@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: IN-PROGRESS
+branch: milestone/561-a-per-cpu-allocator
 raised: 2026-09-21
 promoted_from: a-per-cpu-allocator-is-what-the-current-cpu-page-was-for
-milestone_dependencies: none
+milestone_dependencies: 812
 decision_dependencies: none
 machine_requirements: none
 specific_machine: none
@@ -63,6 +64,29 @@ ways, under QEMU's TCG with four emulated cores, on all three architectures. The
 request #1892). The figures per architecture are in `notes/std/threads.md`. This is the first
 consumer this block was waiting for, and the same program is the measure for whatever replaces the
 lock.
+
+## What the lane found, 2026-10-10 (UTC)
+
+A per-CPU list needs an atomic on every operation without `rseq`, stale id or not, because a thread
+preempted mid-pop hands the same core, and the same list, to another thread. A cache per thread
+needs none, and after milestone 812 reaching it costs a subset of what reaching a per-CPU list costs
+(both start from the thread pointer). So the lane builds a cache per thread in front of the one
+locked heap, and measures it against the per-CPU candidate rather than arguing. The current-CPU page
+loses the consumer it was built for; it keeps `available_parallelism`'s allowance.
+`notes/std/allocation.md` has the argument, the table of candidates and the numbers.
+
+- Built: `crates/allocation_cache` (name provisional), the cache as host-tested pure logic, in
+  front of a real `user_mode_heap` under a random walk of allocations, frees, refills and spills.
+- Next, now that milestone 812 (`std::thread::spawn` runs real threads in one address space) has
+  landed (pull request #1892, merged 2026-10-11 UTC): wiring it into `std`'s allocator through 812's
+  per-thread block, and the measurement on three architectures (one lock, per thread, per CPU, per
+  CPU with the CPU read removed).
+
+Reuse: none to take, after surveying `talc`, `linked_list_allocator`, `buddy_system_allocator`,
+`dlmalloc`, `rlsf`, `frusa`, `rsbmalloc`, `mimalloc` and `snmalloc` on 2026-10-10 (UTC)
+(`notes/std/allocation.md`). The pure-Rust `no_std` ones are one heap behind one lock, which is what
+`std` has; the thread-caching ones are C or C++ or need `mmap`, and would replace `user_mode_heap`,
+which §31 (the foreign-language seam) rule 4 keeps. The cache adapts glibc's `tcache` design.
 
 ## Index row
 
