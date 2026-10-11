@@ -61,8 +61,8 @@ would want, and they are listed because `README.md` used to list them.
 
 - **This page can go stale silently and nothing gates it.** `script/citations` validates in-tree
   numbered records and cannot check a bibliography; a note that stops citing a work leaves a row here
-  pointing at nothing. The same caveat `notes/redleaf.md` states about its own source table applies
-  to this one: the discipline is the author's alone.
+  pointing at nothing. The same caveat `notes/redleaf/sources.md` states about the RedLeaf source
+  table applies to this one: the discipline is the author's alone.
 - **Second-hand readings are marked in the notes, not here.** `notes/verus.md` takes one SOSP '25
   table from `notes/redleaf.md` rather than from the paper, and says so; a reader who needs to know
   which claims are first-hand has to open the note.

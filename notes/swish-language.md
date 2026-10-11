@@ -3,14 +3,15 @@
 *Milestone 67. `crates/grant_plan/src/word.rs`, `crates/grant_plan/src/line.rs`,
 `crates/swish/src/sequence.rs`, `crates/swish/src/lib.rs`, `components/src/swish/`,
 `system_tests/src/user/language_tests.rs`, `xtask`'s `SWISH_CHECK_SCRIPT`. Read notes/pipes.md first if
-you have not: this is the layer above its operators, and it reuses their vocabulary.*
+you have not: this is the layer above its operators, and it reuses their vocabulary. The guest
+test's detail is in [`swish-language/`](swish-language/README.md).*
 
 `swish` had composition, grants, navigation and globbing, and no scripting language at all. This
 milestone adds the three things that were missing and settles the one design fork inside them.
 
-- **Quoting.** `'...'` and `"..."`, which decide what a *word* is, and in this shell a word is often
+- Quoting. `'...'` and `"..."`, which decide what a *word* is, and in this shell a word is often
   the thing you are handing over.
-- **Sequencing.** `;`, `&&` and `||`, outside everything else on the line.
+- Sequencing. `;`, `&&` and `||`, outside everything else on the line.
 - Exit status. `$?`, and the decision about what a status means when the thing that failed was
   a refusal rather than an error.
 
@@ -42,7 +43,7 @@ written to a file called `"my`, and `wc` would have been handed two unplaceable 
 This is the decision the whole design turns on, and it is forced by something real.
 
 Every token in this shell is a slice of the line you typed. Nothing is copied and nothing is
-reassembled, which is what lets a shell with no allocator hand a name straight to the grant planner,
+reassembled. That is what lets a shell with no allocator hand a name straight to the grant planner,
 and it is why `line::split` can keep a stage's command text as a slice rather than rebuilding it. A
 backslash escape would have to *remove* a byte from the middle of a word, and a word with a byte
 removed is not a slice of anything. So:
@@ -75,8 +76,8 @@ It changes what is designated, and that is the whole list:
 
 It changes nothing else. There is no quoting form that widens a grant, none that reaches a
 capability the same word unquoted could not, and none that skips a manifest check: `"secret.txt"` is
-planned against exactly what `secret.txt` is planned against. Quoting is a fact about the **line**,
-and authority here is a fact about what the shell **holds**.
+planned against exactly what `secret.txt` is planned against. Quoting is a fact about the *line*,
+and authority here is a fact about what the shell *holds*.
 
 The narrowing is visible before anything moves, which is the pairing `echo` and `caps` exist for:
 
@@ -146,7 +147,7 @@ chain that reused one region across its segments would keep every earlier segmen
 for the whole chain, and a writer parked on the first would never be told.
 
 It does not, and the reason is where the split is rather than anything anybody wrote: teardown
-happens at the end of a **segment**, because `dispatch_line` sits above `pipeline` rather than
+happens at the end of a *segment*, because `dispatch_line` sits above `pipeline` rather than
 inside it.
 
 ### Two things that are deliberately not connectors
@@ -207,7 +208,7 @@ every program, which is a milestone and not a field. Saying so beats a number no
 ### And what it cannot carry
 
 One small integer, which designates nothing: no capability, no name, no handle. A `&&` chain hands
-the next segment a **bit**. That is the whole of what passes between two commands here, and it is
+the next segment a *bit*. That is the whole of what passes between two commands here, and it is
 the difference between this and a shell where the second command inherits the first's world.
 
 ### `$?` is a word the expander knows, not a variable
@@ -271,8 +272,8 @@ $ echo $?
 ```
 
 Read `caps wc "my notes.txt"` rather than the counts. The `input` row names a file whose name has a
-space in it, which is a sentence the preview could not have been about before this milestone, and
-the parenthesis after it is unchanged: what the child holds is still an endpoint and not a
+space in it, which is a sentence the preview could not have been about before this milestone. The
+parenthesis after it is unchanged: what the child holds is still an endpoint and not a
 capability naming the disk.
 
 The riscv64 leg is the same session with the same answers, which is the parity gate met by running
@@ -280,37 +281,13 @@ the same script rather than by a second implementation.
 
 ## What the guest test proves, on both ISAs
 
-`kernel::user::language_tests` reads the tail of the same run of the same script
-`redirection_tests` reads: the real shell binary with a terminal, a spawn channel, a result channel,
-a budget, and a directory narrowed by an `fs_subtree_caretaker` to one subtree of the real RedoxFS
-image. Both halves of the milestone need that wiring: a quoted name is only worth something if it
-reaches a filesystem, and a `&&` needs a command that can succeed.
-
-It shares the witness rather than wiring its own, and that is a memory finding worth keeping.
-The first version had a seventh role, `ROLE_LANGUAGE`, with the identical endowment. Every scripted
-shell in this suite is a live process whose frames nothing reclaims, and the seventh one put
-`time_tests` over the frame pool *intermittently*: two consecutive runs of unchanged code, one green
-and one dying with `refused to load a user program: Unmappable(OutOfFrames)` and then a lost-wakeup
-watchdog sixty seconds later. The wiring the new lines needed was already there, so the second copy
-of it bought nothing but the flake. The transcript buffer grew from 4 KiB to 8 KiB to hold the longer
-script, which is kernel `.bss` and costs no frames at all.
-
-The lesson generalizes past this milestone: **a scripted-shell witness is not free, and the price is
-paid by whatever test runs last.** A new claim about the shell should look for a witness whose
-endowment already matches before it asks for a role of its own.
-
-The assertions are **pairs**, which is `redirection_tests`'s shape and for the same reason. A single
-line proving "it printed something" would pass on a shell that ignored quoting entirely.
-
-- `echo "*.txt"` against `echo *.txt`: the same four characters, quoted and not. The quoted one must
-  print itself and the bare one must not, so a shell where quoting did nothing fails both halves.
-- `least_authority_demo 3 && echo yes` against `least_authority_demo && echo yes`: one connector against a left-hand side that
-  was refused. `least_authority_demo 3` runs and `least_authority_demo` alone is refused for the integer its manifest requires,
-  so the condition table is covered by two real commands rather than by a branch written for a test.
-- `wc "my notes.txt"` against `wc < "my notes.txt"`: the same designation said two ways, whose byte
-  counts are derived from the `echo` that wrote the file rather than written down.
-- `echo $?` after a command that ran and after one that was refused: `0` and `2`.
-
+`system_tests::user::language_tests` reads the tail of the same script `redirection_tests` runs,
+against the real shell and a real RedoxFS subtree, because a quoted name is only worth something if
+it reaches a filesystem. It shares that witness rather than adding a role: a seventh scripted shell
+put another test over the frame pool intermittently. A scripted-shell witness is not free, and the
+price is paid by whatever test runs last. The assertions are pairs, quoted against bare, refused
+against run, so a shell that ignored the feature fails both halves.
+[`the-guest-test.md`](swish-language/the-guest-test.md) has the four pairs and the flake in full.
 ## BUGS, named where the reader meets them
 
 - No backslash escape, and none is planned while tokens are slices. `my\ notes.txt` is a file

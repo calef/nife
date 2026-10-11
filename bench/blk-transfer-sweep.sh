@@ -57,7 +57,7 @@ set -eu
 
 cd "$(dirname "$0")/.."
 
-LIB=crates/filesystem_protocol/src/lib.rs
+LIB=crates/filesystem_protocol/src/blk.rs
 SAVED=$(mktemp -t blk-transfer-sweep)
 
 restore() {
@@ -82,8 +82,8 @@ for blocks in $BLOCKS; do
     # The constant, and only the constant. Anchored on the whole line so a comment mentioning
     # TRANSFER_BLOCKS cannot be caught by it.
     cp "$SAVED" "$LIB"
-    sed -i '' "s|^    pub const TRANSFER_BLOCKS: usize = .*;|    pub const TRANSFER_BLOCKS: usize = $blocks;|" "$LIB"
-    grep -q "^    pub const TRANSFER_BLOCKS: usize = $blocks;" "$LIB" || {
+    sed -i '' "s|^pub const TRANSFER_BLOCKS: usize = .*;|pub const TRANSFER_BLOCKS: usize = $blocks;|" "$LIB"
+    grep -q "^pub const TRANSFER_BLOCKS: usize = $blocks;" "$LIB" || {
         echo "blk-transfer-sweep: could not set TRANSFER_BLOCKS to $blocks in $LIB" >&2
         exit 1
     }

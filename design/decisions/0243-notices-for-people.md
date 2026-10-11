@@ -83,7 +83,8 @@ Nothing person-facing. Lookups on base `995ac5bce`:
 - Per-user state lives at `<principal root>/<identity>/`, beside `schedule`
   (`crates/schedule_store/src/lib.rs:79`). There are no home directories (`notes/credentials.md#bugs`).
 - The compositor draws a fixed scene of three windows with `MAX_WINDOWS = 4`
-  (`crates/compositor/src/lib.rs:160`) and has no overlay or popup (`notes/compositor.md#what-this-does-not-do-that-a-real-compositor-would`).
+  (`crates/compositor/src/lib.rs:160`) and has no overlay or popup
+  (`notes/compositor.md#what-this-does-not-do-that-a-real-compositor-would`).
 
 ## Prior art, read
 

@@ -24,8 +24,9 @@ pub(crate) mod abi;
 // The net PAL (`sys/net`) is a client of it.
 pub(crate) mod netproto;
 // The FS-service wire format (opcodes, request packing, the errno convention), generated verbatim
-// from `crates/filesystem_protocol/src/lib.rs` by the same xtask step. The fs PAL (`sys/fs`) is a client of
-// it. `blk`/`fixture` in there belong to the other two parties, hence the allow.
+// from `crates/filesystem_protocol/src/lib.rs`, with each module file inlined, by the same xtask
+// step. The fs PAL (`sys/fs`) is a client of it. `blk`/`fixture` in there belong to the other two
+// parties, hence the allow.
 #[allow(dead_code)]
 pub(crate) mod fsproto;
 // The wall-clock contract (DECISIONS §43): the clock page's layout and its seqlock, the propose

@@ -295,7 +295,7 @@ design/roadmap/0102-device-fault-routing.md	-	-	48	-	-
 design/roadmap/0104-init-measures-what-init-loads.md	-	-	55	-	-
 design/roadmap/0105-reap-right-and-thread-handles.md	-	-	41	-	-
 design/roadmap/0107-sockets-that-accept.md	-	-	46	-	-
-design/roadmap/0108-drivers-on-frame-capabilities.md	-	22	47	-	-
+design/roadmap/0108-drivers-on-frame-capabilities.md	-	21.5	47	-	-
 design/roadmap/0109-xargs-at-the-grant-bound.md	-	-	51	-	-
 design/roadmap/0110-recovery-from-a-partition.md	-	-	41	-	-
 design/roadmap/0111-entropy-for-a-child.md	-	-	66	-	-
@@ -668,7 +668,7 @@ design/roadmap/0516-uefi-test-exits-one-after-a-passing-suite.md	-	23	52	-	-
 design/roadmap/0517-survivor-growth-on-the-lines-a-diff-touched.md	3893	-	60	-	-
 design/roadmap/0518-the-per-crate-census-nobody-wrote-down.md	-	-	67	-	-
 design/roadmap/0519-what-this-project-costs.md	-	-	51	-	-
-design/roadmap/0520-cfi-in-hand-written-asm.md	-	22	84	-	-
+design/roadmap/0520-cfi-in-hand-written-asm.md	-	21	84	-	-
 design/roadmap/0521-does-ai-review-catch-anything.md	-	-	59	-	-
 design/roadmap/0522-a-boundary-drawn-by-dependency-not-by-path.md	-	27.5	75	-	-
 design/roadmap/0523-the-job-mix-supervisor-in-userspace.md	3323	-	77	-	-
@@ -745,7 +745,6 @@ notes/board-console.md	-	-	55	-	-
 notes/boot-ladder.md	-	-	74	-	-
 notes/boot-protocol.md	-	-	42	-	-
 notes/boot-slots.md	-	22.5	56	-	-
-notes/boot-stick.md	3052	-	52	-	-
 notes/calendar.md	-	-	76	-	-
 notes/capability-lifecycle.md	-	-	64	-	-
 notes/ci-log-baseline.md	-	30	86	-	-
@@ -763,7 +762,6 @@ notes/dma.md	-	-	66	-	-
 notes/doc-coverage.md	-	-	64	-	-
 notes/documentation-audit.md	-	-	73	-	-
 notes/effort-levels.md	-	-	50	-	-
-notes/elf.md	3085	-	62	-	-
 notes/entropy.md	-	21	68	-	-
 notes/env-config.md	-	-	64	-	-
 notes/exceptions.md	-	-	54	-	-
@@ -799,7 +797,6 @@ notes/net.md	-	-	63	-	-
 notes/nifefs.md	-	-	52	-	-
 notes/non-volatile-memory-express.md	-	21	101	-	-
 notes/ntlm.md	-	-	47	-	-
-notes/ntp.md	4702	-	87	-	-
 notes/object-revocation.md	-	-	56	-	-
 notes/open-model-lanes.md	-	-	44	-	-
 notes/packages.md	-	-	47	-	-
@@ -815,9 +812,7 @@ notes/project-metrics.md	-	-	53	-	-
 notes/project-metrics/ledger.md	-	-	54	-	-
 notes/qemu.md	-	-	71	-	-
 notes/quotas.md	-	-	43	-	-
-notes/redleaf.md	5972	-	49	-	-
 notes/redoxfs-audit.md	-	-	43	-	-
-notes/rented-metal.md	6327	-	53	-	-
 notes/repo-hardening.md	-	-	50	-	-
 notes/ripgrep-on-nife.md	-	-	46	-	-
 notes/riscv-arch-tests.md	-	-	55	-	-
@@ -833,13 +828,11 @@ notes/scheduler.md	-	-	57	-	-
 notes/scripts.md	-	-	47	-	-
 notes/security.md	-	-	53	-	-
 notes/semihosting.md	-	-	49	-	-
-notes/serial-less-output.md	4349	-	67	-	-
 notes/session-handoff.md	-	-	71	-	-
 notes/shell-navigation.md	-	-	72	-	-
 notes/shell.md	-	-	47	-	-
 notes/std.md	-	-	42	-	-
 notes/supervision.md	-	-	58	-	-
-notes/swish-language.md	3147	-	49	-	-
 notes/tail-output-narrowing.md	-	-	74	-	-
 notes/tcb.md	-	21	52	-	-
 notes/terminal-contract.md	-	-	77	-	-
@@ -853,11 +846,8 @@ notes/tsc-under-tcg.md	-	-	71	-	-
 notes/undefined-behavior.md	-	-	61	-	-
 notes/untracked-work-sweep.md	-	21.5	48	-	-
 notes/untrusted-input-audit.md	-	-	57	-	-
-notes/user-proofs.md	3261	-	69	-	-
-notes/verus.md	5478	-	72	-	-
 notes/virtio.md	-	-	41	-	-
 notes/virtualization.md	-	-	52	-	-
 notes/what-a-session-carries.md	-	-	43	-	-
 notes/x86-port.md	-	-	102	-	-
 notes/x86-tlb-shootdown.md	-	-	92	-	-
-notes/xattr.md	3164	-	56	-	-

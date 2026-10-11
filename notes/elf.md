@@ -103,51 +103,13 @@ addresses it has no way of knowing at compile time.
 
 ## Why don't macOS and Windows use it?
 
-History, not merit. The three formats are far more alike than different: header, symbol
-table, relocations, "load these bytes here with these permissions." Nobody looked at ELF
-and found it wanting.
-
-The timing is the whole story. ELF was published ~1988 with System V Release 4 and took
-years to become *the* Unix standard (Linux didn't switch from `a.out` to ELF until ~1995).
-Both Apple's and Microsoft's formats were locked in before that happened.
-
-Mach-O comes from the Mach kernel (CMU, mid-1980s). NeXT built NeXTSTEP on Mach + BSD
-and used Mach-O. Apple bought NeXT in 1997, NeXTSTEP became Mac OS X, and Mach-O came
-along. Apple never *chose* Mach-O over ELF; it was already in the building.
-
-One real technical reason it stuck: Mach-O supports **fat binaries** (one file containing
-code for multiple architectures). Apple changes CPU architecture roughly every decade
-(68k → PowerPC → Intel → Apple Silicon) and each transition was survivable partly because
-one `.app` could run natively on both old and new machines. ELF has no equivalent.
-
-> The interesting version of the fat-binary argument is not about ISAs at all, it's about
-> microarchitecture variants within one ISA (AVX-512, LSE atomics, SVE). That case is
-> live for nife and is written up in
-> [design/fat-binaries.md](../design/fat-binaries.md).
-
-**PE** (Portable Executable, Windows NT 1993) extends COFF, AT&T's *previous* Unix
-object format from the early 1980s: the one ELF was designed to replace. NT development
-started ~1988; the team took the well-understood format they had and extended it for DLLs
-and Windows' resource system. They had zero incentive to adopt a brand-new, unproven,
-competitor's-Unix standard.
-
-The principle: an executable format is a compatibility boundary with enormous switching
-costs and near-zero switching benefits. Compiler, assembler, linker, loader, dynamic
-linker, debugger, profiler, `nm`, `strip`, and the kernel's `exec` path all have to agree,
-and changing it breaks every binary ever compiled. So it gets decided very early, usually
-by "what did the builders already have lying around," and then frozen forever.
-
-### The punchline
-
-UEFI firmware uses PE. Microsoft's format is what boots essentially every modern x86
-and ARM PC, including Linux machines. A UEFI bootloader is formally a Windows executable.
-
-So had we gone x86_64 + UEFI, we'd have been asking Rust to emit a Windows PE binary to
-boot a Unix-flavored kernel from a Mac. Not a joke: that is literally what the
-`x86_64-unknown-uefi` target does.
-
-We dodged it by picking aarch64 and QEMU's `-kernel`, which takes ELF directly.
-
+History, not merit. Mach-O came with NeXTSTEP into Mac OS X, and PE extended COFF for Windows NT,
+both before ELF became the Unix standard. An executable format is a compatibility boundary with
+enormous switching costs and near-zero switching benefits, so it is decided early and frozen. The
+punchline is that UEFI firmware boots PE, so a UEFI bootloader is formally a Windows executable,
+which this tree now builds for x86_64 (`uefi_loader`, `BOOTX64.EFI`).
+[`why-not-mach-o-or-pe.md`](elf/why-not-mach-o-or-pe.md) has the history, the fat-binary argument,
+and the punchline.
 ## Poking at it
 
 Once we build, all of these work on our kernel:
@@ -284,8 +246,8 @@ PT_LOAD  R X  vaddr=0x8000              paddr=0x12b000     .ap_trampoline, neith
 
 Three different relationships in one file, which is why no caller can recover one address from
 the other by subtracting a constant. The trampoline is the interesting one, and it inverts the usual
-sense of both words: its bytes *ship* at `0x12b000`, because `AT()` places them after `.rodata`
-where nothing writes them at runtime, and they *execute* at `0x8000`, because a STARTUP IPI can only
+sense of both words. Its bytes *ship* at `0x12b000`, because `AT()` places them after `.rodata`
+where nothing writes them at runtime. They *execute* at `0x8000`, because a STARTUP IPI can only
 name a physical page below 1 MiB and the secondary core arrives there in real mode with paging off.
 Its VMA was chosen to be its eventual execution address; its LMA is merely where the image carries
 it until `ap_boot::prepare` copies it down.
@@ -297,7 +259,7 @@ The rule that falls out:
   program asked, so the file's physical address is not merely unused, it is a claim about a
   decision the loader is making itself.
 - A loader placing an image at fixed physical addresses wants `paddr`. That is firmware-shaped
-  work, and it is why the field is exposed at all (milestone 196): without it, such a loader has to
+  work, and it is why the field is exposed at all (milestone 196 (a physical address on `elf::Segment`)). Without it, such a loader has to
   re-implement the ELF parse, and two readers of one format is what AGENTS.md rule 7 exists to
   prevent.
 
@@ -320,8 +282,8 @@ error, and the loader placing images physically owns that judgment.
   The blocker was not `p_paddr`: **`crates/elf` refused the kernel image** with
   `Error::WritableAndExecutable`, because the `x86_64` linker script folded `.text.boot` and
   `.data.boot` into one output section and the 32-bit trampoline shipped as a single `RWX` `PT_LOAD`
-  at `0x101000`. Measured rather than argued, twice: 196's lane patched that one segment's `p_flags`
-  to `RX` in a copy and watched the whole file become acceptable, and milestone 208 (the x86_64
+  at `0x101000`. Measured rather than argued, twice. 196's lane patched that one segment's `p_flags`
+  to `RX` in a copy and watched the whole file become acceptable. Milestone 208 (the x86_64
   kernel image ships an RWX segment) then split the section and ran the shipped artifact through
   `Elf::parse`, which accepts it: all ten `PT_LOAD`s, the three `NOLOAD` reservations and the
   trampoline's split addresses included. Nothing else in the validating parser objected, so the
@@ -329,7 +291,7 @@ error, and the loader placing images physically owns that judgment.
 - The second reader is gone (milestone 208). `uefi_loader/src/image.rs` is now a physical-span
   helper and a refusal-wording table over `elf::Elf`, and the loader validates the kernel it places
   instead of trusting it. What made the deletion possible was a security fix rather than an API
-  change, which is the part worth remembering: the kernel's own image was the one thing in the tree
+  change, which is the part worth remembering. The kernel's own image was the one thing in the tree
   breaking the W^X rule `crates/elf` and `paging::Flags` enforce everywhere else, and the parser
   refusing it is that rule catching the tree. `script/image-permissions` is what keeps it caught.
 
