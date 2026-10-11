@@ -100,7 +100,7 @@ Step 4 said where the residual now lives. Of every 6 to 7 blk calls per record, 
 was first identified on 2026-08-18 ([the fixed term](five-blocks-per-request.md), and notes/fs-server.md's
 "the same five blocks every time") and not addressed until now.
 
-`redoxfs_server::CachedDisk` (`redoxfs_server/src/lib.rs`) wraps `IpcDisk` in a small direct-mapped,
+`redoxfs_server::CachedDisk` (`redoxfs_server/src/block.rs`) wraps `IpcDisk` in a small direct-mapped,
 write-through cache of single-block reads. It has 64 slots (`CACHE_SLOTS`,
 `redoxfs_server/src/bin/redoxfs_server.rs`), about 257 KiB. Only a `buffer.len() == BLOCK`
 `Disk::read_at` consults it; a record body, already step 4's batched call, bypasses it. A write
@@ -109,7 +109,7 @@ landed.
 
 That is enough without a generation counter. RedoxFS's copy-on-write allocator never rewrites a live
 address in place, so a cached address's content can change only through that same write path. Six
-host tests (`redoxfs_server/src/lib.rs`) check hit and miss, write-through freshness, short-write
+host tests (`redoxfs_server/src/block/tests.rs`) check hit and miss, write-through freshness, short-write
 invalidation, slot-collision safety and multi-block bypass, in milliseconds with no emulator.
 
 ### Before and after, eight interleaved rounds each

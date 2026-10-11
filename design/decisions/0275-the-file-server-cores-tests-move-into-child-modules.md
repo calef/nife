@@ -37,7 +37,7 @@ with them. The title, this section's heading and both slugs stay, because calef 
 | file | holds | lines |
 |---|---|---|
 | `src/lib.rs` | crate docs, `Server` and its helpers, `mod block;` and a named re-export | 1,448 |
-| `src/block.rs` | `BLOCK`, `CACHE_SLOTS`, the const assertions, `BlockIo`, `BlockDisk`, `BlockCache`, `cacheable`, `CachedDisk` | 306 |
+| `src/block.rs` | `BLOCK`, `CACHE_SLOTS`, the const assertions, `BlockIo`, `BlockDisk`, `BlockCache`, `cacheable`, `CachedDisk` | 307 |
 | `src/block/tests.rs` | `CountingDisk`, the six `CachedDisk` tests and the header-ring test | 206 |
 | `src/tests.rs` | shared helpers, sync, mtime, open, read, write and the chunked repeat writes | 489 |
 | `src/tests/directory_capability.rs` | the directory capability, milestone 47 (navigation and naming) | 1,137 |
@@ -80,18 +80,20 @@ except in six monomorphized functions in each architecture's server binary (inli
 ## Records that follow the move
 
 - `design/file-length-baseline.tsv` loses the file's row.
-- `design/comment-block-baseline.tsv`'s row `lib.rs:1619` moves to `block.rs:185` at the same 44,
-  which needs §267 to carry a row on a split (maintainer PR #1924).
-- `notes/benchmarks/read-path-block-contract-and-metadata-cache.md`, `notes/fs-server.md`,
+- `design/comment-block-baseline.tsv`'s row `lib.rs:1619` moves to `block.rs:186` at the same 44,
+  which needs §267 (a comment states the constraint as it is now) to carry a row on a split
+  (maintainer PR #1924).
+- `notes/benchmarks/read-path-block-contract-and-metadata-cache.md`, `notes/fs-server/throughput.md`,
   `notes/shell-navigation.md`, `bench/cache-slots-sweep.sh` and one comment in
   `crates/filesystem_protocol` now name the new path.
 
 ## Found while moving
 
 The 44-line block is two doc comments run together: `CachedDisk`'s (36 lines) and `cacheable`'s (8),
-all attached to `fn cacheable`, so `pub struct CachedDisk` has no doc. Milestone 606 inserted the
-function between the doc and its struct. Moving the struct's doc back beside it is one commit, and
-it takes both blocks under §267's cap; it was left out because this change moves and does not edit.
+all attached to `fn cacheable`, so `pub struct CachedDisk` has no doc. Milestone 606 (a directory
+walk costs what it does on Linux) inserted the function between the doc and its struct. Moving the
+struct's doc back beside it is one commit, and it takes both blocks under §267's cap; it was left
+out because this change moves and does not edit.
 
 ## What it does not decide
 
