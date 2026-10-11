@@ -285,9 +285,9 @@ the table. Retiring it answered a readability one. Nothing was lost, because mil
 index is generated, not hand-maintained) had already moved the two hand-written columns into the
 blocks. `script/roadmap --index` still assembles the five columns to stdout for the two scripts
 that read them. The record of the generation and its measurements is in
-[roadmap/the-retired-index.md](roadmap/the-retired-index.md).
-
-## What the gate does now, and the one thing it deliberately stopped doing
+[roadmap/the-retired-index.md](roadmap/the-retired-index.md). What the gate stopped checking while
+the table was generated is in
+[milestone 294's block](../design/roadmap/0294-the-index-is-generated.md).
 
 ## BUGS
 
