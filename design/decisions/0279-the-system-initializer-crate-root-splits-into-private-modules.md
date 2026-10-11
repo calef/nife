@@ -86,11 +86,13 @@ Prior art:
 | milestone 840 (the scheduler file is split along its seams), §271 (the scheduler file splits into submodules of `sched`) | a split of `kernel/src/sched.rs`, 8,888 lines | moved items only, no function changed; `schedule` and the send path kept their bodies |
 | milestone 842 (the grant-plan crate root is split along its seams), §272 (the grant-plan crate root splits into private modules) | a split of `crates/grant_plan/src/lib.rs`, 7,034 lines | moved items only, and named a follow-on for the program table once jig installs packages |
 | §266, section 1 and BUGS | what the ceiling measures | file length; a per-function limit was named as "a different problem, and not ruled out" |
+| [the function-length ratchet proposal](../roadmap/proposals/a-ratchet-on-function-length.md) | `kernel_main`, the kernel's boot sequence, 977 code lines; it lists `boot` at 847 and `spawn_service` at 545 | calef ruled on 2026-10-09 (UTC) that `kernel_main` is split by boot phase, one function per phase, not kept whole under an exception |
 | Linux, `init/main.c` `start_kernel` (from memory, not read) | a boot sequence | one long function, but each step a call to a named `*_init` function |
 | seL4, `try_init_kernel` (from memory, not read) | a boot sequence | one function of numbered stages, each a call to a `create_*` or `init_*` helper |
 
-The two peers are the shape the decomposition follow-on would reach. Neither says anything about
-whether to move first.
+calef's ruling on `kernel_main` already answers where `boot` should end up: split by phase, as
+the follow-on proposes. It does not answer the order, which is what this question asks. The two
+peers are the same shape, and neither says anything about whether to move first.
 
 The alternatives:
 
