@@ -391,7 +391,8 @@ def _col(prefix, status):
 # week, so everything downstream of it, the charts included, still sees the flat row it always saw.
 #
 # `cost` rather than `effort`, because `effort.csv` in this same directory is `script/effort`'s
-# output and an input to this script. The chart it feeds keeps its own name, `effort.svg`.
+# output and an input to this script. Its chart, `effort.svg`, was removed on 2026-10-11 (UTC) at calef's
+# request; the columns are still written, and `context-per-turn.svg` still draws from the same records.
 WEEK = 'week'
 
 # Milestone 611's columns; `homes` below fills them.
@@ -423,8 +424,7 @@ MEASURES = [
     # The model-attribution columns (file name `models.csv`; Name: ratified 2026-09-24 (calef, in session, when asked to ratify the two metrics files the split produced; nothing refused)). Commits
     # and lines are one measure and one file rather than two, because a single pass over the same
     # git log produces both and a week that has one always has the other. The two charts it feeds
-    # keep their own names, `models-commits.svg` and `models-lines.svg`, the way `cost` feeds
-    # `effort.svg`.
+    # keep their own names, `models-commits.svg` and `models-lines.svg`.
     ('models', [_model_col('commits', s) for s in MODEL_SLUGS + MODEL_EXTRA]
      + ['model_commits_total']
      + [_model_col('lines', s) for s in MODEL_SLUGS + ['unattributed', 'pre_convention']]),
@@ -2480,10 +2480,6 @@ CHARTS = [
      'dozen lines and the largest was a mechanical sweep. Merges carry no line count',
      model_chart('lines', False)[0], 1000.0, None, 'model_lines_unattributed',
      model_chart('lines', False)[1]),
-    ('effort.svg', 'Machine effort per milestone built, in millions of tokens',
-     'a ratio, not a total: down means the method got cheaper. Weeks with no surviving records are '
-     'marked, not zeroed',
-     [('million tokens per milestone', 'tokens_per_milestone')], 1.0, None, 'lane_tokens'),
     ('context-per-turn.svg', 'What a turn carried, in thousands of tokens of context',
      'mean prompt per request, from the same records as the row above; the bill tracks this, not '
      'the length of the answer. Weeks with no surviving records are marked, not zeroed',
