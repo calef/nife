@@ -20,9 +20,26 @@ on 2026-10-11 (UTC): "Keep it for now, and open the follow-up milestone". This i
 It waits on 845. Moving `fixture` out of the 5,744-line `lib.rs` before 845 lands would make two
 lanes cut the same file at once.
 
-The crate name below is provisional. Which items leave is calef's call too, because some of them
-are not test data (see "The premise is half right"). A lane writes both up as a `status: PROPOSED`
-file in `design/decisions/` before it moves a line, and its pull request carries `needs-architect`.
+The crate name below is provisional and waits for calef's naming ratification pass; it does not
+block the lane.
+
+## What calef ruled (2026-10-11, UTC)
+
+Relayed one question at a time by the maintainer, each with its prior art and alternatives.
+
+- **Which items stay: A.** `READY`, `DESCENT_REFUSED` and the `rm` status convention (`rm::OK`,
+  `rm::status`) stay in `filesystem_protocol`, in a module of their own (name provisional). They
+  are words shipping programs send each other, and every other protocol here keeps its readiness
+  word in its own crate (`entropy_protocol`, `byte_sink_protocol`, `login_protocol`). Refused:
+  moving everything, which would make the kernel, `virtio` and `system_initializer` depend on a
+  test-data crate to boot; and one shared readiness crate, which would merge words that differ per
+  protocol on purpose. Everything else, `crash::CUT`, `throughput::RECORD` and `blank` included,
+  moves.
+- **When std stops copying it: A, as soon as 845 lands.** Step 1 below is its own small pull
+  request, ahead of the crate move. Of the 27 commits that touched `filesystem_protocol/src/lib.rs`
+  from 2026-09-11 to 2026-10-11, 10 edited `mod fixture`, and each made every worktree's std farm
+  stale. The crate move later deletes the skip line, since `fixture.rs` will be gone. calef's
+  ruling on 845 that std's copy keep the same text covered that pure move, not this change.
 
 Reuse: not applicable; this moves code and adds none.
 
@@ -75,7 +92,7 @@ holds. For a few it does not: shipping programs use them to talk to each other.
 | `throughput::RECORD` | a `const` assertion in `redoxfs_server/src/lib.rs` | the record size its throughput phase assumes |
 | `blank` | `disk_partitioner`, `system_installer` (only `LBA`), `mkfs` | milestone 57's test-disk layout, which the partitioner writes |
 
-`READY` is a protocol word misfiled. The recommendation is that it and `DESCENT_REFUSED` stay in
+`READY` is a protocol word misfiled. calef ruled that it and `DESCENT_REFUSED` stay in
 `filesystem_protocol`, and the `rm` status convention with them. A test-only crate that the kernel,
 `virtio` and `system_initializer` must depend on to boot would be the same mistake reversed. The
 other three are test hooks or test layout compiled into programs. They move with the fixture, and
@@ -106,8 +123,9 @@ four roadmap blocks, six notes and two falsification patches under `system_tests
 
 ## The work
 
-1. After 845 lands, the generator skips `fixture.rs`, and the `allow` comment in
-   `sys/pal/nife/mod.rs` stops naming it. Show the shorter `fsproto.rs` in the pull request.
+1. As soon as 845 lands, in a pull request of its own: the generator skips `fixture.rs`,
+   `STD_SRC_PATCH_VERSION` is bumped, and the `allow` comment in `sys/pal/nife/mod.rs` stops
+   naming it. Show the shorter `fsproto.rs` in the pull request.
 2. The protocol words in the table above move to the crate root or a module of their own, name
    provisional, and their users follow.
 3. The rest becomes a crate, `crates/filesystem_fixture` (provisional), with `fixture.rs` as its
@@ -146,6 +164,8 @@ benchmark shapes. calef names crates.
 3. The kernel, `virtio` and `system_initializer` do not depend on the new crate.
 4. Every host test and doc test that passed before passes with no test body changed, and so does
    `script/test` on aarch64, riscv64 and x86_64.
+6. `system_installer` takes its block size from `blk`, not from `blank::LBA`, so no shipping
+   installer depends on the test crate.
 5. The new crate's `lib.rs` carries a `//! Name:` line marked provisional.
 
 ## Index row
@@ -153,4 +173,4 @@ benchmark shapes. calef names crates.
 `filesystem_protocol::fixture` is 1,241 lines of test data in a wire-protocol crate, and std copies
 all of it into every build: 34% of the generated `fsproto.rs`. This moves it to a crate of its own
 at 187 sites, after 845. A few of its items are protocol words that shipping programs use, and
-those stay. The crate name is an architect's call.
+those stay, per calef's ruling. std stops copying it as soon as 845 lands.
