@@ -47,10 +47,9 @@ One stale prescription was found, and it is finding 3.
 ## What came back clean
 
 The six splits' inbound side, otherwise. Every quoted section a citation names still stands in the
-main page it names: "The inbound half" (`notes/net.md:63`), "What still ends a nife process"
-(`notes/std.md:193`, cited from three files), "What had to change above `arch/`"
-(`notes/x86-port.md:139`), "One wait point" (`notes/pipes.md:115`) and "Buffering: measured"
-(`notes/pipes.md:126`). No anchored link anywhere points into the six. The split lanes swept their
+main page it names: "The inbound half" (`notes/net.md`), "What still ends a nife process"
+(`notes/std.md`, cited from three files), "What had to change above `arch/`"
+(`notes/x86-port.md`), "One wait point" and "Buffering: measured" (both `notes/pipes.md`). No anchored link anywhere points into the six. The split lanes swept their
 own inbound sides, which is what the 2026-09-24 sweep asked the next split to do.
 
 `notes/timer.md` checked out on every number: the tick is 100 Hz (`kernel/src/arch/aarch64/timer.rs:103`),
@@ -72,8 +71,8 @@ commits have since touched the file, and nobody made it. The comment names the r
 
 ### 2. FIXED: a call-site count that never matched the tree
 
-`notes/notification-objects.md:128` said `bind_irq` has fifteen call sites (its line 130 now
-carries the correction's date). Counted at the note's
+`notes/notification-objects.md`, under "Two checks the maintainer asked for (2026-09-26)", said
+`bind_irq` has fifteen call sites (the same paragraph now carries the correction's date). Counted at the note's
 own creation commit and again today: thirteen wiring sites plus the soak's loop. The count is now
 the true one, with the correction dated beside it.
 
@@ -97,7 +96,8 @@ uses, beside a marked exception.
 
 ### 5. FIXED: a citation quoted a section that had become an appendix
 
-`design/roadmap/0124-a-thread-is-born-where-it-lives.md:117` quoted "a kernel stack freed under its
+`design/roadmap/0124-a-thread-is-born-where-it-lives.md`, under "Closed: the stack was freed under
+its owner (2026-08-17)", quoted "a kernel stack freed under its
 owner" as a section of `notes/stack.md`. The 2026-09-24 split moved it to
 `notes/stack/kernel-stack-freed-under-its-owner.md`, and the quote stopped resolving. The pointer
 names the appendix, beside a marked exception.

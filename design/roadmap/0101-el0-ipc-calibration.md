@@ -58,6 +58,7 @@ It forecast 12-24x. The measured answer is ~1.1x to ~1.7x, an error the same siz
 was written to correct, in the other direction. It was written to catch an overstatement and
 produced a larger one.
 
+<!-- line-citation: exception. Reason: the block as raised, kept wrong on purpose (above). -->
 > What the source actually says. notes/benchmarks.md:66 names a true EL0-to-EL0 benchmark as
 > "the right follow-up" and says it "needs one `CNTKCTL_EL1` bit so EL0 can read the counter". Both
 > halves are stale. ...
@@ -104,7 +105,7 @@ and both had been false for longer than the block was.
 **The sentence those halves came from no longer exists**, and that is the correction this block was
 still describing as pending. Commit `b4178513` deleted it from notes/benchmarks.md in the same
 change that rewrote the calibration, so from 2026-08-04 this file was quoting a sentence that was
-already gone and calling it "the source". The citation `notes/benchmarks.md:66` now lands in the
+already gone and calling it "the source". The line-number citation it used now lands in the
 middle of the corrected section, which is the well-formed-but-wrong failure mode `script/roadmap`
 records as invisible to it.
 

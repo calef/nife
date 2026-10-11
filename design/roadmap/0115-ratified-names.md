@@ -17,7 +17,7 @@ script entry points, 148 in total, which is complete coverage rather than a samp
 `script/names --check` verifies every one of them carries a block, and `script/lint` runs it. The
 table is a derived query (`script/names`, with `--unratified`, `--refused`, `--unrecorded`,
 `--provisional` and a bare-name lookup) rather than a file anyone maintains, which is the half calef
-rejected the first draft over. The convention is design/naming.md:223.
+rejected the first draft over. The convention is `design/naming.md`'s "Where a name's provenance lives".
 
 The worklist's length is the mechanism working, not a shortfall. `script/names --unratified`
 stands at 74 of 148. The gate deliberately checks that a name carries provenance and never that its

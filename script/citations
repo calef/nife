@@ -65,7 +65,7 @@
 # When a gloss fails against what it cites, this script asks whether it matches THE SAME NUMBER UNDER
 # THE OTHER SCHEME, and says so if it does. That is not a nicety; it is the entire defect this
 # milestone was raised for, and it names the fix instead of the symptom:
-#
+# (line-citation: exception. Reason: the script's own diagnostic, which reports a line it read.)
 #     notes/credentials.md:346: §49's gloss does not match §49, but it matches milestone 49
 #
 # `milestone N` and `§N` are two numbering schemes over the same tree that agree by accident for the

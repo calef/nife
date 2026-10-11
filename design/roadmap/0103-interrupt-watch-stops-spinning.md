@@ -10,7 +10,7 @@ needs_person: no
 # 103. `^C` stops spinning: the shell's interrupt watch, blocking
 
 Raised 2026-08-04 as "`^C` is decided and ready to schedule and nobody
-built it", which is what `notes/session-handoff.md:52` says. The note is stale and `^C` is built.
+built it", which is what `notes/session-handoff.md`'s "Wave-3: what's next, roughly in order" says. The note is stale and `^C` is built.
 What is genuinely unbuilt is one line of §24's own implementation record, and this block is that
 line.
 
