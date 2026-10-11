@@ -79,7 +79,8 @@ the program ids `spawnproto` already sends in word 0.
 - Init held a writable mapping of everything it ever built, until 2026-10-05 (UTC). `build_child`'s
   scratch window is never unmapped (it cannot be: nothing in the ABI unmaps a page), so the progenitor can read and write any
   page it laid down for a child. That included every boot server's. *Closed 2026-10-05; the
-  parenthesis stays because §162 (whether a holder can give up a mapping) quotes it.* §249 (a
+  parenthesis stays because §162 (whether a holder can give up a mapping) quotes it, and the
+  sentence it quotes is also kept on the parent page, which is the file §162 names.* §249 (a
   running address space stays nameable) let the kernel grant the progenitor its own space at slot
   28, and the loader now `UNMAP`s each page once it is in the child. The shell's output page and
   the two DMA pages the progenitor peeks at go the same way. `system_tests`' `running_space_tests`
