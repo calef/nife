@@ -10,11 +10,12 @@
 
 use core::sync::atomic::{AtomicBool, AtomicPtr, AtomicU32, AtomicU64, AtomicUsize, Ordering};
 
-use crate::arch::semihosting;
-use crate::{print, println};
 // The per-test budget table lives in `crates/test_times` (`DEFAULT_BUDGET_SECS`, `SLOW_TESTS`),
 // because `xtask`'s host watchdog reads the same numbers (rule 7).
 use test_times::budget_secs_for;
+
+use crate::arch::semihosting;
+use crate::{print, println};
 
 // The hang watchdog: **two independent mechanisms, because there are two ways a test never
 // finishes.** Both run off the timer IRQ, so they cost a couple of atomic loads per tick and cannot
@@ -61,10 +62,9 @@ use test_times::budget_secs_for;
 //     had that number read as evidence of honest slowness, which sent an investigation looking for a
 //     slow path in a test whose server was already dead. Raising a budget to "measure" something
 //     returns only the new budget.
-//   - `helpers/qemu-bounded.sh` remains the outermost backstop, for a kernel that wedges so hard the
-//     timer IRQ itself stops. It did NOT fire in the reported case because that run invoked `cargo`
-//     directly instead of going through the wrapper: **a bypassable backstop is not a backstop**,
-//     which is precisely why the ceiling belongs in the kernel, where nothing can route around it.
+//   - Both run off the boot core's timer IRQ, so a kernel that loses it loses both. The backstop
+//     for that is xtask's host watchdog (`time_record::HOST_GRACE_SECS`, notes/scheduler.md), which
+//     kills QEMU at the test's budget plus a grace. This ceiling still fires first; its dump says more.
 /// **Which tests this binary runs** (milestone 210): a substring of the full test path, or empty
 /// for the whole suite.
 ///

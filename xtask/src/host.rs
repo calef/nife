@@ -146,28 +146,24 @@ pub(crate) fn selected_by(line: &str) -> Option<usize> {
 /// return is whether it succeeded and how many tests its harness selected (milestone 609 (the
 /// system tests leave the kernel crate)). A leg boots two test images now and a filter may match
 /// in only one, so the "selected nothing" verdict is the caller's, over both.
-pub(crate) fn cargo_test_counting_selected(args: &[&str]) -> (bool, usize) {
-    use std::io::BufRead;
-    let mut child = match Command::new("cargo")
-        .args(args)
-        .stdout(std::process::Stdio::piped())
-        .spawn()
-    {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("failed to run cargo: {e}");
-            return (false, 0);
-        }
-    };
-    let mut selected = 0;
-    if let Some(stdout) = child.stdout.take() {
-        for line in std::io::BufReader::new(stdout).lines() {
-            let Ok(line) = line else { break };
-            println!("{line}");
-            selected += selected_by(&line).unwrap_or(0);
-        }
-    }
-    let ok = child.wait().is_ok_and(|s| s.success());
+///
+/// `who` names the leg and image for the host watchdog's failure line (`time_record::Watch`), which
+/// bounds this run the way it bounds an unfiltered one.
+pub(crate) fn cargo_test_counting_selected(args: &[&str], who: &str) -> (bool, usize) {
+    let (mut child, watch) =
+        match crate::time_record::Watch::spawn(Command::new("cargo").args(args)) {
+            Ok(pair) => pair,
+            Err(e) => {
+                eprintln!("failed to run cargo: {e}");
+                return (false, 0);
+            }
+        };
+    let ok = watch.wait(&mut child, who).is_some_and(|s| s.success());
+    let (lines, _) = watch.finish();
+    let selected = lines
+        .iter()
+        .map(|l| selected_by(&l.text).unwrap_or(0))
+        .sum();
     (ok, selected)
 }
 

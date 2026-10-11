@@ -126,8 +126,8 @@ flake the heartbeat fixed, so both mechanisms are live now.
 
 Why budgets are per test. std_net honestly runs 300 to 344 s, so one global ceiling would sit near
 700 s and let a two-second unit test spin for eleven minutes before failing. The default is a tight
-90 s; a test that is honestly slower declares its cost in `SLOW_TESTS` in `testing.rs`, with the
-reason. Keep entries near 2x measured, so host load does not make them flaky.
+90 s; a test that is honestly slower declares its cost in `SLOW_TESTS` in `crates/test_times`, with
+the reason. Keep entries near 2x measured, so host load does not make them flaky.
 
 The honest limit. Neither mechanism can tell a livelock from slow-but-correct work while it is
 running. Only the budget, a human declaration of expected cost, separates them. That is why a new
@@ -142,10 +142,22 @@ helpers/qemu-bounded.sh 200 cargo test -p kernel \
     --features watchdog_probe --target aarch64-unknown-none-softfloat
 ```
 
-The outermost backstop. `helpers/qemu-bounded.sh` still guards the case where the kernel wedges so
-hard the timer IRQ stops. It did not fire for the RedoxFS livelock only because that run invoked
-`cargo` directly instead of the wrapper: a bypassable backstop is not a backstop, which is exactly
-why the ceiling lives in the kernel, where nothing can route around it.
+The outermost backstop is on the host. Both guest watchdogs run off the boot core's timer IRQ, so a
+kernel that loses it loses both. This section used to name `helpers/qemu-bounded.sh` for that case,
+but no kernel leg of `script/test` runs through it, and on 2026-10-11 (UTC) an x86_64 run sat 9.5
+hours in one e1000e test with neither watchdog printing (#1912). xtask now watches the transcript
+for the running test's name and kills QEMU at that test's budget plus `HOST_GRACE_SECS` (60 s), 150
+s by default. The failure line names the leg, the image, the test and how long it ran:
+
+```text
+HOST WATCHDOG: x86_64 system_tests: test system_tests::user::e1000e_tests::a_client_... ran 150 s,
+past its 150 s bound (its guest budget plus 60 s). ...
+```
+
+It reads the same budget table as the ceiling (`crates/test_times`), so a `SLOW_TESTS` entry
+lifts both. The grace keeps it out of the ceiling's way, since the guest's report carries a thread
+dump and the host's cannot. `xtask/src/time_record.rs` holds the reasoning and what it does not
+cover (the build before the guest's first line, and `--hvf`).
 
 ## CLOSED: the lost wakeup on `reclaim_frees_a_started_then_exited_childs_regions`
 

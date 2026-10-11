@@ -819,7 +819,10 @@ fn hvf_both_images(filtered: bool) -> bool {
 fn filtered_leg(arch: &str, target: &str) -> bool {
     let mut selected = 0;
     for package in ["kernel", "system_tests"] {
-        let (ok, n) = cargo_test_counting_selected(&["test", "-p", package, "--target", target]);
+        let (ok, n) = cargo_test_counting_selected(
+            &["test", "-p", package, "--target", target],
+            &format!("{} {package}", time_record::leg(arch)),
+        );
         if !ok {
             return false;
         }

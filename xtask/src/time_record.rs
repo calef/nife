@@ -69,7 +69,8 @@
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::path::PathBuf;
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Command, ExitStatus, Stdio};
+use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
@@ -82,28 +83,159 @@ pub(crate) struct Stamped {
     pub(crate) text: String,
 }
 
+/// **The host watchdog's grace: how long the host waits past a test's own budget before it ends
+/// the boot itself.** [`Watch`] reads the running test's name off the transcript, and
+/// [`Watch::wait`] or [`Watch::enforce`] kills QEMU's whole tree once that test has run past
+/// [`bound_for`]. The guest's two watchdogs (`kernel/src/testing.rs`, notes/scheduler.md) both run
+/// off the boot core's timer interrupt, so a guest that loses it loses both; this is the backstop
+/// that needs nothing from the guest. Why it exists, a 9.5-hour hang on 2026-10-11 (#1912), is in
+/// notes/scheduler.md.
+///
+/// The guest's ceiling fires on the first tick past its budget, prints the test's name and a
+/// thread dump, and exits. That report says more than this one can, so the host stays out of its
+/// way: 60 s is far more than that exit takes, with room for a guest clock that runs a little
+/// behind the host's (`ClockCheck` bounds it). The default host bound is 90 + 60 = 150 s.
+///
+/// Against what it guards: the slowest honest test in about 27,000 per-test records (three
+/// merge-group CI runs on 2026-10-11 and eight lane runs on patagonia, a shared and busy host) was
+/// 20.5 s, `package_index_tests::a_package_is_fetched_through_the_index_by_name_over_tls_and_judged_by_its_digest`
+/// on aarch64; no test reached 30 s. CI's `test` job runs every leg in a median of about 17
+/// minutes, against milestone 721 (each merge-group CI job has a 20-minute budget) and a
+/// 25-minute `timeout-minutes`. A hang now costs a run 2.5 minutes and fails with its name, where
+/// it used to cost the job its timeout (a cancellation with no name) or, locally, forever.
+///
+/// # BUGS
+///
+/// - **`build` is not bounded**, the stretch before the guest's first line, because that is cargo
+///   compiling and a cold build is minutes. A guest that wedges before printing anything has only
+///   CI's `timeout-minutes` over it.
+/// - **The `--hvf` leg is not watched.** It reads its own transcript (`hvf_kernel_leg`) and trusts
+///   the guest's watchdogs. It runs only on a laptop, by hand.
+pub(crate) const HOST_GRACE_SECS: u64 = 60;
+
+/// **Where a booted image's transcript has got to**, as the host watchdog reads it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Stage {
+    /// Spawned, and nothing on stdout yet: cargo building the image and QEMU starting. Unbounded.
+    Build,
+    /// The guest has printed, and no test has started.
+    Boot,
+    /// The test this `test <path> ... ` line announced.
+    Test(String),
+    /// `test result:` has printed; the guest should be exiting.
+    Exit,
+}
+
+/// The stage a transcript line moves to, or `None` when the line does not move it. Read on whole
+/// lines and on the unfinished tail of the last chunk, because the runner prints `test <path> ... `
+/// with no newline and a test that hangs never adds one.
+fn stage_after(line: &str) -> Option<Stage> {
+    let line = line.trim_end_matches('\r');
+    if line.starts_with("test result:") {
+        return Some(Stage::Exit);
+    }
+    announced_test(line).map(|path| Stage::Test(path.to_string()))
+}
+
+/// **The host's bound on one stage**, or `None` for [`Stage::Build`]. A test gets its own guest
+/// budget (`test_times`, the same table the kernel's ceiling reads) plus [`HOST_GRACE_SECS`];
+/// `Boot` and `Exit` get the default budget plus the grace, and the slowest of either measured in
+/// CI on 2026-10-11 was 1.8 s.
+pub(crate) fn bound_for(stage: &Stage) -> Option<Duration> {
+    let secs = match stage {
+        Stage::Build => return None,
+        Stage::Boot | Stage::Exit => test_times::DEFAULT_BUDGET_SECS,
+        Stage::Test(path) => test_times::budget_secs_for(path),
+    };
+    Some(Duration::from_secs(secs + HOST_GRACE_SECS))
+}
+
+/// What the reader thread shares with the waiter: the stage and when it began.
+struct Progress {
+    stage: Stage,
+    since: Instant,
+}
+
+/// A stage that ran past its bound, for the failure line.
+#[derive(Debug)]
+pub(crate) struct Overrun {
+    pub(crate) stage: Stage,
+    pub(crate) ran: Duration,
+    pub(crate) bound: Duration,
+}
+
+impl Overrun {
+    /// The failure line: who (the leg, which starts with the architecture, and the image), what,
+    /// how long it ran and against what bound.
+    pub(crate) fn message(&self, who: &str) -> String {
+        let what = match &self.stage {
+            Stage::Test(path) => format!("test {path}"),
+            Stage::Boot => "the boot, before its first test".to_string(),
+            Stage::Exit => "the exit, after `test result:`".to_string(),
+            Stage::Build => "the build".to_string(),
+        };
+        format!(
+            "HOST WATCHDOG: {who}: {what} ran {} s, past its {} s bound (its guest budget plus \
+             {HOST_GRACE_SECS} s). The guest's own watchdogs did not end it, which they do from the \
+             boot core's timer interrupt, so suspect that interrupt first. QEMU and its harness are \
+             killed. See HOST_GRACE_SECS in xtask/src/time_record.rs.",
+            self.ran.as_secs(),
+            self.bound.as_secs(),
+        )
+    }
+}
+
 /// The reader that passes a child's stdout through and stamps each line. Spawned beside the child;
-/// [`Watch::finish`] joins it once the child has exited.
+/// [`Watch::finish`] joins it once the child has exited. It also keeps the [`Stage`] the host
+/// watchdog reads.
 pub(crate) struct Watch {
     started: Instant,
     reader: JoinHandle<Vec<Stamped>>,
+    progress: Arc<Mutex<Progress>>,
+    bound: fn(&Stage) -> Option<Duration>,
 }
 
 impl Watch {
-    /// Spawn `command` with its stdout piped through this process's stdout.
+    /// Spawn `command` with its stdout piped through this process's stdout, bounded by
+    /// [`bound_for`].
     ///
     /// **The bytes are copied the moment they arrive, not a line at a time**, so a test that hangs
     /// after printing `test x ... ` shows that line live, exactly as it did when the child
     /// inherited stdout. Only the stamping waits for a newline.
     pub(crate) fn spawn(command: &mut Command) -> std::io::Result<(Child, Watch)> {
+        Self::spawn_bounded(command, bound_for)
+    }
+
+    /// [`Watch::spawn`] with another bound, so the host test can watch one fire in a second.
+    pub(crate) fn spawn_bounded(
+        command: &mut Command,
+        bound: fn(&Stage) -> Option<Duration>,
+    ) -> std::io::Result<(Child, Watch)> {
         let started = Instant::now();
         let mut child = command.stdout(Stdio::piped()).spawn()?;
         let mut out = child.stdout.take().expect("stdout was piped");
+        let progress = Arc::new(Mutex::new(Progress {
+            stage: Stage::Build,
+            since: started,
+        }));
+        let shared = Arc::clone(&progress);
         let reader = std::thread::spawn(move || {
             let mut lines = Vec::new();
             let mut partial = Vec::new();
             let mut buf = [0u8; 8192];
             let stdout = std::io::stdout();
+            let advance = |text: &str| {
+                let mut p = shared.lock().unwrap_or_else(|e| e.into_inner());
+                let next = match stage_after(text) {
+                    Some(next) => next,
+                    None if p.stage == Stage::Build => Stage::Boot,
+                    None => return,
+                };
+                if p.stage != next {
+                    p.stage = next;
+                    p.since = Instant::now();
+                }
+            };
             loop {
                 let n = match out.read(&mut buf) {
                     Ok(0) | Err(_) => break,
@@ -116,14 +248,16 @@ impl Watch {
                 let at = started.elapsed();
                 for &b in &buf[..n] {
                     if b == b'\n' {
-                        lines.push(Stamped {
-                            at,
-                            text: String::from_utf8_lossy(&partial).into_owned(),
-                        });
+                        let text = String::from_utf8_lossy(&partial).into_owned();
+                        advance(&text);
+                        lines.push(Stamped { at, text });
                         partial.clear();
                     } else {
                         partial.push(b);
                     }
+                }
+                if !partial.is_empty() {
+                    advance(&String::from_utf8_lossy(&partial));
                 }
             }
             if !partial.is_empty() {
@@ -134,7 +268,60 @@ impl Watch {
             }
             lines
         });
-        Ok((child, Watch { started, reader }))
+        Ok((
+            child,
+            Watch {
+                started,
+                reader,
+                progress,
+                bound,
+            },
+        ))
+    }
+
+    /// The stage that has run past its bound, if one has.
+    fn overrun(&self) -> Option<Overrun> {
+        let p = self.progress.lock().unwrap_or_else(|e| e.into_inner());
+        let bound = (self.bound)(&p.stage)?;
+        let ran = p.since.elapsed();
+        (ran > bound).then(|| Overrun {
+            stage: p.stage.clone(),
+            ran,
+            bound,
+        })
+    }
+
+    /// **One look by the host watchdog**, for a caller that already polls its child (the scanout
+    /// referee's loop). If the running stage is past its bound, print the failure line naming
+    /// `who` (the leg, then the image), kill the child and everything under it, and return `true`:
+    /// the caller must then treat the child as failed.
+    pub(crate) fn enforce(&self, child: &mut Child, who: &str) -> bool {
+        let Some(overrun) = self.overrun() else {
+            return false;
+        };
+        eprintln!();
+        eprintln!("{}", overrun.message(who));
+        kill_tree(child);
+        true
+    }
+
+    /// Wait for the child under the host watchdog. `None` when the watchdog ended it, or the wait
+    /// itself failed; either is a failed image.
+    pub(crate) fn wait(&self, child: &mut Child, who: &str) -> Option<ExitStatus> {
+        loop {
+            match child.try_wait() {
+                Ok(Some(status)) => return Some(status),
+                Ok(None) => {}
+                Err(e) => {
+                    eprintln!("waiting for the test child failed: {e}");
+                    return None;
+                }
+            }
+            if self.enforce(child, who) {
+                return None;
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
     }
 
     /// Join the reader once the child has exited, and say when that was.
@@ -143,6 +330,46 @@ impl Watch {
         let lines = self.reader.join().unwrap_or_default();
         (lines, exited)
     }
+}
+
+/// **Kill `child` and every process under it**, deepest first, and reap it.
+///
+/// The child is cargo (or the UEFI runner script), and QEMU is its grandchild: cargo runs the
+/// runner script, which runs QEMU. Killing cargo alone orphans QEMU, which then holds the disk
+/// images and a core until somebody finds it (notes/qemu.md; milestone 663 (bound the host pass, so a test that spins fails instead of running for days) records rustdoc's
+/// runners surviving five days the same way). So the tree is collected with `pgrep -P` before
+/// anything is signaled, sent SIGTERM (QEMU exits cleanly on it), given five seconds, and then
+/// sent SIGKILL. Not a process group: cargo stays in ours, so a Ctrl-C at the terminal still
+/// reaches the whole tree as it always has.
+pub(crate) fn kill_tree(child: &mut Child) {
+    let mut tree = vec![child.id()];
+    let mut i = 0;
+    while i < tree.len() {
+        if let Some(out) = crate::host::capture("pgrep", &["-P", &tree[i].to_string()]) {
+            tree.extend(out.split_whitespace().filter_map(|p| p.parse::<u32>().ok()));
+        }
+        i += 1;
+    }
+    let signal = |sig: &str| {
+        for pid in tree.iter().rev() {
+            let _ = Command::new("kill")
+                .args([sig, &pid.to_string()])
+                .stderr(Stdio::null())
+                .status();
+        }
+    };
+    signal("-TERM");
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while Instant::now() < deadline {
+        if matches!(child.try_wait(), Ok(Some(_))) {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    // The grandchildren too, whether or not the child went: a runner that exits on SIGTERM can
+    // still leave a QEMU that ignored it.
+    signal("-KILL");
+    let _ = child.wait();
 }
 
 /// `cargo <args>` for one test image, timed and recorded. The drop-in for `run("cargo", args)` on
@@ -155,7 +382,8 @@ pub(crate) fn cargo_test(leg: &str, image: &str, args: &[&str]) -> bool {
             return false;
         }
     };
-    let ok = child.wait().map(|s| s.success()).unwrap_or(false);
+    let who = format!("{leg} {image}");
+    let ok = watch.wait(&mut child, &who).is_some_and(|s| s.success());
     let (lines, exited) = watch.finish();
     account(leg, image, &lines, exited, ok) && ok
 }
@@ -746,6 +974,103 @@ mod tests {
         );
         assert_eq!(announced_test("test result: ok. 3 passed"), None);
         assert_eq!(announced_test("test the frobnicator ... ok"), None);
+    }
+
+    #[test]
+    fn the_watchdog_reads_the_stage_from_the_transcript() {
+        // The runner prints the name with no newline, so the unfinished line has to count.
+        assert_eq!(
+            stage_after("test system_tests::user::e1000e_tests::a_client ... "),
+            Some(Stage::Test(
+                "system_tests::user::e1000e_tests::a_client".into()
+            ))
+        );
+        assert_eq!(
+            stage_after("test result: ok. 3 passed\r"),
+            Some(Stage::Exit)
+        );
+        assert_eq!(
+            stage_after("  user thread 4 killed: vector 14 (page fault)"),
+            None
+        );
+        assert_eq!(stage_after("test the frobnicator ... ok"), None);
+    }
+
+    #[test]
+    fn the_host_bound_is_the_guest_budget_plus_the_grace() {
+        let default = Duration::from_secs(test_times::DEFAULT_BUDGET_SECS + HOST_GRACE_SECS);
+        assert_eq!(bound_for(&Stage::Build), None);
+        assert_eq!(bound_for(&Stage::Boot), Some(default));
+        assert_eq!(bound_for(&Stage::Exit), Some(default));
+        assert_eq!(
+            bound_for(&Stage::Test(
+                "kernel::memory::tests::frames_are_zeroed".into()
+            )),
+            Some(default)
+        );
+        // A declared slow test's longer budget reaches the host too, or the host would kill it
+        // before the guest's ceiling could.
+        for &(needle, secs) in test_times::SLOW_TESTS {
+            assert_eq!(
+                bound_for(&Stage::Test(format!("system_tests::user::x::{needle}"))),
+                Some(Duration::from_secs(secs + HOST_GRACE_SECS))
+            );
+        }
+    }
+
+    /// **The watchdog fires, names the test, and leaves nothing running.** A shell stands in for
+    /// cargo, a `sleep` it starts stands in for QEMU, and the bound is one second instead of 150.
+    /// The `sleep` must be gone afterwards: killing only the child is the orphaned-QEMU failure,
+    /// and an orphan that still holds the pipe would also hang `finish`, so the check comes first.
+    #[test]
+    fn a_test_past_its_bound_is_killed_with_its_whole_tree() {
+        fn one_second(stage: &Stage) -> Option<Duration> {
+            matches!(stage, Stage::Test(_)).then_some(Duration::from_secs(1))
+        }
+        let pid_file = std::env::temp_dir().join(format!("xtask-watchdog-{}", std::process::id()));
+        let started = Instant::now();
+        let (mut child, watch) = Watch::spawn_bounded(
+            Command::new("sh")
+                .args([
+                    "-c",
+                    "sleep 300 & echo $! > \"$PID_FILE\"; echo 'running 1 tests'; \
+                     printf 'test kernel::x::hangs ... '; wait",
+                ])
+                .env("PID_FILE", &pid_file),
+            one_second,
+        )
+        .expect("sh runs");
+        while watch.overrun().is_none() && started.elapsed() < Duration::from_secs(30) {
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        let overrun = watch
+            .overrun()
+            .expect("the hang overran its one-second bound");
+        assert_eq!(overrun.stage, Stage::Test("kernel::x::hangs".into()));
+        let line = overrun.message("x86_64 system_tests");
+        assert!(
+            line.contains("x86_64 system_tests: test kernel::x::hangs ran 1 s"),
+            "{line}"
+        );
+        assert_eq!(watch.wait(&mut child, "x86_64 system_tests"), None);
+
+        let grandchild = std::fs::read_to_string(&pid_file).expect("the shell wrote its pid");
+        let _ = std::fs::remove_file(&pid_file);
+        let grandchild = grandchild.trim();
+        let alive = Command::new("kill")
+            .args(["-0", grandchild])
+            .stderr(Stdio::null())
+            .status()
+            .is_ok_and(|s| s.success());
+        if alive {
+            let _ = Command::new("kill").args(["-KILL", grandchild]).status();
+        }
+        assert!(
+            !alive,
+            "pid {grandchild} (the stand-in for QEMU) outlived the watchdog"
+        );
+        let _ = watch.finish();
+        assert!(started.elapsed() < Duration::from_secs(30));
     }
 
     /// Exit criterion 3's host test: the cross-check fails when the two clocks disagree, in both
