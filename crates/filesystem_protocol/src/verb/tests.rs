@@ -298,3 +298,37 @@ fn the_verb_predicates_partition_the_table_as_documented() {
         );
     }
 }
+
+/// **A row the compiler built through `row` is the row `row` builds at run time.**
+///
+/// `row` is only ever evaluated by the compiler, building [`verb::TABLE`], so a coverage run counts
+/// none of its lines; inside the old single-file crate root that went unnoticed, and in its own file
+/// it put `verb.rs` under the per-file coverage floor (milestone 845 (the filesystem-protocol crate
+/// root is split along its seams)). This runs it, and pins the one thing it decides on its own: a
+/// row spelled through it asks for no any-of right.
+#[test]
+fn a_row_built_at_run_time_is_the_row_the_compiler_built() {
+    let mut rebuilt = 0;
+    for v in verb::TABLE.iter().filter(|v| v.needs_any == 0) {
+        let r = super::row(
+            v.operation,
+            v.name,
+            v.operand,
+            v.carries_w1,
+            v.mints_handle,
+            v.needs_all,
+        );
+        assert_eq!(
+            (r.operation, r.name, r.operand, r.carries_w1),
+            (v.operation, v.name, v.operand, v.carries_w1)
+        );
+        assert_eq!(
+            (r.mints_handle, r.needs_all, r.needs_any),
+            (v.mints_handle, v.needs_all, 0),
+            "{}",
+            v.name
+        );
+        rebuilt += 1;
+    }
+    assert!(rebuilt > 0, "no row was spelled through `row`");
+}

@@ -90,6 +90,9 @@ and rustfmt reflowing four lines that wrapped because of the indent (a `use supe
 - The ratchets. `design/file-length-baseline.tsv` lost its row for this file. Of the seven
   comment-block rows for `lib.rs`, three stay in `lib.rs` and four move with their blocks, three to
   `fs.rs` and one to `verb.rs`, at the same ceilings, under ruling 4.
+- Coverage. CI's per-file floor (85% of lines) measured `verb.rs` at 53.8% once it stood alone:
+  `row` builds the verb table and runs only at compile time, which the 5,744-line file had hidden.
+  One test in `verb/tests.rs` now runs it, so the crate has 67 tests.
 - Prose. `notes/std.md` and the overlay's `mod.rs` say the copy is inlined. `mutation-triage.csv`
   and older notes cite `lib.rs` as a historical record and stay.
 - Proof. The crate's 66 host tests, the three Kani proofs and their falsifications, the std farm
