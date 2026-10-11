@@ -57,30 +57,28 @@ surface question. Finding that out early is a good outcome of starting it.
 
 2026-10-10 (UTC), by milestone 812 (`std::thread::spawn` runs real threads in one address space):
 `std` programs now have threads, and the `std` heap is one spinlock. Allocation is 1.5 to 3.2 times
-slower with four threads than with one, across two runs. That is 200,000 small allocations and frees, split four
-ways, under QEMU's TCG with four emulated cores, on all three architectures. The program is
-`std_exerciser/src/bin/std_heap_contention.rs`, run by
-`std_threads_tests::the_std_heap_is_measured_under_four_threads`, from commit `26ee75bae` (pull
-request #1892). The figures per architecture are in `notes/std/threads.md`. This is the first
+slower with four threads than with one, across two runs. Each run is 200,000 small allocations and
+frees, split four ways. It ran under QEMU's TCG with four emulated cores, on all three
+architectures. The program is `std_exerciser/src/bin/std_heap_contention.rs`. The test
+`std_threads_tests::the_std_heap_is_measured_under_four_threads` runs it (pull request #1892). The figures per architecture are in `notes/std/threads.md`. This is the first
 consumer this block was waiting for, and the same program is the measure for whatever replaces the
 lock.
 
 ## What the lane found, 2026-10-10 (UTC)
 
-A per-CPU list needs an atomic on every operation without `rseq`, stale id or not, because a thread
+Without `rseq`, a per-CPU list needs an atomic on every operation, stale id or not. A thread
 preempted mid-pop hands the same core, and the same list, to another thread. A cache per thread
-needs none, and after milestone 812 reaching it costs a subset of what reaching a per-CPU list costs
-(both start from the thread pointer). So the lane builds a cache per thread in front of the one
+needs none. After milestone 812, reaching it costs a subset of what reaching a per-CPU list costs,
+since both start from the thread pointer. So the lane builds a cache per thread in front of the one
 locked heap, and measures it against the per-CPU candidate rather than arguing. The current-CPU page
 loses the consumer it was built for; it keeps `available_parallelism`'s allowance.
 `notes/std/allocation.md` has the argument, the table of candidates and the numbers.
 
 - Built: `crates/allocation_cache` (name provisional), the cache as host-tested pure logic, in
   front of a real `user_mode_heap` under a random walk of allocations, frees, refills and spills.
-- Next, now that milestone 812 (`std::thread::spawn` runs real threads in one address space) has
-  landed (pull request #1892, merged 2026-10-11 UTC): wiring it into `std`'s allocator through 812's
-  per-thread block, and the measurement on three architectures (one lock, per thread, per CPU, per
-  CPU with the CPU read removed).
+- Next: wiring it into `std`'s allocator through 812's per-thread block, and the measurement on
+  three architectures (one lock, per thread, per CPU, per CPU with the CPU read removed). Milestone
+  812 (`std::thread::spawn` runs real threads in one address space) landed on 2026-10-11 (UTC).
 
 Reuse: none to take, after surveying `talc`, `linked_list_allocator`, `buddy_system_allocator`,
 `dlmalloc`, `rlsf`, `frusa`, `rsbmalloc`, `mimalloc` and `snmalloc` on 2026-10-10 (UTC)
