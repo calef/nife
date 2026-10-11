@@ -123,10 +123,11 @@ are in [2026W40](swish-check-flake-2026w40.md).
 answers with the `SPAWN_FAILED` sentinel (components/src/swish.rs:3053; the sentinel is
 `u64::MAX`, crates/grant_plan/src/spawnproto.rs:633). A `std` program needs one contiguous
 384-page region (`STD_REGION_PAGES`, crates/grant_plan/src/lib.rs:1713) carved from a job pool of
-exactly six native regions plus one std region (crates/system_initializer/src/lib.rs:702).
+exactly six native regions plus one std region (`system_initializer::JOBS_BUDGET_PAGES`).
 `split_job` waits for an in-flight reap by yielding 1024 times, and its own doc calls that
-"kept on effort, and a foot gun", recording the same CI failure on 2026-09-27
-(system_initializer/src/lib.rs:4002-4032). Reclamation is asynchronous (`components/src/job_undertaker.rs`),
+"kept on effort, and a foot gun", recording the same CI failure on 2026-09-27 (its doc in
+`crates/system_initializer` at `402e122d3`). `7fdd76557` later removed `split_job`, when the pool
+began waiting on the undertaker. Reclamation is asynchronous (`components/src/job_undertaker.rs`),
 and its BUGS note a mode where a parked fault-report SEND wedges the collecting loop entirely
 (job_undertaker.rs:38-51). QEMU memory is not implicated: both runners give 256 MiB
 (helpers/qemu-runner-aarch64.sh:537, helpers/qemu-runner-riscv64.sh:273), and the constraint is the
