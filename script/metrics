@@ -2886,6 +2886,9 @@ LINES = {'verify-shards.svg': ('slowest shard per run', 'verify_slowest_minutes'
 TRENDS = {'velocity.svg': ('milestones_built_this_week', 10),
           'interface-stability.svg': ('interface_breaking', 4),
           'pull-requests.svg': ('merged_pull_requests', 10),
+          # calef, 2026-10-11 (UTC): a 10-week moving average on the file-size chart. One split
+          # moves the share in a week, so the mean is what says whether the splits are winning.
+          'file-size.svg': ('lines_share_over_2000_pct', 10),
           # A share's trend is pooled, not a mean of shares: the line is ten weeks' labeled pull
           # requests over ten weeks' merged ones, so a quiet week weighs what it merged, for
           # `queue_by_week`'s reason. A (numerator, denominator) pair asks `trailing_mean` for that.
