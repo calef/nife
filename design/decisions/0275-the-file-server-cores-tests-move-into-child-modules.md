@@ -80,8 +80,8 @@ except in six monomorphized functions in each architecture's server binary (inli
 ## Records that follow the move
 
 - `design/file-length-baseline.tsv` loses the file's row.
-- `design/comment-block-baseline.tsv`'s row `lib.rs:1619` moves to `block.rs:186` at the same 44,
-  which needs §267 (a comment states the constraint as it is now) to carry a row on a split
+- `design/comment-block-baseline.tsv`'s row for `redoxfs_server/src/lib.rs` moves to `block.rs`
+  at the same 44 lines, which needs §267 (a comment states the constraint as it is now) to carry a row on a split
   (maintainer PR #1924).
 - `notes/benchmarks/read-path-block-contract-and-metadata-cache.md`, `notes/fs-server/throughput.md`,
   `notes/shell-navigation.md`, `bench/cache-slots-sweep.sh` and one comment in
