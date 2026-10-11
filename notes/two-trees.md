@@ -9,7 +9,7 @@ the half after that: the real `swish` builtins and the per-command grant planner
 trees, presented the way calef ruled.
 
 The pure half is `crates/grant_plan` (`Holdings::anchor`, `locate`, `place`, and a `which` on
-`FileGrant` and `DirGrant`). The requests are `components/src/swish.rs` (`Nav`, `Tree`, the
+`FileGrant` and `DirGrant`). The requests are `components/src/swish/navigation.rs` (`Nav`, `Tree`, the
 `two_trees` witness). The guest proof is
 `a_shell_holding_two_trees_moves_between_them_and_crosses_neither`.
 

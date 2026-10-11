@@ -487,7 +487,12 @@ fn collect_module_docs(
     let mut found: Vec<std::path::PathBuf> = entries.flatten().map(|e| e.path()).collect();
     found.sort();
     for entry in found {
-        let path = if file.is_empty() {
+        // A program is a `.rs` file or, since milestone 844 (the shell program is split along its
+        // seams), a directory whose crate root is `main.rs`. The directory's name is the program's.
+        let program_dir = file.is_empty() && entry.join("main.rs").is_file();
+        let path = if program_dir {
+            entry.join("main.rs")
+        } else if file.is_empty() {
             if entry.extension().and_then(|s| s.to_str()) != Some("rs") {
                 continue;
             }
@@ -512,7 +517,12 @@ fn collect_module_docs(
         // level-one heading, and falling back to the path would print the path twice. `crate abi`
         // is what a reader calls the thing.
         let what = if file.is_empty() { "program" } else { "crate" };
-        let name = if file.is_empty() {
+        let name = if program_dir {
+            path.parent()
+                .and_then(|p| p.file_name())
+                .and_then(|s| s.to_str())
+                .unwrap_or("?")
+        } else if file.is_empty() {
             path.file_stem().and_then(|s| s.to_str()).unwrap_or("?")
         } else {
             path.parent()
