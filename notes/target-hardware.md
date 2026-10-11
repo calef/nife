@@ -20,7 +20,7 @@ unambiguous phrase in a conversation. One noble gas per architecture:
 
 Why they earn names rather than descriptions. This project's own tenet is that a name is a
 claim and a reader meets it before anything else. "The board" was serviceable while there was
-one; with three it silently means whichever the speaker had in mind, and the cost lands on
+one. With three it silently means whichever the speaker had in mind, and the cost lands on
 whoever reads the sentence later. The names are also stable in a way the descriptions are not:
 the aarch64 board may not stay a Jetson, but argon stays argon.
 
@@ -30,41 +30,15 @@ name has to survive the day a second machine of the same architecture arrives.
 The development machines keep their existing names and are not part of this scheme:
 **patagonia** (the Mac everything is built on) and **cordoba** (the always-on x86 box).
 
-## Item 0's alternative: isolation without an MMU, and what each version costs
+## Item 0's alternative: isolation without an MMU
 
-Recorded 2026-09-04, because item 0 as written reads as though nobody had considered it, and a reader
-who knows Tock or seL4's MPU variant will assume we had not. None of these is being taken, and
-the reason in each case is a cost rather than an oversight.
-
-An MPU instead of an MMU. Cortex-M and Cortex-R carry Memory Protection Units: region-based
-permissions, no address translation, typically eight to sixteen regions. seL4 has an MPU variant
-and Tock OS pairs an MPU with Rust's type system, so this is proven rather than theoretical. It is
-also the only one of the three that preserves this project's thesis, because it isolates compiled
-binaries rather than requiring the system to have compiled them.
-
-What it costs: no virtual addresses, so every program is position-independent or linked per
-deployment; a hard ceiling of eight-ish simultaneously separated things, where the capability model
-assumes as many address spaces as there are processes; and no demand paging, no copy-on-write, no
-shared mappings. It is a port rather than a configuration, and most of `kernel/src/arch/*/mmu.rs`
-and the `paging` crate would have no counterpart.
-
-**Software fault isolation** (Native Client, WebAssembly): bounds-check every memory access, enforced
-by the compiler.
-
-**Language-based isolation** (Microsoft Research's Singularity): software-isolated processes sharing
-one address space, safe because every binary is verified type-safe before it runs.
-
-Those last two are foreclosed by DECISIONS §14 rather than by taste. Both isolate only code the
-system itself compiled or verified. §14's demonstrator claim is a kernel that runs real workloads
-which were not written for it, and design/fatal-risks/README.md's first risk is exactly *"only software
-written for nife runs on nife"*, measured on 2026-08-31 with an unmodified `ripgrep`. An SFI or
-language-based nife would make that risk permanently red by construction, which is a stranger thing
-to ship than a kernel that needs an MMU.
-
-**Why this is a note and not a milestone.** There is no machine. The form factors an MPU port would
-open are the ones where no open MMU-class device exists today, and a proposal nobody can act on is
-the backlog graveyard milestone 247 exists to avoid. What would change that is a specific device,
-and at that point this section is the starting analysis rather than a blank page.
+Recorded 2026-09-04, because item 0 reads as though nobody had considered the alternatives. Three
+exist and none is being taken; in each case the reason is a cost rather than an oversight. An MPU
+(as in seL4's MPU variant and Tock OS) keeps this project's thesis but costs virtual addresses, the
+number of separable things and a port's worth of `mmu.rs`. Software fault isolation and
+language-based isolation are foreclosed by DECISIONS §14 (the project's direction): both isolate
+only code the system itself compiled, which would make fatal risk 1 permanently red. There is no machine to make it a milestone.
+The analysis is in [`target-hardware/without-an-mmu.md`](target-hardware/without-an-mmu.md).
 
 ## The ISA is almost never the constraint
 
@@ -80,7 +54,7 @@ than the rest put together:
    driver and server is an EL0 process behind its own page tables. There is no configuration in
    which it runs without one. This is what excludes the whole microcontroller class (Cortex-M,
    Cortex-R, RISC-V E-series). The alternatives exist, are proven elsewhere, and are described in
-   their own section below; none is free and one costs the thing fatal risk 1 measures.
+   their own section above; none is free and one costs the thing fatal risk 1 measures.
 1. Can you get code to execute at boot? Unlocked bootloader, or no secure boot at all.
 2. Are the peripherals documented? You need an interrupt controller, a timer, and eventually
    storage. The CPU is standardized. The stuff bolted around it is not, and that's where the work is.
@@ -96,10 +70,10 @@ hardware. Every word nife has ever said went down a UART: the boot tour on all t
 console server and the shell, kernel fault reports, and every automated gate that reads any of them.
 So a machine with no serial port cannot currently *tell us* it is working, which is not the same as
 being unable to work. Milestone 243 (a machine with no serial port has no way to say anything, and
-no gate can read it) is the milestone that separates them, and until it lands, requirement 4 is
+no gate can read it) is the milestone that separates them. Until it lands, requirement 4 is
 doing the job of requirements 1 to 3 by proxy.
 
-**The reason it matters is not tidiness.** calef's fleet argument on milestone 241 names Graeme's
+The reason it matters is not tidiness. calef's fleet argument on milestone 241 names Graeme's
 laptop and desktop, an Intel MacBook, cordoba and Clay's desktop as machines a USB stick could boot
 (milestone 87 boots from `\EFI\BOOT\BOOTX64.EFI`, the removable-media fallback every UEFI firmware
 looks for). **Not one of them has a serial port.** Read as a running requirement, item 4 excludes the
@@ -108,7 +82,7 @@ entire fleet; read correctly, it says only that we cannot yet watch them.
 A device can be aarch64 and still be completely useless to us by failing any of items 0 to 3, and
 useless *for development* by failing item 4.
 
-**Which item actually does the excluding, because the order is not what it looks like.** Written out,
+Which item actually does the excluding? The order is not what it looks like. Written out,
 this list reads as though an unlocked bootloader were the wall. It is not:
 
 - Item 0 excludes the most, and silently, because a microcontroller never appears in a
@@ -116,7 +90,7 @@ this list reads as though an unlocked bootloader were the wall. It is not:
 - Item 2 is the real filter for everything else. Phones with unlockable bootloaders are a genuine
   class rather than an exception (Pixel, Fairphone, Sony's open-device program, and the several
   hundred devices postmarketOS supports), so item 1 is often satisfiable. What defeats a phone is
-  that its SoC is undocumented: no public reference for the interrupt controller, clocks, power
+  that its SoC is undocumented. There is no public reference for the interrupt controller, clocks, power
   domains or display, a downstream device tree describing what the vendor's kernel happens to do
   rather than what the hardware is, and firmware the application processor must cooperate with. That
   is years per device, which is why postmarketOS is a years-per-device project.
@@ -131,27 +105,27 @@ place where a decision of ours could foreclose a small target is the kernel mode
 DECISIONS §96's memory input is recorded there as closed at this project's scale rather than
 absolutely, for exactly this reason.
 
-**Requirement 3 is a *development* requirement, not a running one** (milestone 243, 2026-09-04), and
+Requirement 4 is a *development* requirement, not a running one (milestone 243, 2026-09-04), and
 the distinction was invisible for as long as nife had exactly one way to say anything. A system that
 boots, runs and serves needs no serial port; a system somebody is *bringing up* needs a way to watch
 it fail. The two lists looked identical because every word nife had ever said went down a UART.
 
-They do not any more, on one architecture. `notes/serial-less-output.md` records what changed: on a
-UEFI machine the loader asks the firmware where the linear framebuffer is and the kernel paints the
-boot tour into it, so requirement 3 is met by a monitor on those machines rather than by a cable.
-What that does *not* yet do is meet the half of requirement 3 an unattended gate needs, which still
+They do not any more, on one architecture. `notes/serial-less-output.md` records what changed. On a
+UEFI machine the loader asks the firmware where the linear framebuffer is, and the kernel paints the
+boot tour into it. So requirement 4 is met by a monitor on those machines rather than by a cable.
+What that does *not* yet do is meet the half of requirement 4 an unattended gate needs, which still
 wants a serial line or a postmortem log. So: a screen is enough to bring a machine up by hand, and
 not yet enough to put one in a test loop.
 
-## A fourth requirement, and this one filters silicon rather than firmware
+## Requirement 3, the cache floor, filters silicon rather than firmware
 
 At least 32 KB of L1 instruction cache, and it is a requirement on the *claims* rather than on
 the boot. nife will start on less; what will not survive is the reason a microkernel is supposed to
 be fast.
 
 Where the number comes from. Liedtke's *On micro-Kernel Construction* (SOSP 1995) argued Mach's
-IPC was slow because of the cache footprint of its hot path rather than anything inherent to
-microkernels: a kernel touching a lot of memory per IPC evicts the *application's* working set, so
+IPC was slow because of the cache footprint of its hot path, not anything inherent to
+microkernels. A kernel touching a lot of memory per IPC evicts the *application's* working set, so
 the cost appears as capacity misses spread through the workload instead of as time in the kernel.
 `script/fastpath-footprint` is the gate that keeps this honest and notes/benchmarks.md carries the
 argument.
@@ -174,7 +148,7 @@ What this rules in and out. Every frontier core clears it easily: notes/benchmar
 puts Zen 5 at 32 KB, Intel's Lion Cove and Arm's Cortex-X925 and SiFive's P870 at 64 KB, and Apple
 at 192 KB. What it rules out is the small end, and that is the end a capability microkernel is
 otherwise attractive at: deeply embedded Cortex-M and Cortex-R parts, older in-order cores, and
-microcontroller-class RISC-V. A machine can satisfy all three requirements above and still fail
+microcontroller-class RISC-V. A machine can satisfy requirements 0 to 2 and still fail
 this one, which is why it is stated separately rather than folded into "the peripherals are
 documented".
 
@@ -261,7 +235,7 @@ plan was, but read it against the record rather than as a queue.
    item was really about. argon is the aarch64 board, and no Pi was bought.
 2. Then a UEFI/ACPI target, precisely because it is alien. This one happened, and it did
    exactly what it was predicted to do. xenon (milestone 87) boots from real firmware, and the
-   places it broke were the boundary: a loader that had to place an image at physical addresses,
+   places it broke were the boundary. They were a loader that had to place an image at physical addresses,
    a low-memory range the firmware holds, and a framebuffer console because the serial chain was
    not the channel that worked. notes/x86-uefi-boot.md and notes/xenon-firmware.md.
 3. Apple Silicon as the trophy. Still the trophy, still not attempted bare metal. What exists
