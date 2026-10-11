@@ -97,9 +97,9 @@ vocabulary to discuss.
 
 `timetable::Held` is `grant_plan::Holdings` one level out, and it exists for exactly the reason that
 one does. "This scheduler holds nothing to back that" has to be a statement about a particular
-process's capability table. The same document is four refusals in a scheduler granted nothing but a budget and
-four running jobs in one granted a clock, a directory and a terminal, and neither the document nor
-the program manifests can tell those two apart.
+process's capability table. The same document is four refusals in a scheduler granted nothing but a budget, and
+four running jobs in one granted a clock, a directory and a terminal. Neither the document nor the
+program manifests can tell those two apart.
 
 Every field on the shipped scheduler's `Held` is `false` or zero, and that is checkable against the
 slot list in `components/src/timetable.rs`'s header:
@@ -125,52 +125,16 @@ bitmask, computable at registration and therefore before the spawn site has to d
 over. So the spawn site builds an archive of exactly that set with `nifefs::write_image`, and the
 timetable is handed that instead of the initrd.
 
-### Where the set is computed, and why not at the spawn site
+The plan cannot be computed in the kernel. Holding a printable plan costs a kilobyte per entry,
+so registering a document needs a stack frame far wider than the kernel's 4096-byte guard page
+allows. The spawn site therefore carries the program set as a written list, `PLANNED_PROGRAMS`,
+and a host test, `the_archive_a_timetable_holds_is_measured_against_what_it_will_build`, holds it
+equal to the plan. That is rung two of the ladder, forced rather than chosen.
 
-The obvious shape is for the spawn site to register the document itself and read `programs()` off the
-result. The kernel cannot do that, and the reason is worth knowing before anyone tries again.
-
-`timetable::Registry` is a `[Row; MAX_ENTRIES]` and a `Row` carries an `Admission`, which carries a
-kilobyte of `grant_plan::Endowment`. So `Registry::register` compiles to a 21632-byte stack
-frame, and the `grant_plan::plan` underneath it to a further 12048. In `components/src/timetable.rs`
-those numbers are fine and stated: it is a process with a 32-page stack, and
-`system_tests/src/user/timetable_tests.rs` says why it maps 32 pages. In the kernel they are exactly
-what `script/stack-frame-check` refuses, because a frame larger than the 4096-byte guard page can
-move `sp` from inside a thread's stack to below the guard in one step, touching nothing in between,
-so the guard never faults and the write lands in the neighboring thread's stack. This tree measured
-that on riscv64 on 2026-08-14, at 4088 bytes below the bottom of a 4096-byte guard; eight more bytes
-would have produced no fault at all. See notes/stack-high-water.md.
-
-Neither number is a bug in `timetable`. A plan you can print is a plan you have to hold, and holding
-one entry's worth of authority costs a kilobyte because that is what the authority *is*. What it
-means is that the plan is computed where there is stack for it, which is the host and the
-program, and never in the kernel.
-
-So the spawn site carries the program set as a written list, `PLANNED_PROGRAMS`, and the thing that
-keeps it equal to the plan is a host test rather than a comment:
-`the_archive_a_timetable_holds_is_measured_against_what_it_will_build` registers the same
-`components/timetable.conf` against the same `timetable::SHIPPED_HELD` and asserts the plan is exactly that
-set, by name. Editing the document without editing the list fails in milliseconds with no emulator,
-and the program's own audit line then fails the cross-ISA test as well, so a wrong list goes red
-twice.
-
-That is rung two of AGENTS.md's ladder where the first draft of this reached for rung one, and the
-demotion is forced rather than chosen: the rung-one version does not fit on a kernel stack.
-
-A process cannot narrow its own endowment, so what `timetable` does instead is measure it.
-`timetable::Audit` compares the names the archive carries against the plan's program set and prints
-one of two sentences after the plan:
-
-```text
-timetable: the archive it holds carries exactly the 2 programs its plan names
-timetable: the archive it holds carries 57 programs, 55 of them beyond its plan
-```
-
-The second one is what the shipped program printed before this landed, and keeping both is the
-point rather than politeness: the width of an endowment should be a line on the console rather than
-a fact only the spawn site knows. `system_tests/src/user/timetable_tests.rs` asserts the first sentence
-and asserts the second never appears, so a spawn site that quietly went back to handing over the
-initrd fails a test rather than passing one it no longer earns.
+A process cannot narrow its own endowment, so `timetable` measures it instead: `timetable::Audit`
+prints whether the archive it holds carries exactly the programs its plan names, and the
+cross-ISA test asserts that it does. The frame sizes, the guard-page measurement and the audit's
+two sentences are in [archive-narrowing.md](scheduled-execution/archive-narrowing.md).
 
 It does not narrow per *entry*, and that was refused on 2026-09-26: an image is code, not
 authority, so reaching the union of the plan's programs gives a compromise nothing it lacked. See
@@ -185,9 +149,10 @@ touch a disk, cannot open a socket, and cannot give any of those to a child, bec
 ambient authority anywhere for a child to fall back on.
 
 Who may register is answered by where the document lives, and for the first deliverable that is
-`include_str!`: the document is compiled into the binary, exactly as the multicast DNS responder's configuration
-was until that program was retired on 2026-09-15, and for the same recorded reason (reading a file needs a file capability
-wired through the spawn; see notes/mdns.md and milestone 131). So today the authority to register is
+`include_str!`. The document is compiled into the binary, exactly as the multicast DNS responder's
+configuration was until that program was retired on 2026-09-15. The recorded reason is the same:
+reading a file needs a file capability wired through the spawn (see notes/mdns.md and milestone
+131). So today the authority to register is
 the authority to rebuild the image, which is the strongest possible answer and also the least useful
 one. A runtime registration protocol is a real decision with a real fork in it (the boot endowment?
 the shell? a per-registrar endpoint whose entries can only be as wide as the registrar?) and the
@@ -211,53 +176,47 @@ than a scheduler.
 
 Five Kani harnesses hold those properties (`crates/timetable/src/proofs.rs`), and the reason it is
 Kani rather than more host tests is that every wrong answer here is quiet. An off-by-one at a
-period boundary fires twice in one polling pass and nothing complains; a lost phase drifts a schedule
-a few nanoseconds an hour and surfaces as a beat nobody can explain a month later; a catch-up
-implementation satisfies every property except the one that bounds it. None of those is reachable by
+period boundary fires twice in one polling pass and nothing complains. A lost phase drifts a
+schedule a few nanoseconds an hour and surfaces as a beat nobody can explain a month later. A
+catch-up implementation satisfies every property except the one that bounds it. None of those is reachable by
 sampling, because the interesting inputs are the ones nobody thinks to type.
 
-Two things about that file are worth knowing before anyone edits `next_after`.
+Before editing `next_after`, read
+[next-after-proofs.md](scheduled-execution/next-after-proofs.md). It records why the function snaps
+`now` back onto the beat rather than counting periods (the snapping form proves in about a second,
+the counting form did not finish in ten minutes). It also records the one gap: phase preservation
+is host-tested up to `u64::MAX / 4` rather than machine-checked, because a second 64-bit modulo is
+where CBMC stops finishing.
 
-The first is a measurement. The function reaches its answer by snapping `now` back onto the beat
-(`now - (now - prev) % period`) rather than by counting the periods that went by
-(`first + (gap / period + 1) * period`). Both are correct and the host tests do not tell them apart;
-the counting form contains a 64-by-64 multiplication, which is an enormous thing to hand a SAT
-solver, and CBMC was still grinding on one harness after ten minutes. The snapping form proves in
-about a second. That is a three-orders-of-magnitude difference bought by removing one operator, and
-it is the kind of thing the verification path notices and a test suite never would.
+## The primitive that was missing, and what it still costs
 
-The second is a gap, stated because a reader would otherwise assume it is covered: phase
-preservation is the one law that is host-tested rather than machine-checked. Every way of writing
-the congruence needs a modulo of a *computed* value on top of the one inside `next_after`, and a
-second 64-bit modulo is where CBMC stops finishing (the direct spelling, the cheaper one, and the
-cheaper one bounded to `1 << 32` all failed to return). Shipping a harness bounded far enough down to
-finish would read as proved while covering a range no schedule lives in, which is worse than shipping
-none. `next_after_is_strictly_in_the_future_and_keeps_its_phase` samples the law up to `u64::MAX / 4`
-instead, and the implementation's shape is the real defense: the phase is not computed and then
-preserved, it is the only thing that expression can produce.
+When this was written (2026-08-18 UTC) there was no timed wait anywhere in this kernel. No sleep, no
+timeout, no deadline: the syscall surface was `EXIT`, `YIELD`, `INVOKE` and `CAP_DELETE`, and a
+process had exactly one blocking wait point. So a program whose entire purpose is to act at a time
+could only yield and re-read the counter, and a running timetable costs a core's worth of yields.
 
-## The primitive that is missing, and what it costs
+Corrected 2026-10-11 (UTC): the primitive exists now. Milestone 106 (a wait that ends on either the
+interrupt or the deadline) built a timer object on 2026-09-26, `objtype::TIMER` with `ARM` and
+`CANCEL`, which signals a notification at a deadline ([timer.md](timer.md)). Its own block lists
+this note among the places it made false. `timetable` has not adopted it: `components/src/timetable.rs`
+still yields between fires, so the cost above is still paid. Adopting it is milestone 674 (the last
+yield spinners sleep on a timer), not started.
 
-There is no timed wait anywhere in this kernel. No sleep, no timeout, no deadline: the syscall
-surface is `EXIT`, `YIELD`, `INVOKE` and `CAP_DELETE`, and a process has exactly one blocking wait
-point. So a program whose entire purpose is to act at a time can only yield and re-read the
-counter, and a running timetable costs a core's worth of yields.
-
-That is the fork of milestone 51 (wall-clock time) and the gate of milestone 106 (a wait that ends
-on either the interrupt or the deadline), and this program is its fifth consumer. The
+That was the fork of milestone 51 (wall-clock time) and the gate of milestone 106, and this program
+was its fifth consumer. The
 block counts four (`net_stack`'s retransmit window, `thread::sleep`, `RECEIVE`'s no-timeout limitation,
 the shell's `^C` poll); this is the first whose whole reason for existing is a deadline.
 
-The shape of the fix is already in the code. `Registry::next_deadline` computes exactly the instant a
-timed wait would block until, and it is computed today even though nothing can use it, so that when
-the fork is decided the loop changes by one line rather than being restructured.
+The shape of the fix is already in the code. `Registry::next_deadline` computes exactly the instant
+a timed wait would block until. It is computed today even though nothing uses it, so that adopting
+the timer changes the loop by one line rather than restructuring it.
 
 The second thing the missing primitive costs is lazy reaping, and it is worth naming because it
 looks like a design choice and is not. Reaping a scheduled child means blocking on the supervision
 endpoint; blocking means not watching the clock; one wait point means you cannot do both. So
 `timetable` reaps only when the budget cannot back another instance, and the failure counts it
 reports lag reality until then. A wait that returns on either a message or a deadline fixes this too,
-and it is the same fork.
+and it is the same adoption.
 
 ## What is built, and on what
 
@@ -280,9 +239,9 @@ fires:
   of budget instead of finishing.
 
 Nothing in that test asserts on time. The fires are counted, never timed, and no wall clock is
-compared to anything: a loaded host makes the test slower and cannot make it red
-(notes/load-sensitive-assertions.md; milestone 62 spent a week putting that property back into this
-tree and this is not the lane to take it out again).
+compared to anything. A loaded host makes the test slower and cannot make it red
+(notes/load-sensitive-assertions.md). Milestone 62 (tests that assert on time) spent a week putting that property back into
+this tree, and this is not the lane to take it out again.
 
 ## A backable `--mem` grant, and why it runs alone
 
@@ -292,32 +251,21 @@ is now 4 and `timetable.conf`'s `at-boot memory_grant_depleter --mem 4` is plann
 
 Milestone 129's block said to split the grant out of the *instance's own region*, "so that a
 single `Untyped::DESTROY` still reclaims both and a restart loop is not a leak". The kernel
-refuses precisely that. `memory_regions::destroy_outcome` answers `Refused` for any region with a live
-child, `split_stays_within_budget_and_progresses`' sibling proof pins it, and
-`sched::reap_supervised` passes the refusal straight back as `NotPermitted`. So a corpse whose
-region carries a split grant is uncollectable through `reap` until the grant is destroyed first, by
-its own separate capability.
+refuses precisely that: a region with a live child cannot be destroyed, so the grant has to be
+destroyed first, by its own separate capability.
 
-The nesting is still the right shape, for a reason the block did not state. A refused reap would
-be the only thing in this system that pairs a death with a grant, because a supervisor learns a
-tid and nothing else: `supervision_protocol::build_child` hands back a TCB capability, `abi::tcb` has
-no method that reads a tid out of one, and `abi::fault`'s five-word message carries no
-builder-chosen tag. `components/src/timetable.rs` does not lean on that ambiguous signal, though: it
-sidesteps the need to interpret a refusal at all by making the pairing structural. `fire_with_grant`
-and `collect_grant` are called back to back, with nothing else fired in between and everything
-already outstanding drained first, so the very next death on the supervision endpoint cannot be
-anyone else's and the grant is destroyed unconditionally rather than guessed at.
+The nesting is still the right shape, because it is the only thing in this system that pairs a
+death with a grant. `components/src/timetable.rs` makes that pairing structural rather than
+guessed. `fire_with_grant` and `collect_grant` are called back to back, with everything already
+outstanding drained first, so the very next death on the supervision endpoint cannot be anyone
+else's.
 
 That is the decision the block left open, made: at most one `--mem` instance may be outstanding
-at a time. A generation counter or a slot table could track more, but nothing here needs its
-child's tid for any other reason, so that would be speculative machinery for a document that
-schedules exactly one such entry. The cost lands on every *other* entry, not on `--mem` ones:
-`_start` is fully blocked in one syscall for as long as the grant-bearing instance takes to die, so
-an interval entry due during that window runs late rather than on schedule when the loop resumes
-(never dropped: `next_after`'s ordinary skip-not-catch-up rule covers a wait outlasting more than
-one period, same as any other stall). `timetable.conf`'s `at-boot memory_grant_depleter --mem 4` fires before the
-first `every 150ms` tick can even become due, so the cross-ISA test does not exercise that cost; a
-document whose `--mem` entry shared the clock with a fast interval would.
+at a time. The cost lands on every *other* entry. One due while a grant-bearing instance is dying
+runs late rather than on schedule, and is never dropped. The shipped document's `--mem` entry fires
+at boot, before any interval is due, so the cross-ISA test does not exercise that cost. The proof
+that pins the refusal, why a supervisor cannot tell whose death it is, and the cost in full are in
+[mem-entries.md](scheduled-execution/mem-entries.md).
 
 ## BUGS
 

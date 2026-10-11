@@ -12,21 +12,13 @@ read them.
 
 ## What was read, and when
 
-| source | what it is | read |
-|---|---|---|
-| Li, Miller, Zhuo, Chen, Howell, Anderson. *An Incremental Path Towards a Safer OS Kernel.* HotOS '21, Ann Arbor MI, May 31 - June 2 2021, pp. 183-190, 8 pages. DOI 10.1145/3458336.3465277. | the paper | 2026-09-21, full text from `https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s09-li.pdf` |
-| `https://rust-for-linux.com/rust-kernel-policy` | what the Rust-for-Linux project states as kernel policy | 2026-09-21 |
-| `https://goals.rust-lang.org/2026/roadmap-rust-for-linux.html` | the Rust project's own 2026 roadmap item for the kernel | 2026-09-21 |
-| `https://rusted-kernel.com/` | a per-release line count of Rust in the kernel tree | 2026-09-21, for the 7.2.4 figures only |
-| Corbet. *A process for handling Rust code in the core kernel.* LWN, 2025-03-27, `https://lwn.net/Articles/1015409/` | the maintainer-side process question | 2026-09-21 |
-| Edge. *Rust for filesystems.* LWN, 2024-06-21, `https://lwn.net/Articles/978738/` | the LSFMM+BPF 2024 session where filesystem maintainers answered | 2026-09-21 |
-| `https://api.github.com/repos/smiller123/bento` | the paper's own exemplar implementation | 2026-09-21, for `pushed_at` only |
-| `design/fatal-risks/README.md` at `b6d8fa2d` | this project's falsification list | 2026-09-21 |
-
-Everything quoted from the paper below is quoted from that PDF. The title on the PDF's own title
-line is *An Incremental Path Towards a **Safer** OS Kernel*; search results disagree and several say
-"Safe". `script/citations` validates in-tree numbered records and can check none of the external
-material, so the table is the only mechanism here and the discipline is the author's.
+The paper is Li, Miller, Zhuo, Chen, Howell, Anderson, *An Incremental Path Towards a Safer OS
+Kernel*, HotOS '21, DOI 10.1145/3458336.3465277, read in full on 2026-09-21. Everything quoted from
+it below is quoted from its PDF. The other sources (Rust-for-Linux's policy, the Rust project's 2026
+roadmap, a per-release Rust line count, two LWN articles, the Bento repository and
+`design/fatal-risks/README.md` at `b6d8fa2d`) were read the same day. Each, with its URL, is in
+[sources.md](incremental-path/sources.md). `script/citations` can check none of the external
+material, so that table is the only mechanism here and the discipline is the author's.
 
 ## The argument, at full strength
 
@@ -62,7 +54,7 @@ overlayfs, ext4 and btrfs. Maturity is not convergence. Testing has been applied
 for a decade, and the paper lists the tools by name, and the rate does not go to zero.
 
 The roadmap is four steps, each a strictly stronger contract at a module interface. Step 1 is
-**modularity**: *"callers of any module must only reference the modular interface and cannot directly
+modularity: *"callers of any module must only reference the modular interface and cannot directly
 depend on any specific implementation."* Step 2 is type safety, a module rewritten *"without the
 use of void pointers or casting values to incompatible types"*. Step 3 is ownership safety, which
 they define as *"a multi-threaded version of memory safety"*, and they are explicit about what it
@@ -72,16 +64,12 @@ a module proved against a specification. The steps compose rather than merely se
 requirement strengthens the previous, so the interface for one step informs the interface for the
 next."*
 
-The research challenges are honest about what Linux's own design costs them, and this is the
-section that a hostile reader would skip and should not. On modularity, *"Because of its focus on
-performance, Linux often lacks strict module boundaries between components"*, with TCP state
-*"found throughout generic socket code and data structures"* as the worked case. On type safety, the
-VFS `write_begin`/`write_end` pair passing `void` pointers and error values cast to pointers. On
-ownership, the generic `inode` whose `i_size` field *"is only maybe protected, according to the
-relevant comment"*, and whose synchronization requirements *"are different depending on the function
-in the file system"*. On functional correctness, `buffer_head`'s *"16 state flags"* whose valid
-combinations are hard even to enumerate, and the candid admission that *"it is almost impossible to
-know the right interfaces for composed verification before anything is built."*
+The research challenges are honest about what Linux's own design costs them, and a hostile reader
+should not skip them. Each step meets a concrete obstacle in Linux as it is: TCP state smeared
+through generic socket code, VFS interfaces passing `void` pointers, an `inode` field that is "only
+maybe protected", and `buffer_head`'s sixteen state flags. The paper admits it is almost impossible
+to know the right interfaces for composed verification before anything is built. The cases and
+quotations are in [linux-research-challenges.md](incremental-path/linux-research-challenges.md).
 
 And the closing argument is economic rather than technical, which is why it is the strong one.
 *"Our guiding principle is incremental benefit for incremental work. Society should not have to wait
@@ -101,55 +89,24 @@ assertion in a note is worth nothing. Five years and change have passed since th
 Linux is the one place the incremental path was most available, most resourced and most publicly
 committed to. Here is what it did.
 
-Rust is permanent and it is real. Support merged for Linux 6.1 in October 2022, the first Rust
-drivers landed in 6.8 in March 2024, and the hedging ended at the Kernel Maintainers Summit in
-December 2025, with Linux 7.0 (April 2026) the first release not to mark Rust experimental. That is
-not a project in trouble, and any reading that says otherwise is wrong.
+Rust is permanent and it is real. Support merged for Linux 6.1 in October 2022, and Linux 7.0
+(April 2026) is the first release not to mark Rust experimental. That is not a project in trouble.
 
-But look at where the code is. At Linux 7.2.4 (2026-09-07), `rusted-kernel.com` counts 114,520
-SLOC of Rust in a 30,520,324-line tree, 0.38%, of which 63,817 lines are vendored crates
-(`syn`, `quote`, `proc-macro2`, `zerocopy`) and 50,703 lines, 0.166%, are first-party kernel
-Rust. Against 19,625,567 lines of C. The per-subsystem split of the production drivers is the
-telling part: GPU/DRM 11,825 SLOC, Android binder 7,018, block 290, PWM 274, networking 163, cpufreq
-156. That growth is real and fast, 23.5x the SLOC of 6.1. It is also, without exception, new leaf
-code.
+But look at where the code is. At Linux 7.2.4 (2026-09-07), `rusted-kernel.com` counts 50,703
+lines of first-party kernel Rust, 0.166% of a 30,520,324-line tree. That growth is real and fast,
+23.5x the SLOC of 6.1. It is also, without exception, new leaf code.
 
-**That is not step 1 of the paper's roadmap. It is the thing the paper distinguished itself from.**
-The roadmap is *gradual replacement module by module*: retrofit a modular interface onto an existing
-Linux subsystem, then rewrite that subsystem behind it. Nothing in the 50,703 lines is a replacement
-of an existing C subsystem. The kernel's stated position is that new code may be Rust and existing C
-is not rewritten wholesale, and five years of commits agree with it. ext4 is the paper's own poster
-child and is still C. So are overlayfs and btrfs. The 0.5%-of-lines-per-year bug rate the paper
-measured in those three file systems is being paid today by exactly the code that was paying it in
-2021.
+That is not step 1 of the paper's roadmap. It is the thing the paper distinguished itself from.
+The roadmap is gradual replacement module by module, and nothing in those lines replaces an
+existing C subsystem. ext4, overlayfs and btrfs are still C, so the bug rate the paper measured in
+them is being paid today by exactly the code that was paying it in 2021.
 
-The friction is structural rather than incidental, and it is on the record from both sides. At
-LSFMM+BPF in June 2024, Ted Ts'o stated the position that decides how far the path can go through a
-mature subsystem: he will fix all affected C code when he makes a change, but *"because I don't know
-Rust, I am not going to fix the Rust bindings, sorry"*, and he called Rust bindings second-class
-citizens for the foreseeable future, with the real question being *"where does the pain get
-allocated"* (LWN, 2024-06-21). By March 2025 LWN was reporting a spectrum of subsystem postures, with
-*"some subsystems are not working with the Rust developers in any way; they simply don't want to know
-about the Rust code. That is the case for the DMA-mapping and XArray subsystems"* (LWN, 2025-03-27).
-The DMA-mapping maintainer stepped down over it.
-
-And the project's own policy encodes the asymmetry. `rust-for-linux.com/rust-kernel-policy`
-states that maintainers are not required to learn Rust, and that *"Exceptionally, for Rust, a
-subsystem may allow to temporarily break Rust code"*, a carve-out from the kernel's own
-no-known-breakage rule that exists for no other language in the tree. That is a sensible, generous
-compromise, adopted precisely so the path is not blocked. It is also a written statement that Rust
-in Linux is the side that yields.
-
-Two further gaps, both worth naming because they are about the top of the ladder. The kernel
-still cannot be built with stable Rust: the Rust project's own 2026 roadmap item exists to *"Build
-Linux kernel releases using the stable Rust language (no feature gates), support all the targets that
-Linux supports"*, and lists arbitrary self types, a const-traits MVP and ADT const params among the
-features targeted for 2026-2027 stabilization. Nine years into Rust's stable life and four years into
-the kernel effort, step 2 of the roadmap still runs on `#![feature(...)]`. And **step 4, functional
-correctness, has not started in mainline at all.** There is no verified module in Linux. The paper's
-own exemplar for step 3, Bento, whose FAST '21 paper is reference [43] and which it holds up as the
-existing demonstration of limited ownership sharing at a Linux interface, has a public repository
-whose last push is 2023-12-15. It did not go upstream.
+The friction is structural, and it is on the record from both sides. Maintainers will not fix
+Rust bindings, and some subsystems decline to work with the Rust developers. A written policy lets
+a subsystem break Rust code, which makes Rust the side that yields. The kernel still cannot be
+built with stable Rust, and step 4 has not started in mainline at all. The timeline, the
+per-subsystem counts, the quotations and their sources are in
+[rust-in-linux.md](incremental-path/rust-in-linux.md).
 
 The honest scorecard, then. Step 1, modularity retrofitted into existing subsystems: not
 attempted at scale; the VFS and DRM interfaces Rust drivers bind to were already the modular ones.
@@ -158,11 +115,11 @@ new code, 0.166% of the tree. Step 4, functional correctness: not started. Five 
 talent, the full backing of the largest software project in the world, and the incremental path has
 reached a sixth of a percent of the code and none of the subsystems the paper measured.
 
-**What that does and does not prove.** It does **not** prove the path is wrong, and the trajectory
-argument is genuinely available: 23.5x in eleven releases compounds, and a strategy that only adds
+**What that does and does not prove.** It does not prove the path is wrong, and the trajectory
+argument is genuinely available. 23.5x in eleven releases compounds, and a strategy that only adds
 safe code still bends the curve for new code, which is where the paper says the bugs are being
-minted. A fair reading is that the incremental path is **working on new code and has not begun on
-old code**, and that the old code is where ext4's 0.5% per year lives. What it does prove is that
+minted. A fair reading is that the incremental path is working on new code and has not begun on
+old code, and that the old code is where ext4's 0.5% per year lives. What it does prove is that
 *"the cost of switching from Linux"* is not the only prohibitive cost in the comparison. Retrofitting
 has a cost too, it is being paid in maintainer relationships rather than in lines, and five years is
 enough to say that it is not small.
@@ -206,7 +163,7 @@ Optimization cannot fix 'nothing runs here', and no amount of kernel work change
 this state is a research demonstrator forever."* That is Li et al.'s *"significantly fewer features
 than Linux ... impeding adoption"*, written independently, and stated more harshly.
 
-Risk 8 is titled **"Nobody needs it"**: *"everything works and no one has a reason to run it."* And
+Risk 8 is titled "Nobody needs it": *"everything works and no one has a reason to run it."* And
 it records that it has already fired once, when the project's first customer took their backups to
 Linux in August 2026 because nife was not ready. That is Li et al.'s *"the cost of switching from
 Linux to these clean-slate designs is prohibitive"*, observed in a sample of one, at home, with real
@@ -265,17 +222,18 @@ behind them has a citation, a measurement, and a name.
 - The Rust-in-Linux line counts are from a third party, `rusted-kernel.com`, and were not
   reproduced by counting a kernel tree here. They are cited with the release (7.2.4, 2026-09-07) and
   the date read so a reader can check them, but this note did not check them.
-- **The paper's three figures were not read**, only its prose. Figure 2a (CVEs per year), 2b (the
-  ext4 CDF) and 2c (bugs per line per year) are images in the PDF, and every number attributed to
-  them above is taken from the sentences in Sections 2 and 5 that describe them. The underlying CVE
+- The paper's three figures were not read, only its prose. Figure 2a (CVEs per year), 2b (the
+  ext4 CDF) and 2c (bugs per line per year) are images in the PDF. Every number attributed to them
+  above is taken from the sentences in Sections 2 and 5 that describe them. The underlying CVE
   categorization was not re-derived, so the 42/35/23 split is quoted, not verified.
 - The step-1 scorecard is an argument from absence. "No existing C subsystem has been replaced
   behind a retrofitted modular interface" rests on the published policy, the per-subsystem line
   counts, and the LWN coverage. A retrofit in progress somewhere that has not landed would not
   appear in any of those.
-- **`design/fatal-risks/README.md` is not edited by this note**, deliberately: a lane does not edit that
-  file. The paragraph proposed for risk 8 is in this lane's report and in PR #1063, and until it is
-  applied the connection above is asserted here and nowhere the reader of that file will meet it.
-  That is rung four of AGENTS.md's ladder and it is known to be rung four.
-- **`notes/bibliography.md` was not on `main` at `b6d8fa2d`**, so this paper is not indexed there.
-  The row is owed at merge.
+- Closed, corrected 2026-10-11 (UTC). This entry said `design/fatal-risks/README.md` was not
+  edited by this note, so the connection to risk 8 was asserted only here, at rung four. The
+  paragraph proposed in PR #1063 has since been applied: risk 8's appendix,
+  `design/fatal-risks/nobody-needs-it.md`, carries it and links here, and risk 1's file and its
+  appendix cite this note too.
+- Closed, corrected 2026-10-11 (UTC). This entry said `notes/bibliography.md` was not on `main` at
+  `b6d8fa2d`, so the paper's row was owed at merge. The bibliography carries the row now.
