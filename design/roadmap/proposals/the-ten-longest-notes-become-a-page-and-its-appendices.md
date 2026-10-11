@@ -29,7 +29,10 @@ as syntax. The baseline, `design/prose-baseline.tsv`, holds 148 rows on words.
 
 The ten longest by words are not ten a developer can take. Four are routed elsewhere (below), and
 the next four notes by words replace them. Work them in this order, which is §212's rank of words
-times citing files (`git grep -l` on the basename, the file itself excluded):
+times citing files. A citing file names the exact path or basename as a link or path token
+(``git grep -lE '(^|[/(` ])abi\.md'``), the file itself excluded. A substring grep over-counted
+`abi.md` and `roadmap.md`, because longer names such as `0015-native-abi.md` end in them (found
+2026-10-11):
 
 | order | document | words | above cap | citing files |
 |---|---|---|---|---|
@@ -142,6 +145,11 @@ since each outsider pass adds to it.
    10,358→~2,597. Then merge-queue 9,278→~2,458, x86-uefi-boot 8,072→~2,325, smb 10,296→~1,639,
    glyphs 8,368→~2,981, footprint-perturbation 8,082→~2,752. What moved, per document, is in
    #1918's body.
+   The second lane, `lane/next-ten-longest-notes` (PR #1926), took ten more notes and removed all
+   ten baseline rows. Words before and after: frames 7,809→2,299, job-mix 5,116→2,767,
+   process-view 7,416→2,480, shared-page-audit 6,454→2,780, unsafe-obligations 8,139→2,269.
+   Then roadmap 5,525→2,860, trusted-init 6,056→2,434, abi 3,308→2,704, interleaving
+   5,618→2,666, stack-high-water 6,220→2,636. The detail is in #1926's body.
 5. The report names each provisional directory and file name for calef's queue.
 
 ## Open questions for an architect
