@@ -738,7 +738,6 @@ notes/aarch64-board-survey.md	-	-	63	-	-
 notes/adding-a-program.md	3211	-	82	-	-
 notes/address-space-identifiers.md	-	21	44	-	-
 notes/arch-audit.md	4186	-	57	-	-
-notes/architecture-list-sweep.md	6206	-	-	-	-
 notes/automation-identity.md	-	-	83	-	-
 notes/bench-runbook.md	-	-	65	-	-
 notes/benchmarks/read-path-block-contract-and-metadata-cache.md	-	-	41	-	-
@@ -756,10 +755,8 @@ notes/capability-lifecycle.md	-	-	64	-	-
 notes/cfi-unwind.md	3398	25	59	-	-
 notes/check-inventory.md	4024	-	81	-	-
 notes/ci-log-baseline.md	-	30	86	-	-
-notes/citations.md	6258	-	69	-	-
 notes/clock.md	-	21	50	-	-
 notes/component-manifest.md	-	-	70	-	-
-notes/compositor.md	4372	-	65	-	-
 notes/corrections.md	-	-	54	-	-
 notes/corrections/2026-09-23-the-sweep-that-swept-nothing.md	3155	-	61	-	-
 notes/counted-claims.md	3673	-	53	-	-
@@ -774,18 +771,14 @@ notes/dir-capability.md	-	-	54	-	-
 notes/dma.md	-	-	66	-	-
 notes/doc-coverage.md	-	-	64	-	-
 notes/documentation-audit.md	-	-	73	-	-
-notes/documentation.md	5264	-	60	-	-
 notes/effort-levels.md	-	-	50	-	-
 notes/elf.md	3085	-	62	-	-
 notes/entropy.md	-	21	68	-	-
 notes/env-config.md	-	-	64	-	-
 notes/exceptions.md	-	-	54	-	-
-notes/falsification.md	7204	-	53	-	-
 notes/follow-on-work.md	3264	-	59	-	-
 notes/framebuffer-contract.md	-	-	50	-	-
-notes/fuzzing.md	4246	-	56	-	-
 notes/generational-names.md	-	-	41	-	-
-notes/glob-grant.md	5123	-	107	-	-
 notes/glob.md	3290	-	44	-	-
 notes/globally-unique-identifier-partition-table.md	3173	-	63	-	-
 notes/grant-expression.md	-	-	54	-	-
@@ -805,7 +798,6 @@ notes/ipc-naming.md	-	-	64	-	-
 notes/isa-discovery.md	3450	-	47	-	-
 notes/jh7110-clock-and-reset.md	-	-	58	-	-
 notes/kernel-budget.md	-	-	53	-	-
-notes/kernel-proofs.md	3532	-	69	-	-
 notes/l4-lessons.md	-	-	52	-	-
 notes/line-discipline.md	-	21.5	68	-	-
 notes/linker-scripts.md	-	-	41	-	-
@@ -813,7 +805,6 @@ notes/live-replacement.md	-	-	64	-	-
 notes/login.md	-	22	54	-	-
 notes/main-is-red.md	-	-	55	-	-
 notes/mascot.md	-	-	56	-	-
-notes/mdns.md	3583	-	137	-	-
 notes/memory-ordering.md	3710	-	57	-	-
 notes/memory-regions.md	-	-	43	-	-
 notes/model-attribution-review.md	5067	-	90	-	-
@@ -863,7 +854,6 @@ notes/serial-less-output.md	4349	-	67	-	-
 notes/session-handoff.md	-	-	71	-	-
 notes/shell-navigation.md	-	-	72	-	-
 notes/shell.md	-	-	47	-	-
-notes/sink-protocol.md	3189	-	-	-	-
 notes/std.md	-	-	42	-	-
 notes/supervision.md	-	-	58	-	-
 notes/swish-language.md	3147	-	49	-	-

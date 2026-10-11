@@ -1,11 +1,11 @@
-# The test suite reaches RISC-V: the follow-ons of milestone 19 (run a real workload)
+# The test suite reaches RISC-V: the follow-ons of §19 (architectural parity)
 
 An appendix to [notes/riscv-parity-scope.md](../riscv-parity-scope.md), moved there on 2026-10-11
 (UTC) under §212 (a prose budget). It is the record of making `kernel::sched::tests` and
 `kernel::user::tests` run on both ISAs: what moved, the three defects the port surfaced, the
 assertions broken on purpose, and what stays aarch64-only.
 
-Follow-on (milestone 19, 2026-07-31): the last two gated portable tests are gated no longer.
+Follow-on (§19 (architectural parity), 2026-07-31): the last two gated portable tests are gated no longer.
 `kernel::sched::tests::an_interrupt_becomes_a_message` and
 `an_interrupt_that_arrives_before_the_wait_is_not_lost` were the "two SGI interrupt tests" named
 above. Neither property is architectural (IRQ-to-IPC delivery, and a lost-wakeup race); only the
@@ -17,7 +17,7 @@ not twins in what the trigger costs, and notes/interrupts.md says which way each
 That leaves `kernel::sched::tests` fully portable, and the remaining aarch64-only tests are the ones
 that genuinely need aarch64 machine code or a GIC.
 
-Follow-on (milestone 19, 2026-07-31): `kernel::user::tests` runs on both ISAs. It was the last
+Follow-on (§19 (architectural parity), 2026-08-01 00:08 UTC, commit 3b6eb2254): `kernel::user::tests` runs on both ISAs. It was the last
 whole module gated to one architecture, and the reason turned out not to be the tests. The module
 comment said "every test drives a hand-written aarch64 program through `exec` and reads aarch64 fault
 registers", which was true and was the wrong thing to fix. The *scaffolding* was aarch64, and the
