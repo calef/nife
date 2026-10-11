@@ -1,7 +1,7 @@
 ---
-status: IN-PROGRESS
-branch: milestone/561-a-per-cpu-allocator
+status: BUILT
 raised: 2026-09-21
+built: 2026-10-11
 promoted_from: a-per-cpu-allocator-is-what-the-current-cpu-page-was-for
 milestone_dependencies: 812
 decision_dependencies: none
@@ -11,7 +11,8 @@ needs_person: no
 ---
 # 561. A per-CPU allocator is what the current-CPU page was for
 
-The number is **provisional**: the integrator mints it at merge. Promoted from the proposal `a-per-cpu-allocator-is-what-the-current-cpu-page-was-for` on 2026-09-22, filed 2026-09-21. Raised by the lane that built the current-CPU page, as the work its
+The number is **provisional**: the integrator mints it at merge. Built on branch
+`milestone/561-a-per-cpu-allocator` (#1904). Promoted from the proposal `a-per-cpu-allocator-is-what-the-current-cpu-page-was-for` on 2026-09-22, filed 2026-09-21. Raised by the lane that built the current-CPU page, as the work its
 own change exists to serve and which nobody is doing.
 
 The page ships; a reader can call `user_mode_runtime::current_cpu` today.
@@ -58,8 +59,8 @@ surface question. Finding that out early is a good outcome of starting it.
 2026-10-10 (UTC), by milestone 812 (`std::thread::spawn` runs real threads in one address space):
 `std` programs now have threads, and the `std` heap is one spinlock. Allocation is 1.5 to 3.2 times
 slower with four threads than with one, across two runs. Each run is 200,000 small allocations and
-frees, split four ways. It ran under QEMU's TCG with four emulated cores, on all three
-architectures. The program is `std_exerciser/src/bin/std_heap_contention.rs`. The test
+frees, split four ways. It ran under QEMU's TCG on all three architectures. (This said four
+emulated cores on each; `x86_64` has two in turn and one, corrected 2026-10-11 (UTC) below.) The program is `std_exerciser/src/bin/std_heap_contention.rs`. The test
 `std_threads_tests::the_std_heap_is_measured_under_four_threads` runs it (pull request #1892). The figures per architecture are in `notes/std/threads.md`. This is the first
 consumer this block was waiting for, and the same program is the measure for whatever replaces the
 lock.
@@ -68,23 +69,55 @@ lock.
 
 Without `rseq`, a per-CPU list needs an atomic on every operation, stale id or not. A thread
 preempted mid-pop hands the same core, and the same list, to another thread. A cache per thread
-needs none. After milestone 812, reaching it costs a subset of what reaching a per-CPU list costs,
-since both start from the thread pointer. So the lane builds a cache per thread in front of the one
-locked heap, and measures it against the per-CPU candidate rather than arguing. The current-CPU page
-loses the consumer it was built for; it keeps `available_parallelism`'s allowance.
-`notes/std/allocation.md` has the argument, the table of candidates and the numbers.
+needs none, and after milestone 812 reaching it costs a subset of what reaching a per-CPU list
+costs. So the lane built a cache per thread in front of the one locked heap, and measured it against
+the per-CPU candidate rather than arguing.
 
-- Built: `crates/allocation_cache` (name provisional), the cache as host-tested pure logic, in
-  front of a real `user_mode_heap` under a random walk of allocations, frees, refills and spills.
-- Next: wiring it into `std`'s allocator through 812's per-thread block, and the measurement on
-  three architectures (one lock, per thread, per CPU, per CPU with the CPU read removed). Milestone
-  812 (`std::thread::spawn` runs real threads in one address space) landed on 2026-10-11 (UTC).
+## What was built and measured, 2026-10-11 (UTC)
+
+- `crates/allocation_cache` (name provisional), host-tested and clean under Miri, generated into
+  `std` and kept in each thread's block (milestone 812's thread-pointer block). A thread's end
+  spills it; `std_threads_tests::the_std_heap_is_measured_under_four_threads` proves that with 64
+  threads that each end with a full cache, twice the program's heap budget, and a replayable
+  falsification.
+- The measurement, `std_heap_contention` three times on every leg, millions of allocations per
+  second of guest time with four threads (four against one in brackets):
+
+| leg | (a) one lock | (b) per thread | (c) per CPU | (d) per CPU, no CPU read |
+|---|---|---|---|---|
+| aarch64, 4 cores | 3.31 (0.76) | **13.65 (2.48)** | 8.80 (2.14) | 2.42 (0.51) |
+| riscv64, 4 cores | 1.73 (0.87) | **5.49 (2.57)** | 4.53 (2.84) | 3.83 (2.00) |
+| `x86_64` PVH, 2 cores in turn | 2.72 (0.56) | **5.84 (1.26)** | 5.17 (1.41) | 3.93 (0.71) |
+| `x86_64` OVMF, 1 core | 3.15 (0.61) | 4.64 (1.01) | 2.75 (0.72) | **5.58 (1.06)** |
+
+Per thread wins wherever there is more than one core, and per CPU is not recommended. The page's
+own number is (c) against (d): with four threads the CPU read is worth 3.6 times on aarch64 and 1.2
+on riscv64, because without it 59 to 69% of list operations find the lock taken. With one thread
+the read costs 16 to 50% under TCG. **Staleness did not matter**: an instrumented build counted no
+operation whose id went stale, and at most one contended acquire, in about 400,000 per phase on
+every leg. **`CPU_ID_BOUND` sizing was right**: eight line-aligned lists are 1.5 KiB, and cached
+memory is spent only by lists in use. **For the page (milestone 557 (a thread reads its own CPU from
+a page))**: it works, and its CPU word now has no reader outside tests. Whether the kernel keeps
+writing it on every switch is calef's, on #1904. This is TCG on a loaded host, and `x86_64` runs its
+cores in turn, so read ranks and ratios, not rates. `notes/std/allocation.md` has the method, the
+raw times, the caveats and the scratch patch the variants live in.
 
 Reuse: none to take, after surveying `talc`, `linked_list_allocator`, `buddy_system_allocator`,
 `dlmalloc`, `rlsf`, `frusa`, `rsbmalloc`, `mimalloc` and `snmalloc` on 2026-10-10 (UTC)
 (`notes/std/allocation.md`). The pure-Rust `no_std` ones are one heap behind one lock, which is what
 `std` has; the thread-caching ones are C or C++ or need `mmap`, and would replace `user_mode_heap`,
 which §31 (the foreign-language seam) rule 4 keeps. The cache adapts glibc's `tcache` design.
+
+## Follow-on
+
+- **Recorded.** The CPU read on silicon, in `notes/std/allocation.md`. Every figure here is TCG;
+  the same four variants under HVF on Apple silicon (`notes/benchmarks.md`'s real-time instrument,
+  aarch64 only) would put nanoseconds on the read, though not change the staleness or contention
+  counts. The scratch patch makes it a rebuild.
+- **Recorded.** The page's CPU word has no reader outside tests, in `crates/current_cpu_protocol`'s
+  `BUGS`. Whether the kernel keeps writing it is calef's question on #1904.
+- **Recorded.** Cross-thread frees (a producer freeing what a consumer allocated) were not
+  measured, in `notes/std/allocation.md`'s `BUGS`.
 
 ## Index row
 

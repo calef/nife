@@ -3,18 +3,16 @@
 //! calef ruled on 2026-09-21 (§204 (how userspace asks where a thread runs)) that two different
 //! questions get two different mechanisms: observing *another* thread is a selector on the
 //! rendezvous surface, and a thread observing *itself* is a per-thread page on the shape Linux's
-//! `rseq(2)` uses. This crate is the self half: one definition of the page the kernel
-//! writes the running core's id into, so the kernel (the one writer) and
-//! `user_mode_runtime::current_cpu` (every reader) cannot drift on the layout or the fixed virtual
-//! address (AGENTS.md rule 7).
+//! `rseq(2)` uses. This crate is the self half: one definition of the page the kernel writes the
+//! running core's id into, so the kernel (the one writer) and `user_mode_runtime::current_cpu`
+//! (every reader) cannot drift on the layout or the fixed virtual address (AGENTS.md rule 7).
 //!
 //! # Why a page and not a syscall
 //!
-//! The consumer that decides this is a memory allocator keeping a per-CPU cache: it asks which CPU
-//! it is on **once per allocation**, which is millions of times a second. An IPC round trip in this
-//! tree measures ~705 ns and a bare syscall is cheaper than that, but neither is in the same
-//! decade as a load. `rseq` exists for exactly this reason, and Linux's own numbers for the move
-//! from the vDSO path to a memory read were 20x on x86 and 35x on ARM.
+//! It was shaped for a per-CPU allocator, which asks which CPU it is on **once per allocation**,
+//! millions of times a second. An IPC round trip here is ~705 ns and a bare syscall less, neither
+//! in a load's decade; `rseq` exists for this, and Linux measured 20x on x86 and 35x on ARM moving
+//! from the vDSO to a memory read.
 //!
 //! # Why a page and not a register, which is the question a reader asks next
 //!
@@ -137,6 +135,8 @@
 //!
 //! # BUGS
 //!
+//! - **Nothing outside tests reads the CPU word**, written on every switch. Milestone 561 (a
+//!   per-CPU allocator is what the current-CPU page was for) shipped a per-thread cache (#1904).
 //! - **The reader forms an `&AtomicU64` over memory its process maps read-only.** Miri cannot model
 //!   a mapping, but it does reject the same shape over an immutable Rust binding (milestone 636
 //!   (the scheduled workflows are failing) found it while repairing this crate's tests, which now
