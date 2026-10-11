@@ -11,7 +11,9 @@ name: architect label
 # the label when the syscall surface or the dependency graph moved... the second is the real
 # answer,"* then built one shape of it, a correction of error. This workflow is the rest of it: the
 # syscall surface, the dependency graph, a format crate's wire layout, the spawn protocol, and
-# CLAUDE.md/`design/decisions/`.
+# CLAUDE.md/`design/decisions/`. A bookkeeping edit to a decision (a link retargeted, a backticked
+# path moved, a paragraph rewrapped) no longer fires: calef ruled on 2026-10-11 (UTC) that it does
+# not need him, and §88 (`needs-architect` as a required check)'s amendment records it.
 #
 # **A separate workflow, not an extension of `coe-architect-label.yml`, and not a change to
 # `architect-hold.yml`.** `coe-architect-label.yml`'s own header already argues the second half of

@@ -88,7 +88,9 @@ the moment the decision to hold is made and not later:
   paragraph somebody has to have read. It names the role, not the person. A thing lands there when
   it is outside standing merge authority: the syscall surface, a new dependency, or a
   `design/decisions/` section owed. It means waiting on calef and nothing else, so the list is his
-  worklist.
+  worklist. An edit to a decision is his to approve unless it is bookkeeping: a link retargeted, a
+  backticked path moved, a paragraph rewrapped (calef, 2026-10-11 UTC; §88 (`needs-architect` as a
+  required check)'s amendment). A changed word still asks, a renamed identifier included.
 - A send-back swaps it for `held-by-lane` (2026-10-06). When a ruling asks the lane for a change,
   take `needs-architect` off, put `held-by-lane` on, and add `architect-ruled` if the ruling covers
   the diff. The `architect hold` check fails on `held-by-lane` even beside `architect-ruled`, the
