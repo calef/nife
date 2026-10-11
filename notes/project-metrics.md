@@ -95,19 +95,12 @@ became a repair is missed.
 
 Queue began 2026-08-15; W31 and W32 predate it.
 
-## How long verify takes
-
-![How long verify takes](project-metrics/verify-shards.svg)
-
-<!-- week-notes: script/metrics writes this -->
-- 2026W41: prove shards rebalanced on 2026-10-07 UTC by a 40-run median and split three ways (calef, #1802), planned at 15.7 minutes each from 20.5 and 27
-<!-- /week-notes -->
-
 ## How long a merge-group build takes
 
 ![How long a merge-group build takes](project-metrics/ci-jobs.svg)
 
 <!-- week-notes: script/metrics writes this -->
+- 2026W41: prove shards rebalanced on 2026-10-07 UTC by a 40-run median and split three ways (calef, #1802), planned at 15.7 minutes each from 20.5 and 27
 - 2026W41: CI job test ran at 89% of its budget on its newest merge-group run; tracking issue #1930
 <!-- /week-notes -->
 
@@ -116,10 +109,6 @@ Queue began 2026-08-15; W31 and W32 predate it.
 A build is a merge commit's `ci.yml` and `verify.yml` runs (same `head_sha`), first job start to last
 job end, green only, from 2026-08-15 (`helpers/ci_job_times.py`). The timeline is the newest full
 week.
-
-
-Medians of up to twelve green runs a day (`helpers/verify_times.py`). Before
-2026-10-05 the re-falsify bar is the one replay job it then was.
 
 ## Which model wrote it
 

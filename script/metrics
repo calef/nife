@@ -228,11 +228,6 @@ LEDGER_PATH = DATA_DIR / 'ledger.md'
 # `helpers/merge_queue_share.py update` writes from GitHub's merge-queue events. Read from the working
 # tree like `effort.csv`, and for its reason: a committed record of a fact git cannot reproduce.
 QUEUE_PATH = DATA_DIR / 'merge-queue-daily.csv'
-# How long verify's shards take (lane/verify-shard-refresh, 2026-10-07 UTC, calef: "It seems like we
-# need a graph on our metrics page too."): one row per sampled CI run, written by
-# `helpers/verify_times.py update` from GitHub's job records. Read from the working tree for the
-# queue file's reason: a committed record of a fact git cannot reproduce.
-VERIFY_RUNS_PATH = DATA_DIR / 'verify-runs.csv'
 # The week notes (milestone 623, provisional): hand-appended rows, pruned by this script when a
 # week ages out of the chart window, rendered as bullets under the chart a row names. Like the two
 # above rather than like the measure files: it is a record of an explanation, not a series
@@ -423,12 +418,6 @@ MEASURES = [
     # commits on `main`; `debt_paydown_by_week` says where the two part. File and column names
     # provisional (lane maintainer/debt-paydown-share-chart).
     ('debt-paydown', ['debt_paydown_merged_total', 'debt_paydown_merged', 'debt_paydown_pct']),
-    # Verify's wall clock, as weekly medians over the runs `verify-runs.csv` sampled. Empty before
-    # 2026-08-14, when the proofs first ran as shards. File and column names provisional
-    # (lane/verify-shard-refresh's).
-    ('verify-shards', ['verify_runs_sampled', 'verify_slowest_minutes',
-                       'verify_prove_fastest_minutes', 'verify_prove_slowest_minutes',
-                       'verify_refalsify_slowest_minutes']),
     # How long a merge-group build takes, against the 20-minute lid (calef, 2026-10-11 UTC): each
     # week's green builds counted, and their median and 90th-percentile wall time, from
     # `ci-builds.csv`. The per-job bars on `ci-jobs.svg` are read from that record when the chart is
@@ -1081,37 +1070,6 @@ def debt_paydown_cells(held):
     return {'debt_paydown_merged_total': held['merged'],
             'debt_paydown_merged': held['labeled'],
             'debt_paydown_pct': '%.1f' % (100.0 * held['labeled'] / held['merged'])}
-
-
-def verify_by_week():
-    """{ISO week: {column: value}} from `verify-runs.csv`, or {} without the file.
-
-    Each figure is the median over the week's sampled runs of a per-run number: the slowest shard
-    of any kind (the run's wall clock as far as proving goes), the fastest and slowest `prove`
-    shard, and the slowest re-falsify shard. A median of per-run maxima, not the maximum of
-    per-shard medians, so the line on the chart is a run somebody waited for."""
-    if not VERIFY_RUNS_PATH.exists():
-        return {}
-    held = {}
-    for row in csv.DictReader(VERIFY_RUNS_PATH.read_text().splitlines()):
-        prove = [float(x) for x in row['prove_minutes'].split(';') if x]
-        refalsify = [float(x) for x in row['refalsify_minutes'].split(';') if x]
-        if not prove:
-            continue
-        week = held.setdefault(week_of_date(row['created'][:10]),
-                               {'slowest': [], 'fast': [], 'slow': [], 'refalsify': []})
-        week['slowest'].append(float(row['slowest_minutes']))
-        week['fast'].append(min(prove))
-        week['slow'].append(max(prove))
-        if refalsify:
-            week['refalsify'].append(max(refalsify))
-    med = lambda v: '%.1f' % statistics.median(v) if v else ''
-    return {w: {'verify_runs_sampled': len(h['slowest']),
-                'verify_slowest_minutes': med(h['slowest']),
-                'verify_prove_fastest_minutes': med(h['fast']),
-                'verify_prove_slowest_minutes': med(h['slow']),
-                'verify_refalsify_slowest_minutes': med(h['refalsify'])}
-            for w, h in held.items()}
 
 
 def _builds(path=None):
@@ -2176,7 +2134,7 @@ def svg_chart(title, subtitle, weeks, series, path, ceiling=None, absent=None, t
     A point whose value is None is a week with nothing to draw, and the line breaks there.
 
     `grouped` draws each week's series side by side instead of stacked, for series that are
-    alternatives rather than parts (the verify chart's shards). The axis is then scaled to the
+    alternatives rather than parts (the build chart's jobs). The axis is then scaled to the
     tallest bar, and each line point carries its value in place of a bar total.
 
     `lines` is [(label, [value or None per week])], stored columns drawn over the bars in the
@@ -2632,14 +2590,6 @@ CHARTS = [
      'ejected over entered, summed across the week from GitHub\u2019s merge-queue events; the line '
      'is where trunk-health starts to say so',
      [('ejected share', 'queue_ejection_pct')], 1.0, (20, 'reported above'), 'queue_ejection_pct'),
-    # Grouped rather than stacked (GROUPED below): three shards side by side are three runners at
-    # once, and stacking them would draw a sum nobody waits for. The line is LINES' column.
-    ('verify-shards.svg', 'How long verify takes, in minutes',
-     'weekly medians over sampled green runs; the line is each run\u2019s slowest shard of any kind',
-     [('fastest prove shard', 'verify_prove_fastest_minutes'),
-      ('slowest prove shard', 'verify_prove_slowest_minutes'),
-      ('slowest re-falsify shard', 'verify_refalsify_slowest_minutes')], 1.0, (20, 'target'),
-     'verify_slowest_minutes'),
     # How long a merge-group build takes against its lid (calef, 2026-10-11 UTC). The two lines are
     # the stored columns (LINES); the bars are every job past JOB_BAR_MINUTES, read from
     # `ci-builds.csv` when drawn (SERIES_FROM), so the column here is what the flag and `--charts`
@@ -2931,17 +2881,11 @@ def fill_derived(rows, rev):
     cash = cash_by_week(date.today())
     queue = queue_by_week()
     debt = debt_paydown_by_week()
-    verify = verify_by_week()
     builds = builds_by_week()
     for week, row in rows.items():
         # Empty before the record starts, never zero, for the verify columns' reason.
         for column in ('ci_builds', 'ci_build_median_minutes', 'ci_build_p90_minutes'):
             row[column] = builds.get(week, {}).get(column, '')
-        # Empty for a week no run was sampled in, never zero, for the queue's reason below.
-        for column in ('verify_runs_sampled', 'verify_slowest_minutes',
-                       'verify_prove_fastest_minutes', 'verify_prove_slowest_minutes',
-                       'verify_refalsify_slowest_minutes'):
-            row[column] = verify.get(week, {}).get(column, '')
         row['milestones_built_this_week'] = built.get(week, 0)
         row['merged_pull_requests'] = merged.get(week, 0)
         # Empty for a week the daily record does not cover, for the cost columns' reason: a zero
@@ -3010,13 +2954,13 @@ def github_anchor(heading):
 # velocity chart and then the pull-request chart, one helper for both, because a flow that swings
 # from 8 to 49 to 13 in three weeks cannot be read for direction by eye. It is drawn and never stored, like the fatal-risks chart's unclassified band:
 # it is arithmetic over a column already in the CSV, and a stored copy could disagree with it.
-# Charts whose series stand side by side rather than stacked, and charts that carry a column as a
-# solid line over the bars: (legend label, column). Both are the verify chart's alone so far.
-GROUPED = {'verify-shards.svg', 'ci-jobs.svg'}
-LINES = {'verify-shards.svg': [('slowest shard per run', 'verify_slowest_minutes')],
-         # Two lines, so the second is dotted with open markers: solid and dashed already mean a
-         # trailing mean's full and short window on this page (TRENDS).
-         'ci-jobs.svg': [('median build', 'ci_build_median_minutes'),
+# Charts whose series stand side by side rather than stacked, and charts that carry stored columns
+# as lines over the bars: [(legend label, column)]. Both are the build chart's alone since
+# verify-shards.svg was retired on 2026-10-11 (UTC).
+GROUPED = {'ci-jobs.svg'}
+# Two lines, so the second is dotted with open markers: solid and dashed already mean a trailing
+# mean's full and short window on this page (TRENDS).
+LINES = {'ci-jobs.svg': [('median build', 'ci_build_median_minutes'),
                          ('p90 build', 'ci_build_p90_minutes')]}
 # Charts whose bars are read from a record when drawn rather than from stored columns:
 # chart -> function(weeks) returning (series, note), the note printed under the plot.
@@ -3320,21 +3264,7 @@ def selftest():
         recorded = commit_models(record)
         absent = commit_models(pathlib.Path(tmp) / 'no-such-file.csv')
 
-    # The verify chart (lane/verify-shard-refresh): weekly medians of per-run figures, a run with
-    # no replay shard leaving that column to the others, and bars drawn side by side, not summed.
-    global VERIFY_RUNS_PATH
-    held_path = VERIFY_RUNS_PATH
     with tempfile.TemporaryDirectory() as tmp:
-        VERIFY_RUNS_PATH = pathlib.Path(tmp) / 'verify-runs.csv'
-        VERIFY_RUNS_PATH.write_text(
-            'run,created,event,prove_minutes,refalsify_minutes,slowest_minutes\n'
-            '1,2026-10-05T01:00:00Z,push,20.0;27.0,25.0;22.0,27.0\n'
-            '2,2026-10-06T01:00:00Z,push,21.0;30.0,,30.0\n'
-            '3,2026-10-06T02:00:00Z,push,14.0;26.0,28.0,28.0\n')
-        verify_weeks = verify_by_week()
-        VERIFY_RUNS_PATH = pathlib.Path(tmp) / 'absent.csv'
-        verify_absent = verify_by_week()
-        VERIFY_RUNS_PATH = held_path
         # The build chart (maintainer/build-time-chart): two builds in W41, one of them with a
         # verify that ran, and a third in W42. Wall time is the build row's, set by the helper.
         builds_csv = pathlib.Path(tmp) / 'ci-builds.csv'
@@ -3394,12 +3324,6 @@ def selftest():
          [(50.0, False), (20.0, True)]),
         ('debt-paydown: a window with no covered week draws no point',
          trailing_mean(debt_rows, ['2026W01'], debt_pair, 2), [(None, False)]),
-        ('verify: a week is the median of its runs\u2019 own figures',
-         verify_weeks.get('2026W41'),
-         {'verify_runs_sampled': 3, 'verify_slowest_minutes': '28.0',
-          'verify_prove_fastest_minutes': '20.0', 'verify_prove_slowest_minutes': '27.0',
-          'verify_refalsify_slowest_minutes': '26.5'}),
-        ('verify: no record is no weeks, not zeros', verify_absent, {}),
         ('ci-jobs: a week is the median and p90 of its builds\u2019 wall time',
          build_weeks.get('2026W41'),
          {'ci_builds': 2, 'ci_build_median_minutes': '18.0', 'ci_build_p90_minutes': '19.6'}),
@@ -3417,9 +3341,9 @@ def selftest():
          (last_full_week(date(2026, 10, 11)), last_full_week(date(2026, 10, 12))),
          ('2026W40', '2026W41')),
         ('p90 of one build is that build', p90([7.0]), 7.0),
-        ('verify: grouped bars are never summed into a total',
+        ('grouped bars are never summed into a total',
          ('>30<' in grouped_text, '>34<' in grouped_text), (False, False)),
-        ('verify: the line carries its value and breaks at a missing week',
+        ('a trend line over grouped bars carries its value and breaks at a missing week',
          (grouped_text.count('<circle'), '>25<' in grouped_text), (1, True)),
         ('a recorded sha with no trailer takes the recorded model',
          signed_by('a' * 40, [], recorded), ['GLM 5.3']),
