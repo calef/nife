@@ -402,7 +402,7 @@ person-years"*.
 
 ### Performance, second-hand
 
-This lane could not read the evaluation section. `notes/redleaf.md` (branch
+This lane could not read the evaluation section. `notes/redleaf/crossing-costs.md` (branch
 `maintainer/redleaf-comparison`, 2026-09-20) reports SOSP '25 Table 3 from the full text, on CloudLab
 c220g5 (two Intel Xeon Silver 4114 10-core at 2.20 GHz): call/reply 1,058 cycles for Atmosphere
 against seL4's 1,026, and map-a-page 1,984 against 2,650. Treated here as second-hand and
