@@ -15,7 +15,7 @@ That single property is what turns a whole family of unaskable questions into as
 `notes/load-sensitive-assertions.md` states the problem twice, once per ISA, in the same words:
 from inside the guest, a 30 ms handler and a 30 ms deschedule are the same observation. Milestone
 78's other four rounds re-aimed everything that could be re-aimed at a property the host cannot
-touch; two claims survived because no wall-clock margin can separate those two cases, and a margin
+touch. Two claims survived because no wall-clock margin can separate those two cases, and a margin
 wide enough to try is a margin that no longer catches the defect. That is DECISIONS §61's scar, and
 the block forbids it by name.
 
@@ -67,7 +67,7 @@ icount: riscv64 claims hold
 ```
 
 **Read `min` and `max` before anything else.** On aarch64 they are the same number across 64
-consecutive ticks, which is the instrument's whole claim demonstrated rather than argued: the
+consecutive ticks, which is the instrument's whole claim demonstrated rather than argued. The
 measurement has *zero* variance, so a bound on it is a statement about this kernel's code and about
 nothing else. The riscv64 pair differ by one counter tick, which is that ISA's 100-instruction
 quantization showing (see "Resolution" below), not jitter in the machine.
@@ -92,8 +92,8 @@ that keeps `DEADLINE` on the grid and arms SBI with something else, and it would
 test in this tree.
 
 It does not pass this one, and that was proved by building it rather than by arguing it. See "The
-injections" below, which also corrects the expectation this paragraph used to state: the existing
-suite does notice both of the implementations tried, and it misdiagnoses both, which turns
+injections" below, which also corrects the expectation this paragraph used to state. The existing
+suite does notice both of the implementations tried, and it misdiagnoses both. That turns
 out to be the more interesting result and the one the milestone is actually about.
 
 aarch64 asserts the same thing, at the same site, for the reason rule 5 gives: a claim that holds on
@@ -103,8 +103,8 @@ one ISA and is unmade on the other is the gap, not the parity.
 
 `handler_instructions` is deadline to re-armed: claim 1's span plus the tick bookkeeping, the
 deadline write, and on riscv64 the SBI `ecall` round trip into OpenSBI and back. That trip is inside
-the measurement on purpose; it is a real part of what this ISA's handler costs and it is the part
-aarch64 does not pay, so a measurement that stopped short of it would be comparing two different
+the measurement on purpose. It is a real part of what this ISA's handler costs and it is the part
+aarch64 does not pay. So a measurement that stopped short of it would be comparing two different
 spans across the two ISAs.
 
 **This is the quantity `MISSED_TICKS` has always been a coarse proxy for.** A miss is this number
@@ -132,70 +132,30 @@ about.
 ### 3. Zero missed ticks, which is only assertable here
 
 This one closes a recorded `BUGS` entry rather than adding a claim. The miss taxonomy on both ISAs
-exists to tell a slow handler from a descheduled emulator by how late the re-arm was, and
+exists to tell a slow handler from a descheduled emulator by how late the re-arm was.
 `notes/load-sensitive-assertions.md` is honest that its cut leaves a window one tick period wide in
-which a host deschedule is still blamed on this kernel (measured, 2026-08-16: a lateness of 0.83 of
-an interval from a probe holding a lock across two and a half periods).
+which a host deschedule is still blamed on this kernel. Measured on 2026-08-16, that was a lateness
+of 0.83 of an interval from a probe holding a lock across two and a half periods.
 
 Virtual time has no deschedules. So here a miss has exactly one possible cause and needs no taxonomy
 at all, and `missed_ticks == 0` is a bare assertion.
 
 ## Why it is opt-in, and why that is the design rather than a compromise
 
-**`-icount` is not a flag that observes. It changes what QEMU is.** But the first thing to say is a
-correction, because the milestone block states the cost as *"icount is slower and changes what the
-suite measures"* and nobody had ever measured the first half of that. On compute it is not
-slower.
+`-icount` is not a flag that observes; it changes what QEMU is. It is not slower on compute, as
+measured (2.47 to 2.61 s against 2.69 to 2.80 s). The two real reasons it stays off the test path:
 
-| identical bench boot, `-smp 1`, three runs each | wall clock |
-|---|---|
-| `-icount shift=0,sleep=off` | 2.47 s, 2.50 s, 2.61 s |
-| no icount | 2.69 s, 2.62 s, 2.80 s |
+- One virtual clock serves every vCPU, and an idle hart in `wfi` jumps it forward, so multi-hart
+  timing is fiction. A suite run this way would silently stop proving every cross-core property.
+- A clock-bound wait starts costing instructions. The suite's `spin_for`s and clock-bounded
+  `wait_for`s would cost roughly five times what they cost today.
 
-Measured 2026-08-17, same binary, marker to marker (boot to `bench: done`), on a laptop carrying
-other lanes' gates. The instrument was if anything marginally *faster*, because `sleep=off`
-fast-forwards virtual time through the idling the bench does between phases, and that gain covers
-icount's per-instruction overhead. So "it would slow the suite down" is not the argument, and
-repeating it would have been an unmeasured claim inside a milestone about unmeasured claims. The
-second half of the block's sentence is exactly right, and is the whole of what follows.
-
-**The two real reasons are these.**
-
-*One virtual clock for every vCPU.* An idle hart parked in `wfi` jumps that clock forward to the
-next event, so multi-hart timing is fiction here. That is why this boot and the bench boot are both
-`-smp 1`, and why the placement probe can never move here (a cross-core delivery test cannot run on
-a one-core instrument, `notes/benchmarks.md`). A suite run this way would not fail; it would
-**silently stop proving every cross-core property it exists to prove**, which is worse.
-
-*A clock-bound wait stops costing host time and starts costing instructions.* This boot samples 64
-tick periods, which is 0.64 s of virtual time and therefore 6.4x10^8 guest instructions, and it
-spends about 3 s of wall clock retiring them. A plain TCG guest reaches the same counter value in
-0.64 s. So the suite's `spin_for`s and clock-bounded `wait_for`s would cost roughly five times what
-they cost today, and the compute-bound parts would cost nothing extra. That is a real bill, and it
-is a different bill from the one everyone assumed.
-
-Putting it on `script/test` would therefore change what all ~400 tests measure in order to sharpen
-two of them. So this is its own boot mode, its own feature and its own command, on the model
-`script/bench` already set. **Nothing on the test path changes at all**: the `tick_trace` hooks are
-`#[cfg(feature = "icount")]`, so the test and shipping builds do not contain them, and what this
-boot measures is therefore the handler that ships rather than a handler carrying an instrument.
-
-**Its own feature, which implies `bench` rather than extending it.** The two boots park at the same
-point, so they leave exactly the same set of functions unreferenced, and `bench` already carries that
-set spelled out one `cfg` at a time across five files. Declaring `icount` independent means writing
-every one of those conditions again, in `main.rs`, `sched.rs` and `user.rs`, to describe a fact
-already described; the other way out is a crate-level `allow(dead_code)`, and DECISIONS §38 refuses
-that, correctly, and `script/lint` enforces the refusal. (It refused this lane's first attempt, which
-is the mechanism working.)
-
-What that costs is that the icount kernel carries the benchmark code, compiled and never run.
-Nothing measures *this* binary against a baseline, so the ±5% codegen drift that makes `bench --check`
-a coarse tripwire is not a cost here. The property that mattered is kept: `script/bench`'s own
-binary is untouched, so no baseline had to be re-saved to admit an unrelated instrument, which is a
-tripwire losing its history for nothing.
-
-**What it costs to run:** 7.0 s wall for both ISAs including two kernel builds (2026-08-17, same
-conditions).
+So it is its own boot mode, feature and command, like `script/bench`. Nothing on the test path
+changes: the `tick_trace` hooks are `#[cfg(feature = "icount")]`, so what this boot
+measures is the handler that ships. The feature implies `bench` rather than extending it, because
+DECISIONS §38 (a suppression is scoped to an item) refuses the crate-level `allow(dead_code)` the
+other way out would need. Both ISAs run in 7.0 s including two kernel builds. The full argument is
+in [`instruction-clock/why-opt-in.md`](instruction-clock/why-opt-in.md).
 
 ## Resolution: what this instrument can and cannot see
 
@@ -219,37 +179,19 @@ different instrument from the `bench --check` tripwire, which compares *whole-bi
 
 ### The pricing question milestone 106 could not answer
 
-`notes/timed-wait.md` (the pricing lane for milestone 51's deadline fork) wanted "a dedicated
-`--features bench` probe under `-icount shift=0`" and could not build one, so it priced the
-deadline check by reading disassembly instead: +30 instructions on aarch64 and +31 on riscv64 in
-`sched::on_tick`, against a whole-tick path of ~491 and ~400 static instructions. Its own words:
-"Nothing was measured under icount, because the icount tripwire's own note records ±5% codegen drift
-between binaries, which swamps a 30-instruction change: the disassembly is the finer instrument
-here, not the coarser one."
-
-That was true of the tripwire and it is not true of this. The quantity here is a localized span
-inside one run, not two binaries' totals, and it has no variance at all:
-
-- aarch64: yes, and it is measured rather than argued. Injecting exactly 200 instructions into
-  the handler moved the reported number by 208, on every one of the 64 ticks, with the residual
-  smaller than one counter tick (the table above). A +30 change is therefore two counter ticks of
-  movement on a number that does not otherwise move at all. Build with the prototype, build without
-  it, run `script/icount --arch aarch64` twice, and the difference is the answer.
-- riscv64: not at this resolution. One counter tick is 100 instructions, so a +31 change is
-  visible only as an occasional single-tick step, and the honest reading is "under 100 and not zero".
-  The disassembly stays the finer instrument on that ISA.
-
-The caveat both legs share: the measured span is the timer handler, so it answers "what does a
-deadline check cost the tick" and not "what does it cost anything else".
+The pricing lane of milestone 106 (a wait that ends on the interrupt or the deadline) could not
+measure a 30-instruction deadline check under the icount tripwire, because ±5% codegen drift between
+binaries swamps it. This instrument can, on aarch64: see the injections below, and
+[`instruction-clock/the-injections.md`](instruction-clock/the-injections.md).
 
 ### 4. The armed deadline advanced by exactly one interval per delivered tick
 
-The re-arm law, and it is here because claims 1 to 3 are blind to a violation of it. Milestone
-62 injected the defect the aarch64 timer's module header has warned about since milestone 6,
-re-anchoring the grid from `now` inside `rearm` rather than advancing it from the deadline that
-fired: the bug that made 100 Hz configured into about 70 Hz delivered. `script/test` went red.
-This instrument went green with every number byte-identical to a clean run (arrival min/mean/max
-1008, handler 1056, `missed_ticks 0`).
+The re-arm law, and it is here because claims 1 to 3 are blind to a violation of it. Milestone 62
+(tests that assert on time) injected the defect the aarch64 timer's module header has warned about since milestone 6 (threads
+and preemption). It re-anchored the grid from `now` inside `rearm` rather than advancing it from the
+deadline that fired: the bug that made 100 Hz configured into about 70 Hz delivered. `script/test`
+went red. This instrument went green with every number byte-identical to a clean run (arrival
+min/mean/max 1008, handler 1056, `missed_ticks 0`).
 
 The reason is claim 1's own subject. It compares each arrival against *the deadline that fired*, so
 a kernel that re-anchors the whole grid arms the timer with the very word it records and satisfies
@@ -258,7 +200,7 @@ misses, of which re-anchoring produces none. Nothing moves.
 
 Here the law needs no retry loop at all, which is claim 3 paying for itself. The suite's twin
 must find a window in which `MISSED_TICKS` did not move, because a miss re-anchors the grid on
-purpose, and on a loaded host it sometimes cannot find one in eight tries; that is the whole of
+purpose. On a loaded host it sometimes cannot find one in eight tries, and that is the whole of
 milestone 62's disposition of it. Virtual time has no deschedules, `missed == 0` is asserted a few
 lines above, and the window is therefore miss-free by assertion.
 
@@ -273,57 +215,19 @@ tick, or 1,008 instructions, which is exactly the arrival latency the same run p
 
 ## The injections, and what each one settled
 
-Every injection was reverted. Recorded in full, including the expectation they refuted, because a
-failed prediction is how the useful facts arrived here as well.
+Every injection was reverted. Each is recorded in full in
+[`instruction-clock/the-injections.md`](instruction-clock/the-injections.md). What they settled:
 
-### Two implementations of the defect claim 1 names
-
-The block names the residual exactly: *"an implementation that maintains `DEADLINE` correctly and
-arms SBI with something else"*. Two were written, both one line in `rearm`, both keeping the grid
-store untouched.
-
-| injection | what it is | `script/icount --arch riscv64` | the riscv64 leg of `script/test` |
-|---|---|---|---|
-| `sbi_set_timer(now + interval())` | re-anchor on every tick, the classic drift bug, with the grid still kept correctly beside it | **red**: arrival 420,400 instructions against a bound of 1,500 | **red**, at `the_handler_keeps_up_when_no_lock_is_held` |
-| `sbi_set_timer(next + interval() / 4)` | a *fixed* quarter-period offset: no drift, no accumulation, the delivered rate still exactly 100 Hz | **red**: arrival 2,500,400 instructions, which is the injected 25,000 counter ticks plus the usual ~400, on every one of the 64 ticks | **red**, at `ticks_arrive_at_the_configured_rate` |
-
-The expectation was that the suite would not notice, and it did. That is worth stating plainly
-because it was written down as a prediction first. What it did not do is say what was wrong:
-
-- the first one failed as *"the timer handler is taking longer than a whole tick period, with no lock
-  held... Late by less than one interval means the handler itself is slow, which is this kernel's
-  bug."* The handler is not slow. It is the assertion that broke #204, #210 and #215 on aarch64 in a
-  single afternoon, so a reader triaging that red run has to decide "known or real" about the exact
-  assertion this milestone was raised over.
-- the second failed as *"no miss-free measurement window in eight tries: either the host is too
-  contended to observe the grid, or the handler is slower than a whole tick period"*. The first half
-  of that sentence is an invitation to re-run and move on.
-
-The icount message names the defect: *"either the trap path grew, or the timer was armed with
-something other than the deadline the kernel recorded"*, on a number with no host term in it.
-
-So the instrument's value is diagnostic certainty rather than detection, and that is the
-milestone's own thesis rather than a consolation. The block's cost line is "every red check in this
-repository currently needs a human to decide 'known or real', and on 2026-08-03 that judgment was
-made at least six times and got the wrong answer twice." Both of these injections produce exactly
-that judgment call on the test path and none of it here.
-
-### A known instruction count, to measure the resolution
-
-The third injection asks what this instrument can see rather than whether it fires: exactly 200
-instructions added to the top of the aarch64 `tick`, via the same assembly loop the calibration
-uses.
-
-| | arrival | handler |
-|---|---|---|
-| clean | 1,008 | 1,056 |
-| +200 instructions injected | 1,216 | 1,264 |
-| **delta** | **+208** | **+208** |
-
-Both numbers moved by the same amount, on every one of the 64 ticks, and the eight-instruction
-residual over the 200 injected is the operand setup around the loop: smaller than one counter
-tick. That is the resolution claim measured rather than reasoned, and it is what makes the
-paragraph below about milestone 106 a statement of fact.
+- Two implementations of the defect claim 1 names, each keeping `DEADLINE` correct and arming SBI
+  with something else, both went red here. The expectation was that the suite would not notice. It
+  did, but it misdiagnosed both: once as a slow handler, once as a contended host. The icount
+  message names the defect, on a number with no host term in it. So the instrument's value is
+  diagnostic certainty rather than detection, which is the milestone's own thesis.
+- Exactly 200 instructions injected into the aarch64 `tick` moved both numbers by 208 on every
+  tick. That measures the resolution rather than reasoning about it, and it answers milestone 106's
+  pricing question: on aarch64 a +30-instruction deadline check is two counter ticks of movement on
+  a number that does not otherwise move. On riscv64 the 100-instruction resolution can say only
+  "under 100 and not zero".
 
 ## The calibration, and why a boot refuses to measure without it
 
@@ -334,9 +238,9 @@ wall-clock number wearing an instruction's units. That is worse than an error, b
 a measurement.
 
 So the boot proves it is on the instrument before it measures anything with it. The arch layer runs
-a loop of a known instruction count (`subs`/`b.ne` on aarch64, `addi`/`bnez` on riscv64, two
-instructions per iteration, written in assembly precisely so the expected count is known rather than
-whatever the optimizer decided this week), and the virtual clock must agree to within 1%:
+a loop of a known instruction count: `subs`/`b.ne` on aarch64, `addi`/`bnez` on riscv64, two
+instructions per iteration. It is written in assembly precisely so the expected count is known
+rather than whatever the optimizer decided this week. The virtual clock must agree to within 1%:
 
 | leg | expected instructions | virtual time observed |
 |---|---|---|
@@ -345,7 +249,7 @@ whatever the optimizer decided this week), and the virtual clock must agree to w
 
 Those thirty-two and one hundred nanoseconds are the operand setup either side of the loop and the
 counter's own quantization. The 1% tolerance is nowhere near wide enough to admit either of the
-other two ways this kernel is ever run: plain TCG retires far fewer than one instruction per
+other two ways this kernel is ever run. Plain TCG retires far fewer than one instruction per
 nanosecond of wall clock, and HVF on this host retires several.
 
 The assembly lives under `arch/` rather than in `icount.rs` because DECISIONS §3 puts every `asm!`
@@ -357,7 +261,7 @@ there.
   smaller than one `rdtime` tick is invisible on that leg except as an occasional single-tick step in
   the max. Nothing in the kernel can fix this: the counter's frequency is the machine's. A finer
   probe would have to read `rdcycle`/`rdinstret`, which QEMU does map to the instruction count under
-  icount but which S-mode may only read when the firmware permits it (`mcounteren`), so it is a
+  icount. But S-mode may only read them when the firmware permits it (`mcounteren`), so it is a
   dependency on OpenSBI's configuration rather than on the architecture. Not tried here.
 - The bounds are ceilings and a regression under them is invisible. A change that adds 300
   instructions to the aarch64 handler passes, because the bound is 2,000 and the number is 1,008.
@@ -385,7 +289,7 @@ there.
   which is the cost of not putting `-icount` on the test path.
 - The failure path had to be bounded on the host, and finding that out leaked two emulators.
   The guest's panic handler halts rather than exiting, so a violated claim prints its message and
-  then the pipe never closes: `xtask` blocked on the read forever and QEMU stayed alive at ~80% of a
+  then the pipe never closes. `xtask` blocked on the read forever and QEMU stayed alive at ~80% of a
   core, twice, on a laptop already carrying four other lanes' gates. Counting "a few more lines"
   after the panic was the first fix and it hung for the same reason, one line further on. The
   mechanism now is a watchdog thread with a 300 s deadline that a seen panic shortens to three
