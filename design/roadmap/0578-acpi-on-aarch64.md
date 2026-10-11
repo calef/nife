@@ -195,6 +195,10 @@ The third is where the fork is, and this is the one item in this block that is a
 > is what the device-tree-versus-ACPI split actually is. The decision is a boot contract, it is what
 > every future aarch64 machine is entered through, and it belongs in `design/decisions/`.
 
+Answered. PR #1153 built option 1 (merged 2026-09-24 UTC), and calef ratified it on 2026-10-11
+(UTC). §278 (an ACPI machine reaches the aarch64 kernel as a device tree the loader writes)
+records the question, the refusals and the cost.
+
 ## The link address, which is the second half and is not this block's to describe
 
 The same `BUGS` section names a second blocker behind the first: the kernel is linked for
@@ -229,8 +233,8 @@ Each ships independently and none needs hardware. The QEMU A/B above tests all o
    it found, and makes `discover`'s error distinguish "no device tree and no ACPI" from "ACPI,
    which this kernel cannot yet use". Half a lane, and the failure message tells the truth before
    anything downstream exists.
-5. The handover, the fork above, which needs calef's decision first. A lane can write the
-   proposal with the three options priced; it should not pick.
+5. The handover, the fork above. Answered with option 1 by §278 (an ACPI machine reaches the
+   aarch64 kernel as a device tree the loader writes).
 6. The kernel's second front door, once 5 is answered: memory, GIC, timer, CPU list and console
    sourced from ACPI instead of the tree. The large one, and the only item touching
    `kernel/src/memory.rs`, so it wants the machine to itself.
@@ -256,10 +260,9 @@ Each ships independently and none needs hardware. The QEMU A/B above tests all o
 
 ## Follow-on
 
-- **Outstanding.** Item 5's handover fork was answered by the implementing lane, not by calef, and
-  no `design/decisions/` section records it. PR #1153's body gives the reason: option 1 moves
-  nothing the loader and kernel agree on. Checked 2026-10-11 (UTC): `device_tree_from_acpi`
-  appears nowhere under `design/decisions/`.
+- **Recorded.** Item 5's handover fork, which PR #1153 answered with option 1, is now
+  [§278 (an ACPI machine reaches the aarch64 kernel as a device tree the loader writes)](../decisions/0278-an-acpi-machine-reaches-the-aarch64-kernel-as-a-device-tree.md#278-an-acpi-machine-reaches-the-aarch64-kernel-as-a-device-tree-the-loader-writes),
+  ratified by calef on 2026-10-11 (UTC).
 - **Outstanding.** MADT types 0x0D (GIC MSI frame) and 0x0F (GIC ITS) still fall to
   `MadtEntry::Other`. Checked 2026-10-11 (UTC) in `machine_discovery::acpi`, where `MadtEntries`
   decodes each entry. The ITS node also waits on milestone 317 (the interrupt-remapping flags, and
@@ -275,6 +278,5 @@ Every aarch64 cloud offer qualifies on price, console, power and cores, and is a
 describes itself with ACPI, while nife's aarch64 kernel reads a device tree. PR #1153 (2026-09-24
 UTC) made the loader write that tree from the MADT's GIC entries, the GTDT, the FADT's Arm boot
 flags and the SPCR. So `NIFE_ACPI=on helpers/qemu-stick.sh aarch64 target/stick` reaches the shell
-on a laptop. Left: a recorded ruling on that handover, the MSI frame and ITS entries, a gate that
-boots `acpi=on`, and the Oracle Always Free boot. The `0x4008_0000` link address belongs to
-milestone 127 (the seL4 machine).
+on a laptop. Left: the MSI frame and ITS entries, a gate that boots `acpi=on`, and the Oracle
+Always Free boot. The `0x4008_0000` link address belongs to milestone 127 (the seL4 machine).
