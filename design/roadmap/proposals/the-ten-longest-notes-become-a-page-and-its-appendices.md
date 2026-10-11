@@ -178,6 +178,10 @@ since each outsider pass adds to it.
    3,164→2,758, verus 5,478→2,953, user-proofs 3,261→2,837, elf 3,085→2,759. The detail is in
    #1939's body. After it, 8 notes directly under `notes/` are still over the cap (measured
    2026-10-11 UTC), and a final lane is running on them.
+   After the final lane, `lane/final-longest-notes` (PR #1945), `notes/adding-a-program.md` was the
+   one note still over the cap. The lane `notes/split-adding-a-program` (PR #1954) split it,
+   3,211→2,618 words. Its "Why it works this way" moved to `notes/adding-a-program/why-it-works-this-way.md`,
+   and the walk table stayed, because `script/stranger-test` measures it on the main page.
 5. The report names each provisional directory and file name for calef's queue.
 
 ## Open questions for an architect
