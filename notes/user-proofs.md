@@ -3,8 +3,9 @@
 Milestone 197. The companion to [kernel-proofs.md](kernel-proofs.md), which did the same thing one
 privilege level down; both are downstream of [verification.md](verification.md), which is about
 proving the pure crates. This one is about the 68 EL0 programs the prover could not compile until
-2026-08-31, about the stubs you take on when you point it at them, and about the two shapes of
-property that turned out to be out of reach.
+2026-08-31. It covers the stubs you take on when you point it at them, and the shapes of property
+that turned out to be out of reach. The measurements behind two sections are in
+[`user-proofs/`](user-proofs/README.md).
 
 *Name provisional: notes are an interface and their names are an architect's call (AGENTS.md).
 `user-proofs` says what the file is about and matches `kernel-proofs.md`'s neighborhood; expect it
@@ -21,7 +22,7 @@ That premise is half right, and the half that is wrong is worth stating first, b
 finding rather than a disappointment.
 
 Most of the parsing is not in `user/` any more. Rule 7 (anything two binaries agree on is a
-crate) and the host-testability discipline have already lifted it out: the initrd parser is
+crate) and the host-testability discipline have already lifted it out. The initrd parser is
 `nifefs`, the ELF front half is `elf`, the partition table is
 `globally_unique_identifier_partition_table`, the directory entries are
 `filesystem_protocol`, the terminal escapes are
@@ -41,14 +42,15 @@ saves it by joining the rows with `\n` into one scratch buffer before writing th
 filesystem. The buffer was `MAX_ROWS * MAX_COLS`.
 
 That is the size of the document's text, not the size of what `save` writes. The separators cost
-`MAX_ROWS - 1` bytes more. A document at both bounds (32 rows of 100 columns, which the editor's own
-limits permit and which typing 31 characters onto the last line of a freshly loaded full file
-reaches) staged 3231 bytes into a 3200-byte buffer and panicked the editor on `^S`.
+`MAX_ROWS - 1` bytes more. A document at both bounds is 32 rows of 100 columns. The editor's own limits
+permit it, and typing 31 characters onto the last line of a freshly loaded full file reaches it. It
+staged 3231 bytes into a 3200-byte buffer and panicked the editor on `^S`.
 
-Nothing found this in the eight months `rmle` has existed. It was found by trying to state the
-property, before any harness ran, which is the mechanism milestone 191 (did) said the tree was missing:
-a property has to be written down before it can be checked, and writing it down is where the two
-constants got compared for the first time.
+Nothing found this in the five days `rmle` had existed. *(Corrected 2026-10-11 UTC: this said
+"eight months". The editor landed on 2026-08-27 UTC as `kilo`, commit `f3d119d6e`.)* It was found
+by trying to state the property, before any harness ran. That is the mechanism milestone 191 (did
+the proofs catch the bugs?) said the tree was missing. A property has to be written down before it
+can be checked, and writing it down is where the two constants got compared for the first time.
 
 The fix is the buffer sized as `MAX_ROWS * (MAX_COLS + 1)`, one separator budgeted per row rather
 than per gap, and a `const` assertion beside it rather than a proof:
@@ -57,43 +59,21 @@ than per gap, and a `const` assertion beside it rather than a proof:
 const _: () = assert!(FILE_SCRATCH_LEN >= MAX_ROWS * MAX_COLS + (MAX_ROWS - 1));
 ```
 
-That is rung one of AGENTS.md's ladder, and it is the right rung: the claim is a relationship
+That is rung one of AGENTS.md's ladder, and it is the right rung. The claim is a relationship
 between three compile-time constants, so the compiler can hold it for nothing and will stop the
 build at the line that is wrong. The next section is why it is not *also* a harness.
 
 ## What Kani could not do here, measured
 
-A proof that does not terminate is not a weaker proof, it is no proof, and three properties were
-written, run, and abandoned before the one that shipped. They are recorded because the shapes
-generalize, and because a future lane that tries the obvious thing deserves the measurement rather
-than the surprise.
-
-| the property | the shape | what happened |
-|---|---|---|
-| the staged document fits the buffer | a bound on a **sum of 32 symbolic values** | no answer in 20 minutes, on CaDiCaL **or** Z3 |
-| `Editor::insert_char` preserves the document invariant | a **symbolic index into a 3.5 KB struct** | CBMC ran out of memory in 3m23s |
-| `wc::render` writes the digits of `v` | any claim about **values off a chain of 20 divisions** | no answer in 10 minutes |
-
-The first is the instructive one. "The sum of at most 32 values, each at most 100, is at most 3232"
-is arithmetic a child can check, and it is a cardinality argument, which is the family
-resolution-based SAT is famously worst at; the solver has to rediscover counting from bit-level
-adders. Kani is a bounded model checker over a SAT backend, and this is not a gap in the tool so
-much as the wrong question to bring it.
-
-The second says the same thing about state size rather than arithmetic: a symbolic index into an
-array of 32 hundred-byte rows is a case split the formula cannot afford, so the editor's editing
-operations are out of reach as written. Restructuring the document so its lengths live apart from
-its bytes would fix that, and would be a data-layout change made for the prover, which is a design
-question and not a lane's to take.
-
-The third is the trap most likely to catch the next person: `render` verifies instantly if the
-only assertion is `n <= out.len()`, because `--slice-formula` throws the division chain away as
-irrelevant. Add one assertion about a byte's *value* and the whole chain becomes relevant and the
-harness stops finishing. A fast harness is not evidence that the code is cheap to reason about; it
-can be evidence that the assertion was not asking anything.
-
-What Kani is good at here, and what shipped, is the opposite shape: bounded byte movement with
-comparisons, no sums, no division, no symbolic indices into large objects.
+A proof that does not terminate is not a weaker proof, it is no proof. Three properties were written,
+run and abandoned before the one that shipped. One bounded a sum of 32 symbolic values, and got no
+answer in 20 minutes on CaDiCaL or Z3. One took a symbolic index into a 3.5 KB editor struct, and
+ran out of memory. One claimed values off a chain of 20 divisions. The third is the trap most likely to catch the next
+person: `wc::render` verifies instantly if the assertion asks nothing about a byte's value, because
+the slicer throws the divisions away. A fast harness is not evidence that the code is cheap to reason
+about. What Kani is good at here is the opposite shape: bounded byte movement with comparisons.
+[`what-kani-could-not-do.md`](user-proofs/what-kani-could-not-do.md) has the table and why each
+shape fails.
 
 ## What is proved today
 
@@ -106,7 +86,7 @@ offset across three calls is a function of them. The one thing standing between 
 write past the end of a fixed array is a single `*n < buf.len()`.
 
 - `push_never_writes_past_the_buffer_it_was_given`. For every starting offset in the whole of
-  `usize` and every content, `push` writes nothing outside `buf`; and given an offset that starts in
+  `usize` and every content, `push` writes nothing outside `buf`. And given an offset that starts in
   range it ends in range, appends (nothing below the starting offset moves) and reports what it
   wrote (nothing at or above the final offset moves). The starting offset is left unconstrained on
   purpose: memory safety must not depend on the caller, and here it does not, because the guard is a
@@ -120,31 +100,20 @@ Cost: 2.4 seconds, against `script/verify`'s ~650. Both were falsified before th
 believed (`components/falsifications/`, and the section below on why no script replays it).
 
 The unwind bound is `bytes.len() == 4`, and it is stated at the harness. The loop body is one
-comparison and one store per byte and the starting offset is symbolic over all of `usize`, so four
+comparison and one store per byte, and the starting offset is symbolic over all of `usize`. So four
 bytes already exercise every way a push can meet the boundary: entirely below, crossing, exactly on,
 entirely past. What it cannot see is a defect that appears only at a larger length, and none is
 expressible in a loop whose whole state is a `usize` that only increments.
 
 ## What it took, exactly
 
-Shorter than milestone 193's list, because the kernel had already paid for most of it.
-
-| what stopped it | why | the fix |
-|---|---|---|
-| `unwinding panics are not supported without std` | the workspace deliberately does not set `panic = "abort"` (DECISIONS §7) | nothing: Kani passes `-C panic=abort` itself, so this is a `cargo check` problem and not a `cargo kani` one |
-| `found duplicate lang item panic_impl` | Kani links `std`, which defines the handler `user_mode_runtime::panic_handler!()` expands to | `#[cfg(not(kani))]` on the macro invocation, in the one binary carrying a harness |
-| `Failed to detect Kani functions ... seems to be using #[no_std]` | Kani refuses a `no_std` crate root that never mentions it, and 67 of the 68 programs never will | select the binaries instead: `--bin`, derived in `script/verify` from a grep of the tree |
-
-No `--ignore-global-asm`, which is the difference from the kernel and is DECISIONS §4 (kernel shape) rule 1
-paying out again: there is no `global_asm!` anywhere under `user/`, because the only assembly a
-program has any business containing is the syscall itself and that lives in `user_mode_runtime`.
-
-The `--bin` selection is the one piece of machinery worth arguing about, and the argument is in
-`script/verify`'s own comment: a hand-written list of binaries would be one name short the first
-time somebody adds a harness to a 69th program, and that failure is the invisible one this
-project has now recorded twice (`multicast_dns_protocol`, `jh7110_entropy`) -- the suite goes green faster and
-nothing says a harness stopped running. `script/lint` already catches a whole package missing from
-the verify table; only the derivation catches a binary missing from inside one.
+Shorter than milestone 193's list, because the kernel had already paid for most of it. Kani's own
+`-C panic=abort` handled the unwinding error. `#[cfg(not(kani))]` on the panic-handler macro removed
+a duplicate lang item. `script/verify` selects the binaries with `--bin`, derived from a grep of
+the tree, because Kani refuses a `no_std` crate root that never mentions it. No
+`--ignore-global-asm` is needed, since `user/` has no `global_asm!`. The derivation matters: a
+hand-written list would silently drop the next binary to gain a harness.
+[`what-it-took.md`](user-proofs/what-it-took.md) has each error and fix.
 
 ## The stub boundary, enumerated
 
@@ -201,7 +170,7 @@ exhaustive list of what a harness in a program package cannot see. The same list
 Milestone 197's block names `xtask` alongside `user/` and does not argue for it. Its own BUGS section
 says so. This is the argument, and it is a refusal.
 
-**The front door is already open, and that is not the question.** Measured 2026-08-31:
+The front door is already open, and that is not the question. Measured 2026-08-31:
 `cargo kani -p xtask --no-codegen` compiles with no changes to anything -- no `cfg`, no flag, no
 `--bin`. It is ordinary host `std` code. So the cost of *starting* is zero and the case has to be
 made on value.
@@ -225,13 +194,13 @@ Four reasons it is not worth it, in the order they matter:
    cannot go: no allocator, no scheduler, an input space nobody can enumerate. None of that is true
    here.
 4. **The cost is not zero even though the front door is free.** It is 8,511 lines in one file whose
-   logic is process orchestration -- `Command`, paths, environment variables, timeouts -- which is
+   logic is process orchestration: `Command`, paths, environment variables, timeouts. That is
    the category a model checker has to stub out entirely, and a suite of stubs is where a proof
    quietly becomes decoration. Its genuinely pure logic already lives in the crates it depends on
    (`nifefs`, `gpt`, `manual`, `measured_boot`, `compositor`, `video_terminal`, `bitmap_font`),
    and every one of those is in `script/verify`'s table today.
 
-**What would change this answer**: `xtask` growing logic that decides something the target then
+What would change this answer: `xtask` growing logic that decides something the target then
 trusts. The measured-boot digest is the shape to watch, and it is already in `measured_boot`, which
 is the right place for exactly this reason.
 
@@ -258,7 +227,7 @@ The whole suite, `components` included, the way CI runs it:
 $ script/verify
 ```
 
-**Falsify a harness before you believe it.** Milestone 191 is why this is not optional: it measured
+Falsify a harness before you believe it. Milestone 191 is why this is not optional: it measured
 141 harnesses and found none that had caught a defect after the day it was written. No script
 replays this one (see BUGS), so it is done by hand:
 
@@ -276,8 +245,8 @@ are worth their place rather than an assertion that they are.
 
 ## BUGS
 
-- **`fixtures` is not a row in `script/verify`'s crate table, so a harness added to a fixture runs
-  nowhere and nothing says so** (milestone 175). It carries no harness today, and a row with none
+- `fixtures` is not a row in `script/verify`'s crate table, so a harness added to a fixture runs
+  nowhere and nothing says so (milestone 175). It carries no harness today, and a row with none
   fails the way that file's own comment describes: Kani refuses every `#![no_std]` crate root that
   does not mention it, so the run dies on the first binary without one. The failure mode is the
   invisible one this note already records twice, `multicast_dns_protocol` and then `jh7110_entropy`, where
@@ -299,18 +268,19 @@ are worth their place rather than an assertion that they are.
   `kernel`'s now carry records and are counted. Struck 2026-09-23, part 5 of milestone 323 (the
   falsification record is incomplete in five ways), the same unstruck-`BUGS`-entry shape
   found twice more in `design/roadmap/0197-user-and-xtask-proofs.md`.
-- **Two harnesses is not coverage of 68 programs**, and the number to watch is not the count but
+- Two harnesses is not coverage of 68 programs, and the number to watch is not the count but
   whether the properties are ones a defect would violate. This one is: the same guard, one character
   different, is the whole failure.
-- **The three shapes in the table above are recorded, not solved.** In particular the editor's
+- The three shapes in [`what-kani-could-not-do.md`](user-proofs/what-kani-could-not-do.md)'s
+  table are recorded, not solved. In particular the editor's
   editing operations (`insert_char`, `insert_newline`, `backspace`, `delete_at_cursor`) are the
   richest untrusted-input surface left in `user/` and are out of reach as the document is laid out
   today.
-- **`user/` is a package with 68 binaries and no library**, so there is no `cargo kani -p user` that
+- `user/` is a package with 68 binaries and no library, so there is no `cargo kani -p user` that
   means "everything". Stub 5 above is the consequence.
-- **`user`'s 3 seconds in `script/verify`'s table is a dev-Mac number**, like
+- `user`'s 3 seconds in `script/verify`'s table is a dev-Mac number, like
   `jh7110_entropy`'s and `kernel`'s, and the wrong machine for that column. Replace it from the first
   CI log that carries it. Almost all of it is compile rather than solver time, so it will grow with
   the harnesses and not with the programs.
-- **This note does not price the rest of the work.** What was measured is which shapes open and
+- This note does not price the rest of the work. What was measured is which shapes open and
   which do not.
