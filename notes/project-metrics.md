@@ -81,6 +81,14 @@ backfills to the first commit. 2026W29 and 2026W30 are zeros: the practice start
 2026W31.
 The line is the same trailing mean.
 
+## Debt paydown
+
+![Debt paydown share](project-metrics/debt-paydown.svg)
+
+The share of each week's merged pull requests labeled `debt-paydown` ([what
+counts](debt-paydown.md)). The label is chosen at the claim and judged from titles, so a lane that
+became a repair is missed.
+
 ## Merge queue ejections
 
 ![Merge queue ejections](project-metrics/merge-queue.svg)
@@ -123,8 +131,7 @@ here as unattributed rather than as a model
 ([the correction](coes/2026-10-03-the-merge-rate.md)). `script/effort` has the same gap and its
 charts show that week's z.ai work as nothing at all.
 
-The palette has eight hues, so "other models" is Opus 4.8, Fable 5.1 and any trailer the script
-does not recognize, drawn as one band; `notes/project-metrics/models.csv` keeps each apart.
+Each model has its own band; "other models" is a trailer the script does not recognize.
 
 ## Lines touched, by the model that signed them
 

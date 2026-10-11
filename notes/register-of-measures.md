@@ -167,7 +167,7 @@ time.
 | unsafe by trust boundary | the same blocks split kernel, userspace, shared and boot chain | [the unsafe series](register-of-measures/unsafe-series.md) |
 | Rust file size | files over 2,000 lines, their share of all Rust lines, the largest file, the 95th percentile, the share over 1,000 | [file size](register-of-measures/file-size.md) |
 | milestones built each week | a flow, read from each block's `Built` date in today's tree | [landed each week](register-of-measures/landed-each-week.md) |
-| pull requests merged each week | merge commits on `main` with GitHub's merge subject | [landed each week](register-of-measures/landed-each-week.md) |
+| pull requests merged each week; debt-paydown share | merge commits on `main`; the share, from GitHub labels | [landed each week](register-of-measures/landed-each-week.md) |
 | commits and lines by model | commits and lines touched per week, bucketed by the `Co-Authored-By` trailer | [which model wrote it](register-of-measures/which-model-wrote-it.md) |
 | what the project costs | person-weeks, lane tokens and hours with a dated shadow price, cash, and context per turn | [project cost](register-of-measures/project-cost.md) |
 | decisions, names, proposals, milestones by status | the status each record carries, per week | [records by status](register-of-measures/records-by-status.md) |

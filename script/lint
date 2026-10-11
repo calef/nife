@@ -3472,6 +3472,9 @@ python3 helpers/verify_times.py --selftest >/dev/null
 # daily rows against a recorded run, and the near-budget issue's three transitions (open, update,
 # close after three runs under), with no network. The fetch and the sync run only in metrics.yml.
 python3 helpers/ci_job_times.py --selftest >/dev/null
+# The debt-paydown share (lane maintainer/debt-paydown-share-chart, 2026-10-11 UTC): the filter to
+# pull requests merged into main and the label test, against fixtures, with no network.
+python3 helpers/debt_paydown_share.py --selftest >/dev/null
 python3 helpers/packages.py --check
 
 # The region claim protocol has ONE decision path (milestone 136).
