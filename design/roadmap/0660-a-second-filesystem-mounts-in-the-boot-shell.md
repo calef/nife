@@ -43,6 +43,11 @@ What lands with it:
 - The spawn protocol says which tree a directory grant is in, so `rm` under a mount point is built
   rather than refused at delivery.
 - Verification under `script/swish-check`, which is the only thing that runs a real init.
+- The two-tree witness moves to a script and its role goes. Milestone 885 (the shell's test roles
+  become scripts the shipping shell runs) left it in swish on calef's ruling of 2026-10-11 (UTC),
+  because the shipping shell cannot hold a second tree until this lands. What goes: role 6
+  (`ROLE_TWO_TREES`), the rest of `components/src/swish/witness.rs`, the `role` read in `_start`,
+  and `filesystem_protocol::fixture::twotrees` with its host test rows.
 
 ## Exit criterion
 
