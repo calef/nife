@@ -9,8 +9,8 @@ that there was nothing left to argue about.
 
 | | clippy with `--cfg kani` | `-D warnings` on `script/verify` |
 |---|---|---|
-| Undocumented `unsafe` it finds | 13 | 0 |
-| Other warnings it finds | 13 | 0 |
+| Undocumented `unsafe` it finds | **13** | **0** |
+| Other warnings it finds | **13** | 0 |
 | Needs Kani installed | no | yes |
 | Runs | every pull request, ~1 s | when someone runs the proofs, ~20 min |
 | Compiles the harnesses truthfully | no, against a shim | yes, by definition |

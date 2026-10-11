@@ -24,7 +24,7 @@ than a boundary and the register's BUGS says so.
 |---|---|---|---|---|---|---|---|
 | `unsafe {}` outside `kernel/src/arch/` | 171 | 426 | 728 | 763 | 747 | 777 | 698 |
 | code lines outside it | 7,508 | 19,223 | 58,351 | 64,452 | 80,359 | 85,530 | 88,596 |
-| blocks per 10,000 lines | 227.8 | 221.6 | 124.8 | 118.4 | 93.0 | 90.8 | 78.8 |
+| **blocks per 10,000 lines** | 227.8 | 221.6 | 124.8 | 118.4 | 93.0 | **90.8** | **78.8** |
 | `unsafe {}` inside `kernel/src/arch/` | 34 | 102 | 128 | 134 | 139 | 141 | 248 |
 | `unsafe impl Send`/`Sync` | 7 | 12 | 15 | 15 | 17 | 20 | 23 |
 

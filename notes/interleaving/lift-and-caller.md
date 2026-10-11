@@ -36,7 +36,7 @@ two halves that are each insufficient alone:
 
 | Half | Asserts | Catches |
 |---|---|---|
-| the surface pin | the public items of `crates/memory_regions/src/table.rs`, with receivers, are exactly a pinned set | a new observer; a method removed; `claim_for_destroy` respelled `&self`, which deletes the single-borrow argument while changing no name |
+| the surface pin | the public items of `crates/memory_regions/src/table.rs`, **with receivers**, are exactly a pinned set | a new observer; a method removed; `claim_for_destroy` respelled `&self`, which deletes the single-borrow argument while changing no name |
 | the warrant pin | each function in `kernel/src/memory_region.rs` that reaches a free loop made its entitling call first (`create`/`insert_root`, `destroy`/`claim_for_destroy`) | the rebuilt gap above, and any third path that returns region pages |
 
 Two `compile_fail` doctests on `DestroyClaim` cover what neither half can see, since a
