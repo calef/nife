@@ -147,9 +147,10 @@ The port is worth doing precisely because it finds where the abstraction leaked.
    probed `reclaim_region(...).is_err()` on the child's own TCB region, which under DECISIONS §16 as
    amended *arms the kill* on the child; the child was then reaped at its next preemption, before it
    could `SEND`. Widening the window reproduces it on aarch64 as deterministically, which is
-   the control that rules the ISA out. Full account in notes/scheduler.md. The dump that made it
-   legible is still owed to `user_pc` no longer returning 0 here, which is the one thing this section
-   can claim.
+   the control that rules the ISA out. Full account in
+   [notes/scheduler/reclaim-lost-wakeup.md](../scheduler/reclaim-lost-wakeup.md). The dump that made
+   it legible is still owed to `user_pc` no longer returning 0 here, which is the one thing this
+   section can claim.
 
 A related, smaller ABI leak the traps step resolves: `syscall.rs` reads the syscall number from
 `frame.x[8]` and args from `frame.x[0..]`, the aarch64 `svc`+`x8` convention. RISC-V's `ecall` ABI
