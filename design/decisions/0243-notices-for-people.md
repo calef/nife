@@ -80,9 +80,10 @@ Nothing person-facing. Lookups on base `995ac5bce`:
 - Nobody may list sessions. "List sessions and match" was refused as "enumeration is authority"
   (`notes/durable-delegation.md:48`, milestone 126 (who else is running)).
 - Per-user state lives at `<principal root>/<identity>/`, beside `schedule`
-  (`crates/schedule_store/src/lib.rs:79`). There are no home directories (`notes/credentials.md:372`).
+  (`crates/schedule_store/src/lib.rs:79`). There are no home directories (`notes/credentials.md#bugs`).
 - The compositor draws a fixed scene of three windows with `MAX_WINDOWS = 4`
-  (`crates/compositor/src/lib.rs:160`) and has no overlay or popup (`notes/compositor.md:327`).
+  (`crates/compositor/src/lib.rs:160`) and has no overlay or popup
+  (`notes/compositor.md#what-this-does-not-do-that-a-real-compositor-would`).
 
 ## Prior art, read
 
