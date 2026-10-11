@@ -215,7 +215,7 @@ Twenty-two rather than twenty-one: the twelve MMU, six timer and three exception
 `the_satp_carries_the_address_spaces_asid`, which is the salvageable half of an aarch64 test that
 lives in `kernel::user::tests`.
 
-## What was still aarch64-only, and what porting it took (DONE, milestone 19, 2026-07-31)
+## What was still aarch64-only, and what porting it took (DONE, §19 (architectural parity), 2026-07-31)
 
 The plan below was written when `kernel::user::tests` was ~30 tests that did not run on RISC-V. It
 held up, so it is kept with each step's outcome. notes/riscv-parity-scope.md records what changed

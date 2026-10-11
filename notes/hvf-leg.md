@@ -47,7 +47,7 @@ Two things failed on the way there, and neither is the GIC:
   runs**, and passes when run alone and in every TCG run. The std program aborts (its
   `__rust_abort`, so a panic), the kernel test then waits for a report that never comes, and the
   watchdog calls it a lost-wakeup hang. The likeliest reading, from `probe_inbound` and the std
-  `accept`, is timing: the host prober holds one connection open until the run ends, and if that
+  `accept`, is timing. The host prober holds one connection open until the run ends. If that
   connection was opened in the gap between the hand-written listener and the std one, the std
   listener's bounded `accept` expires with the prober stuck on a connection nobody will accept.
   Under TCG the gap is shaped differently. This is not established. `script/ci-build` names this
@@ -91,14 +91,15 @@ about this leg, so it is taken at the merge (CLAUDE.md), and the wall clocks are
 because two tests do not move a twelve-second figure.
 
 Two samples each, on a machine that was not otherwise idle (another lane was building). Subtract
-the 14 seconds of host crates that only the TCG row contains and the comparison is about 40 s
-against about 14 s for the same fixtures, the same 234 tests, and the same post-run image checks:
-roughly a 3x win on the leg, and more than that on the booted suite alone, since a fixed few
-seconds of both numbers is cargo and image building.
+the 14 seconds of host crates that only the TCG row contains. The comparison is then about 40 s
+against about 14 s for the same fixtures, the same 234 tests, and the same post-run image checks.
+That is roughly a 3x win on the leg, and more on the booted suite alone, since a fixed few seconds
+of both numbers is cargo and image building.
 
 So the leg adds 12 to 16 seconds to the local run. Timing it before adopting it was the condition
-milestone 81 (an HVF leg: the test suite on the physical core) set; the `--full` flag the block named as the fallback is not needed, because native
-execution beat TCG by the margin the block hoped for.
+milestone 81 (an HVF leg: the test suite on the physical core) set. The `--full` flag the block
+named as the fallback is not needed, because native execution beat TCG by the margin the block
+hoped for.
 
 ## Why the local tier and not a workflow
 
@@ -108,45 +109,21 @@ that gap and is deliberately not part of this: it couples CI to a laptop that sl
 
 `script/ci-build` with no arguments is the one command a person or an agent runs before pushing,
 which makes it the place where every lane on this machine picks the leg up for free. The leg is a
-`local` row in its table, and there is no CI job for it at all. When the host cannot supply HVF
-the leg skips loudly, naming the reason (not macOS, not Apple Silicon, `kern.hv_support` off,
-or a QEMU built without the accelerator) and saying in plain words that nothing in the run executed
-on a physical core. A silent omission would let a Linux CI transcript read exactly like one from
-this laptop, and the whole point of the leg is that those are not the same evidence.
+`local` row in its table, and there is no CI job for it at all. When the host cannot supply HVF the
+leg skips loudly. It names the reason (not macOS, not Apple Silicon, `kern.hv_support` off, or a
+QEMU built without the accelerator), and it says in plain words that nothing in the run executed on
+a physical core. A silent omission would let a Linux CI transcript read exactly like one from this
+laptop, and the whole point of the leg is that those are not the same evidence.
 
 ## Semihosting is not answered under HVF, and this is what that looks like
 
-The test harness reports its verdict by asking the host to exit: `testing::runner` ends in
-`semihosting::exit`, and so do the panic handler and both watchdogs. QEMU 11.0.2 does not
-intercept ARM semihosting on the HVF path. The tree already believed this (`notes/benchmarks.md`
-records "semihosting does not work under HVF" and the bench kernel parks in `wfi` instead of
-exiting); milestone 81 measured it, and measured what happens next.
-
-The probe was nine instructions: write `A` to the PL011, then `hlt #0xf000` with `x0 = 0x18`
-(`SYS_EXIT`).
-
-| accelerator | result |
-|---|---|
-| TCG | the process exits at the trap |
-| HVF | `A` appears, then nothing; QEMU runs until killed |
-
-Booting the real kernel says what the guest sees. The trap is **not swallowed**: it raises a real
-synchronous exception into the guest's own vector table, `EC 0x00` ("Unknown reason",
-`ESR_EL1 = 0x02000000`), with `x0 = 0x18` and `x9 = 0x20026` still in the registers. Our handler
-does the correct thing for an exception it does not know, which is to panic, and the panic handler
-under `cfg(test)` calls `semihosting::exit`, which takes the same trap again. Four cores doing
-that write interleaved garbage at native speed, forever. `kernel/src/arch/aarch64/semihosting.rs`
-predicted exactly this in a comment ("without one it raises a real exception") without knowing it
-had a case.
-
-So the host, not the guest, ends the run. `hvf_kernel_leg` owns the QEMU child and reads its
-transcript, the same shape `run_bench` has used since milestone 21, and takes its verdict from
-three markers the harness prints *before* the exit that will not happen: `test result: ok. N
-passed`, `[PANIC] `, and `WATCHDOG:`. Once something has failed it relays 200 more lines (enough
-for the longest thread dump) and stops, because there is no end of output to read to. The first
-version of this leg had no such budget and left an xtask spinning on the storm for four minutes,
-holding `target/nifefs-blank.img` and failing the *next* run with `Failed to get "write" lock`,
-which is precisely the trap CLAUDE.md warns about.
+The test harness reports its verdict by asking the host to exit through semihosting. QEMU 11.0.2
+does not intercept ARM semihosting on the HVF path. The `hlt` trap is not swallowed: it raises an
+Unknown-reason exception in the guest, the panic handler tries to exit the same way, and four cores
+write interleaved garbage forever. So the host ends the run. `hvf_kernel_leg` reads the transcript
+for three markers printed before the exit (`test result: ok. N passed`, `[PANIC] `, `WATCHDOG:`),
+relays 200 more lines after a failure, and stops. The probe, the exception and the first version's
+four-minute spin are in [`hvf-leg/semihosting.md`](hvf-leg/semihosting.md).
 
 ## The SMMU correction
 
@@ -159,75 +136,35 @@ a DMA leaving its domain.
 The belief was also costing a real gap while it stood: with no SMMU under HVF, the compositor test
 fails outright ("a virtio-gpu is present but the IOMMU is not active"), and the DMA-confinement
 tests would have had no hardware to assert about. The flag now applies on both paths, which is
-where it belongs on principle too: the accelerator chooses how CPU instructions execute, while the
+where it belongs on principle too. The accelerator chooses how CPU instructions execute, while the
 SMMU sits in front of the PCIe root complex and translates *device* traffic that QEMU emulates in
 the host process either way. This is a correction to the record, in the sense CLAUDE.md means: the
 machine overruled the comment.
 
 ## What the physical core found: five assertions about "has it happened yet"
 
-Every failure belonged to the milestone-78 family (`notes/load-sensitive-assertions.md`), and every
-one was found from the opposite direction. That note's diagnostic is that a slow machine
-produces a deficit; HVF is a *fast* machine, and it produces the same deficit for the mirror-image
-reason. A yield count is not a duration in either direction: on a loaded host this core burns cheap
-yields while another core is descheduled, and on the physical core it burns them in nanoseconds
-while another core has not been dispatched yet.
+Every failure belonged to the milestone-78 family (`notes/load-sensitive-assertions.md`), found from
+the opposite direction. A slow machine produces a deficit, and HVF is a *fast* machine that produces
+the same deficit for the mirror-image reason. A yield count is not a duration in either direction.
+They arrived one per run, over five runs, so the leg is a sampler of this defect, not a detector.
 
-They arrived one per run, over five runs (so the leg is a *sampler* of this defect, not a detector
-of it), except one that was fixed on inspection because it was the same shape a few lines from a
-failing sibling.
-
-- **`sched::a_blocked_waiter_wakes_with_an_error_when_its_endpoint_is_revoked`** ("the revoked
-  waiter never woke"). One `yield_now()` was the entire wait for the waiter to block on the
-  endpoint, under a comment saying "single core: one yield lets the waiter run", which stopped
-  being true when DECISIONS §28 scattered placement across cores. Under HVF the reclaim ran before
-  the waiter had ever been scheduled, so there was nothing to wake. The test now waits, on the
-  clock, for the endpoint's receive queue to actually hold the waiter, which needed a new
-  `#[cfg(test)] sched::endpoint_waiting_receivers` beside the existing
-  `endpoint_waiting_senders`. Its second wait (50 yields for `WOKE`) is now `wait_for` too.
-- **`sched::other_threads_run_while_one_is_blocked`** ("a worker made no progress while another
-  thread was blocked on IPC"). 100 yields on this core, then assert the worker on another core had
-  incremented a counter. Now `wait_for(|| PROGRESS > 0)`. Nothing is weakened: if a blocked thread
-  were requeued and starved the worker, the counter stays at zero for the full two seconds and the
-  assertion fails with the message it always had. Its teardown also changed from 20 yields to
-  waiting for both of its threads to be gone, because this test's late-landing teardown is
-  the neighboring state that made *other* tests' accounting fail in milestone 78 (load-sensitive assertions).
-
-- **`user::reap_tests::reaping_an_uncollected_corpse_leaves_no_ghost_on_the_endpoint`** ("the
-  corpse never parked on its supervision endpoint"). 4000 yields waiting for a dying child on
-  another core to park its death message. This one passed three HVF runs and failed the fourth,
-  which is worth stating: the leg samples this defect, it does not detect it. Now
-  `wait_for(|| endpoint_waiting_senders(fault_ep) == 1)`.
-- **`user::supervision_tests`'s reclaim after a respawn** (2000 yields, no assertion at all, so a
-  timeout silently left an unreclaimed region for a neighbor to trip over). Not a failure; fixed
-  on inspection, and it now asserts.
-
-- **`sched::a_thread_that_never_yields_is_preempted_anyway`** ("the spinner never ran at all"). Not
-  a yield count, and the most interesting of the five, because it is a vacuity guard that the
-  faster machine turned into a failure. The test spawns a hostile spinner and a polite thread on
-  the same core, waits for the polite one to report, sets `STOP`, and then checks the spinner had
-  spun at least once, since a polite thread running on a core nobody was monopolizing proves
-  nothing about preemption. Which of the two runs first is a race, and on the physical core it came
-  out the other way: the polite thread finished, `STOP` was set, and the spinner was killed before
-  its first increment. It now waits (its own bounded second) for the spinner to have spun before
-  stopping it, so the guard fires on a genuinely dead spinner rather than on a scheduling order.
-
-`user::tests::wait_for` became `pub(super)` so the two `user` modules could use the existing
-implementation instead of becoming the sixth and seventh copies of it.
-
-**None of these was a timer-behavior failure**, which is the finding worth stating plainly,
-because timers were what the milestone expected to be perturbed.
+The five were the revoked waiter, the worker that made no progress, the corpse that never parked,
+a supervision reclaim with no assertion, and the spinner that never ran. Each yield count became a
+`wait_for` on the state it was waiting for, and the spinner's vacuity guard now waits for the
+spinner to have spun. None of these was a timer-behavior failure, which is the finding worth
+stating plainly. Each test, its failure and its fix are in
+[`hvf-leg/five-assertions.md`](hvf-leg/five-assertions.md).
 
 ## Timer behavior: what did NOT differ, and why
 
-Under HVF guest time is host time (`CNTVCT_EL0` is passed through at the host's 24 MHz) and there
-is no icount instrument, so the milestone expected the wall-clock assertions to be the casualties.
-None of them failed. The reason is milestone 78, which landed the night before: the timer-drift
-twins had already been re-aimed at the re-arm law (over a window in which `MISSED_TICKS` did
-not move, the deadline advanced by exactly one interval per delivered tick), and that law is a
-statement about state the kernel owns, not about how fast the clock runs. A test that measures the
-right thing does not care which accelerator it is on, which is a stronger endorsement of that work
-than the milestone could have written for itself.
+Under HVF guest time is host time (`CNTVCT_EL0` is passed through at the host's 24 MHz) and there is
+no icount instrument, so the milestone expected the wall-clock assertions to be the casualties. None
+of them failed. The reason is milestone 78 (the load-sensitive assertions), which landed the night
+before. The timer-drift twins had already been re-aimed at the re-arm law: over a window in which
+`MISSED_TICKS` did not move, the deadline advanced by exactly one interval per delivered tick. That
+law is a statement about state the kernel owns, not about how fast the clock runs. A test that
+measures the right thing does not care which accelerator it is on, which is a stronger endorsement
+of that work than the milestone could have written for itself.
 
 The assertions that *do* keep wall-clock exposure passed here as well: the handler-latency pair
 (`the_handler_keeps_up_when_no_lock_is_held`), named in that note's BUGS as unfixed, and
@@ -242,14 +179,11 @@ leg is now preceded by an instrument the accelerator cannot influence at all.
 
 ### The settle windows the leg makes weaker, not flakier
 
-Three sites spend 400 yields to "let it settle" and then assert that nothing more happened
-(`user::c_seam_tests` line ~122, `user::authority_tests` ~121, `user::live_swap_tests` ~185, each
-asserting `endpoint_waiting_senders(report) == 0`). These do not fail under HVF and will not: a
-shorter real settle window makes a negative assertion easier to pass, so the leg quietly proves
-*less* there rather than going red. They are left alone deliberately, because turning a settle
-window into a wall-clock duration is a design question (how long is "nothing more happened"?) and
-not the mechanical fix the four above took. Recorded here so the next reader does not mistake their
-silence for a clean bill.
+Three sites spend 400 yields to "let it settle" and then assert that nothing more happened. A
+shorter real settle window makes that negative assertion easier to pass, so the leg proves *less*
+there rather than going red. They are left alone deliberately, because turning a settle window into
+a duration is a design question. The three sites are named in
+[`hvf-leg/five-assertions.md`](hvf-leg/five-assertions.md).
 
 ## BUGS
 
@@ -259,20 +193,20 @@ silence for a clean bill.
   instead of skipping), and a loud skip is a record of a gap and not a substitute for one.
 - **The leg was red on `main` from 2026-09-19 to 2026-09-24 and nobody saw it**, because nothing
   runs it but a person. Milestone 134 (the register of measures) merged a per-IPC stack depth
-  calibration, `null_median == null_floor`, that failed on every HVF run: both runs at its merge
+  calibration, `null_median == null_floor`, that failed on every HVF run. Both runs at its merge
   failed there, while on the commit before it one run was green and the other failed only on the
   known inbound flake. A local queue preflight found it five days later. The check was a timing
   assertion, and `kernel/src/ipc_stack_depth.rs` has the measurement. It is the same shape as the
-  five yield-count assertions below, found from the same direction, and the only mechanism that
+  five yield-count assertions above, found from the same direction, and the only mechanism that
   would have caught it sooner is running this leg.
-- With the calibration fixed, two older failures are what stand between this leg and green,
-  measured on 2026-09-24 over six runs on a host that other lanes held at a 1-minute load of 14 to
-  25 on 8 cores: two runs green (355 passed, 3 skipped, every host check), three hung at
-  `a_std_program_serves_a_granted_listening_port`, and one passed the whole suite and then failed
+- With the calibration fixed, two older failures are what stand between this leg and green. They
+  were measured on 2026-09-24 over six runs, on a host that other lanes held at a 1-minute load of 14
+  to 25 on 8 cores. Two runs were green (355 passed, 3 skipped, every host check). Three hung at
+  `a_std_program_serves_a_granted_listening_port`. One passed the whole suite and then failed
   the scanout referee on the display-terminal and display-pattern checks (the referee sampled too
   late; the guest's own tests passed). The listener hang had one prober shape in all four runs
-  that showed it: two rounds answered around +19 s, then a connection opened within a millisecond
-  of the second answer that waited 90 s and was never accepted, while the std program aborted
+  that showed it. Two rounds were answered around +19 s. Then a connection opened within a
+  millisecond of the second answer, waited 90 s and was never accepted, while the std program aborted
   (`BRK`) on its bounded `accept`. That is the shape the hypothesis at the top of this page
   predicts, a connection handed to the hand-written listener's socket after its last round, now seen
   four times rather than inferred. It is not fixed here: the prober holds connections on purpose
@@ -283,13 +217,13 @@ silence for a clean bill.
   tests, so the leg now says to fix the first failure before reading them.
 - A failing run leaves an exception storm behind it. The kernel has no way to know its
   semihosting exit will not be answered, so any failure under HVF ends in an unbounded panic loop
-  on four cores. The host stops reading and kills the child, so the cost is bounded in practice,
-  but a transcript from a failed HVF run ends in interleaved garbage after the 200-line budget, and
+  on four cores. The host stops reading and kills the child, so the cost is bounded in practice.
+  But a transcript from a failed HVF run ends in interleaved garbage after the 200-line budget, and
   anyone driving the runner by hand under HVF (rather than through `xtask`) will get a QEMU
-  that never stops. Use `helpers/qemu-bounded.sh` for that. A guest-side fix (recognizing the
-  semihosting trap in the Unknown-reason handler and parking in `wfi` instead of panicking) is not
-  built here; it would touch the exception path for a test-only benefit, and on its own it would
-  make the leg *worse*: `hvf_kernel_leg` stops reading after 200 more lines, and a guest that went
+  that never stops. Use `helpers/qemu-bounded.sh` for that. A guest-side fix is not built here:
+  recognizing the semihosting trap in the Unknown-reason handler and parking in `wfi` instead of
+  panicking. It would touch the exception path for a test-only benefit. On its own it would make
+  the leg *worse*, because `hvf_kernel_leg` stops reading after 200 more lines, and a guest that went
   quiet would leave it blocked on the transcript until the outer bound killed it. The two halves
   would have to land together, the host stopping on a marker the parked guest prints.
 - **The leg is not a CI gate and cannot be one.** Nothing enforces that it ran. `script/ci-build`'s

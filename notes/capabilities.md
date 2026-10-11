@@ -103,12 +103,12 @@ runtime and hoping.
 
 We can. It has been done. It does not work, and the reason is the whole asymmetry.
 
-**FreeBSD's Capsicum** (2010) added `cap_enter()`: a process calls it and drops into capability
+FreeBSD's Capsicum (2010) added `cap_enter()`: a process calls it and drops into capability
 mode with no ambient authority. No `open()` by path. Only what you already hold.
 
 It works. It is in the base system. It has been there for fifteen years.
 
-**Almost nothing uses it.**
+Almost nothing uses it.
 
 Because every program on the machine assumes it may call `open("/etc/resolv.conf")`. Once that
 assumption is baked into a million lines of userspace, you cannot take it back without
@@ -170,12 +170,12 @@ in a process, at EL0. If it deadlocks, it deadlocks by itself, and we restart it
 
 ## Is it slow?
 
-**One IPC is not slow.** seL4's fastpath is a few hundred cycles: comparable to a Linux syscall,
+One IPC is not slow. seL4's fastpath is a few hundred cycles: comparable to a Linux syscall,
 and *better* than one now that Spectre mitigations made Linux's syscall boundary expensive. Mach
 was slow in the 90s and it poisoned the word "microkernel" for twenty years, but Liedtke showed in
 1995 that this was an implementation failure, not a law, and it has stayed fixed.
 
-**The cost is that you need more crossings.** A `read()` that was one syscall becomes six. And the
+The cost is that you need more crossings. A `read()` that was one syscall becomes six. And the
 real bite is not the cycles, it is the cache and TLB pollution of landing in a different working
 set. You can make the switch cost 200 cycles. You cannot make the other process's data be in L1.
 
@@ -218,264 +218,43 @@ tree, untyped memory.*
 
 ---
 
-# Milestone 7d: the syscall surface, and refusing to be a deputy
-
-The decision (§10) is now code. Three things landed: an ABI that is one artifact, a capability
-table, and a syscall dispatcher whose most important function is the one that says *no*.
-
-## 7d landed three calls; the surface is five today <!--count:syscalls-->
-
-What 7d shipped, and the numbers in this section are 7d's rather than today's:
-
-```text
-  exit(code)                          authority over yourself
-  yield()                             likewise
-  invoke(cap, method, a0, a1, a2)     EVERYTHING ELSE
-```
-
-No `open`. No `read`. No `write`. No `fork`. A process acts on the things it was handed, and
-`invoke` is how. `exit` and `yield` are plain syscalls rather than methods on a TCB capability,
-because *a capability is authority over something else* and you do not need to be granted the
-right to stop running.
-
-This is DECISIONS §4 rule 3 ("the syscall surface stays narrow and explicit, a boundary not a
-habit") meeting §10, and §10 is what makes three enough. A monolithic kernel needs a syscall per
-verb because the verb is where the authority check lives. Here the authority is the capability,
-and there is one verb: invoke it.
-
-**One call has been added since, and it did not widen the boundary** (added by the 2026-08-17
-documentation sweep, which found this heading claiming three in the present tense). `SYS_CAP_DELETE`
-arrived on 2026-07-24 with milestone 19d: a loader retyping hundreds of frames through a 16-slot
-capability table has to recycle slots, and forgetting something in your *own* table needs no capability for
-the same reason `exit` does not. So the property this section is about survives the count
-going up: three of the four calls are authority over yourself, and the fourth is everything
-else. `notes/abi.md` is the current contract and has the full table.
-
-## The ABI is a crate, not a convention
-
-`crates/abi` is a `no_std` crate that both the kernel and every user program depend on. The
-syscall numbers, the register layout, the method constants, the error codes: one definition. If
-it changes, both sides fail to compile. A boundary that can drift silently is not a boundary, and
-two files that "agree" by having been edited to match are exactly that.
-
-## A capability is a file descriptor that can point at anything
-
-`crates/capability` is the table, and it is pure logic, so it is host-tested in milliseconds. The
-mechanism is deliberately boring: a `Vec<Option<Cap>>`, indexed by a small integer, living in
-kernel memory. Userspace sees the integer. You cannot forge slot 7 for the same reason you
-cannot forge `fd 7`: the table is not yours to write. No cryptography. A bounds check.
-
-The one operation with teeth is `derive`, and its whole job is that rights only ever narrow:
-
-```rust
-if !rights.is_subset_of(src.rights) {
-    return Err(Error::CannotWiden);
-}
-```
-
-If delegation could widen authority the model is theater, because you would derive
-yourself a better capability from the one you hold. And `NONE`/`READ`/`WRITE`/`GRANT` includes a
-right Unix cannot express: `GRANT`, the right to pass a capability on. Our console capability
-has `WRITE` and not `GRANT`, so the program may print and may not lend printing to anyone. Unix's
-"the child inherits every fd" is the opposite default, and `FD_CLOEXEC` is the afterthought that
-tries to walk it back.
-
-For a long while `derive` and `GRANT` were true in the crate and unreachable from a running
-process: every capability was minted by the kernel and handed out at spawn, which made the kernel a
-central authority-granting oracle, the ambient-authority shape §10 warned against, only relocated.
-That is fixed. A process now delegates a capability to another process over an IPC endpoint
-(`SEND_CAP` / `RECEIVE_CAP`), narrowing the rights on the way, and only if it holds `GRANT`. Authority
-composes between processes at runtime instead of being wired by the kernel once. See
-[delegation.md](delegation.md).
-
-## A new process holds nothing
-
-`CapabilityTable::empty()`, and every thread starts with one. That constructor is the decision. A Unix
-process inherits its parent's descriptors and can `open()` anything its uid allows. A nife
-thread can name nothing until `sched::grant` puts something in its table, and the only thing
-`user::exec_elf` grants is a `Console` with `WRITE`.
-
-The demo spawns the byte-identical binary twice: once with the console, once with
-`exec_elf_with(image, false)`. The first prints. The second cannot, and not because it is denied
-when it tries. Slot 0 holds nothing, `invoke` returns `NoSuchSlot`, and there is no other way to
-ask. Same program. Different world.
-
-## The interesting refusal: the confused deputy, in our own kernel
-
-The console `write` takes a pointer and a length, both chosen by the user. So the user hands us
-`0xffff_0000_4008_0000` (our own `.text`) and a length, and asks us to print it.
-
-**The kernel can read that address.** It reads it all day. So a `write` that dereferences
-the pointer prints the kernel's memory *on the user's behalf, using the kernel's authority*, and
-the program that could not read one byte of it receives all of it.
-
-**No capability check catches this.** The console capability is genuine; the program is entitled
-to print. The authority that leaks is not the console's. It is the kernel's own. That is exactly
-the compiler service and the billing log at the top of this note: the deputy is confused about
-*whose authority it is acting under*.
-
-And it is real. With the check deleted, the demo prints raw kernel bytes, including the four
-bytes `ARMd`, which is the [arm64 Image header magic](boot-protocol.md) sitting at the start of
-our `.text`.
-
-### The refusal is one question, asked of the hardware
-
-Not re-implemented in software and hoped to agree with the silicon. Asked of the silicon:
-
-```text
-  AT S1E0R, <addr>     translate this address AS EL0 WOULD, for a read
-  ISB
-  MRS  x, PAR_EL1      bit 0 (F) set  =>  it FAULTED  =>  EL0 could not have done this
-```
-
-One instruction does the stage-1 walk with EL0's permissions and reports the same "no" the
-hardware would have given the user program itself. So `syscall::user_slice` asks, for every page
-the range touches:
-
-> **Could EL0 have read this itself?** If not, then neither may we, on its behalf.
-
-`PAR_EL1` is a single shared register, so the `at`/`mrs` pair runs with interrupts masked: a
-preemption in between could return with another thread's translation result sitting in it. Two
-instructions, one masked window, and a bug that would never reproduce if you skipped it.
-
-### The TOCTOU note, which is a comment today and a bug tomorrow
-
-Between "the hardware says EL0 can read this" and "the kernel reads it", the mapping could
-change. Nothing can currently change it: an address space belongs to exactly one thread, so there
-is no second thread to unmap it, and there is no demand paging. When either arrives, borrowing
-the user's bytes becomes unsound, and the fix is to copy them under a lock. The comment is in
-`user_slice` so the next person meets it before the bug does.
-
-## What it prints
-
-```text
-      hello from EL0, through a capability in slot 0.
-      and it refused to read the kernel's memory on my behalf.
-
-      every one of its expectations held, including that one.
-
-      and spawned again with an EMPTY capability table, the very
-      same binary cannot print one byte. slot 0 holds nothing,
-      and there is no other way to ask.
-```
-
-## What is deliberately still kernel-served
-
-Invoking the `Console` capability lands in the kernel, which owns the PL011. That is a
-milestone away from what §10 (process model) promised. At milestone 8 (console driver) the console driver leaves the
-kernel, `Object::Console` becomes an `Endpoint` to a userspace console *server*, and the kernel
-stops knowing what a UART is. Until that happens we have a capability system with a monolithic
-kernel underneath it, which is honest scaffolding and not the destination.
-
----
-
-# Milestone 7e: IPC, and the scheduler learning to wait
-
-7d gave a process one thing it could do to a capability: invoke a `Console` and have the kernel
-act. 7e adds the capability that lets a process talk to another process, which is the whole
-point of a microkernel and the thing milestone 8 cannot happen without.
-
-## An endpoint is a rendezvous
-
-```text
-  invoke(cap, SEND, w0, w1, w2)   ->  0     blocks until a receiver takes the message
-  invoke(cap, RECEIVE, _,  _,  _)    ->  w0    (with w1 in x1, w2 in x2) blocks until one arrives
-```
-
-Synchronous. There is no buffer, no queue of messages, no "mailbox that fills up." A `SEND` and a
-`RECEIVE` on the same endpoint meet, the three words move from one thread's registers toward the
-other, and both go on their way. If one side arrives first, it waits.
-
-Three words, in registers, and memory is never touched on the way. That is the fastpath, and
-it is DECISIONS §10's rule taken literally: *IPC carries control; shared memory carries data.*
-Bulk data will move later by handing over a frame capability, not by copying bytes into a message.
-The moment we copy a buffer through the kernel we have rebuilt Mach, and Mach was slow.
-
-## Which end you are is a matter of rights, not of the endpoint
-
-`SEND` needs `WRITE`. `RECEIVE` needs `READ`. So the same endpoint, handed to two processes with
-opposite rights, is a one-way pipe neither side can run backwards. The client holds a
-`WRITE`-only capability: it can send and it *cannot express* receiving. Nobody had to tell it
-which end it is. It could not be the other end if it tried.
-
-This is [`capability::Rights`](../crates/capability/src/lib.rs) doing real work, and it is a distinction Unix
-does not have: a pipe fd is a pipe fd.
-
-## The scheduler learned a third thing a thread can be
-
-Threads were `Ready`, `Running`, `Finished`. Now they can be `Blocked`, and blocking is the
-substance of this milestone.
-
-A blocked thread is in no run queue. It sits in an endpoint's wait queue instead, and the
-thread on the other side of that endpoint is the only thing in the universe that will move it back
-to `Ready`. That is what makes "wait for a message" a real thing a thread does, rather than a spin
-loop that asks "is it here yet" and burns a core.
-
-And it took one line in `schedule()`, which is the interesting part:
-
-```rust
-let runnable = state == Some(State::Running);
-// ...only requeue `current` if runnable...
-```
-
-`schedule()` can be called from the timer IRQ *while a thread is halfway through blocking itself*:
-it has marked itself `Blocked` and joined an endpoint queue but has not yet reached its own
-`schedule()` call. The timer must not helpfully requeue it. One equality check is the whole
-defense, and a test (`a_receiver_blocks_until_a_sender_arrives`) fails loudly without it: with the
-check relaxed to "anything not Finished is runnable", the blocked receiver gets rescheduled and
-returns from `ipc_receive` holding a message nobody sent.
-
-## Where the message actually lives
-
-A thread has a `mailbox: [u64; 3]`. It is a `Thread` field and not a stack local because the
-two halves of a rendezvous run at different times on different stacks: a sender deposits its
-message and blocks, and a receiver, running later, reaches into the *sender's* `Thread` to collect
-it (or the reverse). The mailbox is the one place both threads can agree on when only one of them
-is running at a time.
-
-For a user thread, the received words have to end up in its EL0 registers. Word 0 rides back the
-way every syscall result does, in `x0` (the dispatcher writes it from the return value). Words 1
-and 2 the kernel places into the trap frame's `x1`/`x2` directly, because a syscall return is one
-register and a message is three. Writing the trap frame is writing the user's registers ([see
-7a](userspace.md)).
-
-## Single core was a gift here, and the bill arrived
-
-*(Written at milestone 7e (user mode), when §6 (SMP) said one core. SMP landed at milestone 41 (dead code) under §11 (SMP), which
-supersedes §6, so read the paragraph below as the record of what was true before it did. That was
-this section's own stated purpose; the tense is corrected here rather than the argument deleted.)*
-
-Every worry that makes IPC hard on a real machine: a sender and receiver racing on the queue, a
-message half-delivered: could not arise, because only one thread ran at a time. Between a
-thread releasing the scheduler lock and calling `schedule()` to block, the *only* thing that could
-run was the timer IRQ, and the one-line `runnable` check already handled that.
-
-What it costs now that cores are real is written down rather than left to inference:
-[scheduler.md](scheduler.md) for the per-core run queues and the message-shaped stealing that
-replaced the one big lock, [memory-ordering.md](memory-ordering.md) for which sites rely
-on the weak model, and [interleaving.md](interleaving.md) for the protocols loom searches because
-reading them was no longer enough.
-
-## What it looks like
-
-The demo hands a user program a `WRITE`-only endpoint capability in slot 1, and spawns a kernel
-thread blocked on the other end:
-
-```text
-      hello from EL0, through a capability in slot 0.
-      and it refused to read the kernel's memory on my behalf.
-      and sent a word to a server through slot 1.
-
-      a server thread received 0x5eed1e55 from a user program that holds
-      one capability for it and no other way to find it.
-```
-
-## The server was a kernel thread, for one more milestone
-
-*(Milestone 8 has since shipped; this is the record of the last piece of scaffolding and why it
-came down in that order. See [userspace-drivers.md](userspace-drivers.md).)*
-
-The thing on the other end of that endpoint was a kernel thread. Milestone 8 made it a userspace process: the console driver leaves the kernel,
-`Object::Console` becomes an `Endpoint` to a console *server*, and `write` becomes an ordinary
-`SEND` to it. Everything 7e built (endpoints, blocking, the rendezvous, message-in-registers) is
-exactly the machinery that move needs, which is why it came first.
+# What was built: milestones 7d and 7e
+
+The decision, §10 (process model: capability-based, microkernel), became code in two steps. Each has its own record in
+[`capabilities/`](capabilities/README.md), and what each found is below.
+
+## Milestone 7d: the syscall surface, and refusing to be a deputy
+
+Milestone 7d (user mode: EL0, capabilities, the ELF loader, and IPC) shipped three calls: `exit`, `yield` and `invoke(cap, method, a0, a1, a2)`, which is everything
+else. There is no `open`, `read`, `write` or `fork`. One call has been added since:
+`SYS_CAP_DELETE` (2026-07-24, milestone 19d (run a real workload)), because forgetting something in your own table needs
+no capability. The surface is five calls today <!--count:syscalls-->, and
+[`notes/abi.md`](abi.md) is the current contract.
+
+- The ABI is a crate, `crates/abi`, that the kernel and every user program depend on. If it
+  changes, both sides fail to compile.
+- The capability table, `crates/capability`, is pure logic and host-tested. Its one operation with
+  teeth is `derive`, and rights only ever narrow. `GRANT`, the right to pass a capability on, is one
+  Unix cannot express. A process now delegates over an endpoint ([delegation.md](delegation.md)).
+- A new process holds nothing. `CapabilityTable::empty()` is the decision, and the demo shows the
+  same binary printing with a console capability and unable to print one byte without it.
+- The console `write` takes a user pointer, so the kernel could be a confused deputy and print its
+  own memory. `syscall::user_slice` refuses by asking the hardware (`AT S1E0R`) whether EL0 could
+  have read each page itself. A TOCTOU window is recorded in that function for when demand paging
+  or shared address spaces arrive.
+
+The whole record, with the demo output and why the console was still kernel-served at 7d, is in
+[`capabilities/syscall-surface.md`](capabilities/syscall-surface.md).
+
+## Milestone 7e: IPC, and the scheduler learning to wait
+
+7e added the endpoint, a synchronous rendezvous: `SEND` blocks until a receiver takes three words
+in registers, and `RECEIVE` blocks until one arrives. There is no buffer. `SEND` needs `WRITE` and
+`RECEIVE` needs `READ`, so which end a process holds is a matter of rights. The scheduler gained a
+`Blocked` state, and one equality check in `schedule()` stops the timer requeueing a thread halfway
+through blocking itself. The message lives in a `Thread` field, because the two halves of a
+rendezvous run on different stacks. The server on the other end was a kernel thread until
+milestone 8 (the console driver leaves the kernel) moved it to userspace.
+
+The whole record, including what single core made easy and where the SMP cost is now written down,
+is in [`capabilities/ipc-endpoints.md`](capabilities/ipc-endpoints.md).

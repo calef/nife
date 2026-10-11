@@ -13,9 +13,9 @@ surface reached through it, and how a program meets its world at startup.
 
 The decision here is to write down and commit the convention we already run, rather than build a
 self-describing environment (a BootInfo page). Hardcoded, out-of-band agreement on the initial
-capability layout between a parent and the children it builds is the normal microkernel pattern
-(seL4 hands a BootInfo only to its *root* task; every other task gets caps placed by its parent per
-a private layout). Our progenitor is that parent. A BootInfo mechanism earns its keep when a loader must
+capability layout between a parent and the children it builds is the normal microkernel pattern.
+seL4 hands a BootInfo only to its *root* task; every other task gets caps placed by its parent per
+a private layout. Our progenitor is that parent. A BootInfo mechanism earns its keep when a loader must
 start programs whose layout it cannot know in advance, which is milestone 23 (live component replacement), with competing
 vendors, not now. See "What is deliberately deferred".
 
@@ -130,8 +130,8 @@ is the contract, and it is per program, published in that program's own source:
   at **slot 5**, with `READ`, plus a read-only mapping of that page at `0x1200_0000` (DECISIONS §43).
 - a std program *given entropy* (milestone 56) gets the entropy service's request endpoint at
   **slot 6**, with WRITE, and **no mapping alongside it** (DECISIONS §44). The contrast with slot 5
-  is the interesting part: reading the clock is a page because reading is near-harmless and wants to
-  cost two loads, while obtaining randomness is a message because the service must be the only thing
+  is the interesting part. Reading the clock is a page, because reading is near-harmless and wants to
+  cost two loads. Obtaining randomness is a message, because the service must be the only thing
   that can reach the device, and a page would be a place the bytes persist. An empty slot 6 makes
   `std::random::SystemRng` panic rather than return something predictable.
 
@@ -159,10 +159,9 @@ reserved fault slot, `abi::fault::FAULT_EP_SLOT` (the last capability table slot
 A supervisor building a child through the TCB surface places it there with
 `ThreadControlBlock::CAP_INSERT`'s explicit target argument (`invoke(tcb, CAP_INSERT, cap_slot,
 rights, target)`, where `target` is `slot + 1` and `0` keeps the original first-free behavior). At
-`START` the kernel reads the fault slot: if it holds a `Rendezvous` capability the thread is
-supervised, and the kernel records that endpoint as the thread's fault target and clears the
-slot, so the child cannot forge fault
-messages on it. An empty fault slot means the thread is unsupervised and gets the pre-milestone-22
+`START` the kernel reads the fault slot. If it holds a `Rendezvous` capability the thread is
+supervised. The kernel records that endpoint as the thread's fault target and clears the slot, so
+the child cannot forge fault messages on it. An empty fault slot means the thread is unsupervised and gets the pre-milestone-22
 behavior: it dies and is reaped immediately, reporting to no one. The reserved slot is the *last*
 one precisely so an ordinary child, whose grants fill the low slots from zero upward, never lands a
 working endpoint there by accident and gets mistaken for supervised.
@@ -187,7 +186,7 @@ two forks)).
 
 The userspace side of that is two functions rather than one, and the split is not an ABI difference:
 `user_mode_runtime::receive` reads three words and `user_mode_runtime::receive_fault` reads all five, both from the same `RECEIVE`.
-`receive_fault` arrived with milestone 36 (notes/c-seam.md), the first program to want `w3`: a restart
+`receive_fault` arrived with milestone 36 (notes/c-seam.md), the first program to want `w3`. A restart
 policy needs the event and the tid, but a *checker* needs the faulting address, because that is the
 only word that says where the dead thread actually pointed.
 
@@ -216,63 +215,15 @@ record of why.
 
 ### The fine counter is not ambient, and that took a decision (milestone 229)
 
-The coarse counter above is ambient. The cycle counter is not, on two of the three
-architectures, and the difference is deliberate: it is roughly 160x finer (0.25 ns against 41 ns),
-so spending §10's exception a second time on it was not free. DECISIONS 139 (who may read the cycle
-counter, and by what authority) decided it in three parts, milestone 228 made the closed default a
-fact rather than an assumption, and milestone 229 built the grant.
-
-The mechanism is a per-thread grant the context switch enforces: `sched::grant_cycle_counter`
-sets a bool on an embryo and refuses any thread that is not one, so it belongs to the same
-creation-time set as `CONFIGURE` and `CAP_INSERT` and a running program cannot ask for it. The
-kernel writes the enable at the switch, beside the address-space root, comparing before it writes,
-so a machine where nothing is granted never writes the register at all.
-
-There is deliberately no syscall method to set it, and that is the part worth knowing. The
-kernel half is complete; the surface is deferred. A method number is irreversible, and this one's
-successor is already foreseeable: the prior art for a per-thread property as a TCB method is
-`seL4_TCB_SetAffinity`, which MCS deleted and replaced with a field of `sched_control_cap`, and
-milestone 147 (a profiler that holds exactly the counters it was granted) wants cross-thread
-authority with a named target that no such method would provide. 139 also records that 147's
-target-naming has no precedent here to price from, so the object is not buildable yet either. The
-choice was method-now against not yet, and not-yet costs almost nothing while the grant has no
-consumer. Whoever needs it mints it, with a requirement in hand. A field on `CONFIGURE` is not the
-cheap way round: `invoke` has three argument registers and `CONFIGURE` and `START` spend all three
-each, so it would mean widening `invoke` itself.
-
-| ISA | What the grant opens | Closed by default | Cost when nothing is granted |
-|---|---|---|---|
-| aarch64 | `PMUSERENR_EL0.CR`, so EL0 may read `PMCCNTR_EL0` | yes, `timer::init` writes zero per core | a per-core load and a compare |
-| riscv64 | `scounteren.CY`, so U-mode may read `cycle` | yes, `timer::init` writes `TM` alone per hart | a `csrr` and a compare |
-| `x86_64` | nothing: `rdtsc` is already ambient | **no**, and that is a stated position | nothing; the call compiles away |
-
-**The `x86_64` row is an exception §19 (architectural parity is a tenet) should read as stated
-rather than as a gap.** `CR4.TSD` would close `rdtsc` to ring 3, and there is no coarse fallback on
-that architecture the way `CNTVCT_EL0` and `rdtime` are fallbacks on the other two: `user_mode_runtime`'s
-`now()` there is `rdtsc`, so closing it takes out `Instant`, `thread::sleep`, the random seed,
-smoltcp's timestamps and the benchmark harness at once. DECISIONS 139 measured the alternatives
-(trap-and-emulate at 1,667 ns, 4.1x the syscall it would be beating) and closed them.
-
-**And the grant is only built when something asks for it** (milestone 237, the cycle-counter grant
-as a measurement build). Every piece above is behind `any(test, feature = "cycle_counter_grant")`,
-so a shipping kernel carries none of it: the field, the switch read, the register write and
-`grant_cycle_counter` all leave the binary, and `sched::schedule` is 136 bytes smaller for it
-(`script/fastpath-footprint`'s aarch64 `ipc_fastpath` closure, 5852 against 5988). `script/test`
-compiles and runs milestone 229's proofs on all three architectures anyway, because `test` is in the
-predicate, and `script/lint` clippies the feature without `test` on all three.
-
-Two things that gate does **not** cover, both deliberately. Milestone 228 (the cycle counters are
-closed by assumption)'s default write is in every build, granted or not: closing what we claim is
-closed is right whether or not anyone can be granted an exception, so the "closed by default" column
-above is true of a production kernel. And nothing here was deleted, because deleting it would make
-the cycle figure milestone 25 (cross-OS performance comparison) publishes against seL4's
-unreproducible and would quietly return DECISIONS 139's answer to "closed for everyone".
-
-None of this is timing confinement, and nothing in the tree should be read as saying it is. Two
-threads and a shared word reconstruct a 6.8 ns clock on any of the three architectures; see
-notes/confinement-claims.md, which carries that row. What the grant buys is accountable
-authority: the cheap accurate instrument is granted rather than ambient, and the kernel knows
-which threads hold it.
+The cycle counter is roughly 160x finer than the coarse counter (0.25 ns against 41 ns), so it is
+not ambient on aarch64 or riscv64. DECISIONS 139 (who may read the cycle counter, and by what
+authority) decided it. The kernel closes it by default on every core, and a thread may be granted it
+only as an embryo; the context switch enforces the grant. There is deliberately no syscall method
+to set it yet, because a method number is irreversible and its successor is already foreseeable.
+On `x86_64` `rdtsc` stays ambient, a stated position rather than a gap, because closing it takes out
+`now()` itself. The grant is compiled only into test and measurement builds. None of this is timing
+confinement: what it buys is accountable authority. The decision's parts, the per-ISA table and
+what the build gate does not cover are in [abi/cycle-counter-grant.md](abi/cycle-counter-grant.md).
 
 ## What is deliberately deferred
 

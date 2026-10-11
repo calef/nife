@@ -29,7 +29,10 @@ as syntax. The baseline, `design/prose-baseline.tsv`, holds 148 rows on words.
 
 The ten longest by words are not ten a developer can take. Four are routed elsewhere (below), and
 the next four notes by words replace them. Work them in this order, which is §212's rank of words
-times citing files (`git grep -l` on the basename, the file itself excluded):
+times citing files. A citing file names the exact path or basename as a link or path token
+(``git grep -lE '(^|[/(` ])abi\.md'``), the file itself excluded. A substring grep over-counted
+`abi.md` and `roadmap.md`, because longer names such as `0015-native-abi.md` end in them (found
+2026-10-11):
 
 | order | document | words | above cap | citing files |
 |---|---|---|---|---|
@@ -142,6 +145,33 @@ since each outsider pass adds to it.
    10,358→~2,597. Then merge-queue 9,278→~2,458, x86-uefi-boot 8,072→~2,325, smb 10,296→~1,639,
    glyphs 8,368→~2,981, footprint-perturbation 8,082→~2,752. What moved, per document, is in
    #1918's body.
+   The second lane, `lane/next-ten-longest-notes` (PR #1926), took ten more notes and removed all
+   ten baseline rows. Words before and after: frames 7,809→2,299, job-mix 5,116→2,767,
+   process-view 7,416→2,480, shared-page-audit 6,454→2,780, unsafe-obligations 8,139→2,269.
+   Then roadmap 5,525→2,860, trusted-init 6,056→2,434, abi 3,308→2,704, interleaving
+   5,618→2,666, stack-high-water 6,220→2,636. The detail is in #1926's body.
+   The third lane, `lane/third-ten-longest-notes` (PR #1928, merged 2026-10-11), took ten more.
+   Words before and after: interrupts 6,253→2,998, riscv-port 4,794→1,694, scheduler
+   6,567→2,318, crates-io-on-nife 6,811→2,880, grant-expression 5,697→2,892. Then dma
+   4,525→2,692, framebuffer-contract 4,562→2,594, dir-capability 4,759→2,076, board-console
+   6,749→2,638, riscv-parity-scope 6,389→2,016. The detail is in #1928's body.
+   The fourth lane, `lane/fourth-ten-longest-notes` (PR #1929), took ten more. Words before and
+   after: falsification 7,204→2,999, documentation 5,264→2,994, sink-protocol 3,189→2,916,
+   kernel-proofs 3,532→2,961, glob-grant 5,123→2,996. Then architecture-list-sweep 6,206→2,752,
+   mdns 3,583→2,288, compositor 4,372→2,995, citations 6,258→2,607, fuzzing 4,246→2,980. The
+   detail is in #1929's body.
+   The fifth lane, `lane/fifth-ten-longest-notes` (PR #1934, merged 2026-10-11), took ten more.
+   Words before and after: arch-audit 4,186→2,868, capabilities 3,641→1,945, xenon-firmware
+   3,725→2,299, hung-component 4,620→2,996, glob 3,290→2,603. Then target-hardware 3,032→2,755,
+   check-inventory 4,024→2,983, credentials 3,757→2,861, hvf-leg 3,584→2,828, instruction-clock
+   4,079→2,994. The detail is in #1934's body.
+   The sixth lane, `lane/sixth-ten-longest-notes` (PR #1937), took ten more. Words before and
+   after: proof-retrospective 5,945→2,994, cfi-unwind 3,398→2,744, blocked-thread-teardown
+   8,049→2,981, memory-ordering 3,710→2,772, cryptography-provider 4,479→2,880. Then
+   counted-claims 3,673→2,948, host-recovery 3,871→2,133, timed-wait 3,827→2,355, c-seam
+   3,251→2,455, globally-unique-identifier-partition-table 3,173→2,629. The detail is in #1937's
+   body. After it, 18 notes directly under `notes/` are still over the 3,000-word cap (measured
+   2026-10-11 UTC).
 5. The report names each provisional directory and file name for calef's queue.
 
 ## Open questions for an architect

@@ -19,15 +19,17 @@ At *runtime* the kernel confines it about as well as anything can be confined. M
 proved, its code is mapped W^X, capabilities are unforgeable, and a compromised progenitor cannot break the
 kernel or escape its own confinement. What was missing was earlier than that:
 
-- **its bytes were loaded unchecked.** QEMU (or a bootloader, or firmware) put a file in RAM and
+- its bytes were loaded unchecked. QEMU (or a bootloader, or firmware) put a file in RAM and
   wrote the address into `/chosen/linux,initrd-start`; the kernel read the `init` entry out of that
   archive, parsed it, and entered it. Anything that could put different bytes there got to be init.
-- **its authority is broad.** Within that authority a corrupted progenitor can endow malicious children or
+- its authority is broad. Within that authority a corrupted progenitor can endow malicious children or
   simply refuse to build the system.
 
 B.1 is the first of those. Phase B.2 is the second.
 
-**Why it is not theater.** A check on bytes in RAM is worthless if something can rewrite them between
+### Why it is not theater
+
+A check on bytes in RAM is worthless if something can rewrite them between
 the check and the use. The IOMMU work of milestone 16b (DECISIONS §20) closed exactly that window: a
 device can no longer DMA over the initrd behind the kernel's back. So the sequence "hash the bytes,
 then parse and enter the same bytes" is now a real ordering, not a hopeful one. Measured boot
@@ -37,7 +39,7 @@ arrived after DMA confinement on purpose.
 
 Three pieces, no new syscall, no new capability, no key material.
 
-1. **The build measures.** `xtask` packs the initrd archive, parses the packed image back with
+1. The build measures. `xtask` packs the initrd archive, parses the packed image back with
    `nifefs`, hashes the boot-program entries, and writes `target/init-measure-<arch>.txt`:
 
    ```text
@@ -49,12 +51,12 @@ Three pieces, no new syscall, no new capability, no key material.
    must be measured is what the kernel will read. If packing ever mangled an entry, this measures the
    mangling and the boot fails, which is the correct direction to be wrong in.
 
-2. **The kernel image carries the digest.** `kernel/build.rs` reads the manifest and generates
+2. The kernel image carries the digest. `kernel/build.rs` reads the manifest and generates
    `TRUST_ROOT: &[measured_boot::Measurement]` into `OUT_DIR`; `kernel/src/trust.rs` includes it. The
    expected value is part of the thing doing the checking, which is what lets this work with no keys
    and no certificate chain.
 
-3. **The boot path refuses.** `trust::require(name, bytes)` runs before the boot program's address
+3. The boot path refuses. `trust::require(name, bytes)` runs before the boot program's address
    space is built: `boot_progenitor` on every architecture, `spawn_hello` for milestone 19d's and
    19e's test roles, and riscv's `riscv_initrd_demo`. On a mismatch it prints what it expected,
    what it measured, and calls `arch::halt()`.
@@ -63,9 +65,9 @@ The meaning of the whole arrangement is one sentence: this kernel image runs exa
 
 ## Failing closed, in both directions
 
-- **Wrong bytes halt.** There is no second progenitor to fall back to and no recovery that would not be the
+- Wrong bytes halt. There is no second progenitor to fall back to and no recovery that would not be the
   thing we are preventing.
-- **A missing measurement halts too.** `measured_boot::VerifyError::Unmeasured` is a refusal, not a pass. A
+- A missing measurement halts too. `measured_boot::VerifyError::Unmeasured` is a refusal, not a pass. A
   kernel built without the manifest gets an *empty* trust root, and an empty trust root vouches for
   nothing. This matters more than the mismatch case: the natural bug in a measured-boot
   implementation is for the check to quietly evaporate when the build step does not run, and then
@@ -82,12 +84,16 @@ never runs") hold.
 `crates/measured_boot` is about a hundred lines of shifts and adds: no dependency, no allocation, no
 `unsafe`, `no_std`, host-tested.
 
-**Why a cryptographic hash at all.** The threat is someone substituting the initrd bytes. A fast
+### Why a cryptographic hash at all
+
+The threat is someone substituting the initrd bytes. A fast
 non-crypto hash (xtask already has an FNV, used to notice stale build inputs) would let an attacker
 craft a colliding progenitor, which defeats the entire exercise. Collision and preimage resistance are the
 requirement, not speed.
 
-**Why SHA-256 rather than something newer.** Among the collision-resistant options it costs the
+### Why SHA-256 rather than something newer
+
+Among the collision-resistant options it costs the
 trusted computing base the least. BLAKE3 is faster and would be a dependency (or several hundred more
 lines of tree hashing inside the boundary we are trying to keep small); SHA-3 is a second permutation
 to audit for no gain here. SHA-256 is small, boring, and checkable by hand against `shasum -a 256` on
@@ -96,13 +102,17 @@ first user instruction. (It is compiled at `opt-level = 2` even in debug builds,
 `[profile.dev.package.measured_boot]` override, because an unoptimized SHA-256 is a visible tax under TCG
 and there is nothing in it a debugger wants to step through.)
 
-**Vendored or hand-written: hand-written.** A vendored crate would be more code and a supply-chain
+### Vendored or hand-written: hand-written
+
+A vendored crate would be more code and a supply-chain
 edge inside the TCB, to save a hundred lines of arithmetic whose reference text is public and whose
 test vectors are published.
 
-**One implementation, both sides.** The build (on the host) and the kernel (`no_std`, at boot) hash
-through the same crate, so there is exactly one definition of the measurement, the same discipline
-`nifefs` gets as the one parser for the archive whether it lives on a disk or in RAM. The risk
+### One implementation, both sides
+
+The build (on the host) and the kernel (`no_std`, at boot) hash
+through the same crate, so there is exactly one definition of the measurement. That is the same
+discipline `nifefs` gets as the one parser for the archive, whether it lives on a disk or in RAM. The risk
 that trades for is an implementation agreeing only with itself, so the tests are the published
 FIPS 180-4 vectors (empty, `"abc"`, the 448-bit padding case, and a million `a`s streamed), not
 self-consistency. It was also cross-checked against macOS `shasum -a 256` over the real 1.2 MB progenitor
@@ -116,14 +126,14 @@ The kernel image contains the hash of a separately built initrd, so the order is
 userspace ELFs  ->  nifefs archive  ->  measurement manifest  ->  kernel image
 ```
 
-The dependency runs one way only. The hash never feeds back into the initrd, so nothing is circular;
-it is the ordering the build *already had* (every xtask path builds `user()` before the kernel,
-because the kernel boots with the archive as `-initrd`), now made explicit and enforced by
+The dependency runs one way only. The hash never feeds back into the initrd, so nothing is circular.
+It is the ordering the build *already had*: every xtask path builds `user()` before the kernel,
+because the kernel boots with the archive as `-initrd`. It is now made explicit and enforced by
 `cargo::rerun-if-changed` on the manifest.
 
 Two consequences worth knowing:
 
-- **Changing userspace relinks the kernel.** That is the honest cost of "this kernel runs exactly
+- Changing userspace relinks the kernel. That is the honest cost of "this kernel runs exactly
   this progenitor," not an accident. The manifest is written only when its contents change, so an unchanged
   userspace does not trigger it.
 - A bare `cargo build -p kernel` (or `script/lint`) still works and produces an empty trust root
@@ -134,10 +144,10 @@ Two consequences worth knowing:
 
 ## What is proven
 
-- Host (`crates/measured_boot`, milliseconds): the published SHA-256 vectors; streaming in any chunking
-  equals one-shot; a flipped bit changes the digest; accept / mismatch / unmeasured are the three
-  verdicts, and both an unknown name and an empty root are refusals; hex round-trips and malformed
-  hex does not parse as zeros.
+- Host (`crates/measured_boot`, milliseconds): the published SHA-256 vectors, and streaming in any
+  chunking equals one-shot. A flipped bit changes the digest. Accept / mismatch / unmeasured are the
+  three verdicts, and both an unknown name and an empty root are refusals. Hex round-trips, and
+  malformed hex does not parse as zeros.
 - Both ISAs (`system_tests/src/user/measured_boot_tests.rs`):
   - `the_boot_program_measures_to_the_compiled_in_trust_root` is the end-to-end build-composition
     proof. Nothing in it is hard-coded: the digest comes out of the running kernel's own `.rodata`
@@ -146,10 +156,12 @@ Two consequences worth knowing:
     is repacked without a kernel relink, this fails.
   - `a_tampered_boot_program_and_an_unmeasured_name_are_both_refused` flips one bit of the real progenitor
     (by streaming: flip the first byte, then the rest untouched, so no 1.2 MB copy is needed on a
-    kernel with no heap) and confirms the trust root refuses it, and that an unmeasured name is
+    kernel with no heap). It confirms the trust root refuses it, and that an unmeasured name is
     refused too.
 
-**Why the refusal path itself is not booted in a test.** A real refusal halts the machine, so a test
+### Why the refusal path itself is not booted in a test
+
+A real refusal halts the machine, so a test
 cannot take that branch and survive. What a test can prove, and what actually carries the weight, is
 the decision: the same function the boot path consults says `Ok` for the bytes in RAM and `Err` for
 bytes off by one bit. The boot path's only response to `Err` is `arch::halt()`, three lines away in
@@ -161,457 +173,71 @@ than papered over.
 A signature over the progenitor against a public key compiled into the kernel would buy one thing the hash
 cannot: updating the progenitor without rebuilding the kernel. The tradeoff, and why the hash came first,
 is in DECISIONS §26's milestone-22 phase B block. Short version: signature verification (Ed25519:
-field arithmetic, point decompression, SHA-512) enters the trusted computing base, and key custody
-becomes a real question (where the private key lives, how it is rotated, what revokes a compromised
-one) that a hash does not ask. The peer project Atom ships Ed25519-signed executables, so it is a
+field arithmetic, point decompression, SHA-512) enters the trusted computing base. And key custody
+becomes a real question that a hash does not ask: where the private key lives, how it is rotated,
+what revokes a compromised one. The peer project Atom ships Ed25519-signed executables, so it is a
 real and reachable option, just a bigger TCB. It becomes worth its cost when the progenitor is delivered
 independently of the kernel, which is not true today: they are built by the same command, in the same
 tree, in one sequence.
 
-**Recorded-accepted by milestone 94's sweep** (2026-08-04), with one thing owed. The sweep's
+Recorded-accepted by milestone 94's sweep (2026-08-04), with one thing owed. The sweep's
 judgment stands: the hash is the decision, the signature is the alternative, and the condition that
 would make it worth its cost is stated, so an audit may pass over it. What is owed is the promotion.
 §71 (a limitation is promoted when it becomes a plan) names this entry as the shape of its second
-trigger, a design fork an architect must rule on before any lane could start, and that is the one
-case that lands as a `RECORDED` roadmap row. No such row exists yet. Minting one is the integrator's
+trigger: a design fork an architect must rule on before any lane could start. That is the one case
+that lands as a `RECORDED` roadmap row. No such row exists yet. Minting one is the integrator's
 act and not a lane's, so this paragraph is the flag rather than the fix. See
 notes/untracked-work-sweep.md.
 
 ## Phase B.2: shrinking what a broken progenitor can do
 
-B.1 settled *what bytes the progenitor is*. B.2 is the other half: what a compromised progenitor can still reach.
+B.1 settled what bytes the progenitor is. B.2 is the other half: what a compromised progenitor can
+still reach. The answer is not to make the progenitor more careful; it is to make it hold less, for
+less time. A supervision tree of four small programs proves the pattern. `root_supervisor` hands a
+`spawner` one program image and a budget it may spend but not lend, hands `sub_server_supervisor`
+no memory at all, and then deletes its own untyped. Restart policy is userspace code.
 
-The pre-B.2 progenitor (`system_initializer`, `hello`'s init role) holds a large untyped budget for its entire life,
-because it stays the system's process builder. Every process in the system is therefore one bug in
-the progenitor away from being built wrong. The answer is not to make the progenitor more careful; it is to make it
-hold less, and to make it hold it for less time.
-
-### The tree
-
-Four small portable programs (`components/src/root_supervisor.rs`, `spawner.rs`, `sub_server_supervisor.rs`, `flaky.rs`, sharing
-`crates/supervision_protocol`):
-
-```text
-  root_supervisor   the root untyped + the initrd + a report endpoint       (briefly)
-    |
-    +-- spawner   one program image, one budget (WRITE), no initrd  (can build only that program)
-    |
-    +-- sub_server_supervisor    a request channel + a fault endpoint, NO memory   (cannot build anything)
-            |
-            +-- flaky   a report endpoint                           (the supervised sub-server)
-
-  then: root_supervisor deletes its untyped and becomes a RECEIVE loop on its own supervision endpoint.
-```
-
-Each split is chosen so that the authority is the smallest thing that still does the job:
-
-- **The spawner holds a program image, not the initrd.** root_supervisor copies `flaky`'s bytes into fresh
-  read-only pages in the spawner's address space (the `blobs` field of `Endow`). So "build me program
-  X" is not a request the spawner *can* honor for any other X: the only program it can name is the
-  one it was handed. Compare the progenitor, which holds a 14 MB archive of every program in the system.
-- **The spawner's budget is WRITE without GRANT.** It may spend memory; it may not lend it. Nothing
-  it builds can be endowed with a budget of its own.
-- Each instance is built in its own region, split off the budget, so reaping it is one
-  `Untyped::DESTROY` (§16) and one instance's corpse cannot pin another's memory. A LIFO reap returns
-  the pages to the budget (§16's return-of-pages), so the restart loop is not a leak.
-- **The supervisor holds no memory at all.** Its entire power is to ask the spawner for a rebuild of
-  one program. A compromised supervisor is a restart loop, not a foothold.
-- root_supervisor deletes the budget once the two servers are running (and the wiring capabilities, and
-  the spawner's budget copy). What is left cannot make a page, an address space, a thread, or an
-  endpoint.
-
-### Restart policy is userspace code, and stays there
-
-`sub_server_supervisor` is the policy: bounded retries (two), a clean exit read as "finished" rather than "crashed",
-a give-up when the budget runs out. It reaps the corpse through the spawner before rebuilding, because
-§26's corpse is dead-until-reaped. None of that is in the kernel, and the kernel's whole contribution
-is one five-word message. That is DECISIONS §26 working as designed: the kernel is the only witness to
-a death, so it reports; everything after the report is somebody's opinion.
-
-Note which side of the split *reaping* falls on: the supervisor decides whether to reap and
-rebuild, the spawner is what can. Policy and authority, separated by an IPC boundary.
-
-### What is proven, both ISAs
-
-`system_tests/src/user/authority_tests.rs`:
-
-- `init_drops_its_construction_authority_and_cannot_build_again`. After the handoff, root_supervisor tries the
-  two primitives that build things (retype a page, retype a kernel object) and reports the result from
-  *inside* the process, because what matters is what the holder can do and only the holder can ask.
-  Both fail, and they fail with `NoSuchSlot` (there is nothing there), not `NotPermitted` (there is
-  something there and you may not use it). That distinction is the whole difference between "we asked
-  the progenitor not to" and "the progenitor cannot".
-- `a_dead_sub_server_is_restarted_by_its_supervisor_not_by_init`. The sub-server runs as attempt 0 and
-  faults on a load from an unmapped address; the supervisor receives `FAULT`, reaps the corpse through
-  the spawner, and asks for attempt 1; attempt 1 runs and exits cleanly; the supervisor receives
-  `EXIT` and does not restart it. Exactly five reports arrive and the endpoint then has no parked
-  sender, which is how "and then nothing else happened" is asserted without a blocking receive.
-
-"Without the progenitor's involvement" is an authority argument, not a timing one. The progenitor cannot retype a
-page by then, and a process that cannot retype a page cannot have built the replacement. Scheduling
-order is not the evidence; the empty capability slot is.
-
-### The bug this work found
-
-The supervision-tree tests enter more processes per run than anything before them, and that surfaced a
-pre-existing race in the exception-return path on both architectures: staging `SPSR_EL1`/`ELR_EL1`
-(and `sepc`/`sstatus`) for the `eret` is not atomic with respect to a nested exception, so an interrupt
-in a two-instruction window could return a brand-new process to its entry point *at EL1*. Fixed by
-masking interrupts at the top of the restore. Full account in notes/exceptions.md; it is written up
-there rather than here because it is an exception-path fact, not a progenitor fact.
-
-### Two design forks found and deliberately not built through
-
-1. Reaping requires the same right as building. `Untyped::DESTROY` needs `WRITE` on the region,
-   and so does `RETYPE`. So a root supervisor that could restart a dead tier-one server is a root
-   supervisor that can build processes, which is exactly the authority we set out to give away.
-   root_supervisor therefore chooses to be *unable* to build, and its policy for a dead tier-one server is
-   "report and stop", the fail-closed floor pushed as high and as small as it goes. Splitting a
-   reap-only right out of `WRITE` (a rights bit, or a distinct `Untyped::REAP`) would let a root
-   supervisor recover without regaining construction authority. That is a kernel surface change and a
-   rights-model change, so it is an architect's call, not a thing to slip in.
-2. A supervisor cannot turn a tid into a handle. The death message names the dead thread by tid
-   (§26 (the fault endpoint), item 5), and nothing turned a tid into something a builder holds.
-   The options were `Tcb::NAME`, per-child fault endpoints, or the builder reporting the tid.
-
-Both are answered. Fork one by §32 (a supervisor may collect a corpse without being able to build
-one) and §148 (a supervisor restarts by asking)'s spawner pattern. Fork two by §148 as amended
-2026-10-04: the death message carries the builder's label, and `sub_server_supervisor` tells two
-children apart by it. See milestone 105 (the two forks).
+The proof is that after the handoff, retyping answers `NoSuchSlot` from inside the process: there is
+nothing there, rather than something it may not use. The work also found a race in the
+exception-return path on both architectures, fixed in notes/exceptions.md. The tree, the proofs and
+the two design forks it found (both since answered) are in
+[trusted-init/supervision-tree.md](trusted-init/supervision-tree.md).
 
 ## The interactive boot, migrated
 
-The tree above proves the pattern with programs written for it. This is the same discipline applied
-to the boot path a person actually types at: `system_initializer` (riscv) and `hello`'s `init_boot`
-role (aarch64), which until now held the kernel's whole construction budget for life.
+The boot path a person types at keeps the ELF loader, because moving the loader out would relocate
+the archive's authority rather than reduce it. It gives up three other things instead: the root
+construction budget (it keeps a 128-page scratch budget and a 240-page job pool), the UART and its
+interrupt once the drivers are built, and every live job's region. The pool is bounded because it is
+renewable: `job_undertaker`, whose only authority is one endpoint, reaps each finished job back into
+it. `script/swish-check` reads the progenitor's own report that its budget is gone, then runs
+thirteen jobs through a six-job pool.
 
-### The shape, and why it is not the one that was predicted
-
-The prediction recorded here was: *the spawn service becomes a sub-server holding the archive and a
-budget, the progenitor wires the shell to it, and the progenitor drops what it no longer needs.* That was not built, and
-the reason is worth keeping rather than quietly diverging from.
-
-The spawn service is the ELF loader, and the ELF loader is the archive. Moving it out means the
-sub-server holds the initrd, which is every program in the system, so "it can build exactly one
-program" (the property that makes `spawner` worth having) does not survive the move: the sub-server
-would hold strictly more than the progenitor does today, and the progenitor would hold nothing but a pipe. That is a
-relocation of the authority, not a reduction of it, and it costs an IPC hop on every capability the
-shell delegates, because `spawnproto` moves capabilities and not just words.
-
-So the interactive progenitor keeps the loader and gives up three other things instead.
-
-1. The root construction budget. It carves `INIT_OWN_PAGES` (128, for its own scratch page
-   tables) and `JOBS_BUDGET_PAGES` (240, the job pool) off the root untyped and deletes the root.
-   After that it can spend at most those two, and it cannot reach the rest of what the kernel gave it
-   or delegate the root to anything it builds.
-2. The device authority. The UART device capability and the UART receive interrupt go back as
-   soon as the console and input drivers are built, along with aarch64's test SGI and the kernel's
-   report endpoint, which were never part of the interactive system. A progenitor that kept the device
-   could hand the UART to anything it later builds.
-3. Anything that reaches a live job's memory. Each job is built in a region split off the pool,
-   and the progenitor deletes that region capability as soon as the job starts. Since §32 the reap does not
-   need it.
-
-### The job pool is bounded *because* it is renewable
-
-Bounding the progenitor's budget would be a bad trade on its own: a prompt that runs out of memory after thirty
-commands is worse than a prompt whose progenitor holds too much. What makes it cheap is that the pages come
-back. Every job is born supervised (§26's spawn-slot convention: a `READ` view of one endpoint in the
-reserved fault slot, which `START` reads and clears), and `job_undertaker` collects the corpse through
-`Endpoint::REAP`. Its entire authority is that one endpoint capability: no untyped, no frame, no TCB,
-nothing it could build with. The reclaimed region returns to *the progenitor's* pool, because §13 says a region
-belongs to whoever owns it and the progenitor is the one who split it. A process that can free a job's memory
-and can never spend it is exactly what §32 was decided for, and this is its first non-test consumer.
-
-Why a second process rather than the progenitor collecting its own children. There is no non-blocking
-receive, and the progenitor is parked in `RECEIVE` on the shell's spawn channel for its whole life. Multiplexing
-deaths onto that same endpoint was considered and rejected: the shell holds `WRITE` on it, so a
-compromised shell could forge death messages, and `EVENT_FAULT`/`EVENT_EXIT` (1 and 2) collide with
-the program ids `spawnproto` already sends in word 0.
-
-### Proven, both ISAs
-
-- `system_tests/src/user/job_undertaker_tests.rs`, a control and a claim in that order.
-  `without_a_collector_a_bounded_job_pool_runs_out` builds three jobs in a three-job pool, lets all
-  three *finish*, and shows the fourth refused: a finished job's region is not free memory. Then
-  `job_undertaker_returns_every_finished_job_to_the_pool` puts twelve jobs through the same pool with
-  the real `job_undertaker` binary running, and asserts after each one that the pool came all the way
-  back and at the end that it carves again in one piece. The assertion is which budget the pages are
-  in, never how long anything took.
-- `script/swish-check`, which is the only thing that boots the real interactive progenitor. It reads a
-  sentence the progenitor prints from inside itself, after deleting the root untyped and before starting the
-  shell: the progenitor retypes a page and retypes a kernel object on that slot and prints "construction budget
-  dropped; retype answers NoSuchSlot" only when both answered `NoSuchSlot` (-1) rather than
-  `NotPermitted` (-3). Gone, not narrowed; the other branch prints "NOT dropped" so a boot that kept
-  its budget fails loudly. The script then runs thirteen jobs through the six-job pool, so a boot
-  where nothing was collected answers "could not spawn (the progenitor is out of memory)" partway down instead
-  of the arithmetic.
-
-### BUGS
-
-- **Recovery is LIFO** (§16, `crates/memory_regions`). A job region reclaimed while it is not at the top of
-  the pool's watermark returns nothing and leaves a hole until the pool's owner dies, which the progenitor never
-  does. Sequential commands at a prompt are exactly LIFO and recover fully; two jobs alive at once (a
-  pipeline stage outliving its producer) permanently costs one region, so a long enough session of
-  concurrent pipelines still ends at "could not spawn". Six job slots is generous for a prompt and
-  small enough to keep the gate honest, which is the trade.
-- Init held a writable mapping of everything it ever built, until 2026-10-05 (UTC). `build_child`'s
-  scratch window is never unmapped (it cannot be: nothing in the ABI unmaps a page), so the progenitor can read and write any
-  page it laid down for a child. That included every boot server's. *Closed 2026-10-05; the
-  parenthesis stays because §162 (whether a holder can give up a mapping) quotes it.* §249 (a
-  running address space stays nameable) let the kernel grant the progenitor its own space at slot
-  28, and the loader now `UNMAP`s each page once it is in the child. The shell's output page and
-  the two DMA pages the progenitor peeks at go the same way. `system_tests`' `running_space_tests`
-  has the negative control: a builder writes to a page it filled for a child and faults.
-- The boot servers are not supervised. Endowing them a supervision endpoint with nobody to
-  restart them would make their corpses persist forever instead of being reaped by the kernel, which
-  is strictly worse. A dead console is still a halt, which is §26's fail-closed floor and correct for
-  a tier-one server nothing can rebuild.
-- `job_undertaker` cannot say anything. Init holds no channel it could report on, so a refused reap
-  traps rather than being ignored. The visible symptom of the collector dying is that the pool stops
-  coming back and the prompt eventually answers "could not spawn".
-- **A hung job is not collected**, on purpose: `REAP` refuses a live thread (§32), and that is the
-  watchdog case, which belongs to milestone 23. At the prompt the case a person can see is already
-  covered by §24's forcible tier, and those jobs are built from the shell's own untyped
-  rather than the progenitor's, so they never reach the collector at all.
-
-### One progenitor, and one loader (milestone 96)
-
-This increment left two duplications behind on purpose, and both are gone now.
-
-The larger one was the system itself. `user::initrd()` loaded an archive entry called `init`,
-which was `fixtures/src/hello.rs`'s `init_boot` role on aarch64 and a separate program on riscv64
-(milestone 266 later collapsed both the alias and the two programs into one `progenitor`), and
-everything above (the six boot components, the giveaway, the negative control, the spawn service) was
-was written once in each. About three hundred near-identical lines, and the failure mode is the reason it
-mattered rather than the line count: a fix that lands in one and not the other is **a boot that
-reaches userspace and prints nothing at all**, with no fault and no message, which cost three separate
-lanes an evening each. It is now `crates/system_initializer`, and the boot entry is the table of slot numbers
-its own kernel granted plus a call into it. Those tables are the one thing the boards genuinely
-disagree about: aarch64's boot path is shared with milestone 19d's test roles, so it grants a report
-endpoint and a test SGI the interactive system never uses and numbers everything after them
-differently. That is data the crate takes (`BootEndowment::unused`), not code it repeats.
-
-The smaller one was the loader. `crates/supervision_protocol`'s child builder was a generalization of
-the two inits' `build_child`, so the logic existed three times, and this increment added the fault
-slot to all three rather than unifying them, because unifying loaders and migrating the boot path in
-one pass would have made a boot failure ambiguous. Milestone 96 did both, in that order, with
-`script/swish-check` between them. `supervision_protocol`'s is the tree's only loader now; what it grew
-is what the inits needed, a capability placed at a **named** slot (§67's diagnostic stream) and a
-stack size the caller states. The stack is a field rather than a constant because the two callers
-honestly differ: four pages is enough for the supervision tree, and a child at the prompt gets twelve
-because the shell's redirection path found the wall twice.
+Recovery is LIFO, so two jobs alive at once can permanently cost a region, and a hung job is not
+collected. Until 2026-10-05 (UTC) the progenitor also kept a writable mapping of everything it built.
+`build_child`'s scratch window is never unmapped (it cannot be: nothing in the ABI unmaps a page), so
+the progenitor can read and write any page it laid down for a child. That sentence is kept here
+because §162 (whether a holder can give up a mapping) quotes it; §249 (a running address space stays
+nameable) closed the gap, and the loader now unmaps each page once it is in the child. Milestone 96 (one init: the spawn service written twice) made `crates/system_initializer` the one progenitor and
+`supervision_protocol`'s builder the one loader. The shape, the proofs and the BUGS in full are in
+[trusted-init/interactive-boot.md](trusted-init/interactive-boot.md).
 
 ## The chain continues past the progenitor (milestone 104)
 
-Everything above measures one program: the one the kernel loads itself. Every other program in
-the archive is loaded by the progenitor, and until this increment those bytes were unchecked, so the
-chain of trust stopped at the progenitor's entry, before the whole interactive system.
+The progenitor measures every program it loads, in userspace, against a table packed as an archive
+entry, `program_measurements` (name provisional). The kernel gains one digest and no policy: it
+hashes the table beside the progenitor and halts if either is not what the image was built against.
+The progenitor grants nothing of its own to what it cannot vouch for. A refused program is treated
+as a missing one: a boot component stops the boot, and a leaf program cannot be spawned. A name the
+table does not mention is a refusal, and a missing or unreadable table vouches for nothing.
 
-The fix is the one this note predicted: The progenitor measures what the progenitor loads, in
-userspace, against a table of its own. Only the mechanism's reach changed: still SHA-256, still no keys.
-
-### Where the table lives, and why it is not compiled into the progenitor
-
-The kernel's trust root works because the kernel is not in the archive it measures. The progenitor is. A
-table of the progenitor's siblings generated into the progenitor's own binary would mean building userspace, measuring
-it, and building userspace again, with "and nothing else changed on the second pass" holding the
-whole chain up. That invariant is not checkable cheaply and its failure is a boot that refuses
-correct bytes.
-
-So the build packs the table as an ordinary archive entry, `program_measurements` (name
-provisional), and the kernel's trust root names it:
-
-```text
-$ cat target/init-measure-aarch64.txt
-# generated by cargo xtask; the boot programs this aarch64 kernel image is built against
-init                 97199d465ab79fed823287e0986b87eca8bd229b4762b47b2b59f89f41ba69c9
-program_measurements 4faa76a9ad01ee027137b1a0e99b89a32d1c5677d73f992922d9aefc9c5e7f0e
-```
-
-The kernel gains one digest and no policy at all. It never parses the table; it hashes the entry
-beside the progenitor and halts if either is not what this image was built against. That is what makes the progenitor's
-refusals worth exactly what the progenitor is worth, and it stays on the near side of the line this note draws
-above when it rejects hashing the whole 14 MB archive in the kernel: the table is 4 KB, and what to
-*do* about a mismatch is decided in userspace, the same split DECISIONS §26 makes for faults.
-
-The table itself is every entry in the archive except the table (an entry cannot carry its own
-digest), sorted, in the same `name <sha256>` format the kernel's manifest uses. One format, one
-parser: `measured_boot::manifest_entries`, which `kernel/build.rs` also reads through.
-
-### The policy: the progenitor grants nothing of its own to what it cannot vouch for
-
-Restated 2026-09-26 (UTC) by §219 (how the shell names an installed program to the spawner), from
-"runs nothing it cannot vouch for". A session holding §219's D2 capability may send unvouched bytes,
-which run with the caller's grants and the clock and configuration pages only. Option D is
-unbuilt, so every program comes from the archive, where the rule means refusal.
-
-Refusing to spawn, spawning and recording, and halting are all defensible, and only the first is a policy. The other two are what a refusal *costs*, and
-what it costs is decided by what the program was for.
-
-That was already answered by what the progenitor does when an archive entry is simply missing,
-so a refused program is treated as a missing one:
-
-| Program | Missing, before this | Refused, now |
-|---|---|---|
-| `console`, `input`, `line_editor`, `swish`, `job_undertaker` | The progenitor traps; the system does not come up | The progenitor names it, then traps |
-| `terminal_sink_caretaker` | the boot comes up without a second stream | the same, and the progenitor names it |
-| the spawnable programs (`grant_plan::Prog`) | the prompt answers "could not spawn" | the same, and the progenitor names it at boot |
-
-Halting the machine for a leaf program was rejected: it turns a build defect in `wc` into an
-unbootable machine and buys nothing, because not spawning an archive program is the guarantee.
-
-Recording and loading anyway was rejected harder. With no audit log, it would change nothing about
-what runs. A chain whose second link is advisory is not a chain, and milestone 22 (trusted init)
-already refused that direction for the kernel.
-
-And a name the table does not mention is a refusal, not a pass, for the same reason
-`VerifyError::Unmeasured` halts the kernel: a table that failed to generate must not wave everything
-through. A table that is missing, or arrives as bytes that are not UTF-8, becomes the empty table,
-which vouches for nothing, so the console is refused and the boot stops.
-
-### EXAMPLES
-
-A healthy boot says so, which matters as much as the refusals: the natural bug in a measured boot is
-for the check to evaporate when the build step does not run, and a boot that says nothing looks
-exactly like a boot that measured everything.
-
-```text
-nife: handing the system to userspace init.
-init: construction budget dropped; retype answers NoSuchSlot
-init: every program measured against the archive table
-
-nife capability shell. naming a resource in a command IS granting it.
-$
-```
-
-`script/swish-check` reads that sentence, so a boot that stopped measuring fails the gate.
-
-Flip one bit of a spawnable program. The prompt still comes up; the program does not run:
-
-```console
-$ cargo run -p xtask -- image
-$ python3 - <<'EOF'          # flip one bit inside the archive's `wc` entry
-import struct
-d = bytearray(open('target/initrd.img','rb').read())
-n = struct.unpack_from('<I', d, 8)[0]
-for i in range(n):
-    o = 12 + i*40
-    if d[o:o+32].split(b'\0')[0] == b'wc':
-        d[struct.unpack_from('<I', d, o+32)[0]*512 + 0x40] ^= 1
-open('target/initrd.img','wb').write(d)
-EOF
-$ cargo build -p kernel --features shell --target aarch64-unknown-none-softfloat
-$ NIFE_INITRD=target/initrd.img NIFE_DISK=target/nifefs.img \
-      helpers/qemu-bounded.sh 20 helpers/qemu-runner-aarch64.sh \
-      target/aarch64-unknown-none-softfloat/debug/kernel
-```
-
-```text
-init: construction budget dropped; retype answers NoSuchSlot
-init: measurement refused wc; they cannot be spawned
-
-nife capability shell. naming a resource in a command IS granting it.
-$ date
-Tue Aug  4 2026 21:14:03 UTC
-```
-
-Flip one bit of `swish`. There is no system to come up, so the progenitor says which component and stops:
-
-```text
-nife: handing the system to userspace init.
-init: cannot vouch for swish; halting rather than building an unmeasured system
-
-  user thread 9 killed: BRK instruction
-    pc 0x000000000040e6f0   far 0x0000000000000000   user sp 0x00000000004ff960   esr 0xf2000000
-  the kernel is fine.
-```
-
-Flip one bit of the table. The progenitor never runs at all; the kernel refuses first:
-
-```text
-nife: handing the system to userspace init.
-
-  MEASURED BOOT REFUSED: 'program_measurements' is not what this kernel image was built against
-    expected sha256 fd0b1815b5ff5a49910975fa644c1d2a4ee65c6836d10e52e27363639dcea29e
-    measured sha256 27edf8e8125afd8ac5369c36bd40e8181109185af37237fdfdcc03f9ea6ddc41
-  halting rather than handing the archive to init.
-```
-
-### What is proven
-
-- Host (`crates/measured_boot`, milliseconds): a manifest gives the same three verdicts a
-  compiled-in trust root does, including that a malformed line and an empty table both refuse
-  their program; and the parser skips comments and blank lines but reports the line it could not
-  read, which is what lets `kernel/build.rs` turn that into a hard error.
-- Both ISAs (`system_tests/src/user/measured_boot_tests.rs`):
-  - `the_measurement_table_measures_to_the_compiled_in_trust_root`, the build-composition proof one
-    link down from the boot program's.
-  - `every_program_init_loads_is_vouched_for_by_the_measurement_table`, which is the one that earns
-    its keep. The failure that threatens this mechanism is not a substituted program, which is loud;
-    it is a program packed into the archive and left out of the table, which boots fine and is
-    silently unspawnable. So the test asserts completeness, over the six boot components and over
-    `grant_plan::Prog` (so a new prompt command is covered without anyone remembering).
-  - `the_measurement_table_refuses_a_tampered_program_and_an_unnamed_one`, the two axes the trust
-    root already gets, plus the assertion that the table does not claim to measure itself.
-
-### BUGS
-
-- A refused `console` or `line_editor` stops in silence. Those two carry the progenitor's output, so a
-  refusal of either has no route to a person: the progenitor traps and an operator sees the kernel's fault
-  line for the progenitor, indistinguishable from any other early progenitor failure. Everything refused after them
-  is named on the console. There is no debug-print syscall (the kernel-served `Console` object went
-  away at milestone 8) and driving the UART from the progenitor would be a second copy of the console driver,
-  per ISA, inside the process the drivers exist to keep small.
-- The prompt says the wrong thing about a refused program. The shell's message for a failed
-  spawn is `could not spawn (the progenitor is out of memory)`, which predates this and is now sometimes a
-  lie: the progenitor refused the program. The boot line names it, so the information is there, but the
-  sentence at the prompt asserts a cause it does not know. Fixing it means either a second
-  `spawnproto` reply code or rewording five call sites in `swish`.
-- A pipeline whose stage cannot be spawned hangs the prompt. `echo hi | wc` with a refused `wc`
-  never returns. This is not new: a refused program takes exactly the value in the progenitor's program table
-  that a program missing from the archive always took, so the hang is the pre-existing behavior of
-  an unspawnable pipeline stage. It was simply unreachable before, because every packed program was
-  loadable. Worth a lane of its own.
-- An absent required component still traps with no message, unchanged. That is a build that did
-  not pack it rather than bytes somebody swapped, and it has never had one.
-- The measurement is of the archive, not of memory over time. Each program is checked once, when
-  it is loaded. Nothing re-measures a running process, and nothing measures what the progenitor wrote into a
-  child's pages after `build_child` copied them (the progenitor keeps a writable mapping of every page it laid
-  down; see the interactive boot's BUGS above).
-
-### Still not covered
-
-The chain now reaches everything the interactive progenitor loads. Two other userspace loaders
-still load unmeasured bytes, and both are test or demo programs rather than the shipped system:
-
-- `root_supervisor`/`spawner` (the supervision tree), where the program image travels as a blob
-  copied into the spawner's address space rather than as an archive read. Measuring it means
-  measuring the blob at the point `root_supervisor` reads it.
-- `c_confiner`, which builds `c_shim`.
-
-Both run through `supervision_protocol::build_child`, the tree's only loader since milestone 96, and
-both could read the same table; neither does today. The table already carries their programs'
-digests, so the remaining work is the call, not the data.
-
-**There were three, and the third was the one that mattered** (milestone 295, 2026-09-14). `builder`
-loaded `least_authority_demo` out of the archive without consulting
-`measured_boot::PROGRAM_MEASUREMENTS`, and milestone 289 had added a caveat here saying why that was
-worse than the other two read: it was not a demo somebody runs in QEMU, it was the default riscv64
-build, which is what `script/board-image` writes to a card. The chain reached the first process
-there and stopped one link short of the only child it built.
-
-calef retired `builder` on 2026-09-14, so that gap is closed by the program going away rather than
-by the call being added. **What closed it is worth being exact about, because "the gap is gone" and
-"the gap was fixed" are different facts.** The default riscv64 boot now ends in `riscv_shell_boot`,
-which measures `progenitor` against the trust root and hands it the measurement table, and
-`crates/system_initializer` is the same code aarch64's progenitor runs, so that boot's userspace is
-now covered by the interactive chain above rather than by an exception to it. Nothing was added to
-the kernel; a link that stopped short was removed from the shipped path. The two loaders left really
-are QEMU-only.
+A refused `console` or `line_editor` stops in silence, and the prompt blames memory for a refused
+program. The supervision tree and `c_confiner` still load unmeasured bytes; both are QEMU-only.
+Where the table lives, the policy table, the proofs, the BUGS and what is still not covered are in
+[trusted-init/chain-past-the-progenitor.md](trusted-init/chain-past-the-progenitor.md).
 
 ## The alternative that was rejected, and stays rejected
 
 Hashing the whole archive in the kernel covers everything with one value. It puts a 14 MB hash at
 every boot and the policy that decides what is acceptable inside the trusted computing base, which is
-the wrong place for both. The table above costs the kernel one 4 KB hash and no policy at all.
+the wrong place for both. The table in [trusted-init/chain-past-the-progenitor.md](trusted-init/chain-past-the-progenitor.md) costs the kernel one 4 KB hash and no policy at all.

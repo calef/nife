@@ -187,8 +187,8 @@ exactly the class risk 5 names and should not be quietly argued away.
   recorded under. A multicore defect recorded under different words, or fixed in a commit whose
   message never said so, is missing. The rows found are the ones the tree already told a reader
   about, which biases the table towards defects somebody thought were interesting.
-- D5's date is when loom modeled it, not when it was found. `notes/scheduler.md` records it as
-  a race "observed on the machine" without a date or an instrument; `notes/interleaving.md` says the
+- D5's date is when loom modeled it, not when it was found.
+  `notes/scheduler/undelivered-wake-gate.md` records it as a race "observed on the machine" without a date or an instrument; `notes/interleaving.md` says the
   protocol's races "were found by flakes and bench boots first". Which it was is not recorded, and
   a bench boot would make it the one row that bears on risk 5's premise.
 - E1 to E3 lack builds and final beats. Their logs were read at the bench and summarized into

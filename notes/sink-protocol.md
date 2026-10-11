@@ -1,10 +1,4 @@
 # The sink protocol: one way to write bytes somewhere
-<!-- writing-standards: exception. Marked 2026-09-29 (UTC) by the audit lane for the documentation
-audit of that date. Reason: the one correction below repoints a quotation that named
-notes/pipes.md for wording this note itself wrote, and bringing a 3,190-word note to 4 bold spans
-per 1,000 words is a rewrite for this note's owner, not something to hide inside a correction, the
-same line notes/timed-wait.md's marker takes. Remove this marker when that de-bold pass lands. -->
-
 
 *Milestone 50, the protocol lane. `crates/byte_sink_protocol`, `fixtures/src/sink.rs`, the std PAL's
 `sys/stdio/nife.rs`, and `abi::Error::Gone`.*
@@ -71,9 +65,9 @@ not a sink, it is a service, and it should be a CALL protocol like `filesystem_p
 Types. This carries bytes. Typed pipelines are a separate and larger fork, recorded as one in
 design/roadmap/0050-pipes-and-redirection.md, and nothing in this framing is a step toward one.
 
-Seek, truncate, re-read, stat. A sink appends, and that is the payoff milestone 50 (pipes and redirection) claims over
-Unix. `> report.txt` hands a program strictly less than fd 1 with full file semantics does, and it
-is the opcode list that makes that true rather than policy.
+Seek, truncate, re-read, stat. A sink appends, and that is the payoff milestone 50 (pipes and
+redirection) claims over Unix. `> report.txt` hands a program strictly less than fd 1 with full file
+semantics does, and it is the opcode list that makes that true rather than policy.
 
 ## The wire
 
@@ -84,16 +78,16 @@ is the opcode list that makes that true rather than policy.
   OPERATION_EOF   = 1    len = 0        the writer is finished
 ```
 
-`OPERATION_BYTES` is zero on purpose. With the opcode at zero a bytes message's first word is exactly
-its byte count, which is bit for bit the framing std's stdout already sent. So unifying the protocol
-changed no instruction on the fastpath, cost no message, and the benchmark that prices `println!`
-cannot tell that anything happened. An opcode is a claim about what a message means; the cheapest
-claim to make is the one the wire was already making.
+`OPERATION_BYTES` is zero on purpose. With the opcode at zero a bytes message's first word is
+exactly its byte count, which is bit for bit the framing std's stdout already sent. So unifying the
+protocol changed no instruction on the fastpath, cost no message, and the benchmark that prices
+`println!` cannot tell that anything happened. An opcode is a claim about what a message means; the
+cheapest claim to make is the one the wire was already making.
 
-`OPERATION_EOF` is new and it is not decoration. Without it a pipe's reader blocks forever after the writer
-exits, and "the producer is done" would have to be inferred from a death notification the reader may
-not even be the supervisor for, which is a fact about process supervision standing in for a fact
-about a stream. std sends it from the PAL's `cleanup`, which std's runtime calls after `main`
+`OPERATION_EOF` is new and it is not decoration. Without it a pipe's reader blocks forever after the
+writer exits, and "the producer is done" would have to be inferred from a death notification the
+reader may not even be the supervisor for. That is a fact about process supervision standing in for
+a fact about a stream. std sends it from the PAL's `cleanup`, which std's runtime calls after `main`
 returns and after it has flushed stdout.
 
 ## "Gone" versus "never had one", which is the point of doing this now
@@ -109,29 +103,29 @@ So the protocol needs to tell two failures apart:
 ### The kernel could not tell them apart, and that was the actual finding
 
 Both arrived as `abi::Error::NoSuchSlot`. A destroyed endpoint leaves the holder's capability in
-place (endpoints are named generationally, `crates/generational_table`), and the failure surfaces when
-`sched::take_ipc_aborted` is set; `syscall.rs` mapped that to `NoSuchSlot`, the same value an empty
-slot returns. The only available behavior was therefore the wrong one for a pipeline, and no
+place (endpoints are named generationally, `crates/generational_table`), and the failure surfaces
+when `sched::take_ipc_aborted` is set; `syscall.rs` mapped that to `NoSuchSlot`, the same value an
+empty slot returns. The only available behavior was therefore the wrong one for a pipeline, and no
 amount of userspace protocol design could have recovered the distinction, because the fact lives in
 the kernel.
 
 So the ABI grew one variant, `abi::Error::Gone` (-11): *the capability names an object that no
-longer exists*. It applies to all five endpoint IPC paths (SEND, RECEIVE, SEND_CAP, RECEIVE_CAP, CALL),
-because the fact is about the endpoint and not about the direction.
+longer exists*. It applies to all five endpoint IPC paths (SEND, RECEIVE, SEND_CAP, RECEIVE_CAP,
+CALL), because the fact is about the endpoint and not about the direction.
 
 This is the second time a distinction like this came up and it was resolved the other way the first
 time. DECISIONS §32 deliberately makes `Endpoint::REAP` return one error for "already collected" and
 "not your child", because telling them apart would let a supervisor probe the tid space of children
 it has no relationship with. `Gone` carries no such risk: the capability is one the caller already
-holds, in its own capability table, so learning that its object died reveals nothing it was not entitled to
-know.
+holds, in its own capability table, so learning that its object died reveals nothing it was not
+entitled to know.
 
 ### SIGPIPE, arriving through std's own seam
 
-std already has exactly this two-way split and we had been defeating it. `io::stdio`'s `handle_ebadf`
-swallows an error for which `is_ebadf` returns true and propagates everything else, and a propagated
-error makes `println!` panic. The old PAL returned `true` unconditionally, so every failure was
-swallowed. Now:
+std already has exactly this two-way split and we had been defeating it. `io::stdio`'s
+`handle_ebadf` swallows an error for which `is_ebadf` returns true and propagates everything else,
+and a propagated error makes `println!` panic. The old PAL returned `true` unconditionally, so every
+failure was swallowed. Now:
 
 - never had one maps to `ErrorKind::Unsupported`, which `is_ebadf` accepts. That is the same
   answer every other ungranted capability gives in this PAL (`std::fs` without a directory,
@@ -152,10 +146,10 @@ Three programs in `fixtures/`, and the sink among them is the `fs_file_caretaker
 that speaks the sink contract to its client and the underlying protocol to whatever is behind it.
 
 - `file_sink`: holds a `filesystem_protocol` endpoint and a shared page, creates or opens one name,
-  and appends every message's bytes at a running offset. `OPERATION_EOF` closes the handle and reports the
-  total. Its client holds an endpoint to this process and nothing that names the FS server, so it
-  cannot seek, truncate, re-read or stat, which is milestone 50's "grants strictly less than Unix"
-  made structural rather than promised.
+  and appends every message's bytes at a running offset. `OPERATION_EOF` closes the handle and
+  reports the total. Its client holds an endpoint to this process and nothing that names the FS
+  server, so it cannot seek, truncate, re-read or stat, which is milestone 50's "grants strictly
+  less than Unix" made structural rather than promised.
 - `file_source`: the read-back. It opens the same name in its own FS session and streams the
   contents out over this contract, which is what makes `<` the same shape as `|` for whatever is
   reading.
@@ -163,7 +157,7 @@ that speaks the sink contract to its client and the underlying protocol to whate
   tests. It writes a fixed transcript to whatever is in slot 0 and reports the classification it got
   back, which is how the "gone" path is asserted by value.
 
-**These were one binary until milestone 292**, dispatching `ROLE_FILE`, `ROLE_VERIFY` and
+These were one binary until milestone 292, dispatching `ROLE_FILE`, `ROLE_VERIFY` and
 `ROLE_WRITER` out of `arg0`. The role numbers existed in three files (this program, the kernel's
 `sink_tests`, and `fs_service`) with nothing keeping them equal, and a mismatch spawned the wrong
 role and hung. Three programs have no role numbers to keep equal.
@@ -172,42 +166,28 @@ role and hung. Three programs have no role numbers to keep equal.
 
 `kernel::user::sink_tests`, both ISAs.
 
-The same `std_exerciser` ELF is spawned twice with identical grants except for what is behind slot 1:
-once with an endpoint the kernel test receives on directly (the pipe shape: the reader is an
-ordinary receiver), and once with an endpoint served by `file_sink`, which writes the bytes
-into a file on the real RedoxFS image through the real FS server. The test then reads that file back
-and compares it, byte for byte, with the transcript the first arm received.
+The same `std_exerciser` ELF is spawned twice with identical grants except for what is behind
+slot 1. Once it gets an endpoint the kernel test receives on directly (the pipe shape: the reader is
+an ordinary receiver). Once it gets an endpoint served by `file_sink`, which writes the bytes into a
+file on the real RedoxFS image through the real FS server. The test then reads that file back and
+compares it, byte for byte, with the transcript the first arm received.
 
 Same binary, same transcript, two destinations that share nothing but the sixteen bytes of a
 message. The program is not told which one it has and has no way to find out.
 
-The `Gone` half is asserted separately and by value, because it is a claim about a number: the
-kernel creates an endpoint out of a region it owns, spawns `sink_transcript_writer` with WRITE on it,
-takes some messages, destroys the region, and the writer reports that its next SEND classified as
-`Sent::Gone` rather than `Sent::NoSink`. Without the ABI variant that assertion is not expressible.
+The `Gone` half is asserted separately and by value, because it is a claim about a number. The
+kernel creates an endpoint out of a region it owns, spawns `sink_transcript_writer` with WRITE on
+it, takes some messages, destroys the region, and the writer reports that its next SEND classified
+as `Sent::Gone` rather than `Sent::NoSink`. Without the ABI variant that assertion is not
+expressible.
 
 ## Benchmarks
 
-`println!` is on the ABI fastpath and `relay_rtt` / `call_reply` price exactly the kind of hop this
-lane could have added. It added none, and the numbers say so rather than the argument doing it.
-Deterministic icount ticks against `bench/baseline-aarch64.txt`, on the pinned QEMU:
-
-| | aarch64 | riscv64 |
-|---|---|---|
-| `ipc_rtt_el0` (an EL0 send/receive round trip, the closest thing to a `println!`) | +0.13% | -0.63% |
-| `relay_rtt` (a hop through a userspace relay) | +0.01% | +0.02% |
-| `call_reply` | 0.00% | +0.00% |
-| `null_syscall` | +0.00% | -0.04% |
-
-Everything moved by less than 1% and in both directions, which is build noise on an instruction
-count. The baseline file was deliberately not updated, because updating it is a statement that a
-performance change was intended, and there was none.
-
-Two honest caveats. There is no benchmark that prices `println!` itself; what these price is the
-`SEND` that `println!` is, so a regression inside the PAL's chunking loop would not appear here.
-And the reason the fastpath is untouched is structural rather than lucky: `OPERATION_BYTES == 0` keeps the
-wire identical, `SEND` keeps the message count identical, and the kernel's only change is on the
-*failure* return of an aborted send, which no benchmark takes.
+The lane added no hop to `println!`'s path, and the icount benchmarks say so: `ipc_rtt_el0`,
+`relay_rtt`, `call_reply` and `null_syscall` all moved by less than 1%, in both directions, on
+aarch64 and riscv64. That is build noise, so the baseline file was deliberately not updated. No
+benchmark prices `println!` itself, so a regression inside the PAL's chunking loop would not show.
+The table and both caveats are in [sink-protocol/benchmarks.md](sink-protocol/benchmarks.md).
 
 ## What is still missing, named where a reader meets it
 
@@ -216,9 +196,9 @@ wire identical, `SEND` keeps the message count identical, and the kernel's only 
   one-directional by construction and a source contract is its own design.
   *(Answered by the operators lane the same day: a source is the sink contract received rather than
   sent. See notes/pipes.md.)*
-- **The terminal is a sink now** (`components/src/terminal_sink_caretaker.rs`, 2026-08-03), and it took one new
-  opcode and one process. The analysis this bullet used to carry was right about the shape and
-  wrong about the cost; see "The terminal's sink adapter" below.
+- **The terminal is a sink now** (`components/src/terminal_sink_caretaker.rs`, 2026-08-03), and it
+  took one new opcode and one process. The analysis this bullet used to carry was right about the
+  shape and wrong about the cost; see "The terminal's sink adapter" below.
 - **The console server's page-plus-ack channel is untouched**, and after building the adapter that
   looks like the right answer rather than a gap. `line_editor` is its only client and now speaks for
   two writers; a second client of the *console* would hit the same one-page wall one layer down,
@@ -236,43 +216,35 @@ still cannot tell that from a pipe or a file.
 ### It is a process for a capability reason, which was known
 
 The cheap move is to have `line_editor` serve the sink contract on the endpoint it already has: a
-`SEND` arrives there with no reply capability, so it is trivially distinguishable from the `CALL`s it
-serves. That is wrong. That endpoint also carries `OPERATION_READLINE`, and `WRITE` on an endpoint is
-the right to `CALL`, so a child handed it as its output slot would hold the terminal's keyboard.
-A sink capability that can read the keyboard is not a sink capability. This kernel offers no
-receive-on-a-set, so the terminal cannot serve two endpoints itself, and the answer is a separate
+`SEND` arrives there with no reply capability, so it is trivially distinguishable from the `CALL`s
+it serves. That is wrong. That endpoint also carries `OPERATION_READLINE`, and `WRITE` on an
+endpoint is the right to `CALL`, so a child handed it as its output slot would hold the terminal's
+keyboard. A sink capability that can read the keyboard is not a sink capability. This kernel offers
+no receive-on-a-set, so the terminal cannot serve two endpoints itself, and the answer is a separate
 process holding both contracts and handing out only one.
 
 ### And it needed a new opcode, which was not known
 
-The plan said the adapter would be `file_sink`'s shape and that the work was rewiring the progenitor. Building
-it found something else: `OPERATION_WRITE` reads from the client's output page, and there is exactly one
-of those. The progenitor maps a single frame into `line_editor` read-only and into the shell read/write. A
-second page-based client needs a second frame and a page index in every request, which is `filesystem_protocol`'s
-one-page-two-clients problem (DECISIONS §55, the reason the file behind a `>` is the shell itself)
-arriving in a second contract.
-
-So the terminal contract grew `OPERATION_PRINT`: up to eight bytes carried in the request's own words,
-replied when they are on the wire. The adapter then needs no page at all, and `expand_output` is
-shared with `OPERATION_WRITE`, so a newline from an adapter gets the same manners as a newline from the
-shell. Two writers, one terminal, one set of manners, no second frame.
-
-Eight rather than sixteen is the contract's request shape and not a choice: a served request arrives
-through `receive_cap`, which hands the server a reply capability and two data words. `OPERATION_BYTES`
-carries eight for the same reason, from the input direction, which is why the shape was already
-there to copy.
+Building the adapter found that `OPERATION_WRITE` reads from the client's one output page, and a
+second page-based client would need a second frame. So the terminal contract grew `OPERATION_PRINT`:
+up to eight bytes carried in the request's own words, replied when they are on the wire, sharing
+`expand_output` with `OPERATION_WRITE`. Two writers, one terminal, one set of manners, no second
+frame. Why eight, and the page problem it avoided, are in
+[sink-protocol/print-opcode.md](sink-protocol/print-opcode.md).
 
 ### What it is for
 
 DECISIONS §67's declared second stream. A program that declares diagnostics gets this endpoint in
-its declared slot by default, endowed by the progenitor from the manifest exactly as the clock is, and `2>`
-replaces it with a file the shell backs. So a `date` complaining about a missing clock reaches the
-screen without passing through the shell at all, which is stronger than the shell printing it:
-nothing the shell does to the output can touch those bytes, and `caps` says so in its `diags` row.
+its declared slot by default, endowed by the progenitor from the manifest exactly as the clock is,
+and `2>` replaces it with a file the shell backs. So a `date` complaining about a missing clock
+reaches the screen without passing through the shell at all, which is stronger than the shell
+printing it. Nothing the shell does to the output can touch those bytes, and `caps` says so in its
+`diags` row.
 
 `kernel::user::sink_tests::the_terminal_is_a_sink_like_any_other_and_the_writer_cannot_tell` is the
-proof, and it is the indifference claim made a third time: the same `sink_transcript_writer` ELF, the same
-transcript, a pipe and a file and now a terminal, and the program holds one capability in each case.
+proof, and it is the indifference claim made a third time: the same `sink_transcript_writer` ELF,
+the same transcript, a pipe and a file and now a terminal, and the program holds one capability in
+each case.
 
 ### BUGS
 
@@ -281,21 +253,23 @@ transcript, a pipe and a file and now a terminal, and the program holds one capa
   fd 2 does on Unix too, and there is nothing here that could do better without a second adapter and
   a way to decide which one a child gets.
 - **The bytes bypass the shell entirely, which is the feature and also the limitation.** A shell
-  cannot capture, indent, count or truncate them. `2>` is the only way to put them anywhere else, and
-  it works by handing the child a *different* endpoint rather than by intercepting this one.
-- **Building it found the progenitor's sixteen-slot capability table for the third time.** One more endpoint held across
-  the shell's `build_child` made the boot print nothing at all, so the adapter is built after the
-  shell (order: notes/pipes/the-boot.md). "Built last" was this note's phrase; merging milestone 22 (trusted init) proved it wrong: the progenitor now builds a `job_undertaker` after it and the capability table has room either way. The
-  real constraint was never the ordinal, it was the shell's build. Where the adapter does have to sit
-  is before the progenitor gives the construction budget away, because it is a system component and that
-  budget is what the system is built from; building it afterwards would spend the progenitor's scratch pool on
+  cannot capture, indent, count or truncate them. `2>` is the only way to put them anywhere else,
+  and it works by handing the child a *different* endpoint rather than by intercepting this one.
+- **Building it found the progenitor's sixteen-slot capability table for the third time.** One more
+  endpoint held across the shell's `build_child` made the boot print nothing at all, so the adapter
+  is built after the shell (order: notes/pipes/the-boot.md). "Built last" was this note's phrase,
+  and merging milestone 22 (trusted init) proved it wrong. The progenitor now builds a
+  `job_undertaker` after it and the capability table has room either way. The real constraint was
+  never the ordinal, it was the shell's build. Where the adapter does have to sit is before the
+  progenitor gives the construction budget away, because it is a system component and that budget is
+  what the system is built from. Building it afterwards would spend the progenitor's scratch pool on
   a whole program. See notes/trusted-init.md.
-- **`date` was already speaking the contract before it existed**, which is the `OPERATION_BYTES == 0`
-  decision paying out immediately: its hand-rolled framing is bit for bit a `BYTES` message. It
+- **`date` was already speaking the contract before it existed**, which is the `OPERATION_BYTES ==
+  0` decision paying out immediately: its hand-rolled framing is bit for bit a `BYTES` message. It
   announced no end of stream, because nothing yet read its output as a stream. `|` has since landed
   and it does: every exit path in `components/src/date.rs` goes through an `end()` that sends
-  `byte_sink_protocol::eof()` first, because a reader downstream of a `|` has no other way to learn the
-  producer is finished. See notes/pipes.md.
+  `byte_sink_protocol::eof()` first, because a reader downstream of a `|` has no other way to learn
+  the producer is finished. See notes/pipes.md.
 - **No buffering, and it is now measured rather than argued.** A pipe built from this contract is
   full lockstep, where Unix's 64 KB buffer lets a producer run ahead. `bench: sink_throughput`
   (`kernel/src/bench.rs`, two EL0 processes over one endpoint) and

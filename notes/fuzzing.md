@@ -1,26 +1,28 @@
 # Fuzzing the parse surface
 
-Milestone 42 (supply chain and fuzzing), second leg. The first two (advisories, licenses, vendored integrity) ask whether
-code we did not write is what we think; this one asks whether code we *did* write
-survives bytes it did not write.
+Milestone 42 (supply chain and fuzzing), second leg. The first two (advisories, licenses, vendored
+integrity) ask whether code we did not write is what we think; this one asks whether code we *did*
+write survives bytes it did not write.
 
-`script/fuzz` runs four coverage-guided fuzz targets over the parsers that read data from outside
-this system. It found two bugs on its first day, and a third came out of reading the code while
-designing a target. All three are fixed and pinned by host tests.
+`script/fuzz` runs coverage-guided fuzz targets over the parsers that read data from outside this
+system: four when this note was written, seven parsers now, plus three service targets that
+[fuzzing-the-services.md](fuzzing-the-services.md) covers. It found two bugs on its first day, and a
+third came out of reading the code while designing a target. All three are fixed and pinned by host
+tests.
 
 ## What fuzzing finds that Kani does not
 
-This project has over 100 Kani harnesses <!--count-at-least:kani-harnesses--> across more than 20 crates <!--count-at-least:harness-crates-->,
-and DECISIONS §14 says the proofs are the
-thesis. Adding a fuzzer only earns its place if it answers a question the proofs cannot, so that is
-the first thing to settle.
+This project has over 100 Kani harnesses <!--count-at-least:kani-harnesses-->
+across more than 20 crates <!--count-at-least:harness-crates-->, and DECISIONS §14 (the project's
+direction) says the proofs are the thesis. Adding a fuzzer only earns its place if it answers a question the proofs
+cannot, so that is the first thing to settle.
 
 Kani is exhaustive inside a bound. `kani::any()` is every value at once, the program becomes a
 formula, and `UNSATISFIABLE` means no input breaks the property. That is a stronger claim than any
-fuzzer can make, for the inputs it covers. Its limit is structural rather than incidental: a solver
-reasons completely about *fixed-size* things, so an unbounded loop over an arbitrarily long input has
-to be unrolled to a limit, and past a certain unrolling the formula stops being solvable in useful
-time. notes/verification.md records those bounds and their justifications.
+fuzzer can make, for the inputs it covers. Its limit is structural rather than incidental. A solver
+reasons completely about *fixed-size* things, so an unbounded loop over an arbitrarily long input
+has to be unrolled to a limit, and past a certain unrolling the formula stops being solvable in
+useful time. notes/verification.md records those bounds and their justifications.
 
 Fuzzing is unbounded and random. It proves nothing. What it does is execute the real code on
 millions of concrete inputs an hour, with coverage feedback steering toward inputs that reach new
@@ -36,25 +38,13 @@ So the two tools divide on one line, and the line is visible in this tree rather
 | Cost of a wrong bound | a silent hole | none |
 | Verdict on success | a proof | "not yet" |
 
-The place where they meet is the bound, and this tree has three worked examples of the bound
-being the whole story:
+The place where they meet is the bound. In this tree the proved leaf and the unproved shell of
+`crates/elf`, the proved leaf readers and unproved walkers of `crates/device_tree_blob`, and
+`crates/nifefs`'s writer and reader agreeing (a property nobody had written down) are the three
+worked examples, in [fuzzing/kani-and-fuzzing.md](fuzzing/kani-and-fuzzing.md).
 
-1. **`crates/elf`.** The crate's own doc comment says the whole-parse totality proof *did not
-   return*: an O(n^2) overlap loop over up to 64 program headers, unrolled 64 deep against symbolic
-   slice offsets, is past what the solver can do. What is proved is `check_segment_bounds`, the leaf
-   arithmetic, factored out so bounded model checking can reach it. The proved leaf and the unproved
-   shell are exactly the split a fuzzer covers from the other side.
-2. `crates/device_tree_blob`. Four harnesses, all on `be32`/`be64`, the leaf readers. The seven
-   *walkers* above them are unbounded loops over a symbolic blob carrying a depth counter and two
-   16-entry per-depth arrays. Both of the bugs found on 2026-08-02 were in that unproved region, and one of
-   them was an out-of-bounds index into one of those arrays.
-3. `crates/nifefs`. `Fs::parse` is proved total, with no bound on the image size at all
-   (`the_validation_implies_reads_slice_is_in_bounds`). Fuzzing it for panics would be burning CI
-   time to rediscover a theorem. What is *not* proved, and cannot be by a harness of that shape, is
-   that the writer and the reader agree, and that is where its bug was.
-
-**The honest summary: a proof says the property holds where it looked, and a fuzzer looks where the
-proof could not.** Neither subsumes the other, and the third case above shows the boundary is not
+The honest summary: a proof says the property holds where it looked, and a fuzzer looks where the
+proof could not. Neither subsumes the other, and the third worked example shows the boundary is not
 even always "bounded versus unbounded": sometimes it is that nobody wrote the property down.
 
 ## Which parsers, and why those
@@ -63,175 +53,76 @@ The rule that picked them: does this code read bytes from outside the trust boun
 whose input this system produced is a correctness question. A parser whose input somebody else
 produced is a security question, and it is the one where a panic has a consequence a user notices.
 
-Six targets, deliberately fewer than one per crate. A fuzz target that finds nothing because it
-fuzzes a total function is worse than no target: it costs CI time on every commit and it implies
-coverage the project does not have.
+Seven parser targets, deliberately fewer than one per crate. A fuzz target that finds nothing
+because it fuzzes a total function is worse than no target: it costs CI time on every commit and it
+implies coverage the project does not have.
 
 | Target | Input comes from | Why it earns a target |
 |---|---|---|
-| `device_tree_blob_walk` | firmware (QEMU, OpenSBI, a board's ROM) | parsed **before anything else exists**, on both ISAs, from a pointer in a register; a panic here is a kernel that cannot boot and cannot say why. Kani reaches the leaf readers and not the walkers. |
-| `elf_parse` | any binary a user asks to run | the only parser that **loads what it parses**: its output becomes page-table entries. The whole-parse totality proof is recorded as intractable. |
+| `device_tree_blob_walk` | firmware (QEMU, OpenSBI, a board's ROM) | parsed before anything else exists, on both ISAs, from a pointer in a register; a panic here is a kernel that cannot boot and cannot say why. Kani reaches the leaf readers and not the walkers. |
+| `elf_parse` | any binary a user asks to run | the only parser that loads what it parses: its output becomes page-table entries. The whole-parse totality proof is recorded as intractable. |
 | `globally_unique_identifier_partition_table` | a disk somebody else formatted | decides which LBA range is a filesystem. Heavily checked already, which is the point: the gap is *combinations* of hostile fields, which neither the proofs nor the single-byte mutation tests can build. |
+| `domain_name_system_reply` | a name server, or anyone who can forge its reply | a reply that panics takes name resolution down, and one that slips past `Query::accept` sends a client to the wrong host. Kani covers the name decoder, not `accept`; see notes/name-resolution.md. |
 | `http_response_feed` | a package server, over plain HTTP | network bytes, read in the progenitor **before** the digest check. Asserts read splits never change the answer. |
-| `nifefs_roundtrip` | (structured) the writer's own output | not a panic hunt. Asserts that **what goes in comes out**, which is the property `write_image`'s truncation bug violated until 2026-08-01 and its NUL bug until 2026-08-02. |
+| `nifefs_roundtrip` | (structured) the writer's own output | not a panic hunt. Asserts that what goes in comes out, which is the property `write_image`'s truncation bug violated until 2026-08-01 and its NUL bug until 2026-08-02. |
 | `package_archive_roundtrip` | (structured) the writer's own output | §197 (a package is one archive file)'s owed target: a written package reads back and verifies. |
 
 ### And the ones deliberately not fuzzed
 
-Naming these matters as much as naming the six, because "we have fuzzers" is the kind of claim that
-quietly grows to cover everything.
-
-- `nifefs`'s `Fs::parse` on raw bytes. Kani proves it total with no size bound. A fuzz target
-  there would be a fuzz target that cannot find anything.
-- `filesystem_protocol`, `byte_sink_protocol`, `socket_protocol`. These *are* a trust boundary (a malicious client on
-  the other end of an endpoint), and they are unproved. But their decoders are written with
-  `slice::get` throughout and are total by construction, and the real hazard at that boundary is not
-  a byte string at all: it is the double fetch, where a server validates a length out of a
-  shared page and then reads the page again, and the client changed it in between. A byte-string
-  fuzzer cannot express a concurrent mutation. That is milestone 43's lens, and it needs a different
-  tool.
-- `video_terminal`. 63 escape sequences, no proofs, and a byte stream as input, so it looks like
-  a good candidate. It is a candidate, and it is not in this first set because its input comes from a
-  program *this system started*, one rung inside the boundary the other four sit on. Worth adding
-  when the terminal serves output from something we did not build.
-- `grant_plan`. Its parser was being rewritten in a concurrent lane while this was built.
+Naming these matters as much as naming the targets, because "we have fuzzers" quietly grows to cover
+everything. `Fs::parse` on raw bytes is proved total, so a target there could find nothing. The IPC
+protocols are total by construction, and their real hazard, a double fetch, is a concurrent mutation
+no byte-string fuzzer can express. `video_terminal` and `grant_plan` were left for stated reasons.
+Each is argued in [fuzzing/not-fuzzed.md](fuzzing/not-fuzzed.md).
 
 ## Why cargo-fuzz
 
-DECISIONS §46 says taking a dependency is a decision, and that holds for a dev tool. Three candidates
-were real: cargo-fuzz (libFuzzer), cargo-afl, and honggfuzz-rs.
-
-**cargo-fuzz wins on one property the other two do not have here.** It is in-process and
-coverage-guided with no external harness process, so a target is a plain Rust function over `&[u8]`
-that the crates under test link into directly. Our parsers are `no_std`, pure, and take a byte slice,
-which is the exact shape libFuzzer wants. AFL's fork-server model buys robustness against a target
-that corrupts its own address space, which safe-Rust parsers cannot do, and pays for it in exec rate.
-cargo-fuzz is also what rustc, `regex`, and most of the ecosystem use, so a crash reproduces for a
-stranger reading this repository.
-
-The costs, stated rather than glossed: it needs nightly (already pinned), it needs `rust-src` for
-`-Zbuild-std` (already listed for the kernel), and it adds three crates (`libfuzzer-sys`,
-`arbitrary`, `cc`) to a graph nothing ships. It also brought the license exception below.
-
-The one license decision. `libfuzzer-sys` is `(MIT OR Apache-2.0) AND NCSA`, because it vendors
-LLVM's libFuzzer C++ source. `deny.toml` carries it as a `[[licenses.exceptions]]` scoped to that one
-crate rather than as an allow-list entry, so a second NCSA crate would still stop the build. NCSA is
-OSI approved and FSF free and reads as BSD-3-Clause and MIT stapled together, and nothing that boots
-links it.
+DECISIONS §46 (thin primitives or whole subsystems) makes taking a dev tool a decision too.
+cargo-fuzz (libFuzzer) won over cargo-afl and honggfuzz-rs because it is in-process and
+coverage-guided, so a target is a plain Rust function over `&[u8]`, the exact shape of these
+`no_std` parsers. It needs nightly and `rust-src`, both already present, and adds three crates
+nothing ships. `libfuzzer-sys` carries NCSA, so `deny.toml` holds a `[[licenses.exceptions]]` entry
+scoped to that one crate. The comparison and the license reasoning are in
+[fuzzing/why-cargo-fuzz.md](fuzzing/why-cargo-fuzz.md).
 
 ## The three bugs
 
-The first two were found in the crate when it was named `dtb` and its type `Dtb`, and the headings
-keep those names as the account of where each bug was. Both are `device_tree_blob` and
-`DeviceTreeBlob` since 2026-09-18.
+Each is fixed and pinned by a host test, and each is told in full in
+[fuzzing/three-bugs.md](fuzzing/three-bugs.md).
 
-### 1. `dtb::Dtb::node_reg` indexed past its cell stack (out-of-bounds panic)
+1. `dtb::Dtb::node_reg` indexed past its 16-entry cell stack on a tree nested 17 deep. Fixed by
+refusing to match past the stack, as its sibling already did. It was found by reading the code while
+writing the target; ten minutes of fuzzing did not find it. 2. `dtb::Region::end` overflowed on a
+hostile memory map, a panic on the boot path. Fixed at the source (`Error::RegionOverflow`) and at
+the type (`end()` saturates). The fuzzer found it in about ten minutes. 3. `nifefs::write_image`
+accepted a name with a NUL in it, so `"a\0b"` was written and read back as `"a"`. Fixed with
+`Error::NameHasNul`. `nifefs_roundtrip` found it in under a minute, as a property violation no
+totality proof could see.
 
-`node_reg` carries `#address-cells`/`#size-cells` down a 16-entry per-depth array, and matched a
-node at any depth `>= 2`. When the matched node's `reg` property arrived, it read `acells[depth - 1]`
-with no upper guard, so a device tree nested 17 levels deep with a matching name at the bottom
-indexed `acells[16]` on a 16-element array. That is a panic in the parser the kernel runs against a
-blob it did not write, before there is any way to report a failure.
-
-Fixed by refusing to match past the stack, `(2..MAX_DEPTH).contains(&depth)`, which is what the
-sibling `node_reg_compatible` already did. Clamping the index would have been worse: past `MAX_DEPTH`
-the walk has stopped tracking cell counts, so the region it decoded would be arithmetic on the wrong
-widths. Not finding the node is honest; finding it and reporting the wrong address is not.
-
-**Found by reading the code while writing the fuzz target. Ten minutes of fuzzing did not find it**,
-and that is recorded here rather than smoothed over. See BUGS below.
-
-### 2. `dtb::Region::end` overflowed on a hostile memory map
-
-`end()` was `self.start + self.size` on two `u64`s straight out of the blob.
-`kernel/src/memory.rs`'s `place_bitmap` calls it on every RAM region the device tree declares, and
-the kernel's own test builds are dev-profile builds with overflow checks on, so a `/memory` node
-claiming `start = size = u64::MAX` is a panic on the boot path. In a release build it wraps instead,
-which is worse: the frame allocator gets a memory map that is quietly wrong.
-
-Fixed twice over, at the source and at the type. `decode_reg` now refuses a wrapping pair outright
-(`Error::RegionOverflow`), because a boot path should be told its memory map is impossible rather
-than work around it. And `end()` saturates, because `Region` is `pub` with `pub` fields and a type
-anyone can construct has to hold on its own. That second argument is not new here;
-`elf::Segment::page_range` already carries it in a comment.
-
-Found by the fuzzer, in about ten minutes from a cold corpus, starting from a mutated copy of the
-committed `qemu-aarch64-virt.dtb`. Nobody had thought to look at `end()`.
-
-### 3. `nifefs::write_image` accepted a name it could not store
-
-A name containing a NUL byte was written into the entry's NUL-padded name field, where every reader
-stops at the first NUL. So `"a\0b"` was written and read back as `"a"`, and `read("a\0b")` answered
-`None`: data written, not readable, nothing panicking, no test noticing. Two names agreeing up to
-their first NUL become one entry, which is exactly the collision the `NameTooLong` refusal was
-introduced to stop on 2026-08-01. That fix missed this case because nobody thought to write a name
-with a NUL in it.
-
-Fixed with `Error::NameHasNul`, the same shape as `NameTooLong`.
-
-Found by `nifefs_roundtrip` in under a minute, minimal input `[("\0", [])]`. No totality proof
-could have found it, because nothing panicked: it is a *property* violation, and the property had
-never been written down.
+The crate and type were named `dtb` and `Dtb` when the first two were found; they are
+`device_tree_blob` and `DeviceTreeBlob` since 2026-09-18.
 
 ## The CI job, and its budget
 
-`script/fuzz --time 60`, all four targets, in a job of its own on its own runner. Two decisions
-worth defending.
+`script/fuzz --time 60`, every target `script/fuzz --list` names, in a job of its own on its own
+runner. Two decisions worth defending.
 
 Why a time budget at all. Fuzzing has no completion condition. A proof discharges or it does not;
 a fuzzer runs until you stop it. So it cannot be a step inside a gate somebody waits on, because the
 only knob is how long the wait is, and every second of it is paid by every commit forever. `ci.yml`
 already has `cpu-matrix` as precedent for "its own runner, not a slower gate".
 
-Why sixty seconds. Measured rather than felt. Ten minutes on each target, on the developer machine
-(Apple Silicon, and busy with another lane's QEMU for part of it):
+Why sixty seconds: measured on a developer machine, the slowest target runs about 19,000 inputs a
+second, so a minute buys at least a million inputs per target from a corpus already past every
+magic-number check. But the sweep is shallow. With both `device_tree_blob` fixes reverted, sixty
+seconds from the committed seeds found nothing, and fifteen minutes found the overflow after 13.1
+million executions. What keeps those bugs from coming back is
+`crates/device_tree_blob/tests/hostile.rs`, which runs on every `script/test`: the fuzzer finds
+things once, and a host test holds them forever. The measurements are in
+[fuzzing/ci-budget.md](fuzzing/ci-budget.md).
 
-| Target | Executions in 600s | Per second |
-|---|---:|---:|
-| `dtb_walk` | 11,702,017 | 19,470 |
-| `elf_parse` | 269,592,178 | 448,572 |
-| `gpt_table` | 14,532,550 | 24,180 |
-| `nifefs_roundtrip` | 21,469,277 | 35,722 |
-| **total** | **317,296,022** | |
-
-The targets were named `gpt_table` and `dtb_walk` when this table was measured; they have been
-`globally_unique_identifier_partition_table` and `device_tree_blob_walk` since calef's 2026-09-19
-ruling that a fuzz target follows the crate it fuzzes. The rows keep the names the run printed.
-
-The spread is the shape of each parser rather than noise: `elf_parse` rejects most inputs in its first
-fifteen lines and returns, while `device_tree_blob_walk` runs seven full walks over a blob for every
-input it accepts. The slowest target is the floor, so a minute buys at least a million inputs on
-every target, and four to six million per CI run, from a corpus already past every magic-number
-check. CI's runner is a different machine; the order of magnitude is what the budget is chosen
-against.
-
-What the CI budget actually does, measured the way CI does it, from a deleted corpus so nothing
-carries over:
-
-```
-$ rm -rf fuzz/corpus fuzz/artifacts && script/fuzz --time 60
-dtb_walk               1,495,284 execs    24,512/s
-elf_parse             51,234,895 execs   839,916/s
-gpt_table              1,548,246 execs    25,381/s
-nifefs_roundtrip    1,763,965 execs    28,917/s
-==> fuzz: no crashes in 4 targets at 60s each
-```
-
-And it is weaker than that number makes it sound, which is worth knowing before anyone leans on
-it. The draft of this paragraph claimed the job would now catch `Region::end`'s overflow immediately
-from the seeds. That was a guess, so it got tested: both `dtb` fixes were reverted and
-`script/fuzz --time 60 dtb_walk` run from a deleted corpus. It found nothing. Reverted the same
-way with a fifteen-minute budget, it found the panic after 13,124,546 executions, about ten
-minutes, which is the same order as the original discovery.
-
-So the sixty-second job is a sweep, not a guarantee, and a bug of this depth is outside it. **What
-actually keeps these two bugs from coming back is `crates/device_tree_blob/tests/hostile.rs`**,
-which runs in milliseconds on every `script/test` on both ISAs. That is the division of labor: the
-fuzzer finds things once, and a host test holds them forever. A CI fuzz job that had to catch every
-regression it ever found would need a budget nobody would pay.
-
-**What the job is for, so it is not mistaken for something else: it is a shallow sweep, not a search
-and not a guarantee.** A minute per target from the committed seeds re-covers the ground those seeds
+What the job is for, so it is not mistaken for something else: it is a shallow sweep, not a search
+and not a guarantee. A minute per target from the committed seeds re-covers the ground those seeds
 reach quickly, which is where a change that breaks a parser outright will show. Finding something
 genuinely new is a long run on a developer's machine, and that is deliberately not automated. A
 nightly job that finds a crash at 4am with no persisted corpus produces an artifact nobody can
@@ -239,7 +130,8 @@ reproduce and an alert nobody dispositions, which is DECISIONS §35's wallpaper 
 
 **The corpus is not cached between CI runs, on purpose.** Caching it would make a run's coverage
 depend on which runs came before it, so a red run could not be reproduced from the repository alone.
-Every run starts from exactly the committed seeds, which is the same starting point a developer gets.
+Every run starts from exactly the committed seeds, which is the same starting point a developer
+gets.
 
 ## Corpus discipline
 
@@ -248,41 +140,28 @@ Three kinds of input, and they are kept apart because they have different reason
 Seeds are committed, and they are read-only. A fuzzer starting from `[]` spends its first
 minutes rediscovering that a device tree begins `d0 0d fe ed`. With a sixty-second budget it would
 never get past the magic check. But `fuzz/seeds/` holds one small ELF per machine and nothing else,
-because the seeds this project needs already exist in the tree:
+because the seeds this project needs already exist in the tree.
 `crates/device_tree_blob/tests/fixtures/` holds three real device trees dumped from the boards we
 boot, and `crates/globally_unique_identifier_partition_table/tests/fixtures/` holds two real disks
 formatted by `sgdisk` and by Apple's Disk Utility. `script/fuzz` passes those directories to
 libFuzzer as extra corpus arguments. Copying them under `fuzz/` would create a second copy that can
 drift from the first.
 
-The exception is `fuzz/seeds/elf_parse/minimal_rx_<machine>.elf`, 120 bytes each, because nothing else
-in the tree is a small ELF (our real binaries are over a megabyte). They are hand-assembled, and
-[fuzz/seeds/README.md](../fuzz/seeds/README.md) carries the generator that produces them.
+The exception is `fuzz/seeds/elf_parse/minimal_rx_<machine>.elf`, 120 bytes each, because nothing
+else in the tree is a small ELF (our real binaries are over a megabyte). They are hand-assembled,
+and [fuzz/seeds/README.md](../fuzz/seeds/README.md) carries the generator that produces them.
 
-There are three of them, one per machine nife runs, and that is milestone 288's repair. `elf`
-picks the `e_machine` it accepts at compile time, so a seed carries a machine or it carries nothing
-useful. There was one seed, `EM_AARCH64`, under a note saying a riscv64 build would reject it; an
-x86_64 build rejects it too, which nobody wrote down because `x86_64` became a target after that
-sentence was written. On an x86_64 host the corpus really was empty. The two seeds a given build
-refuses cost that build's fuzzer one rejected input each, which is the cheapest form this can take.
-
-**A seed that stops parsing is not a seed, and nothing about a fuzz run would say so.** The target
-returns immediately on anything the parser rejects, so a corpus of rejected inputs reports the same
-"no crashes" a working one does. `crates/elf/tests/fuzz_seed.rs` holds the seed for this build to
-actually parsing, and holds the directory to carrying a seed for every machine in
-`elf::KNOWN_MACHINES`, so a fourth architecture with no seed fails on whatever host adds it rather
-than on the first machine that tries to fuzz there. The other three targets seed from fixtures that
-already have tests.
-
-The seed's effect, measured from an empty corpus: `elf_parse` starts at `cov: 65` on its very first
-execution and is at 90 edges by input 256. Without it, that first execution is a four-byte magic check
-and nothing else.
+There is one per machine nife runs, because `elf` picks the `e_machine` it accepts at compile time;
+`crates/elf/tests/fuzz_seed.rs` holds each build's seed to actually parsing and the directory to
+carrying one for every machine in `elf::KNOWN_MACHINES`. A seed that stops parsing is not a seed,
+and a fuzz run would not say so. Why, and the seed's measured effect, are in
+[fuzzing/elf-seeds.md](fuzzing/elf-seeds.md).
 
 **Dictionaries are committed** (`fuzz/dictionaries/*.dict`), and they are the cheap half of a
 grammar. A device tree's structure block is a stream of 32-bit tokens; a fuzzer that has to discover
 by bit-flipping that `\x00\x00\x00\x01` opens a node spends its whole budget in the first three
-branches. `crates/globally_unique_identifier_partition_table`'s dictionary deliberately does *not* try to help with the CRC-32, which is
-what the seeds are for.
+branches. `crates/globally_unique_identifier_partition_table`'s dictionary deliberately does *not*
+try to help with the CRC-32, which is what the seeds are for.
 
 **The working corpus is not committed** (`fuzz/corpus/`, gitignored). libFuzzer writes every input
 that reaches a new edge, so minutes leave thousands of files and hours leave hundreds of megabytes.
@@ -300,7 +179,7 @@ worth more than a 7,642-byte artifact named after its SHA-1.
 Run everything, the way CI does:
 
 ```sh
-script/fuzz                     # four targets, 60 seconds each
+script/fuzz                     # every target, 60 seconds each
 ```
 
 See what the targets are:
@@ -309,7 +188,7 @@ See what the targets are:
 script/fuzz --list
 ```
 
-**Hunt properly, on a machine you are not using:**
+Hunt properly, on a machine you are not using:
 
 ```sh
 script/fuzz --time 3600 device_tree_blob_walk   # one hour on one target
@@ -373,8 +252,8 @@ doing.
 ## BUGS
 
 **Ten minutes of fuzzing did not find the `node_reg` bug, and a reader did.** This is the most
-important limitation on this page, because it is the one that contradicts what a fuzzer is assumed to
-do. Reaching that panic needs a device tree seventeen levels deep whose *only* prefix match is at
+important limitation on this page, because it is the one that contradicts what a fuzzer is assumed
+to do. Reaching that panic needs a device tree seventeen levels deep whose *only* prefix match is at
 the bottom, and the seed corpus is real device trees, which are three deep. A mutational fuzzer
 explores outward from what it has; deep recursive structure is what it is worst at synthesizing. A
 grammar-based generator (`arbitrary`-derived structure that emits well-formed trees) would reach it,
@@ -407,8 +286,8 @@ how deep a device tree can be, which is a behavioral wart rather than a bug: `no
 per-depth state, so it has nothing to overflow. Nothing in the tree nests past 4.
 
 Sanitizers are on and buy very little here. The default is AddressSanitizer, and the four crates
-under test contain no `unsafe`. It costs throughput and catches nothing these targets can produce;
-it stays on because it costs nothing to leave a default alone, and because the first `unsafe` to
+under test contain no `unsafe`. It costs throughput and catches nothing these targets can produce.
+It stays on because it costs nothing to leave a default alone, and because the first `unsafe` to
 appear in one of these crates would be the one that needs it. The checks actually doing the work are
 `debug-assertions` and `overflow-checks`, set in `fuzz/Cargo.toml`'s release profile, which is what
 turned bug 2 from a silent wrap into a crash.

@@ -39,7 +39,7 @@ first three data points.
 **The VisionFive 2 reading is void, not merely outdated.** `notes/visionfive2.md`'s fifth bench stop
 (2026-08-15, the day *before* this milestone was minted) overturned it with five independent
 identifications: the dumps the fourth stop read as a stranded receiver were the terminal state of a
-*completed* boot tour. `notes/scheduler.md:70` records the consequence plainly: the wake-refusal gate
+*completed* boot tour. `notes/scheduler.md` ("The undelivered-wake gate") records the consequence plainly: the wake-refusal gate
 built against this reading "has never fired on a field failure," and `refuse:` has never appeared on
 a board ring. It is hardening against a reachable state, proved by a loom harness, not a repair of an
 observed one. There was no silicon-only, QEMU-invisible defect here. It never happened, and treating

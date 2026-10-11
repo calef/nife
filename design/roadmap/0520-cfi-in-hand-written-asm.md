@@ -128,7 +128,8 @@ riscv64's `_start` carries the identical Linux Image header shape and gets the i
 
 Captured with GDB 17.2 against two builds of the identical source tree -- commit `ece6d72c`
 (immediately before this milestone) and this branch's tip -- on aarch64, the only architecture
-`cargo xtask gdb` currently drives. Full transcripts in `notes/cfi-unwind.md`.
+`cargo xtask gdb` currently drives. Full transcripts were in `notes/cfi-unwind.md`. (Corrected
+2026-10-11 UTC: #1937 moves them to the note's appendix "Before and after: the GDB transcripts".)
 
 Before, breaking on `switch_to` and asking for a backtrace: GDB's own frame-pointer fallback
 (there was no CFI at all to consult, the compiler's included, because of the discard line above)
@@ -169,8 +170,10 @@ transcripts above, not the gate.
   CFI (a few hundred bytes to ~30 KiB depending on the build) rides into guest RAM harmlessly. If
   either port grows a real flat-image path this is the thing to revisit.
 - `cargo xtask gdb` is aarch64-only, so the live-GDB evidence above is aarch64-only too. x86_64's
-  and riscv64's CFI is built and inspected with `llvm-objdump --dwarf=frames` (notes/cfi-unwind.md
-  has the FDE listings) but not exercised against a live GDB session in this pass.
+  and riscv64's CFI is built and inspected with `llvm-objdump --dwarf=frames` but not exercised
+  against a live GDB session in this pass. (Corrected 2026-10-11 UTC: this bullet said
+  `notes/cfi-unwind.md` has the FDE listings. No version of that note ever held them; its BUGS
+  section says the inspection is recorded in this milestone's pull request.)
 - The gate is a presence check, at file granularity, stated above and repeated here because it
   is the kind of limit that is easy to forget once the check is green: it cannot confirm every
   function in a multi-function file has its own directives, or that an offset is right rather than

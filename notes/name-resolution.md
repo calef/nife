@@ -232,8 +232,8 @@ hands it to `name_resolver`. It then grants the package client's badge its packa
   ports with its own rotating allocator, not the generator. That is a finding about
   `net_stack` beyond this milestone, proposed in
   `design/roadmap/0783-net-stack-seeds-its-generator-from-entropy.md`.
-- `notes/fuzzing.md`'s table does not list `domain_name_system_reply`, as it does not list the
-  service targets. Adding a row obliges that note to shed 47 bold spans under the prose ratchet,
-  which is its own piece of work.
+- Resolved 2026-10-11 (UTC): `notes/fuzzing.md`'s table now lists `domain_name_system_reply`, and
+  its opening points at `notes/fuzzing-the-services.md` for the service targets. The row waited for
+  that note's split under §212 (a prose budget), which shed the bold the prose ratchet asked for.
 
 Name: provisional 2026-10-04 (milestone 384's lane). Retitled 2026-10-06 when the resolver was built.

@@ -18,7 +18,8 @@ transport seam and the shadow-ring validator were queue-0-only. Piece 1 grew the
 (N = 2 today, fixed and asserted) under the same confinement discipline, so the driver work sits on
 proved ground rather than a NIC forcing a retrofit.
 
-The mechanics are in notes/dma.md ("Multiple queues, and the receive direction") and DECISIONS §23.
+The mechanics are in notes/dma/directions.md ("Multiple queues, and the receive direction") and
+DECISIONS §23.
 The short version:
 
 - `setup_queue(id, num, queue)` and `notify(id, queue)` take a queue number; the `Virtio`

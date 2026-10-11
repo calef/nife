@@ -1,7 +1,8 @@
 # Counted claims: a number in the prose is a claim, and a gate can keep it
 
-*The name `counted-claims.md`, and the phrase "counted claim" it introduces, are **provisional**.
-A lane ships a provisional name and says so; naming is an architect's (AGENTS.md).*
+*The name `counted-claims.md`, and the phrase "counted claim" it introduces, are provisional.
+A lane ships a provisional name and says so; naming is an architect's (AGENTS.md). The evidence
+this page has no room for is in [`counted-claims/`](counted-claims/README.md).*
 
 DECISIONS §39 says a name is a claim, made before a reader sees a line of code. So is a number, and
 a number is the kind of claim a machine can check. That difference is the whole of this convention:
@@ -68,7 +69,7 @@ answers, in the prose's own words, and a derivation.
 
 The last four arrived with the 2026-08-17 documentation sweep, whose lens was the ABI. `syscalls`
 exists because the ABI crate's own front page, the kernel's syscall module, an `Error` variant's
-description and two notes all said the surface was **three calls; `SYS_CAP_DELETE` had landed
+description and two notes all said the surface was three calls; `SYS_CAP_DELETE` had landed
 three weeks earlier and moved none of them. `rights-bits` exists because `ENUMERATE` made the rights
 four and `notes/capability-lifecycle.md` still said three the next day. The `loom-*` pair is the one
 this note asked for by name: it cited `notes/interleaving.md` as the claim a marker could never
@@ -108,8 +109,8 @@ $ grep -rc '#\[kani::proof' --include='*.rs' crates | awk -F: '{s+=$2} END {prin
 119
 ```
 
-The gap between 123 and 119 is the whole reason for this step: two of the four are in the vendored
-RedoxFS, which this suite has never proved, and two are inside doc comments in
+The gap between 123 and 119 is the whole reason for this step. Two of the four are in the vendored
+RedoxFS, which this suite has never proved. Two are inside doc comments in
 `helpers/kani-lint-shim/` that describe the attribute rather than use it. A derivation that counted
 them would be confidently wrong, in the direction nobody checks.
 
@@ -152,31 +153,17 @@ the wrong question. See notes/counted-claims.md.
 
 ### What it found on its first runs
 
-Two things, and the second one caught the gate's own author.
-
-The `harness-crates` derivation reads the tree, and `script/verify` reads a hand-kept table of crates
-to prove. They disagreed by one: **`multicast_dns_protocol` landed with milestone 55 carrying three harnesses and
-was never added to that table**, so nothing proved them and nothing said so. The suite went green
-*faster*, which `notes/verification.md` already names as the dangerous failure mode; it simply arrived
-through the crate list rather than through the shard packer that note was worried about.
-
-That is the argument for deriving rather than maintaining, made by the mechanism on the day it was
-built. The row was added; the omission is recorded in `script/verify`'s comment where the next person
-to edit that table will read it.
-
-Then, documenting this very check in `notes/scripts.md`'s `script/lint` table row, the addition took
-that row from 1835 bytes to 2108 and overflowed `documentation::render::LINE_MAX`, which is 2048 because
-1835 was the measurement it was sized against. The renderer truncated, and the failure arrived as a
-`manual` render test asserting that no character is dropped, quoting text three hundred lines further
-down the file. Nothing connected the two. `longest-markdown-line` is in the registry because of that
-half hour: the number was in a doc comment, it was load-bearing, and nothing re-derived it.
+Two things, recorded in [`first-runs.md`](counted-claims/first-runs.md). The `harness-crates`
+derivation disagreed with `script/verify`'s hand-kept table by one: `multicast_dns_protocol` had
+never been added, so its three harnesses were never proved. And documenting the check overflowed
+`documentation::render::LINE_MAX`, which is why `longest-markdown-line` is in the registry.
 
 ## What this is not
 
 **It is a ratchet, not a sweep.** An unmarked number stays unchecked. The population grows as people
 touch numbers, not in one pass, and there is deliberately no attempt at tree-wide markup.
 
-The posture is `script/names --check`'s, which is the closest relative in the tree: that gate insists
+The posture is `script/names --check`'s, which is the closest relative in the tree. That gate insists
 a name carry a provenance *state* and never that the state be `ratified`, because a gate demanding
 ratification would block every unrelated merge behind a review queue. The same restraint here.
 **Insist a marked number be right; never insist that every number be marked.**
@@ -217,7 +204,7 @@ Reading what each site actually claimed split them cleanly, and that is the reus
 
 For a monotonically growing quantity, a floor is the true claim and an exact equality is a
 maintenance tax that buys nothing. "Over 100 harnesses" is what those two sentences were really
-asserting; the exact figure was incidental to the point they were making, and it cost a four-file
+asserting. The exact figure was incidental to the point they were making, and it cost a four-file
 edit every time somebody proved something new.
 
 The ratchet is intact, which is the only test that matters. A floor that goes false still fails
@@ -225,58 +212,18 @@ the build, and going false means harnesses were deleted, which is precisely the 
 catching and the one an equality check was drowning in noise. Rounded to 100 it will not move for
 months, and when it does, moving it is a deliberate act rather than bookkeeping.
 
-### The ceiling, which is the floor read upside down (milestone 134, 2026-08-18)
+### The ceiling, which is the floor read upside down
 
-The floor suits a quantity where more is better and the bad event is a deletion. Some quantities
-are the other way up, and unsafe is this tree's clearest one: nobody wants more of it, every
-addition should carry a reason, and the bad event is an upward drift that no single commit looks
-responsible for. calef asked it as one question, *"is that something we should be monitoring and
-driving in a particular direction over time?"*, and a **direction** is exactly what the other two
-relations cannot express. Equality says "this is the number"; a floor says "at least"; only a
-ceiling says "and it should not grow".
-
-A ceiling is written above the tree, and the headroom is measured rather than guessed. In the
-fourteen days to 2026-08-18, 38 non-merge commits changed the number of `unsafe {` outside
-`kernel/src/arch/`. A ceiling written at the tree's exact value would have fired on all 38 and sent
-every one of them to edit the same line of the same note, which is the merge hotspot this convention
-already manufactured once with `kani-harnesses`. The exception is a population small and
-consequential enough that every addition deserves the stop: `unsafe-thread-safety-claims` is written
-at the tree's exact value, and it moved twice in three weeks rather than 38 times in two.
-
-And the quantity often has to change to make a ceiling honest. The obvious ceiling on unsafe is
-a count of blocks, and it is wrong for a tree that is still being built: outside `arch/` the count
-went 171 to 747 in a month while the density fell from 228 to 93 per 10,000 lines. A count
-ceiling would have fired on almost every lane, which is the signature of a check that gets deleted;
-a density ceiling holds a trend that is already going the right way and stays silent for a lane
-adding a driver at the tree's own rate. Choosing the relation is half the work and choosing the
-quantity is the other half.
-
-**A third ceiling, `agents-md-lines` (milestone 118, 2026-08-22), and it is written at the tree's
-exact value for the same reason `unsafe-thread-safety-claims` is: every line added to `AGENTS.md`
-deserves the stop.** Milestone 118 measured that file's growth as stepwise rather than diffuse (two
-commits were 61% of thirteen days of growth, each a whole new tenet section) and wanted exactly what
-"the point is it converts 'should I add this rule?' into 'what does this replace?'" describes: not
-headroom to absorb ordinary drift, but a stop on every single addition, forcing a deliberate,
-recorded raise. The marker cannot live in `AGENTS.md` itself: a developer lane may not edit that
-file (AGENTS.md's own naming section), so it lives in `design/roadmap/0118-constitution-budget.md`
-instead, which is where the budget question was raised and is exactly the kind of indirection the
-floor's BUGS entry already names ("a reader who wants the number has to go to" the other file). The
-gate still runs against the real file; only the claim about it moved.
-
-And since 2026-09-24 that ceiling is a ratchet, the one ceiling that fails in both directions.
-Splitting `AGENTS.md` (#1189) took it from 935 lines to 584, and an ordinary ceiling is silent below
-itself, so the old number would have stopped nothing. A name in `script/lint`'s `RATCHET_CEILINGS`
-also fails when the tree falls below the claim, and the only fix is to lower the claim. It stays in
-the marker rather than a separate baseline file, because the marker already is the baseline.
-Retired 2026-10-06 (UTC) by calef's "drop 118's limit and rely on §212's cap", per §212 (a prose budget);
-`RATCHET_CEILINGS` is now empty.
-
-**Deliberately not built: an auto-fix.** A `--fix` that rewrote marked numbers was considered and
-refused. This gate's failure message offers two responses, and they are not equally likely to be
-right: *fix the number*, or *fix the derivation if the tree is right and the gate is asking the
-wrong question*. An auto-fix biases every disagreement toward the first, and the second is where the
-real bugs are; the `multicast_dns_protocol` shard hole was found exactly that way. With two exact sites left,
-hand-editing is cheap and thinking is the point.
+The floor suits a quantity where more is better. Unsafe is the other way up: the bad event is an
+upward drift no single commit looks responsible for, and only a ceiling says "and it should not
+grow". A ceiling is written above the tree, with headroom measured rather than guessed, unless the
+population is small and consequential enough that every addition deserves the stop. Choosing the
+quantity matters as much as the relation: a count of unsafe blocks would fire on almost every lane,
+while a density holds a trend that is already falling. An auto-fix that rewrote marked numbers was
+refused, because it biases every disagreement toward "fix the number" when the real bugs are where
+the derivation is wrong. [`the-ceiling.md`](counted-claims/the-ceiling.md) has the measurements,
+the `agents-md-lines` ceiling that became a two-way ratchet and was retired on 2026-10-06, and the
+refusal in full.
 
 ## BUGS
 
@@ -300,7 +247,7 @@ hand-editing is cheap and thinking is the point.
   `crates/` until milestone 212 (`script/falsifications` walks `crates/` only, so the ratio it prints
   is not the tree's), with a docstring giving the reason as "the kernel, the user programs and xtask
   are not packages it compiles". Milestones 193 (put `kernel/src` within reach of the prover) and 197
-  (`user/` and `xtask` are out of reach of the prover) made that false a milestone later, and every
+  (`user/` and `xtask` are out of reach of the prover) made that false a milestone later. Every
   marker stayed green throughout, because a derivation that is wrong in the same way everywhere
   agrees with itself. The question sentence in the registry is the only thing that catches this,
   and only when somebody reads it against the tree.
@@ -321,7 +268,7 @@ hand-editing is cheap and thinking is the point.
   convention the way a note's can.
 
 - Only fenced blocks and backtick spans are exempt. A marker inside a fence, or inside inline
-  code, is being shown rather than asserted, and the gate skips it: prose explaining the convention
+  code, is being shown rather than asserted, and the gate skips it. Prose explaining the convention
   has to be able to spell it, the same exemption `script/lint`'s rejected-vocabulary check makes for the
   documents that argue about the word. A marker inside a four-space indented code block is *not*
   recognized and will be checked as a live claim. Write examples in fences.
@@ -331,8 +278,8 @@ hand-editing is cheap and thinking is the point.
   really a line-wrapping accident. Reflow the paragraph so the two sit together.
 
 - A count spelled in words is read, but only a small one, and never a composed one. The marker
-  took digits only until the 2026-08-17 documentation sweep, which needed words: the claim it went to
-  gate was "the surface is three calls", and a small count in prose about a design is written as a
+  took digits only until the 2026-08-17 documentation sweep, which needed words. The claim it went to
+  gate was "the surface is three calls". A small count in prose about a design is written as a
   word far more often than as a numeral. Cardinals up to `twenty`, plus the round tens and
   `hundred`, are understood; **`twenty-one` is not**, and a marker on one fails with "no number
   before it" rather than passing. That is deliberate rather than unfinished. A count large enough to

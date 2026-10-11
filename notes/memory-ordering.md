@@ -1,51 +1,34 @@
 # Memory ordering, and the fences with no partner
 
-Milestone 116. CLAUDE.md's fourth rule is *assume weak memory ordering*, and this is the inventory
+Milestone 116 (the fences with no partner). CLAUDE.md's fourth rule is *assume weak memory
+ordering*, and this is the inventory
 that says where in the tree that rule is being relied on, who is relying on it, and which
 sites were trusting something that is not there.
 
 A release fence with no matching acquire orders nothing while reading as though it does. That is
 worse than an absent fence, because the fence is the comment: a reader who meets
 `fence(Ordering::Release)` stops asking the question. The mistake was found twice on 2026-08-04 by
-two methods that share nothing, milestone 80's loom harness on the clock page's seqlock and
-milestone 43's audit on the compositor, and no gate in the tree could see either one.
+two methods that share nothing, and no gate in the tree could see either one. One was the loom
+harness of milestone 80 (loom), on the clock page's seqlock. The other was the audit of
+milestone 43 (a second security audit), on the compositor.
 
 This note does three things. It counts the population honestly. It adjudicates every site into a
 bug, a soundness argument, or dead code. And it answers, with a measurement rather than an opinion,
-whether pairing can be checked mechanically.
+whether pairing can be checked mechanically. The evidence it has no room for is in
+[`memory-ordering/`](memory-ordering/README.md).
 
-## The count, and how it was taken
+## The count
 
-From the merged tree, outside test code:
+At milestone 116's count the tree held 306 `Ordering::*` sites outside test code. Of those, 243
+were `Relaxed` and 63 carried acquire or release semantics. There were 13 `fence` call sites and one
+`compiler_fence`, across 45 files. A line-oriented grep gets this wrong, because `rustfmt` splits a
+call across lines and prose says "Release" constantly. [`the-count.md`](memory-ordering/the-count.md)
+has the full table and the method, including the test-code exclusion that once hid a live fence.
 
-| | |
-|---|---|
-| `Ordering::*` occurrences, total | **504** |
-| ... in test code | 198 |
-| ... outside test code | **306** |
-| ... of those, `Relaxed` | 243 |
-| ... of those, carrying acquire or release semantics | **63** (27 `Acquire`, 22 `Release`, 14 `SeqCst`) |
-| `fence` call sites outside test code | **13** (11 at the 2026-09-0x count, plus milestone 243's two in `drivers/ramfb.rs`) |
-| `compiler_fence` call sites outside test code | **1** |
-| Files holding at least one non-test site | 45 |
-
-Two things about that count are worth more than the number.
-
-The first is that a line-oriented grep gets it wrong, which CLAUDE.md already warns about from the
-`#[path]` module count. `rustfmt` splits a long `compare_exchange` across five lines, so the ordering
-argument and the atomic it belongs to are rarely on the same line. The scan behind this table blanks
-out comments and string literals, then walks backwards from each `Ordering::` to the open paren of
-the call that contains it, so a multi-line call is attributed to the right atomic. Checking the
-pattern against the real shapes first is the part that matters: prose in this tree says "Release" and
-"Acquire" constantly (`kernel/src/sync.rs`'s header, `redoxfs_server`'s "Release a handle") and a naive
-grep counts every one of them.
-
-The second is that the test-code exclusion is where the first version of this scan was wrong, and it
-was wrong in the direction that hides things. The kernel's tests are separate files pulled in with
-`#[cfg(test)] mod disk_tests;`, which has no brace, so a scan that looked for the next `{` after the
-attribute swallowed the following 400 lines of live kernel and quietly classified a real fence in
-`kernel/src/user.rs` as test code. An attribute followed by a semicolon before any brace marks a
-whole file, not a region. Both forms exist in this tree and a scan has to know the difference.
+These counts have drifted. On 2026-09-29 `script/lint` counted 19 fences, against the 13, "all
+fourteen" and "twelve" this note says in three places. Milestone 622 (the fence inventory is
+re-adjudicated) re-derives the count and adjudicates the fences added since; until it lands, take
+the number from `script/lint` and not from here.
 
 ## Where this kernel's ordering actually lives, which is mostly not here
 
@@ -116,8 +99,8 @@ may take the new sequence beside the previous frame's rectangle. There is no ren
 the compositor to fall back on.
 
 Every other producer in that subsystem is covered by its own `CALL` or by the reply it is about to
-send, including the keystroke path in `display_terminal`, where `ring` is deliberately false and it
-looks at first reading as though nothing follows. Something does: the compositor is blocked in a
+send. That includes the keystroke path in `display_terminal`, where `ring` is deliberately false and
+it looks at first reading as though nothing follows. Something does: the compositor is blocked in a
 `CALL` *to* the terminal, and the terminal's reply is the edge.
 
 So milestone 43's two acquire fences are the right fix, and the reason they are needed is the shared
@@ -149,95 +132,34 @@ would try to reconcile three against four.
 | Benchmark start barrier | `kernel/src/bench.rs` `TP_GO` | Release store, acquire spin. Paired. The `SeqCst` reset is over-strong and has no reader yet, so it orders nothing and costs nothing |
 | Secret wipe | `crates/credential_protocol` | `compiler_fence`, no cross-core meaning, no partner wanted |
 
-### The two sites that are sound for a reason that was not written down
-
-`HWID` in `kernel/src/smp.rs` is read with `Acquire` and written with `Relaxed`. An acquire whose
-release does not exist, which is this milestone's bug class in mirror image. It is sound: nothing is
-published behind `HWID`, the publication flag for the whole roster is `ROSTER`, and a caller reaches
-a valid slot index only by having read `ROSTER` with an acquire first. The acquire on `HWID` is
-decorative. The tell is that the same array is read with `Relaxed` thirty lines further down, so the
-file already disagrees with itself about whether that ordering means anything. Left as it is,
-because this milestone changes no ordering that is not shown wrong, and an unnecessary `Acquire`
-removed is still an ordering change with no argument behind it.
-
-`components/src/compositor.rs`'s `publish` had a comment that was wrong, and this is the one place the
-inventory corrected the record rather than the code. It writes six control-page fields with plain
-`write_volatile` and then writes `MAGIC` last, under a comment saying "the store order is what makes
-the check mean anything". It is not. `write_volatile` guarantees that the access happens and
-guarantees no ordering at all; on aarch64 the interconnect may make `MAGIC` visible before the fields
-above it. What makes the check sound is that `publish` runs once, before the serve loop, so no
-client's `HELLO` can be answered until every page is written. Both client programs say exactly that
-at their end and this end did not, which is the same one-sided shape as a fence: the argument
-existed and lived somewhere the reader was not. The comment now carries it, and says what would have
-to change if `publish` were ever called again while clients run.
-
-### The window list, which no reader has yet
-
-`publish` writes `wlist::COUNT`, then `FOCUSED`, then the per-window `RECORDS`. If `COUNT` were ever
-used as the publication flag for the records it counts, that order is backwards. It is not used
-that way today, because nothing in the tree reads `RECORDS` at all: `fixtures/src/window.rs` reads
-`COUNT` and `FOCUSED` and reports them, and the kernel reads `FOCUSED`. Recorded here rather than
-fixed, because the first reader of `RECORDS` is the change that makes it matter and that reader
-should meet this paragraph.
-
-### Relaxed, and the one question worth asking of it
-
-The 243 `Relaxed` sites were not adjudicated individually; the brief scoped this milestone to the
-sites that carry ordering. One sub-question was worth asking anyway, because a relaxed
-compare-exchange used as a claim is the classic form of this bug: fifteen compare-exchange sites
-outside test code, and at twelve of them the `Relaxed` is the failure ordering, which is
-conventional and right. The three that are relaxed on success publish nothing behind the value:
-`kernel/src/sched.rs`'s thread-budget reservation, `kernel/src/pci.rs`'s BAR cursor, and the
-interrupt-routing lottery in `kernel/src/arch/*/irq.rs`, where the loser of the race reads the
-winner's answer out of the compare-exchange's own failure return. In all three the value is the
-whole protocol.
+Four sites deserve more than a row, and
+[`the-atomics-in-detail.md`](memory-ordering/the-atomics-in-detail.md) has each. `HWID` in
+`kernel/src/smp.rs` is an acquire with no release, sound because nothing is published behind it,
+and left alone. The compositor's `publish` had a comment crediting store order with what only its
+run-once placement guarantees; the comment was corrected, not the code. The window list's write
+order is backwards for a reader that does not exist yet. And of fifteen compare-exchanges, the three
+relaxed on success publish nothing behind the value.
 
 ## Can pairing be checked mechanically? Measured, not argued
 
-Broadly, no. The obvious check is per variable: for every atomic touched with `Acquire`, require
-a `Release` somewhere on the same atomic. It was built and run against the tree before this note was
-written, and here is what it did on a population of 63:
+Broadly, no. A per-variable check (every `Acquire` needs a `Release` on the same atomic) was built
+and run on the 63 sites. It raised seven flags, six on correct code, including the best pair in the
+tree, and missed `HWID`, the one genuine finding. A check that fires on the exemplary case and stays
+quiet on the defective one is an anti-check. The reason is structural: the partner is often an IPC
+rendezvous inside `spin::Mutex`, the halves live in different programs, and the defect is an
+absence with no token to match. [`checking-pairing.md`](memory-ordering/checking-pairing.md) has the
+measurement.
 
-Seven flags, six of them correct code. It flagged all five spin locks, because a lock pairs a
-compare-exchange with a store and the receiver expression (`self.0.locked`, `REG.locked`) is not a
-stable identifier. It flagged the `USER_FAULTS` protocol on both ISAs, which is the *best* pair in
-the tree, because its acquire side is a `fence` and not a load on that variable. It missed `HWID`,
-the one genuine finding, because `HWID.get(id)?.load(...)` does not textually name the same thing
-`HWID[i].store(...)` does. A check that fires on the exemplary case and stays quiet on the defective
-one is not a weak check, it is an anti-check, and shipping it would have taught every future reader
-to add an allow-list entry without looking.
-
-That is the measurement. The reason underneath it is structural and does not improve with effort:
-
-- The partner is frequently not an ordering primitive at all. For most of this tree it is a
-  blocking IPC rendezvous whose happens-before edge lives in `spin::Mutex`, in a dependency. No AST
-  in this repository contains it.
-- The two halves are in different programs, often different crates, sometimes different languages
-  (`fixtures/c/c_seam.c`). Cross-binary dataflow.
-- The defect is an absence. Finding 7 was a reader with no fence anywhere. There is no token to
-  match on, which is why a grep-shaped tool cannot find the exact bug this milestone is named for.
-
-**Narrowly, yes, and it is worth having.** Milestone 112 faced the same question about SAFETY
-comments and shipped a narrow check that is true plus a recorded limitation, rather than a broad one
-that only looks like a gate. Same posture here:
+Narrowly, yes, and it is worth having. Same posture as the SAFETY check of milestone 112 (the SAFETY
+comments that bind nobody):
 
 > **Every `fence` outside test code must carry a `PAIR:` comment naming where its other half is.**
 
 `script/lint` enforces it, over the contiguous comment block immediately above the fence, which is
-where `SAFETY:` already lives. Twelve sites today.
-
-**It checks the bookkeeping, not the ordering, and that limitation is the design.** What it buys is
-the forcing function. An author made to write down where the partner lives has to go and look for it,
-and looking is precisely the step neither of the two authors on 2026-08-04 took: both wrote a fence,
-both wrote a true comment about what their own side does, and neither opened the other file. Writing
-`PAIR: serve_frame in components/src/compositor.rs` requires opening `serve_frame`, at which point the
-absence is visible. Four of the twelve markers in this tree changed what their author believed while
-being written.
-
-**Fences only, not all 63 ordered atomics**, and the line is principled rather than a budget. A
-`Release` store names its variable, so its partner is one grep away and a reader can find it unaided.
-`fence()` names nothing at all. It is the one construct in the language whose meaning is entirely
-about code somewhere else, which makes it the site where the partner has to be written by hand.
+where `SAFETY:` already lives. It checks the bookkeeping, not the ordering, and that limitation is
+the design. What it buys is the forcing function: writing the marker means opening the other file,
+at which point an absence is visible. It covers fences only, because a `Release` store names its
+variable and `fence()` names nothing at all.
 
 ## What actually wants a loom harness
 
@@ -259,8 +181,8 @@ order, with the reason each earns a harness:
    checked property instead of a pattern someone recognizes.
 
 Not worth one: the spin locks (the lock is both halves), the boot roster (single-shot, single
-writer), `TP_GO` (nothing published behind it), and anything under `arch/`, where rule 1 keeps the
-code and lifting it is a larger question than a harness.
+writer), and `TP_GO` (nothing published behind it). Nor is anything under `arch/`, where rule 1 keeps
+the code and lifting it is a larger question than a harness.
 
 ## EXAMPLES
 
@@ -324,20 +246,20 @@ If there is no matching fence, say what the edge is and name it:
   ever reimplemented, or if `spin` weakened its orderings, roughly half the adjudications in this
   note would need rereading and nothing would fail first. This is the largest unpinned assumption
   here.
-- **The 63-site figure is a count of *syntax*, not of protocols.** Nine protocols cover all of it,
+- The 63-site figure is a count of *syntax*, not of protocols. Nine protocols cover all of it,
   and a tenth could be added tomorrow in `Relaxed` and never appear in this table.
-- **Two of the three findings this note describes are fixed elsewhere.** The clock seqlock's writer
+- Two of the three findings this note describes are fixed elsewhere. The clock seqlock's writer
   fence is milestone 80's, and the compositor's two acquire fences are milestone 43's. This milestone
   changed no ordering at all, which was its scope note and is the honest result: the inventory
   found one wrong comment and one decorative `Acquire`, and no new bug.
-- **`crates/user_mode_runtime`'s spin lock and the interrupt-routing lottery cannot be modeled today**, for
-  the reasons milestone 80 recorded: `user_mode_runtime` is aarch64 inline `asm!` and does not compile for the
+- `crates/user_mode_runtime`'s spin lock and the interrupt-routing lottery cannot be modeled today,
+  for the reasons milestone 80 recorded: `user_mode_runtime` is aarch64 inline `asm!` and does not compile for the
   host, and the lottery lives under `arch/`.
 
 ---
 
-*See `notes/locking.md` for the ranked-lock discipline that makes this population small,
-`notes/deadlock.md` for the other half of that discipline, `notes/interleaving.md` (milestone 80) for
-the loom harnesses that can decide a protocol, `notes/shared-page-audit.md` (milestone 43) for the
-audit whose finding 7 is half of this milestone's motivation, and `notes/compositor.md` for the
+*See `notes/locking.md` for the ranked-lock discipline that makes this population small, and
+`notes/deadlock.md` for the other half of that discipline. `notes/interleaving.md` (milestone 80)
+has the loom harnesses that can decide a protocol. `notes/shared-page-audit.md` (milestone 43) has
+the audit whose finding 7 is half of this milestone's motivation, and `notes/compositor.md` the
 subsystem most of the fences are in.*

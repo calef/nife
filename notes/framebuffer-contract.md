@@ -4,7 +4,7 @@ Milestone 29, rung one of the display ladder. The contract a client speaks to ge
 screen, written down so rung two (the compositor, milestone 33) implements against a contract
 instead of inventing one. The code half is `crates/graphics_protocol`; this is the prose half, the same
 split `notes/fs-server.md` makes for the filesystem and `notes/terminal-contract.md` for the
-terminal.
+terminal. The evidence behind it is in [framebuffer-contract/](framebuffer-contract/README.md).
 
 ## The shape
 
@@ -137,49 +137,14 @@ Two consequences follow, both stated plainly because they matter:
   a virtio-gpu-aware check, and the record should say which was chosen rather than discovering it
   later. Under HVF, likewise: PCIe DMA runs unconfined there by standing default.
 
-### A surprise worth recording: the device's "OK" is not evidence
-
-The first version of the escape test asserted that the device *refused* the command. It did not.
-QEMU's DMA layer answers a translation failure by handing the device a bounce buffer rather than
-failing the mapping, so `RESOURCE_ATTACH_BACKING` returns `OK_NODATA` while the bytes the device
-actually gets are not the victim frame's. The confinement held; only the error reporting did not
-survive the trip.
-
-So the test asserts on the IOMMU's fault queue, which is the hardware's own account, and the
-response code is only printed for the record. A test that had trusted the response code would have
-reported a hole that was not there, and (worse, in the other direction) a test that trusted an `OK`
-as "the device read it" would have reported a read that did not happen.
-
-An earlier iteration also aimed the escape at "the frame just past my region", which was a bad guess:
-the kernel's shadow page is allocated immediately after the DMA region, and that frame is in the
-domain. The kernel now picks the victim frame and hands it to the attacker in `arg2`, the same way
-milestone 16b's confinement test picks its own, because the test has to know the exact address to
-look for in the fault queue.
-
-### A found limit: the RISC-V IOMMU's fault queue overflows silently
-
-Worth its own heading because it will matter more to whoever routes faults to a production handler
-than it did here. The RISC-V IOMMU driver gives the fault queue 128 records
-(`FQ_LOG2 = 7` in `kernel/src/arch/riscv64/iommu.rs`) and never clears the queue's overflow bit.
-So a flood of faults latches the overflow and, from then on, *no further faults are recorded at all*.
-
-This was found the way such things should be: the escape test first attached a 4096-byte backing,
-which produced a flood, and the next test in the suite (milestone 16b (real hardware)'s
-`the_iommu_faults_a_dma_that_escapes_the_domain`) then observed no fault and correctly reported the
-IOMMU as not confining the device. A real regression signal, from a cause two tests away.
-
-Two mitigations, both local to milestone 29 because the driver's overflow handling is not this
-milestone's lane:
-
-- the escape attaches four bytes, so it provokes exactly one translation and one fault, which asks
-  the same security question ("can this device reach an address outside its grant?") without flooding;
-- the test drains the queue when it is done, leaving it as it found it.
-
-What is left for a fault-handling milestone: clear the overflow bit when draining, and decide what a
-production kernel does when a confined device faults at all (today the queue is drained only by tests;
-DECISIONS §20 already records fault routing as future work). aarch64's SMMUv3 event queue has the same
-shape of limit and was not exercised into it here.
-
+Two things the escape test found on the way. The device's "OK" is not evidence: QEMU hands a
+device a bounce buffer on a translation failure, so the command succeeds while the confinement holds.
+The test therefore asserts on the IOMMU's fault queue. And the RISC-V IOMMU's fault queue (128
+records, `FQ_LOG2 = 7`) overflows silently: the driver never clears the overflow bit, so a flood of
+faults stops all later fault recording. The escape now attaches four bytes and drains the queue
+after. Clearing the bit and routing faults is left for a fault-handling milestone (DECISIONS §20
+(IOMMU-backed DMA isolation)).
+Both are in [framebuffer-contract/iommu-escape-test.md](framebuffer-contract/iommu-escape-test.md).
 ## What the test proves, and the one thing it does not
 
 `a_confined_userspace_driver_puts_a_known_pattern_in_a_framebuffer`, one arch-neutral test that runs
@@ -230,143 +195,32 @@ So the pixels are proven all the way to the device, not just to our own frames: 
 witnesses agree about the framebuffer, and the host independently confirms that what QEMU is
 scanning out is the pattern, pixel for pixel, in the right format, at the right geometry.
 
-Three details that make this a real check rather than a comforting one:
-
-- It runs inside the existing test run, not a second boot. The suite is minutes long per ISA, and
-  the pattern stays on the scanout from the display test until QEMU exits, so there is nothing to
-  synchronize with the guest. No extra QEMU, no marker protocol.
-- **The geometry is part of the assertion.** QEMU's console defaults to 640x480 and `SET_SCANOUT`
-  resizes it, so a dump that is 128x64 is itself evidence our scanout rectangle reached the device. A
-  scanout never set fails on size before a single pixel is compared.
-- **The checker has a negative control** (`cargo test -p xtask`): it must reject a black scanout, a
-  red/blue-swapped one (what a wrong virtio-gpu format code produces, and exactly what the in-guest
-  test cannot see), a one-row shift, a single wrong pixel, and the default console size. A checker
-  that accepted anything would report success on every run, which is worse than no check.
-
-Ordering is load-bearing and deliberately fail-loud: the confinement test resets the device (which
-destroys the scanout), so it must run before the pixel test. That is why it is named
-`a_backing_outside_the_grant_is_refused_by_the_iommu` rather than `the_iommu_...`, and the reason is
-in its doc comment. If the order ever changes, no dump matches and the scanout check fails; nothing
-is silently waved through.
-
-Two practical constraints found while building it, recorded so they are not rediscovered: the unix
-socket path must stay under 104 bytes (a worktree checkout plus `target/` gets close, so the socket
-lives in `/tmp` while the PPM goes under `target/`), and `socat` is not installed here, so the monitor
-client is xtask itself over `std::os::unix::net::UnixStream`.
+The check runs inside the existing test run, the 128x64 geometry is part of the assertion, and the
+checker has a negative control that must reject a red/blue swap, a one-row shift and a single wrong
+pixel. Test order is load-bearing: the confinement test resets the device, so it runs first, and a
+changed order fails loudly. Those details and two practical constraints are in
+[framebuffer-contract/scanout-referee.md](framebuffer-contract/scanout-referee.md).
 
 What is still not proven, to be exact about it: that a physical panel would show this. QEMU's
 scanout is the last thing we can observe, and on real hardware there is a display controller past it.
 That is a silicon question (notes/target-hardware.md), not a QEMU one.
 
-### BUGS
+### A false lead, resolved
 
-- **RESOLVED 2026-08-26, in the same lane, a few hours after it was first written below.** The
-  paragraph that follows was written mid-investigation and its conclusion was wrong: there is no
-  QEMU-side resize bug. Root cause was the guest driver, not the host: `components/src/gpu_driver.rs`,
-  `fixtures/src/painter.rs` and `components/src/display_terminal.rs` still looped over per-page capability
-  slots (`SLOT + k` for `k` in `0..N`) that increment one's move to a single run capability
-  (DECISIONS §102) had already removed. The second iteration always failed with `NoSuchSlot`, and
-  the driver called `die()` and exited *before* sending the "UP" report anything downstream was
-  waiting on. Whatever waited on that report hung, the hang looked exactly like a stuck
-  `screendump`, and every diagnostic below (the qtree check, `edid=off`, an explicit
-  `xres=1280,yres=720`) was chasing a symptom that had nothing to do with the display device: the
-  guest kernel test suite had genuinely hung and exited on the watchdog, and `display_tests::`
-  never appeared in the log at all, which the xtask summary's static pass/fail prose did not make
-  obvious. After replacing the three per-page loops with single `map_page_frame` calls, the full
-  suite passed clean on both architectures, including the host-side scanout referee reading back
-  1280x720 correctly. The investigation below is kept verbatim as the record of a false lead,
-  because it is a real account of what was checked and found (the qtree state, the two-witness
-  digest agreement, the ruled-out fixes), and because the project's own convention is to correct
-  the record rather than delete the wrong turn. Read every claim below that a QEMU resize bug
-  exists as superseded by this paragraph.
+On 2026-08-26 a grown 1280x720 scanout looked like a QEMU resize bug. It was a guest hang: three
+programs still looped over per-page capability slots that DECISIONS §102 (a Frame names a run of
+pages) had removed, so the driver
+died before its "UP" report. The investigation is kept, superseded, in
+[framebuffer-contract/scanout-referee.md](framebuffer-contract/scanout-referee.md).
 
-- **The host-side scanout check does not currently confirm a grown scanout, on aarch64, under QEMU
-  11.0.2** (found 2026-08-26, milestone 142 increment 1, growing the surface from 128x64 to
-  1280x720 per DECISIONS §102). `screendump` consistently returns a 640x480 PPM for the whole
-  suite, never the requested 1280x720, even after the guest driver has completed `SET_SCANOUT`
-  many times across several real-device tests. This is isolated to the *host's* view, not the
-  guest's:
-  - The driver never reports failure: `RESOURCE_CREATE_2D`, `RESOURCE_ATTACH_BACKING` and
-    `SET_SCANOUT` all return their success codes (none of `E_CREATE_2D`/`E_ATTACH_BACKING`/
-    `E_SET_SCANOUT` fire), and `GET_DISPLAY_INFO` reports room for the requested size before any
-    of this runs.
-  - `info qtree` on a live monitor confirms the device model itself holds `xres = 1280`,
-    `yres = 720` (matching an explicit `-device virtio-gpu-pci,...,xres=1280,yres=720`, tried as a
-    fix and reverted: it changed nothing, since 1280x800 was already the device's own default and
-    evidently was never the constraint).
-  - The kernel's own two independent witnesses (the client's digest after the flush, the driver's
-    digest after the device reports the transfer complete, both against a value the kernel computed
-    itself) agree the correct pixels reached the correct frames. The pixels are right; QEMU's own
-    console surface, the thing `screendump` reads, does not appear to resize with them.
-  - `edid=off` (tried as a second fix, on the theory that EDID negotiation might bound the console
-    to a preferred mode) also changed nothing.
-  - Not root-caused further: this is QEMU-internal display-refresh behavior (`screendump` calling
-    into `dpy_gfx_replace_surface`/`qemu_console_resize`, or not), not something the guest driver's
-    protocol correctness can influence from where this was investigated.
-  - **The practical effect**: `cargo xtask`'s scanout referee (the third-party check that a real
-    device, not just our own frames, shows the picture) cannot currently confirm the resized
-    scanout, so it is graded on the guest's own two-witness proof alone for this milestone's
-    increment. That proof is real and independent of the driver grading itself, but it is one rung
-    short of the three-party proof this contract otherwise gets, until this is root-caused (a
-    different QEMU version is the first thing worth trying) or a different host-side probe replaces
-    `screendump`.
-  - **This paragraph is wrong; see the RESOLVED entry above it.**
+## What the next clients did with this contract
 
-## What rung two did with this contract (milestone 33)
-
-Written back here on 2026-07-29, because a contract's real test is what happened when the next thing
-implemented against it, and the answer is worth recording: nothing in this rung changed.
-
-`crates/graphics_protocol` and `components/src/gpu_driver.rs` are byte-for-byte the same. The compositor
-(`components/src/compositor.rs`) took `painter`'s place at this seam, holding the display endpoint and the scanout
-frames with exactly `painter`'s authority, and the driver cannot tell the difference. The only addition
-on this side of the seam is a kernel wiring entry point that starts the driver with no client
-(`display_service::start_driver`), because rung two's client is spawned separately with a scene behind
-it.
-
-Three of the four rung-two tests go further and replace `gpu_driver` with a kernel stand-in that serves
-`INFO` and `FLUSH` over frames the kernel allocated. The compositor does not notice that either, which
-is milestone 23's swappable-component claim arriving as a side effect of a contract rather than as a
-demonstration built on purpose. It also made the damage rectangle *observable*: a real driver honors a
-rectangle and says nothing about it, so the stand-in is how "a one-window redraw does not cost a whole
-screen" became an assertion.
-
-Two predictions in the list below came out exactly as written, and one was answered differently:
-
-- **Damage tracking**: the compositor flushes one rectangle per frame, and the test poisons the rest of
-  the scanout and finds the poison intact. As predicted, no driver change.
-- **Input**: the keyboard's routing question turned out to be the compositor's, as predicted, and the
-  answer reuses `line_editor::proto::OPERATION_BYTES` verbatim.
-- **Several surfaces**, differently: the prediction was "a compositor holding one endpoint per client
-  surface needs a driver change and not a contract change". Rung two holds one endpoint for all its
-  clients instead, because a shared endpoint carries no sender identity and per-client surfaces are
-  therefore identified by *memory* rather than by endpoint. Still no contract change, and still no
-  driver change, but by a different route than this note guessed. See notes/compositor.md.
-
-The scanout check grew accordingly: `cargo xtask` now proves two pictures over one boot, the
-composed screen first and this rung's pattern second, both on both ISAs.
-
-## What the display terminal did with this contract (milestone 29's text increment)
-
-Written back here on 2026-07-30, for the same reason rung two's section exists: a contract's real test
-is what happened when the next thing implemented against it. Nothing in this rung changed.
-
-`crates/graphics_protocol` and `components/src/gpu_driver.rs` are byte-for-byte the same again. The display terminal
-(`components/src/display_terminal.rs`) takes `painter`'s place at this seam with exactly `painter`'s authority: a
-report endpoint, the display endpoint, and the surface frames. It draws glyphs instead of a
-coordinate pattern and calls `FLUSH` with the rectangle of cells that changed, which is what this
-note said a client does. The only addition on this side is a kernel wiring entry point
-(`display_service::start_terminal`), and the only thing the terminal adds over `painter` belongs to
-the *terminal* contract rather than this one: an endpoint it serves, and a page an application writes
-text into.
-
-So the prediction in the list below came out exactly as written, and the seam claim is now made twice
-in one milestone: the same binary is also a compositor client, with exactly `window`'s authority, and
-`compositor` cannot tell it from the client that painted a pattern either. See notes/glyphs.md.
-
-The scanout check grew accordingly: `cargo xtask` now proves three pictures over one boot, in
-order (the composed screen, the terminal's text, then this rung's pattern), on both ISAs.
-
+Rung two's compositor (milestone 33 (a compositor)) and the display terminal (milestone 29 (a display
+terminal)'s text increment) each
+took `painter`'s place at this seam with exactly `painter`'s authority. `crates/graphics_protocol` and
+`gpu_driver` stayed byte-for-byte the same both times. A kernel stand-in for the driver made the
+damage rectangle observable. The scanout check grew to three pictures over one boot. How each
+prediction below came out is in [framebuffer-contract/later-rungs.md](framebuffer-contract/later-rungs.md).
 ## The seams left open
 
 Deliberately not in rung one, each with the seam it will use:
@@ -398,44 +252,11 @@ test spawners read it because they want the digest; the boot now reads it becaus
 enforces this: `display_service::start_terminal`'s doc says so and names it a foot gun, because the
 tests need the digest and the wiring function therefore cannot swallow it for them.
 
-**RESOLVED 2026-09-19 (milestone 177): the second `FLUSH` on the real boot never returned because
-nobody received the driver's `FLUSHED` report.** Found 2026-08-27 by milestone 177's boot-wiring lane
-and carried here, unexplained, for three weeks. The hypothesis recorded at the time (the driver stuck
-waiting on its own completion interrupt) was wrong, and so was the reading of the data point below.
-
-What the boot did: `kernel::user::boot_graphical_terminal` received `UP` from the driver and `TERM_UP`
-from the terminal and stopped. But the terminal paints its blank grid, which is a first `FLUSH`,
-*before* it sends `TERM_UP`, so by then the driver had already replied to that flush and was blocked
-sending `FLUSHED`. The terminal's second `FLUSH` (the banner) queued on the display endpoint behind a
-driver that would never `RECEIVE` again.
-
-The evidence, read from the boot rather than inferred. A kernel thread dumped every thread twenty
-seconds into an aarch64 `--features shell` boot with a GPU and a keyboard, with the endpoints named
-first (`display_ep=0xa`, `driver_report=0xb`):
-
-```
-tid=0x0009 state=Blocked ... wait=0xb/Sender          <- gpu_driver, in SEND on its report endpoint
-tid=0x000a state=Blocked ... wait=0xa/Reply           <- display_terminal, CALLing the driver
-ep=0x000a senders=1 receivers=0 pending=0
-ep=0x000b senders=1 receivers=0 pending=0
-```
-
-The same thread then received on `0xb`, got `[0xd150002, <digest>, 0x4d9a0, ..]`, which is
-`FLUSHED` with the surface's pixel count, and a second dump ten seconds later showed the driver back
-in `RECEIVE` on `0xa` and the terminal in `RECEIVE` on its own endpoint: the queued flush had been served.
-No interrupt, fence or used-ring index was involved.
-
-**The keyboard had the identical hang one step later.** `keyboard_driver` sends `KEYBOARD_UP` before
-its first `WAIT`, and the boot discarded the report endpoint `keyboard_service::start_direct`
-returned, so with the display fixed the prompt appeared and a key pressed with `sendkey` still never
-echoed. `start_direct` now takes that report itself and no longer returns the endpoint, so no caller
-can drop it again. The serial source (`input`) sends no report, which is why
-`--graphical-serial` went green with the `FLUSHED` fix alone.
-
-**The data point from the second driver, reread** (milestone 400, 2026-09-19): `framebuffer_driver`
-serves the same contract to the same `display_terminal` over the real boot's wiring and every flush
-returns. That was read as pointing at `gpu_driver`'s interrupt handling. The real difference is that
-`framebuffer_driver` sends `UP` and nothing after it: it has no `FLUSHED` witness to block on.
+RESOLVED 2026-09-19 (milestone 177): the second `FLUSH` on the real boot never returned because
+nobody received the driver's `FLUSHED` report. The terminal's first flush came before its `TERM_UP`,
+so the driver was already blocked sending `FLUSHED` when the boot stopped listening. The keyboard had
+the identical hang one step later, and `keyboard_service::start_direct` now takes its report itself.
+The boot evidence is in [framebuffer-contract/flushed-hang.md](framebuffer-contract/flushed-hang.md).
 
 ## Where the pieces are
 

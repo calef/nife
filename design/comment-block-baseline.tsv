@@ -48,7 +48,7 @@ components/src/serial_driver.rs:1	42
 components/src/socket_squatter.rs:1	44
 components/src/socket_test_client.rs:1	53
 components/src/swapper.rs:1	56
-components/src/swish.rs:1	100
+components/src/swish/main.rs:1	100
 components/src/system_installer.rs:1	175
 components/src/system_log.rs:1	80
 components/src/terminal_sink_caretaker.rs:1	56

@@ -68,7 +68,7 @@ person to touch these scripts finds them.
 ## Follow-on
 
 - **Recorded.** `crates/swish/src/lib.rs`'s own `BUGS` section and `notes/shell.md`: `builtin`,
-  `dispatch_one`, `run`, `spawn` and `pipeline` stay in `components/src/swish.rs` and are still reachable
+  `dispatch_one`, `run`, `spawn` and `pipeline` stay in `components/src/swish/` and are still reachable
   only by booting QEMU. They are capability movement, and lifting them would need the shell's IO
   restructured, which this milestone was scoped not to do.
 - **Milestone 76.** The gate blind spot this block found: a table row saying `NOT-STARTED` while the

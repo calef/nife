@@ -73,6 +73,25 @@ cannot grant to and the witness would have fuzzed; it is slot 0, and the endowme
   needs a conductor that lets two fuzzers interact mid-call, which is a protocol redesign rather
   than a patch.
 
+## BUGS
+
+The driver's own limitations are in its module's `BUGS`; this one lives here because that
+comment block is at its ceiling under §267 (a comment states the constraint as it is now).
+
+- **A fuzzer once had no space root right after parking on GO, and why is not known.** Merge
+  group run 38142134083, job `cpu matrix shard (rva23s64 thead-c906)`, 2026-10-11 about 13:20
+  UTC: `a_confined_fuzzer_reaches_nothing_it_was_not_granted` panicked in the baseline loop at
+  `a live fuzzer has a space root`. `parked_on_go` had counted one receiver waiting on fuzzer x's
+  GO channel, and `sched::thread_space_root` then returned `None` for its thread. The same
+  sources passed rva23s64 at 11:34 UTC that day (#1928's merge group) on a normally loaded
+  runner. It is not a load-sensitive assertion: the wait succeeded and a property was false after
+  it. Two hypotheses, neither tested: the receiver counted on GO was not that fuzzer, or the
+  fuzzer died or lost its space while still counted as waiting. Commits 4a8adf510, dd30481f1 and
+  7d4db96d9 (threads joining a process by `BIND`, and reaping a process's members) changed thread
+  and space lifetimes the day before and are candidates only; nothing ties them to this failure.
+  The panic now prints the fuzzer's tid, the seed, `live`, its disposition and GO's
+  waiting-receiver count read at the moment of failure, so a recurrence names which case it is.
+
 ## (a) Host fuzz targets for the services' request handlers
 
 calef asked for this on 2026-10-04 (UTC), and asked that it be a proposal, not a build. Written by

@@ -82,7 +82,7 @@ meets it in, because a registry of blessings would be the same evaporating mediu
 | No IPC timeouts and no revocation: the seL4 depth parked | `notes/security.md`, "What is deferred, on purpose, and named honestly" |
 | A reclaiming `unmap`, considered and not built, because an address space dies all at once | `notes/teardown.md` |
 | A minted endpoint per socket, deferred with a named trigger | `notes/net/prior-art-and-the-contract.md`, the socket contract |
-| A delegable clock: no program is asking, so it is recorded and not built | `notes/grant-expression.md`, "What a delegable clock would still need" |
+| A delegable clock: no program is asking, so it is recorded and not built | `notes/grant-expression/clock-grant.md`, "What a delegable clock would still need" |
 | The capability derivation tree, not built; generational names are the other way to be safe | `notes/generational-names.md` |
 | zsh's glob qualifiers, settled and out, because a qualifier needs a right beyond enumerate | `notes/glob.md` |
 | `ArgSpec` has no position and no arity, deferred until a program wants both an argument and a file | `notes/date.md` BUGS |
@@ -108,7 +108,7 @@ decision rather than as everything that happened to be found.
 | `notes/benchmarks/calibration-against-sel4.md`, the seL4 comparison deferred to real hardware | tracked since 2026-08-15 by milestone 127 (the seL4 machine), whose board is bought |
 | `notes/ipc-tables-lock-inventory.md` (`sched-lock-inventory.md` when this table was written), contention that only exists on hardware we do not have | the same shape as above and waiting on the same silicon; a hardware trigger, not a decision |
 | `notes/load-sensitive-assertions.md`, "Recommended here, not built here" (now in `notes/load-sensitive-assertions/measurement-windows-and-the-load-recipe.md`, and built since as `script/icount`) | milestone 78 (the load-sensitive assertions) owns it |
-| `notes/host-recovery.md`, a backup when the primary fails | the neighboring finding in the same note became milestone 110 (the recovery tool takes a device and a partition); this one is a proposal nobody has taken, which is trigger 3's territory rather than a recorded limitation |
+| `notes/host-recovery.md`, a backup when the primary fails (now in `notes/host-recovery/devices-and-partitions.md`) | the neighboring finding in the same note became milestone 110 (the recovery tool takes a device and a partition); this one is a proposal nobody has taken, which is trigger 3's territory rather than a recorded limitation |
 | `notes/live-replacement.md`, the real derivation tree still wanted | the same object as the `notes/generational-names.md` blessing; blessed once, at the note that explains the alternative |
 | `notes/verification.md`, whole-parse totality deferred | a verification bound with its own analysis, and milestone 18's surface |
 | `notes/supervision.md`, runtime reattach deferred to milestone 23 | already tracked, and it names the milestone |

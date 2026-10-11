@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-08
+built: 2026-10-11
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 273
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -20,6 +21,13 @@ Milestone 840 (the scheduler file is split along its seams) is the model.
 The cut and every module name below are calef's call. A lane writes them up as a
 `status: PROPOSED` file in `design/decisions/` before it moves a line, and its pull request
 carries `needs-architect`.
+
+The lane wrote it up on 2026-10-10 (UTC) as §273 (the shell program becomes a directory of
+modules), and calef ruled it on 2026-10-11 (UTC). The witnesses get `witness.rs` as a temporary
+home until pull request #1922 turns them into scripts. `components/src/swish/` is the first program
+directory, and helpers four or more modules use live in `main.rs`. Every name ships provisional.
+Built on 2026-10-11 by branch `milestone/844-the-shell-program-is-split-along-its-seams`;
+§273 records the cut as it landed and what it cost.
 
 Reuse: not applicable; this moves code and adds none.
 
@@ -120,6 +128,31 @@ Found with `grep` at `0435a9aeb`.
 4. `script/test` passes on aarch64, riscv64 and x86_64, and so does `script/swish-check`.
 5. The shell's ELF size is recorded before and after, and any growth is explained.
 6. Each new module carries a `//! Name:` block marked provisional.
+
+## What was built
+
+1. `components/src/swish.rs` is gone. The largest file under `components/src/swish/` is
+   `running.rs` at 1,172 lines, and `main.rs` is 1,090.
+2. One Rust file outside the directory changed, against this item: `xtask/src/manual.rs`, so the
+   repository's documentation store still indexes the shell's header. §273 says why. The 16 Rust
+   files whose comments name the old path are in notes/shell.md's BUGS.
+3. `script/lint`'s alloc check reads the directory and requires the one declaration in `main.rs`.
+   Falsified four ways on 2026-10-11 (UTC); §273 lists them.
+4. `script/test` (aarch64, riscv64 and x86_64) and `script/swish-check` (all three legs) passed
+   on patagonia on 2026-10-11 (UTC).
+5. Release `.text` grew 3.6% to 4.6% from codegen partitioning, and about 210 bytes with one codegen
+   unit. §273 has the table.
+6. Each new module opens with a `//! Name: provisional` block.
+
+## Follow-on
+
+- **Recorded.** `notes/shell.md`'s BUGS: 16 Rust files outside `components/src/swish/` still name
+  the shell's old one-file path in comments, which done-when 2 kept out of this milestone.
+- **Milestone 884.** `crates/swish/src/lib.rs`, the shell's logic crate, is split by milestone 884
+  (the shell logic crate is split along its seams).
+- **Decision.** `design/decisions/0273-the-shell-program-becomes-a-directory-of-modules.md`:
+  `witness.rs` is a temporary home, and pull request #1922 replaces the witness roles with scripts
+  the shipping shell runs and deletes it.
 
 ## Index row
 

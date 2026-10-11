@@ -11,7 +11,8 @@ The contract lives with its code in `crates/filesystem_protocol` (the `dir` and 
 `redoxfs_server/src/lib.rs`; the caretaker is `components/src/fs_subtree_caretaker.rs`; the wiring and the
 attacks are `kernel/src/user/fs_service.rs`'s `start_granted_dir` and
 `system_tests/src/user/dir_capability_tests.rs`. This note is the argument around them. Read
-[fs-server.md](fs-server.md) first for the contract this extends.
+[fs-server.md](fs-server.md) first for the contract this extends. The evidence behind it is in
+[dir-capability/](dir-capability/README.md).
 
 What milestone 47 (navigation and naming) builds on this, from `cd` to globbing and completion, is
 in [shell-navigation.md](shell-navigation.md). Four were easy; `rm` was not, because
@@ -132,83 +133,15 @@ Serving a second, narrower endpoint from the FS server itself would need a recei
 endpoints, which this kernel does not offer; adding it means giving endpoint capabilities a badge
 (seL4's answer), which is a design fork and is recorded as the alternative rather than taken.
 
-### `fs_subtree_caretaker`, and why it checks nothing at all
-
-```text
-  FS server ──file IPC──► fs_subtree_caretaker ──narrowed file IPC──► the confined program
-  (the image root)                  (one subtree, one rights set)
-```
-
-`fs_file_caretaker` has to inspect requests, because a file capability and a directory capability
-speak different protocols and it is translating between them. `fs_subtree_caretaker` performs no
-rights checks, by design.
-
-At startup it sends exactly one `OPENDIR`, asking for the granted name with the granted rights.
-The FS server intersects those with its own and refuses if the intersection came up short, so a
-wiring that asked for more than exists dies at the caretaker's first request instead of coming up
-serving a capability nobody meant to hand out. Everything the client can reach afterwards, it
-reaches *through the handle that request minted*, so there is no branch in the caretaker that could
-be wrong about it.
-
-What the process does is translate a namespace. The client numbers its handles in its
-own space starting at `fs::ROOT`, which is the granted directory; the caretaker maps each to the FS
-server's number and forwards the request otherwise unchanged. A client that guesses a handle is
-guessing in a table with a handful of inhabitants, none of which it chose, and a number the
-caretaker never minted is `EBADF` from one check.
-
-It costs no memory: the granted name and the rights mask ride in the three `START` argument words
-(`filesystem_protocol::grant`), and one frame is shared by all three processes.
-
-### The verb table, and how it stayed a translation (milestone 61)
-
-Each of the three caretakers used to be a hand-written `match` over the opcode, and nothing made a
-`match` and the contract agree. So the way it failed was that a verb added to `filesystem_protocol` was
-absent from a caretaker and the capability silently was not there. That is not
-hypothetical: milestone 57 added the four extended-attribute verbs, none of the three was taught
-them, and nothing failed. Programs behind every kind of grant could not reach their files'
-attributes.
-
-`filesystem_protocol::verb` is a row per verb saying what the request word's length field counts
-(`Operand::None`, `Name`, `Payload`, `Rename`), whether the second word means anything, whether the
-reply is a new handle, and which `dir` rights the server will demand. `verb::of(op)` is the whole of
-a caretaker's dispatch now, and a verb with no row is a compile error, so forgetting fails the
-build rather than producing a capability that is quietly missing.
-
-The table shares the dispatch and never the attenuation, which is what keeps this program's one
-strong property intact. A table lookup that decides whether to forward the length field or a zero
-cannot refuse anything; a name filter or a rights test here would be a branch that could be wrong.
-`fs_subtree_caretaker` consults no policy table at all, and there is nothing for it to consult: the
-attenuation is still entirely in the handle the server minted.
-
-The three caretakers therefore stay three programs, and the roadmap's refutation of collapsing them
-holds: `fs_subtree_caretaker` and `fs_nameset_caretaker` serve identical verb surfaces by opposite
-means, one by checking nothing and one by checking every name, and `fs_file_caretaker` translates
-between two protocols rather than narrowing one.
-
-### One frame, and the startup ordering that argument does not cover
-
-The one-frame argument is `fs_file_caretaker`'s: every request on both hops is a blocking `CALL`, so
-the client is parked inside its own call for the whole time the caretaker is using the page, and a
-second frame would buy a copy and no isolation.
-
-That holds once the caretaker is serving. It does not hold at startup, and this cost a
-debugging round. The caretaker stages the granted name in the shared page and then blocks in a
-`CALL` to the FS server; a confined program that already exists writes its own first name over that
-page, and the FS server resolves whatever it finds there.
-
-In the case that failed it is not even a race. When the wiring call is the one that wires
-the FS service, the FS server is parked inside its readiness `SEND`, so the caretaker's descent
-cannot be answered until somebody drains it, and the client has that entire window. The caretaker
-then died rather than serve a hole, and its client blocked forever on a call nobody would answer: a
-userspace `ebreak` followed by the 60 s lost-wakeup watchdog. It passed on aarch64 and failed on
-riscv, which is the shape of a timing bug and was one.
-
-The fix is ordering, not a second page. Draining the readiness sentinels is sequencing, not only
-an assertion: each server is parked inside its blocking announcement until somebody receives it,
-so nothing it serves can be answered first. `fs_service::start_granted_dir` now drains the service,
-waits for the caretaker's own sentinel, and only then spawns the confined program.
-`fs_file_caretaker` had the same latent bug and took the same three lines.
-
+`fs_subtree_caretaker` is that process, and it performs no rights checks by design. At startup it
+sends exactly one `OPENDIR` for the granted name with the granted rights, and everything the client
+reaches afterwards goes through the handle that request minted. It only translates handle numbers.
+Since milestone 61 (the caretakers: one verb table) its dispatch is
+`filesystem_protocol::verb::of(op)`, so a verb with no row is a
+compile error, and the table shares the dispatch and never the attenuation. One frame is shared by
+all three processes; at startup that needed an ordering fix, because the caretaker's name and the
+client's first name shared the page. The detail is in
+[dir-capability/caretaker.md](dir-capability/caretaker.md).
 ## `RENAME`
 
 `mv`'s verb, and the one that made `REMOVE` real: until it existed nothing on the wire consulted
@@ -225,212 +158,42 @@ appears), each refused with `EROFS`. Within one directory a rename needs both on
 rights are checked before anything is resolved, so a capability that may not move a name cannot
 use the verb to find out whether one is there.
 
-### The two atomicities, stated apart (DECISIONS §42)
+It is concurrency-atomic, because the server runs one request to completion before the next. It is
+crash-atomic, measured by `redoxfs_server/tests/crash_consistency.rs` cutting the device at every
+write (§42 (a filesystem declares what it offers)). `renameat2`'s `EXCHANGE` and `NOREPLACE` and
+cross-filesystem moves are not offered, and moving a directory between directories is `EINVAL`. Two
+checks are ours rather than the engine's: file over directory is `EISDIR`, and directory over file
+is `ENOTDIR`. The design in full is in [dir-capability/rename.md](dir-capability/rename.md).
 
-§42's point is that saying "atomic" and letting the reader assume the stronger one is the mistake
-POSIX made, so:
+## What the tests prove
 
-- Concurrency-atomic: yes. No observer sees the state where the name is in both places or
-  neither. The reason is structural rather than a lock: the FS server's serve loop runs one request
-  to completion before it receives the next, so inside the server there is no concurrent observer at
-  all.
-- Crash-atomic: yes, and measured. The whole rename runs inside one `fs.tx`, which reaches the
-  platter through one commit in RedoxFS's header ring. That is a design claim until something cuts
-  the power, so the rename is now the last operation of the workload in
-  `redoxfs_server/tests/crash_consistency.rs`, whose sweep cuts the device at every write the workload
-  makes and mounts what is left. A recovery holding the file under both names, or under neither, is
-  a state that never existed and fails the sweep. Both names are in that test's `NAMES`, so a
-  snapshot reads both and cannot miss either case.
-
-### What is deliberately not offered, and why each refusal is loud
-
-§42's operative rule is no silent degradation: a verb that is not offered fails loudly and the
-application decides, and what it must never receive is an unsafe operation wearing a safe one's
-name.
-
-- **`renameat2`'s `EXCHANGE` and `NOREPLACE`.** They work on ext4, btrfs, XFS, f2fs and tmpfs and
-  nowhere else, and emulating `NOREPLACE` with link-then-unlink is racy. Offering them would make
-  behavior backend-specific, which §42 forbids.
-- **Cross-filesystem move.** A different verb: copy-then-unlink, a different object with a different
-  identity, non-atomic by nature. It cannot be reached through this verb anyway, because both
-  handles are minted by one server bound to one image.
-- **Moving a *directory* between two directories** is `EINVAL`; a directory renames in place fine.
-  POSIX's guard against making a directory its own descendant is a path-prefix test, and this
-  contract has no paths to take a prefix of. The equivalent here is an ancestry walk inside the
-  server, which is real recursion in a process whose stack is measured at about three quarters used
-  (§27). Renaming within one directory cannot create a cycle, because the node's parent does not
-  change, and that is exactly where the line is drawn.
-
-### Two checks that are ours rather than the engine's
-
-RedoxFS's `rename_node` passes the *destination's* own type to `remove_node`, so it never compares
-the two kinds: it will happily rename a file over a directory. POSIX will not, and §42 says an
-offered verb means one thing on every backend, so the kind comparison is done at our boundary: file
-over directory is `EISDIR`, directory over file is `ENOTDIR`. A non-empty destination directory is
-the engine's `ENOTEMPTY`. Renaming a name onto itself is a successful no-op, which is POSIX's answer
-and the safe one: the alternative removes the only link and then has nothing left to relink.
-
-Both names go through `check_component`, so `..` means nothing here either.
-
-## What the guest tests prove, and from where
-
-Three `#[test_case]`s, one module for both ISAs rather than an aarch64 test with a riscv twin:
-nothing in them is architecture-specific, so the parity gate, §19 (architectural parity is a tenet), is met by the
-same test
-running twice.
-
-Each wires a `fs_subtree_caretaker` holding a capability to the fixture's `sub` with one rights set,
-and runs the `ROLE_DIR_ATTACKER` role of `fs_test_client` against it. The image carries:
-
-```text
-  /            motd  scratch  sub/  other/
-  /sub         inner  deeper/          <- the granted capability is here
-  /sub/deeper  leaf
-  /other       secret                  <- never reachable from the grant
-```
-
-**The attacker is told nothing about its own grant** beyond a run index, which only keeps the names
-it creates distinct across three runs that share one image. It attempts every verb and reports a
-**bitmap of what got through**; the kernel test asserts the *exact* expected set for that
-configuration. So the specification lives in the test rather than in the program under test, and the
-three runs are each other's controls: a caretaker that refused everything fails the wide run, and
-one that allowed everything fails the narrow ones.
-
-| Run | Rights | Expected |
-|---|---|---|
-| read-only | `DESCEND｜READ｜ENUMERATE` | opened its own file, enumerated, descended |
-| full | `ALL` | those three, plus created, wrote, renamed, made a directory |
-| append-only | `READ｜WRITE｜CREATE` | opened its own, created, wrote |
-
-The append-only run is the roadmap's motivating sentence made a test, and two rungs in it are the
-interesting ones. `DESCEND` withheld while `CREATE` is held means it can make a file and cannot make
-a directory. `REMOVE` withheld while `CREATE` is held is "add to this, destroy nothing" exactly: it
-creates a name and then cannot move it, through the same code the full run moves it with.
-
-What the attacker attempts, and what makes each attempt real: `motd` is in the granted directory's
-**parent**, `other/secret` is in its sibling, and both are on the image and one directory entry
-from the caretaker, which could open either on any request it liked. So each refusal is a fact about
-the capability rather than about the filesystem. It tries `..` at every rights setting, asks
-for a right its capability does not carry (which must be refused, not quietly narrowed), descends
-asking for nothing and checks that the resulting capability can do nothing at all, and guesses
-handle numbers past anything the caretaker could have minted.
-
-Two bits exist to stop the whole thing being vacuous. `OPENED_ITS_OWN` is the control: without it,
-every refusal above is equally consistent with a caretaker that answers no to everything or a grant
-that reaches nothing. `GRANTED_ACCESS_FAILED` fires when the thing it *should* be able to do did not
-work, so a capability that reaches nothing reports itself rather than passing as perfectly confined.
-`ENUMERATED_A_STRANGER` catches a listing that contains a name from outside the grant, because a
-listing is a rendering of authority and a stranger in one is an escape even though nothing was
-opened.
-
-### And from outside the guest entirely
-
-The bitmap is a statement by the thing being tested. The other kind of evidence is a different
-process, on the host, with the pinned engine, reading the image the run left behind
-(`xtask::redoxfs_subtree_was_confined`). It asserts:
-
-1. every fixture name is still in the image root (a capability granted on `sub` can remove nothing
-   above itself, so a missing name is an escape too);
-2. **no name of the attacker's making is in the root**, which is the upward escape;
-3. its creations are in `sub`, which stops claim 2 from being true of a capability that reaches
-   nothing, and `sub` holds both a renamed name and an unrenamed one, which is the `REMOVE` rung
-   witnessed from out here: one capability moved a name and another, running the same code against
-   the same directory, could not;
-4. `other/secret` and `sub/inner` read back byte for byte.
-
-A program that broke out and then lied about it would still have left the file on the disk.
-
-## The FS server's stack, measured before and after
-
-§27 records that this server's stack is sized by measurement rather than chosen, after `CREATE` and
-`TRUNCATE` added a level of tree recursion and left it 528 bytes short, which presented as a
-mystery 900-second test. So the four verbs this milestone adds are exactly the kind of change that
-warrants looking, and `RENAME` most of all: it is `find_node` twice, then `link_node` and
-`remove_node`, all in one transaction.
-
-The high-water mark went down, by 3,776 bytes on aarch64 and 3,696 on riscv64:
-
-| | aarch64 | riscv64 | of a 397,312-byte grant |
-|---|---|---|---|
-| the four verbs, before `RENAME` | 135,744 | 135,856 | 34% |
-| with `RENAME` | 131,968 | 132,160 | 33% |
-
-**Not attributed**, deliberately. A verb that recurses more cannot make the deepest path shallower,
-so this is the compiler laying the serve loop out differently, not `RENAME` being cheap; measuring
-the frame it costs would need an instrument aimed at that request rather than a per-boot maximum.
-Milestone 37 saw the same shape (an 8 KiB drop it also declined to explain) and §27 records both
-numbers rather than a story. What matters for the gate is the headroom, and two thirds of the grant
-is free either way, comfortably above the quarter-left floor the test fails under.
+Three `#[test_case]`s run on both ISAs. Each grants `sub` with one rights set (read-only, full,
+append-only) to an attacker that is told nothing about its grant, tries every verb, and reports a
+bitmap of what got through; the test asserts the exact set. The three runs are each other's
+controls, and two bits stop the result being vacuous. A host-side check then reads the image the
+run left behind and confirms nothing escaped upward. The FS server's stack high-water mark went
+down by about 3.7 KB with `RENAME`, unattributed, and two thirds of its grant stays free. The runs,
+the host check and the stack table are in
+[dir-capability/tests-and-stack.md](dir-capability/tests-and-stack.md).
 
 ## BUGS
 
-Known limitations, next to the feature rather than only in a tracker.
+Known limitations, next to the feature rather than only in a tracker. Each is in full in
+[dir-capability/limitations.md](dir-capability/limitations.md).
 
-- **`std::fs::rename` is still `Unsupported`.** The verb exists on the wire and in the server; the
-  std PAL has not been bound to it. Milestone 55 depends on this (`fruit:posix_rename` in the
-  reference Samba config), so it is the next step rather than a permanent gap. Binding it is a change
-  to `patches/std-nife`, which rebuilds the std farm and moves the `std_exerciser` transcript, and it
-  was kept out of this lane deliberately.
-- ~~`UNLINK` does not exist.~~ Built by the commands lane, along with the unlink/revoke split the
-  roadmap argues for: see [shell-navigation.md](shell-navigation.md). `REMOVE` now gates two verbs.
-  What that lane found and did not fix: there is no `RMDIR`, so `MKDIR` can make a directory this
-  contract cannot remove, and no verb reports what rights a handle carries, so a program handed a
-  directory capability must be told out of band or discover by probing.
-- **A directory cannot be moved between directories** (`EINVAL`). The argument is above; it is a real
-  restriction against POSIX and it is declared rather than silently approximated.
-- **`READDIR`'s cursor is an index, and the directory is re-read per call.** A name added or removed
-  between two calls of one enumeration can be seen twice or missed. That is readdir's usual caveat.
-  Fixing it means a snapshot per client, and this table is not per client.
-- **A client of a dead caretaker blocks forever**, exactly as a client of a dead FS server does
-  (§27). §26's fault endpoint is the mechanism that would turn that into a message a supervisor can
-  act on, and wiring the FS service into a supervision tree belongs to milestone 23.
-- **`fs_subtree_caretaker` holds at most 16 handles per client** (`EMFILE` past that). It has no
-  heap and runs on the single stack page `run` maps, so a growable table would need an allocator and
-  a 4 KiB local would overflow the stack on the first request. Sixteen is well past what the
-  attacker or any `cd`/`ls` sequence needs.
-- **A single-name grant is still the directory the name is in**, which is wider than the name. The
-  globbing lane closed that for a *pattern* operand (a nameset caretaker,
-  `components/src/fs_nameset_caretaker.rs`, serves only the names that matched: see
-  [glob-grant.md](glob-grant.md)) and it is still open for a literal one, because a set of exactly
-  one has no wiring behind it today.
-- **A grant on the root of a shell's namespace cannot be narrowed at all** (milestone 31 phase 3,
-  2026-08-17). A caretaker's whole attenuation is one `OPENDIR` *into* the granted directory, and the
-  root has no name to descend into: the contract resolves a single component under a handle, and it
-  has no verb meaning "the directory I already hold, with fewer rights". So `rm gate.txt` typed at
-  the top prompt is a refusal with nothing spawned, while `rm rmtree/rm-solo` works, and the
-  difference is one level of path. Two answers exist and both are somebody's call rather than a
-  lane's: a narrowing verb on the contract (small in the server, `Rights::attenuate` with no name
-  resolution, and a permanent addition to something two programs agree on), or a boot whose
-  interactive shell is rooted one component below the image root, which costs nothing on the wire and
-  changes what every other command means. Recorded in `design/roadmap/0031-capability-shell.md` rather
-  than guessed at.
-- **A grant whose directory is not there reads as "the progenitor is out of memory" at the prompt.** The
-  caretaker answers `DESCENT_REFUSED` and the progenitor does the right thing with it (nothing is spawned, and
-  the region goes back), but the only word the progenitor can put on the result endpoint is
-  `spawnproto::SPAWN_FAILED`, and the shell renders that with the one sentence it has. So
-  `rm nosuchdir/x` says something true about the outcome and false about the cause. Fixing it is a
-  second sentinel on that endpoint, which is two programs agreeing on a format for one diagnostic,
-  and it was left rather than taken: the honest sentence is worth having and it is not worth widening
-  the wire for on its own. Whatever else next needs a reason on that endpoint should carry this too.
-- **Init builds one caretaker per grant, so a grant more than one level down is not delivered**
-  either. That shape is a *chain* of caretakers, each an ordinary FS client above and an ordinary FS
-  server below, which DECISIONS §92 names as the case supervision was chosen to make free. Nothing
-  builds the chain today; `rm a/b/c.txt` is a refusal at the prompt.
-- **The rights are not printed by `caps`.** §42 says the rights *are* the discovery mechanism for
-  what a mount offers, and they are introspectable in principle. `caps rm -r logs` says which of the
-  two capabilities is being handed over in a sentence ("...and everything under it: -r grants the
-  walk") rather than as a rights mask, so a reader learns the shape of the grant and not its bits.
-  (§27's amendment records an older refusal, from before the boot had a filesystem at all.)
-- **A wrong row in `filesystem_protocol::verb` is wrong in three programs at once** (milestone 61). The
-  mitigation is that it is pure data in a host-testable crate, so the tests and Kani can reach it,
-  which a hand-written match in a `no_std` binary could not. The row that decides a security
-  property rather than a formatting one is `takes_name()`, because it is what `fs_nameset_caretaker`
-  filters on: a name-taking verb whose row said otherwise would walk straight past the filter. It is
-  pinned by a host test that spells the expected list out rather than deriving it from the field it
-  is checking.
-- ~~The caretakers answer `EOPNOTSUPP` to the extended-attribute verbs.~~ Closed by milestone
-  61; see [xattr.md](xattr.md) for which caretaker refuses a write through a read-only grant and
-  which leaves it to the server.
+- A directory cannot be moved between directories (`EINVAL`).
+- `READDIR`'s cursor is an index, so a name changed mid-enumeration can be seen twice or missed.
+- A client of a dead caretaker blocks forever, as a client of a dead FS server does.
+- `fs_subtree_caretaker` holds at most 16 handles per client.
+- A single-name grant is still the directory the name is in.
+- A grant on the root of a shell's namespace cannot be narrowed at all.
+- A missing directory reads as "the progenitor is out of memory" at the prompt.
+- A grant more than one level down is not delivered: nothing builds a chain of caretakers.
+- `caps` does not print the rights as bits.
+- A wrong row in `filesystem_protocol::verb` is wrong in three programs at once.
+- No verb reports what rights a handle carries.
+- Closed: `std::fs::rename` is bound, `UNLINK` and `RMDIR` exist, and the caretakers forward the
+  extended-attribute verbs.
 
 ## EXAMPLES
 
@@ -480,7 +243,7 @@ Run the whole thing:
 
 ```sh
 script/test                         # both ISAs, plus the post-run host confinement check
-cargo test -p fs_proto              # the contract and the ladder's arithmetic
+cargo test -p filesystem_protocol   # the contract and the ladder's arithmetic
 cargo test --manifest-path redoxfs_server/Cargo.toml   # the engine side, and the crash sweep
-cargo kani -p fs_proto              # attenuation never widens, at any depth
+cargo kani -p filesystem_protocol   # attenuation never widens, at any depth
 ```

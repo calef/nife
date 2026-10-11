@@ -3,7 +3,7 @@
 *Built by `lane/fuzz-service-handlers` on 2026-10-04 (UTC), part (a) of the proposal on #1592,
 which calef ruled yes the same day. Every target, helper and module name here is provisional.*
 
-`notes/fuzzing.md` covers the six parser targets. This note covers the three that replay a
+`notes/fuzzing.md` covers the seven parser targets. This note covers the three that replay a
 session of requests against a service built on the host, and check a stated rule after every
 reply. A confinement breach answers a request with success and crashes nothing, so a target that
 only waits for a panic would miss the class it exists for.

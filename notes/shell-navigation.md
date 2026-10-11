@@ -12,7 +12,7 @@ every user forever. So the bar is not "is this more capability-pure", it is "doe
 actually force this", and three divergences clear it. The rest of Unix's surface survives.
 
 The pure half is `crates/grant_plan/src/nav.rs` (host-tested in milliseconds); the requests are
-`components/src/swish.rs`; the wire verb `rm` needed is `filesystem_protocol::fs::UNLINK` with `Server::unlink` behind
+`components/src/swish/navigation.rs`; the wire verb `rm` needed is `filesystem_protocol::fs::UNLINK` with `Server::unlink` behind
 it; the guest proof is `system_tests/src/user/shell_navigation_tests.rs` and the host half is
 `xtask::shell_navigation_landed`.
 

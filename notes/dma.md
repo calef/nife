@@ -1,7 +1,8 @@
 # Confining DMA without an IOMMU
 
 The security audit's most severe finding: a userspace virtio driver could make the device DMA over
-any physical memory. This note is how that hole was closed.
+any physical memory. This note is how that hole was closed. The detail behind it is in
+[dma/](dma/README.md).
 
 ## Why it was a hole
 
@@ -152,159 +153,34 @@ Three tests, and one of them is the attack:
 Verified the confinement can fail: with the region check stubbed to accept everything, the attack
 goes through and the end-to-end test fails.
 
-## Two ways the in-place check was still too weak
+## The shadow descriptor ring
 
-A second read of the validator turned up a gap that the "walk the chain, check each address" story
-misses. The check assumes it sees every address the device will use. Two virtio features break that
-assumption, and both are negotiable by the driver, because the kernel passes `DRIVER_FEATURES`
-writes straight through.
+An in-place check of descriptors in driver-writable memory was too weak in three ways. Indirect
+descriptors (`VIRTIO_RING_F_INDIRECT_DESC`) hid the real addresses in a table the validator never
+walked, and QEMU's virtio-blk offers the feature. Packed virtqueues (`VIRTIO_F_RING_PACKED`) change
+the ring format the validator reads. And a device that fetches descriptors asynchronously can read
+a descriptor the driver changed after the kernel validated it.
 
-**Indirect descriptors (`VIRTIO_RING_F_INDIRECT_DESC`, feature bit 28).** A descriptor flagged
-`INDIRECT` does not describe a buffer. Its `addr` points at a *table* of more descriptors, and the
-device follows that table. The old validator only understood `NEXT` chains, so it treated the
-indirect descriptor as an ordinary buffer: it confirmed the table's address was in-region (it is,
-the attacker puts the table in its own region) and stopped. It never walked the inner descriptors,
-which is exactly where the attacker writes the kernel address. QEMU's virtio-blk offers this
-feature, so a malicious driver could negotiate it and escape. This one is reachable on the current
-target, not just on hypothetical async-DMA hardware.
+The cure is to stop reading from shared memory. The device reads a shadow descriptor table and
+available ring in a kernel-private frame that is never mapped into the driver, and the kernel only
+ever writes a validated descriptor into it. The data buffers and the used ring stay in the driver's
+region, because the device writes no addresses there. `sanitize_driver_features` still strips the
+indirect and packed bits, and the validator still refuses the `INDIRECT` flag, as defense in depth.
+`the_shadow_ring_is_immune_to_a_descriptor_mutated_after_validation` proves the copy. The full
+account is in [dma/shadow-ring.md](dma/shadow-ring.md).
 
-**Packed virtqueues (`VIRTIO_F_RING_PACKED`, feature bit 34).** The whole ring format changes. The
-validator understands only the split ring (separate descriptor table, available ring, used ring),
-so against a packed ring it would be reading the wrong bytes while the device reads a ring nobody
-checked.
+## The write direction, the receive direction, and kill-mid-write (milestones 32 and 30)
 
-The fix has two layers, both cheap:
+The validator bounds addresses, never directions, so the write path (milestone 32 (a real filesystem) phase 1)
+and the receive queue of a NIC (milestone 30 (the network stack as a confined component)) needed no change to it. A descriptor aimed at kernel memory is
+refused whichever way the device would move the bytes. A NIC's second queue sits at its own
+`RING_BLOCK` in both the driver's region and the shadow frame.
 
-1. **Refuse the features at negotiation.** `sanitize_driver_features` strips bit 28 from the low
-   feature word and bit 34 from the high word before the value reaches the device. Without the
-   negotiated feature, the spec forbids the driver from using it and QEMU rejects an `INDIRECT`
-   descriptor outright. The honest driver asks for neither, so nothing legitimate breaks.
-2. **Refuse the flag at validation.** The validator returns false on any descriptor carrying
-   `VIRTQ_DESC_F_INDIRECT`. With the feature already stripped no honest descriptor sets it, so this
-   costs one branch and makes the confinement fail closed if layer 1 ever regresses.
-
-The deeper lesson is that both of these, and the time-of-check/time-of-use question below, are the
-same shape of problem: the validator reads descriptors out of memory the driver keeps mapped
-writable. Patching each feature is treating symptoms. The cure is to stop reading from shared
-memory at all.
-
-## The residual race, and the complete fix: a shadow descriptor ring
-
-Even for a plain split ring with no fancy features, the check and the device's use are separated in
-time. The kernel validates the descriptors, then writes `QUEUE_NOTIFY`, then the device reads the
-descriptors. If the device reads them by its own asynchronous DMA (as real hardware does), the
-driver can change a descriptor's `addr` after the kernel validated it and before the device
-dereferences it. Validating memory the writer still controls is a time-of-check/time-of-use race by
-construction.
-
-On the current target it does not fire: the driver is a single EL0 thread that cannot run between
-the kernel's validation and its `QUEUE_NOTIFY` write, and QEMU's virtio-blk pops descriptors
-synchronously inside that MMIO write, capturing the addresses before any guest code resumes. So
-this is recorded as a design limit, not a live hole. On hardware where the device fetches
-descriptors asynchronously, it is real.
-
-The complete fix is a **shadow descriptor ring**:
-
-- Allocate a kernel-private page (not mapped into the driver) for the descriptor table and the
-  available ring.
-- In `SETUP_QUEUE`, program the device with the addresses of that private page instead of offsets
-  in the driver's region.
-- On `NOTIFY`, copy the driver's descriptors into the private ring, validate the copy, and only then
-  ring the device.
-
-Now the device reads descriptors the driver physically cannot touch, so there is nothing left to
-race. The data buffers stay in the driver's region (it has to fill and drain them), and that is
-fine: a driver racing its own buffer *contents* only corrupts its own I/O, never anyone else's
-memory, because the *addresses* the device uses are the validated copies. The used ring can stay
-shared too, since the device writes only indices and lengths there, not addresses. The copy also
-subsumes the feature problem: the copy step either refuses `INDIRECT`/packed or recursively copies
-and validates an indirect table, so there is one place that decides what the device is allowed to
-read.
-
-The cost is small (one page per device, a 128-byte copy per submit, the same validation against the
-copy), which is the real argument for doing it rather than masking feature bits forever.
-
-**This is now built.** `Device` carries a `shadow_base` (one frame, allocated and zeroed in
-`register`, never mapped into the driver). `setup_queue` programs `QUEUE_DESC` and `QUEUE_DRIVER`
-(descriptor table and available ring) at the shadow page, and leaves `QUEUE_DEVICE` (the used ring)
-in the driver's region so the driver still reads its own completions. `validate_and_shadow` replaces
-the old in-place `validate_avail`: for each newly-available head it walks the driver's chain,
-validates every descriptor, and copies the validated bytes into the shadow at the same index, then
-mirrors the head into the shadow available ring and publishes the shadow's `avail.idx` last. A `dsb`
-(`arch::direct_memory_access_write_barrier`) orders the shadow writes before the `QUEUE_NOTIFY`,
-because the device is a separate observer. The driver's ABI does not change at all: it still builds
-its rings at the same offsets in its own region and reads the same used ring, unaware that the
-device now reads a copy.
-
-The invariant that makes it airtight: **the kernel only ever writes a validated descriptor into the
-shadow.** So every descriptor the device can reach in the shadow has an in-region address, the
-device bounds its own chain walk to the queue size, and a descriptor the driver mutates after the
-check lands only in the driver's own copy, which nothing reads. `the_shadow_ring_is_immune_to_a_
-descriptor_mutated_after_validation` proves exactly that: validate, then point the driver's
-descriptor at the kernel, and assert the shadow still holds the validated address. The end-to-end
-disk read (`a_userspace_driver_reads_a_file_from_a_virtio_disk`) still passes, which is the proof
-the copy is functionally transparent: the device reads its descriptors from the shadow, DMAs into
-the driver's data buffers, and the driver gets its file.
-
-The feature-stripping and the `INDIRECT`-flag refusal stay as defense in depth in front of the
-copy. The copy step does not walk indirect tables, so it refuses the flag rather than recursively
-shadowing them, which is the simpler and stricter choice for a device that never needs indirect
-descriptors.
-
-## The write direction (milestone 32 phase 1)
-
-The write-capable block path needed no kernel change, and it is worth recording why that is a
-property and not luck: the validator bounds *addresses*, never directions. A blk read marks the
-data descriptor device-writable (the device fills the buffer); a blk write leaves the flag clear
-(the device consumes the buffer). Either way `validate_and_shadow` checks the same thing, that
-`addr..addr+len` stays inside the driver's region, so both hazards are closed by one check: a read
-descriptor aimed at kernel memory would let the device *overwrite* the kernel, a write descriptor
-aimed there would let it *exfiltrate* kernel memory to disk, and neither address ever reaches the
-device. The roadmap's claim that the transport "already speaks both directions" was verified
-against the code and is accurate.
-
-What was new: the driver's write verb (`crates/virtio`'s `write_block`, one flag away from the
-read), attaching QEMU's disks writable (one image file per transport, because QEMU write-locks a
-file once any attachment can write; see the runners), and the tests. The write tests run the same
-matrix as the read path: both ISAs, both transports (mmio and PCIe), a full pattern round trip
-through a wiped buffer, plus a re-check of the superblock and directory so a write that strayed
-off its own block would be caught.
-
-**Kill-mid-write.** Errors here eat filesystems, so the teardown case is tested on both ISAs: a
-driver submits a validated write and dies (panic, kill, reap) without collecting the completion or
-acknowledging the interrupt, then a fresh driver resets the same device and must complete its own
-round trip. Three facts make the abandoned request harmless, and all three are load-bearing:
-
-- **The dead driver's DMA frame is never reclaimed.** A `Spawn`-mapped page goes through
-  `map_physical`, whose contract is "Drop leaves it alone", so the in-flight completion (the used
-  ring entry, the status byte) lands in a frame the allocator never re-issued. This is currently a
-  deliberate leak, one frame per spawned driver. **The caveat for whoever builds DMA-region
-  reclaim later:** freeing that frame on thread death would hand the device a landing zone the
-  allocator may already have re-issued to someone else, which is a use-after-free performed by
-  hardware. Reclaim must quiesce the device first (device reset, then confirm no requests are
-  outstanding), and nothing enforces that today except this note and the test.
-- **The kernel's transport state carries nothing in-flight.** `Device` tracks `last_avail`, a
-  count of validated submissions, not completions, so an uncollected completion leaves nothing
-  dangling; the next operator of the physical device resets it (status 0) and programs its own
-  registration's rings from scratch.
-- The completion is the used ring, not the interrupt. This one was missing at first, and the
-  test caught it: the kill-mid-write case failed intermittently, `report_code(0xE3)` ("woke, but
-  the device did not complete the request"), roughly one run in two. The abandoned write's
-  completion still raises the device's interrupt line, and the kernel turns that into a pending
-  signal on the interrupt's routing endpoint. That endpoint is shared across every driver of the
-  same physical line, so the *survivor's* first `WAIT` consumed the dead driver's stale completion
-  signal and then found its own request not yet on the used ring. The read path never noticed
-  because it only ever expects one completion. The fix is the correct virtio discipline anyway: a
-  driver treats the used ring advancing, not a single wakeup, as the completion, so
-  `complete_block` (`crates/virtio`) now loops WAIT/ack until `used.idx` moves, discarding a
-  wakeup that was really someone else's. Every real completion also raises the line, so the loop
-  always makes progress. This hardens the read path too: coalesced and spurious interrupts were
-  always possible and were only tolerated by luck before.
-
-The riscv half of this test is also what exposed that the riscv trap path could not kill a
-faulting user thread at all (it stepped over a U-mode `ebreak` and kernel-panicked on any other
-U-mode fault, behind a comment stale since milestone 20). Fixed alongside; see
-notes/riscv-parity-scope.md.
+The kill-mid-write test found that a completion is the used ring advancing, not a wakeup, so
+`complete_block` loops until `used.idx` moves. It also leans on a deliberate leak: a dead driver's
+DMA frame is never reclaimed. Whoever builds DMA-region reclaim must quiesce the device first, or
+the device performs a use-after-free. Both directions, the three load-bearing facts and the queue
+layout are in [dma/directions.md](dma/directions.md).
 
 ## BUGS: the confinement is one-directional, and two drivers read it as if it were not
 
@@ -352,37 +228,3 @@ police (indirect, packed) before a descriptor is built, and the IOMMU still faul
 address even if a validator bug ever let one through. The feature-stripping and the shadow copy cost
 almost nothing and buy a second independent barrier, which is the right trade for the one DMA path
 that can reach the whole machine.
-
-## Multiple queues, and the receive direction (milestone 30)
-
-The disk uses one virtqueue. A NIC uses two: receive (queue 0) and transmit (queue 1). virtio-net is
-the reason the confinement grew a second queue, and receive is the reason it is worth stating what
-"a second direction" does and does not mean.
-
-The plumbing that is new. Each device now carries a per-queue last-validated index and a
-per-queue ring block. `setup_queue(id, num, queue)` and `notify(id, queue)` take a queue number, and
-queue `q`'s descriptor table, available ring, and used ring sit at `q * RING_BLOCK` (0x200) in both
-the driver's DMA region and the one kernel-private shadow frame (two queues fit in 0x400 of a 4 KiB
-frame, asserted at compile time). Queue 0's offsets are exactly the old single-queue layout, so the
-disk driver did not change: its data buffers already start at 0x200, which is queue 1's block, and a
-disk has no queue 1. The `Virtio` capability's methods grew a queue argument rather than gaining new
-methods; the disk passes queue 0 and its ABI is byte-identical (DECISIONS §23).
-
-The validation that is NOT new, and why that is the honest finding. `validate_and_shadow` did not
-change. It bounds the *address* of every descriptor, `addr..addr+len` inside the driver's region,
-whichever way the device moves the bytes. Receive is where the *device writes into* driver memory
-(the driver posts an empty buffer, the device fills it with a packet), and that is exactly the shape
-milestone 32's block write already leaned on: the validator "bounds addresses, never directions." A
-receive descriptor aimed at kernel memory would let the device *overwrite* the kernel with an inbound
-packet; a transmit descriptor aimed there would let it *exfiltrate* kernel memory onto the wire; both
-are refused by the one in-region check, before the device is ever rung. So the "second direction" is
-proved, not implemented: `the_validator_refuses_an_rx_descriptor_that_escapes_the_region` sets the
-device-writable flag and asserts the refusal is about the address, not the flag, and
-`a_second_queue_validates_on_its_own_block` proves queue 1 validates on its own block without
-touching queue 0's shadow. Both run on both ISAs.
-
-The used ring for the receive queue needs no extra confinement either: the device writes the received
-length into `used.ring[i].len` and the packet bytes into the descriptor buffer, and both landing
-zones are the driver's own in-region memory (the used ring is placed by the kernel; the buffer is
-address-checked). The device never writes an *address* anywhere the driver chose, which is the whole
-invariant.

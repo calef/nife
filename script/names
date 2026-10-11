@@ -163,16 +163,28 @@ import name_provenance                                                      # no
 # to). design/naming/provenance-limits.md is the one place that carries the reason, and this comment
 # deliberately cites it rather than restating it, because the last copy of this scope claim went
 # stale without anyone noticing.
+def program_root(directory, name):
+    """The file a program's block lives in: `<name>.rs`, or `<name>/main.rs` for a directory."""
+    if os.path.isdir(os.path.join(directory, name)):
+        return os.path.join(directory, name, "main.rs")
+    return os.path.join(directory, name + ".rs")
+
+
 SURFACES = [
     ("crate", os.path.join(root, "crates"),
      lambda name: os.path.join(root, "crates", name, "src", "lib.rs"), "//!"),
     # **Two directories, one kind** (milestone 175). A program is a program whether it ships or
     # exercises what ships, and splitting the kind would key the worklist's exposure order on a
     # classification rather than on who reads the name, which is the two-tier rule calef rejected.
+    #
+    # **A program is a file or a directory** (milestone 844 (the shell program is split along its
+    # seams), §273 (the shell program becomes a directory of modules)): `components/src/swish/` was
+    # the first, and its block is in `main.rs`, the crate root, where a one-file program's is in
+    # `<name>.rs`.
     ("program", os.path.join(root, "components", "src"),
-     lambda name: os.path.join(root, "components", "src", name + ".rs"), "//!"),
+     lambda name: program_root(os.path.join(root, "components", "src"), name), "//!"),
     ("program", os.path.join(root, "fixtures", "src"),
-     lambda name: os.path.join(root, "fixtures", "src", name + ".rs"), "//!"),
+     lambda name: program_root(os.path.join(root, "fixtures", "src"), name), "//!"),
     ("script", os.path.join(root, "script"),
      lambda name: os.path.join(root, "script", name), "#"),
 ]
@@ -244,9 +256,12 @@ def items():
                     continue
                 name = entry
             elif kind == "program":
-                if not entry.endswith(".rs"):
+                if entry.endswith(".rs"):
+                    name = entry[:-3]
+                elif os.path.isfile(os.path.join(directory, entry, "main.rs")):
+                    name = entry
+                else:
                     continue
-                name = entry[:-3]
             else:
                 if os.path.isdir(os.path.join(directory, entry)):
                     continue
