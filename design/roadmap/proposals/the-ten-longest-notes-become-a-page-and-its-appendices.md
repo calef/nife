@@ -178,6 +178,16 @@ since each outsider pass adds to it.
    3,164→2,758, verus 5,478→2,953, user-proofs 3,261→2,837, elf 3,085→2,759. The detail is in
    #1939's body. After it, 8 notes directly under `notes/` are still over the cap (measured
    2026-10-11 UTC), and a final lane is running on them.
+   The final lane, `lane/final-longest-notes` (PR #1945, merged 2026-10-11 18:56 UTC), took seven
+   of the eight and removed all seven baseline rows. Words before and after, by
+   `prose_ratchet.py --report` at the merge commit: follow-on-work 3,264→2,768,
+   progenitor-and-loading 3,364→2,508, scheduled-execution 3,576→2,919, isa-discovery
+   3,450→2,857. Then incremental-path 3,541→2,908, model-attribution-review 5,067→2,795,
+   timer-capability 5,644→2,145. The detail is in #1945's body. Its `design/` references were
+   repointed to the appendices by `maintainer/repoint-split-notes`.
+   `notes/adding-a-program.md` (3,211 words) is the one note still over the cap. The lane skipped
+   it because PR #1913 was editing it. #1913 merged at 18:32 UTC, before #1945 did, so the hold is
+   gone and the note is ready for a split of its own.
 5. The report names each provisional directory and file name for calef's queue.
 
 ## Open questions for an architect

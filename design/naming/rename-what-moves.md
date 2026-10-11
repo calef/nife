@@ -178,7 +178,8 @@ cited the crate in a score table. The directory looked like history; the status 
 
 Status is a property of the passage, not of the file. The `jh7110` rename found the other direction
 of the same error (2026-09-13). `notes/model-attribution-review.md` announces itself as a plan, so
-by the table above it moves. Two of its tables do not. They count the crates and programs created
+by the table above it moves. Two of its tables do not; they are now in
+[`notes/model-attribution-review/reconnaissance.md`](../../notes/model-attribution-review/reconnaissance.md#5-it-sat-squarely-on-the-irreversible-list-and-that-is-the-review-worth-doing). They count the crates and programs created
 inside one measured commit window, and a crate created in that window under the name `jh7110_trng`
 did not exist under any other. Sweeping them made a live plan carry a false measurement, which
 nothing checks and no reader can spot.
