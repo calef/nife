@@ -23,17 +23,17 @@ moving inside as `X/README.md`: this paragraph used to give `design/fatal-risks/
 checks `X.md`, and the lane that split the ten longest notes had to pick a reading.*
 
 This governs a page whose detail was moved out of it. A directory of records made one at a time,
-such as `design/decisions/`, `design/roadmap/`, `design/journeys/` or `notes/coes/`, has no page
-to keep: its `README.md` is the index, and nothing here changes it.
+such as `design/decisions/`, `design/roadmap/`, `design/journeys/`, `notes/coes/` or
+`design/fatal-risks/`, has no page to keep: its `README.md` is the index, and nothing here changes
+it. `design/fatal-risks/` holds nine numbered risk records, and calef moved its summary inside on
+2026-09-29 for exactly this reason: "the directory should look like the archive and the file like a
+summary of it, the same shape as design/decisions/ and design/roadmap/".
 
-*Exceptions, and foot guns: two pages live inside their own directory as `README.md`.*
-`design/fatal-risks/README.md` was split on 2026-09-23 as `design/fatal-risks.md` beside its
-appendices and moved inside on 2026-09-29 (calef: "the directory should look like the archive and
-the file like a summary of it, the same shape as design/decisions/ and design/roadmap/").
-`notes/delegated-review/README.md` was written there on 2026-09-22 by the lane for milestone 521
-(does an AI review of a pull request catch anything the gates and the maintainer do not), as a
-study with its transcripts beside it. Both predate this correction. Do not copy either: a new
-split puts the page at `X.md`.
+The rule has no exceptions. calef ruled on pull request #1921 (2026-10-11, UTC) that fatal-risks is
+a records directory rather than a marked exception. The one page that lived inside its own
+directory moves out to `notes/delegated-review.md`, beside its transcripts. It is the study of
+milestone 521 (does an AI review of a pull request catch anything the gates and the maintainer do
+not).
 
 A thematic directory is a permitted exception when the appendices are independently citable,
 which is why `AGENTS.md`'s tenets live in `design/tenets/` rather than in `AGENTS/`. Content that is

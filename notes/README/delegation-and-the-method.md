@@ -6,7 +6,7 @@ Part of [the notes index](../README.md), which says how to add a line.
 
 - [What a session carries, and why delegation is about context](../what-a-session-carries.md).
 - [What `claude --effort` buys, measured against a real repository query](../effort-levels.md). Name provisional.
-- [Does a delegated AI review catch what the gates and the maintainer miss](../delegated-review/README.md).
+- [Does a delegated AI review catch what the gates and the maintainer miss](../delegated-review.md).
 - [Renting an open-weight model for the mechanical lanes](../open-model-lanes.md).
 - [Would local inference hardware replace part of the subscription](../local-inference.md): a
   bake-off shortlist, measured and not yet run. Name provisional.
