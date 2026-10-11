@@ -29,7 +29,8 @@ worklist: the disposition column says where each verdict lives.
 ## The day's evidence, which is history rather than a worklist
 
 All three negative-discrepancy assertions were fixed, and the line numbers in this table are stale
-(corrected 2026-08-17 by the status-accuracy sweep; notes/load-sensitive-assertions.md:465 had already
+(corrected 2026-08-17 by the status-accuracy sweep; `notes/load-sensitive-assertions/miss-taxonomy-and-clockless-loops.md`, "The fourth round,
+2026-08-16", had already
 named this exact defect, that a reader coming to the block first is sent to three finished sites). The
 reaper count is now at `kernel/src/sched.rs:3978`, rescoped to per-`Tid` waits and `used() <= before`.
 The address-space frame check is `kernel/src/user/tests.rs:2221`, where the old "-19" survives as a

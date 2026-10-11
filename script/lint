@@ -3239,6 +3239,16 @@ echo "==> capability is not abbreviated cap (calef, 2026-10-06)"
 # Fixtures first, so a green check is not a counter matching nothing.
 python3 helpers/cap_abbreviation.py --selftest
 python3 helpers/cap_abbreviation.py --check
+echo "==> no line-number citations (§277: cite a heading or a symbol)"
+# §277 (cite a heading or a symbol, never a line number), calef, 2026-10-11 (UTC): a document is
+# cited by its heading and code by a symbol, never by line number, because a line number moves with
+# every edit above it; that day's §212 splits left every `notes/X.md:NNN` into sixty notes stale at
+# once. helpers/line_citations.py, whose header is the
+# manual, holds citations into Markdown at zero and citations into code to a ceiling that only
+# falls, plus no net growth against the merge base. Quoted tool output (a `path:LINE:COLUMN`, a code
+# block) is not a citation; anything else needs a marked exception. Fixtures first.
+python3 helpers/line_citations.py --selftest
+python3 helpers/line_citations.py --check
 # Milestone 415 (sub-tripwire drift accumulates across baseline saves), item 3's arithmetic
 # (helpers/baseline_drift.py), against fixtures and with no git:
 # the weekly drift report is a record other people quote, so its sums are checked where a change to
@@ -3462,6 +3472,9 @@ python3 helpers/verify_times.py --selftest >/dev/null
 # daily rows against a recorded run, and the near-budget issue's three transitions (open, update,
 # close after three runs under), with no network. The fetch and the sync run only in metrics.yml.
 python3 helpers/ci_job_times.py --selftest >/dev/null
+# The debt-paydown share (lane maintainer/debt-paydown-share-chart, 2026-10-11 UTC): the filter to
+# pull requests merged into main and the label test, against fixtures, with no network.
+python3 helpers/debt_paydown_share.py --selftest >/dev/null
 python3 helpers/packages.py --check
 
 # The region claim protocol has ONE decision path (milestone 136).

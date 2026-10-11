@@ -13,7 +13,19 @@ work that page points at but does not need to carry whole.
   against its sources and priced against G3 and G4. calef ruled "G5 full" on 2026-09-26 (UTC).
 - [mem-entries.md](mem-entries.md): why a `--mem` grant nests inside its instance's region, why
   one is outstanding at a time, and what that costs the other entries. Moved from the program's
-  BUGS by milestone 862 (comments state the constraint as it is now), 2026-10-09 (UTC).
+  BUGS by milestone 862 (comments state the constraint as it is now), 2026-10-09 (UTC). The
+  parent's restatement of it became a link on 2026-10-11 (UTC), and its extra facts moved here.
+- [archive-narrowing.md](archive-narrowing.md): why the program set the timetable's archive is
+  narrowed to is a written list held by a host test, not computed in the kernel, and the audit
+  line that measures it. Moved from the parent under §212 (a prose budget), 2026-10-11 (UTC).
+- [next-after-proofs.md](next-after-proofs.md): why `next_after` snaps onto the beat rather than
+  counting periods, and why phase preservation is tested rather than proved. Moved from the parent
+  under §212, 2026-10-11 (UTC).
 
 *Name: provisional, minted 2026-09-26 (UTC) by the lane for milestone 129 (scheduled execution), for the directory and every
 stem in it. `calendar-grammar-g5` was minted the same day by the lane `proposal/129-calendar-grammar`. Naming is calef's; `script/names --unratified` lists each stem.*
+
+- `archive-narrowing` Name: provisional, minted 2026-10-11 (UTC) by lane/final-longest-notes, for
+  the parent's "Where the set is computed, and why not at the spawn site". calef names files.
+- `next-after-proofs` Name: provisional, minted 2026-10-11 (UTC) by lane/final-longest-notes, for
+  what the parent said about `next_after`'s Kani harnesses. calef names files.

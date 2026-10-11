@@ -34,16 +34,16 @@ Everything on those lines was previously either unknown to the kernel or assumed
 ## The three tiers, and the one RISC-V does not have
 
 The roadmap entry names three ways to learn what a machine is, in decreasing order of how much you
-should like them: a firmware claim (a device-tree property), a targeted measurement (write a
-value, read back what stuck), and trap-and-detect (execute it and catch the illegal-instruction
-fault). We do the first two and none of the third.
+should like them. A firmware claim is a device-tree property. A targeted measurement writes a
+value and reads back what stuck. Trap-and-detect executes it and catches the illegal-instruction
+fault. We do the first two and none of the third.
 
 Building both ISAs at once exposed a tier the list is missing, and it is the reason the two halves
 of the crate look nothing alike.
 
 aarch64 has a tier 0: the CPU describes itself. `MIDR_EL1` and the `ID_AA64*` space are
 architected, mandatory, and read straight off the part in front of you. Not hearsay, and not a
-measurement anyone had to design. So the aarch64 half is a **decoder**: three `mrs` reads and a
+measurement anyone had to design. So the aarch64 half is a decoder: three `mrs` reads and a
 handful of shifts.
 
 RISC-V removed that tier deliberately. `misa` exists, is coarse, is permitted to read as zero,
@@ -69,12 +69,13 @@ two of the entry's four candidates turned out not to be among them.
 | TLB flush strategy | **Varies nowhere.** The unconditional `sfence.vma` in `write_satp` is unconditional by design, and removing it is its own milestone gated on the ASID probe. `Svinval` is recorded and acted on by nothing. |
 | IOMMU presence | **Already discovered, elsewhere.** The `smmuv3@` device-tree node and PCI enumeration answer this, and the record would add a second way to ask the same question. |
 
-Plus the requirement checks, which are branches that go exactly one way: RISC-V refuses a machine
-that is not RV64, that lacks `m`/`a`/`c`, whose MMU is narrower than Sv39, or whose firmware says it
-does not implement one of the four SBI extensions the kernel calls unconditionally.
+Plus the requirement checks, which are branches that go exactly one way. RISC-V refuses a machine
+that is not RV64, that lacks `m`/`a`/`c`, or whose MMU is narrower than Sv39. It also refuses one
+whose firmware says it does not implement one of the four SBI extensions the kernel calls
+unconditionally.
 
-**A fifth call site was never reached.** Four is what the entry predicted the ceiling should be, and
-the two that dropped out are the more interesting result: a fact you already discover another way,
+A fifth call site was never reached. Four is what the entry predicted the ceiling should be, and
+the two that dropped out are the more interesting result. A fact you already discover another way,
 and a fact nothing branches on yet, both look like they need a record and do not.
 
 ## What the machine corrected, twice
@@ -166,48 +167,19 @@ is what should tell us what the abstraction is, if there is one.
 
 ## Naming
 
-The crate was `isa`, settled by calef on 2026-08-03 as an abbreviation in the group `DECISIONS.md`
-§39 protects: a standard term of art a reader already knows from outside this project, like `elf`,
-`dtb` and `pci`.
+The crate was `isa`, settled by calef on 2026-08-03 as a term of art. It collided with the ISA bus
+and undersold the crate's scope, so calef renamed it to `machine_discovery` on 2026-08-23, after
+the "machine" that Linux ARM and FreeBSD use for the same device-tree-plus-probe scope. The
+reasoning and the names it beat are in [the-crate-name.md](isa-discovery/the-crate-name.md).
 
-That protection turned out not to fit: `isa` collides with the well-known ISA bus (a 1980s PC
-expansion standard) and only partially described the crate's scope, which is a boot-time "what
-machine is this?" record built from device-tree claims, targeted measurements, and ID-register
-reads, not just instruction-set-extension discovery. calef renamed it to `machine_discovery` on
-2026-08-23 during a naming review of every crate the kernel directly depends on. Verified prior art
-settled the new name: Linux ARM's `setup_machine_fdt()`/`struct machine_desc`/`DT_MACHINE_START` and
-FreeBSD's `hw.machine` both use "machine" for this same device-tree-plus-probe scope, which is why
-`machine_discovery` won over `hardware_discovery` (too generic, collides with `pci`'s and `dtb`'s own
-territory) and `identcpu` (FreeBSD's actual name, but narrower: register-only, no device-tree layer).
+## The tables, and a line nothing covers
 
-## Four lookup tables, and why none of them is a `match`
-
-`TABLE` (extensions), `SBI_TABLE`, `IMPLEMENTATIONS` (SBI firmware) and `aarch64::IMPLEMENTERS`
-(chip vendors) are all arrays with a `const` assertion over them, and all four could have been a
-`match`. The reason they are not is a bug class a `match` cannot be checked for: a duplicated key
-compiles, silently, and makes the second arm unreachable forever. In a vendor table that is a chip
-whose name can never be printed; in the extension table it would be a fact the kernel can never
-report. As arrays the duplicate is a compile error, and the lookup being a loop over data means a
-test can walk the rows rather than copy them into a test file, which is the difference between
-checking a table and restating it.
-
-The SBI extension ids go one better and are derived from their tags (`eid("TIME")`), so the only
-thing anybody can get wrong is a four-character string rather than a hex constant. That one is worth
-the extra step because a mistyped id probes an extension that does not exist, gets "no", and refuses
-to boot on correct firmware. The vendor codes are not derivable: most are the ASCII of the vendor's
-initial and enough are not (`0x50`, `0x56`, `0xc0`) that the rule would have more exceptions than
-cases.
-
-## One line nothing covers, on purpose
-
-`bit(n)`, the helper that turns an index into an `Extensions` bit. Every caller is a `const`
-initializer, so the compiler folds it and the body never runs; a coverage report will always show it
-unreached. The only assertion available is that `bit(3)` is `1 << 3`, which restates the body, so it
-has a comment saying why it is uncovered instead of a test that moves a number.
-
-`eid` is the instructive contrast. It is const-only too, and it *is* called at runtime by a test,
-because there the thing that can be wrong is the tag rather than the arithmetic, and const
-evaluation and runtime evaluation are two implementations of one function that should agree.
+The four lookup tables (`TABLE`, `SBI_TABLE`, `IMPLEMENTATIONS`, `aarch64::IMPLEMENTERS`) are
+arrays with a `const` assertion rather than `match`es, because a duplicated `match` key compiles
+silently and a duplicated array key does not. The SBI extension ids are derived from their tags
+(`eid("TIME")`). And `bit(n)` is deliberately uncovered by tests, because every caller is a
+`const` initializer. The reasoning for each is in
+[lookup-tables.md](isa-discovery/lookup-tables.md), for whoever edits the crate.
 
 ## The sequel: PSCI and the CPU list (milestone 100)
 
@@ -231,16 +203,10 @@ machines anyone ran.
 
 ### The two failure shapes were not the same, and the plan had to say so
 
-The core list was a guaranteed silent no-op. A machine with more than four cores had cores 4 and
-up never started, and there was no error available, because nothing asked about them. That is the
-worst shape a failure can take: success reported, work not done, and the symptom arriving later as a
-scheduler that never balances.
-
-The conduit was board-specific and untested. `smp.rs` did have a degradation path, written for
-one case (a core that is absent, `PSCI {ret}; not present?`), and a machine whose firmware answers on
-`smc` is under no obligation to produce a PSCI error code from an `hvc` it never agreed to serve. It
-would more likely be an undefined-instruction trap. Calling both "silent" was close enough for a
-warning and too loose for a plan.
+The core list was a guaranteed silent no-op: cores 4 and up were never started, and nothing
+reported it. The conduit was board-specific and untested, and a wrong one would more likely trap
+than return a PSCI error.
+Why that difference mattered is in [psci-conduit.md](isa-discovery/psci-conduit.md).
 
 ### What is read, and what is still assumed
 
@@ -252,9 +218,9 @@ set up.
 Still assumed, and now checked rather than assumed silently: that a core's hardware id equals its
 logical id. Using a hardware id that differs would need three other things to move with it, and none
 of them is in this milestone. `cpu::PERCPU`, the secondary stacks and the RISC-V trap stashes are
-arrays indexed by logical id; the GICv2 targets an SPI by CPU-interface number and `send_sgi` by that
-same number; the PLIC's S-mode context is `2 * hart + 1` and the SBI IPI mask is a bitmap of hart
-ids. So `bring_up_secondaries` reads the real ids, compares each to its index, and refuses by name
+arrays indexed by logical id. The GICv2 targets an SPI by CPU-interface number, and `send_sgi` by
+that same number. The PLIC's S-mode context is `2 * hart + 1`, and the SBI IPI mask is a bitmap of
+hart ids. So `bring_up_secondaries` reads the real ids, compares each to its index, and refuses by name
 the ones that differ:
 
 ```
@@ -264,8 +230,8 @@ the ones that differ:
 ```
 
 A clustered aarch64 board (`MPIDR_EL1.Aff1` in use) is exactly that machine. This turns a guaranteed
-silent no-op into a named refusal and a smaller machine, which is the whole point; making the kernel
-actually *use* such a core is a milestone of its own, and it is a bigger one than this was.
+silent no-op into a named refusal and a smaller machine, which is the whole point. Making the
+kernel actually *use* such a core is a milestone of its own, and it is a bigger one than this was.
 
 ### What the boot says now
 
@@ -275,48 +241,36 @@ actually *use* such a core is a milestone of its own, and it is a bigger one tha
   smp: 4 core(s) online
 ```
 
-On RISC-V the first line reads `sbi hsm hart_start (the only mechanism RISC-V defines)`, and the
-asymmetry is real rather than a gap: RISC-V has one bring-up mechanism, no conduit to choose and no
+On RISC-V the first line reads `sbi hsm hart_start (the only mechanism RISC-V defines)`. The
+asymmetry is real rather than a gap. RISC-V has one bring-up mechanism, no conduit to choose and no
 function id to look up, because a kernel entered in S-mode has firmware under it by construction.
 
 ### The fixture that made the `smc` half testable
 
-QEMU `virt` states `method = "hvc"`, so for a while it looked as though the other branch could only
-be exercised by hand-writing a tree. It cannot, quite: `-machine virt,virtualization=on` puts
-something at EL2 and QEMU's own PSCI moves to EL3, so the same board, one option different, states
-`smc`. That dump is `crates/device_tree_blob/tests/fixtures/qemu-aarch64-virt-smc.dtb`, and the host test that
-compares the two is the whole finding in one assertion: the conduit is not a property of aarch64, of
-QEMU, or of the `virt` board.
-
-It does not make the `smc` call tested. That configuration enters the kernel at EL2 and this
-kernel expects EL1, so nothing here boots it. Parsed, not called; the `arch::psci_cpu_on` BUGS block
-says so where a reader meets the function.
+QEMU `virt` states `method = "hvc"`, but the same board with `-machine virt,virtualization=on`
+states `smc`, so the conduit is not a property of aarch64, of QEMU, or of the `virt` board. A host
+test compares the two dumps. It does not make the `smc` call tested: that configuration enters the
+kernel at EL2 and this kernel expects EL1, so the half is parsed, not called. The fixture and the
+reasoning are in [psci-conduit.md](isa-discovery/psci-conduit.md).
 
 ## BUGS
 
 - Discovery does not make the kernel portable, it makes it honest. Knowing an extension is
   missing and doing something useful about it are different milestones. Today the kernel does
   exactly one thing with a missing requirement: it says so and stops.
-- **A core whose hardware id is not its logical id is refused, not used** (milestone 100). See
+- A core whose hardware id is not its logical id is refused, not used (milestone 100). See
   above; the reason is four other subsystems that index hardware by logical id.
-- **The `smc` conduit is parsed and never called.** No machine on this laptop boots the
+- The `smc` conduit is parsed and never called. No machine on this laptop boots the
   configuration that would exercise it.
-- **`cpu_list` reads `/cpus/timebase-frequency` and falls back to the first hart's own.** The RISC-V
+- `cpu_list` reads `/cpus/timebase-frequency` and falls back to the first hart's own. The RISC-V
   binding permits it per hart, and a machine whose harts genuinely differ would be misread. The
   kernel treats the counter as machine-wide regardless, so this is a limitation of the model rather
   than of the parse.
-- **`user_mode_runtime::cntfrq` returned 10 MHz on RISC-V until 2026-09-21. Closed, and the reasoning
-  that kept it open was wrong.** This entry used to say that userspace *cannot* learn the rate, that
-  closing it was an ABI addition (an aux-vector entry at process start, the way Linux passes
-  `AT_HWCAP`), and that it was therefore a design fork rather than a fix. The premise was right and
-  the conclusion was not: userspace cannot *read* the device tree, but the kernel can *hand it a
-  page*, which is not an ABI addition because the mechanism already existed and shipped on `x86_64`
-  (`counter_frequency_protocol`, from milestone 161 (the x86_64 kernel port)). The fix was to widen a `cfg`,
-  not to design a handoff. The lesson is the one worth keeping: a limitation recorded with a
-  proposed fix attached stops being re-examined, and this one went two months without anybody asking
-  whether the tree already solved it somewhere else. What made it urgent was radon, whose rate is
-  4 MHz, so the "honest gap" was a silent 2.5x on the one board that matters.
-- **A `status = "disabled"` CPU node is counted in the intersection.** Firmware sometimes describes
+- Closed 2026-09-21: `user_mode_runtime::cntfrq` returned 10 MHz on RISC-V until then, a silent
+  2.5x on radon, whose rate is 4 MHz. The fix widened a `cfg` so the kernel hands userspace the
+  rate in a page, as `x86_64` already did. The reasoning that had kept it open was wrong, and the
+  lesson is in [counter-rate-in-userspace.md](isa-discovery/counter-rate-in-userspace.md).
+- A `status = "disabled"` CPU node is counted in the intersection. Firmware sometimes describes
   a core the OS will never run on, and including it narrows `common` further than it needs to be.
   That is the safe direction and it is not free: a board describing a disabled core with no FPU
   would make us report no FPU. Left alone until a real board shows the case.
@@ -326,8 +280,11 @@ says so where a reader meets the function.
 - `OpenSBI`'s implementation version prints as raw hex (`0x10007`). The encoding is
   implementation-defined, so decoding it as `1.7` would be a guess that happens to be right for one
   vendor, which is the sort of guess `implementer_name` deliberately refuses elsewhere.
-- Nothing here has met a real board. Every fixture is QEMU's or hand-written. That is the
-  limitation the milestone exists to prepare for, not one it removes.
+- Little here has met a real board. Every ISA and CPU-list fixture is QEMU's or hand-written. That
+  is the limitation the milestone exists to prepare for, not one it removes. Corrected 2026-10-11
+  (UTC), which this line used to say of every fixture:
+  `crates/machine_discovery/tests/fixtures/visionfive2-uboot-control.dts` is the VisionFive 2's
+  U-Boot control tree's PLIC node, captured at the bench on 2026-08-21.
 
 ## See also
 

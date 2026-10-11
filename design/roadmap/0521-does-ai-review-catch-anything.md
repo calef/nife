@@ -116,7 +116,7 @@ nothing downstream checks it. The experiment exists to find out whether that pri
 
 ## The result, 2026-09-22
 
-Run and recorded in `notes/delegated-review/README.md`, against the three defect rows and two
+Run and recorded in `notes/delegated-review.md`, against the three defect rows and two
 clean rows the rented models produced that morning, every one of which passed `script/lint`,
 `script/citations --ratchet` and `script/roadmap --check`. Fifty-five reviews, two models, both
 postures, three replicates a cell, every transcript kept unedited in an archive beside the note.
@@ -168,7 +168,7 @@ passed the defect and invented concerns on the clean one, in the same pair of ru
 
 ## Follow-on
 
-- **Recorded.** `notes/delegated-review/README.md`'s `BUGS` carries what this run cannot support: an
+- **Recorded.** `notes/delegated-review.md`'s `BUGS` carries what this run cannot support: an
   agent adjudicated its own kind, the corpus is five diffs of which one was mislabelled, every defect
   in it is of one shape (a true sentence removed or two meanings folded into one), the reviewer saw
   one commit rather than the worktree, and the run's cost was never measured.

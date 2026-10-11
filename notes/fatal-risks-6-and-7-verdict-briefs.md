@@ -37,11 +37,11 @@ All of it on radon (riscv64 VisionFive 2, JH7110). The device is the true random
 
 | What | Result | Source |
 |---|---|---|
-| Confined | grant is two endpoints and one `0x1000` page; no IRQ, no DMA page, no `Virtio` capability | `design/roadmap/0159-jh7110-trng-driver.md`; read adversarially, "Nothing to find", `design/audit-reports/2026-09-17-userspace-confinement.md:84` |
+| Confined | grant is two endpoints and one `0x1000` page; no IRQ, no DMA page, no `Virtio` capability | `design/roadmap/0159-jh7110-trng-driver.md`; read adversarially, "Nothing to find", `design/audit-reports/2026-09-17-userspace-confinement.md`, "The population, found by reading grants rather than names" |
 | Drives the device | draws differ between draws and boots, 2026-09-03/04 | transcripts named in the appendix live under `target/board/`, which is not in git |
 | Rate, 2026-09-16 | 988,416, 992,248 and 992,248 bytes/s; bring-up 522, 516 and 522 us | `bench/radon-2026-09-16/jobmix-boot3.log:721`, `jobmix-boot5.log:736`, `jobmix-boot4.log:814` |
 | Rate, 2026-09-25 | 973,384 bytes/s over 8 round trips, bring-up 580 us | `bench/radon-2026-09-25/soak-8h.log:208` (the 8 h 09 m soak boot) |
-| The README's figure | 955,223 bytes/s, 64 bytes in 67 us | commit `4af8ff980`, `design/roadmap/0306-time-the-hw-entropy-step.md:17` |
+| The README's figure | 955,223 bytes/s, 64 bytes in 67 us | commit `4af8ff980`, `design/roadmap/0306-time-the-hw-entropy-step.md`, "The number" |
 | QEMU floor | about 250 us per exchange; radon is 8.4 us, so the floor is not a denominator | appendix, `design/roadmap/0306-time-the-hw-entropy-step.md` |
 
 No xenon NVMe result exists. `bench/xenon-2026-09-17/` holds a first-light tour and two failed NVMe
@@ -131,8 +131,8 @@ Three kinds of work, all by this project, on QEMU and the host unless stated.
 | 2026-09-17 | audit, userspace lens (313) | fixed 3, minted 3, accepted 1; §12 (call/reply IPC: a one-shot reply capability) false on x86_64 (port grant kept after `CAP_DELETE`); SMEP sentence false | `design/audit-reports/2026-09-17-userspace-confinement.md` |
 | 2026-09-21 | adversarial pass | a revoked capability parked in `outgoing_cap` was delivered afterwards; fixed in three sweeps; eight attacks held | PR #1059, `notes/confinement-claims.md` |
 | 2026-09-23 | `PortRange::REVOKE` other-core window closed (315) | 12 of 12 two-core suites against 3 of 12 failing before | README appendix, PR #1144 |
-| 2026-09-24 | audit, new trust boundaries | fixed 5 (incl. SVE/SME/V state neither saved nor disabled, a window no tested machine can open), no confinement claim false | `design/audit-reports/2026-09-24-new-trust-boundaries.md:223` |
-| 2026-09-29 | audit, syscall surface as a whole | fixed 0, minted 0, accepted 3, no confinement claim false | `design/audit-reports/2026-09-29-syscall-surface-whole.md:114` |
+| 2026-09-24 | audit, new trust boundaries | fixed 5 (incl. SVE/SME/V state neither saved nor disabled, a window no tested machine can open), no confinement claim false | `design/audit-reports/2026-09-24-new-trust-boundaries.md`, "Is any confinement claim in this tree false as stated?" |
+| 2026-09-29 | audit, syscall surface as a whole | fixed 0, minted 0, accepted 3, no confinement claim false | `design/audit-reports/2026-09-29-syscall-surface-whole.md`, "Is any confinement claim false as stated?" |
 
 Current replay evidence, from `script/falsifications` at this branch's base: 155 of 212 Kani
 harnesses replayable (all packages, not only confinement ones); 16 of 17 kernel tests carry a

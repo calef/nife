@@ -13,7 +13,7 @@ needs_person: no
 The number is **provisional**: the integrator mints it at merge. Promoted from the proposal `a-delegated-reviewer-found-ten-defects-nobody-was-going-to-find` on 2026-09-22, filed 2026-09-22. Raised by the experiment in milestone 521 (does an AI review of a
 pull request catch anything the gates and the maintainer do not), as work its own run turned up and
 could not do. The findings, and the check of each against the file, are in
-`notes/delegated-review/README.md`.
+`notes/delegated-review.md`.
 
 Every correction is in Markdown that already exists.
 
@@ -58,7 +58,7 @@ alike.
 ## BUGS
 
 - One corpus, five diffs, one adjudicator who was an agent. Nothing here establishes a rate.
-  `notes/delegated-review/README.md` records the rest of what the run cannot support.
+  `notes/delegated-review.md` records the rest of what the run cannot support.
 
 ## Index row
 

@@ -242,6 +242,11 @@ WEEK_NOTES_PATH = DATA_DIR / 'week-notes.csv'
 # wall time, per job and per step, written by `helpers/ci_job_times.py update` from GitHub's job
 # records. Read from the working tree for the queue file's reason. File name provisional.
 CI_JOB_TIMES_PATH = DATA_DIR / 'ci-job-times.csv'
+# Which merged pull requests carry the `debt-paydown` label (notes/debt-paydown.md), one row per
+# pull request, written by `helpers/debt_paydown_share.py update` from GitHub. Read from the
+# working tree for the queue file's reason: a label is on GitHub and not in git. File name
+# provisional (lane maintainer/debt-paydown-share-chart, 2026-10-11 UTC).
+DEBT_PAYDOWN_PATH = DATA_DIR / 'merged-pull-requests.csv'
 
 # The jobs `ci-jobs.svg` draws by name: the four longest poles of `ci.yml` when milestone 808's lane
 # read the record on 2026-10-07 (UTC). A fixed list because a chart's series are fixed; the line is
@@ -391,7 +396,8 @@ def _col(prefix, status):
 # week, so everything downstream of it, the charts included, still sees the flat row it always saw.
 #
 # `cost` rather than `effort`, because `effort.csv` in this same directory is `script/effort`'s
-# output and an input to this script. The chart it feeds keeps its own name, `effort.svg`.
+# output and an input to this script. Its chart, `effort.svg`, was removed on 2026-10-11 (UTC) at calef's
+# request; the columns are still written, and `context-per-turn.svg` still draws from the same records.
 WEEK = 'week'
 
 # Milestone 611's columns; `homes` below fills them.
@@ -409,6 +415,12 @@ MEASURES = [
     # The merge queue's weekly entries and ejections, summed from `merge-queue-daily.csv` (milestone
     # 724). A week with no daily rows is left empty, never zero: the record starts on 2026-09-14.
     ('merge-queue', ['queue_entries', 'queue_ejected', 'queue_ejection_pct']),
+    # The share of merged pull requests that pay down debt (calef, 2026-10-11 UTC), counted from
+    # `merged-pull-requests.csv`: numerator and denominator from that one file, so they agree about
+    # which pull requests exist. The total is not `merged_pull_requests` above, which reads merge
+    # commits on `main`; `debt_paydown_by_week` says where the two part. File and column names
+    # provisional (lane maintainer/debt-paydown-share-chart).
+    ('debt-paydown', ['debt_paydown_merged_total', 'debt_paydown_merged', 'debt_paydown_pct']),
     # Verify's wall clock, as weekly medians over the runs `verify-runs.csv` sampled. Empty before
     # 2026-08-14, when the proofs first ran as shards. File and column names provisional
     # (lane/verify-shard-refresh's).
@@ -423,8 +435,7 @@ MEASURES = [
     # The model-attribution columns (file name `models.csv`; Name: ratified 2026-09-24 (calef, in session, when asked to ratify the two metrics files the split produced; nothing refused)). Commits
     # and lines are one measure and one file rather than two, because a single pass over the same
     # git log produces both and a week that has one always has the other. The two charts it feeds
-    # keep their own names, `models-commits.svg` and `models-lines.svg`, the way `cost` feeds
-    # `effort.svg`.
+    # keep their own names, `models-commits.svg` and `models-lines.svg`.
     ('models', [_model_col('commits', s) for s in MODEL_SLUGS + MODEL_EXTRA]
      + ['model_commits_total']
      + [_model_col('lines', s) for s in MODEL_SLUGS + ['unattributed', 'pre_convention']]),
@@ -1038,6 +1049,35 @@ def queue_by_week():
         held['entries'] += int(row['entries'] or 0)
         held['ejected'] += int(row['ejected'] or 0)
     return weeks
+
+
+def debt_paydown_by_week(path=DEBT_PAYDOWN_PATH):
+    """{ISO week: {merged, labeled}} counted from `merged-pull-requests.csv`, or {} without it.
+
+    Both counts come from the one file, so the share's numerator and denominator agree about which
+    pull requests exist. The total is close to `merged_pull_requests` and not equal to it: that
+    column counts first-parent merge commits on `main` by committer date, this one counts GitHub's
+    pull requests merged into `main` by `mergedAt`. A merge landing seconds either side of Monday
+    00:00 UTC can fall in different weeks on the two, and a merge commit whose subject is not
+    GitHub's default is in this count and not that one."""
+    if not path.exists():
+        return {}
+    weeks = {}
+    for row in csv.DictReader(path.read_text().splitlines()):
+        held = weeks.setdefault(week_of_date(row['merged_day']), {'merged': 0, 'labeled': 0})
+        held['merged'] += 1
+        held['labeled'] += int(row['debt_paydown'])
+    return weeks
+
+
+def debt_paydown_cells(held):
+    """The three columns for one week's `debt_paydown_by_week` entry, or None for a week the file
+    does not cover: every cell empty then, never zero, for the queue's reason."""
+    if held is None:
+        return {'debt_paydown_merged_total': '', 'debt_paydown_merged': '', 'debt_paydown_pct': ''}
+    return {'debt_paydown_merged_total': held['merged'],
+            'debt_paydown_merged': held['labeled'],
+            'debt_paydown_pct': '%.1f' % (100.0 * held['labeled'] / held['merged'])}
 
 
 def verify_by_week():
@@ -2451,6 +2491,12 @@ CHARTS = [
     ('pull-requests.svg', 'Pull requests merged each week',
      'first-parent merge commits on main; a milestone is one of these, and most of these are not',
      [('merged that week', 'merged_pull_requests')], 1.0, None, None),
+    # The weekly share as bars and the pooled ten-week share as the line (TRENDS). Chart name
+    # provisional (lane maintainer/debt-paydown-share-chart, 2026-10-11 UTC).
+    ('debt-paydown.svg', 'Merged pull requests that pay down debt, per cent',
+     'labeled debt-paydown: repairs, cleanups, record fixes, compliance; over every pull request '
+     'merged into main',
+     [('debt-paydown share', 'debt_paydown_pct')], 1.0, None, 'debt_paydown_pct'),
     ('merge-queue.svg', 'Merge queue entries that left without merging, per cent',
      'ejected over entered, summed across the week from GitHub\u2019s merge-queue events; the line '
      'is where trunk-health starts to say so',
@@ -2480,10 +2526,6 @@ CHARTS = [
      'dozen lines and the largest was a mechanical sweep. Merges carry no line count',
      model_chart('lines', False)[0], 1000.0, None, 'model_lines_unattributed',
      model_chart('lines', False)[1]),
-    ('effort.svg', 'Machine effort per milestone built, in millions of tokens',
-     'a ratio, not a total: down means the method got cheaper. Weeks with no surviving records are '
-     'marked, not zeroed',
-     [('million tokens per milestone', 'tokens_per_milestone')], 1.0, None, 'lane_tokens'),
     ('context-per-turn.svg', 'What a turn carried, in thousands of tokens of context',
      'mean prompt per request, from the same records as the row above; the bill tracks this, not '
      'the length of the answer. Weeks with no surviving records are marked, not zeroed',
@@ -2755,6 +2797,7 @@ def fill_derived(rows, rev):
     effort = effort_by_week()
     cash = cash_by_week(date.today())
     queue = queue_by_week()
+    debt = debt_paydown_by_week()
     verify = verify_by_week()
     ci_jobs = ci_jobs_by_week()
     for week, row in rows.items():
@@ -2775,6 +2818,7 @@ def fill_derived(rows, rev):
         row['queue_ejected'] = '' if held_queue is None else held_queue['ejected']
         row['queue_ejection_pct'] = ('' if not held_queue or not held_queue['entries']
                                      else '%.1f' % (100.0 * held_queue['ejected'] / held_queue['entries']))
+        row.update(debt_paydown_cells(debt.get(week)))
         row.update(models.get(week, {}))
         held = effort.get(week) or {}
         tokens, hours = held.get('tokens'), held.get('hours')
@@ -2844,7 +2888,11 @@ TRENDS = {'velocity.svg': ('milestones_built_this_week', 10),
           'pull-requests.svg': ('merged_pull_requests', 10),
           # calef, 2026-10-11 (UTC): a 10-week moving average on the file-size chart. One split
           # moves the share in a week, so the mean is what says whether the splits are winning.
-          'file-size.svg': ('lines_share_over_2000_pct', 10)}
+          'file-size.svg': ('lines_share_over_2000_pct', 10),
+          # A share's trend is pooled, not a mean of shares: the line is ten weeks' labeled pull
+          # requests over ten weeks' merged ones, so a quiet week weighs what it merged, for
+          # `queue_by_week`'s reason. A (numerator, denominator) pair asks `trailing_mean` for that.
+          'debt-paydown.svg': (('debt_paydown_merged', 'debt_paydown_merged_total'), 10)}
 
 
 def trailing_mean(rows, weeks, field, span):
@@ -2857,6 +2905,16 @@ def trailing_mean(rows, weeks, field, span):
     for week in weeks:
         k = every.index(week)
         window = every[max(0, k - span + 1):k + 1]
+        if isinstance(field, tuple):
+            # A pooled share in per cent, over the weeks in the window that have a denominator; a
+            # week the record does not cover is skipped rather than read as zero, and the window
+            # counts as short until `span` weeks have one.
+            num, den = field
+            held = [w for w in window if rows[w].get(den, '') not in ('', None)]
+            total = sum(_cell(rows[w], den) for w in held)
+            out.append((100.0 * sum(_cell(rows[w], num) for w in held) / total if total else None,
+                        len(held) == span))
+            continue
         out.append((sum(_cell(rows[w], field) for w in window) / len(window),
                     len(window) == span))
     return out
@@ -2885,8 +2943,9 @@ def draw_charts(rows, only=None):
         trend = None
         if name in TRENDS:
             field, span = TRENDS[name]
-            trend = ('trailing %d-week mean' % span,
-                     'trailing mean, fewer than %d weeks' % span,
+            word = 'share' if isinstance(field, tuple) else 'mean'
+            trend = ('trailing %d-week %s' % (span, word),
+                     'trailing %s, fewer than %d weeks' % (word, span),
                      trailing_mean(rows, weeks, field, span))
         if name in LINES:
             label, field = LINES[name]
@@ -3057,7 +3116,38 @@ def selftest():
                   grouped=True)
         grouped_text = grouped_svg.read_text()
 
+        # The debt-paydown share (lane maintainer/debt-paydown-share-chart): one file gives both
+        # counts, a Sunday and the Monday after it are two weeks, and no file is no weeks.
+        debt_record = pathlib.Path(tmp) / 'merged-pull-requests.csv'
+        debt_record.write_text('number,merged_day,debt_paydown\n'
+                               '10,2026-10-05,1\n11,2026-10-11,0\n12,2026-10-11,1\n'
+                               '13,2026-10-12,0\n')
+        debt_weeks = debt_paydown_by_week(debt_record)
+        debt_absent = debt_paydown_by_week(pathlib.Path(tmp) / 'absent.csv')
+    debt_rows = {'2026W01': {'debt_paydown_merged_total': '', 'debt_paydown_merged': ''},
+                 '2026W02': {'debt_paydown_merged_total': '10', 'debt_paydown_merged': '5'},
+                 '2026W03': {'debt_paydown_merged_total': '30', 'debt_paydown_merged': '3'}}
+    debt_pair = ('debt_paydown_merged', 'debt_paydown_merged_total')
+
     cases = [
+        ('debt-paydown: both counts from one file, weeks split at Monday UTC', debt_weeks,
+         {'2026W41': {'merged': 3, 'labeled': 2}, '2026W42': {'merged': 1, 'labeled': 0}}),
+        ('debt-paydown: no record is no weeks, not zeros', debt_absent, {}),
+        ('debt-paydown: the share to one place, the counts as counts',
+         debt_paydown_cells({'merged': 3, 'labeled': 2}),
+         {'debt_paydown_merged_total': 3, 'debt_paydown_merged': 2, 'debt_paydown_pct': '66.7'}),
+        ('debt-paydown: a week the record does not cover is empty, never zero',
+         debt_paydown_cells(None),
+         {'debt_paydown_merged_total': '', 'debt_paydown_merged': '', 'debt_paydown_pct': ''}),
+        ('debt-paydown: a week with none labeled is a measured zero',
+         debt_paydown_cells({'merged': 4, 'labeled': 0})['debt_paydown_pct'], '0.0'),
+        ('debt-paydown: the trend pools the window rather than averaging shares',
+         trailing_mean(debt_rows, ['2026W03'], debt_pair, 3), [(20.0, False)]),
+        ('debt-paydown: an uncovered week neither counts as zero nor fills the window',
+         trailing_mean(debt_rows, ['2026W02', '2026W03'], debt_pair, 2),
+         [(50.0, False), (20.0, True)]),
+        ('debt-paydown: a window with no covered week draws no point',
+         trailing_mean(debt_rows, ['2026W01'], debt_pair, 2), [(None, False)]),
         ('verify: a week is the median of its runs\u2019 own figures',
          verify_weeks.get('2026W41'),
          {'verify_runs_sampled': 3, 'verify_slowest_minutes': '28.0',
