@@ -7,8 +7,9 @@
 # in the same change that takes its block to 40 lines or below, or deletes it; a row may not be
 # added and a number may not rise (script/lint compares against the merge base, matching rows in
 # line order per file, so a shrink that shifts later blocks moves their rows in the same change).
-# A rename moves its rows in the same change, at the same numbers. A block that must exceed its row
-# needs §267 amended by an architect, not an edit here.
+# A rename moves its rows in the same change, at the same numbers, and so does a split: a listed block
+# moved unchanged (or only cut) into a file with no rows keeps its row under its new path, which
+# `--bank` writes for you. A block that must exceed its row needs §267 amended by an architect.
 block	lines
 components/src/clock.rs:1	51
 components/src/console.rs:1	79

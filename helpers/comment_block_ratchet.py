@@ -48,6 +48,13 @@ one level down):
   by file in line order, so a shrink that shifts later blocks down moves their rows in the same
   change, the way a rename moves a row. A rename moves its rows in the same change, at the same
   numbers.
+- A split carries a row the same way (§267's amendment of 2026-10-11, UTC). A listed block that
+  leaves its file and turns up, unchanged or only cut, in a file with no rows at the merge base
+  keeps its row under the new path, at a ceiling no higher than before. The match is by content,
+  not by a declared list: the block's lines, each stripped of its indentation, must be the base
+  block's lines or a subsequence of them (lines deleted, none added or edited), and nothing in the
+  old file may still be that block. So a moved block that grew is unlisted and fails, a copy left
+  behind carries nothing, and each base block carries at most one row.
 - Exceptions are not provided for. A block that must stay over the cap needs §267 amended, by an
   architect.
 
@@ -82,8 +89,9 @@ HEADER = """\
 # in the same change that takes its block to 40 lines or below, or deletes it; a row may not be
 # added and a number may not rise (script/lint compares against the merge base, matching rows in
 # line order per file, so a shrink that shifts later blocks moves their rows in the same change).
-# A rename moves its rows in the same change, at the same numbers. A block that must exceed its row
-# needs §267 amended by an architect, not an edit here.
+# A rename moves its rows in the same change, at the same numbers, and so does a split: a listed block
+# moved unchanged (or only cut) into a file with no rows keeps its row under its new path, which
+# `--bank` writes for you. A block that must exceed its row needs §267 amended by an architect.
 """
 
 REMEDY = ('The remedy is the sweep\'s move: history goes in the commit message, findings go in a '
@@ -247,6 +255,15 @@ def blocks_over(src, ceiling=CEILING):
     return out
 
 
+def block_texts(src, ceiling=CEILING):
+    """[(first_line, lines, text)] for every block over `ceiling`, `text` a tuple of its source
+    lines with indentation stripped, so a block that moved out of an inline `mod x { }` into its own
+    file, one indent shallower, still reads as the same block."""
+    lines = src.split('\n')
+    return [(first, size, tuple(line.strip() for line in lines[first - 1:first - 1 + size]))
+            for first, size in blocks_over(src, ceiling)]
+
+
 def block_counts(paths, read):
     """{path: [(first_line, lines)]} for the over-cap blocks of each path."""
     return {p: blocks_over(read(p)) for p in paths}
@@ -299,20 +316,98 @@ def renamed_rust(base):
     return pairs
 
 
+def is_cut_from(new, old):
+    """True when `new` is `old` with zero or more whole lines deleted and nothing added."""
+    rest = iter(old)
+    return all(line in rest for line in new)
+
+
+def moved_blocks(base_texts, tree_texts, renames=()):
+    """[(old_path, old_line, new_path, new_line)]: the listed blocks a split carried elsewhere.
+
+    `base_texts` is {path: [(first_line, lines, text)]} for every file with rows at the merge base,
+    `tree_texts` the same for every tree file with an over-cap block. A tree block is a carried
+    block when its file had no rows at the base, its text is a listed base block's text or a cut of
+    it (`is_cut_from`), and the base block's own file (under its new name, if git calls it renamed)
+    no longer holds anything that could be that block. Exact matches pair first, so a block moved
+    unchanged is never claimed by a cut copy of itself; each base block carries at most once.
+    """
+    became = dict(renames)
+    was_called = {new: old for old, new in renames}
+    home = {}
+    for old, blocks in base_texts.items():
+        now = tree_texts.get(became.get(old, old), [])
+        for line, _size, text in blocks:
+            home[(old, line)] = any(is_cut_from(t, text) for _l, _s, t in now)
+    targets = [(path, line, text) for path in sorted(tree_texts)
+               if was_called.get(path, path) not in base_texts
+               for line, _size, text in tree_texts[path]]
+    sources = [(old, line, text) for old in sorted(base_texts)
+               for line, _size, text in base_texts[old] if not home[(old, line)]]
+    used, taken, moves = set(), set(), []
+    for exact in (True, False):
+        for path, line, text in targets:
+            if (path, line) in taken:
+                continue
+            for old, old_line, old_text in sources:
+                if (old, old_line) in used:
+                    continue
+                if text == old_text if exact else is_cut_from(text, old_text):
+                    used.add((old, old_line))
+                    taken.add((path, line))
+                    moves.append((old, old_line, path, line))
+                    break
+    return sorted(moves)
+
+
+def carry(moves, base_counts, base_rows, renames=()):
+    """`base_counts` and `base_rows` as though each moved block had sat in its new file at the base.
+
+    Every later rule then holds the moved block exactly as it holds a renamed one: its new file's
+    rows may not outnumber what came with it, its ceiling may not rise, and it may not grow.
+    """
+    if not moves:
+        return base_counts, base_rows
+    was_called = {new: old for old, new in renames}
+    counts = {path: list(blocks) for path, blocks in (base_counts or {}).items()}
+    rows = dict(base_rows or {})
+    by_file = {}
+    for (path, line, occ), ceiling in (base_rows or {}).items():
+        by_file.setdefault(path, []).append((line, occ, ceiling))
+    for old, old_line, new, new_line in moves:
+        blocks = (base_counts or {}).get(old, [])
+        index = next(i for i, (line, _size) in enumerate(blocks) if line == old_line)
+        size = blocks[index][1]
+        counts[old] = [b for b in counts.get(old, []) if b[0] != old_line]
+        dest = was_called.get(new, new)
+        counts[dest] = sorted(counts.get(dest, []) + [(new_line, size)])
+        listed = sorted(by_file.get(old, []))
+        if index < len(listed):
+            line, occ, ceiling = listed[index]
+            rows.pop((old, line, occ), None)
+            occ = 1
+            while (dest, new_line, occ) in rows:
+                occ += 1
+            rows[(dest, new_line, occ)] = ceiling
+    return ({p: b for p, b in counts.items() if b},
+            rows if base_rows is not None else None)
+
+
 # --- the rules, pure so the selftest can drive them ------------------------------------------------
 
-def problems(counts, rows, base_counts=None, base_rows=None, renames=()):
+def problems(counts, rows, base_counts=None, base_rows=None, renames=(), moves=()):
     """Every failure in one tree. See the header for the rules.
 
     `counts` is the tree's {path: [(first_line, lines)]}; `rows` the baseline's
     {(path, first_line, occurrence): ceiling}; `base_counts` and `base_rows` the same at the merge
-    base, where there was one; `renames` git's (old, new) `.rs` pairs since the base. The baseline
-    comparison is skipped when `base_rows` is None, which is the base holding no baseline: the
-    change that first lands one.
+    base, where there was one; `renames` git's (old, new) `.rs` pairs since the base; `moves` the
+    blocks a split carried, from `moved_blocks`. The baseline comparison is skipped when
+    `base_rows` is None, which is the base holding no baseline: the change that first lands one.
     """
     if not counts:
         return ['the check judged no Rust file at all. A selector that matches nothing passes by '
                 'checking nothing (design/roadmap/0401-a-gate-that-selects-the-set-it-judges.md)']
+    base_counts, base_rows = carry(moves, base_counts, base_rows, renames)
     was_called = {new: old for old, new in renames}
     bad = []
     total_blocks = sum(len(blocks) for blocks in counts.values())
@@ -330,7 +425,8 @@ def problems(counts, rows, base_counts=None, base_rows=None, renames=()):
             for line, size in blocks[len(listed):]:
                 bad.append(f'{path}:{line}: a {fmt(size)}-line comment block against the '
                            f'{fmt(CEILING)}-line cap, and it is not on the list. A new block meets '
-                           f'the cap outright. {REMEDY}')
+                           f'the cap outright; a block moved from another file keeps its row only '
+                           f'when it moved unchanged or cut. {REMEDY}')
         for (line, size), (_row_line, _occ, ceiling) in zip(blocks, listed):
             if size > ceiling:
                 bad.append(f'{path}:{line}: a {fmt(size)}-line comment block, over its baseline '
@@ -406,29 +502,59 @@ def banked(rows, counts):
     return out
 
 
+def carried_rows(moves, base_counts, base_rows, rows, renames=()):
+    """`rows` with each split's rows moved to their blocks' new files, for `--bank`.
+
+    Only a file whose rows still read as they did at the base is carried from, since a lane that
+    already moved its rows by hand has done this, and moving them twice would mislabel them.
+    """
+    if not moves or base_rows is None:
+        return rows
+    untouched = {old for old, _line, _new, _new_line in moves
+                 if rows_of(rows, {old}) == rows_of(base_rows, {old})}
+    moves = [m for m in moves if m[0] in untouched]
+    if not moves:
+        return rows
+    _counts, moved = carry(moves, base_counts, rows_of(base_rows, untouched), renames)
+    return {**{k: v for k, v in rows.items() if k[0] not in untouched}, **moved}
+
+
+def rows_of(table, paths):
+    return {k: v for k, v in table.items() if k[0] in paths}
+
+
 # --- the verbs ------------------------------------------------------------------------------------
 
 def gather():
-    """(counts, rows, base_counts, base_rows, renames) for the tree and its merge base."""
+    """(counts, rows, base_counts, base_rows, renames, moves) for the tree and its merge base."""
     read = lambda p: open(p, encoding='utf-8', errors='replace').read()
     counts = block_counts(tracked_rust(), read)
     rows = read_baseline(open(BASELINE).read())
     base = merge_base()
-    base_counts, base_rows, renames = None, None, ()
+    base_counts, base_rows, renames, moves = None, None, (), ()
     if base:
         renames = renamed_rust(base)
-        wanted = {path for (path, _line, _occ) in rows} | {new for _old, new in renames}
-        base_counts = {}
-        for path in sorted(wanted):
-            text = git('show', f'{base}:{path}')
-            if text is not None:
-                over = blocks_over(text)
-                if over:
-                    base_counts[path] = over
         old_text = git('show', f'{base}:{BASELINE}')
         if old_text is not None:
             base_rows = read_baseline(old_text)
-    return counts, rows, base_counts, base_rows, renames
+        # The base's listed files are read too, not only the tree's, so a file whose every row a
+        # split carried away is still there to carry from.
+        wanted = ({path for (path, _line, _occ) in rows} | {new for _old, new in renames}
+                  | {path for (path, _line, _occ) in (base_rows or {})})
+        base_counts, base_texts = {}, {}
+        for path in sorted(wanted):
+            text = git('show', f'{base}:{path}')
+            if text is not None:
+                over = block_texts(text)
+                if over:
+                    base_counts[path] = [(line, size) for line, size, _text in over]
+                    base_texts[path] = over
+        if base_rows is not None:
+            listed = {path for (path, _line, _occ) in base_rows}
+            tree_texts = {path: block_texts(read(path)) for path in sorted(counts) if counts[path]}
+            moves = moved_blocks({p: t for p, t in base_texts.items() if p in listed}, tree_texts,
+                                 renames)
+    return counts, rows, base_counts, base_rows, renames, moves
 
 
 def run_check():
@@ -436,8 +562,8 @@ def run_check():
         print(f'comment-block ratchet: {BASELINE} is missing. The gate and its list are one change; '
               f'deleting one deletes the gate', file=sys.stderr)
         return 1
-    counts, rows, base_counts, base_rows, renames = gather()
-    bad = problems(counts, rows, base_counts, base_rows, renames)
+    counts, rows, base_counts, base_rows, renames, moves = gather()
+    bad = problems(counts, rows, base_counts, base_rows, renames, moves)
     if bad:
         print('comment-block ratchet: the tree breaks §267 against its baseline:', file=sys.stderr)
         for b in bad:
@@ -447,8 +573,9 @@ def run_check():
               'design/roadmap/0860-comments-state-the-constraint-as-it-is-now.md.', file=sys.stderr)
         return 1
     over = sum(len(blocks) for blocks in counts.values())
+    carried = f', {len(moves)} carried by a split' if moves else ''
     print(f'comment-block ratchet: {len(counts)} Rust files, {fmt(over)} comment blocks over the '
-          f'{fmt(CEILING)}-line cap, all held to {len(rows)} baseline rows')
+          f'{fmt(CEILING)}-line cap, all held to {len(rows)} baseline rows{carried}')
     return 0
 
 
@@ -462,12 +589,13 @@ def bank(init=False):
         print(f'comment-block ratchet: {BASELINE} does not exist; there is nothing to bank',
               file=sys.stderr)
         return 2
-    counts = block_counts(tracked_rust(),
-                          lambda p: open(p, encoding='utf-8', errors='replace').read())
     if init:
+        counts = block_counts(tracked_rust(),
+                              lambda p: open(p, encoding='utf-8', errors='replace').read())
         rows = rows_from_counts(counts)
     else:
-        rows = banked(read_baseline(open(BASELINE).read()), counts)
+        counts, rows, base_counts, base_rows, renames, moves = gather()
+        rows = banked(carried_rows(moves, base_counts, base_rows, rows, renames), counts)
     write_baseline(rows)
     print(f'comment-block ratchet: {len(rows)} rows written to {BASELINE}')
     return 0
@@ -535,6 +663,73 @@ def selftest():
     fails('a rename that leaves its rows behind fails',
           problems(tree(renamed=BIG), rows('x/old.rs', (100, 1, 50)),
                    tree(old=BIG), rows('x/old.rs', (100, 1, 50)), RENAME))
+    # A split carries a row the way a rename does (§267, amended 2026-10-11 UTC): lib.rs holds two
+    # listed blocks at the base and the split moves the second into a new file, fs.rs.
+    lib_base = tree(lib=[(100, 50), (300, 60)])
+    lib_rows = rows('x/lib.rs', (100, 1, 50), (300, 1, 60))
+    MOVE = [('x/lib.rs', 300, 'x/fs.rs', 20)]
+    split_rows = {**rows('x/lib.rs', (100, 1, 50)), **rows('x/fs.rs', (20, 1, 60))}
+    passes('a block moved unchanged keeps its row under its new path',
+           problems(tree(lib=[(100, 50)], fs=[(20, 60)]), split_rows, lib_base, lib_rows, (), MOVE))
+    fails('without the carry the same split fails',
+          problems(tree(lib=[(100, 50)], fs=[(20, 60)]), split_rows, lib_base, lib_rows))
+    fails('a moved block whose row stays under the old path fails',
+          problems(tree(lib=[(100, 50)], fs=[(20, 60)]), lib_rows, lib_base, lib_rows, (), MOVE))
+    fails('a moved block grown past its base size fails',
+          problems(tree(lib=[(100, 50)], fs=[(20, 61)]),
+                   {**rows('x/lib.rs', (100, 1, 50)), **rows('x/fs.rs', (20, 1, 61))},
+                   lib_base, lib_rows, (), MOVE))
+    fails('a carried row raised above its base ceiling fails',
+          problems(tree(lib=[(100, 50)], fs=[(20, 60)]),
+                   {**rows('x/lib.rs', (100, 1, 50)), **rows('x/fs.rs', (20, 1, 61))},
+                   lib_base, lib_rows, (), MOVE))
+    passes('a block moved and cut passes, its row at the old ceiling until banked',
+           problems(tree(lib=[(100, 50)], fs=[(20, 55)]), split_rows, lib_base, lib_rows, (), MOVE))
+    passes('a block moved and cut passes, its row lowered',
+           problems(tree(lib=[(100, 50)], fs=[(20, 55)]),
+                    {**rows('x/lib.rs', (100, 1, 50)), **rows('x/fs.rs', (20, 1, 55))},
+                    lib_base, lib_rows, (), MOVE))
+    fails('an unlisted over-cap block in a new file still fails',
+          problems(tree(lib=[(100, 50), (300, 60)], fs=[(20, 45)]), lib_rows, lib_base, lib_rows,
+                   (), MOVE[:0]))
+    fails('a second over-cap block in the new file, beside the carried one, fails',
+          problems(tree(lib=[(100, 50)], fs=[(20, 60), (200, 45)]), split_rows, lib_base,
+                   lib_rows, (), MOVE))
+    passes('a split beside a rename carries its row from the old name',
+           problems(tree(mod=[(100, 50)], fs=[(20, 60)]),
+                    {**rows('x/mod.rs', (100, 1, 50)), **rows('x/fs.rs', (20, 1, 60))},
+                    lib_base, lib_rows, [('x/lib.rs', 'x/mod.rs')], MOVE))
+    # The match is by content. Lines are compared without their indentation.
+    old = tuple(f'// line {i}' for i in range(60))
+    base_text = {'x/lib.rs': [(100, 50, tuple(f'// a {i}' for i in range(50))), (300, 60, old)]}
+    keep = {'x/lib.rs': [base_text['x/lib.rs'][0]]}
+    if moved_blocks(base_text, {**keep, 'x/fs.rs': [(20, 60, old)]}) != MOVE:
+        cases.append(('a block moved unchanged is found by its content', False))
+    cut = tuple(l for i, l in enumerate(old) if i % 12)
+    if moved_blocks(base_text, {**keep, 'x/fs.rs': [(20, len(cut), cut)]}) != MOVE:
+        cases.append(('a block moved and cut is found by its content', False))
+    grown = old[:30] + ('// added',) + old[30:]
+    if moved_blocks(base_text, {**keep, 'x/fs.rs': [(20, 61, grown)]}):
+        cases.append(('a block moved and grown carries nothing', False))
+    edited = old[:30] + ('// edited',) + old[31:]
+    if moved_blocks(base_text, {**keep, 'x/fs.rs': [(20, 60, edited)]}):
+        cases.append(('a block moved with a line edited carries nothing', False))
+    if moved_blocks(base_text, {**base_text, 'x/fs.rs': [(20, 60, old)]}):
+        cases.append(('a copy that leaves the block at home carries nothing', False))
+    two = moved_blocks(base_text, {**keep, 'x/fs.rs': [(20, 60, old)], 'x/verb.rs': [(5, 60, old)]})
+    if len(two) != 1:
+        cases.append(('a block copied into two new files carries one row, not two', False))
+    if moved_blocks(base_text, {**keep, 'x/fs.rs': [(20, 60, old)]}, [('x/lib.rs', 'x/fs.rs')]):
+        cases.append(('a block in a renamed file is the rename\'s, not a split\'s', False))
+    if moved_blocks(base_text, {'x/lib.rs': [base_text['x/lib.rs'][0], (900, 60, old)],
+                                'x/fs.rs': []}):
+        cases.append(('a block that moved within its own file carries nothing', False))
+    # --bank writes the carried row under the new path, lowered to the tree.
+    if banked(carried_rows(MOVE, lib_base, lib_rows, lib_rows), tree(lib=[(100, 50)], fs=[(20, 55)])) \
+            != {**rows('x/lib.rs', (100, 1, 50)), **rows('x/fs.rs', (20, 1, 55))}:
+        cases.append(('bank carries a split\'s row to its new path and lowers it', False))
+    if carried_rows(MOVE, lib_base, lib_rows, split_rows) != split_rows:
+        cases.append(('bank leaves rows a lane already moved by hand', False))
     # A selector that matches nothing.
     fails('a selector that matches nothing fails loudly', problems({}, {}))
     # Banking lowers to the tree, never raises, never adds, and drops dead rows.
