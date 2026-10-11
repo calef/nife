@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-08
-milestone_dependencies: none
-decision_dependencies: unwritten
+built: 2026-10-11
+milestone_dependencies: 812
+decision_dependencies: 271
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -18,9 +19,12 @@ and that is about a quarter of it. The rest is everything that takes the `IPC_TA
 Milestone 98 (the scheduler that stopped scheduling: name what `SCHED` actually guards) already
 found this for the lock; this milestone does the same for the file.
 
-The boundaries are an architect's call, and so is every module name below. The `unwritten`
-decision dependency is that fork. A lane writes it up as a `status: PROPOSED` file in
-`design/decisions/` before it moves a line, and its pull request carries `needs-architect`.
+The boundaries were an architect's call. calef ruled them on 2026-10-11 (UTC): *"Accept all four
+sched split recommendations."* §271 (the scheduler file splits into submodules of `sched`) records
+the four answers: submodules, capability deletion stays, region reaping alone, and the size target
+in *Done when* below. Every module name still ships provisional. The lane waits on milestone 812
+(`std::thread::spawn` runs real threads in one address space), which reshapes this file and already
+cut `sched/configure.rs`, `sched/futex.rs` and `sched/process.rs` as submodules beside `sched.rs`.
 
 Reuse: not applicable; this moves code and adds none. The precedent is `kernel/src/user.rs` beside
 `kernel/src/user/`, where each service grew its own file.
@@ -82,7 +86,10 @@ phrase is spoken, applied recursively) deratified it.
 
 Tests move beside the code they test, each module growing its own `mod tests`.
 
-## What an architect has to rule
+## What an architect had to rule
+
+Answered 2026-10-11 (UTC) in §271: the recommendation on each of 1 to 3 was accepted, and 4 ships
+provisional. The questions stay here as they were asked.
 
 1. Submodules of `sched`, or siblings of it. Milestone 98's argument points at siblings: a
    rendezvous is not scheduling. The recommendation is submodules. Every seam above takes
@@ -124,8 +131,8 @@ These were found with `grep`, and a lane has to carry each one.
 
 ## Done when
 
-1. `kernel/src/sched.rs` is gone. `kernel/src/sched/mod.rs`, or whatever the ruling names, is under
-   3,000 lines, and no new file is over 1,500.
+1. `kernel/src/sched.rs`, the parent (812's layout keeps it beside `kernel/src/sched/` rather than
+   as `sched/mod.rs`), is under 3,000 lines, and no new file is over 1,500 (§271, part 4).
 2. Every `pub` path callers use today still resolves, through `pub use` where needed, so no Rust file
    outside `sched` changes. The tooling, patches and citations listed above are the exception.
 3. `script/test` passes on aarch64, riscv64 and x86_64 with no test body changed.
@@ -134,9 +141,54 @@ These were found with `grep`, and a lane has to carry each one.
 5. All 16 falsification patches apply and fail their tests.
 6. Each new module carries a `//! Name:` block marked provisional.
 
+## What was built
+
+Built 2026-10-11 (UTC) on `ddd38f0b0`, the merge of milestone 812. `kernel/src/sched.rs` went from
+8,888 lines to 1,889, under the ceiling of §266 (a Rust source file stays under 2,000 lines), so
+its file-length row is gone. Every name below is
+provisional.
+
+| file | lines | holds |
+|---|---|---|
+| `sched.rs` | 1,889 | `IpcTables`, init, spawn, exit and fault, the tick, `schedule`, `finish_switch`, `wake` |
+| `sched/tests.rs` | 1,219 | the scheduling tests and the wait helpers the others share |
+| `sched/rendezvous.rs` | 1,109 | creation, send, receive, call, reply, capability transfer, stranding |
+| `sched/rendezvous/tests.rs` | 717 | the rendezvous tests |
+| `sched/region_reaping.rs` | 831 | the reap verdict, `reclaim_region`, supervised reap and survey, with their tests |
+| `sched/inspection.rs` | 826 | soak counters, boot stage, preemption counts, accessors, `system_tests` hooks |
+| `sched/capabilities.rs` | 427 | lookup, `grant`, delegation, and the deleters (§271 part 2) |
+| `sched/thread_table.rs` | 406 | `Threads`, the peak and per-slot tick accounting |
+| `sched/notification.rs` | 387 | notifications and binding |
+| `sched/placement.rs` | 324 | spawn placement, idle, inboxes, stealing, wake targets |
+| `sched/thread_control_block.rs` | 292 | creating, inserting into and starting a thread control block, binders |
+| `sched/trace.rs`, `sched/canary.rs` | 183, 153 | the real modules; each bench twin stays inline beside its `mod` line |
+| `sched/timer.rs` | 173 | timers |
+| `sched/interrupt_route.rs` | 102 | interrupt routes |
+
+`capability` was the planned name, but a module of that name shadows the `capability` crate inside
+`sched`, so the child is `capabilities`. Each child takes `use super::*` and the parent re-exports
+each whole, so no path outside `sched` changed and no test body changed. Private items became
+`pub(super)`.
+
+Measured against `ddd38f0b0`. `script/icount` reads identically on both ISAs and `script/bench
+--check` passes on all three. `script/fastpath-footprint` moves at most 12 bytes on aarch64 and
+x86_64. On riscv64, `riscv_trap_dispatch` now inlines `preempt_if_needed` (146 to 360 bytes), so
+`syscall_entry` grew 11% while the executed code stayed the same. That baseline was re-recorded with
+the reason. The 18 falsification records that patched `sched.rs` were regenerated at the lines' new
+homes, and the sweep shows each one still turns its test red.
+
+## Follow-on
+
+- **Decision.** Every module name is provisional and is calef's to rule, per
+  `design/decisions/0271-the-scheduler-file-splits-into-submodules-of-sched.md`.
+- **Done.** The riscv64 `syscall_entry` growth is recorded in `bench/fastpath-riscv64.txt`.
+- **Refused.** Rewriting the `sched.rs:NNNN` citations in `notes/` here. They cite line numbers that
+  were stale before this split, since the file had grown from 3,166 lines. §277 (cite a heading or a
+  symbol, never a line number) now holds them in its code ratchet, and its sweep repoints them.
+
 ## Index row
 
 `kernel/src/sched.rs` grew from 3,166 lines to 8,921, and three quarters of it is rendezvous,
 notifications, timers, capability deletion, region reaping and test hooks rather than scheduling.
-This splits it into modules under one unchanged lock. Where the boundaries fall, whether they are
-submodules or siblings, and every name are an architect's call.
+This splits it into submodules of `sched` under one unchanged lock, as §271 rules. Every module
+name is provisional.
