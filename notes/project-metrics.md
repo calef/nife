@@ -286,13 +286,10 @@ rest.
   ladder declining to be rung one, said out loud rather than left as an omission.
 - A newly added column can go blank across history if a CSV merge conflict is resolved with
   `--update` instead of `--backfill`. `--update` only touches the current week and any week
-  missing outright; a row the CSV already holds is left exactly as it was, new columns included, so
-  a merge that resolves two branches' concurrently-added columns into one header needs a `--backfill`
-  afterward or the older rows carry the new columns as empty cells. This happened to
-  `unsafe_trust_*` from 2026-09-21 to 2026-09-23 (the register's *The weekly series* has the whole
-  case) and nowhere else, checked at the time. Empty, not zero, is the tell: `git diff` on
-  `notes/project-metrics/` after any commit that merges two metrics branches is worth a look before
-  trusting the row count.
+  missing outright. A merge of two branches' concurrently-added columns into one header therefore
+  needs a `--backfill` afterward, or the older rows carry empty cells (the register's *The weekly
+  series* has the one case). Empty, not zero, is the tell: `git diff` on `notes/project-metrics/`
+  after merging two metrics branches is worth a look.
 - `milestones_built_this_week` will not equal the week-on-week change in the `Built` stock, in
   any week. It is deliberate and the register argues it, but it reads as an error to anyone who
   differences two rows and expects the flow to fall out, which is what happened on 2026-09-23.
