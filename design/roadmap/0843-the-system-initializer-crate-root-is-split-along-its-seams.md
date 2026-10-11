@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: IN-PROGRESS
 raised: 2026-10-08
+branch: milestone/843-the-system-initializer-crate-root-is-split-along-its-seams
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 279
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -20,6 +21,10 @@ Rust source file stays under 2,000 lines) sets the ceiling and a 2026-12-31 goal
 The cut and every module name below are calef's call. A lane writes them up as a
 `status: PROPOSED` file in `design/decisions/` before it moves a line, and its pull request
 carries `needs-architect`.
+
+The lane wrote it up on 2026-10-11 (UTC) as §279 (the system-initializer crate root splits into
+private modules), `status: PROPOSED`, with the file re-measured on main at `ae6b91e79` (5,850
+lines) and a recommendation on each open question. Nothing moves until calef rules.
 
 Reuse: not applicable; this moves code and adds none.
 
