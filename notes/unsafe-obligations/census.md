@@ -87,8 +87,10 @@ than a comment shortage, and it is recorded in the register's BUGS.
 
 ## What `user/`'s share is actually made of
 
-`user/` holds 287 of the tree's unsafe blocks, the largest share of any directory, which looks wrong
-for userspace in a capability system. Reading the first token inside each block says what it is:
+On 2026-08-18, `user/` held 287 of the tree's unsafe blocks, the largest share of any directory,
+which looks wrong for userspace in a capability system. Milestone 175 (split `user/`) divided that
+crate into `components/` and `fixtures/` on 2026-09-13; the table below was not re-taken after the split
+(noted 2026-10-11). Reading the first token inside each block says what it is:
 
 | shape | blocks | what it is |
 |---|---|---|

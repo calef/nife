@@ -49,7 +49,8 @@ locked in, and nobody can silently spend it back up to 100.
 
 Lowered a sixth time, 94 to 88, by milestone 139 (drive the unsafe count down, and cinch the ratchet behind it) round 8 (2026-09-01). The six-point step is the
 first one this measurement's own history argues for, rather than the convention. Rounds 6 and 7
-worked `user/` and left the ceiling at 94. Round 8 is the first round to work `kernel/src` outside
+worked `user/`, the userspace crate that milestone 175 (split `user/`) divided into `components/`
+and `fixtures/` on 2026-09-13, and left the ceiling at 94. Round 8 is the first round to work `kernel/src` outside
 `arch/`. That had been the largest unworked pool in the tree: 242 blocks, against `user/`'s 162
 after round 7. It is also the part DECISIONS §14 (the project's direction) calls verified. Two collapses, both the §94 (what may live in a userspace library, and what must be per-binary) shape
 and both measured from the diff against this round's own base commit (`8fc30efb`):
@@ -59,9 +60,11 @@ went on to zero it by hand. Each had its own `// SAFETY:` comment over `core::pt
 asserting the same two facts. A frame just handed back by `memory::alloc` is exclusively the
 caller's, and the direct map reaches it. That is one fact about what the allocator returns, and the
 allocator is the only thing that can check it. Two of the copies had already noticed they were
-copies (`user/rmle_service.rs`: *"a second copy of three lines"*; `user/session_reviver_service.rs`:
+copies (`kernel/src/user/rmle_service.rs`: *"a second copy of three lines"*;
+`kernel/src/user/session_reviver_service.rs`, retired 2026-09-27 and gone as of 2026-10-11:
 *"matches `fs_service::frame`'s own shape"*) without anyone lifting it out. That is the same tell
-`ntp.rs` carried for round 1's cluster and `timetable.rs` for round 6's. `memory::alloc_zeroed` and
+`user/src/ntp.rs` (now `components/src/network_time_client.rs`) carried for round 1's cluster and
+`user/src/timetable.rs` (now `components/src/timetable.rs`) for round 6's. `memory::alloc_zeroed` and
 `memory::alloc_contiguous_zeroed` (both new; ratified by calef 2026-09-01) hold it once, in the
 module that owns the allocator. Every migrated call site is now ordinary safe code.
 
