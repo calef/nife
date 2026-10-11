@@ -118,8 +118,9 @@ which §31 (the foreign-language seam) rule 4 keeps. The cache adapts glibc's `t
   `BUGS`. Whether the kernel keeps writing it is calef's question on #1904.
 - **Recorded.** Cross-thread frees (a producer freeing what a consumer allocated) were not
   measured, in `notes/std/allocation.md`'s `BUGS`.
-- **Recorded.** What the kernel's per-switch write of that word costs in time, below, for calef's
-  ruling on whether to keep it.
+- **Recorded.** What the kernel's per-switch write of that word costs in time, below. calef ruled on
+  2026-10-11 (UTC) that the write stays.
+- **Recorded.** The same A/B on radon's U74, the one in-order core here, when someone is at the desk.
 
 ### The write's time cost, measured 2026-10-11 (UTC)
 
@@ -159,6 +160,15 @@ Caveats:
   is boot-to-boot spread rather than the counter.
 - riscv64 and `x86_64` were not measured: radon and xenon each need a person at the desk to
   power-cycle. radon's U74 is an in-order core, where a store miss may cost more than on an M3.
+
+### calef's ruling, 2026-10-11 (UTC)
+
+calef ruled (A) on #1955: the kernel keeps writing the CPU id on every switch. Stopping it is not one line. Without the per-switch write, the single write when a space
+is adopted goes stale, so `current_cpu` would name the wrong core. Doing it properly retires the
+reader, the word, 557's tests and the self-observation half of §204 (how userspace asks where a
+thread runs), to save a store and a branch the bench cannot see. Writing only for threads that
+register, as Linux `rseq` does, was refused for the same reason: an opt-in interface and a
+per-switch check to save nothing measurable.
 
 ## Index row
 
