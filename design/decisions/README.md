@@ -387,7 +387,7 @@ place instead of moving text between two systems. Numbers 68 to 73 are the six t
 | 268 | DECIDED | [The cast ratchet does not count a 64-bit integer cast to `usize`](0268-the-cast-ratchet-does-not-count-a-64-bit-integer-cast-to-usize.md) |
 | 269 | DECIDED | [How threads share a process: the seven thread forks](0269-how-threads-share-a-process.md) |
 | 270 | DECIDED | [A package manager holds an installer endpoint, not the spawn endpoint](0270-a-package-manager-holds-an-installer-endpoint-not-the-spawn-endpoint.md) |
-| 272 | PROPOSED | [The grant-plan crate root splits into private modules](0272-the-grant-plan-crate-root-splits-into-private-modules.md) |
+| 272 | DECIDED | [The grant-plan crate root splits into private modules](0272-the-grant-plan-crate-root-splits-into-private-modules.md) |
 | 273 | DECIDED | [The shell program becomes a directory of modules](0273-the-shell-program-becomes-a-directory-of-modules.md) |
 | 274 | DECIDED | [The filesystem-protocol crate root splits into its module files](0274-the-filesystem-protocol-crate-root-splits-into-its-module-files.md) |
 

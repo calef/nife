@@ -1,6 +1,8 @@
 ---
-status: PROPOSED
+status: DECIDED
 raised: 2026-10-10
+decided: 2026-10-11
+ratified_by: calef
 ---
 
 # 272. The grant-plan crate root splits into private modules
@@ -11,7 +13,24 @@ says is calef's call before a line moves. Written by lane
 `milestone/842-the-grant-plan-crate-root-is-split-along-its-seams`. *(Section number provisional
 until the merge queue lands it.)*
 
-What is blocked: the whole milestone. Nothing else waits on it.
+It blocked the whole milestone until the ruling below. Nothing else waited on it.
+
+## The ruling
+
+calef ruled on 2026-10-11 at 07:15 (UTC), and the maintainer recorded it on
+[PR #1913](https://github.com/nifeos/nife/pull/1913#issuecomment-6106583264) the same morning.
+Three forks, three answers, each the recommendation:
+
+| Fork | calef's words | What it decides |
+|---|---|---|
+| 1. Private or public modules | *"Private modules"* | Private modules; `lib.rs` re-exports each public item by name. No path outside the crate changes. |
+| 2. The program table and its manifests | *"One module, two files. However this should change soon as we shift to using jig to install packages rather than maintain this list."* | One module across `program.rs` and `program/manifests.rs`. |
+| 3. Where `RunSpec` lives | *"parsing"* | `RunSpec` moves to `parsing` beside `parse_run`, and its fields stay private. |
+
+Fork 2 carries an expectation, not a rule: the table is expected to shrink once packages are
+installed through jig rather than listed in it, so the "about six more programs" headroom below is
+a ceiling the table may never approach. Fork 4, every module name, was deferred to a name-ratification pass, as calef ruled
+for #1919 the same day. The names below ship provisional.
 
 ## What the file is today
 
@@ -67,7 +86,7 @@ items. Planning's 1,600 lines of tests are three files:
 
 No file is over 1,500, and `lib.rs` is far under the block's 2,000.
 
-## What an architect has to rule
+## The forks, as raised
 
 1. Private modules with named re-exports. Recommended, as the block said: the public API does
    not change at all, and `helpers/interface_stability.py`, which fingerprints this crate as a
