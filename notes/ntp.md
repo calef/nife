@@ -16,14 +16,15 @@ dispatched on `arg0`, packed as `ntp`. calef ruled the split and named all three
 
 Milestone 51's other lanes own the RTC drivers and the clock service, and `date` plus the calendar
 crate. The authority argument in full, that reading the clock is harmless and setting it is a real
-capability, belongs with the service and is recorded in notes/clock.md.
+capability, belongs with the service and is recorded in notes/clock.md. Proofs, era arithmetic and
+client tests are in [`ntp/`](ntp/README.md).
 
 ## Why the protocol is a crate and not part of a component
 
 The same reason `filesystem_protocol` and `graphics_protocol` are crates. A wire format is arithmetic and byte layout,
 which is the cheapest thing in the system to get wrong and the most expensive to debug from inside a
-QEMU boot against a live server. Here it is 21 host tests and 7 Kani harnesses, and the whole lot
-runs in under a second with no emulator.
+QEMU boot against a live server. Here it is 21 host tests and 7 Kani harnesses, all done in
+under a second with no emulator.
 
 It puts the boundary in the right place ahead of time. The eventual NTP client will hold a
 network capability and a capability to *propose* a time. It will not hold the clock. Keeping the
@@ -46,31 +47,24 @@ answer to that, and the crate says so in its own documentation rather than leavi
 discovered.
 
 The consequence for the system is that an NTP-derived time is untrusted input, and milestone 51's
-design already treats it that way: the client proposes, the service applies bounds, and a compromised
+design already treats it that way. The client proposes and the service applies bounds. A compromised
 client can lie only inside those bounds and can do nothing else.
 
 ### Why NTS is a separate decision and not a stretch goal
 
 NTS-KE is TLS 1.3. TLS needs certificate validation. Certificate validation needs a roughly correct
 clock, which is the thing being obtained. The standard escape is a build-time "not before" timestamp
-plus whatever the RTC says, and that is a real design choice with real consequences (a machine whose
-image is older than its certificates fails to boot into a usable state), not a detail to settle
-mid-implementation. The roadmap records it as a fork. What the crate deliberately does not do is
+plus whatever the RTC says. That is a real design choice with real consequences, not a detail to
+settle mid-implementation: a machine whose image is older than its certificates fails to boot into a
+usable state. The roadmap records it as a fork. What the crate deliberately does not do is
 half of it: an extension-field parser with no cryptography behind it would put the letters NTS in the
 tree while authenticating nothing, which is worse than the honest absence.
 
 ## The 2036 problem, and the pivot we chose
 
-An NTP timestamp is 64 bits: 32 of seconds since 1 January 1900, 32 of binary fraction. Two
-things follow that catch people out.
-
-The epoch is not Unix's. They differ by 2,208,988,800 seconds, which is 25,567 days: 70 years of
-365 plus the 17 leap days from 1904 to 1968. 1900 is not a leap year (divisible by 100 and not by
-400), and assuming it is puts the constant one day out.
-
-The seconds field wraps, on 7 February 2036 at 06:28:16 UTC. 32 bits of seconds is 136 years, and
-the field alone cannot say which 136 years it means. Something has to decide, and the choice is
-visible in the decoded output of every timestamp the machine ever handles.
+An NTP timestamp is 64 bits: 32 of seconds since 1 January 1900, 32 of binary fraction. The epoch is
+2,208,988,800 seconds before Unix's, and the seconds field wraps on 7 February 2036 at 06:28:16 UTC.
+The field alone cannot say which 136 years it means, so something has to decide.
 
 We take RFC 5905 §6 (SMP)'s convention as a fixed pivot:
 
@@ -79,31 +73,14 @@ We take RFC 5905 §6 (SMP)'s convention as a fixed pivot:
 | high bit set (≥ 2^31) | era 0, counted from 1900 | 1968-01-20 to 2036-02-07 |
 | high bit clear | era 1, counted from the 2036 rollover | 2036-02-07 to 2104-02-26 |
 
-The alternative is real and is what several implementations do: pick the era that puts the timestamp
-nearest to the time you already believe it is. It is more flexible and it is strictly worse here, for
-three reasons.
-
-1. It makes decoding depend on the clock. The same bytes parse to different instants depending on
-   when you ask, which is a property no parser should have.
-2. It makes the function untestable without injecting a "now", and therefore unprovable: Kani
-   quantifies over inputs, and a hidden input is not one.
-3. It is wrong exactly when it matters. This machine boots believing it is January 1970. A
-   nearest-era heuristic on a machine whose clock is wrong picks the wrong era with total confidence,
-   and the entire reason this crate exists is that the clock is wrong.
-
-So the pivot is a pure function of its input, provable, and wrong only after 2104. The crate
-therefore has a documented expiry date, which is better than the undocumented one every
-implementation has.
-
-The representable window in Unix seconds is `0 .. 4_233_462_144` (the epoch to 2104-02-26 09:42:24
-UTC), clipped below at 1970 because the crate's Unix seconds are unsigned. `Timestamp::from_unix`
-refuses anything outside it rather than wrapping, so the failure mode is `None` instead of a date
-136 years off.
-
-One more piece of the same problem, and it is the one that is easy to miss: the offset and delay
-arithmetic is modular, not absolute. Differences are taken as `wrapping_sub` on the raw 64-bit
-values and read back as signed, which is what makes an exchange straddling the 2036 boundary come out
-as three seconds instead of minus 136 years. There is a test that does exactly that.
+The alternative, picking the era nearest the time you already believe, makes decoding depend on the
+clock. That makes it unprovable, and it is wrong exactly when this machine needs it, at a boot that
+believes it is 1970. So the pivot is a pure function of its input, provable, and wrong only after
+2104. The crate therefore has a documented expiry date, which is better than the undocumented one
+every implementation has. `Timestamp::from_unix` refuses anything outside the window rather than
+wrapping. Offsets and delays are modular (`wrapping_sub`, read back as signed), so an exchange
+straddling 2036 comes out as three seconds. [`the-era-pivot.md`](ntp/the-era-pivot.md) has the
+epoch arithmetic, the three reasons against a nearest-era rule, and the exact window.
 
 ## The checks, which are the security
 
@@ -151,48 +128,18 @@ is what chrony does by default and it costs one extra field.
 
 ## What is proved, and one place where a solver was the wrong tool
 
-Seven Kani harnesses, run by `script/verify`:
+Seven Kani harnesses, run by `script/verify`, cover the era pivot over every Unix second from 1970
+to 2104 and total decoding of any wire timestamp. Three more quantify over all 2^384 48-byte
+packets: the parse round trip, the nonce check, and `accept` being total and coherent. Those three are what a
+model checker exists for.
 
-| harness | what it quantifies over |
-|---|---|
-| `the_era_pivot_is_exact_over_the_window` | every Unix second from 1970 to 2104, all 4.2 billion: encode then decode is the identity, across both eras and the boundary |
-| `nanoseconds_survive_the_fixed_point` | nanoseconds under 2^16 (see below) |
-| `decoding_any_wire_value_is_total` | all 2^64 timestamp bit patterns: no panic, and the nanosecond returned is always a valid sub-second |
-| `out_of_range_is_refused` | every input to `from_unix`: `Some` exactly inside the window, never an aliased answer |
-| `parse_then_serialise_is_the_identity` | all 2^384 48-byte packets |
-| `an_unmatched_origin_is_always_rejected` | all 2^384 packets: no combination of the other 40 bytes gets one past the nonce check |
-| `accepting_is_total_and_a_sample_is_coherent` | all 2^384 packets and any three timestamps: `accept` never panics or overflows, and an accepted sample has a non-negative delay, a stratum in 1..=15, mode 4, and a non-zero transmit |
-
-The three 2^384 harnesses are the ones a model checker exists for: the domain is unenumerable and the
-code is fed by the network.
-
-**The nanosecond round trip is the exception, and it is the interesting finding.** The property is
-`ticks_to_nanos(nanos_to_ticks(n)) == n`, and it is real: a tick is 2^-32 s, about 233 ps, so
-nanoseconds fit inside ticks, but only if both directions round to nearest. Truncate either way and
-1 ns becomes 4 ticks becomes 0 ns. Kani is bad at it, because a bit-blasting model checker is bad at
-multiplication and this is two of them composed. Measured on an M-series laptop with kissat:
-
-| bound on `n` | solver time |
-|---|---|
-| 2^16 | 9 s |
-| 2^20 | 212 s |
-| 2^30 (the real range) | killed at 10 minutes, twice |
-
-About four times the work per bit, so the full range is out of reach by roughly five orders of
-magnitude. Restating the division by its defining inequality (`t*d <= x < (t+1)*d`, which replaces a
-division circuit with a shift-and-add one) did not help, which is what identified the multiplication
-rather than the division as the cost.
-
-The answer was not a cleverer harness. The domain is 10^9 values, and running the code on every one
-of them takes 0.6 s. So the test does that: `every_nanosecond_survives_the_round_trip` is
-exhaustive, which is a *complete* verification of the function, strictly stronger than any bounded
-solver result. The crate gets `opt-level = 2` in the dev profile to keep it that quick, the same way
-`measured_boot` does for SHA-256. The bounded Kani harness stays as the in-gate regression guard on the low
-corner where the truncation bug lives.
-
-The general rule this is an instance of, and it is worth keeping: a model checker is the tool for
-domains too big to enumerate, not a better tool for domains that are not. Check first whether you
-can try all of them.
+The nanosecond round trip is the exception. Kani needs about four times the work per bit of operand
+on two composed multiplications, and could not finish the full range. Running the
+code on all 10^9 values takes 0.6 s, so `every_nanosecond_survives_the_round_trip` is exhaustive,
+which is a complete verification, and a bounded harness guards the low corner. The rule it is an
+instance of: a model checker is the tool for domains too big to enumerate, not a better tool for
+domains that are not. Check first whether you can try all of them.
+[`what-is-proved.md`](ntp/what-is-proved.md) has the harness table and the solver timings.
 
 ## What is not in the crate
 
@@ -201,7 +148,6 @@ can try all of them.
 - No leap-second handling beyond passing the indicator through. A pending leap second is not a
   rejection: the server's clock is fine, the day is not 86400 seconds long, and interpreting that is
   the calendar's problem.
-- No NTS, no MAC, as above.
 - No `Duration`/`SystemTime` conversions. The crate is `no_std` and deals in `(u64, u32)`, so the
   clock service can hold whatever type it likes.
 
@@ -231,14 +177,14 @@ slot that is missing.
 
 There is no clock page here in either direction, so "set the time" is not an operation this process
 can express. A compromised NTP client can lie inside the service's bounds and can do nothing
-else: it cannot set the clock to 2038, it cannot move it backwards past a second, and it holds no
-authority over anything but the socket it was given. Unix cannot make that claim, because `ntpd`
+else. It cannot set the clock to 2038 or move it backwards past a second, and it holds no authority
+over anything but the socket it was given. Unix cannot make that claim, because `ntpd`
 runs as root and `settimeofday` takes any value it is handed.
 
 The claim is proved the way the machine proves things rather than argued.
-`an_ntp_client_holds_no_writable_clock_page` spawns the same binary with the same five slots,
-hands it the exact address at which a process holding the *set* authority maps the clock page
-(`clock_service::CLOCK_VA`), and watches it write there and die of a fault, with the page's
+`an_ntp_client_holds_no_writable_clock_page` gives a witness the same five slots, plus the exact
+address at which a process holding the *set* authority maps the clock page
+(`clock_service::CLOCK_VA`). It watches the witness write there and die of a fault, with the page's
 generation unchanged on both sides of the attempt. The address is the one that would matter, so the
 test cannot degenerate into poking at nothing; the boundary is the mapping, and knowing where to look
 buys nothing.
@@ -258,18 +204,16 @@ is the case NTP exists for.
 
 ## The nonce comes from the entropy service, and refuses to come from anywhere else
 
-`Query::with_nonce` is free hardening (above): a server never interprets the client's transmit
-timestamp, so 64 random bits on the wire take an off-path attacker from about twelve bits of
-guesswork to sixty-four. That is worth exactly as much as the bits are unguessable.
-
-Until 2026-07-30 the only source in this tree was splitmix64 seeded off the virtual counter, which
+`Query::with_nonce`'s 64 bits (above) are worth exactly as much as they are unguessable. Until
+2026-07-30 the only source in this tree was splitmix64 seeded off the virtual counter, which
 notes/entropy.md calls predictable to anyone who can guess boot-relative time. The entropy service
 (DECISIONS §44) landed that day, so the nonce is one eight-byte draw from it, one per attempt.
 
-**A client with no entropy capability stops.** It reports `RPT_NO_ENTROPY` and exits *before it
+A client with no entropy capability stops. It reports `RPT_NO_ENTROPY` and exits *before it
 touches the network at all*: no socket, no frame, no datagram. Falling back to the weak stream would
-be §42's silent degradation in the one place where the entire value of the number is that nobody can
-predict it, and it is the same call `SystemRng` makes when it panics rather than degrading. The two
+be §42 (a filesystem must be truthful)'s silent degradation, in the one place where the entire value
+of the number is that nobody can predict it. It is the same call `SystemRng` makes when it panics
+rather than degrading. The two
 failures stay distinguishable with no probe, because `entropy_protocol::delivered` reads a byte count of
 `0..=8` and every kernel `CALL` error is one of the small negatives: `NoSuchSlot` means "there is no
 entropy service", 0 means "the service has none".
@@ -277,152 +221,59 @@ entropy service", 0 means "the service has none".
 The test asserts what did *not* happen, which is the harder half: the server's report endpoint has no
 waiting sender, so no request was ever built.
 
-## One shot, because there is no timed wait
+## One shot, and why that is now a choice
 
-The syscall surface is `EXIT`, `YIELD`, `INVOKE`, `CAP_DELETE`. There is no sleep, no timeout and no
-deadline anywhere in it, which is the milestone 51 block's open fork. So a poll interval is a
-yield-spin: a thread that stays runnable for the whole interval and costs scheduler work in
-proportion to it. At NTP's ordinary 64-second poll that is not a service anybody should ship.
+When the client was built (2026-07-31) the syscall surface was `EXIT`, `YIELD`, `INVOKE` and
+`CAP_DELETE`, with no sleep, no timeout and no deadline anywhere in it. That was the milestone 51
+block's open fork. A poll interval was a yield-spin, a thread that stays runnable for the whole
+interval, and at NTP's ordinary 64-second poll that is not a service anybody should ship.
 
 So this is a one-shot synchronizer: up to three requests a couple of milliseconds apart, one
-proposal, exit. That is not a workaround and it is not a stub; it is the honest shape available, and
-**a long-running client is the timed-wait fork's to build.** Adding a sleep syscall to get one would
-be settling that fork by accident, in the milestone least entitled to settle it.
+proposal, exit. It was the honest shape available then, and adding a sleep syscall to escape it
+would have settled the timed-wait fork by accident.
 
-**A kiss-o'-death is not retried**, and this is a property of the client rather than of the crate. A
-rejected reply *is* retried, because it may have been a spoof that beat the real server back; stratum
-0 is an instruction (`RATE` means back off, `DENY` means go away) and retrying into one is the
-abusive behavior the packet exists to stop. The test counts requests: three for a bad origin, one
-for a kiss.
+*Corrected 2026-10-11 (UTC), verified against `components/src/network_time_client.rs`:* milestone
+106 (a wait that ends on either the interrupt or the deadline) built the `Timer` object, and
+`poll_gap` sleeps on one between attempts. A long-running client is no longer blocked on a kernel
+primitive. It is a design question of its own (who supervises it, and what it does between polls),
+recorded in `design/roadmap/0674-the-last-yield-spinners-sleep-on-a-timer.md`.
 
-## The test server, and what it does and does not prove
+A kiss-o'-death is not retried, and this is a property of the client rather than of the crate. A
+rejected reply *is* retried, because it may have been a spoof that beat the real server back.
+Stratum 0 is an instruction (`RATE` means back off, `DENY` means go away), and retrying into one is
+the abusive behavior the packet exists to stop. The test counts requests: three for a bad origin,
+one for a kiss.
+
+## The tests, and what they do and do not prove
 
 The client's whole network authority is one endpoint capability, so the tests substitute the peer
-at that boundary: `fixtures/src/network_time_test_server.rs` holds `READ` on the endpoint the client
-holds `WRITE` on, and speaks the same socket contract (`crates/socket_protocol/src/lib.rs`, the same file
-`net_stack` compiles) while being an NTP server on the other side of it. The client cannot tell, and
-**there is no test-only branch anywhere in the client**. That is the shape a capability system makes
-available, and it is why this is the honest choice rather than a compromise.
+at that boundary. `fixtures/src/network_time_test_server.rs` speaks the socket contract on the other
+end of the client's slot 1 and is an NTP server behind it. There is no test-only branch anywhere in
+the client. `fixtures/src/unwritable_clock_witness.rs` gets the client's five slots and faults
+writing the clock page, and `spawn_with_client_endowment` endows both from one `grants` list, so the
+two cannot drift. Six kernel tests (`system_tests/src/user/ntp_tests.rs`) run the same assertions on
+aarch64 and riscv64, and each was watched fail under a deliberate mutation first.
 
-**The substitution never depended on the two sharing a binary**, which milestone 290 settled by
-splitting them: what the client talks to is decided by which endpoint is in slot 1, and the peer's
-ELF has nothing to do with it. Before the split this sentence had a second problem, which is that
-"no test-only branch anywhere in the client" sat on the same page as `ROLE_PROBE_CLOCK`, a test-only
-branch in the client's binary. It is unqualified now.
+They do not prove that smoltcp and the NIC carry the bytes (milestone 30 (the network stack as a
+confined component) does), or anything about a real time server. [`the-client-tests.md`](ntp/the-client-tests.md) has what is proved and
+not, the test table, the seven mutations, and the false "same binary" argument that kept the witness inside
+the client's binary until milestone 290 (`components/src/ntp.rs` is three programs wearing one
+name). It also has why `script/test --test an_ntp_exchange` once hung on its own: a discarded
+entropy-service wiring, a trap milestone 402 (a service report nobody is obliged to drain) prices.
 
-What it proves: the socket-contract glue (minting a frame, delegating it, the destination header,
-`SENDTO`/`RECEIVE` framing), that the 48 bytes are a well-formed NTPv4 client packet addressed to port
-123, that the nonce is 64 unpredictable bits rather than a clock reading, that a reply failing
-`Query::accept` moves nothing, that an accepted sample reaches the clock as a proposal (the page
-publishes `SYNCED`, which nothing but the service can write), and that a proposal outside the policy
-is refused by the service while the client behaves perfectly.
-
-What it does not prove, stated plainly because a test server is exactly the kind of thing that gets
-overclaimed:
-
-- **Not that smoltcp, UDP, IPv4 and the NIC carry the bytes.** Milestone 30's socket-contract tests
-  prove that path with a real datagram over the confined NIC, and this lane deliberately does not
-  re-prove it.
-- **Not anything about a real time server.** Nothing in QEMU's slirp answers UDP 123 (its built-in
-  servers are TFTP, DHCP and a DNS NAT, and `guestfwd` is TCP-only), so there is no offline peer to
-  point at; pointing the gate at a public server would make it depend on somebody else's network, the
-  way the DNS check already has to be non-gating for exactly that reason.
-- **Not that the client and the real `net_stack` agree**, beyond both compiling `netproto.rs`. The
-  stub implements the server side of that contract, and a misreading of it would be a misreading on
-  both sides at once. Compiling the same file rather than a copy is what keeps that risk to the
-  semantics rather than the layout.
-
-The honest summary: the client is proven against a server we wrote, over a network we wrote, and the
-parts we did not write are proven elsewhere.
-
-## The witness, and the argument about it that turned out to be false
-
-`fixtures/src/unwritable_clock_witness.rs` is handed the client's five slots plus the address at
-which a process holding the *set* authority maps the clock page. It reports, writes there, and dies
-of a translation fault, because its address space has no mapping of that frame at any address. The
-boundary is the mapping, not the layout, so knowing where to look buys nothing. That is the claim
-Unix cannot make: `ntpd` runs as root, and there is no address in a Unix system its `settimeofday`
-cannot reach.
-
-**Until milestone 290 the witness was a role of the client's binary, and the reason given was that
-the proof needed it to be the *same binary*.** That reason is false and is worth writing down,
-because it was believed for six weeks and it is the sort of argument that survives review by sounding
-like rigor. The fault is caused by the capability set. Any process holding that endowment faults
-at that address whatever code it runs, and no amount of shared machine code would make a stale
-capability list fault.
-
-**What keeps the witness honest is that one function endows both.**
-`kernel/src/user/ntp_service.rs`'s `spawn_with_client_endowment` takes the image as a parameter, so
-`start_client` and `start_witness` are the same five `grants` with a different ELF. A sixth slot given
-to the client is a sixth slot given to the witness, with nothing to remember and no second list to
-update. A separate binary passed through that one function proves exactly what a shared binary did.
-
-**The failure this guards against is a second capability list, not a second binary.** Milestone 117's
-stranger run found `swish` carrying a hand-maintained copy of a fact its manifest already held, which
-is the same shape: a copy that decays silently rather than breaking a build. If a future change ever
-needs the witness wired differently from the client, the honest move is to say so in the test's own
-words, not to grow a second `grants` array beside the first.
-
-## What is proven, and where
-
-Six kernel tests (`system_tests/src/user/ntp_tests.rs`), not arch-gated: three portable binaries, so
-aarch64 and riscv64 run literally the same assertions. The suite went from 181 to 187 tests on
-aarch64 and 152 to 158 on riscv64.
-
-| test | what would have to be broken for it to pass anyway |
-|---|---|
-| `an_ntp_exchange_reaches_the_clock_as_a_proposal` | the request is NTPv4, mode 3, port 123; the correction arrives; the page says `SYNCED`, which only the service writes; the clock moved by about what the server claimed |
-| `a_reply_that_fails_validation_never_becomes_a_proposal` | a bad origin, a kiss-o'-death and a 20-byte datagram each leave the page's generation untouched, and the kiss is not retried |
-| `a_proposal_outside_the_policy_is_refused_by_the_service` | two hours forward and ten seconds back are both refused, by the service, with the client behaving perfectly |
-| `an_ntp_client_holds_no_writable_clock_page` | the write faults, at that exact address on aarch64, and the process does not survive it |
-| `the_nonce_on_the_wire_is_random_and_is_not_the_clock` | two exchanges differ, and neither transmit field is within an hour of the clock |
-| `without_entropy_the_client_refuses_rather_than_guessing` | the refusal names `NoSuchSlot`, and no request was ever sent |
-
-Every one of those assertions was watched fail before it was trusted: the write removed from the
-witness, `with_nonce` swapped for the plain form, a proposal made despite a rejection, a fallback
-inserted where the entropy refusal is, the kiss-o'-death `break` deleted, the offset dropped from the
-correction, and the destination port hard-coded past the wiring. Seven mutations, seven failures,
-each naming the right thing.
-
-Two of them found a real defect in the *tests* rather than in the client, and it is worth recording
-because it is the shape a test-server design invites: with the client mutated to carry on, an
-unbounded `ipc_receive` on a report nobody would ever send became a sixty-second watchdog hang instead
-of an assertion. Both waits are now bounded, so "the client never got there" fails in two seconds
-with a sentence.
-
-### Running one of these on its own used to hang, and why
-
-**If you reach for `script/test --arch aarch64 --test an_ntp_exchange`, it works now, and before
-milestone 290 it did not.** Every exchange test failed in isolation with *"the test server never saw a
-request: the client failed before it reached the network"*, while the whole suite was green. The
-cause was three steps from the message, which is why it is written down here rather than left to the
-next person's afternoon:
-
-`machine_has_no_entropy()` called `entropy_service::ensure` and threw the `Wiring` away. The first
-caller of `ensure` is handed the entropy service's `ready` endpoint, and the service announces itself
-with a blocking send, so discarding that wiring parks the service inside its own startup, before
-its request loop. Every later `ensure` gets `ready: None` and cannot rescue it. The client then blocks
-forever in `call(ENTROPY, ...)`, and what the test reports is the *server's* silence.
-
-It never showed in a whole-suite run because `entropy_tests` sorts before `ntp_tests` and drains the
-report first: this file was correct only because of another file's name. `machine_has_no_entropy()`
-is `entropy().is_none()` now, which asks the same question through the helper that drains properly.
-
-**The trap itself is still there for anyone else calling `ensure`**, and the remedy belongs in
-`ensure` rather than in its callers;
 Milestone 402, `design/roadmap/0402-a-service-report-nobody-is-obliged-to-drain.md`, prices it.
 
 ## What the client does not do
 
-- **No server selection, no clock filter, no combining.** RFC 5905's selection and clustering
+- No server selection, no clock filter, no combining. RFC 5905's selection and clustering
   algorithms exist because a real client polls several servers and weighs their samples. One server,
   one sample, one proposal is what a one-shot synchronizer can honestly do, and the machinery for
-  more wants the poll loop that wants the timed wait.
-- **No slewing.** Nothing here gradually corrects; a proposal is a step the service bounds. Slewing
+  more wants a long-running client, which is now a design question rather than a missing primitive.
+- No slewing. Nothing here gradually corrects; a proposal is a step the service bounds. Slewing
   is a policy the *service* could adopt, and DECISIONS §43 records why it is a choice rather than a
   correctness requirement: `Instant` is never in the write path, so a step cannot perturb monotonic
   time.
-- **No NTS and no MAC**, as the crate half of this file records at length.
-- **No `init` endowment.** Nothing in the interactive boot runs the NTP client; the tests wire it.
+- No NTS and no MAC, as the crate half of this file records at length.
+- No `init` endowment. Nothing in the interactive boot runs the NTP client; the tests wire it.
   Ambient time synchronization would be ambient authority, and which process may propose a time
   should be as visible as which process may reach the network.
