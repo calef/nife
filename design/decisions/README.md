@@ -389,6 +389,7 @@ place instead of moving text between two systems. Numbers 68 to 73 are the six t
 | 270 | DECIDED | [A package manager holds an installer endpoint, not the spawn endpoint](0270-a-package-manager-holds-an-installer-endpoint-not-the-spawn-endpoint.md) |
 | 273 | DECIDED | [The shell program becomes a directory of modules](0273-the-shell-program-becomes-a-directory-of-modules.md) |
 | 274 | DECIDED | [The filesystem-protocol crate root splits into its module files](0274-the-filesystem-protocol-crate-root-splits-into-its-module-files.md) |
+| 277 | DECIDED | [Cite a heading or a symbol, never a line number](0277-cite-a-heading-or-a-symbol-never-a-line-number.md) |
 | 278 | DECIDED | [An ACPI machine reaches the aarch64 kernel as a device tree the loader writes](0278-an-acpi-machine-reaches-the-aarch64-kernel-as-a-device-tree.md) |
 
 Two blocks that lived among the decisions are not decisions and moved out with the split, the same

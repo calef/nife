@@ -216,17 +216,17 @@ time" (PR #1493, graphics on demand, number provisional). That makes the questio
 **The serial path has no such gap, because nife does not interpret escapes there.**
 `components/src/console.rs` copies the bytes of an `OPERATION_WRITE` to the UART verbatim, and the terminal
 contract says "ANSI from the application reaches the screen intact"
-(`notes/terminal-contract.md:177-179`). The user's host terminal (`xterm`, `Terminal.app`, `tmux`)
+(`notes/terminal-contract.md`, "What a terminal owes a program, and what it does not"). The user's host terminal (`xterm`, `Terminal.app`, `tmux`)
 is the VT engine, so `vim`-class programs get a complete one for free. `rmle` already does this: it
 emits `ESC[?25l`, `ESC[H`, `ESC[K`, `ESC[7m` and a cursor-position `CSI H` (`components/src/rmle.rs:526-560`) and
 depends on nothing the display terminal lacks. Replies from the host terminal arrive on the UART
 as input bytes. They reach the program through `OPERATION_READRAW` while raw mode is on
-(`notes/terminal-contract.md:105-115`), so DSR and DA already work in principle on the serial path;
+(`notes/terminal-contract.md`, "The IPC protocol"), so DSR and DA already work in principle on the serial path;
 I did not test it.
 
 The serial path has a different gap. The contract carries no window size, so `rmle` fixes 80x24
 (`rmle.rs` "No terminal size negotiation") and a differently sized host window redraws wrongly
-(`notes/terminal-contract.md:185-188`). That is a separate piece of work and is not this proposal.
+(`notes/terminal-contract.md`, its "Terminal size tracking" limit). That is a separate piece of work and is not this proposal.
 
 **Where this proposal matters.** A screen the user is looking at, with no host terminal in the
 loop: the `screen` session of PR #1493 on a machine with a display, and the firmware-screen console, where

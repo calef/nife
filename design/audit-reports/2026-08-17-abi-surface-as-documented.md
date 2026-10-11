@@ -116,7 +116,8 @@ surface is today, so the number stays true as history and a reader cannot leave 
 present-tense belief.
 
 **Left as history, deliberately:** `crates/abi/src/lib.rs:56` ("milestone 7d's first three
-syscalls", correct), `design/roadmap/0007-user-mode.md:20` and `notes/README.md:180` (both "**7d**:
+syscalls", correct), `design/roadmap/0007-user-mode.md`'s `ec6f1b5` entry and `notes/README.md`'s "Rust" section, as
+it read then (both "**7d**:
 three syscalls", correct as changelog entries).
 
 ### 2. FIXED: `abi::rights` had no documentation, and `objtype`'s claimed to be the rights bits
@@ -211,7 +212,7 @@ does not edit `design/decisions/`, so this is handed to the integrator. It is al
 instance: a dated record of an argument, whose point (methods were added, not syscalls) is still
 exactly right, and whose parenthetical was true when written. Recorded rather than urgent.
 
-`notes/object-revocation.md:179` says the same thing in a note this lane could have edited, and it
+`notes/object-revocation.md`, under "The surface, and what remains", says the same thing in a note this lane could have edited, and it
 was **left alone on purpose**: it is milestone 16's narrative, the parenthetical's argument is
 correct, and the sweep had already added a forward pointer in `notes/capabilities.md`, which is where
 a reader looking for the surface actually lands. Fixing every historical mention of a superseded

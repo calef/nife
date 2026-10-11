@@ -20,7 +20,7 @@ moment it merged. *(Number provisional until the merge queue lands it.)*
 132 of them, 12%, are the naming section. `design/naming.md` is 760 lines on the same subject.
 
 Both stated the same rule. `AGENTS.md` said standard terms *"should not be touched"* with a
-list; `design/naming.md:154` said *"Standard terms are already right and must not be touched"* with
+list; `design/naming.md` said *"Standard terms are already right and must not be touched"* with
 the same list. On 2026-09-05 that rule changed, and it had to be edited in both places in one commit.
 Nothing would have caught it if it had not been: no gate compares the two, and the note is the file a
 lane reads *second*, so the contradiction would have been discovered by somebody acting on the wrong

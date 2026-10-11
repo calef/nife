@@ -187,6 +187,24 @@ gate resolves.
 So: yes, verify it. The cost is bounded by the normalization and the payoff is a class of rot that
 is otherwise invisible.
 
+## Line numbers: cite a heading or a symbol
+
+§277 (cite a heading or a symbol, never a line number), calef, 2026-10-11 (UTC). Cite a document by
+path and heading, as `notes/net.md#the-inbound-half` or `notes/net.md`'s "The inbound half". Cite
+code by path and symbol, as `kernel/src/sched.rs` `threads_round_robin`. Never follow a path with
+`:` and a line number, or a link with `#L` and one: a line number moves with every edit above it,
+and a heading or a symbol moves with its text.
+
+`helpers/line_citations.py` (provisional name) is the gate, in `script/lint` and its `--no-cargo`
+pre-push mode. Citations into Markdown are held at zero. Citations into code are held to a ceiling
+that only falls, 835 when the gate landed, and a branch may not add one net. Quoted tool output is
+not a citation: a `path:LINE:COLUMN` diagnostic, and anything in a fenced or indented code block.
+Anything else that must keep a line number carries `line-citation: exception. Reason: ...` on its
+line or the line above.
+
+    $ python3 helpers/line_citations.py --list notes/x.md   # what the gate counts, and where
+    $ python3 helpers/line_citations.py --bank              # after a sweep, lower the ceiling
+
 ## EXAMPLES
 
 Report every citation, classified:
