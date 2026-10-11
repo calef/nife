@@ -342,6 +342,16 @@ pub(crate) fn std_inputs_stamp() -> u64 {
         root.join("crates/current_cpu_protocol/src/lib.rs"),
         root.join("crates/address_space_map/src/lib.rs"),
     ];
+    // A crate root that names its modules out of line (`pub mod x;`) is copied with each `x.rs`
+    // inlined, so each of those files is an input too: milestone 845 (the filesystem-protocol crate
+    // root is split along its seams), and §274 (the filesystem-protocol crate root splits into its
+    // module files).
+    let roots = files.clone();
+    for f in &roots {
+        if let Ok(text) = std::fs::read_to_string(f) {
+            files.extend(out_of_line_modules(f, &text).into_iter().map(|(_, p)| p));
+        }
+    }
     collect_files(&root.join("patches/std-nife/overlay"), &mut files);
     files.sort();
     for f in files {
@@ -758,6 +768,17 @@ fn std_generate_modules() -> bool {
         if let Some(idx) = body.find("\n#[cfg(test)]\nmod tests") {
             body.truncate(idx);
         }
+        let modules = out_of_line_modules(&src, &body);
+        let body = match inline_modules(&body, |name| {
+            let (_, path) = modules.iter().find(|(n, _)| n == name)?;
+            std::fs::read_to_string(path).ok()
+        }) {
+            Ok(body) => body,
+            Err(e) => {
+                eprintln!("std-src: {}: {e}", src.display());
+                return false;
+            }
+        };
         let body = format!("{}\n", strip_doc_examples(&body).trim_end());
         if let Some(parent) = dst.parent() {
             let _ = std::fs::create_dir_all(parent);
@@ -771,6 +792,55 @@ fn std_generate_modules() -> bool {
         }
     }
     true
+}
+
+/// The modules a crate root names out of line, as a column-0 `pub mod x;`, each with the `x.rs`
+/// beside the root that holds it. Only that form: a `mod x;` or a `#[cfg(test)] mod tests;` is not
+/// public, so it is nothing std copies.
+fn out_of_line_modules(root_file: &Path, text: &str) -> Vec<(String, PathBuf)> {
+    let dir = root_file.parent().unwrap_or(Path::new("."));
+    text.lines()
+        .filter_map(|l| l.strip_prefix("pub mod ")?.strip_suffix(';'))
+        .filter(|name| {
+            !name.is_empty() && name.chars().all(|c| c == '_' || c.is_ascii_alphanumeric())
+        })
+        .map(|name| (name.to_string(), dir.join(format!("{name}.rs"))))
+        .collect()
+}
+
+/// Put each column-0 `pub mod x;` in `body` back inline, as `pub mod x {`, the text `read(x)`
+/// returns indented four spaces, and `}`, so a crate split into module files still generates the
+/// one file std builds (milestone 845, §274). An empty line stays empty, so nothing gains
+/// trailing whitespace. A module file may end with `#[cfg(test)] mod tests;`: it is copied with
+/// the rest, and std never builds with `cfg(test)`, so the file it names is never looked for.
+/// An out-of-line module inside a module file is not followed, so it fails the std build loudly
+/// rather than being skipped.
+fn inline_modules(body: &str, read: impl Fn(&str) -> Option<String>) -> Result<String, String> {
+    let names = out_of_line_modules(Path::new("lib.rs"), body);
+    let mut out: Vec<String> = Vec::new();
+    for line in body.lines() {
+        let name = line
+            .strip_prefix("pub mod ")
+            .and_then(|l| l.strip_suffix(';'))
+            .filter(|n| names.iter().any(|(m, _)| m == n));
+        let Some(name) = name else {
+            out.push(line.to_string());
+            continue;
+        };
+        let Some(text) = read(name) else {
+            return Err(format!("cannot read the file of `pub mod {name};`"));
+        };
+        out.push(format!("pub mod {name} {{"));
+        for l in text.trim_end().lines() {
+            out.push(if l.is_empty() {
+                String::new()
+            } else {
+                format!("    {l}")
+            });
+        }
+        out.push("}".to_string());
+    }
+    Ok(out.join("\n"))
 }
 
 /// Insert `text` immediately after the first occurrence of `anchor` in `path`.
@@ -1692,5 +1762,20 @@ pub const GET: u64 = 1;
             !got.contains("let x = 1;"),
             "a trailing section, with no heading after it to stop at"
         );
+    }
+
+    /// A crate root split into module files generates the text it did as one file: milestone 845
+    /// (§274) relies on this to split `filesystem_protocol` without changing what std builds.
+    #[test]
+    fn an_out_of_line_module_is_inlined_as_it_was_written_inline() {
+        let split = "/// Docs.\npub mod fs;\n\nmod private;\npub const PAGE: usize = 4096;";
+        let file = "pub const OPEN: u64 = 1;\n\n#[cfg(test)]\nmod tests;\n";
+        let got = inline_modules(split, |n| (n == "fs").then(|| file.to_string())).unwrap();
+        assert_eq!(
+            got,
+            "/// Docs.\npub mod fs {\n    pub const OPEN: u64 = 1;\n\n    #[cfg(test)]\n    mod tests;\n}\n\n\
+             mod private;\npub const PAGE: usize = 4096;"
+        );
+        assert!(inline_modules("pub mod gone;", |_| None).is_err());
     }
 }
