@@ -34,8 +34,10 @@ note), the shapes the sizing proposed:
      authorities; the zero word still grants nothing anywhere. The reply vocabulary is `LISTEN`'s
      three outcomes, which are properties of claiming a port, not of TCP.
    - A UDP `RECEIVE` reply now writes the datagram's source endpoint into the shared frame's
-     `dst_ip`/`dst_port` fields, the dead-space proposal above, taken. TCP `RECEIVE` leaves them
-     untouched; the peer is fixed by the connection.
+     `dst_ip`/`dst_port` fields. Those fields were dead space on a reply, so the source fits
+     without a format change; an earlier draft of this note proposed exactly that (commit
+     cc2de9f7c, 2026-08-15). TCP `RECEIVE` leaves them untouched; the peer is fixed by the
+     connection.
    - `OPERATION_SENDTO` to a multicast destination was measured, not trusted: the QEMU gate's host-side
      prober takes the guest's group-addressed datagram off the raw wire.
 
