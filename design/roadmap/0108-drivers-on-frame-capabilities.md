@@ -5,9 +5,10 @@ built: 2026-08-14
 ---
 # 108. The drivers move onto frame capabilities
 
-Built 2026-08-14 (PR #141). Raised 2026-08-04 from `notes/frames.md:96`, which closes with the
-migration it deliberately did not do: "This note builds the object and proves it; migrating the
-existing users to it is separate work."
+Built 2026-08-14 (PR #141). Raised 2026-08-04 from `notes/frames.md`, whose section "What this
+unlocks, and what is left" then closed with the migration it deliberately did not do: "This note
+builds the object and proves it; migrating the existing users to it is separate work." That section
+has since given way to "The migration (milestone 108)".
 
 The finding. There are two mechanisms for sharing a page between a driver and its client, and
 the older one is still in use everywhere.

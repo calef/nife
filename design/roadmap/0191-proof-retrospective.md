@@ -64,7 +64,7 @@ This project writes its failures down, so the defect history is real rather than
   was the terminal state of a completed boot tour, not a stranded receiver. It never happened, and
   this entry should not have named it "the single most important" item in the corpus. Found still
   standing here 2026-09-23, by the lane sweeping the retraction's propagation; see
-  `notes/scheduler.md:70`.
+  `notes/scheduler.md`, "The undelivered-wake gate (boot 8, VisionFive 2)".
 - The load-sensitive assertions (notes/load-sensitive-assertions.md), including the run that
   went red on a clean kernel.
 - The arch audit's own bug class (notes/arch-audit.md): state staged in single-copy hardware
