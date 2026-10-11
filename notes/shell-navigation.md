@@ -270,7 +270,7 @@ $ rm logs
 Unlink, and the thing that makes it an unlink:
 
 ```rust
-// redoxfs_server/src/lib.rs, and the test beside it
+// redoxfs_server/src/lib.rs, and its test in redoxfs_server/src/tests/directory_capability.rs
 let h = srv.create_file_at(sub, "doomed").unwrap();
 srv.write(h, 0, b"the bytes outlive the name").unwrap();
 srv.unlink(sub, "doomed").unwrap();

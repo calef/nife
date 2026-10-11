@@ -201,7 +201,7 @@ pub mod throughput {
     /// **This is the store's number, not the protocol's**, and it used to say so and then add
     /// that nothing checked it, calling itself "the one soft spot in this module". It is checked
     /// now: `redoxfs_server` sees both this crate and the vendored engine, and asserts at compile
-    /// time that this value is a whole number of records. See `redoxfs_server/src/lib.rs`.
+    /// time that this value is a whole number of records. See `redoxfs_server/src/block.rs`.
     pub const RECORD: u64 = 128 * 1024;
 
     /// **The cost of producing one page of payload**, with no filesystem in it at all.

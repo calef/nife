@@ -391,6 +391,7 @@ place instead of moving text between two systems. Numbers 68 to 73 are the six t
 | 272 | DECIDED | [The grant-plan crate root splits into private modules](0272-the-grant-plan-crate-root-splits-into-private-modules.md) |
 | 273 | DECIDED | [The shell program becomes a directory of modules](0273-the-shell-program-becomes-a-directory-of-modules.md) |
 | 274 | DECIDED | [The filesystem-protocol crate root splits into its module files](0274-the-filesystem-protocol-crate-root-splits-into-its-module-files.md) |
+| 275 | DECIDED | [The file server core's tests move into child modules by topic](0275-the-file-server-cores-tests-move-into-child-modules.md) |
 | 276 | DECIDED | [The thread syscalls as built: the process object, `BIND`, futexes, the thread pointer and `SYS_EXIT_THREAD`](0276-the-thread-syscalls-as-built.md) |
 | 277 | DECIDED | [Cite a heading or a symbol, never a line number](0277-cite-a-heading-or-a-symbol-never-a-line-number.md) |
 | 278 | DECIDED | [An ACPI machine reaches the aarch64 kernel as a device tree the loader writes](0278-an-acpi-machine-reaches-the-aarch64-kernel-as-a-device-tree.md) |

@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-08
+built: 2026-10-11
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 275
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -20,6 +21,20 @@ reaches a different answer, because the file is mostly tests.
 The file layout and every name below are calef's call. A lane writes them up as a
 `status: PROPOSED` file in `design/decisions/` before it moves a line, and its pull request
 carries `needs-architect`.
+
+The lane wrote it up on 2026-10-10 (UTC) as §275 (the file server core's tests move into child modules by topic), `status: PROPOSED`, with the cut re-measured
+on main at `396187b0b` and a recommendation on each fork. Nothing moves until calef rules.
+
+**calef ruled on 2026-10-11 (UTC), against this block's verdict: "b".** The block layer moves into
+`block.rs` with its tests beside it, `lib.rs` keeps `Server` and its helpers, and the remaining tests
+split by topic. The scope widened by ruling: the title says the tests move out, and the block layer
+moves with them. The title and slug stay, because calef names things. §275 now records the layout
+as built; the verdict and layout below are the block's original proposal, kept as the record of
+what was ruled on.
+
+**Built 2026-10-11 (UTC)** by branch `milestone/846-the-file-server-core-moves-its-tests-out` (pull
+request #1916). `lib.rs` is 1,448 lines and the largest new file 1,137. The 77 tests pass unchanged,
+and `script/test` passed on all three architectures.
 
 Reuse: not applicable; this moves code and adds none.
 
@@ -103,8 +118,21 @@ Found with `grep` at `0435a9aeb`.
 
 1. `redoxfs_server/src/lib.rs` is under 2,000 lines, and no new file is over 2,000.
 2. The 77 host tests pass with no test body changed, and so do the crate's integration tests.
-3. No Rust file outside `redoxfs_server/src/` changes, and no item's visibility widens.
+3. No Rust file outside `redoxfs_server/src/` changes, and no item's visibility widens. As built,
+   one comment in `crates/filesystem_protocol` follows the const assertions to their new path, and
+   the test fake `VecIo` is `pub(crate)` so the block tests can reach it (§275).
 4. `script/test` passes on aarch64, riscv64 and x86_64.
+
+## Follow-on
+
+- **Recorded.** `CachedDisk`'s doc comment sits on `fn cacheable`, run together with that
+  function's own, so the public struct has none. Found while moving and left alone because this
+  change moves and does not edit; written up under "Found while moving" in
+  `design/decisions/0275-the-file-server-cores-tests-move-into-child-modules.md`. Putting it back is
+  one commit and takes both blocks under §267 (a comment states the constraint as it is now)'s cap.
+- **Decision.** The module and file names (`block`, `directory_capability`, `entries`,
+  `extended_attributes`) ship provisional for calef's name-ratification pass, as
+  `design/decisions/0275-the-file-server-cores-tests-move-into-child-modules.md` records.
 
 ## Index row
 

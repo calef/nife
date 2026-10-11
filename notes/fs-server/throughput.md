@@ -51,7 +51,7 @@ that. It also finally retired a comment in `fs_test_client` that had claimed `fs
 measurement.
 
 Superseded 2026-08-19 (milestone 138 step 2). `IpcDisk` is now wrapped in `CachedDisk`
-(`redoxfs_server::CachedDisk`, `redoxfs_server/src/lib.rs`). It is a small direct-mapped
+(`redoxfs_server::CachedDisk`, `redoxfs_server/src/block.rs`). It is a small direct-mapped
 write-through cache of single-block reads: 64 slots, ~257 KiB. It answers exactly the repetition
 milestone 38 found and this section names above. That is `Transaction::read_tree_and_addr`'s
 five-block tree walk, answered from memory when the walk resolves the same node it last resolved. It
