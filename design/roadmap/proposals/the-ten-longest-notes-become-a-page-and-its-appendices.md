@@ -185,9 +185,10 @@ since each outsider pass adds to it.
    3,450→2,857. Then incremental-path 3,541→2,908, model-attribution-review 5,067→2,795,
    timer-capability 5,644→2,145. The detail is in #1945's body. Its `design/` references were
    repointed to the appendices by `maintainer/repoint-split-notes`.
-   `notes/adding-a-program.md` (3,211 words) is the one note still over the cap. The lane skipped
-   it because PR #1913 was editing it. #1913 merged at 18:32 UTC, before #1945 did, so the hold is
-   gone and the note is ready for a split of its own.
+   That left `notes/adding-a-program.md` as the one note still over the cap. The lane
+   `notes/split-adding-a-program` (PR #1954) split it, 3,211→2,618 words. Its "Why it works this
+   way" moved to `notes/adding-a-program/why-it-works-this-way.md`, and the walk table stayed,
+   because `script/stranger-test` measures it on the main page.
 5. The report names each provisional directory and file name for calef's queue.
 
 ## Open questions for an architect
