@@ -82,7 +82,7 @@ meets it in, because a registry of blessings would be the same evaporating mediu
 | No IPC timeouts and no revocation: the seL4 depth parked | `notes/security.md`, "What is deferred, on purpose, and named honestly" |
 | A reclaiming `unmap`, considered and not built, because an address space dies all at once | `notes/teardown.md` |
 | A minted endpoint per socket, deferred with a named trigger | `notes/net/prior-art-and-the-contract.md`, the socket contract |
-| A delegable clock: no program is asking, so it is recorded and not built | `notes/grant-expression.md`, "What a delegable clock would still need" |
+| A delegable clock: no program is asking, so it is recorded and not built | `notes/grant-expression/clock-grant.md`, "What a delegable clock would still need" |
 | The capability derivation tree, not built; generational names are the other way to be safe | `notes/generational-names.md` |
 | zsh's glob qualifiers, settled and out, because a qualifier needs a right beyond enumerate | `notes/glob.md` |
 | `ArgSpec` has no position and no arity, deferred until a program wants both an argument and a file | `notes/date.md` BUGS |

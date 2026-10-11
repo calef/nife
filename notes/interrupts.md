@@ -6,6 +6,8 @@ instructions.
 Which means every piece of the locking discipline we wrote in
 [DECISIONS](../design/decisions/0009-irq-safe-locking.md) §9 stops being a hypothesis.
 
+The evidence behind this note is in [interrupts/](interrupts/README.md).
+
 ## The GIC: the multiplexer in front of the CPU
 
 The CPU has one IRQ input line. That's all. Everything a kernel wants from interrupts,
@@ -250,207 +252,36 @@ INTID 1 from software, with no hardware behind it. A thread blocks in `WAIT`, th
 SGI, the handler routes it, the thread wakes. Deterministic, and it needs no disk. The virtio
 driver (9b) will use the same path with a real device interrupt in place of the SGI.
 
-## Testing it on RISC-V, which has no SGI (milestone 19, 2026-07-31)
+## Testing it on RISC-V, which has no SGI (§19 (architectural parity), 2026-07-31)
 
-The two tests above (`kernel::sched::tests::an_interrupt_becomes_a_message` and
-`an_interrupt_that_arrives_before_the_wait_is_not_lost`) were aarch64-only for a year, gated because
-they trigger with an SGI. The properties are not architectural, though: one is IRQ-to-IPC
-delivery and the other is a lost-wakeup race, and RISC-V has interrupts and the same IPC. Only the
-trigger was in the way. They are portable now, with the trigger behind three functions in the test
-module (`arm_test_irq`, `raise_test_irq`, `quiet_test_irq`).
-
-What RISC-V raises, and why that one. The console UART's own transmit-empty interrupt. A 16550
-asserts its line the moment `IER.ETBEI` is set while `LSR.THRE` is set, and the transmitter of a
-polling console is always empty, so one register write raises the line into the PLIC and one lowers
-it. No transfer, no external stimulus, nothing to read back. `console::raise_uart_interrupt` /
-`quiet_uart_interrupt`, test builds only.
-
-Two other options were considered and are worse, for reasons worth keeping:
-
-- The SBI's IPI (`sbi_send_ipi`, which `arch::irq::send_reschedule` already uses). It is the
-  obvious "software-generated interrupt" on RISC-V and it is the wrong one. It arrives as a
-  *supervisor software* interrupt, `scause` = 1, which is a different arm of
-  `riscv_trap_dispatch` from a device's `scause` = 9: that arm drains the scheduler inbox and serves
-  steal requests, and touches neither `irq_route` nor `irq_notify`. A test built on it would have
-  looked like parity with aarch64 and proved nothing about IRQ-to-message delivery.
-- Writing the PLIC's pending bits (base + 0x1000). Read-only by specification, and QEMU 11.0.2
-  agrees: a probe that set source 20's pending bit and read the word back got `0x0` before and
-  `0x0` after. Even if it had worked it would have been a QEMU behavior to lean a gate on, three
-  weeks before the VisionFive 2 arrives.
-
-**So the two legs are not twins, and the note says so rather than the doc comment claiming it.**
-aarch64's SGI needs no device at all; RISC-V's needs the UART to exist. In the other direction
-RISC-V covers *more* of the controller: an external interrupt goes through the PLIC's
-claim / mask / notify / complete handshake, which an aarch64 SGI does not reach. The kernel path
-under test, the part these tests exist for, is the same on both.
-
-A claim that was in the tree and was not backed. The old doc comment on
-`an_interrupt_becomes_a_message` said the same path was "proven on RISC-V by the boot tour's
-userspace UART driver". The boot tour is `script/console`, interactive, and gates nothing, so as
-written the claim cited a witness the suite does not run. The substance was true by then for a
-different reason (the parity-C virtio tests, below), but the citation was to the wrong thing, and a
-parity claim resting on a demo nobody runs is the shape of gap §19 exists to catch.
+The two tests (`kernel::sched::tests::an_interrupt_becomes_a_message` and
+`an_interrupt_that_arrives_before_the_wait_is_not_lost`) were aarch64-only until 2026-07-31,
+because they trigger with an SGI. On RISC-V the trigger is now the console UART's own
+transmit-empty interrupt, behind `arm_test_irq`, `raise_test_irq` and `quiet_test_irq`. The SBI IPI
+was refused because it never reaches `irq_route`, and writing the PLIC's pending bits does nothing.
+The two legs are not twins: aarch64's needs no device, and RISC-V's covers more of the controller.
+Why each option lost, and the unbacked claim the old doc comment made, are in
+[interrupts/riscv-test-trigger.md](interrupts/riscv-test-trigger.md).
 
 ---
 
 # IRQ affinity: spreading device lines off core 0 (fix/irq-delivery, 2026-07-29)
 
-Until now every SPI targeted core 0: `gic::enable` wrote `ITARGETSR[intid] = 1` (bit 0). Under SMP
-that funnels every device interrupt onto one core, and because the handler that turns an interrupt
-into a message runs on the core that took it (`handle_irq` calls `irq_notify`, which wakes the
-driver onto `cpu::current`), the driver wake lands on core 0 too. Every disk and NIC completion, and
-the driver work it triggers, re-concentrates on core 0 no matter where the threads were spawned.
+Device lines no longer all target core 0. `arch::irq::enable` gives each SPI a target core the
+first time it is enabled, round-robin over the online cores, and keeps it (`IRQ_TARGET`), because
+the `Irq` capability's ACK re-enables the line on every completion. The GIC driver is told which
+core and does not decide (rule #2). The PLIC does the same per hart (`SOURCE_CTX`), with each hart
+claiming and completing against its own context.
 
-The fix distributes SPI lines across the online cores. The policy lives in `arch::irq::enable`
-(it may read `smp::online_count`; it is arch glue, not a driver): each SPI is assigned a target core
-the first time it is enabled, round-robin over the online cores, and that assignment is stable
-(`IRQ_TARGET`, an atomic per-INTID slot). Stability matters because the `Irq` capability's ACK
-re-enables the line on every completion; re-rolling the target each time would make the line hop
-cores on every interrupt. The mechanism stays in the driver: `gic::enable(intid, target_cpu)`
-writes `ITARGETSR[intid] = 1 << target_cpu`. PPIs and SGIs are per-core, so the target is ignored
-for them (the timer PPI, the reschedule SGI). Rule #2 holds: the GIC driver is told which core, it
-does not decide.
+The PLIC's enable bits share one 32-bit word per 32 sources, so its `enable` and `disable` are a
+read-modify-write that two harts can interleave. A lost update either masks a device forever or
+leaves a level-triggered source storming. Both go through one `IrqSafeMutex` at
+`rank::IRQ_CONTROLLER`, found by the assembly audit ([arch-audit.md](arch-audit.md), finding 3).
 
-What this does and does not buy, measured honestly:
-
-- It does move each device's interrupt (and the wake it causes) off core 0 onto its assigned
-  core. Verified: the full aarch64 suite (disk, PCIe disk, both DHCP round trips) stays green with
-  the lines spread, and a diskless boot's device IRQs land on cores other than 0.
-- It does not, on its own, make the heavy `std_net` pipeline (smoltcp in `net_stack`, plus the std
-  program) go faster under SMP, because that pipeline is a chain of IPC rendezvous, and a rendezvous
-  wake still lands on the *waker's* core (`cpu::current`). Spreading the interrupt moves the whole
-  chain to the interrupt's core; it does not parallelize it. Parallelizing the pipeline needs the
-  rendezvous/device-IRQ wake placement to be load-aware, which is the scheduler's call
-  (DECISIONS §28 territory), not the interrupt controller's. See the `std_net` note below.
-
-## The riscv PLIC side, done the same way (parity §19)
-
-The PLIC equivalent spreads device sources across harts, the same round-robin-with-a-stable-target
-shape as the GIC. The PLIC delivers a source to a context (a hart at a privilege level). The
-hart-to-context numbering is the board's, read out of the device tree's `interrupts-extended` at
-boot (`arch::irq::init_contexts`, backed by `isa::plic`): `2*hart+1` for S-mode on QEMU `virt`,
-`2*hart` on the JH7110, whose disabled S7 monitor core contributes only an M context (see
-notes/visionfive2.md). The pieces are:
-
-- Every hart sets `SEIE` early (`arch::irq::init_this_cpu` now unmasks supervisor external
-  interrupts alongside the software-interrupt IPI source). This is safe before the PLIC base is even
-  known: `SEIE` with no source enabled for the hart's context delivers nothing. It sidesteps the
-  ordering hazard that a secondary comes online (running `init_this_cpu`) *before* the boot path
-  calls `plic::init`; the CSR is unmasked now, the context is set up later.
-- The boot hart opens a target hart's context and routes the source to it (`target_context` in
-  `arch/riscv64/irq.rs`). The threshold and enable registers are global PLIC MMIO, so the boot hart,
-  which runs every `enable` (test wiring, driver spawn), can open any hart's context and enable a
-  source on it. The target is chosen round-robin over the online harts and is stable per source
-  (`SOURCE_CTX`), for the same reason the GIC target is stable: the ACK re-enables the line on every
-  completion, and the mask and the re-enable have to name the same context.
-- Each hart claims and completes against its own context (`this_s_context`, the context table's
-  entry for `cpu::id()`,
-  passed to `plic::claim`/`complete`/`disable` from the external-interrupt handler). A source targets
-  exactly one hart, so the hart that takes it is the hart it is enabled on, and the mask/complete land
-  on the right context. The PLIC driver stays mechanism-only: it is told the context, it does not read
-  the hartid (rule #2, DECISIONS §4).
-- The enable bits are serialized; nothing else in the driver is. The sentence two bullets up, "the
-  threshold and enable registers are global PLIC MMIO," is exactly what makes this necessary, and the
-  assembly audit ([arch-audit.md](arch-audit.md), finding 3) is where it was caught. One enable
-  register carries 32 sources of a context, so setting one source's bit is a read-modify-write over
-  a word its neighbors share, and the boot hart running `enable` can collide with another hart's
-  handler running `disable` on a neighbor. A lost update either masks a device forever (its driver
-  blocks on an interrupt that never arrives) or leaves a level-triggered source live after the handler
-  masked it (an interrupt storm on that hart). So `enable`/`disable` go through one helper holding an
-  `IrqSafeMutex` at `rank::IRQ_CONTROLLER`, the same rank the GIC's lock takes.
-
-  It has to be `IrqSafeMutex` rather than a plain lock, and that is the §9 deadlock rather than
-  caution: `disable` runs *in the handler* while `enable` runs in thread context with interrupts on,
-  so a plain spinlock would let a thread take the word on a hart and then have that hart's own
-  handler spin on it forever. Nothing else in the driver takes the lock, deliberately:
-  claim/complete is per-context and therefore hart-local (the hot path stays lock-free), the
-  per-source priority register is unshared, and the threshold write is a whole-word store of `0`, so
-  it is idempotent rather than an RMW. aarch64 never needed this: the GIC's
-  `ISENABLER`/`ICENABLER` are write-1-to-set and write-1-to-clear, so one store touches one line and
-  the architecture supplies the atomicity that the PLIC's plain read/write bits do not.
-
-### The lost update, step by step
-
-The abstract phrase "read-modify-write" hides the bug, so here it is concretely. Say the disk is
-source 8 and the NIC is source 10. Both bits live in the same 32-bit enable word (sources 0..31 of
-that context), so a driver touching *its own* source still writes the neighbor's bit back, because
-the only way to change one bit of that word is to store all 32.
-
-Hart 0 is in thread context enabling the disk. Hart 1 is inside its handler masking the NIC. Without
-the lock they interleave:
-
-| step | hart 0 (`enable(8)`)        | hart 1 (`disable(10)`)      | word in the PLIC |
-|------|----------------------------|-----------------------------|------------------|
-| 1    | read → `0b0100` (bit 10)   |                             | `0b0100_0000_0000` |
-| 2    |                            | read → `0b0100` (bit 10)    | `0b0100_0000_0000` |
-| 3    | or in bit 8                |                             | `0b0100_0000_0000` |
-| 4    | write `bits 8,10`          |                             | `0b0101_0000_0000` |
-| 5    |                            | clear bit 10 from ITS copy  | `0b0101_0000_0000` |
-| 6    |                            | write `0b0000`              | `0b0000_0000_0000` |
-
-Hart 1's copy of the word was read at step 2, before hart 0's store at step 4. Its store at step 6
-is computed from that stale copy, so it does not just clear bit 10, it *un-sets bit 8 as collateral*.
-Hart 0's enable is gone, and nothing anywhere reports an error: the PLIC has no notion of a
-disagreement, it just holds whichever word was written last.
-
-Both directions of that race are bad, and they fail differently, which is why neither is tolerable:
-
-- **A lost `enable`** (above) silently masks a device forever. The driver blocks in `Irq::WAIT` on an
-  interrupt the PLIC will never route to it. The symptom is a hang in code that has no bug.
-- **A lost `disable`** is the mirror: the handler thinks it masked a level-triggered source, but the
-  bit is back on and the line is still asserted, so the PLIC re-delivers immediately, forever. That
-  is an interrupt storm, and the hart it lands on stops making progress.
-
-This is also why the window is small but not negligible. It is the few instructions between the read
-and the write, hit only when two harts touch the same 32-source word at once, which is exactly the
-kind of race that passes a thousand test runs and then fails in front of an audience. The audit found
-it by reading for the pattern rather than by waiting for it to bite ([arch-audit.md](arch-audit.md),
-finding 3).
-
-The fix is one `IrqSafeMutex` around the read and the write together, so steps 1-4 and 2-6 cannot
-interleave: whichever hart takes the lock second re-reads the word *after* the first hart's store and
-computes from current state. It is the smallest possible critical section (a read, an or/and-not, a
-write) and it is off the hot path, so it costs nothing measurable.
-
-Proven the same way as the GIC: the riscv suite is green at the 4-hart boot with device sources
-spread across harts (disk read, the interrupt-driven redoxfs_server block server, both routed to whatever
-hart the round-robin picked, plus the SMP placement tests). As on aarch64, this distributes the
-interrupt and the wake it causes; it does not by itself parallelize the `std_net` pipeline, which
-needs the load-aware rendezvous wake (see below).
-
-## The `std_net` SMP hang was not an interrupt-delivery bug (resolved)
-
-Recorded so it is not re-diagnosed as one, and left in place with its resolution because the wrong
-diagnosis was tempting and the right one took two agents to reach.
-
-The `std_net` test (smoltcp in `net_stack` serving a std program's `UdpSocket`/`TcpStream`) used to hang
-under the 4-core boot on both ISAs, watchdog-killed at 60 s, while in the same run the hand-built
-DHCP round trips (`virtio_net`, `virtio_net_pci`) passed and the interrupt-driven redoxfs_server block
-server passed. That asymmetry was the tell: interrupt delivery under SMP was sound, and the hang was
-specific to the heavier, longer, timer-driven smoltcp pipeline.
-
-Two things were wrong, and only one of them was scheduling:
-
-1. A real deadlock. `net_stack` blocked on the NIC interrupt while smoltcp still had a retransmit
-   pending, so neither side would move: the timer that would have retransmitted was never polled
-   because the thread was parked in `Irq::WAIT`, and no packet was coming to wake it. That is a
-   mutual-idle deadlock, not slowness, and no amount of core placement fixes it. `net_stack` now bounds
-   its wait by smoltcp's own next-poll deadline.
-2. Serialization on one core. With the deadlock gone the pipeline ran, but slowly: its threads
-   are woken by a mix of device IRQ and IPC rendezvous, and both wakes pinned to one core. DECISIONS
-   §28's wake split fixed the half that mattered (device-IRQ wakes go load-aware, IPC rendezvous
-   wakes stay local, because a rendezvous partner is about to run on the caller's core and moving it
-   only adds a migration).
-
-An intermediate hypothesis of mine was wrong and worth keeping written down: I expected IRQ
-affinity alone to fix it. It cannot. Spreading interrupts across harts relocates where a wake lands;
-it does not parallelize a chain of request/response rendezvous, which is serial by construction. The
-agent disproved it by measurement rather than argument.
-
-`std_net` now passes on both ISAs. It is also the longest honest test in the suite at roughly 300 to
-344 s on aarch64, because it is a real DHCP lease plus TCP and UDP round trips through an emulated NIC
-under TCG. That length is legitimate work, not a symptom, which is precisely what makes it awkward for
-the watchdogs: see the per-test ceiling discussion in [scheduler.md](scheduler.md).
+Spreading interrupts moves a wake; it does not parallelize a chain of IPC rendezvous. The `std_net`
+hang under SMP was a mutual-idle deadlock in `net_stack` plus serialization on one core, fixed by a
+bounded wait and §28 (SMP placement)'s wake split, not by affinity. The step-by-step race, the per-hart context
+numbering and the `std_net` diagnosis are in [interrupts/affinity.md](interrupts/affinity.md).
 
 ## Two GICs: which one this machine has, and how the kernel knows
 
@@ -505,17 +336,10 @@ QEMU 11.1.1 refuses `gic-version=2` with HVF, so the runner asks for 3 there.
 
 ### The gate against silent loss
 
-A GIC assumption that stops being true now fails loudly, at three points:
-
-- An `intc@` node whose binding is not a GIC this kernel knows panics in `memory::init`, naming
-  the `compatible` it found. It used to be driven as a GICv2 on the strength of its name.
-- A tree the hardware contradicts panics in `arch::irq::init` before any configuration write,
-  naming the version claimed and the revision read. This is the check that would have stopped
-  milestone 222's boot: a GICv2 claim over a redistributor frame reads `GICC_IIDR` as zero.
-- A core with no redistributor, or whose `ICC_SRE_EL1.SRE` will not set, panics as it comes
-  online. And `arch::irq::tests::every_online_cpu_takes_its_own_timer_ticks` holds every core, not
-  only the test's own, to taking interrupts; injecting "secondaries never enable Group 1" fails it
-  naming core 1.
+A GIC assumption that stops being true now fails loudly. An unknown `intc@` binding, a tree the
+hardware contradicts, or a core missing its redistributor or `ICC_SRE_EL1.SRE` each panics with a
+name. A test holds every core to taking its own ticks. The three points are listed in
+[interrupts/gicv3-history.md](interrupts/gicv3-history.md).
 
 ### BUGS
 
@@ -531,142 +355,29 @@ A GIC assumption that stops being true now fails loudly, at three points:
   reads as set whether or not the step runs. It is Linux's sequence, and the EL1 assertion is what
   would catch a board where it matters.
 
-### The measurement, taken 2026-09-02, and why this used to be the most dangerous line in the file
+### Before milestone 227 (a GICv3 driver), and what no CPU matrix catches
 
-Until milestone 227 the runner's `gic-version=2` pin was protection rather than support, and this
-section said so. The measurement below is what made it load-bearing, and it is kept because it is
-the shape the gates above exist to make impossible.
-
-This section used to say `-machine virt,gic-version=3` had never been booted here, that it was one
-command, and that it would turn "our driver does not support it" from an assumption into a recorded
-failure with an error message attached. Milestone 222 ran the command. There is no error message.
-
-```
-  timer       : 100 Hz tick, counter at 62 MHz, interrupts ON
-  scheduler   : 5 thread(s), round robin, preemptive
-  ...
-    thread 1 (hostile) :          0 iterations
-    thread 2 (polite)  :          0 iterations
-    preemptions        :          0
-```
-
-Under `-machine virt,gic-version=3,iommu=smmuv3 -cpu cortex-a72 -smp 4` the kernel boots all the
-way through the tour, brings four cores online over PSCI, prints that the timer's interrupts are
-on, and then never receives one. Nothing faults and nothing says anything is wrong.
-
-The reason is that a GICv3 device tree node carries two register blocks like a GICv2 one does, so
-`memory::gic_regions()` finds a pair and hands them over without complaint. The second block is the
-redistributor rather than a CPU interface, and `gic::init_this_cpu` writes `GICC_CTLR` and
-`GICC_PMR` into it. Those are device-memory writes to registers that are not there: they land, they
-do nothing, and the real CPU interface (`ICC_*`, system registers) is never enabled. Every interrupt
-the distributor routes is then delivered to a core that has not agreed to receive any.
-
-**So the honest statement of the limitation is not "GICv3 is unsupported", it is "GICv3 boots and
-silently loses every interrupt".** That was the more dangerous shape, and it was why the QEMU runner's
-`gic-version=2` pin was load-bearing rather than tidy: without it, a QEMU that changed its default
-would have produced a kernel that came up and then quietly stopped preempting anything.
-
-### What a GICv3 driver would actually be, priced in advance, and what it turned out to be
-
-Milestone 222 priced it from the failure: a version decision at init, a redistributor per core, a
-system-register CPU interface under `arch/aarch64/`, affinity routing, and both drivers coexisting
-behind roughly ten call sites. Milestone 227 built exactly that list and found two things the
-pricing did not have: SGIs must stay permanently enabled on a GICv3, because QEMU's GICv2 model
-and the GIC-400 treat them that way and the Irq capability's mask-on-fire, unmask-on-ACK protocol
-relied on it without saying so; and the ID register that says whether a core has the system
-registers is not believed by HVF (see BUGS above). The call sites all moved to `arch::irq`.
-
-### Why there is no aarch64 CPU-model matrix, unlike RISC-V's (milestone 59, DECISIONS §53)
-
-The asymmetry is real and worth stating, because "we did it for RISC-V" is the obvious argument for
-doing it here and it is wrong.
-
-- We already test on a conservative real core. The aarch64 runner uses `-cpu cortex-a72`, an
-  ARMv8.0-A chip, not QEMU's `max`. RISC-V's default was the maximalist model, which is what made a
-  matrix worth building there. Here the emulator is *less* capable than a modern board, and code
-  that runs on an A72 runs on an A76.
-- aarch64 has architectural feature discovery and RISC-V does not. The `ID_AA64*` registers are
-  mandatory and readable at EL1, and this kernel already uses them: `arch/aarch64/mmu.rs` reads
-  `ID_AA64MMFR0_EL1::PARange` and feeds it to `TCR_EL1::IPS` rather than assuming a physical address
-  range. That is why milestone 60 (ISA discovery) is a RISC-V milestone specifically; RISC-V omitted
-  CPUID on purpose and left discovery to a device-tree string.
-
-### What no CPU matrix catches on either ISA
-
-Memory ordering. Different microarchitectures reorder differently, and a missing
-`Acquire`/`Release` can pass on one core and fail on another. **QEMU's TCG does not faithfully model
-reordering**, so no `-cpu` value tests it. That class is covered by a different mechanism and
-`ci.yml` says so: CI runs on a real aarch64 runner, because a missing barrier passes on an x86_64
-host and fails only on real ARM. Real silicon is the test; an emulator cannot be.
+Milestone 222 ran `-machine virt,gic-version=3` expecting "a recorded failure with an error message
+attached", and found none: the kernel booted and silently lost every interrupt, because it wrote
+`GICC_*` registers into the redistributor frame. That is why the `gic-version=2` pin was
+load-bearing, and it is the shape the gate exists to make impossible. What a GICv3 driver would
+actually be, priced in advance by milestone 222 (a leg that fails instead of skipping), is what milestone 227 built, plus two findings: SGIs
+stay permanently enabled, and HVF hides the GIC ID field. aarch64 has no CPU-model matrix like
+RISC-V's, because the runner already uses a conservative `cortex-a72` and the `ID_AA64*` registers
+make features discoverable. Memory ordering is what no matrix catches; real aarch64 silicon in CI is
+the test. The evidence is in [interrupts/gicv3-history.md](interrupts/gicv3-history.md).
 
 # Interrupts or polling: why every confined driver in this tree polls
 
-calef, 2026-09-17: *"What are the advantages and disadvantages of Irq vs polling? This has come up
-multiple times."* It had, three times in two days, and the answer had never been written down, which
-is why it kept coming up. This section is the record.
+calef asked on 2026-09-17 why the tree polls, and it had come up three times in two days. The answer
+is confinement, not performance. An MSI or MSI-X message is a memory write, and plain DMA remapping
+does not confine it: a component that can write a device's MSI-X table can aim an interrupt at a
+vector it was never given (§86 (whether an NVMe driver can leave the kernel)). MSI remapping is offered but never enabled on `x86_64`, and absent
+on `aarch64` (no GICv3 ITS is driven); only `riscv64` drives it. So an IRQ-driven EL0 driver would not
+be confined on two of three architectures, and milestones 159 and 261 poll. `Object::Irq` already
+confines a line-based interrupt; MSI-X is the case it does not cover.
 
-## The ordinary trade, which is not what decides it here
-
-Polling wins on latency at depth (no delivery, no context switch, no EOI), determinism (an
-icount tripwire can read a polled loop and cannot read an interrupt's arrival), and simplicity (no
-vector allocation, no masking, no affinity).
-
-Polling loses on a burned core while idle, which is ruinous for a device asked for 64 bytes once
-a boot; scaling, because N polling drivers are N spinning threads; and it cannot express *wake me
-when something happens*, which is the whole of milestone 103.
-
-None of that is why this tree polls.
-
-## What actually decides it: an MSI is a memory write
-
-An MSI or MSI-X message is a memory write to an architecturally special address. **Plain DMA
-remapping does not confine it**: a component that can write a device's MSI-X table can aim an
-interrupt at a vector it was never given. [DECISIONS §86](../design/decisions/0086-el0-nvme-driver.md)
-found this and named the axis; `notes/confinement-claims.md` carries it as a claim stated nowhere.
-
-Linux draws the same line and says so in its API: **VFIO refuses to hand a device to an untrusted
-userspace driver on a machine without interrupt remapping**, and its escape hatch is named
-`allow_unsafe_interrupts`. (§86 marks that as confirmed by search paraphrase rather than a fetched
-source, and this note inherits the caveat rather than laundering it.)
-
-Measured on the machines this project runs, not asserted:
-
-| | where MSI remapping lives | state here |
-|---|---|---|
-| `x86_64` | VT-d interrupt remapping | offered, never enabled: `ECAP.IR` reads set and `arch/x86_64/iommu.rs` never writes `GCMD.IRE` (`notes/confinement-claims.md`) |
-| `aarch64` | a separate *device*, the GICv3 ITS | absent: the TCG runner uses `gic-version=2`, which has none, and milestone 227 (a GICv3 driver) does not drive the ITS a `gic-version=3` machine offers |
-| `riscv64` | inside the IOMMU's own device context (`CAP_MSI_FLAT`, widening it 32 → 64 bytes) | already driven, `arch/riscv64/iommu.rs` handles both formats |
-
-So on two of three architectures an IRQ-driven EL0 driver would not be confined, whatever the
-IOMMU does for DMA (on x86_64, ours). That is why milestone 159 (a real hardware entropy source) polls and why milestone 261 (the NVMe driver leaves the kernel)
-does: in 261's lane's words, *"polling keeps `Object::Irq` off the grant list, which is less
-authority."* **A confinement choice wearing a performance choice's clothes**, and worth saying out
-loud because the next person meeting a polled driver will reasonably read it as a shortcut.
-
-## What is not in question
-
-An interrupt is already a capability here. `Object::Irq(u32)` has existed since milestone 9 (an interrupt becomes a message): the
-kernel masks the line, `READ` lets the holder `WAIT` and `ACK`, and everything that knows what the
-*device* is lives in the userspace driver. That is seL4's `IRQHandler` shape, and
-[DECISIONS §101](../design/decisions/0101-notification-objects.md) already specifies `bind_irq(intid,
-ep)` on the delivery side, with a prior-art survey covering seL4's bound notifications, Fuchsia's
-`zx_port`, Mach port sets and why Linux's `epoll` model was refused.
-
-`Object::Irq` confines a line-based interrupt perfectly well. The kernel masks it; the holder
-can only wait and acknowledge; there is no way to aim it. MSI-X is the case it does not cover.
-
-## The open question, and why it is deliberately not a decision yet
-
-Who owns the page holding the MSI-X table? calef declined to mint that on 2026-09-17, and the
-reason is the one `design/fatal-risks/README.md`'s own rule 1 gives: nothing is blocked on it, both EL0
-drivers poll, and **there was no experiment behind it**. A decision with no experiment is a worry
-rather than a choice.
-
-Milestone 317 (the interrupt-remapping flags) made the question live. The options are: EL0 drivers get `Irq` for line-based interrupts only and MSI-X stays kernel-owned; or
-remapping is turned on and a driver may own its table because the platform confines it; or it is
-allowed unconfined and said so, which is Linux's `allow_unsafe_interrupts` and is a claim this tree
-should not make quietly.
-
-**One asymmetry worth carrying forward**: on `riscv64` the IOMMU and the interrupt-confinement story
-are the same hardware, so a board with a ratified RISC-V IOMMU would close milestone 143 *and* this
-gap in one purchase. Milestone 143's 2026-09-17 survey found such a board buyable.
+Who owns the page holding the MSI-X table is open on purpose: calef declined to mint it on
+2026-09-17 because no experiment stands behind it. Milestone 317 (the interrupt-remapping flags)
+made it live. The ordinary trade, the per-architecture measurements, the three options and the
+RISC-V asymmetry are in [interrupts/polling.md](interrupts/polling.md).

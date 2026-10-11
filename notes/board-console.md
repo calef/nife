@@ -7,7 +7,8 @@ milestone gated on real hardware needed somebody at a terminal emulator reading 
 far the boot got, and stops on a deadline.
 
 The last clause is the only hard part. Opening a serial port is a `screen` invocation. Knowing
-when to stop reading is what kept this a milestone.
+when to stop reading is what kept this a milestone. The detail behind this note is in
+[board-console/](board-console/README.md).
 
 And since milestone 324 it writes, under one rule: *it writes only what a named mode sends,
 and every byte it sends is printed into the log.* calef ruled that on 2026-09-19, replacing this
@@ -155,276 +156,45 @@ The byte is rendered in hex and never written raw, so the capture stays greppabl
 reader's cursor, and cannot be mistaken for something the board said. A host test asserts that no
 line this mode writes into a log reads as a boot marker when that log is replayed.
 
-## What it recognizes, and where each marker came from
+## What it recognizes
 
-Every marker was first quoted from `notes/visionfive2.md`'s bench runbook ("What appears, in order,
-on a good day" and the failure-triage ladder) or from this tree's own source. They were then
-checked against the board, on 2026-09-01, against a captured success and a captured failure that
-now live in `crates/board_console/tests/fixtures/captured/` and are asserted on by the tests.
+Every marker was quoted from `notes/visionfive2.md`'s bench runbook or this tree's source, then
+checked on 2026-09-01 against a captured success and a captured failure that now live in
+`crates/board_console/tests/fixtures/captured/`. The firmware rungs (`spl`, `opensbi`, `uboot`,
+`handoff`) are radon's and live in a board profile (`crates/board_console/src/board.rs`); xenon's
+profile is empty, because it boots through PVH straight into our banner. The kernel's rungs are
+shared by every board: `banner`, `machine`, `selftest`, `tour`, `prompt`, `soak`, `sweep` and
+`sweep-done`. Five markers end a session early: U-Boot's `### ERROR ###`, a bad image magic,
+`MEASURED BOOT REFUSED`, our own `[PANIC] `, and U-Boot relocating, which is a note. `init/build`
+is reported and deliberately not a stage; it is the only difference between the two successful
+captures, and since milestone 295 (retire `components/src/builder.rs`) only those old captures print it.
 
-The first four rows are radon's and live in a board profile (milestone 324 part 3,
-`crates/board_console/src/board.rs`); the rest are the kernel's and are shared by every board.
-
-| stage | board | marker | source |
-|---|---|---|---|
-| `spl` | radon | `U-Boot SPL` | runbook, confirmed on the board |
-| `opensbi` | radon | `OpenSBI v` | runbook ("record the version line"), confirmed: `OpenSBI v1.2` |
-| `uboot` | radon | `U-Boot ` followed by a word that is not `SPL`/`TPL`, or `StarFive #` | runbook, confirmed both ways |
-| `handoff` | radon | `Starting kernel ...` | runbook, confirmed |
-| `banner` | every | `boot_ladder::BANNER` (`nife on `) | `kernel/src/main.rs`, confirmed |
-| `machine` | every | `boot_ladder::MACHINE` | milestone 268 |
-| `selftest` | every | `boot_ladder::SELF_TEST` | milestone 268 |
-| `tour` | riscv64 | `boot_ladder::TOUR` | `kernel/src/main.rs`, confirmed |
-| `prompt` | every | `boot_ladder::PROMPT` | milestone 268 |
-| `soak` | every | `soak-test: started` | milestone 219 |
-| `sweep` | every | `job_mix::STARTED` | milestone 324, confirmed under QEMU 2026-09-19 |
-| `sweep-done` | every | `job_mix::DONE` | milestone 324, confirmed under QEMU 2026-09-19 |
-
-xenon's profile is an empty prologue, and that is a measurement rather than a gap.
-`bench/xenon-2026-09-17/first-light-095500.log` shows nothing before `nife on ` that this tool
-matches, because the machine boots through PVH straight into our banner. A test replays that exact
-file through the xenon profile and asserts the banner, the machine line, the five-of-five verdict
-and the measured-boot refusal, all with no firmware rung climbed at all. That is what the split is
-for: the same radon capture read through xenon's profile reaches the same tour and reports no
-firmware rung, because none of those lines are xenon's to claim.
-
-One more thing is reported and is deliberately **not** a stage: `init/build`, meaning userspace init
-built its child. It cannot be a stage without breaking the ladder, because a card with no archive
-runs the whole tour and never reaches it, so putting it below `tour` would make reaching the tour
-imply something that did not happen. It is a detail of a successful boot, like `Moving Image from`,
-and it is the only difference between the two successful captures.
-
-Since milestone 295 it reads captured logs and nothing else. calef retired
-`components/src/builder.rs` on 2026-09-14, so no kernel this tree builds prints `init/build` and
-`userspace_ran()` is `false` on every live board. The matcher stays because
-`tests/fixtures/captured/vf2-2026-09-01-userspace.log` carries the line, and that capture is
-evidence off real VisionFive 2 silicon that cannot be re-taken with a different kernel; deleting the
-recognizer to tidy the code would throw the evidence away. What to ask of a board booted today is
-`reached() >= Stage::Prompt`, and it is a stronger question: `init/build` meant userspace built one
-child out of two capabilities, where the prompt cannot appear unless userspace built the console
-server, the line discipline, the input driver and the shell. The two successful captures are still
-the two successful captures; what distinguishes them is now a fact about 2026-09-01 rather than a
-test to run.
-
-And five things that end a session early rather than waiting the clock out:
-
-| what | marker | source |
-|---|---|---|
-| **U-Boot giving up**, with the reason on the line before | `### ERROR ### Please RESET the board ###` | **captured 2026-09-01**; no documentation in this tree named it |
-| a stale or wrong card | `Bad Linux RISCV Image magic!` | triage ladder row 3, never seen at a bench |
-| the trust boundary refusing | `MEASURED BOOT REFUSED` | `kernel/src/trust.rs`, **captured 2026-09-01** |
-| our own panic, with its message | `[PANIC] ` | `kernel/src/panic.rs` |
-| U-Boot relocating (a note, not a stage) | `Moving Image from` | triage ladder row 4, confirmed |
-
-### Four outcomes, three of them real
-
-The captures of 2026-09-01 turned this from a two-way question into a four-way one, and three of
-the four are things a board actually did.
+Four outcomes, three of them seen on a board:
 
 | outcome | what it looks like | exit |
 |---|---|---|
-| **Success** | the tour reaches `nife: the capability core runs on RISC-V.`, then the board goes quiet because the kernel halts in `wfi` | 0 |
-| **U-Boot refused before the kernel ran** | the image loads and relocates, then `### ERROR ### Please RESET the board ###` | 1 |
-| **The kernel booted and then halted on purpose** | `MEASURED BOOT REFUSED`, after the banner and most of a tour | 1 |
-| **A genuine hang** | it starts, says a few lines, and stops before the tour | 2 |
+| Success | the tour reaches `nife: the capability core runs on RISC-V.`, then the board goes quiet because the kernel halts in `wfi` | 0 |
+| U-Boot refused before the kernel ran | the image loads and relocates, then `### ERROR ### Please RESET the board ###` | 1 |
+| The kernel booted and then halted on purpose | `MEASURED BOOT REFUSED`, after the banner and most of a tour | 1 |
+| A genuine hang | it starts, says a few lines, and stops before the tour | 2 |
 
-Three of those four are traps for a naive recognizer, and each got a fix:
+Reaching the wanted stage starts a two-second settle window, so a refusal that follows the banner
+still wins. Silence after the tour is how a good boot ends, so the quiet timer stops there. Booted,
+hung, and refused-before-the-kernel are three outcomes, not two. `--until tour` is the one to want
+when the question is "did it work". A job-mix sweep is judged the same way, with `sweep-done` as its
+finish and a sixty-second quiet timer. The marker tables, their sources, and each trap are in
+[board-console/markers.md](board-console/markers.md).
+## The design, and testing it with no board
 
-Both successes and the measured-boot refusal contain the banner. The refusal prints
-`Starting kernel ...`, the whole nife banner, and most of a tour before halting, so a watcher that
-returned the moment `--until banner` was satisfied would report it as a success, in the case a
-bench script most needs to be right about. So reaching the wanted stage starts a **settle window**
-(`settle`, two seconds) rather than ending the session, and a failure arriving inside it wins.
-
-Silence after the tour is how a good boot ends. The kernel halts in `wfi`, so the board goes
-quiet and stays quiet. Treating silence alone as a hang would fail every successful boot, so the
-quiet timer is suppressed once the tour completes, whatever `--quiet-after` says. The synthetic hang
-fixture stops *before* the tour, which is exactly the difference.
-
-**A measured-boot refusal is the gate working, not a crash.** It exits 1, because the board did not
-boot and a script asking "did it boot" needs a no. But the message says what actually happened and
-what to do, because a report that read like a crash would send somebody debugging the boot mechanism
-when what is wrong is that two files on the card came from different builds.
-
-### The extlinux outcome, which documentation did not have
-
-The capture that mattered most is the one that failed. From power-on, the extlinux path ends:
-
-```
-Moving Image from 0x40200000 to 0x80200000, end=802ff000
-Device tree not found or missing FDT support
-### ERROR ### Please RESET the board ###
-```
-
-That is exactly the caveat `notes/visionfive2.md` records about U-Boot's fallback DTB addresses,
-and it arrives **after** the image has loaded and relocated and **before** the kernel has run a
-single instruction. A recognizer that knew only the stages would have watched the image load, seen
-nothing more, and called the silence a hang, which is the worst available answer: it sends somebody
-hunting a multicore bug in a kernel that never started. **Booted, hung, and refused-before-the-
-kernel are three outcomes, not two.** The tool exits 1 for the refusal and 2 for a hang, and the
-difference is the difference between resetting the board and opening a debugger.
-
-### And `tour` is a stronger claim than `banner`
-
-`nife on RISC-V (rv64, S-mode, Sv39)` is printed before the device tree is touched, so it says the
-console works and nothing else. `nife: the capability core runs on RISC-V.` is the last line of the
-boot tour, so it says paging, traps, the timer, the frame allocator, SMP and the scheduler all came
-up. `--until tour` is the one to want when the question is "did it work"; the default stays
-`banner` because only the milestone-tour build prints the other, and a shell build would wait for a
-line that is never coming.
-
-### The card's U-Boot environment is degraded, and that is not ours
-
-Both captures carry `*** Warning - bad CRC, using default environment`, several
-`** Invalid partition 3 **` / `Couldn't find partition mmc 1:3` / `Can't set block device`
-complaints, and `## Error: "boot2" not defined`, before U-Boot finds `mmc 1:1` and gets on with it.
-The board boots through all of it. Nobody should read those lines as a defect in our payload, and
-whether the environment is worth repairing is somebody else's milestone.
-
-### Telling a finished job-mix sweep from a wedged one
-
-Milestone 324 part 2, found by milestone 168's lane. `script/job-mix` boots a `--features job_mix`
-kernel whose boot tour ends in a sweep over task counts rather than in a halt. Until this milestone
-nothing recognized any of it: a finished sweep and one that stopped partway both ended as the clock
-running out, so they shared an exit status, and `cargo xtask job-mix` had no timeout at all and hung
-forever on a wedge.
-
-Two rungs close that. `sweep` is `job_mix::STARTED`, meaning the pool spawned and the workload
-announced itself. `sweep-done` is `job_mix::DONE`, meaning every point printed and the kernel is
-parking. So:
-
-```
-script/board-console --until sweep-done --for 30m     # at a board
-script/job-mix --arch riscv64 --smp 4                 # under QEMU, same judging, same statuses
-```
-
-returns `0` for a sweep that finished, `1` for one the kernel refused to start (`job-mix: FAILED`),
-`2` for one that spoke and then stopped, and `3` for one still printing when the clock ran out.
-
-**The quiet timer is the hard part, and a sweep is harder than a soak.** A soak beats on the wall
-clock every five seconds whatever the workload is doing, so a missed beat is a missed deadline and
-fifteen seconds is three of them. A sweep speaks only when a subrun ends. The longest subrun is the
-top of `job_mix::TASK_SWEEP`, measured at 4.0 seconds
-(`crates/board_console/tests/fixtures/captured/qemu-2026-09-19-aarch64-job-mix-medians.log`,
-249,234,771 ticks on a 62.5 MHz counter), so `script/job-mix` defaults `--quiet-after` to sixty
-seconds, fifteen times that. A board outside that margin will be called wedged when it is merely
-slow; `--quiet-after 0` is the answer and it gives up the wedge detection. This is in both `BUGS`
-sections because it is the one number here a bench operator may have to change.
-
-And the margin is spent by changes nowhere near it. It was twenty to one against a 2.6-second
-subrun when this paragraph was first written, earlier on 2026-09-19. Milestone 168 landed the same
-day and took twenty-one repeats of a seven-kind mix where there had been three of a five-kind one,
-which made the slowest subrun half again as long and cost a quarter of the headroom without anybody
-touching `--quiet-after`. A number quoted from a capture is only as current as the capture.
-
-And `job-mix: done` joins the quiet exemption, with `tour` and `prompt`, because the kernel
-halts in `wfi` after it. `sweep` deliberately does not: silence during a sweep is the wedge.
-
-## Two things in the design that are not obvious
-
-A partial line is weaker evidence than a complete one. The recognizer is offered the
-incomplete tail of the stream as well as the finished lines, because U-Boot's `StarFive #` prompt
-has no newline after it and a tool that waited for one would sit there while the board sat waiting
-for it. But a tail is ambiguous in two ways that a byte-at-a-time test found and reasoning did
-not. `U-Boot ` reads as U-Boot proper right up until the next three bytes turn out to be `SPL`, so
-a board dying in SPL was being reported two stages further along than it got. And a marker
-carrying a payload captures a truncated one: the tail `nife on ` recorded the banner as the empty
-string, and `[PANIC] ` recorded a panic with no message, both latched before the rest arrived. So
-a tail may ratchet a stage, because a substring match is monotone and more bytes cannot unmake it;
-it may not settle a word boundary and it may not capture text.
-
-The read happens on its own thread, so the deadline holds whatever the reader does. The port
-is configured with `min 0 time 1`, which makes a `read` return after a tenth of a second with
-whatever arrived, including nothing. When that works, a single-threaded loop would be fine. There
-are several ordinary ways for it not to work: an `stty` that failed and was only warned about, a
-driver that ignores the setting, a file or a pipe standing in for a port. So the read runs on a
-worker and the loop waits on a channel with a timeout. The worker may still be parked in `read`
-when the tool decides to stop, and that is fine: deciding to stop means returning, the process
-exits, and the descriptor goes with it. This is `CLAUDE.md`'s *Never leave QEMU running* rule
-wearing different clothes. An emulator that never exits and a board that never speaks are the same
-bug seen from the tool's side.
-
-Open the device first, then run `stty` on it, then check that the speed took. Opening a macOS
-`cu` device resets its termios towards the driver's default, so a configuration made before the
-read descriptor exists is undone by the open that follows it; and holding the descriptor is what
-keeps the setting alive, because it reverts when the last user closes. Measured on the rig: the
-CH343 sits at 9600 when nobody holds it and reads 115200 while this tool does.
-
-**This is not a theory, and somebody already paid for it.** calef's first capture of the board on
-2026-09-01 was pure garbage, because it configured the port with `stty` and then ran `cat`, and
-`cat`'s open put the device back to the default rate. It looks exactly like a wiring fault, which
-is the triage ladder's second row, and it cost a power cycle to diagnose. So the tool now reads the
-speed back after configuring and says loudly when it is not 115200: an invisible wrong baud sends
-the next person chasing hardware, and a stated one takes a second to fix.
-
-The residual hazard, stated rather than hidden: because the configuration is a separate process
-rather than a `tcsetattr` on our own descriptor, any *other* process that opens the device
-mid-session can put it back, and nothing here would notice. That is the honest cost of having no
-dependency, and it is the case that would justify taking one.
-
-**`O_NONBLOCK` is not used, and that is a decision rather than an oversight.** Its job would be to
-stop a silent board hanging the tool in `read`, and the worker thread above already guarantees
-that. The thread's guarantee is the stronger one: it holds even when the `stty` fails outright,
-where a non-blocking read on its own would not, because a non-blocking read returns immediately but
-only a deadline decides when to stop asking.
-
-**And `cu.`, never `tty.`** On macOS the `tty.*` name is the dial-in side and blocks in `open`
-until carrier detect asserts, which a three-wire console cable never does. That hangs *before* any
-deadline of ours has started. The tool warns if it is handed one.
-
-## Why there is no dependency
-
-Configuring a UART is one `tcsetattr`, and the two ordinary ways to reach it from Rust are the
-`serialport` crate or `libc` and the struct by hand. Both are new dependencies in the shipping
-graph, and §46 (thin primitives or whole subsystems; we write everything in between) makes taking
-one a decision rather than a convenience. A lane does not take that decision. A serial
-configuration call is squarely the "in between" that section refuses: not a thin architectural
-primitive, and nothing like a whole subsystem. `stty(1)` makes the
-same call, is in every base system, and costs a process spawn per session. **Milestone 324's
-writing mode did not change this**, which is worth saying because it looks like it should have: the
-port is already opened read-write and one byte goes out through an ordinary `write`, with no flow
-control to negotiate and no baud to change. If this ever needs to write *with* flow control, or at
-a non-standard baud, the trade changes and the dependency is worth proposing.
-
-## Testing it with no board
-
-The board was powered off for all of this and its power strip was unreachable, so nothing below
-involved a booting machine.
-
-- **The recognizer** runs against four fixtures under `crates/board_console/tests/fixtures/`, fed
-  one byte at a time, which is the worst case a real UART delivers and the case that catches a
-  recognizer depending on chunk boundaries. Two of them are in `captured/` and are raw bytes off
-  the wire on 2026-09-01, control characters and all; two are in `synthetic/` and are cases
-  nobody has yet seen at a bench. The directory split is the provenance, deliberately, because a
-  claim in a README is a weaker record than a path.
-- The deadline runs against sources that block forever, which is what a powered-off board
-  looks like through a port whose read timeout did not take.
-- **A real descriptor**: a FIFO standing in for a port covers `stty` failing (a warning, not
-  fatal) and a source that speaks and then stops (caught as silence, exit 2).
-- The port layer, which is the part that looks untestable and mostly is not. The argument list
-  `stty` is given, the complaint it produces when it fails, the speed read back afterwards, the
-  dial-in warning, and the choice between zero, one and several adapters are all pure functions
-  with the IO lifted off them, so a host test asserts on the exact words a person meets at a bench.
-  `open` itself is exercised against a temporary file holding the real capture, so the path from
-  `port::open` to a recognized boot runs in a host test.
-- The real adapter, with the board off, covers everything except the board: discovery finds
-  `/dev/cu.usbmodem*`, the `stty` moves it to 115200 and it reverts on exit, and the deadline
-  returns with zero bytes and exit 3.
-- **The writing mode** (milestone 324) is tested against a `Vec<u8>` standing in for the port, so a
-  host test asserts the exact bytes a board would have received and the log entries beside them.
-  Eleven tests in `stop.rs` cover the decision (nothing is written until the board announces an
-  armed reboot loop; one byte, once; the n-th draw and not the one before it), the invariant (the
-  log names the byte in hex, and names it *before* the write, so a failed write reads correctly),
-  the confirmation, a port that refuses the write, and the agreement between this mode's draw count
-  and `--tally`'s. Two more in `watch.rs` run the same thing through the real loop. What none of
-  them prove is the wire: no byte has reached a board, and `stop.rs`'s `BUGS` says so where a
-  reader meets it.
-
-The residue no host test reaches is one claim: that `tcsetattr` actually took. Nothing on a
-host is a tty, so a test can prove the right arguments were sent and cannot prove the device
-listened. That was checked by hand against the CH343 (9600 before, 115200 while held, reverting on
-exit), and it is what `confirm_speed` gates at runtime, which is the better answer anyway: the
-check runs on every real session rather than only when somebody runs the tests.
+A partial line may ratchet a stage but not settle a word boundary or capture text. The read runs on
+its own thread, so the deadline holds whatever the port does. The device is opened first, then
+configured with `stty`, then the speed is read back, because opening a macOS `cu` device resets it.
+calef's first capture was garbage for exactly that reason. `cu.`, never `tty.`. There is no serial
+dependency: `stty(1)` makes the one call needed, and §46 (thin primitives or whole subsystems) makes
+taking a crate a decision. The recognizer, the deadline, the port layer and the writing mode are all
+host-tested with no board; the one claim no host test reaches is that `tcsetattr` took, and
+`confirm_speed` checks it on every session. The detail is in
+[board-console/design.md](board-console/design.md).
 
 ## EXAMPLES
 
@@ -565,119 +335,20 @@ $ echo $?
 
 ## BUGS
 
-The markers are checked against one board, on one day, in four states. That is much better than
-where this started, which was documentation only, and it is not the same as proven. Not covered:
-every other way this board can behave, a different vendor firmware build with differently worded
-banners, the two synthetic cases nobody has yet seen at a bench, and argon, which has never printed
-a byte to this tool. x86_64 is no longer in that list: xenon was captured on 2026-09-17
-(`bench/xenon-2026-09-17/first-light-095500.log`) and the markers that matched were the portable
-ones, which is a second board's worth of evidence for exactly the half of `Stage` that claims to be
-portable and none at all for the half that is radon's firmware.
+Each is in full in [board-console/limitations.md](board-console/limitations.md).
 
-There is no real sample of a hang, which is the outcome this tool exists for, since a hang is
-what a multicore defect looks like from the far end of a serial cable. The synthetic fixture is a
-real capture truncated before the tour. If risk 5 ever produces a genuine one at a bench, capture
-it; it would be worth more than every other fixture here. A marker whose real text differs by a word is missed, and a
-missed marker reports a healthy board as having got less far than it did.
-
-**A missed marker fails toward pessimism; a matched one does not.** Matching is `contains`
-anywhere in a line, so a console that echoed `Starting kernel ...` back would be read as having
-handed over. Nothing guards against that. **This bullet used to rest on the tool never writing, and
-since milestone 324 landed it rests on what the writing mode sends instead**: `--stop` sends one
-byte, which cannot spell a marker, and the mode logs what it sent, in hex, so a reader can rule it
-out by hand. A host test asserts the same of the mode's own log annotations, which are the other
-text this tool adds to a capture. A future mode that typed whole lines would put this hazard back,
-which is a reason to keep the write surface at named commands rather than a keyboard.
-
-**It does not recognize an OpenSBI trap dump**, which the triage ladder lists as a real and
-specific outcome (the kernel started the S7 and vendor firmware died in its own handler). The
-dump's exact first line is written down nowhere in this tree, and guessing it would put text in a
-recognizer that no machine has ever printed. Such a boot is caught as silence or as time running
-out, with the dump sitting in the log, which is one step worse than being named.
-
-**A captured log is not a test result.** The roadmap block says this first and it is worth
-repeating where the tool is: this reports how far a boot got, and deciding a milestone passed on
-the strength of a vendor's boot message is a line nobody has agreed to cross. `Reached` is named
-for what was observed rather than for a verdict.
-
-It drives no firmware, and the reason that was fatal on this board is gone. The captured
-failure was the proof: the extlinux path from power-on ended at `### ERROR ###`, so reaching nife
-meant interrupting autoboot and typing the four `StarFive #` commands. Milestone 218 closed that
-on 2026-09-16, confirmed by a boot whose countdown expired with nobody typing
-(`bench/radon-2026-09-16/tour-083200.log`), so a reader is now enough to get radon from power-on to
-the kernel, and nothing here types at U-Boot. What is not gone is the next bullet, which arrived
-from a different direction and is what the writing mode answers.
-
-Stopping a rebooting soak no longer needs a person, and no byte of it has reached a board yet
-(milestones 249 and 324). `--features reboot_soak_test` makes a board cold-reboot every two
-minutes, and its escape is a byte on the console UART: any byte, checked every five seconds. Until
-milestone 324 this tool held the port and could not send one, so the escape was reached by a
-person typing, either into this session's terminal or by detaching it first, and detaching a
-console is not free (notes/soak.md records a 6% rate change from doing it mid-run). `--stop` and
-`--stop-after <n>` are now that escape from a script. **What is not yet proven is the wire.**
-Milestone 324's lane had no board attached to it, so the decision to send is tested against
-captures and the bytes against a buffer standing in for the port, and nothing has tested that a
-write to the descriptor reaches the UART or that the kernel's poll finds it. The first real
-`--stop` is that experiment and its `DISARMED` line is the result.
-
-The `--stop` gate costs a draw when a session attaches mid-run. The byte goes out only on the
-board's arming announcement, which is printed once per boot, so a `--stop` against a board already
-two minutes into a draw waits for that draw's reboot before it can act. Attaching at power-on has
-no such gap. The gate is what makes every other state safe (see "Writing to a board" above), and
-this is its price, stated rather than hidden.
-
-An unconfirmed send is three faults wearing one report. The byte may not have left the host,
-the board's receive path may be dead (`kernel/src/soak.rs`'s own `BUGS` says nothing in the kernel
-can tell), or the kernel may be wedged in a way the beat has not yet shown. The tool says the byte
-went out and was not acknowledged, and cannot say which. The surrounding beats in the log separate
-them by hand: beats still arriving with no `DISARMED` points at the receive path.
-
-**It does not touch power.** The board's Kasa strip was not reachable from either machine when
-this was written, and the roadmap block declines to decide whether this tool should ever drive it.
-A tool that power-cycles is a different and more dangerous object than one that reads.
-
-The board profile is real now, and exactly one board has ever been checked against one. calef
-ruled on 2026-09-19 that this is one tool whose profile is the firmware prologue and nothing else,
-and milestone 324 part 3 built it: `crates/board_console/src/board.rs` declares radon's four rungs,
-its two refusals and its relocation note as data, `--board` chooses, and `Stage::Firmware` is what a
-boot reaches while climbing one. What that does **not** do is add evidence. radon's rungs are
-asserted against bytes off the wire on 2026-09-01; xenon's profile says it has no prologue, which
-rests on one capture on one day (`bench/xenon-2026-09-17/first-light-095500.log`) and would miss a
-xenon that fell over inside its own firmware; argon has no profile on purpose, because a Jetson boot
-chain read out of vendor documentation and never watched on a wire is the assertion-shaped-as-
-measurement failure this tree keeps catching. Its prologue stays unwritten until a board prints
-something.
-
-Nothing gates a profile against the board it claims to describe. The same gap `crates/boot_ladder`
-records against the kernel, one level out, and the same mechanism: review, plus a capture in
-`tests/fixtures/captured/` for every rung anybody asserts on. A rung declared with a marker no
-machine prints fails in the direction that looks like success.
-
-A sweep has no heartbeat, so its wedge timer is a guess with headroom. The sixty-second default
-on `script/job-mix` is twenty times the longest subrun measured on one host under TCG. A board
-slower than twenty-to-one is called wedged when it is merely slow, and `--quiet-after 0` gives up
-the detection to avoid that. Giving the sweep a real wall-clock heartbeat, the way
-`kernel/src/soak.rs` has one, is a kernel change and was not made here.
-
-No sweep has been watched on a board. The recognizer was proved against QEMU on 2026-09-19: a
-finished sweep exits 0, one wedged by a one-second quiet window exits 2, one cut off by a
-twelve-second cap exits 3, and a refusal is a host test built from `job_mix::FAILED` rather than
-from a capture, because no kernel here has refused one. radon has never run a sweep this tool
-watched; that is milestone 168's own HARDWARE gate and not something part 2 could close.
-
-The settle window is two seconds, and two seconds is a guess. It is long enough for the
-captured measured-boot refusal, which follows the banner within a tour's worth of printing, and
-there is no principle behind it beyond that. A failure that a board announces three seconds after
-the awaited stage would still be reported as a success. `--until none` has no early exit at all and
-sees everything up to the cap, which is the answer when being right matters more than being quick.
-
-No test opens a real serial device. A pseudo-terminal pair would be the honest stand-in, and
-making one needs `posix_openpt` and its `ioctl`s, which is `libc`, which is §46's decision and not
-a lane's. So the port layer is tested as pure logic plus a regular file, and the one claim that
-leaves unproven is named in the testing section above. If this crate ever takes a serial
-dependency, a pty test should arrive with it.
-
-Neither the tool nor this note knows whether a session was interrupted. Ctrl-C kills the
-process, the descriptor closes, and the log holds every byte that had arrived, but no summary line
-is written and no exit status distinguishes it from a crash. The log is the record; the summary is
-a convenience.
+- The markers are checked against one board, on one day, in four states; argon has printed nothing.
+- There is no real sample of a hang, the outcome this tool exists for.
+- A matched marker does not fail toward pessimism: an echoed `Starting kernel ...` would count.
+- It does not recognize an OpenSBI trap dump.
+- A captured log is not a test result.
+- No byte of `--stop` has reached a board yet; the wire is unproven.
+- The `--stop` gate costs a draw when a session attaches mid-run.
+- An unconfirmed send is three faults wearing one report.
+- It does not touch power.
+- Nothing gates a board profile against the board it describes, and only radon's has evidence.
+- A sweep has no heartbeat, so its sixty-second wedge timer is a guess with fifteen-to-one headroom.
+- No sweep has been watched on a board.
+- The two-second settle window is a guess.
+- No test opens a real serial device.
+- Neither the tool nor this note knows whether a session was interrupted.
