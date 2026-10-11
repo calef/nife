@@ -13,7 +13,28 @@ maintainer session spent most of a context window reading one document, `design/
 17,742 words.
 
 Appendix siting is ratified too, by calef on 2026-09-23 (UTC), answering question 3. The default
-is a parent-named sibling directory: `design/fatal-risks/README.md` beside `design/fatal-risks/*.md`.
+is a parent-named sibling directory: `notes/soak.md` beside `notes/soak/*.md`, with
+`notes/soak/README.md` as the appendices' index and the directory's naming record (§75 (directories under `design/` and `notes/` carry provenance in their own README)).
+The page keeps its path when it crosses the cap and is split, so a note has one shape whatever its size.
+
+*Corrected 2026-10-11 (UTC), calef on pull request #1918, who chose this layout over the page
+moving inside as `X/README.md`: this paragraph used to give `design/fatal-risks/README.md` beside
+`design/fatal-risks/*.md` as the default's example. That contradicted the orphan rule below, which
+checks `X.md`, and the lane that split the ten longest notes had to pick a reading.*
+
+This governs a page whose detail was moved out of it. A directory of records made one at a time,
+such as `design/decisions/`, `design/roadmap/`, `design/journeys/` or `notes/coes/`, has no page
+to keep: its `README.md` is the index, and nothing here changes it.
+
+*Exceptions, and foot guns: two pages live inside their own directory as `README.md`.*
+`design/fatal-risks/README.md` was split on 2026-09-23 as `design/fatal-risks.md` beside its
+appendices and moved inside on 2026-09-29 (calef: "the directory should look like the archive and
+the file like a summary of it, the same shape as design/decisions/ and design/roadmap/").
+`notes/delegated-review/README.md` was written there on 2026-09-22 by the lane for milestone 521
+(does an AI review of a pull request catch anything the gates and the maintainer do not), as a
+study with its transcripts beside it. Both predate this correction. Do not copy either: a new
+split puts the page at `X.md`.
+
 A thematic directory is a permitted exception when the appendices are independently citable,
 which is why `AGENTS.md`'s tenets live in `design/tenets/` rather than in `AGENTS/`. Content that is
 a document in its own right is neither, and stays a peer document in the same directory, which is
