@@ -1,11 +1,11 @@
 //! **The secrets service** (milestone 56's credential half, generalised by milestone 65;
-//! notes/credentials.md and notes/ntlm.md).
+//! notes/credentials.md; notes/ntlm.md is the history of the NTLM half, removed 2026-08-30).
 //!
 //! **Hold the key, expose the operation, never the key.** The one process in the system that holds
 //! secrets, and the only thing that can read them. Everything else holds an endpoint that means
 //! *"you may ask this store to compute with a secret"*, which is a strictly smaller authority than
 //! *"you may read the secret"*: a client cannot enumerate the identities, cannot obtain a salt, a
-//! tag or an NTLM key, and cannot write a record.
+//! or a tag, and cannot write a record.
 //!
 //! **This program's name lags its job**, and knowingly. Milestone 65 says the credentialer becomes
 //! one operation in a secrets service rather than a service beside it, because a second process
@@ -13,26 +13,23 @@
 //! rather than in a new program. A rename is a naming decision and belongs to an architect
 //! (CLAUDE.md); this header is the note that it is owed.
 //!
-//! # Two kinds of secret, two operations, one store
+//! # One kind of secret, one operation, one store
 //!
 //! | secret | operation | never exposed |
 //! |---|---|---|
 //! | an Argon2id tag | `VERIFY`: is this the secret? | the tag, the salt |
-//! | an `NTOWFv2` | `NTLM_PROOF`: is this the proof, and here is the session key | the key |
 //!
-//! The second is the reason this is a milestone rather than another opcode. **NTLMv2 does not
-//! verify a presented secret**: the client never sends the password, the server holds a key and
-//! computes a MAC, so "secret in, boolean out" does not fit it. What the SMB server gets is an
-//! endpoint that answers challenges. Compromise it and an attacker can authenticate sessions
-//! *while they hold the endpoint*, and cannot extract the key, crack it offline, or carry it
-//! anywhere else. Storing the key in the SMB server offers none of that, which is what Samba does.
+//! There were two kinds until 2026-08-30. The second was an `NTOWFv2` answering `NTLM_PROOF`,
+//! because NTLMv2 never sends the password and so does not fit "secret in, boolean out"; it went
+//! with the SMB implementation that was its only consumer. notes/ntlm.md keeps the argument,
+//! which is not about NTLM: hold the key, expose the operation.
 //!
 //! ```text
 //!   the provisioner ──the provision endpoint──►┌────────────┐
-//!   (once, at boot)   (PUT/PUT_NTLM, then SEAL) │  secrets   │──►the entropy service
+//!   (once, at boot)      (PUT, then SEAL)       │  secrets   │──►the entropy service
 //!                                               │  service   │   (salts; §44's endpoint)
 //!   a client ────────the verify endpoint───────►└────────────┘
-//!              (VERIFY / NTLM_PROOF, forever)      the store lives here and nowhere else
+//!                  (VERIFY, forever)               the store lives here and nowhere else
 //! ```
 //!
 //! # Two phases, because this kernel has one wait point
@@ -81,8 +78,7 @@
 //!   writes plaintext secrets into its page, and a client that shared that frame would read them.
 //!
 //! No initrd, no filesystem, no network, no device. A compromised secrets service is a machine
-//! whose logins an attacker can answer and whose shares they can authenticate to, for as long as
-//! they hold it, which is exactly as much damage as owning the store should be worth. It is not
+//! whose logins an attacker can answer, for as long as they hold it, which is exactly as much damage as owning the store should be worth. It is not
 //! a machine whose passwords they can carry away.
 //!
 //! # BUGS
@@ -90,7 +86,7 @@
 //! **One verify page means one client at a time.** The page is per service, not per channel, so
 //! two clients sharing the endpoint would also share the frame each writes its presented secret
 //! into. Nothing here detects that. `filesystem_protocol`'s answer (one page per channel) is the shape to
-//! copy when a second client exists; today the intended client is the single SMB adapter.
+//! copy when a second client exists; today the one client is `login` (components/src/login.rs).
 //!
 //! **Nothing survives a reboot.** The store is memory only. Secrets at rest are unsolved and this
 //! service does not pretend otherwise; see notes/credentials.md.
@@ -99,12 +95,6 @@
 //! guess as fast as it can `CALL`, and each guess costs it one Argon2id derivation of the service's
 //! time. That cost is the only thing slowing an online attack down, and it is also a way to make
 //! the service unresponsive to everyone else.
-//!
-//! **`NTLM_PROOF` does not even have that.** An NTLM answer is three MD5-shaped operations, four
-//! orders of magnitude cheaper than a password verify, so the KDF's incidental rate limiting does
-//! not apply to it at all. Online guessing against it is still useless (a guess is a 128-bit MAC,
-//! not a password), but it is a free way to spin this service, and a service that answers logins
-//! is a service worth spinning. Nothing here counts requests.
 //!
 //! **Revocation is per holder, not per secret.** Destroying a client's endpoint ends its access,
 //! which is the thing this design buys and a stored hash could never offer. Revoking one *secret*
@@ -119,10 +109,10 @@
 //! exists to refuse.
 //!
 //! **That ratification predates what this program became.** Milestone 65 turned it from a
-//! credential service into a **secrets service**: it now holds an `NTOWFv2` beside the
-//! Argon2id tag and answers `NTLM_PROOF`, so the argument above ("this service will never
-//! give you a credential") still holds while the noun no longer describes the scope. A
-//! rename is owed, and it is an architect's, not a lane's; `cred`, `credential_protocol` and
+//! credential service into a **secrets service** by adding an `NTOWFv2` beside the Argon2id tag
+//! and an `NTLM_PROOF` operation, and the NTLM half was removed again on 2026-08-30. Today the
+//! store holds Argon2id tags only, so whether that rename is still owed is itself an
+//! architect's question, not a lane's; `cred`, `credential_protocol` and
 //! `credentialer_test_client` are in the same boat. Recorded here rather than acted on.
 
 #![no_std]

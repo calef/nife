@@ -36,7 +36,7 @@ aspire to.
 
 The deciding cost is not the one this document first named. smoltcp would not notice a coarse clock:
 `net_stack.rs`'s `instant()` divides to `Instant::from_millis` and discards the resolution. The
-wall clock would notice. `components/src/ntp.rs` advances `local.now()` between syncs by
+wall clock would notice. `components/src/network_time_client.rs` advances `local.now()` between syncs by
 `monotonic_nanos().saturating_sub(self.mono0)`, and `monotonic_nanos` reads the cycle counter, so on
 `x86_64` a tick-resolution page would make every timestamp between NTP syncs step in tick-sized
 jumps, with NTP computing corrections against a clock coarser than the corrections. aarch64 and

@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-08
+built: 2026-10-11
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 274
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -20,6 +21,13 @@ file is split along its seams) is the model.
 The cut and every module name below are calef's call. A lane writes them up as a
 `status: PROPOSED` file in `design/decisions/` before it moves a line, and its pull request
 carries `needs-architect`.
+
+The lane wrote it up on 2026-10-10 (UTC) as §274 (the filesystem-protocol crate root splits into its module files), `status: PROPOSED`, with the cut re-measured
+on main at `396187b0b` and a recommendation on each fork. calef ruled on 2026-10-11 (UTC). Every
+module moves, each with its tests beside it in `x/tests.rs`. `fixture` stays as `fixture.rs` until
+milestone 886 (the filesystem test fixture moves to its own crate) moves it. The std copy's whitespace change is accepted, and §267 (a comment
+states the constraint as it is now) is amended so a row moves with its block. §274 records the ruling and the cut as built. Built 2026-10-11 (UTC) on branch
+`milestone/845-the-filesystem-protocol-crate-root-is-split-along-its-seams`.
 
 Reuse: not applicable; this moves code and adds none.
 
@@ -117,9 +125,18 @@ Found with `grep` at `0435a9aeb`.
 
 1. Step 1: `lib.rs` is under 4,000 lines and the 66 host tests pass unchanged.
 2. Step 2, if ruled: `lib.rs` is under 2,000 lines, and no file in the crate is over 2,000.
-3. The generated `fsproto.rs` is byte-for-byte what it was before, and the std farm builds.
+3. The generated `fsproto.rs` is what it was before apart from rustfmt's reflow of four items and
+   each module's `#[cfg(test)] mod tests;` (ruling 3, which replaced "byte-for-byte"), and the std
+   farm builds.
 4. The three Kani proofs pass, and their falsification patches apply and fail.
 5. No Rust file outside the crate changes, and `script/test` passes on aarch64, riscv64 and x86_64.
+
+## Follow-on
+
+- **Milestone 886.** The test fixture leaves this crate: milestone 886 (the filesystem test fixture
+  moves to its own crate), ruled by calef on §274's fork 2.
+- **Decision.** The cut, the test placement and the std copy's diff are in
+  `design/decisions/0274-the-filesystem-protocol-crate-root-splits-into-its-module-files.md`.
 
 ## Index row
 

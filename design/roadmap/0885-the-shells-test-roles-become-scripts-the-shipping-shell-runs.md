@@ -18,8 +18,40 @@ swish. Couldn't we design a better implementation that the witnesses are individ
 run them all with scripts rather than a specific build?"
 
 Classification: new work. The lane claims with `--new-work`, because what it leads with is a user
-feature the shell does not have: running a script without a keyboard. Deleting the roles is what
-the feature pays for, not the purpose.
+feature the shell does not have: running a script from a file. Deleting the roles is what the
+feature pays for, not the purpose.
+
+## What calef ruled (2026-10-11, UTC)
+
+Relayed one question at a time by the maintainer, each with its prior art and alternatives.
+
+- **Where a script comes from: (d), a fourth option this block did not list.** The interactive
+  shell already reads every line from its terminal endpoint (`line_editor::proto`'s
+  `OPERATION_READLINE`), a userspace protocol the kernel only routes. So the harness serves that
+  endpoint from a script: each `READLINE` gets the next line, the end is end-of-file, and what the
+  shell writes is the transcript. The shell gains no script mode and no probe; the witnesses run
+  the shipping binary at its own prompt, as `script/swish-check` already does over the serial
+  console. The user feature is a `.` builtin (POSIX's spelling, name provisional): the running shell
+  reads a file through its own directory capability and hands each line to `dispatch_line`, with no
+  new process and no new authority. Refused:
+  - (a) the input slot. For tests it is a probe only the harness fills. For users, `swish build.sw`
+    starts a second shell that must spawn. The spawn endpoint stays at the boot prompt under
+    §221 (the boot prompt is the owner's console) and §270 (a package manager holds an installer
+    endpoint, not the spawn endpoint).
+  - (b) `-c`, for the same reason, and it caps a script at one argument page.
+  - (c) the shell opening a path. That is the `.` builtin under another name, and the fixture trees
+    hold no script.
+
+  A child shell that runs a file waits for its own spawn-authority decision.
+- **Two trees: A, wait for milestone 660.** Role 6 and `fixture::twotrees` stay until 660 deletes
+  them, about 250 lines. §234 (the prompt shows one tree) lands the transport "with the first real
+  second filesystem". A probe only the harness fills would be a test hook by another name, and it
+  would fix a one-slot shape before the deferred mount-name rules shape the real one.
+- **Exit status** needs no ruling: under (d) the shell never exits, and the harness judges the
+  transcript and its `echo $?` lines. No status word, so no syscall surface change.
+- **Removing `navscape` and `globscape`** is cleanup, not a ruling: their only readers are the
+  witnesses and the three test files that move off them.
+- **Names** wait for calef's naming ratification pass, marked provisional until then.
 
 Reuse: the shell's own `dispatch_line`, which is the thing under test and is reused unchanged.
 `system_tests/src/user/pipeline_service.rs` already wires a scripted shell and reads its transcript
@@ -57,20 +89,20 @@ the shipping binary, through the shipping dispatch.
 
 ## What gets built
 
-1. A non-interactive mode in swish. It reads lines from a script until the end, runs each through
-   `dispatch_line`, prints what the prompt would print, draws no prompt and edits no line. A user
-   gets it as `swish build.sw` or `swish < build.sw`, or in whatever form the decision below rules.
-2. Each witness becomes a script file in the tree (location and extension provisional, for example
-   `system_tests/scripts/navigate.sw`), included in the test build and handed to the shell by the
-   kernel harness.
+1. A `.` builtin in swish that reads a file through the shell's directory capability and runs each
+   line through `dispatch_line`, as if typed. This is the user feature.
+2. A terminal server in the kernel harness that answers the shell's `READLINE` from a script and
+   records what it writes. The lane first checks whether `edit_line` reads raw keystrokes; if so,
+   the harness feeds the real line discipline as a keyboard driver would, rather than answering
+   `READLINE` itself. Each witness becomes a script file in the tree (location and extension
+   provisional, for example `system_tests/scripts/navigate.sw`), included in the test build.
 3. Each test judges the transcript, the way `pipeline_tests` already does, plus whatever the harness
    can read from the tree afterwards through `fs_service`.
-4. The six roles, their helpers (`run_line`, `pwd_is`, `Text`, `opened`, `opened_token`, `created`,
+4. Five roles (all but role 6, which waits for 660), their helpers (`run_line`, `pwd_is`, `Text`, `opened`, `opened_token`, `created`,
    `mtime_of`, `open_dir`, the `touch` probes, `run_name`, `line`, `bind_line`, `listing_is`), the
    witness-only `Nav` constructors, and `witness.rs` itself are deleted.
-5. The verdict bitmaps `fixture::navscape`, `globscape` and `twotrees` in `filesystem_protocol`,
-   with their host test rows, go once nothing reads them. That removes public items from a crate,
-   which the decision below lists.
+5. The verdict bitmaps `fixture::navscape` and `globscape`, with their host test rows, go once
+   nothing reads them. `twotrees` stays with role 6.
 
 ## How each witness keeps its property
 
@@ -131,36 +163,23 @@ This is open question 2.
 clock slot), because both are told for reasons the code records. `role` is no longer read. The
 system initializer passes 0 there and can keep doing so; changing its three-word spawn convention
 is outside this milestone. Every wiring now grants a budget, so the branch that skips `heap_init`
-for roles 1 and 2 goes. Script mode is chosen by what the shell holds, the way `HOLDS_CONFIG` is
-probed, never by a number in `x0`, so no role dispatch comes back under another name.
+for roles 1 and 2 goes. Until 660 deletes role 6, `_start` reads `role` for that one branch and
+nothing else. There is no script mode to choose: a scripted shell is the interactive shell with the
+harness as its terminal, so no role dispatch comes back under another name.
 
 ## What has to be decided first
 
-The lane writes these up as a `status: PROPOSED` decision before building, and its pull request
-carries `needs-architect`.
-
-1. Where a script comes from. (a) The input slot a program's manifest declares, so `swish
-   build.sw`, `swish < build.sw` and the harness's in-memory stream are one path. Recommended:
-   a script is then a file grant like any other, and the user feature and the test are the same
-   code. (b) A `-c` argument, which caps a script at an argument page. (c) The shell opening a
-   path through its own directory, which fails in the navigation and glob subtrees, whose fixture
-   trees hold no script.
-2. Two trees: build 660's shell half here (probe the named slot, call `rooted_twice`), with only the
-   harness filling the slot until a real second filesystem exists, or leave role 6 until 660 lands.
-   Building it here goes against calef's "not before" for the shell half, so it is his call. If he
-   says wait, this milestone is done when five roles are gone, and role 6 is deleted by 660.
-3. Exit status. No program reports one (notes/swish-language.md), and `SYS_EXIT` carries none, so
-   a status word would be a syscall surface change (rule 3). Recommended: none. The harness reads
-   `echo $?` lines and whether the shell exited or faulted.
-4. Removing `navscape`, `globscape` and `twotrees` from `filesystem_protocol`'s public `fixture`.
-5. Every new name: the mode, the script extension, the scripts' directory.
+Nothing. calef answered the open questions on 2026-10-11 (UTC); see "What calef ruled" above. The
+lane records the `.` builtin's semantics in `notes/swish-language.md` and marks its names
+provisional.
 
 ## Risks the lane measures
 
 - Memory. Every scripted shell is a live process the kernel never reclaims, and one more once put
   `time_tests` over the frame pool (`pipeline_service.rs`, the `TRANSCRIPT` comment). Three
   witnesses gaining a 128-page budget and a terminal costs frames. Measure the pool before and
-  after; the remedy is reclaiming a script's shell once it exits, not a bigger pool.
+  after. A scripted shell does not exit at end of input (it says it has nowhere to exit to and
+waits), so the remedy is the harness ending it, not a bigger pool.
 - Stack. Roles 1 and 2 run on 4 and 7 measured pages. The script wirings take the interactive
   `SHELL_EXTRA_STACK` of 11, which must stay level with the boot's.
 - A transcript is prose. A reworded sentence fails a test. That is the intent, and the failure
@@ -168,13 +187,12 @@ carries `needs-architect`.
 
 ## Done when
 
-1. `witness.rs` (or, if 844 has not split the file, every witness item in `swish.rs`) is deleted,
-   and no role constant or witness helper remains in swish.
-2. `_start` has no dispatch beyond the interactive shell and script mode, chosen by what the shell
-   holds.
-3. A user can run a script at the prompt in the form question 1 rules, with `EXAMPLES` and a
-   `BUGS` section in notes/swish-language.md.
-4. Every assertion the six witnesses made still runs on aarch64, riscv64 and x86_64, DECISIONS §19
+1. `witness.rs` holds only role 6 and what it alone uses, and no other role constant or witness
+   helper remains in swish. Milestone 660 deletes the rest.
+2. `_start` has no dispatch beyond the interactive shell and role 6.
+3. A user can run a file with `.` at the prompt, with `EXAMPLES` and a `BUGS` section in
+   notes/swish-language.md.
+4. Every assertion the five moved witnesses made still runs on aarch64, riscv64 and x86_64, DECISIONS §19
    (architectural parity is a tenet). Each one moved to `fs_test_client` or the harness is listed in
    the pull request beside the bit it replaced, so a reader can check none was dropped.
 5. `user.shell_navigation_tests.two_shells_with_different_roots_cannot_name_each_others_files.patch`
@@ -185,8 +203,8 @@ carries `needs-architect`.
 
 ## Index row
 
-The shipping shell carries six test-only roles, about 1,090 lines that only tests reach. This gives
-swish a script mode as a user feature and turns each witness into a script the shipping binary runs
-and the harness judges, so tests exercise the real shell rather than a role compiled into it. The
-glob witness reads the planner through `caps`. The two-tree witness waits on calef's answer about
-milestone 660's transport. Comes after 844.
+The shipping shell carries six test-only roles, about 1,090 lines that only tests reach. Five
+become scripts the harness types at the shipping shell by serving its terminal, so tests exercise
+the real prompt with no hook compiled in, and users get a `.` builtin that runs a file. The glob
+witness reads the planner through `caps`. The two-tree witness stays until milestone 660, per
+calef's ruling. Comes after 844.

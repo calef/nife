@@ -97,7 +97,7 @@ claim had spread to five sites:
 | `crates/abi/src/lib.rs` (`Error::BadSyscall`) | "The syscall number is not one of the three" |
 | `kernel/src/syscall.rs:1` | "The syscall boundary. **Three calls.**", same omission in its block |
 | `kernel/src/arch/aarch64/exceptions.rs:370` | "It is three calls. See syscall.rs." |
-| `notes/capabilities.md:226` | "## The surface is three calls" |
+| `notes/capabilities.md` | "## The surface is three calls" |
 
 **`Error::BadSyscall`'s is the one that is not arguable.** The others can be read as a slogan about
 shape; that one describes what the kernel does with a register value, and passing 3 is valid. An

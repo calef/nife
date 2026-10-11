@@ -19,7 +19,7 @@ with the load-sensitive assertions live*. At the time this milestone was minted 
 was believed to have already fired once, on radon, with a receiver woken and nothing delivered on
 three harts, found in a bench session rather than by any test. That reading is retracted
 (`notes/visionfive2.md`'s fifth bench stop, 2026-08-15, before this milestone was minted): the dumps
-were the terminal state of a completed boot tour, not a stranded receiver, and `notes/scheduler.md:70`
+were the terminal state of a completed boot tour, not a stranded receiver, and `notes/scheduler.md` ("The undelivered-wake gate")
 records that the gate built against it "has never fired on a field failure." Found still repeating the
 retracted reading here 2026-09-23. The rest of this milestone (a workload that lasts, so there is
 something to soak at all) does not depend on the retracted finding and stands regardless.
