@@ -29,7 +29,7 @@ mod manifests;
 ///
 /// A `macro_rules!` rather than a derive because DECISIONS §46 refuses a proc-macro dependency for
 /// this, and a `const` table beside a hand-written enum would still be two lists nothing joins.
-/// notes/adding-a-program.md has what else was considered.
+/// notes/adding-a-program/why-it-works-this-way.md has what else was considered.
 macro_rules! programs {
     (
         $(#[$enum_meta:meta])*
