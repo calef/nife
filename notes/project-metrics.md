@@ -139,14 +139,6 @@ Each model has its own band; "other models" is a trailer the script does not rec
 
 Added plus removed, not net, and volume rather than effort. Merges carry no line count.
 
-## What this project costs
-
-![Machine effort per milestone built](project-metrics/effort.svg)
-
-Millions of lane tokens per milestone built. 2026W29 through 2026W33 are absent, not zero: those
-records were never in git. The current week is always understated because its tokens accumulate
-all week.
-
 ## What a turn costs
 
 ![What a turn carried, in thousands of tokens of context](project-metrics/context-per-turn.svg)
