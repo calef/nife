@@ -47,7 +47,7 @@ and no idle thread"), fixed by masking interrupts across init, which aarch64 get
 the scheduler up before enabling interrupts. The original scope is in
 [riscv-parity-scope/original-scope.md](riscv-parity-scope/original-scope.md).
 
-Follow-on (milestone 19): the suite was at parity on the portable tests and not on the arch ones.
+Follow-on (§19 (architectural parity)): the suite was at parity on the portable tests and not on the arch ones.
 `arch/aarch64` carried 21 unit tests and `arch/riscv64` carried zero, across the same three files, so
 the properties that differ between the ISAs were asserted on one side only. The twins are now
 written, and they found three defects nothing else would have: the timer delivering 80 Hz against a
@@ -58,7 +58,7 @@ wide as the suite that checks it, and "both ISAs run the same suite" was true of
 and not of the arch half. See notes/riscv-arch-tests.md, which also sizes the remaining
 `kernel::user::tests` port.
 
-Follow-on (milestone 19 (run a real workload), 2026-07-31): `kernel::sched::tests` and
+Follow-on (§19 (architectural parity), 2026-07-31): `kernel::sched::tests` and
 `kernel::user::tests` run on
 both ISAs. The two SGI interrupt tests now trigger through three per-arch functions, with RISC-V
 raising its console UART's own transmit-empty line (notes/interrupts.md). `kernel::user::tests` was
