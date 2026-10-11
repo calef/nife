@@ -12,6 +12,9 @@ use core::sync::atomic::{AtomicBool, AtomicPtr, AtomicU32, AtomicU64, AtomicUsiz
 
 use crate::arch::semihosting;
 use crate::{print, println};
+// The per-test budget table lives in `crates/test_times` (`DEFAULT_BUDGET_SECS`, `SLOW_TESTS`),
+// because `xtask`'s host watchdog reads the same numbers (rule 7).
+use test_times::budget_secs_for;
 
 // The hang watchdog: **two independent mechanisms, because there are two ways a test never
 // finishes.** Both run off the timer IRQ, so they cost a couple of atomic loads per tick and cannot
@@ -508,7 +511,7 @@ fn report_frame_pressure() {
 
 /// Report a test's duration once it reaches this many seconds. Below it, silence: most tests are
 /// milliseconds and a duration on every line would bury the signal. Above it, the number is what makes
-/// a [`SLOW_TESTS`] entry an evidence-based declaration rather than a guess: until this existed, the
+/// a `test_times::SLOW_TESTS` entry an evidence-based declaration rather than a guess: until this existed, the
 /// only way to learn a test's real cost was to set its budget too low on purpose and read the failure.
 const SLOW_REPORT_SECS: u64 = 5;
 
@@ -529,38 +532,6 @@ static TEST_MILLISECONDS: [AtomicU32; TIME_RECORD_CAPACITY] =
 /// exits (a pass and a skip) and read by [`runner`] straight after. A static rather than a return
 /// value so `Testable` keeps the signature every `#[test_case]` already satisfies.
 static LAST_TEST_MILLISECONDS: AtomicU64 = AtomicU64::new(0);
-
-/// **The default per-test wall-clock budget.** Deliberately tight: almost every test in this suite is
-/// milliseconds, and a handful of the userspace ones are a few seconds. 90 s is far above anything
-/// honest while still being a real net, so a two-second unit test that starts spinning fails in a
-/// minute and a half rather than never.
-const DEFAULT_BUDGET_SECS: u64 = 90;
-
-/// **The known-slow tests, each declaring its own cost.** A test whose honest runtime exceeds
-/// [`DEFAULT_BUDGET_SECS`] must say so here, with the reason, which is the point: the exception is
-/// visible, reviewable, and attached to an explanation instead of being absorbed into one enormous
-/// global limit that protects nothing. Matched as a substring of the full test path, so the entry
-/// covers a test on both architectures.
-///
-/// Keep budgets roughly 2x the measured time: enough headroom that host load or a debug build does
-/// not produce a flaky failure, tight enough to still catch a hang.
-const SLOW_TESTS: &[(&str, u64)] = &[
-    // Measured ~300 to 344 s on aarch64: a serial net_stack<->std_exerciser pipeline whose time is spent in
-    // net_stack's userspace smoltcp poll (DHCP, DNS, then a TCP echo). The longest honest test we have,
-    // and the reason a single global ceiling would have to be uselessly large.
-    ("std_net_runs_over_the_socket_contract", 700),
-];
-
-/// The budget for a test, by name: its [`SLOW_TESTS`] entry if it has one, else the default.
-fn budget_secs_for(name: &str) -> u64 {
-    let mut secs = DEFAULT_BUDGET_SECS;
-    for &(needle, allowed) in SLOW_TESTS {
-        if name.contains(needle) {
-            secs = allowed;
-        }
-    }
-    secs
-}
 
 /// Record one step of forward progress for the hang watchdog (test builds only). Cheap enough to sit
 /// on the wake and console paths: one relaxed increment. See the module note above.
@@ -637,7 +608,7 @@ fn check_test_ceiling() {
     println!(
         "WATCHDOG: test exceeded its {} s budget (ran {} s) WHILE MAKING PROGRESS: a livelock, not a \
          lost wakeup. The no-progress heartbeat cannot see this, which is why the per-test ceiling \
-         exists. If this test is honestly this slow, give it an entry in testing.rs SLOW_TESTS.",
+         exists. If this test is honestly this slow, give it an entry in test_times::SLOW_TESTS.",
         budget / hz,
         elapsed / hz,
     );

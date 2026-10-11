@@ -125,6 +125,56 @@ pub fn parse(line: &str) -> Result<Line<'_>, Malformed> {
     Ok(Line { milliseconds, path })
 }
 
+/// **The default per-test wall-clock budget, in seconds.** Deliberately tight: almost every test in
+/// this suite is milliseconds, and a handful of the userspace ones are a few seconds. 90 s is far
+/// above anything honest while still being a real net, so a two-second unit test that starts
+/// spinning fails in a minute and a half rather than never.
+///
+/// Here rather than in `kernel/src/testing.rs` (2026-10-11 (UTC), lane
+/// `lane/a-hung-test-fails-with-its-name`) because two programs now read it under rule 7: the
+/// kernel's per-test ceiling enforces it in guest time, and `xtask`'s host watchdog
+/// (`time_record::bound_for`) enforces it plus a grace in host time, for the guest that can no
+/// longer enforce anything. One table, so a test that declares a longer budget gets it from both.
+pub const DEFAULT_BUDGET_SECS: u64 = 90;
+
+/// **The known-slow tests, each declaring its own cost.** A test whose honest runtime exceeds
+/// [`DEFAULT_BUDGET_SECS`] must say so here, with the reason, which is the point: the exception is
+/// visible, reviewable, and attached to an explanation instead of being absorbed into one enormous
+/// global limit that protects nothing. Matched as a substring of the full test path, so the entry
+/// covers a test on every architecture.
+///
+/// Keep budgets roughly 2x the measured time: enough headroom that host load or a debug build does
+/// not produce a flaky failure, tight enough to still catch a hang. The kernel's own report of any
+/// test over 5 s, and the per-test time record (`time per test`), are where the measurement comes
+/// from.
+pub const SLOW_TESTS: &[(&str, u64)] = &[
+    // Measured ~300 to 344 s on aarch64: a serial net_stack<->std_exerciser pipeline whose time is spent in
+    // net_stack's userspace smoltcp poll (DHCP, DNS, then a TCP echo). The longest honest test we have,
+    // and the reason a single global ceiling would have to be uselessly large.
+    ("std_net_runs_over_the_socket_contract", 700),
+];
+
+/// The budget for a test, in seconds, by its full path: its [`SLOW_TESTS`] entry if it has one,
+/// else [`DEFAULT_BUDGET_SECS`]. When two entries match, the later one wins.
+///
+/// # EXAMPLES
+///
+/// ```
+/// use test_times::{DEFAULT_BUDGET_SECS, budget_secs_for};
+///
+/// assert_eq!(budget_secs_for("kernel::memory::tests::frames_are_zeroed"), DEFAULT_BUDGET_SECS);
+/// ```
+#[must_use]
+pub fn budget_secs_for(path: &str) -> u64 {
+    let mut secs = DEFAULT_BUDGET_SECS;
+    for &(needle, allowed) in SLOW_TESTS {
+        if path.contains(needle) {
+            secs = allowed;
+        }
+    }
+    secs
+}
+
 /// Counter ticks to whole milliseconds, rounding down.
 ///
 /// In 128 bits because the product can outgrow 64: a 900 s ceiling on a 3 GHz TSC is 2.7e12 ticks,
@@ -204,6 +254,14 @@ mod tests {
     fn the_heading_is_not_a_record_line() {
         // xtask reads record lines only after the heading; the heading itself must never parse.
         assert!(parse(HEADING).is_err());
+    }
+
+    #[test]
+    fn a_declared_slow_test_gets_its_own_budget_and_every_other_test_the_default() {
+        assert_eq!(budget_secs_for("kernel::a::b"), DEFAULT_BUDGET_SECS);
+        for &(needle, secs) in SLOW_TESTS {
+            assert_eq!(budget_secs_for(&std::format!("system_tests::x::{needle}")), secs);
+        }
     }
 
     #[test]
