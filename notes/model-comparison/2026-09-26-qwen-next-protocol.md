@@ -126,7 +126,7 @@ work is removed, reset or stashed. Reported: 2 for all four of queue depth again
 `helpers/review-trial.sh`'s prompt, neutral posture, byte for byte, sent through `claude -p` with
 no tools and a one-line system prompt, so all three models see the same bytes through the same
 client. Bundles come from `helpers/review-bundle.sh`. Milestone 521's truths
-([delegated-review](../delegated-review/README.md)):
+([delegated-review](../delegated-review.md)):
 
 - D2, `d7492cf9c` (defect): the install offer's `" (unpartitioned or unreadable)"` folds "safe
   to wipe" and "could not read it" into one string on a consent prompt. 2 named, 1 partial, 0 missed.

@@ -387,9 +387,12 @@ place instead of moving text between two systems. Numbers 68 to 73 are the six t
 | 268 | DECIDED | [The cast ratchet does not count a 64-bit integer cast to `usize`](0268-the-cast-ratchet-does-not-count-a-64-bit-integer-cast-to-usize.md) |
 | 269 | DECIDED | [How threads share a process: the seven thread forks](0269-how-threads-share-a-process.md) |
 | 270 | DECIDED | [A package manager holds an installer endpoint, not the spawn endpoint](0270-a-package-manager-holds-an-installer-endpoint-not-the-spawn-endpoint.md) |
+| 272 | DECIDED | [The grant-plan crate root splits into private modules](0272-the-grant-plan-crate-root-splits-into-private-modules.md) |
 | 273 | DECIDED | [The shell program becomes a directory of modules](0273-the-shell-program-becomes-a-directory-of-modules.md) |
 | 274 | DECIDED | [The filesystem-protocol crate root splits into its module files](0274-the-filesystem-protocol-crate-root-splits-into-its-module-files.md) |
 | 276 | DECIDED | [The thread syscalls as built: the process object, `BIND`, futexes, the thread pointer and `SYS_EXIT_THREAD`](0276-the-thread-syscalls-as-built.md) |
+| 277 | DECIDED | [Cite a heading or a symbol, never a line number](0277-cite-a-heading-or-a-symbol-never-a-line-number.md) |
+| 278 | DECIDED | [An ACPI machine reaches the aarch64 kernel as a device tree the loader writes](0278-an-acpi-machine-reaches-the-aarch64-kernel-as-a-device-tree.md) |
 
 Two blocks that lived among the decisions are not decisions and moved out with the split, the same
 way milestone 76 moved four essays out of the roadmap: [the open design

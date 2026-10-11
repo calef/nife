@@ -5,7 +5,7 @@ built: 2026-08-04
 ---
 # 107. The socket contract learns to accept
 
-Merged 2026-08-04 (pull request #117; `socket_proto`'s listen verbs are on main). The status said IN-PROGRESS for eleven days after the merge, found 2026-08-15 while ranking ready work: §76's defect class, and the finding that un-hid milestone 54`. Raised 2026-08-04 from `notes/net.md:250`, which states the gap and names
+Merged 2026-08-04 (pull request #117; `socket_proto`'s listen verbs are on main). The status said IN-PROGRESS for eleven days after the merge, found 2026-08-15 while ranking ready work. That is the defect class of §76 (what catches a milestone status that is wrong in both places), and the finding that un-hid milestone 54`. Raised 2026-08-04 from `notes/net/the-outbound-gates.md`'s "What the gate proves, and what it does not", which states the gap and names
 the test that would close it. Two milestones already on the roadmap need it and neither block says
 so, which is why it is here rather than folded into one of them.
 
