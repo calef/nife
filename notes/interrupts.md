@@ -252,7 +252,7 @@ INTID 1 from software, with no hardware behind it. A thread blocks in `WAIT`, th
 SGI, the handler routes it, the thread wakes. Deterministic, and it needs no disk. The virtio
 driver (9b) will use the same path with a real device interrupt in place of the SGI.
 
-## Testing it on RISC-V, which has no SGI (milestone 19, 2026-07-31)
+## Testing it on RISC-V, which has no SGI (§19 (architectural parity), 2026-07-31)
 
 The two tests (`kernel::sched::tests::an_interrupt_becomes_a_message` and
 `an_interrupt_that_arrives_before_the_wait_is_not_lost`) were aarch64-only until 2026-07-31,
