@@ -14,11 +14,15 @@ portable code, so one patch serves every leg; riscv64 and x86_64 were not replay
 `ipc_reply_capability` learned to report a copy that did not land; the re-cut hunk was not replayed
 again.
 
-diff --git a/kernel/src/sched.rs b/kernel/src/sched.rs
-index ca3d9f108..1a90d41a2 100644
---- a/kernel/src/sched.rs
-+++ b/kernel/src/sched.rs
-@@ -4391,11 +4391,11 @@ pub fn ipc_reply_capability(caller: ThreadId, msg: [u64; 2], slot: u64) -> Result<
+Regenerated 2026-10-11 (UTC) for milestone 840 (the scheduler file is split along its seams):
+the same lines, moved out of `kernel/src/sched.rs` into `kernel/src/sched/rendezvous.rs` unchanged, so the defect is
+the same and only the path and line numbers differ.
+
+diff --git a/kernel/src/sched/rendezvous.rs b/kernel/src/sched/rendezvous.rs
+index c59bccd96..554ccf9f0 100644
+--- a/kernel/src/sched/rendezvous.rs
++++ b/kernel/src/sched/rendezvous.rs
+@@ -926,11 +926,11 @@ pub fn ipc_reply_capability(
              .ok_or(abi::Error::NoSuchSlot)?;
          let table = ours.lock();
          let src = table.get(slot).map_err(|_| abi::Error::NoSuchSlot)?;

@@ -364,11 +364,17 @@ size = {s: last.get(s, start[s]) - start[s] + 4 for s in start}
 # `schedule`, `finish_switch` and `current_cap` are in both, because both shapes reach them: the
 # capability lookup that IS the security check, and the general scheduler re-selection that a
 # hand-written fastpath would be trying to skip.
+#
+# **The optional module segment** follows milestone 840 (the scheduler file is split along its
+# seams), 2026-10-11 UTC. A mangled name follows the defining module, so `ipc_*` moved to
+# `kernel5sched10rendezvous...` and `current_cap` to `kernel5sched12capabilities...` while
+# `schedule` and `finish_switch` stayed in `sched` itself. A `pub use` keeps the Rust path and not
+# the symbol, so without the segment every root but two would silently fall out of the closure.
 SHAPES = [
     ("ipc_send_receive",
-     re.compile(r"kernel5sched(8ipc_send|15ipc_send_badged|11ipc_receive|8schedule|13finish_switch|11current_cap)")),
+     re.compile(r"kernel5sched(?:10rendezvous|12capabilities)?(8ipc_send|15ipc_send_badged|11ipc_receive|8schedule|13finish_switch|11current_cap)")),
     ("ipc_call_reply",
-     re.compile(r"kernel5sched(8ipc_call|15ipc_call_badged|15ipc_receive_cap|9ipc_reply|8schedule|13finish_switch|11current_cap)")),
+     re.compile(r"kernel5sched(?:10rendezvous|12capabilities)?(8ipc_call|15ipc_call_badged|15ipc_receive_cap|9ipc_reply|8schedule|13finish_switch|11current_cap)")),
 ]
 # **`ipc_call_badged` is a root because it IS the CALL body** (milestone 599 (a frame per filesystem
 # client channel), 2026-09-26). The syscall's `CALL` dispatches to it, and `ipc_call` became an

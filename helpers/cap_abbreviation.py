@@ -80,9 +80,11 @@ KEPT = {
         ({'addresses_past_the_cap_are_dropped_and_the_rest_kept'}, _CEILING),
     'crates/video_terminal/src/lib.rs': ({'scrolls_report_movement_and_cap_at_the_screen'}, _CEILING),
     'xtask/src/board.rs': ({'cap_given'}, _CEILING),
-    # `PRINT_CAP` bounds a diagnostic's lines; the test's `caps` is the verb "limits".
-    'kernel/src/sched.rs': ({'PRINT_CAP', 'a_spawn_quota_caps_live_children_and_replenishes_on_reap'},
-                            _CEILING),
+    # `PRINT_CAP` bounds a diagnostic's lines; the test's `caps` is the verb "limits". Two files since
+    # milestone 840 (the scheduler file is split along its seams) moved each out of `sched.rs`.
+    'kernel/src/sched/canary.rs': ({'PRINT_CAP'}, _CEILING),
+    'kernel/src/sched/tests.rs': ({'a_spawn_quota_caps_live_children_and_replenishes_on_reap'},
+                                  _CEILING),
     # Intel VT-d, section 10.4.2: the Capability Register and its fields, and its value.
     'kernel/src/arch/x86_64/iommu.rs': ({'CAP', 'cap', 'CAP_FRO_MASK', 'CAP_FRO_SHIFT', 'CAP_ND_MASK',
                                          'CAP_PHMR', 'CAP_PLMR', 'CAP_RWBF', 'CAP_SAGAW_48BIT'},
