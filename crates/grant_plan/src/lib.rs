@@ -2691,7 +2691,7 @@ pub enum Refusal {
     /// program that takes one, in a shell that was never granted a directory to narrow. This is the
     /// refusal the milestone is about: not "permission denied" but "there is nothing you hold that
     /// could grant this."
-    NoSuchCapability(CapKind),
+    NoSuchCapability(CapabilityKind),
     /// The program takes no file, but a token was left over that nothing else could be. The
     /// milestone's inversion cuts both ways: a name the program has no use for is authority the user
     /// did not mean to move, so it is refused rather than granted-and-ignored. **This is the refusal
@@ -2855,8 +2855,11 @@ pub enum Refusal {
 /// The kind of capability a command designated but the shell cannot back. Phase 1 has one; the
 /// enum exists so milestone 32 (files) and later device/endpoint grants slot in without changing
 /// the refusal's shape.
+///
+/// Name: recorded (design/naming/capability-worklist.md). `CapKind` until 2026-10-11 (UTC),
+/// renamed by #1913 under calef's ruling of 2026-10-06 that capability is not abbreviated as cap.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum CapKind {
+pub enum CapabilityKind {
     /// A file or directory, designated by naming it. Arrives with milestone 32's FS server.
     File,
 }
@@ -2871,7 +2874,7 @@ impl Refusal {
             // program name arrive at the same refusal, so this line has to be able to point at
             // both halves of what the prompt understands.
             Refusal::NoSuchProgram => "no such program (try 'help' for the builtins)",
-            Refusal::NoSuchCapability(CapKind::File) => {
+            Refusal::NoSuchCapability(CapabilityKind::File) => {
                 "you hold no such capability: this shell was granted no directory to narrow"
             }
             // "drop the name", in the same voice as "drop the --mem": the token would have been a
@@ -3493,7 +3496,7 @@ pub fn plan_against_with(
             // wins over the name's shape: "there is nothing I hold that could grant this" is a
             // bigger fact than "and that name is too long".
             if !holds.dir {
-                return Err(Refusal::NoSuchCapability(CapKind::File));
+                return Err(Refusal::NoSuchCapability(CapabilityKind::File));
             }
             let (which, dir, names) = designate(token, at, &holds, expanded)?;
             // One file, so a pattern that matched more than one has designated something this
@@ -3520,7 +3523,7 @@ pub fn plan_against_with(
             let at = next;
             next += 1;
             if !holds.dir {
-                return Err(Refusal::NoSuchCapability(CapKind::File));
+                return Err(Refusal::NoSuchCapability(CapabilityKind::File));
             }
             let (which, dir, names) = designate(token, at, &holds, expanded)?;
             // Typing the recursion option is what widens the capability from "take names out of
@@ -3553,7 +3556,7 @@ pub fn plan_against_with(
     let dir = match (m.arg, expanded.designation()) {
         (ArgSpec::Words(_), Some(d)) if !d.is_empty() => {
             if !holds.dir {
-                return Err(Refusal::NoSuchCapability(CapKind::File));
+                return Err(Refusal::NoSuchCapability(CapabilityKind::File));
             }
             Some(DirGrant {
                 which: nav::Which::A,
@@ -3612,7 +3615,7 @@ pub fn plan_against_with(
         // What the shell holds decides whether the designation can be backed at all, and it wins
         // over the name's shape, exactly as it does for a file grant.
         if !holds.dir {
-            return Err(Refusal::NoSuchCapability(CapKind::File));
+            return Err(Refusal::NoSuchCapability(CapabilityKind::File));
         }
         let (which, dir, names) = designate(token, at, &holds, expanded)?;
         let name = names.only().ok_or(Refusal::AmbiguousFile)?;
@@ -3685,7 +3688,7 @@ pub fn redirect_target(
     writable: bool,
 ) -> Result<FileGrant, Refusal> {
     if !holds.dir {
-        return Err(Refusal::NoSuchCapability(CapKind::File));
+        return Err(Refusal::NoSuchCapability(CapabilityKind::File));
     }
     let (which, dir, names) = designate(token, 0, &holds, Expansion::none())?;
     let name = names.only().ok_or(Refusal::FileNotNameable)?;
@@ -5327,7 +5330,7 @@ mod tests {
         );
         assert_eq!(
             refused,
-            Err(Refusal::NoSuchCapability(CapKind::File)),
+            Err(Refusal::NoSuchCapability(CapabilityKind::File)),
             "with no directory in hand, it is the milestone's headline refusal",
         );
         assert!(
@@ -5517,7 +5520,7 @@ mod tests {
         // refusal, and it is a statement about a capability table rather than about the calendar.
         assert_eq!(
             plan_line(b"wc report.txt", Holdings::default()),
-            Err((0, Refusal::NoSuchCapability(CapKind::File))),
+            Err((0, Refusal::NoSuchCapability(CapabilityKind::File))),
         );
     }
 
@@ -5727,7 +5730,7 @@ mod tests {
     fn a_redirection_needs_a_directory_to_resolve_against() {
         assert_eq!(
             plan_line(b"date > report.txt", Holdings::default()),
-            Err((0, Refusal::NoSuchCapability(CapKind::File))),
+            Err((0, Refusal::NoSuchCapability(CapabilityKind::File))),
         );
         // A pipeline with no file on it needs no directory at all, which is what makes `date | wc`
         // runnable in a shell that holds nothing but a spawn channel.
@@ -6244,7 +6247,7 @@ mod tests {
         };
         assert_eq!(
             plan(&r, Holdings::default()),
-            Err(Refusal::NoSuchCapability(CapKind::File)),
+            Err(Refusal::NoSuchCapability(CapabilityKind::File)),
             "a shell granted no directory holds nothing that could back this",
         );
     }
@@ -6420,7 +6423,7 @@ mod tests {
         // therefore nothing to expand against either.
         assert_eq!(
             plan(&r, Holdings::default()),
-            Err(Refusal::NoSuchCapability(CapKind::File)),
+            Err(Refusal::NoSuchCapability(CapabilityKind::File)),
         );
     }
 
@@ -6793,7 +6796,7 @@ mod tests {
                 holds_none,
                 Expansion::designated(d)
             ),
-            Err(Refusal::NoSuchCapability(CapKind::File))
+            Err(Refusal::NoSuchCapability(CapabilityKind::File))
         );
     }
 

@@ -76,7 +76,7 @@ becomes `capability`, `caps` becomes `capabilities`, `Cap` becomes `Capability`,
 |---|---|---|
 | `CapNeed` (`crates/component_plan`) | `CapabilityNeed` | |
 | `MAX_CAPS`, `TooManyCaps`, `FULL_CAPS`, `OVER_CAPS`, `CAP_TWICE`, `caps()` | `MAX_CAPABILITIES`, `TooManyCapabilities` and so on | |
-| `CapKind`, `Command::Caps` (`crates/grant_plan`) | `CapabilityKind`, `Command::Capabilities` | see the swish builtin below |
+| `Command::Caps` (`crates/grant_plan`) | `Command::Capabilities` | see the swish builtin below. `CapKind` is done: it became `CapabilityKind` on 2026-10-11 (UTC), #1913 |
 | `CAP_TAG` (`crates/grant_plan/src/spawnproto.rs`) | `CAPABILITY_TAG` | the value `0x6361_705f` stays: it is a wire marker |
 | `CAP_WRITE`, `CAP_USER`, `CAP_USER_EXEC`, `CAP_KERNEL_EXEC`, `CAP_DEVICE`, `CAP_GLOBAL`, `CAP_WRITE_COMBINE`, `from_caps` (`crates/paging`) | `ACCESS_WRITE` and so on, `from_access` | private bits for what a mapping grants; `CAPABILITY_WRITE` would read as an object capability, so propose `ACCESS_`. A word for calef. |
 | `MsiCap`, `MsixCap`, `VirtioCap`, `msi_cap`, `msix_cap`, `virtio_caps`, `cap_offset`, `cap_id` (`crates/pci`, `kernel/src/pci.rs`) | `MsiCapability`, `MsixCapability` and so on | the tree's own names for PCI capabilities; the spec's register names are kept |
@@ -111,7 +111,7 @@ kernel at once, so they go in one batch, after the rest has landed.
 1. Locals, fields and private items, one file group at a time: `kernel/`, `crates/`,
    `components/`, `fixtures/`, `system_tests/`. Each batch is mechanical and banks the ceiling.
 2. The kernel's public functions and the `cap` module.
-3. The crates' public types (`CapNeed`, `CapKind`, the PCI and paging names).
+3. The crates' public types (`CapNeed`, the PCI and paging names; `CapKind` is done, #1913).
 4. Last, as one batch: the ABI names and the `Cap` type, with the tests named after them.
 
 Closed records (`BUILT` roadmap blocks, `design/decisions/`, dated reports) keep the name they used,
