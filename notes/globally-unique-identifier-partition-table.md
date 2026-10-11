@@ -6,12 +6,15 @@ how to write one, and how to tell a broken one from a good one.
 (The three letters are the UEFI disk format and predate the machine-learning sense of them by about
 fifteen years. Nothing in this note is about a language model.)
 
+The proofs in full are in
+[`globally-unique-identifier-partition-table/`](globally-unique-identifier-partition-table/README.md).
+
 ## Why the OS needs it before it needs anything else about disks
 
 `parted /dev/sda mkpart`, then `mkfs.ext4`, then mount. That is calef's router setup, and nife
 had no equivalent of the first step at all. It is not optional, and not only because we might
-want to partition something: **you cannot find a partition on a disk you did not create without
-reading its table.** A block device hands you 131,072 blocks of undifferentiated bytes. Which of
+want to partition something: you cannot find a partition on a disk you did not create without
+reading its table. A block device hands you 131,072 blocks of undifferentiated bytes. Which of
 them is the filesystem is written in the table and nowhere else.
 
 So this is the mandatory half of the milestone even in the world where nife never partitions
@@ -34,7 +37,7 @@ broken. Most on-disk structures cannot. It is also why every check in the crate 
 than a warning: a table that half-validates is a table somebody is about to write a filesystem onto.
 
 The header is 92 bytes of a 512-byte block, and the other 420 must be zero. The entry array is
-128 entries whether or not you have 128 partitions; an entry is unused when its type GUID is all
+128 entries whether or not you have 128 partitions. An entry is unused when its type GUID is all
 zeros, which is the only thing that marks it, and not (this is the trap) its LBA fields.
 
 ## The crate does no I/O, and that is the whole design
@@ -106,8 +109,8 @@ in it makes symmetrically coming out. What the two independent writers bought:
 - **macOS does not write GPT partition names.** The image was made with
   `diskutil partitionDisk ... MS-DOS ESP 16M HFS+ MACDATA 0b`, both volumes are named, and both GPT
   entries have 72 bytes of zero where the name goes. On a Mac the volume name lives in the
-  filesystem and the partition table is not asked. `sgdisk` and Linux tools do write it. **The
-  consequence is a design constraint on anything built on this crate**: a partition browser cannot
+  filesystem and the partition table is not asked. `sgdisk` and Linux tools do write it. The
+  consequence is a design constraint on anything built on this crate: a partition browser cannot
   key off the GPT name, because on any disk a Mac touched there is not one. Identify by type GUID, or
   by unique GUID for a particular partition.
 - **The two tools write different CHS bytes and both are right.** `sgdisk` computes the real
@@ -115,7 +118,7 @@ in it makes symmetrically coming out. What the two independent writers bought:
   use LBA" marker. Nothing has read a CHS field in thirty years. A validator written from one tool's
   output would have rejected the other's disk outright, and `mbr::validate` therefore checks the two
   fields that do the protecting (start at LBA 1, cover the disk) and ignores CHS.
-- **Both write 128 entries of 128 bytes, and identical geometry**, arrived at independently. The
+- Both write 128 entries of 128 bytes, and identical geometry, arrived at independently. The
   spec does not require it; it is just what everybody does.
 
 Re-emitting `sgdisk`'s table reproduces its bytes exactly, and *rebuilding* it from its parsed
@@ -134,7 +137,7 @@ this is a decision somebody can make later with the error already named.
 ## The nife partition type GUID
 
 `EC5CC08B-D749-4434-AC38-A274C50385BA`, `globally_unique_identifier_partition_table::guid::types::NIFE_DATA`, a nife data partition
-holding a RedoxFS volume. A random version-4 GUID generated on 2026-07-30 and **fixed forever**: a
+holding a RedoxFS volume. A random version-4 GUID generated on 2026-07-30 and fixed forever: a
 type GUID's whole job is to not collide with anybody else's and there is no registry to ask. See
 DECISIONS §45 for why it is never to change; the short version is that the recovery story ("the
 board is dead, can I get my data") depends on a `sgdisk -p` five years from now still showing it.
@@ -163,63 +166,18 @@ load is a serial dependency in the loop. That is the number that decided the tes
 
 ### Proved, symbolically
 
-`script/verify` runs these harnesses, about 96 seconds in total on an M-series laptop; the last two are now `universally_unique_identifier`'s:
+`script/verify` runs ten harnesses over this crate's logic, about 96 seconds in total, the last two
+now `universally_unique_identifier`'s. They prove that the table-driven CRC-32 agrees with its
+bitwise definition and that a changed byte always changes it. They prove that entries, GUIDs and
+header fields survive their on-disk layout, and that `create` never lays out a table `parse` would
+reject, for every disk size. And `overlap_is_exactly_sharing_a_block` is complete rather than
+bounded, stated as its definition rather than as the code.
 
-| harness | what it quantifies over | time |
-|---|---|---|
-| `crc32_matches_its_bitwise_definition` | every 8-byte input | 20 s |
-| `a_single_byte_change_always_changes_the_crc` | every 8-byte buffer, every position, every replacement | 33 s |
-| `an_entry_survives_the_round_trip` | all 2^1024 partition entries | 8 s |
-| `a_guid_survives_the_on_disk_layout` | all 2^128 on-disk GUIDs | 3 s |
-| `overlap_is_exactly_sharing_a_block` | every pair of LBA ranges (complete, not bounded) | 2 s |
-| `a_headers_fields_survive_the_round_trip` | every value of all nine header fields | 3 s |
-| `the_header_fields_partition_the_block` | every 512-byte block: no two fields share a byte | 2 s |
-| `create_never_lays_out_a_table_parse_would_reject` | every disk size and every partition placement | 22 s |
-| `a_uuid_survives_printing_and_parsing` | all 2^128 UUIDs, out through text and back | 5 s |
-| `stamping_reserves_six_bits_and_keeps_the_other_hundred_and_twenty_two` | all 2^128 random inputs to the v4 stamp | 1 s |
-
-Three of these need their reasoning spelled out, and one of them is a correction.
-
-**Why the CRC harnesses are bounded at 8 bytes.** CRC-32 is a shift-and-xor over every bit of the
-input, so the formula the solver gets grows with the byte count. The bound does not buy "CRC-32 is
-correct for short inputs", which would be a nearly worthless claim; it buys the *structure*: that
-the table-driven implementation agrees with the bitwise definition, and that a changed byte always
-changes the answer. Both are properties of the algorithm rather than of the length, and the lengths
-that actually occur (92 bytes, 16 KiB) are covered exhaustively above, over bytes real tools wrote.
-
-The table-versus-definition harness earns its keep specifically because the table is derived by
-`const` evaluation from the polynomial. A wrong table that happened to be self-consistent would
-round-trip our own output perfectly and pass every test in the suite except the published check
-values, and it would fail on every real disk.
-
-**A symbolic CRC-32 is very expensive, and it decided the shape of two harnesses.** The first
-attempt at the header round trip went through `encode_into` and `decode`, so the formula carried two
-92-byte CRC-32s over symbolic bytes. It ran 274 seconds without finishing, against a
-`script/verify` budget of about three minutes per harness (the same budget the DMA harnesses record
-in notes/verification.md). The measured reason is in the two CRC harnesses above: one table CRC plus
-one bitwise CRC over 8 symbolic bytes is 20 s, two table CRCs over the same 8 bytes is 33 s, so the
-table version costs roughly five times the bitwise one for the solver. A table lookup on a symbolic
-index is a 256-way multiplexer, and there is one per byte from the first symbolic byte onward.
-
-So `Header` grew a `decode_fields`/`encode_fields` pair, and the round trip is proved in two halves
-that compose for a reason you can read in three lines of source rather than assume: everything
-`encode_into` adds is four bytes at offset 16, everything `decode` adds is checks, and the CRC field
-is not one of the nine fields, so neither half can disturb the other. 3 seconds instead of 274,
-and it is a better decomposition anyway: the layout and the integrity are different claims.
-
-The same reasoning moved the create-then-parse harness. A byte-level version has four symbolic CRC
-chains in it and did not finish either. The byte-level identity is proved instead where it can be
-proved *completely*, in `tests/real_disks.rs`: `GloballyUniqueIdentifierPartitionTable::create`
-reproduces `sgdisk`'s 512-byte header, its backup header and its 16 KiB array exactly. What that
-test cannot do is vary the disk size, so the harness takes that dimension and asserts every geometry
-rule `GloballyUniqueIdentifierPartitionTable::parse` enforces on what
-`GloballyUniqueIdentifierPartitionTable::create` produced, for every `u64` disk size. A writer
-that emits a table its own reader rejects is the worst failure available to this crate, and an
-unusual disk size is exactly where it would hide.
-
-`overlap_is_exactly_sharing_a_block` is the one that is complete rather than bounded, because it is
-pure integer comparison. It states the property as its definition (the intersection is non-empty)
-rather than as the implementation, so the proof is not the code compared against itself.
+A symbolic CRC-32 is very expensive, and that shaped the harnesses. The CRC ones are bounded at 8
+bytes, which buys the algorithm's structure; the lengths that occur are covered exhaustively above.
+The header round trip is proved in two halves through `decode_fields`/`encode_fields`, 3 seconds
+instead of a run that had not finished at 274. [`the-proofs.md`](globally-unique-identifier-partition-table/the-proofs.md)
+has the table of harnesses, their times, and the reasoning in full.
 
 ## What this crate does not do
 
@@ -238,9 +196,9 @@ Stated plainly, because a demonstrator's docs are part of the deliverable:
 
   This turns out to be the same wall `mkfs` on the target hits, and that is worth knowing
   (measured 2026-08-01, design/roadmap/0057-partitioning-and-xattrs.md). RedoxFS stamps a v4 UUID into a
-  fresh header with `uuid::Uuid::new_v4()`, so `FileSystem::create` is `std`-gated for the same
-  reason this crate refuses to invent a GUID: an identifier that has to be unique needs randomness,
-  and neither a `no_std` engine nor a pure-computation crate has any. Partitioning a real drive from
+  fresh header with `uuid::Uuid::new_v4()`, so `FileSystem::create` is `std`-gated. The reason is
+  the one this crate has for refusing to invent a GUID: an identifier that has to be unique needs
+  randomness, and neither a `no_std` engine nor a pure-computation crate has any. Partitioning a real drive from
   nife and formatting one are therefore blocked on the same thing, the entropy service reaching
   the program that does them, and on nothing else.
 
@@ -271,9 +229,9 @@ judgment is still this crate's; the program is I/O, a layout, and a refusal.
 ### The version-4 stamp, and the one way to get it wrong
 
 `Uuid::v4_from_random` sets four version bits and two variant bits. On a GPT that is the
-mixed-endian rule again: the version
+mixed-endian rule again. The version
 nibble is the high nibble of the third group, which is stored little-endian and therefore lands in
-on-disk byte 7; the variant bits are the top of the fourth group, stored as written, so on-disk
+on-disk byte 7. The variant bits are the top of the fourth group, stored as written, so on-disk
 byte 8, which `guid.rs`'s `a_version_4_uuid_lands_its_version_in_on_disk_byte_7` checks.
 
 Setting them at the wrong offsets produces a GUID that is still unique, still unpredictable, and
@@ -296,7 +254,7 @@ with no entropy endpoint reports and exits with the disk exactly as it found it.
 then runs the *same binary* in its verify role, which holds no entropy at all, and reads the disk:
 that is what turns "it refused" into "it wrote nothing". After the successful run the same reader
 finds both copies of the table agreeing, three names decoding, and three distinct version-4 unique
-GUIDs; and after the run, on the host, `cargo xtask test` parses the same bytes with this crate and
+GUIDs. And after the run, on the host, `cargo xtask test` parses the same bytes with this crate and
 checks the GUIDs are distinct again from outside the guest.
 
 **What is not proved**: nothing here is crash-atomic. A kill between the primary write and the backup
