@@ -76,7 +76,8 @@ rather than from the specifications, which is exactly what the spike must correc
 
 Corrected against the specifications, 2026-09-05. The table above is left as written, because
 this block's own `BUGS` says it was read from this tree's doc comments and the spike existed to check
-it. This is what the specifications say instead, and the working is in `notes/timer-capability.md`:
+it. This is what the specifications say instead, and the working is in
+[`notes/timer-capability/specifications.md`](../../notes/timer-capability/specifications.md):
 
 | ISA | the block said | the specification says |
 |---|---|---|
@@ -137,8 +138,9 @@ service, and because a fork should not be settled by discovering an option late.
 
 Built as a throwaway scaffold on 2026-09-05, gated green with `script/test` (205 passed, 69 skipped,
 all three ISAs plus the OVMF leg), and deleted, which is milestone 106's own pricing method and
-its reason: shipping it would settle a syscall-surface fork by accident. Full method and error bars in
-`notes/timer-capability.md`.
+its reason: shipping it would settle a syscall-surface fork by accident. Method and error bars:
+[`notes/timer-capability/first-scaffold.md`](../../notes/timer-capability/first-scaffold.md#method) and
+[`notes/timer-capability/second-scaffold.md`](../../notes/timer-capability/second-scaffold.md#method-and-error-bars-both-scaffolds).
 
 | what | figure |
 |---|---|
@@ -162,7 +164,8 @@ way.
 The table above left two things unpriced, and its own `BUGS` named the first. A second scaffold paid
 both: four kernels differing by one change each, built release on all three ISAs, measured with
 `llvm-nm --print-size`, and deleted. **The error bar is zero bytes** (a build was reverted and
-rebuilt from its patch and came out byte-identical). Full method in `notes/timer-capability.md`.
+rebuilt from its patch and came out byte-identical). Full method in
+[`notes/timer-capability/second-scaffold.md`](../../notes/timer-capability/second-scaffold.md#method-and-error-bars-both-scaffolds).
 
 | what | aarch64 | riscv64 | x86_64 |
 |---|---|---|---|
@@ -233,12 +236,16 @@ block only says what it costs.
   the same source costs riscv64 +37,061 data bytes against aarch64's +10,980. It is a cliff rather
   than a slope, it prices every future addition to the scheduler's tables rather than anything about
   timers, and it is left unactioned because the right response may be a smaller registry rather than
-  a fight with the backend. `notes/timer-capability.md` has the symbol-level working.
+  a fight with the backend.
+  [`notes/timer-capability/second-scaffold.md`](../../notes/timer-capability/second-scaffold.md#one-finding-that-is-not-about-timers-at-all)
+  has the symbol-level working.
 - **Recorded.** `design/decisions/0139-cycle-counter-authority.md` says *"There is no precedent in this
   tree for a per-thread system-register bit maintained across a context switch."* Milestones 229 and
   237 built one, so that sentence is stale inside its own decision, in the same way §102's per-slot
   arithmetic went stale inside §102. Amending a `DECISIONS` section is not a lane's (AGENTS.md), so it
-  is recorded here and in `notes/timer-capability.md` for whoever owns §139 next.
+  is recorded here and in
+  [`notes/timer-capability/specifications.md`](../../notes/timer-capability/specifications.md#aarch64-the-blocks-negative-is-refuted) for
+  that section's next owner.
 - **Recorded.** xenon's HPET. Nothing in this tree records whether the machine this project owns
   has one, how many comparators, or whether the legacy replacement route is on. It needs the
   first-light photograph transcribed or the boot tour re-run with the table list captured, and it

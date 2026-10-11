@@ -59,7 +59,8 @@ It cannot, on riscv64, on any machine. So the decision needs re-making, and this
 
 ## Why the premise failed
 
-The full working, with the specification citations, is `notes/timer-capability.md`, and the corrected
+The full working, with the specification citations, is
+[`notes/timer-capability/specifications.md`](../../notes/timer-capability/specifications.md), and the corrected
 per-architecture table is in `design/roadmap/0263-can-a-timer-be-a-capability.md`. The short form:
 
 - riscv64: closed three independent ways. Sstc's every enable (`mcounteren.TM`, `menvcfg.STCE`,
@@ -161,7 +162,7 @@ It also does not amend
 which says *"There is no precedent
 in this tree for a per-thread system-register bit maintained across a context switch."* Milestones 229
 and 237 built one, so that sentence is stale inside its own decision. The correction is recorded in
-`notes/timer-capability.md` and in 263's block; amending a decision section is not a lane's to do.
+[`notes/timer-capability/specifications.md`](../../notes/timer-capability/specifications.md#aarch64-the-blocks-negative-is-refuted) and in 263's block; amending a decision section is not a lane's to do.
 
 ## Amendment (milestone 106): the syscall numbers, `bits`, and no slack argument
 

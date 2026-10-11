@@ -30,7 +30,8 @@ and every gate in this repository passed them. `script/lint` check 4c verifies t
 thing the author meant. A path in backticks is neither, so `` `crates/fs_proto` `` was
 unfalsifiable prose for the two weeks after §75's naming pass renamed the crate.
 
-`notes/follow-on-work.md` recorded the same rot one directory over, in the roadmap's own blocks, and
+[`notes/follow-on-work/first-sweep.md`](../../notes/follow-on-work/first-sweep.md#two-things-the-sweep-found-that-were-not-in-its-brief)
+recorded the same rot one directory over, in the roadmap's own blocks, and
 its sentence is the whole argument for this: *"Nothing had been checking a path cited in a roadmap
 block."* Nothing is checking one cited in a note either, and there are more of them.
 
