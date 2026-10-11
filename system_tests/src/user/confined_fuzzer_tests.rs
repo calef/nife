@@ -1240,8 +1240,24 @@ fn run_seed(image: &'static [u8], seed: u64) {
         for x in 0..FUZZERS {
             let parked = wait_for(|| parked_on_go(&c, x));
             assert!(parked, "fuzzer {x} never parked on its conductor channel");
-            let root =
-                sched::thread_space_root(c.fuzzers[x].tid).expect("a live fuzzer has a space root");
+            // A failure here was seen once (rva23s64, merge group run 38142134083, 2026-10-11
+            // UTC) and is not yet understood; the `BUGS` section of milestone 779's block
+            // (design/roadmap/0779-fuzz-the-surface-a-confined-process-can-reach.md) holds the
+            // two hypotheses. The message reads the state again at the failure to say which: a
+            // fuzzer that is not live (or not parked on GO) means the waiter counted on GO was
+            // not this fuzzer or it died after parking; a live fuzzer parked on GO with no space
+            // means it lost its space while counted as waiting.
+            let Some(root) = sched::thread_space_root(c.fuzzers[x].tid) else {
+                panic!(
+                    "a live fuzzer has a space root: fuzzer {x} (tid {:?}, seed {:#x}) has none; \
+                     live {}, disposition {:?}, GO waiting receivers {}",
+                    c.fuzzers[x].tid,
+                    c.seed,
+                    live(&c, x),
+                    disposition(&c, x),
+                    sched::rendezvous_waiting_receivers(c.world.go[x]),
+                );
+            };
             let mut cursor = 0;
             while let crate::revoke::Listing::Entry(next, va) =
                 crate::revoke::list_mapping(root, cursor)
