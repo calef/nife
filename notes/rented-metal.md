@@ -7,7 +7,8 @@ left exactly one line open: which provider, and the spend split. Nobody had acte
 2026-09-23: *"we want to price all three architectures and lean heavily on free/trial options to keep
 costs low."* This is the priced comparison that open line needs. No account was created and nothing
 was spent. Every figure below carries the page it came from and the date it was read, which was
-2026-09-23 for all of them.
+2026-09-23 for all of them. Each architecture's table and sources are in
+[`rented-metal/`](rented-metal/README.md).
 
 **What this is not.** It is not a recommendation to sign up today, and it is not a benchmark. It
 prices access to machines, against the four things a machine must do before nife can use it at all.
@@ -58,51 +59,13 @@ this file says so rather than manufacturing a diversity argument.
 
 ## x86_64
 
-Commodity, and the column with real choice in it.
-
-| Provider | Offer | Cores | RAM | Per hour | Per month | Free or trial | 1 boot | 2 console | 3 power API | 4 cores | Source, read 2026-09-23 |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| Scaleway | Elastic Metal EM-A116X-SSD (Xeon E3-1220) | 4C/4T | 32 GB | €0.077 | €27.99 | none | yes | yes | yes | yes | [pricing](https://www.scaleway.com/en/pricing/elastic-metal/) |
-| Scaleway | Elastic Metal EM-A610R-NVMe (Ryzen PRO 3600) | 6C/12T | 32 GB | €0.11 | €39.99 | none | yes | yes | yes | yes | [pricing](https://www.scaleway.com/en/pricing/elastic-metal/) |
-| Hetzner | Dedicated AX42-1 (Ryzen 7 PRO 8700GE) | 8C/16T | 64 GB | n/a | €97.30 | none | yes | **no, not without asking** | partial | yes | [price adjustment](https://docs.hetzner.com/general/infrastructure-and-availability/price-adjustment/), [AX42](https://www.hetzner.com/dedicated-rootserver/ax42/), [custom images](https://docs.hetzner.com/robot/dedicated-server/operating-systems/installing-custom-images/) |
-| OVHcloud | Kimsufi / Eco KS-B (Xeon E5-1620v2) | 4C/8T | 32 GB | n/a | $11.10 | none | unverified | **no** | unverified | yes | [Kimsufi](https://eco.ovhcloud.com/en/kimsufi/), [IPMI](https://docs.ovhcloud.com/en/guides/bare-metal-cloud/dedicated-servers/ipmi) |
-| OVHcloud | Rise RISE-1 (Xeon-E 2386G) | 6C/12T | 32 GB+ | n/a | $64 | none | yes | yes | yes | yes | [Rise](https://eco.ovhcloud.com/en/rise/), [IPMI](https://docs.ovhcloud.com/en/guides/bare-metal-cloud/dedicated-servers/ipmi) |
-| Oracle | Always Free VM.Standard.E2.1.Micro | 1/8 OCPU | 1 GB | free | free | Always Free, 2 instances | unverified | yes | yes | **no** | [Always Free](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm) |
-| Equinix | Metal, any plan | - | - | - | - | - | **gone** | - | - | - | [sunset](https://www.latitude.sh/blog/equinix-metal-sunset-how-to-reduce-the-migration-burden) |
-
-A note on requirement 1 in this column, in the vocabulary above. The `yes` values are about the
-*offer*: each of those providers lets you put your own kernel on the disk. Whether nife then boots is
-`unverified` and is much likelier here than on aarch64, for a reason the tree can state: `xtask`
-stages `BOOTX64.EFI` and `uefi_loader/src/arch/x86_64/mod.rs` takes the ACPI RSDP from the
-firmware's configuration table and synthesizes an `hvm_start_info` for the kernel. So the x86_64 path
-already discovers an ACPI machine, which is what a rented server is. That is why this column is
-buyable today and the aarch64 one is not.
-
-**Equinix Metal is not an option and should be struck from any future list.** Equinix announced the
-shutdown of its bare metal platform by 30 June 2026, which is already past. §203 named it as a
-candidate; it no longer exists.
-
-OVH's cheap range is the trap in this column. Kimsufi at $11.10 a month is the lowest price on
-the page and OVH's own IPMI guide says the feature *"might be unavailable or limited on servers of
-the Eco product line"*. No console means no way to see a kernel that dies before userspace, which is
-precisely the failure this hardware is being rented to observe. It is listed as failing requirement 2
-rather than as cheap. OVH's Rise range does have IPMI, with HTML KVM, a Java applet, serial
-over LAN through the browser and serial over LAN over SSH, and that is the offer worth naming, at
-roughly six times the price.
-
-Hetzner is the other one that looks better than it is, for this job. Custom images are supported
-and documented, but by two routes that both cost a person: `installimage` from the rescue system,
-which wants a `.tar.gz` of a Linux distribution rather than a raw kernel image, or a KVM console
-requested through Robot support, which mounts an ISO over SMB. There is a *"24h reset service via
-web interface"*. That is a support ticket in the loop, not an API, and Hetzner's own page says
-*"Hetzner Online doesn't offer any support for the installation of custom images and can't offer any
-warranty on the functionality."* At €97.30 a month for AX42-1 it is also the most expensive row that
-is not AWS. It fails requirement 2 in the form this project needs it: a console you have to ask for
-is not a console you can script.
-
-Oracle's Always Free x86 tier fails on cores before anything else. Two `VM.Standard.E2.1.Micro`
-instances at 1/8 OCPU and 1 GB each cannot test a multicore claim, so requirement 4 ends it. It is
-genuinely free and genuinely useless for this.
+Commodity, and the column with real choice in it. Scaleway Elastic Metal qualifies on all four.
+OVH's Rise range does too, at roughly six times the price. OVH's cheap Kimsufi range has no
+console, Hetzner's console and custom image need a support request, Oracle's free x86 tier has an
+eighth of a core, and Equinix Metal shut down on 30 June 2026. Whether nife boots is unverified on
+every row, and much likelier than on aarch64, because the x86_64 loader already takes the ACPI RSDP
+from the firmware. [`x86_64.md`](rented-metal/x86_64.md) has the table, the sources, and the case
+against each offer not recommended.
 
 ### x86_64 recommendation
 
@@ -119,169 +82,54 @@ duplicating them.
 
 ## aarch64
 
-This section was wrong on 2026-09-23 and is rewritten rather than quietly amended. It said
-*"none of these qualifies"* and priced the aarch64 leg as needing *"a UEFI-bootable image that does
-not exist yet"*. calef pushed back: *"aarch64 has no cloud options. That doesn't seem right. What
-about AWS?"* He was right to. Two errors, of different kinds:
+*Corrected 2026-10-11 (UTC), verified against `uefi_loader/src/arch/aarch64/mod.rs` and
+[`notes/boot-stick/device-tree-handover.md`](boot-stick/device-tree-handover.md).* The blocker this
+section was written around is half lifted. On 2026-09-23 the loader learned to write a device tree
+from a machine's ACPI tables, so an ACPI-only machine is no longer refused outright; under QEMU with
+ACPI on, the stick reaches the shell. The kernel is still linked at QEMU `virt`'s RAM, and no cloud
+machine has been booted. So the `no (nife)` verdicts below are now unverified, and the experiment
+the recommendation names is the way to find out.
 
-1. The image exists. `xtask/src/stick.rs`'s `payload_aarch64` builds `BOOTAA64.EFI` for the
-   `aarch64-unknown-uefi` target, out of the aarch64 archive, the kernel, and `uefi_loader/`.
-   `BOOTAA64.EFI` at the EFI system partition's default path is exactly what a UEFI aarch64 machine
-   boots. That was checkable in this repository and was not checked, which makes it the worse of the
-   two errors.
-2. "Unverified" was reported as "disqualified". A requirement nobody checked is a gap in the
-   evidence, not a failure by the offer. The tables now score requirement 1 with a vocabulary that
-   keeps the two apart, and it applies to every architecture:
-   - **yes**: documented by the provider.
-   - **unverified**: not checkable without an account; the offer is not accused of anything.
-   - **no (offer)**: the provider will not let you put your own kernel on the disk.
-   - **no (nife)**: the provider will, and nife cannot boot what it hands over. This value did
-     not exist in the first draft and it is where this whole column actually lands.
-
-And the corrected answer is more interesting than the error. Every aarch64 offer below passes
-requirements 2, 3 and 4 and lets you bring your own image. The blocker is in this repository, it is
-already written down, and no amount of money moves it.
-
-### Why no aarch64 cloud machine boots nife today
-
-`uefi_loader/src/arch/aarch64/mod.rs` finds the device tree by searching the UEFI configuration
-table for `efi::DEVICE_TREE_GUID`, copies it, patches `/chosen/linux,initrd-*`, and branches to the
-kernel with `x0` = that tree. Its own `BUGS` section says what that costs, and it said so before
-this file existed:
-
-> The device tree must be offered by the firmware. EDK2 on QEMU `virt` offers it only with
-> `acpi=off`; an aarch64 machine that describes itself only with ACPI (most servers) cannot boot
-> this kernel at all, which is a kernel limit rather than a loader one.
-
-Every aarch64 server cloud is one of those machines, and by specification rather than by
-accident. Arm's Server Base Boot Requirements make UEFI and ACPI the boot contract for Arm servers,
-and the clouds comply: AWS documents that on arm64 with no boot mode specified the resulting
-instance boot mode is UEFI, Azure's Cobalt 100 Arm series is Generation 2 only, and Google's
-own image-import requirements state flatly that "The boot disk must support ACPI." A third-party
-port of another OS to Graviton records the consequence in the exact form nife would meet it: Graviton
-boots via ACPI with no timer node, so the generic-timer interrupt IDs have to come from the ACPI
-GTDT rather than from a device tree that is not there.
-
-There is a second, smaller blocker behind the first, from the same `BUGS` section: the kernel is
-linked for `0x4008_0000`, which is QEMU `virt`'s RAM. A cloud machine whose RAM starts elsewhere
-cannot place the kernel there. That is the same limit milestone 127 (the seL4 machine)'s argon port
-has to lift, not one the cloud adds.
-
-And this is exactly the shape fatal risk 9 (the HAL is a fiction, and an architecture costs a
-restructure rather than a port) predicts, arriving early and cheaply. The x86_64 side of the very
-same loader already does the ACPI job: `uefi_loader/src/arch/x86_64/mod.rs` takes the ACPI RSDP from
-the firmware's configuration table and synthesizes an `hvm_start_info` for the kernel. So nife
-already has an ACPI discovery path, on one architecture only, and aarch64 and riscv64 are
-device-tree-only. A machine that hands the kernel ACPI instead of a device tree is not a new
-architecture; it is the same aarch64 with different firmware, and nife does not boot on it. That is
-risk 9's failure mode showing up as a firmware difference rather than an ISA difference,
-which is the gap the risk's own text does not cover.
-
-What this says about the money: nothing here is a purchasing problem. The aarch64 column is
-blocked on an ACPI discovery path for aarch64, which is a milestone. It is proposed below rather than
-assumed.
-
-### The offers, priced properly
-
-| Provider | Offer | Cores | RAM | Per hour | Free or trial | 1 boot | 2 console | 3 power API | 4 cores | Source, read 2026-09-23 |
-|---|---|---|---|---|---|---|---|---|---|---|
-| AWS | EC2 `c7g.large` (Graviton3) | 2 vCPU | 4 GiB | $0.073 | 12-month free tier excludes it | **no (nife)** | yes | yes | yes | [c7g](https://aws.amazon.com/ec2/instance-types/c7g/), [price](https://instances.vantage.sh/aws/ec2/c7g.large) |
-| AWS | EC2 `c7g.4xlarge` (Graviton3) | 16 vCPU | 32 GiB | $0.58 | none | **no (nife)** | yes | yes | yes | [price](https://instances.vantage.sh/aws/ec2/c7g.4xlarge) |
-| AWS | EC2 `c7g.metal` (Graviton3) | 64 vCPU | 128 GiB | $2.32 | none | **no (nife)** | yes | yes | yes | [price](https://instances.vantage.sh/aws/ec2/c7g.metal) |
-| AWS | EC2 `c8g.metal-24xl` (Graviton4) | 96 vCPU | 192 GiB | $3.83 | none | **no (nife)** | yes | yes | yes | [price](https://instances.vantage.sh/aws/ec2/c8g.metal-24xl) |
-| Oracle | Always Free Ampere A1 | 2 OCPU | 12 GB | **free** | Always Free, standing | **no (nife)**, see below | yes | yes | yes, 2 | [Always Free](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm), [BYOI](https://docs.oracle.com/en-us/iaas/Content/Compute/References/bringyourownimage.htm), [console](https://docs.oracle.com/en-us/iaas/Content/Compute/References/serialconsole.htm) |
-| Azure | `Dpsv6` series (Cobalt 100 Arm64) | 2 to 96 vCPU | 8 to 384 GiB | not read | none | **no (nife)** | yes, boot diagnostics | yes | yes | [Dpsv6](https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/general-purpose/dpsv6-series) |
-| Google | C4A Axion, incl. `c4a-standard-96-metal` | up to 96 vCPU | up to 768 GB | not read | none | **no (nife)** | yes | yes | yes | [Arm on Compute](https://docs.cloud.google.com/compute/docs/instances/arm-on-compute), [import](https://docs.cloud.google.com/compute/docs/images/import-existing-image) |
-| Hetzner | RX line (Arm64 dedicated) | - | - | - | - | **unavailable** | - | - | - | [RX matrix](https://www.hetzner.com/dedicated-rootserver/matrix-rx/) |
-| Hetzner | Cloud CAX31 (Ampere Altra VM) | 8 vCPU | 16 GB | ~€15.99 to €25.57/mo | none | **no (offer)** | VNC only | yes | yes | [cloud](https://www.hetzner.com/cloud/), prices third-party, see BUGS |
-| Scaleway | Elastic Metal, Arm | - | - | - | - | **none offered** | - | - | - | [pricing](https://www.scaleway.com/en/pricing/elastic-metal/) |
-
-**aarch64 is not a thin column, which is the correction.** AWS, Azure and Google all sell Arm
-compute, Google and AWS both sell Arm bare metal, and all three take a custom image. The first
-draft looked at one instance type and generalized.
-
-**A `.metal` instance is not required, and this is the largest price finding in the file.** The four
-requirements are met by an ordinary virtualized Graviton instance: the EC2 serial console is
-supported on *"All virtualized instances built on the Nitro System"*, the EC2 API does power, and
-`c7g.large` has two cores. So the relevant aarch64 price is **$0.073 an hour, not $2.32** -- a factor
-of 32 -- and a 16-core `c7g.4xlarge` at $0.58 sits between them. Bare metal buys removed
-virtualization, which matters for a timing claim and not for a soak that only has to cross cores.
-The first draft priced the most expensive row in the family and called the architecture
-unaffordable.
-
-**One caveat on bare metal specifically**, which cuts the other way: AWS's boot-mode page says *"All
-instances built on the AWS Nitro System support both UEFI and Legacy BIOS, except the following: bare
-metal instances"*, and the serial-console page excludes `a1.metal` and `g5g.metal` by name. So the
-`.metal` rows carry a boot-mode caveat that the virtualized rows do not, and the cheap rows are the
-better target anyway.
-
-### Oracle Ampere A1, and exactly what would resolve it
-
-The first draft called this *"genuinely ambiguous"* and passing three of four, and said the ambiguity
-was the most valuable thing in the section. It was, and it is now resolved far enough to act on,
-in the unfavorable direction.
-
-The Oracle page's ambiguity was about Linux guests: Arm shapes take custom imported images in
-paravirtualized mode only, the listed guests are all Linux or Windows, and the stated requirement is
-a *"Linux kernel version 3.4 or later"*. That ambiguity is no longer the deciding one. Ampere A1
-instances boot UEFI and are SBBR-class, so they present ACPI and no device tree, and nife's
-aarch64 path needs a device tree. Requirement 1 is `no (nife)` for the same reason as every other
-row, and Oracle's own wording is not what settles it.
-
-What would resolve it definitively, and it is one observation rather than an argument: boot any
-aarch64 instance on any of these providers with `BOOTAA64.EFI` on an EFI system partition, and read
-the serial console. `uefi_loader`'s aarch64 path prints the firmware's memory map when it cannot
-place the kernel, and the device-tree lookup either finds `DEVICE_TREE_GUID` in the configuration
-table or does not. That is a free experiment on Oracle Always Free, it costs an evening, and it
-produces a real answer instead of a reading of a documentation page. It should be run, and it should
-be run expecting it to fail, because a failure here names the assumption precisely.
+As written on 2026-09-23, the first draft of this section was wrong, and calef pushed back: *"aarch64
+has no cloud options. That doesn't seem right. What about AWS?"* The image exists (`BOOTAA64.EFI`),
+and "unverified" had been reported as "disqualified". The corrected finding was that every aarch64
+offer passes requirements 2, 3 and 4 and takes a custom image: AWS, Azure and Google all sell Arm
+compute. What blocked requirement 1 was in this repository. Every aarch64 server cloud presents
+ACPI and no device tree, by Arm's Server Base Boot Requirements, and nife's aarch64 path read only a
+device tree. Behind that, the kernel is linked for `0x4008_0000`, the same limit milestone 127 (the
+seL4 machine)'s argon port has to lift. A `.metal` instance is not required: an ordinary virtualized
+Graviton meets all four requirements, so the price is $0.073 an hour, not $2.32.
+[`aarch64.md`](rented-metal/aarch64.md) has the two errors, the case from fatal risk 9, the offers
+table, and the Oracle Ampere A1 experiment.
 
 ### aarch64 recommendation
 
-**The offers qualify; nife does not.** That is the corrected verdict, and it is a different sentence
+The offers qualify; nife does not. That is the corrected verdict, and it is a different sentence
 from the first draft's, because it points at work in this repository rather than at a gap in the
 market.
 
 - The machine to buy, when nife can use it, is an ordinary virtualized Graviton instance, not a
   `.metal` one: `c7g.large` at $0.073 an hour for a two-core soak, `c7g.4xlarge` at $0.58 for
   sixteen cores. A ten-hour bench evening is $0.73 or $5.80.
-- **The experiment to run first costs nothing**: Oracle Always Free Ampere A1, two OCPUs, with
+- The experiment to run first costs nothing: Oracle Always Free Ampere A1, two OCPUs, with
   `BOOTAA64.EFI` on an EFI system partition, to observe what the firmware offers.
-- **The work that unblocks the column is a milestone, not a purchase.** Proposed, provisionally, and
-  for calef to number: *an ACPI discovery path for aarch64, so a machine that describes itself with
-  ACPI rather than a device tree can boot nife.* Its shape is already visible on the x86_64 side of
+- The work that unblocks the column is a milestone, not a purchase. It was proposed here and
+  promoted on 2026-09-23 as milestone 578 (an ACPI discovery path for aarch64, because every server
+  machine has one). Its shape is already visible on the x86_64 side of
   the same loader, which takes the RSDP from the UEFI configuration table, and the aarch64 half would
   need the MADT for the interrupt controller and the GTDT for the timer. The linked-address limit
   above is the second half, shared with milestone 127 (the seL4 machine).
-- **And a second aarch64 provider is not worth buying yet**, because none of them can be tested until
+- And a second aarch64 provider is not worth buying yet, because none of them can be tested until
   that milestone lands. The diversity argument below is live for x86_64 today and deferred here.
 
 ---
 
 ## riscv64
 
-One offer, and it is the one §203 already found.
-
-| Provider | Offer | Cores | RAM | Per hour | Per month | Free or trial | 1 boot | 2 console | 3 power API | 4 cores | Source, read 2026-09-23 |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| Scaleway | Elastic Metal EM-RV1 (T-Head TH1520, C910, RV64GC, 1.85 GHz) | 4C/4T | 16 GB | €0.042 | €15.99 | none | yes | yes | yes | yes | [RV1](https://www.scaleway.com/en/elastic-metal-rv1/), [Labs](https://labs.scaleway.com/en/em-rv1/) |
-| RISE | RISC-V GitHub Actions runners | 1 job per node | - | free | free | free, no allowlist | **no** | no | no | - | [announcement](https://riseproject.dev/2026/03/24/announcing-the-rise-risc-v-runners-free-native-risc-v-ci-on-github/) |
-| AWS, Azure, Hetzner, OVH | - | - | - | - | - | - | **nothing offered** | - | - | - | [survey](https://en.wikipedia.org/wiki/RISC-V_ecosystem) |
-
-§203's figures are confirmed. The RV1 page gives the SoC, four cores at 1.85 GHz, 16 GB LPDDR4,
-128 GB eMMC, 100 Mbit/s networking, and €0.042 an hour or €15.99 a month excluding VAT, for
-`EM-RV1-C4M16S128-A`. The Labs page confirms the Labs status and is blunter than §203 was: *"EM-RV1s
-are considered as 'Labs' services, with a service level agreement (SLA) contractually defined in our
-special conditions for BETA services"*, and the SLA is 0%. Custom operating systems are supported
-on the record: *"Access to the server's serial console is available for installing the most exotic
-operating systems."*
-
-**The free RISC-V offer is real and does not qualify.** RISE runs free native RISC-V GitHub Actions
-runners for any open source project on GitHub, with no approval process and no allowlist, on
-Scaleway EM-RV1 hardware, one job per node. It is genuinely excellent and it is a Kubernetes pod on
-a shared RISC-V node, so it cannot boot a kernel. It fails requirement 1 and with it 2 and 3. It is
-worth knowing about for a different reason: if nife ever needs a RISC-V *build* or *cross-check* leg
-in CI, this is free hardware for it, and that is a separate proposal from this file's subject.
+One offer, and it is the one §203 already found: Scaleway Elastic Metal EM-RV1, a T-Head TH1520
+with four cores and 16 GB. It costs €0.042 an hour or €15.99 a month, as a Labs service with a 0%
+SLA and a serial console. RISE's free RISC-V GitHub Actions runners are real and cannot boot a kernel. No
+other provider offers RISC-V. [`riscv64.md`](rented-metal/riscv64.md) has the table and sources.
 
 ### riscv64 recommendation
 
@@ -292,134 +140,46 @@ column, at any price. Buy it on its own merits and understand what it is not, be
 
 ## What riscv64 cannot buy
 
-**Rental does not substitute for radon, and §203 already said so.** The TH1520 is a different SoC
-from radon's JH7110, so booting nife on an RV1 is a port, with its own UART address, its own device
-tree, and whatever its firmware hands over. That makes it a second RISC-V implementation, which
-is a good thing to have and a different thing from a spare radon.
-
-The RV1's boot path is documented and is the concrete form of that port. Scaleway's own account:
-the early stages are *"the full boot process (which cannot be modified by the customer)"*, a first
-stage U-Boot SPL fixed in eMMC *"which ensures a stable and immutable boot"*, then U-Boot Proper,
-and only then the customer-controlled final stage, *"again U-Boot Proper, but configured
-differently, which loads OpenSBI and the Linux kernel."* So nife arrives on this machine as
-something U-Boot loads with OpenSBI underneath it, which is the same shape radon uses and a
-different set of addresses and tables.
-
-Three milestones name radon's JH7110 specifically and cannot be settled by rental at any price:
-milestone 163 (the JH7110's PCIe root complex), milestone 239 (radon's device tree does not describe
-the TRNG), and milestone 493 (a disk-file job mix needs a disk radon can drive). An RV1 has no PCIe
-root complex to drive, a different device tree, and 128 GB of eMMC rather than radon's storage. It
-also has no remote power cycle of radon, which is milestone 224 (nothing can power-cycle radon)'s
-subject, and rented metal does nothing for that either.
-
-And the RV1 will not settle milestone 225 (run the soak on radon, argon and xenon)'s RISC-V leg
-as written, because that milestone names radon. It would settle a *different* and arguably more
-interesting question: whether the soak behaves the same on a second RISC-V implementation. That is
-worth proposing as its own milestone rather than quietly redefining 225's.
+Rental does not substitute for radon. The TH1520 is a different SoC from radon's JH7110, so
+booting nife on an RV1 is a port behind Scaleway's fixed U-Boot and OpenSBI stages. Milestones 163,
+239 and 493 name the JH7110 and cannot be settled by rental, nor can milestone 224 (nothing can
+power-cycle radon). An RV1 soak would answer whether the soak behaves the same on a second RISC-V
+implementation, which is worth its own milestone rather than redefining milestone 225 (run the soak
+on radon, argon and xenon). [`riscv64.md`](rented-metal/riscv64.md) has the boot path and each
+milestone.
 
 ---
 
 ## What a second provider is a test of
 
 calef, 2026-09-23: *"a nife that runs on one cloud platform but not another is also its own form of
-risk."* This section states that as an experiment, because framing it as redundancy would waste it.
+risk."* This is an experiment, not redundancy. Two x86_64 providers are the same silicon with
+different firmware, boot delivery and tables at entry, a gap fatal risk 9 (the HAL is a fiction,
+and an architecture costs a restructure rather than a port) does not cover. The hypothesis: nife
+boots unchanged on both, and only image and console delivery differ. A failure would name an
+assumption nife makes about what a machine hands it at entry. Finding no difference is also a
+result, and it would weaken the case for the second account.
 
-The gap it sits in. Fatal risk 9 (the HAL is a fiction, and an architecture costs a restructure
-rather than a port) rests on a claim about *"actual functioning on the three silicons"*. That is
-about architectures. Two x86_64 providers are the same silicon with different firmware,
-different boot delivery, and different tables at entry. A nife that boots on xenon and not on some
-provider's metal falls through that gap entirely, and the HAL being a fiction would surface first
-in that form, long before it surfaced as an architecture costing a restructure. Whether that widens
-risk 9 or becomes its own entry is an architect's call; this file does not touch
-`design/fatal-risks/README.md`.
-
-The hypothesis, stated before the numbers exist, in the shape this tree already uses: nife boots
-unchanged on two providers' x86_64 metal, and the only differences are in how the image and the
-console are delivered. A failure is the valuable outcome: it would name a concrete assumption
-nife makes about what a machine hands it at entry, and that assumption is currently invisible because
-every x86_64 boot this project has ever done was on QEMU or on xenon.
-
-Finding no difference is also a result, and it would weaken the case for the second account. This
-file does not get to assume diversity.
-
-### The fifth column, side by side, for x86_64
-
-| | Scaleway Elastic Metal | OVHcloud Rise | Hetzner dedicated |
-|---|---|---|---|
-| How a custom kernel is delivered | rescue mode plus the serial console; documented as supporting *"the most exotic operating systems"* on the RV1, with `Reinstall a server`, `Configure custom disk partitioning` and `Use rescue mode` as the Elastic Metal how-tos | IPMI virtual media and netboot, with the OS installed through a KVM session | `installimage` from the rescue system, which wants a distribution tarball, **or** an ISO mounted over SMB through a KVM console **obtained by a support request** |
-| Console channel | serial console, over SSH, activated per account | IPMI: HTML KVM, Java KVM, **serial over LAN in the browser and serial over LAN over SSH** | KVM console on request; no standing serial channel documented |
-| Power channel | API `Start`, `Stop`, `Reboot` server actions | control panel and IPMI; API coverage not confirmed here | *"24h reset service via web interface"* |
-| What the machine presents at entry | x86 firmware, provider-installed; not documented further | x86 firmware, vendor BMC present | x86 firmware, no BMC exposed by default |
-
-**These are not the same interface, and that is the finding.** Scaleway hands you a serial line over
-SSH and three REST verbs. OVH hands you a BMC, which is a different object with its own virtual
-media and its own serial-over-LAN, and a genuinely different way of getting an image onto the disk.
-Hetzner puts a human in the loop for the console. An automation built only against Scaleway would
-express "provision a machine" as three REST calls and a serial SSH session, and would not even have
-a verb for "mount this ISO through the BMC".
-
-Where it is weaker than it sounds: the *firmware* row is the one that matters most for risk 9 and
-it is the one this file could not fill in. None of the three publishes what their machines hand a
-kernel at entry, which is exactly the kind of thing that gets discovered by printing it and getting
-zero. So the anti-lock-in argument about **our tooling** is solidly evidenced by the table above; the
-argument about **nife's own boot assumptions** is a hypothesis that buying the second machine tests,
-and it is not evidence yet.
-
-### What multi-vendor costs
-
-Naming it, because pretending it is free would be the dishonest half.
-
-- Three accounts, three billing relationships. Three invoices, three renewal dates, three places a
-  forgotten machine accrues charges.
-- Three provisioning APIs and three auth models. Scaleway's CLI and secret key, OVH's application
-  key and consumer key, AWS's IAM. Any script that automates "get me a machine" has to speak all
-  three or be written once per vendor.
-- Three sets of credentials to hold and rotate, for one person, which is the kind of thing that
-  quietly stops happening.
-- Three console mechanisms and three ways to get an image onto a disk, which is the same fact as
-  the benefit above read from the cost side. A second vendor is not a drop-in.
-
-The honest balance. Two providers for x86_64 is worth it because the interfaces genuinely differ
-and the difference is the experiment. A third x86_64 provider is not, and a second provider for
-aarch64 or riscv64 is not purchasable today because there is barely a first.
+The interfaces do differ. Scaleway hands you a serial line over SSH and three REST verbs, OVH a BMC
+with virtual media and serial over LAN, and Hetzner puts a human in the loop for the console. The
+firmware row could not be filled in from public pages. So the argument about our tooling is
+evidenced and the argument about nife's own boot assumptions is a hypothesis. The cost is three
+accounts, three provisioning APIs, three sets of credentials and three console mechanisms. Two
+x86_64 providers are worth it; a third is not, and aarch64 and riscv64 barely have a first.
+[`a-second-provider.md`](rented-metal/a-second-provider.md) has the side-by-side table and the
+costs in full.
 
 ---
 
 ## What it would cost to settle milestone 225's x86_64 and aarch64 legs
 
-Milestone 225 (run the soak on radon, argon and xenon)'s gate is `HARDWARE` in milestone 53 (the
-board's own peripherals)'s sense: the boards are on the desk and it needs hands on them. That is a
-person gate, and renting a machine with a power API and a console is what removes the person. The
-milestone prescribes no duration, so this prices an eight-hour soak plus two hours of setup and
-reading the first heartbeat, ten hours, which is a bench evening.
-
-| Leg | Machine | Rate | 10 hours | Note |
-|---|---|---|---|---|
-| x86_64 | Scaleway EM-A116X-SSD, 4 cores | €0.077/hr | **€0.77** | qualifies today; four cores is enough for a crossing soak |
-| x86_64, second provider | OVHcloud Rise RISE-1 | $64/mo, no hourly | **$64** | monthly only, so one month is the minimum unit |
-| aarch64 | AWS `c7g.large`, 2 vCPU | $0.073/hr | **$0.73** | blocked on nife's ACPI gap, not on the offer or the price |
-| aarch64, 16 cores | AWS `c7g.4xlarge`, 16 vCPU | $0.58/hr | **$5.80** | same blocker; priced because a soak wants more than two cores |
-| aarch64, boot experiment | Oracle Always Free Ampere A1, 2 OCPU | free | **€0** | not a soak: the observation that would confirm the ACPI gap |
-
-So milestone 225's x86_64 leg costs under one euro of machine time and its aarch64 leg costs
-under six, once the right instance is priced rather than the largest one in the family. On both
-legs the money is not the constraint, and on aarch64 it never was. That is the finding: this
-milestone was gated as `HARDWARE` and what actually stands between here and an aarch64 answer is an
-ACPI discovery path in `uefi_loader`, not a machine and not a budget.
-
-This paragraph replaces a wrong one. The first draft priced this leg at $23.20 on
-`c7g.metal` and said the real cost was *"a UEFI-bootable image that does not exist yet"*. The image
-exists (`BOOTAA64.EFI`), bare metal is not required, and the actual obstacle is a different one that
-was already documented in this repository.
-
-**One caveat that matters more than the prices.** A rented x86_64 machine is not xenon. §203 records
-that xenon is a Core i5-7500T and that the tree holds per-machine measurements keyed to it, including
-the fastpath footprint against its 32 KB L1i, so a rented machine of another microarchitecture is
-not like-for-like for those records. The soak does not need like-for-like, so this substitution is
-sound for milestone 225 and unsound for anything comparing against xenon's numbers. Likewise the
-aarch64 leg: argon is a Jetson TX1 chosen by milestone 127 (the seL4 machine) precisely so identical
-silicon referees the seL4 comparison, and no rented Graviton substitutes for that. A rented
-aarch64 soak answers a question about aarch64 multicore; it does not answer argon's.
+Milestone 225 (run the soak on radon, argon and xenon) is gated on hands at the boards; a rented
+machine with a power API and a console removes the person. Ten hours, an eight-hour soak plus
+setup, costs €0.77 on Scaleway's x86_64 metal and $0.73 on AWS `c7g.large` (or $5.80 for sixteen
+cores). The money is not the constraint on either leg, and on aarch64 it never was. A rented
+machine is not xenon or argon, so it is sound for the soak and unsound for anything compared
+against their per-machine numbers. [`settling-milestone-225.md`](rented-metal/settling-milestone-225.md)
+has the table, the corrected first-draft paragraph, and that caveat in full.
 
 ---
 
@@ -435,8 +195,8 @@ aarch64 soak answers a question about aarch64 multicore; it does not answer argo
 Which free and trial tiers genuinely qualify: none of them, and for two different reasons. RISE's
 RISC-V runners are free, real, and cannot boot a kernel, which is the offer's limit. Oracle's Always
 Free x86 micro shapes fail on cores, which is also the offer's limit. Oracle's Always Free Ampere
-A1 passes all four as an offer and fails on nife's side, which makes it the best free thing on this
-page: it costs nothing to run the observation that would confirm the ACPI gap. calef asked to lean
+A1 passes all four as an offer and fails on nife's side. That makes it the best free thing on this
+page: it costs nothing to run the observation that would show what still stands in the way. calef asked to lean
 hard on free and trial options; the
 honest report is that the cheap paid options are cheaper than they look and the free ones do not
 do this job. A soak on Scaleway metal costs less per evening than a cup of coffee.
@@ -457,7 +217,8 @@ do this job. A soak on Scaleway metal costs less per evening than a cup of coffe
 - **Azure and Google Arm prices were not read at all.** Both providers' Arm series are in the aarch64
   table on their specifications, with the price column blank, because neither pricing page was
   fetched. That is a gap rather than a finding, and it does not currently matter, because the column
-  is blocked on nife rather than on price. It would matter the day the ACPI path lands.
+  is blocked on nife rather than on price. It would matter the day nife boots one of them. (The loader's ACPI path landed on 2026-09-23; the
+  link-address limit has not moved.)
 - The ACPI-only claim about aarch64 clouds is sourced three ways and verified on none of them by
   observation. AWS's boot-mode page shows arm64 resolving to UEFI, Azure's Arm series is
   Generation 2, and Google's image-import requirements say the boot disk must support ACPI. Arm's
