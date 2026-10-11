@@ -166,7 +166,7 @@ reads rather than in a report:
 | `components/src/fs_file_caretaker.rs:77` `get` | "callers clamp `out` to the page" |
 | `components/src/fs_nameset_caretaker.rs:107` `get_at` | "every caller clamps `out` and `off` to the page" |
 | `fixtures/src/file_source.rs:108` `get` | "callers clamp `i` to the page" |
-| `components/src/swish.rs:616` `put_page` | "every caller is behind a `dir.is_some()` check" |
+| `components/src/swish/main.rs:430` `put_page` | "every caller is behind a `dir.is_some()` check" |
 | `components/src/line_editor.rs:217` `copy_in` | "offset+len is bounded by PAGE by every caller" |
 | `patches/std-nife/overlay/std/src/sys/fs/nife.rs:161` `put` | "callers clamp to it" |
 | `crates/user_mode_heap/src/lib.rs:100` `effective_size` | "the caller provides the locking" (a data-race obligation, not an addressing one) |

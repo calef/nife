@@ -217,7 +217,7 @@ The split follows the tree's usual one. The reading is `documentation::index::se
 single point at which the writer and the reader are proved to agree: `cargo xtask manual capability`
 on the host and `apropos capability` at the prompt call that same function, over the same bytes,
 through the same one-page-at-a-time `Pages`. The rendering is `swish::write_apropos`, host-tested
-with the rest of what the prompt says. What is left in `components/src/swish.rs` is four filesystem
+with the rest of what the prompt says. What is left in `components/src/swish/prompt.rs` is four filesystem
 requests and a 4 KiB page buffer.
 
 ### And the same index, pointed at the repository

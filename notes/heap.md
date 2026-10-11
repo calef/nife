@@ -271,7 +271,7 @@ calef ruled on 2026-09-26 (UTC) that `swish` gets an allocator, on three conditi
 Allocation is fallible. The boot shell is the owner's root console, so running out of heap is a
 refusal with a sentence (`swish::Say::HeapFull`), never a panic. `MemoryRegionHeap` already
 answers a failed grow with a null pointer, so nothing here needed changing. What needed a
-mechanism was the caller. `components/src/swish.rs` declares `extern crate alloc` inside `mod heap`
+mechanism was the caller. `components/src/swish/main.rs` declares `extern crate alloc` inside `mod heap`
 and nowhere else, and a `no_std` crate cannot name `alloc` without that declaration. So the rest
 of the shell cannot reach `Vec` at all. `mod heap` hands out `Room`, a slice once filled, built
 with `try_reserve_exact` and `push_within_capacity`, and it has no method that grows. `script/lint`

@@ -1,6 +1,6 @@
 # A shell at EL0
 
-The shell's name is `swish` (milestone 63 (directory and package names)): `components/src/swish.rs`, packed into the archive as
+The shell's name is `swish` (milestone 63 (directory and package names)): `components/src/swish/`, packed into the archive as
 `swish`, loaded by that name. This note calls it "the shell" throughout because that is what it is;
 where a path or an archive entry is meant, the spelling is `swish`. The argument for the name is in
 milestone 63's roadmap block, and the short version is that `bash`, `zsh` and `fish` are names while
@@ -112,7 +112,7 @@ typed command, running at EL0, reporting back, and exiting.
 
 ## The program and the crate (milestone 70)
 
-`swish` is now two things with one name: the program at `components/src/swish.rs` and the crate at
+`swish` is now two things with one name: the program at `components/src/swish/` and the crate at
 `crates/swish`. The crate holds what the shell decides or renders; the program holds everything
 that needs a capability. That is the same pair `coremark`, `line_editor` and `compositor` already
 are, and the reason for the shared name is in CLAUDE.md: splitting them would hide the relationship.
@@ -153,3 +153,15 @@ crates, IO in programs" that metric will read zero for every program by construc
 was narrower and worth closing anyway: the error paths QEMU cannot easily provoke. `caps` refusing a
 pipeline whose first stage has no bytes to pipe, a pattern the shell holds no directory to expand, a
 spawn that failed under a program whose report would otherwise print a number.
+
+## BUGS
+
+**Sixteen Rust files outside the program still name `components/src/swish.rs`** in comments, since
+milestone 844 (the shell program is split along its seams) moved it to `components/src/swish/` on
+2026-10-11 (UTC) and its block forbade touching Rust outside that directory. They are
+`components/src/timetable.rs`, `crates/address_space_map/src/lib.rs`, `crates/boot_ladder/src/lib.rs`,
+`crates/filesystem_protocol/src/lib.rs`, `crates/grant_plan/src/{lib,nav,spawnproto}.rs`,
+`crates/swish/src/lib.rs`, seven files under `system_tests/src/user/` and
+`xtask/src/swish_check.rs`. `git grep -l 'components/src/swish\.rs' -- '*.rs'` lists them. Each
+names a thing that still exists under the new directory, so a reader who follows one finds the
+right program and the wrong file.

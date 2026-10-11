@@ -6,7 +6,7 @@ authority, and the demonstration that hangs on it.
 
 The code is `crates/grant_plan/src/expand.rs` (the expander and the name set, host-tested),
 `crates/filesystem_protocol`'s `nameset` module (the wire encoding), `components/src/fs_nameset_caretaker.rs` (the
-caretaker), `components/src/swish.rs` (`echo`, and the grant path), `components/src/rm.rs` (the namespace mode),
+caretaker), `components/src/swish/` (`echo`, and the grant path), `components/src/rm.rs` (the namespace mode),
 and `kernel/src/user/fs_service.rs`'s `start_granted_set`, and `system_tests/src/user/glob_grant_tests.rs`.
 
 Read [dir-capability.md](dir-capability.md) first for the rights ladder and `fs_subtree_caretaker`,
@@ -455,7 +455,7 @@ Known limitations, next to the feature rather than only in a tracker.
   2026-09-26: two entries here said the prompt holds no directory and `spawn` refuses every
   directory grant. Since milestone 31 (a capability shell) phase 3 (2026-08-17) the boot shell holds the file service
   and the progenitor builds a `fs_subtree_caretaker` for one name one level down. Two or more names
-  are refused in `dir_grant` (`components/src/swish.rs`), because `spawnproto` cannot carry a set.
+  are refused in `dir_grant` (`components/src/swish/running.rs`), because `spawnproto` cannot carry a set.
   Only the kernel test wires a set caretaker. How a set should travel is PROPOSED in
   [a-set-grant-at-the-prompt.md](a-set-grant-at-the-prompt.md).
 - The set is not consulted below the granted directory, including for attributes. A handle
@@ -483,7 +483,7 @@ $ echo gl-*.rs
 Expand once and grant what was shown, from the shell's side:
 
 ```rust
-// components/src/swish.rs: one expander, two callers
+// components/src/swish/: one expander, two callers
 let shown = nav.expand(b"gl-*.txt")?;              // what `echo` prints
 let e = grant_plan::plan(&spec, holdings(&nav), Expansion::at(0, shown))?;
 assert_eq!(e.dir.unwrap().names, shown);           // and what `rm` would hold

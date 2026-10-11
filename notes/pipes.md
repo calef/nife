@@ -1,7 +1,7 @@
 # Pipes and redirection: `>`, `<` and `|` are one substitution
 
 *Milestone 50, the operators lane and its closure. `crates/grant_plan/src/line.rs`,
-`components/src/wc.rs`, `components/src/swish.rs`, `components/src/date.rs`, `components/src/terminal_sink_caretaker.rs`,
+`components/src/wc.rs`, `components/src/swish/`, `components/src/date.rs`, `components/src/terminal_sink_caretaker.rs`,
 `components/src/progenitor.rs`, `fixtures/src/hello.rs`, `crates/grant_plan/src/spawnproto.rs`,
 `script/swish-check`. The protocol half is notes/sink-protocol.md and you should read that first.*
 
