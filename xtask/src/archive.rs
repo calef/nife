@@ -235,7 +235,7 @@ fn bin_names(manifest: &str) -> Result<Vec<String>, String> {
 /// **Archive entries packed from outside `components/` and `fixtures/`**, each present only when its
 /// own build ran (see the `initrd_*` functions). Hoisted out of the one test that used to hold it
 /// (milestone 595 (provisional)), because [`check_declared_programs`] now needs the same list.
-const BUILT_ELSEWHERE: [&str; 11] = [
+const BUILT_ELSEWHERE: [&str; 12] = [
     "redoxfs_server",
     "mkfs",
     "std_exerciser",
