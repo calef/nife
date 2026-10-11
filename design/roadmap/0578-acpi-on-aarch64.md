@@ -1,5 +1,5 @@
 ---
-status: NOT-STARTED
+status: PARTIAL
 raised: 2026-09-23
 milestone_dependencies: none
 decision_dependencies: none
@@ -14,6 +14,13 @@ The number is provisional: the integrator mints it at merge. Promoted
 *an ACPI discovery path for aarch64, so a machine that describes itself with ACPI rather than a
 device tree can boot nife.* The file name and every name this block invents are provisional too.
 
+**Status, corrected 2026-10-11 (UTC) by the maintainer: PARTIAL, not NOT-STARTED.** PR #1153
+(merged 2026-09-24 UTC) built items 1 to 4 below, except the MSI frame and ITS arms. It answered
+item 5 with option 1: `uefi_loader::device_tree_from_acpi` writes the tree, so item 6 is not
+needed. `NIFE_ACPI=on helpers/qemu-stick.sh aarch64 target/stick` reaches the shell
+([the measurement](../../notes/boot-stick/device-tree-handover.md#edk2-on-aarch64-hid-the-device-tree-when-it-presented-acpi)).
+The rest of this block is the plan as written on 2026-09-23. What is left is under Follow-on.
+
 A lane can start today, on this laptop, with no account and no board. The failure reproduces
 under QEMU by changing one flag, and the first two items below are host-tested table parsing. One
 item reaches an architect's fork, named where it sits rather than gating the whole thing.
@@ -26,12 +33,10 @@ Always Free Ampere A1 at nothing at all, Azure Cobalt, Google Axion. They take a
 have a serial console, they have a power API, they have cores. What they hand a kernel is ACPI, and
 nife on aarch64 reads a device tree.
 
-That is not a market gap. It is one sentence this tree already had before anyone went looking,
-in `uefi_loader/src/arch/aarch64/mod.rs`'s own `BUGS` section:
-
-> **The device tree must be offered by the firmware.** EDK2 on QEMU `virt` offers it only with
-> `acpi=off`; an aarch64 machine that describes itself only with ACPI (most servers) cannot boot
-> this kernel at all, which is a kernel limit rather than a loader one.
+That is not a market gap. It was one sentence this tree already had before anyone went looking,
+in the `BUGS` section of `uefi_loader/src/arch/aarch64/mod.rs`: the device tree must be offered by
+the firmware. PR #1153 replaced that entry with "An ACPI machine is described second-hand", in the
+same section.
 
 **Every aarch64 server cloud is such a machine by specification.** Arm's Server Base Boot
 Requirements make UEFI and ACPI the boot contract for Arm servers, and the clouds comply: AWS
@@ -48,11 +53,9 @@ source, which both named and neither built.
 
 ## The test bench, which costs nothing and already exists as a workaround
 
-`helpers/qemu-stick.sh` boots the stick's `BOOTAA64.EFI` under EDK2, and line 72 carries the
-workaround with its reason attached:
-
-> `acpi=off`, because EDK2 withholds the device tree when it presents ACPI, and nife on aarch64
-> reads a device tree (measured 2026-09-19; notes/boot-stick.md).
+`helpers/qemu-stick.sh` boots the stick's `BOOTAA64.EFI` under EDK2. Its aarch64 case passed
+`acpi=off` as the workaround, and now takes `NIFE_ACPI=on` for the other description; the comment
+beside that `-machine` argument gives the reason.
 
 So the failure is an A/B on this laptop, one flag apart. Measured 2026-09-23 by this lane, with
 `BOOTAA64.EFI` built from this branch's tip:
@@ -241,9 +244,6 @@ Each ships independently and none needs hardware. The QEMU A/B above tests all o
 
 ## BUGS
 
-- **This block establishes a gap; it does not size the work.** Nothing here was built and no estimate
-  is offered, because the handover fork in item 5 changes what items 1 through 4 are worth and
-  nobody has decided it.
 - **The ACPI table contents in section "What aarch64 additionally needs" are stated from the
   specification and were not read out of a running machine.** The entry type numbers, the GTDT's
   fields and the FADT's flag bits should be checked against a table dumped from QEMU with `acpi=on`
@@ -258,16 +258,27 @@ Each ships independently and none needs hardware. The QEMU A/B above tests all o
   prove that a cloud machine's firmware behaves the same way**, and the only thing that would is
   booting one. That is item 7 and it is the reason item 7 survives the list.
 
+## Follow-on
+
+- **Outstanding.** Item 5's handover fork was answered by the implementing lane, not by calef, and
+  no `design/decisions/` section records it. PR #1153's body gives the reason: option 1 moves
+  nothing the loader and kernel agree on. Checked 2026-10-11 (UTC): `device_tree_from_acpi`
+  appears nowhere under `design/decisions/`.
+- **Outstanding.** MADT types 0x0D (GIC MSI frame) and 0x0F (GIC ITS) still fall to
+  `MadtEntry::Other`. Checked 2026-10-11 (UTC) in `machine_discovery::acpi`, where `MadtEntries`
+  decodes each entry. The ITS node also waits on milestone 317 (the interrupt-remapping flags, and
+  where MSI confinement actually lives), as `device_tree_from_acpi`'s BUGS says.
+- **Outstanding.** No gate boots `acpi=on`; the proof is a transcript run by hand. Checked
+  2026-10-11 (UTC): `NIFE_ACPI` appears only in `helpers/qemu-stick.sh`.
+- **Outstanding.** Item 7, the Oracle Always Free boot, which needs calef's account.
+- **Milestone 127.** The `0x4008_0000` link address, as the section on it says.
+
 ## Index row
 
-Every aarch64 cloud offer qualifies on price, console, power and cores, and nife boots none of them,
-because an SBBR server describes itself with ACPI and nife's aarch64 path reads a device tree. The
-loader's own `BUGS` section said so before anyone went looking. `crates/machine_discovery/src/acpi.rs`
-already parses the RSDP, the SDT headers, the root table, the MADT's entry walk and MCFG, all of it
-architecture-neutral; what is missing is aarch64's own contents: MADT types 0x0B to 0x0F for the GIC
-and the CPU list, a GTDT for the timer interrupts, the FADT's Arm boot flags for PSCI, SPCR for the
-console, and a memory map, which ACPI does not carry at all and which is why the handover is a fork
-for calef rather than a parser. The failure reproduces on a laptop one flag apart,
-`helpers/qemu-stick.sh aarch64 target/stick -machine acpi=on`, so no hardware and no account are
-needed to do this work or to know when it is done. The `0x4008_0000` link address is the second
-blocker and belongs to milestone 127 (the seL4 machine); the same work now has two customers.
+Every aarch64 cloud offer qualifies on price, console, power and cores, and is an SBBR server that
+describes itself with ACPI, while nife's aarch64 kernel reads a device tree. PR #1153 (2026-09-24
+UTC) made the loader write that tree from the MADT's GIC entries, the GTDT, the FADT's Arm boot
+flags and the SPCR. So `NIFE_ACPI=on helpers/qemu-stick.sh aarch64 target/stick` reaches the shell
+on a laptop. Left: a recorded ruling on that handover, the MSI frame and ITS entries, a gate that
+boots `acpi=on`, and the Oracle Always Free boot. The `0x4008_0000` link address belongs to
+milestone 127 (the seL4 machine).

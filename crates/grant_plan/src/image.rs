@@ -152,3 +152,6 @@ pub fn image_request_fits(m: &Manifest, arg: u64, mem_pages: u64, words: bool) -
     };
     arg_ok && mem_ok
 }
+
+#[cfg(test)]
+mod tests;
