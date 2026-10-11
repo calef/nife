@@ -123,8 +123,7 @@ here as unattributed rather than as a model
 ([the correction](coes/2026-10-03-the-merge-rate.md)). `script/effort` has the same gap and its
 charts show that week's z.ai work as nothing at all.
 
-The palette has eight hues, so "other models" is Opus 4.8, Fable 5.1 and any trailer the script
-does not recognize, drawn as one band; `notes/project-metrics/models.csv` keeps each apart.
+Each model has its own band; "other models" is a trailer the script does not recognize.
 
 ## Lines touched, by the model that signed them
 
