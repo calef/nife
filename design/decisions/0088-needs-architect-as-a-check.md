@@ -1,5 +1,5 @@
 ---
-status: DECIDED
+status: AMENDED
 raised: 2026-08-16
 decided: 2026-08-25
 ratified_by: calef
@@ -72,3 +72,22 @@ moment this was ratified, so it needs its own careful, deliberate rollout rather
 side effect of a documentation change. Whoever builds it should write the check's own failure message
 first, per "the argument against" above: one sentence saying what `needs-architect` means and how to
 clear it, not a bare failure a newcomer has to go look up.
+
+## Amendment, 2026-10-11: a bookkeeping edit to a decision does not need an architect
+
+The label's reach was built after this was ratified. `.github/workflows/architect-label.yml` reads
+each pull request's diff, and its rule 5 fired on any edit to a decision file's body. That included
+#1953, which changed only two link targets in §147 (a timer a userspace service cannot hold) after
+the note they pointed at was split. calef approved it by hand, then ruled on 2026-10-11 (UTC):
+*"I need to review and approve decisions, but I don't think I need to approve minor bookkeeping
+edits like this one. Can we update our standards accordingly?"*
+
+So the standard is now this. An edit to a decision needs an architect unless it is bookkeeping: the
+decision reads the same once link targets, repository paths in backticks, line wrapping and
+whitespace are set aside. Retargeting a link, moving a cited path to where the file now lives, and
+reflowing a paragraph are bookkeeping. Changing a word, a number, a quotation, a heading, a list
+item or a table cell is not, and neither is adding or removing a link. A renamed identifier is a
+word, so a rename sweep still asks. `CLAUDE.md` still asks on any edit.
+
+`helpers/architect-label-rules.py` holds the exact terms in `rule_decisions`, with fixtures and a
+measurement over 75 merges: 23 of 387 file firings go quiet, and none of them changed a word.

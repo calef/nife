@@ -54,8 +54,12 @@ against literal fixture strings, no repository and no subprocess required, cheap
    rule 1.
 5. **decisions**: `CLAUDE.md` changed at all, or a `design/decisions/*.md` file (excluding the
    generated `README.md`) changed OUTSIDE its YAML frontmatter block (the first `---`-delimited
-   section). A frontmatter-only edit (a status flip, a date) is provenance, not the decision's
-   substance, and does not fire; see the frontmatter shape in any decision file's first lines.
+   section) by more than bookkeeping. A frontmatter-only edit (a status flip, a date) is
+   provenance, not the decision's substance, and does not fire. Nor, since calef's ruling of
+   2026-10-11 (UTC), does a bookkeeping edit: the body reads the same once link targets, backticked
+   repository paths, wrapping and whitespace are normalized away (`rule_decisions` has the exact
+   terms). A changed word, number, quotation, heading, list item or table cell fires, and so does
+   a link added or removed rather than retargeted.
 6. **syscall-error**: a changed code line in `kernel/src/syscall.rs` (or a future
    `kernel/src/syscall/`) that names an `Error::` variant: a method returns an error it did not, or
    stops returning one. Added by lane/architect-queue, 2026-10-06 (UTC), after #1745's forged-cursor
@@ -86,8 +90,59 @@ to the graph, or a decisions edit):
     spawnproto       3      3  #1377 #1419 #1421: IMAGE_MAX_PAGES, not in those PRs' diffs (not reproduced)
     decisions       23      0  by definition; about 7 are link or rename sweeps (#1369 #1371 #1374 #1427 #1510 #1527 #1289)
 
-Narrowed on this evidence: rules 1, 2, 3 and 4 (above). Not narrowed: decisions (a sweep is still
-an edit to a ratified record).
+Narrowed on this evidence: rules 1, 2, 3 and 4 (above). Decisions was left alone that day, on the
+reasoning that a sweep is still an edit to a ratified record. calef overruled that for bookkeeping
+on 2026-10-11 (UTC), after approving #1953 by hand: "I need to review and approve decisions, but I
+don't think I need to approve minor bookkeeping edits like this one." The next section measures
+the narrowing.
+
+# decisions' narrowing, measured 2026-10-11 UTC
+
+Rule 5 rerun, before and after, over every pull request merged from 2026-09-04 to 2026-10-11 that
+touched `design/decisions/` or `CLAUDE.md` (75), plus #1953, each diffed from its merge base to its
+head as the workflow does. The old rule fires on 73 of them (387 file firings), the new on 71 (364).
+The 23 files that went quiet are in 6 pull requests, and a word diff of each shows nothing changed
+but a path or a link target. The 2026-10-04 list, plus #1953:
+
+    pr     before  after  what the edit was
+    #1369  -       -      no decision file in its merged diff; stacked on #1427 when the bot
+                          fired, it carried #1427's files (below), so it was not a sweep
+    #1371  -       -      the same as #1369
+    #1374  fires   fires  §229 (how a bare name at the prompt reaches an installed program)
+                          amended with calef's ruling (true)
+    #1427  fires   fires  §227 (how Tab reaches the shell), §228 (how a set of matched names
+                          reaches the progenitor) and §229 new; §21 (the terminal is a userspace
+                          component) amended (true)
+    #1510  fires   fires  6 of 9 files quiet (links retargeted); 3 still fire on `crickertech/nife`
+                          renamed `nifeos/nife`, an identifier rename sweep (false)
+    #1527  fires   quiet  9 of 9 files quiet: proposal paths renumbered into the roadmap
+    #1289  fires   fires  §212 (a prose budget) and §213 (writing standards) each gained a
+                          rule on renames (true)
+    #1953  fires   quiet  two `notes/timer-capability.md` citations linked to the split note
+
+So the 2026-10-04 count of "about 7" sweeps was high: #1369 and #1371 were #1427's new sections,
+and #1374, #1427 and #1289 were rulings. The other partly quiet ones are #1174 (3 of 7 files),
+#1235 (1 of 3) and #958 (3 of 4). The firings that remain and are not substance, by class:
+
+    class                                         files  pull requests
+    identifier rename sweep                           6  #1510 (`crickertech` to `nifeos`), #1174
+                                                         (`SHELL_CHECK_*` to `SWISH_CHECK_*`)
+    emphasis sweep (bold removed)                    26  #1706
+    a line-number citation made a heading anchor       3  #1943 (2), #1940 (1)
+    a path not in backticks, or a bare file name       4  #1293
+
+The first is the class the ruling leaves firing on purpose: a renamed identifier is a word, and
+whether a rename touches a ruling's meaning is not decidable from text. The other three are outside
+the ruling's three terms and were not widened into; each is in BUGS. 291 files fired because words
+were added or removed, and those were not classified one by one. Among them are §-citation glosses
+(#1174's §173 (narrowing the root of the shell's namespace) gained a milestone title, #1235's
+§130 (how the kernel-resident CMOS RTC reaches the userspace clock service) a section title), which
+fire by design.
+
+Falsified the same day, each by hand against `--selftest`: `normalize_bookkeeping` returning its
+input fires the two quiet bookkeeping fixtures (#1953's, and the reflow); joining each line alone
+instead of each block fires the same two; dropping the base-against-head comparison fires those and
+the frontmatter flip; and `is_repo_path` accepting any path makes the `/dev/kmsg` fixture go quiet.
 
 # format-crate's second narrowing, measured 2026-10-08 UTC
 
@@ -111,6 +166,15 @@ crate's other `pub const` values are not read at all.
 
 # BUGS
 
+- **decisions still fires on a rename sweep, an emphasis sweep, a line citation turned anchor, and
+  an unbackticked path.** Measured 2026-10-11 (UTC) over 75 merges: 6, 26, 3 and 4 file firings
+  (the section above names them). The first is deliberate: calef's 2026-10-11 ruling covered link
+  targets, paths and wrapping, and a renamed identifier is a word. The other three are candidates
+  for a later narrowing, each needing its own ruling.
+- **decisions' repository paths are a fixed list of top-level entries** (`REPO_TOP_LEVEL`). A
+  top-level directory added later and not listed makes its paths fire, the safe direction. A link
+  whose text is a lone backticked path reads as that path, so turning `` `notes/a.md` `` into a link
+  to `notes/a/b.md` is quiet (#1953); linking plain words still fires.
 - **Renames pair by one-line value text.** `pub const A: u64 = 1;` against `pub const B: u64 = 1;`
   pairs; a `const` whose initializer spans lines, or whose type differs, never does (it fires). A
   pair of unrelated constants that swap to each other's spelling at equal values would pass; that is
@@ -500,7 +564,97 @@ def rule_spawnproto(fd, out):
         out.append(('spawnproto', fd['path'], left[0].strip()))
 
 
-# ---- rule 5: CLAUDE.md and design/decisions/*.md (outside frontmatter) ---------------------------
+# ---- rule 5: CLAUDE.md and design/decisions/*.md (outside frontmatter, past bookkeeping) ---------
+#
+# calef, 2026-10-11 (UTC), after approving #1953 by hand (two link targets in §147 (a timer a
+# userspace service cannot hold) retargeted to a split note, no word of the ruling changed): "I
+# need to review and approve decisions, but I don't think I need to approve minor bookkeeping edits
+# like this one." So a decision file's body is compared base against head after normalizing away
+# exactly three things, and only a difference that survives fires:
+#
+#   (a) a markdown link's target: `[text](target)` and `[text](target#anchor)` keep their text and
+#       lose their target, so retargeting is quiet and adding or removing a link is not;
+#   (b) a backticked repository path: `` `notes/x.md` `` and `` `notes/y/z.md#h` `` read the same.
+#       A link whose whole text is such a path reads as the bare path too, which is #1953's shape
+#       (a backticked path became a link to its successor);
+#   (c) wrapping and whitespace: the body is compared as blocks (a paragraph, a heading, a list
+#       item, a table row, a quote or fence line), each block's lines joined and its runs of
+#       whitespace collapsed, so a reflow pairs off and a block boundary still counts.
+#
+# The comparison is over the whole file (the diff is one hunk holding it), not line by line. Any
+# other difference fires: a word, a number, a quotation, a heading, a list item, a table cell. A
+# CLAUDE.md edit fires as before; the ruling covered decision files only.
+#
+# A "repository path" is one whose first segment, past any `./` or `../`, is a top-level entry of
+# this tree. That keeps `/dev/kmsg`, `America/Los_Angeles` and a URL out: §-files cite all three,
+# and changing one is substance. A top-level entry added later and missing below makes its paths
+# fire, which is the safe direction (BUGS).
+
+REPO_TOP_LEVEL = frozenset((
+    '.agents', '.cargo', '.claude', '.githooks', '.github', 'AGENTS.md', 'ARCHITECTS.md',
+    'CLAUDE.md', 'CODE_OF_CONDUCT.md', 'CONTRIBUTING.md', 'Cargo.lock', 'Cargo.toml', 'README.md',
+    'SECURITY.md', 'art', 'bench', 'briefs', 'c_library', 'components', 'crates',
+    'cryptography_exerciser', 'cryptography_provider', 'design', 'entropy_backend', 'fixtures',
+    'fuzz', 'helpers', 'jig', 'kernel', 'notes', 'packages', 'patches', 'pinned_tls_client',
+    'pinned_tls_exerciser', 'redoxfs_server', 'script', 'std_exerciser', 'system_tests', 'targets',
+    'tools', 'uefi_loader', 'vendor', 'xtask'))
+
+PATH_TEXT_RE = re.compile(r'[\w.\-/]+(?:#[\w.\-]*)?')
+BACKTICK_SPAN_RE = re.compile(r'`([^`]+)`')
+# `[text](target "title")`, with one level of parentheses allowed inside the target.
+MD_LINK_RE = re.compile(r'(!?)\[([^\[\]]*)\]\((?:[^()\s]|\([^()\s]*\))*(?:\s+"[^"]*")?\)')
+BLOCK_START_RE = re.compile(r'\s*(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|\||>|```|~~~)')
+PATH_TOKEN = '\x00path\x00'
+TARGET_TOKEN = '\x00target\x00'
+
+
+def is_repo_path(text):
+    text = text.strip()
+    if not PATH_TEXT_RE.fullmatch(text):
+        return False
+    path = text.split('#', 1)[0]
+    while path.startswith('../') or path.startswith('./'):
+        path = path[path.index('/') + 1:]
+    return path.split('/', 1)[0] in REPO_TOP_LEVEL
+
+
+def normalize_bookkeeping(text):
+    """One block's joined text with (a), (b) and (c) above normalized away."""
+    text = BACKTICK_SPAN_RE.sub(
+        lambda m: PATH_TOKEN if is_repo_path(m.group(1)) else m.group(0), text)
+    text = MD_LINK_RE.sub(
+        lambda m: (PATH_TOKEN if m.group(2).strip() == PATH_TOKEN or is_repo_path(m.group(2))
+                   else f"{m.group(1)}[{m.group(2)}]({TARGET_TOKEN})"), text)
+    return ' '.join(text.split())
+
+
+def decision_body(lines):
+    """A decision file's lines past its frontmatter (the first `---`-delimited block)."""
+    body, dash_count, in_frontmatter = [], 0, False
+    for line in lines:
+        if line.strip() == '---':
+            dash_count += 1
+            in_frontmatter = (dash_count == 1)
+            continue
+        if not in_frontmatter:
+            body.append(line)
+    return body
+
+
+def bookkeeping_blocks(lines):
+    """Body lines -> normalized blocks: split at blank lines and at each block-starting line."""
+    blocks, cur = [], []
+    for line in lines:
+        if not line.strip() or (cur and BLOCK_START_RE.match(line)):
+            if cur:
+                blocks.append(cur)
+            cur = [line] if line.strip() else []
+            continue
+        cur.append(line)
+    if cur:
+        blocks.append(cur)
+    return [normalize_bookkeeping(' '.join(b)) for b in blocks]
+
 
 def rule_decisions(fd, out):
     path = fd['path']
@@ -512,6 +666,10 @@ def rule_decisions(fd, out):
         return
     if path == 'design/decisions/README.md':
         return  # the generated index; see the brief's exclusion
+    base_body = decision_body(base_lines(fd))
+    head_body = decision_body(head_lines(fd))
+    if bookkeeping_blocks(base_body) == bookkeeping_blocks(head_body):
+        return  # frontmatter only, or bookkeeping (calef, 2026-10-11 UTC)
     dash_count = 0
     in_frontmatter = False
     for prefix, line in fd['lines']:
@@ -524,6 +682,7 @@ def rule_decisions(fd, out):
         if prefix in ('+', '-') and line.strip():
             out.append(('decisions', path, line.strip()))
             return
+    out.append(('decisions', path, '(a blank line moved a block boundary)'))
 
 
 # ---- rule 6: syscall-error -----------------------------------------------------------------------
@@ -592,7 +751,8 @@ QUESTIONS = {
         f"Does this change a spawn-protocol value another program sends or reads (`{d}`)?"),
     'decisions': lambda p, d: (
         "Do you approve this edit to CLAUDE.md?" if p == 'CLAUDE.md'
-        else f"Do you approve this edit to {_section(p)}?"),
+        else f"Do you approve this edit to {_section(p)}? It changes more than link targets, "
+        "repository paths or wrapping, which no longer need you (your ruling, 2026-10-11 UTC)."),
     'syscall-error': lambda p, d: (
         f"Does this change which error a syscall method can return (`{d}`)?"),
 }
@@ -1069,6 +1229,126 @@ diff --git a/design/decisions/0088-needs-architect-as-a-check.md b/design/decisi
  ---
  **What.** unchanged text.
 """, None),
+
+    ("decisions: #1953's §147 edit, two link targets moved to a split note, stays quiet", """\
+diff --git a/design/decisions/0147-a-timer-a-userspace-service-cannot-hold.md b/design/decisions/0147-a-timer-a-userspace-service-cannot-hold.md
+--- a/design/decisions/0147-a-timer-a-userspace-service-cannot-hold.md
++++ b/design/decisions/0147-a-timer-a-userspace-service-cannot-hold.md
+@@ -1,14 +1,15 @@
+ ---
+ status: AMENDED
+ ---
+ ## Why the premise failed
+ 
+-The full working, with the specification citations, is `notes/timer-capability.md`, and the corrected
++The full working, with the specification citations, is
++[`notes/timer-capability/specifications.md`](../../notes/timer-capability/specifications.md), and the corrected
+ per-architecture table is in `design/roadmap/0263-can-a-timer-be-a-capability.md`. The short form:
+ 
+ which says *"There is no precedent
+ in this tree for a per-thread system-register bit maintained across a context switch."* Milestones 229
+ and 237 built one, so that sentence is stale inside its own decision. The correction is recorded in
+-`notes/timer-capability.md` and in 263's block; amending a decision section is not a lane's to do.
++[`notes/timer-capability/specifications.md`](../../notes/timer-capability/specifications.md#aarch64-the-blocks-negative-is-refuted) and in 263's block; amending a decision section is not a lane's to do.
+""", None),
+
+    ("decisions: a reflowed paragraph with one link retargeted stays quiet", """\
+diff --git a/design/decisions/0088-needs-architect-as-a-check.md b/design/decisions/0088-needs-architect-as-a-check.md
+--- a/design/decisions/0088-needs-architect-as-a-check.md
++++ b/design/decisions/0088-needs-architect-as-a-check.md
+@@ -1,8 +1,7 @@
+ ---
+ status: DECIDED
+ ---
+-The weakness is in [the merge queue's BUGS](../../notes/merge-queue.md#bugs), which
+-has said so since the script was
+-written, in the tree's own words.
++The weakness is in [the merge queue's BUGS](../../notes/merge-queue/bugs.md#the-label-is-by-hand),
++which has said so since the script was written, in the tree's own words.
+ 
+ - A list item that did not move.
+""", None),
+
+    ("decisions: a retargeted link whose text also lost a word fires", """\
+diff --git a/design/decisions/0088-needs-architect-as-a-check.md b/design/decisions/0088-needs-architect-as-a-check.md
+--- a/design/decisions/0088-needs-architect-as-a-check.md
++++ b/design/decisions/0088-needs-architect-as-a-check.md
+@@ -1,4 +1,4 @@
+ ---
+ status: DECIDED
+ ---
+-The weakness is in [the merge queue's BUGS](../../notes/merge-queue.md#bugs), as written.
++The weakness is in [the merge queue's](../../notes/merge-queue/bugs.md), as written.
+""", 'decisions'),
+
+    ("decisions: a retargeted link with one word of its sentence changed fires", """\
+diff --git a/design/decisions/0088-needs-architect-as-a-check.md b/design/decisions/0088-needs-architect-as-a-check.md
+--- a/design/decisions/0088-needs-architect-as-a-check.md
++++ b/design/decisions/0088-needs-architect-as-a-check.md
+@@ -1,4 +1,4 @@
+ ---
+ status: DECIDED
+ ---
+-The weakness is in [the merge queue's BUGS](../../notes/merge-queue.md#bugs), as written.
++The weakness is in [the merge queue's BUGS](../../notes/merge-queue/bugs.md), as amended.
+""", 'decisions'),
+
+    ("decisions: a link added around words already there fires", """\
+diff --git a/design/decisions/0088-needs-architect-as-a-check.md b/design/decisions/0088-needs-architect-as-a-check.md
+--- a/design/decisions/0088-needs-architect-as-a-check.md
++++ b/design/decisions/0088-needs-architect-as-a-check.md
+@@ -1,4 +1,4 @@
+ ---
+ status: DECIDED
+ ---
+-The weakness is in the merge queue's BUGS, as written.
++The weakness is in [the merge queue's BUGS](../../notes/merge-queue.md#bugs), as written.
+""", 'decisions'),
+
+    ("decisions: a link removed, its words kept, fires", """\
+diff --git a/design/decisions/0088-needs-architect-as-a-check.md b/design/decisions/0088-needs-architect-as-a-check.md
+--- a/design/decisions/0088-needs-architect-as-a-check.md
++++ b/design/decisions/0088-needs-architect-as-a-check.md
+@@ -1,4 +1,4 @@
+ ---
+ status: DECIDED
+ ---
+-The weakness is in [the merge queue's BUGS](../../notes/merge-queue.md#bugs), as written.
++The weakness is in the merge queue's BUGS, as written.
+""", 'decisions'),
+
+    ("decisions: a changed number fires, even beside a retargeted path", """\
+diff --git a/design/decisions/0088-needs-architect-as-a-check.md b/design/decisions/0088-needs-architect-as-a-check.md
+--- a/design/decisions/0088-needs-architect-as-a-check.md
++++ b/design/decisions/0088-needs-architect-as-a-check.md
+@@ -1,4 +1,4 @@
+ ---
+ status: DECIDED
+ ---
+-The hold expires after 30 minutes (`notes/merge-queue.md`).
++The hold expires after 60 minutes (`notes/merge-queue/bugs.md`).
+""", 'decisions'),
+
+    ("decisions: a backticked path outside the tree (`/dev/kmsg`) is substance and fires", """\
+diff --git a/design/decisions/0088-needs-architect-as-a-check.md b/design/decisions/0088-needs-architect-as-a-check.md
+--- a/design/decisions/0088-needs-architect-as-a-check.md
++++ b/design/decisions/0088-needs-architect-as-a-check.md
+@@ -1,4 +1,4 @@
+ ---
+ status: DECIDED
+ ---
+-The log is read from `/dev/kmsg`.
++The log is read from `/dev/kmesg`.
+""", 'decisions'),
+
+    ("decisions: a CLAUDE.md link retarget still fires (the ruling covered decisions only)", """\
+diff --git a/CLAUDE.md b/CLAUDE.md
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -1,1 +1,1 @@
+-See [the note](notes/a.md).
++See [the note](notes/a/b.md).
+""", 'decisions'),
 
     ("decisions: design/decisions/README.md is excluded even on a substantive edit", """\
 diff --git a/design/decisions/README.md b/design/decisions/README.md

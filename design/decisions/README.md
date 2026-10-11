@@ -204,7 +204,7 @@ place instead of moving text between two systems. Numbers 68 to 73 are the six t
 | 85 | DECIDED | [What we port is evidence and must not be ours; what we ship is product and must be](0085-evidence-and-product.md) |
 | 86 | DECIDED | [Whether an NVMe driver can leave the kernel, and what capability would let it](0086-el0-nvme-driver.md) |
 | 87 | DECIDED | [MIT OR Apache-2.0, and why the GPL's lesson does not transfer](0087-permissive-license.md) |
-| 88 | DECIDED | [`needs-architect` as a required check, rather than as a script's restraint](0088-needs-architect-as-a-check.md) |
+| 88 | AMENDED | [`needs-architect` as a required check, rather than as a script's restraint](0088-needs-architect-as-a-check.md) |
 | 89 | DECIDED | [`provisional` becomes the fourth provenance state](0089-provisional-versus-unrecorded.md) |
 | 90 | DECIDED | [The claim is a draft pull request; the status flip is a gate](0090-claiming-and-closing.md) |
 | 91 | DECIDED | [A region's endpoints are swept before its refusal, not after](0091-endpoints-before-the-refusal.md) |
