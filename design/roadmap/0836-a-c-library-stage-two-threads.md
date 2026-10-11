@@ -28,8 +28,10 @@ Reuse: relibc's `src/pthread/` and `src/sync/` (MIT), seeded as stage 1 seeded t
 
 relibc's `src/pthread/` and `src/sync/`, seeded as stage 1 seeded the headers, over two platform
 calls: thread creation (relibc's `rlct_clone`) and a wait-on-address pair (its `futex_wait` and
-`futex_wake`). If milestone 812 provides a wait-on-address primitive, `src/sync/` is kept nearly
-whole; if it does not, this stage rewrites it on what 812 does provide, and says so here.
+`futex_wake`). Milestone 812 provides that pair, so `src/sync/` is kept nearly whole: corrected
+2026-10-11 (UTC), since 812 (#1892) built `abi::address_space::WAIT` and `WAKE`, an address-keyed
+futex (`notes/futex.md`). It has no timeout yet, which a timed wait such as
+`pthread_cond_timedwait` will meet.
 `TPIDR_EL0`, `tp` and the x86_64 FS base become per-thread state, which is 812's to switch.
 
 ## Done when
