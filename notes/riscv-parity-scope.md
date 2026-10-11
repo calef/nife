@@ -58,9 +58,8 @@ wide as the suite that checks it, and "both ISAs run the same suite" was true of
 and not of the arch half. See notes/riscv-arch-tests.md, which also sizes the remaining
 `kernel::user::tests` port.
 
-Follow-on (§19 (architectural parity), 2026-07-31): `kernel::sched::tests` and
-`kernel::user::tests` run on
-both ISAs. The two SGI interrupt tests now trigger through three per-arch functions, with RISC-V
+Follow-on (§19 (architectural parity), 2026-07-31, and 2026-08-01 00:08 UTC for the
+`kernel::user::tests` half): `kernel::sched::tests` and `kernel::user::tests` run on both ISAs. The two SGI interrupt tests now trigger through three per-arch functions, with RISC-V
 raising its console UART's own transmit-empty line (notes/interrupts.md). `kernel::user::tests` was
 gated by its scaffolding, not its tests: a portable `arch::UserFault` record replaced the aarch64
 `ESR`/`FAR` statics, the hand-assembled programs became real ELFs, and `hello` turned out to have

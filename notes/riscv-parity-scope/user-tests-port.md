@@ -17,7 +17,7 @@ not twins in what the trigger costs, and notes/interrupts.md says which way each
 That leaves `kernel::sched::tests` fully portable, and the remaining aarch64-only tests are the ones
 that genuinely need aarch64 machine code or a GIC.
 
-Follow-on (§19 (architectural parity), 2026-07-31): `kernel::user::tests` runs on both ISAs. It was the last
+Follow-on (§19 (architectural parity), 2026-08-01 00:08 UTC, commit 3b6eb2254): `kernel::user::tests` runs on both ISAs. It was the last
 whole module gated to one architecture, and the reason turned out not to be the tests. The module
 comment said "every test drives a hand-written aarch64 program through `exec` and reads aarch64 fault
 registers", which was true and was the wrong thing to fix. The *scaffolding* was aarch64, and the
