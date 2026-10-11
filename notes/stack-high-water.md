@@ -43,8 +43,8 @@ means 53,808 bytes were used at the deepest moment and 11,696 bytes still hold
 
 ## The instrument
 
-The classic watermark, because the classic one is right: paint every kernel-owned stack with a
-64-bit pattern (`0x5AFE_57AC_5AFE_57AC`) before anything uses it, run the suite, then scan each
+The classic watermark, because the classic one is right. Paint every kernel-owned stack with a
+64-bit pattern (`0x5AFE_57AC_5AFE_57AC`) before anything uses it, and run the suite. Then scan each
 stack upward from the bottom for the first word that is no longer the pattern. Bytes between there
 and the top are the stack's high-water mark. The scan is an iterative loop with no locals of size,
 so it needs no meaningful depth itself.
@@ -52,7 +52,7 @@ so it needs no meaningful depth itself.
 Test builds only, deliberately. Painting 24 KiB on every thread spawn would perturb the spawn
 benchmark, and the report goes through the test output channel anyway. (The two primitives, `paint`
 and `high_water`, are compiled under the `ipc_stack_depth` feature since 2026-09-19, for the
-per-IPC section below; the whole-suite report stays test-only.) The code is in
+per-IPC section below and [stack-high-water/per-ipc-depth.md](stack-high-water/per-ipc-depth.md); the whole-suite report stays test-only.) The code is in
 `kernel/src/stack.rs` (paint, scan, report), with call sites in `kernel_main` (boot stack),
 `smp::bring_up_secondaries` (secondary stacks), and `thread::KernelStack` (thread stacks, painted
 at allocation, scanned in `Drop`); `sched::scan_live_thread_stacks` covers the stacks nothing ever
@@ -64,18 +64,18 @@ already existed for the canary.
 | Stack | Where declared | Size | Guarded? | Painted |
 |---|---|---|---|---|
 | Boot stack (boot core) | `link-aarch64.ld` / `link-riscv64.ld`, `__stack_bottom`..`__stack_top` | 64 KiB | guard page below | at `stack::init` time, canary to a margin below live `sp` |
-| Secondary stacks (per core) | `SECONDARY_STACKS` in `kernel/src/smp.rs`, `.secondary_stacks` | 64 KiB x MAX_CPUS | guard page below (milestone 90) | whole stack, before `CPU_ON` |
+| Secondary stacks (per core) | `SECONDARY_STACKS` in `kernel/src/smp.rs`, `.secondary_stacks` | 64 KiB x MAX_CPUS | guard page below (milestone 90 (a guard page under the per-CPU secondary stacks)) | whole stack, before `CPU_ON` |
 | Kernel thread stacks | `KernelStack` in `kernel/src/thread.rs` | 24 KiB (6 pages; 16 KiB until 2026-08-15) | guard page below | whole stack, at allocation |
 | Interrupt stacks (per core) | `kernel/src/interrupt_stack.rs`, `.interrupt_stacks` | 16 KiB x MAX_CPUS | guard page below | whole region, at `interrupt_stack::init` |
 
 The secondary row said `.bss` and no guard page when this note was written, and that asymmetry
-is what milestone 90 closed; the section below records how, and the numbers it did not change.
+is what milestone 90 closed; the section below summarizes how, and the numbers it did not change.
 
 The last row is new on 2026-08-16 and this paragraph used to say the opposite, so it is worth
 being exact about what changed rather than editing the claim away. Until milestone 124 there were no
-separate interrupt or exception stacks on either ISA, verified in the arch code rather than assumed:
+separate interrupt or exception stacks on either ISA, verified in the arch code rather than assumed.
 aarch64's `vectors.s` built its 272-byte frame on `SP_EL1`, which is whatever kernel stack was live
-(the hardware banks `SP_EL0` away, so a user program's `sp` never enters into it), and RISC-V's
+(the hardware banks `SP_EL0` away, so a user program's `sp` never enters into it). RISC-V's
 `trap.s` stayed on the interrupted `sp` for an S-mode trap. So trap depth landed on, and was measured
 as part of, whichever stack the trap interrupted, which is exactly how a preemption came to be billed
 to the thread it preempted (notes/stack.md).
@@ -92,63 +92,14 @@ lottery picked, so "the boot core's slot" is not always slot 0, and the skip fol
 
 ## The guard page under each secondary stack (milestone 90)
 
-The inventory above found an asymmetry rather than assuming symmetry, and the asymmetry was real: the
-boot stack and every kernel thread stack had an unmapped page beneath them, and the per-CPU secondary
-stacks did not. A secondary that ran deep did not fault. It wrote over whatever `.bss` sat below,
-which is the milestone 3 failure mode (notes/stack.md) on a core that is not the one running the
-tests.
-
-Why it could not be skipped where it stood. The stacks were a plain array in `.bss`, and
-`map_everything` maps `.data`..`__bss_end` in a single call. There was nowhere to put a hole. So
-the fix is a move, and the move is what the milestone is: the array now carries
-`#[unsafe(link_section = ".secondary_stacks")]`, and each linker script anchors a page-aligned
-`(NOLOAD)` region around whatever it emits. The mapper then walks the slots in a loop, mapping only
-each stack and never naming the guard, which is the same thing the boot stack's `__stack_guard` gets
-by being skipped between `.bss` and `__stack_bottom`.
-
-The layout, per core (`kernel/src/smp.rs`):
-
-```
-  slot n:  [ guard 4 KiB, unmapped ][ stack 64 KiB, kernel_data ]   stride 68 KiB (0x11000)
-```
-
-The region is `MAX_CPUS` slots, page-aligned at both ends, and it sits inside `__image_start`..
-`__image_end`, so `image_size` in the arm64 Image header still covers it (the bootloader will not
-drop a device tree on a stack) and the direct map still skips it (there is no second, mapped alias of
-a guard page). On aarch64 it lands at `__stack_top`, 0x4010c000..0x40194000; on riscv64 at
-0x80272000..0x802fa000 (eight slots since the 2026-08-14 `MAX_CPUS` bump; the ranges here were
-0x400fc000..0x40140000 and 0x80266000..0x802aa000 at four). `MAX_CPUS` stays in Rust and is not
-written again in either linker
-script, which is the drift `cseam` teaches to avoid; a test holds the emitted region against the
-reserved one from the other side.
-
-`(NOLOAD)` is load-bearing, and one line of the linker script explains half a megabyte. A
-zero-initialized Rust static in an explicitly named section becomes PROGBITS, and the flat binary
-that QEMU loads would then carry 544 KiB of zeroes. Marking the output section `(NOLOAD)` makes it
-`SHT_NOBITS` again: the ELF grew by nothing (`objcopy -O binary` still emits 421,888 bytes on
-aarch64). The cost of the whole feature is 16 KiB of address space and zero physical frames.
-Nothing zeroes the region either, which a stack does not need and the paint pass overwrites anyway.
-
-The proof is a page-table walk, not an overflow. `every_secondary_stack_sits_on_a_guard_page` (in
-`smp.rs`, portable, so it runs on both ISAs) asks the live tables, through the root read back out of
-`TTBR1_EL1` / `satp`, for each core's guard page and each side of it: the guard must not translate,
-the stack's bottom and top must. Deliberately not a deliberate overflow: a test that faults the
-kernel to pass is a test the suite cannot survive, and what would actually go wrong here is someone
-mapping the region as one range again, which the walk catches and an overflow test would too, but
-without killing the machine. `mmu::verify` checks the same thing per core before installing the map,
-where the boot stack's guard has always been checked, so a release build refuses to run on a map that
-lost the holes.
-
-What it does not cover. A secondary runs on the coarse boot map from `secondary_boot` until
-`mmu::init_secondary`, and on that map the guard page is inside a 2 MiB block and is mapped. That is
-a handful of instructions of Rust, and the boot stack's own guard has exactly the same window; it is
-noted here rather than fixed because closing it means fine-grained tables before the MMU is on.
-
-Sizing was not the finding, and it is not taken here. The secondaries run at 12% of 64 KiB. The
-move does make shrinking cheap in a way it was not before: the size is one constant in `smp.rs`,
-slot stride follows it, and nothing else in the image moves, so 16 KiB per secondary (4x the measured
-depth, matching the thread stacks) would return 192 KiB of address space and cost one edit. Recorded
-as an option; the guard, not the size, was the gap.
+The inventory found that the boot stack and every kernel thread stack had an unmapped page beneath
+them, and the per-CPU secondary stacks did not. A secondary that ran deep overwrote `.bss` instead of
+faulting. The stacks now live in their own page-aligned `(NOLOAD)` region, one 4 KiB guard and one
+64 KiB stack per slot, and the mapper skips each guard. It cost 16 KiB of address space and no
+physical frames. A page-table walk on both ISAs proves each guard does not translate, and
+`mmu::verify` refuses a map that lost the holes. On the coarse boot map, before
+`mmu::init_secondary`, the guard is still mapped. The layout, the proof and the re-measurement are
+in [stack-high-water/secondary-guard-page.md](stack-high-water/secondary-guard-page.md).
 
 ## Honest limits
 
@@ -190,17 +141,17 @@ Boot paint floor: 640 bytes (aarch64), 1024 bytes (riscv64); every measured boot
 its floor, so the floor is not what is being read.
 
 A second riscv64 run (the gate run for the assertion below) reproduced its column exactly, from a
-*different boot hart*: OpenSBI's lottery booted hart 3 rather than hart 0, the report skipped the
-boot hart's unused slot as designed, and the three secondary numbers were 8448 again.
+*different boot hart*. OpenSBI's lottery booted hart 3 rather than hart 0, and the report skipped
+the boot hart's unused slot as designed. The three secondary numbers were 8448 again.
 
-Three things the table says beyond the values. The numbers are exactly reproducible: the two
-aarch64 runs agree byte for byte on every stack, including all three secondaries, and they were taken
+Three things the table says beyond the values. The numbers are exactly reproducible. The two
+aarch64 runs agree byte for byte on every stack, including all three secondaries. They were taken
 under host load averages of 33 and 9 (a concurrent cargo-mutants lane was saturating all eight cores
 during the first). Depth really is a property of the code and the suite, not the runner; the
 interrupt-timing jitter the design worried about does not reach the deepest byte on this suite.
 The two ISAs agree to within about 400 bytes on every stack, which is what "same code, same
 suite, different frame layouts" should produce. And the boot stack is at 82%, much closer to its
-guard page than anything else in the kernel; if the suite's deepest test chain grows, the boot stack
+guard page than anything else in the kernel. If the suite's deepest test chain grows, the boot stack
 is where the growth lands (see the gate below for what fails first).
 
 The boot stack is the deep one, and the reason is structural: `test_main` runs on the boot
@@ -208,28 +159,11 @@ context, so the boot stack carries the deepest call chain of the entire suite, e
 included. The secondary stacks carry only idle loops, trap frames, work stealing, and the SMP
 probes. Thread stacks carry every spawned kernel thread and every process's kernel side.
 
-### The guard-page move changed nothing (milestone 90)
+The move to the secondary-stack region changed no number, byte for byte, on either ISA: depth is
+decided by which calls run, and moving a stack's base changes no call. The table is in
+[stack-high-water/secondary-guard-page.md](stack-high-water/secondary-guard-page.md).
 
-Re-measured after the secondary stacks left `.bss` for their own region, full suite, both ISAs, two
-runs each (host load average ~8):
-
-| Stack | aarch64, before | aarch64, after | riscv64, before | riscv64, after |
-|---|---|---|---|---|
-| boot | 53808 | **53808** | 54216 | **54216** |
-| core 1 / 2 / 3 | 8504 | **8504** | 8448 | **8448** |
-| thread max | 11352 (420 stacks) | **11352 (420 stacks)** | 11672 (415 stacks) | **11672 (415 stacks)** |
-
-Byte for byte, including the paint floors (640 and 1024) and the stack counts, and byte for byte
-across the two runs of each ISA as well. OpenSBI's lottery picked hart 0 for one riscv64 run and
-hart 3 for the other, so the second run's three numbers came from *different harts on different
-slots of the new region*, and were 8448 again. That is the same cross-hart reproduction milestone 84
-saw, now over the moved stacks.
-
-The stability is the expected result and it is worth stating why: depth is decided by which calls
-run, and moving a stack's base address changes no call. Anything else would have meant the move perturbed the code, and the number
-to explain would have been the difference. The suite grew by the two tests this milestone added
-(aarch64 223 to 225, riscv64 224 to 226), and even that did not move the boot stack's deepest byte,
-which says those tests are nowhere near the deepest chain.
+The FS server's *user* stack has its own watermark already (`the_redoxfs_servers_stack_still_has_headroom`,
 
 The FS server's *user* stack has its own watermark already (`the_redoxfs_servers_stack_still_has_headroom`,
 in `system_tests/src/user/tests.rs` and its RISC-V twin in `riscv_virtio_tests.rs`); this instrument is the
@@ -238,8 +172,8 @@ kernel-stack complement.
 ## The gate
 
 The numbers were stable enough to gate on immediately (identical runs under a 3.5x load difference;
-~400-byte cross-ISA spread), so the threshold assertion landed in the same milestone, checked in
-`report_high_water` after the printing so a trip always arrives with its numbers. One shared set of
+~400-byte cross-ISA spread). So the threshold assertion landed in the same milestone. It is checked in
+`report_high_water` after the printing, so a trip always arrives with its numbers. One shared set of
 limits on both ISAs, per the parity gate:
 
 | Stack | limit | over observed max | what a trip means |
@@ -256,10 +190,10 @@ gate working, not failing.
 
 The thread limit is the one that has to be sized against stacking, not against the observed
 number, and the 2026-08-15 CI overflows are why (the full story is in notes/stack.md). The
-observed high-water is what the suite's runs happened to catch; the honest worst case is the
-deepest standing path (~11.7 KiB) plus a blocked thread's resident residue (`ipc_receive` +
-`SCHED.lock` + `schedule` + the switch, ~1.4 KiB) plus one preemption landing at the deepest
-instant (~2.3 KiB), about 15.5 KiB, which is why two CI runs overflowed a 16 KiB stack that a
+observed high-water is what the suite's runs happened to catch. The honest worst case is the
+deepest standing path (~11.7 KiB), plus a blocked thread's resident residue (`ipc_receive` +
+`SCHED.lock` + `schedule` + the switch, ~1.4 KiB), plus one preemption landing at the deepest
+instant (~2.3 KiB). That is about 15.5 KiB. It is why two CI runs overflowed a 16 KiB stack that a
 green high-water report said was 71% used. A loaded host does not change any depth; it multiplies
 timer interrupts per guest instruction until one lands on the worst-case alignment. The instrument
 measures truly; it just only measures the alignments that occurred. This is the same lesson as the
@@ -268,268 +202,47 @@ the *sum of independent layers* did, and neither is visible in a single row of t
 
 The secondary row's original entry read "an idle-and-traps stack that has no guard page", and
 said in the same breath that this assertion was the only tripwire there. Milestone 90 made that
-false, and the honest restatement is that all three rows now do the same job: they are the alarm
-that fires in the run that *drifts*, tens of kilobytes before the MMU would fire in the run that
-dies. That is worth having on top of a guard page, not instead of one, and it is the only one of
+false. The honest restatement is that all three rows now do the same job. They are the alarm that
+fires in the run that *drifts*, tens of kilobytes before the MMU would fire in the run that dies. That is worth having on top of a guard page, not instead of one, and it is the only one of
 the two that a release build does not get.
 
 ## The other half of the instrument: what one frame costs, statically (2026-08-13)
 
-A watermark says how deep the suite went. It cannot say which function is expensive, and that is
-the question you have when a stack overflows, because the fix is either "raise the limit" or "shrink
-the offender" and the watermark does not distinguish them.
-
-The compiler will tell you, and it needs no emulator, which matters because it works from a laptop or
-a container with no QEMU:
-
-```sh
-RUSTFLAGS="-Z emit-stack-sizes" \
-  cargo test -p kernel --target aarch64-unknown-none-softfloat --no-run
-# then read the .stack_sizes section of the reported artifact:
-#   llvm-objcopy --dump-section .stack_sizes=ss.bin <artifact> /dev/null
-#   llvm-nm -C --defined-only -S <artifact>        # to name the addresses
-```
-
-Each entry is a function address and its frame size in bytes. Measure the test build, not
-`cargo build`: half the kernel's spawn paths and every test body are `cfg(test)`, so the plain
-binary is missing exactly what you are chasing. That mistake cost an hour on 2026-08-13, and the tell
-was `llvm-nm | grep <a test-only symbol>` returning nothing.
-
-### What it found, and why the 71% row above was a warning nobody read
-
-The deepest frame in the kernel was `sched::reap_region_objects` at 6816 bytes, of which 6144 was
-three scratch arrays sized to their table maxima:
-
-| local | size |
-|---|---|
-| `doomed: [u64; MAX_THREADS]` | 1024 |
-| `doomed_eps: [u64; MAX_ENDPOINTS]` | **4096** |
-| `waiters: [u64; MAX_THREADS]` | 1024 |
-
-All three are gone as of 2026-08-27, and the last two were removed by the same pressure that
-found them. `doomed_eps` went first, replaced by the rescan-for-one-at-a-time loop whose comment
-in `sched::reap_region_objects` is the general statement of the rule. The other two survived
-because 1024 bytes each looked affordable, which is the tell this table exists to make visible: a
-`[T; MAX]` local is a stack allocation wearing the clothes of a bound, so it grows when the bound
-does and nobody is watching that line. Raising `sched::MAX_THREADS` to 256 took the frame to 4,624
-bytes, over `script/stack-frame-check`'s 4,096-byte guard-page ceiling, and the gate caught it
-before any run did. `doomed` became the same rescan loop; `waiters` was removed outright by waking
-each thread inside `Rendezvous::drain_waiters`'s callback rather than listing them first (the entry
-is already off its queue when the callback runs, which is what makes the wake legal there). The
-frame carries no table-sized local at all now.
-
-Now put that next to this note's own thread-stack row. The measured high-water was 11672 of 16384
-bytes, 71%, leaving 4712 bytes. The reap frame wanted 6816, which is 2104 bytes more than
-the entire remaining headroom. Any chain that reached the measured peak and then entered a reap
-could not fit, and would land on the guard page.
-
-That is what happened. Milestone 108's branch faulted one CI run in five with `FAR_EL1` exactly on
-the guard page of thread stack slot 87, and the tests running were the supervision and reap ones. The
-branch was held on suspicion of having introduced it; the static measurement says otherwise, because
-comparing its test binary against `main`'s function by function shows the largest single frame
-growth in the whole milestone is 128 bytes. It added one more spawned program to a margin that was
-already 2104 bytes short.
-
-The 71% row had been sitting in this note since milestone 84 (stack high-water). A percentage reads as comfortable,
-and 4712 bytes of headroom reads as comfortable, right up against a single frame that needs more than
-all of it. The lesson is that a high-water percentage and a frame inventory answer different
-questions and neither is safe alone.
-
-### The fix, and the shape worth copying
-
-`doomed_eps` existed because `remove` mutates the table and you cannot remove while iterating it, so
-the names were collected first. Rescanning for one at a time removes the array entirely: the frame
-went 6816 to 2560 bytes, and it now fits inside the measured headroom with 2152 bytes to spare.
-The cost is O(live endpoints) per removal on a teardown path with a 512-slot table, which is not
-where this kernel's time goes.
-
-The general shape: a `[T; MAX]` local sized to a table maximum is a stack allocation wearing the
-clothes of a bound. `MAX_ENDPOINTS` is 512 because that is a sensible ceiling on live endpoints, and
-nothing about that number was ever a claim about how much stack a function may use. The two got tied
-together by the convenient shape, and the connection was invisible until something measured it.
+A watermark says how deep the suite went, not which function is expensive. `-Z emit-stack-sizes`
+on the test build says what each frame costs, with no emulator. It found
+`sched::reap_region_objects` at 6816 bytes, 2104 more than the thread stacks' entire measured
+headroom, which is what faulted the branch of milestone 108 (the drivers move onto frame capabilities). A `[T; MAX]` local sized to a table maximum
+is a stack allocation wearing the clothes of a bound. The frame now carries no table-sized local, and
+`script/stack-frame-check` fails the build on a frame over the 4,096-byte guard page. The method and
+the account are in [stack-high-water/frame-cost.md](stack-high-water/frame-cost.md).
 
 ## Per-IPC depth: how much of its kernel stack one IPC touches (milestone 134, 2026-09-19)
 
-Everything above measures the deepest a stack ever went over a whole suite, which is spawn and
-teardown. Milestone 134's E1 needed a different number: how many bytes of a thread's kernel stack
-one IPC reaches, because its prediction of where IPC latency bends against thread count was
-arithmetic on "roughly 1 to 2 KiB" per IPC, and that figure was an estimate.
-
-### The instrument
-
-`kernel/src/ipc_stack_depth.rs` (module, feature and line prefix all provisional). The same
-paint and scan as the rest of this note, re-armed per operation: just before one SEND, RECEIVE, CALL,
-RECEIVE_CAP or REPLY the thread paints its own kernel stack up to a margin below its live `sp`, and just
-after it scans. 256 samples per operation, reported as median, min and max, each as a distance from
-the stack's top.
-
-- **Kernel threads**, E1's own shape (`bench.rs`'s `ipc_rtt`, `call_reply` and
-  `ipc_thread_scaling` are all kernel-thread pairs): the thread wraps each call.
-- **EL0 threads**, the shape every service runs (`os_primitives_benchmarker`'s SEND/RECEIVE pair and
-  `soaker`'s CALL/REPLY pair): a user thread cannot paint, so `syscall::dispatch` ends with a call
-  that, for a registered thread only, scans what the finishing syscall reached and paints for the
-  next. An EL0 thread's trap frame sits at the very top of its kernel stack, so the distance from the
-  top is the whole of what one syscall touches.
-
-**It measures its own reach first.** A `null` series wraps an operation that does nothing; its
-median must not read deeper than its floor (the ceiling of the paint), or the margin is too small
-for the build and every other line is contaminated. It said "must equal" until 2026-09-24, and
-that held under TCG for a reason unrelated to the margin: the words between the instrument's own
-reach and the ceiling are never repainted, so a single interrupt trap frame that lands on the
-ceiling word early in the run sets every later sample to exactly the floor. On the physical core
-(the HVF leg) the 256 samples usually finish before that happens and the median reads the true reach, 120
-bytes shallower than the floor in the debug build, which failed the equality on every HVF run from
-the day this merged. `kernel/src/ipc_stack_depth.rs` has the measurement at the check. That check found both of this lane's own
-mistakes: a single 512-byte margin put every release series exactly on its floor (the release IPC
-path is shallower than 512 bytes below the measuring frame), and 256 bytes was too small for the
-**debug** build, whose paint loop keeps real calls. The margin is now 512 in debug and 64 in
-release, and both are checked on every run rather than trusted.
-
-**What it costs:** nothing in any default build. Every piece is `any(test, feature =
-"ipc_stack_depth")`, including the call in `dispatch`, so `script/fastpath-footprint`, `script/bench`
-and the icount tripwire build none of it. In the test build an unregistered syscall pays one relaxed
-load. A measured operation pays a paint of up to 24 KiB before it, which is why this is never on in a
-build that times anything, and why a series stops painting once it is full. The frames the
-instrument itself occupies sit above the paint and are never counted; the null line is the proof.
-
-**What it cannot see:**
-
-- **Interrupt nesting.** A tick that lands mid-operation puts a trap frame on the thread's stack,
-  so every series has a tail. That tail is the `max` column; the per-IPC figure is the median. The
-  null series shows the tail's size directly: in the debug suite (four cores, a busy machine) its
-  median sits at the floor and its max 800 to 1,000 bytes below it, with nothing running but the
-  instrument; in the single-hart release boots no null sample showed a tail at all.
-- **Anything shallower than the instrument.** An operation that never goes below the measuring
-  frame's own margin reads `AT FLOOR: at most N`, an upper bound rather than a depth. In release,
-  the non-blocking EL0 operations do this (the SEND or REPLY that finds its partner waiting): what
-  is true of them is that they reach no deeper than about 420 to 700 bytes, trap frame included.
-- **Real hardware.** Depth is a property of the code, not the clock, so QEMU is a valid place to
-  measure it, and TCG is fine: nothing here is a time. The build is what matters, which is why both
-  are measured: `script/test`'s debug kernel, and the release kernel with `bench` that radon boots
-  (built exactly as `script/board-image` builds it, minus `board` and `single_hart`, which the board
-  needs and QEMU cannot boot). Whether those two features move the IPC path is one optional board
-  boot away (notes/footprint-perturbation.md, "The next radon evening").
-- **Which bytes are hot.** A depth is how far the path *can* reach on this stack; it is not a count
-  of lines touched, and it is not a miss count. That is milestone 134's M7.
-
-### The numbers
-
-Release kernel, `bench,ipc_stack_depth`, single hart (the bench runner's `NIFE_SMP=1`), QEMU TCG,
-two boots per architecture, 2026-09-19. Bytes from the stack's top; each role's figure is the
-median of its deeper operation, because in a strict ping-pong every thread blocks once per round
-trip and the blocking path is the deep one. A range is the two boots disagreeing (below).
-
-| shape | role | aarch64 | riscv64 | x86_64 | of which below the call site |
-|---|---|---|---|---|---|
-| kernel threads, SEND/RECEIVE (E1's shape) | client | 560 | 608 | 440 to 504 | 320 / 352 / 168 to 248 |
-| | server | 544 | 576 | 424 to 472 | 320 / 352 / 168 to 248 |
-| kernel threads, CALL/REPLY | client | 640 | 672 | 584 | 416 / 448 / 344 |
-| | server | 576 | 592 | 488 | 400 / 400 / 296 |
-| EL0, SEND/RECEIVE | each end | 736 to 832 | 832 to 928 | 472 | (all of it) |
-| EL0, CALL/REPLY | client | 928 | 1,024 | 648 | (all of it) |
-| | server | 912 | 976 | 600 | (all of it) |
-
-Debug kernel (`script/test`, `-smp 4`), same method, same day, one or two runs per architecture:
-
-| shape | role | aarch64 | riscv64 | x86_64 |
-|---|---|---|---|---|
-| kernel threads, SEND/RECEIVE | client / server, deeper op | 2,088 to 2,408 / 2,216 | 2,056 / 1,880 | 2,216 / 2,024 |
-| kernel threads, CALL/REPLY | client / server | 2,232 / 2,248 | 2,184 / 2,232 | 2,040 / 2,104 |
-| EL0, SEND/RECEIVE | deeper op, either end | 3,272 to 3,608 | 3,480 | 2,712 to 3,048 |
-| EL0, CALL/REPLY | client / server | 3,496 / 3,688 | 3,704 / 3,896 | 2,936 / 3,144 |
-
-**The ranges are the SEND/RECEIVE shape only, and they are about which operation blocks rather than
-how deep any one path is.** In a SEND/RECEIVE ping-pong either the SEND or the following RECEIVE of a
-thread finds its partner not yet waiting and takes the blocking path, and which one does is settled
-by where each thread happens to be when the loop starts. The two paths differ by a few hundred
-bytes, so the "deeper op" moves between them from boot to boot, even on one hart. The same depth
-values recur (the min and max columns of one run are the medians of the other); what does not
-recur is the assignment. CALL/REPLY has no such freedom, since CALL always blocks, and every
-CALL/REPLY row repeated to the byte on every run.
-
-**Three readings.**
-
-1. **The estimate was high by about 2x for the build that matters.** E1 ran the release kernel on
-   radon. There, one round trip reaches about 600 bytes of each thread's kernel stack (riscv64
-   kernel threads, E1's own shape), roughly ten 64-byte lines, not 1 to 2 KiB. The debug build
-   reaches 2 to 2.4 KiB, so an estimate calibrated against debug-build frames would have been
-   right for the wrong kernel.
-2. **At 600 bytes a thread, capacity does not explain E1's knee.** Stacks alone would fill a 32 KB
-   L1d at about 32,768 / 600, roughly 54 threads. radon's knee is between 8 and 16 threads
-   (notes/footprint-perturbation.md), where the stacks total 5 to 10 KB.
-3. **Page alignment might.** Every thread's stack top is a page boundary (`KernelStack`, slots
-   `STACK_SLOT_SPAN` apart), so every thread's ~ten hot lines sit at the same ten page offsets.
-   radon's U74 L1 D-cache is 32 KiB, 4-way, virtually indexed, 64-byte lines (SiFive U74-MC Core
-   Complex Manual 21G3.02.00, "L1 Data Cache", read 2026-09-19), so a way is 8 KiB and the set index
-   is VA bits 6 to 12. Bit 12 of a stack's top page alternates with the slot index (the stride is
-   seven pages, an odd number), so there are two colors of four ways: at most 8 threads' hot
-   stack lines can be resident at once, whatever the total footprint. The general form, for any
-   cache of at most 8 ways and 64-byte lines: a 32 KiB cache holds at most 32 KiB / 4 KiB = 8 lines
-   that share a page offset. That puts a knee at 8 threads, which is where radon's curve starts
-   bending (1.20x at 8, 1.68x at 16, then flat).
-
-**Reading 3 is a hypothesis, not a finding**, and it has a competitor this note cannot rule out:
-every thread's TCB is also on its own page (`sched::spawn_on`'s "own TCB page"), so hot TCB fields
-alias in exactly the same way. The two predict the same knee. What separates them is cheap: offset
-each thread's initial stack pointer by a per-slot color (slot index times about 640 bytes, modulo a
-page) and re-run E1. If the knee moves right, the stacks were the cause and a process kernel can
-buy it back with coloring, without becoming an event kernel. If it stays at 8, the TCBs (or
-something else page-aligned) are, and an event kernel's shared stack would not remove it either.
-Recorded as a proposed milestone in design/roadmap/0134-the-measurements-that-decide.md's Follow-on.
+The same paint and scan, re-armed around one IPC operation, measures how much of a thread's kernel
+stack one IPC reaches. In the release kernel a round trip reaches about 600 bytes on riscv64 kernel
+threads and about 1 KiB at EL0, half the 1 to 2 KiB that E1 of milestone 134 (the register of measures) estimated. The debug
+kernel reaches 2 to 2.4 KiB. At 600 bytes a thread, cache capacity does not explain E1's knee at 8
+threads. Page-aligned stacks aliasing in radon's 4-way L1 might; so might page-aligned TCBs, and a
+cheap coloring experiment would tell them apart. The instrument, the tables and the readings are in
+[stack-high-water/per-ipc-depth.md](stack-high-water/per-ipc-depth.md).
 
 ## BUGS
 
-- **The per-IPC depth instrument measures two EL0 programs whose role numbers it copies.**
-  `ipc_stack_depth.rs` spells `os_primitives_benchmarker`'s roles (3, 4) and `soaker`'s (0, 1) as
-  local constants, as `bench.rs` and `soak.rs` already do. AGENTS.md rule 7 says a number two binaries
-  agree on belongs in a crate; this is the third copy of the first pair and the second of the other.
-  A renumbering in either fixture would make the test spawn the wrong role and fail on samples, not
-  silently, but the fix is a protocol crate per fixture and it is not this lane's to mint.
-- **Per-IPC depth is not in a gate.** The test asserts that every line is a measurement (enough
-  samples, median above the floor, a clean null line) and nothing about the values, because they
-  had never existed before 2026-09-19. The release figures are the ones a decision would quote and
-  they come from a bench boot no CI job runs. Promote to a ceiling (`count-at-most` shape) only if
-  something starts depending on the value, which the coloring experiment above would be.
-- Depth reached before `paint_boot_stack` runs (a handful of early-boot frames) and never reached
-  again is invisible, bounded below by the printed paint floor.
-- **The static frame sizes above are per function, not per call chain.** `-Z emit-stack-sizes` says
-  what one frame costs; it does not say which frames stack on top of each other, so it cannot give a
-  worst-case depth on its own. Pairing it with the watermark is what makes either number actionable,
-  and a tool that walks the call graph closes the gap. `script/stack-depth-check` is that tool
-  (2026-08-16), written after this entry and `script/stack-frame-check`'s twin of it had both stood
-  unbuilt through two rounds of guard-page faults. It reads direct calls out of the disassembly,
-  hangs these frame sizes on the graph, and takes the longest path from the entry points a kernel
-  thread stack starts at. Its first answer: 13792 bytes worst case on aarch64, 13344 on riscv64.
-  **Do not compare its `thread_entry` chain against a watermark**, which is the mistake two drafts
-  of that comparison made: this note's number is whatever was on the stack, nested trap frames
-  included, and that chain is the thread's own work with no trap on it. Measured over 31 aarch64
-  runs the watermark read 9536, 9640 and 10600 against a 9456 chain and a 13792 composed bound, and
-  the excursions are the size of a trap frame plus a handler. The comparison that means something is
-  against the composed number.
-  Its answer is still a lower bound rather than an upper one, because indirect calls are invisible
-  to it and assembly has no `.stack_sizes` entries at all, so `switch_to`'s 96-byte frame,
-  `user_entry_trampoline`'s 272-byte reservation and `spawn_into`'s closure slot are uncounted.
-- **~~Nothing gates frame size.~~** `script/stack-frame-check` does, since 2026-08-13, at the
-  4096-byte guard page. The entry is kept because the sentence that follows it is still the
-  argument for the gate: the 6816-byte frame was legal, compiled without a warning, and was found
-  only because a stack overflowed and somebody went looking.
-- **The two thresholds are the same number for different reasons, and only one of them needs
-  margin.** This note's thread row gates a measurement at 14336 and needs margin because the next
-  run may go deeper. `script/stack-depth-check` gates a worst-case bound, which already covers every
-  path it can see, so it fails at the stack size and only *warns* at 14336. Raise them together or
-  they stop describing the same stack.
-- A stack whose deepest word happened to store the paint value reads one word shallow.
-- The live scans at end of suite are snapshots; a thread that deepens after being scanned is
-  under-read by that run. Reaped thread stacks are exact.
-- The instrument is `cfg(test)` only: a shell or bench boot measures nothing. The guard pages are
-  not: they are in every build, which is what milestone 90 bought.
-- **The guards are absent on the coarse boot map**, so a secondary is unprotected between
-  `secondary_boot` and `mmu::init_secondary`, and the boot core between `_start` and `mmu::init`.
-  Both windows are a few frames deep and neither has ever been the problem, but neither is zero.
-- **Nothing checks the guards after boot except the suite.** `mmu::verify` runs once, before the
-  map is installed; a later mapping that filled a guard page in (nothing does this today, and the
-  mapper refuses to overwrite) would not be noticed until the test build ran.
-- The boot core's slot in the region is mapped and never used: `MAX_CPUS` slots exist, one is
-  wasted so that slot index can stay CPU id, and any seat the machine does not fill (the constant
-  is a ceiling since the 2026-08-14 bump to eight) idles the same way. 68 KiB of address space
-  each, no frames.
+Each entry is in full in [stack-high-water/limitations.md](stack-high-water/limitations.md).
+
+- The per-IPC depth instrument copies two fixtures' role numbers rather than reading them from a
+  crate.
+- Per-IPC depth is not in a gate; the test asserts each line is a measurement, not its value.
+- Depth reached before `paint_boot_stack` runs is invisible, bounded by the paint floor.
+- Static frame sizes are per function. `script/stack-depth-check` composes them into a worst-case
+  chain, which is still a lower bound: indirect calls and assembly are uncounted.
+- `script/stack-frame-check` gates frame size at the 4096-byte guard page, since 2026-08-13.
+- The thread-row threshold and `script/stack-depth-check`'s warning are the same number for
+  different reasons; raise them together.
+- A stack whose deepest word stored the paint value reads one word shallow.
+- Live scans at end of suite are snapshots; reaped thread stacks are exact.
+- The instrument is `cfg(test)` only. The guard pages are in every build.
+- The guards are absent on the coarse boot map, and nothing checks them after boot except the
+  suite.
+- The boot core's slot in the secondary-stack region is mapped and never used.
+
