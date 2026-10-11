@@ -38,7 +38,7 @@ const STD_TARGETS: [&str; 3] = [
 const TOOLCHAIN_PREFIX: &str = "nife-dev-";
 
 /// Bump to force every farm to rebuild after a change to the patch logic itself (not the inputs).
-const STD_SRC_PATCH_VERSION: u32 = 11;
+const STD_SRC_PATCH_VERSION: u32 = 12;
 
 fn farm_dir() -> PathBuf {
     workspace_root().join("target/nife-farm")
