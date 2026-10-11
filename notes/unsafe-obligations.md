@@ -60,7 +60,8 @@ author picked.
 ## The shape of the 33
 
 All 33 `unsafe fn`s are in `kernel/` and `crates/`. **the program packages have none**, which corrects the
-milestone spec's "across `kernel/`, `crates/`, and `user/`".
+milestone spec's "across `kernel/`, `crates/`, and `user/`" (then `user/`, now `components/` and
+`fixtures/`).
 
 Twenty-two have at least one explicit `unsafe {}` in the body. Every one of those blocks has a
 SAFETY comment, and clippy reproves it on each run, with the single exception of `inter_process_communication`'s `seed`,
@@ -175,8 +176,8 @@ Other unsafe-trait claims are ceilinged the same way. `arch/` itself gets no dir
 driving it down would push against rule 1.
 
 `// SAFETY:` parity is deliberately not a gate, because clippy already enforces it per block and a
-count can only disagree. The samples, each ceiling's history and reasons, and what `user/`'s share is
-made of are in [census.md](unsafe-obligations/census.md) and
+count can only disagree. The samples, each ceiling's history and reasons, and what `user/`'s share
+(now `components/` and `fixtures/`) is made of are in [census.md](unsafe-obligations/census.md) and
 [ceilings.md](unsafe-obligations/ceilings.md).
 
 ## Re-running the survey
