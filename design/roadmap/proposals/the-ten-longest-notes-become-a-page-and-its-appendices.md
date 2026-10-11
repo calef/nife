@@ -172,6 +172,12 @@ since each outsider pass adds to it.
    3,251→2,455, globally-unique-identifier-partition-table 3,173→2,629. The detail is in #1937's
    body. After it, 18 notes directly under `notes/` are still over the 3,000-word cap (measured
    2026-10-11 UTC).
+   The seventh lane, `lane/seventh-ten-longest-notes` (PR #1939, merged 2026-10-11), took ten more.
+   Words before and after: ntp 4,702→2,989, boot-stick 3,052→2,801, rented-metal 6,327→2,947,
+   redleaf 5,972→2,944, serial-less-output 4,349→2,905. Then swish-language 3,147→2,842, xattr
+   3,164→2,758, verus 5,478→2,953, user-proofs 3,261→2,837, elf 3,085→2,759. The detail is in
+   #1939's body. After it, 8 notes directly under `notes/` are still over the cap (measured
+   2026-10-11 UTC), and a final lane is running on them.
 5. The report names each provisional directory and file name for calef's queue.
 
 ## Open questions for an architect
