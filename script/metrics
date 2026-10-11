@@ -2170,8 +2170,10 @@ def svg_chart(title, subtitle, weeks, series, path, ceiling=None, absent=None, t
         out.append('<line x1="%d" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#D55E00" '
                    'stroke-width="1.5" stroke-dasharray="5 4"/>'
                    % (PAD_L, y, PAD_L + plot_w, y))
-        out.append('<text class="mut" x="%.1f" y="%.1f" font-size="10">%s %s</text>'
-                   % (PAD_L + plot_w + 6, y + 3, line_word, _number(ceiling)))
+        # Labeled in the legend, below the series. Until 2026-10-11 (UTC) the label sat at the
+        # line's height in the legend's column, and struck through ci-jobs.svg's fourth entry once
+        # backfilled weeks brought that axis to 30 and the 20 line level with it. Inside the plot
+        # it collides with bars and value labels on four other charts.
 
     def _fill(j):
         return 'c%d' % j if series[j][2] else 's%d' % j
@@ -2276,6 +2278,11 @@ def svg_chart(title, subtitle, weeks, series, path, ceiling=None, absent=None, t
                         for k, line in enumerate(lines))
         out.append('<text class="fg" y="%d" font-size="11">%s</text>' % (y + 10, spans))
         y += 19 + 13 * (len(lines) - 1)
+    if ceiling:
+        out.append('<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#D55E00" stroke-width="1.5" '
+                   'stroke-dasharray="5 4"/>' % (legend_x, y + 5, legend_x + 11, y + 5))
+        out.append('<text class="fg" x="%d" y="%d" font-size="11">%s %s</text>'
+                   % (legend_x + 17, y + 10, esc(line_word), _number(ceiling)))
     out.append('</svg>')
     path.write_text('\n'.join(out) + '\n')
 
@@ -3294,6 +3301,11 @@ def main(argv):
             fresh = row_for(rev, week)
             for column in columns:
                 rows[week][column] = fresh.get(column, '')
+        # A derived measure (`ci-jobs`, `debt-paydown`, the cost records) is not in row_for at all,
+        # so the loop above blanks it; `fill_derived` is where `--update` computes it, and only this
+        # measure's file is written. Before 2026-10-11 (UTC) `--backfill-measure ci-jobs` wrote a
+        # header and nothing else.
+        rows = fill_derived(rows, git('rev-parse', 'HEAD').decode().strip())
         path = measure_path(name)
         write_csvs({path: render_csvs(rows)[path]})
         draw_charts(rows, only=set(columns))
