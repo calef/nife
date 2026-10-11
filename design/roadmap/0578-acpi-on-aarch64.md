@@ -192,6 +192,10 @@ The third is where the fork is, and this is the one item in this block that is a
 > is what the device-tree-versus-ACPI split actually is. The decision is a boot contract, it is what
 > every future aarch64 machine is entered through, and it belongs in `design/decisions/`.
 
+Answered. PR #1153 built option 1 (merged 2026-09-24 UTC), and calef ratified it on 2026-10-11
+(UTC). §278 (an ACPI machine reaches the aarch64 kernel as a device tree the loader writes)
+records the question, the refusals and the cost.
+
 ## The link address, which is the second half and is not this block's to describe
 
 The same `BUGS` section names a second blocker behind the first: the kernel is linked for
@@ -226,8 +230,8 @@ Each ships independently and none needs hardware. The QEMU A/B above tests all o
    it found, and makes `discover`'s error distinguish "no device tree and no ACPI" from "ACPI,
    which this kernel cannot yet use". Half a lane, and the failure message tells the truth before
    anything downstream exists.
-5. The handover, the fork above, which needs calef's decision first. A lane can write the
-   proposal with the three options priced; it should not pick.
+5. The handover, the fork above. Answered with option 1 by §278 (an ACPI machine reaches the
+   aarch64 kernel as a device tree the loader writes).
 6. The kernel's second front door, once 5 is answered: memory, GIC, timer, CPU list and console
    sourced from ACPI instead of the tree. The large one, and the only item touching
    `kernel/src/memory.rs`, so it wants the machine to itself.
