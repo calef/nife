@@ -160,6 +160,18 @@ since each outsider pass adds to it.
    kernel-proofs 3,532→2,961, glob-grant 5,123→2,996. Then architecture-list-sweep 6,206→2,752,
    mdns 3,583→2,288, compositor 4,372→2,995, citations 6,258→2,607, fuzzing 4,246→2,980. The
    detail is in #1929's body.
+   The fifth lane, `lane/fifth-ten-longest-notes` (PR #1934, merged 2026-10-11), took ten more.
+   Words before and after: arch-audit 4,186→2,868, capabilities 3,641→1,945, xenon-firmware
+   3,725→2,299, hung-component 4,620→2,996, glob 3,290→2,603. Then target-hardware 3,032→2,755,
+   check-inventory 4,024→2,983, credentials 3,757→2,861, hvf-leg 3,584→2,828, instruction-clock
+   4,079→2,994. The detail is in #1934's body.
+   The sixth lane, `lane/sixth-ten-longest-notes` (PR #1937), took ten more. Words before and
+   after: proof-retrospective 5,945→2,994, cfi-unwind 3,398→2,744, blocked-thread-teardown
+   8,049→2,981, memory-ordering 3,710→2,772, cryptography-provider 4,479→2,880. Then
+   counted-claims 3,673→2,948, host-recovery 3,871→2,133, timed-wait 3,827→2,355, c-seam
+   3,251→2,455, globally-unique-identifier-partition-table 3,173→2,629. The detail is in #1937's
+   body. After it, 18 notes directly under `notes/` are still over the 3,000-word cap (measured
+   2026-10-11 UTC).
 5. The report names each provisional directory and file name for calef's queue.
 
 ## Open questions for an architect

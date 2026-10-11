@@ -211,8 +211,9 @@ three new names ratified and carrying eight refusals between them.
   appendix `design/decisions/0139-cycle-counter-authority/trap-and-emulate.md`. A lane may not edit
   `design/decisions/`, so they were named here and in this lane's report for the integrator. The
   maintainer repointed the appendix's citation to `components/src/network_time_client.rs` on
-  2026-10-11 (UTC). The other sits in calef's ruling on the main page and stays as written; its
-  content is still true of `network_time_client.rs`, and only the path is stale.
+  2026-10-11 (UTC). The other sits in calef's ruling on the main page, and the ruling now names
+  `components/src/network_time_client.rs` (calef, 2026-10-11 UTC: "Replace the path. Source
+  control gives us a history.").
 - `design/roadmap/0106-deadline-wait.md` cited `components/src/ntp.rs:44`, `:188` in its table of
   what a timed wait would fix. Fixed, checked by the maintainer on 2026-10-11 (UTC). The citation
   had already left that block on 2026-09-26, when milestone 106 (a wait that ends on either the

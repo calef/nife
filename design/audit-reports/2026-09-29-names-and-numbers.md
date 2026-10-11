@@ -104,14 +104,18 @@ names the appendix, beside a marked exception.
 
 ### 6. FIXED: a quotation credited to a file that never held it
 
-`notes/sink-protocol.md:288` quoted "built last" as something `notes/pipes.md` wrote down. The
+`notes/sink-protocol.md`'s BUGS list for the terminal's sink adapter quoted "built last" as
+something `notes/pipes.md` wrote down. The
 phrase was born in this note itself (commit `8c279536f`, 2026-08-03) and appears in no file today.
 It is credited where it lives, and the boot-order pointer names the appendix the split made.
 
 ### 7. MINTED: the fence inventory rotted three counts at once
 
-`notes/memory-ordering.md` says thirteen fences at line 28, "all fourteen" at line 83 over a
-fifteen-row table, and "Twelve sites today" at line 227; `script/lint` counts 19 today. Behind the
+`notes/memory-ordering.md` says thirteen fences under "The count, and how it was taken". It says
+"all fourteen" in a heading over a fifteen-row table, and "Twelve sites today" under "Can pairing
+be checked mechanically? Measured, not argued". `script/lint` counts 19 today. (Repointed
+2026-10-11 UTC from line numbers, which #1937's split moves: it puts the first and third in
+appendices with those titles.) Behind the
 numbers, the fences this window's milestones added are adjudicated nowhere a reader would meet, and
 an inventory whose table no longer names the population is worse than no inventory. Proposed as a
 milestone, its number to be minted at merge: re-derive the count, adjudicate the sites the window

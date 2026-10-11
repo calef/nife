@@ -10,7 +10,9 @@ built: 2026-08-17
 audit of that date. Reason: this change repoints one citation at the appendix its section moved to
 in the 2026-09-24 split, and bringing this block to 4 bold spans per 1,000 words is a rewrite for
 whoever next owns it, not something to hide inside a pointer fix, the same line
-notes/timed-wait.md's marker takes. Remove this marker when that de-bold pass lands. -->
+notes/timed-wait.md's marker took until #1937 rewrote that note and removed it (2026-10-11 UTC).
+This marker is not a pair with that one: it excuses this block's own longest sentence and bold
+density. Remove this marker when that de-bold pass lands. -->
 
 Built 2026-08-14, reopened 2026-08-16 when the same banner came back on both
 ISAs, and **closed 2026-08-17 when the banner turned out not to be this milestone's bug at all**.

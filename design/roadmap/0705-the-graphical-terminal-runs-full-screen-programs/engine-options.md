@@ -23,7 +23,7 @@ Everything below was read from `ghostty-org/ghostty` `main` on 2026-10-02, excep
   `vt_terminal.h`.
 - *Cells versus pixels.* Its C ABI gives cells through a render-state API (`render.h`, 1,104 lines of
   header). `Vt::pixel(x, y)` is a pure function of our own grid. The rebuild is the expected-picture
-  definition, as `notes/glyphs.md:694` says: either it moves to the Zig side or it is rewritten over
+  definition, as `notes/glyphs/libghostty-vt.md` says: either it moves to the Zig side or it is rewritten over
   the cell layout and checked against `Vt` on the same scripts. That check, two engines graded against
   each other, is the milestone 23 (a capability-routed component OS with live replacement)
   demonstration the existing note argues for.
@@ -32,7 +32,7 @@ Everything below was read from `ghostty-org/ghostty` `main` on 2026-10-02, excep
    demonstration; and C, which is a parser only (below).
 2. See the shared answer.
 3. Prior art read: the headers above. Ghostty's conformance history against `vttest` is claimed in
-   `notes/glyphs.md:681`; I did not verify it.
+   `notes/glyphs/libghostty-vt.md`; I did not verify it.
 4. See the shared answer, including the stale "no allocation" line.
 5. Cost: a Zig 0.16 toolchain in the build (unmeasured), a pinned vendored tree under §18's policy, an
    allocator for the component, a cell-based expected-picture check (not estimated), and shim code

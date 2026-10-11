@@ -31,7 +31,9 @@ rather than restating the signature; `kernel/src/sched.rs:2827` carries its own 
 One gate did arrive, adjacent to the headline property rather than on it: `script/lint` now checks
 that every `unsafe fn` states its contract in a `# Safety` section. It checks that a contract is
 *written*, never that it is true, and it found one violation on its first run (`fs_server`'s
-`file_page`, fixed in the same pull request). The decision table is notes/unsafe-obligations.md:250.
+`file_page`, fixed in the same pull request). The decision table is in
+notes/unsafe-obligations/caller-obligations.md, "The comments that bound nobody, decided (milestone
+112)".
 
 The finding. Four safe functions carry a `// SAFETY:` comment that discharges an obligation
 onto "the caller", and their signatures impose that obligation on nobody. Any safe code may call
