@@ -129,7 +129,7 @@ returns `TooManyFiles` and each `initrd_*` function prints the error, the file c
 
 Three edits, and after the first the machine names each of the others.
 
-1. A row in `programs!` in `crates/grant_plan/src/lib.rs`, with its doc comment:
+1. A row in `programs!` in `crates/grant_plan/src/program.rs`, with its doc comment:
 
    ```rust
    /// Triples its integer argument (milestone N, `components/src/triple.rs`).
@@ -301,7 +301,7 @@ rung one, deliberately, and it is the one place this milestone went down the lad
   for, so the combination needs no edit outside its own declaration.
 - This page is prose and the code can move without it. The step that rots first is the manifest
   field list, which is why it is not repeated here: [program-manifest.md](program-manifest.md) has it,
-  and the struct in `crates/grant_plan/src/lib.rs` is the authority over both.
+  and the struct in `crates/grant_plan/src/manifest.rs` is the authority over both.
 - **Written from having done it, and wrong most times it was walked.** Every walk before milestone
   150 found the page wrong, and the reason was structural rather than careless: the fact it described
   lived in seven hand-maintained places it did not control, so it went stale inside two days, twice.
