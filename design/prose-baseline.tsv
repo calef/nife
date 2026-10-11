@@ -695,7 +695,7 @@ design/roadmap/0556-a-second-risc-v-implementation-for-rent.md	-	-	47	-	-
 design/roadmap/0557-a-thread-reads-its-own-cpu-from-a-page.md	-	-	62	-	-
 design/roadmap/0559-a-list-strangers-read-to-find-a-kernel.md	-	-	49	-	-
 design/roadmap/0560-a-long-file-name-or-riscv64-cannot-be-installed.md	-	-	42	-	-
-design/roadmap/0561-a-per-cpu-allocator-is-what-the-current-cpu-page-was-for.md	-	23	45	-	-
+design/roadmap/0561-a-per-cpu-allocator-is-what-the-current-cpu-page-was-for.md	-	21	45	-	-
 design/roadmap/0563-a-seal-check-that-reads-bytes-cannot-see-a-check-that-was-dropped.md	-	-	41	-	-
 design/roadmap/0564-a-userspace-program-cannot-learn-which-cpus-are-online.md	-	22	49	-	-
 design/roadmap/0565-a-website-for-the-project-plan.md	-	-	60	-	-
@@ -735,7 +735,6 @@ design/tenets/three-principles.md	-	-	56	-	-
 design/tenets/working-with-calef.md	-	-	41	-	-
 design/why-now.md	-	-	46	-	-
 notes/aarch64-board-survey.md	-	-	63	-	-
-notes/abi.md	3308	-	61	-	-
 notes/adding-a-program.md	3211	-	82	-	-
 notes/address-space-identifiers.md	-	21	44	-	-
 notes/arch-audit.md	4186	-	57	-	-
@@ -784,7 +783,6 @@ notes/exceptions.md	-	-	54	-	-
 notes/falsification.md	7204	-	53	-	-
 notes/follow-on-work.md	3264	-	59	-	-
 notes/framebuffer-contract.md	4562	-	71	-	-
-notes/frames.md	7809	21	82	-	-
 notes/fuzzing.md	4246	-	56	-	-
 notes/generational-names.md	-	-	41	-	-
 notes/glob-grant.md	5123	-	107	-	-
@@ -800,14 +798,12 @@ notes/hvf-leg.md	3584	23	81	-	-
 notes/incremental-path.md	3541	-	54	-	-
 notes/installing.md	-	22	50	-	-
 notes/instruction-clock.md	4079	-	68	-	-
-notes/interleaving.md	5618	-	64	-	-
 notes/interrupts.md	6253	-	68	-	-
 notes/intrusive-queues.md	-	-	54	-	-
 notes/iommu.md	-	-	56	-	-
 notes/ipc-naming.md	-	-	64	-	-
 notes/isa-discovery.md	3450	-	47	-	-
 notes/jh7110-clock-and-reset.md	-	-	58	-	-
-notes/job-mix.md	5116	-	65	-	-
 notes/kernel-budget.md	-	-	53	-	-
 notes/kernel-proofs.md	3532	-	69	-	-
 notes/l4-lessons.md	-	-	52	-	-
@@ -838,7 +834,6 @@ notes/pipes.md	-	-	55	-	-
 notes/pmu.md	-	-	43	-	-
 notes/portability.md	-	-	49	-	-
 notes/prior-art.md	-	-	54	-	-
-notes/process-view.md	7416	-	61	-	-
 notes/progenitor-and-loading.md	3364	-	55	-	-
 notes/program-manifest.md	-	20.5	56	-	-
 notes/project-metrics.md	-	-	53	-	-
@@ -858,7 +853,6 @@ notes/riscv-port.md	4794	-	68	-	-
 notes/riscv-summit-2026.md	-	-	55	-	-
 notes/riscv-tlb-shootdown.md	-	-	57	-	-
 notes/rm.md	-	-	46	-	-
-notes/roadmap.md	5525	-	99	-	-
 notes/rule-violations.md	-	-	59	-	-
 notes/scheduled-execution.md	3576	-	65	-	-
 notes/scheduler.md	6567	-	84	-	-
@@ -867,11 +861,9 @@ notes/security.md	-	-	53	-	-
 notes/semihosting.md	-	-	49	-	-
 notes/serial-less-output.md	4349	-	67	-	-
 notes/session-handoff.md	-	-	71	-	-
-notes/shared-page-audit.md	6454	-	-	-	-
 notes/shell-navigation.md	-	-	72	-	-
 notes/shell.md	-	-	47	-	-
 notes/sink-protocol.md	3189	-	-	-	-
-notes/stack-high-water.md	6220	21	71	-	-
 notes/std.md	-	-	42	-	-
 notes/supervision.md	-	-	58	-	-
 notes/swish-language.md	3147	-	49	-	-
@@ -886,10 +878,8 @@ notes/timed-wait.md	3827	-	-	-	-
 notes/timer-capability.md	5644	-	68	-	-
 notes/touch.md	-	26	81	-	-
 notes/trusted-base.md	-	-	50	-	-
-notes/trusted-init.md	6056	-	64	-	-
 notes/tsc-under-tcg.md	-	-	71	-	-
 notes/undefined-behavior.md	-	-	61	-	-
-notes/unsafe-obligations.md	8139	-	-	-	-
 notes/untracked-work-sweep.md	-	21.5	48	-	-
 notes/untrusted-input-audit.md	-	-	57	-	-
 notes/user-proofs.md	3261	-	69	-	-

@@ -18,7 +18,24 @@ the parent's Results row points to it.
   that found the single crossing moves about 8 ticks with code placement alone.
 - [`spawn-destroy-gone.md`](spawn-destroy-gone.md): why the full mix failed under HVF. A yield
   wrapper declared no output. The spawn job then trapped with stale arguments.
+- [`warton-aim7.md`](warton-aim7.md): what Warton ran AIM7 on, and why the 20% is not a target.
+- [`instrument-change-2026-09-19.md`](instrument-change-2026-09-19.md): the statistic and the mix
+  that changed that day, and how to tell an old transcript from a new one.
+- [`hvf-cross-check-2026-09-19.md`](hvf-cross-check-2026-09-19.md): the HVF cross-check that did
+  not run.
+- [`limitations.md`](limitations.md): the parent's BUGS list in full.
 
 *Name: provisional, minted 2026-10-04 (UTC) by the `lane/radon-jobmix-2026-10-04` lane, for the
 directory and every stem in it; `lane/null-syscall-under-load` added two stems on 2026-10-05. `lane/null-syscall-hvf` added one, and `lane/radon-2026-10-05-record` one. Naming is an architect's; `script/names --unratified` lists each
 stem.*
+
+The stems `warton-aim7`, `instrument-change-2026-09-19`, `hvf-cross-check-2026-09-19` and
+`limitations` were minted on 2026-10-11 (UTC) by `lane/next-ten-longest-notes`, which split the
+parent under §212 (a prose budget). Each is named for its content, and calef names files.
+
+- `warton-aim7` Name: provisional, minted 2026-10-11 (UTC) by lane/next-ten-longest-notes.
+- `instrument-change-2026-09-19` Name: provisional, minted 2026-10-11 (UTC) by
+  lane/next-ten-longest-notes, dated like `radon-2026-10-04`.
+- `hvf-cross-check-2026-09-19` Name: provisional, minted 2026-10-11 (UTC) by
+  lane/next-ten-longest-notes.
+- `limitations` Name: provisional, minted 2026-10-11 (UTC) by lane/next-ten-longest-notes.

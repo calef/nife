@@ -10,7 +10,26 @@ not:
   were built under DECISIONS §225 (`free` sees the machine and your share), and the method number,
   page layout and names calef ratified.
 - [`pmap` from the prompt](pmap.md): what the listing costs, and the options calef chooses between.
+- [The `SURVEY` method](survey-method.md): the selector, placement, membership and the cursor.
+- [`pgrep`](pgrep.md): the filter, its four answers, and the `pkill` that cannot exist.
+- [`pmap` and `LIST`](pmap-listing.md): the method, the delegation audit, and why no live view can be
+  handed over today.
+- [`watch`](watch.md): built, then cut, and the test it leaves behind.
+- [The BUGS list in full](limitations.md): the parent's BUGS section, one line per entry there.
 
 *Name: provisional, minted 2026-09-26 (UTC) by the lane `milestone/126-procps`, for the directory and
 the stem `what-is-left`, and by `milestone/126-free` for the stem `the-machine-and-your-share`.
 Naming is calef's; `script/names --unratified` lists each stem.*
+
+The stems `survey-method`, `pgrep`, `pmap-listing`, `watch` and `limitations` were minted on
+2026-10-11 (UTC) by `lane/next-ten-longest-notes`, which split the parent under §212 (a prose
+budget). Each is named for its content, and calef names files.
+
+- `survey-method` Name: provisional, minted 2026-10-11 (UTC) by lane/next-ten-longest-notes.
+- `pgrep` Name: provisional, minted 2026-10-11 (UTC) by lane/next-ten-longest-notes, for the program
+  it describes.
+- `pmap-listing` Name: provisional, minted 2026-10-11 (UTC) by lane/next-ten-longest-notes, to sit
+  beside `pmap` without taking its name.
+- `watch` Name: provisional, minted 2026-10-11 (UTC) by lane/next-ten-longest-notes, for the program
+  it records.
+- `limitations` Name: provisional, minted 2026-10-11 (UTC) by lane/next-ten-longest-notes.
