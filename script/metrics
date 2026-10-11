@@ -1241,6 +1241,12 @@ def name_surfaces(tree):
         elif (len(parts) == 3 and parts[1] == 'src' and path.endswith('.rs')
               and parts[0] in ('user', 'components', 'fixtures')):
             out.append((parts[2][:-3], path, '//!'))
+        # A program can be a directory with its block in `main.rs` (milestone 844 (the shell
+        # program is split along its seams), from 2026W41; `components/src/swish/` was the first).
+        # `script/names` was told in the same change.
+        elif (len(parts) == 4 and parts[1] == 'src' and parts[3] == 'main.rs'
+              and parts[0] in ('components', 'fixtures')):
+            out.append((parts[2], path, '//!'))
         elif len(parts) == 2 and parts[0] == 'script':
             out.append((parts[1], path, '#'))
         elif parts[-1] == 'Cargo.toml' and parts[0] != 'crates':
