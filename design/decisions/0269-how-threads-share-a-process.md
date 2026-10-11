@@ -75,6 +75,9 @@ holds the space. The right probably belongs on the process object instead. Fork 
 carries over unchanged, but where the right lives is calef's, and 812's lane brings it back
 before the code that adds the right.
 
+*Answered 2026-10-10 (UTC) on #1892: the right lives on a process capability. §276 (the thread
+syscalls as built) records the ruling and the surface.*
+
 ## What this changes in milestone 812
 
 Work items 1 to 4 now build a process object as well as a shared table, and items 11 and 16

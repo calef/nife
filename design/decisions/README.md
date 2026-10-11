@@ -365,7 +365,7 @@ place instead of moving text between two systems. Numbers 68 to 73 are the six t
 | 246 | DECIDED | [A plain `RECEIVE` never takes a capability, whichever side reaches the rendezvous first](0246-a-plain-receive-never-takes-a-capability.md) |
 | 247 | DECIDED | [The split begins with basalt holding nife, and `procps` moves first](0247-the-split-begins-with-basalt-and-procps-moves-first.md) |
 | 248 | DECIDED | [The name resolver is its own confined program, not a verb inside the network stack](0248-the-resolver-is-its-own-confined-program.md) |
-| 249 | DECIDED | [A running address space stays nameable, and a capability never decides when it dies](0249-a-running-address-space-stays-nameable.md) |
+| 249 | AMENDED | [A running address space stays nameable, and a capability never decides when it dies](0249-a-running-address-space-stays-nameable.md) |
 | 250 | AMENDED | [An image names its distribution's package index, at `basalt.nifeos.org`, and a package's bytes may live anywhere](0250-images-name-one-package-index-and-the-bytes-may-live-anywhere.md) |
 | 251 | DECIDED | [Restarting the machine is a kernel object the progenitor hands out](0251-restarting-the-machine-is-a-kernel-object.md) |
 | 252 | DECIDED | [A resolver grant is one zone per client badge, and a client speaks the socket contract's shape](0252-a-resolver-grant-is-a-zone-per-badge-over-the-socket-contracts-shape.md) |
@@ -388,6 +388,7 @@ place instead of moving text between two systems. Numbers 68 to 73 are the six t
 | 269 | DECIDED | [How threads share a process: the seven thread forks](0269-how-threads-share-a-process.md) |
 | 270 | DECIDED | [A package manager holds an installer endpoint, not the spawn endpoint](0270-a-package-manager-holds-an-installer-endpoint-not-the-spawn-endpoint.md) |
 | 273 | DECIDED | [The shell program becomes a directory of modules](0273-the-shell-program-becomes-a-directory-of-modules.md) |
+| 276 | DECIDED | [The thread syscalls as built: the process object, `BIND`, futexes, the thread pointer and `SYS_EXIT_THREAD`](0276-the-thread-syscalls-as-built.md) |
 
 Two blocks that lived among the decisions are not decisions and moved out with the split, the same
 way milestone 76 moved four essays out of the roadmap: [the open design
