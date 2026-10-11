@@ -39,10 +39,15 @@ iterates `(thread, table)` pairs, so the old hunk no longer matched. Same remova
 added `let _ = t;` only keeps the patched build free of an unused-variable warning.
 Replayed red on riscv64 the same day at `revocation_in_flight_tests.rs:134`, the assertion predicted.
 
-diff --git a/kernel/src/sched.rs b/kernel/src/sched.rs
---- a/kernel/src/sched.rs
-+++ b/kernel/src/sched.rs
-@@ -4374,9 +4374,7 @@ fn delete_page_frame_caps_where(matches: impl Fn(&crate::cap::Object) -> bool) {
+Regenerated 2026-10-11 (UTC) for milestone 840 (the scheduler file is split along its seams):
+the same lines, moved out of `kernel/src/sched.rs` into `kernel/src/sched/capabilities.rs` unchanged, so the defect is
+the same and only the path and line numbers differ.
+
+diff --git a/kernel/src/sched/capabilities.rs b/kernel/src/sched/capabilities.rs
+index cd75c6fdd..63133422a 100644
+--- a/kernel/src/sched/capabilities.rs
++++ b/kernel/src/sched/capabilities.rs
+@@ -94,9 +94,7 @@ pub(super) fn delete_page_frame_caps_where(matches: impl Fn(&crate::cap::Object)
      };
      for (t, caps) in sched.threads.iter_mut_with_capabilities() {
          caps.lock().delete_matching(&matches);

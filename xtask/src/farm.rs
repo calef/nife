@@ -38,7 +38,7 @@ const STD_TARGETS: [&str; 3] = [
 const TOOLCHAIN_PREFIX: &str = "nife-dev-";
 
 /// Bump to force every farm to rebuild after a change to the patch logic itself (not the inputs).
-const STD_SRC_PATCH_VERSION: u32 = 12;
+const STD_SRC_PATCH_VERSION: u32 = 13;
 
 fn farm_dir() -> PathBuf {
     workspace_root().join("target/nife-farm")
@@ -300,6 +300,8 @@ pub(crate) fn std_inputs_stamp() -> u64 {
     let mut files: Vec<PathBuf> = vec![
         root.join("crates/abi/src/lib.rs"),
         root.join("crates/user_mode_heap/src/lib.rs"),
+        // Each thread's cache in front of that heap (milestone 561), generated beside it.
+        root.join("crates/allocation_cache/src/lib.rs"),
         // The net PAL generates its wire constants verbatim from the net_stack contract; a change to it
         // must rebuild the farm just like a change to the ABI crate.
         root.join("crates/socket_protocol/src/lib.rs"),
@@ -670,6 +672,12 @@ fn std_generate_modules() -> bool {
             root.join("crates/user_mode_heap/src/lib.rs"),
             farm_std_src().join("sys/alloc/nife/user_mode_heap.rs"),
         ),
+        // Each thread's cache in front of that heap (milestone 561 (a per-CPU allocator is what
+        // the current-CPU page was for)), a sibling of it, so the two stay one grid.
+        (
+            root.join("crates/allocation_cache/src/lib.rs"),
+            farm_std_src().join("sys/alloc/nife/allocation_cache.rs"),
+        ),
         // The net_stack socket-contract wire format, verbatim, so the net PAL cannot drift from the
         // server it talks to (same discipline as the ABI and heap crates above).
         (
@@ -933,7 +941,9 @@ fn std_patch_dispatch() -> bool {
     ) && patch_after(
         &sys.join("alloc/mod.rs"),
         "cfg_select! {",
-        "    target_os = \"nife\" => {\n        mod nife;\n        use nife as imp;\n    }",
+        // `pub(crate)` so a thread's end can spill its allocation cache (milestone 561), from
+        // `sys/thread_local/key/nife.rs`.
+        "    target_os = \"nife\" => {\n        pub(crate) mod nife;\n        use nife as imp;\n    }",
     ) && patch_after(
         &sys.join("stdio/mod.rs"),
         "cfg_select! {",

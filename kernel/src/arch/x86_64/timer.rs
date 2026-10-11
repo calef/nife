@@ -624,6 +624,11 @@ pub fn set_cycle_counter_grant(_granted: bool) {}
 /// than one per handler.
 pub fn tick() {
     TICKS.fetch_add(1, Ordering::Relaxed);
+    // In a test build, feed the hang watchdogs (`testing::watchdog_tick`), as the other two
+    // architectures' ticks do. Missing here from milestone 161 until 2026-10-11 (UTC), so no x86_64
+    // test could fail by its budget or by a stall, and one hung for 9.5 hours (#1912).
+    #[cfg(any(test, feature = "system_tests"))]
+    crate::testing::watchdog_tick();
 }
 
 /// Scheduler ticks taken so far.

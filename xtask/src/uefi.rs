@@ -888,12 +888,10 @@ fn uefi_test_image(package: &str) -> bool {
             return false;
         }
     };
-    let status = child.wait();
+    let status = watch.wait(&mut child, &format!("x86_64 ovmf {package}"));
     let (lines, exited) = watch.finish();
     let transcript: String = lines.iter().map(|l| l.text.clone() + "\n").collect();
-    let passed = status
-        .as_ref()
-        .is_ok_and(|s| s.code() == Some(i32::from(X86_DEBUG_EXIT_SUCCESS)));
+    let passed = status.is_some_and(|s| s.code() == Some(i32::from(X86_DEBUG_EXIT_SUCCESS)));
     let accounted = crate::time_record::account("x86_64 ovmf", package, &lines, exited, passed);
 
     let mut ok = true;
@@ -917,10 +915,7 @@ fn uefi_test_image(package: &str) -> bool {
         eprintln!(
             "uefi-test: qemu exited {:?}, not {X86_DEBUG_EXIT_SUCCESS} (the harness's own success \
              status through isa-debug-exit)",
-            status
-                .as_ref()
-                .ok()
-                .and_then(std::process::ExitStatus::code)
+            status.and_then(|s| s.code())
         );
         ok = false;
     }

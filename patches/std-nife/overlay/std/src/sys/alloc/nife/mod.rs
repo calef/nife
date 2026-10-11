@@ -9,13 +9,28 @@
 //! Lazy, because std has no moment where a program says "init the heap": the first allocation
 //! (often std's own rt setup) simply finds committed == 0 and grows. A program whose slot 0 is
 //! not an untyped gets a failed allocation, which std turns into the OOM abort: honest, if
-//! blunt. The spinlock is uncontended today (no `thread::spawn`, phase one) and stays correct
-//! under preemption when threads arrive; see notes/std.md for the caveat.
+//! blunt.
+//!
+//! **Each thread has a cache in front of the lock** (milestone 561 (a per-CPU allocator is what
+//! the current-CPU page was for)): `crates/allocation_cache`, generated into `allocation_cache.rs`
+//! next door, kept in the thread's own block (`sys/thread_local/key/nife.rs`). A small request is
+//! served from it without the lock; a miss refills, and a full class spills, eight blocks under one
+//! acquisition. A thread's end closes its cache and gives every block back
+//! ([`spill_thread_cache`]). Before the main thread's block exists, and in a program whose thread
+//! pointer could not be set, every request takes the lock, as before. Why per thread and not per
+//! CPU, and what was measured, is `notes/std/allocation.md`.
 
 use crate::alloc::Layout;
+use crate::ptr::NonNull;
 use crate::sys::pal::nife::{abi, rt};
+use crate::sys::thread_local::key::nife as tls;
 
+// Generated whole from the crate; its counters and bound are the host tests', hence the allow.
+#[allow(dead_code)]
+pub(crate) mod allocation_cache;
 mod user_mode_heap;
+
+use allocation_cache::{Cache, GRID, class, class_bytes};
 
 const PAGE: u64 = 4096;
 const MIN_GROW_PAGES: u64 = 8;
@@ -97,20 +112,68 @@ fn grow(inner: &mut Inner, need: u64) -> bool {
     got >= need_pages
 }
 
-#[inline]
-pub unsafe fn alloc(layout: Layout) -> *mut u8 {
-    let mut g = lock();
-    let inner = g.inner();
+/// A block from the heap itself, growing it as needed; `None` when the region is spent.
+fn heap_alloc(inner: &mut Inner, layout: Layout) -> Option<NonNull<u8>> {
     loop {
         if let Some(p) = inner.heap.alloc(layout) {
-            return p.as_ptr();
+            return Some(p);
         }
         let slack = layout.align().saturating_sub(PAGE as usize) as u64;
         let need = user_mode_heap::effective_size(layout) as u64 + slack;
         if !grow(inner, need) {
-            return crate::ptr::null_mut();
+            return None;
         }
     }
+}
+
+/// The layout a cached block of `class` has in the heap: its whole effective size, on the grid.
+fn class_layout(class: usize) -> Layout {
+    // SAFETY: a nonzero multiple of a power of two, aligned to that power of two.
+    unsafe { Layout::from_size_align_unchecked(class_bytes(class), GRID) }
+}
+
+/// The calling thread's cache, when a request of this shape may use it.
+#[inline]
+fn cache_for(layout: Layout) -> Option<(&'static mut Cache, usize)> {
+    let c = class(layout.size(), layout.align())?;
+    let cache = tls::allocation_cache();
+    // SAFETY: the calling thread's own cache, which nothing else touches (`tls::allocation_cache`),
+    // and nothing here allocates while this borrow is live.
+    (!cache.is_null()).then(|| (unsafe { &mut *cache }, c))
+}
+
+#[inline]
+pub unsafe fn alloc(layout: Layout) -> *mut u8 {
+    if let Some((cache, c)) = cache_for(layout) {
+        if let Some(p) = cache.take(c) {
+            return p.as_ptr();
+        }
+        return refill_and_take(cache, c);
+    }
+    let mut g = lock();
+    heap_alloc(g.inner(), layout).map_or(crate::ptr::null_mut(), NonNull::as_ptr)
+}
+
+/// A miss: up to eight blocks of the class from the heap under one acquisition, then one of them.
+#[cold]
+fn refill_and_take(cache: &mut Cache, c: usize) -> *mut u8 {
+    {
+        let mut g = lock();
+        let inner = g.inner();
+        // SAFETY: each block is the heap's, `class_bytes(c)` long, on the grid, and handed out
+        // to nobody else.
+        unsafe { cache.refill(c, || heap_alloc(inner, class_layout(c))) };
+    }
+    cache.take(c).map_or(crate::ptr::null_mut(), NonNull::as_ptr)
+}
+
+/// **A thread's end**: give every block its cache holds back to the heap under one acquisition.
+/// The caller has already closed the cache, so nothing refills it after this.
+pub(crate) fn spill_thread_cache(cache: &mut Cache) {
+    let mut g = lock();
+    let inner = g.inner();
+    // SAFETY: every cached block of class `c` is the heap's and was cached under `class_layout(c)`.
+    cache.drain(|c, b| unsafe { inner.heap.dealloc(b, class_layout(c)) });
 }
 
 #[inline]
@@ -126,9 +189,25 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
 
 #[inline]
 pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
-    let Some(p) = crate::ptr::NonNull::new(ptr) else {
+    let Some(p) = NonNull::new(ptr) else {
         return;
     };
+    if let Some((cache, c)) = cache_for(layout) {
+        // SAFETY: `p` came from `alloc(layout)`, so it is `class_bytes(c)` grid-aligned bytes
+        // of the heap's (a cached block is fungible within its class), and it is ours now.
+        if let Err(p) = unsafe { cache.put(c, p) } {
+            {
+                let mut g = lock();
+                let inner = g.inner();
+                // SAFETY: as `spill_thread_cache`.
+                cache.spill(c, |b| unsafe { inner.heap.dealloc(b, class_layout(c)) });
+            }
+            // SAFETY: as the first `put`; the spill made room.
+            let kept = unsafe { cache.put(c, p) };
+            debug_assert!(kept.is_ok());
+        }
+        return;
+    }
     let mut g = lock();
     // SAFETY: forwarded GlobalAlloc contract: `ptr` came from `alloc(layout)` on this heap.
     unsafe { g.inner().heap.dealloc(p, layout) };

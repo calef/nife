@@ -533,6 +533,14 @@ pub(crate) fn cargo_test_with_scanout_check(arch: &str, test_args: &[&str]) -> b
                 break;
             }
         }
+        // The host watchdog (time_record's module note): a test past its bound ends the boot here,
+        // and `child_ok` stays false.
+        if watch.enforce(
+            &mut child,
+            &format!("{} system_tests", crate::time_record::leg(arch)),
+        ) {
+            break;
+        }
         referee.poll();
         load.sample();
         std::thread::sleep(std::time::Duration::from_millis(100));

@@ -63,6 +63,9 @@ helpers/needs-maintainer.jq), as calef ruled on 2026-10-06 (UTC).
 - A matrix job's runs are judged by their slowest variant, since that is the pole that meets the
   budget; the issue names it.
 - Runner speed is not controlled. Every number is wall time on a shared hosted machine.
+- `update` matches a run's display names against every version of its workflow in `git log`
+  (`patterns_across`), not the one it ran, so a name two versions gave to different keys reads as
+  the newer key. `sync` reads only the newest runs and so only the current file.
 - Runs are read from the API on the day, and GitHub keeps run history for 90 days, so a missed day
   can be backfilled with `--since` only within that window.
 """
@@ -133,6 +136,37 @@ def display_patterns(workflow_text):
         pattern = "(.*)".join(re.escape(p) for p in parts)
         out.append((key, re.compile("^%s$" % pattern)))
     return out
+
+
+def patterns_across(versions):
+    """display_patterns over every version of a workflow, newest first, so a backfilled run is read
+    by the names its jobs had when it ran. The 2026-09-30 split (a6fdf1093) renamed `test`'s display
+    name from `build + test (host + QEMU)`, and a backfill matched only against the current file
+    dropped every `test` run before it. The newest version's patterns come first, so it wins where
+    two disagree; an older version adds only a pattern the newer ones lack."""
+    out, seen = [], set()
+    for text in versions:
+        for key, rx in display_patterns(text):
+            if (key, rx.pattern) not in seen:
+                seen.add((key, rx.pattern))
+                out.append((key, rx))
+    return out
+
+
+def workflow_versions(path):
+    """The workflow file's text now and at each commit that changed it, newest first. A shallow
+    checkout has only the commits it fetched, which degrades to the current file alone."""
+    try:
+        shas = subprocess.run(["git", "log", "--format=%H", "--", path], capture_output=True,
+                              text=True, check=True).stdout.split()
+    except (OSError, subprocess.CalledProcessError):
+        shas = []
+    texts = [open(path).read()]
+    for sha in shas:
+        done = subprocess.run(["git", "show", "%s:%s" % (sha, path)], capture_output=True, text=True)
+        if done.returncode == 0:
+            texts.append(done.stdout)
+    return texts
 
 
 def job_key(display, patterns):
@@ -382,7 +416,7 @@ def update(argv):
     since = datetime.date.fromisoformat(
         arg_value(argv, "--since", (today - datetime.timedelta(days=DEFAULT_WINDOW_DAYS)).isoformat()))
     for workflow in RECORDED:
-        patterns = display_patterns(open(workflow).read())
+        patterns = patterns_across(workflow_versions(workflow))
         name = os.path.basename(workflow)
         day = since
         while day <= today:
@@ -496,6 +530,13 @@ def selftest():
            ("cpu-matrix-shard", "rv64 sifive-u54 rva22s64"))
     expect("key as name", job_key("rustfmt", pats), ("rustfmt", ""))
     expect("unknown", job_key("draft gate", pats), (None, ""))
+    older = WORKFLOW_FIXTURE.replace("test (host crates and the kernel suite under QEMU)",
+                                     "build + test (host + QEMU)")
+    across = patterns_across([WORKFLOW_FIXTURE, older])
+    expect("an old name still reads as its key", job_key("build + test (host + QEMU)", across), ("test", ""))
+    expect("the current name still does", job_key("test (host crates and the kernel suite under QEMU)",
+                                                   across), ("test", ""))
+    expect("an unchanged name adds no second pattern", len(across), len(pats) + 1)
 
     # The recorded run: a real merge-group run's jobs, trimmed to the fields read.
     with open(FIXTURE) as f:

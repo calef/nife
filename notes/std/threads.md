@@ -54,8 +54,11 @@ worker per online core, its parallel count over four million items must come to 
 
 The block's item 12 asked for a measurement before any change to the heap's spinlock.
 `std_heap_contention` does 200,000 small allocations and frees with one thread, then splits the same
-work across four. Measured 2026-10-10 (UTC) under QEMU's TCG emulation, four emulated cores, by
-`std_threads_tests::the_std_heap_is_measured_under_four_threads`:
+work across four. Measured 2026-10-10 (UTC) under QEMU's TCG emulation by
+`std_threads_tests::the_std_heap_is_measured_under_four_threads`. Corrected 2026-10-11 (UTC) by
+milestone 561's lane: this said four emulated cores on every architecture. aarch64 and riscv64 have
+four. `x86_64` has two in its PVH leg, taken in turn on one host thread, and one in its OVMF leg
+(`helpers/qemu-runner-x86_64.sh`). Its figures show what the lock costs and not how it scales.
 
 | architecture | one thread | four threads | four against one |
 |---|---|---|---|
@@ -72,11 +75,14 @@ A second run at commit `691cb473c`, on a quieter host, read 46.0 ms against 116.
 `x86_64` (2.4 times). The ratio moves with the host's load. That four threads are slower than one
 does not.
 
+Milestone 561 (a per-CPU allocator is what the current-CPU page was for) put a cache per thread in
+front of the lone lock. Four threads now do 2.5 times the work of one on aarch64 and riscv64
+(`notes/std/allocation.md`). Its twelve further runs of the lone lock mostly agree with the
+paragraph above, but not always. Four threads were slower than one in ten of them, and slightly
+faster in two (riscv64 at 1.07 times, `x86_64`'s one-core leg at 1.05).
+
 ## BUGS
 
-- The heap's one spinlock makes allocation slower with four threads than with one (the table
-  above). The replacement is milestone 561 (a per-CPU allocator is what the current-CPU page was
-  for); measure it with the same program.
 - A spawned thread's stack has no guard page. It is heap memory, so an overflow writes into the
   heap. A stack mapped from the region with an unmapped page below it is the fix.
 - A detached thread's stack is never freed, because nothing remains to free it.

@@ -43,10 +43,15 @@ which took the delete itself off `IPC_TABLES` and left only a deleted `PortRange
 and clear the grant. Same two removals, same defect, new surrounding code.
 Replayed red on x86_64 the same day at `x86_port_tests.rs:363`, `left: 2`, `right: 1`.
 
-diff --git a/kernel/src/sched.rs b/kernel/src/sched.rs
---- a/kernel/src/sched.rs
-+++ b/kernel/src/sched.rs
-@@ -4534,14 +4534,13 @@ pub fn delete_current_cap(slot: u64) -> Result<(), crate::cap::Error> {
+Regenerated 2026-10-11 (UTC) for milestone 840 (the scheduler file is split along its seams):
+the same lines, moved out of `kernel/src/sched.rs` into `kernel/src/sched/capabilities.rs` unchanged, so the defect is
+the same and only the path and line numbers differ.
+
+diff --git a/kernel/src/sched/capabilities.rs b/kernel/src/sched/capabilities.rs
+index cd75c6fdd..3990dd7d7 100644
+--- a/kernel/src/sched/capabilities.rs
++++ b/kernel/src/sched/capabilities.rs
+@@ -266,14 +266,13 @@ pub fn delete_current_cap(slot: u64) -> Result<(), crate::cap::Error> {
              .and_then(|sched| sched.threads.get_mut(current))
              .filter(|t| t.port_range_grant == Some((base, count)));
          if let Some(t) = held {

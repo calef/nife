@@ -111,8 +111,9 @@
 
 #![no_std]
 
-/// `exit(code)`: terminate the calling thread. Authority over yourself, so this needs no
-/// capability; see the module docs for why it and its two siblings below are bare syscalls
+/// `exit(code)`: end the calling thread's process, every thread in it (milestone 812; a thread
+/// configured with an address space is a process of its own). Authority over yourself, so this
+/// needs no capability; see the module docs for why it and its two siblings below are bare syscalls
 /// rather than invocations.
 pub const SYS_EXIT: u64 = 0;
 /// `yield()`: give up the CPU without blocking. Same authority-over-yourself reasoning as `exit`.
@@ -140,8 +141,8 @@ pub const SYS_CAP_DELETE: u64 = 3;
 /// waits on the word may free the thread's stack (Linux's `CLONE_CHILD_CLEARTID`). An unmapped or
 /// misaligned word is skipped, never a reason not to exit. Prior art: Linux `exit` beside
 /// `exit_group`, Zircon `zx_thread_exit` beside `zx_process_exit`, FreeBSD `thr_exit` (whose
-/// `state` word is this one). *(Number provisional; semantics owe a `design/decisions/` section at
-/// merge.)*
+/// `state` word is this one). Semantics: §276 (the thread syscalls as built).
+/// *(Number provisional.)*
 pub const SYS_EXIT_THREAD: u64 = 4;
 
 /// An index into the calling thread's capability table. **Not a pointer, not a handle you can

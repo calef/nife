@@ -1,5 +1,5 @@
 ---
-status: DECIDED
+status: AMENDED
 raised: 2026-10-05
 decided: 2026-10-05
 ratified_by: calef
@@ -126,3 +126,17 @@ Refused:
 - C, seL4's slot 3. It renumbers every slot from 3 up for no gain.
 
 This unblocks milestone 95 (an unmap primitive, and the mappings init never lets go) reaching BUILT.
+
+## Amendment (2026-10-10): a space has one holder, and threads share it through a process
+
+calef ruled on #1892 on 2026-10-10 (UTC) that `BIND` lives on a process capability and that this
+section's bound mark retires; §276 (the thread syscalls as built) records it. What changed in the
+merged code (`ddd38f0b0`):
+
+- Amendment (b) applies per holder, not per thread. A holder is a thread that is its own process,
+  or a process object. A second `CONFIGURE` with a held space, or a `RETYPE_OBJ` of a process
+  around one, is still `WrongObject`, so two processes cannot share a space. More threads run in
+  one space by joining the process that holds it.
+- Amendment (a)'s "a space dies when its thread is reaped" now reads: when its holder is gone, which
+  for a process means it has ended and its last member is reaped, or its region is destroyed.
+

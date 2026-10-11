@@ -11,7 +11,12 @@ Expected to fail: "a spinner never ran, or faulted on its first read". Each spin
 a thread pointer of zero and faults at address 0 (replayed on all three architectures, 2026-10-10
 UTC).
 
+Regenerated 2026-10-11 (UTC) for milestone 840 (the scheduler file is split along its seams):
+the same lines, moved out of `kernel/src/sched.rs` into `kernel/src/sched.rs` unchanged, so the defect is
+the same and only the path and line numbers differ.
+
 diff --git a/kernel/src/arch/riscv64/exceptions.rs b/kernel/src/arch/riscv64/exceptions.rs
+index 50bd456e2..dda1795bf 100644
 --- a/kernel/src/arch/riscv64/exceptions.rs
 +++ b/kernel/src/arch/riscv64/exceptions.rs
 @@ -110,7 +110,6 @@ impl TrapFrame {
@@ -23,9 +28,10 @@ diff --git a/kernel/src/arch/riscv64/exceptions.rs b/kernel/src/arch/riscv64/exc
              x,
              sepc: entry,
 diff --git a/kernel/src/sched.rs b/kernel/src/sched.rs
+index e8c8cd6a6..c0b827e52 100644
 --- a/kernel/src/sched.rs
 +++ b/kernel/src/sched.rs
-@@ -2629,12 +2629,6 @@ pub fn schedule() {
+@@ -1492,12 +1492,6 @@ pub fn schedule() {
          // architecture's half.
          //
          // SAFETY: live threads' TCB pages from the table, under `IPC_TABLES`; one field each.

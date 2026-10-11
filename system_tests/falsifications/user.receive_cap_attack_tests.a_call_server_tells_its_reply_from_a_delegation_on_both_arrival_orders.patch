@@ -29,18 +29,23 @@ scheduler code that all three ISAs share. The record is aarch64's because that i
 The diff's context cites milestone 599 (a frame per filesystem client channel) and milestone 634
 (a plain SEND received by RECEIVE_CAP never hands the receiver a sender-chosen slot).
 
-diff --git a/kernel/src/sched.rs b/kernel/src/sched.rs
---- a/kernel/src/sched.rs
-+++ b/kernel/src/sched.rs
-@@ -3658,6 +3658,7 @@
+Regenerated 2026-10-11 (UTC) for milestone 840 (the scheduler file is split along its seams):
+the same lines, moved out of `kernel/src/sched.rs` into `kernel/src/sched/rendezvous.rs` unchanged, so the defect is
+the same and only the path and line numbers differ.
+
+diff --git a/kernel/src/sched/rendezvous.rs b/kernel/src/sched/rendezvous.rs
+index c59bccd96..777aae99f 100644
+--- a/kernel/src/sched/rendezvous.rs
++++ b/kernel/src/sched/rendezvous.rs
+@@ -459,6 +459,7 @@ pub(super) fn hand_over_label(receiver: &crate::thread::Thread, label: u64) {
  /// the receiver's table was full and there is no Reply to name. Written only on the two paths a
  /// `CALL` reaches a receiver (`ipc_call_badged`'s rendezvous and `ipc_receive_cap`'s collect of a
  /// parked caller), so a `SEND_CAP` delegation, which reaches the same `x1`, never carries it.
 +#[allow(dead_code)]
  #[inline(always)]
- fn reply_tag(slot: u64) -> u64 {
+ pub(super) fn reply_tag(slot: u64) -> u64 {
      if slot == NO_CAP {
-@@ -3795,7 +3796,7 @@
+@@ -672,7 +673,7 @@ pub fn ipc_receive_cap(ep: RendezvousId) -> [u64; 5] {
                      // SEND_CAP, whose sender parked mailbox[1] = 0), x3 = the sender's badge (msg[3],
                      // milestone 599), x4 = REPLY_DELIVERED iff x1 is this caller's Reply (milestone
                      // 706), else 0. Never BOUND: that is the arm above.
@@ -49,7 +54,7 @@ diff --git a/kernel/src/sched.rs b/kernel/src/sched.rs
                      Some([msg[0], slot, msg[1], msg[3], tag])
                  }
                  inter_process_communication::Receive::Blocked => {
-@@ -3917,7 +3918,7 @@
+@@ -814,7 +815,7 @@ pub fn ipc_call_badged(ep: RendezvousId, msg: [u64; 2], badge: u64) -> [u64; 3]
                  // value instead of a zero, so the server's RECEIVE_CAP surfaces which client called.
                  // Word 4 says x1 is a Reply (milestone 706), which only this path and the collect
                  // in `ipc_receive_cap` may say; a SEND_CAP's delivery leaves it 0.

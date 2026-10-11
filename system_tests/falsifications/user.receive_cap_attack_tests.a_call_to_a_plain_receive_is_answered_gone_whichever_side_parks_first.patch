@@ -36,10 +36,15 @@ scheduler queue ownership token: `rendezvous.send` now takes the sender's queue 
 back the receiver's, so the receiver line the second hunk matched became `hold_token(receiver)`.
 Same removals, same defect.
 
-diff --git a/kernel/src/sched.rs b/kernel/src/sched.rs
---- a/kernel/src/sched.rs
-+++ b/kernel/src/sched.rs
-@@ -4025,9 +4025,6 @@ fn collected_without_serving(sched: &mut IpcTables, sender: ThreadId) {
+Regenerated 2026-10-11 (UTC) for milestone 840 (the scheduler file is split along its seams):
+the same lines, moved out of `kernel/src/sched.rs` into `kernel/src/sched/rendezvous.rs` unchanged, so the defect is
+the same and only the path and line numbers differ.
+
+diff --git a/kernel/src/sched/rendezvous.rs b/kernel/src/sched/rendezvous.rs
+index c59bccd96..90212c657 100644
+--- a/kernel/src/sched/rendezvous.rs
++++ b/kernel/src/sched/rendezvous.rs
+@@ -412,9 +412,6 @@ pub(super) fn collected_without_serving(sched: &mut IpcTables, sender: ThreadId)
          corpse.handshake.wait_on = None;
          let label = corpse.fault_label;
          hand_over_label(sched.threads.get(current_thread_id()).unwrap(), label);
@@ -49,7 +54,7 @@ diff --git a/kernel/src/sched.rs b/kernel/src/sched.rs
      }
  }
  
-@@ -4416,12 +4413,6 @@ pub fn ipc_call_badged(ep: RendezvousId, msg: [u64; 2], badge: u64) -> [u64; 3 {
+@@ -803,12 +800,6 @@ pub fn ipc_call_badged(ep: RendezvousId, msg: [u64; 2], badge: u64) -> [u64; 3]
                  let receiver = hold_token(receiver);
                  // A server is parked in RECEIVE_CAP: hand it the reply cap and the two words now.
                  let (r, caps) = sched.threads.get_mut_with_capabilities(receiver).unwrap();
