@@ -1,7 +1,7 @@
 ---
 status: NOT-STARTED
 raised: 2026-10-07
-milestone_dependencies: none
+milestone_dependencies: 887
 decision_dependencies: none
 machine_requirements: none
 specific_machine: none
@@ -53,45 +53,50 @@ formats and converts neither.
 
 ## What is proven
 
-Kani harnesses, each with a falsification patch at
-`crates/portable_executable/falsifications/<module.path>.<harness>.patch` as §134 (a harness
-carries a machine-replayable falsification record) and `script/falsifications` require. The first
-four are the audit's holes, closed:
+Nothing yet. The crate has no Kani harnesses today, so closing the audit's holes and writing all
+five proofs is this milestone's scope, not a step before it. Each row is a property this crate must
+prove before it publishes. The harness cell names the Kani harness that proves it, or says `none
+yet`; every named harness carries a falsification patch that makes it fail at its own assertion.
+Each patch sits at `crates/portable_executable/falsifications/<module.path>.<harness>.patch`, as
+§134 (a harness carries a machine-replayable falsification record) and `script/falsifications`
+require. The first four rows are the audit's holes, closed.
 
-1. No panic and no overflow on any input. Each structure read (the file header, a program header, a
-   dynamic entry, an `Elf64_Rela`) takes symbolic bytes and returns a value or an error, with every
-   offset sum checked. Kani bounds its inputs, so whole-file coverage comes from composing
-   per-structure proofs, with `script/fuzz` over whole files as the backstop. The block states that
-   bound rather than claiming more.
-2. The image size is capped. No accepted ELF sizes the output beyond a stated limit, whatever
-   `memsz` says.
-3. The relocation walk terminates. A zero or odd `DT_RELAENT` is refused, and the walk visits at
-   most `DT_RELASZ / DT_RELAENT` entries.
-4. Every fixup lands inside the image. Each `.reloc` entry names an 8-byte word inside a section,
-   and the word holds the relocation's addend.
-5. The layout is the ELF's. Each section's RVA equals its segment's virtual address and its raw
-   bytes are the segment's file bytes, zero-filled to `memsz`.
+| property | harness |
+|---|---|
+| No panic and no overflow on any input: each structure read (file header, program header, dynamic entry, `Elf64_Rela`) takes symbolic bytes and returns a value or an error, with every offset sum checked | none yet |
+| The image size is capped: no accepted ELF sizes the output beyond a stated limit, whatever `memsz` says | none yet |
+| The relocation walk terminates: a zero or odd `DT_RELAENT` is refused, and the walk visits at most `DT_RELASZ / DT_RELAENT` entries | none yet |
+| Every fixup lands inside the image: each `.reloc` entry names an 8-byte word inside a section, and the word holds the relocation's addend | none yet |
+| The layout is the ELF's: each section's RVA equals its segment's virtual address and its raw bytes are the segment's file bytes, zero-filled to `memsz` | none yet |
+
+Kani bounds its inputs, so whole-file coverage comes from composing per-structure proofs, with
+`script/fuzz` over whole files as the backstop. Not proven: that firmware boots the result, which
+the riscv64 UEFI gate shows for this tree's own loader and nothing shows in general.
 
 ## Release, by #1806's rulings
 
-1. Close the four holes in `BUGS`, write the five proofs above with their falsification patches, and
+1. The name is settled before anything leaves (857's Fork 5 as calef amended it on 2026-10-11 UTC).
+   `script/names portable_executable` reports it ratified, crates.io answers 404 for it (or it is
+   already ours), and `nifeos/portable_executable` does not exist yet. `script/crate-standalone`
+   checks the first.
+2. Close the four holes in `BUGS`, write the five proofs above with their falsification patches, and
    rewrite `BUGS` to say what the crate now refuses.
-2. In the tree, `script/verify` proves the harnesses and `Cargo.toml` says `publish = false`.
-3. The package is 0.1.0 with its own semver, states `rust-version` (#1806's note built it on stable
+3. In the tree, `script/verify` proves the harnesses and `Cargo.toml` says `publish = false`.
+4. The package is 0.1.0 with its own semver, states `rust-version` (#1806's note built it on stable
    1.94.1), and ships its harnesses and falsification patches. `cargo package --list` shows them.
-4. Ready means proofs passing and the API stable. §235 (the OS is built and updated from
+5. Ready means proofs passing and the API stable. §235 (the OS is built and updated from
    packages, and the tree divides by what releases together) has milestone 610 (the interface's
    stability is measured weekly)'s per-package co-change column judges the second. When it is ready,
    calef adds it to the lint-checked publish allowlist. A `nifeos/portable_executable` repository is
-   then created on the shared CI template, through reusable workflows: Kani through
+   then created on the shared CI template (milestone 887), through reusable workflows: Kani through
    `kani-github-action`, lint, release. Its release workflow refuses to publish unless the proof job
    is green. Nothing here reads `target_arch`; the ELF's machine is data, not the build target. So
    stock Kani serves. The patched Kani of §218 (carry a Kani patch so riscv64 is proved, and send it
    upstream) is carried only if a harness comes to need riscv64. Milestone 589 (Kani can prove
    riscv64 from the hosts we already have) built it.
-5. crates.io trusted publishing from that workflow, owned by a `nifeos` team, with no stored token.
-6. calef approves this publication, as he does every one.
-7. nife consumes the crates.io release, pinned with its checksum in `Cargo.lock`. A `[patch]` to a
+6. crates.io trusted publishing from that workflow, owned by a `nifeos` team, with no stored token.
+7. calef approves this publication, as he does every one.
+8. nife consumes the crates.io release, pinned with its checksum in `Cargo.lock`. A `[patch]` to a
    checkout is allowed only during development, and a lint fails one that reaches `main`. The copy
    under `crates/` goes.
 
@@ -103,6 +108,23 @@ A host tool in nife, but `no_std` with `alloc`, so it builds anywhere. This lane
 workflow builds the same four. Its tests convert riscv64 PIEs; an aarch64 or x86_64 PIE is outside
 the first release, since rustc emits PE for those directly.
 
+## Standalone, measured 2026-10-11 (UTC)
+
+`script/crate-standalone portable_executable` fails today, at base `ae6b91e79`. The manifest
+inherits `license` and `lints` from nife's workspace and states no `rust-version`, and there is no
+README, `LICENSE-MIT` or `LICENSE-APACHE`. Those hold for all nine crates. Builds and tests on
+stable for the host and the three bare-metal targets, and has no harness for Kani to run. Beyond
+manifest and files, 8 lines cite this tree: 3 tree paths, 2 `milestone N`, 1 `§N`, 1 naming calef
+and 1 provenance block.
+
+Name: `portable_executable` is ratified today (`script/names`, checked 2026-10-11).
+
+## Review before release
+
+- The public API speaks the device's vocabulary, not nife's: no nife capability type, spawn handoff
+  or nife error enum in a public signature. A reviewer judges this; no script can. Known today:
+  Errors are the crate's own; check that no type from `xtask` reaches a public signature.
+
 ## Exit
 
 A check proves it. `script/verify` proves the five properties, `script/falsifications` reports every
@@ -112,14 +134,21 @@ with a checksum in `Cargo.lock`, `crates/portable_executable` no longer exists, 
 stick still boots in EDK2 under the existing UEFI gate. In `nifeos/portable_executable`, the run
 that published 0.1.0 shows the Kani job green ahead of the publish job.
 
+The name check of release step 1 passes first, so the repository, the package and every doc link
+carry a ratified name. Before the move, `script/crate-standalone portable_executable` exits 0 in
+nife, and every row of *What is proven* names a harness that stock Kani proves in the copy and whose
+falsification patch makes it fail. No crate publishes without Kani harnesses covering its
+hostile-input and state-machine surface, each carrying a falsification patch that makes it fail at
+its own assertion, replayable in the crate's own repository with stock Kani.
+
 ## BUGS
 
-- Steps 4 and 5 need machinery that does not exist yet: the publish allowlist lint, the shared CI
-  template, the `nifeos` crates.io team, and milestone 610's per-package co-change column. #1806
-  ruled their shape; none is a milestone yet.
+- Steps 5 and 6 wait on milestone 887 (crate repositories share one CI template),
+  which owns the shared CI template, the publish allowlist lint and the `nifeos` crates.io team,
+  and on milestone 610's per-package co-change column.
 - The five properties are this lane's proposal, read from the code and its audit, not a ruling.
 - `needs_person` is `yes` because the exit includes a publication only calef can approve. Everything
-  before step 6 can start now.
+  before step 7 can start now.
 
 ## Index row
 

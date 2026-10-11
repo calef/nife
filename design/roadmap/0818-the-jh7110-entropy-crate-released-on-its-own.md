@@ -1,7 +1,7 @@
 ---
 status: NOT-STARTED
 raised: 2026-10-07
-milestone_dependencies: none
+milestone_dependencies: 887
 decision_dependencies: none
 machine_requirements: none
 specific_machine: none
@@ -51,25 +51,47 @@ crate for the TRNG was found. Linux's `jh7110-trng` driver stays the reference a
 copied. No upstream offer goes anywhere: calef ruled on #1806 that nife contributes only to
 projects nife depends on.
 
+## What is proven
+
+Each row is a property this crate must prove before it publishes. The harness cell names the Kani
+harness that proves it, or says `none yet`; every named harness carries a falsification patch that
+makes it fail at its own assertion. Each patch is at `crates/jh7110_entropy/falsifications/`.
+Measured 2026-10-11 (UTC): 4 of 4 proven.
+
+| property | harness |
+|---|---|
+| A lockup bit is never overridden | `verification::a_lockup_bit_is_never_overridden` |
+| Ready requires `RAND_RDY` and carries the words untouched | `verification::ready_requires_rand_rdy_and_carries_the_words_untouched` |
+| Neither bit set is always not ready | `verification::neither_bit_set_is_always_not_ready` |
+| An unseeded core never yields bytes | `verification::an_unseeded_core_never_yields_bytes` |
+
+Not proven: the quality of the randomness, which is a property of the silicon that no proof
+reaches; `Pool` and `assemble`, which copy words; and the device-tree query, which the cut moves
+out.
+
 ## Release, by #1806's rulings
 
-1. Make the cut above. `cargo tree -p jh7110_entropy` then lists no nife crate, and the tests read
+1. The name is settled before anything leaves (857's Fork 5 as calef amended it on 2026-10-11 UTC).
+   `script/names jh7110_entropy` reports it ratified, crates.io answers 404 for it (or it is already
+   ours), and `nifeos/jh7110_entropy` does not exist yet. `script/crate-standalone` checks the
+   first.
+2. Make the cut above. `cargo tree -p jh7110_entropy` then lists no nife crate, and the tests read
    only fixtures inside the package.
-2. In the tree, `script/verify` proves the harnesses and `Cargo.toml` says `publish = false`.
-3. The package is 0.1.0 with its own semver, states `rust-version` (#1806's note built it on stable
+3. In the tree, `script/verify` proves the harnesses and `Cargo.toml` says `publish = false`.
+4. The package is 0.1.0 with its own semver, states `rust-version` (#1806's note built it on stable
    1.94.1), and ships its harnesses and falsification patches. `cargo package --list` shows them.
-4. Ready means proofs passing and the API stable. §235 (the OS is built and updated from
-   packages, and the tree divides by what releases together) has milestone 610 (the interface's
-   stability is measured weekly)'s per-package co-change column judges the second. When it is ready,
-   calef adds it to the lint-checked publish allowlist. A `nifeos/jh7110_entropy` repository is then
-   created on the shared CI template, through reusable workflows: Kani through `kani-github-action`,
-   lint, release. Its release workflow refuses to publish unless the proof job is green. No harness
-   here reads `target_arch`, so stock Kani proves them. The patched Kani of §218 (carry a Kani patch
-   so riscv64 is proved, and send it upstream) is carried only if one comes to need riscv64.
-   Milestone 589 (Kani can prove riscv64 from the hosts we already have) built it.
-5. crates.io trusted publishing from that workflow, owned by a `nifeos` team, with no stored token.
-6. calef approves this publication, as he does every one.
-7. nife consumes the crates.io release, pinned with its checksum in `Cargo.lock`. A `[patch]` to a
+5. Ready means proofs passing and the API stable. §235 (the OS is built and updated from packages,
+   and the tree divides by what releases together) has milestone 610 (the interface's stability is
+   measured weekly)'s per-package co-change column judges the second. When it is ready, calef adds
+   it to the lint-checked publish allowlist. A `nifeos/jh7110_entropy` repository is then created on
+   the shared CI template (milestone 887), through reusable workflows: Kani through
+   `kani-github-action`, lint, release. Its release workflow refuses to publish unless the proof job
+   is green. No harness here reads `target_arch`, so stock Kani proves them. The patched Kani of
+   §218 (carry a Kani patch so riscv64 is proved, and send it upstream) is carried only if one comes
+   to need riscv64. Milestone 589 (Kani can prove riscv64 from the hosts we already have) built it.
+6. crates.io trusted publishing from that workflow, owned by a `nifeos` team, with no stored token.
+7. calef approves this publication, as he does every one.
+8. nife consumes the crates.io release, pinned with its checksum in `Cargo.lock`. A `[patch]` to a
    checkout is allowed only during development, and a lint fails one that reaches `main`. The copy
    under `crates/` goes.
 
@@ -80,6 +102,24 @@ Pure logic, tested on the host. This lane built it on 2026-10-07 with the pinned
 host, all exit 0. The release workflow builds the same four. The silicon is riscv64 only; the
 crate is not.
 
+## Standalone, measured 2026-10-11 (UTC)
+
+`script/crate-standalone jh7110_entropy` fails today, at base `ae6b91e79`. The manifest inherits
+`license` and `lints` from nife's workspace and states no `rust-version`, and there is no README,
+`LICENSE-MIT` or `LICENSE-APACHE`. Those hold for all nine crates. It does not build alone:
+`device_tree_blob` is a path dependency outside the copy, so neither the build nor Kani ran. A test
+reads a fixture from `../../device_tree_blob/tests/fixtures/`, outside the crate. Beyond manifest
+and files, 26 lines cite this tree: 14 `milestone N`, 5 tree paths, 3 `§N`, 2 naming calef and 2
+provenance blocks.
+
+Name: `jh7110_entropy` is ratified today (`script/names`, checked 2026-10-11).
+
+## Review before release
+
+- The public API speaks the device's vocabulary, not nife's: no nife capability type, spawn handoff
+  or nife error enum in a public signature. A reviewer judges this; no script can. Known today:
+  `discover` takes a `DeviceTreeBlob`; the cut makes the caller pass the register region.
+
 ## Exit
 
 A check proves it. In nife, `cargo tree --locked -i jh7110_entropy` resolves to `v0.1.x` from
@@ -88,11 +128,18 @@ builds for all three targets. In `nifeos/jh7110_entropy`, the run that published
 Kani job green ahead of the publish job, and every harness's falsification patch makes its proof
 fail.
 
+The name check of release step 1 passes first, so the repository, the package and every doc link
+carry a ratified name. Before the move, `script/crate-standalone jh7110_entropy` exits 0 in nife,
+and every row of *What is proven* names a harness that stock Kani proves in the copy and whose
+falsification patch makes it fail. No crate publishes without Kani harnesses covering its
+hostile-input and state-machine surface, each carrying a falsification patch that makes it fail at
+its own assertion, replayable in the crate's own repository with stock Kani.
+
 ## BUGS
 
-- Steps 4 and 5 need machinery that does not exist yet: the publish allowlist lint, the shared CI
-  template, the `nifeos` crates.io team, and milestone 610's per-package co-change column. #1806
-  ruled their shape; none is a milestone yet.
+- Steps 5 and 6 wait on milestone 887 (crate repositories share one CI template),
+  which owns the shared CI template, the publish allowlist lint and the `nifeos` crates.io team,
+  and on milestone 610's per-package co-change column.
 - The TRNG needs its clocks and reset released first, which is `jh7110_clock_and_reset`'s plan
   (milestone 819 (JH7110 clock and reset logic, proven, then released on its own)). A stranger using
   this crate alone must do that bring-up some other way; the crate's documentation says so before it
@@ -100,7 +147,7 @@ fail.
 - The device-tree fixtures (`tests/fixtures/*.dts`) are excerpts of the mainline and vendor JH7110
   trees. Their licenses were not checked here; record each before `cargo package` ships them.
 - `needs_person` is `yes` because the exit includes a publication only calef can approve. Everything
-  before step 6 can start now.
+  before step 7 can start now.
 
 ## Index row
 

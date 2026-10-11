@@ -53,7 +53,10 @@ record of what was weighed, and its heading says how it was ruled.
 - Fork 5: names stand on their own, with no `nife` prefix. A crate keeps this tree's name where it
   is free and descriptive, and otherwise gets a fresh descriptive name, ratified when it is first
   published. calef: *"It seems like we should pick create names that can stand on their own. If
-  Nife fails the crates may survive."*
+  Nife fails the crates may survive."* Amended by calef on 2026-10-11 (UTC): *"We should ensure
+  that we ratify the crate names before we break them out."* So a name is ratified, as `script/names`
+  records it, before the crate leaves the tree: before its `nifeos/<name>` repository and before
+  the standalone copy, since both carry it. `script/crate-standalone` checks it.
 - Fork 6: crates.io trusted publishing from a `nifeos` workflow, no long-lived token, a `nifeos`
   team as owner, and a release only when calef approves it. calef: *"Yes"*.
 - Fork 7, replacing approval of the table as a whole: each crate is reviewed with calef one at a
@@ -74,6 +77,33 @@ record of what was weighed, and its heading says how it was ruled.
   with b."*
 
 No per-crate milestone is minted by this block. They come from the reviews below.
+
+## What every crate clears before it publishes (calef, 2026-10-11)
+
+calef, 2026-10-11 (UTC): *"As a gate for each of these milestones, I want to ensure that we're
+exposing clean crates without nife assumptions. I also want to ensure that the gates that we have
+for nife will be adapted for these crate repos as well."* Then: *"Don't we want proofs and
+falsifications for our crates?"* This adds to Forks 3 and 4 and changes neither.
+
+- Proofs. No crate publishes without Kani harnesses covering its hostile-input and state-machine
+  surface, each failing at its own assertion under a falsification patch, replayable in the crate's
+  own repository with stock Kani. Each block's *What is proven* table lists every required property
+  and its harness, so coverage is judged, not counted.
+- Standalone. `script/crate-standalone <crate>` (provisional name) copies the crate alone and
+  builds and tests it on stable for the host and its targets. It refuses this tree's citations and
+  provenance, requires a README, both license files and a `rust-version`, and replays the
+  falsifications. It runs while the crate is still here; all nine fail it today.
+- Gates. Milestone 887 (crate repositories share one CI template) adapts nife's gates row by row.
+  It also dual licenses each crate as nife is: *"nife is MIT OR Apache-2.0, so we should dual
+  license our crates as well."*
+
+What nife does at each extraction is a checklist, built with the first (813):
+[what-nife-does-at-each-extraction.md](0857-crates-released-on-their-own/what-nife-does-at-each-extraction.md).
+
+Adoption is measured once the first crate publishes or the first offer goes out, and not before.
+The measures: crates.io downloads over 90 days, reverse dependencies, and issues and pull requests
+from outside `nifeos`. And for offers: made, accepted and declined, with bug reports filed and
+fixed.
 
 ## The per-crate reviews, in order
 
@@ -176,7 +206,8 @@ the evidence, and the evidence is milestone 39's reason to publish at all.
 ## Fork 5. The crates.io names (ruled: names that stand on their own)
 
 Options only, because a crates.io name cannot be taken back: a crate can be yanked but its name
-stays. Each name is ratified under naming-authority and `script/names` before its first publish.
+stays. Each name is ratified under naming-authority and `script/names` before the crate leaves the
+tree (amended 2026-10-11).
 
 - N-a. This tree's names, prefixed only where taken. Free today: `device_tree_blob`,
   `globally_unique_identifier_partition_table`, `network_time_protocol` and most of the long names.
