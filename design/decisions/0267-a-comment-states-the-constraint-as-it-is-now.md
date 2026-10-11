@@ -80,6 +80,17 @@ copies §212 (a prose budget)'s prose ratchet:
   `--bank` lowers rows to the tree and never raises one.
 - A block that must stay over the cap needs this section amended, by an architect.
 
+**Amended 2026-10-11 (UTC), calef, on [PR #1915](https://github.com/nifeos/nife/pull/1915)**:
+*"Amend §267"*. He was ruling on the comment-block fork of milestone 845 (the filesystem-protocol
+crate root is split along its seams). A row moves with its block when a file splits, at the same
+ceiling, the way a rename already moves rows. No ceiling rises, the list still only falls, and a
+moved block that grows still fails. The gate finds the move by content, the way git finds a
+rename, rather than from a declared list. A listed block carries its row when it is gone from its
+file and turns up in a file that had no rows at the merge base. Its lines must be unchanged or only
+deleted; indentation is ignored. A grown or edited block, a copy that leaves the original behind,
+and a second copy all fail as unlisted. `--bank` writes the carried rows. A split is a move and
+nothing else, and this keeps it checkable as one.
+
 Why a ceiling that only falls rather than exact match: §266 section 3's measurement (164 of 664
 merges in a fortnight touching a listed file) argues it there, and holds one level down. The sweep
 banks its shrinks rather than editing numbers by hand.
@@ -99,6 +110,15 @@ worth: the five blocks the note's samples judged "move" or tutorial.
 - The block count treats a trailing comment on a code line as a one-line block that can begin a
   run, which is the note's definition as its scripts took it. A definition that ignored trailing
   comments would count slightly fewer blocks.
+- A split carries a row only into a file with no rows at the merge base. A block moved into a
+  file that already has listed blocks fails as unlisted; amend this section again if a split needs
+  it. A block whose kind changes in the move (`///` to `//!`) is not the same block and does not
+  carry.
+- Rows pair with blocks in line order within a file. A listed block that leaves the middle of its
+  file without being carried (cut to the cap in place, or moved and cut to it) shifts that pairing.
+  The gate can then report a later, larger block as grown when it is not. This was found on
+  2026-10-11 (UTC) while building the split carry, and it was on main before it. The fix is to pair
+  by content within a file, as the carry does across files.
 - The lexer is the note's hand-written one, adapted. It decides comment spans well enough for a
   gate, and a file it mis-lexes would be mis-measured; none has been found, and the note's own
   caveats apply.
