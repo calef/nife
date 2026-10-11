@@ -172,3 +172,29 @@ Merging four small corrections is four pull requests, and it might be the best h
 worst. This series answers how much landed. The cost columns in [project cost](project-cost.md)
 answer what it took. Neither answers whether it was worth doing, so do not read a rising line here as
 though one of them did.
+
+## The share that pays down debt
+
+calef asked for it on 2026-10-11 (UTC). It is the share of each week's merged pull requests that
+carry the `debt-paydown` label, whose definition and backfill are in
+[which pull requests pay down debt](../debt-paydown.md). The chart is `debt-paydown.svg` and the
+columns are in `debt-paydown.csv`; all three names are provisional.
+
+### Counted from the GitHub API, unlike the series above
+
+A label is on GitHub and not in git, so `helpers/debt_paydown_share.py` fetches every pull request
+merged into `main` each day and rewrites `merged-pull-requests.csv`, one row each. The whole history
+is fetched because a label can be corrected long after the merge, and a corrected label should
+correct the past week. So a past week's share can move on any run.
+
+Numerator and denominator both come from that file. The denominator is therefore not
+`merged_pull_requests`, and the two differ by up to four in a week. Sixteen pull requests that
+GitHub records as merged into `main` by 2026-10-11 have no default merge commit on the first-parent
+line, mostly a merge queue fast-forward (#1516), so only this count sees them. A merge in the last
+seconds of a Sunday can also fall in different weeks under `mergedAt` and the committer date.
+Pull requests merged into another lane's branch are left out of both.
+
+### The line is pooled
+
+The line is ten weeks of labeled pull requests over ten weeks of merged ones, not a mean of ten
+weekly shares, so a quiet week weighs only what it merged.

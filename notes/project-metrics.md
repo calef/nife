@@ -81,6 +81,14 @@ backfills to the first commit. 2026W29 and 2026W30 are zeros: the practice start
 2026W31.
 The line is the same trailing mean.
 
+## Debt paydown
+
+![Debt paydown share](project-metrics/debt-paydown.svg)
+
+The share of each week's merged pull requests labeled `debt-paydown` ([what
+counts](debt-paydown.md)). The label is chosen at the claim and judged from titles, so a lane that
+became a repair is missed.
+
 ## Merge queue ejections
 
 ![Merge queue ejections](project-metrics/merge-queue.svg)

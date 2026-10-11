@@ -195,6 +195,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python3 helpers/verify_times.py update
 
+      # Which merged pull requests carry the `debt-paydown` label (notes/debt-paydown.md), for
+      # `script/metrics`' weekly share. Labels are on GitHub and not in git, so the queue step's
+      # reasons hold. Unlike it, the whole history is fetched and the file rewritten, because a
+      # label can be corrected on a pull request merged months ago; it is one paginated listing.
+      - name: Fetch which merged pull requests pay down debt
+        id: debtpaydown
+        continue-on-error: true  # outcome: re-raised
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 helpers/debt_paydown_share.py update
+
       # Where each merge-group job's time went, per day, per job and per step (milestone 808 (every
       # gate accounts for its time), §254 (a gate prints what each item cost) Fork 4), from the jobs
       # API, committed as `ci-job-times.csv` for `script/metrics`' weekly `ci-jobs.svg`. The last
@@ -342,6 +353,7 @@ jobs:
           steps.covtool.outcome == 'failure' || steps.coverage.outcome == 'failure' ||
           steps.interfacetool.outcome == 'failure' || steps.interface.outcome == 'failure' ||
           steps.queue.outcome == 'failure' || steps.verifytimes.outcome == 'failure' ||
+          steps.debtpaydown.outcome == 'failure' ||
           steps.jobtimes.outcome == 'failure' || steps.budgetissues.outcome == 'failure'
         run: |
           echo "::error::an instrument failed, so its cells were carried rather than measured:" \
@@ -351,6 +363,7 @@ jobs:
             "interface '${{ steps.interface.outcome }}'," \
             "merge queue fetch '${{ steps.queue.outcome }}'," \
             "verify shard times '${{ steps.verifytimes.outcome }}'," \
+            "debt-paydown labels '${{ steps.debtpaydown.outcome }}'," \
             "CI job times '${{ steps.jobtimes.outcome }}'," \
             "near-budget issues '${{ steps.budgetissues.outcome }}'"
           exit 1
