@@ -25,7 +25,7 @@ not what `pwdx` does. Upstream `pwdx PID` prints the process's current working d
 display name, and it was waiting on the wrong fork for a month.
 
 The real question is sharper. A working directory here is not a kernel fact. It is a value,
-`grant_plan::nav::Cwd`, inside the shell's own `Holdings` (`crates/grant_plan/src/lib.rs`). A grep
+`grant_plan::nav::Cwd`, inside the shell's own `Holdings` (`crates/grant_plan/src/command.rs`). A grep
 for `Cwd` across `components/` and `crates/` finds it in `grant_plan` and the shell (`swish`) and
 nowhere else. Other programs receive grants, not a position to resolve against. So on this system
 exactly one kind of process has a working directory, and it can already print it with `pwd`.
