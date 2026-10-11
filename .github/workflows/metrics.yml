@@ -208,8 +208,9 @@ jobs:
 
       # Where each merge-group job's time went, per day, per job and per step (milestone 808 (every
       # gate accounts for its time), §254 (a gate prints what each item cost) Fork 4), from the jobs
-      # API, committed as `ci-job-times.csv` for `script/metrics`' weekly `ci-jobs.svg`. The last
-      # two days are rewritten, so yesterday's partial day heals on the next pass.
+      # API, committed as `ci-job-times.csv`, and each green build's timeline as `ci-builds.csv` for
+      # `script/metrics`' `ci-jobs.svg` and `ci-critical-path.svg`. The last two days are
+      # rewritten, so yesterday's partial day heals on the next pass.
       - name: Fetch the CI jobs' daily times
         id: jobtimes
         continue-on-error: true  # outcome: re-raised

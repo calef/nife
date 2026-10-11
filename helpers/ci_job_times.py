@@ -34,7 +34,18 @@ had to change to provide them. One row per day, workflow, job and step, appended
 filled into the display name (`rv64 sifive-u54 rva22s64`), empty otherwise. `kind` is `job` (the
 whole job; `name` is empty) or `step` (`name` is the step's). Milestone 807 (the kernel suite reports
 what each test cost)'s per-test record is an artifact per run; folding it in here is a later kind.
-`script/metrics` reads the `job` rows into the weekly chart `ci-jobs.svg`.
+`script/metrics` read the `job` rows into `ci-jobs.svg` until 2026-10-11 (UTC); the record stays as
+the per-step history a budget issue's reader digs into.
+
+The same pass writes `BUILDS_CSV`, which `ci-jobs.svg` and `ci-critical-path.svg` now read (calef,
+2026-10-11 UTC: "how long a PR build takes against a lid of 20 minutes broken down by each job"). A
+build is a merge commit's runs of both workflows, matched on `head_sha` (`build_rows`), and its
+wall time is first job start to last job end across them (`build_wall`):
+
+    date,build,kind,workflow,job,start_seconds,end_seconds,seconds
+
+`kind` is `build` (one row, `seconds` the wall time) or `job` (start and end in seconds from the
+build's first job start; a matrix job is one row, `seconds` its slowest variant).
 
 # `sync`: the tracking issue (§254, Fork 2)
 
@@ -66,10 +77,15 @@ helpers/needs-maintainer.jq), as calef ruled on 2026-10-06 (UTC).
 - `update` matches a run's display names against every version of its workflow in `git log`
   (`patterns_across`), not the one it ran, so a name two versions gave to different keys reads as
   the newer key. `sync` reads only the newest runs and so only the current file.
+- A build's wall time starts at its first job's start, so the wait for the first runner is not in
+  it; a later job's wait for a runner is.
+- A build counts only when every run in it succeeded. A failed build stops early or is ejected, and
+  folding it in would pull the median down for the wrong reason.
 - Runs are read from the API on the day, and GitHub keeps run history for 90 days, so a missed day
   can be backfilled with `--since` only within that window.
 """
 
+import concurrent.futures
 import csv
 import datetime
 import importlib.util
@@ -99,6 +115,14 @@ MARKER = "<!-- ci-job-times:job=%s -->"
 # BUGS entry), and this record is where they come from. `sync` reads only the budgeted ones, since a
 # job with no budget has no line to cross.
 RECORDED = [".github/workflows/ci.yml", ".github/workflows/verify.yml"]
+# One row per green merge-group build and one per job in it, each job's start and end in seconds
+# from the build's first job start (`build_rows`). `script/metrics` reads it into `ci-jobs.svg`
+# and `ci-critical-path.svg`. File name provisional, minted 2026-10-11 (UTC) by
+# maintainer/build-time-chart.
+BUILDS_CSV = "notes/project-metrics/ci-builds.csv"
+BUILD_COLUMNS = ["date", "build", "kind", "workflow", "job", "start_seconds", "end_seconds", "seconds"]
+# The workflow every build has. A merge group without it was never built.
+ANCHOR = "ci.yml"
 
 
 def _load_budget_module():
@@ -255,6 +279,92 @@ def merge_days(existing, fresh):
     kept = [r for r in existing if (r["date"], r["workflow"]) not in days]
     return sorted(kept + list(fresh), key=lambda r: (r["date"], r["workflow"], r["job"], r["variant"],
                                                      r["kind"] != "job", r["name"]))
+
+
+# ---------------------------------------------------------------------------------------------
+# Builds: one merge group's runs of every RECORDED workflow, as one timeline.
+
+def build_jobs(runs, patterns):
+    """{(workflow, key): (start, end, seconds)} over one merge group's runs, `runs` being
+    {workflow: jobs} and `patterns` {workflow: display patterns}. A matrix job is one entry: its
+    earliest variant's start, its latest variant's end, and its slowest variant's seconds, which is
+    the figure `history` and the budget read."""
+    out = {}
+    for workflow, jobs in runs.items():
+        for job in jobs:
+            s = seconds(job)
+            if s is None:
+                continue
+            key, _variant = job_key(job["name"], patterns[workflow])
+            if key is None:
+                continue
+            start, end = _ts(job["started_at"]), _ts(job["completed_at"])
+            if (workflow, key) in out:
+                a, b, t = out[(workflow, key)]
+                start, end, s = min(a, start), max(b, end), max(t, s)
+            out[(workflow, key)] = (start, end, s)
+    return out
+
+
+def build_wall(jobs):
+    """A build's wall seconds: its first job's start to its last job's end, across every workflow.
+    Not the slowest job, which a `needs:` chain and a queued runner both exceed, and not one
+    workflow's, since the merge waits for the later of the two."""
+    if not jobs:
+        return None
+    return (max(e for _s, e, _t in jobs.values()) - min(s for s, _e, _t in jobs.values())).total_seconds()
+
+
+def build_rows(date, runs, patterns):
+    """The BUILDS_CSV rows for one day. `runs` is {workflow: [(run, jobs)]}, newest first.
+
+    A build is the runs that share a `head_sha`: the merge queue builds each entry's merge commit,
+    and every workflow it triggers reports that commit, so the match is exact. Only a build whose
+    every run succeeded counts, since a failed one is ejected and its time answers another question.
+    A merge group with no `ci.yml` run is not a build (`ANCHOR`); one with no `verify.yml` run is,
+    since verify can be absent where ci never is."""
+    groups = {}
+    for workflow, items in runs.items():
+        for run, jobs in items:
+            # Newest first, so a re-queued commit keeps its latest run.
+            groups.setdefault(run["head_sha"], {}).setdefault(workflow, (run, jobs))
+    rows = []
+    for sha, held in groups.items():
+        if ANCHOR not in held or any(run.get("conclusion") != "success" for run, _j in held.values()):
+            continue
+        jobs = build_jobs({w: j for w, (_r, j) in held.items()}, patterns)
+        wall = build_wall(jobs)
+        if wall is None:
+            continue
+        t0 = min(s for s, _e, _t in jobs.values())
+        build = sha[:12]
+        rows.append({"date": date, "build": build, "kind": "build", "workflow": "", "job": "",
+                     "start_seconds": 0, "end_seconds": "%.0f" % wall, "seconds": "%.0f" % wall})
+        for (workflow, key), (s, e, t) in jobs.items():
+            rows.append({"date": date, "build": build, "kind": "job", "workflow": workflow, "job": key,
+                         "start_seconds": "%.0f" % (s - t0).total_seconds(),
+                         "end_seconds": "%.0f" % (e - t0).total_seconds(), "seconds": "%.0f" % t})
+    return sorted(rows, key=_build_order)
+
+
+def _build_order(r):
+    return (r["date"], r["build"], r["kind"] != "build", r["workflow"], r["job"])
+
+
+def builds_to_csv(rows):
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=BUILD_COLUMNS, lineterminator="\n")
+    w.writeheader()
+    for r in rows:
+        w.writerow({c: r.get(c, "") for c in BUILD_COLUMNS})
+    return buf.getvalue()
+
+
+def merge_build_days(existing, fresh_days, fresh):
+    """Every row of a day in `fresh_days` is replaced by `fresh`'s, so a day with no green build
+    still clears; other days are kept."""
+    kept = [r for r in existing if r["date"] not in fresh_days]
+    return sorted(kept + list(fresh), key=_build_order)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -415,20 +525,31 @@ def update(argv):
     today = datetime.datetime.now(datetime.timezone.utc).date()
     since = datetime.date.fromisoformat(
         arg_value(argv, "--since", (today - datetime.timedelta(days=DEFAULT_WINDOW_DAYS)).isoformat()))
-    for workflow in RECORDED:
-        patterns = patterns_across(workflow_versions(workflow))
-        name = os.path.basename(workflow)
-        day = since
-        while day <= today:
-            per_run = [run_durations(jobs_of(r["id"]), patterns)
-                       for r in merge_group_runs(workflow, created=day.isoformat())]
-            fresh = day_rows(day.isoformat(), name, per_run)
+    patterns = {os.path.basename(w): patterns_across(workflow_versions(w)) for w in RECORDED}
+    day = since
+    while day <= today:
+        # Each run's jobs are read once, for both records: the per-job day rows and the builds.
+        runs = {}
+        for workflow in RECORDED:
+            name = os.path.basename(workflow)
+            listed = merge_group_runs(workflow, created=day.isoformat())
+            # Eight at a time: a busy day is sixty runs per workflow, and one request at a time
+            # made a 57-day backfill take hours.
+            with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+                runs[name] = list(zip(listed, pool.map(lambda r: jobs_of(r["id"]), listed)))
+            fresh = day_rows(day.isoformat(), name, [run_durations(j, patterns[name]) for _r, j in runs[name]])
             existing = from_csv(open(CSV).read()) if os.path.exists(CSV) else []
             # Written a day at a time, so a failure part way keeps every day before it.
             with open(CSV, "w") as f:
                 f.write(to_csv(merge_days(existing, fresh)))
-            print("ci_job_times: %s %s: %d run(s)" % (name, day, len(per_run)), file=sys.stderr)
-            day += datetime.timedelta(days=1)
+            print("ci_job_times: %s %s: %d run(s)" % (name, day, len(runs[name])), file=sys.stderr)
+        builds = build_rows(day.isoformat(), runs, patterns)
+        existing = from_csv(open(BUILDS_CSV).read()) if os.path.exists(BUILDS_CSV) else []
+        with open(BUILDS_CSV, "w") as f:
+            f.write(builds_to_csv(merge_build_days(existing, {day.isoformat()}, builds)))
+        print("ci_job_times: %s: %d green build(s)" % (day, sum(r["kind"] == "build" for r in builds)),
+              file=sys.stderr)
+        day += datetime.timedelta(days=1)
     return 0
 
 
@@ -595,6 +716,46 @@ def selftest():
                          ("merge-drain.sh", 'NM_BUDGET_LABEL="%s"' % LABEL)):
         with open(os.path.join(here, path)) as f:
             expect("%s spells the label %s" % (path, LABEL), needle in f.read(), True)
+
+    # Builds. Two workflows, one merge commit; times are minutes past 12:00.
+    def job(name, start, end, conclusion="success"):
+        at = lambda m: "2026-10-07T12:%02d:%02dZ" % (int(m), round((m % 1) * 60))
+        return {"name": name, "conclusion": conclusion, "started_at": at(start), "completed_at": at(end)}
+
+    verify_pats = display_patterns("name: Verify\njobs:\n  gate:\n    name: draft gate\n  prove:\n"
+                                   "    name: prove (shard ${{ matrix.shard }}/3)\n")
+    chain_pats = display_patterns("name: CI\njobs:\n  gate:\n    name: draft gate\n  lint:\n"
+                                  "    name: lint\n  clippy:\n    name: clippy\n  test:\n    name: test\n")
+    bp = {"ci.yml": chain_pats, "verify.yml": verify_pats}
+    ci_jobs = [job("draft gate", 0, 0.5), job("test", 1, 15), job("lint", 1, 6), job("clippy", 6.5, 12)]
+    verify_long = [job("draft gate", 0.2, 0.6), job("prove (shard 1/3)", 1, 18),
+                   job("prove (shard 2/3)", 1.5, 19), job("prove (shard 3/3)", 1, 9)]
+    verify_skipped = [job("draft gate", 0.2, 0.6), job("prove (shard 1/3)", 0, 0, "skipped")]
+    run = lambda wf, conclusion="success": {"head_sha": "a" * 40, "conclusion": conclusion, "id": 1}
+
+    jobs = build_jobs({"ci.yml": ci_jobs, "verify.yml": verify_long}, bp)
+    expect("the later workflow ends the build", build_wall(jobs), 19 * 60.0)
+    expect("a matrix job spans its variants and counts its slowest",
+           jobs[("verify.yml", "prove")][2], 17.5 * 60)
+    expect("a skipped verify leaves ci's end", build_wall(
+        build_jobs({"ci.yml": ci_jobs, "verify.yml": verify_skipped}, bp)), 15 * 60.0)
+    chain = [job("draft gate", 0, 0.5), job("lint", 1, 6), job("clippy", 6.5, 17)]
+    expect("a needs: chain is longer than its slowest job", build_wall(build_jobs({"ci.yml": chain}, bp)),
+           17 * 60.0)
+    rows = build_rows("2026-10-07", {"ci.yml": [(run("ci.yml"), ci_jobs)],
+                                     "verify.yml": [(run("verify.yml"), verify_long)]}, bp)
+    expect("one build row, then its jobs", [(r["kind"], r["workflow"], r["job"]) for r in rows][:3],
+           [("build", "", ""), ("job", "ci.yml", "clippy"), ("job", "ci.yml", "gate")])
+    expect("the build row holds the wall time", rows[0]["end_seconds"], "1140")
+    expect("a start is an offset from the first job's",
+           next(r["start_seconds"] for r in rows if r["job"] == "clippy"), "390")
+    expect("a failed verify is no green build", build_rows("2026-10-07", {
+        "ci.yml": [(run("ci.yml"), ci_jobs)], "verify.yml": [(run("verify.yml", "failure"), verify_long)]},
+        bp), [])
+    expect("verify alone is no build", build_rows("2026-10-07", {
+        "verify.yml": [(run("verify.yml"), verify_long)]}, bp), [])
+    merged = merge_build_days(rows, {"2026-10-07"}, [])
+    expect("a re-read day with no green build clears", merged, [])
 
     print("ci_job_times selftest: %s" % ("ok" if ok else "FAILED"))
     return 0 if ok else 1

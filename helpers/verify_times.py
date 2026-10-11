@@ -30,8 +30,9 @@ This file is the mechanism that keeps the table honest without anyone rememberin
   table planned. **It warns and never fails** (see SHARD_WARN_PCT).
 - `refresh` is what `.github/workflows/verify-shard-refresh.yml` runs weekly: medians from the
   last REFRESH_RUNS green runs, and a rewrite of the table's seconds when they drifted.
-- `update` writes `notes/project-metrics/verify-runs.csv`, one row per sampled run, which
-  `script/metrics` reads into the weekly "how long verify takes" chart.
+- `update` writes `notes/project-metrics/verify-runs.csv`, one row per sampled run. Nothing reads
+  it since `verify-shards.svg` was retired on 2026-10-11 (UTC) for `ci-jobs.svg`, which draws every
+  verify job; it stays as the raw per-shard record.
 
 # WHERE THE SECONDS COME FROM
 
