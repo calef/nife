@@ -1,0 +1,22 @@
+Falsifies `system_tests::user::std_threads_tests::the_std_heap_is_measured_under_four_threads`.
+
+Architecture: aarch64, riscv64, x86_64
+
+The defect, in milestone 561 (a per-CPU allocator is what the current-CPU page was for): a thread's
+end closes its allocation cache but never gives the blocks back to the heap. Each ended thread
+then keeps up to 34,816 bytes for good, and `std_heap_contention`'s 64 cache-filling threads spend
+twice its one-mebibyte budget, so the program aborts out of memory before its last line.
+
+Expected to fail: "std_heap_contention ended before its output did".
+
+diff --git a/patches/std-nife/overlay/std/src/sys/thread_local/key/nife.rs b/patches/std-nife/overlay/std/src/sys/thread_local/key/nife.rs
+--- a/patches/std-nife/overlay/std/src/sys/thread_local/key/nife.rs
++++ b/patches/std-nife/overlay/std/src/sys/thread_local/key/nife.rs
+@@ -312,7 +312,6 @@
+     // after it go to the heap rather than refilling the cache.
+     unsafe {
+         (*b).cache_closed = true;
+-        crate::sys::alloc::nife::spill_thread_cache(&mut (*b).cache);
+     }
+ }
+ 

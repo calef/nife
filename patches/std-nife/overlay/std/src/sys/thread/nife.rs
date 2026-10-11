@@ -266,6 +266,8 @@ extern "C" fn thread_start(data: u64, packet: u64) -> ! {
             0
         }
     };
+    // SAFETY: `destroy_tls` ran, and the packet above was this thread's last free.
+    unsafe { tls::free_own_block() };
     rt::exit_thread(word)
 }
 

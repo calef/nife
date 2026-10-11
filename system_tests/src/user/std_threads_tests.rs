@@ -244,22 +244,30 @@ fn rayons_parallel_sum_runs_on_every_online_core() {
 /// **The `std` heap's one lock, measured under four threads** (the block's item 12: "measure it under
 /// four threads before replacing it"). `std_heap_contention` does the same allocations with one
 /// thread and then four and prints both times; this prints them to the log and checks only that both
-/// arrived. Under QEMU the numbers are a ratio, not a speed. `notes/std/threads.md` records them.
+/// arrived. Under QEMU the numbers are a ratio, not a speed. `notes/std/threads.md` and
+/// `notes/std/allocation.md` record them.
 ///
-/// Falsification: unfalsified. It is a measurement, and it asserts nothing a defect could break
-/// except that the program ran to its end, which `four_std_threads_share_a_mutex_an_atomic_and_a_space`
-/// already falsifies.
+/// It also checks that a thread's end gives its allocation cache back to the heap (milestone 561 (a
+/// per-CPU allocator is what the current-CPU page was for)): the program then runs 64 threads in
+/// turn, each ending with a full cache, twice the program's heap budget between them.
+///
+/// Falsification: replayable `system_tests/falsifications/user.std_threads_tests.the_std_heap_is_measured_under_four_threads.patch`
 #[test_case]
 fn the_std_heap_is_measured_under_four_threads() {
     let Some(image) = program("std_heap_contention") else {
         crate::testing::skip!(super::std_service::NO_STD_EXERCISER);
     };
-    let mut got = [0u8; 256];
+    let mut got = [0u8; 1024];
     let len = run_as_process(image, "std_heap_contention", &mut got);
     let text = core::str::from_utf8(&got[..len]).unwrap_or("<not utf-8>");
     for line in text.lines() {
         crate::println!("    (std heap under threads: {line})");
     }
+    assert!(
+        text.lines()
+            .any(|l| l == "threads ended with full caches 64"),
+        "threads that ended kept their allocation caches from the heap: {text}",
+    );
     for line in ["one thread us ", "four threads us "] {
         assert!(
             text.lines().any(|l| l
