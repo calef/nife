@@ -8,7 +8,7 @@ crosses the terminal wire. The note's name is provisional.
 
 ## What happens to a keystroke
 
-At the prompt, `components/src/swish.rs` (`edit_line`) holds the terminal in raw mode
+At the prompt, `components/src/swish/prompt.rs` (`edit_line`) holds the terminal in raw mode
 (`OPERATION_RAWMODE`). Each `OPERATION_READRAW` reply carries up to eight bytes. The shell feeds them to its
 engine and sends the echo back with `OPERATION_WRITE`. Enter, `^D` and `^C` end the read with the same
 answers `OPERATION_READLINE` gave: a line, end of input, or interrupted. Bytes that arrive after the one

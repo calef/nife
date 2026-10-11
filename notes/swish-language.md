@@ -1,7 +1,7 @@
 # `swish` the language: quoting, sequencing, and what an exit status can say
 
 *Milestone 67. `crates/grant_plan/src/word.rs`, `crates/grant_plan/src/line.rs`,
-`crates/swish/src/sequence.rs`, `crates/swish/src/lib.rs`, `components/src/swish.rs`,
+`crates/swish/src/sequence.rs`, `crates/swish/src/lib.rs`, `components/src/swish/`,
 `system_tests/src/user/language_tests.rs`, `xtask`'s `SWISH_CHECK_SCRIPT`. Read notes/pipes.md first if
 you have not: this is the layer above its operators, and it reuses their vocabulary.*
 
@@ -227,7 +227,7 @@ The first draft of the boot gate put `echo $?` straight after `least_authority_d
 was the shell being right: the last thing that ran was the `echo`. A skipped segment leaves `$?`
 alone, because nothing happened, which is bash's rule and now this shell's.
 
-The mechanism is two cells rather than one (`CURRENT` and `LAST` in `components/src/swish.rs`), because a
+The mechanism is two cells rather than one (`CURRENT` and `LAST` in `components/src/swish/main.rs`), because a
 segment has to read the previous segment's answer *while* accumulating its own: `least_authority_demo || echo $?`
 is exactly the case one cell could not serve.
 

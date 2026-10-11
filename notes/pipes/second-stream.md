@@ -37,7 +37,7 @@ the shape it does. What follows first is what exists.
 
   crates/grant_plan/line.rs    `2>` and `2>>`, at the tail, like `>` and `>>`
 
-  components/src/swish.rs            an endpoint the shell mints ONLY for a `2>`, because that is the
+  components/src/swish/running.rs    an endpoint the shell mints ONLY for a `2>`, because that is the
                                case where it has to back a file
 
   components/src/terminal_sink_caretaker.rs    where the bytes go with no operator on the line: the terminal,

@@ -27,7 +27,7 @@ The record says `xargs <program>` stops after batch one. The cause reaches furth
 prompt, any pattern that matches more than one name is refused before anything spawns, with or
 without `xargs`:
 
-- `components/src/swish.rs`, `dir_grant`: `g.names.only()` is `None` for a set, and the shell answers
+- `components/src/swish/running.rs`, `dir_grant`: `g.names.only()` is `None` for a set, and the shell answers
   "a set of names is delivered by a nameset caretaker, and the progenitor builds the subtree one;
   name a single file".
 - `crates/grant_plan/src/spawnproto.rs`: `DIR_BIT` announces two more `SEND`s carrying the caretaker's
