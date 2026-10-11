@@ -299,3 +299,6 @@ impl Refusal {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
