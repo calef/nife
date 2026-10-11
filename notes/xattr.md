@@ -9,7 +9,8 @@ made the board a Time Machine target, and Samba stores Apple's metadata as exten
 when its customer chose borg over SSH. The layer is built and works, on nobody's critical path.
 
 The contract is `filesystem_protocol::xattr`; the layer is `redoxfs_server/src/lib.rs`; the mechanism was decided
-in DECISIONS §34's 2026-07-31 amendment.
+in DECISIONS §34's 2026-07-31 amendment. Every test behind it is listed in
+[`xattr/`](xattr/README.md).
 
 ## The shape, in one picture
 
@@ -60,8 +61,8 @@ looked intact and was not.
 
 An attribute is part of what a file *is*, not a separate object with its own authority, so a
 capability that may read a file may read what is attached to it. The other half of the argument is
-mechanical: adding a rung would silently widen or narrow every grant that already exists,
-depending on which way the default fell, and milestone 47's whole monotonicity property is that a
+mechanical. Adding a rung would silently widen or narrow every grant that already exists,
+depending on which way the default fell. Milestone 47's whole monotonicity property is that a
 capability's meaning cannot change out from under its holder.
 
 ## Why a layer, and why that is not the usual bad idea
@@ -139,8 +140,8 @@ indistinguishable from one that never had any.
 
 Both routes to empty are tested, because they are different code: `remove_xattr` writes an empty
 blob and goes through `write_attrs`, while `unlink` purges one and does not. The assertion in the
-middle is the one that keeps the test honest, and it says the store must stay while a second
-node still has attributes; without it the test would pass just as well against an implementation
+middle is the one that keeps the test honest: the store must stay while a second node still has
+attributes. Without it the test would pass just as well against an implementation
 that removed the store on every removal.
 
 ### 3. A shrinking blob must be truncated, or the reader walks records nobody wrote
@@ -177,8 +178,8 @@ than truncated into a type nobody wrote.
 
 The three filesystem caretakers proxy this same contract over a narrowed namespace, and until
 milestone 61 all three answered `EOPNOTSUPP` to all four verbs. So a program handed one file by a
-command line could read the file and could not read what was attached to it. Closed, and **the
-rights model above is what makes closing it safe**: there is no attribute right, so a capability
+command line could read the file and could not read what was attached to it. Closed, and the
+rights model above is what makes closing it safe. There is no attribute right, so a capability
 that may read a file may read its attributes and a capability that may not write it may not change
 them, with no new rung and no new decision.
 
@@ -198,17 +199,9 @@ own file's attributes on the grounds that `user.com.apple.metadata` is not a nam
 matched. The distinction is a variant of `filesystem_protocol::verb::Operand` (`Name` versus `Payload`) rather
 than a comment, so it is checked by a host test instead of remembered.
 
-How it is proven, both ISAs, three witnesses, each with a control that must fail:
-
-- A **read-only per-file grant** lists and gets (so the verbs reach the store) and its `SETXATTR` is
-  refused. A writable grant of the same shape sets, reads back with the type code, and removes.
-  Without the second run the first is equally consistent with a caretaker that refuses everything.
-- A **read-only subtree** grant reads attributes and cannot set one; the full and
-  **append-only** runs (both carrying `dir::WRITE`) can. Same three configurations milestone 47's
-  rights ladder already used, one bit wider.
-- A name-set grant of exactly one name reads and writes that file's attributes and still cannot
-  open the entry beside it, which is the naming property asked with `READ` rather than with `rm`'s
-  `REMOVE`.
+It is proven on both ISAs by three witnesses, a per-file, a subtree and a name-set grant, each
+with a control that must fail. They are listed in
+[`how-it-is-proven.md`](xattr/how-it-is-proven.md).
 
 ## EXAMPLES
 
@@ -291,37 +284,13 @@ Named here because a reader who meets the feature deserves to meet its edges at 
 
 ## How it is proven
 
-Host, milliseconds, no emulator. The whole of the layer's semantics is pure functions over a
-byte slice (`filesystem_protocol::xattr::store`), so what replaces what, which ceiling refuses, and what a
-truncated blob means are all tested without a filesystem: seven tests in `filesystem_protocol`, including a
-sweep that cuts a blob at every byte and asserts it reads back **short rather than wrong**. Ten more
-in `redoxfs_server` drive the real engine against a `DiskMemory` image: persistence across a mount the
-attribute was not written in, the rename property, the purge with a provoked node-id reuse, the
-replaced-destination purge, the store's invisibility to seven verbs and to a listing, both rights
-directions, every ceiling, and the shrink-without-a-tail.
-
-Crash-consistent, measured rather than argued (milestone 57, closing what used to be a BUGS
-entry here). The old claim was sound and second-hand: every mutation runs inside one `fs.tx`, and
-milestone 37's sweep proves prefix consistency for whatever a transaction contains, so the property
-held by construction. It is now in the sweep. `redoxfs_server/tests/crash_consistency.rs` reads each
-name's attributes as part of the filesystem's state, and the workload grew four attribute operations
-covering the three shapes the store has: creating it (two node creations in one commit),
-growing a blob, and shrinking one, which is the path that must truncate afterwards. They are
-interleaved with a write to the same file, so the claim being decided is the interesting one: an
-attribute lives in a *different file* from the data it describes, and a recovery holding the new
-bytes without the new attribute (or the reverse) is a state that never existed and fails the sweep.
-
-The workload's own sanity check does double duty here. An attribute operation changes nothing
-observable unless the snapshot reads attributes, so a harness that quietly stopped looking fails at
-the fixture rather than passing everywhere below it.
-
-On device, both ISAs (DECISIONS §19). `fixtures/src/fs_test_client.rs`'s proof role carries a witness that
-reports a bitmap, and the kernel test asserts an exact set, so a client that could do nothing
-and one that could do everything both fail. Eight claims: set and read back *with the type code*,
-listed and nothing else, survived a rename, gone after a remove, gone after an unlink and remake,
-an over-long value refused with `E2BIG`, the store unnameable, and the store absent from a full
-cursor-driven enumeration of the root. It rides the existing FS-service test's third report word
-rather than booting the three-process stack a second time.
+The layer's semantics are pure functions over a byte slice, tested on the host with no
+filesystem, including a sweep that cuts a blob at every byte and reads back short rather than wrong.
+`redoxfs_server`'s tests drive the real engine through every property above. Crash consistency is
+measured, not argued: milestone 37 (prove RedoxFS's crash consistency)'s sweep now reads attributes as part of the state, interleaved
+with writes to the same file. On device, both ISAs, a witness reports a bitmap of eight claims and
+the kernel test asserts the exact set. [`how-it-is-proven.md`](xattr/how-it-is-proven.md) has every
+test, the sweep's workload, and the eight claims.
 
 ## See also
 

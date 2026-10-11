@@ -8,46 +8,50 @@ Sorted by breaking changes in the last four weeks (2026W38 to 2026W41), then by 
 
 | crate | breaking, 4 weeks | additions, 4 weeks | breaking | additions | commits | crossing another division |
 |---|---:|---:|---:|---:|---:|---:|
+| `grant_plan` | 87 | 279 | 131 | 910 | 142 | 119 (84%) |
 | `globally_unique_identifier_partition_table` | 66 | 29 | 67 | 219 | 34 | 27 (79%) |
-| `grant_plan` | 48 | 214 | 92 | 845 | 141 | 118 (84%) |
-| `socket_protocol` | 17 | 21 | 19 | 59 | 26 | 24 (92%) |
+| `socket_protocol` | 17 | 21 | 19 | 59 | 27 | 25 (93%) |
 | `login_protocol` | 14 | 68 | 14 | 83 | 31 | 30 (97%) |
-| `package_archive` | 14 | 109 | 14 | 109 | 17 | 12 (71%) |
+| `package_archive` | 14 | 110 | 14 | 110 | 19 | 14 (74%) |
 | `line_editor` | 11 | 73 | 12 | 118 | 29 | 25 (86%) |
 | `swap_protocol` | 11 | 34 | 12 | 124 | 42 | 41 (98%) |
 | `filesystem_protocol` | 10 | 54 | 42 | 454 | 101 | 92 (91%) |
-| `abi` | 7 | 52 | 37 | 149 | 97 | 92 (95%) |
+| `abi` | 7 | 66 | 37 | 163 | 100 | 95 (95%) |
+| `activation_set` | 6 | 57 | 6 | 57 | 18 | 18 (100%) |
 | `byte_sink_protocol` | 5 | 10 | 6 | 48 | 27 | 27 (100%) |
-| `activation_set` | 5 | 53 | 5 | 53 | 17 | 17 (100%) |
 | `clock_protocol` | 5 | 4 | 5 | 54 | 27 | 25 (93%) |
 | `credential_protocol` | 4 | 12 | 30 | 67 | 31 | 28 (90%) |
 | `graphics_protocol` | 3 | 2 | 11 | 33 | 27 | 27 (100%) |
 | `component_plan` | 3 | 14 | 3 | 126 | 23 | 18 (78%) |
 | `entropy_protocol` | 3 | 3 | 3 | 18 | 22 | 20 (91%) |
-| `supervision_protocol` | 2 | 8 | 22 | 68 | 48 | 43 (90%) |
+| `supervision_protocol` | 2 | 10 | 22 | 70 | 49 | 44 (90%) |
 | `nifefs` | 2 | 0 | 7 | 41 | 37 | 26 (70%) |
+| `current_cpu_protocol` | 2 | 17 | 2 | 17 | 7 | 4 (57%) |
 | `measured_boot` | 2 | 24 | 2 | 65 | 20 | 16 (80%) |
 | `counter_frequency_protocol` | 1 | 3 | 1 | 15 | 12 | 10 (83%) |
 | `environment_protocol` | 1 | 0 | 1 | 44 | 8 | 8 (100%) |
+| `std_runtime_protocol` | 1 | 23 | 1 | 23 | 8 | 7 (88%) |
 | `user_mode_heap` | 1 | 0 | 1 | 11 | 0 | 0 |
 | `compositor` | 0 | 1 | 4 | 93 | 27 | 22 (81%) |
 | `elf` | 0 | 4 | 3 | 53 | 41 | 33 (80%) |
+| `address_space_map` | 0 | 0 | 0 | 0 | 0 | 0 |
 | `argument_protocol` | 0 | 29 | 0 | 29 | 0 | 0 |
 | `boot_slot` | 0 | 52 | 0 | 52 | 10 | 6 (60%) |
 | `capability_witness_protocol` | 0 | 10 | 0 | 10 | 13 | 11 (85%) |
-| `current_cpu_protocol` | 0 | 13 | 0 | 13 | 6 | 3 (50%) |
-| `manifest_note` | 0 | 40 | 0 | 40 | 12 | 8 (67%) |
-| `std_runtime_protocol` | 0 | 17 | 0 | 17 | 5 | 4 (80%) |
+| `manifest_note` | 0 | 58 | 0 | 58 | 13 | 9 (69%) |
 
 ## What broke in 2026W41
 
-Read at `7d0e8299ec32` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
+Read at `3d93070c645d` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
 
 > - `abi`: syscall changed, method or encoding `CAPABILITY_TABLE_SLOTS`
 > - `abi`: changed `Error`
 > - `abi`: syscall changed, method or encoding `fault::FAULT_EP_SLOT`
+> - `activation_set`: changed `Entry`
 > - `activation_set`: changed `Error`
 > - `activation_set`: removed `Error::Ambiguous`
+> - `current_cpu_protocol`: changed `PAGE_BYTES`
+> - `current_cpu_protocol`: changed `build_page`
 > - `globally_unique_identifier_partition_table`: changed `GloballyUniqueIdentifierPartitionTable::create`
 > - `globally_unique_identifier_partition_table`: changed `GloballyUniqueIdentifierPartitionTable::disk_guid`
 > - `globally_unique_identifier_partition_table`: changed `entry::Entry::new`
@@ -87,13 +91,52 @@ Read at `7d0e8299ec32` against the week before. Each line is one removed or chan
 > - `globally_unique_identifier_partition_table`: changed `guid::types::UNUSED`
 > - `globally_unique_identifier_partition_table`: changed `guid::types::name`
 > - `globally_unique_identifier_partition_table`: changed `header::Header::disk_guid`
+> - `grant_plan`: changed `BUILTINS`
+> - `grant_plan`: changed `Command`
+> - `grant_plan`: removed `Command::Package`
+> - `grant_plan`: removed `IMAGE_ROW`
+> - `grant_plan`: removed `ImageRefusal`
+> - `grant_plan`: removed `ImageRefusal: impl Clone`
+> - `grant_plan`: removed `ImageRefusal: impl Copy`
+> - `grant_plan`: removed `ImageRefusal: impl Debug`
+> - `grant_plan`: removed `ImageRefusal: impl Eq`
+> - `grant_plan`: removed `ImageRefusal: impl PartialEq`
+> - `grant_plan`: removed `ImageRefusal: impl StructuralPartialEq`
+> - `grant_plan`: removed `ImageRefusal::ExceedsVouch`
+> - `grant_plan`: removed `ImageRefusal::NotCarried`
+> - `grant_plan`: removed `ImageRefusal::Unreadable`
 > - `grant_plan`: changed `Manifest`
+> - `grant_plan`: removed `NO_NOTE_MANIFEST`
 > - `grant_plan`: changed `PROG_COUNT`
+> - `grant_plan`: removed `PackageVerb`
+> - `grant_plan`: removed `PackageVerb: impl Clone`
+> - `grant_plan`: removed `PackageVerb: impl Copy`
+> - `grant_plan`: removed `PackageVerb: impl Debug`
+> - `grant_plan`: removed `PackageVerb: impl Eq`
+> - `grant_plan`: removed `PackageVerb: impl PartialEq`
+> - `grant_plan`: removed `PackageVerb: impl StructuralPartialEq`
+> - `grant_plan`: removed `PackageVerb::Fetch`
+> - `grant_plan`: removed `PackageVerb::Install`
+> - `grant_plan`: removed `PackageVerb::Remove`
+> - `grant_plan`: removed `PackageVerb::Rollback`
+> - `grant_plan`: removed `PackageVerb::Usage`
+> - `grant_plan`: removed `PackageVerb::Vouch`
 > - `grant_plan`: changed `Prog`
 > - `grant_plan`: changed `UNVOUCHED_MANIFEST`
+> - `grant_plan`: removed `image_can_carry`
+> - `grant_plan`: removed `image_hears_words`
+> - `grant_plan`: removed `image_manifest`
+> - `grant_plan`: removed `image_request_fits`
+> - `grant_plan`: removed `package_verb`
+> - `grant_plan`: changed `spawnproto::Activation`
+> - `grant_plan`: removed `spawnproto::Activation::Fetch`
 > - `grant_plan`: changed `spawnproto::ActivationStatus`
+> - `grant_plan`: removed `spawnproto::ActivationStatus::FetchFailed`
+> - `grant_plan`: removed `spawnproto::ActivationStatus::NoNetwork`
+> - `grant_plan`: removed `spawnproto::ActivationStatus::NoSuchPackage`
 > - `grant_plan`: removed `spawnproto::ActivationStatus::NotCatalogued`
 > - `grant_plan`: changed `spawnproto::RUN_UNVOUCHED_SLOT`
+> - `grant_plan`: changed `vouch_verb`
 > - `login_protocol`: removed `SESSION_ELF_VA`
 > - `login_protocol`: removed `durable::SESSION_BUDGET_PAGES`
 > - `login_protocol`: removed `durable::SESSION_REGION_PAGES`
@@ -126,4 +169,5 @@ Read at `7d0e8299ec32` against the week before. Each line is one removed or chan
 > - `socket_protocol`: removed `req`
 > - `socket_protocol`: removed `req_operation`
 > - `socket_protocol`: removed `req_sid`
+> - `std_runtime_protocol`: changed `SLOTS`
 > - `swap_protocol`: changed `log_put`

@@ -14,8 +14,9 @@ sweep. That sweep asked how many siblings `script/stack-frame-check`'s hardcoded
 `arches="aarch64 riscv64"` had and found eleven. Ten are strings in shell scripts that a one-line
 edit fixes, and they are the worklist of the sweep's own milestone, minted alongside it on pull
 request #568 and not yet on `main` when this block was written; cite that one by number once it
-lands. This one is not a string: `notes/arch-audit.md` contains zero occurrences of "x86", and the
-directory it does not mention is the largest of the three.
+lands. This one is not a string: `notes/arch-audit.md` read no x86_64 code, and that directory is
+the largest of the three. (Corrected 2026-10-11 UTC: it had no "x86" when this was written; its
+BUGS has named the gap since 2026-08-28 UTC, `5624f1bb8`.)
 
 The lens exists, the template exists, and the disposition vocabulary exists
 (DECISIONS §35, how a scanner's findings get dispositioned). Nothing here is a design fork. Findings
@@ -105,11 +106,9 @@ who takes 6,797 as "the unaudited fraction" is reading it too favorably.
 
 ## Why this is the highest-value unaudited surface
 
-Three reasons, in the order they matter, and one caveat that cuts against.
-
 It is in the trusted computing base, and no prover reaches it. `script/verify`'s Kani harnesses
 cover the pure-logic crates: `paging`, `frames`, `slab`, `elf`, `capability`, the allocators, the
-ring validators. There is no tool in this project that can prove `trap.s`, which is why
+ring validators. No tool here can prove `trap.s`, which is why
 `notes/arch-audit.md` calls the hand-written architecture assembly the least-verified code in the
 TCB and why milestone 20 (a portable HAL, proven on a second architecture) says the same. An audit
 by reading is the compensating control, and on the largest of the three trees it has not been paid
@@ -394,7 +393,7 @@ reasons a reader should not treat the resulting note as a clean bill of health.
 
 ## Index row
 
-`notes/arch-audit.md` contains zero occurrences of "x86". Measured: `kernel/src/arch/x86_64` is 18
+`notes/arch-audit.md` never read x86_64; its BUGS says so. Measured: `kernel/src/arch/x86_64` is 18
 files and 6,797 lines, larger than the 6,202-line two-ISA tree that audit read in full, in the
 code that note calls the least-verified in the TCB and that no prover reaches. Priced as three
 passes cut by risk, each smaller than the one pass already proven affordable. The cadence's

@@ -56,7 +56,7 @@ set -eu
 
 cd "$(dirname "$0")/.."
 
-LIB=crates/filesystem_protocol/src/lib.rs
+LIB=crates/filesystem_protocol/src/fs.rs
 SAVED=$(mktemp -t transfer-size-sweep)
 
 restore() {
@@ -81,8 +81,8 @@ for pages in $PAGES; do
     # The constant, and only the constant. Anchored on the whole line so a comment mentioning
     # TRANSFER_PAGES cannot be caught by it.
     cp "$SAVED" "$LIB"
-    sed -i '' "s|^    pub const TRANSFER_PAGES: usize = .*;|    pub const TRANSFER_PAGES: usize = $pages;|" "$LIB"
-    grep -q "^    pub const TRANSFER_PAGES: usize = $pages;" "$LIB" || {
+    sed -i '' "s|^pub const TRANSFER_PAGES: usize = .*;|pub const TRANSFER_PAGES: usize = $pages;|" "$LIB"
+    grep -q "^pub const TRANSFER_PAGES: usize = $pages;" "$LIB" || {
         echo "transfer-size-sweep: could not set TRANSFER_PAGES to $pages in $LIB" >&2
         exit 1
     }
