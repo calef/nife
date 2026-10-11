@@ -94,7 +94,7 @@ and are now fixed and tested:
   is immune (its pointer is a system register the frame never carries). This is the concrete face of
   rule 4 (assume weak ordering) and rule 1 (arch state lives in arch).
 
-- The hang watchdog counts progress, not test starts. A slow-but-live workload (std_net spends
+- The hang watchdog counts progress, not test starts. A slow-but-live workload (std_net once spent
   about 300 s in net_stack's userspace smoltcp poll, CPU-bound, no wakes or output for stretches over a
   minute) must not read as a deadlock. The watchdog credits a completed wake, a line of output, OR
   any core running a non-idle thread; only a real lost wakeup, every thread blocked and every core on
@@ -124,8 +124,9 @@ hang at about 400% CPU with no watchdog fire. A livelock that makes progress is 
 healthy work to a progress-only instrument. Turning a loud failure into a silent one is worse than the
 flake the heartbeat fixed, so both mechanisms are live now.
 
-Why budgets are per test. std_net honestly runs 300 to 344 s, so one global ceiling would sit near
-700 s and let a two-second unit test spin for eleven minutes before failing. The default is a tight
+Why budgets are per test. std_net once honestly ran 300 to 344 s, so one global ceiling would have
+sat near 700 s and let a two-second unit test spin for eleven minutes before failing. By 2026-10-11
+it took 1.3 to 2.5 s and its entry was removed, leaving the table empty. The default is a tight
 90 s; a test that is honestly slower declares its cost in `SLOW_TESTS` in `crates/test_times`, with
 the reason. Keep entries near 2x measured, so host load does not make them flaky.
 
@@ -145,7 +146,9 @@ helpers/qemu-bounded.sh 200 cargo test -p kernel \
 The outermost backstop is on the host. Both guest watchdogs run off the boot core's timer IRQ, so a
 kernel that loses it loses both. This section used to name `helpers/qemu-bounded.sh` for that case,
 but no kernel leg of `script/test` runs through it, and on 2026-10-11 (UTC) an x86_64 run sat 9.5
-hours in one e1000e test with neither watchdog printing (#1912). xtask now watches the transcript
+hours in one e1000e test with neither watchdog printing (#1912). The cause there was simpler:
+x86_64's tick never called `watchdog_tick`, so that architecture had no guest watchdog at all
+until the same day. xtask now watches the transcript
 for the running test's name and kills QEMU at that test's budget plus `HOST_GRACE_SECS` (60 s), 150
 s by default. The failure line names the leg, the image, the test and how long it ran:
 

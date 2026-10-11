@@ -147,12 +147,11 @@ pub const DEFAULT_BUDGET_SECS: u64 = 90;
 /// not produce a flaky failure, tight enough to still catch a hang. The kernel's own report of any
 /// test over 5 s, and the per-test time record (`time per test`), are where the measurement comes
 /// from.
-pub const SLOW_TESTS: &[(&str, u64)] = &[
-    // Measured ~300 to 344 s on aarch64: a serial net_stack<->std_exerciser pipeline whose time is spent in
-    // net_stack's userspace smoltcp poll (DHCP, DNS, then a TCP echo). The longest honest test we have,
-    // and the reason a single global ceiling would have to be uselessly large.
-    ("std_net_runs_over_the_socket_contract", 700),
-];
+///
+/// Empty since 2026-10-11 (UTC). Its one entry gave `std_net_runs_over_the_socket_contract` 700 s
+/// for a measured 300 to 344 s; that test now takes 1.3 to 2.5 s, and the slowest test in about
+/// 27,000 per-test records takes 20.5 s.
+pub const SLOW_TESTS: &[(&str, u64)] = &[];
 
 /// The budget for a test, in seconds, by its full path: its [`SLOW_TESTS`] entry if it has one,
 /// else [`DEFAULT_BUDGET_SECS`]. When two entries match, the later one wins.
@@ -260,7 +259,10 @@ mod tests {
     fn a_declared_slow_test_gets_its_own_budget_and_every_other_test_the_default() {
         assert_eq!(budget_secs_for("kernel::a::b"), DEFAULT_BUDGET_SECS);
         for &(needle, secs) in SLOW_TESTS {
-            assert_eq!(budget_secs_for(&std::format!("system_tests::x::{needle}")), secs);
+            assert_eq!(
+                budget_secs_for(&std::format!("system_tests::x::{needle}")),
+                secs
+            );
         }
     }
 

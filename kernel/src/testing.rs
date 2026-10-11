@@ -26,8 +26,8 @@ use crate::{print, println};
 // `wake_load_aware`) and every line of console output (`console::_print`, which covers each test's
 // "ok"). Progress is also credited when any online core is running a real, non-idle thread
 // ([`any_cpu_running_real_work`]). If none of that happens for ~60 s the run fails. That second
-// signal is what lets `std_net` pass honestly: it spends its ~300 s in net_stack's *userspace* smoltcp
-// poll, CPU-bound, making no wake and no output for stretches over a minute, yet a real thread runs
+// signal is what let `std_net` pass honestly when it spent ~300 s in net_stack's *userspace* smoltcp
+// poll, CPU-bound, making no wake and no output for stretches over a minute, yet a real thread ran
 // the whole time. A genuine lost wakeup is the opposite: every thread `Blocked`, every core parked on
 // its idle thread.
 //
