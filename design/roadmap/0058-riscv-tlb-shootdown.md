@@ -26,7 +26,8 @@ aarch64-only and is now the milestone-15 witness meaning something on RISC-V. Se
 notes/riscv-tlb-shootdown.md.
 
 The honest result is a small regression on icount, not a win, recorded in
-notes/benchmarks.md:834: `ctx_switch` +1.2%, `ipc_rtt_el0` +1.6%. QEMU charges the added gate and
+`notes/benchmarks/service-path.md`, under "2026-08-04: the RISC-V baseline re-saved for a win
+this instrument cannot see": `ctx_switch` +1.2%, `ipc_rtt_el0` +1.6%. QEMU charges the added gate and
 credits nothing for the removed flush, because its softmmu TLB is not ASID-tagged, so the number this
 milestone was supposed to produce is not measurable on the emulator at all. The real one is milestone
 24's, on the board.

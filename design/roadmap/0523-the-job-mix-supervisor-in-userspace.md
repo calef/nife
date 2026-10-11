@@ -214,7 +214,7 @@ without the arrangement is not a number.
 
 `user_mode_runtime::cntfrq()` on riscv64 returns a hardcoded `10_000_000`, and its own doc says
 why: RISC-V has no register that reports the timebase, it lives in the device tree, and *"userspace
-cannot read it"*. Radon's is 4 MHz (`design/roadmap/0375-e3-on-radon-with-real-cycles.md:7`,
+cannot read it"*. Radon's is 4 MHz (`design/roadmap/0375-e3-on-radon-with-real-cycles.md`,
 `bench: cntfrq 4000000`). The kernel supervisor reads the real value through
 `arch::timer::frequency()`.
 

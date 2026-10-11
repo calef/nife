@@ -11,7 +11,7 @@ calef, 2026-08-25, in conversation: *"Let's decide not to do signing with a note
 on those conditions that would cause us to reconsider."* (raised 2026-08-04 when §73 closed, so the
 deferral does not die with the section that carried it.)
 
-What. Require signed commits on `main`. `notes/repo-hardening.md:82` files this under **Do NOT
+What. Require signed commits on `main`. `notes/repo-hardening.md` files this under **Do NOT
 enable** with a reason that is about sequencing rather than merit: "Nothing here is signed today;
 turning this on would block every merge until signing is set up. Worth doing eventually, as its own
 decision, not as a side effect of this one."
