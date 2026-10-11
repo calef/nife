@@ -135,8 +135,8 @@
 //!
 //! # BUGS
 //!
-//! - **Nothing outside tests reads the CPU word**, written on every switch. Milestone 561 (a
-//!   per-CPU allocator is what the current-CPU page was for) shipped a per-thread cache (#1904).
+//! - **Nothing outside tests reads the CPU word**, written on every switch (#1904). The write costs
+//!   under 1.5 ns a round trip on an M3, inside layout noise: 0561's Follow-on in design/roadmap/.
 //! - **The reader forms an `&AtomicU64` over memory its process maps read-only.** Miri cannot model
 //!   a mapping, but it does reject the same shape over an immutable Rust binding (milestone 636
 //!   (the scheduled workflows are failing) found it while repairing this crate's tests, which now
