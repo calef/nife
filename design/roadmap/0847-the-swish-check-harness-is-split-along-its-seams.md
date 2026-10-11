@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: IN-PROGRESS
 raised: 2026-10-08
+branch: milestone/847-the-swish-check-harness-is-split-along-its-seams
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 280
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -21,6 +22,10 @@ structure) is the precedent inside `xtask`.
 The cut and every module name below are calef's call. A lane writes them up as a
 `status: PROPOSED` file in `design/decisions/` before it moves a line, and its pull request
 carries `needs-architect`.
+
+The lane wrote it up on 2026-10-11 (UTC) as §280 (the swish-check harness splits into submodules,
+with its script in one), `status: PROPOSED`, re-measured on main at `ae6b91e79` at 4,274 lines.
+Nothing moves until calef rules.
 
 Reuse: not applicable; this moves code and adds none.
 
