@@ -43,7 +43,10 @@ possible:
 - `notes/iommu.md:116`, under Honest limits: "No fault handler yet. `take_fault` is drained by
   the confinement test; routing IOMMU faults to a handler in a production boot is future work."
 - `DECISIONS` §20 (IOMMU-backed DMA isolation) says the same in its own limits list.
-- `notes/framebuffer-contract.md:177`, mirrored into `DECISIONS` §29: "What is left for a
+- `notes/framebuffer-contract.md`, in the section now in
+  `notes/framebuffer-contract/iommu-escape-test.md` ("A found limit: the RISC-V IOMMU's fault
+  queue overflows silently"), mirrored into `DECISIONS` §29 (the framebuffer is a bigger grant,
+  not an exemption): "What is left for a
   fault-handling milestone: clear the overflow bit when draining, and decide what a production
   kernel does when a confined device faults at all."
 

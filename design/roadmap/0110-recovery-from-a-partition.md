@@ -5,8 +5,10 @@ built: 2026-08-04
 ---
 # 110. The recovery tool takes a device and a partition
 
-Built 2026-08-04 (PR #103). Raised 2026-08-04 from `notes/host-recovery.md:263`. Milestone 57
-(partitioning and formatting a real drive) is BUILT, so this is its residual, and it is small.
+Built 2026-08-04 (PR #103). Raised 2026-08-04 from `notes/host-recovery.md`, whose "What this does
+not do, and where it goes next" then said the tool "reads an image file, not a raw device". What
+was built is in its section "A device and a partition, not only an image file (milestone 110)".
+Milestone 57 (partitioning and formatting a real drive) is BUILT, so this is its residual, and it is small.
 
 The finding. `tools/redoxfs_host` reads a filesystem out of an image file, not off a device.
 `open_ro` hands a `DiskFile` straight to `FileSystem::open` with no offset, so the bytes at offset

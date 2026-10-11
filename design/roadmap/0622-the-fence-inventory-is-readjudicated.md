@@ -12,8 +12,11 @@ needs_person: no
 
 From the 2026-09-29 documentation audit, finding 7
 ([names and numbers](../audit-reports/2026-09-29-names-and-numbers.md)). `notes/memory-ordering.md`
-says thirteen fences at its line 28, "all fourteen" at line 83 over a fifteen-row table, and
-"Twelve sites today" at line 227, while `script/lint` counts 19. Behind the stale numbers, the
+says thirteen fences under "The count, and how it was taken". It says "all fourteen" in a heading
+over a fifteen-row table, and "Twelve sites today" under "Can pairing be checked mechanically?
+Measured, not argued". Meanwhile `script/lint` counts 19. (Repointed 2026-10-11 UTC from line
+numbers, which #1937's split moves: it puts the first and third in appendices with those titles.)
+Behind the stale numbers, the
 fences this window's milestones added are adjudicated nowhere a reader would meet them, and an
 inventory whose table no longer names its population is worse than no inventory.
 

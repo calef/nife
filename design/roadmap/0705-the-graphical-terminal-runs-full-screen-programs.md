@@ -59,8 +59,8 @@ separate work. This proposal is the terminal half; the programs arrive through w
 and signals. The tree has no libc and no `termios`. `grep termios` finds only a note about a serial
 tool and a rejected crate in milestone 40 (documentation as a system service). The C seam is freestanding and makes no syscalls (§31 (the foreign-language seam: C holds no capabilities and makes no syscalls)).
 `notes/c-seam.md` tier 3, "Full POSIX", is "later, if ever". `vttest` appears in the tree once,
-as a reason in `notes/glyphs.md:681`. The closest measure is therefore the host harness: `vttest` in a
-pty, its output into `Vt`, a screen dump at each "Push <RETURN>" pause, graded against goldens
+as a reason in `notes/glyphs/libghostty-vt.md`. The closest measure is therefore the host
+harness: `vttest` in a pty, its output into `Vt`, a screen dump at each "Push <RETURN>" pause, graded against goldens
 recorded once from a reference terminal and reviewed by a person. `vttest` has no machine-readable
 verdict, so the goldens are the verdict. Menu 6 has nothing to grade without the reply path in Part 3.
 I did not run `vttest`.
@@ -101,12 +101,14 @@ Answers to questions 2 and 4 of the seven are the same for every option, so they
 
 - *What does this tree do in the analogous case?* It built `line_editor` against the prior-art rule's
   default (`notes/line-discipline.md`, "The build-vs-reuse call"), built `video_terminal` before any
-  foreign engine existed, and recorded the libghostty-vt cost in `notes/glyphs.md:669-715` and §37
+  foreign engine existed, and recorded the libghostty-vt cost in `notes/glyphs.md` ("What adopting
+  libghostty-vt would cost now", since #1918 the appendix `notes/glyphs/libghostty-vt.md`) and §37
   (text as a value), which says "Architect's call, not taken here". Vendoring policy for a foreign
   library is §18 (the PCIe transport), the RedoxFS precedent.
 - *Is the premise true?* Partly. The gap is real and measured above, but it needs a program to hit it,
   and no such program ships (Part 1). Separately, a premise in the record is stale. `notes/glyphs.md`
-  and `notes/c-seam.md:95` list libghostty-vt as freestanding with "no allocation". Upstream's
+  and `notes/c-seam.md` (tier 1 of "The libc question, answered by tier") listed libghostty-vt as
+  freestanding with "no allocation" (both corrected 2026-10-03 UTC). Upstream's
   `allocator.h` says it "does require memory allocation for various operations", that on a native
   freestanding target the default allocator always fails, and that the consumer must supply one. So
   tier 1 of the C seam holds, but "fixed buffers, no allocation" does not. `display_terminal` has no
