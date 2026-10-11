@@ -9,8 +9,9 @@ confined, faulting on a deliberate out-of-bounds write, and restarted by its sup
 
 The component is throwaway on purpose. What is being de-risked is the seam: the toolchain, the
 linkage shape, the libc, and the confinement proof. That has to happen before a real foreign component
-depends on it (libghostty-vt, the display ladder's later rung), because if the seam has a problem, you
-want to find it with 150 lines of disposable C rather than half way into a port.
+depends on it (libghostty-vt, the display ladder's later rung). If the seam has a problem, you want
+to find it with 150 lines of disposable C rather than half way into a port. The detail this page has
+no room for is in [`c-seam/`](c-seam/README.md).
 
 ## Why memory-unsafe C is the best demonstration, not the worst
 
@@ -19,8 +20,8 @@ microkernel, and here we are linking C.
 
 But read the thesis again: *a verified core that confines unverified workloads.* The workload was
 always going to be unverified. C is simply the most unverified workload available: no bounds checks, no
-borrow checker, nothing at all between a bad index and a store to whatever address it computed. **The
-more unverified the component, the more the confinement has to prove.** So this is the sharpest
+borrow checker, nothing at all between a bad index and a store to whatever address it computed. The
+more unverified the component, the more the confinement has to prove. So this is the sharpest
 available test of the claim rather than a dilution of it.
 
 And the contrast with a monolith stops being rhetorical and becomes arithmetic:
@@ -97,8 +98,8 @@ this does not cross"):
 2. A handful of symbols. Shim what the component actually references. This is what this spike
    proves.
 3. **Full POSIX.** `open`, `fork`, `socket`, threads. Needs a real libc port, which is DECISIONS §15's
-   "later, if ever" road and the one Redox took with relibc. **Not walked here, and saying so is what
-   keeps this from becoming that project.**
+   "later, if ever" road and the one Redox took with relibc. Not walked here, and saying so is what
+   keeps this from becoming that project.
 
 ### What the object demands (five), and what the linker demands (two)
 
@@ -137,8 +138,8 @@ most of it.
 
 Do not define the three symbols the runtime already owns. Here is why, and it cost a debugging session.
 
-The obvious Rust implementation of `memcpy` is `core::ptr::copy_nonoverlapping`. **That lowers to a
-call to `memcpy`.** So the shim calls itself, forever.
+The obvious Rust implementation of `memcpy` is `core::ptr::copy_nonoverlapping`. That lowers to a
+call to `memcpy`. So the shim calls itself, forever.
 
 The symptom does not look like recursion. It looks like this:
 
@@ -174,63 +175,17 @@ this; it is worth knowing it is a property of `free`'s signature rather than a s
 
 ## The toolchain: bare-metal clang, one compiler for two ISAs
 
-`fixtures/build.rs` compiles `fixtures/c/c_seam.c` and hands the object to the linker for the `c_shim`
-binary only (`cargo::rustc-link-arg-bin=c_shim=...`). No archive and no `ar`: one translation unit,
-one object, straight onto the linker's command line. Every other program in the `user` package links
-exactly as before, which keeps the foreign component from becoming everyone's problem.
+`fixtures/build.rs` compiles `fixtures/c/c_seam.c` and hands the one object to the linker for the
+`c_shim` binary only, so every other program links exactly as before. clang is found from a known
+list: `$CRICKER_CC`, then Homebrew's llvm keg by path, then `clang` on `PATH`. Each candidate must
+have both the AArch64 and RISC-V backends (`clang -print-targets`), so Apple's clang is rejected on
+purpose: the parity gate of §19 (architectural parity), applied to the toolchain. `script/bootstrap` installs one, and without
+one `fixtures/build.rs` panics with installation instructions.
 
-How clang is found, and why the check is a capability check. The same discipline `xtask`'s
-`llvm_tool` uses for `llvm-objcopy`: resolve the tool from a known list rather than hoping it is on
-`PATH` under the right name, and fail loudly with what to install.
-
-1. `$CRICKER_CC`, the escape hatch.
-2. `/opt/homebrew/opt/llvm/bin/clang`, then `/usr/local/opt/llvm/bin/clang`. Homebrew's llvm keg is
-   deliberately not linked onto `PATH` (it would shadow Apple's clang), so it is named directly.
-3. `clang` on `PATH`. Debian and Ubuntu build every LLVM backend into their packages, so this is the
-   usual CI answer.
-
-Each candidate must have both the AArch64 and RISC-V backends, checked with `clang -print-targets`:
-
-```
-$ /usr/bin/clang -print-targets | grep -c riscv        # Apple clang, Xcode CLT
-0
-$ /opt/homebrew/opt/llvm/bin/clang -print-targets | grep -c riscv
-4
-```
-
-Apple's clang is rejected on purpose, and it is worth being clear that this is not an oversight:
-it compiles the aarch64 side perfectly well. Requiring both backends from *one* compiler even when
-only one ISA is being built is DECISIONS §19 (parity is a gate, not an aspiration) applied to the
-toolchain. A machine where the two architectures are compiled by two different clangs is a machine
-where "it works on aarch64" has stopped predicting anything about riscv64, and the failure would
-surface halfway through a build instead of at the front door.
-
-Cost to a fresh clone: one dependency. `script/bootstrap` installs it (`brew install llvm` on macOS,
-`apt-get install clang` on Debian), and from this milestone on `cargo build -p user` needs a
-cross-capable clang. Without one, `fixtures/build.rs` panics with installation instructions rather than
-leaving the link to fail with a bare "undefined symbol: c_seam_transform".
-
-### The flags, and the one that is load-bearing
-
-```
-aarch64:  --target=aarch64-unknown-none-elf  -mgeneral-regs-only
-riscv64:  --target=riscv64-unknown-none-elf  -march=rv64imac -mabi=lp64
-both:     -ffreestanding -fno-pic -fno-stack-protector -Os -std=c11 -Wall -Wextra -Werror
-```
-
-- `-mgeneral-regs-only` is not a size optimization, it is a correctness requirement. Without it,
-  clang happily vectorizes the component's byte loops: 53 vector-register operands appear in the
-  object. Three independent reasons that breaks here, and any one is enough. The Rust target is
-  `aarch64-unknown-none-softfloat`, which uses no FP/SIMD registers in its ABI. The kernel never
-  touches `CPACR_EL1`, so FP/SIMD traps at EL0. And the context switch saves no FP state, so even if
-  it did not trap, the registers would be corrupted across a preemption. Whichever of those bit first,
-  the bug would be a confined component that fails for a reason having nothing to do with its logic.
-- `-mabi=lp64`, not `lp64d`, because the Rust target is `riscv64imac` (no F or D extension). An ABI
-  mismatch here would either be refused by lld or, worse, linked with arguments passed in registers the
-  other side never reads.
-- `-fno-pic` to match the bare targets' `static` relocation model.
-- `-ffreestanding` so no hosted libc is implied. clang still supplies its own `stddef.h` and
-  `stdint.h` from its resource directory, which is all the component includes.
+The load-bearing flag is `-mgeneral-regs-only` on aarch64. Without it clang vectorizes the byte
+loops, and FP/SIMD registers are unusable at EL0 here and unsaved across a switch. On riscv64 the
+ABI is `lp64`, not `lp64d`, to match `riscv64imac`. [`the-toolchain.md`](c-seam/the-toolchain.md)
+has the full flag list and the reasons.
 
 ## The confinement test, which is the milestone
 
@@ -249,91 +204,20 @@ both:     -ffreestanding -fno-pic -fno-stack-protector -Os -std=c11 -Wall -Wextr
 address space from the C component, because a checker *inside* the faulting address space could only
 report what that address space could see, which is exactly the thing under suspicion.
 
-### The layout, and why there are two witnesses
+The address-space layout gives the checker two witnesses. `WITNESS_RO` is the same physical
+frame, mapped read-only into the component and read/write into the confiner. `WITNESS_FAR` is a
+different frame at the virtual address one page further on. An overrun into the first proves the
+store did not happen; a wild write to the second proves a virtual address means nothing outside the
+address space that owns it.
 
-```text
-  c_shim (the C component's process)        c_confiner (the checker)
-  ----------------------------------       ----------------------------------------
-  0x0040_0000  text / rodata / data        0x0040_0000  text / rodata / data
-  0x0050_0000  stack                       0x0050_0000  stack
-  0x4000_0000  heap (malloc/free)          0x2000_0000  the initrd, read-only
-  0x5000_0000  GRANT       1 page, RW <--> 0x5000_0000  the same frame, RW
-  0x5000_1000  WITNESS_RO  1 page, RO <--> 0x5000_1000  the same frame, RW
-  0x5000_2000  NOTHING (unmapped)          0x5000_2000  a DIFFERENT frame, RW
-```
-
-Two witnesses because there are two different claims, and neither implies the other:
-
-- `WITNESS_RO` is the same physical frame, mapped read-only into the component and read/write
-  into the confiner. `c_seam_overrun` writes `grant[len]`, which is this page's first byte. When it
-  comes back unchanged, that is not "the store landed somewhere else": the page was right there, in
-  the offender's own page tables, one byte past a pointer it legitimately held, and **the store did
-  not happen.** This is the stronger of the two.
-- `WITNESS_FAR` is a different frame at the same virtual address. `c_seam_wild` writes
-  `grant[len + 4096]`, an address the component has no mapping for at all and the confiner does.
-  When the confiner's page is unchanged, that is the statement **a virtual address means nothing
-  outside the address space that owns it**, which is the MMU claim itself, made concrete rather than
-  assumed.
-
-Both patterns are position-derived (`i*31+7` and `i*17+3`) and checked byte by byte, which is milestone
-29's framebuffer discipline: a partial overwrite is detected, and a `memset` of any single value could
-not pass.
-
-### The five assertions, and the control that makes them mean anything
-
-Every one is made from outside the faulting address space, after the component is dead.
-
-1. It faults, rather than silently corrupting and continuing. The death message exists at all,
-   carries `EVENT_FAULT`, and carries a non-zero kernel-stamped tid (DECISIONS §26.5: the kernel is the
-   only sender on that endpoint, so the tid needs no badge).
-2. The fault is the bug we planted. The address the kernel reports equals the address the C code
-   computed. Without this the witness checks would be vacuous, because a crash on the way to the bug
-   looks identical from the outside.
-3. `WITNESS_RO` is intact, every byte.
-4. `WITNESS_FAR` is intact, every byte.
-5. The restart works, and works means computes. Three instances run in sequence: attempt 0
-   overruns, attempt 1 goes wild, attempt 2 runs `c_seam_transform` (uppercase the input, FNV-1a it,
-   write both into the grant) and exits cleanly. The confiner reads the output out of the shared
-   grant and checks it against an independent Rust implementation of the same definition, so a
-   restart that revives a process which merely reports for duty fails. The clean exit arrives as
-   `EVENT_EXIT` and is not restarted, which is the other half of §26.3's "both events flow".
-
-The control. Each misbehaving C function stores *inside* its grant first (`grant[0] = 0xC0`),
-and that store must be visible in the confiner's view. Without it, every witness assertion could be
-satisfied by a process whose stores never worked at all, which would prove nothing. This is the
-single most important line in the test.
-
-The verdict is asserted for equality with the expected bitmap, not for containing the interesting
-bits: a missing bit is what broken confinement looks like, and a superset would mean the checker started
-answering a question nobody asked.
-
-### What the machine actually printed
-
-aarch64:
-
-```
-  user thread ... killed: Data abort from a lower EL
-    pc 0x402178   far 0x50001000   esr 0x9200004f     <- overrun: permission fault on WITNESS_RO
-  user thread ... killed: Data abort from a lower EL
-    pc 0x402190   far 0x50002000   esr 0x92000047     <- wild:    translation fault, nothing mapped
-```
-
-riscv64:
-
-```
-  user thread ... killed: scause 0xf (code 15)
-    pc 0x401786   stval 0x50001000                    <- overrun
-  user thread ... killed: scause 0xf (code 15)
-    pc 0x40179a   stval 0x50002000                    <- wild
-```
-
-A cross-ISA difference, found here and worth recording. aarch64's `ESR_EL1` distinguishes the two
-bugs in its fault status code (`0x...4f` permission, `0x...47` translation); RISC-V's `scause` reports
-both as `0xf`, Store/AMO page fault, with no permission-versus-translation distinction at all. Both
-deliver the exact faulting byte address, which is what the test asserts on, so the difference costs
-nothing today. It would matter to a userspace pager, which needs to tell "this page is absent, fetch
-it" from "this page is protected, that is an error"; on RISC-V that requires reading the page tables
-rather than the cause register. That is on the SUSPEND tracker's plate, not this milestone's.
+Five assertions are made from outside, after the component is dead. It faults. The fault address
+equals the address the C code computed. Both witnesses are intact, byte by byte. And a restart
+computes the right answer, checked against an independent Rust implementation. The control makes
+them mean something: each misbehaving function stores inside its grant first, and that store must
+be visible to the confiner. Both ISAs report the exact faulting address. aarch64's `ESR_EL1` also
+tells a permission fault from a translation fault; RISC-V's `scause` does not, which would matter to
+a userspace pager. [`the-confinement-test.md`](c-seam/the-confinement-test.md) has the layout, the
+assertions in full and the transcripts.
 
 ## What the supervisor had to hold, and what it would rather have held
 
@@ -349,7 +233,7 @@ builds a process from it** (`RETYPE`, `RETYPE_OBJ`, `SPLIT`). There is no narrow
   needs the last one. Everything else came attached.
 - What it would have preferred: a reap-only right over one region it did not create. That is
   enough to collect a corpse and return its pages, and not enough to build anything.
-- **The alternative that exists today**, and why this milestone did not use it: milestone 22 phase
+- The alternative that exists today, and why this milestone did not use it: milestone 22 phase
   B.2's proxy. Its supervisor (`sub_server_supervisor`) holds no memory at all and asks a construction sub-server
   (`spawner`) to reap on its behalf, so policy and authority sit either side of an IPC boundary. That
   is the right answer for a system's the progenitor, where the whole point is that progenitor can no longer build. It
