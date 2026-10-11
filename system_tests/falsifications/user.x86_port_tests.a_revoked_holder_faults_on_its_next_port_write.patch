@@ -31,11 +31,15 @@ broadcast inside the lock. The broadcast does not rescue the defect: it resets e
 once, and the revoked holder's next switch-in reinstalls the grant from the cache this patch leaves
 standing.
 
-diff --git a/kernel/src/sched.rs b/kernel/src/sched.rs
-index 0a86074c2..e233860d9 100644
---- a/kernel/src/sched.rs
-+++ b/kernel/src/sched.rs
-@@ -3419,12 +3419,6 @@ fn delete_port_range_caps_impl(base: u16, count: u16, keeper: Option<ThreadId>)
+Regenerated 2026-10-11 (UTC) for milestone 840 (the scheduler file is split along its seams):
+the same lines, moved out of `kernel/src/sched.rs` into `kernel/src/sched/capabilities.rs` unchanged, so the defect is
+the same and only the path and line numbers differ.
+
+diff --git a/kernel/src/sched/capabilities.rs b/kernel/src/sched/capabilities.rs
+index cd75c6fdd..c7f90352c 100644
+--- a/kernel/src/sched/capabilities.rs
++++ b/kernel/src/sched/capabilities.rs
+@@ -182,12 +182,6 @@ pub(super) fn delete_port_range_caps_impl(base: u16, count: u16, keeper: Option<
              if matches!(t.outgoing_cap, Some(c) if c.object == target) {
                  t.outgoing_cap = None;
              }

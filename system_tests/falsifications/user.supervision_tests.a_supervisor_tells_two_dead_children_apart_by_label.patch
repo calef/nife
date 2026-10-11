@@ -14,10 +14,15 @@ Replayed red on aarch64 on 2026-10-05 (UTC) at that assertion. Not replayed on r
 here; CI's re-falsify job covers them. The supervisor-first half would fail the same way at its own
 assertion, which the first half's panic keeps from running.
 
-diff --git a/kernel/src/sched.rs b/kernel/src/sched.rs
---- a/kernel/src/sched.rs
-+++ b/kernel/src/sched.rs
-@@ -5658,7 +5658,7 @@
+Regenerated 2026-10-11 (UTC) for milestone 840 (the scheduler file is split along its seams):
+the same lines, moved out of `kernel/src/sched.rs` into `kernel/src/sched/thread_control_block.rs` unchanged, so the defect is
+the same and only the path and line numbers differ.
+
+diff --git a/kernel/src/sched/thread_control_block.rs b/kernel/src/sched/thread_control_block.rs
+index a2b41ef76..676c60bf3 100644
+--- a/kernel/src/sched/thread_control_block.rs
++++ b/kernel/src/sched/thread_control_block.rs
+@@ -171,7 +171,7 @@ pub fn start_thread_control_block(tid: ThreadId, args: [u64; 3]) -> Result<(), a
          && let crate::cap::Object::Rendezvous(ep, label) = fault_cap.object
      {
          t.fault_ep = Some(ep);

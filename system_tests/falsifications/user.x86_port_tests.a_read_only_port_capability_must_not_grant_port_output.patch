@@ -14,11 +14,16 @@ Regenerated 2026-10-07 (UTC) by the lane for milestone 779 (fuzz the surface a c
 reach), whose capability-spelling pass
 renamed `thread_control_block_insert_from`'s bare `cap` local to `capability` (the
 cap-abbreviation ratchet, calef 2026-10-06): same condition deleted, same defect.
-diff --git a/kernel/src/sched.rs b/kernel/src/sched.rs
-index 0561fbb1b..a60cf0b38 100644
---- a/kernel/src/sched.rs
-+++ b/kernel/src/sched.rs
-@@ -5808,9 +5808,7 @@ fn thread_control_block_insert_from(
+
+Regenerated 2026-10-11 (UTC) for milestone 840 (the scheduler file is split along its seams):
+the same lines, moved out of `kernel/src/sched.rs` into `kernel/src/sched/thread_control_block.rs` unchanged, so the defect is
+the same and only the path and line numbers differ.
+
+diff --git a/kernel/src/sched/thread_control_block.rs b/kernel/src/sched/thread_control_block.rs
+index a2b41ef76..e8cda5ed7 100644
+--- a/kernel/src/sched/thread_control_block.rs
++++ b/kernel/src/sched/thread_control_block.rs
+@@ -112,9 +112,7 @@ pub(super) fn thread_control_block_insert_from(
      // without it opens none. The capability still lands in the table (REVOKE and delegation are
      // unchanged); only the cached grant is withheld.
      #[cfg(target_arch = "x86_64")]

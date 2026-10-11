@@ -10,11 +10,15 @@ joins every thread before it exits and cannot see this.
 
 Expected to fail: "std_rayon's process did not end with all its threads reaped".
 
+Regenerated 2026-10-11 (UTC) for milestone 840 (the scheduler file is split along its seams):
+the same lines, moved out of `kernel/src/sched.rs` into `kernel/src/sched.rs` unchanged, so the defect is
+the same and only the path and line numbers differ.
+
 diff --git a/kernel/src/sched.rs b/kernel/src/sched.rs
-index a6c654e7e..1f9935b20 100644
+index e8c8cd6a6..f8f634bd5 100644
 --- a/kernel/src/sched.rs
 +++ b/kernel/src/sched.rs
-@@ -2907,9 +2907,7 @@ fn reap_switched_out(guard: crate::sync::IrqSafeGuard<'_, Option<IpcTables>>, pr
+@@ -1779,9 +1779,7 @@ fn reap_switched_out(guard: crate::sync::IrqSafeGuard<'_, Option<IpcTables>>, pr
          .and_then(|s| s.threads.get(prev))
          .and_then(|t| t.process);
      process::reap_corpse(guard, prev);
@@ -24,4 +28,4 @@ index a6c654e7e..1f9935b20 100644
 +    let _ = process;
  }
  
- /// intid -> rendezvous id + 1 (0 means "not routed"). A hardware interrupt, delivered as a
+ /// Move a blocked thread back to the ready queue. Caller holds the lock.
