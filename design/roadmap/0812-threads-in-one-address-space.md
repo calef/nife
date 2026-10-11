@@ -203,9 +203,9 @@ exit. A second check runs `rayon`'s parallel sum to the same answer.
   measurement as its first consumer.
 - **Recorded.** `notes/futex.md`, `notes/processes.md`, `notes/thread-pointer.md` and
   `notes/std/threads.md` carry this milestone's limits in their `BUGS`, each where its code is read.
-- **Decision.** The semantics of `SYS_EXIT_THREAD`, `abi::process`, `BIND`, the futex methods,
-  `SET_THREAD_POINTER`, and `CONFIGURE`'s sixth word and result owe a section in `design/decisions/`
-  at merge, whose proposed text is on #1892.
+- **Recorded.** The semantics of `SYS_EXIT_THREAD`, `abi::process`, `BIND`, the futex methods,
+  `SET_THREAD_POINTER`, and `CONFIGURE`'s sixth word and result are §276 (the thread syscalls as
+  built), written after the merge from the merged code.
 
 ## Index row
 
