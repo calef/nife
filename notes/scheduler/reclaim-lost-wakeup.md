@@ -72,13 +72,16 @@ The probe is deleted. Nothing else changed. The refusal's own behavior is proved
 destructive call at a runaway that is *meant* to die, and that is the only subject it can honestly
 be pointed at. `reclaim_region` now carries a `BUGS` section saying so where a caller meets it.
 
-Confirmed under the original recipe: four host burners, the riscv64 leg twenty times,
-0 watchdog hangs. Three of the twenty failed on something else, and all three are the
+Confirmed under the original recipe: four host burners, the riscv64 leg twenty times, 0 watchdog
+hangs. Three of the twenty failed on something else, and all three are the
 bounded-yield-under-contention class this file already documents further down
-(`a_thread_that_never_yields_is_preempted_anyway`, `a_blocked_waiter_wakes_with_an_error_when_its_endpoint_is_revoked`,
-and the sibling at `sched.rs:2709`). They fail in 23 s with a named assertion, not at 60 s with a
-dump, so the two are never confusable once you look. A 15% rate for that class under four burners is
-worth someone's attention on its own; it is not this.
+(`a_thread_that_never_yields_is_preempted_anyway`,
+`a_blocked_waiter_wakes_with_an_error_when_its_endpoint_is_revoked`, and the sibling
+`threads_round_robin`). That test's "thread {i} never ran" was `sched.rs:2709` then; 128d9492a made
+it a clock-bounded wait on 2026-08-03, and the assertion is `kernel/src/sched.rs:7686` as of
+2026-10-11. They fail in 23 s with a named assertion, not at 60 s with a dump, so the two are never
+confusable once you look. A 15% rate for that class under four burners is worth someone's attention
+on its own; it is not this.
 
 The local aarch64 rate is not measurable with this recipe, and that is worth knowing before
 someone tries. Ten pre-fix aarch64 runs under the same four burners gave 0 hangs. That sounds
