@@ -1,7 +1,7 @@
 ---
 status: NOT-STARTED
 raised: 2026-10-07
-milestone_dependencies: none
+milestone_dependencies: 887
 decision_dependencies: none
 machine_requirements: none
 specific_machine: none
@@ -61,41 +61,46 @@ projects nife depends on.
 
 ## What is proven
 
-Kani harnesses, each with a falsification patch at
-`crates/jh7110_clock_and_reset/falsifications/<module.path>.<harness>.patch` as §134 (a harness
-carries a machine-replayable falsification record) and `script/falsifications` require:
+Nothing yet. The crate has no Kani harnesses today, so writing all four is this milestone's scope,
+not a step before it. Each row is a property this crate must prove before it publishes. The harness
+cell names the Kani harness that proves it, or says `none yet`; every named harness carries a
+falsification patch that makes it fail at its own assertion. Each patch sits at
+`crates/jh7110_clock_and_reset/falsifications/<module.path>.<harness>.patch`, as §134 (a harness
+carries a machine-replayable falsification record) and `script/falsifications` require.
 
-1. `with_parent` changes only the mux field. For every word and every parent, every bit outside
-   `CLOCK_MUX_MASK` is unchanged and an over-wide parent never spills into the enable bit.
-2. Every offset a domain answers is one of its own words. For every clock id and reset id,
-   `Domain::clock_offset` and `Domain::reset_bit` return none past the domain's `clocks` or
-   `resets` count. Otherwise they return a word-aligned offset inside that domain's clock or reset
-   range, so the shell can never be told to store outside the controller.
-3. Every plan ungates its clocks before it releases its reset. The fixed plans and any plan built
-   from caller-supplied specifiers hold only in-bounds ids, never more than `MAX_PMIC_BUS_STEPS`,
-   with every `EnableClock` ahead of every `DeassertReset`.
-4. The status decoders (`is_deasserted`, `is_clock_enabled`, `clock_divider`) are total and match
-   their definitions for every word.
+| property | harness |
+|---|---|
+| `with_parent` changes only the mux field: for every word and every parent, every bit outside `CLOCK_MUX_MASK` is unchanged and an over-wide parent never spills into the enable bit | none yet |
+| Every offset a domain answers is one of its own words: `Domain::clock_offset` and `Domain::reset_bit` return none past the domain's `clocks` or `resets` count, and otherwise a word-aligned offset inside its range | none yet |
+| Every plan ungates its clocks before it releases its reset: fixed or built from caller-supplied specifiers, a plan holds only in-bounds ids, never more than `MAX_PMIC_BUS_STEPS`, with every `EnableClock` ahead of every `DeassertReset` | none yet |
+| The status decoders (`is_deasserted`, `is_clock_enabled`, `clock_divider`) are total and match their definitions for every word | none yet |
+
+Not proven, by design: that a plan's order is the one the silicon needs, which only a board shows,
+and the device-tree queries, which the cut moves out of the crate.
 
 ## Release, by #1806's rulings
 
-1. Write the four proofs above with their falsification patches, then make the cut. `cargo tree -p
+1. The name is settled before anything leaves (857's Fork 5 as calef amended it on 2026-10-11 UTC).
+   `script/names jh7110_clock_and_reset` reports it ratified, crates.io answers 404 for it (or it is
+   already ours), and `nifeos/jh7110_clock_and_reset` does not exist yet. `script/crate-standalone`
+   checks the first.
+2. Write the four proofs above with their falsification patches, then make the cut. `cargo tree -p
    jh7110_clock_and_reset` then lists no nife crate.
-2. In the tree, `script/verify` proves the harnesses and `Cargo.toml` says `publish = false`.
-3. The package is 0.1.0 with its own semver, states `rust-version` (#1806's note built it on stable
+3. In the tree, `script/verify` proves the harnesses and `Cargo.toml` says `publish = false`.
+4. The package is 0.1.0 with its own semver, states `rust-version` (#1806's note built it on stable
    1.94.1), and ships its harnesses and falsification patches. `cargo package --list` shows them.
-4. Ready means proofs passing and the API stable. §235 (the OS is built and updated from
-   packages, and the tree divides by what releases together) has milestone 610 (the interface's
-   stability is measured weekly)'s per-package co-change column judges the second. When it is ready,
-   calef adds it to the lint-checked publish allowlist. A `nifeos/jh7110_clock_and_reset` repository
-   is then created on the shared CI template, through reusable workflows: Kani through
+5. Ready means proofs passing and the API stable. §235 (the OS is built and updated from packages,
+   and the tree divides by what releases together) has milestone 610 (the interface's stability is
+   measured weekly)'s per-package co-change column judges the second. When it is ready, calef adds
+   it to the lint-checked publish allowlist. A `nifeos/jh7110_clock_and_reset` repository is then
+   created on the shared CI template (milestone 887), through reusable workflows: Kani through
    `kani-github-action`, lint, release. Its release workflow refuses to publish unless the proof job
    is green. Nothing here reads `target_arch`, so stock Kani serves. The patched Kani of §218 (carry
    a Kani patch so riscv64 is proved, and send it upstream) is carried only if a harness comes to
    need riscv64. Milestone 589 (Kani can prove riscv64 from the hosts we already have) built it.
-5. crates.io trusted publishing from that workflow, owned by a `nifeos` team, with no stored token.
-6. calef approves this publication, as he does every one.
-7. nife consumes the crates.io release, pinned with its checksum in `Cargo.lock`. A `[patch]` to a
+6. crates.io trusted publishing from that workflow, owned by a `nifeos` team, with no stored token.
+7. calef approves this publication, as he does every one.
+8. nife consumes the crates.io release, pinned with its checksum in `Cargo.lock`. A `[patch]` to a
    checkout is allowed only during development, and a lint fails one that reaches `main`. The copy
    under `crates/` goes.
 
@@ -106,6 +111,26 @@ Pure logic, tested on the host. This lane built it on 2026-10-07 with the pinned
 host, all exit 0. The release workflow builds the same four. The silicon is riscv64 only; the crate
 is not.
 
+## Standalone, measured 2026-10-11 (UTC)
+
+`script/crate-standalone jh7110_clock_and_reset` fails today, at base `ae6b91e79`. The manifest
+inherits `license` and `lints` from nife's workspace and states no `rust-version`, and there is no
+README, `LICENSE-MIT` or `LICENSE-APACHE`. Those hold for all nine crates. It does not build alone:
+`device_tree_blob` is a path dependency outside the copy, so neither the build nor Kani ran, and it
+has no harness to run. A test reads a fixture from outside the crate. Beyond manifest and files, 32
+lines cite this tree: 22 `milestone N`, 4 tree paths, 4 provenance blocks and 2 naming calef.
+
+Name: `jh7110_clock_and_reset` is ratified today (`script/names`, checked 2026-10-11). Two of its
+public functions, `discover_aon` and `discover_sys`, are not; the cut moves the device-tree queries
+out of the crate, which settles both.
+
+## Review before release
+
+- The public API speaks the device's vocabulary, not nife's: no nife capability type, spawn handoff
+  or nife error enum in a public signature. A reviewer judges this; no script can. Known today: The
+  four `discover` functions and `pmic_bus` take a `DeviceTreeBlob`, and two still carry provisional
+  names.
+
 ## Exit
 
 A check proves it. `script/verify` proves the four properties and `script/falsifications` reports
@@ -114,17 +139,24 @@ every harness `replayable`. In nife, `cargo tree --locked -i jh7110_clock_and_re
 exists, and the tree builds for all three targets. In `nifeos/jh7110_clock_and_reset`, the run that
 published 0.1.0 shows the Kani job green ahead of the publish job.
 
+The name check of release step 1 passes first, so the repository, the package and every doc link
+carry a ratified name. Before the move, `script/crate-standalone jh7110_clock_and_reset` exits 0 in
+nife, and every row of *What is proven* names a harness that stock Kani proves in the copy and whose
+falsification patch makes it fail. No crate publishes without Kani harnesses covering its
+hostile-input and state-machine surface, each carrying a falsification patch that makes it fail at
+its own assertion, replayable in the crate's own repository with stock Kani.
+
 ## BUGS
 
-- Steps 4 and 5 need machinery that does not exist yet: the publish allowlist lint, the shared CI
-  template, the `nifeos` crates.io team, and milestone 610's per-package co-change column. #1806
-  ruled their shape; none is a milestone yet.
+- Steps 5 and 6 wait on milestone 887 (crate repositories share one CI template),
+  which owns the shared CI template, the publish allowlist lint and the `nifeos` crates.io team,
+  and on milestone 610's per-package co-change column.
 - The four properties are this lane's proposal, read from the code, not a ruling. A lane writing
   them may find a better set and says so in its pull request.
 - The device-tree fixtures (`tests/fixtures/*.dts`) are excerpts of the mainline and vendor JH7110
   trees. Their licenses were not checked here; record each before `cargo package` ships them.
 - `needs_person` is `yes` because the exit includes a publication only calef can approve. Everything
-  before step 6 can start now.
+  before step 7 can start now.
 
 ## Index row
 

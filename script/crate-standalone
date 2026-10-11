@@ -1,0 +1,240 @@
+#!/bin/sh
+# script/crate-standalone: would this crate stand on its own outside nife, checked while it is still here.
+#
+#     script/crate-standalone <crate>...          # every check, Kani included
+#     script/crate-standalone --no-kani <crate>   # skip the proofs (seconds rather than minutes)
+#     script/crate-standalone --keep <crate>      # leave the copy in place and print where it is
+#
+# Name: provisional, minted 2026-10-11 (UTC) by lane/crate-release-gates for milestone 857 (crates
+# released on their own). Named for the property it checks rather than for the release, because it
+# runs long before a release and most of what it finds is not about publishing. calef names
+# scripts; expect this to change.
+#
+# **Why this exists.** calef, 2026-10-11 (UTC): *"As a gate for each of these milestones, I want to
+# ensure that we're exposing clean crates without nife assumptions."* A crate that passes every gate
+# in this tree can still fail the day it moves: a path dependency on a sibling, a fixture read from
+# `../../device_tree_blob`, a license inherited from the workspace, a rustdoc that cites a section
+# a stranger cannot open. Each of those is invisible from inside the workspace and obvious from a
+# copy of the crate alone, so that is what this builds.
+#
+# **What it does**, per crate, in a fresh directory under `$TMPDIR` holding only the crate's tracked
+# files (`git ls-files crates/<crate>`):
+#
+# 0. The name. `script/names <crate>` must report the crate's name ratified, because the copy, the
+#    `nifeos/<name>` repository and the crates.io package all carry it (calef, 2026-10-11 UTC: "We
+#    should ensure that we ratify the crate names before we break them out.").
+# 1. The manifest. Fails on a path dependency that leaves the copy, on a key inherited from the
+#    workspace (`license.workspace = true`, `[lints] workspace = true`), on a missing `rust-version`,
+#    and on a feature whose name says `nife`. Inherited keys are then inlined from the workspace
+#    root in the copy only, so the later steps still report something.
+# 2. Files a stranger needs: a README, and `LICENSE-MIT` and `LICENSE-APACHE` at the crate's root
+#    with `license = "MIT OR Apache-2.0"` in the manifest, nife's own license.
+# 3. Citations of this tree, in every shipped text file (and an `include_bytes!` or `include_str!`
+#    that reads outside the crate, which `cargo package` cannot ship): `§N`, `milestone N`, paths into `design/`,
+#    `notes/`, `script/`, `helpers/` or `briefs/`, provenance blocks (`Name: provisional`, and the
+#    rest), the architect's name, and `cfg(target_os = "nife")`. A stranger can follow none of them.
+# 4. The build, on stable at the crate's `rust-version` (or `stable` when it states none, which
+#    step 1 has already failed): `cargo test` on the host, then `cargo build --lib` for each target
+#    in `[package.metadata.docs.rs] targets`, or for nife's three bare-metal targets when it lists
+#    none. docs.rs's key is used because a stranger's tooling already reads it.
+# 5. The proofs, with the stock Kani on `PATH`: every harness passes on the copy, and each
+#    `falsifications/<module.path>.<harness>.patch`, applied to a fresh copy, makes its own harness
+#    fail. A patch is written against this tree's paths (`a/crates/<crate>/...`), so it is applied
+#    with `-p3`; a crate repository rewrites them to `-p1` when it leaves.
+#
+# It exits 0 only when every check passes. It never edits the tree.
+#
+# # EXAMPLES
+#
+#     $ script/crate-standalone --no-kani jh7110_entropy
+#     crate-standalone: jh7110_entropy
+#       FAIL manifest: path dependency leaves the crate: device_tree_blob (../device_tree_blob)
+#       ...
+#
+# # BUGS
+#
+# - **The public API's vocabulary is not checked.** A crate whose functions take nife's capability
+#   types or return nife's error enums passes every step here if those types live inside the crate.
+#   Whether an API speaks the device's language or nife's is a reviewer's judgment, so each crate's
+#   milestone carries it as a review item instead.
+# - **"Fails at its own assertion" is approximated.** Step 5 accepts a falsification when Kani
+#   reports that one harness's verification failed after compiling. It does not match the failed
+#   check against the assertion the patch's header names; `script/falsifications` is the tree's
+#   check for that, and the crate repository's falsification job inherits it.
+# - **The MSRV build needs that toolchain installed.** It names the `rustup` command and fails
+#   rather than install one behind your back.
+# - Only default features are built and tested.
+set -eu
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+exec python3 - "$ROOT" "$@" <<'PY'
+import os, re, shutil, subprocess, sys, tempfile, tomllib
+
+root, args = sys.argv[1], sys.argv[2:]
+kani = "--no-kani" not in args
+keep = "--keep" in args
+crates = [a for a in args if not a.startswith("--")]
+if not crates or any(a not in ("--no-kani", "--keep") for a in args if a.startswith("--")):
+    sys.exit("usage: script/crate-standalone [--no-kani] [--keep] <crate>...")
+
+BARE_METAL = ["aarch64-unknown-none-softfloat", "riscv64imac-unknown-none-elf", "x86_64-unknown-none"]
+workspace = tomllib.load(open(os.path.join(root, "Cargo.toml"), "rb"))["workspace"]
+# The static checks live in one module that `script/metrics` reads too, so the chart and this
+# script cannot disagree about what "clean" means.
+sys.path.insert(0, os.path.join(root, "helpers"))
+import crate_release  # noqa: E402
+
+
+def run(argv, cwd, env=None):
+    p = subprocess.run(argv, cwd=cwd, env=env, capture_output=True, text=True)
+    return p.returncode, p.stdout + p.stderr
+
+
+def tail(text, n=3):
+    lines = [l for l in text.strip().splitlines() if l.strip()]
+    return " | ".join(lines[-n:])[:400]
+
+
+def copy_crate(crate, dest):
+    """The crate's tracked files, copied to `dest`, and returned as {relative path: text}."""
+    files = subprocess.run(["git", "-C", root, "ls-files", f"crates/{crate}"],
+                           capture_output=True, text=True, check=True).stdout.split()
+    if not files:
+        sys.exit(f"crate-standalone: no tracked files under crates/{crate}")
+    texts = {}
+    for f in files:
+        rel = os.path.relpath(f, f"crates/{crate}")
+        to = os.path.join(dest, rel)
+        os.makedirs(os.path.dirname(to), exist_ok=True)
+        shutil.copy2(os.path.join(root, f), to)
+        if rel.endswith(crate_release.TEXT):
+            texts[rel] = open(to, errors="replace").read()
+    return texts
+
+
+def check_static(copy, files, fail):
+    """Steps 1 to 3. Returns the toolchain, the targets, and whether any dependency leaves the copy."""
+    for step, why in crate_release.static_findings(files, set(os.listdir(copy))):
+        fail(step, why)
+    _found, leaves = crate_release.manifest_findings(files["Cargo.toml"])
+    path = os.path.join(copy, "Cargo.toml")
+    text = files["Cargo.toml"]
+    m = tomllib.loads(text)
+    pkg = m.get("package", {})
+    # Inline what was inherited, in the copy only, so the steps after this one still say something.
+    if m.get("lints", {}).get("workspace"):
+        text = re.sub(r"(?ms)^\[lints\]\s*\nworkspace\s*=\s*true\s*\n", "", text)
+    for key, value in workspace.get("package", {}).items():
+        text = re.sub(rf"(?m)^{re.escape(key)}\.workspace\s*=\s*true", f'{key} = "{value}"', text)
+    open(path, "w").write(text)
+    targets = pkg.get("metadata", {}).get("docs", {}).get("rs", {}).get("targets") or BARE_METAL
+    return pkg.get("rust-version") or "stable", targets, leaves
+
+
+def check_name(crate, fail):
+    """Step 0. calef, 2026-10-11 (UTC): "We should ensure that we ratify the crate names before we
+    break them out." The repository, the crates.io package and every doc link carry the name, so a
+    provisional one fails here, before any copy is made. `script/names` is the one reader."""
+    out = subprocess.run([os.path.join(root, "script", "names"), crate], cwd=root,
+                         capture_output=True, text=True).stdout.splitlines()
+    for i, line in enumerate(out):
+        if line.startswith(f"crate {crate} ") and i + 1 < len(out):
+            status = out[i + 1].split()[0] if out[i + 1].split() else "unknown"
+            if status != "ratified":
+                fail("name", f"`script/names` reports the crate name {status}, not ratified")
+            return
+    fail("name", "`script/names` has no crate by this name")
+
+
+def check_build(copy, toolchain, targets, fail, env):
+    code, out = run(["rustup", "run", toolchain, "rustc", "--version"], copy)
+    if code:
+        fail("build", f"toolchain {toolchain} is not installed: rustup toolchain install {toolchain}")
+        return False
+    ok = True
+    code, out = run(["cargo", f"+{toolchain}", "test", "--quiet"], copy, env)
+    if code:
+        fail("build", f"host test on {toolchain}: {tail(out)}")
+        ok = False
+    for t in targets:
+        code, out = run(["cargo", f"+{toolchain}", "build", "--quiet", "--lib", "--target", t], copy, env)
+        if code:
+            fail("build", f"{t} on {toolchain}: {tail(out)}")
+            ok = False
+    return ok
+
+
+def kani_run(copy, env, harness=None):
+    argv = ["cargo", "kani", "--output-format", "terse"]
+    if harness:
+        argv += ["--harness", harness, "--exact"]
+    return run(argv, copy, env)
+
+
+def check_proofs(crate, copy, fail, env, work):
+    patches = sorted(os.listdir(os.path.join(copy, "falsifications"))) \
+        if os.path.isdir(os.path.join(copy, "falsifications")) else []
+    code, out = kani_run(copy, env)
+    # Kani 0.67 reports a crate with no harness as a compile error ("Failed to detect Kani
+    # functions"), so that string, not the exit code, is what says there is nothing to prove.
+    if "Failed to detect Kani functions" in out or "No proof harnesses" in out:
+        fail("proofs", "no Kani harnesses")
+        return
+    if code:
+        fail("proofs", f"stock Kani does not pass on the copy: {tail(out)}")
+        return
+    summary = re.search(r"Complete - .*", out)
+    print(f"  ok   proofs: {summary.group(0) if summary else 'every harness verified'}")
+    for p in patches:
+        harness = p[: -len(".patch")].replace(".", "::")
+        fresh = os.path.join(work, "falsified")
+        shutil.rmtree(fresh, ignore_errors=True)
+        shutil.copytree(copy, fresh, ignore=shutil.ignore_patterns("target"))
+        code, out = run(["patch", "-s", "-p3", "-i", os.path.join(copy, "falsifications", p)], fresh)
+        if code:
+            fail("falsification", f"{p} does not apply to the copy: {tail(out, 1)}")
+            continue
+        code, out = kani_run(fresh, env, harness)
+        if code == 0:
+            fail("falsification", f"{p}: {harness} still passes with the defect applied")
+        elif "VERIFICATION:- FAILED" not in out and "Status: FAILURE" not in out:
+            fail("falsification", f"{p}: fails without a failed verification (compile error?): {tail(out)}")
+        else:
+            print(f"  ok   falsification: {harness} fails under its patch")
+
+
+status = 0
+for crate in crates:
+    work = tempfile.mkdtemp(prefix=f"crate-standalone-{crate}-")
+    copy = os.path.join(work, crate)
+    os.makedirs(copy)
+    env = dict(os.environ, CARGO_TARGET_DIR=os.path.join(work, "target"))
+    env.pop("RUSTUP_TOOLCHAIN", None)
+    failures = []
+
+    def fail(step, why):
+        failures.append(step)
+        print(f"  FAIL {step}: {why}")
+
+    print(f"crate-standalone: {crate}")
+    check_name(crate, fail)
+    files = copy_crate(crate, copy)
+    toolchain, targets, leaves = check_static(copy, files, fail)
+    built = False
+    if leaves:
+        fail("build", "skipped, a dependency is outside the copy")
+    else:
+        built = check_build(copy, toolchain, targets, fail, env)
+    if built:
+        print(f"  ok   build: host and {', '.join(targets)} on {toolchain}")
+    if kani and built:
+        check_proofs(crate, copy, fail, env, work)
+    elif kani:
+        fail("proofs", "skipped, the copy does not build")
+    print(f"crate-standalone: {crate}: {'clean' if not failures else str(len(failures)) + ' failure(s)'}")
+    status |= bool(failures)
+    if keep:
+        print(f"crate-standalone: copy kept at {copy}")
+    else:
+        shutil.rmtree(work, ignore_errors=True)
+sys.exit(status)
+PY

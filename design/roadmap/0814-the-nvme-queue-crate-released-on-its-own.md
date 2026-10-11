@@ -1,7 +1,7 @@
 ---
 status: NOT-STARTED
 raised: 2026-10-07
-milestone_dependencies: none
+milestone_dependencies: 887
 decision_dependencies: none
 machine_requirements: none
 specific_machine: none
@@ -53,23 +53,50 @@ GitHub mirror is archived. SPDK (C) stays the reference for behavior. None is a 
 model checker can reach, and the proofs are the point. No upstream offer goes anywhere: calef ruled
 on #1806 that nife contributes only to projects nife depends on.
 
+## What is proven
+
+Each row is a property this crate must prove before it publishes. The harness cell names the Kani
+harness that proves it, or says `none yet`; every named harness carries a falsification patch that
+makes it fail at its own assertion. Each patch is at
+`crates/non_volatile_memory_express/falsifications/`. Measured 2026-10-11 (UTC): 8 of 8 proven.
+
+| property | harness |
+|---|---|
+| Submission queue pushes stay in bounds | `verification::sq_push_stays_in_bounds` |
+| Completion pops stay in bounds, and the phase flips only at the wrap | `verification::cq_pop_stays_in_bounds_and_flips_only_at_the_wrap` |
+| Distinct doorbells never collide | `verification::distinct_doorbells_never_collide` |
+| The PRP pair is total and page-disciplined | `verification::prp_pair_is_total_and_page_disciplined` |
+| The identify-namespace parse is total and bounds its shift | `verification::identify_parse_is_total_and_bounds_the_shift` |
+| The spawn handoff round-trips | `verification::the_spawn_handoff_round_trips` |
+| An accepted handoff keeps its doorbells inside the mapped page | `verification::an_accepted_handoff_keeps_its_doorbells_inside_the_mapped_page` |
+| A transfer command is built only for a block the namespace has | `verification::a_transfer_command_is_only_built_for_a_block_the_namespace_has` |
+
+Not proven: the `Cap` register decode beyond the doorbell stride the handoff harness bounds, the
+status fields of `Completion::from_dwords`, and anything in time (reset, enable, timeouts), which
+lives in the driver's volatile shell. Two rows prove nife's spawn handoff. If `Handoff` moves to the
+driver, they move with it and the table loses two rows.
+
 ## Release, by #1806's rulings
 
-1. In the tree, `script/verify` proves the harnesses and `Cargo.toml` says `publish = false`.
-2. The package is 0.1.0 with its own semver, states `rust-version` (#1806's note built it on stable
+1. The name is settled before anything leaves (857's Fork 5 as calef amended it on 2026-10-11 UTC).
+   `script/names non_volatile_memory_express` reports it ratified, crates.io answers 404 for it (or
+   it is already ours), and `nifeos/non_volatile_memory_express` does not exist yet.
+   `script/crate-standalone` checks the first.
+2. In the tree, `script/verify` proves the harnesses and `Cargo.toml` says `publish = false`.
+3. The package is 0.1.0 with its own semver, states `rust-version` (#1806's note built it on stable
    1.94.1), and ships its harnesses and falsification patches. `cargo package --list` shows them.
-3. Ready means proofs passing and the API stable. §235 (the OS is built and updated from
-   packages, and the tree divides by what releases together) has milestone 610 (the interface's
-   stability is measured weekly)'s per-package co-change column judges the second. When it is ready,
-   calef adds it to the lint-checked publish allowlist. A `nifeos/non_volatile_memory_express`
-   repository is then created on the shared CI template, through reusable workflows: Kani through
+4. Ready means proofs passing and the API stable. §235 (the OS is built and updated from packages,
+   and the tree divides by what releases together) has milestone 610 (the interface's stability is
+   measured weekly)'s per-package co-change column judges the second. When it is ready, calef adds
+   it to the lint-checked publish allowlist. A `nifeos/non_volatile_memory_express` repository is
+   then created on the shared CI template (milestone 887), through reusable workflows: Kani through
    `kani-github-action`, lint, release. Its release workflow refuses to publish unless the proof job
    is green. No harness here reads `target_arch`, so stock Kani proves them. The patched Kani of
    §218 (carry a Kani patch so riscv64 is proved, and send it upstream) is carried only if one comes
    to need riscv64. Milestone 589 (Kani can prove riscv64 from the hosts we already have) built it.
-4. crates.io trusted publishing from that workflow, owned by a `nifeos` team, with no stored token.
-5. calef approves this publication, as he does every one.
-6. nife consumes the crates.io release, pinned with its checksum in `Cargo.lock`. A `[patch]` to a
+5. crates.io trusted publishing from that workflow, owned by a `nifeos` team, with no stored token.
+6. calef approves this publication, as he does every one.
+7. nife consumes the crates.io release, pinned with its checksum in `Cargo.lock`. A `[patch]` to a
    checkout is allowed only during development, and a lint fails one that reaches `main`. The copy
    under `crates/` goes.
 
@@ -79,6 +106,24 @@ Pure logic, tested on the host. This lane built it on 2026-10-07 with the pinned
 `aarch64-unknown-none-softfloat`, `riscv64imac-unknown-none-elf`, `x86_64-unknown-none` and the
 host, all exit 0. The release workflow builds the same four.
 
+## Standalone, measured 2026-10-11 (UTC)
+
+`script/crate-standalone non_volatile_memory_express` fails today, at base `ae6b91e79`. The manifest
+inherits `license` and `lints` from nife's workspace and states no `rust-version`, and there is no
+README, `LICENSE-MIT` or `LICENSE-APACHE`. Those hold for all nine crates. Builds and tests on
+stable for the host and the three bare-metal targets. Stock Kani proves all eight harnesses in the
+copy, and each falsification patch, applied with `-p3`, turns its harness red. It fails on manifest
+and files only, plus 25 lines citing this tree: 12 `§N`, 8 `milestone N`, 2 tree paths, 2 naming
+calef and 1 provenance block.
+
+Name: `non_volatile_memory_express` is ratified today (`script/names`, checked 2026-10-11).
+
+## Review before release
+
+- The public API speaks the device's vocabulary, not nife's: no nife capability type, spawn handoff
+  or nife error enum in a public signature. A reviewer judges this; no script can. Known today:
+  `Handoff` encodes nife's spawn ABI. Whether it leaves the public API is the lane's call above.
+
 ## Exit
 
 A check proves it. In nife, `cargo tree --locked -i non_volatile_memory_express` resolves to
@@ -87,13 +132,20 @@ longer exists, and the tree builds for all three targets. In `nifeos/non_volatil
 the run that published 0.1.0 shows the Kani job green ahead of the publish job, and every harness's
 falsification patch makes its proof fail.
 
+The name check of release step 1 passes first, so the repository, the package and every doc link
+carry a ratified name. Before the move, `script/crate-standalone non_volatile_memory_express` exits
+0 in nife, and every row of *What is proven* names a harness that stock Kani proves in the copy and
+whose falsification patch makes it fail. No crate publishes without Kani harnesses covering its
+hostile-input and state-machine surface, each carrying a falsification patch that makes it fail at
+its own assertion, replayable in the crate's own repository with stock Kani.
+
 ## BUGS
 
-- Steps 3 and 4 need machinery that does not exist yet: the publish allowlist lint, the shared CI
-  template, the `nifeos` crates.io team, and milestone 610's per-package co-change column. #1806
-  ruled their shape; none is a milestone yet.
+- Steps 4 and 5 wait on milestone 887 (crate repositories share one CI template),
+  which owns the shared CI template, the publish allowlist lint and the `nifeos` crates.io team,
+  and on milestone 610's per-package co-change column.
 - `needs_person` is `yes` because the exit includes a publication only calef can approve. Everything
-  before step 5 can start now.
+  before step 6 can start now.
 
 ## Index row
 

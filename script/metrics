@@ -195,6 +195,7 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, 'helpers')
 import baseline_drift                                                       # noqa: E402
 import coe_actions                                                          # noqa: E402
+import crate_release                                                        # noqa: E402
 import interface_stability                                                  # noqa: E402
 import name_provenance                                                      # noqa: E402
 import packages as package_boundaries                                       # noqa: E402
@@ -465,6 +466,14 @@ MEASURES = [
     # names provisional (that lane's).
     ('coe-actions', ['coe_actions_open', 'coe_actions_closed']),
     ('coverage', ['coverage_lines_pct', 'coverage_min_file_pct']),
+    # Milestone 857 (crates released on their own), calef's ask of 2026-10-11 (UTC): where each of
+    # its per-crate milestones stands, and how much of what each block says must be proven is.
+    # Both are read from the week's tree by `crate_release_cells` below. File and column names
+    # provisional (lane/crate-release-gates).
+    ('crate-release', ['crates_' + stage for stage in crate_release.STAGES]),
+    ('crate-proofs', ['crate_%d_%s' % (n, part) for n in crate_release.MILESTONES
+                      for part in ('harnesses', 'patches', 'proven', 'required')]
+     + ['crate_properties_proven', 'crate_properties_owed', 'crate_properties_required']),
     ('prose-budget', ['prose_excess_words', 'prose_documents_over_cap']),
     # `bold-backlog.csv` (2026W29 to 2026W41) is history that nothing writes or reads any more. The
     # bold backlog reached zero on 2026-10-06 (UTC) and calef asked that it stop being tracked; the
@@ -559,7 +568,11 @@ def _wanted(path):
         return False
     return (path.endswith(('.rs', '.md', '/Cargo.toml'))
             or (path.startswith('script/') and path.count('/') == 1)
-            or path.startswith('packages/'))
+            or path.startswith('packages/')
+            # The released crates' measures: a lock entry says a crate has left, the allowlist
+            # says it may, and a falsification patch is shipped text the citation scan reads.
+            or path in ('Cargo.lock', crate_release.ALLOWLIST)
+            or (path.startswith('crates/') and path.endswith('.patch')))
 
 
 class Tree:
@@ -1501,6 +1514,66 @@ def homes(tree):
     return {k: cells[k] for k in HOMES_COLUMNS}
 
 
+def crate_release_cells(tree):
+    """Both crate measures from one tree: each crate at the furthest stage it has reached, and its
+    proof coverage against its block's `## What is proven` table.
+
+    The stages are a pipeline, so a crate counts at a stage only when it passes every one before:
+    in tree, standalone (static), proven, allowlisted, published. "Standalone (static)" is the half
+    of `script/crate-standalone` git can answer, from `helpers/crate_release.py`, which the script
+    shares: no build, no `script/names` read and no Kani, so it can say clean where the script says
+    no, never the other way. A crate that has left has no harnesses here to count; its proof cells
+    are empty rather than zero, and its stage comes from `Cargo.lock`.
+    """
+    blocks = {int(m.group(1)): t for p, t in tree.text.items()
+              for m in [_BLOCK.match(p)] if m and int(m.group(1)) in crate_release.MILESTONES}
+    if not blocks:
+        # Before 2026-10-07 no per-crate milestone existed, so there was nothing to measure: empty,
+        # never zero, by the page's own rule.
+        return {c: '' for name, columns in MEASURES if name in ('crate-release', 'crate-proofs')
+                for c in columns}
+    lock = tree.text.get('Cargo.lock', '')
+    allow = tree.text.get(crate_release.ALLOWLIST, '')
+    stages = dict.fromkeys(crate_release.STAGES, 0)
+    cells = {}
+    totals = {'proven': 0, 'required': 0}
+    for number in crate_release.MILESTONES:
+        block = blocks.get(number, '')
+        crate = crate_release.crate_of(block)
+        prefix = 'crates/%s/' % crate
+        files = {p[len(prefix):]: t for p, t in tree.text.items() if crate and p.startswith(prefix)}
+        paths = {p[len(prefix):] for p in tree.paths if crate and p.startswith(prefix)}
+        rows = crate_release.required_properties(block)
+        here = 'Cargo.toml' in files
+        proven = sum(1 for _prop, h in rows if h and here and crate_release.is_proven(h, files, paths))
+        cells['crate_%d_required' % number] = len(rows)
+        cells['crate_%d_harnesses' % number] = crate_release.harness_count(files) if here else ''
+        cells['crate_%d_patches' % number] = (sum(1 for p in paths if p.startswith('falsifications/')
+                                                  and p.endswith('.patch')) if here else '')
+        cells['crate_%d_proven' % number] = proven if here else ''
+        totals['proven'] += proven
+        totals['required'] += len(rows)
+        if not crate or not block:
+            continue
+        if not here:
+            if crate_release.published(crate, lock):
+                stages['published'] += 1
+            continue
+        stage = 'in_tree'
+        if not crate_release.static_findings(files, {p for p in paths if '/' not in p}):
+            stage = 'standalone_static'
+            if rows and proven == len(rows):
+                stage = 'proven'
+                if crate_release.allowlisted(crate, allow):
+                    stage = 'allowlisted'
+        stages[stage] += 1
+    cells.update({'crates_' + k: v for k, v in stages.items()})
+    cells['crate_properties_proven'] = totals['proven']
+    cells['crate_properties_required'] = totals['required']
+    cells['crate_properties_owed'] = totals['required'] - totals['proven']
+    return cells
+
+
 def bugs(tree):
     return {'bugs_markdown': sum(len(_MD_BUGS.findall(t)) for _p, t in tree.markdown()),
             'bugs_rust': sum(len(_RS_BUGS.findall(t)) for _p, t in tree.rust())}
@@ -1917,7 +1990,7 @@ def row_for(rev, week, coverage='', person_weeks='', coverage_min=''):
     for part in (proposals(tree), lines(tree), file_size(tree), bugs(tree), harnesses(tree),
                  unsafe_census(tree), unsafe_trust_census(tree),
                  fatal_risks_colors(tree), coe_action_counts(tree), prose_budget(tree),
-                 homes(tree)):
+                 homes(tree), crate_release_cells(tree)):
         row.update(part)
     row.update(baseline_drift.series_cells(rev))
     return row
@@ -2659,6 +2732,19 @@ CHARTS = [
      'the tripwire is 10% per save, so this is what it cannot see',
      [(arch, 'baseline_drift_rows_over_5pct_' + arch) for arch in baseline_drift.ARCHES],
      1.0, None, 'baseline_drift_rows_over_5pct_aarch64'),
+    # Milestone 857's two (provisional, lane/crate-release-gates). A pipeline that starts flat is
+    # correct: all nine crates sit in the tree, and a band moves only when one clears a stage.
+    ('crate-release.svg', 'The crates 857 releases, by how far each has got',
+     'milestones 813 to 821; each crate at the furthest stage it has cleared, every earlier one '
+     'included; "standalone" is the static half of script/crate-standalone',
+     [('in the tree', 'crates_in_tree'), ('standalone (static)', 'crates_standalone_static'),
+      ('proven', 'crates_proven'), ('allowlisted', 'crates_allowlisted'),
+      ('published', 'crates_published')], 1.0, None, 'crate_properties_required'),
+    ('crate-proofs.svg', 'Properties the crate milestones require, proven and owed',
+     'rows of each block\'s What is proven table; proven means the harness exists and carries a '
+     'falsification patch',
+     [('proven', 'crate_properties_proven'), ('owed', 'crate_properties_owed')], 1.0, None,
+     'crate_properties_required'),
     # Milestone 610 (provisional). Breaking changes only: a week's additions run to hundreds and
     # would flatten the bars that matter, so they are on the generated line and in the CSV.
     ('interface-stability.svg', 'Breaking changes to the interface',

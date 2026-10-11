@@ -240,6 +240,17 @@ Public items removed or changed each week: [definitions](interface-stability.md)
 interface, 2026W38 to 2026W41: 278 breaking changes (1067 additions); 5 syscall numbers changed, 0 format bumps; 75% co-change.
 <!-- /interface-stability -->
 
+## The crates 857 releases
+
+![The crates 857 releases, by how far each has got](project-metrics/crate-release.svg)
+
+![Properties the crate milestones require, proven and owed](project-metrics/crate-proofs.svg)
+
+Milestones 813 to 821, each crate at the furthest stage it has cleared; all nine start in the tree.
+Required properties are rows of each block's *What is proven* table. Both read git alone
+(`helpers/crate_release.py`): "standalone" is `script/crate-standalone`'s static half, and "proven"
+means the harness exists and carries a falsification patch.
+
 ## Kani proof harnesses, and what can falsify them
 
 ![Kani proof harnesses](project-metrics/harnesses.svg)
@@ -283,11 +294,8 @@ rest.
   series* has the one case). Empty, not zero, is the tell: `git diff` on `notes/project-metrics/`
   after merging two metrics branches is worth a look.
 - `milestones_built_this_week` will not equal the week-on-week change in the `Built` stock, in
-  any week. It is deliberate and the register argues it, but it reads as an error to anyone who
-  differences two rows and expects the flow to fall out, which is what happened on 2026-09-23.
-  Nothing gates the two against each other and nothing can: the gap is the lag between finishing a
-  milestone and flipping its row, which is a real property of the record rather than a defect in
-  either column.
+  any week. The gap is the lag between finishing a milestone and flipping its row, and the register
+  argues it; nothing gates the two against each other and nothing can.
 - A milestone dated in a week the series has no row for is dropped, which is milestone 1 (boot
   to Rust on QEMU `virt`, and print to the PL011 UART) and 2026W28. `script/metrics` prints a stderr
   line naming it since 2026-09-23; before that it was silent. A reader summing the chart gets one

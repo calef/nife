@@ -1,7 +1,7 @@
 ---
 status: NOT-STARTED
 raised: 2026-10-07
-milestone_dependencies: none
+milestone_dependencies: 887
 decision_dependencies: none
 machine_requirements: none
 specific_machine: none
@@ -30,8 +30,8 @@ calef's rulings, quoted from the maintainer comments of 2026-10-07 (UTC):
   name; free as of today). Permanent once first published."* His word: *"Yes"*.
 - #1806, milestone: *"mint a new milestone, "`file_allocation_table`: a proven FAT crate, released
   on its own" (write it, prove it, oracle tests, its own nifeos repository on the shared CI template
-  at first publication, trusted publishing); milestone 140's FAT32 stratum depends on it and adds
-  the filesystem-contract server. On the customer path."* His word: *"Yes"*.
+  (milestone 887) at first publication, trusted publishing); milestone 140's FAT32 stratum depends
+  on it and adds the filesystem-contract server. On the customer path."* His word: *"Yes"*.
 
 ## What exists, checked 2026-10-07 (UTC)
 
@@ -72,8 +72,8 @@ recorded at the copied item with its source, commit and license.
 | embedded-sdmmc 0.10.0 | MIT or Apache-2.0 | a reference for FAT16/32 without allocation. Its project bans AI-generated contributions, so per #1806 fork 8 it gets bug reports only |
 | simple-fatfs 0.1.0-alpha.2 | MIT | a `no_std` reference; alpha, last updated 2025-09-14 |
 
-The specification is Microsoft's "FAT: General Overview of On-Disk Format" (version 1.03), which
-the existing crate already cites. A dev-dependency is still a dependency under §46, so the lane names
+The specification is Microsoft's "FAT: General Overview of On-Disk Format" (version 1.03), which the
+existing crate already cites. A dev-dependency is still a dependency under §46, so the lane names
 the oracle's pin in its pull request for calef's ruling.
 
 ## Scope
@@ -96,22 +96,23 @@ Non-goals for the first release:
 
 ## What is proven
 
-Kani harnesses, each with a falsification patch at
-`crates/file_allocation_table/falsifications/<module.path>.<harness>.patch` as §134 (a harness carries a machine-replayable falsification record) and
-`script/falsifications` require:
+Nothing yet. The crate has no Kani harnesses today, so writing all four is this milestone's scope,
+not a step before it. Each row is a property this crate must prove before it publishes. The harness
+cell names the Kani harness that proves it, or says `none yet`; every named harness carries a
+falsification patch that makes it fail at its own assertion. Each patch sits at
+`crates/file_allocation_table/falsifications/<module.path>.<harness>.patch`, as §134 (a harness
+carries a machine-replayable falsification record) and `script/falsifications` require.
 
-1. No panic and no out-of-bounds read on any image. Every parse step (boot sector, BPB, FSInfo, FAT
-   entry, directory entry, long-name run) takes a symbolic sector and returns a value or an error.
-   Kani bounds its inputs, so whole-image coverage comes from composing per-sector proofs, with
-   `script/fuzz` over whole images as the backstop. The block states that bound rather than
-   claiming more.
-2. Cluster chains cannot loop. Walking a chain from any start over any FAT contents ends within the
-   volume's cluster count, either at an end-of-chain marker or with an error.
-3. Write then read round-trips. On a small symbolic volume, what a write puts down, a read returns,
-   byte for byte, and the FAT and directory stay consistent.
-4. Directory entries and long names are well formed. Every entry the writer emits has a legal
-   short name, every long-name run carries the matching checksum and ordinals in sequence, and the
-   reader refuses a run that does not.
+| property | harness |
+|---|---|
+| No panic and no out-of-bounds read on any image: every parse step (boot sector, BPB, FSInfo, FAT entry, directory entry, long-name run) takes a symbolic sector and returns a value or an error | none yet |
+| Cluster chains cannot loop: a walk from any start over any FAT contents ends within the volume's cluster count, at an end-of-chain marker or with an error | none yet |
+| Write then read round-trips on a small symbolic volume, byte for byte, with the FAT and directory consistent | none yet |
+| Directory entries and long names are well formed: every short name is legal, every long-name run carries the matching checksum and ordinals, and the reader refuses a run that does not | none yet |
+
+Kani bounds its inputs, so whole-image coverage comes from composing per-sector proofs, with
+`script/fuzz` over whole images as the backstop. The block states that bound rather than claiming
+more. Not proven, by design: crash consistency (FAT has none), and the caller's sector interface.
 
 ## Oracle tests
 
@@ -130,18 +131,41 @@ tree's build, so nothing about it can work on one target and not another.
 
 ## Release, by #1806's rulings
 
-1. In the tree, `script/verify` runs the harnesses, and `Cargo.toml` says `publish = false`.
-2. The package is version 0.1.0 with its own semver, states its minimum Rust version in
+1. The name is settled before anything leaves (857's Fork 5 as calef amended it on 2026-10-11 UTC).
+   `script/names file_allocation_table` reports it ratified, crates.io answers 404 for it (or it is
+   already ours), and `nifeos/file_allocation_table` does not exist yet. `script/crate-standalone`
+   checks the first.
+2. In the tree, `script/verify` runs the harnesses, and `Cargo.toml` says `publish = false`.
+3. The package is version 0.1.0 with its own semver, states its minimum Rust version in
    `rust-version`, and ships its harnesses and falsification patches. `cargo package --list` shows
    them.
-3. At first publication, and not before, calef adds it to the lint-checked publish allowlist. A
+4. At first publication, and not before, calef adds it to the lint-checked publish allowlist. A
    `nifeos/file_allocation_table` repository is then created on the shared CI template (Kani
    through `kani-github-action`, lint, release). Its release workflow refuses to publish unless the
    proof job is green.
-4. crates.io trusted publishing from that workflow, owned by a `nifeos` team, with no stored token.
-5. calef approves this publication, as he does every one.
-6. nife then consumes the crates.io release, pinned with its checksum in `Cargo.lock`, and the copy
+5. crates.io trusted publishing from that workflow, owned by a `nifeos` team, with no stored token.
+6. calef approves this publication, as he does every one.
+7. nife then consumes the crates.io release, pinned with its checksum in `Cargo.lock`, and the copy
    in this tree goes.
+
+## Standalone, measured 2026-10-11 (UTC)
+
+`script/crate-standalone file_allocation_table` fails today, at base `ae6b91e79`. The manifest
+inherits `license` and `lints` from nife's workspace and states no `rust-version`, and there is no
+README, `LICENSE-MIT` or `LICENSE-APACHE`. Those hold for all nine crates. Builds and tests on
+stable for the host and the three bare-metal targets, and has no harness for Kani to run. Beyond
+manifest and files, 14 lines cite this tree: 7 `milestone N`, 3 tree paths, 3 naming calef and 1
+provenance block. A test reads `../../target/file-allocation-table-check.img` through
+`CARGO_MANIFEST_DIR` at run time, which the script does not catch and a stranger's checkout does not
+have.
+
+Name: `file_allocation_table` is ratified today (`script/names`, checked 2026-10-11).
+
+## Review before release
+
+- The public API speaks the device's vocabulary, not nife's: no nife capability type, spawn
+  handoff or nife error enum in a public signature. A reviewer judges this; no script can.
+  Known today: The sector interface the lane chooses must not be nife's block protocol.
 
 ## Exit
 
@@ -152,16 +176,22 @@ their recorded hashes, writes the tree above on FAT12, FAT16 and FAT32, and has 
 properties, `script/falsifications` reports every harness `replayable`, and the crate builds for all
 three targets. Publication is the last step and not the exit, since it waits on calef.
 
+The name check of release step 1 passes first, so the repository, the package and every doc link
+carry a ratified name. Before the move, `script/crate-standalone file_allocation_table` exits 0 in
+nife, and every row of *What is proven* names a harness that stock Kani proves in the copy and whose
+falsification patch makes it fail. No crate publishes without Kani harnesses covering its
+hostile-input and state-machine surface, each carrying a falsification patch that makes it fail at
+its own assertion, replayable in the crate's own repository with stock Kani.
+
 ## BUGS
 
-- Steps 3 and 4 of the release need machinery that does not exist yet: the publish allowlist lint,
-  the shared CI template and the `nifeos` crates.io team. #1806 ruled their shape; none is a
-  milestone yet.
+- Steps 4 and 5 wait on milestone 887 (crate repositories share one CI template),
+  which owns the shared CI template, the publish allowlist lint and the `nifeos` crates.io team.
 - The "about 5,000 lines" figure is the probed crates' size, not an estimate of this one.
 - Long-name patent status was not checked here. Read it and record it before first publication.
 
 ## Index row
 
 nife's own FAT12/16/32 read-write crate with long file names, proven with Kani because a USB stick
-is hostile input, checked against rust-fatfs and `fsck_msdos`, and released on crates.io from its own
-`nifeos` repository. Milestone 140's FAT32 stratum is built on it. exFAT comes later.
+is hostile input, checked against rust-fatfs and `fsck_msdos`, and released on crates.io from its
+own `nifeos` repository. Milestone 140's FAT32 stratum is built on it. exFAT comes later.
