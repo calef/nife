@@ -150,6 +150,16 @@ since each outsider pass adds to it.
    process-view 7,416→2,480, shared-page-audit 6,454→2,780, unsafe-obligations 8,139→2,269.
    Then roadmap 5,525→2,860, trusted-init 6,056→2,434, abi 3,308→2,704, interleaving
    5,618→2,666, stack-high-water 6,220→2,636. The detail is in #1926's body.
+   The third lane, `lane/third-ten-longest-notes` (PR #1928, merged 2026-10-11), took ten more.
+   Words before and after: interrupts 6,253→2,998, riscv-port 4,794→1,694, scheduler
+   6,567→2,318, crates-io-on-nife 6,811→2,880, grant-expression 5,697→2,892. Then dma
+   4,525→2,692, framebuffer-contract 4,562→2,594, dir-capability 4,759→2,076, board-console
+   6,749→2,638, riscv-parity-scope 6,389→2,016. The detail is in #1928's body.
+   The fourth lane, `lane/fourth-ten-longest-notes` (PR #1929), took ten more. Words before and
+   after: falsification 7,204→2,999, documentation 5,264→2,994, sink-protocol 3,189→2,916,
+   kernel-proofs 3,532→2,961, glob-grant 5,123→2,996. Then architecture-list-sweep 6,206→2,752,
+   mdns 3,583→2,288, compositor 4,372→2,995, citations 6,258→2,607, fuzzing 4,246→2,980. The
+   detail is in #1929's body.
 5. The report names each provisional directory and file name for calef's queue.
 
 ## Open questions for an architect
