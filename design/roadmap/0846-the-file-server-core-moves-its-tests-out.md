@@ -1,7 +1,7 @@
 ---
-status: IN-PROGRESS
+status: BUILT
 raised: 2026-10-08
-branch: milestone/846-the-file-server-core-moves-its-tests-out
+built: 2026-10-11
 milestone_dependencies: none
 decision_dependencies: 266, 275
 machine_requirements: none
@@ -31,6 +31,10 @@ split by topic. The scope widened by ruling: the title says the tests move out, 
 moves with them. The title and slug stay, because calef names things. §275 now records the layout
 as built; the verdict and layout below are the block's original proposal, kept as the record of
 what was ruled on.
+
+**Built 2026-10-11 (UTC)** by branch `milestone/846-the-file-server-core-moves-its-tests-out` (pull
+request #1916). `lib.rs` is 1,448 lines and the largest new file 1,137. The 77 tests pass unchanged,
+and `script/test` passed on all three architectures.
 
 Reuse: not applicable; this moves code and adds none.
 
@@ -118,6 +122,17 @@ Found with `grep` at `0435a9aeb`.
    one comment in `crates/filesystem_protocol` follows the const assertions to their new path, and
    the test fake `VecIo` is `pub(crate)` so the block tests can reach it (§275).
 4. `script/test` passes on aarch64, riscv64 and x86_64.
+
+## Follow-on
+
+- **Recorded.** `CachedDisk`'s doc comment sits on `fn cacheable`, run together with that
+  function's own, so the public struct has none. Found while moving and left alone because this
+  change moves and does not edit; written up under "Found while moving" in
+  `design/decisions/0275-the-file-server-cores-tests-move-into-child-modules.md`. Putting it back is
+  one commit and takes both blocks under §267 (a comment states the constraint as it is now)'s cap.
+- **Decision.** The module and file names (`block`, `directory_capability`, `entries`,
+  `extended_attributes`) ship provisional for calef's name-ratification pass, as
+  `design/decisions/0275-the-file-server-cores-tests-move-into-child-modules.md` records.
 
 ## Index row
 
