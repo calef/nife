@@ -6,10 +6,10 @@ now) on 2026-10-09 (UTC). Wording kept except where a sentence had to split.
 
 The roadmap's first sketch said to split a `--mem` entry's grant out of the instance's own region
 "so a single `DESTROY` still reclaims both", and that is wrong on its own terms.
-`regions::destroy_outcome` returns `Refused` for any region with a live child, and Kani
-proves it. `sched::reap_supervised` hands that refusal straight back. So a corpse whose region carries a
-nested grant can never be collected through `reap` until the grant is destroyed first, by its own
-separate capability.
+`memory_regions::destroy_outcome` returns `Refused` for any region with a live child, and Kani
+proves it. `sched::reap_supervised` hands that refusal straight back. So a corpse whose region
+carries a nested grant can never be collected through `reap` until the grant is destroyed first, by
+its own separate capability.
 
 The nesting survives the correction for a better reason. It is the only thing that can ever pair
 a death with a grant. A builder is never told its child's tid: `supervision_protocol::build_child`
@@ -35,3 +35,19 @@ ordinary skip-not-catch-up rule, not a special case for this path. `timetable.co
 memory_grant_depleter --mem 4` fires before the first `every 150ms` tick can even become due, so
 this cost is not exercised by the cross-ISA test. A document whose `--mem` entry shares the clock
 with a fast interval would pay it.
+
+## What the parent note added
+
+These facts sat in the parent's section "A backable `--mem` grant, and why it runs alone" until
+2026-10-11 (UTC), beside a restatement of everything above. The restatement became a summary and a
+link; these moved here, checked against the tree that day.
+
+- `memory_regions::split_stays_within_budget_and_progresses`' sibling proof pins the refusal.
+  `sched::reap_supervised` passes it back as `NotPermitted`.
+- A supervisor learns a tid and nothing else. Besides the TCB capability above, `abi::fault`'s
+  five-word message carries no builder-chosen tag, so nothing in a death names the grant.
+- `components/src/timetable.rs` does not lean on interpreting a refused reap. It drains everything
+  already outstanding before firing the grant-bearing instance, and the grant is destroyed
+  unconditionally rather than guessed at.
+- An interval entry delayed by that wait is never dropped. If the wait outlasts more than one
+  period, `next_after`'s ordinary skip-not-catch-up rule covers it, the same as any other stall.

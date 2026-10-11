@@ -254,7 +254,8 @@ and it depends on a human remembering to apply it.
 
 ## The watchdog cannot tell "stuck" from "slow", and it is the same defect one level up
 
-Added 2026-08-04 from `notes/semihosting.md:82`, which records the limitation and names the fix
+Added 2026-08-04 from `notes/semihosting.md#the-hang-watchdog-and-what-it-cannot-tell-you`,
+which records the limitation and names the fix
 nobody owns. The suite's own deadlock detector has exactly the problem this milestone is about.
 
 The heartbeat is bumped once per test, at the test's start, in `Testable::run`, and never while

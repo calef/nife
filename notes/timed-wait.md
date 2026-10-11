@@ -202,5 +202,6 @@ exactly the failure `CLAUDE.md` warns about ("`script/decisions --check` verifie
 resolves to *some* section, never that it resolves to the right one, so a well-formed wrong citation
 is invisible to it") and the collision `MEMORY.md` records between `§N` and milestone N as two
 numbering schemes. This lane corrected 106's block; #1291 fixed `notes/pipes.md` and #1296 fixed
-103's, both 2026-09-25. `design/decisions/0043-clock-authority.md:107` gets it right, saying
+103's, both 2026-09-25. `design/decisions/0043-clock-authority.md`'s "What this lane deliberately did not do" gets it
+right, saying
 "the milestone block's fork".

@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-08
+built: 2026-10-11
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 272
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -20,6 +21,22 @@ scheduler file is split along its seams) is the model for this block.
 The cut and every module name below are calef's call. A lane writes them up as a
 `status: PROPOSED` file in `design/decisions/` before it moves a line, and its pull request
 carries `needs-architect`.
+
+**BUILT, 2026-10-11 (UTC).** The lane wrote the cut up on 2026-10-10 as §272 (the grant-plan
+crate root splits into private modules), and calef ruled its three forks on 2026-10-11, each as
+recommended, on #1913. `lib.rs` is 185 lines: the crate docs, the module lines, a named re-export
+of every public item, and the byte helpers. The rest moved unchanged into eight private modules
+(`program`, with its child file `program/manifests.rs`, `manifest`, `command`, `refusal`,
+`parsing`, `planning`, `escalation`), and the tests moved beside them. The largest new file is
+`planning/tests/designation.rs` at 692 lines. Every module name ships provisional until a
+name-ratification pass. The one line of code that changed is `run.line` to `run.line()` in
+`planning`, the public accessor, so `RunSpec`'s fields stay private as ruled.
+
+Three places the move differs from §272's table. `MAX_POSITIONALS` went to `parsing` with
+`RunSpec`, because it is the length of two of `RunSpec`'s fields. The two tests of the root's byte
+helpers sit in the root's own `tests.rs`. The image tests are `image/tests.rs`, a child file, as
+every other module's are. Section comments in the old test module that headed tests now in more
+than one file are repeated in each.
 
 Reuse: not applicable; this moves code and adds none. The crate already has seven submodules
 (`expand`, `job_page_frame`, `job_windows`, `line`, `nav`, `spawnproto`, `word`), which is the
@@ -116,6 +133,16 @@ Found with `grep` at `0435a9aeb`. A lane has to carry each one.
    riscv64 and x86_64 and `script/swish-check`.
 4. `cargo doc` for the crate reports no broken intra-doc link.
 5. Each new module carries a `//! Name:` block marked provisional.
+
+## Follow-on
+
+- **Decision.** Every module name ships provisional. calef deferred them on 2026-10-11 (UTC) to a
+  name-ratification pass, and
+  `design/decisions/0272-the-grant-plan-crate-root-splits-into-private-modules.md` records it.
+- **Decision.** calef expects the program table to shrink once packages install through jig rather
+  than through this list. `design/decisions/0272-the-grant-plan-crate-root-splits-into-private-modules.md`
+  records it, and the header of the table's own file says so where the next person to add a row
+  will read it.
 
 ## Index row
 

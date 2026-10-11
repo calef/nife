@@ -248,7 +248,7 @@ speak, the experiment, and the boards' reason in full.
 
 - **Nothing here has run on real silicon.** It is proved on the host and under OVMF. A framebuffer
   that works under QEMU's emulated adapter is not a framebuffer that works on Graeme's laptop. The
-  aperture may be above 4 GiB (this loader refuses that, see below), the mode may be `PixelBitMask`,
+  aperture may be above 4 GiB (this loader does not check, see below), the mode may be `PixelBitMask`,
   and the firmware may hand over a mode the monitor is not showing.
 - **A gate cannot read a real machine.** The screendump path is QEMU's. On the fleet, the record is a
   photograph and a person, which is exactly the state milestone 216 got the VisionFive 2 *out* of.
@@ -263,10 +263,12 @@ speak, the experiment, and the boards' reason in full.
   on a working machine. What is gated is that the loader still compiles it and that `uefi-boot` is
   green, and what proves it is the halted-loader experiment recorded above. Rung four, honestly.
 - **The framebuffer must be below 4 GiB**, because everything the loader hands the kernel has to be
-  nameable by a 32-bit instruction stream running with paging off. `uefi_loader` does not currently
-  check that for the framebuffer specifically; the aperture is a BAR the firmware placed, and a
-  machine that puts it high would be handing the kernel an address its early direct map does not
-  cover. Nothing has been seen doing this and nothing would notice if one did.
+  nameable by a 32-bit instruction stream running with paging off. `uefi_loader` does not check
+  that for the framebuffer: `find_screen` in `uefi_loader/src/arch/x86_64/mod.rs` bounds the span
+  by the firmware's `framebuffer_size` and never the base (read 2026-10-11 UTC). The aperture is a
+  BAR the firmware placed, and a machine that puts it high would be handing the kernel an address
+  its early direct map does not cover. Nothing has been seen doing this and nothing would notice if
+  one did.
 - **The aperture is mapped uncacheable**, like every other device window, so writing a screenful is
   slow on real silicon in a way it is not under QEMU. Write-combining is a PAT entry and this kernel
   does not program the PAT at all; a framebuffer is the first thing in it that would care.
