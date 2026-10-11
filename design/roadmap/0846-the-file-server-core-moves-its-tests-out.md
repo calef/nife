@@ -25,6 +25,13 @@ carries `needs-architect`.
 The lane wrote it up on 2026-10-10 (UTC) as §275 (the file server core's tests move into child modules by topic), `status: PROPOSED`, with the cut re-measured
 on main at `396187b0b` and a recommendation on each fork. Nothing moves until calef rules.
 
+**calef ruled on 2026-10-11 (UTC), against this block's verdict: "b".** The block layer moves into
+`block.rs` with its tests beside it, `lib.rs` keeps `Server` and its helpers, and the remaining tests
+split by topic. The scope widened by ruling: the title says the tests move out, and the block layer
+moves with them. The title and slug stay, because calef names things. §275 now records the layout
+as built; the verdict and layout below are the block's original proposal, kept as the record of
+what was ruled on.
+
 Reuse: not applicable; this moves code and adds none.
 
 ## What is in the file
@@ -107,7 +114,9 @@ Found with `grep` at `0435a9aeb`.
 
 1. `redoxfs_server/src/lib.rs` is under 2,000 lines, and no new file is over 2,000.
 2. The 77 host tests pass with no test body changed, and so do the crate's integration tests.
-3. No Rust file outside `redoxfs_server/src/` changes, and no item's visibility widens.
+3. No Rust file outside `redoxfs_server/src/` changes, and no item's visibility widens. As built,
+   one comment in `crates/filesystem_protocol` follows the const assertions to their new path, and
+   the test fake `VecIo` is `pub(crate)` so the block tests can reach it (§275).
 4. `script/test` passes on aarch64, riscv64 and x86_64.
 
 ## Index row

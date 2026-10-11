@@ -1,6 +1,8 @@
 ---
-status: PROPOSED
+status: DECIDED
 raised: 2026-10-10
+decided: 2026-10-11
+ratified_by: calef
 ---
 
 # 275. The file server core's tests move into child modules by topic
@@ -11,75 +13,86 @@ says is calef's call before a line moves. Written by lane
 `milestone/846-the-file-server-core-moves-its-tests-out`. *(Section number provisional until the
 merge queue lands it.)*
 
-What is blocked: the whole milestone. Nothing else waits on it.
+## The ruling
 
-## What the file is today
+The lane proposed moving the tests alone and leaving the code whole. calef, 2026-10-11 07:32 (UTC),
+on #1916, after asking earlier whether a split of the tests alone was the right axis: "b". That is
+the other answer: the block layer leaves `lib.rs` too. As the maintainer relayed it, the block layer
+is the device I/O and caching beneath redoxfs, and `Server` reaches it only through `Disk`, so it
+moves into `block.rs` with its tests beside it. `lib.rs` keeps the server and its helpers. The
+remaining tests split by topic and sit beside the code they test, as calef ruled for 842 (#1913) and
+845 (#1915). File names are deferred to a name-ratification pass and ship provisional.
 
-`redoxfs_server/src/lib.rs` is 4,785 lines on main at `396187b0b`. Code is lines 1 to 1,738.
-`mod tests` is lines 1,739 to 4,785: 3,047 lines, 77 tests.
+The scope widened by ruling. The milestone's title says the tests move out; the block layer moves
+with them. The title, this section's heading and both slugs stay, because calef names things.
 
-The block's table is right about the code and wrong in two places about the tests:
+## What the file was
 
-- Lines 4,600 to 4,785 are not extended attributes. They are the `CachedDisk` tests
-  (`CountingDisk` and 6 tests), which have a doc comment and no banner.
-- Three helpers, `image_with_tree`, `server_with_tree` and `list`, sit inside the directory
-  capability range but are used by the sync, mtime, rename, statfs and xattr tests. `CountingDisk`
-  is used by a directory capability test. They belong in the shared file. Left in a child, `list`
-  would also resolve to the crate root's private `fn list` under `use super::*` and fail to build.
+`redoxfs_server/src/lib.rs` was 4,785 lines on main at `396187b0b`. Code was lines 1 to 1,738:
+`Server` and its helpers to 1,443, the block layer from 1,445. `mod tests` was lines 1,739 to 4,785,
+3,047 lines and 77 tests.
 
-## The recommended cut
+## The layout
 
-Tests only. The code stays in `lib.rs` whole. Every file is a child of the existing `tests` module,
-so each reaches the crate root's private items (`Server::fs`, `find_store`, `CachedDisk::inner`)
-through `use super::*` exactly as today. No item's visibility changes. A scratch crate with the
-same module layout confirmed it.
-
-| file | holds | lines, about |
+| file | holds | lines |
 |---|---|---|
-| `src/lib.rs` | lines 1 to 1,738, plus `#[cfg(test)] mod tests;` | 1,740 |
-| `src/tests.rs` | shared helpers, open, read, write, sync, mtime, the block layer and `CachedDisk` | 690 |
-| `src/tests/directory_capability.rs` | the directory capability, milestone 47 (navigation and naming) | 1,140 |
-| `src/tests/entries.rs` | rename, statfs, create and truncate | 690 |
-| `src/tests/xattr.rs` | extended attributes | 530 |
+| `src/lib.rs` | crate docs, `Server` and its helpers, `mod block;` and a named re-export | 1,448 |
+| `src/block.rs` | `BLOCK`, `CACHE_SLOTS`, the const assertions, `BlockIo`, `BlockDisk`, `BlockCache`, `cacheable`, `CachedDisk` | 306 |
+| `src/block/tests.rs` | `CountingDisk`, the six `CachedDisk` tests and the header-ring test | 206 |
+| `src/tests.rs` | shared helpers, sync, mtime, open, read, write and the chunked repeat writes | 489 |
+| `src/tests/directory_capability.rs` | the directory capability, milestone 47 (navigation and naming) | 1,137 |
+| `src/tests/entries.rs` | rename, statfs, create and truncate | 689 |
+| `src/tests/extended_attributes.rs` | extended attributes | 529 |
 
-Submodules of `tests`, not siblings. Siblings at the crate root would each need their own
-`#[cfg(test)]` and would reach the shared helpers through `crate::tests::`, which means making the
-helpers `pub(crate)`. That is a widening, and the milestone forbids one.
+`block` is a private module. `lib.rs` re-exports `BLOCK`, `BlockDisk`, `BlockIo`, `CACHE_SLOTS` and
+`CachedDisk` by name, the 842 pattern, because the crate's binaries, its integration tests, an
+example and `crash.rs` and `walk_model.rs` name them as `redoxfs_server::` or `crate::` paths. Every
+such path still resolves, and no item outside the crate is touched.
 
-## What an architect has to rule
+The test files under `tests/` are children of the crate-level `tests` module, so they reach
+`Server::fs` and `find_store` through `use super::*` as before. `image_with_tree`,
+`server_with_tree` and `list` sit in `tests.rs` because the entries and attribute tests use them.
 
-1. Move the tests and leave the code whole. Recommended, as the block argues: the code is 1,738
-   lines, one `impl Server` of 1,086, and one read sees it. Splitting the block cache out to
-   `block.rs` is possible and buys nothing the reader needs. This holds at equal cost, so it is not
-   about effort.
-2. The file names. All provisional. The block proposed `names.rs` for rename, statfs, create
-   and truncate. That collides in reading, not in compiling, with the test helper `fn names` used
-   by the directory capability tests, so this proposes `entries.rs`. `directory_capability.rs` and
-   `xattr.rs` are the block's.
+## What the move needed beyond moving lines
 
-If the answer to 1 is no, the lane writes the code cut up as a second proposal and stops.
+- **`VecIo` is `pub(crate)`, field and all.** It is the `BlockIo` fake the sync and create tests use
+  and so does `cached_disk_reads_the_same_bytes_as_uncached`, which now lives under `block`. It is
+  `cfg(test)`; nothing in any build's API changes.
+- **`xattr.rs` became `extended_attributes.rs`.** A child module named `xattr` shadows the crate
+  root's `filesystem_protocol::xattr` import under `use super::*`, and 25 references to
+  `xattr::RAW` and its neighbors stopped resolving. The name is the banner's and is provisional.
+- **`the_header_ring_is_never_cached` moved to `block/tests.rs`.** It sat in the directory
+  capability range and reads `CachedDisk`'s private `inner` field, which only `block` can see.
+- Imports at the top of each new file, and a four-line module doc on `block.rs`.
 
-## What the move costs beyond moving code
+No test body changed. The 77 tests still pass, and each test's path gained its module
+(`tests::entries::a_rename_survives_a_reopen`). Nothing filters on a module path, and the bare name
+still works as a `cargo test` filter.
 
-- Test names change. `tests::a_rename_survives_a_reopen` becomes
-  `tests::entries::a_rename_survives_a_reopen`, and likewise under `directory_capability` and
-  `xattr`. Nothing filters on a module path: `xtask/src/suite.rs` runs the crate's tests unfiltered,
-  and the five notes and decisions that name a test use the bare function name, which still works
-  as a `cargo test` filter.
-- The four `Falsification:` records move with their tests. All are attested with no patch, and
-  no tool reads them; their "replay by hand" lines use a substring filter that still matches.
-- The ratchet row goes. `design/file-length-baseline.tsv` lists the file at 4,785.
-  `helpers/file_length_ratchet.py` fails a row whose file is at or under 2,000 lines, so the row is
-  removed in the same change.
-- Two notes need the new path: `notes/benchmarks/read-path-block-contract-and-metadata-cache.md`
-  and `notes/shell-navigation.md`. The other nine mentions cite code that does not move.
-  `design/comment-block-baseline.tsv`'s two rows for this file name lines 1 and 1,619, which do not
-  move.
-- Proof. The tests are `cfg(test)` and never reach the image, so the release ELF should hash the
-  same before and after; the lane records both. Host `cargo test`, clippy and `script/lint` cover
-  the rest. The block's done-when also asks for `script/test` on three architectures, which the
-  lane runs.
+## Proof
+
+Host `cargo test`, clippy and `script/lint` as usual, and `script/test` on the three architectures.
+The release ELFs do not hash the same, which the proposal expected: panic locations carry file
+names and line numbers, and the moved code lands in different codegen units. Function sizes match
+except in six monomorphized functions in each architecture's server binary (inlining around
+`CachedDisk` and `Transaction::commit`); `mkfs` matches on all three.
+
+## Records that follow the move
+
+- `design/file-length-baseline.tsv` loses the file's row.
+- `design/comment-block-baseline.tsv`'s row `lib.rs:1619` moves to `block.rs:185` at the same 44,
+  which needs §267 to carry a row on a split (maintainer PR #1924).
+- `notes/benchmarks/read-path-block-contract-and-metadata-cache.md`, `notes/fs-server.md`,
+  `notes/shell-navigation.md`, `bench/cache-slots-sweep.sh` and one comment in
+  `crates/filesystem_protocol` now name the new path.
+
+## Found while moving
+
+The 44-line block is two doc comments run together: `CachedDisk`'s (36 lines) and `cacheable`'s (8),
+all attached to `fn cacheable`, so `pub struct CachedDisk` has no doc. Milestone 606 inserted the
+function between the doc and its struct. Moving the struct's doc back beside it is one commit, and
+it takes both blocks under §267's cap; it was left out because this change moves and does not edit.
 
 ## What it does not decide
 
-No public crate API, wire format or syscall changes under any answer here.
+No public crate API, wire format or syscall changes. The module and file names are provisional.
