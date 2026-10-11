@@ -16,7 +16,7 @@ feature question.
 
 `crates/documentation` is a streaming renderer: bytes in, styled terminal bytes out, no allocator, no
 document held anywhere. That shape is not an optimization, it is what the program's capabilities
-already are. `doc` receives its input as `byte_sink_protocol` messages of sixteen bytes each and writes its
+already are. `mdr` receives its input as `byte_sink_protocol` messages of sixteen bytes each and writes its
 output the same way, so a renderer that needed the whole document would need somewhere to put it,
 and somewhere to put it is a memory grant the program can otherwise do without. The test
 `framing_does_not_matter` pins it: one byte at a time and the whole document at once produce
@@ -77,7 +77,7 @@ closing test ran against the raw line, so this:
 > A transcript quoted from somewhere else, with its own fence inside the quote:
 >
 > ```text
-> $ doc glob.md | wc
+> $ mdr glob.md | wc
 >   1 4 26
 > ```
 >
@@ -120,15 +120,15 @@ its keep by there being one. A bundle that lists a page which has moved fails th
 The roadmap proposed that "the viewer holds a directory capability to the doc store". It should not,
 and does not.
 
-`doc`'s manifest is byte-identical to `wc`'s: `InputSpec::Required`, `OutputSpec::Bytes`, and
-`Forbidden` for argument, memory, file and directory. Its capability table holds two endpoints. `doc glob.md`
+`mdr`'s manifest is byte-identical to `wc`'s: `InputSpec::Required`, `OutputSpec::Bytes`, and
+`Forbidden` for argument, memory, file and directory. Its capability table holds two endpoints. `mdr glob.md`
 is the shell resolving that name against the directory capability *it* holds and streaming the
 bytes in; nothing in the program names a file, a directory or the filesystem, and there is no
 message it can send to find out what it is reading.
 
 That matters more here than it did for `wc`, because a documentation viewer is precisely the program
-a reader would expect to go and fetch things. A `doc` that opened the page it renders would be a
-`doc` that could open any page. `doc glob.md`, `doc < glob.md` and `something | doc` are one
+a reader would expect to go and fetch things. An `mdr` that opened the page it renders would be a
+`mdr` that could open any page. `mdr glob.md`, `mdr < glob.md` and `something | mdr` are one
 behavior with three sources, and the program cannot tell them apart.
 
 So there is no ambient authority to arrive by accident, because there is no authority at all. The
@@ -209,7 +209,7 @@ $ wc doc/kernel/ipc-naming.md
 search printed resolved, which is the claim.)
 
 The second line is where a capability moves, and it moves because a person typed a name. So search
-cannot widen what its caller could already reach, and `doc notes/ipc-naming.md` granting exactly one
+cannot widen what its caller could already reach, and `mdr notes/ipc-naming.md` granting exactly one
 readable file survives having a search in front of it. A search *program* would have moved the
 authority one line earlier and silently.
 
@@ -370,34 +370,34 @@ Render a page at the prompt, with no pipe or redirection needed to make it run
 `hello world` written earlier in that script; the renderer re-flows them to one paragraph:
 
 ```text
-$ doc gate.txt
+$ mdr gate.txt
   hello world hello world
 ```
 
 And prove the viewer is an ordinary pipeline stage rather than something that reached for a file:
 
 ```text
-$ echo # The terminal contract | doc
+$ echo # The terminal contract | mdr
 THE TERMINAL CONTRACT
-$ doc gate.md | wc
+$ mdr gate.md | wc
 1 3 22
-$ doc
-doc: reads an input stream: name a file, redirect with '<', or pipe into it
+$ mdr
+mdr: reads an input stream: name a file, redirect with '<', or pipe into it
 ```
 
 ## BUGS
 
-- **`doc <page>` on its own used to be refused; DECISIONS §106 (2026-08-22) closed it and it now
+- **`mdr <page>` on its own used to be refused; DECISIONS §106 (2026-08-22) closed it and it now
   renders.** It deadlocked when phase 1 shipped, was a refusal that named the fix from milestone
   50's chain check onward, and this entry described that refusal until this line. The mechanism
   is exactly what it named as the fix: an unredirected tail stage's primary output now defaults to
   `terminal_sink_caretaker`, the terminal's own sink adapter, the same one a declared second stream
   already reached by default under DECISIONS §67. `grant_plan::check_chain` still refuses a
-  redirected shape that has nowhere for the shell to wait but itself (`doc <page> > out.txt`); it
+  redirected shape that has nowhere for the shell to wait but itself (`mdr <page> > out.txt`); it
   is only the unredirected, screen-bound case this decision narrows:
 
   ```text
-  $ doc gate.txt
+  $ mdr gate.txt
     hello world hello world
   ```
 
@@ -426,10 +426,10 @@ doc: reads an input stream: name a file, redirect with '<', or pipe into it
   channel, because the shell needs to `RECEIVE` its own child's exit directly rather than race
   `job_undertaker` for the same message. Its memory still returns to the progenitor's job pool when this
   shell reaps it (§26: a corpse's region returns to its *builder*, not its supervisor), so nothing
-  leaks; it simply does not appear in a domain survey while it runs. Given `doc`'s render is a
+  leaks; it simply does not appear in a domain survey while it runs. Given `mdr`'s render is a
   handful of milliseconds, this is unlikely to matter in practice and is recorded here rather than
   fixed because nothing asked for it.
-- **`doc <page> | wc` and `doc <page> > out.txt` deliver the file now.** Both
+- **`mdr <page> | wc` and `mdr <page> > out.txt` deliver the file now.** Both
   answered `0 0 0` when phase 1 measured them, because a pipeline's head was wired off the `Line`,
   which carries no `<`, so the planned input operand was dropped and the stage counted an empty
   stream. That was fixed in `components/src/swish.rs` (the head's input comes off the plan now) and the
@@ -438,7 +438,7 @@ doc: reads an input stream: name a file, redirect with '<', or pipe into it
   ```text
   $ wc gate.txt
     2 4 24
-  $ doc gate.txt | wc
+  $ mdr gate.txt | wc
     1 4 26
   ```
 
@@ -452,7 +452,7 @@ doc: reads an input stream: name a file, redirect with '<', or pipe into it
   without handing it the terminal, which is the exact thing `terminal_sink_caretaker` exists to
   prevent. So a long page scrolls off. The fix is a decision about the spawn protocol, and it is the
   most interesting thing this milestone found.
-- **`doc` emits plain text even at a terminal.** The renderer can color, and the shell has no way
+- **`mdr` emits plain text even at a terminal.** The renderer can color, and the shell has no way
   to tell a stage "you end at the terminal", for the same reason the sink contract is a good
   contract: a writer cannot tell what is underneath it. Unix answers this with `isatty`, which is a
   sniff; the honest answer here is a wiring bit the spawn protocol does not carry yet.
@@ -464,7 +464,7 @@ doc: reads an input stream: name a file, redirect with '<', or pipe into it
 - **A hyphenated name is not one term, and a path is not searchable.** Only the underscore joins,
   so `apropos line-discipline` searches `line` and then `discipline` separately (as two queries;
   this verb takes one word), and `apropos notes/glob.md` folds to `notesglobmd`, which no page
-  says. A search is for words, and the location a result prints is what you hand to `doc`.
+  says. A search is for words, and the location a result prints is what you hand to `mdr`.
 - ~~Ranking is occurrence count and nothing else.~~ It divides by document length now
   (2026-08-22): the page record grew a `tokens` field, spent out of the six bytes it already held
   spare, and `documentation::index::Ranked::offer` ranks by `count / tokens` (fixed-point, one division)
@@ -499,7 +499,7 @@ doc: reads an input stream: name a file, redirect with '<', or pipe into it
   however small, so the ratio improves as the bundles grow rather than because anything got better.
 - **A source line longer than `documentation::LINE_MAX` (2048) loses its tail.** The longest line in
   this repository is 1928 bytes <!--count:longest-markdown-line-->, so the corpus fits; a document
-  from elsewhere may not, and `Renderer::is_truncated` reports it while `doc` does not print it. The
+  from elsewhere may not, and `Renderer::is_truncated` reports it while `mdr` does not print it. The
   number carries a marker because it drifted: these three places said 1835 for as long as the two
   gated ones said 1841, which is the margin this milestone is measured against going stale in the
   prose that explains it.
@@ -515,7 +515,7 @@ doc: reads an input stream: name a file, redirect with '<', or pipe into it
 
 The guest-side `apropos` that used to head this list is built (phase 2, above), and it went to the
 builtin the entry predicted. The spawn-protocol decision that used to head this list is also built
-(DECISIONS §106, 2026-08-22): `doc <page>` renders at the prompt with no `| wc` in front of it, the
+(DECISIONS §106, 2026-08-22): `mdr <page>` renders at the prompt with no `| wc` in front of it, the
 caretaker-hop race it flagged before the decision was made is a named, accepted interim rather than
 a surprise, and both are recorded in this note's `BUGS` section now rather than here. The ranking
 item that used to be third here is built too (2026-08-22, same day): see this note's `BUGS` section
@@ -525,7 +525,7 @@ for what changed and what did not. What is left, in the order it pays off:
    the narrowing for a tail stage's *primary* output; it did not extend the same bit to "tell this
    stage it ends at a real screen" (color, the honest replacement for `isatty`) or to granting one
    line of *input* without granting the keyboard (the pager). Both still want the wiring bit this
-   entry originally scoped for all three; §106 built the narrowest slice that unblocks `doc <page>`.
+   entry originally scoped for all three; §106 built the narrowest slice that unblocks `mdr <page>`.
    This is a spawn-protocol decision, the same shape as §106 itself, so it is not this lane's call
    to make unilaterally.
 2. **The store as something a package installs**, rather than a table in `xtask`. `DOC_BUNDLES` is
