@@ -1,6 +1,8 @@
 ---
-status: PROPOSED
+status: DECIDED
 raised: 2026-10-10
+decided: 2026-10-11
+ratified_by: calef
 ---
 
 # 273. The shell program becomes a directory of modules
@@ -11,95 +13,116 @@ says is calef's call before a line moves. Written by lane
 `milestone/844-the-shell-program-is-split-along-its-seams`. *(Section number provisional until the
 merge queue lands it.)*
 
-What is blocked: the whole milestone. Nothing else waits on it.
+## The ruling
 
-## What the file is today
+calef ruled on 2026-10-11 at 07:23 (UTC), in the maintainer session, and the maintainer recorded it
+on [PR #1914](https://github.com/nifeos/nife/pull/1914#issuecomment-6106644498). Three blocking
+questions, three answers:
 
-`components/src/swish.rs` is 5,920 lines on main at `396187b0b`, 60 fewer than the block measured,
-all from the `package` builtin leaving in `7b9d12565`. Every seam after the argv section sits about
-60 lines earlier than the block's table. Every seam is between items, so this is a move.
-
-## The recommended cut
-
-The program moves to `components/src/swish/main.rs`, with child modules beside it.
-`components/Cargo.toml`'s `[[bin]]` path follows. Every module is a child of the crate root, so
-"submodules or siblings" has one answer here. Every module name is provisional.
-
-| file | holds | lines, about |
+| Question | calef's words | What it decides |
 |---|---|---|
-| `main.rs` | header, the capped heap and `mod heap`, clock, `holdings`, the role table and `_start`, `interactive` through `run`, and the helpers four or more modules share | 1,060 |
-| `navigation.rs` | `Nav`, the navigation builtins, pattern expansion | 650 |
-| `prompt.rs` | `echo`, `apropos`, `read_line`, the shell editing its own line, Tab completion | 420 |
-| `running.rs` | argv pages, the words grant, `run_image`, the manifest note, `dir_grant`, `spawn`, draining, `outcome` | 1,160 |
-| `caps.rs` | `caps`, `caps_image`, the live generation table, `bare` | 290 |
-| `pipeline.rs` | the operators `>`, `<` and `|`, and the files the shell serves behind them | 990 |
-| `jobs.rs` | `spawn_interruptible`, `watch`, `forcible`, `reclaim` | 350 |
-| `witness.rs` | every witness role and its helpers | 1,090 |
+| Do the witness roles get their own module? | *"Couldn't we design a better implementation that the witnesses are individual programs and we run them all with scripts rather than a specific build?"*, then, on doing both, *"Proceed with both"* | `witness.rs` holds them, as a temporary home. Pull request #1922 gives the shell a non-interactive script mode, turns the six witnesses into scripts the shipping shell runs, and deletes `witness.rs` and the role numbers. |
+| Does `components/` get its first program directory? | *"Yes, program directory"* | `components/src/swish/`, with `main.rs` as the crate root. |
+| Do helpers that four or more modules use live in `main.rs`? | *"Agreed"* | `main.rs` is the program's shared vocabulary. |
 
-No file is over 1,500, and the parent is well under 3,000. The block asked for every file under
-2,000, which this meets.
+Every module name ships provisional. calef deferred them to a name-ratification pass.
 
-`crates/swish/src/lib.rs` (3,850 lines) is outside this milestone. The block says so, and no
-roadmap block covers it yet. The lane proposes it as a milestone of its own rather than widening
-this one.
+**Why the directory is the right layout beyond this file.** calef noted with the second answer that
+`swish` will later move to its own repository, be packaged in basalt and be versioned with `jig`.
+A program that is a directory with `main.rs` and its modules beside it is the shape that extraction
+lifts whole: the directory becomes the new repository's `src/`, and nothing in it names a sibling
+program's file.
 
-## What an architect has to rule
+## What the file was
 
-1. The witnesses get their own module. Recommended, as the block said. They are one table of
-   roles dispatched by `_start`, with no `#[cfg]` anywhere, and the helpers at the end of the file
-   (`run_line`, `pwd_is`, `Text`) serve only them. Three `Nav` constructors and methods
-   (`rooted`, `rooted_twice`, `name_call`) are witness-only too, and this proposes moving them into a
-   second `impl Nav` in `witness.rs`, so the shipping `navigation` module carries no test
-   constructors. The reason holds at equal cost.
-2. `components/` gets its first program directory. Recommended, as the block said: a bin crate
-   root resolves `mod x;` beside itself, which for this file is the directory 59 other programs
-   share. The next program over 2,000 lines needs the same answer, and `#[path]` per module is the
-   habit rule 7 exists to stop. Nothing else in the tree enumerates `components/src/*.rs`:
-   `components/build.rs` does not, and xtask finds the binary by name.
-3. Helpers that four or more modules use live in `main.rs`. The status words (`record`,
-   `refused`, `failed`, `current`, `last`), the output helpers (`print`, `stage`, `print_num`,
-   `put_page`, `get_page`), the file-system window constants, `PAGE`, `memory_region_split`,
-   `delegate`, and the window-disjointness assertion, which names windows from three modules.
-   Children see the parent's private items, so this saves about 20 visibility edits and makes
-   `main.rs` the program's shared vocabulary. Leaving them where they sit today would make
-   `navigation` and `prompt` read as libraries the rest of the shell depends on. The reason holds
-   at equal cost.
-4. Every module name in the table.
+`components/src/swish.rs` was 5,920 lines on main at `396187b0b` and at `9532eeb53`, 60 fewer than
+the block measured, all from the `package` builtin leaving in `7b9d12565`. Every seam was between
+items, so this was a move.
 
-If the answer to 2 is no, the program stays one file and the milestone waits for a convention that
-covers every program in `components/`.
+## The cut, as it landed
 
-## What the move costs beyond moving code
+The program moved to `components/src/swish/main.rs`, with child modules beside it.
+`components/Cargo.toml`'s `[[bin]]` path follows. Every module is a child of the crate root.
 
-- Visibility. About 70 top-level items, 22 `Nav` methods and 17 fields used across module
-  lines become `pub(super)`, which at this depth is the same as `pub(crate)`. §271 (the scheduler
-  file splits into submodules of `sched`) used `pub(super)`, so this does too. That is about 110
-  one-word edits; the shell is a program, so none of it is a public API.
-- The alloc gate. `script/lint` reads `components/src/swish.rs` for exactly one
-  `extern crate alloc`, four spaces in, inside `mod heap {`. It is rewritten to grep the whole
-  directory, require the one hit to be in `main.rs`, and run the same check on it. A missing
-  directory gives zero hits and fails closed. A falsification shows an `extern crate alloc` in a
-  submodule fails it, as the block asks.
-- The comment-block ratchet. The header is one 100-line block, listed at `swish.rs:1`. Git will
-  not call a 1,060-line `main.rs` a rename of a 5,920-line file, so the row cannot just move.
-  Recommended: the header's paragraphs go to the modules they describe, as each module's `//!`, and
-  `main.rs` keeps the part about the program as a whole, the heap and the clock. If what stays is
-  still over 40 lines, it falls under the same ratchet question §274 (the filesystem-protocol crate
-  root splits into its module files) raises for every split in this batch. No other block in the
-  file is over 40.
+| file | holds | lines |
+|---|---|---|
+| `main.rs` | header, the capped heap and `mod heap`, clock, `holdings`, the role table and `_start`, `interactive` through `run`, and the helpers four or more modules share | 1,090 |
+| `navigation.rs` | `Nav`, the navigation builtins, `ls`'s constants, pattern expansion | 605 |
+| `prompt.rs` | `apropos`, `read_line`, the shell editing its own line, Tab completion | 406 |
+| `running.rs` | argv pages, the words grant, `run_image`, the manifest note, `dir_grant`, `spawn`, draining, `outcome` | 1,172 |
+| `capabilities.rs` | `caps`, `caps_image`, the live generation table, `bare` | 319 |
+| `pipeline.rs` | the operators `>`, `<` and `|`, and the files the shell serves behind them | 995 |
+| `jobs.rs` | `spawn_interruptible`, `watch`, `forcible`, `reclaim` | 328 |
+| `witness.rs` | every witness role and its helpers, and the three witness-only `Nav` constructors and methods (`rooted`, `rooted_twice`, `name_call`) as a second `impl Nav` | 1,130 |
+
+No file is over 1,500. `main.rs` is the parent and is well under 3,000.
+
+The proposal called the fifth module `caps`, after the builtin. It ships as `capabilities`,
+because calef ruled on 2026-10-06 (UTC) that an identifier does not abbreviate capability as
+`cap`, and `script/lint` counts a module name as one. The builtin keeps its name.
+
+The shared helpers in `main.rs` are the ones this section listed. They are the status words
+(`record`, `refused`, `failed`, `current`, `last`) and the output helpers (`print`, `stage`,
+`print_num`, `put_page`, `get_page`). With them are the file-system window constants, `PAGE`,
+`memory_region_split`, `delegate`, and the window-disjointness assertion with `SH_CLOCK_VA`, the
+one window that exists only for it. Applying the rule calef agreed to, rather than the list, added
+three that four or more modules call. Two are `expansion` and `echo`, the wrappers over the `swish`
+crate, with the comment that describes them as a pair; the third is `send_cap`, `delegate`'s
+one-line wrapper. That moved `echo` out of `prompt`, where the proposal's table put it.
+
+`crates/swish/src/lib.rs` (3,850 lines) is outside this milestone, and
+milestone 884 (the shell logic crate is split along its seams) now covers it.
+
+## What the move cost beyond moving code
+
+- Visibility. 98 one-word edits: 58 top-level items, 20 `Nav` and other methods and 20 fields
+  became `pub(super)`, as milestone 840 (the scheduler file is split along its seams) does. Each
+  module opens with `use super::*;`, and `main.rs` globs each module, so a sibling reaches another's
+  items through the parent. Five of the 58 are visible only so an intra-doc link still resolves.
+  The shell is a program, so none of it is a public API.
+- The alloc gate. `script/lint` greps the whole directory for `extern crate alloc`, requires
+  exactly one hit, in `main.rs`, four spaces in, inside `mod heap {`, and still requires none in
+  `crates/swish`. A missing directory gives zero hits and fails. It was falsified on 2026-10-11
+  (UTC) against the check as committed, and it passes on the tree. It fails on an
+  `extern crate alloc` appended to `prompt.rs`, on the declaration moved into a module in
+  `navigation.rs`, on it moved to the crate root of `main.rs`, and with the directory moved away.
+- The comment-block ratchet. The header stays one 100-line block at `main.rs:1`, untrimmed. Its
+  baseline row moves from `swish.rs:1` to `swish/main.rs:1` at the same number, which §267 (a comment
+  states the constraint as it is now) allows once its amendment for a split file lands (branch
+  `maintainer/comment-ratchet-rows-follow-a-split`). No other block in the file was over 40, and the
+  module headers this adds are under 40.
 - The file-length ratchet drops its row for `swish.rs`.
-- unsafe. 15 `unsafe` blocks with 15 `SAFETY` comments, all inside items that move whole.
-- ELF size. Release builds use 16 codegen units without LTO, and units follow modules, so the
-  split can change inlining and size. The shell's ELF is measured before and after on all three
-  architectures, and any change is explained.
-- Prose. 80 files name the path, 12 with `swish.rs:NNNN` citations. Notes are updated. The 18
-  Rust files whose comments name the path cannot change under done-when 2; they are listed for a
-  follow-up sweep.
+- unsafe. 15 `unsafe` blocks with 15 `SAFETY` comments, all inside items that moved whole.
+- ELF size, release, `.text` and friends as `llvm-size` reports them:
+
+  | architecture | before | after | change | one codegen unit, before to after |
+  |---|---:|---:|---:|---:|
+  | aarch64 | 231,832 | 240,216 | +8,384 (3.6%) | +208 |
+  | riscv64 | 208,918 | 218,520 | +9,602 (4.6%) | +216 |
+  | x86_64 | 250,423 | 259,319 | +8,896 (3.6%) | +216 |
+
+  The growth is codegen partitioning, as this section predicted: release builds use 16 codegen
+  units without LTO, units follow modules, and a small helper called across a module line is no
+  longer inlined. Built again with `CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1`, the split costs about
+  210 bytes on each architecture, which is the longer source paths in panic locations. Debug builds
+  grew by under 1 KB. The shell is not on a measured hot path, so this lands as a recorded cost
+  rather than a reason to add `#[inline]`.
+- Tools that listed programs as `components/src/<name>.rs`. `script/names` and `script/metrics`
+  now also read a program as `<name>/main.rs`, so `swish` stays a program with its ratified block
+  rather than turning into a module. `xtask/src/manual.rs` does the same for the repository
+  documentation store, so `apropos` still finds the shell's header. That is one Rust file outside
+  the directory, against the block's done-when 2; without it the header would have dropped out of
+  the store silently.
+- Prose. Notes that state where something lives now name the module file. Records that describe
+  a past state (audit reports, older roadmap blocks, decisions, dated runs, generated tables) keep
+  the old path, since it was true when they were written. The 16 Rust files outside the directory
+  whose comments name the old path are unchanged under done-when 2; notes/shell.md's BUGS lists
+  them for a follow-up sweep.
 - Proof. The program has no host tests. `script/test` on aarch64, riscv64 and x86_64 runs the
   `system_tests` modules that spawn the shell in each witness role, and `script/swish-check` runs
   too.
 
 ## What it does not decide
 
-No public crate API, wire format or syscall changes under any answer here. The role numbers
-`system_tests` passes at spawn do not move.
+No public crate API, wire format or syscall changes. The role numbers `system_tests` passes at spawn
+do not move.
