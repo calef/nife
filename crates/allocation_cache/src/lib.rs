@@ -1,7 +1,7 @@
 //! **`allocation_cache`**: a bounded stash of freed blocks in front of the shared heap, so most
 //! allocations never take the heap's lock. The algorithm only, like `user_mode_heap`: it never locks,
 //! maps or reads a CPU id, and its owner decides who touches it. `std` gives each thread one, and
-//! `cargo xtask std-src` generates this file into the overlay verbatim.
+//! `cargo xtask std-src` generates this file into `std` as `sys/alloc/nife/allocation_cache.rs`.
 //!
 //! **One thread owns a cache, never a CPU.** Without `rseq`, a thread preempted mid-pop hands its
 //! core, and a per-CPU list, to another thread, so a per-CPU list needs an atomic on every operation.

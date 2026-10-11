@@ -15,6 +15,12 @@
 //! points at the block itself and is read as `fs:[0]`, which before the base is set would read
 //! address zero.
 //!
+//! **The block holds the thread's allocation cache** (milestone 561 (a per-CPU allocator is what
+//! the current-CPU page was for)), so `sys/alloc/nife` reaches it with the thread pointer and one
+//! offset ([`allocation_cache`]). A spawned thread's end closes and spills it before anything else
+//! of the thread's is freed ([`destroy_tls`]), and frees the block itself last
+//! ([`free_own_block`]), because a free after the block is gone would otherwise write into it.
+//!
 //! # BUGS
 //!
 //! - **[`KEYS`] keys a process**, and a key is never reused: `std` makes one per `thread_local!`
@@ -26,6 +32,7 @@ use crate::num::NonZero;
 use crate::ptr;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use crate::sync::atomic::{Atomic, AtomicBool, AtomicPtr, AtomicUsize};
+use crate::sys::alloc::nife::allocation_cache::Cache;
 use crate::sys::pal::nife::{abi, currentcpuproto, rt, runtimeproto};
 
 pub type Key = usize;
@@ -45,8 +52,15 @@ pub struct Block {
     /// cannot be.
     sleep_timer: u64,
     sleep_notification: u64,
+    /// This thread's allocation cache. Zeroed is empty, so a fresh block needs no setup.
+    cache: Cache,
+    /// Set at the thread's end, after which its allocations go to the heap itself.
+    cache_closed: bool,
     slots: [*mut u8; KEYS],
 }
+
+// A block's own free must not land in the cache it holds (`free_own_block`).
+const _: () = assert!(size_of::<Block>() > crate::sys::alloc::nife::allocation_cache::LARGEST);
 
 fn layout() -> Layout {
     Layout::new::<Block>()
@@ -158,6 +172,24 @@ pub fn main_is_ready() -> bool {
     MAIN_POINTER_SET.load(Acquire)
 }
 
+/// **The calling thread's allocation cache**, or null when it must use the heap's lock: before the
+/// main thread's block exists (whose making allocates, so this must not make it), in a process
+/// whose thread pointer could not be set, and after the thread's end has closed it.
+///
+/// Only the calling thread touches what this answers, on whichever core it runs: that is the whole
+/// correctness argument, and why it needs no atomic (`notes/std/allocation.md`).
+#[inline]
+pub fn allocation_cache() -> *mut Cache {
+    // Relaxed: the main thread sets the flag before any other thread exists, and a spawn, which
+    // follows `main_is_ready`'s acquire, is what makes another thread exist.
+    if !MAIN_READY.load(Relaxed) {
+        return ptr::null_mut();
+    }
+    let b = thread_pointer();
+    // SAFETY: with the flag set, every thread's pointer names its own live block.
+    unsafe { if (*b).cache_closed { ptr::null_mut() } else { &raw mut (*b).cache } }
+}
+
 /// This thread's allowance: how many cores its process may use (§269 fork 7).
 pub fn allowance() -> Option<NonZero<usize>> {
     // SAFETY: a block's page is the one the kernel maps read-only for this thread.
@@ -250,9 +282,10 @@ pub unsafe fn destroy(_key: Key) {
 }
 
 /// **A spawned thread's end**: run every thread-local's destructor, as many rounds as it takes for
-/// destructors that set other thread-locals, then std's own cleanup, then free the block. The
-/// thread pointer is left naming freed memory, which nothing reads: the next instruction that
-/// matters is `SYS_EXIT_THREAD`.
+/// destructors that set other thread-locals, then std's own cleanup, then close the thread's
+/// allocation cache and give its blocks back to the heap. Without that spill each ended thread
+/// would keep up to `MOST_CACHED_BYTES` out of the heap for good. The block stays, for
+/// [`free_own_block`].
 pub unsafe fn destroy_tls() {
     for _ in 0..5 {
         let mut any_run = false;
@@ -275,7 +308,22 @@ pub unsafe fn destroy_tls() {
     }
     crate::rt::thread_cleanup();
     let b = block();
-    // SAFETY: this thread's own block, never read again (see above), and not the main thread's,
-    // which never comes here.
-    unsafe { free_block(b) };
+    // SAFETY: this thread's own block. Closed first, so the spill's own lock and anything freed
+    // after it go to the heap rather than refilling the cache.
+    unsafe {
+        (*b).cache_closed = true;
+        crate::sys::alloc::nife::spill_thread_cache(&mut (*b).cache);
+    }
+}
+
+/// **Free the calling spawned thread's block**, the last thing it does before `SYS_EXIT_THREAD`.
+/// The thread pointer is left naming freed memory, which nothing reads: no allocation or free
+/// follows (the block is too large for any cache class, so its own free goes to the heap).
+///
+/// # Safety
+/// Called once, after [`destroy_tls`], by a spawned thread (never the main one) that will neither
+/// allocate nor free again.
+pub unsafe fn free_own_block() {
+    // SAFETY: the caller's contract.
+    unsafe { free_block(block()) };
 }
