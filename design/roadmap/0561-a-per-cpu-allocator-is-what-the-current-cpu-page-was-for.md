@@ -118,6 +118,57 @@ which §31 (the foreign-language seam) rule 4 keeps. The cache adapts glibc's `t
   `BUGS`. Whether the kernel keeps writing it is calef's question on #1904.
 - **Recorded.** Cross-thread frees (a producer freeing what a consumer allocated) were not
   measured, in `notes/std/allocation.md`'s `BUGS`.
+- **Recorded.** What the kernel's per-switch write of that word costs in time, below. calef ruled on
+  2026-10-11 (UTC) that the write stays.
+- **Recorded.** The same A/B on radon's U74, the one in-order core here, when someone is at the desk.
+
+### The write's time cost, measured 2026-10-11 (UTC)
+
+calef asked for this number before ruling on the write (#1955, lane/current-cpu-write-cost). **The
+write costs less time than code layout moves.** The instrument is `script/bench --release` under
+HVF on patagonia's Apple M3, one hart. Two kernels were built from one commit, one with the
+`publish_current_cpu` call in `schedule` compiled out, and booted in shuffled pairs: 500 pairs over
+two sessions. Each figure is a median per iteration, then the median paired difference (with minus
+without) and its 95% bootstrap interval:
+
+| row | with the write (IQR; min, max) | without | difference | interval |
+|---|---|---|---|---|
+| `ipc_rtt_el0`, 2 switches | 416.9 ns (393.9 to 420.3; 384, 671) | 416.2 ns | +0.78 ns, 0.19% | +0.25 to +1.43 |
+| `ctx_switch`, 2 switches | 126.4 ns (118.1 to 127.7; 117, 202) | 126.7 ns | -0.19 ns | -0.42 to +0.01 |
+| `yield_switch`, control | 31.0 ns (29.6 to 31.5) | 31.4 ns | -0.33 ns | -0.44 to -0.21 |
+| `call_reply`, control | 69.2 ns (69.0 to 69.7) | 69.0 ns | +0.29 ns | +0.21 to +0.33 |
+
+The two controls never run the changed code, since a kernel thread has no space, yet they move
+0.3 ns between the same two builds. That is the layout floor, and the round trip's +0.78 ns is
+barely above it.
+
+**A cold line costs no more.** HVF passes through no PMU, so no cache-miss counter is reachable,
+and the hypothesis was tested directly instead. A third kernel cleans and invalidates the word's
+line to the point of coherency (`dc civac`, `dsb ish`) before the store, and a fourth flushes
+without storing. Over 200 shuffled rounds the cold store costs +0.18 ns (-0.60 to +0.74) on the
+round trip and +0.12 ns (-0.20 to +0.46) on `ctx_switch`, so the store buffer hides the miss. The
+flush alone costs about 7 ns a switch, so it ran natively rather than trapping. In the bench itself
+the line is normally hot, since only two spaces alternate.
+
+Caveats:
+
+- HVF is virtualization, not bare metal. Host load was 1.8 to 3.9 on four performance and four
+  efficiency cores, and macOS chooses which kind runs the vCPU.
+- `ipc_rtt_el0` is bimodal across boots, near 390 and near 420 ns. Both kernels land in the lower
+  mode in 36 to 37% of boots.
+- The counter ticks at 24 MHz, but each row is one window of thousands of iterations, so the limit
+  is boot-to-boot spread rather than the counter.
+- riscv64 and `x86_64` were not measured: radon and xenon each need a person at the desk to
+  power-cycle. radon's U74 is an in-order core, where a store miss may cost more than on an M3.
+
+### calef's ruling, 2026-10-11 (UTC)
+
+calef ruled (A) on #1955: the kernel keeps writing the CPU id on every switch. Stopping it is not one line. Without the per-switch write, the single write when a space
+is adopted goes stale, so `current_cpu` would name the wrong core. Doing it properly retires the
+reader, the word, 557's tests and the self-observation half of §204 (how userspace asks where a
+thread runs), to save a store and a branch the bench cannot see. Writing only for threads that
+register, as Linux `rseq` does, was refused for the same reason: an opt-in interface and a
+per-switch check to save nothing measurable.
 
 ## Index row
 
