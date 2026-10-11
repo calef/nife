@@ -59,9 +59,11 @@ author picked.
 
 ## The shape of the 33
 
-All 33 `unsafe fn`s are in `kernel/` and `crates/`. **the program packages have none**, which corrects the
-milestone spec's "across `kernel/`, `crates/`, and `user/`" (then `user/`, now `components/` and
-`fixtures/`).
+All 33 `unsafe fn`s are in `kernel/` and `crates/`. The program packages have **two**, `malloc` and
+`free` in `fixtures/src/c_shim.rs`, which a search that does not allow `extern "C"` misses
+([caller-obligations.md](unsafe-obligations/caller-obligations.md) has the detail). So the milestone
+spec's "across `kernel/`, `crates/`, and `user/`" (then `user/`, now `components/` and `fixtures/`)
+was right.
 
 Twenty-two have at least one explicit `unsafe {}` in the body. Every one of those blocks has a
 SAFETY comment, and clippy reproves it on each run, with the single exception of `inter_process_communication`'s `seed`,
