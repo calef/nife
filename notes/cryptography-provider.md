@@ -8,15 +8,16 @@ toolchain against the stock bare-metal targets, and that those are not nife's ta
 
 The short answer: `rustls` plus a pure-Rust provider builds and runs on all three nife
 architectures, and the two things that stopped it were a `getrandom` major and a handful of
-compiler flags. Neither was a wall. One is now closed in this tree; the other is six lines of
+compiler flags. Neither was a wall. One is now closed in this tree. The other is six lines of
 build configuration recorded where a reader meets it, and one of those six is a run-time
-hazard rather than a build one, which is the part worth carrying past this milestone.
+hazard rather than a build one. That is the part worth carrying past this milestone.
 
-**The provider that builds is `rustls-rustcrypto` 0.0.2-alpha, and calef refused it**, 2026-09-20:
+The provider that builds is `rustls-rustcrypto` 0.0.2-alpha, and calef refused it, 2026-09-20:
 *"rustls-rustcrypto doesn't seem like a high quality dependency."* The refusal and the numbers
 behind it are in [The refusal](#the-refusal-rustls-rustcrypto), and what replaces it is
 [the glue path](#pricing-the-glue-path), priced before it was written because it does not avoid
-depending on the primitives.
+depending on the primitives. The evidence this page has no room for is in
+[`cryptography-provider/`](cryptography-provider/README.md).
 
 ## What changed about the measurement
 
@@ -25,9 +26,9 @@ depending on the primitives.
 `targets/aarch64-unknown-nife.json` and its two siblings, which declare `"os": "nife"` and
 `"std": true` and are compiled with `-Zbuild-std` against the patched `std` farm
 (notes/std.md). A package client would be one of those programs. So the old table was measuring a
-platform this project does not ship, and its `getrandom` rows in particular were measuring the
-absence of a thing nife has had since milestone 56 (secrets, credentials, and the entropy to make them safe):
-`std::random` over the entropy service.
+platform this project does not ship. Its `getrandom` rows in particular were measuring the absence
+of a thing nife has had since milestone 56 (secrets, credentials, and the entropy to make them
+safe): `std::random` over the entropy service.
 
 `script/crypto-probes` is the re-measurement, and it is `script/crate-probes`' sibling: same
 `[[bin]]`-that-calls-the-crate discipline, narrowed to providers and primitives, widened to all
@@ -74,29 +75,12 @@ candidate failing on every target. This one has one real failure class left, and
 
 ### `getrandom`, which was a major-version gap rather than a missing backend
 
-`rustls-rustcrypto` and `ring` both died at `getrandom`'s `compile_error!`, exactly as §196
-recorded, and `entropy_backend` was already the answer to that class. It answered 0.3 and 0.4,
-whose hook is a bare `__getrandom_v03_custom` symbol. `rustls-rustcrypto` reaches `getrandom`
-0.2 through `rand_core` 0.6, and 0.2's hook is a different symbol with a different signature,
-emitted by the `register_custom_getrandom!` macro.
-
-`entropy_backend`'s own `BUGS` section had named this and forecast it: *"nothing currently needs
-the second shape. Something will."* It did. The crate now defines both symbols. Two details are
-worth carrying:
-
-- 0.2's hook returns a bare `u32` (zero for success), not a `Result`, so defining it needs no
-  type from `getrandom`. What it needs is 0.2's `custom` feature, and only a manifest can turn
-  a feature on, which is why `entropy_backend` now depends on 0.2 as well. The cost is one extra
-  crate in the graph of a consumer that only ever needed 0.4.
-- `use entropy_backend as _;` is still load-bearing, for the 0.2 symbol exactly as for the
-  other. Upstream's documentation says a registration "can only be registered in the root binary
-  crate", which is not quite the rule; the rule is that an rlib nothing references is not linked.
-
-`ring` moved one class along as a result: it no longer fails at `getrandom`, it fails in its own
-`cc` build script, which is what notes/crates-io-on-nife.md's class C predicted and what §196
-already recorded from a different angle. `aws-lc-rs`, which §196 never probed, fails the same way
-in `aws-lc-sys`. Neither is available to this project at any price a lane can pay, and that is
-a finding rather than a disappointment: it is §46's "no C in the shipping graph" holding.
+`rustls-rustcrypto` and `ring` both died at `getrandom`'s `compile_error!`, as §196 recorded.
+`entropy_backend` answered 0.3 and 0.4 already, but `rustls-rustcrypto` reaches 0.2 through
+`rand_core` 0.6, whose hook is a different symbol with a different signature. The crate now defines
+both, and `use entropy_backend as _;` is still load-bearing for each. `ring` then failed one class
+along, in its own `cc` build script, and `aws-lc-rs` fails the same way: §46's "no C in the shipping
+graph" holding. [`the-getrandom-gap.md`](cryptography-provider/the-getrandom-gap.md) has the detail.
 
 ### The x86_64 finding
 
@@ -164,9 +148,9 @@ and is a weak claim here specifically: on x86_64 every one of these crates is ru
 implementation almost nobody runs.
 
 So `cryptography_exerciser` is a `std` program that runs published test vectors against the
-primitives directly and against `cryptography_provider`, the provider this tree assembles, transcribed
-from the specification that publishes each one and named beside it, in the shape
-`crates/measured_boot` already uses for its hand-written SHA-256 ("the published FIPS 180-4
+primitives directly and against `cryptography_provider`, the provider this tree assembles. Each
+vector is transcribed from the specification that publishes it and named beside it. That is the
+shape `crates/measured_boot` already uses for its hand-written SHA-256 ("the published FIPS 180-4
 vectors, **not** self-consistency checks"). `system_tests/src/user/cryptography_tests.rs` boots it under
 QEMU on all three architectures.
 
@@ -204,7 +188,7 @@ third is the one that bit.
 resolving `__getrandom_custom` says nothing about where bytes come from, so the program draws twice
 through `rand_core` 0.6 and asserts the draws differ and are not all zero. That is milestone 56's
 claim for `std::random`, made again one layer out, and it is what a silently-stubbed RNG would
-fail. A draw with no entropy capability granted panics rather than weakening, which is
+fail. A draw with no entropy capability granted panics rather than weakening. That is
 milestone 56's deliberate choice and is the behavior this tree wants: a provider that quietly
 falls back to a weak source is worse than one that does not build.
 
@@ -247,161 +231,32 @@ today.
 
 ## Pricing the glue path
 
-The alternative named in this milestone is to write the `CryptoProvider` glue in this tree over
-primitives chosen deliberately. **That does not avoid depending on the primitives**, so it was
-priced the same way before a line of it was written.
+The alternative to the refused alpha is to write the `CryptoProvider` glue in this tree over
+primitives chosen deliberately. That does not avoid depending on the primitives, so it was priced
+the same way before a line of it was written.
+[`pricing-the-glue-path.md`](cryptography-provider/pricing-the-glue-path.md) has the measured graph,
+the per-primitive quality table and the full `rsa` argument. What it found:
 
-### The graph, measured the same way for both
-
-`cargo tree -e normal`, normal edges only, so build scripts and proc-macro crates that run on the
-host are excluded from every column. The earlier figure of 107 in this milestone's pull request was
-`Cargo.lock` lines, which counts build dependencies too; it is superseded here by a like-for-like
-count, and the honest headline is that the glue path is barely smaller.
-
-| | crates | `rsa` in the graph | alpha crate in the trust path |
-|---|---|---|---|
-| `rustls` + `rustls-rustcrypto` | **73** | yes | yes |
-| **`cryptography_provider` as built** | **67** | yes | **no** |
-| the same without `rsa`, which was built first and then ruled against | 53 | no | no |
-
-Re-priced on 2026-09-20, after calef ruled "Take rsa". The provider is 67 crates, which is
-exactly the figure this note predicted for "the glue at equal algorithm coverage" before the code
-existed, and it is **six fewer than the refused alpha**. The whole of that six is
-`rustls-rustcrypto` itself plus `base64ct`, `paste`, `pem-rfc7468`, `pkcs5` and a second, older
-`rustls-webpki` it pinned beside the one `rustls` already wants.
-
-So the size argument is now as weak as it can be, and the record says so rather than quietly
-dropping the comparison. 67 against 73 is not why the glue was written. It was written because
-the glue is the piece with the least exposure in the chain, which is DECISIONS §198 (the glue is
-ours, the primitives are not).
-
-**`rsa` adds fourteen crates**: `rsa`, `pkcs1`, `num-bigint-dig`, `num-integer`, `num-iter`,
-`num-traits`, `libm`, `lazy_static`, `rand`, `rand_chacha`, `ppv-lite86`, `zerocopy`, `smallvec`
-and `spin`.
-
-**Two of them runtime-detect SIMD, and neither is the ring-3 hazard**, which was checked rather
-than assumed. `ppv-lite86` gates its x86_64 module on `target_feature = "sse2"`, and `libm` gates
-its x86 arch module the same way; `x86_64-unknown-nife` switches SSE2 off, so both compile to their
-portable paths with no flag and no opportunity to execute an instruction the target has no state
-for. That is the opposite of `chacha20`, which selects by asking the CPU and therefore needed
-`--cfg chacha20_force_soft`. Confirmed by the x86_64 leg running both real certificate chains.
-
-73 against 67 is not an argument, and saying so is the point. The full glue graph is a strict
-subset of `rustls-rustcrypto`'s: there is nothing in it that crate does not also pull. Writing
-the glue removes exactly six crates, and one of the six is `rustls-rustcrypto` itself. The others
-are `base64ct`, `paste`, `pem-rfc7468`, `pkcs5`, and a second, older copy of `rustls-webpki`
-(0.102.8) that it pins beside the 0.103 `rustls` already wants.
-
-The third row is where the real difference is, and it is not size. Writing the glue means
-choosing which primitives are in the trust path at all, and the one worth choosing about is `rsa`.
-
-### Quality, per primitive, read rather than recalled
-
-Latest-release dates from crates.io on 2026-09-20; audit and warning text quoted from the README
-that ships inside each crate, so any reader can check it without leaving their disk.
-
-| crate | version here | license | latest release | audit, in its own words | runtime SIMD here |
-|---|---|---|---|---|---|
-| `sha2` | 0.10.9 | MIT OR Apache-2.0 | 0.11.0, 2026-03-25 | no audit statement | yes; needs the `force-soft` **feature** |
-| `hmac`, `hkdf` | 0.12.1, 0.12.4 | MIT OR Apache-2.0 | current line | no audit statement | no |
-| `aes-gcm` (with `aes`, `ghash`, `polyval`) | 0.10.3 | Apache-2.0 OR MIT | 0.11.1, 2026-08-21 | *"one security audit by NCC Group, with no significant findings"*, funded by MobileCoin | yes; needs `aes_force_soft` and `polyval_force_soft` |
-| `chacha20poly1305` (with `chacha20`, `poly1305`) | 0.10.1 | Apache-2.0 OR MIT | 0.11.0, 2026-06-28 | the same NCC Group audit, same wording | yes; needs `chacha20_force_soft` and `poly1305_force_soft` |
-| `p256` | 0.13.2 | Apache-2.0 OR MIT | 0.14.0, 2026-07-03 | *"The elliptic curve arithmetic contained in this crate has never been independently audited!"* | no |
-| `x25519-dalek`, `curve25519-dalek` | 2.0.1, 4.1.3 | BSD-3-Clause | current line | no audit statement | yes; needs `curve25519_dalek_backend="serial"` |
-| `ed25519-dalek` | 2.2.0 | BSD-3-Clause | current line | no audit statement | no |
-| `rsa` | 0.9.10 | MIT OR Apache-2.0 | current line | one audit by Include Security, one minor finding addressed, and see below | no |
-| `rustls-webpki` | 0.103.15 | ISC | current line | part of the rustls project | no |
-
-**Every license is permissive** (MIT, Apache-2.0, BSD-3-Clause, ISC), so nothing here touches
-DECISIONS §135 (running GPL software is aggregation, the capability boundary is what makes it so,
-and packages are how it arrives).
-
-The two audited crates are the two AEADs, and they are the ones handling every byte of every
-record. The NCC Group engagement was commissioned by MobileCoin, reported publicly in February
-2020, and both crates state its outcome in their own README. That is the strongest evidence in the
-table and it covers the record layer.
-
-`p256` says in its own README that it has never been independently audited. It is in the path
-either way, because TLS 1.3 negotiates it and because GitHub's own certificate chain is ECDSA
-P-256, so this is a fact to record rather than a choice to make.
-
-### The one that was a choice: `rsa`, and how it was answered
-
-calef, 2026-09-20: "Take rsa." It is in, and this section keeps the argument because the entry
-it produced in `deny.toml` is the tree's first suppression and the next person will read it as
-precedent.
-
-`rsa` 0.9.10's own README says it plainly:
-
-> This crate is vulnerable to the [Marvin Attack] which could enable private key recovery by a
-> network attacker (see [RUSTSEC-2023-0071]).
-
-**Why the advisory does not describe this use.** Marvin is a timing side channel in RSA PKCS#1 v1.5
-**decryption**: it recovers a private key from an oracle that decrypts attacker-chosen
-ciphertexts. `cryptography_provider` calls `rsa` in exactly one file, `src/verify.rs`, and only for
-signature verification, which is a public-key operation. It holds no RSA private key, decrypts
-nothing, and offers no oracle. The provider being TLS 1.3 only is part of what holds that up, since
-TLS 1.3 removed RSA key transport altogether.
-
-What would end the claim, which is the half that makes it bounded rather than a dismissal: any
-use of `rsa` here to decrypt, to sign, or for key transport. That sentence is in `deny.toml` beside
-the entry, in the `reason` field rather than only in a comment, so `cargo-deny` prints it with the
-finding.
-
-And the suppression is now scanned rather than asserted. `script/supply-chain` ran over four
-manifests and neither of these packages was among them, so an `ignore` entry would have been a
-claim about a graph no gate looked at. Both are on that list now, which also brought three
-licenses onto the allow-list with their own reasons (ISC for `rustls-webpki` and `untrusted`,
-Unicode-3.0 for a proc-macro dependency that ships nothing) and made `publish = false` necessary,
-because `cargo-deny` forgives a path dependency only in a package that could not be published.
-
-What it cost to leave out, measured rather than argued, and the reason the ruling went this
-way:
-
-| host | chain |
-|---|---|
-| `github.com` | ECDSA P-256 throughout, `ecdsa-with-SHA256` and `ecdsa-with-SHA384` |
-| `objects.githubusercontent.com`, where a Release asset is served | **RSA 2048**, `sha256WithRSAEncryption`, Let's Encrypt |
-| `ghcr.io` | **RSA 4096** leaf over a 3072-bit intermediate, Sectigo |
-
-A client without RSA verification reaches GitHub and cannot download the file.
-
-### §46's test, said out loud
-
-§46 says this tree writes what is on the verification path and takes what is won by exposure
-rather than by reading a spec, and it says in so many words that cryptography is the second kind:
-*"take it, do not write it."* So the line has to be drawn deliberately rather than assumed:
-
-- The primitives are taken. AES-GCM, ChaCha20-Poly1305, SHA-2, HMAC, HKDF, X25519, P-256 and
-  RSA verification are all the second kind. Their correctness includes constant-time behavior and
-  resistance to attacks no specification states, which is exactly what years of use and the NCC
-  Group audit above buy and what a proof against a spec would not.
-- **The glue is written, and glue is not crypto.** A `CryptoProvider` is five fields: a cipher
-  suite table, a key exchange group table, a signature verification algorithm table, a random
-  source, and a private key loader. It selects, names and plumbs; it computes nothing. Nothing in
-  it is secret-dependent in a way a timing attack could read, because every secret-dependent
-  operation is inside a primitive.
-- **The one place the line could be crossed, and is not.** The temptation with `rsa` gone is to
-  write RSA PKCS#1 v1.5 verification here, which is genuinely only public-key arithmetic and a
-  padding check. It is refused: the classic failures there (Bleichenbacher's signature forgery, and
-  BERserk after it) are spec-reading failures in exactly this code, which is §46's argument for
-  taking rather than writing, restated. `crypto-bigint` being already in the graph is a
-  convenience argument and this tree's tenets say to distrust that one.
-- The random source is ours and always was. `SecureRandom` reaches `entropy_backend` and the
-  entropy service. That is not a §46 question: it is this system's own capability.
-
-### What the pricing concluded, and what happened next
-
-The glue path is barely smaller and meaningfully better in the one dimension calef named. At
-equal coverage it is 67 crates against 73, which is nothing, and it takes an abandoned alpha out of
-the trust path and replaces it with code this tree can read, over primitives that are individually
-maintained, widely used, and in two cases audited. It also unpins the superseded majors. If the
-argument for it were crate count it would be a bad argument, and that is recorded here rather
-than smoothed over.
+- Size is no argument. Measured with `cargo tree -e normal`, the provider as built is 67 crates
+  against the alpha's 73, and its graph is a strict subset of the alpha's. `rsa` adds fourteen.
+- Every license is permissive (MIT, Apache-2.0, BSD-3-Clause, ISC). The two AEADs carry an NCC
+  Group audit with no significant findings; `p256` says in its own README it has never been
+  independently audited, and is in the path either way.
+- `rsa` was a choice. Its README admits the Marvin attack (RUSTSEC-2023-0071), a timing channel in
+  PKCS#1 v1.5 decryption. This provider only verifies signatures, holds no RSA private key and is
+  TLS 1.3 only, so the advisory does not describe this use. `deny.toml` carries that argument in
+  the suppression's `reason` field, with what would end it. Leaving `rsa` out would have cost the
+  RSA chains of `objects.githubusercontent.com` and `ghcr.io`, so a client could reach GitHub and
+  not download the file. calef, 2026-09-20: "Take rsa."
+- §46's line, drawn out loud: the primitives are taken, because their correctness includes
+  constant-time behavior a spec does not state. The glue is written, and glue is not crypto: it
+  selects, names and plumbs, and computes nothing secret-dependent. Writing RSA verification here is
+  refused, because Bleichenbacher's forgery and BERserk are spec-reading failures in exactly that
+  code. The random source was always this system's own.
 
 calef ruled on both halves: `rustls-rustcrypto` refused (DECISIONS §198, the glue is ours, the
-primitives are not), and then, on 2026-09-20, "Take rsa." The provider is built, the two real
-chains verify on all three architectures, and the milestone's own list is finished.
+primitives are not), and then "Take rsa." The provider is built, the two real chains verify on all
+three architectures, and the milestone's own list is finished.
 
 ## BUGS
 
@@ -419,18 +274,17 @@ chains verify on all three architectures, and the milestone's own list is finish
   that is correct and not constant-time passes every line. On x86_64 the fallbacks are exactly what
   runs, and constant-time behavior is the property §46 says is bought by exposure and not by a
   specification. This is the gap most worth closing and this note does not close it.
-- A cost is measured only under emulation. Milestone 501 (a TLS client that speaks to one
-  pinned peer)'s block has handshake and transfer
-  times for all three architectures under QEMU's TCG, with these soft-implementation cfgs on:
-  a median handshake of 139 to 162 ms and 175 to 441 ms per 256 KiB. Nothing on radon or xenon
+- A cost is measured only under emulation. The block of milestone 501 (a TLS client that speaks
+  to one pinned peer) has handshake and transfer times for all three architectures under QEMU's
+  TCG, with these soft-implementation cfgs on. The median handshake is 139 to 162 ms, and a 256 KiB
+  transfer takes 175 to 441 ms. Nothing on radon or xenon
   yet, and nothing separates what the cfgs cost aarch64 and riscv64.
 - `script/crate-probes` may be measuring the wrong toolchain. It builds its probes under
   `target/`, inside this repository, with `RUSTUP_TOOLCHAIN` alone. Milestone 442's lane measured
   that configuration compiling `std` from the unpatched sysroot, which fails in `sys/alloc`'s
   `cfg_select!` and reads exactly like the crate under test failing. `script/crypto-probes` builds
-  outside the repository for that reason; nobody has re-run the fifty of milestone 64 (enough `std` to run somebody else's crate)
-  since, and the
-  43/7 split in notes/crates-io-on-nife.md has not been rechecked against this.
+  outside the repository for that reason; nobody has re-run the fifty of milestone 64 (enough `std` to run
+  somebody else's crate) since, and the 43/7 split in notes/crates-io-on-nife.md has not been rechecked against this.
 - A toolchain FILE is not a fix for that, and the failure it produces is worse. Giving a probe
   its own `rust-toolchain.toml` naming `nife-dev` gets riscv64 and x86_64 right and still gets
   `aarch64-unknown-nife` wrong on an aarch64 host. Two architectures then agree and the third reads
