@@ -36,8 +36,8 @@ red so far has been a test bug, which fits a healthy kernel and a blind instrume
 no result here can be green, since a flattening curve is only a confidence.
 
 2026-10-08 (UTC): threads are to be built (§263 (threads are built), milestone 812
-(`std::thread::spawn` runs real threads in one address space)), which `schbench` and `hackbench`'s
-thread mode need to run here at all.
+(`std::thread::spawn` runs real threads in one address space)), which `hackbench`'s thread mode
+needs to run here at all.
 
 ## Benchmarks that inform this risk
 
@@ -48,4 +48,6 @@ relibc under §265 (a C library started from relibc). It still waits on whatever
 lacks, such as threads or sockets.
 
 - [Milestone 827 (hackbench on nife and Linux)](../roadmap/0827-hackbench-on-nife-and-linux.md), run long as a second soak.
-- [Milestone 830 (schbench on nife and Linux)](../roadmap/0830-schbench-on-nife-and-linux.md), wakeup-latency tails.
+- [Milestone 830 (wakeup latency on nife and Linux, from each kernel's own scheduler trace)](../roadmap/0830-wakeup-latency-on-nife-and-linux.md),
+  wakeup-latency tails. The exception to "unmodified on both": the load (hackbench) is one program,
+  and the instrument is each kernel's own tracer (calef, 2026-10-12 UTC, dropping schbench).

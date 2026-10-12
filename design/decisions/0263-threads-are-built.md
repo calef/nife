@@ -1,5 +1,5 @@
 ---
-status: DECIDED
+status: AMENDED
 raised: 2026-10-08
 decided: 2026-10-08
 ratified_by: calef
@@ -59,3 +59,12 @@ Milestone 812's block lists those forks with options and a recommendation for ea
   `static mut` or a shared page. The fact stops holding for any program that starts a second thread,
   so each site is a work item in milestone 812. §33's own reasoning about wait-any is unchanged,
   since §101 (notification objects) answered that separately.
+
+## Amendment, 2026-10-12 (UTC): schbench is no longer waiting
+
+`schbench` leaves the uses waiting on threads. calef dropped it on #2009
+([his comment](https://github.com/nifeos/nife/pull/2009#issuecomment-6130684610)): *"c, and drop schbench"*. He ruled on #2021 that this section be amended to
+match: *"Amend"*. Risk 5 (it cannot be made reliable on multicore, and the bugs appear only on
+silicon) now takes its wakeup-latency tails from each kernel's own scheduler trace. That is
+milestone 830 (wakeup latency on nife and Linux, from each kernel's own scheduler trace), and it
+needs no threads in C. `hackbench`'s thread mode still waits on threads, as listed above.

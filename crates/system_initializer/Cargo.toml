@@ -71,6 +71,10 @@ entropy_protocol = { version = "0.1.0", path = "../entropy_protocol" }
 # word: the inbound authority this
 # crate hands the `net_stack` it builds (`NO_LISTEN_GRANT`). Pure logic, no dependencies of its own.
 socket_protocol = { version = "0.1.0", path = "../socket_protocol" }
+# The name resolver's contract (milestone 892 (a std program at the prompt holds the network and a
+# resolver)): the start words this crate tells `name_resolver`, and the grant and forget messages
+# it sends for each job that may resolve. Pure logic over `domain_name_system`.
+name_resolution_protocol = { version = "0.1.0", path = "../name_resolution_protocol" }
 # The credential contract (milestone 49's boot-wiring update), for the request word `identity_provisioner`
 # needs staged and the provision opcodes (`PUT`, `SEAL`) this crate sends directly. Pure logic, no
 # non-dev dependencies of its own; `login_protocol` itself re-exports the same functions rather than

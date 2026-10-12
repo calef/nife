@@ -1,15 +1,21 @@
 // Seeded from relibc (MIT, vendor/relibc/LICENSE) at 893a3b9133ac, 2026-10-10 (UTC), for milestone 835; nife owns it from here, and its edits say `nife:` where they are (vendor/README.md).
 //! Synchronization primitives.
 
+pub mod barrier;
+pub mod cond;
 // TODO: Merge with pthread_mutex
 pub mod mutex;
 
 pub mod once;
 pub mod pthread_mutex;
+pub mod rwlock;
+pub mod semaphore;
+pub mod waitval;
 
 pub use self::{
     mutex::{Mutex, MutexGuard},
     once::Once,
+    semaphore::Semaphore,
 };
 
 use crate::{

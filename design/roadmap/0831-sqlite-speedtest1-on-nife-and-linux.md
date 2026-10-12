@@ -2,7 +2,7 @@
 status: NOT-STARTED
 raised: 2026-10-08
 promoted_from: sqlite-speedtest1-on-nife-and-linux
-milestone_dependencies: 835
+milestone_dependencies: 835, 809, 801, 897
 decision_dependencies: 262, 265
 machine_requirements: silicon for wall-clock rows, radon first, then xenon
 specific_machine: none
@@ -75,6 +75,20 @@ icount baseline per workload step, `--check` failing on drift). The wall-clock r
 silicon on a schedule, as the runbook does for the soak, and write dated rows to
 `notes/benchmarks.md` with the Linux row beside them. A run that cannot reach the board writes
 nothing rather than a TCG number.
+
+## Done when
+
+*Amended 2026-10-12 (UTC) under §297 (software reaches a nife system as a package `jig` installs
+from basalt's index, the kernel included). calef, that day: "They should all be installed via jig
+through basalt."*
+
+`speedtest1` must run on nife installed by `jig install` from basalt's package index. basalt builds
+the package against the nife commit it pins. A binary from a `helpers/build-*.sh` script may feed
+the work until then. So may one packed into an image or copied onto a disk. No exit is taken on
+either. The install waits on milestone 809 (the package client becomes a program, `jig`, with the
+verbs an index needs). It also waits on milestone 801 (packages over the internet: a host name,
+HTTPS and the distribution's index). The package itself is milestone 897 (SQLite is packaged in
+basalt, and its tests run in basalt's package build).
 
 ## Index row
 

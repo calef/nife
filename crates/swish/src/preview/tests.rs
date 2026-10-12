@@ -447,12 +447,22 @@ fn the_preview_shows_the_network_only_where_it_is_declared() {
     assert!(jig.contains("cap 2  endpoint  network  WRITE"), "{jig}");
     assert!(jig.contains("cap 3  untyped   sockets"), "{jig}");
     assert!(jig.contains("cap 15 endpoint  installer  WRITE"), "{jig}");
+    // Milestone 892 (a std program at the prompt holds the network and a resolver): `jig` resolves any name (calef's Q5 on #1884), and nothing else resolves.
+    assert!(
+        jig.contains("cap 9  endpoint  resolver  WRITE. it may look up the addresses of any name"),
+        "{jig}"
+    );
     assert!(jig.contains("cannot vouch for bytes"), "{jig}");
     for &p in Prog::ALL {
         if p != Prog::NetworkEchoClient && p != Prog::Jig {
             assert!(
                 !shown_for(p).contains("network  WRITE"),
                 "`caps {}` shows a network it does not declare",
+                p.name()
+            );
+            assert!(
+                !shown_for(p).contains("resolver  WRITE"),
+                "`caps {}` shows a resolver it is not granted",
                 p.name()
             );
         }

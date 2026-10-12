@@ -136,7 +136,7 @@ The ceiling follows it down, by the rule the paragraph above sets.
 
 ## Thread-safety claims
 
-At most 24 `unsafe impl Send`/`Sync` claims <!--count-at-most:unsafe-thread-safety-claims-->,
+At most 23 `unsafe impl Send`/`Sync` claims <!--count-at-most:unsafe-thread-safety-claims-->,
 and this one has no headroom at all. Each is a hand-written assertion that the compiler is wrong
 about a type, which is the most consequential unsafe in the tree: a wrong one is a data race that
 no test reliably reproduces. The population moved twice in three weeks, so a zero-slack ceiling
@@ -178,6 +178,10 @@ block").
 Raised from 23 to 24 by milestone 835 (a C library, stage 1: files, clock and memory), 2026-10-10
 (UTC): `OneThread`, the C library's descriptor table, sound because a stage-1 C process has one
 thread. Milestone 836 (a C library, stage 2: threads) takes it back out.
+
+Lowered from 24 to 23 by milestone 836 (a C library, stage 2: threads), 2026-10-12 (UTC). The
+descriptor table is a `std::sync::Mutex` now. The thread record a `pthread_t` names is built from
+atomics and a lock, so it needs no claim of its own.
 
 ## Other unsafe traits
 

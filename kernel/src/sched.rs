@@ -122,7 +122,7 @@ pub use notification::*;
 pub use placement::*;
 pub use process::{ProcessId, create_process_from, destroy as destroy_process, with_holders};
 #[cfg(feature = "system_tests")]
-pub use process::{process_state, reap_corpses_now, strand_member};
+pub use process::{process_state, process_threads_started, reap_corpses_now, strand_member};
 pub use region_reaping::*;
 pub use rendezvous::*;
 pub use spawning::*;

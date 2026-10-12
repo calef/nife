@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-11
+built: 2026-10-12
 promoted_from: the-progenitors-boot-is-split-by-phase
 milestone_dependencies: 843
 decision_dependencies: 266, 279
@@ -80,7 +81,43 @@ belongs in the same milestone or the next.
    `swish_check` falsification patches still fail their lines.
 4. If the function-length ratchet has landed, `boot`'s row is banked down or removed.
 
+## What was built
+
+Built 2026-10-12 (UTC) by lanes `maintainer/long-function-paydown` (#1993) and
+`maintainer/long-function-paydown-2`, under milestone 888 (a ratchet on function length).
+
+- `boot` is 75 code lines, a sequence of step calls. Its steps live in a new private module,
+  `crates/system_initializer/src/boot_steps.rs` (name provisional), because keeping them beside
+  `boot` would have taken `boot_sequence.rs` past §266's ceiling. The largest step is
+  `build_shell`, at 68 code lines. Each step is `#[inline(never)]`, so its temporaries stay out of
+  `boot`'s frame, which lives as long as the spawn loop. On aarch64, that frame went from 4,368 to
+  3,792 bytes in release and from 14,752 to 5,520 in debug.
+- `spawn_service` went from 609 code lines to 13 in #1993. A `Service` struct now serves one
+  request per call, with one function per stage.
+- Item 2: a temporary kernel patch, never committed, made the progenitor print the occupancy mask
+  of its 64 slots after every syscall that changed it, with a running FNV-1a hash of every mask so
+  far. It ran on one `script/swish-check` leg per architecture, before (`8daf695a9`) and after.
+  - At the giveaway, the kernel-computed hash is identical before and after on every boot
+    configuration: three on aarch64, one each on riscv64 and x86_64.
+  - It stays identical well past the giveaway, to the 2,958th change on riscv64, the 2,968th on
+    aarch64 and the 2,999th on x86_64.
+  - The x86_64 trace rebuilds line by line from its masks, all 1,264 changes up to the giveaway,
+    and is the same before and after. The other two lose lines where console output splices into
+    them, so only their hashes compare.
+- Item 3: `script/test` and `script/swish-check` exit 0 on aarch64, riscv64 and x86_64. The
+  `swish_check_leg` patch was re-cut against the split code. It still fails on `caps` with the
+  recorded slot list, and `swish_check_boot` still fails on `installed/unvouched`.
+- Item 4: `boot`'s row is gone from `design/lint-baseline.tsv`. Peak progenitor stack, from
+  swish-check's gauge, fell by about 9 KiB on every architecture.
+
+## Follow-on
+
+- **Decision.** The module name boot_steps is provisional and is calef's to rule on, with the rest
+  of the names in
+  `design/decisions/0279-the-system-initializer-crate-root-splits-into-private-modules.md`.
+
 ## Index row
 
-The progenitor's `boot`, one body of about 1,700 lines, splits into one function per boot phase,
-the split calef ruled for the kernel's own `kernel_main`.
+The progenitor's `boot`, once one body of about 1,700 lines, is split into one function per boot
+phase, the split calef ruled for the kernel's own `kernel_main`, with the retype order traced
+unchanged on all three architectures.

@@ -110,6 +110,11 @@ pub(super) struct Channels {
     /// so. The shell holds none, for `entropy`'s reason: nothing it does as a builtin reaches the
     /// network.
     pub(super) network: Option<u64>,
+    /// **The name resolver's unbadged endpoint** (milestone 892 (a std program at the prompt holds
+    /// the network and a resolver)), or `None` on a boot that started none. Never received on: the
+    /// spawn service mints each resolving job a badged copy and sends the grant and, at the job's
+    /// reap, the forget through it ([`SpawnEndpoint::resolver_for`]).
+    pub(super) resolver: Option<u64>,
     /// **The reboot object** (milestone 805, DECISIONS §251), endowed `WRITE` to a child whose
     /// manifest declares [`grant_plan::Manifest::reboot`], and to nothing else. `None` only on a
     /// kernel that did not grant it, and then a declaring child holds an empty
@@ -182,6 +187,7 @@ pub(super) fn spawn_service(
     fs_scoped: bool,
 ) -> ! {
     let spawn_ep = c.spawn_ep;
+    let resolver = c.resolver;
     let mut service = Service {
         c,
         progs,
@@ -191,7 +197,7 @@ pub(super) fn spawn_service(
         // Whether the file page is mapped here yet, for the activation set (first image request).
         fs_mapped: false,
         // The spawn endpoint, its reaped messages, and the windows they free (milestone 685).
-        spawn: SpawnEndpoint::new(spawn_ep),
+        spawn: SpawnEndpoint::new(spawn_ep, resolver),
     };
     loop {
         service.serve();
@@ -328,6 +334,10 @@ impl Wants {
 /// two that its manifest declared failed.
 type PackageParts = (Option<(u64, u64)>, Option<u64>, bool, bool);
 
+/// What a `std` child is placed beyond [`Wants`]: its argv page, installer endpoints, catalog page
+/// and resolver badge.
+type StdParts = (Option<u64>, Option<(u64, u64)>, Option<u64>, Option<u64>);
+
 /// The capabilities a normal job's directory grant and sync-only grant were wired from: its label,
 /// its window, the bound or caretaker channel, and what the child is handed in slot 0 and slot 8.
 struct DirWiring {
@@ -356,6 +366,8 @@ struct NativeEndowment {
 struct JobLeftovers {
     dir: DirWiring,
     installer: Option<(u64, u64)>,
+    /// The badged copy of the resolver's endpoint the child was placed (milestone 892).
+    resolver: Option<u64>,
     catalog_page: Option<u64>,
     args_page: Option<u64>,
     region: Option<u64>,
@@ -836,6 +848,14 @@ impl Service<'_> {
             (std_layout, wants_installer),
             dir.label,
         );
+        // **A resolver badge for the zone the table names** (milestone 892): only for a `std` job
+        // holding the network on this line, and under `job_undertaker`, whose reap is what forgets
+        // the grant (a screen-narrowed job is reaped by the shell; milestone 892's BUGS). Granted
+        // before the child exists, since the resolver deletes a page attached to a badge it does
+        // not know yet. A job that should hold one and could not is refused, `dir_failed`'s rule.
+        let eligible = std_layout && wants.network && req.delegated.screen.is_none();
+        let zone = req.prog.and_then(Prog::resolver_zone).filter(|_| eligible);
+        let (resolver, resolver_failed) = self.spawn.resolver_for(dir.label, zone);
 
         let out = self.output(req);
         let native = self.native_endowment(req, manifest, &wants, &dir, out);
@@ -856,7 +876,8 @@ impl Service<'_> {
         let args_failed = std_layout && req.args_seen.is_some() && args_page.is_none();
         let std_parts = match (std_layout, region) {
             (true, Some(r)) => {
-                Some(self.std_layout(r, out, &wants, &dir, (args_page, installer, catalog_page)))
+                let parts = (args_page, installer, catalog_page, resolver);
+                Some(self.std_layout(r, out, &wants, &dir, parts))
             }
             _ => None,
         };
@@ -878,6 +899,7 @@ impl Service<'_> {
                 && !args_failed
                 && !installer_failed
                 && !catalog_failed
+                && !resolver_failed
                 && fault.is_some()
         });
         let built = build_job(
@@ -898,6 +920,7 @@ impl Service<'_> {
         let leftovers = JobLeftovers {
             dir,
             installer,
+            resolver,
             catalog_page,
             args_page,
             region,
@@ -1367,7 +1390,7 @@ impl Service<'_> {
         out: (u64, u64),
         wants: &Wants,
         dir: &DirWiring,
-        (args_page, installer, catalog_page): (Option<u64>, Option<(u64, u64)>, Option<u64>),
+        (args_page, installer, catalog_page, resolver): StdParts,
     ) -> StdLayout {
         let Channels {
             clock_page,
@@ -1390,6 +1413,7 @@ impl Service<'_> {
                 network: network.filter(|_| wants.network),
                 installer,
                 catalog: catalog_page,
+                resolver,
             },
         )
     }
@@ -1402,6 +1426,7 @@ impl Service<'_> {
         let JobLeftovers {
             dir,
             installer,
+            resolver,
             catalog_page,
             args_page,
             region,
@@ -1428,6 +1453,11 @@ impl Service<'_> {
         if let Some(page) = catalog_page {
             cap_delete(page);
         }
+        // A job that never started is never reaped, so a resolver grant made for it is forgotten
+        // now; our badged copy goes with the other endpoints below.
+        if !ok {
+            self.spawn.forget_resolver(label);
+        }
         // **The window and the wait, by whether a job came to hold them** (milestone 685). A
         // window whose job never started is free now, not at a reap that will never come. A
         // job whose whole answer goes to the shell's result endpoint, under `job_undertaker`,
@@ -1442,7 +1472,7 @@ impl Service<'_> {
         // The narrowed endpoint was only ever the means of wiring: the child holds its own copy
         // and the caretaker holds the other end. Dropped whether or not the build worked, so a
         // failed spawn does not cost this capability table a slot for the rest of the boot.
-        for endpoint in [dir.narrowed, dir.sync_ep].into_iter().flatten() {
+        for endpoint in [dir.narrowed, dir.sync_ep, resolver].into_iter().flatten() {
             cap_delete(endpoint);
         }
         // The window's page and badged endpoint were only the means too: the caretaker and the

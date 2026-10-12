@@ -18,6 +18,14 @@ fn main() {
     };
     println!("cargo::rerun-if-changed=../kernel/{link_script}");
     println!("cargo::rustc-link-arg=-T{manifest_dir}/../kernel/{link_script}");
+    // **Whether a missing `rg` fails rather than skips** (milestone 121 (`ripgrep` on nife), lane
+    // milestone/121-rg-threads): `ripgrep_threads_tests` reads it with `env!`. The CI rows that
+    // build `rg` set it to 1, so a build that left `rg` out of the archive cannot pass as a skip.
+    println!("cargo::rerun-if-env-changed=NIFE_RIPGREP_REQUIRED");
+    println!(
+        "cargo::rustc-env=NIFE_RIPGREP_REQUIRED={}",
+        std::env::var("NIFE_RIPGREP_REQUIRED").unwrap_or_default()
+    );
     println!("cargo::rustc-check-cfg=cfg(initial_ramdisk)");
     if matches!(arch.as_str(), "aarch64" | "riscv64" | "x86_64") {
         println!("cargo::rustc-cfg=initial_ramdisk");

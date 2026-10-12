@@ -1,0 +1,33 @@
+Falsifies `system_tests::user::name_resolver_tests::a_forgotten_badge_is_denied_and_its_window_serves_the_next_client`.
+
+Architecture: aarch64
+
+The defect: a forget frees the badge's grant and deletes the resolver's capability to the client's
+page, but never unmaps it. The window still holds the old client's page, so the next client granted
+that window cannot map its own there, its page is deleted, and it can never resolve. Worse, the
+resolver would keep reading and writing a page from a client that has ended.
+
+Expected to fail: the second badge's first case answers `NOT_ATTACHED` (status 7) where the gate
+wants `OK`. Measured 2026-10-12 (UTC) on aarch64: red with exactly that assertion.
+
+diff --git a/components/src/name_resolver.rs b/components/src/name_resolver.rs
+index dbbb588e5..7d85a6487 100644
+--- a/components/src/name_resolver.rs
++++ b/components/src/name_resolver.rs
+@@ -278,16 +278,6 @@ fn attach_client(state: &mut State, badge: u32, frame: u64) {
+ /// was reclaimed first, and revoking the frame took the mapping with it), which is the same end.
+ fn give_up_window(state: &mut State, window: usize) {
+     if let Some(frame) = state.attached[window].take() {
+-        // SAFETY: `invoke` traps to the kernel, which checks the slot, the rights and the address.
+-        let _ = unsafe {
+-            user_mode_runtime::invoke(
+-                OWN_SPACE,
+-                abi::address_space::UNMAP,
+-                window_va(window),
+-                0,
+-                0,
+-            )
+-        };
+         cap_delete(frame);
+     }
+ }

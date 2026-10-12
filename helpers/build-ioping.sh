@@ -44,7 +44,8 @@ CC="$("$ROOT/helpers/c-library-cc.sh")"
 for TRIPLE in ${NIFE_IOPING_TRIPLES:-aarch64-unknown-nife riscv64-unknown-nife x86_64-unknown-nife}; do
   OBJ="$BUILD/obj/$TRIPLE"
   mkdir -p "$OBJ"
-  read -r -a CFLAGS <<< "$("$ROOT/helpers/c-library-cflags.sh" "$TRIPLE")"
+  # The flags come on two lines (target, then library), and `read` stops at the first newline.
+  read -r -a CFLAGS <<< "$("$ROOT/helpers/c-library-cflags.sh" "$TRIPLE" | tr '\n' ' ')"
   echo "build-ioping: compiling ioping $VERSION for $TRIPLE"
   # `-std=gnu99` and an empty `EXTRA_VERSION` are what ioping's own Makefile passes.
   "$CC" "${CFLAGS[@]}" -O2 -std=gnu99 -DEXTRA_VERSION=\"\" -c "$BUILD/ioping.c" -o "$OBJ/ioping.o"

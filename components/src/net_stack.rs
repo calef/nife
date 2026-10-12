@@ -84,6 +84,10 @@ mod designware_ethernet_transport;
 mod e1000e_transport;
 #[path = "virtio_net_transport.rs"]
 mod virtio_net_transport;
+// The server's start-up: the heap, the interface, and the DHCP lease it reports.
+#[path = "interface_bring_up.rs"]
+mod interface_bring_up;
+use interface_bring_up::{dhcp_lease, heap_and_interface};
 // The socket-contract client rides in this same binary (dispatched by the entry role), because the
 // initial ramdisk directory holds at most 15 files; see components/src/socket_test_client.rs.
 #[path = "socket_test_client.rs"]
@@ -273,47 +277,11 @@ pub extern "C" fn _start(role: u64, direct_memory_access_phys: u64, a2: u64) -> 
 
 /// The net server: bring the NIC up, run DHCP, then serve the socket contract.
 fn server(mut dev: Nic, grant_word: u64) -> ! {
-    HEAP.init(
-        MEMORY_REGION,
-        user_mode_runtime::heap::DEFAULT_BASE,
-        HEAP_MAX,
-    );
-
-    let mut config = Config::new(HardwareAddress::Ethernet(EthernetAddress(dev.mac())));
-    config.random_seed = now();
-    let mut iface = Interface::new(config, &mut dev, instant());
+    let mut iface = heap_and_interface(&mut dev);
     let mut sockets = SocketSet::new(vec![]);
 
     // --- DHCP: bring the interface up, then report the lease (the phase-A test asserts it). ---
-    let dhcp = sockets.add(dhcpv4::Socket::new());
-    loop {
-        iface.poll(instant(), &mut dev, &mut sockets);
-        if let Some(dhcpv4::Event::Configured(cfg)) = sockets.get_mut::<dhcpv4::Socket>(dhcp).poll()
-        {
-            iface.update_ip_addrs(|addrs| {
-                let _ = addrs.push(IpCidr::Ipv4(cfg.address));
-            });
-            if let Some(router) = cfg.router {
-                let _ = iface.routes_mut().add_default_ipv4_route(router);
-            }
-            // The lease report's layout is `socket_protocol::lease`: the address, then the first
-            // DNS server the lease named, which a resolver's spawner hands on (§248 (the name
-            // resolver is its own confined program)).
-            let address = socket_protocol::lease::ipv4_word(cfg.address.address().octets());
-            let nameserver = cfg
-                .dns_servers
-                .first()
-                .map_or(socket_protocol::lease::NO_NAMESERVER, |a| {
-                    socket_protocol::lease::ipv4_word(a.octets())
-                });
-            send(REPORT, address, nameserver, 0);
-            break;
-        }
-        // Same discipline as service_until: block on the interrupt only when smoltcp has no timer
-        // pending, so a dropped DHCP OFFER is retried by smoltcp's own DISCOVER retransmit rather
-        // than deadlocking on an interrupt that will not come.
-        wait_for_nic(&mut iface, &mut dev, &mut sockets);
-    }
+    dhcp_lease(&mut iface, &mut dev, &mut sockets);
 
     // No multicast group is joined here. Milestone 55 joined mDNS's 224.0.0.251 at this point, after
     // DHCP so the IGMP report carried a real source address, and milestone 298 removed the join on

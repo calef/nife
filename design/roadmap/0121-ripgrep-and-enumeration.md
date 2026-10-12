@@ -52,6 +52,10 @@ Re-checked in CI from 2026-10-08 (UTC) (lane `milestone/121-rg-ci`, #1853), the 
 calef's amber ruling on fatal risk 1. `script/ci-build`'s `swish-check` rows build `rg` first, so
 the walk runs on every pull request, and in CI a missing `rg` fails the leg.
 
+Threaded 2026-10-12 (UTC) (lane `milestone/121-rg-threads`, risk 1's third gap): at `-smp 4` on
+all three, the kernel counted five threads in `rg`'s process, and CI re-checks it
+(notes/ripgrep-on-nife.md).
+
 Built 2026-08-31 (lane `milestone/121-ripgrep`; notes/ripgrep-on-nife.md). Unmodified
 `ripgrep` 14.1.1 builds for all three `*-unknown-nife` triples with zero source changes, loads,
 resolves its own directory through a granted capability, and stops at its own "requires at least one
@@ -179,11 +183,8 @@ What to measure: wall time and instruction count over a fixed tree, and the per-
 walk separated from the per-byte cost of the search, because those two exercise different halves of
 the system and a single number hides which one is expensive.
 
-The caveat that makes it honest, and it is not small. This kernel has no threads sharing an
-address space (§105, `std::thread::spawn` stays declined), so a process is single-threaded, and `ignore`'s parallel walker and
-`crossbeam-channel` will build but cannot be used as designed. ripgrep must run with one thread here,
-so the Linux side must be `rg --threads 1` or the comparison is a lie. State it next to the number,
-the way the map "tie" and the spawn caveat are stated.
+The caveat: `rg` walks in parallel since milestone 812, so the comparison pins both sides to
+`--threads 1`, stated next to the number.
 
 An honest loss is a result. §14's framing is that a recorded loss is worth more than an overclaimed
 win, and a microkernel paying IPC per directory entry may well lose this one. That is worth knowing
@@ -233,8 +234,8 @@ ripgrep working beautifully and confinement being decorative.
   which needs a C cross-compiler this machine lacks, and uses musl's malloc. Upstream added
   `jemalloc` because musl's allocator is slow for `ripgrep`, so the Linux figure is if anything
   pessimistic. `bench/host/run_linux_rg.sh` says so where it does it.
-- CI's `test` job builds no `rg`, so the kernel suite's four `rg` tests skip there; only
-  `swish-check` builds it (2026-10-08 UTC). Its crates.io fetch in a gate is a DECISIONS §46 (thin
+- CI's `test` job builds no `rg`, so the kernel suite's four `rg` tests skip there; `swish-check`
+  builds it (2026-10-08 UTC), and since 2026-10-12 the `rg-threads` rows build it and run them. Its crates.io fetch in a gate is a DECISIONS §46 (thin
   primitives or whole subsystems) question, asked on #1853.
 
 - Spawning `rg` at the prompt takes up to 39 s under load, the walk up to 432 s on `x86_64` under
@@ -252,6 +253,7 @@ ripgrep working beautifully and confinement being decorative.
   overlap rather than a size.
 - **Outstanding.** Exit clause 4, `rg` installed by `jig` (809) from the package #1797 mints.
   Checked 2026-10-07.
+- **Outstanding.** A threaded comparison with Linux. Checked 2026-10-12: `rg_search` and `bench/host/run_linux_rg.sh` still run `RG_SEARCH`, which passes `--threads 1`.
 - **Done.** 2026-10-07: `rg` searches the priced tree and its counts match the fixture, on all
   three architectures (`ripgrep_tests::ripgrep_searches_the_tree_it_was_granted`).
 - **Done.** 2026-10-07: the same refusal with `rg` as the walker, and a named-file control

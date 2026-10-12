@@ -7,6 +7,10 @@
 name = "network"
 kind = "base"
 home = { repo = "network", status = "provisional" }
-crates = ["domain_name_system", "http_response", "name_resolution_protocol"]
+crates = ["domain_name_system", "http_response"]
+# The resolver's contract, which the progenitor speaks to grant and forget a job's zone (milestone
+# 892 (a std program at the prompt holds the network and a resolver)) and std's PAL speaks to
+# resolve. Interface rather than internal for the reason every *_protocol is.
+interfaces = ["name_resolution_protocol"]
 programs = ["net_stack", "name_resolver"]
 paths = ["components/src/virtio_net_transport.rs", "components/src/socket_test_client.rs"]

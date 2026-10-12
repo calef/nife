@@ -251,6 +251,43 @@ pub extern "C" fn _start(mode: u64, _arg1: u64, _arg2: u64) -> ! {
     // and the offset is inside it.
     let direct_memory_access_phys =
         unsafe { core::ptr::read_volatile((DMA_VA + abi::virtio::DMA_PHYS_OFFSET) as *const u64) };
+    bring_up_device();
+    let avail = post_event_buffers(direct_memory_access_phys);
+
+    send(
+        REPORT,
+        video_terminal::status::KEYBOARD_UP,
+        EVENTS as u64,
+        0,
+    );
+
+    let mut events = Events {
+        mode,
+        keys: video_terminal::keymap::Keyboard::new(),
+        seen: 0,
+        avail,
+        tail: 0,
+        direct_buf: [0u8; 8],
+        direct_n: 0,
+    };
+    loop {
+        interrupt_wait(IRQ);
+
+        let typed = events.drain();
+
+        // Quiet the device, then re-enable the line at the controller. In that order: the disk
+        // driver's discipline, and the reason an interrupt does not immediately re-fire.
+        let istatus = mr(INTERRUPT_STATUS);
+        mw(INTERRUPT_ACK, istatus);
+        interrupt_acknowledge(IRQ); // re-enable the interrupt the kernel masked when it fired
+
+        events.flush(typed);
+    }
+}
+
+/// Check the device is a virtio-input device, negotiate features, and set up the event queue,
+/// ending with `DRIVER_OK`.
+fn bring_up_device() {
     if mr(MAGIC) != 0x7472_6976 {
         die(E_MAGIC);
     }
@@ -290,7 +327,10 @@ pub extern "C" fn _start(mode: u64, _arg1: u64, _arg2: u64) -> ! {
         STATUS,
         S_ACKNOWLEDGE | S_DRIVER | S_FEATURES_OK | S_DRIVER_OK,
     );
+}
 
+/// Post every event buffer to the device and notify it; returns the avail index after them.
+fn post_event_buffers(direct_memory_access_phys: u64) -> u16 {
     // **Every buffer is device-writable, and posted before the first key can arrive.** This is the
     // receive direction: the device writes into our memory. It is the direction the DMA validator
     // grew for virtio-net (DECISIONS §23) and the direction where confinement matters most, because
@@ -313,29 +353,33 @@ pub extern "C" fn _start(mode: u64, _arg1: u64, _arg2: u64) -> ! {
     // The kernel validates the newly published descriptors and copies them into the shadow ring
     // the device actually reads.
     user_mode_runtime::virtio::notify(VIRTIO, EVENT_Q);
+    avail
+}
 
-    send(
-        REPORT,
-        video_terminal::status::KEYBOARD_UP,
-        EVENTS as u64,
-        0,
-    );
+/// The interrupt loop's state: the keymap, both ring indices, and whichever delivery buffer
+/// `mode` uses.
+struct Events {
+    mode: u64,
+    keys: video_terminal::keymap::Keyboard,
+    seen: u16,           // used-ring index already drained
+    avail: u16,          // our avail-ring index
+    tail: u32,           // our end of the compositor's input ring (MODE_RING)
+    direct_buf: [u8; 8], // buffered bytes awaiting one OPERATION_BYTES CALL (MODE_DIRECT)
+    direct_n: usize,
+}
 
-    let mut keys = video_terminal::keymap::Keyboard::new();
-    let mut seen: u16 = 0; // used-ring index already drained
-    let mut tail: u32 = 0; // our end of the compositor's input ring (MODE_RING)
-    let mut direct_buf = [0u8; 8]; // buffered bytes awaiting one OPERATION_BYTES CALL (MODE_DIRECT)
-    let mut direct_n: usize = 0;
-    loop {
-        interrupt_wait(IRQ);
-
+impl Events {
+    /// Drain every completed event, deliver what it types, and re-post its buffer; `true` if
+    /// anything was typed. Per scancode, so inlined.
+    #[inline]
+    fn drain(&mut self) -> bool {
         let mut typed = false;
         loop {
             let used_idx = r16(EQ_USED + 2);
-            if used_idx == seen {
+            if used_idx == self.seen {
                 break;
             }
-            let slot = (seen % QSIZE) as u64;
+            let slot = (self.seen % QSIZE) as u64;
             // used-ring element: { u32 id; u32 len }.
             let id = r32(EQ_USED + 4 + slot * 8) as usize;
             // **`id` is a 32-bit value the DEVICE wrote** (notes/shared-page-audit.md, finding 6).
@@ -349,60 +393,72 @@ pub extern "C" fn _start(mode: u64, _arg1: u64, _arg2: u64) -> ! {
             // it: a bogus `id` does not say which buffer it was, and a device that lies about its
             // own ring has stopped being a keyboard.
             if id >= EVENTS {
-                seen = seen.wrapping_add(1);
+                self.seen = self.seen.wrapping_add(1);
                 continue;
             }
             let at = event_buf(id);
             let (kind, code, value) = (r16(at), r16(at + 2), r32(at + 4));
-            seen = seen.wrapping_add(1);
+            self.seen = self.seen.wrapping_add(1);
 
-            if let Some(bytes) = keys.event(kind, code, value) {
-                // Most keys send one byte; a cursor or navigation key sends its `CSI` sequence,
-                // up to six bytes (video_terminal::keymap::Bytes). Either way both delivery modes take them one at
-                // a time, in order, which is what makes a multi-byte key indistinguishable
-                // downstream from several single-byte keys typed fast -- true of the ring
-                // (MODE_RING) and just as true of the direct-batch buffer (MODE_DIRECT).
-                for &b in bytes.as_slice() {
-                    if mode == MODE_DIRECT {
-                        direct_buf[direct_n] = b;
-                        direct_n += 1;
-                        if direct_n == direct_buf.len() {
-                            direct_send(&direct_buf, &mut direct_n);
-                        }
-                    } else {
-                        ring_push(&mut tail, b);
-                    }
-                }
+            if let Some(bytes) = self.keys.event(kind, code, value) {
+                self.deliver(bytes.as_slice());
                 typed = true;
             }
 
-            // Re-post the buffer. Its descriptor is permanent, so this is one index write.
-            let aslot = (avail % QSIZE) as u64;
-            w16(EQ_AVAIL + 4 + aslot * 2, id as u16);
-            virtio_ring_barrier();
-            avail = avail.wrapping_add(1);
-            w16(EQ_AVAIL + 2, avail);
-            virtio_ring_barrier();
-            user_mode_runtime::virtio::notify(VIRTIO, EVENT_Q);
+            self.repost(id);
         }
+        typed
+    }
 
-        // Quiet the device, then re-enable the line at the controller. In that order: the disk
-        // driver's discipline, and the reason an interrupt does not immediately re-fire.
-        let istatus = mr(INTERRUPT_STATUS);
-        mw(INTERRUPT_ACK, istatus);
-        interrupt_acknowledge(IRQ); // re-enable the interrupt the kernel masked when it fired
+    /// Hand one key's bytes to whichever delivery `mode` uses. Per scancode, so inlined.
+    #[inline]
+    fn deliver(&mut self, bytes: &[u8]) {
+        // Most keys send one byte; a cursor or navigation key sends its `CSI` sequence,
+        // up to six bytes (video_terminal::keymap::Bytes). Either way both delivery modes take them one at
+        // a time, in order, which is what makes a multi-byte key indistinguishable
+        // downstream from several single-byte keys typed fast -- true of the ring
+        // (MODE_RING) and just as true of the direct-batch buffer (MODE_DIRECT).
+        for &b in bytes {
+            if self.mode == MODE_DIRECT {
+                self.direct_buf[self.direct_n] = b;
+                self.direct_n += 1;
+                if self.direct_n == self.direct_buf.len() {
+                    direct_send(&self.direct_buf, &mut self.direct_n);
+                }
+            } else {
+                ring_push(&mut self.tail, b);
+            }
+        }
+    }
 
-        if mode == MODE_DIRECT {
+    /// Re-post buffer `id`. Its descriptor is permanent, so this is one index write. Per scancode,
+    /// so inlined.
+    #[inline]
+    fn repost(&mut self, id: usize) {
+        let aslot = (self.avail % QSIZE) as u64;
+        w16(EQ_AVAIL + 4 + aslot * 2, id as u16);
+        virtio_ring_barrier();
+        self.avail = self.avail.wrapping_add(1);
+        w16(EQ_AVAIL + 2, self.avail);
+        virtio_ring_barrier();
+        user_mode_runtime::virtio::notify(VIRTIO, EVENT_Q);
+    }
+
+    /// After a drain: send the direct batch, or publish the ring and ring the compositor's
+    /// doorbell if anything was typed. Per interrupt, so inlined.
+    #[inline]
+    fn flush(&mut self, typed: bool) {
+        if self.mode == MODE_DIRECT {
             // Flush whatever this drain accumulated that did not already fill a whole word: a
             // partial batch is still worth delivering promptly, the same "send what you have"
             // rule `components/src/input.rs`'s own `drain` follows for the UART side.
-            direct_send(&direct_buf, &mut direct_n);
+            direct_send(&self.direct_buf, &mut self.direct_n);
         } else if typed {
             // Publish the tail, then ring. **The doorbell carries nothing**, and that is the design:
             // what was typed is in a page the compositor maps and no client does. This is also the
             // frame that will show the keystroke, because the compositor drains the ring and then
             // rescans every client's control page before it composites (see components/src/display_terminal.rs).
-            ring_publish(tail);
+            ring_publish(self.tail);
             let _ = call(OUT, compositor::proto::req(compositor::proto::COMMIT, 0), 0);
         }
     }

@@ -2,16 +2,19 @@
 
 *Milestone 835 (a C library, stage 1: files, clock and memory), from §265 (a C library started from
 relibc, whose Rust platform layer holds the capabilities). Written 2026-10-10 (UTC) by lane
-`milestone/835-a-c-library-stage-one-files-clock-and-memory`. The crate's name, `c_library`, is
-provisional; §265 leaves it to calef.*
+`milestone/835-a-c-library-stage-one-files-clock-and-memory`; threads added 2026-10-12 (UTC) by
+milestone 836 (a C library, stage 2: threads). The crate's name, `c_library`, is provisional; §265
+leaves it to calef.*
 
-This is how a C program written for POSIX runs on nife without being changed. Two such programs run
-in the suite on all three architectures:
+This is how a C program written for POSIX runs on nife without being changed. Three such programs
+run in the suite on all three architectures:
 
 - **SQLite 3.50.4's `speedtest1`** (266,378 lines of C), in memory and on a file. Both runs print
   `Verification Hash: 111130 1e792c9db61996c477b8ab5ce2d690052e8dae74824a430a`, the hash of every
   value SQLite read back, which is what the same program prints on macOS.
 - **ioping 1.3**, timing five 4 KiB reads of a file it creates in its granted directory.
+- **hackbench** (rt-tests 2.11) in its thread mode: up to fourteen `pthread`s passing messages
+  over pipes and socket pairs.
 
 Neither source is touched. What differs from a Linux build is on the command line.
 
@@ -34,9 +37,13 @@ what was taken, what was left behind and why.
 | `src/platform/nife.rs` | the platform layer: `Pal` and `PalSignal` implemented on nife's Rust `std` |
 | `src/platform/allocator.rs` | `malloc` and its family on `std`'s allocator, which is `crates/user_mode_heap` |
 | `src/start.rs` | how a `std` program becomes a C program: `argv`, `environ`, `main`, `exit` |
+| `src/pthread.rs` | POSIX threads on `std`'s threads: create, join, detach, exit, self |
+| `src/platform/futex.rs` | relibc's wait-on-address pair, on `std`'s thread parking |
+| `src/platform/stream.rs` | pipes, `socketpair` and `poll`, inside one process |
+| `c/thread_start.c` | where a new thread's C begins, so `pthread_exit` can `longjmp` back |
 | `src/bin/c_program.rs` | the `std` program a C program is linked into |
 | `src/long_double.rs` | the one `long double` symbol x86_64 needs (see BUGS) |
-| `build.rs` | links the C program's archive, and compiles relibc's one C file |
+| `build.rs` | links the C program's archive, and compiles relibc's C file and nife's |
 
 The `std` errno mapping is its own crate, [`crates/c_library_errno`](../crates/c_library_errno),
 so it is tested on the host.
@@ -61,6 +68,20 @@ that `main`, which builds a C `argv` and `environ` and calls the C program's `ma
 `exit` runs the `atexit` handlers, flushes the C streams and ends the process through
 `std::process::exit`. relibc's `crt0`, its dynamic linker and its TLS setup are not seeded.
 
+### How a thread starts and ends
+
+`pthread_create` spawns a `std` thread with the stack size asked for, holding an `Arc` of the
+thread's record (`src/pthread.rs`); the `pthread_t` is a second count of the same `Arc`, which
+`pthread_join` or `pthread_detach` gives back. The new thread enters `c/thread_start.c`, which
+records a `setjmp` and calls the start routine. Returning from it, or `pthread_exit` (which runs
+the cleanup handlers and `longjmp`s back), ends in the same place: key destructors run, the return
+value is stored, and `std` ends the thread and frees its stack. relibc's `clone`-based thread
+module and its dynamic linker's thread control block are not seeded.
+
+A thread's `errno` is `std`'s `thread_local!`, not relibc's `#[thread_local]`. nife's thread
+pointer names `std`'s own per-thread block, so an ELF thread-local would be addressed through it
+as if it were something else (BUGS).
+
 ### What each call family does
 
 | family | on nife |
@@ -70,6 +91,8 @@ that `main`, which builds a C `argv` and `environ` and calls the C program's `ma
 | memory | `malloc` on `std`'s heap; anonymous `mmap` from the same heap; `brk` refused |
 | process | `exit`, `atexit`, `getenv`, `uname` (`nife`); `getpid` 0 and the user and group calls 65534 (`nobody`), because nife issues no process identifier and attaches no identity to a process; `fork` and `exec*` refused (§264 (`fork` is declined for good)) |
 | signals | `sigaction` records, `sigprocmask` masks, and `raise` (or `kill` of this process) delivers synchronously; nothing else ever sends one |
+| threads | `pthread_create` is `std::thread::Builder::spawn`; mutexes, condition variables, read-write locks, barriers, semaphores and `pthread_once` are relibc's, waiting through `futex.rs`; keys, `errno` and the locale per thread |
+| pipes and sockets | `pipe`, `pipe2` and `socketpair(AF_UNIX, SOCK_STREAM)` are byte queues in the process; `poll` waits on any of them; every other socket call is `ENOSYS` until stage 3 |
 
 An error from `std` becomes an `errno` by meaning: a missing name is `ENOENT`, a grant without the
 right is `EACCES`, no capability at all is `ENOSYS`. `crates/c_library_errno` holds the table.
@@ -94,6 +117,17 @@ test system_tests::user::c_program_tests::unmodified_sqlite_speedtest1_runs_in_m
 ...
 Verification Hash: 111130 1e792c9db61996c477b8ab5ce2d690052e8dae74824a430a
 test result: ok. 3 passed
+```
+
+hackbench's thread mode the same way:
+
+```
+$ helpers/build-hackbench.sh
+$ script/test --arch riscv64 --test c_thread_tests
+test system_tests::user::c_thread_tests::unmodified_hackbench_threads_over_pipes ...
+Running in threaded mode with 2 groups using 6 file descriptors each (== 12 tasks)
+Each sender will pass 100 messages of 100 bytes
+Time: 0.050
 ```
 
 Those latencies are QEMU's, under HVF on an Apple laptop, and are not a benchmark: milestones 831
@@ -140,11 +174,43 @@ $ helpers/c-library-headers.sh stdio
   `crates/calendar` for `chrono`, four-word bit sets for `cbitset`, a `Vec` for `arrayvec`, a
   marker trait for `plain`, and no logging.
 
+Stage 2 (milestone 836) added these, also reversible:
+
+- **Threads are `std`'s**, not relibc's `clone` and control block, for the reason the platform layer
+  is on `std`. `bitflags` is a two-line struct.
+- **The futex is a parking lot on `std::thread::park`**, rather than a new `std` export of the
+  kernel's `WAIT` and `WAKE`, so `std` gains no public API (BUGS: a second crossing).
+- **Pipes and socket pairs are queues in the process**, needing no kernel object while both ends
+  are in one process.
+
 ## BUGS
 
-- **One thread.** The descriptor table, `errno` and the signal table are single cells in `static`s,
-  sound only because a stage-1 process has one thread. Stage 2, milestone 836 (a C library, stage
-  2: threads), replaces them with locks.
+- **C's own thread-locals do not link.** A `__thread` or `_Thread_local` variable stops the link
+  with `has an STT_TLS symbol but doesn't have a PT_TLS segment`: nife's thread pointer names
+  `std`'s block, and nothing lays out an ELF one beside it. The proposal is
+  `design/roadmap/proposals/c-thread-locals-on-the-thread-pointer.md`; fio needs it.
+- **16 threads a process**, the main thread included (`std`'s limit). One more `pthread_create`
+  answers `EAGAIN`.
+- **Every stack comes out of the heap**, which on nife is memory already committed. relibc's
+  default stack is 1 MiB, so a program given an ordinary `std` heap (256 pages) cannot start one
+  thread with default attributes; hackbench asks for 64 KiB and its test gives it 1,024 pages.
+  A heap that runs out mid-run leaves hackbench waiting on threads that never started, which is
+  hackbench's own failure path.
+- **Cancellation is deferred, and acted on only at `pthread_testcancel`.** No signal can interrupt
+  a thread, so a blocking call is not a cancellation point. A caller-supplied stack is refused.
+- **Scheduling parameters change nothing.** nife's scheduler has one class: every priority range
+  is 0, and `sched_setscheduler` answers `EPERM`. `sched_getcpu` and CPU affinity are not built.
+- **A futex wake crosses twice**: `futex.rs` parks through `std`, which waits on a word of its own
+  in the kernel, rather than on the program's word directly. A timed wait burns a core, as `std`'s
+  do until the kernel's `WAIT` takes a deadline.
+- **File calls take turns.** Every call on a file holds the descriptor table's lock throughout,
+  which is also what makes `pread` and `pwrite` (seek, transfer, seek back) atomic. A pipe or
+  socket call lets it go before it waits.
+- **Pipes and socket pairs cannot leave the process**, a write with no reader answers `EPIPE`
+  without `SIGPIPE`, and `poll` is woken by any pipe's change, not only the ones it watches
+  (`src/platform/stream.rs`).
+- **No `syscall()`**, by §265 and calef's ruling on #2009 (2026-10-12 UTC), so a program that
+  calls the kernel by Linux number, as schbench does, does not build.
 - **No wall clock without a clock grant.** `time`, `gettimeofday` and `clock_gettime(CLOCK_REALTIME)`
   call `SystemTime::now()`, which stops a process holding no clock with a message naming the
   missing grant, as `std` does, rather than answer 1970. A C program that never asks is unaffected.
@@ -158,8 +224,8 @@ $ helpers/c-library-headers.sh stdio
 - **Inode numbers are path hashes.** `st_ino` is an FNV-1a hash of the path, which SQLite keys its
   per-file state on. A renamed file gets a new number, which a real inode would not.
 - **`pread` and `pwrite` move the offset and move it back**, because the file contract has no
-  positioned read; atomic only because there is one thread.
-- **No `dup`, `pipe`, `readdir`, symbolic links or hard links.** Each answers `ENOSYS` or, for
+  positioned read; atomic because the descriptor table's lock is held throughout.
+- **No `dup`, `readdir`, symbolic links or hard links.** Each answers `ENOSYS` or, for
   `readlink`, `EINVAL`. `readdir` is the first a consumer will want; `std::fs::read_dir` can carry it.
 - **`mmap` of a file is refused** (`ENODEV`): the file contract offers no shared page. Anonymous
   memory works. `mprotect` is refused.

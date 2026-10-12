@@ -5,14 +5,16 @@
 //! decisive experiment because it is not a toy. It has forty transitive crates, it walks a
 //! filesystem, and it is written for a world with threads, a command line, and `mmap`.
 //!
-//! **The program here is not ours and is not patched.** `helpers/build-ripgrep.sh` downloads the
-//! published `ripgrep` crate and builds it with a target spec and three link arguments; there is no
-//! overlay, no vendored copy and no fork. Everything this test observes is therefore a fact about
-//! the platform rather than about our port of a program.
+//! **The program here is not ours, and its own source is not patched.** `helpers/build-ripgrep.sh`
+//! downloads the published `ripgrep` crate and builds it with a target spec and three link
+//! arguments; there is no overlay, no vendored copy and no fork. One dependency, `ignore`, carries
+//! `helpers/ripgrep-ignore-walk.patch` for its parallel walker (calef, #1892), which the `--threads 1`
+//! lines here never reach. Everything this test observes is otherwise a fact about the platform
+//! rather than about our port of a program.
 //!
-//! **It skips when the archive has no `rg`**, which is every ordinary build and all of CI, because
-//! making the gate fetch a crates.io dependency tree is DECISIONS §46's decision and calef's rather
-//! than a lane's. `rg` is never part of the base image either: calef ruled on 2026-10-07 (UTC) that
+//! **It skips when the archive has no `rg`**, which is every ordinary build. Corrected 2026-10-12
+//! (UTC): CI's `rg-threads` rows build it and run this module with `ripgrep_threads_tests`, which
+//! walks in parallel. `rg` is never part of the base image either: calef ruled on 2026-10-07 (UTC) that
 //! it is installed with `jig` from its own package. See notes/ripgrep-on-nife.md.
 //!
 //! **All three ISAs run it**, which is DECISIONS §19 rather than thoroughness: a capability ships on

@@ -204,23 +204,7 @@ pub fn with_initial_ramdisk(
     let h = header(src)?;
     let rsv = rsvmap_len(src, &h)?;
     let strings = &src[h.off_strings..h.off_strings + h.size_strings];
-
-    // Name offsets: reuse the firmware's where the names already exist, append otherwise.
-    let mut appended: [&[u8]; 2] = [&[], &[]];
-    let mut appended_count = 0;
-    let mut next_off = h.size_strings;
-    let mut name_off = |name: &'static [u8]| -> usize {
-        if let Some(off) = find_string(strings, name) {
-            return off;
-        }
-        let off = next_off;
-        next_off += name.len() + 1;
-        appended[appended_count] = name;
-        appended_count += 1;
-        off
-    };
-    let start_off = name_off(INITRD_START);
-    let end_off = name_off(INITRD_END);
+    let names = ramdisk_property_offsets(strings, h.size_strings);
 
     let mut o = Out { buf: out, at: 0 };
     o.bytes(&[0; HEADER_LEN])?; // filled in last
@@ -229,87 +213,24 @@ pub fn with_initial_ramdisk(
     o.bytes(&src[h.off_rsvmap..h.off_rsvmap + rsv])?;
     let new_struct = o.at;
 
-    let mut at = h.off_struct;
-    let struct_end = h.off_struct + h.size_struct;
-    let mut depth = 0usize;
-    let mut in_chosen = false;
-    let mut wrote_chosen = false;
-    loop {
-        if at >= struct_end {
-            return Err(Error::Truncated);
-        }
-        let token = be32(src, at)?;
-        match token {
-            BEGIN_NODE => {
-                let name_at = at + 4;
-                let name_len = src
-                    .get(name_at..struct_end)
-                    .and_then(|s| s.iter().position(|&b| b == 0))
-                    .ok_or(Error::Truncated)?;
-                let next = name_at + align4(name_len + 1);
-                o.bytes(&src[at..next])?;
-                depth += 1;
-                if depth == 2 && &src[name_at..name_at + name_len] == b"chosen" {
-                    in_chosen = true;
-                    wrote_chosen = true;
-                    o.prop_u64(start_off, start)?;
-                    o.prop_u64(end_off, end)?;
-                }
-                at = next;
-            }
-            END_NODE => {
-                if depth == 0 {
-                    return Err(Error::Malformed);
-                }
-                if depth == 1 && !wrote_chosen {
-                    // The root is closing and there was no /chosen: add one as its last child.
-                    o.u32(BEGIN_NODE)?;
-                    o.bytes(b"chosen\0\0")?;
-                    o.prop_u64(start_off, start)?;
-                    o.prop_u64(end_off, end)?;
-                    o.u32(END_NODE)?;
-                    wrote_chosen = true;
-                }
-                if depth == 2 {
-                    in_chosen = false;
-                }
-                o.u32(END_NODE)?;
-                depth -= 1;
-                at += 4;
-            }
-            PROP => {
-                let len = be32(src, at + 4)? as usize;
-                let nameoff = be32(src, at + 8)? as usize;
-                let next = at + 12 + align4(len);
-                if next > struct_end {
-                    return Err(Error::Truncated);
-                }
-                let name = strings
-                    .get(nameoff..)
-                    .and_then(|s| s.iter().position(|&b| b == 0).map(|n| &s[..n]))
-                    .ok_or(Error::Truncated)?;
-                // Replace, never duplicate: a stale pair from the firmware is dropped.
-                let ours = in_chosen && depth == 2 && (name == INITRD_START || name == INITRD_END);
-                if !ours {
-                    o.bytes(&src[at..next])?;
-                }
-                at = next;
-            }
-            NOP => at += 4,
-            END => {
-                if depth != 0 {
-                    return Err(Error::Malformed);
-                }
-                o.u32(END)?;
-                break;
-            }
-            _ => return Err(Error::Malformed),
-        }
-    }
+    let mut walk = Walk {
+        src,
+        strings,
+        struct_end: h.off_struct + h.size_struct,
+        start,
+        end,
+        start_off: names.start_off,
+        end_off: names.end_off,
+        at: h.off_struct,
+        depth: 0,
+        in_chosen: false,
+        wrote_chosen: false,
+    };
+    walk.copy_struct(&mut o)?;
     let size_struct = o.at - new_struct;
     let new_strings = o.at;
     o.bytes(strings)?;
-    for name in &appended[..appended_count] {
+    for name in &names.appended[..names.appended_count] {
         o.bytes(name)?;
         o.bytes(&[0])?;
     }
@@ -332,6 +253,153 @@ pub fn with_initial_ramdisk(
         o.buf[i * 4..i * 4 + 4].copy_from_slice(&field.to_be_bytes());
     }
     Ok(total)
+}
+
+/// The two `linux,initrd-*` property names' offsets in the rewritten strings block, and the names
+/// that have to be appended to it.
+struct NameOffsets {
+    start_off: usize,
+    end_off: usize,
+    appended: [&'static [u8]; 2],
+    appended_count: usize,
+}
+
+/// Find or place the two `linux,initrd-*` property names in the strings block.
+fn ramdisk_property_offsets(strings: &[u8], size_strings: usize) -> NameOffsets {
+    // Name offsets: reuse the firmware's where the names already exist, append otherwise.
+    let mut appended: [&[u8]; 2] = [&[], &[]];
+    let mut appended_count = 0;
+    let mut next_off = size_strings;
+    let mut name_off = |name: &'static [u8]| -> usize {
+        if let Some(off) = find_string(strings, name) {
+            return off;
+        }
+        let off = next_off;
+        next_off += name.len() + 1;
+        appended[appended_count] = name;
+        appended_count += 1;
+        off
+    };
+    let start_off = name_off(INITRD_START);
+    let end_off = name_off(INITRD_END);
+    NameOffsets {
+        start_off,
+        end_off,
+        appended,
+        appended_count,
+    }
+}
+
+/// One pass over the structure block, copying it to the output with the `linux,initrd-*` pair set.
+struct Walk<'a> {
+    src: &'a [u8],
+    strings: &'a [u8],
+    struct_end: usize,
+    start: u64,
+    end: u64,
+    start_off: usize,
+    end_off: usize,
+    at: usize,
+    depth: usize,
+    in_chosen: bool,
+    wrote_chosen: bool,
+}
+
+impl Walk<'_> {
+    /// Copy every token up to and including `END`, refusing a block that ends early or nests badly.
+    fn copy_struct(&mut self, o: &mut Out<'_>) -> Result<(), Error> {
+        loop {
+            if self.at >= self.struct_end {
+                return Err(Error::Truncated);
+            }
+            let token = be32(self.src, self.at)?;
+            match token {
+                BEGIN_NODE => self.begin_node(o)?,
+                END_NODE => self.end_node(o)?,
+                PROP => self.prop(o)?,
+                NOP => self.at += 4,
+                END => {
+                    if self.depth != 0 {
+                        return Err(Error::Malformed);
+                    }
+                    o.u32(END)?;
+                    break;
+                }
+                _ => return Err(Error::Malformed),
+            }
+        }
+        Ok(())
+    }
+
+    /// Copy a node's opening, and write the `linux,initrd-*` pair first thing inside `/chosen`.
+    fn begin_node(&mut self, o: &mut Out<'_>) -> Result<(), Error> {
+        let src = self.src;
+        let at = self.at;
+        let name_at = at + 4;
+        let name_len = src
+            .get(name_at..self.struct_end)
+            .and_then(|s| s.iter().position(|&b| b == 0))
+            .ok_or(Error::Truncated)?;
+        let next = name_at + align4(name_len + 1);
+        o.bytes(&src[at..next])?;
+        self.depth += 1;
+        if self.depth == 2 && &src[name_at..name_at + name_len] == b"chosen" {
+            self.in_chosen = true;
+            self.wrote_chosen = true;
+            o.prop_u64(self.start_off, self.start)?;
+            o.prop_u64(self.end_off, self.end)?;
+        }
+        self.at = next;
+        Ok(())
+    }
+
+    /// Copy a node's closing, adding `/chosen` before the root closes if there was none.
+    fn end_node(&mut self, o: &mut Out<'_>) -> Result<(), Error> {
+        if self.depth == 0 {
+            return Err(Error::Malformed);
+        }
+        if self.depth == 1 && !self.wrote_chosen {
+            // The root is closing and there was no /chosen: add one as its last child.
+            o.u32(BEGIN_NODE)?;
+            o.bytes(b"chosen\0\0")?;
+            o.prop_u64(self.start_off, self.start)?;
+            o.prop_u64(self.end_off, self.end)?;
+            o.u32(END_NODE)?;
+            self.wrote_chosen = true;
+        }
+        if self.depth == 2 {
+            self.in_chosen = false;
+        }
+        o.u32(END_NODE)?;
+        self.depth -= 1;
+        self.at += 4;
+        Ok(())
+    }
+
+    /// Copy a property, dropping a stale `linux,initrd-*` pair inside `/chosen`.
+    fn prop(&mut self, o: &mut Out<'_>) -> Result<(), Error> {
+        let src = self.src;
+        let at = self.at;
+        let len = be32(src, at + 4)? as usize;
+        let nameoff = be32(src, at + 8)? as usize;
+        let next = at + 12 + align4(len);
+        if next > self.struct_end {
+            return Err(Error::Truncated);
+        }
+        let name = self
+            .strings
+            .get(nameoff..)
+            .and_then(|s| s.iter().position(|&b| b == 0).map(|n| &s[..n]))
+            .ok_or(Error::Truncated)?;
+        // Replace, never duplicate: a stale pair from the firmware is dropped.
+        let ours =
+            self.in_chosen && self.depth == 2 && (name == INITRD_START || name == INITRD_END);
+        if !ours {
+            o.bytes(&src[at..next])?;
+        }
+        self.at = next;
+        Ok(())
+    }
 }
 
 #[cfg(test)]

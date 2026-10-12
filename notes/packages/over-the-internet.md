@@ -117,9 +117,10 @@ greeting-0.1.0-aarch64 sha256:<64 hex> https://packages.basalt.test:8443/rolling
 
 - Nothing is installed. Taking an index's word for what may be installed is `jig` writing the
   index copy, milestone 809's ruling I2, and that program does not exist yet.
-- No program at the prompt can do this yet. The booted system does not start the resolver, and the
-  progenitor does not give a std program the network (milestone 595 (the shell runs a `std`
-  program)'s BUGS).
+- No program at the prompt does this yet. The booted system starts the resolver on the lease's
+  name server, and `jig install` holds the network and a root-zone badge: milestone 892 (a std
+  program at the prompt holds the network and a resolver). But `jig` fetches by a fixed address
+  until milestone 809 (the package client becomes a program)'s item 6 adopts this client.
 - The stand-in has no signed root, so no "moved to" (Q2's move is a signed root's), and no
   version, expiry or signature. Each is the TUF client's.
 - No producer in this tree. The test host composes the stand-in from the build's catalog, in

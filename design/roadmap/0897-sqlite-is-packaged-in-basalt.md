@@ -30,7 +30,10 @@ kernel's tree, which calef ruled is the wrong place.
   the nife commit basalt pins, with the flags `helpers/c-library-cflags.sh` gives.
 - basalt's package build runs `speedtest1 --verify` in memory and on a file, on each architecture,
   and fails unless both print the hash nife's tests check today.
-- ioping is packaged the same way, in this proposal or a sibling of its own.
+- ioping is packaged the same way by a sibling of its own. That is milestone 906 (ioping is
+  packaged in basalt, and its test installs it with `jig`), minted 2026-10-12 (UTC). It was minted
+  under §297 (software reaches a nife system as a package `jig` installs from basalt's index, the
+  kernel included).
 - When basalt's build runs them, the C program tests leave nife, and so do the two helpers.
 
 Reuse: milestone 810's packaging and its basalt build, the helpers' pinned fetches, and the

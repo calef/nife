@@ -12,7 +12,7 @@
 
 use super::*;
 use crate::cap::Rights;
-use crate::sched;
+use crate::{cap as capabilities, sched};
 
 /// The program's ELF bytes, if this archive carries it (it is built by `cargo xtask std-exerciser`,
 /// which `script/test` runs first).
@@ -21,27 +21,74 @@ fn std_threads_image() -> Option<&'static [u8]> {
 }
 
 /// **Run a `std` program as a process, the way a loader that gives it threads builds it**, and hand
-/// back its whole stdout. Its space is loaded from `image`, a process is created around it, its
-/// first thread joins that process, and the runtime's fixed slots go in the process's shared table,
-/// the three milestone 812 added included: its own process with `BIND`, its own first thread and its
-/// own space. Then the program runs to its end, and the test checks that its process ended with
-/// every thread reaped and its space gone, and gives every region back.
+/// back its whole stdout. [`run_as_process_with`] with nothing more than the runtime's own slots.
 fn run_as_process(image: &'static [u8], what: &str, out: &mut [u8]) -> usize {
+    run_as_process_with(image, what, out, &Setup::default()).len
+}
+
+/// **What a caller adds to a process [`run_as_process_with`] builds** (lane
+/// milestone/121-rg-threads, for `rg`'s parallel walk). Names: provisional.
+#[derive(Default)]
+pub(super) struct Setup<'a> {
+    /// Pages mapped into the space before it runs: `(va, phys, writable)`.
+    pub maps: &'a [(u64, u64, bool)],
+    /// Endpoints granted `WRITE` at a named slot: `(slot, endpoint)`.
+    pub endpoints: &'a [(u64, sched::RendezvousId)],
+    /// Page frames granted `READ` at a named slot: `(slot, phys)`.
+    pub read_pages: &'a [(u64, u64)],
+    /// The program's stdout, if the caller owns one; otherwise one is made and given back here.
+    pub report: Option<sched::RendezvousId>,
+    /// The heap budget in pages; zero is `std_service::BUDGET_PAGES`.
+    pub heap_pages: u64,
+}
+
+/// What [`run_as_process_with`] observed once the program had ended.
+pub(super) struct Ran {
+    /// Bytes of stdout.
+    pub len: usize,
+    /// Threads the process ever started, its first included (`sched::process_threads_started`).
+    pub started: u32,
+    /// Pages its heap budget retyped, the program's high-water mark.
+    pub heap_spent: u64,
+}
+
+/// [`run_as_process`], **with what `setup` adds**. Its space is loaded from `image`, a process is
+/// created around it, its first thread joins that process, and the runtime's fixed slots go in the
+/// process's shared table, the three milestone 812 added included: its own process with `BIND`, its
+/// own first thread and its own space. Then the program runs to its end, and the test checks that
+/// its process ended with every thread reaped and its space gone, and gives every region back.
+pub(super) fn run_as_process_with(
+    image: &'static [u8],
+    what: &str,
+    out: &mut [u8],
+    setup: &Setup,
+) -> Ran {
     let (mut space, entry) = load(image, 0).expect("could not load the program");
+    let map = |space: &mut AddressSpace, va: u64, phys: u64, flags: Flags| {
+        space
+            .map_physical(va, phys, flags, crate::revoke::PageMapSource::NoCapability)
+            .expect("could not map a page into the program's space");
+    };
 
     // The deep stack a std program's main thread needs, from a region this test gives back.
     let stack_region =
         crate::memory_region::create(std_runtime_protocol::STACK_PAGES).expect("no stack region");
     for k in 1..std_runtime_protocol::STACK_PAGES {
         let frame = crate::memory_region::retype_page(stack_region).expect("no stack frame");
-        space
-            .map_physical(
-                USER_STACK_VA - k * FRAME_SIZE,
-                frame,
-                Flags::user_data(),
-                crate::revoke::PageMapSource::NoCapability,
-            )
-            .expect("could not map the program's stack");
+        map(
+            &mut space,
+            USER_STACK_VA - k * FRAME_SIZE,
+            frame,
+            Flags::user_data(),
+        );
+    }
+    for &(va, phys, writable) in setup.maps {
+        let flags = if writable {
+            Flags::user_data()
+        } else {
+            Flags::user_rodata()
+        };
+        map(&mut space, va, phys, flags);
     }
     let name = readopt_user_address_space(space).expect("register the program's space");
 
@@ -57,33 +104,46 @@ fn run_as_process(image: &'static [u8], what: &str, out: &mut [u8]) -> usize {
     );
 
     let report_region = crate::memory_region::create(1).expect("no report region");
-    let report = sched::create_rendezvous_from(report_region).expect("no report rendezvous");
-    let budget = crate::memory_region::create(super::std_service::BUDGET_PAGES)
-        .expect("no heap budget for the program");
-    for (slot, cap) in [
+    let report = setup.report.unwrap_or_else(|| {
+        sched::create_rendezvous_from(report_region).expect("no report rendezvous")
+    });
+    let heap_pages = match setup.heap_pages {
+        0 => super::std_service::BUDGET_PAGES,
+        n => n,
+    };
+    let budget = crate::memory_region::create(heap_pages).expect("no heap budget for the program");
+    let insert = |slot, capability| {
+        sched::thread_control_block_insert_cap(tid, capability, Some(slot))
+            .expect("could not fill a runtime slot in the process's table");
+    };
+    // `WRITE` on an endpoint: the program's stdout, and any endpoint `setup` grants.
+    let writer = |ep| capabilities::rendezvous_cap(ep, Rights::WRITE);
+    for (slot, capability) in [
         (
             std_runtime_protocol::MEMORY_REGION_SLOT,
-            crate::cap::memory_region_cap(budget),
+            capabilities::memory_region_cap(budget),
         ),
-        (
-            std_runtime_protocol::STDOUT_SLOT,
-            crate::cap::rendezvous_cap(report, Rights::WRITE),
-        ),
+        (std_runtime_protocol::STDOUT_SLOT, writer(report)),
         (
             std_runtime_protocol::PROCESS_SLOT,
-            crate::cap::process_capability(pid, Rights::BIND),
+            capabilities::process_capability(pid, Rights::BIND),
         ),
         (
             std_runtime_protocol::THREAD_SLOT,
-            crate::cap::thread_control_block_cap(tid, Rights::WRITE),
+            capabilities::thread_control_block_cap(tid, Rights::WRITE),
         ),
         (
             std_runtime_protocol::SPACE_SLOT,
-            crate::cap::address_space_cap(name, Rights::READ),
+            capabilities::address_space_cap(name, Rights::READ),
         ),
     ] {
-        sched::thread_control_block_insert_cap(tid, cap, Some(slot))
-            .expect("could not fill a runtime slot in the process's table");
+        insert(slot, capability);
+    }
+    for &(slot, ep) in setup.endpoints {
+        insert(slot, writer(ep));
+    }
+    for &(slot, phys) in setup.read_pages {
+        insert(slot, capabilities::page_frame_cap(phys, Rights::READ));
     }
     sched::start_thread_control_block(tid, [0; 3]).expect("start the program");
 
@@ -96,6 +156,9 @@ fn run_as_process(image: &'static [u8], what: &str, out: &mut [u8]) -> usize {
         super::wait_for(|| sched::process_state(pid).is_some_and(|(m, ended)| m == 0 && ended)),
         "{what}'s process did not end with all its threads reaped",
     );
+    // Read while the process page still stands: reclaiming its region below forgets it.
+    let started = sched::process_threads_started(pid).expect("the process is still named");
+    let heap_spent = crate::memory_region::usage(budget).map_or(0, |(spent, _)| spent);
     // The last member's reaper takes the space out of the registry after it has left the
     // process, once it has let go of the scheduler's lock, so this waits as well.
     assert!(
@@ -110,13 +173,17 @@ fn run_as_process(image: &'static [u8], what: &str, out: &mut [u8]) -> usize {
             "a region {what} used did not come back"
         );
     }
-    len
+    Ran {
+        len,
+        started,
+        heap_spent,
+    }
 }
 
 /// `std_tests::drain_sink`, except that a process that ends without its end-of-output fails the
 /// test rather than leaving it blocked in `RECEIVE` forever. A thread's fault ends its whole
 /// process, and a dead program sends no end-of-output.
-fn drain_until_end(
+pub(super) fn drain_until_end(
     report: sched::RendezvousId,
     pid: sched::ProcessId,
     out: &mut [u8],

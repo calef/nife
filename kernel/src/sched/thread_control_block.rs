@@ -142,7 +142,7 @@ pub fn start_thread_control_block(tid: ThreadId, args: [u64; 3]) -> Result<(), a
     {
         return Err(abi::Error::Gone);
     }
-    let (t, caps) = sched
+    let (t, capabilities) = sched
         .threads
         .get_mut_with_capabilities(tid)
         .ok_or(abi::Error::NoSuchSlot)?;
@@ -166,7 +166,7 @@ pub fn start_thread_control_block(tid: ThreadId, args: [u64; 3]) -> Result<(), a
     // the insert, and the kernel delivers it with the death message so a supervisor of several
     // children can say which one died. Consuming the slot below is also what keeps it from the
     // child: no capability it holds carries it, and nothing else reports it.
-    let mut table = caps.lock();
+    let mut table = capabilities.lock();
     if let Ok(fault_cap) = table.get(abi::fault::FAULT_EP_SLOT)
         && let crate::cap::Object::Rendezvous(ep, label) = fault_cap.object
     {
@@ -198,7 +198,11 @@ pub fn start_thread_control_block(tid: ThreadId, args: [u64; 3]) -> Result<(), a
     // table minted when this embryo was inserted; `Embryo -> Ready` above happens once, so it is
     // taken once.
     t.placement = target as u8;
+    let member_of = t.process;
     let remote = place_on(target, take_token(sched, tid));
+    if let Some(pid) = member_of {
+        process::count_start(sched, pid);
+    }
     drop(guard);
     if let Some(target) = remote {
         crate::arch::irq::send_reschedule(target);

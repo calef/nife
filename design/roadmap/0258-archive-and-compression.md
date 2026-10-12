@@ -1,7 +1,7 @@
 ---
 status: NOT-STARTED
 raised: 2026-09-05
-milestone_dependencies: none
+milestone_dependencies: 809, 801
 decision_dependencies: 146
 machine_requirements: none
 specific_machine: none
@@ -91,6 +91,20 @@ subtree if the archive told it to**, with the traversal case tested rather than 
 
 For part 2, when it is unblocked: an object written by real `git` is inflated correctly here, on
 a fixture rather than on a running `git`, since milestone 99 is `NOT-STARTED`.
+
+## Done when
+
+*Amended 2026-10-12 (UTC) under §297 (software reaches a nife system as a package `jig` installs
+from basalt's index, the kernel included). calef, that day: "They should all be installed via jig
+through basalt."*
+
+`tar` must run on nife installed by `jig install` from basalt's package index. basalt builds the
+package against the nife commit it pins. A binary from a `helpers/build-*.sh` script may feed the
+work until then. So may one packed into an image or copied onto a disk. No exit is taken on either.
+The install waits on milestone 809 (the package client becomes a program, `jig`, with the verbs an
+index needs). It also waits on milestone 801 (packages over the internet: a host name, HTTPS and the
+distribution's index). `tar` is written in this tree, and basalt builds and publishes its package
+all the same. zlib is a library linked into programs, so it reaches a system inside their packages.
 
 ## BUGS
 

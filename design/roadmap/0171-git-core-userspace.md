@@ -1,7 +1,7 @@
 ---
 status: NOT-STARTED
 raised: 2026-08-25
-milestone_dependencies: none
+milestone_dependencies: 809, 801
 decision_dependencies: none
 machine_requirements: none
 specific_machine: none
@@ -65,6 +65,19 @@ Whether `clone`/`fetch`/`push` (needing a network client, and eventually
 [DECISIONS §31](../decisions/0031-foreign-language-seam.md)-shaped work over whatever wire protocol)
 are folded into this milestone or left for whoever builds milestone 174's remote-development
 protocol, since the two may end up sharing a network-client crate. Left for whoever picks this up.
+
+## Done when
+
+*Amended 2026-10-12 (UTC) under §297 (software reaches a nife system as a package `jig` installs
+from basalt's index, the kernel included). calef, that day: "They should all be installed via jig
+through basalt."*
+
+`git` must run on nife installed by `jig install` from basalt's package index. basalt builds the
+package against the nife commit it pins. A binary from a `helpers/build-*.sh` script may feed the
+work until then. So may one packed into an image or copied onto a disk. No exit is taken on either.
+The install waits on milestone 809 (the package client becomes a program, `jig`, with the verbs an
+index needs). It also waits on milestone 801 (packages over the internet: a host name, HTTPS and the
+distribution's index).
 
 ## Index row
 

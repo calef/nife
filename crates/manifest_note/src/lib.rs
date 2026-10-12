@@ -362,34 +362,9 @@ pub fn decode(d: &[u8]) -> Result<Manifest, Error> {
     if d.len() != DESCRIPTOR_LEN {
         return Err(Error::WrongLength);
     }
-    let arg = match d[ARG] {
-        0 => ArgSpec::Forbidden,
-        1 => ArgSpec::Required,
-        2 => ArgSpec::Words(WordGrant::ReadOnly),
-        3 => ArgSpec::Words(WordGrant::ReadWrite),
-        4 => ArgSpec::Words(WordGrant::Create),
-        _ => return Err(Error::BadField(ARG)),
-    };
-    let mem = match d[MEM] {
-        0 => {
-            zero(d, MEM_MIN, 16)?;
-            MemSpec::Forbidden
-        }
-        1 => {
-            let (min, max) = (get8(d, MEM_MIN), get8(d, MEM_MAX));
-            if min > max {
-                return Err(Error::BadField(MEM_MIN));
-            }
-            MemSpec::Required { min, max }
-        }
-        _ => return Err(Error::BadField(MEM)),
-    };
-    let file = match d[FILE] {
-        0 => FileSpec::Forbidden,
-        1 => FileSpec::Required { writable: false },
-        2 => FileSpec::Required { writable: true },
-        _ => return Err(Error::BadField(FILE)),
-    };
+    let arg = decode_arg(d)?;
+    let mem = decode_mem(d)?;
+    let file = decode_file(d)?;
     let count = d[FLAG_COUNT] as usize;
     if count > MAX_DECLARED_FLAGS {
         return Err(Error::BadField(FLAG_COUNT));
@@ -397,44 +372,10 @@ pub fn decode(d: &[u8]) -> Result<Manifest, Error> {
     let letters = &d[FLAG_LETTERS..FLAG_LETTERS + count];
     let flags = Flags::try_new(letters).ok_or(Error::BadField(FLAG_LETTERS))?;
     zero(d, FLAG_LETTERS + count, MAX_DECLARED_FLAGS - count)?;
-    let dir = match d[DIR] {
-        0 => {
-            zero(d, SUBTREE, 1)?;
-            DirSpec::Forbidden
-        }
-        1 => DirSpec::Required {
-            subtree_flag: match d[SUBTREE] {
-                0 => None,
-                l if letters.contains(&l) => Some(l),
-                _ => return Err(Error::BadField(SUBTREE)),
-            },
-        },
-        _ => return Err(Error::BadField(DIR)),
-    };
-    let output = match d[OUTPUT] {
-        0 => OutputSpec::Silent,
-        1 => OutputSpec::Words,
-        2 => OutputSpec::Bytes,
-        3 => OutputSpec::BytesAndDiagnostics {
-            slot: DIAGNOSTICS_SLOT,
-        },
-        _ => return Err(Error::BadField(OUTPUT)),
-    };
-    let input = match d[INPUT] {
-        0 => {
-            zero(d, WRITES_WHILE_READING, 1)?;
-            InputSpec::Forbidden
-        }
-        1 => InputSpec::Required {
-            writes_while_reading: flag(d, WRITES_WHILE_READING)?,
-        },
-        _ => return Err(Error::BadField(INPUT)),
-    };
-    let runtime = match d[RUNTIME] {
-        0 => Runtime::Native,
-        1 => Runtime::Std,
-        _ => return Err(Error::BadField(RUNTIME)),
-    };
+    let dir = decode_dir(d, letters)?;
+    let output = decode_output(d)?;
+    let input = decode_input(d)?;
+    let runtime = decode_runtime(d)?;
     zero(d, TAIL, DESCRIPTOR_LEN - TAIL)?;
     Ok(Manifest {
         arg,
@@ -459,6 +400,100 @@ pub fn decode(d: &[u8]) -> Result<Manifest, Error> {
         installer: false,
         catalog: false,
         runtime,
+    })
+}
+
+/// The `arg` field.
+fn decode_arg(d: &[u8]) -> Result<ArgSpec, Error> {
+    Ok(match d[ARG] {
+        0 => ArgSpec::Forbidden,
+        1 => ArgSpec::Required,
+        2 => ArgSpec::Words(WordGrant::ReadOnly),
+        3 => ArgSpec::Words(WordGrant::ReadWrite),
+        4 => ArgSpec::Words(WordGrant::Create),
+        _ => return Err(Error::BadField(ARG)),
+    })
+}
+
+/// The `mem` field and its bounds, which are zero when it is absent.
+fn decode_mem(d: &[u8]) -> Result<MemSpec, Error> {
+    Ok(match d[MEM] {
+        0 => {
+            zero(d, MEM_MIN, 16)?;
+            MemSpec::Forbidden
+        }
+        1 => {
+            let (min, max) = (get8(d, MEM_MIN), get8(d, MEM_MAX));
+            if min > max {
+                return Err(Error::BadField(MEM_MIN));
+            }
+            MemSpec::Required { min, max }
+        }
+        _ => return Err(Error::BadField(MEM)),
+    })
+}
+
+/// The `file` field.
+fn decode_file(d: &[u8]) -> Result<FileSpec, Error> {
+    Ok(match d[FILE] {
+        0 => FileSpec::Forbidden,
+        1 => FileSpec::Required { writable: false },
+        2 => FileSpec::Required { writable: true },
+        _ => return Err(Error::BadField(FILE)),
+    })
+}
+
+/// The `dir` field and its subtree letter, which must be one of the declared `letters`.
+fn decode_dir(d: &[u8], letters: &[u8]) -> Result<DirSpec, Error> {
+    Ok(match d[DIR] {
+        0 => {
+            zero(d, SUBTREE, 1)?;
+            DirSpec::Forbidden
+        }
+        1 => DirSpec::Required {
+            subtree_flag: match d[SUBTREE] {
+                0 => None,
+                l if letters.contains(&l) => Some(l),
+                _ => return Err(Error::BadField(SUBTREE)),
+            },
+        },
+        _ => return Err(Error::BadField(DIR)),
+    })
+}
+
+/// The `output` field.
+fn decode_output(d: &[u8]) -> Result<OutputSpec, Error> {
+    Ok(match d[OUTPUT] {
+        0 => OutputSpec::Silent,
+        1 => OutputSpec::Words,
+        2 => OutputSpec::Bytes,
+        3 => OutputSpec::BytesAndDiagnostics {
+            slot: DIAGNOSTICS_SLOT,
+        },
+        _ => return Err(Error::BadField(OUTPUT)),
+    })
+}
+
+/// The `input` field and whether it writes while reading, which is zero when it is absent.
+fn decode_input(d: &[u8]) -> Result<InputSpec, Error> {
+    Ok(match d[INPUT] {
+        0 => {
+            zero(d, WRITES_WHILE_READING, 1)?;
+            InputSpec::Forbidden
+        }
+        1 => InputSpec::Required {
+            writes_while_reading: flag(d, WRITES_WHILE_READING)?,
+        },
+        _ => return Err(Error::BadField(INPUT)),
+    })
+}
+
+/// The `runtime` field.
+fn decode_runtime(d: &[u8]) -> Result<Runtime, Error> {
+    Ok(match d[RUNTIME] {
+        0 => Runtime::Native,
+        1 => Runtime::Std,
+        _ => return Err(Error::BadField(RUNTIME)),
     })
 }
 

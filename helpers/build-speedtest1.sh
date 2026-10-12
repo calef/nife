@@ -64,7 +64,8 @@ CC="$("$ROOT/helpers/c-library-cc.sh")"
 for TRIPLE in ${NIFE_SPEEDTEST1_TRIPLES:-aarch64-unknown-nife riscv64-unknown-nife x86_64-unknown-nife}; do
   OBJ="$BUILD/obj/$TRIPLE"
   mkdir -p "$OBJ"
-  read -r -a CFLAGS <<< "$("$ROOT/helpers/c-library-cflags.sh" "$TRIPLE")"
+  # The flags come on two lines (target, then library), and `read` stops at the first newline.
+  read -r -a CFLAGS <<< "$("$ROOT/helpers/c-library-cflags.sh" "$TRIPLE" | tr '\n' ' ')"
   SQLITE_OPTS=(-O2 -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION)
   echo "build-speedtest1: compiling SQLite $VERSION for $TRIPLE"
   "$CC" "${CFLAGS[@]}" "${SQLITE_OPTS[@]}" -c "$BUILD/$AMALGAMATION/sqlite3.c" -o "$OBJ/sqlite3.o"

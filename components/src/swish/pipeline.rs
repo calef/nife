@@ -170,55 +170,16 @@ pub(super) fn run_pipeline(
     // **Before the files are opened**, which is the whole reason this is the first thing in the
     // function: a `>` truncates, and a line that is not going to run must not have emptied a file.
     if let Err(r) = grant_plan::check_chain(inp.is_some() || head_builtin, &plans[..n]) {
-        refused();
-        print(b"  ");
-        // Named after the first stage that answers while it reads, which is the one a person would
-        // reach for `| wc` about. The sentence itself is about the *line* and says so.
-        if let Some(e) = plans[..n].iter().flatten().find(|e| e.writes_while_reading) {
-            print(e.prog.name().as_bytes());
-            print(b": ");
-        }
-        print(r.message().as_bytes());
-        print(b"\n");
+        say_chain_refused(&plans[..n], r);
         return;
     }
 
     // The files first, before any process exists. A line whose file cannot be opened must not
     // half-run, and `>` truncates here, which is where a person expects it: `date > f` empties `f`
     // even if `date` then says nothing. `>>` is the same call with the emptying left out.
-    let mut sink = match out {
-        Some(g) => match open_sink(nav, g, l.mode()) {
-            Ok(f) => Some(f),
-            Err(s) => return say(s),
-        },
-        None => None,
-    };
-    let mut source = match inp {
-        Some(g) => match open_source(nav, g) {
-            Ok(f) => Some(f),
-            Err(s) => {
-                if let Some(f) = &mut sink {
-                    f.finish();
-                }
-                return say(s);
-            }
-        },
-        None => None,
-    };
-
-    // **The second stream's file, opened on the same terms as the output's** (DECISIONS §67). Held
-    // as an `Option` beside the sink, because a line may name both and they are two files.
-    let mut diag_sink = match diag_file {
-        Some((g, mode)) => match open_sink(nav, g, mode) {
-            Ok(f) => Some(f),
-            Err(s) => {
-                if let Some(f) = &mut sink {
-                    f.finish();
-                }
-                return say(s);
-            }
-        },
-        None => None,
+    let Some((mut sink, mut source, mut diag_sink)) = open_line_files(nav, l, out, inp, diag_file)
+    else {
+        return;
     };
     // How many stages were handed the diagnostic rendezvous, which is what [`drain_diagnostics`]
     // counts end-of-stream messages against. It comes from the manifests rather than from the line:
@@ -248,17 +209,8 @@ pub(super) fn run_pipeline(
     // nobody there to read it), so a mint failure is a loud refusal here, not a silent fallback.
     let tail_writes_while_reading = plans[n - 1].is_some_and(|e| e.writes_while_reading);
     let needs_screen = sink.is_none() && tail_writes_while_reading;
-    let screen_ep = if needs_screen {
-        match screen_rendezvous() {
-            Some(ep) => Some(ep),
-            None => {
-                failed();
-                print(b"  this shell's memory budget is exhausted; nothing left to grant\n");
-                return;
-            }
-        }
-    } else {
-        None
+    let Ok(screen_ep) = screen_for_tail(needs_screen) else {
+        return;
     };
 
     // **A builtin with a file on its output spawns nothing at all.** `ls > out.txt` is one process:
@@ -272,37 +224,9 @@ pub(super) fn run_pipeline(
         return;
     }
 
-    // One region for the whole pipeline, so a line costs one SPLIT and one DESTROY however many
-    // stages it has. Each joint's rendezvous is a page retyped out of it.
-    let Some(region) = memory_region_split(PIPE_REGION_PAGES) else {
-        failed();
-        failed();
-        print(b"  this shell's memory budget is exhausted; nothing left to grant\n");
+    let Some((region, pipes, minted)) = mint_pipes(n, source.is_some()) else {
         return;
     };
-    let mut pipes = [0u64; line::MAX_STAGES];
-    let mut minted = 0usize;
-    // A `<` needs one more rendezvous than a bare pipeline does: the head stage reads a pipe like any
-    // other stage, and the shell is what writes into it. That is the input side of "the same
-    // contract, read from the other end" made concrete: nothing about the head stage knows.
-    let mut want = n - 1;
-    if source.is_some() {
-        want += 1;
-    }
-    while minted < want {
-        match retype_rendezvous(region) {
-            Some(ep) => {
-                pipes[minted] = ep;
-                minted += 1;
-            }
-            None => {
-                failed();
-                print(b"  could not mint a pipe from this shell's budget\n");
-                release_pipeline(region, &pipes[..minted]);
-                return;
-            }
-        }
-    }
     let feed_pipe = source.is_some().then(|| pipes[n - 1]);
 
     // **Every stage that hears words gets its argv written before any stage is spawned**
@@ -314,109 +238,32 @@ pub(super) fn run_pipeline(
     // **And every stage's words grant, the same way** (milestone 205's designation half): a stage
     // that hears words is granted what they designated, on window `i`.
     let mut sets = [None::<WordsGrant>; line::MAX_STAGES];
-    // Carved argv then set, stage by stage, so they go back in exactly the reverse order and each is
-    // the top of this shell's budget when it goes (a region returns its pages only then).
-    let give_back = |argvs: &[Option<Argv>], sets: &[Option<WordsGrant>], unsent: bool| {
-        for i in (0..argvs.len()).rev() {
-            if let Some(w) = &sets[i] {
-                release_words_grant(w, unsent);
-            }
-            if let Some(a) = argvs[i] {
-                release_argv(a, unsent);
-            }
-        }
-    };
-    for i in 0..n {
-        let Some(e) = plans[i].filter(|_| !(i == 0 && head_builtin)) else {
-            continue;
-        };
-        let grant_plan::ArgSpec::Words(grant) = e.prog.manifest().arg else {
-            continue;
-        };
-        let assembled = assemble_argv(l.stages()[i], i)
-            .map_err(|why| why.map(|r| r.message().as_bytes()))
-            .and_then(|a| {
-                argvs[i] = Some(a);
-                match e.dir {
-                    Some(g) => words_grant(&g, grant, i).map(|w| {
-                        sets[i] = Some(w);
-                    }),
-                    None => Ok(()),
-                }
-            });
-        if let Err(why) = assembled {
-            give_back(&argvs, &sets, true);
-            release_pipeline(region, &pipes[..minted]);
-            match why {
-                Some(sentence) => {
-                    refused();
-                    print(b"  ");
-                    print(e.prog.name().as_bytes());
-                    print(b": ");
-                    print(sentence.trim_ascii_start());
-                    if sentence.last() != Some(&b'\n') {
-                        print(b"\n");
-                    }
-                }
-                None => out_of_budget(),
-            }
-            return;
-        }
+    if let Err((prog, why)) = write_stage_words(l, &plans[..n], head_builtin, &mut argvs, &mut sets)
+    {
+        give_back_words(&argvs, &sets, true);
+        release_pipeline(region, &pipes[..minted]);
+        say_stage_words_failed(prog, why);
+        return;
     }
 
     // Left to right, which is the order that cannot deadlock: a producer blocks in its first `SEND`
     // until its reader exists, and its reader is the next thing this loop spawns.
-    for i in 0..n {
-        if i == 0 && head_builtin {
-            continue;
-        }
-        let Some(e) = plans[i] else { continue };
-        let stage_sink = if i + 1 < n { Some(pipes[i]) } else { None };
-        let stage_source = if i > 0 { Some(pipes[i - 1]) } else { feed_pipe };
-        let stage_diag = match e.diagnostics {
-            line::Diagnostics::File(..) => diag_rendezvous(),
-            _ => None,
-        };
-        // Only the tail stage is ever eligible (`screen_ep` is `None` unless the tail's own sink is
-        // unset), and `sink_for` never puts `Sink::Report` anywhere but the last stage, so this
-        // could equally read `i == n - 1` without the `Some` check; both say the same thing.
-        let stage_screen = screen_ep.filter(|_| i + 1 == n);
-        if !spawn_stage(
-            e,
-            stage_sink,
-            stage_source,
-            stage_diag,
-            stage_screen,
-            argvs[i],
-            sets[i],
-        ) {
-            // Stages after this one never sent their frames, so their slots go too.
-            for a in argvs[i + 1..].iter().flatten() {
-                cap_delete(a.frame);
-            }
-            for w in sets[i + 1..].iter().flatten() {
-                if let Some(p) = w.set {
-                    cap_delete(p.frame);
-                }
-            }
-            give_back(&argvs, &sets, false);
-            release_pipeline(region, &pipes[..minted]);
-            return;
-        }
+    let ends = StageEnds {
+        pipes: &pipes,
+        feed_pipe,
+        screen_ep,
+    };
+    if !spawn_stages(&plans[..n], head_builtin, &ends, &argvs, &sets) {
+        give_back_words(&argvs, &sets, false);
+        release_pipeline(region, &pipes[..minted]);
+        return;
     }
 
     // **Diagnostics before anything else**, because in `date | wc` this shell is not the reader of
     // `date`'s output and draining the output first would wait on `wc`, which waits on `date`, which
     // is blocked in a rendezvous send on the diagnostic rendezvous. See [`drain_diagnostics`].
     if let Some(f) = &mut diag_sink {
-        if declarers > 0 {
-            drain_diagnostics(f, declarers);
-            f.report();
-        } else {
-            // A `2>` on a line where nothing was spawned to write to it. Close the file rather than
-            // leaving a handle open on a name the line created.
-            f.finish();
-        }
+        finish_diagnostics(f, declarers);
     }
 
     // The shell as the producer, in either of its two shapes. Both run after every reader exists,
@@ -444,8 +291,267 @@ pub(super) fn run_pipeline(
             None => drain_text(),
         },
     }
-    give_back(&argvs, &sets, false);
+    give_back_words(&argvs, &sets, false);
     release_pipeline(region, &pipes[..minted]);
+}
+
+/// The screen rendezvous for a screen-narrowed tail, minted only when `needs_screen`. `Err` when
+/// it could not be minted, which it has already said.
+fn screen_for_tail(needs_screen: bool) -> Result<Option<u64>, ()> {
+    if needs_screen {
+        match screen_rendezvous() {
+            Some(ep) => Ok(Some(ep)),
+            None => {
+                failed();
+                print(b"  this shell's memory budget is exhausted; nothing left to grant\n");
+                Err(())
+            }
+        }
+    } else {
+        Ok(None)
+    }
+}
+
+/// Say why `check_chain` refused the line, naming the first stage of `plans` that answers while it
+/// reads.
+fn say_chain_refused(plans: &[Option<Endowment>], r: Refusal) {
+    refused();
+    print(b"  ");
+    // Named after the first stage that answers while it reads, which is the one a person would
+    // reach for `| wc` about. The sentence itself is about the *line* and says so.
+    if let Some(e) = plans.iter().flatten().find(|e| e.writes_while_reading) {
+        print(e.prog.name().as_bytes());
+        print(b": ");
+    }
+    print(r.message().as_bytes());
+    print(b"\n");
+}
+
+/// Drain the `2>` file from the `declarers` stages that write to it, or close it when none do.
+fn finish_diagnostics(f: &mut FileOut, declarers: usize) {
+    if declarers > 0 {
+        drain_diagnostics(f, declarers);
+        f.report();
+    } else {
+        // A `2>` on a line where nothing was spawned to write to it. Close the file rather than
+        // leaving a handle open on a name the line created.
+        f.finish();
+    }
+}
+
+/// [`run_pipeline`]'s `>`, `<` and `2>` files, opened in that order. On a failure the output file
+/// (if it was opened) is finished, the reason is said, and the answer is `None`.
+fn open_line_files(
+    nav: &mut Nav,
+    l: Line<'_>,
+    out: Option<grant_plan::FileGrant>,
+    inp: Option<grant_plan::FileGrant>,
+    diag_file: Option<(grant_plan::FileGrant, line::Mode)>,
+) -> Option<(Option<FileOut>, Option<FileIn>, Option<FileOut>)> {
+    let mut sink = match out {
+        Some(g) => match open_sink(nav, g, l.mode()) {
+            Ok(f) => Some(f),
+            Err(s) => {
+                say(s);
+                return None;
+            }
+        },
+        None => None,
+    };
+    let source = match inp {
+        Some(g) => match open_source(nav, g) {
+            Ok(f) => Some(f),
+            Err(s) => {
+                if let Some(f) = &mut sink {
+                    f.finish();
+                }
+                say(s);
+                return None;
+            }
+        },
+        None => None,
+    };
+
+    // **The second stream's file, opened on the same terms as the output's** (DECISIONS §67). Held
+    // as an `Option` beside the sink, because a line may name both and they are two files.
+    let diag_sink = match diag_file {
+        Some((g, mode)) => match open_sink(nav, g, mode) {
+            Ok(f) => Some(f),
+            Err(s) => {
+                if let Some(f) = &mut sink {
+                    f.finish();
+                }
+                say(s);
+                return None;
+            }
+        },
+        None => None,
+    };
+    Some((sink, source, diag_sink))
+}
+
+/// Split the pipeline's region and retype its pipe rendezvous out of it, one per joint and one more
+/// when the shell feeds the head. On a failure it says so, gives back what it took, and answers `None`.
+fn mint_pipes(n: usize, feeds_head: bool) -> Option<(u64, [u64; line::MAX_STAGES], usize)> {
+    // One region for the whole pipeline, so a line costs one SPLIT and one DESTROY however many
+    // stages it has. Each joint's rendezvous is a page retyped out of it.
+    let Some(region) = memory_region_split(PIPE_REGION_PAGES) else {
+        failed();
+        failed();
+        print(b"  this shell's memory budget is exhausted; nothing left to grant\n");
+        return None;
+    };
+    let mut pipes = [0u64; line::MAX_STAGES];
+    let mut minted = 0usize;
+    // A `<` needs one more rendezvous than a bare pipeline does: the head stage reads a pipe like any
+    // other stage, and the shell is what writes into it. That is the input side of "the same
+    // contract, read from the other end" made concrete: nothing about the head stage knows.
+    let mut want = n - 1;
+    if feeds_head {
+        want += 1;
+    }
+    while minted < want {
+        match retype_rendezvous(region) {
+            Some(ep) => {
+                pipes[minted] = ep;
+                minted += 1;
+            }
+            None => {
+                failed();
+                print(b"  could not mint a pipe from this shell's budget\n");
+                release_pipeline(region, &pipes[..minted]);
+                return None;
+            }
+        }
+    }
+    Some((region, pipes, minted))
+}
+
+/// Give back every stage's argv and words grant.
+///
+/// Carved argv then set, stage by stage, so they go back in exactly the reverse order and each is
+/// the top of this shell's budget when it goes (a region returns its pages only then).
+fn give_back_words(argvs: &[Option<Argv>], sets: &[Option<WordsGrant>], unsent: bool) {
+    for i in (0..argvs.len()).rev() {
+        if let Some(w) = &sets[i] {
+            release_words_grant(w, unsent);
+        }
+        if let Some(a) = argvs[i] {
+            release_argv(a, unsent);
+        }
+    }
+}
+
+/// Write the argv and the words grant of every stage in `plans` that hears words. A failure
+/// answers the stage's program and its sentence (`None` for an exhausted budget) and gives nothing back.
+fn write_stage_words(
+    l: Line<'_>,
+    plans: &[Option<Endowment>],
+    head_builtin: bool,
+    argvs: &mut [Option<Argv>],
+    sets: &mut [Option<WordsGrant>],
+) -> Result<(), (grant_plan::Prog, Option<&'static [u8]>)> {
+    for i in 0..plans.len() {
+        let Some(e) = plans[i].filter(|_| !(i == 0 && head_builtin)) else {
+            continue;
+        };
+        let grant_plan::ArgSpec::Words(grant) = e.prog.manifest().arg else {
+            continue;
+        };
+        let assembled = assemble_argv(l.stages()[i], i)
+            .map_err(|why| why.map(|r| r.message().as_bytes()))
+            .and_then(|a| {
+                argvs[i] = Some(a);
+                match e.dir {
+                    Some(g) => words_grant(&g, grant, i).map(|w| {
+                        sets[i] = Some(w);
+                    }),
+                    None => Ok(()),
+                }
+            });
+        if let Err(why) = assembled {
+            return Err((e.prog, why));
+        }
+    }
+    Ok(())
+}
+
+/// Say why [`write_stage_words`] could not write `prog`'s words: its sentence, or that the
+/// budget ran out.
+fn say_stage_words_failed(prog: grant_plan::Prog, why: Option<&[u8]>) {
+    match why {
+        Some(sentence) => {
+            refused();
+            print(b"  ");
+            print(prog.name().as_bytes());
+            print(b": ");
+            print(sentence.trim_ascii_start());
+            if sentence.last() != Some(&b'\n') {
+                print(b"\n");
+            }
+        }
+        None => out_of_budget(),
+    }
+}
+
+/// The pipe ends [`spawn_stages`] hands out: the joints, the head's feed and the tail's screen.
+struct StageEnds<'a> {
+    pipes: &'a [u64],
+    feed_pipe: Option<u64>,
+    screen_ep: Option<u64>,
+}
+
+/// Spawn every stage of `plans` left to right. On a failure it deletes the frames of the stages
+/// after the one that failed and answers `false`; the caller gives back the rest.
+fn spawn_stages(
+    plans: &[Option<Endowment>],
+    head_builtin: bool,
+    ends: &StageEnds<'_>,
+    argvs: &[Option<Argv>],
+    sets: &[Option<WordsGrant>],
+) -> bool {
+    let n = plans.len();
+    for i in 0..n {
+        if i == 0 && head_builtin {
+            continue;
+        }
+        let Some(e) = plans[i] else { continue };
+        let stage_sink = if i + 1 < n { Some(ends.pipes[i]) } else { None };
+        let stage_source = if i > 0 {
+            Some(ends.pipes[i - 1])
+        } else {
+            ends.feed_pipe
+        };
+        let stage_diag = match e.diagnostics {
+            line::Diagnostics::File(..) => diag_rendezvous(),
+            _ => None,
+        };
+        // Only the tail stage is ever eligible (`screen_ep` is `None` unless the tail's own sink is
+        // unset), and `sink_for` never puts `Sink::Report` anywhere but the last stage, so this
+        // could equally read `i == n - 1` without the `Some` check; both say the same thing.
+        let stage_screen = ends.screen_ep.filter(|_| i + 1 == n);
+        if !spawn_stage(
+            e,
+            stage_sink,
+            stage_source,
+            stage_diag,
+            stage_screen,
+            argvs[i],
+            sets[i],
+        ) {
+            // Stages after this one never sent their frames, so their slots go too.
+            for a in argvs[i + 1..].iter().flatten() {
+                cap_delete(a.frame);
+            }
+            for w in sets[i + 1..].iter().flatten() {
+                if let Some(p) = w.set {
+                    cap_delete(p.frame);
+                }
+            }
+            return false;
+        }
+    }
+    true
 }
 
 /// **Somewhere this shell puts bytes it produced itself.**

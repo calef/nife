@@ -352,6 +352,47 @@ pub extern "C" fn _start(fires_wanted: u64, initial_ramdisk_len: u64, registrati
     // happened yet. A crontab has nothing to print here.
     timetable::write_plan(&reg, &mut say);
 
+    let programs = open_programs(store, registration_page, archive, &reg);
+    let mut images = resolve_or_fail(&reg, &programs);
+
+    // The end of the plan, and the start of the running. One line, because the plan and everything
+    // after it travel down one endpoint and a reader has to know where one stops: `kernel/src/user/
+    // timetable_tests.rs` reads to exactly this line, which is also how a person reading a console
+    // knows nothing had fired before it.
+    say(b"timetable: armed\n");
+
+    reg.arm(monotonic_nanos());
+
+    let mut tally = Tally {
+        held,
+        holds_clock,
+        fired: 0,
+        outstanding: 0,
+        exits: 0,
+        faults: 0,
+    };
+    tally.run(
+        fires_wanted,
+        registration_page,
+        &mut reg,
+        &mut images,
+        &programs,
+    );
+
+    // Drain: every child this timetable started is collected before it reports, so the counts it
+    // prints are complete rather than whatever had happened to arrive.
+    tally.drain();
+    tally.report()
+}
+
+/// **Where the programs come from**, refusing a store with no registration page, and the archive
+/// audit printed beside the plan when there is no registrar.
+fn open_programs(
+    store: bool,
+    registration_page: u64,
+    archive: &'static [u8],
+    reg: &Registry<'_>,
+) -> Programs {
     if store && registration_page == 0 {
         say(b"timetable: it holds the store and no registration page, so it runs nothing\n");
         done(E_STORE)
@@ -375,7 +416,7 @@ pub extern "C" fn _start(fires_wanted: u64, initial_ramdisk_len: u64, registrati
     // from exactly `Registry::programs`), and saying it out loud is what makes the decision
     // checkable from in here rather than only from out there. Not with a registrar: see `BUGS`.
     if let (0, Programs::Archive(fs)) = (registration_page, &programs) {
-        let mut audit = timetable::Audit::of(&reg);
+        let mut audit = timetable::Audit::of(reg);
         for entry in fs.entries() {
             if let Some(name) = entry.name_str() {
                 audit.saw(name);
@@ -383,12 +424,16 @@ pub extern "C" fn _start(fires_wanted: u64, initial_ramdisk_len: u64, registrati
         }
         audit.write(&mut say);
     }
+    programs
+}
 
+/// [`resolve`], or the verdict for the first program the archive does not carry.
+fn resolve_or_fail(reg: &Registry<'_>, programs: &Programs) -> Images {
     // Resolve every admitted entry's program **now**, so a plan that names a program the archive
     // does not carry fails loudly at startup rather than as a fire that quietly does not happen.
     // This is also the moment `Registry::programs`' claim becomes checkable: nothing after this
     // point looks anything else up.
-    let mut images: Images = match resolve(&reg, &programs) {
+    match resolve(reg, programs) {
         Ok(images) => images,
         Err(i) => {
             if let Some(e) = reg.rows()[i].endowment() {
@@ -398,142 +443,168 @@ pub extern "C" fn _start(fires_wanted: u64, initial_ramdisk_len: u64, registrati
             }
             done(E_IMAGE)
         }
-    };
+    }
+}
 
-    // The end of the plan, and the start of the running. One line, because the plan and everything
-    // after it travel down one endpoint and a reader has to know where one stops: `kernel/src/user/
-    // timetable_tests.rs` reads to exactly this line, which is also how a person reading a console
-    // knows nothing had fired before it.
-    say(b"timetable: armed\n");
+/// What every fire is built from, and the running counts: children fired, still outstanding,
+/// and collected clean or faulted.
+struct Tally {
+    held: timetable::Held,
+    holds_clock: bool,
+    fired: u64,
+    outstanding: u64,
+    exits: u64,
+    faults: u64,
+}
 
-    reg.arm(monotonic_nanos());
+impl Tally {
+    /// The schedule loop: take any replacement document, then fire whatever is due, until
+    /// `fires_wanted` fires have happened (forever when it is zero) or the document is emptied.
+    fn run(
+        &mut self,
+        fires_wanted: u64,
+        registration_page: u64,
+        reg: &mut Registry<'static>,
+        images: &mut Images,
+        programs: &Programs,
+    ) {
+        // Which of the two document buffers the registry in force borrows from; see [`DOCUMENTS`].
+        let mut current = 0usize;
+        let mut answered = 0u64;
 
-    // Which of the two document buffers the registry in force borrows from; see [`DOCUMENTS`].
-    let mut current = 0usize;
-    let mut answered = 0u64;
-
-    let mut fired = 0u64;
-    let mut outstanding = 0u64;
-    let mut exits = 0u64;
-    let mut faults = 0u64;
-
-    while fires_wanted == 0 || fired < fires_wanted {
-        if registration_page != 0
-            && replace_if_asked(
-                registration_page,
-                &mut answered,
-                &mut current,
-                &mut reg,
-                &mut images,
-                &programs,
-                held,
-            )
-        {
-            // Emptied: nothing more fires, and what is running finishes below.
-            break;
-        }
-        // The wall clock, once per pass, before anything is due: calendar rows are dormant while it
-        // is unknown and re-armed when its generation moves (S3, `Registry::observe`).
-        reg.observe(if holds_clock { wall_reading() } else { None });
-        let now = monotonic_nanos();
-        let mut any = false;
-        while let Some(i) = reg.due(now) {
-            any = true;
-            // Several entries can come due in one pass, so the count has to be checked **inside**
-            // the pass and not only around it. Without this a run asked for four fires can perform
-            // five, and the fifth child blocks forever on a report nobody is left to take, which
-            // shows up as a hang rather than as an off-by-one.
-            if fires_wanted != 0 && fired >= fires_wanted {
+        while fires_wanted == 0 || self.fired < fires_wanted {
+            if registration_page != 0
+                && replace_if_asked(
+                    registration_page,
+                    &mut answered,
+                    &mut current,
+                    reg,
+                    images,
+                    programs,
+                    self.held,
+                )
+            {
+                // Emptied: nothing more fires, and what is running finishes below.
                 break;
             }
-            let Some(registered) = reg.rows()[i].endowment() else {
-                continue;
-            };
-            // An installed program is resolved and its line planned again now, against what the
-            // live generation names today. When the name no longer resolves, or the plan no longer
-            // fires, the beat is missed (skipped, never retried); `BUGS` says who hears of it.
-            let loaded;
-            // `declared` is the manifest the job's bytes carry: an installed row's endowment is filed
-            // under `grant_plan::IMAGE_ROW`, so nothing may be read off its `prog`.
-            let (elf, e, declared) = match images[i].as_ref() {
-                None => continue,
-                Some(Image::Archived(elf)) => (elf, registered, registered.prog.manifest()),
-                Some(Image::Installed(p)) => {
-                    let Some((elf, m)) = load_current(p) else {
-                        continue;
-                    };
-                    let timetable::Admission::Fires(e) = reg.plan_at_fire(i, m) else {
-                        continue;
-                    };
-                    loaded = elf;
-                    (&loaded, e, m)
+            // The wall clock, once per pass, before anything is due: calendar rows are dormant while it
+            // is unknown and re-armed when its generation moves (S3, `Registry::observe`).
+            reg.observe(if self.holds_clock {
+                wall_reading()
+            } else {
+                None
+            });
+            let now = monotonic_nanos();
+            let mut any = false;
+            while let Some(i) = reg.due(now) {
+                any = true;
+                // Several entries can come due in one pass, so the count has to be checked **inside**
+                // the pass and not only around it. Without this a run asked for four fires can perform
+                // five, and the fifth child blocks forever on a report nobody is left to take, which
+                // shows up as a hang rather than as an off-by-one.
+                if fires_wanted != 0 && self.fired >= fires_wanted {
+                    break;
                 }
-            };
+                self.fire_row(reg, images, i);
+            }
+            if !any {
+                // Nothing is due. There is no timed wait in this kernel, so this is a yield and not a
+                // sleep; see `BUGS`.
+                yield_now();
+            }
+        }
+    }
 
-            if e.mem_pages > 0 {
-                // **Exclusive.** See `BUGS`: a `--mem` grant is nested inside its own instance's
-                // region, and the only signal that ties a death to a grant is a refused reap, which
-                // is unambiguous only when nothing else is outstanding to blame it on. So drain
-                // whatever is already running, fire this one alone, and wait for it to die and its
-                // grant to be reclaimed before anything else in this document fires again.
-                while outstanding > 0 {
-                    collect(&mut exits, &mut faults);
-                    outstanding -= 1;
-                }
-                let clock = holds_clock && declared.clock;
-                let Some(mem_slot) = fire_with_grant(elf, e.arg, e.mem_pages, held.report, clock)
-                else {
-                    say(b"timetable: the budget cannot back one instance\n");
-                    done(E_BUDGET)
+    /// Fire row `i`, which has come due, unless it no longer resolves or no longer plans to fire.
+    fn fire_row(&mut self, reg: &Registry<'_>, images: &Images, i: usize) {
+        let Some(registered) = reg.rows()[i].endowment() else {
+            return;
+        };
+        // An installed program is resolved and its line planned again now, against what the
+        // live generation names today. When the name no longer resolves, or the plan no longer
+        // fires, the beat is missed (skipped, never retried); `BUGS` says who hears of it.
+        let loaded;
+        // `declared` is the manifest the job's bytes carry: an installed row's endowment is filed
+        // under `grant_plan::IMAGE_ROW`, so nothing may be read off its `prog`.
+        let (elf, e, declared) = match images[i].as_ref() {
+            None => return,
+            Some(Image::Archived(elf)) => (elf, registered, registered.prog.manifest()),
+            Some(Image::Installed(p)) => {
+                let Some((elf, m)) = load_current(p) else {
+                    return;
                 };
-                fired += 1;
-                collect_grant(&mut exits, &mut faults, mem_slot);
-                continue;
+                let timetable::Admission::Fires(e) = reg.plan_at_fire(i, m) else {
+                    return;
+                };
+                loaded = elf;
+                (&loaded, e, m)
             }
+        };
 
-            // Fire. If the budget cannot back another instance, block until a corpse comes back and
-            // its region with it, then try once more. A second failure is a budget too small for
-            // even one instance, which is a wiring error rather than congestion.
-            let clock = holds_clock && declared.clock;
-            if !fire(elf, e.arg, held.report, clock) {
-                if outstanding == 0 {
-                    // Nothing is out, so there is nothing to wait for: the budget is too small for
-                    // even one instance, which is a wiring error rather than congestion.
-                    say(b"timetable: the budget cannot back one instance\n");
-                    done(E_BUDGET)
-                }
-                collect(&mut exits, &mut faults);
-                outstanding -= 1;
-                if !fire(elf, e.arg, held.report, clock) {
-                    say(b"timetable: the budget cannot back one instance\n");
-                    done(E_BUDGET)
-                }
-            }
-            outstanding += 1;
-            fired += 1;
+        if e.mem_pages > 0 {
+            let clock = self.holds_clock && declared.clock;
+            self.fire_exclusive(elf, e, clock);
+            return;
         }
-        if !any {
-            // Nothing is due. There is no timed wait in this kernel, so this is a yield and not a
-            // sleep; see `BUGS`.
-            yield_now();
+
+        // Fire. If the budget cannot back another instance, block until a corpse comes back and
+        // its region with it, then try once more. A second failure is a budget too small for
+        // even one instance, which is a wiring error rather than congestion.
+        let clock = self.holds_clock && declared.clock;
+        if !fire(elf, e.arg, self.held.report, clock) {
+            if self.outstanding == 0 {
+                // Nothing is out, so there is nothing to wait for: the budget is too small for
+                // even one instance, which is a wiring error rather than congestion.
+                say(b"timetable: the budget cannot back one instance\n");
+                done(E_BUDGET)
+            }
+            collect(&mut self.exits, &mut self.faults);
+            self.outstanding -= 1;
+            if !fire(elf, e.arg, self.held.report, clock) {
+                say(b"timetable: the budget cannot back one instance\n");
+                done(E_BUDGET)
+            }
+        }
+        self.outstanding += 1;
+        self.fired += 1;
+    }
+
+    /// Fire a row with a `--mem` grant alone, and collect it before returning.
+    fn fire_exclusive(&mut self, elf: &elf::Elf, e: grant_plan::Endowment, clock: bool) {
+        // **Exclusive.** See `BUGS`: a `--mem` grant is nested inside its own instance's
+        // region, and the only signal that ties a death to a grant is a refused reap, which
+        // is unambiguous only when nothing else is outstanding to blame it on. So drain
+        // whatever is already running, fire this one alone, and wait for it to die and its
+        // grant to be reclaimed before anything else in this document fires again.
+        self.drain();
+        let Some(mem_slot) = fire_with_grant(elf, e.arg, e.mem_pages, self.held.report, clock)
+        else {
+            say(b"timetable: the budget cannot back one instance\n");
+            done(E_BUDGET)
+        };
+        self.fired += 1;
+        collect_grant(&mut self.exits, &mut self.faults, mem_slot);
+    }
+
+    /// Collect every child still outstanding.
+    fn drain(&mut self) {
+        while self.outstanding > 0 {
+            collect(&mut self.exits, &mut self.faults);
+            self.outstanding -= 1;
         }
     }
 
-    // Drain: every child this timetable started is collected before it reports, so the counts it
-    // prints are complete rather than whatever had happened to arrive.
-    while outstanding > 0 {
-        collect(&mut exits, &mut faults);
-        outstanding -= 1;
+    /// Print the counts and finish.
+    fn report(&self) -> ! {
+        say(b"timetable: ");
+        say_num(self.fired);
+        say(b" fires, ");
+        say_num(self.exits);
+        say(b" clean exits, ");
+        say_num(self.faults);
+        say(b" faults\n");
+        done(0)
     }
-
-    say(b"timetable: ");
-    say_num(fired);
-    say(b" fires, ");
-    say_num(exits);
-    say(b" clean exits, ");
-    say_num(faults);
-    say(b" faults\n");
-    done(0)
 }
 
 /// **Resolve every admitted row's program in the archive**, or the index of the first that is not

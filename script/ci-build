@@ -142,6 +142,8 @@ test-x86_64|ci|script/test --arch x86_64 --no-host
 swish-check|local|cargo xtask std-exerciser && helpers/build-ripgrep.sh && script/swish-check
 swish-check-aarch64-riscv64|ci|cargo xtask std-exerciser && NIFE_RIPGREP_TRIPLES="aarch64-unknown-nife riscv64-unknown-nife" helpers/build-ripgrep.sh && script/swish-check --arch aarch64 && script/swish-check --arch riscv64
 swish-check-x86_64|ci|cargo xtask std-exerciser && NIFE_RIPGREP_TRIPLES=x86_64-unknown-nife helpers/build-ripgrep.sh && script/swish-check --arch x86_64
+rg-threads-aarch64-riscv64|ci|NIFE_RIPGREP_TRIPLES="aarch64-unknown-nife riscv64-unknown-nife" helpers/build-ripgrep.sh && NIFE_RIPGREP_REQUIRED=1 cargo test -p walk_pricing && NIFE_RIPGREP_REQUIRED=1 NIFE_SMP=4 script/test --arch aarch64,riscv64 --test ripgrep
+rg-threads-x86_64|ci|NIFE_RIPGREP_TRIPLES=x86_64-unknown-nife NIFE_RIPGREP_HOST=0 helpers/build-ripgrep.sh && NIFE_RIPGREP_REQUIRED=1 NIFE_SMP=4 script/test --arch x86_64 --test ripgrep
 boot-check|local|script/boot-check
 hvf|local|hvf_leg
 fastpath-footprint|ci|script/fastpath-footprint
@@ -162,6 +164,13 @@ TABLE
 #
 #   test-aarch64-riscv64 and test-x86_64  the `test` row cut in two for CI's 20-minute job budget;
 #                       a developer runs the whole row.
+#   rg-threads-aarch64-riscv64 and rg-threads-x86_64  `rg` walking in parallel at four cores
+#                       (milestone 121, fatal risk 1's third gap; lane milestone/121-rg-threads,
+#                       2026-10-12 UTC). They rebuild every leg's test image with a filter and boot
+#                       it at `NIFE_SMP=4`, which nothing else boots for the suite, so there is
+#                       nothing warm to share. A developer runs them by name. `NIFE_RIPGREP_REQUIRED`
+#                       turns a missing `rg` from a skip into a failure, here and in `walk_pricing`'s
+#                       host check, whose host `rg` the x86_64 row does not build.
 #   fastpath-footprint  builds two RELEASE kernels, which no other check builds, so there is
 #                       nothing warm to share and a developer would wait for a cold build.
 #   boot-file-size-check builds the release x86_64 UEFI image (a release kernel and archive, which

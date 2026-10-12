@@ -18,7 +18,9 @@
 //! `crates/domain_name_system`; a UDP name server a test owned would have to bind a host port.
 
 use name_resolution_protocol::fixture::{self, CASES};
-use name_resolution_protocol::{Outcome, endowment, grant_messages, status};
+use name_resolution_protocol::{
+    GRANTS_MAX, Outcome, endowment, forget_message, grant_messages, status,
+};
 
 use super::*;
 use crate::cap::{Rights, memory_region_cap, rendezvous_cap, rendezvous_cap_badged};
@@ -104,7 +106,8 @@ fn stack_pages(pages: u64, held: &mut Holding) -> [Mapping; STACK_PAGES_MAX] {
 
 /// **Start the resolver on `stack`**, told to ask `fixture::SERVER` on port 53 over TCP. Returns its
 /// endpoint, from a region of its own in `held`: the resolver blocks there between requests, and
-/// reclaiming that region is what wakes it to die at release.
+/// reclaiming that region is what wakes it to die at release. It holds its own address space at
+/// `endowment::OWN_SPACE_SLOT`, as the progenitor's resolver does, so a forget can unmap.
 pub(super) fn start_resolver(
     stack: RendezvousId,
     entropy: RendezvousId,
@@ -116,7 +119,7 @@ pub(super) fn start_resolver(
     let maps = stack_pages(RESOLVER_STACK_PAGES, held);
     let image = image("name_resolver");
     let tid = crate::sched::spawn(move || {
-        run(
+        run_with_own_space(
             image,
             Spawn {
                 arg0: endowment::server(fixture::SERVER),
@@ -135,6 +138,7 @@ pub(super) fn start_resolver(
                 ],
                 maps: &maps[..RESOLVER_STACK_PAGES as usize],
             },
+            endowment::OWN_SPACE_SLOT, // slot 4: its own space, for a forget's UNMAP
         )
     })
     .expect("could not spawn name_resolver");
@@ -150,6 +154,12 @@ pub(super) fn grant(service: RendezvousId, badge: u32, zone: &str) {
     for (w0, w1) in grant_messages(badge, zone.as_bytes()).expect("a grantable zone") {
         crate::sched::ipc_send(service, [w0, w1, 0]);
     }
+}
+
+/// Play the spawner's half of a forget, once `badge`'s client has ended.
+pub(super) fn forget(service: RendezvousId, badge: u32) {
+    let (w0, w1) = forget_message(badge).expect("a forgettable badge");
+    crate::sched::ipc_send(service, [w0, w1, 0]);
 }
 
 /// Spawn the test client holding `badge` on the resolver and, if `stack` is given, the network.
@@ -309,6 +319,90 @@ fn a_granted_client_resolves_inside_its_zone_and_nothing_outside_it() {
 
     w.held
         .release_or_fail("net_stack, name_resolver and its clients");
+}
+
+/// **A forgotten badge is denied every name, and the window it held serves the next client**
+/// (milestone 892 (a std program at the prompt holds the network and a resolver)).
+///
+/// The progenitor at the prompt is a spawner that outlives its clients: every `jig` is a fresh job
+/// with a fresh badge, and the resolver has [`GRANTS_MAX`] windows for its whole life. Before the
+/// forget verb, the ninth `jig` of a boot would have been refused a grant.
+///
+/// Every window but the first is filled with a grant nobody uses, so the forgotten badge's window
+/// is the only free one. The second client therefore lands where the first one's page was mapped,
+/// and resolves only if the forget both freed the grant (or the grant is `Full` and every name
+/// `DENIED`) and gave up the page (or its own page cannot be mapped and every name is
+/// `NOT_ATTACHED`). Meanwhile the first badge, given to a new client, is denied every name.
+///
+/// Falsification: replayable `system_tests/falsifications/user.name_resolver_tests.a_forgotten_badge_is_denied_and_its_window_serves_the_next_client.patch`
+#[test_case]
+fn a_forgotten_badge_is_denied_and_its_window_serves_the_next_client() {
+    const FIRST: u32 = 0x892;
+    const SECOND: u32 = 0x893;
+    const UNUSED: u32 = 0x8920;
+    let Some(entropy) = entropy() else {
+        crate::testing::skip!(
+            "no entropy source on this machine, and the resolver asks nothing without one"
+        );
+    };
+    let mut w = match e1000e_service::start_net_server(
+        image("net_stack"),
+        socket_protocol::NO_LISTEN_GRANT,
+    ) {
+        Ok(w) => w,
+        Err(e1000e_service::Absent::NoController) => {
+            crate::testing::skip!("no e1000e NIC attached");
+        }
+        Err(why) => panic!("the e1000e NIC is on the bus and its bring-up refused: {why:?}"),
+    };
+    let _ = crate::sched::ipc_receive(w.report);
+    let service = start_resolver(w.stack, entropy, &mut w.held);
+    grant(service, FIRST, fixture::ZONE);
+    for k in 1..GRANTS_MAX as u32 {
+        grant(service, UNUSED + k, fixture::ZONE);
+    }
+
+    // Each client's first case is the zone's own host; what it answers is the claim.
+    let first_case = |badge: u32, held: &mut Holding| {
+        let report = start_client(service, badge, None, held);
+        let mut first = 0;
+        for i in 0..=CASES.len() {
+            let [_, word, _] = next_report(report, i);
+            if i == 0 {
+                first = word;
+            }
+        }
+        Outcome::from_word(first).map(|o| o.status)
+    };
+    assert_eq!(
+        first_case(FIRST, &mut w.held),
+        Some(status::OK),
+        "the first client could not resolve its zone, so nothing after this means anything",
+    );
+    forget(service, FIRST);
+    // The first client's budget stays in `w.held` until the end, so its page is never revoked out
+    // from under the resolver: only the forget's own `UNMAP` can have emptied the window. The two
+    // clients after it have holdings of their own, because one holding has room for so many.
+    let mut denied = Holding::new();
+    assert_eq!(
+        first_case(FIRST, &mut denied),
+        Some(status::DENIED),
+        "a forgotten badge still resolved",
+    );
+    denied.release_or_fail("the client holding a forgotten badge");
+    grant(service, SECOND, fixture::ZONE);
+    let mut second = Holding::new();
+    let answered = first_case(SECOND, &mut second);
+    second.release_or_fail("the client in the forgotten window");
+    assert_eq!(
+        answered,
+        Some(status::OK),
+        "the next badge did not resolve in the forgotten window (DENIED: the grant was refused as \
+         Full; NOT_ATTACHED: the old page was still mapped there)",
+    );
+
+    w.held
+        .release_or_fail("net_stack, name_resolver and its forgotten clients");
 }
 
 /// The badge `std_resolve`'s capability carries, granted the same zone as the native client's.

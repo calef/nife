@@ -75,21 +75,6 @@ pub extern "C" fn _start(mode: u64, elf_len: u64, swap: u64) -> ! {
         &component::CONSOLE
     };
     let control_in_child = component_plan::slot_of(decl, "control");
-    // The sink's reply endpoint is routed whether or not the declaration names it: a provision
-    // nothing asks for is not an error, and one table serves both modes.
-    let provisions = |control: u64| -> [(&'static str, u64); 9] {
-        [
-            ("terminal", s::TERMINAL),
-            ("sink", s::SINK),
-            ("sink_reply", s::SINK_REPLY),
-            ("control", control),
-            ("supervisor", notify),
-            ("sink_page", s::SINK_PAGE),
-            ("client_out", s::CLIENT_OUT),
-            ("client_in", s::CLIENT_IN),
-            (component_plan::HANDOFF_ROLE, handoff),
-        ]
-    };
 
     // **Two bays, one per instance, split once and reused.** A child's region comes home to the
     // region it was split from, and only un-bumps that region's watermark when it is on top. Built
@@ -99,20 +84,28 @@ pub extern "C" fn _start(mode: u64, elf_len: u64, swap: u64) -> ! {
     // it is the only child and so always on top.
     let bays = [bay(decl), bay(decl)];
 
-    let mut current = 0usize;
-    let mut started = 0u64;
-    let held = provisions(controls[current]);
-    let Ok(plan) = component_plan::plan(decl, &Provisions { held: &held }) else {
-        fail()
+    let mut sup = Supervisor {
+        image,
+        decl,
+        mode,
+        control_in_child,
+        faultep,
+        controls,
+        notify,
+        handoff,
+        bays,
+        current: 0,
+        started: 0,
     };
+    let plan = sup.plan_for(sup.controls[sup.current]);
     launch(
-        &image,
+        &sup.image,
         &plan,
-        bays[current],
+        sup.bays[sup.current],
         faultep,
         [mode, control_in_child, proto::START_HANDOFF],
     );
-    started += 1;
+    sup.started += 1;
 
     if swap == 0 {
         // No trigger on this boot (see BUGS). Hold everything and wait, so the objects stay ours.
@@ -130,40 +123,90 @@ pub extern "C" fn _start(mode: u64, elf_len: u64, swap: u64) -> ! {
             continue;
         };
         if verb == s::STOP {
-            let (q, _) =
-                user_mode_runtime::call(s::TERMINAL, proto::req(proto::OPERATION_QUIESCE, 0), 0);
-            if q != proto::QUIESCED {
-                fail()
-            }
-            send(controls[current], proto::CTL_QUIT, 0, 0);
-            collect(faultep);
-            // Both bays are empty now, and a budget with children cannot be reclaimed by whoever
-            // owns it, so give them back before going.
-            for b in bays {
-                if !supervision_protocol::memory_region_destroy(b) {
-                    fail()
-                }
-            }
-            reply(caller, s::STOPPED, started);
-            user_mode_runtime::exit()
+            sup.stop(caller)
         }
         if verb != s::SWAP {
             reply(caller, proto::BAD_REQUEST, 0);
             continue;
         }
-        let next = 1 - current;
-        let held = provisions(controls[next]);
-        let Ok(plan) = component_plan::plan(decl, &Provisions { held: &held }) else {
+        sup.swap(caller);
+    }
+}
+
+/// Everything the swap loop works with: the image and declaration every instance is built from,
+/// the objects this supervisor made, and which bay holds the live instance.
+struct Supervisor<'a> {
+    image: elf::Elf<'a>,
+    decl: &'static component_plan::Requirements,
+    mode: u64,
+    control_in_child: u64,
+    faultep: u64,
+    controls: [u64; 2],
+    notify: u64,
+    handoff: u64,
+    bays: [u64; 2],
+    /// Which bay, and which control endpoint, belong to the live instance.
+    current: usize,
+    /// How many instances have been started, reported back on `SWAPPED` and `STOPPED`.
+    started: u64,
+}
+
+impl Supervisor<'_> {
+    /// The plan for an instance whose control endpoint is `control`.
+    fn plan_for(&self, control: u64) -> component_plan::Plan {
+        // The sink's reply endpoint is routed whether or not the declaration names it: a provision
+        // nothing asks for is not an error, and one table serves both modes.
+        let held: [(&'static str, u64); 9] = [
+            ("terminal", s::TERMINAL),
+            ("sink", s::SINK),
+            ("sink_reply", s::SINK_REPLY),
+            ("control", control),
+            ("supervisor", self.notify),
+            ("sink_page", s::SINK_PAGE),
+            ("client_out", s::CLIENT_OUT),
+            ("client_in", s::CLIENT_IN),
+            (component_plan::HANDOFF_ROLE, self.handoff),
+        ];
+        let Ok(plan) = component_plan::plan(self.decl, &Provisions { held: &held }) else {
             fail()
         };
-        let Ok(region) = supervision_protocol::memory_region_split(bays[next], plan.pages()) else {
+        plan
+    }
+
+    /// `STOP`: quiesce and retire the live instance, give both bays back, and exit.
+    fn stop(&self, caller: user_mode_runtime::Reply) -> ! {
+        let (q, _) =
+            user_mode_runtime::call(s::TERMINAL, proto::req(proto::OPERATION_QUIESCE, 0), 0);
+        if q != proto::QUIESCED {
+            fail()
+        }
+        send(self.controls[self.current], proto::CTL_QUIT, 0, 0);
+        collect(self.faultep);
+        // Both bays are empty now, and a budget with children cannot be reclaimed by whoever
+        // owns it, so give them back before going.
+        for b in self.bays {
+            if !supervision_protocol::memory_region_destroy(b) {
+                fail()
+            }
+        }
+        reply(caller, s::STOPPED, self.started);
+        user_mode_runtime::exit()
+    }
+
+    /// `SWAP`: build a replacement in the other bay, quiesce the incumbent, start the replacement
+    /// absorbing its state, and commit or roll back on what the replacement says.
+    fn swap(&mut self, caller: user_mode_runtime::Reply) {
+        let next = 1 - self.current;
+        let plan = self.plan_for(self.controls[next]);
+        let Ok(region) = supervision_protocol::memory_region_split(self.bays[next], plan.pages())
+        else {
             fail()
         };
         let Ok((child, aspace)) = supervision_protocol::build_child_space(
             s::BUDGET,
             region,
-            &image,
-            &endowment(&plan, faultep),
+            &self.image,
+            &endowment(&plan, self.faultep),
         ) else {
             fail()
         };
@@ -173,28 +216,28 @@ pub extern "C" fn _start(mode: u64, elf_len: u64, swap: u64) -> ! {
         if q != proto::QUIESCED {
             fail()
         }
-        if supervision_protocol::configure_child(child.tcb, aspace, image.entry()).is_err()
+        if supervision_protocol::configure_child(child.tcb, aspace, self.image.entry()).is_err()
             || !supervision_protocol::start_child(
                 child,
-                mode,
-                control_in_child,
+                self.mode,
+                self.control_in_child,
                 proto::START_HANDOFF | proto::START_ABSORB,
             )
         {
             fail()
         }
         cap_delete(region);
-        started += 1;
+        self.started += 1;
 
-        let (note, why, _) = receive(notify);
+        let (note, why, _) = receive(self.notify);
         if note == proto::NOTE_ABSORBED {
-            send(controls[current], proto::CTL_QUIT, 0, 0);
-            collect(faultep);
-            current = next;
-            reply(caller, s::SWAPPED, started);
+            send(self.controls[self.current], proto::CTL_QUIT, 0, 0);
+            collect(self.faultep);
+            self.current = next;
+            reply(caller, s::SWAPPED, self.started);
         } else {
-            collect(faultep);
-            send(controls[current], proto::CTL_RESUME, 0, 0);
+            collect(self.faultep);
+            send(self.controls[self.current], proto::CTL_RESUME, 0, 0);
             reply(caller, s::ROLLED_BACK, why);
         }
     }

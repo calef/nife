@@ -2,7 +2,7 @@
 status: NOT-STARTED
 raised: 2026-10-08
 promoted_from: stream-on-nife-and-linux
-milestone_dependencies: 835
+milestone_dependencies: 835, 809, 801
 decision_dependencies: 262, 265
 machine_requirements: silicon, radon, xenon, later argon
 specific_machine: none
@@ -67,6 +67,19 @@ icount baseline per workload step, `--check` failing on drift). The wall-clock r
 silicon on a schedule, as the runbook does for the soak, and write dated rows to
 `notes/benchmarks.md` with the Linux row beside them. A run that cannot reach the board writes
 nothing rather than a TCG number.
+
+## Done when
+
+*Amended 2026-10-12 (UTC) under §297 (software reaches a nife system as a package `jig` installs
+from basalt's index, the kernel included). calef, that day: "They should all be installed via jig
+through basalt."*
+
+STREAM must run on nife installed by `jig install` from basalt's package index. basalt builds the
+package against the nife commit it pins. A binary from a `helpers/build-*.sh` script may feed the
+work until then. So may one packed into an image or copied onto a disk. No exit is taken on either.
+The install waits on milestone 809 (the package client becomes a program, `jig`, with the verbs an
+index needs). It also waits on milestone 801 (packages over the internet: a host name, HTTPS and the
+distribution's index).
 
 ## Index row
 

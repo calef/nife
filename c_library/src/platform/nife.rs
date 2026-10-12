@@ -29,20 +29,23 @@
 //!
 //! # Threads
 //!
-//! A stage-1 program has one thread, so the table lives in a `static` behind a cell with an `unsafe
-//! impl Sync` that says so. Stage 2 (milestone 836 (a C library, stage 2: threads)) replaces it
-//! with a lock.
+//! Every thread of a C program shares the one descriptor table, behind a `std::sync::Mutex`
+//! (milestone 836 (a C library, stage 2: threads)). A call on a file holds it for the call, so two
+//! threads' file calls take turns; a call that can wait (a pipe or socket read or write) takes the
+//! descriptor's object out of the table and lets the lock go before it waits. `errno` is per
+//! thread (`platform::ERRNO`). The threads themselves are `std` threads (`crate::pthread`), and
+//! relibc's locks wait through `futex.rs`.
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
-use core::cell::RefCell;
 use core::num::NonZeroU64;
 use core::ptr;
 use std::io::{Read, Seek, SeekFrom, Write};
 
 use super::types::*;
-use super::{Pal, PalSignal};
+use super::{Pal, PalSignal, PalSocket};
 use crate::c_str::CStr;
 use crate::error::{Errno, Result};
 use crate::header::bits_sigset_t::sigset_t;
@@ -51,6 +54,7 @@ use crate::header::fcntl::*;
 use crate::header::signal::{sigaction, siginfo_t, sigval, stack_t};
 use crate::header::sys_mman::{MAP_ANONYMOUS, MAP_FIXED};
 use crate::header::sys_select::timeval;
+use crate::header::sys_socket::{msghdr, socklen_t};
 use crate::header::sys_stat::{S_IFDIR, S_IFREG, stat};
 use crate::header::sys_time::timezone;
 use crate::header::sys_uio::iovec;
@@ -79,6 +83,9 @@ enum Description {
         path: String,
         flags: c_int,
     },
+    /// One end of a pipe or of a socket pair (`stream.rs`). Shared, so a read or write can wait
+    /// on it with the table's lock let go.
+    Stream(Arc<super::stream::End>),
 }
 
 /// The process's descriptor table, and the anonymous mappings `munmap` must give back.
@@ -88,12 +95,7 @@ struct Table {
     signals: Signals,
 }
 
-struct OneThread(RefCell<Table>);
-// SAFETY: a stage-1 process has exactly one thread (the userspace targets are `singlethread`), so
-// the table is never reached from two threads. Milestone 836 replaces this with a lock.
-unsafe impl Sync for OneThread {}
-
-static TABLE: OneThread = OneThread(RefCell::new(Table {
+static TABLE: std::sync::Mutex<Table> = std::sync::Mutex::new(Table {
     fds: Vec::new(),
     maps: BTreeMap::new(),
     signals: Signals {
@@ -101,10 +103,13 @@ static TABLE: OneThread = OneThread(RefCell::new(Table {
         mask: 0,
         pending: 0,
     },
-}));
+});
 
+/// Run `f` on the descriptor table, holding its lock. `f` must not wait on anything another thread
+/// of this process provides, or that thread could not reach the table to provide it.
 fn with_table<R>(f: impl FnOnce(&mut Table) -> R) -> R {
-    let mut t = TABLE.0.borrow_mut();
+    // A panic aborts a nife process (`panic = "abort"`), so a poisoned lock is never observed.
+    let mut t = TABLE.lock().unwrap_or_else(|e| e.into_inner());
     if t.fds.is_empty() {
         t.fds.push(Some(Description::Stdin));
         t.fds.push(Some(Description::Stdout));
@@ -120,6 +125,15 @@ fn with_fd<R>(fd: c_int, f: impl FnOnce(&mut Description) -> Result<R>) -> Resul
             Some(Some(d)) => f(d),
             _ => Err(Errno(EBADF)),
         }
+    })
+}
+
+/// The stream `fd` names, taken out of the table so the caller can wait on it unlocked; `None` if
+/// `fd` is open but not a stream.
+fn stream_of(fd: c_int) -> Result<Option<Arc<super::stream::End>>> {
+    with_fd(fd, |d| match d {
+        Description::Stream(end) => Ok(Some(Arc::clone(end))),
+        _ => Ok(None),
     })
 }
 
@@ -255,21 +269,21 @@ fn fill_stat(mut buf: Out<stat>, md: &std::fs::Metadata, path: &str) {
         tv_sec: mtime.as_secs() as time_t,
         tv_nsec: c_long::from(mtime.subsec_nanos() as i32),
     };
-    // SAFETY: `stat` is plain data, and every field is written below or zero.
-    let mut st: stat = unsafe { core::mem::zeroed() };
-    st.st_dev = 0;
-    st.st_ino = ino_of(path) as ino_t;
-    st.st_nlink = 1;
-    st.st_mode = mode;
-    st.st_uid = NOBODY as uid_t;
-    st.st_gid = NOBODY as gid_t;
-    st.st_size = md.len() as off_t;
-    st.st_blksize = PAGE as blksize_t;
-    st.st_blocks = md.len().div_ceil(512) as blkcnt_t;
-    st.st_atim = timespec { ..ts };
-    st.st_mtim = timespec { ..ts };
-    st.st_ctim = ts;
-    buf.write(st);
+    buf.write(stat {
+        st_dev: 0,
+        st_ino: ino_of(path) as ino_t,
+        st_nlink: 1,
+        st_mode: mode,
+        st_uid: NOBODY as uid_t,
+        st_gid: NOBODY as gid_t,
+        st_size: md.len() as off_t,
+        st_blksize: PAGE as blksize_t,
+        st_blocks: md.len().div_ceil(512) as blkcnt_t,
+        st_atim: timespec { ..ts },
+        st_mtim: timespec { ..ts },
+        st_ctim: ts,
+        ..stat::default()
+    });
 }
 
 fn duration_to_timespec(d: core::time::Duration) -> timespec {
@@ -280,8 +294,9 @@ fn duration_to_timespec(d: core::time::Duration) -> timespec {
 }
 
 /// The monotonic clock's zero: the first time anything asked. `Instant` has no absolute value on
-/// any platform, so `CLOCK_MONOTONIC` counts from here.
-fn monotonic() -> core::time::Duration {
+/// any platform, so `CLOCK_MONOTONIC` counts from here. `futex.rs` and `stream.rs` measure their
+/// deadlines on it, because relibc passes a futex deadline on `CLOCK_MONOTONIC`.
+pub(crate) fn monotonic() -> core::time::Duration {
     static ZERO: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
     ZERO.get_or_init(std::time::Instant::now).elapsed()
 }
@@ -428,15 +443,31 @@ impl Pal for Sys {
                 fill_stat(buf, &md, path);
                 Ok(())
             }
+            Description::Stream(end) => {
+                // A pipe end is a FIFO and a socket pair's end a socket, with nothing to size.
+                let mut b = buf;
+                let kind = if end.socket {
+                    crate::header::sys_stat::S_IFSOCK
+                } else {
+                    crate::header::sys_stat::S_IFIFO
+                };
+                b.write(stat {
+                    st_mode: kind | 0o600,
+                    st_nlink: 1,
+                    st_blksize: PAGE as blksize_t,
+                    ..stat::default()
+                });
+                Ok(())
+            }
             _ => {
                 // The standard streams are character devices with no size.
                 let mut b = buf;
-                // SAFETY: `stat` is plain data.
-                let mut st: stat = unsafe { core::mem::zeroed() };
-                st.st_mode = crate::header::sys_stat::S_IFCHR | 0o620;
-                st.st_nlink = 1;
-                st.st_blksize = PAGE as blksize_t;
-                b.write(st);
+                b.write(stat {
+                    st_mode: crate::header::sys_stat::S_IFCHR | 0o620,
+                    st_nlink: 1,
+                    st_blksize: PAGE as blksize_t,
+                    ..stat::default()
+                });
                 Ok(())
             }
         })
@@ -457,7 +488,7 @@ impl Pal for Sys {
         }
     }
 
-    fn fcntl(fildes: c_int, cmd: c_int, _arg: c_ulonglong) -> Result<c_int> {
+    fn fcntl(fildes: c_int, cmd: c_int, arg: c_ulonglong) -> Result<c_int> {
         with_fd(fildes, |d| match cmd {
             // No `exec`, so close-on-exec is always true and changes nothing.
             F_GETFD => Ok(FD_CLOEXEC),
@@ -466,7 +497,17 @@ impl Pal for Sys {
                 Description::File { flags, .. } | Description::Directory { flags, .. } => *flags,
                 Description::Stdin => O_RDONLY,
                 Description::Stdout | Description::Stderr => O_WRONLY,
+                Description::Stream(end) => {
+                    end.access() | if end.nonblocking() { O_NONBLOCK } else { 0 }
+                }
             }),
+            // Only a stream has a flag that can change: whether it waits (`O_NONBLOCK`).
+            F_SETFL => {
+                if let Description::Stream(end) = d {
+                    end.set_nonblocking(arg as c_int & O_NONBLOCK != 0);
+                }
+                Ok(0)
+            }
             // Record locks: nife's file contract has none, so a lock is refused rather than
             // pretended. A C program that needs one learns it here (`ENOLCK`, "no locks
             // available"), and SQLite is run with its `unix-none` VFS, which takes none (BUGS).
@@ -501,7 +542,7 @@ impl Pal for Sys {
             Description::Directory { .. } => Ok(()),
             Description::Stdout => io(std::io::stdout().flush()),
             Description::Stderr => io(std::io::stderr().flush()),
-            Description::Stdin => Err(Errno(EINVAL)),
+            Description::Stdin | Description::Stream(_) => Err(Errno(EINVAL)),
         })
     }
 
@@ -513,13 +554,13 @@ impl Pal for Sys {
         })
     }
 
-    unsafe fn futex_wait(_addr: *mut u32, _val: u32, _deadline: Option<&timespec>) -> Result<()> {
-        // Only a second thread could make a stage-1 lock wait, and there is none (milestone 836).
-        Err(Errno(ENOSYS))
+    unsafe fn futex_wait(addr: *mut u32, val: u32, deadline: Option<&timespec>) -> Result<()> {
+        // SAFETY: relibc passes a live word of one of its locks, changed only atomically.
+        unsafe { super::futex::wait(addr, val, deadline) }
     }
 
-    unsafe fn futex_wake(_addr: *mut u32, _num: u32) -> Result<u32> {
-        Ok(0)
+    unsafe fn futex_wake(addr: *mut u32, num: u32) -> Result<u32> {
+        Ok(super::futex::wake(addr, num))
     }
 
     unsafe fn utimensat(
@@ -627,9 +668,11 @@ impl Pal for Sys {
     }
 
     fn gettid() -> pid_t {
-        // Not 0: a mutex's lock word holds its owner's thread ID and reserves 0 for "unlocked"
-        // (`sync/pthread_mutex.rs`). One thread, so one constant.
-        1
+        // A number per thread, from 1 for the first to ask (nife's kernel keeps no thread number a
+        // process can read). Not 0: a mutex's lock word holds its owner's thread ID and reserves
+        // 0 for "unlocked" (`sync/pthread_mutex.rs`), and only the low 30 bits fit beside its two
+        // flag bits, which a process's few threads never reach.
+        crate::pthread::thread_id()
     }
 
     fn gettimeofday(mut tp: Out<timeval>, tzp: Option<Out<timezone>>) -> Result<()> {
@@ -849,8 +892,19 @@ impl Pal for Sys {
         }))
     }
 
-    fn pipe2(_fildes: Out<[c_int; 2]>, _flags: c_int) -> Result<()> {
-        Err(Errno(ENOSYS))
+    fn pipe2(mut fildes: Out<[c_int; 2]>, flags: c_int) -> Result<()> {
+        if flags & !(O_NONBLOCK | O_CLOEXEC) != 0 {
+            return Err(Errno(EINVAL));
+        }
+        let (r, w) = super::stream::pipe(flags & O_NONBLOCK != 0);
+        let fds = with_table(|t| {
+            [
+                install(t, Description::Stream(Arc::new(r))),
+                install(t, Description::Stream(Arc::new(w))),
+            ]
+        });
+        fildes.write(fds);
+        Ok(())
     }
 
     fn posix_fallocate(fd: c_int, offset: u64, length: NonZeroU64) -> Result<()> {
@@ -873,9 +927,16 @@ impl Pal for Sys {
     }
 
     fn read(fildes: c_int, buf: &mut [u8]) -> Result<usize> {
+        // A stream and standard input can wait for another thread, so neither is read under the
+        // table's lock.
+        if let Some(end) = stream_of(fildes)? {
+            return end.read(buf);
+        }
+        if with_fd(fildes, |d| Ok(matches!(d, Description::Stdin)))? {
+            return io(std::io::stdin().read(buf));
+        }
         with_fd(fildes, |d| match d {
             Description::File { file, .. } => io(file.read(buf)),
-            Description::Stdin => io(std::io::stdin().read(buf)),
             Description::Directory { .. } => Err(Errno(EISDIR)),
             _ => Err(Errno(EBADF)),
         })
@@ -886,7 +947,7 @@ impl Pal for Sys {
         with_fd(fildes, |d| match d {
             Description::File { file, .. } => {
                 // The contract has no positioned read, so this is seek, read, seek back, which
-                // is atomic only because a stage-1 process has one thread.
+                // is atomic because the table's lock is held throughout.
                 let was = io(file.stream_position())?;
                 io(file.seek(SeekFrom::Start(at)))?;
                 let mut got = 0;
@@ -1003,7 +1064,7 @@ impl Pal for Sys {
             sysname: field("nife"),
             nodename: field(""),
             release: field(env!("CARGO_PKG_VERSION")),
-            version: field("c_library stage 1"),
+            version: field("c_library stage 2"),
             machine: field(std::env::consts::ARCH),
             domainname: field(""),
         });
@@ -1025,12 +1086,15 @@ impl Pal for Sys {
     }
 
     fn write(fildes: c_int, buf: &[u8]) -> Result<usize> {
+        if let Some(end) = stream_of(fildes)? {
+            return end.write(buf);
+        }
         with_fd(fildes, |d| match d {
             Description::File { file, .. } => io(file.write(buf)),
             Description::Stdout => io(std::io::stdout().write(buf)),
             Description::Stderr => io(std::io::stderr().write(buf)),
             Description::Directory { .. } => Err(Errno(EISDIR)),
-            Description::Stdin => Err(Errno(EBADF)),
+            Description::Stdin | Description::Stream(_) => Err(Errno(EBADF)),
         })
     }
 
@@ -1038,7 +1102,7 @@ impl Pal for Sys {
         let at = u64::try_from(offset).map_err(|_| Errno(EINVAL))?;
         with_fd(fildes, |d| match d {
             Description::File { file, .. } => {
-                // As `pread`: seek, write, seek back, atomic because there is one thread.
+                // As `pread`: seek, write, seek back, under the table's lock.
                 let was = io(file.stream_position())?;
                 io(file.seek(SeekFrom::Start(at)))?;
                 let r = io(file.write_all(buf)).map(|()| buf.len());
@@ -1068,6 +1132,151 @@ impl Pal for Sys {
 
     fn verify() -> bool {
         true
+    }
+}
+
+// --- poll ----------------------------------------------------------------------------------------
+
+/// **`poll`**, for `poll.h` (relibc's own is on epoll, which is not seeded). A stream answers what
+/// it holds; a file, a directory or a standard stream never makes its caller wait, so it is ready
+/// for whichever direction it allows (`stream.rs`).
+pub fn poll(fds: &mut [crate::header::poll::pollfd], timeout: c_int) -> Result<c_int> {
+    use super::stream::{NOT_OPEN, always_ready};
+    super::stream::poll(fds, timeout, |fd, events| {
+        let stream = match stream_of(fd) {
+            Ok(Some(end)) => end,
+            Ok(None) => {
+                return with_fd(fd, |d| {
+                    Ok(match d {
+                        Description::File { flags, .. } => {
+                            let acc = *flags & O_ACCMODE;
+                            always_ready(events, acc != O_WRONLY, acc != O_RDONLY)
+                        }
+                        Description::Directory { .. } => always_ready(events, true, false),
+                        Description::Stdin => always_ready(events, true, false),
+                        Description::Stdout | Description::Stderr => {
+                            always_ready(events, false, true)
+                        }
+                        Description::Stream(_) => unreachable!("taken out above"),
+                    })
+                })
+                .unwrap_or(NOT_OPEN);
+            }
+            Err(_) => return NOT_OPEN,
+        };
+        stream.revents(events)
+    })
+}
+
+// --- Sockets -------------------------------------------------------------------------------------
+//
+// Stage 3 (milestone 837 (a C library, stage 3: sockets)) is where a C program reaches the
+// network. Stage 2 gives it the one socket that never leaves the process, `socketpair(AF_UNIX,
+// SOCK_STREAM)`, because a threaded program uses it to talk to itself (`stream.rs`). Every other
+// call answers `ENOSYS`, so a program that would use the network learns it at the call.
+
+impl PalSocket for Sys {
+    fn accept(_socket: c_int, _address: Option<&mut [u8]>) -> Result<(c_int, socklen_t)> {
+        Err(Errno(ENOSYS))
+    }
+
+    fn bind(_socket: c_int, _address: &[u8]) -> Result<()> {
+        Err(Errno(ENOSYS))
+    }
+
+    fn connect(_socket: c_int, _address: &[u8]) -> Result<c_int> {
+        Err(Errno(ENOSYS))
+    }
+
+    fn getpeername(_socket: c_int, _address: &mut [u8]) -> Result<socklen_t> {
+        Err(Errno(ENOSYS))
+    }
+
+    fn getsockname(_socket: c_int, _address: &mut [u8]) -> Result<socklen_t> {
+        Err(Errno(ENOSYS))
+    }
+
+    fn getsockopt(
+        _socket: c_int,
+        _level: c_int,
+        _option_name: c_int,
+        _option_value: &mut [u8],
+    ) -> Result<socklen_t> {
+        Err(Errno(ENOSYS))
+    }
+
+    fn listen(_socket: c_int, _backlog: c_int) -> Result<()> {
+        Err(Errno(ENOSYS))
+    }
+
+    fn recvfrom(
+        socket: c_int,
+        mut buf: Out<[u8]>,
+        flags: c_int,
+        address: Option<&mut [u8]>,
+    ) -> Result<(usize, socklen_t)> {
+        // On a socket pair, with no flags and no address asked for, `recv` is `read`.
+        if flags != 0 || address.is_some() {
+            return Err(Errno(ENOSYS));
+        }
+        let end = stream_of(socket)?.ok_or(Errno(ENOTSOCK))?;
+        let mut tmp = vec![0u8; buf.len()];
+        let n = end.read(&mut tmp)?;
+        buf.subslice(0, n).copy_from_slice(&tmp[..n]);
+        Ok((n, 0))
+    }
+
+    unsafe fn recvmsg(_socket: c_int, _msg: *mut msghdr, _flags: c_int) -> Result<usize> {
+        Err(Errno(ENOSYS))
+    }
+
+    unsafe fn sendmsg(_socket: c_int, _msg: *const msghdr, _flags: c_int) -> Result<usize> {
+        Err(Errno(ENOSYS))
+    }
+
+    fn sendto(socket: c_int, buf: &[u8], flags: c_int, dest: Option<&[u8]>) -> Result<usize> {
+        // As `recvfrom`: on a socket pair, a plain `send` is `write`.
+        if flags != 0 || dest.is_some() {
+            return Err(Errno(ENOSYS));
+        }
+        stream_of(socket)?.ok_or(Errno(ENOTSOCK))?.write(buf)
+    }
+
+    fn setsockopt(
+        _socket: c_int,
+        _level: c_int,
+        _option_name: c_int,
+        _option_value: &[u8],
+    ) -> Result<()> {
+        Err(Errno(ENOSYS))
+    }
+
+    fn shutdown(_socket: c_int, _how: c_int) -> Result<()> {
+        Err(Errno(ENOSYS))
+    }
+
+    fn socket(_domain: c_int, _kind: c_int, _protocol: c_int) -> Result<c_int> {
+        Err(Errno(ENOSYS))
+    }
+
+    fn socketpair(domain: c_int, kind: c_int, protocol: c_int, sv: &mut [c_int; 2]) -> Result<()> {
+        use crate::header::sys_socket::constants::{
+            AF_UNIX, SOCK_CLOEXEC, SOCK_NONBLOCK, SOCK_STREAM,
+        };
+        if domain != AF_UNIX {
+            return Err(Errno(EAFNOSUPPORT));
+        }
+        if kind & !(SOCK_NONBLOCK | SOCK_CLOEXEC) != SOCK_STREAM || protocol != 0 {
+            return Err(Errno(EPROTONOSUPPORT));
+        }
+        let (a, b) = super::stream::socket_pair(kind & SOCK_NONBLOCK != 0);
+        *sv = with_table(|t| {
+            [
+                install(t, Description::Stream(Arc::new(a))),
+                install(t, Description::Stream(Arc::new(b))),
+            ]
+        });
+        Ok(())
     }
 }
 
@@ -1237,10 +1446,13 @@ impl PalSignal for Sys {
         let n = valid(sig)?;
         signals(|s| {
             if let Some(o) = oact {
-                // SAFETY: `sigaction` is plain data and a zeroed one is `SIG_DFL` with no flags.
-                *o = s.actions[n]
-                    .clone()
-                    .unwrap_or(unsafe { core::mem::zeroed() });
+                // No recorded action is `SIG_DFL` with no flags and nothing masked.
+                *o = s.actions[n].clone().unwrap_or(sigaction {
+                    sa_handler: None,
+                    sa_flags: 0,
+                    sa_restorer: None,
+                    sa_mask: 0,
+                });
             }
             if let Some(a) = act {
                 if n == SIGKILL || n == SIGSTOP {

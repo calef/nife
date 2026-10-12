@@ -16,9 +16,9 @@ change to its own source. One dependency carries one patch, `ignore`'s parallel 
 tree, it finds the 138 matches in 141 files that are there, reads all 333,984 bytes, and prints
 3,813 bytes that are byte for byte what the same `rg` prints on macOS. Through a grant that lacks
 `ENUMERATE` it says the capability does not carry the right, searches nothing, and prints no match.
-On the same HVF machine the search takes about 1.5 times what it takes on Linux. It never reaches
-DECISIONS §105 (threads), it needs no `--no-mmap`, and it fits in the 256-page heap the harness gives
-it with room to spare.
+On the same HVF machine the search takes about 1.5 times what it takes on Linux. It needs no
+`--no-mmap`, and serially it fits in the 256-page heap the harness gives it with room to spare.
+Without `--threads 1` it walks on one thread per core, and the kernel counts them (below).
 
 ```
 `rg --threads 1 --no-mmap --stats 'walk entry'` printed 3813 bytes and spent 65 heap pages
@@ -88,14 +88,44 @@ Every crate compiles, including the four milestone 64 (enough `std` to run someb
 `memmap2`, `walkdir`). Two resolve to non-Unix implementations without being asked: `memmap2`
 compiles its `stub.rs`, and `std::sys::args` compiles nife's own `args/nife.rs`.
 
-## Threads: it never asks for one
+## Threads: it asks, and since milestone 812 it gets more than one
 
 `ripgrep` does not assume parallelism, it asks. `crates/core/flags/hiargs.rs` sets its default
-thread count to `available_parallelism().map_or(1, |n| n.get()).min(12)`, nife's PAL answers
-`Ok(1)` (*"the process model is one thread today, and that is an answer, not an error"*), and
-`ripgrep` takes its serial walker and searcher. `thread::spawn` is never called. A platform that
-answered `Unsupported` there would have failed this program, which is an argument for the
-honest-answer posture generally. `--threads 1` is on the measured line anyway, to pin Linux.
+thread count to `available_parallelism().map_or(1, |n| n.get()).min(12)`. Until milestone 812
+(`std::thread::spawn` runs real threads in one address space) nife's PAL answered `Ok(1)`, so `rg`
+took its serial walker and never called `thread::spawn`. That was this section's old title. Since
+2026-10-10 (UTC) the answer is the online core count, and `rg` takes `ignore`'s parallel walker:
+`std::thread::scope` and one worker per thread, each walking and searching, while the main thread
+waits.
+
+Measured 2026-10-12 (UTC) by `system_tests/src/user/ripgrep_threads_tests.rs` (lane
+milestone/121-rg-threads), with QEMU at `-smp 4` on each architecture. The test runs `rg` as a
+process, built the way the progenitor builds a `std` job, and reads the kernel's count of threads
+that process ever started (`started` on the process page, `sched::process_threads_started`). Nothing
+in `rg` is asked to say how many threads it ran.
+
+| `-smp 4`, TCG | `rg --no-mmap --stats 'walk entry'` | `rg --threads 4 ...` | heap pages |
+|---|---:|---:|---:|
+| aarch64 | 5 threads started | 5 | 269 |
+| riscv64 | 5 | 5 | 267 |
+| `x86_64` (PVH leg) | 5 | 5 | 269 |
+
+Five is the main thread and four workers, asserted exactly; a serial walk reads 1. Both lines print the fixture's 138 match lines, each once and in whatever
+order the workers finished, and the test holds them to `fixture::walk::rg_match_path`'s list. The
+host's `rg`, run over the same staged tree with the same two lines, is held to the same list by
+`walk_pricing`'s `the_hosts_parallel_rg_prints_the_fixture_lines`, so nife and macOS agree byte for
+byte once both are sorted. Sorted because a parallel walk's order is its threads' finishing order,
+on any system.
+
+Four workers spend 269 heap pages against the serial walk's 65, about 51 pages a worker. At the 256
+pages `ripgrep_tests` gives the serial walk, the fourth spawn was refused for want of a page for its
+thread control block, so the threaded tests give `rg` 512. CI's `rg-threads` rows run them on
+every pull request (`script/ci-build`).
+
+The first full `x86_64` suite hung the four-thread test past its 90 s ceiling at two cores: the
+PAL held a spinlock on its one file page across each `CALL`, so idle workers spun while the holder
+waited on the caretaker. It is `std`'s futex mutex now (`sys/fs/nife/page.rs`), and the test takes
+about 0.5 s there. The comparison with Linux below stays serial on both sides.
 
 ## The refusal, through `rg`
 
@@ -205,7 +235,13 @@ sh bench/host/run_linux_rg.sh         # needs rustup target add aarch64-unknown-
 - **`ignore` carries nife's own patch**: `helpers/ripgrep-ignore-walk.patch`, the parallel walker on
   a target that is neither `unix` nor `windows` (milestone 812, #1892). nife maintains it until
   upstream fixes the bug by any route, and re-checks it whenever ripgrep or `ignore` is bumped. The
-  upstream issue: (link pending).
+  upstream issue: (link pending). Re-checked 2026-10-12 (UTC), lane milestone/121-rg-threads: the
+  patch does not exist because threads were missing, and it cannot go now that they are here. The
+  parallel walker builds each entry with `DirEntryRaw::from_entry_os` and `from_path`, which
+  `ignore` implements for `unix` and `windows` only and stubs as "unsupported platform" everywhere
+  else; the serial walker uses `walkdir` and never meets them. `ignore` 0.4.33, the newest on
+  crates.io that day, still has the stubs. So the parallel walk needs the patch, `ripgrep`'s own
+  source is still unmodified, and its dependency tree is not.
 - Spawning `rg` at the prompt is slow, and where the time goes is unmeasured. Lines that stop at
   argument parsing took 3.8 to 30.1 s on aarch64 under HVF, and the `caps` line that hashes the
   2.8 MiB image up to 38.7 s on `x86_64`, with other lanes loading the host (2026-10-07). The
@@ -220,6 +256,9 @@ sh bench/host/run_linux_rg.sh         # needs rustup target add aarch64-unknown-
 - The corpus is whatever `crates/` holds when the gate runs, and it carries no ignore files, so
   gitignore semantics are still untested at the prompt.
 
+- **The kernel suite's `rg` tests run in CI since 2026-10-12 (UTC)**, in the `rg-threads` rows
+  (lane milestone/121-rg-threads), at four cores, with the threaded walk. The `test` job still
+  builds no `rg`, so they skip there. The paragraph below is the 2026-10-08 state.
 - **The kernel suite still skips `rg`; the prompt does not, since 2026-10-08 (UTC).** CI's
   `swish-check` rows build `rg` with `helpers/build-ripgrep.sh` and type its lines, the walk
   included, on all three legs, and refuse to skip them there (lane milestone/121-rg-ci). The
@@ -232,6 +271,13 @@ sh bench/host/run_linux_rg.sh         # needs rustup target add aarch64-unknown-
   with `walk_model` would settle it.
 - **Gitignore semantics are untested.** The fixture holds no ignore files, so `ignore`'s matching
   has not been observed here, only its walking.
+- **The threaded walk is proved in the kernel harness, not at the prompt.** `swish-check`'s walk
+  runs with no thread flag, so on aarch64 and riscv64 at four cores it walks in parallel, but
+  nothing there counts its threads, and the `x86_64` leg boots OVMF with one core. The harness is
+  where the kernel's count can be read.
+- **Threaded memory grows with cores.** About 51 heap pages a worker, and `ripgrep` takes up to 12
+  workers, so on a twelve-core machine the default line would want about 680 pages. The prompt's
+  `std` region is 384 (`grant_plan::STD_REGION_PAGES`). Unmeasured above four cores.
 - **One version, one program.** `ripgrep` 14.1.1 is evidence about this platform, not a survey of
   crates.io.
 - **The build script trusts crates.io's index for its one hash.** Since 2026-10-08 (UTC) it refuses

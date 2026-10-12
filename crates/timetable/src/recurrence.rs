@@ -581,74 +581,110 @@ pub fn parse(after_every: &str) -> Result<Parsed<'_>, Refusal> {
         starting: None,
         through: None,
     };
-    let rest = if first.bytes().all(|b| b.is_ascii_digit()) {
-        let Some((unit, rest)) = word(rest) else {
-            return Ok(Parsed::NotCalendar);
-        };
-        if !matches!(
-            unit,
-            "days" | "weeks" | "months" | "minutes" | "mins" | "hours" | "seconds"
-        ) {
-            return Ok(Parsed::NotCalendar);
-        }
-        let count = digits(first).ok_or(Refusal::BadCount)?;
-        if !(2..=99).contains(&count) && !matches!(unit, "minutes" | "mins" | "hours" | "seconds") {
-            return Err(Refusal::BadCount);
-        }
-        rule.interval = count.clamp(2, 99) as u8;
-        match unit {
-            "days" => rest,
-            "weeks" => {
-                rule.freq = Freq::Weekly;
-                let rest = expect(rest, "on")?;
-                let (days, rest) = word(rest).ok_or(Refusal::Malformed)?;
-                rule.weekdays = day_list(days)?;
-                rest
-            }
-            "months" => {
-                rule.freq = Freq::Monthly;
-                let rest = expect(rest, "on")?;
-                let (on, rest) = month_day(rest)?;
-                rule.on = on;
-                rest
-            }
-            "minutes" | "mins" | "hours" | "seconds" => return Err(Refusal::SpelledInterval),
-            // `every 30 least_authority_demo 7` is an interval missing its unit far more often
-            // than a calendar line, so the interval grammar answers it.
-            _ => return Ok(Parsed::NotCalendar),
-        }
+    let cadence = if first.bytes().all(|b| b.is_ascii_digit()) {
+        counted_cadence(first, rest, &mut rule)?
     } else {
-        match first {
-            "day" => rest,
-            "weekday" => {
-                rule.freq = Freq::Weekly;
-                rule.weekdays = WEEKDAYS;
-                rest
-            }
-            "weekend" => {
-                rule.freq = Freq::Weekly;
-                rule.weekdays = WEEKEND;
-                rest
-            }
-            "week" => {
-                rule.freq = Freq::Weekly;
-                let rest = expect(rest, "on")?;
-                let (days, rest) = word(rest).ok_or(Refusal::Malformed)?;
-                rule.weekdays = day_list(days)?;
-                rest
-            }
-            "month" => {
-                rule.freq = Freq::Monthly;
-                let rest = expect(rest, "on")?;
-                let (on, rest) = month_day(rest)?;
-                rule.on = on;
-                rest
-            }
-            _ => return Ok(Parsed::NotCalendar),
-        }
+        named_cadence(first, rest, &mut rule)?
+    };
+    let Some(rest) = cadence else {
+        return Ok(Parsed::NotCalendar);
     };
 
     // The optional clauses, in their one order.
+    let rest = optional_clauses(rest, &mut rule)?;
+    let (hours, minutes, rest) = times(rest)?;
+    rule.hours = hours;
+    rule.minutes = minutes;
+
+    check_rule(&rule)?;
+    Ok(Parsed::Calendar(rule, rest))
+}
+
+/// A cadence that opens with a count (`every 2 weeks on mon`): the rest of the line after it, or
+/// `None` when the line is not a calendar line.
+fn counted_cadence<'a>(
+    first: &str,
+    rest: &'a str,
+    rule: &mut Rule,
+) -> Result<Option<&'a str>, Refusal> {
+    let Some((unit, rest)) = word(rest) else {
+        return Ok(None);
+    };
+    if !matches!(
+        unit,
+        "days" | "weeks" | "months" | "minutes" | "mins" | "hours" | "seconds"
+    ) {
+        return Ok(None);
+    }
+    let count = digits(first).ok_or(Refusal::BadCount)?;
+    if !(2..=99).contains(&count) && !matches!(unit, "minutes" | "mins" | "hours" | "seconds") {
+        return Err(Refusal::BadCount);
+    }
+    rule.interval = count.clamp(2, 99) as u8;
+    let rest = match unit {
+        "days" => rest,
+        "weeks" => {
+            rule.freq = Freq::Weekly;
+            let rest = expect(rest, "on")?;
+            let (days, rest) = word(rest).ok_or(Refusal::Malformed)?;
+            rule.weekdays = day_list(days)?;
+            rest
+        }
+        "months" => {
+            rule.freq = Freq::Monthly;
+            let rest = expect(rest, "on")?;
+            let (on, rest) = month_day(rest)?;
+            rule.on = on;
+            rest
+        }
+        "minutes" | "mins" | "hours" | "seconds" => return Err(Refusal::SpelledInterval),
+        // `every 30 least_authority_demo 7` is an interval missing its unit far more often
+        // than a calendar line, so the interval grammar answers it.
+        _ => return Ok(None),
+    };
+    Ok(Some(rest))
+}
+
+/// A cadence that opens with a word (`every weekday`, `every month on 1`): the rest of the line
+/// after it, or `None` when the line is not a calendar line.
+fn named_cadence<'a>(
+    first: &str,
+    rest: &'a str,
+    rule: &mut Rule,
+) -> Result<Option<&'a str>, Refusal> {
+    let rest = match first {
+        "day" => rest,
+        "weekday" => {
+            rule.freq = Freq::Weekly;
+            rule.weekdays = WEEKDAYS;
+            rest
+        }
+        "weekend" => {
+            rule.freq = Freq::Weekly;
+            rule.weekdays = WEEKEND;
+            rest
+        }
+        "week" => {
+            rule.freq = Freq::Weekly;
+            let rest = expect(rest, "on")?;
+            let (days, rest) = word(rest).ok_or(Refusal::Malformed)?;
+            rule.weekdays = day_list(days)?;
+            rest
+        }
+        "month" => {
+            rule.freq = Freq::Monthly;
+            let rest = expect(rest, "on")?;
+            let (on, rest) = month_day(rest)?;
+            rule.on = on;
+            rest
+        }
+        _ => return Ok(None),
+    };
+    Ok(Some(rest))
+}
+
+/// The optional `in`, `starting` and `through` clauses, in that order: the rest of the line after them.
+fn optional_clauses<'a>(rest: &'a str, rule: &mut Rule) -> Result<&'a str, Refusal> {
     let mut rest = rest;
     if let Some(("in", after)) = word(rest) {
         if rule.interval > 1 {
@@ -668,10 +704,12 @@ pub fn parse(after_every: &str) -> Result<Parsed<'_>, Refusal> {
         rule.through = Some(date(d).ok_or(Refusal::Malformed)?);
         rest = after;
     }
-    let (hours, minutes, rest) = times(rest)?;
-    rule.hours = hours;
-    rule.minutes = minutes;
+    Ok(rest)
+}
 
+/// Whether a parsed rule is consistent: a count has a start, `through` is not before `starting`,
+/// and `starting` is a day the rule fires on.
+fn check_rule(rule: &Rule) -> Result<(), Refusal> {
     if rule.interval > 1 && rule.starting.is_none() {
         return Err(Refusal::CountWithoutStarting);
     }
@@ -681,11 +719,11 @@ pub fn parse(after_every: &str) -> Result<Parsed<'_>, Refusal> {
         return Err(Refusal::ThroughBeforeStarting);
     }
     if let Some(s) = rule.starting
-        && !day_matches(&rule, s)
+        && !day_matches(rule, s)
     {
         return Err(Refusal::StartingOffRule);
     }
-    Ok(Parsed::Calendar(rule, rest))
+    Ok(())
 }
 
 /// Write a rule as the RRULE it is, for the printed plan: `FREQ=MONTHLY;BYDAY=-1FR;BYHOUR=17;...`.

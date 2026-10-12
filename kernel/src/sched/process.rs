@@ -41,6 +41,11 @@ pub(super) struct ProcessPage {
     space_name: u64,
     /// Threads whose `process` is this one and that are still in the thread table.
     members: u32,
+    /// **Members that have ever been started**, which only grows. `members` falls back to zero as
+    /// threads leave, so it cannot say afterwards how many threads a finished program ran; this
+    /// can. It is how milestone 121 (`ripgrep` on nife) proves that `ripgrep`'s parallel walker ran on more than one
+    /// thread, from the kernel's side, with nothing in the program asked to say so.
+    started: u32,
     /// No thread may join or start here any more, and every member has been ended.
     ended: bool,
     /// How it ended, `[event, pc, addr]` in `abi::fault`'s format: what a supervised member reports
@@ -94,6 +99,7 @@ pub fn create_process_from(region: u64, space: u64) -> Result<ProcessId, abi::Er
                 space: Some(bound),
                 space_name: space,
                 members: 0,
+                started: 0,
                 ended: false,
                 ended_by: [0; 3],
             });
@@ -182,6 +188,14 @@ pub(super) fn space_name_of(pid: ProcessId) -> Option<u64> {
 pub(super) fn refuses_start(sched: &IpcTables, t: &Thread) -> bool {
     t.process
         .is_some_and(|pid| process_of(sched, pid).is_none_or(|p| p.ended))
+}
+
+/// **A member of `pid` has just been started**: count it in [`ProcessPage::started`]. Caller holds
+/// `IPC_TABLES`, and the start has passed [`refuses_start`].
+pub(super) fn count_start(sched: &IpcTables, pid: ProcessId) {
+    if let Some(process) = process_of(sched, pid) {
+        process.started = process.started.saturating_add(1);
+    }
 }
 
 /// Is `t` a thread that runs, or may yet run (`Ready`, `Running`, `Blocked`)?
@@ -551,6 +565,16 @@ pub fn process_state(pid: ProcessId) -> Option<(u32, bool)> {
     let guard = IPC_TABLES.lock();
     let sched = guard.as_ref()?;
     process_of(sched, pid).map(|p| (p.members, p.ended))
+}
+
+/// **How many threads `pid` has ever started**, for a test: [`ProcessPage::started`]. Readable after
+/// the process has ended and every member has left, until its region is reclaimed. Name:
+/// provisional (lane milestone/121-rg-threads, 2026-10-12 UTC).
+#[cfg(feature = "system_tests")]
+pub fn process_threads_started(pid: ProcessId) -> Option<u32> {
+    let guard = IPC_TABLES.lock();
+    let sched = guard.as_ref()?;
+    process_of(sched, pid).map(|p| p.started)
 }
 
 /// **Strand a member for a test**: `pid` ended and `tid` killed while `tid` stays parked, which is

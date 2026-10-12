@@ -473,6 +473,9 @@ pub(super) const SWISH_CHECK_SCRIPT: &[Line] = &[
         "caps jig install greeting@0.1.0",
         &[
             "cap 2  endpoint  network  WRITE",
+            // Milestone 892 (a std program at the prompt holds the network and a resolver): and the
+            // resolver, for any name (calef's Q5 on #1884).
+            "cap 9  endpoint  resolver  WRITE. it may look up the addresses of any name",
             "cap 15 endpoint  installer  WRITE",
             "cannot vouch for bytes, and cannot hand this on",
             "cap 17 frame     catalog  read-only",
@@ -719,6 +722,20 @@ pub(super) const SWISH_CHECK_SCRIPT: &[Line] = &[
     // **Fetching, refused before the network is touched**: the catalog names no such package,
     // so nothing is asked of the package source. `jig` reads its copy of the catalog and sends
     // nothing, so it names no generation: it holds no view of the activation set.
+    line(
+        1,
+        "jig install nosuch",
+        &["refused: this image's catalog names no such package, so nothing was fetched"],
+    ),
+    // **And twice more, so this boot starts nine `jig install`s** (milestone 892 (a std program
+    // at the prompt holds the network and a resolver)). Each holds the network and so a resolver
+    // badge, and the resolver has eight windows: without the forget at each job's reap, the ninth
+    // `jig` of the boot is refused a badge and the shell says it could not spawn.
+    line(
+        1,
+        "jig install nosuch",
+        &["refused: this image's catalog names no such package, so nothing was fetched"],
+    ),
     line(
         1,
         "jig install nosuch",

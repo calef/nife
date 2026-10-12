@@ -1,7 +1,7 @@
 ---
 status: NOT-STARTED
 raised: 2026-08-13
-milestone_dependencies: 121
+milestone_dependencies: 121, 809, 801, 810
 decision_dependencies: none
 machine_requirements: none
 specific_machine: none
@@ -123,6 +123,21 @@ Reimplementing the same programs is worth doing and belongs elsewhere. That is t
 userland, where §84's tier three applies and writing the thing from the ideas is correct;
 `design/what-a-distribution-packages.md` owns it. The two activities look identical and are
 opposites, which is the whole reason §85 exists.
+
+## Done when
+
+*Amended 2026-10-12 (UTC) under §297 (software reaches a nife system as a package `jig` installs
+from basalt's index, the kernel included). calef, that day: "They should all be installed via jig
+through basalt."*
+
+Each program the demonstration runs, `rg` first, must run on nife installed by `jig install` from
+basalt's package index. basalt builds the package against the nife commit it pins. A binary from a
+`helpers/build-*.sh` script may feed the work until then. So may one packed into an image or copied
+onto a disk. No exit is taken on either. The install waits on milestone 809 (the package client
+becomes a program, `jig`, with the verbs an index needs). It also waits on milestone 801 (packages
+over the internet: a host name, HTTPS and the distribution's index). The package itself is milestone
+810 (`ripgrep` is packaged in basalt and installed with `jig`). `rg` reached the prompt from the
+data disk, never from `jig`.
 
 ## BUGS
 

@@ -398,6 +398,100 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
     }
 
+    /// The lines [`tree::rg_match_path`] says `rg` prints over the tree, sorted: `path:body`.
+    fn fixture_rg_lines() -> Vec<String> {
+        let body = std::str::from_utf8(tree::SMALL_BODY).expect("ASCII");
+        let mut lines: Vec<String> = (0..tree::RG_MATCHES)
+            .map(|i| {
+                let mut buf = [0u8; 32];
+                let len = tree::rg_match_path(i, &mut buf);
+                format!(
+                    "{}:{}",
+                    std::str::from_utf8(&buf[..len]).expect("ASCII"),
+                    body.trim_end()
+                )
+            })
+            .collect();
+        lines.sort();
+        lines
+    }
+
+    /// **[`tree::rg_match_path`] names exactly the staged files that hold the small body**, each
+    /// once. The kernel harness holds `rg`'s parallel walk to that list, so the list must be the
+    /// tree's and not a guess about it.
+    #[test]
+    fn the_rg_match_list_is_the_files_holding_the_body() {
+        let root = scratch("rg-list");
+        stage(&root).expect("stage the tree");
+        let mut paths: Vec<String> = (0..tree::RG_MATCHES)
+            .map(|i| {
+                let mut buf = [0u8; 32];
+                let len = tree::rg_match_path(i, &mut buf);
+                String::from_utf8(buf[..len].to_vec()).expect("ASCII")
+            })
+            .collect();
+        for p in &paths {
+            assert_eq!(fs::read(root.join(p)).expect(p), tree::SMALL_BODY, "{p}");
+        }
+        paths.sort();
+        paths.dedup();
+        assert_eq!(paths.len(), tree::RG_MATCHES, "a path is listed twice");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    /// **The host's `rg`, walking in parallel, prints exactly the fixture's lines** (milestone 121,
+    /// lane milestone/121-rg-threads). The same two lines the kernel harness types on nife, run by
+    /// the `rg` `helpers/build-ripgrep.sh` builds for the host from the same source and the same
+    /// patched `ignore`. Its match lines, sorted, must be [`fixture_rg_lines`]; nife's are held to
+    /// the same list, so the two agree byte for byte up to order. Sorted because a parallel walk
+    /// prints in the order its threads finish, on any system.
+    ///
+    /// Skips when no host `rg` was built, unless `NIFE_RIPGREP_REQUIRED=1`, which the CI row that
+    /// builds it sets.
+    #[test]
+    fn the_hosts_parallel_rg_prints_the_fixture_lines() {
+        let rg = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/ripgrep/host/rg");
+        if !rg.exists() {
+            assert!(
+                std::env::var_os("NIFE_RIPGREP_REQUIRED").is_none(),
+                "no host rg at {} and NIFE_RIPGREP_REQUIRED is set",
+                rg.display()
+            );
+            eprintln!(
+                "no host rg at {}; helpers/build-ripgrep.sh builds it",
+                rg.display()
+            );
+            return;
+        }
+        let root = scratch("rg-host");
+        stage(&root).expect("stage the tree");
+        for line in [tree::RG_SEARCH_THREADED, tree::RG_SEARCH_FOUR_THREADS] {
+            let mut words: Vec<String> = Vec::new();
+            grant_plan::each_word(line.as_bytes(), &mut |w| {
+                words.push(String::from_utf8(w.to_vec()).expect("ASCII"));
+                Ok(())
+            })
+            .expect("a line the shell takes");
+            let out = std::process::Command::new(&rg)
+                .args(&words[1..])
+                .arg("--no-config")
+                .current_dir(&root)
+                .output()
+                .expect("run the host's rg");
+            assert!(out.status.success(), "{line}: {out:?}");
+            let text = String::from_utf8(out.stdout).expect("rg printed UTF-8");
+            let (matches, stats) = text.split_once("\n\n").expect("rg printed its stats");
+            let mut got: Vec<String> = matches.lines().map(str::to_string).collect();
+            got.sort();
+            assert_eq!(got, fixture_rg_lines(), "{line}");
+            assert!(
+                stats.contains(&format!("{} files searched", tree::WALK_FILES)),
+                "{line}: {stats}"
+            );
+        }
+        let _ = fs::remove_dir_all(&root);
+    }
+
     /// **The report a gate asserts on leads with the counts**, and every figure the crate header
     /// promises is printed. The timings are the host's and are not checked; the shape is, because
     /// the nife gate finds its lines by these prefixes.

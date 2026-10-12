@@ -31,9 +31,17 @@ static mut POSIX_LOCALE: lconv = posix_lconv();
 pub const LC_GLOBAL_LOCALE: locale_t = -1isize as locale_t;
 /// process-wide locale, used by setlocale() and localeconv()
 static mut GLOBAL_LOCALE: *mut GlobalLocaleData = ptr::null_mut();
-/// thread-wide locale, used by uselocale() and localeconv()
-// nife: one thread in stage 1, so one cell rather than relibc's `#[thread_local]` (milestone 836).
-pub(crate) static mut THREAD_LOCALE: *mut LocaleData = ptr::null_mut();
+// nife: one per thread through `std`'s `thread_local!` rather than relibc's `#[thread_local]`,
+// which nife's targets cannot address (see `platform::ERRNO`). Read with `thread_locale()`.
+std::thread_local! {
+    /// thread-wide locale, used by uselocale() and localeconv()
+    static THREAD_LOCALE: core::cell::Cell<*mut LocaleData> = const { core::cell::Cell::new(ptr::null_mut()) };
+}
+
+/// The calling thread's locale, as `uselocale` last set it; null means the global one.
+pub(crate) fn thread_locale() -> *mut LocaleData {
+    THREAD_LOCALE.with(core::cell::Cell::get)
+}
 
 /// See <https://pubs.opengroup.org/onlinepubs/9799919799/functions/localeconv.html>.
 #[unsafe(no_mangle)]
@@ -94,20 +102,20 @@ pub unsafe extern "C" fn setlocale(category: c_int, locale: *const c_char) -> *m
 /// See <https://pubs.opengroup.org/onlinepubs/9799919799/functions/uselocale.html>.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn uselocale(newloc: locale_t) -> locale_t {
-    let old_loc = if unsafe { THREAD_LOCALE.is_null() } {
+    let current = thread_locale();
+    let old_loc = if current.is_null() {
         LC_GLOBAL_LOCALE
     } else {
-        (unsafe { THREAD_LOCALE }) as locale_t
+        current as locale_t
     };
 
     if !newloc.is_null() {
-        unsafe {
-            THREAD_LOCALE = if newloc == LC_GLOBAL_LOCALE {
-                ptr::null_mut()
-            } else {
-                newloc.cast::<LocaleData>()
-            }
+        let new = if newloc == LC_GLOBAL_LOCALE {
+            ptr::null_mut()
+        } else {
+            newloc.cast::<LocaleData>()
         };
+        THREAD_LOCALE.with(|l| l.set(new));
     }
 
     old_loc

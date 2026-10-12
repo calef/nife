@@ -21,6 +21,11 @@ use crate::{
 pub use self::signal::PalSignal;
 mod signal;
 
+// nife: seeded in stage 2 (milestone 836) for `socketpair`, which a thread-mode program uses to
+// talk to itself; every other socket call is stage 3's (milestone 837).
+pub use self::socket::PalSocket;
+mod socket;
+
 /// Platform abstraction layer, a platform-agnostic abstraction over syscalls.
 pub trait Pal {
     /// Platform implementation of [`access()`](crate::header::unistd::access) from [`unistd.h`](crate::header::unistd).
