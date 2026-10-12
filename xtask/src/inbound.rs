@@ -85,13 +85,31 @@ pub(crate) struct InboundProber {
     arch: String,
     port: Option<u16>,
     stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
-    thread: Option<std::thread::JoinHandle<Result<(), String>>>,
+    thread: Option<std::thread::JoinHandle<(Result<(), String>, InboundTrace)>>,
+    /// The one clock (milestone 514 (the HVF std listener hangs in some full runs)): the prober's
+    /// events and the guest lines [`Self::mark`] stamps are both milliseconds since this instant,
+    /// so a timeline can put a connection's open beside the guest's listen and accept without a
+    /// second clock to reconcile.
+    ///
+    /// Name: provisional, milestone 514's lane, 2026-10-12 (UTC). The name `InboundTrace` already
+    /// used for the same instant.
+    started: std::time::Instant,
+    /// Guest lines about the two listeners, stamped as the relay read them. See [`Self::mark`].
+    ///
+    /// Name: provisional, milestone 514's lane, 2026-10-12 (UTC). The plural of [`Self::mark`].
+    marks: Vec<(u128, String)>,
+    /// The previous line marked a listener test starting, so this one carries its verdict.
+    ///
+    /// Name: provisional, milestone 514's lane, 2026-10-12 (UTC). Says what the next line will be
+    /// read for.
+    marking_result: bool,
 }
 
 impl InboundProber {
     /// Pick the port, tell the runner about it, and start poking. Call this **before** the child is
     /// spawned: the runner reads `NIFE_HOSTFWD_PORT` from the environment it inherits.
     pub(crate) fn new(arch: &str) -> Self {
+        let started = std::time::Instant::now();
         let Some(port) = free_loopback_port() else {
             eprintln!("inbound prober ({arch}): could not get a free loopback port");
             return Self {
@@ -99,6 +117,9 @@ impl InboundProber {
                 port: None,
                 stop: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true)),
                 thread: None,
+                started,
+                marks: Vec::new(),
+                marking_result: false,
             };
         };
         // SAFETY: `set_var` became unsafe in edition 2024 because it races other threads. This runs
@@ -108,12 +129,50 @@ impl InboundProber {
 
         let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         let stop_thread = stop.clone();
-        let thread = std::thread::spawn(move || probe_inbound(port, stop_thread));
+        let thread = std::thread::spawn(move || probe_inbound(port, stop_thread, started));
         Self {
             arch: arch.to_string(),
             port: Some(port),
             stop,
             thread: Some(thread),
+            started,
+            marks: Vec::new(),
+            marking_result: false,
+        }
+    }
+
+    /// **Stamp a guest line on the prober's clock, if it is about a listener** (milestone 514).
+    ///
+    /// The prober knows when it opened each connection and the guest knows when it listened and
+    /// accepted, and until this the two were never on one clock, so a lost round could only be
+    /// argued about. A leg that relays the guest's transcript line by line (the HVF leg) hands
+    /// each line here; the ones kept are the two listener tests' own lines and their verdicts:
+    /// the hand-written test's start (its thread-census line prints once `net_stack` is up and
+    /// before it listens), the std test's start, and each line the std program prints, which its
+    /// test echoes as it arrives (`std listen| listen ok` is the bind; `in use refused` is the
+    /// last thing before its first `accept`). The stamp is when the relay read the line, which
+    /// trails the guest by the serial path's latency, a few milliseconds against rounds seconds
+    /// apart.
+    ///
+    /// Name: provisional, milestone 514's lane, 2026-10-12 (UTC). A verb for stamping a line;
+    /// `stamp` was considered.
+    pub(crate) fn mark(&mut self, line: &str) {
+        let at = self.started.elapsed().as_millis();
+        let listener_test = line.starts_with("test ")
+            && (line.contains("::a_host_process_connects_to_the_guest_and_is_answered ")
+                || line.contains("::a_std_program_serves_a_granted_listening_port "));
+        let echoed = line.starts_with("    std listen| ");
+        if (self.marking_result || listener_test || echoed) && self.marks.len() < 64 {
+            self.marks
+                .push((at, line.trim().chars().take(120).collect()));
+        }
+        // A test line that ends in its verdict (`... ok`) needs nothing more. One that does not
+        // (the census, or an echo that started a line) gets its verdict from the next line that
+        // is not an echo.
+        if listener_test {
+            self.marking_result = !line.trim_end().ends_with(" ok");
+        } else if !echoed {
+            self.marking_result = false;
         }
     }
 
@@ -128,7 +187,17 @@ impl InboundProber {
             return false;
         };
         let port = self.port.unwrap_or(0);
-        match thread.join() {
+        let joined = thread.join();
+        if let Ok((_, trace)) = &joined {
+            // Printed on a GREEN run too, and that is the point: a red run is only diagnosable
+            // against a known-good shape, and the first two failures of this check had none to
+            // compare with.
+            eprintln!(
+                "inbound prober (port {port}): {}",
+                trace.summary(&self.marks)
+            );
+        }
+        match joined.map(|(verdict, _)| verdict) {
             Ok(Ok(())) => {
                 eprintln!(
                     "inbound check ({arch}): host connections to 127.0.0.1:{port} were forwarded \
@@ -177,14 +246,15 @@ impl InboundProber {
 fn probe_inbound(
     port: u16,
     stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
-) -> Result<(), String> {
+    started: std::time::Instant,
+) -> (Result<(), String>, InboundTrace) {
     use std::io::{ErrorKind, Read, Write};
     use std::sync::atomic::Ordering;
 
     let addr: std::net::SocketAddr = ([127, 0, 0, 1], port).into();
     let mut done = 0usize;
     let mut last = String::from("nothing ever answered on the forwarded port");
-    let mut trace = InboundTrace::new();
+    let mut trace = InboundTrace::new(started);
 
     while done < INBOUND_OFFERED && !stop.load(Ordering::Relaxed) {
         let opened = std::time::Instant::now();
@@ -287,17 +357,14 @@ fn probe_inbound(
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
 
-    if done >= INBOUND_REQUIRED {
-        // Printed on a GREEN run too, and that is the point: a red run is only diagnosable against
-        // a known-good shape, and the first two failures of this check had none to compare with.
-        // It is one line and at most four more.
-        eprintln!("inbound prober (port {port}): {}", trace.summary());
+    let verdict = if done >= INBOUND_REQUIRED {
         Ok(())
     } else {
         Err(format!(
             "the guest served {done} of the {INBOUND_OFFERED} inbound connections it offers on the \
              port forwarded to 127.0.0.1:{port}, and {INBOUND_REQUIRED} is the floor that proves \
-             both listeners answered; last attempt: {last}\n  what the {} attempts did: {}\n  \
+             both listeners answered; last attempt: {last}\n  what the {} attempts did is the \
+             `inbound prober` timeline printed just above.\n  \
              READ THE TIMESTAMPS FIRST. The four rounds come from two listeners in two separate \
              windows about eight seconds apart, two rounds in each, so the answers cluster. Two \
              clusters and a missing round means the host lost one that the guest served, and the \
@@ -305,9 +372,9 @@ fn probe_inbound(
              `(no virtio-net device attached; skipping)` in the transcript, which is the only way \
              either guest test passes without offering its two. See notes/net/the-inbound-check.md.",
             trace.attempts,
-            trace.summary(),
         ))
-    }
+    };
+    (verdict, trace)
 }
 
 /// **Whether a read error means "not yet" rather than "this connection is over".**
@@ -352,9 +419,10 @@ struct InboundTrace {
 }
 
 impl InboundTrace {
-    pub(crate) fn new() -> Self {
+    /// `started` is the prober's clock, shared with [`InboundProber::mark`].
+    pub(crate) fn new(started: std::time::Instant) -> Self {
         Self {
-            started: Some(std::time::Instant::now()),
+            started: Some(started),
             ..Default::default()
         }
     }
@@ -387,7 +455,10 @@ impl InboundTrace {
         }
     }
 
-    pub(crate) fn summary(&self) -> String {
+    /// The counts, then one line per kept connection and per guest mark, in time order. A
+    /// connection's line names when it was opened as well as when it ended, because the open is
+    /// what has to be read against the guest's listen and accept.
+    pub(crate) fn summary(&self, marks: &[(u128, String)]) -> String {
         let mut out = String::new();
         for (k, v) in &self.counts {
             if !out.is_empty() {
@@ -398,13 +469,24 @@ impl InboundTrace {
         if out.is_empty() {
             out.push_str("no attempts");
         }
+        let mut lines: Vec<(u128, String)> = marks
+            .iter()
+            .map(|(at, line)| (*at, format!("\n    +{at} ms: guest: {line}")))
+            .collect();
         for (at, outcome, held, bytes, error) in &self.events {
-            out.push_str(&format!(
-                "\n    +{at} ms: {outcome} after {held} ms, {bytes} bytes"
-            ));
+            let opened = at.saturating_sub(*held);
+            let mut line = format!(
+                "\n    +{at} ms: {outcome} after {held} ms (opened +{opened} ms), {bytes} bytes"
+            );
             if let Some(error) = error {
-                out.push_str(&format!(" ({error})"));
+                line.push_str(&format!(" ({error})"));
             }
+            lines.push((*at, line));
+        }
+        // Stable, so a mark and an event in the same millisecond keep the order they were made in.
+        lines.sort_by_key(|(at, _)| *at);
+        for (_, line) in lines {
+            out.push_str(&line);
         }
         out
     }

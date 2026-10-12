@@ -52,6 +52,25 @@ Two clusters with a round missing means the host lost one the guest served, and 
 recorded beside it says how (`reset`, `closed-partial`, `stopped-while-waiting`, `wrong-bytes`). One
 cluster means a whole listener never ran, and the `skipping` line above is the thing to grep for.
 
+**On the HVF leg the same timeline carries the guest's side** (milestone 514 (the HVF std listener
+hangs in some full runs), 2026-10-12 UTC). That leg relays the transcript line by line, so it stamps
+the two listener tests' own lines on the prober's clock. They are the hand-written test's census
+line (its `net_stack` is up), the std program's output as its test echoes it, and each test's
+verdict. `std listen| in use refused` is the last line before the std program's first `accept`. Each connection line also says
+when it was opened. A green HVF run, abridged:
+
+```console
+    +21363 ms: guest: test ...::a_host_process_connects_to_the_guest_and_is_answered ...     (E2 thread census: ...
+    +31756 ms: answered after 31548 ms (opened +208 ms), 9 bytes
+    +31756 ms: answered after 0 ms (opened +31756 ms), 9 bytes
+    +33141 ms: guest: std listen| in use refused
+    +38011 ms: answered after 6255 ms (opened +31756 ms), 9 bytes
+    +38013 ms: guest: std listen| served 2
+```
+
+The TCG legs (`xtask/src/scanout.rs`) do not hand their lines to the prober yet, so their
+timelines have connections and no guest lines.
+
 What that transcript also shows, and it is the most alarming number in this section. Look at the
 hold times. The connection that serves round one is opened at boot and answered 29973 ms
 later; the one that serves round three is held 5.6 s. The prober offers the guest exactly one

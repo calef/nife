@@ -5,7 +5,7 @@
 //! userspace test file is split by topic).
 
 #[cfg(target_arch = "aarch64")]
-use super::std_tests::assert_std_transcript;
+use super::std_tests::assert_std_transcript_from;
 #[cfg(target_arch = "aarch64")]
 use super::test_programs::{blk_image, std_exerciser_image};
 #[cfg(target_arch = "aarch64")]
@@ -574,7 +574,7 @@ fn std_net_runs_over_the_socket_contract() {
     if std_service::std_exerciser_image().is_none() {
         crate::testing::skip!(std_service::NO_STD_EXERCISER);
     }
-    let Some((report, net)) = virtio_service::start_net_std(
+    let Some((report, writer, net)) = virtio_service::start_net_std(
         net_stack_image(),
         std_exerciser_image(),
         socket_protocol::NO_LISTEN_GRANT,
@@ -582,7 +582,7 @@ fn std_net_runs_over_the_socket_contract() {
         crate::testing::skip!("no virtio-net device attached");
     };
 
-    assert_std_transcript(report, STD_NET_EXPECTED, "std net");
+    assert_std_transcript_from(report, writer, STD_NET_EXPECTED, "std net", false);
     net.release_or_fail("a net test's net_stack");
 }
 
@@ -617,7 +617,7 @@ fn a_std_program_serves_a_granted_listening_port() {
     if std_service::std_exerciser_image().is_none() {
         crate::testing::skip!(std_service::NO_STD_EXERCISER);
     }
-    let Some((report, net)) = virtio_service::start_net_std(
+    let Some((report, writer, net)) = virtio_service::start_net_std(
         net_stack_image(),
         std_exerciser_image(),
         socket_protocol::listen_grant(NET_LISTEN_PORT, NET_LISTEN_PORT),
@@ -625,6 +625,6 @@ fn a_std_program_serves_a_granted_listening_port() {
         crate::testing::skip!("no virtio-net device attached");
     };
 
-    assert_std_transcript(report, STD_LISTEN_EXPECTED, "std listen");
+    assert_std_transcript_from(report, writer, STD_LISTEN_EXPECTED, "std listen", true);
     net.release_or_fail("a net test's net_stack");
 }

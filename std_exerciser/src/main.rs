@@ -1220,13 +1220,15 @@ fn serve_one_inbound(listener: &TcpListener, round: usize) {
     // panicked with nobody having tried (milestone 649 (every client of a network stack shares its
     // socket numbers)'s cpu-matrix failure, 2026-10-07 UTC).
     let mut tries = 0;
+    let waiting = Instant::now();
     let (mut conn, _peer) = loop {
         match listener.accept() {
             Ok(accepted) => break accepted,
             Err(e) if e.kind() == ErrorKind::WouldBlock && tries + 1 < ACCEPT_TRIES => tries += 1,
             Err(e) => panic!(
-                "round {round}: nobody connected after {} tries: {e:?}",
-                tries + 1
+                "round {round}: nobody connected after {} tries over {} ms: {e:?}",
+                tries + 1,
+                waiting.elapsed().as_millis()
             ),
         }
     };

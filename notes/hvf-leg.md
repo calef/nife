@@ -11,7 +11,7 @@ rather than four cores running at once. Apple's Hypervisor.framework runs the sa
 EL1 on the physical Apple Silicon core, four vCPUs on four host threads, and until the RISC-V board
 arrives it is the only real silicon this project can test on at all.
 
-## The leg runs again on a GICv3 (milestone 227), with one flaky test
+## The leg runs again on a GICv3 (milestone 227)
 
 Read this before the rest of the page: everything below it describes runs from QEMU 11.0.2 on a
 GICv2, and that machine no longer starts here.
@@ -44,14 +44,13 @@ Two things failed on the way there, and neither is the GIC:
   Apple core now, and `arch::timer::set_cycle_counter_grant`'s BUGS carries the measurement. This is
   milestone 74's finding as much as this leg's: an HVF run is not evidence about that register.
 - **`user::tests::a_std_program_serves_a_granted_listening_port` hung in two of three full `--hvf`
-  runs**, and passes when run alone and in every TCG run. The std program aborts (its
-  `__rust_abort`, so a panic), the kernel test then waits for a report that never comes, and the
-  watchdog calls it a lost-wakeup hang. The likeliest reading, from `probe_inbound` and the std
-  `accept`, is timing. The host prober holds one connection open until the run ends. If that
-  connection was opened in the gap between the hand-written listener and the std one, the std
-  listener's bounded `accept` expires with the prober stuck on a connection nobody will accept.
-  Under TCG the gap is shaped differently. This is not established. `script/ci-build` names this
-  failure when the leg goes red, so a contributor can tell it is not theirs.
+  runs**, and passes when run alone and in every TCG run. Fixed by milestone 514 (the HVF std
+  listener hangs in some full runs) on 2026-10-12. The prober's third connection, opened within a
+  millisecond of the hand-written listener's second answer, could complete its handshake into the
+  socket `net_stack` re-arms after every `ACCEPT`. The hand-written client's `CLOSE` then dropped
+  that socket without a reset. So the prober held an established connection to nobody while the std
+  listener timed out and aborted. `net_stack` now resets such a peer. The block has the forced
+  reproduction and the runs.
 
 **What still happens when the machine will not start** (milestone 222's machinery, unchanged):
 `script/ci-build` skips the leg and says so; `script/test --hvf` fails with a paragraph saying the
@@ -209,8 +208,8 @@ a duration is a design question. The three sites are named in
   millisecond of the second answer, waited 90 s and was never accepted, while the std program aborted
   (`BRK`) on its bounded `accept`. That is the shape the hypothesis at the top of this page
   predicts, a connection handed to the hand-written listener's socket after its last round, now seen
-  four times rather than inferred. It is not fixed here: the prober holds connections on purpose
-  (`xtask/src/inbound.rs`), and changing that is the work notes/net/the-inbound-check.md says to read first.
+  four times rather than inferred. Milestone 514 forced it and fixed it in `net_stack`'s `CLOSE`,
+  not in the prober, which still holds every connection on purpose (`xtask/src/inbound.rs`).
 - One failure ends the suite, on both legs. The custom test framework does not unwind, so a
   panicking test is the end of the run under TCG too; what differs here is only the exit. The scanout
   and inbound checks still report afterwards and can fail because the guest never reached their

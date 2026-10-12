@@ -14,20 +14,23 @@ cargo xtask run --hvf          # or:  NIFE_ACCEL=hvf cargo xtask run
 
 The runner swaps two things and nothing else:
 
-- `-machine virt,accel=hvf,gic-version=2` instead of plain `virt`.
+- `-machine virt,accel=hvf,gic-version=3` instead of plain `virt` (TCG keeps a GICv2).
 - `-cpu host` instead of `-cpu cortex-a72`. **Mandatory**: HVF runs the physical core, so you
   cannot ask for an emulated a72. You get the actual Apple core, which is a much later ARM
   revision.
 
-Everything else is identical. QEMU still provides the `virt` machine, so the PL011, the GICv2, and
-virtio-mmio all keep working; only the CPU execution moves from software to hardware.
+Everything else is identical. QEMU still provides the `virt` machine, so the PL011 and virtio-mmio
+keep working; only the CPU execution and the interrupt controller change.
 
-**That last sentence stopped being true on QEMU 11.1.1**, which refuses to pair HVF with a GICv2 at
-all (`HVF does not support GICv2 emulation`), so none of this runs on this machine today. Milestone
-222 made the refusal legible rather than fatal; see [hvf-leg.md](hvf-leg.md) for what a contributor
-now sees, and [interrupts.md](interrupts.md) for the GICv3 driver that would bring it back. Boot goes
-from about a second to instant, and **the whole stack runs**: both userspace drivers, the
-filesystem read, and the shell spawning processes, all on the M3.
+**The GICv3 is the change, and it is why HVF runs here at all.** QEMU 11.1.1 refuses to pair HVF
+with a GICv2 (`HVF does not support GICv2 emulation`), and from 2026-09-02 that left this machine
+with no accelerated run until milestone 227 (a GICv3 driver, because GICv2 boots and silently loses
+every interrupt) was built on 2026-09-19. [interrupts.md](interrupts.md) has the driver, and
+[hvf-leg.md](hvf-leg.md) has the test leg it brought back, and what a contributor sees if the
+machine still refuses (milestone 222 (the one command a person runs before pushing has a leg that
+fails instead of skipping)). Boot goes from about a second to instant, and **the whole stack
+runs**: both userspace drivers, the filesystem read, and the shell spawning processes, all on the
+M3.
 
 ## Tests stay on TCG, on purpose
 
@@ -35,6 +38,11 @@ filesystem read, and the shell spawning processes, all on the M3.
 work around. The test harness exits and reports pass/fail through semihosting, and semihosting
 does not survive the move to real hardware (see below). TCG is also the right home for tests
 regardless: deterministic, and identical on any host.
+
+The exception is asked for by name: `cargo xtask test --hvf` (milestone 81 (an HVF leg: the test
+suite on the physical core)) runs the same suite under HVF, reads the verdict off the transcript
+instead of waiting for a semihosting exit that never comes, and kills QEMU itself.
+[hvf-leg.md](hvf-leg.md) has how, and what it costs.
 
 ## Two things HVF taught us the first time we booted
 
