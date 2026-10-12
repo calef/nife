@@ -379,3 +379,6 @@ pub(super) fn gauge_follows(transcript: &str, at: usize) -> &str {
         .find_map(|l| l.strip_prefix("$ ").filter(|c| !c.trim().is_empty()))
         .unwrap_or("(boot)")
 }
+
+#[cfg(test)]
+mod tests;
