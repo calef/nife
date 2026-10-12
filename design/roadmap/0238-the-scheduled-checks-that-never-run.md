@@ -144,7 +144,7 @@ this milestone's first run produced.
 
 Something to notice next time: `script/cadence-check`. It reports any scheduled workflow whose
 last successful scheduled run is more than 15 days old, and a workflow too young to have fired is
-excused by its own creation date. It is **deliberately not a scheduled workflow**, which is the
+excused by its own creation date. It is deliberately not a scheduled workflow, which is the
 whole design and the reason milestone 232 declined to build it: a cron that watches crons dies the
 way its subjects die. Delivery is `helpers/trunk-health.sh`, which already runs under `launchd` and
 could not have caught this on its own, structurally: its trunk check filters runs to `main`'s
@@ -242,39 +242,26 @@ ship under a feedback loop that slow.
   milestone's first published report, measured the crate, and closed RECORDED because the pure
   fraction a mutation can reach is small.
 - **Recorded.** `design/roadmap/0238-the-scheduled-checks-that-never-run.md` says in `BUGS` that a
-  green mutation run is not the same as a good one: the number has to be compared against
-  `.cargo/mutants-baseline.txt`, and a run that succeeds while the score falls is a different
-  finding that this milestone does not cover.
+  green mutation run is not the same as a good one.
 - **Recorded.** `notes/mutation-testing.md` tabulates what the two partial runs did and did not
   cover. Seven eighths of the corpus is still unmeasured since 2026-08-03, because four of eight
   shards died on the run that finally published, and a full refresh needs a run where enough shards
   survive.
-- **Recorded.** `AGENTS.md` already accepts the gap `script/cadence-check` inherits. It is delivered
-  through `helpers/trunk-health.sh`, which runs under `launchd` on one Mac, so a machine asleep is a
-  watcher not watching.
-- **Recorded.** `design/decisions/0074-audit-cadence.md` holds the cadence and what it is for. `audit
-  cadence` is red because two audits are genuinely due, which is the signal working rather than a
-  defect, and nothing can tell a correct red from a broken one from outside.
-- **Recorded.** `design/roadmap/0238-the-scheduled-checks-that-never-run.md` records the boundary
-  around the other seven scheduled workflows milestone 232 inventoried and did not run. Neither
-  repair here touches them; what changed is that `script/cadence-check` now names any of them whose
-  last successful scheduled run is more than 15 days old.
-- **Refused.** Excluding `compositor` from the Miri run to make it fit its budget. That was
-  considered and dropped: the crate has no `unsafe` today, which is what retired `xtask` and
-  `board_console`, but it is central system logic under active development, and an excluded crate is
-  one where a future `unsafe` block is silently uncovered.
-- **Milestone 349.** Sample
-  `compositor`'s six full-screen per-pixel sweeps under `cfg(miri)`, the way `glob`, `ntp_proto`,
-  `calendar` and `gpt` already sample theirs. One was strided and fell from 44+ minutes to 57
-  seconds; the other five are untouched and are now the whole remaining cost of
-  `script/undefined-behavior-check`. The budget was raised to 240 minutes instead of tuned, so the
-  true end-to-end cost has never been measured.
+- **Recorded.** `AGENTS.md` already accepts the gap `script/cadence-check` inherits from
+  `helpers/trunk-health.sh`, told in `BUGS, after the work`.
+- **Recorded.** `design/decisions/0074-audit-cadence.md` holds the cadence and what it is for. Why
+  `audit cadence` is red is told in `BUGS, after the work`.
+- **Recorded.** `design/roadmap/0238-the-scheduled-checks-that-never-run.md` records in `BUGS` the
+  boundary around the other seven scheduled workflows milestone 232 (audit every check against two questions)
+  inventoried and did not run.
+  `script/cadence-check` now names any of them that has gone more than 15 days without a scheduled success.
+- **Refused.** Excluding `compositor` from the Miri run to make it fit its budget, for the reason
+  given in the `compositor` handoff above.
+- **Milestone 349.** Milestone 349 (sample `compositor`'s five remaining full-screen sweeps under
+  Miri) is the first handoff above, with its measurements.
 - **Milestone 277.** Bound what one mutant may allocate, so a runaway allocation kills the mutant
-  instead of the machine. Promoted out of the proposal queue 2026-09-11. Three shapes are
-  priced in this block (a memory cgroup via `systemd-run --scope`, `ulimit -v` ahead of
-  `script/mutation`, or a `cargo` runner wrapper) and choosing between them is the work. Today one
-  mutant goes 1.4 GB to 15.8 GB in twenty seconds and takes the runner agent with it, inside the
-  28-to-51-second per-mutant timeout that therefore cannot catch it.
+  instead of the machine. Promoted out of the proposal queue 2026-09-11. The second handoff above
+  holds the three shapes and the measurement behind them.
 - **Done.** Re-read fatal risk 3 against the new number. calef ruled it on 2026-09-19 and
   `design/fatal-risks/README.md` now reads MEASURED, AMBER. The 83.4% this bullet was written against
   turned out not to exist: the workflow this milestone repaired went on to complete all eight shards
