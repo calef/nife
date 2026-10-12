@@ -706,6 +706,137 @@ mod tests {
         assert_eq!(Handoff::unpack(r, p), None);
         assert!(!Handoff::is_role(0xe1e0));
     }
+
+    /// A handoff survives its own packing, and each refusal holds on its own: a role word that is
+    /// not this server's is refused with a good base beside it, as is a good role word with no
+    /// base or a base off a page boundary.
+    #[test]
+    fn the_handoff_round_trips_and_each_refusal_stands_alone() {
+        let h = Handoff {
+            mac: [0x6c, 0xcf, 0x39, 0x00, 0x47, 0x2c],
+            data_plane_phys: 0x4800_0000,
+        };
+        let [r, p] = h.pack();
+        assert!(Handoff::is_role(r));
+        assert_eq!(Handoff::unpack(r, p), Some(h));
+        assert_eq!(Handoff::unpack(r ^ 1, p), None, "not this server's role");
+        assert_eq!(Handoff::unpack(r, 0), None, "no base");
+        assert_eq!(Handoff::unpack(r, p + 8), None, "not page aligned");
+    }
+
+    /// **The region's layout, in bytes**: two pages of rings, sixteen receive buffers, sixteen
+    /// transmit buffers. The kernel allocates `layout::PAGES` from this, so a slip here maps a
+    /// region too small for the buffers the rings point at.
+    #[test]
+    fn the_region_is_two_ring_pages_then_the_buffers() {
+        assert_eq!(layout::RX_BUFFERS, 0x2000);
+        assert_eq!(layout::TX_BUFFERS, 0xa000);
+        assert_eq!(layout::BYTES, 0x1_2000);
+        assert_eq!(layout::rx_buffer(1), 0x2800);
+        assert_eq!(
+            layout::rx_buffer(RX_ENTRIES + 1),
+            0x2800,
+            "reduced mod the ring"
+        );
+        assert_eq!(layout::tx_buffer(1), 0xa800);
+        assert_eq!(
+            layout::tx_buffer(TX_ENTRIES + 1),
+            0xa800,
+            "reduced mod the ring"
+        );
+    }
+
+    /// The descriptor bits as the databook places them, written out: the driver and the simulated
+    /// device both read these names, so only a literal tells a misplaced bit from a right one.
+    #[test]
+    fn the_descriptor_bits_are_where_the_databook_puts_them() {
+        assert_eq!(
+            [
+                RDES3_OWN,
+                RDES3_IOC,
+                RDES3_BUF1V,
+                RDES3_CTXT,
+                RDES3_FD,
+                RDES3_LD,
+                RDES3_ES
+            ],
+            [
+                1 << 31,
+                0x4000_0000,
+                0x0100_0000,
+                0x4000_0000,
+                0x2000_0000,
+                0x1000_0000,
+                0x8000
+            ]
+        );
+        assert_eq!(
+            [TDES2_IC, TDES3_FS, TDES3_LS, TDES3_OWN, TDES3_ES],
+            [0x8000_0000, 0x2000_0000, 0x1000_0000, 0x8000_0000, 0x8000]
+        );
+    }
+
+    /// The held-back slot is truly held back: descriptor 15 is not the device's after `start`.
+    /// The tail alone would not show it, since the simulated device stops at the tail either way.
+    /// And a transmit ring a previous run left owned is cleared whole, so the first reclaim does
+    /// not wait on a frame nobody queued.
+    #[test]
+    fn start_holds_the_last_receive_slot_back_and_clears_a_stale_transmit_ring() {
+        let mut nic = Nic::new(PHYS, Memory::coherent(PHYS));
+        nic.with(|r, _| {
+            for i in 0..TX_ENTRIES {
+                r.write_u64(layout::tx_descriptor(i), u64::MAX);
+                r.write_u64(layout::tx_descriptor(i) + 8, u64::MAX);
+            }
+        });
+        let mut dp = DataPlane::new(PHYS);
+        nic.with(|r, t| dp.start(r, t));
+        nic.with(|r, _| {
+            assert_eq!(r.read_u64(layout::rx_descriptor(RX_ENTRIES - 1) + 8), 0);
+            assert_ne!(r.read_u64(layout::rx_descriptor(RX_ENTRIES - 2) + 8), 0);
+            for i in 0..TX_ENTRIES {
+                assert_eq!(r.read_u64(layout::tx_descriptor(i)), 0, "{i}");
+                assert_eq!(r.read_u64(layout::tx_descriptor(i) + 8), 0, "{i}");
+            }
+        });
+    }
+
+    /// The receive cursor counts frames taken and wraps with the ring, so it always names a slot.
+    #[test]
+    fn the_receive_cursor_names_the_next_slot_and_wraps() {
+        let mut nic = Nic::new(PHYS, Memory::coherent(PHYS));
+        nic.program_rings_and_start(PHYS);
+        let mut dp = DataPlane::new(PHYS);
+        nic.with(|r, t| dp.start(r, t));
+        let mut out = vec![0u8; MAX_FRAME];
+        for k in 1..=usize::from(RX_ENTRIES) + 2 {
+            assert!(nic.wire_in(&frame(64, k as u8)));
+            nic.with(|r, t| dp.receive(r, t, &mut out)).unwrap();
+            assert_eq!(usize::from(dp.rx_cursor()), k % usize::from(RX_ENTRIES));
+        }
+    }
+
+    /// A frame of exactly the largest size is carried, and `can_transmit` tells a ring with room
+    /// from a full one before anything is refused.
+    #[test]
+    fn the_largest_frame_is_sent_and_a_full_ring_says_so_in_advance() {
+        let mut nic = Nic::new(PHYS, Memory::coherent(PHYS));
+        nic.program_rings_and_start(PHYS);
+        let mut dp = DataPlane::new(PHYS);
+        nic.with(|r, t| dp.start(r, t));
+        assert!(nic.with(|r, _| dp.can_transmit(r)));
+        nic.with(|r, t| dp.transmit(r, t, &frame(MAX_FRAME, 1)))
+            .unwrap();
+        for k in 1..usize::from(TX_ENTRIES - 1) {
+            assert!(nic.with(|r, _| dp.can_transmit(r)), "{k}");
+            nic.with(|r, t| dp.transmit(r, t, &frame(60, k as u8)))
+                .unwrap();
+        }
+        assert!(!nic.with(|r, _| dp.can_transmit(r)));
+        nic.step();
+        assert!(nic.with(|r, _| dp.can_transmit(r)));
+        assert_eq!(nic.wire_out()[0].len(), MAX_FRAME);
+    }
 }
 
 #[cfg(kani)]

@@ -300,4 +300,92 @@ mod tests {
         assert_eq!(classify(&o), Verdict::Inconclusive);
         assert!(transmit_completed(&o));
     }
+
+    /// The payload bytes run `0x40` to `0x7f` and repeat: the bytes `the_probe_frame_is_never_
+    /// mistaken_for_poison_or_silence` relies on, pinned at both ends of a lap.
+    #[test]
+    fn the_payload_counts_from_0x40_and_wraps_at_0x7f() {
+        let f = probe_frame(MAC);
+        assert_eq!(
+            [f[14], f[15], f[14 + 63], f[14 + 64]],
+            [0x40, 0x41, 0x7f, 0x40]
+        );
+    }
+
+    /// **Step 2 poisons the frame and its CRC, and nothing past them**, so whatever the device
+    /// writes into those bytes replaces poison, and the read-back covers every line it touches.
+    /// Step 3 has queued the frame and the device has not run yet: descriptor 0 is still its.
+    #[test]
+    fn prepare_poisons_exactly_the_frame_and_its_crc_and_waits_on_descriptor_0() {
+        let mut nic = Nic::new(PHYS, Memory::coherent(PHYS));
+        let id = Identity::read(&mut nic);
+        controller::configure(&mut nic, &id, &BUS, PHYS, MAC).unwrap();
+        controller::start(&mut nic, GIG, true);
+        let mut dp = DataPlane::new(PHYS);
+        nic.with(|r, t| prepare(&mut dp, r, t, MAC)).unwrap();
+        nic.with(|r, _| {
+            let mut b = [0u8; PROBE_LEN + CRC_BYTES + 1];
+            r.read_bytes(layout::rx_buffer(0), &mut b);
+            assert!(b[..PROBE_LEN + CRC_BYTES].iter().all(|&x| x == POISON));
+            assert_eq!(b[PROBE_LEN + CRC_BYTES], 0);
+            assert!(!delivered(r));
+        });
+        assert_eq!(nic.rx_available(), usize::from(POSTED));
+        assert_eq!(POSTED, 15);
+    }
+
+    /// After a coherent loopback, the CPU sees receive descriptor 0 handed back and transmit
+    /// descriptor 0's write-back: first and last, its length, no ownership.
+    #[test]
+    fn a_completed_loopback_is_seen_on_both_rings() {
+        let mut nic = Nic::new(PHYS, Memory::coherent(PHYS));
+        let id = Identity::read(&mut nic);
+        controller::configure(&mut nic, &id, &BUS, PHYS, MAC).unwrap();
+        controller::start(&mut nic, GIG, true);
+        let mut dp = DataPlane::new(PHYS);
+        nic.with(|r, t| prepare(&mut dp, r, t, MAC)).unwrap();
+        nic.step();
+        let o = nic.with(|r, _| {
+            assert!(delivered(r));
+            observe(r, MAC, 0)
+        });
+        assert_eq!(
+            o.tx_des3,
+            crate::TDES3_FS | crate::TDES3_LS | PROBE_LEN as u32
+        );
+        assert!(transmit_completed(&o));
+        assert_eq!(o.payload, Payload::Matches);
+        assert!(!transmit_completed(&Observation {
+            tx_des3: crate::TDES3_OWN,
+            ..o
+        }));
+    }
+
+    /// A buffer of nothing but poison reads as poison, and one of zeros as neither poison nor
+    /// the frame.
+    #[test]
+    fn a_buffer_is_judged_poison_only_when_every_byte_is() {
+        let mut nic = Nic::new(PHYS, Memory::coherent(PHYS));
+        let judged = |nic: &mut Nic, fill: u8| {
+            nic.with(|r, _| {
+                r.write_bytes(layout::rx_buffer(0), &[fill; PROBE_LEN]);
+                observe(r, MAC, 0).payload
+            })
+        };
+        assert_eq!(judged(&mut nic, POISON), Payload::Poison);
+        assert_eq!(judged(&mut nic, 0), Payload::Other);
+    }
+
+    /// Silence from the device, with no completion, is no answer: a transmit side that neither
+    /// completed nor reported a descriptor unavailable has refused nothing.
+    #[test]
+    fn a_status_of_nothing_is_inconclusive() {
+        let o = Observation {
+            rx_des3: RDES3_OWN,
+            tx_des3: TDES3_OWN,
+            status: 0,
+            payload: Payload::Poison,
+        };
+        assert_eq!(classify(&o), Verdict::Inconclusive);
+    }
 }

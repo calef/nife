@@ -244,4 +244,76 @@ mod tests {
             assert_ne!(r & !0xfff, DMA_PAGE, "{r:#x}");
         }
     }
+
+    /// **The bits as the header spells them**, written out rather than shifted, so a slip in one
+    /// constant is caught here and not by a controller that ignores a write. The driver and the
+    /// simulated controller both read these names, so only a literal can tell a wrong bit from a
+    /// right one. The `1 << 0` bits are absent: their shift cannot go wrong.
+    #[test]
+    fn the_bits_are_where_dwqereg_puts_them() {
+        assert_eq!(
+            [
+                MAC_CONF_DCRS,
+                MAC_CONF_LM,
+                MAC_CONF_DM,
+                MAC_CONF_FES,
+                MAC_CONF_PS,
+                MAC_CONF_JD,
+                MAC_CONF_BE,
+            ],
+            [0x200, 0x1000, 0x2000, 0x4000, 0x8000, 0x2_0000, 0x4_0000]
+        );
+        assert_eq!(
+            [
+                MTL_TXQ_OP_MODE_TSF,
+                MTL_TXQ_OP_MODE_TXQEN_MASK,
+                MTL_TXQ_OP_MODE_TXQEN,
+                MTL_TXQ_OP_MODE_TTC_MASK,
+                MTL_TXQ_OP_MODE_TTC_512,
+                MTL_TXQ_OP_MODE_TQS_MASK,
+            ],
+            [0x2, 0xc, 0x8, 0x70, 0x70, 0x01ff_0000]
+        );
+        assert_eq!(
+            [
+                MTL_RXQ_OP_MODE_RTC_MASK,
+                MTL_RXQ_OP_MODE_RTC_128,
+                MTL_RXQ_OP_MODE_RSF,
+                MTL_RXQ_OP_MODE_RQS_MASK,
+            ],
+            [0x18, 0x18, 0x20, 0x3ff0_0000]
+        );
+        assert_eq!(
+            [
+                DMA_SYSBUS_MODE_BLEN_32,
+                DMA_SYSBUS_MODE_BLEN_64,
+                DMA_SYSBUS_MODE_BLEN_128,
+                DMA_SYSBUS_MODE_BLEN_256,
+                DMA_SYSBUS_MODE_EAME,
+            ],
+            [0x10, 0x20, 0x40, 0x80, 0x800]
+        );
+        assert_eq!([CHAN_CONTROL_PBLX8, CHAN_TX_CONTROL_OSP], [0x1_0000, 0x10]);
+        assert_eq!(
+            [
+                CHAN_STATUS_TPS,
+                CHAN_STATUS_TBU,
+                CHAN_STATUS_RI,
+                CHAN_STATUS_RBU,
+                CHAN_STATUS_RPS,
+                CHAN_STATUS_FBE,
+            ],
+            [0x2, 0x4, 0x40, 0x80, 0x100, 0x1000]
+        );
+    }
+
+    /// The four hardware feature registers are consecutive words from `0x11c`, and an index past
+    /// them wraps rather than reading some other register.
+    #[test]
+    fn the_feature_registers_are_four_words_from_0x11c() {
+        assert_eq!(
+            [0, 1, 2, 3, 4, 5].map(mac_hw_feature),
+            [0x11c, 0x120, 0x124, 0x128, 0x11c, 0x120]
+        );
+    }
 }
