@@ -1204,3 +1204,14 @@ mod confinement_attack_tests;
 /// Cross-ISA: the retype paths and the rights model are portable kernel code (DECISIONS §19).
 #[cfg(test)]
 mod seventh_pass_retype_tests;
+
+/// **A `SEND_CAP` cannot widen a right out of its rights register, nor lend a GRANT-less capability**
+/// (milestone 903, fatal risk 7's confinement claim, claims 1 and 2). Drives the live kernel
+/// delegation path (`Rendezvous::SEND_CAP` through the real dispatcher) with a widening rights mask
+/// and with a GRANT-less source, where the host crate's `derive_never_widens_rights` and
+/// `from_bits_cannot_forge_a_right` prove the same properties on pure logic. Both refuse before the
+/// rendezvous is touched, so nothing blocks. Its header has the reasoning.
+///
+/// Cross-ISA: the delegation rule and the rendezvous are portable kernel code (DECISIONS §19).
+#[cfg(test)]
+mod seventh_pass_delegation_tests;
