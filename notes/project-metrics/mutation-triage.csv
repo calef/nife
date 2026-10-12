@@ -976,3 +976,15 @@ paging,Sv39Mae::memory_type,replace | with ^,equivalent,"MAE_SO (63), MAE_C (62)
 paging,Sv39Mae::memory_type_of,replace Sv39Mae::memory_type_of -> u64 with 0,killed,"killed by memory_and_devices_carry_linuxs_memory_types, which now reads the type back through memory_type_of"
 pci,msi_cap,replace & with ^,killed,"killed by an_msi_only_function_decodes_and_places_its_data_by_address_width (a 32-bit MSI capability, and one behind no capability list)"
 pci,msi_cap,replace & with |,killed,"killed by an_msi_only_function_decodes_and_places_its_data_by_address_width (a 32-bit MSI capability, and one behind no capability list)"
+screen_console,,replace * with +,killed,killed by the_grid_holds_150_rows_at_the_widest_scale_one_screen
+screen_console,Aperture::checked,replace * with +,killed,"killed by an_aperture_survives_the_trip_through_two_words, whose stride refusal now sets a scale so the stride check is what refuses"
+screen_console,Aperture::checked,replace * with /,killed,"killed by an_aperture_survives_the_trip_through_two_words, whose stride refusal now sets a scale so the stride check is what refuses"
+screen_console,Aperture::copy_wide_screen,replace | with ^,equivalent,"lo is a u32 widened to u64, so lo and hi << 32 occupy disjoint bits and | and ^ agree; the 2026-10-12 per-crate re-run still reports it"
+screen_console,PixelSink<'a>::is_empty,replace PixelSink<'a>::is_empty -> bool with false,killed,killed by a_pixel_sink_knows_when_it_covers_nothing
+screen_console,PixelSink<'a>::is_empty,replace PixelSink<'a>::is_empty -> bool with true,killed,killed by a_pixel_sink_knows_when_it_covers_nothing
+screen_console,ScreenConsole::clear,replace - with +,equivalent,"the run length only bounds a store_run, which itself clips to the room left (run.len().min(room)), so min(run.len(), len + at) stores the same whole pixels as min(run.len(), len - at); the 2026-10-12 per-crate re-run still reports it"
+screen_console,ScreenConsole::draw,replace * with +,killed,killed by a_glyph_at_scale_sixteen_is_painted
+screen_console,ScreenConsole::draw,replace > with ==,killed,killed by a_glyph_at_scale_sixteen_is_painted
+screen_console,ScreenConsole::draw,replace > with >=,killed,killed by a_glyph_at_scale_sixteen_is_painted
+screen_console,ScreenConsole::scroll,replace + with *,killed,killed by a_console_that_fills_the_grid_scrolls_without_reading_past_it
+screen_console,ScreenConsole::scroll,replace < with <=,killed,killed by a_console_that_fills_the_grid_scrolls_without_reading_past_it
