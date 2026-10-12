@@ -164,7 +164,7 @@ So class 2 should become a reusable toolkit only in its generic half. The nife-r
 | 2, nife records | Stays in nife. |
 | 2, generic checks | Into 887's template repository once 887 is built, consumed by nife at a pin like any crate repository. Until then, nothing moves. |
 | 3, governance mechanism | The rules stay in each repository as data; the bots become reusable workflows in 887's template (Fork 1, ruled A). |
-| 3, the rest | One new public repository (provisionally `nifeos/fleet`), consumed by nife at a pin. Forks 2 and 4. |
+| 3, the rest | One new public repository (provisionally `nifeos/fleet`, name not yet ratified, not yet created), consumed by nife at a pin (Fork 2, ruled A). Order is Fork 4. |
 | 3, method metrics | Fork 3. |
 | 4 | The two constants go to an environment variable with no default, and their values to the lab record. |
 
@@ -193,7 +193,12 @@ The fleet's drain also reads `open-question.jq` and the label rules, so under A 
 template at a pin like any repository. Reversible until 887 is built, since nothing yet consumes
 the template. Had calef said no, B was the fallback and 887 would have grown a copy.
 
-## Fork 2: one new public repository or several
+## Fork 2, ruled A: one new public repository or several
+
+Ruled by calef on 2026-10-12 (UTC), relayed by the maintainer session on pull request #1976: *"A"*.
+One fleet repository, provisionally `nifeos/fleet`, beside 887's template. The name waits for his
+naming pass, and no repository is created yet. The options below stay as the record of what was
+weighed.
 
 Background. With Fork 1's A, class 3 minus the governance mechanism is 134 files. Every
 change that crosses a repository lands upstream first and is then pinned downstream by a separate
@@ -209,7 +214,7 @@ Recommendation: A. The class-3 tools call each other densely (the drain alone lo
 of them by name, two of which are governance), so splitting them makes most changes cross a
 boundary. B would ship a merge queue's tooling to
 repositories that 887 says have no queue. Naming the repository and making it public is the
-irreversible part; the code can move back.
+irreversible part; the code can move back. That part waits for the naming pass.
 
 ## Fork 3: whether method metrics stay with nife
 
