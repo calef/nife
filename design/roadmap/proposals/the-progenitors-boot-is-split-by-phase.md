@@ -18,7 +18,7 @@ source file stays under 2,000 lines), but `boot` is still one body of 1,700 line
 the shell's step still works with locals bound while the archive was read. calef ruled on
 2026-10-09 (UTC) that the kernel's own boot sequence, `kernel_main`, is split by boot phase, one
 function per phase
-([the function-length ratchet proposal](a-ratchet-on-function-length.md), open question 4). This is
+([the function-length ratchet proposal](../0888-a-ratchet-on-function-length.md), open question 4). This is
 the same split for the progenitor's half of booting.
 
 Reuse: not applicable; this restructures code and adds none.

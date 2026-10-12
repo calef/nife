@@ -78,14 +78,16 @@ it was never a count-down ratchet. The count-down shapes in this tree are the un
 ceilings of milestone 134 (the register of measures), the prose ratchet of milestone 586 (a prose
 ratchet in lint) and the file-length ratchet of milestone 841.
 
-So the lint ratchet is a separate pass, in the file-length ratchet's shape:
+So the lint ratchet is a separate pass, in the file-length ratchet's shape. Milestone 888 (a ratchet
+on function length) built it as specified here, with `too_many_lines` its first lint, so this
+proposal registers its lints in `helpers/lint_ratchet.py` rather than building the pass:
 
 1. `script/lint` runs clippy once more per configuration it already lints, with the ratcheted lints
    at `-W` and `--message-format=json`. The census's five passes took 14 seconds with dependencies
    built.
-2. A helper (name provisional, minted by the lane) counts hits per file per lint. A site compiled
+2. `helpers/lint_ratchet.py` (name provisional) counts hits per file per lint, as its `count` kind. A site compiled
    for several architectures counts once, so a parity gap cannot hide a hit.
-3. A committed baseline TSV holds one row per file and lint over zero. It follows
+3. The committed baseline, `design/lint-baseline.tsv`, holds one row per file and lint over zero. It follows
    `helpers/file_length_ratchet.py`'s rules: a row is a ceiling that only `--bank` lowers, a file
    may not grow against the merge base, no row may be added, and a renamed file moves its row.
 4. The scope is the baseline's, not the lint table's. A crate outside the scope is not counted, so
@@ -107,8 +109,8 @@ baseline records. Converting them is not this milestone's work.
 
 ## Done when
 
-1. The lint ratchet runs in `script/lint`, with a selftest that runs first, as the file-length
-   ratchet's does.
+1. The panic lints are registered in the lint ratchet, which already runs in `script/lint` with a
+   selftest first.
 2. The baseline freezes every file in scope at its count on 2026-10-09 (UTC), and a row may only
    go down.
 3. The kernel's syscall entry and every path a syscall argument reaches carry no panic hit. Those
@@ -133,7 +135,7 @@ baseline records. Converting them is not this milestone's work.
 4. Does `indexing_slicing` belong in the kernel at all? 89 of its 282 kernel hits are in `arch/`,
    mostly fixed-size table walks the compiler can bound.
 5. One baseline file for every lint ratchet, or one per proposal? One file is the recommendation;
-   four proposals reuse the pass.
+   four proposals reuse the pass. Ruled 2026-10-12 (UTC), calef: one file, as §283 (a function is held to 100 code lines by a lint ratchet) records.
 
 ## Where it sits in the ranking
 
