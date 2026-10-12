@@ -67,12 +67,27 @@ Checked 2026-10-12 (UTC). Nothing on the roadmap or in the proposal pile owns a 
   `install`, `remove` and `rollback`. §270 (a package manager holds an installer endpoint, not
   the spawn endpoint) keeps the starting in the progenitor.
 
+## The install confirmation
+
+Added 2026-10-12 (UTC). The 892 lane found (#2027) that no milestone builds `jig install`'s
+confirmation, the list of everything an install grants under §208. This milestone's service line
+needs it. So does milestone 892 (a std program at the prompt holds the network and a name
+resolver): calef ruled (c) there, that the manifest asks for resolver zones and the owner grants
+them at install. So it is built here, once, for every grant:
+
+- Each grant on its own line: the service ("runs as a service, now and at every boot"), each
+  resolver zone, each directory with its rights, and every other capability the manifest asks for.
+- A root-zone ask, which can resolve any name, is flagged apart rather than listed like the rest.
+- One confirmation covers the list, and what was confirmed is kept with the activation-set entry.
+  That record is the one the scripted-installs milestone in flight (#2026, approval files) reuses,
+  so an approval file answers the same list a person would.
+
 ## The work
 
 1. The declaration in the manifest, beside 849's run-time needs: program, arguments, grants,
    restart policy (`never`, `on-crash` with a limit and backoff), optional control endpoint.
-2. The installer records the service in the activation set's entry; `jig install` prints it among
-   the grants, and `--no-start`.
+2. The install confirmation above, and its record. The installer records the service in the
+   activation set's entry, with `--no-start`.
 3. The progenitor starts every enabled service in the live generation, at once on install and at
    every boot, each under a supervision endpoint the progenitor holds.
 4. Teardown and respawn on a crash, by policy, and on an update, for each service whose package
@@ -85,14 +100,16 @@ Checked 2026-10-12 (UTC). Nothing on the roadmap or in the proposal pile owns a 
 On aarch64, riscv64 and x86_64 under QEMU, in `script/swish-check`, with a fixture service package
 that reports its version:
 
-1. `jig install` of the fixture lists "runs as a service, now and at every boot", and after one
-   confirmation the fixture is running, as `ps` shows over its domain.
-2. After `reboot` (milestone 805 (`reboot` at the prompt: a person restarts the machine without
+1. `jig install` of the fixture lists each grant: "runs as a service, now and at every boot", a
+   directory with its rights, and a resolver zone. After one confirmation the fixture is running,
+   as `ps` shows over its domain, and the confirmed list is in its activation-set entry.
+2. A second fixture whose manifest asks for the root zone is flagged apart in its confirmation.
+3. After `reboot` (milestone 805 (`reboot` at the prompt: a person restarts the machine without
    touching its power)), it is running again with no command typed.
-3. The fixture faults on request; it is running again under a new tid, by its policy.
-4. Installing version 2 lists the fixture among services that will restart; afterwards it reports
+4. The fixture faults on request; it is running again under a new tid, by its policy.
+5. Installing version 2 lists the fixture among services that will restart; afterwards it reports
    version 2.
-5. `jig rollback` leaves it running and reporting version 1. `jig remove` leaves it stopped, and
+6. `jig rollback` leaves it running and reporting version 1. `jig remove` leaves it stopped, and
    after a reboot it is still stopped.
 
 ## Open questions
