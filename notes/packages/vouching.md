@@ -63,15 +63,15 @@ identity per line, `#` for a comment. There is no list on a fresh machine, and n
 nobody. The owner writes it at the boot prompt:
 
 ```
-$ echo chris >> may-run-unvouched
+$ echo alice >> may-run-unvouched
 ```
 
 `login` reads it on every login, after the secret is checked and the session is built, so an edit
 holds from the next login on. A session cannot reach the file: it is confined to its own subtree.
 
-The proof rides logins `system_tests/src/user/login_tests.rs` already makes. A listed `chris` gets the
+The proof rides logins `system_tests/src/user/login_tests.rs` already makes. A listed `alice` gets the
 capability, and it reaches the endpoint `login` was given and cannot be passed on. With no list,
-`chris` gets none. With a list naming only `corinne`, she gets one and `chris` does not. Falsified
+`alice` gets none. With a list naming only `bob`, he gets one and `alice` does not. Falsified
 once on aarch64: with the list check answering yes for everyone, the no-list login failed.
 
 No login of its own, on purpose: a first version added two, and the aarch64 suite's `std_net`

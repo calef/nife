@@ -241,25 +241,25 @@ console.
 Under QEMU on aarch64 (`virt`), riscv64 (`virt`) and x86_64 (`q35`), one `cargo xtask` gate that
 `script/test` runs, exiting 0 on all three:
 
-1. Two at once. The gate logs `chris` in on console 2, switches with Alt+F3, and logs `corinne` in.
-   `chris`'s job, started before the switch, finishes while console 3 is showing, and its output is
+1. Two at once. The gate logs `alice` in on console 2, switches with Alt+F3, and logs `bob` in.
+   `alice`'s job, started before the switch, finishes while console 3 is showing, and its output is
    on console 2 when the gate switches back.
 2. Files are isolated. Each writes a marker in its own subtree. Each then tries to open the other's
    marker by path and is refused.
-3. Terminals are isolated. No byte `corinne`'s session writes appears anywhere in console 2's
+3. Terminals are isolated. No byte `bob`'s session writes appears anywhere in console 2's
    transcript.
-4. Memory. `chris`, alone, starts jobs until the broker refuses, holding more than half the pool.
-   `corinne`'s program is then refused by name. After the owner, logged in on console 1, runs `revoke chris`, the
-   broker's free count rises and `corinne`'s program runs.
-5. Owner authority is an identity's. `vouch` from `chris` or `corinne` is refused with a named code,
+4. Memory. `alice`, alone, starts jobs until the broker refuses, holding more than half the pool.
+   `bob`'s program is then refused by name. After the owner, logged in on console 1, runs `revoke alice`, the
+   broker's free count rises and `bob`'s program runs.
+5. Owner authority is an identity's. `vouch` from `alice` or `bob` is refused with a named code,
    and succeeds from the owner's session.
-6. A listed identity gets the authority. After the owner adds `chris` to `may-run-unvouched`,
-   `chris`'s next login holds it and `corinne`'s does not.
-7. Liveness. Killing `chris`'s shell returns console 2 to the greeter's prompt with no restart of
+6. A listed identity gets the authority. After the owner adds `alice` to `may-run-unvouched`,
+   `alice`'s next login holds it and `bob`'s does not.
+7. Liveness. Killing `alice`'s shell returns console 2 to the greeter's prompt with no restart of
    `login`.
 8. Audit. The system log's reader, in the owner's session, shows both logins and the logout, each
    stamped with its identity, and the owner-password set from criterion 12.
-9. Measured, not gated: `chris`'s answer time while `corinne` spins, and pages stranded by
+9. Measured, not gated: `alice`'s answer time while `bob` spins, and pages stranded by
    interleaved growth.
 10. `login_hands_out_the_terminal_once_and_denies_a_concurrent_second_login_until_logout` is
     retired, and its replacement proves two concurrent logins get distinct terminals.

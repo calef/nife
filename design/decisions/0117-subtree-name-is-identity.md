@@ -26,7 +26,7 @@ credential store), not auto-vivified the first time someone logs in.
 ## Why, checked rather than assumed
 
 Identity is already the right shape for this. `cred_proto`/`login_proto` already represent
-identity as a plain byte string, up to `MAX_IDENTITY = 64` bytes (`"chris"`, `"corinne"` in the
+identity as a plain byte string, up to `MAX_IDENTITY = 64` bytes (`"alice"`, `"bob"` in the
 existing tests), not an opaque numeric id needing a separate mapping. `fs_subtree_caretaker`
 already takes an arbitrary name at construction; today it is hardcoded to a constant, and using
 the identity instead is passing a different byte string through the same parameter, not new

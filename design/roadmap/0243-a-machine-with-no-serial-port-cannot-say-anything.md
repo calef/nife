@@ -40,7 +40,7 @@ screen were black.
 One thing it still does not cover, and two that were closed on 2026-09-19:
 
 - Problem 2 on real hardware, still open and now its own block. A gate can read a *virtual*
-  machine's screen. Nobody can ask a family member's laptop for a screendump, so the fleet's record is still
+  machine's screen. Nobody can ask a real laptop for a screendump, so the fleet's record is still
   a photograph and a person. That is milestone 369, and it is blocked on USB mass storage.
 - Problem 3, early boot: bounded, and it cannot be more than bounded. See *Early boot* below.
 - The other two architectures: a screen under the emulator, and none on silicon. The board half is

@@ -212,5 +212,6 @@ week,crate,breaking,additions,commits,commits_crossing
 2026W41,supervision_protocol,0,6,6,5
 2026W41,swap_protocol,1,8,6,6
 2026W42,component_plan,0,0,1,0
+2026W42,filesystem_protocol,0,0,1,1
 2026W42,line_editor,40,0,1,0
 2026W42,nifefs,0,0,1,1

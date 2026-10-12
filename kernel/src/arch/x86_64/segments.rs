@@ -25,6 +25,7 @@
 //! general protection fault on the way back to a program that did nothing wrong.
 
 use core::arch::asm;
+use core::cell::SyncUnsafeCell;
 
 /// Selector for the kernel code segment. Also `IA32_STAR[47:32]`, from which `syscall` derives the
 /// kernel SS as this + 8.
@@ -134,13 +135,25 @@ const _: () = assert!(core::mem::offset_of!(Tss, iomap) == IOMAP_OFFSET as usize
 /// `cpu::id()`, the same way every other per-core array in this kernel is; `TSS.rsp0` is what makes
 /// this matter, since sharing one across cores would let two cores race on the same ring-0 stack
 /// pointer the instant both took a trap from ring 3.
-static mut TSS: [Tss; crate::cpu::MAX_CPUS] = [const { Tss::new() }; crate::cpu::MAX_CPUS];
+///
+/// A `SyncUnsafeCell` rather than a lock, by calef's ruling of 2026-10-09 on milestone 891 (a
+/// mutable static becomes an atomic, a lock or a recorded cell): the CPU reads this table by
+/// address, through the descriptor `ltr` loads, so it must sit at a fixed place and be written in
+/// place. Plain access is sound because each core touches only its own slot, `cpu::id()`'s, and the
+/// CPU reads that slot only on this same core (a ring change or an IST switch), so no two cores
+/// ever share an element.
+static TSS: SyncUnsafeCell<[Tss; crate::cpu::MAX_CPUS]> =
+    SyncUnsafeCell::new([const { Tss::new() }; crate::cpu::MAX_CPUS]);
 
 /// The GDT: seven 8-byte slots, the last two of which are one 16-byte TSS descriptor. **One per
 /// core**, for the same reason as [`TSS`]: the TSS descriptor's base address is this core's own
 /// `TSS[cpu::id()]`, so sharing one GDT would mean every core's `ltr` loaded the SAME task
 /// register, aliasing every core's ring-0 stack onto whichever one initialized last.
-static mut GDT: [[u64; 7]; crate::cpu::MAX_CPUS] = [BASE_GDT; crate::cpu::MAX_CPUS];
+///
+/// A `SyncUnsafeCell` for the reason [`TSS`] is one (milestone 891): `lgdt` takes its address. Each
+/// core writes only its own row, in [`init`], before its own `lgdt`, and no core reads another's.
+static GDT: SyncUnsafeCell<[[u64; 7]; crate::cpu::MAX_CPUS]> =
+    SyncUnsafeCell::new([BASE_GDT; crate::cpu::MAX_CPUS]);
 
 /// Every core's GDT starts identical: only the TSS descriptor (slots 5 and 6) differs per core, and
 /// [`init`] fills those in from this core's own [`TSS`] entry.
@@ -188,7 +201,7 @@ pub unsafe fn init() {
     // SAFETY: indexing this core's own slot with `id` in bounds (`cpu::id()` cannot exceed
     // `MAX_CPUS`, which is exactly how big `TSS` is); reading only the address, not the (possibly
     // concurrently-written-by-another-core-at-a-different-index) contents.
-    let base = unsafe { (&raw const TSS[id]) as u64 };
+    let base = unsafe { (&raw const (*TSS.get())[id]) as u64 };
     let limit = (size_of::<Tss>() - 1) as u64;
 
     // Hand trap.s the address of the one field it writes: this core's OWN `TSS[id].rsp0`, through
@@ -198,7 +211,8 @@ pub unsafe fn init() {
     // SAFETY: writes this core's own `PerCpu` slot, reached the same way every per-CPU write on
     // this architecture is, before any trap can be taken on this core.
     unsafe {
-        *crate::cpu::current().x86_trap.tss_rsp0_ptr.get() = (&raw const TSS[id].rsp0) as u64;
+        *crate::cpu::current().x86_trap.tss_rsp0_ptr.get() =
+            (&raw const (*TSS.get())[id].rsp0) as u64;
     }
     let low = (limit & 0xffff)
         | ((base & 0x00ff_ffff) << 16)
@@ -210,12 +224,12 @@ pub unsafe fn init() {
     // SAFETY: this core writes only its OWN slot (`id`), before anything else on this core reads
     // its GDT; a different core's `init` writes a different slot.
     unsafe {
-        GDT[id][5] = low;
-        GDT[id][6] = high;
+        (*GDT.get())[id][5] = low;
+        (*GDT.get())[id][6] = high;
     }
 
     // SAFETY: as `base` above, this core's own slot only.
-    let gdt_base = unsafe { (&raw const GDT[id]) as u64 };
+    let gdt_base = unsafe { (&raw const (*GDT.get())[id]) as u64 };
     let gdtr = DescriptorTablePointer {
         limit: (size_of::<[u64; 7]>() - 1) as u16,
         base: gdt_base,
@@ -290,7 +304,7 @@ pub unsafe fn set_interrupt_stack(slot: u8, top: u64) {
     // SAFETY: writes this CPU's own TSS `ist[slot - 1]`, in bounds by the assertion above. Through
     // a raw pointer because the TSS is `packed` and a reference to a field would be misaligned.
     unsafe {
-        (&raw mut TSS[id].ist)
+        (&raw mut (*TSS.get())[id].ist)
             .cast::<u64>()
             .add(slot as usize - 1)
             .write_unaligned(top);
@@ -304,8 +318,14 @@ pub unsafe fn set_interrupt_stack(slot: u8, top: u64) {
 /// This is the state that makes the switch cheap: [`set_port_range_grant`] compares the incoming thread's
 /// grant against it and does nothing when they match, which is every switch on a core where nothing
 /// holds a port (both sides `None`) and every switch that keeps the same holder running.
-static mut INSTALLED_PORT_GRANT: [Option<(u16, u16)>; crate::cpu::MAX_CPUS] =
-    [None; crate::cpu::MAX_CPUS];
+///
+/// A `SyncUnsafeCell` by calef's ruling of 2026-10-09 (milestone 891), which names it with the
+/// tables the CPU reads because it is the record of what one of them holds: it must change in the
+/// same masked window as this core's bitmap, so a lock would add a second acquisition to the switch
+/// path for no second party. Plain access is sound because each core reads and writes only its own
+/// slot, with interrupts masked (see [`set_port_range_grant_on`] for the one rule).
+static INSTALLED_PORT_GRANT: SyncUnsafeCell<[Option<(u16, u16)>; crate::cpu::MAX_CPUS]> =
+    SyncUnsafeCell::new([None; crate::cpu::MAX_CPUS]);
 
 /// Set every bit of ports `[base, base + count)` in `iomap` to `deny` (`true` = the port faults from
 /// ring 3, `false` = the port is permitted). A port's bit is bit `port % 8` of byte `port / 8`. The
@@ -313,7 +333,7 @@ static mut INSTALLED_PORT_GRANT: [Option<(u16, u16)>; crate::cpu::MAX_CPUS] =
 /// guard byte or run off the end; `count == 0` writes nothing.
 ///
 /// `iomap` is a raw pointer to the bitmap's first byte rather than a `&mut [u8; _]`, because the
-/// array is a field of a `#[repr(C, packed)]` `static mut` and taking a reference into it is exactly
+/// array is a field of a `#[repr(C, packed)]` static and taking a reference into it is exactly
 /// the shape the rest of this file avoids; a pointer plus an in-bounds index is the honest form.
 ///
 /// # Safety
@@ -389,15 +409,15 @@ pub fn set_port_range_grant(grant: Option<(u16, u16)>) {
 fn set_port_range_grant_on(id: usize, grant: Option<(u16, u16)>) {
     // SAFETY: this core's own slot, read and written only here and only with interrupts masked on
     // the switch path; a different core touches a different index.
-    let installed = unsafe { INSTALLED_PORT_GRANT[id] };
+    let installed = unsafe { (*INSTALLED_PORT_GRANT.get())[id] };
     if installed == grant {
         return;
     }
     // This core's own TSS bitmap, as a raw pointer to its first byte: the CPU reads it only on a
     // ring-3 `in`/`out`, which cannot happen while this runs with interrupts masked on this core, and
-    // a pointer avoids taking a reference into the `packed` `static mut`.
+    // a pointer avoids taking a reference into the `packed` table.
     // SAFETY: forming a raw pointer into this core's own TSS slot; no reference is taken.
-    let iomap = unsafe { (&raw mut TSS[id].iomap).cast::<u8>() };
+    let iomap = unsafe { (&raw mut (*TSS.get())[id].iomap).cast::<u8>() };
     if let Some((base, count)) = installed {
         // SAFETY: this core's own bitmap, held exclusively (interrupts masked, own slot).
         unsafe { write_range_bits(iomap, base, count, true) }; // restore the outgoing holder's deny bits
@@ -412,9 +432,9 @@ fn set_port_range_grant_on(id: usize, grant: Option<(u16, u16)>) {
     };
     // SAFETY: as above; `iomap_base` is a `u16` in the same packed TSS, written through a raw
     // pointer because a reference to a packed field would be misaligned.
-    unsafe { (&raw mut TSS[id].iomap_base).write_unaligned(base_value) };
+    unsafe { (&raw mut (*TSS.get())[id].iomap_base).write_unaligned(base_value) };
     // SAFETY: this core's own slot.
-    unsafe { INSTALLED_PORT_GRANT[id] = grant };
+    unsafe { (*INSTALLED_PORT_GRANT.get())[id] = grant };
 }
 
 /// **Reset this core's TSS if it currently grants exactly `(base, count)`** (milestone 299): the
@@ -436,7 +456,7 @@ pub fn revoke_installed_port_grant(base: u16, count: u16) {
 /// for why the handler cannot ask `cpu::id()` who it is.
 pub(super) fn revoke_installed_port_grant_on(id: usize, base: u16, count: u16) {
     // SAFETY: this core's own slot; see `set_port_range_grant_on`.
-    if unsafe { INSTALLED_PORT_GRANT[id] } == Some((base, count)) {
+    if unsafe { (*INSTALLED_PORT_GRANT.get())[id] } == Some((base, count)) {
         set_port_range_grant_on(id, None);
     }
 }
@@ -486,7 +506,7 @@ pub fn revoke_port_grant_everywhere(base: u16, count: u16, spare_this_cpu: bool)
 /// own copy in the thread.
 pub fn installed_port_grant() -> Option<(u16, u16)> {
     // SAFETY: this core's own slot, read only; a different core reads a different index.
-    unsafe { INSTALLED_PORT_GRANT[crate::cpu::id()] }
+    unsafe { (*INSTALLED_PORT_GRANT.get())[crate::cpu::id()] }
 }
 
 /// **Bench-only** (DECISIONS §121's amendment, 2026-08-24): the I/O permission bitmap option 1
@@ -521,8 +541,13 @@ struct BenchIoBitmap([u8; IOMAP_BYTES]);
 /// can never be mistaken for having wired the real one in. One instance because this port has one
 /// CPU (`smp::bring_up_secondaries` is a refusal on `x86_64` today); a real per-CPU version would
 /// need `crate::cpu::PerCpu`, which option 1 would also need and this benchmark does not.
+///
+/// A `SyncUnsafeCell` with the live tables (calef's ruling of 2026-10-09, milestone 891): it stands
+/// in for the bitmap the CPU would read, so it keeps their fixed placement. Plain access is sound
+/// because the bench boot runs one hart and nothing else names this static.
 #[cfg(feature = "bench")]
-static mut BENCH_IOMAP: BenchIoBitmap = BenchIoBitmap([0; IOMAP_BYTES]);
+static BENCH_IOMAP: SyncUnsafeCell<BenchIoBitmap> =
+    SyncUnsafeCell::new(BenchIoBitmap([0; IOMAP_BYTES]));
 
 /// Write a full I/O permission bitmap's worth of bytes into this CPU's bench-only scratch region,
 /// the way `schedule()` would write the incoming thread's bitmap into the TSS under option 1. The
@@ -535,7 +560,7 @@ static mut BENCH_IOMAP: BenchIoBitmap = BenchIoBitmap([0; IOMAP_BYTES]);
 pub fn bench_write_io_bitmap(pattern: u8) -> u8 {
     // SAFETY: single-hart bench boot; writes and reads this CPU's own static, never aliased.
     unsafe {
-        let base = (&raw mut BENCH_IOMAP.0).cast::<u8>();
+        let base = (&raw mut (*BENCH_IOMAP.get()).0).cast::<u8>();
         base.write_bytes(pattern, IOMAP_BYTES);
         base.add(IOMAP_BYTES - 1).read()
     }

@@ -110,15 +110,15 @@ const SHARES: [Share; 3] = [
         proto::fixture::SMB_DOMAIN,
     ),
     (
-        b"backups-corinne",
+        b"backups-bob",
         b"another share secret",
-        b"corinne",
+        b"bob",
         b"WORKGROUP",
     ),
     (
-        b"backups-graeme",
+        b"backups-carol",
         b"a third share secret",
-        b"graeme",
+        b"carol",
         b"WORKGROUP",
     ),
 ];
