@@ -13,8 +13,9 @@ needs_person: no
 **PARTIAL, 2026-10-12 (UTC).** Items 1 and 3 are built for `jig`, and a forget verb the block did
 not foresee is built under them. Item 4 is met: its positive and refusal halves are proved in the
 kernel harness, which calef accepted as the proof (ruling B on #2011, 2026-10-12 UTC). He approved
-the forget verb as written (Q2, "Approve", the same day). What is left is item 3 for every program
-but `jig`, a fork.
+the forget verb as written (Q2, "Approve", the same day), and ruled item 3's fork, also the same
+day ("yes, record c"). What is left is building item 3 for installed programs, under "Item 3,
+ruled" below.
 
 *(Promoted from the proposal pile on 2026-10-12 (UTC) by lane
 `maintainer/promote-proposals`; number provisional until the merge queue lands it. Title
@@ -51,7 +52,7 @@ Three pieces exist and are not joined at the prompt.
    places it at slot 9. Whether the zone is the manifest's word or the owner's is a fork: a manifest
    can only ask, and §252 (a resolver grant is one zone per client badge) says a spawner grants.
    For `jig` it is ruled: the root zone, recorded where it is granted (calef's Q5 on #1884,
-   2026-10-10 (UTC)).
+   2026-10-10 (UTC)). For every other program it is ruled too: see "Item 3, ruled".
 4. A `script/swish-check` line: an in-tree std program run at the prompt resolves a name in its zone
    and is refused one outside it, on all three architectures.
 
@@ -89,9 +90,40 @@ alone would have let the ninth `jig` of a boot be refused.
   architectures, is the proof that a program at the prompt resolves a name. No prompt line
   through the host's DNS and no name-server setting are owed.
 
+## Item 3, ruled 2026-10-12 (UTC)
+
+calef, on #2011: "yes, record c". For every program other than `jig`, the manifest asks for its
+resolver zones. The owner grants them at `jig install`, in the same confirmation as the program's
+other grants (§208 (installing a package is granting it, and the activation set is
+versioned)). The owner can narrow them later. The details he accepted:
+
+- A manifest may list several zones. Each granted zone is its own badge, per §252 (a resolver
+  grant is one zone per client badge).
+- A root-zone ask (any name, as a browser needs) is flagged prominently at install, not listed like
+  the others.
+- A program that asks for nothing gets no resolver.
+
+What that leaves to build:
+
+1. The zones in a program's manifest note, the ask. `manifest_note` is a format two programs agree
+   on, so the encoding is decided once.
+2. The granted zones in the activation set's entry, which is where an owner's narrowing lands too.
+3. The progenitor grants one badge per granted zone at spawn and forgets each at the reap. The std
+   PAL holds one resolver slot today, so a program with several zones needs a slot per badge, or
+   a PAL that picks the badge whose zone holds the name.
+4. The line at install: each zone listed, and a root-zone ask flagged apart. One confirmation
+   covers it with the other grants. No milestone yet builds `jig install`'s listing of what it
+   grants. The services milestone proposed on #2022 (a package declares a service) adds its
+   "runs as a service" line to the same listing, and milestone 809 (the package client becomes a program)
+   owns `jig install`. The listing belongs in one of them, and this item waits on it.
+
+Not covered by the ruling: an installed `std` program cannot declare the network at all yet
+(`grant_plan::image_can_carry` refuses it), so a zone is useless to one until that changes. Whether
+the network is granted at the same confirmation is the next question for calef.
+
 ## BUGS
 
-- Item 3's fork is open for every program but `jig`.
+- Item 3 is built for `jig` only; "Item 3, ruled" says what is left.
 - No program at the prompt resolves a name yet. `jig` holds the badge and fetches by a fixed
   address until milestone 809's item 6.
 - A screen-narrowed job gets no resolver. The shell, not `job_undertaker`, reaps it, so the
@@ -102,7 +134,9 @@ alone would have let the ninth `jig` of a boot be refused.
 
 ## Follow-on
 
-- **Outstanding.** Item 3's zone for any program but `jig`, the fork above.
+- **Outstanding.** Item 3 for installed programs: the four pieces under "Item 3, ruled".
+- **Outstanding.** Whether an installed `std` program may be granted the network at install, which
+  item 3 needs first. calef's.
 - **Milestone 809.** `jig` resolves the index's host through this badge at item 6.
 
 ## Index row
