@@ -71,36 +71,9 @@ reader meeting the list does not go looking for a `budgeter` that `script/names`
 
 ## `swish`: the shell has a name now (calef, 2026-08-01)
 
-`shell` is a category, not a name. `bash`, `zsh`, `fish` and `rc` are names; this project's most
-demonstrable artifact was filed under the noun for what kind of thing it is.
-
-`capsh` was the obvious candidate and is unavailable. Linux's libcap ships `capsh(1)`, a
-"capability shell wrapper" for testing POSIX capabilities, which is adjacent enough that a reader who
-knows Linux capabilities would assume ours is that tool.
-
-Why `swish` rather than something descriptive. Shell names are identities rather than
-descriptions: `fish` describes nothing and nobody minds. But this one happens to carry the thesis
-anyway, which is the combination shell names almost never manage.
-
-A swish is the basketball shot that goes through the net **touching nothing**. That is least
-authority in one word: the command reaches exactly what it designated and nothing else. `wc
-report.txt` touches `report.txt` and not one thing more, and it does so structurally rather than by
-a check that could be wrong.
-
-It also reads as a shell on sight, because the `sh` is built in, the same trick `bash` plays with a
-pun.
-
-`sheesh` was considered and set aside on two grounds, both recorded because they are the kind of
-thing that is obvious only once said. It carries a timestamp: the word spiked as a meme around
-2020-21, where `bash` and `fish` are era-neutral, and this project expects to be shown off years from
-now. And *sheesh* is an interjection of **exasperation**, while this shell's most characteristic
-behavior is **refusing things** by design. The name and the experience would have pointed the same
-direction, and "the shell that says no" reading as a complaint is a risk a name should not carry for
-free. `swish` inverts both: a precision word on a precision property.
-
-Two wrinkles, neither disqualifying: Sweden's mobile payment system is called Swish (different
-domain, no confusion in a terminal), and `swish` contains "wish", which is faintly the wrong idea for
-a system where you do not ask for authority, you hold it.
+The argument for the name moved on 2026-10-12 (UTC) into [`swish.md`](0063-name-spellings/swish.md)
+under §212 (a prose budget): why a category is not a name, why not `capsh`, what the word carries,
+the alternative that was set aside, and the two wrinkles.
 
 ## The three that violate it
 
@@ -218,12 +191,10 @@ Effort: small, and almost entirely mechanical, but it touches paths in `script/`
   reader does not "fix" one by mistake: the `shell` boot mode beside the `swish` binary, the `caps`
   shell builtin, `crates/virtio`'s first line still calling itself a virtio-blk driver, and the
   measured-boot manifest at `target/init-measure-<arch>.txt`.
-- **Recorded.** `design/naming.md` also keeps this block's `target/` and `targets/` entry: build
-  output and the tracked custom target JSON sit next to each other, mean unrelated things, and
-  nothing enforces the distinction while one is gitignored and the other is tracked.
-- **Recorded.** `design/naming.md` keeps the argument against doing this at all, which is worth
-  having after the fact: a hyphenated package name is ordinary in the wider ecosystem, Cargo
-  normalizes it, and nothing was broken. The case was internal consistency, 36 crates against 3.
+- **Recorded.** `design/naming.md` also keeps this block's `target/` and `targets/` entry, told in
+  `BUGS`.
+- **Recorded.** `design/naming.md` keeps the argument against doing this at all, the first `BUGS`
+  entry, which is worth having after the fact.
 
 ## Index row
 

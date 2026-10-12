@@ -17,8 +17,7 @@ exists at all.
 `.github/workflows/falsifications.yml` is that sweep, run weekly: it replays every recorded
 falsification patch against its own harness and reports any that stayed green. Milestone 194 (build
 §134: the falsification record, its lint, and the sweep that replays it) built it, and pull
-request #603 merged it to `main` on 2026-09-01 at 02:16. Its first execution of any kind was the
-cron six days later, which refused.
+request #603 merged it to `main` on 2026-09-01 at 02:16.
 
 **The workflow was never tested when it was deployed.** No run of `falsifications.yml` has ever
 replayed a record, let alone watched one go red on purpose: its Actions history holds seven runs as
@@ -60,7 +59,7 @@ into is the file that stopped the sweep.
 |---|---|
 | 2026-08-31 18:18 | `24a1e0a7b` is written: the lint hook, the weekly sweep, the per-pull-request gate and the note. The `tee` and the `continue-on-error` are both in that first commit. |
 | 2026-09-01 02:16 | Pull request #603 merges it to `main`, which is when the workflow is deployed. The file is not touched on `main` again until the fix on 2026-09-24. |
-| 2026-09-01 to 2026-09-07 | Six days in which the workflow is not run at all. There is no dispatch, no trial, and no run of any kind. |
+| 2026-09-01 to 2026-09-07 | Six days with no dispatch, no trial, and no run of any kind. |
 | 2026-09-07 10:47:57 | First scheduled run, 34113314569, and the first execution of this workflow in any form. Refuses at 10:48:35.396, 0.5 s after the step starts. Reports success. |
 | 2026-09-14 11:01:12 | Second scheduled run, 34836043991. Refuses at 11:01:46.017. Reports success. |
 | 2026-09-21 11:10:46 | Third scheduled run, 35592675887. Refuses at 11:11:24.014. Reports success. |
@@ -82,9 +81,9 @@ before it got there.
 
 ## Impact
 
-Every scheduled sweep the mechanism has ever had produced no evidence, and published a refusal as
-though it were a report. That is 22 days from the workflow landing on `main` to the finding, covering the
-three Mondays of 2026-09-07, -14 and -21.
+Every scheduled sweep produced no evidence and published a refusal as a report. That is 22 days
+from the workflow landing on `main` to the finding, covering the three Mondays of 2026-09-07, -14
+and -21.
 
 **The population it was not checking was growing the whole time**, which matters because the value
 of a sweep is in the records it did not see last week:
@@ -115,7 +114,7 @@ would have caught, and none can be, because the instrument produced no reading e
 honest statement is an absence of evidence rather than evidence of absence, and the three redone
 patches above show the class was live.
 
-**The population moved again on the day of the finding.** `main` today carries 63 of 180 Kani
+The population moved again on the day of the finding. `main` today carries 63 of 180 Kani
 harnesses replayable, 35%, plus a separate 15 of 16 kernel-test records. Three open falsification
 lanes roughly double the first number. The first sweep that actually runs will be the first reading
 ever taken, against a record set that has changed more in one day than in the three weeks before it.
@@ -149,8 +148,6 @@ survivor is a worklist entry and not a defect in whatever commit happened to pre
 survivor must not go red. The mistake is that a step's exit status was carrying two different claims
 at once. "The sweep ran and found something to look at" and "the sweep did not run" are not the same
 fact, and once they share one channel, suppressing the first necessarily suppresses the second.
-Nothing in the workflow could tell them apart afterwards, because the only thing that could have is
-the report's own contents, which nothing reads.
 
 **5. Why does this tree keep building mechanisms that cannot tell "checked and found nothing" from
 "checked nothing"?**
@@ -164,7 +161,7 @@ this document was being written; that recurrence, not the `tee`, is the finding:
 - Milestone 401 (a gate that selects the set it judges can pass by checking nothing), pull
   request #1130, went looking for the class in `script/` and found it. Eight selectors now assert
   they selected something, enumerated in `notes/empty-selectors.md`.
-- **`script/ci-build`'s tier selector.** It picks its checks by matching a literal tier string in
+- `script/ci-build`'s tier selector. It picks its checks by matching a literal tier string in
   its own table with `awk`. Retagging every `local` row to `default` makes the command a developer
   runs before pushing run zero checks and print `ci-build: all pass`, exit 0. Reproduced twice
   independently, by 401's lane and by pull request #1134.
@@ -181,11 +178,8 @@ this document was being written; that recurrence, not the `tee`, is the finding:
   pull request #1155 closed that one hole and the blind spot is still open. `design/fatal-risks/README.md`'s
   risk 2 is answered by this number.
 - One found by this document's own pull request, which is the strongest evidence in it that the
-  shape is a habit rather than four coincidences. The workflow that labels a COE for
-  calef's attention reported success while applying no label. Its detection step names the
-  repository explicitly and worked; its labeling step inferred the repository from a git remote
-  that a checkout-free job does not have, and its deliberate report-and-continue arm turned the
-  failure into a pass. Every individual choice there is one this tree argues for on purpose, in
+  shape is a habit rather than four coincidences: the COE labeler in the timeline's 21:16:38 row,
+  which reported success while applying no label. Every individual choice there is one this tree argues for on purpose, in
   that file's own header: best-effort, never fatal, a COE must not fail to exist because a label
   API call failed. The result is still a green tick over nothing.
 
@@ -195,23 +189,19 @@ many units, and zero should be loud. That is a rung-two artifact this tree does 
 convention for, and building one is what the second action item below is.
 
 **And there is a sharper cause than any of the above, which is that this workflow was never once
-observed working.** It landed on `main` at 02:16 on 2026-09-01 and its first execution of any kind
-was the cron six days later, which refused. No dispatch, no trial run, nothing. A defect that would have
+observed working**, as the timeline shows. A defect that would have
 shown itself in 35 seconds of somebody's attention instead took three weeks and a lane reading a log
 for another reason.
 
-This tree already knows the argument, in the one place where it is a ruling. §134 (a harness
-carries a machine-replayable falsification record, or it is not evidence) says a Kani proof is not
-evidence until somebody has made it go red on purpose, because a proof that cannot fail proves
-nothing and looks exactly like one that can. A CI gate is a claim of the same kind, and this tree
+This tree already knows the argument, in the one place where it is a ruling: §134, as told at the
+top of this record, for a Kani proof. A CI gate is a claim of the same kind, and this tree
 requires nothing of it. A gate ships green against a tree where its defect is absent, which is
 indistinguishable from a gate that cannot fire. That is the fifth why's shape one level out: the gate's
 first green is the "checked nothing" case, and it is the case everybody reads as success.
 
 `coe-architect-label.yml` is the second instance, and the contrast is the measurement. It shipped
-the same way, unexercised, and reported success while applying no label. It was caught in hours
-rather than in three weeks only because a human happened to be reading its log for another reason,
-which is the same luck that found the three redone patches above and is not a mechanism.
+the same way, unexercised, and was caught in hours rather than in three weeks only because a human
+happened to be reading its log for another reason, which is the same luck that found the three redone patches above and is not a mechanism.
 
 ## Action items
 
@@ -238,8 +228,6 @@ which is the same luck that found the three redone patches above and is not a me
   a label a human removed does not silently return. No later push to this branch adds a file under
   `notes/corrections/`, so nothing on this pull request will exercise the fixed step. The next COE
   is the first run that can.
-- **Recorded.** The `concurrency` group in `falsifications.yml` is the bare string `falsifications`
-  with no ref in the key, so a hand dispatch from any branch cancels a running one from any other.
-  That is what killed the only run of this workflow that would have swept anything. The limitation
-  now sits beside the feature in `notes/falsification.md`'s `BUGS` section, where a lane about to
+- **Recorded.** The bare `concurrency` group in `falsifications.yml`, which cancelled the only run
+  that would have swept anything (the timeline's 20:36:38 row). The limitation now sits beside the feature in `notes/falsification.md`'s `BUGS` section, where a lane about to
   dispatch the sweep will meet it.

@@ -11,7 +11,7 @@ needs_person: yes
 
 Minted 2026-08-30, discovered while tracing journey 3 (login to `kilo` on
 real silicon) the way journey 1's trace discovered milestone 177 (wire the graphical terminal stack
-into the real interactive boot). **Option A's wiring built 2026-09-02**
+into the real interactive boot). Option A's wiring built 2026-09-02
 (`milestone/192-keyboard-silicon`); see "What option A's lane built" below, and the paragraph after
 it on why the status stops here rather than at BUILT.
 
@@ -30,21 +30,21 @@ and nothing more. A block that let serial input close this milestone would be cl
 system cannot tell, which is what §39 says a name must never do and what a completion criterion must
 never do either.
 
-**Why A still goes first.** It gets pixels onto the real monitor and a usable keystroke path with no
-new driver, so every other step of journey 3 (login to `kilo` on real silicon, on all three
+Why A still goes first. It gets pixels onto the real monitor and a usable keystroke path with no
+new driver. So every other step of journey 3 (login to `kilo` on real silicon, on all three
 architectures) can be exercised on real hardware while the USB work is still unwritten. It buys
 sequencing, not completion.
 
-**What that requires of A's implementation**, and this is the part that is easy to get wrong: nothing
+What that requires of A's implementation, and this is the part that is easy to get wrong: nothing
 in A may assume keystrokes arrive on a UART. Both paths feed the same `DECISIONS §21`
-line-discipline contract, and **A is finished when the keystroke's source is the only thing B has to
-change.**
+line-discipline contract, and A is finished when the keystroke's source is the only thing B has to
+change.
 
-**In brief.** Every graphical story this project tells assumes a keyboard, and on real hardware there
+In brief. Every graphical story this project tells assumes a keyboard, and on real hardware there
 is no way to press a key. Milestone 29 (a display terminal: framebuffer, virtio-gpu, and a foreign
-component) gets keystrokes from **virtio-input**, which is a QEMU device. None of the three
-boards has one. **A search of the entire roadmap for `usb`, `xhci`, `hid` and `ps/2` returns
-nothing**, so this is not a milestone that exists and is unscheduled; it is work nobody has written
+component) gets keystrokes from virtio-input, which is a QEMU device. None of the three
+boards has one. A search of the entire roadmap for `usb`, `xhci`, `hid` and `ps/2` returns
+nothing, so this is not a milestone that exists and is unscheduled; it is work nobody has written
 down at all.
 
 ## Why it went unnoticed for so long
@@ -58,21 +58,20 @@ is and what journey 1 is a QEMU-shaped rehearsal for.
 
 ## What option A's lane built (2026-09-02), and why the status did not move to BUILT
 
-**The status is `PARTIAL` and stays there.** calef's completion criterion above is literal and it is
-option B: a keyboard plugged into the machine and the OS on a monitor plugged into the machine.
-Nothing in this lane's work lets anyone sit down at a keyboard, and flipping this block to BUILT
-would claim exactly the story he said it does not tell. Milestone 159's lane wrote the same
+The status is `PARTIAL` and stays there, by calef's completion criterion above. Nothing in this
+lane's work lets anyone sit down at a keyboard, and flipping this block to BUILT would claim exactly
+the story he said it does not tell. The lane of milestone 159 (a real hardware entropy source) wrote the same
 paragraph for the same reason and it is the right precedent: a lane may advance a milestone without
 being allowed to close it.
 
-**What existed already, checked rather than assumed.** Input has an owner and milestone 177 already
+What existed already, checked rather than assumed. Input has an owner and milestone 177 already
 built the graphical boot around it:
 
 - `components/src/input.rs` is the UART receive driver, raw since milestone 28. It holds `WRITE` on one
   terminal endpoint, `READ` on the UART receive `Irq`, and one device-typed page of registers. It
   forwards bytes as `line_editor::proto::OPERATION_BYTES`, up to eight per `CALL`.
 - `components/src/keyboard_driver.rs` gained `MODE_DIRECT` in milestone 177: a virtio-input driver
-  holding `WRITE` on one fixed endpoint, sending **byte for byte the same `OPERATION_BYTES` framing**.
+  holding `WRITE` on one fixed endpoint, sending byte for byte the same `OPERATION_BYTES` framing.
 - So the two sources were already interchangeable at DECISIONS §21's line-discipline contract.
   Nothing had ever put them behind one choice, and the graphical boot's condition was "a GPU
   and a keyboard", which on argon, radon and xenon is never true.
@@ -115,10 +114,10 @@ reaches the line discipline through a capability naming one endpoint.
 
 ## What is proven, and where
 
-In QEMU, on both architectures (`script/swish-check`, folded in 2026-10-03 UTC): a boot
-with a virtio-gpu and no keyboard brings up the GPU driver and the display terminal (both
-asserted before anything else happens), chooses the UART, spawns `input` against `line_editor`'s
-endpoint, and prints `keystrokes: Serial (graphical boot)`. aarch64 and riscv64 both reach that
+In QEMU, on both architectures (`script/swish-check`, folded in 2026-10-03 UTC), a boot
+with a virtio-gpu and no keyboard brings up the GPU driver and the display terminal. Both are
+asserted before anything else happens. It then chooses the UART, spawns `input` against
+`line_editor`'s endpoint, and prints `keystrokes: Serial (graphical boot)`. aarch64 and riscv64 both reach that
 line. On x86_64 the serial source refused itself (`machine_has_no_device_page_for_the_console`),
 and the whole graphical stack reported absent.
 
@@ -141,44 +140,14 @@ same build reaches a prompt normally. Reproduced at `8167d806` on nightly-2026-0
 `crates/system_initializer`'s own comments describe around the entropy build. It has no owner and
 is recorded in that crate's `BUGS` rather than held in this block, since a reader meets it there.
 
-## The bench procedure, in order
+## The bench procedure, and the fork as first written
 
-It cannot be run yet, and the reason is milestone 157 (U-Boot's `simple-framebuffer` handoff) rather than this milestone. Option A is
-framebuffer output plus serial input, and the framebuffer half is
-[157](0157-uboot-framebuffer-handoff.md) (U-Boot's `simple-framebuffer` handoff), which is
-NOT-STARTED. Until a board can put a pixel on a monitor there is nothing for a serial keystroke to
-echo onto. Written now so that 157's lane inherits it rather than rederiving it.
+Two appendices hold what the page has no room for:
 
-Needs radon powered on (the Kasa plug), a serial console attached before power, a microSD card, and
-a monitor on the board's HDMI. `notes/visionfive2.md` carries the board facts and the
-failure-triage ladder.
-
-1. Follow milestone 159's steps 1 to 3 verbatim (`script/board-image`, copy all three files from
-   one run, DIP switches to QSPI, serial at 115200 8N1, interrupt U-Boot, the five `load`/`booti`
-   lines). Nothing about this milestone changes the boot recipe.
-2. Read the boot line `keystrokes:`, which is the whole of what this lane added and the first
-   thing to check:
-
-   | Line | What it means |
-   |---|---|
-   | `keystrokes: Serial (graphical boot)` | What a board should print. The framebuffer driver came up, the display terminal came up, and the UART is the keystroke source. |
-   | `keystrokes: Keyboard (graphical boot)` | A virtio-input device was found, which on a board means something is wrong with device discovery, not that a keyboard works. |
-   | no `keystrokes:` line at all | The graphical stack reported absent and the boot fell back to the plain `console`/`input` pair. Either no framebuffer was found (157's problem) or one of `gpu_driver`, `display_terminal`, `input` is missing from the archive. |
-
-3. Look at the monitor. A prompt on the screen is 157's claim, not this one; record it either
-   way, because everything below depends on it.
-4. Type a character on the serial console. It must echo on the monitor, not on the serial
-   line: `input` forwards it to `line_editor`, which echoes through `display_terminal`. If it
-   echoes on the serial console instead, the boot took the plain fallback and step 2 said so.
-5. Type `echo hello` and press return. `hello` on the monitor is option A complete on a real
-   machine: a person at a laptop typing across a null-modem cable into a system whose output is on
-   its own screen.
-6. Failure modes, in the order they are worth checking. No echo at all and no `keystrokes:`
-   line means the fallback (step 2). No echo with a `Serial` line means either the UART receive
-   interrupt is not routed (the same PLIC-source hazard `uart_irq_and_source`'s own doc records for
-   the JH7110, where the QEMU constant armed the wrong source) or the display path hung, which
-   milestone 177's display blocker above would produce identically. A character echoing once and then nothing
-   is the display driver's second-`FLUSH` bug, and it is the same bug QEMU shows.
+- [`bench-procedure.md`](0192-keyboard-on-real-silicon/bench-procedure.md): the ordered bench
+  procedure for option A on radon, why it cannot run yet, and what each `keystrokes:` line means.
+- [`the-fork.md`](0192-keyboard-on-real-silicon/the-fork.md): options A, B and C as the block first
+  laid them out, with why option C is closed and what would start option B.
 
 ## What option B will still need
 
@@ -188,34 +157,6 @@ the scoping pass that splits those into their own milestones. What it will not n
 change to `line_editor`, `display_terminal`, `swish`, `crates/system_initializer`, or the boot's
 capability layout: a HID driver that holds `WRITE` on one endpoint and sends `OPERATION_BYTES` is a third
 arm of `boot_graphical_terminal`'s `match` and nothing else.
-
-## The fork: what a keystroke arrives on
-
-Option A: serial input, framebuffer output. Display on the board's own framebuffer (milestone
-157, U-Boot's `simple-framebuffer` handoff), keystrokes over the existing UART. On the OptiPlex this
-is already wired: milestone 87 (the x86_64 bare-metal machine) bought a Dell C4PDJ serial module and
-an RS-232 chain precisely so a host can drive the box. Zero new drivers. The cost is that the story
-becomes "a person at a laptop typing into a machine across a null-modem cable", which is a real
-demonstration of a real system and is not the story journey 3's title claims.
-
-Option B: a USB HID stack. An xHCI driver, enough USB core to enumerate and configure a device,
-and a HID keyboard driver, on three architectures. This is the honest version of "sit down at the
-machine", and it is large: xHCI alone is a substantial driver against a substantial spec, so plan in
-months rather than weeks. It also lands in the most attacker-adjacent position in the system, a bus
-that enumerates whatever a stranger plugs in, which is either a problem or the best confinement
-demonstration available depending on how it is built.
-Note the peer project Atom keeps xHCI in the kernel, which is exactly the contrast DECISIONS §31
-(the foreign-language seam) already draws for FAT32.
-
-Option C: split the difference by architecture. Serial input on the boards, a cheaper native
-path where one exists. This had exactly one candidate and it is now closed: a PS/2 port on the
-OptiPlex would have been a few dozen lines against xHCI's spec, and calef confirmed on 2026-08-30
-that the 7050 Micro has no PS/2 port and that he owns neither a PS/2 keyboard nor an adapter. So
-there is no cheap native shortcut on any of the three machines, and the fork is genuinely binary.
-Recorded rather than deleted, because the next person will have the same idea.
-
-When B starts is not decided here, only that it is coming. The trigger is the fatal-risk list
-thinning out enough that months of bus-driver work is a reasonable thing to spend.
 
 ## Why A goes first, which was the recommendation
 
@@ -267,6 +208,14 @@ fatal-risk list that months of driver work is a reasonable thing to spend.
 - *Corrected 2026-10-03 (this bullet said both graphical legs were red).* They are green in CI
   since milestone 177's 2026-09-19 root cause. Since milestone 632 (graphics on demand) they launch
   `graphical_terminal` from the normal UART boot, so they prove option A at launch rather than at boot.
+- Stale, kept as written (found 2026-10-12, UTC). "What option A's lane built" and "What option B
+  will still need" still describe `kernel::user::boot_graphical_terminal` as where the keystroke
+  source is chosen. The 2026-10-03 correction under "What is proven" calls that function retired,
+  and the Index row moves the choice to a `graphical_terminal` session's launch (milestone 632).
+- Stale, kept as written (found 2026-10-12, UTC). Step 6 of
+  [`bench-procedure.md`](0192-keyboard-on-real-silicon/bench-procedure.md) still names milestone
+  177's display blocker and second-`FLUSH` bug as live failure modes. That hang was root-caused on
+  2026-09-19.
 ## Follow-on
 
 - **Milestone 242.** Option B, the xHCI driver, USB core and HID keyboard, plus the scoping pass

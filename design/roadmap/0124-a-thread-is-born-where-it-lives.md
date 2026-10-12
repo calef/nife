@@ -5,177 +5,50 @@ built: 2026-08-17
 ---
 # 124. A thread is born where it lives: the spawn path's copies
 
-
-<!-- writing-standards: exception. Marked 2026-09-29 (UTC) by the audit lane for the documentation
-audit of that date. Reason: this change repoints one citation at the appendix its section moved to
-in the 2026-09-24 split, and bringing this block to 4 bold spans per 1,000 words is a rewrite for
-whoever next owns it, not something to hide inside a pointer fix, the same line
-notes/timed-wait.md's marker took until #1937 rewrote that note and removed it (2026-10-11 UTC).
-This marker is not a pair with that one: it excuses this block's own longest sentence and bold
-density. Remove this marker when that de-bold pass lands. -->
-
 Built 2026-08-14, reopened 2026-08-16 when the same banner came back on both
-ISAs, and **closed 2026-08-17 when the banner turned out not to be this milestone's bug at all**.
+ISAs, and closed 2026-08-17 when the banner turned out not to be this milestone's bug at all.
 Minted by calef out of the riscv64 stack overflow milestone 108 was held on. The hold turned out to
 be the wrong suspect three times over, and the third time is the interesting one.
 
-**The structural half is built (pull request #248, 2026-08-16) and the status did not move, which
-is the honest reading rather than an omission.** A per-CPU interrupt stack now exists on both
+The structural half is built (pull request #248, 2026-08-16) and the status did not move, which
+is the honest reading rather than an omission. A per-CPU interrupt stack now exists on both
 ISAs, 16 KiB per core over its own guard page, with the handler chain running there instead of on
-whatever thread it interrupted. Three things deliberately stay on the interrupted stack (the trap
-frame, a trap from user mode, and the deferred `schedule()`), and the design's one rule, that
-nothing on an interrupt stack may context-switch away from it, is held three ways: a
+whatever thread it interrupted. Three things deliberately stay on the interrupted stack: the trap
+frame, a trap from user mode, and the deferred `schedule()`. The design's one rule is that
+nothing on an interrupt stack may context-switch away from it. It is held three ways: a
 `debug_assert!`, the doc at the thing itself, and a static CI proof that no context switch is
 reachable from the interrupt-stack entry point on either ISA.
 
 What that buys, stated as the lane stated it rather than as the headline suggests: the static
-worst-case bound on a thread stack improved by only 256 bytes (13712 to 13456 on aarch64), because
-what remains is `schedule()`'s own chain, which is the cost of scheduling at all and which a
+worst-case bound on a thread stack improved by only 256 bytes (13712 to 13456 on aarch64). What
+remains is `schedule()`'s own chain, which is the cost of scheduling at all and which a
 thread already pays to block in `ipc_recv`. The defensible claim is structural: a preemption now
 costs the interrupted thread a trap frame plus the same scheduler tail a voluntary block costs,
 and the handler is bounded on a stack of its own. The measured watermark did not move at all,
 because in this suite the deepest byte of every stack is reached by ordinary code rather than by
-an interrupt landing on top; that is what a watermark can and cannot say about a rare worst case.
+an interrupt landing on top. That is what a watermark can and cannot say about a rare worst case.
 
 The reopening's own reason is untouched, which is why this stays `PARTIAL`: the two faults are
 a store at a *fixed address*, not depth, and nothing here explains them. `warn_if_guard_page` now
 prints the interrupted `sp` from the frame rather than the live one, which after this change would
 have named the wrong stack.
 
-## Reopened: the guard page is being stepped over again (2026-08-16)
+## Reopened 2026-08-16, closed 2026-08-17: the stack was freed under its owner
 
-The same `*** KERNEL STACK OVERFLOW ***` banner, the same one-page guard, the same test on both
-architectures:
+The same overflow banner came back on both ISAs on 2026-08-16, in the same supervision test. It was
+not an overflow. A supervised corpse is published as `Dead` while it is still executing on its own
+kernel stack, and an out-of-band reaper on another core is allowed to free that stack. The exception
+vector then walks `sp` to the slot base, which is why the address never moved.
 
-- aarch64, in a merge-queue run at 01:48Z: slot 87's guard page, `sp` 4096 bytes past the
-  bottom of a 16384-byte stack, panicking at `arch/aarch64/exceptions.rs:630`.
-- riscv64, in pull request #213's `cpu matrix` job at 22:29Z: slot 102's guard page, 4088 bytes
-  past, on the `rv64` model only, with the other four models green.
+The fix is one clause in `reap_region_objects`: refuse while `Handshake::on_cpu`, without arming a
+kill, because the thread is already dead and the refusal clears one context switch later. Both
+supervision tests now retry their reclaim. The fault was reproduced on the desk by widening the
+window in `depart` with a spin loop, which was not committed. The better fix, deleting the window
+rather than refusing inside it, is milestone 331 (a thread is published `Dead` while it is still executing on its own kernel stack) in the Follow-on.
 
-Both land in `kernel::user::supervision_tests::a_faulting_child_reports_to_its_supervisor_and_is_
-reaped_then_respawned`.
-
-Three things are already known and are what make this worth reopening rather than filing fresh.
-
-**It is not any pull request's fault.** The aarch64 failure was a merge-queue candidate whose pull
-request is 59 lines of markdown, so it reproduces against `main`'s own content. It had been read as
-pull request #213's problem for four hours on that evidence, which was wrong.
-
-It is intermittent, which is why the tree stayed green around it: merge-queue runs at 01:52Z and
-01:53Z passed on the same base that failed at 01:41Z.
-
-The depth hypothesis is refuted, by measurement, and it was this block's own first guess. The
-reopening proposed cumulative depth plus an exception frame arriving at the worst moment. A lane
-built the instrument this milestone and `notes/stack-high-water.md` had both named as missing, a
-call-graph walker (`script/stack-depth-check`), and measured the deepest chain a thread stack can
-reach: 13712 bytes on aarch64 and 13344 on riscv64, against a 16384-byte stack (measured on this
-branch, 2026-08-16). **Take these from a run, not from here.** They moved twice in one afternoon,
-13792 to 13760 to 13712 on aarch64, purely from merging other people's work; the gate prints them
-and the gate is the authority, the graph acyclic, and no frame over the guard page reachable from any
-thread entry point on either ISA. A
-fault at a slot's guard base needs `sp` 20480 bytes in. The deepest watermark ever observed is 10600.
-
-**So the banner was never a measurement.** `warn_if_guard_page` derived every line from the faulting
-*address* and then wrote "so sp went N bytes past it", which is a claim about the stack *pointer*
-that nothing in it had read. It now prints `sp` beside the address in the same units and leaves the
-comparison to the reader. That one sentence is what sent this reopening, and the four hours before
-it, after the wrong thing.
-
-What survives is the evidence the hypothesis was invented to explain. Six recorded guard-page
-faults land on exactly two addresses: aarch64 slot 87 (`notes/frames.md`, 2026-08-13, and again
-08-16) and riscv64 slot 102 (`sched.rs`'s harness doc ~08-11, `notes/stack.md` 08-14, and again
-08-16). Unmoved by #157 and unmoved by this milestone's own rebuild of the spawn path. **Depth
-wanders; those do not.** A fixed address is a stray store rather than a stack running out, and the
-two candidate mechanisms are in `notes/stack.md` along with what the next occurrence must print to
-settle it. One of them is geometry worth knowing: slot `N`'s guard page begins one byte past slot
-`N-1`'s last usable stack byte, so a pointer treating a stack top as inclusive lands in a guard page
-with `sp` nowhere near it.
-
-124's own fix comes out stronger than it claimed: no oversized frame is reachable from a thread
-stack at all. Its remaining `BUGS` entry, that the riscv64 overflow was not proven fixed, closes as
-*the class it addressed is closed, and this is a different bug wearing its clothes*.
-
-This stayed `PARTIAL` until the fault was reproduced on a desk, which happened on 2026-08-17.
-The section below is what it was, and it was not a stack overflow of any kind.
-
-## Closed: the stack was freed under its owner (2026-08-17)
-
-A supervised corpse is published as `Dead` while it is still executing on its own kernel stack,
-and an out-of-band reaper on another core is allowed to free that stack. `depart()` marks the
-thread `Dead`, delivers its death message (which wakes the supervisor), releases `SCHED`, and only
-then calls `schedule()`. A supervisor that reaps in that window runs
-`reap_supervised` -> `reclaim_region` -> `reap_region_objects`, whose refuse phase asks only about
-`state`; `Dead` is not `Ready`/`Running`/`Blocked`, so nothing refuses, the `Thread` is dropped, and
-`KernelStack::drop` unmaps six pages with a real `tlbi` under a running core.
-
-**The kernel already had the flag that answers this and the reap path never asked it.**
-`Handshake::on_cpu` means exactly "a core is standing on this thread's stack" and is cleared by
-that core's successor in `finish_switch`, whose doc says in so many words that dropping a `Thread`
-"must not happen while any core still stands on it". `finish_switch` obeys it; `reap_region_objects`
-reasoned from `state`, and **"never runs again" is not the same as "off its stack"**. The fix is one
-clause: refuse while `on_cpu`, without arming a kill, because the thread is already dead and the
-refusal clears one context switch from now. Both supervision tests now retry their reclaim, which
-is the idiom the same file already used two lines later.
-
-Reproduced on the desk, which 45 runs had failed to do, by widening the window in `depart` with
-a spin loop: the fault appears on the first run with the delay in and does not appear with the
-refusal in. Not committed; the mechanism is recorded instead, and closing the window properly is the
-handoff below.
-
-Three pieces of evidence, and the first two were already in the tree. The full account and
-arithmetic is notes/stack/kernel-stack-freed-under-its-owner.md (the section left `notes/stack.md`
-in the 2026-09-24 split).
-
-- **The fixed address is forced, not chosen.** aarch64's `SAVE_CONTEXT` walks `sp` down 272 bytes
-  per level and stores upward in 16-byte steps, so the terminal store of a cascade lands on the
-  guard base *exactly*, every time; riscv64's 8-byte `sd` gives base or base+8, which are precisely
-  the two riscv64 addresses ever recorded. notes/stack.md said this on 2026-08-15 and contradicted
-  it forty lines later, and the contradiction is what sent this reopening after a stray store that
-  does not exist.
-- `ELR_EL1` confirms the walk in all three aarch64 dumps: `+0x214`, `+0x228` and `+0x234` are
-  the 5th, 10th and 13th `stp` of the same-EL synchronous vector entry, and each one's store offset
-  puts `sp` in the `[G-256, G)` window the arithmetic predicts. The paragraph that read `ELR` as a
-  refutation compared a CI address against a **local** build's `exception_vectors`, in a file
-  that had already measured the two half a megabyte apart.
-- The fourth occurrence names it. CI run 31960738448 was the first firing after this milestone
-  added the conservative `.text` scan, and the scan took a translation fault on the very first word
-  of the slot's stack: the stack is unmapped. Nothing overflows an unmapped stack. That fault
-  also destroyed `ELR_EL1`, `FAR_EL1` and the new `sp` line before any of them printed, so the
-  instrument ate its own report on its first real firing; `stack.rs` now runs the scan last and asks
-  `mmu::is_mapped` before each page, which turns the old fault into the most useful line in the
-  report.
-
-Why this test and no other, and why only CI. `a_faulting_child_reports_to_its_supervisor_and_
-is_reaped_then_respawned` is the only place in the suite that reaps a corpse the instant it is told
-about one, with four assertions between the `ipc_recv` and the `reclaim_region`. That is a race
-between a few hundred instructions on each of two cores: one run in six on a loaded 2-core runner,
-zero in 45 on an idle laptop. It is also why no fix moved it. #157, this milestone's spawn-path
-rebuild and the per-CPU interrupt stack all changed depth, and depth was never the variable.
-
-What this milestone's own work is worth, restated honestly. Nothing here was wasted and nothing
-here fixed the banner. `script/stack-depth-check` is the gate that finally *refuted* depth rather
-than the one that would have caught this; the frame-shrinking closed a real separate hazard; the
-per-CPU interrupt stack is a structural win measured in the interrupt-at-the-worst-instant case.
-The banner was a different bug wearing their clothes, for the third time.
-
-**The better fix, deliberately not taken here, wants a lane.** The window exists because a thread is
-published as `Dead` before it is off its stack. Marking it `Departing` in `depart` and promoting it
-to `Dead` from `finish_switch` (which already holds `SCHED`, and already runs at exactly the instant
-the stack is free) would delete the window instead of refusing inside it, and no caller would ever
-see a transient refusal. That is a change to the death protocol and to `RunState`, which lives in
-`crates/wake_handshake` where loom searches the transitions, so it is a decision rather than a
-hotfix.
-
-The worst `spawn_on` instantiation went from 4592 bytes to 1040, every one of them now clears the
-4096-byte guard page on its own merits, and `script/stack-frame-check`'s ratchet is deleted rather
-than lowered.
-
-Two predictions in this block were wrong, and the corrections are the useful part. It said the
-fix needed `insert_in_place` on `crates/slots` and that reading the Kani harnesses alongside it was
-the main cost. Neither was true: the table stores a `TcbPtr`, not a `Thread`, because a TCB lives
-on its own page. `crates/slots` was never touched and no harness moved. The copies were all between
-`Thread::spawn`'s frame and `ptr.write`, so the fix is `Thread::spawn_into` writing through a pointer
-the caller already holds, plus `Threads::insert_in_place` to hand that pointer down.
+[`reopened-and-closed.md`](0124-a-thread-is-born-where-it-lives/reopened-and-closed.md) holds both
+sections in full: the evidence, the refuted depth hypothesis, why only this test and only CI, and
+what this milestone's own work is worth.
 
 ## The number, and why it is the interesting kind of number
 
@@ -212,7 +85,7 @@ This section proposed the wrong fix, and what replaced it is worth reading. The 
 `self.slots[slot] = Some(f(name))`, so the closure builds it, returns it, it is wrapped in `Some`,
 and then stored.
 
-**The table does not store a `Thread`. It stores a `TcbPtr`**, because a TCB lives on its own page,
+The table does not store a `Thread`. It stores a `TcbPtr`, because a TCB lives on its own page,
 and `Threads::insert_at` is where the value actually lands:
 
 ```rust
@@ -293,29 +166,35 @@ proofs and tests run in a configuration nobody checks is not demonstrating.
 - `Thread::spawn` still carries the copies for `sched::init`'s idle thread and `spawn_blocked`,
   which hold no page when they build. Nothing on those paths is near a guard page today, and if one
   ever is, this is where to look first.
-- **`-Z emit-stack-sizes` measures frames, not call chains**, so "every instantiation under 4096"
+- `-Z emit-stack-sizes` measures frames, not call chains, so "every instantiation under 4096"
   bounds one frame and not the depth of the path it sits in. The watermark in
   notes/stack-high-water.md is the other half, and neither is sufficient alone.
 - The ratchet is gone, so nothing now holds these frames except the gate's own 4096-byte ceiling,
   which is the state a ratchet exists to reach and then be deleted from.
-- **The riscv64 overflow is still unexplained, and this milestone did not prove it fixed.** #157
-  fixed the aarch64 one by shrinking `reap_region_objects`; the riscv64 fault was a different chain on
+- The riscv64 overflow is still unexplained, and this milestone did not prove it fixed. #157
+  fixed the aarch64 one by shrinking `reap_region_objects`. The riscv64 fault was a different chain on
   a different slot, and this was the prime suspect rather than a demonstrated cause. What closed here
   is the separate hazard that ten frames could step over the guard entirely. If it recurs, the
   call-graph walker is the next instrument and nothing in the tree has one, which is now the answer
   to "why did we not catch this" twice over.
 
-  **Closed 2026-08-17, and not by this milestone.** It was never an overflow on either ISA: the
-  stack was freed under its owner and the vector walked `sp` to the slot base. See the section
-  above. The walker did get built and did earn its keep, by refuting depth rather than by measuring
+  Closed 2026-08-17, and not by this milestone. It was never an overflow on either ISA: the
+  stack was freed under its owner and the vector walked `sp` to the slot base. See
+  [`reopened-and-closed.md`](0124-a-thread-is-born-where-it-lives/reopened-and-closed.md). The walker did get built and did earn its keep, by refuting depth rather than by measuring
   it.
 - The refusal is a race a caller can still see, one context switch wide, and it is a
   `NotPermitted` rather than a corrupted kernel. Any caller reclaiming a region that holds a
   just-dead thread must retry; `wait_for` is the in-tree idiom and both supervision tests now use
-  it. The window itself is closed only by the `Departing` change above.
+  it. The window itself is closed only by the `Departing` change, milestone 331 in the Follow-on.
 - The `on_cpu` guard is a condition in one function, which is rung two of AGENTS.md's ladder.
   Rung one would be a type that cannot name a thread still standing on its stack, and this tree does
   not have one. The next out-of-band remover can forget it exactly as this one did.
+- Stale, kept as written (found 2026-10-12, UTC). The opening paragraph that begins "The
+  reopening's own reason" says that reason "is why this stays `PARTIAL`". That was true on
+  2026-08-16; the block closed on 2026-08-17 and its status is BUILT.
+- Stale, kept as written (found 2026-10-12, UTC). The Index row says the fix is an in-place insert
+  "in a Kani-verified crate". The block records that `crates/slots` was never touched and no
+  harness moved: the fix is `Thread::spawn_into` and `Threads::insert_in_place` in the kernel.
 
 ## Follow-on
 
@@ -339,8 +218,8 @@ proofs and tests run in a configuration nobody checks is not demonstrating.
   an answer and neither is sufficient alone.
 - **Recorded.** In `design/roadmap/0124-a-thread-is-born-where-it-lives.md`: the prediction that
   the slot table, `crates/generational_table` (this block's prose still calls it
-  crates/slots, its name before the rename), was the main cost was wrong, and it is kept because it is the plausible reading of
-  `Table::insert_with` and the next person will make it too. The table stores a pointer; the thread
+  crates/slots, its name before the rename), was the main cost was wrong. It is kept because it is
+  the plausible reading of `Table::insert_with` and the next person will make it too. The table stores a pointer; the thread
   is on its own page.
 - **Refused.** Raising `STACK_PAGES` from 4 to 8 as the fix. The guard page stays one page however
   large the stack is, so a frame bigger than 4096 bytes can still step over it in a single move and
@@ -351,7 +230,7 @@ proofs and tests run in a configuration nobody checks is not demonstrating.
   carries it with the condition that would change it.
 - **Milestone 331.** Delete the
   window in which a thread is published `Dead` while it still executes on its own kernel stack,
-  instead of refusing inside it: mark it `Departing` in `depart()` and promote it to `Dead` from
+  instead of refusing inside it. Mark it `Departing` in `depart()` and promote it to `Dead` from
   `finish_switch`, which already holds `SCHED` and already runs at the instant the stack goes free.
   No caller would then see the transient `NotPermitted` this block records as a race. It touches the
   death protocol and `RunState` in `crates/wake_handshake`, where loom searches the transitions, so

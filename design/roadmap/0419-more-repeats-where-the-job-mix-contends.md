@@ -88,7 +88,8 @@ not, until a number exists, and `tasks=4` does not yet have one.
 
 ## Follow-on
 
-- **Milestone 168.** Where the work landed: *"What changed on 2026-09-19"*, with the resampling
+- **Milestone 168.** Where the work landed: *"What changed on 2026-09-19"*, now the appendix
+  [`0168-multitasking-benchmark/holes-closed-2026-09-19.md`](0168-multitasking-benchmark/holes-closed-2026-09-19.md), with the resampling
   evidence for 21 and the old-and-new line formats in `notes/job-mix.md`.
 - **Decision.** [`design/decisions/0191-job-mix-repeats-and-what-the-line-reports.md`](../decisions/0191-job-mix-repeats-and-what-the-line-reports.md),
   still `PROPOSED`, and now asking calef to ratify or overrule what shipped rather than to choose

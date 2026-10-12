@@ -155,7 +155,7 @@ promotion carried tokens across unchanged and that was right: the proposals it d
 written by lanes that had met a real fork, while the older blocks had drifted away from gates that
 were true when they were set.
 
-**Two premise corrections found on the way**, both recorded in the blocks themselves. xenon has
+Two premise corrections were found on the way, both recorded in the blocks themselves. xenon has
 booted since 2026-09-05, so half of milestone 241's trigger has fired, and milestone 330 cited a
 constant, `KERNEL_WRITER_ANCHORS`, that exists nowhere in the tree.
 
@@ -243,13 +243,10 @@ the promoted quarter rather than as a prediction for the other 21.
   which judged the gate and correctly left the retitling alone. A title is a name, so it is an
   architect's and it does not become a decision file. Recorded in 406's own status line, where a
   reader meets the claim before they meet anything else in the block.
-- **Recorded.** *Nothing stops the next block gating on an unwritten decision.* A gate that tried
-  would have to read prose for intent, which is priced in this block's `BUGS` and in the roadmap
-  README's gate vocabulary, where the convention now lives beside the tokens it constrains.
-- **Recorded.** *A slice minting into a reserved range is red on its own branch by construction*,
-  because `script/decisions --check` fails on a hole and a lane must not renumber into another
-  lane's range to go green. Recorded in slice B's paragraph above; it resolves at merge and only at
-  merge, and it did.
+- **Recorded.** *Nothing stops the next block gating on an unwritten decision.* Priced in this
+  block's `BUGS` and in the roadmap README's gate vocabulary, where the convention now lives.
+- **Recorded.** *A slice minting into a reserved range is red on its own branch by construction.*
+  Recorded in slice B's paragraph and in `BUGS`; it resolved at merge, as they said it would.
 
 ## Index row
 

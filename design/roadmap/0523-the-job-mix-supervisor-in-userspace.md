@@ -23,44 +23,12 @@ the shell's authority model as `crates/grant_plan` states it in its own words, a
 fact about what a process may know about its machine. Any single one left unanswered leaves an
 instrument that either cannot be built or produces a number its own page says is not quotable.
 
-## What provoked it, and the cause is now measured rather than inferred
+## What provoked it
 
-`script/board-image --job-mix` builds a card whose kernel and archive are packed by one command, in
-the order that exists so they cannot disagree, and `sealed_pair` then reported the pair unsealed.
-`cargo clean -p kernel` did not change it, and neither did deleting the build directory.
-
-**The kernel compiles the right trust root and the linker drops it.** Measured in this lane's
-worktree, deterministic across three builds alternating the feature:
-
-```text
-board          -> 3 occurrences of `MEASURED BOOT REFUSED`
-board,job_mix  -> 0
-board          -> 3
-```
-
-The reason is one `cfg` and it is not a bug in the seal at all. Since milestone 268 (every architecture boots the same way: describe the machine, test yourself, hand over) the measured-boot refusal lives in
-`user::boot_progenitor`, and `kernel/src/main.rs` reaches that call only under
-`#[cfg(not(any(feature = "soak_test", feature = "job_mix")))]` (`:1640`, `:2018`, and
-`riscv_hand_over`'s own `cfg_attr` at `:2195`). **A job-mix build never calls it**, so nothing
-references the refusal, so the trust root and its message are dead code and the linker removes them.
-
-`sealed_pair` then asks the only question it can ask, which is whether the kernel image *carries*
-the digest (`haystack.windows(needle.len()).any(..)`, `crates/sealed_pair/src/lib.rs:445`), finds it
-absent, and prints a sentence that is false twice over: that the two files are from different
-builds, and that the pair will halt at `MEASURED BOOT REFUSED` after the power cycle. The pair is
-from one build and the kernel will halt at nothing, because it verifies nothing.
-
-**So the failure was never about job-mix specifically.** `--soak` and `--bench` cards divert the
-tour at the same three sites and will read `NOT SEALED` for the same reason. That finding is
-separable from this milestone and is raised on its own as milestone 563 (a seal check that reads
-bytes cannot see a check that was dropped),
-`design/roadmap/0563-a-seal-check-that-reads-bytes-cannot-see-a-check-that-was-dropped.md`; it
-is also recorded where a bench operator meets it, in `notes/job-mix.md`'s `BUGS` and in
-`crates/sealed_pair`'s.
-
-**It is worth separating the two, because only one of them is urgent.** A bench evening is blocked
-by a tool that cries wolf, and that is an hour's work on the tool. A userspace supervisor is a
-different and much larger claim, and the argument for it survives whether or not the tool is fixed.
+Moved on 2026-10-12 (UTC) into [`what-provoked-it.md`](0523-the-job-mix-supervisor-in-userspace/what-provoked-it.md)
+under §212 (a prose budget): why a job-mix card read `NOT SEALED`, measured, and why that finding is
+separate from this milestone and became milestone 563 (a seal check that reads bytes cannot see a
+check that was dropped).
 
 ## The premise in the brief that is false, and it is the good news
 
@@ -277,19 +245,17 @@ an hour on a tool that cries wolf.
 
 ## Follow-on
 
-- **Milestone 563.** The seal check reads bytes and cannot see a check the linker dropped, so a
-  `--soak`, `--job-mix` or `--bench` card is misreported as `NOT SEALED` and, worse, genuinely
-  verifies nothing:
-  `design/roadmap/0563-a-seal-check-that-reads-bytes-cannot-see-a-check-that-was-dropped.md`.
-  This is the urgent half of what provoked this milestone and it is an hour's work on a tool.
+- **Milestone 563.** The seal check reads bytes and cannot see a check the linker dropped:
+  `design/roadmap/0563-a-seal-check-that-reads-bytes-cannot-see-a-check-that-was-dropped.md`. It is
+  the urgent half of what provoked this milestone, told in the appendix above.
 - **Recorded.** Whether a diverted boot tour should keep measured boot at all is a question about
   three kernel features rather than about a tool, and it is option B of that proposal. A card left
   running a rebooting soak unattended for hours is arguably the last one that should skip
   verification.
-- **Recorded.** `user_mode_runtime::cntfrq()` in `crates/user_mode_runtime`'s riscv64 arm returns a hardcoded 10 MHz and
-  says so; radon is 4 MHz. Blocker five above is the first workload that would be silently wrong
-  because of it, and closing it properly is gated on milestone 167 (handing a computed page to a
-  userspace-built child: closing the x86_64 timebase page's delegation gap), which is NOT-STARTED.
+- **Recorded.** `user_mode_runtime::cntfrq()`'s hardcoded riscv64 value, in `crates/user_mode_runtime`
+  where it says so. Blocker five above is the first workload it would make silently wrong, and
+  milestone 167 (handing a computed page to a userspace-built child), which gates the fix, is
+  NOT-STARTED.
 - **Recorded.** A `job-mix` card has no measured boot, so a mismatched pair does not halt: it runs
   the sweep against whatever archive is beside it. `notes/job-mix.md`'s outcome table already has
   the row that catches it (`no 'job_mix_task' program in the initrd archive`), and that row is now

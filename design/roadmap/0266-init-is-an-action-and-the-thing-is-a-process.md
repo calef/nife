@@ -16,13 +16,13 @@ not optional, and milestone 265's block carries the same constraint for the same
 
 AGENTS.md protects standard terms that are genuinely right and says a name a reader already knows
 from outside is the best available. The maintainer quoted that at `init` and calef's answer was that
-`init` is not genuinely right, only **familiar**:
+`init` is not genuinely right, only familiar:
 
 - It names an action for a thing. `init` is short for *initialize*, a verb, and AGENTS.md's own
   rule is *name things with nouns*, because a verb names an action and a process is not one.
 - The thing is the first process, the one the kernel starts and from which every other descends,
   and the name says none of that.
-- **Familiarity is not correctness.** `elf` is genuinely right because that is the format's name.
+- Familiarity is not correctness. `elf` is genuinely right because that is the format's name.
   `pci` is genuinely right because the expansion teaches nothing better. `init` is a truncated verb
   that a reader recognizes from Unix, which is a different thing from a name that is right.
 
@@ -60,8 +60,8 @@ in the words that could name anything.
 ## What is in scope: one program, not a relabelling
 
 calef, 2026-09-08: one progenitor for all three architectures. The rename falls out of that
-rather than preceding it, and the reason is that **the role exists to abstract over several
-implementations and there should not be several.**
+rather than preceding it, and the reason is that the role exists to abstract over several
+implementations and there should not be several.
 
 Today three programs stand behind one archive entry:
 
@@ -80,7 +80,7 @@ goes with it: the kernel looks up `progenitor`, and `progenitor` is the program.
 
 ### The parity violation, stated as the tree states it
 
-`hello` is **not** a one-platform program: it is in the riscv64 and x86_64 archives under its own
+`hello` is not a one-platform program: it is in the riscv64 and x86_64 archives under its own
 name. What is aarch64-only is its init role, and `fixtures/src/hello.rs` records what that cost in
 its own comment:
 
@@ -92,8 +92,8 @@ one ISA and silently not another*, and the bill was paid once already:
 `crates/system_initializer` records a fix landing in one and not the other presenting as "a boot
 that reached userspace and printed nothing at all, with no fault and no message."
 
-**So the violation is not that `hello` exists. It is that one architecture's first process is a role
-bolted inside a demo binary while the others get a purpose-built one.**
+So the violation is not that `hello` exists. It is that one architecture's first process is a role
+bolted inside a demo binary while the others get a purpose-built one.
 
 ### What survives
 
@@ -102,68 +102,13 @@ bolted inside a demo binary while the others get a purpose-built one.**
   `crates/system_initializer`, so what moves is a boot entry rather than logic.
 - `builder` stays as itself if it still earns its keep: it is a demonstrator artifact with its
   own argument, not a third init. The lane should say whether that argument still holds once one
-  progenitor exists, and **not delete it silently** if it does not.
+  progenitor exists, and not delete it silently if it does not.
 
-### The one genuine difference to reconcile
+## The brief, and what it asked
 
-`crates/system_initializer` names it exactly: the boot entry is *"the one thing the two boards
-genuinely disagree about, which is the order their kernels grant capabilities in."* One
-difference. A `cfg` may be the right answer and the lane should argue it rather than reach for it.
-
-## The measurement, so nobody starts by guessing
-
-Taken 2026-09-08.
-
-| what | count |
-|---|---|
-| the contract string `"init"` in `kernel/`, `crates/`, `xtask/` | **39** |
-| `initboot` | 29 |
-| `init_boot` and `INIT_BOOT` | 14 |
-| `INIT_ROLES_ENTRY` | 8 |
-| `init_least_authority_demo` | 3 |
-| **the word `init` in `notes/` and `design/` prose** | **1,011** |
-| files and directories named for it | 6, including three notes and `design/init-and-granular-spawn.md` |
-
-The contract is small and the prose is the work. Thirty-nine sites is an afternoon. The 1,011
-is a judgment per occurrence and cannot be done by a pattern: *"userspace init brings up the
-console"* is the role, *"trusted init"* is milestone 22's title, `notes/trusted-init.md` is a
-filename, and a great many are the ordinary English sense of initialization. This is precisely the
-shape a blind `sed` has damaged this tree with before, when one swept a rename tree-wide and
-rewrote the row recording that a name had been *refused*.
-
-## What a lane must do rather than assume
-
-- Read every prose occurrence. A pattern that changes 1,011 things is wrong by construction.
-  Report how many were the role, how many were English, and how many were historical titles left
-  alone.
-- Leave records that describe the past. Milestone titles, dated audit rows and measurement
-  tables recorded what was true under the name it had, and rewriting them makes the record lie. The
-  `cred` rename on 2026-09-08 set that precedent and named the files it left alone.
-- Rename the three notes and one design file only if their subject is the role, and say so
-  either way. `notes/trusted-init.md` is milestone 22's record and its title may be history.
-- **Check the archive manifest in `xtask` first, not last.** It is the copy no compiler checks, and
-  it is what broke CI on the `job_mix_task` rename on 2026-09-05.
-
-## A contradiction to resolve on the way
-
-`crates/system_initializer`'s header says the archive entry `init` *"is `fixtures/src/hello.rs`'s
-`init_boot` role on aarch64 and this program on riscv64"*, while `xtask`'s
-`portable_archive_entries()` maps `("init", "builder")` and lists `system_initializer` as a separate
-entry. **One of those is stale and this block does not know which.** Settle it and say so; a rename
-that carries a wrong claim forward has spent the opportunity to find it.
-
-## BUGS
-
-- This is a kernel-to-image contract, which AGENTS.md puts in the expensive category alongside a
-  wire format. The edit is easy and the un-shipping is not, and nothing outside this repository has
-  acted on it, which is the only reason it is cheap today.
-- `init` is the one name a stranger arrives already knowing, and that cost is real rather than
-  rhetorical. Every other rename in this sweep replaced a name nobody outside knew.
-- **The 1,011 figure is a word count, not a role count.** Nobody knows how many are the role, and
-  the lane's first honest deliverable is that number.
-- `initboot`'s successor is unnamed. `progenitor-boot` is the mechanical answer and it is a
-  mouthful, and naming the boot path for what it does rather than which role it hands to may be
-  better. That is a decision this block defers rather than makes.
+The block as minted carried its starting measurement, the rules a lane had to follow, the
+difference and the contradiction to resolve, and the limits it predicted, all now in
+[`the-brief.md`](0266-init-is-an-action-and-the-thing-is-a-process/the-brief.md).
 
 ## What was built
 
@@ -178,9 +123,8 @@ them, which is the only way that separation is worth anything.
 
 ### The contradiction, settled
 
-`crates/system_initializer`'s header was the stale one. It said the entry `init` *"is
-`fixtures/src/hello.rs`'s `init_boot` role on aarch64 and this program on riscv64"*, and the second half
-was wrong: `xtask`'s `portable_archive_entries()` mapped `("init", "builder")` and listed
+`crates/system_initializer`'s header was the stale one, and the second half of its claim was
+wrong. `xtask`'s `portable_archive_entries()` mapped `("init", "builder")` and listed
 `system_initializer` as its own entry, which is what the archive actually contained. On riscv64 the
 entry `init` was milestone 20's `builder` demo, and `system_initializer` was reached by its own
 name from `riscv_shell_boot`. So `init` did not mean two things, it meant three: hello's boot role,
@@ -190,28 +134,10 @@ The reason the header could be wrong for that long is the reason the milestone e
 prose beside a program, and nothing compared it to the table; the alias is what made the two
 describable separately.
 
-### The one genuine difference, argued rather than reached for
+### The one genuine difference
 
-A `cfg` is right, and it is one `cfg` over data, not over code. What the two kernels disagree
-about is the *order* they grant boot capabilities in, so the slot numbers differ: aarch64's path is
-shared with milestone 19d's test roles and carries a report endpoint and a test interrupt at slots 1
-and 3 that the interactive system never uses, and everything after them is numbered around that.
-
-Three alternatives were considered and each lost to the same objection.
-
-- Make the kernels agree. The better fix in the abstract, and it moves the aarch64 test roles'
-  slot numbering, which six `spawn_progenitor` tests and `hello`'s whole 19d catalog are written
-  against. That is a real milestone, not a line in this one, and it is proposed below.
-- Probe at runtime. `system_initializer::boot` already probes for absent capabilities, so the
-  machinery exists. It cannot work here: the ambiguity is not "is slot 9 empty", it is "is slot 9 the
-  virtio-rng transport or the graphical terminal's endpoint", and nothing distinguishes those from
-  inside the process.
-- Pass the table in. The kernel could write the endowment into the configuration page. That puts
-  a layout two programs agree on into a runtime channel to avoid a compile-time constant, which is
-  the wrong direction on `DECISIONS`' own dependency argument, and it makes the boot depend on a page
-  the boot is what sets up.
-
-So: data under a `cfg`, in one file, beside the other board's table where a reader meets both.
+A `cfg` over data, not over code, in one file, beside the other board's table. Why it was right,
+and the three alternatives that lost, are in [`the-grant-order.md`](0266-init-is-an-action-and-the-thing-is-a-process/the-grant-order.md).
 
 ### `builder` survives, and the argument holds
 
@@ -239,8 +165,8 @@ count of *roles* among them was the lane's first honest deliverable. Measured on
 | titles, filenames and paths (`notes/trusted-init.md`, `target/init-measure-<arch>.txt`, five roadmap slugs) | 65 |
 | **changed by this milestone** | **18** |
 
-**The block's third bucket does not exist, and that is worth recording rather than quietly
-dropping.** It predicted "a great many are the ordinary English sense of initialisation". None are:
+The block's third bucket does not exist, and that is worth recording rather than quietly
+dropping. It predicted "a great many are the ordinary English sense of initialisation". None are:
 `initrd`, `initial`, `initialize` and `initializer` are not matched by a word-boundary search for
 `init`, and they are exactly the 983 occurrences that separate the substring count from the word
 count. The English sense is real, it is large, and it was never in the 1,011 to begin with. The
@@ -258,13 +184,13 @@ applied, stated so it can be disagreed with:
   `notes/grant-expression.md`'s *"There are still two inits"*, `notes/trusted-init.md`'s
   *"`user::initrd()` loads the archive entry `init`, which is..."*, and `design/naming.md`'s *"the one
   deliberate exception"*.
-- **A record of what was true on a date does not change.** This is the `cred`-to-`credentialer`
+- A record of what was true on a date does not change. This is the `cred`-to-`credentialer`
   precedent from the same week, and the reason is that rewriting it makes the record lie. Milestone
   22's title is *trusted init*; `notes/pipes/second-stream.md`'s section heading *"A correction:
   there are two
   inits"* is the correction it records; `notes/trusted-init.md` carries captured boot transcripts
   whose bytes are evidence.
-- **A file a developer may not edit does not change**, and that is a larger share of the 748 than any
+- A file a developer may not edit does not change, and that is a larger share of the 748 than any
   judgment call: 371 of the remaining occurrences are in other milestones' roadmap blocks and 100
   are in `design/decisions/`, both of which AGENTS.md puts outside a lane's reach.
 
@@ -288,7 +214,7 @@ applied, stated so it can be disagreed with:
   | `cargo xtask initboot` | `initboot` | shell command, hyphens | `progenitor-boot` |
   | the kernel Cargo feature | `initboot` | Rust identifier, `snake_case` | `progenitor_boot` |
 
-  **The recommendation is not the mechanical answer.** The boot path is named after the role it hands
+  The recommendation is not the mechanical answer. The boot path is named after the role it hands
   to, and once the role has a nine-letter name that reads as a mouthful three times over. What the
   flag actually selects is *skip the milestone tour and hand off immediately*, which is a property of
   the boot rather than of who receives it: its sibling `shell` is named that way already, for the
@@ -329,7 +255,7 @@ applied, stated so it can be disagreed with:
 - The boot transcript prefix changed, from `init: ` to `progenitor: `, in
   `crates/system_initializer`. `script/swish-check` matches those strings exactly and moved with
   them. Anyone with a saved transcript, or a script grepping one, sees a different word.
-- **Dangling references remain in `design/`, and they are not oversights.** 471 occurrences of the
+- Dangling references remain in `design/`, and they are not oversights. 471 occurrences of the
   word sit in other milestones' roadmap blocks and in `design/decisions/`, which a developer lane may
   not edit; among them are live citations of `spawn_init`, `boot_via_init`, `INIT_ROLES_ENTRY` and
   `INIT_BOOT_ROLE` (milestones 166, 177, 182, 161, 49 and 105, and decisions 21 and 120). They will
@@ -342,6 +268,9 @@ applied, stated so it can be disagreed with:
 - The grant orders still differ, which is the `cfg` above. It is the one architectural difference
   left in the first process, and it is data rather than code, but it is still a thing two boards
   disagree about in a milestone whose whole point was that they should not.
+- The entry above, that the grant orders still differ under a `cfg`, is stale (found 2026-10-12,
+  UTC). Milestone 166 (one boot loader, reached two inconsistent ways) split the 19d roles out of the boot path, as the Follow-on says, and
+  `components/src/progenitor.rs` now says its slot layout is identical everywhere and has no `cfg`.
 
 ## Index row
 
