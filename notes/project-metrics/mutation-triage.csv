@@ -927,3 +927,12 @@ machine_discovery,IvrsUnits::read_ivmd,delete match arm 0x20,killed,killed by a_
 machine_discovery,IvrsUnits::read_ivmd,replace < with >,killed,killed by a_block_too_short_for_its_type_marks_the_table_truncated
 machine_discovery,blocks,replace < with <=,killed,killed by a_block_too_short_for_its_type_marks_the_table_truncated
 machine_discovery,blocks,replace > with >=,killed,killed by a_block_too_short_for_its_type_marks_the_table_truncated
+manifest_note,,replace + with *,killed,killed by a_verb_record_is_twenty_bytes
+manifest_note,Verbs<'a>::is_empty,replace Verbs<'a>::is_empty -> bool with true,killed,killed by a_table_of_exactly_max_verbs_round_trips
+manifest_note,before,replace && with ||,killed,killed by a_shorter_prefix_sorts_first
+manifest_note,before,replace < with <=,equivalent,"three mutants share this key; the two in the while condition (line 727) are killed by a_shorter_prefix_sorts_first, and the third, return a[i] < b[i] (line 729), runs only when a[i] != b[i], where < and <= agree; the 2026-10-12 per-crate re-run still reports it"
+manifest_note,before,replace < with >,killed,killed by a_shorter_prefix_sorts_first
+manifest_note,decode_verbs,replace + with *,killed,"killed by an_unsorted_or_respelled_table_is_refused, which now asserts the offset each refusal names"
+manifest_note,decode_verbs,replace + with -,killed,"killed by an_unsorted_or_respelled_table_is_refused, which now asserts the offset each refusal names"
+manifest_note,decode_verbs,replace > with >=,killed,killed by a_table_of_exactly_max_verbs_round_trips
+manifest_note,encode_verbs,replace + with -,killed,killed by a_table_of_exactly_max_verbs_round_trips
