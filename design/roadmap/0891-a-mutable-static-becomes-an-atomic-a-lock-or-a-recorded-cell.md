@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-10-09
+built: 2026-10-12
 promoted_from: a-mutable-static-becomes-an-atomic-a-lock-or-a-recorded-cell
 milestone_dependencies: none
 decision_dependencies: 19
@@ -17,13 +18,13 @@ and slug are drafts.)*
 ## What was built, 2026-10-12 (UTC)
 
 Built by lane `maintainer/static-mut-891` (#1997), from base `0e72ca92a`. Every site in scope is
-converted except `SERVER_MAPS`, which waits for #1988 (the split of `kernel/src/user/fs_service.rs`)
-to land, since that pull request moves the file it lives in. That one site is what keeps this block
-PARTIAL.
+converted. `SERVER_MAPS` was done last, after #1988 moved it into
+`kernel/src/user/fs_service/wiring.rs`.
 
 | site | became | why that one |
 |---|---|---|
 | `IDT`, `TSS`, `GDT`, `INSTALLED_PORT_GRANT`, `BENCH_IOMAP` | `SyncUnsafeCell` | the ruling above; each comment names the per-core slot or the single writer before `lidt` |
+| `SERVER_MAPS` (`fs_service/wiring.rs`) | `SyncUnsafeCell` | a server keeps its list for the boot, so a lock guard would never drop; the existing take-once claim bit is the ownership |
 | `PIXELS`, `SCRATCH` (`screen.rs`) | `SyncUnsafeCell` | the emulator reads both by physical address, so they stay fixed and written in place |
 | `PRIMARY`, `BLOCK`, `OPTIONS` (`uefi_loader`'s chooser) | one firmware page allocation `choose` owns and lends down | safe functions each handed out a fresh `&'static mut`; the borrow checker now holds what a comment claimed |
 | `DATA_MARKER`, `BSS_MARKER` (`loaded_image_check`) | `AtomicU64` | still `.data` and `.bss`, checked in the built fixtures on aarch64 and riscv64 |
@@ -41,11 +42,11 @@ The census counts `static mut` (`helpers/rust_source.py`, outside the system tes
 
 | measure | before | after |
 |---|---|---|
-| `static mut`, census scope | 42 | 28 (27 in `components/`, plus `SERVER_MAPS`) |
-| `static mut`, kernel | 8 (5 in `arch/`) | 1 (0 in `arch/`) |
-| `unsafe {}` outside `arch/` | 1,103 (density 61.1) | 1,099 (60.9) |
+| `static mut`, census scope | 42 | 27, all in `components/` |
+| `static mut`, kernel | 8 (5 in `arch/`) | 0 |
+| `unsafe {}` outside `arch/` | 1,103 (density 61.09) | 1,099 (60.83, merged tree) |
 | `unsafe {}` inside `arch/` | 347 | 347 |
-| density ceiling | 66 | 65 |
+| density ceiling | 61 (main had just caught it up to the tree) | 60 |
 
 The arch count does not move because a cell access is still a raw-pointer write. The four blocks
 outside `arch/` are real reductions in milestone 139 (drive the unsafe count down)'s sense: two
@@ -183,8 +184,6 @@ sites, each a small change.
 
 ## Follow-on
 
-- `SERVER_MAPS`, after #1988 lands: a `SyncUnsafeCell` behind its existing take-once claim bit,
-  then the ceiling falls to 27.
 - The 27 in `components/` convert in milestone 812 (real threads in one address space), each one
   lowering the ceiling. Open question 3 stands.
 
