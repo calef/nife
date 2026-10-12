@@ -29,7 +29,7 @@
 #![no_main]
 
 use user_mode_runtime::{
-    cap_delete, destroy_memory_region, exit, map_into, map_page_frame, now, receive, retype_into_kernel_object,
+    cap_delete, destroy_memory_region, exit, address_space_map_into, map_page_frame, now, receive, retype_into_kernel_object,
     retype_into_page_frame, send, split_memory_region, tcb_cap_insert, tcb_configure, tcb_start, yield_now,
 };
 
@@ -268,7 +268,7 @@ fn map_bench() -> ! {
 /// Returns the syscall result: 0 on success, a negative error otherwise.
 #[inline(never)]
 fn map_one(va: u64) -> i64 {
-    map_into(
+    address_space_map_into(
         MAP_ADDRESS_SPACE,
         va,
         MAP_PAGE_FRAME,
@@ -343,14 +343,14 @@ fn spawn_one(code_frame: u64) {
     let child_ut = split_memory_region(SP_UNTYPED, CHILD_PAGES) as u64;
     let aspace = retype_into_kernel_object(child_ut, abi::objtype::ADDRESS_SPACE) as u64;
     // Alias the shared code frame as the child's code; a stack from the child's own region.
-    map_into(
+    address_space_map_into(
         aspace,
         CHILD_CODE_VA,
         code_frame,
         abi::address_space::MAP_CODE,
     );
     let stack = retype_into_page_frame(child_ut) as u64;
-    map_into(aspace, CHILD_STACK_VA, stack, abi::address_space::MAP_RW);
+    address_space_map_into(aspace, CHILD_STACK_VA, stack, abi::address_space::MAP_RW);
     cap_delete(stack);
 
     // The thread: give it CHILD_DONE (narrowed to WRITE) in its slot 0, configure (which consumes

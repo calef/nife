@@ -68,7 +68,7 @@ use component_plan::Provisions;
 use supervision_protocol::{ChildEndowment, Retention};
 use swap_protocol::log_checks as lc;
 use user_mode_runtime::{
-    cap_delete, cntfrq, map_into, map_page_frame, now, receive, receive_bound, receive_fault,
+    cap_delete, cntfrq, address_space_map_into, map_page_frame, now, receive, receive_bound, receive_fault,
     revoke_page_frame, send, timer_arm,
 };
 
@@ -373,7 +373,7 @@ fn direct(fs: &nifefs::Fs, w: &Wiring) -> ! {
     // ------------------------------------------------------------------------------------------
 
     for &(va, slot, mode) in component.devices() {
-        if map_into(b_aspace, va, slot, mode) != 0 {
+        if address_space_map_into(b_aspace, va, slot, mode) != 0 {
             bail(24)
         }
     }
@@ -1136,7 +1136,7 @@ fn hung(fs: &nifefs::Fs, w: &Wiring) -> ! {
     );
 
     for &(va, slot, mode) in component.devices() {
-        if map_into(b_aspace, va, slot, mode) != 0 {
+        if address_space_map_into(b_aspace, va, slot, mode) != 0 {
             bail(83)
         }
     }

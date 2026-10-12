@@ -105,7 +105,7 @@ use capability_witness_protocol::process_composition::{
 use supervision_protocol::{
     ChildEndowment, Retention, build_child_space, configure_child, start_child,
 };
-use user_mode_runtime::{exit, map_into, receive, retype_into_kernel_object, retype_into_page_frame, send};
+use user_mode_runtime::{exit, address_space_map_into, receive, retype_into_kernel_object, retype_into_page_frame, send};
 
 const MEMORY_REGION: u64 = 0;
 const REPORT: u64 = 1;
@@ -159,10 +159,10 @@ fn compose(initrd_len: u64) -> u64 {
     let frame = retype_into_page_frame(MEMORY_REGION);
     if frame >= 0 {
         let frame = frame as u64;
-        if map_into(aspace, VA, frame, abi::address_space::MAP_RW) == 0 {
+        if address_space_map_into(aspace, VA, frame, abi::address_space::MAP_RW) == 0 {
             verdict |= FRAME_MAPPED;
         }
-        if map_into(aspace, VA, frame, abi::address_space::MAP_RW) < 0 {
+        if address_space_map_into(aspace, VA, frame, abi::address_space::MAP_RW) < 0 {
             verdict |= DOUBLE_MAP_REFUSED;
         }
     }
