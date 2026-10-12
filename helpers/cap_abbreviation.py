@@ -78,7 +78,7 @@ KEPT = {
     'crates/swish/src/lib.rs': ({'the_heap_cap_is_named_in_kib'}, _CEILING),
     'crates/domain_name_system/tests/replies.rs':
         ({'addresses_past_the_cap_are_dropped_and_the_rest_kept'}, _CEILING),
-    'crates/video_terminal/src/lib.rs': ({'scrolls_report_movement_and_cap_at_the_screen'}, _CEILING),
+    'crates/video_terminal/src/vt/tests.rs': ({'scrolls_report_movement_and_cap_at_the_screen'}, _CEILING),
     'xtask/src/board.rs': ({'cap_given'}, _CEILING),
     # `PRINT_CAP` bounds a diagnostic's lines; the test's `caps` is the verb "limits". Two files since
     # milestone 840 (the scheduler file is split along its seams) moved each out of `sched.rs`.

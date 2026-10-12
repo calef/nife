@@ -34,7 +34,6 @@ crates/system_log/src/lib.rs	503
 crates/timetable/src/lib.rs	1514
 crates/usb/src/lib.rs	37
 crates/user_mode_runtime/src/lib.rs	542
-crates/video_terminal/src/lib.rs	2050
 cryptography_provider/src/lib.rs	91
 kernel/src/arch/aarch64/mod.rs	161
 kernel/src/arch/mod.rs	95

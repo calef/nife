@@ -269,7 +269,7 @@ either alone. [`glyphs/libghostty-vt.md`](glyphs/libghostty-vt.md) has the prici
 |---|---|
 | the font as pictures, which is what to edit | `crates/bitmap_font/kaypro-style-7x8.art` |
 | the font and its provenance | `crates/bitmap_font/src/lib.rs`, `crates/bitmap_font/src/glyphs.rs` |
-| the VT engine | `crates/video_terminal/src/lib.rs` |
+| the VT engine | `crates/video_terminal/src/vt.rs`, and the cells, damage and palette beside it |
 | the keymap | `crates/video_terminal/src/keymap.rs` |
 | the test script, shared by three witnesses | `crates/video_terminal/src/script.rs` |
 | the terminal component | `components/src/display_terminal.rs` |

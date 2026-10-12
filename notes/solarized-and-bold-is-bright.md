@@ -3,7 +3,7 @@
 Written 2026-09-29 (UTC) by the resumed lane for milestone 141 (a palette worth looking at). Name
 provisional, this file's included; calef names things.
 
-This note is what the PALETTE BUGS entry in `crates/video_terminal/src/lib.rs` promises: the
+This note is what the PALETTE BUGS entry in `crates/video_terminal/src/palette.rs` promises: the
 options for bold under Solarized Dark, and a recommendation. The question was found on the way,
 not raised by anyone, and the answer is calef's.
 
