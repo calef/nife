@@ -308,10 +308,10 @@ pub extern "C" fn _start(fires_wanted: u64, initrd_len: u64, registration_page: 
     // the clock page the spawn site placed there (`timetable::contract`).
     let holds_clock = user_mode_runtime::is_granted(contract::CLOCK_SLOT);
 
-    // SAFETY: forwarded from user_mode_runtime::initrd::initrd_bytes's own contract, the same one
+    // SAFETY: forwarded from user_mode_runtime::initial_ramdisk::bytes's own contract, the same one
     // `components/src/root_supervisor.rs` is started under. It named `components/src/builder.rs`
     // until milestone 295 retired that program; the contract is unchanged, only the sibling is.
-    let archive = unsafe { user_mode_runtime::initrd::initrd_bytes(initrd_len) };
+    let archive = unsafe { user_mode_runtime::initial_ramdisk::bytes(initrd_len) };
 
     // With a registrar, the timetable starts with nothing and waits to be told; without one, the
     // compiled-in document is the whole story, exactly as it was before §222.

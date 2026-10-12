@@ -119,7 +119,7 @@ pub extern "C" fn _start(role: u64, initrd_len: u64, _arg2: u64) -> ! {
 }
 
 /// The bytes of the program named `name` in the initrd (milestone 19f). The initrd is a nifefs
-/// archive the kernel maps read-only at [`user_mode_runtime::initrd::INITRD_VA`]; init indexes it by name
+/// archive the kernel maps read-only at [`user_mode_runtime::initial_ramdisk::INITRD_VA`]; init indexes it by name
 /// rather than treating the whole blob as a single ELF. `initrd_len` (the archive length) arrives
 /// in `x1` at entry. Returns `None` if the archive will not parse or holds no such program.
 ///
@@ -127,8 +127,8 @@ pub extern "C" fn _start(role: u64, initrd_len: u64, _arg2: u64) -> ! {
 /// kernel had loaded and re-entered it at a different role; 19f.2 added distinct entries a caller
 /// can name directly (`"least_authority_demo"` and so on).
 fn program(initrd_len: u64, name: &str) -> Option<&'static [u8]> {
-    // SAFETY: forwarded from user_mode_runtime::initrd::initrd_bytes's own contract.
-    let archive = unsafe { user_mode_runtime::initrd::initrd_bytes(initrd_len) };
+    // SAFETY: forwarded from user_mode_runtime::initial_ramdisk::bytes's own contract.
+    let archive = unsafe { user_mode_runtime::initial_ramdisk::bytes(initrd_len) };
     nifefs::Fs::parse(archive).ok()?.read(name)
 }
 
@@ -170,7 +170,7 @@ const CHILD_WORD: u64 = 0xC0FFEE;
 /// first process; since milestone 266 that is `progenitor`, and this role's name has not followed
 /// it (the constants below are unratified, and a rename of them is an architect's). init holds a
 /// building untyped (slot 0) and a report endpoint (slot 1, `WRITE|GRANT`); the initrd is mapped
-/// read-only at [`user_mode_runtime::initrd::INITRD_VA`], and its length arrives in `x1`.
+/// read-only at [`user_mode_runtime::initial_ramdisk::INITRD_VA`], and its length arrives in `x1`.
 ///
 /// It parses that ELF (the `elf` crate, linked into userspace) and loads it as a **child**: a
 /// second instance of this same program, entered at role [`CHILD`], built entirely by init out

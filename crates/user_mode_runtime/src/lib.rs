@@ -21,8 +21,8 @@
 //! panic handler above: the invariant was one thing asserted N times by hand, and only the
 //! declaration needed to be per-caller.
 //!
-//! And a fourth, in the same round: [`initrd`], the `INITRD_VA` slice seven `init`-shaped programs
-//! each reconstructed by hand with `core::slice::from_raw_parts`. A different pattern from
+//! And a fourth, in the same round: [`initial_ramdisk`], the `INITRD_VA` slice seven `init`-shaped
+//! programs each rebuilt by hand with `core::slice::from_raw_parts`. A different pattern from
 //! `mapped_window` (a whole `'static` slice, not a bounds-checked per-offset accessor), but the
 //! same §94 shape underneath: one invariant, copied verbatim into seven declarations.
 //!
@@ -30,8 +30,8 @@
 //! milestone's own largest unmigrated cluster) and found the same shape at nearly all of them: a
 //! method whose own `# Safety` obligation is [`invoke`]'s own ("the kernel validates the capability
 //! and the method before acting"), asserted by hand at every call site with nothing
-//! call-site-specific to check. Fourteen new thin wrappers below (`retype_into_page_frame` through
-//! `send_capability`), plus [`is_granted`] (the shape of §94 (what may live in a userspace library) again:
+//! call-site-specific to check. Fourteen thin wrappers below (`retype_into_page_frame` through
+//! `send_capability`), plus [`is_granted`] (§94 (what may live in a userspace library) again:
 //! five programs' identical probe) and the opt-in [`virtio`] module (device-specific, so scoped
 //! like `mapped_window` rather than added here), cover all but one of them; see that one call
 //! site's own comment (`window.rs`'s refusal probe) for why it stays raw.
@@ -150,7 +150,7 @@
 pub mod child_stub;
 pub mod entropy;
 pub mod heap;
-pub mod initrd;
+pub mod initial_ramdisk;
 pub mod mapped_window;
 pub mod virtio;
 

@@ -204,7 +204,7 @@ crates/universally_unique_identifier/src/lib.rs:1	55
 crates/uptime/src/lib.rs:1	68
 crates/usb/src/lib.rs:2	80
 crates/user_mode_heap/src/lib.rs:1	81
-crates/user_mode_runtime/src/initrd.rs:1	56
+crates/user_mode_runtime/src/initial_ramdisk.rs:1	56
 crates/user_mode_runtime/src/lib.rs:1	146
 crates/user_mode_runtime/src/lib.rs:157	45
 crates/user_mode_runtime/src/lib.rs:1215	49

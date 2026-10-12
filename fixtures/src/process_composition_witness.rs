@@ -22,7 +22,7 @@
 //! prints the bit meanings on failure.
 //!
 //! **Reading the archive is not a third capability.** The kernel maps the archive read-only at
-//! `user_mode_runtime::initrd::INITRD_VA` and passes its length in `x1`, which is what it did for
+//! `user_mode_runtime::initial_ramdisk::INITRD_VA` and passes its length in `x1`, which is what it did for
 //! `builder` and does for the progenitor. That mapping lets this program read bytes; it names no
 //! kernel object and can do nothing with the system. A reader who counts it as authority anyway
 //! should know it is there.
@@ -129,9 +129,9 @@ pub extern "C" fn _start(_arg0: u64, initrd_len: u64, _arg2: u64) -> ! {
 /// Every step, returning the verdict bits it reached. Stops at the first step that fails, so the
 /// word says where.
 fn compose(initrd_len: u64) -> u64 {
-    // SAFETY: forwarded from user_mode_runtime::initrd::initrd_bytes's own contract: the kernel
+    // SAFETY: forwarded from user_mode_runtime::initial_ramdisk::bytes's own contract: the kernel
     // mapped the archive at INITRD_VA and passed its length in x1.
-    let archive = unsafe { user_mode_runtime::initrd::initrd_bytes(initrd_len) };
+    let archive = unsafe { user_mode_runtime::initial_ramdisk::bytes(initrd_len) };
     let Some(elf) = nifefs::Fs::parse(archive)
         .ok()
         .and_then(|fs| fs.read(CHILD))

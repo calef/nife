@@ -12,7 +12,7 @@
 //! Scoped to a module, not lifted into the crate root, because unlike [`super::send`] or
 //! [`super::reply`] these four methods are meaningful to exactly the programs that own a `Virtio`
 //! capability: the same "opt in by importing the module" shape [`super::heap`],
-//! [`super::initrd`] and [`super::mapped_window`] already use for functionality most programs
+//! [`super::initial_ramdisk`] and [`super::mapped_window`] already use for functionality most programs
 //! never touch.
 
 /// `READ_REG` at `off` on the `Virtio` capability in `virtio_slot`. Reads are DMA-safe, so any
