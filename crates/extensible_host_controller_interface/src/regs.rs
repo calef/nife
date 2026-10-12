@@ -258,9 +258,9 @@ mod tests {
     /// interrupter 0, and the doorbells through slot 64's.
     #[test]
     fn the_needed_ranges_end_at_their_last_byte() {
-        let caps = Capabilities::decode(0x0100_0040, 0x0400_0840, 0, 0, 0x2000, 0x1000);
+        let capabilities = Capabilities::decode(0x0100_0040, 0x0400_0840, 0, 0, 0x2000, 0x1000);
         assert_eq!(
-            caps.needed_ranges(),
+            capabilities.needed_ranges(),
             [(0, 0x47f), (0x1020, 0x103f), (0x2000, 0x2103)]
         );
     }

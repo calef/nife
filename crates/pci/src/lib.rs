@@ -1637,15 +1637,15 @@ mod tests {
             0x80 => u32::from(CAP_ID_MSI) | u32::from(MSI_64_BIT | 0x6) << 16, // 64-bit, eight vectors
             _ => 0,
         };
-        let cap = msi_cap(bdf, &mut read).expect("the function declares MSI");
+        let msi = msi_cap(bdf, &mut read).expect("the function declares MSI");
         assert_eq!(
-            cap,
+            msi,
             MsiCap {
                 cap_offset: 0x80,
                 is_64: true
             }
         );
-        assert_eq!((cap.address_low(), cap.data()), (0x84, 0x8c));
+        assert_eq!((msi.address_low(), msi.data()), (0x84, 0x8c));
         assert_eq!(msix_cap(bdf, &mut read), None);
         let narrow = MsiCap {
             cap_offset: 0x50,
