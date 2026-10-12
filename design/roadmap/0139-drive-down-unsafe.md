@@ -19,8 +19,8 @@ has existed and been live all along; this milestone spent it for its first real 
 **In brief.** Reduce the hand-written `unsafe` this tree carries outside `kernel/src/arch/`, and lower
 the ceiling after each reduction so the ground gained cannot be given back quietly.
 
-<!-- prose-budget: exception. 14,195 words (wc -w, this marker included; re-counted after round
-     9's rulings, 2026-10-08 UTC) against a 3,000-word cap. Ratified by calef on 2026-09-25
+<!-- prose-budget: exception. 14,332 words (wc -w, this marker included; re-counted after round
+     11's renames, 2026-10-12 UTC) against a 3,000-word cap. Ratified by calef on 2026-09-25
      (UTC), who ruled that this block is not split. Reason:
      large and rarely referenced; the maintainer counted 2 files linking it that day. Roadmap blocks
      as a class stay under the cap, per §212 (a prose budget), which refused a class exemption.
@@ -1035,6 +1035,25 @@ Not a reduction. Four days of lane traffic took the density from 59.7 to 61.09 (
 value. That gives up round 1's headroom: `notes/unsafe-obligations/ceilings.md` says what it costs.
 calef ruled on it the same day (UTC): "Keep 61." The zero-headroom trade is decided.
 
+## Round 11 (2026-10-12): question 2's renames
+
+Every rename question 2's table rules is applied in `user_mode_runtime` and its callers, except
+the two in `abi`, each with a `Name: ratified` block at the definition: the thirteen crate-root
+wrappers, `virtio::read_register` and its three siblings, and `initrd::initrd_bytes`, now
+`initial_ramdisk::bytes(len)`. `design/naming.md` says the foreign spelling stops at the boundary.
+
+Left alone as outside the ruling: same-named private helpers (swish's `retype_page_frame()` and
+one-argument `send_cap`, `hello.rs`'s `retype_page_frame`, `system_initializer`'s alias of
+`supervision_protocol::retype_page_frame_from`, `system_tests`' two `map_into`s), the kernel's
+`syscall::irq_wait` and `irq_ack`, `retype_page_frame_run` and `virtio_ring_barrier`. The drivers
+call the virtio wrappers by full path, because a bare `virtio::` would shadow the `virtio` crate
+they also link.
+
+Not done. `abi::interrupt` and `READ_REGISTER`/`WRITE_REGISTER` wait for the `abi` split (#1990).
+How far the `initial_ramdisk` sweep reaches past this module (`INITRD_VA`, the `initrd_len`
+parameters, the kernel, `xtask`, `uefi_loader`, `NIFE_INITRD`: about 1,600 lines and forty derived
+names) is calef's question, asked on #1998.
+
 ## What is still open
 
 Exit criterion, ratified by calef on 2026-10-08 (UTC) on #1842: this block is BUILT when every
@@ -1092,9 +1111,9 @@ are the price of one invariant at six declarations instead of eighteen call site
 1. The ownership token, as question 1 rules it. **Built by round 10** (2026-10-08 UTC, #1852),
    with one deviation for calef to confirm: the token on `Thread::own_token`, not a per-core
    current slot.
-2. The renames, as question 2 rules them: the fifteen renamed names at their definitions and
-   every call site, the program-side `initial_ramdisk` sweep, `abi::interrupt`, the two
-   `abi::virtio` constants, and the `design/naming.md` line about the foreign spelling.
+2. The renames, as question 2 rules them. **Built by round 11** (2026-10-12 UTC, #1998) except
+   `abi::interrupt` and the two `abi::virtio` constants, which wait for #1990, and the reach of
+   the program-side `initial_ramdisk` sweep, which waits for calef.
 
 ## The measurement it starts from
 
@@ -1192,8 +1211,9 @@ proofs and the type system are standing aside and a person's comment is the whol
 - **Done.** `crates/abi`'s `START` doc comment: round 9.
 - **Done.** The ratchet's scope: round 9 gated the other `unsafe impl`s (`unsafe-trait-claims`)
   and recorded why `unsafe fn` gets no ceiling.
-- **Outstanding.** The renames calef ruled on 2026-10-08 (UTC), built under this milestone:
-  fifteen names, the `initial_ramdisk` sweep, `abi::interrupt` and the `abi::virtio` constants.
+- **Outstanding.** What round 11 left of the renames calef ruled on 2026-10-08 (UTC):
+  `abi::interrupt` and the `abi::virtio` constants (after #1990), and the reach of the
+  `initial_ramdisk` sweep past its own module (calef's question on #1998).
 - **Done.** Round 6's slice accessors stay: calef, 2026-10-08 (UTC), "Keep. We don't want to
   penalize reuse." `as_slice`, `as_mut_slice` and `is_granted` are ratified as is.
 - **Done.** The scheduler's ownership token (`Unqueued<T>`), option C: round 10 (#1852). calef's
