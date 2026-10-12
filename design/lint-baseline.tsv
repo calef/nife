@@ -38,7 +38,6 @@ too_many_lines	kernel/src/sched.rs	schedule	128
 too_many_lines	kernel/src/storage_bench.rs	through_el0	102
 too_many_lines	kernel/src/syscall.rs	invoke	189
 too_many_lines	kernel/src/user/compositor_service.rs	start	101
-too_many_lines	kernel/src/user/rmle_service.rs	start	115
 too_many_lines	redoxfs_server/src/dispatch.rs	Server::handle	128
 too_many_lines	uefi_loader/src/arch/aarch64/mod.rs	tree_from_acpi	145
 too_many_lines	uefi_loader/src/arch/x86_64/mod.rs	hand_over	157
