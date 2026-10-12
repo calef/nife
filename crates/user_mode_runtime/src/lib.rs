@@ -873,8 +873,8 @@ pub fn is_granted(slot: u64) -> bool {
 /// (`OutOfMemory` when the untyped is exhausted or the caller's table is full).
 ///
 /// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
-/// question 2), with [`retype_into_kernel_object`]. His words: "retype_into_page_frame and
-/// retype_into_kernel_object". Refused `retype_page_frame` (round 7's provisional name).
+/// question 2), with [`retype_into_kernel_object`]. His words: "`retype_into_page_frame` and
+/// `retype_into_kernel_object`". Refused `retype_page_frame` (round 7's provisional name).
 pub fn retype_into_page_frame(memory_region_slot: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the untyped capability and its remaining budget.
     unsafe { invoke(memory_region_slot, abi::memory_region::RETYPE, 0, 0, 0) }
@@ -911,8 +911,8 @@ pub fn slice_page_frame(frame_slot: u64, first: u64, count: u64) -> i64 {
 /// untyped or either table is exhausted).
 ///
 /// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
-/// question 2), with [`retype_into_page_frame`]. His words: "retype_into_page_frame and
-/// retype_into_kernel_object". Refused `retype_object` (round 7's provisional name),
+/// question 2), with [`retype_into_page_frame`]. His words: "`retype_into_page_frame` and
+/// `retype_into_kernel_object`". Refused `retype_object` (round 7's provisional name),
 /// `retype_kernel_object` (ratified earlier the same day, then superseded by this ruling).
 pub fn retype_into_kernel_object(region: u64, objtype: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the untyped, the objtype and the budget before it
@@ -926,9 +926,9 @@ pub fn retype_into_kernel_object(region: u64, objtype: u64) -> i64 {
 /// exhausted).
 ///
 /// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
-/// question 2). His words: "Ratify split_memory_region, destroy_memory_region,
-/// map_memory_region_page, revoke_page_frame, ..." Refused `split_region` (round 7's provisional
-/// name; the object is a memory region).
+/// question 2). His words: "Ratify `split_memory_region`, `destroy_memory_region`,
+/// `map_memory_region_page`, `revoke_page_frame`, ..." Refused `split_region` (round 7's
+/// provisional name; the object is a memory region).
 pub fn split_memory_region(memory_region_slot: u64, pages: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates `WRITE` and the remaining budget before it splits
     // anything off.
@@ -941,9 +941,9 @@ pub fn split_memory_region(memory_region_slot: u64, pages: u64) -> i64 {
 /// or without `WRITE`).
 ///
 /// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
-/// question 2). His words: "Ratify split_memory_region, destroy_memory_region,
-/// map_memory_region_page, revoke_page_frame, ..." Refused `destroy_region` (round 7's provisional
-/// name).
+/// question 2). His words: "Ratify `split_memory_region`, `destroy_memory_region`,
+/// `map_memory_region_page`, `revoke_page_frame`, ..." Refused `destroy_region` (round 7's
+/// provisional name).
 pub fn destroy_memory_region(memory_region_slot: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates `WRITE` and that nothing still occupies or splits
     // from the region before it reclaims anything.
@@ -959,9 +959,9 @@ pub fn destroy_memory_region(memory_region_slot: u64) -> i64 {
 /// directly on a mapped page.
 ///
 /// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
-/// question 2). His words: "Ratify split_memory_region, destroy_memory_region,
-/// map_memory_region_page, revoke_page_frame, ..." Refused `map_region_page` (round 7's provisional
-/// name).
+/// question 2). His words: "Ratify `split_memory_region`, `destroy_memory_region`,
+/// `map_memory_region_page`, `revoke_page_frame`, ..." Refused `map_region_page` (round 7's
+/// provisional name).
 pub fn map_memory_region_page(memory_region_slot: u64, va: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the untyped, the address, and maps a fresh page
     // from its own budget.
@@ -973,9 +973,9 @@ pub fn map_memory_region_page(memory_region_slot: u64, va: u64) -> i64 {
 /// `abi::Error` (`NotPermitted` without `GRANT`).
 ///
 /// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
-/// question 2). His words: "Ratify split_memory_region, destroy_memory_region,
-/// map_memory_region_page, revoke_page_frame, ..." Refused `revoke_frame` (round 7's provisional
-/// name; the kernel already spells the object `page_frame`).
+/// question 2). His words: "Ratify `split_memory_region`, `destroy_memory_region`,
+/// `map_memory_region_page`, `revoke_page_frame`, ..." Refused `revoke_frame` (round 7's
+/// provisional name; the kernel already spells the object `page_frame`).
 pub fn revoke_page_frame(frame_slot: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates `GRANT` before it unmaps and deletes every
     // capability to the page.
@@ -996,8 +996,8 @@ pub fn revoke_page_frame(frame_slot: u64) -> i64 {
 /// could check and the raw `invoke` site could not.
 ///
 /// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
-/// question 2). His words: "Ratify retype_kernel_object address_space_map_into." Refused `map_into`
-/// (round 7's provisional name; the method is `address_space::MAP_INTO`).
+/// question 2). His words: "Ratify `retype_kernel_object` `address_space_map_into`." Refused
+/// `map_into` (round 7's provisional name; the method is `address_space::MAP_INTO`).
 pub fn address_space_map_into(aspace: u64, va: u64, frame_slot: u64, mode: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the address-space capability, the frame's rights
     // against `mode`, and the address before it touches a page table.
@@ -1010,10 +1010,10 @@ pub fn address_space_map_into(aspace: u64, va: u64, frame_slot: u64, mode: u64) 
 /// use of an explicit target). Returns the slot it landed in, or a negative `abi::Error`.
 ///
 /// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
-/// question 2). His words: "Ratify ... thread_control_block_capability_insert,
-/// thread_control_block_configure, thread_control_block_start, ..." Refused `tcb_cap_insert` (round
-/// 7's provisional name; §154 (the acronym test is whether the phrase is spoken) spells out thread
-/// control block, and capability is spelled out).
+/// question 2). His words: "Ratify ... `thread_control_block_capability_insert`,
+/// `thread_control_block_configure`, `thread_control_block_start`, ..." Refused `tcb_cap_insert`
+/// (round 7's provisional name; §154 (the acronym test is whether the phrase is spoken) spells out
+/// thread control block, and capability is spelled out).
 pub fn thread_control_block_capability_insert(
     tcb_slot: u64,
     cap_slot: u64,
@@ -1042,9 +1042,9 @@ pub fn thread_control_block_capability_insert(
 /// bound.
 ///
 /// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
-/// question 2). His words: "Ratify ... thread_control_block_capability_insert,
-/// thread_control_block_configure, thread_control_block_start, ..." Refused `tcb_configure` (round
-/// 7's provisional name).
+/// question 2). His words: "Ratify ... `thread_control_block_capability_insert`,
+/// `thread_control_block_configure`, `thread_control_block_start`, ..." Refused `tcb_configure`
+/// (round 7's provisional name).
 pub fn thread_control_block_configure(
     tcb_slot: u64,
     entry: u64,
@@ -1071,9 +1071,9 @@ pub fn thread_control_block_configure(
 /// success; a negative `abi::Error`.
 ///
 /// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
-/// question 2). His words: "Ratify ... thread_control_block_capability_insert,
-/// thread_control_block_configure, thread_control_block_start, ..." Refused `tcb_start` (round 7's
-/// provisional name).
+/// question 2). His words: "Ratify ... `thread_control_block_capability_insert`,
+/// `thread_control_block_configure`, `thread_control_block_start`, ..." Refused `tcb_start` (round
+/// 7's provisional name).
 pub fn thread_control_block_start(tcb_slot: u64, x0: u64, x1: u64, x2: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates `WRITE` and that the TCB is whole before it joins
     // the run queue.
@@ -1120,7 +1120,7 @@ pub fn reboot(slot: u64) -> i64 {
 /// receiver takes them. `0` or a positive ack on success; a negative `abi::Error`.
 ///
 /// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
-/// question 2). His words: "Ratify ... send_capability, ..." Refused `send_cap` (round 7's
+/// question 2). His words: "Ratify ... `send_capability`, ..." Refused `send_cap` (round 7's
 /// provisional name; capability is spelled out, calef, 2026-10-06).
 pub fn send_capability(slot: u64, cap_slot: u64, rights: u64, w1: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the endpoint, `GRANT` on the delegated capability,
