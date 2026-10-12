@@ -1047,3 +1047,11 @@ video_terminal,Keyboard::event,replace != with ==,killed,killed by control_and_a
 video_terminal,Keyboard::event,replace == with !=,equivalent,"the surviving site (keymap.rs, code == KEY_LEFTCTRL inside the control branch) swaps which of two flags each control key sets, and only their OR is ever read, so the swap is unobservable; the key's other sites are killed by the keymap tests; the 2026-10-12 per-crate re-run still reports it"
 video_terminal,Vt::clamp_rows,replace < with <=,equivalent,"the expression is min(fit, MAX_ROWS) and at fit == MAX_ROWS both arms yield the same number; the 2026-10-12 per-crate re-run still reports it"
 video_terminal,Vt::scrollback_depth,replace < with <=,equivalent,"the expression is min(fit, SCROLLBACK_ROWS) and at the tie both arms yield the same number; the 2026-10-12 per-crate re-run still reports it"
+uefi_loader,carries_debug_info::scan,replace < with <=,killed,killed by a_section_table_of_the_smallest_entry_size_is_read
+uefi_loader,carries_debug_info::scan,replace < with ==,killed,killed by a_section_table_of_the_smallest_entry_size_is_read
+uefi_loader,carries_debug_info::scan,replace || with &&,killed,killed by a_string_table_index_past_the_table_is_unreadable
+uefi_loader,cmdline,replace > with >=,killed,"killed by the_boot_medium_is_on_the_line_only_for_a_boot_from_the_nvme_disk, which now refuses a leading or trailing space"
+uefi_loader,is_nvme,replace < with <=,killed,"killed by malformed_paths_are_refused_rather_than_walked, which now walks a node of only its header"
+uefi_loader,is_nvme,replace < with ==,killed,"killed by malformed_paths_are_refused_rather_than_walked, which now walks a node of only its header"
+uefi_loader,length,replace < with <=,killed,"killed by malformed_paths_are_refused_rather_than_walked, which now walks a node of only its header"
+uefi_loader,length,replace < with ==,killed,"killed by malformed_paths_are_refused_rather_than_walked, which now walks a node of only its header"

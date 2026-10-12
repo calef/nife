@@ -504,6 +504,8 @@ mod tests {
             let line = core::str::from_utf8(&out[..n]).expect("ASCII");
             assert_eq!(boot_slot::medium::is_nvme(line), on_nvme, "{line:?}");
             assert_eq!(boot_slot::cmdline::parse(line), slot, "{line:?}");
+            // No separator before the first token or after the last.
+            assert_eq!(line.trim(), line, "{line:?}");
         }
     }
 
