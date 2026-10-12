@@ -663,3 +663,6 @@ c_library_errno,errno_for,delete match arm ErrorKind::WriteZero,equivalent,"the 
 capability_witness_protocol,,replace << with >>,equivalent,"six mutants share this key; five (SPACE_BUILT to CHILD_ANSWERED) are killed by every_step_is_its_own_bit_and_whole_is_all_of_them, and the sixth is CHILD_FOUND = 1 << 0, where 1 >> 0 is 1; the 2026-10-12 per-crate re-run still reports it"
 capability_witness_protocol,,replace | with &,killed,killed by every_step_is_its_own_bit_and_whole_is_all_of_them
 capability_witness_protocol,,replace | with ^,equivalent,"the six step constants are distinct single bits (asserted by every_step_is_its_own_bit_and_whole_is_all_of_them), so | and ^ agree in WHOLE; the 2026-10-12 per-crate re-run still reports it"
+compositor,Rect::extent,replace > with ==,killed,killed by an_extent_past_i32_max_clamps_rather_than_wraps
+compositor,Rect::extent,replace > with >=,equivalent,"at n == i32::MAX both arms return i32::MAX, so > and >= agree; the 2026-10-12 per-crate re-run still reports it"
+compositor,commit_damage,replace == with !=,killed,killed by a_commit_says_whether_its_damage_was_clipped
