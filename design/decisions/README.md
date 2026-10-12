@@ -397,6 +397,7 @@ place instead of moving text between two systems. Numbers 68 to 73 are the six t
 | 278 | DECIDED | [An ACPI machine reaches the aarch64 kernel as a device tree the loader writes](0278-an-acpi-machine-reaches-the-aarch64-kernel-as-a-device-tree.md) |
 | 279 | DECIDED | [The system-initializer crate root splits into private modules](0279-the-system-initializer-crate-root-splits-into-private-modules.md) |
 | 282 | DECIDED | [When a file is split, the parent becomes an index](0282-when-a-file-is-split-the-parent-becomes-an-index.md) |
+| 294 | PROPOSED | [The timetable crate root splits into private modules](0294-the-timetable-crate-root-splits-into-private-modules.md) |
 
 Two blocks that lived among the decisions are not decisions and moved out with the split, the same
 way milestone 76 moved four essays out of the roadmap: [the open design
