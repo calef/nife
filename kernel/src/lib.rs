@@ -961,6 +961,12 @@ fn x86_64_memory(info: &machine_discovery::x86_64::BootInfo, acpi: &arch::machin
 
 /// `x86_64` phase 5: the scheduler, the other cores, the ladder, and a kernel thread.
 #[cfg(target_arch = "x86_64")]
+// A bench boot diverges into `bench::run()` part way through, so the kernel thread after it is
+// deliberately unreachable there, and it builds no machine description, the one reader of
+// `boot_info_pointer`. `kernel_main` carried both allows for the whole `x86_64` arm until milestone
+// 888 split the arm into phases (one through its `allow`, one through its other uses of the
+// pointer); this is the phase that needs them.
+#[cfg_attr(feature = "bench", allow(unreachable_code, unused_variables))]
 fn x86_64_scheduler(boot_info_pointer: usize) {
     // **The scheduler** (milestone 161, roadmap item 4). Everything below this line is a
     // process rather than a program, which is the distinction item 3 stopped at.
@@ -1126,7 +1132,7 @@ fn x86_64_userspace() {
 
 /// The `x86_64` boot, one function per phase, ending at the hand-over (milestone 888).
 #[cfg(target_arch = "x86_64")]
-fn x86_64_boot(boot_info_pointer: usize) {
+fn x86_64_boot(boot_info_pointer: usize) -> ! {
     let (info, acpi) = x86_64_first_light(boot_info_pointer);
     x86_64_pci(&acpi);
     x86_64_interrupts(boot_info_pointer, &acpi);
@@ -1961,7 +1967,7 @@ fn riscv64_clock_report(clock: Option<jh7110_clock_and_reset::Report>) {
 fn riscv64_boot(
     boot_info_pointer: usize,
     screen: &Result<(machine_discovery::framebuffer::Framebuffer, u32, u32), screen::Why>,
-) {
+) -> ! {
     riscv64_first_light(boot_info_pointer, screen);
 
     // **The ladder** (milestone 268): say what this machine is, then prove the kernel works on
@@ -2425,9 +2431,27 @@ fn tour_el0() {
     }
 }
 
-/// The measurement boots, each diverging; with none built this returns and the boot hands over.
-#[cfg_attr(any(test, feature = "system_tests", feature = "bench"), allow(dead_code))]
-fn run_measurement_boot() {
+/// The measurement boots, each diverging; with none built, the no-op below stands in for this and
+/// the boot hands over.
+///
+/// **Two definitions, so the type says what the boot does.** Each `run` here is `-> !`, and a boot
+/// that called them inline ended there as far as the compiler could see. Gathered into one
+/// function, it can see that only if the function is `-> !` too, which is true only of a build
+/// that has a measurement boot. So this one is built with a measurement feature and the no-op below
+/// without, and that is what lets `kernel_main` end without its `sched::exit()` in a measurement
+/// build, and `x86_64_boot` and `riscv64_boot` say `-> !`.
+#[cfg(any(
+    feature = "job_mix",
+    feature = "soak_test",
+    feature = "disk_throughput",
+    feature = "network_bench",
+    feature = "storage_bench"
+))]
+#[cfg_attr(
+    any(test, feature = "system_tests", feature = "bench"),
+    allow(dead_code)
+)]
+fn run_measurement_boot() -> ! {
     // **The sweep, when this build asked for one** (milestone 168). Before the soak arm and
     // the halt for the same reason the soak sits before the halt: the tour has finished, so the
     // whole boot is still evidence, and this run ends by halting rather than by beating
@@ -2449,6 +2473,20 @@ fn run_measurement_boot() {
     #[cfg(feature = "storage_bench")]
     storage_bench::run();
 }
+
+/// No measurement boot was built, so there is nothing to run, and the boot goes on to hand over.
+#[cfg(not(any(
+    feature = "job_mix",
+    feature = "soak_test",
+    feature = "disk_throughput",
+    feature = "network_bench",
+    feature = "storage_bench"
+)))]
+#[cfg_attr(
+    any(test, feature = "system_tests", feature = "bench"),
+    allow(dead_code)
+)]
+fn run_measurement_boot() {}
 
 /// Bring up the interrupt controller and the timer, then **unmask interrupts**.
 ///
