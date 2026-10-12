@@ -28,7 +28,8 @@ split, the parent becomes an index), which calef set on
 [#1959](https://github.com/nifeos/nife/pull/1959): *"Agreed, make the parent an index."* That
 overrides the block's cut, which kept 1,690 lines in `lib.rs`. Modules are private with named re-exports, per
 §272's fork 1 (*"Private modules"*). Names stay provisional for his naming pass. §294 stays its own
-section, as §279 to §281 did, rather than folding into §282. The maintainer recorded this on
+section, as §279 to §281 (the kernel's user-mode file splits into child modules of `user`) did,
+rather than folding into §282. The maintainer recorded this on
 [PR #1970](https://github.com/nifeos/nife/pull/1970#issuecomment-6116916808) at 02:55 (UTC) on
 2026-10-12.
 
