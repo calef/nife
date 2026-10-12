@@ -66,10 +66,6 @@ pub fn mcfg_entry(body: &[u8], index: usize) -> Option<McfgEntry> {
 mod verification {
     use super::*;
 
-    /// Long enough to hold a v2 RSDP, a table header, and a few entries of either walk. Every
-    /// harness here is linear in this, so it is the whole cost knob.
-    const N: usize = 36;
-
     /// **An ECAM window's size is total, and counts exactly one mebibyte per bus it covers.**
     ///
     /// **This harness was also false when it was written.** [`McfgEntry::size`] computed
