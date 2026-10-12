@@ -21,13 +21,12 @@
 //! | 1 | `net_stack`'s `Stack` endpoint, its whole network authority | `WRITE` |
 //! | 2 | an untyped budget: the socket page, and the page tables for its clients' pages | |
 //! | 3 | the entropy service's endpoint, for transaction ids | `WRITE` |
+//! | 4 | its own address space, so a forgotten client's page can be given up | `WRITE` |
 //!
 //! And two start words ([`name_resolution_protocol::endowment`]): the name server's address, and its
-//! port and the transport. The third is unused: it named the socket number to use on the stack
-//! until milestone 649 (every client of a network stack shares its socket numbers) made each socket
-//! a capability the stack hands back (§255 (each socket is its own capability)). Which server to ask is the
-//! spawner's decision, read from the DHCP lease (`socket_protocol::lease`), the way the network time
-//! client is told its server rather than choosing one.
+//! port and the transport; the third is unused. Which server to ask is the spawner's decision,
+//! read from the DHCP lease (`socket_protocol::lease`), the way the network time client is told
+//! its server rather than choosing one.
 //!
 //! # What a client can and cannot make it do
 //!
@@ -35,8 +34,9 @@
 //! against the zone its badge was granted before anything is sent**, so a client granted
 //! `nife.test` that asks about `example.com` gets [`status::DENIED`] and the network sees nothing.
 //! It cannot widen its grant: only a message with badge 0 is a grant, and only the spawner holds an
-//! unbadged capability. It cannot read another client's answer: each badge's page is mapped in its
-//! own window, and the name is copied out of the page before it is parsed, so a client rewriting
+//! unbadged capability. When it ends, the spawner forgets its badge (`OPERATION_FORGET`): this
+//! process unmaps and deletes its page, and the window waits for the next grant. It cannot read
+//! another client's answer: each badge's page is mapped in its own window, and the name is copied out of the page before it is parsed, so a client rewriting
 //! its page mid-request changes nothing but its own reply.
 //!
 //! On Unix every process can read `/etc/resolv.conf` and call `getaddrinfo`, and the first sign
@@ -79,8 +79,7 @@
 //!   word and a reason to need it.
 //! - **One socket at a time.** Each resolve opens a socket, which the stack hands back as a
 //!   capability no other client of the stack can reach (§255 (each socket is its own capability)),
-//!   and closes it before answering. Until milestone 649 (every client of a network stack shares
-//!   its socket numbers) the spawner had to pick a socket number no other client of the stack used.
+//!   and closes it before answering.
 //! - **A page attached before its badge was granted is deleted**, so a client must be spawned after
 //!   the spawner's grant, which is the order a spawner works in anyway.
 //! - The UDP path is proved on the host only up to the bytes (`domain_name_system`'s tests); the
@@ -118,6 +117,8 @@ const STACK: u64 = 1;
 const MEMORY_REGION: u64 = 2;
 /// Slot 3: the entropy service.
 const ENTROPY: u64 = 3;
+/// Slot 4: our own address space, for `UNMAP` at a forget.
+const OWN_SPACE: u64 = protocol::endowment::OWN_SPACE_SLOT;
 
 /// Where the socket page is mapped. A private pair page: nobody else knows this address.
 const SOCKET_VA: u64 = address_space_map::pair_page(0x0000_0000_00A0_0000);
@@ -153,7 +154,9 @@ mod step {
 /// Everything too large for a one-page stack, in `.bss`. One thread, so one reference.
 struct State {
     grants: Grants,
-    attached: [bool; protocol::GRANTS_MAX],
+    /// The slot of the page frame mapped in each window, while one is: what a forget unmaps and
+    /// deletes.
+    attached: [Option<u64>; protocol::GRANTS_MAX],
     request: [u8; 2 + domain_name_system::UDP_MESSAGE_MAX],
     reply: [u8; TCP_REPLY_MAX],
     chunk: [u8; socket::DATA_MAX],
@@ -161,7 +164,7 @@ struct State {
 
 static mut STATE: State = State {
     grants: Grants::new(),
-    attached: [false; protocol::GRANTS_MAX],
+    attached: [None; protocol::GRANTS_MAX],
     request: [0; 2 + domain_name_system::UDP_MESSAGE_MAX],
     reply: [0; TCP_REPLY_MAX],
     chunk: [0; socket::DATA_MAX],
@@ -209,6 +212,9 @@ fn serve(state: &mut State, server: &Server, socket_ready: bool) {
         // The spawner's unbadged capability, and nothing else, can say this. A control `CALL` gets
         // an answer so a spawner that called is not left blocked; a delegation is deleted.
         let control = state.grants.control(r.w0, r.w1);
+        if let protocol::Control::Forgotten(window) = control {
+            give_up_window(state, window);
+        }
         if let Some(to) = r.delivered.into_reply() {
             let refused = matches!(control, protocol::Control::Refused(_));
             let _ = reply(to, refused as u64, 0);
@@ -248,15 +254,38 @@ fn serve(state: &mut State, server: &Server, socket_ready: bool) {
 
 /// Map a client's page in its grant's window, or delete it: no grant, or a page already attached.
 fn attach_client(state: &mut State, badge: u32, frame: u64) {
-    match state.grants.granted(badge) {
-        Some(i) if !state.attached[i] => {
-            if map_page_frame(frame, window_va(i), true, MEMORY_REGION) {
-                state.attached[i] = true;
-            } else {
-                cap_delete(frame);
-            }
+    let kept = match state.grants.granted(badge) {
+        Some(i)
+            if state.attached[i].is_none()
+                && map_page_frame(frame, window_va(i), true, MEMORY_REGION) =>
+        {
+            state.attached[i] = Some(frame);
+            true
         }
-        _ => cap_delete(frame),
+        _ => false,
+    };
+    if !kept {
+        cap_delete(frame);
+    }
+}
+
+/// **A forgotten client's page, given up**: unmapped from its window and its capability deleted, so
+/// the next badge granted this window maps its own page here and this process keeps nothing of the
+/// last client's. An `UNMAP` that answers `BadPointer` is a page already gone (the client's region
+/// was reclaimed first, and revoking the frame took the mapping with it), which is the same end.
+fn give_up_window(state: &mut State, window: usize) {
+    if let Some(frame) = state.attached[window].take() {
+        // SAFETY: `invoke` traps to the kernel, which checks the slot, the rights and the address.
+        let _ = unsafe {
+            user_mode_runtime::invoke(
+                OWN_SPACE,
+                abi::address_space::UNMAP,
+                window_va(window),
+                0,
+                0,
+            )
+        };
+        cap_delete(frame);
     }
 }
 
@@ -269,11 +298,12 @@ fn resolve(state: &mut State, server: &Server, badge: u32, len: u64) -> (Outcome
     let Some(window) = state.grants.granted(badge) else {
         return (Outcome::of(status::DENIED), 0);
     };
-    if !state.attached[window] {
+    if state.attached[window].is_none() {
         return (Outcome::of(status::NOT_ATTACHED), 0);
     }
     // SAFETY: `attach_client` mapped a page read/write at this window's address before setting
-    // `attached`, and no window is ever unmapped.
+    // `attached`, and `give_up_window` clears `attached` in the same step it unmaps. One thread,
+    // so nothing runs between the two.
     let page = unsafe { MappedWindow::new(window_va(window), PAGE) };
 
     // Copied out before it is read, so what is judged and what is asked are the same bytes.
