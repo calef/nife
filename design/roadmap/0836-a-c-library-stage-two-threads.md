@@ -41,7 +41,7 @@ hackbench's thread mode and schbench build unmodified and run on all three archi
 
 Amended 2026-10-12 (UTC) by calef's ruling on #2009, "c, and drop schbench": the C library does not
 build `syscall()`, §265 (a C library started from relibc) stands as written, and schbench is
-dropped. Milestone 830 (schbench on nife and Linux, wakeup-latency tails) measures its tails by
+dropped. Milestone 830 (Wakeup latency on nife and Linux, from each kernel's own scheduler trace) measures the tails by
 tracing instead. hackbench is this block's one program.
 
 ## What is built (2026-10-12, lane `milestone/836-a-c-library-stage-two-threads`)
