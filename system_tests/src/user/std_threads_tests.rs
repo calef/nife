@@ -27,7 +27,54 @@ fn std_threads_image() -> Option<&'static [u8]> {
 /// own space. Then the program runs to its end, and the test checks that its process ended with
 /// every thread reaped and its space gone, and gives every region back.
 fn run_as_process(image: &'static [u8], what: &str, out: &mut [u8]) -> usize {
+    run_as_process_with(image, what, None, None, super::std_service::BUDGET_PAGES, out)
+}
+
+/// [`run_as_process`], **told `line` and given a wall clock** when the caller has them: the words
+/// on an argument page at `ARGS_SLOT` and `ARGS_PAGE`, made by `grant_plan::argv` as the shell
+/// makes them, and a clock service's page read-only at `CLOCK_SLOT` and `CLOCK_PAGE`, as
+/// `fs_service::start_std_narrowed_clocked` grants them. Added by milestone 836 (a C library, stage
+/// 2: threads) for a threaded C program, which needs all three: threads, its words, and the clock it
+/// times itself with. `budget_pages` is its heap, which every thread's stack comes out of.
+pub(super) fn run_as_process_with(
+    image: &'static [u8],
+    what: &str,
+    line: Option<&str>,
+    clock_page: Option<u64>,
+    budget_pages: u64,
+    out: &mut [u8],
+) -> usize {
     let (mut space, entry) = load(image, 0).expect("could not load the program");
+    // The argument page, from a region this test gives back.
+    let args_region = crate::memory_region::create(1).expect("no argument region");
+    let args = line.map(|line| {
+        let phys = crate::memory_region::retype_page(args_region).expect("no argument page");
+        // SAFETY: a frame just retyped and zeroed, reached through the direct map, which nothing
+        // else holds until the program is given it read-only below.
+        let page = unsafe {
+            &mut *(crate::arch::mmu::phys_to_virt(phys) as *mut [u8; FRAME_SIZE as usize])
+        };
+        grant_plan::argv(line.as_bytes(), page).expect("the test's own line is not an argv");
+        space
+            .map_physical(
+                std_runtime_protocol::ARGS_PAGE,
+                phys,
+                Flags::user_rodata(),
+                crate::revoke::PageMapSource::NoCapability,
+            )
+            .expect("could not map the argument page");
+        phys
+    });
+    if let Some(phys) = clock_page {
+        space
+            .map_physical(
+                std_runtime_protocol::CLOCK_PAGE,
+                phys,
+                Flags::user_rodata(),
+                crate::revoke::PageMapSource::NoCapability,
+            )
+            .expect("could not map the clock page");
+    }
 
     // The deep stack a std program's main thread needs, from a region this test gives back.
     let stack_region =
@@ -58,7 +105,7 @@ fn run_as_process(image: &'static [u8], what: &str, out: &mut [u8]) -> usize {
 
     let report_region = crate::memory_region::create(1).expect("no report region");
     let report = sched::create_rendezvous_from(report_region).expect("no report rendezvous");
-    let budget = crate::memory_region::create(super::std_service::BUDGET_PAGES)
+    let budget = crate::memory_region::create(budget_pages)
         .expect("no heap budget for the program");
     for (slot, cap) in [
         (
@@ -85,6 +132,19 @@ fn run_as_process(image: &'static [u8], what: &str, out: &mut [u8]) -> usize {
         sched::thread_control_block_insert_cap(tid, cap, Some(slot))
             .expect("could not fill a runtime slot in the process's table");
     }
+    for (slot, phys) in [
+        (std_runtime_protocol::ARGS_SLOT, args),
+        (std_runtime_protocol::CLOCK_SLOT, clock_page),
+    ] {
+        if let Some(phys) = phys {
+            sched::thread_control_block_insert_cap(
+                tid,
+                crate::cap::page_frame_cap(phys, Rights::READ),
+                Some(slot),
+            )
+            .expect("could not fill a page slot in the process's table");
+        }
+    }
     sched::start_thread_control_block(tid, [0; 3]).expect("start the program");
 
     let len = drain_until_end(report, pid, out, what);
@@ -104,7 +164,7 @@ fn run_as_process(image: &'static [u8], what: &str, out: &mut [u8]) -> usize {
     );
     // The same reaper removes the last thread from the table after that, and a region still
     // holding a thread refuses `reclaim` until it is gone, so each region gets the same grace.
-    for region in [budget, report_region, process_region, stack_region] {
+    for region in [budget, report_region, process_region, stack_region, args_region] {
         assert!(
             super::wait_for(|| sched::reclaim_region(region).is_ok()),
             "a region {what} used did not come back"

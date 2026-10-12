@@ -337,6 +337,12 @@ mod ripgrep_tests;
 #[cfg(all(test, initrd))]
 mod c_program_tests;
 
+/// **Somebody else's threaded C, unmodified**: hackbench's thread mode on nife's C library's POSIX
+/// threads (milestone 836 (a C library, stage 2: threads)). Skips unless somebody ran
+/// `helpers/build-hackbench.sh`. Every ISA, per DECISIONS §19.
+#[cfg(all(test, initrd))]
+mod c_thread_tests;
+
 /// **A TLS crypto provider's primitives against published test vectors**, for milestone 442 (a
 /// crypto provider `rustls` can use on all three bare-metal targets). `cargo xtask test` builds the
 /// program for every leg it boots since milestone 855 (the TLS graph enters the gated build). Every

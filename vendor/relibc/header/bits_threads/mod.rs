@@ -25,4 +25,4 @@ pub union pthread_cond_t {
 }
 
 pthread_assert_equal_size!(pthread_mutex_t, RlctMutex);
-// nife: stage 1 seeds no `RlctCond`; this size check returns with stage 2 (milestone 836).
+pthread_assert_equal_size!(pthread_cond_t, RlctCond);

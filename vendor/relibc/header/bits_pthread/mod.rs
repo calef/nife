@@ -95,10 +95,10 @@ macro_rules! pthread_assert_equal_size(
         };
     }
 );
-// nife: stage 1 seeds no `RlctRwlock`; this size check returns with stage 2 (milestone 836).
-// nife: stage 1 seeds no `RlctRwlockAttr`; this size check returns with stage 2 (milestone 836).
-// nife: stage 1 seeds no `RlctBarrier`; this size check returns with stage 2 (milestone 836).
-// nife: stage 1 seeds no `RlctBarrierAttr`; this size check returns with stage 2 (milestone 836).
+pthread_assert_equal_size!(pthread_rwlock_t, RlctRwlock);
+pthread_assert_equal_size!(pthread_rwlockattr_t, RlctRwlockAttr);
+pthread_assert_equal_size!(pthread_barrier_t, RlctBarrier);
+pthread_assert_equal_size!(pthread_barrierattr_t, RlctBarrierAttr);
 pthread_assert_equal_size!(pthread_mutexattr_t, RlctMutexAttr);
-// nife: stage 1 seeds no `RlctCondAttr`; this size check returns with stage 2 (milestone 836).
-// nife: stage 1 seeds no `RlctSpinlock`; this size check returns with stage 2 (milestone 836).
+pthread_assert_equal_size!(pthread_condattr_t, RlctCondAttr);
+pthread_assert_equal_size!(pthread_spinlock_t, RlctSpinlock);
