@@ -347,4 +347,5 @@ use supervision_protocol::{
 };
 use user_mode_runtime::{
     call, cap_delete, invoke, is_granted, receive, receive_badged, receive_cap_badged, send,
+    send_capability,
 };

@@ -810,14 +810,7 @@ pub fn boot(
     // anything that could fail to come. Both sources then feed one line discipline, and a person
     // can type on the keyboard or the serial line alike.
     if is_granted(g.usb_keyboard_attach) {
-        must_ok(
-            user_mode_runtime::send_capability(
-                g.usb_keyboard_attach,
-                term_ep,
-                abi::rights::WRITE,
-                0,
-            ) >= 0,
-        );
+        must_ok(send_capability(g.usb_keyboard_attach, term_ep, abi::rights::WRITE, 0) >= 0);
         cap_delete(g.usb_keyboard_attach);
     }
 
