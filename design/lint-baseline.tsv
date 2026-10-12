@@ -28,7 +28,7 @@ too_many_lines	crates/documentation/src/render.rs	Renderer::flush_table	111
 too_many_lines	crates/grant_plan/src/line.rs	split	123
 too_many_lines	crates/grant_plan/src/planning.rs	plan_against_with	148
 too_many_lines	crates/grant_plan/src/program/manifests.rs	Prog::manifest	555
-too_many_lines	crates/line_editor/src/lib.rs	LineDisc::feed	123
+too_many_lines	crates/line_editor/src/line_disc.rs	LineDisc::feed	123
 too_many_lines	crates/manifest_note/src/lib.rs	decode	106
 too_many_lines	crates/swish/src/preview.rs	write_preview_rows	263
 too_many_lines	crates/system_initializer/src/activation.rs	edit	155

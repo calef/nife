@@ -213,7 +213,7 @@ crates/user_mode_runtime/src/lib.rs:1379	54
 crates/user_mode_runtime/src/lib.rs:1638	47
 crates/user_mode_runtime/src/mapped_window.rs:1	57
 crates/video_terminal/src/lib.rs:1	130
-crates/video_terminal/src/lib.rs:209	54
+crates/video_terminal/src/palette.rs:11	54
 crates/virtio/src/lib.rs:2	72
 crates/walk_pricing/src/lib.rs:1	49
 crates/work_steal_slot/src/lib.rs:1	87
