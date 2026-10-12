@@ -303,12 +303,15 @@ SENTENCE_END = re.compile(r'[.!?][*_)\]"\'\u201d\u2019]*\s+(?=[A-Za-z0-9`"*\'\u2
 
 
 # Tables a script writes, keyed by the heading that anchors them, and skipped like fenced code.
-# `script/decisions` regenerates the table under `## The decisions` in design/decisions/README.md
-# from every section's frontmatter, one row per section, and anchors on that heading (its
-# TABLE_HEADING) rather than on markers. Counting it made every new section a prose-budget failure
-# on a document nobody had edited: the row is the only change, and no lane can cut words to pay
-# for it without cutting someone else's prose. Found 2026-09-25 (UTC), the day the ratchet landed,
-# when #1273 and #1278 each minted a section and each failed on README.md by one row's words.
+# `script/decisions` regenerated the table under `## The decisions` in design/decisions/README.md
+# from every section's frontmatter, one row per section. Counting it made every new section a
+# prose-budget failure on a document nobody had edited: the row was the only change, and no lane
+# could cut words to pay for it without cutting someone else's prose. Found 2026-09-25 (UTC), the
+# day the ratchet landed, when #1273 and #1278 each minted a section and each failed by one row.
+#
+# calef retired that table on 2026-10-12 (UTC), and its heading stays here for history:
+# `script/metrics --backfill` measures each past week's own tree through this set, and a week that
+# carried the table should not suddenly count its rows as prose.
 #
 # The six below are notes/project-metrics/baseline-drift.md's, written by `script/metrics` for
 # milestone 415 (sub-tripwire drift accumulates across baseline saves). The appendix grows by one

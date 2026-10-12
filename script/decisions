@@ -1,7 +1,7 @@
 #!/bin/sh
 #
-# Validate and report the architecture decisions in design/decisions/ (one file per decision, with
-# README.md as the index, whose table this script generates).
+# Validate and report the architecture decisions in design/decisions/ (one file per decision, and a
+# README.md that says how the directory works). Run with no argument, this is the index.
 #
 # Why this exists: 2,000-odd `§N` citations across the kernel, the crates, the notes and the roadmap
 # point into this record, ~400 of them from code comments, and a citation of a section that does not
@@ -24,7 +24,7 @@
 # checkable, and it is checked below. Recorded rather than deleted, because the reasoning is the
 # record.
 #
-# ---- why the status is a field and the index is generated (milestone 582) -----------------------
+# ---- why the status is a field, and why there is no index table ----------------------------------
 #
 # Until 2026-09-23 a decision's status was `**Status: DECIDED.**`, a data field written as a
 # sentence, and this script read it with `re.match(r"\*\*Status: (.+?)\.\*\*", first)`. Two failures
@@ -63,17 +63,16 @@
 # that
 # should have to say what happens to the record, rather than one this script makes quietly.
 #
-# **The index table is generated from the files**, which removes the tree's last additive-index
-# conflict of the shape milestone 294 (`design/roadmap/README.md`'s index is generated, not hand-maintained) removed from the roadmap. Every lane minting a section had to
-# add a row to one sorted file, so every lane in flight collided with every other one, there,
-# always. `briefs/rebase-onto-main.md` names it as case 4's worked example, and that example is now
-# stale. The prose around the table is NOT generated and must not be: the preamble argues, and only
-# the rows are data.
+# **There is no index table; this script's report is the index.** Milestone 582 generated a table
+# into design/decisions/README.md from the files, which removed the hand-edited row every lane
+# minting a section had to add. It did not remove the conflict: a generated table is still one
+# committed file every decision change rewrites, and on 2026-10-12 (UTC) seven pull requests
+# conflicted on it in one day. calef ruled that day to retire the table and keep the prose, the
+# same call he made for the roadmap's table on 2026-09-21 (#1079). `--index` and `--write-index`,
+# the committed-table check and the README's `## The decisions` heading went with it.
 #
-# **The files are the authority.** The index-versus-file comparison this script used to run is gone,
-# because it can no longer fail: there is one record and the table is a rendering of it. That is
-# rung one where the check was rung two, the same move `script/roadmap` recorded when its own table
-# became derived.
+# **The files are the authority**, and now the only record. A status is read from frontmatter and
+# nowhere else, so nothing can disagree with it.
 #
 # What is checked, and which defect each check answers:
 #   - every file carries frontmatter whose keys are in the schema and whose dates are ISO and UTC;
@@ -89,7 +88,6 @@
 #   - a gap in the numbering is REPORTED and does not fail (milestone 443 (lanes wait on each other for three reasons, and none of them is the work)): the defect is a
 #     duplicate, which stays fatal, and failing on a gap is what forced the renumber that moves
 #     every citation. The reasoning is at the check.
-#   - the committed index matches the one generated from the files;
 #   - every `§N` citation TREE-WIDE resolves to a decision (vendor/, patches/ and lockfiles
 #     excluded: other people's text and generated files).
 #
@@ -152,12 +150,10 @@
 #   decision is a file with a title on its own line, `§43 (reading the clock is a page)` can be
 #   checked against `0043-clock-authority.md`'s own H1 without parsing a 5,000-line document.
 #
-#   Row title == file title is not checked and does not need to be: the row IS the file title now.
+#   There are no index rows any more, so no row title can drift from its file's H1.
 #
-#   script/decisions               print the index, grouped by status
+#   script/decisions               print the index, grouped by status (script/fatal-risks reads it)
 #   script/decisions --check       validate; non-zero on a problem (wired into script/lint)
-#   script/decisions --index       print README.md with the table regenerated from the files
-#   script/decisions --write-index write that back
 #
 # Name: recorded (DECISIONS §134, which writes the `script/` family's split down). Introduced
 # 2026-07-30 with the decision index. §134 states the rule nobody had recorded until then: what
@@ -177,8 +173,15 @@ import subprocess
 import sys
 
 root, mode = sys.argv[1], sys.argv[2]
+# Anything else is refused rather than read as the default, so a caller still running the retired
+# `--index` or `--write-index` fails where it can see why instead of getting a report it did not ask
+# for.
+if mode not in ("", "--check"):
+    print(f"decisions: unknown argument {mode!r}. `script/decisions` prints the index and "
+          f"`--check` validates; the committed table and `--write-index` were retired on "
+          f"2026-10-12 (UTC)", file=sys.stderr)
+    sys.exit(2)
 d = os.path.join(root, "design", "decisions")
-index_path = os.path.join(d, "README.md")
 
 # The lifecycle, in the order a decision travels it. See design/decisions/README.md.
 VOCAB = ["PROPOSED", "DECIDED", "AMENDED", "SUPERSEDED"]
@@ -337,7 +340,7 @@ for fname in sorted(os.listdir(d)):
         continue
     m = FNAME.fullmatch(fname)
     if not m:
-        problems.append(f"{fname}: not the index and not a decision file "
+        problems.append(f"{fname}: not the README and not a decision file "
                         f"(expected <NNNN>-<slug>.md); nothing else lives here")
         continue
     num = int(m.group(1))
@@ -431,71 +434,6 @@ if not ids:
 numbers = sorted(ids)
 gap_numbers = sorted(set(range(1, numbers[-1] + 1)) - set(numbers)) if numbers else []
 
-# ---- the index, rendered from the files ---------------------------------------
-# The region is anchored on the `## The decisions` heading and ends after the rows, rather than on
-# HTML comment markers. A marker is a second thing to keep correct, and the heading is already
-# load-bearing: a reader navigates by it and GitHub renders it.
-TABLE_HEADING = "## The decisions"
-
-
-def row_status(num):
-    """What the table shows. `SUPERSEDED BY N` is reassembled from the two keys that replaced it,
-    because a row that said only SUPERSEDED would drop the pointer a reader follows."""
-    status = statuses.get(num)
-    if status == "SUPERSEDED":
-        return f"SUPERSEDED BY {frontmatter[num].get('superseded_by', '?')}"
-    return status or ""
-
-
-def render_index(text):
-    """Return `text` with the decisions table replaced by one generated from the files."""
-    lines = text.split("\n")
-    try:
-        start = lines.index(TABLE_HEADING)
-    except ValueError:
-        return None
-    n = start + 1
-    while n < len(lines) and not lines[n].startswith("| "):
-        n += 1
-    end = n
-    while end < len(lines) and lines[end].startswith("|"):
-        end += 1
-    body = ["| # | Status | Decision |", "|---|---|---|"]
-    for num in sorted(ids):
-        if num not in statuses or num not in titles:
-            continue
-        title = titles[num].replace("|", "\\|")
-        body.append(f"| {num} | {row_status(num)} | [{title}]({ids[num]}) |")
-    return "\n".join(lines[:n] + body + lines[end:])
-
-
-
-try:
-    index = open(index_path).read()
-except FileNotFoundError:
-    print(f"decisions: {index_path} not found", file=sys.stderr)
-    sys.exit(1)
-
-generated_index = render_index(index)
-if generated_index is None:
-    problems.append(f"the index has no '{TABLE_HEADING}' heading, so the table cannot be generated")
-
-if mode == "--index":
-    if generated_index is None:
-        sys.exit(1)
-    print(generated_index, end="")
-    sys.exit(0)
-
-if mode == "--write-index":
-    if generated_index is None:
-        sys.exit(1)
-    open(index_path, "w").write(generated_index)
-    sys.exit(0)
-
-if generated_index is not None and generated_index != index:
-    problems.append("the index table does not match the files it is generated from; run "
-                    "`script/decisions --write-index`")
-
 # ---- citations, tree-wide ----------------------------------------------------
 # **`git grep` output is not only matches.** For a binary file it prints the SENTENCE
 # "Binary file <path> matches" instead, so this stream can contain prose about files rather than
@@ -535,8 +473,8 @@ if mode == "--check":
         print(f"decisions: {p}", file=sys.stderr)
     if problems:
         sys.exit(1)
-    print(f"decisions: {len(ids)} decisions, frontmatter valid and complete, index generated from "
-          f"the files, every tree-wide citation resolves")
+    print(f"decisions: {len(ids)} decisions, frontmatter valid and complete, every tree-wide "
+          f"citation resolves")
     if gap_numbers:
         print(f"decisions: {len(gap_numbers)} unused number"
               f"{'s' if len(gap_numbers) != 1 else ''} "

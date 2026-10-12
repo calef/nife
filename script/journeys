@@ -2,11 +2,11 @@
 #
 # Report progress against the user journeys in design/journeys/ (index: README.md, one file per
 # journey), reading each journey's steps against the milestone blocks in design/roadmap/ and the
-# index in design/decisions/README.md, the same records script/roadmap and script/decisions already
-# treat as ground truth. The roadmap half was an index table too until 2026-09-21, when calef
-# retired it; the blocks it was generated from are read directly now, which is one file open per
-# milestone instead of one, and the only shape a milestone's status has ever had that cannot go
-# stale.
+# decision files in design/decisions/, the same records script/roadmap and script/decisions already
+# treat as ground truth. Both halves were index tables once. calef retired the roadmap's on
+# 2026-09-21 and the decisions' on 2026-10-12 (UTC); the files they were generated from are read
+# directly now, which is one file open per record instead of one, and the only shape a status has
+# ever had that cannot go stale.
 #
 # Why this exists: a milestone answers "is this piece of work done"; a journey answers "could a
 # person actually do the whole thing today, start to finish". No single milestone was blocking the
@@ -54,22 +54,33 @@ dd = os.path.join(root, "design", "decisions")
 problems = []
 
 
-def load_index(path, row_re):
-    try:
-        text = open(path).read()
-    except FileNotFoundError:
-        print(f"journeys: {path} not found", file=sys.stderr)
-        sys.exit(1)
+# A decision's status, from its frontmatter, which is the only place it lives (milestone 582 (a
+# decision's status becomes a field, and the index becomes generated)).
+# `SUPERSEDED BY N` is the two keys read together, the word the retired index table printed. Only the
+# status is wanted, so this trusts script/decisions --check for the rest of the schema.
+DECISION = re.compile(r"(\d+)-[a-z0-9][a-z0-9-]*\.md")
+FRONTMATTER = re.compile(r"---\n(.*?)\n---\n", re.S)
+
+
+def load_decisions(d):
     out = {}
-    for line in text.split("\n"):
-        m = row_re.match(line)
-        if m:
-            out[int(m.group(1))] = m.group(2)
+    try:
+        names = sorted(os.listdir(d))
+    except FileNotFoundError:
+        print(f"journeys: {d} not found", file=sys.stderr)
+        sys.exit(1)
+    for fname in names:
+        m = DECISION.fullmatch(fname)
+        if not m:
+            continue
+        fm = FRONTMATTER.match(open(os.path.join(d, fname), encoding="utf-8").read())
+        keys = dict(re.findall(r"^([a-z_]+): *(\S.*)$", fm.group(1), re.M)) if fm else {}
+        status = keys.get("status")
+        if status == "SUPERSEDED":
+            status = f"SUPERSEDED BY {keys.get('superseded_by', '?')}"
+        if status:
+            out[int(m.group(1))] = status
     return out
-
-
-# The decision index's row shape, which script/decisions parses too.
-DECISION_ROW = re.compile(r"^\| (\d+) \| ([A-Z][A-Z0-9 ]*[A-Z0-9]) \| \[")
 
 # The milestone blocks, read the way script/roadmap reads them: the number is the filename's and
 # the status is its frontmatter or its prose status line (helpers/roadmap_block.py reads both). A
@@ -98,7 +109,7 @@ def load_blocks(d):
 
 
 milestones = load_blocks(rd)
-decisions = load_index(os.path.join(dd, "README.md"), DECISION_ROW)
+decisions = load_decisions(dd)
 
 STEP_ROW = re.compile(
     r"^\| *(\d+) *\| *(\d+) *\| *(\d*) *\| *(.+?) *\|$"
