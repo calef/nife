@@ -22,7 +22,7 @@ USB host and HID; the host controller is the half this waits on.
 
 In brief. Milestone 243 answered the half of its block that a human needs: on a UEFI machine
 with no serial port the boot tour is now painted into the firmware's linear framebuffer, so a person
-standing in front of Graeme's laptop can watch nife boot. It did **not** answer the half a gate
+standing in front of the machine can watch nife boot. It did **not** answer the half a gate
 needs on real hardware. The screen check it added (`board_console::screen`, driven by
 `cargo xtask uefi-boot`) works by asking QEMU's monitor for a screendump, and nobody can ask a Dell
 for one.

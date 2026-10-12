@@ -123,8 +123,8 @@ Until one fires, milestone 227 stays held and this block is the reason.
 
 calef, the same afternoon, on booting from a USB stick:
 
-> that opens up a lot of different hardware in our house that I can use for testing: Graeme's
-> laptop, his desktop, cordoba, two MacBooks, Clay's desktop
+> that opens up a lot of different hardware in our house that I can use for testing: [a family
+> member's] laptop, his desktop, cordoba, two MacBooks, [another family member's] desktop
 >
 > -- calef, 2026-09-03
 

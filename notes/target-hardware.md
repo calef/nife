@@ -73,11 +73,12 @@ being unable to work. Milestone 243 (a machine with no serial port has no way to
 no gate can read it) is the milestone that separates them. Until it lands, requirement 4 is
 doing the job of requirements 1 to 3 by proxy.
 
-The reason it matters is not tidiness. calef's fleet argument on milestone 241 names Graeme's
-laptop and desktop, an Intel MacBook, cordoba and Clay's desktop as machines a USB stick could boot
-(milestone 87 boots from `\EFI\BOOT\BOOTX64.EFI`, the removable-media fallback every UEFI firmware
-looks for). **Not one of them has a serial port.** Read as a running requirement, item 4 excludes the
-entire fleet; read correctly, it says only that we cannot yet watch them.
+The reason it matters is not tidiness. calef's fleet argument on milestone 241 (what a fourth
+board would have to be for) names a family laptop, two family desktops, an Intel MacBook and cordoba
+as machines a USB stick could boot. (Milestone 87 (the x86_64 bare-metal machine) boots from
+`\EFI\BOOT\BOOTX64.EFI`, the removable-media fallback every UEFI firmware looks for.) **Not one of
+them has a serial port.** Read as a running requirement, item 4 excludes the entire fleet; read
+correctly, it says only that we cannot yet watch them.
 
 A device can be aarch64 and still be completely useless to us by failing any of items 0 to 3, and
 useless *for development* by failing item 4.
