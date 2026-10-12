@@ -936,3 +936,12 @@ manifest_note,decode_verbs,replace + with *,killed,"killed by an_unsorted_or_res
 manifest_note,decode_verbs,replace + with -,killed,"killed by an_unsorted_or_respelled_table_is_refused, which now asserts the offset each refusal names"
 manifest_note,decode_verbs,replace > with >=,killed,killed by a_table_of_exactly_max_verbs_round_trips
 manifest_note,encode_verbs,replace + with -,killed,killed by a_table_of_exactly_max_verbs_round_trips
+name_resolution_protocol,Grants::control,replace + with *,killed,killed by the_longest_zone_with_a_trailing_dot_is_granted_and_one_byte_more_is_not
+name_resolution_protocol,Grants::control,replace > with ==,killed,killed by the_longest_zone_with_a_trailing_dot_is_granted_and_one_byte_more_is_not
+name_resolution_protocol,Grants::control,replace > with >=,killed,killed by the_longest_zone_with_a_trailing_dot_is_granted_and_one_byte_more_is_not
+name_resolution_protocol,Grants::control,replace match guard offset == 0 with true,killed,killed by a_continuation_into_a_full_table_is_out_of_order_not_full
+name_resolution_protocol,Outcome::word,replace | with ^,equivalent,"status and detail are bytes and count sits at bit 16, so status, detail << 8 and count << 16 occupy disjoint bits and | and ^ agree; the 2026-10-12 per-crate re-run still reports it"
+name_resolution_protocol,control_word,replace | with ^,equivalent,"badge fills the low 32 bits and total, offset and operation sit at bits 40, 48 and 56 as bytes, all disjoint, so | and ^ agree; the 2026-10-12 per-crate re-run still reports it"
+name_resolution_protocol,endowment::port_and_transport,replace | with ^,equivalent,"port is a u16 and transport sits at bit 16, disjoint, so | and ^ agree; the 2026-10-12 per-crate re-run still reports it"
+name_resolution_protocol,grant_messages,replace + with *,killed,killed by the_longest_zone_with_a_trailing_dot_is_granted_and_one_byte_more_is_not
+name_resolution_protocol,grant_messages,replace > with >=,killed,killed by the_longest_zone_with_a_trailing_dot_is_granted_and_one_byte_more_is_not

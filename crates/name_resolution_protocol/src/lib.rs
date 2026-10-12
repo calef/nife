@@ -584,6 +584,37 @@ mod tests {
         assert_eq!(g.check(99, &name("nife.test")), Err(Denied::NoGrant));
     }
 
+    /// A continuation from a badge with no grant is out of order even when every window is
+    /// taken: only a first piece may claim a window, so only a first piece can find none free.
+    #[test]
+    fn a_continuation_into_a_full_table_is_out_of_order_not_full() {
+        let mut g = Grants::new();
+        for badge in 1..=GRANTS_MAX as u32 {
+            grant(&mut g, badge, "nife.test");
+        }
+        let (w0, w1) = grant_messages(99, b"packages.nife.test")
+            .unwrap()
+            .nth(1)
+            .unwrap();
+        assert_eq!(g.control(w0, w1), Control::Refused(Refusal::OutOfOrder));
+    }
+
+    /// **The longest name with its trailing dot is 254 bytes, and is granted**; a total past that
+    /// is refused before any of it is read.
+    #[test]
+    fn the_longest_zone_with_a_trailing_dot_is_granted_and_one_byte_more_is_not() {
+        let label = "a".repeat(63);
+        let dotted = std::format!("{}.{label}.{label}.{label}.", "b".repeat(61));
+        assert_eq!(dotted.len(), NAME_TEXT_MAX + 1);
+        let mut g = Grants::new();
+        assert_eq!(grant(&mut g, 3, &dotted), Control::Granted(0));
+        let total = (NAME_TEXT_MAX + 2) as u8;
+        assert_eq!(
+            g.control(control_word(OPERATION_GRANT, 0, total, 4), 0),
+            Control::Refused(Refusal::TooLong)
+        );
+    }
+
     #[test]
     fn an_outcome_round_trips_and_a_kernel_error_is_not_one() {
         let o = Outcome {
