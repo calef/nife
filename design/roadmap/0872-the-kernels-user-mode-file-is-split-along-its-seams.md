@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-11
+built: 2026-10-12
 milestone_dependencies: 812
-decision_dependencies: 266
+decision_dependencies: 266, 281
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -18,9 +19,10 @@ work arrives. §266 (a Rust source file stays under 2,000 lines) sets the ceilin
 goal of no file over 4,000. Milestone 840 (the scheduler file is split along its seams) is the
 model.
 
-The cut and every module name below are calef's call. A lane writes them up as a
-`status: PROPOSED` file in `design/decisions/` before it moves a line, and its pull request
-carries `needs-architect`.
+The cut was calef's call, and he ruled it on 2026-10-11 (UTC) in §281 (the kernel's user-mode file
+splits into child modules of `user`). On the first fork: *"Agreed, make the parent an index."* That
+set a precedent for every split, so `AddressSpace` left the parent too. On the second, *"B"*: the
+device starters got a module of their own. Every module name still ships provisional.
 
 Reuse: not applicable; this moves code and adds none. The precedent is `kernel/src/user/`, which
 already holds 24 child modules (`fs_service.rs` and its siblings), each a service that grew its own
@@ -99,7 +101,11 @@ The parent ends near 1,170 lines once #1892's additions to `AddressSpace` are co
 `progenitor_boot` and `entry` avoid the names of the functions they hold, `boot_progenitor` and
 `run`, for the reason milestone 842 (the grant-plan crate root is split along its seams) gives.
 
-## What an architect has to rule
+## What an architect had to rule
+
+Answered 2026-10-11 (UTC) in §281: 1 was ruled the other way (the parent became an index, and
+`AddressSpace` moved to a child), 2 as recommended, 3 was not put to calef (§281 says why), and 4
+ships provisional. The questions stay here as they were asked.
 
 1. Whether `AddressSpace` stays in the parent. The recommendation is yes, for the reason above. It
    holds at equal cost, so it is not about effort.
@@ -128,9 +134,9 @@ Found with `grep` at `396187b0b`. A lane has to carry each one.
   fourth keeps a hunk in `impl AddressSpace`, which stays in the parent. Each must still apply and
   fail its test.
 - No patch under `kernel/falsifications/` names this file.
-- `design/comment-block-baseline.tsv` keys two rows on this path. `user.rs:337` (46 lines, the doc
-  of `AddressSpace::map_physical`) stays in the parent and is unaffected. `user.rs:2286` (52 lines,
-  the doc of `boot_progenitor`) lands in `user/progenitor_boot.rs`. The ratchet admits no row on a
+- `design/comment-block-baseline.tsv` keys two rows on this path. The 46-line doc of
+  `AddressSpace::map_physical` stays in the parent and is unaffected. The 52-line doc of
+  `boot_progenitor` lands in `user/progenitor_boot.rs`. The ratchet admits no row on a
   path the merge base gave none, and a block in a new file meets the 40-line cap outright. So it
   fails this block unless the doc is cut to 40 lines in the same change. The alternative is a fix
   to the ratchet, letting a row move with its block, ruled separately.
@@ -138,10 +144,10 @@ Found with `grep` at `396187b0b`. A lane has to carry each one.
   takes the file under 2,000, so the row is removed in the same change.
 - 26 citations of the form `user.rs:NNNN` name this file. Milestone 811's block holds 11, dated to
   one commit, and `notes/naming-a-running-address-space.md` holds 6. Several are already stale,
-  such as `kernel/src/user.rs:5056` in `notes/repo-hardening.md`. A function name is cheaper to
+  such as the one `notes/repo-hardening.md` held for a test that left the file long ago. A function name is cheaper to
   keep true.
-- 95 tracked files name the path, 63 of them Markdown. `xtask/src/swish_check.rs:3033` tells a
-  reader to raise `INIT_STACK_PAGES` in this file, which stays true under this cut.
+- 95 tracked files name the path, 63 of them Markdown. `xtask/src/swish_check.rs`'s progenitor-stack failure
+  tells a reader to raise `INIT_STACK_PAGES` in this file.
 - `script/fastpath-footprint` keys on `kernel5sched` and `kernel7syscall` symbols, and its cold
   list names `12AddressSpace` by type, so no regex follows this file's module path.
   `script/stack-frame-check` names `kernel::user::disk_service::*`, which does not move.
@@ -165,10 +171,48 @@ Found with `grep` at `396187b0b`. A lane has to carry each one.
 5. The four falsification patches apply and fail their tests.
 6. Each new module carries a `//! Name:` block marked provisional.
 
+## What was built
+
+Built 2026-10-12 (UTC) on `97650277b`. `kernel/src/user.rs` went from 3,519 lines to 457 and is
+now an index, so its file-length row is gone. Every name below is provisional.
+
+| file | lines | holds |
+|---|---|---|
+| `user.rs` | 457 | module docs, imports, `USER_STACK_VA` and `USER_STACK_TOP`, every `mod` line with its doc |
+| `user/progenitor_boot.rs` | 735 | `PROGENITOR_ENTRY`, `PROGENITOR_ROLE`, `INIT_STACK_PAGES`, `boot_progenitor` |
+| `user/entry.rs` | 532 | `Mapping`, `Spawn`, the test roles, `spawn_hello`, the `run` family, `enter_frame` |
+| `user/address_space.rs` | 509 | `AddressSpace`, `Backing`, the overhead constants, `ASIDS`, `Drop` |
+| `user/device_starters.rs` | 488 | the eleven starters and `VirtioBootGrant` |
+| `user/boot_demos.rs` | 377 | the `x86_64` and riscv64 demos, compiled only there |
+| `user/loader.rs` | 316 | `LoadError` through `program`, and `INITRD_VA` |
+| `user/console_device.rs` | 109 | the console UART's interrupt, page and port-range constants |
+| `user/terminal_print.rs`, `user/virtio_dma.rs`, `user/test_support.rs` | 46, 38, 34 | `term_print`; `write_dma_phys`; `wait_for` |
+
+Each child takes `use super::*`, and the index re-exports each at the visibility its items had, so
+no `user::` path changed. A private item a sibling reaches became `pub(super)`, as §281 rules,
+including `AddressSpace`'s four fields: done-when 2's "no field widens" was ruled the other way.
+A line-multiset check against the old file finds nothing changed but those keywords.
+
+`script/test` passed on aarch64 (273 s), riscv64 (311 s) and x86_64 (368 s, with its root-port,
+AMD-Vi and OVMF legs), with the same counts milestone 840 recorded. They ran on `42e0d1db6`; main changed no
+kernel, system-test, crate or xtask code between it and `97650277b`. `script/icount` reads
+identically, and `script/bench --check` and `script/stack-frame-check` pass on all three. On
+riscv64, `riscv_trap_dispatch` stopped inlining `preempt_if_needed`, undoing what 840 recorded, so
+`syscall_entry` fell 2,136 to 1,918 bytes and `bench/fastpath-riscv64.txt` was re-recorded with
+the reason. The one falsification record that patched this file was regenerated at its hunk's new
+home and replayed red at its headline assertion on aarch64.
+
+## Follow-on
+
+- **Decision.** Every module name is provisional and is calef's to rule, per
+  `design/decisions/0281-the-kernels-user-mode-file-splits-into-child-modules-of-user.md`.
+- **Done.** The riscv64 `syscall_entry` change is recorded in `bench/fastpath-riscv64.txt`.
+- **Recorded.** The `user.rs:NNNN` citations in other milestones' blocks go to a maintainer follow-up,
+  listed on pull request #1959.
+
 ## Index row
 
-`kernel/src/user.rs` is 3,866 lines with no tests in it. It holds the address space, the loader,
+`kernel/src/user.rs` was 3,519 lines with no tests in it. It held the address space, the loader,
 the path into user mode, per-architecture demos, the progenitor's boot and the device starters.
-This splits it into child modules under `kernel/src/user/`, keeping `AddressSpace` in the parent so
-nothing widens, after #1892 cuts the registry out first. The cut and every name are an architect's
-call.
+It is now an index of child modules under `kernel/src/user/`, each named for what it holds, as
+§281 rules. Every module name is provisional.
