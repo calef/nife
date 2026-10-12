@@ -487,17 +487,23 @@ def gh(*args):
     return done.stdout
 
 
+# Workflow-run listings are fetched 50 to a page rather than the API's maximum of 100. The
+# metrics workflow on 2026-10-12 got HTTP 502 from a 100-run page on three retries running,
+# for a query that succeeded at once from a laptop; a smaller page asks less of the server.
+RUNS_PAGE = 50
+
+
 def merge_group_runs(workflow, created=None, limit=None):
     """Completed merge-group runs of `workflow`, newest first, not cancelled."""
     out, page = [], 1
-    q = "event=merge_group&status=completed&per_page=100"
+    q = "event=merge_group&status=completed&per_page=%d" % RUNS_PAGE
     if created:
         q += "&created=%s" % created
     while True:
         data = gh_json("repos/%s/actions/workflows/%s/runs?%s&page=%d"
                        % (REPO, os.path.basename(workflow), q, page))
         out += [r for r in data["workflow_runs"] if r.get("conclusion") != "cancelled"]
-        if len(data["workflow_runs"]) < 100 or (limit and len(out) >= limit):
+        if len(data["workflow_runs"]) < RUNS_PAGE or (limit and len(out) >= limit):
             return out[:limit] if limit else out
         page += 1
 
