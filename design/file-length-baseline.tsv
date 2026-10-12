@@ -11,4 +11,3 @@
 path	lines
 kernel/src/arch/x86_64/mmu.rs	2192
 kernel/src/bench.rs	2110
-kernel/src/user/fs_service.rs	2407
