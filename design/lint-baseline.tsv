@@ -31,7 +31,6 @@ too_many_lines	crates/line_editor/src/line_disc.rs	LineDisc::feed	123
 too_many_lines	crates/manifest_note/src/lib.rs	decode	106
 too_many_lines	crates/system_initializer/src/boot_sequence.rs	boot	847
 too_many_lines	crates/timetable/src/recurrence.rs	parse	114
-too_many_lines	kernel/src/sched.rs	schedule	128
 too_many_lines	kernel/src/syscall.rs	invoke	189
 too_many_lines	redoxfs_server/src/dispatch.rs	Server::handle	128
 too_many_lines	uefi_loader/src/arch/aarch64/mod.rs	tree_from_acpi	145

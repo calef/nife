@@ -15,8 +15,13 @@ Regenerated 2026-10-11 (UTC) for milestone 840 (the scheduler file is split alon
 the same lines, moved out of `kernel/src/sched.rs` into `kernel/src/sched.rs` unchanged, so the defect is
 the same and only the path and line numbers differ.
 
+Regenerated 2026-10-12 (UTC) for the split of `schedule` (maintainer/schedule-split): the hand-over
+moved, unchanged, into its new helper `switch_operands` in `kernel/src/sched/switch_decision.rs`,
+so the defect is the same and only the path, the enclosing function and the line numbers differ.
+Replayed on all three architectures the same day, and each failed with the expected message.
+
 diff --git a/kernel/src/arch/riscv64/exceptions.rs b/kernel/src/arch/riscv64/exceptions.rs
-index 50bd456e2..dda1795bf 100644
+index fef4e42d3..fa525f2c3 100644
 --- a/kernel/src/arch/riscv64/exceptions.rs
 +++ b/kernel/src/arch/riscv64/exceptions.rs
 @@ -110,7 +110,6 @@ impl TrapFrame {
@@ -27,20 +32,20 @@ index 50bd456e2..dda1795bf 100644
          TrapFrame {
              x,
              sepc: entry,
-diff --git a/kernel/src/sched.rs b/kernel/src/sched.rs
-index e8c8cd6a6..c0b827e52 100644
---- a/kernel/src/sched.rs
-+++ b/kernel/src/sched.rs
-@@ -1492,12 +1492,6 @@ pub fn schedule() {
-         // architecture's half.
-         //
-         // SAFETY: live threads' TCB pages from the table, under `IPC_TABLES`; one field each.
--        unsafe {
--            crate::arch::thread_pointer::hand_over(
--                &mut (*prev_ptr).thread_pointer,
--                (*next_tcb).thread_pointer,
--            );
--        }
+diff --git a/kernel/src/sched/switch_decision.rs b/kernel/src/sched/switch_decision.rs
+index f06c27054..4be333590 100644
+--- a/kernel/src/sched/switch_decision.rs
++++ b/kernel/src/sched/switch_decision.rs
+@@ -165,12 +165,6 @@ pub(super) unsafe fn switch_operands(
+     // architecture's half.
+     //
+     // SAFETY: live threads' TCB pages from the table, under `IPC_TABLES`; one field each.
+-    unsafe {
+-        crate::arch::thread_pointer::hand_over(
+-            &mut (*prev_ptr).thread_pointer,
+-            (*next_tcb).thread_pointer,
+-        );
+-    }
  
-         // SAFETY: a live thread's TCB page, held under IPC_TABLES. Field projection through a raw
-         // pointer, and `fp_state_of`'s contract is exactly what `pointer` returns.
+     // SAFETY: a live thread's TCB page, held under IPC_TABLES. Field projection through a raw
+     // pointer, and `fp_state_of`'s contract is exactly what `pointer` returns.
