@@ -254,8 +254,7 @@ static POLLERS: AtomicUsize = AtomicUsize::new(0);
 fn advance() {
     GENERATION.fetch_add(1, Ordering::SeqCst);
     if POLLERS.load(Ordering::SeqCst) > 0 {
-        // SAFETY: a static word; `wake` never dereferences it.
-        let _ = unsafe { super::futex::wake(GENERATION.as_ptr(), u32::MAX) };
+        super::futex::wake(GENERATION.as_ptr(), u32::MAX);
     }
 }
 
@@ -291,8 +290,7 @@ pub(crate) fn poll(
             POLLERS.fetch_sub(1, Ordering::SeqCst);
             return Ok(ready);
         }
-        // SAFETY: a static, aligned word changed only atomically.
-        let r = unsafe { super::futex::wait(GENERATION.as_ptr(), seen, deadline.as_ref()) };
+        let r = super::futex::wait_on(&GENERATION, seen, deadline.as_ref());
         POLLERS.fetch_sub(1, Ordering::SeqCst);
         if let Err(Errno(ETIMEDOUT)) = r {
             return Ok(0);

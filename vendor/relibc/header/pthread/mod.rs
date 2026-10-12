@@ -336,12 +336,15 @@ pub unsafe extern "C" fn __relibc_internal_pthread_cleanup_pop(execute: c_int) {
     }
 }
 
-pub(crate) unsafe fn run_destructor_stack() {
+// nife: a safe function (relibc's is `unsafe`): the entries it reads are the ones
+// `pthread_cleanup_push` linked on this thread, which C keeps alive until they are popped.
+pub(crate) fn run_destructor_stack() {
     // nife: relibc first runs C++ `thread_local` destructors (`__cxa_thread_finalize`); its
     // `cxa` module is not seeded, and nife builds no C++.
     let mut ptr = CLEANUP_LL_HEAD.with(|h| h.replace(core::ptr::null()));
 
     while !ptr.is_null() {
+        // SAFETY: a live entry `pthread_cleanup_push` linked on this thread (above).
         let entry = unsafe { ptr.read() };
         ptr = entry.prev.cast();
 

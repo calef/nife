@@ -78,9 +78,8 @@ fn deadline_of(deadline: &timespec) -> Result<Duration> {
     Ok(Duration::new(secs, nanos))
 }
 
-/// **Sleep while `*addr == val`**, until a [`wake`] of `addr` or `deadline` (absolute, on
-/// `CLOCK_MONOTONIC`). `EAGAIN` if the word already differs, `ETIMEDOUT` if the deadline came
-/// first. A return of `Ok` may be spurious, which every caller in relibc allows for.
+/// **Sleep while `*addr == val`**, as [`wait_on`] does, for relibc's locks, which hand over a
+/// raw word.
 ///
 /// # Safety
 /// `addr` is a live, 4-aligned word that other threads change only atomically.
@@ -89,8 +88,14 @@ pub unsafe fn wait(addr: *mut u32, val: u32, deadline: Option<&timespec>) -> Res
         return Err(Errno(EINVAL));
     }
     // SAFETY: the caller's contract: a live, aligned word changed only atomically.
-    let word = unsafe { AtomicU32::from_ptr(addr) };
-    let key = addr as usize;
+    wait_on(unsafe { AtomicU32::from_ptr(addr) }, val, deadline)
+}
+
+/// **Sleep while `word` holds `val`**, until a wake of its address or `deadline` (absolute, on
+/// `CLOCK_MONOTONIC`). `EAGAIN` if the word already differs, `ETIMEDOUT` if the deadline came
+/// first. A return of `Ok` may be spurious, which every caller in relibc allows for.
+pub fn wait_on(word: &AtomicU32, val: u32, deadline: Option<&timespec>) -> Result<()> {
+    let key = word.as_ptr() as usize;
     let deadline = deadline.map(deadline_of).transpose()?;
     let me = ME.with(Arc::clone);
     {
@@ -127,10 +132,8 @@ pub unsafe fn wait(addr: *mut u32, val: u32, deadline: Option<&timespec>) -> Res
 }
 
 /// **Wake up to `n` threads sleeping on `addr`**, oldest first, and answer how many were woken.
-///
-/// # Safety
-/// None beyond `addr` being an address; it is never dereferenced.
-pub unsafe fn wake(addr: *mut u32, n: u32) -> Result<u32> {
+/// `addr` is only compared, never read, so any address is safe to pass.
+pub fn wake(addr: *mut u32, n: u32) -> u32 {
     let key = addr as usize;
     let mut woken = Vec::new();
     {
@@ -151,5 +154,5 @@ pub unsafe fn wake(addr: *mut u32, n: u32) -> Result<u32> {
         w.woken.store(true, Ordering::Release);
         w.thread.unpark();
     }
-    Ok(woken.len() as u32)
+    woken.len() as u32
 }

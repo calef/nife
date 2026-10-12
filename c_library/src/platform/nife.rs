@@ -269,8 +269,7 @@ fn fill_stat(mut buf: Out<stat>, md: &std::fs::Metadata, path: &str) {
         tv_sec: mtime.as_secs() as time_t,
         tv_nsec: c_long::from(mtime.subsec_nanos() as i32),
     };
-    // SAFETY: `stat` is plain data, and every field is written below or zero.
-    let mut st: stat = unsafe { core::mem::zeroed() };
+    let mut st = stat::default();
     st.st_dev = 0;
     st.st_ino = ino_of(path) as ino_t;
     st.st_nlink = 1;
@@ -446,8 +445,7 @@ impl Pal for Sys {
             Description::Stream(end) => {
                 // A pipe end is a FIFO and a socket pair's end a socket, with nothing to size.
                 let mut b = buf;
-                // SAFETY: `stat` is plain data.
-                let mut st: stat = unsafe { core::mem::zeroed() };
+                let mut st = stat::default();
                 st.st_mode = if end.socket {
                     crate::header::sys_stat::S_IFSOCK
                 } else {
@@ -461,8 +459,7 @@ impl Pal for Sys {
             _ => {
                 // The standard streams are character devices with no size.
                 let mut b = buf;
-                // SAFETY: `stat` is plain data.
-                let mut st: stat = unsafe { core::mem::zeroed() };
+                let mut st = stat::default();
                 st.st_mode = crate::header::sys_stat::S_IFCHR | 0o620;
                 st.st_nlink = 1;
                 st.st_blksize = PAGE as blksize_t;
@@ -559,8 +556,7 @@ impl Pal for Sys {
     }
 
     unsafe fn futex_wake(addr: *mut u32, num: u32) -> Result<u32> {
-        // SAFETY: the address is only compared, never dereferenced.
-        unsafe { super::futex::wake(addr, num) }
+        Ok(super::futex::wake(addr, num))
     }
 
     unsafe fn utimensat(
@@ -1446,10 +1442,13 @@ impl PalSignal for Sys {
         let n = valid(sig)?;
         signals(|s| {
             if let Some(o) = oact {
-                // SAFETY: `sigaction` is plain data and a zeroed one is `SIG_DFL` with no flags.
-                *o = s.actions[n]
-                    .clone()
-                    .unwrap_or(unsafe { core::mem::zeroed() });
+                // No recorded action is `SIG_DFL` with no flags and nothing masked.
+                *o = s.actions[n].clone().unwrap_or(sigaction {
+                    sa_handler: None,
+                    sa_flags: 0,
+                    sa_restorer: None,
+                    sa_mask: 0,
+                });
             }
             if let Some(a) = act {
                 if n == SIGKILL || n == SIGSTOP {

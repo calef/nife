@@ -172,16 +172,14 @@ fn run(this: Arc<Pthread>, start: extern "C" fn(*mut c_void) -> *mut c_void, arg
     EXIT_ENV.with(|e| e.set((ptr::null_mut(), ptr::null_mut())));
     // Thread-specific data destructors run on every way out, after `pthread_exit`'s cleanup
     // handlers (which ran before its jump) and before the thread is gone.
-    // SAFETY: on this thread, which is ending.
-    unsafe { header::tls::run_all_destructors() };
+    header::tls::run_all_destructors();
     this.retval.store(ret, Ordering::Release);
     thread_ended();
 }
 
 fn thread_ended() {
     LIVE.fetch_sub(1, Ordering::Release);
-    // SAFETY: a static word; `wake` never dereferences it.
-    let _ = unsafe { crate::platform::futex::wake(LIVE.as_ptr(), u32::MAX) };
+    crate::platform::futex::wake(LIVE.as_ptr(), u32::MAX);
 }
 
 /// **`pthread_create`**: a `std` thread running `start_routine(arg)`, joinable or detached as
@@ -227,15 +225,6 @@ pub(crate) unsafe fn create(
     Ok(Arc::into_raw(record).cast_mut().cast())
 }
 
-/// Give back the `pthread_t`'s count of `thread`.
-///
-/// # Safety
-/// `thread` came from [`create`]'s `Arc::into_raw`, and this is that count's one release.
-unsafe fn release(thread: &Pthread) {
-    // SAFETY: the caller's contract.
-    unsafe { Arc::decrement_strong_count(thread) };
-}
-
 /// **`pthread_join`**: wait for `thread` to end, give its `pthread_t` back, and answer what it
 /// returned.
 ///
@@ -255,8 +244,10 @@ pub unsafe fn join(thread: &Pthread) -> Result<Retval, Errno> {
     // "abort"`.
     let _ = handle.join();
     let ret = thread.retval.load(Ordering::Acquire);
-    // SAFETY: the caller's contract; POSIX: a joined thread's `pthread_t` is no longer valid.
-    unsafe { release(thread) };
+    // Give back the `pthread_t`'s count. SAFETY: the caller's contract, so `thread` came from
+    // `create`'s `Arc::into_raw` and this is that count's one release; POSIX: a joined thread's
+    // `pthread_t` is no longer valid.
+    unsafe { Arc::decrement_strong_count(thread) };
     Ok(Retval(ret))
 }
 
@@ -280,8 +271,8 @@ pub unsafe fn detach(thread: &Pthread) -> Result<(), Errno> {
         .flags
         .fetch_or(PthreadFlags::DETACHED.bits(), Ordering::AcqRel);
     drop(handle);
-    // SAFETY: the caller's contract.
-    unsafe { release(thread) };
+    // Give back the `pthread_t`'s count, as `join` does. SAFETY: as `join`'s.
+    unsafe { Arc::decrement_strong_count(thread) };
     Ok(())
 }
 
@@ -307,24 +298,21 @@ pub unsafe fn testcancel() {
 pub unsafe fn exit_current_thread(retval: Retval) -> ! {
     // `pthread_cleanup_push` handlers, newest first, then (on the main thread) thread-specific
     // data; a made thread's runs in `run`, after the jump.
-    // SAFETY: on the exiting thread.
-    unsafe { header::run_destructor_stack() };
+    header::run_destructor_stack();
     let (env, exit_value) = EXIT_ENV.with(Cell::get);
     if env.is_null() {
         // The main thread: the process ends once every other thread made here has.
-        // SAFETY: on the exiting thread; then the C library's `exit`, which runs the `atexit`
-        // handlers and flushes the C streams, and the futex word is a static.
-        unsafe {
-            header::tls::run_all_destructors();
-            loop {
-                let live = LIVE.load(Ordering::Acquire);
-                if live == 0 {
-                    break;
-                }
-                let _ = crate::platform::futex::wait(LIVE.as_ptr(), live, None);
+        header::tls::run_all_destructors();
+        loop {
+            let live = LIVE.load(Ordering::Acquire);
+            if live == 0 {
+                break;
             }
-            crate::header::stdlib::exit(0)
+            let _ = crate::platform::futex::wait_on(&LIVE, live, None);
         }
+        // SAFETY: the C library's `exit`, which runs the `atexit` handlers and flushes the C
+        // streams, called once.
+        unsafe { crate::header::stdlib::exit(0) }
     }
     // SAFETY: `env` was filled by the `setjmp` in `thread_start.c`, on this thread's stack below
     // every frame `longjmp` discards, and `exit_value` is the word beside it that the trampoline

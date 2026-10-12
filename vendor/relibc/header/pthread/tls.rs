@@ -106,7 +106,9 @@ pub unsafe extern "C" fn pthread_key_delete(key: pthread_key_t) -> c_int {
     0
 }
 
-pub(crate) unsafe fn run_all_destructors() {
+// nife: a safe function (relibc's is `unsafe`): it calls only safe `extern "C" fn` destructors,
+// on the calling thread's own values, so it has no contract for a caller to keep.
+pub(crate) fn run_all_destructors() {
     for _ in 0..PTHREAD_DESTRUCTOR_ITERATIONS {
         let mut any_run = false;
         let dtors = {
