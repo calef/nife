@@ -102,7 +102,8 @@ fn a_client_obtains_unpredictable_bytes_from_a_virtio_rng_over_pcie() {
 /// suite on.
 ///
 /// On a `StarFive` VisionFive 2 (radon) this test skips and the boot tour's `hw entropy` line is
-/// what speaks instead; see `design/roadmap/0159-jh7110-trng-driver.md` for the bench procedure.
+/// what speaks instead; see `design/roadmap/0159-jh7110-trng-driver/bench-procedure.md` for the
+/// bench procedure.
 #[test_case]
 fn the_jh7110_backend_refuses_to_wire_where_there_is_no_jh7110() {
     if entropy_service::jh7110_trng_device().is_some() {

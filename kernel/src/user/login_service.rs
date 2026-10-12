@@ -35,7 +35,7 @@ const LOGIN_STACK_PAGES: u64 = 16;
 /// for why these are two things and not eleven roles.
 ///
 /// The credential halves are `credential_protocol::fixture`'s own indices, not named again here: a
-/// third copy of `chris` is exactly what 293 removed.
+/// third copy of `alice` is exactly what 293 removed.
 pub const LOGIN: u64 = 0;
 /// DECISIONS §117's per-identity subtree proof, writing the identity it was handed; see the same
 /// file's module docs.
@@ -255,8 +255,8 @@ pub fn start(
     // service writes its names into, and `login.rs` takes it as "this process's alone" because no
     // session is live yet. A caller that went on to write that page itself (`fs_service`'s
     // `set_home_file` and `set_root_list`, `login_tests`' `ensure_home_subtree`) raced it: the
-    // durable start-up test failed twice on 2026-10-03 with corinne's subtree not found (`-2`, on
-    // sifive-u54) and her stored schedule not found (on thead-c906), so not one CPU model's fault.
+    // durable start-up test failed twice on 2026-10-03 with bob's subtree not found (`-2`, on
+    // sifive-u54) and his stored schedule not found (on thead-c906), so not one CPU model's fault.
     // `REDERIVE_SKIPS` is the one front-door word with no side effect, and `login` receives
     // nothing on the front door until the pass has run.
     sched::ipc_send(request, [login_protocol::rederive_skips_word(), 0, 0]);
@@ -530,7 +530,7 @@ pub struct ClientRun {
 /// [`wait_client`].
 ///
 /// **`identity` and `secret` are separate arguments on purpose** (milestone 293): they compose, so
-/// the wrong-secret case is `(fixture::CHRIS, fixture::WRONG)` rather than an eleventh role whose
+/// the wrong-secret case is `(fixture::ALICE, fixture::WRONG)` rather than an eleventh role whose
 /// code could drift away from the honest one's. Both are `credential_protocol::fixture` indices.
 pub fn spawn_client(
     image: &'static [u8],

@@ -29,7 +29,7 @@ Plus `mdns_config` (a crate) and `mdns_responder` (a program), which carry no `_
 with the stem ruling below.
 
 The 424 splits 252 code and configuration to 172 markdown, and only 108 of the markdown moved:
-the status rule below is what decided the other 64.
+the status rule (in the appendix named under "How it was performed") decided the other 64.
 
 ## Five stems calef ruled on 2026-09-13, which this milestone carried
 
@@ -159,14 +159,11 @@ correctness problem, and it is named here so that a future 91 finds it written d
 - Every documentation file 91 touches now spells these crates `_protocol`. The rename is on
   `main`, so 91 rebases onto it and sees no conflict from the spelling itself.
 - **What 91 inherits is the 64 markdown files this deliberately did not sweep**, listed by rule
-  below. Those still read `_proto`, correctly, because they are accounts. A documentation sweep that
+  in that appendix. Those still read `_proto`, correctly, because they are accounts. A documentation sweep that
   normalizes spelling across the tree will read them as rot and must not: the status rule is the
   reason, and `design/naming.md`'s rename procedure is where it is written down.
-- **And it inherits one thing this milestone could not fix**: `design/decisions/` sections are
-  closed decisions and keep `_proto` throughout, so a reader following a decision to a crate lands
-  on a directory that no longer exists. Every such citation is prose rather than a checked path
-  (`script/citations` checks glosses and block quotes, not backticked spans), so nothing is red.
-  It is recorded in this block's `BUGS`.
+- And it inherits one thing this milestone could not fix: `design/decisions/` sections are closed
+  decisions and keep `_proto` throughout. The cost is recorded in this block's `BUGS`.
 
 **And `timebase_proto` was not ratified before this landed.** It was on `script/names --unratified`
 as provisional, and ratifying it would have settled a name into a form this milestone was about to
@@ -208,46 +205,10 @@ the suffix; the argument for keeping the stem is in `design/naming/vocabulary-ru
 
 ## How it was performed, and what the sweep took
 
-**The pattern was `git grep -lE '\b(<seventeen alternatives>)\b'`, word-anchored, never a substring
-match**, and the file list was written out and read before anything was edited. The two habits
-`design/naming.md` prescribes both earned their keep:
-
-- Enumerate before sweeping caught the false positives. Thirty-four distinct `*_proto` tokens
-  exist in the tree and only fifteen are live crates; the rest are predecessors kept on purpose
-  (`fs_proto`, `cred_proto`, `gfx_proto`, `sink_proto`, `env_proto`), names of crates that do not
-  exist yet (`smb_proto`, `nfs_proto`, `manifest_proto`), and `ntp-proto`, which is ntpd-rs's and
-  belongs to somebody else. A substring sweep would have eaten all of them.
-- **A program's name is not compiler-checked** caught the false negatives for `mdns_responder`. The
-  string sites were enumerated rather than trusted to `cargo check`: the `[[bin]]` name and path, the
-  archive tuples in `xtask` once per architecture, the kernel's `program(...)` lookups and test
-  expectations, `crates/timetable`'s fixture strings, the shipped `components/*.conf` compiled in
-  with `include_str!`, and one derived identifier, `mdns_responder_image`.
-
-**The sweep took five records it should not have, and enumerating the diff is what found them.** All
-five are restored, each with a sentence beside it saying what the thing is called now:
-
-- A refusal. `timebase_proto`'s *"Refused `timebase_proto`, above"* became a name refusing
-  itself, which is this tree's oldest naming scar exactly.
-- Two records of what the 2026-08-23 renames produced. `graphics_proto`'s block and
-  `user_mode_runtime`'s both cite `cred_proto` -> `credential_proto`; the sweep made that day produce
-  a name that did not exist for another three weeks.
-- The 2026-07-30 four-ways account, carried identically by `clock_proto`, `entropy_proto`,
-  `supervision_proto` and `swap_proto`, where the whole point of the sentence is that two of the four
-  spellings ended in `_proto`. Rewriting them left it listing four spellings, two of which no longer
-  contain the word being contrasted.
-- `socket_proto`'s 2026-08-01 ratification, which named `socket_proto`.
-
-And one gate went blind rather than red. `script/lint` check 3 globs `crates/*proto` to select
-the crates whose suffix it then judges. After the rename that glob matches nothing, so the loop body
-never runs and the check passes by checking zero crates, which is the `--exclude`-goes-stale failure
-`design/naming.md` lists one row over. It now globs `crates/*protocol`, and the hazard is written into
-its comment because the next suffix change will meet it again.
-
-The status rule decided the markdown, 108 files swept and 64 left alone: `BUILT`, `REMOVED` and
-`RECORDED` roadmap blocks, `design/decisions/`, `design/audit-reports/` and the `BUILT` rows of
-`design/roadmap/README.md` are accounts and keep the spelling they were written in. Live intent
-moved: `PROPOSED`, `NOT-STARTED` and `PARTIAL` blocks, every file under
-`design/roadmap/proposals/`, and `notes/`.
+Moved on 2026-10-12 (UTC) into [`how-it-was-performed.md`](0265-proto-is-a-truncation-not-an-abbreviation/how-it-was-performed.md)
+under §212 (a prose budget): the pattern and the two habits it relied on, the five records the
+sweep took and how they were restored, the `script/lint` check 3 glob, and the status rule that
+decided which markdown moved.
 
 ## BUGS
 
@@ -271,16 +232,18 @@ moved: `PROPOSED`, `NOT-STARTED` and `PARTIAL` blocks, every file under
   `network_time_protocol` and `counter_frequency_protocol` carry stems calef ruled and whole names he
   has not been shown. They stay on `script/names --unratified` and that is the correct place for
   them.
+- The Index row, left as written because `script/roadmap` parses it, is wrong twice (found
+  2026-10-12 by maintainer/prose-budget-backlog). It says `timebase_proto`'s provenance records calef
+  refusing `timebase_protocol`; the body above says the refusal on record is of `timebase_proto`, and
+  that `timebase_protocol` is not itself refused. And it says `login_protocol` will move a second
+  time, which the 2026-09-15 correction above withdrew.
 
 ## Follow-on
 
-- **Recorded.** `design/decisions/` keeps the old spelling, so twenty-two closed decisions cite crate
-  directories that no longer exist. The limitation is written beside the reader in this block's
-  `BUGS` and in `design/naming.md`'s rename procedure, which is where somebody performing the next
-  rename meets it.
-- **Done.** `login_protocol`'s stem, left open here and expected to cost a second rename, was ruled on
-  2026-09-15: the stem stays for the whole family, so there is no second rename. Recorded in the
-  crate's provenance block and in `design/naming.md`.
+- **Recorded.** `design/decisions/` keeps the old spelling, in this block's `BUGS` and in
+  `design/naming.md`'s rename procedure, where somebody performing the next rename meets it.
+- **Done.** `login_protocol`'s stem was ruled on 2026-09-15, as the correction above says. Recorded
+  in the crate's provenance block and in `design/naming.md`.
 - **Done.** The five stems calef ruled on 2026-09-13 were performed in this pass, including
   `counter_frequency_protocol`, which this block's own table had omitted. Carried by this lane's pull
   request.
@@ -290,14 +253,12 @@ moved: `PROPOSED`, `NOT-STARTED` and `PARTIAL` blocks, every file under
   many other gates pick their own subject with a pattern that is allowed to stop matching is a lane,
   and this milestone measured only what it tripped over. Numbered on 2026-09-19 by milestone 433's
   drain of the pile.
-- **Recorded.** The other truncations nobody has swept for, in this block's `BUGS` where a reader
-  meets the rename: `design/roadmap/0265-proto-is-a-truncation-not-an-abbreviation.md` says `_rt`,
-  `_cli` and any other suffix are untouched and that nobody has checked. It is the same shape as the
-  acronym question, and milestone 388 is the list that already exists for acronyms, with its `BUGS`
-  carrying the names still waiting on an architect. **The disposition was `**Proposed.` until
-  2026-09-19 and was wrong then: that word names the proposal file holding *this* work, and the
-  file it named holds the acronym question instead, so the gate passed on the path's shape rather
-  than on what it held.
+- **Recorded.** The other truncations nobody has swept for, in this block's `BUGS`. It is the same
+  shape as the acronym question, and milestone 388 (an acronym sweep the tree can do at once) is the list that already exists for acronyms,
+  with its `BUGS` carrying the names still waiting on an architect. This entry's disposition was
+  `**Proposed.` until 2026-09-19 and was wrong then: that word names the proposal file holding *this*
+  work, and the file it named holds the acronym question instead, so the gate passed on the path's
+  shape rather than on what it held.
 
 ## Index row
 

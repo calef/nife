@@ -10,11 +10,11 @@ use super::*;
 /// identity's password against this one) are unaffected by which store they run against.
 ///
 /// **Taken from `credential_protocol::fixture` rather than matched to it by hand** (milestone 293).
-/// The comment that used to sit here said this suite had *chosen* `chris`/`correct horse battery
+/// The comment that used to sit here said this suite had *chosen* `alice`/`correct horse battery
 /// staple` to line up with a constant in a fixture program, which is a coupling with nothing holding
 /// it: the next person to edit either copy would have had no way to know the other existed.
 const IDENTITY: &[u8] =
-    credential_protocol::fixture::PEOPLE[credential_protocol::fixture::CHRIS as usize].0;
+    credential_protocol::fixture::PEOPLE[credential_protocol::fixture::ALICE as usize].0;
 /// The same identity as a `&str`, because `fs_service::narrow_dir` names a path component rather
 /// than a credential. **Derived rather than re-typed** (milestone 293): a second spelling of the
 /// same name is the exact shape this milestone spent its diff removing, and a `const` conversion
@@ -24,13 +24,13 @@ const IDENTITY_STR: &str = match core::str::from_utf8(IDENTITY) {
     Err(_) => panic!("the roster's identity is not UTF-8, so it cannot name a directory"),
 };
 const SECRET: &[u8] =
-    credential_protocol::fixture::PEOPLE[credential_protocol::fixture::CHRIS as usize].1;
+    credential_protocol::fixture::PEOPLE[credential_protocol::fixture::ALICE as usize].1;
 
 /// A second `PUT` for the same identity, with a different secret, used only to provoke the refusal
 /// this suite's second test asks for. Never expected to be stored. Another person's, which is what
 /// makes it certainly not this one's.
 const DUPLICATE_SECRET: &[u8] =
-    credential_protocol::fixture::PEOPLE[credential_protocol::fixture::CORINNE as usize].1;
+    credential_protocol::fixture::PEOPLE[credential_protocol::fixture::BOB as usize].1;
 
 /// What [`wired`] hands each test: the sealed store's own wiring (for a real `VERIFY`) and both
 /// provisioning attempts' raw reports. The file service's root that both attempts were run against
@@ -119,9 +119,9 @@ fn wired() -> Option<Wired> {
 
             // Seal now, the way a real operator would once every identity for this boot is in:
             // `credentialer_test_client`'s provisioner role fills its own three people and three
-            // shares and then seals. `chris` is already there from attempt one above, so that
+            // shares and then seals. `alice` is already there from attempt one above, so that
             // role's own `PUT` for it is refused too (uninteresting here; not asserted), and
-            // `corinne`/`graeme`/the three shares fill the rest of this six-slot store before the
+            // `bob`/`carol`/the three shares fill the rest of this six-slot store before the
             // seal that this suite's own verification step below depends on.
             let cli = program("credentialer_test_client")
                 .expect("no credentialer_test_client program in the initrd archive");
@@ -221,7 +221,7 @@ fn provisioning_creates_a_working_credential_and_a_real_subtree() {
 }
 
 /// **A genuine duplicate is refused, and nothing already there is disturbed.** The second attempt
-/// inside `wired()`'s setup reused `chris`, the identity the first attempt already provisioned; its
+/// inside `wired()`'s setup reused `alice`, the identity the first attempt already provisioned; its
 /// `MKDIR` found the subtree already there (`EEXIST`, tolerated, per this tool's own module docs)
 /// and its credential `PUT` was refused as a duplicate (`credentialer::Store::put`'s own rule: "a duplicate
 /// identity is refused"). This test asserts both halves of that outcome, and that the *original*

@@ -413,7 +413,8 @@ pub const TASK_SWEEP: [usize; 6] = [1, 2, 4, 8, 16, MAX_TASKS];
 /// 17% for the median of 3, 5.1% for the median of 15 and 4.2% for the median of 21, where
 /// `tasks=16` and `tasks=32` already sat at 2.7 to 6.7% with three. 21 brings the worst point into
 /// the band the stable points were in, and it is odd so the median is a sample rather than an
-/// average of two. The method and the figures are in milestone 168's block.
+/// average of two. The method and the figures are in milestone 168's appendix,
+/// `design/roadmap/0168-multitasking-benchmark/holes-closed-2026-09-19.md`.
 ///
 /// **One count for every point, and the table that would have saved time was refused.** Varying the
 /// count by sweep point was proposed because board time was thought to be the cost, and it is not:

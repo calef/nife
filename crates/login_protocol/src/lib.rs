@@ -263,7 +263,7 @@ pub const SCHEDULE_FOLLOWS: u64 = 2;
 /// the identities' own subtrees, which is where this tree already keeps what it knows about an
 /// identity (DECISIONS §117 (a principal's subtree is named by its identity string)). A session
 /// is confined to its own subtree and cannot name it; the boot prompt, the owner's console, can
-/// (`echo chris >> may-run-unvouched`).
+/// (`echo alice >> may-run-unvouched`).
 ///
 /// **Empty by default**: no file, an unreadable file, or one larger than a page lists nobody, so
 /// the failure is always toward the narrower grant. The format is [`lists`]'s.
@@ -274,17 +274,17 @@ pub const RUN_UNVOUCHED_LIST: &str = "may-run-unvouched";
 
 /// **Whether `list` names `identity`** ([`RUN_UNVOUCHED_LIST`]'s format): one identity per line,
 /// surrounding spaces, tabs and a carriage return ignored, blank lines and lines starting with `#`
-/// skipped, and the match exact. `chris` does not list `chr` or `chris2`, and an empty identity
+/// skipped, and the match exact. `alice` does not list `ali` or `alice2`, and an empty identity
 /// is never listed.
 ///
 /// # EXAMPLES
 ///
 /// ```
-/// let list = b"# who may run new native code\nchris\n  corinne \r\n";
-/// assert!(login_protocol::lists(list, b"chris"));
-/// assert!(login_protocol::lists(list, b"corinne"));
-/// assert!(!login_protocol::lists(list, b"chr"));
-/// assert!(!login_protocol::lists(b"", b"chris"));
+/// let list = b"# who may run new native code\nalice\n  bob \r\n";
+/// assert!(login_protocol::lists(list, b"alice"));
+/// assert!(login_protocol::lists(list, b"bob"));
+/// assert!(!login_protocol::lists(list, b"ali"));
+/// assert!(!login_protocol::lists(b"", b"alice"));
 /// ```
 pub fn lists(list: &[u8], identity: &[u8]) -> bool {
     !identity.is_empty()
@@ -305,10 +305,10 @@ pub fn lists(list: &[u8], identity: &[u8]) -> bool {
 ///
 /// ```
 /// let mut out = [0u8; 64];
-/// let n = login_protocol::with_listed(b"# suspended\nchris", b"corinne", &mut out).unwrap();
-/// assert_eq!(&out[..n], b"# suspended\nchris\ncorinne\n");
-/// let n = login_protocol::with_listed(b"chris\n", b"chris", &mut out).unwrap();
-/// assert_eq!(&out[..n], b"chris\n");
+/// let n = login_protocol::with_listed(b"# suspended\nalice", b"bob", &mut out).unwrap();
+/// assert_eq!(&out[..n], b"# suspended\nalice\nbob\n");
+/// let n = login_protocol::with_listed(b"alice\n", b"alice", &mut out).unwrap();
+/// assert_eq!(&out[..n], b"alice\n");
 /// assert!(login_protocol::with_listed(b"", b"two words", &mut out).is_none());
 /// ```
 pub fn with_listed(list: &[u8], identity: &[u8], out: &mut [u8]) -> Option<usize> {
@@ -338,8 +338,8 @@ pub fn with_listed(list: &[u8], identity: &[u8], out: &mut [u8]) -> Option<usize
 ///
 /// ```
 /// let mut out = [0u8; 64];
-/// let n = login_protocol::without_listed(b"# suspended\nchris\n corinne\n", b"corinne", &mut out).unwrap();
-/// assert_eq!(&out[..n], b"# suspended\nchris\n");
+/// let n = login_protocol::without_listed(b"# suspended\nalice\n bob\n", b"bob", &mut out).unwrap();
+/// assert_eq!(&out[..n], b"# suspended\nalice\n");
 /// ```
 pub fn without_listed(list: &[u8], identity: &[u8], out: &mut [u8]) -> Option<usize> {
     let mut n = 0;
@@ -642,10 +642,10 @@ pub mod durable {
     /// # EXAMPLES
     ///
     /// ```
-    /// let manifest: [&[u8]; 3] = [b"chris", b"corinne", b"graeme"];
-    /// let mut left = login_protocol::durable::to_rederive(&manifest, b"# suspended\ncorinne\n");
-    /// assert_eq!(left.next(), Some(&b"chris"[..]));
-    /// assert_eq!(left.next(), Some(&b"graeme"[..]));
+    /// let manifest: [&[u8]; 3] = [b"alice", b"bob", b"carol"];
+    /// let mut left = login_protocol::durable::to_rederive(&manifest, b"# suspended\nbob\n");
+    /// assert_eq!(left.next(), Some(&b"alice"[..]));
+    /// assert_eq!(left.next(), Some(&b"carol"[..]));
     /// assert_eq!(left.next(), None);
     /// ```
     pub fn to_rederive<'a>(
@@ -745,13 +745,13 @@ pub mod durable {
         /// `session_reviver`'s skip carried, now on the function `login`'s start-up pass calls.
         #[test]
         fn a_suspended_identity_is_skipped_and_the_rest_keep_their_order() {
-            let manifest: [&[u8]; 3] = [b"chris", b"corinne", b"graeme"];
+            let manifest: [&[u8]; 3] = [b"alice", b"bob", b"carol"];
             let all: [&[u8]; 3] = manifest;
             assert!(to_rederive(&manifest, b"").eq(all.iter().copied()));
-            assert!(to_rederive(&manifest, b"chris\ngraeme\n").eq([&b"corinne"[..]]));
+            assert!(to_rederive(&manifest, b"alice\ncarol\n").eq([&b"bob"[..]]));
             // A prefix is not a name, and a comment suspends nobody.
-            assert!(to_rederive(&manifest, b"chr\n#corinne\n").eq(all.iter().copied()));
-            assert_eq!(to_rederive(&[], b"chris\n").count(), 0);
+            assert!(to_rederive(&manifest, b"ali\n#bob\n").eq(all.iter().copied()));
+            assert_eq!(to_rederive(&[], b"alice\n").count(), 0);
         }
 
         /// **Skip counts round-trip through one word, and a wild count saturates rather than
@@ -774,20 +774,20 @@ mod tests {
     use super::*;
 
     /// **The list is exact, and every doubtful case lists nobody** (DECISIONS §221 ruling 2).
-    /// Falsified once: matching by prefix (`line.starts_with(identity)`) listed `chr` here.
+    /// Falsified once: matching by prefix (`line.starts_with(identity)`) listed `ali` here.
     #[test]
     fn the_run_unvouched_list_names_whole_identities_only() {
-        let list = b"# owner-written\nchris\n\n\tcorinne\r\n#graeme\n";
-        assert!(lists(list, b"chris"));
-        assert!(lists(list, b"corinne"));
-        for not in [&b"chr"[..], b"chris2", b"graeme", b"#graeme", b"", b" "] {
+        let list = b"# owner-written\nalice\n\n\tbob\r\n#carol\n";
+        assert!(lists(list, b"alice"));
+        assert!(lists(list, b"bob"));
+        for not in [&b"ali"[..], b"alice2", b"carol", b"#carol", b"", b" "] {
             assert!(
                 !lists(list, not),
                 "{:?} was listed",
                 core::str::from_utf8(not)
             );
         }
-        assert!(!lists(b"", b"chris"), "an empty list named somebody");
+        assert!(!lists(b"", b"alice"), "an empty list named somebody");
     }
 
     /// **What `user suspend` and `user resume` write is what `login` reads** (milestone 152
@@ -796,23 +796,23 @@ mod tests {
     #[test]
     fn the_suspended_list_round_trips_through_its_two_edits() {
         let mut out = [0u8; 128];
-        let n = with_listed(b"# owner's list\nchris", b"corinne", &mut out).unwrap();
+        let n = with_listed(b"# owner's list\nalice", b"bob", &mut out).unwrap();
         let list = out;
-        assert!(lists(&list[..n], b"corinne") && lists(&list[..n], b"chris"));
-        let again = with_listed(&list[..n], b"corinne", &mut out).unwrap();
+        assert!(lists(&list[..n], b"bob") && lists(&list[..n], b"alice"));
+        let again = with_listed(&list[..n], b"bob", &mut out).unwrap();
         assert_eq!(again, n, "adding a listed name changed the list");
-        let n2 = without_listed(&list[..n], b"corinne", &mut out).unwrap();
-        assert!(!lists(&out[..n2], b"corinne") && lists(&out[..n2], b"chris"));
+        let n2 = without_listed(&list[..n], b"bob", &mut out).unwrap();
+        assert!(!lists(&out[..n2], b"bob") && lists(&out[..n2], b"alice"));
         assert!(
             out[..n2].starts_with(b"# owner's list\n"),
             "the comment was lost"
         );
-        for bad in [&b""[..], b"two words", b"#chris"] {
+        for bad in [&b""[..], b"two words", b"#alice"] {
             assert!(with_listed(b"", bad, &mut out).is_none(), "{bad:?}");
         }
-        assert!(with_listed(b"chris\n", b"corinne", &mut [0u8; 4]).is_none());
-        assert!(without_listed(b"chris\n", b"corinne", &mut [0u8; 2]).is_none());
-        assert_eq!(with_listed(b"", b"chris", &mut out), Some(6));
+        assert!(with_listed(b"alice\n", b"bob", &mut [0u8; 4]).is_none());
+        assert!(without_listed(b"alice\n", b"bob", &mut [0u8; 2]).is_none());
+        assert_eq!(with_listed(b"", b"alice", &mut out), Some(6));
         assert_eq!(operation(suspend_word()), SUSPEND);
         assert_eq!(operation(logout_word()), LOGOUT);
         assert_eq!(operation(connect_word()), CONNECT);
@@ -820,17 +820,17 @@ mod tests {
 
     #[test]
     fn identity_hint_round_trips_short_names() {
-        assert_eq!(identity_hint(b"chris"), identity_hint(b"chris"));
-        assert_ne!(identity_hint(b"chris"), identity_hint(b"corinne"));
+        assert_eq!(identity_hint(b"alice"), identity_hint(b"alice"));
+        assert_ne!(identity_hint(b"alice"), identity_hint(b"bob"));
     }
 
     #[test]
     fn req_and_place_agree_with_cred_proto_on_the_shape() {
         let mut page = [0u8; PAGE];
-        let w0 = place(&mut page, b"chris", b"secret", LOGIN).expect("fits");
+        let w0 = place(&mut page, b"alice", b"secret", LOGIN).expect("fits");
         assert_eq!(operation(w0), LOGIN);
         let (id, secret) = read(&page, w0).expect("well-formed");
-        assert_eq!(id, b"chris");
+        assert_eq!(id, b"alice");
         assert_eq!(secret, b"secret");
     }
 

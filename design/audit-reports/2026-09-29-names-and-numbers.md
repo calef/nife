@@ -96,7 +96,7 @@ closes with the strikethrough its own table uses, beside a marked exception.
 ### 5. FIXED: a citation quoted a section that had become an appendix
 
 `design/roadmap/0124-a-thread-is-born-where-it-lives.md`, under "Closed: the stack was freed under
-its owner (2026-08-17)", quoted "a kernel stack freed under its
+its owner (2026-08-17)" (now `design/roadmap/0124-a-thread-is-born-where-it-lives/reopened-and-closed.md`), quoted "a kernel stack freed under its
 owner" as a section of `notes/stack.md`. The 2026-09-24 split moved it to
 `notes/stack/kernel-stack-freed-under-its-owner.md`, and the quote stopped resolving. The pointer
 names the appendix, beside a marked exception.

@@ -20,16 +20,15 @@ The sibling harness `every_page_between_the_checked_ends_is_itself_a_user_page` 
 green under this patch, which is the honest half of the record: it reasons about a run
 whose two ends are already given, so it never calls this function.
 
-diff --git a/kernel/src/syscall.rs b/kernel/src/syscall.rs
-index 2493114b..3fd1dab8 100644
---- a/kernel/src/syscall.rs
-+++ b/kernel/src/syscall.rs
-@@ -811,7 +811,7 @@ fn page_frame_map(
+diff --git a/kernel/src/syscall/address_space.rs b/kernel/src/syscall/address_space.rs
+--- a/kernel/src/syscall/address_space.rs
++++ b/kernel/src/syscall/address_space.rs
+@@ -263,7 +263,7 @@
  /// address space (milestone 142's review, MAJOR 4). `count` is a `NonZeroU64` on the capability
  /// now, so the subtraction cannot underflow; this closes the other half.
- fn run_end_va(va: u64, count: u64) -> Option<u64> {
+ pub(super) fn run_end_va(va: u64, count: u64) -> Option<u64> {
 -    va.checked_add(count.checked_sub(1)?.checked_mul(paging::PAGE_SIZE)?)
 +    va.checked_add(count.wrapping_sub(1).wrapping_mul(paging::PAGE_SIZE))
  }
  
- /// **The first proofs over the kernel's own source** (milestone 193).
+ /// **Undo the `mapped` pages a failed run-map had already established**, in the space rooted at

@@ -21,16 +21,16 @@ the identity and the secret were handed in, would anything about this role's *co
 
 | Role | Credential it presented | What its code did that no other role's did | Verdict |
 |---|---|---|---|
-| `ROLE_CHRIS` | chris, correct | nothing; falls through the match's `_` arm | **credential** |
-| `ROLE_CORINNE` | corinne, correct | nothing; byte-identical to `ROLE_CHRIS` | **credential** |
-| `ROLE_WRONG_SECRET` | chris, `not-the-password` | nothing; refused at the shared `verdict != OK` exit | **credential** |
-| `ROLE_NO_SUBTREE` | graeme, correct | nothing; refused at the same exit, for a different reason | **credential** |
-| `ROLE_TERM_SECOND` | corinne, correct | nothing; refused at the same exit with `NO_TERMINAL` | **credential** |
-| `ROLE_CHRIS_MARK` | chris, correct | `write_marker(dir, b"chris")` and an `absent` check | **behavior, and half of it was a credential** |
-| `ROLE_CORINNE_MARK` | corinne, correct | `write_marker(dir, b"corinne")` and the same `absent` check | **the same behavior** |
-| `ROLE_CHRIS_CHECK` | chris, correct | `read_marker(dir)` into the report's third word | **behavior** |
-| `ROLE_LOGOUT` | chris, correct | destroys budget then region, re-`READDIR`s, reports the wait | **behavior** |
-| `ROLE_TERM_FIRST` | chris, correct | sends `TERM_MAGIC` on the terminal, then tears down without the wait report | **behavior** |
+| `ROLE_ALICE` | alice, correct | nothing; falls through the match's `_` arm | **credential** |
+| `ROLE_BOB` | bob, correct | nothing; byte-identical to `ROLE_ALICE` | **credential** |
+| `ROLE_WRONG_SECRET` | alice, `not-the-password` | nothing; refused at the shared `verdict != OK` exit | **credential** |
+| `ROLE_NO_SUBTREE` | carol, correct | nothing; refused at the same exit, for a different reason | **credential** |
+| `ROLE_TERM_SECOND` | bob, correct | nothing; refused at the same exit with `NO_TERMINAL` | **credential** |
+| `ROLE_ALICE_MARK` | alice, correct | `write_marker(dir, b"alice")` and an `absent` check | **behavior, and half of it was a credential** |
+| `ROLE_BOB_MARK` | bob, correct | `write_marker(dir, b"bob")` and the same `absent` check | **the same behavior** |
+| `ROLE_ALICE_CHECK` | alice, correct | `read_marker(dir)` into the report's third word | **behavior** |
+| `ROLE_LOGOUT` | alice, correct | destroys budget then region, re-`READDIR`s, reports the wait | **behavior** |
+| `ROLE_TERM_FIRST` | alice, correct | sends `TERM_MAGIC` on the terminal, then tears down without the wait report | **behavior** |
 | `ROLE_TERM_LOGOUT` | none at all | sends `logout_word` on the front door, never calls `CONNECT` | **behavior** |
 
 Five of eleven were pure credential. Two more were one behavior written twice, because the only
@@ -38,7 +38,7 @@ thing separating them was the identity byte string written into a marker file, w
 identity. Eleven roles were six behaviors and four credentials.
 
 **`ROLE_TERM_SECOND` is the one worth pausing on**, because its name argues hardest that it is a
-behavior and its code is `ROLE_CORINNE` exactly. What made it feel like a role is a fact about
+behavior and its code is `ROLE_BOB` exactly. What made it feel like a role is a fact about
 *when the test runs it* (while `ROLE_TERM_FIRST`'s terminal loan is outstanding), and a precondition
 the caller arranges is not a property of the callee. The kernel test still arranges it; the client
 no longer has a name for it.
@@ -70,7 +70,7 @@ authenticate, and `identity` and `secret` are indices into it. `credential_proto
 dependency of both `kernel` and `fixtures`, so this is not a dependency decision.
 
 The composition is the point. The two indices are separate arguments, so the wrong-secret run is
-`(CHRIS, WRONG)`: the same behavior as the honest `(CHRIS, CHRIS)` with one input changed.
+`(ALICE, WRONG)`: the same behavior as the honest `(ALICE, ALICE)` with one input changed.
 
 That is what the file was already claiming and could not enforce. Its own argument for being one
 binary reads *"a program that shares the honest path with an attempted-wrong-secret run is a fairer
@@ -128,7 +128,7 @@ What it did hold is the definition the other two files were copying. `PEOPLE` li
 
 - `login_test_client.rs` re-typed all three pairs inside its `credentials()` lookup;
 - `kernel/src/user/identity_provisioning_tests.rs` re-typed two of them, under a comment saying it
-  had **chosen** `chris`/`correct horse battery staple` to match this file, which is a coupling with
+  had **chosen** `alice`/`correct horse battery staple` to match this file, which is a coupling with
   nothing holding it: the next person to edit either copy had no way to know the other existed.
 
 That is `credential_proto::fixture`'s own opening argument happening three times over ("several
@@ -174,7 +174,7 @@ limitations, and the fact that a spawn argument is visible wherever a spawn is r
   equal-cost test: `hello`'s thirty-one roles share a file and nothing else, while these six share
   an authenticated-session preamble that is itself the contract under test.
 The behavior constants (`LOGIN`, `WRITE_MARKER`, `READ_MARKER`, `LOGOUT`, `HOLD_TERMINAL`,
-`FREE_TERMINAL`) and the roster's new public names (`PEOPLE`, `CHRIS`, `CORINNE`, `GRAEME`,
+`FREE_TERMINAL`) and the roster's new public names (`PEOPLE`, `ALICE`, `BOB`, `CAROL`,
 `NOBODYS_SECRET`, `WRONG`, `NONE`, `identity`, `secret`) are **provisional** and go to calef with
 the merge, per AGENTS.md. That is a naming backlog rather than follow-on work, and it never blocks,
 which is milestone 115's own rule.

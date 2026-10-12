@@ -67,6 +67,8 @@
 //!   `arch::x86_64::machine::attach_screen` and a real aperture rather than guest RAM. The two do
 //!   not share a code path and deliberately share a *type*.
 
+use core::cell::SyncUnsafeCell;
+
 use machine_discovery::framebuffer::{Framebuffer, PixelOrder};
 
 use crate::drivers::ramfb::{self, FirmwareConfiguration, SCRATCH_LEN};
@@ -95,11 +97,16 @@ struct Scratch([u8; SCRATCH_LEN]);
 
 /// **`.bss`, and the boot tour is single-threaded when it is touched.** Both statics are written by
 /// exactly one core at exactly one point in `kernel_main`, before any other core is started and
-/// before any interrupt can arrive, which is why they are plain statics and not behind the console
-/// lock. After [`attach`] returns, the console's own lock is what serialises the pixels, and
-/// nothing ever touches [`SCRATCH`] again.
-static mut PIXELS: Pixels = Pixels([0; SPAN]);
-static mut SCRATCH: Scratch = Scratch([0; SCRATCH_LEN]);
+/// before any interrupt can arrive, which is why they are not behind the console lock. After
+/// [`attach`] returns, the console's own lock is what serializes the pixels, and nothing ever
+/// touches [`SCRATCH`] again.
+///
+/// `SyncUnsafeCell`s rather than locks, since milestone 891 (a mutable static becomes an atomic, a
+/// lock or a recorded cell): the emulator is handed both by physical address and reads them as
+/// device memory, so they need a fixed placement and in-place writes, and nothing here ever forms a
+/// reference to either. Only raw pointers leave this module.
+static PIXELS: SyncUnsafeCell<Pixels> = SyncUnsafeCell::new(Pixels([0; SPAN]));
+static SCRATCH: SyncUnsafeCell<Scratch> = SyncUnsafeCell::new(Scratch([0; SCRATCH_LEN]));
 
 /// Why there is no screen. A string rather than an enum because the only consumer is one boot line:
 /// nothing branches on this, a person reads it, and four of the five cases are already spelled by
@@ -132,8 +139,8 @@ pub fn attach() -> Result<(Framebuffer, u32, u32), Why> {
         return Err("no qemu,fw-cfg-mmio node: this machine has no ramfb to ask for");
     }
 
-    let pixels = &raw mut PIXELS;
-    let scratch = &raw mut SCRATCH;
+    let pixels = PIXELS.get();
+    let scratch = SCRATCH.get();
     let screen = Framebuffer {
         base: crate::arch::mmu::virt_to_phys(pixels as u64),
         width: WIDTH,

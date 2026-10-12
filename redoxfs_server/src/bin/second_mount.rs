@@ -24,17 +24,19 @@
 //! hypothesis holds. If it fails at both, or succeeds at both, the hypothesis is dead and the note
 //! must say so instead of carrying a plausible-sounding guess.
 
-use std::alloc::{GlobalAlloc, Layout};
+use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::UnsafeCell;
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use redoxfs::{FileSystem, Node, TreePtr};
 use redoxfs_server::{BLOCK, BlockDisk, BlockIo, Server};
 
 /// The pool the capped allocator draws from. Large enough to serve any cap we dial in; the *cap*,
-/// not the pool, is what limits the heap. BSS, so it costs nothing in the binary.
+/// not the pool, is what limits the heap. Asked of the host's own allocator on the first growth and
+/// never returned, so it costs nothing in the binary and only touched pages cost memory. It was a
+/// `static mut` until milestone 891 (a mutable static becomes an atomic, a lock or a recorded cell).
 const POOL_SIZE: usize = 512 * 1024 * 1024;
-static mut POOL: [u8; POOL_SIZE] = [0; POOL_SIZE];
 
 const PAGE: usize = 4096;
 /// The FS server's growth floor (`user_mode_runtime::heap::MIN_GROW_PAGES`).
@@ -69,9 +71,18 @@ impl Inner {
     /// `user_mode_runtime::heap::MemoryRegionHeap::grow`, so exhaustion happens here for the same reasons.
     fn grow(&mut self, need: usize) -> bool {
         if self.base == 0 {
-            // user_mode_heap requires 16-aligned donations; a static [u8; N] is only byte-aligned.
-            let raw = &raw mut POOL as *mut u8 as usize;
-            self.base = (raw + 15) & !15;
+            // Page-aligned, which covers user_mode_heap's 16-byte rule for donations. `System`, not
+            // this binary's global allocator: this IS the global allocator, growing.
+            let Ok(layout) = Layout::from_size_align(POOL_SIZE, PAGE) else {
+                return false;
+            };
+            // SAFETY: `layout` has a nonzero size. The block is never freed, so the regions
+            // donated from it below stay valid for the life of the process.
+            let raw = unsafe { System.alloc(layout) };
+            if raw.is_null() {
+                return false;
+            }
+            self.base = raw as usize;
             self.cap = heap_cap();
         }
         let need_pages = need.div_ceil(PAGE);
@@ -160,29 +171,33 @@ static HEAP: CappedHeap = CappedHeap::new();
 
 /// The image, in a `static` and therefore OFF the heap under test, because on device the image is on
 /// a disk and never sits in the FS server's heap.
+///
+/// A `Mutex` since milestone 891 (a mutable static becomes an atomic, a lock or a recorded cell):
+/// one thread uses it, so the lock is never contended, and holding it is what lets a block be read
+/// and written without `unsafe`.
 const IMAGE_SIZE: usize = 16 * 1024 * 1024;
-static mut IMAGE: [u8; IMAGE_SIZE] = [0; IMAGE_SIZE];
+static IMAGE: Mutex<[u8; IMAGE_SIZE]> = Mutex::new([0; IMAGE_SIZE]);
 
 /// A `BlockIo` over the static image. Both mounts address the same bytes, exactly as they would the
 /// same disk across two boots.
 struct StaticImage;
-impl StaticImage {
-    fn bytes() -> &'static mut [u8] {
-        // SAFETY: single-threaded repro; the only accessor of IMAGE. Built from the raw pointer
-        // rather than `&mut *&raw mut IMAGE`, because that form trips clippy's `deref_addrof` and
-        // the obvious "fix" it suggests (`&mut IMAGE`) is a hard error (`static_mut_refs`).
-        unsafe { core::slice::from_raw_parts_mut((&raw mut IMAGE).cast::<u8>(), IMAGE_SIZE) }
-    }
+
+/// The image, locked. A poisoned lock means a write panicked partway, and the bytes are still the
+/// bytes that write left, which is exactly what this repro wants to read back.
+fn image() -> std::sync::MutexGuard<'static, [u8; IMAGE_SIZE]> {
+    IMAGE
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 impl BlockIo for StaticImage {
     fn read_block(&mut self, block: u64, buf: &mut [u8; BLOCK]) -> syscall::error::Result<()> {
         let off = block as usize * BLOCK;
-        buf.copy_from_slice(&Self::bytes()[off..off + BLOCK]);
+        buf.copy_from_slice(&image()[off..off + BLOCK]);
         Ok(())
     }
     fn write_block(&mut self, block: u64, buf: &[u8; BLOCK]) -> syscall::error::Result<()> {
         let off = block as usize * BLOCK;
-        Self::bytes()[off..off + BLOCK].copy_from_slice(buf);
+        image()[off..off + BLOCK].copy_from_slice(buf);
         Ok(())
     }
     fn size_bytes(&mut self) -> syscall::error::Result<u64> {

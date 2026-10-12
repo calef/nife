@@ -27,7 +27,7 @@ device absent reaches a prompt normally. The cause is capability-slot exhaustion
 ## What was actually wrong
 
 The reported hypothesis was the sixteen-slot wall that this file's own entropy-block comment
-describes. **The wall held; the location did not.** Init does not run out of slots building the
+describes. The wall held; the location did not. Init does not run out of slots building the
 entropy service. It runs out four blocks later, at
 `let verify_page = must(retype_page_frame(ut))` in the login stack, building `credentialer`. The
 entropy service is only the reason that block executes at all: `have_login_stack` requires
@@ -102,14 +102,14 @@ and in order. The kernel prints a user fault report with its own UART driver; th
 `console` server drives the same UART from its own address space; nothing arbitrates between two
 processes writing one device. So a thread dying while init prints shuffles the two lines together.
 
-This is **not** the partial-line problem `crates/board_console` solved for milestone 216 (nothing in
+This is not the partial-line problem `crates/board_console` solved for milestone 216 (nothing in
 this tree can read a board, so every hardware milestone waits on a person). That crate's
 `observe_partial` is about a line the reader has not finished receiving, and its answer, `contains`
 on a completed line, is exactly what fails here.
 Its distinction is worth keeping and does not apply; the reader in `shell_check_leg` already
 accumulates, and accumulating more would not have helped.
 
-It also happens on **every** local riscv64 boot. The interleaving simply landed somewhere harmless
+It also happens on every local riscv64 boot. The interleaving simply landed somewhere harmless
 there, which is why local was green: whether the shuffle lands on a line the gate reads is timing,
 and a runner is not this laptop.
 
@@ -276,13 +276,10 @@ accounting move together and want a lane of their own.
   the explanation for an unreadable line and cannot tell that from init having gone silent in the
   same boot. The trade is deliberate, since a false red taxes every lane whose change had nothing to
   do with it and a false green is undone by repetition.
-- **Recorded.** `script/swish-check` also carries the residual in that third case: "was the kernel
-  writing during the boot" is six exact searches for short kernel strings, and a boot that destroyed
-  all six would give the false red this design otherwise rules out structurally. Six independent
-  chances is a better bet than one, not a proof.
-- **Recorded.** `design/roadmap/0230-shell-check-is-red.md`'s BUGS is honest about the bisect. It
-  runs over first-parent merges, so it names PR #556 rather than a commit inside it, and `d1c81062`
-  was identified by reading that branch rather than by a boot at that commit.
+- **Recorded.** `script/swish-check` also carries the residual in that third case, the six exact
+  searches told in this block's `BUGS`.
+- **Recorded.** `design/roadmap/0230-shell-check-is-red.md`'s BUGS: the bisect names PR #556, not a
+  commit inside it.
 - **Milestone 342.** Decide where the kernel's
   own output goes once userspace owns the console. Today the kernel and the `console` server drive
   the same UART from two address spaces with nothing arbitrating, so the streams interleave at byte

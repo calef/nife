@@ -96,13 +96,8 @@ memory argument is dead *at the scale this project runs at* and would revive at 
 256 MiB the static kernel-stack reservation is 2.27%; the arithmetic is linear, so on a 64 MiB
 machine it is 9.1%, and on 32 MiB it is 18%, which nobody would wave away.
 
-**One caveat on the clause this section leans on twice.** "Warton's result came from resource-starved
-embedded systems" is true of what drove the *move* to an event kernel, and the paper says so. It also
-says, in the same sentence, that *"the approach's benefits are not restricted to those contexts, and
-we believe it is generally the best approach on modern hardware"* (section 4.1, page 1:17, read
-2026-09-13). The authors are not neutral here, and this section should not paraphrase them into
-agreeing that the result is embedded-only. It does not change the memory arithmetic above, which
-stands on this tree's own numbers; it removes an argument from authority that was never the paper's.
+A 2026-09-13 caveat on how this input reads Warton's paper is in
+[`warton-caveat.md`](0096-process-kernel-or-event-kernel/warton-caveat.md).
 
 What would revive it, stated so a future reader does not have to re-derive it. A target where
 `MAX_THREADS * STACK_SLOT_SPAN` is a material fraction of RAM. notes/target-hardware.md's

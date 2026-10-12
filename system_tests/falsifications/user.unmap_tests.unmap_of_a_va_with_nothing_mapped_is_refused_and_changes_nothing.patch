@@ -7,11 +7,10 @@ come earlier and are unaffected.
 Expected to fail: the first case, a `va` never mapped, which gets `Ok(0)` where it wants
 `BadPointer`.
 
-diff --git a/kernel/src/syscall.rs b/kernel/src/syscall.rs
-index f4089be81..09d79f665 100644
---- a/kernel/src/syscall.rs
-+++ b/kernel/src/syscall.rs
-@@ -1065,9 +1065,7 @@ fn address_space_unmap(name: u64, va: u64) -> Result<i64, Error> {
+diff --git a/kernel/src/syscall/address_space.rs b/kernel/src/syscall/address_space.rs
+--- a/kernel/src/syscall/address_space.rs
++++ b/kernel/src/syscall/address_space.rs
+@@ -246,9 +246,7 @@
          // revoke would act on.
          let unmapped = mmu::unmap_user_at(root, va);
          let forgotten = hold.forget_mapping_at(root, va);

@@ -226,7 +226,7 @@ spread per point, and the census summary.
 
 | Date | Machine | Boots | Instrument | Census summary | jpm at 1 / 32 | Notes |
 |---|---|---|---|---|---|---|
-| 2026-09-16 | radon (4 harts, 4 MHz `rdtime`) | 5 | five-job mix, **best of 3** | 32 tasks and 2 servers over 4 cores, 6 to 10 threads a core | 319,013 to 319,072 / 1,032,586 to 1,060,264 | shape solid (1.96x at 2 tasks, plateau past 8, no decline at 32); `tasks=4` spread 29.4% across boots, so **not a number**. Transcripts `bench/radon-2026-09-16/jobmix-boot*.log`; the per-point table is milestone 168's block |
+| 2026-09-16 | radon (4 harts, 4 MHz `rdtime`) | 5 | five-job mix, **best of 3** | 32 tasks and 2 servers over 4 cores, 6 to 10 threads a core | 319,013 to 319,072 / 1,032,586 to 1,060,264 | shape solid (1.96x at 2 tasks, plateau past 8, no decline at 32); `tasks=4` spread 29.4% across boots, so **not a number**. Transcripts `bench/radon-2026-09-16/jobmix-boot*.log`; the per-point table is in `design/roadmap/0168-multitasking-benchmark/radon-2026-09-16.md` |
 | 2026-10-04 | radon, `04a8f9e6c` | 5 | seven-job mix, median of 21 | 34 threads over 4 cores; boot 5 placed differently, read the same | 323,951 to 324,033 / 897,375 to 901,122 | every point a number (widest spread 1.67%, `tasks=4` 1.12%); 2.62x at 4 tasks, rising to 2.78x at 32, no decline. Step 7's first row. Transcripts `bench/radon-2026-10-04/jobmix-boot*.log` |
 
 The 2026-10-04 evening, read in step 6's order with its step 7 judgment, is

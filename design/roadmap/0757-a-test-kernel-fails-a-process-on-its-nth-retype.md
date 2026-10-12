@@ -46,7 +46,7 @@ core's current thread, the one identity the kernel has at those functions withou
 
 - `login_gives_back_everything_when_any_retype_of_a_login_fails`, the sweep. It uses
   `login_tests`' one `login`, because a `login` cannot be torn down and a second one would be a
-  permanent charge on the frame ledger. Per N it runs a `LOGOUT` login as `corinne` (who holds no durable session there) and compares a
+  permanent charge on the frame ledger. Per N it runs a `LOGOUT` login as `bob` (who holds no durable session there) and compares a
   census of `login`'s table and regions against one taken after a clean login.
 - `the_nth_retype_fails_as_an_empty_region_would_and_no_other`, the mechanism with no service in
   the way. For each N the Nth of a `RETYPE`, a `RETYPE_OBJ` and a `SPLIT` is refused and moves

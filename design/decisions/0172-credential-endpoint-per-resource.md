@@ -17,7 +17,7 @@ One question, and it is a wire question: does a `verify` request keep carrying t
 asks about, or does the endpoint become the credential for one resource, with the name implied by
 which endpoint you hold?
 
-Today `place(&mut page, b"corinne", b"hunter2", verify::VERIFY)` puts an identity and a secret in
+Today `place(&mut page, b"bob", b"hunter2", verify::VERIFY)` puts an identity and a secret in
 the shared page, so a holder of a verify endpoint chooses which record to test. The alternative is
 an endpoint minted against one identity, where a caller can present a secret and cannot say whose.
 
