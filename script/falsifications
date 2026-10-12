@@ -93,10 +93,10 @@
 #
 # **A swish-check record is the third thing a block can sit above** (milestone 742 (every test is
 # falsified as routine), provisional). Milestone 673 (the confinement table lists the unvouched
-# child) recorded `xtask/falsifications/swish_check.swish_check_boot.patch` against row 31 of
+# child) recorded `xtask/falsifications/swish_check.boot.swish_check_boot.patch` against row 31 of
 # notes/confinement-claims.md and could only replay it by hand. Now a block above a function in
-# `xtask/src/swish_check.rs` is swept with `script/swish-check --arch <a>`, opt-in like a kernel
-# test, and the patch must name the typed line it breaks (`Line:`, provisional) because red counts
+# the harness (`xtask/src/swish_check/` today) is swept with `script/swish-check --arch <a>`,
+# opt-in like a kernel test, and the patch must name the typed line it breaks (`Line:`, provisional) because red counts
 # only when swish-check's own FAILED report names that line. **Only one such record can exist
 # today**: the path is keyed on a function and every line is typed by `swish_check_boot`, so a
 # second line's record has no name to take. That is a §134 (a harness carries a machine-replayable falsification record) spelling question and an architect's;
@@ -901,7 +901,7 @@ class KernelTest(Harness):
 
 
 class SwishCheckRecord(KernelTest):
-    """A record above a function in `xtask/src/swish_check.rs` (milestone 742, provisional).
+    """A record above a function in the swish-check harness (milestone 742, provisional).
 
     The four states, the patch path and `Architecture:` are a kernel test's. What differs is the
     replay verb, `script/swish-check --arch <a>`, and that the red must be about the line the

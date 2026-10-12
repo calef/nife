@@ -32,7 +32,7 @@ The kernel reads the stack, not the progenitor. That keeps the instrument out of
 progenitor about to overflow is not the program asked to measure itself.
 
 `script/swish-check` takes those lines out of the transcript as they arrive (a `GaugeFilter` in
-`xtask/src/swish_check.rs`), because on a healthy boot they land between a `$ ` and the next line's
+`xtask/src/swish_check/gauge.rs`), because on a healthy boot they land between a `$ ` and the next line's
 echo, and every reader there assumes those two are adjacent. It echoes each one with the command it
 followed, so one run is a per-path measurement.
 
