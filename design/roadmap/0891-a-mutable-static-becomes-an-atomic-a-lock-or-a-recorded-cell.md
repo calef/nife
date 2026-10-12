@@ -1,16 +1,21 @@
 ---
-status: PROPOSED
+status: NOT-STARTED
 raised: 2026-10-09
+promoted_from: a-mutable-static-becomes-an-atomic-a-lock-or-a-recorded-cell
 milestone_dependencies: none
 decision_dependencies: 19
 machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# A mutable static becomes an atomic, a lock or a recorded cell, and `static mut` leaves the kernel
+# 891. A mutable static becomes an atomic, a lock or a recorded cell, and `static mut` leaves the kernel
+
+*(Promoted from the proposal pile on 2026-10-12 (UTC) by lane
+`maintainer/promote-proposals`; number provisional until the merge queue lands it. Title
+and slug are drafts.)*
 
 Raised by a maintainer session on 2026-10-09 (UTC), one of five lint proposals asked for together.
-Its numbers are in [notes/lint-census-2026-10-09.md](../../../notes/lint-census-2026-10-09.md).
+Its numbers are in [notes/lint-census-2026-10-09.md](../../notes/lint-census-2026-10-09.md).
 
 Reuse: the tree's own `IrqSafeMutex`, `core::sync::atomic`, and `core::cell::SyncUnsafeCell`
 (nightly feature `sync_unsafe_cell`, compiled on the pinned nightly-2026-10-09 for this proposal).
@@ -131,3 +136,8 @@ The customer path is vacant, so the tie breaks toward the fatal risks. This serv
 cannot be made reliable on multicore), whose red result is a defect curve that keeps rising. The
 one recorded `static mut` race was a multicore defect. It ranks second of the five: eight kernel
 sites, each a small change.
+
+## Index row
+
+`static mut` leaves the kernel. Every mutable static becomes an atomic, a lock or a recorded
+`SyncUnsafeCell`, and the census counts what is left so the number can only fall.

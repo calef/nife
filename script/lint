@@ -3091,8 +3091,8 @@ echo "==> the lint ratchet's selftest (clippy lints counted against a baseline t
 # only, so it runs in the pre-push mode; the check needs clippy and runs in the next section.
 python3 helpers/lint_ratchet.py --selftest
 echo "==> the lint ratchet (clippy at -W, one more pass per configuration)"
-# The panic proposal's mechanism (design/roadmap/proposals/panics-in-the-kernel-and-the-parsers-
-# are-counted-and-fall.md), built by milestone 888 with one lint registered: `too_many_lines` at 100
+# The panic proposal's mechanism (design/roadmap/0896-panics-in-the-kernel-and-the-parsers-are-
+# counted-and-fall.md), built by milestone 888 with one lint registered: `too_many_lines` at 100
 # code lines (calef, 2026-10-09 UTC), one row per function in design/lint-baseline.tsv. The five
 # configurations are the lint census's (notes/lint-census-2026-10-09.md), without --all-targets so
 # test code is not counted. A redoxfs_server file is named `@redoxfs_server` so the helper can put

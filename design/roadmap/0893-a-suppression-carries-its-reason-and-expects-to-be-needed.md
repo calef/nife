@@ -1,18 +1,23 @@
 ---
-status: PROPOSED
+status: NOT-STARTED
 raised: 2026-10-09
+promoted_from: a-suppression-carries-its-reason-and-expects-to-be-needed
 milestone_dependencies: none
 decision_dependencies: 38
 machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# A suppression carries its reason in the attribute, and fails when it is no longer needed
+# 893. A suppression carries its reason in the attribute, and fails when it is no longer needed
+
+*(Promoted from the proposal pile on 2026-10-12 (UTC) by lane
+`maintainer/promote-proposals`; number provisional until the merge queue lands it. Title
+and slug are drafts.)*
 
 Raised by a maintainer session on 2026-10-09 (UTC), one of five lint proposals asked for together.
-Its numbers are in [notes/lint-census-2026-10-09.md](../../../notes/lint-census-2026-10-09.md).
+Its numbers are in [notes/lint-census-2026-10-09.md](../../notes/lint-census-2026-10-09.md).
 It reuses the lint ratchet specified in
-[the panic proposal](panics-in-the-kernel-and-the-parsers-are-counted-and-fall.md).
+[the panic proposal](0896-panics-in-the-kernel-and-the-parsers-are-counted-and-fall.md).
 
 Reuse: rustc's `#[expect]` and its `reason =` field, and clippy's `allow_attributes`,
 `allow_attributes_without_reason` and `ignore_without_reason`. Nothing is written.
@@ -110,3 +115,8 @@ The customer path is vacant, so the tie breaks toward the fatal risks. This serv
 do not test anything, and the quality is illusory). An unchecked suppression is a claim nobody
 checks, the same shape as a test that cannot fail. It ranks fourth of the five: the gate is the
 compiler's, and most of the work is mechanical once open question 1 is answered.
+
+## Index row
+
+Every lint suppression carries its reason in the attribute and is an `#[expect]`, so it fails the
+day it is no longer needed. Counts are frozen per file and may only fall.

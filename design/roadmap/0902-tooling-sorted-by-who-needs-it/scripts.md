@@ -1,6 +1,6 @@
 # Scripts
 
-An appendix of [nife's tooling, sorted by who needs it](../tooling-sorted-by-who-needs-it.md),
+An appendix of [nife's tooling, sorted by who needs it](../0902-tooling-sorted-by-who-needs-it.md),
 measured 2026-10-12 (UTC) against `e3cc3f128`.
 Every file in `script/`.
 

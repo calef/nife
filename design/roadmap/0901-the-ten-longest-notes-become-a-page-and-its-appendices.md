@@ -1,20 +1,26 @@
 ---
-status: PROPOSED
+status: BUILT
 raised: 2026-10-11
+promoted_from: the-ten-longest-notes-become-a-page-and-its-appendices
+built: 2026-10-11
 milestone_dependencies: 586
 decision_dependencies: 212, 213
 machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# The ten longest notes become a page and its appendices
+# 901. The ten longest notes become a page and its appendices
+
+*(Promoted from the proposal pile on 2026-10-12 (UTC) by lane
+`maintainer/promote-proposals`; number provisional until the merge queue lands it. Title
+and slug are drafts.)*
 
 Raised 2026-10-11 (UTC) by a maintainer session, as the brief for one developer lane. It applies
-[§212 (a prose budget)](../../decisions/0212-a-prose-budget-for-every-document.md) to the ten
+[§212 (a prose budget)](../decisions/0212-a-prose-budget-for-every-document.md) to the ten
 longest over-cap documents a developer may edit. Each is split into a main page under 3,000 words
 and appendices beside it. Nothing is cut except true duplication. Claim it with
 `script/claim <branch> --debt-paydown`: this is compliance with a written standard
-([notes/debt-paydown.md](../../../notes/debt-paydown.md), class 4).
+([notes/debt-paydown.md](../../notes/debt-paydown.md), class 4).
 
 Reuse: `helpers/prose_ratchet.py` measures, gates and banks; §212's siting and orphan rule already
 exist; `notes/soak/`, `notes/visionfive2/`, `notes/merge-queue/` and `notes/footprint-perturbation/`
@@ -107,7 +113,7 @@ Read these before the first move. Each one is a failure a careless split hits.
 `the-confinement-claims.md#` matches too), and repoint any that land on your page.
 4. `script/citations --ratchet` checks that a quoted gloss appears in its target's body. Text moved
    out of a parent breaks every gloss quoting it. Fix the citing file to point at the appendix. It
-   reads the committed tip, so commit first ([briefs/gate-a-lane.md](../../../briefs/gate-a-lane.md)).
+   reads the committed tip, so commit first ([briefs/gate-a-lane.md](../../briefs/gate-a-lane.md)).
 5. The first `--bank` rewrites far more than your rows. The committed baseline is out of the order
    `--bank` writes, and about 86 rows would fall or drop out, shrinks nobody banked since at least 2026-10-07. So the
    lane's first commit is a bank of the tree as it stands, with no prose change. Later banks then
@@ -123,7 +129,7 @@ new main page, its appendices and README, every inbound link it repointed, and
 `python3 helpers/prose_ratchet.py --bank` run after the move. The message says what moved where and
 names any passage replaced as duplication. On a rebase that conflicts in the baseline, take `main`'s
 file and run `--bank` again; never merge its rows by hand
-([briefs/rebase-onto-main.md](../../../briefs/rebase-onto-main.md), the baseline rule).
+([briefs/rebase-onto-main.md](../../briefs/rebase-onto-main.md), the baseline rule).
 
 Before starting each document, check that no open pull request edits it
 (`gh api 'repos/nifeos/nife/pulls?state=open'`, then each pull request's files). If one does, skip
@@ -213,6 +219,11 @@ If the lane is slow, cut a second one after the first merges, on the next ten.
 
 Off the customer path, like all §212 work. It ranks by reading cost: their citing-file counts sum
 to 589, and each arrival today loads 8,000 to 13,000 words to find one fact.
+
+## Follow-on
+
+- **Done.** Carried by PR #1918 (lane `lane/ten-longest-notes`) and PR #1945 (lane
+  `lane/final-longest-notes`), which left no note directly under `notes/` over 3,000 words.
 
 ## Index row
 

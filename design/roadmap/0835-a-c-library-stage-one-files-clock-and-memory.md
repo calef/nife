@@ -143,9 +143,10 @@ correctable, and verdicts are the architect's)).
   `unsafe fn`s gain `# Safety` sections and the census counts them, as calef ruled on #1896.
 - **Milestone 869.** Milestone 869 (the C library's headers cannot drift, and its contract is
   tested in nife): a header drift check and contract tests for the library itself.
-- **Proposed.** `design/roadmap/proposals/sqlite-is-packaged-in-basalt.md`: SQLite's and ioping's
-  tests move to basalt's package build, as milestone 810 (`ripgrep` is packaged in basalt and
-  installed with `jig`) does for `rg` (calef, #1896).
+- **Milestone 897.** Milestone 897 (SQLite is packaged in basalt):
+  `design/roadmap/0897-sqlite-is-packaged-in-basalt.md`. SQLite's and ioping's tests move to
+  basalt's package build, as milestone 810 (`ripgrep` is packaged in basalt and installed with
+  `jig`) does for `rg` (calef, #1896).
 - **Recorded.** The rest of this stage's limitations are in `c_library/README.md`.
 
 ## Index row
