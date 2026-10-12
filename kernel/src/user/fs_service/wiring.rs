@@ -298,11 +298,19 @@ const SERVER_MAPS_LEN: usize = BLK_PAGES + CLIENT_WINDOWS * FILE_PAGES + FS_STAC
 /// 5.6 KiB, and a kernel frame may not exceed the 4 KiB guard page (`script/stack-frame-check`).
 /// The kernel has no heap, so it lives here: one list per slot in [`FS_SERVERS`], 17 KiB of
 /// `.bss` in all.
-static mut SERVER_MAPS: [[Mapping; SERVER_MAPS_LEN]; FS_SERVERS] = [[Mapping {
-    va: 0,
-    phys: 0,
-    flags: Flags::user_data(),
-}; SERVER_MAPS_LEN]; FS_SERVERS];
+///
+/// A `core::cell::SyncUnsafeCell` since milestone 891 (a mutable static becomes an atomic, a lock
+/// or a recorded cell), not a lock: a server keeps its list for the life of the boot, so a guard
+/// would be held forever. [`SERVER_MAPS_TAKEN`] is the ownership instead. Each slot is handed out
+/// once, to one server thread, and the slots are disjoint elements.
+static SERVER_MAPS: core::cell::SyncUnsafeCell<[[Mapping; SERVER_MAPS_LEN]; FS_SERVERS]> =
+    core::cell::SyncUnsafeCell::new(
+        [[Mapping {
+            va: 0,
+            phys: 0,
+            flags: Flags::user_data(),
+        }; SERVER_MAPS_LEN]; FS_SERVERS],
+    );
 
 /// Which slots' lists have been handed out. A slot's server is spawned once per boot (the main
 /// service once, behind [`WIRED`]; each crash-test server once), so a second claim is a bug.
@@ -318,7 +326,7 @@ fn server_maps(slot: usize) -> &'static mut [Mapping; SERVER_MAPS_LEN] {
         prior & bit == 0,
         "FS server slot {slot}'s mapping list was claimed twice; one server per slot per boot",
     );
-    let lists = &raw mut SERVER_MAPS;
+    let lists = SERVER_MAPS.get();
     // SAFETY: `slot` is below `FS_SERVERS` (every caller passes a literal 0, 1 or 2, and indexing
     // checks it), and the claim bit above guarantees this is the only live reference to this
     // slot's list for the life of the boot; the other slots' lists are disjoint elements.

@@ -1,4 +1,4 @@
-use credential_protocol::fixture::{CHRIS, CORINNE, GRAEME, NONE, WRONG};
+use credential_protocol::fixture::{ALICE, BOB, CAROL, NONE, WRONG};
 use login_service as ls;
 
 use super::*;
@@ -16,9 +16,9 @@ use crate::sched;
 /// twelve it performs in total: one in the headline test, two in the two-identity test, six in
 /// `the_login_service_serves_past_the_old_capability_table_ceiling`, and three in
 /// `login_scopes_each_identity_to_its_own_provisioned_subtree` (DECISIONS §117's per-identity
-/// scoping: `chris`'s mark, `corinne`'s mark, and `chris`'s second, independent session). 128 +
+/// scoping: `alice`'s mark, `bob`'s mark, and `alice`'s second, independent session). 128 +
 /// 12*128 = 1664. `login_denies_an_authenticated_identity_with_no_provisioned_subtree`'s own login
-/// (`graeme`, a real credential and no home subtree) used to add a permanent 64-page charge on top
+/// (`carol`, a real credential and no home subtree) used to add a permanent 64-page charge on top
 /// (`mint`'s descent-refused path leaked `region` before this milestone's fix); it does not anymore,
 /// `mint` reclaims it before returning, so it costs this ledger nothing.
 ///
@@ -89,9 +89,9 @@ const DURABLE_UT_PAGES: u64 = login_protocol::durable::BUDGET_PAGES;
 /// generation names, so the demo's bytes go to `packages/` and a generation naming them to
 /// `activation/`. Written once per boot, before either `login` that opens a schedule starts.
 ///
-/// The bytes are `least_authority_demo`'s, out of the initial ramdisk, because the image is the
-/// only source this harness has; the **name is not the image's**, because §229 (how a bare name at
-/// the prompt reaches an installed program) refuses a package entry under a
+/// The bytes are `least_authority_demo`'s, from the archive, because the image is the only source
+/// this harness has; the **name is not the image's**, because §229 (how a bare name at the prompt
+/// reaches an installed program) refuses a package entry under a
 /// name the image carries, calef's ruling of 2026-09-27, and this image carries
 /// `least_authority_demo`. Installing under the image's own name panicked the whole guest suite at
 /// `with_entry`'s `ImageName` refusal the moment the rebase met that ruling, which is the inbound
@@ -102,8 +102,7 @@ fn install_scheduled_program() {
     if DONE.swap(true, Ordering::Relaxed) {
         return;
     }
-    let bytes =
-        program("least_authority_demo").expect("no least_authority_demo in the initial ramdisk");
+    let bytes = program("least_authority_demo").expect("no least_authority_demo in the archive");
     fs_service::install_for_test("scheduled_demo", "demo", "0.1.0", bytes);
 }
 
@@ -117,11 +116,11 @@ const EEXIST: i32 = 17;
 /// itself as the name (DECISIONS §117). Issued directly from this test rather than through a
 /// spawned `identity_provisioner`, because this suite's fs root is the tree-wide shared fixture
 /// (`fs_service`'s own memoized `ensure`, one FS server for the whole kernel test binary): another
-/// suite may have already created this name (`identity_provisioning_tests.rs` provisions `chris`
+/// suite may have already created this name (`identity_provisioning_tests.rs` provisions `alice`
 /// too, against its own, separate credential store, sharing only the filesystem), and `EEXIST` is
 /// the correct, expected answer then, not a failure.
 ///
-/// This is what makes `wired`'s login instance below able to attenuate `chris` and `corinne` to a
+/// This is what makes `wired`'s login instance below able to attenuate `alice` and `bob` to a
 /// subtree of their own at all: `login.rs` no longer creates one (DECISIONS §117: provision-time
 /// creation, never auto-vivified at login), so something upstream of it must, exactly as a real
 /// deployment's `identity_provisioner` would before anyone logs in.
@@ -184,14 +183,14 @@ fn set_run_unvouched_list(list: Option<&[u8]>) {
 }
 
 /// **Wire the whole system once**: entropy, the credential service (`credential_tests::provisioned`'s
-/// own fixture, which already provisions `chris`, `corinne` and `graeme` among the three family
+/// own fixture, which already provisions `alice`, `bob` and `carol` among the three family
 /// logins design/roadmap/0056-secrets-and-entropy.md names), the file service, and the login service
 /// itself. Reusing that fixture rather than provisioning a second store is deliberate: a login-only
 /// store would duplicate `credentialer_test_client.rs`'s `PEOPLE` fixture for no reason a reader
 /// could point at.
 ///
-/// **`chris` and `corinne` are given a home subtree** ([`ensure_home_subtree`]) before the login
-/// service starts; `graeme` deliberately is not, so a credential that authenticates but has nowhere
+/// **`alice` and `bob` are given a home subtree** ([`ensure_home_subtree`]) before the login
+/// service starts; `carol` deliberately is not, so a credential that authenticates but has nowhere
 /// to attenuate to is a fixture this suite already has on hand rather than one built to order. See
 /// DECISIONS §117 and `login.rs`'s own BUGS on why an authenticated identity with no subtree is
 /// refused rather than served, and `login_denies_an_authenticated_identity_with_no_provisioned_subtree`
@@ -222,8 +221,8 @@ pub(super) fn wired() -> Option<ls::Wiring> {
             let (cred_wiring, _, _) = credential_tests::provisioned()?;
             let (fs_ep, fs_page_frame) =
                 fs_service::root_directory(fs_service::blk_server_image(), redoxfs_server_image())?;
-            ensure_home_subtree(fs_ep, fs_page_frame, b"chris");
-            ensure_home_subtree(fs_ep, fs_page_frame, b"corinne");
+            ensure_home_subtree(fs_ep, fs_page_frame, b"alice");
+            ensure_home_subtree(fs_ep, fs_page_frame, b"bob");
             // A fresh machine's manifest: nothing for `login`'s start-up pass to re-derive, so
             // every test here meets a `login` holding no durable session. The start-up pass has
             // its own test and its own `login`.
@@ -314,7 +313,7 @@ fn login_grants_a_working_capability_set_to_the_identity_it_verified() {
     set_run_unvouched_list(None);
     let cli =
         program("login_test_client").expect("no login_test_client program in the initial ramdisk");
-    let r = ls::client(cli, &w, ls::LOGIN, CHRIS, CHRIS);
+    let r = ls::client(cli, &w, ls::LOGIN, ALICE, ALICE);
     assert_eq!(
         r[0],
         ls::RPT_OK,
@@ -323,7 +322,7 @@ fn login_grants_a_working_capability_set_to_the_identity_it_verified() {
     assert_eq!(
         r[1] & ls::F_RUN_UNVOUCHED_ANNOUNCED,
         0,
-        "with no owner's list, chris was announced the run-unvouched capability",
+        "with no owner's list, alice was announced the run-unvouched capability",
     );
     assert_eq!(
         r[1] & ls::F_DIR_WORKS,
@@ -363,13 +362,13 @@ fn login_denies_a_wrong_secret_and_sends_nothing_further() {
     free_terminal(&w);
     let cli =
         program("login_test_client").expect("no login_test_client program in the initial ramdisk");
-    // `chris`'s own identity with a secret that is nobody's: the same behaviour as the honest
+    // `alice`'s own identity with a secret that is nobody's: the same behaviour as the honest
     // login above, composed from a different credential rather than run as a different arm.
-    let r = ls::client(cli, &w, ls::LOGIN, CHRIS, WRONG);
+    let r = ls::client(cli, &w, ls::LOGIN, ALICE, WRONG);
     assert_eq!(r[0], ls::RPT_DENIED, "a wrong secret was not refused",);
 }
 
-/// **Two principals, two channels, correctly attributed.** `chris` and `corinne` both log in and
+/// **Two principals, two channels, correctly attributed.** `alice` and `bob` both log in and
 /// both get a working capability set (this suite's headline test already proves one identity's
 /// set works; this proves a second, different identity's does too, independently). The login
 /// service's own audit trail then names, in order, which sequence number belongs to which
@@ -391,53 +390,53 @@ fn two_different_identities_get_independently_working_channels_and_correct_attri
         crate::testing::skip!("no virtio-rng device or no RedoxFS disk attached");
     };
     free_terminal(&w);
-    // **And the owner's list tells them apart** (DECISIONS §221 ruling 2): it names corinne and not
-    // chris, so one read of one file must answer both ways. Riding these two logins rather than
+    // **And the owner's list tells them apart** (DECISIONS §221 ruling 2): it names bob and not
+    // alice, so one read of one file must answer both ways. Riding these two logins rather than
     // two of its own, for the headline test's reason.
-    set_run_unvouched_list(Some(b"corinne\n"));
+    set_run_unvouched_list(Some(b"bob\n"));
     let cli =
         program("login_test_client").expect("no login_test_client program in the initial ramdisk");
 
-    let r_chris = ls::client(cli, &w, ls::LOGIN, CHRIS, CHRIS);
-    assert_eq!(r_chris[0], ls::RPT_OK, "chris was not authenticated");
-    let a_chris = sched::ipc_receive(w.audit);
+    let r_alice = ls::client(cli, &w, ls::LOGIN, ALICE, ALICE);
+    assert_eq!(r_alice[0], ls::RPT_OK, "alice was not authenticated");
+    let a_alice = sched::ipc_receive(w.audit);
     assert_eq!(
-        a_chris[0],
+        a_alice[0],
         login_protocol::ATTRIBUTED,
-        "no attribution record followed chris's login",
+        "no attribution record followed alice's login",
     );
     assert_eq!(
-        a_chris[2],
-        login_protocol::identity_hint(b"chris"),
+        a_alice[2],
+        login_protocol::identity_hint(b"alice"),
         "the attribution record named the wrong identity for the first channel",
     );
-    // Free the terminal before corinne's login (milestone 49's terminal update): unrelated to the
-    // channel-attribution property this test exists to prove, but every successful login now also
-    // claims the single, shared terminal.
+    // Free the terminal before bob's login (milestone 49 (users, login, and attribution)'s
+    // terminal update): unrelated to the channel-attribution property this test exists to prove,
+    // but every successful login now also claims the single, shared terminal.
     free_terminal(&w);
 
-    let r_corinne = ls::client(cli, &w, ls::LOGIN, CORINNE, CORINNE);
-    assert_eq!(r_corinne[0], ls::RPT_OK, "corinne was not authenticated",);
-    let a_corinne = sched::ipc_receive(w.audit);
+    let r_bob = ls::client(cli, &w, ls::LOGIN, BOB, BOB);
+    assert_eq!(r_bob[0], ls::RPT_OK, "bob was not authenticated",);
+    let a_bob = sched::ipc_receive(w.audit);
     assert_eq!(
-        a_corinne[0],
+        a_bob[0],
         login_protocol::ATTRIBUTED,
-        "no attribution record followed corinne's login",
+        "no attribution record followed bob's login",
     );
     assert_eq!(
-        a_corinne[2],
-        login_protocol::identity_hint(b"corinne"),
+        a_bob[2],
+        login_protocol::identity_hint(b"bob"),
         "the attribution record named the wrong identity for the second channel",
     );
 
     assert!(
-        a_corinne[1] > a_chris[1],
+        a_bob[1] > a_alice[1],
         "the second channel's sequence number ({}) did not follow the first's ({})",
-        a_corinne[1],
-        a_chris[1],
+        a_bob[1],
+        a_alice[1],
     );
 
-    for (label, r) in [("chris", r_chris), ("corinne", r_corinne)] {
+    for (label, r) in [("alice", r_alice), ("bob", r_bob)] {
         assert_eq!(
             r[1] & ls::F_DIR_WORKS,
             ls::F_DIR_WORKS,
@@ -450,15 +449,15 @@ fn two_different_identities_get_independently_working_channels_and_correct_attri
         );
     }
     assert_eq!(
-        r_chris[1] & ls::F_RUN_UNVOUCHED_ANNOUNCED,
+        r_alice[1] & ls::F_RUN_UNVOUCHED_ANNOUNCED,
         0,
-        "chris is not on the owner's list and was announced the run-unvouched capability",
+        "alice is not on the owner's list and was announced the run-unvouched capability",
     );
     let listed = ls::F_RUN_UNVOUCHED_ANNOUNCED | ls::F_RUN_UNVOUCHED_NOT_GRANTABLE;
     assert_eq!(
-        r_corinne[1] & listed,
+        r_bob[1] & listed,
         listed,
-        "corinne is on the owner's list and was not given a run-unvouched capability she cannot \
+        "bob is on the owner's list and was not given a run-unvouched capability he cannot \
          pass on",
     );
     set_run_unvouched_list(None);
@@ -479,8 +478,8 @@ fn two_different_identities_get_independently_working_channels_and_correct_attri
 /// is service *order*, the module docs' own distinction, not shared state.
 ///
 /// **Rewritten for milestone 49's terminal update.** Before it, both concurrent logins succeeded
-/// and this test's own property was that the two attribution records named exactly one chris and
-/// one corinne, never crossed. Now only one of them *can* succeed: the single, shared terminal has
+/// and this test's own property was that the two attribution records named exactly one alice and
+/// one bob, never crossed. Now only one of them *can* succeed: the single, shared terminal has
 /// exactly one holder at a time, and the loser is refused `login_protocol::NO_TERMINAL` before its
 /// identity or secret is even relayed to the credential service (`login.rs`'s own `serve_login`
 /// checks this first, deliberately, so the refusal cannot become a timing or outcome oracle about a
@@ -504,8 +503,8 @@ fn two_clients_connecting_together_get_independent_channels_and_neither_observes
     // Both spawned before either is waited on: this is the race. Which role's CONNECT actually
     // reaches `login`'s front door first is the kernel scheduler's call, not this test's, and the
     // property under test holds either way.
-    let chris_report = ls::spawn_client(cli, &w, ls::LOGIN, CHRIS, CHRIS);
-    let corinne_report = ls::spawn_client(cli, &w, ls::LOGIN, CORINNE, CORINNE);
+    let alice_report = ls::spawn_client(cli, &w, ls::LOGIN, ALICE, ALICE);
+    let bob_report = ls::spawn_client(cli, &w, ls::LOGIN, BOB, BOB);
 
     // Whichever role wins the race, `login` cannot accept the *other*'s `CONNECT` until it finishes
     // fully serving the first: its own `send(AUDIT, ...)` is a blocking rendezvous (every other
@@ -521,28 +520,28 @@ fn two_clients_connecting_together_get_independent_channels_and_neither_observes
         "no attribution record followed the winning login",
     );
 
-    let r_chris = ls::wait_client(chris_report);
-    let r_corinne = ls::wait_client(corinne_report);
+    let r_alice = ls::wait_client(alice_report);
+    let r_bob = ls::wait_client(bob_report);
 
-    let (winner_label, winner, loser_label, loser) = if r_chris[0] == ls::RPT_OK {
-        ("chris", r_chris, "corinne", r_corinne)
+    let (winner_label, winner, loser_label, loser) = if r_alice[0] == ls::RPT_OK {
+        ("alice", r_alice, "bob", r_bob)
     } else {
-        ("corinne", r_corinne, "chris", r_chris)
+        ("bob", r_bob, "alice", r_alice)
     };
     assert_eq!(
         winner[0],
         ls::RPT_OK,
-        "neither chris ({:#x}) nor corinne ({:#x}) was authenticated",
-        r_chris[0],
-        r_corinne[0],
+        "neither alice ({:#x}) nor bob ({:#x}) was authenticated",
+        r_alice[0],
+        r_bob[0],
     );
     assert_eq!(
         loser[0],
         ls::RPT_NO_TERMINAL,
         "{loser_label} was refused for a reason other than the terminal already being held \
-         (chris: {:#x}, corinne: {:#x})",
-        r_chris[0],
-        r_corinne[0],
+         (alice: {:#x}, bob: {:#x})",
+        r_alice[0],
+        r_bob[0],
     );
     assert_eq!(
         winner[1] & ls::F_DIR_WORKS,
@@ -580,7 +579,7 @@ fn two_clients_connecting_together_get_independent_channels_and_neither_observes
 /// instance (`wired()`): nine in total, one past that old eight-login ceiling. It asserts every one
 /// of its own six actually worked (not merely that the verdict was `OK`): a real `READDIR` through
 /// the minted directory and a real page retyped from the minted budget, the same proof the headline
-/// test above asks for. Alternates `chris` and `corinne` rather than repeating one identity, so a
+/// test above asks for. Alternates `alice` and `bob` rather than repeating one identity, so a
 /// regression that only leaked on one particular identity's path would not hide from this test by
 /// accident.
 ///
@@ -605,7 +604,7 @@ fn the_login_service_serves_past_the_old_capability_table_ceiling() {
     for i in 0..ATTEMPTS {
         // Alternating identities, which is what this loop always meant and can now say: one
         // behaviour, two credentials, rather than two roles that happened to run the same code.
-        let who = if i % 2 == 0 { CHRIS } else { CORINNE };
+        let who = if i % 2 == 0 { ALICE } else { BOB };
         let r = ls::client(cli, &w, ls::LOGIN, who, who);
         assert_eq!(
             r[0],
@@ -642,17 +641,17 @@ fn the_login_service_serves_past_the_old_capability_table_ceiling() {
 /// **DECISIONS §117: each identity is attenuated to its own provisioned subtree, not the old
 /// shared fixture and not another identity's.**
 ///
-/// `chris` and `corinne` each log in and, through the directory capability `login` delegated,
+/// `alice` and `bob` each log in and, through the directory capability `login` delegated,
 /// `CREATE` a marker file naming themselves ([`ls::WRITE_MARKER`], run once per identity); both
 /// also confirm
 /// [`filesystem_protocol::fixture::tree::INNER`] is absent, which is this suite's own proof (not merely a
 /// stated intent) that neither landed in the old shared subtree every identity used to be
-/// attenuated to before this milestone. `chris` then logs in a **second, independent** time
-/// ([`ls::READ_MARKER`]) and reads the marker back: it must read `chris`'s own,
+/// attenuated to before this milestone. `alice` then logs in a **second, independent** time
+/// ([`ls::READ_MARKER`]) and reads the marker back: it must read `alice`'s own,
 /// which is the property under test stated positively: the *same* identity's two sessions land in
-/// the *same* subtree, and it is not `corinne`'s (had the old bug still been present, `corinne`'s
-/// later write would have overwritten `chris`'s marker in the one subtree they would have shared,
-/// and this final read would come back `corinne`'s instead).
+/// the *same* subtree, and it is not `bob`'s (had the old bug still been present, `bob`'s
+/// later write would have overwritten `alice`'s marker in the one subtree they would have shared,
+/// and this final read would come back `bob`'s instead).
 ///
 /// `wired`'s own `ensure_home_subtree` issues the identical `filesystem_protocol::fs::MKDIR` request
 /// `identity_provisioner.rs`'s own `mkdir_home` does (same opcode, same
@@ -672,74 +671,74 @@ fn login_scopes_each_identity_to_its_own_provisioned_subtree() {
     let cli =
         program("login_test_client").expect("no login_test_client program in the initial ramdisk");
 
-    let r_chris = ls::client(cli, &w, ls::WRITE_MARKER, CHRIS, CHRIS);
-    assert_eq!(r_chris[0], ls::RPT_OK, "chris was not authenticated");
+    let r_alice = ls::client(cli, &w, ls::WRITE_MARKER, ALICE, ALICE);
+    assert_eq!(r_alice[0], ls::RPT_OK, "alice was not authenticated");
     assert_eq!(
-        r_chris[1] & ls::F_MARKER_WRITTEN,
+        r_alice[1] & ls::F_MARKER_WRITTEN,
         ls::F_MARKER_WRITTEN,
-        "chris's marker was not created and written",
+        "alice's marker was not created and written",
     );
     assert_eq!(
-        r_chris[1] & ls::F_NOT_SHARED_SUBTREE,
+        r_alice[1] & ls::F_NOT_SHARED_SUBTREE,
         ls::F_NOT_SHARED_SUBTREE,
-        "chris's granted directory carries the old shared fixture's own file \
-         (filesystem_protocol::fixture::tree::INNER), so it is not a subtree of chris's own",
+        "alice's granted directory carries the old shared fixture's own file \
+         (filesystem_protocol::fixture::tree::INNER), so it is not a subtree of alice's own",
     );
-    let a_chris = sched::ipc_receive(w.audit);
+    let a_alice = sched::ipc_receive(w.audit);
     assert_eq!(
-        a_chris[0],
+        a_alice[0],
         login_protocol::ATTRIBUTED,
-        "no attribution record followed chris's marking login",
+        "no attribution record followed alice's marking login",
     );
-    // Free the terminal before corinne's own login (milestone 49's terminal update): unrelated to
+    // Free the terminal before bob's own login (milestone 49's terminal update): unrelated to
     // the per-identity subtree property this test exists to prove, but every successful login now
     // also claims the single, shared terminal.
     free_terminal(&w);
 
-    let r_corinne = ls::client(cli, &w, ls::WRITE_MARKER, CORINNE, CORINNE);
-    assert_eq!(r_corinne[0], ls::RPT_OK, "corinne was not authenticated");
+    let r_bob = ls::client(cli, &w, ls::WRITE_MARKER, BOB, BOB);
+    assert_eq!(r_bob[0], ls::RPT_OK, "bob was not authenticated");
     assert_eq!(
-        r_corinne[1] & ls::F_MARKER_WRITTEN,
+        r_bob[1] & ls::F_MARKER_WRITTEN,
         ls::F_MARKER_WRITTEN,
-        "corinne's marker was not created and written",
+        "bob's marker was not created and written",
     );
     assert_eq!(
-        r_corinne[1] & ls::F_NOT_SHARED_SUBTREE,
+        r_bob[1] & ls::F_NOT_SHARED_SUBTREE,
         ls::F_NOT_SHARED_SUBTREE,
-        "corinne's granted directory carries the old shared fixture's own file \
-         (filesystem_protocol::fixture::tree::INNER), so it is not a subtree of corinne's own",
+        "bob's granted directory carries the old shared fixture's own file \
+         (filesystem_protocol::fixture::tree::INNER), so it is not a subtree of bob's own",
     );
-    let a_corinne = sched::ipc_receive(w.audit);
+    let a_bob = sched::ipc_receive(w.audit);
     assert_eq!(
-        a_corinne[0],
+        a_bob[0],
         login_protocol::ATTRIBUTED,
-        "no attribution record followed corinne's marking login",
+        "no attribution record followed bob's marking login",
     );
     free_terminal(&w);
 
-    let r_check = ls::client(cli, &w, ls::READ_MARKER, CHRIS, CHRIS);
+    let r_check = ls::client(cli, &w, ls::READ_MARKER, ALICE, ALICE);
     assert_eq!(
         r_check[0],
         ls::RPT_OK,
-        "chris's second, independent login was not authenticated",
+        "alice's second, independent login was not authenticated",
     );
     assert_eq!(
         r_check[1] & ls::F_DIR_WORKS,
         ls::F_DIR_WORKS,
-        "chris's second login's directory capability did not work",
+        "alice's second login's directory capability did not work",
     );
     assert_eq!(
         r_check[2],
-        login_protocol::identity_hint(b"chris"),
-        "chris's second, independent login did not read back chris's own marker: either it did \
-         not land in chris's subtree, or corinne's write clobbered it, which is exactly the \
+        login_protocol::identity_hint(b"alice"),
+        "alice's second, independent login did not read back alice's own marker: either it did \
+         not land in alice's subtree, or bob's write clobbered it, which is exactly the \
          everyone-shares-one-subtree bug this milestone fixes",
     );
     let a_check = sched::ipc_receive(w.audit);
     assert_eq!(
         a_check[0],
         login_protocol::ATTRIBUTED,
-        "no attribution record followed chris's second login",
+        "no attribution record followed alice's second login",
     );
     free_terminal(&w);
 }
@@ -747,9 +746,9 @@ fn login_scopes_each_identity_to_its_own_provisioned_subtree() {
 /// **The considered fold this milestone adds: a real, authenticated identity with no provisioned
 /// subtree is refused, indistinguishably from a wrong password.**
 ///
-/// `graeme` has a real credential in `wired`'s store (`credential_tests::provisioned`'s own family
-/// fixture) and, deliberately, no home subtree (`wired` only calls `ensure_home_subtree` for `chris`
-/// and `corinne`): the case `identity_provisioner` never having run for a real identity, or its
+/// `carol` has a real credential in `wired`'s store (`credential_tests::provisioned`'s own family
+/// fixture) and, deliberately, no home subtree (`wired` only calls `ensure_home_subtree` for `alice`
+/// and `bob`): the case `identity_provisioner` never having run for a real identity, or its
 /// `MKDIR` never reaching this file service's disk. `mint`'s caretaker construction reaches the
 /// same `OPENDIR`-against-a-missing-name refusal, and `login`'s existing fold answers it with
 /// [`login_protocol::DENIED`], the same code [`login_denies_a_wrong_secret_and_sends_nothing_further`]
@@ -770,13 +769,13 @@ fn login_denies_an_authenticated_identity_with_no_provisioned_subtree() {
     free_terminal(&w);
     let cli =
         program("login_test_client").expect("no login_test_client program in the initial ramdisk");
-    // `graeme`: a real credential this suite provisions and a home subtree it deliberately never
+    // `carol`: a real credential this suite provisions and a home subtree it deliberately never
     // creates. An honest login, refused for the subtree rather than for the secret.
-    let r = ls::client(cli, &w, ls::LOGIN, GRAEME, GRAEME);
+    let r = ls::client(cli, &w, ls::LOGIN, CAROL, CAROL);
     assert_eq!(
         r[0],
         ls::RPT_DENIED,
-        "graeme's real credential, with no provisioned subtree, was not refused",
+        "carol's real credential, with no provisioned subtree, was not refused",
     );
 }
 
@@ -790,16 +789,16 @@ fn login_denies_an_authenticated_identity_with_no_provisioned_subtree() {
 /// same anti-oracle reasoning a wrong password or a missing subtree gets).
 ///
 /// **This suite cannot make the real, already-booted archive disagree with itself** to prove a live
-/// refusal end to end: the initial ramdisk is one physical region the whole kernel test binary
-/// shares, wired once at boot, and `cargo xtask` always packs a measurement table that agrees with
-/// the bytes it just packed alongside it. A second login instance spawned against a deliberately
-/// tampered archive is not something this suite (or `ls::start`, which always takes the one real
-/// `memory::initial_ramdisk_region()`) can construct. So this proves the two things a live
-/// end-to-end refusal would have proven, at the exact level `login`'s own check operates on: the
-/// real `fs_subtree_caretaker` bytes verify against the real table (which is *also* the reason
-/// `wired()`'s own instance, and every other test in this file, can log anyone in at all, now that
-/// the check exists), and the identical [`measured_boot::verify_in_manifest`] call `_start` makes
-/// refuses a tampered copy of those same bytes and a name the table does not mention, mirroring
+/// refusal end to end: the archive is one physical region the whole kernel test binary shares, wired
+/// once at boot, and `cargo xtask` always packs a measurement table that agrees with the bytes it
+/// just packed alongside it. A second login instance spawned against a deliberately tampered archive
+/// is not something this suite (or `ls::start`, which always takes the one real
+/// `memory::initial_ramdisk_region()`) can construct. So this proves the two things a live end-to-end refusal
+/// would have proven, at the exact level `login`'s own check operates on: the real
+/// `fs_subtree_caretaker` bytes verify against the real table (which is *also* the reason `wired()`'s
+/// own instance, and every other test in this file, can log anyone in at all, now that the check
+/// exists), and the identical [`measured_boot::verify_in_manifest`] call `_start` makes refuses a
+/// tampered copy of those same bytes and a name the table does not mention, mirroring
 /// `measured_boot_tests::the_measurement_table_refuses_a_tampered_program_and_an_unnamed_one`, which
 /// covers `console` and the boot-time components but not this one (`fs_subtree_caretaker` is not in
 /// that test's own `BOOT_COMPONENTS`, since it is not a boot-time component; it is what a directory
@@ -876,7 +875,7 @@ fn caretaker_teardown_reclaims_a_full_session_worth_of_memory() {
 
     const ATTEMPTS: usize = 10;
     for i in 0..ATTEMPTS {
-        let r = ls::client(cli, &w, ls::LOGOUT, CHRIS, CHRIS);
+        let r = ls::client(cli, &w, ls::LOGOUT, ALICE, ALICE);
         assert_eq!(
             r[0],
             ls::RPT_OK,
@@ -940,26 +939,26 @@ fn caretaker_teardown_reclaims_a_full_session_worth_of_memory() {
 /// recommendation (`design/roadmap/0049-users-and-attribution.md`'s BUGS) built and proven here in one
 /// sequence against the one memoized service instance every other test in this file shares:
 ///
-/// 1. `chris` logs in ([`ls::HOLD_TERMINAL`]) and receives a fifth delegated capability, the
+/// 1. `alice` logs in ([`ls::HOLD_TERMINAL`]) and receives a fifth delegated capability, the
 ///    terminal, which this test confirms is real (not merely present) by receiving the word the
 ///    role sends through it on `w.term_ep` -- the stand-in terminal this suite's own harness wires
-///    in place of a real one (`ls::Wiring::term_ep`'s own doc). `chris` then tears the *session*
+///    in place of a real one (`ls::Wiring::term_ep`'s own doc). `alice` then tears the *session*
 ///    down (the same `MemoryRegion::DESTROY` pair [`ls::LOGOUT`] already proves) **without**
 ///    freeing the terminal: no `login_protocol::logout_word` is ever sent.
-/// 2. `corinne` then presents a **real, correct** credential (a plain [`ls::LOGIN`], which is all
+/// 2. `bob` then presents a **real, correct** credential (a plain [`ls::LOGIN`], which is all
 ///    that case ever was) while the
-///    terminal is still on loan. She is refused [`login_protocol::NO_TERMINAL`], not `DENIED`: this is
-///    provably not about her identity or secret, both of which are genuine.
+///    terminal is still on loan. He is refused [`login_protocol::NO_TERMINAL`], not `DENIED`: this is
+///    provably not about his identity or secret, both of which are genuine.
 /// 3. [`ls::FREE_TERMINAL`] frees the terminal, a bare word on the front door with no identity
 ///    involved at all, and is answered [`login_protocol::LOGGED_OUT`].
-/// 4. `chris` logs in again ([`ls::HOLD_TERMINAL`], a second, independent time) and receives the
+/// 4. `alice` logs in again ([`ls::HOLD_TERMINAL`], a second, independent time) and receives the
 ///    terminal a second time, proven the same way as step 1 -- the property stated positively: a
 ///    session freeing the terminal is what makes it available to the *next* login, not merely what
 ///    stops it being refused.
 ///
 /// **Costs nothing permanent against [`CONSTRUCTION_PAGES`].** Every login this test performs either
 /// tears its own session down before returning (`HOLD_TERMINAL`, exactly like `LOGOUT`) or is
-/// refused before `mint` ever runs (`corinne`'s `NO_TERMINAL`, checked in `login.rs`'s
+/// refused before `mint` ever runs (`bob`'s `NO_TERMINAL`, checked in `login.rs`'s
 /// `serve_login` before authentication is even attempted), so this test's own two successful logins
 /// are the same "logs back out" shape `caretaker_teardown_reclaims_a_full_session_worth_of_memory`
 /// already established, not a third kind of permanent charge.
@@ -975,16 +974,16 @@ fn login_hands_out_the_terminal_once_and_denies_a_concurrent_second_login_until_
     let cli =
         program("login_test_client").expect("no login_test_client program in the initial ramdisk");
 
-    // Step 1: chris takes the terminal. `spawn_client`/`wait_client`, not `client`, because the
+    // Step 1: alice takes the terminal. `spawn_client`/`wait_client`, not `client`, because the
     // role blocks inside `send(term_ep, ...)` until this test's own `ipc_receive(w.term_ep)` catches
     // it (a genuine rendezvous, not merely `RECEIVE_CAP` succeeding): waiting on the report first would
     // deadlock against the role's own forward progress.
-    let report1 = ls::spawn_client(cli, &w, ls::HOLD_TERMINAL, CHRIS, CHRIS);
+    let report1 = ls::spawn_client(cli, &w, ls::HOLD_TERMINAL, ALICE, ALICE);
     let a1 = sched::ipc_receive(w.audit);
     assert_eq!(
         a1[0],
         login_protocol::ATTRIBUTED,
-        "no attribution record followed chris's first terminal login",
+        "no attribution record followed alice's first terminal login",
     );
     let term_msg = sched::ipc_receive(w.term_ep);
     assert_eq!(
@@ -996,7 +995,7 @@ fn login_hands_out_the_terminal_once_and_denies_a_concurrent_second_login_until_
     assert_eq!(
         r1[0],
         ls::RPT_OK,
-        "chris's first terminal login was not authenticated"
+        "alice's first terminal login was not authenticated"
     );
     for (bit, what) in [
         (ls::F_DIR_WORKS, "the directory capability"),
@@ -1016,16 +1015,16 @@ fn login_hands_out_the_terminal_once_and_denies_a_concurrent_second_login_until_
         assert_eq!(
             r1[1] & bit,
             bit,
-            "chris's first terminal login: {what} did not work"
+            "alice's first terminal login: {what} did not work"
         );
     }
 
-    // Step 2: corinne, a real credential, refused purely because the terminal is spoken for.
-    let r2 = ls::client(cli, &w, ls::LOGIN, CORINNE, CORINNE);
+    // Step 2: bob, a real credential, refused purely because the terminal is spoken for.
+    let r2 = ls::client(cli, &w, ls::LOGIN, BOB, BOB);
     assert_eq!(
         r2[0],
         ls::RPT_NO_TERMINAL,
-        "corinne's real credential was not refused NO_TERMINAL while chris still held the terminal",
+        "bob's real credential was not refused NO_TERMINAL while alice still held the terminal",
     );
 
     // Step 3: free it.
@@ -1036,13 +1035,13 @@ fn login_hands_out_the_terminal_once_and_denies_a_concurrent_second_login_until_
         "login_protocol::logout_word on the front door was not answered LOGGED_OUT",
     );
 
-    // Step 4: chris again, a second, independent time, and the terminal is available once more.
-    let report4 = ls::spawn_client(cli, &w, ls::HOLD_TERMINAL, CHRIS, CHRIS);
+    // Step 4: alice again, a second, independent time, and the terminal is available once more.
+    let report4 = ls::spawn_client(cli, &w, ls::HOLD_TERMINAL, ALICE, ALICE);
     let a4 = sched::ipc_receive(w.audit);
     assert_eq!(
         a4[0],
         login_protocol::ATTRIBUTED,
-        "no attribution record followed chris's second terminal login",
+        "no attribution record followed alice's second terminal login",
     );
     let term_msg2 = sched::ipc_receive(w.term_ep);
     assert_eq!(
@@ -1054,7 +1053,7 @@ fn login_hands_out_the_terminal_once_and_denies_a_concurrent_second_login_until_
     assert_eq!(
         r4[0],
         ls::RPT_OK,
-        "chris's second terminal login (after logout freed it) was not authenticated",
+        "alice's second terminal login (after logout freed it) was not authenticated",
     );
     assert_eq!(
         r4[1] & ls::F_TERM_WORKS,
@@ -1086,12 +1085,12 @@ fn login_hands_a_listed_session_the_run_unvouched_capability_and_it_cannot_be_pa
         crate::testing::skip!("no virtio-rng device or no RedoxFS disk attached");
     };
     free_terminal(&w);
-    set_run_unvouched_list(Some(b"# the owner's list\nchris\n"));
+    set_run_unvouched_list(Some(b"# the owner's list\nalice\n"));
     let cli =
         program("login_test_client").expect("no login_test_client program in the initial ramdisk");
     // `spawn_client`/`wait_client` for the terminal test's reason: the role blocks in its `send`
     // on the sixth capability until this test takes the word.
-    let report = ls::spawn_client(cli, &w, ls::PRESENT_RUN_UNVOUCHED, CHRIS, CHRIS);
+    let report = ls::spawn_client(cli, &w, ls::PRESENT_RUN_UNVOUCHED, ALICE, ALICE);
     let a = sched::ipc_receive(w.audit);
     assert_eq!(
         a[0],
@@ -1108,7 +1107,7 @@ fn login_hands_a_listed_session_the_run_unvouched_capability_and_it_cannot_be_pa
     assert_eq!(
         r[0],
         ls::RPT_OK,
-        "no OK report: chris was not authenticated, or the session's run-unvouched capability \
+        "no OK report: alice was not authenticated, or the session's run-unvouched capability \
          carried GRANT and its delegation arrived in place of the report",
     );
     for (bit, what) in [
@@ -1159,8 +1158,8 @@ fn a_login_session_with_pending_work_refuses_logout_until_the_work_is_gone() {
     free_terminal(&w);
     let cli =
         program("login_test_client").expect("no login_test_client program in the initial ramdisk");
-    let r = ls::client(cli, &w, ls::PENDING_WORK, CHRIS, CHRIS);
-    assert_eq!(r[0], ls::RPT_OK, "chris was not authenticated");
+    let r = ls::client(cli, &w, ls::PENDING_WORK, ALICE, ALICE);
+    assert_eq!(r[0], ls::RPT_OK, "alice was not authenticated");
     for (bit, what) in [
         (
             ls::F_BUDGET_WORKS,
@@ -1208,7 +1207,7 @@ fn a_login_session_with_pending_work_refuses_logout_until_the_work_is_gone() {
 /// it** (milestone 152, durable delegation; S1 and L2 of 2026-09-26; §222 (who holds a user's
 /// schedule)).
 ///
-/// Three logins as `chris`, each by a separate client process, so nothing but `login` and the
+/// Three logins as `alice`, each by a separate client process, so nothing but `login` and the
 /// durable session carries state from one to the next:
 ///
 /// 1. [`ls::OPEN_SCHEDULE`] asks for its schedule. `login` builds `user_timetable_keeper` from a region
@@ -1236,7 +1235,7 @@ fn a_users_schedule_outlives_their_login_and_ends_when_they_empty_it() {
     let cli =
         program("login_test_client").expect("no login_test_client program in the initial ramdisk");
     let login = |behaviour: u64| {
-        let r = ls::client(cli, &w, behaviour, CHRIS, CHRIS);
+        let r = ls::client(cli, &w, behaviour, ALICE, ALICE);
         let a = sched::ipc_receive(w.audit);
         assert_eq!(
             a[0],
@@ -1244,7 +1243,7 @@ fn a_users_schedule_outlives_their_login_and_ends_when_they_empty_it() {
             "no attribution record followed a login"
         );
         free_terminal(&w);
-        assert_eq!(r[0], ls::RPT_OK, "chris was not authenticated");
+        assert_eq!(r[0], ls::RPT_OK, "alice was not authenticated");
         r[1]
     };
 
@@ -1320,13 +1319,13 @@ fn a_users_schedule_outlives_their_login_and_ends_when_they_empty_it() {
 /// **Suspending a user ends their schedule now, refuses their login, and resuming lets them back**
 /// (milestone 152 (durable delegation), calef's §108 (disabling credentials kills the durable session) ruling of 2026-09-26).
 ///
-/// `chris` opens a schedule and detaches, so a `user_timetable_keeper` and a timetable are running on his
-/// budget. The owner's console then does what `user suspend chris` does: it lists `chris` in
+/// `alice` opens a schedule and detaches, so a `user_timetable_keeper` and a timetable are running on her
+/// budget. The owner's console then does what `user suspend alice` does: it lists `alice` in
 /// `login_protocol::SUSPENDED_LIST` and sends `SUSPEND` on the front door. `login` answers that it
-/// ended one durable session, and a correct password for `chris` is refused `SUSPENDED`, not
-/// `DENIED`, while his stored schedule and his manifest line stay. `user resume chris` empties the
-/// list, and the stored schedule comes back at his next login, as the ruling says; emptying it then
-/// takes him off the manifest. A plain `DENIED` for the wrong secret while suspended shows the
+/// ended one durable session, and a correct password for `alice` is refused `SUSPENDED`, not
+/// `DENIED`, while her stored schedule and her manifest line stay. `user resume alice` empties the
+/// list, and the stored schedule comes back at her next login, as the ruling says; emptying it then
+/// takes her off the manifest. A plain `DENIED` for the wrong secret while suspended shows the
 /// refusal is still after authentication.
 #[test_case]
 fn suspending_a_user_ends_their_schedule_and_refuses_them_until_resumed() {
@@ -1341,7 +1340,7 @@ fn suspending_a_user_ends_their_schedule_and_refuses_them_until_resumed() {
     let cli =
         program("login_test_client").expect("no login_test_client program in the initial ramdisk");
     let session = |behaviour: u64| {
-        let r = ls::client(cli, &w, behaviour, CHRIS, CHRIS);
+        let r = ls::client(cli, &w, behaviour, ALICE, ALICE);
         if r[0] == ls::RPT_OK {
             let a = sched::ipc_receive(w.audit);
             assert_eq!(
@@ -1355,15 +1354,15 @@ fn suspending_a_user_ends_their_schedule_and_refuses_them_until_resumed() {
     };
 
     let opened = session(ls::OPEN_SCHEDULE);
-    assert_eq!(opened[0], ls::RPT_OK, "chris was not authenticated");
+    assert_eq!(opened[0], ls::RPT_OK, "alice was not authenticated");
     assert_eq!(
         opened[1] & ls::F_REPLACED,
         ls::F_REPLACED,
         "the schedule did not open, so there is nothing for a suspension to end",
     );
 
-    // `user suspend chris`, as the owner's console does it.
-    fs_service::set_root_list(login_protocol::SUSPENDED_LIST, Some(b"chris\n"));
+    // `user suspend alice`, as the owner's console does it.
+    fs_service::set_root_list(login_protocol::SUSPENDED_LIST, Some(b"alice\n"));
     sched::ipc_send(w.request, [login_protocol::suspend_word(), 0, 0]);
     let applied = sched::ipc_receive(w.result);
     assert_eq!(
@@ -1371,7 +1370,7 @@ fn suspending_a_user_ends_their_schedule_and_refuses_them_until_resumed() {
         login_protocol::APPLIED,
         "SUSPEND was not answered APPLIED"
     );
-    assert_eq!(applied[1], 1, "SUSPEND did not end chris's durable session");
+    assert_eq!(applied[1], 1, "SUSPEND did not end alice's durable session");
 
     let refused = session(ls::LOGIN);
     assert_eq!(
@@ -1379,7 +1378,7 @@ fn suspending_a_user_ends_their_schedule_and_refuses_them_until_resumed() {
         ls::RPT_SUSPENDED,
         "a suspended identity with the right secret was not refused SUSPENDED",
     );
-    let wrong = ls::client(cli, &w, ls::LOGIN, CHRIS, WRONG);
+    let wrong = ls::client(cli, &w, ls::LOGIN, ALICE, WRONG);
     assert_eq!(
         wrong[0],
         ls::RPT_DENIED,
@@ -1387,13 +1386,13 @@ fn suspending_a_user_ends_their_schedule_and_refuses_them_until_resumed() {
     );
 
     // The suspension kept the stored schedule and the manifest line: `user resume` is meant to
-    // bring the schedule back, and the boot-time re-deriver skips chris only while he is listed.
+    // bring the schedule back, and the boot-time re-deriver skips alice only while she is listed.
     assert!(
-        manifest_lists(b"chris"),
-        "suspending chris took him off the durable-session manifest; resuming could not restore him",
+        manifest_lists(b"alice"),
+        "suspending alice took her off the durable-session manifest; resuming could not restore her",
     );
 
-    // `user resume chris`. The stored schedule comes back at this login: `login` opens a fresh
+    // `user resume alice`. The stored schedule comes back at this login: `login` opens a fresh
     // session and stages the stored document as sequence 1, so the page carries a reply before the
     // client has asked anything. The client then empties it, writing the empty store first.
     fs_service::set_root_list(login_protocol::SUSPENDED_LIST, None);
@@ -1424,12 +1423,12 @@ fn suspending_a_user_ends_their_schedule_and_refuses_them_until_resumed() {
         assert_eq!(back[1] & bit, bit, "{what}");
     }
 
-    // Emptied by its user, the schedule does not come back, and chris leaves the manifest.
+    // Emptied by its user, the schedule does not come back, and alice leaves the manifest.
     let last = session(ls::LOGOUT);
     assert_eq!(
         last[0],
         ls::RPT_OK,
-        "chris was not let in after emptying his schedule"
+        "alice was not let in after emptying her schedule"
     );
     assert_eq!(
         last[1] & ls::F_SCHEDULE_ANNOUNCED,
@@ -1442,8 +1441,8 @@ fn suspending_a_user_ends_their_schedule_and_refuses_them_until_resumed() {
         "the last session did not tear down",
     );
     assert!(
-        !manifest_lists(b"chris"),
-        "chris is still on the durable-session manifest after emptying his schedule",
+        !manifest_lists(b"alice"),
+        "alice is still on the durable-session manifest after emptying her schedule",
     );
 }
 
@@ -1464,19 +1463,19 @@ const START_UP_CONSTRUCTION_PAGES: u64 = 128 + DURABLE_UT_PAGES + 32 + 32;
 /// §123 (the boot-time re-derivation privilege) as amended). What `session_reviver_tests` proved
 /// against the retired `session_reviver`, now against `login` itself.
 ///
-/// The store is written as a reboot would find it: `chris` and `corinne` each have
+/// The store is written as a reboot would find it: `alice` and `bob` each have
 /// `schedule_store::fixture::DEMO_SCHEDULE_DOC` stored in their own subtree (§122 (the on-disk
-/// schedule store)), the manifest (§125 (which identities have pending work)) names both, `chris`
-/// first, and the owner's suspended list names `chris`. Then a second `login` starts against that
+/// schedule store)), the manifest (§125 (which identities have pending work)) names both, `alice`
+/// first, and the owner's suspended list names `alice`. Then a second `login` starts against that
 /// store, and three exchanges on its front door, none of them a successful login, show what its
 /// start-up pass did:
 ///
-/// 1. `SUSPEND` with `chris` listed ends nothing. He has a stored schedule and comes first in the
+/// 1. `SUSPEND` with `alice` listed ends nothing. He has a stored schedule and comes first in the
 ///    manifest, so only the skip explains it; with one session kept, a pass that ignored the list
-///    would have spent it on him.
-/// 2. A wrong secret for `corinne` is `DENIED`. The session re-derived for her is handed out only
+///    would have spent it on her.
+/// 2. A wrong secret for `bob` is `DENIED`. The session re-derived for him is handed out only
 ///    after the credential service says yes, as at any login.
-/// 3. `SUSPEND` with `corinne` listed ends one session. Nothing but the start-up pass could have
+/// 3. `SUSPEND` with `bob` listed ends one session. Nothing but the start-up pass could have
 ///    built it, and it only stays kept when the timetable accepted the stored document, so this
 ///    is also the proof that what was written through the file service is what `login` read and
 ///    the timetable took, the connective proof `session_reviver` made against `timetable::parse`.
@@ -1505,13 +1504,10 @@ fn a_durable_session_is_re_derived_at_start_up_unless_suspended() {
 
     let doc = schedule_store::fixture::DEMO_SCHEDULE_DOC.as_bytes();
     let stored = schedule_store::SCHEDULE_FILE_NAME;
-    fs_service::set_home_file(b"chris", stored, Some(doc));
-    fs_service::set_home_file(b"corinne", stored, Some(doc));
-    fs_service::set_root_list(
-        schedule_store::MANIFEST_FILE_NAME,
-        Some(b"chris\ncorinne\n"),
-    );
-    fs_service::set_root_list(login_protocol::SUSPENDED_LIST, Some(b"chris\n"));
+    fs_service::set_home_file(b"alice", stored, Some(doc));
+    fs_service::set_home_file(b"bob", stored, Some(doc));
+    fs_service::set_root_list(schedule_store::MANIFEST_FILE_NAME, Some(b"alice\nbob\n"));
+    fs_service::set_root_list(login_protocol::SUSPENDED_LIST, Some(b"alice\n"));
 
     let w = ls::start(
         program("login").expect("no login program in the initial ramdisk"),
@@ -1556,14 +1552,14 @@ fn a_durable_session_is_re_derived_at_start_up_unless_suspended() {
 
     let cli =
         program("login_test_client").expect("no login_test_client program in the initial ramdisk");
-    let wrong = ls::client(cli, &w, ls::LOGIN, CORINNE, WRONG);
+    let wrong = ls::client(cli, &w, ls::LOGIN, BOB, WRONG);
     assert_eq!(
         wrong[0],
         ls::RPT_DENIED,
         "a wrong secret for an identity with a re-derived session was not DENIED",
     );
 
-    fs_service::set_root_list(login_protocol::SUSPENDED_LIST, Some(b"corinne\n"));
+    fs_service::set_root_list(login_protocol::SUSPENDED_LIST, Some(b"bob\n"));
     let ended = suspend();
     // Read before the failure, not only on it: querying costs one exchange and the value must
     // exist by the time `assert_eq!` might format it.
@@ -1571,11 +1567,11 @@ fn a_durable_session_is_re_derived_at_start_up_unless_suspended() {
 
     fs_service::set_root_list(login_protocol::SUSPENDED_LIST, None);
     fs_service::set_root_list(schedule_store::MANIFEST_FILE_NAME, None);
-    fs_service::set_home_file(b"chris", stored, None);
-    fs_service::set_home_file(b"corinne", stored, None);
+    fs_service::set_home_file(b"alice", stored, None);
+    fs_service::set_home_file(b"bob", stored, None);
     assert_eq!(
         ended, 1,
-        "no durable session was kept for corinne at start-up: the manifest, her stored schedule \
+        "no durable session was kept for bob at start-up: the manifest, his stored schedule \
          or the timetable's answer to it did not carry through `login`'s start-up pass. \
          rederive skip counts [table_full, identity, no_stored_schedule, budget_out_of_pages, \
          session_build_failed] = {skips:?}",

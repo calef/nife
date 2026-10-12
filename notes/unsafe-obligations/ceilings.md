@@ -6,7 +6,7 @@ measurement behind these numbers is in [census.md](census.md). Both are the work
 
 ## The density outside `arch/`
 
-At most 61 <!--count-at-most:unsafe-density-outside-arch--> unsafe blocks per 10,000 lines
+At most 60 <!--count-at-most:unsafe-density-outside-arch--> unsafe blocks per 10,000 lines
 outside `kernel/src/arch/`. The direction is down, because unsafe outside `arch/` is not paying
 for hardware access. It is a raw syscall, a shared page, or a hand-rolled data structure, and each
 of those has a safe wrapper somebody could write. The ceiling was first written at a threshold the
@@ -28,6 +28,7 @@ collapsed, the diff each was measured from, the base commit) is in milestone 139
 | 9 | 2026-10-07 | 88 to 72 | 65.3 | the revocation log walk, address-space installs, code pages |
 | 10 | 2026-10-08 | 72 to 66 | 59.7 | the scheduler queue ownership token, `Unqueued<T>` |
 | none | 2026-10-12 | 66 to 61 | 61.09 | nothing; the ceiling caught up to the tree |
+| 891 | 2026-10-12 | 61 to 60 | 60.83 | `static mut` buffers into atomics and a firmware allocation |
 
 ## Round 1 chose the headroom
 
@@ -128,6 +129,11 @@ ceiling with the reason written here. This is the trade round 8 argued against; 
 the first lane it stops finds the argument beside the marker. calef ruled on it the same day
 (UTC): "Keep 61."
 
+Lowered again, 61 to 60, by milestone 891 (a mutable static becomes an atomic, a lock or a
+recorded cell) on 2026-10-12 (UTC). Moving `static mut` buffers into atomics and an owned firmware
+allocation removed 4 blocks, and the merged tree reads 60.83 (1,099 blocks over 180,675 lines).
+The ceiling follows it down, by the rule the paragraph above sets.
+
 ## Thread-safety claims
 
 At most 24 `unsafe impl Send`/`Sync` claims <!--count-at-most:unsafe-thread-safety-claims-->,
@@ -181,6 +187,19 @@ gives (milestone 139 round 9, 2026-10-07 UTC; the marker's name is provisional).
 counted `unsafe impl` as one number and the gate watched only its `Send`/`Sync` half. This is the
 rest (`GlobalAlloc`, `intrusive_fifo::Node`, `ns16550::RegisterSpace`). It read 7, 9, 9, 9, 11
 and 12 from 2026-08-18 to 2026-10-10, the last for the futex host tests.
+
+## Mutable statics
+
+At most 27 `static mut` declarations <!--count-at-most:static-mut-declarations--> in the Rust that
+runs on nife, outside the system tests and the fixtures. The marker's name is provisional, and it is
+a ratchet ceiling (`RATCHET_CEILINGS` in `script/lint`): it fails when the count rises and when it
+falls, so a converted static is banked by lowering this number in the same commit. Milestone 891
+(a mutable static becomes an atomic, a lock or a recorded cell) added it on 2026-10-12 (UTC). The
+census then read 52 in all tracked Rust and 42 in this scope, and the milestone took the scope to
+27, all in `components/`, which milestone 812 (real threads in one address space) converts. A
+`static mut` is not unsafe code, but every access to one is, and the argument that
+only one writer exists lives in a comment. The test harnesses are out because the census the
+milestone was raised from left them out; their single-threaded shape is each test's own premise.
 
 ## What has no ceiling, and why
 

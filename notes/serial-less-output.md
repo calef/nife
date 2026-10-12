@@ -11,8 +11,8 @@ much larger fleet reachable without anyone noticing, because `\EFI\BOOT\BOOTX64.
 stick is the removable-media fallback every UEFI firmware looks for with no configuration:
 
 > if I can boot a nife system off of a USB drive, then that opens up a lot of different hardware in
-> our house that I can use for testing: Graeme's laptop, his desktop, cordoba, two MacBooks, Clay's
-> desktop
+> our house that I can use for testing: [a family member's] laptop, his desktop, cordoba, two
+> MacBooks, [another family member's] desktop
 >
 > -- calef, 2026-09-03
 
@@ -32,7 +32,7 @@ The block separates them and the separation survived the work, so it is the firs
 
 One mechanism serves both under QEMU and only one of them on a real machine, and pretending
 otherwise would be the dishonest half of this note. Under OVMF a gate can ask the emulator for a
-picture of the screen; on Graeme's laptop nobody can. That gap is real, it is named in `BUGS` below,
+picture of the screen; on a real laptop nobody can. That gap is real, it is named in `BUGS` below,
 and the follow-on proposals are where it goes.
 
 ## What was chosen: the firmware's framebuffer, carried across the handoff
@@ -144,8 +144,8 @@ rather than interpreted, and it is deliberately the same shape as `notes/x86-uef
 
 ### What you need
 
-- Any x86_64 machine with UEFI firmware and a monitor. From the fleet calef named: Graeme's laptop,
-  Graeme's desktop, cordoba, Clay's desktop, or an Intel MacBook. The Apple Silicon MacBooks are
+- Any x86_64 machine with UEFI firmware and a monitor. From the fleet calef named: a family laptop,
+  two family desktops, cordoba, or an Intel MacBook. The Apple Silicon MacBooks are
   not in this fleet: they boot non-Apple kernels legitimately (Asahi's permissive-security mode)
   but they have no UEFI, so a `BOOTX64.EFI` stick will not start one. That is a port, not a boot.
 - A USB stick, formatted FAT32 with a GPT or MBR partition table. macOS Disk Utility: *Erase*,
@@ -247,7 +247,7 @@ speak, the experiment, and the boards' reason in full.
 ## BUGS
 
 - **Nothing here has run on real silicon.** It is proved on the host and under OVMF. A framebuffer
-  that works under QEMU's emulated adapter is not a framebuffer that works on Graeme's laptop. The
+  that works under QEMU's emulated adapter is not a framebuffer that works on a real laptop. The
   aperture may be above 4 GiB (this loader does not check, see below), the mode may be `PixelBitMask`,
   and the firmware may hand over a mode the monitor is not showing.
 - **A gate cannot read a real machine.** The screendump path is QEMU's. On the fleet, the record is a

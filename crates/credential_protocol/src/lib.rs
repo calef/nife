@@ -85,12 +85,12 @@
 //!
 //! // Client: put the identity and the presented secret in the page both parties map.
 //! let mut page = [0u8; PAGE];
-//! let w0 = place(&mut page, b"corinne", b"hunter2", verify::VERIFY).expect("within bounds");
+//! let w0 = place(&mut page, b"bob", b"hunter2", verify::VERIFY).expect("within bounds");
 //!
 //! // Server: every `u64` either names a well-formed request or is refused, so the serve loop has
 //! // no arithmetic that could run off the page.
 //! let (identity, secret) = read(&page, w0).expect("a well-formed request");
-//! assert_eq!(identity, b"corinne");
+//! assert_eq!(identity, b"bob");
 //! assert_eq!(secret, b"hunter2");
 //!
 //! // Then the service wipes the request area, so the frame holds no secret once the reply lands.
@@ -357,7 +357,7 @@ pub mod fixture {
     /// The resource the SMB gate's share authenticates against: the name its NTLM key is stored
     /// under. A *resource* rather than an account, which is milestone 65's model
     /// (design/roadmap/0065-secrets-service.md): a secret is scoped to the thing it opens.
-    pub const SMB_RESOURCE: &[u8] = b"backups-chris";
+    pub const SMB_RESOURCE: &[u8] = b"backups-alice";
     /// The password behind it. Published by Microsoft; secret to nobody.
     pub const SMB_PASSWORD: &[u8] = b"Password";
     /// The account name bound into the stored key at provisioning time.
@@ -378,31 +378,40 @@ pub mod fixture {
     ///
     /// **Paired rather than parallel**, because the pairing is the fact: an identity and the secret
     /// that opens it are one thing, and two arrays indexed in step are one careless insertion away
-    /// from authenticating `corinne` with `graeme`'s password and still passing.
+    /// from authenticating `bob` with `carol`'s password and still passing.
     ///
-    /// `graeme` is deliberately the one with no home subtree in `kernel::user::login_tests`: a real,
+    /// `carol` is deliberately the one with no home subtree in `kernel::user::login_tests`: a real,
     /// authenticated identity that no one ever ran `identity_provisioner` for. That is a fact about
     /// that suite's wiring rather than about this roster, and it is named here only so a reader who
-    /// picks `GRAEME` knows what they are picking up.
+    /// picks `CAROL` knows what they are picking up.
     pub const PEOPLE: [(&[u8], &[u8]); 3] = [
-        (b"chris", b"correct horse battery staple"),
-        (b"corinne", b"a different secret entirely"),
-        (b"graeme", b"and a third one"),
+        (b"alice", b"correct horse battery staple"),
+        (b"bob", b"a different secret entirely"),
+        (b"carol", b"and a third one"),
     ];
 
-    /// Index of `chris` in [`PEOPLE`], for both [`identity`] and [`secret`].
-    pub const CHRIS: u64 = 0;
-    /// Index of `corinne` in [`PEOPLE`].
-    pub const CORINNE: u64 = 1;
-    /// Index of `graeme` in [`PEOPLE`].
-    pub const GRAEME: u64 = 2;
+    /// Index of `alice` in [`PEOPLE`], for both [`identity`] and [`secret`].
+    ///
+    /// Name: ratified 2026-10-12 (calef, renamed by calef's ruling of 2026-10-12 (UTC) removing
+    /// family names from the public tree).
+    pub const ALICE: u64 = 0;
+    /// Index of `bob` in [`PEOPLE`].
+    ///
+    /// Name: ratified 2026-10-12 (calef, renamed by calef's ruling of 2026-10-12 (UTC) removing
+    /// family names from the public tree).
+    pub const BOB: u64 = 1;
+    /// Index of `carol` in [`PEOPLE`].
+    ///
+    /// Name: ratified 2026-10-12 (calef, renamed by calef's ruling of 2026-10-12 (UTC) removing
+    /// family names from the public tree).
+    pub const CAROL: u64 = 2;
 
     /// **A secret that is nobody's**, for the refusal every credential gate owes: a real identity
     /// presenting a real-looking secret that was never provisioned for anyone.
     ///
     /// Not another person's secret, deliberately. "One person's password must not open another
     /// person's account" is a different property, and `credentialer_test_client`'s honest role
-    /// already tests it; a wrong-secret refusal that reused `corinne`'s password would be testing
+    /// already tests it; a wrong-secret refusal that reused `bob`'s password would be testing
     /// that one twice and the plain wrong-secret case never.
     pub const NOBODYS_SECRET: &[u8] = b"not-the-password";
 
@@ -439,21 +448,15 @@ pub mod fixture {
 mod tests {
     use super::*;
 
-    /// **The roster's indices name who they say they name.** A fixture whose `CHRIS` had drifted to
-    /// `corinne` would still authenticate, still pass every login test, and quietly stop proving
+    /// **The roster's indices name who they say they name.** A fixture whose `ALICE` had drifted to
+    /// `bob` would still authenticate, still pass every login test, and quietly stop proving
     /// that two identities land in two subtrees, which is the one thing those tests exist for.
     #[test]
     fn the_roster_indices_name_the_people_they_are_named_for() {
-        assert_eq!(fixture::identity(fixture::CHRIS), Some(b"chris".as_slice()));
-        assert_eq!(
-            fixture::identity(fixture::CORINNE),
-            Some(b"corinne".as_slice())
-        );
-        assert_eq!(
-            fixture::identity(fixture::GRAEME),
-            Some(b"graeme".as_slice())
-        );
-        for i in [fixture::CHRIS, fixture::CORINNE, fixture::GRAEME] {
+        assert_eq!(fixture::identity(fixture::ALICE), Some(b"alice".as_slice()));
+        assert_eq!(fixture::identity(fixture::BOB), Some(b"bob".as_slice()));
+        assert_eq!(fixture::identity(fixture::CAROL), Some(b"carol".as_slice()));
+        for i in [fixture::ALICE, fixture::BOB, fixture::CAROL] {
             assert_eq!(fixture::secret(i), Some(fixture::PEOPLE[i as usize].1));
         }
     }
@@ -508,9 +511,9 @@ mod tests {
     #[test]
     fn place_and_read_are_inverses() {
         let mut page = [0xAAu8; PAGE];
-        let w = place(&mut page, b"corinne", b"hunter2", verify::VERIFY).unwrap();
+        let w = place(&mut page, b"bob", b"hunter2", verify::VERIFY).unwrap();
         let (id, secret) = read(&page, w).unwrap();
-        assert_eq!(id, b"corinne");
+        assert_eq!(id, b"bob");
         assert_eq!(secret, b"hunter2");
     }
 

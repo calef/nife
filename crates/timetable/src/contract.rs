@@ -96,7 +96,7 @@ pub const STORE_PAGE_VA: u64 = 0x0610_0000;
 /// the binding limit. The machine said otherwise: the suite's installed fixture,
 /// `least_authority_demo`'s bytes as the archive packs them (`--strip-debug`, so the symbol table
 /// stays), is 71,664 bytes on aarch64 and 12,184 on riscv64. Store mode refused it on aarch64 as
-/// `registration::STATUS_NO_IMAGE`, so `login`'s start-up pass ended corinne's re-derived session
+/// `registration::STATUS_NO_IMAGE`, so `login`'s start-up pass ended bob's re-derived session
 /// at once and `a_durable_session_is_re_derived_at_start_up_unless_suspended` failed there while
 /// riscv64 passed. 128 KiB is still under an instance, and costs 16 more pages of `.bss`
 /// (`user_timetable_keeper.rs`'s `TIMETABLE_REGION_PAGES`).

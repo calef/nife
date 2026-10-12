@@ -1,13 +1,12 @@
 # Cobble, the mascot
 
 **Name: ratified 2026-08-15 (calef).** The mascot is Cobble, a stone golem holding a gear,
-drawn by Clay (calef's kid, the project's artist; their name travels with the artwork the way
-Larry Ewing's travels with Tux).
+drawn by calef's kid, the project's artist.
 
 Two images are in the tree, and the credit is the same for both because the design is one thing.
-`art/cobble-first-draft.jpg` is Clay's drawing, photographed from their screen. `art/cobble-realistic.jpg`
+`art/cobble-first-draft.jpg` is the artist's drawing, photographed from their screen. `art/cobble-realistic.jpg`
 is a realistic render of that design, added 2026-09-04 and now the one the README carries; its caption
-reads *designed by Clay; realistic render*, which is the whole of what the record claims about it.
+reads *designed by calef's kid; realistic render*, which is the whole of what the record claims about it.
 
 **The render was checked against the rulings below rather than accepted on looks**, and it keeps every
 one: the gear is held, not embedded; the reference gear is plain, with no "Ni · Fe" stamp; the
@@ -43,13 +42,13 @@ Ingot, Eddy (Edison's nickel-iron cells, eddy currents), Ferro, Suess (who coine
 Magnus. All recorded here because refusals are the valuable half of a naming record. Two costs
 were weighed and accepted with eyes open: the idiom "cobbled together" claims the opposite of a
 verified kernel, survivable because the rigor claim rides on `nife` and mascots metabolize irony
-(BSD ships a devil); and Minecraft's Cobblestone Golem is adjacent enough that Clay's generation
-may hear homage, ruled acceptable by the artist being of that generation.
+(BSD ships a devil); and Minecraft's Cobblestone Golem is adjacent enough that the artist's generation
+may hear homage, ruled acceptable because the artist belongs to it.
 
 ## BUGS
 
-- `art/cobble-first-draft.jpg` is photographed from Clay's screen rather than exported, and it
-  stands until Clay calls a draft final and exports it properly. The realistic render does not
-  retire that: it renders the design, and the design is still Clay's to call done.
+- `art/cobble-first-draft.jpg` is photographed from the artist's screen rather than exported, and
+  it stands until the artist calls a draft final and exports it properly. The realistic render does
+  not retire that: it renders the design, and the design is still the artist's to call done.
 - No icon-size rendering exists yet. The draft passes the squint test (boxy head, red eyes,
   center gear), but a real small-size cut is future work for when the art is final.

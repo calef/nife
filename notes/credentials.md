@@ -177,9 +177,9 @@ use credential_protocol as proto;
 
 let page = /* the mapped provision page, 4096 bytes */;
 for (identity, secret) in [
-    (&b"chris"[..], &b"correct horse battery staple"[..]),
-    (b"corinne", b"a different secret entirely"),
-    (b"graeme", b"and a third one"),
+    (&b"alice"[..], &b"correct horse battery staple"[..]),
+    (b"bob", b"a different secret entirely"),
+    (b"carol", b"and a third one"),
 ] {
     let w0 = proto::place(page, identity, secret, proto::provision::PUT).unwrap();
     let (r0, _) = call(SERVICE, w0, 0);
@@ -197,7 +197,7 @@ assert_eq!(r0, proto::OK);
 From anything holding the verify endpoint in slot 0:
 
 ```rust
-let w0 = proto::place(page, b"chris", presented, proto::verify::VERIFY).unwrap();
+let w0 = proto::place(page, b"alice", presented, proto::verify::VERIFY).unwrap();
 let (r0, _) = call(SERVICE, w0, 0);
 if proto::is_authenticated(r0) {
     // let them in
@@ -216,10 +216,10 @@ use credentialer::{Block, Cost, Store, Verdict};
 let cost = Cost::new(256, 2, 1).unwrap();          // cheap, for a test
 let mut scratch = vec![Block::default(); cost.blocks()];
 let mut store = Store::<3>::new(cost, decoy_salt, decoy_tag);
-store.put(b"chris", b"correct horse", salt, &mut scratch).unwrap();
+store.put(b"alice", b"correct horse", salt, &mut scratch).unwrap();
 
-assert_eq!(store.verify(b"chris", b"correct horse", &mut scratch).unwrap(), Verdict::Match);
-assert_eq!(store.verify(b"chris", b"wrong",         &mut scratch).unwrap(), Verdict::Mismatch);
+assert_eq!(store.verify(b"alice", b"correct horse", &mut scratch).unwrap(), Verdict::Match);
+assert_eq!(store.verify(b"alice", b"wrong",         &mut scratch).unwrap(), Verdict::Mismatch);
 assert_eq!(store.verify(b"nobody", b"correct horse", &mut scratch).unwrap(), Verdict::Mismatch);
 ```
 

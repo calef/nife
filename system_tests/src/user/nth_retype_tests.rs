@@ -39,7 +39,7 @@
 //!   `DENIED` and the next exchange must work; anything subtler than that and the two counters is
 //!   not checked.
 
-use credential_protocol::fixture::CORINNE;
+use credential_protocol::fixture::BOB;
 use login_service as ls;
 
 use super::login_tests::{free_terminal, wired};
@@ -102,15 +102,15 @@ fn slot_of(tid: crate::thread::ThreadId, slot: usize) -> Option<crate::cap::Cap>
         .expect("login's thread is gone")
 }
 
-/// One `LOGOUT` login as `corinne`, then the front-door round trip that proves `login` is back at the
+/// One `LOGOUT` login as `bob`, then the front-door round trip that proves `login` is back at the
 /// top of its loop, so whatever it does after answering the client has finished before anything is
 /// counted. Returns the client's verdict.
 ///
-/// `corinne`, not `chris`: `login_tests`' schedule tests give `chris` a durable session on this
+/// `bob`, not `alice`: `login_tests`' schedule tests give `alice` a durable session on this
 /// same `login`, and a `LOGOUT` login that reattached one would destroy that session's budget.
-/// Nothing on this instance gives `corinne` one.
+/// Nothing on this instance gives `bob` one.
 fn one_login(cli: &'static [u8], w: &ls::Wiring) -> u64 {
-    let r = ls::client(cli, w, ls::LOGOUT, CORINNE, CORINNE);
+    let r = ls::client(cli, w, ls::LOGOUT, BOB, BOB);
     if r[0] == ls::RPT_OK {
         // `login` sends the audit record after the capabilities; nothing it does after `OK`
         // retypes, so a run that reached `OK` always gets this far.

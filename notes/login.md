@@ -62,7 +62,7 @@ independently revocable object per principal.
 
 Every login used to be attenuated to `filesystem_protocol::fixture::tree::SUB` with the same
 rights; §117 (2026-08-23) changed that, and each identity is now attenuated to the subtree named by
-its identity string itself, used directly, with no separate lookup table. `chris` and `corinne`
+its identity string itself, used directly, with no separate lookup table. `alice` and `bob`
 land in two different, independently-scoped subtrees; neither can name the other's. The subtree
 must already exist: `identity_provisioner` (milestone 155 (a provisioning tool)) provisions it at provisioning time, and
 this program never creates one (§117's own file records why provision-time creation was chosen over
@@ -201,7 +201,7 @@ let (_, priv_result, _) = receive_cap(RESULT);  // READ
 let (_, page, _) = receive_cap(RESULT);         // the staging page, READ | WRITE
 
 // Phase two, on the private pair only.
-let w0 = proto::place(page, b"chris", b"correct horse battery staple", proto::LOGIN).unwrap();
+let w0 = proto::place(page, b"alice", b"correct horse battery staple", proto::LOGIN).unwrap();
 send(priv_request, w0, 0, 0);
 let (verdict, _, _) = receive(priv_result);
 assert_eq!(verdict, proto::OK);
@@ -213,7 +213,7 @@ let (_, dir_ep, _) = receive_cap(priv_result);
 A refusal sends nothing further:
 
 ```rust
-let w0 = proto::place(page, b"chris", b"wrong", proto::LOGIN).unwrap();
+let w0 = proto::place(page, b"alice", b"wrong", proto::LOGIN).unwrap();
 send(priv_request, w0, 0, 0);
 let (verdict, _, _) = receive(priv_result);
 assert_eq!(verdict, proto::DENIED);

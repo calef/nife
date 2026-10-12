@@ -3,10 +3,10 @@
   .bg{fill:#ffffff} .fg{fill:#1f2328} .mut{fill:#59636e} .grid{stroke:#d1d9e0}
   .seg{stroke:#ffffff;stroke-width:1} .tr{stroke:#1f2328;fill:none} .trd{fill:#1f2328} .trh{fill:#ffffff;stroke:#1f2328}
   .val{paint-order:stroke;stroke:#ffffff;stroke-width:3px;stroke-linejoin:round}
-  .s0{fill:#2a78d6}  .s1{fill:#eb6834}  .s2{fill:#1baf7a}  .s3{fill:#eda100}  .s4{fill:#e87ba4}  .s5{fill:#008300}
+  .s0{fill:#2a78d6}  .s1{fill:#eb6834}  .s2{fill:#1baf7a}  .s3{fill:#eda100}  .s4{fill:#e87ba4}  .s5{fill:#008300}  .s6{fill:#4a3aa7}
   @media (prefers-color-scheme: dark){
     .bg{fill:#0d1117} .fg{fill:#e6edf3} .mut{fill:#9198a1} .grid{stroke:#30363d}
-    .seg{stroke:#0d1117} .val{stroke:#0d1117} .tr{stroke:#e6edf3} .trd{fill:#e6edf3} .trh{fill:#0d1117;stroke:#e6edf3} .s0{fill:#3987e5} .s1{fill:#d95926} .s2{fill:#199e70} .s3{fill:#c98500} .s4{fill:#d55181} .s5{fill:#008300}}
+    .seg{stroke:#0d1117} .val{stroke:#0d1117} .tr{stroke:#e6edf3} .trd{fill:#e6edf3} .trh{fill:#0d1117;stroke:#e6edf3} .s0{fill:#3987e5} .s1{fill:#d95926} .s2{fill:#199e70} .s3{fill:#c98500} .s4{fill:#d55181} .s5{fill:#008300} .s6{fill:#9085e9}}
   text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
 </style>
 <rect class="bg" width="860" height="380"/>
@@ -23,65 +23,67 @@
 <line class="grid" x1="64" y1="58.0" x2="650.0" y2="58.0" stroke-width="1"/>
 <text class="mut" x="56" y="61.0" font-size="10" text-anchor="end">40</text>
 <line x1="64" y1="191.0" x2="650.0" y2="191.0" stroke="#D55E00" stroke-width="1.5" stroke-dasharray="5 4"/>
-<path class="seg s1" d="M80.4,324.0 V219.3 Q80.4,216.6 83.1,216.6 H83.1 Q85.9,216.6 85.9,219.3 V324.0 Z"><title>2026W33, prove (verify): 16.1</title></path>
-<path class="seg s2" d="M86.9,324.0 V277.5 Q86.9,274.7 89.6,274.7 H89.6 Q92.3,274.7 92.3,277.5 V324.0 Z"><title>2026W33, test: 7.4</title></path>
-<path class="seg s3" d="M93.3,324.0 V323.5 Q93.3,323.1 93.8,323.1 H98.3 Q98.7,323.1 98.7,323.5 V324.0 Z"><title>2026W33, cpu-matrix: 0.1</title></path>
-<path class="seg s4" d="M99.7,324.0 V323.6 Q99.7,323.1 100.2,323.1 H104.7 Q105.2,323.1 105.2,323.6 V324.0 Z"><title>2026W33, fuzz: 0.1</title></path>
+<path class="seg s1" d="M79.5,324.0 V218.9 Q79.5,216.6 81.7,216.6 H81.7 Q84.0,216.6 84.0,218.9 V324.0 Z"><title>2026W33, prove (verify): 16.1</title></path>
+<path class="seg s2" d="M85.0,324.0 V277.0 Q85.0,274.7 87.3,274.7 H87.3 Q89.5,274.7 89.5,277.0 V324.0 Z"><title>2026W33, test: 7.4</title></path>
+<path class="seg s3" d="M90.5,324.0 V323.5 Q90.5,323.1 91.0,323.1 H94.6 Q95.1,323.1 95.1,323.5 V324.0 Z"><title>2026W33, cpu-matrix: 0.1</title></path>
+<path class="seg s4" d="M96.1,324.0 V323.6 Q96.1,323.1 96.5,323.1 H100.1 Q100.6,323.1 100.6,323.6 V324.0 Z"><title>2026W33, fuzz: 0.1</title></path>
 <text class="mut" x="93.3" y="342" font-size="10" text-anchor="middle">2026W33</text>
-<path class="seg s1" d="M139.0,324.0 V209.8 Q139.0,207.1 141.7,207.1 H141.7 Q144.5,207.1 144.5,209.8 V324.0 Z"><title>2026W34, prove (verify): 17.6</title></path>
-<path class="seg s2" d="M145.5,324.0 V276.7 Q145.5,274.0 148.2,274.0 H148.2 Q150.9,274.0 150.9,276.7 V324.0 Z"><title>2026W34, test: 7.5</title></path>
-<path class="seg s3" d="M151.9,324.0 V271.3 Q151.9,268.5 154.6,268.5 H154.6 Q157.3,268.5 157.3,271.3 V324.0 Z"><title>2026W34, cpu-matrix: 8.3</title></path>
-<path class="seg s4" d="M158.3,324.0 V296.1 Q158.3,293.4 161.1,293.4 H161.1 Q163.8,293.4 163.8,296.1 V324.0 Z"><title>2026W34, fuzz: 4.6</title></path>
+<path class="seg s1" d="M138.1,324.0 V209.3 Q138.1,207.1 140.3,207.1 H140.3 Q142.6,207.1 142.6,209.3 V324.0 Z"><title>2026W34, prove (verify): 17.6</title></path>
+<path class="seg s2" d="M143.6,324.0 V276.3 Q143.6,274.0 145.9,274.0 H145.9 Q148.1,274.0 148.1,276.3 V324.0 Z"><title>2026W34, test: 7.5</title></path>
+<path class="seg s3" d="M149.1,324.0 V270.8 Q149.1,268.5 151.4,268.5 H151.4 Q153.7,268.5 153.7,270.8 V324.0 Z"><title>2026W34, cpu-matrix: 8.3</title></path>
+<path class="seg s4" d="M154.7,324.0 V295.7 Q154.7,293.4 156.9,293.4 H156.9 Q159.2,293.4 159.2,295.7 V324.0 Z"><title>2026W34, fuzz: 4.6</title></path>
 <text class="mut" x="151.9" y="342" font-size="10" text-anchor="middle">2026W34</text>
-<path class="seg s1" d="M197.6,324.0 V209.7 Q197.6,207.0 200.3,207.0 H200.3 Q203.1,207.0 203.1,209.7 V324.0 Z"><title>2026W35, prove (verify): 17.6</title></path>
-<path class="seg s2" d="M204.1,324.0 V274.0 Q204.1,271.2 206.8,271.2 H206.8 Q209.5,271.2 209.5,274.0 V324.0 Z"><title>2026W35, test: 7.9</title></path>
-<path class="seg s3" d="M210.5,324.0 V270.5 Q210.5,267.8 213.2,267.8 H213.2 Q215.9,267.8 215.9,270.5 V324.0 Z"><title>2026W35, cpu-matrix: 8.4</title></path>
-<path class="seg s4" d="M216.9,324.0 V296.1 Q216.9,293.4 219.7,293.4 H219.7 Q222.4,293.4 222.4,296.1 V324.0 Z"><title>2026W35, fuzz: 4.6</title></path>
+<path class="seg s1" d="M196.7,324.0 V209.2 Q196.7,207.0 198.9,207.0 H198.9 Q201.2,207.0 201.2,209.2 V324.0 Z"><title>2026W35, prove (verify): 17.6</title></path>
+<path class="seg s2" d="M202.2,324.0 V273.5 Q202.2,271.2 204.5,271.2 H204.5 Q206.7,271.2 206.7,273.5 V324.0 Z"><title>2026W35, test: 7.9</title></path>
+<path class="seg s3" d="M207.7,324.0 V270.1 Q207.7,267.8 210.0,267.8 H210.0 Q212.3,267.8 212.3,270.1 V324.0 Z"><title>2026W35, cpu-matrix: 8.4</title></path>
+<path class="seg s4" d="M213.3,324.0 V295.7 Q213.3,293.4 215.5,293.4 H215.5 Q217.8,293.4 217.8,295.7 V324.0 Z"><title>2026W35, fuzz: 4.6</title></path>
 <text class="mut" x="210.5" y="342" font-size="10" text-anchor="middle">2026W35</text>
-<path class="seg s0" d="M249.8,324.0 V321.5 Q249.8,319.0 252.3,319.0 H252.7 Q255.2,319.0 255.2,321.5 V324.0 Z"><title>2026W36, falsify (verify): 0.8</title></path>
-<path class="seg s1" d="M256.2,324.0 V209.5 Q256.2,206.7 258.9,206.7 H258.9 Q261.7,206.7 261.7,209.5 V324.0 Z"><title>2026W36, prove (verify): 17.6</title></path>
-<path class="seg s2" d="M262.7,324.0 V266.4 Q262.7,263.7 265.4,263.7 H265.4 Q268.1,263.7 268.1,266.4 V324.0 Z"><title>2026W36, test: 9.1</title></path>
-<path class="seg s3" d="M269.1,324.0 V237.6 Q269.1,234.9 271.8,234.9 H271.8 Q274.5,234.9 274.5,237.6 V324.0 Z"><title>2026W36, cpu-matrix: 13.4</title></path>
-<path class="seg s4" d="M275.5,324.0 V296.1 Q275.5,293.4 278.3,293.4 H278.3 Q281.0,293.4 281.0,296.1 V324.0 Z"><title>2026W36, fuzz: 4.6</title></path>
+<path class="seg s0" d="M249.8,324.0 V321.3 Q249.8,319.0 252.0,319.0 H252.0 Q254.3,319.0 254.3,321.3 V324.0 Z"><title>2026W36, falsify (verify): 0.8</title></path>
+<path class="seg s1" d="M255.3,324.0 V209.0 Q255.3,206.7 257.5,206.7 H257.5 Q259.8,206.7 259.8,209.0 V324.0 Z"><title>2026W36, prove (verify): 17.6</title></path>
+<path class="seg s2" d="M260.8,324.0 V266.0 Q260.8,263.7 263.1,263.7 H263.1 Q265.3,263.7 265.3,266.0 V324.0 Z"><title>2026W36, test: 9.1</title></path>
+<path class="seg s3" d="M266.3,324.0 V237.2 Q266.3,234.9 268.6,234.9 H268.6 Q270.9,234.9 270.9,237.2 V324.0 Z"><title>2026W36, cpu-matrix: 13.4</title></path>
+<path class="seg s4" d="M271.9,324.0 V295.7 Q271.9,293.4 274.1,293.4 H274.1 Q276.4,293.4 276.4,295.7 V324.0 Z"><title>2026W36, fuzz: 4.6</title></path>
 <text class="mut" x="269.1" y="342" font-size="10" text-anchor="middle">2026W36</text>
-<path class="seg s0" d="M308.4,324.0 V321.4 Q308.4,318.8 311.0,318.8 H311.2 Q313.8,318.8 313.8,321.4 V324.0 Z"><title>2026W37, falsify (verify): 0.8</title></path>
-<path class="seg s1" d="M314.8,324.0 V207.6 Q314.8,204.9 317.5,204.9 H317.5 Q320.3,204.9 320.3,207.6 V324.0 Z"><title>2026W37, prove (verify): 17.9</title></path>
-<path class="seg s2" d="M321.3,324.0 V251.2 Q321.3,248.5 324.0,248.5 H324.0 Q326.7,248.5 326.7,251.2 V324.0 Z"><title>2026W37, test: 11.3</title></path>
-<path class="seg s3" d="M327.7,324.0 V234.4 Q327.7,231.7 330.4,231.7 H330.4 Q333.1,231.7 333.1,234.4 V324.0 Z"><title>2026W37, cpu-matrix: 13.9</title></path>
-<path class="seg s4" d="M334.1,324.0 V295.8 Q334.1,293.1 336.9,293.1 H336.9 Q339.6,293.1 339.6,295.8 V324.0 Z"><title>2026W37, fuzz: 4.7</title></path>
+<path class="seg s0" d="M308.4,324.0 V321.1 Q308.4,318.8 310.6,318.8 H310.6 Q312.9,318.8 312.9,321.1 V324.0 Z"><title>2026W37, falsify (verify): 0.8</title></path>
+<path class="seg s1" d="M313.9,324.0 V207.1 Q313.9,204.9 316.1,204.9 H316.1 Q318.4,204.9 318.4,207.1 V324.0 Z"><title>2026W37, prove (verify): 17.9</title></path>
+<path class="seg s2" d="M319.4,324.0 V250.8 Q319.4,248.5 321.7,248.5 H321.7 Q323.9,248.5 323.9,250.8 V324.0 Z"><title>2026W37, test: 11.3</title></path>
+<path class="seg s3" d="M324.9,324.0 V233.9 Q324.9,231.7 327.2,231.7 H327.2 Q329.5,231.7 329.5,233.9 V324.0 Z"><title>2026W37, cpu-matrix: 13.9</title></path>
+<path class="seg s4" d="M330.5,324.0 V295.3 Q330.5,293.1 332.7,293.1 H332.7 Q335.0,293.1 335.0,295.3 V324.0 Z"><title>2026W37, fuzz: 4.7</title></path>
 <text class="mut" x="327.7" y="342" font-size="10" text-anchor="middle">2026W37</text>
-<path class="seg s0" d="M367.0,324.0 V314.4 Q367.0,311.7 369.7,311.7 H369.7 Q372.4,311.7 372.4,314.4 V324.0 Z"><title>2026W38, falsify (verify): 1.9</title></path>
-<path class="seg s1" d="M373.4,324.0 V212.5 Q373.4,209.7 376.1,209.7 H376.1 Q378.9,209.7 378.9,212.5 V324.0 Z"><title>2026W38, prove (verify): 17.2</title></path>
-<path class="seg s2" d="M379.9,324.0 V247.6 Q379.9,244.9 382.6,244.9 H382.6 Q385.3,244.9 385.3,247.6 V324.0 Z"><title>2026W38, test: 11.9</title></path>
-<path class="seg s3" d="M386.3,324.0 V232.7 Q386.3,230.0 389.0,230.0 H389.0 Q391.7,230.0 391.7,232.7 V324.0 Z"><title>2026W38, cpu-matrix: 14.1</title></path>
-<path class="seg s4" d="M392.7,324.0 V295.9 Q392.7,293.2 395.5,293.2 H395.5 Q398.2,293.2 398.2,295.9 V324.0 Z"><title>2026W38, fuzz: 4.6</title></path>
+<path class="seg s0" d="M367.0,324.0 V314.0 Q367.0,311.7 369.2,311.7 H369.2 Q371.5,311.7 371.5,314.0 V324.0 Z"><title>2026W38, falsify (verify): 1.9</title></path>
+<path class="seg s1" d="M372.5,324.0 V212.0 Q372.5,209.7 374.7,209.7 H374.7 Q377.0,209.7 377.0,212.0 V324.0 Z"><title>2026W38, prove (verify): 17.2</title></path>
+<path class="seg s2" d="M378.0,324.0 V247.1 Q378.0,244.9 380.3,244.9 H380.3 Q382.5,244.9 382.5,247.1 V324.0 Z"><title>2026W38, test: 11.9</title></path>
+<path class="seg s3" d="M383.5,324.0 V232.3 Q383.5,230.0 385.8,230.0 H385.8 Q388.1,230.0 388.1,232.3 V324.0 Z"><title>2026W38, cpu-matrix: 14.1</title></path>
+<path class="seg s4" d="M389.1,324.0 V295.5 Q389.1,293.2 391.3,293.2 H391.3 Q393.6,293.2 393.6,295.5 V324.0 Z"><title>2026W38, fuzz: 4.6</title></path>
 <text class="mut" x="386.3" y="342" font-size="10" text-anchor="middle">2026W38</text>
-<path class="seg s0" d="M425.6,324.0 V247.5 Q425.6,244.8 428.3,244.8 H428.3 Q431.0,244.8 431.0,247.5 V324.0 Z"><title>2026W39, falsify (verify): 11.9</title></path>
-<path class="seg s1" d="M432.0,324.0 V207.4 Q432.0,204.6 434.7,204.6 H434.7 Q437.5,204.6 437.5,207.4 V324.0 Z"><title>2026W39, prove (verify): 17.9</title></path>
-<path class="seg s2" d="M438.5,324.0 V189.1 Q438.5,186.3 441.2,186.3 H441.2 Q443.9,186.3 443.9,189.1 V324.0 Z"><title>2026W39, test: 20.7</title></path>
-<path class="seg s3" d="M444.9,324.0 V248.4 Q444.9,245.7 447.6,245.7 H447.6 Q450.3,245.7 450.3,248.4 V324.0 Z"><title>2026W39, cpu-matrix: 11.8</title></path>
-<path class="seg s4" d="M451.3,324.0 V293.9 Q451.3,291.2 454.1,291.2 H454.1 Q456.8,291.2 456.8,293.9 V324.0 Z"><title>2026W39, fuzz: 4.9</title></path>
+<path class="seg s0" d="M425.6,324.0 V247.0 Q425.6,244.8 427.8,244.8 H427.8 Q430.1,244.8 430.1,247.0 V324.0 Z"><title>2026W39, falsify (verify): 11.9</title></path>
+<path class="seg s1" d="M431.1,324.0 V206.9 Q431.1,204.6 433.3,204.6 H433.3 Q435.6,204.6 435.6,206.9 V324.0 Z"><title>2026W39, prove (verify): 17.9</title></path>
+<path class="seg s2" d="M436.6,324.0 V188.6 Q436.6,186.3 438.9,186.3 H438.9 Q441.1,186.3 441.1,188.6 V324.0 Z"><title>2026W39, test: 20.7</title></path>
+<path class="seg s3" d="M442.1,324.0 V248.0 Q442.1,245.7 444.4,245.7 H444.4 Q446.7,245.7 446.7,248.0 V324.0 Z"><title>2026W39, cpu-matrix: 11.8</title></path>
+<path class="seg s4" d="M447.7,324.0 V293.5 Q447.7,291.2 449.9,291.2 H449.9 Q452.2,291.2 452.2,293.5 V324.0 Z"><title>2026W39, fuzz: 4.9</title></path>
 <text class="mut" x="444.9" y="342" font-size="10" text-anchor="middle">2026W39</text>
-<path class="seg s0" d="M484.2,324.0 V153.1 Q484.2,150.4 486.9,150.4 H486.9 Q489.6,150.4 489.6,153.1 V324.0 Z"><title>2026W40, falsify (verify): 26.1</title></path>
-<path class="seg s1" d="M490.6,324.0 V177.9 Q490.6,175.2 493.3,175.2 H493.3 Q496.1,175.2 496.1,177.9 V324.0 Z"><title>2026W40, prove (verify): 22.4</title></path>
-<path class="seg s2" d="M497.1,324.0 V253.6 Q497.1,250.8 499.8,250.8 H499.8 Q502.5,250.8 502.5,253.6 V324.0 Z"><title>2026W40, test: 11</title></path>
-<path class="seg s3" d="M503.5,324.0 V225.2 Q503.5,222.5 506.2,222.5 H506.2 Q508.9,222.5 508.9,225.2 V324.0 Z"><title>2026W40, cpu-matrix: 15.3</title></path>
-<path class="seg s4" d="M509.9,324.0 V278.8 Q509.9,276.1 512.7,276.1 H512.7 Q515.4,276.1 515.4,278.8 V324.0 Z"><title>2026W40, fuzz: 7.2</title></path>
-<path class="seg s5" d="M516.4,324.0 V293.9 Q516.4,291.1 519.1,291.1 H519.1 Q521.8,291.1 521.8,293.9 V324.0 Z"><title>2026W40, swish-check: 4.9</title></path>
+<path class="seg s0" d="M484.2,324.0 V152.6 Q484.2,150.4 486.4,150.4 H486.4 Q488.7,150.4 488.7,152.6 V324.0 Z"><title>2026W40, falsify (verify): 26.1</title></path>
+<path class="seg s1" d="M489.7,324.0 V177.4 Q489.7,175.2 491.9,175.2 H491.9 Q494.2,175.2 494.2,177.4 V324.0 Z"><title>2026W40, prove (verify): 22.4</title></path>
+<path class="seg s2" d="M495.2,324.0 V253.1 Q495.2,250.8 497.5,250.8 H497.5 Q499.7,250.8 499.7,253.1 V324.0 Z"><title>2026W40, test: 11</title></path>
+<path class="seg s3" d="M500.7,324.0 V224.7 Q500.7,222.5 503.0,222.5 H503.0 Q505.3,222.5 505.3,224.7 V324.0 Z"><title>2026W40, cpu-matrix: 15.3</title></path>
+<path class="seg s4" d="M506.3,324.0 V278.4 Q506.3,276.1 508.5,276.1 H508.5 Q510.8,276.1 510.8,278.4 V324.0 Z"><title>2026W40, fuzz: 7.2</title></path>
+<path class="seg s5" d="M511.8,324.0 V293.4 Q511.8,291.1 514.1,291.1 H514.1 Q516.3,291.1 516.3,293.4 V324.0 Z"><title>2026W40, swish-check: 4.9</title></path>
 <text class="mut" x="503.5" y="342" font-size="10" text-anchor="middle">2026W40</text>
-<path class="seg s0" d="M542.8,324.0 V323.8 Q542.8,323.6 543.0,323.6 H548.0 Q548.2,323.6 548.2,323.8 V324.0 Z"><title>2026W41, falsify (verify): 0.1</title></path>
-<path class="seg s1" d="M549.2,324.0 V188.1 Q549.2,185.3 551.9,185.3 H551.9 Q554.7,185.3 554.7,188.1 V324.0 Z"><title>2026W41, prove (verify): 20.9</title></path>
-<path class="seg s2" d="M555.7,324.0 V239.3 Q555.7,236.6 558.4,236.6 H558.4 Q561.1,236.6 561.1,239.3 V324.0 Z"><title>2026W41, test: 13.2</title></path>
-<path class="seg s3" d="M562.1,324.0 V234.7 Q562.1,232.0 564.8,232.0 H564.8 Q567.5,232.0 567.5,234.7 V324.0 Z"><title>2026W41, cpu-matrix: 13.8</title></path>
-<path class="seg s4" d="M568.5,324.0 V247.7 Q568.5,245.0 571.3,245.0 H571.3 Q574.0,245.0 574.0,247.7 V324.0 Z"><title>2026W41, fuzz: 11.9</title></path>
-<path class="seg s5" d="M575.0,324.0 V291.3 Q575.0,288.5 577.7,288.5 H577.7 Q580.4,288.5 580.4,291.3 V324.0 Z"><title>2026W41, swish-check: 5.3</title></path>
+<path class="seg s0" d="M542.8,324.0 V323.8 Q542.8,323.6 543.0,323.6 H547.1 Q547.3,323.6 547.3,323.8 V324.0 Z"><title>2026W41, falsify (verify): 0.1</title></path>
+<path class="seg s1" d="M548.3,324.0 V187.6 Q548.3,185.3 550.5,185.3 H550.5 Q552.8,185.3 552.8,187.6 V324.0 Z"><title>2026W41, prove (verify): 20.9</title></path>
+<path class="seg s2" d="M553.8,324.0 V238.8 Q553.8,236.6 556.1,236.6 H556.1 Q558.3,236.6 558.3,238.8 V324.0 Z"><title>2026W41, test: 13.2</title></path>
+<path class="seg s3" d="M559.3,324.0 V234.3 Q559.3,232.0 561.6,232.0 H561.6 Q563.9,232.0 563.9,234.3 V324.0 Z"><title>2026W41, cpu-matrix: 13.8</title></path>
+<path class="seg s4" d="M564.9,324.0 V247.2 Q564.9,245.0 567.1,245.0 H567.1 Q569.4,245.0 569.4,247.2 V324.0 Z"><title>2026W41, fuzz: 11.9</title></path>
+<path class="seg s5" d="M570.4,324.0 V290.8 Q570.4,288.5 572.7,288.5 H572.7 Q574.9,288.5 574.9,290.8 V324.0 Z"><title>2026W41, swish-check: 5.3</title></path>
+<path class="seg s6" d="M575.9,324.0 V285.8 Q575.9,283.5 578.2,283.5 H578.2 Q580.4,283.5 580.4,285.8 V324.0 Z"><title>2026W41, lint: 6.1</title></path>
 <text class="mut" x="562.1" y="342" font-size="10" text-anchor="middle">2026W41</text>
-<path class="seg s0" d="M601.4,324.0 V321.4 Q601.4,318.8 604.0,318.8 H604.2 Q606.8,318.8 606.8,321.4 V324.0 Z"><title>2026W42, falsify (verify): 0.8</title></path>
-<path class="seg s1" d="M607.8,324.0 V232.4 Q607.8,229.7 610.5,229.7 H610.5 Q613.3,229.7 613.3,232.4 V324.0 Z"><title>2026W42, prove (verify): 14.2</title></path>
-<path class="seg s2" d="M614.3,324.0 V208.2 Q614.3,205.5 617.0,205.5 H617.0 Q619.7,205.5 619.7,208.2 V324.0 Z"><title>2026W42, test: 17.8</title></path>
-<path class="seg s3" d="M620.7,324.0 V225.2 Q620.7,222.5 623.4,222.5 H623.4 Q626.1,222.5 626.1,225.2 V324.0 Z"><title>2026W42, cpu-matrix: 15.3</title></path>
-<path class="seg s4" d="M627.1,324.0 V247.6 Q627.1,244.9 629.9,244.9 H629.9 Q632.6,244.9 632.6,247.6 V324.0 Z"><title>2026W42, fuzz: 11.9</title></path>
-<path class="seg s5" d="M633.6,324.0 V278.5 Q633.6,275.7 636.3,275.7 H636.3 Q639.0,275.7 639.0,278.5 V324.0 Z"><title>2026W42, swish-check: 7.3</title></path>
+<path class="seg s0" d="M601.4,324.0 V322.6 Q601.4,321.2 602.7,321.2 H604.5 Q605.9,321.2 605.9,322.6 V324.0 Z"><title>2026W42, falsify (verify): 0.4</title></path>
+<path class="seg s1" d="M606.9,324.0 V230.7 Q606.9,228.4 609.1,228.4 H609.1 Q611.4,228.4 611.4,230.7 V324.0 Z"><title>2026W42, prove (verify): 14.4</title></path>
+<path class="seg s2" d="M612.4,324.0 V208.7 Q612.4,206.4 614.7,206.4 H614.7 Q616.9,206.4 616.9,208.7 V324.0 Z"><title>2026W42, test: 17.7</title></path>
+<path class="seg s3" d="M617.9,324.0 V225.0 Q617.9,222.7 620.2,222.7 H620.2 Q622.5,222.7 622.5,225.0 V324.0 Z"><title>2026W42, cpu-matrix: 15.2</title></path>
+<path class="seg s4" d="M623.5,324.0 V247.1 Q623.5,244.9 625.7,244.9 H625.7 Q628.0,244.9 628.0,247.1 V324.0 Z"><title>2026W42, fuzz: 11.9</title></path>
+<path class="seg s5" d="M629.0,324.0 V277.9 Q629.0,275.7 631.3,275.7 H631.3 Q633.5,275.7 633.5,277.9 V324.0 Z"><title>2026W42, swish-check: 7.3</title></path>
+<path class="seg s6" d="M634.5,324.0 V280.4 Q634.5,278.2 636.8,278.2 H636.8 Q639.0,278.2 639.0,280.4 V324.0 Z"><title>2026W42, lint: 6.9</title></path>
 <text class="mut" x="620.7" y="342" font-size="10" text-anchor="middle">2026W42</text>
 <line class="tr" x1="93.3" y1="246.2" x2="151.9" y2="238.2" stroke-width="2"/>
 <line class="tr" x1="151.9" y1="238.2" x2="210.5" y2="240.2" stroke-width="2"/>
@@ -141,7 +143,7 @@
 <text class="fg val" x="562.1" y="126.8" font-size="10" text-anchor="middle">28.6</text>
 <circle class="trh" cx="620.7" cy="189.0" r="3" stroke-width="1.5"><title>2026W42, p90 build: 20.3</title></circle>
 <text class="fg val" x="620.7" y="182.0" font-size="10" text-anchor="middle">20.3</text>
-<text class="mut" x="20" y="368" font-size="10">23 other jobs, each under 6.7 minutes in every week shown (the longest, lint, peaked at 6.6)</text>
+<text class="mut" x="20" y="368" font-size="10">22 other jobs, each under 6.7 minutes in every week shown (the longest, swish-check-x86_64, peaked at 5.8)</text>
 <line class="tr" x1="672" y1="69" x2="683" y2="69" stroke-width="2"/>
 <circle class="trd" cx="677.5" cy="69" r="3"/>
 <text class="fg" y="74" font-size="11"><tspan x="689" dy="0">median build</tspan></text>
@@ -160,6 +162,8 @@
 <text class="fg" y="188" font-size="11"><tspan x="689" dy="0">fuzz</tspan></text>
 <rect class="s5" x="672" y="197" width="11" height="11" rx="2"/>
 <text class="fg" y="207" font-size="11"><tspan x="689" dy="0">swish-check</tspan></text>
-<line x1="672" y1="221" x2="683" y2="221" stroke="#D55E00" stroke-width="1.5" stroke-dasharray="5 4"/>
-<text class="fg" x="689" y="226" font-size="11">build lid 20</text>
+<rect class="s6" x="672" y="216" width="11" height="11" rx="2"/>
+<text class="fg" y="226" font-size="11"><tspan x="689" dy="0">lint</tspan></text>
+<line x1="672" y1="240" x2="683" y2="240" stroke="#D55E00" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text class="fg" x="689" y="245" font-size="11">build lid 20</text>
 </svg>

@@ -174,7 +174,8 @@ The count of `unsafe {}` outside `kernel/src/arch/` more than quadrupled while t
 10,000 lines more than halved, falling at every sample. Only the density is about soundness, so the
 gate holds a ratio rather than a count. The density outside `arch/` has a ceiling that only goes
 down, and `unsafe impl Send`/`Sync` claims have a ceiling at the tree's exact value with no headroom.
-Other unsafe-trait claims are ceilinged the same way. `arch/` itself gets no direction, because
+Other unsafe-trait claims are ceilinged the same way, and so are `static mut` declarations,
+which must also follow the tree down. `arch/` itself gets no direction, because
 driving it down would push against rule 1.
 
 `// SAFETY:` parity is deliberately not a gate, because clippy already enforces it per block and a

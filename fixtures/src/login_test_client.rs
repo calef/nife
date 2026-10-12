@@ -9,8 +9,8 @@
 //!
 //! Until 293 this file had **eleven roles** and its first act was a lookup from role number to a
 //! pair of byte strings. Five of the eleven ran byte-identical code and differed only in that pair
-//! (`chris`, `corinne`, the same `chris` with a wrong secret, a `graeme` with no home subtree, and a
-//! `corinne` presenting a real credential while the terminal was on loan), and two more differed
+//! (`alice`, `bob`, the same `alice` with a wrong secret, a `carol` with no home subtree, and a
+//! `bob` presenting a real credential while the terminal was on loan), and two more differed
 //! only in which identity they wrote into a marker file. A role that differs only in its credentials
 //! is not a role.
 //!
@@ -20,7 +20,7 @@
 //!   eight genuinely different flows rather than eight spellings of one.
 //! - **`identity` and `secret`** are indices into [`credential_protocol::fixture::PEOPLE`], the roster
 //!   three files used to keep their own copy of. They are composed at the call site, so
-//!   `(CHRIS, CHRIS)` is an honest login and `(CHRIS, WRONG)` is the same program presenting a
+//!   `(ALICE, ALICE)` is an honest login and `(ALICE, WRONG)` is the same program presenting a
 //!   secret that is nobody's. [`FREE_TERMINAL`] takes `(NONE, NONE)` and authenticates nothing.
 //!
 //! Every behaviour holds the identical endowment: the login service's front-door request endpoint,
@@ -343,7 +343,7 @@ pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
     // **A credential this program cannot resolve is malformed, not a default.** Every other
     // behaviour authenticates, so an out-of-range index (or `NONE`, which is what
     // [`FREE_TERMINAL`] is handed and nothing else should be) must not fall back to whoever sits at
-    // index zero: a run that silently logged in as `chris` would pass every assertion that follows
+    // index zero: a run that silently logged in as `alice` would pass every assertion that follows
     // and prove nothing about the identity the caller meant.
     let (Some(identity), Some(secret)) = (
         credential_protocol::fixture::identity(identity),
@@ -537,7 +537,7 @@ pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
             // DECISIONS §117's own proof: which subtree did this login actually land in? Only the
             // `WRITE_MARKER`/`READ_MARKER` do this; `LOGIN` stops at proving what it received.
             match behaviour {
-                // **One arm where there were two.** `chris`'s and `corinne`'s halves of this proof
+                // **One arm where there were two.** `alice`'s and `bob`'s halves of this proof
                 // differed only in the name written into the marker, and that name is the identity
                 // this run authenticated as, which it now holds as an argument rather than as a
                 // second copy of the same fact in a second match arm.

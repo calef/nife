@@ -42,8 +42,8 @@ screen were black.
 **One thing it still does not cover, and two that were closed on 2026-09-19:**
 
 - Problem 2 on real hardware, still open and now its own block. A gate can read a *virtual*
-  machine's screen. Nobody can ask Graeme's laptop for a screendump, so the fleet's record is still
-  a photograph and a person. That is **milestone 369**, and it is blocked on USB mass storage.
+  machine's screen. Nobody can ask a real laptop for one, so the fleet's record is still a
+  photograph and a person. That is **milestone 369**, and it is blocked on USB mass storage.
 - Problem 3, early boot: bounded, and it cannot be more than bounded. `uefi_loader` clears the
   screen and writes two lines into the framebuffer as its last act, after `ExitBootServices` and
   before the jump, so "the kernel never reached its first statement" is now a thing a person at a
@@ -86,26 +86,26 @@ unattended hardware reads a serial line. The candidates each cost something:
   the loader and not the kernel.
 
 3. Early boot, which is the hardest. Before the framebuffer exists, a serial-less machine is
-silent, and a panic there produces nothing at all. This is not a nife peculiarity: it is why
+silent, and a panic there produces nothing. This is not a nife peculiarity: it is why
 commodity operating systems ship a firmware console, a splash, or postmortem logging. nife has
 none of the three.
 
 ## The fleet this unlocks, which calef named on the day this was minted
 
 > if I can boot a nife system off of a USB drive, then that opens up a lot of different hardware in
-> our house that I can use for testing: Graeme's laptop, his desktop, cordoba, two MacBooks, Clay's
-> desktop
+> our house that I can use for testing: [a family member's] laptop, his desktop, cordoba, two
+> MacBooks, [another family member's] desktop
 >
 > -- calef, 2026-09-03
 
 That fleet is already reachable and nobody had noticed. Milestone 87 (the x86_64 bare-metal
-machine) boots from a FAT32 stick at `\EFI\BOOT\BOOTX64.EFI`, which is the removable-media
-fallback **every** UEFI firmware looks for with no configuration. Nothing about it is specific to
+machine) boots from a FAT32 stick at `\EFI\BOOT\BOOTX64.EFI`, the removable-media fallback
+**every** UEFI firmware looks for with no configuration. Nothing about it is specific to
 xenon.
 
 And `uefi_loader` already writes to the firmware's `ConOut`, so on any UEFI x86_64 machine a nife
 stick prints to the monitor with no driver of ours, right up to `ExitBootServices`. After that the
-kernel takes over and the machine goes silent, which is exactly this milestone.
+kernel takes over and the machine goes silent, which is this milestone.
 
 **So the blocker on using those machines is this block and not milestone 242** (USB host and HID,
 because on commodity hardware the keyboard is not a UART). **A boot test needs output, not input.**

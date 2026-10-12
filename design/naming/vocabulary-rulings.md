@@ -161,8 +161,8 @@ became `user_mode_`. It is otherwise spoken for: 1079 occurrences in code, essen
 the kernel's `user::` module or the `user_mode_` prefix. That left `principal`, which the tree leans
 on for the thing that matters most and had never given a name to.
 
-The distinction the ratification keeps. An identity is the string a client presents (`chris`,
-`corinne`). A principal is the authenticated actor that results, holding a fresh capability set.
+The distinction the ratification keeps. An identity is the string a client presents (`alice`,
+`bob`). A principal is the authenticated actor that results, holding a fresh capability set.
 Collapsing them into one word was considered and refused. It is cheaper to read, and it loses
 exactly the difference `login` exists to perform. That is the difference between what you present
 and what you become. The attribution model of §109 (attribution is a property of a channel) is

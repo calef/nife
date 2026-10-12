@@ -108,6 +108,19 @@ THREAD_SAFETY = re.compile(r'\bunsafe\s+impl\b[^{;]*?\b(?:Send|Sync)\s+for\b')
 # impls minus the thread-safety claims above, so the two numbers partition one population and
 # cannot overlap (milestone 139 (drive the unsafe count down), 2026-10-07 UTC).
 UNSAFE_IMPL = re.compile(r'\bunsafe\s+impl\b')
+# A `static mut` declaration, counted for milestone 891 (a mutable static becomes an atomic, a lock
+# or a recorded cell); the population's name is provisional. Not unsafe code itself, but every
+# access to one is, and its soundness argument lives in a comment. The lookbehind keeps `&'static
+# mut T`, a reference type, out: the lexer leaves a lifetime alone, so `'static mut` survives the
+# strip and would otherwise match. A bare grep scored about 90 for that reason when the census found
+# 52.
+STATIC_MUT = re.compile(r"(?<!')\bstatic\s+mut\b")
+# Test code is out of this one population and only this one, matching the census the milestone was
+# raised from (notes/lint-census-2026-10-09.md). The system tests and the fixtures are harnesses
+# whose single-threaded shape is the test's own premise, and the block's scope left them out. The
+# `#[cfg(test)]` items elsewhere are not stripped: none declares a `static mut` today, and one that
+# did would count, which is the loud direction.
+STATIC_MUT_TEST_CODE = ('system_tests/', 'fixtures/')
 
 # What is out of the census, and every exclusion has a reason rather than a convenience.
 #
@@ -134,8 +147,8 @@ HOST_ONLY = ('bench/host/', 'xtask/', 'tools/', 'fuzz/', 'helpers/', 'patches/')
 def unsafe_census(files):
     """Every unsafe number this tree tracks, in one pass over the Rust that runs on nife.
 
-    Returns `outside_arch`, `inside_arch`, `thread_safety`, `trait_claims`, `code_lines` and
-    `density`.
+    Returns `outside_arch`, `inside_arch`, `thread_safety`, `trait_claims`, `static_mut`,
+    `code_lines` and `density`.
 
     **Density rather than a raw count, measured before it was chosen.** Outside
     `kernel/src/arch/` the block count went 171 to 747 between 2026-07-15 and 2026-08-18, almost all
@@ -150,7 +163,7 @@ def unsafe_census(files):
     not about assembly.
     """
     out = {'outside_arch': 0, 'inside_arch': 0, 'thread_safety': 0, 'trait_claims': 0,
-           'code_lines': 0}
+           'static_mut': 0, 'code_lines': 0}
     for path, text in files:
         if path.startswith(HOST_ONLY):
             continue
@@ -159,6 +172,8 @@ def unsafe_census(files):
         claims = len(THREAD_SAFETY.findall(code))
         out['thread_safety'] += claims
         out['trait_claims'] += len(UNSAFE_IMPL.findall(code)) - claims
+        if not path.startswith(STATIC_MUT_TEST_CODE):
+            out['static_mut'] += len(STATIC_MUT.findall(code))
         if path.startswith('kernel/src/arch/'):
             out['inside_arch'] += blocks
         else:
@@ -662,6 +677,11 @@ def _selftest():
     strip_non_code('r"' + '\n' * 27)
     elapsed = time.monotonic() - started
     assert elapsed < 1.0, f'raw-string strip took {elapsed:.2f}s: catastrophic backtracking is back'
+    # A `static mut` counts once, a reference type spelled `&'static mut` and a comment about one do
+    # not, and the test harnesses are out of that population.
+    src = ("static mut A: u8 = 0;\nfn f(x: &'static mut u8) {}\n// static mut B\n"
+           "pub(crate) static  mut C: u8 = 0;\n")
+    assert unsafe_census([('k/a.rs', src), ('system_tests/b.rs', src)])['static_mut'] == 2
     print('rust_source selftest: ok')
 
 

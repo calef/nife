@@ -59,7 +59,7 @@ Lane `milestone/198-owner-console`, 2026-09-26. Names provisional.
   one, or one over a page lists nobody. The root is where this tree keeps what it knows about an
   identity (§117 (a principal's subtree is named by its identity)). It is also the one place a
   session cannot name, because a session is confined to its own subtree. The owner edits it at the boot
-  prompt with `echo chris >> may-run-unvouched`.
+  prompt with `echo alice >> may-run-unvouched`.
 - `vouch <path>`. The boot prompt asks the progenitor to record the file's digest in a new
   activation generation, under the path's last component, with `owner` in the package column
   (`activation_set::OWNER`). The bytes then run vouched with the installed manifest until a
