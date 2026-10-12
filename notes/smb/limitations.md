@@ -100,7 +100,7 @@ attempt knew it had not solved, written while the code was in front of someone.
   `link`/`unlink`. It is not a description of a from-scratch, single-request-at-a-time server
   transacting against its own B-tree. This is a wire-format change on a verb two programs already
   agree on (`fs_proto::fs::RENAME`). So it needs a decision that amends or narrows §42, which is an
-  architect's call and not a lane's; see design/roadmap/0055-time-machine.md for the writeup.
+  architect's call and not a lane's; see design/roadmap/0055-time-machine/path-to-built.md for the writeup.
 
 ## Identity
 

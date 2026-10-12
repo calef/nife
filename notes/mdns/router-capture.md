@@ -13,14 +13,14 @@ from the dev machine. The router answered from `192.168.8.1:5353`; the full hex 
 | PTR target | `GL-BE9300.<type>.local` | same | same |
 | SRV port | **445** | **0** | **0** |
 | SRV target | `GL-BE9300.local` | same | same |
-| TXT | one empty string | `dk0=adVN=corinne,adVF=0x82`, `dk1=adVN=chris,adVF=0x82`, `sys=adVF=0x100` | `model=MacSamba` |
+| TXT | one empty string | `dk0=adVN=alice,adVF=0x82`, `dk1=adVN=bob,adVF=0x82` (user names replaced by placeholders), `sys=adVF=0x100` | `model=MacSamba` |
 
 Plus an A record (`192.168.8.1`) and an AAAA in every response. Findings that beat the documentation:
 
 - One `_adisk` instance for all shares. The disks are `dkN=` entries inside a single TXT record.
   Emitting one announcement per share would be wrong.
-- Two disks is correct. The roadmap block described three users; graeme migrated from macOS to
-  Windows and his share was dropped, so the reference advertises corinne and chris (calef confirmed,
+- Two disks is correct. The roadmap block described three users; one moved from macOS to
+  Windows and that share was dropped, so the reference advertises two (calef confirmed,
   2026-08-15).
 - `model=MacSamba`, not `TimeCapsule`. The router's own Samba config sets
   `fruit:model = TimeCapsule`, and its mDNS advertisement says `MacSamba` anyway: the SMB-side AAPL
