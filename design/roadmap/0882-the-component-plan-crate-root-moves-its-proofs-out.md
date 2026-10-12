@@ -1,7 +1,7 @@
 ---
-status: IN-PROGRESS
+status: BUILT
 raised: 2026-10-11
-branch: milestone/882-the-component-plan-crate-root-moves-its-proofs-out
+built: 2026-10-12
 milestone_dependencies: none
 decision_dependencies: 266, 296
 machine_requirements: none
@@ -27,11 +27,11 @@ file in `design/decisions/` before it moves a line, and its pull request carries
 `needs-architect`.
 
 The lane wrote it up on 2026-10-12 (UTC) as §296 (the component-plan crate root's proofs move into
-a child module), `status: PROPOSED`, re-measured on main at `17b23264e` (2,067 lines). Which part
-leaves first is answered by calef's rulings on 842, 845 and 846: tests sit beside their code. Under
-§282 (when a file is split, the parent becomes an index), the orchestration question becomes a
-choice between this move and an index. That is the one question asked. The proofs move is built on
-the recommendation while it waits, and is the first commit of the other answer too.
+a child module), re-measured on main at `17b23264e` (2,067 lines). Which part leaves first is
+answered by calef's rulings on 842, 845 and 846: tests sit beside their code. Under §282 (when a
+file is split, the parent becomes an index), the orchestration question became a choice between
+this move and an index. That was the one question asked, and calef answered "A" (proofs only) on
+2026-10-12 (UTC), on #1971. §296 is DECIDED.
 
 Reuse: not applicable; this moves code and adds none. `crates/timetable/src/proofs.rs` is the
 precedent in this tree for Kani harnesses in their own file.
@@ -150,9 +150,30 @@ Found with `grep` at `396187b0b`.
    harness fail.
 5. `proofs.rs` carries a `//! Name:` line marked provisional.
 
+## What was built
+
+Built 2026-10-12 (UTC) on #1971, as §296 records. `crates/component_plan/src/lib.rs` went from
+2,067 lines to 1,665 and ends with `#[cfg(kani)] mod proofs;`. The five Kani harnesses moved
+unchanged into `crates/component_plan/src/proofs.rs` (411 lines, a provisional `//! Name:` line),
+and the file's row is gone from `design/file-length-baseline.tsv`. Harness paths stay
+`proofs::<harness>`, so no falsification patch, patch name or `falsification-times.tsv` row
+changed. Orchestration stays in `lib.rs`. The stale citations in milestone 849 are not touched
+here.
+
+## Follow-on
+
+- **Decision.** Orchestration stays in `lib.rs`. `design/decisions/0296-the-component-plan-crate-roots-proofs-move-into-a-child-module.md`
+  records calef's "A" and the time to revisit it: when the transitive orchestration this crate's
+  `BUGS` describes is built, since that is what would grow the file. The same section ships the
+  new file's name provisional for calef's name-ratification pass.
+- **Recorded.** `design/roadmap/0849-a-package-declares-what-it-needs-at-run-time.md` cites this
+  file by line number for `Requirements`, `Direction` and `Requirements::depends_on`, and those
+  numbers have been 27 lines low since milestone 863. This move does not shift them. A lane edits
+  only its own block, so they are listed for the maintainer on #1971.
+
 ## Index row
 
 `crates/component_plan/src/lib.rs` is 2,067 lines, 67 over the ceiling, and its baseline row still
 says 2,094. Its planning code is one family of types and should not be cut. This moves the inline
 Kani proofs into `proofs.rs`, which brings the file to about 1,665 and changes no harness path or
-patch. Whether orchestration leaves too, and every name, are an architect's call.
+patch. Orchestration stays, at calef's ruling (§296); names ship provisional.

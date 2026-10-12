@@ -1,6 +1,8 @@
 ---
-status: PROPOSED
+status: DECIDED
 raised: 2026-10-12
+decided: 2026-10-12
+ratified_by: calef
 ---
 
 # 296. The component-plan crate root's proofs move into a child module
@@ -10,6 +12,15 @@ Raised 2026-10-12 (UTC) as the cut that
 says is calef's call before a line moves. Written by lane
 `milestone/882-the-component-plan-crate-root-moves-its-proofs-out`. *(Section number provisional
 until the merge queue lands it.)*
+
+## The ruling
+
+The lane recommended A, the proofs alone, and built it while the question waited. calef,
+2026-10-12 02:28 (UTC), on [PR #1971](https://github.com/nifeos/nife/pull/1971): "A". The Kani
+proofs move to `proofs.rs`, and `lib.rs` keeps the declaration family and orchestration. A child
+named `proofs` does not make `lib.rs` a parent under §282, so it does not become an index.
+Orchestration stays where it is; the file has not grown since 2026-10-03. File names ship
+provisional for the naming pass.
 
 ## What the file is
 
@@ -99,7 +110,7 @@ for A is the first commit of B either way, so nothing is thrown away.
 
 ## What A does
 
-Built on the recommendation while this waits.
+Built on the recommendation while the question waited, and kept as built after calef ruled A.
 
 - `lib.rs` keeps lines 1 to 1661 and ends with `#[cfg(kani)] mod proofs;` and a two-line comment.
 - `proofs.rs` holds the module body, de-indented by four spaces and otherwise unchanged. The
