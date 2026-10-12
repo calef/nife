@@ -436,7 +436,7 @@ design/roadmap/0259-sweep-the-notes-for-stale-claims.md	-	-	54	-	-
 design/roadmap/0260-network-boot-xenon.md	-	-	59	-	-
 design/roadmap/0261-el0-nvme-on-xenon.md	-	-	59	-	-
 design/roadmap/0262-consolidate-the-naming-record.md	-	22	54	-	-
-design/roadmap/0263-can-a-timer-be-a-capability.md	3166	-	74	-	-
+design/roadmap/0263-can-a-timer-be-a-capability.md	-	-	74	-	-
 design/roadmap/0264-sixty-names-nobody-wrote-down.md	-	-	53	-	-
 design/roadmap/0265-proto-is-a-truncation-not-an-abbreviation.md	3294	-	53	-	-
 design/roadmap/0266-init-is-an-action-and-the-thing-is-a-process.md	3622	-	56	-	-

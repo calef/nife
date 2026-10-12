@@ -34,30 +34,12 @@ And the block's aarch64 negative was wrong, which is the correction worth having
 grant a comparator to one thread rather than to all of EL0, and the machinery to do it was built
 in this tree three days ago for a different reason.
 
-## Why a spike, and the precedent is milestone 106's own
+## Why a spike, and the decision it sits under
 
-Milestone 106 was priced this way, and it worked: the pricing lane built a prototype (a
-`deadline` word on `Thread`, a cached earliest, an expiry walk in `on_tick`, a blocked-thread
-census), measured it, and threw it away on purpose, because *"shipping it would have settled the
-fork by accident."* Those numbers retired the cost objection that had stood since 2026-08-04.
-
-This is not proposal-shaped procrastination, which AGENTS.md warns is an available way to avoid
-deciding. The direction is decided. What is unpriced is a prerequisite underneath it, and nobody can
-currently say what it costs, which is the condition that earns a lane.
-
-## The decision this sits under
-
-calef, 2026-09-05, on milestone 106's fork: serve the timed wait from a userspace timer service
-signaling a notification, rather than from a new kernel blocking primitive. The reasoning is in
-[§101](../decisions/0101-notification-objects.md), which anticipated it:
-
-> A notification object lets a *userspace timer process* wake a thread at a deadline, which is how
-> seL4 does it, but it requires that timer process to exist and to hold a clock capability.
-
-All four of milestone 106's named consumers are userspace (`thread::sleep`, `Endpoint::RECV`'s
-callers, the shell's `^C` poll, and `net_stack`), and §101's carve-out for a kernel timed wait names
-kernel needs (a watchdog, a scheduling deadline, an in-kernel retransmit) of which the tree has no
-instance. Both of `sched.rs`'s no-timeout complaints are about userspace callers being hung.
+Both moved on 2026-10-12 (UTC) into
+[`background.md`](0263-can-a-timer-be-a-capability/background.md) under §212 (a prose budget): why
+this was priced as a spike, with milestone 106's own precedent, and calef's decision on 106's fork
+that it sits under.
 
 ## The problem this spike exists to settle
 
@@ -163,7 +145,7 @@ way.
 
 The table above left two things unpriced, and its own `BUGS` named the first. A second scaffold paid
 both: four kernels differing by one change each, built release on all three ISAs, measured with
-`llvm-nm --print-size`, and deleted. **The error bar is zero bytes** (a build was reverted and
+`llvm-nm --print-size`, and deleted. The error bar is zero bytes (a build was reverted and
 rebuilt from its patch and came out byte-identical). Full method in
 [`notes/timer-capability/second-scaffold.md`](../../notes/timer-capability/second-scaffold.md#method-and-error-bars-both-scaffolds).
 
@@ -184,7 +166,7 @@ attack as a side effect.
 
 **And the kernel thread cannot be served by the fourth shape either**, which is the finding this
 block did not have on 2026-09-05 because milestone 106's consumer census had not been run. The
-reason is not architectural: a kernel thread runs at EL1 and **cannot issue a syscall at all**, so
+reason is not architectural: a kernel thread runs at EL1 and cannot issue a syscall at all, so
 `Timer::ARM` is as unreachable to it as a userspace timer service is. Not for want of a cspace,
 which is the thing a reader expects to be missing and is not (`Thread::spawn_into` gives every
 kernel thread an empty `CapabilityTable`). What it needs is *smaller* than the fourth shape, because
