@@ -313,7 +313,6 @@ Each limit in one sentence. The full entries, with how each was found and what w
 - A wrong citation whose gloss is wrong in the same direction passes, and tier 2 is weaker the
   longer the target document.
 - Fenced code blocks in markdown are skipped, so a citation inside one is unchecked.
-- Nothing checks `design/decisions/`'s index rows' titles against the files they link to.
 - The ratchet reads the committed tip; since 2026-09-24 an uncommitted edit that adds or removes a
   citing line fails the run with "Commit first".
 - A tool that reads only stdout can see this gate as clean while it fails; check the exit code.

@@ -42,17 +42,17 @@ retirement, when there is something to generalize from.
 **A journey has no status field of its own, and that is deliberate.** A hand-written "70% done" is
 exactly the kind of claim this tree's own `counted-claims` mechanism exists to replace: a number
 nobody re-derives drifts the moment one of its steps moves. `script/journeys` computes a journey's
-state by reading the milestone blocks in `design/roadmap/` and the index in
-`design/decisions/README.md`, the same records `script/roadmap` and `script/decisions` already treat
+state by reading the milestone blocks in `design/roadmap/` and the decision files in
+`design/decisions/`, the same records `script/roadmap` and `script/decisions` already treat
 as ground truth, so a journey file records
 only what a human has to write: which steps, in what order, and why each one is on the path.
 
 ## Index
 
 GitHub renders this README as the directory index. `script/journeys` is the live view; this table
-is the identity mapping only, the same division `design/decisions/README.md` makes between "what
-number is this" and "what state is it in". `design/roadmap/` no longer keeps an index at all, and
-the reason it can afford not to is that nothing there needs a second copy of a number.
+is the identity mapping only: "what number is this", never "what state is it in". Neither
+`design/roadmap/` nor `design/decisions/` keeps an index any more, and the reason they can afford
+not to is that nothing there needs a second copy of a number.
 
 | # | journey |
 |---|---|
@@ -84,8 +84,8 @@ A journey file is a short narrative (what the story is, why it matters) followed
 
 ## Reading a journey's state
 
-`script/journeys` prints, per step, the milestone's status from the roadmap index and (when a
-decision is cited) that decision's status from the decisions index, then a one-line rollup: how many
+`script/journeys` prints, per step, the milestone's status from its block and (when a decision is
+cited) that decision's status from its frontmatter, then a one-line rollup: how many
 steps sit on a `BUILT` milestone with no additional decision blocking them. A step whose milestone is
 `BUILT` but whose cited decision is not `DECIDED` in the direction the step needs still reads as
 blocked; the tool does not try to parse *which way* a decision went; it says what a step needs and
