@@ -377,13 +377,13 @@ mod package_index_tests;
 /// copies nothing and pre-arranges nothing: the two processes compose the sharing themselves, and
 /// the read-only narrowing means the consumer can look but not write. See fixtures/src/hello.rs
 /// `page_frame_producer()/page_frame_consumer()`.
-// Test scaffolding: the `tests` module below is the only caller, and it runs on both ISAs now
+// Test scaffolding: `capability_tests` below is the only caller, and it runs on both ISAs now
 // (milestone 19's user-test port). This wiring was already portable; it was compiled out on riscv64
 // only because its consumer was.
 #[cfg(test)]
 pub mod page_frame_service;
 
-// Test scaffolding: the `tests` module below is the only caller, and it runs on both ISAs now
+// Test scaffolding: `capability_tests` below is the only caller, and it runs on both ISAs now
 // (milestone 19's user-test port). This wiring was already portable; it was compiled out on riscv64
 // only because its consumer was.
 #[cfg(test)]
@@ -393,7 +393,7 @@ pub mod delegation_service;
 /// an untyped budget and a channel; the peer holds the channel and a report line. Everything
 /// else, the endpoint itself included, is created at runtime by the maker out of its own pages
 /// and delegated. See fixtures/src/hello.rs `ep_maker()/ep_user()`.
-// Test scaffolding: the `tests` module below is the only caller, and it runs on both ISAs now
+// Test scaffolding: `capability_tests` below is the only caller, and it runs on both ISAs now
 // (milestone 19's user-test port). This wiring was already portable; it was compiled out on riscv64
 // only because its consumer was.
 #[cfg(test)]
@@ -412,7 +412,7 @@ pub mod process_composition_service;
 /// **Milestone 12: Call/Reply, at EL0.** One request endpoint, a server that answers a caller it was
 /// never wired to, and the one-shot reply capability proven across the boundary. See
 /// fixtures/src/hello.rs `call_server()/call_client()`.
-// Test scaffolding: the `tests` module below is the only caller, and it runs on both ISAs now
+// Test scaffolding: `capability_tests` below is the only caller, and it runs on both ISAs now
 // (milestone 19's user-test port). This wiring was already portable; it was compiled out on riscv64
 // only because its consumer was.
 #[cfg(test)]
@@ -426,36 +426,62 @@ pub mod carried_capability_service;
 /// **Milestone 13: revoke a frame, at EL0.** One process with an untyped budget retypes a frame,
 /// maps it, revokes it, and reports whether the revoke deleted its own capability. See
 /// fixtures/src/hello.rs `revoke_demo()`.
-// Test scaffolding: the `tests` module below is the only caller, and it runs on both ISAs now
+// Test scaffolding: `capability_tests` below is the only caller, and it runs on both ISAs now
 // (milestone 19's user-test port). This wiring was already portable; it was compiled out on riscv64
 // only because its consumer was.
 #[cfg(test)]
 pub mod revoke_service;
 
-/// **The in-kernel userspace suite, on both instruction sets** (milestone 19's user-test port).
-///
-/// It was aarch64-only for most of this project's life, and the module comment used to say the
-/// reason was the tests: "every test drives a hand-written aarch64 program through `exec` and reads
-/// aarch64 fault registers". That was true, and it was the wrong thing to fix. The tests were fine;
-/// their *scaffolding* was aarch64. Three things moved and the tests came along unchanged:
-///
-/// 1. The hand-assembled programs became real ELFs the toolchain builds for both targets (the
-///    `outlaw` binary and the `interrupt_ignorer` that already existed). See the note above
-///    `OUTLAW_ROUND_TRIP`.
-/// 2. `ESR`/`FAR` became `arch::UserFault`, the same fact in words RISC-V can say, which is what
-///    keeps "a PERMISSION fault at exactly this address" assertable rather than softened to "a fault
-///    happened".
-/// 3. `hello`, which carries the milestone 7-19 role catalogue, was found to build for RISC-V once
-///    six syscalls it had hand-rolled in aarch64 `asm!` were routed through `user_mode_runtime`, which already
-///    had portable versions of all six.
-///
-/// **What is still gated, and why, is written at each test rather than here**, because a blanket
-/// module comment is how the old claim survived past the point of being true. Two kinds of gate
-/// appear below: a property that has no RISC-V analogue at all (`el1_runs_on_sp_el1`), and a
-/// property whose RISC-V twin lives in `riscv_virtio_tests` and would be duplicated rather than
-/// gained. See notes/riscv-parity-scope.md.
+/// The program images, and the bare spawn and reap, that more than one topic file below uses.
 #[cfg(all(test, initrd))]
-mod tests;
+mod test_programs;
+
+/// **The boundary between EL0 and the kernel**: reaching user mode and coming back, a kernel
+/// address refused, preemption, and the trap frame.
+#[cfg(all(test, initrd))]
+mod el0_boundary_tests;
+
+/// **The ELF loader**: forged images refused, and the initrd's own image run at EL0.
+#[cfg(all(test, initrd))]
+mod elf_loader_tests;
+
+/// **Address spaces**: ASID tagging and the cross-CPU flush, read-only segments, a dead thread's
+/// space freed whole, and a space built by user code.
+#[cfg(all(test, initrd))]
+mod address_space_tests;
+
+/// **Capabilities between processes**: shared memory, `map_physical`, rendezvous, delegation,
+/// call and reply, and frame capabilities.
+#[cfg(all(test, initrd))]
+mod capability_tests;
+
+/// **Storage from a userspace driver up**: the virtio disk, `std::fs`, the redoxfs server and
+/// per-file grants.
+#[cfg(all(test, initrd))]
+mod filesystem_tests;
+
+/// **The network path**: virtio-net, DHCP, the socket contract, name resolution, TCP, HTTP and
+/// `std::net`. aarch64 only; the RISC-V twins are in `riscv_virtio_tests`.
+#[cfg(all(test, initrd))]
+mod network_tests;
+
+/// **The block driver**: DMA descriptor escapes refused, blocks written and read back, and the
+/// PCIe transport.
+#[cfg(all(test, initrd))]
+mod block_driver_tests;
+
+/// **Userspace init**, the least-authority demo, and a process spending its own memory region.
+#[cfg(all(test, initrd))]
+mod init_tests;
+
+/// **The cycle-counter grant**, and the CoreMark workload init runs.
+#[cfg(all(test, initrd))]
+mod cycle_counter_tests;
+
+/// **Child threads**: build, start and run one, reclaim, spawn-to-reap, and a process composed
+/// from two capabilities.
+#[cfg(all(test, initrd))]
+mod child_thread_tests;
 
 /// **Forcible teardown: `DESTROY` tears a runaway down** (DECISIONS §16 amendment, §24's second-`^C`
 /// tier). A child spinning at EL0, never yielding and never checking an endpoint, cannot be waited
@@ -1035,9 +1061,10 @@ mod rmle_tests;
 ///
 /// # BUGS
 ///
-/// The ordering is still only alphabetical. A future `kernel::user` module sorting after
-/// `thread_leak_police` would run after the probe and could leak unpoliced, silently, exactly as
-/// `tests` did. Nothing enforces this; there is no "run me last" attribute in
+/// The ordering is still only alphabetical. A module sorting after `thread_leak_police` runs after
+/// the probe and can leak unpoliced, silently, exactly as `tests` did. Seven already do:
+/// `thread_pointer_tests`, `time_tests`, `timer_tests`, `timetable_tests`, `unmap_tests`,
+/// `uuid_tests` and `x86_port_tests`. Nothing enforces this; there is no "run me last" attribute in
 /// `custom_test_frameworks`. If that happens, the symptom will again be a starvation watchdog
 /// somewhere unrelated rather than a failure here.
 #[cfg(test)]
@@ -1048,7 +1075,7 @@ mod thread_leak_police;
 /// Every revocation sweep in this kernel walks capability tables. A capability handed to a
 /// rendezvous nobody is receiving on yet sits in `Thread::outgoing_cap` instead, which no sweep but
 /// `sched::delete_reply_caps_naming` reads. The module's own header has the reasoning and the
-/// `BUGS`; it is here rather than in [`tests`] because that file is this tree's worst merge hotspot.
+/// `BUGS`; it is here rather than in `tests.rs` because that file was this tree's worst merge hotspot.
 ///
 /// Cross-ISA: `outgoing_cap`, the sweeps and the rendezvous are portable scheduler code, so the
 /// parity gate (DECISIONS §19, architectural parity is a tenet) is met by the same test running on
@@ -1083,7 +1110,7 @@ mod map_revocation_window_tests;
 /// **A seeded syscall driver with a shadow model** (milestone 752 (a seeded syscall driver with a
 /// shadow model), provisional). Random capability operations from a seed, every answer and every table
 /// predicted by a model and compared. Its own header has the oracle, the replay and the `BUGS`;
-/// a module of its own for [`tests`]' merge-hotspot reason, named to sort before
+/// a module of its own for `tests.rs`' merge-hotspot reason, named to sort before
 /// [`thread_leak_police`].
 ///
 /// Cross-ISA: one portable body through the portable syscall layer, run on every architecture
@@ -1095,7 +1122,7 @@ mod syscall_fuzzer_tests;
 /// the surface a confined process can reach), part (b), provisional). The sibling of
 /// [`syscall_fuzzer_tests`] one level down: real EL0 programs through the real trap entry, one
 /// random call at a time, judged between calls by an escape oracle rather than a shadow model. Its
-/// own header has the conductor, the oracles and the `BUGS`; a module of its own for [`tests`']
+/// own header has the conductor, the oracles and the `BUGS`; a module of its own for `tests.rs`']
 /// merge-hotspot reason, named to sort before [`thread_leak_police`]. It spawns the
 /// `confined_syscall_fuzzer` fixture, so it carries the initrd gate.
 ///
@@ -1107,7 +1134,7 @@ mod confined_fuzzer_tests;
 /// **`login` gives back everything when any retype of a login fails** (milestone 757 (a test kernel
 /// fails a process on its Nth retype), provisional). The kernel refuses `login`'s Nth retype, for
 /// every N a login reaches, and `login`'s capability table and region usage must come back each
-/// time. Its own header has what it reaches and its `BUGS`; a module of its own for [`tests`]'
+/// time. Its own header has what it reaches and its `BUGS`; a module of its own for `tests.rs`'
 /// merge-hotspot reason, named to sort before [`thread_leak_police`]. It uses `login_tests`' one
 /// `login`, so it carries that module's gate.
 ///
@@ -1122,7 +1149,7 @@ mod nth_retype_tests;
 /// back when a child's region was destroyed; this builds 40 `ripgrep`-sized children through it on
 /// a table budget the old, climbing cursor ran out of at the thirty-seventh (measured, with the
 /// wrap taken out). Its own header has the arithmetic. A module of its own rather than a test in
-/// [`tests`], for that file's merge-hotspot reason, and named to sort before
+/// `tests.rs`, for that file's merge-hotspot reason, and named to sort before
 /// [`thread_leak_police`].
 ///
 /// Cross-ISA: one portable test body, run on every architecture (DECISIONS §19).
@@ -1135,7 +1162,7 @@ mod scratch_window_tests;
 /// Every unmap sweep in `crate::revoke` is driven by the mapping log, and `AddressSpace::map_physical`
 /// filed nothing in it, so a `Spawn::maps` entry survived a revoke of its own frame. The module's
 /// own header has the reasoning, the reachable boot path and the `BUGS`; it is here rather than in
-/// [`tests`] because that file is this tree's worst merge hotspot, and it is named to sort before
+/// `tests.rs` because that file was this tree's worst merge hotspot, and it is named to sort before
 /// [`thread_leak_police`] for that module's own reason.
 ///
 /// Cross-ISA: the mapping log, the sweeps and `map_physical` are portable kernel code, so the
@@ -1148,7 +1175,7 @@ mod spawn_mapping_revocation_tests;
 /// page-tables-outlive-destroy lane, 2026-10-05 UTC, provisional). `PageFrame::MAP` and
 /// `MemoryRegion::MAP` build tables out of a region the caller names, and `DESTROY` handed those
 /// back while the space still linked them. Its own header has the reasoning; a module of its own
-/// for [`tests`]' merge-hotspot reason, named to sort before [`thread_leak_police`].
+/// for `tests.rs`' merge-hotspot reason, named to sort before [`thread_leak_police`].
 ///
 /// Cross-ISA: the map paths, the log and the cut are portable kernel code (DECISIONS §19).
 #[cfg(test)]
