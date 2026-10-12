@@ -123,7 +123,7 @@ design/decisions/0130-cmos-rtc-delegation.md	-	27	100	-	-
 design/decisions/0131-hold-at-rung-two.md	-	23.5	49	-	-
 design/decisions/0132-overlapping-page-frame-runs.md	-	-	59	-	-
 design/decisions/0133-idle-core-self-rescue.md	-	-	54	-	-
-design/decisions/0134-harness-falsification-record.md	3945	-	71	-	-
+design/decisions/0134-harness-falsification-record.md	-	-	71	-	-
 design/decisions/0137-trng-health-tests.md	-	-	44	-	-
 design/decisions/0138-cross-core-handoff-under-load.md	-	-	50	-	-
 design/decisions/0139-cycle-counter-authority.md	-	-	55	-	-

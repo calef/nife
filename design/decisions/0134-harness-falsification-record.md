@@ -17,70 +17,18 @@ where we want to land if we want to state that nife is proven."* Then the format
 were costed: *"Go with the diff, weekly plus per-PR for touched harnesses."* Then the spellings, ratified the
 same day and recorded at the bottom. Nothing here is open.
 
+Its evidence is in two appendices, moved out on 2026-10-12 (UTC) under
+[§212 (a prose budget)](0212-a-prose-budget-for-every-document.md); this page is complete without them:
+
+- [`background.md`](0134-harness-falsification-record/background.md): why now, the two
+  failures, and the prior art.
+- [`format-history.md`](0134-harness-falsification-record/format-history.md): the patch
+  spellings weighed, and the evidence behind each amendment.
+
 ## What is being decided
 
 Whether every Kani harness in this tree must carry evidence that it can fail, in a form a machine
 can replay, and what that form is.
-
-## Why now
-
-`notes/verification.md` already states the rule, and states it well:
-
-> Falsify a property before believing it. Break the code the harness guards and confirm the harness
-> fails. Every milestone 35 property was falsified this way, and one falsification corrected a claim in
-> the code (the load-bearing guard was not the one the comment pointed at). A harness that cannot be
-> made to fail is not evidence.
->
-> -- notes/verification.md
-
-It is rung four, honored by whoever remembers, and milestone 191 measured what that produces:
-145 harnesses, 23 `kani::cover!` sites across 4 of 24 harness crates, and no harness anywhere
-recording what was done to falsify it. The reverse pass found the predictable result:
-`capability::subset_is_reflexive` proves `a & !a == 0`, a tautology no plausible implementation error
-breaks, and twelve of the 26 `paging` harnesses restate six properties once per ISA.
-
-The forcing question is calef's, and it is about a claim rather than about code: if the project is
-going to say proven, the evidence that the proofs are load-bearing cannot itself be a written
-claim that they are load-bearing. That is one level of indirection away from evidence, and it is the
-same shape as the nine misrecorded roadmap statuses and the fabricated block quote that survived
-twelve days of gates.
-
-## Two failures, and they are not the same problem
-
-Conflating them produces a convention that half works.
-
-Vacuity is mechanical. Assumptions contradict, the input set is empty, and Kani reports
-`SUCCESSFUL`. `kani::cover!` is the check that catches it, which `notes/verification.md` already
-says.
-
-**Tautology is not.** A property true of every plausible implementation passes every cover check
-ever written. Only falsification catches it: if nobody can describe a change that turns the harness
-red, the harness is decorative.
-
-## Prior art, and it is a field rather than an idea
-
-Read rather than recalled, because this tree carried a fabricated block quote for twelve days.
-
-The model-checking literature has done this since roughly 2004, under two names that belong
-together. Vacuity detection and coverage metrics are the standard sanity checks, and the
-survey work makes the unifying observation explicit: both work by *repeating the verification on a
-mutated input*, with vacuity mutating the specification and coverage mutating the system.
-
-What this section proposes has a name there: mutation coverage for model checking, where an
-element of the system is considered covered by the specification if changing that element falsifies
-the specification. That is "break the code, confirm the harness fails", stated formally, with two
-decades behind it.
-
-§39's protected class applies: a term a reader already knows from outside costs a newcomer
-nothing, so this convention should be spelled in the field's vocabulary rather than in ours.
-
-There is also a cheaper family, Inductive Validity Cores, which compute the minimal set of model
-elements a proof actually needed and so give coverage without re-running anything. *(Since checked: Kani exposes none, as `script/falsifications` records.)*
-
-Sources: [Coverage Metrics for Formal
-Verification](https://link.springer.com/chapter/10.1007/978-3-540-39724-3_11), [Sanity Checks in
-Formal Verification](https://www.cs.huji.ac.il/~ornak/publications/concur06b.pdf), [Mutation Coverage
-Estimation for Model Checking](https://link.springer.com/chapter/10.1007/978-3-540-30476-0_29).
 
 ## The options
 
@@ -190,23 +138,8 @@ carries that: an attestation is an assertion, and an assertion is not evidence.
 
 ### The mutation is a unified diff
 
-calef, 2026-08-30, choosing between three spellings that differ in what they cost later rather
-than now.
-
-- A unified diff in a sibling file. Replay is `git apply`, run the harness, require failure,
-  revert. No new tooling at all. Chosen.
-- A structured operator record (file, symbol, operator). Survives refactors, and needs a mutation
-  engine that can drive `cargo kani`, which `cargo-mutants` was not built for and nobody has tried.
-- A `cfg`-gated defect in the source. Cannot rot, because the compiler checks it, and it puts 145
-  blocks of deliberately wrong code into shipping source, each a path no normal build exercises.
-
-Why the diff wins, and it is the elegance tenet rather than the convenience one. It has the
-fewest moving parts, needs nothing that does not exist, and leaves the operator route open if a
-sweep ever proves cheap enough to want it.
-
-Its rot is a feature, and this is the load-bearing claim. A patch that no longer applies means
-the covered code moved, which is exactly when a falsification should be redone rather than trusted.
-A record that survives a refactor of the thing it falsifies is asserting something nobody checked.
+The three spellings weighed, and why the diff won, are in
+[`format-history.md`](0134-harness-falsification-record/format-history.md#the-mutation-spellings-weighed).
 
 ### Cadence: weekly, plus per-PR for touched harnesses
 
@@ -267,22 +200,6 @@ rather than central so that two lanes touching two packages cannot collide; both
 words. A rule three of whose own instances violate it teaches the next reader to guess whether that
 was sloppiness or intent, so the words now say what the reason always meant.
 
-And one of those two paths has since moved, which is worth leaving visible rather than
-correcting in place. Milestone 175 split `user/` into `components/` and `fixtures/` on
-2026-09-13, so 197's patch lives at
-`components/falsifications/proofs.push_never_writes_past_the_buffer_it_was_given.patch` today and
-there is no `user/` package. The clarification above was accurate when it was written; the citation
-went stale twelve days later, which is the ordinary cost of naming an instance to illustrate a rule
-and is cheaper than not illustrating it.
-
-Amended 2026-08-31, and the first spelling was wrong. It was
-`falsifications/<harness_fn_name>.patch`, which assumes a harness function name is unique within its
-crate. **In `paging` it is not**: six properties are stated once per ISA across `aarch64.rs`,
-`sv39.rs` and `x86_64.rs`, so eighteen harnesses share six names, three would collide on one file,
-and `cargo kani --harness index_is_always_in_bounds` cannot separate them either. Milestone 191 (did
-the proofs catch the bugs?) had already reported that duplication and the maintainer ratified the
-spelling without checking it against the tree. Found by milestone 194's lane on first contact.
-
 The module path is always included, with no branch. The reason is the one this section used to
 choose a unified diff: fewest moving parts and fewest places to be wrong. It is unique by
 construction, it is stable (a harness added elsewhere cannot retroactively invalidate an existing
@@ -306,15 +223,6 @@ A falsification record names the assertion it expects to fail, on a line beginni
 `Expected to fail:` in the patch's prose head, beside `Falsifies`. `script/falsifications` may then
 compare it against the transcript and fail a record whose red arrived somewhere else.
 
-**The naming question had already been answered by use, and the proposal that raised it did not
-know.** Milestone 323's part 4 was filed as a decision about what to call a new field, on the
-observation that *"four patches in the tree already solve this in prose"*. That was a sample. Counted
-on 2026-09-18: 66 falsification records, all 66 carrying the line, 65 spelling it exactly
-`Expected to fail` and one `Expected red`
-(`crates/nifefs/falsifications/verification.the_validation_implies_reads_slice_is_in_bounds.patch`,
-corrected in the same change). So the decision was not what to name a field; it was whether to ratify
-the name 65 records already used, or rewrite 65 files to no reader's benefit.
-
 **What it buys, and what it does not.** It closes the wrong-reason red: milestone 202's break of
 [§31](0031-foreign-language-seam.md) surfaced as a 234-second watchdog timeout reading *"a livelock, not a lost
 wakeup"*, which is the right answer with a diagnostic containing no word about confinement, and
@@ -325,11 +233,6 @@ here is the point, because a gate that looks like it covers both would be worse 
 one.
 
 ## "Harness" covers a kernel test too, widened 2026-09-19
-
-calef, 2026-09-19, closing a gap `script/falsifications` named against itself and handed back.
-Its header says, in the paragraph on milestone 305, that the only word which strains is `harness`,
-that it strains in prose rather than in the convention, and that widening the wording is a decisions
-edit rather than that script's.
 
 Read every "harness" in this section as "a claim the sweep can replay". Today that is a
 `#[kani::proof]`, replayed with `cargo kani --harness <name> --exact`, or a kernel `#[test_case]`,
