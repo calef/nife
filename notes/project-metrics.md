@@ -56,6 +56,14 @@ not a caption, it is a register entry.
 calef ratified a 3,000-word cap per document on 2026-09-23, enforced as a ratchet. The first chart
 is the debt in words and the second the documents holding it.
 
+## Function length
+
+![Function length](project-metrics/function-length.svg)
+
+<!-- function-length: script/metrics writes this -->
+[9.1%](register-of-measures/function-length.md), 46 functions, 4,566 lines past 100.
+<!-- /function-length -->
+
 ## unsafe blocks outside kernel/src/arch/
 
 ![unsafe density](project-metrics/unsafe.svg)

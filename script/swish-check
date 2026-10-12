@@ -15,7 +15,7 @@
 # no early hand-over, so the kernel it boots is the default one, tour first. It types the same
 # script over COM1, the network lines included since 2026-10-05, when the kernel began building a
 # stack on the `e1000e` the x86_64 runner attaches; `swish_check_omits` in
-# `xtask/src/swish_check.rs` is where a leg-specific gap would say why. The four `uuid` lines run since milestone 595
+# `xtask/src/swish_check/verdict.rs` is where a leg-specific gap would say why. The four `uuid` lines run since milestone 595
 # (the shell runs a std program), which gave the progenitor an entropy service on `RDSEED`. It is
 # the slow leg: about six minutes on patagonia against about ninety seconds for the same script
 # over PVH, because under firmware the console server tees every byte onto the screen and waits for
@@ -56,8 +56,8 @@
 # echoed beside it, and neither can tell which source the key came from, which is the property
 # milestone 192's option A is finished by. They are the legs' full claim on the graphical path:
 # nothing past one key is asserted there. See `launch_graphical_terminal`'s doc in
-# `xtask/src/swish_check.rs`. **x86_64 has no graphical boot** (its runner attaches no virtio-gpu;
-# milestone 632's BUGS has what it would take) and stays on the refusal.
+# `xtask/src/swish_check/launch.rs`. **x86_64 has no graphical boot** (its runner attaches no
+# virtio-gpu; milestone 632's BUGS has what it would take) and stays on the refusal.
 #
 # This is the gate for `components/src/progenitor.rs`. Every other test that runs the shell has
 # the KERNEL play the first process, so a broken progenitor fails nothing; the interactive boot is the only thing that
@@ -102,7 +102,8 @@
 # prints when the answer is NO, searched exactly, because interleaving can destroy a string and
 # cannot create one. A line that cannot be read at all is reported rather than failed, but only when
 # the kernel demonstrably wrote during the boot; with one writer there is nothing to shuffle, so a
-# missing line is a real one and still fails. See `boot_claim` in `xtask/src/swish_check.rs`.
+# missing line is a real one and still fails. See `boot_claim` in
+# `xtask/src/swish_check/transcript.rs`.
 #
 # **The cost of that choice, stated plainly: it can pass a boot it should have failed.** If the
 # progenitor's

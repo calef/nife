@@ -196,6 +196,7 @@ sys.path.insert(0, 'helpers')
 import baseline_drift                                                       # noqa: E402
 import coe_actions                                                          # noqa: E402
 import crate_release                                                        # noqa: E402
+import function_length                                                      # noqa: E402
 import interface_stability                                                  # noqa: E402
 import name_provenance                                                      # noqa: E402
 import packages as package_boundaries                                       # noqa: E402
@@ -443,6 +444,12 @@ MEASURES = [
     # reaches no number anyone quotes (§266 section 3, option (b)'s one cost).
     ('file-size', ['files_over_2000', 'lines_share_over_2000_pct', 'largest_file',
                    'largest_file_lines', 'file_lines_p95', 'lines_share_over_1000_pct']),
+    # Milestone 888 (a ratchet on function length), provisional; calef asked for the chart on
+    # 2026-10-11 (UTC). The share of in-scope code lines inside functions over 100 code lines, with
+    # the count and the summed excess beside it, measured by `helpers/function_length.py`, which
+    # `script/lint`'s lint ratchet holds to clippy's `too_many_lines`. From the tree, never the
+    # baseline, for the file-size series' reason.
+    ('function-length', ['code_lines_share_over_100_pct', 'functions_over_100', 'excess_over_100']),
     ('bugs', ['bugs_markdown', 'bugs_rust']),
     ('harnesses', ['harnesses_falsified', 'harnesses_unfalsifiable', 'harnesses_unfalsified',
                    'harnesses_total']),
@@ -1488,6 +1495,14 @@ def file_size(tree):
             'lines_share_over_1000_pct': share(1000)}
 
 
+# Milestone 888 (provisional): function length in code lines, clippy's `too_many_lines` count,
+# read from text so a past week can be restated without a build. The scope and the count are
+# `helpers/function_length.py`'s; this only hands it the week's Rust.
+def function_lengths(tree):
+    rust = dict(tree.rust())
+    return function_length.series(rust) if rust else {}
+
+
 # A `BUGS` section is a markdown heading in a note, a decision or a milestone block, or the same
 # heading inside a Rust doc comment beside the feature it limits. Rising is GOOD: AGENTS.md calls
 # these "not modesty, they are the mechanism", and a tree that grows features without growing
@@ -1725,6 +1740,40 @@ def write_file_size_line(rows):
     before, rest = text.split(FILE_SIZE_BEGIN)
     _old, after = rest.split(FILE_SIZE_END)
     new = before + FILE_SIZE_BEGIN + '\n' + line + '\n' + FILE_SIZE_END + after
+    if new != text:
+        path.write_text(new)
+
+
+# Milestone 888's generated line, the file-size line's shape: the share, then the count and excess.
+FUNCTION_LENGTH_BEGIN = '<!-- function-length: script/metrics writes this -->'
+FUNCTION_LENGTH_END = '<!-- /function-length -->'
+
+
+def function_length_line(rows):
+    measured = [w for w in sorted(rows)
+                if rows[w].get('functions_over_100', '') not in ('', None)]
+    if not measured:
+        return None
+    row = rows[measured[-1]]
+    # Terse because the page sat 12 words under its 3,000-word cap (§212 (a prose budget)) when
+    # this section landed; the link carries the definition.
+    return ('[%s%%](register-of-measures/function-length.md), %d functions, %s lines past 100.'
+            % (row['code_lines_share_over_100_pct'], int(row['functions_over_100']),
+               f"{int(row['excess_over_100']):,}"))
+
+
+def write_function_length_line(rows):
+    path = pathlib.Path(PAGE)
+    text = path.read_text()
+    if text.count(FUNCTION_LENGTH_BEGIN) != 1 or text.count(FUNCTION_LENGTH_END) != 1:
+        raise SystemExit('metrics: %s must carry exactly one %r and one %r'
+                         % (PAGE, FUNCTION_LENGTH_BEGIN, FUNCTION_LENGTH_END))
+    line = function_length_line(rows)
+    if line is None:
+        return
+    before, rest = text.split(FUNCTION_LENGTH_BEGIN)
+    _old, after = rest.split(FUNCTION_LENGTH_END)
+    new = before + FUNCTION_LENGTH_BEGIN + '\n' + line + '\n' + FUNCTION_LENGTH_END + after
     if new != text:
         path.write_text(new)
 
@@ -1987,7 +2036,8 @@ def row_for(rev, week, coverage='', person_weeks='', coverage_min=''):
     for status in NAME_STATUSES:
         row[_col('names', status)] = nm[status]
     row['names_total'] = named
-    for part in (proposals(tree), lines(tree), file_size(tree), bugs(tree), harnesses(tree),
+    for part in (proposals(tree), lines(tree), file_size(tree), function_lengths(tree), bugs(tree),
+                 harnesses(tree),
                  unsafe_census(tree), unsafe_trust_census(tree),
                  fatal_risks_colors(tree), coe_action_counts(tree), prose_budget(tree),
                  homes(tree), crate_release_cells(tree)):
@@ -2635,6 +2685,14 @@ CHARTS = [
      'ceiling is script/lint\'s; the share is the headline because one split moves it',
      [('share of lines in files over 2,000', 'lines_share_over_2000_pct')], 1.0, None,
      'lines_share_over_2000_pct'),
+    # Milestone 888 (provisional), modeled on the file-size chart at calef's request of 2026-10-11
+    # (UTC): the share, because one split moves it; the count and the excess are on the page's
+    # generated line.
+    ('function-length.svg', 'Share of code lines in functions over 100 code lines, per cent',
+     'code lines as clippy\'s too_many_lines counts them, comments free; the lint ratchet holds '
+     'each long function, and the share is the headline because one split moves it',
+     [('share in functions over 100', 'code_lines_share_over_100_pct')], 1.0, None,
+     'code_lines_share_over_100_pct'),
     # The verdict colours, stacked green then amber then red in their own hues (the
     # fatal-risk-colors-by-week proposal, 2026-09-29; chart name provisional). Grey is a risk with
     # no verdict rendered: five of nine today, which is the number a bar of four has to be read
@@ -3058,6 +3116,9 @@ TRENDS = {'velocity.svg': ('milestones_built_this_week', 10),
           # calef, 2026-10-11 (UTC): a 10-week moving average on the file-size chart. One split
           # moves the share in a week, so the mean is what says whether the splits are winning.
           'file-size.svg': ('lines_share_over_2000_pct', 10),
+          # calef, 2026-10-11 (UTC), the same ruling for function length: one split moves the
+          # share in a week, so the mean is what says whether the splits are winning.
+          'function-length.svg': ('code_lines_share_over_100_pct', 10),
           # A share's trend is pooled, not a mean of shares: the line is ten weeks' labeled pull
           # requests over ten weeks' merged ones, so a quiet week weighs what it merged, for
           # `queue_by_week`'s reason. A (numerator, denominator) pair asks `trailing_mean` for that.
@@ -3191,6 +3252,7 @@ def draw_charts(rows, only=None):
         write_drift_report()
         write_interface_line(rows)
         write_file_size_line(rows)
+        write_function_length_line(rows)
         write_week_notes_bullets()
     weeks = sorted(rows)[-CHART_WEEKS:]
     DATA_DIR.mkdir(parents=True, exist_ok=True)

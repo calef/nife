@@ -331,7 +331,7 @@ Row 31 of `notes/confinement-claims.md` states the claim milestone 198 (a packag
 gate D2 lane had falsified by hand (once each for the process domain, entropy and the network, commit
 `b555bfb3d`, 2026-09-26) and left without a row. The standing test is the `installed/unvouched` line of
 `script/swish-check`, which runs on aarch64, riscv64 and x86_64. Its record is
-`xtask/falsifications/swish_check.swish_check_boot.patch`, which makes the progenitor endow the process
+`xtask/falsifications/swish_check.boot.swish_check_boot.patch`, which makes the progenitor endow the process
 domain to an unvouched child. `script/falsifications` sweeps Kani harnesses and kernel `#[test_case]`s
 and this line is neither, so it reports the patch as a known gap and the replay is by hand. Replayed
 on aarch64 on 2026-10-03 (UTC): without the patch `script/swish-check --arch aarch64` exits 0 (135
