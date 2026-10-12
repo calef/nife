@@ -34,8 +34,13 @@
 use abi::Error;
 
 use crate::arch::exceptions::TrapFrame;
-use crate::cap::{Object, Rights};
-use crate::sched;
+// The `cap` module and these names still carry their pre-sweep spelling
+// (design/naming/capability-worklist.md renames them when the tree is quiet); aliased here so
+// this file spells `capability` out everywhere a reader looks (calef, 2026-10-06).
+use crate::cap::{Object, Rights, memory_region_cap as memory_region_capability};
+use crate::sched::{
+    self, current_cap as current_capability, delete_current_cap as delete_current_capability,
+};
 use crate::syscall::invoke;
 
 /// `invoke` through the real dispatcher, the way a program's `svc`/`ecall` reaches it. Copied in
@@ -48,7 +53,7 @@ fn call(slot: u64, method: u64, a0: u64, a1: u64, a2: u64) -> Result<i64, Error>
 /// The rights on the capability at `slot`, or a panic naming the test's own mistake if the slot is
 /// empty (the attack body always files something first).
 fn rights_at(slot: u64) -> Rights {
-    sched::current_cap(slot)
+    current_capability(slot)
         .expect("no capability at the slot the attack just filled")
         .rights
 }
@@ -75,7 +80,7 @@ fn a_grant_less_budget_narrows_a_split_child_but_mints_full_rights_on_every_rety
     // --- The SPLIT side: claim 3's cited property, which holds. ---------------------------------
     let region_b = crate::memory_region::create(8).expect("no region for the split side");
     let budget_b =
-        sched::grant(crate::cap::memory_region_cap(region_b)).expect("grant the WRITE-only budget");
+        sched::grant(memory_region_capability(region_b)).expect("grant the WRITE-only budget");
     assert_eq!(
         rights_at(budget_b),
         Rights::WRITE,
@@ -91,18 +96,18 @@ fn a_grant_less_budget_narrows_a_split_child_but_mints_full_rights_on_every_rety
     );
     // Teardown the split side: destroy the child region first (a parent with children refuses
     // reclaim), then the parent.
-    let Object::MemoryRegion(child_region) = sched::current_cap(child_slot).unwrap().object else {
+    let Object::MemoryRegion(child_region) = current_capability(child_slot).unwrap().object else {
         panic!("the SPLIT child was not a MemoryRegion");
     };
     sched::reclaim_region(child_region).expect("the split child region did not come back");
-    let _ = sched::delete_current_cap(child_slot);
-    let _ = sched::delete_current_cap(budget_b);
+    let _ = delete_current_capability(child_slot);
+    let _ = delete_current_capability(budget_b);
     sched::reclaim_region(region_b).expect("the split-side region did not come back");
 
     // --- The RETYPE side: the gap, for a page frame and three object kinds. ---------------------
     let region_a = crate::memory_region::create(16).expect("no region for the retype side");
     let budget_a =
-        sched::grant(crate::cap::memory_region_cap(region_a)).expect("grant the WRITE-only budget");
+        sched::grant(memory_region_capability(region_a)).expect("grant the WRITE-only budget");
     assert_eq!(
         rights_at(budget_a),
         Rights::WRITE,
@@ -145,10 +150,10 @@ fn a_grant_less_budget_narrows_a_split_child_but_mints_full_rights_on_every_rety
             "the retyped {name} should carry Rights::ALL: a GRANT-less budget minted a fully \
              delegatable {name} in its own memory",
         );
-        let _ = sched::delete_current_cap(obj_slot);
+        let _ = delete_current_capability(obj_slot);
     }
 
-    let _ = sched::delete_current_cap(frame_slot);
-    let _ = sched::delete_current_cap(budget_a);
+    let _ = delete_current_capability(frame_slot);
+    let _ = delete_current_capability(budget_a);
     sched::reclaim_region(region_a).expect("the retype-side region did not come back");
 }

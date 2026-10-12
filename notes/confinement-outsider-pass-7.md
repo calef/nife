@@ -30,7 +30,7 @@ Both tests were written by the reviewer for this pass (names provisional) and bo
 aarch64, riscv64 and x86_64. The lane reproduced both on all three ISAs, one ISA at a time, with
 `script/test --arch <isa> --test seventh_pass`.
 
-- `seventh_pass_delegation_tests::a_send_cap_cannot_widen_a_right_or_lend_a_grant_less_capability`
+- `seventh_pass_delegation_tests::a_delegation_cannot_widen_a_right_or_lend_a_grant_less_capability`
   (claims 1 and 2). A `SEND_CAP` whose rights register asks for `WRITE` the source lacks, and a
   `SEND_CAP` of a `GRANT`-less source narrowed to a strict subset, both through the real dispatcher.
   Both are refused `NotPermitted` and park nothing. The host proofs cover the same rule on pure
