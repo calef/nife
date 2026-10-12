@@ -1192,3 +1192,15 @@ mod page_table_region_tests;
 /// Cross-ISA: `invoke`, the rights check and the rendezvous are portable kernel code (DECISIONS §19).
 #[cfg(test)]
 mod confinement_attack_tests;
+
+/// **A spend-only budget narrows a SPLIT child but mints full-rights objects on every RETYPE**
+/// (milestone 903 (a seventh outsider pass attacks the confinement claim), fatal risk 7's
+/// confinement claim, claim 3). Drives the real dispatcher: SPLIT off a WRITE-only budget inherits
+/// WRITE (the claim holds), while RETYPE and RETYPE_OBJ hand back `Rights::ALL` for a frame and for
+/// a rendezvous, a notification and a timer alike (the gap ruling (a) of 2026-10-07 and milestone
+/// 824 address). Its header has the reasoning and why it extends `confinement_attack_tests`'
+/// page-frame-only characterization. A near miss, not an escape: the objects are the holder's own.
+///
+/// Cross-ISA: the retype paths and the rights model are portable kernel code (DECISIONS §19).
+#[cfg(test)]
+mod seventh_pass_retype_tests;
