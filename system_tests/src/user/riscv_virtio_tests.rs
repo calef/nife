@@ -522,7 +522,7 @@ fn a_client_echoes_over_tcp_through_the_socket_contract() {
     net.release_or_fail("a net test's net_stack");
 }
 
-/// The riscv twin of `tests::a_package_fetched_over_http_is_accepted_only_by_the_image_digest`
+/// The riscv twin of `network_tests::a_package_fetched_over_http_is_accepted_only_by_the_image_digest`
 /// (milestone 198 (a package manager) rung 3a): `uptime 0.1.0 riscv64`, genuine then tampered.
 #[test_case]
 fn a_package_fetched_over_http_is_accepted_only_by_the_image_digest() {
@@ -676,8 +676,9 @@ fn std_net_runs_over_the_socket_contract() {
 }
 
 /// **A `std::net::TcpListener` serves a port it was granted, on the second ISA** (milestone 64's
-/// inbound half; the §19 parity twin of `tests::a_std_program_serves_a_granted_listening_port`,
-/// which carries the full reasoning).
+/// inbound half; the §19 (architectural parity is a tenet) twin of
+/// `network_tests::a_std_program_serves_a_granted_listening_port`, which carries the full
+/// reasoning).
 ///
 /// The same `std_exerciser` binary, the same grant, the same host prober, and the same four-line
 /// transcript. The PAL is architecture-independent by construction, so what this leg actually

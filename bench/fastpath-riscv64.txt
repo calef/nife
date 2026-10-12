@@ -1,6 +1,6 @@
-# toolchain: nightly-2026-10-10
-# date: 2026-10-11
-# why: milestone 840 (the scheduler file is split along its seams): moving sched's items into submodules changed the codegen-unit partition, and riscv_trap_dispatch now inlines sched::preempt_if_needed (146 -> 360 B, measured at ddd38f0b0 against this branch). Those bytes ran on every trap return before as a separate function outside this flat set; the call is gone, so the executed path is the same code in a different symbol. The two IPC shapes moved +8 and +10 B against ddd38f0b0 (4020 -> 4028, 5078 -> 5088) and are recorded as measured.
+# toolchain: nightly-2026-10-11
+# date: 2026-10-12
+# why: milestone 872 (the kernel's user-mode file is split along its seams): moving user's items into child modules changed the codegen-unit partition again, and riscv_trap_dispatch no longer inlines sched::preempt_if_needed (360 -> 146 B, with preempt_if_needed a 226 B function of its own again, read with llvm-nm on this branch). This undoes the inlining milestone 840 (the scheduler file is split along its seams) recorded: the same code runs on every trap return, now as a call outside this flat set. The two IPC shapes did not move (4028, 5088).
 # bench/fastpath-riscv64.txt: an upper bound on the IPC fastpath's instruction footprint.
 # Written by script/fastpath-footprint --save. Updating this file is a statement that a
 # footprint change is intended and understood; do it in the commit that causes it.
@@ -13,4 +13,4 @@
 ipc_send_receive 4028
 ipc_call_reply 5088
 ipc_fastpath 5088
-syscall_entry 2136
+syscall_entry 1918

@@ -13,17 +13,17 @@ the kernel.
 True, at `origin/main` e1f3ddf8c:
 
 - `RETYPE_OBJ(ADDRESS_SPACE)` is the only mint (`user::user_address_space_create`,
-  `kernel/src/user.rs:476`), and the name lives in `USER_SPACES` (`user.rs:465`).
+  `kernel/src/user/address_space_registry.rs`), and the name lives in that file's `USER_SPACES`.
 - `CONFIGURE` deletes the caller's capability (`thread_control_block_configure`,
   `kernel/src/syscall.rs:1366`) after `sched::configure_thread_control_block`
-  (`kernel/src/sched.rs:5544`) has called `user::take_user_address_space` (`user.rs:595`). The space
+  (`kernel/src/sched.rs:5544`) has called `user::take_user_address_space`. The space
   moves into `Thread::space: Option<AddressSpace>` (`kernel/src/thread.rs:468`), owned outright.
   The comment at `syscall.rs:1363` says why the delete is there: "a second bind must not find it".
 - The thread's death frees the space: `reap_switched_out` takes `t.space` (`sched.rs:2737`) and drops
   it. Init's space is kernel-built and adopted the same way (`adopt_address_space`, `sched.rs:5848`);
   it never enters `USER_SPACES`.
 - A region's `DESTROY` runs `reap_region_objects` (`sched.rs:5067`), then
-  `user::reap_address_spaces_in_region` (`user.rs:608`), which sees only unbound spaces, then unpins
+  `user::reap_address_spaces_in_region`, which sees only unbound spaces, then unpins
   (`reclaim_region`, `sched.rs:5348`). `revoke::revoke_region` (`kernel/src/revoke.rs:847`) carries
   the running-root `BUGS` entry that milestone 765 (a destroyed region cannot free the root a running
   thread walks) closes.
@@ -151,8 +151,8 @@ any capability to a bound space does nothing to the space. There is no final-cap
 there is none anywhere else in nife. A bound space dies when its thread is reaped or when the region
 its root came from is destroyed (765, below). When it dies the name is retired, and every capability
 still naming it, in any process, goes stale and answers as `LIST` does today for a consumed name
-(`user_address_space_root`'s comment, `user.rs:574`). No capability-level revoke of a space is
-added. That is Zircon's "handle valid, operations fail".
+(`user_address_space_root`'s comment, in `kernel/src/user/address_space_registry.rs`). No
+capability-level revoke of a space is added. That is Zircon's "handle valid, operations fail".
 
 Where the `AddressSpace` lives decides most of the code. The cleaner answer is that the registry
 owns every space, bound or not, and a thread caches its immutable root and tag for the context
@@ -174,7 +174,7 @@ its region. That is seL4's rule written as a count, since nife has no derivation
 **(c) Init's capability.** "The kernel grants init one at boot" is a slot convention, which is a
 wire format. seL4 fixes it at slot 3. nife's precedent is `abi::fault::FAULT_EP_SLOT`
 (`crates/abi/src/lib.rs:967`), or a grant through `Spawn::grants` in `boot_progenitor`
-(`user.rs:2094`) at a slot the progenitor is told. That needs naming and an architect's ruling; it
+at a slot the progenitor is told. That needs naming and an architect's ruling; it
 is B's mechanism, applied to one program.
 
 ## How A composes with 765
@@ -210,9 +210,9 @@ milestone 765's lane as a question, below.
 4. Premise. True, as checked. The proposal's framing that seL4's VSpace cap is how a task gives
    pages up was not true.
 5. Cost. None measured. A: one registry entry kept per bound thread, which `MAX_USER_SPACES`
-   (32, `user.rs:457`) does not hold today, since every process would now occupy one; that bound
-   must grow or bound spaces live elsewhere. A cached root and tag per thread. B: a slot per thread
-   and a capability minted at every `START`. C: nothing.
+   (32, in `kernel/src/user/address_space_registry.rs`) does not hold today, since every process
+   would now occupy one; that bound must grow or bound spaces live elsewhere. A cached root and tag
+   per thread. B: a slot per thread and a capability minted at every `START`. C: nothing.
 6. Reversibility. All three touch the `CONFIGURE` contract or a slot convention, so all are on the
    irreversible list. Who has acted on today's "consumed, dies with it" wording
    (`crates/abi/src/lib.rs:848`): §105 and `notes/thread-spawn-fork.md`, which A keeps true only with

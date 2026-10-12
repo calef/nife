@@ -117,7 +117,7 @@ unsafe extern "C" {
 /// places it at the top of the current thread's kernel stack, and calls this.
 ///
 /// **`#[inline(always)]` is load-bearing, not cosmetic.** The frame sits at the *top of the caller's
-/// own kernel stack*, overlapping the caller's live call frames (see `enter_frame` in user.rs). It is
+/// own kernel stack*, overlapping the caller's live call frames (see `user::enter_frame`). It is
 /// intact only until `enter_userspace` does `mov sp, x0`, and only if nothing pushes onto the stack
 /// in between. A real call here would push a return address and prologue into exactly that region and
 /// corrupt the frame (observed as a child thread getting `sp_el0 = 0`). Inlining makes the caller
@@ -496,7 +496,7 @@ fn is_from_lower_el(index: u64) -> bool {
     index >= 8 && index <= 11
 }
 
-/// **System calls served, counted for the system tests only** (`system_tests/src/user/tests.rs`
+/// **System calls served, counted for the system tests only** (`system_tests/src/user/el0_boundary_tests.rs`
 /// proves a program reached user mode and came back by watching it rise). Every syscall on every
 /// core bumps this one line, so it is compiled out of every other build: until 2026-10-04 it was
 /// in all of them, and it was one of two shared writes on the cheapest syscall's path

@@ -680,7 +680,7 @@ mod tests {
 
 /// Machine-checked proofs (`script/verify`; notes/verification.md).
 ///
-/// The initrd is parsed by the KERNEL (kernel/src/user.rs `program`), which puts this parser inside
+/// The initrd is parsed by the KERNEL (`kernel::user::program`), which puts this parser inside
 /// the TCB on externally-supplied bytes, the same position the `device_tree_blob` parser is in. And
 /// the same wall: the first attempt proved the WHOLE parse over a symbolic image, on the theory
 /// that a 15-entry bounded loop is tractable; CBMC disagreed (20+ CPU-minutes and climbing), so as

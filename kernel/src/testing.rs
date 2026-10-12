@@ -1037,7 +1037,7 @@ pub fn runner(tests: &[&dyn Testable]) {
 
 /// **A root region's run of frames, named while the region is alive.**
 ///
-/// The instrument the frame-return tests in `sched.rs`, `user/tests.rs` and
+/// The instrument the frame-return tests in `sched.rs`, `user/child_thread_tests.rs` and
 /// `user/force_kill_tests.rs` ask their question through, and it exists because the question they
 /// used to ask was wider than the property. `memory::free_page_frames()` counts every free frame in
 /// the machine, so bracketing it across a reclaim asserts that *nothing else in the kernel

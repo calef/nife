@@ -78,6 +78,14 @@ The same census split by what confines the code: kernel privilege, userspace con
 the pre-kernel boot chain. Before 2026W38 the `unclassified` band is crates whose names have since
 changed, so read those weeks as undercounts of both sides.
 
+## Debt paydown
+
+![Debt paydown share](project-metrics/debt-paydown.svg)
+
+The share of each week's merged pull requests labeled `debt-paydown` ([what
+counts](debt-paydown.md)). The label is chosen at the claim and judged from titles, so a lane that
+became a repair is missed.
+
 ## Milestones built each week
 
 ![Milestones built each week](project-metrics/velocity.svg)
@@ -95,14 +103,6 @@ The second flow, counted from `main`'s merge subjects, not the API, so it
 backfills to the first commit. 2026W29 and 2026W30 are zeros: the practice starts in
 2026W31.
 The line is the same trailing mean.
-
-## Debt paydown
-
-![Debt paydown share](project-metrics/debt-paydown.svg)
-
-The share of each week's merged pull requests labeled `debt-paydown` ([what
-counts](debt-paydown.md)). The label is chosen at the claim and judged from titles, so a lane that
-became a repair is missed.
 
 ## Merge queue ejections
 

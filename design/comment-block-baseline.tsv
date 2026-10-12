@@ -293,13 +293,13 @@ kernel/src/sync.rs:1	47
 kernel/src/sync.rs:55	64
 kernel/src/syscall.rs:316	41
 kernel/src/testing.rs:16	49
-kernel/src/user.rs:337	46
-kernel/src/user.rs:2286	52
+kernel/src/user/address_space.rs:307	46
 kernel/src/user/e1000e_service.rs:1	54
 kernel/src/user/holding.rs:1	56
 kernel/src/user/install_service.rs:1	98
 kernel/src/user/install_service.rs:263	76
 kernel/src/user/non_volatile_memory_express_service.rs:1	81
+kernel/src/user/progenitor_boot.rs:58	52
 kernel/src/user/usb_keyboard_service.rs:1	45
 kernel/src/virtio.rs:597	92
 patches/std-nife/overlay/std/src/sys/env/nife.rs:1	63
@@ -316,8 +316,10 @@ redoxfs_server/src/crash.rs:1	46
 redoxfs_server/src/lib.rs:1	41
 redoxfs_server/src/memo.rs:1	43
 redoxfs_server/tests/crash_consistency.rs:1	42
-system_tests/src/user.rs:487	41
+system_tests/src/user.rs:531	41
+system_tests/src/user/address_space_tests.rs:96	43
 system_tests/src/user/confined_fuzzer_tests.rs:1	95
+system_tests/src/user/cycle_counter_tests.rs:21	42
 system_tests/src/user/display_tests.rs:254	41
 system_tests/src/user/entropy_tests.rs:253	53
 system_tests/src/user/login_tests.rs:7	73
@@ -328,8 +330,6 @@ system_tests/src/user/scratch_window_tests.rs:1	45
 system_tests/src/user/spawn_mapping_revocation_tests.rs:1	55
 system_tests/src/user/std_tests.rs:309	54
 system_tests/src/user/syscall_fuzzer_tests.rs:1	67
-system_tests/src/user/tests.rs:649	43
-system_tests/src/user/tests.rs:2767	42
 uefi_loader/src/chooser.rs:1	132
 uefi_loader/src/device_tree_from_acpi.rs:1	52
 uefi_loader/src/image.rs:1	41
