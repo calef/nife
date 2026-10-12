@@ -76,10 +76,10 @@ second. Search for more before building; this list is what a grep found on 2026-
     `system_installer`, `login`, `line_editor`, `rmle`, `display_terminal`) argue soundness the same
     way. They stay sound while each program starts no thread, and each comment has to say that
     instead. Nine cite §33 (the compositor's authority is memory, not messages), which recorded
-    the constraint as a fact. All 27 of `components/`' `static mut` declarations are held at a
-    ceiling that follows the tree down (`static-mut-declarations` in
-    [notes/unsafe-obligations/ceilings.md](../../notes/unsafe-obligations/ceilings.md), from
-    milestone 891 (a mutable static becomes an atomic, a lock or a recorded cell)), so each one
+    the constraint as a fact. Milestone 891 (a mutable static becomes an atomic, a lock or a
+    recorded cell) holds all 27 of `components/`' `static mut` declarations at a ceiling that
+    follows the tree down: `static-mut-declarations` in
+    [notes/unsafe-obligations/ceilings.md](../../notes/unsafe-obligations/ceilings.md). Each one
     this milestone converts lowers that marker in the same commit.
 11. The current-CPU page (`crates/current_cpu_protocol`, `kernel/src/user.rs`'s `current_cpu_page`).
     It is per address space, which is per thread only because of §105. The crate's `BUGS` names
