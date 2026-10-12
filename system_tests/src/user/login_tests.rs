@@ -89,9 +89,9 @@ const DURABLE_UT_PAGES: u64 = login_protocol::durable::BUDGET_PAGES;
 /// generation names, so the demo's bytes go to `packages/` and a generation naming them to
 /// `activation/`. Written once per boot, before either `login` that opens a schedule starts.
 ///
-/// The bytes are `least_authority_demo`'s, out of the initrd, because the image is the only source
-/// this harness has; the **name is not the image's**, because §229 (how a bare name at the prompt
-/// reaches an installed program) refuses a package entry under a
+/// The bytes are `least_authority_demo`'s, out of the initial ramdisk, because the image is the
+/// only source this harness has; the **name is not the image's**, because §229 (how a bare name at
+/// the prompt reaches an installed program) refuses a package entry under a
 /// name the image carries, calef's ruling of 2026-09-27, and this image carries
 /// `least_authority_demo`. Installing under the image's own name panicked the whole guest suite at
 /// `with_entry`'s `ImageName` refusal the moment the rebase met that ruling, which is the inbound
@@ -102,7 +102,8 @@ fn install_scheduled_program() {
     if DONE.swap(true, Ordering::Relaxed) {
         return;
     }
-    let bytes = program("least_authority_demo").expect("no least_authority_demo in the initrd");
+    let bytes =
+        program("least_authority_demo").expect("no least_authority_demo in the initial ramdisk");
     fs_service::install_for_test("scheduled_demo", "demo", "0.1.0", bytes);
 }
 
@@ -228,7 +229,7 @@ pub(super) fn wired() -> Option<ls::Wiring> {
             // its own test and its own `login`.
             fs_service::set_root_list(schedule_store::MANIFEST_FILE_NAME, None);
             install_scheduled_program();
-            let login_image = program("login").expect("no login program in the initrd archive");
+            let login_image = program("login").expect("no login program in the initial ramdisk");
             let w = ls::start(
                 login_image,
                 cred_wiring.verify,
@@ -268,7 +269,7 @@ pub(super) fn wired() -> Option<ls::Wiring> {
 /// The name `redoxfs_server`'s image travels under, on the same terms `dir_capability_tests` reads it:
 /// present only when `test` built the FS server, absent for a plain interactive run.
 fn redoxfs_server_image() -> &'static [u8] {
-    program("redoxfs_server").expect("no redoxfs_server program in the initrd archive")
+    program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk")
 }
 
 /// **Free the terminal directly, without spawning a client** (milestone 49's terminal update).
@@ -312,7 +313,7 @@ fn login_grants_a_working_capability_set_to_the_identity_it_verified() {
     // extra run in this suite is paid for by a later test's free frames (`CLIENT_SCRATCH_UT_PAGES`).
     set_run_unvouched_list(None);
     let cli =
-        program("login_test_client").expect("no login_test_client program in the initrd archive");
+        program("login_test_client").expect("no login_test_client program in the initial ramdisk");
     let r = ls::client(cli, &w, ls::LOGIN, CHRIS, CHRIS);
     assert_eq!(
         r[0],
@@ -361,7 +362,7 @@ fn login_denies_a_wrong_secret_and_sends_nothing_further() {
     };
     free_terminal(&w);
     let cli =
-        program("login_test_client").expect("no login_test_client program in the initrd archive");
+        program("login_test_client").expect("no login_test_client program in the initial ramdisk");
     // `chris`'s own identity with a secret that is nobody's: the same behaviour as the honest
     // login above, composed from a different credential rather than run as a different arm.
     let r = ls::client(cli, &w, ls::LOGIN, CHRIS, WRONG);
@@ -395,7 +396,7 @@ fn two_different_identities_get_independently_working_channels_and_correct_attri
     // two of its own, for the headline test's reason.
     set_run_unvouched_list(Some(b"corinne\n"));
     let cli =
-        program("login_test_client").expect("no login_test_client program in the initrd archive");
+        program("login_test_client").expect("no login_test_client program in the initial ramdisk");
 
     let r_chris = ls::client(cli, &w, ls::LOGIN, CHRIS, CHRIS);
     assert_eq!(r_chris[0], ls::RPT_OK, "chris was not authenticated");
@@ -498,7 +499,7 @@ fn two_clients_connecting_together_get_independent_channels_and_neither_observes
     };
     free_terminal(&w);
     let cli =
-        program("login_test_client").expect("no login_test_client program in the initrd archive");
+        program("login_test_client").expect("no login_test_client program in the initial ramdisk");
 
     // Both spawned before either is waited on: this is the race. Which role's CONNECT actually
     // reaches `login`'s front door first is the kernel scheduler's call, not this test's, and the
@@ -598,7 +599,7 @@ fn the_login_service_serves_past_the_old_capability_table_ceiling() {
     };
     free_terminal(&w);
     let cli =
-        program("login_test_client").expect("no login_test_client program in the initrd archive");
+        program("login_test_client").expect("no login_test_client program in the initial ramdisk");
 
     const ATTEMPTS: usize = 6;
     for i in 0..ATTEMPTS {
@@ -669,7 +670,7 @@ fn login_scopes_each_identity_to_its_own_provisioned_subtree() {
     };
     free_terminal(&w);
     let cli =
-        program("login_test_client").expect("no login_test_client program in the initrd archive");
+        program("login_test_client").expect("no login_test_client program in the initial ramdisk");
 
     let r_chris = ls::client(cli, &w, ls::WRITE_MARKER, CHRIS, CHRIS);
     assert_eq!(r_chris[0], ls::RPT_OK, "chris was not authenticated");
@@ -768,7 +769,7 @@ fn login_denies_an_authenticated_identity_with_no_provisioned_subtree() {
     };
     free_terminal(&w);
     let cli =
-        program("login_test_client").expect("no login_test_client program in the initrd archive");
+        program("login_test_client").expect("no login_test_client program in the initial ramdisk");
     // `graeme`: a real credential this suite provisions and a home subtree it deliberately never
     // creates. An honest login, refused for the subtree rather than for the secret.
     let r = ls::client(cli, &w, ls::LOGIN, GRAEME, GRAEME);
@@ -789,16 +790,16 @@ fn login_denies_an_authenticated_identity_with_no_provisioned_subtree() {
 /// same anti-oracle reasoning a wrong password or a missing subtree gets).
 ///
 /// **This suite cannot make the real, already-booted archive disagree with itself** to prove a live
-/// refusal end to end: the initrd is one physical region the whole kernel test binary shares, wired
-/// once at boot, and `cargo xtask` always packs a measurement table that agrees with the bytes it
-/// just packed alongside it. A second login instance spawned against a deliberately tampered archive
-/// is not something this suite (or `ls::start`, which always takes the one real
-/// `memory::initrd_region()`) can construct. So this proves the two things a live end-to-end refusal
-/// would have proven, at the exact level `login`'s own check operates on: the real
-/// `fs_subtree_caretaker` bytes verify against the real table (which is *also* the reason `wired()`'s
-/// own instance, and every other test in this file, can log anyone in at all, now that the check
-/// exists), and the identical [`measured_boot::verify_in_manifest`] call `_start` makes refuses a
-/// tampered copy of those same bytes and a name the table does not mention, mirroring
+/// refusal end to end: the initial ramdisk is one physical region the whole kernel test binary
+/// shares, wired once at boot, and `cargo xtask` always packs a measurement table that agrees with
+/// the bytes it just packed alongside it. A second login instance spawned against a deliberately
+/// tampered archive is not something this suite (or `ls::start`, which always takes the one real
+/// `memory::initial_ramdisk_region()`) can construct. So this proves the two things a live
+/// end-to-end refusal would have proven, at the exact level `login`'s own check operates on: the
+/// real `fs_subtree_caretaker` bytes verify against the real table (which is *also* the reason
+/// `wired()`'s own instance, and every other test in this file, can log anyone in at all, now that
+/// the check exists), and the identical [`measured_boot::verify_in_manifest`] call `_start` makes
+/// refuses a tampered copy of those same bytes and a name the table does not mention, mirroring
 /// `measured_boot_tests::the_measurement_table_refuses_a_tampered_program_and_an_unnamed_one`, which
 /// covers `console` and the boot-time components but not this one (`fs_subtree_caretaker` is not in
 /// that test's own `BOOT_COMPONENTS`, since it is not a boot-time component; it is what a directory
@@ -871,7 +872,7 @@ fn caretaker_teardown_reclaims_a_full_session_worth_of_memory() {
     };
     free_terminal(&w);
     let cli =
-        program("login_test_client").expect("no login_test_client program in the initrd archive");
+        program("login_test_client").expect("no login_test_client program in the initial ramdisk");
 
     const ATTEMPTS: usize = 10;
     for i in 0..ATTEMPTS {
@@ -972,7 +973,7 @@ fn login_hands_out_the_terminal_once_and_denies_a_concurrent_second_login_until_
     };
     free_terminal(&w);
     let cli =
-        program("login_test_client").expect("no login_test_client program in the initrd archive");
+        program("login_test_client").expect("no login_test_client program in the initial ramdisk");
 
     // Step 1: chris takes the terminal. `spawn_client`/`wait_client`, not `client`, because the
     // role blocks inside `send(term_ep, ...)` until this test's own `ipc_receive(w.term_ep)` catches
@@ -1087,7 +1088,7 @@ fn login_hands_a_listed_session_the_run_unvouched_capability_and_it_cannot_be_pa
     free_terminal(&w);
     set_run_unvouched_list(Some(b"# the owner's list\nchris\n"));
     let cli =
-        program("login_test_client").expect("no login_test_client program in the initrd archive");
+        program("login_test_client").expect("no login_test_client program in the initial ramdisk");
     // `spawn_client`/`wait_client` for the terminal test's reason: the role blocks in its `send`
     // on the sixth capability until this test takes the word.
     let report = ls::spawn_client(cli, &w, ls::PRESENT_RUN_UNVOUCHED, CHRIS, CHRIS);
@@ -1157,7 +1158,7 @@ fn a_login_session_with_pending_work_refuses_logout_until_the_work_is_gone() {
     };
     free_terminal(&w);
     let cli =
-        program("login_test_client").expect("no login_test_client program in the initrd archive");
+        program("login_test_client").expect("no login_test_client program in the initial ramdisk");
     let r = ls::client(cli, &w, ls::PENDING_WORK, CHRIS, CHRIS);
     assert_eq!(r[0], ls::RPT_OK, "chris was not authenticated");
     for (bit, what) in [
@@ -1233,7 +1234,7 @@ fn a_users_schedule_outlives_their_login_and_ends_when_they_empty_it() {
     };
     free_terminal(&w);
     let cli =
-        program("login_test_client").expect("no login_test_client program in the initrd archive");
+        program("login_test_client").expect("no login_test_client program in the initial ramdisk");
     let login = |behaviour: u64| {
         let r = ls::client(cli, &w, behaviour, CHRIS, CHRIS);
         let a = sched::ipc_receive(w.audit);
@@ -1338,7 +1339,7 @@ fn suspending_a_user_ends_their_schedule_and_refuses_them_until_resumed() {
     fs_service::set_root_list(login_protocol::SUSPENDED_LIST, None);
     free_terminal(&w);
     let cli =
-        program("login_test_client").expect("no login_test_client program in the initrd archive");
+        program("login_test_client").expect("no login_test_client program in the initial ramdisk");
     let session = |behaviour: u64| {
         let r = ls::client(cli, &w, behaviour, CHRIS, CHRIS);
         if r[0] == ls::RPT_OK {
@@ -1513,7 +1514,7 @@ fn a_durable_session_is_re_derived_at_start_up_unless_suspended() {
     fs_service::set_root_list(login_protocol::SUSPENDED_LIST, Some(b"chris\n"));
 
     let w = ls::start(
-        program("login").expect("no login program in the initrd archive"),
+        program("login").expect("no login program in the initial ramdisk"),
         cred.verify,
         cred.verify_page_frame,
         fs_ep,
@@ -1554,7 +1555,7 @@ fn a_durable_session_is_re_derived_at_start_up_unless_suspended() {
     );
 
     let cli =
-        program("login_test_client").expect("no login_test_client program in the initrd archive");
+        program("login_test_client").expect("no login_test_client program in the initial ramdisk");
     let wrong = ls::client(cli, &w, ls::LOGIN, CORINNE, WRONG);
     assert_eq!(
         wrong[0],

@@ -93,16 +93,16 @@ Flip one bit of a spawnable program. The prompt still comes up; the program does
 $ cargo run -p xtask -- image
 $ python3 - <<'EOF'          # flip one bit inside the archive's `wc` entry
 import struct
-d = bytearray(open('target/initrd.img','rb').read())
+d = bytearray(open('target/initial-ramdisk.img','rb').read())
 n = struct.unpack_from('<I', d, 8)[0]
 for i in range(n):
     o = 12 + i*40
     if d[o:o+32].split(b'\0')[0] == b'wc':
         d[struct.unpack_from('<I', d, o+32)[0]*512 + 0x40] ^= 1
-open('target/initrd.img','wb').write(d)
+open('target/initial-ramdisk.img','wb').write(d)
 EOF
 $ cargo build -p kernel --features shell --target aarch64-unknown-none-softfloat
-$ NIFE_INITRD=target/initrd.img NIFE_DISK=target/nifefs.img \
+$ NIFE_INITIAL_RAMDISK=target/initial-ramdisk.img NIFE_DISK=target/nifefs.img \
       helpers/qemu-bounded.sh 20 helpers/qemu-runner-aarch64.sh \
       target/aarch64-unknown-none-softfloat/debug/kernel
 ```

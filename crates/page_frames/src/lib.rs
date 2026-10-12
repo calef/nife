@@ -290,7 +290,7 @@ impl<'a> PageFrameAllocator<'a> {
     /// [`alloc_contiguous`](Self::alloc_contiguous) can still satisfy, which is not the same
     /// question as [`Stats::free`] and is the one that actually fails a boot: milestone 107 found
     /// 137 frames free and no run of 128, and the failure surfaced three tests away as
-    /// "no swish program in the initrd archive".
+    /// "no swish program in the initial ramdisk".
     ///
     /// Same O(total) scan as `alloc_contiguous` and for the same reason: it is an instrument, called
     /// between tests, never in a hot path.

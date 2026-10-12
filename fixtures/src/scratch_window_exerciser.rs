@@ -49,8 +49,8 @@ const OWN: u64 = 2;
 
 /// How many children to build: past the 37th, where a climbing cursor runs out of tables on this
 /// budget, and past one lap of the window. It was 110 (more than the progenitor's old 65,536 pages
-/// to its initrd window) until CI's aarch64 leg failed to finish that inside the test's 60 s, on
-/// 2026-09-26. The progenitor's own count is computed in milestone 604's block.
+/// to its initial ramdisk window) until CI's aarch64 leg failed to finish that inside the test's 60
+/// s, on 2026-09-26. The progenitor's own count is computed in milestone 604's block.
 const BUILDS: u64 = 40;
 
 /// Pages of image per child: `ripgrep`'s span on aarch64, `0x40_0000..0x69C_000` in

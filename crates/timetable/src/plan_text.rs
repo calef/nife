@@ -168,8 +168,9 @@ fn write_grant(e: &Endowment, command: &[u8], report: bool, out: &mut dyn FnMut(
 ///
 /// [`Registry::programs`] says which programs a document will ever start, and it says so before the
 /// first tick. That number is only worth printing next to the other one: how many programs the
-/// *capability* this process holds can actually reach. A scheduler handed the whole initrd has a
-/// plan naming one program and an archive reaching fifty-seven, and nothing in the plan says so.
+/// *capability* this process holds can actually reach. A scheduler handed the whole initial ramdisk
+/// has a plan naming one program and an archive reaching fifty-seven, and nothing in the plan says
+/// so.
 ///
 /// This is the sentence that says so, and it is here rather than in the program because it is a
 /// comparison rather than a print: the program contributes the names it can see, this decides what
@@ -193,8 +194,8 @@ fn write_grant(e: &Endowment, command: &[u8], report: bool, out: &mut dyn FnMut(
 /// assert!(narrow.is_exact());
 /// assert_eq!(narrow.planned(), 1);
 ///
-/// // Handed the whole initrd. `date` is refused, so the plan never names it, and holding an
-/// // image of it is authority nothing in the document asked for.
+/// // Handed the whole initial ramdisk. `date` is refused, so the plan never names it, and
+/// // holding an image of it is authority nothing in the document asked for.
 /// let mut wide = Audit::of(&reg);
 /// for name in ["least_authority_demo", "date", "swish", "memory_grant_depleter"] {
 ///     wide.saw(name);
@@ -370,7 +371,7 @@ mod tests {
     /// The whole point of [`Registry::programs`] being computable at registration is that the spawn
     /// site can narrow what it hands over to exactly that set. This is the check that says whether
     /// it did, and the two sentences are what a reader meets on the console: one for an archive that
-    /// reaches nothing beyond the plan, one for the whole initrd.
+    /// reaches nothing beyond the plan, one for the whole initial ramdisk.
     ///
     /// **This test is also the mechanism behind a written list in another file**, which is why the
     /// first assertion names `least_authority_demo` and `memory_grant_depleter` rather than counting to two.
@@ -411,9 +412,10 @@ mod tests {
             "timetable: the archive it holds carries exactly the 2 programs its plan names\n",
         );
 
-        // The whole initrd: what it used to be handed. Every program the plan refused is still an
-        // image this process could load, which is authority no line in the document asked for.
-        // `date` is the sharpest case, because the document names it and registration refused it.
+        // The whole initial ramdisk: what it used to be handed. Every program the plan refused is
+        // still an image this process could load, which is authority no line in the document asked
+        // for. `date` is the sharpest case, because the document names it and registration refused
+        // it.
         let mut wide = Audit::of(&reg);
         for name in [
             "least_authority_demo",

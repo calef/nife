@@ -1,7 +1,7 @@
-//! **The initrd archive slice every program receives at spawn** (milestone 139).
+//! **The initial ramdisk archive slice every program receives at spawn** (milestone 139).
 //!
-//! **`initrd` is *initial ramdisk*: a filesystem image the bootloader leaves in RAM before the
-//! kernel starts, readable before any storage driver exists.** The bootstrap problem it solves is
+//! **An initial ramdisk is a filesystem image the bootloader leaves in RAM before the kernel
+//! starts, readable before any storage driver exists.** The bootstrap problem it solves is
 //! circular: starting the first userspace program means reading a file, which needs a filesystem,
 //! which needs a block driver, which in this system is itself a userspace program. The bootloader
 //! breaking that circle is the whole mechanism.
@@ -46,29 +46,33 @@
 //!
 //! ```no_run
 //! #[unsafe(no_mangle)]
-//! pub extern "C" fn _start(_a0: u64, initrd_len: u64, _a2: u64) -> ! {
-//!     // SAFETY: the kernel maps `initrd_len` bytes of the initrd archive, read-only, at
-//!     // INITRD_VA, before this process's `_start` runs (initial_ramdisk::bytes's own contract).
-//!     let archive = unsafe { user_mode_runtime::initial_ramdisk::bytes(initrd_len) };
+//! pub extern "C" fn _start(_a0: u64, initial_ramdisk_len: u64, _a2: u64) -> ! {
+//!     // SAFETY: the kernel maps `initial_ramdisk_len` bytes of the archive, read-only, at
+//!     // INITIAL_RAMDISK_VA, before this process's `_start` runs (`bytes`'s own contract).
+//!     let archive = unsafe { user_mode_runtime::initial_ramdisk::bytes(initial_ramdisk_len) };
 //!     let _ = archive;
 //!     loop {}
 //! }
 //! ```
 
-/// Where the kernel maps the initrd archive before any program's `_start` runs. Must match
-/// `kernel::user::INITRD_VA`, the kernel-side constant this value mirrors,
+/// Where the kernel maps the initial ramdisk archive before any program's `_start` runs. Must match
+/// `kernel::user::INITIAL_RAMDISK_VA`, the kernel-side constant this value mirrors,
 /// which every kernel-side spawn path (`kernel::user::riscv_shell_boot` on RISC-V, `spawn_init` on
 /// aarch64) maps this many bytes at, read-only, before starting the process. Every `_start` that
-/// receives an initrd receives it at this same VA; the seven callers this module replaces had each
+/// receives the archive gets it at this same VA; the seven callers this module replaces had each
 /// hard-coded it under this exact name.
-pub const INITRD_VA: u64 = 0x2000_0000;
+///
+/// Name: ratified 2026-10-12 (calef, #1998, milestone 139 (drive the unsafe count down) round 11).
+/// His words: "B for #1998." Refused `INITRD_VA` (the foreign spelling, which stops at the boundary
+/// where it arrives).
+pub const INITIAL_RAMDISK_VA: u64 = 0x2000_0000;
 
-/// The initrd archive bytes this process was handed at spawn. `len` is the value `_start`
+/// The initial ramdisk archive bytes this process was handed at spawn. `len` is the value `_start`
 /// received in its second argument register (`x1`/`a1`/`rsi`), which the kernel set to the
 /// archive's real length.
 ///
 /// # Safety
-/// The kernel maps `len` bytes of the initrd archive, read-only, at [`INITRD_VA`], before
+/// The kernel maps `len` bytes of the archive, read-only, at [`INITIAL_RAMDISK_VA`], before
 /// this process's `_start` runs, for the whole lifetime of the process; that reserved RAM outlives
 /// every process, which is what makes the `'static` lifetime honest. The caller must pass the
 /// `len` its own `_start` actually received: nothing here can check that, because any `u64`
@@ -80,5 +84,5 @@ pub const INITRD_VA: u64 = 0x2000_0000;
 /// name).
 pub unsafe fn bytes(len: u64) -> &'static [u8] {
     // SAFETY: forwarded from this function's own contract, verbatim.
-    unsafe { core::slice::from_raw_parts(INITRD_VA as *const u8, len as usize) }
+    unsafe { core::slice::from_raw_parts(INITIAL_RAMDISK_VA as *const u8, len as usize) }
 }

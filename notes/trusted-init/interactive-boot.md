@@ -101,7 +101,7 @@ the program ids `spawnproto` already sends in word 0.
 
 This increment left two duplications behind on purpose, and both are gone now.
 
-The larger one was the system itself. `user::initrd()` loaded an archive entry called `init`. That
+The larger one was the system itself. `user::initial_ramdisk()` loaded an archive entry called `init`. That
 was `fixtures/src/hello.rs`'s `init_boot` role on aarch64 and a separate program on riscv64
 (milestone 266 (one progenitor, on all three architectures, and `init` stops being a role) later collapsed both the alias and the two programs into one `progenitor`).
 Everything on this page (the six boot components, the giveaway, the negative control, the spawn service)

@@ -131,9 +131,9 @@ pub fn spawn_hello(
     role: u64,
     report: crate::sched::RendezvousId,
 ) -> holding::Holding {
-    let (initrd_start, initrd_len) =
-        memory::initrd_region().expect("no initrd to hand the progenitor");
-    let initrd_pages = initrd_len.div_ceil(FRAME_SIZE);
+    let (initial_ramdisk_start, initial_ramdisk_len) =
+        memory::initial_ramdisk_region().expect("no initial ramdisk to hand the progenitor");
+    let initial_ramdisk_pages = initial_ramdisk_len.div_ceil(FRAME_SIZE);
 
     // Route the test interrupt (19d.2b) BEFORE spawning the progenitor: the test raises the SGI as soon as
     // this returns, and an interrupt that fires before it is routed is dropped ("unexpected
@@ -188,8 +188,8 @@ pub fn spawn_hello(
                 crate::sched::exit();
             }
         };
-        // A region big enough for hello's own segments, the initrd's page tables, and slack: a role
-        // that builds a child loads whole ELFs with deep call chains.
+        // A region big enough for hello's own segments, the initial ramdisk's page tables, and
+        // slack: a role that builds a child loads whole ELFs with deep call chains.
         let content: u64 = elf
             .segments()
             .map(|seg| {
@@ -198,8 +198,8 @@ pub fn spawn_hello(
             })
             .sum::<u64>()
             + 1
-            + initrd_pages / 512
-            + crate::revoke::log_pages_for(initrd_pages)
+            + initial_ramdisk_pages / 512
+            + crate::revoke::log_pages_for(initial_ramdisk_pages)
             + INIT_STACK_PAGES
             + 8;
         let mut space = AddressSpace::new(content).expect("no memory for hello");
@@ -215,18 +215,18 @@ pub fn spawn_hello(
         #[cfg(any(target_arch = "x86_64", target_arch = "riscv64"))]
         map_timebase_page(&mut space).expect("could not map hello's timebase page");
 
-        // Map the initrd, one page at a time, read-only. These are reserved RAM pages the frame
-        // allocator does not own, so this maps rather than allocates. A role that builds a child
-        // parses the archive here.
-        for i in 0..initrd_pages {
+        // Map the initial ramdisk, one page at a time, read-only. These are reserved RAM pages the
+        // frame allocator does not own, so this maps rather than allocates. A role that builds a
+        // child parses the archive here.
+        for i in 0..initial_ramdisk_pages {
             space
                 .map_physical(
-                    INITRD_VA + i * FRAME_SIZE,
-                    initrd_start + i * FRAME_SIZE,
+                    INITIAL_RAMDISK_VA + i * FRAME_SIZE,
+                    initial_ramdisk_start + i * FRAME_SIZE,
                     Flags::user_rodata(),
                     crate::revoke::PageMapSource::NoCapability,
                 )
-                .expect("could not map the initrd into hello");
+                .expect("could not map the initial ramdisk into hello");
         }
 
         crate::sched::adopt_address_space(space);
@@ -274,7 +274,7 @@ pub fn spawn_hello(
         .expect("grant uart rx irq");
 
         // A test role has no filesystem, so `x2` (the file-service rights the boot path passes) is 0.
-        enter_frame(elf.entry(), USER_STACK_TOP, role, initrd_len, 0)
+        enter_frame(elf.entry(), USER_STACK_TOP, role, initial_ramdisk_len, 0)
     })
     .expect("could not spawn hello");
 
@@ -309,7 +309,8 @@ pub struct DeviceRun {
     pub write_combining: bool,
 }
 
-/// Load the initrd program and become it, handed the world described by `spawn`. Never returns.
+/// Load the initial ramdisk program and become it, handed the world described by `spawn`. Never
+/// returns.
 pub fn run(image: &[u8], spawn: Spawn) -> ! {
     run_with(image, spawn, None, None)
 }
@@ -499,9 +500,9 @@ fn enter_frame(entry: u64, user_sp: u64, arg0: u64, arg1: u64, arg2: u64) -> ! {
 // the "binary" rode inside the kernel image.
 //
 // They are gone (milestone 19's user-test port). The behaviours are ordinary (yield twice, read a
-// forbidden address, spin forever), the toolchain builds them for both targets, and the initrd
-// already delivers thirty other programs, so the scaffolding had outlived its reason twice over:
-// once when 7c shipped the ELF loader, and again when the second ISA turned "one hand-written
+// forbidden address, spin forever), the toolchain builds them for both targets, and the initial
+// ramdisk already delivers thirty other programs, so the scaffolding had outlived its reason twice
+// over: once when 7c shipped the ELF loader, and again when the second ISA turned "one hand-written
 // program" into "two hand-written programs, forever". Keeping them would have meant hand-assembling
 // every one of them a second time to run the same tests on RISC-V.
 //

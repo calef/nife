@@ -133,11 +133,11 @@ fn usb_keyboard_boot(arch: &str) -> bool {
         });
         c.arg(format!("target/{target}/{}/kernel", profile_dir()));
         c.env(
-            "NIFE_INITRD",
+            "NIFE_INITIAL_RAMDISK",
             if riscv {
-                riscv_initrd_path()
+                riscv_initial_ramdisk_path()
             } else {
-                initrd_path()
+                initial_ramdisk_path()
             },
         );
         c
@@ -393,9 +393,9 @@ pub(super) fn swish_check_boot(
     );
 
     // The same build the interactive boot takes, because a gate that builds something else is
-    // gating something else. The FS server first (`user()` packs the initrd by reading the ELF off
-    // disk), then the RedoxFS image, because the runner attaches the disk only when the file is
-    // there and `<` and `>` need one.
+    // gating something else. The FS server first (`user()` packs the initial ramdisk by reading the
+    // ELF off disk), then the RedoxFS image, because the runner attaches the disk only when the
+    // file is there and `<` and `>` need one.
     let target = if riscv { RISCV_TARGET } else { TARGET };
     let built = !fresh
         || if x86 {
@@ -410,7 +410,7 @@ pub(super) fn swish_check_boot(
                 uefi_image_with(Some(probe_features()))
             }
     } else if riscv {
-        redoxfs_server_build(RISCV_TARGET) && mkdisk() && mkredoxfs_of(SWISH_CHECK_DISK_MIB) && initrd_riscv()
+        redoxfs_server_build(RISCV_TARGET) && mkdisk() && mkredoxfs_of(SWISH_CHECK_DISK_MIB) && initial_ramdisk_riscv()
     } else {
         redoxfs_server_build(TARGET) && mkredoxfs_of(SWISH_CHECK_DISK_MIB) && mkdisk() && user()
     } // After the archive build, whose packages it copies: a package the image's catalog
@@ -465,11 +465,11 @@ pub(super) fn swish_check_boot(
         });
         c.arg(format!("target/{target}/{}/kernel", profile_dir()));
         c.env(
-            "NIFE_INITRD",
+            "NIFE_INITIAL_RAMDISK",
             if riscv {
-                riscv_initrd_path()
+                riscv_initial_ramdisk_path()
             } else {
-                initrd_path()
+                initial_ramdisk_path()
             },
         );
         c
@@ -486,8 +486,8 @@ pub(super) fn swish_check_boot(
     // boot itself, not the bench boot sharing its runner, so there is no icount-drift reason to
     // keep it test-leg only, and the whole point of the amendment is that this boot should have
     // one. `cmd.env`, not `test()`'s own `std::env::set_var`, because this function builds its own
-    // `Command` directly (see `NIFE_INITRD`/`NIFE_DISK` just above) rather than spawning through
-    // the global-env-inheriting path `test()` uses.
+    // `Command` directly (see `NIFE_INITIAL_RAMDISK`/`NIFE_DISK` just above) rather than spawning
+    // through the global-env-inheriting path `test()` uses.
     cmd.env("NIFE_RNG", "1");
     // **The gpu, and the keyboard on the device arm** (milestone 632 (provisional)): read by
     // `helpers/qemu-runner-*.sh`. The boot ignores the devices and the shell holds their grants

@@ -105,9 +105,9 @@ struct Wiring {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn _start(role: u64, initrd_len: u64, _a2: u64) -> ! {
+pub extern "C" fn _start(role: u64, initial_ramdisk_len: u64, _a2: u64) -> ! {
     // SAFETY: forwarded from user_mode_runtime::initial_ramdisk::bytes's own contract.
-    let archive = unsafe { user_mode_runtime::initial_ramdisk::bytes(initrd_len) };
+    let archive = unsafe { user_mode_runtime::initial_ramdisk::bytes(initial_ramdisk_len) };
     let Ok(fs) = nifefs::Fs::parse(archive) else {
         bail(1)
     };

@@ -40,8 +40,8 @@
 //! with a hint rather than hanging.
 //!
 //! This is a **module of the `net_stack` binary** (dispatched by its entry role), not a separate binary,
-//! because the initrd archive's directory holds at most 15 files; folding the client in keeps the
-//! entry count under that ceiling (see xtask `initrd_aarch64`).
+//! because the initial ramdisk archive's directory holds at most 15 files; folding the client in
+//! keeps the entry count under that ceiling (see xtask `initial_ramdisk_aarch64`).
 //!
 //! # Capability contract (when entered as the client)
 //! - slot 0: the report endpoint (WRITE)

@@ -1679,13 +1679,13 @@ mod tests {
     #[test]
     fn a_refused_sweep_is_announced_with_its_reason() {
         let progress = run(&format!(
-            "{}no 'job_mix_task' program in the initrd archive; nothing to run\n",
+            "{}no 'job_mix_task' program in the initial ramdisk; nothing to run\n",
             job_mix::FAILED
         ));
         assert_eq!(
             progress.failure(),
             Some(&Failure::SweepFailed(
-                "no 'job_mix_task' program in the initrd archive; nothing to run".to_string()
+                "no 'job_mix_task' program in the initial ramdisk; nothing to run".to_string()
             ))
         );
         assert_eq!(

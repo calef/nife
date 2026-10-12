@@ -191,8 +191,8 @@ pub(crate) fn package_fetch_exerciser_elf(triple: &str) -> PathBuf {
 ///
 /// `helpers/build-ripgrep.sh` puts it here. Nothing in this build produces it, and that is the
 /// point: fetching `ripgrep` and its transitive crates is a crates.io dependency tree, which
-/// DECISIONS §46 makes calef's decision rather than a gate's. So the initrd carries it when it is
-/// on disk and does not when it is not, exactly as `std_exerciser` rides along, and
+/// DECISIONS §46 makes calef's decision rather than a gate's. So the initial ramdisk carries it
+/// when it is on disk and does not when it is not, exactly as `std_exerciser` rides along, and
 /// `system_tests/src/user/ripgrep_tests.rs` skips rather than fails when the archive has no `rg`.
 pub(crate) fn ripgrep_elf(triple: &str) -> PathBuf {
     workspace_root().join(format!("target/ripgrep/{triple}/rg"))
@@ -1123,11 +1123,11 @@ fn std_patch_dispatch() -> bool {
 /// [`std_exerciser_elf`], [`std_echo_elf`], [`std_grep_elf`], and the dep-info [`std_aborts`]
 /// reads. An inherited `CARGO_TARGET_DIR` (AGENTS.md tells every lane to export one for its
 /// gates) moves the build while leaving every one of those readers behind, so the sweep judges
-/// the last unredirected run's evidence and the initrd packs its ELFs. That is not hypothetical:
-/// on 2026-09-30 the 1377 lane built std from a sysroot this worktree never chose under exactly
-/// that export, twice, and `std-aborts` reported "all accounted for" over stale evidence both
-/// times. Pinning makes the wrong state unrepresentable; printing the override keeps the
-/// correction from being one more thing that happened silently.
+/// the last unredirected run's evidence and the initial ramdisk packs its ELFs. That is not
+/// hypothetical: on 2026-09-30 the 1377 lane built std from a sysroot this worktree never chose
+/// under exactly that export, twice, and `std-aborts` reported "all accounted for" over stale
+/// evidence both times. Pinning makes the wrong state unrepresentable; printing the override keeps
+/// the correction from being one more thing that happened silently.
 ///
 /// Name: provisional, minted 2026-09-30 by the sysroot-theft lane.
 fn exerciser_target_dir(inherited: Option<&str>) -> (PathBuf, Vec<String>) {
@@ -1170,7 +1170,7 @@ fn exerciser_target_dir(inherited: Option<&str>) -> (PathBuf, Vec<String>) {
 /// fix, 2026-09-30). `Command` inherits the environment, and AGENTS.md tells every lane to gate
 /// with `CARGO_TARGET_DIR=$PWD/target` exported, so the cargo child obeyed it: the build landed
 /// in the workspace's shared `target/`, dep-info and ELFs with it, while [`std_aborts`] and the
-/// initrd's ELF paths read `std_exerciser/target`. The sweep then judged the previous
+/// initial ramdisk's ELF paths read `std_exerciser/target`. The sweep then judged the previous
 /// unredirected run's evidence, and a build that had resolved a foreign or unpatched sysroot
 /// passed as green; the 1377 lane had exactly that, twice. [`exerciser_target_dir`] pins, and
 /// names the override out loud rather than absorbing it silently.
@@ -1187,7 +1187,7 @@ pub(crate) fn std_exerciser() -> bool {
         s(workspace_root().join("jig/Cargo.toml")),
     ];
     // Pin where the build and its evidence land before the first child runs, so the ELFs the
-    // initrd packs, the dep-info the sweep reads, and this build cannot be separated by an
+    // initial ramdisk packs, the dep-info the sweep reads, and this build cannot be separated by an
     // exported variable they never agreed to.
     let inherited_target_dir = std::env::var("CARGO_TARGET_DIR").ok();
     let (target_dir, notes) = exerciser_target_dir(inherited_target_dir.as_deref());

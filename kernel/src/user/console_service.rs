@@ -43,7 +43,7 @@ pub struct Console {
 pub fn start() -> Console {
     // The console server is its own binary now (19f.3), loaded from the archive by name rather
     // than entered as a role of hello.
-    let image = program("console").expect("no console program in the initrd");
+    let image = program("console").expect("no console program in the initial ramdisk");
     let request = crate::sched::create_rendezvous();
     let reply = crate::sched::create_rendezvous();
     // Zeroed so a client's first print cannot leak stale RAM.

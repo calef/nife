@@ -210,7 +210,7 @@ pub extern "C" fn kernel_main(boot_info_pointer: usize) -> ! {
             feature = "disk_throughput",
             feature = "network_bench"
         )))]
-        if let Some(image) = user::initrd() {
+        if let Some(image) = user::initial_ramdisk() {
             println!();
             println!("nife: handing the system to the userspace progenitor.");
             if let Err(e) = user::boot_progenitor(image) {

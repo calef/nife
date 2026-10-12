@@ -388,7 +388,7 @@ pub const LOG_VA: u64 = address_space_map::pair_page(0x0300_0000);
 pub const DEV_VA: u64 = address_space_map::pair_page(0x0310_0000);
 
 /// Where the operator copies an instance's program image, so a component's builder holds one ELF
-/// rather than the whole initrd.
+/// rather than the whole initial ramdisk.
 pub const IMAGE_VA: u64 = address_space_map::runtime_window(0x3000_0000);
 
 /// **The confused-deputy attacker's chosen offset** (milestone 633, third pass). `log_put` writes

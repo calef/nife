@@ -43,7 +43,7 @@
 //!
 //! - `a0` ([`ARG_FIRES`]): how many fires before the timetable reports and exits; `0` is forever.
 //! - `a1` ([`ARG_ARCHIVE_LEN`]): the length of the archive mapped read-only at
-//!   `user_mode_runtime::initial_ramdisk::INITRD_VA`, holding the programs its jobs may run.
+//!   `user_mode_runtime::initial_ramdisk::INITIAL_RAMDISK_VA`, holding its jobs' programs.
 //! - `a2` ([`ARG_REGISTRATION_PAGE`]): where a writable registration page is mapped, or `0`.
 //!
 //! # How the document arrives

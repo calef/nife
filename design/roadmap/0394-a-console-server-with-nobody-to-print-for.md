@@ -13,7 +13,7 @@ Filed 2026-09-13 as an unnumbered proposal, left behind by
 `maintainer/delete-narrator`, which deleted the narrator on calef's ruling and left the server that
 existed to print for it running; numbered 2026-09-19 by milestone 433's drain of the proposal pile.
 Premise re-read against the tree on 2026-09-19 and still true: the tour arm of
-`kernel/src/main.rs` still runs `user::initrd().map(|_| user::console_service::start())` (line 1768
+`kernel/src/main.rs` still runs `user::initial_ramdisk().map(|_| user::console_service::start())` (line 1768
 now, 1676 when this was written), and `kernel/src/user/console_service.rs` still carries the
 `#[expect(dead_code, reason = "no client since the narrator went; see milestone 267's block")]` on
 `Console`, whose own doc comment says the `expect` is this question made visible and should be
@@ -32,7 +32,7 @@ code is two hops from the question rather than one. When this is answered the `e
 §179 is what its replacement should cite if anything survives it.
 
 In brief. On a tour boot (no `shell`, no `initboot`), `kernel/src/main.rs:1676` still runs
-`user::initrd().map(|_| user::console_service::start())`. That spawns `components/src/console.rs`, a real
+`user::initial_ramdisk().map(|_| user::console_service::start())`. That spawns `components/src/console.rs`, a real
 UART driver at EL0 holding the PL011's registers, which blocks on `receive(REQUEST)` forever because
 nothing in the boot holds a capability naming its endpoint. Its only client was the narrator.
 

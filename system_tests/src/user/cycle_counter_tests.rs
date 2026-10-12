@@ -15,7 +15,7 @@ use crate::sched;
 /// counter twice across a yield and reports. It was role 42 of the `hello` multiplexer until
 /// milestone 291.
 fn cycle_counter_image() -> &'static [u8] {
-    program("cycle_counter_reader").expect("no cycle_counter_reader program in the initrd archive")
+    program("cycle_counter_reader").expect("no cycle_counter_reader program in the initial ramdisk")
 }
 
 /// **Milestone 229: a granted thread reads the cycle counter, and an ungranted one is killed for
@@ -202,7 +202,11 @@ fn init_runs_the_coremark_workload_and_it_checks_out() {
     let report_region = crate::memory_region::create(1).expect("no region for init's report");
     let report =
         crate::sched::create_rendezvous_from(report_region).expect("no rendezvous from region");
-    let init = spawn_hello(initrd().expect("no initrd"), INIT_COREMARK_ROLE, report);
+    let init = spawn_hello(
+        initial_ramdisk().expect("no initial ramdisk"),
+        INIT_COREMARK_ROLE,
+        report,
+    );
 
     let [crc, ticks, freq, _, _] = crate::sched::ipc_receive(report);
     assert_eq!(

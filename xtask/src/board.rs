@@ -627,7 +627,7 @@ fn stage_words(board: &'static board_console::board::Profile) -> String {
 const BOARD_BOOT_SCRIPT: &str = "\
 echo nife: boot.scr is driving this boot, milestone 218
 load ${devtype} ${devnum}:${distro_bootpart} ${kernel_addr_r} /nife-vf2.img
-load ${devtype} ${devnum}:${distro_bootpart} 0x90000000 /nife-initrd.img
+load ${devtype} ${devnum}:${distro_bootpart} 0x90000000 /nife-initial-ramdisk.img
 setenv nife_archive_size ${filesize}
 fdt addr ${fdtcontroladdr}
 fdt move ${fdtcontroladdr} 0x86000000
@@ -795,7 +795,7 @@ fi
 fi
 if test x${{nife_next}} = xarchive; then
 setenv nife_next none
-if tftpboot {archive} nife-initrd.img; then
+if tftpboot {archive} nife-initial-ramdisk.img; then
 setenv nife_archive_size ${{filesize}}
 setenv nife_source net
 fi
@@ -812,7 +812,7 @@ fi
 fi
 if test x${{nife_next}} = xarchive; then
 setenv nife_next none
-if load ${{devtype}} ${{devnum}}:${{distro_bootpart}} {archive} /nife-initrd.img; then
+if load ${{devtype}} ${{devnum}}:${{distro_bootpart}} {archive} /nife-initial-ramdisk.img; then
 setenv nife_archive_size ${{filesize}}
 setenv nife_source card
 fi
@@ -1282,7 +1282,7 @@ booti() {{ echo CALL booti $*; }}
             "{net}"
         );
         assert!(
-            net.contains("CALL tftpboot 0x90000000 nife-initrd.img"),
+            net.contains("CALL tftpboot 0x90000000 nife-initial-ramdisk.img"),
             "{net}"
         );
         assert!(!net.contains("CALL load"), "the card is not touched: {net}");
@@ -1304,7 +1304,7 @@ booti() {{ echo CALL booti $*; }}
             "{card}"
         );
         assert!(
-            card.contains("CALL load 0x90000000 /nife-initrd.img"),
+            card.contains("CALL load 0x90000000 /nife-initial-ramdisk.img"),
             "{card}"
         );
         assert!(card.contains("payload came from card"), "{card}");
@@ -1327,7 +1327,7 @@ booti() {{ echo CALL booti $*; }}
             "{half}"
         );
         assert!(
-            half.contains("CALL load 0x90000000 /nife-initrd.img"),
+            half.contains("CALL load 0x90000000 /nife-initial-ramdisk.img"),
             "{half}"
         );
         assert!(half.contains("payload came from card"), "{half}");

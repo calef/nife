@@ -21,9 +21,9 @@
 //! panic handler above: the invariant was one thing asserted N times by hand, and only the
 //! declaration needed to be per-caller.
 //!
-//! And a fourth, in the same round: [`initial_ramdisk`], the `INITRD_VA` slice seven `init`-shaped
-//! programs each rebuilt by hand with `core::slice::from_raw_parts`. A different pattern from
-//! `mapped_window` (a whole `'static` slice, not a bounds-checked per-offset accessor), but the
+//! And a fourth, in the same round: [`initial_ramdisk`], the `INITIAL_RAMDISK_VA` slice seven
+//! `init`-shaped programs each rebuilt by hand with `core::slice::from_raw_parts`. A different
+//! pattern from `mapped_window` (a whole `'static` slice, not a bounds-checked accessor), but the
 //! same §94 shape underneath: one invariant, copied verbatim into seven declarations.
 //!
 //! Round 7 read every remaining raw `invoke(...)` call site in `user/` (123 of them, the

@@ -119,14 +119,15 @@ const MAX_REPORTS: usize = 42;
 /// **Spawn the operator the way the kernel spawns the progenitor**, and return the report rendezvous every
 /// process in the run holds a WRITE view of.
 ///
-/// Deliberately the same endowment `spawn_init` gives (the archive read-only at `INITRD_VA`, an
-/// untyped in slot 0, a report rendezvous in slot 1), **plus** the one thing this milestone is
-/// about: a device capability in slot 2, `WRITE|GRANT`, exactly as the progenitor gets one at boot. So
+/// Deliberately the same endowment `spawn_init` gives (the archive read-only at
+/// `INITIAL_RAMDISK_VA`, an untyped in slot 0, a report rendezvous in slot 1), **plus** the one
+/// thing this milestone is about: a device capability in slot 2, `WRITE|GRANT`, exactly as the progenitor gets one at boot. So
 /// what is under test is the operator's choices, not a privileged shortcut.
 fn spawn_swapper(role: u64) -> (sched::RendezvousId, u64, u64, u64) {
-    let (initrd_start, initrd_len) = memory::initrd_region().expect("no initrd region");
-    let initrd_pages = initrd_len.div_ceil(FRAME_SIZE);
-    let bytes = program("swapper").expect("no swapper program in the initrd archive");
+    let (initial_ramdisk_start, initial_ramdisk_len) =
+        memory::initial_ramdisk_region().expect("no initial ramdisk region");
+    let initial_ramdisk_pages = initial_ramdisk_len.div_ceil(FRAME_SIZE);
+    let bytes = program("swapper").expect("no swapper program in the initial ramdisk");
     let elf = Elf::parse(bytes).expect("swapper is not loadable");
 
     let content: u64 = elf
@@ -137,8 +138,8 @@ fn spawn_swapper(role: u64) -> (sched::RendezvousId, u64, u64, u64) {
         })
         .sum::<u64>()
         + 1
-        + initrd_pages / 512
-        + crate::revoke::log_pages_for(initrd_pages)
+        + initial_ramdisk_pages / 512
+        + crate::revoke::log_pages_for(initial_ramdisk_pages)
         + INIT_STACK_PAGES
         + 8;
     let mut space = AddressSpace::new(content).expect("no memory for swapper");
@@ -150,15 +151,15 @@ fn spawn_swapper(role: u64) -> (sched::RendezvousId, u64, u64, u64) {
     }
     #[cfg(any(target_arch = "x86_64", target_arch = "riscv64"))]
     map_timebase_page(&mut space).expect("could not map swapper's timebase page");
-    for i in 0..initrd_pages {
+    for i in 0..initial_ramdisk_pages {
         space
             .map_physical(
-                INITRD_VA + i * FRAME_SIZE,
-                initrd_start + i * FRAME_SIZE,
+                INITIAL_RAMDISK_VA + i * FRAME_SIZE,
+                initial_ramdisk_start + i * FRAME_SIZE,
                 Flags::user_rodata(),
                 crate::revoke::PageMapSource::NoCapability,
             )
-            .expect("could not map the initrd");
+            .expect("could not map the initial ramdisk");
     }
     let aspace = readopt_user_address_space(space).expect("register the swapper aspace");
 
@@ -223,7 +224,7 @@ fn spawn_swapper(role: u64) -> (sched::RendezvousId, u64, u64, u64) {
     // The bind is the spawner's to make (a running thread holds no capability to its own TCB), the
     // same hand `net_stack`'s wiring performs for its retransmit wait.
     sched::notification_bind(wake, tid).expect("bind the swapper's notification");
-    sched::start_thread_control_block(tid, [role, initrd_len, 0]).expect("start");
+    sched::start_thread_control_block(tid, [role, initial_ramdisk_len, 0]).expect("start");
     (report, budget, thread_control_block_region, report_region)
 }
 

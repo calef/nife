@@ -72,11 +72,11 @@
 //!   the thing PGE changes.** QEMU 11.0.2's `cpu_x86_update_cr3` (`target/i386/helper.c`) calls
 //!   `tlb_flush` on every `CR3` write, whatever `PGE` and `PCIDE` say, so under TCG a global entry
 //!   never survives a switch; and icount counts retired guest instructions, which a TLB refill is
-//!   not. The x86 bench with an initrd (so `ctx_switch`, two processes and a `CR3` write per
-//!   switch, runs) printed **byte-identical tick counts on every line** with PGE on and off, which
-//!   is the proof of the first half rather than a result about the second. notes/benchmarks.md's
-//!   2026-09-19 section has the numbers and what would measure it: KVM on cordoba (blocked on one
-//!   `usermod`) or a bench boot on xenon. Turning it on is a two-line change after `install` in
+//!   not. The x86 bench with an initial ramdisk (so `ctx_switch`, two processes and a `CR3`
+//!   write per switch, runs) printed **byte-identical tick counts on every line** with PGE on and
+//!   off, which is the proof of the first half rather than a result about the second.
+//!   notes/benchmarks.md's 2026-09-19 section has the numbers and what would measure it: KVM on
+//!   cordoba (blocked on one `usermod`) or a bench boot on xenon. Turning it on is a two-line change after `install` in
 //!   [`init`] and [`init_secondary`] (after the fine map, or the boot map's entries are the ones
 //!   pinned), and nothing else here depends on it being off: kernel mappings are already global,
 //!   user mappings already are not, and every kernel unmap already ends in `invlpg`, which does

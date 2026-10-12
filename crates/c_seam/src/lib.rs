@@ -16,7 +16,7 @@
 //! ```text
 //!   c_shim (the C component's process)          c_confiner (the checker)
 //!   ------------------------------------       -----------------------------------------
-//!   0x2000_0000                                0x2000_0000  the initrd, read-only
+//!   0x2000_0000                                0x2000_0000  the initial ramdisk, read-only
 //!   0x4000_0000  heap (malloc/free)
 //!   0x5000_0000  GRANT       1 page, RW  <---> 0x5000_0000  the same frame, RW
 //!   0x5000_1000  WITNESS_RO  1 page, RO  <---> 0x5000_1000  the same frame, RW

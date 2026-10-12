@@ -91,7 +91,7 @@ pub struct BootInfo {
     /// Loader-defined flags. Xen defines bit 0 (`SecureBoot`) and bit 1 (`SecureBootEnabled`); QEMU
     /// sets neither.
     pub flags: u32,
-    /// How many modules (initrd images) were loaded.
+    /// How many modules (initial ramdisk images) were loaded.
     pub module_count: u32,
     /// Where the module list is, or 0.
     pub modules: u64,
@@ -250,7 +250,8 @@ pub fn memory_entry(bytes: &[u8], index: usize) -> Option<MemoryEntry> {
 /// The size of one `hvm_modlist_entry`.
 pub const MODULE_ENTRY_LEN: usize = 32;
 
-/// **A module the loader put in RAM for the kernel**, which on this system means the initrd.
+/// **A module the loader put in RAM for the kernel**, which on this system means the initial
+/// ramdisk.
 ///
 /// This is x86's answer to `/chosen/linux,initrd-start`, and the analogy is close enough to be
 /// worth stating: on both other architectures the loader writes the archive's bounds into the

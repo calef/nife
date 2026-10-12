@@ -1,12 +1,12 @@
 //! The least-authority demo: a whole program in one job.
 //!
 //! Milestone 19f.2, the first program that is its **own binary** rather than a role of `hello`.
-//! The progenitor loads it out of the initrd archive by the name `"least_authority_demo"` (nifefs), builds a
-//! child address space and TCB at this ELF's own entry, and `START`s it with the input `n` in `x1`.
-//! It squares `n`, `SEND`s the answer on the one endpoint the progenitor granted it (slot 0), and exits.
-//! That is the entire program: no role byte to dispatch on, no capabilities beyond the single one
-//! it needs. Least authority made real, because the program *is* its authority, and the squaring is
-//! arbitrary.
+//! The progenitor loads it out of the initial ramdisk archive by the name `"least_authority_demo"`
+//! (nifefs), builds a child address space and TCB at this ELF's own entry, and `START`s it with the
+//! input `n` in `x1`. It squares `n`, `SEND`s the answer on the one endpoint the progenitor granted
+//! it (slot 0), and exits. That is the entire program: no role byte to dispatch on, no capabilities
+//! beyond the single one it needs. Least authority made real, because the program *is* its
+//! authority, and the squaring is arbitrary.
 //!
 //! It shares `components`' linker script (`crates/user_mode_runtime/link.ld`, linked at `address_space_map::IMAGE_BASE`, in its
 //! own address space, so the shared load address is not a conflict) but not one line of hello's

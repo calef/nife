@@ -60,14 +60,14 @@ pub struct Wiring {
 /// exit over `^Q` and reads its own report, so by the time a caller would release this holding
 /// `rmle`'s thread is already gone.
 pub fn start(dir_name: &'static str, file_name: &str) -> Option<(Wiring, Holding)> {
-    let image = program("rmle").expect("no rmle program in the initrd archive");
+    let image = program("rmle").expect("no rmle program in the initial ramdisk");
 
     // The terminal half: identical to raw_mode_service::start, duplicated rather than reused
     // because that function's Wiring hands back a line_editor already wired to nobody; composing a
     // *third* process's grants into a spawn that function does not perform would need it split the
     // way fs_service::narrow_dir already is split from fs_service::start_granted_dir, and one
     // wiring function is enough plumbing for a milestone that is not itself about wiring.
-    let term_img = program("line_editor").expect("no line_editor program in the initrd archive");
+    let term_img = program("line_editor").expect("no line_editor program in the initial ramdisk");
     // Four pages for three endpoints, one page each and one spare: `virtio_service`'s own
     // `wire_net_server` carves the same shape for the same reason (see `raw_mode_service::start`).
     let ep_region = crate::memory_region::create(4).expect("no endpoint region for rmle_service");
@@ -129,7 +129,7 @@ pub fn start(dir_name: &'static str, file_name: &str) -> Option<(Wiring, Holding
     let (dir_ep, file_shared) = fs_service::narrow_dir(
         fs_service::blk_server_image(),
         fs_service::fs_server_image()?,
-        program("fs_subtree_caretaker").expect("no fs_subtree_caretaker program in the initrd"),
+        program("fs_subtree_caretaker").expect("no fs_subtree_caretaker in the initial ramdisk"),
         dir_name,
         filesystem_protocol::dir::ALL,
     )?;

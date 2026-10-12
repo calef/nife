@@ -3,7 +3,7 @@ use super::*;
 /// The `current_cpu_reader` program's ELF bytes: reads its own core twice across a yield, with no
 /// syscall, and reports both plus the id bound.
 fn current_cpu_reader_image() -> &'static [u8] {
-    program("current_cpu_reader").expect("no current_cpu_reader program in the initrd archive")
+    program("current_cpu_reader").expect("no current_cpu_reader program in the initial ramdisk")
 }
 
 /// **A userspace thread learns which core it is on, by loading from memory, on all three

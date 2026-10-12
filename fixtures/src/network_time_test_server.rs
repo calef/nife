@@ -53,7 +53,7 @@
 //! Refused `fake_stack` and `stub_net_stack`, which name what it *stands in for* rather than what
 //! it is, and which understate it: it is a real server answering a real contract, and the only
 //! thing false about it is that no datagram leaves the machine. The old header's claim that being
-//! one binary with the client kept "the initrd's directory small" is an argument from
+//! one binary with the client kept "the initial ramdisk's directory small" is an argument from
 //! implementation convenience, which AGENTS.md ranks below everything else; it did not survive.
 
 #![no_std]

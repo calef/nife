@@ -131,9 +131,9 @@ protocol for the shell to ask it to run, which is squarely *anything two program
 `supervision_protocol::build_child` (`:2470-2496`), and `build_child_space` maps ELF segments, stack
 pages, an x86_64 timebase placeholder and `endow.maps` -- nothing else. The `maps` a normal job may
 receive are chosen at `:2451-2462` and are exactly three: a filesystem client page, the clock page,
-or the config page, with the comment *"One extra mapping at most, today"*. `INITRD_VA` reaches only
+or the config page, with the comment *"One extra mapping at most, today"*. `INITIAL_RAMDISK_VA` reaches only
 the kernel-spawned progenitor (`kernel/src/user.rs:999`, `:1762`), and `a1` carries the manifest's
-integer argument rather than `initrd_len`.
+integer argument rather than `initial_ramdisk_len`.
 
 So a supervisor launched from the prompt cannot read `job_mix_task`'s bytes. It is the same gap
 `components/src/spawner.rs` was designed around from the other side: that program is handed one

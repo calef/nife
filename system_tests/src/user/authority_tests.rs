@@ -24,13 +24,15 @@ const ROOT_BUDGET_PAGES: u64 = 1024;
 /// **Spawn the tree's root the way the kernel spawns the progenitor**, and return the report endpoint every
 /// process in the tree holds a WRITE view of.
 ///
-/// Deliberately the same endowment `spawn_init` gives (`INITRD_VA`, an untyped in slot 0, a report
-/// endpoint in slot 1) so what is being tested is `root_supervisor`'s *choices*, not a privileged shortcut.
+/// Deliberately the same endowment `spawn_init` gives (`INITIAL_RAMDISK_VA`, an untyped in slot 0,
+/// a report endpoint in slot 1) so what is being tested is `root_supervisor`'s *choices*, not a
+/// privileged shortcut.
 fn spawn_tree() -> (sched::RendezvousId, u64) {
-    let (initrd_start, initrd_len) = memory::initrd_region().expect("no initrd region");
-    let initrd_pages = initrd_len.div_ceil(FRAME_SIZE);
+    let (initial_ramdisk_start, initial_ramdisk_len) =
+        memory::initial_ramdisk_region().expect("no initial ramdisk region");
+    let initial_ramdisk_pages = initial_ramdisk_len.div_ceil(FRAME_SIZE);
     let bytes =
-        program("root_supervisor").expect("no root_supervisor program in the initrd archive");
+        program("root_supervisor").expect("no root_supervisor program in the initial ramdisk");
     let elf = Elf::parse(bytes).expect("root_supervisor is not loadable");
 
     let content: u64 = elf
@@ -41,8 +43,8 @@ fn spawn_tree() -> (sched::RendezvousId, u64) {
         })
         .sum::<u64>()
         + 1
-        + initrd_pages / 512
-        + crate::revoke::log_pages_for(initrd_pages)
+        + initial_ramdisk_pages / 512
+        + crate::revoke::log_pages_for(initial_ramdisk_pages)
         + INIT_STACK_PAGES
         + 8;
     let mut space = AddressSpace::new(content).expect("no memory for root_supervisor");
@@ -54,15 +56,15 @@ fn spawn_tree() -> (sched::RendezvousId, u64) {
     }
     #[cfg(any(target_arch = "x86_64", target_arch = "riscv64"))]
     map_timebase_page(&mut space).expect("could not map root_supervisor's timebase page");
-    for i in 0..initrd_pages {
+    for i in 0..initial_ramdisk_pages {
         space
             .map_physical(
-                INITRD_VA + i * FRAME_SIZE,
-                initrd_start + i * FRAME_SIZE,
+                INITIAL_RAMDISK_VA + i * FRAME_SIZE,
+                initial_ramdisk_start + i * FRAME_SIZE,
                 Flags::user_rodata(),
                 crate::revoke::PageMapSource::NoCapability,
             )
-            .expect("could not map the initrd");
+            .expect("could not map the initial ramdisk");
     }
     let aspace = readopt_user_address_space(space).expect("register the root_supervisor aspace");
 
@@ -95,7 +97,7 @@ fn spawn_tree() -> (sched::RendezvousId, u64) {
     );
     sched::configure_thread_control_block(tid, elf.entry(), USER_STACK_TOP, aspace)
         .expect("configure");
-    sched::start_thread_control_block(tid, [0, initrd_len, 0]).expect("start");
+    sched::start_thread_control_block(tid, [0, initial_ramdisk_len, 0]).expect("start");
     (report, report_region)
 }
 

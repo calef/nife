@@ -217,7 +217,7 @@ uefi_loader,cells64,replace >> with <<,killed,killed; the ledger's uefi_loader s
 uefi_loader,find_string,replace < with <=,equivalent,"an empty tail finds no NUL, and falling out of the loop returns the same"
 uefi_loader,string_offset,replace < with <=,killed,killed; the ledger's uefi_loader section (census-2026-10-03-triage.md) says the sweep afterwards reports only that section's equivalents and gaps
 uefi_loader,unit_name,replace < with <=,killed,killed; the ledger's uefi_loader section (census-2026-10-03-triage.md) says the sweep afterwards reports only that section's equivalents and gaps
-uefi_loader,with_initrd,replace > with >=,equivalent,"an empty tail finds no NUL, and falling out of the loop returns the same"
+uefi_loader,with_initial_ramdisk,replace > with >=,equivalent,"an empty tail finds no NUL, and falling out of the loop returns the same"
 uptime,Writer::push_bytes,replace < with <=,killed,killed; the ledger's loaded_image_check and uptime section (census-2026-10-03-triage.md) says the sweep afterwards reports only that section's equivalents and gaps
 walk_pricing,Price::per_entry,replace - with +,killed,killed; the ledger's walk_pricing section (census-2026-10-03-triage-part-3.md) says the sweep afterwards reports only that section's equivalents and gaps
 walk_pricing,Price::per_entry,replace - with /,killed,killed; the ledger's walk_pricing section (census-2026-10-03-triage-part-3.md) says the sweep afterwards reports only that section's equivalents and gaps

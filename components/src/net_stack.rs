@@ -85,7 +85,7 @@ mod e1000e_transport;
 #[path = "virtio_net_transport.rs"]
 mod virtio_net_transport;
 // The socket-contract client rides in this same binary (dispatched by the entry role), because the
-// initrd directory holds at most 15 files; see components/src/socket_test_client.rs.
+// initial ramdisk directory holds at most 15 files; see components/src/socket_test_client.rs.
 #[path = "socket_test_client.rs"]
 mod socket_test_client;
 // The hostile second client milestone 649's confinement test runs (role 8), here for the same
@@ -222,7 +222,7 @@ impl PortAllocator {
 const SOCK_BUF: usize = 2048;
 
 /// Entry role 0 is the net server; any other role runs the socket-contract client (the same
-/// binary, so the initrd stays under its 15-file directory limit).
+/// binary, so the initial ramdisk stays under its 15-file directory limit).
 ///
 /// `a2` is the server's **grant word**, both port authorities in one spawn argument: the TCP
 /// listen range in the low half (milestone 107, `socket_protocol::listen_grant`) and the fixed-UDP

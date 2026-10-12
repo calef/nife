@@ -141,8 +141,8 @@ const LOG_ENTRIES: usize = 170;
 /// space's own region, so a caller that carves a budget and then maps a large window has to pay for
 /// the window's records as well as for the page tables reaching it. That was free until 2026-09-21,
 /// because [`crate::user::AddressSpace::map_physical`] recorded nothing; it is not free now, and
-/// the callers that map a whole initrd (thousands of pages) are the ones where the difference is
-/// visible rather than lost in `AS_OVERHEAD`'s slack.
+/// the callers that map a whole initial ramdisk (thousands of pages) are the ones where the
+/// difference is visible rather than lost in `AS_OVERHEAD`'s slack.
 ///
 /// Exported rather than left as arithmetic at each call site because `LOG_ENTRIES` is this
 /// module's own business: a caller that spelled `n / 170` would be a copy of a constant that moves
@@ -823,13 +823,14 @@ fn unmap_matching(phys: u64, spare: u64, object: Option<u64>) {
 /// own syscall path uses that one, because there the object being revoked really is the run named
 /// by the invoked capability.
 ///
-/// **Test-only in a non-`initrd` build**, and it stopped being anything else when `revoke_region`
-/// took its own range sweep: its remaining callers are the two `#[cfg(all(test, initrd))]` suites
-/// that revoke a single kernel-minted page (`user::disk_tests`, `user::tests`) and the suite in
-/// this file. Kept rather than deleted because those are the tests that prove the property, and
-/// because it is what a caller wanting exactly one page should still reach for.
+/// **Test-only in a non-`initial_ramdisk` build**, and it stopped being anything else when
+/// `revoke_region` took its own range sweep: its remaining callers are the two `#[cfg(all(test,
+/// initial ramdisk))]` suites that revoke a single kernel-minted page (`user::disk_tests`,
+/// `user::tests`) and the suite in this file. Kept rather than deleted because those are the tests
+/// that prove the property, and because it is what a caller wanting exactly one page should still
+/// reach for.
 #[cfg_attr(
-    not(all(any(test, feature = "system_tests"), initrd)),
+    not(all(any(test, feature = "system_tests"), initial_ramdisk)),
     allow(dead_code)
 )]
 pub fn revoke_page_frame(phys: u64) {
@@ -930,7 +931,7 @@ pub fn revoke_port_range_from_others(base: u16, count: u16) {
 /// revoke, and prove it faults). Test-only, like its frame twin. `x86_64` only.
 #[cfg(target_arch = "x86_64")]
 #[cfg_attr(
-    not(all(any(test, feature = "system_tests"), initrd)),
+    not(all(any(test, feature = "system_tests"), initial_ramdisk)),
     allow(dead_code)
 )]
 pub fn revoke_port_range(base: u16, count: u16) {

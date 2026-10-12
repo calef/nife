@@ -336,7 +336,7 @@ fn spawn_to_reap_repeats_without_leaking() {
 /// watchdog dump rather than as this sentence.
 ///
 /// Falsification: replayable `system_tests/falsifications/user.child_thread_tests.a_process_composed_from_two_capabilities_runs_in_the_space_it_built.patch`
-#[cfg(initrd)]
+#[cfg(initial_ramdisk)]
 #[test_case]
 fn a_process_composed_from_two_capabilities_runs_in_the_space_it_built() {
     use capability_witness_protocol::process_composition as bits;

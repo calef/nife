@@ -32,7 +32,7 @@
 //!
 //! /// riscv64's the progenitor. The slot numbers come from `kernel::user::riscv_shell_boot` and are the only
 //! /// thing this file knows that the other board's the progenitor does not.
-//! fn init(initrd_len: u64, fs_rights: u64) -> ! {
+//! fn init(initial_ramdisk_len: u64, fs_rights: u64) -> ! {
 //!     let endowment = BootEndowment {
 //!         untyped: 2,
 //!         uart_dev: 3,
@@ -108,7 +108,7 @@
 //!     // The fourth argument is milestone 154's second directory grant: `None` here, as at every
 //!     // real entry point today, because what the second subtree should *be* is a boot-time
 //!     // policy decision, not something this call site decides for itself.
-//!     boot(&endowment, initrd_len, fs_rights, None)
+//!     boot(&endowment, initial_ramdisk_len, fs_rights, None)
 //! }
 //! ```
 //!

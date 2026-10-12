@@ -111,8 +111,8 @@ fn std_fs_reads_a_file_through_a_granted_directory_capability() {
     }
     let Some((readiness, report)) = fs_service::start_std(
         blk_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
-        program("std_exerciser").expect("no std_exerciser program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
+        program("std_exerciser").expect("no std_exerciser program in the initial ramdisk"),
     ) else {
         crate::testing::skip!("no RedoxFS disk attached");
     };
@@ -144,8 +144,8 @@ fn the_redoxfs_server_serves_redoxfs_over_a_capability_contract() {
     }
     let Some((readiness, report)) = fs_service::start(
         blk_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
-        program("fs_test_client").expect("no fs_test_client program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
+        program("fs_test_client").expect("no fs_test_client program in the initial ramdisk"),
         0, // the end-to-end proof role, not the benchmark loop
     ) else {
         // No RedoxFS disk attached to this run. Nothing to test; do not fail.
@@ -294,9 +294,9 @@ fn a_writable_per_file_grant_writes_that_file_and_still_only_that_file() {
 fn attack_a_grant(rights: u64, writable: bool) -> Option<u64> {
     let Some(report) = fs_service::start_granted(
         blk_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
-        program("fs_file_caretaker").expect("no fs_file_caretaker program in the initrd archive"),
-        program("fs_test_client").expect("no fs_test_client program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
+        program("fs_file_caretaker").expect("no fs_file_caretaker program in the initial ramdisk"),
+        program("fs_test_client").expect("no fs_test_client program in the initial ramdisk"),
         fs_service::Grant {
             // The writable run damages what it is granted, so it is granted the file the fixture
             // discipline already covers; see the attacker's own note.
@@ -387,8 +387,8 @@ fn a_kill_mid_transaction_leaves_the_filesystem_consistent() {
     }
     assert_a_kill_mid_transaction_recovers(
         blk_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
-        program("fs_test_client").expect("no fs_test_client program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
+        program("fs_test_client").expect("no fs_test_client program in the initial ramdisk"),
     );
 }
 

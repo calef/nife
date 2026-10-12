@@ -77,8 +77,8 @@
 //! - mapped: the provision page, and the verify page. **Two frames, never one**: the provisioner
 //!   writes plaintext secrets into its page, and a client that shared that frame would read them.
 //!
-//! No initrd, no filesystem, no network, no device. A compromised secrets service is a machine
-//! whose logins an attacker can answer, for as long as they hold it, which is exactly as much damage as owning the store should be worth. It is not
+//! No initial ramdisk, no filesystem, no network, no device. A compromised secrets service is a
+//! machine whose logins an attacker can answer, for as long as they hold it, which is exactly as much damage as owning the store should be worth. It is not
 //! a machine whose passwords they can carry away.
 //!
 //! # BUGS

@@ -22,7 +22,7 @@
 //! may collect a corpse without being able to build one)). Of the arguments, two carry
 //! facts worth saying here: `a2` is the registration page, without which the document is the
 //! compiled-in `timetable.conf` (milestone 129 (scheduled execution), §222 (who holds a user's
-//! schedule)); and `a1` is **not the initrd** but the archive of exactly the programs this
+//! schedule)); and `a1` is **not the initial ramdisk** but the archive of exactly the programs this
 //! document will ever build, because the plan is computable before the first tick, and this
 //! process audits that and says what it found, in the line after the plan.
 //!
@@ -43,14 +43,14 @@
 //!
 //! `Registry::programs` is the complete set of programs the document will ever start, and it is
 //! known before anything fires. So the spawn site builds an archive of exactly that set and hands
-//! *that* over, rather than the initrd: after milestone 129's second stratum this process cannot
-//! load `date`, `ps`, `swish` or anything else it will never run, even though it holds a working
-//! image loader.
+//! *that* over, rather than the initial ramdisk: after milestone 129's second stratum this process
+//! cannot load `date`, `ps`, `swish` or anything else it will never run, even though it holds a
+//! working image loader.
 //!
 //! It cannot narrow its own endowment, so what it does instead is **measure it** and print the
-//! answer next to the plan (`timetable::Audit`). A scheduler handed the whole initrd still works
-//! and says a different sentence, which is the property worth having: the width of the endowment is
-//! a line on the console rather than a fact only the spawn site knows.
+//! answer next to the plan (`timetable::Audit`). A scheduler handed the whole initial ramdisk still
+//! works and says a different sentence, which is the property worth having: the width of the
+//! endowment is a line on the console rather than a fact only the spawn site knows.
 //!
 //! # Store mode: a job runs what a bare word runs
 //!
@@ -281,7 +281,7 @@ enum Programs {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn _start(fires_wanted: u64, initrd_len: u64, registration_page: u64) -> ! {
+pub extern "C" fn _start(fires_wanted: u64, initial_ramdisk_len: u64, registration_page: u64) -> ! {
     PAGE.store(registration_page, core::sync::atomic::Ordering::Relaxed);
     // **A scheduled job never holds the run-unvouched capability**, which is how §220 (signed builds, and trusting a key is scoped) keeps its reach: dropping trust in a key has to reach every
     // program that could run an unvouched image, and a job firing on a schedule long after its
@@ -311,7 +311,7 @@ pub extern "C" fn _start(fires_wanted: u64, initrd_len: u64, registration_page: 
     // SAFETY: forwarded from user_mode_runtime::initial_ramdisk::bytes's own contract, the same one
     // `components/src/root_supervisor.rs` is started under. It named `components/src/builder.rs`
     // until milestone 295 retired that program; the contract is unchanged, only the sibling is.
-    let archive = unsafe { user_mode_runtime::initial_ramdisk::bytes(initrd_len) };
+    let archive = unsafe { user_mode_runtime::initial_ramdisk::bytes(initial_ramdisk_len) };
 
     // With a registrar, the timetable starts with nothing and waits to be told; without one, the
     // compiled-in document is the whole story, exactly as it was before §222.
@@ -367,8 +367,8 @@ pub extern "C" fn _start(fires_wanted: u64, initrd_len: u64, registration_page: 
 
     // **What the archive it was handed reaches, next to what the plan will build.** The plan above
     // says what each scheduled child holds; this says what *this* process holds, and the two are
-    // different questions. A scheduler handed the whole initrd has a one-program plan and a
-    // capability that reaches every program in the tree, and nothing in the plan would say so.
+    // different questions. A scheduler handed the whole initial ramdisk has a one-program plan and
+    // a capability that reaches every program in the tree, and nothing in the plan would say so.
     //
     // It measures rather than enforces, because a process cannot narrow its own endowment: the
     // width is the spawn site's decision (`system_tests/src/user/timetable_tests.rs` builds a sub-archive

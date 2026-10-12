@@ -22,10 +22,10 @@
 //! prints the bit meanings on failure.
 //!
 //! **Reading the archive is not a third capability.** The kernel maps the archive read-only at
-//! `user_mode_runtime::initial_ramdisk::INITRD_VA` and passes its length in `x1`, which is what it did for
-//! `builder` and does for the progenitor. That mapping lets this program read bytes; it names no
-//! kernel object and can do nothing with the system. A reader who counts it as authority anyway
-//! should know it is there.
+//! `user_mode_runtime::initial_ramdisk::INITIAL_RAMDISK_VA` and passes its length in `x1`, which is
+//! what it did for `builder` and does for the progenitor. That mapping lets this program read
+//! bytes; it names no kernel object and can do nothing with the system. A reader who counts it as
+//! authority anyway should know it is there.
 //!
 //! **Milestone 19b's "nothing runs in the space it built" reading no longer holds.** It held while
 //! threads were 19c's object, and §185 chose to extend this fixture rather than add a second one. The
@@ -121,17 +121,17 @@ const INPUT: u64 = 9;
 const VA: u64 = address_space_map::pair_page(0x0040_0000);
 
 #[unsafe(no_mangle)]
-pub extern "C" fn _start(_arg0: u64, initrd_len: u64, _arg2: u64) -> ! {
-    send(REPORT, compose(initrd_len), 0, 0);
+pub extern "C" fn _start(_arg0: u64, initial_ramdisk_len: u64, _arg2: u64) -> ! {
+    send(REPORT, compose(initial_ramdisk_len), 0, 0);
     exit()
 }
 
 /// Every step, returning the verdict bits it reached. Stops at the first step that fails, so the
 /// word says where.
-fn compose(initrd_len: u64) -> u64 {
+fn compose(initial_ramdisk_len: u64) -> u64 {
     // SAFETY: forwarded from user_mode_runtime::initial_ramdisk::bytes's own contract: the kernel
-    // mapped the archive at INITRD_VA and passed its length in x1.
-    let archive = unsafe { user_mode_runtime::initial_ramdisk::bytes(initrd_len) };
+    // mapped the archive at INITIAL_RAMDISK_VA and passed its length in x1.
+    let archive = unsafe { user_mode_runtime::initial_ramdisk::bytes(initial_ramdisk_len) };
     let Some(elf) = nifefs::Fs::parse(archive)
         .ok()
         .and_then(|fs| fs.read(CHILD))

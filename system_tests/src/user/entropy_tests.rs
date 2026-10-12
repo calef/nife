@@ -10,7 +10,7 @@ use super::*;
 /// callers must `skip!()` at their own call site rather than have this helper do it, because
 /// `skip!()` returns from its immediate caller and a helper is not the test.
 fn start(bus: Bus) -> Option<entropy_service::Wiring> {
-    let image = program("entropy").expect("no entropy program in the initrd archive");
+    let image = program("entropy").expect("no entropy program in the initial ramdisk");
     let w = entropy_service::ensure(image, bus)?;
     if let Some(report) = w.wait_for_ready() {
         assert_eq!(
@@ -297,13 +297,13 @@ fn a_fill_gathers_across_round_trips() {
 /// **`x86_64`'s `is_instruction_backend_available` arm now checks
 /// `arch::isa::get().has_random_seed_instruction()`** (ring 3 landed, milestone 161 (the `x86_64`
 /// kernel port) item 3), so this test's logic is complete on that architecture too. It does not yet
-/// run there in this suite: this whole module is `#[cfg(all(test, initrd))]`, and
-/// `kernel/build.rs::declare_initrd_cfg` has no `x86_64` arm until milestone 161 item 4's
-/// userspace-compilation hand-off lands, so `x86_64` has no `entropy` binary in its initrd to spawn
-/// yet. Confirmed working ahead of that landing (2026-08-25): cherry-picking the `x86_64` fix of
-/// milestone 162 (real hardware entropy on `x86_64` and aarch64) onto that hand-off's branch makes
-/// this exact test pass under `-cpu max`, `x86_64`'s suite default, no `--cpu` override needed the
-/// way aarch64's does.
+/// run there in this suite: this whole module is `#[cfg(all(test, initial_ramdisk))]`, and
+/// `kernel/build.rs::declare_initial_ramdisk_cfg` has no `x86_64` arm until milestone 161 item 4's
+/// userspace-compilation hand-off lands, so `x86_64` has no `entropy` binary in its initial ramdisk
+/// to spawn yet. Confirmed working ahead of that landing (2026-08-25): cherry-picking the `x86_64`
+/// fix of milestone 162 (real hardware entropy on `x86_64` and aarch64) onto that hand-off's branch
+/// makes this exact test pass under `-cpu max`, `x86_64`'s suite default, no `--cpu` override
+/// needed the way aarch64's does.
 #[test_case]
 fn a_client_obtains_unpredictable_bytes_from_rndrrs_with_no_device_at_all() {
     let Some(w) = start(Bus::Instruction) else {

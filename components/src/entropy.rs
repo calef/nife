@@ -20,8 +20,8 @@
 //! - slot 3, a **readiness** endpoint (WRITE): one message once the first bytes are in hand;
 //! - mapped: one DMA page, which nobody else maps.
 //!
-//! No initrd, no budget, no filesystem, no network. A compromised entropy service is a machine
-//! whose random numbers an attacker chooses, which is exactly as much damage as owning the
+//! No initial ramdisk, no budget, no filesystem, no network. A compromised entropy service is a
+//! machine whose random numbers an attacker chooses, which is exactly as much damage as owning the
 //! entropy source should be worth, and it is why the device does not sit inside every program.
 //!
 //! # It passes the device's bytes through, and computes nothing
