@@ -178,9 +178,9 @@ Raised from 23 to 24 by milestone 835 (a C library, stage 1: files, clock and me
 (UTC): `OneThread`, the C library's descriptor table, sound because a stage-1 C process has one
 thread. Milestone 836 (a C library, stage 2: threads) takes it back out.
 
-Lowered from 24 to 23 by milestone 836 (a C library, stage 2: threads), 2026-10-12 (UTC): the
-descriptor table is a `std::sync::Mutex` now, and the thread record `pthread_t` names is built
-from atomics and a lock, so it needs no claim of its own.
+Lowered from 24 to 23 by milestone 836 (a C library, stage 2: threads), 2026-10-12 (UTC). The
+descriptor table is a `std::sync::Mutex` now. The thread record a `pthread_t` names is built from
+atomics and a lock, so it needs no claim of its own.
 
 ## Other unsafe traits
 
