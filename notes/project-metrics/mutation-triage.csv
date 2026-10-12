@@ -583,7 +583,7 @@ byte_sink_protocol,req,replace | with ^,equivalent,"| over operands on disjoint 
 byte_sink_protocol,pack,replace < with <=,equivalent,at bytes.len() == INLINE_MAX both arms take INLINE_MAX
 c_seam,,replace << with >>,equivalent,"1 << 0 under >> is 1 >> 0, which is also 1"
 calendar,UtcOffset::from_hm,replace < with <=,equivalent,"a zero argument has no sign to disagree with, and the hours != 0 and minutes != 0 terms already exclude it, so < and <= decide the same"
-calendar,Writer::byte,replace < with <=,killed,killed; a_full_writer_drops_the_next_byte_instead_of_panicking in crates/calendar/src/lib.rs
+calendar,Writer::byte,replace < with <=,killed,killed; a_full_writer_drops_the_next_byte_instead_of_panicking in crates/calendar/src/tests.rs
 calendar,Writer::offset,replace < with <=,equivalent,"Writer::offset is only called for a non-zero offset (zero prints Z or UTC), so m < 0 and m <= 0 agree on every call"
 calendar,DateTime::parse_rfc3339_bytes,replace + with -,equivalent,"the dropped length check is repeated by number() and expect(), which return the same Error::Syntax for a short tail"
 capability,note_peak,replace | with ^,equivalent,argued in notes/mutation-testing/regressions-capability-to-dtb.md; the 2026-10-07 per-crate re-run still reports it

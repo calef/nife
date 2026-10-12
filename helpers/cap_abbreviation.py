@@ -72,6 +72,7 @@ _CALLS = 'a call of an existing tree API whose name is on the sweep worklist, no
 KEPT = {
     'components/src/printenv.rs': ({'CAP'}, _CEILING),
     'crates/calendar/src/lib.rs': ({'FMT_CAP'}, _CEILING),
+    'crates/calendar/src/tests.rs': ({'FMT_CAP'}, _CEILING),
     'kernel/src/stack.rs': ({'CAP'}, _CEILING),
     'kernel/src/arch/x86_64/timer.rs': ({'CALIBRATION_WINDOW_CAP'}, _CEILING),
     'redoxfs_server/src/bin/second_mount.rs': ({'cap', 'heap_cap', 'HIT_CAP', 'cap_mib'}, _CEILING),
