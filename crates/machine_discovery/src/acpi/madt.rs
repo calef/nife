@@ -298,7 +298,7 @@ pub fn isa_irq_table(body: &[u8]) -> [IsaIrqRouting; ISA_IRQ_COUNT] {
     table
 }
 
-/// Machine-checked proofs over the MADT (DECISIONS §14, milestone 319).
+/// Machine-checked proofs over the MADT (milestone 319).
 ///
 /// Why these tables carry harnesses, and what is deliberately left unproved, is on
 /// `acpi::root`'s `verification`, beside the RSDP's.

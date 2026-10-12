@@ -82,7 +82,7 @@ pub fn parse_sdt_header(bytes: &[u8]) -> Result<SdtHeader, AcpiError> {
     })
 }
 
-/// Machine-checked proofs over the table header (DECISIONS §14, milestone 319).
+/// Machine-checked proofs over the table header (milestone 319).
 ///
 /// Why these tables carry harnesses, and what is deliberately left unproved, is on
 /// `acpi::root`'s `verification`, beside the RSDP's.

@@ -561,7 +561,7 @@ impl DmarUnits {
     }
 }
 
-/// Machine-checked proofs over the DMAR (DECISIONS §14, milestone 319).
+/// Machine-checked proofs over the DMAR (milestone 319).
 ///
 /// Why these tables carry harnesses, and what is deliberately left unproved, is on
 /// `acpi::root`'s `verification`, beside the RSDP's.

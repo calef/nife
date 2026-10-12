@@ -55,7 +55,7 @@ pub fn mcfg_entry(body: &[u8], index: usize) -> Option<McfgEntry> {
     })
 }
 
-/// Machine-checked proofs over the MCFG (DECISIONS §14, milestone 319).
+/// Machine-checked proofs over the MCFG (milestone 319).
 ///
 /// Why these tables carry harnesses, and what is deliberately left unproved, is on
 /// `acpi::root`'s `verification`, beside the RSDP's.
