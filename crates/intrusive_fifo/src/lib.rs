@@ -503,6 +503,21 @@ mod tests {
         assert_eq!(size_of::<Option<Unqueued<N>>>(), size_of::<NonNull<N>>());
     }
 
+    /// A token compares equal to its node's pointer and to no other, and prints as that pointer,
+    /// which is what lets a caller assert which node a pop handed back.
+    #[test]
+    fn a_token_is_its_nodes_pointer() {
+        let (mut a, mut b) = (node(1), node(2));
+        let pb = NonNull::from(&mut *b);
+        let ta = token(&mut a);
+        assert!(ta == NonNull::from(&mut *a));
+        assert!(!(ta == pb));
+        assert_eq!(
+            format!("{ta:?}"),
+            format!("Unqueued({:?})", ta.as_non_null())
+        );
+    }
+
     /// A popped node leaves with a clean link: it does not secretly point back into the queue.
     #[test]
     fn a_popped_node_carries_no_link() {
