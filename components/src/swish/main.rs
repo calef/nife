@@ -122,7 +122,7 @@ use swish::{Route, Say, Status, Untimed, sequence};
 use user_mode_runtime::mapped_window::MappedWindow;
 use user_mode_runtime::{
     call, cap_delete, cntfrq, destroy_region, exit, monotonic_nanos, now, reap, receive,
-    receive_fault, retype_object, retype_sleeper, send, sleep_until, split_region, yield_now,
+    receive_fault, retype_into_kernel_object, retype_sleeper, send, sleep_until, split_region, yield_now,
 };
 
 // **The shell is a directory of modules** (milestone 844 (the shell program is split along its

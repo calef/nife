@@ -50,7 +50,7 @@ use socket_protocol::*;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{
     badge, call, call_receiving, cap_delete, exit, map_page_frame, now, receive, receive_cap,
-    retype_page_frame, send, send_cap, yield_now,
+    retype_into_page_frame, send, send_cap, yield_now,
 };
 
 use crate::socket_test_client::TFTP_NAME;
@@ -93,7 +93,7 @@ static WINDOW: MappedWindow = unsafe { MappedWindow::new(PAGE_FRAME_VA, PAGE) };
 
 /// **The squat, against capabilities.** See the module doc for the five steps.
 pub fn run() -> ! {
-    let frame = retype_page_frame(MEMORY_REGION);
+    let frame = retype_into_page_frame(MEMORY_REGION);
     if frame < 0 || !map_page_frame(frame as u64, PAGE_FRAME_VA, true, MEMORY_REGION) {
         send(REPORT, 0, 0xE001, 0);
         exit();

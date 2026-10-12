@@ -105,7 +105,7 @@ use capability_witness_protocol::process_composition::{
 use supervision_protocol::{
     ChildEndowment, Retention, build_child_space, configure_child, start_child,
 };
-use user_mode_runtime::{exit, map_into, receive, retype_object, retype_page_frame, send};
+use user_mode_runtime::{exit, map_into, receive, retype_into_kernel_object, retype_into_page_frame, send};
 
 const MEMORY_REGION: u64 = 0;
 const REPORT: u64 = 1;
@@ -139,7 +139,7 @@ fn compose(initrd_len: u64) -> u64 {
     };
     let mut verdict = CHILD_FOUND;
 
-    let answer = retype_object(MEMORY_REGION, abi::objtype::RENDEZVOUS);
+    let answer = retype_into_kernel_object(MEMORY_REGION, abi::objtype::RENDEZVOUS);
     if answer < 0 {
         return verdict;
     }
@@ -156,7 +156,7 @@ fn compose(initrd_len: u64) -> u64 {
     };
     verdict |= SPACE_BUILT;
 
-    let frame = retype_page_frame(MEMORY_REGION);
+    let frame = retype_into_page_frame(MEMORY_REGION);
     if frame >= 0 {
         let frame = frame as u64;
         if map_into(aspace, VA, frame, abi::address_space::MAP_RW) == 0 {

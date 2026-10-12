@@ -21,7 +21,7 @@
 
 use user_mode_runtime::{
     Received, exit, notification_bind, notification_poll, notification_signal, notification_wait,
-    receive_bound, retype_object, send, send_cap,
+    receive_bound, retype_into_kernel_object, send, send_cap,
 };
 
 const MEMORY_REGION: u64 = 0;
@@ -31,7 +31,7 @@ const REPORT: u64 = 3;
 
 #[unsafe(no_mangle)]
 pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
-    let n = retype_object(MEMORY_REGION, abi::objtype::NOTIFICATION);
+    let n = retype_into_kernel_object(MEMORY_REGION, abi::objtype::NOTIFICATION);
     check(n >= 0);
     let n = n as u64;
 

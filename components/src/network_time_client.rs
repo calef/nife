@@ -130,7 +130,7 @@ use network_time_protocol::{Query, Reject, Timestamp};
 use socket_protocol::*;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{
-    call, call_receiving, cntfrq, exit, map_page_frame, now, retype_page_frame, retype_sleeper,
+    call, call_receiving, cntfrq, exit, map_page_frame, now, retype_into_page_frame, retype_sleeper,
     send, send_cap, sleep_until, yield_now,
 };
 
@@ -429,7 +429,7 @@ fn reject_code(r: Reject) -> u64 {
 /// `socket_test_client` does, because it is exactly the same contract.
 fn attach_page_frame(socket: u64) {
     // RETYPE answers with the new frame capability's slot, or a negative error.
-    let frame = retype_page_frame(MEMORY_REGION);
+    let frame = retype_into_page_frame(MEMORY_REGION);
     if frame < 0 {
         done(RPT_NET_ERROR, 0, 0);
     }

@@ -60,7 +60,7 @@ use socket_protocol::*;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{
     call, call_receiving, cap_delete, exit, map_page_frame, now, receive, receive_cap,
-    retype_page_frame, send, send_cap,
+    retype_into_page_frame, send, send_cap,
 };
 
 const REPORT: u64 = 0;
@@ -368,7 +368,7 @@ fn close(which: usize) -> (u64, u64) {
 /// copy of it ([`keep`]).
 fn attach_page_frame() {
     // RETYPE returns the new frame capability's slot, or a negative error.
-    let frame = retype_page_frame(MEMORY_REGION);
+    let frame = retype_into_page_frame(MEMORY_REGION);
     if frame < 0 {
         done(0xE001);
     }

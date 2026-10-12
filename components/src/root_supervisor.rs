@@ -44,7 +44,7 @@
 use supervision_protocol::{
     ChildEndowment, REPORT_FAILED, REPORT_INIT_DROPPED, REPORT_SUP_SAW_DEATH, Retention,
 };
-use user_mode_runtime::{cap_delete, receive, retype_object, retype_page_frame, send};
+use user_mode_runtime::{cap_delete, receive, retype_into_kernel_object, retype_into_page_frame, send};
 
 /// What the kernel grants us, and nothing else.
 const ROOT_UT: u64 = 0; // the construction budget: ours briefly, then deleted
@@ -164,8 +164,8 @@ pub extern "C" fn _start(_a0: u64, initrd_len: u64, _a2: u64) -> ! {
     // And prove it, from the inside, on the two primitives that build things: retype a page, and
     // retype a kernel object. Both must now fail with `NoSuchSlot` (-1), which is what
     // no-ambient-authority feels like: there is nothing there, and no way to name what used to be.
-    let frame = retype_page_frame(ROOT_UT);
-    let object = retype_object(ROOT_UT, abi::objtype::THREAD_CONTROL_BLOCK);
+    let frame = retype_into_page_frame(ROOT_UT);
+    let object = retype_into_kernel_object(ROOT_UT, abi::objtype::THREAD_CONTROL_BLOCK);
     send(
         REPORT,
         REPORT_INIT_DROPPED,

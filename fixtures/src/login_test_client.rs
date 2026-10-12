@@ -139,7 +139,7 @@
 
 use user_mode_runtime::mapped_window::MappedWindow;
 use user_mode_runtime::{
-    call, destroy_region, exit, map_page_frame, receive, receive_cap, retype_page_frame, send,
+    call, destroy_region, exit, map_page_frame, receive, receive_cap, retype_into_page_frame, send,
     send_cap, split_region, yield_now,
 };
 
@@ -457,7 +457,7 @@ pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
     // Prove the budget works: retype one page from it. `RETYPE`'s reply is the new frame's slot
     // (>= 0) or a negative error. Done here, right after the one use of `budget` that needs it
     // alive (`map_page_frame` above), and before anything below tears it down.
-    if retype_page_frame(budget) >= 0 {
+    if retype_into_page_frame(budget) >= 0 {
         flags |= F_BUDGET_WORKS;
     }
 
@@ -481,7 +481,7 @@ pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
             if destroy_region(budget) == abi::Error::NotPermitted as i64 {
                 flags |= F_LOGOUT_REFUSED_WHILE_PENDING;
             }
-            if retype_page_frame(budget) >= 0 {
+            if retype_into_page_frame(budget) >= 0 {
                 flags |= F_SESSION_SURVIVED_REFUSAL;
             }
             if destroy_region(job as u64) == 0 {
@@ -511,7 +511,7 @@ pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
         && destroy_with_retry(budget)
     {
         flags |= F_BUDGET_TEARDOWN_OK;
-        if retype_page_frame(budget) < 0 {
+        if retype_into_page_frame(budget) < 0 {
             flags |= F_BUDGET_DEAD_AFTER_TEARDOWN;
         }
     }

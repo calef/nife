@@ -23,7 +23,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use user_mode_runtime::{exit, retype_object, send, send_cap};
+use user_mode_runtime::{exit, retype_into_kernel_object, send, send_cap};
 
 const MEMORY_REGION: u64 = 0;
 const CHANNEL: u64 = 1;
@@ -32,7 +32,7 @@ const CHANNEL: u64 = 1;
 pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
     // Retype one page of our budget into a rendezvous; the kernel returns the slot where our
     // full-rights capability to it landed.
-    let rendezvous = retype_object(MEMORY_REGION, abi::objtype::RENDEZVOUS);
+    let rendezvous = retype_into_kernel_object(MEMORY_REGION, abi::objtype::RENDEZVOUS);
     check(rendezvous >= 0);
     let rendezvous = rendezvous as u64;
 

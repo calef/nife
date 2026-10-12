@@ -170,11 +170,11 @@ fn map_job() -> Result<u64, Refused> {
         job_mix::MAP_REGION_PAGES,
     ))?;
     let mut region_ticks = now() - t0;
-    let aspace = slot(user_mode_runtime::retype_object(
+    let aspace = slot(user_mode_runtime::retype_into_kernel_object(
         region,
         abi::objtype::ADDRESS_SPACE,
     ))?;
-    let frame = slot(user_mode_runtime::retype_page_frame(region))?;
+    let frame = slot(user_mode_runtime::retype_into_page_frame(region))?;
     let mut i = 0;
     while i < job_mix::MAP_CALLS {
         zero(user_mode_runtime::map_into(
@@ -213,7 +213,7 @@ fn spawn_job(code_frame: u64) -> Result<u64, Refused> {
             job_mix::CHILD_PAGES,
         ))?;
         region_ticks += now() - t0;
-        let aspace = slot(user_mode_runtime::retype_object(
+        let aspace = slot(user_mode_runtime::retype_into_kernel_object(
             child,
             abi::objtype::ADDRESS_SPACE,
         ))?;
@@ -223,7 +223,7 @@ fn spawn_job(code_frame: u64) -> Result<u64, Refused> {
             code_frame,
             abi::address_space::MAP_CODE,
         ))?;
-        let stack = slot(user_mode_runtime::retype_page_frame(child))?;
+        let stack = slot(user_mode_runtime::retype_into_page_frame(child))?;
         zero(user_mode_runtime::map_into(
             aspace,
             CHILD_STACK_VA,
@@ -231,7 +231,7 @@ fn spawn_job(code_frame: u64) -> Result<u64, Refused> {
             abi::address_space::MAP_RW,
         ))?;
         user_mode_runtime::cap_delete(stack);
-        let tcb = slot(user_mode_runtime::retype_object(
+        let tcb = slot(user_mode_runtime::retype_into_kernel_object(
             child,
             abi::objtype::THREAD_CONTROL_BLOCK,
         ))?;
@@ -275,7 +275,7 @@ fn spawn_job(code_frame: u64) -> Result<u64, Refused> {
 /// splits it, so it outlives every child and every `DESTROY` (a region reclaims in reverse order of
 /// what was taken from it). Filled once with [`user_mode_runtime::child_stub::SEND_THEN_EXIT`].
 fn prepare_child_code() -> Result<u64, Refused> {
-    let frame = slot(user_mode_runtime::retype_page_frame(job_mix::SLOT_BUDGET))?;
+    let frame = slot(user_mode_runtime::retype_into_page_frame(job_mix::SLOT_BUDGET))?;
     if !user_mode_runtime::map_page_frame(frame, STUB_SCRATCH_VA, true, job_mix::SLOT_BUDGET) {
         return Err(abi::Error::OutOfMemory as i64);
     }

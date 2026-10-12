@@ -30,7 +30,7 @@
 //! milestone's own largest unmigrated cluster) and found the same shape at nearly all of them: a
 //! method whose own `# Safety` obligation is [`invoke`]'s own ("the kernel validates the capability
 //! and the method before acting"), asserted by hand at every call site with nothing
-//! call-site-specific to check. Fourteen new thin wrappers below (`retype_page_frame` through
+//! call-site-specific to check. Fourteen new thin wrappers below (`retype_into_page_frame` through
 //! `send_cap`), plus [`is_granted`] (the shape of §94 (what may live in a userspace library) again:
 //! five programs' identical probe) and the opt-in [`virtio`] module (device-specific, so scoped
 //! like `mapped_window` rather than added here), cover all but one of them; see that one call
@@ -636,11 +636,11 @@ pub fn retype_sleeper(memory_region_slot: u64, reserved: u64) -> Option<(u64, u6
             return None;
         }
     }
-    let n = retype_object(memory_region_slot, abi::objtype::NOTIFICATION);
+    let n = retype_into_kernel_object(memory_region_slot, abi::objtype::NOTIFICATION);
     if n < 0 {
         return None;
     }
-    let t = retype_object(memory_region_slot, abi::objtype::TIMER);
+    let t = retype_into_kernel_object(memory_region_slot, abi::objtype::TIMER);
     if t < 0 {
         cap_delete(n as u64);
         return None;
@@ -871,7 +871,11 @@ pub fn is_granted(slot: u64) -> bool {
 /// `RETYPE` one page out of the untyped in `memory_region_slot` into a `PageFrame` capability the
 /// caller now holds. Returns the slot the frame landed in, or a negative `abi::Error`
 /// (`OutOfMemory` when the untyped is exhausted or the caller's table is full).
-pub fn retype_page_frame(memory_region_slot: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2), with [`retype_into_kernel_object`]. His words: "retype_into_page_frame and
+/// retype_into_kernel_object". Refused `retype_page_frame` (round 7's provisional name).
+pub fn retype_into_page_frame(memory_region_slot: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the untyped capability and its remaining budget.
     unsafe { invoke(memory_region_slot, abi::memory_region::RETYPE, 0, 0, 0) }
 }
@@ -887,7 +891,7 @@ pub fn retype_page_frame(memory_region_slot: u64) -> i64 {
 /// Name: provisional (the lane for milestone 23 (a capability-routed component OS with live
 /// replacement), 2026-09-26).
 pub fn retype_page_frame_run(memory_region_slot: u64, pages: u64) -> i64 {
-    // SAFETY: as `retype_page_frame`; the kernel checks the count against the remaining budget.
+    // SAFETY: as `retype_into_page_frame`; the kernel checks the count against the remaining budget.
     unsafe { invoke(memory_region_slot, abi::memory_region::RETYPE, pages, 0, 0) } // run wrapper
 }
 
@@ -905,7 +909,12 @@ pub fn slice_page_frame(frame_slot: u64, first: u64, count: u64) -> i64 {
 /// `objtype` (see [`abi::objtype`]). Returns the slot holding a full-rights capability to the new
 /// object, or a negative `abi::Error` (`BadMethod` for an unknown `objtype`, `OutOfMemory` when the
 /// untyped or either table is exhausted).
-pub fn retype_object(memory_region_slot: u64, objtype: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2), with [`retype_into_page_frame`]. His words: "retype_into_page_frame and
+/// retype_into_kernel_object". Refused `retype_object` (round 7's provisional name),
+/// `retype_kernel_object` (ratified earlier the same day, then superseded by this ruling).
+pub fn retype_into_kernel_object(memory_region_slot: u64, objtype: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the untyped, the objtype and the budget before it
     // touches a page.
     unsafe {
@@ -943,7 +952,7 @@ pub fn destroy_region(memory_region_slot: u64) -> i64 {
 /// writable, at `va` in the caller's own address space, in one step. `0` on success; a negative
 /// `abi::Error` (`OutOfMemory` when the untyped is exhausted).
 ///
-/// The one-step twin of [`retype_page_frame`] followed by [`map_page_frame`]: this never produces
+/// The one-step twin of [`retype_into_page_frame`] followed by [`map_page_frame`]: this never produces
 /// a `PageFrame` capability the caller can delegate or revoke, it just spends the untyped's budget
 /// directly on a mapped page.
 pub fn map_region_page(memory_region_slot: u64, va: u64) -> i64 {

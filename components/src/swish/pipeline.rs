@@ -991,6 +991,6 @@ fn release_pipeline(region: u64, pipes: &[u64]) {
 /// RETYPE one page of `region` into an `Rendezvous` we hold with full rights, which is what lets us
 /// delegate a narrowed view of it to each end of a pipe.
 pub(super) fn retype_rendezvous(region: u64) -> Option<u64> {
-    let r = retype_object(region, abi::objtype::RENDEZVOUS);
+    let r = retype_into_kernel_object(region, abi::objtype::RENDEZVOUS);
     if r < 0 { None } else { Some(r as u64) }
 }

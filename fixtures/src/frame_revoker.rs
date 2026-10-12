@@ -23,7 +23,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use user_mode_runtime::{exit, map_page_frame, retype_page_frame, revoke_frame, send};
+use user_mode_runtime::{exit, map_page_frame, retype_into_page_frame, revoke_frame, send};
 
 const MEMORY_REGION: u64 = 0; // retype + page tables
 const REPORT: u64 = 1;
@@ -32,7 +32,7 @@ const VA: u64 = address_space_map::pair_page(0x0000_0000_00c0_0000);
 #[unsafe(no_mangle)]
 pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
     // Retype a page into a PageFrame capability we hold, then map it writable.
-    let frame = retype_page_frame(MEMORY_REGION);
+    let frame = retype_into_page_frame(MEMORY_REGION);
     check(frame >= 0);
     let frame = frame as u64;
     check(map_page_frame(frame, VA, true, MEMORY_REGION));

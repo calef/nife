@@ -121,7 +121,7 @@ pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
     // Before anything deep runs. Retyped from the budget ahead of every carve, so they sit under
     // the regions this program splits and destroys and never block a region's pages going back.
     for k in 1..=EXTRA_STACK_PAGES {
-        let frame = user_mode_runtime::retype_page_frame(MEMORY_REGION);
+        let frame = user_mode_runtime::retype_into_page_frame(MEMORY_REGION);
         if frame < 0
             || !user_mode_runtime::map_page_frame(
                 frame as u64,

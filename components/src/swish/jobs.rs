@@ -313,7 +313,7 @@ pub(super) fn reclaim(job_ut: u64) -> bool {
 
 /// RETYPE one page of our budget into a `PageFrame` capability we hold. `None` when the budget is spent.
 fn retype_page_frame() -> Option<u64> {
-    let r = user_mode_runtime::retype_page_frame(BUDGET);
+    let r = user_mode_runtime::retype_into_page_frame(BUDGET);
     if r < 0 { None } else { Some(r as u64) }
 }
 

@@ -57,7 +57,7 @@ fn fresh_page(va: u64) -> Option<Argv> {
         return None;
     }
     let staging = memory_region_split(1)?;
-    match u64::try_from(user_mode_runtime::retype_page_frame(staging)) {
+    match u64::try_from(user_mode_runtime::retype_into_page_frame(staging)) {
         Ok(frame) if map_window_frame(frame, va) => Some(Argv { staging, frame }),
         Ok(frame) => {
             cap_delete(frame);
@@ -584,7 +584,7 @@ fn send_frames(dir: u64, handle: u64, pages: u64, staging: u64) -> bool {
     let mut read_ok = true;
     for i in 0..pages {
         let va = IMAGE_VA + i * PAGE;
-        let Ok(frame) = u64::try_from(user_mode_runtime::retype_page_frame(staging)) else {
+        let Ok(frame) = u64::try_from(user_mode_runtime::retype_into_page_frame(staging)) else {
             // A staging region sized to `pages` cannot run out before the last page, and this
             // loop holds one frame at a time, so this is a full capability table or a kernel
             // contradicting the budget. There is then no frame to send, and the progenitor will

@@ -44,7 +44,7 @@ use name_resolution_protocol::{
 use socket_protocol as socket;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{
-    call, call_receiving, cap_delete, exit, map_page_frame, retype_page_frame, send, send_cap,
+    call, call_receiving, cap_delete, exit, map_page_frame, retype_into_page_frame, send, send_cap,
 };
 
 const REPORT: u64 = 0;
@@ -101,7 +101,7 @@ fn resolve(name: &[u8]) -> (u64, u64) {
 
 /// Mint a page from the budget, map it at `va`, and delegate it on `slot` with `w0`.
 fn attach(slot: u64, va: u64, w0: u64) -> bool {
-    let frame = retype_page_frame(MEMORY_REGION);
+    let frame = retype_into_page_frame(MEMORY_REGION);
     if frame < 0 || !map_page_frame(frame as u64, va, true, MEMORY_REGION) {
         return false;
     }
