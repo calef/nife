@@ -75,8 +75,9 @@ lines `helpers/c-library-cflags.sh` prints, so neither got nife's headers. Both 
 
 Each is reversible:
 
-- **The thread is `std`'s.** The platform layer is on `std` (milestone 835's decision), and `std`
-  already has the thread, its stack and its thread pointer, so no second spawn path was written.
+- **The thread is `std`'s.** The platform layer is on `std`, as milestone 835 (a C library, stage
+  1: files, clock and memory) decided, and `std` already has the thread, its stack and its thread
+  pointer, so no second spawn path was written.
 - **The futex is a parking lot on `std`**, not a new `std` export of the kernel's
   `AddressSpace::WAIT` and `WAKE`. It costs a second wake per handoff (`futex.rs`'s `BUGS`) and
   adds no public API to `std`.
