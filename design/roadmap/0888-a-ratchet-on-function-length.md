@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-10-09
+built: 2026-10-12
 promoted_from: a-ratchet-on-function-length
 milestone_dependencies: none
 decision_dependencies: 266, 283
@@ -101,8 +102,9 @@ as file splits became their own blocks after milestone 841.
 
 ## Where it stands, 2026-10-11 (UTC)
 
-Criteria 1, 2, 3 and 5 are built. Criterion 4 is held, and calef ruled on 2026-10-12 (UTC) that
-milestone 876 completes it; `kernel_main` stays in the baseline at 977 until then.
+Criteria 1, 2, 3 and 5 are built. Criterion 4 was held, and calef ruled on 2026-10-12 (UTC) that
+milestone 876 completes it. It did, on 2026-10-12 (UTC): `kernel_main` is 59 code lines in
+`kernel/src/boot.rs`, and its row is gone from the baseline.
 
 - The lint ratchet is `helpers/lint_ratchet.py`, built to the panic proposal's specification so the
   other lint proposals register a lint rather than write a gate. `script/lint` runs one more clippy
@@ -117,14 +119,15 @@ milestone 876 completes it; `kernel_main` stays in the baseline at 977 until the
   [the register's appendix](../../notes/register-of-measures/function-length.md).
 - Every name here is provisional: both helpers, the baseline, the measure, its columns and the chart.
 
-**Criterion 4 is held on §266.** The split is built and passes clippy on all three targets, on the
-branch `lane/888-kernel-main-split-held`. `kernel_main` falls from 977 code lines to 59, across 22
-functions, the largest 90 (`tour_el0`). But `kernel/src/lib.rs` grows from 2,984 lines to 3,048, and its §266
-row is 2,984. The phases need signatures, calls and `cfg` lines that the file has no room for.
-Milestone 876 (the kernel crate root is split along its seams) makes room by moving the two
-architecture boots into child modules, and its cut and names are calef's. The phases are the
-contents those modules would take, under the names 876 proposes. calef's ruling of 2026-10-12
-(UTC): this milestone lands the ratchet and the chart, and 876's lane starts from the held branch.
+**Criterion 4 was held on §266, and milestone 876 landed it.** The split was built and passes clippy
+on all three targets, on the branch `lane/888-kernel-main-split-held`. `kernel_main` falls from 977
+code lines to 59, across 22 functions, the largest 90 (`tour_el0`). But `kernel/src/lib.rs` grows
+from 2,984 lines to 3,048, and its §266 row is 2,984. The phases need signatures, calls and `cfg`
+lines that the file has no room for. Milestone 876 (the kernel crate root is split along its seams)
+makes room by moving the two architecture boots into child modules, and its cut and names are
+calef's. The phases are the contents those modules would take, under the names 876 proposes. calef's
+ruling of 2026-10-12 (UTC): this milestone lands the ratchet and the chart, and 876's lane starts
+from the held branch.
 
 ## Open questions for an architect
 
@@ -149,11 +152,10 @@ lines with no seam. It ranks fifth of the five.
 
 ## Follow-on
 
-- **Outstanding.** Criterion 4, the `kernel_main` split, completed by milestone 876 (the kernel
-  crate root is split along its seams), whose lane starts from `lane/888-kernel-main-split-held`
-  (calef, 2026-10-12 UTC). Checked 2026-10-12 against `design/lint-baseline.tsv`: `kernel_main`'s
-  row is 977, and `kernel/src/lib.rs` is at its 2,984-line §266 (a Rust source file stays under
-  2,000 lines) row.
+- **Done.** Criterion 4, the `kernel_main` split, landed with milestone 876 (the kernel crate root
+  is split along its seams), built from `lane/888-kernel-main-split-held` (calef, 2026-10-12 UTC).
+  `kernel_main` is 59 code lines in `kernel/src/boot.rs`; its row is removed from
+  `design/lint-baseline.tsv`, and `kernel/src/lib.rs` is an index with no §266 row.
 - **Recorded.** The unit, the nesting lint and one baseline file were ruled "A" by calef on
   2026-10-12 (UTC), as recommended: code lines, no nesting measure, one file. §283 (a function is
   held to 100 code lines by a lint ratchet) records it,

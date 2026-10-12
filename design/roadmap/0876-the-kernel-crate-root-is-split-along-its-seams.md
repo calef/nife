@@ -210,9 +210,8 @@ now `-> !` in a build with a measurement feature and a no-op without, which lets
 - **Refused.** Repointing the 12 citations of `lib.rs` by line in milestone 811's block. A developer
   lane edits no record under `design/` but its own block. The pull request lists each with the
   symbol it should name.
-- **Recorded.** `kernel_main`'s row in the function-length ratchet's baseline (#1963, at 977 code
-  lines) is banked down to 59 when #1963 lands, and criterion 4 of that ratchet's block is marked
-  done then.
+- **Done.** `kernel_main`'s row in `design/lint-baseline.tsv` (977 code lines) is removed, since it
+  is 59 now, and criterion 4 of milestone 888 (a ratchet on function length) is marked done.
 
 ## Index row
 
