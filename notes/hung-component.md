@@ -337,7 +337,7 @@ non-cooperative fallback, which is not built. See
   notes/supervision.md, notes/teardown.md, notes/sink-protocol.md (`abi::Error::Gone`)
 - design/roadmap/0106-deadline-wait.md and design/roadmap/0051-wall-clock-time.md for the timed-wait fork
   and its three candidate shapes, which five consumers now want.
-- design/roadmap/0062-time-sensitive-tests.md for the progress-versus-duration argument this note
+- design/roadmap/0062-time-sensitive-tests/the-problem.md for the progress-versus-duration argument this note
   borrows, and 78 for the assertions it is currently removing
 - Prior art: MINIX 3's reincarnation server (which does poll, with a per-service timeout an
   administrator sets), QNX's high-availability manager, Erlang/OTP supervisors, and the Linux kernel's

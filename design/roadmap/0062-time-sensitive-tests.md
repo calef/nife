@@ -38,64 +38,25 @@ What was left after 2026-08-18, and why it took until 2026-08-22/23 to close. Bo
 gate line above were answered on 2026-08-17, and the block still was not done, which was worth
 saying plainly rather than rounding up. The icount instrument landed with milestone 78 (the
 load-sensitive assertions), as `script/icount`; its note is notes/instruction-clock.md. The
-acceptance run happened, and **it did not pass on the first attempt**, which is the section below.
+acceptance run happened, and it did not pass on the first attempt, which
+[`acceptance-run.md`](0062-time-sensitive-tests/acceptance-run.md) tells.
 
 So the residual was no longer a missing instrument; it was a **disposition**, and it was made on
 2026-08-18. Both assertions are gone from the failing path, neither by a wider bound: one deleted,
 one converted to a reported non-measurement, with the arguments per assertion in
 notes/load-sensitive-assertions.md and summarized in "The disposition" below.
 
-The heartbeat that landed credits work by *any* thread rather than per test, and
-`kernel/src/testing.rs:48` records that this blinded it once for real; that limitation is stated where
+The heartbeat that landed credits work by *any* thread rather than per test.
+`kernel/src/testing.rs:48` records that this blinded it once for real. That limitation is stated where
 a reader meets the feature, which is what this project asks of a known cost.
 
-## The acceptance run, 2026-08-17: 45 runs under load, 36 green
+## The acceptance run and the problem as raised, in appendices
 
-The evidence this block asks for, taken by `script/repeat-under-load` (one busy loop per host core,
-the full suite, the load average sampled every ten seconds), on an eight-core Mac at a one-minute
-load average between 26.1 and 63.0, over 108 minutes. The full per-run table, the diagnosis of
-every red, and the honest limits are in notes/load-sensitive-assertions.md. Nine of forty-five runs
-went red, and the shape of those nine is the result rather than the count:
-
-- Eight were two assertions, twice each, on both ISAs. `ticks_arrive_at_the_configured_rate`'s
-  eight-attempt retry budget, and `the_handler_keeps_up_when_no_lock_is_held`'s taxonomy cut. Both
-  were already named in that note's BUGS section as residuals that only the icount instrument can
-  close, and neither had ever been observed before this run; one of the two entries called itself
-  "rarer by orders" and has been corrected in place. That instrument now exists, which is what turns
-  these eight reds from a wait into a decision. The perfect ISA symmetry is what says these are
-  properties of the assertions rather than of either architecture.
-- The ninth was a real kernel bug: a double free of a frame during `DESTROY`'s reclaim of a
-  region whose resident was blocked in `recv` (riscv64, one occurrence). Recorded in the BUGS section
-  of notes/object-revocation.md. *It got its own lane, and it is fixed: PR #316* (2026-08-18).
-  **It was not riscv64-only**, which is the correction worth carrying rather than the fix: the
-  ownership defect reproduces deterministically on aarch64, and riscv64 is merely where the timing
-  exposed it. Two ingredients were needed. `user_aspace_create` builds an address space inside a
-  region the caller already holds an `Untyped` to, where `AddressSpace::new` carves its own, and
-  both stored a bare `u64` whose `Drop` called `untyped::destroy` unconditionally: two names for one
-  run of memory, with a pin argument that holds only for a drop under `SCHED`, which
-  `sched::finish_switch` releases before dropping. And `untyped::destroy` released the `REGIONS`
-  lock between deciding and removing the slot, so two callers could both pass the refusal check.
-
-  So this run's ninth red is gone and the eight timing reds are the whole of it, which makes
-  this block a pure disposition question with no correctness bug behind it. That is a better
-  outcome than it looks: the run's own conclusion was that "the one red worth reading arrived
-  wearing the same color as eight that were not", and the eight are now dispositioned and the one
-  is fixed.
-
-Nothing was widened to make this green, and the run is the argument for not widening: the retry
-budget's implicit second claim is already asserted properly by the sibling test, which passed in the
-same log a line before the panic.
-
-**The most useful thing the run measured was not the load average.** Runs sharing the host with
-another lane's emulator went red 6 times in 17; runs with only their own went red 3 times in 28. Run
-42 passed at the highest peak load in the table (63.0) and run 11 failed near the lowest (33.8). A
-competing emulator predicts these failures where a load average does not.
-
-The count in this block is stale, and left below as written rather than edited into the prose,
-because the argument it supports is history: `sched.rs` holds **6** of these spins now, not nineteen.
-Tree-wide the shape matches 19 sites, but 9 are not test code at all, and none of the 10 in tests has
-the flake-prone shape. They are all "let it settle, then prove nothing more happened", which is a
-negative assertion a loaded host cannot fail in the failing direction.
+- [`acceptance-run.md`](0062-time-sensitive-tests/acceptance-run.md): the first acceptance run under
+  load, 2026-08-17. It holds the shape of its reds and the kernel bug it found, with that bug's fix.
+- [`the-problem.md`](0062-time-sensitive-tests/the-problem.md): the problem as raised on
+  2026-08-01 and why it earned a milestone. It also holds the likely fix per class, the watchdog
+  section of 2026-08-04, and a later correction to its count of spins.
 
 ## The disposition, 2026-08-18: one deleted, one told to say when it measured nothing
 
@@ -125,7 +86,7 @@ false-positive band are the same band, measured rather than argued. A handler sl
 periods failed it correctly. A handler slow by **2.5** periods **passed** it, printing "the emulator
 was descheduled; not this kernel's bug, not failed": a false exoneration, on the worst timer defect
 this kernel could have. A real host deschedule inside that same band failed it twice per ISA in the
-acceptance run above, at 0.56 and 0.83 of an interval. `script/icount` bounds the same handler at
+2026-08-17 acceptance run, at 0.56 and 0.83 of an interval. `script/icount` bounds the same handler at
 2,500 instructions against a measured 1,056 and 900 with zero variance across 64 ticks.
 
 The honest cost, run rather than estimated. With both applied, the full aarch64 suite exits 0
@@ -135,46 +96,23 @@ the instrument that does catch it is run, so `script/gates` now runs `script/ico
 seven seconds for both ISAs, above `script/test` on that script's own cheapest-first rule); CI
 already ran it on every non-documentation change.
 
-The first installment of the evidence, taken the same day (`script/repeat-under-load -n 18 -s 8`,
-tree `01474c8e`, full table in notes/load-sensitive-assertions.md):
-
-| | 2026-08-17, before | 2026-08-18, after |
-|---|---|---|
-| runs / ISA legs | 45 / 90 | 18 / 36 |
-| 1-min load average, min to peak | 26.1 to 63.0 | **16.2 to 116.6** |
-| red at either dispositioned assertion | 8 legs | **0** |
-| green runs | 36 of 45 | 16 of 18 |
-| re-arm law reported `UNMEASURED` | n/a | **9 of 36 legs, 25%** |
-
-The load was harsher than the run that produced the finding, which is the direction that makes a
-green result mean something. Both reds are a **different** assertion, `smp.rs:1010`'s
-`a_migrated_kernel_thread_keeps_its_hart_pointer`, a new member of the family this block is about:
-it gives 60 migration workers two seconds of counter time to drain and 59 arrived. Its fix is this
-block's own prescription, a budget in delivered guest ticks rather than in counter time
-(`sched::within_ticks` exists), and it wants a lane.
-
-What was still needed to move this block off PARTIAL, at the time this was written. Eighteen
-runs is not forty-five, and the 25% figure was the one that wanted the bigger count: it was the cost
-this disposition introduced, higher than a reader would assume, and it came from one host. The
-candidate fix was identified and deliberately not taken here (the quarter-second measurement window
-is far longer than the law needs, and shortening it is not a wider bound because the `assert_eq!` is
-untouched and the defect fails on the first tick), because it would have been a change justified
-entirely by a rate resting on 18 runs. The confirmation run below is that bigger count, and it
-found the 25% figure did not survive it: zero of 90 legs reported `UNMEASURED` at 45 runs.
+The first installment of evidence was taken the same day. Its table and the two reds it found are
+in [`interim-check.md`](0062-time-sensitive-tests/interim-check.md), with what was then still needed
+to move this block off PARTIAL.
 
 ## The migration drain, 2026-08-18: the family's newest member, fixed in the prescribed unit
 
 The disposition's own acceptance run found `smp.rs`,
 `a_migrated_kernel_thread_keeps_its_hart_pointer`, red twice in eighteen loaded runs with
 `migration workers never drained (59/60 done)`, and handed it on. It is fixed, in this block's own
-words rather than by a wider bound: the per-wave drain is budgeted in delivered guest ticks
+words rather than by a wider bound. The per-wave drain is budgeted in delivered guest ticks
 (`2 * TICK_HZ`) instead of two seconds of `timer::now()`, so a descheduled emulator stretches the
 budget instead of spending it. The arithmetic was already written once for `sched::within_ticks` and
 is now `testing::TickBudget`, which both waits share.
 
 Both halves of the assertion were watched failing, which is what this block asks of a bound that
-moves: the stale-`tp` defect injected inside the test's own window is red at the drain loop's line
-with the message naming a stale `tp` across a hart migration, and a wave rigged never to finish is
+moves. The stale-`tp` defect injected inside the test's own window is red at the drain loop's line
+with the message naming a stale `tp` across a hart migration. A wave rigged never to finish is
 red with `migration workers never drained (5/12 done) within 200 delivered ticks`. The unscoped
 version of the first injection never reached the target test at all, which is its own finding and is
 recorded in notes/load-sensitive-assertions.md.
@@ -186,8 +124,8 @@ section below.
 
 ## The confirmation run, 2026-08-22/23: 45 of 45 green, the block closes
 
-The one item left after the disposition and the migration-drain fix: a repeat count under load of
-the tree as it now stands, at the block's own 45-run standard, because a flake cannot be shown fixed
+One item was left after the disposition and the migration-drain fix. It was a repeat count under
+load of the tree as it now stands, at the block's own 45-run standard, because a flake cannot be shown fixed
 by a green run and the same rule applies to the change that removed one. Full detail, every run in
 order, and the confidence-interval arithmetic are in notes/load-sensitive-assertions.md ("The
 confirmation run, 2026-08-22"); this is the number the block is owed.
@@ -213,85 +151,12 @@ block asked for.
 
 This closes the block. The status above moves to BUILT.
 
-## The problem
-
-A population of tests assert on elapsed time or on a fixed number of yields. `sched.rs` alone
-holds about nineteen `for _ in 0..N { yield_now() }` spins, and the shape is always the same: give
-the scheduler N chances, then assert something happened. `threads_round_robin` gives twenty yields
-and asserts every thread ran at least once. `ticks_arrive_at_the_configured_rate` and the riscv
-timer-drift assertion compare guest ticks against elapsed counter time.
-
-None of them is wrong about what it wants to prove. All of them fail when the host is busy, because
-a yield is not a guarantee and the guest's clock is the host's clock.
-
-## Why this is worth a milestone rather than tolerance
-
-It makes a real regression invisible. On 2026-08-01 it cost the integrator three separate
-diagnosis cycles, and two of those ended in the wrong conclusion before being re-run. The credentials
-lane hit three flakes, the xattr lane two, the CPU-matrix lane two, and the integrator hit three more
-in different tests each time. A suite that fails for reasons unrelated to the change trains everyone
-to re-run rather than to read, which is the exact habit that lets a genuine failure through.
-
-Milestone 59 multiplies it fivefold. The CPU matrix runs the same suite five times, so every
-timing test now has five chances per run to be unlucky, on a shared CI runner nobody controls.
-
-And the honest diagnostic we rely on is expensive. The current rule is "a green run under load is
-conclusive, a red one is not, so re-run quiet." That works, and it costs a full suite run every time,
-and it depends on a human remembering to apply it.
-
-## What the fix probably is, per class
-
-- The bounded spins are the easy majority. Waiting for a condition with a deadline is a different
-  thing from taking N turns: the test wants "eventually", not "within twenty yields". An
-  event-driven wait, or a bound expressed in guest ticks rather than host-scheduler turns, makes
-  them insensitive to what else the machine is doing.
-- The genuinely temporal tests cannot be made deterministic and should not pretend to be.
-  `ticks_arrive_at_the_configured_rate` is *about* the clock. These want an explicit, stated
-  tolerance and a recorded retry budget, so a flake is a documented cost rather than a surprise.
-- A third class may want to move off the emulator entirely. Scheduling policy is pure logic and
-  some of it could be host-tested against a simulated clock, which is where this project already puts
-  logic it wants to check in milliseconds.
-
-## The watchdog cannot tell "stuck" from "slow", and it is the same defect one level up
-
-Added 2026-08-04 from `notes/semihosting.md#the-hang-watchdog-and-what-it-cannot-tell-you`,
-which records the limitation and names the fix
-nobody owns. The suite's own deadlock detector has exactly the problem this milestone is about.
-
-The heartbeat is bumped once per test, at the test's start, in `Testable::run`, and never while
-a test runs. So "no progress for 60 s" cannot distinguish a genuine deadlock from a test that is
-simply *slower* than 60 s. Both look identical from outside: the heartbeat stops advancing because
-no *new* test started.
-
-This has already cost a diagnosis. Milestone 32's FS-server test tripped the watchdog as a false
-deadlock. It was not stuck, it was starved: leaked spinning driver threads crammed onto core 0 slowed
-the RedoxFS mount past 60 s. Raising the limit made it pass, **which is exactly what a deadlock can
-never do**, and that is the tell the current instrument cannot produce on its own. The thread dump
-reinforced the wrong read, because a starved thread and a deadlocked one both sit `Blocked`/`Ready`
-with nothing obviously moving.
-
-The fix, per the note. A per-test *progress* heartbeat: the test, or the IPC and scheduler paths
-under it, bumps a counter as work happens, so a slow test keeps the watchdog fed and a wedged one
-does not. The other half already exists and was built while chasing that false deadlock: the
-enriched `sched::dump_threads` reports each thread's EL0 PC and the per-endpoint sender, receiver
-and pending counts, so two dumps a few seconds apart show whether the pipeline is changing state
-(starved but progressing) or frozen.
-
-Until the heartbeat is per-progress, the operating rule is what the note says to do by hand: read a
-watchdog trip as "stuck **or** slow", and confirm which by raising the limit before assuming a lost
-wakeup. That is a human step in the loop for exactly the reason the rest of this milestone gives, a
-red run whose meaning has to be argued about trains everyone to re-run rather than to read.
-
-It belongs here rather than in a harness milestone because it is the same failure the bounded
-spins have: a bound expressed in something other than the property under test. Nineteen tests take
-N turns and hope; the watchdog takes 60 seconds and hopes. Whatever answers the first should answer
-the second.
-
 ## BUGS
 
 - Fixing this cannot be verified by running the suite once. A flake that fires one run in six is
   indistinguishable from a fixed one until you have run it many times, so the acceptance evidence is
-  a repeat count, not a green run. *(Answered 2026-08-17 by the section above, and the first answer
+  a repeat count, not a green run. *(Answered 2026-08-17 by the run in
+  [`acceptance-run.md`](0062-time-sensitive-tests/acceptance-run.md), and the first answer
   was "not yet". `script/repeat-under-load` is the instrument, so the next person did not have to
   build one to re-ask the question. The 2026-08-22/23 confirmation run re-asked it at the same
   45-run standard and got 45 of 45 green, which is what closed the block.)*
@@ -321,6 +186,13 @@ the second.
   are exactly what they were, so the population of runs that used to go red now goes unmeasured
   instead. That is the right first move (it changes what is claimed rather than how loosely), but it
   means the number to watch has changed and the old measurement does not predict it.
+- The page's code locations are stale, kept as written (found 2026-10-12, UTC). `wait_for`,
+  `within_ticks` and `threads_round_robin` now live in `kernel/src/sched/tests.rs`, not
+  `kernel/src/sched.rs`. `testing::note_progress` is no longer at the line cited for it, and
+  the two `ticks_arrive_at_the_configured_rate` tests and the migration test have moved from the
+  lines cited.
+- The disposition says `script/gates` runs `script/icount`. There is no `script/gates` in the tree
+  now; `script/ci-build` lists `icount`, as the Follow-on says (found 2026-10-12, UTC).
 
 **Effort: not estimated**, and deliberately: the count is known (~19 spins plus a handful of clock
 assertions) but how many are mechanical and how many need a rethink is not.
