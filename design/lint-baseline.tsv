@@ -16,7 +16,6 @@ too_many_lines	components/src/swapper.rs	handoff	136
 too_many_lines	components/src/swapper.rs	hung	113
 too_many_lines	components/src/swapper.rs	queued	125
 too_many_lines	components/src/terminal_supervisor.rs	_start	122
-too_many_lines	components/src/timetable.rs	_start	155
 too_many_lines	components/src/usb_keyboard_driver.rs	Host::bring_up	102
 too_many_lines	crates/designware_mobile_storage/src/sd.rs	identify	138
 too_many_lines	crates/grant_plan/src/program/manifests.rs	Prog::manifest	555
