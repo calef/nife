@@ -3,8 +3,8 @@
 An appendix of [§138 (how a saturated workload is made to hand threads across
 cores)](../0138-cross-core-handoff-under-load.md), moved out of that page on 2026-10-12 (UTC) under
 [§212 (a prose budget)](../0212-a-prose-budget-for-every-document.md). The main page is complete
-without it. This file holds the four moments at which Linux balances load, the push for running
-tasks, the domain hierarchy, and the control that turns it off.
+without it. This file holds how Linux balances load, the push for running tasks, the domain
+hierarchy, and the control that turns it off.
 
 ## Linux balances continuously, at four moments, because nothing ever tells it anything
 

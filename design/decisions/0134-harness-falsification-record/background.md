@@ -1,9 +1,9 @@
 # §134 appendix: why now, the two failures, and the prior art
 
 Evidence for [§134 (a harness carries a machine-replayable falsification
-record)](../0134-harness-falsification-record.md): the question that forced it, the two failures it
-separates, and the field it borrows from. Moved out of that page on 2026-10-12 (UTC) under [§212 (a
-prose budget)](../0212-a-prose-budget-for-every-document.md). The main page is complete without it.
+record)](../0134-harness-falsification-record.md): the question that forced it, the failures it separates, and the
+field it borrows from. Moved out of that page on 2026-10-12 (UTC) under [§212 (a prose
+budget)](../0212-a-prose-budget-for-every-document.md). The main page is complete without it.
 
 ## Why now
 

@@ -1,6 +1,6 @@
 # §103 appendix: options B and C, a `Frame` stays one page
 
-Part of the survey behind [§103 (what a `Frame` names)](../0103-what-a-frame-names.md), the premise checks and the reading that bear on the two options that keep a `Frame` one page: growing the cspace, and mapping at spawn. Moved out of that page on 2026-10-12 (UTC) under [§212 (a prose budget)](../0212-a-prose-budget-for-every-document.md), word for word: only headings and line breaks changed. The main page is complete without this one, which exists to verify or challenge it. Its section numbers are the original page's.
+Part of the survey behind [§103 (what a `Frame` names)](../0103-what-a-frame-names.md), the premise checks and the reading that bear on options B and C. Moved out of that page on 2026-10-12 (UTC) under [§212 (a prose budget)](../0212-a-prose-budget-for-every-document.md), word for word: only headings and line breaks changed. The main page is complete without this one, which exists to verify or challenge it. Its section numbers are the original page's.
 
 ## 4. Is the premise true?
 

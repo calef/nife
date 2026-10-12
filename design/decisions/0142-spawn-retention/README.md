@@ -1,18 +1,17 @@
 # §142's appendices
 
 [`../0142-spawn-retention.md`](../0142-spawn-retention.md) is the page to read. It holds the ruling,
-what is decided, the five answers with their costs, the mapping onto milestone 133 (ending a
+what is decided, the answers with their costs, the mapping onto milestone 133 (ending a
 permanently blocked thread) and what is blocked, and a reader can act on it without opening anything
 here. These files hold the evidence, moved whole and unreworded:
 
-- [`thread-capability.md`](thread-capability.md): the check that a `ThreadControlBlock` capability
-  authorizes nothing after `START`, the count of the call sites that delete it, and the two findings
-  that raised R2's price.
+- [`thread-capability.md`](thread-capability.md): the premise check on the thread capability after
+  `START`, the call sites that delete it, and R2's findings.
 - [`precedent.md`](precedent.md): what the recorded decisions and milestones already say about a
-  handle on a child, and how reversible each answer is.
+  handle on a child, and the reversibility of each answer.
 - [`prior-art.md`](prior-art.md): seL4, Genode, Zircon, L4Re and QNX, quoted, and the survey table.
-- [`sequencing.md`](sequencing.md): why the question came before milestone 133, the four readings of
-  the mapping, and what the decision leaves out.
+- [`sequencing.md`](sequencing.md): the order against milestone 133, the readings of the mapping,
+  and what the decision leaves out.
 
 *Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-paydown, which split the
 parent under §212 (a prose budget). The directory follows §212's siting default. calef names

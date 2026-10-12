@@ -1,10 +1,9 @@
 # §134 appendix: the patch spellings weighed, and the amendments' evidence
 
 Evidence for [§134 (a harness carries a machine-replayable falsification
-record)](../0134-harness-falsification-record.md): the three spellings weighed before the unified
-diff was chosen, and what each later amendment found. Moved out of that page on 2026-10-12 (UTC)
-under [§212 (a prose budget)](../0212-a-prose-budget-for-every-document.md). The main page is
-complete without it.
+record)](../0134-harness-falsification-record.md): the spellings weighed before the unified diff, and what each later
+amendment found. Moved out of that page on 2026-10-12 (UTC) under [§212 (a prose
+budget)](../0212-a-prose-budget-for-every-document.md). The main page is complete without it.
 
 ## The mutation spellings weighed
 

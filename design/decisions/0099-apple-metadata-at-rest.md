@@ -107,11 +107,9 @@ The evidence behind the options moved, unchanged, to two appendices on 2026-10-1
 them; they exist to verify or challenge it.
 
 - [`client-and-prior-art.md`](0099-apple-metadata-at-rest/client-and-prior-art.md): what macOS
-  does, read from Apple's SMB client and XNU (the client writes `._` sidecars itself when the
-  server leaves `FILE_NAMED_STREAMS` clear), and what Samba, calef's router and ksmbd do.
+  does, read from Apple's SMB client and XNU, and what Samba, calef's router and ksmbd do.
 - [`this-tree.md`](0099-apple-metadata-at-rest/this-tree.md): what this tree already does in the
-  analogous case, with its name limits, the colon in `Path::parse`, the attribute store's ceilings
-  and the `Share` seam.
+  analogous case.
 
 ## The options
 

@@ -56,18 +56,14 @@ permanently?
 
 ## The premise, verified by this lane rather than taken from the milestone
 
-Measured on 2026-09-01: `crossings` froze at 15 across 2.18 million round trips on four aarch64
-cores. A rendezvous wake is local by design, `wake_load_aware` has one caller, and a steal needs an
-idle core that a steady state never has. The run and the code:
+The premise run and the code behind it are in
 [`premise.md`](0138-cross-core-handoff-under-load/premise.md).
 
 ## What this tree already does in the analogous case
 
-Three precedents are in
+The other precedents are in
 [`premise.md`](0138-cross-core-handoff-under-load/premise.md#what-this-tree-already-does-in-the-analogous-case).
-[§28 (SMP placement)](0028-smp-placement.md) already deferred a placement grant in the spawn
-manifest, device-line IRQ affinity is already kernel-internal, and `kernel/src/cpu.rs` refused to
-pin kernel tests to one core. The fourth:
+The one that stays here:
 
 A feature-gated kernel affordance built only to make an experiment possible is established
 practice. `kernel/Cargo.toml` carries `fastpath_pad`, which adds a large reachable-but-never-taken
@@ -81,8 +77,7 @@ the production binary is byte-identical.
 ## The prior art, read rather than recalled
 
 [`prior-art.md`](0138-cross-core-handoff-under-load/prior-art.md) holds seL4, L4Re, Barrelfish and
-QNX. [`linux.md`](0138-cross-core-handoff-under-load/linux.md) holds Linux v6.12's four balancing
-moments: off the tick, on going idle, for a tickless idle CPU, and at wake-up, fork and exec.
+QNX. [`linux.md`](0138-cross-core-handoff-under-load/linux.md) holds Linux v6.12's load balancing.
 
 The maintainer's three-moment summary was substantively right, and this is a re-cut rather
 than a correction: it folded the tickless case into the idle one, where the source puts it beside
@@ -133,8 +128,7 @@ What it is. A placement request a program can make. §28's own deferred wording 
 spawn manifest, where it is a property of a thread being created rather than a method on one that
 exists.
 
-The surface it adds, the three readings of whether pinning is an authority, and what it buys the
-experiment:
+Option A's working is in
 [`options.md`](0138-cross-core-handoff-under-load/options.md#a-thread-affinity-a-program-says-where-a-thread-runs).
 
 Reversibility. Low. A manifest field is a wire format two programs agree on, which is the *move
@@ -159,13 +153,12 @@ So the behavior milestone 219 measured and read as a gap is the design position 
 project measures itself against, and B would be the one option that moves nife away from it in
 order to run a test.
 
-B's one real advantage, its cost and its effect on the experiment:
+Option B's working is in
 [`options.md`](0138-cross-core-handoff-under-load/options.md#b-a-periodic-rebalancer-in-the-scheduler).
 
 ### C. A userspace-drivable interrupt source
 
-Its userspace half already exists (`Irq::WAIT`), and the raise need not be a syscall, so D dominates
-it:
+Option C is in
 [`options.md`](0138-cross-core-handoff-under-load/options.md#c-a-userspace-drivable-interrupt-source).
 
 ### D. A soak-only, kernel-side interrupt raiser (this lane's finding, and it was measured)
@@ -174,11 +167,8 @@ What it is. Under `--features soak` and nowhere else, the kernel signals a route
 inside a real interrupt handler, and soak workers block on it through the existing `Irq::WAIT`. No
 syscall is added. Nothing exists in a production build.
 
-The path it reaches, the spike and its cost:
+How option D was read, run and costed is in
 [`options.md`](0138-cross-core-handoff-under-load/options.md#d-a-soak-only-kernel-side-interrupt-raiser-this-lanes-finding-and-it-was-measured).
-With the spike, `crossings` at 25 s rose from a frozen 15 to 3,785 on aarch64 and from 21 to 1,948
-on riscv64. The round-trip rate fell by about 30% and 55%. The waiters cross; the rendezvous pairs
-do not.
 
 **What it does not reach**, said precisely because a claim of "the real path" is worth nothing
 without it: the interrupt controller's own claim, mask and complete sequence (the PLIC on riscv64,

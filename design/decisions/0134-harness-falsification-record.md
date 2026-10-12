@@ -20,10 +20,10 @@ same day and recorded at the bottom. Nothing here is open.
 Its evidence is in two appendices, moved out on 2026-10-12 (UTC) under
 [§212 (a prose budget)](0212-a-prose-budget-for-every-document.md); this page is complete without them:
 
-- [`background.md`](0134-harness-falsification-record/background.md): why now, the two
-  failures, and the prior art.
-- [`format-history.md`](0134-harness-falsification-record/format-history.md): the patch
-  spellings weighed, and the evidence behind each amendment.
+- [`background.md`](0134-harness-falsification-record/background.md): why now, the failures, and
+  the prior art.
+- [`format-history.md`](0134-harness-falsification-record/format-history.md): the patch spellings
+  weighed, and the evidence behind each amendment.
 
 ## What is being decided
 
@@ -138,7 +138,7 @@ carries that: an attestation is an assertion, and an assertion is not evidence.
 
 ### The mutation is a unified diff
 
-The three spellings weighed, and why the diff won, are in
+The spellings weighed are in
 [`format-history.md`](0134-harness-falsification-record/format-history.md#the-mutation-spellings-weighed).
 
 ### Cadence: weekly, plus per-PR for touched harnesses

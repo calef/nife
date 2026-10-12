@@ -26,13 +26,12 @@ would make true and what it would cost. Picking is calef's.
 The evidence is in [`0142-spawn-retention/`](0142-spawn-retention/README.md); this page is
 complete without it:
 
-- [`thread-capability.md`](0142-spawn-retention/thread-capability.md): the capability is inert
-  after `START`; 25 of 30 sites delete it; R2's two findings.
-- [`precedent.md`](0142-spawn-retention/precedent.md): what recorded decisions already say, and
-  how reversible each answer is.
-- [`prior-art.md`](0142-spawn-retention/prior-art.md): five systems, quoted, and the survey table.
-- [`sequencing.md`](0142-spawn-retention/sequencing.md): why the order matters, and the four
-  readings of the mapping.
+- [`thread-capability.md`](0142-spawn-retention/thread-capability.md): the premise check, and
+  R2's findings.
+- [`precedent.md`](0142-spawn-retention/precedent.md): recorded precedent, and reversibility.
+- [`prior-art.md`](0142-spawn-retention/prior-art.md): the prior art, quoted, and the survey table.
+- [`sequencing.md`](0142-spawn-retention/sequencing.md): the order against milestone 133 (ending a
+  permanently blocked thread), and the readings of the mapping.
 
 ## What is being decided
 

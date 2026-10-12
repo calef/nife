@@ -1,6 +1,6 @@
 # §103 appendix: option D, a large `Frame`
 
-Part of the survey behind [§103 (what a `Frame` names)](../0103-what-a-frame-names.md), the reading and the measured costs that bear on option D, one 2 MiB page. Moved out of that page on 2026-10-12 (UTC) under [§212 (a prose budget)](../0212-a-prose-budget-for-every-document.md), word for word: only headings and line breaks changed. The main page is complete without this one, which exists to verify or challenge it. Its section numbers are the original page's.
+Part of the survey behind [§103 (what a `Frame` names)](../0103-what-a-frame-names.md), the reading and the costs that bear on option D. Moved out of that page on 2026-10-12 (UTC) under [§212 (a prose budget)](../0212-a-prose-budget-for-every-document.md), word for word: only headings and line breaks changed. The main page is complete without this one, which exists to verify or challenge it. Its section numbers are the original page's.
 
 ## The prior art
 

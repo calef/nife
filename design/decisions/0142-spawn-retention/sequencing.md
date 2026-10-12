@@ -1,11 +1,10 @@
 # §142 appendix: why the order against milestone 133 matters
 
 An appendix to [§142 (what a spawner retains over a child after
-`START`)](../0142-spawn-retention.md): why this had to be answered before milestone 133 (ending a
-permanently blocked thread), how to read the mapping, and what is out of scope. Moved out of that
-page on 2026-10-12 (UTC) under [§212 (a prose
-budget)](../0212-a-prose-budget-for-every-document.md). The main page is complete without it; this
-file exists to verify or challenge it.
+`START`)](../0142-spawn-retention.md): the order against milestone 133 (ending a permanently blocked
+thread), how to read the mapping, and what is out of scope. Moved out of that page on 2026-10-12
+(UTC) under [§212 (a prose budget)](../0212-a-prose-budget-for-every-document.md). The main page is
+complete without it; this file exists to verify or challenge it.
 
 ### Why this is upstream of milestone 133, and why the order matters
 

@@ -1,11 +1,10 @@
 # §142 appendix: the thread capability today, and what R2 would make of it
 
 An appendix to [§142 (what a spawner retains over a child after
-`START`)](../0142-spawn-retention.md): the check that a `ThreadControlBlock` capability authorizes
-nothing after `START`, the count of the call sites that delete it, and the two findings that raised
-R2's price. Moved out of that page on 2026-10-12 (UTC) under [§212 (a prose
-budget)](../0212-a-prose-budget-for-every-document.md). The main page is complete without it; this
-file exists to verify or challenge it.
+`START`)](../0142-spawn-retention.md): the premise check on the thread capability after `START`, the call
+sites that delete it, and R2's findings. Moved out of that page on 2026-10-12 (UTC) under [§212 (a
+prose budget)](../0212-a-prose-budget-for-every-document.md). The main page is complete without it;
+this file exists to verify or challenge it.
 
 ## The premise, checked rather than quoted
 
@@ -54,7 +53,7 @@ nobody holds one, so B does not hand an existing population of holders a new pow
 twenty-five call sites to *stop deleting*, which is an additive convention change rather than a
 silent widening, and which has a price measured below.
 
-## R2: two findings that raised its price
+## R2's findings
 
 Two things learned on 2026-09-03, in conversation with calef, that raise R2's price above what
 this entry first stated.

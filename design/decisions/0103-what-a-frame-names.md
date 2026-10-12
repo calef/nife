@@ -43,21 +43,17 @@ in the tree where a single object is a run of hundreds of pages.
 
 ## The appendices
 
-This page keeps the fork, the options in summary, the tree's own precedent, the verdict on each
-recalled claim, the shared cost, the price of options B and C, reversibility and the question that was
-put. It was split on 2026-10-12 (UTC) under [§212 (a prose
+This page was split on 2026-10-12 (UTC) under [§212 (a prose
 budget)](0212-a-prose-budget-for-every-document.md), word for word. The rest of the survey and the
-measured costs moved, grouped by the option they bear on, to
+costs moved, grouped by the option they bear on, to
 [`0103-what-a-frame-names/`](0103-what-a-frame-names/README.md):
 
 - [`frame-runs.md`](0103-what-a-frame-names/frame-runs.md): option A. The Fuchsia and Mach
-  readings, Barrelfish, Genode and CHERI, the revocation invariant, and section 6's entry for A.
+  readings, Barrelfish, Genode and CHERI, revocation, and section 6's entry for A.
 - [`large-frames.md`](0103-what-a-frame-names/large-frames.md): option D. The seL4 reading, KeyKOS
-  and Coyotos, the aarch64 and riscv64 encoders, the Kani count, the allocator, and section 6's
-  entry for D.
-- [`one-page-frames.md`](0103-what-a-frame-names/one-page-frames.md): options B and C, which keep a
-  `Frame` one page. Section 4's premise checks, the L4 flexpage reading, and section 6's entries
-  for B and C.
+  and Coyotos, the encoders, the Kani harnesses, the allocator, and section 6's entry for D.
+- [`one-page-frames.md`](0103-what-a-frame-names/one-page-frames.md): options B and C. Section 4's
+  premise checks, the L4 flexpage reading, and section 6's entries for B and C.
 
 ---
 
@@ -169,8 +165,7 @@ should probably decide the encoding once the shape is chosen.
 
 ## 4. Is the premise true?
 
-Moved, with the arithmetic, the slot ceiling and the workaround that does not work, to
-[`one-page-frames.md`](0103-what-a-frame-names/one-page-frames.md).
+Moved to [`one-page-frames.md`](0103-what-a-frame-names/one-page-frames.md).
 
 ---
 
@@ -258,8 +253,8 @@ recorded here rather than left in a lane report:
 
 ## 6. The four options
 
-Each option is set out in full, with its cost, what it forecloses and what it buys, in the
-appendix for its shape: A in [`frame-runs.md`](0103-what-a-frame-names/frame-runs.md), D in
+Each option's entry is in the appendix for its shape: A in
+[`frame-runs.md`](0103-what-a-frame-names/frame-runs.md), D in
 [`large-frames.md`](0103-what-a-frame-names/large-frames.md), and B and C in
 [`one-page-frames.md`](0103-what-a-frame-names/one-page-frames.md).
 

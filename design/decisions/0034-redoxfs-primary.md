@@ -101,8 +101,8 @@ no xattrs at all. So Time Machine runs on RedoxFS today; what is unavailable is 
 it. The preference for xattrs is right (we will want them anyway) but there is no time pressure, and
 that distinction is what let this be decided by measurement.
 
-The check that settled this, and the finding that rename is blocked on `fs_proto` rather than the
-engine, are in [`crash-consistency.md`](0034-redoxfs-primary/crash-consistency.md).
+The extended-attribute atomicity check and the rename finding are in
+[`crash-consistency.md`](0034-redoxfs-primary/crash-consistency.md).
 
 ## Amendment (2026-07-31): the xattr fork is closed, the layer, and it is reversible
 
@@ -154,8 +154,7 @@ deferred. calef's objection to "patching it in" was right, and the answer is not
 
 ## Amendment (2026-07-30): ZFS and XFS, and why RedoxFS is better-shaped than its size suggests
 
-The comparison, and why the direction is snapshots rather than migration, is in
-[`zfs-and-xfs.md`](0034-redoxfs-primary/zfs-and-xfs.md).
+The ZFS and XFS comparison is in [`zfs-and-xfs.md`](0034-redoxfs-primary/zfs-and-xfs.md).
 
 ## The alternative that could supersede this, and is not a filesystem choice
 
@@ -188,8 +187,8 @@ non-decreasing as the cut point advances, so a later crash can never lose more t
 one; and at the last cut point `p` must be the whole workload, so a filesystem that recovered the
 initial state every time (perfectly prefix-consistent, perfectly useless) fails.
 
-The fault-injection table whose third row the next paragraph cites, its controls, the on-device
-run and why the harness matters more than the engine are in [`crash-consistency.md`](0034-redoxfs-primary/crash-consistency.md).
+The fault-injection table the next paragraph cites, its controls and the on-device run are in
+[`crash-consistency.md`](0034-redoxfs-primary/crash-consistency.md).
 
 The limit, stated as plainly as the guarantee, because it is real. RedoxFS's `Disk` trait has no
 flush and no barrier, so write *ordering* is the device's job. A device that acknowledges a write it

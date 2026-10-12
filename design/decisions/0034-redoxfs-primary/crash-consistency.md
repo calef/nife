@@ -1,10 +1,10 @@
 # §34 appendix: the crash-consistency evidence
 
 Evidence for [§34 (RedoxFS is the primary filesystem, on three conditions)](../0034-redoxfs-primary.md): the fault
-injection behind condition 1, and the check that the extended-attribute layer can be crash-atomic.
-Moved out of that page on 2026-10-12 (UTC) under [§212 (a prose
-budget)](../0212-a-prose-budget-for-every-document.md). The main page is complete without this one,
-which exists to verify or challenge it. Headings were added; no ruled word changed.
+injection behind condition 1, and the extended-attribute atomicity check. Moved out of that page on
+2026-10-12 (UTC) under [§212 (a prose budget)](../0212-a-prose-budget-for-every-document.md). The
+main page is complete without this one, which exists to verify or challenge it. Headings were added;
+no ruled word changed.
 
 ## The measurements behind milestone 37's amendment
 
