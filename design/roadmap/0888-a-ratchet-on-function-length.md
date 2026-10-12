@@ -1,18 +1,23 @@
 ---
-status: PROPOSED
+status: PARTIAL
 raised: 2026-10-09
+promoted_from: a-ratchet-on-function-length
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 283
 machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# A ratchet on function length, beside the one on file length
+# 888. A ratchet on function length, beside the one on file length
+
+*(Promoted 2026-10-11 (UTC) by lane `milestone/888-a-ratchet-on-function-length` from the proposal
+`a-ratchet-on-function-length`, at the number the maintainer assigned. The number is provisional
+until the merge queue lands it; the title and slug are drafts.)*
 
 Raised by a maintainer session on 2026-10-09 (UTC), one of five lint proposals asked for together.
-Its numbers are in [notes/lint-census-2026-10-09.md](../../../notes/lint-census-2026-10-09.md).
+Its numbers are in [notes/lint-census-2026-10-09.md](../../notes/lint-census-2026-10-09.md).
 It reuses the lint ratchet specified in
-[the panic proposal](panics-in-the-kernel-and-the-parsers-are-counted-and-fall.md).
+[the panic proposal](proposals/panics-in-the-kernel-and-the-parsers-are-counted-and-fall.md).
 
 Reuse: clippy's `too_many_lines`, and `helpers/file_length_ratchet.py`'s rules from milestone 841
 (a ratchet on Rust file length). Nothing is written but the row key below.
@@ -87,8 +92,39 @@ does.
 4. `kernel_main` is split by boot phase, one function per phase, and its row is banked down or
    removed. No recorded exception at the site is needed.
 
+5. A chart drives the long functions out, modeled on the file-size chart (calef, 2026-10-11 UTC).
+   `script/metrics` records the share of in-scope code lines inside functions over 100, with the
+   count and the summed excess, backfilled weekly, and plots the share with a 10-week trailing mean.
+
 Burning the rest of the list down is not this milestone. Each other long function is its own split,
 as file splits became their own blocks after milestone 841.
+
+## Where it stands, 2026-10-11 (UTC)
+
+Criteria 1, 2, 3 and 5 are built. Criterion 4 is held, and calef ruled on 2026-10-12 (UTC) that
+milestone 876 completes it; `kernel_main` stays in the baseline at 977 until then.
+
+- The lint ratchet is `helpers/lint_ratchet.py`, built to the panic proposal's specification so the
+  other lint proposals register a lint rather than write a gate. `script/lint` runs one more clippy
+  pass per census configuration at `-W`, in about 20 seconds. One lint is registered.
+- The row value is `helpers/function_length.py`'s text replica of `too_many_lines`, which
+  `script/metrics` needs because it may not build. At a threshold of 0 it matched clippy on all
+  5,181 functions both saw. The gate fails on any difference.
+- The baseline, `design/lint-baseline.tsv`, holds 46 rows, not 39. The text measure reaches 7 long
+  functions in kernel build modes and the UEFI loader that no census clippy pass compiles.
+- The chart is `notes/project-metrics/function-length.svg`, backfilled from 2026W29 with no build.
+  At 2026W41 the share is 9.1%: 46 functions, 4,566 code lines past the limit. The definition is
+  [the register's appendix](../../notes/register-of-measures/function-length.md).
+- Every name here is provisional: both helpers, the baseline, the measure, its columns and the chart.
+
+**Criterion 4 is held on §266.** The split is built and passes clippy on all three targets, on the
+branch `lane/888-kernel-main-split-held`. `kernel_main` falls from 977 code lines to 59, across 22
+functions, the largest 90 (`tour_el0`). But `kernel/src/lib.rs` grows from 2,984 lines to 3,048, and its §266
+row is 2,984. The phases need signatures, calls and `cfg` lines that the file has no room for.
+Milestone 876 (the kernel crate root is split along its seams) makes room by moving the two
+architecture boots into child modules, and its cut and names are calef's. The phases are the
+contents those modules would take, under the names 876 proposes. calef's ruling of 2026-10-12
+(UTC): this milestone lands the ratchet and the chart, and 876's lane starts from the held branch.
 
 ## Open questions for an architect
 
@@ -101,8 +137,31 @@ as file splits became their own blocks after milestone 841.
 4. Ruled 2026-10-09 (UTC): `kernel_main` is split by boot phase (done criterion 4). The question
    was whether to split it or keep it as one boot sequence under a recorded exception.
 
+Questions 2 and 3, with the panic proposal's question 5, were ruled "A" by calef on 2026-10-12
+(UTC): code lines, no nesting measure, and one baseline file. §283 (a function is held to 100 code
+lines by a lint ratchet) records them.
+
 ## Where it sits in the ranking
 
 The customer path is vacant, so the tie breaks toward the fatal risks, and this serves none of
 them directly. It serves the third principle: a newcomer reading `kernel_main` meets 977 code
 lines with no seam. It ranks fifth of the five.
+
+## Follow-on
+
+- **Outstanding.** Criterion 4, the `kernel_main` split, completed by milestone 876 (the kernel
+  crate root is split along its seams), whose lane starts from `lane/888-kernel-main-split-held`
+  (calef, 2026-10-12 UTC). Checked 2026-10-12 against `design/lint-baseline.tsv`: `kernel_main`'s
+  row is 977, and `kernel/src/lib.rs` is at its 2,984-line §266 (a Rust source file stays under
+  2,000 lines) row.
+- **Recorded.** The unit, the nesting lint and one baseline file were ruled "A" by calef on
+  2026-10-12 (UTC), as recommended: code lines, no nesting measure, one file. §283 (a function is
+  held to 100 code lines by a lint ratchet) records it,
+  `design/decisions/0283-a-function-is-held-to-100-code-lines-by-a-lint-ratchet.md`.
+
+## Index row
+
+Clippy's `too_many_lines` at 100 code lines, held by a lint ratchet whose baseline only falls, one
+row per function. It builds the shared lint ratchet the panic proposal specified, so the other lint
+proposals register a lint instead of writing a gate. A chart beside it tracks the share of code
+lines in long functions, so the splits that drive the list down can be seen working.
