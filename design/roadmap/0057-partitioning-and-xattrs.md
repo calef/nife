@@ -5,16 +5,17 @@ built: 2026-08-03
 ---
 # 57. Partitioning and formatting a real drive, and extended attributes
 
-In brief. calef's router setup is `parted` then `mkfs.ext4` then three mounted partitions. Plus
-the xattr gap milestone 55 (time) surfaced. Nearly all of this is testable in QEMU against virtio-blk with
-no board, so it is schedulable before 2026-08-21 rather than waiting on hardware.
+In brief. calef's router setup is `parted` then `mkfs.ext4` then three mounted partitions. Plus the
+xattr gap milestone 55 (Time Machine) surfaced. Nearly all of this is testable in QEMU against
+virtio-blk with no board, so it is schedulable before 2026-08-21 rather than waiting on hardware.
 
 Status, taken from the tree on 2026-08-03 rather than from this entry. The reading half is done
 end to end. `crates/globally_unique_identifier_partition_table` parses and writes tables, and `disk_surveyor` reads a real one off a virtio-blk
 device on both ISAs. `crates/block_roster` answers "what drives are attached" as a read-only mapping.
 The extended-attribute layer and its host recovery half are built, and `tools/redoxfs_host` extracts.
-What is left is writing on the target, and both halves of it are gated on the same thing:
-randomness. See the corrected table below, which used to say "the tools, none of which exist".
+Writing on the target was gated on randomness, and both halves were built in commit `4db2fd74`,
+each holding an entropy endpoint (see the Follow-on). See the corrected table below, which used to
+say "the tools, none of which exist".
 
 ## Extended attributes: decided and built
 
@@ -50,13 +51,14 @@ had. Take a status from the merged tree.
 | GPT writing | Built 2026-07-30 | `Gpt::create`, `write_primary_header`, `write_backup_header`, `mbr::write`. Re-emitting `sgdisk`'s table reproduces its bytes exactly. What it will not do is invent a unique GUID, which is the row below |
 | Reading a table on the target | Built 2026-08-03 | `disk_surveyor` over the block service, both ISAs, against an image built from the `sgdisk` fixture. notes/block-devices.md |
 | Block device enumeration | Built 2026-08-03 | `crates/block_roster`: a read-only page the kernel writes, listing what is attached and deliberately not how big it is. Listing and holding are different authorities, and the negative control writes to the roster and dies |
-| Partitioning on the target | Blocked on entropy | `Gpt::create` is proved and needs a unique GUID per partition. A GUID that is not random is not unique; the entropy service is where a caller gets one. No pin divergence needed, so this is the cheaper of the two write halves |
-| `mkfs` on the target | Blocked on entropy and a pin divergence | The finding below. Not blocked on `std`, which is what it looked like |
+| Partitioning on the target | Built in commit `4db2fd74` | `components/src/disk_partitioner.rs` draws a unique GUID per partition from the entropy service and lays out the table with `Gpt::create`. No pin divergence |
+| `mkfs` on the target | Built in commit `4db2fd74` | `redoxfs_server/src/bin/mkfs.rs`, with `Header::new_with_uuid` taken as divergence 4 (`vendor/README.md`). Never blocked on `std`; see the finding below |
 
-What remains is the write half, and both halves of it are the same wall: an identifier that must
-be unique needs randomness, and neither `crates/globally_unique_identifier_partition_table` nor a `no_std` RedoxFS has any. The difference
-between the two is that partitioning needs only plumbing (an entropy endpoint into the program that
-does it) while `mkfs` also needs a change inside `vendor/redoxfs`, which is a decision.
+The write half was the same wall twice: an identifier that must be unique needs randomness, and
+neither `crates/globally_unique_identifier_partition_table` nor a `no_std` RedoxFS has any. The
+difference between the two was that partitioning needed only plumbing (an entropy endpoint into the
+program that does it) while `mkfs` also needed a change inside `vendor/redoxfs`, which is a
+decision. Both were built in commit `4db2fd74`.
 
 ## Finding 2026-08-01: `mkfs` on the target is blocked on entropy, not on `std`
 
@@ -70,11 +72,12 @@ they need and `Header::new`. Un-gating them is mechanical for all but one call:
 `Key::new`), and that one does not matter here because this volume is deliberately unencrypted.
 
 So the blocker is that a filesystem needs a unique identifier and the engine has no source of
-randomness in a `no_std` build. nife does: milestone 55's entropy service. The shape of the
-fix is therefore small and upstreamable, and it is the shape upstream already uses one line away:
-`create` takes `ctime` and `ctime_nsec` as *parameters* precisely because a `no_std` engine has no
-clock. A `Header::new_with_uuid(size, uuid: [u8; 16])` does for randomness exactly what those
-parameters do for time, and the caller (which has an entropy capability) supplies it.
+randomness in a `no_std` build. nife does: the entropy service of milestone 56 (secrets,
+credentials, and the entropy to make them safe). The shape of the fix is therefore small and
+upstreamable, and it is the shape upstream already uses one line away: `create` takes `ctime` and
+`ctime_nsec` as *parameters* precisely because a `no_std` engine has no clock. A
+`Header::new_with_uuid(size, uuid: [u8; 16])` does for randomness exactly what those parameters do
+for time, and the caller (which has an entropy capability) supplies it.
 
 The same problem appears twice in this milestone, and has the same answer both times.
 notes/globally-unique-identifier-partition-table.md already records that `crates/globally_unique_identifier_partition_table` will not invent a partition GUID, for the identical
@@ -158,17 +161,10 @@ Rewritten 2026-08-03 because everything it sequenced has happened. The GPT crate
 (2026-08-03) are all done. Real drives arrive with milestone 53; the board arrives around
 2026-08-21.
 
-What is left is one decision and one small piece of plumbing behind it, and they are not the
-same size:
-
-- Partitioning on the target needs an entropy endpoint in the program that does it, and nothing
-  else. `Gpt::create` is built and proved. No pin divergence. This is a lane.
-- `mkfs` on the target needs that plus `Header::new_with_uuid` inside `vendor/redoxfs`, which is
-  a new entry in `vendor/redoxfs.divergence.patch` and a new file in `patches/` for upstream
-  submission. §46 (primitives) makes that an architect's call, and the
-  honest alternative is still on the table: `redoxfs_host` on a Mac formats the drive today, which
-  is what actually gets a disk ready for the board, and the target-side version is then a capability
-  demonstration rather than a prerequisite.
+The write half followed in commit `4db2fd74`. Partitioning needed only an entropy endpoint in the
+program that does it. `mkfs` also needed `Header::new_with_uuid` inside `vendor/redoxfs`, taken as
+divergence 4 (`vendor/README.md`) and carried for upstream as
+`patches/redoxfs-no-std-create-uuid.patch`.
 
 Effort: not estimated. The GPT crate turned out to be about one lane on the history-calibrated
 scale, and so did the block-device lane.
@@ -231,23 +227,9 @@ scale, and so did the block-device lane.
   `create` already takes `ctime`, so no randomness enters vendored code. The bullet above was
   written before that landed.
 
-## BUGS
-
-Found on 2026-10-12 (UTC) by maintainer/prose-budget-backlog while splitting this block, and left as
-written above.
-
-- Stale: the status paragraph, the tools table's two write rows, "Sequencing, and what was left"
-  and the Index row still say the write half is left. The Follow-on records both halves built in
-  commit `4db2fd74` (2026-08-03).
-- The opening glosses milestone 55 as "(time)". Milestone 55 is Time Machine (SMB3 with Apple's
-  extensions, and mDNS), which is what surfaced the xattr gap.
-- The `mkfs` finding calls the entropy service milestone 55's. It is milestone 56 (secrets,
-  credentials, and the entropy to make them safe). notes/globally-unique-identifier-partition-table.md
-  says "Milestone 55's entropy work" too.
-
 ## Index row
 
 you cannot find a partition without reading the table, and all of it is testable in QEMU before
-the board lands. Built: the host recovery tool (`ls`/`cat`/`extract`/`xattr`), `crates/globally_unique_identifier_partition_table`, the **extended-attribute layer**, and (2026-08-03) **reading a real table on the target** plus **block-device enumeration**, which is a read-only roster page. What is left is the **write**
-half, and it is one decision rather than a task: partitioning and on-target `mkfs` both need
-randomness, and the `mkfs` half needs a new divergence from the RedoxFS pin
+the board lands. Built: the host recovery tool (`ls`/`cat`/`extract`/`xattr`), `crates/globally_unique_identifier_partition_table`, the **extended-attribute layer**, and (2026-08-03) **reading a real table on the target** plus **block-device enumeration**, which is a read-only roster page. The **write**
+half followed in commit `4db2fd74`: partitioning and on-target `mkfs`, each drawing its
+identifiers from an entropy endpoint, with `mkfs` taking a fourth divergence from the RedoxFS pin

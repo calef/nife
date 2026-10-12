@@ -136,8 +136,10 @@ describable separately.
 
 ### The one genuine difference
 
-A `cfg` over data, not over code, in one file, beside the other board's table. Why it was right,
-and the three alternatives that lost, are in [`the-grant-order.md`](0266-init-is-an-action-and-the-thing-is-a-process/the-grant-order.md).
+A `cfg` over data, not over code, in one file, beside the other board's table. Gone since
+2026-09-15, when milestone 166 (one boot loader, reached two inconsistent ways) unified the loaders
+(see Follow-on). Why it was right, and the three alternatives that lost, are in
+[`the-grant-order.md`](0266-init-is-an-action-and-the-thing-is-a-process/the-grant-order.md).
 
 ### `builder` survives, and the argument holds
 
@@ -265,12 +267,9 @@ applied, stated so it can be disagreed with:
 - The captured transcripts in `notes/trusted-init.md` still read `init:`. They are evidence from
   a dated run and their bytes are the record, so they were not rewritten; a reader comparing them
   against a boot today will see a different prefix.
-- The grant orders still differ, which is the `cfg` above. It is the one architectural difference
-  left in the first process, and it is data rather than code, but it is still a thing two boards
-  disagree about in a milestone whose whole point was that they should not.
-- The entry above, that the grant orders still differ under a `cfg`, is stale (found 2026-10-12,
-  UTC). Milestone 166 (one boot loader, reached two inconsistent ways) split the 19d roles out of the boot path, as the Follow-on says, and
-  `components/src/progenitor.rs` now says its slot layout is identical everywhere and has no `cfg`.
+- *Corrected 2026-10-12 (UTC); this entry said the grant orders still differ under a `cfg`.*
+  Milestone 166 (one boot loader, reached two inconsistent ways) unified them on 2026-09-15, as the
+  Follow-on says, and `components/src/progenitor.rs` now has one `GRANTS` table and no `cfg`.
 
 ## Index row
 

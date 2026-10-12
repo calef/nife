@@ -22,11 +22,11 @@ what it used to.
 
 Milestone 75's index row reads `NOT-STARTED` and that is false: its mechanism is built.
 `design/decisions/0139-cycle-counter-authority.md` was DECIDED by calef on 2026-09-02,
-`kernel/src/sched.rs`'s `install_cycle_counter_grant` (near line 1734) applies the per-thread grant
-at every context switch behind the `cycle_counter_grant` feature, and
-`kernel::user::tests::a_granted_thread_reads_the_cycle_counter_and_an_ungranted_one_faults` passes
-on all three architectures, negative case included. Whether 75's row is flipped, and what that
-unblocks, is an architect's rather than a lane's; the mechanism cited here is what a reader can
+`kernel/src/sched.rs`'s `install_cycle_counter_grant` applies the per-thread grant at every context
+switch behind the `cycle_counter_grant` feature, and
+`system_tests::user::cycle_counter_tests::a_granted_thread_reads_the_cycle_counter_and_an_ungranted_one_faults`
+passes on all three architectures, negative case included. Whether 75's row is flipped, and what
+that unblocks, is an architect's rather than a lane's; the mechanism cited here is what a reader can
 check today. The aarch64 half of 74 was out of the riscv64 lane's scope, not blocked by an
 unanswered question. Until 2026-09-19 `PMCR_EL0.E` and `PMCNTENSET_EL0.C` were never written by
 this kernel, so `PMCCNTR_EL0` was a stopped counter that a granted thread read the same value from
@@ -103,8 +103,8 @@ The capability half is legitimately two ISAs, by a recorded exception rather tha
 ambient counter: `CR4.TSD` is clear at reset, this kernel never writes it, so ring 3 may execute
 `rdtsc` and an ungranted read is not an error. There is therefore no x86_64 counterpart to
 "grant the counter, fault without it", and
-`kernel::user::tests::a_granted_thread_reads_the_cycle_counter_and_an_ungranted_one_faults` skips
-its negative half there, saying so in the comment beside the `cfg`. That is §19 working: an
+`system_tests::user::cycle_counter_tests::a_granted_thread_reads_the_cycle_counter_and_an_ungranted_one_faults`
+skips its negative half there, saying so in the comment beside the `cfg`. That is §19 (architectural parity is a tenet) working: an
 exception with a reason, where a reader meets it.
 
 The measurement half is three ISAs and is three (it was one until 2026-09-17 and two until
@@ -201,10 +201,6 @@ QEMU configuration took.
   reads the current core's, and only a same-core difference means anything.
 - The user-mode read was the fixture's until 2026-10-07; it is now `user_mode_runtime::cycle_reading()`
   (decision B, step 1).
-- Two locations in the opening section are stale (found 2026-10-12, UTC), kept as written.
-  `install_cycle_counter_grant` is near line 1246 of `kernel/src/sched.rs`, not 1734. The test
-  named `kernel::user::tests::a_granted_thread_reads_the_cycle_counter_and_an_ungranted_one_faults`
-  now lives in `system_tests/src/user/cycle_counter_tests.rs`.
 
 ### argon's first evening, for this half
 

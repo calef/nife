@@ -19,10 +19,10 @@ falsification patch against its own harness and reports any that stayed green. M
 §134: the falsification record, its lint, and the sweep that replays it) built it, and pull
 request #603 merged it to `main` on 2026-09-01 at 02:16.
 
-**The workflow was never tested when it was deployed.** No run of `falsifications.yml` has ever
-replayed a record, let alone watched one go red on purpose: its Actions history holds seven runs as
-of 2026-09-24, the first of them the cron of 2026-09-07, and six refused while the seventh was
-cancelled before its sweep step finished. The six records pull request #603 reports "all replaying
+**The workflow was never tested when it was deployed.** Before the fix merged on 2026-09-24, no
+run of `falsifications.yml` had replayed a record, let alone watched one go red on purpose: its
+Actions history held seven runs, the first of them the cron of 2026-09-07, and six refused while
+the seventh was cancelled before its sweep step finished. The six records pull request #603 reports "all replaying
 red" were replayed by `script/falsifications --sweep` outside Actions, which tested the script and
 never the workflow that runs it.
 
@@ -71,13 +71,13 @@ into is the file that stopped the sweep.
 | 2026-09-23 20:49:25 | `falsify/machine-discovery` dispatches. Refuses. |
 | 2026-09-23 20:50:57 | `falsify/crates-paging` posts the same finding as a comment on pull request #1159, deliberately not fixing it, because `.github/` is shared and two siblings were dispatching that workflow at the time. |
 | 2026-09-23 21:16:38 | This record's own pull request, #1166, trips another instance of the same shape while being written. `coe-architect-label.yml`, merged hours earlier to put `needs-architect` on every COE by default, detects the new file correctly and then fails to apply the label, because `gh pr edit` was called without `--repo` in a job that never checks the repository out. The step's `if` takes the else arm as designed, the job reports **pass**, and no label appears. |
-| 2026-09-24 16:41:34 | Pull request #1156 merges the `$RUNNER_TEMP` fix to `main`. The fixed workflow has not run since; the next scheduled run is Monday 2026-09-28. |
+| 2026-09-24 16:41:34 | Pull request #1156 merges the `$RUNNER_TEMP` fix to `main`. |
 | 2026-09-24 17:22:38 | The maintainer dispatches the fixed workflow on `main` (run 36031723556), and it is the first run in this workflow's life to replay a record: 73 of the 144 replayable records go red as required in about fifteen minutes, then `nifefs::a_short_image_is_refused_not_indexed` hangs from 17:37:58 until the job's 120-minute `timeout-minutes` cancels it at 19:22:23, so the remaining 70 are never reached and the run reports **cancelled**, not success. |
 | 2026-09-24 20:15:20 | After #1217 bounds the nifefs record, the maintainer's second dispatch on `main` (run 36053521935, at `ce46107c1`) replays 76 of 144 red, nifefs's `a_short_image_is_refused_not_indexed` now among them in 2.5 s, then hangs on `package_archive::a_short_file_is_refused` from 20:31:45 until the 120-minute job limit cancels it at 22:15:06, leaving 67 unreached; #1243 (that record's bound) and #1242 (a per-record time limit in `script/falsifications`) merged while it ran, but after its commit. |
 
-Six completed runs, six refusals. The count of falsification patches this workflow has replayed in
-its lifetime is zero. The one run that carried the fix was cancelled by its own concurrency group
-before it got there.
+Before the fix merged: six completed runs, six refusals, and no patch replayed. The one run that
+carried the fix before then was cancelled by its own concurrency group before it got there. The
+first replays are the last two rows, after the merge.
 
 ## Impact
 

@@ -2157,9 +2157,10 @@ MARKER = re.compile(r'<!--count(-at-least|-at-most)?:([a-z0-9-]+)-->')
 #
 # The shape is `unsafe-thread-safety-claims`' (a ceiling written at the tree's exact value) with the
 # slack direction closed, and the baseline stays where every counted claim's does: in the marker,
-# here in design/roadmap/0118-constitution-budget.md. Not a separate baseline file, because the
-# marker already is one, and two places holding one number is the drift this convention exists to
-# end. BUGS: a raise is still an ordinary edit to that marker. Nothing here compares the number
+# beside the claim it counts (for `static-mut-declarations`, notes/unsafe-obligations/ceilings.md;
+# for `agents-md-lines`, design/roadmap/0118-constitution-budget.md until 2026-10-06). Not a
+# separate baseline file, because the marker already is one, and two places holding one number is
+# the drift this convention exists to end. BUGS: a raise is still an ordinary edit to that marker. Nothing here compares the number
 # against origin/main, because every raise on record (925 to 929, and before) was a considered act
 # with its reason written beside it, and a gate that forbade them would be deleted the first time
 # one was right. The raise shows in the diff; the reader of that diff is the check.

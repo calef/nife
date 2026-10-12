@@ -136,7 +136,8 @@ its own smaller diff, which §155 superseded.
 
 ## 922 to 924, 2026-09-21
 
-Recorded at the time as the first time this ceiling had moved, which the earlier entries contradict.
+Recorded at the time as the first time this ceiling had moved. It was the first move since the drop
+to 922 two days earlier; the marker's history shows eighteen moves before it, from 942 on 2026-08-22.
 It is the case this budget exists to permit rather than the case it exists to refuse. The file's
 advice on avoiding a shared `git stash` recommended `/tmp/x.patch` by name. That is a fixed path
 shared machine-wide exactly like the stash stack it was protecting against, and two lanes duly
@@ -174,7 +175,9 @@ to one paragraph of quote, one of relation to the existing tenet, and one of the
 
 ## 949 to 935, 2026-09-23
 
-The first time this ceiling ever moved down. The fourteen lines went to
+Recorded at the time as the first time this ceiling ever moved down. It was the fourth: 1048 to 988
+on 2026-09-05, 1012 to 1009 on 2026-09-14 and 1009 to 922 on 2026-09-19 came first, each in the
+marker's history. The fourteen lines went to
 `briefs/merge-and-cleanup.md` and `briefs/session-start.md` rather than being deleted. The number
 was taken with `wc -l` from the finished file, not by arithmetic against the diff. Two branches
 earlier the same day had each raised this ceiling honestly from the same base and produced a wrong

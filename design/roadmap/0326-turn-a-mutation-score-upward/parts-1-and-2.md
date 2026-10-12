@@ -10,8 +10,8 @@ it recorded.
 169 survivors triaged, and none of the eight crates carries an untriaged one. Measured per crate
 with `script/mutation -p <crate>` on the lane's own worktree, before and after. Every kill was
 verified by re-running the sweep and watching the mutant die; every equivalence claim is a mutant
-the second run still reports. The reasons are in the `## 2026-09-19` sections of
-`notes/mutation-testing/regressions-capability-to-dtb.md` and
+the second run still reports. The reasons are in
+`notes/mutation-testing/regressions-capability-to-dtb.md` (its `## 2026-09-19` section) and
 `notes/mutation-testing/regressions-clock-protocol-swish-filesystem-protocol.md`, crate by crate,
 which is where a reader should go to disagree with one.
 
