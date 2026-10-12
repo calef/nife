@@ -232,17 +232,6 @@ diagnostic line that made it readable.
   have a serial port and it has its own home.
 - A machine that can only report over a network is a machine whose failures you cannot see when
   the network is the failure, and no answer here escapes that entirely.
-- Milestone 400 (the shell on the firmware's screen)'s `BUGS` entry about the screendump window is
-  stale in its last clause, since this lane changed that gate's marker. A lane may not edit another
-  milestone's block, so it was named for the integrator to strike, and it still stands
-  ([`gate-repairs.md`](0243-a-machine-with-no-serial-port-cannot-say-anything/gate-repairs.md);
-  checked 2026-10-12, UTC).
-- The marker change in [`gate-repairs.md`](0243-a-machine-with-no-serial-port-cannot-say-anything/gate-repairs.md)
-  rests on a measurement that the tour tops out below the screen's height, so nothing scrolls.
-  Milestone 445 (the screen check stops sampling and starts asking) found the opposite on OVMF the
-  same day: the tour scrolls, and the banner is gone from the screen by the end. It moved the marker
-  back to the self-test verdict. The appendix keeps the lane's account as written (found
-  2026-10-12, UTC).
 
 ## Index row
 

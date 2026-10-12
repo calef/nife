@@ -197,11 +197,11 @@ scroll is a full-surface copy through an uncacheable mapping (BUGS).
 - **Recorded.** After the handover the kernel's own output (a user fault report, the progenitor's exit
   line) reaches the UART only; a panic reclaims the screen and can be overdrawn by another core
   (`kernel/src/console.rs`, `reclaim_screen_for_panic`'s doc).
-- **Recorded.** The tour stage of `uefi-boot` now has a window: the kernel paints the tour only until
-  the handover clears it, so the watcher polls about every 200 ms until it has the tour. It caught
-  the tour on every OVMF run this lane made, and the window was not timed; a much faster guest or a
-  slower screendump could miss it, and the gate then fails loudly rather than passing (`xtask`'s
-  `screen_watch`).
+- **Milestone 445.** The tour stage of `uefi-boot` had a window: the kernel painted the tour only
+  until the handover cleared it, and the watcher polled about every 200 ms. Since 2026-09-20,
+  milestone 445 (the screen check stops sampling and starts asking) has the kernel hold the screen
+  until the watcher has dumped it, so the stage is a handshake rather than a race (`xtask`'s
+  `screen_watch`, `console::hold_screen_for_host`).
 - **Milestone 192.** On an x86 boot that has a virtio-gpu, `boot_graphical_terminal` still spawns
   the virtio stack and then returns `None` (its serial keystroke source, `input_service::start_direct`,
   refuses x86 for a reason milestone 299 made stale), and this path takes the firmware screen as

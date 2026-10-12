@@ -29,6 +29,11 @@ claimed to be avoiding.
 The marker is now the banner, the first line. Five consecutive runs read 52, 68, 78, 84 and 89
 rows and all passed, where the same machine had been failing one run in two.
 
+*Corrected 2026-10-12 (UTC): the 98-row measurement did not hold. Milestone 445 (the screen check
+stops sampling and starts asking) held the boot at the handover the next day and found that the
+tour scrolls on OVMF, so the banner is gone by the end. It moved the marker back to the self-test
+verdict (`UEFI_SCREEN_MARKER` in `xtask/src/uefi.rs`), now read behind a handshake.*
+
 The total claim is unchanged, which is the thing to check before believing any gate got easier.
 The screen's job is to prove the *pixels*: `LocateProtocol`, the byte order, the stride, the mapping
 surviving `mmu::init`, and the glyphs. Any decoded row proves all five. That the boot reached the
@@ -39,6 +44,7 @@ How deep the dump caught the tour is now *reported* rather than required.
 This edits the gate of milestone 400 (the shell on the firmware's screen), not this one's. 400's
 `BUGS` entry about that window is now stale in its last clause. A lane may not edit another
 milestone's block, so it is named here and in this lane's report for the integrator to strike.
+(Struck 2026-10-12, UTC.)
 
 ## The gate's first red run, and the line that made it readable
 
