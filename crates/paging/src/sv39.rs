@@ -247,6 +247,7 @@ mod mae_tests {
             };
             let leaf = Sv39Mae::leaf_entry(0xff_e701_4000, flags);
             assert_eq!(leaf >> 59 << 59, want, "{flags:?}");
+            assert_eq!(Sv39Mae::memory_type_of(leaf), want, "{flags:?}");
             for size in [PageSize::Size2MiB, PageSize::Size1GiB] {
                 let block = Sv39Mae::block_entry(0x8000_0000, flags, size).unwrap();
                 assert_eq!(block >> 59 << 59, want, "{flags:?} block");
@@ -274,6 +275,8 @@ mod mae_tests {
     #[test]
     fn a_pointer_carries_no_memory_type() {
         let e = Sv39Mae::table_entry(0x8100_0000, 0);
+        assert_eq!(e, Sv39::table_entry(0x8100_0000, 0));
+        assert!(Sv39Mae::is_present(e) && !Sv39Mae::is_present(0));
         assert_eq!(Sv39Mae::memory_type_of(e), 0);
         assert!(!Sv39Mae::is_block(e));
     }

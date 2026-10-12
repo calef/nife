@@ -74,6 +74,11 @@ stays unset, deferring to QEMU.
 
 ## aarch64: it cannot be switched yet, and here is precisely why
 
+This section is the tree of 2026-09-17. Milestone 227 (a GICv3 driver) was built on 2026-09-19:
+the kernel now reads `compatible`, drives both versions and boots `gic-version=3` at 5 of 5, and
+the runner no longer warns. Items 1 and 2 of the bill below are paid; the ITS (item 3), and the
+parity gap that waits on it (item 4), are still owed.
+
 `gic-version=3` is one flag. Surviving it is milestone 227. QEMU accepts the machine; this
 kernel does not survive it, and the failure is silent rather than loud, which is the part worth
 recording.
@@ -165,9 +170,9 @@ Ask each machine where it stands, which is the one command that makes this miles
     cargo xtask boot-check --arch aarch64  # interrupts : GICv2, ... (no ITS to report)
     cargo xtask boot-check --arch riscv64  # ... MSI page table offered (mode off)
 
-Reproduce aarch64's position in one command:
+Boot the GICv3 machine, which was 3 of 5 here on 2026-09-17 and is 5 of 5 since milestone 227:
 
-    NIFE_GIC=3 cargo xtask boot-check --arch aarch64      # 3 of 5, timer and scheduler dead
+    NIFE_GIC=3 cargo xtask boot-check --arch aarch64      # interrupts : GICv3, ... 5 of 5
 
 Compare the device trees the two GIC versions produce, which is how the table above was made:
 
@@ -199,10 +204,9 @@ Compare the device trees the two GIC versions produce, which is how the table ab
   202's shape: give a component the MSI-X table page, have it aim an interrupt at a vector it was
   never granted, and assert the hardware refuses. That needs a driver outside the kernel that wants
   interrupts, which is §86's question and not this one.
-- `NIFE_GIC=3` produces a boot that is known-broken, on purpose. It exists so milestone 227
-  starts from a reproduction rather than a rediscovery. It is not a supported configuration, no
-  gate runs it, and the runner warns on every use. If it ever stops failing, something in the GIC
-  path changed and this block is stale.
+- `NIFE_GIC=3` was added to reproduce a known-broken boot for milestone 227, which fixed that boot
+  on 2026-09-19. It is now an ordinary runner choice (`helpers/qemu-runner-aarch64.sh`: TCG
+  defaults to 2, HVF to 3). The ITS is still undriven (`kernel/src/drivers/gicv3.rs`'s BUGS).
 - The correction is about QEMU under TCG on one machine, not about VT-d. `intremap`'s `auto`
   resolving ON is QEMU's behavior with no in-kernel irqchip. Under KVM it resolves differently and
   the original reading could well be right there. Nobody has checked what the CI Linux runners do,
@@ -217,11 +221,6 @@ Compare the device trees the two GIC versions produce, which is how the table ab
 - `ECAP.IR` is a capability bit, not a working unit. It says QEMU's model advertises interrupt
   remapping. Whether that model's remapping behaves like silicon's is a question no boot here asks,
   and milestone 87's `OptiPlex` (xenon) is where it would get a second witness.
-- The aarch64 section, its EXAMPLES line and the `NIFE_GIC=3` entry above describe the tree of
-  2026-09-17. Milestone 227 (a GICv3 driver) was built on 2026-09-19: its block records the boot self-test at 5 of 5
-  under `gic-version=3`, the driver choosing by the device tree's `compatible`, and the ITS still
-  undriven. So `NIFE_GIC=3` no longer fails as written here, and "What milestone 227 would owe" is
-  paid except for the ITS. Found 2026-10-12 by maintainer/prose-budget-backlog and left as written.
 
 ## Follow-on
 
@@ -235,10 +234,9 @@ Compare the device trees the two GIC versions produce, which is how the table ab
 - **Recorded.** That the confinement claim about where a device may *interrupt* is still stated
   nowhere, in `notes/confinement-claims.md`, whose entry now carries what the flags measured and
   what is left.
-- **Milestone 227.** The GICv3 driver and its ITS. This block's "What milestone 227 would owe"
-  section is the bill, and `NIFE_GIC=3` is the reproduction; item 1 there (read `compatible`, and
-  report what was found rather than a hardcoded `GICv2`) is worth doing on its own and is not done
-  here because it is 227's file.
+- **Recorded.** Milestone 227 (a GICv3 driver) paid items 1 and 2 of "What milestone 227 would
+  owe" on 2026-09-19. The ITS, item 3, is still undriven, recorded in
+  `kernel/src/drivers/gicv3.rs`'s BUGS, so item 4's parity gap stands.
 - **Decision.** `design/decisions/0086-el0-nvme-driver.md`: who owns the page holding the MSI-X table.
   calef held it on 2026-09-17 for want of an experiment behind it, and this milestone is that
   experiment. It is now answerable on x86_64 without any further machinery, and the honest cost of

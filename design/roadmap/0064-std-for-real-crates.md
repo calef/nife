@@ -59,16 +59,10 @@ this page is complete without them.
   `Unsupported` permanently rather than pending, and milestone 149's Rayon-parallel NPB-Rust variants
   stay out of scope until one does. §105 is the record; nothing here forecloses building the
   seL4-shaped option later.
-- `env` is a table nobody seeds. The environment backend added in the second pass is honest, and
-  it is also a stub in one direction. A program can set its own variables and cannot be *given* one,
-  because there is no endowment to carry it. That is milestone 47's namespace, and until it lands
-  every `env::var` a crate reads is `None`. `chrono`'s `TZ` and `clap`'s color detection both take
-  that path, which is fine and is not the same as working.
-- The entry above is stale, found 2026-10-12 (UTC) while splitting this block under §212. The
-  Follow-on records `env` as seeded now, from the validated page of §111 (inert configuration is a
-  validated page), with `TZ`, `LANG` and `TERM` filled before `main` runs. The entry was left as
-  written rather than corrected in passing; whoever owns this block should reconcile the two.
-
+- `env` was a table nobody seeds until 2026-08-22, when the shim began filling `TZ`, `LANG` and
+  `TERM` from a granted inert-configuration page (§111 (inert configuration is a validated page);
+  see the Follow-on). A program granted no such page still starts empty, and every `env::var` it
+  reads is `None`, which is the design.
 - A fifth check of the ranked list (2026-08-22) found no genuinely buildable row. After §105
   closed rank 3 and PR #341 closed rank 21, every remaining row fell into one of five groups:
   - already closed;

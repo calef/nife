@@ -18,7 +18,10 @@ failure-triage ladder.
    one run, DIP switches to QSPI, serial at 115200 8N1, interrupt U-Boot, the five `load`/`booti`
    lines). Nothing about this milestone changes the boot recipe.
 2. Read the boot line `keystrokes:`, which is the whole of what this lane added and the first
-   thing to check:
+   thing to check. (Corrected 2026-10-12, UTC: no boot prints this line since milestone 600 (the
+   graphical terminal stack is built in userspace) removed it on 2026-09-26, and since milestone
+   632 (graphics on demand) graphics start from the prompt, not at boot. The table is the line as
+   this lane shipped it, and this step needs rewriting before a bench run.)
 
    | Line | What it means |
    |---|---|
@@ -38,6 +41,6 @@ failure-triage ladder.
    line means the fallback (step 2). No echo with a `Serial` line means one of two things. Either
    the UART receive interrupt is not routed, or the display path hung. The first is the same
    PLIC-source hazard `uart_irq_and_source`'s own doc records for the JH7110, where the QEMU
-   constant armed the wrong source. The second is what the display blocker of milestone 177 (wire the graphical terminal stack into the real interactive boot) would
-   produce identically. A character echoing once and then nothing is the display driver's
-   second-`FLUSH` bug, and it is the same bug QEMU shows.
+   constant armed the wrong source. The second is how the second-`FLUSH` hang of milestone 177
+   (wire the graphical terminal stack into the real interactive boot) looked before it was
+   root-caused and fixed on 2026-09-19: a character echoing once and then nothing.

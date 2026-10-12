@@ -28,10 +28,10 @@ and the handler is bounded on a stack of its own. The measured watermark did not
 because in this suite the deepest byte of every stack is reached by ordinary code rather than by
 an interrupt landing on top. That is what a watermark can and cannot say about a rare worst case.
 
-The reopening's own reason is untouched, which is why this stays `PARTIAL`: the two faults are
-a store at a *fixed address*, not depth, and nothing here explains them. `warn_if_guard_page` now
-prints the interrupted `sp` from the frame rather than the live one, which after this change would
-have named the wrong stack.
+The reopening's own reason was untouched, which is why the block stayed `PARTIAL` until
+2026-08-17: the two faults were a store at a *fixed address*, not depth, and nothing here explained
+them. `warn_if_guard_page` now prints the interrupted `sp` from the frame rather than the live one,
+which after this change would have named the wrong stack.
 
 ## Reopened 2026-08-16, closed 2026-08-17: the stack was freed under its owner
 
@@ -189,12 +189,6 @@ proofs and tests run in a configuration nobody checks is not demonstrating.
 - The `on_cpu` guard is a condition in one function, which is rung two of AGENTS.md's ladder.
   Rung one would be a type that cannot name a thread still standing on its stack, and this tree does
   not have one. The next out-of-band remover can forget it exactly as this one did.
-- Stale, kept as written (found 2026-10-12, UTC). The opening paragraph that begins "The
-  reopening's own reason" says that reason "is why this stays `PARTIAL`". That was true on
-  2026-08-16; the block closed on 2026-08-17 and its status is BUILT.
-- Stale, kept as written (found 2026-10-12, UTC). The Index row says the fix is an in-place insert
-  "in a Kani-verified crate". The block records that `crates/slots` was never touched and no
-  harness moved: the fix is `Thread::spawn_into` and `Threads::insert_in_place` in the kernel.
 
 ## Follow-on
 
@@ -242,7 +236,8 @@ proofs and tests run in a configuration nobody checks is not demonstrating.
 4096, so ten instantiations can step from inside the stack to below the guard in one move,
 touching nothing, and the guard never fires. Measured on both ISAs; a `thead-c906` fault landed
 4088 bytes below the bottom of a 4096-byte guard. The `Thread` travels by value from `Thread::spawn` into `Table::insert_with`, which a debug build copies rather than elides; the fix
-is an in-place insert, in a Kani-verified crate. Raising `STACK_PAGES` is the wrong lever: the
+is an in-place build (`Thread::spawn_into` into `Threads::insert_in_place`), and the Kani-verified
+`crates/slots` was never touched. Raising `STACK_PAGES` is the wrong lever: the
 guard page stays one page. Reopened 2026-08-16 and closed 2026-08-17: the returning banner was
 never an overflow. A supervised corpse is published `Dead` while still executing on its own kernel
 stack, and an out-of-band reap frees that stack under it; the exception vector then walks `sp` to

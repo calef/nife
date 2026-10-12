@@ -34,7 +34,7 @@ are the facts documentation could not settle, each an explicit measurement and n
    does not describe the TRNG, so a working driver never runs), and its block carries the two
    commands. The second belongs to milestone 159 (a real hardware entropy source: the JH7110's TRNG). Both are read off the `hw entropy` line the riscv64
    boot tour now prints last. `design/roadmap/0159-jh7110-trng-driver/bench-procedure.md` carries the ordered bench
-   procedure and a table of what each of the five possible lines means. This is the first real,
+   procedure and a table of what each possible line means. This is the first real,
    non-virtio device a confined userspace process on this project has been asked to drive. That
    makes it `design/fatal-risks/README.md`'s risk 6 rather than a driver.
 10. Whether this U-Boot can boot from a USB stick, and through UEFI. This was added 2026-09-19,

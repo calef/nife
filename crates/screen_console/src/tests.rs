@@ -702,8 +702,13 @@ fn an_aperture_survives_the_trip_through_two_words() {
         let (size, layout) = aperture.to_words();
         assert_eq!(Aperture::from_words(size, layout), Some(aperture));
     }
-    // A stride narrower than the row, and an order this tree has no name for.
+    // A stride narrower than the row, and an order this tree has no name for. The scale is set,
+    // so the stride is what refuses: at scale zero the first word would be refused for that.
     assert_eq!(Aperture::from_words(10 | 10 << 32, 39), None);
+    assert_eq!(Aperture::from_words(10 | 10 << 32, 39 | 1 << 40), None);
+    assert!(Aperture::from_words(10 | 10 << 32, 40 | 1 << 40).is_some());
+    assert_eq!(Aperture::from_words(10 | 10 << 32, 79 | 2 << 40), None);
+    assert!(Aperture::from_words(10 | 10 << 32, 80 | 2 << 40).is_some());
     assert_eq!(Aperture::from_words(10 | 10 << 32, 40 | 2 << 32), None);
     assert_eq!(Aperture::from_words(0, 40), None);
 }
@@ -1083,4 +1088,77 @@ fn a_short_framebuffer_truncates_rather_than_panicking() {
         &mut pixels,
         "this is far more text than sixty-four bytes can hold\n",
     );
+}
+
+/// A pixel sink reports whether it covers anything, which is what a caller checks before it
+/// paints into a slice it was handed.
+#[test]
+fn a_pixel_sink_knows_when_it_covers_nothing() {
+    assert!(PixelSink::new(&mut []).is_empty());
+    let mut one = [0u8; 4];
+    assert!(!PixelSink::new(&mut one).is_empty());
+}
+
+/// **The grid holds 150 rows at the widest scale-one screen.** A screen just under two scales'
+/// worth of columns wide and 1200 pixels tall is the case [`Cells::CAPACITY`] was sized for, and
+/// it gets every row.
+#[test]
+fn the_grid_holds_150_rows_at_the_widest_scale_one_screen() {
+    let cols = 2 * super::MIN_COLUMNS - 1;
+    let width = cols * bitmap_font::GLYPH_W;
+    assert_eq!(ScreenConsole::scale_for(width), 1);
+    let found = Framebuffer {
+        base: 0,
+        width,
+        height: 1200,
+        stride: width * 4,
+        order: PixelOrder::Bgrx,
+    };
+    assert_eq!(ScreenConsole::new(found).unwrap().size(), (cols, 150));
+}
+
+/// **A console whose rows fill the grid exactly still scrolls.** The bottom row has no row under
+/// it in the grid, so the scroll must blank it rather than read the cell past the grid's end. A
+/// short pixel slice is enough: the painter truncates rather than panics.
+#[test]
+fn a_console_that_fills_the_grid_scrolls_without_reading_past_it() {
+    let cols = super::MIN_COLUMNS;
+    let rows = (Cells::CAPACITY / cols as usize) as u32;
+    let width = cols * bitmap_font::GLYPH_W;
+    let found = Framebuffer {
+        base: 0,
+        width,
+        height: rows * bitmap_font::GLYPH_H,
+        stride: width * 4,
+        order: PixelOrder::Bgrx,
+    };
+    let mut console = ScreenConsole::new(found).unwrap();
+    assert_eq!(console.size(), (cols, rows));
+    let mut pixels = vec![0u8; 4096];
+    let mut cells = Box::new(Cells::new());
+    console.clear(&mut cells, &mut PixelSink::new(&mut pixels));
+    for _ in 0..rows + 1 {
+        console.write(&mut cells, &mut PixelSink::new(&mut pixels), "x\n");
+    }
+}
+
+/// **The largest scale draws.** At scale 16 a glyph row is exactly the painter's run buffer, and
+/// it must be painted rather than skipped as too wide.
+#[test]
+fn a_glyph_at_scale_sixteen_is_painted() {
+    let width = 16 * bitmap_font::GLYPH_W * super::MIN_COLUMNS;
+    assert_eq!(ScreenConsole::scale_for(width), 16);
+    let found = Framebuffer {
+        base: 0,
+        width,
+        height: 16 * bitmap_font::GLYPH_H,
+        stride: width * 4,
+        order: PixelOrder::Bgrx,
+    };
+    let mut console = ScreenConsole::new(found).unwrap();
+    // The first glyph row's sixteen screen rows, which is where the top bar of an F is.
+    let mut pixels = vec![0u8; 16 * width as usize * 4];
+    write(&mut console, &mut pixels, "F");
+    // The bar starts one font pixel in: screen pixel (16, 0) onward is ink.
+    assert_eq!(pixel(&found, &pixels, 16 + 8, 8), ScreenConsole::FOREGROUND);
 }

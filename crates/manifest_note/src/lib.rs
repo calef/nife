@@ -963,14 +963,41 @@ mod verb_tests {
         let refused = |at: usize, b: u8| {
             let mut d = good;
             d[at] = b;
-            decode_verbs(&d).is_err()
+            decode_verbs(&d).err()
         };
-        assert!(refused(0, 2), "a later version");
-        assert!(refused(4, 9), "a count that is not the length's");
-        assert!(refused(8, 0), "an empty word");
-        assert!(refused(8 + 7 + 1, b'x'), "a byte after the word's end");
-        assert!(refused(8 + 17, 0x80), "a grant bit that names nothing");
-        assert!(refused(8 + 18, 1), "a nonzero pad");
+        assert_eq!(
+            refused(0, 2),
+            Some(Error::UnknownVersion),
+            "a later version"
+        );
+        assert_eq!(
+            refused(4, 9),
+            Some(Error::WrongLength),
+            "a count that is not the length's"
+        );
+        assert_eq!(refused(8, 0), Some(Error::BadField(8)), "an empty word");
+        // Each refusal names the byte at fault, which is what a person reading a bad note needs.
+        let jig = JIG[0].verb.len();
+        assert_eq!(
+            refused(8 + jig + 1, b'x'),
+            Some(Error::BadField(8 + jig + 1)),
+            "a byte after the word's end"
+        );
+        assert_eq!(
+            refused(8 + 17, 0x80),
+            Some(Error::BadField(8 + 16)),
+            "a grant bit that names nothing"
+        );
+        assert_eq!(
+            refused(8 + 18, 1),
+            Some(Error::BadField(8 + 18)),
+            "a nonzero pad"
+        );
+        assert_eq!(
+            refused(8 + 19, 1),
+            Some(Error::BadField(8 + 18)),
+            "the pad's second byte"
+        );
         // The first two records swapped: every byte valid, the order not.
         let mut swapped = good;
         let (a, b) = (8, 8 + VERB_RECORD);
@@ -987,6 +1014,42 @@ mod verb_tests {
             decode_verbs(&good[..good.len() - 1]),
             Err(Error::WrongLength)
         );
+    }
+
+    /// **A record is the word's sixteen bytes, its grant word and two zero bytes**: twenty, after
+    /// an eight-byte head. The layout is a wire format between the build and the loader.
+    #[test]
+    fn a_verb_record_is_twenty_bytes() {
+        assert_eq!(verbs_len(0), 8);
+        assert_eq!(verbs_len(1), 8 + 16 + 2 + 2);
+    }
+
+    /// **The full 256 verbs encode and decode**, the cap itself rather than one under it. The
+    /// count's second byte is nonzero only here, so this is also what proves the count is written
+    /// where the decoder reads it.
+    #[test]
+    fn a_table_of_exactly_max_verbs_round_trips() {
+        const N: usize = MAX_VERBS;
+        let table: std::vec::Vec<VerbGrant> = (0..N)
+            .map(|i| VerbGrant {
+                verb: std::boxed::Box::leak(std::format!("verb{i:03}").into_boxed_str()),
+                grants: Grants::CATALOG,
+            })
+            .collect();
+        let bytes: [u8; verbs_len(N)] = encode_verbs(&table);
+        let v = decode_verbs(&bytes).unwrap();
+        assert_eq!(v.len(), N);
+        assert!(!v.is_empty());
+        assert_eq!(v.grants_for(b"verb255"), Some(Grants::CATALOG));
+    }
+
+    /// **A prefix sorts first**: `ab` before `abc`, never after, and neither before itself.
+    #[test]
+    fn a_shorter_prefix_sorts_first() {
+        assert!(before(b"ab", b"abc"));
+        assert!(!before(b"abc", b"ab"));
+        assert!(!before(b"ab", b"ab"));
+        assert!(before(b"ab", b"b"));
     }
 
     /// **`encode_verbs` refuses an unsorted table**, which in a constant is a compile error.

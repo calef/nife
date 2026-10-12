@@ -91,11 +91,12 @@ a kernel feature printing to the serial console.
 - `fixtures/src/job_mix_task.rs`, one EL0 task. Processes rather than kernel threads, which is the one
   place this differs from milestone 134's E1 on purpose: §96 asks what a process kernel costs a
   *workload*, and a workload is processes.
-- `kernel/src/jobmix.rs` (`--features jobmix`), the supervisor. It builds the pool once, releases
+- `kernel/src/job_mix.rs` (`--features job_mix`), the supervisor. It builds the pool once, releases
   a subrun's worth of tasks, owns the wall clock, and prints the placement census before the first
   number, because milestone 240 (soak reports) found placement decides throughput on radon by up to fifteenfold
   and a figure without its arrangement is a draw rather than a result.
-- `script/job-mix` (QEMU rehearsal) and `script/board-image --jobmix` (the card).
+- `script/job-mix` (QEMU rehearsal) and `script/board-image --job-mix` (the card).
+  All three were spelled `jobmix` until 2026-09-14.
   `notes/job-mix.md` is the bench procedure, with a table mapping every observable outcome to what it
   means and where it routes.
 
@@ -174,11 +175,9 @@ and calef ratified it as shipped on 2026-09-26.
   growth with task count, not their magnitude.
 - The breakdown exchange between repeats warms the report endpoint and the supervisor's stack,
   which the old sweep did not do. It is identical for every repeat.
-- The HVF cross-check has no machine until milestone 227.
-- "What was built, 2026-09-04" names `kernel/src/jobmix.rs`, `--features jobmix` and
-  `script/board-image --jobmix`. The tree has `kernel/src/job_mix.rs`, the feature `job_mix` and
-  `script/board-image --job-mix` (found 2026-10-12 by maintainer/prose-budget-backlog, left as
-  written).
+- The HVF cross-check had no machine until milestone 227 (a GICv3 driver) was built on 2026-09-19,
+  and the full mix has completed under HVF only since #1663 (2026-10-05). The runs since then took
+  `null_syscall` at one to four tasks; none is recorded as the cross-check of this curve's shape.
 
 ## Follow-on
 
@@ -195,8 +194,8 @@ and calef ratified it as shipped on 2026-09-26.
 - **Milestone 493.** The disk-file mix, blocked on a disk radon can drive and on a file-service
   channel per client (a wire format, so calef's).
   milestone 493 (a disk-file job mix needs a disk), `design/roadmap/0493-a-disk-file-job-mix-needs-a-disk-radon-can-drive.md`.
-- **Milestone 227.** The HVF cross-check on patagonia runs once the kernel has a GICv3 driver:
-  `script/job-mix --hvf --release --smp 4`, alone on the host.
+- **Recorded.** The HVF cross-check on patagonia, unblocked since milestone 227 (a GICv3
+  driver) and #1663: `script/job-mix --hvf --release --smp 4`, alone on the host.
 - **Recorded.** The mix proportions are chosen rather than derived from an AIM7 workfile, so a
   different mix gives a different number and no result is quotable without saying which mix produced
   it. It stays a limitation: nobody has an AIM7 workfile for a capability microkernel, and inventing

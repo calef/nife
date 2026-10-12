@@ -198,14 +198,6 @@ nobody reads has satisfied the gate and defeated the milestone. The ledger is th
 it is weaker than a gate, because it depends on lanes continuing to report their own mistakes
 honestly, which is a culture rather than a mechanism. Say so where the reader meets it.
 
-## BUGS
-
-- The ledger's 2026-09-21 entry, 922 to 924 lines, calls itself the first time the ceiling moved,
-  and earlier entries contradict it. [`size-gate-september.md`](0118-constitution-budget/size-gate-september.md)
-  marks the contradiction rather than choosing a reading (found 2026-10-12, UTC).
-- The comment above `RATCHET_CEILINGS` in `script/lint` still says the `agents-md-lines` marker
-  lives in this block. It has been stale since the 2026-10-06 drop.
-
 ## Follow-on
 
 - **Done.** The split into a core plus linked documents: `AGENTS.md` is 573 lines, with the evidence

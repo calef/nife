@@ -13,7 +13,7 @@ use std::cell::{Cell, RefCell};
 
 use paging::{
     Aarch64, Flags, Half, Ia32e, MapError, Mapper, PAGE_SIZE, PageFormat, PageSize, PageTable,
-    Sv39, Vtd,
+    Sv39, Sv39Mae, Vtd,
 };
 
 /// The pretend frame allocator. **The mapper borrows it**, so the borrow checker, not a guard a
@@ -109,6 +109,30 @@ fn a_block_translates_with_its_offset_on_every_format() {
     a_block_translates_with_its_offset::<Aarch64>();
     a_block_translates_with_its_offset::<Sv39>();
     a_block_translates_with_its_offset::<Ia32e>();
+}
+
+/// **Only a table is ever cut.** `unlink_table` asked for the frame a leaf or a block maps
+/// answers `None` and leaves the mapping in force: the walk stops at a block, and it never reads
+/// the last level, where every entry is a leaf.
+fn a_leaf_or_a_block_is_never_cut_as_a_table<F: PageFormat>() {
+    let pool = Pool::new(8);
+    let mut m = pool.mapper::<F>(Half::Low);
+    let flags = Flags::user_data();
+    m.map(VA, PA, flags).unwrap();
+    m.map_block(VA + GIB1, PA, PageSize::Size1GiB, flags)
+        .unwrap();
+    assert!(m.unlink_table(VA, PA).is_none(), "a 4 KiB leaf");
+    assert!(m.unlink_table(VA + GIB1, PA).is_none(), "a 1 GiB block");
+    assert_eq!(m.translate(VA), Some((PA, flags)));
+    assert_eq!(m.translate(VA + GIB1), Some((PA, flags)));
+}
+
+#[test]
+fn a_leaf_or_a_block_is_never_cut_as_a_table_on_every_format() {
+    a_leaf_or_a_block_is_never_cut_as_a_table::<Aarch64>();
+    a_leaf_or_a_block_is_never_cut_as_a_table::<Sv39>();
+    a_leaf_or_a_block_is_never_cut_as_a_table::<Sv39Mae>();
+    a_leaf_or_a_block_is_never_cut_as_a_table::<Ia32e>();
 }
 
 /// **A page cannot be mapped inside a block**, and the refusal happens before anything is

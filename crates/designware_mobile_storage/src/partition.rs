@@ -175,4 +175,41 @@ mod tests {
         let mbr = Mbr::parse(&sector(&[(0, 16, 100), (0x0b, 2048, 100)])).unwrap();
         assert_eq!(mbr.scratch(4), Some((2044, 4)));
     }
+
+    /// Every byte of the start and length words is read, little-endian, from its own entry: the
+    /// CHS bytes between them are not.
+    #[test]
+    fn an_entry_is_read_from_all_four_bytes_of_each_word() {
+        let mut s = sector(&[(0, 0, 0), (0x83, 0x1234_5678, 0x0abc_def0)]);
+        // CHS end address bytes (offsets 5 to 7) set, so a misplaced read cannot pass by zeros.
+        s[446 + 16 + 5..446 + 16 + 8].copy_from_slice(&[0xfe, 0xff, 0xff]);
+        let e = Mbr::parse(&s).unwrap().entries[1];
+        assert_eq!(
+            (e.kind, e.start, e.sectors),
+            (0x83, 0x1234_5678, 0x0abc_def0)
+        );
+    }
+
+    #[test]
+    fn a_partition_contains_its_own_sectors_and_no_others() {
+        let e = Entry {
+            kind: 0x0b,
+            start: 100,
+            sectors: 50,
+        };
+        assert!(!e.contains(99));
+        assert!(e.contains(100));
+        assert!(e.contains(149));
+        assert!(!e.contains(150));
+        // An unused slot contains nothing, whatever its start says.
+        assert!(!Entry { kind: 0, ..e }.contains(120));
+        // The end is computed in 64 bits, so an entry crossing 2^32 still contains its tail.
+        let high = Entry {
+            kind: 0x83,
+            start: u32::MAX - 1,
+            sectors: 10,
+        };
+        assert!(high.contains(u64::from(u32::MAX) + 5));
+        assert!(!high.contains(u64::from(u32::MAX) + 9));
+    }
 }

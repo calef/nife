@@ -491,3 +491,43 @@ pub fn write_blocks<R: Registers>(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn card(blocks: u64, block_addressed: bool) -> Card {
+        Card {
+            kind: Kind::SdHighCapacity,
+            rca: 1,
+            ocr: 0,
+            cid_raw: [0; 4],
+            csd_raw: [0; 4],
+            cid: Cid::sd(&[0; 4]),
+            blocks,
+            block_addressed,
+            bus_width: 4,
+            clock_hz: TRANSFER_HZ,
+        }
+    }
+
+    #[test]
+    fn the_last_block_is_in_range_and_the_one_after_it_is_not() {
+        assert!(in_range(10, true, 9, 1));
+        assert!(!in_range(10, true, 9, 2));
+        assert!(!in_range(10, true, 10, 1));
+    }
+
+    /// One command moves at most `u32::MAX / 512` blocks, because `BYTCNT` is a 32-bit byte count.
+    /// `check` is given lengths it is never handed a buffer of, so nothing is allocated.
+    #[test]
+    fn one_command_moves_no_more_blocks_than_a_32_bit_byte_count_holds() {
+        let huge = card(1 << 40, true);
+        let most = (u32::MAX / BLOCK as u32) as usize;
+        assert_eq!(most, 8_388_607);
+        assert_eq!(check(most * BLOCK, &huge, 0), Ok(most as u32));
+        assert_eq!(check((most + 1) * BLOCK, &huge, 0), Err(IoError::Range));
+        assert_eq!(check((most + 2) * BLOCK, &huge, 0), Err(IoError::Range));
+        assert_eq!(check(512 * BLOCK, &huge, 0), Ok(512));
+    }
+}

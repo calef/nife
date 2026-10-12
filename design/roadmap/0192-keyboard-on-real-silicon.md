@@ -77,7 +77,7 @@ built the graphical boot around it:
   and a keyboard", which on argon, radon and xenon is never true.
 
 What the lane added is one choice and its second arm. `kernel::user::boot_graphical_terminal`
-now picks the keystroke source: the virtio keyboard when the bus has one, the board's own UART when
+picked the keystroke source: the virtio keyboard when the bus has one, the board's own UART when
 it does not. `kernel::user::input_service::start_direct` is `keyboard_service::start_direct`'s twin,
 spawning `input` kernel-side against the endpoint the kernel creates before init exists (which is
 the reason the keyboard is spawned there too, recorded in full in milestone 177's finding 1).
@@ -85,6 +85,12 @@ the reason the keyboard is spawned there too, recorded in full in milestone 177'
 that it cannot is the property this block asked option A to be finished by.
 
 Option B is a third arm of that `match`. Nothing else in the guest is downstream of the choice.
+
+*Corrected 2026-10-12 (UTC): milestone 600 (the graphical terminal stack is built in userspace)
+retired that function on 2026-09-26. Since milestone 632 (graphics on demand) the choice is made
+when a `graphical_terminal` session launches, in `crates/system_initializer`'s
+`build_graphical_terminal_session`: `keyboard_driver` behind the session's own line discipline when
+the boot has a keyboard, otherwise the boot line discipline's endpoint read raw.*
 
 ## What authority the serial source holds, which is the risk-6 claim
 
@@ -153,10 +159,11 @@ Two appendices hold what the page has no room for:
 
 Unchanged by this lane except that the wiring is no longer part of it: an xHCI driver, enough USB
 core to enumerate and configure a device, and a HID keyboard driver, on three architectures, plus
-the scoping pass that splits those into their own milestones. What it will not need is any
-change to `line_editor`, `display_terminal`, `swish`, `crates/system_initializer`, or the boot's
-capability layout: a HID driver that holds `WRITE` on one endpoint and sends `OPERATION_BYTES` is a third
-arm of `boot_graphical_terminal`'s `match` and nothing else.
+the scoping pass that splits those into their own milestones. What it will not need is any change to
+`line_editor`, `display_terminal`, `swish`, or the boot's capability layout: a HID driver that holds
+`WRITE` on one endpoint and sends `OPERATION_BYTES` is one more keystroke source. That choice now
+lives in `crates/system_initializer`'s `build_graphical_terminal_session`, which knows two arms
+today (`keyboard_driver` by name, or the boot's discipline read raw).
 
 ## Why A goes first, which was the recommendation
 
@@ -208,14 +215,7 @@ fatal-risk list that months of driver work is a reasonable thing to spend.
 - *Corrected 2026-10-03 (this bullet said both graphical legs were red).* They are green in CI
   since milestone 177's 2026-09-19 root cause. Since milestone 632 (graphics on demand) they launch
   `graphical_terminal` from the normal UART boot, so they prove option A at launch rather than at boot.
-- Stale, kept as written (found 2026-10-12, UTC). "What option A's lane built" and "What option B
-  will still need" still describe `kernel::user::boot_graphical_terminal` as where the keystroke
-  source is chosen. The 2026-10-03 correction under "What is proven" calls that function retired,
-  and the Index row moves the choice to a `graphical_terminal` session's launch (milestone 632).
-- Stale, kept as written (found 2026-10-12, UTC). Step 6 of
-  [`bench-procedure.md`](0192-keyboard-on-real-silicon/bench-procedure.md) still names milestone
-  177's display blocker and second-`FLUSH` bug as live failure modes. That hang was root-caused on
-  2026-09-19.
+
 ## Follow-on
 
 - **Milestone 242.** Option B, the xHCI driver, USB core and HID keyboard, plus the scoping pass

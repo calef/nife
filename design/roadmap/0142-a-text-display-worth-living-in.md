@@ -203,8 +203,9 @@ Nothing blocks increment three now. The family was §104's (2026-08-20) and the 
   for better rounding, and if that is fixed, output changes.
 - The x86 AVX2 path was verified statically, not run. Rosetta does not expose AVX2, so the absence
   of fused multiply-add was read out of generated assembly. Rosetta is also one machine, not native
-  silicon. Neither limit touches the two architectures this project actually targets, both of
-  which were built and run.
+  silicon. Neither limit touches the two bare-metal targets: the minimal crate set built clean for
+  `aarch64-unknown-none-softfloat` and `riscv64imac-unknown-none-elf` on 2026-08-20, though the
+  determinism runs were on the x86_64 and aarch64 hosts, not on either target (see above).
 - This milestone enlarges the supply-chain gap §100 (the terminal font) recorded.
   `script/supply-chain` reads the cargo graph, so a font transcribed into a Rust table is invisible
   to it. Today that is a kilobyte of public-domain bitmap; the atlas would be hundreds of kilobytes
@@ -212,11 +213,6 @@ Nothing blocks increment three now. The family was §104's (2026-08-20) and the 
   the same time as the table.
 - "Rich text" is read here as terminal attributes, not as a document model. If calef meant
   proportional type, embedded images, or anything a terminal is not, the right answer is rung three.
-- This section contradicts itself, found 2026-10-12 (UTC) by the §212 (a prose budget) split. One
-  entry says no rasterizer has been run on either target; another says both targets were built and
-  run. Which is true is not settled here.
-- The Index row says increments three, four and six remain NOT-STARTED, but increment six is built.
-  The row is left as written because `script/roadmap` parses it; it wants its own edit.
 
 ## Follow-on
 
@@ -271,5 +267,6 @@ to 1280x720 via DECISIONS §102 then retargeted 2026-08-27 to 924x344 for a 132x
 shipping 7x8 cell, and a real terminal: scrollback, UTF-8, arrow keys) are built. Increment five
 is partial (truecolour and the line renditions built 2026-09-26; the faces are ruled and wait on the atlas), the
 navigation cluster is in the keymap, and scrollback from the keyboard is a proposal because its
-route needs a new opcode. Three, four and six remain
-NOT-STARTED; the ruling of 2026-10-05 UTC and milestone 141 is built, so nothing blocks them.
+route needs a new opcode. Six, the palette, is built (the gate of milestone 141, a palette worth
+looking at). Three and four remain NOT-STARTED; the ruling of 2026-10-05 UTC and milestone 141 is
+built, so nothing blocks them.

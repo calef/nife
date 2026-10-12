@@ -516,6 +516,8 @@ mod tests {
         }
         assert_eq!(thread_page_va(THREAD_PAGE_SLOTS), None);
         assert_eq!(THREAD_PAGE_SLOTS, 16);
+        // One page apart, so no two threads share a slot's page.
+        assert_eq!(thread_page_va(1), Some(PAGE_VA - address_space_map::PAGE));
     }
 
     /// The layout constants do not overlap and the page fits in one frame and one cache line,

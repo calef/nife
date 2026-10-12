@@ -18,6 +18,10 @@ fn a_vouch_answer_says_what_is_live() {
         shown(|o| write_vouch(S::NotExecutable, 0, o)),
         "  refused: those bytes are not a program this machine runs; nothing is installed\n"
     );
+    assert_eq!(
+        shown(|o| write_vouch(S::StoreFailed, 2, o)),
+        "  could not write the activation set; generation 2 is live\n"
+    );
 }
 
 #[test]

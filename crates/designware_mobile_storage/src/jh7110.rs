@@ -193,4 +193,15 @@ mod tests {
         assert_eq!(discover(&qemu, 0).unwrap(), None);
         assert_eq!(discover(&qemu, 1).unwrap(), None);
     }
+
+    /// A node at a slot's name with neither binding is not this controller, and a stated clock
+    /// rate is used rather than the default.
+    #[test]
+    fn a_foreign_binding_is_skipped_and_a_stated_rate_is_kept() {
+        let tree =
+            DeviceTreeBlob::from_bytes(include_bytes!("../tests/fixtures/jh7110-mmc-odd.dtb"))
+                .unwrap();
+        assert_eq!(discover(&tree, 0).unwrap(), None);
+        assert_eq!(discover(&tree, 1).unwrap().unwrap().ciu_hz, 100_000_000);
+    }
 }

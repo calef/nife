@@ -232,6 +232,51 @@ mod tests {
         assert_eq!(caps.context_bytes, 64);
     }
 
+    /// The `USBCMD`, `USBSTS`, `IMAN`, `ERDP` and legacy support bits, pinned against xHCI 1.2
+    /// sections 5.4.1, 5.4.2, 5.5.2 and 7.1, so a shift written the wrong way round fails here.
+    #[test]
+    fn the_register_bits_are_where_the_specification_puts_them() {
+        assert_eq!([CMD_RUN, CMD_RESET, CMD_INTERRUPTS], [1, 2, 4]);
+        assert_eq!(
+            [
+                STS_HALTED,
+                STS_HOST_SYSTEM_ERROR,
+                STS_EVENT_INTERRUPT,
+                STS_PORT_CHANGE
+            ],
+            [1, 4, 8, 0x10]
+        );
+        assert_eq!([STS_NOT_READY, STS_CONTROLLER_ERROR], [0x800, 0x1000]);
+        assert_eq!([IMAN_PENDING, IMAN_ENABLE], [1, 2]);
+        assert_eq!(ERDP_BUSY, 8);
+        assert_eq!([LEGACY_BIOS_OWNED, LEGACY_OS_OWNED], [0x1_0000, 0x100_0000]);
+        assert_eq!(LEGACY_SMI_ENABLES, 0xe011);
+        assert_eq!(LEGACY_SMI_EVENTS, 0xe000_0000);
+    }
+
+    /// QEMU's needed ranges, inclusive at both ends: through port 4's status set, the 32 bytes of
+    /// interrupter 0, and the doorbells through slot 64's.
+    #[test]
+    fn the_needed_ranges_end_at_their_last_byte() {
+        let capabilities = Capabilities::decode(0x0100_0040, 0x0400_0840, 0, 0, 0x2000, 0x1000);
+        assert_eq!(
+            capabilities.needed_ranges(),
+            [(0, 0x47f), (0x1020, 0x103f), (0x2000, 0x2103)]
+        );
+    }
+
+    /// The next pointer counts dwords, and an entry whose last byte is the limit's is still read.
+    #[test]
+    fn the_next_pointer_is_in_dwords_and_the_limit_is_inclusive() {
+        let mut read = |at: u64| match at {
+            0x100 => 2 | 1 << 8,
+            0x104 => 1,
+            _ => 0,
+        };
+        assert_eq!(find_extended(0x100, 0x1000, 1, &mut read), Some(0x104));
+        assert_eq!(find_extended(0x100, 0x108, 1, &mut read), Some(0x104));
+    }
+
     #[test]
     fn the_extended_list_is_walked_and_bounded() {
         // Two entries: id 2 (supported protocol) at 0x100 pointing 0x10 on, id 1 at 0x110.

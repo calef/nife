@@ -239,4 +239,24 @@ mod tests {
             Command::with_data(WRITE_BLOCK, 0, Response::R1, Data { write: true, ..one }).word();
         assert_ne!(w & (CMD_WRITE | CMD_DATA_EXPECTED), 0);
     }
+
+    /// Only R2 is 136 bits: a 48-bit response asked for as a long one would never complete.
+    #[test]
+    fn a_short_response_is_not_asked_for_as_a_long_one() {
+        for r in [
+            Response::R1,
+            Response::R1b,
+            Response::R3,
+            Response::R6,
+            Response::R7,
+        ] {
+            assert!(!r.is_long(), "{r:?}");
+            assert_eq!(
+                Command::new(SEND_STATUS, 0, r).word() & CMD_LONG_RESPONSE,
+                0
+            );
+        }
+        // The clock-update word, as a number: start, wait for previous data, update only.
+        assert_eq!(UPDATE_CLOCK, 0x8020_2000);
+    }
 }
