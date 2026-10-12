@@ -23,7 +23,7 @@ that nife will ever run into this tree. We need packages working."*
 It is the C library's own contract, tested where the library lives. It is not the foreign programs.
 Each foreign program's tests (SQLite, ioping, and later `ripgrep`) run in basalt's package build
 against the pinned nife. That is milestone 810 (`ripgrep` is packaged in basalt and installed with
-`jig`)'s shape. For SQLite it is the proposal `design/roadmap/proposals/sqlite-is-packaged-in-basalt.md`.
+`jig`)'s shape. For SQLite it is the proposal `design/roadmap/0897-sqlite-is-packaged-in-basalt.md`.
 
 ## What it builds
 

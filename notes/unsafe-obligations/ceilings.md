@@ -6,7 +6,7 @@ measurement behind these numbers is in [census.md](census.md). Both are the work
 
 ## The density outside `arch/`
 
-At most 66 <!--count-at-most:unsafe-density-outside-arch--> unsafe blocks per 10,000 lines
+At most 61 <!--count-at-most:unsafe-density-outside-arch--> unsafe blocks per 10,000 lines
 outside `kernel/src/arch/`. The direction is down, because unsafe outside `arch/` is not paying
 for hardware access. It is a raw syscall, a shared page, or a hand-rolled data structure, and each
 of those has a safe wrapper somebody could write. The ceiling was first written at a threshold the
@@ -26,6 +26,8 @@ collapsed, the diff each was measured from, the base commit) is in milestone 139
 | 5 | 2026-08-24 | unchanged | 87 | device register blocks onto `tock_registers` |
 | 8 | 2026-09-01 | 94 to 88 | 78.8 | 37 page-zeroing sites, 5 device-tree parses |
 | 9 | 2026-10-07 | 88 to 72 | 65.3 | the revocation log walk, address-space installs, code pages |
+| 10 | 2026-10-08 | 72 to 66 | 59.7 | the scheduler queue ownership token, `Unqueued<T>` |
+| none | 2026-10-12 | 66 to 61 | 61.09 | nothing; the ceiling caught up to the tree |
 
 ## Round 1 chose the headroom
 
@@ -104,7 +106,7 @@ The gain is more than kept, and in a note whose whole subject is a measurement t
 worth stating exactly. The density fell five points (83 to 78, truncated) and the ceiling fell six
 (94 to 88), one point further than it gained.
 
-## Rounds 9 and 10
+## Rounds 9 and 10, and the 2026-10-12 cinch
 
 Lowered again, 88 to 72, by milestone 139 round 9 (2026-10-07 UTC). Five weeks of lane traffic
 had taken the density from 78 to 66 with no round working it; the ceiling stood 22 points over
@@ -114,6 +116,16 @@ density 66.6 to 65.3, from the diff against base `3dfbf1fd4`).
 Lowered again, 72 to 66, by milestone 139 round 10 (2026-10-08 UTC), the scheduler queue ownership
 token, counted from the merged tree: 1,029 blocks over 172,506 lines, density 59.7. 66
 keeps round 1's seven points.
+
+Lowered again, 66 to 61, on 2026-10-12 (UTC), with no reduction behind it. In four days ordinary
+lane traffic took the tree from 59.7 to 61.09 (1,103 blocks over 180,545 lines at base
+`0e72ca92a`), so the ceiling stood five points over a tree nobody had cut. Milestone 139's ratchet
+rule says a ceiling above the true number is a budget, so 61 gives up round 1's headroom on
+purpose. Truncation still leaves some: about 16 blocks at that day's line count before the density
+reads 62. At the rate of those four days (about 0.35 a day) that is a few days of traffic, and
+then the gate stops a lane on honest work. That lane finds a reduction, or calef raises the
+ceiling with the reason written here. This is the trade round 8 argued against; it is recorded so
+the first lane it stops finds the argument beside the marker.
 
 ## Thread-safety claims
 

@@ -25,7 +25,7 @@ neither question asked about one.
 | 2. Where the layout constants go | *"Agreed, make the parent an index."*, 2026-10-11 (UTC), on [PR #1959](https://github.com/nifeos/nife/pull/1959) | A module of their own, kept whole, and the crate root an index. |
 
 Question 1 is the recommendation, A. The follow-on is
-[the progenitor's boot is split by phase](../roadmap/proposals/the-progenitors-boot-is-split-by-phase.md),
+[the progenitor's boot is split by phase](../roadmap/0899-the-progenitors-boot-is-split-by-phase.md),
 which covers `boot` and `spawn_service` with the phase boundaries measured. It matches
 [the function-length ratchet proposal](../roadmap/0888-a-ratchet-on-function-length.md), which
 records calef's 2026-10-09 (UTC) ruling that `kernel_main` is split by boot phase and leaves every

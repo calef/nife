@@ -786,7 +786,7 @@ pub mod dirscape {
 /// A bitmap for [`dirscape`]'s reason: the test asserts an *exact* set, so a witness that
 /// reached nothing and one that reached everything both fail. The witness is told nothing
 /// about its two grants beyond which capability table slot each landed in (slot 0 is always the first,
-/// slot 1 the second, per `kernel/src/user/fs_service.rs`'s `start_granted_two_dirs` doc); it
+/// slot 1 the second, per `kernel/src/user/fs_service/two_dirs.rs`'s `start_granted_two_dirs` doc); it
 /// tries to name a file in each subtree, tries to cross from one to the other both by request
 /// and by `grant_plan::nav::TwoRoots`'s own client-side resolution, and reports what it found.
 pub mod twodir {

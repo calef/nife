@@ -1,6 +1,6 @@
 # toolchain: nightly-2026-10-11
 # date: 2026-10-12
-# why: milestone 872 (the kernel's user-mode file is split along its seams): moving user's items into child modules changed the codegen-unit partition again, and riscv_trap_dispatch no longer inlines sched::preempt_if_needed (360 -> 146 B, with preempt_if_needed a 226 B function of its own again, read with llvm-nm on this branch). This undoes the inlining milestone 840 (the scheduler file is split along its seams) recorded: the same code runs on every trap return, now as a call outside this flat set. The two IPC shapes did not move (4028, 5088).
+# why: lane maintainer/last-three-over-2000 (the last three Rust files over 2,000 lines are split): splitting kernel/src/user/fs_service.rs into child modules changed the codegen-unit partition, and riscv_trap_body now inlines sched::placement's drain_inbox and serve_steal_request (556 -> 1150 B; neither is a standalone symbol on this branch). Both run in the software-interrupt arm, on an IPI, not on a syscall: bytes the flat set counts and no syscall fetches (milestone 368 (the entry set is flat, so an inlining flip can move 12% into it)). Measured on the same nightly at the base 4a6746bb5 (1918) and on the branch (2516), so the movement is the split's. The two IPC shapes did not move (4028, 5088).
 # bench/fastpath-riscv64.txt: an upper bound on the IPC fastpath's instruction footprint.
 # Written by script/fastpath-footprint --save. Updating this file is a statement that a
 # footprint change is intended and understood; do it in the commit that causes it.
@@ -13,4 +13,4 @@
 ipc_send_receive 4028
 ipc_call_reply 5088
 ipc_fastpath 5088
-syscall_entry 1918
+syscall_entry 2516

@@ -160,9 +160,10 @@ generated from.
 
 ## Follow-on
 
-- **Proposed.** `design/roadmap/proposals/the-progenitors-boot-is-split-by-phase.md`: `boot` along its
-  twelve measured phases, and `spawn_service` along its request's stages. §279 records calef's
-  ruling that this is the next step.
+- **Milestone 899.** Milestone 899 (the progenitor's boot is split by phase):
+  `design/roadmap/0899-the-progenitors-boot-is-split-by-phase.md`: `boot` along its twelve measured
+  phases, and `spawn_service` along its request's stages. §279 records calef's ruling that this is
+  the next step.
 - **Decision.** Every module name is provisional and is calef's to rule in his naming pass, per
   `design/decisions/0279-the-system-initializer-crate-root-splits-into-private-modules.md`.
 - **Refused.** Repointing the 17 citations of `system_initializer/src/lib.rs` by line under
