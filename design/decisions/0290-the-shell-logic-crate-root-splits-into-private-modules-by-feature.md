@@ -17,7 +17,7 @@ Nothing. The block named three questions, and rulings made since it was written 
 
 | The block's question | Answered by | The answer |
 |---|---|---|
-| 1. Private modules with re-exports, or public modules | §272 (the grant-plan crate root splits into private modules), fork 1: *"Private modules"*; §279 (the system-initializer crate root splits into private modules) did the same | Private modules. `lib.rs` re-exports every public item by name, so no `swish::` path changes. |
+| 1. Private modules with re-exports, or public modules | §272 (the grant-plan crate root splits into private modules), fork 1: *"Private modules"*; §279 (the system-initializer crate root splits into private modules) did the same | Private modules. `lib.rs` re-exports every public item by name, so no `swish::` path changes beyond the rename below. |
 | 2. Where the shared test helpers live | §272's cut, ruled with it: a crate-level `#[cfg(test)]` `test_support` module, imported by name | `test_support.rs` holds `shown`, `spec_of`, `listing` and `endowment`. Helpers one topic uses stay in that topic's tests. |
 | 3. Every module name | calef's naming pass; he does not rule names on a split | Every name below is provisional and carries a `//! Name:` line. |
 
@@ -46,23 +46,23 @@ under. Lines are measured after `cargo fmt`.
 
 | file | holds | lines | tests |
 |---|---|---|---|
-| `lib.rs` | crate docs (unchanged), `mod` lines, imports, named re-exports | 134 | |
+| `lib.rs` | crate docs (unchanged), `mod` lines, imports, named re-exports | 133 | |
 | `say.rs` | `Say`, `HEAP_MAX_BYTES`, `write_say` | 106 | 50 |
-| `status.rs` | `Status`, `STATUS_WORD` | 105 | 71 |
+| `status.rs` | `Status`, `STATUS_WORD` | 105 | 73 |
 | `routing.rs` | `Route`, `route` | 77 | 45 |
-| `words.rs` | `is_pattern`, `expansion`, `designation`, `write_set`, `echo`, quoting (`Piece`, `pieces`) | 259 | 345 |
+| `words.rs` | `is_pattern`, `expansion`, `designation`, `write_set`, `echo`, quoting (`Piece`, `pieces`) | 259 | 348 |
 | `batching.rs` | `Sweep`, `write_sweep`, `write_batch` | 132 | 17 |
-| `number.rs` | `write_num` | 25 | 14 |
-| `apropos.rs` | `write_found`, `write_apropos` and their layout constants | 89 | 98 |
+| `number.rs` | `write_num` | 23 | 14 |
+| `apropos.rs` | `write_found`, `write_apropos` and their layout constants | 89 | 100 |
 | `timing.rs` | `Untimed`, `write_untimed`, `write_duration`, `write_timing` | 114 | 76 |
-| `sentences.rs` | `pwd`, `help`, refusals, the fixed sentences, `write_vouch`, the usage lines, `write_outcome` | 285 | 151 |
-| `endowment.rs` | `write_holdings`, `write_census`, the bind row, `write_config_values` | 162 | 183 |
-| `preview.rs` | `Vouched`, `caps <path>`, `write_caps`, `write_preview` and the row writer they share | 672 | 745 |
-| `test_support.rs` | the four shared helpers | 53 | |
+| `sentences.rs` | `pwd`, `help`, refusals, the fixed sentences, `write_vouch`, the usage lines, `write_outcome` | 285 | 152 |
+| `endowment.rs` | `write_holdings`, `write_census`, the bind row, `write_config_values` | 162 | 186 |
+| `preview.rs` | `Vouched`, `caps <path>`, `write_capabilities`, `write_preview` and the row writer they share | 672 | 740 |
+| `test_support.rs` | the four shared helpers | 54 | |
 
 No file is over 1,500. `write_preview_rows` serves `caps <path>` and the preview, so the two share
-`preview`, as the block said. `Vouched` goes with them because `write_image_caps` is its only
-reader.
+`preview`, as the block said. `Vouched` goes with them because `write_image_capabilities` is its
+only reader.
 
 Visibility widens in one place. `write_config_values`, private today, is read by `endowment` and
 `preview`, so it becomes `pub(super)` and `lib.rs` imports it privately for the second. The four
@@ -70,15 +70,17 @@ test helpers become `pub(crate)` inside a `#[cfg(test)]` module.
 
 ## What moving the code costs
 
-- The cap ratchet. `lib.rs` naming `write_caps` and `write_image_caps` in its re-exports counts as
-  two new identifiers. The worklist (`design/naming/capability-worklist.md`) already lists both,
-  with `write_capabilities` as the target. #1913 met the same gate with `CapKind`, and the answer
-  there was to apply calef's 2026-10-06 (UTC) ruling early rather than change the gate. This does
-  the same, in its own commit ahead of the move: `write_capabilities` and
-  `write_image_capabilities`. That touches two call sites in `components/src/swish/capabilities.rs`,
-  the one change outside the crate beyond the block's comment.
-- The comment-block ratchet. `write_sweep`'s 45-line doc moves to `batching.rs` whole, and §267's
-  2026-10-11 (UTC) amendment carries its row there. Nothing is cut.
+- The cap ratchet. `lib.rs` naming `write_caps` and `write_image_caps` in its re-exports would
+  count as two new identifiers. The worklist (`design/naming/capability-worklist.md`) already lists
+  both, with `write_capabilities` as the target. #1913 met the same gate with `CapKind`, and the
+  answer there was to apply calef's 2026-10-06 (UTC) ruling early rather than change the gate.
+  This does the same, in its own commit ahead of the move: `write_capabilities` and
+  `write_image_capabilities`. That touches two call sites in
+  `components/src/swish/capabilities.rs`, the one change outside the crate beyond the block's
+  comment, and banks the ratchet's ceiling from 2,844 to 2,827.
+- The comment-block ratchet. `write_sweep`'s 45-line doc moves to `batching.rs` whole, and the
+  2026-10-11 (UTC) amendment to §267 (a comment states the constraint as it is now) carries its
+  row there. Nothing is cut.
 - `the_heap_cap_is_named_in_kib` moves to `say/tests.rs`, and its `cap` allowance moves with it.
 - `design/file-length-baseline.tsv` and `design/parent-index-baseline.tsv` drop their rows.
 - Intra-doc links. `status.rs` takes no glob, since it uses nothing from the root, so its three
@@ -86,5 +88,5 @@ test helpers become `pub(crate)` inside a `#[cfg(test)]` module.
 
 ## What it does not decide
 
-No public path, sentence, wire format or behavior changes. No function body changes apart from the
-rename.
+No sentence, wire format or behavior changes. No function body changes apart from the rename, and
+no public path changes apart from the two renamed functions.
