@@ -269,20 +269,21 @@ fn fill_stat(mut buf: Out<stat>, md: &std::fs::Metadata, path: &str) {
         tv_sec: mtime.as_secs() as time_t,
         tv_nsec: c_long::from(mtime.subsec_nanos() as i32),
     };
-    let mut st = stat::default();
-    st.st_dev = 0;
-    st.st_ino = ino_of(path) as ino_t;
-    st.st_nlink = 1;
-    st.st_mode = mode;
-    st.st_uid = NOBODY as uid_t;
-    st.st_gid = NOBODY as gid_t;
-    st.st_size = md.len() as off_t;
-    st.st_blksize = PAGE as blksize_t;
-    st.st_blocks = md.len().div_ceil(512) as blkcnt_t;
-    st.st_atim = timespec { ..ts };
-    st.st_mtim = timespec { ..ts };
-    st.st_ctim = ts;
-    buf.write(st);
+    buf.write(stat {
+        st_dev: 0,
+        st_ino: ino_of(path) as ino_t,
+        st_nlink: 1,
+        st_mode: mode,
+        st_uid: NOBODY as uid_t,
+        st_gid: NOBODY as gid_t,
+        st_size: md.len() as off_t,
+        st_blksize: PAGE as blksize_t,
+        st_blocks: md.len().div_ceil(512) as blkcnt_t,
+        st_atim: timespec { ..ts },
+        st_mtim: timespec { ..ts },
+        st_ctim: ts,
+        ..stat::default()
+    });
 }
 
 fn duration_to_timespec(d: core::time::Duration) -> timespec {
@@ -445,25 +446,28 @@ impl Pal for Sys {
             Description::Stream(end) => {
                 // A pipe end is a FIFO and a socket pair's end a socket, with nothing to size.
                 let mut b = buf;
-                let mut st = stat::default();
-                st.st_mode = if end.socket {
+                let kind = if end.socket {
                     crate::header::sys_stat::S_IFSOCK
                 } else {
                     crate::header::sys_stat::S_IFIFO
-                } | 0o600;
-                st.st_nlink = 1;
-                st.st_blksize = PAGE as blksize_t;
-                b.write(st);
+                };
+                b.write(stat {
+                    st_mode: kind | 0o600,
+                    st_nlink: 1,
+                    st_blksize: PAGE as blksize_t,
+                    ..stat::default()
+                });
                 Ok(())
             }
             _ => {
                 // The standard streams are character devices with no size.
                 let mut b = buf;
-                let mut st = stat::default();
-                st.st_mode = crate::header::sys_stat::S_IFCHR | 0o620;
-                st.st_nlink = 1;
-                st.st_blksize = PAGE as blksize_t;
-                b.write(st);
+                b.write(stat {
+                    st_mode: crate::header::sys_stat::S_IFCHR | 0o620,
+                    st_nlink: 1,
+                    st_blksize: PAGE as blksize_t,
+                    ..stat::default()
+                });
                 Ok(())
             }
         })
