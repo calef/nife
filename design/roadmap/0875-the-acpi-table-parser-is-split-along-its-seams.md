@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: IN-PROGRESS
 raised: 2026-10-11
+branch: milestone/875-the-acpi-table-parser-is-split-along-its-seams
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 282, 293
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -20,6 +21,14 @@ lines) sets the ceiling. Milestone 840 (the scheduler file is split along its se
 The cut and every module name below are calef's call. A lane writes them up as a
 `status: PROPOSED` file in `design/decisions/` before it moves a line, and its pull request
 carries `needs-architect`.
+
+The lane wrote it up on 2026-10-12 (UTC) as §293 (the ACPI table parser splits into one private
+module per table), `status: PROPOSED`, with the file re-measured on main at `17b23264e`. Three
+decisions had answered forks 1 and 2 below by then: §272 (the grant-plan crate root splits into
+private modules), §274 (the filesystem-protocol crate root splits into its module files) and §279
+(the system-initializer crate root splits into private modules). §282 (when a file is split, the
+parent becomes an index) moves the RSDP, header and root walk out of `acpi.rs` too. §293 applies
+them and asks nothing. Every module name ships provisional.
 
 Reuse: not applicable; this moves code and adds none. The precedent is in this module already.
 The IVRS, AMD's counterpart of the DMAR, lives in `acpi/ivrs.rs` (694 lines) with its own tests.
