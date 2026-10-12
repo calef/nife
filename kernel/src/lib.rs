@@ -35,6 +35,12 @@
     allow(clippy::new_without_default, clippy::result_unit_err)
 )]
 #![feature(custom_test_frameworks)]
+// The five x86_64 tables the CPU reads by address (`IDT`, `TSS`, `GDT`, the installed port grant
+// and the bench I/O bitmap) are `core::cell::SyncUnsafeCell`s, by calef's ruling of 2026-10-09 on
+// milestone 891 (a mutable static becomes an atomic, a lock or a recorded cell). The gate is a
+// dependency on an unstable `core` API: if it changes shape, the fallback is a hand-written wrapper;
+// if it stabilizes, delete this line.
+#![feature(sync_unsafe_cell)]
 #![test_runner(crate::testing::runner)]
 #![reexport_test_harness_main = "test_main"]
 
