@@ -16,7 +16,7 @@ slug are drafts. **This is an architect's call**: it is the spelling of §134's 
 The fork. §134 (a harness carries a machine-replayable falsification record) names a patch `<package>/falsifications/<module.path>.<fn>.patch`, keyed on a
 function. Milestone 742 made a swish-check record replayable, and the record sits above
 `swish_check_boot`, the function that types every line. So exactly one swish-check record can exist:
-`xtask/falsifications/swish_check.swish_check_boot.patch`, which today falsifies the
+`xtask/falsifications/swish_check.boot.swish_check_boot.patch`, which today falsifies the
 `installed/unvouched` line (row 31 of notes/confinement-claims.md). A second line's record has no
 path to take.
 
