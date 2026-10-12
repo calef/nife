@@ -1,6 +1,8 @@
 ---
-status: PROPOSED
+status: DECIDED
 raised: 2026-10-11
+decided: 2026-10-11
+ratified_by: calef
 ---
 
 # 279. The system-initializer crate root splits into private modules
@@ -11,8 +13,34 @@ says is calef's call before a line moves. Written by lane
 `milestone/843-the-system-initializer-crate-root-is-split-along-its-seams`. *(Section number
 provisional until the merge queue lands it.)*
 
-It blocks the move and nothing else. Two questions are open, each with a recommendation. Every
-module name is provisional and is left to calef's naming pass, so neither question asks about one.
+It blocked the move and nothing else. Two questions were raised, each with a recommendation, and
+both are now answered. Every module name is provisional and is left to calef's naming pass, so
+neither question asked about one.
+
+## The ruling
+
+| Question | calef's words | What it decides |
+|---|---|---|
+| 1. Move items alone now, while `boot` stays one body | *"A"*, 2026-10-11 (UTC), on [PR #1957](https://github.com/nifeos/nife/pull/1957) | Move now. Decomposing `boot` and `spawn_service` is the follow-on, not this milestone. |
+| 2. Where the layout constants go | *"Agreed, make the parent an index."*, 2026-10-11 (UTC), on [PR #1959](https://github.com/nifeos/nife/pull/1959) | A module of their own, kept whole, and the crate root an index. |
+
+Question 1 is the recommendation, A. The follow-on is
+[the progenitor's boot is split by phase](../roadmap/proposals/the-progenitors-boot-is-split-by-phase.md),
+which covers `boot` and `spawn_service` with the phase boundaries measured. It matches
+[the function-length ratchet proposal](../roadmap/proposals/a-ratchet-on-function-length.md), which
+records calef's 2026-10-09 (UTC) ruling that `kernel_main` is split by boot phase and leaves every
+other long function to a split of its own: "Each other long function is its own split". That
+proposal's own lane builds the ratchet; this one does not.
+
+Question 2 was not answered on this pull request. calef set the precedent for every split on the
+pull request of milestone 872 (the kernel's user-mode file is split along its seams). When a file is
+split, the parent holds crate docs, `mod` lines, `use` lines and re-exports, and nothing that can
+grow into a feature. Every type and function lives in a child named for its topic. The only
+exception is a handful of tiny items every child uses. So the layout constants leave `lib.rs`.
+Beside their users would put `boot`'s file over 2,000 lines, so they take the third alternative
+below, a module of their own, kept whole as the collision map it is. The same rule moves the rest
+of the crate root out, as the cut shows. A separate lane is writing the precedent up as its own
+decision, with a lint.
 
 ## What the file is today
 
@@ -44,25 +72,34 @@ and `fixtures/src/hello.rs`.
 ## The cut
 
 Private modules, children of the crate root, each taking `use super::*` as `activation.rs` and
-`std_layout.rs` already do. A private item in the crate root is visible to every child without a
-change, so only items that move and are reached from another child become `pub(super)`. No path
-outside the crate changes. Names are the block's, all provisional.
+`std_layout.rs` already do. An item that moves and is reached from another child becomes
+`pub(super)`, which in a child of the crate root means the crate. No path outside the crate
+changes: `lib.rs` re-exports the eight public items by name. Names are provisional.
 
-| file | holds | lines, about |
+| file | holds | lines |
 |---|---|---|
-| `lib.rs` | docs, public types, the layout constants (question 2), `announce`, `measured`, `must`, `fail` | 1,110 |
-| `boot_sequence.rs` | the password helpers and `boot` | 1,760 |
-| `spawn_loop.rs` | the slot helpers, `Channels`, `Fs`, `spawn_service` | 1,190 |
-| `children.rs` | the builders: grant, caretaker, network stack, graphical terminal, terminal | 880 |
-| `image_request.rs` | `SpawnEndpoint`, frames, staging, vouching | 570 |
-| `client_windows.rs` | client windows, bound channels, `FsCalls` | 470 |
+| `lib.rs` | crate docs, `mod` lines, `use` lines, re-exports | 350 |
+| `endowment.rs` | `BootEndowment`, `SecondDirGrant` | 269 |
+| `layout.rs` | the layout constants, page budgets and each stack's constants, whole | 391 |
+| `boot_sequence.rs` | `boot`, the password helpers, `EndowmentSlices` | 1,755 |
+| `spawn_loop.rs` | the slot helpers, `Channels`, `Fs`, `spawn_service` | 1,176 |
+| `children.rs` | the builders: grant, caretaker, network stack, graphical terminal, terminal; `reclaim`, `memory_region_split` | 861 |
+| `image_request.rs` | `SpawnEndpoint`, frames, staging, vouching | 572 |
+| `client_windows.rs` | client windows, bound channels, `FsCalls`, `PAGE_BYTES` | 473 |
+| `announcement.rs` | `announce` and `sentence`, what the progenitor says | 66 |
+| `measurement.rs` | `measured` | 28 |
+| `fault.rs` | `must`, `must_ok`, `fail` | 29 |
 | `activation.rs`, `std_layout.rs` | unchanged | 431, 189 |
 
-Every file is under the ceiling of §266 (a Rust source file stays under 2,000 lines). The block's
-`measurement` module is gone: measured boot is now 45 lines and every caller is `boot`, so it stays
-beside `must` and `fail` in `lib.rs`.
+Every file is under the ceiling of §266 (a Rust source file stays under 2,000 lines).
 
-## Question 1: is moving items alone worth taking while `boot` stays one body?
+What stayed in the crate root: the crate docs (300 lines, with the `no_run` example), the `mod` and
+`use` lines, and the re-exports. Nothing else qualified for the exception. `must`, `must_ok` and
+`fail` are tiny, but only `boot_sequence` and `children` call them, so they have a child of their
+own. `EndowmentSlices` is a type alias only `boot` uses, so it left the layout block for `boot`'s
+file.
+
+## Question 1, as raised: is moving items alone worth taking while `boot` stays one body?
 
 `boot` is 1,700 lines in one body, with 139 `let` bindings, 72 of them at its top level.
 `spawn_service` is 1,026 lines with 93. §266's checked reason is that an agent sees a whole file in
@@ -116,7 +153,7 @@ The ratchet is the mechanism that keeps the follow-on from being forgotten. `boo
 be a new file, so it meets the 2,000 ceiling outright and has no baseline row; the first change
 that would push it past 2,000 fails `script/lint` and has to decompose first.
 
-## Question 2: do the layout constants stay in `lib.rs`, or move beside their users?
+## Question 2, as raised: do the layout constants stay in `lib.rs`, or move beside their users?
 
 Lines 589 to 974: about 60 constants and one type alias. Who reads each, from a grep of the crate:
 
@@ -160,11 +197,9 @@ The alternatives:
   Costs `pub(super)` on all 60 and a named re-export of the five public ones, for a crate root that
   is already under the ceiling either way.
 
-The recommendation holds at equal cost: its reasons are that it widens nothing and keeps the map one
-read, not that it moves fewer lines. 840 and 842 moved single-user constants with their user, and
-this departs from them because neither file's constants were a map. If calef says "beside their
-users", the lane does that with a third file for `boot`'s share. If he says "a module of their own",
-the lane does that. Neither changes the rest of the cut.
+The recommendation held at equal cost: its reasons were that it widens nothing and keeps the map
+one read, not that it moves fewer lines. It is superseded by the index precedent above, which takes
+the third alternative. The cost that alternative names is paid: 51 constants became `pub(super)`.
 
 ## What the move costs beyond moving code
 
