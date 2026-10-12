@@ -118,6 +118,45 @@ pub fn run() -> ! {
         arch::halt(arch::HaltReason::measurement_boot());
     };
 
+    let pool = build_pool();
+
+    // Where the kernel put each task at spawn, kept rather than forgotten: milestone 240's finding
+    // is that this decides throughput on real silicon by up to fifteenfold, so a result printed
+    // without it is a number nobody can interpret. Servers first, then tasks, which is the order
+    // `census_letter` reads them back in.
+    let mut placed = [u8::MAX; ECHO_SERVERS + MAX_TASKS];
+
+    // **The servers before the tasks.** A mixer whose server is not yet receiving simply parks on
+    // the endpoint, so the order is not load-bearing for correctness; starting the answering half
+    // first keeps a fresh boot's first subrun from timing a server's spawn.
+    spawn_echo_servers(image, &pool.echo, &mut placed);
+    spawn_tasks(image, &pool, &mut placed);
+
+    let hz = arch::timer::frequency();
+    print_preamble(cpus, hz, &placed);
+
+    for &tasks in &TASK_SWEEP {
+        measure_point(pool.report, &pool.go, tasks, hz);
+    }
+
+    println!("{DONE}");
+    // Parked, not exited: the watcher saw the marker and tears the run down, and a forgotten QEMU
+    // costs nothing in `wfi` (AGENTS.md's rule).
+    arch::halt(arch::HaltReason::measurement_boot());
+}
+
+/// The supervisor's endpoints and budgets, built once with the pool rather than per subrun.
+struct Pool {
+    report: sched::RendezvousId,
+    go: [sched::RendezvousId; MAX_TASKS],
+    budget: [u64; MAX_TASKS],
+    child_done: [sched::RendezvousId; MAX_TASKS],
+    echo: [sched::RendezvousId; ECHO_SERVERS],
+}
+
+/// Create the report endpoint, each task's go endpoint, budget and child-done endpoint, and the
+/// echo servers' endpoints.
+fn build_pool() -> Pool {
     let report = sched::create_rendezvous();
     let mut go = [0u64; MAX_TASKS];
     for slot in &mut go {
@@ -146,16 +185,21 @@ pub fn run() -> ! {
     for slot in &mut echo {
         *slot = sched::create_rendezvous();
     }
+    Pool {
+        report,
+        go,
+        budget,
+        child_done,
+        echo,
+    }
+}
 
-    // Where the kernel put each task at spawn, kept rather than forgotten: milestone 240's finding
-    // is that this decides throughput on real silicon by up to fifteenfold, so a result printed
-    // without it is a number nobody can interpret. Servers first, then tasks, which is the order
-    // `census_letter` reads them back in.
-    let mut placed = [u8::MAX; ECHO_SERVERS + MAX_TASKS];
-
-    // **The servers before the tasks.** A mixer whose server is not yet receiving simply parks on
-    // the endpoint, so the order is not load-bearing for correctness; starting the answering half
-    // first keeps a fresh boot's first subrun from timing a server's spawn.
+/// Spawn the echo servers and record the core each was placed on.
+fn spawn_echo_servers(
+    image: &'static [u8],
+    echo: &[sched::RendezvousId; ECHO_SERVERS],
+    placed: &mut [u8; ECHO_SERVERS + MAX_TASKS],
+) {
     for (i, &ep) in echo.iter().enumerate() {
         let grant = rendezvous_cap(ep, Rights::READ);
         let started = sched::spawn_reporting_placement(move || {
@@ -176,7 +220,17 @@ pub fn run() -> ! {
         };
         placed[i] = u8::try_from(cpu).unwrap_or(u8::MAX);
     }
+}
 
+/// Spawn every task with its five grants and record the core each was placed on.
+fn spawn_tasks(image: &'static [u8], pool: &Pool, placed: &mut [u8; ECHO_SERVERS + MAX_TASKS]) {
+    let &Pool {
+        report,
+        ref go,
+        ref budget,
+        ref child_done,
+        ref echo,
+    } = pool;
     for i in 0..MAX_TASKS {
         // Slot order is `job_mix`'s, and both sides read it from there rather than from a second
         // copy of the numbering. The rights are the least each use needs: a task may write its
@@ -217,8 +271,10 @@ pub fn run() -> ! {
         };
         placed[ECHO_SERVERS + i] = u8::try_from(cpu).unwrap_or(u8::MAX);
     }
+}
 
-    let hz = arch::timer::frequency();
+/// The start marker, what the run measures and does not, and the spawn census.
+fn print_preamble(cpus: usize, hz: u64, placed: &[u8; ECHO_SERVERS + MAX_TASKS]) {
     println!();
     println!(
         "{STARTED} {MAX_TASKS} tasks and {ECHO_SERVERS} servers on {cpus} online core(s), \
@@ -241,59 +297,61 @@ pub fn run() -> ! {
          ticks= and jpm=, which is a different statistic from a different mix and is not \
          comparable with jpm_median="
     );
-    print_census(&placed);
+    print_census(placed);
     println!(
         "{CENSUS} placement decides throughput on real silicon by up to fifteenfold \
          (notes/soak.md, milestone 240), so a jobs-per-minute figure from ONE boot is a draw and \
          not a result; notes/job-mix.md's procedure asks for repeated boots"
     );
+}
 
-    for &tasks in &TASK_SWEEP {
-        let mut samples = [0u64; REPEATS];
-        let mut kind_ticks = [0u64; JOB_KINDS];
-        let mut region_ticks = [0u64; JOB_KINDS];
-        #[cfg(feature = "lock_wait")]
-        crate::lock_wait::reset();
-        for (repeat, sample) in samples.iter_mut().enumerate() {
-            let ticks = subrun(report, &go[..tasks]);
-            println!("{SUBRUN}tasks={tasks} repeat={repeat} ticks={ticks}");
-            *sample = ticks;
-            breakdown(report, &go[..tasks], &mut kind_ticks, &mut region_ticks);
-        }
-        let Some(spread) = job_mix::spread(&mut samples) else {
-            unreachable!("REPEATS is a nonzero constant");
-        };
-        let jobs = tasks as u64 * job_mix::JOBS_PER_TASK;
-        println!(
-            "{POINT}{tasks} jobs={jobs} repeats={REPEATS} ticks_min={} ticks_median={} \
-             ticks_max={} jpm_median={}",
-            spread.min,
-            spread.median,
-            spread.max,
-            job_mix::jobs_per_minute(jobs, spread.median, hz)
-        );
-        // Per kind, summed over every task and every repeat at this point: what each kind of job
-        // cost on average, and how much of that was the region calls. Totals rather than a
-        // per-job figure alone, so a reader can re-derive the division.
-        for kind in 0..JOB_KINDS {
-            let kind_jobs = job_mix::jobs_of_kind(kind as u8) * tasks as u64 * REPEATS as u64;
-            println!(
-                "{KIND} tasks={tasks} kind={} jobs={kind_jobs} ticks={} per_job={} \
-                 region_ticks={}",
-                job_mix::KIND_NAMES[kind],
-                kind_ticks[kind],
-                kind_ticks[kind] / kind_jobs.max(1),
-                region_ticks[kind]
-            );
-        }
-        #[cfg(feature = "lock_wait")]
-        print_lock_wait(tasks);
+/// One point of the sweep: `REPEATS` subruns of `tasks` tasks, then the spread and the per-kind
+/// breakdown.
+fn measure_point(
+    report: sched::RendezvousId,
+    go: &[sched::RendezvousId; MAX_TASKS],
+    tasks: usize,
+    hz: u64,
+) {
+    let mut samples = [0u64; REPEATS];
+    let mut kind_ticks = [0u64; JOB_KINDS];
+    let mut region_ticks = [0u64; JOB_KINDS];
+    #[cfg(feature = "lock_wait")]
+    crate::lock_wait::reset();
+    for (repeat, sample) in samples.iter_mut().enumerate() {
+        let ticks = subrun(report, &go[..tasks]);
+        println!("{SUBRUN}tasks={tasks} repeat={repeat} ticks={ticks}");
+        *sample = ticks;
+        breakdown(report, &go[..tasks], &mut kind_ticks, &mut region_ticks);
     }
-
-    println!("{DONE}");
-    // Parked, not exited: the watcher saw the marker and tears the run down, and a forgotten QEMU
-    // costs nothing in `wfi` (AGENTS.md's rule).
-    arch::halt(arch::HaltReason::measurement_boot());
+    let Some(spread) = job_mix::spread(&mut samples) else {
+        unreachable!("REPEATS is a nonzero constant");
+    };
+    let jobs = tasks as u64 * job_mix::JOBS_PER_TASK;
+    println!(
+        "{POINT}{tasks} jobs={jobs} repeats={REPEATS} ticks_min={} ticks_median={} \
+         ticks_max={} jpm_median={}",
+        spread.min,
+        spread.median,
+        spread.max,
+        job_mix::jobs_per_minute(jobs, spread.median, hz)
+    );
+    // Per kind, summed over every task and every repeat at this point: what each kind of job
+    // cost on average, and how much of that was the region calls. Totals rather than a
+    // per-job figure alone, so a reader can re-derive the division.
+    for kind in 0..JOB_KINDS {
+        let kind_jobs = job_mix::jobs_of_kind(kind as u8) * tasks as u64 * REPEATS as u64;
+        println!(
+            "{KIND} tasks={tasks} kind={} jobs={kind_jobs} ticks={} per_job={} \
+             region_ticks={}",
+            job_mix::KIND_NAMES[kind],
+            kind_ticks[kind],
+            kind_ticks[kind] / kind_jobs.max(1),
+            region_ticks[kind]
+        );
+    }
+    #[cfg(feature = "lock_wait")]
+    print_lock_wait(tasks);
 }
 
 /// One subrun: release `go.len()` tasks, wait for all of them, and return the wall-clock ticks.
