@@ -435,7 +435,7 @@ def analyse(text, milestones, built_on, decisions, exists, last_touched, appendi
             if n in decisions and claimed in set(decisions.values()) and decisions[n] != claimed:
                 report("status-word", start + m.start(),
                        f"{RISKS}:{lineno(start + m.start())}: {label} says §{n} is {claimed}; "
-                       f"the decision index records {decisions[n]}")
+                       f"its frontmatter records {decisions[n]}")
 
         # ---- 6: the entry is older than a status change it depends on --------
         dates = DATE.findall(body) + ([run] if run and ISO_DATE.fullmatch(run) else [])

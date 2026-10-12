@@ -1,7 +1,8 @@
 ---
-status: NOT-STARTED
+status: SUPERSEDED
 raised: 2026-09-19
 promoted_from: the-decision-index-is-still-hand-maintained
+superseded_by: 582
 milestone_dependencies: none
 decision_dependencies: none
 machine_requirements: none
@@ -10,7 +11,7 @@ needs_person: no
 ---
 # 513. The decision index is still hand-maintained
 
-*(Number provisional until the merge queue lands it.)* Promoted from the
+Superseded 2026-10-12 (UTC), by milestone 582 (a decision's status becomes a field, and the index becomes generated). It generated the table from the files on 2026-09-23, which is the work below. Then calef retired the table on 2026-10-12 (maintainer/retire-decisions-index). `script/decisions` prints the index from the files. *(Number provisional until the merge queue lands it.)* Promoted from the
 proposal `the-decision-index-is-still-hand-maintained`, filed 2026-09-19, on calef's instruction of
 2026-09-20 to give every proposal on `main` a number. The text below is the proposal's own, unedited
 except for this paragraph: the argument is its author's and promotion is not the moment to improve

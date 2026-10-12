@@ -2,7 +2,7 @@
 //! actually has** (milestone 494 (a driver for the network card a PC actually has); notes/e1000e.md).
 //!
 //! The same `net_stack`, the same smoltcp, the same socket contract and the same client role as
-//! the virtio gates in `tests.rs`, with one thing changed: the NIC is QEMU's `e1000e` (an Intel
+//! the virtio gates in `network_tests.rs`, with one thing changed: the NIC is QEMU's `e1000e` (an Intel
 //! 82574L, the family xenon's I219 belongs to), reset and programmed by the kernel and driven at
 //! EL0 through two pages of BAR0 and a DMA region confined by the IOMMU. **One module for all three
 //! architectures**, because this is the first NIC the x86_64 leg has, and the parity claim is that
@@ -13,7 +13,7 @@
 
 use super::*;
 
-/// `socket_test_client`'s TCP echo selector and its success word; the same numbers `tests.rs` and
+/// `socket_test_client`'s TCP echo selector and its success word; the same numbers `network_tests.rs` and
 /// `riscv_virtio_tests` spell for the virtio gates (`components/src/socket_test_client.rs`).
 const NET_TEST_TCP_ECHO: u64 = 2;
 /// `socket_test_client`'s UDP selector against slirp's TFTP server.
