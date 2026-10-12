@@ -113,9 +113,9 @@ pub mod durability {
 /// reader meets, and this one is met by anyone who lists the bench image after a run.
 pub const THROUGHPUT_NAME: &str = "throughput";
 
-/// **The shape of milestone 38's throughput measurement**, shared by the client that performs
-/// it (`fixtures/src/fs_test_client.rs`, the throughput role) and the bench boot that names its
-/// results (`kernel/src/bench.rs`). Two programs agree on these, so they are a crate and not a
+/// **The shape of milestone 38's throughput measurement**, shared by the client that performs it
+/// (`fixtures/src/fs_test_client/throughput.rs`, the throughput role) and the bench boot that names
+/// its results (`kernel/src/bench.rs`). Two programs agree on these, so they are a crate and not a
 /// constant written twice (CLAUDE.md rule 7).
 pub mod throughput {
     /// **The transfer unit: the whole file channel, which is the most a single `filesystem_protocol`

@@ -152,7 +152,7 @@ bench = false
 # "fs_test_client".
 [[bin]]
 name = "fs_test_client"
-path = "src/fs_test_client.rs"
+path = "src/fs_test_client/main.rs"
 test = false
 bench = false
 

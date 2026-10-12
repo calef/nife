@@ -288,7 +288,7 @@ boot_slot,SlotHeader::decode,replace < with ==,killed,"killed; a_slot_header_nee
 boot_slot,SlotHeader::decode,replace || with &&,killed,"killed; a_slot_header_needs_exactly_its_own_length in crates/boot_slot/tests/a_bad_upgrade_rolls_back.rs, re-run with cargo mutants"
 boot_slot,SlotHeader::encode,replace < with <=,killed,"killed; a_slot_header_needs_exactly_its_own_length in crates/boot_slot/tests/a_bad_upgrade_rolls_back.rs, re-run with cargo mutants"
 capability,"storage::CapabilityTable<O, N>::fill",replace > with >=,equivalent,"after used == peak, fill's > to >= calls note_peak with a pair the global fetch_max already holds, so the recorded high-water mark is unchanged; re-run with cargo mutants still reports it"
-capability,"storage::CapabilityTable<O, N>::occupied_mask",replace & with |,killed,"killed; the_occupied_mask_is_exactly_the_occupied_slots in crates/capability/src/lib.rs, re-run with cargo mutants"
+capability,"storage::CapabilityTable<O, N>::occupied_mask",replace & with |,killed,"killed; the_occupied_mask_is_exactly_the_occupied_slots in crates/capability/src/tests.rs, re-run with cargo mutants"
 device_tree_blob,,replace * with +,killed,"killed; a_tree_of_one_and_a_half_mebibytes_is_not_too_large in crates/device_tree_blob/tests/hostile.rs, re-run with cargo mutants"
 address_space_map,check_image,replace && with ||,killed,"killed; an_image_linked_for_the_old_layout_is_outside_the_band now asserts the exact refusal for an inverted range and for a start below the band, re-run with cargo mutants"
 address_space_map,check_image,replace > with >=,equivalent,"end == IMAGE.end with the start inside the band means holds() already accepted, so the branch is unreachable at that boundary and > and >= agree; re-run with cargo mutants still reports it"
@@ -583,7 +583,7 @@ byte_sink_protocol,req,replace | with ^,equivalent,"| over operands on disjoint 
 byte_sink_protocol,pack,replace < with <=,equivalent,at bytes.len() == INLINE_MAX both arms take INLINE_MAX
 c_seam,,replace << with >>,equivalent,"1 << 0 under >> is 1 >> 0, which is also 1"
 calendar,UtcOffset::from_hm,replace < with <=,equivalent,"a zero argument has no sign to disagree with, and the hours != 0 and minutes != 0 terms already exclude it, so < and <= decide the same"
-calendar,Writer::byte,replace < with <=,killed,killed; a_full_writer_drops_the_next_byte_instead_of_panicking in crates/calendar/src/lib.rs
+calendar,Writer::byte,replace < with <=,killed,killed; a_full_writer_drops_the_next_byte_instead_of_panicking in crates/calendar/src/tests.rs
 calendar,Writer::offset,replace < with <=,equivalent,"Writer::offset is only called for a non-zero offset (zero prints Z or UTC), so m < 0 and m <= 0 agree on every call"
 calendar,DateTime::parse_rfc3339_bytes,replace + with -,equivalent,"the dropped length check is repeated by number() and expect(), which return the same Error::Syntax for a short tail"
 capability,note_peak,replace | with ^,equivalent,argued in notes/mutation-testing/regressions-capability-to-dtb.md; the 2026-10-07 per-crate re-run still reports it
@@ -952,7 +952,7 @@ package_index,accept,replace + with -,killed,killed by a_stem_of_the_longest_len
 package_index,entry,replace > with ==,killed,killed by a_stem_of_the_longest_length_is_read_and_judged
 package_index,entry,replace > with >=,killed,killed by a_stem_of_the_longest_length_is_read_and_judged
 package_index,entry,replace || with &&,killed,killed by a_stem_of_the_longest_length_is_read_and_judged
-package_index,ipv4_literal,replace || with &&,gap,"two mutants share this key. The second || is equivalent on every input that reaches it: is_host admits only letters, digits, hyphens and dots, and the one non-digit u8::from_str accepts is a leading +. The first differs only on a zero-padded part of four or more digits (0010.0.0.1), which the original reads as a name and the mutant as 10.0.0.1, so refused as private. Either host is then resolved and its answers held to public_address by CheckedLocation; whether such a host should be refused outright is a policy question this triage does not settle; the 2026-10-12 per-crate re-run still reports it"
+package_index,ipv4_literal,replace || with &&,killed,"killed by package_index::tests::a_host_that_ends_in_a_number_must_be_a_canonical_address. Was a gap: the original read a zero-padded host such as 0010.0.0.1 as a name. calef ruled on 2026-10-12 (UTC) that a host ending in a number is canonical IPv4 or refused (#2020), and ipv4_literal's one || is now the ends-in-a-number test, which that test's 0010.0.0.1 kills"
 package_index,parse_port,replace > with ==,killed,killed by a_location_at_each_limit_is_read_and_one_past_it_is_not
 package_index,parse_port,replace > with >=,killed,killed by a_location_at_each_limit_is_read_and_one_past_it_is_not
 package_index,parse_port,replace || with &&,killed,killed by a_location_at_each_limit_is_read_and_one_past_it_is_not

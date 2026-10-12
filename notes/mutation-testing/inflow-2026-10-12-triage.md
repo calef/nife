@@ -34,10 +34,10 @@ More than half came from three drivers merged in the window: `e1000e`'s I219 bri
 | `jh7110_clock_and_reset` | 14 | 9 | 5 | 0 |
 | `board_console` | 13 | 13 | 0 | 0 |
 | `screen_console` | 12 | 10 | 2 | 0 |
-| `package_index` | 11 | 10 | 0 | 1 |
+| `package_index` | 11 | 11 | 0 | 0 |
 | 20 more crates, 1 to 9 keys each | 85 | 60 | 24 | 1 |
 | the six caught since 2026-10-05 | 6 | 6 | 0 | 0 |
-| total | 710 | 553 | 153 | 4 |
+| total | 710 | 554 | 153 | 3 |
 
 No survivor was a bug. The kills fall into a few shapes, each already named in the note's "What
 the tool has taught".
@@ -74,14 +74,14 @@ survivors with no row, and are triaged once, under the names cargo-mutants gives
 
 ## BUGS
 
-- The four gaps: `direct_memory_access_validator`'s `verification::ChainMem::racing` is in the
+- The three gaps: `direct_memory_access_validator`'s `verification::ChainMem::racing` is in the
   `cfg(kani)` module, and cargo-mutants 27.1.0 applies `.cargo/mutants.toml`'s `verification::`
   exclusion to function mutants but not to a struct-field deletion. `designware_ethernet`'s two
   `prepare` keys cover the coherence probe's read-back length, which `sim::Memory`'s
   write-allocate cache hides; a no-write-allocate mode would close them. `package_index`'s
-  `ipv4_literal` key differs only for a zero-padded part such as `0010.0.0.1`, read as a name by
-  the original and as `10.0.0.1` by the mutant. Whether such a host should be refused outright is
-  a policy question this lane left open.
+  `ipv4_literal` key was a fourth, differing only for a zero-padded part such as `0010.0.0.1`.
+  calef ruled on 2026-10-12 (UTC) that such a host is refused outright; #2020 built the refusal,
+  and its test `a_host_that_ends_in_a_number_must_be_a_canonical_address` kills the key.
 - `e1000e`'s `accessible` keeps FreeBSD's branch for an identifier already known, which this port's
   only caller never reaches. Its mutants are recorded as equivalent for that reason.
 - Six crate roots grew past their §282 (when a file is split, the parent becomes an index)

@@ -16,7 +16,7 @@ pub(super) const BLK_PAGE_FS: u64 = 0x5000_0000; // FS server's block region (re
 // FS server's file region (redoxfs_server.rs FILE_PAGE): BLK_PAGES pages above BLK_PAGE_FS, so growing
 // the block channel (milestone 138 step 4) cannot walk into it.
 pub(super) const FILE_PAGE_FS: u64 = BLK_PAGE_FS + (BLK_PAGES as u64) * FRAME_SIZE;
-pub(super) const FILE_VA_CLIENT: u64 = 0x0000_0000_0060_0000; // client's file page (fs_test_client.rs FILE_VA)
+pub(super) const FILE_VA_CLIENT: u64 = 0x0000_0000_0060_0000; // client's file page (fs_test_client/channel.rs FILE_VA)
 
 /// A std program's half of the same agreement (notes/abi.md section 4, notes/std.md): the slot the PAL
 /// looks for the FS-service endpoint in, and the VA it expects the shared file page at. Read from

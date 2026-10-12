@@ -34,7 +34,7 @@ which is milestone 23's hot-swap claim in component form.
 - **The FS server** (`redoxfs_server/`, its own workspace because it links the vendored engine) runs the
   no_std RedoxFS core behind a `Disk` trait implemented over blk IPC, allocating everything from its
   own untyped budget through the milestone-27 `GlobalAlloc`. It serves file IPC to clients.
-- **The client** (`fixtures/src/fs_test_client.rs`) is the program a milestone-31 shell will be: it holds only
+- **The client** (`fixtures/src/fs_test_client/main.rs`) is the program a milestone-31 shell will be: it holds only
   a directory capability and opens files by name under it.
 
 The kernel wires all three (`kernel/src/user/fs_service.rs`), handing each a `Spawn` literal that
