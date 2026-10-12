@@ -188,7 +188,9 @@ use supervision_protocol::{
     retype_obj_from as retype_obj, retype_page_frame_from, start_child,
 };
 use timetable::registration;
-use user_mode_runtime::{call, cap_delete, map_page_frame, receive, send, send_cap, yield_now};
+use user_mode_runtime::{
+    call, cap_delete, map_page_frame, receive, send, send_capability, yield_now,
+};
 
 /// The front door: a bare [`login_protocol::CONNECT`], `RECEIVE` (milestone 49).
 const REQUEST: u64 = 0;
@@ -1755,7 +1757,7 @@ fn file_page() -> Option<&'static mut [u8]> {
 /// [`RESULT`] for a [`login_protocol::CONNECTED`] answer and a channel's own private `result` for a
 /// [`login_protocol::OK`] one; both are this process's own copy, always held with `GRANT`.
 fn delegate(ep: u64, slot: u64, rights: u64) {
-    send_cap(ep, slot, rights, 0);
+    send_capability(ep, slot, rights, 0);
 }
 
 /// Zero the identity/secret staged at `va`, on every path: a malformed request, a denial, and a

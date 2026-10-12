@@ -27,7 +27,7 @@ const RESOURCE: u64 = 1;
 #[unsafe(no_mangle)]
 pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
     // Delegate RESOURCE, narrowed to WRITE (dropping GRANT), over CHANNEL.
-    user_mode_runtime::send_cap(CHANNEL, RESOURCE, abi::rights::WRITE, 0);
+    user_mode_runtime::send_capability(CHANNEL, RESOURCE, abi::rights::WRITE, 0);
 
     user_mode_runtime::exit() // one-shot: our authority is passed on, so we leave and the kernel reaps us
 }

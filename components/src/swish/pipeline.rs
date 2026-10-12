@@ -915,7 +915,7 @@ fn spawn_stage(
     // **The argv's frame, then the name set's, before every other capability**
     // (`spawnproto::ARGS_BIT`, `NAMESET_BIT`), as `spawn` sends them.
     if let Some(a) = argv {
-        user_mode_runtime::send_cap(SPAWN, a.frame, abi::rights::READ, 0);
+        user_mode_runtime::send_capability(SPAWN, a.frame, abi::rights::READ, 0);
         cap_delete(a.frame);
     }
     if let Some(w) = &words {

@@ -166,7 +166,7 @@ pub(super) fn words_grant(
 /// Send a words grant's set page, `READ` only (`spawnproto::NAMESET_BIT`), after the argv's.
 pub(super) fn send_set(w: &WordsGrant) {
     if let Some(p) = w.set {
-        user_mode_runtime::send_cap(SPAWN, p.frame, abi::rights::READ, 0);
+        user_mode_runtime::send_capability(SPAWN, p.frame, abi::rights::READ, 0);
         cap_delete(p.frame);
     }
 }
@@ -381,7 +381,7 @@ pub(super) fn run_image(nav: &mut Nav, spec: RunSpec) {
     nav.close_in(t, handle);
     // The argv's frame follows the image's, before every other capability (`spawnproto::ARGS_BIT`).
     if let Some(a) = argv {
-        user_mode_runtime::send_cap(SPAWN, a.frame, abi::rights::READ, 0);
+        user_mode_runtime::send_capability(SPAWN, a.frame, abi::rights::READ, 0);
         cap_delete(a.frame);
     }
     if let Some(w) = &set_grant {
@@ -606,7 +606,7 @@ fn send_frames(dir: u64, handle: u64, pages: u64, staging: u64) -> bool {
         } else {
             read_ok = false;
         }
-        user_mode_runtime::send_cap(SPAWN, frame, abi::rights::READ, i);
+        user_mode_runtime::send_capability(SPAWN, frame, abi::rights::READ, i);
         cap_delete(frame);
     }
     read_ok
@@ -925,7 +925,7 @@ pub(super) fn spawn(e: Endowment, argv: Option<Argv>) {
     // (`spawnproto::ARGS_BIT`), `READ` only: the progenitor copies it and can neither write it nor
     // pass it on. The slot goes now; the region waits for the child's answer.
     if let Some(a) = argv {
-        user_mode_runtime::send_cap(SPAWN, a.frame, abi::rights::READ, 0);
+        user_mode_runtime::send_capability(SPAWN, a.frame, abi::rights::READ, 0);
         cap_delete(a.frame);
     }
     // The name set's frame follows the argv's (`spawnproto::NAMESET_BIT`).

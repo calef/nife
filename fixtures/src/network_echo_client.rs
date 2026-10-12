@@ -47,7 +47,7 @@ use socket_protocol::*;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{
     call, call_receiving, cap_delete, exit, is_granted, map_page_frame, retype_into_page_frame,
-    send, send_cap,
+    send, send_capability,
 };
 
 /// The output slot: the sink contract.
@@ -116,7 +116,7 @@ fn exchange() -> Result<usize, &'static [u8]> {
 /// Attach the page to `socket`, connect, send, receive: the length received, or the step that
 /// failed.
 fn converse(socket: u64, frame: u64) -> Result<usize, &'static [u8]> {
-    if send_cap(
+    if send_capability(
         socket,
         frame,
         rights::READ | rights::WRITE,

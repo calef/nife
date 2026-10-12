@@ -131,7 +131,7 @@ use socket_protocol::*;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{
     call, call_receiving, cntfrq, exit, map_page_frame, now, retype_into_page_frame,
-    retype_sleeper, send, send_cap, sleep_until, yield_now,
+    retype_sleeper, send, send_capability, sleep_until, yield_now,
 };
 
 // =================================================================================================
@@ -439,7 +439,7 @@ fn attach_page_frame(socket: u64) {
         done(RPT_NET_ERROR, 1, 0);
     }
     // Delegate it, narrowed to read/write, with the ATTACH request.
-    if send_cap(
+    if send_capability(
         socket,
         frame,
         rights::READ | rights::WRITE,

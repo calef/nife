@@ -140,7 +140,7 @@
 use user_mode_runtime::mapped_window::MappedWindow;
 use user_mode_runtime::{
     call, destroy_memory_region, exit, map_page_frame, receive, receive_cap,
-    retype_into_page_frame, send, send_cap, split_memory_region, yield_now,
+    retype_into_page_frame, send, send_capability, split_memory_region, yield_now,
 };
 
 /// The login service's front-door request endpoint (slot 0), `WRITE`.
@@ -433,7 +433,7 @@ pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
             send(ru, RUN_UNVOUCHED_MAGIC, 0, 0);
             flags |= F_RUN_UNVOUCHED_WORKS;
         }
-        if send_cap(REPORT, ru, abi::rights::WRITE, 0) == abi::Error::NotPermitted as i64 {
+        if send_capability(REPORT, ru, abi::rights::WRITE, 0) == abi::Error::NotPermitted as i64 {
             flags |= F_RUN_UNVOUCHED_NOT_GRANTABLE;
         }
     }

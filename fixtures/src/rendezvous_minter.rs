@@ -23,7 +23,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use user_mode_runtime::{exit, retype_into_kernel_object, send, send_cap};
+use user_mode_runtime::{exit, retype_into_kernel_object, send, send_capability};
 
 const MEMORY_REGION: u64 = 0;
 const CHANNEL: u64 = 1;
@@ -37,7 +37,7 @@ pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
     let rendezvous = rendezvous as u64;
 
     // Delegate a READ-only view (receive, never send) to whoever is on the channel; we keep WRITE.
-    check(send_cap(CHANNEL, rendezvous, abi::rights::READ, 0) == 0);
+    check(send_capability(CHANNEL, rendezvous, abi::rights::READ, 0) == 0);
 
     // Speak first through our own creation: blocks until the peer receives, which is the proof.
     check(send(rendezvous, 0x77, 0, 0) == 0);

@@ -1085,7 +1085,7 @@ fn send_cap(slot: u64) {
 /// input**. A pipeline that granted both directions would be a two-way channel nobody asked for, and
 /// the narrowing is what stops it rather than a convention the programs are trusted to keep.
 fn delegate(slot: u64, rights: u64) {
-    user_mode_runtime::send_cap(SPAWN, slot, rights, spawnproto::CAP_TAG);
+    user_mode_runtime::send_capability(SPAWN, slot, rights, spawnproto::CAP_TAG);
 }
 
 user_mode_runtime::panic_handler!();

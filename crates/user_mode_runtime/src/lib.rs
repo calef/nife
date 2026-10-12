@@ -31,7 +31,7 @@
 //! method whose own `# Safety` obligation is [`invoke`]'s own ("the kernel validates the capability
 //! and the method before acting"), asserted by hand at every call site with nothing
 //! call-site-specific to check. Fourteen new thin wrappers below (`retype_into_page_frame` through
-//! `send_cap`), plus [`is_granted`] (the shape of §94 (what may live in a userspace library) again:
+//! `send_capability`), plus [`is_granted`] (the shape of §94 (what may live in a userspace library) again:
 //! five programs' identical probe) and the opt-in [`virtio`] module (device-specific, so scoped
 //! like `mapped_window` rather than added here), cover all but one of them; see that one call
 //! site's own comment (`window.rs`'s refusal probe) for why it stays raw.
@@ -1134,7 +1134,11 @@ pub fn reboot(slot: u64) -> i64 {
 /// `SEND_CAP` on the endpoint capability in `slot`: delegate a (possibly narrowed) copy of the
 /// capability in `cap_slot`, narrowed to `rights`, alongside the data word `w1`, and block until a
 /// receiver takes them. `0` or a positive ack on success; a negative `abi::Error`.
-pub fn send_cap(slot: u64, cap_slot: u64, rights: u64, w1: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2). His words: "Ratify ... send_capability, ..." Refused `send_cap` (round 7's
+/// provisional name; capability is spelled out, calef, 2026-10-06).
+pub fn send_capability(slot: u64, cap_slot: u64, rights: u64, w1: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the endpoint, `GRANT` on the delegated capability,
     // and narrows it to `rights` before it delegates anything.
     unsafe { invoke(slot, abi::rendezvous::SEND_CAP, cap_slot, rights, w1) }
