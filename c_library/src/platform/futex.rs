@@ -24,6 +24,9 @@
 //!   A `std` that exported its futex would remove the table and the extra wake.
 //! - **A timed wait burns a core**, as every timed wait in nife's `std` does until the kernel's
 //!   `WAIT` takes a deadline (`notes/futex.md`): `park_timeout` yields until its deadline.
+//!
+//! Name: provisional, lane milestone/836-a-c-library-stage-two-threads (#2009), 2026-10-12 (UTC),
+//! for the module and the file. The pull request records no other name considered.
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -94,6 +97,9 @@ pub unsafe fn wait(addr: *mut u32, val: u32, deadline: Option<&timespec>) -> Res
 /// **Sleep while `word` holds `val`**, until a wake of its address or `deadline` (absolute, on
 /// `CLOCK_MONOTONIC`). `EAGAIN` if the word already differs, `ETIMEDOUT` if the deadline came
 /// first. A return of `Ok` may be spurious, which every caller in relibc allows for.
+///
+/// Name: provisional, lane milestone/836-a-c-library-stage-two-threads (#2009), 2026-10-12 (UTC).
+/// The pull request records no other name considered.
 pub fn wait_on(word: &AtomicU32, val: u32, deadline: Option<&timespec>) -> Result<()> {
     let key = word.as_ptr() as usize;
     let deadline = deadline.map(deadline_of).transpose()?;

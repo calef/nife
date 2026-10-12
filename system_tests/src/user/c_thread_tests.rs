@@ -18,6 +18,9 @@
 //!
 //! The group sizes keep every run inside a process's 16 threads (`std`'s limit, milestone 812's
 //! `BUGS`): hackbench's own default, 10 groups of 40, is 400.
+//!
+//! Name: provisional, lane milestone/836-a-c-library-stage-two-threads (#2009), 2026-10-12 (UTC),
+//! for the module and the file. The pull request records no other name considered.
 
 use super::*;
 

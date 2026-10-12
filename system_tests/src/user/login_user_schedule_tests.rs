@@ -7,8 +7,11 @@
 //! which was over the 1,500 lines the next split tier starts at. The wiring and the budget these
 //! tests share stay in `login_tests`. Named to sort right after `login_tests`, so the suite runs
 //! these next to it; within one module the order was alphabetical, so three of these used to run
-//! before the rest of `login_tests` and now run after it. Name: provisional, for the module and the
-//! file.
+//! before the rest of `login_tests` and now run after it.
+//!
+//! Name: provisional, lane maintainer/files-over-1500 (#2017), 2026-10-12 (UTC), for the module and
+//! the file. Chosen to sort beside `login_tests`, as above; the pull request records no other name
+//! considered.
 
 use credential_protocol::fixture::{ALICE, BOB, WRONG};
 use login_service as ls;

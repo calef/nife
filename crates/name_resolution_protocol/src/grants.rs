@@ -1,7 +1,10 @@
 //! **The grant table**: which badge may resolve which zone, and in which window its page lives.
 //! Moved out of `lib.rs` unchanged by milestone 892 (a std program at the prompt holds the network
 //! and a resolver), whose forget verb grew the crate root, so the root stays an index (§282 (when a
-//! file is split, the parent becomes an index)). Name: provisional.
+//! file is split, the parent becomes an index)).
+//!
+//! Name: provisional, milestone 892's lane (#2011), 2026-10-12 (UTC), for the module and the file.
+//! The pull request records no other name considered.
 
 use domain_name_system::Name;
 

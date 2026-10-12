@@ -185,6 +185,9 @@ struct Aligned<const N: usize>([u8; N]);
 /// does that. Pages rather than the stack: 24 KiB, and the frame that holds them is still live
 /// while the child image runs on the same firmware stack. Never freed, which is what
 /// [`Self::options`] needs: the child reads its `LoadOptions` after this loader has handed off.
+///
+/// Name: provisional, lane maintainer/static-mut-891 (#1997), 2026-10-12 (UTC). The kernel's
+/// `fw_cfg` buffer in `screen.rs` is also `Scratch`; the pull request records no other name.
 #[repr(C)]
 struct Scratch {
     /// LBA 0 through 33 of the candidate disk, read once and then used as the staging buffer for

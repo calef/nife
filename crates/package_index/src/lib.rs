@@ -245,16 +245,29 @@ pub enum AddressRefusal {
 
 /// Why [`Location::parse`] refused a location. Its `Display` says what was wrong, naming the host
 /// where the host is the problem.
+///
+/// Name: provisional, lane maintainer/canonical-ipv4-hosts (#2020), 2026-10-12 (UTC).
+/// Named after the crate's `AddressRefusal` and `package_archive::Refusal`; the pull request
+/// records no other name considered.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LocationRefusal<'a> {
     /// Not `https://`, a host, an optional port and a path within the limits [`Location`] states.
+    ///
+    /// Name: provisional, lane maintainer/canonical-ipv4-hosts (#2020), 2026-10-12 (UTC).
+    /// No other name recorded.
     Malformed,
     /// A host whose last label is a number, so that some reader takes it for an IPv4 address, but
     /// which is not one written the canonical way: four decimal parts, each 0 to 255, no leading
     /// zeros. Refused rather than read, because readers disagree on which address it names
     /// (`0010` is 8 to WHATWG and `inet_aton`, 10 to others).
+    ///
+    /// Name: provisional, lane maintainer/canonical-ipv4-hosts (#2020), 2026-10-12 (UTC).
+    /// No other name recorded.
     NonCanonicalAddress(&'a str),
     /// A canonical address literal [`public_address`] refuses.
+    ///
+    /// Name: provisional, lane maintainer/canonical-ipv4-hosts (#2020), 2026-10-12 (UTC).
+    /// Matches `AddressRefusal::Private`; no other name recorded.
     Private(Ipv4Addr),
 }
 
@@ -384,6 +397,9 @@ pub struct BadLine<'a> {
     /// The line as it arrived.
     pub line: &'a str,
     /// Why, when a listed location is what was refused; `None` for the stem or the digest.
+    ///
+    /// Name: provisional, lane maintainer/canonical-ipv4-hosts (#2020), 2026-10-12 (UTC).
+    /// No other name recorded.
     pub location: Option<LocationRefusal<'a>>,
 }
 

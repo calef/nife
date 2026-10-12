@@ -27,7 +27,10 @@ fn run_as_process(image: &'static [u8], what: &str, out: &mut [u8]) -> usize {
 }
 
 /// **What a caller adds to a process [`run_as_process_with`] builds** (lane
-/// milestone/121-rg-threads, for `rg`'s parallel walk). Names: provisional.
+/// milestone/121-rg-threads, for `rg`'s parallel walk).
+///
+/// Name: provisional, lane milestone/121-rg-threads (#2016), 2026-10-12 (UTC).
+/// The pull request records no other name considered.
 #[derive(Default)]
 pub(super) struct Setup<'a> {
     /// Pages mapped into the space before it runs: `(va, phys, writable)`.
@@ -43,6 +46,9 @@ pub(super) struct Setup<'a> {
 }
 
 /// What [`run_as_process_with`] observed once the program had ended.
+///
+/// Name: provisional, lane milestone/121-rg-threads (#2016), 2026-10-12 (UTC).
+/// The pull request records no other name considered.
 pub(super) struct Ran {
     /// Bytes of stdout.
     pub len: usize,
@@ -57,6 +63,10 @@ pub(super) struct Ran {
 /// process's shared table, the three milestone 812 added included: its own process with `BIND`, its
 /// own first thread and its own space. Then the program runs to its end, and the test checks that
 /// its process ended with every thread reaped and its space gone, and gives every region back.
+///
+/// Name: provisional, lane milestone/836-a-c-library-stage-two-threads (#2009) and lane
+/// milestone/121-rg-threads (#2016), each on its own, 2026-10-12 (UTC). Neither pull request
+/// records another name.
 pub(super) fn run_as_process_with(
     image: &'static [u8],
     what: &str,

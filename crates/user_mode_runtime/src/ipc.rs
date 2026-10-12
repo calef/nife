@@ -4,7 +4,11 @@
 //!
 //! Cut out of `lib.rs` unchanged on 2026-10-12 (UTC) by lane maintainer/files-over-1500, for §282
 //! (when a file is split, the parent becomes an index); the crate root re-exports every public
-//! item, so each keeps its path. Name: provisional, for the module and the file.
+//! item, so each keeps its path.
+//!
+//! Name: provisional, lane maintainer/files-over-1500 (#2017), 2026-10-12 (UTC), for the module and
+//! the file. Named for the calls it holds, one module per seam of the old crate root; the pull
+//! request records no other name considered.
 
 use crate::objects::{self, retype_into_kernel_object};
 use crate::syscall::{invoke, invoke5, invoke6};

@@ -181,6 +181,9 @@ impl SpawnEndpoint {
     /// copy of the resolver's endpoint for the caller to place and delete. `None` with no resolver,
     /// with every badge held by a live job, or if the kernel refused the copy (and then the grant is
     /// forgotten at once).
+    ///
+    /// Name: provisional, milestone 892's lane (#2011), 2026-10-12 (UTC).
+    /// The pull request records no other name considered.
     pub(super) fn grant_resolver(&mut self, label: u64, zone: &str) -> Option<u64> {
         let ep = self.resolver?;
         let entry = self.resolving.iter().position(Option::is_none)?;
@@ -214,6 +217,9 @@ impl SpawnEndpoint {
     /// **Withdraw job `label`'s resolver grant**, if it has one: the resolver denies its badge from
     /// now on and gives up the page it attached. At the job's reap, or at once for a job that never
     /// started.
+    ///
+    /// Name: provisional, milestone 892's lane (#2011), 2026-10-12 (UTC).
+    /// The pull request records no other name considered.
     pub(super) fn forget_resolver(&mut self, label: u64) {
         let (Some(ep), Some(entry)) = (
             self.resolver,

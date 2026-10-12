@@ -21,6 +21,9 @@
 //! - **`poll` wakes for every pipe's change**, not only the ones it watches (above).
 //! - **`AF_UNIX` stream pairs only.** `SOCK_DGRAM` and `SOCK_SEQPACKET` pairs are refused, and
 //!   every other socket call is stage 3's (milestone 837 (a C library, stage 3: sockets)).
+//!
+//! Name: provisional, lane milestone/836-a-c-library-stage-two-threads (#2009), 2026-10-12 (UTC),
+//! for the module and the file. The pull request records no other name considered.
 
 use alloc::collections::VecDeque;
 use alloc::sync::Arc;

@@ -712,7 +712,10 @@ pub mod walk {
     /// that is more than one. A line a person would type, apart from the measurement pins.
     /// Name: provisional (lane milestone/121-rg-threads, 2026-10-12 UTC).
     pub const RG_SEARCH_THREADED: &str = "rg --no-mmap --stats 'walk entry'";
-    /// **[`RG_SEARCH`] told four threads**, whatever the core count. Name: provisional.
+    /// **[`RG_SEARCH`] told four threads**, whatever the core count.
+    ///
+    /// Name: provisional, lane milestone/121-rg-threads (#2016), 2026-10-12 (UTC).
+    /// The pull request records no other name considered.
     pub const RG_SEARCH_FOUR_THREADS: &str = "rg --threads 4 --no-mmap --stats 'walk entry'";
     /// The thread count [`RG_SEARCH_FOUR_THREADS`] names.
     pub const RG_FOUR: usize = 4;
@@ -722,7 +725,10 @@ pub mod walk {
     /// down, then [`WIDE`]'s in name order, then [`NARROW`]'s. Returns its length. Each matching
     /// line is this, `:` and [`SMALL_BODY`]. The kernel harness and the host's `rg` are both held
     /// to this one list, so a parallel walk that prints in another order, or prints a line twice,
-    /// is caught on either side. Name: provisional (lane milestone/121-rg-threads).
+    /// is caught on either side.
+    ///
+    /// Name: provisional, lane milestone/121-rg-threads (#2016), 2026-10-12 (UTC).
+    /// The pull request records no other name considered.
     pub fn rg_match_path(i: usize, buf: &mut [u8; 32]) -> usize {
         let mut len = 0;
         let mut put = |bytes: &[u8], len: &mut usize| {

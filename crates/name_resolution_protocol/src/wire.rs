@@ -45,6 +45,10 @@ pub const OPERATION_GRANT: u64 = 0x10;
 /// its clients sends one when each client ends, which is what lets a resolver serve more than
 /// [`GRANTS_MAX`] clients in its life (milestone 892 (a std program at the prompt holds the network
 /// and a resolver); provisional).
+///
+/// Name: provisional, milestone 892's lane (#2011), 2026-10-12 (UTC).
+/// `system_log_protocol` has its own `OPERATION_FORGET`; the pull request records no other name
+/// considered.
 pub const OPERATION_FORGET: u64 = 0x11;
 
 /// A client's request word.

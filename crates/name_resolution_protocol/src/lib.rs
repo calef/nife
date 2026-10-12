@@ -117,6 +117,9 @@ pub fn grant_messages(badge: u32, zone: &[u8]) -> Option<impl Iterator<Item = (u
 
 /// The [`OPERATION_FORGET`] message that withdraws `badge`'s grant: the control word, and an unused
 /// second word. `None` for badge 0, the spawner's own, which holds no grant to withdraw.
+///
+/// Name: provisional, milestone 892's lane (#2011), 2026-10-12 (UTC).
+/// The pull request records no other name considered.
 pub const fn forget_message(badge: u32) -> Option<(u64, u64)> {
     if badge == 0 {
         return None;
@@ -183,6 +186,10 @@ pub mod endowment {
     /// socket's page through `socket_protocol::stack_slots::OWN_SPACE`. Slots 0 to 3 are the
     /// resolver's own business (`components/src/name_resolver.rs`); this one is here because the
     /// progenitor and the kernel's test harness both place it. Provisional (milestone 892).
+    ///
+    /// Name: provisional, milestone 892's lane (#2011), 2026-10-12 (UTC).
+    /// After `socket_protocol::stack_slots::OWN_SPACE`; the pull request records no other name
+    /// considered.
     pub const OWN_SPACE_SLOT: u64 = 4;
 }
 

@@ -39,6 +39,9 @@
 //! - **Scheduling parameters are accepted and ignored**, since nife's scheduler has one class
 //!   (`header/sched`).
 
+//! Name: provisional, lane milestone/836-a-c-library-stage-two-threads (#2009), 2026-10-12 (UTC),
+//! for the module and the file. The pull request records no other name considered.
+
 use alloc::sync::Arc;
 use core::cell::Cell;
 use core::ptr;
@@ -125,6 +128,9 @@ static LIVE: AtomicU32 = AtomicU32::new(0);
 static NEXT_TID: AtomicI32 = AtomicI32::new(1);
 
 /// **The calling thread's number**, 1 for the first thread to ask (normally the main thread).
+///
+/// Name: provisional, lane milestone/836-a-c-library-stage-two-threads (#2009), 2026-10-12 (UTC).
+/// The pull request records no other name considered.
 pub fn thread_id() -> c_int {
     TID.with(|t| {
         if t.get() == 0 {
@@ -150,6 +156,10 @@ pub fn current_thread() -> Option<&'static Pthread> {
 unsafe extern "C" {
     /// `c_library/c/thread_start.c`: `setjmp` into `env`, then call `start(arg)`; a `longjmp` to
     /// `env` returns `*exit_value` instead.
+    ///
+    /// Name: provisional, lane milestone/836-a-c-library-stage-two-threads (#2009), 2026-10-12
+    /// (UTC). The C side in `c_library/c/thread_start.c` shares it; the pull request records no
+    /// other name considered.
     fn nife_pthread_trampoline(
         start: extern "C" fn(*mut c_void) -> *mut c_void,
         arg: *mut c_void,
