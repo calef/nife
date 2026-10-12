@@ -618,6 +618,14 @@ fn user_fault(frame: &TrapFrame, scause: u64, code: u64) -> ! {
 /// [`riscv_trap_dispatch`] catches `scause` = breakpoint, [`advance_past_trapping_insn`] steps `sepc`
 /// past the `ebreak`, and `sret` lands us right back here. If they are not, this never returns.
 /// Returns the breakpoint count so the caller can confirm the handler actually ran.
+// The boot self-test is the only caller, and it is `#[cfg(not(any(test, feature = "bench")))]`, as
+// aarch64's is. The riscv64 boot called this unconditionally until milestone 890 (riscv64 and
+// `x86_64` join the shared boot path) retired its `traps` line in favor of the self-test's
+// `exceptions` check, which makes the same claim on all three architectures.
+#[cfg_attr(
+    any(test, feature = "system_tests", feature = "bench"),
+    allow(dead_code)
+)]
 pub fn self_test() -> usize {
     let before = BRK_COUNT.load(Ordering::Relaxed);
     super::instructions::ebreak();

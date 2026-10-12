@@ -240,8 +240,8 @@ pub fn read_cpu_list() {
     }
     DESCRIBED.store(list.described, Ordering::Release);
 
-    // The RISC-V timer's counter rate is a `/cpus` property and is read separately, earlier in that
-    // boot, because `timer::init` runs several steps ahead of this. See arch/riscv64/timer.rs.
+    // The RISC-V timer's counter rate is a `/cpus` property and is read separately, right after this
+    // in `bring_up_machine`, by `timer::init_frequency`. See arch/riscv64/timer.rs.
     print!("  smp: {} core(s) in the device tree", list.described);
     if startable != list.described {
         print!(", {startable} startable");

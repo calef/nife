@@ -154,14 +154,22 @@ pub fn boot_s_context() -> usize {
     s_context_of(super::boot_hartid())
 }
 
-/// Bring the interrupt controller up on the boot core. On RISC-V this is the PLIC, but the shared
-/// `interrupts_init` that calls this is on the full-boot path, which the port does not reach yet (the
-/// RISC-V boot tour halts earlier and initializes the PLIC directly in its device-driver step, from
-/// `memory::plic_region`). A no-op until the two paths converge; the PLIC is real (drivers/plic.rs).
-pub fn init() {}
+/// The boot hart's half of the shared `interrupts_init` (milestone 890 (riscv64 and `x86_64` join
+/// the shared boot path)): [`init_this_cpu`], the same unmasking each secondary does for itself in
+/// `secondary_main`. It is here rather than called by name in the boot because this is the step
+/// aarch64 fills with its GIC, and portable code names `arch::irq`, never a controller.
+///
+/// **What it does not do yet is bring the PLIC up**, which is what the GIC half does. The PLIC's
+/// base is still stored by `drivers::plic::init` in three places in the riscv64 boot's own paths
+/// (the tour's device step, the test boot, the hand-over), from `memory::plic_region`. Moving that
+/// here opens the boot context's threshold before the other harts start, which changes the order
+/// on silicon this milestone could not run, so it is a later slice of the same milestone.
+pub fn init() {
+    init_this_cpu();
+}
 
-/// Per-core interrupt setup, run on each hart as it becomes a scheduler participant (the primary in
-/// its boot tour, each secondary in `secondary_main`). Unmasks this hart's software interrupts
+/// Per-core interrupt setup, run on each hart as it becomes a scheduler participant (the primary through
+/// [`init`], each secondary in `secondary_main`). Unmasks this hart's software interrupts
 /// (`sie.SSIE`), the reschedule-IPI source, so a thread another hart hands it wakes it promptly, and
 /// its supervisor external interrupts (`sie.SEIE`), so IRQ affinity ([`enable`]) can route a device
 /// source to this hart's PLIC context and have it taken here. The context's threshold is opened, and

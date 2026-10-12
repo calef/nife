@@ -14,7 +14,6 @@ The shape is one record per architecture, populated once at boot, printed at boo
 RISC-V, on QEMU `virt` with `-smp 4`:
 
 ```
-  paging      : fine-grained W^X Sv39 tables installed, satp switched (paging on: true)
   isa         : rv64i m a c f d h zicsr zifencei sstc zicbom
               : 4 hart(s), mmu sv57 declared and sv39 in use, satp.ASID 16 bits measured
   firmware    : OpenSBI 0x10007, SBI 3.0, TIME IPI RFENCE HSM

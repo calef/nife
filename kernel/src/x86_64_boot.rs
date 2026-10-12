@@ -8,7 +8,7 @@
 //! child modules, one per boot): this file is the port's route until it joins the shared path in
 //! `boot.rs`, and the parity work shrinks it toward the CPU bring-up that belongs under `arch/`. It
 //! is not an architecture layer. The work is
-//! design/roadmap/proposals/riscv64-and-x86-64-join-the-shared-boot-path.md.
+//! design/roadmap/0890-riscv64-and-x86-64-join-the-shared-boot-path.md.
 //!
 //! Name: provisional (milestone 876's lane, 2026-10-12 UTC).
 
