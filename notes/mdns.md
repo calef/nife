@@ -45,7 +45,7 @@ file service and its port), `_adisk._tcp` (the Time Machine flags, which are wha
 backup-disk list), and `_device-info._tcp` (a model string, which picks the icon). The requirement
 was measured, not assumed: `dns-sd -B _adisk._tcp` on the family network returns the router, so the
 working reference does it, and proving it unnecessary would mean disabling it on a working family
-backup system (design/roadmap/0055-time-machine.md, "mDNS is required after all").
+backup system (design/roadmap/0055-time-machine/reference.md, "mDNS is required after all").
 
 Four pieces, all built:
 
