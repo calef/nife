@@ -220,6 +220,15 @@ fn a_users_schedule_outlives_their_login_and_ends_when_they_empty_it() {
 /// list, and the stored schedule comes back at her next login, as the ruling says; emptying it then
 /// takes her off the manifest. A plain `DENIED` for the wrong secret while suspended shows the
 /// refusal is still after authentication.
+///
+/// # BUGS
+///
+/// **Its first login was refused `DENIED` once on the HVF leg**, with the right password and before
+/// any suspension: `alice was not authenticated`, left 2 (`login_protocol::DENIED`), right 1. One of
+/// ten full `script/test --hvf` runs on 2026-10-12 (UTC), at a 1-minute load of 3.4, found by
+/// milestone 514 (the HVF std listener hangs in some full runs)'s verification runs and not
+/// investigated there. The suspended list is emptied at the top of this test, so a list left by an
+/// earlier test is not the obvious reading.
 #[test_case]
 fn suspending_a_user_ends_their_schedule_and_refuses_them_until_resumed() {
     if fs_service::fs_server_image().is_none() {

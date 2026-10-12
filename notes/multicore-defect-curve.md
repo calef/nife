@@ -165,20 +165,22 @@ only on silicon") is a claim about this column, and the `silicon-only` column is
 | D10 | 2026-08-26 | x86_64 | qemu-tcg (26 of 40 at `-smp 4`) | race | no | 2026-09-19, milestone 161 | `arch::x86_64::ap_boot`'s `BUGS` #1 (the lost check-in) |
 | D11 | 2026-09-02 | riscv64, and a loaded host | qemu-tcg | instrument | no | 2026-09-02, milestone 221 | [`soak.md`](soak.md), "Two bugs this mechanism had" (both) |
 | D12 | 2026-09-17 | x86_64 | audit (milestone 313), then qemu-tcg (7 of 12) | race | no | 2026-09-23, milestone 315 | `sched::delete_port_range_caps_impl`, the per-core port revoke |
-| D13 | 2026-09-19 | aarch64 | hvf, 5 of 9 recorded full runs | unclassified | unknown | open | [`hvf-leg.md`](hvf-leg.md), `a_std_program_serves_a_granted_listening_port` |
+| D13 | 2026-09-19 | aarch64 | hvf, 5 of 9 recorded full runs | race | no | 2026-10-12, milestone 514 | [`hvf-leg.md`](hvf-leg.md), `a_std_program_serves_a_granted_listening_port` |
 
 The milestones in the `fixed` column: milestone 80 (Loom: the hand-rolled atomic protocols,
 model-checked), milestone 161 (the x86_64 kernel port), milestone 221 (the soak never crosses cores,
 so build the hook that makes it), milestone 313 (the security audit that was due since August),
 milestone 315 (a port revoke that reaches every core) and milestone 316 (which core booted: making
-`NIFE_SMP=2` mean something on x86_64).
+`NIFE_SMP=2` mean something on x86_64). D13's is milestone 514 (the HVF std listener hangs in some
+full runs).
 
-**What the table says about risk 5.** Eleven rows are real or instrument defects, and every one
-whose instrument is recorded was shown by QEMU, loom or an audit; D5's is not recorded. The one silicon reading (D6) is retracted. The only row that has appeared on
-physical cores and not under TCG is D13, and the evidence there (a host prober's connection landing
-in a gap between two listeners, seen four times) points at the test harness rather than the kernel.
-It stays `unclassified` until someone settles it, because an unclassified row is a candidate for
-exactly the class risk 5 names and should not be quietly argued away.
+**What the table says about risk 5.** Twelve rows are real or instrument defects. Every one whose
+instrument is recorded was shown by QEMU, loom or an audit, except D13; D5's is not recorded. The one
+silicon reading (D6) is retracted. D13 is the only row that appeared on physical cores and not under
+TCG. Milestone 514 settled it on 2026-10-12: a host prober's connection completed its handshake
+into a listener `net_stack` was about to close, and the close sent no reset. That is userspace
+networking and timing, not the kernel, and widening the window made it fail on demand, so it is no
+evidence for the class risk 5 names.
 
 ## BUGS
 

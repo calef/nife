@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-09-19
+built: 2026-10-12
 promoted_from: the-hvf-std-listener-hangs-in-some-full-runs
 milestone_dependencies: none
 decision_dependencies: none
@@ -76,6 +77,84 @@ Capture the std program's panic message (its stderr reaches no transcript today)
 prober's connection opens against the guest's listen and accept times on one clock. If the reading
 above holds, the fix is on the host side of the prober or in the listener's retry, not in the
 kernel.
+
+## What the evidence showed (2026-10-12 UTC)
+
+Both instruments the block asked for were built first, and the evidence then picked the fix.
+
+- The panic message. It was never lost: std's stderr is the same sink as stdout, and the kernel
+  test had already received the message into its buffer. It only blocked forever waiting for an end
+  of stream that a dead program never sends. Fixing defect 2 (below) prints it.
+- One clock. The HVF leg now stamps the listener tests' own lines on the prober's clock, and
+  each connection line says when it was opened (notes/net/the-inbound-check.md has a green run).
+- **The cause.** The prober opens its third connection within a millisecond of the hand-written
+  listener's second answer. `net_stack`'s `tcp_accept` re-arms before it returns, so that
+  connection can complete its handshake into the re-armed socket, and the hand-written client's
+  `CLOSE` then dropped the socket unpolled without a reset. The prober held an established
+  connection to nobody, and offered nothing else, while the std listener's `accept` ran out. That
+  is the reading above, sharpened: the gap was not between the two listeners but inside the first
+  one's close. Forced on HVF by making `net_stack` poll for 300 ms before closing a listener, a
+  `network_tests` run failed in exactly the recorded shape (the connection held 91 s, the std
+  listener to its 90 s test budget). With the fix and the same forcing it was green twice, the
+  prober reconnecting about 400 ms later.
+- The std listener's retry did not cover it. Milestone 649 (each socket is its own capability)
+  gave `std_exerciser` eight 15 s accept windows on 2026-10-07, before this lane. The forced run
+  above had them and still failed, because the prober opens nothing new while it holds a
+  connection.
+
+## What was built
+
+1. **`net_stack` resets a peer whose handshake landed in a listener being closed**
+   (`close_tcp`, in a new child `components/src/tcp_close.rs`, since §282 (when a file is split,
+   the parent becomes an index) lets `net_stack.rs` only shrink): `abort` and one poll instead of
+   `close`, which is what Linux does to a closed listener's unaccepted connections.
+2. **A std test fails at once when its writer dies** (defect 2): `drain_sink_from` in
+   `system_tests/src/user/std_tests.rs` binds a notification to the test thread, ticks it every
+   100 ms, and on a tick asks whether the writer's thread still exists. A dead writer fails the test
+   with everything it wrote, panic message last. `start_net_std` hands back the writer's thread, and
+   the four std net tests (two per ISA) use it. Proven by making `std_exerciser` panic in round 1:
+   the test failed with `INJECTED: round 1 dies on purpose` in the same second.
+3. The one clock (`InboundProber::mark`, `xtask/src/inbound.rs`), and the std test echoes the
+   program's lines as `std listen| ...` so they can be stamped. `std_exerciser`'s accept panic now
+   says how long it waited.
+4. The hand-written listener re-arms too (`ACCEPT_TRIES`, five 15 s windows, in
+   `components/src/socket_test_client.rs`). Not the cause, but measured beside it: the prober's
+   first connection is opened at boot and slirp backs its SYN off to 16 and then 32 s gaps, and
+   every run here answered it about 10 s into a single 15 s window.
+5. `script/ci-build`'s sentence naming this test as a known flake is gone, and notes/hvf-leg.md,
+   notes/multicore-defect-curve.md (D13) and notes/virtualization.md (stale since milestone 227
+   (a GICv3 driver, because GICv2 boots and silently loses every interrupt)) say what is true now.
+
+## Verified
+
+Full `script/test --hvf` on patagonia (Apple M-series, QEMU 11.1.1), one at a time, each started
+only once the 1-minute load was under 4 and no other QEMU ran: thirteen runs. Ten were of the fix
+before `close_tcp` moved into its child module and three of the final tree. Twelve were green end
+to end (347 passed, 13 skipped, the scanout and inbound checks passing), with the std listener test
+passing each time, about 90 s a run. One stopped earlier, at
+`login_user_schedule_tests::suspending_a_user_ends_their_schedule_and_refuses_them_until_resumed`
+(`alice was not authenticated`), before any network test ran; that test's BUGS records it.
+
+Read the green count with its caveat. Four more full runs on the way here (one on the base commit,
+three with the instruments but before the `net_stack` fix) were green too, so at this load the
+unforced hang was rarer than the two in three of 2026-09-19 or the three in six of 2026-09-24 (load
+14 to 25). Twelve green runs therefore say little alone. The evidence that the fix closes the cause is
+the forced pair: red without it, green with it, same forcing.
+
+## BUGS
+
+- A writer that is alive but stuck is now reported as a livelock. The watch's ticks are wakes,
+  and wakes are progress to the lost-wakeup watchdog, so such a test runs to its budget (90 s) and
+  fails as over budget rather than at 60 s as a hang. `drain_sink_from`'s BUGS has it.
+- The other `drain_sink` callers still hang on an aborting writer, because their starters do not
+  hand back the writer's thread. Each needs only that.
+- `std_exerciser`'s eight accept windows (120 s) are more than the 90 s test budget. The budget
+  ends the test first, so the last two windows never run on this leg.
+
+## Follow-on
+
+- **None.** The BUGS above that are work (more `drain_sink` callers, the window count) are each a
+  few lines for whoever next touches those tests, and the login flake is recorded at its test.
 
 ## Index row
 
