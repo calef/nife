@@ -46,19 +46,25 @@ nife is a capability microkernel in Rust for aarch64, riscv64 and x86_64. Its co
 confined component cannot reach an object it was not granted. The numbered claims are in the table
 at `<path>`. Work in `<worktree>` only.
 
-**Posture.** Blind: do not open `notes/confinement-claims.md` or `notes/confinement-claims/`,
+### Posture
+
+Blind: do not open `notes/confinement-claims.md` or `notes/confinement-claims/`,
 `design/audit-reports/`, `design/fatal-risks/`, `design/roadmap/`, any note whose name contains
 `outsider`, `falsif`, `adversarial`, `breaking` or `audit`, git history, or GitHub. Source, comments,
 `BUGS` sections, `design/decisions/` and how-to notes are fair game; record any hint you meet.
 Informed: you have the whole tree and its history, and you report a re-found fixed escape apart, as
 a re-discovery.
 
-**What counts.** An attack counts when it boots. Write your own hostile program or system test,
+### What counts
+
+An attack counts when it boots. Write your own hostile program or system test,
 aimed at the case you think breaks the claim, and boot it. Running a test that already exists is
 not an attack. At least 18 rows must be booted for the pass to count; reading is the weakest grade.
 Where a claim concerns a userspace server, build a hostile client that drives it.
 
-**Mechanics.** Read `notes/scripts.md` and `notes/qemu.md`. Tests live in `system_tests/src/user/`.
+### Mechanics
+
+Read `notes/scripts.md` and `notes/qemu.md`. Tests live in `system_tests/src/user/`.
 Run one test with `script/test --arch <isa> --test <substring>`, one QEMU at a time. Never run
 `script/verify`, a mutation sweep or Kani. Interactive runs go through `helpers/qemu-bounded.sh`.
 Put `/opt/homebrew/opt/python@3.14/libexec/bin` first on `PATH`. Shape an exploit so a break ends
@@ -66,14 +72,20 @@ the run at an assertion, exit or fault. When you finish, `pgrep -l qemu` shows n
 New code spells `capability` out; alias the kernel's `cap` names at the import, as
 `confined_fuzzer_tests.rs` does.
 
-**Escapes.** Each escape is a test that is red because of it, booted to confirm and committed
+### Escapes
+
+Each escape is a test that is red because of it, booted to confirm and committed
 before anything else. Do not write the fix. A red test that would break the default suite is opt-in
 and says so. A path one bug away, or holding by accident, is a near miss.
 
-**Commits.** Commit on the current branch; do not push, rebase or branch. One purpose each. Never
+### Commits
+
+Commit on the current branch; do not push, rebase or branch. One purpose each. Never
 use `git stash`; never edit `design/`, `AGENTS.md` or `CLAUDE.md`. Run `cargo fmt` first.
 
-**Output,** to `<results path>` outside the repository:
+### Output
+
+Write to `<results path>`, outside the repository:
 
 1. One row per claim: the attack, the outcome (escape, near miss, held, or untestable with the
    reason), the grade (`booted <isas>`, `host` or `read`), and the test.
