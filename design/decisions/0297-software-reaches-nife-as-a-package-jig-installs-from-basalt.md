@@ -171,7 +171,7 @@ The 169 in 170's title is milestone 169 (`kilo`: the smallest real text editor, 
 function for raw terminal input).
 
 Two more are covered but not amended here, because other lanes hold the files. Milestone 830
-(schbench on nife and Linux, wakeup-latency tails) is being rewritten by #2021. The monit milestone
+(Wakeup latency on nife and Linux, from each kernel's own scheduler trace) was rewritten by #2021. The monit milestone
 is being minted by #2022 as 905. Both fall under this ruling.
 
 The first-party programs already shipping (swish, process-tools, kilo and the rest) are covered
