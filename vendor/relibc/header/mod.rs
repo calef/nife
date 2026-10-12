@@ -1,6 +1,7 @@
 // Seeded from relibc (MIT, vendor/relibc/LICENSE) at 893a3b9133ac, 2026-10-10 (UTC), for milestone 835; nife owns it from here, and its edits say `nife:` where they are (vendor/README.md).
 //! POSIX header implementations.
 
+pub mod arpa_inet;
 pub mod assert;
 pub mod bits_arpainet;
 #[path = "bits_clock-t/mod.rs"]
@@ -95,7 +96,12 @@ pub mod malloc;
 // nife: built unconditionally, where relibc gates it behind its opt-in `math_libm` feature and
 // otherwise uses openlibm (vendor/README.md).
 pub mod math;
+pub mod netinet_in;
+pub mod poll;
 pub mod pthread;
+pub mod sched;
+pub mod semaphore;
+pub mod setjmp;
 // TODO: stdalign.h (likely C implementation)
 pub mod signal;
 pub mod stdarg;
@@ -111,12 +117,14 @@ pub mod strings;
 pub mod sys_ioctl;
 pub mod sys_mman;
 pub mod sys_select;
+pub mod sys_socket;
 pub mod sys_stat;
 pub mod sys_time;
 pub mod sys_types;
 #[allow(non_camel_case_types)]
 pub mod sys_types_extra;
 pub mod sys_uio;
+pub mod sys_un;
 pub mod sys_utsname;
 pub mod sys_wait;
 pub mod time;
