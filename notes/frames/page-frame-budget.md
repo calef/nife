@@ -170,8 +170,8 @@ went), and the difference is accounted rather than shrugged at:
   `display` is the standing candidate for where this becomes permanent rather than transient.
   `system_tests/src/user/display_tests.rs` says outright that its driver instance "is a long-lived
   server and never exits" for the rest of that test's boot. A process's `AddressSpace` is sized from
-  its own ELF segment page count (`kernel/src/user.rs::load`). So a permanently bigger binary should
-  cost permanently more frames by construction.
+  its own ELF segment page count (`kernel/src/user/loader.rs::load`). So a permanently bigger binary
+  should cost permanently more frames by construction.
 
   This is the fact the account does not have. The per-program page math for `display` alone
   (roughly +14 pages between the same two commits) does not cleanly reduce to the suite's measured

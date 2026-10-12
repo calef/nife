@@ -293,13 +293,13 @@ kernel/src/sync.rs:1	47
 kernel/src/sync.rs:55	64
 kernel/src/syscall.rs:316	41
 kernel/src/testing.rs:16	49
-kernel/src/user.rs:337	46
-kernel/src/user.rs:2286	52
+kernel/src/user/address_space.rs:307	46
 kernel/src/user/e1000e_service.rs:1	54
 kernel/src/user/holding.rs:1	56
 kernel/src/user/install_service.rs:1	98
 kernel/src/user/install_service.rs:263	76
 kernel/src/user/non_volatile_memory_express_service.rs:1	81
+kernel/src/user/progenitor_boot.rs:58	52
 kernel/src/user/usb_keyboard_service.rs:1	45
 kernel/src/virtio.rs:597	92
 patches/std-nife/overlay/std/src/sys/env/nife.rs:1	63

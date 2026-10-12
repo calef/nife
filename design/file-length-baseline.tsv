@@ -9,7 +9,6 @@
 # rename moves its row in the same change, at the same number. A file that must exceed its row
 # needs §266 amended by an architect, not an edit here.
 path	lines
-crates/component_plan/src/lib.rs	2094
 crates/line_editor/src/lib.rs	2290
 crates/machine_discovery/src/acpi.rs	3009
 crates/timetable/src/lib.rs	2468
@@ -17,6 +16,5 @@ crates/video_terminal/src/lib.rs	3242
 kernel/src/arch/x86_64/mmu.rs	2192
 kernel/src/bench.rs	2110
 kernel/src/lib.rs	2984
-kernel/src/user.rs	3867
 kernel/src/user/fs_service.rs	2407
 system_tests/src/user/tests.rs	3533

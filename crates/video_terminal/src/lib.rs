@@ -165,7 +165,7 @@ pub const MAX_COLS: usize = 240;
 pub const MAX_ROWS: usize = 150;
 /// Cells in the largest possible **live** grid (the on-screen viewport; see [`SCROLLBACK_ROWS`] for
 /// the off-screen history alongside it). A real cost, paid once per terminal instance and
-/// auto-provisioned from that program's own region (`kernel/src/user.rs`'s `load` sizes a process's
+/// auto-provisioned from that program's own region (the kernel's `user::load` sizes a process's
 /// address-space region from its ELF segments, `.bss` included), not from any shared budget.
 ///
 /// **A budget rather than `MAX_COLS * MAX_ROWS`** (2026-10-04, the screen terminal lane). The grid
