@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: IN-PROGRESS
 raised: 2026-10-11
+branch: milestone/882-the-component-plan-crate-root-moves-its-proofs-out
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 296
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -24,6 +25,13 @@ row. The ratchet allows that, since a row is a ceiling that only falls.
 The layout and every name below are calef's call. A lane writes them up as a `status: PROPOSED`
 file in `design/decisions/` before it moves a line, and its pull request carries
 `needs-architect`.
+
+The lane wrote it up on 2026-10-12 (UTC) as §296 (the component-plan crate root's proofs move into
+a child module), `status: PROPOSED`, re-measured on main at `17b23264e` (2,067 lines). Which part
+leaves first is answered by calef's rulings on 842, 845 and 846: tests sit beside their code. Under
+§282 (when a file is split, the parent becomes an index), the orchestration question becomes a
+choice between this move and an index. That is the one question asked. The proofs move is built on
+the recommendation while it waits, and is the first commit of the other answer too.
 
 Reuse: not applicable; this moves code and adds none. `crates/timetable/src/proofs.rs` is the
 precedent in this tree for Kani harnesses in their own file.
