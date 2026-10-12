@@ -105,6 +105,9 @@ KEPT = {
     'crates/pci/src/lib.rs': ({'CAP_PTR', 'STATUS_CAP_LIST', 'CAP_ID_MSI', 'CAP_ID_MSIX',
                                'CAP_ID_VENDOR', 'VIRTIO_CAP_COMMON', 'VIRTIO_CAP_NOTIFY',
                                'VIRTIO_CAP_ISR', 'VIRTIO_CAP_DEVICE'}, _REGISTER),
+    'crates/pci/src/tests.rs': ({'CAP_PTR', 'STATUS_CAP_LIST', 'CAP_ID_MSI', 'CAP_ID_MSIX',
+                                 'CAP_ID_VENDOR', 'VIRTIO_CAP_COMMON', 'VIRTIO_CAP_NOTIFY',
+                                 'VIRTIO_CAP_ISR', 'VIRTIO_CAP_DEVICE'}, _REGISTER),
     'kernel/src/pci.rs': ({'VIRTIO_CAP_COMMON', 'VIRTIO_CAP_NOTIFY', 'VIRTIO_CAP_ISR'}, _REGISTER),
     # Milestone 800 (a non-Anthropic model attacks the confinement claim), 2026-10-07 (UTC): the
     # outsider pass's fixture and test call these APIs by their existing names and mint no
