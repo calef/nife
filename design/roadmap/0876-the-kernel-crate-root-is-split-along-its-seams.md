@@ -174,10 +174,11 @@ Found with `grep` at `396187b0b`. A lane has to carry each one.
 Built 2026-10-12 (UTC) on `17b23264e` by lane
 `milestone/876-the-kernel-crate-root-is-split-along-its-seams`, carrying the function-length ratchet
 lane's `kernel_main` split by boot phase (calef's ruling of 2026-10-09 (UTC), moved here by his "A"
-on #1963). The cut and its one open question are
+on #1963). The cut is
 [§284 (the kernel crate root splits into child modules, one per boot)](../decisions/0284-the-kernel-crate-root-splits-into-child-modules-one-per-boot.md),
-`PROPOSED`. Its questions 1 and 3 above were answered by those rulings and by §282 (when a file is
-split, the parent becomes an index); question 2 is the one still open.
+decided. Its questions 1 and 3 above were answered by those rulings and by §282 (when a file is
+split, the parent becomes an index); calef answered question 2 on 2026-10-12 (UTC): the crate root,
+with both boots temporary.
 
 `kernel/src/lib.rs` went from 2,984 lines to 293, an index, so its file-length and parent-index
 rows are gone. `kernel_main` went from 977 code lines to 59. Every name is provisional.
@@ -186,8 +187,8 @@ rows are gone. `kernel_main` went from 977 code lines to 59. Every name is provi
 |---|---|---|
 | `lib.rs` | 293 | crate docs, `mod` lines, `system_test_access`, re-exports |
 | `boot.rs` | 432 | `kernel_main`, `DTB`, `device_tree`, the aarch64 bring-up, the test-suite hook, the measurement boots |
-| `x86_64_boot.rs` | 758 | the `x86_64` boot's phases, `x86_hand_over` |
-| `riscv64_boot.rs` | 1,087 | the riscv64 boot's phases, its timing helpers, `riscv_hand_over` |
+| `x86_64_boot.rs` | 768 | the `x86_64` boot's phases, `x86_hand_over` |
+| `riscv64_boot.rs` | 1,093 | the riscv64 boot's phases, its timing helpers, `riscv_hand_over` |
 | `milestone_tour.rs` | 260 | aarch64's tour, `image_for_virtio` |
 | `machine_description.rs` | 206 | `print_machine_description`, `stack_top` |
 | `tests.rs` | 124 | the seven boot self-tests |
@@ -202,8 +203,12 @@ now `-> !` in a build with a measurement feature and a no-op without, which lets
 
 ## Follow-on
 
-- **Decision.** §284's open question, crate root or `arch/<port>/`, and every module name are
-  calef's: `design/decisions/0284-the-kernel-crate-root-splits-into-child-modules-one-per-boot.md`.
+- **Decision.** calef ruled §284's question on 2026-10-12 (UTC), "We should treat them as
+  temporary": the two boots stay at the crate root as each port's route to the shared path. Every
+  module name is still his:
+  `design/decisions/0284-the-kernel-crate-root-splits-into-child-modules-one-per-boot.md`.
+- **Proposed.** Bringing riscv64 and `x86_64` onto the shared path, which retires the two boot
+  files: `design/roadmap/proposals/riscv64-and-x86-64-join-the-shared-boot-path.md`.
 - **Recorded.** AGENTS.md's Testing section names `kernel/src/lib.rs` for the boot self-tests,
   which are in `kernel/src/tests.rs` now. A developer lane does not edit AGENTS.md, so the
   pull request names it for the maintainer.

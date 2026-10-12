@@ -1,6 +1,8 @@
 ---
-status: PROPOSED
+status: DECIDED
 raised: 2026-10-12
+decided: 2026-10-12
+ratified_by: calef
 ---
 
 # 284. The kernel crate root splits into child modules, one per boot
@@ -11,8 +13,21 @@ says is calef's call before a line moves. Written by lane
 `milestone/876-the-kernel-crate-root-is-split-along-its-seams`. *(Section number provisional until
 the merge queue lands it.)*
 
-One question is open, below. The pull request is built on its recommendation, so a yes changes
-nothing and a no moves two files. Every module name is provisional and left to calef's naming pass.
+It blocked the merge and nothing else. One question was raised, with a recommendation, and calef
+answered it. Every module name is provisional and is left to his naming pass.
+
+## The ruling
+
+| Question | calef's words | What it decides |
+|---|---|---|
+| Do the two per-architecture boots live at the crate root or under `kernel/src/arch/<port>/`? | *"We should treat them as temporary."*, 2026-10-12 (UTC), recorded on [PR #1965](https://github.com/nifeos/nife/pull/1965#issuecomment-6117124813) | A, the recommendation: the crate root. |
+
+The consequence is the reason. `kernel/src/x86_64_boot.rs` and `kernel/src/riscv64_boot.rs` are
+temporary. Each is its port's route until it joins the shared path in `kernel/src/boot.rs`, and the
+parity work shrinks each toward the CPU bring-up that does belong under `kernel/src/arch/`. They are
+not an architecture layer, so they do not move there. Each file's module doc says so. The work
+itself is proposed as
+`design/roadmap/proposals/riscv64-and-x86-64-join-the-shared-boot-path.md`.
 
 ## What is already decided, and so not asked
 
@@ -42,8 +57,8 @@ which in a child of the crate root is the crate, so nothing widens. `kernel_main
 |---|---|---|
 | `lib.rs` | crate docs and attributes, `mod` lines, `system_test_access`, re-exports | 293 |
 | `boot.rs` | `kernel_main`, `DTB`, `device_tree`, `bring_up_machine`, `interrupts_init`, `run_test_suite` and its hook, `run_measurement_boot` | 432 |
-| `x86_64_boot.rs` | `x86_64_boot`, its six phases, `x86_hand_over` | 758 |
-| `riscv64_boot.rs` | `riscv64_boot`, its phases, `micros`, `micros_between`, `bytes_per_second`, `mode_note`, `riscv_hand_over` | 1,087 |
+| `x86_64_boot.rs` | `x86_64_boot`, its six phases, `x86_hand_over` | 768 |
+| `riscv64_boot.rs` | `riscv64_boot`, its phases, `micros`, `micros_between`, `bytes_per_second`, `mode_note`, `riscv_hand_over` | 1,093 |
 | `milestone_tour.rs` | `milestone_tour`, `tour_preemption`, `tour_el0`, `image_for_virtio` | 260 |
 | `machine_description.rs` | `print_machine_description`, `stack_top` | 206 |
 | `tests.rs` | the seven boot self-tests, still `crate::tests` | 124 |
@@ -51,7 +66,7 @@ which in a child of the crate root is the crate, so nothing widens. `kernel_main
 `lib.rs` was 2,984 lines on main at `17b23264e`, and 3,086 with the phase split in place. The
 two per-architecture boots carry their `cfg(target_arch)` on the declaration in `lib.rs`.
 
-## The question: do the two boots live at the crate root, or under `kernel/src/arch/<port>/`?
+## The question, as raised: do the two boots live at the crate root, or under `kernel/src/arch/<port>/`?
 
 AGENTS.md rule 1 says all architecture-specific code lives under `kernel/src/arch/`, and names
 assembly, `asm!`, system registers and CPU-specific behavior. `x86_64_boot` and `riscv64_boot`
@@ -102,7 +117,7 @@ move and nothing else changes, since no path outside the crate names them.
 
 - Module names, all provisional.
 - Bringing the two boots onto the shared path (a parity change, not this milestone).
-- Splitting `riscv64_boot.rs` further; at 1,087 lines it is under the 1,500 the block allows a new
+- Splitting `riscv64_boot.rs` further; at 1,093 lines it is under the 1,500 the block allows a new
   file.
 
 ## BUGS
