@@ -33,7 +33,6 @@ too_many_lines	crates/manifest_note/src/lib.rs	decode	106
 too_many_lines	crates/swish/src/preview.rs	write_preview_rows	263
 too_many_lines	crates/system_initializer/src/boot_sequence.rs	boot	847
 too_many_lines	crates/timetable/src/recurrence.rs	parse	114
-too_many_lines	kernel/src/memory.rs	init	107
 too_many_lines	kernel/src/sched.rs	schedule	128
 too_many_lines	kernel/src/storage_bench.rs	through_el0	102
 too_many_lines	kernel/src/syscall.rs	invoke	189

@@ -54,134 +54,8 @@ pub fn init() {
         .expect("cannot read the memory reservations");
     let reserved = &reserved[..reserved_count];
 
-    // The interrupt controller, aarch64's GIC, found by its BINDING (milestone 227). It used to be
-    // found by the node-name prefix `intc@`, taking `reg[0]` and `reg[1]` as distributor and CPU
-    // interface. That is true of a GICv2 and false of a GICv3, whose `reg[1]` is the redistributor
-    // array, and milestone 222 measured the result: a kernel that booted, printed `interrupts ON`,
-    // and took none. `machine_discovery::gic` reads `compatible` instead, and an `intc@` node with a
-    // binding it does not know is refused here, by name, rather than driven on a guess.
-    // `arch::irq::init` then asks the hardware whether the tree is right before using it.
-    //
-    // aarch64 only: on RISC-V the interrupt controllers are the PLIC below and each hart's
-    // `riscv,cpu-intc`, neither of which is this question.
-    #[cfg(target_arch = "aarch64")]
-    match machine_discovery::gic::discover(&dtb) {
-        Ok(found) => *GIC_REGIONS.lock() = found,
-        Err(machine_discovery::gic::Refusal::UnknownController { compatible }) => panic!(
-            "the device tree's interrupt controller is {:?}, which is not a GIC this kernel drives \
-             (it drives {:?} and {:?}); refusing to guess",
-            core::str::from_utf8(compatible).unwrap_or("<not UTF-8>"),
-            machine_discovery::gic::GICV2_COMPATIBLE,
-            machine_discovery::gic::GICV3_COMPATIBLE,
-        ),
-        Err(refusal) => panic!("cannot read the device tree's GIC: {refusal:?}"),
-    }
-
-    // The RISC-V interrupt controller (milestone 20): the PLIC. Found by its binding, because the
-    // node's label is the board author's: QEMU spells it `plic@c000000` and the JH7110
-    // `interrupt-controller@c000000`, so the old `plic@` name-prefix read found nothing on the
-    // board this has to boot next (notes/visionfive2.md). The name prefix stays as a fallback for
-    // a tree that names the node conventionally but states a compatible we do not know. aarch64
-    // has neither, so there `plic_region` stays None; the GIC above is its equivalent. One
-    // register block, unlike the GIC's distributor/CPU-interface pair.
-    {
-        let mut plic = [Region { start: 0, size: 0 }; 1];
-        // One compatible list, shared with the context map, so the two lookups cannot disagree
-        // about what a PLIC is (`machine_discovery::plic::COMPATIBLES` names each string's machine).
-        let found = machine_discovery::plic::COMPATIBLES
-            .iter()
-            .any(|compat| matches!(dtb.node_reg_compatible(compat, &mut plic), Ok(n) if n >= 1))
-            || matches!(dtb.node_reg(b"plic@", &mut plic), Ok(n) if n >= 1);
-        if found {
-            *PLIC_REGION.lock() = Some((plic[0].start, plic[0].size));
-        }
-    }
-
-    // The JH7110's STG clock and reset generator (milestone 220), which nothing else on any
-    // machine this kernel boots has an analog of: every other device it drives came up already
-    // running. Recorded **only when this machine is a JH7110**, because `jh7110_clock_and_reset::discover`
-    // deliberately never fails to produce an address (it falls back to the corroborated constant
-    // when a tree names no controller), and mapping that constant on a board that has nothing
-    // there would be a device mapping of an address nobody named. The two ways to be a JH7110
-    // that matter here: the tree names a clock controller, or it names the TRNG whose clocks this
-    // exists to ungate. QEMU's `virt` board names neither, so `jh7110_clock_and_reset` stays None
-    // there and `drivers::jh7110_clock_and_reset` is never reached.
-    //
-    // The SYS window and the PMIC bus's plan (milestone 592 (radon's cold reboot dies in OpenSBI's PMIC write),
-    // provisional) ride the same guard, and
-    // only it: their own discovery also falls back to constants, so it cannot be the evidence that
-    // this machine is a JH7110. They are read here, while the tree is in hand, because the one
-    // caller (the rebooting soak, just before its SBI reset) runs long after boot.
-    record_jh7110(&dtb);
-    // The JH7110's two SD/MMC controllers (milestone 53 (the board's own peripherals: network and
-    // storage on real silicon)), under the same guard: recorded only once `record_jh7110` has
-    // established that this is a JH7110, because the vendor tree's `snps,dw-mshc` is a generic
-    // binding that says nothing about which board it is on.
-    record_jh7110_storage(&dtb);
-
-    // The SMMUv3 (milestone 16b), present only when the machine was started with
-    // `iommu=smmuv3`. Absent, the kernel runs exactly as before; present, iommu::init drives it.
-    {
-        let mut smmu = [Region { start: 0, size: 0 }; 1];
-        if let Ok(n) = dtb.node_reg(b"smmuv3@", &mut smmu)
-            && n >= 1
-        {
-            *SMMU_REGION.lock() = Some((smmu[0].start, smmu[0].size));
-        }
-    }
-
-    // The real-time clock (milestone 51), matched on `compatible` rather than on a node name.
-    // This is the device where the name shortcut runs out: aarch64 `virt` calls it
-    // `pl031@9010000` and riscv64 `virt` calls it `rtc@101000`, so no prefix finds both, while
-    // `arm,pl031` and `google,goldfish-rtc` name exactly the register layouts a driver knows.
-    // Both boots probe for both, and a machine with neither leaves this None, which the clock
-    // service reports as "I do not know what time it is" (DECISIONS §42, §43).
-    {
-        let mut rtc = [Region { start: 0, size: 0 }; 1];
-        for (compat, kind) in [
-            (&b"arm,pl031"[..], clock_protocol::rtc::PL031),
-            (&b"google,goldfish-rtc"[..], clock_protocol::rtc::GOLDFISH),
-        ] {
-            if let Ok(n) = dtb.node_reg_compatible(compat, &mut rtc)
-                && n >= 1
-            {
-                *RTC_REGION.lock() = Some((rtc[0].start, rtc[0].size, kind));
-                break;
-            }
-        }
-    }
-
-    // The console UART's interrupt line, decoded per the tree's own `#interrupt-cells` rather
-    // than assumed (crates/machine_discovery/src/interrupt_id.rs). It was a constant, and the constant was the
-    // last QEMU number on the interrupt path: the tour's driver demo armed PLIC source 10 on the
-    // JH7110, whose UART0 interrupts on line 32, and boot 13 (2026-08-15) proved it on silicon
-    // when a key press at the finished tour's prompt reached nothing (notes/visionfive2.md,
-    // BUGS). A tree that does not say leaves this None, and the callers fall back to the QEMU
-    // `virt` constant and print which source won.
-    if let Ok(Some(irq)) = machine_discovery::interrupt_id::of_node(&dtb, crate::console::UART_NODE)
-    {
-        *UART_IRQ.lock() = Some(irq);
-    }
-
-    // The PCIe host bridge, matched on the generic-ECAM binding both QEMU `virt` boards state.
-    // `reg` is the ECAM config window; `ranges` carries the standard 7-cell PCI entries, of
-    // which the 32-bit non-prefetchable memory entry is the window the kernel assigns BARs from
-    // (`pci::mem32_window` owns that parse). The JH7110 has no such node (its PLDA controller
-    // is `starfive,jh7110-pcie`, a different device with no driver here yet), so there this
-    // stays None and no PCIe window is ever mapped or probed. It has to come from the tree: the
-    // old QEMU constants put the BAR window at 0x4000_0000, which on the JH7110 is DRAM base,
-    // already direct-mapped, and the first VisionFive 2 boot died on the mapper's overwrite
-    // refusal (DECISIONS §43, notes/visionfive2.md).
-    {
-        let mut ecam = [Region { start: 0, size: 0 }; 1];
-        if let Ok(n) = dtb.node_reg_compatible(b"pci-host-ecam-generic", &mut ecam)
-            && n >= 1
-            && let Ok(Some(ranges)) = dtb.node_prop_compatible(b"pci-host-ecam-generic", b"ranges")
-            && let Some(mem32) = ::pci::mem32_window(ranges)
-        {
-            *PCI_REGIONS.lock() = Some(((ecam[0].start, ecam[0].size), mem32));
-        }
-    }
+    record_interrupt_controllers(&dtb);
+    record_devices(&dtb);
 
     // Everything that is already spoken for, and must not be allocated or scribbled on.
     //
@@ -232,6 +106,142 @@ pub fn init() {
     let forbidden = &forbidden[..n];
 
     bring_up_page_frames(ram, forbidden);
+}
+
+/// Find the interrupt controller in the tree: aarch64's GIC, or the RISC-V PLIC.
+fn record_interrupt_controllers(dtb: &device_tree_blob::DeviceTreeBlob<'_>) {
+    // The interrupt controller, aarch64's GIC, found by its BINDING (milestone 227). It used to be
+    // found by the node-name prefix `intc@`, taking `reg[0]` and `reg[1]` as distributor and CPU
+    // interface. That is true of a GICv2 and false of a GICv3, whose `reg[1]` is the redistributor
+    // array, and milestone 222 measured the result: a kernel that booted, printed `interrupts ON`,
+    // and took none. `machine_discovery::gic` reads `compatible` instead, and an `intc@` node with a
+    // binding it does not know is refused here, by name, rather than driven on a guess.
+    // `arch::irq::init` then asks the hardware whether the tree is right before using it.
+    //
+    // aarch64 only: on RISC-V the interrupt controllers are the PLIC below and each hart's
+    // `riscv,cpu-intc`, neither of which is this question.
+    #[cfg(target_arch = "aarch64")]
+    match machine_discovery::gic::discover(dtb) {
+        Ok(found) => *GIC_REGIONS.lock() = found,
+        Err(machine_discovery::gic::Refusal::UnknownController { compatible }) => panic!(
+            "the device tree's interrupt controller is {:?}, which is not a GIC this kernel drives \
+             (it drives {:?} and {:?}); refusing to guess",
+            core::str::from_utf8(compatible).unwrap_or("<not UTF-8>"),
+            machine_discovery::gic::GICV2_COMPATIBLE,
+            machine_discovery::gic::GICV3_COMPATIBLE,
+        ),
+        Err(refusal) => panic!("cannot read the device tree's GIC: {refusal:?}"),
+    }
+
+    // The RISC-V interrupt controller (milestone 20): the PLIC. Found by its binding, because the
+    // node's label is the board author's: QEMU spells it `plic@c000000` and the JH7110
+    // `interrupt-controller@c000000`, so the old `plic@` name-prefix read found nothing on the
+    // board this has to boot next (notes/visionfive2.md). The name prefix stays as a fallback for
+    // a tree that names the node conventionally but states a compatible we do not know. aarch64
+    // has neither, so there `plic_region` stays None; the GIC above is its equivalent. One
+    // register block, unlike the GIC's distributor/CPU-interface pair.
+    {
+        let mut plic = [Region { start: 0, size: 0 }; 1];
+        // One compatible list, shared with the context map, so the two lookups cannot disagree
+        // about what a PLIC is (`machine_discovery::plic::COMPATIBLES` names each string's machine).
+        let found = machine_discovery::plic::COMPATIBLES
+            .iter()
+            .any(|compat| matches!(dtb.node_reg_compatible(compat, &mut plic), Ok(n) if n >= 1))
+            || matches!(dtb.node_reg(b"plic@", &mut plic), Ok(n) if n >= 1);
+        if found {
+            *PLIC_REGION.lock() = Some((plic[0].start, plic[0].size));
+        }
+    }
+}
+
+/// Record where the tree puts the devices the kernel drives or maps later: the JH7110's
+/// controllers, the SMMUv3, the real-time clock, the UART's interrupt line and the PCIe host bridge.
+fn record_devices(dtb: &device_tree_blob::DeviceTreeBlob<'_>) {
+    // The JH7110's STG clock and reset generator (milestone 220), which nothing else on any
+    // machine this kernel boots has an analog of: every other device it drives came up already
+    // running. Recorded **only when this machine is a JH7110**, because `jh7110_clock_and_reset::discover`
+    // deliberately never fails to produce an address (it falls back to the corroborated constant
+    // when a tree names no controller), and mapping that constant on a board that has nothing
+    // there would be a device mapping of an address nobody named. The two ways to be a JH7110
+    // that matter here: the tree names a clock controller, or it names the TRNG whose clocks this
+    // exists to ungate. QEMU's `virt` board names neither, so `jh7110_clock_and_reset` stays None
+    // there and `drivers::jh7110_clock_and_reset` is never reached.
+    //
+    // The SYS window and the PMIC bus's plan (milestone 592 (radon's cold reboot dies in OpenSBI's PMIC write),
+    // provisional) ride the same guard, and
+    // only it: their own discovery also falls back to constants, so it cannot be the evidence that
+    // this machine is a JH7110. They are read here, while the tree is in hand, because the one
+    // caller (the rebooting soak, just before its SBI reset) runs long after boot.
+    record_jh7110(dtb);
+    // The JH7110's two SD/MMC controllers (milestone 53 (the board's own peripherals: network and
+    // storage on real silicon)), under the same guard: recorded only once `record_jh7110` has
+    // established that this is a JH7110, because the vendor tree's `snps,dw-mshc` is a generic
+    // binding that says nothing about which board it is on.
+    record_jh7110_storage(dtb);
+
+    // The SMMUv3 (milestone 16b), present only when the machine was started with
+    // `iommu=smmuv3`. Absent, the kernel runs exactly as before; present, iommu::init drives it.
+    {
+        let mut smmu = [Region { start: 0, size: 0 }; 1];
+        if let Ok(n) = dtb.node_reg(b"smmuv3@", &mut smmu)
+            && n >= 1
+        {
+            *SMMU_REGION.lock() = Some((smmu[0].start, smmu[0].size));
+        }
+    }
+
+    // The real-time clock (milestone 51), matched on `compatible` rather than on a node name.
+    // This is the device where the name shortcut runs out: aarch64 `virt` calls it
+    // `pl031@9010000` and riscv64 `virt` calls it `rtc@101000`, so no prefix finds both, while
+    // `arm,pl031` and `google,goldfish-rtc` name exactly the register layouts a driver knows.
+    // Both boots probe for both, and a machine with neither leaves this None, which the clock
+    // service reports as "I do not know what time it is" (DECISIONS §42, §43).
+    {
+        let mut rtc = [Region { start: 0, size: 0 }; 1];
+        for (compat, kind) in [
+            (&b"arm,pl031"[..], clock_protocol::rtc::PL031),
+            (&b"google,goldfish-rtc"[..], clock_protocol::rtc::GOLDFISH),
+        ] {
+            if let Ok(n) = dtb.node_reg_compatible(compat, &mut rtc)
+                && n >= 1
+            {
+                *RTC_REGION.lock() = Some((rtc[0].start, rtc[0].size, kind));
+                break;
+            }
+        }
+    }
+
+    // The console UART's interrupt line, decoded per the tree's own `#interrupt-cells` rather
+    // than assumed (crates/machine_discovery/src/interrupt_id.rs). It was a constant, and the constant was the
+    // last QEMU number on the interrupt path: the tour's driver demo armed PLIC source 10 on the
+    // JH7110, whose UART0 interrupts on line 32, and boot 13 (2026-08-15) proved it on silicon
+    // when a key press at the finished tour's prompt reached nothing (notes/visionfive2.md,
+    // BUGS). A tree that does not say leaves this None, and the callers fall back to the QEMU
+    // `virt` constant and print which source won.
+    if let Ok(Some(irq)) = machine_discovery::interrupt_id::of_node(dtb, crate::console::UART_NODE)
+    {
+        *UART_IRQ.lock() = Some(irq);
+    }
+
+    // The PCIe host bridge, matched on the generic-ECAM binding both QEMU `virt` boards state.
+    // `reg` is the ECAM config window; `ranges` carries the standard 7-cell PCI entries, of
+    // which the 32-bit non-prefetchable memory entry is the window the kernel assigns BARs from
+    // (`pci::mem32_window` owns that parse). The JH7110 has no such node (its PLDA controller
+    // is `starfive,jh7110-pcie`, a different device with no driver here yet), so there this
+    // stays None and no PCIe window is ever mapped or probed. It has to come from the tree: the
+    // old QEMU constants put the BAR window at 0x4000_0000, which on the JH7110 is DRAM base,
+    // already direct-mapped, and the first VisionFive 2 boot died on the mapper's overwrite
+    // refusal (DECISIONS §43, notes/visionfive2.md).
+    {
+        let mut ecam = [Region { start: 0, size: 0 }; 1];
+        if let Ok(n) = dtb.node_reg_compatible(b"pci-host-ecam-generic", &mut ecam)
+            && n >= 1
+            && let Ok(Some(ranges)) = dtb.node_prop_compatible(b"pci-host-ecam-generic", b"ranges")
+            && let Some(mem32) = ::pci::mem32_window(ranges)
+        {
+            *PCI_REGIONS.lock() = Some(((ecam[0].start, ecam[0].size), mem32));
+        }
+    }
 }
 
 /// **Record the JH7110's SD/MMC controllers** (milestone 53 (the board's own peripherals: network
