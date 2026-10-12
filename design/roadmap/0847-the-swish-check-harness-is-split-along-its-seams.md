@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-08
+built: 2026-10-12
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 280
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -21,6 +22,12 @@ structure) is the precedent inside `xtask`.
 The cut and every module name below are calef's call. A lane writes them up as a
 `status: PROPOSED` file in `design/decisions/` before it moves a line, and its pull request
 carries `needs-architect`.
+
+The lane wrote it up on 2026-10-11 (UTC) as §280 (the swish-check harness splits into submodules,
+with its script in one), re-measured on main at `ae6b91e79` at 4,274 lines. Its one fork, whether
+the script table gets its own module, was settled on 2026-10-11 (UTC) by calef's tree-wide
+precedent on #1959: *"Agreed, make the parent an index."* A parent that may hold only module docs,
+`mod` lines, `use` and re-exports cannot keep the rows, so the table has its own module.
 
 Reuse: not applicable; this moves code and adds none.
 
@@ -97,13 +104,57 @@ Found with `grep` at `0435a9aeb`.
 
 ## Done when
 
-1. `xtask/src/swish_check.rs` is gone, and no file under `xtask/src/swish_check/` is over 2,000
-   lines.
+1. `xtask/src/swish_check.rs` is an index, and no file under `xtask/src/swish_check/` is over 2,000
+   lines. *(Corrected 2026-10-11 (UTC): this said the file is gone, for a `mod.rs` layout.
+   Milestone 809 (the package client becomes a program) had already put `gauge.rs` beside the
+   parent, the layout milestone 840 kept.)*
 2. No Rust file outside `xtask/src/swish_check/` changes.
 3. `cargo xtask`'s host tests pass, the 33 here among them, with no test body changed.
 4. `script/swish-check` passes on aarch64, riscv64 and x86_64.
 5. `script/falsifications` finds both records, and both patches apply and fail their lines.
 6. Each new module carries a `//! Name:` block marked provisional.
+
+## What was built
+
+Built 2026-10-12 (UTC) on `17b23264e`, after milestone 843 landed. `xtask/src/swish_check.rs` went from 4,274 lines to 32, an
+index, so its file-length row is gone. Every name below is provisional.
+
+| file | lines | holds |
+|---|---|---|
+| `swish_check.rs` | 32 | module docs, `mod` lines, the shared imports, one re-export |
+| `swish_check/run.rs` | 157 | the verb, its flags, the probes, flood counting |
+| `swish_check/script.rs` | 1,287 | `Line`, its constructors, the three scripts |
+| `swish_check/verdict.rs` | 175 | omissions, hand-over markers, timeouts, leg cost |
+| `swish_check/transcript.rs` | 286 | fault tokens, markers, the boot claim |
+| `swish_check/boot.rs` | 1,340 | the leg, the USB keyboard boot, `swish_check_boot` |
+| `swish_check/launch.rs` | 489 | keystrokes, the reboot phase, the graphical launch, the `rg` walk |
+| `swish_check/gauge.rs` | 384 | unchanged, with its tests now beside it |
+
+The 33 tests moved into five `tests.rs` children. rustfmt rewrapped a few of their lines after the
+dedent, and no body changed otherwise. Of 44 items widened to `pub(super)`, 6 were narrowed back
+one at a time against the compiler, and 2 of those returned because an intra-doc link needs them.
+
+`script/swish-check` passed on all three architectures, before and after, on a loaded machine:
+
+| leg | before, `ae6b91e79` (s) | after, same base (s) | after, rebased on `97650277b` (s) |
+|---|---:|---:|---:|
+| aarch64 | 102 | 96 | 88 |
+| riscv64 | 107 | 115 | 103 |
+| x86_64 | 832 | 969 | 758 |
+
+The sweep found its records only after its function pattern learned `pub(super)`. Both patches,
+renamed `swish_check.boot.*`, carry milestone 843's regenerated diffs and still turn their lines
+red on aarch64. The sweep and the aarch64 leg (77 s) ran again on `17b23264e`.
+
+## Follow-on
+
+- **Decision.** Every module name ships provisional, for calef's name-ratification pass, as
+  `design/decisions/0280-the-swish-check-harness-splits-into-submodules-with-its-script-in-one.md`
+  records.
+- **Proposed.** The script table crosses §266's ceiling on its own within weeks:
+  `design/roadmap/proposals/the-swish-check-script-splits-by-topic-before-it-crosses-the-ceiling.md`.
+- **Proposed.** `swish_check_boot` moved whole and is still 1,051 lines:
+  `design/roadmap/proposals/swish-check-boot-is-decomposed.md`.
 
 ## Index row
 

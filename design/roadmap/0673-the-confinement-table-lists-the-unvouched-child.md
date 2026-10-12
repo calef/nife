@@ -39,7 +39,7 @@ entry for this proposal is marked done.
 ## Built
 
 Row 31 is in the table, tested by the `installed/unvouched` line of `script/swish-check` (all three
-legs) and falsified by `xtask/falsifications/swish_check.swish_check_boot.patch`, replayed on aarch64
+legs) and falsified by `xtask/falsifications/swish_check.boot.swish_check_boot.patch`, replayed on aarch64
 on 2026-10-03 (UTC): exit 0 without it, exit 1 with it, the child reporting `domain: REACHED` and
 `slots held: 0 1 2 7`. The row counts are now 31 (`design/fatal-risks/README.md` and
 `design/fatal-risks/the-confinement-claims.md`). Milestone 202's Follow-on entry is marked done.
@@ -55,7 +55,7 @@ the note to keep its word count at or under main's.
 - **Done.** Row 31 and the counts, carried by this lane; milestone 202's Follow-on entry is marked done.
 - **Recorded.** The sweep cannot replay a swish-check line, the record covers the domain defect only
   and only aarch64 was replayed: the limits sit beside the record, in
-  `xtask/falsifications/swish_check.swish_check_boot.patch`.
+  `xtask/falsifications/swish_check.boot.swish_check_boot.patch`.
 
 ## Index row
 

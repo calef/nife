@@ -18,7 +18,7 @@ corrected in this lane's commit.
 ## 1. What the kernel writes after handoff (more than §175 counted)
 
 §175's `KERNEL_FAULT_TOKENS` measurement (six tokens, three lines, ~150 bytes, once per faulting
-user thread) is real and correctly sourced from `xtask/src/swish_check.rs:1113-1134`, and it is
+user thread) is real and correctly sourced from `swish_check::KERNEL_FAULT_TOKENS`, and it is
 identical on all three architectures: `kernel/src/arch/{aarch64,riscv64,x86_64}/exceptions.rs` each
 print the same shape (`user thread N killed: ...`, a register line, `the kernel is fine.`).
 
@@ -47,16 +47,16 @@ output, once per new stack or capability-table peak. On a shell session that spa
 command, which most of swish-check's 111 lines do, new peaks are common, not rare.
 
 The tree already found the progenitor-stack gauge doing exactly this, and patched around it without
-fixing the write: `xtask/src/swish_check.rs`'s `GaugeFilter` strips `"  progenitor stack:"` lines out
-of the transcript before any check reads it, because *"the first version with the gauge in it waited
-thirty seconds for a prompt that had already been printed, then read `echo hello world | wc` as
-having answered nothing."* That is this milestone's failure mode, already reproduced and already
+fixing the write: `xtask/src/swish_check.rs`'s `GaugeFilter` strips `"  progenitor stack:"` lines
+out of the transcript before any check reads it, because *"the first version with the gauge in it
+waited thirty seconds for a prompt that had already been printed, then read `echo hello world | wc`
+as having answered nothing."* That is this milestone's failure mode, already reproduced and already
 fixed once, in the harness rather than at the source. `capability slots:` has **no equivalent
-filter**: `xtask/src/swish_check.rs:1999` finds it with a plain `rfind` over whole lines, and the
-general command-echo wait (`wait_after`, line 1834) does an exact substring match with no
-interleaving tolerance. If a capability-slot peak announcement lands between a prompt and the next
-command's echo, the wait fails exactly the way the progenitor-stack gauge already failed once:
-`"the prompt never echoed \`{line}\`"`.
+filter**: `swish_check::swish_check_boot`'s slot-gauge check finds it with a plain `rfind` over
+whole lines, and the general command-echo wait (`swish_check_boot`'s `wait_after` closure) does an
+exact substring match with no interleaving tolerance. If a capability-slot peak announcement lands
+between a prompt and the next command's echo, the wait fails exactly the way the progenitor-stack
+gauge already failed once: `"the prompt never echoed \`{line}\`"`.
 
 ## 2. Confirming the flake is this interleaving
 
@@ -146,7 +146,7 @@ try.
 
 ## 5. What each option does to the flake specifically, R priced separately
 
-`xtask/src/swish_check.rs:73-77`: swish-check's `--release` flag exists and is explicitly "Not in
+In `swish_check::swish_check`, swish-check's `--release` flag exists and is explicitly "Not in
 CI." CI's `build + test` job builds and boots the debug/dev kernel on every leg, confirmed directly
 from the run 36329333745 log: `Finished \`dev\` profile [unoptimized + debuginfo]`. Option R gates
 kernel chatter on the release/debug distinction, so since CI never builds release, **R changes

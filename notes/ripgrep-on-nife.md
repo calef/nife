@@ -130,7 +130,7 @@ guest sees) into `target/ripgrep-walk-expected.txt`. The answer must hold every 
 often, and nothing else, in any order, since RedoxFS and APFS list a directory differently. On
 2026-10-07 that was 349 lines from 136 files, matched on all three architectures, in 14.9 s
 (aarch64, HVF), 40.8 s (riscv64) and 345.8 s (`x86_64`, both TCG). The bounds and their table are
-beside `RG_WALK_SECS` in `xtask/src/swish_check.rs`.
+beside `RG_WALK_SECS` in `xtask/src/swish_check/launch.rs`.
 
 The walk exposed three faults, each fixed in the same change:
 
