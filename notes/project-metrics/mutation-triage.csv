@@ -988,3 +988,4 @@ screen_console,ScreenConsole::draw,replace > with ==,killed,killed by a_glyph_at
 screen_console,ScreenConsole::draw,replace > with >=,killed,killed by a_glyph_at_scale_sixteen_is_painted
 screen_console,ScreenConsole::scroll,replace + with *,killed,killed by a_console_that_fills_the_grid_scrolls_without_reading_past_it
 screen_console,ScreenConsole::scroll,replace < with <=,killed,killed by a_console_that_fills_the_grid_scrolls_without_reading_past_it
+swish,write_vouch,delete match arm S::StoreFailed,killed,"killed by a_vouch_answer_says_what_is_live, which now asserts the StoreFailed sentence"
