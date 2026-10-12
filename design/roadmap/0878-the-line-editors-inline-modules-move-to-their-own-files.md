@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: IN-PROGRESS
 raised: 2026-10-11
+branch: milestone/878-the-line-editors-inline-modules-move-to-their-own-files
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 282, 295
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -19,6 +20,14 @@ is split along its seams) is the model for this block.
 The cut and every file name below are calef's call. A lane writes them up as a
 `status: PROPOSED` file in `design/decisions/` before it moves a line, and its pull request
 carries `needs-architect`.
+
+The lane wrote it up on 2026-10-12 (UTC) as §295 (the line editor's crate root splits into module
+files), `status: PROPOSED`, and asks nothing, because three later decisions answer its questions.
+They are §274 (the filesystem-protocol crate root splits into its module files), §275 (the file
+server core's tests move into child modules by topic) and §282 (when a file is split, the parent
+becomes an index). §282 takes the cut further than the layout below. `LineDisc`,
+`RawQueue` and the output side leave `lib.rs` too, and it becomes an index. §295 has the layout as
+built.
 
 Reuse: not applicable; this moves code and adds none. The seams are already drawn: the file holds
 three public inline modules, `proto`, `component` and `handoff`. The last two came with milestone
@@ -129,9 +138,17 @@ Found with `grep` at `396187b0b`. A lane has to carry each one.
 5. `cargo doc` for the crate reports no broken intra-doc link.
 6. `script/test` passes on aarch64, riscv64 and x86_64.
 
+## What was built
+
+Built 2026-10-12 (UTC) on `17b23264e`, waiting on §295's ratification. `lib.rs` went from 2,290
+lines to 198, an index with no exception, and its file-length row is gone. The largest new file is
+`line_disc/tests.rs` at 576. The crate's 54 tests and 3 doc tests pass with no test body changed,
+and `cargo doc` reports no broken link. The 12 mutation-ledger keys that lost their `handoff::`
+prefix are rewritten. Every new module and file name is provisional.
+
 ## Index row
 
 The line editor's file is 2,290 lines, and most of its growth is two modules added inline for live
 replacement. This moves `proto`, `component` and `handoff` into their own files, each with its tests,
-behind unchanged public paths. `LineDisc` stays whole with its tests in `lib.rs`, near 1,540
-lines. The layout and every file name are an architect's call.
+behind unchanged public paths. Under §282 `LineDisc`, `RawQueue` and the output side move too, and
+`lib.rs` becomes a 198-line index. Every file name is provisional.
