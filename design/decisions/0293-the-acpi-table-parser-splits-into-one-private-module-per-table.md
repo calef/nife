@@ -33,17 +33,17 @@ Private modules, children of `acpi`. `acpi.rs` re-exports every public item by n
 
 | file | holds | lines |
 |---|---|---|
-| `acpi.rs` | module docs and BUGS, `mod` lines, named re-exports | 92 |
-| `acpi/bytes.rs` | `u16`, `u32`, `u64` | 25 |
-| `acpi/sdt.rs` | `AcpiError`, `is_checksum_ok`, `SdtHeader`, `parse_sdt_header`; 1 harness, 2 tests | 152 |
-| `acpi/root.rs` | the RSDP, `root_entry_count`, `root_entry`; 2 harnesses, 7 tests | 330 |
-| `acpi/madt.rs` | the MADT, its entry walk, legacy IRQ routing; 2 harnesses, 18 tests | 862 |
-| `acpi/mcfg.rs` | `McfgEntry`, `mcfg_entry`; 1 harness, 3 tests | 189 |
-| `acpi/dmar.rs` | the DMAR's fixed part and walk, `DmarUnits`; 2 harnesses, 22 tests | 1,162 |
-| `acpi/gtdt.rs` | the GTDT; 2 tests | 95 |
-| `acpi/spcr.rs` | the SPCR; 2 tests | 100 |
-| `acpi/fadt.rs` | the Arm boot flags and the reset register; 3 tests | 222 |
-| `acpi/tests.rs` | test fixtures more than one table uses, and the one test that reads four tables | 137 |
+| `acpi.rs` | module docs and BUGS, `mod` lines, named re-exports | 94 |
+| `acpi/bytes.rs` | `u16`, `u32`, `u64` | 21 |
+| `acpi/sdt.rs` | `AcpiError`, `is_checksum_ok`, `SdtHeader`, `parse_sdt_header`; 1 harness, 2 tests | 150 |
+| `acpi/root.rs` | the RSDP, `root_entry_count`, `root_entry`; 2 harnesses, 7 tests | 299 |
+| `acpi/madt.rs` | the MADT, its entry walk, legacy IRQ routing; 2 harnesses, 18 tests | 775 |
+| `acpi/mcfg.rs` | `McfgEntry`, `mcfg_entry`; 1 harness, 3 tests | 195 |
+| `acpi/dmar.rs` | the DMAR's fixed part and walk, `DmarUnits`; 2 harnesses, 23 tests | 1,143 |
+| `acpi/gtdt.rs` | the GTDT; 2 tests | 91 |
+| `acpi/spcr.rs` | the SPCR; 2 tests | 97 |
+| `acpi/fadt.rs` | the Arm boot flags and the reset register; 3 tests | 219 |
+| `acpi/tests.rs` | test fixtures more than one table uses, and the one test that reads four tables | 150 |
 | `acpi/ivrs.rs` | unchanged | 694 |
 
 No file is over 1,500. The block's own cut kept the RSDP, header and root walk in `acpi.rs` at
@@ -87,7 +87,9 @@ on 2026-10-12: rust-osdev's `acpi` crate (`7bf9e4210d`) has `src/rsdp.rs` and `s
   tables. No test body changes.
 - The verification module's doc, which spoke for all eight harnesses, stays whole on `root`'s, the
   RSDP harness being the one it calls the crate's security-shaped claim. Each other table's
-  `verification` points to it.
+  `verification` points to it, and carries its own copy of the input length `N`, which its
+  harnesses are linear in. A private constant of one module cannot be named from a sibling's
+  `cfg(kani)` module without widening it, so the knob is now per table.
 - The eight falsification patches are renamed to their harness's new module path
   (`acpi.root.verification.*`, `acpi.sdt.verification.*`, `acpi.madt.verification.*`,
   `acpi.dmar.verification.*`, `acpi.mcfg.verification.*`), regenerated against the new file, and
