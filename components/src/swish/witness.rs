@@ -247,81 +247,9 @@ pub(super) fn navigate(spec: u64) -> ! {
     let mut nav = Nav::rooted(filesystem_protocol::grant::spec_rights(spec));
     let mut v = 0u64;
 
-    // 1. `pwd` at the start. The root of your namespace renders as `/` because it is the root of
-    //    the only namespace you have.
-    if pwd_is(&nav, b"/") {
-        v |= nb::PWD_IS_ROOT;
-    }
+    probe_root_and_reach(&mut nav, &mut v);
 
-    // 2. **`..` at the root.** Nothing is sent: the shell holds a stack of the capabilities it
-    //    descended through, and at the root there is nothing to pop. Both halves are checked, since
-    //    a refusal that moved anyway would be the interesting failure.
-    let said = run_line(&mut nav, b"cd ..");
-    if !pwd_is(&nav, b"/") {
-        v |= nb::WALKED_UP;
-    } else if matches!(said, Some(Say::Refused(Refused::AtYourRoot))) {
-        v |= nb::CLAMPED_AT_ROOT;
-    }
-
-    // 3. **An absolute path, rooted in this shell's own namespace** (milestone 47's namespace
-    //    half). `/..` first, because it is the negative control: your root is the only root there
-    //    is, so there is no level above it to name and the syntax meets the same wall `..` does.
-    if matches!(
-        run_line(&mut nav, b"cd /.."),
-        Some(Say::Refused(Refused::AtYourRoot))
-    ) && pwd_is(&nav, b"/")
-    {
-        v |= nb::ABSOLUTE_CLAMPED_AT_ROOT;
-    }
-
-    // 4. The two files, one from each root. Exactly one of these must open, and which one is the
-    //    whole point of running this twice.
-    if let Some(h) = opened(&nav, tree::INNER.as_bytes()) {
-        v |= nb::REACHED_INNER;
-        nav.close(h);
-    }
-    if let Some(h) = opened(&nav, tree::SECRET.as_bytes()) {
-        v |= nb::REACHED_SECRET;
-        nav.close(h);
-    }
-
-    // 4b. **The same two probes, asked with a leading slash.** This is what "an absolute path
-    //     grants nothing" is measured as rather than asserted: each shell reaches exactly the file
-    //     its own root contains, and a `/` rooted in a global namespace would make both reach both.
-    if let Some((t, h)) = opened_token(&mut nav, tree::ABS_INNER.as_bytes()) {
-        v |= nb::ABSOLUTE_REACHED_INNER;
-        nav.close_in(t, h);
-    }
-    if let Some((t, h)) = opened_token(&mut nav, tree::ABS_SECRET.as_bytes()) {
-        v |= nb::ABSOLUTE_REACHED_SECRET;
-        nav.close_in(t, h);
-    }
-
-    // 5. `ls`. A listing is a rendering of authority, so what is in it is checked and not merely
-    //    counted: a name from the other shell's root appearing here would be an escape even though
-    //    nothing was opened.
-    let mut saw = 0u64;
-    let said = nav.ls(b"", &mut |name, _| {
-        if name == tree::INNER.as_bytes() {
-            saw |= nb::SAW_INNER;
-        }
-        if name == tree::SECRET.as_bytes() {
-            saw |= nb::SAW_SECRET;
-        }
-    });
-    if matches!(said, Say::Nothing) {
-        v |= nb::LISTED;
-    }
-    v |= saw;
-
-    // 6. Down one level and back. `pwd` has to follow, or the shell's idea of where it is and the
-    //    capability it is resolving against have come apart.
-    if matches!(run_line(&mut nav, b"cd deeper"), Some(Say::Nothing)) && pwd_is(&nav, b"/deeper") {
-        v |= nb::DESCENDED;
-        if matches!(run_line(&mut nav, b"cd .."), Some(Say::Nothing)) && pwd_is(&nav, b"/") {
-            v |= nb::RETURNED;
-        }
-    }
+    probe_listing_and_descent(&mut nav, &mut v);
 
     // 7. `mkdir`, which mints a capability and hands it straight back: making a directory is not
     //    going there.
@@ -351,88 +279,9 @@ pub(super) fn navigate(spec: u64) -> ! {
         v |= nb::ABSOLUTE_IS_MY_ROOT;
     }
 
-    // 8. Two files: one that stays, so the other's absence afterwards is a fact about `rm` rather
-    //    than about a shell that created nothing.
-    let kept = run_name(tree::NAV_KEPT, run);
-    let doomed = run_name(tree::NAV_GONE, run);
-    let (Some(k), Some(h)) = (
-        created(&nav, name_of(&kept)),
-        created(&nav, name_of(&doomed)),
-    ) else {
-        // Nothing else below can mean anything without them.
-        send(REPORT, VERDICT, v | nb::NAVIGATION_FAILED, 0);
-        exit();
-    };
-    v |= nb::CREATED;
-    nav.close(k); // the name is what this one is for; a handle nobody closes pins the node
-    put_page(tree::NAV_BODY);
-    let w = call(DIR, fs::req(fs::WRITE, h, tree::NAV_BODY.len() as u64), 0).0 as i64;
-    if w != tree::NAV_BODY.len() as i64 {
-        v |= nb::NAVIGATION_FAILED;
-    }
+    probe_unlink_while_held(&mut nav, run, &mut v);
 
-    // 9. **`UNLINK` while still holding the file.** The name goes; the object does not. This is the
-    //    unlink/revoke split as a measurement rather than a claim.
-    //
-    //    Sent through the contract rather than typed as a command line, because **`rm` is a program
-    //    now** (milestone 47's rmdir lane) and this witness holds no spawn channel: it is confined
-    //    to a subtree by a `fs_subtree_caretaker` and nothing in its capability table names a progenitor. So what
-    //    is under test here is the verb `rm` sends, at the far end of the same caretaker chain the
-    //    program runs behind, and `components/src/rm.rs`'s own guest test is what covers the program.
-    if removed(&nav, fs::UNLINK, name_of(&doomed)) {
-        v |= nb::UNLINKED;
-        let mut buf = [0u8; 64];
-        let n = call(DIR, fs::req(fs::READ, h, tree::NAV_BODY.len() as u64), 0).0 as i64;
-        if n == tree::NAV_BODY.len() as i64 {
-            get_page(n as usize, &mut buf);
-            if &buf[..n as usize] == tree::NAV_BODY {
-                v |= nb::HOLDER_KEPT_READING;
-            }
-        }
-        // And the name really is gone, or the bit above is equally true of an unlink that did
-        // nothing at all.
-        if opened(&nav, name_of(&doomed)).is_none() {
-            v |= nb::NAME_GONE_AFTER_UNLINK;
-        }
-    }
-    nav.close(h);
-
-    // 10. `UNLINK` of a **directory** is refused, and so is `RMDIR` of a directory with a name in
-    //     it. Together they are the safety property this lane rests on: **no single call on this
-    //     contract takes a subtree away.** Emptying one is a deliberate second step.
-    if !removed(&nav, fs::UNLINK, name_of(&dirname)) {
-        v |= nb::UNLINK_REFUSED_A_DIRECTORY;
-    }
-    let empty = run_name(tree::NAV_EMPTY, run);
-    if matches!(
-        run_line(&mut nav, line(&mut cmd, b"mkdir ", &empty)),
-        Some(Say::Nothing)
-    ) {
-        // A directory with exactly one name in it: enough to make `RMDIR` refuse, and cheap to
-        // take back out so the same call can be shown to work.
-        let inside = nav.name_call(
-            fs::CREATE,
-            open_dir(&nav, name_of(&empty)).unwrap_or(fs::ROOT),
-            tree::NAV_INSIDE.as_bytes(),
-            0,
-        );
-        if let Some(d) = open_dir(&nav, name_of(&empty)) {
-            if inside >= 0 {
-                nav.close(inside as u64);
-                if !removed(&nav, fs::RMDIR, name_of(&empty)) {
-                    v |= nb::RMDIR_REFUSED_NON_EMPTY;
-                }
-                // Empty it by hand, exactly as `rm -r` does: bottom-up, one safe step at a time.
-                let gone = nav.name_call(fs::UNLINK, d, tree::NAV_INSIDE.as_bytes(), 0) == 0;
-                nav.close(d);
-                if gone && removed(&nav, fs::RMDIR, name_of(&empty)) {
-                    v |= nb::RMDIR_REMOVED_EMPTY;
-                }
-            } else {
-                nav.close(d);
-            }
-        }
-    }
+    probe_directory_removal(&mut nav, run, &dirname, &mut cmd, &mut v);
 
     // 11a. **`touch`, the two-fold contract.** First on a name that is not there: the create half.
     //      Then, once it holds a body, a second `touch` on the same name: the no-op half. A
@@ -468,6 +317,211 @@ pub(super) fn navigate(spec: u64) -> ! {
         v |= nb::WALKED_UP;
     }
 
+    probe_bind(&mut nav, run, &dirname, &mut cmd, &mut v);
+
+    // Nothing worked at all: say so, rather than letting a shell that reaches nothing pass as a
+    // shell that is perfectly confined.
+    if v & (nb::REACHED_INNER | nb::REACHED_SECRET | nb::LISTED) == 0 {
+        v |= nb::NAVIGATION_FAILED;
+    }
+    send(REPORT, VERDICT, v, 0);
+    exit();
+}
+
+/// [`navigate`]'s steps 1 to 4b: `pwd` and `..` at the root, then the two files reached plainly
+/// and with a leading slash.
+fn probe_root_and_reach(nav: &mut Nav, v: &mut u64) {
+    use filesystem_protocol::fixture::{navscape as nb, tree};
+
+    // 1. `pwd` at the start. The root of your namespace renders as `/` because it is the root of
+    //    the only namespace you have.
+    if pwd_is(nav, b"/") {
+        *v |= nb::PWD_IS_ROOT;
+    }
+
+    // 2. **`..` at the root.** Nothing is sent: the shell holds a stack of the capabilities it
+    //    descended through, and at the root there is nothing to pop. Both halves are checked, since
+    //    a refusal that moved anyway would be the interesting failure.
+    let said = run_line(nav, b"cd ..");
+    if !pwd_is(nav, b"/") {
+        *v |= nb::WALKED_UP;
+    } else if matches!(said, Some(Say::Refused(Refused::AtYourRoot))) {
+        *v |= nb::CLAMPED_AT_ROOT;
+    }
+
+    // 3. **An absolute path, rooted in this shell's own namespace** (milestone 47's namespace
+    //    half). `/..` first, because it is the negative control: your root is the only root there
+    //    is, so there is no level above it to name and the syntax meets the same wall `..` does.
+    if matches!(
+        run_line(nav, b"cd /.."),
+        Some(Say::Refused(Refused::AtYourRoot))
+    ) && pwd_is(nav, b"/")
+    {
+        *v |= nb::ABSOLUTE_CLAMPED_AT_ROOT;
+    }
+
+    // 4. The two files, one from each root. Exactly one of these must open, and which one is the
+    //    whole point of running this twice.
+    if let Some(h) = opened(nav, tree::INNER.as_bytes()) {
+        *v |= nb::REACHED_INNER;
+        nav.close(h);
+    }
+    if let Some(h) = opened(nav, tree::SECRET.as_bytes()) {
+        *v |= nb::REACHED_SECRET;
+        nav.close(h);
+    }
+
+    // 4b. **The same two probes, asked with a leading slash.** This is what "an absolute path
+    //     grants nothing" is measured as rather than asserted: each shell reaches exactly the file
+    //     its own root contains, and a `/` rooted in a global namespace would make both reach both.
+    if let Some((t, h)) = opened_token(nav, tree::ABS_INNER.as_bytes()) {
+        *v |= nb::ABSOLUTE_REACHED_INNER;
+        nav.close_in(t, h);
+    }
+    if let Some((t, h)) = opened_token(nav, tree::ABS_SECRET.as_bytes()) {
+        *v |= nb::ABSOLUTE_REACHED_SECRET;
+        nav.close_in(t, h);
+    }
+}
+
+/// [`navigate`]'s steps 5 and 6: what `ls` shows, then down one level and back.
+fn probe_listing_and_descent(nav: &mut Nav, v: &mut u64) {
+    use filesystem_protocol::fixture::{navscape as nb, tree};
+
+    // 5. `ls`. A listing is a rendering of authority, so what is in it is checked and not merely
+    //    counted: a name from the other shell's root appearing here would be an escape even though
+    //    nothing was opened.
+    let mut saw = 0u64;
+    let said = nav.ls(b"", &mut |name, _| {
+        if name == tree::INNER.as_bytes() {
+            saw |= nb::SAW_INNER;
+        }
+        if name == tree::SECRET.as_bytes() {
+            saw |= nb::SAW_SECRET;
+        }
+    });
+    if matches!(said, Say::Nothing) {
+        *v |= nb::LISTED;
+    }
+    *v |= saw;
+
+    // 6. Down one level and back. `pwd` has to follow, or the shell's idea of where it is and the
+    //    capability it is resolving against have come apart.
+    if matches!(run_line(nav, b"cd deeper"), Some(Say::Nothing)) && pwd_is(nav, b"/deeper") {
+        *v |= nb::DESCENDED;
+        if matches!(run_line(nav, b"cd .."), Some(Say::Nothing)) && pwd_is(nav, b"/") {
+            *v |= nb::RETURNED;
+        }
+    }
+}
+
+/// [`navigate`]'s steps 8 and 9: create two files, then `UNLINK` one while still holding it.
+/// Reports and exits if either file cannot be created.
+fn probe_unlink_while_held(nav: &mut Nav, run: u64, v: &mut u64) {
+    use filesystem_protocol::fixture::{VERDICT, navscape as nb, tree};
+
+    // 8. Two files: one that stays, so the other's absence afterwards is a fact about `rm` rather
+    //    than about a shell that created nothing.
+    let kept = run_name(tree::NAV_KEPT, run);
+    let doomed = run_name(tree::NAV_GONE, run);
+    let (Some(k), Some(h)) = (created(nav, name_of(&kept)), created(nav, name_of(&doomed))) else {
+        // Nothing else below can mean anything without them.
+        send(REPORT, VERDICT, *v | nb::NAVIGATION_FAILED, 0);
+        exit();
+    };
+    *v |= nb::CREATED;
+    nav.close(k); // the name is what this one is for; a handle nobody closes pins the node
+    put_page(tree::NAV_BODY);
+    let w = call(DIR, fs::req(fs::WRITE, h, tree::NAV_BODY.len() as u64), 0).0 as i64;
+    if w != tree::NAV_BODY.len() as i64 {
+        *v |= nb::NAVIGATION_FAILED;
+    }
+
+    // 9. **`UNLINK` while still holding the file.** The name goes; the object does not. This is the
+    //    unlink/revoke split as a measurement rather than a claim.
+    //
+    //    Sent through the contract rather than typed as a command line, because **`rm` is a program
+    //    now** (milestone 47's rmdir lane) and this witness holds no spawn channel: it is confined
+    //    to a subtree by a `fs_subtree_caretaker` and nothing in its capability table names a progenitor. So what
+    //    is under test here is the verb `rm` sends, at the far end of the same caretaker chain the
+    //    program runs behind, and `components/src/rm.rs`'s own guest test is what covers the program.
+    if removed(nav, fs::UNLINK, name_of(&doomed)) {
+        *v |= nb::UNLINKED;
+        let mut buf = [0u8; 64];
+        let n = call(DIR, fs::req(fs::READ, h, tree::NAV_BODY.len() as u64), 0).0 as i64;
+        if n == tree::NAV_BODY.len() as i64 {
+            get_page(n as usize, &mut buf);
+            if &buf[..n as usize] == tree::NAV_BODY {
+                *v |= nb::HOLDER_KEPT_READING;
+            }
+        }
+        // And the name really is gone, or the bit above is equally true of an unlink that did
+        // nothing at all.
+        if opened(nav, name_of(&doomed)).is_none() {
+            *v |= nb::NAME_GONE_AFTER_UNLINK;
+        }
+    }
+    nav.close(h);
+}
+
+/// [`navigate`]'s step 10: `UNLINK` refuses a directory and `RMDIR` refuses a non-empty one.
+fn probe_directory_removal(
+    nav: &mut Nav,
+    run: u64,
+    dirname: &([u8; 16], usize),
+    cmd: &mut [u8; 32],
+    v: &mut u64,
+) {
+    use filesystem_protocol::fixture::{navscape as nb, tree};
+
+    // 10. `UNLINK` of a **directory** is refused, and so is `RMDIR` of a directory with a name in
+    //     it. Together they are the safety property this lane rests on: **no single call on this
+    //     contract takes a subtree away.** Emptying one is a deliberate second step.
+    if !removed(nav, fs::UNLINK, name_of(dirname)) {
+        *v |= nb::UNLINK_REFUSED_A_DIRECTORY;
+    }
+    let empty = run_name(tree::NAV_EMPTY, run);
+    if matches!(
+        run_line(nav, line(cmd, b"mkdir ", &empty)),
+        Some(Say::Nothing)
+    ) {
+        // A directory with exactly one name in it: enough to make `RMDIR` refuse, and cheap to
+        // take back out so the same call can be shown to work.
+        let inside = nav.name_call(
+            fs::CREATE,
+            open_dir(nav, name_of(&empty)).unwrap_or(fs::ROOT),
+            tree::NAV_INSIDE.as_bytes(),
+            0,
+        );
+        if let Some(d) = open_dir(nav, name_of(&empty)) {
+            if inside >= 0 {
+                nav.close(inside as u64);
+                if !removed(nav, fs::RMDIR, name_of(&empty)) {
+                    *v |= nb::RMDIR_REFUSED_NON_EMPTY;
+                }
+                // Empty it by hand, exactly as `rm -r` does: bottom-up, one safe step at a time.
+                let gone = nav.name_call(fs::UNLINK, d, tree::NAV_INSIDE.as_bytes(), 0) == 0;
+                nav.close(d);
+                if gone && removed(nav, fs::RMDIR, name_of(&empty)) {
+                    *v |= nb::RMDIR_REMOVED_EMPTY;
+                }
+            } else {
+                nav.close(d);
+            }
+        }
+    }
+}
+
+/// [`navigate`]'s step 12: `bind` a nested directory under a new word and reach it through that word.
+fn probe_bind(
+    nav: &mut Nav,
+    run: u64,
+    dirname: &([u8; 16], usize),
+    cmd: &mut [u8; 32],
+    v: &mut u64,
+) {
+    use filesystem_protocol::fixture::{navscape as nb, tree};
+
     // 12. **`bind`**, milestone 47's "blocked on a second grant" closed by milestone 154: name a
     //     position this shell already reached (a directory nested inside the one it made at step
     //     7, holding a marker file) under a fresh top-level word, then reach the real files
@@ -475,22 +529,22 @@ pub(super) fn navigate(spec: u64) -> ! {
     let nested = run_name(tree::NAV_BIND_NESTED, run);
     let alias = run_name(tree::NAV_BIND_ALIAS, run);
     let marker_made = matches!(
-        run_line(&mut nav, line(&mut cmd, b"cd ", &dirname)),
+        run_line(nav, line(cmd, b"cd ", dirname)),
         Some(Say::Nothing)
     ) && matches!(
-        run_line(&mut nav, line(&mut cmd, b"mkdir ", &nested)),
+        run_line(nav, line(cmd, b"mkdir ", &nested)),
         Some(Say::Nothing)
     ) && matches!(
-        run_line(&mut nav, line(&mut cmd, b"cd ", &nested)),
+        run_line(nav, line(cmd, b"cd ", &nested)),
         Some(Say::Nothing)
-    ) && created(&nav, tree::NAV_BIND_MARKER.as_bytes())
+    ) && created(nav, tree::NAV_BIND_MARKER.as_bytes())
         .map(|h| nav.close(h))
         .is_some()
-        && matches!(run_line(&mut nav, b"cd /"), Some(Say::Nothing));
+        && matches!(run_line(nav, b"cd /"), Some(Say::Nothing));
     if marker_made {
         let mut bindbuf = [0u8; 64];
-        let bind_cmd = bind_line(&mut bindbuf, &dirname, &nested, &alias);
-        if matches!(run_line(&mut nav, bind_cmd), Some(Say::Nothing)) {
+        let bind_cmd = bind_line(&mut bindbuf, dirname, &nested, &alias);
+        if matches!(run_line(nav, bind_cmd), Some(Say::Nothing)) {
             // `ls` of the bound name lists the real directory it points at: the marker, which
             // this shell never `mkdir`ed or `cd`ed into by that name.
             let mut cmd2 = [0u8; 32];
@@ -501,7 +555,7 @@ pub(super) fn navigate(spec: u64) -> ! {
                 }
             });
             if matches!(listed, Say::Nothing) && saw_marker {
-                v |= nb::BIND_REACHED_TARGET;
+                *v |= nb::BIND_REACHED_TARGET;
             }
 
             // `/<dirname>`, the real parent's own path: built once, so the check below compares
@@ -509,40 +563,32 @@ pub(super) fn navigate(spec: u64) -> ! {
             // having been reached through.
             let mut want = [0u8; nav::RENDER_MAX];
             want[0] = b'/';
-            want[1..1 + dirname.1].copy_from_slice(name_of(&dirname));
+            want[1..1 + dirname.1].copy_from_slice(name_of(dirname));
             let want = &want[..1 + dirname.1];
 
             // `cd` through the bound name, then `..` three times: to the real parent (not a
             // boundary invented at the alias), to the real root, and refused there exactly where
             // a direct walk to that depth would refuse, never one step earlier or later.
             if matches!(
-                run_line(&mut nav, line(&mut cmd2, b"cd /", &alias)),
+                run_line(nav, line(&mut cmd2, b"cd /", &alias)),
                 Some(Say::Nothing)
-            ) && matches!(run_line(&mut nav, b"cd .."), Some(Say::Nothing))
-                && pwd_is(&nav, want)
+            ) && matches!(run_line(nav, b"cd .."), Some(Say::Nothing))
+                && pwd_is(nav, want)
             {
-                v |= nb::BIND_ASCEND_REACHES_REAL_PARENT;
-                if matches!(run_line(&mut nav, b"cd .."), Some(Say::Nothing))
-                    && pwd_is(&nav, b"/")
+                *v |= nb::BIND_ASCEND_REACHES_REAL_PARENT;
+                if matches!(run_line(nav, b"cd .."), Some(Say::Nothing))
+                    && pwd_is(nav, b"/")
                     && matches!(
-                        run_line(&mut nav, b"cd .."),
+                        run_line(nav, b"cd .."),
                         Some(Say::Refused(Refused::AtYourRoot))
                     )
-                    && pwd_is(&nav, b"/")
+                    && pwd_is(nav, b"/")
                 {
-                    v |= nb::BIND_STOPS_AT_TRUE_ROOT;
+                    *v |= nb::BIND_STOPS_AT_TRUE_ROOT;
                 }
             }
         }
     }
-
-    // Nothing worked at all: say so, rather than letting a shell that reaches nothing pass as a
-    // shell that is perfectly confined.
-    if v & (nb::REACHED_INNER | nb::REACHED_SECRET | nb::LISTED) == 0 {
-        v |= nb::NAVIGATION_FAILED;
-    }
-    send(REPORT, VERDICT, v, 0);
-    exit();
 }
 
 // ---- the two-tree witness (milestone 154) ----
