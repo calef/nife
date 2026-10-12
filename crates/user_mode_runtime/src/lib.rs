@@ -1030,7 +1030,12 @@ pub fn address_space_map_into(aspace_slot: u64, va: u64, frame_slot: u64, mode: 
 /// thread_control_block_configure, thread_control_block_start, ..." Refused `tcb_cap_insert` (round
 /// 7's provisional name; §154 (the acronym test is whether the phrase is spoken) spells out thread
 /// control block, and capability is spelled out).
-pub fn thread_control_block_capability_insert(tcb_slot: u64, cap_slot: u64, rights: u64, target: u64) -> i64 {
+pub fn thread_control_block_capability_insert(
+    tcb_slot: u64,
+    cap_slot: u64,
+    rights: u64,
+    target: u64,
+) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates `WRITE` on the TCB and `GRANT` on the inserted
     // capability before it copies anything.
     unsafe {
@@ -1056,7 +1061,12 @@ pub fn thread_control_block_capability_insert(tcb_slot: u64, cap_slot: u64, righ
 /// question 2). His words: "Ratify ... thread_control_block_capability_insert,
 /// thread_control_block_configure, thread_control_block_start, ..." Refused `tcb_configure` (round
 /// 7's provisional name).
-pub fn thread_control_block_configure(tcb_slot: u64, entry: u64, user_sp: u64, aspace_slot: u64) -> i64 {
+pub fn thread_control_block_configure(
+    tcb_slot: u64,
+    entry: u64,
+    user_sp: u64,
+    aspace_slot: u64,
+) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates `WRITE` on both capabilities before it binds them.
     unsafe {
         invoke(
@@ -1088,14 +1098,23 @@ pub fn thread_control_block_start(tcb_slot: u64, x0: u64, x1: u64, x2: u64) -> i
 
 /// `WAIT` on the `Irq` capability in `irq_slot`: block until the interrupt fires. The kernel masks
 /// it when it fires and hands it to us as a message; nothing device-specific happens in the kernel.
-pub fn irq_wait(irq_slot: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2), with [`interrupt_acknowledge`] and `abi::interrupt`. His words: "Ratify those
+/// three." Refused `irq_wait` (round 7's provisional name; a newcomer says interrupt, per §154 (the
+/// acronym test is whether the phrase is spoken)).
+pub fn interrupt_wait(irq_slot: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the Irq capability before it blocks the caller.
     unsafe { invoke(irq_slot, abi::irq::WAIT, 0, 0, 0) }
 }
 
 /// `ACK` the `Irq` capability in `irq_slot`: re-enable the interrupt at the GIC once the device has
 /// been quieted. Until this is called, the interrupt stays masked and cannot storm.
-pub fn irq_ack(irq_slot: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2), with [`interrupt_wait`]. His words: "Ratify those three." Refused `irq_ack` (round
+/// 7's provisional name), `irq_acknowledge` (the alternative round 9 recommended).
+pub fn interrupt_acknowledge(irq_slot: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the Irq capability before it re-enables anything.
     unsafe { invoke(irq_slot, abi::irq::ACK, 0, 0, 0) }
 }

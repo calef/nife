@@ -139,8 +139,8 @@
 
 use user_mode_runtime::mapped_window::MappedWindow;
 use user_mode_runtime::{
-    call, destroy_memory_region, exit, map_page_frame, receive, receive_cap, retype_into_page_frame, send,
-    send_cap, split_memory_region, yield_now,
+    call, destroy_memory_region, exit, map_page_frame, receive, receive_cap,
+    retype_into_page_frame, send, send_cap, split_memory_region, yield_now,
 };
 
 /// The login service's front-door request endpoint (slot 0), `WRITE`.

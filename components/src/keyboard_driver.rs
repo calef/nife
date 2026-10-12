@@ -80,7 +80,7 @@ use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::virtio::{
     virtio_notify, virtio_read_reg, virtio_ring_barrier, virtio_setup_queue, virtio_write_reg,
 };
-use user_mode_runtime::{call, irq_ack, irq_wait, send};
+use user_mode_runtime::{call, interrupt_acknowledge, interrupt_wait, send};
 
 /// Capability slots, by convention with `kernel/src/user/keyboard_service.rs`.
 const REPORT: u64 = 0;
@@ -329,7 +329,7 @@ pub extern "C" fn _start(mode: u64, _arg1: u64, _arg2: u64) -> ! {
     let mut direct_buf = [0u8; 8]; // buffered bytes awaiting one OPERATION_BYTES CALL (MODE_DIRECT)
     let mut direct_n: usize = 0;
     loop {
-        irq_wait(IRQ);
+        interrupt_wait(IRQ);
 
         let mut typed = false;
         loop {
@@ -392,7 +392,7 @@ pub extern "C" fn _start(mode: u64, _arg1: u64, _arg2: u64) -> ! {
         // driver's discipline, and the reason an interrupt does not immediately re-fire.
         let istatus = mr(INTERRUPT_STATUS);
         mw(INTERRUPT_ACK, istatus);
-        irq_ack(IRQ); // re-enable the interrupt the kernel masked when it fired
+        interrupt_acknowledge(IRQ); // re-enable the interrupt the kernel masked when it fired
 
         if mode == MODE_DIRECT {
             // Flush whatever this drain accumulated that did not already fill a whole word: a

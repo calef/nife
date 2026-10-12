@@ -74,7 +74,7 @@ use smoltcp::time::Instant;
 use smoltcp::wire::{EthernetAddress, HardwareAddress, IpAddress, IpCidr, IpEndpoint, Ipv4Address};
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{
-    Delivered, Reply, cap_delete, cntfrq, irq_wait, map_page_frame, notification_poll, now,
+    Delivered, Reply, cap_delete, cntfrq, interrupt_wait, map_page_frame, notification_poll, now,
     receive_request, reply, reply_capability, send, sleep_until, timer_arm, timer_cancel,
 };
 
@@ -655,7 +655,7 @@ fn wait_for_nic(iface: &mut Interface, dev: &mut Nic, sockets: &mut SocketSet) {
         Nic::Virtio(_) => {}
     }
     let Some(delay) = iface.poll_delay(instant(), sockets) else {
-        irq_wait(IRQ);
+        interrupt_wait(IRQ);
         dev.ack_irq();
         return;
     };
@@ -671,7 +671,7 @@ fn wait_for_nic(iface: &mut Interface, dev: &mut Nic, sockets: &mut SocketSet) {
         cntfrq(),
     );
     if timer_arm(RETRANSMIT, now().saturating_add(ticks), WAKE, 1) == 0 {
-        irq_wait(IRQ); // 1: a frame; BOUND: the deadline
+        interrupt_wait(IRQ); // 1: a frame; BOUND: the deadline
         // Whichever ended the wait, leave nothing behind: disarm, and clear a fire that raced the
         // frame, so a stale deadline never ends the next `receive_cap(STACK)` as a bound delivery.
         if timer_cancel(RETRANSMIT) == 0 {

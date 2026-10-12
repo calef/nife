@@ -131,7 +131,9 @@ use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::virtio::{
     virtio_notify, virtio_read_reg, virtio_ring_barrier, virtio_setup_queue, virtio_write_reg,
 };
-use user_mode_runtime::{exit, irq_ack, irq_wait, receive_request, reply, send};
+use user_mode_runtime::{
+    exit, interrupt_acknowledge, interrupt_wait, receive_request, reply, send,
+};
 
 /// Capability slots for the virtio backend, by convention with `kernel/src/user/entropy_service.rs`.
 const REQ: u64 = 0;
@@ -328,7 +330,7 @@ impl Pool {
                 self.seen = self.seen.wrapping_add(1);
                 break;
             }
-            irq_wait(IRQ);
+            interrupt_wait(IRQ);
             self.quiet();
         }
         // Quiet the device and re-enable the line even on the path that never waited: the device
@@ -344,7 +346,7 @@ impl Pool {
     fn quiet(&self) {
         let istatus = mr(INTERRUPT_STATUS);
         mw(INTERRUPT_ACK, istatus);
-        irq_ack(IRQ); // re-enable the line the kernel masked when it fired
+        interrupt_acknowledge(IRQ); // re-enable the line the kernel masked when it fired
     }
 
     /// Refill the buffer, retrying a device that returned nothing. `false` when the device gave us

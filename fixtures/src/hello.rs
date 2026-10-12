@@ -67,7 +67,7 @@
 /// interactive boot's own use of it is in `crates/system_initializer`; what is left here is milestone
 /// 19d's test roles, which build a child out of one budget and hand it two or three capabilities.
 use supervision_protocol::{Child, ChildEndowment, Retention};
-use user_mode_runtime::{exit, irq_wait, map_page_frame, receive, send};
+use user_mode_runtime::{exit, interrupt_wait, map_page_frame, receive, send};
 
 /// Roles, as passed in `x0` by the kernel.
 // Roles 0, 2, 7, 9 to 19 and 42 were the milestone 7-19 capability demonstrations and the granted
@@ -277,7 +277,7 @@ fn irq_child() -> ! {
     const IRQ: u64 = 1;
     const IRQ_WORD: u64 = 0x1590; // "IRQ 0" ish; any fixed value the test asserts
 
-    let _ = irq_wait(IRQ); // blocks until the interrupt the kernel routed for this cap fires
+    let _ = interrupt_wait(IRQ); // blocks until the interrupt the kernel routed for this cap fires
     send(REPORT, IRQ_WORD, 0, 0);
     exit();
 }

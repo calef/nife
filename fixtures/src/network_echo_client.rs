@@ -46,8 +46,8 @@ use socket_protocol::fixture::{ECHO_PEER_IP, ECHO_PEER_PORT};
 use socket_protocol::*;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{
-    call, call_receiving, cap_delete, exit, is_granted, map_page_frame, retype_into_page_frame, send,
-    send_cap,
+    call, call_receiving, cap_delete, exit, is_granted, map_page_frame, retype_into_page_frame,
+    send, send_cap,
 };
 
 /// The output slot: the sink contract.

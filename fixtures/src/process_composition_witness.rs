@@ -105,7 +105,9 @@ use capability_witness_protocol::process_composition::{
 use supervision_protocol::{
     ChildEndowment, Retention, build_child_space, configure_child, start_child,
 };
-use user_mode_runtime::{exit, address_space_map_into, receive, retype_into_kernel_object, retype_into_page_frame, send};
+use user_mode_runtime::{
+    address_space_map_into, exit, receive, retype_into_kernel_object, retype_into_page_frame, send,
+};
 
 const MEMORY_REGION: u64 = 0;
 const REPORT: u64 = 1;

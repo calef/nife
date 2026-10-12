@@ -68,8 +68,8 @@ use component_plan::Provisions;
 use supervision_protocol::{ChildEndowment, Retention};
 use swap_protocol::log_checks as lc;
 use user_mode_runtime::{
-    cap_delete, cntfrq, address_space_map_into, map_page_frame, now, receive, receive_bound, receive_fault,
-    revoke_page_frame, send, timer_arm,
+    address_space_map_into, cap_delete, cntfrq, map_page_frame, now, receive, receive_bound,
+    receive_fault, revoke_page_frame, send, timer_arm,
 };
 
 /// What the kernel grants us, and nothing else.

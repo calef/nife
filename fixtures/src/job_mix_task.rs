@@ -245,8 +245,12 @@ fn spawn_job(code_frame: u64) -> Result<u64, Refused> {
         // Its result is the child's current-CPU page address since milestone 812
         // (`std::thread::spawn` runs real threads in one address space), so success is
         // any non-negative answer.
-        let configured =
-            user_mode_runtime::thread_control_block_configure(tcb, CHILD_CODE_VA, CHILD_STACK_VA + PAGE, aspace);
+        let configured = user_mode_runtime::thread_control_block_configure(
+            tcb,
+            CHILD_CODE_VA,
+            CHILD_STACK_VA + PAGE,
+            aspace,
+        );
         zero(configured.min(0))?;
         zero(user_mode_runtime::thread_control_block_start(tcb, 0, 0, 0))?;
         // The child's done word. Then reclaim: `DESTROY` refuses a region a live thread occupies,
@@ -275,7 +279,9 @@ fn spawn_job(code_frame: u64) -> Result<u64, Refused> {
 /// splits it, so it outlives every child and every `DESTROY` (a region reclaims in reverse order of
 /// what was taken from it). Filled once with [`user_mode_runtime::child_stub::SEND_THEN_EXIT`].
 fn prepare_child_code() -> Result<u64, Refused> {
-    let frame = slot(user_mode_runtime::retype_into_page_frame(job_mix::SLOT_BUDGET))?;
+    let frame = slot(user_mode_runtime::retype_into_page_frame(
+        job_mix::SLOT_BUDGET,
+    ))?;
     if !user_mode_runtime::map_page_frame(frame, STUB_SCRATCH_VA, true, job_mix::SLOT_BUDGET) {
         return Err(abi::Error::OutOfMemory as i64);
     }

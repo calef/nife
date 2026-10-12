@@ -24,7 +24,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use user_mode_runtime::irq_ack;
+use user_mode_runtime::interrupt_acknowledge;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::virtio::{
     virtio_notify, virtio_read_reg, virtio_ring_barrier, virtio_setup_queue, virtio_write_reg,
@@ -216,7 +216,7 @@ impl VirtioNet {
     pub fn ack_irq(&self) {
         let istatus = mr(INTERRUPT_STATUS);
         mw(INTERRUPT_ACK, istatus);
-        irq_ack(IRQ); // re-enable the interrupt the kernel masked when it fired
+        interrupt_acknowledge(IRQ); // re-enable the interrupt the kernel masked when it fired
     }
 
     /// Take one received frame, if the receive used ring has advanced. Copies the frame out (minus
