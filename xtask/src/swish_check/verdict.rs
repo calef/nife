@@ -31,16 +31,16 @@ pub(super) fn swish_check_omits(arch: &str, line: &str) -> Option<&'static str> 
     None
 }
 
-/// The first thing `x86_hand_over` prints (`kernel/src/lib.rs`), where the `x86_64` leg starts
-/// reading for faults; see `after_hand_over` in [`swish_check_leg`]. The same sentence
+/// The first thing `x86_hand_over` prints (`kernel/src/x86_64_boot.rs`), where the `x86_64` leg
+/// starts reading for faults; see `after_hand_over` in [`swish_check_leg`]. The same sentence
 /// `uefi_boot` requires.
 pub(super) const X86_HAND_OVER_START: &str =
     "nife: handing the system to the userspace progenitor.";
 
-/// The last thing `x86_hand_over` prints (`kernel/src/lib.rs`) once the progenitor has outlived
-/// its ten-second watch, which is the ordinary interactive outcome. The `x86_64` leg waits for it
-/// before typing; see [`swish_check_leg`]'s doc. The milestone it names is milestone 299 (the x86
-/// port-range capability: the serial console becomes a userspace driver).
+/// The last thing `x86_hand_over` prints (`kernel/src/x86_64_boot.rs`) once the progenitor has
+/// outlived its ten-second watch, which is the ordinary interactive outcome. The `x86_64` leg waits
+/// for it before typing; see [`swish_check_leg`]'s doc. The milestone it names is milestone 299
+/// (the x86 port-range capability: the serial console becomes a userspace driver).
 pub(super) const X86_HAND_OVER_REPORT: &str = "as a port capability (milestone 299).";
 
 /// How long to wait for the banner, for one line's echo, and for the whole transcript. Generous:

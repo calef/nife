@@ -170,41 +170,22 @@ jobs:
         continue-on-error: true  # outcome: re-raised
         run: python3 helpers/interface_stability.py --update
 
-      # The merge queue's daily record (milestone 724 (the merge queue reports its ejection share and
-      # its time to merge), provisional): GitHub's queue events are not in git, so they are fetched
-      # here and committed as `merge-queue-daily.csv`, which `script/metrics` then sums by week.
-      # `continue-on-error` for coverage's reason: a fetch failure is an instrument problem, and the
-      # other columns should still be recorded. The step rewrites the last eight days and keeps older
-      # ones, so a missed run heals on the next.
-      - name: Fetch the merge queue's daily record
-        id: queue
-        continue-on-error: true  # outcome: re-raised
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 helpers/merge_queue_share.py update
+      # The merge queue's daily record and the debt-paydown labels are fetched by fleet-metrics.yml
+      # since milestone 889 (the tree's gates stop depending on the fleet tooling), provisional: they
+      # measure the fleet, and calef's Fork 3 ruling on #1976 sends their collectors with the fleet
+      # tooling. They write the same two CSV files, which `script/metrics` below still charts.
 
       # How long verify's shards took (lane/verify-shard-refresh, provisional): one row per sampled
       # green run, from GitHub's job records, committed as `verify-runs.csv` for `script/metrics`
-      # to take weekly medians of. The same reasons as the queue step above: the record is not in
-      # git, a fetch failure is an instrument problem, and the last eight days are rewritten so a
-      # missed run heals on the next.
+      # to take weekly medians of. The record is not in git, a fetch failure is an instrument
+      # problem (`continue-on-error`, so the other columns are still recorded; the last step
+      # re-raises), and the last eight days are rewritten so a missed run heals on the next.
       - name: Fetch verify's per-shard times
         id: verifytimes
         continue-on-error: true  # outcome: re-raised
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 helpers/verify_times.py update
-
-      # Which merged pull requests carry the `debt-paydown` label (notes/debt-paydown.md), for
-      # `script/metrics`' weekly share. Labels are on GitHub and not in git, so the queue step's
-      # reasons hold. Unlike it, the whole history is fetched and the file rewritten, because a
-      # label can be corrected on a pull request merged months ago; it is one paginated listing.
-      - name: Fetch which merged pull requests pay down debt
-        id: debtpaydown
-        continue-on-error: true  # outcome: re-raised
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 helpers/debt_paydown_share.py update
 
       # Where each merge-group job's time went, per day, per job and per step (milestone 808 (every
       # gate accounts for its time), §254 (a gate prints what each item cost) Fork 4), from the jobs
@@ -353,8 +334,7 @@ jobs:
         if: >-
           steps.covtool.outcome == 'failure' || steps.coverage.outcome == 'failure' ||
           steps.interfacetool.outcome == 'failure' || steps.interface.outcome == 'failure' ||
-          steps.queue.outcome == 'failure' || steps.verifytimes.outcome == 'failure' ||
-          steps.debtpaydown.outcome == 'failure' ||
+          steps.verifytimes.outcome == 'failure' ||
           steps.jobtimes.outcome == 'failure' || steps.budgetissues.outcome == 'failure'
         run: |
           echo "::error::an instrument failed, so its cells were carried rather than measured:" \
@@ -362,9 +342,7 @@ jobs:
             "coverage '${{ steps.coverage.outcome }}'," \
             "interface target '${{ steps.interfacetool.outcome }}'," \
             "interface '${{ steps.interface.outcome }}'," \
-            "merge queue fetch '${{ steps.queue.outcome }}'," \
             "verify shard times '${{ steps.verifytimes.outcome }}'," \
-            "debt-paydown labels '${{ steps.debtpaydown.outcome }}'," \
             "CI job times '${{ steps.jobtimes.outcome }}'," \
             "near-budget issues '${{ steps.budgetissues.outcome }}'"
           exit 1

@@ -23,7 +23,6 @@ crates/globally_unique_identifier_partition_table/src/lib.rs	550
 crates/grant_plan/src/lib.rs	40
 crates/grant_plan/src/program.rs	129
 crates/inter_process_communication/src/lib.rs	553
-crates/machine_discovery/src/acpi.rs	1968
 crates/memory_regions/src/lib.rs	183
 crates/name_resolution_protocol/src/lib.rs	402
 crates/paging/src/lib.rs	590
@@ -31,7 +30,6 @@ crates/stick_maker/src/host/mod.rs	106
 crates/stick_maker/src/lib.rs	4
 crates/swish/src/lib.rs	2525
 crates/system_log/src/lib.rs	503
-crates/timetable/src/lib.rs	1514
 crates/usb/src/lib.rs	37
 crates/user_mode_runtime/src/lib.rs	542
 crates/video_terminal/src/lib.rs	2050
@@ -40,7 +38,6 @@ kernel/src/arch/aarch64/mod.rs	161
 kernel/src/arch/mod.rs	95
 kernel/src/arch/riscv64/mod.rs	148
 kernel/src/arch/x86_64/mod.rs	203
-kernel/src/lib.rs	1278
 kernel/src/reboot.rs	170
 kernel/src/sched.rs	624
 kernel/src/syscall.rs	1104

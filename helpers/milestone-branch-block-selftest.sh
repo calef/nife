@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Selftest for helpers/milestone-branch-block.sh (script/lint's check 4b), run by script/lint.
+# Selftest for helpers/milestone-branch-block.sh (script/lint-fleet's check 4b), run by script/lint-fleet.
 # Builds a throwaway repository with an `origin/main` ref, so it needs no tree and no network. The
 # cases are #1901's shape (cut as 868, renumbered to 871, branch kept) beside the mismatches the
 # check exists to catch. The warning cases are the point: a check that never warns looks the same as

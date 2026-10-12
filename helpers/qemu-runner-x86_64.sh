@@ -129,11 +129,11 @@ DEBUG_EXIT="-device isa-debug-exit,iobase=0xf4,iosize=0x04"
 
 # VT-d (milestone 161, roadmap item 6), unconditional, the same posture the other two runners take
 # for their own IOMMU (`iommu=smmuv3` on aarch64, `-device riscv-iommu-pci` on riscv): idle when
-# nothing attaches. `intel-iommu` is a q35-only device (it attaches to the host bridge, not to a
-# PCI slot), which is one more reason this runner and the aarch64/riscv ones cannot share a code
-# path. What proves the driver against real (emulated) hardware rather than only its own
-# host-side unit tests is `arch::x86_64::machine::read_acpi` finding a DMAR with one DRHD, so
-# `kernel_main`'s x86 tour brings VT-d up and prints so; the NVMe attachment below (§86's data
+# nothing attaches. `intel-iommu` is a q35-only device (it attaches to the host bridge, not to a PCI
+# slot), which is one more reason this runner and the aarch64/riscv ones cannot share a code path.
+# What proves the driver against real (emulated) hardware rather than only its own host-side unit
+# tests is `arch::x86_64::machine::read_acpi` finding a DMAR with one DRHD, so `x86_64_boot`'s tour
+# (kernel/src/x86_64_boot.rs) brings VT-d up and prints so; the NVMe attachment below (§86's data
 # point) is the first PCI device this runner confines behind it.
 #
 # **NIFE_INTREMAP passes `intremap=` through to the unit** (milestone 317; the name is PROVISIONAL,
@@ -142,11 +142,11 @@ DEBUG_EXIT="-device isa-debug-exit,iobase=0xf4,iosize=0x04"
 # QEMU's own default, which is what every boot before this milestone got.
 #
 # **The useful value is `off`, and that is the opposite of what this milestone set out to build.**
-# DECISIONS §86 and notes/confinement-claims.md both state that this runner "attaches `-device
-# intel-iommu` with no `intremap=on`, so interrupt remapping is off in every x86_64 boot this tree
-# runs." The first half is a true reading of this file. **The second half is false**, and it was
-# reached by reading this file rather than by booting it. Measured by printing `ECAP` from inside
-# the guest, QEMU 11.1.1, `q35` under TCG on patagonia:
+# DECISIONS §86 (whether an NVMe driver can leave the kernel) and notes/confinement-claims.md both
+# state that this runner "attaches `-device intel-iommu` with no `intremap=on`, so interrupt
+# remapping is off in every x86_64 boot this tree runs." The first half is a true reading of this
+# file. **The second half is false**, and it was reached by reading this file rather than by booting
+# it. Measured by printing `ECAP` from inside the guest, QEMU 11.1.1, `q35` under TCG on patagonia:
 #
 #     -device intel-iommu                 ECAP = 0xf00f4a   IR set    (QEMU's default)
 #     -device intel-iommu,intremap=on     ECAP = 0xf00f4a   IR set    (a no-op here)

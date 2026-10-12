@@ -186,7 +186,7 @@ mod tests {
 
     use super::*;
     use crate::contract::STAGING_BYTES;
-    use crate::{Admission, Unbacked};
+    use crate::{Admission, Held, Unbacked, parse, registration};
 
     #[test]
     fn a_request_word_carries_an_operation_and_a_sequence_that_come_back_out() {
@@ -243,5 +243,69 @@ mod tests {
         assert_eq!(stage(&mut page, &long), None);
         let fits = std::vec![b'y'; BODY_MAX];
         assert_eq!(stage(&mut page, &fits), Some(()));
+    }
+
+    /// **The verdict word a registrar reads back**, and the request word it writes. Kind in the
+    /// low two bits, the missing authority above it, the kept beat in bit 7.
+    #[test]
+    fn the_verdict_word_says_what_each_entry_became() {
+        use registration::*;
+        let doc = parse(
+            "every 1s least_authority_demo 7\n\
+             every 1s memory_grant_depleter\n\
+             every 1s date\n",
+        )
+        .unwrap();
+        let reg = Registry::register(&doc, Held::default());
+        let word = verdicts(&reg, 0b001);
+        assert_eq!(verdict_of(word, 0), KIND_FIRES | KEPT_PHASE);
+        assert_eq!(verdict_of(word, 1), KIND_REFUSED);
+        assert_eq!(
+            verdict_of(word, 2),
+            KIND_UNBACKED | (unbacked_code(Unbacked::Clock) << 2)
+        );
+        assert_eq!(verdict_of(word, 3), KIND_NONE, "no entry at index 3");
+
+        let r = request(REPLACE, 41);
+        assert_eq!((operation(r), sequence(r)), (REPLACE, 41));
+
+        let mut page = [0u8; PAGE_BYTES];
+        stage(&mut page, b"at-boot least_authority_demo 3\n").unwrap();
+        assert_eq!(
+            u64::from_le_bytes(page[LEN..LEN + 8].try_into().unwrap()),
+            31
+        );
+        assert_eq!(&page[BODY..BODY + 31], b"at-boot least_authority_demo 3\n");
+        assert!(
+            stage(&mut page, &[b'#'; BODY_MAX + 1]).is_none(),
+            "a document past the page"
+        );
+        assert!(
+            stage(&mut page, &[b'#'; BODY_MAX]).is_some(),
+            "and one that exactly fills it"
+        );
+    }
+
+    // ---- survivor triage of the 2026-10-03 census ---------------------------------------------
+
+    /// The kept mask is read bit by bit: entry `i` is kept when bit `i` is set. The existing check
+    /// used bit 0, where a shift by zero cannot tell left from right.
+    #[test]
+    fn the_verdict_word_marks_the_kept_entry_and_only_that_one() {
+        use registration::*;
+        let doc = parse(
+            "every 1s least_authority_demo 7\n\
+             every 1s memory_grant_depleter\n\
+             every 1s date\n",
+        )
+        .unwrap();
+        let reg = Registry::register(&doc, Held::default());
+        let word = verdicts(&reg, 0b010);
+        assert_eq!(verdict_of(word, 0), KIND_FIRES);
+        assert_eq!(verdict_of(word, 1), KIND_REFUSED | KEPT_PHASE);
+        assert_eq!(
+            verdict_of(word, 2),
+            KIND_UNBACKED | (unbacked_code(Unbacked::Clock) << 2)
+        );
     }
 }

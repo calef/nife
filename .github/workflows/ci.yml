@@ -135,6 +135,12 @@ concurrency:
 # request *is* rather than what an event once said it was, and by failing toward running. Treat the
 # paragraph above as history: no job now tests `github.event.pull_request.draft`.
 #
+# **The draft gate is not a fleet dependency, and stays** (milestone 889 (the tree's gates stop
+# depending on the fleet tooling) kept this edge on purpose). It came from §90 (the claim is a draft
+# pull request), but what it does is general: a contributor who opens a draft loses nothing by CI
+# waiting for ready, and the runner time is saved in any repository. It reads only GitHub's own
+# draft flag, no fleet file.
+#
 # **Six jobs run on ubuntu-24.04-arm and the rest on ubuntu-24.04 (x86_64)** (milestone 587 (most CI
 # jobs do not need an arm64 host), calef's ruling of 2026-09-24). The count was two when that
 # milestone landed; the watchdog job joined them, and the 2026-09-30 split turned the one build job
@@ -1085,6 +1091,16 @@ jobs:
           command -v cargo-machete >/dev/null || cargo install cargo-machete --locked
           command -v typos        >/dev/null || cargo install typos-cli     --locked
       - run: script/ci-build lint
+      # **The fleet tooling's checks, as their own step** (milestone 889 (the tree's gates stop
+      # depending on the fleet tooling), provisional). The 22 checks of the lane, queue, label and
+      # identity machinery left script/lint for script/lint-fleet, so that a stranger's lint reads
+      # no fleet file. They still gate every pull request and merge group from here: a step in
+      # this job, rather than a job of its own, because a new job gates nothing until the ruleset
+      # requires it, and this job's verdict is already required (as `clippy`, through the relay
+      # job below). When the fleet tooling moves to its own repository this step becomes a call to
+      # that repository's reusable workflow.
+      - name: The fleet tooling's checks
+        run: script/lint-fleet
       # The one host-only tool with no selftest in script/lint. The gate (helpers/prose_only.py,
       # HOST_ONLY_TOOLS) skips every heavy job for a change that touches only script/metrics and
       # the report generators beside it, so this job, which never skips, is where it is exercised

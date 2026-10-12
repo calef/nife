@@ -38,7 +38,6 @@ too_many_lines	crates/system_initializer/src/spawn_loop.rs	spawn_service	609
 too_many_lines	crates/timetable/src/recurrence.rs	parse	114
 too_many_lines	kernel/src/disk_throughput.rs	measure	130
 too_many_lines	kernel/src/job_mix.rs	run	150
-too_many_lines	kernel/src/lib.rs	kernel_main	977
 too_many_lines	kernel/src/memory.rs	init	107
 too_many_lines	kernel/src/sched.rs	schedule	128
 too_many_lines	kernel/src/soak.rs	run	117

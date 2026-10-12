@@ -554,7 +554,7 @@ if mode == "--ratchet":
                               capture_output=True, text=True).stdout.strip()
     if not base:
         # No merge base means no branch to judge: a detached HEAD in CI, or a fresh clone with no
-        # origin/main. Silence rather than a guess, which is what script/lint's 4b does with the
+        # origin/main. Silence rather than a guess, which is what script/lint-fleet's 4b does with the
         # same situation.
         print("citations: no merge base against origin/main; ratchet skipped")
         sys.exit(0)
@@ -920,7 +920,7 @@ if mode == "--moved":
                               capture_output=True, text=True).stdout.strip()
     if not base:
         # No merge base is a detached HEAD in CI or a fresh clone, and there is no branch to judge.
-        # Silence rather than a guess, the same answer `--ratchet` and script/lint 4b give.
+        # Silence rather than a guess, the same answer `--ratchet` and script/lint-fleet 4b give.
         print("citations: no merge base against origin/main; nothing to compare statuses against")
         sys.exit(0)
 

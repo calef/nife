@@ -24,12 +24,10 @@ not a caption, it is a register entry.
   commits, which is right for a trend and is not what anybody believed at the time.
 - Every figure here is derived by an agent and none of it is externally audited. Where a number
   has been checked two different ways, the register says so and names the method.
-- A missing bar means the record did not exist, not that the number was zero. No empty cell is
-  ever drawn as a nought.
+- A missing bar means the record did not exist, not that the number was zero.
 - Weeks are ISO weeks in UTC, spelled `2026W36` everywhere, and the series starts at 2026W29
   because that is where the first commit falls. There is no 2026W28.
-- The charts show the ten most recent weeks; the CSV keeps every one. A week is never deleted,
-  only no longer drawn.
+- The charts show the ten most recent weeks; the CSV keeps every one.
 - A milestone is not a fixed unit and a pull request is not a unit of value. Read the shape, not
   the height.
 
@@ -119,6 +117,7 @@ Queue began 2026-08-15; W31 and W32 predate it.
 <!-- week-notes: script/metrics writes this -->
 - 2026W41: prove shards rebalanced on 2026-10-07 UTC by a 40-run median and split three ways (calef, #1802), planned at 15.7 minutes each from 20.5 and 27
 - 2026W41: CI job test ran at 89% of its budget on its newest merge-group run; tracking issue #1930
+- 2026W42: re-falsify replays two records at a time (#1979); full-scope shards fell from 16.5 to 8.8 minutes
 <!-- /week-notes -->
 
 ![Where a merge-group build's time goes](project-metrics/ci-critical-path.svg)

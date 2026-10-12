@@ -8,10 +8,10 @@ scheduler hits every time it wakes on the beat instead of late.
 Expected to fail: the harness's `assert!(next > now)`, at `prev + period == now`, where the
 function returns `now` itself and the same occurrence fires again on the next poll.
 
-diff --git a/crates/timetable/src/lib.rs b/crates/timetable/src/lib.rs
---- a/crates/timetable/src/lib.rs
-+++ b/crates/timetable/src/lib.rs
-@@ -738,3 +738,3 @@ pub const fn next_after(prev: u64, period: u64, now: u64) -> u64 {
+diff --git a/crates/timetable/src/registry.rs b/crates/timetable/src/registry.rs
+--- a/crates/timetable/src/registry.rs
++++ b/crates/timetable/src/registry.rs
+@@ -440,3 +440,3 @@ pub const fn next_after(prev: u64, period: u64, now: u64) -> u64 {
      let first = prev.saturating_add(period);
 -    if first > now {
 +    if first >= now {

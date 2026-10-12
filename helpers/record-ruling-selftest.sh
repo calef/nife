@@ -1,7 +1,7 @@
 #!/bin/sh
 # helpers/record-ruling-selftest.sh: prove script/record-ruling posts the ruling with the marker
 # helpers/open-question.jq reads, then swaps needs-architect for architect-ruled in one edit, with a
-# stub `gh` and no network. script/lint runs it. Cases: a plain ruling; a send-back adds held-by-lane;
+# stub `gh` and no network. script/lint-fleet runs it. Cases: a plain ruling; a send-back adds held-by-lane;
 # --partial posts a marker that closes nothing and edits no label; an item without needs-architect
 # is not asked to remove it; a swap that does not take exits 1; an issue goes through `gh issue`.
 set -u

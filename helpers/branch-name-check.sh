@@ -17,7 +17,9 @@
 # branch, before a single commit. That means two callers now need the same answer for the same
 # name, and copying the four-line `case` statement into a second file is exactly the failure this
 # project's naming rule calls out elsewhere, a second copy that quietly stops agreeing with the
-# first. So the `case` statement lives here once, and script/lint and script/claim both source it.
+# first. So the `case` statement lives here once, and script/lint-fleet and script/claim both
+# source it (script/lint until milestone 889 (the tree's gates stop depending on the fleet tooling)
+# moved check 4 there).
 #
 # Name: provisional, minted 2026-09-22 pulling this out of script/lint's check 4. Hyphenated and
 # unadorned like helpers/qemu-path.sh, the other sourced-not-run helper in this directory; a verb
@@ -27,12 +29,12 @@
 # nife_check_branch_name_shape <branch> [prefix]
 #
 # Returns 0 for a correctly spelled `milestone/N-slug` claim, and for every branch that claims no
-# milestone at all (a prefix nothing reads is a convention, not a gate; script/lint's check 4 has
+# milestone at all (a prefix nothing reads is a convention, not a gate; script/lint-fleet's check 4 has
 # the reasoning for why that half is deliberately unbounded).
 #
 # Returns 1 and prints the explanation, on a near-miss: `milestone-126-pgrep`, `milestones/9-foo`,
 # `Milestone/3-x`. A near-miss is refused rather than let through because it would sail past
-# script/lint's check 4b in silence: that check moves a milestone's roadmap status and matches only
+# script/lint-fleet's check 4b in silence: that check moves a milestone's roadmap status and matches only
 # `milestone/*`, so a branch that LOOKS like a claim but does not parse as one would skip the
 # status-moves-at-merge check with nothing to say so. See DECISIONS §77 (the branch-prefix list now
 # describes the tree) for why the prefix taxonomy is otherwise unbounded, and DECISIONS §90 (the

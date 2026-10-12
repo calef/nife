@@ -243,9 +243,8 @@ would measure any repository run this way. Fully reversible.
 
 calef, 2026-10-12 (UTC), [relayed by the maintainer session](https://github.com/nifeos/nife/pull/1976#issuecomment-6117241317): *"A"*.
 The edges are cut in place first, in one nife lane, and then class 3 moves as a unit. That lane is
-the proposal
-[the tree's gates stop depending on the fleet tooling](the-trees-gates-stop-depending-on-the-fleet-tooling.md),
-ready to claim; its number is minted at merge.
+milestone 889 (the tree's gates stop depending on the fleet tooling), in
+[its block](../0889-the-trees-gates-stop-depending-on-the-fleet-tooling.md).
 
 Background. Edges 1 to 6 are why a move today would be a rewrite. Every option keeps class 1 where
 it is.

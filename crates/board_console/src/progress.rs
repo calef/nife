@@ -2,7 +2,7 @@
 //!
 //! Every marker below is quoted from something in this tree rather than remembered: the bench
 //! runbook in `notes/visionfive2.md` ("What appears, in order, on a good day" and the
-//! failure-triage ladder), and `kernel/src/lib.rs` and `kernel/src/panic.rs` for the lines that
+//! failure-triage ladder), and the kernel's boot files and `kernel/src/panic.rs` for the lines that
 //! are ours. Nothing here was invented, which matters more than usual, because a recogniser that
 //! matches text no board ever prints fails in the direction that looks like success.
 //!
@@ -638,7 +638,7 @@ impl BootProgress {
         // only marker that existed was a string literal in one architecture's arm of
         // `kernel/src/lib.rs` and a second copy of it here, which is exactly how finding 3 hid.
         //
-        // `nife on ` rather than the RISC-V line specifically: `kernel/src/lib.rs` prints one of
+        // `nife on ` rather than the RISC-V line specifically: the kernel's boot prints one of
         // these per architecture, and a recogniser that only knew the VisionFive 2's would report
         // a healthy aarch64 or x86_64 board as never having booted. The full line is kept so the
         // reader sees which one answered, and only from a complete line, or it is kept truncated.

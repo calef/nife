@@ -171,8 +171,27 @@ state() {
 # transition discipline as RED/GREEN, for the same reason: a cadence that has been dead for a month
 # is one fact, not four hundred polls of it. `|| true` because a dead cadence is its exit 1 and this
 # script runs under `set -e`.
+#
+# **Two of the cadences are asked here rather than by `script/cadence-check`** (milestone 889 (the
+# tree's gates stop depending on the fleet tooling), provisional, 2026-10-12 UTC). The weekly capture
+# of machine effort and the two merge watchers measure the fleet that runs agent lanes, and
+# cadence-check is a tree tool that a stranger's clone keeps, so it no longer calls either. Both
+# are asked on the same five-minute pass as before, in the same row format, so the transitions and
+# trunk-health.yml's DEAD warning read them exactly as they did.
+#
+# The effort capture (milestone 519 (what this project costs, tracked where it cannot rot)) is a
+# person running `script/effort --update` on the machine the lanes ran on, because only that
+# machine has the session records; `--check` asks whether the committed `effort.csv` holds the
+# current week, which needs no network and no records. It prints its row only when dead, the
+# `--quiet` rule. The merge watchers (milestone 723 (a stopped merge watcher is reported within
+# three of its own intervals)) have their own rule, from their own cron, in helpers/watcher_watch.py.
 cadence() {
 	script/cadence-check --quiet 2>/dev/null || true
+	if [ -x script/effort ]; then
+		effort_say="$(script/effort --check 2>&1)" ||
+			printf '%-32s %-24s %s\n' "effort capture" "not this week" "DEAD: ${effort_say#effort: }"
+	fi
+	python3 helpers/watcher_watch.py check --quiet 2>/dev/null || true
 }
 
 # Relayed by `--once` only; the watching form no longer calls it. See the header section above for

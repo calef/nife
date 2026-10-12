@@ -3,7 +3,7 @@
 # helpers/blocked-by-resolution-selftest.sh: the draft-unblock decision, checked against fixtures.
 #
 # Like the drain's other selftests: the predicate in
-# helpers/blocked-by-resolution.jq is checked here without a `gh` call, and script/lint runs this
+# helpers/blocked-by-resolution.jq is checked here without a `gh` call, and script/lint-fleet runs this
 # so a change to the decision is a gate rather than a habit.
 #
 # Needs jq, which every consumer of the predicate needs too.
