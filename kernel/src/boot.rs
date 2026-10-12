@@ -1,9 +1,14 @@
 //! **The kernel's Rust entry point, and the steps all three boots share.**
 //!
-//! `kernel_main` is the function `_start` calls on every architecture. On `x86_64` and riscv64
-//! it hands off to that architecture's own boot (`x86_64_boot.rs`, `riscv64_boot.rs`); aarch64
-//! goes on through [`bring_up_machine`] here. The boot pointer it stashes ([`DTB`]), the test
-//! suite and the measurement boots are here because all three boots reach them.
+//! `kernel_main` is the function `_start` calls on every architecture. On `x86_64` it hands off
+//! to that architecture's own boot (`x86_64_boot.rs`) before anything is brought up. aarch64 and
+//! riscv64 both go through [`bring_up_machine`] here; riscv64 then leaves for the rest of its own
+//! boot (`riscv64_boot.rs`), and aarch64 goes on below. The boot pointer it stashes ([`DTB`]), the
+//! test suite and the measurement boots are here because all three boots reach them.
+//!
+//! riscv64 joined [`bring_up_machine`] in milestone 890 (riscv64 and `x86_64` join the shared boot
+//! path), the first slice of retiring the two per-architecture boot files (§284 (the kernel crate
+//! root splits into child modules, one per boot)).
 //!
 //! Moved out of the crate root by milestone 876 (the kernel crate root is split along its seams),
 //! with the bodies unchanged. `kernel_main` had been split by boot phase first, calef's ruling of
@@ -56,8 +61,8 @@ pub fn device_tree() -> Result<device_tree_blob::DeviceTreeBlob<'static>, device
 /// where arguments live. `boot_info_pointer` arrives in `x0`. See notes/registers.md.
 ///
 /// `-> !` means this never returns, which is true: there is nowhere to return *to*.
-// On riscv64, the boot tour below ends in `sched::exit()`, so the rest of `kernel_main` (the shared
-// full boot) is deliberately unreachable there. Scoped to riscv so aarch64 keeps the lint.
+// On riscv64 and `x86_64`, each port's own boot below diverges, so the rest of `kernel_main` is
+// deliberately unreachable there. Scoped to those two so aarch64 keeps the lint.
 // And the icount boot parks before the bench boot it implies, so `bench::run()` and everything after
 // it is deliberately unreachable in that one configuration (milestone 78).
 #[cfg_attr(
@@ -131,28 +136,26 @@ pub extern "C" fn kernel_main(boot_info_pointer: usize) -> ! {
         );
         screen::print_summary(&screen);
     }
+    #[cfg(target_arch = "riscv64")]
+    riscv64_banner(boot_info_pointer, &screen);
 
-    // **The x86_64 boot is a self-contained tour and it halts at the end**, the same shape the
-    // RISC-V boot took on its first day and for the same reason: the arch layer beneath the shared
-    // path is not built yet, so there is nothing honest to fall through to. What it proves is
-    // exactly the part that is real, one line per step, and it stops the moment it would have to
-    // guess (milestone 161). See notes/x86-port.md.
+    // **The x86_64 boot still diverges here, before the shared bring-up below.** It brings up its
+    // own traps, memory, interrupts and scheduler and ends at its own hand-over, because
+    // `memory::init` reads a device tree and this machine hands over a PVH `hvm_start_info` and
+    // ACPI instead (milestone 161 (the `x86_64` kernel port); notes/x86-port.md). Joining
+    // `bring_up_machine` is the rest of milestone 890 (riscv64 and `x86_64` join the shared boot
+    // path).
     #[cfg(target_arch = "x86_64")]
     x86_64_boot(boot_info_pointer);
 
-    // The RISC-V boot is a self-contained tour, right here in this block, and it halts at the end
-    // rather than falling through to the shared boot path below. From OpenSBI's S-mode handoff it
-    // brings up its own arch (traps, the Sv39 MMU, the SBI timer) and then demonstrates the whole
-    // capability core on RISC-V: the scheduler and preemption, U-mode programs and syscalls,
-    // capability invocation, userspace progenitor building a child out of the initrd, and a userspace
-    // driver servicing a device interrupt through the PLIC. It stops before the shared full boot
-    // (userspace progenitor as the boot process, the shell, the virtio service), which is still
-    // aarch64-shaped; making those portable is what would let RISC-V join the shared path instead of
-    // halting here. See notes/riscv-port.md.
-    #[cfg(target_arch = "riscv64")]
-    riscv64_boot(boot_info_pointer, &screen);
-
     bring_up_machine(boot_info_pointer);
+
+    // **riscv64 leaves here, after the shared bring-up** (milestone 890). What follows in its own
+    // boot is the ladder, the measurement and test boots, its tour and its hand-over, in the order
+    // that boot has always run them. Converging those with the aarch64 path below is the rest of
+    // milestone 890. See notes/riscv-port.md.
+    #[cfg(target_arch = "riscv64")]
+    riscv64_boot(boot_info_pointer);
 
     #[cfg(any(test, feature = "system_tests"))]
     run_test_suite();
@@ -233,7 +236,14 @@ pub extern "C" fn kernel_main(boot_info_pointer: usize) -> ! {
     sched::exit()
 }
 
-/// The shared bring-up, which only aarch64 reaches: arch, memory, paging, IOMMU, interrupts, cores.
+/// The shared bring-up, which aarch64 and riscv64 reach: arch, memory, paging, IOMMU, interrupts,
+/// cores.
+///
+/// **riscv64 runs it since milestone 890** (riscv64 and `x86_64` join the shared boot path). That
+/// port's boot used to do every step here itself, in a different order: traps, then the timer and
+/// interrupts on, then memory, paging and the scheduler. What it needs that aarch64 does not is
+/// three calls into its own `arch/`, each `cfg`-gated beside the aarch64-only line that was already
+/// here, and its `arch::irq::init`, which this function reaches through [`interrupts_init`].
 fn bring_up_machine(boot_info_pointer: usize) {
     arch::init();
     stack::init();
@@ -266,11 +276,22 @@ fn bring_up_machine(boot_info_pointer: usize) {
     // and a firmware that writes a wrong-but-plausible number is the one failure no later check can
     // see. Silent on every machine we test on, which states nothing to compare against; see
     // `arch::timer::check_frequency_against_device_tree` for what that costs and why it refuses
-    // rather than preferring one source. (Gated even though only aarch64 reaches this line at run
-    // time: the riscv64 arm above ends in `sched::exit()`, so everything below it is still
-    // *compiled* for that architecture, which has no such function and needs none.)
+    // rather than preferring one source. riscv64 has no such function and needs none.
     #[cfg(target_arch = "aarch64")]
     arch::timer::check_frequency_against_device_tree(boot_info_pointer);
+
+    // riscv64's two reads from the same window, for the same reason: the tree is only reachable
+    // through the boot map. The counter's rate is a `/cpus` property, because RISC-V has no
+    // `CNTFRQ_EL0` to read (milestone 100 (read the machine's PSCI and its CPU list)), and it must
+    // be known before `pmu::init` below times itself and before `interrupts_init` arms the first
+    // deadline. The PLIC's S-mode contexts are the tree's answer to a layout QEMU and the JH7110
+    // disagree on, read before anything touches a context (`arch::irq::init_contexts`,
+    // notes/visionfive2.md).
+    #[cfg(target_arch = "riscv64")]
+    {
+        arch::timer::init_frequency(boot_info_pointer);
+        arch::irq::init_contexts(boot_info_pointer);
+    }
 
     // And now the sketchiest moment in the kernel. The instant SCTLR_EL1.M is set, the very
     // next instruction is fetched through the MMU. See arch/aarch64/mmu.rs.
@@ -281,6 +302,17 @@ fn bring_up_machine(boot_info_pointer: usize) {
     // trap before this point runs its handler on whatever stack it interrupted, which is what every
     // trap did before milestone 124. See kernel/src/interrupt_stack.rs.
     interrupt_stack::init();
+
+    // riscv64 says what the machine is here rather than only in the machine description, so the
+    // test, shell and bench boots report it too: it is the line whoever brings up a board reads
+    // first. After `mmu::init`, because one of its numbers is measured there. Then it asks firmware
+    // for a cycle counter (milestone 74 (cycle counters)), which reads the SBI extension set
+    // `isa::init` filled in; aarch64 starts its counter per core inside `timer::init` instead.
+    #[cfg(target_arch = "riscv64")]
+    {
+        arch::isa::print_summary();
+        arch::pmu::init();
+    }
 
     // The SMMUv3 (milestone 16b), if the machine was started with `iommu=smmuv3`. Its register
     // block is a device-tree node (memory::smmu_region), mapped by mmu::init just above; absent, the
@@ -294,6 +326,12 @@ fn bring_up_machine(boot_info_pointer: usize) {
     if let Some((smmu_base, _)) = memory::smmu_region() {
         arch::iommu::init(smmu_base);
     }
+    // The RISC-V IOMMU (milestone 16b (real hardware + IOMMU-backed driver isolation)), if QEMU
+    // presents one (`-device riscv-iommu-pci`). It is a PCI function rather than a tree node, so
+    // the kernel enumerates it and places its BAR first; absent, this is a no-op. Here for the
+    // SMMUv3's reason: before any path (test, shell, tour) confines a virtio-pci device.
+    #[cfg(target_arch = "riscv64")]
+    pci::init_iommu();
 
     // The heap must come AFTER the MMU: it hands out addresses, and with paging on an
     // address is only usable if something has mapped it. From here, `Vec` works.
@@ -327,9 +365,11 @@ fn bring_up_machine(boot_info_pointer: usize) {
 fn interrupts_init(_dtb: usize) {
     use crate::arch::{interrupts, irq, timer};
 
-    // Bring up the interrupt controller (the GIC on aarch64, the PLIC on RISC-V), reading its
-    // location from the device tree. Portable code names `arch::irq`, never a specific controller,
-    // which is what lets a second architecture be a new `arch/` directory rather than a diff here.
+    // Bring up the interrupt controller (the GIC on aarch64), reading its location from the device
+    // tree. Portable code names `arch::irq`, never a specific controller, which is what lets a
+    // second architecture be a new `arch/` directory rather than a diff here. On RISC-V this
+    // unmasks the boot hart's software and external interrupt sources, as each secondary does for
+    // itself; the PLIC's own base is still stored later, by that boot's device paths.
     irq::init();
 
     timer::init();

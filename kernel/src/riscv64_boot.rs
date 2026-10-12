@@ -1,22 +1,34 @@
 //! **The riscv64 boot**: one function per phase, ending at the hand-over.
 //!
-//! A self-contained tour from OpenSBI's S-mode handoff, with the timing helpers only its entropy
+//! What this port's boot does after the shared bring-up: the ladder, the measurement and test
+//! boots, a tour of the capability core, and the hand-over, with the timing helpers only its entropy
 //! step uses. See notes/riscv-port.md. Moved out of the crate root by milestone 876 (the kernel
-//! crate root is split along its seams), bodies unchanged.
+//! crate root is split along its seams), bodies unchanged. Since milestone 890 (riscv64 and `x86_64`
+//! join the shared boot path) the bring-up is `bring_up_machine`'s, in `boot.rs`, and all that is
+//! left here before it is the banner.
 //!
 //! **Temporary.** calef ruled so on 2026-10-12 (UTC), in §284 (the kernel crate root splits into
 //! child modules, one per boot): this file is the port's route until it joins the shared path in
 //! `boot.rs`, and the parity work shrinks it toward the CPU bring-up that belongs under `arch/`. It
 //! is not an architecture layer. The work is
-//! design/roadmap/proposals/riscv64-and-x86-64-join-the-shared-boot-path.md.
+//! design/roadmap/0890-riscv64-and-x86-64-join-the-shared-boot-path.md.
 //!
 //! Name: provisional (milestone 876's lane, 2026-10-12 UTC).
 
 use super::*;
 
-/// riscv64 phase 1: the banner, traps, timer, memory, paging, the scheduler and the other harts.
+/// riscv64's opening lines: the banner, where the kernel is running, and the screen.
+///
+/// **All that is left of this boot's first phase** (milestone 890 (riscv64 and `x86_64` join the
+/// shared boot path)). The rest of it was the bring-up, which `bring_up_machine` now does for this
+/// port: traps, the timer's rate, memory, paging, the PLIC's contexts, the scheduler, interrupts and
+/// the other harts. Its four demonstration lines went with it (`traps`, `timer`, `memory`,
+/// `paging`), because `self_test::run` makes each of those claims on all three architectures as its
+/// `exceptions`, `timer`, `frames` and `mapping` checks. Milestone 268 (every architecture boots the
+/// same way) put them there, and retired the tour's own copies of two of them the same way. They are not read by `board_console`, which reads
+/// the ladder's markers.
 #[cfg(target_arch = "riscv64")]
-fn riscv64_first_light(
+pub(super) fn riscv64_banner(
     boot_info_pointer: usize,
     screen: &Result<(machine_discovery::framebuffer::Framebuffer, u32, u32), screen::Why>,
 ) {
@@ -30,115 +42,6 @@ fn riscv64_first_light(
     println!("  running at  : {pc:#018x}  (high half: Sv39 paging is on)");
     println!("  device tree : {boot_info_pointer:#018x}");
     screen::print_summary(screen);
-
-    // Traps: install stvec and prove the round-trip by taking a breakpoint and returning.
-    arch::exceptions::init();
-    let caught = arch::exceptions::self_test();
-    println!("  traps       : stvec set; a breakpoint was caught and stepped over ({caught})");
-
-    // Timer + interrupts: arm the SBI timer, unmask interrupts, and let the S-mode timer
-    // interrupt fire for ~0.2 s. A nonzero tick count proves the whole interrupt path (SBI
-    // set_timer, sie.STIE, sstatus.SIE, the trap vector routing scause=timer to timer::tick).
-    //
-    // The counter's rate comes out of the device tree first (milestone 100). It used to be a
-    // 10 MHz constant, which is QEMU's; RISC-V has no CNTFRQ_EL0 to read, so the tree is the
-    // architected source and this is the earliest point anything needs the number.
-    arch::timer::init_frequency(boot_info_pointer);
-    arch::timer::init();
-    arch::interrupts::enable();
-    let start = arch::timer::now();
-    while arch::timer::now().wrapping_sub(start) < arch::timer::frequency() / 5 {
-        arch::wait_for_interrupt();
-    }
-    println!(
-        "  timer       : {} ticks in ~0.2s (SBI timer + S-mode interrupt at {} Hz)",
-        arch::timer::ticks(),
-        arch::timer::TICK_HZ,
-    );
-
-    // Memory: parse the device tree OpenSBI handed us (via its high-half alias) for RAM, and
-    // bring up the frame allocator. Portable code, reached through the real phys_to_virt now.
-    stack::init();
-    // Paint the boot stack's unused region for the high-water report (milestone 84), before
-    // memory::init and everything after it can push frames into it.
-    #[cfg(any(test, feature = "system_tests"))]
-    stack::paint_boot_stack();
-    memory::init();
-    let f = memory::alloc().expect("no frame from the allocator");
-    println!(
-        "  memory      : device tree parsed, frame allocator up (first frame {:#x})",
-        f.addr(),
-    );
-
-    // What machine is this (milestone 60). Before the MMU, because this is where a machine that
-    // cannot run us says so and stops, and building fine-grained tables the hardware will not
-    // walk is a worse place to find out. It reads the same device tree `memory::init` just
-    // parsed, then asks OpenSBI what it implements. The summary prints after paging, because
-    // one of the numbers in it is measured by `mmu::init`.
-    arch::isa::init(boot_info_pointer);
-
-    // Which harts does this machine have (milestone 100)? Here, while the device tree is still
-    // reachable through the boot map, rather than at bring-up time after `mmu::init` has
-    // replaced it. The list used to be `0..cpu::MAX_CPUS`, a constant.
-    smp::read_cpu_list();
-
-    // And how does the PLIC number their S-mode contexts? Read here, in the same window and
-    // before anything touches a context: the `2*hart + 1` formula this replaces is QEMU's
-    // layout, and the JH7110's disabled S7 shifts every context down one (arch::irq,
-    // notes/visionfive2.md). On QEMU the tree reproduces the formula exactly.
-    arch::irq::init_contexts(boot_info_pointer);
-
-    // Replace the coarse RWX boot table with fine-grained W^X Sv39 kernel tables. We keep
-    // running (and printing) across the satp switch, which proves the fine map covers this code.
-    arch::mmu::init();
-    println!(
-        "  paging      : fine-grained W^X Sv39 tables installed, satp switched (paging on: {})",
-        arch::mmu::is_enabled(),
-    );
-
-    // The per-CPU interrupt stacks go live here, for the reason the aarch64 boot arms them
-    // right after its own `mmu::init`: their guard pages are holes in the map that was just
-    // installed. This hart has had interrupts on since the timer step above, so every trap
-    // before this one ran on the stack it interrupted, exactly as it used to.
-    interrupt_stack::init();
-
-    // And say what the machine is. Here rather than in the tour below, so the test, shell and
-    // bench boots report it too: it is the line whoever brings up a board reads first.
-    arch::isa::print_summary();
-
-    // Ask firmware for a cycle counter (milestone 74). After `isa::init`, because it reads the
-    // SBI extension set that probe filled in, and beside the summary because whether this
-    // machine has one is a fact about the machine and belongs in the same paragraph. Silent and
-    // harmless where the PMU extension is absent: the counter is then simply `None` forever.
-    arch::pmu::init();
-    arch::pmu::print_summary();
-
-    // The scheduler comes up before the tour (and, in a test build, before the tests): both
-    // need threads to switch between, and preemption needs somewhere to go. aarch64 brings it
-    // up in its main boot flow for the same reason.
-    //
-    // Interrupts have been on since the timer step above, so mask them across `sched::init`: a
-    // timer tick landing mid-init would run the deferred `schedule()` before the idle thread is
-    // registered, and hit "nothing runnable and no idle thread" (sched.rs). aarch64 gets this
-    // ordering for free by bringing the scheduler up before it ever enables interrupts.
-    let irqs = arch::interrupts::disable();
-    sched::init();
-    arch::interrupts::restore(irqs);
-
-    // SMP: bring the other harts online (parity workstream A). First arm this (boot) hart's own
-    // software-interrupt source, so a secondary can hand work back to it; then start the
-    // secondaries. Each starts via SBI HSM at secondary_boot, adopts the fine kernel map, sets
-    // its own trap vector and per-CPU state (its own per-hart trap stash, A1), arms its timer and
-    // its IPI source, and becomes a scheduler participant. Before the tests (and the tour), so the
-    // SMP tests find the cores online, mirroring aarch64's `bring_up_secondaries` then `test_main`.
-    arch::irq::init_this_cpu();
-    smp::bring_up_secondaries();
-
-    // The RISC-V IOMMU (milestone 16b), if QEMU presents one (`-device riscv-iommu-pci`). It is
-    // a PCI function, so the kernel enumerates it, places its BAR, and brings it up here, before
-    // any path (test, shell, tour) confines a virtio-pci device. Absent, this is a no-op and the
-    // kernel runs exactly as before. See kernel/src/iommu.rs, notes/iommu.md.
-    pci::init_iommu();
 }
 
 /// riscv64 phase 2: a process address space, a U-mode program, and a user ELF.
@@ -302,7 +205,8 @@ fn riscv64_preemption() {
     // 10ms, riscv_trap_dispatch records the tick and defers a schedule() to the trap tail, and
     // both threads make progress anyway. This is the RISC-V half of DECISIONS §5: an arbitrary
     // binary that refuses to yield is preempted regardless. `STOP` lets them exit cleanly so
-    // nothing lingers past the demo. Interrupts have been unmasked since the timer step above.
+    // nothing lingers past the demo. Interrupts have been unmasked since `interrupts_init`, in the
+    // shared bring-up.
     {
         use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
         static A: AtomicU64 = AtomicU64::new(0);
@@ -472,7 +376,7 @@ fn riscv64_block_devices() {
 // separately underneath it, and those are the two the rate question actually wants: a
 // reseed plus a generation is a once-per-boot cost, and the round trips are the rate.
 //
-// `arch::timer::now()` is the mechanism the tour already uses (the timer step above spins
+// `arch::timer::now()` is the mechanism the boot already uses (the preemption step above spins
 // on it), so nothing new is introduced here; on riscv64 it is the `time` CSR, whose rate
 // came out of this machine's device tree at `init_frequency`.
 #[cfg(target_arch = "riscv64")]
@@ -787,7 +691,8 @@ fn riscv64_clock_report(clock: Option<jh7110_clock_and_reset::Report>) {
     }
 }
 
-/// The riscv64 boot, one function per phase, ending at the hand-over (calef, 2026-10-09 (UTC)).
+/// The riscv64 boot after `bring_up_machine`, one function per phase, ending at the hand-over
+/// (calef, 2026-10-09 (UTC)).
 #[cfg(target_arch = "riscv64")]
 #[cfg_attr(
     any(
@@ -799,12 +704,13 @@ fn riscv64_clock_report(clock: Option<jh7110_clock_and_reset::Report>) {
     ),
     allow(unreachable_code)
 )]
-pub(super) fn riscv64_boot(
-    boot_info_pointer: usize,
-    screen: &Result<(machine_discovery::framebuffer::Framebuffer, u32, u32), screen::Why>,
-) -> ! {
-    riscv64_first_light(boot_info_pointer, screen);
-
+// The machine description is the one reader of `boot_info_pointer` here, and a bench, test or
+// system-test build has none; the bring-up that used to read it moved to `bring_up_machine`.
+#[cfg_attr(
+    any(test, feature = "system_tests", feature = "bench"),
+    allow(unused_variables)
+)]
+pub(super) fn riscv64_boot(boot_info_pointer: usize) -> ! {
     // **The ladder** (milestone 268): say what this machine is, then prove the kernel works on
     // it, then hand over. Here, and not further down the tour, because every build that is not
     // a measurement build passes this line: the `shell` boot below hands to the progenitor from
@@ -958,7 +864,7 @@ pub(super) fn riscv64_boot(
 #[allow(dead_code)]
 fn micros(ticks: u64) -> u64 {
     // `frequency()` asserts the rate is nonzero rather than returning a poison value, and it has
-    // been read from the tree since the timer step near the top of this tour, so there is no
+    // been read from the tree since `bring_up_machine`, long before this tour, so there is no
     // pre-init case to guard here. `saturating_mul` bounds the scaling rather than the duration: a
     // gap long enough to overflow is one nobody is timing.
     ticks.saturating_mul(1_000_000) / arch::timer::frequency()
@@ -966,7 +872,7 @@ fn micros(ticks: u64) -> u64 {
 
 /// The two-timestamp form of [`micros`]. `wrapping_sub` because the `time` CSR is a free-running
 /// 64-bit counter and this is the arithmetic the rest of this file already uses on it (see the
-/// timer step above); at 10 MHz it wraps after about 58,000 years.
+/// JH7110 entropy step above); at 10 MHz it wraps after about 58,000 years.
 #[cfg(target_arch = "riscv64")]
 #[allow(dead_code)]
 fn micros_between(start: u64, end: u64) -> u64 {

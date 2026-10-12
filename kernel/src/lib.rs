@@ -37,12 +37,6 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::testing::runner)]
 #![reexport_test_harness_main = "test_main"]
-// The RISC-V boot runs a self-contained tour (`riscv64_boot.rs`) that ends in `sched::exit()`,
-// before the shared, still-aarch64-shaped full boot (userspace progenitor as the boot process, the shell,
-// the virtio service). That full-boot code and its helpers are therefore unreferenced from a riscv64
-// build and look like dead code, even though the `arch` layer itself is fully implemented. Allow it
-// *only* on riscv64, so the aarch64 build keeps full dead-code checking; it goes away if the RISC-V
-// boot is ever wired into the shared path instead of halting. See notes/riscv-port.md.
 
 mod arch;
 #[cfg(feature = "bench")]
