@@ -47,6 +47,14 @@ not a caption, it is a register entry.
 **File size:** 18 Rust files over 2,000 lines, holding 18.4% of all Rust lines; largest kernel/src/sched.rs (8,888); 95th percentile 1,463.
 <!-- /file-size -->
 
+## Function length
+
+![Function length](project-metrics/function-length.svg)
+
+<!-- function-length: script/metrics writes this -->
+[9.1%](register-of-measures/function-length.md), 46 functions, 4,566 lines past 100.
+<!-- /function-length -->
+
 ## unsafe blocks outside kernel/src/arch/
 
 ![unsafe density](project-metrics/unsafe.svg)
