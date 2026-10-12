@@ -5,10 +5,10 @@ for `pmap` can take pages out of the space it was only allowed to look at.
 
 Expected to fail: the `NotPermitted` assertion, which gets `Ok(0)`.
 
-diff --git a/kernel/src/syscall.rs b/kernel/src/syscall.rs
---- a/kernel/src/syscall.rs
-+++ b/kernel/src/syscall.rs
-@@ -1384,12 +1384,7 @@ fn address_space_invoke(
+diff --git a/kernel/src/syscall/address_space.rs b/kernel/src/syscall/address_space.rs
+--- a/kernel/src/syscall/address_space.rs
++++ b/kernel/src/syscall/address_space.rs
+@@ -50,12 +50,7 @@
          // DECISIONS §162 (whether a holder can give up a mapping), option A).
          // `WRITE`, the authority `MAP_INTO` takes: shaping a space is one right in both
          // directions. See `abi::address_space::UNMAP` and notes/unmap.md.
