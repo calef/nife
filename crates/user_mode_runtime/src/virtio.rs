@@ -5,8 +5,8 @@
 //! call sites in all, every one carrying the identical `// SAFETY:` comment: "the kernel validates
 //! the capability and the method before acting." That comment is `invoke`'s own contract, not a
 //! per-call obligation any of these four methods add: `abi::virtio`'s own doc already states what
-//! the kernel checks (`WRITE_REG` refuses the queue-address and notify registers; `SETUP_QUEUE`
-//! and `NOTIFY` are bounds-checked against the driver's DMA region and its own high-water mark),
+//! the kernel checks (`WRITE_REGISTER` refuses the queue-address and notify registers;
+//! `SETUP_QUEUE` and `NOTIFY` are bounds-checked against the DMA region and its high-water mark),
 //! so the raw `invoke` site could not add anything a wrapper cannot add just as well.
 //!
 //! Scoped to a module, not lifted into the crate root, because unlike [`super::send`] or
@@ -15,7 +15,7 @@
 //! [`super::initial_ramdisk`] and [`super::mapped_window`] already use for functionality most programs
 //! never touch.
 
-/// `READ_REG` at `off` on the `Virtio` capability in `virtio_slot`. Reads are DMA-safe, so any
+/// `READ_REGISTER` at `off` on the `Virtio` capability in `virtio_slot`. Reads are DMA-safe, so any
 /// register. Returns the register value, or a negative `abi::Error`.
 ///
 /// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
@@ -25,10 +25,10 @@
 pub fn read_register(virtio_slot: u64, off: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the Virtio capability before it reads the
     // register; every register is DMA-safe to read.
-    unsafe { super::invoke(virtio_slot, abi::virtio::READ_REG, off, 0, 0) }
+    unsafe { super::invoke(virtio_slot, abi::virtio::READ_REGISTER, off, 0, 0) }
 }
 
-/// `WRITE_REG` `val` at `off` on the `Virtio` capability in `virtio_slot`. `0` on success; a
+/// `WRITE_REGISTER` `val` at `off` on the `Virtio` capability in `virtio_slot`. `0` on success; a
 /// negative `abi::Error` (`NotPermitted` for a queue-address or notify register, which only
 /// [`setup_queue`]/[`notify`] may touch).
 ///
@@ -38,7 +38,7 @@ pub fn read_register(virtio_slot: u64, off: u64) -> i64 {
 pub fn write_register(virtio_slot: u64, off: u64, val: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the Virtio capability and refuses any register
     // this call is not DMA-safe to write.
-    unsafe { super::invoke(virtio_slot, abi::virtio::WRITE_REG, off, val, 0) }
+    unsafe { super::invoke(virtio_slot, abi::virtio::WRITE_REGISTER, off, val, 0) }
 }
 
 /// `SETUP_QUEUE` virtqueue `queue` (0-indexed; a virtio-net device uses 0 = receive, 1 = transmit)

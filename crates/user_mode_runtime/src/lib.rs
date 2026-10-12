@@ -1089,7 +1089,7 @@ pub fn thread_control_block_start(tcb_slot: u64, x0: u64, x1: u64, x2: u64) -> i
 /// acronym test is whether the phrase is spoken)).
 pub fn interrupt_wait(irq_slot: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the Irq capability before it blocks the caller.
-    unsafe { invoke(irq_slot, abi::irq::WAIT, 0, 0, 0) }
+    unsafe { invoke(irq_slot, abi::interrupt::WAIT, 0, 0, 0) }
 }
 
 /// `ACK` the `Irq` capability in `irq_slot`: re-enable the interrupt at the GIC once the device has
@@ -1100,7 +1100,7 @@ pub fn interrupt_wait(irq_slot: u64) -> i64 {
 /// 7's provisional name), `irq_acknowledge` (the alternative round 9 recommended).
 pub fn interrupt_acknowledge(irq_slot: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the Irq capability before it re-enables anything.
-    unsafe { invoke(irq_slot, abi::irq::ACK, 0, 0, 0) }
+    unsafe { invoke(irq_slot, abi::interrupt::ACK, 0, 0, 0) }
 }
 
 /// **Invoke the reboot object in `slot`** (milestone 805 (`reboot` at the prompt), DECISIONS §251

@@ -239,7 +239,7 @@ pub(super) fn irq_ack(intid: u32) -> Result<i64, Error> {
     Ok(0)
 }
 
-/// `Virtio`'s four register-level methods (`READ_REG`, `WRITE_REG`, `SETUP_QUEUE`, `NOTIFY`): a
+/// `Virtio`'s four register-level methods (`READ_REGISTER`, `WRITE_REGISTER`, `SETUP_QUEUE`, `NOTIFY`): a
 /// driver's transport-level plumbing, not a step of the IPC round trip. `#[inline(never)]` for
 /// the reason `memory_region_map` gives.
 #[inline(never)]
@@ -250,10 +250,10 @@ pub(super) fn virtio_invoke(id: usize, method: u64, a0: u64, a1: u64) -> Result<
         _ => Error::WrongObject,
     };
     match method {
-        abi::virtio::READ_REG => crate::virtio::read_register(id, a0)
+        abi::virtio::READ_REGISTER => crate::virtio::read_register(id, a0)
             .map(|v| v as i64)
             .ok_or(Error::WrongObject),
-        abi::virtio::WRITE_REG => crate::virtio::write_register(id, a0, a1 as u32)
+        abi::virtio::WRITE_REGISTER => crate::virtio::write_register(id, a0, a1 as u32)
             .map(|_| 0)
             .map_err(map),
         abi::virtio::SETUP_QUEUE => crate::virtio::setup_queue(id, a0 as u16, a1 as u16)

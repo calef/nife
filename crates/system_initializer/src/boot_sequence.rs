@@ -365,7 +365,7 @@ pub fn boot(
         // SAFETY: `invoke` traps to the kernel, which validates the capability and the method
         // before acting; a probe against an empty slot is exactly what that contract is built to
         // answer safely.
-        let magic = unsafe { invoke(g.virtio_rng, abi::virtio::READ_REG, 0, 0, 0) };
+        let magic = unsafe { invoke(g.virtio_rng, abi::virtio::READ_REGISTER, 0, 0, 0) };
         if magic >= 0 {
             // SAFETY: as above.
             if unsafe {
