@@ -23,6 +23,16 @@ a convention every future spawn path is written against, so it sits in the *move
 undone; be methodical on what cannot* tenet's irreversible category. Each answer below says what it
 would make true and what it would cost. Picking is calef's.
 
+The evidence is in [`0142-spawn-retention/`](0142-spawn-retention/README.md); this page is
+complete without it:
+
+- [`thread-capability.md`](0142-spawn-retention/thread-capability.md): the premise check, and
+  R2's findings.
+- [`precedent.md`](0142-spawn-retention/precedent.md): recorded precedent, and reversibility.
+- [`prior-art.md`](0142-spawn-retention/prior-art.md): the prior art, quoted, and the survey table.
+- [`sequencing.md`](0142-spawn-retention/sequencing.md): the order against milestone 133 (ending a
+  permanently blocked thread), and the readings of the mapping.
+
 ## What is being decided
 
 **Does a spawner retain a lifetime handle on its child, and if so, is that handle the supervision
@@ -38,199 +48,9 @@ doc says reading one "is meant to tell you the complete authority of the thing a
 **The reciprocal half has never been written.** What the parent keeps is decided today one call site
 at a time, by whether that call site happens to call `cap_delete` after `START`.
 
-### Why this is upstream of milestone 133, and why the order matters
-
-Milestone 133 (ending a permanently blocked thread, and deciding who may) has four proposals in
-`notes/blocked-thread-teardown.md`. Proposal B is a terminate verb on the thread capability, seL4's
-`suspend()` transliterated, and the note's own account of how B fails ends on this:
-
-> That may be exactly right (it separates policy from memory) or exactly wrong (it produces a stopped
-> thread nobody can free), and which one it is depends on a spawn-time endowment convention that does
-> not exist yet.
->
-> Source: `notes/blocked-thread-teardown.md`, Proposal B
-
-So B cannot be evaluated against a convention nobody has stated. And proposal A would state it by
-accident. A needs no new authority at all, which is most of its appeal; taking it settles the
-retention question in the direction of "no lifetime handle, the region capability is the whole
-answer", after which every spawn path grows around that and B gets harder rather than easier. The
-sequencing is the reason this file exists.
-
-## The premise, checked rather than quoted
-
-`kernel/src/syscall.rs:305` says every `ThreadControlBlock` method "is process-spawn machinery",
-which reads as a claim that the capability is inert once the thread runs. It is true, and it is
-enforced in the scheduler rather than in the dispatcher, which is a stronger place for it to live.
-Read at `49db708f`:
-
-| Entry point | Where the check is | The check |
-|---|---|---|
-| `thread_control_block::CONFIGURE` | `sched::configure_thread_control_block` | `if t.handshake.state != State::Embryo { return Err(WrongObject) }`, twice, before and after taking the address space |
-| `thread_control_block::CAP_INSERT` | `sched::thread_control_block_insert_cap` | same, once |
-| `thread_control_block::START` | `sched::start_thread_control_block` | same, once, then the whole-or-refuse gate |
-| `sched::grant_cycle_counter` | itself | same, and there is **no method number for it**: §139 (who may read the cycle counter, and by what authority) declined to mint one |
-
-There is no fourth method and no fifth entry point. A `ThreadControlBlock` capability held after
-`START` authorizes nothing. Every method it names answers `WrongObject` for the life of the thread.
-That property is what proposal B would end, and it is worth saying plainly that it is a real property
-today and not a comment's optimism.
-
-One consequence of the check's placement, since it bears on cost. The refusal is in `sched`, not
-in the `match` arm, so a new verb that works on a running thread does not have to unpick a
-dispatcher-level guard. It adds an arm and a scheduler function whose state check is different from
-its three neighbors'. That is cheaper than it sounds and it is also the thing that makes the
-capability's meaning state-dependent, which the ladder in AGENTS.md says to design out rather than
-in.
-
-### What the tree does today, counted
-
-Thirty `START` sites in shipping and test code (`crates/system_initializer`, `user/src/*`; the
-`supervision_proto` and `pgrep` matches are the wrapper definition and doc comments, excluded).
-
-| | sites | where |
-|---|---|---|
-| `cap_delete` on the TCB slot immediately after `START` | **25** | all fifteen in `crates/system_initializer`, `root_supervisor` (2), `swapper` (3), `timetable` (2), `spawner`, `c_confiner`, `login` |
-| the capability is kept | **5** | `fixtures/src/hello.rs` only, at 468, 500, 523, 671, 723 |
-
-So the tree already has an unwritten answer, and it is "retain nothing". The five exceptions are
-in one file, the kernel's own test program, whose parents `exit()` a few lines later; none of them
-records a reason for keeping it, and nothing in the tree would notice if they stopped.
-
-This inverts one of the costs that looks obvious from outside. Proposal B's own account says
-"`crates/system_initializer` and every spawn path would need auditing for who ends up holding one
-after `START`". The audit has now been run, and the finding is the opposite of a widening: almost
-nobody holds one, so B does not hand an existing population of holders a new power. It requires
-twenty-five call sites to *stop deleting*, which is an additive convention change rather than a
-silent widening, and which has a price measured below.
-
-## What this tree already does in the analogous case
-
-Five records bear directly, and they do not all point the same way.
-
-§26 (the fault endpoint) already decided the shape of the one handle that exists. Supervision is
-granted at spawn only: the endowment goes in the reserved slot, `START` reads it, records
-`Thread::fault_ep`, and clears the slot so the child cannot forge messages on its own death
-channel. §26.2 is explicit that this is fixed for life, and that runtime reattach (it names
-`Tcb::SET_FAULT_EP`) is deferred until something demands supervision handoff, "and it is a new
-decision when it does". §26.5 makes the endpoint one per supervisor, shared by every child, with
-the kernel stamping the identity per message.
-
-§32 (a supervisor may collect a corpse without being able to build one) put a verb on that
-endpoint and drew the line at the corpse. `REAP` is authorized by the kernel checking that the
-named thread's `fault_ep` *is* the endpoint being invoked. Consequence 2 is the sentence this
-decision has to be read against: "It authorizes collecting a corpse, not killing. The method refuses
-a thread that is still alive."
-
-§32.3 also answered the naming question once, narrowly, and said so. The tid is authorized
-relative to the endpoint it arrived on, which is "the endpoint-only naming discipline applied
-consistently: the name means something only to the holder of the capability it came through, and it
-is not a global handle", with the standing instruction that a later operation needing to name a child
-"is a fresh decision and should reach for the same shape first". This decision is that later
-operation.
-
-§40 (there is no reaper of last resort) makes ownership the answer instead of a handle. A child's
-resources come from its supervisor's region, so destroying the region reclaims the child and
-everything built from it, and there is no privileged collector. Its first recorded caveat is directly
-about retention: "The chain holds only if children are built from the supervisor's own region," and
-whether building a child from a delegated region is forbidden or merely discouraged "is not yet
-decided, and it should be before someone writes a supervisor that does it."
-
-§92 (a caretaker is supervised by the client it serves) is the adjacent lifetime decision, and it
-chose supervision over membership. It also established a fact this decision needs: construction is
-already splittable, because `build_child_space` returns a TCB and an address space and starting the
-child is a separate step, so "build the client's space, build the caretaker beneath it, hand over the
-endpoint, start the client" is expressible. Anything that has to be arranged before `START` can be.
-
-Milestone 105 (the two forks milestone 22 named and left) has been holding half of this question
-since 2026-08-04. Its fork two is `Tcb::NAME`, "a tid that becomes a handle", with three options
-recorded and none chosen: a method, per-child fault endpoints (already refused by §26.5), or the
-builder reporting the tid it created. Its framing is worth keeping: "Whether the kernel owes a
-supervisor the ability to resolve the identity it already sends, or whether that is userspace
-bookkeeping."
-
-Milestone 126 (who else is running, and who is allowed to ask) set the looking-versus-acting line,
-with `Rights::ENUMERATE` separating them. Any answer here has to say which side it falls on.
-
 ## Prior art, fetched rather than recalled
 
-Every quote below was fetched on 2026-09-03 in this lane. Where a source would not yield a verbatim
-sentence it says so rather than paraphrasing into quotation marks; this tree carried a fabricated
-block quote for twelve days through every gate.
-
-### seL4: there is no parent, only whoever kept the capability
-
-`seL4_TCB_Suspend`, `seL4_TCB_Resume`, `seL4_TCB_Configure` and `seL4_TCB_SetPriority` all state the
-same requirement, word for word:
-
-> Capability to the TCB which is being operated on.
->
-> Source: [seL4 API Reference](https://docs.sel4.systems/projects/sel4/api-doc.html) (fetched
-> 2026-09-03)
-
-Twenty TCB methods share one authority and one shape. There is no spawner in the picture at all: a
-TCB is retyped from untyped, the capability lands in the retyper's cspace, and whether the retyper
-keeps it is a fact about that program rather than about the kernel. **seL4's answer to "what does a
-spawner retain" is "exactly what it did not delete", and the retention handle and the construction
-handle are the same object.** That is the shape nife has today, minus the running-thread verbs.
-
-The relevant caution is already in this tree: §139 records `seL4_TCB_SetAffinity` as the worked
-example of a per-thread property expressed as a TCB method that MCS deleted outright.
-
-### Genode: the parent keeps a session capability, and the power that comes with it is total
-
-> Since the parent retains the PD-session capabilities of all its children, it can issue further
-> quota transfers back and forth between the children's PD sessions and its own PD session, which
-> represents the reference account for all children.
->
-> Source: [Resource trading, Genode OS Framework
-> Foundations](https://genode.org/documentation/genode-foundations/25.05/architecture/Resource_trading.html),
-> "Trading memory between clients and servers" (fetched 2026-09-03)
-
-> This includes the decision to destruct a child at any time in order to regain the resources that
-> were assigned to the child.
->
-> Source: [Recursive system structure, Genode OS Framework
-> Foundations](https://genode.org/documentation/genode-foundations/25.05/architecture/Recursive_system_structure.html),
-> "Component ownership" (fetched 2026-09-03)
-
-And in the other direction, the child gets one thing:
-
-> At creation time, the parent installs a single capability called _parent capability_ into the new
-> protection domain.
->
-> Source: same page (fetched 2026-09-03)
-
-Genode is the system that answers this question hardest, and its answer is a per-child session
-capability held for life. Note what it buys with it: not a kill verb, but *resources*. Retention in
-Genode is about the quota account, and destruction falls out of owning what the child is made of.
-That is §40's argument, reached by a different tradition, with a handle attached.
-
-### Zircon: handles, and a deliberate refusal at the thread
-
-> This asynchronously kills the given process or job and its children recursively, until the entire
-> task tree rooted at handle is dead. Killing a thread is not supported.
->
-> _handle_ must have `ZX_RIGHT_DESTROY`.
->
-> Source: [`zx_task_kill`, Fuchsia](https://fuchsia.dev/reference/syscalls/task_kill) (fetched
-> 2026-09-03)
-
-The authority is a handle with a right, held by whoever holds it, and the *granularity* is the
-process or the job. Zircon retains a handle and refuses to point it at a thread.
-
 ### L4Re: the retained thing is the capability, and destruction is deleting it
-
-> If obj has the delete permission, initiates the deletion of the object. This implies that all
-> capabilities for that object are gone afterwards.
->
-> Source: [`l4_task_delete_obj`, L4Re](https://l4re.org/doc/group__l4__task__api.html) (fetched
-> 2026-09-03)
-
-> If the reference counter of a kernel object referenced in fpage goes down to zero (as a result of
-> deleting capabilities), the deletion of the object is initiated.
->
-> Source: [`l4_task_unmap`, same page](https://l4re.org/doc/group__l4__task__api.html) (fetched
-> 2026-09-03)
 
 L4Re's thread capability is a lifetime handle in the fullest sense: the group description says a
 capability to a thread permits `l4_thread_ex_regs()`, which exchanges the instruction and stack
@@ -240,33 +60,11 @@ construction are one capability, as in seL4, and the delete right is what turns 
 
 ### QNX: the counterexample, and it is the ambient one
 
-> To signal another process, either the user IDs must match, or the calling process must have the
-> `PROCMGR_AID_SIGNAL` ability enabled.
->
-> Source: [`kill()`, QNX Neutrino Library
-> Reference](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/k/kill.html)
-> (fetched 2026-09-03)
-
 The authority is a property of the *caller*, not of anything the caller was handed, and the target is
 named by a global pid. A parent retains nothing in particular; it is simply one of the processes that
 may signal. This is the model §82 and this whole tree exist to refuse, and it is included because it
 is the one that makes the shape of the others visible: everybody else's answer is a held object,
 and the only disagreement is which object.
-
-### The survey in one line each
-
-| System | What the spawner retains | Granularity | Ends a running child? |
-|---|---|---|---|
-| seL4 | whatever caps it did not delete, the TCB cap among them | thread | yes, `Suspend` |
-| Genode | the child's PD-session capability, for life | component | yes, destruct |
-| Zircon | a process or job handle with `ZX_RIGHT_DESTROY` | process/job, **never thread** | yes, and refuses at the thread |
-| L4Re | the thread/task capability, plus the delete right | thread or task | yes, `ex_regs` or delete |
-| QNX | nothing; the right is ambient and the name is a pid | process | yes, by pid |
-| **nife today** | the region capability, the supervision endpoint, and an **inert** TCB cap that 25 of 30 sites delete | region, or corpse | **no** |
-
-Nobody else's spawner retains nothing. nife is not unusual in refusing a kill verb; Zircon does
-too. It is unusual in having no per-child object that outlives construction, and the region
-capability is the thing standing in for one.
 
 ## The five answers, and what each costs
 
@@ -363,37 +161,6 @@ assemble this thread". Afterwards it offers "you may end this thread whenever yo
 five `hello.rs` sites that keep theirs would acquire that power without anyone deciding it, which is
 an argument for the retention convention being written down in the same change rather than after it.
 
-Two things learned on 2026-09-03, in conversation with calef, that raise R2's price above what
-this entry first stated.
-
-**The state-dependence is this proposal's, not the tree's.** The entry above says R2 makes a
-capability's authority a function of the object's state. Re-read, that is backwards about what exists
-today: `ThreadControlBlock`'s three methods are all construction verbs, and
-`configure_thread_control_block`'s own comment gives the reason its refusal exists, which is a real
-precondition rather than a smell:
-
-> Refuses anything but an `Embryo`, so a running thread cannot be reconfigured under itself.
-
-seL4 has no such rule because its TCB methods are *different verbs* (`Suspend`, `ReadRegisters`) that
-are meaningful after a thread runs, not the same verbs applied later. So this tree does not have
-state-dependent authority to remove; R2 is what would introduce it, by bolting one any-state verb
-onto three embryo-only ones. That hybrid is more state-dependent than either model it sits between.
-
-And seL4's verb set follows from a recovery model this tree has already declined. seL4 delivers a
-fault to a handler that may read the faulting thread's registers, repair the cause and resume it,
-which is why `ReadRegisters` and `Resume` exist and why a lifetime handle is load-bearing there. §26
-(the fault endpoint) chose the other answer in as many words: **"restart policy stays in userspace,
-and the kernel never relaunches anything"**, and *"restart policy is userspace code and stays there"*.
-A supervisor here does not repair a broken thread, it builds a fresh one from the same region, and
-`build_child` is that path. §26 reserved a word so a fault-reply/resume protocol could arrive
-additively, so this is a deferral rather than an absence.
-
-The consequence for this decision. A faithful R2 pays off only alongside seL4's recovery model,
-which would mean adding `Suspend`, `Resume` and register access, new syscall surface with no customer.
-A partial R2, one lifetime verb on a construction capability, buys the state-dependence without the
-uniformity that justifies it. **R2 is therefore not "seL4's answer, available cheaply"; it is half of
-seL4's answer without the half that makes it coherent.**
-
 The mitigation available. Rights. A capability narrowed at `CAP_INSERT` time already exists as
 machinery, so "construction-only" and "construction plus lifetime" could be two rights on one object
 rather than two objects. That reuses `Rights` instead of teaching a new noun, and it costs a bit;
@@ -458,42 +225,6 @@ here); D accepts the leak, bounds it, and records it.
 | **R3** new capability | enables, unchanged | enables, on the new object rather than on `ThreadControlBlock` | enables |
 | **R4** declared retention | enables | **neutral**: declares whichever of the above is chosen | enables, and is the honest way to record it |
 
-Four readings, and they are the useful part.
-
-**A is compatible with every answer, which is why it is not the safe one.** A needs no retention at
-all, so it neither requires nor forbids any row. What makes it a decision by accident is the
-sentence one line down: taking A without answering this leaves R0 in place by default, and R0 is
-the only row that forecloses B. The risk is not that A conflicts with a retention answer; it is that
-A makes answering feel unnecessary.
-
-B is the only proposal this decision gates, and it gates it in one direction: B requires
-retention to be R2 or R3, and under R1 it becomes a different proposal wearing B's name. That is
-the whole of the sequencing problem calef identified.
-
-D is orthogonal, and is worth taking as evidence rather than as an escape. If milestone 133 ends
-as `RECORDED`, this decision still wants an answer, because R0 is a convention with consequences and
-today it is unwritten rather than chosen.
-
-Nothing here decides milestone 133, and R2 is not a vote for B. R2 says a spawner may keep a
-handle; whether a verb on that handle may end a running thread is 133's question and stays there.
-
-## How reversible this is, and who has already acted
-
-By the *move fast on what can be undone* test, which is "who else has already acted on this":
-
-- R0 and R4 are reversible. R4 is a field in one userspace crate. R0 is the status quo, and
-  writing it down costs a paragraph that a later decision can supersede.
-- **R2 and R3 are not.** Both change what an existing capability means or add a method number to
-  `abi`, which is the tenet's "anything two programs agree on" category, and §139's standing note
-  gives the worked example of a method number whose retirement was foreseeable.
-- **R1 is the least reversible of all, and not because of code.** It would overturn §32's stated line
-  and milestone 126's, and a decision that overturns two recorded decisions is read by everyone who
-  meets either of them afterwards.
-
-Who has acted already: 25 call sites, in the R0 direction, without anyone deciding. That is the
-honest status of the question, and it is the argument for answering it now rather than after
-milestone 133 has answered it sideways.
-
 ## What is blocked until this is answered
 
 - Milestone 133's A/B/D choice. Not blocked in the sense of unable to proceed; blocked in the
@@ -502,17 +233,6 @@ milestone 133 has answered it sideways.
   asked from the naming side and has been open since 2026-08-04.
 - §26.2's deferred `SET_FAULT_EP`, which is the R1 row in miniature and was already deferred once
   with the note that reattachment "is a new decision when it does" arrive.
-
-## What this decision deliberately does not touch
-
-- Milestone 133 itself. Options and a mapping; no winner.
-- Detection. Deciding a child *is* stuck is milestone 106's timed wait and milestone 23's
-  residual.
-- The stranded caller, which was being split out of 133 into a milestone of its own on
-  `maintainer/mint-254-stranded-caller` as this was written.
-- Milestone 244's endowment table. Cited above because R4 shares its shape; the two are the same
-  subject from opposite sides, and folding them together would put a proof question and an authority
-  question in one lane.
 
 
 ## The decision, 2026-09-03
