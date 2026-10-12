@@ -125,7 +125,9 @@ Each line is one lane. "Proposed" means a new milestone an integrator would numb
    (`notes/packages.md`), so no lab machine can fetch anything until this lands.
 6. Proposed, generations get tries (Fork 1).
 7. Proposed, a supervisor restarts a service from new bytes (Fork 3), §159's restart tier, with the
-   report; live swap stays milestone 23's.
+   report; live swap stays milestone 23's. Milestone 910 (a package declares a service: install
+   starts it, boot starts it, update restarts it) builds the mechanism for a package's declared
+   service (added 2026-10-12 UTC); this item extends it to base services.
 8. The health checks of Fork 4, built with items 6 and 7.
 9. basalt (out of tree): pin bump per nife merge; on each passing gate, publish a TUF repository
    whose release manifest pins a kernel and its base (Fork 5).

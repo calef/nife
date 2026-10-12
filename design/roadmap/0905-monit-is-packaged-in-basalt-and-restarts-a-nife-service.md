@@ -1,8 +1,8 @@
 ---
 status: NOT-STARTED
 raised: 2026-10-12
-milestone_dependencies: 801, 809, 810, 836, 837, 838, 849, 897
-decision_dependencies: 135, 223, 264, 265, unwritten
+milestone_dependencies: 801, 809, 810, 836, 837, 838, 849, 897, 910
+decision_dependencies: 135, 208, 223, 226, 264, 265
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -21,45 +21,24 @@ basalt."*
 AGPL-3.0). Ship it the way milestone 810 (`ripgrep` is packaged in basalt and installed with
 `jig`) ships `rg`. That means a recipe in basalt and a package build against the C library at
 basalt's pinned nife commit. Then publication to basalt's index, and `jig install monit` at the
-prompt. The program
-does not run unmodified. Its process layer has no nife backend, and it starts every program with
-`fork`, which §264 (`fork` is declined for good, and spawn is the supported way to start a program)
-refuses. So this milestone is a port with two named changes, and it says so.
+prompt, which starts it as a nife service. The program does not run unmodified. Its process layer
+has no nife backend, it starts every program with `fork`, which §264 (`fork` is declined for good,
+and spawn is the supported way to start a program) refuses, and its daemon is controlled by
+signals. So this milestone is a port with three named changes, and it says so.
 
-## What monit needs, read from its source
+## What monit needs
 
-Read from the monit 5.35.2 release tarball (mmonit.com/monit/dist/, the newest on 2026-10-12 UTC).
+Read from the monit 5.35.2 release tarball; the detail is in [the appendix](0905-monit-is-packaged-in-basalt-and-restarts-a-nife-service/monit-source.md). Process statistics come
+from a per-OS `sysdep` layer, and adding a pair of `sysdep` files is upstream's porting path.
+Starting a program is `Command_execute`, which forks. Exit status arrives only by `SIGCHLD`.
+`monit reload` and `monit quit` signal the daemon found by pidfile; `monit status` and the service
+actions are HTTP requests to the daemon's web server. It needs pthreads, TCP and Unix sockets,
+`poll` and `getaddrinfo`, and builds with autotools; OpenSSL, PAM and zlib are optional.
 
-- Process statistics go through a per-OS layer, `src/process/sysdep_<OS>.c`, eight functions
-  behind `process_sysdep.h`, from `init_processtree_sysdep` to `Sysdep_getMainThread`. A twin layer,
-  `src/device/sysdep_<OS>.c`, does filesystems. Both exist for AIX, Darwin, DragonFly, FreeBSD,
-  Linux, NetBSD, OpenBSD and Solaris, plus an `UNKNOWN` stub.
-- Linux's layer reads `/proc`: `glob("/proc/[0-9]*")`, then per process `stat`, `status`,
-  `cmdline` and the rest; system-wide `/proc/meminfo`, `/proc/stat` and `/proc/loadavg`; mounts
-  from `/proc/self/mounts` and usage from `statvfs`.
-- Porting is by adding a layer. `configure.ac` (and libmonit's) switch on the build host's `uname`
-  and compile `sysdep_@ARCH@.c`; anything unrecognized warns "Architecture not supported" and gets
-  `UNKNOWN`. No porting document ships, but a new pair of `sysdep` files plus a `uname` case in two
-  `configure.ac` files is the shape the tree is built for. `UNKNOWN` alone is
-  not enough: its `Sysdep_getMainThread` returns 0, so every pidfile check reads as "not running".
-- Starting a program: `libmonit/src/system/Command.c`'s `Command_execute` calls plain `fork`, then
-  `setsid`, `dup2`, closes descriptors to 256, `setgid`/`setgroups`/`setuid`, `umask` and `execve`,
-  with no shell. A comment above it rejects `posix_spawn` by name (below). Exit status is collected only by a `SIGCHLD` handler
-  that loops `waitpid`; `Process_exitStatus` says "Trust SIGCHLD handler to set status".
-- Existence: a pidfile read by `Util_getPid`, or a regex over every command line; then `getpgid`
-  and `Sysdep_getMainThread`.
-- Signals: `SIGTERM` stops, `SIGHUP` reloads, `SIGUSR1` wakes; `monit reload` and `monit quit`
-  signal the daemon found by pidfile. `monit status`,
-  `summary` and the start and stop actions are HTTP requests to the daemon's own web server, over
-  TCP to `localhost` or a Unix socket. `daemonize` forks twice; `-I` runs in the foreground.
-- Threads: pthreads are required. One thread runs the web server, one request at a time over
-  `poll`; one sends heartbeats to M/Monit. Nothing else.
-- Sockets: listening TCP and Unix sockets, `getaddrinfo`, `poll` (never `select`), `getifaddrs`,
-  raw ICMP for `ping`, SMTP for alerts, and 36 protocol tests in `src/protocols/`.
-- Files: `stat` (the control file must be owned by `geteuid()`), bundled MD5 and SHA-1,
-  `regcomp`, `syslog`, `getpwnam`, `crypt`, `glob`.
-- Build: autotools, libmonit as a configured subdirectory. OpenSSL, PAM and zlib are on by default,
-  each turned off by a `--without-` flag.
+The daemon's HTTP interface cannot carry reload or quit, checked for calef's question 2 ruling:
+`src/http/cervlet.c`'s runtime actions are `validate` and `stop`, and `stop` stops only the web
+server (`Engine_stop`). Service actions are queued and the daemon woken by `kill(pid, SIGUSR1)` on
+the pidfile's pid, so without a wakeup they wait for the next cycle.
 
 ## What each need maps onto in nife
 
@@ -69,9 +48,10 @@ Read from the monit 5.35.2 release tarball (mmonit.com/monit/dist/, the newest o
 | pthreads | stage 2, BUILT on its branch (#2009) and in the merge queue | milestone 836 (a C library, stage 2: threads) |
 | TCP and Unix sockets, `poll`, `getaddrinfo` | stage 3 promises TCP, `poll` and literal-address `getaddrinfo`; no Unix sockets | milestone 837 (a C library, stage 3: sockets) |
 | Starting a service | `fork` returns `ENOSYS` (`c_library/src/platform/nife.rs`) and always will | §264; milestone 838 (a C library: `posix_spawn`, and no fork) on milestone 172 (a capability-native subprocess primitive) |
-| Process ids | `getpid` is 0, `kill` names only the caller, and `getpgid` answers 0 for any number, so every pid looks alive | unwritten (question 3) |
-| `SIGCHLD`, `SIGHUP`, `SIGTERM` | none delivered; `sigaction` records a handler and nothing fires it | §265 (a C library started from relibc, whose Rust platform layer holds the capabilities), "What this does not decide" |
+| Process ids | `getpid` is 0, `kill` names only the caller, and `getpgid` answers 0 for any number, so every pid looks alive | milestone 838, as ruled (question 3): a pid is a tid in a held domain |
+| `SIGCHLD`, `SIGHUP`, `SIGTERM` | none delivered; `sigaction` records a handler and nothing fires it; reload and stop arrive on milestone 910's control endpoint instead | §265 (a C library started from relibc, whose Rust platform layer holds the capabilities), "What this does not decide" |
 | A process table | `endpoint::SURVEY` over one supervision domain, records `STATE` and `PLACEMENT`; no command line, CPU time or memory | §223 (the process view is the supervision domain); milestone 126 (the `procps` package, now `process-tools`) |
+| Keeping monit itself running | a declared service, started at install and every boot, restarted on crash and update | milestone 910 (a package declares a service: install starts it, boot starts it, update restarts it) |
 | Ending a service | no `kill`; ending a child is its region holder's | milestone 455 (`kill`, `pkill`, `skill` and `snice`: the signaling stratum of `procps`), REFUSED |
 | Learning of a death | the kernel's death message to the spawner's supervision endpoint | §26 (the fault endpoint: thread death becomes a message a supervisor holds) |
 | Grants (files, network, a domain to watch) | `grant_plan::Manifest` (`domain`, `network`, a directory) in an ELF note | milestone 849 (a package declares what it needs at run time, apart from what it links) for a foreign package |
@@ -101,7 +81,8 @@ alerts by mail, a status page and a CLI. None of that should be rebuilt in the k
 
 monit's model of a stranger's process is a pid read from a file, the ambient naming §223 refuses.
 On nife it sees only the services it spawned or a domain it was granted: a narrower monit, on
-purpose.
+purpose. And monit is itself a service under milestone 910, so the progenitor keeps monit running
+and monit keeps its own services running, each with the policy it holds.
 
 ## The modification question
 
@@ -119,36 +100,25 @@ this tree applies to foreign software, and monit cannot meet it.
   way monit selects a `sysdep`, so `fork` stays the path on every other system. It is §264's stated
   consequence for a C program that forks. It also stops trusting `SIGCHLD` and collects status with
   `waitpid(WNOHANG)` on its poll, or every start program waits out its timeout.
-- What does not work and is not patched: `monit reload` and `monit quit` (signals), `ping` (raw
-  sockets), PAM, and `getifaddrs` link checks. Each goes in the block's `BUGS` when built.
+- A nife-only daemon control, from question 2's ruling. The daemon serves milestone 910's control
+  endpoint: reload sets `Run_DoReload` and stop sets `Run_Stopped`, the flags the signal handlers
+  set today. `monit reload` and `monit quit` send to it instead of `kill_daemon`, because monit's
+  HTTP interface carries neither (above). The same change wakes the daemon in-process for HTTP
+  service actions, where `do_wakeupcall` signals a pid.
+- What does not work and is not patched: `ping` (raw sockets), PAM, and `getifaddrs` link checks.
+  Each goes in the block's `BUGS` when built.
 
-So monit reaches nife as a port with two named changes, the ripgrep precedent: `rg`'s own source
+So monit reaches nife as a port with three named changes, the ripgrep precedent: `rg`'s own source
 untouched, a ten-line patch in a dependency, and the patch nife's to maintain (#1892).
 
 Ruled by calef, 2026-10-12 (UTC), on question 1 (#2022): *"monit 1 of 4, ship it patched as you
-recommend."* basalt's recipe carries both changes, both are offered upstream as a platform port,
-and monit is recorded as a port with two named changes.
+recommend."* basalt's recipe carries the changes, they are offered upstream as a platform port,
+and monit is recorded as a port with named changes. calef's question 2 ruling added the third.
 
-### Why upstream's objections to `posix_spawn` do not hold on nife
-
-The comment above `Command_execute` (`libmonit/src/system/Command.c`, lines 838 to 871) gives six
-reasons for `fork`. Each assumes a Unix child that inherits its parent's state and must shed it.
-A nife child inherits nothing it is not handed, so each step `fork` exists to run has nothing to do.
-
-- `setsid`, to leave the controlling terminal. A child holds a terminal only if spawn grants one;
-  there is no session to leave. `setsid` answers `EPERM` in `c_library` today.
-- `setuid` and `setgid`. nife has no users: `geteuid` is `NOBODY`. Authority is the capabilities
-  the spawn request grants, so changing privilege means granting less, which `posix_spawn` can say.
-- Closing every descriptor. A child's capability table starts empty apart from its grants, so
-  close-all is the default rather than a step.
-- `chdir`. A process stands in the directory it was granted, and `chdir` answers `ENOSYS`. The
-  service's directory is a grant in the spawn request, milestone 838's file actions.
-- `umask`. It is C-library state with no kernel counterpart; `c_library` answers `0o022` and
-  enforces no mask. The child starts with its own.
-- The `clone` and `vfork` limits. No code runs in a nife child before its image starts. Spawn is a
-  request to the spawner, under §219 (how the shell names an installed program to the spawner).
-  Milestone 172 (a capability-native subprocess primitive) builds the child from an image. The
-  `getpwuid` and `getgrouplist` calls the comment worries about have no users to look up.
+The comment above `Command_execute` gives six reasons for `fork` over `posix_spawn`: `setsid`,
+`setuid`, close-all, `chdir`, `umask`, and what a `clone` or `vfork` child may do. Each assumes a
+child that inherits its parent's state and must shed it. A nife child inherits nothing it is not
+granted, so none applies; [the appendix](0905-monit-is-packaged-in-basalt-and-restarts-a-nife-service/monit-source.md) takes them one at a time.
 
 ## Delivery: a package from basalt
 
@@ -157,7 +127,7 @@ base-image program (§241 (a threadbare base: the boot slot holds the kernel and
 repairs, and every other program is a package)). It is a package `jig` installs.
 
 1. basalt carries a recipe naming monit 5.35.2's tarball by SHA-256, with the `sysdep` pair and
-   the `Command.c` patch as files beside it. Its configure line is `--without-pam`, `--without-ssl`
+   the nife patch as files beside it. Its configure line is `--without-pam`, `--without-ssl`
    (question 4), `--without-zlib` unless basalt packages zlib, and the `ARCH` the patch's
    `configure.ac` case selects. A download that does not match fails the build (§195 (a reviewed
    recipe vouches for a package, and the machine's owner may overrule it)).
@@ -165,9 +135,10 @@ repairs, and every other program is a package)). It is a package `jig` installs.
    with `helpers/c-library-cflags.sh`'s flags. Milestone 897 (SQLite is packaged in basalt, and its
    tests run in basalt's package build) builds that path for the first C package; this is the
    second.
-3. The manifest note, for a foreign program, is milestone 849's: a directory for `monitrc` and its
-   state, the network for its web server and checks, the spawn request, and `ENUMERATE` on the
-   domain its services are born under.
+3. The manifest note, for a foreign program, is milestone 849's: the network for its web server
+   and checks, the spawn request, and `ENUMERATE` on the domain its services are born under. It
+   declares a service under milestone 910: `monit -I`, restart on crash, a control endpoint, a
+   read-only default `monitrc` in the package and the owner's `monitrc` in a writable directory.
 4. One archive per architecture, kind `optional`, under §197 (a package is one archive file,
    named and vouched for by its recipe). It is published to basalt's index, under
    §250 (an image names its distribution's package index, at `basalt.nifeos.org`, and a package's
@@ -175,8 +146,8 @@ repairs, and every other program is a package)). It is a package `jig` installs.
 5. `jig install monit` installs it. Its `install <name>` is built by milestone 809 (the package
    client becomes a program, `jig`, with the verbs an index needs). It fetches the index by name
    over HTTPS, whose QEMU half is built by milestone 801 (packages over the internet: a host name,
-   HTTPS and the distribution's index). If monit is served from the opt-in copyleft repository (below), the
-   test first runs `jig add-repository`, milestone 809's unbuilt item 7.
+   HTTPS and the distribution's index). monit is served from the opt-in copyleft repository
+   (below), so the test first runs `jig add-repository`, milestone 809's unbuilt item 7.
 
 The order across repositories: the nife pieces (`posix_spawn`, sockets, process ids, the manifest
 support) land first through nife's queue. basalt then bumps its pin in a separate pull request
@@ -196,10 +167,13 @@ dependency.
   text in the package. Whether that repository lives under nifeos or a sibling
   organization is still open under milestone 198 (a package manager).
 - Shipping the binary obliges basalt, under the AGPL's section 6, to offer the corresponding
-  source: the tarball, the `sysdep` pair, the patch and the build scripts.
+  source: the tarball, the `sysdep` pair, the patches and the build scripts.
 - Section 13 applies to a modified version, and this one is modified. Whoever runs it must
   prominently offer users who interact with it over a network (its web UI is that interaction)
   the source of that version. Upstream's footer links only to mmonit.com.
+- Ruled 2026-10-12 (UTC), question 4, *"a"*: the nife patch adds a footer link to basalt's
+  published source for that exact build. basalt publishes the corresponding source beside the
+  binary, and monit builds `--without-ssl` until OpenSSL is packaged.
 
 ## Done when
 
@@ -208,40 +182,41 @@ commit:
 
 1. `jig install monit` fetches monit from basalt's index over HTTPS, and the archive's digest
    matches the recipe.
-2. monit's daemon runs with a `monitrc` declaring one service: a fixture that listens on a port and
-   faults when told to over it, since nothing can `kill` it (milestone 455). monit starts it.
+2. The install listed "runs as a service", and monit's daemon is running with no further command.
+   Its `monitrc` declares one service: a fixture that listens on a port and faults when told to
+   over it, since nothing can `kill` it (milestone 455). monit starts it.
 3. `monit status` typed at the prompt prints the service as `OK` with a pid that names it.
 4. The test tells the fixture to fault. Within two monit cycles the daemon reports it gone,
    starts it again, and `monit status` at the prompt shows it `OK` under a new pid.
-5. The recipe's tarball checksum, altered, fails basalt's build.
+5. `monit reload` at the prompt makes the daemon reread its `monitrc`; after a reboot monit is
+   running again and restarts the fixture. The web UI's footer links to the build's source.
+6. The recipe's tarball checksum, altered, fails basalt's build.
 
-Every change to monit's source is listed in the recipe and in this block. A lane that finds a third
-change it needs stops and asks rather than adding it.
+Every change to monit's source is listed in the recipe and in this block. A lane that finds a
+fourth change it needs stops and asks rather than adding it.
 
 ## Which fatal risk it informs
 
 Risk 1 (`1-only-software-written-for-nife.md`): only software written for nife runs on nife. monit
 is a stranger's C daemon that uses threads, sockets, process creation and a process table. That is
 more of the POSIX surface than speedtest1 or ioping touch. It informs the risk honestly only if it
-is reported as a port with two changes, not as an unmodified run. As such it is evidence that a
-real C daemon needs about one file and one patch, and that `fork` is the cost.
+is reported as a port with three changes, not as an unmodified run. As such it is evidence that a
+real C daemon needs a `sysdep` and two small patches, and that `fork` and signals are the cost.
 
-## Open questions for calef
+## Questions calef ruled
 
 1. **Ship monit patched?** Ruled 2026-10-12 (UTC): yes, as recommended. See *The modification
    question*.
-2. **How does the daemon outlive the prompt?** swish has no background jobs (milestone 48 (job
-   control: `jobs`, `wait`, `kill`, `fg`, `bg`, and a stopped state) is NOT-STARTED), and monit's
-   `daemonize` forks. Recommended: a package may declare a service the progenitor starts at boot
-   under a supervision endpoint, unwritten today, because a supervisor tied to a session is not one.
-   The cheaper path is `monit -I &` once milestone 48 lands.
-3. **What is a pid in the C library?** Today every pid is 0. Recommended: a tid within a
-   supervision domain the process holds (§223), as `pidwait` already takes tids (§226 (`pidwait`
-   takes tids and composes with `pgrep`, because a program does one thing)). This belongs in
-   milestone 838's mapping and is asked here because monit is its first consumer.
-4. **The section 13 offer.** Recommended: the same patch adds a source link to the web UI's
-   footer, so every nife user is compliant by default, and monit ships `--without-ssl` until
-   OpenSSL is packaged (its exception permits it later).
+All four on #2022, 2026-10-12 (UTC).
+
+2. **How does the daemon outlive the prompt?** *"a, and restart services on update."* A package
+   declares a service; that mechanism is milestone 910.
+3. **What is a pid in the C library?** *"a"*. A pid is a tid within a supervision domain the
+   process holds, as under §226 (`pidwait` takes tids and composes with `pgrep`, because a program
+   does one thing), with no global namespace. It is milestone 838's scope, including the `getpgid`
+   fix, recorded in its block.
+4. **The section 13 offer.** *"a"*. A footer link to basalt's source for the build, from the
+   opt-in repository, and no SSL until OpenSSL is packaged. See *The license, as facts*.
 
 Reuse: monit 5.35.2 itself, with upstream's porting seam; relibc's `posix_spawn` file actions
 through milestone 838; `crates/ps`'s survey walk for the sysdep; milestone 810's and 897's basalt
@@ -252,5 +227,6 @@ the tree has.
 ## Index row
 
 The first foreign service supervisor on nife, installed by `jig` from basalt. A stranger's C daemon
-with threads, sockets and process creation, ported through its own `sysdep` seam and one patch off
-`fork`. It restarts a nife service it spawned and reports it at the prompt.
+with threads, sockets and process creation, ported through its own `sysdep` seam and patches off
+`fork` and signals. A nife service itself, it restarts a service it spawned and reports it at the
+prompt.
