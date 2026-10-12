@@ -400,6 +400,7 @@ place instead of moving text between two systems. Numbers 68 to 73 are the six t
 | 281 | DECIDED | [The kernel's user-mode file splits into child modules of `user`](0281-the-kernels-user-mode-file-splits-into-child-modules-of-user.md) |
 | 282 | DECIDED | [When a file is split, the parent becomes an index](0282-when-a-file-is-split-the-parent-becomes-an-index.md) |
 | 283 | DECIDED | [A function is held to 100 code lines by a lint ratchet](0283-a-function-is-held-to-100-code-lines-by-a-lint-ratchet.md) |
+| 291 | DECIDED | [The catch-all userspace test file splits into topic files beside it](0291-the-catch-all-userspace-test-file-splits-into-topic-files-beside-it.md) |
 | 296 | DECIDED | [The component-plan crate root's proofs move into a child module](0296-the-component-plan-crate-roots-proofs-move-into-a-child-module.md) |
 
 Two blocks that lived among the decisions are not decisions and moved out with the split, the same
