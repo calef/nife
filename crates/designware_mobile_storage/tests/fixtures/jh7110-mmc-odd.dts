@@ -1,0 +1,36 @@
+/dts-v1/;
+
+/*
+ * Two nodes at the JH7110's SD/MMC slot names that the vendor tree does not have: a node at slot
+ * 0's name whose `compatible` is neither binding (it must be skipped, not taken), and slot 1 with a
+ * clock rate other than the 50 MHz default (it must be read, not replaced by the default). Made up
+ * for the tests, after jh7110-mmc-vendor.dts. Compile: dtc -I dts -O dtb -o jh7110-mmc-odd.dtb jh7110-mmc-odd.dts
+ */
+
+/ {
+	#address-cells = <2>;
+	#size-cells = <2>;
+	compatible = "starfive,visionfive-v2", "starfive,jh7110";
+
+	soc {
+		compatible = "simple-bus";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		sdio0@16010000 {
+			compatible = "vendor,something-else";
+			reg = <0x0 0x16010000 0x0 0x10000>;
+			status = "okay";
+		};
+
+		sdio1@16020000 {
+			compatible = "snps,dw-mshc";
+			reg = <0x0 0x16020000 0x0 0x10000>;
+			assigned-clock-rates = <100000000>;
+			fifo-depth = <32>;
+			bus-width = <4>;
+			status = "okay";
+		};
+	};
+};

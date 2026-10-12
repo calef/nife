@@ -914,6 +914,128 @@ mod tests {
         assert_eq!(ring.read(0, &mut out), Read::Overwritten);
     }
 
+    /// **Each record keeps its own words.** Two full records side by side read back whole, with
+    /// the severity, source and kind the kernel wrote; the window's edge is exact (a record
+    /// [`SLOTS`](kernel_ring::SLOTS) behind the next is still there, one more is gone); a flag
+    /// already set stays set; and the counters read what was counted.
+    #[test]
+    fn the_kernel_ring_keeps_each_record_and_its_counters() {
+        extern crate std;
+        use core::sync::atomic::{AtomicU64, Ordering};
+
+        use kernel_ring::{Cursor, Read, Ring, SLOTS};
+        let words: std::vec::Vec<AtomicU64> =
+            (0..kernel_ring::WORDS).map(|_| AtomicU64::new(0)).collect();
+        let ring = Ring::new(&words).unwrap();
+        // The slot count alone, with no magic, is not a formatted ring, and neither is the magic
+        // with another slot count.
+        words[3].store(SLOTS, Ordering::Relaxed);
+        assert!(!ring.is_formatted());
+        ring.format();
+        words[3].store(SLOTS + 1, Ordering::Relaxed);
+        assert!(!ring.is_formatted());
+        ring.format();
+
+        let a = [b'a'; record::TEXT_MAX];
+        let b = [b'b'; record::TEXT_MAX];
+        ring.append(1, severity::INFO, record::flags::KERNEL, &a);
+        ring.append(2, severity::WARNING, 0, &b);
+        let mut out = [0u8; record::TEXT_MAX];
+        let Read::Record(h, n) = ring.read(0, &mut out) else {
+            panic!()
+        };
+        assert_eq!(&out[..n], &a[..]);
+        assert_eq!((h.severity, h.source, h.kind), (severity::INFO, 0, 0));
+        let Read::Record(h, n) = ring.read(1, &mut out) else {
+            panic!()
+        };
+        assert_eq!(&out[..n], &b[..]);
+        assert_eq!((h.severity, h.source), (severity::WARNING, 0));
+
+        assert!(ring.add_flags(0, record::flags::KERNEL));
+        let Read::Record(h, _) = ring.read(0, &mut out) else {
+            panic!()
+        };
+        assert_eq!(
+            h.flags,
+            record::flags::KERNEL,
+            "a flag set twice is still set"
+        );
+
+        for i in 2..=SLOTS {
+            ring.append(i, 6, 0, b"x");
+        }
+        assert_eq!(ring.next_seq(), SLOTS + 1);
+        assert_eq!(ring.oldest(), 1);
+        assert_eq!(ring.read(0, &mut out), Read::Overwritten);
+        assert!(matches!(ring.read(1, &mut out), Read::Record(h, _) if h.seq == 1));
+        ring.append(0, 6, 0, b"y");
+        ring.append(0, 6, 0, b"z");
+        assert_eq!(ring.oldest(), 3);
+
+        ring.count_fallback();
+        ring.count_fallback();
+        assert_eq!(ring.fallback(), 2);
+
+        let page = AtomicU64::new(kernel_ring::DETACHED);
+        let cursor = Cursor(&page);
+        cursor.set(5);
+        assert_eq!(cursor.get(), 5);
+    }
+
+    /// A kernel chunk's word is its opcode in the top byte over its byte count.
+    #[test]
+    fn a_kernel_chunk_word_is_its_opcode_and_its_count() {
+        let w = console::chunk(16);
+        assert_eq!(console::operation(w), console::OPERATION_KERNEL_LINE);
+        assert_eq!(w & 0xff, 16);
+    }
+
+    /// **The queue holds exactly [`QUEUE_MAX`](console::QUEUE_MAX) bytes before it flushes**, and
+    /// a client's write that does not end the line never releases it. Eight 256-byte lines fill it
+    /// to the byte and go nowhere; the ninth flushes them first.
+    #[test]
+    fn the_queue_flushes_only_past_its_size_and_only_at_a_line_end() {
+        extern crate std;
+        use std::vec::Vec;
+        let mut c = console::Inserter::new();
+        c.wrote(b"$ ", |_| unreachable!());
+        let line = [b'k'; console::LINE_MAX - console::LINE_END.len()];
+        for _ in 0..8 {
+            c.kernel_chunk(&line, |_| panic!("flushed before the queue was full"));
+        }
+        assert_eq!(c.queued(), console::QUEUE_MAX);
+        c.wrote(b"more", |_| panic!("released mid-line"));
+        let mut t: Vec<u8> = Vec::new();
+        c.kernel_chunk(&line, |b| t.extend_from_slice(b));
+        assert_eq!(
+            t.len(),
+            console::LINE_END.len() + console::QUEUE_MAX + b"$ more".len()
+        );
+        assert_eq!(c.queued(), console::LINE_MAX);
+    }
+
+    /// At a line start with nothing queued, the client's own write sends no kernel bytes at all.
+    #[test]
+    fn nothing_queued_is_nothing_written() {
+        let mut c = console::Inserter::new();
+        c.wrote(b"x\n", |_| panic!("an empty kernel write"));
+    }
+
+    /// A partial line longer than the console keeps is dropped from the redraw rather than
+    /// written past the end of its buffer.
+    #[test]
+    fn a_partial_line_past_its_buffer_is_not_redrawn() {
+        extern crate std;
+        use std::vec::Vec;
+        let mut c = console::Inserter::new();
+        c.wrote(&[b'p'; console::PARTIAL_MAX + 1], |_| unreachable!());
+        c.kernel_chunk(b"k\n", |_| unreachable!());
+        let mut t: Vec<u8> = Vec::new();
+        c.flush(|b| t.extend_from_slice(b));
+        assert_eq!(t, b"\r\nk\r\n");
+    }
+
     /// The console's half: a kernel line is written at a line start, queued mid-line, released
     /// by the line end that follows, and on a flush drawn on its own line with the partial line
     /// redrawn beneath it.

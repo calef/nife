@@ -140,3 +140,30 @@ pub mod process_composition {
     pub const WHOLE: u64 =
         CHILD_FOUND | SPACE_BUILT | FRAME_MAPPED | DOUBLE_MAP_REFUSED | STARTED | CHILD_ANSWERED;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::process_composition::*;
+
+    /// **Each step owns one bit of its own**, and [`WHOLE`] is all of them, so a verdict short of
+    /// `WHOLE` names exactly the steps that did not happen. A step at zero, or two steps on one bit,
+    /// would make a stopped composition read as a finished one.
+    #[test]
+    fn every_step_is_its_own_bit_and_whole_is_all_of_them() {
+        let steps = [
+            CHILD_FOUND,
+            SPACE_BUILT,
+            FRAME_MAPPED,
+            DOUBLE_MAP_REFUSED,
+            STARTED,
+            CHILD_ANSWERED,
+        ];
+        let mut seen = 0;
+        for step in steps {
+            assert_eq!(step.count_ones(), 1, "{step:#x} is not one bit");
+            assert_eq!(seen & step, 0, "{step:#x} is shared with an earlier step");
+            seen |= step;
+        }
+        assert_eq!(WHOLE, seen);
+    }
+}

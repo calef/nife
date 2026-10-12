@@ -1287,6 +1287,25 @@ mod tests {
         assert_eq!(foreign_change(newer, newer, "jig").unwrap(), None);
     }
 
+    /// **A row differs when its program and digest are not both in the other table.** Another
+    /// manager's program upgraded to new bytes keeps its name but not its digest, and a rollback
+    /// across that upgrade undoes their row, so it is foreign to `jig` although the name matches.
+    #[test]
+    fn a_new_digest_under_the_same_name_is_a_change() {
+        let older = format!("sha256:{} hello 1 hello other\n", "11".repeat(32));
+        let newer = format!("sha256:{} hello 2 hello other\n", "22".repeat(32));
+        let found = foreign_change(&older, &newer, "jig").unwrap().unwrap();
+        assert_eq!((found.program, found.manager), ("hello", "other"));
+    }
+
+    /// A manager column is a name like any other column: one starting `#` would read as a comment
+    /// when the table is shown, so the line is malformed rather than a row with an odd manager.
+    #[test]
+    fn a_manager_that_is_not_a_name_makes_the_line_malformed() {
+        let bad = format!("sha256:{} a 1 a #jig\n", "11".repeat(32));
+        assert_eq!(entries(&bad).next().unwrap(), Err(Error::Malformed));
+    }
+
     #[test]
     fn a_buffer_too_small_is_refused_rather_than_truncated() {
         let mut out = [0u8; 40];

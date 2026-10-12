@@ -272,5 +272,67 @@ mod tests {
         // CARD_IS_LOCKED is not an error; ILLEGAL_COMMAND is.
         assert_eq!((1 << 25) & R1_ERRORS, 0);
         assert_ne!((1 << 22) & R1_ERRORS, 0);
+        assert_eq!(R1_READY_FOR_DATA, 0x100);
+    }
+
+    /// The arguments a card is sent, as numbers: what a protocol analyzer on the bus would show.
+    #[test]
+    fn the_operating_condition_arguments_are_the_specs() {
+        assert_eq!(OCR_VOLTAGE_WINDOW, 0x0030_0000);
+        assert_eq!(SD_OP_COND_ARG, 0x4030_0000);
+    }
+
+    #[test]
+    fn a_length_above_32_reads_32_bits_and_a_field_past_the_end_reads_zero_there() {
+        let mut r = [0u32; 4];
+        put(&mut r, 0, 32, 0x8765_4321);
+        put(&mut r, 32, 32, 0x0fed_cba9);
+        put(&mut r, 96, 32, 0xa5c3_0f1e);
+        assert_eq!(bits(&r, 0, 64), 0x8765_4321);
+        // Shift 1, length 32: the field's top bit is the next word's bit 0.
+        assert_eq!(bits(&r, 1, 32), 0x8765_4321 >> 1 | 0x0fed_cba9 << 31);
+        // Bits 120 to 135: the eight that exist, and nothing read past the last word.
+        assert_eq!(bits(&r, 120, 16), 0xa5);
+    }
+
+    /// `READ_BL_LEN` 9 (512-byte blocks) is the case where the shift's `- 9` is zero, and
+    /// `C_SIZE_MULT` 3 the one where the multiplier's `+ 2` matters: (100 + 1) * 2^(3 + 2) blocks.
+    #[test]
+    fn a_csd_with_512_byte_blocks_is_sized_from_its_multiplier_alone() {
+        let mut r = [0u32; 4];
+        put(&mut r, 62, 12, 100);
+        put(&mut r, 47, 3, 3);
+        put(&mut r, 80, 4, 9);
+        assert_eq!(Csd::sd(&r).blocks, 101 << 5);
+        assert_eq!(Csd::mmc(&r).blocks, 101 << 5);
+    }
+
+    #[test]
+    fn an_sduc_card_is_sized_from_a_28_bit_count() {
+        let mut r = [0u32; 4];
+        put(&mut r, 126, 2, 2);
+        put(&mut r, 48, 28, 0x0abc_def0);
+        let csd = Csd::sd(&r);
+        assert_eq!(csd.structure, 2);
+        assert_eq!(csd.blocks, (0x0abc_def0 + 1) * 1024);
+    }
+
+    /// An SD CID has a five-byte name; the byte after it is the product revision, not a sixth
+    /// letter. An eMMC's name is six bytes and its serial sits eight bits lower.
+    #[test]
+    fn an_sd_name_is_five_bytes_and_an_emmc_name_six() {
+        let mut r = [0u32; 4];
+        for (i, b) in b"NIFEMC".iter().enumerate() {
+            put(&mut r, 96 - 8 * i as u32, 8, u32::from(*b));
+        }
+        put(&mut r, 120, 8, 0x15);
+        assert_eq!(Cid::sd(&r).name, *b"NIFEM\0");
+        let mut mmc = r;
+        put(&mut mmc, 16, 32, 0x1357_9bdf);
+        let cid = Cid::mmc(&mmc);
+        assert_eq!(
+            (cid.manufacturer, cid.name, cid.serial),
+            (0x15, *b"NIFEMC", 0x1357_9bdf)
+        );
     }
 }

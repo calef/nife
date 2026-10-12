@@ -857,6 +857,29 @@ mod tests {
         }
     }
 
+    /// An extent past `i32::MAX` clamps to the far edge of the number line rather than wrapping to
+    /// a negative width, so a client's oversized rectangle reads as the huge one it claimed.
+    #[test]
+    fn an_extent_past_i32_max_clamps_rather_than_wraps() {
+        assert_eq!(Rect::new(0, 0, u32::MAX, 1).right(), i32::MAX);
+        assert_eq!(Rect::new(0, 0, 1, i32::MAX as u32 + 1).bottom(), i32::MAX);
+    }
+
+    /// **A commit inside the surface is acknowledged plainly, and one past it is reported clipped**,
+    /// the per-client feedback the status word exists to carry.
+    #[test]
+    fn a_commit_says_whether_its_damage_was_clipped() {
+        let win = &SCENE[0];
+        assert_eq!(
+            commit_damage(win, 0, 0, win.w, win.h).1,
+            proto::ctl::STATUS_OK
+        );
+        assert_eq!(
+            commit_damage(win, 0, 0, win.w + 1, win.h).1,
+            proto::ctl::STATUS_CLIPPED
+        );
+    }
+
     /// `area` on a rectangle that is neither square nor 2 by 2. Every fixture here was square, and
     /// `w + h` equals `w * h` at 2 by 2, so `* -> +` survived from the 2026-08-03 run to the
     /// 2026-09-19 census. See notes/mutation-testing.md.

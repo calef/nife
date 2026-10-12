@@ -51,6 +51,20 @@ pub struct Sim {
     pub flash_busy_reads: u32,
     /// Cycles that end in `FLCERR` before one succeeds.
     pub flash_failing_cycles: u32,
+    /// Status reads a started cycle stays in progress for before it ends; `u32::MAX` never ends.
+    /// Zero, the default, ends each cycle at `GO`. The data and `FDONE` arrive when it ends, as
+    /// on the device, and a `FDONE` left set by an earlier cycle stays set until it is cleared.
+    pub flash_slow_reads: u32,
+    flash_pending: u32,
+    /// Every `GO` issued, as the control half it was issued with.
+    pub flash_cycles: Vec<u16>,
+    /// `GO` issued while a cycle was still in progress, which the device ignores.
+    pub flash_go_while_busy: u32,
+    /// Every BAR0 read by offset, in order, except of the flash status word, which a cycle that
+    /// never ends polls ten million times.
+    pub reads: Vec<u64>,
+    /// Every BAR0 write, in order.
+    pub writes: Vec<(u64, u32)>,
     lanphypc_low: bool,
 }
 
@@ -80,6 +94,12 @@ impl Sim {
             flash_ctl: 0,
             flash_busy_reads: 0,
             flash_failing_cycles: 0,
+            flash_slow_reads: 0,
+            flash_pending: 0,
+            flash_cycles: Vec::new(),
+            flash_go_while_busy: 0,
+            reads: Vec::new(),
+            writes: Vec::new(),
             lanphypc_low: false,
         };
         // FW_VALID when there is an ME; RSPCIPHY set, so firmware does not block PHY resets.
@@ -183,21 +203,32 @@ impl Sim {
             !(low & (nvm::status::DONE | nvm::status::ERROR | nvm::status::DIRECT_ACCESS_ERROR));
         self.flash_ctl = (v >> 16) as u16;
         if self.flash_ctl & nvm::control::GO != 0 {
-            let byte = self.get(nvm::FLASH_BASE + nvm::FADDR) as usize;
-            let w = byte / 2;
-            let lo = *self.nvm.get(w).unwrap_or(&0xffff);
-            let hi = *self.nvm.get(w + 1).unwrap_or(&0xffff);
-            self.mac.insert(
-                nvm::FLASH_BASE + nvm::FDATA0,
-                u32::from(hi) << 16 | u32::from(lo),
-            );
-            if self.flash_failing_cycles > 0 {
-                self.flash_failing_cycles -= 1;
-                self.flash_status |= nvm::status::DONE | nvm::status::ERROR;
-            } else {
-                self.flash_status |= nvm::status::DONE;
+            if self.flash_busy_reads > 0 || self.flash_pending > 0 {
+                self.flash_go_while_busy += 1;
             }
+            self.flash_cycles.push(self.flash_ctl);
             self.flash_ctl &= !nvm::control::GO;
+            self.flash_pending = self.flash_slow_reads;
+            if self.flash_pending == 0 {
+                self.flash_end_cycle();
+            }
+        }
+    }
+
+    fn flash_end_cycle(&mut self) {
+        let byte = self.get(nvm::FLASH_BASE + nvm::FADDR) as usize;
+        let w = byte / 2;
+        let lo = *self.nvm.get(w).unwrap_or(&0xffff);
+        let hi = *self.nvm.get(w + 1).unwrap_or(&0xffff);
+        self.mac.insert(
+            nvm::FLASH_BASE + nvm::FDATA0,
+            u32::from(hi) << 16 | u32::from(lo),
+        );
+        if self.flash_failing_cycles > 0 {
+            self.flash_failing_cycles -= 1;
+            self.flash_status |= nvm::status::DONE | nvm::status::ERROR;
+        } else {
+            self.flash_status |= nvm::status::DONE;
         }
     }
 }
@@ -209,6 +240,17 @@ fn mac_mdic() -> u64 {
 impl Hw for Sim {
     fn read(&mut self, off: u64) -> u32 {
         if off == nvm::FLASH_BASE + nvm::HSFSTS {
+            if self.flash_pending > 0 {
+                if self.flash_pending != u32::MAX {
+                    self.flash_pending -= 1;
+                }
+                if self.flash_pending == 0 {
+                    self.flash_end_cycle();
+                } else {
+                    let st = self.flash_status | nvm::status::IN_PROGRESS;
+                    return u32::from(self.flash_ctl) << 16 | u32::from(st);
+                }
+            }
             let mut st = self.flash_status;
             if self.flash_busy_reads > 0 {
                 if self.flash_busy_reads != u32::MAX {
@@ -218,9 +260,11 @@ impl Hw for Sim {
             }
             return u32::from(self.flash_ctl) << 16 | u32::from(st);
         }
+        self.reads.push(off);
         self.get(off)
     }
     fn write(&mut self, off: u64, v: u32) {
+        self.writes.push((off, v));
         match off {
             o if o == regs::MDIC => self.mdic(v),
             o if o == mac::CTRL => self.ctrl(v),
@@ -325,6 +369,69 @@ mod tests {
         let mut m = Mute(0);
         assert_eq!(phy::read_mdic(&mut m, 1, 2), Err(PhyError::NotReady));
         assert_eq!(m.0, u64::from(mdic::POLLS) * mdic::POLL_US);
+        assert_eq!(m.0, 96_000, "FreeBSD's 96 ms: 1920 polls of 50 us");
+    }
+
+    /// The edges of MDIO's register field and of the pages this port reaches: register 31 is the
+    /// last one there is, page `MAX_PAGE` is the last whose select fits, and register 15 is the last
+    /// one reached without a page select.
+    #[test]
+    fn the_last_register_and_the_last_page_are_reachable_and_one_past_is_not() {
+        let mut s = Sim::new(Start::Healthy, true);
+        assert!(phy::read_mdic(&mut s, 2, phy::MAX_REG).is_ok());
+        assert!(plan(reg(phy::MAX_PAGE, 1)).is_ok());
+        assert_eq!(
+            plan(reg(phy::MAX_PAGE + 1, 1)),
+            Err(PhyError::PageNotPorted)
+        );
+        assert_eq!(plan(reg(769, phy::MAX_UNPAGED_REG)).unwrap().select, None);
+        assert!(
+            plan(reg(769, phy::MAX_UNPAGED_REG + 1))
+                .unwrap()
+                .select
+                .is_some()
+        );
+    }
+
+    /// **The PHY identifier is `ID1:ID2` with the revision nibble cleared**, the path QEMU's
+    /// 82574L takes and the one value the gates see from this module.
+    #[test]
+    fn the_phy_id_is_both_words_without_the_revision() {
+        let mut s = Sim::new(Start::Healthy, true);
+        assert_eq!(phy::id_at(&mut s, 2), Ok(PHY_ID));
+        let mut dead = Sim::new(Start::Dead, true);
+        assert_eq!(phy::id_at(&mut dead, 2), Err(PhyError::Mdi));
+    }
+
+    /// A firmware block on PHY resets is polled 31 times, 10 ms apart, with no wait after the
+    /// last: 300 ms in all, as FreeBSD's `e1000_check_reset_block_ich8lan`. An unblocked one
+    /// answers at once.
+    #[test]
+    fn a_reset_block_is_polled_for_three_hundred_milliseconds() {
+        let mut s = Sim::new(Start::Healthy, true);
+        assert!(!phy::reset_blocked(&mut s));
+        assert_eq!(s.elapsed_us, 0);
+        s.mac.insert(regs::FWSM, 0);
+        assert!(phy::reset_blocked(&mut s));
+        assert_eq!(s.elapsed_us, 300_000);
+    }
+
+    /// A refused semaphore is cleared without disturbing the rest of `EXTCNF_CTRL`, and releasing
+    /// a flag that is already gone writes nothing.
+    #[test]
+    fn the_semaphore_touches_only_its_own_bit() {
+        let mut s = Sim::new(Start::Healthy, true);
+        s.firmware_holds_swflag = true;
+        s.mac.insert(regs::EXTCNF_CTRL, 0x80);
+        assert!(Swflag::acquire(&mut s).is_err());
+        assert_eq!(s.get(regs::EXTCNF_CTRL), 0x80);
+
+        let mut s = Sim::new(Start::Healthy, true);
+        let f = Swflag::acquire(&mut s).unwrap();
+        s.mac.insert(regs::EXTCNF_CTRL, 0x80);
+        s.writes.clear();
+        f.release(&mut s);
+        assert!(s.writes.is_empty(), "{:x?}", s.writes);
     }
 
     #[test]
@@ -513,6 +620,10 @@ mod tests {
         let g = nvm::Geometry::read(&mut s);
         s.flash_busy_reads = 5;
         assert_eq!(nvm::read_word(&mut s, g, 0x20), Ok(0x1234));
+        // `read_word` falls back to bank 0 when the bank probe fails, so ask `read_dword` itself.
+        s.flash_busy_reads = 5;
+        assert_eq!(nvm::read_dword(&mut s, 0x20).map(|d| d as u16), Ok(0x1234));
+        assert_eq!(s.flash_go_while_busy, 0);
         s.flash_busy_reads = u32::MAX;
         assert_eq!(nvm::read_dword(&mut s, 0x20), Err(nvm::Error::Busy));
     }
@@ -529,6 +640,109 @@ mod tests {
             nvm::read_dword_at_byte(&mut s, nvm::LINEAR_ADDR_MASK + 1),
             Err(nvm::Error::OutOfRange)
         );
+    }
+
+    /// The flash status and control bits where FreeBSD's `ich8_hws_flash_status` and
+    /// `ich8_hws_flash_ctrl` unions put them.
+    #[test]
+    fn the_flash_register_bits_are_the_ich8_unions() {
+        assert_eq!(nvm::status::DONE, 0x0001);
+        assert_eq!(nvm::status::ERROR, 0x0002);
+        assert_eq!(nvm::status::DIRECT_ACCESS_ERROR, 0x0004);
+        assert_eq!(nvm::status::IN_PROGRESS, 0x0020);
+        assert_eq!(nvm::status::DESCRIPTOR_VALID, 0x4000);
+        assert_eq!(nvm::control::GO, 0x0001);
+        assert_eq!(nvm::control::CYCLE_MASK, 0x0006);
+        assert_eq!(nvm::control::BYTE_COUNT_SHIFT, 8);
+        assert_eq!(nvm::control::BYTE_COUNT_MASK, 0x0300);
+    }
+
+    /// **A flash read touches only the flash registers** and starts one cycle, a read (cycle type
+    /// zero) of four bytes (byte count three), which ends without a wait in this model.
+    #[test]
+    fn a_flash_read_is_one_four_byte_cycle_on_the_flash_registers_alone() {
+        let mut s = Sim::new(Start::Healthy, true);
+        s.nvm[0x20] = 0x1234;
+        s.nvm[0x21] = 0x5678;
+        assert_eq!(nvm::read_dword(&mut s, 0x20), Ok(0x5678_1234));
+        let flash = nvm::FLASH_BASE..nvm::FLASH_BASE + 0x100;
+        assert!(s.reads.iter().all(|o| flash.contains(o)), "{:x?}", s.reads);
+        assert!(
+            s.writes.iter().all(|(o, _)| flash.contains(o)),
+            "{:x?}",
+            s.writes
+        );
+        assert_eq!(s.flash_cycles.len(), 1);
+        let ctl = s.flash_cycles[0];
+        assert_eq!(ctl & 0x0300, 0x0300, "four bytes");
+        assert_eq!(ctl & 0x0006, 0, "a read");
+        assert_eq!(
+            s.elapsed_us, 1,
+            "one microsecond before the cycle, none in it"
+        );
+        // The last byte the linear address reaches is still in range.
+        assert!(nvm::read_dword_at_byte(&mut s, nvm::LINEAR_ADDR_MASK).is_ok());
+    }
+
+    /// A cycle that takes a few status reads to finish is waited for, one microsecond a poll.
+    #[test]
+    fn a_slow_flash_cycle_is_waited_for() {
+        let mut s = Sim::new(Start::Healthy, true);
+        s.nvm[0x20] = 0x1234;
+        s.flash_slow_reads = 3;
+        assert_eq!(nvm::read_dword(&mut s, 0x20).map(|d| d as u16), Ok(0x1234));
+        assert_eq!(s.flash_cycles.len(), 1);
+        assert_eq!(s.elapsed_us, 1 + 2);
+    }
+
+    /// **Errors left set by an earlier cycle are cleared before the next one starts** (they are
+    /// write-one-to-clear), so the next read needs one cycle, not a failed one and a retry.
+    #[test]
+    fn stale_flash_errors_are_cleared_before_the_cycle() {
+        let mut s = Sim::new(Start::Healthy, true);
+        s.nvm[0x20] = 0x1234;
+        // FLCERR (bit 1) and the direct-access error bit (bit 2), as numbers so a wrong constant cannot agree.
+        s.flash_status |= 0x0002 | 0x0004;
+        assert_eq!(nvm::read_dword(&mut s, 0x20).map(|d| d as u16), Ok(0x1234));
+        assert_eq!(s.flash_cycles.len(), 1);
+        assert_eq!(s.flash_status & (0x0002 | 0x0004), 0);
+    }
+
+    /// **A cycle someone else started is waited out, and its `FDONE` and `FLCERR` cleared,
+    /// before ours starts.** Starting ours early would be ignored by the device; leaving its
+    /// `FDONE` set would end ours at the first poll and read the other cycle's data.
+    #[test]
+    fn a_running_cycle_is_waited_out_and_its_status_cleared() {
+        let mut s = Sim::new(Start::Healthy, true);
+        s.nvm[0x30] = 0x2222;
+        s.nvm[0x31] = 0x3333;
+        // A foreign cycle at FADDR 0 (erased, 0xffff) ends, with an error, two reads from now.
+        s.flash_pending = 2;
+        s.flash_failing_cycles = 1;
+        s.flash_slow_reads = 3;
+        assert_eq!(nvm::read_dword(&mut s, 0x30), Ok(0x3333_2222));
+        assert_eq!(s.flash_go_while_busy, 0);
+        assert_eq!(s.flash_cycles.len(), 1, "ours ran once and did not fail");
+    }
+
+    /// **A cycle that never finishes is a cycle error after FreeBSD's bound, and is not
+    /// retried**: only an error is worth a second cycle, and a hung flash would only hang again.
+    #[test]
+    fn a_flash_cycle_that_never_ends_fails_once_and_is_not_retried() {
+        let mut s = Sim::new(Start::Healthy, true);
+        s.flash_slow_reads = u32::MAX;
+        assert_eq!(nvm::read_dword(&mut s, 0x20), Err(nvm::Error::Cycle));
+        assert_eq!(s.flash_cycles.len(), 1);
+    }
+
+    /// The NVM's size is `STRAP` bits 5:1 plus one, in 4 KiB units, over two banks.
+    #[test]
+    fn the_nvm_size_comes_from_strap_bits_five_to_one() {
+        assert_eq!(nvm::Geometry::from_strap(STRAP_VALUE).bank_words, 1024);
+        assert_eq!(nvm::Geometry::from_strap(1 << 1).bank_words, 2048);
+        assert_eq!(nvm::Geometry::from_strap(0x1f << 1).bank_words, 32 * 1024);
+        // Bit 0 and bit 6 are not the size.
+        assert_eq!(nvm::Geometry::from_strap(1 | 1 << 6).bank_words, 1024);
     }
 
     #[test]

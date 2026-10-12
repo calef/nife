@@ -136,6 +136,34 @@ mod tests {
         assert_eq!(PRESERVE, 0x4e00_ffe9);
     }
 
+    /// The bit positions, pinned against xHCI 1.2 Table 5-27, so a shift written the wrong way
+    /// round fails here rather than as a port that never enables on the bench.
+    #[test]
+    fn the_portsc_bits_are_where_the_specification_puts_them() {
+        assert_eq!([CONNECTED, ENABLED, RESET, POWER], [1, 2, 0x10, 0x200]);
+        assert_eq!(
+            [
+                CONNECT_CHANGE,
+                ENABLE_CHANGE,
+                WARM_RESET_CHANGE,
+                OVER_CURRENT_CHANGE
+            ],
+            [0x2_0000, 0x4_0000, 0x8_0000, 0x10_0000]
+        );
+        assert_eq!(
+            [RESET_CHANGE, LINK_CHANGE, CONFIG_ERROR_CHANGE],
+            [0x20_0000, 0x40_0000, 0x80_0000]
+        );
+        assert_eq!(CHANGES, 0x00fe_0000);
+    }
+
+    /// Setting a bit the port already has keeps it set: power stays on when the caller writes
+    /// power again.
+    #[test]
+    fn writing_a_preserved_bit_again_keeps_it() {
+        assert_eq!(write_value(CONNECTED | POWER, POWER), CONNECTED | POWER);
+    }
+
     #[test]
     fn endpoint_zero_starts_at_the_speeds_minimum() {
         assert_eq!(default_control_packet(speed::LOW), Some(8));

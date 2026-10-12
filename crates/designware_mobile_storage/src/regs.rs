@@ -256,4 +256,58 @@ mod tests {
         assert_eq!(fifo_count(0x1fff << 17), 0x1fff);
         assert_eq!(fifo_count(!(0x1fff << 17)), 0);
     }
+
+    /// **Every bit, as a number.** The driver and `sim` both name these constants, so a wrong one
+    /// would agree with itself in every sequence test; only the databook's values can catch it.
+    /// Read from OpenBSD's `dwmmc.c` (the bit numbers in its `#define`s) and the `dwmmc-host`
+    /// cross-check, written out as hexadecimal.
+    #[test]
+    fn the_register_bits_are_the_databooks() {
+        for (bit, value) in [
+            (CTRL_CONTROLLER_RESET, 0x1),
+            (CTRL_FIFO_RESET, 0x2),
+            (CTRL_DMA_RESET, 0x4),
+            (CTRL_INT_ENABLE, 0x10),
+            (CTRL_DMA_ENABLE, 0x20),
+            (CTRL_USE_INTERNAL_DMAC, 0x2000000),
+            (CLKENA_ENABLE, 0x1),
+            (CLKENA_LOW_POWER, 0x10000),
+            (CTYPE_4BIT, 0x1),
+            (CTYPE_8BIT, 0x10000),
+            (CMD_START, 0x80000000),
+            (CMD_USE_HOLD_REG, 0x20000000),
+            (CMD_UPDATE_CLOCK_ONLY, 0x200000),
+            (CMD_SEND_INIT, 0x8000),
+            (CMD_STOP_ABORT, 0x4000),
+            (CMD_WAIT_PREVIOUS_DATA, 0x2000),
+            (CMD_SEND_AUTO_STOP, 0x1000),
+            (CMD_WRITE, 0x400),
+            (CMD_DATA_EXPECTED, 0x200),
+            (CMD_CHECK_RESPONSE_CRC, 0x100),
+            (CMD_LONG_RESPONSE, 0x80),
+            (CMD_RESPONSE_EXPECT, 0x40),
+            (INT_RE, 0x2),
+            (INT_CD, 0x4),
+            (INT_DTO, 0x8),
+            (INT_TXDR, 0x10),
+            (INT_RXDR, 0x20),
+            (INT_RCRC, 0x40),
+            (INT_DCRC, 0x80),
+            (INT_RTO, 0x100),
+            (INT_DRTO, 0x200),
+            (INT_HTO, 0x400),
+            (INT_FRUN, 0x800),
+            (INT_HLE, 0x1000),
+            (INT_SBE, 0x2000),
+            (INT_ACD, 0x4000),
+            (INT_EBE, 0x8000),
+            (STATUS_DATA_BUSY, 0x200),
+            (CARDTHRCTL_READ_ENABLE, 0x1),
+        ] {
+            assert_eq!(bit, value);
+        }
+        assert_eq!(CTRL_ALL_RESET, 0x7);
+        assert_eq!(INT_DATA_ERRORS, 0xb880);
+        assert_eq!(INT_DATA_TIMEOUTS, 0x600);
+    }
 }
