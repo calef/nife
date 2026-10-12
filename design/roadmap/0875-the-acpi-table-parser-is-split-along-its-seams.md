@@ -190,6 +190,14 @@ go red. `cargo doc` with private items reports no warning. `script/test` passes 
 architectures. `git diff --color-moved` shows every changed code line moved, except visibility,
 imports and module scaffolding.
 
+## Follow-on
+
+- **Decision.** `design/decisions/0293-the-acpi-table-parser-splits-into-one-private-module-per-table.md`
+  records the cut. Every module name it lists waits for calef's naming pass, marked at each file's
+  `//! Name:` block.
+- **None.** No defect was found in the moved code; the one fix in the lane was a dead `N` the
+  split itself had copied into `mcfg`'s proofs.
+
 ## Index row
 
 The ACPI parser is 3,009 lines and grew 1,043 in two weeks. It is seven firmware tables sharing a
