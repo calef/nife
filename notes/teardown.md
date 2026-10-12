@@ -23,7 +23,7 @@ is gone. When you are freeing *everything*, incremental reclamation buys you not
 not keeping any of it, so there is no emptiness to track and no order to respect. You just free
 the set.
 
-`user::AddressSpace` (`kernel/src/user.rs`) is exactly this: a `root: Frame` and a
+`user::AddressSpace` (`kernel/src/user/address_space.rs`) is exactly this: a `root: Frame` and a
 `frames: Vec<Frame>` that records what the mapper allocated. Its `Drop` frees the lot. The test
 `a_dead_user_thread_frees_its_whole_address_space` asserts that four user address spaces come
 and go with zero net frames leaked.
