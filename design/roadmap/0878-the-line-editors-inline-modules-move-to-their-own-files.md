@@ -1,7 +1,7 @@
 ---
-status: IN-PROGRESS
+status: BUILT
 raised: 2026-10-11
-branch: milestone/878-the-line-editors-inline-modules-move-to-their-own-files
+built: 2026-10-12
 milestone_dependencies: none
 decision_dependencies: 266, 282, 295
 machine_requirements: none
@@ -22,7 +22,8 @@ The cut and every file name below are calef's call. A lane writes them up as a
 carries `needs-architect`.
 
 The lane wrote it up on 2026-10-12 (UTC) as §295 (the line editor's crate root splits into module
-files), `status: PROPOSED`, and asks nothing, because three later decisions answer its questions.
+files). It asked nothing, because three later decisions answer its questions, and the maintainer
+recorded it as settled by precedent on #1969 on 2026-10-12 (UTC).
 They are §274 (the filesystem-protocol crate root splits into its module files), §275 (the file
 server core's tests move into child modules by topic) and §282 (when a file is split, the parent
 becomes an index). §282 takes the cut further than the layout below. `LineDisc`,
@@ -140,7 +141,7 @@ Found with `grep` at `396187b0b`. A lane has to carry each one.
 
 ## What was built
 
-Built 2026-10-12 (UTC) on `17b23264e`, waiting on §295's ratification. `lib.rs` went from 2,290
+Built 2026-10-12 (UTC) on `17b23264e`. `lib.rs` went from 2,290
 lines to 198, an index with no exception, and its file-length row is gone. The largest new file is
 `line_disc/tests.rs` at 576. The crate's 54 tests and 3 doc tests pass with no test body changed,
 and `cargo doc` reports no broken link. The 12 mutation-ledger keys that lost their `handoff::`

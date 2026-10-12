@@ -1,6 +1,8 @@
 ---
-status: PROPOSED
+status: DECIDED
 raised: 2026-10-12
+decided: 2026-10-12
+ratified_by: calef
 ---
 
 # 295. The line editor's crate root splits into module files
@@ -11,24 +13,27 @@ says is calef's call before a line moves. Written by lane
 `milestone/878-the-line-editors-inline-modules-move-to-their-own-files`. *(Section number
 provisional until the merge queue lands it.)*
 
-## What it asks
+It blocked the move and nothing else.
 
-Nothing. The block raised three questions, and decisions made since it was written answer each.
+## The ruling
 
-1. By module, or tests only. The block recommended by module, and calef chose the code over the
-   tests alone twice since, in §275 (the file server core's tests move into child modules by topic)
-   and §274 (the filesystem-protocol crate root splits into its module files). The same axis holds
-   here: `proto`, `component` and `handoff` are already modules.
-2. Whether the editor's 46 tests stay in `lib.rs`. §282 (when a file is split, the parent becomes an
-   index) settles it a step further than the block went. Once `lib.rs` declares a child it is a
-   parent, and a parent holds docs, `mod` lines, `use` and re-exports. `LineDisc` leaves too, and its
-   tests go beside it as §274 ruled: `x.rs` ends with `#[cfg(test)] mod tests;`, and the tests live in
-   `x/tests.rs`.
-3. File names. They ship provisional for calef's naming pass, as every split since §279 (the
-   system-initializer crate root splits into private modules) has.
+calef asked nothing separate on this section. The block's three questions are answered by
+decisions he had already made, and the maintainer recorded that on 2026-10-12 at 02:58 (UTC) on
+[PR #1969](https://github.com/nifeos/nife/pull/1969#issuecomment-6116941685): *"Settled by
+precedent; nothing asked."*
 
-So the layout below goes further than the block's, which kept `LineDisc` and `RawQueue` in a
-1,540-line `lib.rs`. §282 was decided the day the block was written, after it.
+1. By module, or tests only: by module. calef chose the code over the tests alone in §275 (the file
+   server core's tests move into child modules by topic) and §274 (the filesystem-protocol crate
+   root splits into its module files), and `proto`, `component` and `handoff` are already modules.
+2. Whether the editor's 46 tests stay in `lib.rs`: no. Under §282 (when a file is split, the parent
+   becomes an index), a crate root that declares a child holds only docs, `mod` lines, `use` and
+   re-exports. `LineDisc` leaves too, and its tests go beside it in the shape §274 ruled: `x.rs`
+   ends with `#[cfg(test)] mod tests;`, and the tests live in `x/tests.rs`.
+3. File names were not asked. They ship provisional for calef's naming pass, as every split since
+   §279 (the system-initializer crate root splits into private modules) has.
+
+The layout below therefore goes further than the block's, which kept `LineDisc` and `RawQueue` in a
+1,540-line `lib.rs`. §282 was decided after the block was written.
 
 ## What the file was
 
