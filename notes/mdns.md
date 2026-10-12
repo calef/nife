@@ -97,8 +97,8 @@ host      = GL-BE9300
 smb-port  = 445
 model     = MacSamba
 sys-flags = 0x100
-disk      = corinne 0x82
-disk      = chris   0x82
+disk      = alice   0x82
+disk      = bob     0x82
 ```
 
 Two properties are worth stating because both were decisions rather than defaults.

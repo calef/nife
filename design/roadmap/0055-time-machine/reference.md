@@ -93,12 +93,12 @@ concurrency-versus-crash atomicity split was always right.
 
 ## Three users, and this is where the thesis gets a concrete demonstration
 
-calef's setup served graeme, corinne and chris when this was written. As of 2026-08-15 it is corinne
-and chris (measured: the router's `_adisk._tcp` TXT advertises `dk0=adVN=corinne` and
-`dk1=adVN=chris`). graeme migrated to Windows, whose backups leave Time Machine entirely.
+calef's setup served three macOS users' Time Machine shares when this was written. As of 2026-08-15
+it serves two (measured: the router's `_adisk._tcp` TXT advertises two disks, one per user). The
+third user moved to Windows, whose backups leave Time Machine entirely.
 
-One partition and one share each, and privacy between family members rests on Samba correctly
-honoring a "Read-Write User = corinne" line in a config file. A Samba bug, a misedit, or a
+One partition and one share each, and privacy between users rests on Samba correctly
+honoring a "Read-Write User = alice" line in a config file. A Samba bug, a misedit, or a
 path-traversal flaw crosses that boundary.
 
 Ours would be one adapter instance per user, each holding one directory capability, and one adapter
