@@ -142,12 +142,12 @@ Linux needs some interrupt controller even to reach its panic: arm64 panics with
 controller found" without one. So rung 1 carries the smallest virtual GIC that delivers one private
 interrupt to one CPU.
 
-- Done when: a pinned upstream arm64 `Image` with a device tree from the VMM boots on one guest CPU
+- Done when: the arm64 kernel from Ubuntu's newest LTS release, pinned by checksum, with a device tree from the VMM boots on one guest CPU
   under `NIFE_EL2=1 NIFE_CPU=max NIFE_GIC=3` on TCG. It prints its banner and its timer calibration
   through the emulated PL011 to nife's console, then panics with `VFS: Unable to mount root fs`. A
   test reads that line. The existing suite passes on both entries, EL1 and EL2.
-- Depends on: milestone 227 (built); the decision section for the objects and the exit format; the
-  VHE question below.
+- Depends on: milestone 227 (built); the decision section for the objects and the exit format; VHE,
+  per ruling 1 below.
 - Refuses: device emulation in the kernel. AArch32 guests. A guest at EL2 (nested virtualization).
   Any Linux-specific hook in the kernel, and any paravirtual patch to the guest.
 
@@ -161,7 +161,7 @@ physical cores with its thread.
   same panic. A test makes a guest CPU send an SGI to another and sees it taken. A host-crate test
   holds the list-register overflow logic.
 - Depends on: rung 1.
-- Refuses: a GICv2 virtual interface (GICH and GICV), unless the VHE question rules otherwise. GICv4
+- Refuses: a GICv2 virtual interface (GICH and GICV), which ruling 1 leaves out. GICv4
   direct injection. An ITS and LPIs for the guest, which wait for rung 4's MSIs.
 
 ### Rung 3: virtio devices served by the VMM against nife's servers
@@ -241,14 +241,15 @@ count is offered because none was measured.
 The risks, plainly:
 
 - No aarch64 silicon in hand can run the VHE design. argon is a TX1 with Cortex-A57 cores, Armv8.0,
-  so it has EL2 but no VHE. Until a newer board exists, rungs 1 to 3 run on QEMU and maybe on HVF.
+  so it has EL2 but no VHE, and ruling 1 leaves it a non-host. Until a newer board exists, rungs 1
+  to 3 run on QEMU and maybe on HVF.
 - The privileged core grows. driver-domains.md names this tension and argues the growth is general
   mechanism. That holds only if every device stays in the VMM, which is why each rung refuses
   in-kernel emulation.
 - An EL2 bug is a whole-machine bug. Every guest and the host share one EL2, and nothing is above it
   on QEMU to catch it.
 - The tests need a Linux `Image`, tens of megabytes, from outside the tree. That is a §46
-  dependency.
+  dependency, and ruling 3 trusts Ubuntu's build of it.
 - It does not rank itself. The customer path is vacant, and hosting Linux is a reason a customer
   might run nife. It is also a reason nobody needs nife's own programs. Both are calef's to weigh.
 
@@ -264,22 +265,17 @@ kernel and its memory. The two do not compete for mechanism: 621 needs no EL2, a
 syscall translation. They answer different customers. One wants a Linux binary to run on nife; the
 other wants a Linux machine next to nife's own programs.
 
-## Questions for calef
+## Rulings
 
-Each is one ruling.
+calef answered the four questions on 2026-10-12 (UTC), relayed on #2004.
 
-1. VHE only, or also the split design (nVHE) so argon can host guests? VHE lets nife's EL1 code run
-   at EL2 largely unchanged, and its own tick stays on the virtual timer. The split design is a
-   separate small EL2 kernel plus the existing one at EL1, roughly twice the EL2 work. My
-   recommendation is VHE only, with argon a non-host until a ruling says otherwise. The
-   recommendation is not about effort: two EL2 designs is two places for whole-machine bugs.
-2. Should exits arrive on the thread's existing fault endpoint, or on a separate endpoint per
-   `VirtualCpu`? I recommend the fault endpoint, because one supervisor already watches it and a
-   VMM is a supervisor of its guest.
-3. Where does the test `Image` come from: built in CI from a pinned upstream tag, or a
-   distribution's signed arm64 kernel pinned by checksum? The first is reproducible and slow. The second is fast
-   and trusts a distributor.
-4. Does rung 1 start now, or wait behind the customer path and milestone 621?
+1. VHE only, no split design: "Only VHE. We want to target nife to newer hardware." argon does not
+   host guests.
+2. Exits arrive on the thread's existing fault endpoint: "Fault endpoint."
+3. The test `Image` is the arm64 kernel from Ubuntu's most recent LTS release, pinned by checksum:
+   "Use Ubuntu's kernel from their most recent long term release." The pin moves when a newer LTS
+   ships.
+4. Rung 1 waits behind the customer path and milestone 621: "Wait".
 
 ## Found while writing this
 
