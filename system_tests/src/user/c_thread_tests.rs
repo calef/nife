@@ -127,10 +127,10 @@ macro_rules! skip_without_hackbench {
 /// `pthread_create` with a stack size, blocking `read` and `write` on `pipe`s from many threads at
 /// once, `poll` on the start pipe, and `pthread_join` of every thread.
 ///
-/// Falsification: attested 2026-10-12. With the platform layer's pipe read taking the descriptor
-/// table's lock for its whole wait (as stage 1's reads did), the first receiver to block held the
-/// table and no sender could write: hackbench printed its plan and nothing else, and this test
-/// failed on its half-hour deadline. A replay needs hackbench in the archive, which no gate builds.
+/// Falsification: attested 2026-10-12. On patagonia, aarch64 under HVF, with the platform layer's
+/// pipe `read` waiting inside the descriptor table's lock (as stage 1's reads hold it): the first
+/// receiver to wait held the table, no sender could reach its pipe, and this test ran into the
+/// suite's 90-second watchdog. A replay needs hackbench in the archive, which no gate builds.
 #[test_case]
 fn unmodified_hackbench_threads_over_pipes() {
     skip_without_hackbench!();
@@ -145,9 +145,10 @@ fn unmodified_hackbench_threads_over_pipes() {
 /// of seven senders and seven receivers, fifteen threads with the main one, one short of a
 /// process's limit.
 ///
-/// Falsification: attested 2026-10-12. Before `socketpair` existed hackbench printed its plan and
-/// then `Creating fdpair (error: Function not implemented)`, and this test failed on its first
-/// assertion after the plan. A replay needs hackbench in the archive, which no gate builds.
+/// Falsification: attested 2026-10-12. On patagonia, aarch64 under HVF, with `socketpair`
+/// answering `ENOSYS`: hackbench printed its plan, then `Creating fdpair (error: Function not
+/// implemented)`, and this test failed for want of its time line. A replay needs hackbench in the
+/// archive, which no gate builds.
 #[test_case]
 fn unmodified_hackbench_threads_over_socket_pairs() {
     skip_without_hackbench!();

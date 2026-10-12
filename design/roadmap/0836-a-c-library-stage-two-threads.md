@@ -1,5 +1,5 @@
 ---
-status: NOT-STARTED
+status: PARTIAL
 raised: 2026-10-08
 milestone_dependencies: 835, 812
 decision_dependencies: 265
@@ -37,6 +37,87 @@ futex (`notes/futex.md`). It has no timeout yet, which a timed wait such as
 ## Done when
 
 hackbench's thread mode and schbench build unmodified and run on all three architectures.
+
+## What is built (2026-10-12, lane `milestone/836-a-c-library-stage-two-threads`)
+
+PARTIAL: hackbench is done on all three architectures, and schbench is not, because it needs a
+ruling first (below).
+
+hackbench (rt-tests 2.11, `helpers/build-hackbench.sh`) runs unmodified in its thread mode on
+aarch64, riscv64 and x86_64 under QEMU (`system_tests/src/user/c_thread_tests.rs`, two tests,
+skipping where the helper was not run). Over pipes, two groups of three senders and three
+receivers; over its default `socketpair(AF_UNIX, SOCK_STREAM)`, one group of seven and seven,
+fifteen threads with the main one. Every sender's 100 messages reach every receiver of its group,
+every thread is joined, and the process ends with every thread reaped. Each test has an attested
+falsification. SQLite's `speedtest1` and ioping still pass on the threaded library.
+
+The library ([`c_library/README.md`](../../c_library/README.md) is the guide, with its `BUGS`):
+
+- relibc's `pthread.h` (attributes, mutexes, condition variables, read-write locks, barriers, spin
+  locks, keys, `pthread_once`) and its `sync` module are seeded, with `sched.h`, `semaphore.h`,
+  `setjmp.h` (musl's assembly, less the float registers a soft-float process has none of),
+  `poll.h`, `sys/socket.h`, `netinet/in.h`, `arpa/inet.h` and `sys/un.h`.
+- `pthread_create` is a `std` spawn (`c_library/src/pthread.rs`), not relibc's `clone` and
+  dynamic-linker control block. `pthread_exit` `longjmp`s back to `c_library/c/thread_start.c`.
+- relibc's wait-on-address pair is built on `std`'s thread parking (`futex.rs`), a parking lot
+  keyed by address, so the crate still makes no system call of its own.
+- `errno`, the locale, cleanup handlers and key values are per thread, on `std`'s
+  `thread_local!`. relibc's `#[thread_local]` statics cannot work on nife, whose thread pointer
+  names `std`'s block.
+- The descriptor table is a `std::sync::Mutex`. A pipe or socket read or write takes its object
+  out of the table and waits with the lock released.
+- Pipes, `socketpair` and `poll` live inside the process (`stream.rs`).
+
+The `helpers/build-ioping.sh` and `build-speedtest1.sh` fix: each read only the first of the two
+lines `helpers/c-library-cflags.sh` prints, so neither got nife's headers. Both now read both.
+
+## What this block decided
+
+Each is reversible:
+
+- **The thread is `std`'s.** The platform layer is on `std` (milestone 835's decision), and `std`
+  already has the thread, its stack and its thread pointer, so no second spawn path was written.
+- **The futex is a parking lot on `std`**, not a new `std` export of the kernel's
+  `AddressSpace::WAIT` and `WAKE`. It costs a second wake per handoff (`futex.rs`'s `BUGS`) and
+  adds no public API to `std`.
+- **Pipes and socket pairs are process-local queues.** No kernel object is needed while both ends
+  are in one process.
+- **`FIONBIO` is the one `ioctl` kept**, as `fcntl`'s `O_NONBLOCK`.
+- **hackbench's build passes `-Wno-incompatible-pointer-types`**: glibc's socket calls take a
+  transparent union under `_GNU_SOURCE`, and relibc's take `struct sockaddr *`.
+
+## What schbench needs, and why it is not here
+
+Checked 2026-10-12 against schbench at `6300b8f3a892` (git.kernel.org, mason/schbench):
+
+1. `syscall(SYS_futex, ...)` for its wakeups and `syscall(SYS_gettid)`, with
+   `<linux/futex.h>` and `<sys/syscall.h>`. §265 (a C library started from relibc) says
+   `syscall()` is not built for nife. Whether the platform layer may answer a fixed set of Linux
+   numbers in Rust is calef's question, asked on this milestone's pull request.
+2. `getaddrinfo` from `<netdb.h>`, called only to label its JSON output but needed to link. That
+   is stage 3's, milestone 837 (a C library, stage 3: sockets).
+3. `sched_getcpu`, `pthread_setaffinity_np`, the `CPU_SET` macros and `<sys/sysinfo.h>`.
+   `/proc/stat` is read only by its `-A` mode.
+
+## BUGS
+
+- schbench does not build (above).
+- The rest of this stage's limits are in `c_library/README.md`'s `BUGS`: C thread-locals do not
+  link, 16 threads a process, stacks from the heap, deferred cancellation only at
+  `pthread_testcancel`, and pipes that cannot leave the process.
+
+## Follow-on
+
+- **Outstanding.** schbench building unmodified and running on all three architectures, this
+  block's other `Done when` program. Checked 2026-10-12: it waits on calef's ruling on `syscall()`
+  (asked on this milestone's pull request), on `getaddrinfo` from milestone 837 (a C library,
+  stage 3: sockets), and on the scheduling calls listed above.
+- **Proposed.** `design/roadmap/proposals/c-thread-locals-on-the-thread-pointer.md`: C's own
+  `__thread`, which fio (milestone 833 (the same storage benchmark on nife and Linux, by porting
+  real fio)) uses.
+- **Milestone 827.** Milestone 827 (hackbench on nife and Linux, as a scheduler benchmark and a
+  multicore soak): the same program on silicon beside Linux, now that its thread mode runs here.
+- **Recorded.** The per-call limits, in `c_library/README.md`'s `BUGS`.
 
 ## Index row
 
