@@ -202,11 +202,12 @@ scroll is a full-surface copy through an uncacheable mapping (BUGS).
   milestone 445 (the screen check stops sampling and starts asking) has the kernel hold the screen
   until the watcher has dumped it, so the stage is a handshake rather than a race (`xtask`'s
   `screen_watch`, `console::hold_screen_for_host`).
-- **Milestone 192.** On an x86 boot that has a virtio-gpu, `boot_graphical_terminal` still spawns
-  the virtio stack and then returns `None` (its serial keystroke source, `input_service::start_direct`,
-  refuses x86 for a reason milestone 299 made stale), and this path takes the firmware screen as
-  well. Harmless (the virtio terminal idles) and reachable only by attaching a GPU to the UEFI runner
-  by hand; it belongs to 192's x86 half.
+- **Recorded.** On an x86 boot that had a virtio-gpu, `boot_graphical_terminal` spawned the virtio
+  stack and then returned `None`, and this path took the firmware screen as well. Gone since
+  milestone 600 (the graphical terminal stack is built in userspace) retired that function on
+  2026-09-26 and milestone 632 (graphics on demand) took graphics off the boot: the kernel now
+  grants the gpu or the firmware-screen terminal, never both (`crates/system_initializer`'s
+  `boot_sequence.rs`). Corrected 2026-10-12 (UTC).
 - **Milestone 182.** That is milestone 182 (x86_64's own interactive-boot entry point).
   `script/swish-check` still has no x86_64 leg, and its `--arch` refusal says x86
   has no prompt, which milestone 299 made untrue. That is milestone 182's third leg, already
