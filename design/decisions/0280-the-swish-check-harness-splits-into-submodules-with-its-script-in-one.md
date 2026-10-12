@@ -1,6 +1,8 @@
 ---
-status: PROPOSED
+status: DECIDED
 raised: 2026-10-11
+decided: 2026-10-11
+ratified_by: calef
 ---
 
 # 280. The swish-check harness splits into submodules, with its script in one
@@ -11,7 +13,18 @@ says is calef's call before a line moves. Written by lane
 `milestone/847-the-swish-check-harness-is-split-along-its-seams`. *(Section number provisional
 until the merge queue lands it.)*
 
-What is blocked: the move. Nothing else waits on it.
+It blocked the move and nothing else.
+
+## The ruling
+
+calef asked nothing separate on this section. Its one question, whether the script table gets its
+own module, is answered A by the precedent he set for every split on 2026-10-11 (UTC), on
+[PR #1959](https://github.com/nifeos/nife/pull/1959): *"Agreed, make the parent an index."* §282
+(when a file is split, the parent becomes an index) records that precedent. A parent that holds
+only docs, `mod` lines, `use` and re-exports cannot keep the rows, so the table has its own module.
+The maintainer recorded the ruling on
+[PR #1958](https://github.com/nifeos/nife/pull/1958#issuecomment-6115401832). Module names were not
+asked; they ship provisional for calef's naming pass.
 
 ## What the file is today
 
