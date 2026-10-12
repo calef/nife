@@ -112,4 +112,4 @@ No shipped-path step was declined, so the log leaves no shipped-path refusal une
 - The near miss was in the source the reviewer was allowed to read, so independence did not hold
   for it.
 - The delegation test fails by the watchdog rather than at its assertion when the subset check is
-  dropped. Red either way. The falsification is not recorded as a replayable patch.
+  dropped. Red either way. The falsification is `attested`, not a replayable patch.
