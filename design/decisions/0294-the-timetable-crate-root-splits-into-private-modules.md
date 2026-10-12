@@ -25,23 +25,26 @@ the line ranges.
 
 ## The cut
 
-Private modules, children of the crate root, each with its tests in a `tests.rs` child, as §272
-(the grant-plan crate root splits into private modules) laid out. `lib.rs` re-exports every public
-item by name, so no path outside the crate changes. Names are provisional.
+Private modules, children of the crate root. `lib.rs` re-exports every public item by name, so no
+path outside the crate changes. Each layer keeps its tests in an inline `mod tests` at its foot, as
+this crate's `recurrence.rs` and `registration.rs` already do, so every moved test line is byte
+identical. §272 (the grant-plan crate root splits into private modules) used `tests.rs` children
+instead; here the files stay under 800 lines without them. Names are provisional. Measured as
+built:
 
-| file | holds | lines, about |
-|---|---|---|
-| `lib.rs` | crate docs, `mod` lines, named re-exports, `NANOS_PER_SEC`, `MAX_ENTRIES` | 120 |
-| `document.rs` | `Schedule`, `Entry`, `Document`, `Error`, `parse` and its three helpers | 240 |
-| `admission.rs` | `Held`, `SHIPPED_HELD`, `Unbacked`, `Admission`; `admit` and its installed forms, `schedulable`, `unbacked` | 270 |
-| `registry.rs` | `Row`, the beat sentinels, `WallReading`, `Registry`; `next_after` | 460 |
-| `plan_text.rs` | `write_plan`, its four writers, `Audit` | 280 |
-| `test_support.rs` (`#[cfg(test)]`) | `REFERENCE`, `shown`, `with_clock`, which more than one test file uses | 40 |
-| `document/tests.rs`, `admission/tests.rs`, `registry/tests.rs`, `plan_text/tests.rs` | the 40 tests, by the layer each checks | 125, 430, 330, 200 |
+| file | holds | code | tests |
+|---|---|---|---|
+| `lib.rs` | crate docs, `mod` lines, named re-exports, `NANOS_PER_SEC`, `MAX_ENTRIES` | 118 | 0 |
+| `document.rs` | `Schedule`, `Entry`, `Document`, `Error`, `parse` and its three helpers | 233 | 116, 7 tests |
+| `admission.rs` | `Held`, `SHIPPED_HELD`, `Unbacked`, `Admission`; `admit` and its installed forms, `schedulable`, `unbacked` | 269 | 445, 13 tests |
+| `registry.rs` | `Row`, the beat sentinels, `WallReading`, `Registry`; `next_after` | 457 | 325, 13 tests |
+| `plan_text.rs` | `write_plan`, its four writers, `Audit` | 284 | 212, 5 tests |
+| `test_support.rs` (`#[cfg(test)]`) | `REFERENCE`, `shown`, `with_clock`, which more than one layer's tests use | 29 | |
 
 The two tests of the verdict word go to `registration.rs`'s own tests, beside
-`registration::verdicts`, which they check. The two constants stay in `lib.rs` as the exception
-§282 allows: one line each, and three of the four layers use them.
+`registration::verdicts`, which they check; that file grows from 247 lines to 311. The two
+constants stay in `lib.rs` as the exception §282 allows: one line each, and three of the four
+layers use them. The largest file is `registry.rs` at 782 lines.
 
 ## The block's four questions, and what answers each
 
