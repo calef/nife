@@ -55,4 +55,3 @@ system_tests/src/user.rs	11
 tools/redoxfs_host/src/lib.rs	734
 uefi_loader/src/main.rs	391
 xtask/src/main.rs	149
-xtask/src/swish_check.rs	2475
