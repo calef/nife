@@ -610,3 +610,62 @@ fn a_tcp_reply_refuses_more_than_it_holds_and_more_than_it_announced() {
     let mut reply = TcpReply::new(&mut buf);
     assert_eq!(reply.feed(&[0, 6, 1, 2, 3, 4, 5, 6]), Ok(true));
 }
+
+/// A length prefix announcing more than the buffer holds is refused even when the body arrives in
+/// the same piece as the prefix, before any of it is copied.
+#[test]
+fn an_oversized_tcp_reply_is_refused_when_its_body_comes_with_its_length() {
+    let mut buf = [0u8; 8];
+    let mut reply = TcpReply::new(&mut buf);
+    let mut piece = vec![0, 16];
+    piece.extend(1..=10);
+    assert_eq!(reply.feed(&piece), Err(Error::Overflow));
+}
+
+/// A record's TTL is two 16-bit halves on the wire, high half first; one past 65,535 seconds
+/// needs both.
+#[test]
+fn a_ttl_wider_than_sixteen_bits_reads_whole() {
+    let bytes = Reply::to("nife.test")
+        .record(
+            &wire("nife.test"),
+            record_type::A,
+            CLASS_IN,
+            0x0001_0002,
+            &[10, 0, 0, 1],
+        )
+        .bytes;
+    let mut reader = Reader::new(&bytes).unwrap();
+    reader.question().unwrap();
+    assert_eq!(reader.record().unwrap().ttl, 0x0001_0002);
+}
+
+/// A compression pointer is fourteen bits, so a target past offset 255 uses the high six.
+#[test]
+fn a_pointer_past_offset_255_reaches_its_target() {
+    let mut msg = vec![0u8; 300];
+    msg.extend(wire("nife.test"));
+    let at = msg.len();
+    msg.extend((0xc000u16 | 300).to_be_bytes());
+    assert_eq!(
+        decode_name(&msg, at).unwrap().0,
+        Name::from_dotted("nife.test").unwrap()
+    );
+}
+
+/// Labels that fill the 255 bytes exactly are read in full; the name fails at its missing end,
+/// as truncated, and only a label past the limit is too long.
+#[test]
+fn labels_that_fill_the_limit_exactly_are_not_too_long() {
+    let mut msg = Vec::new();
+    for len in [63u8, 63, 63, 62] {
+        msg.push(len);
+        msg.extend(vec![b'a'; len as usize]);
+    }
+    assert_eq!(decode_name(&msg, 0).err(), Some(Error::Truncated));
+}
+
+#[test]
+fn a_query_keeps_its_transaction_id() {
+    assert_eq!(Query::new(0x1234, "nife.test").unwrap().id(), 0x1234);
+}
