@@ -9,7 +9,6 @@
 lint	path	item	value
 too_many_lines	components/src/keyboard_driver.rs	_start	111
 too_many_lines	components/src/net_stack.rs	server	103
-too_many_lines	components/src/terminal_supervisor.rs	_start	122
 too_many_lines	components/src/usb_keyboard_driver.rs	Host::bring_up	102
 too_many_lines	crates/designware_mobile_storage/src/sd.rs	identify	138
 too_many_lines	crates/grant_plan/src/program/manifests.rs	Prog::manifest	555
