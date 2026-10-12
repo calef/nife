@@ -26,7 +26,7 @@ use crate::sched::RendezvousId;
 use crate::user::holding::Holding;
 
 /// `net_stack`'s entry roles (`components/src/socket_test_client.rs`, and `socket_squatter::ROLE`).
-/// Spelled here rather than imported, the convention `tests.rs` keeps for the same numbers.
+/// Spelled here rather than imported, the convention `network_tests.rs` keeps for the same numbers.
 const NET_ROLE_SQUATTER: u64 = 8;
 const NET_TEST_SOCKET_GIVE: u64 = 9;
 const NET_TEST_SOCKET_TAKE: u64 = 10;

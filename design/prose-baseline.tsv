@@ -189,7 +189,6 @@ design/decisions/0209-state-handoff-is-an-opaque-blob-and-it-is-optional.md	-	-	
 design/decisions/0210-a-correction-names-its-action.md	-	-	77	-	-
 design/decisions/0211-what-a-fatal-risk-verdict-says.md	-	-	77	-	-
 design/decisions/0212-a-prose-budget-for-every-document.md	-	-	68	-	-
-design/decisions/README.md	-	-	70	-	-
 design/display-ladder.md	-	22	56	-	-
 design/driver-domains.md	-	-	46	-	-
 design/haiku-bfs-and-packages.md	-	-	45	-	-
@@ -661,7 +660,7 @@ design/roadmap/0508-lint-does-not-build-the-uefi-binary.md	-	-	55	-	-
 design/roadmap/0510-nothing-regenerates-the-roadmap-index.md	-	-	49	-	-
 design/roadmap/0511-the-boards-screen-under-uefi.md	-	-	65	-	-
 design/roadmap/0512-the-census-blamed-a-pull-request-that-added-four.md	-	-	81	-	-
-design/roadmap/0513-the-decision-index-is-still-hand-maintained.md	-	23.5	49	-	-
+design/roadmap/0513-the-decision-index-is-still-hand-maintained.md	-	-	49	-	-
 design/roadmap/0514-the-hvf-std-listener-hangs-in-some-full-runs.md	-	-	54	-	-
 design/roadmap/0515-the-installer-a-stick-runs-to-put-itself-on-the-disk.md	-	-	57	-	-
 design/roadmap/0516-uefi-test-exits-one-after-a-passing-suite.md	-	23	52	-	-

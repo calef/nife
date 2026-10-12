@@ -257,7 +257,7 @@ pub static NMIS_UNCLAIMED: AtomicUsize = AtomicUsize::new(0);
 /// APIC delivers and the trap path returns, and this proves a line outside the CPU reached it.
 pub static DEVICE_IRQS: AtomicUsize = AtomicUsize::new(0);
 
-/// **System calls served, counted for the system tests only** (`system_tests/src/user/tests.rs`
+/// **System calls served, counted for the system tests only** (`system_tests/src/user/el0_boundary_tests.rs`
 /// proves a program reached user mode and came back by watching it rise). Every syscall on every
 /// core bumps this one line, so it is compiled out of every other build: until 2026-10-04 it was
 /// in all of them, and it was one of two shared writes on the cheapest syscall's path
