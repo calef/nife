@@ -270,11 +270,18 @@ pub(super) const NET_STACK_STACK_PAGES: u64 = 9;
 /// network and a resolver)): its socket page and the page tables for up to
 /// `name_resolution_protocol::GRANTS_MAX` client pages. The kernel harness's
 /// `name_resolver_tests::BUDGET_PAGES`, which every resolver test runs under.
+///
+/// Name: provisional, milestone 892's lane (#2011), 2026-10-12 (UTC).
+/// The pull request records no other name considered.
 pub(super) const RESOLVER_BUDGET_PAGES: u64 = 16;
 
 /// `name_resolver`'s stack, in pages, counted whole as [`NET_STACK_STACK_PAGES`] is: the kernel
 /// harness's eight extra (measured: the debug build faulted below three on its first resolve,
 /// 2026-10-06 UTC) and the one every process gets.
+///
+/// Name: provisional, milestone 892's lane (#2011), 2026-10-12 (UTC).
+/// The kernel harness's `name_resolver_tests::RESOLVER_STACK_PAGES` is older; the pull request
+/// records no other name considered.
 pub(super) const RESOLVER_STACK_PAGES: u64 = 9;
 
 /// `net_stack`'s own spawn-argument convention: entry role 0 is the server

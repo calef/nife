@@ -19,6 +19,9 @@
 //!
 //! They skip when nobody built `rg`, like `ripgrep_tests`. CI's `rg-threads` rows build it and run
 //! these at four cores on all three architectures (`script/ci-build`).
+//!
+//! Name: provisional, lane milestone/121-rg-threads (#2016), 2026-10-12 (UTC), for the module and
+//! the file. The pull request records no other name considered.
 
 use super::*;
 

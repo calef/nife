@@ -35,6 +35,9 @@ impl Prog {
     ///
     /// `jig` holds the root zone, calef's ruling Q5 on #1884 (2026-10-10 UTC): it reaches whatever
     /// host an owner's repository or a listed location names.
+    ///
+    /// Name: provisional, milestone 892's lane (#2011), 2026-10-12 (UTC).
+    /// The pull request records no other name considered.
     pub const fn resolver_zone(self) -> Option<&'static str> {
         match self {
             Prog::Jig => Some(""),
