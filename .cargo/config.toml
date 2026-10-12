@@ -3,7 +3,7 @@ xtask = "run --quiet --package xtask --"
 
 # **A host test thread's default stack (2 MiB on macOS) is too small for `video_terminal::Vt`**
 # since milestone 142's grid growth (128x64 -> 1280x720, DECISIONS §102): the type is hundreds of
-# KiB (`crates/video_terminal/src/lib.rs`'s own doc comment on `Vt`), and a debug build's
+# KiB (`crates/video_terminal/src/vt.rs`'s own doc comment on `Vt`), and a debug build's
 # unoptimized frames stack several such values deep in some tests (`cargo test -p video_terminal`
 # overflowed and `SIGABRT`ed before this was set, reproducibly, on the crate's own host tests, which
 # is the one place this project promised would run in milliseconds without needing a workaround).

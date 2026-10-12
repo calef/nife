@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-11
+built: 2026-10-12
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 292
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -20,6 +21,15 @@ Milestone 846 (the file-server core moves its tests out) is the model for most o
 The cut and every module name below are calef's call. A lane writes them up as a
 `status: PROPOSED` file in `design/decisions/` before it moves a line, and its pull request
 carries `needs-architect`.
+
+The lane wrote it up on 2026-10-12 (UTC) as §292 (the terminal engine's crate root becomes an
+index), `status: PROPOSED`, number provisional. This block was minted before §282 (when a file is
+split, the parent becomes an index) was decided the same day. §282 answers its ruling 1
+differently, since the reason given below for keeping `Attr` and `Vt` in `lib.rs` is the one
+§282's third reason refused. §267's amendment of 2026-10-11 (UTC) answers ruling 2, since a
+listed comment block now keeps its row when a split moves it unchanged. calef's ruling, recorded on
+#1968 on 2026-10-12 (UTC), settled the one open question by precedent: the crate root becomes an
+index. §292 records it.
 
 Reuse: not applicable; this moves code and adds none. The crate already has two child modules in
 their own files, `keymap` and `script`, which is the precedent.
@@ -137,6 +147,44 @@ Found with `grep` at `396187b0b`. A lane has to carry each one.
 4. `script/lint` passes, with the file-length row gone and the comment-block row resolved as ruled.
 5. `cargo doc` for the crate reports no broken intra-doc link.
 6. `script/test` passes on aarch64, riscv64 and x86_64.
+
+## What was built
+
+Built 2026-10-12 (UTC). `crates/video_terminal/src/lib.rs` went from 3,242 lines to 158, an index of
+crate docs, `mod` lines and named re-exports, so its file-length and parent-index rows are gone.
+Every public path still resolves, and no Rust file outside the crate changed. Every name below is
+provisional.
+
+| file | lines | holds |
+|---|---|---|
+| `lib.rs` | 158 | crate docs, `mod` lines, re-exports, `status`'s doc |
+| `geometry.rs` | 72 | `MAX_COLS`, `MAX_ROWS`, `MAX_CELLS`, `SCROLLBACK_ROWS`, `SCROLLBACK_CELLS` |
+| `palette.rs`, `palette/tests.rs` | 196, 146 | `PALETTE` and its gate, `DEFAULT_FG`, `DEFAULT_BG`; 3 tests |
+| `cell.rs`, `cell/tests.rs` | 255, 86 | the color enum, `Attr` and its flags, `Cell`; 5 tests |
+| `damage.rs`, `damage/tests.rs` | 132, 42 | `CellRect`, `Damage`; 2 tests |
+| `vt.rs`, `vt/tests.rs` | 962, 1,217 | `State`, `Vt`; 37 tests |
+| `status.rs` | 23 | the three report constants |
+| `test_support.rs` | 11 | `attr`, shared by two test files |
+
+No function body changed, and the 47 tests pass under their old names with a module added to each
+path. Thirteen items became `pub(super)`, which names the same modules they reached as private items
+of the crate root; done-when 3's "no item's visibility widens" holds in that sense and not in
+keywords. The palette's 54-line comment moved unchanged and took its comment-block row with it.
+`palette.rs`, `damage.rs` and `geometry.rs` import `super::*` under `#[cfg(doc)]`, since only their
+doc links use it. The allowance in `helpers/cap_abbreviation.py` follows its test to `vt/tests.rs`,
+and `notes/glyphs.md`, `notes/solarized-and-bold-is-bright.md` and a comment in `.cargo/config.toml`
+name the new paths. `cargo mutants --list` keys mutants without a module, so the mutation ledger
+needs no change.
+
+## Follow-on
+
+- **Decision.** Every module name is provisional and is calef's to rule in his naming pass, per
+  `design/decisions/0292-the-terminal-engines-crate-root-becomes-an-index.md`.
+- **Refused.** Repointing the citations of `video_terminal/src/lib.rs` under `design/` here (milestones
+  141, 142 and 705). A developer lane edits no record under `design/` but its own block. Pull request
+  #1968 lists each with the symbol it should name, for the maintainer's sweep.
+- **Refused.** Splitting `vt/tests.rs` (1,217 lines) by topic now. It is under §266's ceiling and the
+  1,500 aim; the scroll and scrollback tests are the natural first cut if it grows.
 
 ## Index row
 
