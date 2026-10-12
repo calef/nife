@@ -905,7 +905,7 @@ pub fn slice_page_frame(frame_slot: u64, first: u64, count: u64) -> i64 {
     unsafe { invoke(frame_slot, abi::page_frame::SLICE, first, count, 0) }
 }
 
-/// `RETYPE_OBJ` one page out of the untyped in `memory_region_slot` into a kernel object of
+/// `RETYPE_OBJ` one page out of the untyped in `region` into a kernel object of
 /// `objtype` (see [`abi::objtype`]). Returns the slot holding a full-rights capability to the new
 /// object, or a negative `abi::Error` (`BadMethod` for an unknown `objtype`, `OutOfMemory` when the
 /// untyped or either table is exhausted).
@@ -914,18 +914,10 @@ pub fn slice_page_frame(frame_slot: u64, first: u64, count: u64) -> i64 {
 /// question 2), with [`retype_into_page_frame`]. His words: "retype_into_page_frame and
 /// retype_into_kernel_object". Refused `retype_object` (round 7's provisional name),
 /// `retype_kernel_object` (ratified earlier the same day, then superseded by this ruling).
-pub fn retype_into_kernel_object(memory_region_slot: u64, objtype: u64) -> i64 {
+pub fn retype_into_kernel_object(region: u64, objtype: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the untyped, the objtype and the budget before it
     // touches a page.
-    unsafe {
-        invoke(
-            memory_region_slot,
-            abi::memory_region::RETYPE_OBJ,
-            objtype,
-            0,
-            0,
-        )
-    }
+    unsafe { invoke(region, abi::memory_region::RETYPE_OBJ, objtype, 0, 0) }
 }
 
 /// `SPLIT` `pages` off the untyped's unspent budget in `memory_region_slot` into a new child
@@ -990,7 +982,7 @@ pub fn revoke_page_frame(frame_slot: u64) -> i64 {
     unsafe { invoke(frame_slot, abi::page_frame::REVOKE, 0, 0, 0) }
 }
 
-/// `MAP_INTO`: map the frame in `frame_slot` into the address space named by `aspace_slot`, at
+/// `MAP_INTO`: map the frame in `frame_slot` into the address space named by `aspace`, at
 /// `va`, per `mode` (`abi::address_space::MAP_RO`/`MAP_RW`/`MAP_CODE`). `0` on success; a negative
 /// `abi::Error`.
 ///
@@ -1006,18 +998,10 @@ pub fn revoke_page_frame(frame_slot: u64) -> i64 {
 /// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
 /// question 2). His words: "Ratify retype_kernel_object address_space_map_into." Refused `map_into`
 /// (round 7's provisional name; the method is `address_space::MAP_INTO`).
-pub fn address_space_map_into(aspace_slot: u64, va: u64, frame_slot: u64, mode: u64) -> i64 {
+pub fn address_space_map_into(aspace: u64, va: u64, frame_slot: u64, mode: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the address-space capability, the frame's rights
     // against `mode`, and the address before it touches a page table.
-    unsafe {
-        invoke(
-            aspace_slot,
-            abi::address_space::MAP_INTO,
-            va,
-            frame_slot,
-            mode,
-        )
-    }
+    unsafe { invoke(aspace, abi::address_space::MAP_INTO, va, frame_slot, mode) }
 }
 
 /// `CAP_INSERT`: copy the capability in the caller's `cap_slot`, narrowed to `rights`, into the
