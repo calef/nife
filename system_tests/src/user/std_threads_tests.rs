@@ -114,7 +114,7 @@ pub(super) fn run_as_process_with(
     let report = sched::create_rendezvous_from(report_region).expect("no report rendezvous");
     let budget =
         crate::memory_region::create(budget_pages).expect("no heap budget for the program");
-    for (slot, cap) in [
+    for (slot, capability) in [
         (
             std_runtime_protocol::MEMORY_REGION_SLOT,
             crate::cap::memory_region_cap(budget),
@@ -136,7 +136,7 @@ pub(super) fn run_as_process_with(
             crate::cap::address_space_cap(name, Rights::READ),
         ),
     ] {
-        sched::thread_control_block_insert_cap(tid, cap, Some(slot))
+        sched::thread_control_block_insert_cap(tid, capability, Some(slot))
             .expect("could not fill a runtime slot in the process's table");
     }
     for (slot, phys) in [
