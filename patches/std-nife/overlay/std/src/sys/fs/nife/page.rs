@@ -1,9 +1,16 @@
 //! **The shared page**.
 //!
-//! One page for the whole process, so two concurrent operations would trample each other. A
-//! spinlock guards it: uncontended on this single-threaded target, correct if threads arrive, the
-//! same discipline the heap and the net PAL's registry use. Every request that touches the page
-//! holds the guard across its `CALL`, which is also what makes the reply's bytes ours to read.
+//! One page for the whole process, so two concurrent operations would trample each other. A lock
+//! guards it, and every request that touches the page holds the guard across its `CALL`, which is
+//! also what makes the reply's bytes ours to read.
+//!
+//! **The lock sleeps; it was a spinlock until 2026-10-12 (UTC)** (lane milestone/121-rg-threads).
+//! A spinlock was right while a process had one thread. With `rg`'s parallel walker it was not:
+//! the holder is blocked in `CALL` waiting for the file server, and every other worker spun on
+//! the flag until its time slice ran out. On `x86_64` at two cores, both cores spun while the
+//! caretaker waited behind them, and one walk of 141 files passed the suite's 90 s per-test
+//! ceiling. It is now `sys::sync::Mutex`, the futex lock `std`'s own `Mutex` uses: a waiter sleeps
+//! on the space's futex (slot 12), or yields where the program holds none.
 //!
 //! Cut out of `sys/fs/nife.rs` unchanged on 2026-10-12 (UTC) by lane
 //! maintainer/near-ceiling-splits, for §266 (a Rust source file stays under 2,000 lines) and §282
@@ -15,24 +22,21 @@
 
 use super::*;
 
-pub(super) static LOCKED: AtomicBool = AtomicBool::new(false);
+static LOCK: crate::sys::sync::Mutex = crate::sys::sync::Mutex::new();
 
 pub(super) struct Page;
 
 impl Drop for Page {
     fn drop(&mut self) {
-        LOCKED.store(false, Ordering::Release);
+        // SAFETY: a `Page` exists only between `page()`'s `lock` and this, on the thread that
+        // locked.
+        unsafe { LOCK.unlock() };
     }
 }
 
 /// Take the shared page. Held across the `CALL` that uses it.
 pub(super) fn page() -> Page {
-    while LOCKED
-        .compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed)
-        .is_err()
-    {
-        crate::hint::spin_loop();
-    }
+    LOCK.lock();
     Page
 }
 
