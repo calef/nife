@@ -95,10 +95,10 @@ pub struct Wiring {
 /// content-free `HELLO`: either order works.
 pub fn start(n: usize, focusable: usize, display: RendezvousId, screen: u64) -> Wiring {
     assert!(n <= SCENE.len() && n <= compositor::MAX_WINDOWS && focusable <= n);
-    let image = program("compositor").expect("no compositor program in the initrd archive");
-    let client_image = program("window").expect("no window program in the initrd archive");
+    let image = program("compositor").expect("no compositor program in the initial ramdisk");
+    let client_image = program("window").expect("no window program in the initial ramdisk");
     let term_image =
-        program("display_terminal").expect("no display_terminal program in the initrd archive");
+        program("display_terminal").expect("no display_terminal program in the initial ramdisk");
 
     let wlist = zeroed_page_frame();
     let ring = zeroed_page_frame();

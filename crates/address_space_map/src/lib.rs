@@ -43,9 +43,9 @@
 //!    CPU page is here.
 //! 4. **Is it the heap?** [`HEAP`].
 //! 5. **Is it mapped by a loader or a runtime into programs that did not choose the address**: a
-//!    page std's loader hands every std program, the initrd window, a builder's own scratch cursor,
-//!    std's per-socket frames? [`RUNTIME_WINDOWS`], sited with a written argument in the protocol
-//!    crate that owns it, the way `std_runtime_protocol` sites its three pages.
+//!    page std's loader hands every std program, the initial ramdisk window, a builder's own
+//!    scratch cursor, std's per-socket frames? [`RUNTIME_WINDOWS`], sited with a written argument
+//!    in the protocol crate that owns it, the way `std_runtime_protocol` sites its three pages.
 //! 6. **Is it a large window a service contract names**, shared by several programs that speak one
 //!    protocol (the block channel at `0x5000_0000`, a screen aperture)? [`SERVICE_WINDOWS`].
 //! 7. **Otherwise it is a pair page**: one builder and the one program it builds agree on it, both
@@ -172,8 +172,8 @@ pub const PAIR_PAGES: Band = Band {
 };
 
 /// **Windows a loader or runtime places on a program's behalf**: std's runtime pages
-/// (`std_runtime_protocol`), std's per-socket frames, a builder's scratch cursor, the initrd window
-/// the kernel hands the progenitor, the swap image window.
+/// (`std_runtime_protocol`), std's per-socket frames, a builder's scratch cursor, the initial
+/// ramdisk window the kernel hands the progenitor, the swap image window.
 pub const RUNTIME_WINDOWS: Band = Band {
     start: PAIR_PAGES.end,
     end: 0x4000_0000,

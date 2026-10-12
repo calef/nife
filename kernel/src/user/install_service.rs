@@ -63,8 +63,8 @@
 //!
 //! # BUGS
 //!
-//! - **x86_64 only**, because `memory::boot_file_region` is: a device-tree handoff has one initrd
-//!   slot in `/chosen` and no second one for the loader's own file. `uefi_loader`'s
+//! - **x86_64 only**, because `memory::boot_file_region` is: a device-tree handoff has one
+//!   initial ramdisk slot in `/chosen` and no second one for the loader's own file. `uefi_loader`'s
 //!   `place_boot_file` carries the argument and the gap, and
 //!   `design/roadmap/0568-the-boot-file-has-nowhere-to-go-on-a-device-tree-machine.md` prices
 //!   closing it and names the three other things that still stand between it and an install on

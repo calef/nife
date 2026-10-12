@@ -5,24 +5,25 @@
 
 use std::process::Command;
 
-use crate::archive::initrd_path;
+use crate::archive::initial_ramdisk_path;
 use crate::disk::disk_path;
 use crate::{TARGET, profile_dir};
 
 /// The ELF path of a named binary the `user` package builds (milestone 19f.2+): `hello`, `least_authority_demo`,
-/// `console`, and so on. `initrd_aarch64` packs each into the archive under that same name (milestone
-/// 266 retired the one exception, which packed `hello` under the entry `init` on aarch64).
+/// `console`, and so on. `initial_ramdisk_aarch64` packs each into the archive under that same name
+/// (milestone 266 (one progenitor) retired the one exception, which packed `hello` under the entry
+/// `init` on aarch64).
 ///
 /// **The path is ABSOLUTE, and that is not fussiness.** Cargo runs the runner script with the
 /// working directory set to the **package** dir for `cargo test` and the workspace root for
 /// `cargo run`. A relative path therefore resolved under `cargo run` and silently did not under
-/// `cargo test`, so the tests booted with no initrd at all and the one that noticed was the one
-/// that panicked.
+/// `cargo test`, so the tests booted with no initial ramdisk at all and the one that noticed was
+/// the one that panicked.
 ///
 /// That lesson was written on a `user_elf()` helper that computed this same path for `hello`
 /// alone, and was `bin_elf("hello")` in every respect but the comment. Milestone 130 folded it in
-/// when `initrd_aarch64` stopped needing a special case for `init`; the warning belongs here, where
-/// every caller reads it, rather than on the one caller that happened to earn it.
+/// when `initial_ramdisk_aarch64` stopped needing a special case for `init`; the warning belongs
+/// here, where every caller reads it, rather than on the one caller that happened to earn it.
 pub(crate) fn bin_elf(name: &str) -> String {
     workspace_root()
         .join(format!("target/{TARGET}/{}/{name}", profile_dir()))
@@ -35,10 +36,10 @@ pub(crate) fn bin_elf(name: &str) -> String {
 pub(crate) fn workspace_root() -> std::path::PathBuf {
     // Runtime, not env!: the compile-time form bakes the absolute path into the binary, and a
     // cached xtask built before the checkout moved (the 2026-08-15 cricker-os -> nife rename)
-    // then aims every path it computes, the farm, the initrds, the images, at a directory that
-    // no longer exists. Cargo sets the variable at run time for every cargo-invoked binary, and
-    // that one is always the live path. The render test in crates/documentation had the same bug the
-    // same day; if a third place grows this pattern, it is worth a lint.
+    // then aims every path it computes, the farm, the initial ramdisks, the images, at a directory
+    // that no longer exists. Cargo sets the variable at run time for every cargo-invoked binary,
+    // and that one is always the live path. The render test in crates/documentation had the same
+    // bug the same day; if a third place grows this pattern, it is worth a lint.
     let manifest =
         std::env::var("CARGO_MANIFEST_DIR").expect("cargo sets CARGO_MANIFEST_DIR for xtask");
     std::path::Path::new(&manifest)
@@ -102,13 +103,13 @@ pub(crate) fn cargo(args: &[&str]) -> bool {
 /// The environment [`cargo`] gives every runner, set without running anything: for a caller that
 /// spawns the child itself, such as `time_record::cargo_test` timing a test image.
 pub(crate) fn runner_env() {
-    // The runner needs to know where the initrd is. Set it for every cargo invocation; the
+    // The runner needs to know where the initial ramdisk is. Set it for every cargo invocation; the
     // script ignores it when the file is not there (which is any build before `user` exists).
     // SAFETY: `set_var`/`remove_var` became unsafe in edition 2024 because they race other
     // threads. xtask is single-threaded here: this runs on the main thread before the child
     // that reads it is spawned, and the only thread xtask ever starts (the transcript reader
     // in swish_check_leg) copies pipe bytes into a String and never touches the environment.
-    unsafe { std::env::set_var("NIFE_INITRD", initrd_path()) };
+    unsafe { std::env::set_var("NIFE_INITIAL_RAMDISK", initial_ramdisk_path()) };
     // SAFETY: `set_var`/`remove_var` became unsafe in edition 2024 because they race other
     // threads. xtask is single-threaded here: this runs on the main thread before the child
     // that reads it is spawned, and the only thread xtask ever starts (the transcript reader

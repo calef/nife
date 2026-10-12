@@ -123,7 +123,7 @@ impl core::fmt::Display for Verdict {
 fn measured_server() -> Result<&'static [u8], &'static str> {
     const NAME: &str = "non_volatile_memory_express";
     let image = crate::trust::require_program(NAME)
-        .ok_or("no non_volatile_memory_express program in the initrd archive")?;
+        .ok_or("no non_volatile_memory_express program in the initial ramdisk")?;
     let hex = measured_boot::hex(&measured_boot::sha256(image));
     println!(
         "disk-throughput: measured    {NAME} sha256 {}.. matches the table this kernel vouches for",

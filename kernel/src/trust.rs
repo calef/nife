@@ -1,15 +1,16 @@
 //! **The trust root: what the progenitor is allowed to be** (milestone 22 phase B.1, DECISIONS §22).
 //!
-//! The kernel loads exactly one program itself: the boot program, out of the initrd archive
-//! (`"progenitor"`, on every architecture, since milestone 295 took `"builder"` off riscv64's and
-//! `x86_64`'s lists). Everything else is the progenitor's to load. `"hello"` is in the root too and
-//! is not a counter-example: `spawn_hello` enters it directly for milestone 19d's and 19e's
-//! init roles, and [`require`] refuses an entry the root does not name, so the root grew rather
-//! than the check being relaxed (`xtask`'s `boot_programs`).
-//! That one load used to be pure trust: whatever bytes sat at `/chosen/linux,initrd-start` got
-//! parsed and entered. Since a compromised progenitor can endow malicious children and deny the system it
-//! was meant to start, and since milestone 16b closed the DMA window a device could have used to
-//! rewrite the initrd *behind* a check, checking it is now both necessary and airtight.
+//! The kernel loads exactly one program itself: the boot program, out of the initial ramdisk
+//! archive (`"progenitor"`, on every architecture, since milestone 295 (retire
+//! `components/src/builder.rs`) took `"builder"` off riscv64's and `x86_64`'s lists). Everything
+//! else is the progenitor's to load. `"hello"` is in the root too and is not a counter-example:
+//! `spawn_hello` enters it directly for milestone 19d (run a real workload)'s and 19e's init roles,
+//! and [`require`] refuses an entry the root does not name, so the root grew rather than the check
+//! being relaxed (`xtask`'s `boot_programs`). That one load used to be pure trust: whatever bytes
+//! sat at `/chosen/linux,initrd-start` got parsed and entered. Since a compromised progenitor can
+//! endow malicious children and deny the system it was meant to start, and since milestone 16b
+//! (real hardware + IOMMU-backed driver isolation) closed the DMA window a device could have used
+//! to rewrite the initial ramdisk *behind* a check, checking it is now both necessary and airtight.
 //!
 //! So: the build hashes the archive entry it packed and writes the digest into a manifest; the
 //! kernel's `build.rs` compiles that manifest into [`TRUST_ROOT`] (below, generated into `OUT_DIR`);
@@ -164,7 +165,7 @@ pub fn require_program_measurements(fs: &nifefs::Fs<'_>) {
     allow(dead_code)
 )]
 pub fn require_program(name: &str) -> Option<&'static [u8]> {
-    let fs = nifefs::Fs::parse(crate::user::initrd()?).ok()?;
+    let fs = nifefs::Fs::parse(crate::user::initial_ramdisk()?).ok()?;
     // Halts unless the table is the one this kernel image was built against, so past this line the
     // table's word on `name` is the kernel's word.
     require_program_measurements(&fs);

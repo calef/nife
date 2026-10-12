@@ -148,8 +148,8 @@ pub fn start_net_pci(image: &'static [u8]) -> Option<RendezvousId> {
 /// regions is ever reclaimed (the server blocks in its serve loop forever, and nothing reaps it), so
 /// this number is multiplied by ten and held until reboot. Adding one more net test took the boot's
 /// free frames down to **107**, and the shell-timing test then asked for 128 contiguous pages and
-/// could not have them; the failure surfaced as "no swish program in the initrd archive", which
-/// reads like a packaging bug and is not one.
+/// could not have them; the failure surfaced as "no swish program in the initial ramdisk",
+/// which reads like a packaging bug and is not one.
 ///
 /// The invariant that makes 128 safe rather than lucky: `net_stack::HEAP_MAX` caps the heap at **96**
 /// pages, lowered in the same change, so the budget covers the heap's worst case with 32 pages left
@@ -326,11 +326,11 @@ const NET_CLIENT_BLOB_PAGES: u64 = 1;
 
 /// **Spawn the net server and a client of its socket contract** (milestone 30, piece 3 phase B).
 /// Both are the `net_stack` binary (`image`): the server is entry role 0, the client is a nonzero
-/// role (the client rides in the same binary to keep the initrd under its 15-file directory
-/// limit). They share a `Stack` endpoint: `net_stack` holds `READ` (it serves), the client holds
-/// `WRITE` (it requests). The client also gets its own untyped (to mint and delegate the shared
-/// frame) and a report endpoint. `cli_arg` selects which exchange the client drives (UDP DNS or
-/// TCP echo). Returns the client's report endpoint, or `None` if no NIC is attached.
+/// role (the client rides in the same binary to keep the initial ramdisk under its 15-file
+/// directory limit). They share a `Stack` endpoint: `net_stack` holds `READ` (it serves), the
+/// client holds `WRITE` (it requests). The client also gets its own untyped (to mint and delegate
+/// the shared frame) and a report endpoint. `cli_arg` selects which exchange the client drives (UDP
+/// DNS or TCP echo). Returns the client's report endpoint, or `None` if no NIC is attached.
 ///
 /// `listen_grant` is the **inbound authority** this stack hands its client (milestone 107,
 /// `socket_protocol::listen_grant`): the port range a `LISTEN` may bind, and

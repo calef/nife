@@ -47,7 +47,7 @@
 //!   before `_start` ran, so this process holds no *name* for either and can neither delegate nor
 //!   remap them. Milestone 159's TRNG driver made the same choice, and its header records why an
 //!   earlier draft's capability slot was describing a thing nobody hands over.
-//! - **The initrd, a budget, a filesystem, a network, a clock.** None of them is here.
+//! - **The initial ramdisk, a budget, a filesystem, a network, a clock.** None of them is here.
 //!
 //! # What is proven, and where
 //!

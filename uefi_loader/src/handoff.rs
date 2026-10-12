@@ -116,7 +116,7 @@ pub struct StartInfo {
     /// scanning the BIOS area for `"RSD PTR "`; real firmware hands it over, so the non-zero path
     /// runs. Milestone 87's brief called that path out by name: it had never executed.
     pub rsdp: u64,
-    /// Where the module list is, or 0 when there is no initrd.
+    /// Where the module list is, or 0 when there is no initial ramdisk.
     pub modules: u64,
     /// How many modules. 0 or 1 here.
     pub module_count: u32,

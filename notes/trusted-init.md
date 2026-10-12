@@ -58,7 +58,7 @@ Three pieces, no new syscall, no new capability, no key material.
 
 3. The boot path refuses. `trust::require(name, bytes)` runs before the boot program's address
    space is built: `boot_progenitor` on every architecture, `spawn_hello` for milestone 19d's and
-   19e's test roles, and riscv's `riscv_initrd_demo`. On a mismatch it prints what it expected,
+   19e's test roles, and riscv's `riscv_initial_ramdisk_demo`. On a mismatch it prints what it expected,
    what it measured, and calls `arch::halt()`.
 
 The meaning of the whole arrangement is one sentence: this kernel image runs exactly this progenitor.

@@ -57,7 +57,7 @@ fn wait_for(mut cond: impl FnMut() -> bool) -> bool {
 }
 
 fn image(name: &str) -> &'static [u8] {
-    program(name).unwrap_or_else(|| panic!("no {name} program in the initrd archive"))
+    program(name).unwrap_or_else(|| panic!("no {name} program in the initial ramdisk"))
 }
 
 /// The entropy service's request endpoint, from whichever source this machine has: virtio-rng on

@@ -36,7 +36,7 @@
 #![no_main]
 
 use line_editor::proto;
-use user_mode_runtime::{call, irq_ack, irq_wait};
+use user_mode_runtime::{call, interrupt_acknowledge, interrupt_wait};
 
 // Unused on x86_64: there is no page for it to name (`user::UART_PHYS` is zero, DECISIONS §121),
 // so the arm below traps instead of reading. Kept unconditional rather than cfg'd out because the
@@ -248,10 +248,10 @@ pub extern "C" fn _start(_x0: u64, _x1: u64, _x2: u64) -> ! {
     uart::arm_rx_interrupt();
 
     loop {
-        irq_wait(IRQ);
+        interrupt_wait(IRQ);
         drain();
         uart::clear_interrupt(); // quiet the device (PL011: ICR; 16550: reading RBR already did)
-        irq_ack(IRQ); // re-enable the line at the controller now that the device is quiet
+        interrupt_acknowledge(IRQ); // re-enable the line at the controller now that the device is quiet
     }
 }
 

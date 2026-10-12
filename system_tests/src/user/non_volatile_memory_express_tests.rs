@@ -21,7 +21,7 @@ use super::*;
 /// not the test.
 fn start() -> Option<non_volatile_memory_express_service::Wiring> {
     let image = program("non_volatile_memory_express")
-        .expect("no non_volatile_memory_express program in the initrd archive");
+        .expect("no non_volatile_memory_express program in the initial ramdisk");
     // **A controller that is there and refused is a failure, never a skip** (milestone 261's
     // bench rehearsal). Both used to arrive here as `None`, so xenon's second attempt on
     // 2026-09-17 reported "skipped: no NVMe controller came up" about a disk that was on the bus.
@@ -204,7 +204,7 @@ fn a_confined_el0_process_serves_the_block_interface_end_to_end() {
 #[test_case]
 fn a_confined_el0_server_cannot_dma_outside_its_region() {
     let image = program("non_volatile_memory_express")
-        .expect("no non_volatile_memory_express program in the initrd archive");
+        .expect("no non_volatile_memory_express program in the initial ramdisk");
 
     // Drain any stale fault first, so what we observe is this test's.
     while crate::iommu::take_fault().is_some() {}
@@ -227,13 +227,13 @@ fn a_confined_el0_server_cannot_dma_outside_its_region() {
     let [rd, wr, ..] = esc.wait();
 
     // **A server that served instead of attacking** sends the honest readiness word. That is an
-    // initrd built without `components/confinement_attackers` (a boot outside `cargo xtask test`),
-    // and it would otherwise surface below as "the IOMMU recorded no fault", blaming the IOMMU
-    // for a build that never tried.
+    // initial ramdisk built without `components/confinement_attackers` (a boot outside `cargo xtask
+    // test`), and it would otherwise surface below as "the IOMMU recorded no fault", blaming the
+    // IOMMU for a build that never tried.
     assert_ne!(
         rd,
         filesystem_protocol::fixture::READY,
-        "the NVMe server reported ready rather than attacking: this initrd was built without \
+        "the NVMe server reported ready rather than attacking: this initial ramdisk was built without \
          `components/confinement_attackers`, so it has no DMA-escape role. Run the suite through \
          `cargo xtask test`, which builds it in",
     );

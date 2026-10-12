@@ -3334,11 +3334,11 @@ echo "==> shellcheck"
 # Severity is `warning`, not `note`, and that is a deliberate scope rather than laziness (DECISIONS
 # §38: a suppression is scoped and carries a reason). The tree has ZERO errors and ZERO warnings, so
 # this is green today and is a regression guard. The 13 note-level findings are all SC2086 in the
-# QEMU runners' argument assembly, where `$INITRD`/`$DISK`/`$NET`/`$GPU`/`$KBD`/`$MON` are unquoted
-# ON PURPOSE: each holds a multi-word QEMU fragment, and quoting would pass it as one argument and
-# break the emulator. Raising to note level means restructuring that assembly with `set --` (the
-# pattern script/fmt uses) rather than blanket-disabling the rule, and that is a change to the script
-# every test run depends on, so it is not worth bundling here.
+# QEMU runners' argument assembly, where `$INITIAL_RAMDISK`/`$DISK`/`$NET`/`$GPU`/`$KBD`/`$MON` are
+# unquoted ON PURPOSE: each holds a multi-word QEMU fragment, and quoting would pass it as one
+# argument and break the emulator. Raising to note level means restructuring that assembly with `set
+# --` (the pattern script/fmt uses) rather than blanket-disabling the rule, and that is a change to
+# the script every test run depends on, so it is not worth bundling here.
 # Dependency direction: nothing under crates/ may depend on a BINARY (kernel, user, xtask).
 #
 # This is the method, not a tidiness rule. The whole approach is "pure logic in crates that compile
@@ -3713,9 +3713,9 @@ print(f'kani modules: {blocks} blocks, none hiding a #[test]')
 PY
 
 # **Every test module `system_tests/src/user.rs` declares carries its own `cfg`.** The suite's
-# modules are declared one per line under `#[cfg(test)]` or `#[cfg(all(test, initrd))]`, and an
-# attribute binds to the next item only. Milestone 634 (a plain SEND received by RECEIVE_CAP never
-# hands the receiver a sender-chosen slot) inserted `mod recv_cap_attack_tests;`
+# modules are declared one per line under `#[cfg(test)]` or `#[cfg(all(test, initial_ramdisk))]`,
+# and an attribute binds to the next item only. Milestone 634 (a plain SEND received by RECEIVE_CAP
+# never hands the receiver a sender-chosen slot) inserted `mod recv_cap_attack_tests;`
 # between an existing attribute and `mod revocation_in_flight_tests;`, so the attribute moved onto
 # the new module and the old one was declared bare: compiled into every build of the crate, which
 # nothing noticed because the crate still built (the 2026-10-03 security audit's follow-up, item
@@ -3739,7 +3739,7 @@ if bad:
           file=sys.stderr)
     for b in bad:
         print(f'  {b}', file=sys.stderr)
-    print('\nEach `mod` line takes its own `#[cfg(test)]` (or `#[cfg(all(test, initrd))]`); an '
+    print('\nEach `mod` line takes its own `#[cfg(test)]` (or `#[cfg(all(test, initial_ramdisk))]`); an '
           'attribute binds to the next item only, so inserting a module between an attribute '
           'and its `mod` moves the attribute.', file=sys.stderr)
     sys.exit(1)

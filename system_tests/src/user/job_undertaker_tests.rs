@@ -67,8 +67,8 @@ fn pool_came_back(pool: u64) -> bool {
 /// **Start the real `job_undertaker` binary** the way the interactive progenitor starts it: an ordinary user
 /// process whose entire capability table is one endpoint with `READ`.
 ///
-/// Deliberately the real program out of the initrd rather than a stub, because what is under test is
-/// a *program's* behaviour, and a stub would be this test's opinion of it.
+/// Deliberately the real program out of the initial ramdisk rather than a stub, because what is
+/// under test is a *program's* behaviour, and a stub would be this test's opinion of it.
 ///
 /// Its thread and its thread's region go into `held`, so the test hands them back when it ends.
 /// The endpoints it waits on must be in a region `held` names first, or the kill cannot wake it
@@ -90,7 +90,8 @@ fn spawn_job_undertaker_with(
     tell: Option<(sched::RendezvousId, sched::RendezvousId)>,
     held: &mut Holding,
 ) {
-    let bytes = program("job_undertaker").expect("no job_undertaker program in the initrd archive");
+    let bytes =
+        program("job_undertaker").expect("no job_undertaker program in the initial ramdisk");
     let (space, entry) = load(bytes, 0).expect("job_undertaker is not loadable");
     let aspace = readopt_user_address_space(space).expect("register the job_undertaker aspace");
 

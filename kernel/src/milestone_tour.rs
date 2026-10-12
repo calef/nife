@@ -59,16 +59,16 @@ pub(super) fn milestone_tour() {
     // case both ways. The interactive system does not reach this code at all; it builds
     // its own console through `boot_progenitor` further down.
     //
-    // The initrd is asked for first because both `expect`s inside
+    // The initial ramdisk is asked for first because both `expect`s inside
     // `console_service::start` are about the archive rather than the machine: a run with no
-    // `-initrd` has no console program to start, and the initrd step further down is where
+    // `-initrd` has no console program to start, and the initial ramdisk step further down is where
     // that boot says so.
     //
     // The `map` form is milestone 267's and is kept rather than rewritten. It was chosen
     // over `is_some() && let` on a measurement (340 bytes of `.text`), but that comparison
     // was made against a two-condition `if let` that no longer exists here, so the number
     // is history rather than a live claim about this line.
-    let _console = user::initrd().map(|_| user::console_service::start());
+    let _console = user::initial_ramdisk().map(|_| user::console_service::start());
 
     tour_preemption();
     tour_el0();
@@ -216,13 +216,13 @@ fn tour_el0() {
     }
 
     // Milestone 8. The console driver is no longer in the kernel.
-    match user::initrd() {
-        None => println!("    initrd : none (no -initrd passed to QEMU)"),
+    match user::initial_ramdisk() {
+        None => println!("    initial ramdisk : none (no -initrd passed to QEMU)"),
         Some(image) => {
             println!(
-                "    initrd : {} bytes at {:#x}, from the device tree",
+                "    initial ramdisk : {} bytes at {:#x}, from the device tree",
                 image.len(),
-                memory::initrd_region().unwrap().0,
+                memory::initial_ramdisk_region().unwrap().0,
             );
             // The console server and its client both came up at the top of the tour
             // (milestone 267): the narrative above is what they printed. This line
@@ -250,11 +250,11 @@ fn tour_el0() {
 
 /// The driver the virtio service spawns. `block_driver` on every architecture since milestone 291;
 /// on aarch64 this used to be a role of `hello`, which was the same `crates/virtio` code behind a
-/// second dispatch table. Panics if absent (the demo checked `initrd()` above).
+/// second dispatch table. Panics if absent (the demo checked `initial_ramdisk()` above).
 #[cfg(not(any(test, feature = "system_tests")))]
 // Tour-only: the shell and bench boots both skip the milestone tour where it is used.
 #[cfg_attr(feature = "shell", allow(dead_code))]
 #[cfg(not(feature = "bench"))]
 fn image_for_virtio() -> &'static [u8] {
-    user::program("block_driver").expect("no block_driver program in the initrd")
+    user::program("block_driver").expect("no block_driver program in the initial ramdisk")
 }

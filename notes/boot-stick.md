@@ -195,7 +195,7 @@ comes first (radon: notes/visionfive2.md, "To measure at the bench", item 10; ar
 
 A microSD card is a stick too, and on radon it removes USB from the question entirely: U-Boot
 reads the card already, every boot. So write the card with `stick_maker` (it offers SD cards; a card
-that is already FAT32 is copied onto, and the existing `nife-vf2.img`, `nife-initrd.img` and
+that is already FAT32 is copied onto, and the existing `nife-vf2.img`, `nife-initial-ramdisk.img` and
 `boot.scr.uimg` stay beside the new files), put it in, interrupt autoboot, and:
 
 ```

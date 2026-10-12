@@ -68,7 +68,7 @@ pub fn start_replaceable() -> (Wiring, Holding) {
 }
 
 fn start_with(replaceable: bool) -> (Wiring, Holding) {
-    let image = program("line_editor").expect("no line_editor program in the initrd archive");
+    let image = program("line_editor").expect("no line_editor program in the initial ramdisk");
 
     // Four pages for three endpoints, one page each and one spare: `virtio_service`'s own
     // `wire_net_server` carves the same shape for the same reason.

@@ -109,7 +109,7 @@ else's kernel:
   magic at offset 0). Revisit at **milestone 22** (trusted init): the initrd format must
   change there anyway to carry measurements or signatures, and adopting ustar as the
   container is nearly free inside a redesign that is happening regardless. Inspectability,
-  the one benefit worth having now, is purchasable as a ~30-line `xtask initrd-ls` without
+  the one benefit worth having now, is purchasable as a ~30-line `xtask initial-ramdisk-ls` without
   touching the format.
 
 ## The convention

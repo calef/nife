@@ -20,8 +20,8 @@
 //! - slot 3, a **readiness** endpoint (WRITE): one message once the first bytes are in hand;
 //! - mapped: one DMA page, which nobody else maps.
 //!
-//! No initrd, no budget, no filesystem, no network. A compromised entropy service is a machine
-//! whose random numbers an attacker chooses, which is exactly as much damage as owning the
+//! No initial ramdisk, no budget, no filesystem, no network. A compromised entropy service is a
+//! machine whose random numbers an attacker chooses, which is exactly as much damage as owning the
 //! entropy source should be worth, and it is why the device does not sit inside every program.
 //!
 //! # It passes the device's bytes through, and computes nothing
@@ -128,10 +128,10 @@
 
 use entropy_protocol as proto;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
-use user_mode_runtime::virtio::{
-    virtio_notify, virtio_read_reg, virtio_ring_barrier, virtio_setup_queue, virtio_write_reg,
+use user_mode_runtime::virtio::virtio_ring_barrier;
+use user_mode_runtime::{
+    exit, interrupt_acknowledge, interrupt_wait, receive_request, reply, send,
 };
-use user_mode_runtime::{exit, irq_ack, irq_wait, receive_request, reply, send};
 
 /// Capability slots for the virtio backend, by convention with `kernel/src/user/entropy_service.rs`.
 const REQ: u64 = 0;
@@ -245,11 +245,11 @@ fn r32(off: u64) -> u32 {
 }
 
 fn mr(off: u64) -> u32 {
-    virtio_read_reg(VIRTIO, off) as u32
+    user_mode_runtime::virtio::read_register(VIRTIO, off) as u32
 }
 
 fn mw(off: u64, v: u32) {
-    virtio_write_reg(VIRTIO, off, v as u64);
+    user_mode_runtime::virtio::write_register(VIRTIO, off, v as u64);
 }
 
 fn die(code: u64) -> ! {
@@ -297,7 +297,7 @@ impl Pool {
 
         // The kernel walks the descriptor we just published, refuses it if it leaves our region,
         // and only then rings the device.
-        if virtio_notify(VIRTIO, RNG_Q) < 0 {
+        if user_mode_runtime::virtio::notify(VIRTIO, RNG_Q) < 0 {
             return 0; // the kernel refused our own in-region descriptor: a bug here, not a dry device
         }
 
@@ -328,12 +328,12 @@ impl Pool {
                 self.seen = self.seen.wrapping_add(1);
                 break;
             }
-            irq_wait(IRQ);
+            interrupt_wait(IRQ);
             self.quiet();
         }
         // Quiet the device and re-enable the line even on the path that never waited: the device
         // raised its line when it completed and the kernel masked it, and a line left masked is one
-        // the *next* holder of a shared intid never hears from. `irq::ACK` is
+        // the *next* holder of a shared intid never hears from. `interrupt::ACK` is
         // `arch::irq::enable`, which is idempotent, so this is safe when nothing fired.
         self.quiet();
         len
@@ -344,7 +344,7 @@ impl Pool {
     fn quiet(&self) {
         let istatus = mr(INTERRUPT_STATUS);
         mw(INTERRUPT_ACK, istatus);
-        irq_ack(IRQ); // re-enable the line the kernel masked when it fired
+        interrupt_acknowledge(IRQ); // re-enable the line the kernel masked when it fired
     }
 
     /// Refill the buffer, retrying a device that returned nothing. `false` when the device gave us
@@ -437,7 +437,7 @@ pub extern "C" fn _start(mode: u64, direct_memory_access_phys: u64, _arg2: u64) 
 
     // The kernel programs the queue's ring addresses; this service never writes a queue-address
     // register, which is the §18 seam and the reason the shadow ring can be trusted.
-    if virtio_setup_queue(VIRTIO, QSIZE as u64, RNG_Q) != 0 {
+    if user_mode_runtime::virtio::setup_queue(VIRTIO, QSIZE as u64, RNG_Q) != 0 {
         die(E_QUEUE);
     }
     mw(

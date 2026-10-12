@@ -20,7 +20,7 @@ use crate::sched;
 /// DECISIONS §5 describes, so the preemption test uses it rather than a second copy of the same
 /// idea.
 fn interrupt_ignorer_image() -> &'static [u8] {
-    program("interrupt_ignorer").expect("no interrupt_ignorer program in the initrd archive")
+    program("interrupt_ignorer").expect("no interrupt_ignorer program in the initial ramdisk")
 }
 
 /// **We are running on `SP_EL1`, and the whole trap frame depends on it.**
@@ -215,7 +215,7 @@ fn a_user_threads_trap_frame_sits_where_the_trap_path_rebuilds_it() {
 fn the_hardware_says_el0_cannot_read_the_kernels_memory() {
     const KERNEL_TEXT: u64 = 0xffff_0000_4008_0000;
 
-    let (space, _) = load(loader_subject_image(), 0).expect("the initrd did not load");
+    let (space, _) = load(loader_subject_image(), 0).expect("the initial ramdisk did not load");
 
     space.while_installed(|| {
         // The precondition, and it is what gives the assertion below its teeth: that address IS

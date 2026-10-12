@@ -57,7 +57,7 @@ fn fresh_page(va: u64) -> Option<Argv> {
         return None;
     }
     let staging = memory_region_split(1)?;
-    match u64::try_from(user_mode_runtime::retype_page_frame(staging)) {
+    match u64::try_from(user_mode_runtime::retype_into_page_frame(staging)) {
         Ok(frame) if map_window_frame(frame, va) => Some(Argv { staging, frame }),
         Ok(frame) => {
             cap_delete(frame);
@@ -166,7 +166,7 @@ pub(super) fn words_grant(
 /// Send a words grant's set page, `READ` only (`spawnproto::NAMESET_BIT`), after the argv's.
 pub(super) fn send_set(w: &WordsGrant) {
     if let Some(p) = w.set {
-        user_mode_runtime::send_cap(SPAWN, p.frame, abi::rights::READ, 0);
+        user_mode_runtime::send_capability(SPAWN, p.frame, abi::rights::READ, 0);
         cap_delete(p.frame);
     }
 }
@@ -187,7 +187,7 @@ pub(super) fn release_argv(a: Argv, unsent: bool) {
 }
 
 fn release_region(region: u64) {
-    user_mode_runtime::destroy_region(region);
+    user_mode_runtime::destroy_memory_region(region);
     cap_delete(region);
 }
 
@@ -381,7 +381,7 @@ pub(super) fn run_image(nav: &mut Nav, spec: RunSpec) {
     nav.close_in(t, handle);
     // The argv's frame follows the image's, before every other capability (`spawnproto::ARGS_BIT`).
     if let Some(a) = argv {
-        user_mode_runtime::send_cap(SPAWN, a.frame, abi::rights::READ, 0);
+        user_mode_runtime::send_capability(SPAWN, a.frame, abi::rights::READ, 0);
         cap_delete(a.frame);
     }
     if let Some(w) = &set_grant {
@@ -421,7 +421,7 @@ pub(super) fn run_image(nav: &mut Nav, spec: RunSpec) {
     }
     // The frames are spent: the child was built from the progenitor's copy. Destroying the region
     // revokes every mapping of them, ours and the progenitor's, and returns the pages.
-    user_mode_runtime::destroy_region(staging);
+    user_mode_runtime::destroy_memory_region(staging);
     cap_delete(staging);
     if let Some(w) = &set_grant {
         release_words_grant(w, false);
@@ -584,7 +584,7 @@ fn send_frames(dir: u64, handle: u64, pages: u64, staging: u64) -> bool {
     let mut read_ok = true;
     for i in 0..pages {
         let va = IMAGE_VA + i * PAGE;
-        let Ok(frame) = u64::try_from(user_mode_runtime::retype_page_frame(staging)) else {
+        let Ok(frame) = u64::try_from(user_mode_runtime::retype_into_page_frame(staging)) else {
             // A staging region sized to `pages` cannot run out before the last page, and this
             // loop holds one frame at a time, so this is a full capability table or a kernel
             // contradicting the budget. There is then no frame to send, and the progenitor will
@@ -606,7 +606,7 @@ fn send_frames(dir: u64, handle: u64, pages: u64, staging: u64) -> bool {
         } else {
             read_ok = false;
         }
-        user_mode_runtime::send_cap(SPAWN, frame, abi::rights::READ, i);
+        user_mode_runtime::send_capability(SPAWN, frame, abi::rights::READ, i);
         cap_delete(frame);
     }
     read_ok
@@ -657,7 +657,7 @@ pub(super) fn vouch(nav: &mut Nav, path: Option<&[u8]>) {
     let (lo, hi) = filesystem_protocol::grant::pack_name(name);
     send(SPAWN, lo, hi, name.len() as u64);
     let (r0, r1, _) = receive(RESULT);
-    user_mode_runtime::destroy_region(staging);
+    user_mode_runtime::destroy_memory_region(staging);
     cap_delete(staging);
     if !read_ok {
         print(b"  (this shell could not read the whole file, so those were not its bytes)\n");
@@ -925,7 +925,7 @@ pub(super) fn spawn(e: Endowment, argv: Option<Argv>) {
     // (`spawnproto::ARGS_BIT`), `READ` only: the progenitor copies it and can neither write it nor
     // pass it on. The slot goes now; the region waits for the child's answer.
     if let Some(a) = argv {
-        user_mode_runtime::send_cap(SPAWN, a.frame, abi::rights::READ, 0);
+        user_mode_runtime::send_capability(SPAWN, a.frame, abi::rights::READ, 0);
         cap_delete(a.frame);
     }
     // The name set's frame follows the argv's (`spawnproto::NAMESET_BIT`).

@@ -62,12 +62,12 @@ pub const PROGENITOR_ROLE: u64 = 27;
 ///
 /// It loads [`PROGENITOR_ENTRY`], measures it under the trust root (milestone 22 phase B.1) and the
 /// program-measurement table it will check its own loads against (milestone 104), builds its address
-/// space (its segments, a deep stack, and the whole initrd mapped read-only so it can parse and load
-/// the rest by name), endows it with the boot capability set, and starts it. From those capabilities
-/// and nothing else, `crates/system_initializer` builds the console server, the input driver, the
-/// line discipline and the shell out of the progenitor's own budget and wires them together; the
-/// kernel touches none of it. It does not block: the progenitor and its children run on the
-/// scheduler while the boot thread parks.
+/// space (its segments, a deep stack, and the whole initial ramdisk mapped read-only so it can
+/// parse and load the rest by name), endows it with the boot capability set, and starts it. From
+/// those capabilities and nothing else, `crates/system_initializer` builds the console server, the
+/// input driver, the line discipline and the shell out of the progenitor's own budget and wires
+/// them together; the kernel touches none of it. It does not block: the progenitor and its children
+/// run on the scheduler while the boot thread parks.
 ///
 /// **The capability slot layout is the same on all three architectures** (milestone 166's point):
 /// the delegable root budget at slot 0, the console device at slot 1, the UART receive interrupt at
@@ -131,11 +131,11 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
     let (uart_irq, uart_irq_source) = uart_irq_and_source();
     crate::println!("  uart irq  : {uart_irq} ({uart_irq_source})");
 
-    let (initrd_start, initrd_len) = memory::initrd_region().expect("no initrd region");
-    let initrd_pages = initrd_len.div_ceil(FRAME_SIZE);
+    let (ramdisk_start, ramdisk_len) = memory::initial_ramdisk_region().expect("no archive");
+    let ramdisk_pages = ramdisk_len.div_ceil(FRAME_SIZE);
     let elf = measured_progenitor(archive)?;
 
-    let aspace_name = progenitor_address_space(&elf, initrd_start, initrd_pages)?;
+    let aspace_name = progenitor_address_space(&elf, ramdisk_start, ramdisk_pages)?;
 
     // Route the UART receive interrupt to an endpoint; the input driver's Irq cap will WAIT on it.
     let irq_ep = crate::sched::create_rendezvous();
@@ -178,7 +178,7 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
         .expect("configure");
     // x0 = the boot role (the progenitor has one role and ignores it, but it is passed for the
     // symmetry the old `spawn_progenitor` established); x1 = the archive length; x2 = the file-service rights.
-    crate::sched::start_thread_control_block(tid, [PROGENITOR_ROLE, initrd_len, fs_rights])
+    crate::sched::start_thread_control_block(tid, [PROGENITOR_ROLE, ramdisk_len, fs_rights])
         .expect("start");
 
     // Arm the interrupt chain so the input driver's keystrokes flow. aarch64 already did its arming
@@ -214,7 +214,7 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
 /// Read the progenitor out of the archive and check it against the trust root and the program
 /// measurements before anything is built from it.
 fn measured_progenitor(archive: &'static [u8]) -> Result<Elf<'static>, LoadError> {
-    let fs = nifefs::Fs::parse(archive).expect("initrd is not a nifefs archive");
+    let fs = nifefs::Fs::parse(archive).expect("initial ramdisk is not a nifefs archive");
     let init_bytes = fs
         .read(PROGENITOR_ENTRY)
         .unwrap_or_else(|| panic!("archive has no '{PROGENITOR_ENTRY}' program"));
@@ -229,21 +229,22 @@ fn measured_progenitor(archive: &'static [u8]) -> Result<Elf<'static>, LoadError
     Elf::parse(init_bytes).map_err(LoadError::NotLoadable)
 }
 
-/// Build the progenitor's address space (segments, stack, timebase page, initrd) and register it,
-/// returning its name.
+/// Build the progenitor's address space (segments, stack, timebase page, initial ramdisk) and
+/// register it, returning its name.
 fn progenitor_address_space(
     elf: &Elf<'_>,
-    initrd_start: u64,
-    initrd_pages: u64,
+    ramdisk_start: u64,
+    ramdisk_pages: u64,
 ) -> Result<u64, LoadError> {
     // system_initializer's address space: its segments, a deep stack (it runs an ELF loader that builds three
     // children), and the whole archive mapped read-only so it can load them by name.
     //
-    // `log_pages_for(initrd_pages)` is the term that was not here before 2026-09-21: the archive's
-    // pages are mapped with `map_physical`, which records now, and a record is paid for out of this
-    // space's own region like the page tables beside it. It is the largest single such window in
-    // the tree (the aarch64 archive is a few thousand pages), so it is the one place the cost is
-    // visible rather than lost in `AS_OVERHEAD`'s slack. See `crate::revoke::log_pages_for`.
+    // `log_pages_for(ramdisk_pages)` is the term that was not here before 2026-09-21: the
+    // archive's pages are mapped with `map_physical`, which records now, and a record is paid for
+    // out of this space's own region like the page tables beside it. It is the largest single such
+    // window in the tree (the aarch64 archive is a few thousand pages), so it is the one place the
+    // cost is visible rather than lost in `AS_OVERHEAD`'s slack. See
+    // `crate::revoke::log_pages_for`.
     let content: u64 = elf
         .segments()
         .map(|seg| {
@@ -252,8 +253,8 @@ fn progenitor_address_space(
         })
         .sum::<u64>()
         + 1
-        + initrd_pages / 512
-        + crate::revoke::log_pages_for(initrd_pages)
+        + ramdisk_pages / 512
+        + crate::revoke::log_pages_for(ramdisk_pages)
         + INIT_STACK_PAGES
         + 8;
     let mut space =
@@ -272,11 +273,11 @@ fn progenitor_address_space(
     // that each found this as a page fault). The progenitor reads the clock like any program does.
     #[cfg(any(target_arch = "x86_64", target_arch = "riscv64"))]
     map_timebase_page(&mut space).map_err(LoadError::Unmappable)?;
-    for i in 0..initrd_pages {
+    for i in 0..ramdisk_pages {
         space
             .map_physical(
-                INITRD_VA + i * FRAME_SIZE,
-                initrd_start + i * FRAME_SIZE,
+                INITIAL_RAMDISK_VA + i * FRAME_SIZE,
+                ramdisk_start + i * FRAME_SIZE,
                 Flags::user_rodata(),
                 crate::revoke::PageMapSource::NoCapability,
             )

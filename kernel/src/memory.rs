@@ -59,12 +59,12 @@ pub fn init() {
 
     // Everything that is already spoken for, and must not be allocated or scribbled on.
     //
-    // The initrd matters and is easy to miss: the bootloader loaded a file into RAM for
+    // The initial ramdisk matters and is easy to miss: the bootloader loaded a file into RAM for
     // us and told us where. Nobody else will protect it. Milestone 8 and 10 want to read
     // it, and if the allocator hands that memory out first, the bug lands a long way from
     // its cause.
-    // Image + DTB + initrd (3), plus the legacy reservation block and the /reserved-memory node
-    // (up to MAX_REGIONS each).
+    // Image + DTB + initial ramdisk (3), plus the legacy reservation block and the /reserved-memory
+    // node (up to MAX_REGIONS each).
     let mut forbidden = [Region { start: 0, size: 0 }; 2 * MAX_REGIONS + 3];
     let mut n = 0;
 
@@ -83,10 +83,10 @@ pub fn init() {
         start: dtb_phys,
         size: dtb.total_size() as u64,
     });
-    if let Some(initrd) = dtb.initrd().expect("cannot read /chosen") {
-        INITRD_START.store(initrd.start as usize, core::sync::atomic::Ordering::Relaxed);
-        INITRD_SIZE.store(initrd.size as usize, core::sync::atomic::Ordering::Relaxed);
-        claim(initrd);
+    if let Some(image) = dtb.initial_ramdisk().expect("cannot read /chosen") {
+        INITIAL_RAMDISK_START.store(image.start as usize, core::sync::atomic::Ordering::Relaxed);
+        INITIAL_RAMDISK_SIZE.store(image.size as usize, core::sync::atomic::Ordering::Relaxed);
+        claim(image);
     }
     for r in reserved {
         claim(*r);
@@ -366,12 +366,12 @@ pub fn bring_up_page_frames(ram: &[Region], forbidden: &[Region]) {
 
     // The span the bitmap must cover is RAM's, **widened by whatever `forbidden` reaches
     // past it**, not RAM's alone. Found on x86_64 (decisions §86's VT-d/NVMe data point,
-    // 2026-08-25): QEMU's PVH loader places the initrd at a fixed offset below the top of
+    // 2026-08-25): QEMU's PVH loader places the initial ramdisk at a fixed offset below the top of
     // guest memory, sized for a smaller device set than this boot's VT-d-plus-NVMe ACPI
     // tables need. Attaching the NVMe controller grows those tables enough that the e820
-    // map's "usable RAM" boundary moves down past the initrd's last few hundred bytes,
+    // map's "usable RAM" boundary moves down past the initial ramdisk's last few hundred bytes,
     // which land in the newly-`reserved` region instead. `bring_up_memory` (the x86_64
-    // front end) correctly still claims that whole initrd region as `forbidden`, physical
+    // front end) correctly still claims that whole initial ramdisk region as `forbidden`, physical
     // bytes and all; what was missing is that `top` here was computed from `ram` alone, so
     // the bitmap never grew far enough to represent those last frames at all, and
     // `is_used` on them answered `None` (out of range) rather than the `Some(true)` a
@@ -389,7 +389,7 @@ pub fn bring_up_page_frames(ram: &[Region], forbidden: &[Region]) {
         .max()
         .unwrap();
     // Round up to a whole frame before sizing the bitmap: RAM regions are frame-aligned in
-    // practice, but a `forbidden` region need not be (the initrd above is 4629504 bytes,
+    // practice, but a `forbidden` region need not be (the initial ramdisk above is 4629504 bytes,
     // not a multiple of 4096), and `page_frames_in` truncates. Rounding down here would
     // silently drop the very last partial frame `top` was just widened to reach.
     let total_frames = PageFrameAllocator::page_frames_in(top.next_multiple_of(FRAME_SIZE) - base);
@@ -405,7 +405,7 @@ pub fn bring_up_page_frames(ram: &[Region], forbidden: &[Region]) {
     // We used to just drop it immediately after the kernel image and hope. That worked,
     // but only by luck: `image_size` in the arm64 Image header stops at `__stack_top`,
     // so everything past `__image_end` is memory we never told the bootloader we wanted.
-    // QEMU happens to place the DTB and the initrd 64 MiB higher up. Different firmware
+    // QEMU happens to place the DTB and the initial ramdisk 64 MiB higher up. Different firmware
     // need not.
     //
     // So instead: scan RAM for the first frame-aligned run that clears everything above.
@@ -451,7 +451,7 @@ pub fn bring_up_page_frames(ram: &[Region], forbidden: &[Region]) {
 /// Scans RAM in order and returns the first frame-aligned run of `need` bytes that clears
 /// every forbidden region. When a candidate collides, jump past the *end* of whatever it
 /// hit rather than nudging forward by a frame: the regions are large and stepping through
-/// a 200 KiB initrd one page at a time would be silly.
+/// a 200 KiB initial ramdisk one page at a time would be silly.
 fn place_bitmap(need: u64, ram: &[Region], forbidden: &[Region]) -> u64 {
     for region in ram {
         let mut candidate = align_up(region.start, FRAME_SIZE);
@@ -946,13 +946,14 @@ pub fn bitmap_region() -> (u64, u64) {
     )
 }
 
-/// **Record where the loader put the initrd**, for a front end that is not the device tree's
-/// (milestone 161).
+/// **Record where the loader put the initial ramdisk**, for a front end that is not the device
+/// tree's (milestone 161).
 ///
 /// [`init`] reads the bounds out of `/chosen` and stores them itself, which works on the two
 /// architectures that have a device tree. `x86_64` gets them from PVH's module list instead
-/// (`arch::x86_64::machine::initrd`), so the storing has to be reachable from there. This is the
-/// same seam [`bring_up_page_frames`] is: the fact crosses it, the *source* of the fact does not.
+/// (`arch::x86_64::machine::initial_ramdisk`), so the storing has to be reachable from there. This
+/// is the same seam [`bring_up_page_frames`] is: the fact crosses it, the *source* of the fact does
+/// not.
 ///
 /// **It does not reserve the region**, and the asymmetry with [`init`] is deliberate. A caller here
 /// is already building the `forbidden` slice it hands [`bring_up_page_frames`], so doing it in both
@@ -961,16 +962,24 @@ pub fn bitmap_region() -> (u64, u64) {
 /// Only a device-tree-less front end calls this, so on the two architectures that have a tree it is
 /// dead, and saying so here is cheaper than the alternative (`#[cfg(target_arch = "x86_64")]`),
 /// which would make a seam look like an x86 detail.
+///
+/// Name: ratified 2026-10-12 (calef, #1998, milestone 139 (drive the unsafe count down) round 11).
+/// His words: "B for #1998." Refused `record_initrd` (the foreign spelling, which stops at the
+/// boundary where it arrives).
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-pub fn record_initrd(start: u64, size: u64) {
-    INITRD_START.store(start as usize, core::sync::atomic::Ordering::Relaxed);
-    INITRD_SIZE.store(size as usize, core::sync::atomic::Ordering::Relaxed);
+pub fn record_initial_ramdisk(start: u64, size: u64) {
+    INITIAL_RAMDISK_START.store(start as usize, core::sync::atomic::Ordering::Relaxed);
+    INITIAL_RAMDISK_SIZE.store(size as usize, core::sync::atomic::Ordering::Relaxed);
 }
 
-/// The initrd, if the bootloader gave us one. Test support.
-pub fn initrd_region() -> Option<(u64, u64)> {
-    let start = INITRD_START.load(core::sync::atomic::Ordering::Relaxed) as u64;
-    let size = INITRD_SIZE.load(core::sync::atomic::Ordering::Relaxed) as u64;
+/// The initial ramdisk, if the bootloader gave us one. Test support.
+///
+/// Name: ratified 2026-10-12 (calef, #1998, milestone 139 (drive the unsafe count down) round 11).
+/// His words: "B for #1998." Refused `initrd_region` (the foreign spelling, which stops at the
+/// boundary where it arrives).
+pub fn initial_ramdisk_region() -> Option<(u64, u64)> {
+    let start = INITIAL_RAMDISK_START.load(core::sync::atomic::Ordering::Relaxed) as u64;
+    let size = INITIAL_RAMDISK_SIZE.load(core::sync::atomic::Ordering::Relaxed) as u64;
     (size > 0).then_some((start, size))
 }
 
@@ -978,8 +987,8 @@ pub fn initrd_region() -> Option<(u64, u64)> {
 /// (`arch::x86_64::machine::boot_file`). Milestone 198 (a package manager, and the trivial install
 /// that makes a second customer possible)'s rung 2a.
 ///
-/// Recorded exactly the way [`record_initrd`] is, and for the same reason: the caller is already
-/// building the `forbidden` slice, so this stores the fact and reserves nothing.
+/// Recorded exactly the way [`record_initial_ramdisk`] is, and for the same reason: the caller is
+/// already building the `forbidden` slice, so this stores the fact and reserves nothing.
 ///
 /// **What it is for, in one sentence**: the running system does not otherwise have its own file,
 /// and an installer has to write that file to a disk's EFI system partition. `uefi_loader`'s
@@ -998,7 +1007,7 @@ pub fn record_boot_file(start: u64, size: u64) {
 /// Only `user::install_service` reads it, and that module is `x86_64` only for the reasons stated
 /// at its declaration, so on the other two architectures this is dead. Saying so here is cheaper
 /// than a `cfg` that would make a portable fact look like an x86 detail, which is
-/// [`record_initrd`]'s own reasoning for the same attribute.
+/// [`record_initial_ramdisk`]'s own reasoning for the same attribute.
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
 pub fn boot_file_region() -> Option<(u64, u64)> {
     let start = BOOT_FILE_START.load(core::sync::atomic::Ordering::Relaxed) as u64;
@@ -1046,16 +1055,16 @@ pub fn booted_from_nvme() -> bool {
     BOOTED_FROM_NVME.load(core::sync::atomic::Ordering::Relaxed)
 }
 
-/// Written once at boot, before any reader exists; see [`INITRD_START`].
+/// Written once at boot, before any reader exists; see [`INITIAL_RAMDISK_START`].
 static BOOTED_FROM_NVME: core::sync::atomic::AtomicBool =
     core::sync::atomic::AtomicBool::new(false);
 
-/// Where [`record_boot_slot`] puts it. Zero means no chooser; see [`INITRD_START`] for why this is
-/// an atomic written once at boot rather than a lock.
+/// Where [`record_boot_slot`] puts it. Zero means no chooser; see [`INITIAL_RAMDISK_START`] for why
+/// this is an atomic written once at boot rather than a lock.
 static BOOT_SLOT_PLUS_ONE: AtomicUsize = AtomicUsize::new(0);
 
-/// Where [`record_boot_file`] puts the boot file's base. See [`INITRD_START`] for why this is an
-/// atomic written once at boot rather than a lock.
+/// Where [`record_boot_file`] puts the boot file's base. See [`INITIAL_RAMDISK_START`] for why this
+/// is an atomic written once at boot rather than a lock.
 static BOOT_FILE_START: AtomicUsize = AtomicUsize::new(0);
 /// How many bytes of it there are; zero means there is none.
 static BOOT_FILE_SIZE: AtomicUsize = AtomicUsize::new(0);
@@ -1162,8 +1171,8 @@ static UART_IRQ: IrqSafeMutex<Option<u32>> = IrqSafeMutex::new(rank::RAM, None);
 
 static BITMAP_START: AtomicUsize = AtomicUsize::new(0);
 static BITMAP_BYTES: AtomicUsize = AtomicUsize::new(0);
-static INITRD_START: AtomicUsize = AtomicUsize::new(0);
-static INITRD_SIZE: AtomicUsize = AtomicUsize::new(0);
+static INITIAL_RAMDISK_START: AtomicUsize = AtomicUsize::new(0);
+static INITIAL_RAMDISK_SIZE: AtomicUsize = AtomicUsize::new(0);
 
 /// The boot banner's memory line. Only the banner in `main.rs` calls it, and the test build and the
 /// `bench` boot mode both compile the banner out, so it has no caller in exactly those two.
@@ -1381,15 +1390,15 @@ mod tests {
             "bitmap {bstart:#x}+{bsize:#x} is sitting on the device tree at {dtb:#x}"
         );
 
-        if let Some((istart, isize)) = crate::memory::initrd_region() {
+        if let Some((istart, isize)) = crate::memory::initial_ramdisk_region() {
             assert!(
                 bstart + bsize <= istart || bstart >= istart + isize,
-                "bitmap {bstart:#x}+{bsize:#x} is sitting on the initrd"
+                "bitmap {bstart:#x}+{bsize:#x} is sitting on the initial ramdisk"
             );
         }
     }
 
-    /// If the bootloader gave us an initrd, the allocator must never hand it out.
+    /// If the bootloader gave us an initial ramdisk, the allocator must never hand it out.
     ///
     /// Only meaningful when QEMU is run with `-initrd`, which the default test run isn't.
     /// It asserts the invariant when there IS one and **skips** when there isn't, which is the
@@ -1402,11 +1411,11 @@ mod tests {
     /// a test that prints "skipping" and returns is counted as passed, and one that prints
     /// nothing at all is counted as passed too.
     #[test_case]
-    fn initrd_is_reserved_if_present() {
+    fn initial_ramdisk_is_reserved_if_present() {
         use page_frames::{FRAME_SIZE, PageFrame};
 
-        let Some((start, size)) = crate::memory::initrd_region() else {
-            crate::testing::skip!("no initrd region on this boot (no -initrd passed)");
+        let Some((start, size)) = crate::memory::initial_ramdisk_region() else {
+            crate::testing::skip!("no initial ramdisk region on this boot (no -initrd passed)");
         };
 
         let mut addr = start - start % FRAME_SIZE;
@@ -1414,7 +1423,7 @@ mod tests {
             assert_eq!(
                 crate::memory::is_page_frame_used(PageFrame::from_addr(addr)),
                 Some(true),
-                "frame {addr:#x} is part of the initrd but is marked FREE"
+                "frame {addr:#x} is part of the initial ramdisk but is marked FREE"
             );
             addr += FRAME_SIZE;
         }

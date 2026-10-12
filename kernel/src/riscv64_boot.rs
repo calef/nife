@@ -84,8 +84,8 @@ fn riscv64_user_programs() {
     // the program's exit, which is a tour change and not this one.
     //
     // This step used to run a hand-assembled RISC-V blob through a one-page raw loader. It runs
-    // a compiled ELF out of the initrd now (milestone 19's user-test port), so it needs one, and
-    // says so rather than quietly proving nothing when there is none.
+    // a compiled ELF out of the initial ramdisk now (milestone 19 (run a real workload)'s user-test
+    // port), so it needs one, and says so rather than quietly proving nothing when there is none.
     {
         match user::program("outlaw") {
             Some(image) => {
@@ -108,7 +108,9 @@ fn riscv64_user_programs() {
                     "  userspace   : a program was started at U-mode (yield/yield/exit via ecall)",
                 );
             }
-            None => println!("  userspace   : skipped (no 'outlaw' program in the initrd)"),
+            None => {
+                println!("  userspace   : skipped (no 'outlaw' program in the initial ramdisk)");
+            }
         }
     }
 
@@ -132,14 +134,15 @@ fn riscv64_user_programs() {
     sched::note_boot_stage(3);
 
     // Running a real compiled ELF at U-mode, on the boots that carry one to run.
-    if let Some(initrd) = user::initrd() {
-        // Entered for either shape of initrd, which it was not before milestone 295: the
-        // breadcrumb used to fire only on the archive arm, so a bare-ELF boot that died here
-        // reported the stage before it and read as having died one step earlier than it did.
+    if let Some(initial_ramdisk) = user::initial_ramdisk() {
+        // Entered for either shape of initial ramdisk, which it was not before milestone 295
+        // (retire `components/src/builder.rs`): the breadcrumb used to fire only on the archive
+        // arm, so a bare-ELF boot that died here reported the stage before it and read as having
+        // died one step earlier than it did.
         sched::note_boot_stage(4);
 
-        // **An archive initrd has no demonstration of its own here any more** (milestone 295,
-        // calef's ruling of 2026-09-14). It used to have the best one on this architecture:
+        // **An archive initial ramdisk has no demonstration of its own here any more** (milestone
+        // 295, calef's ruling of 2026-09-14). It used to have the best one on this architecture:
         // the kernel loaded `builder` out of the archive, granted it a budget and a report
         // endpoint and nothing else, and `builder` parsed `least_authority_demo` out of the
         // same archive **in userspace**, built it as a child from its own budget and started
@@ -172,7 +175,7 @@ fn riscv64_user_programs() {
         // cannot appear unless userspace built the whole console stack, so it says more than
         // the line it replaces. `userspace_ran` itself stays, for the captured VisionFive 2
         // transcript that carries the old line and cannot be re-taken; its doc says so.
-        let is_archive = nifefs::Fs::parse(initrd)
+        let is_archive = nifefs::Fs::parse(initial_ramdisk)
             .map(|fs| fs.read(user::PROGENITOR_ENTRY).is_some())
             .unwrap_or(false);
         if is_archive {
@@ -181,10 +184,10 @@ fn riscv64_user_programs() {
             );
         } else {
             const N: u64 = 7;
-            match user::riscv_least_authority_demo(initrd, N) {
+            match user::riscv_least_authority_demo(initial_ramdisk, N) {
                 Ok(sq) => println!(
                     "  user ELF    : loaded a {}-byte riscv ELF, ran least_authority_demo({N}) at U-mode, it sent {sq} (expected {})",
-                    initrd.len(),
+                    initial_ramdisk.len(),
                     N * N,
                 ),
                 Err(e) => println!("  user ELF    : load failed: {e:?}"),
@@ -256,8 +259,8 @@ fn riscv64_preemption() {
 #[cfg(target_arch = "riscv64")]
 fn riscv64_device_interrupt() {
     // Device interrupts, serviced by an unprivileged userspace driver: the last piece of the
-    // interrupt story, in its real form. The kernel loads `driver` from the initrd, maps the
-    // NS16550 into it device-typed, and grants it an Irq capability and a report endpoint. A
+    // interrupt story, in its real form. The kernel loads `driver` from the initial ramdisk, maps
+    // the NS16550 into it device-typed, and grants it an Irq capability and a report endpoint. A
     // keystroke raises a line into the PLIC; the PLIC delivers a supervisor external interrupt;
     // riscv_trap_dispatch claims it, masks the source, and notifies the endpoint the Irq cap
     // waits on; the driver (a U-mode process owning no privilege) wakes, reads the byte through
@@ -285,7 +288,7 @@ fn riscv64_device_interrupt() {
 
         println!("  uart irq    : source {uart_irq} ({uart_irq_source})");
 
-        let started = user::initrd()
+        let started = user::initial_ramdisk()
             .filter(|a| {
                 nifefs::Fs::parse(a)
                     .map(|fs| fs.read("serial_driver").is_some())
@@ -311,7 +314,7 @@ fn riscv64_device_interrupt() {
                 }
             }
             None => println!(
-                "  device IRQ  : skipped (no 'driver' in the initrd; run `cargo xtask initrd-riscv`)"
+                "  device IRQ  : skipped (no 'driver' in the initial ramdisk; run `cargo xtask initial-ramdisk-riscv`)"
             ),
         }
     }
@@ -495,7 +498,7 @@ fn riscv64_entropy_reference(entropy_step_start: u64) {
 fn riscv64_jh7110_entropy(device: jh7110_entropy::Discovered, entropy_step_start: u64) {
     match user::program("jh7110_entropy") {
         None => println!(
-            "  hw entropy  : JH7110 TRNG at {:#x}, but no 'jh7110_entropy' in the initrd (run `cargo xtask initrd-riscv`)",
+            "  hw entropy  : JH7110 TRNG at {:#x}, but no 'jh7110_entropy' in the initial ramdisk (run `cargo xtask initial-ramdisk-riscv`)",
             device.reg_base,
         ),
         Some(image) => {
@@ -735,17 +738,19 @@ pub(super) fn riscv64_boot(boot_info_pointer: usize) -> ! {
     icount::run();
 
     // A bench build runs the primitive suite here and parks, instead of the tour. It needs the
-    // `os_primitives_benchmarker` and `coremark` programs in the initrd (cargo xtask initrd-riscv packs them). The
-    // RISC-V equivalent of the aarch64 boot's `#[cfg(feature = "bench")] bench::run()`.
+    // `os_primitives_benchmarker` and `coremark` programs in the initial ramdisk (cargo xtask
+    // initial-ramdisk-riscv packs them). The RISC-V equivalent of the aarch64 boot's `#[cfg(feature
+    // = "bench")] bench::run()`.
     #[cfg(feature = "bench")]
     bench::run();
 
     // A `shell` build hands the machine to userspace progenitor here and parks, instead of the tour.
-    // The kernel loads `system_initializer` from the initrd, grants it the NS16550 and the UART interrupt,
-    // and it builds the console server, input driver, and shell out of its own budget; the shell
-    // is interactive over the serial. This is the RISC-V equivalent of the aarch64 `shell`
-    // path (named `initboot` there until milestone 296 found the two features identical).
-    // Needs the shell programs in the initrd (cargo xtask initrd-riscv packs them).
+    // The kernel loads `system_initializer` from the initial ramdisk, grants it the NS16550 and the
+    // UART interrupt, and it builds the console server, input driver, and shell out of its own
+    // budget; the shell is interactive over the serial. This is the RISC-V equivalent of the
+    // aarch64 `shell` path (named `initboot` there until milestone 296 (the `initboot` feature was
+    // `shell`) found the two features identical). Needs the shell programs in the initial ramdisk
+    // (cargo xtask initial-ramdisk-riscv packs them).
     #[cfg(feature = "shell")]
     {
         riscv_hand_over();
@@ -931,16 +936,16 @@ fn mode_note(stat: u32) -> &'static str {
 /// **Hand the machine to the userspace progenitor**, riscv64's half of the ladder's top rung
 /// (milestone 268, item 4).
 ///
-/// The kernel loads the progenitor from the initrd, grants it the NS16550 and the UART's interrupt,
-/// and it builds the console server, the line discipline, the input driver and `swish` out of its
-/// own budget through the granular verbs. This is the line that retires the kernel as the system's
-/// builder on this architecture, and since milestone 295 it is the **only** place this architecture
-/// makes that claim: **userspace, not the kernel, composes a process.** `components/src/builder.rs`
-/// used to make it in miniature one step up the tour, from exactly two capabilities, and calef
-/// retired it on 2026-09-14 on the ground that this carries it at a larger scale on the same boot.
-/// The difference is that this one composes the whole running system rather than one child, and a
-/// person can then type at it; what it does not carry is the minimality half, which is why
-/// design/roadmap/0295-retire-the-builder-program.md exists and says where that went.
+/// The kernel loads the progenitor from the initial ramdisk, grants it the NS16550 and the UART's
+/// interrupt, and it builds the console server, the line discipline, the input driver and `swish`
+/// out of its own budget through the granular verbs. This is the line that retires the kernel as
+/// the system's builder on this architecture, and since milestone 295 it is the **only** place this
+/// architecture makes that claim: **userspace, not the kernel, composes a process.**
+/// `components/src/builder.rs` used to make it in miniature one step up the tour, from exactly two
+/// capabilities, and calef retired it on 2026-09-14 on the ground that this carries it at a larger
+/// scale on the same boot. The difference is that this one composes the whole running system rather
+/// than one child, and a person can then type at it; what it does not carry is the minimality half,
+/// which is why design/roadmap/0295-retire-the-builder-program.md exists and says where that went.
 ///
 /// **Two callers, one body** (milestone 268). It was the inside of the `#[cfg(feature = "shell")]`
 /// block and nothing else; since this milestone the *default* boot ends here too, so the two paths
@@ -953,8 +958,9 @@ fn mode_note(stat: u32) -> &'static str {
 ///
 /// Name: provisional (milestone 268 (every architecture boots the same way)). This is the x86
 /// caller of the shared `user::boot_progenitor` loader (milestone 166 (one boot loader, reached two
-/// inconsistent ways)): it finds the initrd, hands it over, then watches the boot thread bounded
-/// and reports how it left; `riscv_hand_over` is its riscv twin. calef names what a reader meets.
+/// inconsistent ways)): it finds the initial ramdisk, hands it over, then watches the boot thread
+/// bounded and reports how it left; `riscv_hand_over` is its riscv twin. calef names what a reader
+/// meets.
 #[cfg(target_arch = "riscv64")]
 // A `soak` or `job_mix` build replaces the handoff with its own workload and never calls this, and
 // a `test` or `bench` build parks before it; all four are boots with nothing to hand over. Allowed
@@ -983,9 +989,11 @@ fn riscv_hand_over() {
             );
         };
     }
-    let Some(initrd) = user::initrd() else {
+    let Some(initial_ramdisk) = user::initial_ramdisk() else {
         println!();
-        println!("nife: no archive to hand the system to (run `cargo xtask initrd-riscv`).");
+        println!(
+            "nife: no archive to hand the system to (run `cargo xtask initial-ramdisk-riscv`)."
+        );
         return;
     };
     println!();
@@ -993,7 +1001,7 @@ fn riscv_hand_over() {
     // `boot_progenitor` discovers the UART's interrupt line itself and prints it with its source
     // (10 on QEMU virt, 32 on the JH7110; notes/visionfive2.md, BUGS), so a bench transcript names
     // which source won.
-    if let Err(e) = user::boot_progenitor(initrd) {
+    if let Err(e) = user::boot_progenitor(initial_ramdisk) {
         println!("  handoff FAILED: {e:?}");
     }
 }

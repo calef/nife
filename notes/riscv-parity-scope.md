@@ -134,7 +134,7 @@ shell still works. The original scope is in
 
 All eleven primitives plus CoreMark run on RISC-V, single-hart and SMP. `bench.rs` moved its timing
 to `arch::timer::now`/`frequency` (rdtime on riscv), the boot reaches `bench::run` under `--features
-bench`, and `initrd-riscv` packs `os_primitives_benchmarker` + `coremark`. Two fixes fell out of `spawn_el0` (the fast
+bench`, and `initial-ramdisk-riscv` packs `os_primitives_benchmarker` + `coremark`. Two fixes fell out of `spawn_el0` (the fast
 userspace spawn+reap loop): os_primitives_benchmarker's 9-instruction `CHILD_STUB` was aarch64 machine code (added the
 riscv `li`/`ecall` version), and the `MAP_CODE` syscall never synced the icache on the userspace
 map-executable path (a correctness fix for both arches, latent until a spawn loop stressed it).

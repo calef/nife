@@ -76,5 +76,5 @@ pub const NO_MKFS: &str = "no mkfs in this archive (nothing built one for this t
 /// It panics rather than returning `None` because a boot archive without it is a build that did
 /// not finish, not a machine without a disk; the disk's absence is [`root_directory`]'s `None`.
 pub fn blk_server_image() -> &'static [u8] {
-    program("block_driver").expect("no block_driver program in the initrd archive")
+    program("block_driver").expect("no block_driver program in the initial ramdisk")
 }

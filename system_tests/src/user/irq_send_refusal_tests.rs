@@ -52,7 +52,7 @@ fn a_send_to_an_interrupts_endpoint_is_refused_and_the_driver_never_sees_it() {
 
     let driver = sched::spawn(|| {
         let slot = sched::grant(crate::cap::irq_cap(QUIET_INTID)).expect("grant the interrupt");
-        let (answer, frame) = call(slot, abi::irq::WAIT, 0, 0, 0);
+        let (answer, frame) = call(slot, abi::interrupt::WAIT, 0, 0, 0);
         WOKE_WITH[1].store(frame.arg(1), Ordering::SeqCst);
         WOKE_WITH[2].store(frame.arg(4), Ordering::SeqCst);
         WOKE_WITH[0].store(answer.map_or(u64::MAX - 1, |v| v as u64), Ordering::SeqCst);

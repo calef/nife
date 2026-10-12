@@ -152,11 +152,11 @@ fn strip_tag(path: &str) -> &'static str {
 
 /// **Read a program ELF for packing, with its debug information removed.**
 ///
-/// The initrd is *reserved RAM*: the frame allocator never owns those pages, so every byte in the
-/// archive is a byte the running system does not have. And a debug build is almost entirely debug
-/// information: `rust_swappable` is 720 KB, of which **3 KB** is `.text` plus `.rodata` and the
-/// other 717 KB is `.debug_*`. Twenty-odd programs like that made a 26 MB archive out of well under
-/// a megabyte of code, on a machine with 128 MB.
+/// The initial ramdisk is *reserved RAM*: the frame allocator never owns those pages, so every byte
+/// in the archive is a byte the running system does not have. And a debug build is almost entirely
+/// debug information: `rust_swappable` is 720 KB, of which **3 KB** is `.text` plus `.rodata` and
+/// the other 717 KB is `.debug_*`. Twenty-odd programs like that made a 26 MB archive out of well
+/// under a megabyte of code, on a machine with 128 MB.
 ///
 /// Nothing ever read those bytes. `crates/elf` parses **program headers only** (it has no
 /// section-header code at all), so the loader cannot see a debug section on either side of the

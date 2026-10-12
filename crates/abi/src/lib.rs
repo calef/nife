@@ -384,7 +384,7 @@ pub mod fault;
 pub mod cycle_counter;
 
 /// Methods on an `Irq` capability. **How a userspace driver owns an interrupt.**
-pub mod irq;
+pub mod interrupt;
 
 /// Methods on a `Virtio` capability. **How a driver operates a device it cannot point out of its
 /// own DMA region.** The kernel owns the queue addresses and the notify; the driver builds

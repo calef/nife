@@ -553,7 +553,7 @@ fn x86_64_scheduler(boot_info_pointer: usize) {
     }
 }
 
-/// `x86_64` phase 6: userspace, the initrd and the boot file, or the test suite.
+/// `x86_64` phase 6: userspace, the initial ramdisk and the boot file, or the test suite.
 #[cfg(target_arch = "x86_64")]
 fn x86_64_userspace() {
     // **Userspace**, which is the step this whole tour has been building toward: every line
@@ -584,31 +584,32 @@ fn x86_64_userspace() {
         Err(why) => println!("  userspace   : FAILED: {why}"),
     }
 
-    // **The initrd** (milestone 161, item 4's hand-off). Not a demo but a report, and the two
-    // facts it carries are the ones every `cfg(initrd)` test depends on: that the PVH module
-    // list reached the kernel at all, and that what it points at parses as an archive. A boot
-    // where the first is true and the second is not looks identical to a boot with no initrd
-    // from any test's point of view, which is why they are printed apart.
-    match user::initrd() {
-        None => println!("  initrd      : none (no -initrd passed to QEMU)"),
+    // **The initial ramdisk** (milestone 161 (the x86_64 kernel port), item 4's hand-off). Not a
+    // demo but a report, and the two facts it carries are the ones every `cfg(initial_ramdisk)`
+    // test depends on: that the PVH module list reached the kernel at all, and that what it points
+    // at parses as an archive. A boot where the first is true and the second is not looks identical
+    // to a boot with no initial ramdisk from any test's point of view, which is why they are
+    // printed apart.
+    match user::initial_ramdisk() {
+        None => println!("  initial ramdisk : none (no -initrd passed to QEMU)"),
         Some(image) => match nifefs::Fs::parse(image) {
             Ok(fs) => println!(
-                "  initrd      : {} bytes at {:#x}, {} programs, from the PVH module list",
+                "  initial ramdisk : {} bytes at {:#x}, {} programs, from the PVH module list",
                 image.len(),
-                memory::initrd_region().unwrap().0,
+                memory::initial_ramdisk_region().unwrap().0,
                 fs.len(),
             ),
             Err(e) => println!(
-                "  initrd      : {} bytes at {:#x}, but it does not parse: {e:?}",
+                "  initial ramdisk : {} bytes at {:#x}, but it does not parse: {e:?}",
                 image.len(),
-                memory::initrd_region().unwrap().0,
+                memory::initial_ramdisk_region().unwrap().0,
             ),
         },
     }
 
     // **The boot file** (milestone 198 (a package manager, and the trivial install that makes a
-    // second customer possible)'s rung 2a), printed for the same reason the initrd is: it is
-    // the one fact that says whether this system can install itself, and a boot that cannot is
+    // second customer possible)'s rung 2a), printed for the same reason the initial ramdisk is: it
+    // is the one fact that says whether this system can install itself, and a boot that cannot is
     // not broken. `uefi_loader` reads its own file back off the volume it was started from and
     // hands it over as the second PVH module; QEMU's `-kernel` path passes no such thing, so
     // "none" is the normal answer on most of this tree's boots.
@@ -714,16 +715,16 @@ pub(super) fn x86_64_boot(boot_info_pointer: usize) -> ! {
 fn x86_hand_over() {
     use core::sync::atomic::Ordering;
 
-    let Some(initrd) = user::initrd() else {
+    let Some(initial_ramdisk) = user::initial_ramdisk() else {
         println!();
-        println!("nife: no archive to hand the system to (run `cargo xtask initrd-x86`).");
+        println!("nife: no archive to hand the system to (run `cargo xtask initial-ramdisk-x86`).");
         return;
     };
     println!();
     println!("nife: handing the system to the userspace progenitor.");
 
     let faults_before = arch::exceptions::USER_FAULTS.load(Ordering::Acquire);
-    let tid = match user::boot_progenitor(initrd) {
+    let tid = match user::boot_progenitor(initial_ramdisk) {
         Ok(tid) => tid,
         Err(e) => {
             println!("  handoff FAILED: {e:?}");

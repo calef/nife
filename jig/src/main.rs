@@ -165,7 +165,7 @@ fn ask(verb: Activation, staged: Option<&Staged>, name: Option<&str>) -> (S, u64
         for i in 0..spawnproto::image_pages(st.len) {
             match u64::try_from(rt::slice_page_frame(st.run, i, 1)) {
                 Ok(page) => {
-                    rt::send_cap(INSTALLER_SLOT, page, abi::rights::READ, i);
+                    rt::send_capability(INSTALLER_SLOT, page, abi::rights::READ, i);
                     rt::cap_delete(page);
                 }
                 // A plain message where a frame was promised keeps both sides in step: the

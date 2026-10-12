@@ -43,15 +43,15 @@ use crate::sched;
 ///
 /// **The `.bss` requirement is load-bearing and nearly went missing.** It was `hello`'s bytes until
 /// milestone 291, and splitting hello's roles out took its last `static mut X = 0` with them, so
-/// the binary stopped having a `.bss` at all and `the_initrd_holds_a_native_executable` said so:
-/// "no segment has a .bss, so the zero-fill is untested". The vacuity guard fired exactly as
-/// written, which is why it is there.
+/// the binary stopped having a `.bss` at all and `the_initial_ramdisk_holds_a_native_executable`
+/// said so: "no segment has a .bss, so the zero-fill is untested". The vacuity guard fired exactly
+/// as written, which is why it is there.
 ///
-/// **`x86_64` packs no initrd at all**, because no user program is built for
+/// **`x86_64` packs no initial ramdisk at all**, because no user program is built for
 /// `x86_64-unknown-none` (`crates/user_mode_runtime` has no arms for this ISA; see notes/x86-port.md). Every
 /// test that reaches for this skips instead.
 pub(super) fn loader_subject_image() -> &'static [u8] {
-    program("image_self_checker").expect("no image_self_checker program in the initrd archive")
+    program("image_self_checker").expect("no image_self_checker program in the initial ramdisk")
 }
 
 /// **The `block_driver` binary's ELF bytes**: the virtio driver and its two DMA attackers, one
@@ -66,13 +66,13 @@ pub(super) fn loader_subject_image() -> &'static [u8] {
 /// the two PCIe tests in this module (it packs RISC-V's archive but has no `riscv_virtio_tests`).
 #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
 pub(super) fn blk_image() -> &'static [u8] {
-    program("block_driver").expect("no block_driver program in the initrd archive")
+    program("block_driver").expect("no block_driver program in the initial ramdisk")
 }
 
 /// The `outlaw` program's ELF bytes: the two privilege-boundary behaviours that used to be
 /// hand-assembled aarch64 machine code in this file. See [`OUTLAW_ROUND_TRIP`].
 pub(super) fn outlaw_image() -> &'static [u8] {
-    program("outlaw").expect("no outlaw program in the initrd archive")
+    program("outlaw").expect("no outlaw program in the initial ramdisk")
 }
 
 /// **An address in the kernel's own memory: mapped, readable by the kernel, forbidden to
@@ -132,5 +132,5 @@ pub(super) fn reap_bare(tid: crate::thread::ThreadId) -> bool {
 /// the network here, its `UdpSocket::bind` probe succeeds and it runs the net transcript.
 #[cfg(target_arch = "aarch64")]
 pub(super) fn std_exerciser_image() -> &'static [u8] {
-    program("std_exerciser").expect("no std_exerciser program in the initrd archive")
+    program("std_exerciser").expect("no std_exerciser program in the initial ramdisk")
 }
