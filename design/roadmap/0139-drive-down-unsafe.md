@@ -19,7 +19,7 @@ has existed and been live all along; this milestone spent it for its first real 
 **In brief.** Reduce the hand-written `unsafe` this tree carries outside `kernel/src/arch/`, and lower
 the ceiling after each reduction so the ground gained cannot be given back quietly.
 
-<!-- prose-budget: exception. 14,326 words (wc -w, this marker included; re-counted after round
+<!-- prose-budget: exception. 14,318 words (wc -w, this marker included; re-counted after round
      11's renames, 2026-10-12 UTC) against a 3,000-word cap. Ratified by calef on 2026-09-25
      (UTC), who ruled that this block is not split. Reason:
      large and rarely referenced; the maintainer counted 2 files linking it that day. Roadmap blocks
@@ -1037,9 +1037,9 @@ calef ruled on it the same day (UTC): "Keep 61." The zero-headroom trade is deci
 
 ## Round 11 (2026-10-12): question 2's renames
 
-Every rename question 2's table rules is applied in `user_mode_runtime` and its callers, except
-the two in `abi`, each with a `Name: ratified` block at the definition: the thirteen crate-root
-wrappers, `virtio::read_register` and its three siblings, and `initrd::initrd_bytes`, now
+Every rename question 2's table rules is applied in `user_mode_runtime`, `abi` and their callers,
+each with a `Name: ratified` block at the definition: the thirteen crate-root wrappers,
+`virtio::read_register` and its three siblings, and `initrd::initrd_bytes`, now
 `initial_ramdisk::bytes(len)`. `design/naming.md` says the foreign spelling stops at the boundary.
 
 Left alone as outside the ruling: same-named private helpers (swish's `retype_page_frame()` and
@@ -1054,7 +1054,8 @@ How far the sweep reached past that module was asked on #1998, and calef ruled B
 `uefi_loader`, `cfg(initial_ramdisk)`, the derived constants and parameters, and the environment
 variable. Only `linux,initrd-start`/`-end` and QEMU's `-initrd` keep the foreign spelling.
 
-Not done. `abi::interrupt` and `READ_REGISTER`/`WRITE_REGISTER` wait for the `abi` split (#1990).
+`abi::irq` became `abi::interrupt` and `abi::virtio::READ_REG`/`WRITE_REG` became
+`READ_REGISTER`/`WRITE_REGISTER` once the `abi` split (#1990) landed.
 
 ## What is still open
 
@@ -1113,8 +1114,7 @@ are the price of one invariant at six declarations instead of eighteen call site
 1. The ownership token, as question 1 rules it. **Built by round 10** (2026-10-08 UTC, #1852),
    with one deviation for calef to confirm: the token on `Thread::own_token`, not a per-core
    current slot.
-2. The renames, as question 2 rules them. **Built by round 11** (2026-10-12 UTC, #1998) except
-   `abi::interrupt` and the two `abi::virtio` constants, which wait for #1990.
+2. The renames, as question 2 rules them. **Built by round 11** (2026-10-12 UTC, #1998).
 
 ## The measurement it starts from
 
@@ -1212,8 +1212,8 @@ proofs and the type system are standing aside and a person's comment is the whol
 - **Done.** `crates/abi`'s `START` doc comment: round 9.
 - **Done.** The ratchet's scope: round 9 gated the other `unsafe impl`s (`unsafe-trait-claims`)
   and recorded why `unsafe fn` gets no ceiling.
-- **Outstanding.** What round 11 left of the renames calef ruled on 2026-10-08 (UTC):
-  `abi::interrupt` and the `abi::virtio` constants, after #1990.
+- **Done.** The renames calef ruled on 2026-10-08 (UTC), and his ruling B on #1998 (2026-10-12
+  UTC) for how far the `initial_ramdisk` sweep reaches: round 11.
 - **Done.** Round 6's slice accessors stay: calef, 2026-10-08 (UTC), "Keep. We don't want to
   penalize reuse." `as_slice`, `as_mut_slice` and `is_granted` are ratified as is.
 - **Done.** The scheduler's ownership token (`Unqueued<T>`), option C: round 10 (#1852). calef's
