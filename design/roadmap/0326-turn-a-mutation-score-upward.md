@@ -139,12 +139,6 @@ that column. What is refused is an exclusion whose reason is that the test would
   exactly this reason, and AGENTS.md's rule is that a mutation sweep never runs beside lanes. A
   per-crate run is small enough not to be a sweep, and a lane taking part 3 in bulk should read that
   rule first.
-- Some of this block's pointers into `notes/mutation-testing.md` are stale, kept as written (found
-  2026-10-12, UTC). Part 3's `## 2026-09-20` section is now in
-  `notes/mutation-testing/new-crate-backlog.md`, and the `machine_discovery` accounts are in
-  `notes/mutation-testing/machine-discovery.md`. The `## 2026-09-19` section cited in
-  `regressions-clock-protocol-swish-filesystem-protocol.md` has no such heading there; that heading is
-  in `regressions-capability-to-dtb.md`.
 
 ## Follow-on
 
@@ -196,8 +190,8 @@ Parts 1 and 2 only. Each of these was checked against the tree on 2026-09-19, on
   `Admission::Unbacked` can never carry `File` or `Directory`. Two mutants survived on it, and
   whether `admit` should stop pre-consuming the scheduler's `dir` holding is a behavior change
   rather than a test.
-- **Recorded.** `notes/mutation-testing/regressions-clock-protocol-swish-filesystem-protocol.md`'s
-  `## 2026-09-19` section: `verb`'s compile-time table walk in
+- **Recorded.** `notes/mutation-testing/regressions-clock-protocol-swish-filesystem-protocol.md`,
+  under `filesystem_protocol`'s *Two recorded gaps*: `verb`'s compile-time table walk in
   `crates/filesystem_protocol/src/lib.rs` has two mutants no `cargo test` can kill, because its
   checker is `rustc`. The same object as the Kani harnesses, without a module path to exclude by.
 
@@ -205,9 +199,9 @@ Parts 1 and 2 only. Each of these was checked against the tree on 2026-09-19, on
   `milestone/326-machine-discovery-truncation`. It was part 1's category rather than part 3's: a
   crate the August baseline covers, carrying 77 of the 2026-09-19 census's survivors, more than any
   other. Measured before and after with `script/mutation -p machine_discovery`; the before column
-  reproduces the census row for row. 58 killed by tests, 11 argued equivalent, 8 recorded gaps,
-  and no untriaged survivor is left. The reasons are in `notes/mutation-testing.md`'s
-  `## 2026-09-19` section, crate by crate, which is where a reader should go to disagree with one.
+  reproduces the census row for row. 58 killed by tests, 11 argued equivalent, 8 recorded gaps, and
+  no untriaged survivor is left. The reasons are in `notes/mutation-testing/machine-discovery.md`,
+  which is where a reader should go to disagree with one.
 
   The crate's Kani harnesses were checked before the lane started and are not the miscount that
   inflated `timetable`: they are inline `mod verification` blocks in `acpi.rs`, `framebuffer.rs`,
