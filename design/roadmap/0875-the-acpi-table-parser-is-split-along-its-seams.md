@@ -178,7 +178,7 @@ parent-index rows are gone. Every name below is provisional.
 | `acpi/sdt.rs` | 150 | `AcpiError`, the checksum, the table header; 1 harness, 2 tests |
 | `acpi/root.rs` | 299 | the RSDP and the root walk; 2 harnesses, 7 tests |
 | `acpi/madt.rs` | 775 | the MADT and legacy IRQ routing; 2 harnesses, 18 tests |
-| `acpi/mcfg.rs` | 195 | the MCFG; 1 harness, 3 tests |
+| `acpi/mcfg.rs` | 191 | the MCFG; 1 harness, 3 tests |
 | `acpi/dmar.rs` | 1,143 | the DMAR and `DmarUnits`; 2 harnesses, 23 tests |
 | `acpi/gtdt.rs`, `acpi/spcr.rs`, `acpi/fadt.rs` | 91, 97, 219 | one table each; 2, 2 and 3 tests |
 | `acpi/bytes.rs` | 21 | the three readers `ivrs` also uses |

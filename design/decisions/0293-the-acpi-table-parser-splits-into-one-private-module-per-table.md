@@ -54,7 +54,7 @@ Private modules, children of `acpi`. `acpi.rs` re-exports every public item by n
 | `acpi/sdt.rs` | `AcpiError`, `is_checksum_ok`, `SdtHeader`, `parse_sdt_header`; 1 harness, 2 tests | 150 |
 | `acpi/root.rs` | the RSDP, `root_entry_count`, `root_entry`; 2 harnesses, 7 tests | 299 |
 | `acpi/madt.rs` | the MADT, its entry walk, legacy IRQ routing; 2 harnesses, 18 tests | 775 |
-| `acpi/mcfg.rs` | `McfgEntry`, `mcfg_entry`; 1 harness, 3 tests | 195 |
+| `acpi/mcfg.rs` | `McfgEntry`, `mcfg_entry`; 1 harness, 3 tests | 191 |
 | `acpi/dmar.rs` | the DMAR's fixed part and walk, `DmarUnits`; 2 harnesses, 23 tests | 1,143 |
 | `acpi/gtdt.rs` | the GTDT; 2 tests | 91 |
 | `acpi/spcr.rs` | the SPCR; 2 tests | 97 |
