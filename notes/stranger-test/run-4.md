@@ -199,9 +199,9 @@ Still unopened after four runs: every file under `design/decisions/`, `notes/net
   should not need eight hand-maintained lists) made a program one `[[bin]]` block on 2026-09-19.
 - `notes/adding-a-program.md` was right about everything, including a line number. This was the
   first of four walks to find no defect in it, and the page's own `BUGS` predicted the opposite. The
-  stranger checked `crates/swish/src/lib.rs:864` against the error the page quotes and got the same
-  file and line. Its prediction, written before the walk, was that it would find at least one thing
-  the page did not mention. It did not.
+  stranger checked the `match` in `write_outcome`, then in `crates/swish/src/lib.rs`, against the
+  error the page quotes and got the same file and line. Its prediction, written before the walk, was
+  that it would find at least one thing the page did not mention. It did not.
 
 Its worst-thing answer is the one to keep. It is the only place in four runs where a stranger
 criticized the tree's central habit rather than a document. In its words: *"the project's habitual

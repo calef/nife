@@ -635,7 +635,7 @@ const SWISH_CHECK_SCRIPT: &[Line] = &[
     // **Grants by verb** (milestone 809, option V2): `jig list` holds the catalog and nothing
     // else, which the next line shows by what it can do. `caps` of it shows no installer row, and
     // a line can only assert what is printed, so the absence is proved by `jig list` running and
-    // `swish::tests`'s preview test.
+    // the preview tests in `crates/swish/src/preview/tests.rs`.
     line(
         1,
         "jig list",

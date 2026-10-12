@@ -189,7 +189,7 @@ crates/swap_protocol/src/lib.rs:2	72
 crates/swish/src/bare.rs:1	58
 crates/swish/src/complete.rs:1	57
 crates/swish/src/lib.rs:1	84
-crates/swish/src/lib.rs:598	45
+crates/swish/src/batching.rs:40	45
 crates/swish/src/sequence.rs:1	82
 crates/system_initializer/src/lib.rs:6	300
 crates/system_initializer/src/boot_sequence.rs:299	41

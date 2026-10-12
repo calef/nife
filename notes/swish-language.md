@@ -1,10 +1,10 @@
 # `swish` the language: quoting, sequencing, and what an exit status can say
 
 *Milestone 67. `crates/grant_plan/src/word.rs`, `crates/grant_plan/src/line.rs`,
-`crates/swish/src/sequence.rs`, `crates/swish/src/lib.rs`, `components/src/swish/`,
-`system_tests/src/user/language_tests.rs`, `xtask`'s `SWISH_CHECK_SCRIPT`. Read notes/pipes.md first if
-you have not: this is the layer above its operators, and it reuses their vocabulary. The guest
-test's detail is in [`swish-language/`](swish-language/README.md).*
+`crates/swish/src/sequence.rs`, `crates/swish/src/status.rs`, `crates/swish/src/words.rs`,
+`components/src/swish/`, `system_tests/src/user/language_tests.rs`, `xtask`'s `SWISH_CHECK_SCRIPT`.
+Read notes/pipes.md first if you have not: this is the layer above its operators, and it reuses
+their vocabulary. The guest test's detail is in [`swish-language/`](swish-language/README.md).*
 
 `swish` had composition, grants, navigation and globbing, and no scripting language at all. This
 milestone adds the three things that were missing and settles the one design fork inside them.
