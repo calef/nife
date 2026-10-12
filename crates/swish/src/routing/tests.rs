@@ -43,3 +43,18 @@ fn a_redirection_with_nothing_after_it_runs_nothing() {
         other => panic!("expected a refusal, got {other:?}"),
     }
 }
+
+/// `time` and `xargs` take a whole line as their operand for `caps`'s reason, so they are
+/// answered before the split too. The doctest on `route` says the same, but `script/coverage`
+/// counts no doctest.
+#[test]
+fn time_and_xargs_keep_the_operators_of_the_line_they_take() {
+    match route(b"time date | wc") {
+        Route::Time(tail) => assert_eq!(tail, b"date | wc"),
+        other => panic!("expected time, got {other:?}"),
+    }
+    match route(b"xargs rm *.txt") {
+        Route::Xargs(tail) => assert_eq!(tail, b"rm *.txt"),
+        other => panic!("expected xargs, got {other:?}"),
+    }
+}
