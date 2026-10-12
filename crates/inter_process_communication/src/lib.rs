@@ -800,6 +800,45 @@ mod tests {
         unsafe { Unqueued::new(NonNull::from(&mut **n)) }
     }
 
+    /// **Two verdicts are equal when they decided the same thing about the same nodes**, and a
+    /// verdict about other nodes, or of another kind, is not. Every node here has one token, so a
+    /// verdict can share its nodes only with itself.
+    #[test]
+    fn a_verdict_equals_itself_and_no_other() {
+        {
+            let mut n: Vec<Box<N>> = (0..6).map(|_| node()).collect();
+            let mut t = n.iter_mut().map(token);
+            let mut next = || t.next().unwrap();
+            let sends = [
+                Send::Rendezvous(next(), next()),
+                Send::Rendezvous(next(), next()),
+                Send::Refused(next()),
+                Send::Refused(next()),
+                Send::Blocked,
+            ];
+            for (i, x) in sends.iter().enumerate() {
+                for (j, y) in sends.iter().enumerate() {
+                    assert_eq!(x == y, i == j, "sends {i} and {j}");
+                }
+            }
+        }
+        let mut n: Vec<Box<N>> = (0..6).map(|_| node()).collect();
+        let mut t = n.iter_mut().map(token);
+        let mut next = || t.next().unwrap();
+        let receives = [
+            Receive::Signal(next()),
+            Receive::Signal(next()),
+            Receive::FromSender(next(), next()),
+            Receive::FromSender(next(), next()),
+            Receive::Blocked,
+        ];
+        for (i, x) in receives.iter().enumerate() {
+            for (j, y) in receives.iter().enumerate() {
+                assert_eq!(x == y, i == j, "receives {i} and {j}");
+            }
+        }
+    }
+
     /// The rendezvous, both orderings: whoever arrives first waits, the second completes the pair
     /// and gets the first: the very node, by identity, not a name to look up.
     #[test]

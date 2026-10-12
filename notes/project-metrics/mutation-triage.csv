@@ -884,3 +884,18 @@ grant_plan,reaped,"replace reaped -> (u64, u64, u64) with (1, 0, 0)",killed,kill
 grant_plan,reaped,"replace reaped -> (u64, u64, u64) with (1, 0, 1)",killed,killed by a_reaped_message_is_label_then_thread
 grant_plan,reaped,"replace reaped -> (u64, u64, u64) with (1, 1, 0)",killed,killed by a_reaped_message_is_label_then_thread
 grant_plan,reaped,"replace reaped -> (u64, u64, u64) with (1, 1, 1)",killed,killed by a_reaped_message_is_label_then_thread
+inter_process_communication,,replace <impl PartialEq for Wait<T>>::eq -> bool with true,killed,killed by a_wait_verdict_equals_itself_and_no_other
+inter_process_communication,,"replace Futexes<T, B>::queued -> usize with 0",killed,"killed by a_wake_takes_only_its_own_key_in_order_and_at_most_max, which now counts the table before and after"
+inter_process_communication,,"replace Futexes<T, B>::queued -> usize with 1",killed,"killed by a_wake_takes_only_its_own_key_in_order_and_at_most_max, which now counts the table before and after"
+inter_process_communication,,"replace Futexes<T, B>::waiters -> usize with 1",killed,"killed by a_wake_takes_only_its_own_key_in_order_and_at_most_max, which now counts the table before and after"
+inter_process_communication,<impl PartialEq for Receive<T>>::eq,"delete match arm (Receive::FromSender(a, r), Receive::FromSender(b, q))",killed,killed by a_verdict_equals_itself_and_no_other
+inter_process_communication,<impl PartialEq for Receive<T>>::eq,"delete match arm (Receive::Signal(a), Receive::Signal(b))",killed,killed by a_verdict_equals_itself_and_no_other
+inter_process_communication,<impl PartialEq for Receive<T>>::eq,replace && with ||,equivalent,"equivalent under Unqueued::new's contract, which allows one token per node: two verdicts can agree on one of their two nodes only by being the same verdict, where && and || agree; telling them apart needs a second token for a node, which the contract forbids; the 2026-10-12 per-crate re-run still reports it"
+inter_process_communication,<impl PartialEq for Receive<T>>::eq,replace == with !=,killed,killed by a_verdict_equals_itself_and_no_other
+inter_process_communication,<impl PartialEq for Send<T>>::eq,"delete match arm (Send::Refused(a), Send::Refused(b))",killed,killed by a_verdict_equals_itself_and_no_other
+inter_process_communication,<impl PartialEq for Send<T>>::eq,"delete match arm (Send::Rendezvous(a, s), Send::Rendezvous(b, t))",killed,killed by a_verdict_equals_itself_and_no_other
+inter_process_communication,<impl PartialEq for Send<T>>::eq,replace && with ||,equivalent,"equivalent under Unqueued::new's contract, which allows one token per node: two verdicts can agree on one of their two nodes only by being the same verdict, where && and || agree; telling them apart needs a second token for a node, which the contract forbids; the 2026-10-12 per-crate re-run still reports it"
+inter_process_communication,<impl PartialEq for Send<T>>::eq,replace == with !=,killed,killed by a_verdict_equals_itself_and_no_other
+inter_process_communication,<impl PartialEq for Wait<T>>::eq,"delete match arm (Wait::Word(x, a), Wait::Word(y, b))",killed,killed by a_wait_verdict_equals_itself_and_no_other
+inter_process_communication,<impl PartialEq for Wait<T>>::eq,replace && with ||,killed,killed by a_wait_verdict_equals_itself_and_no_other
+inter_process_communication,<impl PartialEq for Wait<T>>::eq,replace == with !=,killed,killed by a_wait_verdict_equals_itself_and_no_other

@@ -448,6 +448,29 @@ mod tests {
         unsafe { Unqueued::new(NonNull::from(&mut **n)) }
     }
 
+    /// **A wait's verdict is equal only to itself**: the same word for another node, another word,
+    /// or a block are all different verdicts. Each node has one token, so only a verdict compared
+    /// with itself shares one.
+    #[test]
+    fn a_wait_verdict_equals_itself_and_no_other() {
+        let (mut a, mut b, mut c) = (
+            Box::new(N { next: None }),
+            Box::new(N { next: None }),
+            Box::new(N { next: None }),
+        );
+        let waits = [
+            Wait::Word(1, token(&mut a)),
+            Wait::Word(1, token(&mut b)),
+            Wait::Word(2, token(&mut c)),
+            Wait::Blocked,
+        ];
+        for (i, x) in waits.iter().enumerate() {
+            for (j, y) in waits.iter().enumerate() {
+                assert_eq!(x == y, i == j, "waits {i} and {j}");
+            }
+        }
+    }
+
     /// The bound path takes the whole accumulated word, not just the newest bits: a signal that
     /// was counted while the bound thread was elsewhere rides along with the one that finds it
     /// receiving.
