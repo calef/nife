@@ -319,7 +319,7 @@ design/roadmap/0135-loom-region-claim.md	-	22	74	-	-
 design/roadmap/0136-one-decision-path.md	-	-	51	-	-
 design/roadmap/0137-mac-file-server.md	-	22	60	-	-
 design/roadmap/0138-file-io-throughput.md	-	-	73	-	-
-design/roadmap/0139-drive-down-unsafe.md	-	21.5	123	-	-
+design/roadmap/0139-drive-down-unsafe.md	-	21	123	-	-
 design/roadmap/0140-foreign-filesystems.md	-	-	57	-	-
 design/roadmap/0141-a-palette-worth-looking-at.md	-	-	42	-	-
 design/roadmap/0142-a-text-display-worth-living-in.md	-	-	50	-	-
@@ -690,7 +690,7 @@ design/roadmap/0556-a-second-risc-v-implementation-for-rent.md	-	-	47	-	-
 design/roadmap/0557-a-thread-reads-its-own-cpu-from-a-page.md	-	-	62	-	-
 design/roadmap/0559-a-list-strangers-read-to-find-a-kernel.md	-	-	49	-	-
 design/roadmap/0560-a-long-file-name-or-riscv64-cannot-be-installed.md	-	-	42	-	-
-design/roadmap/0561-a-per-cpu-allocator-is-what-the-current-cpu-page-was-for.md	-	21	45	-	-
+design/roadmap/0561-a-per-cpu-allocator-is-what-the-current-cpu-page-was-for.md	-	-	45	-	-
 design/roadmap/0563-a-seal-check-that-reads-bytes-cannot-see-a-check-that-was-dropped.md	-	-	41	-	-
 design/roadmap/0564-a-userspace-program-cannot-learn-which-cpus-are-online.md	-	22	49	-	-
 design/roadmap/0565-a-website-for-the-project-plan.md	-	-	60	-	-
