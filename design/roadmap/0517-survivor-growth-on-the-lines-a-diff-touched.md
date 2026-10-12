@@ -14,8 +14,8 @@ The answer is 81.6%, and the shape of the other 18.4% is the part that decides a
 771 survivors standing in the 2026-09-14 census, 629 sit on a line a pull request in the window
 rewrote or added, and a diff-scoped check running on that pull request would have reported them.
 The remaining 142 sit on lines older than the window, and every one of them was checked against
-a mutation run of the tree as it stood on 2026-08-03: **141 were already survivors then, and one was
-not**.
+a mutation run of the tree as it stood on 2026-08-03: 141 were already survivors then, and one was
+not.
 
 So the inflow hypothesis holds on the measurement: survivors arrive with new code, not by old code
 quietly losing its tests. One counter-example exists and is named below, which is what keeps this
@@ -38,7 +38,7 @@ is a deeper fetch.
 The main checkout has the whole history. 4,957 commits back to 2026-07-12, so every pull request
 in the window is present and `git archive` reaches any of them.
 
-**And the census does not have to be re-run, because it kept its receipts.** The weekly workflow
+And the census does not have to be re-run, because it kept its receipts. The weekly workflow
 uploads one artifact per shard, each with `missed.txt` naming every survivor by
 `path:line:col: description`. The runs of
 [2026-09-14](https://github.com/nifeos/nife/actions/runs/34833498873) and
@@ -64,8 +64,8 @@ So the measurement is two steps and no census:
 | | survivors | share |
 |---|---|---|
 | census, 2026-09-14, all shards | 771 | |
-| on a line last touched **in the window** (after 2026-08-03) | **629** | **81.6%** |
-| on a line **older than the window** | 142 | 18.4% |
+| on a line last touched in the window (after 2026-08-03) | 629 | 81.6% |
+| on a line older than the window | 142 | 18.4% |
 
 The 629 are concentrated, which is the finding under the finding. They are blamed to 80
 commits in 62 pull requests, out of 761 pull requests merged in the window. The median
@@ -87,139 +87,44 @@ measured from opposite ends.
 ### The bound on 81.6%, stated as a range
 
 It is 68% to 85% across the plausible boundaries, and 81.6% at the right one. The baseline run
-is dated 2026-08-03 with no hour recorded, so the cut is a day rather than an instant, and the
-window's first two days are unusually dense:
-
-| cut | in-window share |
-|---|---|
-| 2026-08-01 | 84.8% |
-| **2026-08-03 (the baseline's own date)** | **81.6%** |
-| 2026-08-05 | 68.1% |
-
-The 13-point drop between the third row and the second is one day: 104 survivors are blamed to
-commits of 2026-08-04, the day after the baseline. Those are unambiguously in the window; the row is
-in the table to show how much of the answer rides on two days of a six-week window, not because
-68.1% is a candidate answer.
+is dated 2026-08-03 with no hour recorded, so the cut is a day rather than an instant.
 
 ## Does the proxy tell the truth: six replays, 197 of 197
 
-Each replay is `cargo mutants --in-diff` against that commit's own diff, inside a `git archive` of
-the commit, tool pinned at 27.1.0, the same shape milestone 438 used. The question is not how many
-survivors the gate reports; it is whether the survivors blame attributes to that commit are among
-them.
+Each replay ran `cargo mutants --in-diff` against one commit blame names, and asked whether the
+survivors blame attributes to that commit are among those it reports. Every attributed survivor was
+reported, including in two lint-only commits picked because they should have broken the proxy. One
+lesson travels: mutants have to be matched on the function and the mutation, not on the path,
+because the tree renames.
 
-| replay | commit | survivors blame attributes | reported by `--in-diff` | mutants, wall clock |
-|---|---|---|---|---|
-| #207, `mdns_proto` | `6bc7751e` | 76 | **76** (of 82 reported) | 373 in 2m |
-| #326, `timetable` | `0c61d6af` | 48 | **48** (of 50) | 172 in 50s |
-| `video_terminal` | `1b60e047` | 66 | **66** (of 66) | 120 in 48s |
-| a clippy fix | `858a1268` | 1 | **1** (of 1) | 7 in 15s |
-| a lint pass on `pci` | `d6ad03dd` | 1 | **1** (of 1) | 15 in 6s |
-| milestone 231 (nothing counts how many capability slots a boot actually uses) | `34b52ac3` | 5 | **5** (of 22) | 32 in 18s |
-| **total** | | **197** | **197** | |
-
-**Not one attributed survivor was missing from the replay.** 197 is 31% of the 629, chosen to
-include both the concentrated case and the tail, and the two smallest samples were picked
-*because* they are the shape that should have broken the proxy: commits whose message is a lint or
-clippy fix, where blame would plausibly be pointing at a cosmetic rewrite of an older line. Both
-reported their attributed survivor.
-
-One of them nearly read as a failure and the reason is worth keeping. `858a1268` reported
-`crates/isa/src/plic.rs: replace < with <= in PlicContexts::from_device_tree` and the census names
-`crates/machine_discovery/src/plic.rs` for the same mutant: `isa` was renamed to `machine_discovery`
-later in the window. A comparison keyed on the path scores that as a miss. Mutants have to be
-matched on the function and the mutation, not on where the file lived that week.
-
-The replays also report more than blame attributes, 82 against 76 and 22 against 5, because a
-pull request's diff contains lines other commits wrote and the gate mutates all of them. That
-direction costs a contributor work and does not change this fraction.
+- [replays.md](0517-survivor-growth-on-the-lines-a-diff-touched/replays.md) holds the six replays,
+  the one that nearly read as a miss, and why a replay reports more than blame attributes.
 
 ## The other 18.4%: pre-existing, with exactly one exception
 
-The 142 survivors on old lines are the population an inflow gate is structurally blind to, and
-whether that matters depends entirely on whether they are old survivors (which the corpus rate
-owns and which no inflow gate was ever meant to catch) or regressions, code that used to be
-tested and quietly stopped being.
+The 142 survivors on old lines are the population an inflow gate is structurally blind to. Whether
+that matters depends on whether they are old survivors or regressions, code that used to be tested
+and quietly stopped being. Each was checked against a mutation run of the tree as it stood when the
+window opened, and every one but one was already a survivor then.
 
-That is answerable without a census: run the mutation over the tree as it stood at the window's
-start and ask, mutant by mutant, whether each of the 142 was already a survivor then. The tree at
-`c87c1575`, the 2026-08-03 merge of milestone 85 (mutation testing over the host crates), is that
-tree, and every crate holding an old-line survivor was run against it: 4,730 mutants over 27
-packages, 2 hours 9 minutes on this laptop, 152 survivors.
+The one regression is `compositor`'s `replace * with + in Rect::area`, a survivor at the census on
+a line nobody in the window touched. It is exactly the case a diff-scoped inflow gate cannot see, it
+is real, and out of 771 survivors it is one.
 
-| the 142 survivors on old lines | count |
-|---|---|
-| already a survivor on 2026-08-03 | **141** |
-| caught on 2026-08-03, surviving at the census | **1** |
-
-The one regression is `compositor`'s `replace * with + in Rect::area`. On 2026-08-03 that mutant
-is in `caught.txt`, with the three others the same function generates; at the census it is a
-survivor, on a line nobody in the window touched. It is exactly the case a diff-scoped inflow gate
-cannot see, it is real, and out of 771 survivors it is one.
-
-Three near-misses are worth recording because they are the trap in this comparison, and all three
-read as regressions until the rename is undone: `page_frames`' two (`FrameAllocator` became
-`PageFrameAllocator`) and `inter_process_communication`'s one (`Endpoint` became `Rendezvous`). The
-mutation text is identical and the type name is not, so a comparison keyed on the printed mutant
-name scores a pre-existing survivor as fresh damage. This is the same failure the replay table hit
-on `isa` becoming `machine_discovery`, in a tree that renames deliberately and often.
+- [bounds.md](0517-survivor-growth-on-the-lines-a-diff-touched/bounds.md) holds the table of cut
+  dates and why the share moves with it, and the old-line check: the tree it ran against, its
+  table, and the three renames that read as regressions.
 
 ## What it would take to put `kernel/**` and `components/**` in the corpus
 
 This is milestone 438's third objection and the one that decides whether an inflow gate can carry
-risk 3 at all: a kernel change passes by construction today, because
-`.cargo/mutants.toml` excludes both trees. The honest answer is that it is mechanically possible,
-nobody has to invent anything, and the price is between two and three orders of magnitude.
+risk 3 at all: a kernel change passes by construction today, because `.cargo/mutants.toml` excludes
+both trees. It is mechanically possible, and the price is between two and three orders of
+magnitude, about 500 hours of runner time per census across three architectures.
 
-The corpus would roughly double. `cargo mutants --no-config --list` generates 7,529 mutants
-for `kernel` and 3,482 for `components`, against a census corpus of about 9,300 viable mutants
-today.
-
-**The mechanism already exists and is not the problem.** `.cargo/config.toml` sets a `runner` for
-each bare-metal target, so `cargo test -p kernel --target aarch64-unknown-none-softfloat` boots QEMU
-and runs the suite; cargo-mutants takes `-C --target=...` for exactly this. The exclusion's stated
-reason, that these are "crates whose lines cannot execute on the host", is true and is about the
-*host*, not about testability.
-
-**The price is the test command, and it is not a harness problem, it is a wall-clock problem.** The
-kernel suite is one QEMU boot that runs every test: `xtask/src/suite.rs` records the aarch64 leg at
-about 53 seconds for 312 tests, and `kernel/build.rs` records a kernel relink at about 2.3
-seconds. So a kernel mutant costs about 55 seconds, against the fraction of a second a host
-crate's mutant costs.
-
-| | mutants | at ~55s each, serial | per architecture, 8 shards |
-|---|---|---|---|
-| `kernel` | 7,529 | 115 hours | 14 hours |
-| `components` | 3,482 | 53 hours | 7 hours |
-| both | 11,011 | **168 hours** | **21 hours** |
-
-§19 (architectural parity is a tenet) makes it a gate, so multiply by three architectures: about 500 hours of
-runner time per census, against the 52 minutes the whole host corpus costs today. A 21-hour shard
-also exceeds GitHub's per-job ceiling, so the sharding would have to be roughly quadrupled before
-the run is even expressible.
-
-Three things make it worse than that arithmetic, and one makes it better.
-
-- **A kernel mutant that hangs the boot costs the timeout, not the suite.** Mutating a scheduler or
-  an MMU path does not fail a test, it wedges the machine, and the suite has no way to fail fast. On
-  the host corpus, timeouts are already the dominant cost of the one parser change milestone 438
-  measured.
-- `components` has no tests of its own. Zero `#[test]` and zero `#[cfg(test)]` in
-  `components/src`; what proves it is `kernel/src/user/tests.rs`, 3,195 lines of kernel-side tests
-  that boot the whole system and run the programs. cargo-mutants can express that
-  (`--test-package kernel`), so the mutant is testable, but every components mutant pays the full
-  system boot too.
-- **The kernel test leg is not `cargo test`, it is `cargo xtask test`,** and the difference is
-  scaffolding: `suite.rs` builds the std exerciser, every user program, the initrd, the RedoxFS
-  images, a GPT disk, a blank disk and an NVMe image, and sets `NIFE_GPU`, `NIFE_KEYBOARD`,
-  `NIFE_RNG` and `NIFE_NVME` before the boot. Several tests assert those devices are present
-  rather than skipping. In a cargo-mutants build directory none of that exists, so the unmutated
-  baseline fails and the run refuses to start. Making the runner self-sufficient under a mutation
-  flag is real work, and it is the smallest piece of this.
-- The one thing in its favor: `--in-diff` makes the wall clock scale with the diff rather than
-  the corpus, so a *diff-scoped* kernel check is affordable where a kernel census is not. A pull
-  request touching ten kernel lines is a handful of mutants at 55 seconds, which is minutes. The
-  expensive thing is the standing corpus, not the derivative.
+- [kernel-pricing.md](0517-survivor-growth-on-the-lines-a-diff-touched/kernel-pricing.md) holds the
+  mutant counts, the per-mutant cost and where it comes from, the table per tree, and what makes
+  the price worse or better.
 
 So the honest verdict has two halves. A kernel *census* at the current cadence is not feasible
 and should not be attempted: 500 hours a week to measure a suite is a worse use of the machine than
@@ -229,7 +134,7 @@ Nobody has priced the scaffolding half, which is the piece that would need a lan
 
 ## What the green condition should say
 
-**A proposal for calef, not an edit.** `design/fatal-risks/README.md` is his and this lane does not touch
+A proposal for calef, not an edit. `design/fatal-risks/README.md` is his and this lane does not touch
 it. The condition below is offered against the ruling of 2026-09-20 that the green condition should
 be inflow, with the corpus rate as a lagging indicator.
 
@@ -260,7 +165,7 @@ is available without the gate: the replay costs four seconds on a documentation 
 minutes on the largest crate landing in six weeks, and it can run after the merge, weekly, over the
 window since the last census, which is exactly what this lane did for six weeks in an afternoon.
 
-**Why (b) is a floor and not a target.** A percentage target can be met by excluding awkward crates,
+Why (b) is a floor and not a target. A percentage target can be met by excluding awkward crates,
 which is the argument milestone 326 (nobody has been assigned to turn a mutation score upward) makes;
 "has not fallen" cannot be, because the exclusions change both sides of the comparison.
 
@@ -269,7 +174,7 @@ the window would have named 62 pull requests of 761 (8.1%) as carrying untriaged
 a median of 6 each. That is a real worklist and it is the honest shape of the claim: "new code does
 not arrive less tested" is a promise about roughly one pull request in twelve.
 
-**And it does not carry the kernel, which is the caveat that has to travel with it.** The kernel pricing above
+And it does not carry the kernel, which is the caveat that has to travel with it. The kernel pricing above
 prices that; until the scaffolding half is built, any inflow condition is a claim about the host
 crates only, and risk 3's text should say so where the reader meets the verdict rather than in a
 follow-on.
@@ -278,12 +183,12 @@ follow-on.
 
 - Every pull request in the window can now be replayed; 6 were. The limit is wall clock, not
   history. The 6 cover 197 of the 629 attributed survivors.
-- **The baseline's own survivor list does not exist.** `.cargo/mutants-baseline.txt` is per-crate
-  counts, and the 2026-08-03 run's output was never kept, which is why section 3 re-ran the tree at
+- The baseline's own survivor list does not exist. `.cargo/mutants-baseline.txt` is per-crate
+  counts, and the 2026-08-03 run's output was never kept, which is why the old-line check above re-ran the tree at
   `c87c1575` instead of comparing against it. Those counts are also pre-triage, as the file's own
   header says, so the re-run finds fewer survivors than the file records and the re-run is the better
   reference for "what was already a survivor when the window opened".
-- **The census was not re-run.** Every number here comes from the 2026-09-14 artifacts, from blame,
+- The census was not re-run. Every number here comes from the 2026-09-14 artifacts, from blame,
   or from a scoped replay.
 
 ## Follow-on
@@ -314,15 +219,15 @@ follow-on.
   residual risk is a commit that rewrote a line cosmetically *and* was not sampled; the two sampled
   cosmetic commits both confirmed, so the correction is small, but it is not zero and the fraction
   should be read as "about 82%" rather than to the tenth.
-- **The cut is a day, not an instant.** The baseline run is dated 2026-08-03 with no hour, so any
+- The cut is a day, not an instant. The baseline run is dated 2026-08-03 with no hour, so any
   survivor blamed to a 2026-08-03 commit is assigned to the window whether or not the run had
   already happened. At most 25 survivors ride on that choice.
-- **The old-line check matches mutants by function and mutation text, not by path or line.** It has
+- The old-line check matches mutants by function and mutation text, not by path or line. It has
   to, because the tree renames: three of the 142 would otherwise have been scored as regressions on
   a type rename alone. The residual risk runs the other way, that a rename makes a genuine
   regression look pre-existing, and nothing here rules that out beyond reading the four that did not
   match.
-- **A replay is not a live run**, milestone 438's own caveat and it still holds: `--in-diff` against
+- A replay is not a live run, milestone 438's own caveat and it still holds: `--in-diff` against
   a merged diff sees the code as it landed, not as it was proposed.
 - The 55-second kernel mutant is derived, not measured here. It is `xtask/src/suite.rs`'s 53
   seconds plus `kernel/build.rs`'s 2.3-second relink, both recorded in the tree by the milestones
