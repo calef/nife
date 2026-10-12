@@ -30,7 +30,6 @@ crates/stick_maker/src/host/mod.rs	106
 crates/stick_maker/src/lib.rs	4
 crates/system_log/src/lib.rs	503
 crates/usb/src/lib.rs	37
-crates/user_mode_runtime/src/lib.rs	542
 cryptography_provider/src/lib.rs	91
 kernel/src/arch/aarch64/mod.rs	161
 kernel/src/arch/mod.rs	95

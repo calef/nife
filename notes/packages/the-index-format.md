@@ -72,6 +72,21 @@ lives:
 The stand-in encoding stays until the TUF client exists: a line is the catalog's line followed by
 zero or more HTTPS locations.
 
+## What calef ruled, 2026-10-12 (UTC): a host that ends in a number is canonical or refused
+
+"Agreed", to this recommendation: a host whose last label is all digits but is not canonical
+dotted-decimal IPv4 (four parts, each 0 to 255 in decimal, no leading zeros) is refused outright,
+with an error naming it. Before, `https://0010.0.0.1/` was read as a DNS name. WHATWG URL and
+`inet_aton` read `0010` as octal (8.0.0.1) and others read decimal; that disagreement was
+CVE-2021-29921 (Python `ipaddress`) and CVE-2021-29923 (Go `net.ParseIP`), and both now refuse
+leading zeros, as Rust's `Ipv4Addr` does. Index URLs come from manifests the distribution writes, so
+nothing legitimate is lost, and Q1's safeguard no longer rests on the resolved-address check alone.
+Hex (`0x0a.0.0.1`) and short forms (`10.1`) are refused too. #2020 records the ruling and built it:
+`Location::parse` returns `LocationRefusal::NonCanonicalAddress(host)`, `Index::parse` passes it out
+in `BadLine::location`, and `Repository::new` refuses the same hosts. The lane also refuses a last
+label of `0x` and hex digits, WHATWG's other "ends in a number" form, which the ruling's words did
+not name.
+
 ## Two questions the rulings raise
 
 **A. Does the backup address touch §250's wording?** Yes, in two places. Clause 1 says "An image

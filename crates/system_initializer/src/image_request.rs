@@ -211,30 +211,6 @@ impl SpawnEndpoint {
         (copy, copy.is_none())
     }
 
-    /// **After a spawn, the package manager's leftovers** (milestones 809 and 892). The child holds
-    /// its own installer endpoint, so ours goes; the reply endpoint's `WRITE` is filed under the
-    /// child's label until its reap, which is how an answer finds it, and a holder that did not
-    /// start has its endpoint deleted now. A job that did not start is never reaped, so a resolver
-    /// grant made for it is forgotten now.
-    pub(super) fn settle_package_manager(
-        &mut self,
-        label: u64,
-        ok: bool,
-        installer: Option<(u64, u64)>,
-        manager: Option<&'static str>,
-    ) {
-        if !ok {
-            self.forget_resolver(label);
-        }
-        if let Some((inst, reply)) = installer {
-            cap_delete(inst);
-            let kept = ok && manager.is_some_and(|m| self.hold_reply(label, reply, m));
-            if !kept {
-                cap_delete(reply);
-            }
-        }
-    }
-
     /// **Withdraw job `label`'s resolver grant**, if it has one: the resolver denies its badge from
     /// now on and gives up the page it attached. At the job's reap, or at once for a job that never
     /// started.

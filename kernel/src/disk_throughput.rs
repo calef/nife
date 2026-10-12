@@ -137,64 +137,11 @@ fn measure() -> Verdict {
         Ok(image) => image,
         Err(why) => return Verdict::Failed(why),
     };
-    let disk = match service::ensure_or_why(image) {
+    let disk = match bring_up(image) {
         Ok(disk) => disk,
-        Err(Absent::NoController) => {
-            println!(
-                "disk-throughput: preflight 1/2 dmar scope : FAIL  no NVMe controller on the bus"
-            );
-            return Verdict::Skipped("no NVMe controller on the bus");
-        }
-        Err(Absent::Refused {
-            rid,
-            why: Error::UnsupportedNamespace { lba_shift, blocks },
-        }) => {
-            // The server never started, so there is no wiring to ask for a scope; the controller's
-            // requester id is enough to answer it anyway, and the answer is still worth the photo.
-            print_scope(rid, crate::iommu::scope_of(rid));
-            println!(
-                "disk-throughput: preflight 2/2 lba size   : FAIL  {}-byte lbas ({blocks} of them): \
-                 4096-byte blocks need 512, 1024, 2048 or 4096 (blocks_per 1..=8)",
-                1u64.checked_shl(lba_shift as u32).unwrap_or(0),
-            );
-            return Verdict::Skipped("the namespace's lba size gives no blocks_per in 1..=8");
-        }
-        Err(Absent::Refused { rid, why }) => {
-            print_scope(rid, crate::iommu::scope_of(rid));
-            println!("disk-throughput: controller {rid:#06x} failed bring-up: {why:?}");
-            // Bench diagnostic (xenon, 2026-10-04): the DMA path, bridge to IOMMU.
-            crate::pci::print_dma_path(rid);
-            #[cfg(target_arch = "x86_64")]
-            crate::arch::iommu::print_faults(rid);
-            return Verdict::Failed("the controller is present and failed bring-up (line above)");
-        }
+        Err(verdict) => return verdict,
     };
-    // Bench diagnostic (xenon, 2026-10-04): the context entry the unit accepted.
-    #[cfg(target_arch = "x86_64")]
-    crate::arch::iommu::print_context(disk.rid);
-    if let Some(report) = disk.wait_for_ready()
-        && report[0] != filesystem_protocol::fixture::READY
-    {
-        println!(
-            "disk-throughput: the server did not come up: step word {:#x}, first-read status {:#x}",
-            report[0], report[2]
-        );
-        return Verdict::Failed("the EL0 server reported a failed step (line above)");
-    }
-
-    let confined = print_scope(disk.rid, disk.scope);
-    let lba = BLOCK_SIZE as u64 / disk.blocks_per as u64;
-    println!(
-        "disk-throughput: preflight 2/2 lba size   : PASS  {lba}-byte lbas, blocks_per {} \
-         (needs 1..=8); namespace {} bytes",
-        disk.blocks_per, disk.size_bytes,
-    );
-    if !confined {
-        println!(
-            "disk-throughput: measuring anyway, labelled: a rate from an untranslated device \
-             answers a different question"
-        );
-    }
+    let confined = print_lba_preflight(&disk);
 
     let total = disk.size_bytes / BLOCK_SIZE as u64;
     if total <= WINDOW_START + 1 {
@@ -202,72 +149,10 @@ fn measure() -> Verdict {
     }
     let count = WINDOW_BLOCKS.min(total - WINDOW_START);
 
-    // The IPC floor: the same path with no device on it.
-    let start = arch::timer::now();
-    for _ in 0..FLOOR_CALLS {
-        if disk.blk(blk::SIZE, 0) as u64 != disk.size_bytes {
-            return Verdict::Failed("SIZE answered the wrong size during the ipc floor");
-        }
-    }
-    let floor = arch::timer::now().wrapping_sub(start);
-    println!(
-        "disk-throughput: ipc floor   {FLOOR_CALLS} SIZE round trips in {} us ({} ns each, no device)",
-        micros(floor),
-        nanos(floor) / FLOOR_CALLS,
-    );
-
-    // Write: stamp each block's first and last words with its number, so the read phase can tell
-    // a block that came back from the wrong place. The rest of the page is a fixed pattern filled
-    // once, outside the timed loop.
-    // SAFETY: the blk contract's turn-taking. A request is a CALL, so this thread holds the buffer
-    // exactly while the server is not running.
-    unsafe { disk.transfer_block() }.fill(0x5a);
-    let start = arch::timer::now();
-    for b in WINDOW_START..WINDOW_START + count {
-        stamp(&disk, b);
-        if disk.blk(blk::WRITE, b) != 0 {
-            return Verdict::Failed("the server refused a write inside the namespace");
-        }
-    }
-    let write = arch::timer::now().wrapping_sub(start);
-    print_phase("write", count, write);
-
-    let start = arch::timer::now();
-    let flushed = disk.blk(blk::FLUSH, 0);
-    let flush = arch::timer::now().wrapping_sub(start);
-    if flushed < 1 {
-        return Verdict::Failed("the server refused a flush");
-    }
-    println!(
-        "disk-throughput: flush       one FLUSH in {} us",
-        micros(flush)
-    );
-
-    // Read, and verify every block's stamp. Clobbering the stamp words first is what makes a read
-    // that never reached the device fail rather than pass on what the write phase left behind.
-    let mut wrong = 0u64;
-    let start = arch::timer::now();
-    for b in WINDOW_START..WINDOW_START + count {
-        clobber(&disk);
-        if disk.blk(blk::READ, b) != 0 {
-            return Verdict::Failed("the server refused a read inside the namespace");
-        }
-        if !is_stamped(&disk, b) {
-            wrong += 1;
-        }
-    }
-    let read = arch::timer::now().wrapping_sub(start);
-    print_phase("read", count, read);
-    println!(
-        "disk-throughput: verified    {} of {count} blocks came back stamped with their own number \
-         (window {}..{} in 4096-byte blocks)",
-        count - wrong,
-        WINDOW_START,
-        WINDOW_START + count,
-    );
-    if wrong != 0 {
-        return Verdict::Failed("blocks came back from the wrong place or not at all");
-    }
+    let (read, write) = match time_window(&disk, count) {
+        Ok(ticks) => ticks,
+        Err(verdict) => return verdict,
+    };
 
     let (read, write) = (
         rate(count * BLOCK_SIZE as u64, read),
@@ -282,6 +167,181 @@ fn measure() -> Verdict {
     } else {
         Verdict::Unconfined { read, write }
     }
+}
+
+/// Start the NVMe server and wait for it to come up; a missing, refused or failed controller is
+/// the verdict instead.
+fn bring_up(image: &'static [u8]) -> Result<Wiring, Verdict> {
+    let disk = match service::ensure_or_why(image) {
+        Ok(disk) => disk,
+        Err(Absent::NoController) => {
+            println!(
+                "disk-throughput: preflight 1/2 dmar scope : FAIL  no NVMe controller on the bus"
+            );
+            return Err(Verdict::Skipped("no NVMe controller on the bus"));
+        }
+        Err(Absent::Refused {
+            rid,
+            why: Error::UnsupportedNamespace { lba_shift, blocks },
+        }) => {
+            // The server never started, so there is no wiring to ask for a scope; the controller's
+            // requester id is enough to answer it anyway, and the answer is still worth the photo.
+            print_scope(rid, crate::iommu::scope_of(rid));
+            println!(
+                "disk-throughput: preflight 2/2 lba size   : FAIL  {}-byte lbas ({blocks} of them): \
+                 4096-byte blocks need 512, 1024, 2048 or 4096 (blocks_per 1..=8)",
+                1u64.checked_shl(lba_shift as u32).unwrap_or(0),
+            );
+            return Err(Verdict::Skipped(
+                "the namespace's lba size gives no blocks_per in 1..=8",
+            ));
+        }
+        Err(Absent::Refused { rid, why }) => {
+            print_scope(rid, crate::iommu::scope_of(rid));
+            println!("disk-throughput: controller {rid:#06x} failed bring-up: {why:?}");
+            // Bench diagnostic (xenon, 2026-10-04): the DMA path, bridge to IOMMU.
+            crate::pci::print_dma_path(rid);
+            #[cfg(target_arch = "x86_64")]
+            crate::arch::iommu::print_faults(rid);
+            return Err(Verdict::Failed(
+                "the controller is present and failed bring-up (line above)",
+            ));
+        }
+    };
+    // Bench diagnostic (xenon, 2026-10-04): the context entry the unit accepted.
+    #[cfg(target_arch = "x86_64")]
+    crate::arch::iommu::print_context(disk.rid);
+    if let Some(report) = disk.wait_for_ready()
+        && report[0] != filesystem_protocol::fixture::READY
+    {
+        println!(
+            "disk-throughput: the server did not come up: step word {:#x}, first-read status {:#x}",
+            report[0], report[2]
+        );
+        return Err(Verdict::Failed(
+            "the EL0 server reported a failed step (line above)",
+        ));
+    }
+    Ok(disk)
+}
+
+/// Print both preflights' lines once the server is up, and return whether the device is confined.
+fn print_lba_preflight(disk: &Wiring) -> bool {
+    let confined = print_scope(disk.rid, disk.scope);
+    let lba = BLOCK_SIZE as u64 / disk.blocks_per as u64;
+    println!(
+        "disk-throughput: preflight 2/2 lba size   : PASS  {lba}-byte lbas, blocks_per {} \
+         (needs 1..=8); namespace {} bytes",
+        disk.blocks_per, disk.size_bytes,
+    );
+    if !confined {
+        println!(
+            "disk-throughput: measuring anyway, labelled: a rate from an untranslated device \
+             answers a different question"
+        );
+    }
+    confined
+}
+
+/// The timed phases over the window, in order: the IPC floor, the writes, the flush, and the
+/// verified reads. Returns the read and write ticks.
+fn time_window(disk: &Wiring, count: u64) -> Result<(u64, u64), Verdict> {
+    ipc_floor(disk)?;
+    let write = timed_writes(disk, count)?;
+    timed_flush(disk)?;
+    let read = timed_reads(disk, count)?;
+    Ok((read, write))
+}
+
+/// Time `FLOOR_CALLS` SIZE round trips, the IPC path with no device on it.
+fn ipc_floor(disk: &Wiring) -> Result<(), Verdict> {
+    // The IPC floor: the same path with no device on it.
+    let start = arch::timer::now();
+    for _ in 0..FLOOR_CALLS {
+        if disk.blk(blk::SIZE, 0) as u64 != disk.size_bytes {
+            return Err(Verdict::Failed(
+                "SIZE answered the wrong size during the ipc floor",
+            ));
+        }
+    }
+    let floor = arch::timer::now().wrapping_sub(start);
+    println!(
+        "disk-throughput: ipc floor   {FLOOR_CALLS} SIZE round trips in {} us ({} ns each, no device)",
+        micros(floor),
+        nanos(floor) / FLOOR_CALLS,
+    );
+    Ok(())
+}
+
+/// Time writing `count` stamped blocks across the window.
+fn timed_writes(disk: &Wiring, count: u64) -> Result<u64, Verdict> {
+    // Write: stamp each block's first and last words with its number, so the read phase can tell
+    // a block that came back from the wrong place. The rest of the page is a fixed pattern filled
+    // once, outside the timed loop.
+    // SAFETY: the blk contract's turn-taking. A request is a CALL, so this thread holds the buffer
+    // exactly while the server is not running.
+    unsafe { disk.transfer_block() }.fill(0x5a);
+    let start = arch::timer::now();
+    for b in WINDOW_START..WINDOW_START + count {
+        stamp(disk, b);
+        if disk.blk(blk::WRITE, b) != 0 {
+            return Err(Verdict::Failed(
+                "the server refused a write inside the namespace",
+            ));
+        }
+    }
+    let write = arch::timer::now().wrapping_sub(start);
+    print_phase("write", count, write);
+    Ok(write)
+}
+
+/// Time one FLUSH.
+fn timed_flush(disk: &Wiring) -> Result<(), Verdict> {
+    let start = arch::timer::now();
+    let flushed = disk.blk(blk::FLUSH, 0);
+    let flush = arch::timer::now().wrapping_sub(start);
+    if flushed < 1 {
+        return Err(Verdict::Failed("the server refused a flush"));
+    }
+    println!(
+        "disk-throughput: flush       one FLUSH in {} us",
+        micros(flush)
+    );
+    Ok(())
+}
+
+/// Time reading the window back, and check every block's stamp.
+fn timed_reads(disk: &Wiring, count: u64) -> Result<u64, Verdict> {
+    // Read, and verify every block's stamp. Clobbering the stamp words first is what makes a read
+    // that never reached the device fail rather than pass on what the write phase left behind.
+    let mut wrong = 0u64;
+    let start = arch::timer::now();
+    for b in WINDOW_START..WINDOW_START + count {
+        clobber(disk);
+        if disk.blk(blk::READ, b) != 0 {
+            return Err(Verdict::Failed(
+                "the server refused a read inside the namespace",
+            ));
+        }
+        if !is_stamped(disk, b) {
+            wrong += 1;
+        }
+    }
+    let read = arch::timer::now().wrapping_sub(start);
+    print_phase("read", count, read);
+    println!(
+        "disk-throughput: verified    {} of {count} blocks came back stamped with their own number \
+         (window {}..{} in 4096-byte blocks)",
+        count - wrong,
+        WINDOW_START,
+        WINDOW_START + count,
+    );
+    if wrong != 0 {
+        return Err(Verdict::Failed(
+            "blocks came back from the wrong place or not at all",
+        ));
+    }
+    Ok(read)
 }
 
 /// Print preflight 1 and say whether it passed.
