@@ -50,7 +50,7 @@ until the merge early on 2026-08-31 UTC, which is 2026W36.
 
 ## Architecture decisions by status
 
-From `design/decisions/README.md`. The gray band in the first three weeks is the honest bucket. A
+From each decision's frontmatter in `design/decisions/`. The gray band in the first three weeks is the honest bucket. A
 decision was then a `## N.` heading in one 5,320-line `DECISIONS.md`, and nothing said whether it
 still held. Milestone 114 (split `DECISIONS.md`, and give a decision a status) is where a status
 exists at all. Counting those early decisions as `DECIDED` would invent a claim the record never

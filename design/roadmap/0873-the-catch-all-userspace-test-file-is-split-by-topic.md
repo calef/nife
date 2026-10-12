@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-11
+built: 2026-10-12
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 282, 291
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -23,6 +24,15 @@ carries `needs-architect`.
 
 Reuse: not applicable; this moves code and adds none. The precedent is the 84 other files in
 `system_tests/src/user/`, 73 of them a `*_tests.rs` module on one topic, declared in `user.rs`.
+
+The lane wrote the cut up on 2026-10-12 (UTC) as §291 (the catch-all userspace test file splits
+into topic files beside it). It finds each fork below already answered by the tree, and asks
+calef nothing; the maintainer recorded it as settled by precedent on #1966 the same day. Two premises here were wrong. The file holds 69 tests, not 71: two
+grep hits were comments. And `userspace_init_tests` would sort after `thread_leak_police`, which
+polices only the modules that sort before it, so the file ships as `init_tests`.
+
+Built 2026-10-12 (UTC): `tests.rs` is gone, eleven siblings replace it, and every test runs on the
+same architectures as before, with the same counts on all three.
 
 ## What is in the file
 
@@ -156,6 +166,21 @@ Found with `grep` at `396187b0b`.
 3. `script/falsifications --check` passes, and each of the seven renamed patches is replayed red.
 4. `script/test` passes on aarch64, riscv64 and x86_64.
 5. Each new module carries a `//! Name:` block marked provisional.
+
+## Follow-on
+
+- **Recorded.** `thread_leak_police` polices only the modules that sort before it, and seven
+  already sort after it. Its BUGS entry in `system_tests/src/user.rs` now names them. This split's
+  eleven names all sort before it.
+- **Decision.** Three defects found while moving and left alone (a doubled doc sentence, and two
+  stale comments in the kernel crate) are under "Found while moving" in
+  `design/decisions/0291-the-catch-all-userspace-test-file-splits-into-topic-files-beside-it.md`.
+- **Decision.** The eleven module and file names ship provisional for calef's naming pass, as
+  `design/decisions/0291-the-catch-all-userspace-test-file-splits-into-topic-files-beside-it.md`
+  records.
+- **Refused.** Folding the name-resolution test into `name_resolver_tests.rs`, or the composed
+  process into `process_tests.rs`: a fold mixes moved lines with edited ones, and each topic file
+  already holds its tests whole.
 
 ## Index row
 

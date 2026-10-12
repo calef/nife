@@ -39,16 +39,19 @@ different dated entries or appendix rows; neither replaces the other. Keep both,
 
 ### 4. Any additive index file conflicts
 
-`notes/README.md`, `design/decisions/README.md`, and
-anything else that is one entry per thing. Both sides are adding different entries at the same spot.
-Keep both, delete only the marker lines, and preserve the file's own ordering:
-`design/decisions/README.md` is numeric, `notes/README.md` is not, so there keep an order that reads
-naturally.
+`notes/README.md`, and anything else that is one entry per thing. Both sides are adding different
+entries at the same spot. Keep both, delete only the marker lines, and preserve the file's own
+ordering, which in `notes/README.md` is the order that reads naturally.
 
-If two rows claim the same decision section number, the row already on `origin/main` keeps the
-number and this branch's row moves to the lowest free number above the highest on `main`. Rename
-the file with `git mv`, change its H1 to match, and add one sentence to its status paragraph saying
-it was renumbered, with the date, because a concurrently merged lane had taken the old number.
+`design/decisions/` has no index to conflict on: calef retired its table on 2026-10-12 (UTC), and
+`script/decisions` prints the index from the files. A conflict in `design/decisions/README.md` is
+now a conflict in its prose, so read both sides.
+
+If two decision files claim the same section number, `script/decisions --check` fails. The file
+already on `origin/main` keeps the number, and this branch's moves to the lowest free number above
+the highest on `main`. Rename the file with `git mv`, change its H1 to match, and add one sentence
+to its status paragraph saying it was renumbered, with the date, because a concurrently merged lane
+had taken the old number.
 
 ### 5. A heading was renamed on `main` while this branch inserted prose next to it
 

@@ -52,8 +52,8 @@ against literal fixture strings, no repository and no subprocess required, cheap
    `crates/grant_plan/src/spawnproto.rs` documents; matched by filename rather than the one path in
    the tree today, so a second one elsewhere is still caught). Same-value renames pair off as in
    rule 1.
-5. **decisions**: `CLAUDE.md` changed at all, or a `design/decisions/*.md` file (excluding the
-   generated `README.md`) changed OUTSIDE its YAML frontmatter block (the first `---`-delimited
+5. **decisions**: `CLAUDE.md` changed at all, or a `design/decisions/*.md` file (excluding
+   `README.md`, which says how the directory works and holds no decision) changed OUTSIDE its YAML frontmatter block (the first `---`-delimited
    section) by more than bookkeeping. A frontmatter-only edit (a status flip, a date) is
    provenance, not the decision's substance, and does not fire. Nor, since calef's ruling of
    2026-10-11 (UTC), does a bookkeeping edit: the body reads the same once link targets, backticked
@@ -665,7 +665,10 @@ def rule_decisions(fd, out):
     if not (path.startswith('design/decisions/') and path.endswith('.md')):
         return
     if path == 'design/decisions/README.md':
-        return  # the generated index; see the brief's exclusion
+        # Not a decision. It held the generated index table until calef retired it on 2026-10-12
+        # (UTC), and since then it holds only how the directory works, so neither its prose nor that
+        # table's removal is a ruling to review.
+        return
     base_body = decision_body(base_lines(fd))
     head_body = decision_body(head_lines(fd))
     if bookkeeping_blocks(base_body) == bookkeeping_blocks(head_body):
@@ -1357,6 +1360,19 @@ diff --git a/design/decisions/README.md b/design/decisions/README.md
 @@ -1,1 +1,1 @@
 -88. old title
 +88. a completely different title
+""", None),
+
+    ("decisions: removing the retired index table from design/decisions/README.md stays quiet", """\
+diff --git a/design/decisions/README.md b/design/decisions/README.md
+--- a/design/decisions/README.md
++++ b/design/decisions/README.md
+@@ -1,6 +1,1 @@
+-## The decisions
+-
+-| # | Status | Decision |
+-|---|---|---|
+-| 1 | DECIDED | [Target architecture: aarch64](0001-target-architecture.md) |
+ ## Reading
 """, None),
 
     ("decisions: an unrelated design/ file stays quiet", """\
