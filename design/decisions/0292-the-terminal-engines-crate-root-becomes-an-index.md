@@ -74,21 +74,21 @@ recommended keeping its layout constants in the root.
   falls from 2,050 to about 810. No `pub(super)` is added.
 - **B. The crate root becomes an index (recommended).** Every banner becomes a private child module,
   `status` becomes a file, and `lib.rs` keeps the crate docs, `mod` lines and named re-exports, so
-  every public path still resolves. Its §282 row goes. Twelve items become `pub(super)`: `Attr`'s
-  `fg`, `bg` and `with`, the six flags, the underline and strikethrough rows, and `CellRect::cell`.
+  every public path still resolves. Its §282 row goes. Thirteen items become `pub(super)`: `Attr`'s
+  three fields and `with`, the six flags, the underline and strikethrough rows, and `CellRect::cell`.
   Tests sit beside each module as `x/tests.rs`, the shape calef ruled for 845 in §274 (the
   filesystem-protocol crate root splits into its module files). The one helper two test files
   share goes to a crate-level `test_support.rs`, the shape of 842 (§272).
 
-| file, provisional | holds | lines, about |
+| file, provisional | holds | lines, as built |
 |---|---|---|
-| `lib.rs` | crate docs, `mod` lines, re-exports | 160 |
-| `geometry.rs` | `MAX_COLS`, `MAX_ROWS`, `MAX_CELLS`, `SCROLLBACK_ROWS`, `SCROLLBACK_CELLS` | 75 |
-| `palette.rs`, `palette/tests.rs` | `PALETTE`, the gate, `DEFAULT_FG`, `DEFAULT_BG`; its 3 tests and 2 tables | 195, 150 |
-| `cell.rs`, `cell/tests.rs` | the color enum, `Attr`, the flags, the dim midpoint, `Cell`; 5 tests | 255, 90 |
-| `damage.rs`, `damage/tests.rs` | `CellRect`, `Damage`; 2 tests | 130, 45 |
-| `vt.rs`, `vt/tests.rs` | `State`, `MAX_PARAMS`, `Vt`; 37 tests and 3 helpers | 960, 1,190 |
-| `status.rs` | the three report constants, unchanged | 30 |
+| `lib.rs` | crate docs, `mod` lines, re-exports | 158 |
+| `geometry.rs` | `MAX_COLS`, `MAX_ROWS`, `MAX_CELLS`, `SCROLLBACK_ROWS`, `SCROLLBACK_CELLS` | 72 |
+| `palette.rs`, `palette/tests.rs` | `PALETTE`, the gate, `DEFAULT_FG`, `DEFAULT_BG`; its 3 tests and 2 tables | 196, 146 |
+| `cell.rs`, `cell/tests.rs` | the color enum, `Attr`, the flags, the dim midpoint, `Cell`; 5 tests | 255, 86 |
+| `damage.rs`, `damage/tests.rs` | `CellRect`, `Damage`; 2 tests | 132, 42 |
+| `vt.rs`, `vt/tests.rs` | `State`, `MAX_PARAMS`, `Vt`; 37 tests and 3 helpers | 962, 1,217 |
+| `status.rs` | the three report constants, unchanged | 23 |
 | `test_support.rs` | `attr`, the helper the cell and engine tests share | 10 |
 
 Considered and refused: an index whose one child `vt.rs` holds cells, damage and the engine
@@ -103,11 +103,15 @@ would become the new default home at about 1,330 lines, which is the regrowth §
 3. Each concept is found by its file: a change to bold or dim opens `cell.rs`, not a 1,560-line
    root.
 
-B costs more than A: five more files and twelve `pub(super)` keywords. It would still be the choice
+B costs more than A: five more files and thirteen `pub(super)` keywords. It would still be the choice
 at equal cost, so the recommendation is not about effort.
 
+The lane built B while this waits, so a yes needs no rework. It found one more item than counted
+above: `Vt::sgr` builds an `Attr` with struct-update syntax, which needs every field visible,
+`flags` included. That keyword is in the thirteen.
+
 **If no:** the lane takes A, which is a subset of B. `vt.rs`, `cell.rs`, `damage.rs`, `geometry.rs`
-and `status.rs` fold back into `lib.rs`, and the twelve keywords go.
+and `status.rs` fold back into `lib.rs`, and the thirteen keywords go.
 
 ## What it does not decide
 
