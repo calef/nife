@@ -400,13 +400,6 @@ place instead of moving text between two systems. Numbers 68 to 73 are the six t
 | 281 | DECIDED | [The kernel's user-mode file splits into child modules of `user`](0281-the-kernels-user-mode-file-splits-into-child-modules-of-user.md) |
 | 282 | DECIDED | [When a file is split, the parent becomes an index](0282-when-a-file-is-split-the-parent-becomes-an-index.md) |
 | 283 | DECIDED | [A function is held to 100 code lines by a lint ratchet](0283-a-function-is-held-to-100-code-lines-by-a-lint-ratchet.md) |
-<<<<<<< HEAD
-| 281 | DECIDED | [The kernel's user-mode file splits into child modules of `user`](0281-the-kernels-user-mode-file-splits-into-child-modules-of-user.md) |
-=======
-| 280 | DECIDED | [The swish-check harness splits into submodules, with its script in one](0280-the-swish-check-harness-splits-into-submodules-with-its-script-in-one.md) |
->>>>>>> origin/main
-| 282 | DECIDED | [When a file is split, the parent becomes an index](0282-when-a-file-is-split-the-parent-becomes-an-index.md) |
-| 283 | DECIDED | [A function is held to 100 code lines by a lint ratchet](0283-a-function-is-held-to-100-code-lines-by-a-lint-ratchet.md) |
 
 Two blocks that lived among the decisions are not decisions and moved out with the split, the same
 way milestone 76 moved four essays out of the roadmap: [the open design
