@@ -243,17 +243,17 @@ fn help_is_a_builtin_and_everything_else_is_a_program() {
 /// [`UserVerb::Usage`], so a line the list could not hold never reaches it.
 #[test]
 fn user_takes_suspend_or_resume_and_one_name() {
-    let Command::User(tail) = parse(b"user  suspend  chris ") else {
+    let Command::User(tail) = parse(b"user  suspend  alice ") else {
         panic!("`user` is not its own command");
     };
-    assert_eq!(user_verb(tail), UserVerb::Suspend(b"chris"));
-    assert_eq!(user_verb(b"resume corinne"), UserVerb::Resume(b"corinne"));
+    assert_eq!(user_verb(tail), UserVerb::Suspend(b"alice"));
+    assert_eq!(user_verb(b"resume bob"), UserVerb::Resume(b"bob"));
     for bad in [
         &b""[..],
         b"suspend",
         b"suspend two names",
-        b"delete chris",
-        b"suspend #chris",
+        b"delete alice",
+        b"suspend #alice",
         b"resume seventeen-bytes!!",
     ] {
         assert_eq!(

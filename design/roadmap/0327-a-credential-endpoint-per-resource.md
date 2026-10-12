@@ -12,7 +12,7 @@ needs_person: no
 Filed 2026-09-03 as an unnumbered proposal by the milestone 247 sweep,
 from milestone 54's block; numbered 2026-09-19 by milestone 433. Premise re-checked 2026-09-19 and
 it holds. `crates/credential_protocol`'s `verify::VERIFY` is still one opcode whose request carries
-the identity in the shared page (`place(&mut page, b"corinne", b"hunter2", verify::VERIFY)`), so a
+the identity in the shared page (`place(&mut page, b"bob", b"hunter2", verify::VERIFY)`), so a
 holder of a verify endpoint still chooses which record to test. Nothing has narrowed the wire since;
 the only change in that crate was the 2026-08-30 removal of `NTLM_PROOF` with the SMB
 implementation, which reduced the store to one kind of secret and left the addressing alone.

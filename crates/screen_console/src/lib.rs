@@ -126,9 +126,9 @@
 //!   defect from a photograph of a halted machine that had been displaying text correctly, and the
 //!   lesson taken was to name what a photograph can and cannot settle.
 //! - **Nothing here is proved on real silicon.** It is proved on the host and under OVMF. A
-//!   framebuffer that works under QEMU's emulated adapter is not a framebuffer that works on
-//!   Graeme's laptop, and `notes/serial-less-output.md` carries the bench procedure that would
-//!   settle it.
+//!   framebuffer that works under QEMU's emulated adapter is not a framebuffer that works on a
+//!   family laptop with no serial port, and `notes/serial-less-output.md` carries the bench
+//!   procedure that would settle it.
 //! - **The right-hand and bottom edges are never painted** when the screen is not a whole number of
 //!   cells. 1280 is not a multiple of 7, so a 1280-pixel-wide screen owns 182 columns and leaves
 //!   six pixels of whatever the firmware last drew. The same is true of `display_terminal`'s

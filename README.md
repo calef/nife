@@ -16,7 +16,7 @@ machine-checked proofs. Many agents build it in parallel lanes and the architect
 
 <img src="art/cobble-realistic.jpg" alt="Cobble, the nife mascot: a stone golem with red eyes and mossy shoulders, holding a gear" width="300">
 
-*Cobble, guardian of the machinery, designed by Clay ([notes/mascot.md](notes/mascot.md)).*
+*Cobble, guardian of the machinery, designed by calef's kid ([notes/mascot.md](notes/mascot.md)).*
 
 [![CI](https://github.com/nifeos/nife/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/nifeos/nife/actions/workflows/ci.yml)
 The badge is green only when every check `script/ci-build --list` names passes on `main`;

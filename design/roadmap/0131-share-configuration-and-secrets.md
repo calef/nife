@@ -41,7 +41,7 @@ Nothing is configurable. Changing anything about a share means editing Rust and 
 |---|---|
 | Which behavior (fixture, read-only, read-write, authenticated) | a `--features` flag choosing one of four numbered constants in `user/src/smb_server.rs` |
 | What is served | the whole RedoxFS image; there is no "this directory is a share" notion at all |
-| The identity | four constants in `cred_proto::fixture`: resource `backups-chris`, user `User`, domain `Domain`, password `Password` |
+| The identity | four constants in `cred_proto::fixture`: resource `backups-alice`, user `User`, domain `Domain`, password `Password` |
 | Which resource the adapter authenticates against | the same constant, compiled in and **named in every request** |
 | The port | `127.0.0.1:10445`, fixed, which is why two serve boots on one machine collide |
 
@@ -80,7 +80,7 @@ a live copy of the same shape. A share document is the same move one service ove
    than it needs: it is choosing which record in the store to ask about, and nothing structural stops
    it asking about another. `caps` on that adapter cannot show which credential it reaches, because
    the answer is "whichever one it types". If a document says share `backups` uses resource
-   `backups-chris`, then init mints an endpoint that means exactly that credential, the request
+   `backups-alice`, then init mints an endpoint that means exactly that credential, the request
    carries only a challenge and a proof, and the name is not refused but unsayable, because there is
    no field to put it in. That is §27's "the endpoint IS the capability" carried through the one
    place `cred_proto` does not yet carry it, and its own header already argues the general case:

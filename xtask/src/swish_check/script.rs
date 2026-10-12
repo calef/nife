@@ -873,12 +873,12 @@ pub(super) const SWISH_CHECK_SCRIPT: &[Line] = &[
     // root, the file service's, in the format `login` reads at a login and at start-up; the kernel
     // suite's `login_tests` prove what it does with it. Here: the
     // two verbs answer, the file is where `login` looks, and a malformed line changes nothing.
-    line(0, "user suspend chris", &["suspended chris"]),
+    line(0, "user suspend alice", &["suspended alice"]),
     line(0, "ls", &["suspended"]),
-    line(0, "user resume chris", &["resumed chris"]),
+    line(0, "user resume alice", &["resumed alice"]),
     line(
         0,
-        "user delete chris",
+        "user delete alice",
         &["user suspend <name> | user resume <name>"],
     ),
     // **The owner vouches for a local build** (DECISIONS §221 (the boot prompt is the owner's
