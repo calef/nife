@@ -19,7 +19,7 @@ use crate::scanout::{HostLoad, ScanoutReferee, cargo_test_with_scanout_check};
 use crate::uefi::{uefi_boot, uefi_test};
 use crate::{RELEASE, RISCV_TARGET, RUNNER, TARGET, X86_TARGET, time_record, user};
 
-/// The architecture legs `test` should run: both by default, one when `--arch` names it.
+/// The architecture legs `test` should run: all three by default, the ones `--arch` names otherwise.
 ///
 /// **`--arch` did not exist before milestone 59**, and this is the correction worth stating: the
 /// milestone brief said to follow how it "already threads through", and nothing in the tree parsed
@@ -33,35 +33,85 @@ use crate::{RELEASE, RISCV_TARGET, RUNNER, TARGET, X86_TARGET, time_record, user
 /// `self != the_other_one`, which is correct for exactly two variants and answers `true` for every
 /// leg the moment there is a third. That shape is the same default-arm trap `crates/elf`'s
 /// `EXPECTED_MACHINE` fell into on the same day, so both are now explicit `matches!`.
+///
+/// **It is a set, not an enum, since 2026-10-12 (UTC)** (lane maintainer/split-test-job, #1930),
+/// because CI's suite runs as two jobs and one of them runs two legs: `--arch aarch64,riscv64`.
+/// An enum would need a variant per combination; three flags have no default arm to fall into. The
+/// constants keep the four values every other caller names.
 #[derive(Clone, Copy, PartialEq)]
-pub(crate) enum ArchLegs {
-    All,
-    Aarch64,
-    Riscv64,
-    X86_64,
+pub(crate) struct ArchLegs {
+    aarch64: bool,
+    riscv64: bool,
+    x86_64: bool,
 }
 
 impl ArchLegs {
+    pub(crate) const ALL: ArchLegs = ArchLegs {
+        aarch64: true,
+        riscv64: true,
+        x86_64: true,
+    };
+    pub(crate) const AARCH64: ArchLegs = ArchLegs {
+        aarch64: true,
+        riscv64: false,
+        x86_64: false,
+    };
+    pub(crate) const RISCV64: ArchLegs = ArchLegs {
+        aarch64: false,
+        riscv64: true,
+        x86_64: false,
+    };
+    pub(crate) const X86_64: ArchLegs = ArchLegs {
+        aarch64: false,
+        riscv64: false,
+        x86_64: true,
+    };
+
+    /// `--arch`'s value as `test` reads it: one architecture or a comma-separated list of them.
+    /// A name that is not an architecture, or an empty entry, is an error naming it, so a typo
+    /// cannot quietly drop a leg. Name: provisional (lane maintainer/split-test-job, 2026-10-12 UTC).
+    pub(crate) fn parse_list(value: &str) -> Result<ArchLegs, String> {
+        let mut legs = ArchLegs {
+            aarch64: false,
+            riscv64: false,
+            x86_64: false,
+        };
+        for name in value.split(',') {
+            match name {
+                "aarch64" => legs.aarch64 = true,
+                "riscv64" => legs.riscv64 = true,
+                "x86_64" => legs.x86_64 = true,
+                other => {
+                    return Err(format!(
+                        "--arch {other:?} is not an architecture (aarch64, riscv64 or x86_64, \
+                         or a comma-separated list of them)"
+                    ));
+                }
+            }
+        }
+        Ok(legs)
+    }
+
     /// Name: provisional, flagged 2026-09-24 by the boolean-predicate pass
     /// (design/naming/boolean-predicates-worklist.md). It does not yet follow the Rust predicate
     /// rule calef ratified 2026-09-24; recommended `includes_aarch64`, because `is_aarch64` would
-    /// be false for `All`, which also answers yes.
+    /// be false for `ALL`, which also answers yes.
     pub(crate) fn aarch64(self) -> bool {
-        matches!(self, ArchLegs::All | ArchLegs::Aarch64)
+        self.aarch64
     }
     /// Name: provisional, flagged 2026-09-24 by the boolean-predicate pass
     /// (design/naming/boolean-predicates-worklist.md). It does not yet follow the Rust predicate
     /// rule calef ratified 2026-09-24; recommended `includes_riscv64`, because `is_riscv64` would
-    /// be false for `All`, which also answers yes.
+    /// be false for `ALL`, which also answers yes.
     pub(crate) fn riscv64(self) -> bool {
-        matches!(self, ArchLegs::All | ArchLegs::Riscv64)
+        self.riscv64
     }
     /// Name: provisional, flagged 2026-09-24 by the boolean-predicate pass
     /// (design/naming/boolean-predicates-worklist.md). It does not yet follow the Rust predicate
     /// rule calef ratified 2026-09-24; recommended `includes_x86_64`, because `is_x86_64` would be
-    /// false for `All`, which also answers yes.
+    /// false for `ALL`, which also answers yes.
     pub(crate) fn x86_64(self) -> bool {
-        matches!(self, ArchLegs::All | ArchLegs::X86_64)
+        self.x86_64
     }
 }
 
@@ -71,10 +121,14 @@ impl ArchLegs {
 /// with no emulator, so they fail fast and cheap. Only once they pass is it worth spending twenty
 /// seconds booting QEMU. See DECISIONS §7.
 ///
-/// Four flags narrow what runs, and all four default to today's behaviour:
+/// Five flags narrow what runs, and all five default to today's behaviour:
 ///
 /// - `--arch aarch64|riscv64|x86_64` runs one ISA leg instead of all three (milestone 59; the
-///   third arrived with milestone 161).
+///   third arrived with milestone 161 (the x86_64 kernel port)). A comma-separated list runs those legs, in the suite's own
+///   order (`--arch aarch64,riscv64`, 2026-10-12 UTC, for CI's two suite jobs).
+/// - `--no-host` skips the host pass (2026-10-12 UTC, name provisional). CI's `test-x86_64` row
+///   passes it because `test-aarch64-riscv64` has already run that pass on the same commit, and
+///   running it twice cost about two minutes of the shorter job for nothing.
 /// - `--cpu <model>` picks the emulated CPU model (`NIFE_CPU`, read by both QEMU runners).
 ///   Unset means `cortex-a72` on aarch64 and `rv64` on riscv64, exactly as before (milestone 59).
 /// - `--hvf` runs the aarch64 kernel leg on the physical Apple Silicon core (milestone 81). It is
@@ -100,37 +154,37 @@ impl ArchLegs {
 /// ```
 ///
 /// `script/cpu_matrix` is the caller that needs the first two (notes/cpu-models.md); `script/ci-build`
-/// is the caller that needs the third.
+/// is the caller that needs the third, and the list form of `--arch` and `--no-host`.
 pub(crate) fn test() -> bool {
     // Milestone 81. Read before `--arch`, because it constrains it: Hypervisor.framework runs the
     // host's own ISA and this host is aarch64, so there is no riscv64 leg to accelerate and asking
     // for one is a mistake worth naming rather than ignoring.
     let hvf = std::env::args().any(|a| a == "--hvf");
     let legs = match flag_value("--arch").as_deref() {
-        None if hvf => ArchLegs::Aarch64,
-        None => ArchLegs::All,
-        Some("aarch64") => ArchLegs::Aarch64,
-        Some("riscv64") if hvf => {
-            eprintln!(
-                "test: --hvf is aarch64 only (Hypervisor.framework runs this host's own ISA; riscv64 \
-                 has no equivalent until the board lands)"
-            );
-            return false;
-        }
-        Some("riscv64") => ArchLegs::Riscv64,
-        Some("x86_64") if hvf => {
-            eprintln!(
-                "test: --hvf is aarch64 only (Hypervisor.framework runs this host's own ISA, and \
-                 this host is aarch64)"
-            );
-            return false;
-        }
-        Some("x86_64") => ArchLegs::X86_64,
-        Some(other) => {
-            eprintln!("test: --arch {other} is not an architecture (aarch64, riscv64 or x86_64)");
-            return false;
-        }
+        None if hvf => ArchLegs::AARCH64,
+        None => ArchLegs::ALL,
+        Some(list) => match ArchLegs::parse_list(list) {
+            Ok(legs) => legs,
+            Err(why) => {
+                eprintln!("test: {why}");
+                return false;
+            }
+        },
     };
+    if hvf && legs.riscv64() {
+        eprintln!(
+            "test: --hvf is aarch64 only (Hypervisor.framework runs this host's own ISA; riscv64 \
+             has no equivalent until the board lands)"
+        );
+        return false;
+    }
+    if hvf && legs.x86_64() {
+        eprintln!(
+            "test: --hvf is aarch64 only (Hypervisor.framework runs this host's own ISA, and \
+             this host is aarch64)"
+        );
+        return false;
+    }
     // The suite's userspace carries the confinement tests' attacker roles; no other boot's does.
     // Set before any leg builds its archive, and for the whole run, so a `--test` falsification
     // replay gets them too. See `CONFINEMENT_ATTACKERS`.
@@ -227,7 +281,17 @@ pub(crate) fn test() -> bool {
     // `cargo test <name>`, which is what milestone 210 exists to give the kernel, and running the
     // whole host pass (about 72 s here) to reach one kernel test would keep most of the cost the
     // flag is meant to remove.
-    if !hvf && filter.is_none() {
+    //
+    // `--no-host` says so in the log, like `--hvf` does, so a transcript cannot be read as one
+    // that ran the host pass.
+    let no_host = std::env::args().any(|a| a == "--no-host");
+    if no_host && !hvf && filter.is_none() {
+        eprintln!(
+            "--- host tests, the vendored redoxfs round trip and the TLS graph's host tests: SKIPPED \
+             under --no-host ---"
+        );
+    }
+    if !hvf && !no_host && filter.is_none() {
         eprintln!("--- host tests (pure logic, no emulator) ---");
         // Every host crate, by asking cargo which ones those are instead of listing them.
         //
@@ -1179,4 +1243,22 @@ pub(crate) fn undefined_behavior_check() -> bool {
     let extra: Vec<String> = std::env::args().skip(2).collect();
     args.extend(extra.iter().map(String::as_str));
     run("cargo", &args)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ArchLegs;
+
+    #[test]
+    fn a_list_selects_exactly_the_legs_it_names() {
+        let legs = ArchLegs::parse_list("aarch64,riscv64").unwrap();
+        assert!(legs.aarch64() && legs.riscv64() && !legs.x86_64());
+        assert!(ArchLegs::parse_list("x86_64").unwrap() == ArchLegs::X86_64);
+    }
+
+    #[test]
+    fn a_misspelled_or_empty_entry_is_refused_rather_than_dropped() {
+        assert!(ArchLegs::parse_list("aarch64,risc64").is_err());
+        assert!(ArchLegs::parse_list("aarch64,").is_err());
+    }
 }
