@@ -282,9 +282,9 @@ kernel/src/retype_fault.rs:1	48
 kernel/src/revoke.rs:443	44
 kernel/src/revoke.rs:656	42
 kernel/src/revoke.rs:940	56
-kernel/src/sched.rs:291	95
-kernel/src/sched.rs:453	45
-kernel/src/sched.rs:1821	45
+kernel/src/sched.rs:1294	45
+kernel/src/sched/ipc_tables.rs:32	95
+kernel/src/sched/ipc_tables.rs:194	45
 kernel/src/screen.rs:1	68
 kernel/src/self_test.rs:1	66
 kernel/src/soak.rs:1	130
