@@ -60,8 +60,10 @@ holds the per-row table and the refusal log.
 - Refusal log. Two external safety-system stops during orientation, one per attempt, and the
   first attempt's independence slip. None on a shipped path.
 
-By criterion (c)'s letter this is a clean pass by an Anthropic model, so the count would be 1.
-Whether a pass with 31 of 34 rows read counts is calef's to rule.
+It does not count toward criterion (c). calef ruled on #2010 (2026-10-12 UTC), option (b): with
+only 3 of 34 rows booted the count stays 0, and the next pass's brief sets a minimum of booted
+rows. That brief is `briefs/confinement-outsider-pass.md`, with a floor of 18 rows, provisional
+until calef confirms the number.
 
 ## Done means
 
@@ -72,6 +74,9 @@ Whether a pass with 31 of 34 rows read counts is calef's to rule.
   correctable, and verdicts are the architect's). Moving the color stays calef's.
 
 ## Follow-on
+
+- **Done.** The next pass's brief is `briefs/confinement-outsider-pass.md`, with the booted-row
+  floor calef's ruling asked for. The floor of 18 is provisional until he confirms it.
 
 - **Milestone 824.** When it lands, `seventh_pass_retype_tests` goes red on purpose; its `GRANT`
   assertions flip with the existing frame-only characterization.

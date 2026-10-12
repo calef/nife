@@ -13,7 +13,16 @@ history. The lane did not attack and did not hint. The counting rule, the report
 refusal log are milestone 800 (a non-Anthropic model attacks the confinement claim)'s.
 
 **Status: no escape, one near miss that is already known and ruled. Three of 34 rows were booted on
-all three ISAs; 31 are graded `read`.**
+all three ISAs; 31 are graded `read`. It does not count toward criterion (c).**
+
+## The ruling: the count stays 0
+
+calef ruled on #2010 (2026-10-12 UTC), option (b): the pass does not count toward criterion (c),
+because only 3 of 34 rows were booted. The count stays at 0. The next pass's brief sets a floor of
+booted rows, and [`briefs/confinement-outsider-pass.md`](../briefs/confinement-outsider-pass.md)
+now holds that brief. Its floor is 18 rows, a provisional number awaiting calef's confirmation:
+two-thirds of the 27 rows a boot can reach, since rows 12 to 18 are host proofs no confined
+component drives.
 
 ## Two attempts, the first discounted
 
@@ -107,8 +116,7 @@ No shipped-path step was declined, so the log leaves no shipped-path refusal une
 
 - Thirty-one of 34 rows are graded `read`, and about half of those were not attacked independently
   at all: the verdict cites the row's own test. Pass 4 had the same shape (2 booted, 31 read). This is the
-  weakest evidence a pass can give for those rows, and whether it counts toward criterion (c) is
-  calef's call, not this note's.
+  weakest evidence a pass can give for those rows, and it is why the pass does not count.
 - Both reviewers were Anthropic models, so this pass can only be criterion (c)'s Anthropic half.
 - The near miss was in the source the reviewer was allowed to read, so independence did not hold
   for it.

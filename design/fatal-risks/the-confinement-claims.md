@@ -322,8 +322,11 @@ objects are the holder's own. The other 31 rows are graded `read`, about half of
 the row's own cited test. The refusal log holds two external safety-system stops during
 orientation and the first reviewer's independence slip, none on a shipped path.
 
-By criterion (c)'s letter this is a clean pass by an Anthropic model. Whether a pass this read-heavy
-counts is calef's to rule. The verdict is unchanged, and moving the color stays calef's.
+It does not count toward criterion (c). calef ruled on #2010 (2026-10-12 UTC), option (b): with
+only 3 of 34 rows booted the count stays 0. The next pass's brief,
+[`briefs/confinement-outsider-pass.md`](../../briefs/confinement-outsider-pass.md), sets a floor of
+booted rows (18, provisional until calef confirms it). The verdict is unchanged, and moving the
+color stays calef's.
 
 ### Added 2026-10-03: row 27's hand-off was tested on one of the two `x86_64` boots
 
