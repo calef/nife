@@ -1652,6 +1652,21 @@ mod tests {
             is_64: false,
         };
         assert_eq!(narrow.data(), 0x58);
+        // A 32-bit MSI capability says so, and a function whose status has no capability list
+        // is not walked even when its pointer byte happens to lead to one.
+        let mut read32 = |_: Bdf, o: u64| match o {
+            COMMAND => u32::from(STATUS_CAP_LIST) << 16,
+            CAP_PTR => 0x50,
+            0x50 => u32::from(CAP_ID_MSI),
+            _ => 0,
+        };
+        assert_eq!(msi_cap(bdf, &mut read32), Some(narrow));
+        let mut unlisted = |_: Bdf, o: u64| match o {
+            CAP_PTR => 0x50,
+            0x50 => u32::from(CAP_ID_MSI),
+            _ => 0,
+        };
+        assert_eq!(msi_cap(bdf, &mut unlisted), None);
     }
 
     /// A function with no capability list at all answers `None` rather than walking from a
