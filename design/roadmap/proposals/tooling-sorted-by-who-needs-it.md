@@ -163,12 +163,17 @@ So class 2 should become a reusable toolkit only in its generic half. The nife-r
 | 1 | Stays in nife. Programs leave with their packages under 756 and milestone 691 (packages move out of this repository, one per pull request), as `build-speedtest1.sh` already proposes to. |
 | 2, nife records | Stays in nife. |
 | 2, generic checks | Into 887's template repository once 887 is built, consumed by nife at a pin like any crate repository. Until then, nothing moves. |
-| 3, governance mechanism | Fork 1. |
+| 3, governance mechanism | The rules stay in each repository as data; the bots become reusable workflows in 887's template (Fork 1, ruled A). |
 | 3, the rest | One new public repository (provisionally `nifeos/fleet`), consumed by nife at a pin. Forks 2 and 4. |
 | 3, method metrics | Fork 3. |
 | 4 | The two constants go to an environment variable with no default, and their values to the lab record. |
 
-## Fork 1: where the architect governance sits
+## Fork 1, ruled A: where the architect governance sits
+
+Ruled by calef on 2026-10-12 (UTC), relayed by the maintainer session on pull request #1976: *"A"*.
+Each repository keeps its own architect rules as in-tree data, and the label, hold and
+`record-ruling` bots become reusable workflows in 887's template. The options below stay as the
+record of what was weighed. The pull request records one ruling once all four forks are answered.
 
 Background. §88 (`needs-architect` as a check) made the hold a required status check. The machinery
 is eight helpers, four workflows and `script/record-ruling`: `architect-label-rules.py` (1,496 lines) decides from a diff
@@ -186,8 +191,7 @@ Recommendation: A. Who needs an architect, and for which paths, is a fact about 
 its architect, so it stays with the repository. How a label gets applied is the same everywhere.
 The fleet's drain also reads `open-question.jq` and the label rules, so under A it consumes the
 template at a pin like any repository. Reversible until 887 is built, since nothing yet consumes
-the template. If calef says no, B is the
-fallback and 887 grows a copy.
+the template. Had calef said no, B was the fallback and 887 would have grown a copy.
 
 ## Fork 2: one new public repository or several
 
