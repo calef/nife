@@ -40,7 +40,6 @@ kernel/src/arch/aarch64/mod.rs	161
 kernel/src/arch/mod.rs	95
 kernel/src/arch/riscv64/mod.rs	148
 kernel/src/arch/x86_64/mod.rs	203
-kernel/src/lib.rs	1278
 kernel/src/reboot.rs	170
 kernel/src/sched.rs	624
 kernel/src/syscall.rs	1104

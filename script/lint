@@ -240,7 +240,7 @@ cargo clippy -p components --features confinement_attackers --target aarch64-unk
 #   `bench` is one of the two exceptions (DECISIONS §121's amendment, the TSS I/O-bitmap switch
 #   cost); `cycle_counter_grant` is the other, and its own line below says why it is a different
 #   case rather than the same one. Of `bench`: milestone
-#   161 item 4 brought the scheduler up on this ISA, `kernel_main`'s x86_64 arm now diverges into
+#   161 item 4 brought the scheduler up on this ISA, and `x86_64_boot` now diverges into
 #   `bench::run()` the same way the other two do, and it passes this same clippy line clean. Linted
 #   on its own line below rather than folded into the two-ISA loop above, because that loop's
 #   `--target` list is aarch64/riscv64 only and widening it would also run every OTHER feature in the
@@ -591,10 +591,11 @@ echo "CFI: every hand-written .s file with an exported symbol carries call-frame
 
 # The machine description prints on every boot (milestone 267).
 #
-# `kernel/src/lib.rs`'s `print_machine_description` is the bring-up transcript: paging, the ISA,
-# firmware, the cores, the timer, the memory map. On xenon there was no serial console this project
-# could read at first light, so those lines *were* the record, photographed off a monitor, and they
-# are what diagnosed the local-APIC collision and the PCI BAR window landing in RAM.
+# `print_machine_description` (kernel/src/machine_description.rs) is the bring-up transcript:
+# paging, the ISA, firmware, the cores, the timer, the memory map. On xenon there was no serial
+# console this project could read at first light, so those lines *were* the record, photographed off
+# a monitor, and they are what diagnosed the local-APIC collision and the PCI BAR window landing in
+# RAM.
 #
 # Before milestone 267 they shared one block with the milestone tour, under a single
 # `#[cfg(not(any(feature = "shell", feature = "initboot")))]` sitting in the middle of it (quoted as
@@ -612,10 +613,11 @@ echo "==> the machine description is not gated on a boot mode"
 python3 - <<'M267EOF' || exit 1
 import re, sys
 
-src = open("kernel/src/lib.rs", encoding="utf8").read()
+src = open("kernel/src/machine_description.rs", encoding="utf8").read()
 start = src.find("fn print_machine_description")
 if start < 0:
-    print("lint: kernel/src/lib.rs has no `print_machine_description`.", file=sys.stderr)
+    print("lint: kernel/src/machine_description.rs has no `print_machine_description`.",
+          file=sys.stderr)
     print("      Milestone 267 (the milestone tour is three things wearing one name) made the",
           file=sys.stderr)
     print("      machine description a function so that nothing could gate half of it. If it was",
