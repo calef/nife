@@ -23,69 +23,18 @@ The lens exists, the template exists, and the disposition vocabulary exists
 may raise forks, which is what an audit is for; raising them is not the same as this milestone
 needing one to start.
 
-## What the existing audit actually did, because "on its own terms" is the whole scope
+## What the existing audit actually did
 
-`notes/arch-audit.md` is not a review. Reading it as "somebody read the arch tree and looked for
-bugs" is what would make this milestone unpickable, so the shape is worth stating precisely.
-
-It took exactly one bug class, stated generally before any code was read, under that note's
-heading *The bug class, stated generally* (reproduced without an attribution line because it is a
-block quote there too, and `script/citations` cannot match a quote of a quote past the source's own
-`>` prefixes):
-
-> Kernel code that stages state in single-copy hardware registers, or in any per-CPU location that
-> the exception path itself clobbers, across more than one instruction, while an exception,
-> interrupt, or preemption can land in the middle.
-
-It asked four fixed questions of every candidate, and the fourth is the one that does the work:
-(a) what is the window, (b) what can land in it, (c) what state is corrupted if something does, and
-(d) **is it reachable**, or is it a window that exists in the instruction stream that nothing can
-ever land in. Two of the three findings turned entirely on (d), and one of them (the RISC-V
-`sstatus` mask) was reported as a *record* defect rather than a code defect: the code was correct,
-and the comment claiming it was correct "by construction" was false on that ISA.
-
-It recorded the cleared candidates too, at length, and that section is longer than the findings
-section. The stated reason is that "we looked and it is fine" is the other half of an audit, and
-that each cleared candidate is a place a future change could break something. A pass that reports
-three findings and nothing else has thrown away most of what it produced.
-
-It established structural facts that bound the search, and these are the cheapest thing in the
-whole method. Two, on the ISAs it read: there is exactly one `eret` and exactly one `sret` in the
-kernel, both inside the restore sequence, so there is no second way out of the kernel to audit; and
-there are exactly two places that fabricate a trap frame, one per ISA. Establishing those took
-minutes and made the rest of the read finite.
-
-It named its own general lesson, which is the finding that outlived the three bugs: when the
-same fix is applied to two architectures, check whether it is load-bearing for the same reason on
-both. Finding 1 was a complete fix on aarch64 and a partial one on RISC-V, and the symmetry of the
-two patches is what concealed it. Finding 3 was the same shape from the other side: one ISA quietly
-getting a guarantee from its hardware (the GIC's write-1-to-set enables) that the other does not.
-
-**What it deliberately did not cover.** It read `kernel/src/arch/` plus the code on the other side of
-the seam that the class reaches into (`drivers/gic.rs`, `drivers/plic.rs`, `sched.rs`'s switch path,
-`cpu.rs`, `smp.rs`'s `secondary_main`, and `user.rs`'s trap-frame placement, read only). It did not
-read for memory ordering, for integer overflow, for time-of-check-to-time-of-use, or for anything
-else; those became milestone 43's lenses precisely because this one did not take them. It closes by
-saying so: an audit by reading finds what the reader thinks to look for, and the bug that
-prompted it was found by a failing test rather than by any of the earlier readings of that same
-file.
+`notes/arch-audit.md` is not a review. It took one bug class, stated before any code was read,
+and asked four fixed questions of every candidate, the last being whether the window is reachable.
+It recorded cleared candidates as well as findings, and bounded the search with structural facts.
+It read for nothing else, and says so. [`method.md`](0187-x86-64-arch-audit/method.md) holds the
+method in full and how the line counts below were taken.
 
 ## The scale, measured
 
-How this was counted, since "lines" is ambiguous and the number should reproduce:
-
-```sh
-$ find kernel/src/arch/x86_64 -type f -exec cat {} + | wc -l
-```
-
-Every file in the directory, `.rs` and `.s` alike, counting physical lines including blanks and
-comments. That is not SLOC, and for an audit by reading it is the right measure: a reader reads the
-comments, and on this tree the comments are where the hardware constraints are written down.
-
-The check that this is also the method the original note used: the same command over
-`kernel/src/arch/aarch64` and `kernel/src/arch/riscv64` at commit `8334d0ba`, the commit that added
-`notes/arch-audit.md`, gives **6,202 lines**, against that note's own "the whole arch tree is about
-6,200 lines". The figure reproduces, so the comparison below is like for like.
+Counted as physical lines of every file, the same way the original note counted; the command and
+its check against that note are in [`method.md`](0187-x86-64-arch-audit/method.md).
 
 | | Files | Lines | State |
 |---|---|---|---|
@@ -195,102 +144,18 @@ unconditionally. So the same question reaches x86_64 with the expensive half alr
 answer may well differ. Inheriting the riscv64 disposition would be the exact mistake finding 1
 recorded as its general lesson.
 
-## The cadence question, and why it is a second milestone rather than half of this one
+## The cadence question: a second milestone, not half of this one
 
-The sweep's second claim is that this gap will never surface on its own, because "the audit cadence
-counts elapsed time and shipped components and has no notion of an architecture". That sentence is
-in pull request #568's body and in none of the files it landed, which is the record shape
-`AGENTS.md` warns about most directly: a pull request body is read while the diff is open and never
-again. This block is the tracked home it did not have.
+Finding 8's sweep also claimed, in pull request #568's body and in no file, that the audit cadence
+"has no notion of an architecture". Checked against `script/audits`, it holds: an entire ISA moved
+none of the counted triggers, and the cadence tracks an audit's kind rather than its lens.
 
-The claim was checked here against `script/audits`, `design/audit-reports/README.md` and
-`.github/workflows/audit-cadence.yml`. It holds, and it is worse than stated in one respect and
-better in another.
+The decision: split. This milestone is the reading half, and teaching the cadence what an
+architecture is goes to a second milestone, proposed provisionally for calef to mint. The strongest
+reason is that the gate must not be written by the lane that satisfies it. Neither blocks the other.
 
-Worse: the counted triggers are measurably blind to an ISA. `script/audits` has four,
-DECISIONS §74 (audits run on change, not on the calendar): milestones BUILT, components
-(`crates/*/` plus `[[bin]]` targets), ABI constants, and external packages. At commit `797a20ac`,
-which added fourteen files under `kernel/src/arch/x86_64/` in a 2,241-line commit, every one of the
-four was unchanged: built 97 to 97, components 122 to 122, ABI constants 51 to 51, external packages
-108 to 108. An
-architecture adds no crate, no program, no syscall constant, and no dependency, so the only counter
-it can ever move is `milestones built`, by one, when milestone 161's row flips from PARTIAL. Against
-a security cadence that fires at 15, an entire instruction set is worth one fifteenth of a
-trigger. The script's own BUGS predicts this in general terms ("a change that lands as neither a
-milestone nor a component moves no number here") without noticing that the largest single addition
-to the TCB in the project's history is that shape.
-
-**Worse still: the cadence's unit is the kind, not the lens.** `notes/arch-audit.md` is on record as
-a `security` audit dated 2026-07-29. Three later `security` audits have run, so `script/audits`
-prints `security last 2026-08-17` and the arch-and-assembly lens's age is invisible. The `lens` cell
-is free text; `--check` validates only that it is non-empty, under a message that reads "the value
-of an audit is the lens the last one lacked, so a row without one cannot be read for what to do
-next". That is the field holding the information, and nothing ever reads it. In `AGENTS.md`'s
-ladder this is a rung-2 gate firing reliably on the wrong question, which is the shape that reports
-green over a real hole.
-
-Better: one trigger does reach it, by accident, under a question about something else. The
-`security` kind carries an uncountable judgment question, printed on every run: "has this booted on
-a new machine class (a board, a cloud) since the last audit?" A reader could answer yes for x86_64
-under q35. But a machine class and an instruction set are different axes (a Raspberry Pi is a new
-machine class on an already-audited ISA), the arch layer landed after the most recent security
-audit so the question has not yet been put to anyone, and the script's own BUGS calls this rung four
-and "the weakest part of the mechanism". A mechanism that catches the right thing under the wrong
-question, once, if somebody reads the output, is not a mechanism.
-
-### The decision: split, and this milestone is the reading half
-
-Four reasons, strongest first.
-
-**1. The gate must not be written by the lane that satisfies it.** `AGENTS.md`'s first principle
-says a gate can be written to pass. A single lane that both teaches the cadence about architectures
-and performs the audit clearing it chooses the trigger's shape knowing what will read green when it
-is done. Two lanes and two pull requests is the cheapest guard available, and it costs nothing.
-
-2. They are different sizes by an order of magnitude, and bundling makes the small one wait.
-The audit is three passes. The cadence change is a cadence row, a judgment entry, and possibly one
-counted trigger: well under a lane. Bundled, the mechanism lands when the last reading pass lands.
-Split, it can land tomorrow, and the tree stops being blind while the audit is still being read.
-
-**3. The cadence change has value even if this audit never happens**, which is the test for whether
-something is its own piece of work. The 59% growth in the audited ISAs' own trees since 2026-07-29
-makes the point with no reference to x86_64 at all: a lens's coverage decays on the architectures it
-*did* cover, and nothing measures that either. A tree that cannot see either kind of decay is broken
-whether or not anyone reads x86_64.
-
-**4. Part of the fix is not a lane's call.** The obvious shape, giving the arch-and-assembly lens its
-own audit kind, means retroactively reclassifying the 2026-07-29 row in
-`design/audit-reports/README.md` and changing what `script/lint` runs on every pull request. That is
-a global record and a global gate, which `AGENTS.md` assigns to the integrator rather than to a
-lane, and handing it to a lane mid-read is the worst moment to ask.
-
-The one-milestone case, and why the roadmap row answers it. The case is that auditing x86_64
-without fixing the blindness leaves the fourth architecture in the same position. That is an
-argument that both must happen, not that they must be one milestone, and this tree's own mechanism
-for "this must not be forgotten" is a tracked row rather than a bundle. Bundling is rung four in a
-milestone's clothes: it relies on the reading lane remembering the second half.
-
-Ordering: neither blocks the other. If the cadence milestone lands first the story is tidier,
-because its red light is then what this milestone answers. Sequencing them strictly would delay this
-one for no gain, since we already know x86_64 is unread and do not need a mechanism to tell us.
-
-### The second milestone, proposed provisionally
-
-calef mints the number and the title; this is the content, recorded so it has a home rather than
-living in a report.
-
-**Provisional title: teach the audit cadence what an architecture is.** Three questions it decides,
-none of them decided here:
-
-1. Whether the arch-and-assembly lens gets its own audit **kind** with its own cadence row, or
-   whether the existing kinds get an architecture-shaped trigger. The first is a table row; the
-   second is code in `script/audits`.
-2. Whether a counted trigger can be made sensitive to the arch tree at all. Directories under
-   `kernel/src/arch/` is one candidate and fires once per ISA, which is the right frequency for the
-   gap found here. Lines under `kernel/src/arch/` is another and would also catch the 59% decay on
-   the ISAs already read, at the cost of a threshold somebody has to choose.
-3. What to do with the `lens` cell, which is the field that holds the information and the field
-   nothing reads.
+[`the-cadence-question.md`](0187-x86-64-arch-audit/the-cadence-question.md) holds the check, the
+reasons for the split, and the questions the second milestone decides.
 
 ## What this audit cannot find
 
@@ -323,8 +188,8 @@ The rest, specific to this pass:
 - It proves nothing. After this milestone the honest position is what it was after the last one:
   `vectors.s`, `trap.s` and their x86_64 twin are trusted rather than verified, and notes like these
   are how the project pays for that.
-- **It does not re-audit the two ISAs that grew 59% underneath their own audit.** That is named
-  above, measured, and left to the cadence milestone to make visible rather than folded in here.
+- It does not re-audit the two ISAs that grew underneath their own audit (*What this does not
+  decide*).
 - A cleared candidate is cleared as of one commit. The cleared list is the more durable half of
   the output and it is also the half that rots silently, because nothing recomputes it.
 
@@ -346,14 +211,14 @@ The rest, specific to this pass:
 
 ## What this does not decide
 
-Whether the two ISAs that were read stay read. They have grown 3,633 lines since 2026-07-29,
-59%, and re-reading the delta is a second body of work with its own size. It is named here because
-the numbers in *The scale, measured* would mislead without it, and it is left to the cadence
-milestone to make visible rather than folded in: a mechanism that can see an unaudited architecture
+Whether the two ISAs that were read stay read. Re-reading their growth since 2026-07-29 (*The
+scale, measured*) is a second body of work with its own size. It is left to the cadence milestone to
+make visible rather than folded in: a mechanism that can see an unaudited architecture
 should be able to see an audited one that moved, and building it once is cheaper than reading twice.
 
-How the cadence learns about architectures. The three questions under *The second milestone,
-proposed provisionally* are recorded, not answered. Answering them means touching `script/audits`,
+How the cadence learns about architectures. The three questions in
+[`the-cadence-question.md`](0187-x86-64-arch-audit/the-cadence-question.md) are recorded, not
+answered. Answering them means touching `script/audits`,
 the audit index, and what `script/lint` runs on every pull request, and this milestone deliberately
 touches none of the three.
 
@@ -390,6 +255,16 @@ that the other two targets have already had.
 Not started; nothing built yet to carry its own BUGS section. The limits of the work itself are
 under *What this audit cannot find*, above, and are stated in advance on purpose: they are the
 reasons a reader should not treat the resulting note as a clean bill of health.
+
+Stale facts, kept as written (found 2026-10-12, UTC):
+
+- The opening asks that the sweep's own milestone be cited by number once it lands. It is
+  milestone 186 (derive the architecture list), BUILT.
+- "Why this is the highest-value unaudited surface" calls milestone 161 still PARTIAL and says
+  x86_64 has no interactive boot until milestone 182 lands. Both are BUILT, as is milestone 184.
+  [`the-cadence-question.md`](0187-x86-64-arch-audit/the-cadence-question.md) also waits for 161's
+  row to flip.
+- The line counts and "four days" of review time are as of 2026-08-27.
 
 ## Index row
 
