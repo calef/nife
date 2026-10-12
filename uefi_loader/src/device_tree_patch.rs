@@ -204,7 +204,7 @@ pub fn with_initial_ramdisk(
     let h = header(src)?;
     let rsv = rsvmap_len(src, &h)?;
     let strings = &src[h.off_strings..h.off_strings + h.size_strings];
-    let names = initrd_name_offsets(strings, h.size_strings);
+    let names = ramdisk_property_offsets(strings, h.size_strings);
 
     let mut o = Out { buf: out, at: 0 };
     o.bytes(&[0; HEADER_LEN])?; // filled in last
@@ -255,8 +255,8 @@ pub fn with_initial_ramdisk(
     Ok(total)
 }
 
-/// The two initrd property names' offsets in the rewritten strings block, and the names that
-/// have to be appended to it.
+/// The two `linux,initrd-*` property names' offsets in the rewritten strings block, and the names
+/// that have to be appended to it.
 struct NameOffsets {
     start_off: usize,
     end_off: usize,
@@ -264,8 +264,8 @@ struct NameOffsets {
     appended_count: usize,
 }
 
-/// Find or place the two initrd property names in the strings block.
-fn initrd_name_offsets(strings: &[u8], size_strings: usize) -> NameOffsets {
+/// Find or place the two `linux,initrd-*` property names in the strings block.
+fn ramdisk_property_offsets(strings: &[u8], size_strings: usize) -> NameOffsets {
     // Name offsets: reuse the firmware's where the names already exist, append otherwise.
     let mut appended: [&[u8]; 2] = [&[], &[]];
     let mut appended_count = 0;
@@ -290,7 +290,7 @@ fn initrd_name_offsets(strings: &[u8], size_strings: usize) -> NameOffsets {
     }
 }
 
-/// One pass over the structure block, copying it to the output with the initrd pair set.
+/// One pass over the structure block, copying it to the output with the `linux,initrd-*` pair set.
 struct Walk<'a> {
     src: &'a [u8],
     strings: &'a [u8],
@@ -331,7 +331,7 @@ impl Walk<'_> {
         Ok(())
     }
 
-    /// Copy a node's opening, and write the initrd pair first thing inside `/chosen`.
+    /// Copy a node's opening, and write the `linux,initrd-*` pair first thing inside `/chosen`.
     fn begin_node(&mut self, o: &mut Out<'_>) -> Result<(), Error> {
         let src = self.src;
         let at = self.at;
@@ -376,7 +376,7 @@ impl Walk<'_> {
         Ok(())
     }
 
-    /// Copy a property, dropping a stale initrd pair inside `/chosen`.
+    /// Copy a property, dropping a stale `linux,initrd-*` pair inside `/chosen`.
     fn prop(&mut self, o: &mut Out<'_>) -> Result<(), Error> {
         let src = self.src;
         let at = self.at;
