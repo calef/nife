@@ -236,7 +236,7 @@ Public items removed or changed each week: [definitions](interface-stability.md)
 [per crate](project-metrics/interface-stability.md).
 
 <!-- interface-stability: script/metrics writes this -->
-interface, 2026W39 to 2026W42: 274 breaking changes (1025 additions); 5 syscall numbers changed, 0 format bumps; 77% co-change.
+interface, 2026W39 to 2026W42: 279 breaking changes (1028 additions); 5 syscall numbers changed, 0 format bumps; 77% co-change.
 <!-- /interface-stability -->
 
 ## The crates 857 releases
@@ -276,7 +276,7 @@ Each week is read from its own commit, so 2026W39 is the first correction, alrea
 ![Share of Rust lines in files over 2,000](project-metrics/file-size.svg)
 
 <!-- file-size: script/metrics writes this -->
-**File size:** 0 Rust files over 2,000 lines, holding 0.0% of all Rust lines; largest patches/std-nife/overlay/std/src/sys/fs/nife.rs (1,957); 95th percentile 1,246.
+**File size:** 0 Rust files over 2,000 lines, holding 0.0% of all Rust lines; largest crates/pci/src/lib.rs (1,785); 95th percentile 1,194.
 <!-- /file-size -->
 
 ## How it stays current
