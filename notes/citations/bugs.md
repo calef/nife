@@ -202,6 +202,10 @@ That is `script/decisions`' stated non-goal (a row may abbreviate), so a row tha
 index from the blocks, so a roadmap row's title is its block's H1 by construction, and the migration
 found five rows that had drifted.
 
+Resolved since: milestone 582 (a decision's status becomes a field, and the index becomes
+generated) generated the decisions table from each file's H1, and calef retired
+the table on 2026-10-12 (UTC). There are no rows left to drift.
+
 ## The ratchet reads the committed tip, not the working tree, and refuses to pretend otherwise
 
 `--ratchet` diffs against the branch's base and reads each file with `git show`, so a gloss you have

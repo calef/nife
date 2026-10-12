@@ -160,7 +160,7 @@ spent. 2026W29 through 2026W33 are absent, not zero.
 
 ![Architecture decisions by status](project-metrics/decisions.svg)
 
-From `design/decisions/README.md`. The gray band in the first three weeks is decisions that predate
+From `design/decisions/`. The gray band in the first three weeks is decisions that predate
 a status existing at all, counted as having none rather than as `DECIDED`.
 
 ## Names by what the tree records about them
