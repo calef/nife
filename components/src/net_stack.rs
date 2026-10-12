@@ -88,6 +88,10 @@ mod virtio_net_transport;
 #[path = "interface_bring_up.rs"]
 mod interface_bring_up;
 use interface_bring_up::{dhcp_lease, heap_and_interface};
+// Ending a TCP socket or a listener on `CLOSE`, and why a listener resets what landed in it.
+#[path = "tcp_close.rs"]
+mod tcp_close;
+use tcp_close::close_tcp;
 // The socket-contract client rides in this same binary (dispatched by the entry role), because the
 // initial ramdisk directory holds at most 15 files; see components/src/socket_test_client.rs.
 #[path = "socket_test_client.rs"]
@@ -509,22 +513,7 @@ impl Table {
         let Some(sk) = self.socks[entry] else { return };
         match sk.kind {
             Kind::Tcp | Kind::Listener => {
-                let handle = sk.handle;
-                sockets.get_mut::<tcp::Socket>(handle).close();
-                if sk.kind == Kind::Tcp {
-                    // Drain the close handshake so the peer (and slirp's flow for it) sees a
-                    // clean teardown before we drop the socket. Dropping a socket mid-close
-                    // leaves the peer's connection half-open, which on the guestfwd echo peer
-                    // blocks the next connection to it. Both FINs exchanged (Closed or TimeWait)
-                    // is enough; waiting for full Closed would linger in TimeWait's timer.
-                    // Bounded, so a peer that never finishes still returns.
-                    service_until(iface, dev, sockets, |s| {
-                        matches!(
-                            s.get_mut::<tcp::Socket>(handle).state(),
-                            tcp::State::Closed | tcp::State::TimeWait
-                        )
-                    });
-                }
+                close_tcp(iface, dev, sockets, sk.handle, sk.kind == Kind::Listener);
             }
             Kind::Udp => {
                 sockets.get_mut::<udp::Socket>(sk.handle).close();
