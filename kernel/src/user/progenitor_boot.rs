@@ -8,6 +8,7 @@
 //! splits into child modules of `user`)).
 
 use super::*;
+use crate::cap::Rights;
 
 /// **The archive entry the kernel enters as the first process**, on every architecture.
 ///
@@ -123,8 +124,6 @@ pub const PROGENITOR_ROLE: u64 = 27;
     allow(dead_code)
 )]
 pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId, LoadError> {
-    use crate::cap::Rights;
-
     // The UART receive interrupt line, from the machine's own description when it gave one
     // (`memory::uart_irq`), else QEMU virt's constant. The source is printed so a bench transcript
     // names where the number came from: a wrong PLIC source once cost a boot on the JH7110
@@ -134,7 +133,87 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
 
     let (initrd_start, initrd_len) = memory::initrd_region().expect("no initrd region");
     let initrd_pages = initrd_len.div_ceil(FRAME_SIZE);
+    let elf = measured_progenitor(archive)?;
 
+    let aspace_name = progenitor_address_space(&elf, initrd_start, initrd_pages)?;
+
+    // Route the UART receive interrupt to an endpoint; the input driver's Irq cap will WAIT on it.
+    let irq_ep = crate::sched::create_rendezvous();
+    crate::sched::bind_irq(uart_irq, irq_ep);
+    // aarch64's GIC has no boot-hart-lottery hazard, so its UART line is enabled here, the same
+    // place and way the old `spawn_progenitor` armed it. riscv64 must wait until the driver is
+    // running (the arming block after the start below). `x86_64` arms COM1's IRQ 4 here too, since
+    // milestone 505 (an x86_64 input driver that never lets the core idle): the IO APIC entry goes
+    // live now, and nothing raises the line until the input driver sets the 16550's receive enable.
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    crate::arch::irq::enable(uart_irq);
+    let build_region =
+        crate::memory_region::create(12288).expect("no building budget for the progenitor");
+
+    let thread_control_block_region = crate::memory_region::create(2).expect("no tcb region");
+    let tid =
+        crate::sched::create_thread_control_block(thread_control_block_region).expect("no tcb");
+    grant_boot_slots(tid, build_region, uart_irq);
+    let fs_rights = grant_file_service(tid);
+    let virtio_rng = grant_entropy_source(tid);
+    let (gpu, keyboard) = wire_graphics();
+    grant_machine_slots(tid, aspace_name);
+    grant_kernel_log(tid);
+    grant_usb_keyboard(tid);
+    grant_screen_terminal(tid, gpu.is_none());
+    grant_graphics(tid, gpu.as_ref(), keyboard.as_ref());
+    let virtio_net = grant_virtio_net(tid);
+    grant_kernel_network_stack(tid, virtio_net.is_none());
+    // **Say that this boot worked**, if a chooser started it (rung 2b of milestone 198's other
+    // half). Here and not a line earlier or later, and the position is the mechanism: the
+    // filesystem server above has mounted the installed disk and reported ready, which is as late
+    // a criterion as this system can evaluate without a person, and the progenitor has not started,
+    // so the disk's one transfer region still has a single user. `install_service::confirm` argues
+    // both halves and names the foot gun in the second.
+    #[cfg(target_arch = "x86_64")]
+    if fs_rights != 0 {
+        install_service::confirm();
+    }
+    crate::sched::configure_thread_control_block(tid, elf.entry(), USER_STACK_TOP, aspace_name)
+        .expect("configure");
+    // x0 = the boot role (the progenitor has one role and ignores it, but it is passed for the
+    // symmetry the old `spawn_progenitor` established); x1 = the archive length; x2 = the file-service rights.
+    crate::sched::start_thread_control_block(tid, [PROGENITOR_ROLE, initrd_len, fs_rights])
+        .expect("start");
+
+    // Arm the interrupt chain so the input driver's keystrokes flow. aarch64 already did its arming
+    // inline above (the GIC's UART line before the thread was built, its virtio-rng source as the
+    // caps were inserted), because the GIC has no boot-hart lottery. What is left here is the
+    // hardware that must wait until the driver is running:
+    //
+    // riscv64: the source at the PLIC and supervisor external interrupts in `sie`. The input driver
+    // arms the NS16550's own RX interrupt (its IER) when it starts, and re-arms the PLIC source
+    // through its Irq cap's ACK.
+    //
+    // `x86_64`: nothing. There is no userspace input driver to feed until DECISIONS §149 chooses a
+    // console, so arming COM1's line would deliver keystrokes to nobody.
+    #[cfg(target_arch = "riscv64")]
+    {
+        crate::drivers::plic::enable(uart_irq, crate::arch::irq::boot_s_context());
+        // The virtio-rng device's own source, pinned to the same boot-hart context for the same
+        // reason (`notes/harts-and-pes.md`'s hart lottery; see [`VirtioBootGrant::intid`]'s own doc).
+        if let Some(g) = &virtio_rng {
+            crate::drivers::plic::enable(g.intid, crate::arch::irq::boot_s_context());
+        }
+        // The NIC's, for the same reason (milestone 590 (provisional)).
+        if let Some(g) = &virtio_net {
+            crate::drivers::plic::enable(g.intid, crate::arch::irq::boot_s_context());
+        }
+        crate::arch::exceptions::enable_external();
+    }
+    #[cfg(not(target_arch = "riscv64"))]
+    let _ = (&virtio_rng, &virtio_net);
+    Ok(tid)
+}
+
+/// Read the progenitor out of the archive and check it against the trust root and the program
+/// measurements before anything is built from it.
+fn measured_progenitor(archive: &'static [u8]) -> Result<Elf<'static>, LoadError> {
     let fs = nifefs::Fs::parse(archive).expect("initrd is not a nifefs archive");
     let init_bytes = fs
         .read(PROGENITOR_ENTRY)
@@ -147,8 +226,16 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
     // (milestone 104). This is the boot path that genuinely uses it: `crates/system_initializer` is
     // the same code aarch64's the progenitor runs, so the two boards extend the chain by the same lines.
     crate::trust::require_program_measurements(&fs);
-    let elf = Elf::parse(init_bytes).map_err(LoadError::NotLoadable)?;
+    Elf::parse(init_bytes).map_err(LoadError::NotLoadable)
+}
 
+/// Build the progenitor's address space (segments, stack, timebase page, initrd) and register it,
+/// returning its name.
+fn progenitor_address_space(
+    elf: &Elf<'_>,
+    initrd_start: u64,
+    initrd_pages: u64,
+) -> Result<u64, LoadError> {
     // system_initializer's address space: its segments, a deep stack (it runs an ELF loader that builds three
     // children), and the whole archive mapped read-only so it can load them by name.
     //
@@ -171,7 +258,7 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
         + 8;
     let mut space =
         AddressSpace::new(content).ok_or(LoadError::Unmappable(MapError::OutOfPageFrames))?;
-    map_segments(&mut space, &elf)?;
+    map_segments(&mut space, elf)?;
     for k in 0..INIT_STACK_PAGES {
         let page = space
             .map_new(USER_STACK_VA - k * FRAME_SIZE, Flags::user_data())
@@ -195,25 +282,12 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
             )
             .map_err(LoadError::Unmappable)?;
     }
-    let aspace_name =
-        readopt_user_address_space(space).expect("register the progenitor's address space");
+    Ok(readopt_user_address_space(space).expect("register the progenitor's address space"))
+}
 
-    // Route the UART receive interrupt to an endpoint; the input driver's Irq cap will WAIT on it.
-    let irq_ep = crate::sched::create_rendezvous();
-    crate::sched::bind_irq(uart_irq, irq_ep);
-    // aarch64's GIC has no boot-hart-lottery hazard, so its UART line is enabled here, the same
-    // place and way the old `spawn_progenitor` armed it. riscv64 must wait until the driver is
-    // running (the arming block after the start below). `x86_64` arms COM1's IRQ 4 here too, since
-    // milestone 505 (an x86_64 input driver that never lets the core idle): the IO APIC entry goes
-    // live now, and nothing raises the line until the input driver sets the 16550's receive enable.
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
-    crate::arch::irq::enable(uart_irq);
-    let build_region =
-        crate::memory_region::create(12288).expect("no building budget for the progenitor");
-
-    let thread_control_block_region = crate::memory_region::create(2).expect("no tcb region");
-    let tid =
-        crate::sched::create_thread_control_block(thread_control_block_region).expect("no tcb");
+/// Slots 0 to 4, granted on every boot: the root budget, the console device, the UART interrupt,
+/// the clock page and the inert-configuration page.
+fn grant_boot_slots(tid: crate::thread::ThreadId, build_region: u64, uart_irq: u32) {
     // slot 0: the delegable root budget (milestone 31), GRANT included so the progenitor can split
     // off a budget for the shell and hand it on; rights only narrow downward. slot 1: the console
     // device (see below), WRITE|GRANT so the progenitor delegates it into the console and input
@@ -271,12 +345,17 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
     )
     .expect("insert the config page");
     assert_eq!(s4, 4);
+}
+
+/// Slots 5 and 6, the file service and its shared page, when this boot has a filesystem; returns
+/// the rights the progenitor is told the endpoint holds (0 for none).
+fn grant_file_service(tid: crate::thread::ThreadId) -> u64 {
     // The file service (slot 5) and the page its clients share with it (slot 6), when this boot has
     // a filesystem (milestone 50). GRANT on both, because the progenitor's job with them is to delegate: it
     // narrows the endpoint into the shell and maps the frame into its address space. `a2` carries
     // the rights the endpoint holds, which is also how the progenitor is told there is one at all. `None` is
     // the ordinary case for a run with no RedoxFS disk attached.
-    let fs_rights = match program("redoxfs_server").and_then(|redoxfs_server| {
+    match program("redoxfs_server").and_then(|redoxfs_server| {
         fs_service::root_directory(fs_service::blk_server_image(), redoxfs_server)
     }) {
         Some((file_ep, file_shared)) => {
@@ -306,7 +385,12 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
             filesystem_protocol::dir::ALL
         }
         None => 0,
-    };
+    }
+}
+
+/// Slots 7 to 9 for a virtio-rng device, or slot 16 for the instruction entropy service when there
+/// is none; returns the virtio-rng grant for the interrupt arming after the start.
+fn grant_entropy_source(tid: crate::thread::ThreadId) -> Option<VirtioBootGrant> {
     // The virtio-rng device (slots 7-9, always, even without a disk), when this boot has one
     // (DECISIONS §120's 2026-08-26 amendment). GRANT on all three so system_initializer can
     // delegate them onward to an entropy service it builds, the same shape every other device
@@ -369,6 +453,14 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
         .expect("insert the instruction entropy service");
         assert_eq!(s16, 16);
     }
+    virtio_rng
+}
+
+/// Wire the virtio-gpu and virtio keyboard when present, and say what this boot has.
+fn wire_graphics() -> (
+    Option<display_service::GpuDevice>,
+    Option<keyboard_service::KeyboardDevice>,
+) {
     // **The graphical terminal stack's raw materials** (milestone 600 (provisional); milestone 177 (wire the graphical terminal stack into the real interactive boot)
     // built the stack itself here), when a virtio-gpu is attached: the gpu's confined transport,
     // interrupt and DMA run, and the surface run inside it, in slots 17, 18, 19 and 12. Nothing
@@ -415,6 +507,12 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
             }
         );
     }
+    (gpu, keyboard)
+}
+
+/// Slots 23, 28 and 31, granted on every boot: the machine statistics page, the progenitor's own
+/// address space and the reboot object.
+fn grant_machine_slots(tid: crate::thread::ThreadId, aspace_name: u64) {
     // **The machine statistics page** (slot 23, milestone 126 (the `procps` package), DECISIONS §225
     // (`free` sees the machine and your share) part 2), the config page's shape: a frame the kernel
     // keeps its machine-wide counters in, granted unconditionally so its slot never moves, and
@@ -469,6 +567,10 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
     )
     .expect("insert the reboot object");
     assert_eq!(s31, 31);
+}
+
+/// Slots 24 to 26: the kernel's log ring, its cursor page and its notification.
+fn grant_kernel_log(tid: crate::thread::ThreadId) {
     // **The kernel's ring, its cursor page and its notification** (slots 24 to 26, milestone 342
     // (the kernel and the `console` server drive one UART from two address spaces), calef's
     // ruling F): the ring read-only so the log service can copy kernel lines out and never write
@@ -511,6 +613,10 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
             assert_eq!(s, slot, "{what} landed in the wrong slot");
         }
     }
+}
+
+/// Slot 27: a USB keyboard's attach endpoint, when the kernel started one.
+fn grant_usb_keyboard(tid: crate::thread::ThreadId) {
     // **A USB keyboard** (slot 27, milestone 242 (USB host and HID)): the attach endpoint of a
     // driver the kernel already started on the machine's xHCI controller, `WRITE | GRANT`, so the
     // progenitor can delegate the line discipline's endpoint through it once it has built one and
@@ -528,17 +634,17 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
         .expect("insert the USB keyboard's attach endpoint");
         assert_eq!(s27, 27);
     }
+}
+
+/// Slots 10 and 11: a terminal on the firmware's screen, when there is no GPU.
+fn grant_screen_terminal(tid: crate::thread::ThreadId, no_gpu: bool) {
     // **Or a terminal on the screen the firmware left running** (the shell on the firmware screen,
     // milestone 198's rung 1b), when there is no GPU: slots 10 and 11, the terminal's endpoint and
     // its output page. (They were the graphical stack's slots too, until milestone 600
     // (provisional) moved that stack's construction into the progenitor.) `None` on every machine whose
     // console has no screen, which is every boot but a UEFI one today. See
     // [`boot_screen_terminal`].
-    let screen = if gpu.is_none() {
-        boot_screen_terminal()
-    } else {
-        None
-    };
+    let screen = if no_gpu { boot_screen_terminal() } else { None };
     if let Some(t) = &screen {
         let s10 = crate::sched::thread_control_block_insert_cap(
             tid,
@@ -558,12 +664,21 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
         .expect("insert the screen terminal's output page");
         assert_eq!(s11, 11);
     }
+}
+
+/// Slots 12 and 17 to 22: the gpu's and keyboard's raw materials, for a `graphical_terminal` launch
+/// to build from.
+fn grant_graphics(
+    tid: crate::thread::ThreadId,
+    gpu: Option<&display_service::GpuDevice>,
+    keyboard: Option<&keyboard_service::KeyboardDevice>,
+) {
     let insert = |granted, slot: u64, what: &str| {
         let s = crate::sched::thread_control_block_insert_cap(tid, granted, Some(slot))
             .unwrap_or_else(|_| panic!("insert {what}"));
         assert_eq!(s, slot, "{what} landed in the wrong slot");
     };
-    if let Some(g) = &gpu {
+    if let Some(g) = gpu {
         insert(
             crate::cap::page_frame_run_cap(
                 g.surface,
@@ -593,7 +708,7 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
             "the gpu's DMA run",
         );
     }
-    if let Some(k) = &keyboard {
+    if let Some(k) = keyboard {
         insert(
             crate::cap::virtio_cap_rights(k.vid, Rights::WRITE.union(Rights::GRANT)),
             20,
@@ -613,6 +728,11 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
             "the keyboard's DMA page",
         );
     }
+}
+
+/// Slots 13 to 15 for a virtio-net device; returns the grant for the interrupt arming after the
+/// start.
+fn grant_virtio_net(tid: crate::thread::ThreadId) -> Option<VirtioBootGrant> {
     // **The network card** (slots 13-15, milestone 590 (provisional)), when this boot has a
     // virtio-net device on the MMIO bus: the virtio-rng trio's shape exactly, three slots past the
     // graphical stack's own, explicit for the same reason those are (every conditional grant
@@ -652,6 +772,11 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
         #[cfg(target_arch = "aarch64")]
         crate::arch::irq::enable(g.intid);
     }
+    virtio_net
+}
+
+/// Slots 29 and 30: a network stack the kernel built itself, when there is no virtio-net NIC.
+fn grant_kernel_network_stack(tid: crate::thread::ThreadId, no_virtio_net: bool) {
     // **Or a stack the kernel already built on an `e1000e`** (slots 29 and 30, milestone 198 (a
     // package manager): rung 3a on x86_64), when there is no virtio-net NIC: the `Stack` endpoint,
     // `READ | WRITE | GRANT` as the progenitor's own retype of it is on the virtio path, and the
@@ -663,7 +788,7 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
     // **Or one built on radon's Ethernet port** (milestone 53 (the board's own peripherals: network
     // and storage on real silicon)), in the same two slots, when there is neither: today that is a
     // line saying the port is left alone, until `designware_ethernet_service::PROVEN_ON_SILICON`.
-    let kernel_stack = if virtio_net.is_none() {
+    let kernel_stack = if no_virtio_net {
         let e1000e = boot_e1000e_network().map(|w| (w.stack, w.report));
         #[cfg(target_arch = "riscv64")]
         let e1000e = e1000e.or_else(boot_designware_network);
@@ -687,49 +812,4 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
         .expect("insert the kernel-built stack's lease endpoint");
         assert_eq!(s30, 30);
     }
-    // **Say that this boot worked**, if a chooser started it (rung 2b of milestone 198's other
-    // half). Here and not a line earlier or later, and the position is the mechanism: the
-    // filesystem server above has mounted the installed disk and reported ready, which is as late
-    // a criterion as this system can evaluate without a person, and the progenitor has not started,
-    // so the disk's one transfer region still has a single user. `install_service::confirm` argues
-    // both halves and names the foot gun in the second.
-    #[cfg(target_arch = "x86_64")]
-    if fs_rights != 0 {
-        install_service::confirm();
-    }
-    crate::sched::configure_thread_control_block(tid, elf.entry(), USER_STACK_TOP, aspace_name)
-        .expect("configure");
-    // x0 = the boot role (the progenitor has one role and ignores it, but it is passed for the
-    // symmetry the old `spawn_progenitor` established); x1 = the archive length; x2 = the file-service rights.
-    crate::sched::start_thread_control_block(tid, [PROGENITOR_ROLE, initrd_len, fs_rights])
-        .expect("start");
-
-    // Arm the interrupt chain so the input driver's keystrokes flow. aarch64 already did its arming
-    // inline above (the GIC's UART line before the thread was built, its virtio-rng source as the
-    // caps were inserted), because the GIC has no boot-hart lottery. What is left here is the
-    // hardware that must wait until the driver is running:
-    //
-    // riscv64: the source at the PLIC and supervisor external interrupts in `sie`. The input driver
-    // arms the NS16550's own RX interrupt (its IER) when it starts, and re-arms the PLIC source
-    // through its Irq cap's ACK.
-    //
-    // `x86_64`: nothing. There is no userspace input driver to feed until DECISIONS §149 chooses a
-    // console, so arming COM1's line would deliver keystrokes to nobody.
-    #[cfg(target_arch = "riscv64")]
-    {
-        crate::drivers::plic::enable(uart_irq, crate::arch::irq::boot_s_context());
-        // The virtio-rng device's own source, pinned to the same boot-hart context for the same
-        // reason (`notes/harts-and-pes.md`'s hart lottery; see [`VirtioBootGrant::intid`]'s own doc).
-        if let Some(g) = &virtio_rng {
-            crate::drivers::plic::enable(g.intid, crate::arch::irq::boot_s_context());
-        }
-        // The NIC's, for the same reason (milestone 590 (provisional)).
-        if let Some(g) = &virtio_net {
-            crate::drivers::plic::enable(g.intid, crate::arch::irq::boot_s_context());
-        }
-        crate::arch::exceptions::enable_external();
-    }
-    #[cfg(target_arch = "x86_64")]
-    let _ = (&virtio_rng, &virtio_net);
-    Ok(tid)
 }
