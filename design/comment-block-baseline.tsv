@@ -59,8 +59,8 @@ components/src/user_timetable_keeper.rs:1	69
 components/src/uuid.rs:1	123
 components/src/wc.rs:1	75
 crates/abi/src/lib.rs:1	112
-crates/abi/src/lib.rs:242	46
-crates/abi/src/lib.rs:326	68
+crates/abi/src/rendezvous.rs:58	46
+crates/abi/src/rendezvous.rs:142	68
 crates/activation_set/src/lib.rs:1	106
 crates/address_space_identifier/src/lib.rs:1	72
 crates/address_space_map/src/lib.rs:1	120
