@@ -293,15 +293,7 @@ fn write_preview_rows(
     // else, and slot 0 is not even the same kind of object, so a preview that printed the native
     // positions for one would be describing a child the progenitor does not build.
     let std = m.runtime == grant_plan::Runtime::Std;
-    let slot = |n: u64, out: &mut dyn FnMut(&[u8])| {
-        out(b"    cap ");
-        write_num(n, out);
-        out(if n < 10 {
-            b"  ".as_slice()
-        } else {
-            b" ".as_slice()
-        });
-    };
+    let slot = write_slot;
     if std {
         slot(std_runtime_protocol::MEMORY_REGION_SLOT, out);
         out(b"untyped   heap. the ");
@@ -479,51 +471,7 @@ fn write_preview_rows(
         out(b"                              hand a random source to anything it spawns\n");
         out(b"                              a program without this row draws no randomness at all\n");
     }
-    // **The network, which no token on the line designates either** (milestone 590 (the booted
-    // system starts its network stack)).
-    // The entropy row's shape and its reason: whether a program can reach the network is a fact
-    // about what it holds, so a person reads it here before anything runs rather than learning it
-    // from a firewall afterward. The fourth line says what it does not reach: since milestone 649
-    // (every client of a network stack shares its socket numbers) each socket is its own capability
-    // (§255 (each socket is its own capability)), so one declaring program cannot reach another's
-    // sockets. Until then this line said the opposite, because it was true.
-    if m.network {
-        if std {
-            // The stack at slot 2 and, at slot 3, the region the program is built in, which the
-            // net PAL retypes each socket's shared page from (milestone 809).
-            slot(std_runtime_protocol::STACK_SLOT, out);
-            out(b"endpoint  network  WRITE. it may open outbound sockets through the network\n");
-            slot(std_runtime_protocol::NET_MEMORY_REGION_SLOT, out);
-            out(b"untyped   sockets. the heap's region again, which each socket's page is\n");
-            out(b"                              made from\n");
-        } else {
-            out(b"    cap 10 endpoint  network  WRITE. it may open outbound sockets through the network\n");
-        }
-        out(b"                              stack, and nothing else: it cannot reach the card, cannot\n");
-        out(b"                              listen, and cannot hand the network to anything it spawns.\n");
-        out(b"                              each socket it opens is a capability of its own; it cannot\n");
-        out(b"                              reach another program's sockets\n");
-        out(
-            b"                              a program without this row reaches no network at all\n",
-        );
-    }
-    // **The name resolver, beside the network** (milestone 892 (a std program at the prompt holds
-    // the network and a resolver)): the zone is the table's (`Prog::resolver_zone`), so a person
-    // reads which names the program may look up before it runs, where on Unix every process may
-    // read `/etc/resolv.conf` and ask about anything.
-    if let (true, true, Some(zone)) = (m.network, std, e.prog.resolver_zone()) {
-        slot(std_runtime_protocol::RESOLVER_SLOT, out);
-        out(b"endpoint  resolver  WRITE. it may look up the addresses of ");
-        if zone.is_empty() {
-            out(b"any name\n");
-        } else {
-            out(b"names in ");
-            out(zone.as_bytes());
-            out(b"\n");
-        }
-        out(b"                              and nothing else: a name outside that is refused unasked.\n");
-        out(b"                              held only on a boot whose lease named a name server\n");
-    }
+    write_network_rows(e, m, std, out);
     // **The row this milestone exists to print.** On Linux there is nothing here to say: `ps` reads
     // /proc and the answer is "every process on the machine", which no command line chose and no
     // tool can narrow. Here the scope is a capability, so it is a line a person can read before
@@ -683,6 +631,74 @@ fn write_preview_rows(
         out(b"(none)\n");
     }
     out(b"  reading the command is reading its whole authority.\n");
+}
+
+/// A capability row's prefix, `    cap N`, padded so the kinds line up.
+fn write_slot(n: u64, out: &mut dyn FnMut(&[u8])) {
+    out(b"    cap ");
+    write_num(n, out);
+    out(if n < 10 {
+        b"  ".as_slice()
+    } else {
+        b" ".as_slice()
+    });
+}
+
+/// **The network's rows and the resolver's beside it** ([`write_preview_rows`]'s, split out by
+/// milestone 892 (a std program at the prompt holds the network and a resolver) so that function
+/// stays under its length ratchet).
+fn write_network_rows(
+    e: &Endowment,
+    m: &grant_plan::Manifest,
+    std: bool,
+    out: &mut dyn FnMut(&[u8]),
+) {
+    let slot = write_slot;
+    // **The network, which no token on the line designates either** (milestone 590 (the booted
+    // system starts its network stack)).
+    // The entropy row's shape and its reason: whether a program can reach the network is a fact
+    // about what it holds, so a person reads it here before anything runs rather than learning it
+    // from a firewall afterward. The fourth line says what it does not reach: since milestone 649
+    // (every client of a network stack shares its socket numbers) each socket is its own capability
+    // (§255 (each socket is its own capability)), so one declaring program cannot reach another's
+    // sockets. Until then this line said the opposite, because it was true.
+    if m.network {
+        if std {
+            // The stack at slot 2 and, at slot 3, the region the program is built in, which the
+            // net PAL retypes each socket's shared page from (milestone 809).
+            slot(std_runtime_protocol::STACK_SLOT, out);
+            out(b"endpoint  network  WRITE. it may open outbound sockets through the network\n");
+            slot(std_runtime_protocol::NET_MEMORY_REGION_SLOT, out);
+            out(b"untyped   sockets. the heap's region again, which each socket's page is\n");
+            out(b"                              made from\n");
+        } else {
+            out(b"    cap 10 endpoint  network  WRITE. it may open outbound sockets through the network\n");
+        }
+        out(b"                              stack, and nothing else: it cannot reach the card, cannot\n");
+        out(b"                              listen, and cannot hand the network to anything it spawns.\n");
+        out(b"                              each socket it opens is a capability of its own; it cannot\n");
+        out(b"                              reach another program's sockets\n");
+        out(
+            b"                              a program without this row reaches no network at all\n",
+        );
+    }
+    // **The name resolver, beside the network** (milestone 892 (a std program at the prompt holds
+    // the network and a resolver)): the zone is the table's (`Prog::resolver_zone`), so a person
+    // reads which names the program may look up before it runs, where on Unix every process may
+    // read `/etc/resolv.conf` and ask about anything.
+    if let (true, true, Some(zone)) = (m.network, std, e.prog.resolver_zone()) {
+        slot(std_runtime_protocol::RESOLVER_SLOT, out);
+        out(b"endpoint  resolver  WRITE. it may look up the addresses of ");
+        if zone.is_empty() {
+            out(b"any name\n");
+        } else {
+            out(b"names in ");
+            out(zone.as_bytes());
+            out(b"\n");
+        }
+        out(b"                              and nothing else: a name outside that is refused unasked.\n");
+        out(b"                              held only on a boot whose lease named a name server\n");
+    }
 }
 
 #[cfg(test)]

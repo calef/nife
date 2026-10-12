@@ -301,16 +301,52 @@ pub(super) fn build_net_stack(ut: u64, program: &elf::Elf, g: &BootEndowment) ->
 /// **Measure `name_resolver` and build it**, or `None` when the table does not vouch for it. Never
 /// inlined, so the measured image stays out of [`boot`](crate::boot)'s frame, which the spawn
 /// service runs inside for the life of the boot ([`graphical_terminal_grants`]' reason).
+/// `None` too with no stack, no entropy (it asks nothing without unguessable ids), or a lease that
+/// named no name server. `network` is `(stack, lease, name server)`, the server in
+/// `socket_protocol::lease`'s encoding.
 #[inline(never)]
 pub(super) fn start_name_resolver(
-    fs: &nifefs::Fs<'static>,
-    table: &str,
-    ut: u64,
-    (stack, entropy): (u64, u64),
-    server: [u8; 4],
+    (fs, table, ut): (&nifefs::Fs<'static>, &str, u64),
+    network: Option<(u64, u64, u64)>,
+    entropy: Option<u64>,
 ) -> Option<u64> {
+    let (stack, _, name_server) = network?;
+    let server = socket_protocol::lease::word_ipv4(name_server)?;
     let program = measured(fs, table, "name_resolver").elf?;
-    Some(build_name_resolver(ut, &program, stack, entropy, server))
+    Some(build_name_resolver(ut, &program, stack, entropy?, server))
+}
+
+/// **What the boot says about its network** (milestones 590 (the booted system starts its network
+/// stack) and 892): the lease `net_stack` reported, so the line is evidence rather than an
+/// intention, and the server the resolver asks, which is where every name a program at this prompt
+/// asks will go. Silent on a boot with no network. Split out of [`boot`](crate::boot) to keep it
+/// under its length ratchet.
+pub(super) fn announce_network(term_ep: u64, network: Option<(u64, u64, u64)>, resolver: bool) {
+    let Some((_, lease, name_server)) = network else {
+        return;
+    };
+    let mut line = [0u8; 80];
+    let head = b"progenitor: network stack up; DHCP leased ";
+    line[..head.len()].copy_from_slice(head);
+    let mut n = head.len();
+    n += render_ipv4(lease as u32, &mut line[n..]);
+    line[n] = b'\n';
+    announce(term_ep, &line[..n + 1]);
+    if resolver {
+        let head = b"progenitor: name resolver up; asks ";
+        line[..head.len()].copy_from_slice(head);
+        let mut n = head.len();
+        n += render_ipv4(name_server as u32, &mut line[n..]);
+        let tail = b", the lease's name server\n";
+        line[n..n + tail.len()].copy_from_slice(tail);
+        announce(term_ep, &line[..n + tail.len()]);
+    } else {
+        announce(
+            term_ep,
+            b"progenitor: no name resolver (no lease name server, no entropy, or not vouched); \
+              programs here resolve no names\n",
+        );
+    }
 }
 
 /// **Build `name_resolver` on the booted system's stack** (milestone 892 (a std program at the

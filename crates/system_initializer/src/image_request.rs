@@ -162,7 +162,7 @@ const STASHED: usize = 4;
 const INSTALLER_HOLDERS: usize = 4;
 
 impl SpawnEndpoint {
-    pub(super) fn new(ep: u64) -> Self {
+    pub(super) fn new(ep: u64, resolver: Option<u64>) -> Self {
         Self {
             ep,
             windows: job_windows(),
@@ -172,7 +172,7 @@ impl SpawnEndpoint {
             abandoned: false,
             replies: [None; INSTALLER_HOLDERS],
             next_label: 1,
-            resolver: None,
+            resolver,
             resolving: [None; name_resolution_protocol::GRANTS_MAX],
         }
     }
@@ -194,6 +194,43 @@ impl SpawnEndpoint {
             Err(()) => {
                 self.forget_resolver(label);
                 None
+            }
+        }
+    }
+
+    /// **A resolver badge for `zone`, when the job may hold one** (milestone 892): the badged copy,
+    /// and whether a job that should hold one is going without, which refuses its spawn. A badge
+    /// every live job holds may be one a finished job's due reap frees, as a window may, so this
+    /// waits for the reaps that are due before it gives up. `zone` is `None` for a job the table
+    /// names no zone for or that is not eligible; on a boot with no resolver nothing is owed.
+    pub(super) fn resolver_for(&mut self, label: u64, zone: Option<&str>) -> (Option<u64>, bool) {
+        let Some(zone) = zone.filter(|_| self.resolver.is_some()) else {
+            return (None, false);
+        };
+        let copy = self.until_reaped(|s| s.grant_resolver(label, zone));
+        (copy, copy.is_none())
+    }
+
+    /// **After a spawn, the package manager's leftovers** (milestones 809 and 892). The child holds
+    /// its own installer endpoint, so ours goes; the reply endpoint's `WRITE` is filed under the
+    /// child's label until its reap, which is how an answer finds it, and a holder that did not
+    /// start has its endpoint deleted now. A job that did not start is never reaped, so a resolver
+    /// grant made for it is forgotten now.
+    pub(super) fn settle_package_manager(
+        &mut self,
+        label: u64,
+        ok: bool,
+        installer: Option<(u64, u64)>,
+        manager: Option<&'static str>,
+    ) {
+        if !ok {
+            self.forget_resolver(label);
+        }
+        if let Some((inst, reply)) = installer {
+            cap_delete(inst);
+            let kept = ok && manager.is_some_and(|m| self.hold_reply(label, reply, m));
+            if !kept {
+                cap_delete(reply);
             }
         }
     }

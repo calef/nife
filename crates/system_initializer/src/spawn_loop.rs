@@ -209,8 +209,7 @@ pub(super) fn spawn_service(
     // Whether the file page is mapped here yet, for the activation set (first image request).
     let mut fs_mapped = false;
     // The spawn endpoint, its reaped messages, and the windows they free (milestone 685).
-    let mut spawn = SpawnEndpoint::new(spawn_ep);
-    spawn.resolver = resolver;
+    let mut spawn = SpawnEndpoint::new(spawn_ep, resolver);
     loop {
         let (w0, w1, w2, badge) = spawn.request();
         // **A request on an installer endpoint** (milestone 809 (the package client becomes a
@@ -739,25 +738,12 @@ pub(super) fn spawn_service(
             // the prompt holds the network and a resolver)): only for a `std` job that holds the
             // network on this line, on a boot that started a resolver, and under
             // `job_undertaker`, whose reap is what forgets the grant (a screen-narrowed job is
-            // reaped by the shell, so it resolves nothing; see the module's BUGS). Granted before
+            // reaped by the shell, so it resolves nothing; milestone 892's BUGS). Granted before
             // the child exists, since the resolver deletes a page attached to a badge it does not
-            // know yet. A job that should hold one and could not (every badge held by a live job,
-            // after the reaps that are due) is refused, `dir_failed`'s rule.
-            let wants_resolver = std_layout
-                && wants_network
-                && network.is_some()
-                && screen.is_none()
-                && spawn.resolver.is_some()
-                && prog.and_then(Prog::resolver_zone).is_some();
-            let resolver_copy = match prog.and_then(Prog::resolver_zone) {
-                // A badge every live job holds may be one a finished job's due reap frees, as a
-                // window may.
-                Some(zone) if wants_resolver => {
-                    spawn.until_reaped(|s| s.grant_resolver(label, zone))
-                }
-                _ => None,
-            };
-            let resolver_failed = wants_resolver && resolver_copy.is_none();
+            // know yet. A job that should hold one and could not is refused, `dir_failed`'s rule.
+            let eligible = std_layout && wants_network && network.is_some() && screen.is_none();
+            let zone = prog.and_then(Prog::resolver_zone).filter(|_| eligible);
+            let (resolver_copy, resolver_failed) = spawn.resolver_for(label, zone);
             let catalog_failed = wants_catalog && catalog_page.is_none();
 
             // **Slot 0 is the output**, and milestone 50 is the whole of what changed here: it is
@@ -1104,24 +1090,13 @@ pub(super) fn spawn_service(
             if let Some(l) = labeled {
                 cap_delete(l);
             }
-            // The child holds its badged copy; ours goes. The reply endpoint's `WRITE` is kept until
-            // the child's reap, filed by its label, which is how an answer finds it; a holder that
-            // did not start has its endpoint deleted now. There is room to file it: a spawn that
-            // found none made no installer, and was refused above.
-            if let Some((inst, reply)) = installer {
-                cap_delete(inst);
-                let kept = ok && prog.is_some_and(|p| spawn.hold_reply(label, reply, p.name()));
-                if !kept {
-                    cap_delete(reply);
-                }
-            }
+            // The installer's endpoints and a resolver grant are kept or given up by whether the
+            // job started ([`SpawnEndpoint::settle_package_manager`]). There is room to file the
+            // reply endpoint: a spawn that found none made no installer, and was refused above.
+            // Our badged resolver copy goes with the other endpoints below.
+            spawn.settle_package_manager(label, ok, installer, prog.map(Prog::name));
             if let Some(page) = catalog_page {
                 cap_delete(page);
-            }
-            // A job that never started is never reaped, so its resolver grant is forgotten now; our
-            // badged copy goes with the other endpoints below.
-            if resolver_copy.is_some() && !ok {
-                spawn.forget_resolver(label);
             }
             // **The window and the wait, by whether a job came to hold them** (milestone 685). A
             // window whose job never started is free now, not at a reap that will never come. A

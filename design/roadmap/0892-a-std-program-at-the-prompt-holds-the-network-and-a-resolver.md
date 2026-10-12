@@ -11,8 +11,10 @@ needs_person: no
 # 892. A std program at the prompt holds the network and a name resolver
 
 **PARTIAL, 2026-10-12 (UTC).** Items 1 and 3 are built for `jig`, and a forget verb the block did
-not foresee is built under them. Item 4's refusal half and its positive half are proved in the
-kernel harness, not at the prompt; "Built" says why, and "Follow-on" what is left.
+not foresee is built under them. Item 4 is met: its positive and refusal halves are proved in the
+kernel harness, which calef accepted as the proof (ruling B on #2011, 2026-10-12 UTC). He approved
+the forget verb as written (Q2, "Approve", the same day). What is left is item 3 for every program
+but `jig`, a fork.
 
 *(Promoted from the proposal pile on 2026-10-12 (UTC) by lane
 `maintainer/promote-proposals`; number provisional until the merge queue lands it. Title
@@ -77,13 +79,15 @@ alone would have let the ninth `jig` of a boot be refused.
   program table, not in `Manifest`, so installed bytes can never carry one. Each `jig` job whose
   verb holds the network gets a fresh badge granted the root zone (Q5), placed at slot 9, and
   forgotten at its reap. `caps jig install greeting@0.1.0` prints the row.
-- Item 4, in part. The swish script now starts nine `jig install`s in one boot. With the
+- Item 4. The swish script now starts nine `jig install`s in one boot. With the
   forget at reap removed, the ninth answered "could not spawn" on aarch64 (2026-10-12): the
   lifecycle is gated at the prompt. A name resolved at the prompt is not. Under slirp the lease's
   name server is always slirp's own proxy to the host's resolver, and QEMU refuses a `guestfwd`
   on its DNS address ("Conflicting/invalid host:port", measured 2026-10-12), so the runners' peer
-  cannot answer there. The positive and refusal halves stay the kernel harness's
-  (`a_std_program_resolves_its_granted_zone_and_nothing_without_a_grant`).
+  cannot answer there. calef ruled on #2011 (2026-10-12 UTC, "B") that the kernel harness's
+  `a_std_program_resolves_its_granted_zone_and_nothing_without_a_grant`, green on all three
+  architectures, is the proof that a program at the prompt resolves a name. No prompt line
+  through the host's DNS and no name-server setting are owed.
 
 ## BUGS
 
@@ -98,9 +102,6 @@ alone would have let the ninth `jig` of a boot be refused.
 
 ## Follow-on
 
-- **Outstanding.** Item 4's positive half at the prompt, waiting on calef's answer on this
-  block's pull request: a gate line that depends on the host's DNS, the kernel harness as the
-  proof, or an owner setting that names the name server.
 - **Outstanding.** Item 3's zone for any program but `jig`, the fork above.
 - **Milestone 809.** `jig` resolves the index's host through this badge at item 6.
 
