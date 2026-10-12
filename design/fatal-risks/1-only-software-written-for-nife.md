@@ -120,6 +120,15 @@ SQLite 3.50.4's `speedtest1` and ioping 1.3 run under QEMU on all three architec
 where their helpers were run, never in CI. Whether this closes gap 2 is calef's, under §216
 (fatal-risk facts are correctable, and verdicts are the architect's), so the verdict stays AMBER.
 
+Fact, 2026-10-12 (UTC): every foreign program this page counts runs today from a binary a
+`helpers/build-*.sh` script built, not from a package. That is `rg`, `speedtest1` and ioping on
+`main`, and hackbench once #2009 (milestone 836 (a C library, stage 2: threads)) lands. calef ruled
+the same day that every program reaches nife that way: §297 (software reaches a nife system as a
+package `jig` installs from basalt's index, the kernel included). Their packaging is milestone 810 (`ripgrep` is packaged in basalt and installed with
+`jig`), milestone 897 (SQLite is packaged in basalt, and its tests run in basalt's package build),
+milestone 906 (ioping is packaged in basalt, and its test installs it with `jig`) and milestone 907
+(hackbench is packaged in basalt, and its test installs it with `jig`). The verdict is unchanged.
+
 ## Benchmarks that inform this risk
 
 As of 2026-10-08 (UTC), under §262 (nife is measured with the field's standard benchmarks).
