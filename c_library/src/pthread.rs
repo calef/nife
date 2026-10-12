@@ -32,9 +32,8 @@
 //! - **Cancellation is deferred and checked only at `pthread_testcancel`.** nife has no signals to
 //!   interrupt a thread, so the cancellation points POSIX lists (a blocking `read`, a condition
 //!   wait) do not act on a pending cancel.
-//! - **A caller-supplied stack (`pthread_attr_setstack`) is refused** with `EINVAL`: `std` makes
-//!   the stack. A requested size is honoured, and `std` raises one below 64 KiB to 64 KiB.
-//! - **`pthread_getattr_np` reports no stack address**, for the same reason.
+//! - **A caller-supplied stack (`pthread_attr_setstack`) is refused** with `EINVAL`, and
+//!   `pthread_getattr_np` reports no stack address: `std` makes the stack.
 //! - **16 threads a process**, the main thread included: `std`'s limit (milestone 812's `BUGS`).
 //!   One more `pthread_create` answers `EAGAIN`.
 //! - **Scheduling parameters are accepted and ignored**, since nife's scheduler has one class
