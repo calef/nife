@@ -260,6 +260,31 @@ mod tests {
         assert_eq!(p.take(2), Some(w));
     }
 
+    /// **A released window is not the next one handed out**: the rotation moved past it, so a
+    /// job that failed to start does not hand the next job the same window at once.
+    #[test]
+    fn a_released_window_waits_its_turn() {
+        let mut p = pool();
+        let w = p.take(1).unwrap();
+        p.release(w);
+        assert_eq!(p.take(2), Some(w + 1));
+    }
+
+    /// **A window's bound bit is its own**: setting one leaves the others, and clearing it clears
+    /// only it.
+    #[test]
+    fn each_window_is_bound_and_unbound_on_its_own() {
+        let mut p = pool();
+        assert!(!p.is_bound(3));
+        p.set_bound(3, true);
+        p.set_bound(5, true);
+        assert!(p.is_bound(3) && p.is_bound(5));
+        assert!(!p.is_bound(2) && !p.is_bound(4));
+        p.set_bound(3, false);
+        assert!(!p.is_bound(3));
+        assert!(p.is_bound(5), "clearing window 3 cleared window 5");
+    }
+
     /// **A due reap is forgotten when it arrives, and only then.**
     #[test]
     fn a_due_reap_is_cleared_by_its_own_reap() {

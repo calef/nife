@@ -43,3 +43,20 @@ fn an_image_region_is_its_pages_plus_its_runtimes() {
     assert_eq!(image_region_pages(10, Runtime::Native, 99), 10 + 99);
     assert_eq!(image_region_pages(0, Runtime::Native, 0), 0);
 }
+
+/// **A package manager's region carries one package more**: a named `std` program's region is
+/// [`STD_REGION_PAGES`], and one declaring the installer adds the largest image it may read.
+#[test]
+fn an_installer_region_holds_one_more_package() {
+    let jig = Prog::Jig.manifest();
+    assert!(jig.installer);
+    assert_eq!(
+        named_std_region_pages(&jig),
+        STD_REGION_PAGES + spawnproto::IMAGE_MAX_PAGES
+    );
+    let plain = Manifest {
+        installer: false,
+        ..jig
+    };
+    assert_eq!(named_std_region_pages(&plain), STD_REGION_PAGES);
+}

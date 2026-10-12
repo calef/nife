@@ -926,6 +926,13 @@ pub const SPAWN_OK: u64 = 0;
 mod tests {
     use super::*;
 
+    /// The reaped message carries the label and the thread id, in that order, and a zero third
+    /// word, so it cannot be read as a delegated capability's.
+    #[test]
+    fn a_reaped_message_is_label_then_thread() {
+        assert_eq!(reaped(6, 9), (6, 9, 0));
+    }
+
     #[test]
     fn request_round_trips() {
         // 6, not 1: word zero must come back verbatim, and an id of 1 cannot tell verbatim from a

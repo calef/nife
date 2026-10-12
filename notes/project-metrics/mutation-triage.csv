@@ -848,3 +848,39 @@ filesystem_protocol,rename_dst,replace | with ^,equivalent,"(handle & 0xffff) <<
 filesystem_protocol,reply,replace | with ^,equivalent,"xattr::reply packs (kind & MAX_KIND) << 32 beside value_len & 0xffff_ffff, disjoint, so | and ^ agree; the 2026-10-12 per-crate re-run still reports it"
 filesystem_protocol,req,replace | with ^,equivalent,"every req packs the opcode at bit 56 (OPERATION_SHIFT) beside fields below it: blk's count is at most 15 and fs's handle sits at 40..56 and its length below 40, all disjoint, so | and ^ agree; the 2026-10-12 per-crate re-run still reports it"
 filesystem_protocol,spec,replace | with ^,equivalent,"grant::spec packs len & 0xff beside rights << 8, and xattr::spec packs kind << 32 beside value_len & 0xffff_ffff; each pair is disjoint, so | and ^ agree; the 2026-10-12 per-crate re-run still reports it"
+grant_plan,,replace - with +,killed,killed by all_is_nine_bits_and_a_union_keeps_shared_bits
+grant_plan,Grants::union,replace | with ^,killed,killed by all_is_nine_bits_and_a_union_keeps_shared_bits
+grant_plan,Windows::is_bound,replace != with ==,killed,killed by each_window_is_bound_and_unbound_on_its_own
+grant_plan,Windows::is_bound,replace & with ^,killed,killed by each_window_is_bound_and_unbound_on_its_own
+grant_plan,Windows::is_bound,replace & with |,killed,killed by each_window_is_bound_and_unbound_on_its_own
+grant_plan,Windows::is_bound,replace << with >>,killed,killed by each_window_is_bound_and_unbound_on_its_own
+grant_plan,Windows::is_bound,replace Windows::is_bound -> bool with false,killed,killed by each_window_is_bound_and_unbound_on_its_own
+grant_plan,Windows::is_bound,replace Windows::is_bound -> bool with true,killed,killed by each_window_is_bound_and_unbound_on_its_own
+grant_plan,Windows::set_bound,delete !,killed,killed by each_window_is_bound_and_unbound_on_its_own
+grant_plan,Windows::set_bound,replace &= with |=,killed,killed by each_window_is_bound_and_unbound_on_its_own
+grant_plan,Windows::set_bound,replace << with >>,killed,killed by each_window_is_bound_and_unbound_on_its_own
+grant_plan,Windows::set_bound,replace Windows::set_bound with (),killed,killed by each_window_is_bound_and_unbound_on_its_own
+grant_plan,Windows::set_bound,replace |= with &=,killed,killed by each_window_is_bound_and_unbound_on_its_own
+grant_plan,Windows::take,replace + with *,killed,"two mutants share this key; the one in the next cursor (w + 1 as the value) is killed by a_released_window_waits_its_turn, and the one in the condition (w * 1 < end) is equivalent: it sets the cursor to end instead of first, and (end - first + i) % n is the same window as (first - first + i) % n"
+grant_plan,Windows::take,replace + with -,equivalent,"the mutant is in the wrap condition: with < end replaced by <= end, or w + 1 by w - 1, the cursor is left at end rather than first, and (end - first + i) % n names the same window as (first - first + i) % n; the 2026-10-12 per-crate re-run still reports it"
+grant_plan,Windows::take,replace < with <=,equivalent,"the mutant is in the wrap condition: with < end replaced by <= end, or w + 1 by w - 1, the cursor is left at end rather than first, and (end - first + i) % n names the same window as (first - first + i) % n; the 2026-10-12 per-crate re-run still reports it"
+grant_plan,installer_badge,replace | with ^,equivalent,"INSTALLER_BADGE is bit 62 and a label is a counter from 1 that never reaches it (the constant's documented contract), so | and ^ agree on every label; the 2026-10-12 per-crate re-run still reports it"
+grant_plan,named_std_region_pages,replace + with *,killed,killed by an_installer_region_holds_one_more_package
+grant_plan,named_std_region_pages,replace + with -,killed,killed by an_installer_region_holds_one_more_package
+grant_plan,named_std_region_pages,replace named_std_region_pages -> u64 with 0,killed,killed by an_installer_region_holds_one_more_package
+grant_plan,named_std_region_pages,replace named_std_region_pages -> u64 with 1,killed,killed by an_installer_region_holds_one_more_package
+grant_plan,narrow_by_verb,delete field clock from struct Manifest expression,killed,killed by each_field_is_narrowed_by_its_own_bit
+grant_plan,narrow_by_verb,delete field config from struct Manifest expression,killed,killed by each_field_is_narrowed_by_its_own_bit
+grant_plan,narrow_by_verb,delete field domain from struct Manifest expression,killed,killed by each_field_is_narrowed_by_its_own_bit
+grant_plan,narrow_by_verb,delete field entropy from struct Manifest expression,killed,killed by each_field_is_narrowed_by_its_own_bit
+grant_plan,narrow_by_verb,delete field machine from struct Manifest expression,killed,killed by each_field_is_narrowed_by_its_own_bit
+grant_plan,narrow_by_verb,delete field share from struct Manifest expression,killed,killed by each_field_is_narrowed_by_its_own_bit
+grant_plan,narrow_by_verb,replace && with ||,killed,killed by each_field_is_narrowed_by_its_own_bit
+grant_plan,reaped,"replace reaped -> (u64, u64, u64) with (0, 0, 0)",killed,killed by a_reaped_message_is_label_then_thread
+grant_plan,reaped,"replace reaped -> (u64, u64, u64) with (0, 0, 1)",killed,killed by a_reaped_message_is_label_then_thread
+grant_plan,reaped,"replace reaped -> (u64, u64, u64) with (0, 1, 0)",killed,killed by a_reaped_message_is_label_then_thread
+grant_plan,reaped,"replace reaped -> (u64, u64, u64) with (0, 1, 1)",killed,killed by a_reaped_message_is_label_then_thread
+grant_plan,reaped,"replace reaped -> (u64, u64, u64) with (1, 0, 0)",killed,killed by a_reaped_message_is_label_then_thread
+grant_plan,reaped,"replace reaped -> (u64, u64, u64) with (1, 0, 1)",killed,killed by a_reaped_message_is_label_then_thread
+grant_plan,reaped,"replace reaped -> (u64, u64, u64) with (1, 1, 0)",killed,killed by a_reaped_message_is_label_then_thread
+grant_plan,reaped,"replace reaped -> (u64, u64, u64) with (1, 1, 1)",killed,killed by a_reaped_message_is_label_then_thread
