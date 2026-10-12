@@ -434,11 +434,13 @@ pub fn init() {
         // SAFETY: guarded by the swap above, so at most one core ever runs this loop, and it runs
         // to completion before any OTHER core's `lidt` (below) can possibly point at this table:
         // that core would have to have gotten here first, which the swap already ruled out. The
-        // stub table is 256 entries and so is the IDT, so every index is in bounds.
+        // stub table is 256 entries and so is the IDT, so the two zip one to one. The `&mut` to
+        // the table lives only for this loop, and nothing else can reach the table until it ends.
         unsafe {
-            for vector in 0..256 {
+            let idt = &mut *IDT.get();
+            for (vector, (gate, &stub)) in idt.iter_mut().zip(ISR_STUBS.iter()).enumerate() {
                 let ist = if vector == 8 { IST_DOUBLE_FAULT } else { 0 };
-                (*IDT.get())[vector] = IdtEntry::interrupt_gate(ISR_STUBS[vector], ist);
+                *gate = IdtEntry::interrupt_gate(stub, ist);
             }
         }
     }
