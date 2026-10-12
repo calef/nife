@@ -37,8 +37,6 @@ too_many_lines	kernel/src/disk_throughput.rs	measure	130
 too_many_lines	kernel/src/job_mix.rs	run	150
 too_many_lines	kernel/src/memory.rs	init	107
 too_many_lines	kernel/src/sched.rs	schedule	128
-too_many_lines	kernel/src/soak.rs	run	117
-too_many_lines	kernel/src/soak.rs	watch	156
 too_many_lines	kernel/src/storage_bench.rs	through_el0	102
 too_many_lines	kernel/src/syscall.rs	invoke	189
 too_many_lines	kernel/src/user/compositor_service.rs	start	101

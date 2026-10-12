@@ -220,6 +220,31 @@ pub fn run() -> ! {
         arch::halt(arch::HaltReason::measurement_boot());
     }
 
+    let (tids, placed) = spawn_workers(image, shared, groups);
+
+    // **Last, and after every worker exists** (milestone 221). Signalling earlier would hand the
+    // first waiter a backlog to drain before it ever blocked, so the first beat would measure setup
+    // rather than the machine. Harmless either way (a signal is counted, not lost), which is why
+    // this is the half that waits and the routing above is the half that does not.
+    arm_tick_hook(groups);
+
+    let workers = groups * MEMBERS_PER_GROUP;
+    print_start_banner(groups, callers, workers, cpus);
+
+    #[cfg(feature = "reboot_soak_test")]
+    arm_reboot();
+
+    print_spawn_census(groups, &placed[..workers]);
+
+    watch(shared, workers, &tids, &placed)
+}
+
+/// Spawn every group's workers, responder first, and keep the thread and core each was given.
+fn spawn_workers(
+    image: &'static [u8],
+    shared: u64,
+    groups: usize,
+) -> ([u64; MAX_WORKERS], [u8; MAX_WORKERS]) {
     // **What milestone 240 needs and nothing else records.** The kernel decides where every worker
     // goes and then forgets; these two arrays are that decision kept, so the census below can be
     // printed from what happened rather than from what the placement policy usually does.
@@ -280,14 +305,11 @@ pub fn run() -> ! {
             placed[index] = u8::try_from(cpu).unwrap_or(u8::MAX);
         }
     }
+    (tids, placed)
+}
 
-    // **Last, and after every worker exists** (milestone 221). Signalling earlier would hand the
-    // first waiter a backlog to drain before it ever blocked, so the first beat would measure setup
-    // rather than the machine. Harmless either way (a signal is counted, not lost), which is why
-    // this is the half that waits and the routing above is the half that does not.
-    arm_tick_hook(groups);
-
-    let workers = groups * MEMBERS_PER_GROUP;
+/// The start marker and the lines that say how to read the beat that follows.
+fn print_start_banner(groups: usize, callers: usize, workers: usize, cpus: usize) {
     println!();
     println!(
         "{START_MARKER} {groups} groups of one responder, {callers} callers, \
@@ -312,14 +334,14 @@ pub fn run() -> ! {
          because they are separate quantities, and neither rate compares with a soak built \
          differently"
     );
+}
 
-    #[cfg(feature = "reboot_soak_test")]
-    arm_reboot();
-
+/// The spawn-time census, and what a reader should and should not take from it.
+fn print_spawn_census(groups: usize, placed: &[u8]) {
     print_census(
         "where the kernel placed each worker at spawn",
         groups,
-        &placed[..workers],
+        placed,
     );
     println!(
         "{CENSUS_MARKER} this is the boot-time lottery and NOT where the run settles: a rendezvous \
@@ -337,8 +359,6 @@ pub fn run() -> ! {
          point rather than a surprise, and it is already crossings= \
          (design/roadmap/0221-a-soak-that-crosses-cores.md)"
     );
-
-    watch(shared, workers, &tids, &placed)
 }
 
 /// **The prefix every census line carries** (milestone 240).
@@ -908,54 +928,15 @@ fn watch(shared: u64, workers: usize, tids: &[u64; MAX_WORKERS], placed: &[u8; M
         let elapsed = now.wrapping_sub(started) / hz.max(1);
         let window = (now.wrapping_sub(last_at) / hz.max(1)).max(1);
 
-        let mut total = 0u64;
-        let mut wakes = 0u64;
-        let mut mismatches = 0u64;
-        let mut stalled = 0usize;
-        let mut first_stalled = usize::MAX;
-        for (i, last) in previous.iter_mut().take(workers).enumerate() {
-            let rounds = read_counter(shared, soak_page::rounds(i));
-            let woken = read_counter(shared, soak_page::wakes(i));
-            mismatches = mismatches.wrapping_add(read_counter(shared, soak_page::mismatches(i)));
-            total = total.wrapping_add(rounds);
-            wakes = wakes.wrapping_add(woken);
-            // **One question for every role** (milestone 221): did *either* of this worker's two
-            // progress counters move? A waiter leaves `rounds` at zero forever and the other three
-            // roles leave `wakes` at zero forever, so summing them is a progress measure that needs
-            // no table of who plays which part, and cannot be fooled: neither counter ever goes
-            // down, so a sum that is unchanged means both terms were.
-            let progress = rounds.wrapping_add(woken);
-            if progress == *last {
-                stalled += 1;
-                if first_stalled == usize::MAX {
-                    first_stalled = i;
-                }
-            }
-            *last = progress;
-        }
+        let BeatSample {
+            total,
+            wakes,
+            mismatches,
+            stalled,
+            first_stalled,
+        } = sample_workers(shared, &mut previous, workers);
 
-        // **Is the census the log last printed still true?** (milestone 240.) One lock acquisition
-        // and `workers` comparisons once every [`BEAT_SECONDS`], which is what lets a census be
-        // printed on a change instead of on every beat: while this reads zero the reader knows the
-        // block above them describes the machine right now, and they are told rather than trusting.
-        //
-        // **Measured against the last census rather than against spawn**, and the difference is the
-        // whole value. Against spawn it becomes a constant a few beats in (11 of 20 on the aarch64
-        // QEMU leg) and then says nothing further; against the census it returns to zero after each
-        // reprint, so a nonzero one always means "there is a newer block below".
-        //
-        // Counted over the roles whose movement is news. A tick waiter migrating is milestone 221's
-        // whole point and is already `crossings=`, so folding it in would make this rise on a
-        // healthy run and mean nothing. A thread reading `u8::MAX` has not run yet and has no
-        // second core to have gone to, which is not drift either.
-        sched::last_cpus(&tids[..workers], &mut here[..workers]);
-        let drifted = (0..workers)
-            .filter(|&i| {
-                role_of(i % MEMBERS_PER_GROUP) != ROLE_WAITER
-                    && here[i] != u8::MAX
-                    && here[i] != census[i]
-            })
-            .count();
+        let drifted = count_drift(tids, workers, &mut here, &census);
 
         let refused = sched::wake_refusals();
         let rate = total.wrapping_sub(last_total) / window;
@@ -989,61 +970,10 @@ fn watch(shared: u64, workers: usize, tids: &[u64; MAX_WORKERS], placed: &[u8; M
             census = here;
         }
 
-        // The three verdicts, in the order a reader would want them: the one that is a finding
-        // about the kernel, then the one that is a finding about delivery, then the one that is a
-        // finding about liveness.
-        //
-        // The first beat is exempt from the stall check and only from that one: workers that have
-        // not been scheduled yet have not stalled, they have not started.
-        let verdict = if refused != 0 {
-            Some(
-                "the wake gate refused a wake: a waker made a parked receiver Ready with nothing \
-                  delivered (sched::wake_load_aware, the boot-8 gate). This is the defect \
-                  design/fatal-risks/README.md risk 5 is about.",
-            )
-        } else if mismatches != 0 {
-            Some(
-                "a caller got back a word that was not the answer to what it sent, or a CALL \
-                  arrived without its reply capability. The IPC path delivered the wrong message.",
-            )
-        } else if stalled != 0 && beat > 1 {
-            Some(
-                "a worker made no progress for a whole beat while the machine kept running: it \
-                  is wedged, or it died.",
-            )
-        } else {
-            None
-        };
+        let verdict = verdict_of(refused, mismatches, stalled, beat);
 
         if let Some(why) = verdict {
-            println!("soak-test: FAILED at t={elapsed}s beat={beat}: {why}");
-            if first_stalled != usize::MAX {
-                // Group and member, not a partner index. The old line printed `first_stalled ^ 1`
-                // and called it the partner, which was arithmetic from a two-member group that no
-                // longer exists; naming the group points a reader at every thread that could have
-                // wedged this one, which is what they actually need.
-                println!(
-                    "soak-test: first stalled worker is {first_stalled}: group {}, member {} of \
-                     {MEMBERS_PER_GROUP} (member 0 is the responder, then {CALLERS_PER_GROUP} \
-                     callers, then {GRINDERS_PER_GROUP} grinder, then the tick waiter)",
-                    first_stalled / MEMBERS_PER_GROUP,
-                    first_stalled % MEMBERS_PER_GROUP,
-                );
-            }
-            // The census before the dump, because a failure is the one moment a reader has the
-            // whole log in front of them and wants to know the shape of the machine that produced
-            // it. It costs four lines once, on a run that is ending anyway.
-            print_census(
-                "where the workers were when this run failed",
-                workers / MEMBERS_PER_GROUP,
-                &here[..workers],
-            );
-            // The thread dump before the panic, because the panic handler does not print one and
-            // the per-core event rings are the whole reason they exist: a soak failure with no path
-            // into the wedge is the end state alone, which is the thing first-silicon diagnostics
-            // were built because nobody could read.
-            sched::dump_threads();
-            panic!("soak failed at t={elapsed}s beat={beat}: {why}");
+            fail_run(elapsed, beat, why, first_stalled, workers, &here[..workers]);
         }
 
         // **The rebooting soak's two questions, in this order, and only after the verdict**
@@ -1057,19 +987,7 @@ fn watch(shared: u64, workers: usize, tids: &[u64; MAX_WORKERS], placed: &[u8; M
         // right now".
         #[cfg(feature = "reboot_soak_test")]
         if armed {
-            if crate::console::is_byte_waiting() {
-                armed = false;
-                println!(
-                    "{REBOOT_MARKER} DISARMED at t={elapsed}s: a byte arrived on this console. \
-                     This board will not reboot itself again. The soak keeps running and keeps \
-                     beating; power it off when you are done with it."
-                );
-            } else if elapsed >= REBOOT_AFTER_SECONDS {
-                // Returns only if somebody typed in the grace window or the firmware refused the
-                // reset, and both mean the same thing here: stop asking.
-                draw_again(elapsed);
-                armed = false;
-            }
+            ask_reboot_questions(&mut armed, elapsed);
         }
 
         // **Pet the watchdog, after the verdict** (milestone 593). After, for `draw_again`'s reason:
@@ -1077,34 +995,202 @@ fn watch(shared: u64, workers: usize, tids: &[u64; MAX_WORKERS], placed: &[u8; M
         // once its dump is on the console. The escape is the same sticky console byte the reboot
         // loop reads, asked first, so a keypress halts the watchdog rather than racing it.
         #[cfg(feature = "watchdog_soak_test")]
-        if let Some(tco) = watchdog.take() {
-            if crate::console::is_byte_waiting() {
-                let halted = tco.disarm();
-                println!(
-                    "{WATCHDOG_MARKER} DISARMED at t={elapsed}s: a byte arrived on this console. The \
-                     watchdog is {} and will not reset this machine. The soak keeps running.",
-                    if halted {
-                        "halted"
-                    } else {
-                        "STILL COUNTING (the halt bit did not take)"
-                    }
-                );
-            } else {
-                let left = tco.ticks_left();
-                tco.pet();
-                if beat % WATCHDOG_REPORT_EVERY_BEATS == 1 {
-                    println!(
-                        "{WATCHDOG_MARKER} petted at t={elapsed}s beat={beat}: the count had {left} \
-                         of {} ticks left",
-                        tco.reload()
-                    );
-                }
-                watchdog = Some(tco);
-            }
-        }
+        tend_watchdog(&mut watchdog, elapsed, beat);
         #[cfg(feature = "wedge_soak_test")]
         if elapsed >= WEDGE_AFTER_SECONDS {
             wedge(elapsed);
+        }
+    }
+}
+
+/// One beat's sums over every worker's counters, and which workers made no progress.
+struct BeatSample {
+    total: u64,
+    wakes: u64,
+    mismatches: u64,
+    stalled: usize,
+    first_stalled: usize,
+}
+
+/// Read every worker's counters, sum them, and count the workers whose progress did not move.
+fn sample_workers(shared: u64, previous: &mut [u64; MAX_WORKERS], workers: usize) -> BeatSample {
+    let mut total = 0u64;
+    let mut wakes = 0u64;
+    let mut mismatches = 0u64;
+    let mut stalled = 0usize;
+    let mut first_stalled = usize::MAX;
+    for (i, last) in previous.iter_mut().take(workers).enumerate() {
+        let rounds = read_counter(shared, soak_page::rounds(i));
+        let woken = read_counter(shared, soak_page::wakes(i));
+        mismatches = mismatches.wrapping_add(read_counter(shared, soak_page::mismatches(i)));
+        total = total.wrapping_add(rounds);
+        wakes = wakes.wrapping_add(woken);
+        // **One question for every role** (milestone 221): did *either* of this worker's two
+        // progress counters move? A waiter leaves `rounds` at zero forever and the other three
+        // roles leave `wakes` at zero forever, so summing them is a progress measure that needs
+        // no table of who plays which part, and cannot be fooled: neither counter ever goes
+        // down, so a sum that is unchanged means both terms were.
+        let progress = rounds.wrapping_add(woken);
+        if progress == *last {
+            stalled += 1;
+            if first_stalled == usize::MAX {
+                first_stalled = i;
+            }
+        }
+        *last = progress;
+    }
+    BeatSample {
+        total,
+        wakes,
+        mismatches,
+        stalled,
+        first_stalled,
+    }
+}
+
+/// Read where each worker is now into `here`, and count those not where the last census put them.
+fn count_drift(
+    tids: &[u64; MAX_WORKERS],
+    workers: usize,
+    here: &mut [u8; MAX_WORKERS],
+    census: &[u8; MAX_WORKERS],
+) -> usize {
+    // **Is the census the log last printed still true?** (milestone 240.) One lock acquisition
+    // and `workers` comparisons once every [`BEAT_SECONDS`], which is what lets a census be
+    // printed on a change instead of on every beat: while this reads zero the reader knows the
+    // block above them describes the machine right now, and they are told rather than trusting.
+    //
+    // **Measured against the last census rather than against spawn**, and the difference is the
+    // whole value. Against spawn it becomes a constant a few beats in (11 of 20 on the aarch64
+    // QEMU leg) and then says nothing further; against the census it returns to zero after each
+    // reprint, so a nonzero one always means "there is a newer block below".
+    //
+    // Counted over the roles whose movement is news. A tick waiter migrating is milestone 221's
+    // whole point and is already `crossings=`, so folding it in would make this rise on a
+    // healthy run and mean nothing. A thread reading `u8::MAX` has not run yet and has no
+    // second core to have gone to, which is not drift either.
+    sched::last_cpus(&tids[..workers], &mut here[..workers]);
+    (0..workers)
+        .filter(|&i| {
+            role_of(i % MEMBERS_PER_GROUP) != ROLE_WAITER
+                && here[i] != u8::MAX
+                && here[i] != census[i]
+        })
+        .count()
+}
+
+/// The beat's verdict, if it is a failure.
+fn verdict_of(refused: u64, mismatches: u64, stalled: usize, beat: u64) -> Option<&'static str> {
+    // The three verdicts, in the order a reader would want them: the one that is a finding
+    // about the kernel, then the one that is a finding about delivery, then the one that is a
+    // finding about liveness.
+    //
+    // The first beat is exempt from the stall check and only from that one: workers that have
+    // not been scheduled yet have not stalled, they have not started.
+    if refused != 0 {
+        Some(
+            "the wake gate refused a wake: a waker made a parked receiver Ready with nothing \
+              delivered (sched::wake_load_aware, the boot-8 gate). This is the defect \
+              design/fatal-risks/README.md risk 5 is about.",
+        )
+    } else if mismatches != 0 {
+        Some(
+            "a caller got back a word that was not the answer to what it sent, or a CALL \
+              arrived without its reply capability. The IPC path delivered the wrong message.",
+        )
+    } else if stalled != 0 && beat > 1 {
+        Some(
+            "a worker made no progress for a whole beat while the machine kept running: it \
+              is wedged, or it died.",
+        )
+    } else {
+        None
+    }
+}
+
+/// Report a failed beat with its census and the thread dump, then panic.
+fn fail_run(
+    elapsed: u64,
+    beat: u64,
+    why: &str,
+    first_stalled: usize,
+    workers: usize,
+    here: &[u8],
+) -> ! {
+    println!("soak-test: FAILED at t={elapsed}s beat={beat}: {why}");
+    if first_stalled != usize::MAX {
+        // Group and member, not a partner index. The old line printed `first_stalled ^ 1`
+        // and called it the partner, which was arithmetic from a two-member group that no
+        // longer exists; naming the group points a reader at every thread that could have
+        // wedged this one, which is what they actually need.
+        println!(
+            "soak-test: first stalled worker is {first_stalled}: group {}, member {} of \
+             {MEMBERS_PER_GROUP} (member 0 is the responder, then {CALLERS_PER_GROUP} \
+             callers, then {GRINDERS_PER_GROUP} grinder, then the tick waiter)",
+            first_stalled / MEMBERS_PER_GROUP,
+            first_stalled % MEMBERS_PER_GROUP,
+        );
+    }
+    // The census before the dump, because a failure is the one moment a reader has the
+    // whole log in front of them and wants to know the shape of the machine that produced
+    // it. It costs four lines once, on a run that is ending anyway.
+    print_census(
+        "where the workers were when this run failed",
+        workers / MEMBERS_PER_GROUP,
+        here,
+    );
+    // The thread dump before the panic, because the panic handler does not print one and
+    // the per-core event rings are the whole reason they exist: a soak failure with no path
+    // into the wedge is the end state alone, which is the thing first-silicon diagnostics
+    // were built because nobody could read.
+    sched::dump_threads();
+    panic!("soak failed at t={elapsed}s beat={beat}: {why}");
+}
+
+/// The rebooting soak's two questions for this beat: has anyone typed, and is the window up.
+#[cfg(feature = "reboot_soak_test")]
+fn ask_reboot_questions(armed: &mut bool, elapsed: u64) {
+    if crate::console::is_byte_waiting() {
+        *armed = false;
+        println!(
+            "{REBOOT_MARKER} DISARMED at t={elapsed}s: a byte arrived on this console. \
+             This board will not reboot itself again. The soak keeps running and keeps \
+             beating; power it off when you are done with it."
+        );
+    } else if elapsed >= REBOOT_AFTER_SECONDS {
+        // Returns only if somebody typed in the grace window or the firmware refused the
+        // reset, and both mean the same thing here: stop asking.
+        draw_again(elapsed);
+        *armed = false;
+    }
+}
+
+/// Pet the watchdog for this beat, or halt it if a byte arrived on the console.
+#[cfg(feature = "watchdog_soak_test")]
+fn tend_watchdog(watchdog: &mut Option<arch::tco::Tco>, elapsed: u64, beat: u64) {
+    if let Some(tco) = watchdog.take() {
+        if crate::console::is_byte_waiting() {
+            let halted = tco.disarm();
+            println!(
+                "{WATCHDOG_MARKER} DISARMED at t={elapsed}s: a byte arrived on this console. The \
+                 watchdog is {} and will not reset this machine. The soak keeps running.",
+                if halted {
+                    "halted"
+                } else {
+                    "STILL COUNTING (the halt bit did not take)"
+                }
+            );
+        } else {
+            let left = tco.ticks_left();
+            tco.pet();
+            if beat % WATCHDOG_REPORT_EVERY_BEATS == 1 {
+                println!(
+                    "{WATCHDOG_MARKER} petted at t={elapsed}s beat={beat}: the count had {left} \
+                     of {} ticks left",
+                    tco.reload()
+                );
+            }
+            *watchdog = Some(tco);
         }
     }
 }
