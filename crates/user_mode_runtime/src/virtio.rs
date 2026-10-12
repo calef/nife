@@ -100,6 +100,11 @@ pub fn notify(virtio_slot: u64, queue: u64) -> i64 {
 /// compiler is the entire exposure and [`core::sync::atomic::compiler_fence`] is the whole answer.
 /// `components/src/non_volatile_memory_express.rs` keeps its own stronger barrier because its
 /// doorbell is a direct store to a device-typed page in this address space rather than a syscall.
+///
+/// Name: provisional, the lane for milestone 186 (derive the architecture list), #1143, 2026-09-23
+/// (UTC); marker written 2026-10-12 (UTC). Milestone 139 (drive the unsafe count down) round 11
+/// recorded it as outside calef's 2026-10-08 (UTC) renames of this module's wrappers. No other
+/// name is recorded.
 pub fn virtio_ring_barrier() {
     // SAFETY: a barrier has no operands and cannot be unsound; it only constrains ordering.
     #[cfg(target_arch = "aarch64")]

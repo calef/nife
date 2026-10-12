@@ -290,7 +290,6 @@ kernel/src/soak.rs:1	130
 kernel/src/stack.rs:166	43
 kernel/src/sync.rs:1	47
 kernel/src/sync.rs:55	64
-kernel/src/syscall.rs:316	41
 kernel/src/testing.rs:16	49
 kernel/src/user/address_space.rs:307	46
 kernel/src/user/e1000e_service.rs:1	54

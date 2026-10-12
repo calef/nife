@@ -49,13 +49,11 @@ mod address_space;
 mod memory_region;
 mod object_methods;
 mod page_frame;
+mod rendezvous;
 mod retype;
 mod thread_control_block;
 use address_space::address_space_invoke;
-use memory_region::{
-    memory_region_destroy, memory_region_map, memory_region_retype, memory_region_split,
-    memory_region_usage,
-};
+use memory_region::memory_region_invoke;
 #[cfg(target_arch = "x86_64")]
 use object_methods::port_range_invoke;
 use object_methods::{
@@ -63,6 +61,10 @@ use object_methods::{
     rendezvous_badge, rendezvous_reap, reply_other, timer_invoke, virtio_invoke,
 };
 use page_frame::{page_frame_map, page_frame_revoke, page_frame_slice};
+use rendezvous::{
+    rendezvous_call, rendezvous_receive, rendezvous_receive_capability, rendezvous_send,
+    rendezvous_send_capability, rendezvous_survey,
+};
 use thread_control_block::thread_control_block_invoke;
 
 // Index exception (2026-10-12): `script/fastpath-footprint` finds the syscall entry by this
@@ -177,128 +179,15 @@ pub fn invoke(
 
     match cap.object {
         Object::Rendezvous(ep, badge) => match method {
-            // SEND takes WRITE, RECEIVE takes READ. The *same* endpoint, handed out with different
-            // rights, is a one-way pipe in whichever direction each holder was trusted with.
-            abi::rendezvous::SEND => {
-                if !cap.rights.allows(Rights::WRITE) {
-                    return Err(Error::NotPermitted);
-                }
-                // The three words are already in registers. **Nothing is read from user memory**,
-                // so there is no pointer to validate and no confused-deputy question to ask. That
-                // is the fastpath, and it is why IPC carries control and not bulk data (§10).
-                // The badge rides in word 3 (milestone 613 (a system log service), provisional):
-                // a byte-sink writer's identity is its capability's badge, never its own claim.
-                sched::ipc_send_badged(ep, [a0, a1, a2], badge);
-                // If the endpoint was revoked (stale, or reclaimed while we blocked), the send never
-                // happened: report it rather than a silent success. Object revocation, notes/.
-                //
-                // `Gone`, not `NoSuchSlot`, since milestone 50. The slot is not empty; a real
-                // capability names an object that has been destroyed, and a writer branches on the
-                // difference in opposite directions (`abi::Error::Gone`, notes/sink-protocol.md).
-                // This one line is what turns a dead pipe reader into something the producer can
-                // act on, which is why the ABI grew a variant rather than the sink protocol growing
-                // a heartbeat.
-                //
-                // **Or it was refused** (milestone 603 (provisional), DECISIONS §101 (notification objects) ruling B): the
-                // endpoint carries a hardware interrupt, whose driver reads `w0 = 1` as "the device
-                // fired", so no program may deposit anything there. `NotPermitted`, because it is
-                // the answer to an operation the capability names but may not perform, and it is
-                // asked only once the abort branch is taken, so a send that went through pays
-                // nothing for it.
-                if sched::take_ipc_aborted() {
-                    return Err(aborted_send_error());
-                }
-                Ok(0)
-            }
-            abi::rendezvous::RECEIVE => {
-                if !cap.rights.allows(Rights::READ) {
-                    return Err(Error::NotPermitted);
-                }
-                let msg = sched::ipc_receive(ep);
-                if sched::take_ipc_aborted() {
-                    return Err(Error::Gone); // endpoint revoked; the message is a placeholder
-                }
-                // Word 0 goes back the way every syscall result does, in x0 (dispatch writes it
-                // from our return value). Words 1..4 we place directly, because a syscall return is
-                // one register and a message is up to five: ordinary IPC fills three and leaves the
-                // top two zero, and a fault/exit notification (DECISIONS §26) fills all five.
-                frame.set_arg(1, msg[1]);
-                frame.set_arg(2, msg[2]);
-                frame.set_arg(3, msg[3]);
-                frame.set_arg(4, msg[4]);
-                Ok(msg[0] as i64)
-            }
-
-            // Delegation. `a0` is the slot of the capability to pass on, `a1` the rights to narrow
-            // it to, `a2` one data word. Two rights are in play and they are different questions:
-            // WRITE on *this* endpoint (may I send here?) and GRANT on the *delegated* capability
-            // (was I trusted to pass it on?). Without GRANT you may use a thing and not lend it.
+            // The round trip's methods and `SURVEY`, each in `rendezvous`, `#[inline(always)]` so
+            // the decoder compiles as it did with them written here (that module says why).
+            abi::rendezvous::SEND => rendezvous_send(cap.rights, ep, badge, [a0, a1, a2]),
+            abi::rendezvous::RECEIVE => rendezvous_receive(frame, cap.rights, ep),
             abi::rendezvous::SEND_CAP => {
-                if !cap.rights.allows(Rights::WRITE) {
-                    return Err(Error::NotPermitted);
-                }
-                // The source is read, checked (GRANT, narrow-only) and copied inside `sched`, under
-                // the hold that files the copy, so no revocation sweep can fall between the read and
-                // the filing. Reading it here first was that gap (`sched::Delegation`).
-                #[cfg(feature = "system_tests")]
-                crate::delegation_pause::here(); // no lock held
-                sched::ipc_delegate_cap(
-                    ep,
-                    a2,
-                    sched::Delegation {
-                        slot: a0,
-                        rights: Rights::from_bits(a1 as u32),
-                    },
-                    badge, // the endpoint we send on may be badged (milestone 599 (a frame per filesystem client channel))
-                )?;
-                if sched::take_ipc_aborted() {
-                    // Revoked, or refused (§101 ruling B); either way the delegation did not happen
-                    // and the capability is still the sender's.
-                    return Err(aborted_send_error());
-                }
-                Ok(0)
+                rendezvous_send_capability(cap.rights, ep, badge, [a0, a1, a2])
             }
-            abi::rendezvous::RECEIVE_CAP => {
-                if !cap.rights.allows(Rights::READ) {
-                    return Err(Error::NotPermitted);
-                }
-                let msg = sched::ipc_receive_cap(ep);
-                if sched::take_ipc_aborted() {
-                    return Err(Error::Gone); // endpoint revoked; the message is a placeholder
-                }
-                // x1 carries the slot the received capability landed in, or NO_CAP if the message
-                // brought none; x2 the second data word (a CALL's, or 0); x3 the sender's badge
-                // (milestone 599), 0 when its capability was unbadged. x0 returns the first word.
-                // x4 is `abi::notification::BOUND` when the bound notification ended this receive,
-                // `abi::rendezvous::REPLY_DELIVERED` when x1 is a CALL's Reply (§245 (a `CALL`
-                // server tells a Reply from a delegation)), and 0 otherwise (milestone 151
-                // (notification objects)): the one register here no sender can write, so the one a
-                // bound server, and every CALL server, tests.
-                frame.set_arg(1, msg[1]);
-                frame.set_arg(2, msg[2]);
-                frame.set_arg(3, msg[3]);
-                frame.set_arg(4, msg[4]);
-                Ok(msg[0] as i64)
-            }
-
-            // Call: send two words and block until replied. The kernel mints a one-shot Reply cap
-            // naming us into the server (delivered by its RECEIVE_CAP); we return here only when the
-            // server invokes it. See §12 and notes/ipc-naming.md. Sending needs WRITE, like SEND.
-            abi::rendezvous::CALL => {
-                if !cap.rights.allows(Rights::WRITE) {
-                    return Err(Error::NotPermitted);
-                }
-                let reply = sched::ipc_call_badged(ep, [a0, a1], badge);
-                if sched::take_ipc_aborted() {
-                    return Err(aborted_send_error()); // revoked or refused; no call, no reply
-                }
-                frame.set_arg(1, reply[1]); // r1; r0 returns in x0 below
-                // x2: the slot a `REPLY_CAPABILITY` filed in our table, or `NO_CAP` (§255 (each socket is
-                // its own capability)). Written on every CALL so a caller reads the kernel's word,
-                // never what it left in x2 itself.
-                frame.set_arg(2, reply[2]);
-                Ok(reply[0] as i64)
-            }
+            abi::rendezvous::RECEIVE_CAP => rendezvous_receive_capability(frame, cap.rights, ep),
+            abi::rendezvous::CALL => rendezvous_call(frame, cap.rights, ep, badge, [a0, a1]),
 
             // **Collect a corpse this endpoint supervises** (DECISIONS §32). The method that lets a
             // supervisor reap without holding the authority to *build*: reaping used to mean
@@ -316,61 +205,7 @@ pub fn invoke(
                 }
                 rendezvous_reap(ep, a0)
             }
-
-            // **Read one entry of the domain this endpoint supervises** (milestone 126 (the `procps` package)). The view
-            // half of what REAP is the control half of, and scoped by the same relationship, so a
-            // supervisor sees exactly the children whose deaths would arrive here.
-            //
-            // READ for the same reason REAP takes READ: the authority to see who may die here is
-            // the authority to receive deaths here. **A send-only holder is refused rather than
-            // shown an empty domain**, which is the whole point of the method; a monitor that
-            // reports nothing because it could not look is the worst failure this tool has, and an
-            // empty answer is reserved for a domain that really is empty.
-            //
-            // `a0` is the cursor: 0 to start, then whatever the last call returned, until a
-            // `survey::DONE` comes back. `a1` is the RECORD: which per-thread fact the caller
-            // wants. x1 carries the tid and x2 that record's word.
-            //
-            // **The selector is calef's 2026-09-21 ruling, and it replaces growing this row.** The
-            // earlier plan put each new fact in a further return register; he expects a third and a
-            // fourth fact, and a mechanism that has to be redesigned at the sixth field is the
-            // wrong mechanism at the fourth. Nobody grows a register row: Linux reached 52 fields
-            // through a pseudo-file and Zircon 41 topics through a selector. So x0 and x1 are the
-            // frame, the same for every record, and only x2 belongs to the record.
-            //
-            // **`record::STATE` is 0 so that every caller written before the selector keeps
-            // working**, having passed 0 into an argument that was then unused. That is a claim
-            // about a wire rather than a hope, and it is asserted in `abi`'s own tests.
-            //
-            // **Why the placement record needs no authority beyond the `ENUMERATE` below**, said
-            // here rather than in a decisions file the reader would have to go and find. §150 (how does a
-            // thread's CPU time reach userspace?)
-            // already weighed that a viewer holding `ENUMERATE` learns something aggregate about
-            // threads it cannot otherwise name, and accepted it for a CPU-time counter. A placement
-            // is strictly less than what was accepted: one bounded value out of at most 64, written
-            // once when the thread started and never again, against a counter that moves
-            // continuously and can therefore be differenced into a timing channel. A viewer that
-            // can already see a thread's tid and run state learns which of a handful of cores it
-            // was put on. **It can never name a thread outside the domain it was handed**; what
-            // it can learn about them is one noisy bit per spawn (2026-09-24 security audit):
-            // `pick_spawn_target` samples two cores and takes the one with the shorter run queue,
-            // and that queue counts every domain's threads, so a placement says which of two
-            // random cores was lighter at that instant. That is the counting channel the
-            // 2026-08-17 audit recorded, at lower bandwidth, and it is accepted on the same
-            // reasoning. The right to look is still the capability, and nothing here widens it.
-            abi::rendezvous::SURVEY => {
-                // `ENUMERATE`, not `READ`, and the distinction is the method's whole safety
-                // argument: `READ` here also unlocks `RECEIVE` and `REAP`, so a viewer granted it
-                // could reap a child. A domain names its members and does not act on them, and one
-                // bit for three operations cannot say that. See `Rights::ENUMERATE`.
-                if !cap.rights.allows(Rights::ENUMERATE) {
-                    return Err(Error::NotPermitted);
-                }
-                let (next, tid, word) = sched::survey_supervised(ep, a0, a1)?;
-                frame.set_arg(1, tid);
-                frame.set_arg(2, word);
-                Ok(next as i64)
-            }
+            abi::rendezvous::SURVEY => rendezvous_survey(frame, cap.rights, ep, a0, a1),
 
             // Body extracted, the pattern of milestone 156 (`syscall_entry`'s measured size is every method
             // combined): minting a badge is spawn-time delegation, never a step of the IPC round
@@ -429,48 +264,9 @@ pub fn invoke(
         // capability is the whole authority, so no rights bit is asked for (§251, "The method").
         Object::Reboot => reboot_invoke(method),
 
-        Object::MemoryRegion(region) => match method {
-            // Body extracted (milestone 156): all five `MemoryRegion` methods are memory-management
-            // administration a spawner runs while building a process, never a step of the IPC
-            // round trip `script/fastpath-footprint` bounds, so each stays out of `invoke`'s own
-            // bytes and `#[inline(never)]` on purpose. See `address_space_list`, the pattern this copies.
-            abi::memory_region::MAP => {
-                if !cap.rights.allows(Rights::WRITE) {
-                    return Err(Error::NotPermitted);
-                }
-                memory_region_map(region, a0)
-            }
-            abi::memory_region::RETYPE_OBJ => {
-                if !cap.rights.allows(Rights::WRITE) {
-                    return Err(Error::NotPermitted);
-                }
-                retype::memory_region_retype_obj(region, a0, a1, a2)
-            }
-            abi::memory_region::RETYPE => {
-                if !cap.rights.allows(Rights::WRITE) {
-                    return Err(Error::NotPermitted);
-                }
-                memory_region_retype(region, a0)
-            }
-            abi::memory_region::SPLIT => {
-                if !cap.rights.allows(Rights::WRITE) {
-                    return Err(Error::NotPermitted);
-                }
-                memory_region_split(cap, region, a0)
-            }
-            abi::memory_region::DESTROY => {
-                if !cap.rights.allows(Rights::WRITE) {
-                    return Err(Error::NotPermitted);
-                }
-                memory_region_destroy(region)
-            }
-            // What the region was spent on (milestone 126's `free`, DECISIONS §225 (`free` sees the machine and your share) part 1). Under
-            // `ENUMERATE` alone, `address_space::LIST`'s rule one object type over: learning what
-            // a budget went to is not the authority to spend it. An unknown record is refused
-            // before the region is looked up, `SURVEY`'s order.
-            abi::memory_region::USAGE => memory_region_usage(cap, region, a0),
-            _ => Err(Error::BadMethod),
-        },
+        // The rights checks and the out-of-line bodies, in `memory_region`, `#[inline(always)]`
+        // for the reason `rendezvous` gives.
+        Object::MemoryRegion(region) => memory_region_invoke(cap, region, method, [a0, a1, a2]),
 
         Object::PageFrame(phys, count) => match method {
             // Body extracted (milestone 156), the same reason as `MemoryRegion`'s five methods:

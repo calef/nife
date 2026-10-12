@@ -7,4 +7,3 @@
 # threshold or below, or deletes it. A rename moves its row at the same number. script/lint compares
 # this file against the merge base, so a row cannot be added and a number cannot rise.
 lint	path	item	value
-too_many_lines	kernel/src/syscall.rs	invoke	189

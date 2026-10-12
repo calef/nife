@@ -568,8 +568,10 @@ pub fn process_state(pid: ProcessId) -> Option<(u32, bool)> {
 }
 
 /// **How many threads `pid` has ever started**, for a test: [`ProcessPage::started`]. Readable after
-/// the process has ended and every member has left, until its region is reclaimed. Name:
-/// provisional (lane milestone/121-rg-threads, 2026-10-12 UTC).
+/// the process has ended and every member has left, until its region is reclaimed.
+///
+/// Name: provisional, lane milestone/121-rg-threads (#2016), 2026-10-12 (UTC).
+/// The pull request records no other name considered.
 #[cfg(feature = "system_tests")]
 pub fn process_threads_started(pid: ProcessId) -> Option<u32> {
     let guard = IPC_TABLES.lock();
