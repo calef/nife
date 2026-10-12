@@ -66,10 +66,10 @@
 
 use graphics_protocol as gfx;
 use user_mode_runtime::mapped_window::MappedWindow;
-use user_mode_runtime::virtio::{
-    virtio_notify, virtio_read_reg, virtio_ring_barrier, virtio_setup_queue, virtio_write_reg,
+use user_mode_runtime::virtio::virtio_ring_barrier;
+use user_mode_runtime::{
+    exit, interrupt_acknowledge, interrupt_wait, receive_request, reply, send,
 };
-use user_mode_runtime::{exit, irq_ack, irq_wait, receive_request, reply, send};
 
 /// Capability slots, by convention with `kernel/src/user/display_service.rs`.
 const REPORT: u64 = 0;
@@ -194,13 +194,13 @@ const E_DMA_REFUSED: u64 = 0x0A;
 const E_NO_COMPLETION: u64 = 0x0B;
 
 fn mr(off: u64) -> u32 {
-    virtio_read_reg(VIRTIO, off) as u32
+    user_mode_runtime::virtio::read_register(VIRTIO, off) as u32
 }
 
 fn mw(off: u64, v: u32) {
     // Only DMA-*safe* registers reach the device; the queue-address and notify registers are
     // refused by the kernel and go through SETUP_QUEUE / NOTIFY instead.
-    virtio_write_reg(VIRTIO, off, v as u64);
+    user_mode_runtime::virtio::write_register(VIRTIO, off, v as u64);
 }
 
 // SAFETY: the `MAP` loop in `_start` maps `DMA_PAGE_FRAMES` frames read/write at `DMA_VA` before any
@@ -291,7 +291,7 @@ fn submit(direct_memory_access_phys: u64, req_len: u32) -> u32 {
 
     // The kernel validates both descriptors against our DMA region, copies them into the shadow
     // ring the device actually reads, and only then rings the doorbell.
-    if virtio_notify(VIRTIO, CONTROL_Q) < 0 {
+    if user_mode_runtime::virtio::notify(VIRTIO, CONTROL_Q) < 0 {
         die(E_DMA_REFUSED);
     }
 
@@ -301,10 +301,10 @@ fn submit(direct_memory_access_phys: u64, req_len: u32) -> u32 {
     // the kill-mid-write section). The bound turns "no completion ever" into a legible failure
     // instead of a hang the watchdog has to catch.
     for _ in 0..64 {
-        irq_wait(IRQ); // blocks until the device raises its line
+        interrupt_wait(IRQ); // blocks until the device raises its line
         let istatus = mr(INTERRUPT_STATUS);
         mw(INTERRUPT_ACK, istatus);
-        irq_ack(IRQ); // re-enable the line the kernel masked when it fired
+        interrupt_acknowledge(IRQ); // re-enable the line the kernel masked when it fired
         virtio_ring_barrier();
         if direct_memory_access_read::<u16>(OFF_USED + 2) != used_before {
             return direct_memory_access_read::<u32>(OFF_RESP);
@@ -348,7 +348,7 @@ fn init(direct_memory_access_phys: u64) -> (u32, u32) {
     }
 
     // The kernel places queue 0's rings at the contract's offsets.
-    if virtio_setup_queue(VIRTIO, QSIZE as u64, CONTROL_Q) != 0 {
+    if user_mode_runtime::virtio::setup_queue(VIRTIO, QSIZE as u64, CONTROL_Q) != 0 {
         die(E_QUEUE);
     }
 

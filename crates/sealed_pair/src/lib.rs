@@ -58,7 +58,7 @@
 //! # let (_, archive) = sealed_pair::test_support::other_pair();
 //! let seal = inspect(&kernel, &archive).expect("the archive parses and carries a progenitor");
 //! assert!(!seal.is_sealed());
-//! assert!(seal.explain("nife-vf2.img", "nife-initrd.img").contains("progenitor"));
+//! assert!(seal.explain("nife-vf2.img", "nife-initial-ramdisk.img").contains("progenitor"));
 //! ```
 //!
 //! # BUGS
@@ -531,7 +531,7 @@ mod tests {
         assert!(seal.is_sealed(), "{seal:?}");
         assert!(!seal.kernel_refuses());
         assert!(!seal.progenitor_refuses());
-        let line = seal.explain("nife-vf2.img", "nife-initrd.img");
+        let line = seal.explain("nife-vf2.img", "nife-initial-ramdisk.img");
         assert!(line.starts_with("SEALED:"), "{line}");
         assert_eq!(line.lines().count(), 1, "a yes is one line: {line}");
         assert!(
@@ -579,7 +579,7 @@ mod tests {
         for e in &seal.entries {
             assert_eq!(e.vouch, Vouch::No, "{e:?}");
         }
-        let text = seal.explain("nife-vf2.img", "nife-initrd.img");
+        let text = seal.explain("nife-vf2.img", "nife-initial-ramdisk.img");
         assert!(text.contains("MEASURED BOOT REFUSED"), "{text}");
         assert!(text.contains("`progenitor` hashes to"), "{text}");
         assert!(text.contains("trust root"), "{text}");

@@ -397,7 +397,7 @@ fn a_kernel_signal_ends_an_irq_wait_with_the_word_in_x1_and_the_tag_in_x4() {
     let driver = sched::spawn(move || {
         let slot = sched::grant(crate::cap::irq_cap_rights(QUIET_INTID, Rights::READ))
             .expect("grant the irq");
-        let (answer, frame) = invoke(slot, abi::irq::WAIT, 0);
+        let (answer, frame) = invoke(slot, abi::interrupt::WAIT, 0);
         RESULT[0].store(answer.map_or(u64::MAX - 1, |v| v as u64), Ordering::SeqCst);
         RESULT[1].store(frame.arg(1), Ordering::SeqCst);
         RESULT[2].store(frame.arg(4), Ordering::SeqCst);

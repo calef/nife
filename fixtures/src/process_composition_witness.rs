@@ -22,10 +22,10 @@
 //! prints the bit meanings on failure.
 //!
 //! **Reading the archive is not a third capability.** The kernel maps the archive read-only at
-//! `user_mode_runtime::initrd::INITRD_VA` and passes its length in `x1`, which is what it did for
-//! `builder` and does for the progenitor. That mapping lets this program read bytes; it names no
-//! kernel object and can do nothing with the system. A reader who counts it as authority anyway
-//! should know it is there.
+//! `user_mode_runtime::initial_ramdisk::INITIAL_RAMDISK_VA` and passes its length in `x1`, which is
+//! what it did for `builder` and does for the progenitor. That mapping lets this program read
+//! bytes; it names no kernel object and can do nothing with the system. A reader who counts it as
+//! authority anyway should know it is there.
 //!
 //! **Milestone 19b's "nothing runs in the space it built" reading no longer holds.** It held while
 //! threads were 19c's object, and §185 chose to extend this fixture rather than add a second one. The
@@ -105,7 +105,9 @@ use capability_witness_protocol::process_composition::{
 use supervision_protocol::{
     ChildEndowment, Retention, build_child_space, configure_child, start_child,
 };
-use user_mode_runtime::{exit, map_into, receive, retype_object, retype_page_frame, send};
+use user_mode_runtime::{
+    address_space_map_into, exit, receive, retype_into_kernel_object, retype_into_page_frame, send,
+};
 
 const MEMORY_REGION: u64 = 0;
 const REPORT: u64 = 1;
@@ -119,17 +121,17 @@ const INPUT: u64 = 9;
 const VA: u64 = address_space_map::pair_page(0x0040_0000);
 
 #[unsafe(no_mangle)]
-pub extern "C" fn _start(_arg0: u64, initrd_len: u64, _arg2: u64) -> ! {
-    send(REPORT, compose(initrd_len), 0, 0);
+pub extern "C" fn _start(_arg0: u64, initial_ramdisk_len: u64, _arg2: u64) -> ! {
+    send(REPORT, compose(initial_ramdisk_len), 0, 0);
     exit()
 }
 
 /// Every step, returning the verdict bits it reached. Stops at the first step that fails, so the
 /// word says where.
-fn compose(initrd_len: u64) -> u64 {
-    // SAFETY: forwarded from user_mode_runtime::initrd::initrd_bytes's own contract: the kernel
-    // mapped the archive at INITRD_VA and passed its length in x1.
-    let archive = unsafe { user_mode_runtime::initrd::initrd_bytes(initrd_len) };
+fn compose(initial_ramdisk_len: u64) -> u64 {
+    // SAFETY: forwarded from user_mode_runtime::initial_ramdisk::bytes's own contract: the kernel
+    // mapped the archive at INITIAL_RAMDISK_VA and passed its length in x1.
+    let archive = unsafe { user_mode_runtime::initial_ramdisk::bytes(initial_ramdisk_len) };
     let Some(elf) = nifefs::Fs::parse(archive)
         .ok()
         .and_then(|fs| fs.read(CHILD))
@@ -139,7 +141,7 @@ fn compose(initrd_len: u64) -> u64 {
     };
     let mut verdict = CHILD_FOUND;
 
-    let answer = retype_object(MEMORY_REGION, abi::objtype::RENDEZVOUS);
+    let answer = retype_into_kernel_object(MEMORY_REGION, abi::objtype::RENDEZVOUS);
     if answer < 0 {
         return verdict;
     }
@@ -156,13 +158,13 @@ fn compose(initrd_len: u64) -> u64 {
     };
     verdict |= SPACE_BUILT;
 
-    let frame = retype_page_frame(MEMORY_REGION);
+    let frame = retype_into_page_frame(MEMORY_REGION);
     if frame >= 0 {
         let frame = frame as u64;
-        if map_into(aspace, VA, frame, abi::address_space::MAP_RW) == 0 {
+        if address_space_map_into(aspace, VA, frame, abi::address_space::MAP_RW) == 0 {
             verdict |= FRAME_MAPPED;
         }
-        if map_into(aspace, VA, frame, abi::address_space::MAP_RW) < 0 {
+        if address_space_map_into(aspace, VA, frame, abi::address_space::MAP_RW) < 0 {
             verdict |= DOUBLE_MAP_REFUSED;
         }
     }

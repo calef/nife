@@ -87,7 +87,7 @@ not a new instrument.
 
 ## What it would take, priced
 
-The boot itself is one `cargo xtask` verb over machinery that is all present: `initrd_riscv()`,
+The boot itself is one `cargo xtask` verb over machinery that is all present: `initial_ramdisk_riscv()`,
 `helpers/qemu-runner-riscv64.sh`, `crates/board_console`. A bounded tour boot is seconds, not
 minutes, because the tour halts on its own; the cost is the riscv64 kernel build, which
 `script/ci-build` already pays for other reasons.

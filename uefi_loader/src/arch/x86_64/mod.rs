@@ -386,11 +386,11 @@ fn write_start_info(
     cmdline: u64,
 ) {
     // **Module 0 is the archive and module 1 is this loader's own file, in that order, and the
-    // order is the contract.** `arch::x86_64::machine::initrd` reads module 0 and has since
-    // milestone 87; `machine::boot_file` reads module 1 and is milestone 198 (a package manager,
-    // and the trivial install that makes a second customer possible)'s rung 2a. A boot with no
-    // archive therefore hands over **no** modules at all rather than sliding the boot file into
-    // slot 0, which would be read as an archive and fail the measurement that protects it.
+    // order is the contract.** `arch::x86_64::machine::initial_ramdisk` reads module 0 and has
+    // since milestone 87; `machine::boot_file` reads module 1 and is milestone 198 (a package
+    // manager, and the trivial install that makes a second customer possible)'s rung 2a. A boot
+    // with no archive therefore hands over **no** modules at all rather than sliding the boot file
+    // into slot 0, which would be read as an archive and fail the measurement that protects it.
     let modules: [Option<(u64, u64)>; 2] = match module {
         Some(_) => [module, boot_file],
         None => [None, None],

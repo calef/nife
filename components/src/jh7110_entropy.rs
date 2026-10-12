@@ -8,8 +8,8 @@
 //! **Something spawns this program as of 2026-09-01**: `kernel/src/user/entropy_service.rs`'s
 //! `Bus` enum grew a `Jh7110` variant, and the riscv64 boot tour asks for it. The decision the
 //! previous draft of this paragraph was holding open (how a spawner locates this binary in an
-//! initrd) turned out to need no new answer: `entropy_service::ensure` already takes the program's
-//! bytes from its caller, exactly as it does for `entropy`, so the tour reads
+//! initial ramdisk) turned out to need no new answer: `entropy_service::ensure` already takes the
+//! program's bytes from its caller, exactly as it does for `entropy`, so the tour reads
 //! `user::program("jh7110_entropy")` and hands them over. Nothing about the interactive boot changed;
 //! DECISIONS §120's stopgap question is still open and still untouched by this.
 //!

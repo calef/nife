@@ -2,12 +2,13 @@
 //! `/chosen/linux,initrd-start` and `linux,initrd-end` set.
 //!
 //! On aarch64 and riscv64 the kernel learns about the machine from a flattened device tree, and it
-//! finds the userspace archive the way Linux finds an initrd: two properties under `/chosen`
-//! (`memory::init`, via `device_tree_blob::DeviceTreeBlob::initrd`). QEMU's `-initrd` writes them
-//! and U-Boot's `booti` writes them. **UEFI firmware does not**, because a UEFI loader places the
-//! archive itself and is expected to say so; this is that saying. It is the same job the Linux EFI
-//! stub does in `drivers/firmware/efi/libstub/fdt.c` (recalled, not read), done here in the
-//! smallest form that works: rebuild the blob with the two properties, and nothing else changed.
+//! finds the userspace archive the way Linux finds an initial ramdisk: two properties under
+//! `/chosen` (`memory::init`, via `device_tree_blob::DeviceTreeBlob::initial_ramdisk`). QEMU's
+//! `-initrd` writes them and U-Boot's `booti` writes them. **UEFI firmware does not**, because a
+//! UEFI loader places the archive itself and is expected to say so; this is that saying. It is the
+//! same job the Linux EFI stub does in `drivers/firmware/efi/libstub/fdt.c` (recalled, not read),
+//! done here in the smallest form that works: rebuild the blob with the two properties, and nothing
+//! else changed.
 //!
 //! **Pure and host-tested**, like the rest of this library: every test decodes the output with the
 //! crate the kernel decodes with, so the writer and the reader cannot drift apart without a test
@@ -130,12 +131,13 @@ pub fn output_len(src: &[u8]) -> Result<usize, Error> {
     let rsv = rsvmap_len(src, &h)?;
     // BEGIN_NODE "chosen" (4 + 8) + END_NODE (4) + two props (12 + 8 each) + two names.
     let extra = 12 + 4 + 2 * 20 + INITRD_START.len() + 1 + INITRD_END.len() + 1;
-    // **Exact, not padded**: this is the size `with_initrd` writes for a tree with no `/chosen`
-    // and neither name in its strings, which is the largest it can write, and a test holds the two
-    // equal. The header needs no padding before the reservation block because 40 is already the
-    // multiple of 8 that block needs (asserted below), so `with_initrd`'s `pad_to(8)` writes
-    // nothing. Until milestone 326 (2026-09-24) this added two unexplained 8s, and fifteen mutants
-    // of its arithmetic survived because a bound with slack cannot be told from a wrong one.
+    // **Exact, not padded**: this is the size `with_initial_ramdisk` writes for a tree with no
+    // `/chosen` and neither name in its strings, which is the largest it can write, and a test
+    // holds the two equal. The header needs no padding before the reservation block because 40 is
+    // already the multiple of 8 that block needs (asserted below), so `with_initial_ramdisk`'s
+    // `pad_to(8)` writes nothing. Until milestone 326 (2026-09-24) this added two unexplained 8s,
+    // and fifteen mutants of its arithmetic survived because a bound with slack cannot be told from
+    // a wrong one.
     const _: () = assert!(HEADER_LEN.is_multiple_of(8));
     Ok(HEADER_LEN + rsv + h.size_struct + h.size_strings + extra)
 }
@@ -189,7 +191,16 @@ impl Out<'_> {
 /// return the new tree's length. `out` must be at least [`output_len`] bytes.
 ///
 /// `/chosen` is created as the root's last child if the firmware's tree has none.
-pub fn with_initrd(src: &[u8], start: u64, end: u64, out: &mut [u8]) -> Result<usize, Error> {
+///
+/// Name: ratified 2026-10-12 (calef, #1998, milestone 139 (drive the unsafe count down) round 11).
+/// His words: "B for #1998." Refused `with_initrd` (the foreign spelling, which stops at the
+/// boundary where it arrives).
+pub fn with_initial_ramdisk(
+    src: &[u8],
+    start: u64,
+    end: u64,
+    out: &mut [u8],
+) -> Result<usize, Error> {
     let h = header(src)?;
     let rsv = rsvmap_len(src, &h)?;
     let strings = &src[h.off_strings..h.off_strings + h.size_strings];
@@ -399,14 +410,15 @@ mod tests {
 
     const PLAIN: &[u8] =
         include_bytes!("../../crates/device_tree_blob/tests/fixtures/qemu-aarch64-virt.dtb");
-    const WITH_INITRD: &[u8] =
-        include_bytes!("../../crates/device_tree_blob/tests/fixtures/qemu-aarch64-virt-initrd.dtb");
+    const WITH_INITIAL_RAMDISK: &[u8] = include_bytes!(
+        "../../crates/device_tree_blob/tests/fixtures/qemu-aarch64-virt-initial-ramdisk.dtb"
+    );
     const RISCV: &[u8] =
         include_bytes!("../../crates/device_tree_blob/tests/fixtures/qemu-riscv64-virt.dtb");
 
     fn rewrite(src: &[u8], start: u64, end: u64) -> Vec<u8> {
         let mut out = vec![0; output_len(src).unwrap()];
-        let n = with_initrd(src, start, end, &mut out).unwrap();
+        let n = with_initial_ramdisk(src, start, end, &mut out).unwrap();
         out.truncate(n);
         out
     }
@@ -437,11 +449,11 @@ mod tests {
 
     #[test]
     fn the_kernel_reads_back_the_archive_it_is_told_about() {
-        for src in [PLAIN, WITH_INITRD, RISCV] {
+        for src in [PLAIN, WITH_INITIAL_RAMDISK, RISCV] {
             let out = rewrite(src, 0x4800_0000, 0x4849_0000);
             let tree = DeviceTreeBlob::from_bytes(&out).unwrap();
             assert_eq!(
-                tree.initrd().unwrap(),
+                tree.initial_ramdisk().unwrap(),
                 Some(Region {
                     start: 0x4800_0000,
                     size: 0x49_0000
@@ -454,18 +466,18 @@ mod tests {
 
     #[test]
     fn a_stale_pair_from_the_firmware_is_replaced_not_duplicated() {
-        let before = DeviceTreeBlob::from_bytes(WITH_INITRD)
+        let before = DeviceTreeBlob::from_bytes(WITH_INITIAL_RAMDISK)
             .unwrap()
-            .initrd()
+            .initial_ramdisk()
             .unwrap();
         assert!(
             before.is_some(),
             "the fixture carries QEMU's own -initrd pair"
         );
-        let out = rewrite(WITH_INITRD, 0x9000_0000, 0x9000_1000);
+        let out = rewrite(WITH_INITIAL_RAMDISK, 0x9000_0000, 0x9000_1000);
         let tree = DeviceTreeBlob::from_bytes(&out).unwrap();
         assert_eq!(
-            tree.initrd().unwrap(),
+            tree.initial_ramdisk().unwrap(),
             Some(Region {
                 start: 0x9000_0000,
                 size: 0x1000
@@ -509,7 +521,7 @@ mod tests {
         let out = rewrite(&src, 0x1000, 0x2000);
         let tree = DeviceTreeBlob::from_bytes(&out).unwrap();
         assert_eq!(
-            tree.initrd().unwrap(),
+            tree.initial_ramdisk().unwrap(),
             Some(Region {
                 start: 0x1000,
                 size: 0x1000
@@ -521,15 +533,15 @@ mod tests {
     fn refuses_what_is_not_a_tree() {
         let mut out = [0u8; 256];
         assert_eq!(
-            with_initrd(&[0; 64], 0, 1, &mut out),
+            with_initial_ramdisk(&[0; 64], 0, 1, &mut out),
             Err(Error::NotADeviceTree)
         );
         assert_eq!(
-            with_initrd(&PLAIN[..20], 0, 1, &mut out),
+            with_initial_ramdisk(&PLAIN[..20], 0, 1, &mut out),
             Err(Error::Truncated)
         );
         assert_eq!(
-            with_initrd(PLAIN, 0, 1, &mut out),
+            with_initial_ramdisk(PLAIN, 0, 1, &mut out),
             Err(Error::OutputTooSmall),
             "256 bytes is not a whole QEMU tree"
         );
@@ -649,11 +661,11 @@ mod tests {
         plain[at] = b'X';
         let mut out = vec![0; output_len(&plain).unwrap()];
         assert_eq!(
-            with_initrd(&plain, 0x1000, 0x2000, &mut out),
+            with_initial_ramdisk(&plain, 0x1000, 0x2000, &mut out),
             Ok(output_len(&plain).unwrap())
         );
         let mut out = vec![0; output_len(&src).unwrap()];
-        let n = with_initrd(&src, 0x1000, 0x2000, &mut out).unwrap();
+        let n = with_initial_ramdisk(&src, 0x1000, 0x2000, &mut out).unwrap();
         assert_eq!(n + 19, output_len(&src).unwrap(), "one name reused");
     }
 
@@ -728,22 +740,22 @@ mod tests {
         };
         let len = src.len();
         assert_eq!(
-            with_initrd(&with(1, len + 1), 0, 1, &mut out),
+            with_initial_ramdisk(&with(1, len + 1), 0, 1, &mut out),
             Err(Error::Truncated),
             "total"
         );
         assert_eq!(
-            with_initrd(&with(9, len), 0, 1, &mut out),
+            with_initial_ramdisk(&with(9, len), 0, 1, &mut out),
             Err(Error::Truncated),
             "struct"
         );
         assert_eq!(
-            with_initrd(&with(8, len), 0, 1, &mut out),
+            with_initial_ramdisk(&with(8, len), 0, 1, &mut out),
             Err(Error::Truncated),
             "strings"
         );
         assert_eq!(
-            with_initrd(&with(4, len), 0, 1, &mut out),
+            with_initial_ramdisk(&with(4, len), 0, 1, &mut out),
             Err(Error::Truncated),
             "rsvmap"
         );
@@ -751,17 +763,17 @@ mod tests {
         let mut longer = src.clone();
         longer.extend_from_slice(&[0xff; 64]);
         assert!(
-            with_initrd(&longer, 0, 1, &mut out).is_ok(),
+            with_initial_ramdisk(&longer, 0, 1, &mut out).is_ok(),
             "a buffer longer than the tree"
         );
         let slack = tree(&[], &bare_root(), false, 16);
         assert!(
-            with_initrd(&slack, 0, 1, &mut out).is_ok(),
+            with_initial_ramdisk(&slack, 0, 1, &mut out).is_ok(),
             "covered space after the strings"
         );
         let struct_last = tree(&[], &bare_root(), true, 0);
         assert!(
-            with_initrd(&struct_last, 0, 1, &mut out).is_ok(),
+            with_initial_ramdisk(&struct_last, 0, 1, &mut out).is_ok(),
             "the structure block last"
         );
     }
@@ -782,7 +794,7 @@ mod tests {
         assert_eq!(out, without, "the same tree, less its NOPs");
         let tree = DeviceTreeBlob::from_bytes(&out).unwrap();
         assert_eq!(
-            tree.initrd().unwrap(),
+            tree.initial_ramdisk().unwrap(),
             Some(Region {
                 start: 0x1000,
                 size: 0x1000
@@ -809,7 +821,7 @@ mod tests {
         let out = nested("chosen");
         let tree_out = DeviceTreeBlob::from_bytes(&out).unwrap();
         assert_eq!(
-            tree_out.initrd().unwrap(),
+            tree_out.initial_ramdisk().unwrap(),
             Some(Region {
                 start: 0x1000,
                 size: 0x1000
@@ -822,7 +834,7 @@ mod tests {
         other[at + 5] = b'n';
         assert_eq!(out, other, "/soc/chosen is treated like any other node");
 
-        for src in [PLAIN, WITH_INITRD, RISCV] {
+        for src in [PLAIN, WITH_INITIAL_RAMDISK, RISCV] {
             let out = rewrite(src, 0x1000, 0x2000);
             assert_eq!(chosen_nodes(&out), chosen_nodes(src), "no second /chosen");
         }
@@ -858,7 +870,7 @@ mod tests {
         s[8 + 4..8 + 8].copy_from_slice(&0x1000u32.to_be_bytes()); // the property's length
         let mut out = vec![0u8; 4096];
         assert_eq!(
-            with_initrd(&tree(&[], &s, false, 0), 0, 1, &mut out),
+            with_initial_ramdisk(&tree(&[], &s, false, 0), 0, 1, &mut out),
             Err(Error::Truncated)
         );
     }

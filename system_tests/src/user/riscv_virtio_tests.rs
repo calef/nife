@@ -8,16 +8,16 @@ use super::std_tests::{
 use super::*;
 use crate::sched;
 
-/// The `block_driver` program's ELF bytes from the riscv initrd archive. Absent means the initrd
-/// was built without it (or the aarch64 archive was handed to a riscv boot, the mix-up the xtask
-/// riscv test leg exists to prevent); fail loudly rather than skip.
+/// The `block_driver` program's ELF bytes from the riscv initial ramdisk archive. Absent means the
+/// initial ramdisk was built without it (or the aarch64 archive was handed to a riscv boot, the
+/// mix-up the xtask riscv test leg exists to prevent); fail loudly rather than skip.
 fn blk_image() -> &'static [u8] {
-    program("block_driver").expect("no block_driver program in the initrd archive")
+    program("block_driver").expect("no block_driver program in the initial ramdisk")
 }
 
 /// The `net_stack` program's ELF bytes (milestone 30, piece 3): the smoltcp net server.
 fn net_stack_image() -> &'static [u8] {
-    program("net_stack").expect("no net_stack program in the initrd archive")
+    program("net_stack").expect("no net_stack program in the initial ramdisk")
 }
 
 /// The net client's test selectors and success word, matching `components/src/socket_test_client.rs`. The client is
@@ -131,8 +131,8 @@ fn the_page_tables_say_u_mode_cannot_read_the_kernels_memory() {
 
     // Any real compiled user ELF will do here; `hello` is packed under that name on every
     // architecture since milestone 266, so this no longer has to know which board it is on.
-    let image = program(super::HELLO_ENTRY).expect("no hello program in the initrd archive");
-    let (space, _) = load(image, 0).expect("the initrd did not load");
+    let image = program(super::HELLO_ENTRY).expect("no hello program in the initial ramdisk");
+    let (space, _) = load(image, 0).expect("the initial ramdisk did not load");
 
     space.while_installed(|| {
         assert!(
@@ -201,8 +201,8 @@ fn a_userspace_driver_reads_a_file_from_a_virtio_disk() {
 fn the_redoxfs_server_serves_redoxfs_over_a_capability_contract() {
     let Some((readiness, report)) = fs_service::start(
         blk_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
-        program("fs_test_client").expect("no fs_test_client program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
+        program("fs_test_client").expect("no fs_test_client program in the initial ramdisk"),
         0, // the end-to-end proof role, not the benchmark loop
     ) else {
         crate::testing::skip!("no RedoxFS disk attached");
@@ -234,8 +234,8 @@ fn the_redoxfs_server_serves_redoxfs_over_a_capability_contract() {
 fn std_fs_reads_a_file_through_a_granted_directory_capability() {
     let Some((readiness, report)) = fs_service::start_std(
         blk_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
-        program("std_exerciser").expect("no std_exerciser program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
+        program("std_exerciser").expect("no std_exerciser program in the initial ramdisk"),
     ) else {
         crate::testing::skip!("no RedoxFS disk attached");
     };
@@ -288,9 +288,9 @@ fn a_writable_per_file_grant_writes_that_file_and_still_only_that_file() {
 fn attack_a_grant(rights: u64, writable: bool) -> Option<u64> {
     let Some(report) = fs_service::start_granted(
         blk_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
-        program("fs_file_caretaker").expect("no fs_file_caretaker program in the initrd archive"),
-        program("fs_test_client").expect("no fs_test_client program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
+        program("fs_file_caretaker").expect("no fs_file_caretaker program in the initial ramdisk"),
+        program("fs_test_client").expect("no fs_test_client program in the initial ramdisk"),
         fs_service::Grant {
             name: if writable {
                 filesystem_protocol::fixture::SCRATCH_NAME
@@ -331,8 +331,8 @@ fn a_kill_mid_transaction_leaves_the_filesystem_consistent() {
     }
     assert_a_kill_mid_transaction_recovers(
         blk_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
-        program("fs_test_client").expect("no fs_test_client program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
+        program("fs_test_client").expect("no fs_test_client program in the initial ramdisk"),
     );
 }
 
@@ -527,7 +527,7 @@ fn a_client_echoes_over_tcp_through_the_socket_contract() {
 #[test_case]
 fn a_package_fetched_over_http_is_accepted_only_by_the_image_digest() {
     let catalogue = program(package_archive::CATALOG)
-        .expect("no package catalogue in the initrd archive: the archive build packs one");
+        .expect("no package catalogue in the initial ramdisk: the archive build packs one");
     let Some((report, net)) = virtio_service::start_package_fetch(
         net_stack_image(),
         NET_TEST_HTTP_PACKAGE,
@@ -640,10 +640,10 @@ fn a_host_process_connects_to_the_guest_and_is_answered() {
     net.release_or_fail("a net test's net_stack");
 }
 
-/// The `std_exerciser` std program's ELF bytes from the riscv initrd. Given the network here, its
-/// `UdpSocket::bind` probe succeeds and it runs the net transcript.
+/// The `std_exerciser` std program's ELF bytes from the riscv initial ramdisk. Given the network
+/// here, its `UdpSocket::bind` probe succeeds and it runs the net transcript.
 fn std_exerciser_image() -> &'static [u8] {
-    program("std_exerciser").expect("no std_exerciser program in the initrd archive")
+    program("std_exerciser").expect("no std_exerciser program in the initial ramdisk")
 }
 
 /// The exact transcript `std_exerciser` prints when it is granted the network **and refused every

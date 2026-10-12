@@ -11,7 +11,8 @@ use crate::user::holding::Holding;
 /// `-Zbuild-std` for a **custom target** (`aarch64-unknown-nife`, `riscv64-unknown-nife`,
 /// `x86_64-unknown-nife` since milestone 184) against the patched `std` in the `nife-dev`
 /// toolchain. It is absent from an archive packed by something that never built it (a bare
-/// `cargo xtask initrd-x86`, an interactive `run`), and every std test skips rather than fails.
+/// `cargo xtask initial-ramdisk-x86`, an interactive `run`), and every std test skips rather than
+/// fails.
 ///
 /// A named accessor rather than an `.expect` at nine call sites, for [`super::fs_service::
 /// fs_server_image`]'s reason: a fixture missing because of the *toolchain* rather than because of

@@ -73,7 +73,7 @@ pub fn run() -> ! {
 
 fn measure() -> &'static str {
     let Some(image) = crate::trust::require_program("net_stack") else {
-        return "FAILED: no net_stack in the initrd, or its bytes are not the measured ones";
+        return "FAILED: no net_stack in the initial ramdisk, or its bytes are not the measured ones";
     };
     let peer = match PEER.map(parse_peer) {
         Some(Some(p)) => Some(p),

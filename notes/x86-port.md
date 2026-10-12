@@ -25,7 +25,7 @@ faults and is delivered to its supervisor), and halts.
 
 And since 2026-08-24, userspace: every program in `user/` compiles for `x86_64-unknown-none`,
 `xtask` packs the same archive RISC-V's leg does, QEMU's PVH loader hands it over as a module, and
-`cfg(initrd)` is on. `script/test --arch x86_64` runs 170 tests and skips 67, where it ran 97
+`cfg(initial_ramdisk)` is on. `script/test --arch x86_64` runs 170 tests and skips 67, where it ran 97
 and skipped 7 the day before.
 
 **Not built:** VT-d and SMP bring-up, both loud `unimplemented!()`s in `arch/x86_64/` that name

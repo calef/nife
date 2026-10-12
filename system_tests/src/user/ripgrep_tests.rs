@@ -34,7 +34,7 @@ const NO_RIPGREP: &str = "no rg in this archive: build it with helpers/build-rip
 /// milestone packed `block_driver` on aarch64 too; `fs_service::blk_server_image` carries the
 /// reason.
 fn block_server_image() -> &'static [u8] {
-    program("block_driver").expect("no block_driver program in the initrd archive")
+    program("block_driver").expect("no block_driver program in the initial ramdisk")
 }
 
 /// **Somebody else's forty-crate application loads, runs, reaches a real filesystem through a
@@ -60,11 +60,11 @@ fn unmodified_ripgrep_runs_and_has_no_arguments_to_run_on() {
 
     use crate::arch::exceptions::USER_FAULTS;
 
-    let image = program("rg").expect("no rg program in the initrd archive");
+    let image = program("rg").expect("no rg program in the initial ramdisk");
     let faults_before = USER_FAULTS.load(Ordering::Relaxed);
     let Some(rg) = fs_service::start_std_full(
         block_server_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
         image,
     ) else {
         crate::testing::skip!("no RedoxFS disk attached");
@@ -120,13 +120,13 @@ fn unmodified_ripgrep_runs_and_has_no_arguments_to_run_on() {
 
 /// The caretaker's ELF, in every archive since milestone 47 (navigation and naming).
 fn caretaker_image() -> &'static [u8] {
-    program("fs_subtree_caretaker").expect("no fs_subtree_caretaker program in the initrd archive")
+    program("fs_subtree_caretaker").expect("no fs_subtree_caretaker program in the initial ramdisk")
 }
 
 /// Run `std_exerciser` holding milestone 121's priced tree with `rights`, and return its whole
 /// transcript. `None` when there is nothing to run it against, which the caller skips on.
 fn walk_with(rights: u64, out: &mut [u8]) -> Option<usize> {
-    let image = program("std_exerciser").expect("no std_exerciser program in the initrd archive");
+    let image = program("std_exerciser").expect("no std_exerciser program in the initial ramdisk");
     run_confined(image, "std_exerciser (walk)", rights, None, out).map(|(len, _)| len)
 }
 
@@ -147,7 +147,7 @@ fn run_confined(
     let faults_before = USER_FAULTS.load(Ordering::Relaxed);
     let spawned = fs_service::start_std_narrowed(
         block_server_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
         caretaker_image(),
         image,
         filesystem_protocol::fixture::walk::ROOT,
@@ -316,8 +316,8 @@ fn a_walk_through_a_bound_grant_is_priced() {
     skip_without_the_walk!();
     let Some(spawned) = fs_service::start_std_bound(
         block_server_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
-        program("std_exerciser").expect("no std_exerciser program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
+        program("std_exerciser").expect("no std_exerciser program in the initial ramdisk"),
         tree::ROOT,
         dir::ENUMERATE | dir::READ | dir::DESCEND,
     ) else {
@@ -368,7 +368,7 @@ fn a_bound_grant_reaches_nothing_outside_it() {
     skip_without_the_walk!();
     let Some(grant) = fs_service::bind_subtree(
         block_server_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
         tree::ROOT,
         dir::ENUMERATE | dir::READ | dir::DESCEND,
     ) else {
@@ -472,7 +472,7 @@ macro_rules! skip_without_rg {
 /// One `rg` run over the priced tree, its transcript in `out`. Prints the transcript's tail and
 /// the heap it spent, which is the figure the 256-page budget is judged on.
 fn rg_with(rights: u64, line: &str, out: &mut [u8]) -> Option<usize> {
-    let image = program("rg").expect("no rg program in the initrd archive");
+    let image = program("rg").expect("no rg program in the initial ramdisk");
     let (len, spent) = run_confined(image, "rg", rights, Some(line), out)?;
     let text = core::str::from_utf8(&out[..len]).unwrap_or("<not utf-8>");
     crate::println!("    `{line}` printed {len} bytes and spent {spent} heap pages; it ended:");

@@ -68,8 +68,8 @@ use component_plan::Provisions;
 use supervision_protocol::{ChildEndowment, Retention};
 use swap_protocol::log_checks as lc;
 use user_mode_runtime::{
-    cap_delete, cntfrq, map_into, map_page_frame, now, receive, receive_bound, receive_fault,
-    revoke_frame, send, timer_arm,
+    address_space_map_into, cap_delete, cntfrq, map_page_frame, now, receive, receive_bound,
+    receive_fault, revoke_page_frame, send, timer_arm,
 };
 
 /// What the kernel grants us, and nothing else.
@@ -105,9 +105,9 @@ struct Wiring {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn _start(role: u64, initrd_len: u64, _a2: u64) -> ! {
-    // SAFETY: forwarded from user_mode_runtime::initrd::initrd_bytes's own contract.
-    let archive = unsafe { user_mode_runtime::initrd::initrd_bytes(initrd_len) };
+pub extern "C" fn _start(role: u64, initial_ramdisk_len: u64, _a2: u64) -> ! {
+    // SAFETY: forwarded from user_mode_runtime::initial_ramdisk::bytes's own contract.
+    let archive = unsafe { user_mode_runtime::initial_ramdisk::bytes(initial_ramdisk_len) };
     let Ok(fs) = nifefs::Fs::parse(archive) else {
         bail(1)
     };
@@ -481,7 +481,7 @@ fn build_without_devices(
 
 /// Take the device registers back from every other holder, and report it. Bails `stage`.
 fn revoke_device(stage: u64) {
-    if revoke_frame(DEVICE) != 0 {
+    if revoke_page_frame(DEVICE) != 0 {
         bail(stage)
     }
     send(
@@ -501,7 +501,7 @@ fn endow_devices_and_start(
     stage: u64,
 ) {
     for &(va, slot, mode) in component.devices() {
-        if map_into(u.aspace, va, slot, mode) != 0 {
+        if address_space_map_into(u.aspace, va, slot, mode) != 0 {
             bail(stage)
         }
     }

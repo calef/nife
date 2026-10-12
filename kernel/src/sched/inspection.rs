@@ -726,9 +726,9 @@ pub fn wake_without_delivery(tid: ThreadId) {
 /// **The boot tour's last-reached stage**, printed in every [`dump_threads`] header (first-silicon
 /// diagnostics, 2026-08-15; name provisional).
 ///
-/// Boots 7 through 9 on the VisionFive 2 were called a hang inside the initrd demo because the
-/// tour's serial lines after "init : measured, built, started" (the prefix that line carried then;
-/// the demo's program is `builder` and the line says so now) never showed at the bench, while
+/// Boots 7 through 9 on the VisionFive 2 were called a hang inside the initial ramdisk demo because
+/// the tour's serial lines after "init : measured, built, started" (the prefix that line carried
+/// then; the demo's program is `builder` and the line says so now) never showed at the bench, while
 /// the thread dumps kept printing. The dumps' own rows later proved the tour had in fact advanced
 /// through the UART-driver step (notes/visionfive2.md, fifth stop), so "which step did the boot
 /// thread reach" must not be inferable only from serial lines that can go missing: a breadcrumb
@@ -746,19 +746,20 @@ pub fn note_boot_stage(stage: u32) {
 /// finished (stage 11, and it was 10 until milestone 159 added the hardware-entropy step after
 /// what used to be the last one): boot 13 completed healthily and still printed five dumps of a
 /// quiescent machine, which reads as a hang to anyone who has not memorized the watcher.
-// Dead since milestone 295: the hang watcher in `riscv_initrd_demo` was the only reader, and that
-// function went with the program it loaded. `note_boot_stage` above still has ten callers, so the
-// breadcrumb is still WRITTEN and `dump_threads` still prints it from `BOOT_STAGE` directly; what
-// has no caller is this accessor. Kept with the canary below, for the reason written there.
+// Dead since milestone 295 (retire `components/src/builder.rs`): the hang watcher in
+// `riscv_initial_ramdisk_demo` was the only reader, and that function went with the program it
+// loaded. `note_boot_stage` above still has ten callers, so the breadcrumb is still WRITTEN and
+// `dump_threads` still prints it from `BOOT_STAGE` directly; what has no caller is this accessor.
+// Kept with the canary below, for the reason written there.
 #[allow(dead_code)]
 pub fn boot_stage() -> u32 {
     BOOT_STAGE.load(Ordering::Relaxed)
 }
 
 /// Arm the [`canary`] over the thread table and the rendezvous registry, snapshotting under `IPC_TABLES`
-/// so the baseline is a consistent cut. The riscv initrd demo arms before parking in its receive and
-/// disarms when the receive returns; see notes/visionfive2.md (fifth stop) for what boot 11 does
-/// with the output. **No caller since milestone 295**; see the note on `mod canary`.
+/// so the baseline is a consistent cut. The riscv initial ramdisk demo arms before parking in its
+/// receive and disarms when the receive returns; see notes/visionfive2.md (fifth stop) for what
+/// boot 11 does with the output. **No caller since milestone 295**; see the note on `mod canary`.
 #[allow(dead_code)]
 pub fn canary_arm_registries() {
     let mut guard = IPC_TABLES.lock();

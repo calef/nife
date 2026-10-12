@@ -65,7 +65,7 @@ pub struct BootEndowment {
     /// slot holds nothing at all, the same "0/empty means absent" shape [`fs_ep`](BootEndowment::fs_ep)
     /// already carries; [`boot`](crate::boot) probes for it (`invoke`'s own `NoSuchSlot` on an ungranted slot)
     /// rather than being told, because there is no fourth `START` argument word left to tell it
-    /// with (`role`, `initrd_len`, `fs_rights` already spend all three).
+    /// with (`role`, `initial_ramdisk_len`, `fs_rights` already spend all three).
     pub virtio_rng: u64,
     /// The device's completion interrupt; see [`virtio_rng`](BootEndowment::virtio_rng). `READ |
     /// GRANT`, routed by the kernel but left unenabled on riscv64 (`kernel::user::VirtioBootGrant`'s

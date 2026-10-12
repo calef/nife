@@ -57,7 +57,7 @@ mod swish_check;
 mod time_record;
 mod uefi;
 
-use crate::archive::{initrd_aarch64, initrd_riscv, initrd_x86};
+use crate::archive::{initial_ramdisk_aarch64, initial_ramdisk_riscv, initial_ramdisk_x86};
 use crate::bench::bench;
 use crate::board::{board_console, board_script};
 use crate::boot_check::boot_check;
@@ -75,15 +75,17 @@ use crate::uefi::{uefi_boot, uefi_image_command, uefi_test};
 const TARGET: &str = "aarch64-unknown-none-softfloat";
 const RUNNER: &str = "helpers/qemu-runner-aarch64.sh";
 
-/// The RISC-V target, for the second-architecture initrd (milestone 20). The kernel itself is built
-/// and run through cargo + `helpers/qemu-runner-riscv64.sh` directly, not this xtask; this const exists
-/// only so `initrd-riscv` builds the userspace archive for the matching target.
+/// The RISC-V target, for the second-architecture initial ramdisk (milestone 20 (a portable HAL)).
+/// The kernel itself is built and run through cargo + `helpers/qemu-runner-riscv64.sh` directly,
+/// not this xtask; this const exists only so `initial-ramdisk-riscv` builds the userspace archive
+/// for the matching target.
 const RISCV_TARGET: &str = "riscv64imac-unknown-none-elf";
 
 /// The `x86_64` target (milestone 161). The kernel is built and run through cargo +
 /// `helpers/qemu-runner-x86_64.sh`, exactly as the RISC-V one is, and since item 4's hand-off this
-/// const also builds the third userspace archive: `initrd-x86` compiles `user` for it and
-/// [`initrd_x86`] packs the same programs RISC-V's archive carries. See notes/x86-port/userspace.md.
+/// const also builds the third userspace archive: `initial-ramdisk-x86` compiles `user` for it and
+/// [`initial_ramdisk_x86`] packs the same programs RISC-V's archive carries. See
+/// notes/x86-port/userspace.md.
 const X86_TARGET: &str = "x86_64-unknown-none";
 
 /// Whether this run builds optimized binaries. Only `bench --release` sets it (a fair cross-OS
@@ -120,10 +122,11 @@ fn cargo_profiled(args: &[&str]) -> bool {
 
 /// **Build the two program packages, `components` and `fixtures`, for `target`**, in the run's
 /// profile and with the attacker roles only when [`CONFINEMENT_ATTACKERS`] says so. The one place
-/// the three initrd builders ([`user`], [`archive::initrd_riscv`], [`archive::initrd_x86`]) spell
-/// that build, so the feature cannot reach one architecture's archive and not another's. Switching
-/// between a test and any other boot recompiles `components`, because cargo fingerprints features;
-/// that is the price of the shipped image not containing the attacker. Name provisional.
+/// the three initial ramdisk builders ([`user`], [`archive::initial_ramdisk_riscv`],
+/// [`archive::initial_ramdisk_x86`]) spell that build, so the feature cannot reach one
+/// architecture's archive and not another's. Switching between a test and any other boot recompiles
+/// `components`, because cargo fingerprints features; that is the price of the shipped image not
+/// containing the attacker. Name provisional.
 pub(crate) fn build_programs(target: &str) -> bool {
     let mut args = vec![
         "build",
@@ -147,8 +150,8 @@ fn main() -> ExitCode {
         "build" => build(),
         "run" => {
             maybe_hvf();
-            // Build the disk and the initrd first: the kernel boots with them, and `cargo run`
-            // would not rebuild them on its own (the kernel does not depend on them in cargo).
+            // Build the disk and the initial ramdisk first: the kernel boots with them, and `cargo
+            // run` would not rebuild them on its own (the kernel does not depend on them in cargo).
             mkdisk() && user() && cargo(&["run", "-p", "kernel", "--target", TARGET])
         }
         "shell" => {
@@ -165,10 +168,10 @@ fn main() -> ExitCode {
             // its child, so there is no concurrent reader to race.
             unsafe { std::env::set_var("NIFE_RNG", "1") };
             // **The filesystem the prompt's `>` and `<` need** (milestone 50). The FS server first,
-            // because `user()` packs the initrd and the boot loads it out of there by name, and the
-            // RedoxFS image because the runner attaches it only when the file exists. Both are
-            // rebuilt per boot, so the prompt always meets a fresh fixture rather than whatever the
-            // last session wrote.
+            // because `user()` packs the initial ramdisk and the boot loads it out of there by
+            // name, and the RedoxFS image because the runner attaches it only when the file exists.
+            // Both are rebuilt per boot, so the prompt always meets a fresh fixture rather than
+            // whatever the last session wrote.
             redoxfs_server_build(TARGET)
                 && mkredoxfs()
                 && mkdisk()
@@ -184,15 +187,15 @@ fn main() -> ExitCode {
                 ])
         }
         // The aarch64 archive, standalone (2026-08-27): every other caller reaches
-        // `initrd_aarch64` through `user()` as part of a boot (`build`, `run`, `shell`, ...), and
-        // `initrd_aarch64` itself only packs, it does not build. `initrd_riscv` and `initrd_x86`
-        // both build-then-pack in one call, so this subcommand calls `user()` (build, then pack)
-        // rather than `initrd_aarch64()` alone, to give aarch64 the same self-contained entry
-        // point its two siblings already have.
-        "initrd-aarch64" => user(),
-        "initrd-riscv" => initrd_riscv(),
+        // `initial_ramdisk_aarch64` through `user()` as part of a boot (`build`, `run`, `shell`,
+        // ...), and `initial_ramdisk_aarch64` itself only packs, it does not build.
+        // `initial_ramdisk_riscv` and `initial_ramdisk_x86` both build-then-pack in one call, so
+        // this subcommand calls `user()` (build, then pack) rather than `initial_ramdisk_aarch64()`
+        // alone, to give aarch64 the same self-contained entry point its two siblings already have.
+        "initial-ramdisk-aarch64" => user(),
+        "initial-ramdisk-riscv" => initial_ramdisk_riscv(),
         // The third archive (milestone 161). Same programs, built for x86_64.
-        "initrd-x86" => initrd_x86(),
+        "initial-ramdisk-x86" => initial_ramdisk_x86(),
         // The bootable UEFI image (milestone 87): the entry real firmware can start, staged at
         // target/esp for a QEMU/OVMF boot or for a FAT32 stick. See notes/x86-uefi-boot.md.
         // Name: `uefi-image` and `uefi-boot` ratified 2026-08-30 (calef, in session, on milestone
@@ -300,7 +303,7 @@ fn main() -> ExitCode {
                 eprintln!("unknown command: {other}\n");
             }
             eprintln!(
-                "usage: cargo xtask <build|run|shell|swish-check|boot-check|initrd-aarch64|initrd-riscv|initrd-x86|uefi-image|uefi-boot|uefi-test|package|install-boot|rollback-boot|confirm-boot|stick|stick-boot|screen-boot|manual|apropos|std-src|std-stamp|std-exerciser|std-aborts|foreign-note|test|time-summary|undefined-behavior-check|bench|icount|gdb|objdump|image|board-console|soak-test|board-script|card-check> [--hvf]"
+                "usage: cargo xtask <build|run|shell|swish-check|boot-check|initial-ramdisk-aarch64|initial-ramdisk-riscv|initial-ramdisk-x86|uefi-image|uefi-boot|uefi-test|package|install-boot|rollback-boot|confirm-boot|stick|stick-boot|screen-boot|manual|apropos|std-src|std-stamp|std-exerciser|std-aborts|foreign-note|test|time-summary|undefined-behavior-check|bench|icount|gdb|objdump|image|board-console|soak-test|board-script|card-check> [--hvf]"
             );
             eprintln!("       cargo xtask swish-check [--arch aarch64|riscv64]");
             eprintln!(
@@ -341,8 +344,8 @@ fn main() -> ExitCode {
 }
 
 fn build() -> bool {
-    // The user program and the disk image first: the kernel boots with the program as an initrd
-    // and reads the disk over virtio, so both have to exist before it runs.
+    // The user program and the disk image first: the kernel boots with the program as an initial
+    // ramdisk and reads the disk over virtio, so both have to exist before it runs.
     mkdisk() && user() && cargo(&["build", "-p", "kernel", "--target", TARGET])
 }
 
@@ -353,17 +356,20 @@ fn build() -> bool {
 /// an **ELF**: the kernel's loader wants program headers, unlike the kernel itself, which QEMU
 /// wants as a flat image. See notes/elf.md.
 pub(crate) fn user() -> bool {
-    build_programs(TARGET) && initrd_aarch64()
+    build_programs(TARGET) && initial_ramdisk_aarch64()
 }
 
-/// The packed initrd archive ([`archive::initrd_path`]) is what `helpers/qemu-runner-aarch64.sh` passes to QEMU as
-/// `-initrd` (milestone 19f); the raw user ELFs ([`host::bin_elf`]) are only the input `initrd_aarch64` packs.
+/// The packed initial ramdisk archive ([`archive::initial_ramdisk_path`]) is what
+/// `helpers/qemu-runner-aarch64.sh` passes to QEMU as `-initrd` (milestone 19f (run a real
+/// workload)); the raw user ELFs ([`host::bin_elf`]) are only the input `initial_ramdisk_aarch64`
+/// packs.
 ///
 /// **Deliberately the same road Linux's initramfs travels**, now literally an archive like theirs.
 /// QEMU loads the file into RAM and writes its address into `/chosen/linux,initrd-start` in the
-/// device tree; the kernel finds it there (`memory::initrd_region`, built at milestone 3 for
-/// exactly this). Nothing about the contents is known to the kernel at build time, which is the
-/// entire point of milestone 7c.
+/// device tree; the kernel finds it there (`memory::initial_ramdisk_region`, built at milestone 3
+/// (hand out physical memory) for exactly this). Nothing about the contents is known to the kernel
+/// at build time, which is the entire point of milestone 7c (user mode: EL0, capabilities, the ELF
+/// loader, and IPC).
 ///
 /// If `--hvf` was passed, boot under Apple's Hypervisor.framework instead of TCG.
 fn maybe_hvf() {

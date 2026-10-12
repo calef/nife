@@ -87,39 +87,43 @@ fn refuses_to_overflow_the_callers_slice() {
     }
 }
 
-// --- /chosen and the initrd ---
+// --- /chosen and the initial ramdisk ---
 
-const QEMU_VIRT_INITRD: &[u8] = include_bytes!("fixtures/qemu-aarch64-virt-initrd.dtb");
+const QEMU_VIRT_INITIAL_RAMDISK: &[u8] =
+    include_bytes!("fixtures/qemu-aarch64-virt-initial-ramdisk.dtb");
 
 #[test]
-fn finds_the_initrd() {
-    let dtb = DeviceTreeBlob::from_bytes(QEMU_VIRT_INITRD).unwrap();
-    let initrd = dtb.initrd().unwrap().expect("this fixture has an initrd");
+fn finds_the_initial_ramdisk() {
+    let dtb = DeviceTreeBlob::from_bytes(QEMU_VIRT_INITIAL_RAMDISK).unwrap();
+    let initial_ramdisk = dtb
+        .initial_ramdisk()
+        .unwrap()
+        .expect("this fixture has an initial ramdisk");
 
     // The bootloader loaded a file into RAM and told us where. Nobody else protects it.
-    // If the frame allocator hands this memory out, the initrd is gone before milestone 8
-    // ever reads a byte of it.
-    assert_eq!(initrd.start, 0x4400_0000);
-    assert_eq!(initrd.end(), 0x4403_0d40);
+    // If the frame allocator hands this memory out, the initial ramdisk is gone before milestone 8
+    // (the console driver leaves the kernel) ever reads a byte of it.
+    assert_eq!(initial_ramdisk.start, 0x4400_0000);
+    assert_eq!(initial_ramdisk.end(), 0x4403_0d40);
     assert_eq!(
-        initrd.size, 200_000,
+        initial_ramdisk.size, 200_000,
         "the fixture was made from a 200 KB file"
     );
 }
 
 #[test]
-fn no_initrd_is_not_an_error() {
+fn no_initial_ramdisk_is_not_an_error() {
     // The common case: nobody passed -initrd. `None`, not an error, and definitely not a
     // zero-length region that the allocator then tries to reason about.
     let dtb = DeviceTreeBlob::from_bytes(QEMU_VIRT).unwrap();
-    assert_eq!(dtb.initrd().unwrap(), None);
+    assert_eq!(dtb.initial_ramdisk().unwrap(), None);
 }
 
 #[test]
-fn an_initrd_does_not_disturb_the_memory_map() {
+fn an_initial_ramdisk_does_not_disturb_the_memory_map() {
     // Regression guard: the /chosen walk and the /memory walk are separate passes over
     // the same token stream. A bug in one must not corrupt the other.
-    let dtb = DeviceTreeBlob::from_bytes(QEMU_VIRT_INITRD).unwrap();
+    let dtb = DeviceTreeBlob::from_bytes(QEMU_VIRT_INITIAL_RAMDISK).unwrap();
     let mut regions = [Region { start: 0, size: 0 }; 8];
     assert_eq!(dtb.memory_regions(&mut regions).unwrap(), 1);
     assert_eq!(regions[0].start, 0x4000_0000);

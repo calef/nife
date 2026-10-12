@@ -74,7 +74,7 @@ use smoltcp::time::Instant;
 use smoltcp::wire::{EthernetAddress, HardwareAddress, IpAddress, IpCidr, IpEndpoint, Ipv4Address};
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{
-    Delivered, Reply, cap_delete, cntfrq, irq_wait, map_page_frame, notification_poll, now,
+    Delivered, Reply, cap_delete, cntfrq, interrupt_wait, map_page_frame, notification_poll, now,
     receive_request, reply, reply_capability, send, sleep_until, timer_arm, timer_cancel,
 };
 
@@ -89,7 +89,7 @@ mod virtio_net_transport;
 mod interface_bring_up;
 use interface_bring_up::{dhcp_lease, heap_and_interface};
 // The socket-contract client rides in this same binary (dispatched by the entry role), because the
-// initrd directory holds at most 15 files; see components/src/socket_test_client.rs.
+// initial ramdisk directory holds at most 15 files; see components/src/socket_test_client.rs.
 #[path = "socket_test_client.rs"]
 mod socket_test_client;
 // The hostile second client milestone 649's confinement test runs (role 8), here for the same
@@ -226,7 +226,7 @@ impl PortAllocator {
 const SOCK_BUF: usize = 2048;
 
 /// Entry role 0 is the net server; any other role runs the socket-contract client (the same
-/// binary, so the initrd stays under its 15-file directory limit).
+/// binary, so the initial ramdisk stays under its 15-file directory limit).
 ///
 /// `a2` is the server's **grant word**, both port authorities in one spawn argument: the TCP
 /// listen range in the low half (milestone 107, `socket_protocol::listen_grant`) and the fixed-UDP
@@ -623,7 +623,7 @@ fn wait_for_nic(iface: &mut Interface, dev: &mut Nic, sockets: &mut SocketSet) {
         Nic::Virtio(_) => {}
     }
     let Some(delay) = iface.poll_delay(instant(), sockets) else {
-        irq_wait(IRQ);
+        interrupt_wait(IRQ);
         dev.ack_irq();
         return;
     };
@@ -639,7 +639,7 @@ fn wait_for_nic(iface: &mut Interface, dev: &mut Nic, sockets: &mut SocketSet) {
         cntfrq(),
     );
     if timer_arm(RETRANSMIT, now().saturating_add(ticks), WAKE, 1) == 0 {
-        irq_wait(IRQ); // 1: a frame; BOUND: the deadline
+        interrupt_wait(IRQ); // 1: a frame; BOUND: the deadline
         // Whichever ended the wait, leave nothing behind: disarm, and clear a fire that raced the
         // frame, so a stale deadline never ends the next `receive_cap(STACK)` as a bound delivery.
         if timer_cancel(RETRANSMIT) == 0 {

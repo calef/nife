@@ -70,7 +70,9 @@ use usb::boot_keyboard::{BootReport, REPORT_LEN, changes};
 use usb::descriptor::{self, ConfigurationHeader, DeviceDescriptor};
 use usb::request::SetupPacket;
 use user_mode_runtime::mapped_window::MappedWindow;
-use user_mode_runtime::{call, exit, irq_ack, irq_wait, monotonic_nanos, receive_cap, send};
+use user_mode_runtime::{
+    call, exit, interrupt_acknowledge, interrupt_wait, monotonic_nanos, receive_cap, send,
+};
 use video_terminal::keymap::{EV_KEY, Keyboard};
 
 /// Capability slots, by convention with `kernel/src/user/usb_keyboard_service.rs`.
@@ -852,7 +854,7 @@ pub extern "C" fn _start(arg0: u64, arg1: u64, arg2: u64) -> ! {
     let (_, out, _) = receive_cap(ATTACH);
 
     loop {
-        irq_wait(IRQ);
+        interrupt_wait(IRQ);
         // Clear the pending bits before draining, so an event that lands after the drain raises
         // the interrupt again rather than waiting for the next one.
         host.set_reg(
@@ -881,7 +883,7 @@ pub extern "C" fn _start(arg0: u64, arg1: u64, arg2: u64) -> ! {
                 _ => {}
             }
         }
-        irq_ack(IRQ);
+        interrupt_acknowledge(IRQ);
         if host.ports_changed {
             host.ports_changed = false;
             host.service_ports();

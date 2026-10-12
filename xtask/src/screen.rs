@@ -12,7 +12,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use crate::archive::{initrd_path, initrd_riscv, riscv_initrd_path};
+use crate::archive::{initial_ramdisk_path, initial_ramdisk_riscv, riscv_initial_ramdisk_path};
 use crate::host::{cargo, workspace_root};
 use crate::scanout::screendump;
 use crate::{RISCV_TARGET, TARGET, profile_dir};
@@ -49,7 +49,7 @@ pub(crate) fn screen_boot(arch: &str) -> bool {
     let prepared = if arch == "aarch64" {
         crate::user()
     } else {
-        initrd_riscv()
+        initial_ramdisk_riscv()
     };
     if !prepared || !cargo(&["build", "-p", "kernel", "--target", target]) {
         return false;
@@ -58,17 +58,17 @@ pub(crate) fn screen_boot(arch: &str) -> bool {
 
     // **The archive this architecture's kernel was measured against**, and it has to be said here.
     //
-    // [`cargo`] exports `NIFE_INITRD` pointing at the *aarch64* archive, because that is what the
-    // aarch64 runner wants and it is the aarch64 path's helper. Every other riscv64 caller in this
-    // crate overrides it for exactly this reason (`suite`'s riscv leg says so in its own comment,
-    // and `swish_check` and the interactive boot both pick per architecture). This one did not, and
-    // the failure had two faces: locally the aarch64 archive existed, so the riscv kernel loaded it
-    // and printed `MEASURED BOOT REFUSED` and carried on; in a CI job that never built one, QEMU
-    // refused to start at all with `could not load ramdisk`.
+    // [`cargo`] exports `NIFE_INITIAL_RAMDISK` pointing at the *aarch64* archive, because that is
+    // what the aarch64 runner wants and it is the aarch64 path's helper. Every other riscv64 caller
+    // in this crate overrides it for exactly this reason (`suite`'s riscv leg says so in its own
+    // comment, and `swish_check` and the interactive boot both pick per architecture). This one did
+    // not, and the failure had two faces: locally the aarch64 archive existed, so the riscv kernel
+    // loaded it and printed `MEASURED BOOT REFUSED` and carried on; in a CI job that never built
+    // one, QEMU refused to start at all with `could not load ramdisk`.
     let archive = if arch == "riscv64" {
-        riscv_initrd_path()
+        riscv_initial_ramdisk_path()
     } else {
-        initrd_path()
+        initial_ramdisk_path()
     };
 
     eprintln!();
@@ -86,7 +86,7 @@ pub(crate) fn screen_boot(arch: &str) -> bool {
         .current_dir(workspace_root())
         .env("NIFE_SCREEN", "1")
         .env("NIFE_SCREEN_MON", &sock)
-        .env("NIFE_INITRD", &archive)
+        .env("NIFE_INITIAL_RAMDISK", &archive)
         // The devices this boot must not have. The GPU and its monitor are the console-0 collision
         // above; the keyboard and the NVMe controller are suite devices that only lengthen a tour
         // nobody is reading here. Removed rather than simply not set, because `cargo` above and any

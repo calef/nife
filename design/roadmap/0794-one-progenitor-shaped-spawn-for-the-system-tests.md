@@ -22,14 +22,14 @@ progenitor. Each one does these steps:
 - Lay out the program's ELF in a hand-built space.
 - Map a stack.
 - Map the timebase page on x86_64 and riscv64.
-- Map the whole archive read-only at `INITRD_VA`.
+- Map the whole archive read-only at `INITIAL_RAMDISK_VA`.
 - Insert a memory region in slot 0 and a report line in slot 1.
 - Configure, and start with the archive's length in `x1`.
 
 The five are `authority_tests::spawn_tree`, `c_seam_tests::spawn_confiner`, `live_swap_tests::spawn_swapper`,
 `timetable_tests::spawn_timetable` (a variant that copies a narrowed archive into fresh pages
 rather than mapping the real one) and `process_composition_service::wire`. Each sizes the space
-with the same arithmetic. That includes the `log_pages_for(initrd_pages)` term, which had to be
+with the same arithmetic. That includes the `log_pages_for(initial_ramdisk_pages)` term, which had to be
 added to every copy when `map_physical` began recording.
 
 `run` cannot serve them. It takes the extra pages as a slice, and the suite has no allocator
@@ -50,7 +50,7 @@ open in the same files.
 
 Reuse: the helper would be the reuse. `kernel::user::run` was considered and does not fit
 (above); `spawn_hello` measures and routes interrupts, which no test harness wants. Searched
-`system_tests/src/user/` and `kernel/src/user.rs` for `INITRD_VA`.
+`system_tests/src/user/` and `kernel/src/user.rs` for `INITIAL_RAMDISK_VA`.
 
 ## What is blocked
 

@@ -515,21 +515,21 @@ pub fn after_syscall(nr: u64, method: u64) {
 /// `EL_IPC_CLIENT`) and the fixture's `_start` matches them. A third copy of a number two binaries
 /// agree on, which AGENTS.md rule 7 says should be a crate; recorded in notes/stack-high-water.md's
 /// BUGS rather than fixed here, because the fix moves the fixture's protocol.
-#[cfg(initrd)]
+#[cfg(initial_ramdisk)]
 const EL_IPC_SERVER: u64 = 3;
-#[cfg(initrd)]
+#[cfg(initial_ramdisk)]
 const EL_IPC_CLIENT: u64 = 4;
 
 /// `soaker`'s roles, likewise already copied once into `soak.rs`.
-#[cfg(initrd)]
+#[cfg(initial_ramdisk)]
 const SOAK_RESPONDER: u64 = 0;
-#[cfg(initrd)]
+#[cfg(initial_ramdisk)]
 const SOAK_CALLER: u64 = 1;
 
 /// SEND/RECEIVE between two EL0 processes: `bench.rs`'s `ipc_rtt_el0`, lmbench's `lat_pipe`. The
 /// client runs its own fixed loop, reports and exits; the server parks in RECEIVE forever, so the
 /// endpoints come from a region a `Holding` reclaims, which is what wakes it to die.
-#[cfg(initrd)]
+#[cfg(initial_ramdisk)]
 fn send_receive_el0() -> Option<()> {
     use crate::cap::{Rights, rendezvous_cap};
     use crate::user::Spawn;
@@ -537,7 +537,7 @@ fn send_receive_el0() -> Option<()> {
 
     let Some(image) = crate::user::program("os_primitives_benchmarker") else {
         println!(
-            "ipc-stack-depth: el0 send_receive skipped (no os_primitives_benchmarker in the initrd)"
+            "ipc-stack-depth: el0 send_receive skipped (no os_primitives_benchmarker in the initial ramdisk)"
         );
         return None;
     };
@@ -600,14 +600,14 @@ fn send_receive_el0() -> Option<()> {
 /// CALL against `RECEIVE_CAP` and REPLY between two EL0 processes, using the soak workload's caller and
 /// responder, which loop forever: this waits until both have filled their series and then takes
 /// them back.
-#[cfg(initrd)]
+#[cfg(initial_ramdisk)]
 fn call_reply_el0() -> Option<()> {
     use crate::cap::{Rights, rendezvous_cap};
     use crate::user::holding::Holding;
     use crate::user::{Mapping, Spawn};
 
     let Some(image) = crate::user::program("soaker") else {
-        println!("ipc-stack-depth: el0 call_reply skipped (no soaker in the initrd)");
+        println!("ipc-stack-depth: el0 call_reply skipped (no soaker in the initial ramdisk)");
         return None;
     };
     let region = crate::memory_region::create(2).expect("ipc_stack_depth: no endpoint region");
@@ -666,7 +666,7 @@ fn call_reply_el0() -> Option<()> {
 }
 
 /// Both EL0 shapes, then their report, in the same form as [`kernel_thread_shapes`].
-#[cfg(initrd)]
+#[cfg(initial_ramdisk)]
 pub fn el0_shapes() -> usize {
     use abi::rendezvous::{CALL, RECEIVE, RECEIVE_CAP, SEND};
     let mut bad = 0;
@@ -778,7 +778,7 @@ mod tests {
     #[test_case]
     fn one_ipc_reaches_a_measured_depth_into_its_kernel_stack() {
         let bad = super::kernel_thread_shapes();
-        #[cfg(initrd)]
+        #[cfg(initial_ramdisk)]
         let bad = bad + super::el0_shapes();
         assert_eq!(
             bad, 0,

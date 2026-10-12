@@ -40,8 +40,8 @@
 //! with a hint rather than hanging.
 //!
 //! This is a **module of the `net_stack` binary** (dispatched by its entry role), not a separate binary,
-//! because the initrd archive's directory holds at most 15 files; folding the client in keeps the
-//! entry count under that ceiling (see xtask `initrd_aarch64`).
+//! because the initial ramdisk archive's directory holds at most 15 files; folding the client in
+//! keeps the entry count under that ceiling (see xtask `initial_ramdisk_aarch64`).
 //!
 //! # Capability contract (when entered as the client)
 //! - slot 0: the report endpoint (WRITE)
@@ -60,7 +60,7 @@ use socket_protocol::*;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{
     call, call_receiving, cap_delete, exit, map_page_frame, now, receive, receive_cap,
-    retype_page_frame, send, send_cap,
+    retype_into_page_frame, send, send_capability,
 };
 
 const REPORT: u64 = 0;
@@ -244,7 +244,7 @@ fn socket_give() -> ! {
         done(0xE0B0);
     };
     // `WRITE` alone: what the taker needs to use it. Our copy keeps `GRANT`; the taker's does not.
-    if send_cap(HANDOFF, socket, rights::WRITE, 0) < 0 {
+    if send_capability(HANDOFF, socket, rights::WRITE, 0) < 0 {
         done(0xE0B1);
     }
     send(REPORT, READY, 0, 0);
@@ -335,7 +335,7 @@ fn keep(which: usize, socket: u64, carries_bytes: bool) {
     let frame = FRAME.load(Ordering::Relaxed);
     if carries_bytes
         && frame != NO_SOCKET
-        && send_cap(
+        && send_capability(
             socket,
             frame,
             rights::READ | rights::WRITE,
@@ -368,7 +368,7 @@ fn close(which: usize) -> (u64, u64) {
 /// copy of it ([`keep`]).
 fn attach_page_frame() {
     // RETYPE returns the new frame capability's slot, or a negative error.
-    let frame = retype_page_frame(MEMORY_REGION);
+    let frame = retype_into_page_frame(MEMORY_REGION);
     if frame < 0 {
         done(0xE001);
     }

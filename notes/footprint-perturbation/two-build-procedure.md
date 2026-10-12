@@ -160,7 +160,7 @@ $ script/board-image --bench
 built:
   features: board,bench,single_hart
   target/board/nife-vf2.img  (669792 bytes, Image header verified)
-  target/board/nife-initrd.img  (... bytes, the userspace archive this kernel measures)
+  target/board/nife-initial-ramdisk.img  (... bytes, the userspace archive this kernel measures)
 ```
 
 A `features:` line missing `single_hart` is a wasted boot. It is cheaper to read it here than to read

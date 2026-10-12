@@ -329,10 +329,10 @@ impl AddressSpace {
     /// `under` says which capability's authority made this mapping, and it is a required argument
     /// with no default for [`crate::revoke::PageMapSource`]'s own reason (AGENTS.md's ladder, rung
     /// one). Every kernel-wiring caller passes `NoCapability`, truthfully: a [`Spawn`]`::maps`
-    /// entry, a [`DeviceRun`], the initrd and the `x86_64` timebase page are all endowments the
-    /// process holds no capability for, so the page stands as its own object and a single-page
-    /// revoke of it finds the record. [`user_address_space_map`] is the one caller that passes a
-    /// capability through, because the `MAP_INTO` syscall has one to pass.
+    /// entry, a [`DeviceRun`], the initial ramdisk and the `x86_64` timebase page are all
+    /// endowments the process holds no capability for, so the page stands as its own object and a
+    /// single-page revoke of it finds the record. [`user_address_space_map`] is the one caller that
+    /// passes a capability through, because the `MAP_INTO` syscall has one to pass.
     ///
     /// **What the defect was, since a reader will meet the fix without the failure.** Every unmap
     /// sweep in `crate::revoke` is driven by the mapping log, so a page wired here was invisible to

@@ -5,14 +5,14 @@ use super::*;
 /// pick the entry both ISAs happened to share and say so in a parenthesis.
 const BOOT_PROGRAM: &str = super::PROGENITOR_ENTRY;
 
-/// **The initrd in RAM is the initrd this kernel was built against.** The end-to-end build
-/// composition check: nothing here is hard-coded, the digest comes out of the kernel's own
-/// `.rodata` and the bytes come out of the archive QEMU loaded, and they have to agree. If the
-/// build ever writes the manifest after compiling the kernel, or measures the wrong entry, or the
-/// archive is repacked without a kernel relink, this fails.
+/// **The initial ramdisk in RAM is the initial ramdisk this kernel was built against.** The
+/// end-to-end build composition check: nothing here is hard-coded, the digest comes out of the
+/// kernel's own `.rodata` and the bytes come out of the archive QEMU loaded, and they have to
+/// agree. If the build ever writes the manifest after compiling the kernel, or measures the wrong
+/// entry, or the archive is repacked without a kernel relink, this fails.
 #[test_case]
 fn the_boot_program_measures_to_the_compiled_in_trust_root() {
-    let bytes = program(BOOT_PROGRAM).expect("no boot program in the initrd archive");
+    let bytes = program(BOOT_PROGRAM).expect("no boot program in the initial ramdisk");
     assert!(
         crate::trust::expected(BOOT_PROGRAM).is_some(),
         "the kernel image carries no measurement for '{BOOT_PROGRAM}': the build's measurement \
@@ -28,10 +28,10 @@ fn the_boot_program_measures_to_the_compiled_in_trust_root() {
 /// **One flipped bit is refused, and an unmeasured name is refused too.** The tamper is measured
 /// by streaming (flip the first byte, then the rest untouched) rather than by copying a
 /// 300 KiB ELF, because there is no heap to copy it into; the digest is the same one a real
-/// tampered initrd would produce.
+/// tampered initial ramdisk would produce.
 #[test_case]
 fn a_tampered_boot_program_and_an_unmeasured_name_are_both_refused() {
-    let bytes = program(BOOT_PROGRAM).expect("no boot program in the initrd archive");
+    let bytes = program(BOOT_PROGRAM).expect("no boot program in the initial ramdisk");
     let mut h = measured_boot::Sha256::new();
     h.update(&[bytes[0] ^ 1]);
     h.update(&bytes[1..]);
@@ -80,7 +80,7 @@ const BOOT_COMPONENTS: [&str; 6] = [
 #[test_case]
 fn the_measurement_table_measures_to_the_compiled_in_trust_root() {
     let name = measured_boot::PROGRAM_MEASUREMENTS;
-    let bytes = program(name).expect("the initrd archive carries no measurement table");
+    let bytes = program(name).expect("the initial ramdisk archive carries no measurement table");
     assert!(
         crate::trust::expected(name).is_some(),
         "the kernel image carries no measurement for '{name}': the progenitor would be handed a table this \

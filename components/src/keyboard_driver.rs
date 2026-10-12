@@ -77,10 +77,8 @@
 
 use line_editor::proto;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
-use user_mode_runtime::virtio::{
-    virtio_notify, virtio_read_reg, virtio_ring_barrier, virtio_setup_queue, virtio_write_reg,
-};
-use user_mode_runtime::{call, irq_ack, irq_wait, send};
+use user_mode_runtime::virtio::virtio_ring_barrier;
+use user_mode_runtime::{call, interrupt_acknowledge, interrupt_wait, send};
 
 /// Capability slots, by convention with `kernel/src/user/keyboard_service.rs`.
 const REPORT: u64 = 0;
@@ -175,11 +173,11 @@ fn w16(off: u64, v: u16) {
 }
 
 fn mr(off: u64) -> u32 {
-    virtio_read_reg(VIRTIO, off) as u32
+    user_mode_runtime::virtio::read_register(VIRTIO, off) as u32
 }
 
 fn mw(off: u64, v: u32) {
-    virtio_write_reg(VIRTIO, off, v as u64);
+    user_mode_runtime::virtio::write_register(VIRTIO, off, v as u64);
 }
 
 fn write_desc(i: u64, addr: u64, len: u32, flags: u16) {
@@ -273,7 +271,7 @@ pub extern "C" fn _start(mode: u64, _arg1: u64, _arg2: u64) -> ! {
         direct_n: 0,
     };
     loop {
-        irq_wait(IRQ);
+        interrupt_wait(IRQ);
 
         let typed = events.drain();
 
@@ -281,7 +279,7 @@ pub extern "C" fn _start(mode: u64, _arg1: u64, _arg2: u64) -> ! {
         // driver's discipline, and the reason an interrupt does not immediately re-fire.
         let istatus = mr(INTERRUPT_STATUS);
         mw(INTERRUPT_ACK, istatus);
-        irq_ack(IRQ); // re-enable the interrupt the kernel masked when it fired
+        interrupt_acknowledge(IRQ); // re-enable the interrupt the kernel masked when it fired
 
         events.flush(typed);
     }
@@ -322,7 +320,7 @@ fn bring_up_device() {
 
     // The kernel programs the queue's ring addresses; this driver never writes a queue address
     // register, which is the §18 seam and the reason the shadow ring can be trusted.
-    if virtio_setup_queue(VIRTIO, QSIZE as u64, EVENT_Q) != 0 {
+    if user_mode_runtime::virtio::setup_queue(VIRTIO, QSIZE as u64, EVENT_Q) != 0 {
         die(E_QUEUE);
     }
     mw(
@@ -354,7 +352,7 @@ fn post_event_buffers(direct_memory_access_phys: u64) -> u16 {
     virtio_ring_barrier();
     // The kernel validates the newly published descriptors and copies them into the shadow ring
     // the device actually reads.
-    virtio_notify(VIRTIO, EVENT_Q);
+    user_mode_runtime::virtio::notify(VIRTIO, EVENT_Q);
     avail
 }
 
@@ -443,7 +441,7 @@ impl Events {
         self.avail = self.avail.wrapping_add(1);
         w16(EQ_AVAIL + 2, self.avail);
         virtio_ring_barrier();
-        virtio_notify(VIRTIO, EVENT_Q);
+        user_mode_runtime::virtio::notify(VIRTIO, EVENT_Q);
     }
 
     /// After a drain: send the direct batch, or publish the ring and ring the compositor's

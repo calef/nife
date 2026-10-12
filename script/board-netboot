@@ -6,7 +6,7 @@
 #   script/board-netboot --port 6969            # a port an unprivileged bind is certain to get
 #
 # Read-only, one directory, one transfer at a time. It exists to answer three files:
-# nife-vf2.img, nife-initrd.img, and whatever else a bench session wants to hand the board.
+# nife-vf2.img, nife-initial-ramdisk.img, and whatever else a bench session wants to hand the board.
 #
 # **Port 69 binds without root on macOS**, checked on patagonia on 2026-09-04, so there is no
 # `sudo` in the runbook. If a machine refuses it, `--port` plus `setenv tftpdstp <port>` at the

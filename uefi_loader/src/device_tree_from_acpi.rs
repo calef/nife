@@ -292,8 +292,8 @@ pub const fn output_len() -> usize {
 /// **Write `machine` as a flattened device tree into `out`**, returning its length.
 ///
 /// `out` must be at least [`output_len`] bytes. The result has no `/chosen`;
-/// `device_tree_patch::with_initrd` adds one, which is the same call the firmware's own tree goes
-/// through, so this module has one job and the archive handoff keeps its single writer.
+/// `device_tree_patch::with_initial_ramdisk` adds one, which is the same call the firmware's own
+/// tree goes through, so this module has one job and the archive handoff keeps its single writer.
 pub fn build(machine: &Machine, out: &mut [u8]) -> Result<usize, Error> {
     let mut o = Out { buf: out, at: 0 };
     o.bytes(&[0; HEADER_LEN])?; // filled in last, once the offsets are known
@@ -712,25 +712,30 @@ mod tests {
     }
 
     /// **The archive handoff is unchanged**: the written tree goes through the same
-    /// `device_tree_patch::with_initrd` the firmware's own tree does, and the kernel reads
+    /// `device_tree_patch::with_initial_ramdisk` the firmware's own tree does, and the kernel reads
     /// `/chosen` back. This is the seam where a tree with no `/chosen` at all would have been a
     /// silent boot with no userspace.
     #[test]
-    fn the_written_tree_takes_an_initrd_like_any_other() {
+    fn the_written_tree_takes_an_initial_ramdisk_like_any_other() {
         let (len, out) = built(&qemu_virt());
         let capacity =
             crate::device_tree_patch::output_len(&out[..len]).expect("the tree is well formed");
         let mut patched = [0u8; 8192];
         assert!(capacity <= patched.len());
-        crate::device_tree_patch::with_initrd(&out[..len], 0x4ac6_0000, 0x4b70_0000, &mut patched)
-            .expect("the initrd is named");
+        crate::device_tree_patch::with_initial_ramdisk(
+            &out[..len],
+            0x4ac6_0000,
+            0x4b70_0000,
+            &mut patched,
+        )
+        .expect("the initial ramdisk is named");
         let dt = DeviceTreeBlob::from_bytes(&patched).expect("still a device tree");
-        let initrd = dt
-            .initrd()
+        let initial_ramdisk = dt
+            .initial_ramdisk()
             .expect("/chosen parses")
             .expect("the archive is named");
-        assert_eq!(initrd.start, 0x4ac6_0000);
-        assert_eq!(initrd.size, 0x4b70_0000 - 0x4ac6_0000);
+        assert_eq!(initial_ramdisk.start, 0x4ac6_0000);
+        assert_eq!(initial_ramdisk.size, 0x4b70_0000 - 0x4ac6_0000);
         // And the machine survived the rewrite, which is the half a `/chosen` test usually forgets.
         assert!(gic::discover(&dt).expect("the GIC node parses").is_some());
     }

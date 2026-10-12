@@ -188,7 +188,9 @@ use supervision_protocol::{
     retype_obj_from as retype_obj, retype_page_frame_from, start_child,
 };
 use timetable::registration;
-use user_mode_runtime::{call, cap_delete, map_page_frame, receive, send, send_cap, yield_now};
+use user_mode_runtime::{
+    call, cap_delete, map_page_frame, receive, send, send_capability, yield_now,
+};
 
 /// The front door: a bare [`login_protocol::CONNECT`], `RECEIVE` (milestone 49).
 const REQUEST: u64 = 0;
@@ -450,8 +452,9 @@ fn vouched_caretaker(
     // `fs_subtree_caretaker`'s ELF bytes read-only at `login_protocol::CARETAKER_ELF_VA` and the
     // measurement table at `login_protocol::PROGRAM_MEASUREMENTS_VA`, with their lengths in the first
     // two argument registers. Those constants carry the whole account of why this is not a mapping
-    // of the initrd any more; the short version is that the real boot could not hand over the
-    // initrd at all, so this program died at `_start` on every interactive boot until milestone 233.
+    // of the initial ramdisk any more; the short version is that the real boot could not hand over
+    // the initial ramdisk at all, so this program died at `_start` on every interactive boot until
+    // milestone 233 (`login` dies on every boot).
     //
     // SAFETY: the spawner maps `caretaker_len` bytes read-only at `CARETAKER_ELF_VA`, for the
     // lifetime of this process, before `_start` runs (`login_protocol::CARETAKER_ELF_VA`'s own
@@ -482,12 +485,13 @@ fn vouched_caretaker(
     // not the same anti-oracle reasoning a wrong password gets, and is the considered answer anyway.
     //
     // **This check's trust root moved with the blob and the docs have to say so.** When this
-    // program read the initrd it was reading the same physical archive the kernel maps for the progenitor, so
-    // the check was independent of whoever spawned this process. It is not any more: under
-    // `crates/system_initializer` both the bytes and the table arrive from the progenitor, which has already
-    // run the identical `verify_in_manifest` over them. What survives is a consistency check on the
-    // hand-over rather than an independent verification, and it is kept because it costs one hash
-    // and catches a spawner that pairs the wrong two blobs. This program's BUGS records the loss.
+    // program read the initial ramdisk it was reading the same physical archive the kernel maps for
+    // the progenitor, so the check was independent of whoever spawned this process. It is not any
+    // more: under `crates/system_initializer` both the bytes and the table arrive from the
+    // progenitor, which has already run the identical `verify_in_manifest` over them. What survives
+    // is a consistency check on the hand-over rather than an independent verification, and it is
+    // kept because it costs one hash and catches a spawner that pairs the wrong two blobs. This
+    // program's BUGS records the loss.
     //
     // SAFETY: as above, for `table_len` bytes at `PROGRAM_MEASUREMENTS_VA`.
     let table = unsafe {
@@ -1879,7 +1883,7 @@ fn file_page() -> Option<&'static mut [u8]> {
 /// [`RESULT`] for a [`login_protocol::CONNECTED`] answer and a channel's own private `result` for a
 /// [`login_protocol::OK`] one; both are this process's own copy, always held with `GRANT`.
 fn delegate(ep: u64, slot: u64, rights: u64) {
-    send_cap(ep, slot, rights, 0);
+    send_capability(ep, slot, rights, 0);
 }
 
 /// Zero the identity/secret staged at `va`, on every path: a malformed request, a denial, and a

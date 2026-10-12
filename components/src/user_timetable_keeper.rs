@@ -97,8 +97,8 @@ const PACKAGES: u64 = contract::PACKAGES_SLOT;
 const STORE_PAGE: u64 = contract::STORE_PAGE_SLOT;
 
 /// Where the timetable finds its registration page. Any address clear of its program, its stack
-/// and the archive at `user_mode_runtime::initrd::INITRD_VA` would do; this is the one
-/// `kernel/src/user/timetable_tests.rs` already uses for the same job.
+/// and the archive at `user_mode_runtime::initial_ramdisk::INITIAL_RAMDISK_VA` would do; this is
+/// the one `kernel/src/user/timetable_tests.rs` already uses for the same job.
 const TIMETABLE_PAGE_VA: u64 = 0x0600_0000;
 
 /// The timetable's own construction: its segments (which since Fork 8 D include a

@@ -16,7 +16,7 @@ use crate::sched::RendezvousId;
 /// real `crates/system_initializer`, by `script/swish-check`; see this module's own note in
 /// `design/roadmap/0111-entropy-for-a-child.md`.
 fn spawn_uuid_holding_no_entropy(endpoints: u64) -> RendezvousId {
-    let image = program("uuid").expect("no uuid program in the initrd archive");
+    let image = program("uuid").expect("no uuid program in the initial ramdisk");
     let out = crate::sched::create_rendezvous_from(endpoints).expect("no stdout rendezvous");
     crate::sched::spawn(move || {
         run(

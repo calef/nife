@@ -1021,7 +1021,7 @@ fn spawn_stage(
     // **The argv's frame, then the name set's, before every other capability**
     // (`spawnproto::ARGS_BIT`, `NAMESET_BIT`), as `spawn` sends them.
     if let Some(a) = argv {
-        user_mode_runtime::send_cap(SPAWN, a.frame, abi::rights::READ, 0);
+        user_mode_runtime::send_capability(SPAWN, a.frame, abi::rights::READ, 0);
         cap_delete(a.frame);
     }
     if let Some(w) = &words {
@@ -1097,6 +1097,6 @@ fn release_pipeline(region: u64, pipes: &[u64]) {
 /// RETYPE one page of `region` into an `Rendezvous` we hold with full rights, which is what lets us
 /// delegate a narrowed view of it to each end of a pipe.
 pub(super) fn retype_rendezvous(region: u64) -> Option<u64> {
-    let r = retype_object(region, abi::objtype::RENDEZVOUS);
+    let r = retype_into_kernel_object(region, abi::objtype::RENDEZVOUS);
     if r < 0 { None } else { Some(r as u64) }
 }

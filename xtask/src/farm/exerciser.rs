@@ -17,7 +17,7 @@ use super::*;
 /// [`std_exerciser_elf`], [`std_echo_elf`], [`std_grep_elf`], and the dep-info [`std_aborts`]
 /// reads. An inherited `CARGO_TARGET_DIR` (AGENTS.md tells every lane to export one for its
 /// gates) moves the build while leaving every one of those readers behind, so the sweep judges
-/// the last unredirected run's evidence and the initrd packs its ELFs. That is not hypothetical:
+/// the last unredirected run's evidence and the archive packs its ELFs. That is not hypothetical:
 /// on 2026-09-30 the 1377 lane built std from a sysroot this worktree never chose under exactly
 /// that export, twice, and `std-aborts` reported "all accounted for" over stale evidence both
 /// times. Pinning makes the wrong state unrepresentable; printing the override keeps the
@@ -64,7 +64,7 @@ pub(super) fn exerciser_target_dir(inherited: Option<&str>) -> (PathBuf, Vec<Str
 /// fix, 2026-09-30). `Command` inherits the environment, and AGENTS.md tells every lane to gate
 /// with `CARGO_TARGET_DIR=$PWD/target` exported, so the cargo child obeyed it: the build landed
 /// in the workspace's shared `target/`, dep-info and ELFs with it, while [`std_aborts`] and the
-/// initrd's ELF paths read `std_exerciser/target`. The sweep then judged the previous
+/// archive's ELF paths read `std_exerciser/target`. The sweep then judged the previous
 /// unredirected run's evidence, and a build that had resolved a foreign or unpatched sysroot
 /// passed as green; the 1377 lane had exactly that, twice. [`exerciser_target_dir`] pins, and
 /// names the override out loud rather than absorbing it silently.
@@ -81,7 +81,7 @@ pub(crate) fn std_exerciser() -> bool {
         s(workspace_root().join("jig/Cargo.toml")),
     ];
     // Pin where the build and its evidence land before the first child runs, so the ELFs the
-    // initrd packs, the dep-info the sweep reads, and this build cannot be separated by an
+    // archive packs, the dep-info the sweep reads, and this build cannot be separated by an
     // exported variable they never agreed to.
     let inherited_target_dir = std::env::var("CARGO_TARGET_DIR").ok();
     let (target_dir, notes) = exerciser_target_dir(inherited_target_dir.as_deref());

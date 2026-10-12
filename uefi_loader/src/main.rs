@@ -254,21 +254,21 @@ fn place_kernel(table: &SystemTable, services: &BootServices) -> Result<Placed, 
 
 /// Copy the archive to memory below the architecture's ceiling, if this build has one.
 fn place_archive(services: &BootServices) -> Result<Option<(u64, u64)>, &'static str> {
-    if embedded::INITRD.is_empty() {
+    if embedded::INITIAL_RAMDISK.is_empty() {
         return Ok(None);
     }
-    let pages = (embedded::INITRD.len() as u64).div_ceil(PAGE) as usize;
+    let pages = (embedded::INITIAL_RAMDISK.len() as u64).div_ceil(PAGE) as usize;
     let base = allocate_below(services, pages, memory_type::LOADER_DATA)
         .ok_or("no memory below the kernel's reach for the userspace archive")?;
     // SAFETY: `pages` covers the archive and the range was just granted exclusively.
     unsafe {
         ptr::copy_nonoverlapping(
-            embedded::INITRD.as_ptr(),
+            embedded::INITIAL_RAMDISK.as_ptr(),
             base as *mut u8,
-            embedded::INITRD.len(),
+            embedded::INITIAL_RAMDISK.len(),
         );
     }
-    Ok(Some((base, embedded::INITRD.len() as u64)))
+    Ok(Some((base, embedded::INITIAL_RAMDISK.len() as u64)))
 }
 
 /// **The removable-media path the firmware found this image at**, which is the path its own file is
@@ -316,8 +316,9 @@ const BOOT_FILE_MAX: u64 = 64 * 1024 * 1024;
 ///   milestone is about is the removable-media fallback path, which is the constant. A loader
 ///   started from some other path on the volume reads the wrong file or none, and says so.
 /// - **x86_64 only.** The device-tree architectures hand the kernel a tree rather than a module
-///   list, and `/chosen` has one initrd and no second slot; adding one is its own piece of work.
-///   The trivial install of §157 (a trivial install is a web page, a USB drive, and packages) is a
+///   list, and `/chosen` has one initial ramdisk and no second slot; adding one is its own piece
+///   of work. The trivial install of §157 (a trivial install is a web page, a USB drive, and
+/// packages) is a
 ///   PC, so this is where it is needed first. The gap is real, it is why rung 2a is an x86_64
 ///   claim, and it is priced in
 ///   `design/roadmap/0568-the-boot-file-has-nowhere-to-go-on-a-device-tree-machine.md`.
@@ -498,7 +499,7 @@ fn copy_device_tree(
     let out = unsafe { core::slice::from_raw_parts_mut(base as *mut u8, pages * PAGE as usize) };
     match module {
         Some((start, len)) => {
-            device_tree_patch::with_initrd(src, start, start + len, out)
+            device_tree_patch::with_initial_ramdisk(src, start, start + len, out)
                 .map_err(device_tree_patch::Error::reason)?;
         }
         None => out[..total].copy_from_slice(src),

@@ -150,7 +150,10 @@ pub fn delete_port_range_caps_from_others(base: u16, count: u16) {
 /// [`crate::revoke::revoke_page_frame`]'s test-only whole-machine sweep); no syscall reaches it,
 /// because a live driver replacement wants the sparing variant above. `x86_64` only.
 #[cfg(target_arch = "x86_64")]
-#[cfg_attr(not(any(test, feature = "system_tests", initrd)), allow(dead_code))]
+#[cfg_attr(
+    not(any(test, feature = "system_tests", initial_ramdisk)),
+    allow(dead_code)
+)]
 pub fn delete_port_range_caps(base: u16, count: u16) {
     delete_port_range_caps_impl(base, count, None);
 }

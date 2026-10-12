@@ -1,6 +1,6 @@
 //! **The progenitor: the first process, on all three architectures.**
 //!
-//! The kernel loads this as the boot process, maps the initrd into it, and grants it the
+//! The kernel loads this as the boot process, maps the initial ramdisk into it, and grants it the
 //! capabilities `GRANTS` names below. From those, and nothing else, it builds the whole interactive
 //! system out of its own budget: the console server, the input driver, the line discipline, the
 //! shell, the terminal's sink adapter and the job undertaker, wired together with endpoints and
@@ -134,7 +134,7 @@ const GRANTS: BootEndowment = BootEndowment {
 };
 
 #[unsafe(no_mangle)]
-pub extern "C" fn _start(_a0: u64, initrd_len: u64, fs_rights: u64) -> ! {
+pub extern "C" fn _start(_a0: u64, initial_ramdisk_len: u64, fs_rights: u64) -> ! {
     // `_a0` is the role the kernel entered this program at. The progenitor has exactly one role, so
     // it does not read it; `kernel::user::boot_progenitor` still passes `PROGENITOR_ROLE` for the
     // symmetry the old `spawn_progenitor` established, when the same function also entered `hello` at
@@ -146,7 +146,7 @@ pub extern "C" fn _start(_a0: u64, initrd_len: u64, fs_rights: u64) -> ! {
     // for an architect, so this real
     // boot
     // does not enable it.
-    system_initializer::boot(&GRANTS, initrd_len, fs_rights, None)
+    system_initializer::boot(&GRANTS, initial_ramdisk_len, fs_rights, None)
 }
 
 user_mode_runtime::panic_handler!();

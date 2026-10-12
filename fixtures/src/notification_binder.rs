@@ -21,7 +21,7 @@
 
 use user_mode_runtime::{
     Received, exit, notification_bind, notification_poll, notification_signal, notification_wait,
-    receive_bound, retype_object, send, send_cap,
+    receive_bound, retype_into_kernel_object, send, send_capability,
 };
 
 const MEMORY_REGION: u64 = 0;
@@ -31,7 +31,7 @@ const REPORT: u64 = 3;
 
 #[unsafe(no_mangle)]
 pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
-    let n = retype_object(MEMORY_REGION, abi::objtype::NOTIFICATION);
+    let n = retype_into_kernel_object(MEMORY_REGION, abi::objtype::NOTIFICATION);
     check(n >= 0);
     let n = n as u64;
 
@@ -59,7 +59,7 @@ pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
     check(receive_bound(ENDPOINT) == Received::Notification(0b1000));
 
     // Hand the kernel test a signal-only view of the notification, then block receiving twice.
-    check(send_cap(REPORT, n, abi::rights::WRITE, 0) == 0);
+    check(send_capability(REPORT, n, abi::rights::WRITE, 0) == 0);
     for _ in 0..2 {
         match receive_bound(ENDPOINT) {
             Received::Notification(word) => {

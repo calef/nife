@@ -57,8 +57,8 @@ list is short and it is what makes the blockers concrete:
 1. **Find `job_mix_task`'s ELF in the initrd archive.** `nifefs::Fs::parse(archive).read(..)` plus
    `elf::Elf::parse`, the shape `components/src/root_supervisor.rs:63-67` already uses.
 2. **Create 67 rendezvous objects** out of its own budget: one report, 32 go, 32 child-done, 2 echo.
-   `retype_object(budget, abi::objtype::RENDEZVOUS)`, which `fixtures/src/rendezvous_minter.rs`
-   proves works from EL0.
+   `retype_into_kernel_object(budget, abi::objtype::RENDEZVOUS)`, which
+   `fixtures/src/rendezvous_minter.rs` proves works from EL0.
 3. Build and start 34 processes with a per-child grant set, each carrying its own rights.
    `supervision_protocol::build_child` and `start_child`.
 4. Split 32 per-task budgets off its own region (`job_mix::TASK_BUDGET_PAGES` is 25 pages each,
@@ -81,7 +81,7 @@ milestone 126 (the `procps` package: who else is running, and who is allowed to 
 and milestone 281 (`watch` holds exactly what `ps` holds, so it is nothing). Of the thirteen programs the shell can run
 (`least_authority_demo`, `memory_grant_depleter`, `interrupt_heeder`, `interrupt_ignorer`, `date`,
 `rm`, `wc`, `mdr`, `ps`, `pgrep`, `uptime`, `printenv`, `uuid`), **not one** contains a
-`build_child`, a `retype_object(.., RENDEZVOUS)` or a `memory_region_split`. Even
+`build_child`, a `retype_into_kernel_object(.., RENDEZVOUS)` or a `memory_region_split`. Even
 `memory_grant_depleter`, the only one holding an untyped at all, only maps frames with it.
 
 A job-mix supervisor is a program whose entire job is building 34 processes. Admitting it to that
@@ -99,9 +99,9 @@ protocol for the shell to ask it to run, which is squarely *anything two program
 `supervision_protocol::build_child` (`:2470-2496`), and `build_child_space` maps ELF segments, stack
 pages, an x86_64 timebase placeholder and `endow.maps` -- nothing else. The `maps` a normal job may
 receive are chosen at `:2451-2462` and are exactly three: a filesystem client page, the clock page,
-or the config page, with the comment *"One extra mapping at most, today"*. `INITRD_VA` reaches only
+or the config page, with the comment *"One extra mapping at most, today"*. `INITIAL_RAMDISK_VA` reaches only
 the kernel-spawned progenitor (`kernel/src/user.rs:999`, `:1762`), and `a1` carries the manifest's
-integer argument rather than `initrd_len`.
+integer argument rather than `initial_ramdisk_len`.
 
 So a supervisor launched from the prompt cannot read `job_mix_task`'s bytes. It is the same gap
 `components/src/spawner.rs` was designed around from the other side: that program is handed one

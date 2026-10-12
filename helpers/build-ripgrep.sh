@@ -2,7 +2,7 @@
 # Build **unmodified `ripgrep` from crates.io** for the nife custom target (milestone 121).
 #
 # This is an experiment's apparatus, not part of the build. Nothing in `script/test` runs it:
-# `xtask initrd-aarch64` packs the resulting ELF only if it is already on disk, and
+# `xtask initial-ramdisk-aarch64` packs the resulting ELF only if it is already on disk, and
 # `system_tests/src/user/ripgrep_tests.rs` skips when it is not. **The `swish-check` rows of
 # `script/ci-build` run it** (lane milestone/121-rg-ci, 2026-10-08 UTC), so CI walks a tree with
 # `rg` on every pull request: until then nothing re-checked fatal risk 1's claim. That puts a
@@ -108,8 +108,8 @@ fi
 (cd "$ROOT" && cargo xtask std-src)
 
 # `-Copt-level=s` and `-Cstrip=debuginfo` are not tuning: ripgrep's own release profile sets
-# `debug = 1`, which produces a 25 MB ELF the initrd would carry into RAM. Overriding a profile from
-# the command line is a build setting, not a change to the program.
+# `debug = 1`, which produces a 25 MB ELF the initial ramdisk would carry into RAM. Overriding a
+# profile from the command line is a build setting, not a change to the program.
 # The link script is the shared one, unchanged. **This used to relink at 16 MiB**, by substituting
 # `crates/user_mode_runtime/link.ld`'s base, because every program was linked at `0x40_0000` with its
 # stack at `0x50_0000`, and ripgrep's 1.37 MiB of `.text` did not fit in the 896 KiB between them.

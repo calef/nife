@@ -30,7 +30,11 @@ fn a_userspace_program_reads_the_frequency_the_kernel_measured() {
 
     let endpoints = crate::memory_region::create(1).expect("no endpoint region");
     let report = crate::sched::create_rendezvous_from(endpoints).expect("no report rendezvous");
-    let mut init = spawn_hello(initrd().expect("no initrd"), INIT_COREMARK_ROLE, report);
+    let mut init = spawn_hello(
+        initial_ramdisk().expect("no initial ramdisk"),
+        INIT_COREMARK_ROLE,
+        report,
+    );
     init.add_region(endpoints);
 
     let [_crc, _ticks, freq, _, _] = crate::sched::ipc_receive(report);
