@@ -473,6 +473,12 @@ def selftest():
             # helper does may write a git or gh configuration file anywhere.
             "HOME": home,
             "XDG_CONFIG_HOME": os.path.join(home, ".config"),
+            # The stub is on loopback, so a proxy in the caller's environment must not carry the
+            # requests away. Without this the selftest failed on any machine with HTTPS_PROXY set,
+            # found 2026-10-12 (UTC) by milestone 889 (the tree's gates stop depending on the fleet
+            # tooling)'s no-network proof, while it still ran inside every contributor's script/lint.
+            "NO_PROXY": "127.0.0.1,localhost",
+            "no_proxy": "127.0.0.1,localhost",
         })
         outputs = []
 

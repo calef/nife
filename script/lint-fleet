@@ -1,0 +1,217 @@
+#!/bin/sh
+# script/lint-fleet: the checks of the agent-fleet tooling, apart from the tree's own lint.
+#
+# Milestone 889 (the tree's gates stop depending on the fleet tooling), the first step of calef's
+# Fork 4 ruling on #1976 (2026-10-12 UTC). design/roadmap/proposals/tooling-sorted-by-who-needs-it.md
+# sorted the tree's tooling into who needs it, and found script/lint running 22 checks of the
+# machinery that runs a fleet of agent lanes: the claim, the merge drain and its detectors, the
+# architect label and hold, the session identity, the merge watchers and two method-metric
+# collectors. A stranger's lint should not depend on any of that, and when the fleet tooling moves
+# to its own repository these checks must go with it rather than be deleted or fetched back.
+#
+# So they live here, moved whole from script/lint with their reasoning beside them. script/lint
+# runs none of them and reads none of their files. ci.yml's `lint` job runs this script as its own
+# step, so every check still gates every pull request and merge group; `.githooks/pre-push` runs it
+# on a checkout that opts in to the fleet (`git config nife.fleet true`, which script/claim sets).
+# Rust tidy and rust-lang/triagebot split the same way: the bot's tests live with the bot.
+#
+# Each check is the one script/lint ran, at the same path and with the same failure. The 23rd, the
+# pre-push hook's fleet half, is new with that hook's split. None needs a
+# network, `gh` or a token: every selftest here uses fixtures or a stub `gh`.
+#
+#     script/lint-fleet           # all 23, about ten seconds
+#
+# BUGS
+#
+# - A check added to the fleet tooling has to be added here by hand; nothing finds an orphaned
+#   selftest. Before this split the same was true of script/lint.
+# - Rules 4 and 4b read the checked-out branch. On a detached HEAD (every CI pull_request run) both
+#   skip, as they did inside script/lint.
+#
+# Name: provisional, minted 2026-10-12 (UTC) by milestone 889 as the proposal named it. `lint`
+# for the act, as script/lint; `-fleet` for whose checks they are, the inventory's word for the
+# tooling that runs agent lanes. calef has not ratified it.
+
+set -e
+cd "$(dirname "$0")/.."
+
+# The section numbers (4, 4b, 11, 12) are the ones these checks carried in script/lint, kept so
+# that older records citing "lint check 4b" still find them.
+
+echo "==> rule 4: a branch that looks like a milestone claim parses as one"
+# 4. **The one branch prefix that carries a mechanism, guarded against near-misses.**
+#
+#    This was a fixed allowlist of eleven prefixes until 2026-08-17, and calef retired it after
+#    asking what the taxonomy was for. The answer, checked rather than argued: **nothing consumes
+#    it except this check.** A grep across `script/`, `helpers/`, `.github/workflows/` and `xtask/`
+#    for any other reader of a branch prefix returns only false positives (`bench/baseline-*.txt`
+#    is a directory, `$prefix/bin` is a shell variable). Only `milestone/N-` is read by anything,
+#    and 4b below is what reads it.
+#
+#    **Every observed failure of the allowlist was a false rejection of legitimate work**, four
+#    times: `roadmap/` (the repository's SECOND commonest prefix, refused while ~35 merges already
+#    on main used it), `gh-readonly-queue/*` (failed every group build's clippy job, so the queue
+#    evicted and rebuilt forever), `dependabot/*`, and `claude/*` (a harness names its own branches
+#    and a lane cannot rename them from inside). Each was fixed by widening the list after
+#    something broke. That is the signature §61 used to drop three lints and milestone 78 used on
+#    three assertions: a check that only ever rejects valid work is measuring the wrong thing.
+#
+#    **What survives, and why it is the branch name rather than a label.** 4b needs to know which
+#    milestone a lane claims, and it runs LOCALLY and OFFLINE: the branch comes from
+#    `symbolic-ref`, with no network and no GitHub context. A label cannot carry this. It would
+#    put a `gh` call and an authenticated network round trip inside a file-only gate, and it would
+#    not exist yet, because a lane runs this before `gh pr create`. The status-accuracy sweep
+#    decided the same question the same way on 2026-08-16, refusing `git ls-remote` for the
+#    `IN-PROGRESS` check because "the remote needs network in a file-only gate". A branch name is
+#    also **fixed when the lane is cut**, where a label is editable at any time; for a check whose
+#    job is "you claimed 126, so move 126's block", the claim has to be the immutable half.
+#
+#    So the taxonomy moves to design/naming.md as a convention, and the only thing still refused is
+#    a name that LOOKS like a milestone claim and would therefore skip 4b in silence. That is the
+#    one real hole the allowlist was plugging: `milestone-126-pgrep`, with a hyphen, does not match
+#    4b's `milestone/*` and would sail past the check that exists to catch a status that never
+#    moved.
+#
+#    A detached HEAD (every CI pull_request run, since actions/checkout builds the merge commit)
+#    has no branch to judge and is skipped rather than guessed at, as before.
+#
+#    **The shape rule itself lives in helpers/branch-name-check.sh** (2026-09-22), not here. This
+#    check only ever sees a branch that already exists, which means it fires after the worktree is
+#    made, after the work is written, sometimes after commits; script/claim runs the identical
+#    refusal before any of that, and a shared case statement is what keeps the two answers from
+#    drifting apart. See that file for the near-miss reasoning.
+branch="$(git -C "$(dirname "$0")/.." symbolic-ref --quiet --short HEAD || true)"
+. "$(dirname "$0")/../helpers/branch-name-check.sh"
+nife_check_branch_name_shape "$branch" lint || exit 1
+
+# 4b. **A `milestone/N-*` branch must touch that milestone's roadmap file** (§90, 2026-08-16).
+#     The status field lagged the tree four times in one week: 43, 65 and 107 were BUILT for
+#     eleven days while their rows said otherwise, and 54 sat hidden behind them. Merging is what
+#     finishes a lane, so the status flip belongs in the merge rather than with whoever happens to
+#     notice afterwards.
+#
+#     **The lane makes the edit, and this is the one exception to "a developer never edits
+#     design/"** (calef, 2026-08-23; reaffirmed and narrowed 2026-09-01, and now stated in
+#     AGENTS.md's developer role rather than only here). The original intent was the reverse: the
+#     lane would report the status and the integrator would land the flip separately. That was
+#     dropped because the check cannot tell who made an edit anyway, and because a status flip in
+#     a different merge from the work is the drift this check exists to catch.
+#
+#     **Why it was reaffirmed.** On 2026-09-01 two lanes hit this check and both reported it as an
+#     impossible instruction, because the failure message below still quoted the retired rule while
+#     AGENTS.md's developer bullet forbade the fix. The exception had been real for eight days and
+#     lived only in this comment, which no failing lane ever reads. It is narrow: a lane's own
+#     milestone's roadmap block and nothing else under design/, not design/decisions/ and not
+#     another milestone's block. The drift to watch for is between a lane's claim and the merged
+#     tree, and review catches that rather than authorship.
+#
+#     A branch that leaves the status unmoved still touches the file, if only to say why. That
+#     sentence was missing four times.
+#
+#     **A renumbered lane keeps its branch** (2026-10-10 UTC, #1901): renaming an open pull
+#     request's head branch closes the pull request, so the branch keeps the number it was cut
+#     with and the check finds the block the lane moved to. The logic and that reasoning live in
+#     helpers/milestone-branch-block.sh, so its selftest can plant a renumbered lane and a real
+#     mismatch; the selftest runs first, for the reason `fatal-risks --selftest` does.
+"$(dirname "$0")/../helpers/milestone-branch-block-selftest.sh" >/dev/null
+"$(dirname "$0")/../helpers/milestone-branch-block.sh" "$(cd "$(dirname "$0")/.." && pwd)" "$branch" || exit 1
+
+# 11. **The merge queue's admission predicate says what it means** (2026-09-24 security audit). Until
+#     that audit "eligible" admitted a pull request from any fork on GitHub, at a time when the
+#     drain armed every eligible pull request as `nife-smelter[bot]`. The predicate is one file,
+#     helpers/queue-eligible.jq, and this self-test checks it against fixtures and checks that both
+#     consumers still splice it.
+echo "==> the merge queue's admission predicate"
+"$(dirname "$0")/../helpers/queue-eligible-selftest.sh"
+#     And the cancelled-duplicate detection (2026-09-24): the drain reruns, once, the CI run a
+#     concurrency group cancelled beside its same-second sibling; the self-test's fixtures are the
+#     ordinary supersede that must not be rerun and the attempt-2 run that must not be rerun again.
+"$(dirname "$0")/../helpers/cancelled-duplicate-selftest.sh"
+#     And the needs-maintainer detector (milestone 727 (a queue eviction goes to a maintainer session), provisional): an ejected, conflicting,
+#     stale or unarmed pull request is labelled for a maintainer session and cleared when its cause
+#     goes, fed a recorded GraphQL response and one fixture per case, no `gh`. It also fails if the
+#     drain arms or enqueues again, which calef ruled out on #1564.
+"$(dirname "$0")/../helpers/needs-maintainer-selftest.sh"
+#     And the failing-CI flag (provisional name, with helpers/ci-failing.sh): a ready pull request
+#     whose newest run of a required check failed is labelled and commented once per head, and a
+#     failure a later run superseded is not reported. A recorded commit and synthetic cases, no `gh`.
+"$(dirname "$0")/../helpers/ci-failing-selftest.sh"
+#     And who took a dequeue, for milestone 642 (the record should say whether a person or the
+#     machinery took a step): helpers/session_steps.py credits a `calef`-account event to the
+#     session whose `gh` call came before it, never after. Fixtures only, no `gh`.
+python3 "$(dirname "$0")/../helpers/session_steps.py" --selftest
+#     And the session identity (milestone 128 (the automation gets its own identity); helper name
+#     provisional): helpers/smelter-token signs a JWT with a throwaway key, a local stub of the
+#     GitHub API verifies it, and the cache, both permission scopes, git's credential protocol, the
+#     `gh` shim's refusal to fall back to a personal login, and the key never reaching output are
+#     each checked. No network, and it never reads a keychain.
+python3 "$(dirname "$0")/../helpers/smelter-token" --selftest >/dev/null
+#     And `Blocked-by: #N` (2026-09-27): the parser (helpers/blocked-by.sh, one number or several
+#     on the line) and the draft-unblock decision it feeds (helpers/blocked-by-resolution.jq:
+#     unblocked, still waiting, closed unmerged, already labelled) are each fixtures-only, no `gh`.
+"$(dirname "$0")/../helpers/blocked-by-selftest.sh"
+"$(dirname "$0")/../helpers/blocked-by-resolution-selftest.sh"
+#     And the classified claim (calef's ruling R1 on #1894, 2026-10-10 UTC): script/claim refuses a
+#     lane with neither or both of `--debt-paydown` and `--new-work`, before git, `gh` or the disk.
+#     Both tools are stubs here, so a refusal that regresses fails this rather than claiming.
+"$(dirname "$0")/../helpers/claim-selftest.sh" >/dev/null
+
+#     The queued-branch push refusal (provisional milestone name: refuse a push to a queued branch;
+#     helpers/push-queued-check.sh, called from .githooks/pre-push): queued refuses, not queued
+#     passes, gh failing warns and passes, against a fake `gh` on PATH.
+"$(dirname "$0")/../helpers/push-queued-selftest.sh" >/dev/null
+
+# 12. The CI-poll refusal hook (helpers/hooks/refuse-ci-polling, wired as a PreToolUse hook on Bash
+#     in .claude/settings.json). calef's 2026-09-26 ruling is that a lane never polls CI; this
+#     self-test is fixtures only, no stdin and no tree, so it costs nothing to run on every lint.
+#     The pre-push hook's fleet half (milestone 889, provisional; helpers/pre-push-fleet.sh), on a
+#     checkout with `nife.fleet` set: it reaches `gh`, a failing script/lint-fleet refuses the push,
+#     and without the opt-in neither happens. A throwaway repository and a stub `gh`.
+echo "==> the pre-push hook's fleet half"
+"$(dirname "$0")/../helpers/pre-push-fleet-selftest.sh" >/dev/null
+
+echo "==> the CI-poll refusal hook"
+python3 "$(dirname "$0")/../helpers/hooks/refuse-ci-polling" --selftest
+
+echo "==> the agent instructions agree in all five places"
+# notes/skills/<name>/SKILL.md, its notes/skills/README.md row, its AGENTS.md link, and its
+# .claude/skills and .agents/skills symlinks. helpers/agents-index-check.py's header says why.
+python3 "$(dirname "$0")/../helpers/agents-index-check.py"
+
+# §88 (`needs-architect` as a required check, rather than as a script's restraint)'s diff-reading
+# half (.github/workflows/architect-label.yml, the general case of
+# coe-architect-label.yml): whether a pull request's diff moved the syscall surface, the dependency
+# graph, a format crate's wire layout, the spawn protocol, or CLAUDE.md/design/decisions/. The rule
+# engine is pure text-in-text-out (helpers/architect-label-rules.py), so its selftest is fixtures
+# only, no git and no subprocess, and costs nothing here.
+echo "==> the architect-label diff rules"
+python3 helpers/architect-label-rules.py --selftest >/dev/null
+
+# `architect-ruled` is read live, not from the event payload (#1712 race, 2026-10-05); stub-gh fixtures.
+echo "==> the live architect-ruled read"
+helpers/architect-ruled-selftest.sh >/dev/null
+
+# A ruling is posted and the labels swap in one step (lane/architect-queue, 2026-10-06): the marker
+# helpers/open-question.jq reads, comment before labels, and --partial leaving the hold; stub-gh.
+echo "==> record-ruling posts the ruling and swaps the labels"
+helpers/record-ruling-selftest.sh >/dev/null
+
+# A released hold reruns the old red hold runs on the head (#1766, 2026-10-06); stub-gh fixtures plus
+# a structural check that architect-ruled-clears-hold.yml listens for the release events.
+echo "==> the hold-release rerun"
+helpers/hold-rerun-selftest.sh >/dev/null
+
+echo "==> the merge watchers and the method-metric collectors"
+# Milestone 723 (a stopped merge watcher is reported within three of its own intervals): the cron to
+# interval derivation, the silence rule and its measured floor, and the issue plan (one issue per
+# stop, closed on recovery), against fixtures with no `gh` and no network.
+python3 helpers/watcher_watch.py --selftest >/dev/null
+# Milestone 724 (the merge queue reports its ejection share and its time to merge): the daily
+# aggregation, the share, the report's threshold and the CSV upsert, against fixtures with no
+# network. The fetch itself runs only in the fleet-metrics and trunk-health workflows.
+python3 helpers/merge_queue_share.py --selftest >/dev/null
+# The debt-paydown share (lane maintainer/debt-paydown-share-chart, 2026-10-11 UTC): the filter to
+# pull requests merged into main and the label test, against fixtures, with no network.
+python3 helpers/debt_paydown_share.py --selftest >/dev/null
+
+echo "lint-fleet: all 23 checks of the fleet tooling passed"

@@ -3,7 +3,7 @@
 # helpers/needs-maintainer-selftest.sh: the detector's decision (helpers/needs-maintainer.jq), fed
 # GraphQL responses in the shape helpers/merge-drain.sh asks for, and the drain checked for still
 # asking for every field the decision reads and for never arming or enqueueing. Milestone 727
-# (a queue eviction goes to a maintainer session), number provisional. script/lint runs it.
+# (a queue eviction goes to a maintainer session), number provisional. script/lint-fleet runs it.
 #
 # Two fixtures under helpers/needs-maintainer-fixtures/:
 #
@@ -304,9 +304,17 @@ got=$(jq -c --argjson now "$(jq -n '"2026-10-03T22:00:00Z" | fromdateiso8601')" 
 	"$fx/every-cause.json")
 expect "a budget issue's kind or episode key came back wrong (milestone 808)" "$got" \
 	'["50:issue:50@2026-10-03T06:00:00Z","51:issue:51@2026-10-02T06:00:00Z","52:issue:","53:issue:53@2026-09-20T06:00:00Z"]'
-for where in "$here/merge-drain.sh" "$here/ci_job_times.py"; do
-	if ! grep -q 'near-budget' "$where"; then
-		echo "$me: $where does not name the near-budget label that needs-maintainer.jq's nm_budget_label holds." >&2
+# The label is spelled in three places, checked from this side only (milestone 889 (the tree's gates
+# stop depending on the fleet tooling)): helpers/ci_job_times.py, which opens the issue, is a tree
+# tool and no longer reads the fleet's two files, so the exact spellings are compared here.
+grep -qF 'def nm_budget_label: "near-budget";' "$here/needs-maintainer.jq" || {
+	echo "$me: needs-maintainer.jq's nm_budget_label is no longer \"near-budget\"." >&2
+	exit 1
+}
+for pair in 'merge-drain.sh|NM_BUDGET_LABEL="near-budget"' 'ci_job_times.py|LABEL = "near-budget"'; do
+	where="$here/${pair%%|*}"
+	if ! grep -qF "${pair#*|}" "$where"; then
+		echo "$me: $where does not spell the near-budget label as ${pair#*|}, which needs-maintainer.jq's nm_budget_label holds." >&2
 		exit 1
 	fi
 done

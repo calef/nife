@@ -34,6 +34,7 @@ needs.
   [notes/skills/maintainer/SKILL.md](notes/skills/maintainer/SKILL.md). It holds the three roles
   (maintainer and steward), the top-up rule and what bounds lane count.
 - Before any work in a lane, read [notes/skills/developer-lane/SKILL.md](notes/skills/developer-lane/SKILL.md).
+  Its checks run in `script/lint-fleet`.
   It holds the developer role, the claim, the handoff, identified work and shared state.
 - Before you choose between options, recommend one, or hold work for an architect, read
   [notes/skills/decisions/SKILL.md](notes/skills/decisions/SKILL.md). It holds "move fast on what

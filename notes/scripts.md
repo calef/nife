@@ -19,7 +19,6 @@ Full rows: [build-test-and-gate.md](scripts/build-test-and-gate.md).
 | `script/bootstrap` | Install the pinned toolchain and QEMU. Idempotent. `NIFE_SKIP_LINT_TOOLS=1` skips the lint-only tools (cargo-machete, typos). |
 | `script/setup` | First run after a clone: `bootstrap`, then build. |
 | `script/update` | After a pull: `bootstrap`, then rebuild. |
-| `script/claim <branch-name>` | Cut a lane's branch and worktree, and make the draft pull request claim; exactly one of `--debt-paydown` or `--new-work` is required ([debt-paydown.md](debt-paydown.md)). |
 | `script/test` | The suite: host-logic crates, then the kernel under QEMU. The gate. `--arch`, `--cpu`, `--hvf`, `--test` narrow it. |
 | `script/verify` | The Kani proofs over the pure-logic crates. |
 | `script/verify-riscv64` | The `kernel` row for riscv64, under Kani patched from `patches/`. Provisional name. |
@@ -29,7 +28,6 @@ Full rows: [build-test-and-gate.md](scripts/build-test-and-gate.md).
 | `script/lint` | Clippy on every ISA and feature build, plus the non-clippy checks sharing its job. |
 | `script/coverage` | Host-crate coverage, gated at 80% per file. |
 | `script/ci-build` | The one list of checks a pull request must pass. CI runs its rows. |
-| `script/preflight-queue` | Replay the merge queue locally before a group build does. |
 | `script/qemu-check` | Is the QEMU on PATH the pinned one, with the devices the suite needs? |
 | `script/ci-qemu` | Build the pinned QEMU on Linux, where apt cannot. |
 | `script/drift` | Does a toolchain still build us? |
@@ -52,7 +50,6 @@ Full rows: [records-and-indexes.md](scripts/records-and-indexes.md).
 | `script/apropos <word>` | Search every document in the repository. |
 | `script/names` | Who named this, when, and what was refused. |
 | `script/metrics` | The weekly measures behind `notes/project-metrics.md`. |
-| `script/architect-queue`, `script/record-ruling` | calef's queue; rulings. |
 
 ### How the project measures itself
 
@@ -63,9 +60,6 @@ Full rows: [process-measures.md](scripts/process-measures.md).
 | `script/rule-violations` | Total the strikes against each documented rule. |
 | `script/audits` | Is an audit due? |
 | `script/cadence-check` | Which scheduled workflows have stopped producing a result? |
-| `script/redo-rate` | How often delegated work has to be done again. |
-| `script/nanny` | Work the merge queue by delegating the rebases. |
-| `script/effort` | Machine effort spent per ISO week, from Claude Code and opencode records; `--attribute` records which unsigned commits an opencode session made. |
 | `script/stranger-test` | Hand the repository to a fresh process and record what it could not work out. |
 
 ### Boards and boot checks
@@ -128,6 +122,20 @@ crates run under QEMU, out of reach of host instrumentation, which is the same r
 leaning on `bootstrap`, so the CI test job (which runs `bootstrap`) never compiles a coverage tool
 it does not use.
 
+### Running the agent fleet
+
+Full rows: the appendices above.
+
+| script | what it does |
+|---|---|
+| `script/lint-fleet` | The fleet tooling's checks, apart from `script/lint`; CI runs both. |
+| `script/claim <branch-name>` | Cut a lane's branch, worktree and draft pull request; sets `nife.fleet`. `--debt-paydown` or `--new-work` ([debt-paydown.md](debt-paydown.md)). |
+| `script/preflight-queue` | Replay the merge queue locally before a group build does. |
+| `script/architect-queue`, `script/record-ruling` | calef's queue; rulings. |
+| `script/nanny` | Work the merge queue by delegating the rebases. |
+| `script/redo-rate` | How often delegated work has to be done again. |
+| `script/effort` | Machine effort spent per ISO week, from agent session records. |
+
 ## They are thin wrappers, on purpose
 
 The scripts do almost nothing themselves. `script/test` is `cargo xtask test`; `script/server`
@@ -180,7 +188,8 @@ from milestone 286 (one enumeration of the checks that gate a pull request). The
 developer does, from the same list, and a job without a row is the defect that list prevents. `verify.yml` is the exception and says so: Kani is sharded
 across jobs with its own scope predicate, and the table does not claim it.
 
-The lint job was named `clippy` until 2026-10-08 (UTC). It runs every check in `script/lint`, and
+The lint job was named `clippy` until 2026-10-08 (UTC). It runs every check in `script/lint`, then
+`script/lint-fleet`, and
 a red `clippy` was usually a citation, decision or roadmap check. calef asked "Should the gate named
 clippy be renamed? It seems to cause you some confusion when I cite it", then said "Go ahead with
 lint". A required check is matched by name, so the rename goes in three steps, each safe
@@ -217,8 +226,10 @@ covers every worktree at once, the case that motivated the first hook.
   work-in-progress branch for safekeeping is a legitimate reason, and the hook is a courtesy to
   the queue rather than a rule about what may exist on a branch.
 - It then runs `script/lint --no-cargo` (every check that does not invoke cargo; clippy stays in
-  CI) and `script/roadmap --ready-branch` for a ready pull request. A push that changes no files,
-  a claim, skips all three. Timings and reasoning: [queue-ejection.md](queue-ejection.md).
+  CI). A push that changes no files, a claim, skips both. See
+  [queue-ejection.md](queue-ejection.md).
+- With `nife.fleet` set (by `script/claim`) it runs `helpers/pre-push-fleet.sh`. Without it, no
+  `gh` or network.
 
 An existing clone installs it by rerunning `script/setup`, or by hand with the config line above.
 
