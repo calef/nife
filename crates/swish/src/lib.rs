@@ -1069,7 +1069,7 @@ pub const FAULTED_SENTENCE: &[u8] = b"  that command faulted and was killed befo
 /// meets this sentence only when it does not hold it.
 pub const UNVOUCHED_SENTENCE: &[u8] = b"  refused: those bytes are not in the activation set, and running unvouched bytes needs a capability this session does not hold\n";
 
-/// **Who vouched for an image's digest**, for [`write_image_caps`]: the live generation that lists
+/// **Who vouched for an image's digest**, for [`write_image_capabilities`]: the live generation that lists
 /// it, and whether its entry is the owner's own vouch (`activation_set::OWNER`) rather than an
 /// installed package's. Name: provisional (2026-09-26).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1137,7 +1137,7 @@ pub const NO_DISPLAY_SENTENCE: &[u8] =
 /// let holds = grant_plan::Holdings::default();
 /// let e = grant_plan::plan_against(&spec, grant_plan::IMAGE_ROW, m, holds, grant_plan::expand::Expansion::none()).unwrap();
 /// let mut said = Vec::new();
-/// swish::write_image_caps(b"./a.out", b"sha256:ab12", None, true, Some(m), &e, &holds, &mut |b| said.extend_from_slice(b));
+/// swish::write_image_capabilities(b"./a.out", b"sha256:ab12", None, true, Some(m), &e, &holds, &mut |b| said.extend_from_slice(b));
 /// let said = String::from_utf8(said).unwrap();
 /// assert!(said.contains("provenance: unvouched (digest sha256:ab12)"));
 /// assert!(said.contains("cap 1  page      clock"));
@@ -1147,7 +1147,7 @@ pub const NO_DISPLAY_SENTENCE: &[u8] =
 // print a path under a mount point. Each is one fact the caller already holds, and bundling them
 // into a struct used nowhere else would be more to read, not less.
 #[allow(clippy::too_many_arguments)]
-pub fn write_image_caps(
+pub fn write_image_capabilities(
     path: &[u8],
     digest: &[u8],
     vouched_by: Option<Vouched>,
@@ -1509,7 +1509,7 @@ fn write_config_values(page: &ConfigPage, indent: &[u8], out: &mut dyn FnMut(&[u
 /// Nothing here moves any authority. That is the point of it being reachable from a host test at
 /// all: the sentences a user reads before they decide to run something are checked without an
 /// emulator, and without a shell that holds anything.
-pub fn write_caps(
+pub fn write_capabilities(
     tail: &[u8],
     budget_pages: u64,
     holdings: Holdings,
@@ -2037,7 +2037,7 @@ mod tests {
                 )
                 .unwrap();
                 let mut said = Vec::new();
-                super::write_image_caps(
+                super::write_image_capabilities(
                     b"bin/x",
                     b"00ff",
                     v,
@@ -2980,7 +2980,7 @@ mod tests {
     }
 
     /// The values reach a pipeline stage's preview too, which is the path `caps` takes for any line
-    /// with an operator on it: the page is threaded through [`write_caps`], not only
+    /// with an operator on it: the page is threaded through [`write_capabilities`], not only
     /// [`write_preview`].
     #[test]
     fn caps_on_a_pipeline_threads_the_page_to_the_stage_that_declares_it() {
@@ -2988,7 +2988,7 @@ mod tests {
         // SAFETY: as above.
         let page = unsafe { ConfigPage::new(bytes.as_ptr() as u64) };
         let s = shown(|o| {
-            write_caps(
+            write_capabilities(
                 b"printenv | wc",
                 128,
                 Holdings::default(),
@@ -3351,7 +3351,7 @@ mod tests {
         assert_eq!(shown(|o| write_pwd(&holdings, o)), "  /media/usb/logs\n");
 
         let s = shown(|o| {
-            write_caps(
+            write_capabilities(
                 b"rm /media/usb/old/x",
                 128,
                 holdings,
@@ -3409,7 +3409,7 @@ mod tests {
     #[test]
     fn caps_with_no_tail_is_the_shells_own_endowment() {
         let tail = shown(|o| {
-            write_caps(
+            write_capabilities(
                 b"   ",
                 128,
                 Holdings::default(),
@@ -3426,7 +3426,7 @@ mod tests {
     #[test]
     fn caps_previews_every_stage_of_a_pipeline() {
         let s = shown(|o| {
-            write_caps(
+            write_capabilities(
                 b"date | wc",
                 128,
                 Holdings::default(),
@@ -3481,7 +3481,7 @@ mod tests {
                 line.push_str(" report.txt");
             }
             let s = shown(|o| {
-                write_caps(
+                write_capabilities(
                     line.as_bytes(),
                     128,
                     holdings,
@@ -3515,7 +3515,7 @@ mod tests {
         // preview refuses the same line the prompt would, which is the property that makes `caps`
         // worth typing before a command rather than after it.
         let s = shown(|o| {
-            write_caps(
+            write_capabilities(
                 b"least_authority_demo 7 | wc",
                 128,
                 Holdings::default(),
@@ -3534,7 +3534,7 @@ mod tests {
         // A shell holding no directory cannot back a name, and the preview says so rather than
         // printing a grant that would not happen.
         let s = shown(|o| {
-            write_caps(
+            write_capabilities(
                 b"wc report.txt",
                 128,
                 Holdings::default(),
@@ -3551,7 +3551,7 @@ mod tests {
     #[test]
     fn caps_says_so_when_the_tail_is_not_an_invocation() {
         let s = shown(|o| {
-            write_caps(
+            write_capabilities(
                 b"help",
                 128,
                 Holdings::default(),
@@ -3574,7 +3574,7 @@ mod tests {
     fn caps_of_a_timed_command_previews_the_command_itself() {
         let preview = |line: &'static [u8]| {
             shown(|o| {
-                write_caps(
+                write_capabilities(
                     line,
                     128,
                     Holdings::default(),
@@ -3750,7 +3750,7 @@ mod tests {
     #[test]
     fn caps_refuses_a_second_stream_the_program_never_declared() {
         let s = shown(|o| {
-            write_caps(
+            write_capabilities(
                 b"least_authority_demo 7 2> err.txt",
                 128,
                 Holdings {

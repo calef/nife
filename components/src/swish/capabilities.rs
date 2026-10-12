@@ -12,7 +12,7 @@ use super::*;
 /// Print the shell's whole endowment, or, with a tail, preview what that command would grant. This
 /// is the introspection that makes "reading one literal tells you a process's authority" real.
 ///
-/// The preview is [`swish::write_caps`], and it moved there because **nothing about it needs a
+/// The preview is [`swish::write_capabilities`], and it moved there because **nothing about it needs a
 /// capability**: it renders what a line *would* grant, so it is the one command in this shell whose
 /// entire meaning is checkable without a machine to run it on. What is left here is the directory
 /// read a pattern needs and the terminal to print to.
@@ -48,7 +48,7 @@ pub(super) fn caps(nav: &mut Nav, tail: &[u8]) {
     let config = HOLDS_CONFIG
         .load(core::sync::atomic::Ordering::Relaxed)
         .then(|| unsafe { environment_protocol::ConfigPage::new(grant_plan::SHELL_CONFIG_VA) });
-    swish::write_caps(
+    swish::write_capabilities(
         tail,
         SH_BUDGET_PAGES,
         holdings,
@@ -166,7 +166,7 @@ fn caps_image(nav: &mut Nav, spec: RunSpec) {
     let digest = hash.finalize();
     let text = measured_boot::digest_text(&digest);
     let vouched_by = live_generation_listing(nav, &digest);
-    swish::write_image_caps(
+    swish::write_image_capabilities(
         spec.prog,
         &text,
         vouched_by,

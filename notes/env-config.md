@@ -113,6 +113,6 @@ magic both reading as "no configuration," and the layout offsets not overlapping
   values". Only the boot prompt's shell holds the view. Children spawned from a session are still
   endowed normally; only the preview is blind.
 - `caps <path>` for an unvouched image prints the config row without values
-  (`swish::write_image_caps`, milestone 198 (a package manager)'s), because that renderer does not take the page. A
+  (`swish::write_image_capabilities`, milestone 198 (a package manager)'s), because that renderer does not take the page. A
   small follow-up in 198's file once its lane has landed.
 - The domains are curated, not exhaustive. See `environment_protocol`'s own `BUGS` section.
