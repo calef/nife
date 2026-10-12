@@ -103,9 +103,9 @@ on 2026-10-12: rust-osdev's `acpi` crate (`7bf9e4210d`) has `src/rsdp.rs` and `s
   tables. No test body changes.
 - The verification module's doc, which spoke for all eight harnesses, stays whole on `root`'s, the
   RSDP harness being the one it calls the crate's security-shaped claim. Each other table's
-  `verification` points to it, and those whose harnesses take a byte buffer (`sdt`, `madt`,
-  `dmar`) carry their own copy of the input length `N`, which the harnesses are linear in;
-  `mcfg`'s harness takes two bus numbers and needs none. A private constant of one module cannot be named from a sibling's
+  `verification` points to it. Those whose harnesses take a byte buffer (`sdt`, `madt`, `dmar`)
+  carry their own copy of the input length `N`, which the harnesses are linear in. `mcfg`'s
+  harness takes two bus numbers and needs none. A private constant of one module cannot be named from a sibling's
   `cfg(kani)` module without widening it, so the knob is now per table.
 - The eight falsification patches are renamed to their harness's new module path
   (`acpi.root.verification.*`, `acpi.sdt.verification.*`, `acpi.madt.verification.*`,
