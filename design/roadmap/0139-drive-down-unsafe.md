@@ -19,7 +19,7 @@ has existed and been live all along; this milestone spent it for its first real 
 **In brief.** Reduce the hand-written `unsafe` this tree carries outside `kernel/src/arch/`, and lower
 the ceiling after each reduction so the ground gained cannot be given back quietly.
 
-<!-- prose-budget: exception. 14,332 words (wc -w, this marker included; re-counted after round
+<!-- prose-budget: exception. 14,326 words (wc -w, this marker included; re-counted after round
      11's renames, 2026-10-12 UTC) against a 3,000-word cap. Ratified by calef on 2026-09-25
      (UTC), who ruled that this block is not split. Reason:
      large and rarely referenced; the maintainer counted 2 files linking it that day. Roadmap blocks
@@ -1049,10 +1049,12 @@ one-argument `send_cap`, `hello.rs`'s `retype_page_frame`, `system_initializer`'
 call the virtio wrappers by full path, because a bare `virtio::` would shadow the `virtio` crate
 they also link.
 
+How far the sweep reached past that module was asked on #1998, and calef ruled B on 2026-10-12
+(UTC): "B for #1998." Everything the tree authors now says `initial_ramdisk`: the kernel, `xtask`,
+`uefi_loader`, `cfg(initial_ramdisk)`, the derived constants and parameters, and the environment
+variable. Only `linux,initrd-start`/`-end` and QEMU's `-initrd` keep the foreign spelling.
+
 Not done. `abi::interrupt` and `READ_REGISTER`/`WRITE_REGISTER` wait for the `abi` split (#1990).
-How far the `initial_ramdisk` sweep reaches past this module (`INITRD_VA`, the `initrd_len`
-parameters, the kernel, `xtask`, `uefi_loader`, `NIFE_INITRD`: about 1,600 lines and forty derived
-names) is calef's question, asked on #1998.
 
 ## What is still open
 
@@ -1112,8 +1114,7 @@ are the price of one invariant at six declarations instead of eighteen call site
    with one deviation for calef to confirm: the token on `Thread::own_token`, not a per-core
    current slot.
 2. The renames, as question 2 rules them. **Built by round 11** (2026-10-12 UTC, #1998) except
-   `abi::interrupt` and the two `abi::virtio` constants, which wait for #1990, and the reach of
-   the program-side `initial_ramdisk` sweep, which waits for calef.
+   `abi::interrupt` and the two `abi::virtio` constants, which wait for #1990.
 
 ## The measurement it starts from
 
@@ -1212,8 +1213,7 @@ proofs and the type system are standing aside and a person's comment is the whol
 - **Done.** The ratchet's scope: round 9 gated the other `unsafe impl`s (`unsafe-trait-claims`)
   and recorded why `unsafe fn` gets no ceiling.
 - **Outstanding.** What round 11 left of the renames calef ruled on 2026-10-08 (UTC):
-  `abi::interrupt` and the `abi::virtio` constants (after #1990), and the reach of the
-  `initial_ramdisk` sweep past its own module (calef's question on #1998).
+  `abi::interrupt` and the `abi::virtio` constants, after #1990.
 - **Done.** Round 6's slice accessors stay: calef, 2026-10-08 (UTC), "Keep. We don't want to
   penalize reuse." `as_slice`, `as_mut_slice` and `is_granted` are ratified as is.
 - **Done.** The scheduler's ownership token (`Unqueued<T>`), option C: round 10 (#1852). calef's
