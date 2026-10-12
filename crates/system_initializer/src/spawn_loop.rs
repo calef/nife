@@ -32,7 +32,7 @@ pub(super) fn archive_name(p: Prog) -> Option<&'static str> {
 /// an explicit target, which the ABI numbers from one). `false` if the slot was taken or the right
 /// could not be granted.
 pub(super) fn place_at(tcb: u64, cap: u64, rights: u64, slot: u64) -> bool {
-    user_mode_runtime::tcb_cap_insert(tcb, cap, rights, slot + 1) >= 0
+    user_mode_runtime::thread_control_block_capability_insert(tcb, cap, rights, slot + 1) >= 0
 }
 
 // The slot the run-unvouched capability is placed in sits just under the kernel's reserved fault

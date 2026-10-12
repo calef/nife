@@ -235,7 +235,7 @@ fn spawn_job(code_frame: u64) -> Result<u64, Refused> {
             child,
             abi::objtype::THREAD_CONTROL_BLOCK,
         ))?;
-        slot(user_mode_runtime::tcb_cap_insert(
+        slot(user_mode_runtime::thread_control_block_capability_insert(
             tcb,
             job_mix::SLOT_CHILD_DONE,
             abi::rights::WRITE,
@@ -246,9 +246,9 @@ fn spawn_job(code_frame: u64) -> Result<u64, Refused> {
         // (`std::thread::spawn` runs real threads in one address space), so success is
         // any non-negative answer.
         let configured =
-            user_mode_runtime::tcb_configure(tcb, CHILD_CODE_VA, CHILD_STACK_VA + PAGE, aspace);
+            user_mode_runtime::thread_control_block_configure(tcb, CHILD_CODE_VA, CHILD_STACK_VA + PAGE, aspace);
         zero(configured.min(0))?;
-        zero(user_mode_runtime::tcb_start(tcb, 0, 0, 0))?;
+        zero(user_mode_runtime::thread_control_block_start(tcb, 0, 0, 0))?;
         // The child's done word. Then reclaim: `DESTROY` refuses a region a live thread occupies,
         // and the child is between its `SEND` and its exit for a moment after this returns.
         let _ = receive(job_mix::SLOT_CHILD_DONE);

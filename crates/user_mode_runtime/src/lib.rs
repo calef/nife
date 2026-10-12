@@ -1024,7 +1024,13 @@ pub fn address_space_map_into(aspace_slot: u64, va: u64, frame_slot: u64, mode: 
 /// child TCB's capability table. `target = 0` places it in the first free slot; `target = n` places
 /// it in slot `n - 1` (see `abi::thread_control_block::CAP_INSERT`'s own doc for the supervision-slot
 /// use of an explicit target). Returns the slot it landed in, or a negative `abi::Error`.
-pub fn tcb_cap_insert(tcb_slot: u64, cap_slot: u64, rights: u64, target: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2). His words: "Ratify ... thread_control_block_capability_insert,
+/// thread_control_block_configure, thread_control_block_start, ..." Refused `tcb_cap_insert` (round
+/// 7's provisional name; §154 (the acronym test is whether the phrase is spoken) spells out thread
+/// control block, and capability is spelled out).
+pub fn thread_control_block_capability_insert(tcb_slot: u64, cap_slot: u64, rights: u64, target: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates `WRITE` on the TCB and `GRANT` on the inserted
     // capability before it copies anything.
     unsafe {
@@ -1045,7 +1051,12 @@ pub fn tcb_cap_insert(tcb_slot: u64, cap_slot: u64, rights: u64, target: u64) ->
 /// child's current-CPU page (milestone 812 (`std::thread::spawn` runs real threads in one address
 /// space)), never negative; a negative `abi::Error` otherwise, `WrongObject` for a space already
 /// bound.
-pub fn tcb_configure(tcb_slot: u64, entry: u64, user_sp: u64, aspace_slot: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2). His words: "Ratify ... thread_control_block_capability_insert,
+/// thread_control_block_configure, thread_control_block_start, ..." Refused `tcb_configure` (round
+/// 7's provisional name).
+pub fn thread_control_block_configure(tcb_slot: u64, entry: u64, user_sp: u64, aspace_slot: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates `WRITE` on both capabilities before it binds them.
     unsafe {
         invoke(
@@ -1064,7 +1075,12 @@ pub fn tcb_configure(tcb_slot: u64, entry: u64, user_sp: u64, aspace_slot: u64) 
 /// stale: `kernel/src/syscall.rs`'s `START` arm forwards all three to `sched::start_thread_control_block`
 /// unconditionally). Refuses a half-built thread (no bound address space, or no entry). `0` on
 /// success; a negative `abi::Error`.
-pub fn tcb_start(tcb_slot: u64, x0: u64, x1: u64, x2: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2). His words: "Ratify ... thread_control_block_capability_insert,
+/// thread_control_block_configure, thread_control_block_start, ..." Refused `tcb_start` (round 7's
+/// provisional name).
+pub fn thread_control_block_start(tcb_slot: u64, x0: u64, x1: u64, x2: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates `WRITE` and that the TCB is whole before it joins
     // the run queue.
     unsafe { invoke(tcb_slot, abi::thread_control_block::START, x0, x1, x2) }
