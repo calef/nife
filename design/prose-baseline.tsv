@@ -341,7 +341,7 @@ design/roadmap/0155-user-provisioning.md	-	28	64	-	-
 design/roadmap/0156-syscall-entry-diet.md	-	21	62	-	-
 design/roadmap/0157-uboot-framebuffer-handoff.md	-	-	51	-	-
 design/roadmap/0158-kernel-object-rename-build.md	4100	35	167	-	-
-design/roadmap/0159-jh7110-trng-driver.md	5291	-	82	-	-
+design/roadmap/0159-jh7110-trng-driver.md	-	-	54	-	-
 design/roadmap/0160-pub-fn-naming-review.md	-	21	66	-	-
 design/roadmap/0161-x86-64-kernel-port.md	-	-	106	-	-
 design/roadmap/0162-cpu-instruction-entropy.md	-	24	78	-	-
