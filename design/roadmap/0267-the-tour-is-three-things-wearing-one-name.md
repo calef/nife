@@ -157,9 +157,9 @@ entry needs:
 
 - The machine description prints on every boot, on all three architectures. It is now harder to
   break than it was: it is a function with a name and a gate rather than the first half of a block.
-- `xtask`'s archive manifest. `narrator` is packed into `initrd_aarch64`'s table. aarch64 only:
+- `xtask`'s archive manifest. `narrator` was packed into `initrd_aarch64`'s table, aarch64 only:
   the other two boots halt before the shared path, so packing it there would be archive bytes
-  nothing can reach.
+  nothing can reach. The entry went with the program on 2026-09-13.
 - `script/swish-check` runs the real boot on both legs. Green.
 
 ## BUGS
@@ -203,11 +203,6 @@ entry needs:
   them one day, and the shape is already established by §139 and milestones 229/237: a per-thread
   grant, not an ambient fact. Nothing needs it today, so nothing is built. This is why the spinner
   demo is on the kernel-only list rather than being a program.
-- "What must not break" still says `narrator` is packed into `initrd_aarch64`'s table. That was true
-  when it was written. It stopped being true on 2026-09-13, when the entry went with the program
-  (this block's own list of what went with it says so, and `xtask` holds no `narrator` entry today).
-  Found on 2026-10-12 (UTC) while splitting this block under §212 (a prose budget), and left as
-  written for whoever owns the block to correct.
 
 ## Follow-on
 
