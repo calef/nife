@@ -1043,11 +1043,11 @@ RUSTDOCFLAGS="$DOCFLAGS" cargo doc --no-deps --quiet -p xtask -p board_console -
     -p sealed_pair -p walk_pricing -p c_library_errno
 RUSTDOCFLAGS="$DOCFLAGS" cargo doc --no-deps --quiet --manifest-path redoxfs_server/Cargo.toml --lib
 
-# The decision index (design/decisions/README.md and one file per decision, milestone 114): its
-# numbering, its status vocabulary, that each decision's own Status line agrees with its index row,
-# and that every §N cited in the tree resolves. Two concurrent milestones both claimed §30 on
-# 2026-07-30 and it was caught only because an agent noticed; ~400 code comments cite a section by
-# number, so a dangling citation is a broken footnote in the one place this project asks a reader to
+# The decisions (one file per decision, milestone 114 (split `DECISIONS.md`, and give a decision a
+# status)): their numbering, each file's frontmatter against the schema milestone 582 (a decision's
+# status becomes a field, and the index becomes generated) gave it, and that every §N cited in the
+# tree resolves. Two concurrent milestones both claimed section number 30 on 2026-07-30 and it was
+# caught only because an agent noticed; ~400 code comments cite a section by number, so a dangling citation is a broken footnote in the one place this project asks a reader to
 # trust prose. See script/decisions, including what it still cannot check.
 echo "==> decisions"
 "$(dirname "$0")/decisions" --check
