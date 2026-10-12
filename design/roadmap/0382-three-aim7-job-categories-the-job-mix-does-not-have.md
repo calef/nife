@@ -59,7 +59,8 @@ stake is how much weight a flat curve can carry.
 ## Follow-on
 
 - **Milestone 168.** Where the work landed: *"The second hole"* and *"What changed on 2026-09-19"*
-  in that block, with the refusals this one recorded answered there. The map job did not need a new
+  in that block's appendix
+  [`0168-multitasking-benchmark/holes-closed-2026-09-19.md`](0168-multitasking-benchmark/holes-closed-2026-09-19.md), with the refusals this one recorded answered there. The map job did not need a new
   capability, and the spawn job's allocator share is now printed.
 - **Milestone 493.** The disk-file category, which is the one of the three that did not land and is
   not simply deferred. A 2026-09-13 correction to `crates/job_mix`'s `BUGS` established that
