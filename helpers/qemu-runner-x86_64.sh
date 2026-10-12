@@ -159,7 +159,8 @@ DEBUG_EXIT="-device isa-debug-exit,iobase=0xf4,iosize=0x04"
 # machine WITHOUT the capability, which is the comparison this knob exists to make possible.
 #
 # The default does not move: unset is QEMU's default is what the tree already ran, so this adds a
-# knob and changes no existing boot. See design/roadmap/0317-interrupt-remapping-flags.md.
+# knob and changes no existing boot. See
+# design/roadmap/0317-interrupt-remapping-flags/x86-64.md.
 #
 # **`kernel-irqchip=split` is NOT required here, and that is measured rather than inherited.** The
 # advice that pairs the two is real, and it is a KVM constraint: QEMU refuses `intremap=on` with an

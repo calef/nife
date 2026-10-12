@@ -486,7 +486,7 @@ design/roadmap/0313-confinement-audit.md	-	-	85	-	-
 design/roadmap/0314-ecam-second-witness.md	-	21	59	-	-
 design/roadmap/0315-port-revoke-every-core.md	-	24	54	-	-
 design/roadmap/0316-x86-smp-two-cores.md	-	-	63	-	-
-design/roadmap/0317-interrupt-remapping-flags.md	3668	-	58	-	-
+design/roadmap/0317-interrupt-remapping-flags.md	-	-	58	-	-
 design/roadmap/0318-nvme-test-on-real-geometry.md	-	-	99	-	-
 design/roadmap/0319-machine-discovery-proofs.md	-	-	86	-	-
 design/roadmap/0320-every-pci-bus-the-machine-has.md	-	-	59	-	-
