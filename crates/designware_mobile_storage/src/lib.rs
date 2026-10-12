@@ -632,6 +632,153 @@ mod tests {
         assert!(sim.storage[2040].iter().any(|&b| b != 0));
         assert!(sim.written.iter().all(|&lba| lba < 2048));
     }
+
+    /// What the write test put on the card is the pattern for each sector's own address: seen when
+    /// a card drops the restore and the pattern stays.
+    #[test]
+    fn the_pattern_left_behind_is_each_sectors_own() {
+        let (v, sim) = write_test(|s| s.writes_stored = Some(1), 8 * BLOCK);
+        assert_eq!(v, WriteVerdict::RestoreMismatch(2040));
+        for lba in 2040..2048u64 {
+            for (i, &b) in sim.storage[lba as usize].iter().enumerate() {
+                assert_eq!(b, bench::pattern(lba, i), "sector {lba} byte {i}");
+            }
+        }
+    }
+
+    /// A mismatch is named by the sector it is in, not the first of the range: here the second.
+    #[test]
+    fn a_mismatch_names_its_own_sector() {
+        let (v, _) = write_test(|s| s.mangle_write = Some((0, 2041)), 8 * BLOCK);
+        assert_eq!(v, WriteVerdict::PatternMismatch(2041));
+        let (v, _) = write_test(|s| s.mangle_write = Some((1, 2041)), 8 * BLOCK);
+        assert_eq!(v, WriteVerdict::RestoreMismatch(2041));
+    }
+
+    /// Buffers longer than the range are fine (only their first eight sectors are used), either
+    /// one too short is refused, and the verdict says whether the gap was blank.
+    #[test]
+    fn the_write_test_takes_long_buffers_refuses_either_short_one_and_reports_a_blank_gap() {
+        let (v, _) = write_test(|_| {}, 9 * BLOCK);
+        assert_eq!(v, WriteVerdict::Verified(2040, 8, true));
+        let (v, _) = write_test(|s| s.storage[2047][511] = 1, 8 * BLOCK);
+        assert_eq!(v, WriteVerdict::Verified(2040, 8, false));
+        for (a, b) in [(7, 8), (8, 7)] {
+            let mut h = Host::new(mbr_card(8192, 2048), 50_000_000, Some(32))
+                .unwrap()
+                .0;
+            let mut buf = vec![0u8; 8 * BLOCK];
+            let r = bench::read_only(&mut h, 4, &mut buf, 0).unwrap();
+            let (mut a, mut b) = (vec![0u8; a * BLOCK], vec![0u8; b * BLOCK]);
+            let v = bench::scratch_write(&mut h, &r.card, r.mbr.as_ref(), &mut a, &mut b);
+            assert_eq!(v, WriteVerdict::Failed(0, IoError::Length));
+        }
+    }
+
+    /// The pattern, worked by hand for a few bytes: `i * 31 ^ lba * 7 ^ 0x5a ^ i >> 8`, each in
+    /// eight bits. The `i >> 8` term is what makes a sector's two halves differ.
+    #[test]
+    fn the_write_pattern_is_the_formula_and_its_halves_differ() {
+        assert_eq!(bench::pattern(0, 0), 0x5a);
+        assert_eq!(bench::pattern(0, 1), 31 ^ 0x5a);
+        assert_eq!(bench::pattern(1, 0), 7 ^ 0x5a);
+        assert_eq!(bench::pattern(3, 5), 155 ^ 21 ^ 0x5a);
+        assert_eq!(bench::pattern(0, 256), 0x5a ^ 1);
+        assert_ne!(
+            (0..256).map(|i| bench::pattern(9, i)).collect::<Vec<_>>(),
+            (256..512).map(|i| bench::pattern(9, i)).collect::<Vec<_>>()
+        );
+    }
+
+    /// The timed reads stop at the card's end, in whole buffers, and a buffer under one block
+    /// times nothing rather than reading nothing forever.
+    #[test]
+    fn the_timed_reads_stop_at_the_end_of_the_card() {
+        let (mut h, _) = Host::new(mbr_card(2048, 16), 50_000_000, Some(32)).unwrap();
+        let mut buf = vec![0u8; 256 * BLOCK];
+        let r = bench::read_only(&mut h, 4, &mut buf, 100_000).unwrap();
+        // Partition 1 starts at 16, so blocks 16 to 2047 fit seven 256-block reads and not eight.
+        assert_eq!(r.timed_blocks, 7 * 256);
+        // Each read was of the next 256 blocks up from the partition, not below it.
+        let reads: Vec<u32> = h
+            .into_registers()
+            .commands
+            .iter()
+            .filter(|c| c.0 == 18)
+            .map(|c| c.1)
+            .collect();
+        assert_eq!(reads, (0..7).map(|k| 16 + 256 * k).collect::<Vec<u32>>());
+        let (mut h, _) = Host::new(mbr_card(2048, 1024), 50_000_000, Some(32)).unwrap();
+        let r = bench::read_only(&mut h, 4, &mut [], 8).unwrap();
+        assert_eq!(r.timed_blocks, 0);
+    }
+
+    /// An SD card's relative address goes in the high half of every addressed command's argument,
+    /// the `APP_CMD` before `ACMD6` among them; its CID is decoded with the SD layout and its
+    /// ACMD41 argument asks for high capacity only of a card that answered CMD8.
+    #[test]
+    fn an_sd_card_is_addressed_by_the_rca_it_chose_and_decoded_as_sd() {
+        let mut h = host(CardKind::SdHighCapacity, 8192);
+        let card = sd::identify(&mut h, 4).unwrap();
+        assert_eq!(
+            card.cid,
+            card::Cid {
+                manufacturer: 0x1b,
+                name: *b"NIFE1\0",
+                serial: 0x1234_5678,
+            }
+        );
+        let sim = h.into_registers();
+        let acmd6 = sim.commands.iter().position(|c| c.0 == 6).unwrap();
+        assert_eq!(sim.commands[acmd6 - 1], (55, 0xb368 << 16));
+        assert!(sim.commands.contains(&(41, 0x4030_0000)));
+        let mut h = host(CardKind::SdV1, 4096);
+        sd::identify(&mut h, 4).unwrap();
+        assert!(h.into_registers().commands.contains(&(41, 0x0030_0000)));
+    }
+
+    /// An eMMC of 2 GB or less is byte addressed and sized by its CSD; `EXT_CSD`'s count, which
+    /// such a part need not fill in, is not trusted for it. A larger one is sized by `EXT_CSD`.
+    #[test]
+    fn an_emmc_is_sized_by_ext_csd_only_when_it_is_sector_addressed() {
+        let mut sim = Sim::new(CardKind::Mmc, 4096, 32);
+        sim.mmc_byte_addressed = true;
+        sim.ext_csd_sectors = Some(99_999);
+        let mut h = Host::new(sim, 50_000_000, Some(32)).unwrap().0;
+        let card = sd::identify(&mut h, 8).unwrap();
+        assert!(!card.block_addressed);
+        assert_eq!(card.blocks, 4096);
+        let mut sim = Sim::new(CardKind::Mmc, 4096, 32);
+        sim.ext_csd_sectors = Some(99_999);
+        let mut h = Host::new(sim, 50_000_000, Some(32)).unwrap().0;
+        let card = sd::identify(&mut h, 8).unwrap();
+        assert!(card.block_addressed);
+        assert_eq!(card.blocks, 99_999);
+    }
+
+    /// The power-up deadline is a comparison past it, not an equality with it: on a clock that
+    /// steps seven microseconds a read the elapsed time never equals the deadline, as a real
+    /// clock's need not. A worker with its own deadline turns a spin into a named failure.
+    #[test]
+    fn an_emmc_that_never_powers_up_is_given_up_on_whatever_the_clock_steps() {
+        assert_ne!(sd::POWER_UP_DEADLINE_US % 7, 0);
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let mut sim = Sim::new(CardKind::Mmc, 4096, 32);
+            sim.busy_polls = u32::MAX;
+            sim.clock_step = 7;
+            let mut h = Host::new(sim, 50_000_000, Some(32)).unwrap().0;
+            let _ = tx.send(matches!(
+                sd::identify(&mut h, 8),
+                Err(InitError::PowerUp(ocr)) if ocr & card::OCR_BUSY_DONE == 0
+            ));
+        });
+        assert_eq!(
+            rx.recv_timeout(std::time::Duration::from_secs(10)),
+            Ok(true),
+            "power-up neither finished nor gave up"
+        );
+    }
 }
 
 #[cfg(kani)]

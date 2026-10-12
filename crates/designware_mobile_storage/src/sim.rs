@@ -48,6 +48,8 @@ pub enum Fault {
     ErrorStatus,
     /// The card answers `CMD8` with the wrong check pattern.
     EchoWrong,
+    /// The answer arrives with a response CRC error (`RCRC`).
+    BadCrc,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -116,6 +118,37 @@ pub struct Sim {
     /// databook says, rather than whenever the FIFO holds anything. A read whose tail is shorter
     /// than the watermark then ends with words in the FIFO and only `DTO` to say so.
     pub strict_watermark: bool,
+    /// Every register write the driver made, in order, FIFO words excepted.
+    pub writes: Vec<(u32, u32)>,
+    /// `CTRL`'s reset bits never clear.
+    pub reset_stuck: bool,
+    /// The controller never takes a clock update: `CMD`'s start bit stays set.
+    pub clock_stuck: bool,
+    /// The card holds DAT0 low forever.
+    pub busy_forever: bool,
+    /// How many `RINTSTS` reads pass before a command's answer (`CD`, `RTO`, the response words)
+    /// lands, as on silicon, where the command takes time on the wire.
+    pub late_answer: u32,
+    answer_pending: Option<(u32, Option<[u32; 4]>, u32)>,
+    /// The card stops moving data after this many bytes of a transfer.
+    pub stall_after: Option<usize>,
+    /// When the card stalls, it also raises `DTO`: a transfer the card ended early.
+    pub end_early: bool,
+    /// `STATUS` reports a full FIFO whatever it holds: a confused controller.
+    pub overreport_fill: bool,
+    /// A write's data phase ends with a data CRC error and no `DTO`.
+    pub crc_error_at_end: bool,
+    /// How many `RINTSTS` reads pass after `DTO` before the automatic CMD12's `ACD` lands.
+    pub late_acd: u32,
+    acd_pending: u32,
+    /// An eMMC of 2 GB or less: byte addressed, its OCR without the sector-mode bit.
+    pub mmc_byte_addressed: bool,
+    /// What `EXT_CSD`'s `SEC_COUNT` reports, if not the card's real size.
+    pub ext_csd_sectors: Option<u32>,
+    /// Store one block of one write command wrongly: `(write command, from 0; block)`.
+    pub mangle_write: Option<(usize, u64)>,
+    /// Microseconds per call to `now_us`.
+    pub clock_step: u64,
 }
 
 /// The `VERID` the simulation reports: release 2.90a, which puts the FIFO at `0x200`.
@@ -154,6 +187,22 @@ impl Sim {
             writes_stored: None,
             write_commands: 0,
             strict_watermark: false,
+            writes: Vec::new(),
+            reset_stuck: false,
+            clock_stuck: false,
+            busy_forever: false,
+            late_answer: 0,
+            answer_pending: None,
+            stall_after: None,
+            end_early: false,
+            overreport_fill: false,
+            crc_error_at_end: false,
+            late_acd: 0,
+            acd_pending: 0,
+            mmc_byte_addressed: false,
+            ext_csd_sectors: None,
+            mangle_write: None,
+            clock_step: 1,
         };
         s.regs[(regs::VERID / 4) as usize] = VERID;
         s.regs[(regs::HCON / 4) as usize] = HCON;
@@ -173,12 +222,25 @@ impl Sim {
         self
     }
 
+    /// The FIFO depth in words.
+    #[must_use]
+    pub fn depth(&self) -> usize {
+        self.depth
+    }
+
+    /// A register's value as the driver last left it, without the side effects of a read.
+    #[must_use]
+    pub fn peek(&self, offset: u32) -> u32 {
+        self.regs[(offset / 4) as usize]
+    }
+
     fn reg(&mut self, offset: u32) -> &mut u32 {
         &mut self.regs[(offset / 4) as usize]
     }
 
     fn high_capacity(&self) -> bool {
         !matches!(self.kind, CardKind::SdV1 | CardKind::SdV2)
+            && !(self.kind == CardKind::Mmc && self.mmc_byte_addressed)
     }
 
     fn r1(&self) -> u32 {
@@ -338,14 +400,14 @@ impl Sim {
         match answer {
             None if word & regs::CMD_RESPONSE_EXPECT != 0 => rint |= regs::INT_RTO,
             None => {}
-            Some(r) => {
-                *self.reg(regs::RESP0) = r[0];
-                *self.reg(regs::RESP1) = r[1];
-                *self.reg(regs::RESP2) = r[2];
-                *self.reg(regs::RESP3) = r[3];
-            }
+            Some(_) if fault == Some(Fault::BadCrc) => rint |= regs::INT_RCRC,
+            Some(_) => {}
         }
-        *self.reg(regs::RINTSTS) |= rint;
+        if self.late_answer > 0 {
+            self.answer_pending = Some((rint, answer, self.late_answer));
+        } else {
+            self.land(rint, answer);
+        }
         if answer.is_some() && word & regs::CMD_DATA_EXPECTED != 0 {
             let bytes = *self.reg(regs::BYTCNT) as usize;
             let write = word & regs::CMD_WRITE != 0;
@@ -362,7 +424,8 @@ impl Sim {
             if !write {
                 if ext_csd {
                     let mut e = vec![0u8; 512];
-                    e[212..216].copy_from_slice(&(self.storage.len() as u32).to_le_bytes());
+                    let sectors = self.ext_csd_sectors.unwrap_or(self.storage.len() as u32);
+                    e[212..216].copy_from_slice(&sectors.to_le_bytes());
                     t.buffer = e;
                 } else {
                     for i in 0..bytes / 512 {
@@ -377,25 +440,43 @@ impl Sim {
         }
     }
 
+    fn land(&mut self, rint: u32, answer: Option<[u32; 4]>) {
+        if let Some(r) = answer {
+            *self.reg(regs::RESP0) = r[0];
+            *self.reg(regs::RESP1) = r[1];
+            *self.reg(regs::RESP2) = r[2];
+            *self.reg(regs::RESP3) = r[3];
+        }
+        *self.reg(regs::RINTSTS) |= rint;
+    }
+
     /// Advance the data phase: fill or drain the FIFO, and end it when every byte has moved.
     fn pump(&mut self) {
         let Some(mut t) = self.transfer.take() else {
             return;
         };
         if t.write {
-            while let Some(w) = self.fifo.pop_front() {
+            let limit = self.stall_after.unwrap_or(usize::MAX);
+            while t.buffer.len() < limit
+                && let Some(w) = self.fifo.pop_front()
+            {
                 t.buffer.extend_from_slice(&w.to_le_bytes());
             }
             if t.buffer.len() >= t.bytes {
                 let store = self.writes_stored.is_none_or(|n| self.write_commands < n);
+                let nth = self.write_commands;
                 self.write_commands += 1;
                 for (i, block) in t.buffer.as_chunks::<512>().0.iter().enumerate() {
                     let lba = t.first_lba + i as u64;
                     self.written.push(lba);
+                    let mangle = self.mangle_write == Some((nth, lba));
                     if let Some(b) = self.storage.get_mut(lba as usize)
                         && store
                     {
                         b.copy_from_slice(block);
+                        if mangle {
+                            b[0] ^= 0xff;
+                        }
                     }
                 }
                 self.busy_reads = 2;
@@ -409,7 +490,8 @@ impl Sim {
                 *self.reg(regs::RINTSTS) |= regs::INT_DCRC | regs::INT_DTO;
                 return;
             }
-            while self.fifo.len() < self.depth && t.moved < t.bytes {
+            let limit = self.stall_after.unwrap_or(usize::MAX);
+            while self.fifo.len() < self.depth && t.moved < t.bytes && t.moved < limit {
                 let b = &t.buffer[t.moved..t.moved + 4];
                 self.fifo
                     .push_back(u32::from_le_bytes([b[0], b[1], b[2], b[3]]));
@@ -423,7 +505,7 @@ impl Sim {
             if self.fifo.len() > watermark {
                 *self.reg(regs::RINTSTS) |= regs::INT_RXDR;
             }
-            if t.moved >= t.bytes {
+            if t.moved >= t.bytes || (self.end_early && t.moved >= limit) {
                 self.end(&t);
                 return;
             }
@@ -432,10 +514,18 @@ impl Sim {
     }
 
     fn end(&mut self, t: &Transfer) {
+        if t.write && self.crc_error_at_end {
+            *self.reg(regs::RINTSTS) |= regs::INT_DCRC;
+            return;
+        }
         let mut rint = regs::INT_DTO;
         if t.auto_stop {
             self.commands.push((12, 0));
-            rint |= regs::INT_ACD;
+            if self.late_acd > 0 {
+                self.acd_pending = self.late_acd;
+            } else {
+                rint |= regs::INT_ACD;
+            }
         }
         *self.reg(regs::RINTSTS) |= rint;
     }
@@ -459,14 +549,35 @@ impl Registers for Sim {
             }
             regs::STATUS => {
                 self.pump();
-                let mut s = (self.fifo.len() as u32) << 17;
-                if self.busy_reads > 0 {
+                let filled = if self.overreport_fill {
+                    self.depth
+                } else {
+                    self.fifo.len()
+                };
+                let mut s = (filled as u32) << 17;
+                if self.busy_forever {
+                    s |= regs::STATUS_DATA_BUSY;
+                } else if self.busy_reads > 0 {
                     self.busy_reads -= 1;
                     s |= regs::STATUS_DATA_BUSY;
                 }
                 s
             }
             regs::RINTSTS => {
+                if let Some((rint, answer, polls)) = self.answer_pending {
+                    if polls <= 1 {
+                        self.answer_pending = None;
+                        self.land(rint, answer);
+                    } else {
+                        self.answer_pending = Some((rint, answer, polls - 1));
+                    }
+                }
+                if self.acd_pending > 0 {
+                    self.acd_pending -= 1;
+                    if self.acd_pending == 0 {
+                        *self.reg(regs::RINTSTS) |= regs::INT_ACD;
+                    }
+                }
                 self.pump();
                 *self.reg(regs::RINTSTS)
             }
@@ -487,11 +598,12 @@ impl Registers for Sim {
             self.fifo.push_back(value);
             return;
         }
+        self.writes.push((offset, value));
         match offset {
             regs::RINTSTS => *self.reg(regs::RINTSTS) &= !value,
             regs::CTRL => {
                 if value & regs::CTRL_ALL_RESET != 0 {
-                    self.reset_pending = true;
+                    self.reset_pending = !self.reset_stuck;
                     if value & regs::CTRL_FIFO_RESET != 0 {
                         self.fifo.clear();
                     }
@@ -505,7 +617,12 @@ impl Registers for Sim {
                 if value & regs::CMD_START != 0 && value & regs::CMD_UPDATE_CLOCK_ONLY == 0 {
                     self.command(value);
                 }
-                *self.reg(regs::CMD) = value & !regs::CMD_START;
+                let stuck = self.clock_stuck && value & regs::CMD_UPDATE_CLOCK_ONLY != 0;
+                *self.reg(regs::CMD) = if stuck {
+                    value
+                } else {
+                    value & !regs::CMD_START
+                };
             }
             regs::VERID | regs::HCON | regs::STATUS => {}
             _ => *self.reg(offset) = value,
@@ -513,7 +630,7 @@ impl Registers for Sim {
     }
 
     fn now_us(&mut self) -> u64 {
-        self.now += 1;
+        self.now += self.clock_step;
         self.now
     }
 }
