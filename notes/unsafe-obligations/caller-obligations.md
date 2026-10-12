@@ -162,7 +162,7 @@ reads rather than in a report:
 | Site | The comment's claim |
 |---|---|
 | `components/src/virtio_net_transport.rs` `r8` `r16` `r32` `w8` `w16` `write_desc` | "callers pass offsets inside it" (the DMA frame) |
-| `fixtures/src/fs_test_client.rs:854` `fill_page` | "the caller keeps within it" |
+| `fixtures/src/fs_test_client/extended_attributes.rs:21` `fill_page` | "the caller keeps within it" |
 | `components/src/fs_file_caretaker.rs:77` `get` | "callers clamp `out` to the page" |
 | `components/src/fs_nameset_caretaker.rs:107` `get_at` | "every caller clamps `out` and `off` to the page" |
 | `fixtures/src/file_source.rs:108` `get` | "callers clamp `i` to the page" |

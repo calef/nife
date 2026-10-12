@@ -151,7 +151,7 @@ bench = false
 # reads it, writes and reads back a pattern, and reports. initrd_aarch64 packs it as "fs_test_client".
 [[bin]]
 name = "fs_test_client"
-path = "src/fs_test_client.rs"
+path = "src/fs_test_client/main.rs"
 test = false
 bench = false
 

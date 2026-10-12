@@ -30,8 +30,9 @@ use filesystem_protocol::fixture;
 use super::*;
 use crate::sched;
 
-/// The two `fs_test_client` roles, mirrored from `fixtures/src/fs_test_client.rs`. The numbers live
-/// on both sides because one program is started by role, the same shape as every other role here.
+/// The two `fs_test_client` roles, mirrored from `fixtures/src/fs_test_client/role.rs`. The numbers
+/// live on both sides because one program is started by role, the same shape as every other role
+/// here.
 const ROLE_SHARE_VICTIM: u64 = 13;
 const ROLE_SHARE_ATTACKER: u64 = 14;
 
