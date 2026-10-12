@@ -41,7 +41,7 @@ const CAPACITY: usize = 16 * 4096;
 /// One direction of a stream: a bounded byte queue and who still holds each side of it.
 pub(crate) struct Pipe {
     state: Mutex<State>,
-    /// Signalled on every change: bytes in, bytes out, a side closed.
+    /// Signaled on every change: bytes in, bytes out, a side closed.
     changed: Condvar,
 }
 
