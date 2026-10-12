@@ -203,10 +203,11 @@ static CHECK_TSC: AtomicU64 = AtomicU64::new(0);
 /// **Find the architectural fixed cycle counter, enable it, check it is counting something of its
 /// own, and remember whether to believe it.**
 ///
-/// Called once from `kernel_main`'s `x86_64` arm, after the TSC has been calibrated: the checks below
-/// need a clock to spin against, and the clock they spin against is the very counter they are
-/// checking the answer is not. Silent and harmless on a part with no performance monitoring:
-/// [`cycles`] then answers `None` forever, which is the honest answer and not an error.
+/// Called once from `x86_64_memory` (`kernel/src/x86_64_boot.rs`), after the TSC has been
+/// calibrated: the checks below need a clock to spin against, and the clock they spin against is
+/// the very counter they are checking the answer is not. Silent and harmless on a part with no
+/// performance monitoring: [`cycles`] then answers `None` forever, which is the honest answer and
+/// not an error.
 ///
 /// Every way of failing is recorded in [`outcome`] and printed by [`print_summary`], because on the
 /// machine where this matters nobody can attach a debugger.

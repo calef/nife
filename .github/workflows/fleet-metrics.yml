@@ -1,0 +1,157 @@
+name: fleet metrics
+
+# Observed failing: 2026-10-12, by script: both fetch steps' commands were run at 04:19 UTC with
+#   GH_TOKEN set to a bogus token. Each exited 2 (`Bad credentials (HTTP 401)`) and left its CSV
+#   untouched, which is the outcome the last step re-raises as red. A real run could not be staged:
+#   the workflow is new, a dispatch needs it on `main`, and its secrets are scoped to `main`. The
+#   same commands with a real token wrote rows byte-identical to metrics.yml's last run (12:25 UTC
+#   on 2026-10-11) for every day it had finished. See notes/observed-failing.md.
+
+# **The method-metric collectors, apart from the tree's own metrics** (milestone 889 (the tree's
+# gates stop depending on the fleet tooling), provisional; the workflow's name is provisional too).
+# calef's Fork 3 ruling on #1976 (2026-10-12 UTC): the collectors of the method series move with the
+# fleet tooling, and the series, the charts and their caveats stay in nife. Two of metrics.yml's
+# fetches measured the fleet rather than the tree: the merge queue's daily record
+# (helpers/merge_queue_share.py, milestone 724) and which merged pull requests carry `debt-paydown`
+# (helpers/debt_paydown_share.py). They run here now and write the same two CSV files under
+# notes/project-metrics/, which `script/metrics` reads as it did. When the fleet tooling moves to
+# its own repository, this workflow goes with it and nife keeps the files.
+#
+# **The PROPOSE, VERIFY, ACCEPT split metrics.yml's header argues**, for the same reason: what this
+# writes is a record other people quote, so it lands through a pull request and never by a push to
+# `main`. Its own branch, `metrics/fleet`, so it never races metrics.yml's `metrics/weekly`.
+#
+# BUGS
+#
+# - **The charts lag the fetch by a day.** metrics.yml redraws at 06:00 UTC from `main`, and this
+#   pull request merges after 05:30 plus a queue cycle, so a morning's fetch is charted the next
+#   morning. Before the split both ran in one job and the chart was same-day. Nothing reads the
+#   current day's cell.
+# - Without the App (a fork) the pull request is opened by `github.token`, which starts no CI, so
+#   its checks are kicked by hand. toolchain-bump.yml has the argument.
+
+on:
+  schedule:
+    # 05:30 UTC daily: before metrics.yml's 06:00, so on a quiet queue the fetch has merged by the
+    # time the charts are redrawn.
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: fleet-metrics
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  record:
+    name: record the fleet's daily series
+    # The App's secrets live in the `automation` environment, whose deployment branches are `main`
+    # only (see trunk-health.yml's comment for why). Only jobs that mint the App token name it.
+    environment: automation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # The App is optional, as in toolchain-bump.yml: with its secrets absent the token step is
+    # skipped and every `|| github.token` below falls through. Only the App ID is lifted, and only
+    # so a step's `if` can test its presence.
+    env:
+      AUTOMATION_APP_ID: ${{ secrets.AUTOMATION_APP_ID }}
+    steps:
+      - name: Mint an installation token for the automation App, when it is installed
+        id: app-token
+        if: env.AUTOMATION_APP_ID != ''
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          app-id: ${{ secrets.AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_APP_KEY }}
+          # Exactly the set the App held before milestone 128 (the automation gets its own identity)
+          # widened it for sessions, Administration among them. Named here so the widening reaches no
+          # workflow; notes/session-identity.md.
+          permission-contents: write
+          permission-pull-requests: write
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          token: ${{ steps.app-token.outputs.token || github.token }}
+
+      # Moved from metrics.yml unchanged (milestone 724 (the merge queue reports its ejection share
+      # and its time to merge), provisional): GitHub's queue events are not in git, so they are
+      # fetched here and committed as `merge-queue-daily.csv`, which `script/metrics` sums by week.
+      # `continue-on-error` so the other fetch is still recorded; the last step re-raises. The step
+      # rewrites the last eight days and keeps older ones, so a missed run heals on the next.
+      - name: Fetch the merge queue's daily record
+        id: queue
+        continue-on-error: true  # outcome: re-raised
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 helpers/merge_queue_share.py update
+
+      # Moved from metrics.yml unchanged: which merged pull requests carry the `debt-paydown` label
+      # (notes/debt-paydown.md). The whole history is fetched and the file rewritten, because a label
+      # can be corrected on a pull request merged months ago; it is one paginated listing.
+      - name: Fetch which merged pull requests pay down debt
+        id: debtpaydown
+        continue-on-error: true  # outcome: re-raised
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 helpers/debt_paydown_share.py update
+
+      # The same shape as metrics.yml's step: no diff is the normal quiet-day outcome and opens
+      # nothing; a diff force-pushes one branch, so there is one pull request, refreshed daily.
+      - name: Open or update the pull request
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          # Who the pull request's opening line names: the App, or the fallback above.
+          PR_AUTHOR: ${{ steps.app-token.outputs.token && 'nife-smelter[bot]' || 'github-actions[bot]' }}
+        run: |
+          set -e
+          files="notes/project-metrics/merge-queue-daily.csv notes/project-metrics/merged-pull-requests.csv"
+          # shellcheck disable=SC2086 # two paths, split on purpose
+          if git diff --quiet -- $files; then
+            echo "Neither series moved; no pull request."
+            exit 0
+          fi
+          branch="metrics/fleet"
+          day="$(date -u +%F)"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          # shellcheck disable=SC2086 # two paths, split on purpose
+          git add $files
+          git commit -m "fleet metrics: record $day
+
+          The merge queue's daily record and the merged pull requests' debt-paydown labels, fetched
+          from GitHub by the scheduled fleet-metrics workflow. script/metrics charts both."
+          git push --force origin "$branch"
+          title="fleet metrics: record $day"
+          body="**Lane:** $branch, opened by a scheduled workflow; $PR_AUTHOR is the author GitHub shows.
+
+          Refreshes \`notes/project-metrics/merge-queue-daily.csv\` and
+          \`notes/project-metrics/merged-pull-requests.csv\` from GitHub. The charts are redrawn by
+          metrics.yml from \`main\`, so they pick this up on the morning after it merges.
+
+          This branch is force-pushed on every run that changed something, so it proposes the
+          newest rows rather than accumulating one pull request per run."
+          existing="$(gh pr list --head "$branch" --state open --json number --jq '.[].number')"
+          if [ -z "$existing" ]; then
+            gh pr create --head "$branch" --base main --title "$title" --body "$body"
+          else
+            gh pr edit "$existing" --title "$title" --body "$body"
+            echo "Updated PR #$existing in place."
+          fi
+          # Arms its own pull request, as metrics.yml's does (milestone 727 (a queue eviction goes
+          # to a maintainer session), provisional): the merge drain arms nothing.
+          gh pr merge "$branch" --auto --merge || echo "::warning::could not arm the fleet metrics pull request"
+
+      # Where the instruments above go red (milestone 641 (a mechanism that reports clean says over
+      # how many units, and zero is loud), provisional). Each swallows its own failure so the other
+      # is still recorded; this runs last and re-raises. See notes/denominators.md.
+      - name: Fail if an instrument did not take its reading
+        if: steps.queue.outcome == 'failure' || steps.debtpaydown.outcome == 'failure'
+        run: |
+          echo "::error::an instrument failed, so its rows were carried rather than fetched:" \
+            "merge queue fetch '${{ steps.queue.outcome }}'," \
+            "debt-paydown labels '${{ steps.debtpaydown.outcome }}'"
+          exit 1

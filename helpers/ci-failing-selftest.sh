@@ -2,7 +2,7 @@
 #
 # helpers/ci-failing-selftest.sh: the decision in helpers/ci-failing.jq against a recorded commit
 # and against synthetic cases, and helpers/ci-failing.sh checked for staying a reporter. Provisional
-# names, with the script. script/lint runs it.
+# names, with the script. script/lint-fleet runs it.
 #
 # The recorded fixture is the check runs of one real pull request head, kept to five names: its
 # `ready status` ran twice, failed first and passed on the later run, which is the stale failure

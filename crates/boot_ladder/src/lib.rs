@@ -84,9 +84,9 @@ pub const BANNER: &str = "nife on ";
 
 /// **The machine description finished: `nife machine: <arch>, <n> processor(s), ...`.**
 ///
-/// Printed by `kernel/src/lib.rs`'s `print_machine_description` as its **last** line, and that
-/// position is the point: reaching it means the whole description printed, which is the claim a
-/// ladder rung should make. A header would only have meant the block started.
+/// Printed by `kernel/src/machine_description.rs`'s `print_machine_description` as its **last**
+/// line, and that position is the point: reaching it means the whole description printed, which is
+/// the claim a ladder rung should make. A header would only have meant the block started.
 pub const MACHINE: &str = "nife machine: ";
 
 /// **The self-test verdict: `nife self-test: 5 of 5 passed`, or `... , 1 FAILED: <names>`.**
@@ -98,10 +98,11 @@ pub const SELF_TEST: &str = "nife self-test: ";
 
 /// **What a red verdict says before it names the checks that failed.**
 ///
-/// Uppercase, and the same token `kernel/src/lib.rs`'s preemption check has used since milestone
-/// 267 (`FAILED: a spinner did not run, or nothing was preempted.`), so this is the tree's word
-/// rather than a new one. It appears *inside* a [`SELF_TEST`] line; a matcher wanting a failed
-/// verdict must find both.
+/// Uppercase, and the same token as `FAILED: a spinner did not run, or nothing was preempted.`,
+/// which `kernel/src/milestone_tour.rs`'s preemption check has printed since milestone 267 (the
+/// milestone tour is three things wearing one name), so this is the tree's word rather than a new
+/// one. It appears *inside* a [`SELF_TEST`] line; a matcher wanting a failed verdict must find
+/// both.
 pub const SELF_TEST_FAILED: &str = "FAILED: ";
 
 /// **The boot self-test's checks, by name, in the order they run** (milestone 268).
@@ -122,11 +123,11 @@ pub const SELF_TEST_CHECKS: &[&str] = &["exceptions", "mapping", "frames", "time
 
 /// **The RISC-V demonstration tour ran to its end.**
 ///
-/// Printed by the RISC-V arm of `kernel/src/lib.rs` and by nothing else. That is finding 3 of
-/// milestone 268 (every architecture boots the same way), stated as a constant rather than as a
-/// defect: this rung is **one architecture's**, and keeping it here beside the three that are not is
-/// what makes that visible. It is not a rung of
-/// the portable ladder and the other two architectures do not print it.
+/// Printed by the RISC-V boot, `kernel/src/riscv64_boot.rs`, and by nothing else. That is finding 3
+/// of milestone 268 (every architecture boots the same way), stated as a constant rather than as a
+/// defect: this rung is **one architecture's**, and keeping it here beside the three that are not
+/// is what makes that visible. It is not a rung of the portable ladder and the other two
+/// architectures do not print it.
 pub const TOUR: &str = "nife: the capability core runs on ";
 
 /// **Userspace is up and the shell is offering a prompt.**

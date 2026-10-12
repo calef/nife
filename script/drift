@@ -142,7 +142,7 @@ for bare_target in $kernel_targets; do
     # `system_tests` is built on its own (milestone 609 (the system tests leave the kernel crate)).
     # It turns on the kernel's `system_tests` feature, cargo unifies features across one
     # invocation, and a kernel BINARY built with that feature fails to link by design
-    # (kernel/src/lib.rs, `system_tests_main`). So the workspace build excludes it and the next
+    # (kernel/src/boot.rs, `system_tests_main`). So the workspace build excludes it and the next
     # line builds it alone, which is also the build that proves it links.
     # shellcheck disable=SC2086  # host_only is a flag list and must split
     cargo build --workspace $host_only --exclude system_tests --target "$bare_target"

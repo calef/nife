@@ -1,5 +1,6 @@
 #!/bin/sh
-# pre-push: the formatting gate, lint's text checks, and the ready-status check, run where they are cheap.
+# pre-push: the formatting gate and lint's text checks, run where they are cheap, plus the fleet's
+# checks on a checkout that opted in to them.
 #
 # CI's rustfmt is one of seven required checks, and a lane that pushes unformatted code learns
 # that from a runner ten minutes later, then pushes again. Every lane on 2026-08-15 and -16 paid
@@ -12,8 +13,9 @@
 #
 #   1. `script/fmt --check`.
 #   2. `script/lint --no-cargo`: every lint check that does not invoke cargo. Clippy stays in CI.
-#   3. `script/roadmap --ready-branch`, for a branch whose pull request is ready.
-#   4. All three are skipped for a push whose commits change no files, which is a claim (an empty
+#   3. On a checkout with `git config nife.fleet true` only: the queued-branch refusal, the fleet
+#      tooling's own lint and the ready-status check, all in helpers/pre-push-fleet.sh.
+#   4. All but the queued-branch refusal are skipped for a push whose commits change no files, which is a claim (an empty
 #      commit, §90 (the claim is a draft pull request)). That push used to be refused for "milestone N has no roadmap
 #      block", five false refusals on 2026-10-03, because the block comes after the claim.
 #
@@ -35,6 +37,14 @@
 # Installed by `script/setup` via core.hooksPath, so it covers every worktree sharing this .git
 # (which is how lanes work) rather than needing per-worktree installation.
 #
+# **Without the opt-in this hook runs no `gh` command and needs no network** (milestone 889 (the
+# tree's gates stop depending on the fleet tooling), provisional). Asking GitHub whether a branch
+# is queued, or whether its pull request is ready, is a question about a lane in the fleet's merge
+# queue, and a stranger's push should pass or fail on the tree alone. The lane claim sets the opt-in
+# on the machine that cuts lanes; helpers/pre-push-fleet.sh has the rest. This file names no fleet
+# script by path, so script/lint's contract check (every `script/<name>` named here exists) holds
+# in a tree with the fleet tooling moved out.
+#
 # `NIFE_PUSH_QUEUED=1 git push` overrides only the queued-branch check. Bypass with `git push --no-verify` when you mean it: pushing a work-in-progress branch for
 # safekeeping is a legitimate reason, and this hook is a courtesy to the queue rather than a
 # rule about what may exist on a branch.
@@ -46,14 +56,20 @@ root="$(git rev-parse --show-toplevel)"
 # once, because two steps below want it.
 refs="$(cat)"
 
-# **A push to a branch whose pull request is in the merge queue is refused** (provisional milestone
-# name: refuse a push to a queued branch, 2026-10-05 UTC). It runs before the empty-push skip below
-# because an empty push to a queued branch removes it from the queue just as well. One `gh api
-# graphql` call, fail-open with a one-line warning when `gh` cannot answer. Override with
-# `NIFE_PUSH_QUEUED=1` (provisional name). helpers/push-queued-check.sh has the reasoning and
-# notes/merge-queue.md has the measurement.
-if [ -x "$root/helpers/push-queued-check.sh" ]; then
-    printf '%s\n' "$refs" | "$root/helpers/push-queued-check.sh" || exit 1
+# The fleet half, opted in per clone. Read once: both of its calls below want it.
+fleet=
+if [ "$(git config --bool nife.fleet 2>/dev/null)" = true ]; then
+    if [ -x "$root/helpers/pre-push-fleet.sh" ]; then
+        fleet=1
+    else
+        echo "pre-push: nife.fleet is set but helpers/pre-push-fleet.sh is missing here; the fleet checks did not run." >&2
+    fi
+fi
+
+# The queued-branch refusal runs before the empty-push skip below, because an empty push to a
+# queued branch removes it from the queue just as well. helpers/pre-push-fleet.sh says more.
+if [ -n "$fleet" ]; then
+    printf '%s\n' "$refs" | "$root/helpers/pre-push-fleet.sh" queued || exit 1
 fi
 
 # **A push that changes no files has nothing to check** (a claim: `git commit --allow-empty`). Changed
@@ -106,29 +122,7 @@ if ! "$root/script/lint" --no-cargo >"$out" 2>&1; then
 fi
 rm -f "$out"
 
-# **A ready pull request may not carry an IN-PROGRESS block on its own branch** (milestone 630).
-# The same question `.github/workflows/ready-status.yml` asks on `pull_request`, asked here for a
-# push to a branch whose pull request is already ready, so the answer comes before the push rather
-# than a runner later. The merge group's roadmap check fails on exactly this 20 to 38 minutes into
-# a queue attempt, and the ejection cancels auto-merge (#1473, 2026-10-03).
-#
-# The branch is the one being pushed, from stdin (`<local ref> <sha> <remote ref> <sha>`), not
-# HEAD's. It needs `gh` and the network; with neither, or with no pull request, or a draft, it
-# skips silently, because a draft's block is honest to say IN-PROGRESS and CI asks again anyway.
-# The block is read from the working tree, as lint's is.
-if [ -x "$root/script/roadmap" ] && grep -q -- '"--ready-branch"' "$root/script/roadmap" 2>/dev/null &&
-    command -v gh >/dev/null 2>&1; then
-    while read -r _ _ remote_ref _; do
-        case "$remote_ref" in refs/heads/*) ;; *) continue ;; esac
-        branch="${remote_ref#refs/heads/}"
-        draft="$(gh pr view "$branch" --json isDraft -q .isDraft 2>/dev/null || true)"
-        [ "$draft" = "false" ] || continue
-        if ! "$root/script/roadmap" --ready-branch "$branch"; then
-            echo "pre-push: the pull request for $branch is ready, and its block above still reads IN-PROGRESS." >&2
-            echo "  Bypass: git push --no-verify" >&2
-            exit 1
-        fi
-    done <<ENDREFS
-$refs
-ENDREFS
+# The fleet's checks: its own lint, and the ready-status check. helpers/pre-push-fleet.sh.
+if [ -n "$fleet" ]; then
+    printf '%s\n' "$refs" | "$root/helpers/pre-push-fleet.sh" after || exit 1
 fi

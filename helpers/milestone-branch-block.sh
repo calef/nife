@@ -1,13 +1,13 @@
 #!/bin/sh
 #
-# script/lint's check 4b: a `milestone/N-*` branch must touch that milestone's roadmap block, per
+# script/lint-fleet's check 4b: a `milestone/N-*` branch must touch that milestone's roadmap block, per
 # §90 (the claim is a draft pull request; the status flip is a gate).
 #
 #     helpers/milestone-branch-block.sh <repo-root> <branch>
 #
 # Exits 1 when the branch names a milestone that has no block and the lane was not renumbered.
 # Prints a warning and exits 0 when the branch changes nothing in its block. Exits 0 quietly
-# otherwise. script/lint has the history of the check; this file holds the logic so that
+# otherwise. script/lint-fleet has the history of the check; this file holds the logic so that
 # helpers/milestone-branch-block-selftest.sh can plant cases against it.
 #
 # **A renumbered lane keeps its branch** (2026-10-10 UTC, #1901). A lane's milestone number is

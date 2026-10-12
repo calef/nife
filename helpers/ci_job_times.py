@@ -105,6 +105,9 @@ WEEK_NOTES = "notes/project-metrics/week-notes.csv"
 CHART = "ci-jobs.svg"
 # The issue's label. helpers/needs-maintainer.jq's `nm_budget_label` and helpers/merge-drain.sh's
 # `NM_BUDGET_LABEL` hold the same string; helpers/needs-maintainer-selftest.sh checks all three.
+# The check sits there and not in this file's selftest (milestone 889 (the tree's gates stop
+# depending on the fleet tooling)): this file's selftest runs in script/lint, which reads no fleet
+# file, and the fleet's selftest may read a tree file.
 LABEL = "near-budget"
 HISTORY = 10
 CLOSE_AFTER = 3
@@ -709,13 +712,6 @@ def selftest():
                              'merge-group run; tracking issue #77\n')
     expect("week note found", has_week_note("week,chart,note\n" + row, "2026W41", "77"), True)
     expect("week note per week", has_week_note("week,chart,note\n" + row, "2026W42", "77"), False)
-
-    # The label agrees with the two other places that spell it.
-    here = os.path.dirname(os.path.abspath(__file__))
-    for path, needle in (("needs-maintainer.jq", 'def nm_budget_label: "%s";' % LABEL),
-                         ("merge-drain.sh", 'NM_BUDGET_LABEL="%s"' % LABEL)):
-        with open(os.path.join(here, path)) as f:
-            expect("%s spells the label %s" % (path, LABEL), needle in f.read(), True)
 
     # Builds. Two workflows, one merge commit; times are minutes past 12:00.
     def job(name, start, end, conclusion="success"):

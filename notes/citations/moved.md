@@ -34,7 +34,7 @@ edits would reintroduce what §207 refused three weeks after it was decided, whi
 
 Over the 150 most recent merges into `main` on 2026-09-23, 50 moved at least one status and the
 other 100 printed a single line saying nothing moved. A lane that edits its own block without
-changing its status, which `script/lint` 4b makes every lane do, sees that line and nothing else.
+changing its status, which `script/lint-fleet` 4b makes every lane do, sees that line and nothing else.
 
 Of the 50, the median is 4 citing files. Those 50 merges hold 262 individual flips, and per
 flip the median is 1 citing file and the mean 3.4.

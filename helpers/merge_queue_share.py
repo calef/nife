@@ -36,8 +36,9 @@ request that enters at 23:50 and is ejected at 00:10 moves one number on each si
 # HOW THE NUMBER REACHES `script/metrics`
 
 `script/metrics` reads git and committed records, and a GitHub API fetch is neither. So the fetch
-is this helper's, run by the weekly-metrics workflow before `script/metrics --update`, and it
-writes `notes/project-metrics/merge-queue-daily.csv`. `script/metrics` reads that file the way it
+is this helper's, run daily by the fleet-metrics workflow (milestone 889 (the tree's gates stop
+depending on the fleet tooling) moved it there from metrics.yml), and it writes
+`notes/project-metrics/merge-queue-daily.csv`. `script/metrics` reads that file the way it
 reads `effort.csv`, a committed record of a fact it cannot re-derive, and sums it into weekly
 columns. That is the cheapest honest path: no new carried column, no second fetch, and a week the
 fetch never ran for is left empty rather than zeroed. The alternative was passing the figure in

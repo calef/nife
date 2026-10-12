@@ -21,7 +21,7 @@ The maintainer side of the same queue is in [the maintainer](../maintainer/SKILL
 
 - Developer. A subagent executing exactly one milestone. Reports; never merges, never mints, never
   edits `design/decisions/`, `design/` or this file, except its own milestone's roadmap block,
-  which `script/lint` 4b requires it to edit. Names anything new provisionally and says so. A
+  which `script/lint-fleet` 4b requires it to edit. Names anything new provisionally and says so. A
   developer never polls CI. It ends its turn with `WAITING <run_id>... on <what>` and the
   maintainer resumes it once the runs finish. The report comes after the gate, and nothing about a
   gate is finished until you have read its exit. A lane continues until it needs a human or it is

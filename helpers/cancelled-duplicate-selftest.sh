@@ -9,7 +9,7 @@
 #   bench    #30 cancelled 15:43:24, #31 success 15:44:10 (ordinary supersede)   -> nothing
 #   lint     #40 success 15:43:24, #41 cancelled 15:43:24, run_attempt 2         -> nothing: rerun once
 #   docs     #50 in_progress 15:43:24, #51 cancelled 15:43:24                    -> rerun #51 (sibling running)
-# script/lint runs it.
+# script/lint-fleet runs it.
 
 set -e
 here="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"

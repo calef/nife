@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Selftest for script/claim's refusals, run by script/lint. Every case here must be refused before
+# Selftest for script/claim's refusals, run by script/lint-fleet. Every case here must be refused before
 # script/claim touches git, the disk or the network. `git` and `gh` are stubs on PATH that record
 # being called and fail, so a refusal that regresses fails this test instead of making a real claim
 # (the first falsification of this file, run without the stubs, opened draft #1898 and pushed its

@@ -1,4 +1,4 @@
-Falsifies `machine_discovery::acpi::verification::the_dmar_fixed_part_decodes_without_arithmetic_overflow`.
+Falsifies `machine_discovery::acpi::dmar::verification::the_dmar_fixed_part_decodes_without_arithmetic_overflow`.
 
 **This is the defect as it actually shipped**, restored: the `+ 1` that undoes the
 table's `HostAddressWidth - 1` encoding happens in `u8` before the widening rather
@@ -15,10 +15,10 @@ now reads tables written by people who never heard of it.
 
 Expected to fail: the arithmetic-overflow check on `body[0] + 1`.
 
-diff --git a/crates/machine_discovery/src/acpi.rs b/crates/machine_discovery/src/acpi.rs
---- a/crates/machine_discovery/src/acpi.rs
-+++ b/crates/machine_discovery/src/acpi.rs
-@@ -549,7 +549,7 @@ pub fn parse_dmar(body: &[u8]) -> Result<Dmar, AcpiError> {
+diff --git a/crates/machine_discovery/src/acpi/dmar.rs b/crates/machine_discovery/src/acpi/dmar.rs
+--- a/crates/machine_discovery/src/acpi/dmar.rs
++++ b/crates/machine_discovery/src/acpi/dmar.rs
+@@ -40,7 +40,7 @@ pub fn parse_dmar(body: &[u8]) -> Result<Dmar, AcpiError> {
          return Err(AcpiError::Truncated);
      }
      Ok(Dmar {

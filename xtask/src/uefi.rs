@@ -800,7 +800,7 @@ fn screen_watch(
 /// **Run the kernel suite under real firmware** (milestone 195), rather than the tour
 /// `uefi_boot` boots.
 ///
-/// The difference between the two is one ELF. `#[cfg(test)]` in `kernel_main`'s `x86_64` arm runs
+/// The difference between the two is one ELF. `#[cfg(test)]` in `x86_64_userspace` runs
 /// `test_main()` at the end of the same tour, so this boot prints every line `uefi-boot` asserts on
 /// *and then* runs the suite, and the verdict it adds is the one thing the tour cannot say: that
 /// the tests pass when the memory map, the ACPI root and the PCIe window came from firmware

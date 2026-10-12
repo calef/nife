@@ -379,9 +379,20 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    # **The App is optional** (milestone 889 (the tree's gates stop depending on the fleet tooling),
+    # provisional), as in toolchain-bump.yml, which has the full argument. With the App's secrets
+    # absent (a fork, or a repository the App is not installed on) the token step is skipped and
+    # every `steps.app-token.outputs.token || github.token` below falls through to the ephemeral
+    # token. That token still pushes and opens the pull request, but GitHub starts no CI on it,
+    # so its checks have to be kicked by hand. The secrets context is not readable in a step's
+    # `if`, so only the App ID is lifted here, and only so its presence can be tested.
+    env:
+      AUTOMATION_APP_ID: ${{ secrets.AUTOMATION_APP_ID }}
     steps:
-      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+      - name: Mint an installation token for the automation App, when it is installed
         id: app-token
+        if: env.AUTOMATION_APP_ID != ''
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         with:
           app-id: ${{ secrets.AUTOMATION_APP_ID }}
           private-key: ${{ secrets.AUTOMATION_APP_KEY }}
@@ -393,7 +404,7 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.app-token.outputs.token || github.token }}
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
@@ -407,7 +418,9 @@ jobs:
 
       - name: Open or update the pull request
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          # Who the pull request's opening line names: the App, or the fallback above.
+          PR_AUTHOR: ${{ steps.app-token.outputs.token && 'nife-smelter[bot]' || 'github-actions[bot]' }}
           CENSUS: ${{ needs.inflow.outputs.census }}
         run: |
           set -e
@@ -429,7 +442,7 @@ jobs:
           Per-crate rows for mutation-census.csv and the survivor list the next census is diffed
           against, from the scheduled workflow's own artifacts, which expire in about 90 days."
           git push --force origin "$branch"
-          body="**Lane:** $branch, opened by a scheduled workflow; nife-smelter[bot] is the author GitHub shows.
+          body="**Lane:** $branch, opened by a scheduled workflow; $PR_AUTHOR is the author GitHub shows.
 
           Records the $CENSUS mutation census ([run $GITHUB_RUN_ID]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)): one row per crate in \`mutation-census.csv\` and the survivor list \`mutation-survivors/$CENSUS.csv.gz\`. Append-only; nothing from a past census changes."
           existing="$(gh pr list --head "$branch" --state open --json number --jq '.[].number')"
