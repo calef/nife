@@ -452,11 +452,15 @@ fn x86_64_memory(info: &machine_discovery::x86_64::BootInfo, acpi: &arch::machin
 /// `x86_64` phase 5: the scheduler, the other cores, the ladder, and a kernel thread.
 #[cfg(target_arch = "x86_64")]
 // A bench boot diverges into `bench::run()` part way through, so the kernel thread after it is
-// deliberately unreachable there, and it builds no machine description, the one reader of
-// `boot_info_pointer`. `kernel_main` carried both allows for the whole `x86_64` arm until the arm
-// was split into phases (one through its `allow`, one through its other uses of the pointer); this
-// is the phase that needs them.
-#[cfg_attr(feature = "bench", allow(unreachable_code, unused_variables))]
+// deliberately unreachable there. And a bench, test or system-test build has no machine
+// description, the one reader of `boot_info_pointer` here. `kernel_main` carried the first allow
+// for the whole `x86_64` arm, and used the pointer elsewhere, until the arm was split into phases;
+// this is the phase that needs both.
+#[cfg_attr(feature = "bench", allow(unreachable_code))]
+#[cfg_attr(
+    any(test, feature = "system_tests", feature = "bench"),
+    allow(unused_variables)
+)]
 fn x86_64_scheduler(boot_info_pointer: usize) {
     // **The scheduler** (milestone 161, roadmap item 4). Everything below this line is a
     // process rather than a program, which is the distinction item 3 stopped at.
