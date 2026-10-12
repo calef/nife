@@ -44,11 +44,6 @@ pub struct Spawn<'a> {
     pub maps: &'a [Mapping],
 }
 
-/// **Spawn the progenitor task** (milestone 19d): load `image` as an ordinary user process, but also
-/// map the whole initrd read-only at [`INITRD_VA`] so the progenitor can parse it, and hand the progenitor a building
-/// budget (an untyped, slot 0) plus `report` (slot 1, `WRITE|GRANT` so the progenitor can endow a child).
-/// The progenitor enters with `x0` = `role` and `x1` = the initrd length. This is the one program the kernel
-/// still loads; the progenitor loads the rest (design/init-and-granular-spawn.md).
 /// The interrupt the kernel routes to the progenitor for the IRQ-delegation test (19d.2b).
 ///
 /// aarch64: SGI 3, distinct from the scheduler's RESCHED (0) and the older endpoint SGIs (1, 2).
