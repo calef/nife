@@ -3218,6 +3218,19 @@ echo "==> the comment-block ratchet (calef's 40-line cap on a comment block, 202
 # an unlisted block meets the cap outright.
 python3 helpers/comment_block_ratchet.py --selftest
 python3 helpers/comment_block_ratchet.py --check
+echo "==> the parent-index check (§282: when a file is split, the parent becomes an index)"
+# calef ruled §282 (when a file is split, the parent becomes an index) on 2026-10-11 (UTC), ruling
+# fork 1 of #1959: a parent that has been split holds module docs, `mod` lines, `use` and
+# re-exports, and nothing that can grow into a feature. The split files grew because the parent was
+# the default home for new code, so the rule gives new code nowhere to land but a named file. A
+# parent is any Rust file declaring a child out of line other than its own `tests` or `proofs`. 49
+# of the 57 parents held more than an index the day the rule landed and are held one row each in
+# design/parent-index-baseline.tsv, a ceiling on the code lines outside the index that only falls;
+# a new split meets the rule outright. The definitions, the small-item allowance, the exception
+# mark and the failure messages live in helpers/parent_index.py, whose header is the manual, as the
+# other ratchets' are.
+python3 helpers/parent_index.py --selftest
+python3 helpers/parent_index.py --check
 echo "==> American spelling and metric units (calef, 2026-10-06)"
 # calef ruled on 2026-10-06 (UTC) that the tree's prose and names use American spelling and its
 # measurements are metric. On that day the tree held about 3,900 British forms, so this is a
