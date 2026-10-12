@@ -62,8 +62,10 @@ holds the per-row table and the refusal log.
 
 It does not count toward criterion (c). calef ruled on #2010 (2026-10-12 UTC), option (b): with
 only 3 of 34 rows booted the count stays 0, and the next pass's brief sets a minimum of booted
-rows. That brief is `briefs/confinement-outsider-pass.md`, with a floor of 18 rows, provisional
-until calef confirms the number.
+rows. That brief is `briefs/confinement-outsider-pass.md`. Its floor is every row a boot can
+reach, 27 of 34 (rows 12 to 18 are host proofs and exempt), ruled by calef on #2010 the same day:
+"27 seems right". Rows 1 to 3 count when the next reviewer accepts or strengthens this pass's
+tests.
 
 ## Done means
 
@@ -76,7 +78,7 @@ until calef confirms the number.
 ## Follow-on
 
 - **Done.** The next pass's brief is `briefs/confinement-outsider-pass.md`, with the booted-row
-  floor calef's ruling asked for. The floor of 18 is provisional until he confirms it.
+  floor calef's ruling asked for: 27 of 34, ruled on #2010.
 
 - **Milestone 824.** When it lands, `seventh_pass_retype_tests` goes red on purpose; its `GRANT`
   assertions flip with the existing frame-only characterization.
