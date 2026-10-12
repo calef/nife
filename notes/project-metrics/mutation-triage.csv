@@ -641,3 +641,5 @@ abi,admitted,replace admitted -> bool with false,killed,"killed by the_futex_adm
 abi,admitted,replace admitted -> bool with true,killed,"killed by the_futex_admits_only_a_private_32_bit_word (crates/abi/src/tests.rs, added after the census by the near-ceiling splits)"
 abi,admitted,replace | with &,killed,"killed by the_futex_admits_only_a_private_32_bit_word (crates/abi/src/tests.rs, added after the census by the near-ceiling splits)"
 abi,admitted,replace | with ^,equivalent,"PRIVATE (bit 7) and SIZE_U32 (2) are disjoint, so | and ^ give the same word; the 2026-10-12 per-crate re-run still reports it"
+activation_set,classify,replace match guard good_name(manager) with true,killed,killed by a_manager_that_is_not_a_name_makes_the_line_malformed
+activation_set,foreign_change,replace && with ||,killed,killed by a_new_digest_under_the_same_name_is_a_change
