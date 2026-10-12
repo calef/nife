@@ -781,7 +781,7 @@ fn riscv64_clock_report(clock: Option<jh7110_clock_and_reset::Report>) {
     }
 }
 
-/// The riscv64 boot, one function per phase, ending at the hand-over (milestone 888).
+/// The riscv64 boot, one function per phase, ending at the hand-over (calef, 2026-10-09 (UTC)).
 #[cfg(target_arch = "riscv64")]
 #[cfg_attr(
     any(

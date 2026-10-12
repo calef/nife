@@ -6,8 +6,8 @@
 //! suite and the measurement boots are here because all three boots reach them.
 //!
 //! Moved out of the crate root by milestone 876 (the kernel crate root is split along its seams),
-//! with the bodies unchanged; milestone 888 (a ratchet on function length) had split
-//! `kernel_main` by boot phase first.
+//! with the bodies unchanged. `kernel_main` had been split by boot phase first, calef's ruling of
+//! 2026-10-09 (UTC) in design/roadmap/proposals/a-ratchet-on-function-length.md.
 //!
 //! Name: provisional (milestone 876's lane, 2026-10-12 UTC).
 

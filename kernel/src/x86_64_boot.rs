@@ -453,9 +453,9 @@ fn x86_64_memory(info: &machine_discovery::x86_64::BootInfo, acpi: &arch::machin
 #[cfg(target_arch = "x86_64")]
 // A bench boot diverges into `bench::run()` part way through, so the kernel thread after it is
 // deliberately unreachable there, and it builds no machine description, the one reader of
-// `boot_info_pointer`. `kernel_main` carried both allows for the whole `x86_64` arm until milestone
-// 888 split the arm into phases (one through its `allow`, one through its other uses of the
-// pointer); this is the phase that needs them.
+// `boot_info_pointer`. `kernel_main` carried both allows for the whole `x86_64` arm until the arm
+// was split into phases (one through its `allow`, one through its other uses of the pointer); this
+// is the phase that needs them.
 #[cfg_attr(feature = "bench", allow(unreachable_code, unused_variables))]
 fn x86_64_scheduler(boot_info_pointer: usize) {
     // **The scheduler** (milestone 161, roadmap item 4). Everything below this line is a
@@ -620,7 +620,7 @@ fn x86_64_userspace() {
     }
 }
 
-/// The `x86_64` boot, one function per phase, ending at the hand-over (milestone 888).
+/// The `x86_64` boot, one function per phase, ending at the hand-over (calef, 2026-10-09 (UTC)).
 #[cfg(target_arch = "x86_64")]
 pub(super) fn x86_64_boot(boot_info_pointer: usize) -> ! {
     let (info, acpi) = x86_64_first_light(boot_info_pointer);
