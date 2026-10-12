@@ -74,9 +74,10 @@ to close inside it.
 ## Each signature, mechanically
 
 **The echo wait (signature of #1442).** Each typed line is waited for as an exact string,
-`wait_after(at, "{echoed}\n", 30s)` (xtask/src/swish_check.rs:2192; the 30s constant at :1217, boot
-120s at :1216, x86_64 90s at :1246). The failure is usually not slowness. Run 36622549563's
-transcript shows the kernel's progenitor-stack gauge spliced inside the echo itself:
+`wait_after(at, "{echoed}\n", 30s)` (in `swish_check::swish_check_boot`; 30s is
+`SWISH_CHECK_LINE_SECS`, boot 120s `SWISH_CHECK_BOOT_SECS`, x86_64 90s `SWISH_CHECK_X86_LINE_SECS`).
+The failure is usually not slowness. Run 36622549563's transcript shows the kernel's
+progenitor-stack gauge spliced inside the echo itself:
 
 ```
 $ packages/greeting/0  progenito.1.0/r stack: 27400 of 49152 bytes at peak, 21752 spare
@@ -84,12 +85,13 @@ greeting
 ```
 
 The command ran (its output follows); the exact string can never match because two processes write
-one UART with no arbiter (script/swish-check's first BUGS, lines 66-89). `degauge`
-(swish_check.rs:1508) was built for this after #1371 and #1420, but it strips a gauge it can find
-whole; when the splice lands inside both strings at once, neither is recoverable. The same
+one UART with no arbiter (script/swish-check's first BUGS entry). `degauge`
+(`swish_check::gauge::degauge`) was built for this after #1371 and #1420, but it strips a gauge it
+can find whole; when the splice lands inside both strings at once, neither is recoverable. The same
 signature hit the riscv64 reboot leg on 2026-09-28 (run 36362665042, "never echoed
 `packages/greeting/0.1.0/greeting`" beside an uptime line). The gate's own constant doc already
-records this class (:1206-1215) and names the remedy: rerun the leg before reading the transcript.
+records this class (`SWISH_CHECK_BOOT_SECS`'s doc) and names the remedy: rerun the leg before
+reading the transcript.
 
 **The echo splice's base rate, measured 2026-10-03 (UTC) by lane 629.** 3 of 29 merge-group
 swish-check jobs that day failed with the aarch64 gauge-versus-echo splice, about one in ten. Every
@@ -147,8 +149,8 @@ and swish-check now fails a run whose `free` reads above two regions.
 
 Ten `--arch aarch64` and ten `--arch riscv64` runs (plus warm-ups), each a full leg with two boots,
 from a clean worktree-local target: 20/20 green, no failure of either signature. Zero is a result:
-on this fast, unloaded host the races do not close. CI's runner is measured 1.5x to 1.8x slower
-than this machine on these legs (swish_check.rs:1232-1234), which widens both windows: the
+on this fast, unloaded host the races do not close. CI's runner is measured 1.5x to 1.8x slower than
+this machine on these legs (`SWISH_CHECK_X86_LINE_SECS`'s doc), which widens both windows: the
 gauge-versus-echo interleave and the reap-versus-yield race.
 
 ## What the data supports, and refuses
@@ -170,9 +172,9 @@ answered.
   the observed echo reds never see the string at all. Cost: a real hang reports twice as late.
   Not recommended on this data.
 - Retry the failing leg once inside the gate. Mechanizes what the constant doc already tells a
-  person to do (swish_check.rs:1211-1212). Cures both signatures as observed (both rerun green).
-  Cost: one extra leg of CI time only on red, and a deterministic interleave defect would surface
-  as intermittent rather than red, trading loudness for throughput.
+  person to do (`SWISH_CHECK_BOOT_SECS`'s doc). Cures both signatures as observed (both rerun
+  green). Cost: one extra leg of CI time only on red, and a deterministic interleave defect would
+  surface as intermittent rather than red, trading loudness for throughput.
 - Raise QEMU `-m`. Buys nothing: both signatures are bounded by the progenitor's internal pool
   and by a two-writer race, not by machine RAM. Not priced further.
 - **The root fixes, both already tracked.** The interleave class dies when the kernel stops writing

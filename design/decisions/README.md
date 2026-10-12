@@ -396,6 +396,7 @@ place instead of moving text between two systems. Numbers 68 to 73 are the six t
 | 277 | DECIDED | [Cite a heading or a symbol, never a line number](0277-cite-a-heading-or-a-symbol-never-a-line-number.md) |
 | 278 | DECIDED | [An ACPI machine reaches the aarch64 kernel as a device tree the loader writes](0278-an-acpi-machine-reaches-the-aarch64-kernel-as-a-device-tree.md) |
 | 279 | DECIDED | [The system-initializer crate root splits into private modules](0279-the-system-initializer-crate-root-splits-into-private-modules.md) |
+| 280 | DECIDED | [The swish-check harness splits into submodules, with its script in one](0280-the-swish-check-harness-splits-into-submodules-with-its-script-in-one.md) |
 | 282 | DECIDED | [When a file is split, the parent becomes an index](0282-when-a-file-is-split-the-parent-becomes-an-index.md) |
 
 Two blocks that lived among the decisions are not decisions and moved out with the split, the same
