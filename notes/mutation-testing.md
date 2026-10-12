@@ -291,3 +291,4 @@ architect's.
 | [census-2026-10-03-triage-part-4](mutation-testing/census-2026-10-03-triage-part-4.md) | the same, continued | 2026-10-03: `swish`, `line_editor`, `package_archive`, `pci`, `manifest_note` |
 | [census-2026-10-03-triage-part-5](mutation-testing/census-2026-10-03-triage-part-5.md) | the same, finished: the last 201 | 2026-10-07: 39 crates, from `abi` to `stick_maker` |
 | [inflow-2026-10-03](mutation-testing/inflow-2026-10-03.md) | survivors merged pull requests added on their own lines, and whether anything triages them | 2026-10-03: 600 since 09-21; no weekly report exists |
+| [inflow-2026-10-12-triage](mutation-testing/inflow-2026-10-12-triage.md) | both failed inflow jobs, triaged | 2026-10-12: 710 keys |
