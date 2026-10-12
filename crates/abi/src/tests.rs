@@ -118,3 +118,15 @@ fn the_fault_slot_is_inside_the_capability_table() {
         super::CAPABILITY_TABLE_SLOTS - 1
     );
 }
+
+/// **The futex call admits exactly one flags word**: private and 32-bit (§269 (how threads share a process)). Every other size,
+/// and the shared form, is refused.
+#[test]
+fn the_futex_admits_only_a_private_32_bit_word() {
+    use crate::futex::{PRIVATE, SIZE_U8, SIZE_U16, SIZE_U32, SIZE_U64, admitted};
+    assert!(admitted(PRIVATE | SIZE_U32));
+    assert!(!admitted(SIZE_U32));
+    for size in [SIZE_U8, SIZE_U16, SIZE_U64] {
+        assert!(!admitted(PRIVATE | size));
+    }
+}
