@@ -290,7 +290,6 @@ enum El0 {
 /// scratch range, writable, and its one block is read, overwritten, read back and restored through
 /// the server.
 fn through_el0(slot: &Slot, r: &ReadReport, write: bool) -> El0 {
-    use designware_mobile_storage::serve::Window;
     use filesystem_protocol::blk;
 
     use crate::user::designware_mobile_storage_service as service;
@@ -306,24 +305,8 @@ fn through_el0(slot: &Slot, r: &ReadReport, write: bool) -> El0 {
     let Some(mbr) = r.mbr else {
         return El0::NoWindow;
     };
-    let window = if write {
-        match mbr.scratch(bench::SCRATCH_SECTORS) {
-            Some((first, 8)) => Window {
-                first: u64::from(first),
-                sectors: 8,
-                writable: true,
-            },
-            _ => return El0::NoWindow,
-        }
-    } else {
-        let Some(p) = mbr.entries.iter().find(|e| e.is_used() && e.sectors >= 8) else {
-            return El0::NoWindow;
-        };
-        Window {
-            first: u64::from(p.start),
-            sectors: u64::from(p.sectors) & !7,
-            writable: false,
-        }
+    let Some(window) = el0_window(&mbr, write) else {
+        return El0::NoWindow;
     };
     let Ok(w) = service::start(image, slot, window) else {
         return El0::NotStarted;
@@ -354,15 +337,62 @@ fn through_el0(slot: &Slot, r: &ReadReport, write: bool) -> El0 {
         return El0::Wrong("READ block 0", got);
     }
     if !write {
-        if shared[510..512] != [0x55, 0xaa] || shared[82..90] != r.fs_type {
-            return El0::Wrong("block 0 is the boot sector the kernel read", 0);
-        }
-        let got = call(blk::WRITE, 0);
-        if got != filesystem_protocol::reply_err(30) {
-            return El0::Wrong("WRITE to a read-only window is EROFS", got);
-        }
-        return El0::Served;
+        return read_only_checks(&call, shared, r);
     }
+    write_cycle_checks(&call, shared, window)
+}
+
+/// The window the EL0 server serves: the scratch range in a write build, else the first used
+/// partition, rounded down to whole blocks. `None` when the card has neither.
+fn el0_window(
+    mbr: &designware_mobile_storage::partition::Mbr,
+    write: bool,
+) -> Option<designware_mobile_storage::serve::Window> {
+    use designware_mobile_storage::serve::Window;
+
+    let window = if write {
+        match mbr.scratch(bench::SCRATCH_SECTORS) {
+            Some((first, 8)) => Window {
+                first: u64::from(first),
+                sectors: 8,
+                writable: true,
+            },
+            _ => return None,
+        }
+    } else {
+        let p = mbr.entries.iter().find(|e| e.is_used() && e.sectors >= 8)?;
+        Window {
+            first: u64::from(p.start),
+            sectors: u64::from(p.sectors) & !7,
+            writable: false,
+        }
+    };
+    Some(window)
+}
+
+/// A read-only build's checks: block 0 is the boot sector the kernel read, and a WRITE is refused.
+fn read_only_checks(call: &impl Fn(u64, u64) -> i64, shared: &[u8], r: &ReadReport) -> El0 {
+    use filesystem_protocol::blk;
+
+    if shared[510..512] != [0x55, 0xaa] || shared[82..90] != r.fs_type {
+        return El0::Wrong("block 0 is the boot sector the kernel read", 0);
+    }
+    let got = call(blk::WRITE, 0);
+    if got != filesystem_protocol::reply_err(30) {
+        return El0::Wrong("WRITE to a read-only window is EROFS", got);
+    }
+    El0::Served
+}
+
+/// A write build's checks: overwrite the window's one block, read it back, restore the original
+/// and read that back, then flush.
+fn write_cycle_checks(
+    call: &impl Fn(u64, u64) -> i64,
+    shared: &mut [u8],
+    window: designware_mobile_storage::serve::Window,
+) -> El0 {
+    use filesystem_protocol::blk;
+
     let mut original = [0u8; blk::BLOCK_SIZE];
     original.copy_from_slice(shared);
     for (i, b) in shared.iter_mut().enumerate() {
