@@ -24,7 +24,7 @@ const NET_TEST_HTTP_PACKAGE: u64 = 6;
 const NET_CLIENT_DIGEST_REFUSED: u64 = 3;
 
 fn image() -> &'static [u8] {
-    program("net_stack").expect("no net_stack program in the initrd archive")
+    program("net_stack").expect("no net_stack program in the initial ramdisk")
 }
 
 /// A NIC that is on the bus and refused is a failure, and a busy one is a test that leaked its
@@ -154,7 +154,7 @@ fn a_client_completes_a_udp_round_trip_through_the_e1000e_nic() {
 #[test_case]
 fn a_package_fetched_over_the_e1000e_nic_is_accepted_only_by_the_image_digest() {
     let catalogue = program(package_archive::CATALOG)
-        .expect("no package catalogue in the initrd archive: the archive build packs one");
+        .expect("no package catalogue in the initial ramdisk: the archive build packs one");
     let (report, w) = match e1000e_service::start_package_fetch(
         image(),
         NET_TEST_HTTP_PACKAGE,

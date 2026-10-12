@@ -81,7 +81,7 @@ SECTIONS
          * p_filesz then stretches past .bss to cover it, p_memsz == p_filesz, and the segment has
          * no zero-fill tail at all. Two things break quietly: the loader has nothing to zero, so
          * .bss is whatever bytes happened to be in the file, and the kernel's own
-         * `the_initrd_holds_a_native_executable` test loses the memsz > filesz it asserts on,
+         * `the_initial_ramdisk_holds_a_native_executable` test loses the memsz > filesz it asserts on,
          * which is how this was found.
          *
          * It shows up on x86_64 and not on the other two. The GOT is not something this project

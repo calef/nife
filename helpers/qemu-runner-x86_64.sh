@@ -103,22 +103,23 @@ fi
 # never been told no. NIFE_CPU narrows it; `qemu64` is the conservative baseline.
 CPU="${NIFE_CPU:-max}"
 
-# The userspace archive rides in as an initrd (milestone 161), the same knob both other runners
-# take. The mechanism underneath differs and is worth one line: there is no device tree here, so
-# QEMU's PVH loader puts the file in RAM and describes it in the `hvm_start_info` module list,
-# which arch::x86_64::machine::initrd reads. Unset, the kernel finds no module and says so.
+# The userspace archive rides in as an initial ramdisk (milestone 161), the same knob both other
+# runners take. The mechanism underneath differs and is worth one line: there is no device tree
+# here, so QEMU's PVH loader puts the file in RAM and describes it in the `hvm_start_info` module
+# list, which arch::x86_64::machine::initial_ramdisk reads. Unset, the kernel finds no module and
+# says so.
 #
-# A SET NIFE_INITRD naming a missing file is an error rather than a silent no-op, matching the
-# check both other runners make about NIFE_DISK: `cargo xtask test` exports this variable
+# A SET NIFE_INITIAL_RAMDISK naming a missing file is an error rather than a silent no-op, matching
+# the check both other runners make about NIFE_DISK: `cargo xtask test` exports this variable
 # unconditionally, so a typo or a stale path would otherwise boot a kernel with no userspace and
 # report thirty test failures that name the tests rather than the cause.
-INITRD=""
-if [ -n "$NIFE_INITRD" ]; then
-    if [ ! -f "$NIFE_INITRD" ]; then
-        echo "qemu-runner-x86_64: NIFE_INITRD=$NIFE_INITRD does not exist (run cargo xtask initrd-x86)" >&2
+INITIAL_RAMDISK=""
+if [ -n "$NIFE_INITIAL_RAMDISK" ]; then
+    if [ ! -f "$NIFE_INITIAL_RAMDISK" ]; then
+        echo "qemu-runner-x86_64: NIFE_INITIAL_RAMDISK=$NIFE_INITIAL_RAMDISK does not exist (run cargo xtask initial-ramdisk-x86)" >&2
         exit 1
     fi
-    INITRD="-initrd $NIFE_INITRD"
+    INITIAL_RAMDISK="-initrd $NIFE_INITIAL_RAMDISK"
 fi
 
 # isa-debug-exit is x86's answer to the semihosting exit the other two use: a write to this port
@@ -172,8 +173,8 @@ DEBUG_EXIT="-device isa-debug-exit,iobase=0xf4,iosize=0x04"
 # would be asserting a machine fact nobody on this machine can check.
 #
 # A value that is neither `on` nor `off` is an error rather than a silent pass-through, the same
-# posture NIFE_INITRD and NIFE_DISK take about a missing file: QEMU would reject it anyway, and
-# failing here names the variable instead of burying it in a device-option diagnostic.
+# posture NIFE_INITIAL_RAMDISK and NIFE_DISK take about a missing file: QEMU would reject it anyway,
+# and failing here names the variable instead of burying it in a device-option diagnostic.
 if [ -n "$NIFE_INTREMAP" ] && [ "$NIFE_INTREMAP" != "on" ] && [ "$NIFE_INTREMAP" != "off" ]; then
     echo "qemu-runner-x86_64: NIFE_INTREMAP=$NIFE_INTREMAP is neither 'on' nor 'off'" >&2
     exit 1
@@ -224,8 +225,8 @@ esac
 # on the machine the controller sits behind VT-d with no flag to forget, and the kernel must
 # confine its requester id before the controller can fetch a single command
 # (kernel/src/non_volatile_memory_express.rs). serial= is mandatory (QEMU refuses the device without one). A set
-# NIFE_NVME naming a missing file is an error, the same NIFE_INITRD lesson above: a silently
-# absent controller would read as a machine fact when it is a build-order mistake.
+# NIFE_NVME naming a missing file is an error, the same NIFE_INITIAL_RAMDISK lesson above: a
+# silently absent controller would read as a machine fact when it is a build-order mistake.
 # The PCIe transport's disk (milestone 215) and the RedoxFS disk (milestone 303). `q35` has no
 # virtio-mmio bus at all (`arch::x86_64::mmu::VIRTIO_SLOTS` is 0), so unlike the other two runners
 # every block device here is a PCI function, and `NIFE_DISK` names the fixture set the same way it
@@ -401,7 +402,7 @@ qemu-system-x86_64 \
     $NVME \
     $NET \
     -kernel "$ELF" \
-    $INITRD \
+    $INITIAL_RAMDISK \
     "$@" <&3 3<&- &
 QEMU=$!
 exec 3<&-

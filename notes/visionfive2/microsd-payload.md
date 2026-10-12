@@ -76,7 +76,7 @@ writes it, and `target/board/boot.cmd` is the same text in readable form. This i
 ```
 echo nife: boot.scr is driving this boot, milestone 218
 load ${devtype} ${devnum}:${distro_bootpart} ${kernel_addr_r} /nife-vf2.img
-load ${devtype} ${devnum}:${distro_bootpart} 0x90000000 /nife-initrd.img
+load ${devtype} ${devnum}:${distro_bootpart} 0x90000000 /nife-initial-ramdisk.img
 setenv nife_archive_size ${filesize}
 fdt addr ${fdtcontroladdr}
 fdt move ${fdtcontroladdr} 0x86000000

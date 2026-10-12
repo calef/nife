@@ -114,7 +114,7 @@ pub fn run() -> ! {
     // `trust::require_program` (milestone 563 (a seal check that reads bytes cannot see a check
     // that was dropped)).
     let Some(image) = crate::trust::require_program("job_mix_task") else {
-        println!("{FAILED}no 'job_mix_task' program in the initrd archive; nothing to run");
+        println!("{FAILED}no 'job_mix_task' program in the initial ramdisk; nothing to run");
         arch::halt(arch::HaltReason::measurement_boot());
     };
 

@@ -24,14 +24,14 @@ as its fourth claim, and only then was the disposition made. notes/instruction-c
 numbers.
 
 What is built. The prescribed fix exists by name: `sched::wait_for`
-(`kernel/src/sched.rs:3233`), "bounded by the CLOCK rather than by a yield count", and
-`sched::within_ticks` (`kernel/src/sched.rs:3260`), budgeted in guest timer ticks, which is this
-block's own guest-ticks prescription. The example this block names is converted:
-`threads_round_robin` (`kernel/src/sched.rs:3809`) calls `wait_for(all_ran)` instead of giving twenty
-yields. `ticks_arrive_at_the_configured_rate` was rebuilt on both ISAs against the re-arm law rather
-than against elapsed counter time (`kernel/src/arch/aarch64/timer.rs:382`,
-`kernel/src/arch/riscv64/timer.rs:423`). And the watchdog progress heartbeat this block asks for is
-`testing::note_progress` (`kernel/src/testing.rs:288`), bumped on every IPC rendezvous, wake and
+(`kernel/src/sched/tests.rs`), "bounded by the CLOCK rather than by a yield count", and
+`sched::within_ticks` (same file), budgeted in guest timer ticks, which is this block's own
+guest-ticks prescription. The example this block names is converted: `threads_round_robin` (also
+there) calls `wait_for(all_ran)` instead of giving twenty yields.
+`ticks_arrive_at_the_configured_rate` was rebuilt on both ISAs against the re-arm law rather than
+against elapsed counter time (`kernel/src/arch/aarch64/timer.rs`,
+`kernel/src/arch/riscv64/timer.rs`). And the watchdog progress heartbeat this block asks for is
+`testing::note_progress` (`kernel/src/testing.rs`), bumped on every IPC rendezvous, wake and
 console line, beside a per-test wall-clock ceiling.
 
 What was left after 2026-08-18, and why it took until 2026-08-22/23 to close. Both items in the
@@ -46,8 +46,8 @@ So the residual was no longer a missing instrument; it was a **disposition**, an
 one converted to a reported non-measurement, with the arguments per assertion in
 notes/load-sensitive-assertions.md and summarized in "The disposition" below.
 
-The heartbeat that landed credits work by *any* thread rather than per test.
-`kernel/src/testing.rs:48` records that this blinded it once for real. That limitation is stated where
+The heartbeat that landed credits work by *any* thread rather than per test. The header comment in
+`kernel/src/testing.rs` records that this blinded it once for real. That limitation is stated where
 a reader meets the feature, which is what this project asks of a known cost.
 
 ## The acceptance run and the problem as raised, in appendices
@@ -92,9 +92,11 @@ this kernel could have. A real host deschedule inside that same band failed it t
 The honest cost, run rather than estimated. With both applied, the full aarch64 suite exits 0
 under a handler slow by 2.5 periods on every other tick, printing `UNMEASURED` where it used to go
 red. The suite has stopped claiming anything about handler latency. That trade is only defensible if
-the instrument that does catch it is run, so `script/gates` now runs `script/icount` (about
-seven seconds for both ISAs, above `script/test` on that script's own cheapest-first rule); CI
-already ran it on every non-documentation change.
+the instrument that does catch it is run, so `script/gates` ran `script/icount` (about seven
+seconds for both ISAs, above `script/test` on that script's own cheapest-first rule); CI already ran
+it on every non-documentation change. Milestone 286 (one enumeration of the checks that gate a pull
+request) deleted `script/gates` on 2026-09-13, and `script/ci-build` now lists `icount` above
+`test`.
 
 The first installment of evidence was taken the same day. Its table and the two reds it found are
 in [`interim-check.md`](0062-time-sensitive-tests/interim-check.md), with what was then still needed
@@ -186,13 +188,6 @@ This closes the block. The status above moves to BUILT.
   are exactly what they were, so the population of runs that used to go red now goes unmeasured
   instead. That is the right first move (it changes what is claimed rather than how loosely), but it
   means the number to watch has changed and the old measurement does not predict it.
-- The page's code locations are stale, kept as written (found 2026-10-12, UTC). `wait_for`,
-  `within_ticks` and `threads_round_robin` now live in `kernel/src/sched/tests.rs`, not
-  `kernel/src/sched.rs`. `testing::note_progress` is no longer at the line cited for it, and
-  the two `ticks_arrive_at_the_configured_rate` tests and the migration test have moved from the
-  lines cited.
-- The disposition says `script/gates` runs `script/icount`. There is no `script/gates` in the tree
-  now; `script/ci-build` lists `icount`, as the Follow-on says (found 2026-10-12, UTC).
 
 **Effort: not estimated**, and deliberately: the count is known (~19 spins plus a handful of clock
 assertions) but how many are mechanical and how many need a rethink is not.
@@ -234,7 +229,8 @@ riscv64 one). The disposition was made 2026-08-18: `the_handler_keeps_up_when_no
 it saw, and `ticks_arrive_at_the_configured_rate`'s retry budget converted to a loud `UNMEASURED`
 report, its law untouched. Neither was widened. `script/icount` gained the re-arm law as a fourth
 claim first, because an injection showed it was **blind** to the drift bug the record said it
-subsumed, and `script/gates` now runs it. A migration-drain assertion found in the disposition's
+subsumed, and `script/gates` ran it (`script/ci-build` since milestone 286, one enumeration of
+the checks that gate a pull request). A migration-drain assertion found in the disposition's
 own 18-run interim check (`smp.rs`, `a_migrated_kernel_thread_keeps_its_hart_pointer`) was fixed
 the same day, budgeted in delivered guest ticks rather than counter time. The block's own
 standard, a repeat count under load of the current tree, was taken 2026-08-22/23 at the same

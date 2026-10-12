@@ -70,8 +70,8 @@ pub(crate) fn mkdisk() -> bool {
 //
 // The FS-server binary is out-of-workspace (it links the vendored engine), built for the bare
 // targets with the pure no_std core (`--no-default-features`) plus the EL0 runtime (`el0`),
-// release so the initrd stays small. The test image is made HOST-side by the redoxfs_host tool,
-// the same engine the server opens it with; the server never creates. See notes/fs-server.md.
+// release so the initial ramdisk stays small. The test image is made HOST-side by the redoxfs_host
+// tool, the same engine the server opens it with; the server never creates. See notes/fs-server.md.
 // ===========================================================================================
 
 /// Build the FS-server ELF for `triple`. Its own workspace, so it takes `--manifest-path` and its
@@ -639,9 +639,9 @@ fn stage_installed(architecture: &str) -> Result<String, String> {
     // and only the archive can say. Read the archive this leg boots and refuse to seed if it has
     // either program, since every line about them after that would prove nothing.
     let archive = match architecture {
-        "aarch64" => crate::archive::initrd_path(),
-        "riscv64" => crate::archive::riscv_initrd_path(),
-        _ => crate::archive::x86_initrd_path(),
+        "aarch64" => crate::archive::initial_ramdisk_path(),
+        "riscv64" => crate::archive::riscv_initial_ramdisk_path(),
+        _ => crate::archive::x86_initial_ramdisk_path(),
     };
     let image = std::fs::read(&archive).map_err(|e| format!("could not read {archive}: {e}"))?;
     let fs = nifefs::Fs::parse(&image).map_err(|e| format!("{archive} does not parse: {e:?}"))?;

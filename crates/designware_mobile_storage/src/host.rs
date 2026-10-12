@@ -515,6 +515,8 @@ mod tests {
                 }
             }
         }
+        // The widest divider the field holds is 255 itself: 51 MHz to 100 kHz needs exactly it.
+        assert_eq!(clock_divider(51_000_000, 100_000), Some(255));
         // 50 MHz cannot be divided below 98 kHz.
         assert_eq!(clock_divider(50_000_000, 90_000), None);
         assert_eq!(clock_divider(50_000_000, 0), None);
@@ -529,5 +531,278 @@ mod tests {
         // A count above the depth (a confused STATUS) cannot overrun a write.
         assert_eq!(fifo_step(filled(0x1fff), 32, true, 4096), 0);
         assert_eq!(fifo_step(filled(0x1fff), 32, false, 4096), 128);
+    }
+
+    // The sequences below run against `sim`, which models the contract and, through its knobs, the
+    // ways silicon can break it: a reset or a clock update that never completes, an answer that
+    // takes time on the wire, a card that stalls or ends a transfer early, a confused `STATUS`.
+
+    use std::sync::mpsc;
+    use std::time::Duration;
+    use std::vec::Vec;
+
+    use crate::command::{Command, Data, Response, SEND_IF_COND, WRITE_BLOCK};
+    use crate::sd::{self, IoError};
+    use crate::sim::{CardKind, Fault, Sim};
+
+    fn take(sim: Sim) -> Host<Sim> {
+        let depth = u32::try_from(sim.depth()).unwrap();
+        Host::new(sim, 50_000_000, Some(depth)).unwrap().0
+    }
+
+    /// Runs `f` on a worker and fails if it has not returned in ten seconds. A wait whose deadline
+    /// never fires spins forever, and this turns that into a named failure rather than a hung test.
+    fn within_ten_seconds<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T {
+        let (tx, rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = tx.send(f());
+        });
+        rx.recv_timeout(Duration::from_secs(10))
+            .expect("the driver neither returned nor gave up: a deadline never fired")
+    }
+
+    #[test]
+    fn reset_clears_the_enables_keeps_other_bits_and_asks_for_all_three_resets() {
+        let mut h = take(Sim::new(CardKind::Empty, 1, 32));
+        // Firmware left the DMA and interrupt enables on, and bit 8, which is not the driver's.
+        let firmware =
+            regs::CTRL_USE_INTERNAL_DMAC | regs::CTRL_DMA_ENABLE | regs::CTRL_INT_ENABLE | 1 << 8;
+        h.registers().write(regs::CTRL, firmware);
+        h.registers().writes.clear();
+        h.reset().unwrap();
+        assert_eq!(
+            h.registers().writes,
+            [
+                (regs::CLKENA, 0),
+                (regs::CTRL, 1 << 8 | regs::CTRL_ALL_RESET),
+                (regs::INTMASK, 0),
+                (regs::RINTSTS, 0xffff_ffff),
+                (regs::TMOUT, 0xffff_ffff),
+                (regs::CTYPE, 0),
+                (regs::FIFOTH, regs::fifoth_for_pio(32)),
+            ]
+        );
+        // A FIFO reset still in flight when the driver starts is asked for again, not toggled off.
+        let mut h = take(Sim::new(CardKind::Empty, 1, 32));
+        h.registers().write(regs::CTRL, regs::CTRL_FIFO_RESET);
+        h.registers().writes.clear();
+        h.reset().unwrap();
+        assert_eq!(h.registers().writes[1], (regs::CTRL, regs::CTRL_ALL_RESET));
+    }
+
+    #[test]
+    fn a_reset_that_never_clears_is_reported_with_the_word_read() {
+        let mut sim = Sim::new(CardKind::Empty, 1, 32);
+        sim.reset_stuck = true;
+        let mut h = take(sim);
+        assert_eq!(h.reset(), Err(Error::ResetStuck(regs::CTRL_ALL_RESET)));
+    }
+
+    #[test]
+    fn power_and_bus_width_land_in_their_registers() {
+        let mut h = take(Sim::new(CardKind::Empty, 1, 32));
+        h.power_on();
+        assert_eq!(h.registers().peek(regs::PWREN), 1);
+        for (width, ctype) in [(4, regs::CTYPE_4BIT), (8, regs::CTYPE_8BIT), (1, 0), (2, 0)] {
+            h.set_bus_width(width);
+            assert_eq!(h.registers().peek(regs::CTYPE), ctype, "width {width}");
+        }
+    }
+
+    #[test]
+    fn a_clock_update_the_controller_never_takes_is_an_error() {
+        let mut sim = Sim::new(CardKind::Empty, 1, 32);
+        sim.clock_stuck = true;
+        let mut h = take(sim);
+        assert_eq!(h.set_clock(400_000), Err(Error::ClockUpdate));
+    }
+
+    /// A clock that advances seven microseconds a read never lands on the deadline exactly, as a
+    /// real one need not, so the give-up test has to be a comparison past it.
+    #[test]
+    fn a_card_busy_forever_is_reported_once_the_deadline_has_passed() {
+        let mut sim = Sim::new(CardKind::Empty, 1, 32);
+        sim.busy_forever = true;
+        sim.clock_step = 7;
+        assert_ne!(DATA_DEADLINE_US % 7, 0);
+        let mut h = take(sim);
+        assert_eq!(
+            within_ten_seconds(move || h.wait_not_busy()),
+            Err(Error::Busy)
+        );
+    }
+
+    /// On silicon a command takes time on the wire, so `CD` and the response words land some polls
+    /// after the write to `CMD`. The driver must wait for `CD` before it reads either.
+    #[test]
+    fn the_response_is_read_only_once_the_command_is_done() {
+        let mut sim = Sim::new(CardKind::SdHighCapacity, 2048, 32);
+        sim.late_answer = 3;
+        let mut h = take(sim);
+        h.command(&Command::new(0, 0, Response::None)).unwrap();
+        let echo = h
+            .command(&Command::new(SEND_IF_COND, 0x1aa, Response::R7))
+            .unwrap();
+        assert_eq!(echo[0] & 0xfff, 0x1aa);
+        let mut sim = Sim::new(CardKind::Empty, 1, 32);
+        sim.late_answer = 3;
+        let mut h = take(sim);
+        assert_eq!(
+            h.command(&Command::new(SEND_IF_COND, 0x1aa, Response::R7)),
+            Err(Error::NoResponse(SEND_IF_COND))
+        );
+    }
+
+    #[test]
+    fn a_response_crc_error_is_a_bad_response() {
+        let mut sim = Sim::new(CardKind::SdHighCapacity, 2048, 32);
+        sim.faults = vec![(SEND_IF_COND, 0, Fault::BadCrc)];
+        let mut h = take(sim);
+        h.command(&Command::new(0, 0, Response::None)).unwrap();
+        assert!(matches!(
+            h.command(&Command::new(SEND_IF_COND, 0x1aa, Response::R7)),
+            Err(Error::BadResponse(SEND_IF_COND, s)) if s & regs::INT_RCRC != 0
+        ));
+    }
+
+    /// Before a data command: the FIFO is reset and the reset waited for, and a read (only a read)
+    /// gets the card read threshold of one whole block. Bit 8 of `CTRL`, left by firmware, makes a
+    /// wait that tested anything but the reset bits never finish.
+    #[test]
+    fn a_data_command_resets_the_fifo_and_only_a_read_sets_the_threshold() {
+        let mut h = take(Sim::new(CardKind::SdHighCapacity, 2048, 32));
+        h.registers().write(regs::CTRL, 1 << 8);
+        let card = sd::identify(&mut h, 4).unwrap();
+        h.registers().writes.clear();
+        let mut block = [0u8; 512];
+        sd::read_blocks(&mut h, &card, 1, &mut block).unwrap();
+        let read = core::mem::take(&mut h.registers().writes);
+        assert!(read.contains(&(regs::CARDTHRCTL, 512 << 16 | regs::CARDTHRCTL_READ_ENABLE)));
+        assert!(read.contains(&(regs::CTRL, 1 << 8 | regs::CTRL_FIFO_RESET)));
+        sd::write_blocks(&mut h, &card, 1, &block).unwrap();
+        let write = &h.registers().writes;
+        assert!(!write.iter().any(|&(o, _)| o == regs::CARDTHRCTL));
+        assert!(write.contains(&(regs::CTRL, 1 << 8 | regs::CTRL_FIFO_RESET)));
+        // A FIFO reset that never clears stops the command before it is sent.
+        h.registers().reset_stuck = true;
+        assert!(matches!(
+            sd::read_blocks(&mut h, &card, 1, &mut block),
+            Err(IoError::Host(Error::ResetStuck(_)))
+        ));
+    }
+
+    /// The size and direction checks come before anything is sent, so an empty slot (which would
+    /// answer `NoResponse` to anything sent) shows that nothing was.
+    #[test]
+    fn a_buffer_or_direction_that_does_not_match_the_command_is_refused_unsent() {
+        let mut h = take(Sim::new(CardKind::Empty, 1, 32));
+        let one = |write| Data {
+            block_size: 512,
+            blocks: 1,
+            write,
+        };
+        let read = Command::with_data(17, 0, Response::R1, one(false));
+        let write = Command::with_data(WRITE_BLOCK, 0, Response::R1, one(true));
+        let mut buf = [0u8; 1024];
+        assert_eq!(h.read(&write, &mut buf[..512]), Err(Error::BufferSize));
+        assert_eq!(h.read(&read, &mut buf), Err(Error::BufferSize));
+        assert_eq!(h.write(&read, &buf[..512]), Err(Error::BufferSize));
+        assert_eq!(h.write(&write, &buf), Err(Error::BufferSize));
+        assert!(h.into_registers().commands.is_empty());
+    }
+
+    /// A card that stops moving data is a timeout naming exactly the bytes still owed: the first
+    /// 128 moved (a 32-word FIFO's worth), and for a write a second 128 sits in the full FIFO.
+    #[test]
+    fn a_stalled_transfer_times_out_owing_what_did_not_move() {
+        let mut h = take(Sim::new(CardKind::SdHighCapacity, 2048, 32));
+        let card = sd::identify(&mut h, 4).unwrap();
+        h.registers().stall_after = Some(128);
+        let mut block = [0u8; 512];
+        assert!(matches!(
+            sd::read_blocks(&mut h, &card, 1, &mut block),
+            Err(IoError::Host(Error::DataTimeout(17, _, 384)))
+        ));
+        let mut h = take(Sim::new(CardKind::SdHighCapacity, 2048, 32));
+        let card = sd::identify(&mut h, 4).unwrap();
+        h.registers().stall_after = Some(128);
+        assert!(matches!(
+            sd::write_blocks(&mut h, &card, 1, &block),
+            Err(IoError::Host(Error::DataTimeout(24, _, 256)))
+        ));
+    }
+
+    /// A card that raises `DTO` having sent only part of a read leaves nothing to move and nothing
+    /// coming: the driver must wait out the deadline, not spin on an end that has no data.
+    #[test]
+    fn a_read_the_card_ends_early_times_out_rather_than_spinning() {
+        let mut h = take(Sim::new(CardKind::SdHighCapacity, 2048, 32));
+        let card = sd::identify(&mut h, 4).unwrap();
+        h.registers().stall_after = Some(128);
+        h.registers().end_early = true;
+        let r = within_ten_seconds(move || {
+            let mut block = [0u8; 512];
+            sd::read_blocks(&mut h, &card, 1, &mut block)
+        });
+        assert!(matches!(
+            r,
+            Err(IoError::Host(Error::DataTimeout(17, _, 384)))
+        ));
+    }
+
+    /// A 48-word FIFO does not divide a 512-byte block, so the last step of a transfer is shorter
+    /// than the FIFO: each step must move what is owed, not what fits. The read half is with a
+    /// `STATUS` that says the FIFO is full whatever it holds, which `fifo_step` exists to survive.
+    #[test]
+    fn the_last_fifo_step_moves_only_what_is_owed() {
+        let mut h = take(Sim::new(CardKind::SdHighCapacity, 2048, 48));
+        let card = sd::identify(&mut h, 4).unwrap();
+        let data: Vec<u8> = (0..512).map(|i| (i % 253) as u8).collect();
+        sd::write_blocks(&mut h, &card, 5, &data).unwrap();
+        h.registers().overreport_fill = true;
+        let mut back = [0u8; 512];
+        sd::read_blocks(&mut h, &card, 5, &mut back).unwrap();
+        assert_eq!(back[..], data[..]);
+    }
+
+    /// An error that ends a write's data phase is reported, and at once: not after the deadline a
+    /// transfer that never ends would wait out.
+    #[test]
+    fn a_data_error_at_the_end_of_a_write_is_reported_promptly() {
+        let mut h = take(Sim::new(CardKind::SdHighCapacity, 2048, 32));
+        let card = sd::identify(&mut h, 4).unwrap();
+        h.registers().crc_error_at_end = true;
+        let start = h.registers().now_us();
+        assert!(matches!(
+            sd::write_blocks(&mut h, &card, 1, &[0u8; 512]),
+            Err(IoError::Host(Error::Data(24, rint))) if rint & regs::INT_DCRC != 0
+        ));
+        assert!(h.registers().now_us() - start < DATA_DEADLINE_US);
+    }
+
+    /// The same for a read whose data phase fails its CRC: the wait for the FIFO ends on the error.
+    #[test]
+    fn a_data_error_during_a_read_ends_the_wait_at_once() {
+        let mut h = take(Sim::new(CardKind::SdHighCapacity, 2048, 32));
+        let card = sd::identify(&mut h, 4).unwrap();
+        h.registers().fail_next_read_crc = true;
+        let start = h.registers().now_us();
+        let mut block = [0u8; 512];
+        assert!(matches!(
+            sd::read_blocks(&mut h, &card, 1, &mut block),
+            Err(IoError::Host(Error::Data(17, _)))
+        ));
+        assert!(h.registers().now_us() - start < DATA_DEADLINE_US);
+    }
+
+    /// A multi-block transfer is over when the automatic CMD12 is, which can land after `DTO`.
+    #[test]
+    fn a_multi_block_transfer_waits_for_the_automatic_stop() {
+        let mut h = take(Sim::new(CardKind::SdHighCapacity, 2048, 32));
+        let card = sd::identify(&mut h, 4).unwrap();
+        h.registers().late_acd = 5;
+        let mut blocks = [0u8; 4 * 512];
+        sd::read_blocks(&mut h, &card, 1, &mut blocks).unwrap();
+        assert_ne!(h.registers().peek(regs::RINTSTS) & regs::INT_ACD, 0);
     }
 }

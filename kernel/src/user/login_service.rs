@@ -24,10 +24,11 @@ const CRED_VA: u64 = address_space_map::pair_page(0x0000_0000_00e3_0000);
 /// so the timetable's `--mem` split failed and the test hung rather than failing.
 const CLIENT_SCRATCH_UT_PAGES: u64 = 5;
 
-/// Stack pages beyond the one page `run` maps. This process parses the initrd, parses an ELF, and
-/// builds a child address space (`supervision_protocol::build_child`), which is deeper than
-/// `root_supervisor`'s own 8-page stack covers; sized against `credentialer.rs`'s own lesson (its
-/// Argon2id inner loop needed 16 pages where one was not close) rather than guessed from nothing.
+/// Stack pages beyond the one page `run` maps. This process parses the initial ramdisk, parses an
+/// ELF, and builds a child address space (`supervision_protocol::build_child`), which is deeper
+/// than `root_supervisor`'s own 8-page stack covers; sized against `credentialer.rs`'s own lesson
+/// (its Argon2id inner loop needed 16 pages where one was not close) rather than guessed from
+/// nothing.
 const LOGIN_STACK_PAGES: u64 = 16;
 
 /// **What a `login_test_client` run is handed** (milestone 293): a behaviour, and separately a
@@ -176,8 +177,8 @@ fn map_blob(space: &mut AddressSpace, base: u64, bytes: &[u8]) {
 }
 
 /// **Wire and spawn the login service, and return once its start-up pass is over.** It parses the
-/// initrd for `fs_subtree_caretaker`'s own bytes, re-derives what the durable-session manifest
-/// names, and then blocks on [`Wiring::request`].
+/// initial ramdisk for `fs_subtree_caretaker`'s own bytes, re-derives what the durable-session
+/// manifest names, and then blocks on [`Wiring::request`].
 ///
 /// `verify` is the credential service's verify endpoint (milestone 56), already sealed: login never
 /// provisions it and never could. `verify_page_frame` is the exact physical frame that instance maps at
@@ -207,14 +208,15 @@ pub fn start(
     // archive this harness used to map wholesale.
     //
     // This changed so that there is **one** contract rather than two. `login` used to read the
-    // initrd at `user_mode_runtime::initrd::INITRD_VA`, which this harness could hand it (it is the kernel;
-    // it maps reserved RAM directly) and which `crates/system_initializer` could not (`build_child`
-    // maps only pages the spawner holds a capability for, and nothing names the archive). So the
-    // one path the suite exercised was the one the real boot never took, and `login` died at
-    // `_start` on every interactive boot without a single test noticing. A harness that starts a
-    // program differently from the way the system starts it is not testing that program.
-    let archive = super::initrd().expect("no initrd");
-    let fs = nifefs::Fs::parse(archive).expect("the initrd is not a nifefs archive");
+    // initial ramdisk at `user_mode_runtime::initial_ramdisk::INITIAL_RAMDISK_VA`, which this
+    // harness could hand it (it is the kernel; it maps reserved RAM directly) and which
+    // `crates/system_initializer` could not (`build_child` maps only pages the spawner holds a
+    // capability for, and nothing names the archive). So the one path the suite exercised was the
+    // one the real boot never took, and `login` died at `_start` on every interactive boot without
+    // a single test noticing. A harness that starts a program differently from the way the system
+    // starts it is not testing that program.
+    let archive = super::initial_ramdisk().expect("no initial ramdisk");
+    let fs = nifefs::Fs::parse(archive).expect("the initial ramdisk is not a nifefs archive");
     let caretaker = fs.read("fs_subtree_caretaker").unwrap_or(&[]);
     let measurements = fs.read(measured_boot::PROGRAM_MEASUREMENTS).unwrap_or(&[]);
     // **What a durable session is built from** (milestone 152), when this `login` may open one:
@@ -222,8 +224,8 @@ pub fn start(
     let (keeper, timetable) = if schedule {
         (
             fs.read("user_timetable_keeper")
-                .expect("no user_timetable_keeper in the initrd"),
-            fs.read("timetable").expect("no timetable in the initrd"),
+                .expect("no user_timetable_keeper in the initial ramdisk"),
+            fs.read("timetable").expect("no timetable in the archive"),
         )
     } else {
         (&[][..], &[][..])

@@ -16,7 +16,7 @@ use crate::sched;
 /// role of the `hello` binary. `_start(x0, x1, x2)` reads its input in `x1` and needs no
 /// role selector.
 fn least_authority_demo_image() -> &'static [u8] {
-    program("least_authority_demo").expect("no least_authority_demo program in the initrd archive")
+    program("least_authority_demo").expect("no least_authority_demo program in the initial ramdisk")
 }
 
 /// **The shell's `run` mechanism: spawn a process, get its answer.** Milestone 10's core.
@@ -151,7 +151,11 @@ fn userspace_init_delegates_an_interrupt_to_a_child() {
     let report_region = crate::memory_region::create(1).expect("no region for init's report");
     let report =
         crate::sched::create_rendezvous_from(report_region).expect("no rendezvous from region");
-    let init = spawn_hello(initrd().expect("no initrd"), INIT_IRQ_ROLE, report);
+    let init = spawn_hello(
+        initial_ramdisk().expect("no initial ramdisk"),
+        INIT_IRQ_ROLE,
+        report,
+    );
 
     // Raise the test interrupt. The rendezvous counts it if the child is not waiting yet (it is
     // still being built), and the child's WAIT drains that pending signal, so there is no race.
@@ -186,7 +190,11 @@ fn userspace_init_brings_up_the_console_server() {
     let report_region = crate::memory_region::create(1).expect("no region for init's report");
     let report =
         crate::sched::create_rendezvous_from(report_region).expect("no rendezvous from region");
-    let init = spawn_hello(initrd().expect("no initrd"), INIT_CONSOLE_ROLE, report);
+    let init = spawn_hello(
+        initial_ramdisk().expect("no initial ramdisk"),
+        INIT_CONSOLE_ROLE,
+        report,
+    );
 
     let acked = crate::sched::ipc_receive(report)[0];
     assert_eq!(
@@ -222,7 +230,11 @@ fn userspace_init_builds_a_driver_that_reads_real_hardware() {
     let report_region = crate::memory_region::create(1).expect("no region for init's report");
     let report =
         crate::sched::create_rendezvous_from(report_region).expect("no rendezvous from region");
-    let init = spawn_hello(initrd().expect("no initrd"), INIT_DEV_ROLE, report);
+    let init = spawn_hello(
+        initial_ramdisk().expect("no initial ramdisk"),
+        INIT_DEV_ROLE,
+        report,
+    );
 
     let id = crate::sched::ipc_receive(report)[0];
     assert_eq!(
@@ -235,8 +247,8 @@ fn userspace_init_builds_a_driver_that_reads_real_hardware() {
 
 /// **Milestone 19d: userspace init parses a real ELF and builds a running process from it.**
 /// The kernel loads exactly one program, init (a role of the same binary), and hands it the
-/// initrd mapped read-only plus a building budget and a report rendezvous. init parses that
-/// ELF *in userspace* (the `elf` crate, no longer in the kernel's trusted core) and loads it
+/// initial ramdisk mapped read-only plus a building budget and a report rendezvous. init parses
+/// that ELF *in userspace* (the `elf` crate, no longer in the kernel's trusted core) and loads it
 /// as a child through the granular verbs: retype an address space, copy each segment into
 /// retyped frames and map them, retype and endow a TCB, configure, start. The child runs code
 /// the kernel never parsed and reports the agreed word. Receiving it is the whole thesis of
@@ -249,7 +261,11 @@ fn userspace_init_parses_an_elf_and_builds_a_running_child() {
     let report_region = crate::memory_region::create(1).expect("no region for init's report");
     let report =
         crate::sched::create_rendezvous_from(report_region).expect("no rendezvous from region");
-    let init = spawn_hello(initrd().expect("no initrd"), INIT_ROLE, report);
+    let init = spawn_hello(
+        initial_ramdisk().expect("no initial ramdisk"),
+        INIT_ROLE,
+        report,
+    );
 
     let word = crate::sched::ipc_receive(report)[0];
     assert_eq!(
@@ -275,7 +291,7 @@ fn init_builds_the_demo_and_passes_it_an_argument() {
     let report =
         crate::sched::create_rendezvous_from(report_region).expect("no rendezvous from region");
     let init = spawn_hello(
-        initrd().expect("no initrd"),
+        initial_ramdisk().expect("no initial ramdisk"),
         INIT_LEAST_AUTHORITY_DEMO_ROLE,
         report,
     );

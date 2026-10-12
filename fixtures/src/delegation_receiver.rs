@@ -22,7 +22,7 @@
 #![no_main]
 
 use abi::rendezvous;
-use user_mode_runtime::{exit, receive_cap, send, send_cap};
+use user_mode_runtime::{exit, receive_cap, send, send_capability};
 
 const CHANNEL: u64 = 0;
 const REPORT: u64 = 1;
@@ -44,7 +44,7 @@ pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
 
     // Try to pass it on. We hold it WITHOUT grant, so the kernel refuses before any rendezvous, and
     // the invoke returns an error. LOOPBACK needs no receiver: the refusal happens at the check.
-    let redelegate = send_cap(LOOPBACK, got, abi::rights::WRITE, 0);
+    let redelegate = send_capability(LOOPBACK, got, abi::rights::WRITE, 0);
     let refused = redelegate < 0;
 
     // Verdict: bit 0 we received a capability, bit 1 re-delegation was refused. 0b11 is the story.

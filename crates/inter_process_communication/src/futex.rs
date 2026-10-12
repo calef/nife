@@ -203,6 +203,8 @@ mod tests {
         let ptrs: Vec<NonNull<T>> = threads.iter_mut().map(NonNull::from).collect();
         let mut f = OneBucket::new();
         park_all(&mut f, &mut threads);
+        assert_eq!(f.queued(), 5);
+        assert_eq!(f.waiters(a, key_of), 3);
 
         let mut two = f.take(a, 2, key_of);
         assert!(two.pop_front().is_some_and(|t| t == ptrs[0]));
@@ -218,6 +220,7 @@ mod tests {
         assert_eq!(drain(f.take(b, 0, key_of)), 0, "max 0 takes nothing");
         assert_eq!(drain(f.take(b, 1, key_of)), 1);
         assert_eq!(drain(f.take(a, usize::MAX, key_of)), 0);
+        assert_eq!(f.queued(), 0);
     }
 
     #[test]

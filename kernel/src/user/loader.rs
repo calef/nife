@@ -1,5 +1,5 @@
 //! **Loading an image**: checking an ELF against the image band, mapping its segments and the
-//! timebase page, and finding a program in the initrd.
+//! timebase page, and finding a program in the initial ramdisk.
 //!
 //! Cut out of `user.rs` unchanged by milestone 872 (the kernel's user-mode file is split along its
 //! seams), which left the parent an index.
@@ -284,9 +284,13 @@ pub fn map_segments(space: &mut AddressSpace, elf: &Elf) -> Result<(), LoadError
 /// at build time: QEMU put a file somewhere in RAM and wrote the address into
 /// `/chosen/linux,initrd-start`, and `memory::init` read it there and told the frame allocator
 /// to keep its hands off. That reservation was written at milestone 3, for this.
+///
+/// Name: ratified 2026-10-12 (calef, #1998, milestone 139 (drive the unsafe count down) round 11).
+/// His words: "B for #1998." Refused `initrd` (the foreign spelling, which stops at the boundary
+/// where it arrives).
 #[cfg_attr(feature = "bench", allow(dead_code))] // the bench boot runs no user programs
-pub fn initrd() -> Option<&'static [u8]> {
-    let (start, size) = memory::initrd_region()?;
+pub fn initial_ramdisk() -> Option<&'static [u8]> {
+    let (start, size) = memory::initial_ramdisk_region()?;
 
     // SAFETY: the region came from the device tree, it is inside RAM, the frame allocator has
     // been told it is forbidden, and the direct map names it. Nothing else will ever write here.
@@ -295,22 +299,27 @@ pub fn initrd() -> Option<&'static [u8]> {
     })
 }
 
-/// The bytes of the program named `name` inside the initrd archive (milestone 19f). The initrd is a
-/// nifefs image carrying the progenitor plus the programs it loads. The milestone tour and the
-/// kernel-side service demos ask for whichever program they wire, by name; since milestone 291
-/// that is one program per demo rather than one role of [`HELLO_ENTRY`].
-/// `spawn_hello` and `boot_progenitor` instead take the whole archive, because the
-/// progenitor parses the rest itself. Returns `None` if there is no initrd, it will not parse, or
-/// it holds no such program.
+/// The bytes of the program named `name` inside the initial ramdisk archive (milestone 19f (run a
+/// real workload)). The initial ramdisk is a nifefs image carrying the progenitor plus the programs
+/// it loads. The milestone tour and the kernel-side service demos ask for whichever program they
+/// wire, by name; since milestone 291 (`fixtures/src/hello.rs` was thirty-one programs wearing one
+/// name) that is one program per demo rather than one role of [`HELLO_ENTRY`]. `spawn_hello` and
+/// `boot_progenitor` instead take the whole archive, because the progenitor parses the rest itself.
+/// Returns `None` if there is no initial ramdisk, it will not parse, or it holds no such program.
 // Used by the milestone tour, the kernel-wired virtio/console/shell demos, and the tests that load
 // a user program; dead only in the bench boot, which runs no user programs.
 #[cfg_attr(feature = "bench", allow(dead_code))]
 pub fn program(name: &str) -> Option<&'static [u8]> {
-    nifefs::Fs::parse(initrd()?).ok()?.read(name)
+    nifefs::Fs::parse(initial_ramdisk()?).ok()?.read(name)
 }
 
-/// Where the kernel maps the initrd read-only into the progenitor's address space (milestone 19d): the progenitor
-/// reads the ELF to parse it here. A runtime window on the address-space map (milestone 206): the
-/// kernel places it for a program that did not choose the address.
+/// Where the kernel maps the initial ramdisk read-only into the progenitor's address space
+/// (milestone 19d): the progenitor reads the ELF to parse it here. A runtime window on the
+/// address-space map (milestone 206 (a program image has under 896 KiB)): the kernel places it for
+/// a program that did not choose the address.
+///
+/// Name: ratified 2026-10-12 (calef, #1998, milestone 139 (drive the unsafe count down) round 11).
+/// His words: "B for #1998." Refused `INITRD_VA` (the foreign spelling, which stops at the boundary
+/// where it arrives).
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))] // becomes the boot path at 19d.2; test-driven until then
-pub const INITRD_VA: u64 = address_space_map::runtime_window(0x2000_0000);
+pub const INITIAL_RAMDISK_VA: u64 = address_space_map::runtime_window(0x2000_0000);

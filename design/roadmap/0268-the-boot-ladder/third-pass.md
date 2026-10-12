@@ -12,7 +12,7 @@ the one thing its own gate could not read.
 ## What changed, and it is small
 
 Each leg packs its architecture's archive before building the kernel, hands the runner
-`NIFE_INITRD`, and watches to `Stage::Prompt` instead of `Stage::SelfTest`. The packer has to run
+`NIFE_INITIAL_RAMDISK`, and watches to `Stage::Prompt` instead of `Stage::SelfTest`. The packer has to run
 first rather than beside: it writes the measurement manifest `kernel/build.rs` reads, and a kernel
 built against a stale one refuses to load the progenitor and reaches no prompt at all.
 

@@ -2,7 +2,7 @@
 
 [Milestone 158 (build the eleven kernel object and identifier renames DECISIONS §113 decided)](../0158-kernel-object-rename-build.md)
 carries why it was minted, the seven renames and their measured surfaces, the collisions a lane must
-know, the sequencing rule, its `BUGS` and the follow-on. This directory carries each lane's full
+know, the sequencing rule and the follow-on. This directory carries each lane's full
 account of its rename, which its prose budget has no room for. The renames are those of §113 (eleven kernel
 object and identifier names move to the plain, standard term).
 

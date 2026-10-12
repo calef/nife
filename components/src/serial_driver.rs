@@ -48,7 +48,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use user_mode_runtime::{irq_ack, irq_wait, send};
+use user_mode_runtime::{interrupt_acknowledge, interrupt_wait, send};
 
 /// The `Irq` capability for the UART interrupt (slot 0), and the report endpoint (slot 1).
 const IRQ: u64 = 0;
@@ -67,7 +67,7 @@ const LSR_DR: u8 = 0b0000_0001;
 pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
     loop {
         // 1. Block until the kernel delivers the UART interrupt as a message.
-        irq_wait(IRQ);
+        interrupt_wait(IRQ);
 
         // 2. Read the byte from the device, quieting the receive line.
         let byte = read_uart();
@@ -76,7 +76,7 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
         send(REPORT, byte as u64, 0, 0);
 
         // 4. Re-arm the interrupt now that the device is serviced.
-        irq_ack(IRQ);
+        interrupt_acknowledge(IRQ);
     }
 }
 

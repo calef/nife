@@ -8,7 +8,10 @@ use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 use std::sync::atomic::Ordering;
 
-use crate::archive::{initrd_path, initrd_riscv, initrd_x86, riscv_initrd_path, x86_initrd_path};
+use crate::archive::{
+    initial_ramdisk_path, initial_ramdisk_riscv, initial_ramdisk_x86, riscv_initial_ramdisk_path,
+    x86_initial_ramdisk_path,
+};
 use crate::board::{Tee, parse_duration};
 use crate::disk::mkdisk;
 use crate::host::workspace_root;
@@ -160,12 +163,16 @@ pub(crate) fn job_mix_sweep() -> ExitCode {
         maybe_hvf();
     }
 
-    let (target, runner, initrd) = match arch.as_str() {
+    let (target, runner, initial_ramdisk) = match arch.as_str() {
         "aarch64" => {
             if !(mkdisk() && user()) {
                 return ExitCode::from(4);
             }
-            (TARGET, "helpers/qemu-runner-aarch64.sh", initrd_path())
+            (
+                TARGET,
+                "helpers/qemu-runner-aarch64.sh",
+                initial_ramdisk_path(),
+            )
         }
         // **`mkdisk` here too, not only on aarch64** (found 2026-09-19 by the lane that closed
         // milestone 168's sampling hole): the riscv64 runner refuses a `NIFE_DISK` naming a missing
@@ -173,23 +180,23 @@ pub(crate) fn job_mix_sweep() -> ExitCode {
         // it only ever passed on a checkout where an aarch64 run had made the image first. The
         // sweep reads no disk; the runner's own check is what needs it.
         "riscv64" => {
-            if !(mkdisk() && initrd_riscv()) {
+            if !(mkdisk() && initial_ramdisk_riscv()) {
                 return ExitCode::from(4);
             }
             (
                 RISCV_TARGET,
                 "helpers/qemu-runner-riscv64.sh",
-                riscv_initrd_path(),
+                riscv_initial_ramdisk_path(),
             )
         }
         "x86_64" => {
-            if !initrd_x86() {
+            if !initial_ramdisk_x86() {
                 return ExitCode::from(4);
             }
             (
                 X86_TARGET,
                 "helpers/qemu-runner-x86_64.sh",
-                x86_initrd_path(),
+                x86_initial_ramdisk_path(),
             )
         }
         other => {
@@ -243,7 +250,7 @@ pub(crate) fn job_mix_sweep() -> ExitCode {
         workspace_root().display(),
         profile_dir()
     ));
-    cmd.env("NIFE_INITRD", &initrd);
+    cmd.env("NIFE_INITIAL_RAMDISK", &initial_ramdisk);
     // **No disk on `x86_64`**, `boot_check`'s fix applied here (found 2026-09-25 by milestone 593,
     // provisional number, in a fresh worktree). `host::cargo` exports a `NIFE_DISK` naming a file
     // only `mkdisk` writes, only the aarch64 leg above calls `mkdisk`, and the `x86_64` runner treats
@@ -460,35 +467,39 @@ pub(crate) fn soak_test() -> ExitCode {
         return ExitCode::from(4);
     }
 
-    let (target, runner, initrd) = match arch.as_str() {
+    let (target, runner, initial_ramdisk) = match arch.as_str() {
         "aarch64" => {
             if !(mkdisk() && user()) {
                 return ExitCode::from(4);
             }
-            (TARGET, "helpers/qemu-runner-aarch64.sh", initrd_path())
+            (
+                TARGET,
+                "helpers/qemu-runner-aarch64.sh",
+                initial_ramdisk_path(),
+            )
         }
         // `mkdisk` for job-mix's reason above (found again 2026-09-25 by milestone 592 (radon's cold reboot dies in OpenSBI's PMIC write)'s
         // lane,
         // whose fresh worktree failed `--reboot --arch riscv64` with `starts=0` before the kernel
         // printed a line): the riscv64 runner refuses a `NIFE_DISK` naming a missing file.
         "riscv64" => {
-            if !(mkdisk() && initrd_riscv()) {
+            if !(mkdisk() && initial_ramdisk_riscv()) {
                 return ExitCode::from(4);
             }
             (
                 RISCV_TARGET,
                 "helpers/qemu-runner-riscv64.sh",
-                riscv_initrd_path(),
+                riscv_initial_ramdisk_path(),
             )
         }
         "x86_64" => {
-            if !initrd_x86() {
+            if !initial_ramdisk_x86() {
                 return ExitCode::from(4);
             }
             (
                 X86_TARGET,
                 "helpers/qemu-runner-x86_64.sh",
-                x86_initrd_path(),
+                x86_initial_ramdisk_path(),
             )
         }
         other => {
@@ -562,7 +573,7 @@ pub(crate) fn soak_test() -> ExitCode {
         workspace_root().display(),
         profile_dir()
     ));
-    cmd.env("NIFE_INITRD", &initrd);
+    cmd.env("NIFE_INITIAL_RAMDISK", &initial_ramdisk);
     // **No disk on `x86_64`**, `boot_check`'s fix applied here (found 2026-09-25 by milestone 593,
     // provisional number, in a fresh worktree). `host::cargo` exports a `NIFE_DISK` naming a file
     // only `mkdisk` writes, only the aarch64 leg above calls `mkdisk`, and the `x86_64` runner treats

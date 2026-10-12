@@ -139,6 +139,14 @@ mod tests {
             }
         }
         assert_eq!(Step::from_code(0), None);
+        // Every code a driver sends names its step, and no two steps read the same.
+        for code in 1..=17u8 {
+            let step = Step::from_code(code).unwrap();
+            for other in code + 1..=17 {
+                assert_ne!(step.describe(), Step::from_code(other).unwrap().describe());
+            }
+        }
+        assert_eq!(Step::from_code(18), None);
         assert_eq!(keyboard_of(keyboard(5, 1, 0x0627, 1)), (5, 1, 0x0627, 1));
         assert_eq!(
             refusal_of(refusal(Step::NotABootKeyboard, 3, 7)),

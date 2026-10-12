@@ -8,7 +8,7 @@ use super::*;
 #[test_case]
 fn a_process_runs_alloc_collections_on_its_own_memory_region() {
     let image = program("allocator_exerciser")
-        .expect("no allocator_exerciser program in the initrd archive");
+        .expect("no allocator_exerciser program in the initial ramdisk");
     let endpoints = crate::memory_region::create(1).expect("no endpoint region");
     let report = alloc_service::start(image, endpoints);
     let words = crate::sched::ipc_receive(report);

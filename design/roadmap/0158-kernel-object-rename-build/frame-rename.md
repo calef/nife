@@ -16,8 +16,9 @@ genuinely distinct in-tree senses, and all had to be told apart before touching 
   `components/src/compositor.rs` (`serve_frame`, "Serve one frame. Read every client's control
   page, composite whatever changed"), and `crates/watch`/`kernel/src/user/watch_tests.rs`
   (`a_second_frame_erases_the_first_rather_than_leaving_it_on_screen`, a terminal redraw, the same
-  sense). Two of these instances sit on lines immediately adjacent to genuine `PageFrame` renames in
-  the same file. `kernel/src/user/compositor_service.rs` has its `zeroed_page_frame()` helper beside
+  sense; both deleted on 2026-09-13). Two of these instances sit on lines immediately adjacent to
+  genuine `PageFrame` renames in the same file. `kernel/src/user/compositor_service.rs` has its
+  `zeroed_page_frame()` helper beside
   its own "the compositor has processed the frame" prose two functions over. That is exactly the
   fine-grained case the milestone doc's own warning anticipated.
 - A CPU call frame (`TrapFrame`, compiler stack-size accounting), not named or anticipated by §113.
@@ -61,7 +62,7 @@ These renamed once the four collisions above were excluded.
     `OP_ATTACH_PAGE_FRAME`;
   - the `grant_plan::jobframe` module -> `job_page_frame`;
   - the `kernel/src/user/frame_service.rs` module (a kernel-side Frame-producer/consumer test
-    wiring) -> `page_frame_service.rs`.
+    wiring) -> `page_frame_service.rs`, now in `system_tests/src/user/`.
 
 `FRAME_SIZE` was checked and left alone deliberately. Every use names the size of one physical page
 frame, which is the correct, unambiguous sense already.

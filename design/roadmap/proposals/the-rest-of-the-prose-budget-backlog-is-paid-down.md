@@ -70,18 +70,6 @@ amendment's body (its account of the missing `TRUNCATE`, and the three supersede
 appendix, with six long sentences split and two bold byte counts made plain. That rewords ruled text,
 so it waits on calef the same way.
 
-## Found on the way
-
-- `notes/corrections/2026-09-23-the-sweep-that-swept-nothing.md` says no run of the workflow has
-  ever replayed a record, and that the count replayed in its lifetime is zero. Its own timeline's
-  2026-09-24 rows record runs that replayed 73 and 76 records. The text was true when written and
-  was not updated when the rows were added; a correction has no `BUGS` section to carry it, so it
-  is recorded here for that file's next editor.
-- `notes/globally-unique-identifier-partition-table.md` credits the entropy work to milestone 55
-  (Time Machine over SMB3); it is milestone 56 (secrets, credentials, and the entropy to make them
-  safe). The block of milestone 57 (partitioning and formatting a real drive, and extended
-  attributes) made the same slip and now records it in its `BUGS`.
-
 ## Done when
 
 Every document listed here is under the cap, or carries a marked exception with its reason, and its

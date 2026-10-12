@@ -15,7 +15,7 @@ fn transcript(out: &mut [u8; 3072]) -> usize {
     let mut cache = TRANSCRIPT.lock();
     if cache.is_none() {
         let Some(w) = pipeline_service::start() else {
-            panic!("no swish program in the initrd archive, or no memory to wire one");
+            panic!("no swish program in the initial ramdisk, or no memory to wire one");
         };
         let mut buf = [0u8; 3072];
         let n = pipeline_service::transcript(&w, DONE, &mut buf);

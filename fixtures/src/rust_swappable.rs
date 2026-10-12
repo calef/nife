@@ -8,8 +8,8 @@
 //! Its whole authority is four capabilities and two pages, and every one of them was placed by
 //! `swapper` before this program ran: the stable service endpoint (READ), a report endpoint (WRITE),
 //! the operator's coordination channel (WRITE), the operator's post-revoke poke (READ), the shared
-//! log page (read/write), and the device's registers. No initrd, no budget, no way to build
-//! anything. A compromised instance is a bad console and nothing else.
+//! log page (read/write), and the device's registers. No initial ramdisk, no budget, no way to
+//! build anything. A compromised instance is a bad console and nothing else.
 //!
 //! The serving loop is in `swap.rs` and is shared byte for byte with
 //! [`c_swappable`](../c_swappable/index.html), the replacement. The *only* difference between the

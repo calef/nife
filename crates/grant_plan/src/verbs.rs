@@ -233,6 +233,71 @@ mod tests {
         assert_eq!(Grants::from_bits(1 << 15), None);
     }
 
+    /// **Each authority a verb can choose is narrowed on its own.** A manifest declaring all nine,
+    /// and a table with one verb per authority: each verb keeps its one, and only that one.
+    #[test]
+    fn each_field_is_narrowed_by_its_own_bit() {
+        let all = Manifest {
+            clock: true,
+            config: true,
+            entropy: true,
+            network: true,
+            domain: true,
+            machine: true,
+            share: true,
+            installer: true,
+            catalog: true,
+            ..Prog::Jig.manifest()
+        };
+        let one = |verb: &'static str, grants| VerbGrant { verb, grants };
+        let table = [
+            one("a", Grants::CLOCK),
+            one("b", Grants::CONFIG),
+            one("c", Grants::ENTROPY),
+            one("d", Grants::NETWORK),
+            one("e", Grants::DOMAIN),
+            one("f", Grants::MACHINE),
+            one("g", Grants::SHARE),
+            one("h", Grants::INSTALLER),
+            one("i", Grants::CATALOG),
+        ];
+        for v in &table {
+            let n = narrow_by_verb(&all, &table, Some(v.verb.as_bytes()));
+            let held = [
+                n.clock,
+                n.config,
+                n.entropy,
+                n.network,
+                n.domain,
+                n.machine,
+                n.share,
+                n.installer,
+                n.catalog,
+            ];
+            let bits = held
+                .iter()
+                .enumerate()
+                .filter(|(_, h)| **h)
+                .fold(0u16, |b, (i, _)| b | 1 << i);
+            assert_eq!(bits, v.grants.bits(), "verb {}", v.verb);
+        }
+    }
+
+    /// The set of every authority is the nine bits and no tenth, and a union keeps a bit both
+    /// sides hold.
+    #[test]
+    fn all_is_nine_bits_and_a_union_keeps_shared_bits() {
+        assert_eq!(Grants::ALL.bits(), 0x1ff);
+        assert_eq!(Grants::from_bits(1 << 9), None);
+        assert_eq!(Grants::CLOCK.union(Grants::CLOCK), Grants::CLOCK);
+        assert_eq!(
+            Grants::CLOCK
+                .union(Grants::CLOCK.union(Grants::SHARE))
+                .bits(),
+            Grants::CLOCK.bits() | Grants::SHARE.bits()
+        );
+    }
+
     /// **Exactly one program holds the installer endpoint, and it is a `std` program** (milestone
     /// 809 (the package client becomes a program), calef's 2026-10-06 ruling: "by default only
     /// `jig` holds the installer endpoint"). The progenitor places the endpoint, its reply

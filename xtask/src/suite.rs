@@ -4,7 +4,10 @@
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::archive::{initrd_path, initrd_riscv, initrd_x86, riscv_initrd_path, x86_initrd_path};
+use crate::archive::{
+    initial_ramdisk_path, initial_ramdisk_riscv, initial_ramdisk_x86, riscv_initial_ramdisk_path,
+    x86_initial_ramdisk_path,
+};
 use crate::disk::{
     disk_path, mkblankdisk, mkdisk, mkgptdisk, mknvmedisk, mkredoxfs, mkredoxfs_crash,
     nvme_disk_path, redoxfs_server_build,
@@ -404,10 +407,11 @@ pub(crate) fn test() -> bool {
         }
     }
 
-    // Build the std demo (milestone 27) for every custom target first, so every initrd carries it:
-    // initrd_aarch64 (inside `user`) packs the aarch64 std_exerciser, initrd_riscv packs the riscv one. Outside
-    // the leg guards below because BOTH legs need it, and the nifefs data disk with it: it is
-    // arch-neutral, and the riscv leg reads it whether or not the aarch64 leg ran.
+    // Build the std demo (milestone 27 (Rust `std` on the native ABI)) for every custom target
+    // first, so every initial ramdisk carries it: initial_ramdisk_aarch64 (inside `user`) packs the
+    // aarch64 std_exerciser, initial_ramdisk_riscv packs the riscv one. Outside the leg guards
+    // below because BOTH legs need it, and the nifefs data disk with it: it is arch-neutral, and
+    // the riscv leg reads it whether or not the aarch64 leg ran.
     if !std_exerciser() || !mkdisk() {
         return false;
     }
@@ -472,7 +476,8 @@ pub(crate) fn test() -> bool {
         eprintln!();
         eprintln!("--- kernel tests, aarch64 (QEMU) ---");
         // The FS server (milestone 32 phase 2), for the aarch64 bare target, before `user()` so
-        // initrd_aarch64 packs it; then the RedoxFS test images the runner attaches as extra mmio disks.
+        // initial_ramdisk_aarch64 packs it; then the RedoxFS test images the runner attaches as
+        // extra mmio disks.
         if !redoxfs_server_build(TARGET)
             || !user()
             || !mkredoxfs()
@@ -524,12 +529,12 @@ pub(crate) fn test() -> bool {
     if legs.riscv64() {
         eprintln!();
         eprintln!("--- kernel tests, riscv64 (QEMU) ---");
-        // The riscv userspace tests (parity C) load programs from the initrd and read the disk, so
-        // build the riscv archive and point the runner at IT, not at the aarch64 archive `cargo()`
-        // exports: the riscv ELF loader must never be handed aarch64 ELFs. The disk is arch-neutral
-        // (a nifefs data image) and was built by mkdisk() above.
+        // The riscv userspace tests (parity C) load programs from the initial ramdisk and read the
+        // disk, so build the riscv archive and point the runner at IT, not at the aarch64 archive
+        // `cargo()` exports: the riscv ELF loader must never be handed aarch64 ELFs. The disk is
+        // arch-neutral (a nifefs data image) and was built by mkdisk() above.
         // The riscv FS server, before the riscv archive that packs it.
-        if !redoxfs_server_build(RISCV_TARGET) || !initrd_riscv() {
+        if !redoxfs_server_build(RISCV_TARGET) || !initial_ramdisk_riscv() {
             return false;
         }
         // **A fresh RedoxFS image for this leg.** The two ISA legs share one image path, and the
@@ -547,7 +552,7 @@ pub(crate) fn test() -> bool {
         // threads. xtask is single-threaded here: this runs on the main thread before the child
         // that reads it is spawned, and the only thread xtask ever starts (the transcript reader
         // in swish_check_leg) copies pipe bytes into a String and never touches the environment.
-        unsafe { std::env::set_var("NIFE_INITRD", riscv_initrd_path()) };
+        unsafe { std::env::set_var("NIFE_INITIAL_RAMDISK", riscv_initial_ramdisk_path()) };
         // SAFETY: `set_var`/`remove_var` became unsafe in edition 2024 because they race other
         // threads. xtask is single-threaded here: this runs on the main thread before the child
         // that reads it is spawned, and the only thread xtask ever starts (the transcript reader
@@ -581,22 +586,22 @@ pub(crate) fn test() -> bool {
     // other two use semihosting and the SiFive test finisher.
     //
     // **It builds a userspace archive and one disk image**, which is where it now sits between the
-    // other two rather than below both. `initrd_x86` compiles every program in `user/` for this
-    // target and packs the same table RISC-V's archive uses, so the thirty `cfg(initrd)` test
-    // modules are in this binary; since milestone 164 it packs the FS server and `mkfs` too. What
-    // it still does not build is a `std` farm, and the runner still attaches no virtio-blk, so the
-    // tests wanting a filesystem `skip!()` for want of a DISK rather than of a server. The one
-    // exception
+    // other two rather than below both. `initial_ramdisk_x86` compiles every program in `user/` for
+    // this target and packs the same table RISC-V's archive uses, so the thirty
+    // `cfg(initial_ramdisk)` test modules are in this binary; since milestone 164 (x86_64 userspace
+    // can't build `aes`) it packs the FS server and `mkfs` too. What it still does not build is a
+    // `std` farm, and the runner still attaches no virtio-blk, so the tests wanting a filesystem
+    // `skip!()` for want of a DISK rather than of a server. The one exception
     // is the NVMe image (decisions §86's x86_64/VT-d data point, milestone 161's VT-d having
     // landed): `mknvmedisk` writes it here the same way the aarch64 and riscv64 legs do, since
     // NIFE_NVME names this leg's image too (set unconditionally above) and the runner now attaches
     // a controller behind it.
     //
-    // **`NIFE_INITRD` is set here rather than left to `cargo()`**, and it has to be: this leg runs
-    // last, so whatever the aarch64 or riscv64 leg left in that variable is still there, and an x86
-    // kernel handed an aarch64 archive refuses every program in it with a `machine` error that
-    // names neither the archive nor the leg. `run` rather than `cargo` because that wrapper also
-    // exports `NIFE_DISK` and `NIFE_NET`, and this runner attaches neither.
+    // **`NIFE_INITIAL_RAMDISK` is set here rather than left to `cargo()`**, and it has to be: this
+    // leg runs last, so whatever the aarch64 or riscv64 leg left in that variable is still there,
+    // and an x86 kernel handed an aarch64 archive refuses every program in it with a `machine`
+    // error that names neither the archive nor the leg. `run` rather than `cargo` because that
+    // wrapper also exports `NIFE_DISK` and `NIFE_NET`, and this runner attaches neither.
     if legs.x86_64() {
         eprintln!();
         eprintln!("--- kernel tests, x86_64 (QEMU q35) ---");
@@ -611,7 +616,7 @@ pub(crate) fn test() -> bool {
         // that wrote to an image a previous leg mutated would be order-coupled and reproducible
         // only in sequence. Each leg gets the known-good fixture.
         if !redoxfs_server_build(X86_TARGET)
-            || !initrd_x86()
+            || !initial_ramdisk_x86()
             || !mkdisk()
             || !mkredoxfs()
             || !mknvmedisk()
@@ -622,7 +627,7 @@ pub(crate) fn test() -> bool {
         // single-threaded here: this runs on the main thread before the child that reads it is
         // spawned, and the only thread xtask ever starts (the transcript reader in swish_check_leg)
         // copies pipe bytes into a String and never touches the environment.
-        unsafe { std::env::set_var("NIFE_INITRD", x86_initrd_path()) };
+        unsafe { std::env::set_var("NIFE_INITIAL_RAMDISK", x86_initial_ramdisk_path()) };
         // **`NIFE_DISK` names the fixture set, not one disk**, exactly as it does on both other
         // runners. This one derives the `-pci.img` and `-redoxfs.img` siblings from it and attaches
         // those as the first and second virtio-blk-pci functions (milestones 215 and 303); `q35`
@@ -957,8 +962,9 @@ fn hvf_kernel_leg(package: &str, watch_devices: bool) -> (bool, usize) {
     // nothing else in this process can inherit it.
     cmd.env("NIFE_ACCEL", "hvf");
     // The same devices the TCG leg attaches, set by `test()` and `cargo()` in our environment and
-    // inherited from there: the initrd, the disks, the NIC, the GPU, the keyboard, the RNGs.
-    cmd.env("NIFE_INITRD", initrd_path());
+    // inherited from there: the initial ramdisk, the disks, the NIC, the GPU, the keyboard, the
+    // RNGs.
+    cmd.env("NIFE_INITIAL_RAMDISK", initial_ramdisk_path());
     cmd.env("NIFE_DISK", disk_path());
     cmd.env("NIFE_NET", "1");
     cmd.stdout(std::process::Stdio::piped());

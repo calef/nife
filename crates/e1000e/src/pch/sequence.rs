@@ -756,3 +756,319 @@ pub fn transmit_errata(hw: &mut impl Hw) {
         (t & !TARC0_CB_MULTIQ_3_REQ) | TARC0_CB_MULTIQ_2_REQ,
     );
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use std::vec::Vec;
+
+    use super::super::sim::{Sim, Start};
+    use super::*;
+
+    /// **Registers that hold what is written and do nothing else**: no self-clearing reset, no PHY
+    /// behind `MDIC`, no flash, no `LCD power cycle done`. What each step does when the device
+    /// never answers, which the simulated I219 (always answering) cannot show.
+    #[derive(Default)]
+    struct Inert {
+        regs: HashMap<u64, u32>,
+        reads: Vec<u64>,
+        writes: Vec<(u64, u32)>,
+        elapsed_us: u64,
+        notes: Vec<Note>,
+    }
+
+    impl Hw for Inert {
+        fn read(&mut self, off: u64) -> u32 {
+            self.reads.push(off);
+            *self.regs.get(&off).unwrap_or(&0)
+        }
+        fn write(&mut self, off: u64, v: u32) {
+            self.writes.push((off, v));
+            self.regs.insert(off, v);
+        }
+        fn read16(&mut self, off: u64) -> u16 {
+            self.read(off) as u16
+        }
+        fn delay_us(&mut self, us: u64) {
+            self.elapsed_us += us;
+        }
+        fn pci_vendor_id(&mut self) -> u16 {
+            0x8086
+        }
+        fn note(&mut self, n: Note) {
+            self.notes.push(n);
+        }
+    }
+
+    impl Inert {
+        fn written(&self, off: u64) -> Vec<u32> {
+            self.writes
+                .iter()
+                .filter(|w| w.0 == off)
+                .map(|w| w.1)
+                .collect()
+        }
+    }
+
+    fn mac(s: &Sim, off: u64) -> u32 {
+        *s.mac.get(&off).unwrap_or(&0)
+    }
+
+    /// **An ME that never finishes is given FreeBSD's whole 2.5 s** (250 waits of 10 ms over 251
+    /// polls, none after the last, and no polls past them), and the request is left standing. One that is already done
+    /// costs nothing and has its request released.
+    #[test]
+    fn the_me_gets_two_and_a_half_seconds_to_leave_ulp() {
+        let mut hw = Inert::default();
+        hw.regs
+            .insert(regs::FWSM, ulp::FWSM_FW_VALID | ulp::FWSM_ULP_CFG_DONE);
+        leave_ulp(&mut hw);
+        assert_eq!(hw.elapsed_us, 2_500_000);
+        // One read to ask whether there is an ME, then the 251 polls.
+        assert_eq!(
+            hw.reads.iter().filter(|&&o| o == regs::FWSM).count(),
+            1 + 251
+        );
+        assert_eq!(hw.notes, [Note::UlpByMe { cleared: false }]);
+        assert_eq!(hw.regs[&regs::H2ME], ulp::H2ME_ENFORCE_SETTINGS);
+
+        let mut hw = Inert::default();
+        hw.regs.insert(regs::FWSM, ulp::FWSM_FW_VALID);
+        leave_ulp(&mut hw);
+        assert_eq!(hw.elapsed_us, 0);
+        assert_eq!(hw.notes, [Note::UlpByMe { cleared: true }]);
+        assert_eq!(hw.written(regs::H2ME), [ulp::H2ME_ENFORCE_SETTINGS, 0]);
+    }
+
+    /// **`LANPHYPC` is driven low and released, and nothing else in `CTRL` moves**: the override
+    /// set with the value bit low, then the override cleared, from whatever `CTRL` held. The PHY
+    /// configuration counter is set to 50 ms in `FEXTNVM3` with the register's other bits kept.
+    /// The wait is 1 ms low, then 5 ms polls for `LPCD`, then 30 ms: 36 ms when the power cycle
+    /// is reported at once, 136 ms when it never is.
+    #[test]
+    fn the_lanphypc_toggle_moves_only_its_own_bits_and_waits_for_lpcd() {
+        let mut hw = Inert::default();
+        hw.regs.insert(regs::FEXTNVM3, 0x0c00_00ff);
+        // SLU, with the override and the value bit both left set by someone else.
+        hw.regs.insert(mac::CTRL, 0x0003_0040);
+        toggle_lanphypc(&mut hw);
+        assert_eq!(hw.regs[&regs::FEXTNVM3], 0x0800_00ff);
+        assert_eq!(hw.written(mac::CTRL), [0x0001_0040, 0x0000_0040]);
+        assert_eq!(hw.elapsed_us, 136_000, "LPCD never rose");
+
+        let mut s = Sim::new(Start::Dead, true);
+        toggle_lanphypc(&mut s);
+        assert_eq!(s.lanphypc_toggles, 1);
+        assert_eq!(s.elapsed_us, 36_000, "LPCD rose at the first poll");
+    }
+
+    /// **A configuration that never completes is waited for 150 ms after the first 10 and
+    /// reported**, and so is a PHY reset that `PHYRA` does not confirm.
+    #[test]
+    fn a_configuration_that_never_completes_is_reported_after_its_wait() {
+        let mut hw = Inert::default();
+        assert_eq!(
+            config_done(&mut hw),
+            Err(Error::Nvm(nvm::Error::NoDescriptor))
+        );
+        assert_eq!(hw.notes, [Note::LanInitTimeout, Note::PhyResetNotAsserted]);
+        // 10 ms, 1500 polls of 100 us, and the bank probe's one microsecond before its flash
+        // cycle (which fails at once: there is no flash descriptor).
+        assert_eq!(hw.elapsed_us, 10_000 + 1500 * 100 + 1);
+
+        // The simulated reset raises both, and nothing is reported.
+        let mut s = Sim::new(Start::Healthy, true);
+        global_reset(&mut s, 1000).unwrap();
+        assert!(!s.notes.contains(&Note::LanInitTimeout));
+        assert!(!s.notes.contains(&Note::PhyResetNotAsserted));
+        assert!(!s.notes.contains(&Note::MasterRequestsPending));
+    }
+
+    /// **Pending bus-master requests are waited for 80 ms, then reported, and the reset goes
+    /// ahead**; a reset that never self-clears is `ResetTimeout`, and a retry after one still asks
+    /// for the reset.
+    #[test]
+    fn stuck_master_requests_are_waited_for_and_the_reset_still_goes_ahead() {
+        let mut hw = Inert::default();
+        hw.regs.insert(regs::FWSM, phy::FWSM_RSPCIPHY);
+        hw.regs.insert(mac::STATUS, reset::STATUS_GIO_MASTER_ENABLE);
+        // The last reset never cleared.
+        hw.regs.insert(mac::CTRL, crate::CTRL_RST);
+        assert_eq!(global_reset(&mut hw, 0), Err(Error::ResetTimeout));
+        assert_eq!(hw.notes, [Note::MasterRequestsPending]);
+        // 80 ms for the master requests, 10 ms after disabling receive and transmit, and 20 ms
+        // after the reset.
+        assert_eq!(hw.elapsed_us, 80_000 + 10_000 + 20_000);
+        let last = *hw.written(mac::CTRL).last().unwrap();
+        assert_ne!(last & crate::CTRL_RST, 0);
+        assert_ne!(last & CTRL_PHY_RST, 0, "the PHY is reset with the MAC");
+    }
+
+    /// **After a PHY reset the host wakeup bit is cleared and nothing else in the port
+    /// configuration**, and no extended configuration is replayed unless the NVM says software
+    /// does it, whatever size the hardware reports.
+    #[test]
+    fn the_post_reset_clears_host_wakeup_and_replays_only_when_asked() {
+        let mut s = Sim::new(Start::Healthy, true);
+        s.phy.insert(r::PORT_GEN_CFG, 0x0011);
+        s.mac.insert(regs::EXTCNF_CTRL, 0x40 << 16);
+        s.mac.insert(regs::EXTCNF_SIZE, 3 << 16);
+        global_reset(&mut s, 1000).unwrap();
+        assert_eq!(s.phy[&r::PORT_GEN_CFG], 0x0001);
+        assert!(s.notes.contains(&Note::LcdNotConfigured));
+        assert!(
+            !s.notes
+                .iter()
+                .any(|n| matches!(n, Note::LcdConfigured { .. }))
+        );
+    }
+
+    /// **The `SMBus` address word takes its address and frequency from `STRAP`** and keeps only
+    /// the bits it does not own: the old address is replaced, PEC and valid are set even if they
+    /// already were, and the frequency (minus one) lands in bits 8 and 12. A frequency of zero is
+    /// left alone and reported, as FreeBSD declines to program it.
+    #[test]
+    fn the_smbus_address_comes_from_strap() {
+        let strap = |addr: u32, freq: u32| addr << 17 | freq << 12;
+        for (freq, preset, want) in [
+            (2, 0x02d5, 0x0382),
+            (3, 0x02d5, 0x1282),
+            (0, 0x1155, 0x1382),
+        ] {
+            let mut s = Sim::new(Start::Healthy, true);
+            s.mac.insert(regs::STRAP, strap(2, freq));
+            s.phy.insert(r::SMB_ADDR, preset);
+            let f = Swflag::acquire(&mut s).unwrap();
+            write_smbus_addr(&mut s, &f).unwrap();
+            f.release(&mut s);
+            assert_eq!(s.phy[&r::SMB_ADDR], want, "frequency field {freq}");
+            assert_eq!(
+                s.notes.contains(&Note::SmbusFrequencyUnsupported),
+                freq == 0
+            );
+        }
+    }
+
+    /// **The OEM bits carry the MAC's gigabit-disable and LPLU into the PHY**, clear them when the
+    /// MAC does not ask, keep the PHY's other bits, and restart autonegotiation unless firmware
+    /// blocks PHY resets. Without `SW_CONFIG` the PHY is not touched.
+    #[test]
+    fn the_oem_bits_follow_the_mac() {
+        let sw = FEXTNVM_SW_CONFIG_ICH8M;
+        let both = PHY_CTRL_GBE_DISABLE | PHY_CTRL_D0A_LPLU;
+        // (FEXTNVM, PHY_CTRL, OEM_BITS before, firmware blocks resets, OEM_BITS after)
+        for (fextnvm, pc, before, blocked, after) in [
+            (sw, both, 0x0000, false, 0x0444),
+            (sw | 1, 0, 0x8044, false, 0x8400),
+            (0, both, 0x8044, false, 0x8044),
+            (sw, 0, 0x0000, true, 0x0000),
+        ] {
+            let mut s = Sim::new(Start::Healthy, true);
+            s.mac.insert(regs::FEXTNVM, fextnvm);
+            s.mac.insert(regs::PHY_CTRL, pc);
+            if blocked {
+                s.mac.insert(regs::FWSM, 0);
+            }
+            s.phy.insert(r::OEM_BITS, before);
+            oem_bits(&mut s).unwrap();
+            assert_eq!(
+                s.phy[&r::OEM_BITS],
+                after,
+                "{fextnvm:#x} {pc:#x} {before:#x}"
+            );
+        }
+    }
+
+    /// **`init_hw` writes FreeBSD's values**, from a device that holds nothing and from one
+    /// whose registers already hold some of the bits. The second case is what tells setting a bit
+    /// from toggling it, and keeping a register's other bits from clearing them.
+    #[test]
+    fn init_hw_writes_freebsds_values_from_any_starting_state() {
+        let mut s = Sim::new(Start::Healthy, true);
+        s.phy.insert(r::AUTONEG_ADV, 0x0c01);
+        init_hw(&mut s).unwrap();
+        assert_eq!(
+            mac(&s, mac::CTRL_EXT),
+            0x0052_0000,
+            "bit 22, PHYPDEN, RO_DIS"
+        );
+        assert_eq!(mac(&s, regs::TXDCTL0), 0x0141_001f);
+        assert_eq!(mac(&s, regs::TXDCTL1), 0x0141_001f);
+        assert_eq!(mac(&s, regs::TARC0), 0x0d80_0000);
+        assert_eq!(mac(&s, regs::TARC1), 0x5500_0000, "MULR clear: bit 28 set");
+        assert_eq!(mac(&s, mac::RFCTL), 0x00c0);
+        assert_eq!(mac(&s, regs::PBECCSTS), 0x0001_0000);
+        assert_eq!(mac(&s, mac::CTRL), 0x0008_0040, "MEHE and SLU");
+        assert_eq!(s.phy[&r::I82577_CFG], 0x8c00);
+        assert_eq!(s.phy[&r::I82577_CTRL_2], 0x0400);
+        assert_eq!(s.phy[&r::AUTONEG_ADV], 0x01e1);
+        assert_eq!(s.phy[&r::CTRL_1000T], 0x0200);
+        assert_eq!(s.phy[&r::CONTROL], 0x1200);
+
+        let mut s = Sim::new(Start::Healthy, true);
+        s.mac.insert(mac::TCTL, TCTL_MULR);
+        s.mac.insert(regs::TARC1, 0x5500_00ff);
+        s.mac.insert(regs::TXDCTL0, 0x013f_ff3f);
+        s.mac.insert(mac::RFCTL, 0x00c0);
+        s.mac
+            .insert(mac::CTRL, crate::CTRL_SLU | CTRL_FRCSPD | CTRL_FRCDPX);
+        s.phy.insert(r::I82577_CFG, 0x8c01);
+        s.phy.insert(r::I82577_CTRL_2, 0x0601);
+        s.phy.insert(r::AUTONEG_ADV, 0x0de1);
+        s.phy.insert(r::CTRL_1000T, 0x0300);
+        s.phy.insert(r::CONTROL, 0x1200);
+        init_hw(&mut s).unwrap();
+        assert_eq!(
+            mac(&s, regs::TARC1),
+            0x4500_00ff,
+            "MULR set: bit 28 cleared"
+        );
+        assert_eq!(mac(&s, regs::TXDCTL0), 0x0141_ff1f);
+        assert_eq!(mac(&s, mac::RFCTL), 0x00c0);
+        assert_eq!(mac(&s, mac::CTRL), 0x0008_0040, "speed and duplex unforced");
+        assert_eq!(s.phy[&r::I82577_CFG], 0x8c01);
+        assert_eq!(s.phy[&r::I82577_CTRL_2], 0x0401);
+        assert_eq!(s.phy[&r::AUTONEG_ADV], 0x01e1);
+        assert_eq!(s.phy[&r::CTRL_1000T], 0x0200);
+        assert_eq!(s.phy[&r::CONTROL], 0x1200);
+    }
+
+    /// **The SPT transmit errata**: `MULR` on, `IOSFPC`'s receive threshold, and `TARC0`'s
+    /// request count set to two with the register's other bits kept.
+    #[test]
+    fn the_transmit_errata_set_freebsds_three_values() {
+        let mut hw = Inert::default();
+        hw.regs.insert(regs::TARC0, 0x3000_00ff);
+        transmit_errata(&mut hw);
+        assert_eq!(hw.regs[&mac::TCTL], TCTL_MULR);
+        assert_eq!(hw.regs[&regs::IOSFPC], 0x0001_0000);
+        assert_eq!(hw.regs[&regs::TARC0], 0x2000_00ff);
+    }
+
+    /// **Without an ME, every write to `CV_SMB_CTRL` clears only the force bit, and K1 and the
+    /// ULP start bit are set even when already set.** The PHY is reset twice: once by the ULP exit
+    /// and once by the attach that follows it.
+    #[test]
+    fn leaving_ulp_without_an_me_changes_only_the_bits_it_names() {
+        let mut s = Sim::new(Start::InSmbus, false);
+        s.phy.insert(r::SMB_CTRL, 0x0101);
+        s.phy.insert(r::PM_CTRL, 0x4001);
+        s.phy.insert(r::ULP_CONFIG1, 0x1ff5);
+        assert!(init_phy_workarounds(&mut s).is_ok());
+        let to = |reg: u32| -> Vec<u16> {
+            s.phy_writes
+                .iter()
+                .filter(|w| w.0 == reg)
+                .map(|w| w.1)
+                .collect()
+        };
+        let smb = to(r::SMB_CTRL);
+        assert!(
+            !smb.is_empty() && smb.iter().all(|&v| v == 0x0100),
+            "{smb:x?}"
+        );
+        assert_eq!(to(r::PM_CTRL), [0x4001]);
+        assert_eq!(to(r::ULP_CONFIG1), [0x0281, 0x0281]);
+        assert_eq!(s.phy_resets, 2);
+    }
+}

@@ -39,9 +39,9 @@
 //!     prices a walk over it; without, it proves the walk is refused rather than empty. See
 //!     `walk_transcript`.
 //!
-//! One binary keeps the initrd inside its nifefs directory limit (`MAX_FILES`, 31 entries when
-//! this was written and 76 since 2026-08-01) while still proving all three. The kernel test suite spawns it three ways and checks each transcript
-//! byte for byte, on both ISAs.
+//! One binary keeps the initial ramdisk inside its nifefs directory limit (`MAX_FILES`, 31 entries
+//! when this was written and 76 since 2026-08-01) while still proving all three. The kernel test
+//! suite spawns it three ways and checks each transcript byte for byte, on both ISAs.
 
 use std::collections::HashMap;
 use std::fs::{Dir, File};

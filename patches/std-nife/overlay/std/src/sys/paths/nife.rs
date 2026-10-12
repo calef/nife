@@ -120,7 +120,7 @@ pub fn chdir(_p: &path::Path) -> io::Result<()> {
 }
 
 /// Refused: nothing tells a nife process the path it was loaded from. The loader maps an ELF out
-/// of the initrd and the program never learns a name for itself.
+/// of the initial ramdisk and the program never learns a name for itself.
 pub fn current_exe() -> io::Result<PathBuf> {
     unsupported()
 }

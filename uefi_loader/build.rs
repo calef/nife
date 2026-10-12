@@ -26,27 +26,29 @@ use std::{env, fs};
 /// question about files it did not build. It used to be written out here, and a second copy of a
 /// measured-entry list is exactly the thing that goes stale without anybody noticing: a kernel that
 /// grew a third boot program would have been vouched for by a check that had never heard of it.
-fn refuse_an_unsealed_pair(kernel_path: &str, initrd_path: &str) {
+fn refuse_an_unsealed_pair(kernel_path: &str, initial_ramdisk_path: &str) {
     let kernel = fs::read(kernel_path).unwrap_or_else(|e| panic!("cannot read {kernel_path}: {e}"));
-    let archive =
-        fs::read(initrd_path).unwrap_or_else(|e| panic!("cannot read {initrd_path}: {e}"));
-    let seal =
-        sealed_pair::inspect(&kernel, &archive).unwrap_or_else(|e| panic!("{initrd_path} {e}"));
+    let archive = fs::read(initial_ramdisk_path)
+        .unwrap_or_else(|e| panic!("cannot read {initial_ramdisk_path}: {e}"));
+    let seal = sealed_pair::inspect(&kernel, &archive)
+        .unwrap_or_else(|e| panic!("{initial_ramdisk_path} {e}"));
     assert!(
         seal.is_sealed(),
         "\n\n{}\nBuild the archive first and then the kernel, which is what `cargo xtask \
          uefi-image` and `cargo xtask stick` do.\n",
-        seal.explain(kernel_path, initrd_path)
+        seal.explain(kernel_path, initial_ramdisk_path)
     );
 }
 
 fn main() {
     println!("cargo::rerun-if-env-changed=NIFE_UEFI_KERNEL");
-    println!("cargo::rerun-if-env-changed=NIFE_UEFI_INITRD");
+    println!("cargo::rerun-if-env-changed=NIFE_UEFI_INITIAL_RAMDISK");
 
     let building_the_application = env::var_os("CARGO_FEATURE_UEFI").is_some();
     let kernel = env::var("NIFE_UEFI_KERNEL").ok().filter(|p| !p.is_empty());
-    let initrd = env::var("NIFE_UEFI_INITRD").ok().filter(|p| !p.is_empty());
+    let initial_ramdisk = env::var("NIFE_UEFI_INITIAL_RAMDISK")
+        .ok()
+        .filter(|p| !p.is_empty());
 
     let mut generated = String::new();
 
@@ -68,24 +70,24 @@ fn main() {
         None => generated.push_str("pub static KERNEL: &[u8] = &[];\n"),
     }
 
-    match &initrd {
+    match &initial_ramdisk {
         Some(path) => {
             println!("cargo::rerun-if-changed={path}");
             generated.push_str(&format!(
                 "/// The userspace archive, handed over as PVH's single module.\n\
-                 pub static INITRD: &[u8] = include_bytes!(r\"{path}\");\n"
+                 pub static INITIAL_RAMDISK: &[u8] = include_bytes!(r\"{path}\");\n"
             ));
         }
         // An absent archive is a legitimate build, not an error: the kernel's boot tour runs
         // without one and says so, which is the shortest possible bring-up on new hardware.
         None => generated.push_str(
             "/// No archive in this build. The kernel boots its tour and reports no module.\n\
-             pub static INITRD: &[u8] = &[];\n",
+             pub static INITIAL_RAMDISK: &[u8] = &[];\n",
         ),
     }
 
-    if let (Some(kernel), Some(initrd)) = (&kernel, &initrd) {
-        refuse_an_unsealed_pair(kernel, initrd);
+    if let (Some(kernel), Some(initial_ramdisk)) = (&kernel, &initial_ramdisk) {
+        refuse_an_unsealed_pair(kernel, initial_ramdisk);
     }
 
     let out = PathBuf::from(env::var("OUT_DIR").expect("cargo sets OUT_DIR")).join("embedded.rs");

@@ -68,8 +68,8 @@ use component_plan::Provisions;
 use supervision_protocol::{ChildEndowment, Retention};
 use swap_protocol::log_checks as lc;
 use user_mode_runtime::{
-    cap_delete, cntfrq, map_into, map_page_frame, now, receive, receive_bound, receive_fault,
-    revoke_frame, send, timer_arm,
+    address_space_map_into, cap_delete, cntfrq, map_page_frame, now, receive, receive_bound,
+    receive_fault, revoke_page_frame, send, timer_arm,
 };
 
 /// What the kernel grants us, and nothing else.
@@ -105,9 +105,9 @@ struct Wiring {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn _start(role: u64, initrd_len: u64, _a2: u64) -> ! {
-    // SAFETY: forwarded from user_mode_runtime::initrd::initrd_bytes's own contract.
-    let archive = unsafe { user_mode_runtime::initrd::initrd_bytes(initrd_len) };
+pub extern "C" fn _start(role: u64, initial_ramdisk_len: u64, _a2: u64) -> ! {
+    // SAFETY: forwarded from user_mode_runtime::initial_ramdisk::bytes's own contract.
+    let archive = unsafe { user_mode_runtime::initial_ramdisk::bytes(initial_ramdisk_len) };
     let Ok(fs) = nifefs::Fs::parse(archive) else {
         bail(1)
     };
@@ -357,7 +357,7 @@ fn direct(fs: &nifefs::Fs, w: &Wiring) -> ! {
     // keep ours, which is what makes this a transfer rather than a demolition (DECISIONS §41).
     // ------------------------------------------------------------------------------------------
 
-    if revoke_frame(DEVICE) != 0 {
+    if revoke_page_frame(DEVICE) != 0 {
         bail(23)
     }
     send(
@@ -373,7 +373,7 @@ fn direct(fs: &nifefs::Fs, w: &Wiring) -> ! {
     // ------------------------------------------------------------------------------------------
 
     for &(va, slot, mode) in component.devices() {
-        if map_into(b_aspace, va, slot, mode) != 0 {
+        if address_space_map_into(b_aspace, va, slot, mode) != 0 {
             bail(24)
         }
     }
@@ -1125,7 +1125,7 @@ fn hung(fs: &nifefs::Fs, w: &Wiring) -> ! {
     // the change that would demonstrate it.
     // ------------------------------------------------------------------------------------------
 
-    if revoke_frame(DEVICE) != 0 {
+    if revoke_page_frame(DEVICE) != 0 {
         bail(82)
     }
     send(
@@ -1136,7 +1136,7 @@ fn hung(fs: &nifefs::Fs, w: &Wiring) -> ! {
     );
 
     for &(va, slot, mode) in component.devices() {
-        if map_into(b_aspace, va, slot, mode) != 0 {
+        if address_space_map_into(b_aspace, va, slot, mode) != 0 {
             bail(83)
         }
     }

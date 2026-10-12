@@ -32,7 +32,7 @@
 //! spawner building each child in its own reclaimable region), a capability for the reserved fault
 //! slot so the child is born supervised, capabilities for **named** slots the caller picks, and
 //! **blobs** to copy into the child. That last one is what lets a construction sub-server hold
-//! exactly the one program image it is allowed to build, instead of the whole initrd.
+//! exactly the one program image it is allowed to build, instead of the whole initial ramdisk.
 //!
 //! # Examples
 //!
@@ -66,7 +66,7 @@
 //!
 //! // A construction sub-server, holding exactly the one program image it may build. That is what
 //! // `blobs` buys: the child is handed *data* it has no capability to reach, so the sub-server
-//! // never needs the whole initrd.
+//! // never needs the whole initial ramdisk.
 //! let image = &[0x7f, b'E', b'L', b'F'][..];
 //! let builder = ChildEndowment {
 //!     blobs: &[(0x2000_0000, image)],
@@ -205,16 +205,16 @@ pub const CHILD_STACK_PAGES: u64 = 4;
 /// destroying that region revokes every mapping of its pages, the builder's included (DECISIONS §13
 /// (frame revocation)). So the page is free again once the child is reaped, and only the builder's
 /// cursor did not know it. Until 2026-09-26 the cursor advanced one page per page built and never
-/// came back; in the progenitor it ran into the kernel's initrd window at `0x2000_0000` after 256
-/// MiB, or into the end of its own page-table budget first (milestone 604's block has the
+/// came back; in the progenitor it ran into the kernel's initial ramdisk window at `0x2000_0000`
+/// after 256 MiB, or into the end of its own page-table budget first (milestone 604's block has the
 /// arithmetic). Now [`map_scratch`] wraps at the window's end and asks the kernel, page by page,
 /// which addresses are free.
 ///
 /// **Siting.** In [`address_space_map::RUNTIME_WINDOWS`], starting where the cursor always started,
-/// and ending well under the progenitor's initrd window. `std_runtime_protocol`'s three pages sit
-/// inside it, but only in a `std` program's space, and no `std` program builds children. A window
-/// some other party does map in a builder's space costs a probe, not a failure: [`map_scratch`]
-/// skips any page the kernel says is taken.
+/// and ending well under the progenitor's initial ramdisk window. `std_runtime_protocol`'s three
+/// pages sit inside it, but only in a `std` program's space, and no `std` program builds children.
+/// A window some other party does map in a builder's space costs a probe, not a failure:
+/// [`map_scratch`] skips any page the kernel says is taken.
 ///
 /// **Why this size.** Big enough to hold every page one builder can have built and not yet
 /// reaped, which is what must fit at once; small enough that its page tables are a budget a

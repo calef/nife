@@ -37,12 +37,13 @@ const EXPECTED_REPORTS: usize = 4 * ATTEMPTS;
 
 /// **Spawn the confiner the way the kernel spawns the progenitor**, and return the report endpoint every
 /// process in the run holds a WRITE view of. Deliberately the same endowment `spawn_init` gives
-/// (the archive read-only at `INITRD_VA`, an untyped in slot 0, a report endpoint in slot 1), so
-/// what is under test is the seam rather than a privileged shortcut.
+/// (the archive read-only at `INITIAL_RAMDISK_VA`, an untyped in slot 0, a report endpoint in slot
+/// 1), so what is under test is the seam rather than a privileged shortcut.
 fn spawn_confiner() -> (sched::RendezvousId, u64) {
-    let (initrd_start, initrd_len) = memory::initrd_region().expect("no initrd region");
-    let initrd_pages = initrd_len.div_ceil(FRAME_SIZE);
-    let bytes = program("c_confiner").expect("no c_confiner program in the initrd archive");
+    let (initial_ramdisk_start, initial_ramdisk_len) =
+        memory::initial_ramdisk_region().expect("no initial ramdisk region");
+    let initial_ramdisk_pages = initial_ramdisk_len.div_ceil(FRAME_SIZE);
+    let bytes = program("c_confiner").expect("no c_confiner program in the initial ramdisk");
     let elf = Elf::parse(bytes).expect("c_confiner is not loadable");
 
     let content: u64 = elf
@@ -53,8 +54,8 @@ fn spawn_confiner() -> (sched::RendezvousId, u64) {
         })
         .sum::<u64>()
         + 1
-        + initrd_pages / 512
-        + crate::revoke::log_pages_for(initrd_pages)
+        + initial_ramdisk_pages / 512
+        + crate::revoke::log_pages_for(initial_ramdisk_pages)
         + INIT_STACK_PAGES
         + 8;
     let mut space = AddressSpace::new(content).expect("no memory for c_confiner");
@@ -66,15 +67,15 @@ fn spawn_confiner() -> (sched::RendezvousId, u64) {
     }
     #[cfg(any(target_arch = "x86_64", target_arch = "riscv64"))]
     map_timebase_page(&mut space).expect("could not map c_confiner's timebase page");
-    for i in 0..initrd_pages {
+    for i in 0..initial_ramdisk_pages {
         space
             .map_physical(
-                INITRD_VA + i * FRAME_SIZE,
-                initrd_start + i * FRAME_SIZE,
+                INITIAL_RAMDISK_VA + i * FRAME_SIZE,
+                initial_ramdisk_start + i * FRAME_SIZE,
                 Flags::user_rodata(),
                 crate::revoke::PageMapSource::NoCapability,
             )
-            .expect("could not map the initrd");
+            .expect("could not map the initial ramdisk");
     }
     let aspace = readopt_user_address_space(space).expect("register the c_confiner aspace");
 
@@ -104,7 +105,7 @@ fn spawn_confiner() -> (sched::RendezvousId, u64) {
     assert_eq!(s1, 1, "c_confiner's report endpoint must land in slot 1");
     sched::configure_thread_control_block(tid, elf.entry(), USER_STACK_TOP, aspace)
         .expect("configure");
-    sched::start_thread_control_block(tid, [0, initrd_len, 0]).expect("start");
+    sched::start_thread_control_block(tid, [0, initial_ramdisk_len, 0]).expect("start");
     (report, report_region)
 }
 

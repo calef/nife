@@ -4,7 +4,7 @@
 use std::process::Command;
 use std::sync::atomic::Ordering;
 
-use crate::archive::{initrd_path, initrd_riscv, riscv_initrd_path};
+use crate::archive::{initial_ramdisk_path, initial_ramdisk_riscv, riscv_initial_ramdisk_path};
 use crate::disk::{disk_path, mkdisk, mkredoxfs, redoxfs_server_build};
 use crate::host::{flag_value, kernel_elf, run, workspace_root};
 use crate::{RELEASE, RISCV_TARGET, RUNNER, TARGET, X86_TARGET, cargo_profiled, user};
@@ -104,9 +104,9 @@ pub(crate) fn bench() -> bool {
 /// One bench pass on the architecture the command line names: build, boot, read the rows, and
 /// check or save them if asked. Split out of `bench` so `--restamp` can run it twice.
 fn leg(real: bool, check: bool, save: bool, features: &str) -> bool {
-    // The second architecture. RISC-V has its own path (its own kernel target, runner, and initrd,
-    // no disk, no HVF); everything else -- the icount instrument, the parsing, the table, the
-    // baseline gate -- is shared through run_bench. See bench_riscv.
+    // The second architecture. RISC-V has its own path (its own kernel target, runner, and initial
+    // ramdisk, no disk, no HVF); everything else -- the icount instrument, the parsing, the table,
+    // the baseline gate -- is shared through run_bench. See bench_riscv.
     if std::env::args().any(|a| a == "--riscv") {
         return bench_riscv(check, save, features);
     }
@@ -134,10 +134,10 @@ fn leg(real: bool, check: bool, save: bool, features: &str) -> bool {
     // lines. Only meaningful with `--real`.
     let smp = std::env::args().any(|a| a == "--smp");
 
-    // For --smp, build the FS server (before user(), so initrd_aarch64 packs the redoxfs_server ELF) and the
-    // RedoxFS test image the runner attaches as the second mmio disk. The fs_read bench opens it; on
-    // any run without the image the bench finds no second disk and skips, so this stays out of the
-    // icount gate's build entirely.
+    // For --smp, build the FS server (before user(), so initial_ramdisk_aarch64 packs the
+    // redoxfs_server ELF) and the RedoxFS test image the runner attaches as the second mmio disk.
+    // The fs_read bench opens it; on any run without the image the bench finds no second disk and
+    // skips, so this stays out of the icount gate's build entirely.
     if (smp && !redoxfs_server_build(TARGET))
         // `fs_walk`, from milestone 606 (a directory walk costs what it does on Linux), runs
         // `std_exerciser`, which only reaches the archive if it was built first. It builds this worktree's own std farm (notes/std.md), as a gate does.
@@ -207,7 +207,7 @@ fn leg(real: bool, check: bool, save: bool, features: &str) -> bool {
             "--- bench: aarch64, single hart, TCG + icount (deterministic instruction counts) ---"
         );
     }
-    cmd.env("NIFE_INITRD", initrd_path());
+    cmd.env("NIFE_INITIAL_RAMDISK", initial_ramdisk_path());
     cmd.env("NIFE_DISK", disk_path());
 
     run_bench(
@@ -224,10 +224,10 @@ fn leg(real: bool, check: bool, save: bool, features: &str) -> bool {
 /// icount instrument, on the second architecture, so the tick counts are directly comparable to the
 /// aarch64 ones: both are the virtual timer advancing under `-icount`, which is instruction-clocked,
 /// not wall-clock. No HVF (there is no RISC-V hypervisor on this host) and no disk (the bench boot
-/// runs no virtio); it just needs the riscv initrd carrying `os_primitives_benchmarker` + `coremark`. Its baseline is a
-/// separate file, since the counts differ by ISA. `cargo xtask bench --riscv [--check|--save]`.
+/// runs no virtio); it just needs the riscv initial ramdisk carrying `os_primitives_benchmarker` +
+/// `coremark`. Its baseline is a separate file, since the counts differ by ISA. `cargo xtask bench --riscv [--check|--save]`.
 fn bench_riscv(check: bool, save: bool, features: &str) -> bool {
-    if !initrd_riscv()
+    if !initial_ramdisk_riscv()
         || !run(
             "cargo",
             &[
@@ -254,7 +254,7 @@ fn bench_riscv(check: bool, save: bool, features: &str) -> bool {
     // icount pins virtual time (rdtime) to the instruction stream; sleep=off so it never waits on the
     // wall clock. This is what makes the riscv counts deterministic and comparable to aarch64's.
     cmd.args(["-icount", "shift=0,sleep=off"]);
-    cmd.env("NIFE_INITRD", riscv_initrd_path());
+    cmd.env("NIFE_INITIAL_RAMDISK", riscv_initial_ramdisk_path());
     // No disk, as this function's doc says, and that has to be said to the runner rather than
     // assumed: `host::cargo` exports `NIFE_DISK` for every child, and the riscv64 runner treats a set
     // `NIFE_DISK` naming a missing file as fatal. Inherited, it made `--riscv` fail on any checkout
@@ -286,12 +286,13 @@ fn bench_riscv(check: bool, save: bool, features: &str) -> bool {
 /// **The `x86_64` benchmark path** (DECISIONS §121's amendment, milestone 161 item 4; the icount
 /// leg, milestone 161, 2026-08-25). Same suite, minus everything that needs a real userspace ELF:
 /// `crates/user_mode_runtime` has no `x86_64` arms yet, so every `_el0` bench self-skips (`crate::
-/// user::program` finds nothing in the initrd this leg never builds), and it adds one x86-only
-/// bench, `tss_iomap_switch`: `bench::yield_switch` with a full I/O-permission-bitmap-sized write
-/// added on every switch-in. Reading its `ns/iter` against `yield_switch`'s from the same boot is
-/// §121's missing number, the dominant cost of option 1 (a port-range capability enforced by the
-/// TSS bitmap) that the decision names as unmeasured. See
-/// `kernel/src/arch/x86_64/segments.rs`'s `bench_write_io_bitmap`.
+/// user::program` finds nothing in the initial ramdisk this leg never builds), and it adds one
+/// x86-only bench, `tss_iomap_switch`: `bench::yield_switch` with a full
+/// I/O-permission-bitmap-sized write added on every switch-in. Reading its `ns/iter` against
+/// `yield_switch`'s from the same boot is §121 (what a device capability is when the device has no
+/// page)'s missing number, the dominant cost of option 1 (a port-range capability enforced by the
+/// TSS bitmap) that the decision names as unmeasured. See `kernel/src/arch/x86_64/segments.rs`'s
+/// `bench_write_io_bitmap`.
 ///
 /// **Two instruments, the same split `bench()` makes for aarch64**: default is TCG + `-icount
 /// shift=0,sleep=off`, gated against `bench/baseline-x86_64.txt`; `--real` is plain TCG (no
@@ -311,8 +312,8 @@ fn bench_riscv(check: bool, save: bool, features: &str) -> bool {
 /// line, including the PIT-calibrated TSC frequency itself (`bench: cntfrq 999935600` on all
 /// three), so `run_bench`'s existing tick-count machinery needed no x86-specific change.
 ///
-/// `helpers/qemu-runner-x86_64.sh` attaches no disk and builds no initrd, so this needs neither
-/// `mkdisk` nor `user()`. `cargo xtask bench --x86 [--real] [--check|--save]`.
+/// `helpers/qemu-runner-x86_64.sh` attaches no disk and builds no initial ramdisk, so this needs
+/// neither `mkdisk` nor `user()`. `cargo xtask bench --x86 [--real] [--check|--save]`.
 fn bench_x86(real: bool, check: bool, save: bool, features: &str) -> bool {
     if !run(
         "cargo",

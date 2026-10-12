@@ -331,6 +331,18 @@ mod tests {
         );
     }
 
+    /// Endpoint number 0 is the control endpoint, which no endpoint descriptor may name: an
+    /// interrupt IN descriptor claiming it is not where reports arrive.
+    #[test]
+    fn an_endpoint_numbered_zero_is_not_the_report_endpoint() {
+        let mut config = QEMU_USB_KBD;
+        config[29] = 0x80; // bEndpointAddress: IN, number 0
+        assert_eq!(
+            find_boot_keyboard(&config),
+            Err(Refusal::NoInterruptIn { interface: 0 })
+        );
+    }
+
     /// **A zero length is the infinite loop**, and a length past the end is the overrun. Both stop
     /// the walk and name the offset.
     #[test]
@@ -388,6 +400,73 @@ mod tests {
         let mut wrong = d;
         wrong[1] = CONFIGURATION;
         assert_eq!(DeviceDescriptor::parse(&wrong), None);
+    }
+
+    /// A device descriptor whose `bLength` is shorter than the layout is refused, however many
+    /// bytes the buffer holds; a longer one (a future revision's) is read.
+    #[test]
+    fn a_device_descriptor_reads_its_own_length() {
+        let mut d = [
+            18, 1, 0x00, 0x02, 0, 0, 0, 8, 0x27, 0x06, 0x01, 0x00, 0, 0, 1, 4, 11, 1,
+        ];
+        d[0] = 17;
+        assert_eq!(DeviceDescriptor::parse(&d), None);
+        d[0] = 20;
+        assert!(DeviceDescriptor::parse(&d).is_some());
+    }
+
+    /// Exactly the nine header bytes parse; a short `bLength` or a different type is not this
+    /// descriptor.
+    #[test]
+    fn a_configuration_header_is_nine_bytes_of_type_two() {
+        let header = ConfigurationHeader::parse(&QEMU_USB_KBD[..9]).unwrap();
+        assert_eq!((header.total_length, header.value), (34, 1));
+        let mut short = QEMU_USB_KBD;
+        short[0] = 8;
+        assert_eq!(
+            ConfigurationHeader::parse(&short),
+            Err(Refusal::NotThatDescriptor)
+        );
+        let mut long = QEMU_USB_KBD;
+        long[0] = 10;
+        assert!(ConfigurationHeader::parse(&long).is_ok());
+        let mut other = QEMU_USB_KBD;
+        other[1] = INTERFACE;
+        assert_eq!(
+            ConfigurationHeader::parse(&other),
+            Err(Refusal::NotThatDescriptor)
+        );
+    }
+
+    /// A boot mouse whose endpoint is big enough for a keyboard report is still a mouse: every
+    /// one of class, subclass and protocol has to match.
+    #[test]
+    fn a_boot_mouse_with_a_wide_endpoint_is_passed_over() {
+        let config = [
+            9, 2, 41, 0, 2, 1, 0, 0xa0, 50, //
+            9, 4, 0, 0, 1, 3, 1, 2, 0, // interface 0: boot mouse
+            7, 5, 0x81, 3, 8, 0, 10, // 8 bytes, as wide as a keyboard report
+            9, 4, 1, 0, 1, 3, 1, 1, 0, // interface 1: boot keyboard
+            7, 5, 0x82, 3, 8, 0, 10, //
+        ];
+        let k = find_boot_keyboard(&config).unwrap();
+        assert_eq!((k.interface, k.endpoint), (1, 0x82));
+    }
+
+    /// Descriptors too short to be the interface or endpoint their type names are skipped, not
+    /// read past their end, and a two-byte descriptor is well formed.
+    #[test]
+    fn a_short_descriptor_is_skipped_and_two_bytes_is_enough() {
+        let config = [
+            9, 2, 35, 0, 1, 1, 0, 0xa0, 50, //
+            2, 0xff, // a vendor descriptor of length and type alone
+            4, 4, 0, 0, // an "interface" too short to be one
+            9, 4, 0, 0, 1, 3, 1, 1, 0, // the boot keyboard
+            4, 5, 0x81, 3, // an "endpoint" too short to be one
+            7, 5, 0x82, 3, 8, 0, 10, //
+        ];
+        let k = find_boot_keyboard(&config).unwrap();
+        assert_eq!((k.interface, k.endpoint), (0, 0x82));
     }
 
     #[test]

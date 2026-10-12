@@ -35,7 +35,7 @@
 #![no_main]
 
 use abi::Error;
-use user_mode_runtime::{map_region_page, send};
+use user_mode_runtime::{map_memory_region_page, send};
 
 const MEMORY_REGION: u64 = 0;
 const REPORT: u64 = 1;
@@ -51,7 +51,7 @@ pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
     loop {
         let va = BASE_VA + mapped * 4096;
         // Retype a page out of our region and map it here.
-        let r = map_region_page(MEMORY_REGION, va);
+        let r = map_memory_region_page(MEMORY_REGION, va);
         if let Some(e) = Error::from_ret(r) {
             // OutOfMemory means our budget is spent. Any other error is a real bug.
             if e != Error::OutOfMemory {

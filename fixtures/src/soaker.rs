@@ -113,7 +113,7 @@
 #![no_main]
 
 use user_mode_runtime::mapped_window::{self, MappedWindow};
-use user_mode_runtime::{call, irq_wait, receive_request, reply};
+use user_mode_runtime::{call, interrupt_wait, receive_request, reply};
 
 /// The one capability a soaker holds: the request endpoint, in slot 0.
 const ENDPOINT: u64 = 0;
@@ -167,10 +167,10 @@ pub extern "C" fn _start(role: u64, index: u64, seed: u64) -> ! {
     loop {
         if role == ROLE_WAITER {
             // **The whole of the waiter role** (milestone 221): block on the tick route, count the
-            // wake, block again. `irq_wait` is the same `Irq::WAIT` a device driver uses, and the
+            // wake, block again. `interrupt_wait` is the same `Irq::WAIT` a device driver uses, and the
             // kernel's soak build is what signals the route, from `sched::on_tick` on every core.
             //
-            // No `irq_ack`. A driver acknowledges because its controller masked a line that a
+            // No `interrupt_acknowledge`. A driver acknowledges because its controller masked a line that a
             // device is still asserting; there is no line here and nothing was masked, so an ack
             // would be a real controller write for an interrupt that does not exist.
             //
@@ -178,7 +178,7 @@ pub extern "C" fn _start(role: u64, index: u64, seed: u64) -> ! {
             // counting rather than to spin: the counter stops moving, and the kernel's stall check
             // reports it at the next beat, which is the same way every other failure in this
             // workload surfaces.
-            if irq_wait(TICK_IRQ) < 0 {
+            if interrupt_wait(TICK_IRQ) < 0 {
                 loop {
                     core::hint::spin_loop();
                 }

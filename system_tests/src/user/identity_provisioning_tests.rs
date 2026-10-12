@@ -46,7 +46,7 @@ struct Wired {
 
 /// The name `redoxfs_server`'s image travels under; present only when `test` built it.
 fn redoxfs_server_image() -> &'static [u8] {
-    program("redoxfs_server").expect("no redoxfs_server program in the initrd archive")
+    program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk")
 }
 
 /// **Wire a fresh entropy service, a fresh (unsealed) credential service, and the file service, then
@@ -76,7 +76,7 @@ fn wired() -> Option<Wired> {
 
     if !DONE.load(Ordering::Acquire) {
         let result = (|| {
-            let rng = program("entropy").expect("no entropy program in the initrd archive");
+            let rng = program("entropy").expect("no entropy program in the initial ramdisk");
             let e = entropy_service::ensure(rng, entropy_service::Bus::Mmio)?;
             if let Some(r) = e.wait_for_ready() {
                 assert_eq!(
@@ -86,13 +86,13 @@ fn wired() -> Option<Wired> {
                 );
             }
             let svc =
-                program("credentialer").expect("no credentialer program in the initrd archive");
+                program("credentialer").expect("no credentialer program in the initial ramdisk");
             let w = cs::start(svc, e.request);
             let (fs_ep, fs_page_frame) =
                 fs_service::root_directory(fs_service::blk_server_image(), redoxfs_server_image())?;
 
             let prov_image = program("identity_provisioner")
-                .expect("no identity_provisioner program in the initrd archive");
+                .expect("no identity_provisioner program in the initial ramdisk");
 
             // Attempt one: a fresh identity. Expected `RPT_OK`.
             let r_a = ips::provision(
@@ -124,7 +124,7 @@ fn wired() -> Option<Wired> {
             // `bob`/`carol`/the three shares fill the rest of this six-slot store before the
             // seal that this suite's own verification step below depends on.
             let cli = program("credentialer_test_client")
-                .expect("no credentialer_test_client program in the initrd archive");
+                .expect("no credentialer_test_client program in the initial ramdisk");
             cs::provisioner(cli, &w);
             let ready = crate::sched::ipc_receive(w.ready);
             assert_eq!(
@@ -196,7 +196,7 @@ fn provisioning_creates_a_working_credential_and_a_real_subtree() {
     );
 
     let cli = program("credentialer_test_client")
-        .expect("no credentialer_test_client program in the initrd archive");
+        .expect("no credentialer_test_client program in the initial ramdisk");
     let honest = cs::client(cli, &w.cs, cs::ROLE_HONEST);
     assert_eq!(honest[0], cs::RPT_DONE, "the honest client did not report");
     assert_eq!(
@@ -206,7 +206,7 @@ fn provisioning_creates_a_working_credential_and_a_real_subtree() {
     );
 
     let caretaker = program("fs_subtree_caretaker")
-        .expect("no fs_subtree_caretaker program in the initrd archive");
+        .expect("no fs_subtree_caretaker program in the initial ramdisk");
     // `narrow_dir` asserts a successful descent internally (`wait_for_caretaker`); reaching this
     // line at all is the proof the subtree is real. See this program's own module docs on why a
     // panic here is the correct failure mode for this suite, matching every other filesystem test.
@@ -245,7 +245,7 @@ fn a_duplicate_identity_is_refused_without_disturbing_the_original() {
     );
 
     let cli = program("credentialer_test_client")
-        .expect("no credentialer_test_client program in the initrd archive");
+        .expect("no credentialer_test_client program in the initial ramdisk");
     let honest = cs::client(cli, &w.cs, cs::ROLE_HONEST);
     assert_eq!(honest[0], cs::RPT_DONE, "the honest client did not report");
     assert_eq!(

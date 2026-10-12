@@ -96,10 +96,10 @@ fn a_tls_crypto_provider_computes_what_the_specifications_say() {
 
     use crate::arch::exceptions::USER_FAULTS;
 
-    let image =
-        program("cryptography_exerciser").expect("no cryptography_exerciser in the initrd archive");
-    let clock = program("clock").expect("no clock program in the initrd archive");
-    let entropy = program("entropy").expect("no entropy program in the initrd archive");
+    let image = program("cryptography_exerciser")
+        .expect("no cryptography_exerciser in the initial ramdisk");
+    let clock = program("clock").expect("no clock program in the initial ramdisk");
+    let entropy = program("entropy").expect("no entropy program in the initial ramdisk");
     let faults_before = USER_FAULTS.load(Ordering::Relaxed);
     // `start_reclaimable` rather than `start`, because this program is in the archive only when
     // somebody ran the build script: a permanent charge for its heap would make the suite's frame

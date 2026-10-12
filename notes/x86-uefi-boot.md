@@ -216,7 +216,7 @@ Triage in this order, because each step rules out everything above it.
 
 A triple fault or a dead machine after the loader's lines is the hard case, and the honest
 answer is that this is where the QEMU work stops helping. What is available: boot with the archive
-left out (the loader builds fine with no `NIFE_UEFI_INITRD`, and the tour says
+left out (the loader builds fine with no `NIFE_UEFI_INITIAL_RAMDISK`, and the tour says
 `initrd: none`), which removes five megabytes of copying and the whole userspace half of the tour.
 And `-cpu qemu64` under QEMU is the nearest thing to "a CPU that has told us no" (`notes/cpu-models.md`);
 `-cpu max` on the dev machine has never refused this kernel anything.

@@ -34,8 +34,8 @@ shipping boot.
 `riscv_trap_body`, one of the symbols this gate measures flat. The trap decoder's bytes are on
 every `ecall`, so an arm that inlined a register-file load there would be charged to every syscall
 this kernel serves. The decoder's own compare and branch is riscv64's `syscall_entry` row above.
-The block called it "the +2.5% row", but the table shows +2.2% and no row reads +2.5%; the table is
-the measurement.
+That row read +2.5% (1870 to 1916) in the first shape's table, and +2.2% since the 2026-09-20
+re-measurement of the shipped shape (commit `28e165e26`).
 
 ## The benchmarks: the switch costs one to three percent more instructions
 
