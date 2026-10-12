@@ -945,3 +945,14 @@ name_resolution_protocol,control_word,replace | with ^,equivalent,"badge fills t
 name_resolution_protocol,endowment::port_and_transport,replace | with ^,equivalent,"port is a u16 and transport sits at bit 16, disjoint, so | and ^ agree; the 2026-10-12 per-crate re-run still reports it"
 name_resolution_protocol,grant_messages,replace + with *,killed,killed by the_longest_zone_with_a_trailing_dot_is_granted_and_one_byte_more_is_not
 name_resolution_protocol,grant_messages,replace > with >=,killed,killed by the_longest_zone_with_a_trailing_dot_is_granted_and_one_byte_more_is_not
+package_index,Index<'a>::find,replace match guard first == e with false,killed,killed by the_same_line_twice_is_one_package
+package_index,Location<'a>::parse,replace > with >=,killed,killed by a_location_at_each_limit_is_read_and_one_past_it_is_not
+package_index,accept,replace + with *,killed,killed by a_stem_of_the_longest_length_is_read_and_judged
+package_index,accept,replace + with -,killed,killed by a_stem_of_the_longest_length_is_read_and_judged
+package_index,entry,replace > with ==,killed,killed by a_stem_of_the_longest_length_is_read_and_judged
+package_index,entry,replace > with >=,killed,killed by a_stem_of_the_longest_length_is_read_and_judged
+package_index,entry,replace || with &&,killed,killed by a_stem_of_the_longest_length_is_read_and_judged
+package_index,ipv4_literal,replace || with &&,gap,"two mutants share this key. The second || is equivalent on every input that reaches it: is_host admits only letters, digits, hyphens and dots, and the one non-digit u8::from_str accepts is a leading +. The first differs only on a zero-padded part of four or more digits (0010.0.0.1), which the original reads as a name and the mutant as 10.0.0.1, so refused as private. Either host is then resolved and its answers held to public_address by CheckedLocation; whether such a host should be refused outright is a policy question this triage does not settle; the 2026-10-12 per-crate re-run still reports it"
+package_index,parse_port,replace > with ==,killed,killed by a_location_at_each_limit_is_read_and_one_past_it_is_not
+package_index,parse_port,replace > with >=,killed,killed by a_location_at_each_limit_is_read_and_one_past_it_is_not
+package_index,parse_port,replace || with &&,killed,killed by a_location_at_each_limit_is_read_and_one_past_it_is_not
