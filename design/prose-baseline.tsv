@@ -418,7 +418,6 @@ design/roadmap/0239-radons-tree-describes-less-than-the-chip-has.md	-	-	68	-	-
 design/roadmap/0240-a-soak-should-say-where-its-threads-landed.md	-	-	63	-	-
 design/roadmap/0241-what-a-fourth-board-would-have-to-be-for.md	-	-	61	-	-
 design/roadmap/0242-usb-host-and-a-keyboard-that-is-not-a-uart.md	-	-	56	-	-
-design/roadmap/0243-a-machine-with-no-serial-port-cannot-say-anything.md	3913	-	-	-	-
 design/roadmap/0244-the-largest-crate-in-the-tree-is-proved-by-nothing.md	-	-	59	-	-
 design/roadmap/0245-a-soak-cannot-tell-a-flat-run-from-a-productive-one.md	-	-	49	-	-
 design/roadmap/0246-the-refusal-path-of-measured-boot-is-tested-by-nothing.md	-	-	66	-	-
