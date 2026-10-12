@@ -1,6 +1,8 @@
 ---
-status: PROPOSED
+status: DECIDED
 raised: 2026-10-12
+decided: 2026-10-12
+ratified_by: calef
 ---
 
 # 292. The terminal engine's crate root becomes an index
@@ -11,7 +13,21 @@ says is calef's call before a line moves. Written by lane
 `milestone/874-the-terminal-engine-moves-its-palette-and-its-tests-out`. *(Section number
 provisional until the merge queue lands it.)*
 
-One question is open. The block asked three. Its ruling 2, the palette's 54-line doc comment, is
+It blocked the move and nothing else.
+
+## The ruling
+
+B, the index, settled by precedent on 2026-10-12 at 03:08 (UTC). calef asked nothing separate on
+this section. §282 (when a file is split, the parent becomes an index) postdates the block, and its
+third reason had already refused the block's one argument for keeping `Attr` and `Vt` in `lib.rs`.
+calef ruled the same way on [PR #1959](https://github.com/nifeos/nife/pull/1959): *"Agreed, make the
+parent an index."* §279 (the system-initializer crate root splits into private modules) applied it to
+a crate root, and pull requests #1967 and #1969 applied it to blocks written before §282, as this
+one was. Tests sit beside their code as the 845 ruling has it, `test_support.rs` follows 842's
+shape, and the names wait for calef's naming pass. The maintainer recorded the ruling on
+[PR #1968](https://github.com/nifeos/nife/pull/1968#issuecomment-6117031057).
+
+The block asked three questions. Its ruling 2, the palette's 54-line doc comment, is
 answered by §267 (a comment states the constraint as it is now)'s amendment of 2026-10-11 (UTC). A
 listed block that a split moves unchanged keeps its row, so the comment moves whole and nothing is
 cut. Its ruling 3, the file names, is left to calef's naming pass, and every name below ships
@@ -35,7 +51,7 @@ code lines. Code lines by banner:
 | `pub mod status`, inline | 31 | 6 |
 | `mod tests`, 47 tests | 1,489 | 1,149 |
 
-## The question: does the crate root become an index in this milestone?
+## The question, as raised: does the crate root become an index in this milestone?
 
 ### Background
 
@@ -106,12 +122,9 @@ would become the new default home at about 1,330 lines, which is the regrowth §
 B costs more than A: five more files and thirteen `pub(super)` keywords. It would still be the choice
 at equal cost, so the recommendation is not about effort.
 
-The lane built B while this waits, so a yes needs no rework. It found one more item than counted
-above: `Vt::sgr` builds an `Attr` with struct-update syntax, which needs every field visible,
-`flags` included. That keyword is in the thirteen.
-
-**If no:** the lane takes A, which is a subset of B. `vt.rs`, `cell.rs`, `damage.rs`, `geometry.rs`
-and `status.rs` fold back into `lib.rs`, and the thirteen keywords go.
+The lane built B while the question waited. It found one more item than counted above: `Vt::sgr`
+builds an `Attr` with struct-update syntax, which needs every field visible, `flags` included. That
+keyword is in the thirteen.
 
 ## What it does not decide
 
