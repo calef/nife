@@ -21,14 +21,13 @@ sweep reached the mapper's own table, so the red means the claim rather than the
 Nothing here is architecture-specific: the syscall layer, the sweeps and the seam are portable
 code, so one patch serves every leg.
 
-diff --git a/kernel/src/syscall.rs b/kernel/src/syscall.rs
-index 98f833e7c..6554b1b7e 100644
---- a/kernel/src/syscall.rs
-+++ b/kernel/src/syscall.rs
-@@ -1039,10 +1039,10 @@ fn address_space_map_into(
- /// would have found.
- #[inline(never)]
- fn page_frame_map(slot: u64, va: u64, writable: u64, ut_slot: u64) -> Result<i64, Error> {
+diff --git a/kernel/src/syscall/page_frame.rs b/kernel/src/syscall/page_frame.rs
+--- a/kernel/src/syscall/page_frame.rs
++++ b/kernel/src/syscall/page_frame.rs
+@@ -42,10 +42,10 @@
+     writable: u64,
+     ut_slot: u64,
+ ) -> Result<i64, Error> {
 +    let frame = sched::current_cap(slot).map_err(|_| Error::NoSuchSlot)?;
      #[cfg(feature = "system_tests")]
      crate::delegation_pause::here(); // no lock held
