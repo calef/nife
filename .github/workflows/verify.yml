@@ -464,6 +464,15 @@ jobs:
         run: |
           script/falsifications --affected-since "${{ needs.scope.outputs.base }}" \
             --shard "${{ matrix.shard }}/${{ needs.scope.outputs.falsify-count }}"
+        # Two records at a time, each in its own worktree (maintainer/merge-group-critical-path,
+        # 2026-10-12 UTC). This step replayed one record at a time on a 4-core runner, and at 16 to
+        # 18 minutes it was the merge group's long pole. Two, not four, for the reason the `prove`
+        # job's VERIFY_JOBS gives: two CBMC formulas fit a 16 GB runner and four were killed. The
+        # shards are still planned by serial seconds against SHARD_TARGET, so the shard count and
+        # the runners it takes are what calef ruled on #1802; each shard now finishes in a bit over
+        # half its plan. script/falsifications, above PARALLEL_KINDS, has the mechanism.
+        env:
+          FALSIFICATIONS_JOBS: 2
 
   # The name the rest of the tree knows this check by, kept stable over the matrix the way
   # `verify (Kani proofs)` stands over the prove shards. It reads one result and needs no runner
