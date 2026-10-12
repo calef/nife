@@ -15,7 +15,7 @@ Sorted by breaking changes in the last four weeks (2026W39 to 2026W42), then by 
 | `package_archive` | 14 | 110 | 14 | 110 | 19 | 14 (74%) |
 | `login_protocol` | 13 | 68 | 14 | 83 | 31 | 30 (97%) |
 | `swap_protocol` | 10 | 34 | 12 | 124 | 42 | 41 (98%) |
-| `filesystem_protocol` | 9 | 54 | 42 | 454 | 101 | 92 (91%) |
+| `filesystem_protocol` | 9 | 54 | 42 | 454 | 102 | 93 (91%) |
 | `abi` | 7 | 65 | 37 | 163 | 100 | 95 (95%) |
 | `activation_set` | 6 | 57 | 6 | 57 | 18 | 18 (100%) |
 | `byte_sink_protocol` | 4 | 10 | 6 | 48 | 27 | 27 (100%) |
@@ -43,7 +43,7 @@ Sorted by breaking changes in the last four weeks (2026W39 to 2026W42), then by 
 
 ## What broke in 2026W42
 
-Read at `0e72ca92a439` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
+Read at `0f8df05d5aa5` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
 
 > - `line_editor`: removed `Event`
 > - `line_editor`: removed `Event: impl Clone`

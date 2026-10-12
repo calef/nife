@@ -42,7 +42,7 @@ not a caption, it is a register entry.
 ![Share of Rust lines in files over 2,000](project-metrics/file-size.svg)
 
 <!-- file-size: script/metrics writes this -->
-**File size:** 3 Rust files over 2,000 lines, holding 1.7% of all Rust lines; largest kernel/src/user/fs_service.rs (2,258); 95th percentile 1,271.
+**File size:** 0 Rust files over 2,000 lines, holding 0.0% of all Rust lines; largest patches/std-nife/overlay/std/src/sys/fs/nife.rs (1,957); 95th percentile 1,246.
 <!-- /file-size -->
 
 ## The prose budget
