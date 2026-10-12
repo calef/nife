@@ -842,3 +842,9 @@ extensible_host_controller_interface,refusal,replace | with ^,equivalent,"step (
 extensible_host_controller_interface,register_window,replace < with <=,killed,killed by qemus_window_withholds_the_msix_page_and_nothing_else (a withheld range ending exactly at page 4 leaves page 4 mapped)
 extensible_host_controller_interface,slot,replace | with ^,equivalent,"speed is masked to 4 bits at 20 and entries to 5 bits at 27, disjoint, so | and ^ agree; the 2026-10-12 per-crate re-run still reports it"
 extensible_host_controller_interface,write_value,replace | with ^,killed,killed by writing_a_preserved_bit_again_keeps_it
+filesystem_protocol,Verb::mutates,replace | with ^,equivalent,"dir::WRITE, CREATE and REMOVE are bits 2, 3 and 4, disjoint, so | and ^ agree; the 2026-10-12 per-crate re-run still reports it"
+filesystem_protocol,encode,replace | with ^,equivalent,"a name is at most grant::MAX_NAME (16) bytes, below IS_DIR (bit 7), so | and ^ agree; the 2026-10-12 per-crate re-run still reports it"
+filesystem_protocol,rename_dst,replace | with ^,equivalent,"(handle & 0xffff) << 40 and len & ((1 << 40) - 1) occupy disjoint bits, so | and ^ agree; the 2026-10-12 per-crate re-run still reports it"
+filesystem_protocol,reply,replace | with ^,equivalent,"xattr::reply packs (kind & MAX_KIND) << 32 beside value_len & 0xffff_ffff, disjoint, so | and ^ agree; the 2026-10-12 per-crate re-run still reports it"
+filesystem_protocol,req,replace | with ^,equivalent,"every req packs the opcode at bit 56 (OPERATION_SHIFT) beside fields below it: blk's count is at most 15 and fs's handle sits at 40..56 and its length below 40, all disjoint, so | and ^ agree; the 2026-10-12 per-crate re-run still reports it"
+filesystem_protocol,spec,replace | with ^,equivalent,"grant::spec packs len & 0xff beside rights << 8, and xattr::spec packs kind << 32 beside value_len & 0xffff_ffff; each pair is disjoint, so | and ^ agree; the 2026-10-12 per-crate re-run still reports it"
