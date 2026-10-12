@@ -1244,8 +1244,14 @@ elif _base.strip() != (_git("rev-parse", "HEAD") or "").strip():
     _base = _base.strip()
     _added_files = (_git("diff", "--name-only", "--diff-filter=A", _base, "HEAD", "--",
                          "design/roadmap/") or "").split()
+    # A block whose number was already on main was promoted there, so a new file under that number
+    # is the old block renamed. git's rename detection misses it when the block was also rewritten
+    # (830, renamed and rewritten 2026-10-12 UTC, read as an add and failed here).
+    _base_numbers = {os.path.basename(f).split("-", 1)[0] for f in (_git(
+        "ls-tree", "--name-only", _base, "design/roadmap/") or "").split()}
     _added = [(os.path.basename(f), promoted_slug[os.path.basename(f)])
-              for f in _added_files if os.path.basename(f) in promoted_slug]
+              for f in _added_files if os.path.basename(f) in promoted_slug
+              and os.path.basename(f).split("-", 1)[0] not in _base_numbers]
     if _added:
         _held = {os.path.basename(f)[:-3] for f in (_git(
             "ls-tree", "--name-only", _base, "design/roadmap/proposals/") or "").split()}
