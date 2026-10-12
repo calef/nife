@@ -924,6 +924,145 @@ mod tests {
         assert_eq!(rctl() & 0x0003_0000, 0, "2048-byte buffers");
         assert_ne!(tctl() & 0x2, 0, "TCTL.EN");
     }
+
+    /// The three control words as whole values, so a field that lands at the wrong shift is caught
+    /// as well as a missing enable bit. `TCTL`: EN, PSP, CT 15 at bit 4, COLD 63 at bit 12. `TIPG`:
+    /// IPGT 8, IPGR1 8 at bit 10, IPGR2 6 at bit 20 (Linux's `DEFAULT_82543_TIPG_*`).
+    #[test]
+    fn the_control_words_are_linuxs_values_exactly() {
+        assert_eq!(rctl(), 0x0400_8002);
+        assert_eq!(tctl(), 0x0003_f0fa);
+        assert_eq!(tctl() >> 4 & 0xff, 15, "collision threshold");
+        assert_eq!(tctl() >> 12 & 0x3ff, 63, "collision distance");
+        assert_eq!(tipg(), 0x0060_2008);
+        assert_eq!(
+            (tipg() & 0x3ff, tipg() >> 10 & 0x3ff, tipg() >> 20 & 0x3ff),
+            (8, 8, 6)
+        );
+    }
+
+    /// Each of the five frame-error bits drops the frame on its own, so no one of them can fall out
+    /// of the mask unnoticed: CRC, symbol, sequence, carrier extension and RX data errors.
+    #[test]
+    fn every_frame_error_bit_drops_the_frame() {
+        let good = |errors: u8| 60 | (GOOD as u64) << 32 | (errors as u64) << 40;
+        assert_eq!(rx_verdict(good(0), 1514), RxVerdict::Frame(60));
+        for bit in [0x01, 0x02, 0x04, 0x10, 0x80] {
+            assert_eq!(
+                rx_verdict(good(bit), 1514),
+                RxVerdict::Drop,
+                "error bit {bit:#04x}"
+            );
+        }
+        // Bits 3 and 6 are not frame errors (TCP/UDP and IP checksum), and checksum offload is off.
+        assert_eq!(rx_verdict(good(0x08 | 0x40), 1514), RxVerdict::Frame(60));
+    }
+
+    /// A transmit descriptor's command byte asks for all three things the ring depends on: end of
+    /// packet, the FCS appended, and a status write-back that `reclaim` waits for.
+    #[test]
+    fn the_transmit_command_is_eop_ifcs_and_rs() {
+        assert_eq!(TX_COMMAND & 0x01, 0x01, "EOP");
+        assert_eq!(TX_COMMAND & 0x02, 0x02, "IFCS");
+        assert_eq!(TX_COMMAND & 0x08, 0x08, "RS");
+        assert_eq!(TX_COMMAND, 0x0b);
+    }
+
+    /// Every buffer and descriptor index is reduced modulo its ring, and successive slots sit one
+    /// buffer or one descriptor apart inside their own range of the region, so two slots never
+    /// share memory and no index reaches past its ring.
+    #[test]
+    fn ring_slots_are_distinct_evenly_spaced_and_wrap() {
+        for i in 0..2 * RX_ENTRIES {
+            let next = (i + 1) % RX_ENTRIES;
+            assert_eq!(layout::rx_buffer(i), layout::rx_buffer(i % RX_ENTRIES));
+            assert_eq!(
+                layout::rx_descriptor(i),
+                layout::rx_descriptor(i % RX_ENTRIES)
+            );
+            assert!((layout::RX_BUFFERS..layout::TX_BUFFERS).contains(&layout::rx_buffer(i)));
+            assert!((layout::RX_RING..layout::TX_RING).contains(&layout::rx_descriptor(i)));
+            if next != 0 {
+                assert_eq!(
+                    layout::rx_buffer(next) - layout::rx_buffer(i % RX_ENTRIES),
+                    BUFFER_SIZE
+                );
+                assert_eq!(
+                    layout::rx_descriptor(next) - layout::rx_descriptor(i % RX_ENTRIES),
+                    16
+                );
+            }
+        }
+        for i in 0..2 * TX_ENTRIES {
+            let next = (i + 1) % TX_ENTRIES;
+            assert_eq!(layout::tx_buffer(i), layout::tx_buffer(i % TX_ENTRIES));
+            assert_eq!(
+                layout::tx_descriptor(i),
+                layout::tx_descriptor(i % TX_ENTRIES)
+            );
+            assert!((layout::TX_BUFFERS..layout::BYTES).contains(&layout::tx_buffer(i)));
+            assert!((layout::TX_RING..layout::RX_BUFFERS).contains(&layout::tx_descriptor(i)));
+            if next != 0 {
+                assert_eq!(
+                    layout::tx_buffer(next) - layout::tx_buffer(i % TX_ENTRIES),
+                    BUFFER_SIZE
+                );
+                assert_eq!(
+                    layout::tx_descriptor(next) - layout::tx_descriptor(i % TX_ENTRIES),
+                    16
+                );
+            }
+        }
+        assert_eq!(layout::rx_buffer(0), layout::RX_BUFFERS);
+        assert_eq!(layout::tx_buffer(0), layout::TX_BUFFERS);
+        assert_eq!(layout::rx_descriptor(0), layout::RX_RING);
+        assert_eq!(layout::tx_descriptor(0), layout::TX_RING);
+    }
+
+    /// `start` clears the whole transmit ring, so no descriptor holds the region's stale bytes
+    /// (the simulation fills it with `0xa5`), and the receive cursor names the slot `receive`
+    /// reads next.
+    #[test]
+    fn start_clears_the_transmit_ring_and_the_cursor_follows_receive() {
+        let (mut sim, mut dp) = started();
+        for i in 0..TX_ENTRIES {
+            let d = layout::tx_descriptor(i);
+            assert_eq!(
+                (sim.read_u64(d), sim.read_u64(d + 8)),
+                (0, 0),
+                "descriptor {i}"
+            );
+        }
+        assert_eq!(dp.rx_cursor(), 0);
+        let mut out = [0u8; MAX_FRAME];
+        for n in 1..=3u16 {
+            assert!(sim.deliver(&frame(1, 64), 64, GOOD, 0));
+            assert_eq!(sim.with(|s, r| dp.receive(s, r, &mut out)), Some(64));
+            assert_eq!(dp.rx_cursor(), n);
+        }
+    }
+
+    /// The handoff refuses each bad field on its own: a role word with a valid-looking MAC but the
+    /// wrong tag, and a group MAC under the right tag.
+    #[test]
+    fn the_handoff_refuses_a_wrong_tag_and_a_group_address_each_alone() {
+        let h = Handoff {
+            mac: [0x52, 0x54, 0, 0x12, 0x34, 0x56],
+            data_plane_phys: PHYS,
+        };
+        let [role, phys] = h.pack();
+        assert_eq!(Handoff::unpack(role, phys), Some(h));
+        assert_eq!(Handoff::unpack(role ^ 1, phys), None, "wrong tag");
+        let group = Handoff {
+            mac: [0x53, 0x54, 0, 0x12, 0x34, 0x56],
+            ..h
+        };
+        assert_eq!(
+            Handoff::unpack(group.pack()[0], phys),
+            None,
+            "group address"
+        );
+    }
 }
 
 #[cfg(kani)]
