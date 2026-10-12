@@ -16,8 +16,6 @@ too_many_lines	components/src/swapper.rs	direct	151
 too_many_lines	components/src/swapper.rs	handoff	136
 too_many_lines	components/src/swapper.rs	hung	113
 too_many_lines	components/src/swapper.rs	queued	125
-too_many_lines	components/src/swish/running.rs	run_image	160
-too_many_lines	components/src/swish/running.rs	spawn	109
 too_many_lines	components/src/terminal_supervisor.rs	_start	122
 too_many_lines	components/src/timetable.rs	_start	155
 too_many_lines	components/src/usb_keyboard_driver.rs	Host::bring_up	102
