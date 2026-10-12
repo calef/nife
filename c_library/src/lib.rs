@@ -27,7 +27,7 @@
 #![feature(core_intrinsics)]
 #![feature(linkage)]
 #![feature(macro_derive)]
-// relibc's read-write lock guards are `!Send` (milestone 836).
+// relibc's read-write lock guards are `!Send` (milestone 836 (a C library, stage 2: threads)).
 #![feature(negative_impls)]
 #![feature(ptr_as_uninit)]
 #![feature(slice_ptr_get)]

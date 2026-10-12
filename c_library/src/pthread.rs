@@ -204,6 +204,11 @@ fn thread_ended() {
     let _ = unsafe { crate::platform::futex::wake(LIVE.as_ptr(), u32::MAX) };
 }
 
+/// **`pthread_create`**: a `std` thread running `start_routine(arg)`, joinable or detached as
+/// `attrs` says, with the stack size it asks for.
+///
+/// # Safety
+/// `start_routine` is a C function that may be called with `arg` on another thread.
 pub(crate) unsafe fn create(
     attrs: Option<&header::RlctAttr>,
     start_routine: extern "C" fn(arg: *mut c_void) -> *mut c_void,
@@ -254,6 +259,10 @@ pub(crate) unsafe fn create(
     }
 }
 
+/// **`pthread_join`**: wait for `thread` to end, free it, and answer what it returned.
+///
+/// # Safety
+/// `thread` came from [`create`] and has been neither joined nor detached.
 pub unsafe fn join(thread: &Pthread) -> Result<Retval, Errno> {
     if current_thread().is_some_and(|me| ptr::eq(thread, me)) {
         return Err(Errno(EDEADLK));
@@ -275,6 +284,11 @@ pub unsafe fn join(thread: &Pthread) -> Result<Retval, Errno> {
     Ok(Retval(ret))
 }
 
+/// **`pthread_detach`**: `thread` frees itself when it ends, or is freed now if it has.
+///
+/// # Safety
+/// `thread` came from [`create`] or [`current_thread`] and has been neither joined nor detached;
+/// it is not used again after this returns.
 pub unsafe fn detach(thread: &Pthread) -> Result<(), Errno> {
     if !thread.created {
         // The main thread: nothing ever joins it, and its record is kept anyway.
@@ -305,6 +319,10 @@ pub unsafe fn detach(thread: &Pthread) -> Result<(), Errno> {
     Ok(())
 }
 
+/// **`pthread_testcancel`**: end the calling thread if a cancel is pending and enabled.
+///
+/// # Safety
+/// As [`exit_current_thread`]: the caller's frames hold nothing that must be dropped.
 pub unsafe fn testcancel() {
     let this = current_thread().expect("current thread not present");
     if this.has_queued_cancelation.load(Ordering::Acquire)
@@ -315,6 +333,11 @@ pub unsafe fn testcancel() {
     }
 }
 
+/// **`pthread_exit`**: run the cleanup handlers, then end the calling thread with `retval`.
+///
+/// # Safety
+/// Every frame between here and the thread's start is C or holds nothing with a destructor:
+/// `longjmp` skips them all.
 pub unsafe fn exit_current_thread(retval: Retval) -> ! {
     // `pthread_cleanup_push` handlers, newest first.
     // SAFETY: on the exiting thread.
@@ -347,6 +370,10 @@ pub unsafe fn exit_current_thread(retval: Retval) -> ! {
     unsafe { crate::header::stdlib::exit(0) }
 }
 
+/// **`pthread_cancel`**: mark `thread` cancelled, for its next `pthread_testcancel`.
+///
+/// # Safety
+/// `thread` names a live thread of this process (relibc's signature; nothing here needs more).
 pub unsafe fn cancel(thread: &Pthread) -> Result<(), Errno> {
     // Deferred only: the thread acts on it at its next `pthread_testcancel` (BUGS).
     thread.has_queued_cancelation.store(true, Ordering::Release);

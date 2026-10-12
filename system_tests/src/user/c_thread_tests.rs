@@ -8,8 +8,8 @@
 //! differs from a Linux build is on the command line (the helper says what and why).
 //!
 //! The program runs as a process (`std_threads_tests::run_as_process_with`): its threads are
-//! milestone 812's (`std::thread::spawn` runs real threads in one address space), joined to one
-//! process, so the process's end is checked to reap every one. hackbench times itself with
+//! those of milestone 812 (`std::thread::spawn` runs real threads in one address space), joined to
+//! one process, so the process's end is checked to reap every one. hackbench times itself with
 //! `gettimeofday`, so it is given a clock as `c_program_tests` gives one.
 //!
 //! **Each test skips when hackbench is not in the archive**, on `c_program_tests`' terms: fetching
