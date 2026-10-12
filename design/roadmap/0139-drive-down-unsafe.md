@@ -1033,6 +1033,7 @@ block is the integrator's to edit, and the fuzzer module's BUGS names it.
 Not a reduction. Four days of lane traffic took the density from 59.7 to 61.09 (1,103 blocks over
 180,545 lines, base `0e72ca92a`) under a ceiling of 66, so the marker went 66 to 61, the truncated
 value. That gives up round 1's headroom: `notes/unsafe-obligations/ceilings.md` says what it costs.
+calef ruled on it the same day (UTC): "Keep 61." The zero-headroom trade is decided.
 
 ## What is still open
 
