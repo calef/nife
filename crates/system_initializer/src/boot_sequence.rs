@@ -474,22 +474,31 @@ pub fn boot(
     // milestone 590's BUGS: on QEMU's user-mode network the answer is immediate, and on a network
     // with a NIC and no DHCP server the prompt would never appear. The lease is what
     // `net_stack`'s first message says, and it cannot serve a client before it has sent it.
-    let mut network: Option<(u64, u64)> = None;
+    // `(stack, lease, the lease's name server)`.
+    let mut network: Option<(u64, u64, u64)> = None;
     if is_granted(g.virtio_net) {
         if let Some(net_program) = net_elf.as_ref() {
             network = Some(build_net_stack(ut, net_program, g));
         }
-        cap_delete(g.virtio_net_irq);
-        cap_delete(g.virtio_net);
-        cap_delete(g.virtio_net_dma);
+        for trio in [g.virtio_net_irq, g.virtio_net, g.virtio_net_dma] {
+            cap_delete(trio);
+        }
     } else if is_granted(g.net_stack_ep) {
         // **Or the stack the kernel built on an `e1000e`** (milestone 198 (a package manager)),
         // [`BootEndowment::net_stack_ep`]. Nothing to build, so nothing spent; the lease is taken
         // here for the same reason [`build_net_stack`] takes it, and blocks the boot the same way.
-        let (lease, _, _) = receive(g.net_stack_report);
+        let (lease, server, _) = receive(g.net_stack_report);
         cap_delete(g.net_stack_report);
-        network = Some((g.net_stack_ep, lease));
+        network = Some((g.net_stack_ep, lease, server));
     }
+
+    // **The name resolver** (milestone 892 (a std program at the prompt holds the network and a
+    // resolver)), on the stack just built, asking the name server the lease named. Optional in the
+    // stack's own sense: no stack, no lease name server, no entropy (it asks nothing without
+    // unguessable ids), or an archive whose table refuses `name_resolver`, and the prompt's
+    // programs resolve no names, which each says when it tries. It serves nobody until the spawn
+    // service grants a job a zone.
+    let resolver = start_name_resolver((&fs, table, ut), network, entropy_client);
 
     // **The two components that have to exist before the progenitor can say anything.** The console writes
     // the UART and the line discipline is its only client, so a refusal of either has no route to a
@@ -1585,19 +1594,9 @@ pub fn boot(
             },
         );
     }
-    // **The network stack's outcome** (milestone 590 (provisional)), said here for
-    // `entropy_ready`'s
-    // reason. The address is the lease `net_stack` reported, so the line is evidence rather than
-    // an intention: DHCP completed through the confined NIC before the prompt existed.
-    if let Some((_, lease)) = network {
-        let mut line = [0u8; 80];
-        let head = b"progenitor: network stack up; DHCP leased ";
-        line[..head.len()].copy_from_slice(head);
-        let mut n = head.len();
-        n += render_ipv4(lease as u32, &mut line[n..]);
-        line[n] = b'\n';
-        announce(term_ep, &line[..n + 1]);
-    }
+    // **The network stack's outcome, and the resolver's** (milestones 590 and 892), said here for
+    // `entropy_ready`'s reason; [`announce_network`] has both sentences.
+    announce_network(term_ep, network, resolver.is_some());
     // **The generated login credential** (milestone 49's boot-wiring update), said here for
     // [`entropy_ready`]'s own reason: `login_ready` was decided long before this process had a
     // terminal. Printed exactly once, before the prompt, the shape a cloud image's generated
@@ -1720,7 +1719,9 @@ pub fn boot(
             entropy: entropy_client,
             // **The stack's client endpoint, if this boot built one** (milestone 590
             // (provisional)), `entropy`'s shape one service over.
-            network: network.map(|(stack, _)| stack),
+            network: network.map(|(stack, ..)| stack),
+            // **The resolver's unbadged endpoint, if this boot started one** (milestone 892).
+            resolver,
             // **The reboot object** (milestone 805), kept for the one program that declares it.
             reboot: is_granted(g.reboot).then_some(g.reboot),
             catalogue,

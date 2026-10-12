@@ -1,5 +1,5 @@
 ---
-status: DECIDED
+status: AMENDED
 raised: 2026-10-08
 decided: 2026-10-08
 ratified_by: calef
@@ -114,3 +114,22 @@ caveat until the reference C runs.
 - The selection is one agent's, from the eight proposals and calef's ioping lean. A benchmark the
   field weighs heavily may be missing; a new one is a proposal under `design/roadmap/proposals/`.
 - Nothing gates point 3. A run that changes the published flags is caught only by review of its row.
+
+## Amendment, 2026-10-12 (UTC): wakeup latency replaces schbench
+
+calef ruled on #2009 ([his comment](https://github.com/nifeos/nife/pull/2009#issuecomment-6130684610)), choosing to measure wakeup latency from each kernel's own
+trace: *"c, and drop schbench"*. He then ruled that this section be amended to match, on #2021:
+*"Amend"*. Both are dated 2026-10-12 (UTC).
+
+The table's row for milestone 830 now reads:
+
+| benchmark | milestone | risks | waits on |
+|---|---|---|---|
+| wakeup latency (each kernel's own scheduler trace) | 830 | 5 | a timed scheduler trace |
+
+This row is the one exception to point 2. It compares the same quantity, measured by each kernel's
+own tracer, and not one program run unmodified on both systems. schbench is Linux-only: it calls
+`syscall(SYS_futex)` and `syscall(SYS_gettid)`, which §265 (a C library started from relibc,
+whose Rust platform layer holds the capabilities) does not build. The load is still one unmodified
+program, hackbench, as milestone 830 (wakeup latency on nife and Linux, from each kernel's own
+scheduler trace) records with its instruments.

@@ -780,6 +780,55 @@ jobs:
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
 
+  # **`rg` walks in parallel, and the kernel counts its threads** (milestone 121, the third gap of
+  # calef's amber ruling on fatal risk 1; lane milestone/121-rg-threads, 2026-10-12 UTC; the job id
+  # and row names are provisional). calef: "the path to green on risk 1 requires a foreign program
+  # running a second thread." Each row builds `rg` for its legs and boots the kernel suite filtered
+  # to `ripgrep` at four cores, where `ripgrep_threads_tests` runs unmodified `rg` as a process,
+  # with no thread flag and with `--threads 4`, and fails unless its process started the main
+  # thread and one worker per thread asked for, and printed exactly the tree's 138 lines. The
+  # aarch64 row also holds the host's `rg` to the same lines. The four `ripgrep_tests`, which no
+  # other job runs with `rg` present, come along. Both rows run on arm64, x86_64 under TCG as in
+  # `test-shard`. Not yet a required check: the merge queue's ruleset is an admin act.
+  rg-threads:
+    name: rg-threads (${{ matrix.legs }})
+    runs-on: ubuntu-24.04-arm
+    needs: gate
+    if: ${{ !cancelled() && needs.gate.outputs.run != 'false' && needs.gate.outputs.prose != 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - check: rg-threads-aarch64-riscv64
+            legs: aarch64 and riscv64
+          - check: rg-threads-x86_64
+            legs: x86_64
+    # 25 minutes is the 20-minute budget plus margin (calef, 2026-10-03
+    # UTC). Any derivation above that argues for a longer bound predates it and describes a job
+    # that no longer fits; `helpers/job-budget.py` is the rule and `script/lint` holds it.
+    timeout-minutes: 25
+    steps:
+      - name: Start the job wall-time clock
+        run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # QEMU, built from source and cached, for the `swish-check` job's reasons above.
+      - name: Cache QEMU
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.cache/nife-qemu
+          key: qemu-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.qemu-version') }}
+      - name: Build QEMU if the cache missed
+        run: script/ci-qemu
+      - name: Put it on PATH
+        run: echo "$HOME/.cache/nife-qemu/bin" >> "$GITHUB_PATH"
+      - run: script/bootstrap
+        env:
+          NIFE_SKIP_LINT_TOOLS: "1"
+      - run: script/ci-build ${{ matrix.check }}
+      - name: Check the job's wall time against its budget
+        if: always()
+        run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
+
   boot-check:
     name: boot-check (the default kernels' interactive boot)
     runs-on: ubuntu-24.04-arm

@@ -1,7 +1,7 @@
 ---
 risk: 1
-color: amber
-updated: 2026-10-06
+color: green
+updated: 2026-10-12
 ---
 # Appendix to risk 1: Only software written for nife runs on nife
 

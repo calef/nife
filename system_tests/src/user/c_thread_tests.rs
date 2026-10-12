@@ -39,13 +39,40 @@ fn run_hackbench(line: &str, out: &mut [u8]) -> usize {
     clock_held.add_region(region);
     // Its startup verdict first, so the offset is published before the program reads the page.
     let _ = crate::sched::ipc_receive(clock.report);
+    // The argument page: `line` as the shell would send it, read-only at `ARGS_PAGE`.
+    let args_region = crate::memory_region::create(1).expect("no argument page region");
+    let args = crate::memory_region::retype_page(args_region).expect("no argument page");
+    {
+        // SAFETY: a frame just retyped for this page alone, direct-mapped, which nothing else
+        // holds until the program is given it read-only.
+        let page = unsafe {
+            &mut *(crate::arch::mmu::phys_to_virt(args) as *mut [u8; FRAME_SIZE as usize])
+        };
+        page.fill(0);
+        grant_plan::argv(line.as_bytes(), page).expect("the test's line is not an argv");
+    }
+    let clock_page = clock.page_phys;
     let len = super::std_threads_tests::run_as_process_with(
         image,
         "hackbench",
-        Some(line),
-        Some(clock.page_phys),
-        HEAP_PAGES,
         out,
+        &super::std_threads_tests::Setup {
+            maps: &[
+                (std_runtime_protocol::ARGS_PAGE, args, false),
+                (std_runtime_protocol::CLOCK_PAGE, clock_page, false),
+            ],
+            read_pages: &[
+                (std_runtime_protocol::ARGS_SLOT, args),
+                (std_runtime_protocol::CLOCK_SLOT, clock_page),
+            ],
+            heap_pages: HEAP_PAGES,
+            ..Default::default()
+        },
+    )
+    .len;
+    assert!(
+        super::wait_for(|| crate::sched::reclaim_region(args_region).is_ok()),
+        "hackbench's argument page did not come back"
     );
     assert!(
         clock_held.release(),

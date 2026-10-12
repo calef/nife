@@ -38,6 +38,14 @@ pub const OPERATION_RESOLVE: u64 = 2;
 /// text, little-endian. Offset 0 starts the zone afresh, so a re-grant replaces rather than
 /// appends. Starting at 0x10 so that no client opcode is ever also a control opcode.
 pub const OPERATION_GRANT: u64 = 0x10;
+/// **The spawner withdraws a badge's grant.** A plain `SEND` or a `CALL` through the unbadged
+/// capability, whose first word is a [`control_word`] naming the badge, with offset and total 0;
+/// the second word is unused. From then on the badge is denied every name, the resolver gives up
+/// the page that badge attached, and the window is free for the next grant. A spawner that outlives
+/// its clients sends one when each client ends, which is what lets a resolver serve more than
+/// [`GRANTS_MAX`] clients in its life (milestone 892 (a std program at the prompt holds the network
+/// and a resolver); provisional).
+pub const OPERATION_FORGET: u64 = 0x11;
 
 /// A client's request word.
 pub const fn request(operation: u64) -> u64 {
@@ -151,6 +159,7 @@ mod tests {
             OPERATION_ATTACH_PAGE_FRAME,
             OPERATION_RESOLVE,
             OPERATION_GRANT,
+            OPERATION_FORGET,
         ] {
             assert_eq!(operation(request(op)), op);
         }
