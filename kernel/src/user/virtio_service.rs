@@ -537,7 +537,9 @@ const STD_NET_STACK_PAGES: u64 = 32;
 /// mmio transport; the PAL sits above the transport, so proving it on one is proving it. The
 /// same binary spawned without slots 2 and 3 runs the offline transcript instead, which is what
 /// makes "no ambient network" visible: authority, not the code, decides. Returns the program's
-/// stdout endpoint for the test to reassemble, or `None` if no NIC is attached.
+/// stdout endpoint for the test to reassemble and the program's thread, so the test can tell a
+/// program that died from one that is still working (milestone 514 (the HVF std listener hangs in
+/// some full runs)), or `None` if no NIC is attached.
 ///
 /// `listen_grant` is the **inbound authority** the std program gets, and it is decided here rather
 /// than asked for (milestone 64, `socket_protocol::listen_grant`). It is the difference between a std
@@ -550,7 +552,7 @@ pub fn start_net_std(
     net_stack_image: &'static [u8],
     std_image: &'static [u8],
     listen_grant: u64,
-) -> Option<(RendezvousId, Holding)> {
+) -> Option<(RendezvousId, crate::thread::ThreadId, Holding)> {
     use crate::cap::memory_region_cap;
 
     let dev = crate::virtio::find_net_device()?;
@@ -612,7 +614,7 @@ pub fn start_net_std(
     held.add_region_after_death(heap);
     held.add_region_after_death(frames);
     held.add_region_after_death(std_stack_region);
-    Some((report, held))
+    Some((report, tid, held))
 }
 
 /// [`wire`] against the enumerated mmio disk, at `role`.

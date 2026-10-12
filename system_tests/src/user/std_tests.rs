@@ -26,6 +26,27 @@ pub(super) fn assert_std_transcript(report: crate::sched::RendezvousId, want: &[
     );
 }
 
+/// [`assert_std_transcript`] through [`drain_sink_from`]: the same comparison, and a program that
+/// dies before ending its stream fails the test at once with what it wrote, instead of hanging it.
+///
+/// Name: provisional, milestone 514's lane, 2026-10-12 (UTC). `_from` for the writer it watches,
+/// beside `drain_sink_from`; `_watching` was considered and is longer for the same claim.
+pub(super) fn assert_std_transcript_from(
+    report: crate::sched::RendezvousId,
+    writer: crate::thread::ThreadId,
+    want: &[u8],
+    what: &str,
+    echo: bool,
+) {
+    let mut got = [0u8; 768];
+    let len = drain_sink_from(report, writer, &mut got, what, echo);
+    assert_eq!(
+        &got[..len],
+        want,
+        "{what}: stdout did not match the transcript"
+    );
+}
+
 /// Reassemble a sink-contract stream into `out` until end of stream; returns its length.
 ///
 /// The one decoder for every sink in the suite, on purpose. The indifference test's whole claim
@@ -42,9 +63,11 @@ pub(super) fn assert_std_transcript(report: crate::sched::RendezvousId, want: &[
 /// and it was read as exactly that.
 ///
 /// The workaround a program can apply itself is a panic hook that prints and then calls
-/// `process::exit`, which is what `cryptography_exerciser` does. A fix here would need a
-/// non-blocking receive or a pending count by rendezvous id, neither of which the scheduler
-/// exposes today.
+/// `process::exit`, which is what `cryptography_exerciser` does. A caller that knows which thread
+/// writes the stream can use [`drain_sink_from`] instead, which ends on that thread's death and
+/// prints what it said (milestone 514 (the HVF std listener hangs in some full runs)). This one
+/// stays for the callers whose starter does not hand back the writer's thread; each is a hang
+/// waiting for its first abort.
 pub(super) fn drain_sink(ep: crate::sched::RendezvousId, out: &mut [u8], what: &str) -> usize {
     let mut len = 0usize;
     loop {
@@ -66,6 +89,126 @@ pub(super) fn drain_sink(ep: crate::sched::RendezvousId, out: &mut [u8], what: &
                 )
             }
         }
+    }
+}
+
+/// How often [`drain_sink_from`] looks to see whether its writer is still alive. A tenth of a
+/// second is "at once" next to the 60 s watchdog it replaces, and costs one timer expiry per tick
+/// while a stream is open.
+///
+/// Name: provisional, milestone 514's lane, 2026-10-12 (UTC). Named for what is checked and how
+/// often; `LIVENESS_PERIOD_MS` was considered.
+const WRITER_CHECK_MS: u64 = 100;
+
+/// **[`drain_sink`], for a caller that knows which thread writes the stream: if that thread dies
+/// before it ends the stream, fail at once and print everything it wrote** (milestone 514).
+///
+/// `drain_sink` blocks in `RECEIVE` until end of stream, so a writer that aborts leaves it parked
+/// for good, and the suite's watchdog fires a minute later and calls it a lost wakeup. That is how
+/// `a_std_program_serves_a_granted_listening_port` read for three weeks on the HVF leg: the
+/// program's panic message had been received into this buffer, and nothing ever printed it.
+///
+/// **How it notices, with nothing new in the kernel.** The calling thread binds a notification and
+/// arms a timer on it every [`WRITER_CHECK_MS`]. A bound notification ends a `RECEIVE` (§101
+/// (notification objects), the `x4 == BOUND` tag), so the receive returns either a sink message or
+/// a tick, and on a tick this asks whether the writer's thread still resolves. A name is
+/// generational, so "gone" means gone.
+/// It is a poll and not an event because an unsupervised thread's death signals nobody; making it
+/// an event would mean spawning the writer supervised, which changes who reaps it.
+///
+/// `echo` prints each line as it arrives, indented under the test's own line, so the host relay
+/// can stamp it on the inbound prober's clock (`xtask/src/inbound.rs`). The comparison is made on
+/// the bytes either way.
+///
+/// # BUGS
+///
+/// **The tick is a wake, and a wake is progress to the suite's lost-wakeup watchdog**
+/// (`testing::watchdog_tick`). So a writer that is alive but stuck, which used to trip that
+/// watchdog after 60 s, now runs to the test's own budget (90 s by default) and is reported as a
+/// livelock. The dump that follows names the stuck thread either way; the label is what changed.
+///
+/// Name: provisional, milestone 514's lane, 2026-10-12 (UTC). `drain_sink` plus the thread it
+/// drains from; `drain_sink_watching` and `drain_sink_or_death` were considered.
+pub(super) fn drain_sink_from(
+    ep: crate::sched::RendezvousId,
+    writer: crate::thread::ThreadId,
+    out: &mut [u8],
+    what: &str,
+    echo: bool,
+) -> usize {
+    use crate::arch::timer::{frequency, now};
+    let region = crate::memory_region::create(2).expect("no region for a writer watch");
+    let bell =
+        crate::sched::create_notification_from(region).expect("no notification for a writer watch");
+    let tick = crate::sched::create_timer_from(region).expect("no timer for a writer watch");
+    crate::sched::notification_bind(bell, crate::sched::current())
+        .expect("this test thread already has a notification bound to it");
+    let period = frequency() * WRITER_CHECK_MS / 1000;
+    let arm = || {
+        crate::sched::timer_arm(tick, now() + period, bell, 1)
+            .expect("could not arm the writer watch");
+    };
+    arm();
+
+    let mut len = 0usize;
+    let mut line = 0usize;
+    let ended = loop {
+        let words = crate::sched::ipc_receive(ep);
+        if words[4] == abi::notification::BOUND {
+            if !crate::sched::is_thread_present(writer) {
+                break false;
+            }
+            arm();
+            continue;
+        }
+        let mut chunk = [0u8; byte_sink_protocol::INLINE_MAX];
+        match byte_sink_protocol::unpack(words[0], words[1], words[2], &mut chunk) {
+            byte_sink_protocol::Msg::Bytes(n) => {
+                for &b in &chunk[..n] {
+                    assert!(len < out.len(), "{what}: wrote more than the buffer holds");
+                    out[len] = b;
+                    len += 1;
+                    if echo && b == b'\n' {
+                        crate::println!("    {what}| {}", printable(&out[line..len - 1]));
+                        line = len;
+                    }
+                }
+            }
+            byte_sink_protocol::Msg::Eof => break true,
+            byte_sink_protocol::Msg::Malformed => {
+                panic!(
+                    "{what}: a sink message the contract does not define: {:#x}",
+                    words[0]
+                )
+            }
+        }
+    };
+
+    // Unbinding is the region going: a bound name that no longer resolves counts as unbound, so the
+    // next test may bind this thread again.
+    let _ = crate::sched::timer_cancel(tick);
+    assert!(
+        super::wait_for(|| crate::sched::reclaim_region(region).is_ok()),
+        "{what}: the writer watch's region could not be reclaimed"
+    );
+    assert!(
+        ended,
+        "{what}: the program writing this stream (thread {writer}) died before ending it. \
+         Everything it wrote follows, and if it panicked, its panic message is the end of it:\n{}",
+        printable(&out[..len])
+    );
+    len
+}
+
+/// Bytes as text for a failure message: the valid UTF-8 prefix, which for a std program's output
+/// is all of it.
+///
+/// Name: provisional, milestone 514's lane, 2026-10-12 (UTC). `lossy` was considered and refused,
+/// since nothing is replaced.
+fn printable(bytes: &[u8]) -> &str {
+    match core::str::from_utf8(bytes) {
+        Ok(s) => s,
+        Err(e) => core::str::from_utf8(&bytes[..e.valid_up_to()]).unwrap_or(""),
     }
 }
 

@@ -954,7 +954,7 @@ fn hvf_kernel_leg(package: &str, watch_devices: bool) -> (bool, usize) {
     // `NIFE_HOSTFWD_PORT` before the child exists, and it runs on its own thread throughout. The
     // accept test is not accelerator-sensitive, but it is in the suite, so a leg without a prober
     // would fail it. Its "before the child" placement is load-bearing exactly as the referee's is.
-    let prober = watch_devices.then(|| InboundProber::new("aarch64"));
+    let mut prober = watch_devices.then(|| InboundProber::new("aarch64"));
 
     let mut cmd = Command::new(RUNNER);
     cmd.arg(&elf);
@@ -1020,6 +1020,12 @@ fn hvf_kernel_leg(package: &str, watch_devices: bool) -> (bool, usize) {
         // Stream it, because a test suite you cannot watch is a test suite you cannot debug. The
         // TCG leg inherits stdio and prints as it goes; this leg has to relay.
         println!("{line}");
+        // The listeners' own lines, onto the prober's clock (milestone 514 (the HVF std listener
+        // hangs in some full runs)). Only this leg can, because only this leg reads the transcript
+        // a line at a time as it happens.
+        if let Some(prober) = prober.as_mut() {
+            prober.mark(&line);
+        }
         selected += selected_by(&line).unwrap_or(0);
         load.sample();
         if line.starts_with("test result: ok.") {

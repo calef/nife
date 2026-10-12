@@ -3,7 +3,7 @@ use core::sync::atomic::Ordering;
 // Shared with the aarch64 module so both ISAs assert a std transcript the same way.
 use super::std_tests::{
     assert_a_kill_mid_transaction_recovers, assert_attrs, assert_fs_service_ready,
-    assert_std_transcript, std_fs_expected,
+    assert_std_transcript, assert_std_transcript_from, std_fs_expected,
 };
 use super::*;
 use crate::sched;
@@ -663,7 +663,7 @@ const STD_LISTEN_EXPECTED: &[u8] =
 /// architectures (the §19 parity gate). Its stdout is reassembled and compared byte for byte.
 #[test_case]
 fn std_net_runs_over_the_socket_contract() {
-    let Some((report, net)) = virtio_service::start_net_std(
+    let Some((report, writer, net)) = virtio_service::start_net_std(
         net_stack_image(),
         std_exerciser_image(),
         socket_protocol::NO_LISTEN_GRANT,
@@ -671,7 +671,7 @@ fn std_net_runs_over_the_socket_contract() {
         crate::testing::skip!("no virtio-net device attached");
     };
 
-    assert_std_transcript(report, STD_NET_EXPECTED, "std net");
+    assert_std_transcript_from(report, writer, STD_NET_EXPECTED, "std net", false);
     net.release_or_fail("a net test's net_stack");
 }
 
@@ -686,7 +686,7 @@ fn std_net_runs_over_the_socket_contract() {
 /// that has broken this stack's timing twice.
 #[test_case]
 fn a_std_program_serves_a_granted_listening_port() {
-    let Some((report, net)) = virtio_service::start_net_std(
+    let Some((report, writer, net)) = virtio_service::start_net_std(
         net_stack_image(),
         std_exerciser_image(),
         socket_protocol::listen_grant(NET_LISTEN_PORT, NET_LISTEN_PORT),
@@ -694,7 +694,7 @@ fn a_std_program_serves_a_granted_listening_port() {
         crate::testing::skip!("no virtio-net device attached");
     };
 
-    assert_std_transcript(report, STD_LISTEN_EXPECTED, "std listen");
+    assert_std_transcript_from(report, writer, STD_LISTEN_EXPECTED, "std listen", true);
     net.release_or_fail("a net test's net_stack");
 }
 
