@@ -26,9 +26,7 @@ use alloc::vec::Vec;
 
 use user_mode_runtime::interrupt_acknowledge;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
-use user_mode_runtime::virtio::{
-    virtio_notify, virtio_read_reg, virtio_ring_barrier, virtio_setup_queue, virtio_write_reg,
-};
+use user_mode_runtime::virtio::virtio_ring_barrier;
 
 /// The DMA page's virtual address, matching the kernel's `net_server` mapping.
 const DMA_VA: u64 = address_space_map::pair_page(0x0000_0000_0090_0000);
@@ -118,10 +116,10 @@ fn w16(off: u64, v: u16) {
 }
 
 fn mr(off: u64) -> u32 {
-    virtio_read_reg(VIRTIO, off) as u32
+    user_mode_runtime::virtio::read_register(VIRTIO, off) as u32
 }
 fn mw(off: u64, v: u32) {
-    virtio_write_reg(VIRTIO, off, v as u64);
+    user_mode_runtime::virtio::write_register(VIRTIO, off, v as u64);
 }
 
 fn write_desc(desc_base: u64, i: u64, addr: u64, len: u32, flags: u16, next: u16) {
@@ -168,8 +166,14 @@ impl VirtioNet {
         assert!(mr(STATUS) & S_FEATURES_OK != 0, "FEATURES_OK stuck off");
 
         // Set up both queues through the kernel; it programs each queue's ring addresses.
-        assert_eq!(virtio_setup_queue(VIRTIO, QSIZE as u64, RX_Q), 0);
-        assert_eq!(virtio_setup_queue(VIRTIO, QSIZE as u64, TX_Q), 0);
+        assert_eq!(
+            user_mode_runtime::virtio::setup_queue(VIRTIO, QSIZE as u64, RX_Q),
+            0
+        );
+        assert_eq!(
+            user_mode_runtime::virtio::setup_queue(VIRTIO, QSIZE as u64, TX_Q),
+            0
+        );
 
         mw(
             STATUS,
@@ -208,7 +212,7 @@ impl VirtioNet {
     }
 
     fn notify(&self, q: u64) {
-        virtio_notify(VIRTIO, q);
+        user_mode_runtime::virtio::notify(VIRTIO, q);
     }
 
     /// Quiet the device's interrupt and re-enable the line at the controller, after a `WAIT`

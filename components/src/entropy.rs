@@ -128,9 +128,7 @@
 
 use entropy_protocol as proto;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
-use user_mode_runtime::virtio::{
-    virtio_notify, virtio_read_reg, virtio_ring_barrier, virtio_setup_queue, virtio_write_reg,
-};
+use user_mode_runtime::virtio::virtio_ring_barrier;
 use user_mode_runtime::{
     exit, interrupt_acknowledge, interrupt_wait, receive_request, reply, send,
 };
@@ -247,11 +245,11 @@ fn r32(off: u64) -> u32 {
 }
 
 fn mr(off: u64) -> u32 {
-    virtio_read_reg(VIRTIO, off) as u32
+    user_mode_runtime::virtio::read_register(VIRTIO, off) as u32
 }
 
 fn mw(off: u64, v: u32) {
-    virtio_write_reg(VIRTIO, off, v as u64);
+    user_mode_runtime::virtio::write_register(VIRTIO, off, v as u64);
 }
 
 fn die(code: u64) -> ! {
@@ -299,7 +297,7 @@ impl Pool {
 
         // The kernel walks the descriptor we just published, refuses it if it leaves our region,
         // and only then rings the device.
-        if virtio_notify(VIRTIO, RNG_Q) < 0 {
+        if user_mode_runtime::virtio::notify(VIRTIO, RNG_Q) < 0 {
             return 0; // the kernel refused our own in-region descriptor: a bug here, not a dry device
         }
 
@@ -439,7 +437,7 @@ pub extern "C" fn _start(mode: u64, direct_memory_access_phys: u64, _arg2: u64) 
 
     // The kernel programs the queue's ring addresses; this service never writes a queue-address
     // register, which is the §18 seam and the reason the shadow ring can be trusted.
-    if virtio_setup_queue(VIRTIO, QSIZE as u64, RNG_Q) != 0 {
+    if user_mode_runtime::virtio::setup_queue(VIRTIO, QSIZE as u64, RNG_Q) != 0 {
         die(E_QUEUE);
     }
     mw(
