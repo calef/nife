@@ -6,7 +6,7 @@ measurement behind these numbers is in [census.md](census.md). Both are the work
 
 ## The density outside `arch/`
 
-At most 66 <!--count-at-most:unsafe-density-outside-arch--> unsafe blocks per 10,000 lines
+At most 65 <!--count-at-most:unsafe-density-outside-arch--> unsafe blocks per 10,000 lines
 outside `kernel/src/arch/`. The direction is down, because unsafe outside `arch/` is not paying
 for hardware access. It is a raw syscall, a shared page, or a hand-rolled data structure, and each
 of those has a safe wrapper somebody could write. The ceiling was first written at a threshold the
@@ -114,6 +114,12 @@ density 66.6 to 65.3, from the diff against base `3dfbf1fd4`).
 Lowered again, 72 to 66, by milestone 139 round 10 (2026-10-08 UTC), the scheduler queue ownership
 token, counted from the merged tree: 1,029 blocks over 172,506 lines, density 59.7. 66
 keeps round 1's seven points.
+
+Lowered again, 66 to 65, by milestone 891 (a mutable static becomes an atomic, a lock or a
+recorded cell) on 2026-10-12 (UTC). Lane traffic had taken the density back up to 61.1 (1,103
+blocks over 180,545 lines at base `0e72ca92a`). Moving `static mut` buffers into atomics and an
+owned firmware allocation removed 4 blocks (1,099 over 180,575, density 60.9), and the ceiling
+fell by the same one point the truncated density did, the round 1 rule, so the gain is banked.
 
 ## Thread-safety claims
 
