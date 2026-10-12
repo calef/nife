@@ -656,6 +656,11 @@ mod tests {
         );
         // No MSI-X at all (a function delivering INTx): every page.
         assert_eq!(register_window(&qemu(), 0x4000, &[]), Ok(0b1111));
+        // A withheld range is half open: one that ends where page 4 starts leaves page 4 mapped.
+        assert_eq!(
+            register_window(&qemu(), 0x5000, &[(0x3000, 0x4000)]),
+            Ok(0b1_0111)
+        );
     }
 
     /// **The refusal that makes the rule checkable**: a controller whose doorbells share a page
@@ -727,6 +732,15 @@ mod tests {
         );
         let t = Trb([5 << 24, 0, 1 << 24, 34 << 10 | 1]);
         assert_eq!(Event::decode(t), Event::PortStatus { port: 5 });
+        // A TRB above 4 GiB keeps its high half.
+        let t = Trb([0x1000, 0x2, 1 << 24, 33 << 10 | 1 << 24 | 1]);
+        assert!(matches!(
+            Event::decode(t),
+            Event::Command {
+                trb: 0x2_0000_1000,
+                ..
+            }
+        ));
     }
 
     /// The event ring's consumer flips its cycle at the wrap, so last lap's events read as stale.
@@ -736,11 +750,15 @@ mod tests {
         let fresh = Trb([0, 0, 0, 1]);
         assert!(ring.is_ready(&fresh));
         ring.advance();
+        assert_eq!(ring.index(), 1);
         assert_eq!(ring.dequeue_pointer(), 0x2010);
         ring.advance();
         assert_eq!(ring.dequeue_pointer(), 0x2000);
         assert!(!ring.is_ready(&fresh));
         assert_eq!(ring.segment_table_entry(), [0x2000, 0, 2, 0]);
+        // A ring above 4 GiB: the table entry's second dword is the base's high half.
+        let high = EventRing::new(0x3_0000_2000, 4);
+        assert_eq!(high.segment_table_entry(), [0x2000, 3, 4, 0]);
     }
 
     #[test]
