@@ -17,12 +17,14 @@ PARTIAL for it. calef, asked directly once the origin was traced: *"I don't need
 viewer."* Struck below wherever it was named; the status moves to BUILT because the milestone's own
 quoted direction, and everything a lane actually decided to build against it, is now complete.
 
-What exists: `crates/manual` (a streaming markdown renderer, the byte layout of a search index, and
-the query that reads one, all pure and host-tested in `tests/render.rs`), `components/src/doc.rs`, the
-viewer program, which the shell can spawn as `Prog::Doc`, the store the image installs, `apropos` at
-the nife prompt, and `script/apropos` over the whole repository. The renderer was written against
-`line_editor`'s contract rather than `pulldown-cmark`, which the block's own text anticipated as the
-alternative and which the crate's header records.
+What exists: `crates/documentation` (a streaming markdown renderer, the byte layout of a search
+index, and the query that reads one, all pure and host-tested in `tests/render.rs`),
+`components/src/mdr.rs`, the viewer program, which the shell can spawn as `Prog::Mdr`, the store the
+image installs, `apropos` at the nife prompt, and `script/apropos` over the whole repository. The
+renderer was written against `line_editor`'s contract rather than `pulldown-cmark`, which the
+block's own text anticipated as the alternative and which the crate's header records. Renamed
+2026-09-13 (commit `f60c541ca`): the crate was `manual` and the program `doc`, and the phase records
+below keep the names of their time.
 
 Phase 2 landed 2026-08-16. The store is built on the host from the `DOC_BUNDLES` table
 (`cargo xtask manual`), installed into the filesystem image as `doc/<bundle>/` with `doc/bundles`
@@ -31,15 +33,16 @@ whole of it is gated by `script/swish-check` on both architectures: `apropos cap
 pages, and the line after it grants `wc` exactly one of them. Search produces names, never
 capabilities, which is why it may be a builtin: a searching *program* would have to be handed the
 whole store to read every shard in it, which is more authority than the answer needs. See
-notes/manual.md.
+notes/documentation.md.
 
 What happened between phase 2 and BUILT, in order. On 2026-08-18 three defects in the record were
-fixed: a renderer bug the corpus test could not see, three `BUGS` entries in notes/manual.md that
-described a system no longer there, and an index defect where the builder and the query disagreed
-about what a word is. The same index was pointed at the repository as `script/apropos`, for the
-finding of milestone 117 (the stranger test). On 2026-08-22 the one remaining fork, where a tail stage's output goes when
-the shell cannot read it, was worked through in notes/tail-output-narrowing.md, decided as DECISIONS
-§106 (take the `terminal_sink_caretaker` narrowing) and built the same day, and ranking was made to divide by page length.
+fixed: a renderer bug the corpus test could not see, three `BUGS` entries in notes/manual.md (now
+notes/documentation.md) that described a system no longer there, and an index defect where the
+builder and the query disagreed about what a word is. The same index was pointed at the repository
+as `script/apropos`, for the finding of milestone 117 (the stranger test). On 2026-08-22 the one
+remaining fork, where a tail stage's output goes when the shell cannot read it, was worked through
+in notes/tail-output-narrowing.md, decided as DECISIONS §106 (take the `terminal_sink_caretaker`
+narrowing) and built the same day, and ranking was made to divide by page length.
 
 - [build-record.md](0040-documentation-service/build-record.md): the three 2026-08-18 fixes,
   `script/apropos`, the fork as it stood, §106's decision and build with the verifying transcript,
@@ -97,8 +100,8 @@ That split is the reuse judgment, and it is the same one milestone 32 made about
 - A doc bundle is part of a package: rendered-source markdown plus a small index shard, installed
   into a documentation store when the component is installed. This is where milestone 39's packaging
   observation pays: manifest, hash, version, and now a doc bundle.
-- ~~The viewer holds a directory capability to the doc store and nothing else.~~ It should
-  not, and does not (phase 1's finding, notes/manual.md): `doc`'s manifest is byte-identical to
+- ~~The viewer holds a directory capability to the doc store and nothing else.~~ It should not, and
+  does not (phase 1's finding, now in notes/documentation.md): `doc`'s manifest is byte-identical to
   `wc`'s, its cspace holds two endpoints, and the shell is what resolves a page name. A viewer that
   could open the page it renders could open any page. Phase 2 kept that true by making search a
   builtin rather than a program, for the same reason `ls` is one.
@@ -161,11 +164,6 @@ later. Effort: 1 lane estimated per phase, three phases, landed separately.
   returns to init's job pool when the shell reaps it. Recorded rather than fixed: nothing asked for
   a rendering `doc` invocation to be surveyable, and the alternative (giving the shell a second,
   narrower view into `deaths` itself) is a bigger change than this increment needed.
-- The present-tense "What exists" paragraph, and the rest of this page, name `crates/manual`,
-  `components/src/doc.rs`, notes/manual.md and the program `doc`. None of the three paths exists
-  in the tree on 2026-10-12: the crate is `crates/documentation`, the note is
-  notes/documentation.md, and that note says the viewer is now `mdr`. Found 2026-10-12 by
-  maintainer/prose-budget-backlog and left as written; the appendix keeps the names of its time.
 
 ## Follow-on
 
@@ -196,13 +194,13 @@ later. Effort: 1 lane estimated per phase, three phases, landed separately.
   §106's spawn-protocol narrowing: a bit telling a tail stage
   it ends at a real screen (color, the honest `isatty` replacement), and a way to grant one line of
   input without granting the keyboard (the pager). Both widen a protocol two programs agree on, so
-  both are an architect's call; `notes/manual.md`'s "where this goes next" is the only record either
-  has.
+  both are an architect's call; `notes/documentation.md`'s "where this goes next" is the only
+  record either has.
 
 ## Index row
 
-the OS explains itself, on itself. Phases 1 and 2 built: `crates/manual` (a streaming renderer and
-an index layout a reader with one 4 KiB page can binary-search), `doc` at the prompt, and `apropos` as a builtin because search is enumeration and a searching *program* would need the
+the OS explains itself, on itself. Phases 1 and 2 built: `crates/manual` (now `crates/documentation`; a streaming renderer and
+an index layout a reader with one 4 KiB page can binary-search), `doc` (now `mdr`) at the prompt, and `apropos` as a builtin because search is enumeration and a searching *program* would need the
 whole store. 2026-08-18 fixed a renderer bug the corpus test structurally could not see (a fence
 inside a block quote never closed, so one quoted transcript misrendered every line after it),
 fixed an index defect where the builder and the reader disagreed about what a word is (`apropos
