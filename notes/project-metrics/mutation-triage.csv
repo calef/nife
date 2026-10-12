@@ -643,3 +643,6 @@ abi,admitted,replace | with &,killed,"killed by the_futex_admits_only_a_private_
 abi,admitted,replace | with ^,equivalent,"PRIVATE (bit 7) and SIZE_U32 (2) are disjoint, so | and ^ give the same word; the 2026-10-12 per-crate re-run still reports it"
 activation_set,classify,replace match guard good_name(manager) with true,killed,killed by a_manager_that_is_not_a_name_makes_the_line_malformed
 activation_set,foreign_change,replace && with ||,killed,killed by a_new_digest_under_the_same_name_is_a_change
+allocation_cache,,replace / with %,killed,"killed by a_spill_and_a_refill_each_move_half_a_class (BATCH = DEPTH / 2, line 60); the same key's line 63 is killed by the_bound_is_what_a_full_cache_holds and line 52 is unviable"
+allocation_cache,,replace / with *,killed,"killed by the_last_class_is_the_largest_size (CLASSES, line 52) and a_spill_and_a_refill_each_move_half_a_class (BATCH, line 60)"
+allocation_cache,Cache::spill,replace Cache::spill with (),killed,killed by a_spill_and_a_refill_each_move_half_a_class
