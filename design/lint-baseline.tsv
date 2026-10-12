@@ -8,8 +8,6 @@
 # this file against the merge base, so a row cannot be added and a number cannot rise.
 lint	path	item	value
 too_many_lines	components/src/keyboard_driver.rs	_start	111
-too_many_lines	components/src/login.rs	_start	121
-too_many_lines	components/src/login.rs	serve_login	145
 too_many_lines	components/src/net_stack.rs	server	103
 too_many_lines	components/src/terminal_supervisor.rs	_start	122
 too_many_lines	components/src/usb_keyboard_driver.rs	Host::bring_up	102
