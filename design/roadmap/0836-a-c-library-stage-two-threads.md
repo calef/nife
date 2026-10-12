@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-10-08
+built: 2026-10-12
 milestone_dependencies: 835, 812
 decision_dependencies: 265
 machine_requirements: none
@@ -38,10 +39,12 @@ futex (`notes/futex.md`). It has no timeout yet, which a timed wait such as
 
 hackbench's thread mode and schbench build unmodified and run on all three architectures.
 
-## What is built (2026-10-12, lane `milestone/836-a-c-library-stage-two-threads`)
+Amended 2026-10-12 (UTC) by calef's ruling on #2009, "c, and drop schbench": the C library does not
+build `syscall()`, §265 (a C library started from relibc) stands as written, and schbench is
+dropped. Milestone 830 (schbench on nife and Linux, wakeup-latency tails) measures its tails by
+tracing instead. hackbench is this block's one program.
 
-PARTIAL: hackbench is done on all three architectures, and schbench is not, because it needs a
-ruling first (below).
+## What is built (2026-10-12, lane `milestone/836-a-c-library-stage-two-threads`)
 
 hackbench (rt-tests 2.11, `helpers/build-hackbench.sh`) runs unmodified in its thread mode on
 aarch64, riscv64 and x86_64 under QEMU (`system_tests/src/user/c_thread_tests.rs`, two tests,
@@ -87,32 +90,14 @@ Each is reversible:
 - hackbench's build passes `-Wno-incompatible-pointer-types`. glibc's socket calls take a
   transparent union under `_GNU_SOURCE`, and relibc's take `struct sockaddr *`.
 
-## What schbench needs, and why it is not here
-
-Checked 2026-10-12 against schbench at `6300b8f3a892` (git.kernel.org, mason/schbench):
-
-1. `syscall(SYS_futex, ...)` for its wakeups and `syscall(SYS_gettid)`, with
-   `<linux/futex.h>` and `<sys/syscall.h>`. §265 (a C library started from relibc) says
-   `syscall()` is not built for nife. Whether the platform layer may answer a fixed set of Linux
-   numbers in Rust is calef's question, asked on this milestone's pull request.
-2. `getaddrinfo` from `<netdb.h>`, called only to label its JSON output but needed to link. That
-   is stage 3's, milestone 837 (a C library, stage 3: sockets).
-3. `sched_getcpu`, `pthread_setaffinity_np`, the `CPU_SET` macros and `<sys/sysinfo.h>`.
-   `/proc/stat` is read only by its `-A` mode.
-
 ## BUGS
 
-- schbench does not build (above).
 - The rest of this stage's limits are in `c_library/README.md`'s `BUGS`: C thread-locals do not
   link, 16 threads a process, stacks from the heap, deferred cancellation only at
   `pthread_testcancel`, and pipes that cannot leave the process.
 
 ## Follow-on
 
-- **Outstanding.** schbench building unmodified and running on all three architectures, this
-  block's other `Done when` program. Checked 2026-10-12: it waits on calef's ruling on `syscall()`
-  (asked on this milestone's pull request), on `getaddrinfo` from milestone 837 (a C library,
-  stage 3: sockets), and on the scheduling calls listed above.
 - **Proposed.** `design/roadmap/proposals/c-thread-locals-on-the-thread-pointer.md`: C's own
   `__thread`, which fio (milestone 833 (the same storage benchmark on nife and Linux, by porting
   real fio)) uses.

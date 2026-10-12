@@ -209,8 +209,8 @@ Stage 2 (milestone 836) added these, also reversible:
 - **Pipes and socket pairs cannot leave the process**, a write with no reader answers `EPIPE`
   without `SIGPIPE`, and `poll` is woken by any pipe's change, not only the ones it watches
   (`src/platform/stream.rs`).
-- **No `syscall()`.** §265 leaves it unbuilt, and schbench calls it for `SYS_futex` and
-  `SYS_gettid`, so schbench does not build. The question is on milestone 836's pull request.
+- **No `syscall()`**, by §265 and calef's ruling on #2009 (2026-10-12 UTC), so a program that
+  calls the kernel by Linux number, as schbench does, does not build.
 - **No wall clock without a clock grant.** `time`, `gettimeofday` and `clock_gettime(CLOCK_REALTIME)`
   call `SystemTime::now()`, which stops a process holding no clock with a message naming the
   missing grant, as `std` does, rather than answer 1970. A C program that never asks is unaffected.
