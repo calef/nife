@@ -4,7 +4,7 @@
 # Consumed by helpers/merge-drain.sh's unblocked_drafts, spliced the same way
 # helpers/queue-eligible.jq is: jq -c "$(cat helpers/blocked-by-resolution.jq)"'resolution'. The
 # split keeps the decision testable without a `gh` call: helpers/blocked-by-resolution-selftest.sh
-# checks it against fixtures without touching GitHub, and script/lint runs it.
+# checks it against fixtures without touching GitHub, and script/lint-fleet runs it.
 #
 # Input: {"has_label": bool, "blockers": [{"number": N, "state": "MERGED"|"CLOSED"|"OPEN"}, ...]}
 #
