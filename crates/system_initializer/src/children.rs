@@ -213,8 +213,9 @@ const RECLAIM_ATTEMPTS: usize = 64;
 /// `supervision_protocol` returns is for the dropped-authority proof, which this crate takes from the
 /// raw `invoke` instead, so it is dropped here.
 /// **Build `net_stack` from the NIC trio and wait for its DHCP lease** (milestone 590
-/// (provisional)). Returns `(stack, lease)`: the full-rights endpoint its clients `CALL`, which
-/// this process keeps, and the IPv4 address `net_stack` reported, big-endian in the low 32 bits.
+/// (provisional)). Returns `(stack, lease, name server)`: the full-rights endpoint its clients
+/// `CALL`, which this process keeps, the IPv4 address `net_stack` reported, big-endian in the low
+/// 32 bits, and the lease's name server in `socket_protocol::lease`'s encoding.
 ///
 /// The endowment is `kernel::user::virtio_service::wire_net_server`'s, slot for slot, because that
 /// is the one every network test proves: report `WRITE` (0), interrupt `READ` (1), transport
@@ -225,7 +226,7 @@ const RECLAIM_ATTEMPTS: usize = 64;
 /// Failures trap, as the entropy build's do: every step here is a retype or a build out of this
 /// process's own budget, and one failing means the boot's arithmetic is wrong, which is a defect to
 /// see rather than a feature to go without.
-pub(super) fn build_net_stack(ut: u64, program: &elf::Elf, g: &BootEndowment) -> (u64, u64) {
+pub(super) fn build_net_stack(ut: u64, program: &elf::Elf, g: &BootEndowment) -> (u64, u64, u64) {
     // SAFETY: `invoke` traps to the kernel, which validates the capability and the method.
     let mapped = unsafe {
         invoke(
@@ -292,9 +293,76 @@ pub(super) fn build_net_stack(ut: u64, program: &elf::Elf, g: &BootEndowment) ->
     cap_delete(budget);
     // `net_stack`'s first and only message on this endpoint: the lease, sent with a blocking
     // `send`, so it enters its serve loop only once this receive has taken it.
-    let (lease, _, _) = receive(report);
+    let (lease, name_server, _) = receive(report);
     cap_delete(report);
-    (stack, lease)
+    (stack, lease, name_server)
+}
+
+/// **Measure `name_resolver` and build it**, or `None` when the table does not vouch for it. Never
+/// inlined, so the measured image stays out of [`boot`](crate::boot)'s frame, which the spawn
+/// service runs inside for the life of the boot ([`graphical_terminal_grants`]' reason).
+#[inline(never)]
+pub(super) fn start_name_resolver(
+    fs: &nifefs::Fs<'static>,
+    table: &str,
+    ut: u64,
+    (stack, entropy): (u64, u64),
+    server: [u8; 4],
+) -> Option<u64> {
+    let program = measured(fs, table, "name_resolver").elf?;
+    Some(build_name_resolver(ut, &program, stack, entropy, server))
+}
+
+/// **Build `name_resolver` on the booted system's stack** (milestone 892 (a std program at the
+/// prompt holds the network and a resolver)), told to ask `server`, the name server the DHCP
+/// lease named, on port 53 over UDP (and over TCP when a reply is truncated). Returns its unbadged
+/// endpoint, which this process keeps for the life of the boot: it mints each resolving job's
+/// badged copy from it, and sends the grant and the forget through it.
+///
+/// The endowment is the kernel harness's (`name_resolver_tests::start_resolver`), slot for slot:
+/// its endpoint `READ` (0), the stack `WRITE` (1), a budget (2), the entropy service `WRITE` (3),
+/// and its own address space `WRITE` (4) for a forget's `UNMAP`. What differs is the server: the
+/// harness names the runners' peer, and this names whatever the lease said.
+///
+/// Failures trap, [`build_net_stack`]'s reason.
+pub(super) fn build_name_resolver(
+    ut: u64,
+    program: &elf::Elf,
+    stack: u64,
+    entropy: u64,
+    server: [u8; 4],
+) -> u64 {
+    use name_resolution_protocol::endowment;
+    let service = must(retype_obj(ut, abi::objtype::RENDEZVOUS));
+    let budget = must(memory_region_split(ut, RESOLVER_BUDGET_PAGES));
+    let child = must(build_child(
+        ut,
+        ut,
+        program,
+        &ChildEndowment {
+            placed: &[
+                (0, service, abi::rights::READ),
+                (1, stack, abi::rights::WRITE),
+                (2, budget, abi::rights::WRITE),
+                (3, entropy, abi::rights::WRITE),
+                (
+                    endowment::OWN_SPACE_SLOT,
+                    supervision_protocol::CHILDS_OWN_SPACE,
+                    abi::rights::WRITE,
+                ),
+            ],
+            stack_pages: RESOLVER_STACK_PAGES,
+            ..ChildEndowment::new(Retention::Nothing)
+        },
+    ));
+    must_ok(start_child(
+        child,
+        endowment::server(server),
+        endowment::port_and_transport(53, endowment::TRANSPORT_UDP),
+        0,
+    ));
+    cap_delete(budget);
+    service
 }
 
 /// **What a `graphical_terminal` session is made of, measured, and whether this boot can launch one**:

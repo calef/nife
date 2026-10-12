@@ -24,6 +24,24 @@ impl Prog {
         }
     }
 
+    /// **The zone this program may resolve names in, when its manifest is narrowed to hold the
+    /// network** (milestone 892 (a std program at the prompt holds the network and a resolver)):
+    /// dotted text, empty for the root zone, which is every name. `None` for every program that
+    /// resolves nothing, which is every program but one.
+    ///
+    /// On this table rather than in [`Manifest`], so installed bytes can never carry one: an image
+    /// has no `Prog`, and its note has no field to ask with. Whether a zone is a manifest's word or
+    /// the owner's is milestone 892's open fork for every other program.
+    ///
+    /// `jig` holds the root zone, calef's ruling Q5 on #1884 (2026-10-10 UTC): it reaches whatever
+    /// host an owner's repository or a listed location names.
+    pub const fn resolver_zone(self) -> Option<&'static str> {
+        match self {
+            Prog::Jig => Some(""),
+            _ => None,
+        }
+    }
+
     /// The program's declared endowment: what the shell must (and must not) grant it.
     pub const fn manifest(self) -> Manifest {
         match self {

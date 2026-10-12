@@ -144,6 +144,13 @@ pub(super) struct SpawnEndpoint {
     /// The label the next job's supervision capability carries (DECISIONS §148 (resolves by asking
     /// the kernel)). Never `0`, which is "unlabeled".
     next_label: u64,
+    /// **The name resolver's unbadged endpoint** (milestone 892 (a std program at the prompt holds
+    /// the network and a resolver)), or `None` on a boot that started none.
+    pub(super) resolver: Option<u64>,
+    /// The label of the job each resolver badge is granted to: badge `i + 1` for entry `i`, so a
+    /// badge names its entry and no two live jobs share one. Forgotten at the job's reap, which is
+    /// when nothing holds the badge any more.
+    resolving: [Option<u64>; name_resolution_protocol::GRANTS_MAX],
 }
 
 /// How many first messages [`SpawnEndpoint`] keeps from senders it is not serving.
@@ -165,7 +172,46 @@ impl SpawnEndpoint {
             abandoned: false,
             replies: [None; INSTALLER_HOLDERS],
             next_label: 1,
+            resolver: None,
+            resolving: [None; name_resolution_protocol::GRANTS_MAX],
         }
+    }
+
+    /// **Grant job `label` a resolver badge for `zone`** (milestone 892), and return a fresh badged
+    /// copy of the resolver's endpoint for the caller to place and delete. `None` with no resolver,
+    /// with every badge held by a live job, or if the kernel refused the copy (and then the grant is
+    /// forgotten at once).
+    pub(super) fn grant_resolver(&mut self, label: u64, zone: &str) -> Option<u64> {
+        let ep = self.resolver?;
+        let entry = self.resolving.iter().position(Option::is_none)?;
+        let badge = entry as u32 + 1;
+        for (w0, w1) in name_resolution_protocol::grant_messages(badge, zone.as_bytes())? {
+            send(ep, w0, w1, 0);
+        }
+        self.resolving[entry] = Some(label);
+        match badged(ep, badge as u64) {
+            Ok(copy) => Some(copy),
+            Err(()) => {
+                self.forget_resolver(label);
+                None
+            }
+        }
+    }
+
+    /// **Withdraw job `label`'s resolver grant**, if it has one: the resolver denies its badge from
+    /// now on and gives up the page it attached. At the job's reap, or at once for a job that never
+    /// started.
+    pub(super) fn forget_resolver(&mut self, label: u64) {
+        let (Some(ep), Some(entry)) = (
+            self.resolver,
+            self.resolving.iter().position(|l| *l == Some(label)),
+        ) else {
+            return;
+        };
+        if let Some((w0, w1)) = name_resolution_protocol::forget_message(entry as u32 + 1) {
+            send(ep, w0, w1, 0);
+        }
+        self.resolving[entry] = None;
     }
 
     /// Keep a first message from a sender not being served; `false` if there is no room.
@@ -223,6 +269,7 @@ impl SpawnEndpoint {
     fn reaped(&mut self, label: u64) {
         self.windows.reaped(label);
         self.due.reaped(label);
+        self.forget_resolver(label);
         for r in &mut self.replies {
             if let Some((l, ep, _)) = *r
                 && l == label

@@ -507,6 +507,23 @@ fn write_preview_rows(
             b"                              a program without this row reaches no network at all\n",
         );
     }
+    // **The name resolver, beside the network** (milestone 892 (a std program at the prompt holds
+    // the network and a resolver)): the zone is the table's (`Prog::resolver_zone`), so a person
+    // reads which names the program may look up before it runs, where on Unix every process may
+    // read `/etc/resolv.conf` and ask about anything.
+    if let (true, true, Some(zone)) = (m.network, std, e.prog.resolver_zone()) {
+        slot(std_runtime_protocol::RESOLVER_SLOT, out);
+        out(b"endpoint  resolver  WRITE. it may look up the addresses of ");
+        if zone.is_empty() {
+            out(b"any name\n");
+        } else {
+            out(b"names in ");
+            out(zone.as_bytes());
+            out(b"\n");
+        }
+        out(b"                              and nothing else: a name outside that is refused unasked.\n");
+        out(b"                              held only on a boot whose lease named a name server\n");
+    }
     // **The row this milestone exists to print.** On Linux there is nothing here to say: `ps` reads
     // /proc and the answer is "every process on the machine", which no command line chose and no
     // tool can narrow. Here the scope is a capability, so it is a line a person can read before

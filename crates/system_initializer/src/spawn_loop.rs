@@ -110,6 +110,11 @@ pub(super) struct Channels {
     /// so. The shell holds none, for `entropy`'s reason: nothing it does as a builtin reaches the
     /// network.
     pub(super) network: Option<u64>,
+    /// **The name resolver's unbadged endpoint** (milestone 892 (a std program at the prompt holds
+    /// the network and a resolver)), or `None` on a boot that started none. Never received on: the
+    /// spawn service mints each resolving job a badged copy and sends the grant and, at the job's
+    /// reap, the forget through it ([`SpawnEndpoint::grant_resolver`]).
+    pub(super) resolver: Option<u64>,
     /// **The reboot object** (milestone 805, DECISIONS §251), endowed `WRITE` to a child whose
     /// manifest declares [`grant_plan::Manifest::reboot`], and to nothing else. `None` only on a
     /// kernel that did not grant it, and then a declaring child holds an empty
@@ -194,6 +199,7 @@ pub(super) fn spawn_service(
         fs,
         entropy,
         network,
+        resolver,
         reboot,
         catalogue,
         run_unvouched,
@@ -204,6 +210,7 @@ pub(super) fn spawn_service(
     let mut fs_mapped = false;
     // The spawn endpoint, its reaped messages, and the windows they free (milestone 685).
     let mut spawn = SpawnEndpoint::new(spawn_ep);
+    spawn.resolver = resolver;
     loop {
         let (w0, w1, w2, badge) = spawn.request();
         // **A request on an installer endpoint** (milestone 809 (the package client becomes a
@@ -728,6 +735,29 @@ pub(super) fn spawn_service(
                 _ => (None, None),
             };
             let installer_failed = wants_installer && installer.is_none();
+            // **A resolver badge for the zone the table names** (milestone 892 (a std program at
+            // the prompt holds the network and a resolver)): only for a `std` job that holds the
+            // network on this line, on a boot that started a resolver, and under
+            // `job_undertaker`, whose reap is what forgets the grant (a screen-narrowed job is
+            // reaped by the shell, so it resolves nothing; see the module's BUGS). Granted before
+            // the child exists, since the resolver deletes a page attached to a badge it does not
+            // know yet. A job that should hold one and could not (every badge held by a live job,
+            // after the reaps that are due) is refused, `dir_failed`'s rule.
+            let wants_resolver = std_layout
+                && wants_network
+                && network.is_some()
+                && screen.is_none()
+                && spawn.resolver.is_some()
+                && prog.and_then(Prog::resolver_zone).is_some();
+            let resolver_copy = match prog.and_then(Prog::resolver_zone) {
+                // A badge every live job holds may be one a finished job's due reap frees, as a
+                // window may.
+                Some(zone) if wants_resolver => {
+                    spawn.until_reaped(|s| s.grant_resolver(label, zone))
+                }
+                _ => None,
+            };
+            let resolver_failed = wants_resolver && resolver_copy.is_none();
             let catalog_failed = wants_catalog && catalog_page.is_none();
 
             // **Slot 0 is the output**, and milestone 50 is the whole of what changed here: it is
@@ -965,6 +995,7 @@ pub(super) fn spawn_service(
                         network: network.filter(|_| wants_network),
                         installer,
                         catalog: catalog_page,
+                        resolver: resolver_copy,
                     },
                 )),
                 _ => None,
@@ -988,6 +1019,7 @@ pub(super) fn spawn_service(
                         && !args_failed
                         && !installer_failed
                         && !catalog_failed
+                        && !resolver_failed
                         && fault.is_some()
                 }),
                 region,
@@ -1086,6 +1118,11 @@ pub(super) fn spawn_service(
             if let Some(page) = catalog_page {
                 cap_delete(page);
             }
+            // A job that never started is never reaped, so its resolver grant is forgotten now; our
+            // badged copy goes with the other endpoints below.
+            if resolver_copy.is_some() && !ok {
+                spawn.forget_resolver(label);
+            }
             // **The window and the wait, by whether a job came to hold them** (milestone 685). A
             // window whose job never started is free now, not at a reap that will never come. A
             // job whose whole answer goes to the shell's result endpoint, under `job_undertaker`,
@@ -1100,7 +1137,7 @@ pub(super) fn spawn_service(
             // The narrowed endpoint was only ever the means of wiring: the child holds its own copy
             // and the caretaker holds the other end. Dropped whether or not the build worked, so a
             // failed spawn does not cost this capability table a slot for the rest of the boot.
-            for endpoint in [narrowed, sync_ep].into_iter().flatten() {
+            for endpoint in [narrowed, sync_ep, resolver_copy].into_iter().flatten() {
                 cap_delete(endpoint);
             }
             // The window's page and badged endpoint were only the means too: the caretaker and the
