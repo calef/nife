@@ -158,9 +158,9 @@ impl Error {
 /// # Examples
 ///
 /// ```
-/// let doc = schedule_store::parse_manifest("# who has pending work\nchris\ncorinne\n")
+/// let doc = schedule_store::parse_manifest("# who has pending work\nalice\nbob\n")
 ///     .expect("that document is well formed");
-/// assert_eq!(doc.entries(), &[b"chris".as_slice(), b"corinne".as_slice()]);
+/// assert_eq!(doc.entries(), &[b"alice".as_slice(), b"bob".as_slice()]);
 ///
 /// // Comments and blank lines are ignored, and an empty manifest is not an error: nobody has
 /// // registered a schedule yet, which is a fact about the fleet, not a malformed document.
@@ -213,15 +213,15 @@ fn strip_comment(line: &str) -> &str {
 ///
 /// ```
 /// let mut buf = [0u8; 64];
-/// let n = schedule_store::render_manifest(&[b"chris", b"corinne"], &mut buf)
+/// let n = schedule_store::render_manifest(&[b"alice", b"bob"], &mut buf)
 ///     .expect("two short names fit");
-/// assert_eq!(&buf[..n], b"chris\ncorinne\n");
+/// assert_eq!(&buf[..n], b"alice\nbob\n");
 ///
 /// // Parsing what this just rendered gives back exactly what went in: the round trip the write
 /// // path and the read path both depend on.
 /// let doc = core::str::from_utf8(&buf[..n]).unwrap();
 /// let parsed = schedule_store::parse_manifest(doc).unwrap();
-/// assert_eq!(parsed.entries(), &[b"chris".as_slice(), b"corinne".as_slice()]);
+/// assert_eq!(parsed.entries(), &[b"alice".as_slice(), b"bob".as_slice()]);
 /// ```
 pub fn render_manifest(names: &[&[u8]], buf: &mut [u8]) -> Option<usize> {
     if names.len() > MAX_IDENTITIES {
@@ -267,8 +267,8 @@ mod tests {
 
     #[test]
     fn a_well_formed_manifest_lists_its_identities_in_order() {
-        let doc = parse_manifest("# heading\nchris\n\ncorinne\n# trailing comment\n").unwrap();
-        assert_eq!(doc.entries(), &[b"chris".as_slice(), b"corinne".as_slice()]);
+        let doc = parse_manifest("# heading\nalice\n\nbob\n# trailing comment\n").unwrap();
+        assert_eq!(doc.entries(), &[b"alice".as_slice(), b"bob".as_slice()]);
     }
 
     #[test]
@@ -286,7 +286,7 @@ mod tests {
 
     #[test]
     fn more_identities_than_the_table_holds_is_refused_rather_than_dropped() {
-        let doc = heapless_repeat("chris\n", MAX_IDENTITIES + 1);
+        let doc = heapless_repeat("alice\n", MAX_IDENTITIES + 1);
         assert_eq!(
             parse_manifest(&doc),
             Err(Error::TooManyIdentities(MAX_IDENTITIES + 1))
@@ -296,14 +296,14 @@ mod tests {
     #[test]
     fn render_then_parse_round_trips() {
         let mut buf = [0u8; 256];
-        let n = render_manifest(&[b"chris", b"corinne", b"durable_demo"], &mut buf).unwrap();
+        let n = render_manifest(&[b"alice", b"bob", b"durable_demo"], &mut buf).unwrap();
         let text = core::str::from_utf8(&buf[..n]).unwrap();
         let doc = parse_manifest(text).unwrap();
         assert_eq!(
             doc.entries(),
             &[
-                b"chris".as_slice(),
-                b"corinne".as_slice(),
+                b"alice".as_slice(),
+                b"bob".as_slice(),
                 b"durable_demo".as_slice()
             ]
         );
@@ -322,7 +322,7 @@ mod tests {
 
         // A buffer too small for what would otherwise fit.
         let mut tiny = [0u8; 3];
-        assert_eq!(render_manifest(&[b"chris"], &mut tiny), None);
+        assert_eq!(render_manifest(&[b"alice"], &mut tiny), None);
 
         // An empty name.
         assert_eq!(render_manifest(&[b""], &mut buf), None);
@@ -351,12 +351,12 @@ mod tests {
         );
 
         // Exactly MAX_IDENTITIES of them, through both halves.
-        let full = heapless_repeat("chris\n", MAX_IDENTITIES);
+        let full = heapless_repeat("alice\n", MAX_IDENTITIES);
         assert_eq!(
             parse_manifest(&full).unwrap().entries().len(),
             MAX_IDENTITIES
         );
-        let names: [&[u8]; MAX_IDENTITIES] = [b"chris".as_slice(); MAX_IDENTITIES];
+        let names: [&[u8]; MAX_IDENTITIES] = [b"alice".as_slice(); MAX_IDENTITIES];
         assert!(
             render_manifest(&names, &mut buf).is_some(),
             "a manifest holding exactly its capacity is renderable"
@@ -374,15 +374,15 @@ mod tests {
     /// returns `None` rather than that it returns anything at all.
     #[test]
     fn the_buffer_bound_counts_the_newline_it_has_not_written_yet() {
-        let names: [&[u8]; 2] = [b"chris", b"corinne"];
-        let exact = b"chris\ncorinne\n".len();
+        let names: [&[u8]; 2] = [b"alice", b"bob"];
+        let exact = b"alice\nbob\n".len();
 
-        let mut just_enough = [0u8; 14];
+        let mut just_enough = [0u8; 10];
         assert_eq!(just_enough.len(), exact);
         assert_eq!(render_manifest(&names, &mut just_enough), Some(exact));
-        assert_eq!(&just_enough[..], b"chris\ncorinne\n");
+        assert_eq!(&just_enough[..], b"alice\nbob\n");
 
-        let mut one_short = [0u8; 13];
+        let mut one_short = [0u8; 9];
         assert_eq!(
             render_manifest(&names, &mut one_short),
             None,
@@ -396,12 +396,12 @@ mod tests {
     /// at the wrong line is the failure the 1-based convention exists to prevent.
     #[test]
     fn each_error_carries_the_line_it_is_about() {
-        let mut doc = String::from("# heading\nchris\n");
+        let mut doc = String::from("# heading\nalice\n");
         doc.push_str(&repeat_byte_string(b'a', MAX_IDENTITY_LEN + 1));
         doc.push('\n');
         assert_eq!(parse_manifest(&doc).unwrap_err().line(), 3);
 
-        let crowded = heapless_repeat("chris\n", MAX_IDENTITIES + 1);
+        let crowded = heapless_repeat("alice\n", MAX_IDENTITIES + 1);
         assert_eq!(
             parse_manifest(&crowded).unwrap_err().line(),
             MAX_IDENTITIES + 1

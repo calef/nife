@@ -25,7 +25,7 @@
 //!
 //! // Each salt is per-identity and unpredictable. Nothing in this crate invents one, because a salt
 //! // a caller chose is a salt an attacker may have chosen too.
-//! store.put(b"corinne", b"battery staple", [1u8; SALT_LEN], &mut scratch).unwrap();
+//! store.put(b"bob", b"battery staple", [1u8; SALT_LEN], &mut scratch).unwrap();
 //! store.put(b"calef", b"correct horse", [2u8; SALT_LEN], &mut scratch).unwrap();
 //! assert_eq!(store.len(), 2);
 //!
@@ -35,7 +35,7 @@
 //! // would make this an identity oracle: ask about a thousand names and learn which three exist.
 //! // The store also spends the same work on both, so the timing does not distinguish them either.
 //! assert_eq!(store.verify(b"calef", b"hunter2", &mut scratch).unwrap(), Verdict::Mismatch);
-//! assert_eq!(store.verify(b"graeme", b"anything", &mut scratch).unwrap(), Verdict::Mismatch);
+//! assert_eq!(store.verify(b"carol", b"anything", &mut scratch).unwrap(), Verdict::Mismatch);
 //! ```
 //!
 //! There is no read path, and that is a property of the API rather than of anyone's discipline: a
@@ -761,9 +761,9 @@ mod tests {
         let cost = cheap();
         let mut mem = scratch(cost);
         let mut s = Store::<3>::new(cost, [7u8; SALT_LEN], [9u8; TAG_LEN]);
-        s.put(b"chris", b"correct horse", [1u8; SALT_LEN], &mut mem)
+        s.put(b"alice", b"correct horse", [1u8; SALT_LEN], &mut mem)
             .unwrap();
-        s.put(b"corinne", b"battery staple", [2u8; SALT_LEN], &mut mem)
+        s.put(b"bob", b"battery staple", [2u8; SALT_LEN], &mut mem)
             .unwrap();
         (s, mem)
     }
@@ -772,26 +772,26 @@ mod tests {
     fn the_right_secret_matches_and_nothing_else_does() {
         let (s, mut mem) = store3();
         assert_eq!(
-            s.verify(b"chris", b"correct horse", &mut mem).unwrap(),
+            s.verify(b"alice", b"correct horse", &mut mem).unwrap(),
             Verdict::Match,
         );
         assert_eq!(
-            s.verify(b"corinne", b"battery staple", &mut mem).unwrap(),
+            s.verify(b"bob", b"battery staple", &mut mem).unwrap(),
             Verdict::Match,
         );
         // Wrong secret for a real identity.
         assert_eq!(
-            s.verify(b"chris", b"battery staple", &mut mem).unwrap(),
+            s.verify(b"alice", b"battery staple", &mut mem).unwrap(),
             Verdict::Mismatch,
         );
         // Right secret, wrong identity: the pairing is what is checked, not the secret alone.
         assert_eq!(
-            s.verify(b"corinne", b"correct horse", &mut mem).unwrap(),
+            s.verify(b"bob", b"correct horse", &mut mem).unwrap(),
             Verdict::Mismatch,
         );
         // An identity nobody provisioned.
         assert_eq!(
-            s.verify(b"graeme", b"correct horse", &mut mem).unwrap(),
+            s.verify(b"carol", b"correct horse", &mut mem).unwrap(),
             Verdict::Mismatch,
         );
     }
@@ -804,12 +804,12 @@ mod tests {
         let (s, mut mem) = store3();
         for secret in [&b"correct hors"[..], b"correct horsee", b"correct horsf"] {
             assert_eq!(
-                s.verify(b"chris", secret, &mut mem).unwrap(),
+                s.verify(b"alice", secret, &mut mem).unwrap(),
                 Verdict::Mismatch,
                 "secret {secret:?}",
             );
         }
-        for id in [&b"chri"[..], b"chriss", b"chrix"] {
+        for id in [&b"alic"[..], b"alices", b"alicx"] {
             assert_eq!(
                 s.verify(id, b"correct horse", &mut mem).unwrap(),
                 Verdict::Mismatch,
@@ -842,7 +842,7 @@ mod tests {
         assert_eq!(miss.tag, [9u8; TAG_LEN]);
         assert_eq!(miss.cost, s.cost());
 
-        let hit = s.select(b"corinne");
+        let hit = s.select(b"bob");
         assert!(bool::from(hit.found));
         assert_eq!(hit.salt, [2u8; SALT_LEN]);
         assert_eq!(hit.cost, s.cost());
@@ -894,14 +894,14 @@ mod tests {
             s.verify(&[b'x'; MAX_IDENTITY + 1], b"x", &mut mem),
             Err(Error::Identity),
         );
-        assert_eq!(s.verify(b"chris", b"", &mut mem), Err(Error::Secret));
+        assert_eq!(s.verify(b"alice", b"", &mut mem), Err(Error::Secret));
         assert_eq!(
-            s.verify(b"chris", &[b'x'; MAX_SECRET + 1], &mut mem),
+            s.verify(b"alice", &[b'x'; MAX_SECRET + 1], &mut mem),
             Err(Error::Secret),
         );
         let mut tiny = vec![Block::default(); 1];
         assert_eq!(
-            s.verify(b"chris", b"correct horse", &mut tiny),
+            s.verify(b"alice", b"correct horse", &mut tiny),
             Err(Error::Scratch),
             "a scratch buffer too small must be an error, never a mismatch a caller might retry",
         );
@@ -968,9 +968,9 @@ mod tests {
     fn a_record_round_trips_through_its_encoding() {
         let cost = cheap();
         let mut mem = scratch(cost);
-        let r = Record::derive(b"chris", b"secret", [5u8; SALT_LEN], cost, &mut mem).unwrap();
+        let r = Record::derive(b"alice", b"secret", [5u8; SALT_LEN], cost, &mut mem).unwrap();
         let back = Record::decode(&r.encode()).unwrap();
-        assert_eq!(back.identity(), b"chris");
+        assert_eq!(back.identity(), b"alice");
         assert_eq!(back.salt, r.salt);
         assert_eq!(back.tag, r.tag);
         assert_eq!(back.cost, cost);
@@ -982,17 +982,17 @@ mod tests {
     fn a_decoded_record_still_answers_the_same_way() {
         let cost = cheap();
         let mut mem = scratch(cost);
-        let r = Record::derive(b"chris", b"secret", [5u8; SALT_LEN], cost, &mut mem).unwrap();
+        let r = Record::derive(b"alice", b"secret", [5u8; SALT_LEN], cost, &mut mem).unwrap();
         let back = Record::decode(&r.encode()).unwrap();
         let mut s = Store::<1>::new(cost, [0u8; SALT_LEN], [0u8; TAG_LEN]);
         s.records[0] = back;
         s.used = 1;
         assert_eq!(
-            s.verify(b"chris", b"secret", &mut mem).unwrap(),
+            s.verify(b"alice", b"secret", &mut mem).unwrap(),
             Verdict::Match
         );
         assert_eq!(
-            s.verify(b"chris", b"wrong", &mut mem).unwrap(),
+            s.verify(b"alice", b"wrong", &mut mem).unwrap(),
             Verdict::Mismatch
         );
     }
@@ -1005,7 +1005,7 @@ mod tests {
     fn no_corrupted_encoding_decodes_to_the_same_record() {
         let cost = cheap();
         let mut mem = scratch(cost);
-        let r = Record::derive(b"chris", b"secret", [5u8; SALT_LEN], cost, &mut mem).unwrap();
+        let r = Record::derive(b"alice", b"secret", [5u8; SALT_LEN], cost, &mut mem).unwrap();
         let good = r.encode();
         for pos in 0..Record::ENCODED_LEN {
             for delta in [1u8, 0x7f, 0x80, 0xff] {
@@ -1031,7 +1031,7 @@ mod tests {
     fn a_truncated_or_padded_encoding_is_not_a_record() {
         let cost = cheap();
         let mut mem = scratch(cost);
-        let r = Record::derive(b"chris", b"secret", [5u8; SALT_LEN], cost, &mut mem).unwrap();
+        let r = Record::derive(b"alice", b"secret", [5u8; SALT_LEN], cost, &mut mem).unwrap();
         let good = r.encode();
         let mut long = good.to_vec();
         long.push(0);
@@ -1070,7 +1070,7 @@ mod tests {
         let mut miss = Vec::new();
         for _ in 0..25 {
             let t = Instant::now();
-            let _ = s.verify(b"chris", b"wrong secret", &mut mem).unwrap();
+            let _ = s.verify(b"alice", b"wrong secret", &mut mem).unwrap();
             hit.push(t.elapsed().as_nanos());
             let t = Instant::now();
             let _ = s.verify(b"nobody", b"wrong secret", &mut mem).unwrap();
@@ -1161,7 +1161,7 @@ mod tests {
         let mut mem = scratch(cost);
         let mut s = Store::<3>::new(cost, [7u8; SALT_LEN], [9u8; TAG_LEN]);
         assert!(s.is_empty());
-        s.put(b"chris", b"secret", [5u8; SALT_LEN], &mut mem)
+        s.put(b"alice", b"secret", [5u8; SALT_LEN], &mut mem)
             .unwrap();
         assert!(!s.is_empty());
     }
@@ -1173,9 +1173,9 @@ mod tests {
     fn debug_prints_the_redaction_and_nothing_secret() {
         let cost = cheap();
         let mut mem = scratch(cost);
-        let r = Record::derive(b"chris", b"secret", [0xA5u8; SALT_LEN], cost, &mut mem).unwrap();
+        let r = Record::derive(b"alice", b"secret", [0xA5u8; SALT_LEN], cost, &mut mem).unwrap();
         let shown = format!("{r:?}");
-        assert!(shown.contains("chris"));
+        assert!(shown.contains("alice"));
         assert!(shown.contains("<redacted>"));
         assert!(
             !shown.contains("165"),
