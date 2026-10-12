@@ -20,63 +20,16 @@ Everything this needs exists: `script/mutation -p <crate>` runs one package,
 `.cargo/mutants.toml` is where an exclusion goes with its reason, and milestone 85 (mutation testing over the host crates) already set the
 rule a survivor is triaged under. No decision is owed and no hardware is involved.
 
-## Parts 1 and 2, 2026-09-19
+## Parts 1 and 2, and part 3's head, in appendices
 
-169 survivors triaged, and none of the eight crates carries an untriaged one. Measured per crate
-with `script/mutation -p <crate>` on the lane's own worktree, before and after. Every kill was
-verified by re-running the sweep and watching the mutant die; every equivalence claim is a mutant
-the second run still reports. The reasons are in the `## 2026-09-19` sections of
-`notes/mutation-testing/regressions-capability-to-dtb.md` and
-`notes/mutation-testing/regressions-clock-protocol-swish-filesystem-protocol.md`, crate by crate,
-which is where a reader should go to disagree with one.
+- [`parts-1-and-2.md`](0326-turn-a-mutation-score-upward/parts-1-and-2.md): parts 1 and 2 of
+  2026-09-19. It holds the per-crate table, what moved the numbers, what the part looked for and did
+  not find, and the behavior question recorded on `timetable::Unbacked`.
+- [`part-3-head.md`](0326-turn-a-mutation-score-upward/part-3-head.md): the seven crates part 3
+  named, 2026-09-20. It holds their table, the two artifacts among them, the deadlocks, what was
+  found, and the one exclusion added.
 
-| crate | before | after | killed by a test | equivalent | excluded | recorded gap |
-|---|---|---|---|---|---|---|
-| `capability` | 8 | 3 | 5 | 3 | 0 | 0 |
-| `memory_regions` | 8 | 0 | 6 | 0 | 2 | 0 |
-| `elf` | 6 | 0 | 6 | 0 | 0 | 0 |
-| `timetable` | 48 | 0 | 12 | 0 | 36 | 0 |
-| `dtb` | 14 | 1 | 13 | 1 | 0 | 0 |
-| `clock_protocol` | 6 | 3 | 0 | 3 | 3 | 0 |
-| `swish` | 20 | 4 | 16 | 4 | 0 | 0 |
-| `filesystem_protocol` | 59 | 40 | 19 | 38 | 0 | 2 |
-| total | 169 | 51 | 77 | 49 | 41 | 2 |
-
-`after` is what a re-run reports now: the equivalents plus the two recorded gaps. Excluded mutants are no longer generated, so they leave the column.
-
-What moved the numbers, in order of how much a reader should care.
-
-1. Forty-one of the 169 were never the crate's code. `timetable` keeps its Kani harnesses in
-   `src/proofs.rs` rather than in an inline `mod proofs`, and cargo-mutants names a mutant by its
-   path *within the parsed file*, so `.cargo/mutants.toml`'s `proofs::` regex matched nothing: 36 of
-   that crate's 48 survivors were its own proofs, which is why it read 73.6%. The five `mod
-   interleavings` loom models were unexcluded for the same reason one level over. Both are closed
-   with globs, and both are the `system_initializer` (milestone 244) and `uefi_loader` (milestone
-   280) arithmetic wearing new clothes.
-2. Seventy-seven were real, and four of them are places a probe reports nothing.
-   `capability::survey_includes`, the predicate deciding which threads a supervision rendezvous may
-   see, had no `cargo test` caller at all: a constant `true` and a constant `false` both survived.
-   `filesystem_protocol::fixture::twodir` had no distinctness test, so five witness bits could each
-   become zero while their boot passed. `memory_regions::has_children` is what the kernel asks before
-   it offers to destroy, and every test proved the refusal through a different door.
-3. Forty-nine are equivalent and that is a result, not a shortfall. They are argued by group in
-   the note so a later pass can re-check a group rather than a mutant, and the two crates whose
-   numbers barely moved (`clock_protocol`, `filesystem_protocol`) are the two where that is the
-   honest answer.
-
-And the one thing this part was told to look for, which it did not find. The block ordered
-`timetable` second because it holds `next_after`, the property `design/fatal-risks/README.md`'s risk 2 calls
-its strongest counterfactual. No survivor touched `next_after`, or the phase arithmetic, or the
-firing decision; every mutant in them was caught before this lane changed anything. That is evidence
-against risk 2 in the place this roadmap thought it most likely, and it is worth as much as a finding
-would have been.
-
-One behavior question is recorded rather than answered, in a `BUGS` section on
-`timetable::Unbacked` where a reader meets the variants: `Admission::Unbacked` can never carry
-`File` or `Directory`, because `admit` hands `grant_plan::plan` the same `dir` bit that `unbacked`
-then re-tests, so a designation the scheduler cannot back is refused during planning instead. Two
-mutants deleting the `!` in those tests survived on exactly that. Changing which of two true
-sentences a reader meets is a behavior change, so it is written down and not made.
+## The gap this milestone fills
 
 Why it exists, and the shape is worth naming. Four milestones touch mutation testing and
 three of them are repairs to the instrument: 85 built `script/mutation` and triaged the
@@ -90,63 +43,6 @@ That is what holds `design/fatal-risks/README.md`'s risk 3 at AMBER rather than 
 reading of 2026-09-19. Milestone 85's rule is that every survivor becomes a test, an exclusion with
 a reason, or a recorded gap. It held for the baseline's 391. The census of 2026-09-14 produced
 771, and none of them has been looked at.
-
-## Part 3's head, 2026-09-20
-
-The seven crates this block names are triaged, and none carries an untriaged survivor. Measured
-per crate with `script/mutation -p <crate>` on the lane's own worktree, before and after; every kill
-was verified by re-running the sweep and watching the mutant die, and every equivalence claim is a
-mutant the second run still reports. The reasons are in `notes/mutation-testing.md`'s
-`## 2026-09-20` section, crate by crate, which is where a reader should go to disagree with one.
-
-| crate | before | after | killed by a test | equivalent | excluded | recorded gap |
-|---|---|---|---|---|---|---|
-| `work_steal_slot` | 0 | 0 | 0 | 0 | 0 | 0 |
-| `memory_corruption_canary_gate` | 8 | 2 | 6 | 2 | 1 | 0 |
-| `soak_page` | 7 | 0 | 7 | 0 | 0 | 0 |
-| `jh7110_entropy` | 23 | 10 | 13 | 6 | 0 | 4 |
-| `multicast_dns_protocol` | n/a | n/a | n/a | n/a | n/a | n/a |
-| `job_mix` | 10 | 4 | 6 | 3 | 0 | 1 |
-| `schedule_store` | 8 | 0 | 8 | 0 | 0 | 0 |
-| total | 56 | 16 | 40 | 11 | 1 | 5 |
-
-`before` and `after` count missed plus timeouts, which is what `script/mutation --report` lists as
-the survivors themselves.
-
-Two of the seven numbers in the table below were artifacts, and this block predicted one of them.
-`work_steal_slot`'s 54.2% was its loom model, which part 1's `interleavings::` entry removes: it now
-reports 14 mutants, 13 caught, 1 unviable and nothing owed. `multicast_dns_protocol` (the census's
-`mdns_proto`, renamed by milestone 265 (`_proto` is a truncation)) is not in this tree at all:
-milestone 298 (retire the multicast DNS responder and its two crates) retired it and its sibling on
-2026-09-15, the day after the census measured them,
-so its 82 survivors close by deletion. The other flagged crate went the opposite way:
-`memory_corruption_canary_gate` was genuinely 50.0% once its loom mutants left the count, worse
-than the 66.7% it was flagged at.
-
-Eight of the fifty-six were deadlocks rather than wrong answers. A loop that waits is broken by
-making it never accept; a loop that gathers is broken by making it never advance. Neither returns,
-so the suite's answer is to hang, and cargo-mutants can only call a suite that did not finish a
-timeout. This block's own posture is that such a timeout is the tests noticing rather than missing,
-and that stands. What part 3 adds is that noticing by hanging is worth converting into noticing by
-*failing* where the crate allows it: `memory_corruption_canary_gate` now runs each test body on a
-worker with a deadline (four converted), `job_mix`'s hand-rolled index became a `for` (one removed
-at rung one), and `jh7110_entropy`'s four were left because `Pool`'s doctest calls `take` directly,
-a hang confirmed by hand-applying the mutant. (Corrected 2026-09-26, UTC: this said a doctest has
-nowhere to put a deadline. #1323 disproved it, with hidden `# ` lines that `recv_timeout` a worker.)
-
-Nothing found here is a defect in shipped behavior, which is the answer to the question this
-milestone exists to ask. The closest are three places where a plausible-looking mistake was
-unguarded: `soak_page`'s offsets could collapse two workers onto one word with every test green,
-`schedule_store`'s buffer bound could index one past a caller's array, and `job_mix`'s budget could
-size a task nine pages below what `MAP` needs while a compile-time assertion beside it still passed.
-All three are now checked. One real limitation was found and recorded rather than fixed:
-`job_mix::order(2k)` and `order(2k + 1)` are the same permutation, in a `BUGS` section on the
-function, unreachable because the kernel hands out odd seeds.
-
-`.cargo/mutants.toml` gains one entry, `tests::`, and it is measured rather than assumed:
-cargo-mutants skips a plain `#[cfg(test)]` module but not the `#[cfg(all(test, not(loom)))]` the
-five loom crates have to write, so a helper in one of those is mutated where the identical helper
-elsewhere is not.
 
 ## The 2026-09-21 census, 2026-09-24
 
@@ -202,7 +98,7 @@ Detail: `notes/mutation-testing/inflow-2026-10-03.md`.
    lanes should be expected to produce. This part is a worklist and should be taken as one; a
    milestone that tried to close all of it would be a milestone that never finishes.
 
-   Those seven are done (`## Part 3's head`), and the rest is in `## The 2026-09-21 census`. Re-derive
+   Those seven are done ([`part-3-head.md`](0326-turn-a-mutation-score-upward/part-3-head.md)), and the rest is in `## The 2026-09-21 census`. Re-derive
    any census rate before acting on it: it can be a loom model, proof harnesses, or a deleted crate.
 
 4. Rewrite the baseline once the triage lands. `.cargo/mutants-baseline.txt` is still the
@@ -249,8 +145,8 @@ that column. What is refused is an exclusion whose reason is that the test would
 Parts 1 and 2 only. Each of these was checked against the tree on 2026-09-19, on this branch.
 
 - **Done.** *2026-09-20: part 3's seven named crates, 56 survivors to 16,* on
-  `milestone/326-new-crate-backlog`. The per-crate table and the argument are in `## Part 3's head`
-  above and in `notes/mutation-testing/new-crate-backlog.md`'s `## 2026-09-20` section.
+  `milestone/326-new-crate-backlog`. The per-crate table and the argument are in
+  [`part-3-head.md`](0326-turn-a-mutation-score-upward/part-3-head.md) and in `notes/mutation-testing/new-crate-backlog.md`'s `## 2026-09-20` section.
 - **Outstanding.** The rest of part 3, which is the other seventeen crates that did not exist at
   the August baseline. Nobody has measured one of them per crate, and the census rates they would be
   picked by are the 2026-09-14 ones. A lane taking this should re-derive before it triages,
@@ -294,8 +190,8 @@ Parts 1 and 2 only. Each of these was checked against the tree on 2026-09-19, on
   `Admission::Unbacked` can never carry `File` or `Directory`. Two mutants survived on it, and
   whether `admit` should stop pre-consuming the scheduler's `dir` holding is a behavior change
   rather than a test.
-- **Recorded.** `notes/mutation-testing/regressions-clock-protocol-swish-filesystem-protocol.md`'s
-  `## 2026-09-19` section: `verb`'s compile-time table walk in
+- **Recorded.** `notes/mutation-testing/regressions-clock-protocol-swish-filesystem-protocol.md`,
+  under `filesystem_protocol`'s *Two recorded gaps*: `verb`'s compile-time table walk in
   `crates/filesystem_protocol/src/lib.rs` has two mutants no `cargo test` can kill, because its
   checker is `rustc`. The same object as the Kani harnesses, without a module path to exclude by.
 
@@ -303,9 +199,9 @@ Parts 1 and 2 only. Each of these was checked against the tree on 2026-09-19, on
   `milestone/326-machine-discovery-truncation`. It was part 1's category rather than part 3's: a
   crate the August baseline covers, carrying 77 of the 2026-09-19 census's survivors, more than any
   other. Measured before and after with `script/mutation -p machine_discovery`; the before column
-  reproduces the census row for row. 58 killed by tests, 11 argued equivalent, 8 recorded gaps,
-  and no untriaged survivor is left. The reasons are in `notes/mutation-testing.md`'s
-  `## 2026-09-19` section, crate by crate, which is where a reader should go to disagree with one.
+  reproduces the census row for row. 58 killed by tests, 11 argued equivalent, 8 recorded gaps, and
+  no untriaged survivor is left. The reasons are in `notes/mutation-testing/machine-discovery.md`,
+  which is where a reader should go to disagree with one.
 
   The crate's Kani harnesses were checked before the lane started and are not the miscount that
   inflated `timetable`: they are inline `mod verification` blocks in `acpi.rs`, `framebuffer.rs`,

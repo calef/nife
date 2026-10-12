@@ -35,7 +35,7 @@ The workload's own sanity check does double duty here. An attribute operation ch
 observable unless the snapshot reads attributes, so a harness that quietly stopped looking fails at
 the fixture rather than passing everywhere below it.
 
-On device, both ISAs (DECISIONS §19). `fixtures/src/fs_test_client.rs`'s proof role carries a witness that
+On device, both ISAs (DECISIONS §19 (architectural parity is a tenet)). `fixtures/src/fs_test_client/proof.rs`, the proof role, carries a witness that
 reports a bitmap, and the kernel test asserts an exact set, so a client that could do nothing
 and one that could do everything both fail. It checks eight claims:
 

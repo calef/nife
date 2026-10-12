@@ -30,7 +30,7 @@ Measured 2026-09-12, on `4306c8c1`.
 | Module | Lines | Syscalls | Consumers | Excluded for a real reason? |
 |---|---|---|---|---|
 | `mapped_window` | 176 | **0** | **29 files** | No. Pointer arithmetic with bounds checks |
-| `initrd` | 60 | **0** | 9 files | No. A `'static` slice over a fixed VA |
+| `initial_ramdisk` | 60 | **0** | 9 files | No. A `'static` slice over a fixed VA |
 | `heap` | 220 | yes (`memory_region::MAP`) | 7 files | Yes |
 | `virtio` | 53 | yes (5 sites) | 4 files | Yes |
 | core (`invoke` and its wrappers) | ~500 | yes, it *is* the syscall | all | Yes |
@@ -60,7 +60,7 @@ The same boundary also costs coverage and mutation on 236 lines that both tools 
 
 ## The work
 
-Move `mapped_window` and `initrd` into a crate that compiles for the host. Leave `heap`, `virtio`
+Move `mapped_window` and `initial_ramdisk` into a crate that compiles for the host. Leave `heap`, `virtio`
 and the core where they are, and leave the exclusion on `user_rt` exactly as it stands. Then let the
 three tools that were always able to read this code read it: a harness on the bounds check, coverage,
 and mutants.
@@ -129,7 +129,7 @@ a name had been refused. Read before sweeping.
 Minted 2026-09-12 by calef out of the `user_rt` naming review, from a question that was not about
 naming. `crates/user_rt` is excluded from the host pass, coverage, mutation and Kani because it is
 the EL0 syscall floor, and the exclusion is crate-level: `mapped_window` (176 lines, 29 consumers)
-and `initrd` (60 lines) make no syscall at all and inherit it from the file they are declared
+and `initial_ramdisk` (60 lines) make no syscall at all and inherit it from the file they are declared
 in. `MappedWindow`'s one-line bounds check with an overflow guard stands behind 29 call sites and
 cannot be reached by a prover; the crate has zero harnesses. Milestone 191's finding one scale
 down. Touches the four exclusion lists milestone 244 found drifting. Does not settle whether `user_rt` keeps its name.

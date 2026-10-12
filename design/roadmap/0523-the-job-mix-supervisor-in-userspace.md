@@ -23,44 +23,12 @@ the shell's authority model as `crates/grant_plan` states it in its own words, a
 fact about what a process may know about its machine. Any single one left unanswered leaves an
 instrument that either cannot be built or produces a number its own page says is not quotable.
 
-## What provoked it, and the cause is now measured rather than inferred
+## What provoked it
 
-`script/board-image --job-mix` builds a card whose kernel and archive are packed by one command, in
-the order that exists so they cannot disagree, and `sealed_pair` then reported the pair unsealed.
-`cargo clean -p kernel` did not change it, and neither did deleting the build directory.
-
-**The kernel compiles the right trust root and the linker drops it.** Measured in this lane's
-worktree, deterministic across three builds alternating the feature:
-
-```text
-board          -> 3 occurrences of `MEASURED BOOT REFUSED`
-board,job_mix  -> 0
-board          -> 3
-```
-
-The reason is one `cfg` and it is not a bug in the seal at all. Since milestone 268 (every architecture boots the same way: describe the machine, test yourself, hand over) the measured-boot refusal lives in
-`user::boot_progenitor`, and `kernel/src/main.rs` reaches that call only under
-`#[cfg(not(any(feature = "soak_test", feature = "job_mix")))]` (`:1640`, `:2018`, and
-`riscv_hand_over`'s own `cfg_attr` at `:2195`). **A job-mix build never calls it**, so nothing
-references the refusal, so the trust root and its message are dead code and the linker removes them.
-
-`sealed_pair` then asks the only question it can ask, which is whether the kernel image *carries*
-the digest (`haystack.windows(needle.len()).any(..)`, `crates/sealed_pair/src/lib.rs:445`), finds it
-absent, and prints a sentence that is false twice over: that the two files are from different
-builds, and that the pair will halt at `MEASURED BOOT REFUSED` after the power cycle. The pair is
-from one build and the kernel will halt at nothing, because it verifies nothing.
-
-**So the failure was never about job-mix specifically.** `--soak` and `--bench` cards divert the
-tour at the same three sites and will read `NOT SEALED` for the same reason. That finding is
-separable from this milestone and is raised on its own as milestone 563 (a seal check that reads
-bytes cannot see a check that was dropped),
-`design/roadmap/0563-a-seal-check-that-reads-bytes-cannot-see-a-check-that-was-dropped.md`; it
-is also recorded where a bench operator meets it, in `notes/job-mix.md`'s `BUGS` and in
-`crates/sealed_pair`'s.
-
-**It is worth separating the two, because only one of them is urgent.** A bench evening is blocked
-by a tool that cries wolf, and that is an hour's work on the tool. A userspace supervisor is a
-different and much larger claim, and the argument for it survives whether or not the tool is fixed.
+Moved on 2026-10-12 (UTC) into [`what-provoked-it.md`](0523-the-job-mix-supervisor-in-userspace/what-provoked-it.md)
+under §212 (a prose budget): why a job-mix card read `NOT SEALED`, measured, and why that finding is
+separate from this milestone and became milestone 563 (a seal check that reads bytes cannot see a
+check that was dropped).
 
 ## The premise in the brief that is false, and it is the good news
 
@@ -89,8 +57,8 @@ list is short and it is what makes the blockers concrete:
 1. **Find `job_mix_task`'s ELF in the initrd archive.** `nifefs::Fs::parse(archive).read(..)` plus
    `elf::Elf::parse`, the shape `components/src/root_supervisor.rs:63-67` already uses.
 2. **Create 67 rendezvous objects** out of its own budget: one report, 32 go, 32 child-done, 2 echo.
-   `retype_object(budget, abi::objtype::RENDEZVOUS)`, which `fixtures/src/rendezvous_minter.rs`
-   proves works from EL0.
+   `retype_into_kernel_object(budget, abi::objtype::RENDEZVOUS)`, which
+   `fixtures/src/rendezvous_minter.rs` proves works from EL0.
 3. Build and start 34 processes with a per-child grant set, each carrying its own rights.
    `supervision_protocol::build_child` and `start_child`.
 4. Split 32 per-task budgets off its own region (`job_mix::TASK_BUDGET_PAGES` is 25 pages each,
@@ -113,7 +81,7 @@ milestone 126 (the `procps` package: who else is running, and who is allowed to 
 and milestone 281 (`watch` holds exactly what `ps` holds, so it is nothing). Of the thirteen programs the shell can run
 (`least_authority_demo`, `memory_grant_depleter`, `interrupt_heeder`, `interrupt_ignorer`, `date`,
 `rm`, `wc`, `mdr`, `ps`, `pgrep`, `uptime`, `printenv`, `uuid`), **not one** contains a
-`build_child`, a `retype_object(.., RENDEZVOUS)` or a `memory_region_split`. Even
+`build_child`, a `retype_into_kernel_object(.., RENDEZVOUS)` or a `memory_region_split`. Even
 `memory_grant_depleter`, the only one holding an untyped at all, only maps frames with it.
 
 A job-mix supervisor is a program whose entire job is building 34 processes. Admitting it to that
@@ -131,9 +99,9 @@ protocol for the shell to ask it to run, which is squarely *anything two program
 `supervision_protocol::build_child` (`:2470-2496`), and `build_child_space` maps ELF segments, stack
 pages, an x86_64 timebase placeholder and `endow.maps` -- nothing else. The `maps` a normal job may
 receive are chosen at `:2451-2462` and are exactly three: a filesystem client page, the clock page,
-or the config page, with the comment *"One extra mapping at most, today"*. `INITRD_VA` reaches only
+or the config page, with the comment *"One extra mapping at most, today"*. `INITIAL_RAMDISK_VA` reaches only
 the kernel-spawned progenitor (`kernel/src/user.rs:999`, `:1762`), and `a1` carries the manifest's
-integer argument rather than `initrd_len`.
+integer argument rather than `initial_ramdisk_len`.
 
 So a supervisor launched from the prompt cannot read `job_mix_task`'s bytes. It is the same gap
 `components/src/spawner.rs` was designed around from the other side: that program is handed one
@@ -277,19 +245,17 @@ an hour on a tool that cries wolf.
 
 ## Follow-on
 
-- **Milestone 563.** The seal check reads bytes and cannot see a check the linker dropped, so a
-  `--soak`, `--job-mix` or `--bench` card is misreported as `NOT SEALED` and, worse, genuinely
-  verifies nothing:
-  `design/roadmap/0563-a-seal-check-that-reads-bytes-cannot-see-a-check-that-was-dropped.md`.
-  This is the urgent half of what provoked this milestone and it is an hour's work on a tool.
+- **Milestone 563.** The seal check reads bytes and cannot see a check the linker dropped:
+  `design/roadmap/0563-a-seal-check-that-reads-bytes-cannot-see-a-check-that-was-dropped.md`. It is
+  the urgent half of what provoked this milestone, told in the appendix above.
 - **Recorded.** Whether a diverted boot tour should keep measured boot at all is a question about
   three kernel features rather than about a tool, and it is option B of that proposal. A card left
   running a rebooting soak unattended for hours is arguably the last one that should skip
   verification.
-- **Recorded.** `user_mode_runtime::cntfrq()` in `crates/user_mode_runtime`'s riscv64 arm returns a hardcoded 10 MHz and
-  says so; radon is 4 MHz. Blocker five above is the first workload that would be silently wrong
-  because of it, and closing it properly is gated on milestone 167 (handing a computed page to a
-  userspace-built child: closing the x86_64 timebase page's delegation gap), which is NOT-STARTED.
+- **Recorded.** `user_mode_runtime::cntfrq()`'s hardcoded riscv64 value, in `crates/user_mode_runtime`
+  where it says so. Blocker five above is the first workload it would make silently wrong, and
+  milestone 167 (handing a computed page to a userspace-built child), which gates the fix, is
+  NOT-STARTED.
 - **Recorded.** A `job-mix` card has no measured boot, so a mismatched pair does not halt: it runs
   the sweep against whatever archive is beside it. `notes/job-mix.md`'s outcome table already has
   the row that catches it (`no 'job_mix_task' program in the initrd archive`), and that row is now

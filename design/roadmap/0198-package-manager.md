@@ -44,71 +44,13 @@ each on a milestone of its own: the install layout on milestone 515 (rung 2a), S
 milestone 500 (a stick that boots with Secure Boot on) for rungs 1d and 4, and publication is
 an architect's act at rung 4.
 
-**The history of that line.** **Ruled by calef on 2026-09-19 (16:32 UTC):
-`MILESTONE 23` is dropped from this line.** It read `DECISION, MILESTONE 23`, inherited through
-milestone 39, until then. That made a loop: this block waited on milestone 23, whose one residual
-(state handoff, §116) is declined until a customer exists, and no second customer can be accepted
-until this block exists. The scoping lane checked what a first slice would need from milestone 39's
-repository split and found only an SDK gap (an outside author needs this repository cloned to get
-the toolchain), which is a candidate milestone of its own rather than a reason to wait on the split.
-The argument is in
-[DECISIONS §156](../decisions/0156-the-package-manager-waits-on-a-decision-not-milestone-23.md). Milestone 39
-keeps its own gate; this ruling does not touch it.
-
-A second half of that fork was already ruled and this gate did not say so, found by milestone
-435's first slice on the same day.
-[§151](../decisions/0151-repository-goal-is-independent-release.md) (the goal of the repository
-split is independent release and third-party programs) took the goal on 2026-09-15, and names this
-milestone's own sentence in doing it. What §151 deliberately leaves open is the order, when the
-split happens and against what preconditions, and it lists a package format existing so `basalt` has
-something to assemble as one of them, which is this milestone. The format, the activation shape and
-the repository split are still not this block's and are deliberately not raised here.
+The history of the gate line, and the half of that fork §151 had already ruled, is in
+[scoping.md](0198-package-manager/scoping.md).
 
 In brief, from calef on 2026-08-30: *"I don't think we expose nife to third parties (aka other
 customers) until we have a package manager and a trivial install process."* And, in the same breath,
-that he wants it early, to make our own lives easier.
-
-Both halves matter and they point the same way.
-
-## This is a precondition on principle 1, not an item under it
-
-AGENTS.md ranks work by the shortest path to a system a customer runs. As of 2026-08-30 that path is
-vacant, and the reason is now two reasons: the first customer's deadline passed and they went to
-borg over SSH, and this system could not accept a second one if it appeared.
-
-That makes packaging structurally different from the milestones it sits beside. It is not on the
-customer path; it is the door. A roadmap that ranks by the shortest path to a customer while
-being unable to take one is ranking against a door it has not built.
-
-## The second half is the one that earns it early
-
-The third-party argument alone would justify deferring this indefinitely, since there is no third
-party and no date for one. **The reason to do it early is that the builders are the ones paying for
-its absence today**, hand-wiring per program what a package would install once:
-
-- Milestone 40 (documentation as a system service) already ships *"installed by the package that
-  owns it"* and its per-package index shard, against no package that exists.
-- Milestone 47's conclusion is that **installing a program is granting it into a namespace**, which
-  is a packaging statement with no packager.
-- `crates/system_initializer` spends a capability through a syscall per program, per architecture,
-  and every new program edits it.
-- Milestone 150 (adding a program should not need eight hand-maintained lists) is the same complaint
-  from the other end, and the count is the argument: eight lists, hand-maintained, per program.
-
-## What already exists to build on, so this does not start cold
-
-- **Milestone 39** has the structural recommendation: monorepo now with the distribution as a
-  separate manifest repo, executed as multiple workspaces.
-- `design/haiku-bfs-and-packages.md` is the prior art the roadmap already tells you to read
-  first. Haiku's `packagefs` activates packages rather than installing them, composing a
-  filesystem view from read-only package files rather than letting installers mutate shared
-  directories. It arrived near milestone 47's conclusion from an entirely different motive, atomic
-  and rollback-able installs, which is the useful kind of convergence.
-- `design/what-a-distribution-packages.md` is the speculation about the units, and is explicitly
-  labeled as speculation.
-- DECISIONS §135 (running GPL software is aggregation) makes packages the channel for copyleft,
-  so this milestone is also what unblocks `git` and `nano` arriving the honest way rather than being
-  built into an image.
+that he wants it early, to make our own lives easier. Why that puts this block ahead of the customer
+path, and the prior art it builds on, is in [why-early.md](0198-package-manager/why-early.md).
 
 ## What "trivial install" has to mean
 
@@ -118,8 +60,8 @@ Milestone 802 (the trivial install) has it, with §157's definition.
 
 A second lane (`milestone/198-rungs-to-a-trivial-install`) built nothing and mapped §157's
 definition onto rungs, each shipping something on its own, against the tree as it stood that day.
-This section replaces the scoping lane's proposed first slice (a QEMU run bundle, recorded below
-as history), which §157 superseded as a definition.
+This section replaces the scoping lane's proposed first slice (a QEMU run bundle, recorded as history
+in [scoping.md](0198-package-manager/scoping.md)), which §157 superseded as a definition.
 
 Every rung is proved on xenon first and on a second PC after. xenon is the only PC on the bench;
 milestone 243's fleet (the family's other x86 machines) is what turns a claim about one Dell into a
@@ -182,30 +124,9 @@ Not a ruling but calef's hands: the wipe of xenon's NVMe, done; and DNS and a ho
 Rung 3c's work list is milestone 801 (packages over the internet). What must be true before the
 page goes up, and the Secure Boot and publication rulings, are milestone 802 (the trivial install).
 
-### The superseded slice, and what survived it
+### The superseded slice
 
-The scoping lane's first slice (below, under "Scoped 2026-09-19") had four items. Item 1, packages
-as host-side recipes, survives as rung 3a's producer. Items 2 (image composition, milestone 150, PR #968) and 3 (the QEMU run bundle,
-a reversible call per §157) are off the path. **Item 4**, removal, is part of 3a's exit criterion and of the activation ruling.
-
-## Scoped 2026-09-19
-
-*History since 2026-09-19: the trivial-install row and the first slice below are superseded by
-§157; the three fork proposals stand and are placed on rungs above.*
-
-A scoping lane (`milestone/198-package-manager-scoping`) built nothing and wrote the forks as
-proposals, one decision each, for calef to rule on separately. The status does not move: nothing is
-built, and the gate line above is left as minted because changing it is the first proposal's ask.
-
-| Fork | Proposal | Shape |
-|---|---|---|
-| The gate | [DECISIONS §156](../decisions/0156-the-package-manager-waits-on-a-decision-not-milestone-23.md) | **Decided 2026-09-19 by calef, as recommended:** `Gate: DECISION` alone. The loop is real (198 waits on 23, whose residual waits on a customer, who waits on 198), and nothing in a first slice needs the split's timing. One real dependency was found, on a downloadable toolchain rather than on the split |
-| Package format | [DECISIONS §197](../decisions/0197-a-package-is-one-archive-file.md) | **Decided 2026-09-20 by calef**, after comparing apt, Homebrew, Alpine, Haiku and Nix: one archive file per package, the mainstream container, vouched for by §195's reviewed recipe |
-| Activation | [installing-a-package-mutates-or-composes.md](0507-installing-a-package-mutates-or-composes.md) | **Decided 2026-09-23 by calef (§208): A3, with rollback.** As proposed, options with no winner: mutate, compose a union view, or only widen what may be spawned. The program namespace is sealed at boot, and the spawner gives the file service away, so nothing that builds processes can read an installed program today |
-| Trust (found, not briefed) | [DECISIONS §195](../decisions/0195-a-recipe-vouches-and-the-owner-may-overrule.md) | **Decided 2026-09-19 by calef**, after reading how apt, pkg, pacman, Nix, Fuchsia and Homebrew do it: Homebrew's shape (digests in reviewed recipes, per source) with the owner-vouches escape hatch every one of them keeps. The image's measured table becomes the first source |
-| Trivial install | [DECISIONS §157](../decisions/0157-a-trivial-install-is-a-web-page-a-usb-drive-and-packages.md) | **Decided 2026-09-19 by calef, not as recommended:** a web page, a download written to a USB drive and installed, then packages over the internet. The lane had recommended a QEMU run bundle first; that slice is superseded |
-
-**Superseded 2026-09-19 by §157 and by "Rescoped 2026-09-19" above.**
+The scoping lane's first slice, what survived of it, and its table of forks are in [scoping.md](0198-package-manager/scoping.md).
 
 ## Follow-on
 

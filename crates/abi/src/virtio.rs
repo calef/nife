@@ -1,9 +1,16 @@
-/// `invoke(cap, READ_REG, off, _, _)` -> register value. Reads are DMA-safe, so any register.
-pub const READ_REG: u64 = 0;
-/// `invoke(cap, WRITE_REG, off, val, _)` -> 0. Only DMA-*safe* registers (status, features,
+/// `invoke(cap, READ_REGISTER, off, _, _)` -> register value. Reads are DMA-safe, so any register.
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2), with [`WRITE_REGISTER`]. His words: "Yes". Refused `READ_REG` (round 7's spelling;
+/// `reg` is an abbreviation).
+pub const READ_REGISTER: u64 = 0;
+/// `invoke(cap, WRITE_REGISTER, off, val, _)` -> 0. Only DMA-*safe* registers (status, features,
 /// interrupt-ack); the queue-address and notify registers are refused (they go through the
 /// validated paths below).
-pub const WRITE_REG: u64 = 1;
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2), with [`READ_REGISTER`]. His words: "Yes". Refused `WRITE_REG` (round 7's spelling).
+pub const WRITE_REGISTER: u64 = 1;
 /// `invoke(cap, SETUP_QUEUE, num, queue, _)` -> 0. The kernel programs the given queue's ring
 /// addresses to the fixed offsets of that queue's ring block in the driver's DMA region, so the
 /// driver never chooses them. `queue` selects the virtqueue (a virtio-net device uses receive =

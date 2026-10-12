@@ -800,9 +800,10 @@ static TX_BYTES: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::
 /// The [`TX_BYTES`] counter. Diagnostic; racy reads are fine.
 ///
 /// **No reader since milestone 295.** The riscv diag line printed it, and that line lived inside
-/// `kernel::user::riscv_initrd_demo`'s hang watcher, which went with the program it loaded. The
-/// counter is still incremented on every print, so it is still true and still free to read; what is
-/// gone is the thing that read it. Kept for the same reason `sched::canary` is, written there.
+/// `kernel::user::riscv_initial_ramdisk_demo`'s hang watcher, which went with the program it
+/// loaded. The counter is still incremented on every print, so it is still true and still free to
+/// read; what is gone is the thing that read it. Kept for the same reason `sched::canary` is,
+/// written there.
 ///
 /// Name: provisional, flagged 2026-09-25 by the lane that re-derived the x86 port falsifications
 /// (design/naming/boolean-predicates-worklist.md, "`rx` and `tx`"). calef asked what `rx` stands

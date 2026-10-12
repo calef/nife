@@ -95,10 +95,10 @@ pub struct Wiring {
 /// content-free `HELLO`: either order works.
 pub fn start(n: usize, focusable: usize, display: RendezvousId, screen: u64) -> Wiring {
     assert!(n <= SCENE.len() && n <= compositor::MAX_WINDOWS && focusable <= n);
-    let image = program("compositor").expect("no compositor program in the initrd archive");
-    let client_image = program("window").expect("no window program in the initrd archive");
+    let image = program("compositor").expect("no compositor program in the initial ramdisk");
+    let client_image = program("window").expect("no window program in the initial ramdisk");
     let term_image =
-        program("display_terminal").expect("no display_terminal program in the initrd archive");
+        program("display_terminal").expect("no display_terminal program in the initial ramdisk");
 
     let wlist = zeroed_page_frame();
     let ring = zeroed_page_frame();
@@ -133,41 +133,7 @@ pub fn start(n: usize, focusable: usize, display: RendezvousId, screen: u64) -> 
         *ep = crate::sched::create_rendezvous();
     }
 
-    // The compositor's world: the list it publishes, the ring it reads, and every client's control
-    // page and surface, all still `Spawn::maps` entries (small, fixed in number). **Not the screen**
-    // (milestone 142, DECISIONS §102): at the grown scanout, `SCREEN_PAGE_FRAMES` (900) one-page
-    // `Mapping` entries would no longer fit in the 1 KiB a spawn closure may capture
-    // (`kernel/src/thread.rs`'s own limit), the same reason the display driver's DMA region moved
-    // to a single run capability. The screen is granted below as one `PageFrame` instead, and the
-    // compositor maps it itself. No device, no interrupt, no physical address.
-    let mut maps = [Mapping {
-        va: 0,
-        phys: 0,
-        flags: Flags::user_data(),
-    }; MAX_COMP_MAPS];
-    let mut m = 0;
-    maps[m] = Mapping {
-        va: WLIST_VA,
-        phys: wlist,
-        flags: Flags::user_data(),
-    };
-    m += 1;
-    maps[m] = Mapping {
-        va: RING_VA,
-        phys: ring,
-        flags: Flags::user_data(),
-    };
-    m += 1;
-    for i in 0..n {
-        for k in 0..per_client[i] {
-            maps[m] = Mapping {
-                va: CLIENT_BASE + i as u64 * CLIENT_STRIDE + k * FRAME_SIZE,
-                phys: client[i] + k * FRAME_SIZE,
-                flags: Flags::user_data(),
-            };
-            m += 1;
-        }
-    }
+    let (maps, m) = compositor_maps(wlist, ring, n, &per_client, &client);
 
     let budget =
         crate::memory_region::create(MAP_BUDGET_PAGES).expect("no map budget for the compositor");
@@ -216,6 +182,53 @@ pub fn start(n: usize, focusable: usize, display: RendezvousId, screen: u64) -> 
         term_image,
         ring_tail: 0,
     }
+}
+
+/// The compositor's `Spawn::maps`: the window list, the input ring, and each client's control page
+/// and surface. Returns the table and how many entries are used.
+fn compositor_maps(
+    wlist: u64,
+    ring: u64,
+    n: usize,
+    per_client: &[u64; compositor::MAX_WINDOWS],
+    client: &[u64; compositor::MAX_WINDOWS],
+) -> ([Mapping; MAX_COMP_MAPS], usize) {
+    // The compositor's world: the list it publishes, the ring it reads, and every client's control
+    // page and surface, all still `Spawn::maps` entries (small, fixed in number). **Not the screen**
+    // (milestone 142, DECISIONS §102): at the grown scanout, `SCREEN_PAGE_FRAMES` (900) one-page
+    // `Mapping` entries would no longer fit in the 1 KiB a spawn closure may capture
+    // (`kernel/src/thread.rs`'s own limit), the same reason the display driver's DMA region moved
+    // to a single run capability. The screen is granted below as one `PageFrame` instead, and the
+    // compositor maps it itself. No device, no interrupt, no physical address.
+    let mut maps = [Mapping {
+        va: 0,
+        phys: 0,
+        flags: Flags::user_data(),
+    }; MAX_COMP_MAPS];
+    let mut m = 0;
+    maps[m] = Mapping {
+        va: WLIST_VA,
+        phys: wlist,
+        flags: Flags::user_data(),
+    };
+    m += 1;
+    maps[m] = Mapping {
+        va: RING_VA,
+        phys: ring,
+        flags: Flags::user_data(),
+    };
+    m += 1;
+    for i in 0..n {
+        for k in 0..per_client[i] {
+            maps[m] = Mapping {
+                va: CLIENT_BASE + i as u64 * CLIENT_STRIDE + k * FRAME_SIZE,
+                phys: client[i] + k * FRAME_SIZE,
+                flags: Flags::user_data(),
+            };
+            m += 1;
+        }
+    }
+    (maps, m)
 }
 
 impl Wiring {

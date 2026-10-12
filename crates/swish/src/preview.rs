@@ -293,17 +293,53 @@ fn write_preview_rows(
     // else, and slot 0 is not even the same kind of object, so a preview that printed the native
     // positions for one would be describing a child the progenitor does not build.
     let std = m.runtime == grant_plan::Runtime::Std;
-    let slot = |n: u64, out: &mut dyn FnMut(&[u8])| {
-        out(b"    cap ");
-        write_num(n, out);
-        out(if n < 10 {
-            b"  ".as_slice()
-        } else {
-            b" ".as_slice()
-        });
-    };
+    write_result_and_memory_rows(e, m, std, out);
+    write_file_and_directory_rows(e, m, holdings, std, out);
+    write_page_rows(m, config, std, out);
+    write_service_rows(m, std, out);
+    write_machine_rows(m, out);
+    write_stream_rows(e, out);
+    out(b"    arg    ");
+    // **Read the manifest, do not keep a second list of which programs take an argument.** This
+    // was `matches!(e.prog, Prog::LeastAuthorityDemo)` until 2026-08-16, so every other argument-taking program
+    // previewed `arg (none)` while the shell went on to hand it the argument anyway. That is the
+    // worst possible direction for this particular line to be wrong in: the next thing it prints is
+    // that reading the command is reading its whole authority, and a preview that under-reports
+    // authority is one a reader would trust. Found by someone adding their first program, who hit
+    // it because the manifest already knew the answer.
+    if m.arg == ArgSpec::Required {
+        write_num(e.arg, out);
+        out(b"\n");
+    } else if m.arg.hears_words() {
+        out(b"(the words on the line, at cap ");
+        write_num(std_runtime_protocol::ARGS_SLOT, out);
+        out(b")\n");
+    } else {
+        out(b"(none)\n");
+    }
+    out(b"  reading the command is reading its whole authority.\n");
+}
+
+/// The `cap N` column of a preview row, padded so the kind that follows lines up.
+fn write_slot(n: u64, out: &mut dyn FnMut(&[u8])) {
+    out(b"    cap ");
+    write_num(n, out);
+    out(if n < 10 {
+        b"  ".as_slice()
+    } else {
+        b" ".as_slice()
+    });
+}
+
+/// The result row (or a `std` program's heap and stdout rows) and the memory grant.
+fn write_result_and_memory_rows(
+    e: &Endowment,
+    m: &grant_plan::Manifest,
+    std: bool,
+    out: &mut dyn FnMut(&[u8]),
+) {
     if std {
-        slot(std_runtime_protocol::MEMORY_REGION_SLOT, out);
+        write_slot(std_runtime_protocol::MEMORY_REGION_SLOT, out);
         out(b"untyped   heap. the ");
         write_num(grant_plan::named_std_region_pages(m), out);
         out(b"-page region it is built in, less the\n");
@@ -314,7 +350,7 @@ fn write_preview_rows(
                 .as_slice()
         });
         out(b"                              shell's budget, and all of it goes back at exit\n");
-        slot(std_runtime_protocol::STDOUT_SLOT, out);
+        write_slot(std_runtime_protocol::STDOUT_SLOT, out);
         out(b"endpoint  result   stdout and stderr, both\n");
     } else {
         out(b"    cap 0  endpoint  result   report its answer back\n");
@@ -324,6 +360,16 @@ fn write_preview_rows(
         write_num(e.mem_pages, out);
         out(b" pages  split from this shell's budget\n");
     }
+}
+
+/// The rows for what the line designated: a file, or a directory and its names.
+fn write_file_and_directory_rows(
+    e: &Endowment,
+    m: &grant_plan::Manifest,
+    holdings: &Holdings,
+    std: bool,
+    out: &mut dyn FnMut(&[u8]),
+) {
     // A file endowment reads as one line naming the file and the direction, because that IS the
     // whole authority: an endpoint served by a file caretaker that will answer for this name and no
     // other. The direction comes from the program's manifest, not from anything typed, which is why
@@ -343,7 +389,7 @@ fn write_preview_rows(
     // the load-bearing half, because typing that option is what widens the capability from "may
     // take a name out of this directory" to "may walk everything under it".
     if let Some(g) = e.dir {
-        slot(
+        write_slot(
             if std {
                 std_runtime_protocol::FS_DIR_SLOT
             } else {
@@ -393,13 +439,22 @@ fn write_preview_rows(
             }
         }
     }
+}
+
+/// The read-only pages the progenitor endows: the clock, the inert configuration, and the argv.
+fn write_page_rows(
+    m: &grant_plan::Manifest,
+    config: Option<ConfigPage>,
+    std: bool,
+    out: &mut dyn FnMut(&[u8]),
+) {
     // **The clock, which no token on the line designates.** It is the progenitor's to endow rather than the
     // shell's, and it is still part of this child's complete authority, so `caps` prints it: a
     // reader who took the command line for the whole story would be wrong by exactly one capability.
     // The row says *read-only* because that is the entire reason `date` cannot set the time
     // (DECISIONS §43): there is no flag it could pass and no method it could call.
     if m.clock {
-        slot(
+        write_slot(
             if std {
                 std_runtime_protocol::CLOCK_SLOT
             } else {
@@ -421,7 +476,7 @@ fn write_preview_rows(
     // what the child reads. A shell given no view (a `login` session, a test role) says so rather
     // than guessing.
     if m.config {
-        slot(
+        write_slot(
             if std {
                 std_runtime_protocol::CONFIG_SLOT
             } else {
@@ -447,10 +502,14 @@ fn write_preview_rows(
     // because it is a capability the child holds, and worded so nobody reads it as more: a path
     // among these words reaches only what a directory row above already granted.
     if m.arg.hears_words() {
-        slot(std_runtime_protocol::ARGS_SLOT, out);
+        write_slot(std_runtime_protocol::ARGS_SLOT, out);
         out(b"frame     args     read-only. the words on the line, as bytes; they\n");
         out(b"                              name things and grant none of them\n");
     }
+}
+
+/// The service endpoints a program may call: entropy, the network, and its supervision domain.
+fn write_service_rows(m: &grant_plan::Manifest, std: bool, out: &mut dyn FnMut(&[u8])) {
     // **The row milestone 111 exists to print, and it is the point of that milestone rather than a
     // decoration on it.** Randomness is the one authority a program can hold whose use leaves no
     // trace at all: a process that draws a key and a process that hardcodes one look identical from
@@ -463,7 +522,7 @@ fn write_preview_rows(
     // which the service holds and nothing else does), and it holds no `GRANT`, so it cannot pass
     // randomness on to anything at all.
     if m.entropy {
-        slot(
+        write_slot(
             if std {
                 std_runtime_protocol::ENTROPY_SLOT
             } else {
@@ -491,9 +550,9 @@ fn write_preview_rows(
         if std {
             // The stack at slot 2 and, at slot 3, the region the program is built in, which the
             // net PAL retypes each socket's shared page from (milestone 809).
-            slot(std_runtime_protocol::STACK_SLOT, out);
+            write_slot(std_runtime_protocol::STACK_SLOT, out);
             out(b"endpoint  network  WRITE. it may open outbound sockets through the network\n");
-            slot(std_runtime_protocol::NET_MEMORY_REGION_SLOT, out);
+            write_slot(std_runtime_protocol::NET_MEMORY_REGION_SLOT, out);
             out(b"untyped   sockets. the heap's region again, which each socket's page is\n");
             out(b"                              made from\n");
         } else {
@@ -532,6 +591,11 @@ fn write_preview_rows(
         // milestone, and notes/process-view.md's `BUGS` carries the disposition.
         out(b"                              outside this domain but that it exists\n");
     }
+}
+
+/// The machine-level grants: the statistics page, the budget view, reboot, sync, the installer
+/// and the catalog.
+fn write_machine_rows(m: &grant_plan::Manifest, out: &mut dyn FnMut(&[u8])) {
     // **The machine, and this prompt's share of it** (milestone 126 (the `procps` package), DECISIONS §225 (`free` sees the machine and your share)). Two rows
     // because they are two grants and one can be held without the other: `vmstat` sees the machine
     // and not the budget, `slabtop` the budget and not the machine, `free` both. The first says the
@@ -565,19 +629,23 @@ fn write_preview_rows(
     // §270 (a package manager holds an installer endpoint, not the spawn endpoint)). Three lines
     // for what it cannot do, because the endpoint it is a copy of can do all three.
     if m.installer {
-        slot(grant_plan::INSTALLER_SLOT, out);
+        write_slot(grant_plan::INSTALLER_SLOT, out);
         out(b"endpoint  installer  WRITE. it may ask the progenitor to install, remove or\n");
         out(b"                              roll back a package, and nothing else: it cannot spawn,\n");
         out(b"                              cannot vouch for bytes, and cannot hand this on.\n");
         out(b"                              only the owner's console grants it\n");
-        slot(grant_plan::INSTALLER_REPLY_SLOT, out);
+        write_slot(grant_plan::INSTALLER_REPLY_SLOT, out);
         out(b"endpoint  replies    READ. the progenitor's answers to those requests\n");
     }
     if m.catalog {
-        slot(grant_plan::CATALOG_SLOT, out);
+        write_slot(grant_plan::CATALOG_SLOT, out);
         out(b"frame     catalog  read-only. the packages this image vouches for, by name,\n");
         out(b"                              version and digest; knowledge, and no authority\n");
     }
+}
+
+/// Where the output, the second stream and the input go.
+fn write_stream_rows(e: &Endowment, out: &mut dyn FnMut(&[u8])) {
     // **Where its output goes**, which is the demonstration milestone 50 owed: the destination is a
     // capability rather than an integer with a convention attached, so `caps` can name it. On Unix
     // the same question has no answer at this point, because fd 1 is whatever the shell's fd 1
@@ -647,25 +715,6 @@ fn write_preview_rows(
             out(b"             holds an endpoint, not a file)\n");
         }
     }
-    out(b"    arg    ");
-    // **Read the manifest, do not keep a second list of which programs take an argument.** This
-    // was `matches!(e.prog, Prog::LeastAuthorityDemo)` until 2026-08-16, so every other argument-taking program
-    // previewed `arg (none)` while the shell went on to hand it the argument anyway. That is the
-    // worst possible direction for this particular line to be wrong in: the next thing it prints is
-    // that reading the command is reading its whole authority, and a preview that under-reports
-    // authority is one a reader would trust. Found by someone adding their first program, who hit
-    // it because the manifest already knew the answer.
-    if m.arg == ArgSpec::Required {
-        write_num(e.arg, out);
-        out(b"\n");
-    } else if m.arg.hears_words() {
-        out(b"(the words on the line, at cap ");
-        write_num(std_runtime_protocol::ARGS_SLOT, out);
-        out(b")\n");
-    } else {
-        out(b"(none)\n");
-    }
-    out(b"  reading the command is reading its whole authority.\n");
 }
 
 #[cfg(test)]

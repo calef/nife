@@ -77,14 +77,16 @@ pub struct Repository<'a> {
 }
 
 impl<'a> Repository<'a> {
-    /// `None` for a host or channel that is not that shape, or port 0.
+    /// `None` for a host or channel that is not that shape, or port 0. A host that ends in a
+    /// number must be a canonical IPv4 address, as for a [`Location`].
     pub fn new(host: &'a str, port: u16, channel: &'a str) -> Option<Repository<'a>> {
         let channel_ok = !channel.is_empty()
             && channel.len() <= CHANNEL_MAX
             && channel
                 .bytes()
                 .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-');
-        (is_host(host) && port != 0 && channel_ok).then_some(Repository {
+        let host_ok = is_host(host) && ipv4_literal(host).is_ok();
+        (host_ok && port != 0 && channel_ok).then_some(Repository {
             host,
             port,
             channel,
@@ -128,7 +130,7 @@ pub fn public_address(ip: [u8; 4]) -> bool {
 /// port, a path. No user, no fragment; a query is part of the path. HTTPS only (Q1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Location<'a> {
-    /// A DNS name, or a dotted IPv4 address [`public_address`] admits.
+    /// A DNS name, or a canonical dotted-decimal IPv4 address [`public_address`] admits.
     pub host: &'a str,
     /// The port written, or 443.
     pub port: u16,
@@ -137,27 +139,29 @@ pub struct Location<'a> {
 }
 
 impl<'a> Location<'a> {
-    /// Read one location. `None` for anything that is not exactly the shape above, plain HTTP
-    /// included, and for an address literal outside [`public_address`].
-    pub fn parse(text: &'a str) -> Option<Location<'a>> {
-        let rest = text.strip_prefix("https://")?;
-        let slash = rest.find('/')?;
+    /// Read one location. Refused: anything that is not exactly the shape above, plain HTTP
+    /// included; a host that ends in a number but is not a canonical IPv4 address; and an address
+    /// literal outside [`public_address`].
+    pub fn parse(text: &'a str) -> Result<Location<'a>, LocationRefusal<'a>> {
+        use LocationRefusal::Malformed;
+        let rest = text.strip_prefix("https://").ok_or(Malformed)?;
+        let slash = rest.find('/').ok_or(Malformed)?;
         let (authority, path) = rest.split_at(slash);
         let (host, port) = match authority.split_once(':') {
-            Some((host, port)) => (host, parse_port(port)?),
+            Some((host, port)) => (host, parse_port(port).ok_or(Malformed)?),
             None => (authority, 443),
         };
         if !is_host(host) || path.len() > PATH_MAX || !path.bytes().all(|b| b.is_ascii_graphic()) {
-            return None;
+            return Err(Malformed);
         }
         // A fragment is the browser's and never reaches a server.
         if path.contains('#') {
-            return None;
+            return Err(Malformed);
         }
-        if ipv4_literal(host).is_some_and(|ip| !public_address(ip)) {
-            return None;
+        match ipv4_literal(host)? {
+            Some(ip) if !public_address(ip) => Err(LocationRefusal::Private(Ipv4Addr::from(ip))),
+            _ => Ok(Location { host, port, path }),
         }
-        Some(Location { host, port, path })
     }
 
     /// **Q1's safeguard on one resolution, and the addresses a client may then connect to.**
@@ -239,12 +243,76 @@ pub enum AddressRefusal {
     NotJudged(Ipv6Addr),
 }
 
-fn ipv4_literal(host: &str) -> Option<[u8; 4]> {
+/// Why [`Location::parse`] refused a location. Its `Display` says what was wrong, naming the host
+/// where the host is the problem.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LocationRefusal<'a> {
+    /// Not `https://`, a host, an optional port and a path within the limits [`Location`] states.
+    Malformed,
+    /// A host whose last label is a number, so that some reader takes it for an IPv4 address, but
+    /// which is not one written the canonical way: four decimal parts, each 0 to 255, no leading
+    /// zeros. Refused rather than read, because readers disagree on which address it names
+    /// (`0010` is 8 to WHATWG and `inet_aton`, 10 to others).
+    NonCanonicalAddress(&'a str),
+    /// A canonical address literal [`public_address`] refuses.
+    Private(Ipv4Addr),
+}
+
+impl core::fmt::Display for LocationRefusal<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            LocationRefusal::Malformed => {
+                f.write_str("not https://, a host, an optional port and a path")
+            }
+            LocationRefusal::NonCanonicalAddress(host) => write!(
+                f,
+                "host {host} ends in a number but is not a canonical IPv4 address \
+                 (four decimal parts, each 0 to 255, no leading zeros)"
+            ),
+            LocationRefusal::Private(ip) => write!(f, "address {ip} is not a public address"),
+        }
+    }
+}
+
+/// **Is `host` an IPv4 address, and is it written the one way every reader agrees on?**
+/// `Ok(None)` for a DNS name, `Ok(Some(_))` for canonical dotted decimal, and a refusal for a host
+/// whose last label is a number but that is not canonical: `0010.0.0.1`, `0x0a.0.0.1`, `10.1`,
+/// `167772161`, `10.0.0.0x1`.
+///
+/// Such a host is refused outright, not read either way, because readers disagree on it. The
+/// WHATWG URL standard and `inet_aton` read `0010` as octal (8) and accept hex and short forms;
+/// others read decimal. That disagreement was CVE-2021-29921 (Python `ipaddress`) and
+/// CVE-2021-29923 (Go `net.ParseIP`), and both now refuse leading zeros, as Rust's `Ipv4Addr`
+/// does. A refusal here means nothing downstream has to agree with us about which address it is,
+/// and [`Location::check`] on the resolved address stops being the only guard. Index and repository
+/// hosts come from manifests the distribution writes, so no legitimate host is lost. calef ruled
+/// it on 2026-10-12 (UTC), on #2020; `notes/packages/the-index-format.md` has the ruling.
+///
+/// "Ends in a number" is WHATWG's test (the ends-in-a-number checker): the last label is all
+/// decimal digits, or `0x` followed by hex digits. Only the decimal case was in the ruling's words;
+/// the hex case is the same disagreement and is refused with it.
+///
+/// [`is_host`] has already admitted `host`, so a part holds only letters, digits and hyphens, and
+/// `u8`'s parser refuses every one of those that is not a decimal number up to 255.
+fn ipv4_literal(host: &str) -> Result<Option<[u8; 4]>, LocationRefusal<'_>> {
+    let last = host.rsplit('.').next().unwrap_or(host);
+    let hex = last.strip_prefix("0x").or_else(|| last.strip_prefix("0X"));
+    let ends_in_a_number = last.bytes().all(|b| b.is_ascii_digit())
+        || hex.is_some_and(|h| h.bytes().all(|b| b.is_ascii_hexdigit()));
+    if !ends_in_a_number {
+        return Ok(None);
+    }
+    canonical_ipv4(host)
+        .map(Some)
+        .ok_or(LocationRefusal::NonCanonicalAddress(host))
+}
+
+fn canonical_ipv4(host: &str) -> Option<[u8; 4]> {
     let mut out = [0u8; 4];
     let mut parts = host.split('.');
     for b in out.iter_mut() {
         let part = parts.next()?;
-        if part.is_empty() || part.len() > 3 || !part.bytes().all(|c| c.is_ascii_digit()) {
+        if part != "0" && part.starts_with('0') {
             return None;
         }
         *b = part.parse().ok()?;
@@ -294,7 +362,7 @@ impl<'a> Entry<'a> {
         listed
             .split(' ')
             .filter(|l| !l.is_empty())
-            .filter_map(Location::parse)
+            .filter_map(|l| Location::parse(l).ok())
     }
 }
 
@@ -315,6 +383,8 @@ pub struct BadLine<'a> {
     pub number: usize,
     /// The line as it arrived.
     pub line: &'a str,
+    /// Why, when a listed location is what was refused; `None` for the stem or the digest.
+    pub location: Option<LocationRefusal<'a>>,
 }
 
 /// Why [`Index::find`] found no one entry.
@@ -342,8 +412,12 @@ impl<'a> Index<'a> {
     pub fn parse(text: &'a str) -> Result<Index<'a>, BadLine<'a>> {
         let index = Index { text };
         for (number, line) in index.lines() {
-            if entry(line).is_none() {
-                return Err(BadLine { number, line });
+            if let Err(location) = entry(line) {
+                return Err(BadLine {
+                    number,
+                    line,
+                    location,
+                });
             }
         }
         Ok(index)
@@ -352,7 +426,9 @@ impl<'a> Index<'a> {
     /// Every entry, in the order the index lists them.
     pub fn entries(&self) -> impl Iterator<Item = Entry<'a>> + 'a {
         let text = self.text;
-        Index { text }.lines().filter_map(|(_, line)| entry(line))
+        Index { text }
+            .lines()
+            .filter_map(|(_, line)| entry(line).ok())
     }
 
     /// **The one entry `name` (or `name@version`) asks for on `architecture`**, by the same rule the
@@ -401,18 +477,22 @@ impl<'a> Index<'a> {
     }
 }
 
-fn entry(line: &str) -> Option<Entry<'_>> {
-    let (stem, rest) = line.split_once(' ')?;
+/// One line read, or refused with the location refusal that refused it (`None` when the stem or
+/// the digest did).
+fn entry(line: &str) -> Result<Entry<'_>, Option<LocationRefusal<'_>>> {
+    let (stem, rest) = line.split_once(' ').ok_or(None)?;
     let (digest, listed) = rest.split_once(' ').unwrap_or((rest, ""));
     if stem.is_empty() || stem.len() > STEM_LEN {
-        return None;
+        return Err(None);
     }
-    if !listed.is_empty() && !listed.split(' ').all(|l| Location::parse(l).is_some()) {
-        return None;
+    if !listed.is_empty() {
+        for location in listed.split(' ') {
+            Location::parse(location).map_err(Some)?;
+        }
     }
-    Some(Entry {
+    Ok(Entry {
         stem,
-        digest: parse_digest(digest).ok()?,
+        digest: parse_digest(digest).map_err(|_| None)?,
         listed,
     })
 }
@@ -524,10 +604,66 @@ mod tests {
             "https://h/p#frag",
             "HTTPS://h/p",
         ] {
-            assert_eq!(Location::parse(bad), None, "{bad}");
+            assert_eq!(
+                Location::parse(bad),
+                Err(LocationRefusal::Malformed),
+                "{bad}"
+            );
         }
         let long = format!("https://h/{}", "a".repeat(PATH_MAX));
-        assert_eq!(Location::parse(&long), None);
+        assert_eq!(Location::parse(&long), Err(LocationRefusal::Malformed));
+    }
+
+    /// **Each limit is inclusive.** A port is at most five digits and nothing but digits, so a
+    /// sign or zero padding past five is refused, and a path of exactly [`PATH_MAX`] fits.
+    #[test]
+    fn a_location_at_each_limit_is_read_and_one_past_it_is_not() {
+        assert_eq!(Location::parse("https://h:65535/p").unwrap().port, 65535);
+        assert_eq!(
+            Location::parse("https://h:+80/p"),
+            Err(LocationRefusal::Malformed)
+        );
+        assert_eq!(
+            Location::parse("https://h:000080/p"),
+            Err(LocationRefusal::Malformed)
+        );
+        let path = format!("/{}", "a".repeat(PATH_MAX - 1));
+        let at_limit = format!("https://h{path}");
+        assert_eq!(Location::parse(&at_limit).unwrap().path, path);
+    }
+
+    /// A stem may be [`STEM_LEN`] bytes and no more, and not empty. The longest one still fits
+    /// the one-line catalog `accept` writes for it, so a package is judged rather than a buffer
+    /// overrun.
+    #[test]
+    fn a_stem_of_the_longest_length_is_read_and_judged() {
+        let n = package_archive::NAME_LEN;
+        let stem = format!("{}-{}-{}", "a".repeat(n), "1".repeat(n), "c".repeat(n));
+        assert_eq!(stem.len(), STEM_LEN);
+        let bytes = package("greeting", "0.1.0", b"\x7fELF g");
+        let text = line(&stem, &bytes, "");
+        let index = Index::parse(&text).unwrap();
+        let entry = index.entries().next().unwrap();
+        assert_eq!(entry.stem, stem);
+        assert_eq!(
+            accept(&entry, &bytes).map(|i| i.program),
+            Err(Refusal::NotRequested)
+        );
+
+        let long = format!("a{stem}");
+        assert!(Index::parse(&line(&long, &bytes, "")).is_err());
+        let digest = digest_text(&sha256(b"a"));
+        let empty = format!(" {}\n", core::str::from_utf8(&digest).unwrap());
+        assert!(Index::parse(&empty).is_err());
+    }
+
+    /// The same line twice is one package, not two versions of it.
+    #[test]
+    fn the_same_line_twice_is_one_package() {
+        let one = line("greeting-0.1.0-aarch64", b"a", "https://h/1");
+        let twice = format!("{one}{one}");
+        let index = Index::parse(&twice).unwrap();
+        assert!(index.find("greeting", "aarch64").is_ok());
     }
 
     /// Q1's safeguard, on address literals and as the check a client runs on resolved addresses.
@@ -550,7 +686,11 @@ mod tests {
                 "https://{}.{}.{}.{}/p",
                 private[0], private[1], private[2], private[3]
             );
-            assert_eq!(Location::parse(&text), None, "{text}");
+            assert_eq!(
+                Location::parse(&text),
+                Err(LocationRefusal::Private(Ipv4Addr::from(private))),
+                "{text}"
+            );
         }
         for public in [
             [8, 8, 8, 8],
@@ -561,6 +701,49 @@ mod tests {
         ] {
             assert!(public_address(public), "{public:?}");
         }
+    }
+
+    /// calef's ruling of 2026-10-12 (UTC): a host that ends in a number is an address written the
+    /// canonical way or is refused, by name, before anything resolves it. `0010.0.0.1` was read as
+    /// a DNS name before, and `inet_aton` reads it as 8.0.0.1.
+    #[test]
+    fn a_host_that_ends_in_a_number_must_be_a_canonical_address() {
+        let at = Location::parse("https://8.0.10.8/p").unwrap();
+        assert_eq!(at.host, "8.0.10.8");
+        assert!(Location::parse("https://1password.example/p").is_ok());
+        assert!(Location::parse("https://a.0x1g/p").is_ok());
+        for host in [
+            "0010.0.0.1",
+            "8.8.8.08",
+            "00.8.8.8",
+            "0x0a.0.0.1",
+            "8.8.8.0x8",
+            "8.8.8.0X8",
+            "8.8.8.0x",
+            "10.1",
+            "167772161",
+            "8.8.8.8.8",
+            "8.8.8.256",
+            "packages.example.8",
+        ] {
+            let text = format!("https://{host}/p");
+            let refused = Location::parse(&text).unwrap_err();
+            assert_eq!(refused, LocationRefusal::NonCanonicalAddress(host));
+            let said = refused.to_string();
+            assert!(said.contains(host) && said.contains("canonical"), "{said}");
+            assert_eq!(Repository::new(host, 443, "rolling"), None, "{host}");
+        }
+        let text = line(
+            "greeting-0.1.0-aarch64",
+            b"a",
+            "https://h/1 https://0010.0.0.1/g",
+        );
+        let refused = Index::parse(&text).unwrap_err();
+        assert_eq!(
+            refused.location,
+            Some(LocationRefusal::NonCanonicalAddress("0010.0.0.1"))
+        );
+        assert!(Repository::new("10.0.0.5", 443, "rolling").is_some());
     }
 
     #[test]

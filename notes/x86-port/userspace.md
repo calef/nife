@@ -35,9 +35,9 @@ spawns a program by accident. The tests that would spawn them skip with the reas
 `hvm_start_info` carries `nr_modules` and `modlist_paddr`, and QEMU's PVH loader turns `-initrd
 FILE` into exactly one entry there. `machine_discovery::x86_64::module` decodes it (host-tested,
 three tests, including the 32-byte stride that a one-module list cannot catch), and
-`arch::x86_64::machine::initrd` reads entry zero through the direct map. The x86 front end then does
+`arch::x86_64::machine::initial_ramdisk` reads entry zero through the direct map. The x86 front end then does
 what `memory::init` does with the tree's answer. It adds the region to the `forbidden` slice so the
-allocator cannot hand out the archive it is about to read, and calls `memory::record_initrd`. The
+allocator cannot hand out the archive it is about to read, and calls `memory::record_initial_ramdisk`. The
 evidence it works is arithmetic rather than a print: free memory drops from 254 MiB to 249 with a
 4.4 MB archive attached.
 
@@ -46,7 +46,7 @@ inventing a policy for a case the machine never produces would be code nobody co
 
 ### `xtask` grew a third packer, and one latent bug came out with it
 
-`initrd_x86` packs the same table `initrd_riscv` does, which is now
+`initial_ramdisk_x86` packs the same table `initial_ramdisk_riscv` does, which is now
 `portable_archive_entries()`: one list, two callers, because duplicating it would have let the two
 drift the first time somebody added a program to one of them. x86 builds the whole `user` package
 rather than naming binaries, which is both shorter and self-maintaining now that everything
@@ -68,7 +68,7 @@ than a substring, because a host path on an x86 CI runner contains `x86_64-unkno
 ### The suite: 170 pass, 67 skip
 
 It was 97 pass, 7 skip the day the scheduler landed and nothing in `user/` compiled. Item 4's
-hand-off (2026-08-24) built the userspace, packed an archive, and turned `cfg(initrd)` on, and the
+hand-off (2026-08-24) built the userspace, packed an archive, and turned `cfg(initial_ramdisk)` on, and the
 whole of `kernel/src/user/` came into the binary at once.
 
 Every skip prints why. Grouped by cause, largest first:
@@ -133,7 +133,7 @@ the argument for doing item 4's hand-off rather than deferring it.
    after the last section the script mentions, which was `.bss`. `.got` has file contents and `.bss`
    does not. So the `data` segment's `p_filesz` stretched past `.bss` to cover it, `p_memsz ==
    p_filesz`, and the segment had no zero-fill tail at all. The loader had nothing to zero and
-   `.bss` was whatever the file happened to hold. Found by `the_initrd_holds_a_native_executable`,
+   `.bss` was whatever the file happened to hold. Found by `the_initial_ramdisk_holds_a_native_executable`,
    which asserts `memsz > filesz` precisely so the zero-fill test below it is not vacuous. It shows
    up here and not on the other two because all three targets use the static relocation model and
    none of these programs is position-independent. But LLVM's x86-64 backend still routes a few
@@ -144,14 +144,14 @@ the argument for doing item 4's hand-off rather than deferring it.
    archive existed. It panicked *before* any disk check, so a dozen test files that already degrade
    gracefully on a machine with no disk aborted the suite instead.
 
-### `cfg(initrd)`, and the prediction it made
+### `cfg(initial_ramdisk)`, and the prediction it made
 
 Thirty test modules under `kernel/src/user/` were gated `#[cfg(all(test, initrd))]`, a cfg
 `kernel/build.rs` emits for every target that has user programs to pack. They are portable in every
 respect except that their fixture is a real ELF binary read out of the initrd archive.
 
 `#[cfg(not(target_arch = "x86_64"))]` would have said the same thing thirty times and been wrong the
-day this port could build user programs, in thirty places nobody would think to look. `cfg(initrd)`
+day this port could build user programs, in thirty places nobody would think to look. `cfg(initial_ramdisk)`
 reads as what it means, and unblocking it was one match arm in the build script, with nothing
 else edited. Every one of those modules came back at once. That is the prediction the cfg was
 written to make, and it held. It is recorded here as well as in the build script because the

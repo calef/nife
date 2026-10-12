@@ -73,9 +73,9 @@ fn run(name: &str, line: &str, out: &mut [u8]) -> Option<usize> {
     let _ = crate::sched::ipc_receive(clock.report);
     let faults_before = USER_FAULTS.load(Ordering::Relaxed);
     let Some(spawned) = fs_service::start_std_narrowed_clocked(
-        program("block_driver").expect("no block_driver program in the initrd archive"),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
-        program("fs_subtree_caretaker").expect("no fs_subtree_caretaker in the initrd archive"),
+        program("block_driver").expect("no block_driver program in the initial ramdisk"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
+        program("fs_subtree_caretaker").expect("no fs_subtree_caretaker in the initial ramdisk"),
         image,
         c_program_fixture::ROOT,
         filesystem_protocol::dir::ALL,

@@ -16,7 +16,7 @@ Raised 2026-10-05 (UTC) by `lane/radon-2026-10-05-record`. Title and slug are dr
 ## What was seen
 
 `script/board-image` builds the kernel with `cargo build --release` and the userspace archive with
-`cargo xtask initrd-riscv`, which packs `target/<target>/debug/` because nothing sets xtask's
+`cargo xtask initial-ramdisk-riscv`, which packs `target/<target>/debug/` because nothing sets xtask's
 `RELEASE` flag on that path (`xtask/src/archive.rs`, `profile_dir()`). So every radon payload runs a
 release kernel under debug programs. The job mix measures user code as well as the kernel's: a
 syscall's userspace stub, `compute`'s grind, the spawn job's loader.
@@ -32,7 +32,7 @@ Every job-mix and soak number recorded from radon was taken with debug userspace
 the profile changes all of them at once. The change has to come with a new baseline, taken
 interleaved against the old payload on the same evening. Every note that quotes a radon number
 has to say which side of the change it is on. `swish-check --release` already met the same mismatch
-and fixed it for its own path (the comment at `initrd_riscv`).
+and fixed it for its own path (the comment at `initial_ramdisk_riscv`).
 
 Reuse: xtask's existing `RELEASE` flag and `profile_dir()`, which `bench`, `soak` and `install`
 already set; nothing new is built.

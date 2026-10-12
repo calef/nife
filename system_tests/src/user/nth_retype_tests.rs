@@ -138,7 +138,7 @@ fn login_gives_back_everything_when_any_retype_of_a_login_fails() {
     };
     free_terminal(&w);
     let cli =
-        program("login_test_client").expect("no login_test_client program in the initrd archive");
+        program("login_test_client").expect("no login_test_client program in the initial ramdisk");
 
     // A clean login first, counted and not failed, so the census below is taken after `login` has
     // built whatever it builds once (a page table for the channel window, say) and every run after

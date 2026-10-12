@@ -30,8 +30,9 @@ use filesystem_protocol::fixture;
 use super::*;
 use crate::sched;
 
-/// The two `fs_test_client` roles, mirrored from `fixtures/src/fs_test_client.rs`. The numbers live
-/// on both sides because one program is started by role, the same shape as every other role here.
+/// The two `fs_test_client` roles, mirrored from `fixtures/src/fs_test_client/role.rs`. The numbers
+/// live on both sides because one program is started by role, the same shape as every other role
+/// here.
 const ROLE_SHARE_VICTIM: u64 = 13;
 const ROLE_SHARE_ATTACKER: u64 = 14;
 
@@ -43,8 +44,8 @@ const ROLE_SHARE_ATTACKER: u64 = 14;
 fn witness(shared: bool) -> Option<u64> {
     let (_readiness, report) = fs_service::start_shared_frame_witness(
         fs_service::blk_server_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
-        program("fs_test_client").expect("no fs_test_client program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
+        program("fs_test_client").expect("no fs_test_client program in the initial ramdisk"),
         ROLE_SHARE_VICTIM,
         ROLE_SHARE_ATTACKER,
         shared,

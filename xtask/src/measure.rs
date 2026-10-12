@@ -26,12 +26,12 @@ use crate::host::workspace_root;
 /// check being relaxed there.
 ///
 /// **It stopped being per-architecture at milestone 295, and took its `arch` parameter with it.**
-/// riscv64 and `x86_64` used to add `builder`, milestone 20's richer-initrd demo, because the
-/// RISC-V boot tour entered it directly to prove that userspace composes the system; calef retired
-/// that program on 2026-09-14 once milestone 268 made the default riscv64 boot hand over to the
-/// progenitor, which makes the same claim at a larger scale. So the kernel now enters exactly two
-/// programs on every board, and a trust root that differed by architecture is one fewer thing for a
-/// reader to hold.
+/// riscv64 and `x86_64` used to add `builder`, milestone 20 (a portable HAL)'s richer initial
+/// ramdisk demo, because the RISC-V boot tour entered it directly to prove that userspace composes
+/// the system; calef retired that program on 2026-09-14 once milestone 268 (every architecture
+/// boots the same way) made the default riscv64 boot hand over to the progenitor, which makes the
+/// same claim at a larger scale. So the kernel now enters exactly two programs on every board, and
+/// a trust root that differed by architecture is one fewer thing for a reader to hold.
 ///
 /// The parameter went rather than being kept for a future divergence, because an argument nothing
 /// reads is a claim that something varies when nothing does. `write_measure_manifest` still takes

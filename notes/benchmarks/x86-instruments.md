@@ -97,7 +97,7 @@ after a context switch writes `CR3`. The saving is refills, and refills are not 
 
 `cargo xtask bench --x86` boots with no initrd, so every `_el0` bench self-skips and nothing in its
 baseline writes `CR3` (`yield_switch` and friends are kernel threads sharing one root). Run by hand
-with `target/initrd-x86_64.img` (`cargo xtask initrd-x86`) attached, the EL0 plane runs on x86_64 for
+with `target/initial-ramdisk-x86_64.img` (`cargo xtask initial-ramdisk-x86`) attached, the EL0 plane runs on x86_64 for
 the first time. `ctx_switch` is two processes yielding to each other, so every switch is a `CR3`
 write. `ipc_rtt_el0` is a round trip between two processes, two per iteration.
 

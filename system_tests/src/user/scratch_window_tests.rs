@@ -4,8 +4,8 @@
 //! `supervision_protocol`'s loader maps every page it fills for a child into its own address space,
 //! and nothing in the ABI unmaps it (DECISIONS §162 (whether a holder can give up a mapping) is
 //! open). Until 2026-09-26 its cursor only climbed, so a long-lived builder ran out: in the
-//! progenitor, first of page tables for the cursor and then of address space below the initrd
-//! window, after about seventy-five `ripgrep`-sized spawns. Every build after that failed.
+//! progenitor, first of page tables for the cursor and then of address space below the initial
+//! ramdisk window, after about seventy-five `ripgrep`-sized spawns. Every build after that failed.
 //!
 //! The loader now wraps inside a fixed window and asks the kernel which pages are free, and this
 //! proves the kernel half of that bargain as well as the loader's: that destroying a child's region

@@ -61,10 +61,10 @@ const ALWAYS: u64 = nb::PWD_IS_ROOT
 fn navigate(root: &'static str, run: u64) -> Option<u64> {
     let report = fs_service::start_granted_dir(
         dir_capability_tests::blk_server_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
         program("fs_subtree_caretaker")
-            .expect("no fs_subtree_caretaker program in the initrd archive"),
-        program("swish").expect("no swish program in the initrd archive"),
+            .expect("no fs_subtree_caretaker program in the initial ramdisk"),
+        program("swish").expect("no swish program in the initial ramdisk"),
         fs_service::DirGrant {
             name: root,
             rights: dir::ALL,

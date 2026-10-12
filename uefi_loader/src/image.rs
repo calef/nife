@@ -468,6 +468,11 @@ mod tests {
     /// A minimal ELF64 with a section table: a null section, the string table, and one named
     /// section per entry of `names`.
     fn with_sections(names: &[&str]) -> std::vec::Vec<u8> {
+        with_sections_of(names, 64)
+    }
+
+    /// [`with_sections`] with section headers `entsize` bytes apart, at least the 0x28 this reads.
+    fn with_sections_of(names: &[&str], entsize: usize) -> std::vec::Vec<u8> {
         let mut strtab = std::vec![0u8];
         let mut offsets = std::vec![];
         for n in names {
@@ -481,12 +486,12 @@ mod tests {
         let count = names.len() + 2;
         let mut out = std::vec![0u8; 64];
         out[0x28..0x30].copy_from_slice(&(shoff as u64).to_le_bytes());
-        out[0x3a..0x3c].copy_from_slice(&64u16.to_le_bytes());
+        out[0x3a..0x3c].copy_from_slice(&(entsize as u16).to_le_bytes());
         out[0x3c..0x3e].copy_from_slice(&(count as u16).to_le_bytes());
         out[0x3e..0x40].copy_from_slice(&1u16.to_le_bytes());
         out.extend_from_slice(&strtab);
         let mut header = |name: u32, off: u64, len: u64| {
-            let mut h = [0u8; 64];
+            let mut h = std::vec![0u8; entsize];
             h[0..4].copy_from_slice(&name.to_le_bytes());
             h[0x18..0x20].copy_from_slice(&off.to_le_bytes());
             h[0x20..0x28].copy_from_slice(&len.to_le_bytes());
@@ -518,6 +523,30 @@ mod tests {
         assert!(!carries_debug_info(&with_sections(&[".not.debug_x"])));
         // No section table at all.
         assert!(!carries_debug_info(&[0u8; 64]));
+    }
+
+    /// The smallest section header this reads, 0x28 bytes, is read; one smaller is not.
+    #[test]
+    fn a_section_table_of_the_smallest_entry_size_is_read() {
+        assert!(!carries_debug_info(&with_sections_of(&[".text"], 0x28)));
+        assert!(carries_debug_info(&with_sections_of(
+            &[".debug_info"],
+            0x28
+        )));
+    }
+
+    /// A string-table index equal to the section count is unreadable even when bytes follow the
+    /// table that would parse as one more header: the count bounds the table, not the file.
+    #[test]
+    fn a_string_table_index_past_the_table_is_unreadable() {
+        let mut image = with_sections(&[".text"]);
+        let count = u16::from_le_bytes([image[0x3c], image[0x3d]]);
+        image[0x3e..0x40].copy_from_slice(&count.to_le_bytes());
+        // A copy of the real string table's header, one slot past the end of the table.
+        let shoff = image.len() - usize::from(count) * 64;
+        let real = image[shoff + 64..shoff + 128].to_vec();
+        image.extend_from_slice(&real);
+        assert!(carries_debug_info(&image));
     }
 
     #[test]

@@ -14,7 +14,7 @@ the merge queue lands it.)*
 ## What is being decided
 
 On a tour boot, `kernel/src/main.rs:1881` runs
-`user::initrd().map(|_| user::console_service::start())`. That spawns `components/src/console.rs`, a
+`user::initial_ramdisk().map(|_| user::console_service::start())`. That spawns `components/src/console.rs`, a
 real UART driver at EL0 holding the PL011's registers, which then blocks on `recv(REQUEST)` for
 ever, because nothing on that boot holds a capability naming its endpoint. Its only client was the
 narrator, deleted 2026-09-13 on calef's ruling (milestone 267).

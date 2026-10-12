@@ -1,4 +1,4 @@
-//! The userspace archives: the initrd each architecture's kernel is booted with.
+//! The userspace archives: the initial ramdisk each architecture's kernel is booted with.
 //!
 //! One packer per ISA, over the same program list, plus the check that every program the
 //! tree loads by name is declared in a manifest the packer reads.
@@ -14,19 +14,19 @@ use crate::inspect::read_stripped;
 use crate::measure::{boot_programs, measurement_table, write_measure_manifest};
 use crate::{RISCV_TARGET, TARGET, X86_TARGET, profile_dir};
 
-/// Where the packed initrd archive is written.
-pub(crate) fn initrd_path() -> String {
+/// Where the packed initial ramdisk archive is written.
+pub(crate) fn initial_ramdisk_path() -> String {
     workspace_root()
-        .join("target/initrd.img")
+        .join("target/initial-ramdisk.img")
         .display()
         .to_string()
 }
 
-/// Where the RISC-V initrd archive is written (milestone 20). Separate from the aarch64 one because
-/// it holds riscv64 ELFs, not aarch64 ones.
-pub(crate) fn riscv_initrd_path() -> String {
+/// Where the RISC-V initial ramdisk archive is written (milestone 20 (a portable HAL)). Separate
+/// from the aarch64 one because it holds riscv64 ELFs, not aarch64 ones.
+pub(crate) fn riscv_initial_ramdisk_path() -> String {
     workspace_root()
-        .join("target/initrd-riscv.img")
+        .join("target/initial-ramdisk-riscv.img")
         .display()
         .to_string()
 }
@@ -40,7 +40,7 @@ const PROGRAM_PACKAGES: [&str; 2] = ["components", "fixtures"];
 /// cargo needs anyway. All three archives pack exactly this list, so a program is added to them by
 /// adding its `[[bin]]` block and removed by deleting it.
 ///
-/// **This replaced two hand-maintained tables**, `initrd_aarch64()`'s own and the
+/// **This replaced two hand-maintained tables**, `initial_ramdisk_aarch64()`'s own and the
 /// `portable_archive_entries()` riscv64 and `x86_64` shared. By 2026-09-19 they disagreed about two
 /// programs nobody had decided to leave out (`serial_driver` and `jh7110_entropy` were missing from
 /// aarch64's) and both had missed a third (`pmap`, built and packed nowhere). That was drift rather
@@ -233,8 +233,9 @@ fn bin_names(manifest: &str) -> Result<Vec<String>, String> {
 }
 
 /// **Archive entries packed from outside `components/` and `fixtures/`**, each present only when its
-/// own build ran (see the `initrd_*` functions). Hoisted out of the one test that used to hold it
-/// (milestone 595 (provisional)), because [`check_declared_programs`] now needs the same list.
+/// own build ran (see the `initial_ramdisk_*` functions). Hoisted out of the one test that used to
+/// hold it (milestone 595 (provisional)), because [`check_declared_programs`] now needs the same
+/// list.
 const BUILT_ELSEWHERE: [&str; 12] = [
     "redoxfs_server",
     "mkfs",
@@ -303,20 +304,25 @@ fn check_declared_programs(names: &[String]) -> Result<(), String> {
     Ok(())
 }
 
-/// **Build the RISC-V userspace archive** (milestone 20, the richer-initrd step). Compiles the
-/// portable programs the second architecture runs and packs them into a nifefs archive. The kernel
-/// enters `progenitor` and nothing else: the tour used to enter `builder` as well, to load
+/// **Build the RISC-V userspace archive** (milestone 20, the richer initial ramdisk step). Compiles
+/// the portable programs the second architecture runs and packs them into a nifefs archive. The
+/// kernel enters `progenitor` and nothing else: the tour used to enter `builder` as well, to load
 /// `least_authority_demo` by name from userspace, and milestone 295 retired it. Every entry is packed
-/// under its own name since milestone 266. Point `NIFE_INITRD` at the result and boot the riscv
-/// kernel, e.g.:
+/// under its own name since milestone 266 (one progenitor). Point `NIFE_INITIAL_RAMDISK` at the
+/// result and boot the riscv kernel, e.g.:
 ///
 /// ```text
-/// cargo xtask initrd-riscv
-/// NIFE_INITRD=target/initrd-riscv.img cargo run -p kernel --target riscv64imac-unknown-none-elf
+/// cargo xtask initial-ramdisk-riscv
+/// NIFE_INITIAL_RAMDISK=target/initial-ramdisk-riscv.img cargo run -p kernel \
+///     --target riscv64imac-unknown-none-elf
 /// ```
-pub(crate) fn initrd_riscv() -> bool {
+///
+/// Name: ratified 2026-10-12 (calef, #1998, milestone 139 (drive the unsafe count down) round 11).
+/// His words: "B for #1998." Refused `initrd_riscv` (the foreign spelling, which stops at the
+/// boundary where it arrives).
+pub(crate) fn initial_ramdisk_riscv() -> bool {
     // **Builds the whole package rather than naming binaries** (fixed 2026-08-27; see
-    // [`initrd_x86`]'s doc comment, which used to describe this as the one structural
+    // [`initial_ramdisk_x86`]'s doc comment, which used to describe this as the one structural
     // difference between the two). The `--bin` list this used to carry predated every program
     // in `user/` compiling for this target, and had to be kept in step with the packing table
     // (itself generated since milestone 150, see [`declared_programs`]) by hand; it fell out of step twice in one night when
@@ -344,7 +350,7 @@ pub(crate) fn initrd_riscv() -> bool {
             .to_string()
     };
     // Every declared program, packed under its own name (milestone 150).
-    let Some(mut blobs) = declared_program_blobs("initrd-riscv", bin) else {
+    let Some(mut blobs) = declared_program_blobs("initial-ramdisk-riscv", bin) else {
         return false;
     };
     // The std demo (milestone 27 (Rust `std` on the native ABI)), built through the patched std
@@ -446,7 +452,7 @@ pub(crate) fn initrd_riscv() -> bool {
     let catalogue = match crate::package::image_catalogue("riscv64") {
         Ok(catalogue) => catalogue,
         Err(complaint) => {
-            eprintln!("initrd-riscv: the image's package source: {complaint}");
+            eprintln!("initial-ramdisk-riscv: the image's package source: {complaint}");
             return false;
         }
     };
@@ -454,7 +460,7 @@ pub(crate) fn initrd_riscv() -> bool {
     // The measurement table (milestone 104), on the same terms as aarch64's: last, so it measures
     // everything above it, and vouched for by the kernel's trust root so the progenitor's refusals mean
     // something. Parity is the point (§19): the same table, the same parser, the same policy.
-    if !programs_fit_the_address_space_map("initrd-riscv", &files) {
+    if !programs_fit_the_address_space_map("initial-ramdisk-riscv", &files) {
         return false;
     }
     let table = measurement_table(&files);
@@ -465,14 +471,17 @@ pub(crate) fn initrd_riscv() -> bool {
     // through MAX_FILES, image_size and write_image's bounds check by hand; the error names which.
     if let Err(e) = nifefs::write_image(&files, &mut img) {
         eprintln!(
-            "initrd-riscv: could not build the archive: {e:?} ({} files, {} bytes)",
+            "initial-ramdisk-riscv: could not build the archive: {e:?} ({} files, {} bytes)",
             files.len(),
             size
         );
         return false;
     }
-    if let Err(e) = std::fs::write(riscv_initrd_path(), &img) {
-        eprintln!("initrd-riscv: could not write {}: {e}", riscv_initrd_path());
+    if let Err(e) = std::fs::write(riscv_initial_ramdisk_path(), &img) {
+        eprintln!(
+            "initial-ramdisk-riscv: could not write {}: {e}",
+            riscv_initial_ramdisk_path()
+        );
         return false;
     }
     // Measure the boot programs before the riscv kernel is built (milestone 22 phase B.1).
@@ -481,18 +490,18 @@ pub(crate) fn initrd_riscv() -> bool {
     }
     eprintln!(
         "wrote {} ({size} bytes): progenitor, least_authority_demo",
-        riscv_initrd_path()
+        riscv_initial_ramdisk_path()
     );
     true
 }
 
-/// Where the `x86_64` initrd archive is written (milestone 161). Separate from the other two for the
-/// reason they are separate from each other: it holds `x86_64` ELFs, and the kernel's loader refuses
-/// anything whose `e_machine` is not its own (`crates/elf`'s `EXPECTED_MACHINE`, which was itself
-/// wrong for this architecture until item 4 found it).
-pub(crate) fn x86_initrd_path() -> String {
+/// Where the `x86_64` initial ramdisk archive is written (milestone 161 (the x86_64 kernel port)).
+/// Separate from the other two for the reason they are separate from each other: it holds `x86_64`
+/// ELFs, and the kernel's loader refuses anything whose `e_machine` is not its own (`crates/elf`'s
+/// `EXPECTED_MACHINE`, which was itself wrong for this architecture until item 4 found it).
+pub(crate) fn x86_initial_ramdisk_path() -> String {
     workspace_root()
-        .join("target/initrd-x86_64.img")
+        .join("target/initial-ramdisk-x86_64.img")
         .display()
         .to_string()
 }
@@ -502,15 +511,17 @@ pub(crate) fn x86_initrd_path() -> String {
 /// `x86_64-unknown-none`.
 ///
 /// **It builds the whole package rather than naming binaries.** This used to be the one structural
-/// difference from [`initrd_riscv`], whose `--bin` list predated every program in `user/` compiling
-/// for its target and had to be kept in step with the table by hand; that list is gone as of
-/// 2026-08-27 and `initrd_riscv` now builds unfiltered too, the same way this function always has.
-/// Since milestone 150 there is no packing table either: a `[[bin]]` block is packed here and by
-/// both siblings with no second edit.
+/// difference from [`initial_ramdisk_riscv`], whose `--bin` list predated every program in `user/`
+/// compiling for its target and had to be kept in step with the table by hand; that list is gone as
+/// of 2026-08-27 and `initial_ramdisk_riscv` now builds unfiltered too, the same way this function
+/// always has. Since milestone 150 (adding a program should not need eight hand-maintained lists)
+/// there is no packing table either: a `[[bin]]` block is packed here and by both siblings with no
+/// second edit.
 ///
 /// ```text
-/// cargo xtask initrd-x86
-/// NIFE_INITRD=target/initrd-x86_64.img cargo run -p kernel --target x86_64-unknown-none
+/// cargo xtask initial-ramdisk-x86
+/// NIFE_INITIAL_RAMDISK=target/initial-ramdisk-x86_64.img cargo run -p kernel \
+///     --target x86_64-unknown-none
 /// ```
 ///
 /// # BUGS
@@ -535,19 +546,13 @@ pub(crate) fn x86_initrd_path() -> String {
 /// feature, or an x86 target spec that keeps SSE for userspace. Both are their own work.
 /// See notes/x86-port/userspace.md.
 ///
-/// **Naming, updated 2026-08-27**: this function's own name predates a naming scheme; the mismatch
-/// it used to flag against its two siblings (`mkinitrd` for aarch64, `initrd_riscv` for RISC-V,
-/// `initrd_x86` here) is resolved on calef's behalf as follows, and remains **provisional** because
-/// naming is an architect's call, not a lane's (per this repo's naming convention; function names
-/// get more latitude than crate names but still ship provisional). aarch64's `mkinitrd` is renamed
-/// to `initrd_aarch64` and given its own `initrd-aarch64` subcommand, matching the `initrd_<arch>`
-/// / `initrd-<arch>` shape `initrd_riscv`/`initrd-riscv` and this function/`initrd-x86` already
-/// had; this function and `initrd_riscv` are left as they were; see the PR that made this change
-/// for the reasoning (chiefly: extending the pattern two of three already used costs one new
-/// subcommand and one rename, where making all three agree on fully-spelled ISA names, e.g.
-/// `initrd_riscv64` / `initrd_x86_64`, would also rename two already-typed, already-documented
-/// subcommand names for a smaller win). Confirm or redirect.
-pub(crate) fn initrd_x86() -> bool {
+/// **Naming.** The three `initial_ramdisk_<arch>` functions and `initial-ramdisk-<arch>`
+/// subcommands share one shape; aarch64's was `mkinitrd` until 2026-08-27.
+///
+/// Name: ratified 2026-10-12 (calef, #1998, milestone 139 (drive the unsafe count down) round 11).
+/// His words: "B for #1998." Refused `initrd_x86` (the foreign spelling, which stops at the
+/// boundary where it arrives).
+pub(crate) fn initial_ramdisk_x86() -> bool {
     if !crate::build_programs(X86_TARGET) {
         return false;
     }
@@ -558,14 +563,15 @@ pub(crate) fn initrd_x86() -> bool {
             .display()
             .to_string()
     };
-    let Some(mut blobs) = declared_program_blobs("initrd-x86", bin) else {
+    let Some(mut blobs) = declared_program_blobs("initial-ramdisk-x86", bin) else {
         return false;
     };
-    // The FS server and `mkfs` (milestone 164), on exactly the terms `initrd_riscv` carries them:
-    // present iff something built them for this target, absent from a bare `initrd-x86`, and
-    // `test` builds them first. Until milestone 164 they could not be built for this target at
-    // all, because the vendored RedoxFS engine's `aes` dependency would not codegen without SSE;
-    // `.cargo/config.toml`'s `--cfg aes_force_soft` on this target is what changed that.
+    // The FS server and `mkfs` (milestone 164 (x86_64 userspace can't build `aes`)), on exactly the
+    // terms `initial_ramdisk_riscv` carries them: present iff something built them for this target,
+    // absent from a bare `initial-ramdisk-x86`, and `test` builds them first. Until milestone 164
+    // they could not be built for this target at all, because the vendored RedoxFS engine's `aes`
+    // dependency would not codegen without SSE; `.cargo/config.toml`'s `--cfg aes_force_soft` on
+    // this target is what changed that.
     if let Ok(bytes) = read_stripped(&redoxfs_server_elf(X86_TARGET)) {
         blobs.push(("redoxfs_server", bytes));
     }
@@ -652,7 +658,7 @@ pub(crate) fn initrd_x86() -> bool {
     let catalogue = match crate::package::image_catalogue("x86_64") {
         Ok(catalogue) => catalogue,
         Err(complaint) => {
-            eprintln!("initrd-x86: the image's package source: {complaint}");
+            eprintln!("initial-ramdisk-x86: the image's package source: {complaint}");
             return false;
         }
     };
@@ -660,7 +666,7 @@ pub(crate) fn initrd_x86() -> bool {
     // The measurement table (milestone 104), on the same terms as the other two: last, so it
     // measures everything above it, and vouched for by the kernel's trust root so the progenitor's refusals
     // mean something. Parity is the point (§19): the same table, the same parser, the same policy.
-    if !programs_fit_the_address_space_map("initrd-x86", &files) {
+    if !programs_fit_the_address_space_map("initial-ramdisk-x86", &files) {
         return false;
     }
     let table = measurement_table(&files);
@@ -669,14 +675,17 @@ pub(crate) fn initrd_x86() -> bool {
     let mut img = std::vec![0u8; size];
     if let Err(e) = nifefs::write_image(&files, &mut img) {
         eprintln!(
-            "initrd-x86: could not build the archive: {e:?} ({} files, {} bytes)",
+            "initial-ramdisk-x86: could not build the archive: {e:?} ({} files, {} bytes)",
             files.len(),
             size
         );
         return false;
     }
-    if let Err(e) = std::fs::write(x86_initrd_path(), &img) {
-        eprintln!("initrd-x86: could not write {}: {e}", x86_initrd_path());
+    if let Err(e) = std::fs::write(x86_initial_ramdisk_path(), &img) {
+        eprintln!(
+            "initial-ramdisk-x86: could not write {}: {e}",
+            x86_initial_ramdisk_path()
+        );
         return false;
     }
     // **Measure the boot programs before the x86 kernel is built** (milestone 22 phase B.1), and on
@@ -689,44 +698,50 @@ pub(crate) fn initrd_x86() -> bool {
     }
     eprintln!(
         "wrote {} ({size} bytes): progenitor plus {} entries",
-        x86_initrd_path(),
+        x86_initial_ramdisk_path(),
         files.len()
     );
     true
 }
 
-/// **Build the aarch64 userspace archive.** Pack the built user ELFs into the initrd archive the
-/// kernel hands the progenitor (milestone 19f).
+/// **Build the aarch64 userspace archive.** Pack the built user ELFs into the initial ramdisk
+/// archive the kernel hands the progenitor (milestone 19f (run a real workload)).
 ///
-/// The initrd is a **nifefs image**, the same format the virtio disk uses, so one parser serves
-/// both the RAM archive and the disk. It holds `progenitor` (the first process, milestone 266) and
-/// `hello` (the init roles the kernel re-enters for milestone 19d's and 19e's tests), plus the
-/// binaries lifted out of hello over 19f.2, 19f.3 and milestone 291. The kernel reads the
-/// `progenitor` entry to boot; the progenitor loads the rest by name. Generated, not checked in, exactly like the disk and the flat kernel image: a blob
-/// in git is a blob nobody can review.
+/// The initial ramdisk is a **nifefs image**, the same format the virtio disk uses, so one parser
+/// serves both the RAM archive and the disk. It holds `progenitor` (the first process, milestone
+/// 266) and `hello` (the init roles the kernel re-enters for milestone 19d's and 19e's tests), plus
+/// the binaries lifted out of hello over 19f.2, 19f.3 and milestone 291 (`fixtures/src/hello.rs`
+/// was thirty-one programs wearing one name). The kernel reads the `progenitor` entry to boot; the
+/// progenitor loads the rest by name. Generated, not checked in, exactly like the disk and the flat
+/// kernel image: a blob in git is a blob nobody can review.
 ///
-/// **Renamed from `mkinitrd` (2026-08-27), and given aarch64 its own `initrd-aarch64`
-/// subcommand**, to match its two siblings ([`initrd_riscv`], [`initrd_x86`]): one job, one
-/// `initrd_<arch>` naming scheme, three matching `cargo xtask initrd-<arch>` subcommands. This
-/// function only packs, unlike its two siblings, which both build-then-pack in one call; `main`'s
-/// `"initrd-aarch64"` arm calls [`crate::user`] (build, then pack) rather than this function alone, so
-/// the subcommand is self-contained the same way `initrd-riscv`/`initrd-x86` are. It is still
-/// called internally by `user()` (and so by `build`, `run`, `shell`, and everything else that
-/// boots the aarch64 kernel) exactly as `mkinitrd` was; the new subcommand is additive, so nothing
-/// that already called this function changed. **Name and subcommand provisional**, per this
+/// **Renamed from `mkinitrd` (2026-08-27), and given aarch64 its own
+/// `initial-ramdisk-aarch64` subcommand**, to match its two siblings ([`initial_ramdisk_riscv`],
+/// [`initial_ramdisk_x86`]): one job, one `initial_ramdisk_<arch>` naming scheme, three matching
+/// `cargo xtask initial-ramdisk-<arch>` subcommands. This function only packs, unlike its two
+/// siblings, which both build-then-pack in one call; `main`'s `"initial-ramdisk-aarch64"` arm calls
+/// [`crate::user`] (build, then pack) rather than this function alone, so the subcommand is
+/// self-contained the same way `initial-ramdisk-riscv`/`initial-ramdisk-x86` are. It is still
+/// called internally by `user()` (and so by `build`, `run`, `shell`, and everything else that boots
+/// the aarch64 kernel) exactly as `mkinitrd` was; the new subcommand is additive, so
+/// nothing that already called this function changed. **Name and subcommand provisional**, per this
 /// repo's naming convention: an architect's call to confirm or redirect.
-pub(crate) fn initrd_aarch64() -> bool {
+///
+/// Name: ratified 2026-10-12 (calef, #1998, milestone 139 (drive the unsafe count down) round 11).
+/// His words: "B for #1998." Refused `initrd_aarch64` (the foreign spelling, which stops at the
+/// boundary where it arrives).
+pub(crate) fn initial_ramdisk_aarch64() -> bool {
     // **No table** since milestone 150: every `[[bin]]` in `components/` and `fixtures/`, the
     // same list the other two archives pack ([`declared_programs`]). This function carried its own
     // hand-written table before that, and an older three-way copy of it before milestone 130; the
     // table had drifted from riscv64's and `x86_64`'s by two programs when it was deleted.
-    let Some(blobs) = declared_program_blobs("initrd-aarch64", bin_elf) else {
+    let Some(blobs) = declared_program_blobs("initial-ramdisk-aarch64", bin_elf) else {
         return false;
     };
     let mut files: Vec<(&str, &[u8])> = blobs.iter().map(|(n, b)| (*n, b.as_slice())).collect();
     // The std demo (milestone 27) rides along IFF it has been built (`cargo xtask std-exerciser`, which
     // `test` runs). It builds through a separate toolchain and target, so an interactive `run` that
-    // never built it simply ships an initrd without it; nothing loads it there.
+    // never built it simply ships an initial ramdisk without it; nothing loads it there.
     let std_exerciser = read_stripped(
         &std_exerciser_elf("aarch64-unknown-nife")
             .display()
@@ -851,7 +866,7 @@ pub(crate) fn initrd_aarch64() -> bool {
     let catalogue = match crate::package::image_catalogue("aarch64") {
         Ok(catalogue) => catalogue,
         Err(complaint) => {
-            eprintln!("initrd-aarch64: the image's package source: {complaint}");
+            eprintln!("initial-ramdisk-aarch64: the image's package source: {complaint}");
             return false;
         }
     };
@@ -860,7 +875,7 @@ pub(crate) fn initrd_aarch64() -> bool {
     // reads this entry out of the archive it already holds and refuses to load a program whose
     // bytes it does not match. See [`measurement_table`] for why it lives here rather than inside
     // the progenitor's own image.
-    if !programs_fit_the_address_space_map("initrd-aarch64", &files) {
+    if !programs_fit_the_address_space_map("initial-ramdisk-aarch64", &files) {
         return false;
     }
     let table = measurement_table(&files);
@@ -868,19 +883,23 @@ pub(crate) fn initrd_aarch64() -> bool {
 
     let size = nifefs::image_size(&files);
     let mut img = std::vec![0u8; size];
-    // Carry the reason, as `initrd_riscv` already does. "could not build the initrd archive" with
-    // the error thrown away is what milestone 291 hit on the commit that crossed `MAX_FILES`, and
-    // it cost a hunt through three candidate bounds by hand; the error names which one.
+    // Carry the reason, as `initial_ramdisk_riscv` already does. "could not build the initial
+    // ramdisk archive" with the error thrown away is what milestone 291 hit on the commit that
+    // crossed `MAX_FILES`, and it cost a hunt through three candidate bounds by hand; the error
+    // names which one.
     if let Err(e) = nifefs::write_image(&files, &mut img) {
         eprintln!(
-            "initrd-aarch64: could not build the initrd archive: {e:?} ({} files, {} bytes)",
+            "initial-ramdisk-aarch64: could not build the initial ramdisk archive: {e:?} ({} files, {} bytes)",
             files.len(),
             size
         );
         return false;
     }
-    if let Err(e) = std::fs::write(initrd_path(), &img) {
-        eprintln!("initrd-aarch64: could not write {}: {e}", initrd_path());
+    if let Err(e) = std::fs::write(initial_ramdisk_path(), &img) {
+        eprintln!(
+            "initial-ramdisk-aarch64: could not write {}: {e}",
+            initial_ramdisk_path()
+        );
         return false;
     }
     // Measure the boot program before the kernel is built (milestone 22 phase B.1). Every caller
@@ -1023,8 +1042,8 @@ mod tests {
 
     /// **The tree's own declaration reads, and agrees with everything that checks it** (milestone
     /// 150): the two `Cargo.toml`s parse, every program `grant_plan` lets the shell spawn has a
-    /// binary, and so do the boot programs. This is what `initrd_*` runs before packing, run here
-    /// so `script/lint`'s host pass catches a disagreement without building an archive.
+    /// binary, and so do the boot programs. This is what `initial_ramdisk_*` runs before packing,
+    /// run here so `script/lint`'s host pass catches a disagreement without building an archive.
     #[test]
     fn the_declared_programs_agree_with_grant_plan_and_the_boot_list() {
         let names = declared_programs().unwrap_or_else(|e| panic!("{e}"));

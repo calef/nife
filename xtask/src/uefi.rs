@@ -7,7 +7,7 @@ use std::path::Path;
 use std::process::Command;
 use std::sync::atomic::Ordering;
 
-use crate::archive::{initrd_x86, x86_initrd_path};
+use crate::archive::{initial_ramdisk_x86, x86_initial_ramdisk_path};
 use crate::disk::{disk_path, mkdisk, mknvmedisk, nvme_disk_path};
 use crate::host::workspace_root;
 use crate::scanout::screendump;
@@ -137,13 +137,13 @@ pub(crate) fn uefi_kernel(features: Option<&str>) -> Option<String> {
     // working tree usually has both fresh; it bites when the kernel is already built, which is
     // every time a lane has compiled it earlier in the session.
     //
-    // `initrd_x86` builds `components`, never the kernel, so the dependency runs one way only and
-    // this order is the safe one as well as the correct one.
+    // `initial_ramdisk_x86` builds `components`, never the kernel, so the dependency runs one way
+    // only and this order is the safe one as well as the correct one.
     let mut build = vec!["build", "-p", "kernel", "--target", X86_TARGET];
     if let Some(list) = features {
         build.extend(["--features", list]);
     }
-    if !initrd_x86() || !cargo_profiled(&build) {
+    if !initial_ramdisk_x86() || !cargo_profiled(&build) {
         return None;
     }
     let built = workspace_root().join(format!("target/{X86_TARGET}/{}/kernel", profile_dir()));
@@ -235,13 +235,14 @@ pub(crate) fn uefi_stage(
     if RELEASE.load(Ordering::Relaxed) {
         args.push("--release");
     }
-    // Not `cargo()`: that helper exports the aarch64 runner's `NIFE_INITRD`/`NIFE_DISK`/`NIFE_NET`,
-    // none of which means anything to a UEFI build, and the two archive variables would then differ
-    // by one character in a way nothing would catch.
+    // Not `cargo()`: that helper exports the aarch64 runner's
+    // `NIFE_INITIAL_RAMDISK`/`NIFE_DISK`/`NIFE_NET`, none of which means anything to a UEFI build,
+    // and the two archive variables would then differ by one character in a way nothing would
+    // catch.
     let built = Command::new("cargo")
         .args(&args)
         .env("NIFE_UEFI_KERNEL", kernel)
-        .env("NIFE_UEFI_INITRD", x86_initrd_path())
+        .env("NIFE_UEFI_INITIAL_RAMDISK", x86_initial_ramdisk_path())
         .status()
         .map(|s| s.success())
         .unwrap_or_else(|e| {
@@ -278,7 +279,7 @@ pub(crate) fn uefi_stage(
     // are embedded whole (`include_bytes!`, no compression), so the loader is what remains.
     // `script/boot-file-size-check` budgets the total; this says where it went.
     let part = |p: &str| std::fs::metadata(p).map(|m| m.len()).unwrap_or(0);
-    let (kernel_bytes, archive_bytes) = (part(kernel), part(&x86_initrd_path()));
+    let (kernel_bytes, archive_bytes) = (part(kernel), part(&x86_initial_ramdisk_path()));
     eprintln!(
         "size: {} loader, {kernel_bytes} kernel, {archive_bytes} archive = {size} bytes ({} profile)",
         size.saturating_sub(kernel_bytes + archive_bytes),
@@ -456,7 +457,7 @@ pub(crate) fn uefi_boot() -> bool {
     for wanted in [
         // The self-test verdict and the hand-over, rather than the halt line this used to want:
         // milestone 182 made x86_64 hand the machine to the progenitor instead of halting, and
-        // this boot carries the archive (`uefi_stage`'s `NIFE_UEFI_INITRD`), so under real
+        // this boot carries the archive (`uefi_stage`'s `NIFE_UEFI_INITIAL_RAMDISK`), so under real
         // firmware it reaches both.
         boot_ladder::SELF_TEST,
         "nife: handing the system to the userspace progenitor.",
@@ -820,7 +821,7 @@ fn screen_watch(
 ///   calef carries to the bench; a regression that only the shipping image has would otherwise be
 ///   gated by nothing.
 pub(crate) fn uefi_test() -> bool {
-    if !initrd_x86() || !mkdisk() || !mknvmedisk() {
+    if !initial_ramdisk_x86() || !mkdisk() || !mknvmedisk() {
         return false;
     }
     // Both test images (milestone 609 (the system tests leave the kernel crate)): the kernel's own

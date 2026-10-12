@@ -149,8 +149,9 @@ pub fn memory_map_entry(info: &BootInfo, index: usize) -> Option<MemoryEntry> {
     memory_entry(bytes, 0)
 }
 
-/// **The initrd, if the loader put one in RAM** (milestone 161 (the `x86_64` kernel port)): x86's answer to the device tree's
-/// `/chosen/linux,initrd-start`, which is what both other architectures read.
+/// **The initial ramdisk, if the loader put one in RAM** (milestone 161 (the `x86_64` kernel
+/// port)): x86's answer to the device tree's `/chosen/linux,initrd-start`, which is what both other
+/// architectures read.
 ///
 /// QEMU's PVH loader turns `-initrd FILE` into one entry in the module list `hvm_start_info` points
 /// at, and `uefi_loader` writes the same entry. **Module 0 is the archive**, and it has been since
@@ -161,7 +162,11 @@ pub fn memory_map_entry(info: &BootInfo, index: usize) -> Option<MemoryEntry> {
 /// of its own file. The old text here said a second module would be "left in RAM, unreserved and
 /// unread"; that is what changed, and the order is now a contract stated at both ends (see
 /// `uefi_loader/src/arch/x86_64/mod.rs`'s `hand_over`). A third module is still ignored.
-pub fn initrd(info: &BootInfo) -> Option<Module> {
+///
+/// Name: ratified 2026-10-12 (calef, #1998, milestone 139 (drive the unsafe count down) round 11).
+/// His words: "B for #1998." Refused `initrd` (the foreign spelling, which stops at the boundary
+/// where it arrives).
+pub fn initial_ramdisk(info: &BootInfo) -> Option<Module> {
     nth_module(info, 0)
 }
 
@@ -903,10 +908,10 @@ pub fn bring_up_memory(info: &BootInfo) -> usize {
     // Three reservations now, and all three would be catastrophic to miss. The kernel image is the
     // code running right now, plus the boot page tables the CPU is walking (they live in
     // `.boot_scratch`, which the linker script puts inside the image bounds precisely so that this
-    // one entry covers them). The initrd is the archive every user program is read out of, sitting
-    // in ordinary RAM the loader did not mark reserved, so without this entry the first process
-    // built would very likely be built on top of its own ELF. The low megabyte is clipped above
-    // rather than listed here.
+    // one entry covers them). The initial ramdisk is the archive every user program is read out of,
+    // sitting in ordinary RAM the loader did not mark reserved, so without this entry the first
+    // process built would very likely be built on top of its own ELF. The low megabyte is clipped
+    // above rather than listed here.
     //
     // **The count is what the array is sliced to**, rather than the array being sized to the worst
     // case and passed whole: an all-zero `Region` is a reservation of nothing at address zero, and
@@ -917,13 +922,13 @@ pub fn bring_up_memory(info: &BootInfo) -> usize {
         size: crate::memory::image_end() - crate::memory::image_start(),
     };
     let mut forbidden_count = 1;
-    if let Some(m) = initrd(info) {
+    if let Some(m) = initial_ramdisk(info) {
         forbidden[forbidden_count] = device_tree_blob::Region {
             start: m.addr,
             size: m.size,
         };
         forbidden_count += 1;
-        crate::memory::record_initrd(m.addr, m.size);
+        crate::memory::record_initial_ramdisk(m.addr, m.size);
     }
     // The same pair of lines, one module along, and for the same reason: the frame allocator would
     // otherwise hand out the bytes an installer is going to write to a disk. The loader asked for

@@ -36,8 +36,8 @@ use crate::sched;
 /// notes/framebuffer-contract.md, "Proving the scanout, from the host".
 #[test_case]
 fn a_confined_userspace_driver_puts_a_known_pattern_in_a_framebuffer() {
-    let gpu_driver = program("gpu_driver").expect("no gpu_driver program in the initrd archive");
-    let painter = program("painter").expect("no painter program in the initrd archive");
+    let gpu_driver = program("gpu_driver").expect("no gpu_driver program in the initial ramdisk");
+    let painter = program("painter").expect("no painter program in the initial ramdisk");
     let threads_before = sched::thread_count();
 
     // **A missing GPU is not always the build-order mistake this test exists to catch.** On the
@@ -190,7 +190,7 @@ fn a_confined_userspace_driver_puts_a_known_pattern_in_a_framebuffer() {
 /// fails the scanout check loudly, which is the right way to be wrong.
 #[test_case]
 fn a_backing_outside_the_grant_is_refused_by_the_iommu() {
-    let gpu_driver = program("gpu_driver").expect("no gpu_driver program in the initrd archive");
+    let gpu_driver = program("gpu_driver").expect("no gpu_driver program in the initial ramdisk");
 
     // Drain any stale fault first, so what we observe is this test's.
     while crate::iommu::take_fault().is_some() {}
@@ -294,9 +294,9 @@ fn a_backing_outside_the_grant_is_refused_by_the_iommu() {
 /// one that stays up until QEMU exits. See notes/glyphs.md for the ordering and what breaks it.
 #[test_case]
 fn a_bitmap_font_and_a_vt_engine_put_readable_text_on_the_scanout() {
-    let gpu_driver = program("gpu_driver").expect("no gpu_driver program in the initrd archive");
+    let gpu_driver = program("gpu_driver").expect("no gpu_driver program in the initial ramdisk");
     let display_terminal =
-        program("display_terminal").expect("no display_terminal program in the initrd archive");
+        program("display_terminal").expect("no display_terminal program in the initial ramdisk");
 
     let Some(w) = display_service::start_terminal(gpu_driver, display_terminal) else {
         crate::testing::skip!("no virtio-gpu-pci function on the bus (NIFE_GPU not set?)");
@@ -467,7 +467,7 @@ fn a_bitmap_font_and_a_vt_engine_put_readable_text_on_the_scanout() {
 #[test_case]
 fn a_keystroke_from_a_virtio_keyboard_becomes_a_terminal_byte() {
     let keyboard_driver =
-        program("keyboard_driver").expect("no keyboard_driver program in the initrd archive");
+        program("keyboard_driver").expect("no keyboard_driver program in the initial ramdisk");
     let Some(mut w) = keyboard_service::start(keyboard_driver) else {
         crate::testing::skip!("no virtio-input function on the bus (NIFE_KEYBOARD not set?)");
     };

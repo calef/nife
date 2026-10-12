@@ -394,8 +394,9 @@ impl Aperture {
     /// (`notes/benchmarks/icount-tick-scales.md`), which made the one-word-per-pixel copy most of
     /// the `x86_64` swish leg's 321 s. Pairing the pixels halves the store count and nothing else
     /// changes. A `u64` is also the widest store this tree's `x86_64` target can legalise: the
-    /// kernel and initrd build for `x86_64-unknown-none`, whose spec is `-mmx,-sse,+soft-float`,
-    /// so there is no vector store to reach for (`xtask/src/archive.rs` records the target).
+    /// kernel and initial ramdisk build for `x86_64-unknown-none`, whose spec is
+    /// `-mmx,-sse,+soft-float`, so there is no vector store to reach for (`xtask/src/archive.rs`
+    /// records the target).
     ///
     /// `misalign` is the aperture's own base misalignment in bytes: the offset of pixel (0, 0)
     /// from an 8-aligned address, which only the driver that holds the mapping can know. With it,

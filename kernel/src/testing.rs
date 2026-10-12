@@ -126,8 +126,8 @@ static TEST_NAME_LEN: AtomicUsize = AtomicUsize::new(0);
 /// `non_volatile_memory_express.rs`'s end-to-end test did.
 ///
 /// The boot tour already has the shape this borrows: `main.rs` prints "skipped (no 'outlaw'
-/// program in the initrd)" instead of asserting a fixture that may not be there. `skip!()` is
-/// the same move inside a `#[test_case]`: call it where the old code called `.expect(...)`, and
+/// program in the initial ramdisk)" instead of asserting a fixture that may not be there. `skip!()`
+/// is the same move inside a `#[test_case]`: call it where the old code called `.expect(...)`, and
 /// it prints the same message a passing test would have, tagged `skipped` instead of `ok`, then
 /// returns from the calling function. The macro (not a function) is what makes the early return
 /// reach the test: a function can only return `()` and hand back control, not unwind its caller.

@@ -28,12 +28,12 @@ pub(super) fn transcript(out: &mut [u8; TRANSCRIPT_MAX]) -> Option<usize> {
             dir_capability_tests::blk_server_image(),
             program("redoxfs_server")?,
             program("fs_subtree_caretaker")
-                .expect("no fs_subtree_caretaker program in the initrd archive"),
+                .expect("no fs_subtree_caretaker program in the initial ramdisk"),
             filesystem_protocol::fixture::tree::REDIR,
             dir::ALL,
         )?;
         let Some(w) = pipeline_service::start_redirecting(dir, dir::ALL) else {
-            panic!("no swish program in the initrd archive, or no memory to wire one");
+            panic!("no swish program in the initial ramdisk, or no memory to wire one");
         };
         let mut buf = [0u8; TRANSCRIPT_MAX];
         let n = pipeline_service::transcript(&w, DONE, &mut buf);

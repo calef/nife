@@ -6,10 +6,10 @@
 //!
 //! **This was the portable analog of seven roles of `hello` until milestone 291, and those seven
 //! were this file's code.** aarch64 reached the identical `crates/virtio` through the `hello`
-//! multiplexer, because `initrd_aarch64`'s table never packed this binary; 291 packed it and
-//! deleted the roles. Every architecture spawns this program now, with the same role numbers and
-//! the same capability slots, so the kernel side was byte-identical across the two shapes and is
-//! now simply one shape.
+//! multiplexer, because `initial_ramdisk_aarch64`'s table never packed this binary; 291 packed it
+//! and deleted the roles. Every architecture spawns this program now, with the same role numbers
+//! and the same capability slots, so the kernel side was byte-identical across the two shapes and
+//! is now simply one shape.
 //!
 //! The roles are the honest driver, the block server, the net driver, the write path, and the two
 //! attackers the DMA-confinement tests spawn (a descriptor aimed at kernel memory, and the

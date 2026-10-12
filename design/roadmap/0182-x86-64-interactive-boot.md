@@ -45,12 +45,6 @@ the fault path can build and run real EL0-equivalent (ring 3) processes; it does
 `init` reached from a real archive, the thing `spawn_init`/`riscv_shell_boot` each already are for
 their own architecture.
 
-Milestone 177 corrected its own earlier claim that this piece was independent of the others.
-x86_64 has no fallback UART path at all (DECISIONS §121, permanently kernel-resident), so this
-milestone's only possible route to an interactive shell is through the graphical stack milestone
-177 builds, not a plain-console alternative the way aarch64/riscv64 each have one. *(Superseded by
-the 2026-09-09 amendment above; kept as the record of what was believed.)*
-
 ## What this needs
 
 1. A real ELF-loading boot entry, matching `spawn_init`/`riscv_shell_boot`'s shape: parse the
@@ -106,32 +100,6 @@ nife x86_64: the progenitor is running at ring 3; 2 of the processes it built st
   no prompt  : the console server cannot reach COM1 from ring 3 (§121); how a shell gets a console here is §149, not yet decided.
 ```
 
-What those two faults are, identified rather than assumed. A temporary dump of the bytes at
-each faulting `rip` and of the user stack, symbolized against the x86 ELFs: both are
-`user_mode_runtime::trap`. Thread 6 is `input` (`rip` is `trap`, called from `input::uart::rx_pending`
-via `input::drain`), and the other is `console` (`trap` at `0x400398` in that binary, its
-`uart_put`). Both are the `x86_64` arms those programs have carried since milestone 161, which trap
-on first use because a ring-3 process cannot reach port I/O (DECISIONS §121). They are the
-progenitor's children, so the progenitor built the console server, the line discipline and the
-input driver before they stopped, and it is still alive after the bound. Under OVMF with two cores
-(`cargo xtask uefi-boot`) the same boot also prints the kernel's `capability slots: 13 of 24 at
-peak`, which is the progenitor's own table gauge.
-
-### A correction found by measurement: the empty slot
-
-The first version left slot 1 empty on x86_64, because slot 1 is the UART page on RISC-V and
-there is no page to grant here. The boot then failed in a way that had nothing to do with §149:
-the progenitor trapped in `must(build_child(swish))` (`crates/system_initializer/src/lib.rs:1374`).
-A temporary print of every syscall error named it: `MAP_INTO` of the shell's output page returned
-`WrongObject`. The progenitor's first-free retype had put `term_out` into the empty slot 1, and once
-the drivers existed it deleted slot 1 as `uart_dev`, deleting its own output page.
-
-So slot 1 holds a placeholder on x86_64: a freshly zeroed frame, `READ | GRANT`, which nothing
-else owns and which the console and input drivers' x86 arms trap before touching. It is marked in
-the code as the foot gun it is. A device capability over physical page zero, which is what
-`spawn_progenitor`'s aarch64-shaped path grants on x86, was refused for this: page zero is real
-memory, and the console server would have written to it.
-
 ### The gates that keyed on the halt line
 
 Three things waited for `nife x86_64: boot complete, halting.`: `cargo xtask uefi-boot`'s serial
@@ -140,33 +108,14 @@ verdict (`boot_ladder::SELF_TEST`), the last line every boot prints whatever it 
 and `uefi-boot` also requires the hand-over line, since that boot carries the archive. `uefi-boot`
 passed under OVMF after the change.
 
-### What §149 would take from here, per option
+### The empty slot, and §149's options as priced then
 
-Priced against the tree as it stands, so the ruling can be made without reading the diff.
+Parts of this record were overtaken by the ruling on §149 and milestone 299, and are in
+[`before-the-ruling.md`](0182-x86-64-interactive-boot/before-the-ruling.md). They are milestone
+177's superseded claim about the only route, what the two faults in the transcript above were, the
+correction that put a placeholder frame in slot 1, and what each of §149's options would have taken
+from the tree.
 
-- Option 1, a kernel thread answering on an endpoint (recommended in §149). Smaller than §149
-  reads, because the progenitor already has the shape. Its graphical branch (milestone 177,
-  `has_graphical`) takes three kernel-created capabilities at slots 10 to 12 and builds no console
-  and no input driver at all: `disp_term_ep`, which `line_editor` `CALL`s with `OP_WRITE` after
-  filling `disp_term_page`, and `kbd_ep`, which a keystroke source `CALL`s with `OP_BYTES`. Under
-  option 1 the kernel would run two kernel threads, one serving `OP_WRITE` by copying the page to
-  COM1 through the direct map and one taking COM1's receive interrupt and `CALL`ing `kbd_ep`, and
-  grant the three slots. The kernel already has the IPC for a kernel-side server
-  (`sched::ipc_recv_cap`, `sched::ipc_reply`, `sched::ipc_call`). No change to the progenitor,
-  `line_editor` or `swish`, and no syscall surface. What it costs is §149's own objection, a
-  message parser in the kernel, and one naming wrinkle: the slots are called `disp_term_*` and would
-  hold a serial terminal.
-- Option 2, a console syscall. One or two new syscall numbers (the surface is four today), the
-  `x86_64` arms of `components/src/console.rs` and `components/src/input.rs` rewritten to call
-  them, and a blocking read, which needs a kernel wait queue for keystrokes. The progenitor would
-  be unchanged. Every program on every architecture is then written against a surface that exists
-  for one of them.
-- Option 3, the graphical stack. `boot_graphical_terminal` is already portable and
-  `pci::find_gpu_device` is PCI, which x86 has. The q35 runner would need a `NIFE_GPU` block
-  (`virtio-gpu-pci` behind VT-d) and a keystroke source: the UART fallback in
-  `boot_graphical_terminal` is `input`, which traps on x86, so a virtio keyboard is required too.
-  xenon has neither device, and `board_console` cannot read a monitor, so the bench loses its
-  serial path.
 
 ## The third leg (2026-09-19)
 

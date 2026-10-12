@@ -60,14 +60,63 @@ pub struct Wiring {
 /// exit over `^Q` and reads its own report, so by the time a caller would release this holding
 /// `rmle`'s thread is already gone.
 pub fn start(dir_name: &'static str, file_name: &str) -> Option<(Wiring, Holding)> {
-    let image = program("rmle").expect("no rmle program in the initrd archive");
+    let image = program("rmle").expect("no rmle program in the initial ramdisk");
 
+    let TerminalHalf {
+        ep_region,
+        term,
+        term_out_phys,
+        console_tid,
+        line_editor_tid,
+    } = start_terminal_half();
+
+    // The filesystem half: fs_service's own split, built for exactly this (a client that needs a
+    // directory *and* something else, milestone 50's own redirection witness).
+    let (dir_ep, file_shared) = fs_service::narrow_dir(
+        fs_service::blk_server_image(),
+        fs_service::fs_server_image()?,
+        program("fs_subtree_caretaker").expect("no fs_subtree_caretaker in the initial ramdisk"),
+        dir_name,
+        filesystem_protocol::dir::ALL,
+    )?;
+
+    let report = spawn_rmle(image, file_name, term, term_out_phys, dir_ep, file_shared);
+
+    let mut held = Holding::new();
+    held.add_thread(console_tid);
+    held.add_thread(line_editor_tid);
+    held.add_region(ep_region);
+
+    Some((
+        Wiring {
+            term,
+            term_out_phys,
+            dir: dir_ep,
+            file_shared,
+            report,
+        },
+        held,
+    ))
+}
+
+/// What the terminal half leaves running under `rmle`: the endpoint region, the TERM endpoint,
+/// `rmle`'s terminal-output page, and the two threads a [`Holding`] must reclaim.
+struct TerminalHalf {
+    ep_region: u64,
+    term: RendezvousId,
+    term_out_phys: u64,
+    console_tid: crate::thread::ThreadId,
+    line_editor_tid: crate::thread::ThreadId,
+}
+
+/// Mint the terminal's endpoints and pages, and spawn the fake console and `line_editor`.
+fn start_terminal_half() -> TerminalHalf {
     // The terminal half: identical to raw_mode_service::start, duplicated rather than reused
     // because that function's Wiring hands back a line_editor already wired to nobody; composing a
     // *third* process's grants into a spawn that function does not perform would need it split the
     // way fs_service::narrow_dir already is split from fs_service::start_granted_dir, and one
     // wiring function is enough plumbing for a milestone that is not itself about wiring.
-    let term_img = program("line_editor").expect("no line_editor program in the initrd archive");
+    let term_img = program("line_editor").expect("no line_editor program in the initial ramdisk");
     // Four pages for three endpoints, one page each and one spare: `virtio_service`'s own
     // `wire_net_server` carves the same shape for the same reason (see `raw_mode_service::start`).
     let ep_region = crate::memory_region::create(4).expect("no endpoint region for rmle_service");
@@ -123,17 +172,25 @@ pub fn start(dir_name: &'static str, file_name: &str) -> Option<(Wiring, Holding
         )
     })
     .expect("could not spawn line_editor");
+    TerminalHalf {
+        ep_region,
+        term,
+        term_out_phys,
+        console_tid,
+        line_editor_tid,
+    }
+}
 
-    // The filesystem half: fs_service's own split, built for exactly this (a client that needs a
-    // directory *and* something else, milestone 50's own redirection witness).
-    let (dir_ep, file_shared) = fs_service::narrow_dir(
-        fs_service::blk_server_image(),
-        fs_service::fs_server_image()?,
-        program("fs_subtree_caretaker").expect("no fs_subtree_caretaker program in the initrd"),
-        dir_name,
-        filesystem_protocol::dir::ALL,
-    )?;
-
+/// Pack `file_name` into `rmle`'s argument words and spawn it with its three grants; returns the
+/// endpoint its closing report arrives on.
+fn spawn_rmle(
+    image: &'static [u8],
+    file_name: &str,
+    term: RendezvousId,
+    term_out_phys: u64,
+    dir_ep: RendezvousId,
+    file_shared: u64,
+) -> RendezvousId {
     assert!(
         filesystem_protocol::grant::fits(file_name.as_bytes()),
         "rmle's target name rides in two argument words; this one does not fit",
@@ -174,22 +231,7 @@ pub fn start(dir_name: &'static str, file_name: &str) -> Option<(Wiring, Holding
         )
     })
     .expect("could not spawn rmle");
-
-    let mut held = Holding::new();
-    held.add_thread(console_tid);
-    held.add_thread(line_editor_tid);
-    held.add_region(ep_region);
-
-    Some((
-        Wiring {
-            term,
-            term_out_phys,
-            dir: dir_ep,
-            file_shared,
-            report,
-        },
-        held,
-    ))
+    report
 }
 
 // BUGS: the console/line_editor terminal half is spawned before the two fallible calls below it

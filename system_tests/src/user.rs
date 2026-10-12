@@ -5,10 +5,11 @@
 //! came with them, doc comments and gates unchanged, and they are below.
 //!
 //! **Why the glob.** Every file here was written as a child of the kernel's `user` module, so it
-//! says `super::spawn` and `crate::user::initrd` for the kernel's helpers. The glob below puts the
-//! kernel `user` module's `pub` items in this module too, so those paths resolve to the same items
-//! they always did, and a module declared here (`alloc_service`, say) shadows nothing, because the
-//! kernel no longer has one. See `kernel/src/lib.rs`'s `system_test_access` for the other half.
+//! says `super::spawn` and `crate::user::initial_ramdisk` for the kernel's helpers. The glob below
+//! puts the kernel `user` module's `pub` items in this module too, so those paths resolve to the
+//! same items they always did, and a module declared here (`alloc_service`, say) shadows nothing,
+//! because the kernel no longer has one. See `kernel/src/lib.rs`'s `system_test_access` for the
+//! other half.
 
 // The imports `kernel/src/user.rs` makes for itself. Its children saw them through `use super::*`,
 // private or not; a glob across crates sees only `pub` items, so the suite's half repeats them.
@@ -63,7 +64,7 @@ fn code_page(region: u64, code: &[u32]) -> u64 {
 /// The second is the negative control the first would be weaker without. The roster is a read-only
 /// mapping, so a program that knows exactly where it is still cannot add a device to it or turn an
 /// entry into a handle. `lsblk` plus `parted` cannot make that claim.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod disk_tests;
 
 /// **Wall-clock time** (milestone 51 lane A, DECISIONS §43).
@@ -71,7 +72,7 @@ mod disk_tests;
 /// Arch-neutral on purpose: one portable binary carrying both RTC drivers, one host-tested
 /// contract, and the machine's own device tree choosing between them, so **both ISAs run literally
 /// these tests** rather than two copies that can drift (DECISIONS §19, parity is a gate).
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod clock_tests;
 
 /// **`date`** (milestone 51; DECISIONS §43, notes/date.md).
@@ -86,7 +87,7 @@ mod clock_tests;
 /// rather than 1970 or a panic**, which DECISIONS §43 listed as proven by construction only. It is
 /// proven in the guest now, on a board whose RTC works, because the page is the thing under test
 /// and a frame nobody has published to is an honest unknown clock.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod date_tests;
 
 /// **`printenv`** (milestone 47's environment-variable fork, DECISIONS §111, notes/env-config.md).
@@ -103,7 +104,7 @@ mod date_tests;
 /// own unpublished-clock shape) reads as no configuration rather than three empty strings; and a
 /// process granted no capability at all answers without touching the page, the same
 /// without-touching-memory-it-does-not-hold property `date`'s clock probe already proves.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod printenv_tests;
 
 /// **`uuid`** (milestone 111, `components/src/uuid.rs`, notes/entropy.md).
@@ -121,7 +122,7 @@ mod printenv_tests;
 /// through the real `crates/system_initializer`, for the reason this module's own
 /// `spawn_uuid_holding_no_entropy` records: `Spawn::grants` fills a capability table from zero and
 /// cannot place one at the slot a manifest names.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod uuid_tests;
 
 /// **A confined EL0 process drives a real, non-virtio DMA device** (milestone 261).
@@ -131,30 +132,30 @@ mod uuid_tests;
 /// neither the device nor the doorbells, and that the bytes a client reads back are the bytes it
 /// wrote, through a controller an IOMMU confined before it was ever enabled.
 ///
-/// `cfg(initrd)`: see `kernel/build.rs::declare_initrd_cfg`; the server is a packed program, so a
-/// build without an archive cannot spawn it.
-#[cfg(all(test, initrd))]
+/// `cfg(initial_ramdisk)`: see `kernel/build.rs::declare_initial_ramdisk_cfg`; the server is a
+/// packed program, so a build without an archive cannot spawn it.
+#[cfg(all(test, initial_ramdisk))]
 mod non_volatile_memory_express_tests;
 
 /// **Milestone 30 (the network stack as a confined component)'s DHCP, TCP and UDP gates over the `e1000e` NIC** (milestone 494 (a driver for
 /// the network card a PC actually has)): `net_stack` driving QEMU's 82574L at EL0 through two pages
 /// of BAR0 and an IOMMU-confined DMA region, on all three architectures. The first NIC the x86_64
 /// leg has.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod e1000e_tests;
 
 /// **A host name resolves through a confined resolver, and only inside the zone the client was
 /// granted** (milestone 384 (in a capability system the resolver is a grant), §248 (the name
 /// resolver is its own confined program)): `net_stack` over the `e1000e`, `name_resolver` as its
 /// client, and a test client holding one badged capability to the resolver. All three architectures.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod name_resolver_tests;
 
 /// **A client of a network stack reaches the sockets it was handed and no others** (milestone 649
 /// (every client of a network stack shares its socket numbers), §255 (each socket is its own
 /// capability)): a squatter against a held socket, and a socket handed from one program to another.
 /// All three architectures, over the `e1000e`.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod net_confinement_tests;
 
 /// **Randomness that an adversary cannot predict** (milestone 56, DECISIONS §44).
@@ -168,15 +169,16 @@ mod net_confinement_tests;
 /// stuck source, a re-served buffer, or a driver reading a stale ring all present as repeats), and
 /// that the count in a reply is honoured so a caller cannot be handed zeros it mistakes for entropy.
 ///
-/// `cfg(initrd)`: see `kernel/build.rs::declare_initrd_cfg`. Not aarch64/riscv64-only for much
-/// longer: `x86_64` picks it up the moment milestone 161 item 4's userspace-compilation hand-off
-/// lands (no `x86_64` arm in `declare_initrd_cfg` as of this writing), and every test in this
-/// module, including the instruction-backend one below, needs no further change to run there.
-/// Confirmed 2026-08-25 by cherry-picking milestone 162's `x86_64` scheduling fix onto that
-/// hand-off's branch:
+/// `cfg(initial_ramdisk)`: see `kernel/build.rs::declare_initial_ramdisk_cfg`. Not
+/// aarch64/riscv64-only for much longer: `x86_64` picks it up the moment milestone 161 (the x86_64
+/// kernel port) item 4's userspace-compilation hand-off lands (no `x86_64` arm in
+/// `declare_initial_ramdisk_cfg` as of this writing), and every test in this module, including the
+/// instruction-backend one below, needs no further change to run there. Confirmed 2026-08-25 by
+/// cherry-picking milestone 162 (real hardware entropy on x86_64 and aarch64)'s `x86_64` scheduling
+/// fix onto that hand-off's branch:
 /// `a_client_obtains_unpredictable_bytes_from_rndrrs_with_no_device_at_all` passes under the
 /// suite's default `-cpu max` with no code change of its own.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod entropy_tests;
 
 /// **What a userspace program is told the counter runs at** (2026-09-21, calef's ruling that a
@@ -187,7 +189,7 @@ mod entropy_tests;
 /// learns its rate a different way and two of the three carry it to userspace through a page the
 /// third does not need. The question ("does a process time itself against the number the machine
 /// stated") is the same on all three, so the assertion is too.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod counter_frequency_tests;
 
 /// **A thread's own CPU, read from a page with no syscall** (calef's 2026-09-21 ruling that
@@ -198,7 +200,7 @@ mod counter_frequency_tests;
 /// architectures run literally these tests (§19 (architectural parity is a tenet)), and here that
 /// is more than a convention. The page exists *because* the register that would answer this is
 /// x86_64-only, so a suite that proved it on one ISA would prove the wrong thing.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod current_cpu_tests;
 
 /// **A secret you can check and cannot read** (milestone 56, the credential half).
@@ -215,7 +217,7 @@ mod current_cpu_tests;
 ///   reading it, cannot;
 /// - that the frame a client shares with the service holds **nothing** after the answer, which is
 ///   the strongest form of "the reply carried no data" that a test can check.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod credential_tests;
 
 /// **A login produces a directory and a budget, not a changed identity** (milestone 49).
@@ -228,8 +230,14 @@ mod credential_tests;
 /// checkable). See `components/src/login.rs`'s BUGS for what this slice does not attempt: a terminal,
 /// per-principal subtree scoping, and wiring into the interactive boot are all named there as
 /// follow-on rather than guessed at here.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod login_tests;
+
+/// **A login session's work outlives the login, and a suspended user's does not** (milestone 152
+/// (durable delegation)). Cut out of `login_tests` on 2026-10-12 (UTC) for its length, and named to
+/// sort right after it; it uses that module's wiring, so it carries that module's gate.
+#[cfg(all(test, initial_ramdisk))]
+mod login_user_schedule_tests;
 
 /// **A principal never exists with a credential and no home, or a home and no credential, for
 /// longer than one tool invocation** (milestone 155).
@@ -241,7 +249,7 @@ mod login_tests;
 /// already exists (`EEXIST`) is recovery rather than a second failure. See
 /// `components/src/identity_provisioner.rs`'s own module docs for the ordering argument these tests hold
 /// it to.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod identity_provisioning_tests;
 
 /// **An NTP client may propose a time and may not set one** (milestone 51).
@@ -255,7 +263,7 @@ mod identity_provisioning_tests;
 ///
 /// Not arch-gated: three portable binaries, the same assertions on aarch64 and riscv64
 /// (DECISIONS §19).
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod ntp_tests;
 
 /// **The untyped-backed userspace heap** (milestone 27): spawn the `allocator_exerciser` workload, the
@@ -264,11 +272,11 @@ mod ntp_tests;
 /// `Vec`/`String`/`BTreeMap` with frees in arbitrary order, asserts every intermediate result
 /// itself (a wrong value faults), and reports a magic word plus how many bytes of heap it
 /// committed. Portable: the same test runs the riscv64 ELF on riscv and the aarch64 ELF on
-/// aarch64, out of each arch's own initrd.
+/// aarch64, out of each arch's own initial ramdisk.
 #[cfg(test)]
 pub mod alloc_service;
 
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod heap_tests;
 
 /// **The compositor: one screen, several mutually distrusting clients** (milestone 33, rung two of
@@ -288,7 +296,7 @@ mod heap_tests;
 /// **These tests run before `display_tests`** (`compositor_tests` sorts first), which matters for the
 /// host-side scanout check: the composed screen goes up first and rung one's pattern last, and
 /// `cargo xtask` looks for both in that order. See notes/compositor.md.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod compositor_tests;
 
 /// **The display: virtio-gpu, a confined driver, and a client that draws** (milestone 29, rung one
@@ -298,7 +306,7 @@ mod compositor_tests;
 /// portable binaries in both archives, the transport is the same PCIe seam on both boards, and the
 /// contract is one host-tested crate, so **both ISAs run literally this test** rather than two
 /// copies of it that can drift (DECISIONS §19: parity is a gate).
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod display_tests;
 
 /// **Rust `std` on the native ABI** (milestone 27): spawn the `std_exerciser` demo, an ordinary Rust
@@ -307,7 +315,7 @@ mod display_tests;
 /// an untyped budget (slot 0, which the std `GlobalAlloc` draws the heap from) and an endpoint
 /// (slot 1, which `println!` SENDs to). Its stdout is a fixed, deterministic transcript the test
 /// reassembles from the endpoint and checks byte for byte. Portable: the aarch64 ELF runs on
-/// aarch64 and the riscv64 ELF on riscv, out of each arch's own initrd.
+/// aarch64 and the riscv64 ELF on riscv, out of each arch's own initial ramdisk.
 ///
 /// **Since milestone 51 it is also granted a wall clock**: a clock service is started first, and
 /// the program gets that service's page as a `PageFrame` capability with `READ` in slot 5 plus a
@@ -316,25 +324,25 @@ mod display_tests;
 #[cfg(test)]
 pub mod std_service;
 
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod std_tests;
 
 /// **Milestone 812 (`std::thread::spawn` runs real threads in one address space)'s exit test**: an
 /// ordinary `std` program's four threads share an atomic, a mutex and a space, and each keeps its
 /// own thread-local. Cross-ISA (DECISIONS §19).
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod std_threads_tests;
 
 /// **Unmodified `ripgrep` from crates.io** (milestone 121), which skips unless somebody ran
 /// `helpers/build-ripgrep.sh`. Every ISA the `std` port ships on, per DECISIONS §19, which is all
 /// three since milestone 184 built `x86_64-unknown-nife`.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod ripgrep_tests;
 
 /// **Somebody else's C, unmodified, on nife's C library**: SQLite's `speedtest1` and ioping
 /// (milestone 835 (a C library, stage 1: files, clock and memory)). Each skips unless somebody ran
 /// its `helpers/build-<name>.sh`. Every ISA, per DECISIONS §19.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod c_program_tests;
 
 /// **Somebody else's threaded C, unmodified**: hackbench's thread mode on nife's C library's POSIX
@@ -349,7 +357,7 @@ mod c_thread_tests;
 /// ISA, per DECISIONS §19 (architectural parity is a tenet; the targets are aarch64, riscv64 and x86_64),
 /// and here the x86_64 leg is the one that matters most: it is the only
 /// target whose build forces the portable implementations.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod cryptography_tests;
 
 /// **A TLS 1.3 handshake against a peer that is not ours, trusting one pinned root**, for milestone
@@ -357,13 +365,13 @@ mod cryptography_tests;
 /// `cargo xtask test` through `helpers/build-pinned-tls-exerciser.sh`. Every ISA, over the `e1000e` each
 /// runner attaches, per DECISIONS §19 (architectural parity is a tenet; the targets are aarch64,
 /// riscv64 and x86_64).
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod pinned_tls_tests;
 
 /// **A package fetched through the distribution's index, by host name, over pinned TLS**, for
 /// milestone 801 (packages over the internet), on `pinned_tls_tests`' terms: the same helper builds
 /// it. Every ISA, over the `e1000e`.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod package_index_tests;
 
 /// **Capability delegation: authority moves between processes at runtime.**
@@ -411,8 +419,9 @@ pub mod retype_ep_service;
 /// of; everything else it constructs, the child included. See
 /// `fixtures/src/process_composition_witness.rs`, which milestone 291 (thirty-one programs wearing
 /// one name) split out of the `hello` multiplexer.
-// `cfg(initrd)`: the witness reads its child out of the archive. See `kernel/build.rs::declare_initrd_cfg`.
-#[cfg(all(test, initrd))]
+// `cfg(initial_ramdisk)`: the witness reads its child out of the archive. See
+// `kernel/build.rs::declare_initial_ramdisk_cfg`.
+#[cfg(all(test, initial_ramdisk))]
 pub mod process_composition_service;
 
 /// **Milestone 12: Call/Reply, at EL0.** One request endpoint, a server that answers a caller it was
@@ -439,54 +448,54 @@ pub mod carried_capability_service;
 pub mod revoke_service;
 
 /// The program images, and the bare spawn and reap, that more than one topic file below uses.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod test_programs;
 
 /// **The boundary between EL0 and the kernel**: reaching user mode and coming back, a kernel
 /// address refused, preemption, and the trap frame.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod el0_boundary_tests;
 
-/// **The ELF loader**: forged images refused, and the initrd's own image run at EL0.
-#[cfg(all(test, initrd))]
+/// **The ELF loader**: forged images refused, and the initial ramdisk's own image run at EL0.
+#[cfg(all(test, initial_ramdisk))]
 mod elf_loader_tests;
 
 /// **Address spaces**: ASID tagging and the cross-CPU flush, read-only segments, a dead thread's
 /// space freed whole, and a space built by user code.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod address_space_tests;
 
 /// **Capabilities between processes**: shared memory, `map_physical`, rendezvous, delegation,
 /// call and reply, and frame capabilities.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod capability_tests;
 
 /// **Storage from a userspace driver up**: the virtio disk, `std::fs`, the redoxfs server and
 /// per-file grants.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod filesystem_tests;
 
 /// **The network path**: virtio-net, DHCP, the socket contract, name resolution, TCP, HTTP and
 /// `std::net`. aarch64 only; the RISC-V twins are in `riscv_virtio_tests`.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod network_tests;
 
 /// **The block driver**: DMA descriptor escapes refused, blocks written and read back, and the
 /// PCIe transport.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod block_driver_tests;
 
 /// **Userspace init**, the least-authority demo, and a process spending its own memory region.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod init_tests;
 
 /// **The cycle-counter grant**, and the CoreMark workload init runs.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod cycle_counter_tests;
 
 /// **Child threads**: build, start and run one, reclaim, spawn-to-reap, and a process composed
 /// from two capabilities.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod child_thread_tests;
 
 /// **Forcible teardown: `DESTROY` tears a runaway down** (DECISIONS §16 amendment, §24's second-`^C`
@@ -512,7 +521,7 @@ mod force_kill_tests;
 /// the sub-server crashes, its supervisor hears about it, reaps it through the spawner, and asks for a
 /// replacement, which runs and exits cleanly. The progenitor could not have done any of that, and that is what
 /// these two tests prove.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod authority_tests;
 
 /// **The interactive boot's half of the same idea: a job's memory comes home** (milestone 22, the
@@ -531,7 +540,7 @@ mod authority_tests;
 ///
 /// Cross-ISA, because every piece is portable: `job_undertaker` is an ordinary program in both archives
 /// and the reap authorization reads two TCB fields.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod job_undertaker_tests;
 
 /// **A memory-unsafe C component, confined** (milestone 36, DECISIONS §31).
@@ -575,7 +584,7 @@ mod job_undertaker_tests;
 /// bugs take *different* fault paths on each (a permission fault on the read-only page, a translation
 /// fault on the unmapped one), which is more of each architecture's fault machinery than any previous
 /// test has exercised from userspace.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod c_seam_tests;
 
 /// **A running component replaced under a talking client** (milestone 23, DECISIONS §41).
@@ -616,7 +625,7 @@ mod c_seam_tests;
 ///
 /// The second test covers the latency ladder's opt-in rung, `broker`. Both ISAs, because a swap
 /// that only worked on one would be a finding, not a pass.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod live_swap_tests;
 
 /// **Measured boot: the kernel refuses to enter a first process it was not built for** (milestone 22 phase
@@ -624,17 +633,18 @@ mod live_swap_tests;
 ///
 /// Cross-ISA, because the check is portable: one hash implementation (`crates/measured_boot`), one trust
 /// root generated into the kernel image by `build.rs`, called from the boot path on every
-/// architecture (`boot_progenitor`; the riscv milestone-20 demo `riscv_initrd_demo` measures too).
+/// architecture (`boot_progenitor`; the riscv milestone-20 demo `riscv_initial_ramdisk_demo`
+/// measures too).
 ///
 /// **What these two prove, and why the boot path itself cannot be tested directly.** A real refusal
 /// halts the machine, so a test cannot take that branch and live. What *can* be proven, and is what
 /// actually matters, is the decision: the same function the boot path consults says Ok for the bytes
-/// in the initrd QEMU loaded (which proves the whole build composition end to end: userspace built,
-/// archive packed, digest written, kernel compiled with it, and the digest in the running image
-/// matches the archive in RAM), and says Err for bytes off by one bit. The boot path's only response
-/// to Err is `arch::halt()`, which is three lines up from here in `trust::require` and is the sort of
-/// thing a reader can check by looking.
-#[cfg(all(test, initrd))]
+/// in the initial ramdisk QEMU loaded (which proves the whole build composition end to end:
+/// userspace built, archive packed, digest written, kernel compiled with it, and the digest in the
+/// running image matches the archive in RAM), and says Err for bytes off by one bit. The boot
+/// path's only response to Err is `arch::halt()`, which is three lines up from here in
+/// `trust::require` and is the sort of thing a reader can check by looking.
+#[cfg(all(test, initial_ramdisk))]
 mod measured_boot_tests;
 
 /// **The fault endpoint: a supervisor watches a child die and reap it** (milestone 22, DECISIONS
@@ -821,7 +831,7 @@ mod machine_statistics_tests;
 /// The negative control is what makes it worth having: the shipped document contains entries a Unix
 /// cron would simply have run (`date` wants a clock, `ps` wants a process view), and the timetable
 /// holds neither, so both are refused **in writing, before anything fires** and neither ever runs.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod timetable_tests;
 
 /// **The directory capability, attacked** (milestone 47, notes/dir-capability.md).
@@ -831,7 +841,7 @@ mod timetable_tests;
 /// bitmap, so the only difference between the legs is which binary carries the block-server role,
 /// and that is one `cfg` in [`blk_server_image`] rather than a second copy of every assertion. The
 /// parity gate (DECISIONS §19) is met by literally the same test running twice.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod dir_capability_tests;
 
 /// **One process, two directory capabilities** (milestone 154,
@@ -844,7 +854,7 @@ mod dir_capability_tests;
 /// the deliverable both milestone 47's `bind` and milestone 64's `File::open` fork were blocked
 /// on: `/a/x` and `/b/y` both resolve, `/a/../b` is refused, and neither caretaker can see the
 /// other's tree.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod multi_dir_namespace_tests;
 
 /// **The navigation builtins, and the property that two shells cannot name each other's files**
@@ -857,7 +867,7 @@ mod multi_dir_namespace_tests;
 /// holding a `fs_subtree_caretaker`'s narrowed endpoint where the interactive one holds a terminal.
 /// So the builtins under test are the builtins at the prompt rather than a reimplementation of
 /// them, and the thing being confined is a shell.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod shell_navigation_tests;
 
 /// **`rm` as a program, and a recursive removal bounded by the capability it was handed**
@@ -876,7 +886,7 @@ mod shell_navigation_tests;
 /// exactly where the capabilities stop**: the same command line against the same tree does the
 /// whole job through one grant and cannot begin through a narrower one, and no branch in the
 /// program decides which.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod rm_program_tests;
 
 /// **Globbing: the expansion you see is the grant** (milestone 47's globbing lane;
@@ -889,7 +899,7 @@ mod rm_program_tests;
 /// `READDIR`) and then the **real `rm` binary** behind a real `fs_nameset_caretaker`. The argument
 /// the two halves make together is the one Unix cannot make: the names a command displays are
 /// literally the authority it would transfer, and nothing else in the directory moves.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod glob_grant_tests;
 
 /// **The shared-frame witness** (milestone 599 (a frame per filesystem client channel),
@@ -899,17 +909,17 @@ mod glob_grant_tests;
 /// architecture-specific, so the parity gate (DECISIONS §19) is met by the same test running on
 /// every architecture `script/test` boots. It builds finding 1 of `notes/shared-page-audit.md` (the
 /// escape the set grant at the prompt would make live) and asserts the per-client windows close it.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod fs_shared_page_tests;
 
 /// Parity C: the virtio-blk driver, its two attackers, and the DMA confinement, on RISC-V.
 ///
 /// These are the riscv twins of the three disk tests in the aarch64 module above, separate
 /// because that module leans on aarch64-only scaffolding (the hand-written 7a user programs and
-/// the PL011-wired `hello` roles), while these need only the ELF loader and the initrd archive.
-/// The driver is the SAME `virtio` module the aarch64 roles compile, packed as the dedicated
-/// `block_driver` binary (`components/src/block_driver.rs`); the kernel-side wiring (`virtio_service`) is
-/// the same code,
+/// the PL011-wired `hello` roles), while these need only the ELF loader and the initial ramdisk
+/// archive. The driver is the SAME `virtio` module the aarch64 roles compile, packed as the
+/// dedicated `block_driver` binary (`components/src/block_driver.rs`); the kernel-side wiring
+/// (`virtio_service`) is the same code,
 /// unconditionally. What these prove that aarch64's runs do not: userspace device drivers with
 /// DMA, and the kernel's DMA confinement, on the second ISA.
 #[cfg(all(test, target_arch = "riscv64"))]
@@ -940,7 +950,7 @@ pub mod pipeline_service;
 /// The claim under test is one sentence: **a program holds an endpoint for its output and cannot
 /// tell what is on the other end.** So the assertions are all of the form "the same binary, two
 /// destinations, the same bytes", never "the pipeline printed something".
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod pipeline_tests;
 
 /// **`>` and `<` at a prompt that holds a filesystem** (milestone 50, notes/pipes.md).
@@ -958,7 +968,7 @@ mod pipeline_tests;
 ///
 /// One module for both ISAs, for [`shell_navigation_tests`]'s reason: nothing here is
 /// architecture-specific, so the parity gate (DECISIONS §19) is met by the same test running twice.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod redirection_tests;
 
 /// **`time <command>` at a real prompt** (milestone 86, notes/time-command.md).
@@ -974,7 +984,7 @@ mod redirection_tests;
 ///
 /// One module for both ISAs, for [`shell_navigation_tests`]'s reason: nothing here is
 /// architecture-specific, so the parity gate (DECISIONS §19) is met by the same test running twice.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod time_tests;
 
 /// **Quoting, sequencing and `$?` at a real prompt** (milestone 67, notes/swish-language.md).
@@ -996,7 +1006,7 @@ mod time_tests;
 ///
 /// One module for both ISAs, for [`shell_navigation_tests`]'s reason: nothing here is
 /// architecture-specific, so the parity gate (DECISIONS §19) is met by the same test running twice.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod language_tests;
 
 /// **The sink contract, and the one behaviour it changed** (milestone 50, notes/sink-protocol.md).
@@ -1008,7 +1018,7 @@ mod language_tests;
 ///
 /// Both run on both ISAs (§19), because the claim is about a contract and not about an instruction
 /// set.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod sink_tests;
 
 /// **The system log service** (milestone 613 (a system log service: the in-memory half), for §242
@@ -1017,7 +1027,7 @@ mod sink_tests;
 ///
 /// Runs on all three ISAs (§19 (architectural parity is a tenet)): the service is one portable
 /// binary, and the claim is about badges and a ring, not about an instruction set.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod system_log_tests;
 
 /// **`OPERATION_RAWMODE` and `OPERATION_READRAW`, proved against a real `line_editor`** (milestone 169 (`kilo`, the smallest real text editor, as the forcing function for raw terminal input)): echo
@@ -1025,23 +1035,23 @@ mod system_log_tests;
 /// consume as an editing command, the two input models refusing each other, and a read parked
 /// before data arrives still being answered once it does. See the module's own doc for why the
 /// echo-suppression check is proven both ways rather than only the direction that matters.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod raw_mode_tests;
 /// `OPERATION_QUIESCE` and `FLAG_RETRY` (milestone 23 (a capability-routed component OS with live
 /// replacement)): a terminal quiesced for replacement hands its parked reader back rather than
 /// stranding it, and resumes a half-typed line without repainting it.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod terminal_quiesce_tests;
 /// `terminal_supervisor` replaces a live `line_editor` under a reader and a typist, carrying the
 /// half-typed line and the history across (milestone 23 (a capability-routed component OS with live
 /// replacement)).
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod terminal_swap_tests;
 
 /// **`rmle` itself**: open a file, move a cursor, insert and delete characters, save. Driven with
 /// real keystrokes over the raw-keystroke primitive, and the saved file verified independently of
 /// `rmle`'s own report. See the module's own doc for why that independence matters.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod rmle_tests;
 
 /// **No test may leak a runnable thread** (the regression proxy for the test-thread starvation that
@@ -1130,11 +1140,11 @@ mod syscall_fuzzer_tests;
 /// random call at a time, judged between calls by an escape oracle rather than a shadow model. Its
 /// own header has the conductor, the oracles and the `BUGS`; a module of its own for `tests.rs`']
 /// merge-hotspot reason, named to sort before [`thread_leak_police`]. It spawns the
-/// `confined_syscall_fuzzer` fixture, so it carries the initrd gate.
+/// `confined_syscall_fuzzer` fixture, so it carries the initial ramdisk gate.
 ///
 /// Cross-ISA: the trap entries differ by ISA, which is the point, and the conductor is portable
 /// kernel code, run on every architecture (DECISIONS §19).
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod confined_fuzzer_tests;
 
 /// **`login` gives back everything when any retype of a login fails** (milestone 757 (a test kernel
@@ -1145,7 +1155,7 @@ mod confined_fuzzer_tests;
 /// `login`, so it carries that module's gate.
 ///
 /// Cross-ISA: one portable body over portable kernel code (DECISIONS §19).
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod nth_retype_tests;
 
 /// **A userspace builder keeps building past its scratch window** (milestone 604 (provisional),
@@ -1159,7 +1169,7 @@ mod nth_retype_tests;
 /// [`thread_leak_police`].
 ///
 /// Cross-ISA: one portable test body, run on every architecture (DECISIONS §19).
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod scratch_window_tests;
 
 /// **Revocation against a mapping the kernel wired** (the `map_physical` mapping record,

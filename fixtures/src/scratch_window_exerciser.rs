@@ -49,8 +49,8 @@ const OWN: u64 = 2;
 
 /// How many children to build: past the 37th, where a climbing cursor runs out of tables on this
 /// budget, and past one lap of the window. It was 110 (more than the progenitor's old 65,536 pages
-/// to its initrd window) until CI's aarch64 leg failed to finish that inside the test's 60 s, on
-/// 2026-09-26. The progenitor's own count is computed in milestone 604's block.
+/// to its initial ramdisk window) until CI's aarch64 leg failed to finish that inside the test's 60
+/// s, on 2026-09-26. The progenitor's own count is computed in milestone 604's block.
 const BUILDS: u64 = 40;
 
 /// Pages of image per child: `ripgrep`'s span on aarch64, `0x40_0000..0x69C_000` in
@@ -121,7 +121,7 @@ pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
     // Before anything deep runs. Retyped from the budget ahead of every carve, so they sit under
     // the regions this program splits and destroys and never block a region's pages going back.
     for k in 1..=EXTRA_STACK_PAGES {
-        let frame = user_mode_runtime::retype_page_frame(MEMORY_REGION);
+        let frame = user_mode_runtime::retype_into_page_frame(MEMORY_REGION);
         if frame < 0
             || !user_mode_runtime::map_page_frame(
                 frame as u64,

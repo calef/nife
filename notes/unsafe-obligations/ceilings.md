@@ -126,7 +126,8 @@ purpose. Truncation still leaves some: about 16 blocks at that day's line count 
 reads 62. At the rate of those four days (about 0.35 a day) that is a few days of traffic, and
 then the gate stops a lane on honest work. That lane finds a reduction, or calef raises the
 ceiling with the reason written here. This is the trade round 8 argued against; it is recorded so
-the first lane it stops finds the argument beside the marker.
+the first lane it stops finds the argument beside the marker. calef ruled on it the same day
+(UTC): "Keep 61."
 
 Lowered again, 61 to 60, by milestone 891 (a mutable static becomes an atomic, a lock or a
 recorded cell) on 2026-10-12 (UTC). Moving `static mut` buffers into atomics and an owned firmware

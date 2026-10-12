@@ -4,7 +4,7 @@ use super::*;
 
 /// Start the service and take its startup report. `[RPT_READY, state, wall_nanos]`.
 fn start() -> (clock_service::Wiring, [u64; 5]) {
-    let image = program("clock").expect("no clock program in the initrd archive");
+    let image = program("clock").expect("no clock program in the initial ramdisk");
     let w = clock_service::start(image);
     let report = crate::sched::ipc_receive(w.report);
     (w, report)

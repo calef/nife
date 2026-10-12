@@ -24,10 +24,11 @@ const CRED_VA: u64 = address_space_map::pair_page(0x0000_0000_00e3_0000);
 /// so the timetable's `--mem` split failed and the test hung rather than failing.
 const CLIENT_SCRATCH_UT_PAGES: u64 = 5;
 
-/// Stack pages beyond the one page `run` maps. This process parses the initrd, parses an ELF, and
-/// builds a child address space (`supervision_protocol::build_child`), which is deeper than
-/// `root_supervisor`'s own 8-page stack covers; sized against `credentialer.rs`'s own lesson (its
-/// Argon2id inner loop needed 16 pages where one was not close) rather than guessed from nothing.
+/// Stack pages beyond the one page `run` maps. This process parses the initial ramdisk, parses an
+/// ELF, and builds a child address space (`supervision_protocol::build_child`), which is deeper
+/// than `root_supervisor`'s own 8-page stack covers; sized against `credentialer.rs`'s own lesson
+/// (its Argon2id inner loop needed 16 pages where one was not close) rather than guessed from
+/// nothing.
 const LOGIN_STACK_PAGES: u64 = 16;
 
 /// **What a `login_test_client` run is handed** (milestone 293): a behaviour, and separately a
@@ -176,8 +177,8 @@ fn map_blob(space: &mut AddressSpace, base: u64, bytes: &[u8]) {
 }
 
 /// **Wire and spawn the login service, and return once its start-up pass is over.** It parses the
-/// initrd for `fs_subtree_caretaker`'s own bytes, re-derives what the durable-session manifest
-/// names, and then blocks on [`Wiring::request`].
+/// initial ramdisk for `fs_subtree_caretaker`'s own bytes, re-derives what the durable-session
+/// manifest names, and then blocks on [`Wiring::request`].
 ///
 /// `verify` is the credential service's verify endpoint (milestone 56), already sealed: login never
 /// provisions it and never could. `verify_page_frame` is the exact physical frame that instance maps at
@@ -203,18 +204,105 @@ pub fn start(
 ) -> Wiring {
     let elf = Elf::parse(image).expect("login is not loadable");
 
+    let blobs = read_login_blobs(schedule);
+    let aspace = build_login_space(&elf, &blobs, verify_page_frame);
+
+    let request = sched::create_rendezvous();
+    let result = sched::create_rendezvous();
+    let audit = sched::create_rendezvous();
+    // The stand-in terminal (milestone 49's terminal update); see `Wiring::term_ep`'s own doc.
+    let term_ep = sched::create_rendezvous();
+    let construction = crate::memory_region::create(construction_pages)
+        .expect("no construction budget for the login service");
+
+    let thread_control_block_region =
+        crate::memory_region::create(2).expect("no tcb region for login");
+    let tid =
+        sched::create_thread_control_block(thread_control_block_region).expect("no tcb for login");
+
+    grant_in_slot_order(
+        tid,
+        &LoginSlots {
+            request,
+            result,
+            verify,
+            fs_ep,
+            fs_page_frame,
+            construction,
+            audit,
+            term_ep,
+        },
+    );
+    let run_unvouched = grant_named_slots(tid);
+
+    sched::configure_thread_control_block(tid, elf.entry(), USER_STACK_TOP, aspace)
+        .expect("configure");
+    sched::start_thread_control_block(
+        tid,
+        [
+            blobs.caretaker.len() as u64,
+            blobs.measurements.len() as u64,
+            login_protocol::schedule_lengths(
+                blobs.keeper.len() as u64,
+                blobs.timetable.len() as u64,
+            ),
+        ],
+    )
+    .expect("start");
+
+    // **Returned only once `login`'s start-up pass is over**, so no caller holds a `Wiring` to a
+    // `login` that is still re-deriving. That pass reads the manifest, the suspended list and each
+    // stored schedule through `fs_page_frame`, the one page every direct client of the file
+    // service writes its names into, and `login.rs` takes it as "this process's alone" because no
+    // session is live yet. A caller that went on to write that page itself (`fs_service`'s
+    // `set_home_file` and `set_root_list`, `login_tests`' `ensure_home_subtree`) raced it: the
+    // durable start-up test failed twice on 2026-10-03 with bob's subtree not found (`-2`, on
+    // sifive-u54) and his stored schedule not found (on thead-c906), so not one CPU model's fault.
+    // `REDERIVE_SKIPS` is the one front-door word with no side effect, and `login` receives
+    // nothing on the front door until the pass has run.
+    sched::ipc_send(request, [login_protocol::rederive_skips_word(), 0, 0]);
+    let r = sched::ipc_receive(result);
+    assert_eq!(
+        r[0],
+        login_protocol::SKIP_COUNTS,
+        "login did not answer REDERIVE_SKIPS at the end of its start-up pass",
+    );
+
+    Wiring {
+        request,
+        result,
+        audit,
+        term_ep,
+        run_unvouched,
+        tid,
+    }
+}
+
+/// The four blobs `login` is started against, read out of the initial ramdisk; an empty one maps
+/// nothing.
+struct LoginBlobs {
+    caretaker: &'static [u8],
+    measurements: &'static [u8],
+    keeper: &'static [u8],
+    timetable: &'static [u8],
+}
+
+/// Read the caretaker, the program measurements and, when `schedule` is set, the durable-session
+/// programs out of the initial ramdisk.
+fn read_login_blobs(schedule: bool) -> LoginBlobs {
     // **The two blobs `login`'s `_start` is started against** (milestone 233), read out of the same
     // archive this harness used to map wholesale.
     //
     // This changed so that there is **one** contract rather than two. `login` used to read the
-    // initrd at `user_mode_runtime::initrd::INITRD_VA`, which this harness could hand it (it is the kernel;
-    // it maps reserved RAM directly) and which `crates/system_initializer` could not (`build_child`
-    // maps only pages the spawner holds a capability for, and nothing names the archive). So the
-    // one path the suite exercised was the one the real boot never took, and `login` died at
-    // `_start` on every interactive boot without a single test noticing. A harness that starts a
-    // program differently from the way the system starts it is not testing that program.
-    let archive = super::initrd().expect("no initrd");
-    let fs = nifefs::Fs::parse(archive).expect("the initrd is not a nifefs archive");
+    // initial ramdisk at `user_mode_runtime::initial_ramdisk::INITIAL_RAMDISK_VA`, which this
+    // harness could hand it (it is the kernel; it maps reserved RAM directly) and which
+    // `crates/system_initializer` could not (`build_child` maps only pages the spawner holds a
+    // capability for, and nothing names the archive). So the one path the suite exercised was the
+    // one the real boot never took, and `login` died at `_start` on every interactive boot without
+    // a single test noticing. A harness that starts a program differently from the way the system
+    // starts it is not testing that program.
+    let archive = super::initial_ramdisk().expect("no initial ramdisk");
+    let fs = nifefs::Fs::parse(archive).expect("the initial ramdisk is not a nifefs archive");
     let caretaker = fs.read("fs_subtree_caretaker").unwrap_or(&[]);
     let measurements = fs.read(measured_boot::PROGRAM_MEASUREMENTS).unwrap_or(&[]);
     // **What a durable session is built from** (milestone 152), when this `login` may open one:
@@ -222,13 +310,29 @@ pub fn start(
     let (keeper, timetable) = if schedule {
         (
             fs.read("user_timetable_keeper")
-                .expect("no user_timetable_keeper in the initrd"),
-            fs.read("timetable").expect("no timetable in the initrd"),
+                .expect("no user_timetable_keeper in the initial ramdisk"),
+            fs.read("timetable").expect("no timetable in the archive"),
         )
     } else {
         (&[][..], &[][..])
     };
+    LoginBlobs {
+        caretaker,
+        measurements,
+        keeper,
+        timetable,
+    }
+}
 
+/// Build `login`'s address space (segments, stack, blobs and the credential-relay page) and
+/// register it.
+fn build_login_space(elf: &Elf<'_>, blobs: &LoginBlobs, verify_page_frame: u64) -> u64 {
+    let &LoginBlobs {
+        caretaker,
+        measurements,
+        keeper,
+        timetable,
+    } = blobs;
     let content: u64 = elf
         .segments()
         .map(|seg| {
@@ -246,7 +350,7 @@ pub fn start(
         // images each reach a table of their own.
         + 10;
     let mut space = AddressSpace::new(content).expect("no memory for login");
-    map_segments(&mut space, &elf).expect("could not lay out login");
+    map_segments(&mut space, elf).expect("could not lay out login");
     for k in 0..LOGIN_STACK_PAGES {
         space
             .map_new(USER_STACK_VA - k * FRAME_SIZE, Flags::user_data())
@@ -289,21 +393,33 @@ pub fn start(
         )
         .expect("could not map login's credential-relay page");
 
-    let aspace = readopt_user_address_space(space).expect("register the login aspace");
+    readopt_user_address_space(space).expect("register the login aspace")
+}
 
-    let request = sched::create_rendezvous();
-    let result = sched::create_rendezvous();
-    let audit = sched::create_rendezvous();
-    // The stand-in terminal (milestone 49's terminal update); see `Wiring::term_ep`'s own doc.
-    let term_ep = sched::create_rendezvous();
-    let construction = crate::memory_region::create(construction_pages)
-        .expect("no construction budget for the login service");
+/// The eight objects `login` holds in its first eight slots, in `components/src/login.rs`'s order.
+struct LoginSlots {
+    request: RendezvousId,
+    result: RendezvousId,
+    verify: RendezvousId,
+    fs_ep: RendezvousId,
+    fs_page_frame: u64,
+    construction: u64,
+    audit: RendezvousId,
+    term_ep: RendezvousId,
+}
 
-    let thread_control_block_region =
-        crate::memory_region::create(2).expect("no tcb region for login");
-    let tid =
-        sched::create_thread_control_block(thread_control_block_region).expect("no tcb for login");
-
+/// Grant `login` its eight capabilities, each asserted into the slot `login.rs` expects.
+fn grant_in_slot_order(tid: crate::thread::ThreadId, slots: &LoginSlots) {
+    let &LoginSlots {
+        request,
+        result,
+        verify,
+        fs_ep,
+        fs_page_frame,
+        construction,
+        audit,
+        term_ep,
+    } = slots;
     // In `components/src/login.rs`'s own slot order: REQUEST, RESULT, VERIFY, FS_EP, FS_PAGE_FRAME,
     // CONSTRUCTION_UT, AUDIT, TERM_EP. Each `assert_eq!` inside `grant_in_order` is that file's
     // own doc read from the other side, the same discipline `authority_tests::spawn_tree` uses for
@@ -355,6 +471,11 @@ pub fn start(
         rendezvous_cap(term_ep, Rights::WRITE.union(Rights::GRANT)),
     );
     assert_eq!(next_slot, 8, "login must hold exactly eight capabilities");
+}
+
+/// Grant the run-unvouched endpoint and the durable window at their named slots; returns the
+/// run-unvouched endpoint.
+fn grant_named_slots(tid: crate::thread::ThreadId) -> RendezvousId {
     // **And the run-unvouched capability at its named slot** (DECISIONS §219 gate D2), where
     // `crates/system_initializer` places it in the real boot, so `login` meets one contract here
     // and there.
@@ -379,45 +500,7 @@ pub fn start(
     )
     .expect("insert the durable window");
     assert_eq!(landed, login_protocol::DURABLE_WINDOW_SLOT);
-
-    sched::configure_thread_control_block(tid, elf.entry(), USER_STACK_TOP, aspace)
-        .expect("configure");
-    sched::start_thread_control_block(
-        tid,
-        [
-            caretaker.len() as u64,
-            measurements.len() as u64,
-            login_protocol::schedule_lengths(keeper.len() as u64, timetable.len() as u64),
-        ],
-    )
-    .expect("start");
-
-    // **Returned only once `login`'s start-up pass is over**, so no caller holds a `Wiring` to a
-    // `login` that is still re-deriving. That pass reads the manifest, the suspended list and each
-    // stored schedule through `fs_page_frame`, the one page every direct client of the file
-    // service writes its names into, and `login.rs` takes it as "this process's alone" because no
-    // session is live yet. A caller that went on to write that page itself (`fs_service`'s
-    // `set_home_file` and `set_root_list`, `login_tests`' `ensure_home_subtree`) raced it: the
-    // durable start-up test failed twice on 2026-10-03 with bob's subtree not found (`-2`, on
-    // sifive-u54) and his stored schedule not found (on thead-c906), so not one CPU model's fault.
-    // `REDERIVE_SKIPS` is the one front-door word with no side effect, and `login` receives
-    // nothing on the front door until the pass has run.
-    sched::ipc_send(request, [login_protocol::rederive_skips_word(), 0, 0]);
-    let r = sched::ipc_receive(result);
-    assert_eq!(
-        r[0],
-        login_protocol::SKIP_COUNTS,
-        "login did not answer REDERIVE_SKIPS at the end of its start-up pass",
-    );
-
-    Wiring {
-        request,
-        result,
-        audit,
-        term_ep,
-        run_unvouched,
-        tid,
-    }
+    run_unvouched
 }
 
 /// **Spawn one `login_test_client` run** against `w`, and return its report. Waits for it to

@@ -88,7 +88,7 @@ pub fn spawn_fs_client(
 }
 
 /// Wire the service (or reuse this boot's) and spawn the hand-written client
-/// (`fixtures/src/fs_test_client.rs`): the file-service endpoint, which IS its directory capability, the
+/// (`fixtures/src/fs_test_client/main.rs`): the file-service endpoint, which IS its directory capability, the
 /// report endpoint, and its view of the shared file page. It names nothing else in the system.
 ///
 /// Returns `(readiness, report)`: the two readiness endpoints if this call wired the service,

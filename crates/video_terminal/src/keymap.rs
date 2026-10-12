@@ -288,6 +288,9 @@ mod tests {
         assert_eq!(k.event(EV_KEY, 46, 1).unwrap().as_slice(), b"C");
         assert_eq!(k.event(EV_KEY, KEY_RIGHTCTRL, 1), None);
         assert_eq!(k.event(EV_KEY, 2, 1).unwrap().as_slice(), b"!"); // a digit is not folded
+        // Releasing the right-hand control types letters again, as the left-hand one does.
+        assert_eq!(k.event(EV_KEY, KEY_RIGHTCTRL, 0), None);
+        assert_eq!(k.event(EV_KEY, 46, 1).unwrap().as_slice(), b"C");
     }
 
     /// The letters, the digits, and the symbols land where the keycaps say, shifted and unshifted.

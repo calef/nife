@@ -14,7 +14,7 @@ pub fn install_for_test(program: &str, name: &str, version: &str, bytes: &[u8]) 
     use filesystem_protocol::{PAGE, dir as rights, fs};
     let (fs_ep, fs_page_frame) = root_directory(
         blk_server_image(),
-        crate::user::program("redoxfs_server").expect("no redoxfs_server in the initrd"),
+        crate::user::program("redoxfs_server").expect("no redoxfs_server in the initial ramdisk"),
     )
     .expect("wired() already brought the file service up");
     // SAFETY: as in `set_file`: the file service's own shared page, idle between logins.

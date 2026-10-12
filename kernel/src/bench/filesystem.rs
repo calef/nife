@@ -15,7 +15,7 @@ use super::*;
 /// through a granted *directory capability* and reads a block, over the real confined stack, a block
 /// server driving the RedoxFS disk by DMA and an FS server (the vendored RedoxFS engine, `no_std`, on
 /// its own heap) mounting it over blk IPC. `kernel/src/user/fs_service.rs` wires all three; the
-/// client (`fixtures/src/fs_test_client.rs`, `ROLE_BENCH`) times a warm read loop and reports `[ticks, iters]`.
+/// client (`fixtures/src/fs_test_client/bench.rs`, `ROLE_BENCH`) times a warm read loop and reports `[ticks, iters]`.
 ///
 /// **Why it is `--real`-only and never gates, unlike the primitives.** The FS server's mount is
 /// device-driven: hundreds of block reads gated on the disk's completion interrupt, plus the engine's

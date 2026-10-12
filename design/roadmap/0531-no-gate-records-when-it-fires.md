@@ -127,7 +127,11 @@ signal read as a pass. The instances are the same defect in twelve places:
 - `script/fmt` silently ignoring `--check` for months;
 - a scheduled step piped through `tee` and exiting with tee's status;
 - `--shard 4/4` dying as an argument error in twenty seconds every week for a month;
-- `script/citations` reading exit 0 on a file `git ls-files` could not see.
+- `script/citations` reading exit 0 on a file `git ls-files` could not see;
+- `script/decisions` silently skipping a binary file;
+- `script/roadmap`'s merged-branch check spending a day unable to fail.
+
+The last three are told together in `notes/citations/bugs.md`.
 
 This tree already has the answer to that shape and applies it in one direction only. §134 (a
 harness carries a machine-replayable falsification record, or it is not evidence) makes a proof
@@ -258,12 +262,6 @@ is about. Three bound this proposal, argued in full in
 
 If only one is taken, take the first. The other three are opinions about where the next defect
 will come from. The first is the instrument that would tell us whether this proposal was right.
-
-## BUGS
-
-- Finding 2 says the defect appears in twelve places, but its list names ten instances. Either the
-  count is stale or two instances were never written down (found 2026-10-12, UTC, by the §212 (a
-  prose budget) split).
 
 ## Index row
 

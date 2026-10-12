@@ -19,10 +19,10 @@ pub(super) fn blk_server_image() -> &'static [u8] {
 fn two_dir_witness() -> Option<u64> {
     let Some(report) = fs_service::start_granted_two_dirs(
         blk_server_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
         program("fs_subtree_caretaker")
-            .expect("no fs_subtree_caretaker program in the initrd archive"),
-        program("fs_test_client").expect("no fs_test_client program in the initrd archive"),
+            .expect("no fs_subtree_caretaker program in the initial ramdisk"),
+        program("fs_test_client").expect("no fs_test_client program in the initial ramdisk"),
         fs_service::TwoDirGrant {
             // The same rights the two-tree shell below asks for, so both tests share one pair of
             // caretakers (`start_granted_two_dirs` reuses a pair asked for twice). The extra
@@ -100,10 +100,10 @@ fn two_tree_shell() -> Option<u64> {
     let rights = TWO_TREE_RIGHTS;
     let report = fs_service::start_granted_two_dirs(
         blk_server_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
         program("fs_subtree_caretaker")
-            .expect("no fs_subtree_caretaker program in the initrd archive"),
-        program("swish").expect("no swish program in the initrd archive"),
+            .expect("no fs_subtree_caretaker program in the initial ramdisk"),
+        program("swish").expect("no swish program in the initial ramdisk"),
         fs_service::TwoDirGrant {
             a: (filesystem_protocol::fixture::tree::SUB, rights),
             b: (filesystem_protocol::fixture::tree::OTHER, rights),

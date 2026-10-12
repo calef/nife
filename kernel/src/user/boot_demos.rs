@@ -302,7 +302,7 @@ pub fn riscv_uart_driver_demo(
     const DRIVER_UART_VA: u64 = address_space_map::pair_page(0x0070_0000); // must match components/src/serial_driver.rs UART_VA
     const UART_PHYS: u64 = 0x1000_0000; // the NS16550 on QEMU virt
 
-    let fs = nifefs::Fs::parse(archive).expect("initrd is not a nifefs archive");
+    let fs = nifefs::Fs::parse(archive).expect("initial ramdisk is not a nifefs archive");
     let driver_bytes = fs
         .read("serial_driver")
         .expect("archive has no 'serial_driver' program");

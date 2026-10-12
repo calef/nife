@@ -58,22 +58,11 @@ adds new kernel-visible state (a boot-phase indicator something can read or, wor
 `root_supervisor`'s shape needs zero of. This is exactly the "make the wrong state unrepresentable vs.
 a gate that fails loudly" tradeoff AGENTS.md's ladder names, and the ladder's own ordering answers it.
 
-**(c) A capability minted with a kernel-enforced single-use bit (invoke once, then the kernel marks
-the slot dead).** Considered and rejected as unnecessary machinery. This would be a new kernel
-primitive on the capability surface, which AGENTS.md treats as one of the expensive, hard-to-undo
-categories ("the syscall surface... is a boundary rather than a habit"). It also solves a problem
-`cap_delete` already solves for free: a capability the holder has deleted from its own cspace is
-already "invoke once, never again," without a new bit, a new invariant to prove, or a new Kani
-harness. Building a bespoke single-use mechanism when ordinary deletion gives the same guarantee is
-the kind of "more abstraction, more machinery" this tree's elegance tenet warns against, not more
-elegant for having a named feature.
+Option (c), a kernel-enforced single-use bit, is in
+[`single-use-bit.md`](0123-boot-time-rederivation-privilege/single-use-bit.md).
 
-**(d) Trigger re-derivation lazily, on the first scheduled job's fire time, rather than all-at-once at
-boot.** Considered briefly and set aside as a scheduling-shape question rather than a privilege-shape
-one; it does not change what grants the privilege or how it is scoped, only when the privileged
-process runs. It is compatible with the recommendation below (the boot-only process could re-derive
-everything at once, or could itself be structured to defer per-session work) and is not this
-decision's fork. Noted so it is not silently assumed away.
+Option (d), triggering re-derivation lazily, is in
+[`lazy-trigger.md`](0123-boot-time-rederivation-privilege/lazy-trigger.md).
 
 ## What this tree already does in the analogous case
 

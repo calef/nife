@@ -516,14 +516,7 @@ fn graphical_terminal_session_children(
     d: &SessionDiscipline,
 ) -> Result<(), ()> {
     let GraphicalTerminalLaunch {
-        own_ut,
-        region,
-        deaths,
-        boot_terminal,
-        result_ep,
-        gpu,
-        kbd,
-        program: screen_elf,
+        boot_terminal, kbd, ..
     } = *l;
     let (Some(gpu_program), Some(disp_program)) = (&s.driver, &s.terminal) else {
         return Err(());
@@ -535,6 +528,62 @@ fn graphical_terminal_session_children(
     }
     // --- the driver: the confined transport, the interrupt, the display endpoint's serving half,
     // a map budget and the whole DMA run. `components/src/gpu_driver.rs`'s slots 0-5. ---
+    let (display, driver_report) = start_gpu_driver(l, gpu_program)?;
+
+    // --- the terminal: `painter`'s authority plus the endpoint it serves and the page an
+    // application writes into. `components/src/display_terminal.rs`'s slots 0-5. ---
+    let (term, out) = start_display_terminal(l, disp_program, display, driver_report)?;
+
+    // --- the keystroke source, and it decides the program's arm. With a keyboard (its three
+    // caps came with the gpu's four): the session's own discipline, `terminal_supervisor`
+    // building `line_editor` in `MODE_DISPLAY`, with `keyboard_driver`
+    // `CALL`ing it in `MODE_DIRECT`. Without one: no discipline and no driver, and the program
+    // reads the boot's own discipline raw, over the UART, echoing to the screen itself.
+    // `components/src/graphical_terminal.rs`'s slots 0-2 and its `x0` are the contract. ---
+    let arm = match kbd {
+        Some(k) => start_keyboard_arm(l, &s.kbd_driver, d, k, (term, out))?,
+        // **Arm 1 gets the raw half of the boot discipline, not the discipline** (milestone 709
+        // (a graphical terminal session on the no-keyboard arm holds only the raw half of the boot
+        // discipline)). A copy of `boot_terminal` badged `proto::RAW_ONLY_BADGE`, which the
+        // discipline answers `OPERATION_RAWMODE` and `OPERATION_READRAW` on and refuses everything else, so the
+        // session cannot `OPERATION_BYTES` a line the boot shell then runs with the shell's authority.
+        // Minted per launch and deleted below once the session holds its narrowed copy; one slot
+        // for the length of the build, under arm 0's peak (its discipline, pages and report).
+        None => {
+            // SAFETY: the syscall; the kernel checks `GRANT` on `boot_terminal` and that it is
+            // unbadged, and refuses a zero badge.
+            let raw = unsafe {
+                invoke(
+                    boot_terminal,
+                    abi::rendezvous::BADGE,
+                    proto::RAW_ONLY_BADGE,
+                    0,
+                    0,
+                )
+            };
+            let Ok(raw) = u64::try_from(raw) else {
+                drop_caps(&[term, out]);
+                return Err(());
+            };
+            (1, raw, out, None, term)
+        }
+    };
+    start_session_program(l, arm, (term, out))
+}
+
+/// A session's keystroke arm, as the session program is wired from it: `(arm, keys_ep, out_page,
+/// in_page, write_ep)`, where `arm` is the program's `x0` and `in_page` exists only on arm 0.
+type SessionArm = (u64, u64, u64, Option<u64>, u64);
+
+/// Build and start `gpu_driver` from the session's region and wait for its `UP`. On success the
+/// display endpoint and the driver's report endpoint, which the terminal phase needs next.
+fn start_gpu_driver(l: &GraphicalTerminalLaunch, gpu_program: &elf::Elf) -> Result<(u64, u64), ()> {
+    let GraphicalTerminalLaunch {
+        own_ut,
+        region,
+        gpu,
+        ..
+    } = *l;
     let Some(display) = retype_obj(region, abi::objtype::RENDEZVOUS).ok() else {
         return Err(());
     };
@@ -578,9 +627,23 @@ fn graphical_terminal_session_children(
         drop_caps(&[display, driver_report]);
         return Err(());
     }
+    Ok((display, driver_report))
+}
 
-    // --- the terminal: `painter`'s authority plus the endpoint it serves and the page an
-    // application writes into. `components/src/display_terminal.rs`'s slots 0-5. ---
+/// Build and start `display_terminal`, wait for its `TERM_UP` and then the driver's `FLUSHED`.
+/// Consumes the display and report endpoints; on success the terminal's endpoint and write page.
+fn start_display_terminal(
+    l: &GraphicalTerminalLaunch,
+    disp_program: &elf::Elf,
+    display: u64,
+    driver_report: u64,
+) -> Result<(u64, u64), ()> {
+    let GraphicalTerminalLaunch {
+        own_ut,
+        region,
+        gpu,
+        ..
+    } = *l;
     let Some(term_report) = retype_obj(region, abi::objtype::RENDEZVOUS).ok() else {
         drop_caps(&[display, driver_report]);
         return Err(());
@@ -635,109 +698,102 @@ fn graphical_terminal_session_children(
         return Err(());
     }
     cap_delete(driver_report);
+    Ok((term, out))
+}
 
-    // --- the keystroke source, and it decides the program's arm. With a keyboard (its three
-    // caps came with the gpu's four): the session's own discipline, `terminal_supervisor`
-    // building `line_editor` in `MODE_DISPLAY`, with `keyboard_driver`
-    // `CALL`ing it in `MODE_DIRECT`. Without one: no discipline and no driver, and the program
-    // reads the boot's own discipline raw, over the UART, echoing to the screen itself.
-    // `components/src/graphical_terminal.rs`'s slots 0-2 and its `x0` are the contract. ---
-    let (arm, keys_ep, out_page, in_page, write_ep) = match kbd {
-        Some(k) => {
-            let Some(session_term) = retype_obj(region, abi::objtype::RENDEZVOUS).ok() else {
-                drop_caps(&[term, out]);
-                return Err(());
-            };
-            let Some(session_out) = retype_page_frame(region).ok() else {
-                drop_caps(&[term, out, session_term]);
-                return Err(());
-            };
-            let Some(session_in) = retype_page_frame(region).ok() else {
-                drop_caps(&[term, out, session_term, session_out]);
-                return Err(());
-            };
-            build_terminal(
-                own_ut,
-                region,
-                &d.supervisor,
-                d.discipline,
-                LINE_EDITOR_MODE_DISPLAY,
-                &[
-                    (
-                        session_term,
-                        abi::rights::READ | abi::rights::WRITE | abi::rights::GRANT,
-                    ),
-                    (term, abi::rights::WRITE | abi::rights::GRANT),
-                    (out, abi::rights::READ | abi::rights::WRITE),
-                    (session_out, abi::rights::READ),
-                    (session_in, abi::rights::READ | abi::rights::WRITE),
-                ],
-            );
-            let Some(report) = retype_obj(region, abi::objtype::RENDEZVOUS).ok() else {
-                drop_caps(&[term, out, session_term, session_out, session_in]);
-                return Err(());
-            };
-            // `s.kbd_driver` was checked before anything was retyped, so this is the
-            // same `Some` the guard saw.
-            let kbd_program = s.kbd_driver.as_ref().unwrap();
-            let Some(driver) = build_child(
-                own_ut,
-                region,
-                kbd_program,
-                &ChildEndowment {
-                    caps: &[
-                        (report, abi::rights::WRITE),
-                        (k[1], abi::rights::READ),
-                        (k[0], abi::rights::WRITE),
-                        (session_term, abi::rights::WRITE),
-                    ],
-                    maps: &[(KBD_DMA_VA, k[2], abi::address_space::MAP_RW)],
-                    ..ChildEndowment::new(Retention::Nothing)
-                },
-            )
-            .ok() else {
-                drop_caps(&[term, out, session_term, session_out, session_in, report]);
-                return Err(());
-            };
-            if !start_child(driver, KBD_MODE_DIRECT, 0, 0) {
-                drop_caps(&[term, out, session_term, session_out, session_in, report]);
-                return Err(());
-            }
-            let (tag, _, _) = receive(report);
-            if tag != video_terminal::status::KEYBOARD_UP {
-                drop_caps(&[term, out, session_term, session_out, session_in, report]);
-                return Err(());
-            }
-            cap_delete(report);
-            (0, session_term, session_out, Some(session_in), session_term)
-        }
-        // **Arm 1 gets the raw half of the boot discipline, not the discipline** (milestone 709
-        // (a graphical terminal session on the no-keyboard arm holds only the raw half of the boot
-        // discipline)). A copy of `boot_terminal` badged `proto::RAW_ONLY_BADGE`, which the
-        // discipline answers `OPERATION_RAWMODE` and `OPERATION_READRAW` on and refuses everything else, so the
-        // session cannot `OPERATION_BYTES` a line the boot shell then runs with the shell's authority.
-        // Minted per launch and deleted below once the session holds its narrowed copy; one slot
-        // for the length of the build, under arm 0's peak (its discipline, pages and report).
-        None => {
-            // SAFETY: the syscall; the kernel checks `GRANT` on `boot_terminal` and that it is
-            // unbadged, and refuses a zero badge.
-            let raw = unsafe {
-                invoke(
-                    boot_terminal,
-                    abi::rendezvous::BADGE,
-                    proto::RAW_ONLY_BADGE,
-                    0,
-                    0,
-                )
-            };
-            let Ok(raw) = u64::try_from(raw) else {
-                drop_caps(&[term, out]);
-                return Err(());
-            };
-            (1, raw, out, None, term)
-        }
+/// Arm 0: build the session's own line discipline and start `keyboard_driver` behind it, waiting
+/// for its `KEYBOARD_UP`. On failure `term` and `out` are dropped with everything made here.
+fn start_keyboard_arm(
+    l: &GraphicalTerminalLaunch,
+    kbd_driver: &Option<elf::Elf<'static>>,
+    d: &SessionDiscipline,
+    k: &[u64; 3],
+    (term, out): (u64, u64),
+) -> Result<SessionArm, ()> {
+    let GraphicalTerminalLaunch { own_ut, region, .. } = *l;
+    let Some(session_term) = retype_obj(region, abi::objtype::RENDEZVOUS).ok() else {
+        drop_caps(&[term, out]);
+        return Err(());
     };
+    let Some(session_out) = retype_page_frame(region).ok() else {
+        drop_caps(&[term, out, session_term]);
+        return Err(());
+    };
+    let Some(session_in) = retype_page_frame(region).ok() else {
+        drop_caps(&[term, out, session_term, session_out]);
+        return Err(());
+    };
+    build_terminal(
+        own_ut,
+        region,
+        &d.supervisor,
+        d.discipline,
+        LINE_EDITOR_MODE_DISPLAY,
+        &[
+            (
+                session_term,
+                abi::rights::READ | abi::rights::WRITE | abi::rights::GRANT,
+            ),
+            (term, abi::rights::WRITE | abi::rights::GRANT),
+            (out, abi::rights::READ | abi::rights::WRITE),
+            (session_out, abi::rights::READ),
+            (session_in, abi::rights::READ | abi::rights::WRITE),
+        ],
+    );
+    let Some(report) = retype_obj(region, abi::objtype::RENDEZVOUS).ok() else {
+        drop_caps(&[term, out, session_term, session_out, session_in]);
+        return Err(());
+    };
+    // `s.kbd_driver` was checked before anything was retyped, so this is the
+    // same `Some` the guard saw.
+    let kbd_program = kbd_driver.as_ref().unwrap();
+    let Some(driver) = build_child(
+        own_ut,
+        region,
+        kbd_program,
+        &ChildEndowment {
+            caps: &[
+                (report, abi::rights::WRITE),
+                (k[1], abi::rights::READ),
+                (k[0], abi::rights::WRITE),
+                (session_term, abi::rights::WRITE),
+            ],
+            maps: &[(KBD_DMA_VA, k[2], abi::address_space::MAP_RW)],
+            ..ChildEndowment::new(Retention::Nothing)
+        },
+    )
+    .ok() else {
+        drop_caps(&[term, out, session_term, session_out, session_in, report]);
+        return Err(());
+    };
+    if !start_child(driver, KBD_MODE_DIRECT, 0, 0) {
+        drop_caps(&[term, out, session_term, session_out, session_in, report]);
+        return Err(());
+    }
+    let (tag, _, _) = receive(report);
+    if tag != video_terminal::status::KEYBOARD_UP {
+        drop_caps(&[term, out, session_term, session_out, session_in, report]);
+        return Err(());
+    }
+    cap_delete(report);
+    Ok((0, session_term, session_out, Some(session_in), session_term))
+}
 
+/// Build and start the `graphical_terminal` program on its arm's wiring, then drop the wiring's
+/// means, whether or not the build worked.
+fn start_session_program(
+    l: &GraphicalTerminalLaunch,
+    (arm, keys_ep, out_page, in_page, write_ep): SessionArm,
+    (term, out): (u64, u64),
+) -> Result<(), ()> {
+    let GraphicalTerminalLaunch {
+        own_ut,
+        region,
+        deaths,
+        result_ep,
+        program: screen_elf,
+        ..
+    } = *l;
     // --- the session program itself, born supervised exactly as any job is (`deaths` in the
     // reserved fault slot, where `START` reads it and clears it), so its one reap, by
     // `job_undertaker`, sweeps the drivers with it. Slot 0 is its answer word; slot 1 prints to

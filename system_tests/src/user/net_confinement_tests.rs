@@ -71,7 +71,7 @@ fn wait_for(mut cond: impl FnMut() -> bool) -> bool {
 }
 
 fn net_stack_image() -> &'static [u8] {
-    program("net_stack").expect("no net_stack program in the initrd archive")
+    program("net_stack").expect("no net_stack program in the initial ramdisk")
 }
 
 /// Start `net_stack` over the `e1000e` and drain its lease. `None` when no `e1000e` is attached.

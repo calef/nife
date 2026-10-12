@@ -23,7 +23,7 @@ rather than trust the count.
 3. `#[cfg(target_arch)]` arm counting per file, then reading every file with a nonzero count
    and a zero in one column. Found findings 9 and 10, and the `not(target_arch` hazard class.
    Blind to: a runtime dispatch on architecture rather than a `cfg`, and a `cfg` written through
-   a build-script-generated `cfg` name. `kernel/build.rs`'s `cfg(initrd)` is exactly the second
+   a build-script-generated `cfg` name. `kernel/build.rs`'s `cfg(initial_ramdisk)` is exactly the second
    shape, and it is complete, but this method would not have told me that; reading `build.rs` did.
 4. Reading the prose claims: every "both ISAs", "both architectures", "two architectures", and "both
    bare-metal" in the tree, filtered to those with no x86 mention nearby. About forty hits, and

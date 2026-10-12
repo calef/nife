@@ -254,6 +254,45 @@ mod tests {
         assert_eq!(cache.cached_bytes(), 0);
     }
 
+    /// The classes stop exactly at [`LARGEST`]: its class is the last one, so no class is sized
+    /// past what [`class`] can ever answer.
+    #[test]
+    fn the_last_class_is_the_largest_size() {
+        assert_eq!(class(LARGEST, 1), Some(CLASSES - 1));
+        assert_eq!(class_bytes(CLASSES - 1), LARGEST);
+    }
+
+    /// A spill gives back half a full class and a refill into an empty one takes half a class, so
+    /// a thread that only frees, or only allocates, takes the heap's lock once per eight blocks.
+    #[test]
+    fn a_spill_and_a_refill_each_move_half_a_class() {
+        let mut arena: Vec<u128> = std::vec![0; DEPTH];
+        let base = arena.as_mut_ptr().cast::<u8>();
+        let mut cache = Cache::new();
+        for i in 0..DEPTH {
+            // SAFETY: disjoint 16-byte, grid-aligned slices of `arena`, which outlives `cache`.
+            let b = unsafe { NonNull::new_unchecked(base.add(i * GRID)) };
+            // SAFETY: as above; each slice is handed to the cache once.
+            assert!(unsafe { cache.put(0, b) }.is_ok());
+        }
+        let mut given = 0;
+        cache.spill(0, |_| given += 1);
+        assert_eq!(given, DEPTH / 2);
+        assert_eq!(cache.count(0), DEPTH / 2);
+
+        let mut empty = Cache::new();
+        let mut next = 0;
+        // SAFETY: the same disjoint slices, now owned by `empty` alone (`cache` is not used again).
+        let taken = unsafe {
+            empty.refill(0, || {
+                next += 1;
+                NonNull::new(base.wrapping_add((next - 1) * GRID))
+            })
+        };
+        assert_eq!(taken, DEPTH / 2);
+        assert_eq!(empty.count(0), DEPTH / 2);
+    }
+
     /// The test that matters: a cache in front of a real `user_mode_heap`, driven by a random
     /// mix of allocations and frees with refills and spills, never hands out a block twice and gives
     /// every byte back, coalesced, at the end.

@@ -17,138 +17,36 @@ PARTIAL for it. calef, asked directly once the origin was traced: *"I don't need
 viewer."* Struck below wherever it was named; the status moves to BUILT because the milestone's own
 quoted direction, and everything a lane actually decided to build against it, is now complete.
 
-What exists: `crates/manual` (a streaming markdown renderer, the byte layout of a search index, and
-the query that reads one, all pure and host-tested in `tests/render.rs`), `components/src/doc.rs`, the
-viewer program, which the shell can spawn as `Prog::Doc`, the store the image installs, `apropos` at
-the nife prompt, and `script/apropos` over the whole repository. The renderer was written against
-`line_editor`'s contract rather than `pulldown-cmark`, which the block's own text anticipated as the
-alternative and which the crate's header records.
+What exists: `crates/documentation` (a streaming markdown renderer, the byte layout of a search
+index, and the query that reads one, all pure and host-tested in `tests/render.rs`),
+`components/src/mdr.rs`, the viewer program, which the shell can spawn as `Prog::Mdr`, the store the
+image installs, `apropos` at the nife prompt, and `script/apropos` over the whole repository. The
+renderer was written against `line_editor`'s contract rather than `pulldown-cmark`, which the
+block's own text anticipated as the alternative and which the crate's header records. Renamed
+2026-09-13 (commit `f60c541ca`): the crate was `manual` and the program `doc`, and the phase records
+below keep the names of their time.
 
 Phase 2 landed 2026-08-16. The store is built on the host from the `DOC_BUNDLES` table
 (`cargo xtask manual`), installed into the filesystem image as `doc/<bundle>/` with `doc/bundles`
-naming what is there, and searched from the prompt by **`apropos <word>`**, a shell builtin. The
+naming what is there, and searched from the prompt by `apropos <word>`, a shell builtin. The
 whole of it is gated by `script/swish-check` on both architectures: `apropos capability` names the
-pages, and the line after it grants `wc` exactly one of them. Search produces **names, never
-capabilities**, which is why it may be a builtin: a searching *program* would have to be handed the
+pages, and the line after it grants `wc` exactly one of them. Search produces names, never
+capabilities, which is why it may be a builtin: a searching *program* would have to be handed the
 whole store to read every shard in it, which is more authority than the answer needs. See
-notes/manual.md.
+notes/documentation.md.
 
-2026-08-18: the record was the defect three times over, and all three are fixed.
+What happened between phase 2 and BUILT, in order. On 2026-08-18 three defects in the record were
+fixed: a renderer bug the corpus test could not see, three `BUGS` entries in notes/manual.md (now
+notes/documentation.md) that described a system no longer there, and an index defect where the
+builder and the query disagreed about what a word is. The same index was pointed at the repository
+as `script/apropos`, for the finding of milestone 117 (the stranger test). On 2026-08-22 the one
+remaining fork, where a tail stage's output goes when the shell cannot read it, was worked through
+in notes/tail-output-narrowing.md, decided as DECISIONS §106 (take the `terminal_sink_caretaker`
+narrowing) and built the same day, and ranking was made to divide by page length.
 
-*In the renderer.* A fenced code block opened inside a block quote **never closed**: the closing
-test ran against the raw line, so a quoted closing fence never matched its own opener and every line
-to the end of the document rendered as quoted code. It survived because the corpus test cannot see
-this class of failure at all (verbatim output loses no characters, and the check is a subsequence),
-and because the one symptom it *could* see had been quarantined behind an honest `BUGS` comment
-that refused to widen the filter until somebody answered the question. Answering it found the bug.
-That refusal is the mechanism working, and it is worth reading before the next one is waved through.
-
-*In the prose.* Three of notes/manual.md's `BUGS` entries described a system that no longer existed:
-`doc <page>` was said to deadlock (it is refused, by `grant_plan::check_chain`, with a sentence that
-names the fix), `doc <page> | wc` was said to render an empty stream (the head stage's input comes
-off the plan now), and `MAX_TEXT_CHUNKS = 32` was said to truncate a page to 512 bytes (it is
-`MAX_OUTPUT_CHUNKS = 4096`). Two of the three were closed by other lanes and nobody came back. The
-correction is three lines in `script/swish-check` rather than three paragraphs, because this is the
-milestone least allowed to describe a system that is not there.
-
-*In the index.* `normalize` folds a query by dropping every non-alphanumeric byte, so a reader who
-types `line_editor` looks up `lineeditor`; `tokens` split the *text* on that byte, so the builder
-only ever wrote `line` and `editor`, and the term the query asked for was one no page could ever
-have. In a repository whose prose is full of `snake_case` identifiers that is most of what anyone
-would search for: `apropos fs_proto` answered "nothing says that" while dozens of pages said it. The
-test that should have caught it asserted the property in its own first comment and then checked a
-word with no underscore in it, which is the fence's shape again. Fixed in the writer, so
-`apropos editor` keeps working and `apropos line_editor` starts; narrowing the reader instead would
-have made it silently search for `line`, which is worse than no answer.
-
-`script/apropos`, and it is milestone 117's finding rather than a nicety. Three stranger runs
-have measured what a newcomer cannot reach by following this tree: `notes/net.md`,
-`notes/capabilities.md`, **any** `design/decisions/` file, and `crates/abi/src/lib.rs`, which is
-four syscall numbers and the whole design on one screen. None of them is hidden; nothing a person
-would type led to them. This milestone already owned the machinery, pointed at the six pages a guest
-can hold, so it is now also pointed at the 512 pages a checkout holds: the same
-`manual::index::build` and `manual::index::search`, one shard per part of the tree, and a result
-that names a repository path rather than a store location. Crate and program **module headers** are
-indexed as pages, which is what makes `crates/abi/src/lib.rs` findable at all: the document a reader
-wants about the ABI *is* that file's header, and no markdown page was ever going to fix it.
-
-What remained, as of 2026-08-18, was one fork rather than a list. There was still no line a
-person could type that rendered a page at the prompt, and the reason was not the shell's
-scheduling. A process has one wait point, so a shell that feeds a chain cannot also read from it,
-and no interleaving fixes that. What fixes it is somewhere for the viewer's output to go that is
-**not the shell**, and the tree already had that thing: `terminal_sink_caretaker`, the terminal's
-own sink adapter, where a declared second stream goes by default. Putting it in a tail stage's
-*output* slot was a spawn-protocol decision, the same decision the pager and the color bit still
-want, and notes/pipes.md had been holding it open since milestone 50: *"a shell that wanted a
-program to print straight to the screen rather than through its own result endpoint could hand it
-over, and would lose the ability to redirect that program at all."* DECISIONS §106 took that fork
-on 2026-08-22, and it is built; see below. Phase 3's other half, the graphical viewer, still waits
-on the display ladder as the block says below.
-
-**2026-08-22: the fork is worked through, not just named.** DECISIONS §101 (notification objects),
-decided 2026-08-20, ratified the *direction*: the `terminal_sink_caretaker` narrowing is "the right
-short-term move" and stays valid as the permanent shape even once the notification object lands,
-but it explicitly left milestone 40's own fork undecided: "That is milestone 40's fork, and this
-decision does not take it." notes/tail-output-narrowing.md answers CLAUDE.md's six questions
-against it: confirms the premise against `grant_plan::check_chain` rather than trusting this
-block's own framing, prices the two previously-refused alternatives (a pull-based source, a
-buffering stage) against measured numbers already in notes/pipes.md, and finds two things not
-previously in the tree. The shell can reuse DECISIONS §26's already-built fault endpoint as its
-completion signal instead of reading the child's bytes, and moving output off the shell's own read
-loop opens a narrower race than notes/manual.md named, between a child's exit and its own trailing
-delivery through the caretaker.
-
-Decided (§106, 2026-08-22): take it. Checking `SINK_BIT`'s existing contract
-(`crates/grant_plan/src/spawnproto.rs`) found the fork's own write-up had overpriced it: the child's
-output slot is already opaque to the program ("the shell delegates an endpoint and init puts it
-where the result endpoint would have gone, so the child writes to a pipe or a file sink without
-knowing which"), so no program's manifest changes, only shell-and-init default-routing logic.
-
-Built, the same day. An unredirected tail stage whose program declares
-`InputSpec::Required { writes_while_reading: true }` (`doc` is the only one today) is delegated to
-`terminal_sink_caretaker` by default; `grant_plan::check_chain` no longer refuses that shape, only
-the redirected one (`doc <page> > out.txt`, still DECISIONS §55's shell); and the shell's completion
-signal for a narrowed child is DECISIONS §26's kernel exit-delivery, on a fresh endpoint it mints and
-delegates, exactly the reuse notes/tail-output-narrowing.md found. Verified at the real prompt, both
-architectures (`script/swish-check`, `NIFE_SHOW_TRANSCRIPT=1`):
-
-```text
-$ doc gate.txt | wc
-  1 4 26
-$ doc gate.txt
-  hello world hello world
-```
-
-The first line is the control this milestone has carried since phase 1 (the barrier `wc` makes the
-render countable); the second is the line nobody could type before today, rendering with no `| wc`
-in front of it. The caretaker-hop display race notes/tail-output-narrowing.md named is carried as a
-documented, accepted interim rather than fixed here; see this block's `BUGS` and milestone 151.
-This is also the milestone's own headline demonstration, decided 2026-08-26 to be the whole of
-phase 3 rather than half of it (see the Status block above).
-
-2026-08-22, later the same day: ranking divides by length. `crates/manual/src/index.rs`'s own
-`BUGS` had named this since phase 2 landed: "ranking is occurrence count and nothing else, so a
-long page that mentions a word in passing can outrank a short page about it," priced at "one
-division" needing "the page's length, which the layout does not store." That price was accurate.
-A page record grew a `tokens` field (four of the six bytes `PAGE_REC` already held spare, no
-format growth), `index::VERSION` moved to 2, and `manual::index::Ranked::offer` now ranks by
-`count / tokens` (fixed-point, one division) rather than raw `count`. `Found::count` still reports
-the raw occurrence count in the printed answer; only the merge order changed, and it is pure crate
-logic with no spawn-protocol or syscall-surface change, unlike the two items above it. See
-notes/manual.md's `BUGS` and "Where this goes next" for detail and `crates/manual`'s own new test,
-`ranking_divides_by_page_length`. This does not move phase 2 status; phase 2 was already BUILT and
-this is a quality improvement inside it, named as future work at the time and now closed.
-
-**The status did not move to BUILT that day.** This closed phase 3's caretaker-narrowing increment,
-not phase 3 as this file then defined it: a graphical viewer, waiting on the display ladder
-(milestone 29's font rendering, milestone 33's compositor), was still named as the phase's other
-half. That naming is struck 2026-08-26, traced to its origin and found unrequested; see the
-Status block above. Phase 3 is therefore complete as of the caretaker-narrowing increment, and so
-is this milestone.
-
-In brief. Markdown authored, **rendered** for display rather than shown raw, searchable locally, and installed by the package that owns it. Reuse `pulldown-cmark` for parsing (CommonMark is a fiddly spec worth taking from someone else) and write the ANSI renderer against `line_editor`'s contract, because `termimad`/`mdcat` sit on `crossterm` and assume a POSIX terminal we do not have. Phase 1 is a terminal viewer and pager, phase 2 a host-built inverted index shipped as a per-package shard, phase 3 a page rendered straight at the prompt. Two constraints found while scoping: `readdir` refuses and the §27 contract has no such verb, so nothing can walk a tree for documents, and font rendering is still milestone 29's remaining increment, so the terminal comes first, and stays: no graphical viewer was ever asked for (struck 2026-08-26, see the Status block)
-
-Why it matters. the OS explains itself, on itself. The project's whole argument is already markdown (DECISIONS, thirty-plus notes, this roadmap), so a capability-confined viewer serving them is a better milestone-23 demonstration than another synthetic test and costs the documentation nothing. The missing `readdir` turns out to be a feature: enumeration is authority, so indexing at package-build time is both the way around the gap and the more honest shape, which is the same answer `apropos` reached for a different reason. And `doc notes/ipc-naming.md` granting exactly one readable file is milestone 31's designation-is-authorization made into something a person uses
+- [build-record.md](0040-documentation-service/build-record.md): the three 2026-08-18 fixes,
+  `script/apropos`, the fork as it stood, §106's decision and build with the verifying transcript,
+  the ranking change, and why the status waited until 2026-08-26.
 
 calef's direction, 2026-07-30. Markdown as the authored format, rendered for display rather than
 shown raw, searchable on the local machine, and installed *by the package that owns it*, so a
@@ -176,9 +74,9 @@ exactly where it entered.
    *package build time* and ships the index, which sidesteps the missing verb and is the more honest
    shape. Unix reached the same answer for a different reason: `apropos` reads a prebuilt `mandb`
    because scanning was slow.
-2. ~~There is no font rendering yet.~~ **There is now** (milestone 29, 2026-07-30): a bitmap
+2. ~~There is no font rendering yet.~~ There is now (milestone 29, 2026-07-30): a bitmap
    font, a VT engine, and a display terminal that is a compositor client. ~~A *graphical*
-   documentation browser is therefore unblocked in principle~~ **struck 2026-08-26**: nobody asked
+   documentation browser is therefore unblocked in principle~~ struck 2026-08-26: nobody asked
    for one, and this milestone's own headline demonstration renders at the prompt instead. See the
    Status block.
 
@@ -190,11 +88,11 @@ That split is the reuse judgment, and it is the same one milestone 32 made about
 
 | Piece | Option | Judgment |
 |---|---|---|
-| Parse | **`pulldown-cmark`** (pure Rust, CommonMark, event-stream API, few dependencies) | **Take it.** The event stream is the right shape for a renderer that emits ANSI. Milestone 27's `std` is what makes this buildable at all. |
+| Parse | `pulldown-cmark` (pure Rust, CommonMark, event-stream API, few dependencies) | Take it. The event stream is the right shape for a renderer that emits ANSI. Milestone 27's `std` is what makes this buildable at all. |
 | Parse | `comrak` (GFM: tables, strikethrough, footnotes) | Consider later if GFM tables matter; more dependencies. |
-| Render | `termimad`, `mdcat` | **Do not take.** Both sit on `crossterm`, which assumes a POSIX terminal (termios, ioctl). Porting that is more work than emitting ANSI against `line_editor`'s contract, which we own and already speak (§21). |
-| Search | `tantivy` | **Too heavy.** It assumes a filesystem and mmap. |
-| Search | A host-built inverted index shipped in the package | **Take this shape.** Built by `xtask` where there are no constraints, merged by the viewer across installed packages. |
+| Render | `termimad`, `mdcat` | Do not take. Both sit on `crossterm`, which assumes a POSIX terminal (termios, ioctl). Porting that is more work than emitting ANSI against `line_editor`'s contract, which we own and already speak (§21). |
+| Search | `tantivy` | Too heavy. It assumes a filesystem and mmap. |
+| Search | A host-built inverted index shipped in the package | Take this shape. Built by `xtask` where there are no constraints, merged by the viewer across installed packages. |
 | UI | `ratatui` | Possible for a pager later; needs a backend against our terminal contract first. |
 
 ## Shape
@@ -202,8 +100,8 @@ That split is the reuse judgment, and it is the same one milestone 32 made about
 - A doc bundle is part of a package: rendered-source markdown plus a small index shard, installed
   into a documentation store when the component is installed. This is where milestone 39's packaging
   observation pays: manifest, hash, version, and now a doc bundle.
-- ~~The viewer holds a directory capability to the doc store and nothing else.~~ **It should
-  not, and does not** (phase 1's finding, notes/manual.md): `doc`'s manifest is byte-identical to
+- ~~The viewer holds a directory capability to the doc store and nothing else.~~ It should not, and
+  does not (phase 1's finding, now in notes/documentation.md): `doc`'s manifest is byte-identical to
   `wc`'s, its cspace holds two endpoints, and the shell is what resolves a page name. A viewer that
   could open the page it renders could open any page. Phase 2 kept that true by making search a
   builtin rather than a program, for the same reason `ls` is one.
@@ -224,12 +122,12 @@ That split is the reuse judgment, and it is the same one milestone 32 made about
   today and inherits the display terminal for free when 29's glyph work lands. Host-tested in
   milliseconds like every other pure-logic piece: markdown in, styled bytes out.
 - Phase 2, search. BUILT (2026-08-16). The host-built index, the shard merge, and the search
-  verb, which is **`apropos <word>`** rather than the `doc search` proposed above: `doc` is a
+  verb, which is `apropos <word>` rather than the `doc search` proposed above: `doc` is a
   program and a builtin sharing its first word would make the parse ambiguous, and `man`/`apropos`
   is the split this design already borrowed everywhere else. The merge is
   `manual::index::Ranked`, a fixed sixteen-result table with no allocator, so a shell with one
-  stack page can hold it. **Ranking by document length, not just raw occurrence count, closed
-  2026-08-22**: `manual::index::Page::tokens` and the `score` function above `Ranked::offer`, see
+  stack page can hold it. Ranking by document length, not just raw occurrence count, closed
+  2026-08-22: `manual::index::Page::tokens` and the `score` function above `Ranked::offer`, see
   this page's status block.
 - Phase 3. BUILT (DECISIONS §106, 2026-08-22): `doc <page>` renders straight at the prompt,
   with no `| wc` needed to give it a reader that is not the shell. A graphical viewer was named here
@@ -248,7 +146,7 @@ later. Effort: 1 lane estimated per phase, three phases, landed separately.
 
 ## BUGS
 
-- **The caretaker-hop display race is a known, accepted interim, not fixed by §106.** With the
+- The caretaker-hop display race is a known, accepted interim, not fixed by §106. With the
   `terminal_sink_caretaker` narrowing built, a page's last line and the shell's next `$ ` prompt can
   interleave under contention: kernel exit-delivery (DECISIONS §26) tells the shell a child is dead,
   but the caretaker's own trailing `CALL` to `line_editor` is a second, independent call with no
@@ -259,7 +157,7 @@ later. Effort: 1 lane estimated per phase, three phases, landed separately.
   notes/tail-output-narrowing.md's own BUGS, which is honest that the race is named and not measured.
   Tracked at milestone 151 (notification objects), DECISIONS §101's kernel build, which lets the
   shell `WAIT` on "the caretaker's queue for this client has drained" instead of racing it.
-- **A screen-narrowed child does not appear in a concurrent `ps`/`pgrep`.** Its DECISIONS §26 fault
+- A screen-narrowed child does not appear in a concurrent `ps`/`pgrep`. Its DECISIONS §26 fault
   target is a fresh endpoint the shell mints for this purpose, not init's `deaths` domain channel
   (the shell needs to `RECV` its own child's exit directly, not race `job_undertaker` for the same
   message), and domain membership is exactly having `deaths` as that target. Its memory still
@@ -296,13 +194,13 @@ later. Effort: 1 lane estimated per phase, three phases, landed separately.
   §106's spawn-protocol narrowing: a bit telling a tail stage
   it ends at a real screen (color, the honest `isatty` replacement), and a way to grant one line of
   input without granting the keyboard (the pager). Both widen a protocol two programs agree on, so
-  both are an architect's call; `notes/manual.md`'s "where this goes next" is the only record either
-  has.
+  both are an architect's call; `notes/documentation.md`'s "where this goes next" is the only
+  record either has.
 
 ## Index row
 
-the OS explains itself, on itself. Phases 1 and 2 built: `crates/manual` (a streaming renderer and
-an index layout a reader with one 4 KiB page can binary-search), `doc` at the prompt, and `apropos` as a builtin because search is enumeration and a searching *program* would need the
+the OS explains itself, on itself. Phases 1 and 2 built: `crates/manual` (now `crates/documentation`; a streaming renderer and
+an index layout a reader with one 4 KiB page can binary-search), `doc` (now `mdr`) at the prompt, and `apropos` as a builtin because search is enumeration and a searching *program* would need the
 whole store. 2026-08-18 fixed a renderer bug the corpus test structurally could not see (a fence
 inside a block quote never closed, so one quoted transcript misrendered every line after it),
 fixed an index defect where the builder and the reader disagreed about what a word is (`apropos
