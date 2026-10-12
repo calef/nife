@@ -59,7 +59,10 @@ fn compile_seeded_c(dir: &str) {
     let cc = clang();
     let mut objs = Vec::new();
     for src in &sources {
-        let stem = std::path::Path::new(src).file_stem().unwrap().to_string_lossy();
+        let stem = std::path::Path::new(src)
+            .file_stem()
+            .unwrap()
+            .to_string_lossy();
         let obj = format!("{out}/{stem}.o");
         let ok = Command::new(&cc)
             .args(flags.split_whitespace())

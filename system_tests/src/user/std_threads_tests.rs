@@ -27,7 +27,14 @@ fn std_threads_image() -> Option<&'static [u8]> {
 /// own space. Then the program runs to its end, and the test checks that its process ended with
 /// every thread reaped and its space gone, and gives every region back.
 fn run_as_process(image: &'static [u8], what: &str, out: &mut [u8]) -> usize {
-    run_as_process_with(image, what, None, None, super::std_service::BUDGET_PAGES, out)
+    run_as_process_with(
+        image,
+        what,
+        None,
+        None,
+        super::std_service::BUDGET_PAGES,
+        out,
+    )
 }
 
 /// [`run_as_process`], **told `line` and given a wall clock** when the caller has them: the words
@@ -105,8 +112,8 @@ pub(super) fn run_as_process_with(
 
     let report_region = crate::memory_region::create(1).expect("no report region");
     let report = sched::create_rendezvous_from(report_region).expect("no report rendezvous");
-    let budget = crate::memory_region::create(budget_pages)
-        .expect("no heap budget for the program");
+    let budget =
+        crate::memory_region::create(budget_pages).expect("no heap budget for the program");
     for (slot, cap) in [
         (
             std_runtime_protocol::MEMORY_REGION_SLOT,
@@ -164,7 +171,13 @@ pub(super) fn run_as_process_with(
     );
     // The same reaper removes the last thread from the table after that, and a region still
     // holding a thread refuses `reclaim` until it is gone, so each region gets the same grace.
-    for region in [budget, report_region, process_region, stack_region, args_region] {
+    for region in [
+        budget,
+        report_region,
+        process_region,
+        stack_region,
+        args_region,
+    ] {
         assert!(
             super::wait_for(|| sched::reclaim_region(region).is_ok()),
             "a region {what} used did not come back"
