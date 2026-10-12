@@ -1272,6 +1272,11 @@ def selftest():
         ("a package over the target is split", sum(1 for sh in shards if any(h.package == "big" for h in sh)) == 2),
         ("a fixed shard count is honored", len(pack(recs, times, n=5, target=1200)[0]) == 5),
         ("nothing reachable packs into no shard", pack([], times) == ([], [])),
+        # FALSIFICATIONS_JOBS's estimate: heaviest first onto the least-loaded worker.
+        ("one worker takes the sum", makespan(recs[6:10], times, 1) == 800),
+        ("two workers split four equal records evenly", makespan(recs[6:10], times, 2) == 400),
+        ("no worker count goes under the heaviest record",
+         makespan([recs[0], recs[10]], times, 4) == 400),
     ]
     for what, ok in packing:
         if not ok:
@@ -1634,8 +1639,9 @@ if _override is not None:
     LIMIT_KANI = LIMIT_KERNEL_TEST = int(_override)
 
 
-def run_bounded(argv, limit, env=None):
-    """Run `argv` for at most `limit` seconds. Returns (returncode, output, elapsed, timed_out).
+def run_bounded(argv, limit, env=None, cwd=None):
+    """Run `argv` in `cwd` (the checkout by default) for at most `limit` seconds. Returns
+    (returncode, output, elapsed, timed_out).
 
     **The whole process group is killed, not the child.** `subprocess.run(timeout=...)` kills only
     the process it started, and that is `cargo`: `cbmc` (or QEMU, for a kernel test) is a grandchild
@@ -1644,7 +1650,7 @@ def run_bounded(argv, limit, env=None):
     AGENTS.md asks, then KILL for whatever ignored it.
     """
     start = time.monotonic()
-    p = subprocess.Popen(argv, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+    p = subprocess.Popen(argv, cwd=cwd or root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                          text=True, start_new_session=True,
                          env=dict(os.environ, **env) if env else None)
     try:
@@ -1671,7 +1677,7 @@ def timed_out(limit, what):
                      "script/falsifications on the limit)" % (limit, what))
 
 
-def replay_kani(h):
+def replay_kani(h, tree=None):
     """Run one Kani harness against the applied patch. Returns (verdict, detail).
 
     `--exact` against the fully qualified name, which is what the amended patch path buys beyond
@@ -1680,7 +1686,7 @@ def replay_kani(h):
     `index_is_always_in_bounds` harnesses would all have run, so "one of them went red" proved
     nothing about the one being falsified.
     """
-    rc, out, _, hung = run_bounded(h.kani_argv(), LIMIT_KANI)
+    rc, out, _, hung = run_bounded(h.kani_argv(), LIMIT_KANI, cwd=tree)
     if hung:
         return timed_out(LIMIT_KANI, "`cargo kani` and its CBMC")
     hit = re.search(r"(\d+) successfully verified harnesses, (\d+) failures, (\d+) total", out)
@@ -1789,13 +1795,13 @@ def replay_kernel_test_on(t, arch):
     return "red", "the test caught it on %s\n      %s" % (arch, "\n      ".join(body))
 
 
-def replay_host_test(t):
+def replay_host_test(t, tree=None):
     """Run one host `#[test]` against the applied patch (milestone 742). Returns (verdict, detail).
 
     Red needs `running 1 test` and `1 failed`: a patch that does not compile, or a filter that
     selects nothing or several, is an error and not evidence.
     """
-    rc, out, _, hung = run_bounded(t.replay_argv(), LIMIT_KANI)
+    rc, out, _, hung = run_bounded(t.replay_argv(), LIMIT_KANI, cwd=tree)
     if hung:
         return timed_out(LIMIT_KANI, "`cargo test`")
     ran = re.findall(r"^running (\d+) tests?$", out, re.M)
@@ -1867,6 +1873,166 @@ def replay_swish_check_on(t, arch):
     return "red", "the line caught it on %s\n      %s" % (arch, named[0][:300])
 
 
+# **Records replay side by side when FALSIFICATIONS_JOBS asks** (maintainer/merge-group-critical-path,
+# 2026-10-12 UTC). Until then a sweep replayed one record at a time, so a re-falsify shard on a
+# 4-core, 16 GB runner ran one single-threaded CBMC and left three cores idle for its whole 16
+# minutes; that serial replay was the merge group's long pole. Records are independent, but they
+# cannot share a checkout, because each one writes a deliberate defect into the source. So every
+# worker past the first gets its own detached worktree of HEAD (and with it its own `target/`, built
+# cold), and the workers take records from one list, heaviest first by TIMES: longest-processing-time
+# scheduling, the rule `pack` already deals shards by. verify.yml sets 2, the number of CBMC formulas
+# CI measured fitting that runner's 16 GB (VERIFY_JOBS in script/verify). Unset, it is 1 and nothing
+# below changes.
+#
+# The transcript keeps its shape for its two readers (`--record-times` and helpers/verify_times.py):
+# a record's `==>` line and its verdict print together when it finishes, so each verdict sits under
+# its own name. A `--> started` line says what is in flight, for a cancelled run that never reaches a
+# verdict. Kernel tests and swish-check records boot QEMU against one shared image, so a sweep that
+# holds any runs with one job and says so.
+#
+# BUGS: a worker builds its package cold in its own `target/`, which the estimate does not count
+# (measured on the first probe runs: shards finished within 17% of it). A sweep killed mid-run
+# leaves its worker worktrees registered; `git worktree prune` drops them once the temporary
+# directory is gone.
+PARALLEL_KINDS = ("kani", "host test")
+
+
+def sweep_jobs():
+    raw = os.environ.get("FALSIFICATIONS_JOBS", "1")
+    if not raw.isdigit() or int(raw) == 0:
+        sys.exit("script/falsifications: FALSIFICATIONS_JOBS must be a positive number, not %r" % raw)
+    return int(raw)
+
+
+def makespan(records, times, jobs):
+    """Seconds `jobs` workers take over `records`, heaviest first, by the planner's weights."""
+    lanes = [0.0] * jobs
+    w = weights(records, times)
+    for secs in sorted((w[record_key(h)] for h in records), reverse=True):
+        lanes[lanes.index(min(lanes))] += secs
+    return max(lanes)
+
+
+def replay_one(h, tree):
+    """Apply `h`'s patch in `tree`, replay that ONE record, revert. Returns (lines, outcome).
+
+    `outcome` is red, survivor, broken, hung, or unreverted; the last means `tree` still holds a
+    deliberate defect and nothing more may be replayed in it."""
+    patch = os.path.join(root, h.state_patch)
+    applied = subprocess.run(["git", "-C", tree, "apply", patch], capture_output=True, text=True)
+    if applied.returncode != 0:
+        # A patch that will not apply is a FAILURE and not a skip. §134's claim is that this rot
+        # is the mechanism working: the covered code moved, so the falsification is stale and
+        # must be redone rather than trusted.
+        return ["    STALE    the patch no longer applies; the covered code moved",
+                "    " + applied.stderr.strip().replace("\n", "\n    ")], "broken"
+    lines = []
+    try:
+        replay = {"kernel test": replay_kernel_test,
+                  "swish-check line": replay_swish_check,
+                  "host test": replay_host_test}.get(h.kind, replay_kani)
+        began = time.monotonic()
+        verdict, detail = replay(h, tree) if h.kind in PARALLEL_KINDS else replay(h)
+        # Every verdict carries its wall-clock time, build included, because the limit above
+        # was chosen from the one run whose timestamps happened to survive, and the next
+        # person to move it should have a whole sweep to read instead.
+        took = "(%.1f s)" % (time.monotonic() - began)
+        if verdict == "red":
+            lines.append("    red      %s %s" % (detail, took))
+            outcome = "red"
+        elif verdict == "survivor":
+            lines.append("    SURVIVOR it stayed green with its own falsification applied %s" % took)
+            if detail:
+                lines.append("    " + detail)
+            outcome = "survivor"
+        else:
+            lines.append("    ERROR    %s %s" % (detail, took))
+            outcome = "hung" if detail.startswith("no verdict within") else "broken"
+    finally:
+        rev = subprocess.run(["git", "-C", tree, "apply", "-R", patch],
+                             capture_output=True, text=True)
+    if rev.returncode != 0:
+        # Stop here rather than continue. Every later harness would be proved against a tree
+        # holding a deliberate defect, and a green result from that means nothing.
+        where = "your tree" if tree == root else "the worker tree %s" % tree
+        return lines + ["    COULD NOT REVERT %s; %s is modified" % (h.state_patch, where),
+                        "    " + rev.stderr.strip()], "unreverted"
+    return lines, outcome
+
+
+def replay_serially(todo, tally):
+    """One record at a time in the checkout itself. False when a patch would not revert."""
+    for h in todo:
+        print("==> %s::%s" % (h.package, h.name))
+        lines, outcome = replay_one(h, root)
+        for line in lines:
+            print(line)
+        tally[outcome].append(h)
+        if outcome == "unreverted":
+            return False
+    return True
+
+
+def worker_trees(jobs, scratch):
+    """The checkout plus `jobs - 1` detached worktrees of HEAD under `scratch`. Fewer if git
+    refuses one, which costs time and never a record: the list of records is shared."""
+    trees = [root]
+    for i in range(2, jobs + 1):
+        tree = os.path.join(scratch, "worker-%d" % i)
+        made = subprocess.run(["git", "-C", root, "worktree", "add", "--detach", "--quiet", tree,
+                               "HEAD"], capture_output=True, text=True)
+        if made.returncode != 0:
+            print("warning: no worktree for worker %d, so %d replay side by side: %s"
+                  % (i, len(trees), made.stderr.strip()))
+            break
+        trees.append(tree)
+    return trees
+
+
+def replay_in_parallel(todo, jobs, tally):
+    """`jobs` workers over one list, heaviest record first (see PARALLEL_KINDS). False when a
+    patch would not revert; every worker then stops after the record it holds."""
+    import tempfile
+    import threading
+    w = weights(todo, read_times())
+    queue = sorted(todo, key=lambda h: (-w[record_key(h)], record_key(h)))
+    lock, stop = threading.Lock(), []
+    scratch = tempfile.mkdtemp(prefix="falsifications-")
+    trees = worker_trees(jobs, scratch)
+    print("replaying with %d worker(s), heaviest record first" % len(trees))
+
+    def work(n, tree):
+        while True:
+            with lock:
+                if stop or not queue:
+                    return
+                h = queue.pop(0)
+                print("--> started %s::%s (worker %d)" % (h.package, h.name, n))
+            lines, outcome = replay_one(h, tree)
+            with lock:
+                print("==> %s::%s" % (h.package, h.name))
+                for line in lines:
+                    print(line)
+                tally[outcome].append(h)
+                if outcome == "unreverted":
+                    stop.append(tree)
+                    return
+
+    try:
+        threads = [threading.Thread(target=work, args=(n, tree))
+                   for n, tree in enumerate(trees, 1)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+    finally:
+        for tree in trees[1:]:
+            subprocess.run(["git", "-C", root, "worktree", "remove", "--force", tree],
+                           capture_output=True, text=True)
+        subprocess.run(["rm", "-rf", scratch])
+    return not stop
+
+
 def sweep(hs, only=None, empty_is_clean=False, attested=False):
     """Apply each recorded patch, run that ONE harness, require red, revert.
 
@@ -1905,50 +2071,16 @@ def sweep(hs, only=None, empty_is_clean=False, attested=False):
         print("0 swept: --sweep selected no replayable record, so it examined nothing. That is a")
         print("broken selection and not a clean sweep (see the docstring of sweep()).")
         return 4
-    survivors, broken, hung = [], [], []
+    tally = {k: [] for k in ("red", "survivor", "broken", "hung", "unreverted")}
     sweep_began = time.monotonic()
-    for h in todo:
-        patch = os.path.join(root, h.state_patch)
-        print("==> %s::%s" % (h.package, h.name))
-        applied = subprocess.run(["git", "-C", root, "apply", patch],
-                                 capture_output=True, text=True)
-        if applied.returncode != 0:
-            # A patch that will not apply is a FAILURE and not a skip. §134's claim is that this rot
-            # is the mechanism working: the covered code moved, so the falsification is stale and
-            # must be redone rather than trusted.
-            print("    STALE    the patch no longer applies; the covered code moved")
-            print("    " + applied.stderr.strip().replace("\n", "\n    "))
-            broken.append(h)
-            continue
-        try:
-            replay = {"kernel test": replay_kernel_test,
-                      "swish-check line": replay_swish_check,
-                      "host test": replay_host_test}.get(h.kind, replay_kani)
-            began = time.monotonic()
-            verdict, detail = replay(h)
-            # Every verdict carries its wall-clock time, build included, because the limit above
-            # was chosen from the one run whose timestamps happened to survive, and the next
-            # person to move it should have a whole sweep to read instead.
-            took = "(%.1f s)" % (time.monotonic() - began)
-            if verdict == "red":
-                print("    red      %s %s" % (detail, took))
-            elif verdict == "survivor":
-                print("    SURVIVOR it stayed green with its own falsification applied %s" % took)
-                if detail:
-                    print("    " + detail)
-                survivors.append(h)
-            else:
-                print("    ERROR    %s %s" % (detail, took))
-                (hung if detail.startswith("no verdict within") else broken).append(h)
-        finally:
-            rev = subprocess.run(["git", "-C", root, "apply", "-R", patch],
-                                 capture_output=True, text=True)
-        if rev.returncode != 0:
-            # Stop here rather than continue. Every later harness would be proved against a tree
-            # holding a deliberate defect, and a green result from that means nothing.
-            print("    COULD NOT REVERT %s; your tree is modified" % h.state_patch)
-            print("    " + rev.stderr.strip())
-            return 3
+    jobs = min(sweep_jobs(), len(todo))
+    if jobs > 1 and any(h.kind not in PARALLEL_KINDS for h in todo):
+        print("FALSIFICATIONS_JOBS asks for %d, but this sweep holds a record that boots QEMU; "
+              "replaying one at a time (see PARALLEL_KINDS)" % jobs)
+        jobs = 1
+    if not (replay_in_parallel(todo, jobs, tally) if jobs > 1 else replay_serially(todo, tally)):
+        return 3
+    survivors, broken, hung = tally["survivor"], tally["broken"], tally["hung"]
     print("")
     # The total, beside the per-record times `--record-times` reads, so a shard's estimate can be
     # checked against what it took.
@@ -2288,7 +2420,13 @@ elif mode == "--affected-since":
         if not 1 <= k <= len(shards):
             sys.exit("--shard %d/%d: this diff packs into %d shard(s)" % (k, n, len(shards)))
         todo = shards[k - 1]
+        # The first line is the serial estimate, the one `pack` plans with, and helpers/verify_times.py
+        # reads it in that exact form. The second is what this shard should take on its workers,
+        # which is what the drift warning below compares against.
         print("shard %d/%d: %d record(s), estimated %.0f s" % (k, n, len(todo), loads[k - 1]))
+        jobs = min(sweep_jobs(), len(todo)) or 1
+        expected = makespan(todo, read_times(), jobs)
+        print("shard %d/%d: on %d worker(s), heaviest first, about %.0f s" % (k, n, jobs, expected))
         began = time.monotonic()
         rc = sweep(todo, None, empty_is_clean=True)
         # The prove shards' drift warning, applied to this shard's plan (lane/verify-shard-refresh):
@@ -2298,7 +2436,7 @@ elif mode == "--affected-since":
         try:
             sys.path.insert(0, os.path.join(root, "helpers"))
             import verify_times
-            pct = verify_times.shard_verdict(loads[k - 1], took)
+            pct = verify_times.shard_verdict(expected, took)
         except Exception as e:  # the replay's verdict stands whatever the warning does
             print("warning: the re-falsify drift check did not run: %s" % e)
             pct = None
@@ -2306,7 +2444,7 @@ elif mode == "--affected-since":
             print("%sre-falsify shard %d/%d took %.1f min against the %.1f planned (%+.0f%%, warns past "
                   "%.0f%%); helpers/verify_times.py refresh rewrites %s"
                   % ("::warning::" if os.environ.get("GITHUB_ACTIONS") else "warning: ", k, n,
-                     took / 60, loads[k - 1] / 60, pct, verify_times.SHARD_WARN_PCT, TIMES))
+                     took / 60, expected / 60, pct, verify_times.SHARD_WARN_PCT, TIMES))
         sys.exit(rc)
     sys.exit(sweep(todo, None, empty_is_clean=True))
 elif mode == "--plan-since":

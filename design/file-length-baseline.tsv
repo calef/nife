@@ -10,10 +10,7 @@
 # needs §266 amended by an architect, not an edit here.
 path	lines
 crates/line_editor/src/lib.rs	2290
-crates/machine_discovery/src/acpi.rs	3009
 crates/swish/src/lib.rs	3885
-crates/timetable/src/lib.rs	2468
 kernel/src/arch/x86_64/mmu.rs	2192
 kernel/src/bench.rs	2110
-kernel/src/lib.rs	2984
 kernel/src/user/fs_service.rs	2407

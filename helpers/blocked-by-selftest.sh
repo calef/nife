@@ -10,6 +10,13 @@ set -e
 here="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 me="$(basename "$0")"
 
+# Loaded once in a child first: a parser file that exits while being sourced would end this
+# selftest with its own status, green, before any case ran. Milestone 889 (the tree's gates stop
+# depending on the fleet tooling)'s mutation sweep found that hole on 2026-10-12 (UTC).
+if [ "$(sh -c '. "$1" && command -v nife_blocked_by >/dev/null && echo loaded' _ "$here/blocked-by.sh")" != loaded ]; then
+	echo "$me: helpers/blocked-by.sh did not load or does not define nife_blocked_by" >&2
+	exit 1
+fi
 . "$here/blocked-by.sh"
 
 check() {

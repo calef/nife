@@ -22,7 +22,7 @@ bench = false
 
 [dependencies]
 # The kernel, as a library, with the feature that makes its boot a test boot and hands over to the
-# suite here (kernel/src/lib.rs, `run_test_suite`).
+# suite here (kernel/src/boot.rs, `run_test_suite`).
 kernel = { version = "0.1.0", path = "../kernel", features = ["system_tests"] }
 
 # Everything the suite names, and nothing a plain build of this crate needs, so all of it is a

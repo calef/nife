@@ -13,9 +13,9 @@ produces, so every file's diff is one hunk holding the WHOLE file, changed lines
 which of six rules fired, and where. It never runs `git` and never talks to GitHub; the workflow
 does both and pipes the diff text in on stdin. That split is what makes `--selftest` below run
 against literal fixture strings, no repository and no subprocess required, cheap enough for
-`script/lint` to run on every invocation.
+`script/lint-fleet` to run on every invocation.
 
-    python3 helpers/architect-label-rules.py --selftest        # fixtures; script/lint runs this
+    python3 helpers/architect-label-rules.py --selftest        # fixtures; script/lint-fleet runs this
     git diff --unified=1000000 BASE HEAD | python3 helpers/architect-label-rules.py
         # prints one "rule: file: line" per match on stdout, exits 0 if anything fired, 1 if
         # nothing did, 2 on a usage error, 3 if it crashed. Nothing here reads BASE/HEAD; a caller

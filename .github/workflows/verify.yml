@@ -219,7 +219,7 @@ jobs:
           echo "count=$(echo "$shards" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))')" >> "$GITHUB_OUTPUT"
 
   prove:
-    name: prove (shard ${{ matrix.shard }}/3)
+    name: prove (shard ${{ matrix.shard }}/4)
     needs: [gate, scope]
     # `!cancelled()` for the same reason `verify` below gives: without it a failed or cancelled
     # dependency skips this job outright, whatever the condition says, and a skipped job still
@@ -230,9 +230,9 @@ jobs:
       needs.scope.outputs.needed == 'true' &&
       needs.gate.outputs.run != 'false'
     runs-on: ubuntu-24.04
-    # A third of the serial job plus its setup, generously. The serial job's 60 was for ~30 minutes
-    # of proving; a shard proves ~16 since 2026-10-07 (47 serial), and the box stays generous because a hung
-    # solver must fail loudly rather than sit on the runner's 6-hour default.
+    # A quarter of the serial job plus its setup, generously. The serial job's 60 was for ~30
+    # minutes of proving; a shard proves ~12 since 2026-10-12 (48 serial), and the box stays generous
+    # because a hung solver must fail loudly rather than sit on the runner's 6-hour default.
     timeout-minutes: 45
     strategy:
       # **Do not cancel the sibling.** One shard failing is a real result about its own crates, and
@@ -240,7 +240,7 @@ jobs:
       # whole suite did is the difference between one investigation and fifteen.
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       # `save-if`: no rust-cache entry is saved from a merge group, since no later run can restore
@@ -264,16 +264,21 @@ jobs:
         run: |
           cargo install --locked kani-verifier
           cargo kani setup
-      # Three shards, calef's ruling on #1802 (2026-10-07 UTC): "Add a third prove shard." On
+      # Four shards, calef's ruling on #1979 (2026-10-12 UTC): "A", prove goes from three shards
+      # to four. Three was his ruling on #1802 (2026-10-07 UTC): "Add a third prove shard." On
       # 2026-08-14 two was a measurement (`glob` alone was half the job, so a third bought
       # nothing); by 2026-10-07 `machine_discovery` had grown to match `glob`, and the 40-run
-      # medians pack to 23.6 minutes at two shards and 15.7 at three, for about 0.8 more
-      # runner-minutes a run. script/verify's comment above `--shard` has the ladder.
+      # medians packed to 23.6 minutes at two shards and 15.7 at three. Once #1979 halved
+      # re-falsify, three shards (17.4 minutes slowest, n=46) were the build's long pole alone;
+      # two probe runs of four took 13.2 and 12.9 minutes slowest, for no more runner-minutes
+      # (47.7 against 48.4), since the idle tail at each crate's end shrinks as much as the added
+      # setup grows. `glob` (about 12.2 minutes) is now the floor, so a fifth buys nothing.
+      # script/verify's comment above `--shard` has the ladder.
       # The balance is by measured seconds from the table in script/verify, which
       # verify-shard-refresh.yml keeps current, and each shard warns when it ran more than 30% off
       # its plan.
-      - name: script/verify --shard ${{ matrix.shard }}/3
-        run: script/verify --shard ${{ matrix.shard }}/3
+      - name: script/verify --shard ${{ matrix.shard }}/4
+        run: script/verify --shard ${{ matrix.shard }}/4
         # VERIFY_JOBS=2, not the script's default 4, and this is a measurement, not caution: the
         # first four runs of the parallel suite on this runner were each killed ~15 minutes in,
         # inside glob's largest harnesses, as a bare "operation was canceled" with orphaned cbmc
@@ -464,6 +469,15 @@ jobs:
         run: |
           script/falsifications --affected-since "${{ needs.scope.outputs.base }}" \
             --shard "${{ matrix.shard }}/${{ needs.scope.outputs.falsify-count }}"
+        # Two records at a time, each in its own worktree (maintainer/merge-group-critical-path,
+        # 2026-10-12 UTC). This step replayed one record at a time on a 4-core runner, and at 16 to
+        # 18 minutes it was the merge group's long pole. Two, not four, for the reason the `prove`
+        # job's VERIFY_JOBS gives: two CBMC formulas fit a 16 GB runner and four were killed. The
+        # shards are still planned by serial seconds against SHARD_TARGET, so the shard count and
+        # the runners it takes are what calef ruled on #1802; each shard now finishes in a bit over
+        # half its plan. script/falsifications, above PARALLEL_KINDS, has the mechanism.
+        env:
+          FALSIFICATIONS_JOBS: 2
 
   # The name the rest of the tree knows this check by, kept stable over the matrix the way
   # `verify (Kani proofs)` stands over the prove shards. It reads one result and needs no runner

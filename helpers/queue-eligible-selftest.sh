@@ -7,7 +7,7 @@
 # a pull request from any fork (see helpers/queue-eligible.jq for the path). This is the test that
 # fails on the tree before that fix and passes after it: with the predicate absent, or with a
 # consumer that stopped splicing it, or with a `--json` list that dropped `isCrossRepository`, one
-# of the three checks below goes red. script/lint runs it, so the property is a gate rather than a
+# of the three checks below goes red. script/lint-fleet runs it, so the property is a gate rather than a
 # habit (AGENTS.md's ladder, rung two).
 #
 # Needs jq, which every consumer of the predicate needs too.

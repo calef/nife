@@ -135,7 +135,7 @@
 # and one per orphan branch that never had a pull request, for the shell to open a draft for:
 #   { number: null, branch, action: "adopt", causes: [ { cause: "orphan", ... } ] }
 #
-# helpers/needs-maintainer-selftest.sh feeds recorded responses through this; script/lint runs it.
+# helpers/needs-maintainer-selftest.sh feeds recorded responses through this; script/lint-fleet runs it.
 
 # The label `helpers/ci_job_times.py sync` puts on a job's tracking issue (milestone 808). The name
 # is provisional; that script holds the same string and the selftest checks they agree.

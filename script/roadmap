@@ -189,7 +189,8 @@ import roadmap_block                                                        # no
 # The fact is knowable the moment the pull request stops being a draft: a ready pull request is a
 # merge request, and a block naming the branch being merged cannot honestly read "active work on a
 # branch right now". So this asks the same question on `pull_request`, at ready time, in about a
-# second, from `.github/workflows/ready-status.yml` and from `.githooks/pre-push`.
+# second, from `.github/workflows/ready-status.yml` and from the pre-push hook's fleet half
+# (`helpers/pre-push-fleet.sh`, on a checkout with `nife.fleet` set).
 #
 # It runs BEFORE everything below on purpose. It reads frontmatter and nothing else: no history, no
 # tree-wide grep, and no other block's problems, which are `--check`'s to report. A ready check that
@@ -519,7 +520,7 @@ refused_by = {}
 # ---- the files, which are the whole record ------------------------------------
 # **There is no index to compare them against any more.** Milestone 294 (`design/roadmap/README.md`'s
 # index is generated, not hand-maintained) had already made the table derived from these blocks,
-# because it was the tree's worst merge hotspot: `script/lint` 4b makes every lane touch its own
+# because it was the tree's worst merge hotspot: `script/lint-fleet` 4b makes every lane touch its own
 # block, every milestone also needed a row in one sorted table, so every milestone in flight
 # collided with every other one, always, in that one file. Eight conflicts in a single session on
 # 2026-09-14 (pull requests #836, #843, #847, #849, #850, #851, #854 and #855), every resolution

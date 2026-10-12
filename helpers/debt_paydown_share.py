@@ -13,8 +13,9 @@ file, `notes/project-metrics/merged-pull-requests.csv` and its columns. A python
 calef asked on 2026-10-11 (UTC) for a chart of the share of pull requests that pay down debt. The
 label and its definition are in notes/debt-paydown.md. A label lives on GitHub and not in git, so
 `script/metrics`, which reads git and committed records only, cannot see it. This helper is the
-fetch, run by the metrics workflow before `script/metrics --update`, and its CSV is the committed
-record `script/metrics` sums by week. The same split `helpers/merge_queue_share.py` uses, for the
+fetch, run daily by the fleet-metrics workflow (milestone 889 (the tree's gates stop depending on
+the fleet tooling) moved it there from metrics.yml), and its CSV is the committed record
+`script/metrics` sums by week. The same split `helpers/merge_queue_share.py` uses, for the
 same reason.
 
 # WHAT IT WRITES

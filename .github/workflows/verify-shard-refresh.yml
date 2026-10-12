@@ -48,11 +48,22 @@ jobs:
     runs-on: ubuntu-24.04
     # Twenty runs is about 20 job listings and 40 log downloads; minutes, not tens of them.
     timeout-minutes: 20
+    # **The App is optional** (milestone 889 (the tree's gates stop depending on the fleet tooling),
+    # provisional), as in toolchain-bump.yml, which has the full argument. With the App's secrets
+    # absent (a fork, or a repository the App is not installed on) the token step is skipped and
+    # every `steps.app-token.outputs.token || github.token` below falls through to the ephemeral
+    # token. That token still pushes and opens the pull request, but GitHub starts no CI on it,
+    # so its checks have to be kicked by hand. The secrets context is not readable in a step's
+    # `if`, so only the App ID is lifted here, and only so its presence can be tested.
+    env:
+      AUTOMATION_APP_ID: ${{ secrets.AUTOMATION_APP_ID }}
     steps:
       # A pull request opened with the workflow's own GITHUB_TOKEN does not trigger CI, so it
       # could never merge; the App's token does (metrics.yml and toolchain-bump.yml argue this).
-      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+      - name: Mint an installation token for the automation App, when it is installed
         id: app-token
+        if: env.AUTOMATION_APP_ID != ''
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         with:
           app-id: ${{ secrets.AUTOMATION_APP_ID }}
           private-key: ${{ secrets.AUTOMATION_APP_KEY }}
@@ -64,7 +75,7 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.app-token.outputs.token || github.token }}
 
       - name: Read the last 20 green runs and rewrite the table if it drifted
         id: refresh
@@ -77,7 +88,9 @@ jobs:
 
       - name: Open or update the pull request
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          # Who the pull request's opening line names: the App, or the fallback above.
+          PR_AUTHOR: ${{ steps.app-token.outputs.token && 'nife-smelter[bot]' || 'github-actions[bot]' }}
         run: |
           set -e
           if git diff --quiet -- script/verify notes/project-metrics/falsification-times.tsv; then
@@ -98,7 +111,7 @@ jobs:
 
           $(cat "$RUNNER_TEMP/refresh.txt")"
           git push --force origin "$branch"
-          body="**Lane:** $branch, opened by a scheduled workflow; nife-smelter[bot] is the author GitHub shows.
+          body="**Lane:** $branch, opened by a scheduled workflow; $PR_AUTHOR is the author GitHub shows.
 
           Rewrites the seconds of the crate table in \`script/verify\` and of the re-falsify
           records in \`notes/project-metrics/falsification-times.tsv\`, with their

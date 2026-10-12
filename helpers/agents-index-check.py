@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Fail when the five lists that name the agent instructions disagree.
 #
-#     helpers/agents-index-check.py        # script/lint runs it; exit 1 on any disagreement
+#     helpers/agents-index-check.py        # script/lint-fleet runs it; exit 1 on any disagreement
 #
 # Why this exists. On 2026-10-06 (UTC) the rules that only one kind of work needs moved out of
 # AGENTS.md into notes/skills/<name>/SKILL.md (calef's ruling: agent-agnostic, because "we expect

@@ -16,7 +16,7 @@
 # of theirs: jq -r "$(cat helpers/queue-eligible.jq)" '[ .[] | eligible | ... ]'. A missing file
 # leaves `eligible` undefined, jq refuses the program, and the consumer's `|| echo '[]'` arms
 # nothing, which is the direction to fail in. helpers/queue-eligible-selftest.sh checks the
-# predicate against fixtures and checks that both consumers still splice it, and script/lint runs
+# predicate against fixtures and checks that both consumers still splice it, and script/lint-fleet runs
 # that self-test.
 #
 # The `--json` list a consumer passes to `gh pr list` MUST include isCrossRepository, isDraft and
