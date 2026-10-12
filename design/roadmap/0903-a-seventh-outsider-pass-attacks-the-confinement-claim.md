@@ -50,9 +50,10 @@ holds the per-row table and the refusal log.
 - **Two attempts.** The first reviewer read past the claims table into earlier findings, said so,
   and was discounted. A second fresh reviewer, handed the table alone, ran the pass.
 - **Booted.** Two new tests in `system_tests/src/user/` (names provisional), green on aarch64,
-  riscv64 and x86_64, reproduced by the lane on each: `SEND_CAP` cannot widen a right through its
-  rights register or lend a `GRANT`-less capability (rows 1 and 2), and a `WRITE`-only budget
-  narrows a `SPLIT` child but mints `Rights::ALL` on every `RETYPE` and `RETYPE_OBJ` (row 3).
+  riscv64 and x86_64, reproduced by the lane on each. In one, `SEND_CAP` cannot widen a right
+  through its rights register or lend a `GRANT`-less capability (rows 1 and 2). In the other, a
+  `WRITE`-only budget narrows a `SPLIT` child but mints `Rights::ALL` on every `RETYPE` and
+  `RETYPE_OBJ` (row 3).
 - **One near miss, already ruled.** The retype half of row 3 is the gap milestone 824 (a retype
   mints no right its budget lacks) fixes. New: it reaches every kernel object, not only frames.
 - **Read.** The other 31 rows, about half resting on the row's own cited test.

@@ -59,7 +59,7 @@ milestone 633's own `BUGS` says a brief cannot remove. Scored as a re-discovery 
 ## The claims
 
 Grades: `booted` means a hostile test written this pass and run under QEMU on aarch64, riscv64 and
-x86_64; `read` means source review only. "Cited" means the row was not attacked independently and
+x86_64. `read` means source review only. "Cited" means the row was not attacked independently and
 the verdict rests on reading plus the coverage the table already cites.
 
 | # | Attack | Outcome | Grade |
@@ -80,10 +80,11 @@ the verdict rests on reading plus the coverage the table already cites.
 | 31, 32 | Cited: the `script/swish-check` censuses | held | read |
 | 34 | Cited: the socket confinement tests | held | read |
 
-Surfaces with no row, all read with no gap seen: `RETYPE_OBJ`'s slot floor (it never overwrites an
-occupied slot), `PageFrame::SLICE` (needs `GRANT`, copies the source's rights), `PageFrame::MAP`
-(no executable or writable-beyond-rights user page), `Rendezvous::BADGE` (needs `GRANT`, set once),
-and `Notification::BIND` (needs a TCB capability, so only a thread the caller already controls).
+Surfaces with no row were read, with no gap seen. `RETYPE_OBJ`'s slot floor never overwrites an
+occupied slot. `PageFrame::SLICE` needs `GRANT` and copies the source's rights. `PageFrame::MAP`
+makes no executable or writable-beyond-rights user page. `Rendezvous::BADGE` needs `GRANT` and sets
+a badge once. `Notification::BIND` needs a TCB capability, so it reaches only a thread the caller
+already controls.
 
 Not reached: the milestone 801 (packages over the internet) package fetch, which has no row (it
 waits on milestone 855 (the TLS graph enters the gated build)), and every userspace server a
