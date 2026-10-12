@@ -47,6 +47,15 @@ not a caption, it is a register entry.
 **File size:** 18 Rust files over 2,000 lines, holding 18.4% of all Rust lines; largest kernel/src/sched.rs (8,888); 95th percentile 1,463.
 <!-- /file-size -->
 
+## The prose budget
+
+![Words over the cap](project-metrics/prose-budget.svg)
+
+![Documents over the cap](project-metrics/prose-budget-documents.svg)
+
+calef ratified a 3,000-word cap per document on 2026-09-23, enforced as a ratchet. The first chart
+is the debt in words and the second the documents holding it.
+
 ## Function length
 
 ![Function length](project-metrics/function-length.svg)
@@ -207,15 +216,6 @@ The aggregate above can hold steady while one file slides, so this is the panel 
 failing build. 2026W31 to 2026W38 were backfilled on 2026-09-24 from each week's own lcov;
 2026W30 is empty because the floor did not exist yet. The provenance is in the register's
 [proofs and coverage](register-of-measures/code-proofs-and-coverage.md) appendix.
-
-## The prose budget
-
-![Words over the cap](project-metrics/prose-budget.svg)
-
-![Documents over the cap](project-metrics/prose-budget-documents.svg)
-
-calef ratified a 3,000-word cap per document on 2026-09-23, enforced as a ratchet. The first chart
-is the debt in words and the second the documents holding it.
 
 ## Homes
 
