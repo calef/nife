@@ -88,11 +88,10 @@ security audit's premise check, and that audit verifies the race itself.
 ### 4. FIXED: a recorded-gap row closed a month before the note knew
 
 The recorded-gaps table of `notes/architecture-list-sweep.md` (row at line 215) said `swish_check`
-refuses `--arch x86_64`, scoped under
-milestone 177 (wire the graphical terminal stack into the real interactive boot). The third leg
-runs (`xtask/src/swish_check.rs:59`, milestone 182 (x86-64's own interactive-boot entry point)),
-and 177 has been BUILT since 2026-09-19. The row now closes with the strikethrough its own table
-uses, beside a marked exception.
+refuses `--arch x86_64`, scoped under milestone 177 (wire the graphical terminal stack into the real
+interactive boot). The third leg runs (`swish_check::swish_check`'s `--arch` match, milestone 182
+(x86-64's own interactive-boot entry point)), and 177 has been BUILT since 2026-09-19. The row now
+closes with the strikethrough its own table uses, beside a marked exception.
 
 ### 5. FIXED: a citation quoted a section that had become an appendix
 

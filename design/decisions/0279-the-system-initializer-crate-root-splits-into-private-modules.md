@@ -27,7 +27,7 @@ neither question asked about one.
 Question 1 is the recommendation, A. The follow-on is
 [the progenitor's boot is split by phase](../roadmap/proposals/the-progenitors-boot-is-split-by-phase.md),
 which covers `boot` and `spawn_service` with the phase boundaries measured. It matches
-[the function-length ratchet proposal](../roadmap/proposals/a-ratchet-on-function-length.md), which
+[the function-length ratchet proposal](../roadmap/0888-a-ratchet-on-function-length.md), which
 records calef's 2026-10-09 (UTC) ruling that `kernel_main` is split by boot phase and leaves every
 other long function to a split of its own: "Each other long function is its own split". That
 proposal's own lane builds the ratchet; this one does not.
@@ -123,7 +123,7 @@ Prior art:
 | milestone 840 (the scheduler file is split along its seams), §271 (the scheduler file splits into submodules of `sched`) | a split of `kernel/src/sched.rs`, 8,888 lines | moved items only, no function changed; `schedule` and the send path kept their bodies |
 | milestone 842 (the grant-plan crate root is split along its seams), §272 (the grant-plan crate root splits into private modules) | a split of `crates/grant_plan/src/lib.rs`, 7,034 lines | moved items only, and named a follow-on for the program table once jig installs packages |
 | §266, section 1 and BUGS | what the ceiling measures | file length; a per-function limit was named as "a different problem, and not ruled out" |
-| [the function-length ratchet proposal](../roadmap/proposals/a-ratchet-on-function-length.md) | `kernel_main`, the kernel's boot sequence, 977 code lines; it lists `boot` at 847 and `spawn_service` at 545 | calef ruled on 2026-10-09 (UTC) that `kernel_main` is split by boot phase, one function per phase, not kept whole under an exception |
+| [the function-length ratchet proposal](../roadmap/0888-a-ratchet-on-function-length.md) | `kernel_main`, the kernel's boot sequence, 977 code lines; it lists `boot` at 847 and `spawn_service` at 545 | calef ruled on 2026-10-09 (UTC) that `kernel_main` is split by boot phase, one function per phase, not kept whole under an exception |
 | Linux, `init/main.c` `start_kernel` (from memory, not read) | a boot sequence | one long function, but each step a call to a named `*_init` function |
 | seL4, `try_init_kernel` (from memory, not read) | a boot sequence | one function of numbered stages, each a call to a `create_*` or `init_*` helper |
 

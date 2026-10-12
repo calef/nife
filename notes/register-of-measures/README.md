@@ -7,3 +7,8 @@ hold each measure's argument.
 *Name: provisional, minted 2026-09-24 by the lane that split the register (`d70f6dcd4`), for the
 directory and every stem in it. Naming is an architect's; `script/names --unratified` lists each
 stem.*
+
+One appendix is linked from here rather than from that table:
+[function-length.md](function-length.md), milestone 888 (a ratchet on function length)'s series. The
+register was at exactly its 3,000-word cap when it landed on 2026-10-11 (UTC), so its row waits for
+the register's next split.
