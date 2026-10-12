@@ -18,7 +18,7 @@ until the merge queue lands it; the title and slug are drafts.)*
 Raised by a maintainer session on 2026-10-09 (UTC), one of five lint proposals asked for together.
 Its numbers are in [notes/lint-census-2026-10-09.md](../../notes/lint-census-2026-10-09.md).
 It reuses the lint ratchet specified in
-[the panic proposal](proposals/panics-in-the-kernel-and-the-parsers-are-counted-and-fall.md).
+[the panic proposal](0896-panics-in-the-kernel-and-the-parsers-are-counted-and-fall.md).
 
 Reuse: clippy's `too_many_lines`, and `helpers/file_length_ratchet.py`'s rules from milestone 841
 (a ratchet on Rust file length). Nothing is written but the row key below.

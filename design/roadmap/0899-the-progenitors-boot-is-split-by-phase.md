@@ -1,13 +1,18 @@
 ---
-status: PROPOSED
+status: NOT-STARTED
 raised: 2026-10-11
+promoted_from: the-progenitors-boot-is-split-by-phase
 milestone_dependencies: 843
 decision_dependencies: 266, 279
 machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# The progenitor's boot is split by phase
+# 899. The progenitor's boot is split by phase
+
+*(Promoted from the proposal pile on 2026-10-12 (UTC) by lane
+`maintainer/promote-proposals`; number provisional until the merge queue lands it. Title
+and slug are drafts.)*
 
 Raised 2026-10-11 (UTC) by lane `milestone/843-the-system-initializer-crate-root-is-split-along-its-seams`
 as that milestone's named follow-on. Title and slug are drafts.
@@ -18,7 +23,7 @@ source file stays under 2,000 lines), but `boot` is still one body of 1,700 line
 the shell's step still works with locals bound while the archive was read. calef ruled on
 2026-10-09 (UTC) that the kernel's own boot sequence, `kernel_main`, is split by boot phase, one
 function per phase
-([the function-length ratchet proposal](../0888-a-ratchet-on-function-length.md), open question 4). This is
+([the function-length ratchet proposal](0888-a-ratchet-on-function-length.md), open question 4). This is
 the same split for the progenitor's half of booting.
 
 Reuse: not applicable; this restructures code and adds none.
@@ -74,3 +79,8 @@ belongs in the same milestone or the next.
 3. `script/swish-check` and `script/test` pass on aarch64, riscv64 and x86_64, and both
    `swish_check` falsification patches still fail their lines.
 4. If the function-length ratchet has landed, `boot`'s row is banked down or removed.
+
+## Index row
+
+The progenitor's `boot`, one body of about 1,700 lines, splits into one function per boot phase,
+the split calef ruled for the kernel's own `kernel_main`.

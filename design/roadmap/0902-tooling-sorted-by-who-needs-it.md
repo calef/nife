@@ -1,13 +1,18 @@
 ---
-status: PROPOSED
+status: NOT-STARTED
 raised: 2026-10-12
+promoted_from: tooling-sorted-by-who-needs-it
 milestone_dependencies: none
 decision_dependencies: none
 machine_requirements: none
 specific_machine: none
 needs_person: yes
 ---
-# nife's tooling, sorted by who needs it, before any of it moves
+# 902. nife's tooling, sorted by who needs it, before any of it moves
+
+*(Promoted from the proposal pile on 2026-10-12 (UTC) by lane
+`maintainer/promote-proposals`; number provisional until the merge queue lands it. Title
+and slug are drafts.)*
 
 Raised 2026-10-12 (UTC) by lane `maintainer/tooling-inventory`, on calef's prompt of that day: *"It
 seems like we have a fair amount of automation for how I work in the nife tree. Maybe we need to
@@ -36,10 +41,10 @@ agent workflow, put in exactly one class:
 An item that honestly sits between two is recorded as straddling both (`1/3`, `2/3`), not forced.
 The per-file tables, with what calls each file, what it calls, its length and whether it names
 calef, are in four appendices:
-[scripts](tooling-sorted-by-who-needs-it/scripts.md),
-[helpers in classes 1 and 2](tooling-sorted-by-who-needs-it/helpers-classes-1-and-2.md),
-[helpers in class 3](tooling-sorted-by-who-needs-it/helpers-class-3.md), and
-[CI, hooks, instructions and notes](tooling-sorted-by-who-needs-it/ci-hooks-and-instructions.md).
+[scripts](0902-tooling-sorted-by-who-needs-it/scripts.md),
+[helpers in classes 1 and 2](0902-tooling-sorted-by-who-needs-it/helpers-classes-1-and-2.md),
+[helpers in class 3](0902-tooling-sorted-by-who-needs-it/helpers-class-3.md), and
+[CI, hooks, instructions and notes](0902-tooling-sorted-by-who-needs-it/ci-hooks-and-instructions.md).
 
 ## What was measured
 
@@ -116,12 +121,8 @@ event condition.
 
 ## Prior art, read 2026-10-12
 
-| Project | In-tree standards | Workflow automation, outside the tree |
-|---|---|---|
-| Rust | [`src/tools/tidy`](https://github.com/rust-lang/rust/tree/main/src/tools/tidy): "a custom tool used for validating source code style and formatting conventions" ([rustc-dev-guide](https://rustc-dev-guide.rust-lang.org/tests/intro.html)) | [triagebot](https://github.com/rust-lang/triagebot), "the triage and team assistance bot", and [bors](https://github.com/rust-lang/bors), the merge bot, each its own repository |
-| Linux | `scripts/checkpatch.pl`, run before submitting ([submitting-patches](https://docs.kernel.org/process/submitting-patches.html)) | [b4](https://github.com/mricon/b4) (canonical repo on git.kernel.org) for patch workflows, and [patchwork](https://github.com/getpatchwork/patchwork), "a patch tracking system" |
-| Chromium | `PRESUBMIT.py` files in the source tree, found by walking up from each changed file ([presubmit scripts](https://www.chromium.org/developers/how-tos/depottools/presubmit-scripts/)) | [depot_tools](https://commondatastorage.googleapis.com/chrome-infra-docs/flat/depot_tools/docs/html/depot_tools_tutorial.html), one repository of "git workflow-enhancing tools" whose `git cl` runs those files |
-| Kubernetes | `hack/verify-*.sh` ([hack/](https://github.com/kubernetes/kubernetes/tree/master/hack)) | [Prow](https://github.com/kubernetes-sigs/prow), with job configs in [test-infra](https://github.com/kubernetes/test-infra) |
+Rust, Linux, Chromium and Kubernetes, with sources, are in
+[an appendix](0902-tooling-sorted-by-who-needs-it/prior-art.md).
 
 Two patterns hold across all four. The checks that read the code live with the code, and the
 machinery that moves changes through review lives elsewhere. Where the machinery needs policy, the
@@ -147,7 +148,7 @@ nife breaks the first pattern in one place, edge 1: its standards gate runs the 
   template through reusable workflows (its Fork 1). That template is where generic class 2 would
   live if it lived anywhere shared.
 - Milestone 756 (the first code to leave this repository) and
-  [notes/the-first-split.md](../../../notes/the-first-split.md) measured the split for code, and
+  [notes/the-first-split.md](../../notes/the-first-split.md) measured the split for code, and
   refused moving `host-tools` first because it is the most entangled. The note already says lint's
   sections "assume one tree" and that a moving repository needs a subset. This inventory is that
   subset's measurement, from the other side.
@@ -244,7 +245,7 @@ would measure any repository run this way. Fully reversible.
 calef, 2026-10-12 (UTC), [relayed by the maintainer session](https://github.com/nifeos/nife/pull/1976#issuecomment-6117241317): *"A"*.
 The edges are cut in place first, in one nife lane, and then class 3 moves as a unit. That lane is
 milestone 889 (the tree's gates stop depending on the fleet tooling), in
-[its block](../0889-the-trees-gates-stop-depending-on-the-fleet-tooling.md).
+[its block](0889-the-trees-gates-stop-depending-on-the-fleet-tooling.md).
 
 Background. Edges 1 to 6 are why a move today would be a rewrite. Every option keeps class 1 where
 it is.
@@ -267,3 +268,8 @@ independent of the merge queue on day one. It is also how tidy and triagebot alr
 - `helpers/prune_build_output.py` (#1974) is not on `main` and is not counted. It is class 3.
 - Notes about OS features whose names sound like workflow (`notes/state-handoff.md`,
   `notes/delegation.md`, `notes/durable-delegation.md`) were read and left out.
+
+## Index row
+
+An inventory of nife's tooling in four classes, sorted by who needs each file, with calef's rulings
+on where each class goes, taken before any of it moves out of the tree.

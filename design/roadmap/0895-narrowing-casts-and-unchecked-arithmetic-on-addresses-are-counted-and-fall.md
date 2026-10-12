@@ -1,18 +1,23 @@
 ---
-status: PROPOSED
+status: NOT-STARTED
 raised: 2026-10-09
+promoted_from: narrowing-casts-and-unchecked-arithmetic-on-addresses-are-counted-and-fall
 milestone_dependencies: none
 decision_dependencies: 61, 268
 machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# Narrowing casts and unchecked arithmetic on syscall arguments and addresses are counted, and the count falls
+# 895. Narrowing casts and unchecked arithmetic on syscall arguments and addresses are counted, and the count falls
+
+*(Promoted from the proposal pile on 2026-10-12 (UTC) by lane
+`maintainer/promote-proposals`; number provisional until the merge queue lands it. Title
+and slug are drafts.)*
 
 Raised by a maintainer session on 2026-10-09 (UTC), one of five lint proposals asked for together.
-Its numbers are in [notes/lint-census-2026-10-09.md](../../../notes/lint-census-2026-10-09.md).
+Its numbers are in [notes/lint-census-2026-10-09.md](../../notes/lint-census-2026-10-09.md).
 It reuses the lint ratchet specified in
-[the panic proposal](panics-in-the-kernel-and-the-parsers-are-counted-and-fall.md); whichever of the
+[the panic proposal](0896-panics-in-the-kernel-and-the-parsers-are-counted-and-fall.md); whichever of the
 two is promoted first builds it.
 
 Reuse: clippy's `cast_possible_truncation`, `cast_sign_loss`, `cast_possible_wrap` and
@@ -24,7 +29,7 @@ calef ruled on three of this proposal's questions on 2026-10-09 (UTC).
 
 - Open question 1: the `u64`/`i64` to `usize` filter gets a short decision of its own rather than
   stretching §61. It is
-  [§268 (the cast ratchet does not count a 64-bit integer cast to `usize`)](../../decisions/0268-the-cast-ratchet-does-not-count-a-64-bit-integer-cast-to-usize.md),
+  [§268 (the cast ratchet does not count a 64-bit integer cast to `usize`)](../decisions/0268-the-cast-ratchet-does-not-count-a-64-bit-integer-cast-to-usize.md),
   ratified by calef the same day, with a provisional number.
 - Open question 2: the scope is the 16 measured files. A file is added only when a concrete path
   from a syscall argument into it is shown.
@@ -123,3 +128,8 @@ The customer path is vacant, so the tie breaks toward the fatal risks. This serv
 confinement claim is false), since a truncated address is a confinement break's raw material. It
 ranks third of the five, behind the panic proposal (which shares its overflow half) and the
 `static mut` proposal, which is smaller and touches risk 5 directly.
+
+## Index row
+
+Narrowing casts and unchecked arithmetic on syscall arguments and addresses are counted by clippy's
+cast and arithmetic lints, held per file by the lint ratchet so the count only falls.
