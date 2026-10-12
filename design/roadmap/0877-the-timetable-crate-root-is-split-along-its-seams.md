@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-11
+built: 2026-10-12
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 282, 294
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -20,6 +21,17 @@ model for this block.
 The cut and every module name below are calef's call. A lane writes them up as a
 `status: PROPOSED` file in `design/decisions/` before it moves a line, and its pull request
 carries `needs-architect`.
+
+**BUILT, 2026-10-12 (UTC).** The lane wrote the cut up as §294 (the timetable crate root splits
+into private modules). §282 (when a file is split, the parent becomes an index) was ruled after
+this block was written and answers its rulings 1 to 3: the registry leaves `lib.rs` too, so the
+cut below is superseded. `lib.rs` is 118 lines: the crate docs, the module lines, a named
+re-export of every public item, and the two constants. The rest moved unchanged into four private
+modules, each with its tests inline beside it: `document` (349 lines), `admission` (714),
+`registry` (782) and `plan_text` (496), with `test_support` for the three helpers more than one
+layer's tests use. The two tests of the verdict word joined `registration.rs`'s tests. Every module
+name ships provisional. All five falsification patches patch `next_after` (none patches
+`unbacked`), and they were regenerated against `registry.rs`.
 
 Reuse: not applicable; this moves code and adds none. The crate already has four submodules. Two of
 them, `recurrence` (1,271 lines) and `registration` (247), hold their own `mod tests` beside their
@@ -141,6 +153,13 @@ Found with `grep` at `396187b0b`.
 4. The five patches that diff this file still apply and fail their harnesses.
 5. `cargo doc` for the crate reports no broken intra-doc link.
 6. Each new module carries a `//! Name:` block marked provisional.
+
+## Follow-on
+
+- **Decision.** The cut, and why §282 and earlier rulings answer this block's four questions, is
+  `design/decisions/0294-the-timetable-crate-root-splits-into-private-modules.md`. Every module name
+  ships provisional for calef's naming pass. No further split is owed: the largest file the cut
+  made is `registry.rs` at 782 lines, and `lib.rs` is an index.
 
 ## Index row
 

@@ -11,7 +11,6 @@
 path	lines
 crates/line_editor/src/lib.rs	2290
 crates/swish/src/lib.rs	3885
-crates/timetable/src/lib.rs	2468
 crates/video_terminal/src/lib.rs	3242
 kernel/src/arch/x86_64/mmu.rs	2192
 kernel/src/bench.rs	2110
