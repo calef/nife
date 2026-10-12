@@ -646,3 +646,16 @@ activation_set,foreign_change,replace && with ||,killed,killed by a_new_digest_u
 allocation_cache,,replace / with %,killed,"killed by a_spill_and_a_refill_each_move_half_a_class (BATCH = DEPTH / 2, line 60); the same key's line 63 is killed by the_bound_is_what_a_full_cache_holds and line 52 is unviable"
 allocation_cache,,replace / with *,killed,"killed by the_last_class_is_the_largest_size (CLASSES, line 52) and a_spill_and_a_refill_each_move_half_a_class (BATCH, line 60)"
 allocation_cache,Cache::spill,replace Cache::spill with (),killed,killed by a_spill_and_a_refill_each_move_half_a_class
+board_console,Boot::checks,replace != with ==,killed,killed by any_failure_counter_fails_the_checks
+board_console,Boot::checks,replace * with +,killed,killed by the_tick_route_keeps_up_at_exactly_eighty_percent
+board_console,Boot::checks,replace * with /,killed,killed by the_tick_route_keeps_up_at_exactly_eighty_percent
+board_console,Boot::checks,replace > with <,killed,killed by two_starts_in_one_boot_are_reported_as_merged
+board_console,Boot::checks,replace > with ==,killed,killed by two_starts_in_one_boot_are_reported_as_merged
+board_console,Boot::checks,replace > with >=,killed,killed by two_starts_in_one_boot_are_reported_as_merged
+board_console,Boot::checks,replace | with &,killed,killed by any_failure_counter_fails_the_checks
+board_console,Boot::checks,replace | with ^,killed,killed by any_failure_counter_fails_the_checks
+board_console,Boot::crossed,replace && with ||,killed,killed by crossing_needs_rising_crossings_and_some_wakes
+board_console,Boot::crossed,replace > with >=,killed,killed by crossing_needs_rising_crossings_and_some_wakes
+board_console,Boot::soaked,replace > with >=,killed,killed by heartbeats_without_a_start_are_not_a_soak
+board_console,online_cores,replace online_cores -> Option<u64> with None,killed,killed by the_smp_line_overrides_the_machine_lines_processor_count
+board_console,read,replace + with *,killed,killed by the_smp_line_overrides_the_machine_lines_processor_count

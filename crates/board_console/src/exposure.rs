@@ -452,6 +452,111 @@ mod tests {
         );
     }
 
+    /// A beat line with the given wake rate and failure counters, for the bench-check tests.
+    fn beat(
+        t: u64,
+        wakerate: u64,
+        crossings: u64,
+        wakes: u64,
+        failures: (u64, u64, u64),
+    ) -> String {
+        let (refused, mismatch, stalled) = failures;
+        format!(
+            "soak-test: t={t}s beat={t} wakes={wakes} wakerate={wakerate}/s crossings={crossings} \
+             refused={refused} mismatch={mismatch} stalled={stalled}\n"
+        )
+    }
+
+    /// A one-boot capture on a four-core, 100 Hz machine, whose tick route expects 400 wakes/s.
+    fn boot_of(beats: &[String]) -> Boot {
+        let mut log = String::from(
+            "nife on x\nnife machine: riscv64, 4 processor(s), 1 MiB, 100 Hz\nsoak-test: started\n",
+        );
+        for b in beats {
+            log.push_str(b);
+        }
+        read(&log).remove(0)
+    }
+
+    /// **The online count wins over the device tree's**, whichever line comes first: a machine
+    /// line claiming five processors and an smp line bringing four online is a four-core run.
+    #[test]
+    fn the_smp_line_overrides_the_machine_lines_processor_count() {
+        let boot = &read(
+            "nife on x\nnife machine: riscv64, 5 processor(s), 1 MiB, 100 Hz\n  smp: 4 core(s) online\n",
+        )[0];
+        assert_eq!(boot.cores, Some(4));
+    }
+
+    /// The wake-rate check's line is 80% of `hz * cores`: 320/s keeps up with 400/s expected and
+    /// 319/s does not.
+    #[test]
+    fn the_tick_route_keeps_up_at_exactly_eighty_percent() {
+        let ok = boot_of(&[beat(5, 320, 1, 9, (0, 0, 0))]);
+        assert!(
+            ok.checks()
+                .iter()
+                .any(|c| c == "wakerate 320/s against 400/s expected: the tick route kept up")
+        );
+        let slow = boot_of(&[beat(5, 319, 1, 9, (0, 0, 0))]);
+        assert!(slow.checks().iter().any(|c| c.contains("fell behind")));
+    }
+
+    /// Any one nonzero failure counter fails the run, two together still do, and none is clean.
+    #[test]
+    fn any_failure_counter_fails_the_checks() {
+        let failed = |f| {
+            boot_of(&[beat(5, 400, 1, 9, f)])
+                .checks()
+                .iter()
+                .any(|c| c.starts_with("FAILED"))
+        };
+        assert!(failed((1, 0, 0)));
+        assert!(failed((0, 0, 1)));
+        assert!(failed((1, 1, 0)));
+        assert!(failed((0, 1, 1)));
+        assert!(!failed((0, 0, 0)));
+    }
+
+    /// Two `started` lines in one boot are two boots merged by a lost banner, and one is not.
+    #[test]
+    fn two_starts_in_one_boot_are_reported_as_merged() {
+        let merged = |b: &Boot| b.checks().iter().any(|c| c.contains("two boots merged"));
+        let one = boot_of(&[beat(5, 400, 1, 9, (0, 0, 0))]);
+        assert!(!merged(&one));
+        let two = boot_of(&[
+            String::from("soak-test: started\n"),
+            beat(5, 400, 1, 9, (0, 0, 0)),
+        ]);
+        assert!(merged(&two));
+    }
+
+    /// Crossing needs both: crossings that rose, and wakes at all. Either alone is not a soak that
+    /// crossed cores.
+    #[test]
+    fn crossing_needs_rising_crossings_and_some_wakes() {
+        let rose_no_wakes = boot_of(&[beat(5, 0, 1, 0, (0, 0, 0)), beat(10, 0, 2, 0, (0, 0, 0))]);
+        assert_eq!(rose_no_wakes.crossed(), Some(false));
+        let flat = boot_of(&[
+            beat(5, 400, 3, 9, (0, 0, 0)),
+            beat(10, 400, 3, 9, (0, 0, 0)),
+        ]);
+        assert_eq!(flat.crossed(), Some(false));
+        let rose = boot_of(&[
+            beat(5, 400, 3, 9, (0, 0, 0)),
+            beat(10, 400, 4, 9, (0, 0, 0)),
+        ]);
+        assert_eq!(rose.crossed(), Some(true));
+    }
+
+    /// Heartbeats with no `started` line are not a soak: the start is what says this boot ran it.
+    #[test]
+    fn heartbeats_without_a_start_are_not_a_soak() {
+        let boot = &read(&format!("nife on x\n{}", beat(5, 400, 1, 9, (0, 0, 0))))[0];
+        assert!(boot.last.is_some());
+        assert!(!boot.soaked());
+    }
+
     #[test]
     fn thousands_matches_the_note() {
         assert_eq!(thousands(0), "0");
