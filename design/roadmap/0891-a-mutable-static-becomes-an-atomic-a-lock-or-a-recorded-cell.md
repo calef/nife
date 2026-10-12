@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-09
+built: 2026-10-12
 promoted_from: a-mutable-static-becomes-an-atomic-a-lock-or-a-recorded-cell
 milestone_dependencies: none
 decision_dependencies: 19
@@ -13,6 +14,50 @@ needs_person: no
 *(Promoted from the proposal pile on 2026-10-12 (UTC) by lane
 `maintainer/promote-proposals`; number provisional until the merge queue lands it. Title
 and slug are drafts.)*
+
+## What was built, 2026-10-12 (UTC)
+
+Built by lane `maintainer/static-mut-891` (#1997), from base `0e72ca92a`. Every site in scope is
+converted. `SERVER_MAPS` was done last, after #1988 moved it into
+`kernel/src/user/fs_service/wiring.rs`.
+
+| site | became | why that one |
+|---|---|---|
+| `IDT`, `TSS`, `GDT`, `INSTALLED_PORT_GRANT`, `BENCH_IOMAP` | `SyncUnsafeCell` | the ruling above; each comment names the per-core slot or the single writer before `lidt` |
+| `SERVER_MAPS` (`fs_service/wiring.rs`) | `SyncUnsafeCell` | a server keeps its list for the boot, so a lock guard would never drop; the existing take-once claim bit is the ownership |
+| `PIXELS`, `SCRATCH` (`screen.rs`) | `SyncUnsafeCell` | the emulator reads both by physical address, so they stay fixed and written in place |
+| `PRIMARY`, `BLOCK`, `OPTIONS` (`uefi_loader`'s chooser) | one firmware page allocation `choose` owns and lends down | safe functions each handed out a fresh `&'static mut`; the borrow checker now holds what a comment claimed |
+| `DATA_MARKER`, `BSS_MARKER` (`loaded_image_check`) | `AtomicU64` | still `.data` and `.bss`, checked in the built fixtures on aarch64 and riscv64 |
+| `IMAGE` (`second_mount`) | `Mutex` | one thread, never contended; still 16 MiB of `.bss` |
+| `POOL` (`second_mount`) | taken from `System` on first growth | an address handed to an allocator, page-aligned |
+
+`#![feature(sync_unsafe_cell)]` is in `kernel/src/lib.rs`, with the dependency's way out written
+beside it. The kernel's own `IrqSafeMutex` fitted nothing in scope: no site had fields changing
+together under an interrupt, and the CPU-read tables cannot sit behind a lock.
+
+The census counts `static mut` (`helpers/rust_source.py`, outside the system tests and fixtures,
+`&'static mut` excluded). `static-mut-declarations` (provisional) is the first member of
+`RATCHET_CEILINGS` since `agents-md-lines` left, so it fails in both directions. Its marker is in
+`notes/unsafe-obligations/ceilings.md`.
+
+| measure | before | after |
+|---|---|---|
+| `static mut`, census scope | 42 | 27, all in `components/` |
+| `static mut`, kernel | 8 (5 in `arch/`) | 0 |
+| `unsafe {}` outside `arch/` | 1,103 (density 61.09) | 1,099 (60.83, merged tree) |
+| `unsafe {}` inside `arch/` | 347 | 347 |
+| density ceiling | 61 (main had just caught it up to the tree) | 60 |
+
+The arch count does not move because a cell access is still a raw-pointer write. The four blocks
+outside `arch/` are real reductions in milestone 139 (drive the unsafe count down)'s sense: two
+volatile reads became atomics, and three accessor blocks in the chooser became one allocation.
+
+Proven by `script/test` on all three architectures and the host crates, `cargo xtask
+rollback-boot` (the chooser spends a try, dies at the handoff and comes back on slot 0),
+`cargo test -p loaded_image_check`, and the second-mount repro's unchanged output at the 8 MiB cap.
+
+Open question 2 is answered by measurement rather than ruled: the atomics land in `.data` and
+`.bss` as the `u64`s did. calef may still prefer the volatile form.
 
 Raised by a maintainer session on 2026-10-09 (UTC), one of five lint proposals asked for together.
 Its numbers are in [notes/lint-census-2026-10-09.md](../../notes/lint-census-2026-10-09.md).
@@ -136,6 +181,12 @@ The customer path is vacant, so the tie breaks toward the fatal risks. This serv
 cannot be made reliable on multicore), whose red result is a defect curve that keeps rising. The
 one recorded `static mut` race was a multicore defect. It ranks second of the five: eight kernel
 sites, each a small change.
+
+## Follow-on
+
+- **Milestone 812.** The 27 in `components/` convert in milestone 812 (real threads in one address
+  space), each one lowering the ceiling. Open question 3 stands.
+- **Done.** `SERVER_MAPS`, held for #1988, converted in this lane once it landed.
 
 ## Index row
 
