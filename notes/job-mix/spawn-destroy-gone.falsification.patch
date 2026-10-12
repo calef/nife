@@ -10,17 +10,17 @@ architecture, declaring no output register. Expected with this applied:
                                       job's retry loop again loads DESTROY's arguments before
                                       the yield and traps with x0 = 0 after it
 
-(The diff's context mentions milestone 299 (the x86 port-range capability), only because `outb`
-follows `yield_now`.)
+(Re-cut on 2026-10-12 (UTC) against `crates/user_mode_runtime/src/process.rs`, where `yield_now`
+moved when the crate root was split; it had stopped applying to `lib.rs` before then.)
 
 Apply with `git apply`, revert with `git apply -R`. Only yield_now is restored: it is the wrapper
 the miscompiled loop crossed, so it is the one whose absence of a declaration this proves matters.
 
-diff --git a/crates/user_mode_runtime/src/lib.rs b/crates/user_mode_runtime/src/lib.rs
-index 9d43849b4..d12a35b9d 100644
---- a/crates/user_mode_runtime/src/lib.rs
-+++ b/crates/user_mode_runtime/src/lib.rs
-@@ -996,15 +996,37 @@ pub fn send_cap(slot: u64, cap_slot: u64, rights: u64, w1: u64) -> i64 {
+diff --git a/crates/user_mode_runtime/src/process.rs b/crates/user_mode_runtime/src/process.rs
+index 125a93bd6..6846f93aa 100644
+--- a/crates/user_mode_runtime/src/process.rs
++++ b/crates/user_mode_runtime/src/process.rs
+@@ -9,15 +9,37 @@ use crate::syscall::trap6;
  
  /// Give up the CPU (`SYS_YIELD`). Returns when the scheduler runs this thread again; if another
  /// thread is ready, control goes there and back, which is one context-switch round trip.
@@ -65,4 +65,4 @@ index 9d43849b4..d12a35b9d 100644
 +    }
  }
  
- /// **Write one byte to an x86 I/O port** (milestone 299). Not a syscall: `out` is an instruction,
+ /// Terminate this process. The kernel reaps the thread and frees its whole address space. Never

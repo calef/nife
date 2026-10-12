@@ -24,9 +24,9 @@ This is fix/redoxfs-repeat-write. "A repeat write to the same block loops" is al
 shape of it. What is now proven, with tests in the tree rather than by reasoning:
 
 - A repeat write inside one run works, on both ISAs. The FS client writes the same block three times
-  in one run (`fixtures/src/fs_test_client.rs`). It passes on aarch64 and riscv64 against a freshly
-  generated image. The image afterwards carries the pass-3 payload, so the third write really reached
-  the disk. This is the reproduction the old gate could not perform. It depends on nothing left over
+  in one run (`fixtures/src/fs_test_client/proof.rs`). It passes on aarch64 and riscv64 against a
+  freshly generated image. The image afterwards carries the pass-3 payload, so the third write really
+  reached the disk. This is the reproduction the old gate could not perform. It depends on nothing left over
   from a previous invocation, so it cannot hide behind `mkredoxfs` rewriting the target first.
 - The host does not reproduce any of it. Four `redoxfs_server` host tests are all green in
   milliseconds. They are three writes to one block; the same through the EL0 binary's exact

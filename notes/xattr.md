@@ -219,7 +219,7 @@ let (kind, n) = srv.get_xattr(h, b"user.com.apple.metadata", &mut page)?;
 assert_eq!(kind, 0x4353_5452);
 ```
 
-The same thing on the wire, which is what `fixtures/src/fs_test_client.rs` does:
+The same thing on the wire, which is what `fixtures/src/fs_test_client/extended_attributes.rs` does:
 
 ```rust
 // SET: the name and the value go into the shared page back to back; the value's length and its

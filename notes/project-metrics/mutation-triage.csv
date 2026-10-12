@@ -288,7 +288,7 @@ boot_slot,SlotHeader::decode,replace < with ==,killed,"killed; a_slot_header_nee
 boot_slot,SlotHeader::decode,replace || with &&,killed,"killed; a_slot_header_needs_exactly_its_own_length in crates/boot_slot/tests/a_bad_upgrade_rolls_back.rs, re-run with cargo mutants"
 boot_slot,SlotHeader::encode,replace < with <=,killed,"killed; a_slot_header_needs_exactly_its_own_length in crates/boot_slot/tests/a_bad_upgrade_rolls_back.rs, re-run with cargo mutants"
 capability,"storage::CapabilityTable<O, N>::fill",replace > with >=,equivalent,"after used == peak, fill's > to >= calls note_peak with a pair the global fetch_max already holds, so the recorded high-water mark is unchanged; re-run with cargo mutants still reports it"
-capability,"storage::CapabilityTable<O, N>::occupied_mask",replace & with |,killed,"killed; the_occupied_mask_is_exactly_the_occupied_slots in crates/capability/src/lib.rs, re-run with cargo mutants"
+capability,"storage::CapabilityTable<O, N>::occupied_mask",replace & with |,killed,"killed; the_occupied_mask_is_exactly_the_occupied_slots in crates/capability/src/tests.rs, re-run with cargo mutants"
 device_tree_blob,,replace * with +,killed,"killed; a_tree_of_one_and_a_half_mebibytes_is_not_too_large in crates/device_tree_blob/tests/hostile.rs, re-run with cargo mutants"
 address_space_map,check_image,replace && with ||,killed,"killed; an_image_linked_for_the_old_layout_is_outside_the_band now asserts the exact refusal for an inverted range and for a start below the band, re-run with cargo mutants"
 address_space_map,check_image,replace > with >=,equivalent,"end == IMAGE.end with the start inside the band means holds() already accepted, so the branch is unreachable at that boundary and > and >= agree; re-run with cargo mutants still reports it"
@@ -583,7 +583,7 @@ byte_sink_protocol,req,replace | with ^,equivalent,"| over operands on disjoint 
 byte_sink_protocol,pack,replace < with <=,equivalent,at bytes.len() == INLINE_MAX both arms take INLINE_MAX
 c_seam,,replace << with >>,equivalent,"1 << 0 under >> is 1 >> 0, which is also 1"
 calendar,UtcOffset::from_hm,replace < with <=,equivalent,"a zero argument has no sign to disagree with, and the hours != 0 and minutes != 0 terms already exclude it, so < and <= decide the same"
-calendar,Writer::byte,replace < with <=,killed,killed; a_full_writer_drops_the_next_byte_instead_of_panicking in crates/calendar/src/lib.rs
+calendar,Writer::byte,replace < with <=,killed,killed; a_full_writer_drops_the_next_byte_instead_of_panicking in crates/calendar/src/tests.rs
 calendar,Writer::offset,replace < with <=,equivalent,"Writer::offset is only called for a non-zero offset (zero prints Z or UTC), so m < 0 and m <= 0 agree on every call"
 calendar,DateTime::parse_rfc3339_bytes,replace + with -,equivalent,"the dropped length check is repeated by number() and expect(), which return the same Error::Syntax for a short tail"
 capability,note_peak,replace | with ^,equivalent,argued in notes/mutation-testing/regressions-capability-to-dtb.md; the 2026-10-07 per-crate re-run still reports it

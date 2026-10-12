@@ -233,6 +233,12 @@ mod credential_tests;
 #[cfg(all(test, initial_ramdisk))]
 mod login_tests;
 
+/// **A login session's work outlives the login, and a suspended user's does not** (milestone 152
+/// (durable delegation)). Cut out of `login_tests` on 2026-10-12 (UTC) for its length, and named to
+/// sort right after it; it uses that module's wiring, so it carries that module's gate.
+#[cfg(all(test, initial_ramdisk))]
+mod login_user_schedule_tests;
+
 /// **A principal never exists with a credential and no home, or a home and no credential, for
 /// longer than one tool invocation** (milestone 155).
 ///
