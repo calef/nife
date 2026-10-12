@@ -615,6 +615,41 @@ impl Renderer {
 
         self.open_block(out);
 
+        let w = self.table_widths(rows, ncols);
+
+        self.margin = BODY;
+        for r in 0..rows {
+            self.line_start(out);
+            for (c, width) in w.iter().enumerate().take(ncols) {
+                let width = *width;
+                if c > 0 {
+                    self.set(Attr::Marker, out);
+                    out.put(b" | ");
+                    self.col += 3;
+                }
+                let (s, l) = if c < self.table.cols[r] as usize {
+                    self.table.cell[r][c]
+                } else {
+                    (0, 0)
+                };
+                let attr = if r == 0 && delimited {
+                    Attr::Strong
+                } else {
+                    Attr::Plain
+                };
+                self.write_table_cell((s, l), width, attr, align[c], out);
+            }
+            self.close_line(out);
+            if r == 0 && delimited {
+                self.write_table_rule(&w, ncols, out);
+            }
+        }
+        self.gap = true;
+    }
+
+    /// A table's column widths: each column's natural width, then the widest shrunk until a row
+    /// fits the page.
+    fn table_widths(&self, rows: usize, ncols: usize) -> [usize; TABLE_COLS] {
         // Natural widths first, then shrink the widest column until the row fits. Shrinking the
         // widest is the rule that keeps a table of one long prose column and three short ones
         // readable: the prose loses characters and the labels do not.
@@ -645,90 +680,79 @@ impl Renderer {
             w[widest] -= 1;
             total -= 1;
         }
+        w
+    }
 
-        self.margin = BODY;
-        for r in 0..rows {
-            self.line_start(out);
-            for (c, width) in w.iter().enumerate().take(ncols) {
-                let width = *width;
-                if c > 0 {
-                    self.set(Attr::Marker, out);
-                    out.put(b" | ");
-                    self.col += 3;
-                }
-                let (s, l) = if c < self.table.cols[r] as usize {
-                    self.table.cell[r][c]
-                } else {
-                    (0, 0)
-                };
-                let attr = if r == 0 && delimited {
-                    Attr::Strong
-                } else {
-                    Attr::Plain
-                };
-                // The attribute is set before the cell's bytes are touched, because emitting them
-                // borrows the table arena and `set` borrows all of `self`. A cell is written as one
-                // unit and never wrapped: a wrapped cell would not line up with its column, which
-                // is the only thing a table is for.
-                // How many characters of the cell will be emitted, counted before any of them
-                // goes out, because a right- or centre-aligned cell has to know how much space
-                // to put in FRONT of its text.
-                let (lo, hi) = (s as usize, (s + l) as usize);
-                let mut n = 0;
-                let mut k = lo;
-                while k < hi && n < width {
-                    k += char_len(&self.table.text[..hi], k);
-                    n += 1;
-                }
-                // **The delimiter row said where a column's text sits, and until milestone 280 it
-                // said it to nobody.** `read_align` filled `table.align` from `:---`, `---:` and
-                // `:---:`, and this loop padded every cell on the right whatever it held, so all
-                // three rendered identically to `---`. Nothing was wrong with the parse and
-                // nothing was wrong with the tests; the value simply had no consumer. The
-                // mutation sweep is what found it: sixteen mutants in `read_align` survived,
-                // including replacing the whole function with `()`, because a function whose
-                // result nothing reads cannot be wrong in a way anything notices.
-                let slack = width - n;
-                let (before, after) = match align[c] {
-                    Align::Left => (0, slack),
-                    Align::Right => (slack, 0),
-                    Align::Center => (slack / 2, slack - slack / 2),
-                };
-                self.set(attr, out);
-                pad(out, before);
-                let mut k = lo;
-                let mut done = 0;
-                while k < hi && done < width {
-                    let step = char_len(&self.table.text[..hi], k);
-                    out.put(&self.table.text[k..k + step]);
-                    k += step;
-                    done += 1;
-                }
-                pad(out, after);
-                self.col += width;
-            }
-            self.close_line(out);
-            if r == 0 && delimited {
-                self.line_start(out);
-                self.set(Attr::Marker, out);
-                for (c, width) in w.iter().enumerate().take(ncols) {
-                    if c > 0 {
-                        out.put(b"-+-");
-                        self.col += 3;
-                    }
-                    let dashes = [b'-'; 64];
-                    let mut left = *width;
-                    while left > 0 {
-                        let take = left.min(64);
-                        out.put(&dashes[..take]);
-                        left -= take;
-                    }
-                    self.col += *width;
-                }
-                self.close_line(out);
-            }
+    /// Write one table cell, the text at `(s, l)` in the table arena, in `width` characters.
+    fn write_table_cell(
+        &mut self,
+        (s, l): (u16, u16),
+        width: usize,
+        attr: Attr,
+        align: Align,
+        out: &mut impl Sink,
+    ) {
+        // The attribute is set before the cell's bytes are touched, because emitting them
+        // borrows the table arena and `set` borrows all of `self`. A cell is written as one
+        // unit and never wrapped: a wrapped cell would not line up with its column, which
+        // is the only thing a table is for.
+        // How many characters of the cell will be emitted, counted before any of them
+        // goes out, because a right- or centre-aligned cell has to know how much space
+        // to put in FRONT of its text.
+        let (lo, hi) = (s as usize, (s + l) as usize);
+        let mut n = 0;
+        let mut k = lo;
+        while k < hi && n < width {
+            k += char_len(&self.table.text[..hi], k);
+            n += 1;
         }
-        self.gap = true;
+        // **The delimiter row said where a column's text sits, and until milestone 280 it
+        // said it to nobody.** `read_align` filled `table.align` from `:---`, `---:` and
+        // `:---:`, and this loop padded every cell on the right whatever it held, so all
+        // three rendered identically to `---`. Nothing was wrong with the parse and
+        // nothing was wrong with the tests; the value simply had no consumer. The
+        // mutation sweep is what found it: sixteen mutants in `read_align` survived,
+        // including replacing the whole function with `()`, because a function whose
+        // result nothing reads cannot be wrong in a way anything notices.
+        let slack = width - n;
+        let (before, after) = match align {
+            Align::Left => (0, slack),
+            Align::Right => (slack, 0),
+            Align::Center => (slack / 2, slack - slack / 2),
+        };
+        self.set(attr, out);
+        pad(out, before);
+        let mut k = lo;
+        let mut done = 0;
+        while k < hi && done < width {
+            let step = char_len(&self.table.text[..hi], k);
+            out.put(&self.table.text[k..k + step]);
+            k += step;
+            done += 1;
+        }
+        pad(out, after);
+        self.col += width;
+    }
+
+    /// The rule under a table's header row: dashes the width of each column, `-+-` between them.
+    fn write_table_rule(&mut self, w: &[usize; TABLE_COLS], ncols: usize, out: &mut impl Sink) {
+        self.line_start(out);
+        self.set(Attr::Marker, out);
+        for (c, width) in w.iter().enumerate().take(ncols) {
+            if c > 0 {
+                out.put(b"-+-");
+                self.col += 3;
+            }
+            let dashes = [b'-'; 64];
+            let mut left = *width;
+            while left > 0 {
+                let take = left.min(64);
+                out.put(&dashes[..take]);
+                left -= take;
+            }
+            self.col += *width;
+        }
+        self.close_line(out);
     }
 
     // ---- inline --------------------------------------------------------------------------

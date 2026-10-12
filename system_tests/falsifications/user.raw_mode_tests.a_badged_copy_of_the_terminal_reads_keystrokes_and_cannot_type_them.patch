@@ -6,7 +6,7 @@ built for every ISA from one source).
 The defect this restores is the one milestone 709 closes: the boot line discipline served every
 request the same whatever the badge on the capability that sent it, so a `graphical_terminal`
 session holding a copy of its endpoint could `OPERATION_BYTES` a command line into the queue the boot shell
-reads with `OPERATION_READLINE`. The patch removes the badge guard ahead of `match proto::operation(w0)` and the
+reads with `OPERATION_READLINE`. The patch removes the badge guard ahead of `term.serve(w0, w1, slot)` and the
 `badge` binding it reads (so the build stays warning-free).
 
 Expected to fail: `assert_eq!(r[0], BAD_REQUEST, "a badged holder's OPERATION_BYTES was served (r0 = 0):
@@ -18,10 +18,15 @@ no-keyboard arm holds only the raw half of the boot discipline); see the roadmap
 code and the assertion line. The first red was taken before the fix existed, which is the same
 tree as this patch applied.
 
+**Re-cut 2026-10-12 (UTC) by the long-function paydown lane**, when `_start`'s opcode match moved
+into `Terminal::serve` and the guard came to sit ahead of that call instead. Same defect, same
+lines removed. Replayed red on aarch64 the same day, at the same first assertion
+(`raw_mode_tests.rs:449`).
+
 diff --git a/components/src/line_editor.rs b/components/src/line_editor.rs
 --- a/components/src/line_editor.rs
 +++ b/components/src/line_editor.rs
-@@ -203,7 +203,7 @@
+@@ -175,7 +175,7 @@
  
      loop {
          let req = receive_request(TERM);
@@ -30,7 +35,7 @@ diff --git a/components/src/line_editor.rs b/components/src/line_editor.rs
          let Some(slot) = req.delivered.into_reply() else {
              // A plain SEND or a SEND_CAP slipped in; the contract says CALL. With no Reply there is
              // nobody to answer, so the only honest move is to drop it, and a delegated capability
-@@ -211,22 +211,6 @@
+@@ -183,22 +183,6 @@
              // delegation)).
              continue;
          };
@@ -50,6 +55,6 @@ diff --git a/components/src/line_editor.rs b/components/src/line_editor.rs
 -            reply(slot, proto::BAD_REQUEST, 0);
 -            continue;
 -        }
-         match proto::operation(w0) {
-             proto::OPERATION_BYTES if raw_mode => {
-                 // Raw mode: no echo, no interpretation, straight into the raw queue. A burst past
+         term.serve(w0, w1, slot);
+     }
+ }

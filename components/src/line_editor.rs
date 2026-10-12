@@ -152,55 +152,25 @@ pub extern "C" fn _start(mode: u64, control: u64, start: u64) -> ! {
     let raw_queue_p = &raw mut RAW_QUEUE;
     // SAFETY: see above.
     let raw_queue = unsafe { &mut *raw_queue_p };
-    let mut con = Con { used: 0, mode };
-    // A parked READLINE: the slot holding the caller's one-shot Reply capability. The caller
-    // stays blocked (that is CALL's contract) while we serve everyone else.
-    let mut pending: Option<Reply> = None;
-    // How many ^C we have seen since boot. The shell reads this (OPERATION_INTRCOUNT) to sense interrupts
-    // while a foreground job runs and no read is parked to fail (DECISIONS §24). A
-    // monotonic counter, so the shell learns of a ^C by the count advancing, never missing one.
-    let mut intr_count: u64 = 0;
-    // Raw mode (milestone 169 (`kilo`, the smallest real text editor, as the forcing function for raw terminal input); OPERATION_RAWMODE): while true, OPERATION_BYTES bypasses `disc` entirely and
-    // lands in `raw_queue` instead, with no echo and no interpretation. `pending_raw` is
-    // OPERATION_READRAW's own parked reply capability, the raw-mode twin of `pending`.
-    let mut raw_mode = false;
-    let mut pending_raw: Option<Reply> = None;
-    // Set when a quiesce answered a parked OPERATION_READLINE with FLAG_RETRY and this instance then
-    // resumed: the reader's re-issued read must not repaint a prompt the screen already shows.
-    let mut resuming_line = false;
+    let mut term = Terminal {
+        disc,
+        queue,
+        raw_queue,
+        con: Con { used: 0, mode },
+        pending: None,
+        intr_count: 0,
+        raw_mode: false,
+        pending_raw: None,
+        resuming_line: false,
+        control,
+        start,
+    };
 
     // A replacement reads its predecessor's state before it serves anything, per DECISIONS §209 (state
     // handoff is an opaque blob over a granted frame, and it is optional). An
     // instance that served first and checked later would already have answered with a blank line.
     if start & proto::START_ABSORB != 0 {
-        let notify = control + 1;
-        // SAFETY: a supervisor passes START_ABSORB only alongside START_HANDOFF, having mapped the
-        // handoff page read/write at HANDOFF_VA before starting us.
-        let page = unsafe { core::slice::from_raw_parts(HANDOFF_VA as *const u8, HANDOFF_BYTES) };
-        let absorbed = line_editor::handoff::Reader::new(page).map_err(|e| match e {
-            line_editor::handoff::Refusal::NoBlob => 0,
-            line_editor::handoff::Refusal::Malformed => 1,
-            line_editor::handoff::Refusal::Layout(l) => l as u64,
-        });
-        let ok = match absorbed {
-            Ok(mut r) => restore(&mut r, disc, queue, raw_queue)
-                .map(|(raw, intr, resuming)| {
-                    raw_mode = raw;
-                    intr_count = intr;
-                    resuming_line = resuming;
-                })
-                .ok_or(1),
-            Err(why) => Err(why),
-        };
-        match ok {
-            Ok(()) => {
-                send(notify, proto::NOTE_ABSORBED, 0, 0);
-            }
-            Err(why) => {
-                send(notify, proto::NOTE_REFUSED, why, 0);
-                user_mode_runtime::exit()
-            }
-        }
+        term.absorb();
     }
 
     loop {
@@ -229,116 +199,94 @@ pub extern "C" fn _start(mode: u64, control: u64, start: u64) -> ! {
             reply(slot, proto::BAD_REQUEST, 0);
             continue;
         }
+        term.serve(w0, w1, slot);
+    }
+}
+
+/// Everything the serve loop carries between requests: the three `.bss` statics, the output sink,
+/// both parked readers, and the mode and counters a quiesce hands to a replacement.
+struct Terminal {
+    disc: &'static mut LineDisc,
+    queue: &'static mut LineQueue,
+    raw_queue: &'static mut RawQueue,
+    con: Con,
+    // A parked READLINE: the slot holding the caller's one-shot Reply capability. The caller
+    // stays blocked (that is CALL's contract) while we serve everyone else.
+    pending: Option<Reply>,
+    // How many ^C we have seen since boot. The shell reads this (OPERATION_INTRCOUNT) to sense interrupts
+    // while a foreground job runs and no read is parked to fail (DECISIONS §24). A
+    // monotonic counter, so the shell learns of a ^C by the count advancing, never missing one.
+    intr_count: u64,
+    // Raw mode (milestone 169 (`kilo`, the smallest real text editor, as the forcing function for raw terminal input); OPERATION_RAWMODE): while true, OPERATION_BYTES bypasses `disc` entirely and
+    // lands in `raw_queue` instead, with no echo and no interpretation. `pending_raw` is
+    // OPERATION_READRAW's own parked reply capability, the raw-mode twin of `pending`.
+    raw_mode: bool,
+    pending_raw: Option<Reply>,
+    // Set when a quiesce answered a parked OPERATION_READLINE with FLAG_RETRY and this instance then
+    // resumed: the reader's re-issued read must not repaint a prompt the screen already shows.
+    resuming_line: bool,
+    /// The control endpoint's slot, `0` when no supervisor can replace this instance.
+    control: u64,
+    /// The start flags (`proto::START_ABSORB`, `proto::START_HANDOFF`).
+    start: u64,
+}
+
+impl Terminal {
+    /// Read a predecessor's handoff blob and tell the supervisor whether it took; exits on a refusal.
+    fn absorb(&mut self) {
+        let notify = self.control + 1;
+        // SAFETY: a supervisor passes START_ABSORB only alongside START_HANDOFF, having mapped the
+        // handoff page read/write at HANDOFF_VA before starting us.
+        let page = unsafe { core::slice::from_raw_parts(HANDOFF_VA as *const u8, HANDOFF_BYTES) };
+        let absorbed = line_editor::handoff::Reader::new(page).map_err(|e| match e {
+            line_editor::handoff::Refusal::NoBlob => 0,
+            line_editor::handoff::Refusal::Malformed => 1,
+            line_editor::handoff::Refusal::Layout(l) => l as u64,
+        });
+        let ok = match absorbed {
+            Ok(mut r) => restore(&mut r, self.disc, self.queue, self.raw_queue)
+                .map(|(raw, intr, resuming)| {
+                    self.raw_mode = raw;
+                    self.intr_count = intr;
+                    self.resuming_line = resuming;
+                })
+                .ok_or(1),
+            Err(why) => Err(why),
+        };
+        match ok {
+            Ok(()) => {
+                send(notify, proto::NOTE_ABSORBED, 0, 0);
+            }
+            Err(why) => {
+                send(notify, proto::NOTE_REFUSED, why, 0);
+                user_mode_runtime::exit()
+            }
+        }
+    }
+
+    /// Answer one CALL by its operation. Per keystroke, so inlined into the serve loop.
+    #[inline]
+    fn serve(&mut self, w0: u64, w1: u64, slot: Reply) {
         match proto::operation(w0) {
-            proto::OPERATION_BYTES if raw_mode => {
-                // Raw mode: no echo, no interpretation, straight into the raw queue. A burst past
-                // RAW_QUEUE_MAX is dropped audibly, the same overflow contract `disc.feed` uses.
-                let n = proto::len(w0).min(8);
-                let bytes = w1.to_le_bytes();
-                if raw_queue.push(&bytes[..n]) < n {
-                    con.put(&[0x07]);
-                    con.flush();
-                }
-                reply(slot, 0, 0);
-                deliver_raw(raw_queue, &mut pending_raw);
-            }
-            proto::OPERATION_BYTES => {
-                let n = proto::len(w0).min(8);
-                for i in 0..n {
-                    let b = (w1 >> (8 * i)) as u8;
-                    match disc.feed(b, &mut con) {
-                        Event::Line => queue.push(disc.line(), 0, &mut con),
-                        Event::Eof => queue.push(&[], proto::FLAG_EOF, &mut con),
-                        Event::Interrupt => {
-                            // ^C: the discipline discarded the edit line. We discard the type-ahead
-                            // and fail a pending read (case 1, the shell is at the prompt). And we
-                            // bump the interrupt count, which the shell polls (OPERATION_INTRCOUNT) when a
-                            // foreground job is running and no read is parked (case 2,
-                            // DECISIONS §24). One ^C, both effects; whichever the shell is watching.
-                            intr_count = intr_count.wrapping_add(1);
-                            queue.clear();
-                            if let Some(p) = pending.take() {
-                                reply(p, 0, proto::FLAG_INTERRUPTED);
-                            }
-                        }
-                        // Tab is the application's (§227 (how Tab reaches the shell)): a
-                        // client that wants completion runs the engine itself over raw mode.
-                        Event::None | Event::Tab => {}
-                    }
-                }
-                con.flush();
-                reply(slot, 0, 0);
-                deliver(queue, &mut pending);
-            }
-            proto::OPERATION_RAWMODE => {
-                let on = proto::len(w0) != 0;
-                // Abandon whichever mode's in-progress line we're leaving: the edit buffer (and
-                // any parked OPERATION_READLINE, which raw mode would otherwise never complete) going
-                // into raw mode, the unread raw queue (and any parked OPERATION_READRAW) coming out of
-                // it. A session must never resume half a line typed under the mode it just left.
-                if on {
-                    disc.abandon();
-                    queue.clear();
-                    if let Some(p) = pending.take() {
-                        reply(p, proto::BAD_REQUEST, 0);
-                    }
-                } else {
-                    *raw_queue = RawQueue::new();
-                    if let Some(p) = pending_raw.take() {
-                        reply(p, proto::BAD_REQUEST, 0);
-                    }
-                }
-                raw_mode = on;
-                reply(slot, 0, 0);
-            }
-            proto::OPERATION_READRAW if !raw_mode => {
+            proto::OPERATION_BYTES if self.raw_mode => self.bytes_raw(w0, w1, slot),
+            proto::OPERATION_BYTES => self.bytes_cooked(w0, w1, slot),
+            proto::OPERATION_RAWMODE => self.set_raw_mode(w0, slot),
+            proto::OPERATION_READRAW if !self.raw_mode => {
                 reply(slot, proto::BAD_REQUEST, 0);
             }
             proto::OPERATION_READRAW => {
-                if pending_raw.is_some() {
+                if self.pending_raw.is_some() {
                     reply(slot, proto::BAD_REQUEST, 0);
-                    continue;
+                    return;
                 }
-                pending_raw = Some(slot);
-                deliver_raw(raw_queue, &mut pending_raw);
+                self.pending_raw = Some(slot);
+                deliver_raw(self.raw_queue, &mut self.pending_raw);
             }
-            proto::OPERATION_READLINE if raw_mode => {
+            proto::OPERATION_READLINE if self.raw_mode => {
                 reply(slot, proto::BAD_REQUEST, 0);
             }
-            proto::OPERATION_WRITE => {
-                let len = proto::len(w0).min(PAGE);
-                // Stream the client's text through newline expansion into the console page, in
-                // small chunks so the expansion never needs a buffer the size of its input.
-                let mut done = 0;
-                let mut chunk = [0u8; 256];
-                while done < len {
-                    let n = (len - done).min(chunk.len());
-                    copy_in(APP_OUT_VA, done, &mut chunk[..n]);
-                    line_editor::expand_output(&chunk[..n], &mut con);
-                    done += n;
-                }
-                con.flush();
-                reply(slot, len as u64, 0);
-            }
-            proto::OPERATION_READLINE => {
-                if pending.is_some() {
-                    // One outstanding read per terminal (the contract). A second caller while
-                    // one is parked is a protocol violation; refuse it loudly.
-                    reply(slot, proto::BAD_REQUEST, 0);
-                    continue;
-                }
-                let plen = proto::len(w0).min(PROMPT_MAX);
-                let mut prompt = [0u8; PROMPT_MAX];
-                copy_in(APP_OUT_VA, 0, &mut prompt[..plen]);
-                if core::mem::replace(&mut resuming_line, false) {
-                    disc.resume_line(&prompt[..plen]);
-                } else {
-                    disc.start_line(&prompt[..plen], &mut con);
-                    con.flush();
-                }
-                pending = Some(slot);
-                deliver(queue, &mut pending);
-            }
+            proto::OPERATION_WRITE => self.write(w0, slot),
+            proto::OPERATION_READLINE => self.read_line(w0, slot),
             proto::OPERATION_PRINT => {
                 // **A second writer, with no second page** (DECISIONS §67, notes/sink-protocol.md).
                 // The bytes are in the request's own words, so this client needs no frame mapped
@@ -350,60 +298,170 @@ pub extern "C" fn _start(mode: u64, control: u64, start: u64) -> ! {
                 // writers, one terminal, one set of manners.
                 let len = proto::len(w0).min(8);
                 let bytes = w1.to_le_bytes();
-                line_editor::expand_output(&bytes[..len], &mut con);
-                con.flush();
+                line_editor::expand_output(&bytes[..len], &mut self.con);
+                self.con.flush();
                 reply(slot, len as u64, 0);
             }
-            proto::OPERATION_QUIESCE if control == 0 => {
+            proto::OPERATION_QUIESCE if self.control == 0 => {
                 // No control endpoint means nobody could ever tell us to resume: honouring this
                 // would leave a dead terminal. Every boot-built terminal today is this case.
                 reply(slot, proto::BAD_REQUEST, 0);
             }
-            proto::OPERATION_QUIESCE => {
-                // A reply capability cannot leave this process, so a parked reader is answered
-                // now or never. It asks again, and whoever receives next answers it.
-                if let Some(p) = pending.take() {
-                    reply(p, 0, proto::FLAG_RETRY);
-                    resuming_line = true;
-                }
-                if let Some(p) = pending_raw.take() {
-                    reply(p, 0, proto::FLAG_RETRY);
-                }
-                if start & proto::START_HANDOFF != 0 {
-                    // Written before the reply, so the supervisor's QUIESCED is also the receipt
-                    // that the page holds this instance's final state.
-                    // SAFETY: START_HANDOFF means the page is mapped read/write at HANDOFF_VA.
-                    let page = unsafe {
-                        core::slice::from_raw_parts_mut(HANDOFF_VA as *mut u8, HANDOFF_BYTES)
-                    };
-                    let mut w = line_editor::handoff::Writer::new(page);
-                    disc.save(&mut w);
-                    queue.save(&mut w);
-                    raw_queue.save(&mut w);
-                    w.u32(raw_mode as u32);
-                    w.u32(intr_count as u32);
-                    w.u32(resuming_line as u32);
-                    if w.finish().is_none() {
-                        // Cannot happen at these sizes (the blob is under 4 KiB); if it did, the
-                        // replacement's reader refuses a truncated blob and the swap rolls back.
-                        page[..4].copy_from_slice(&[0; 4]);
-                    }
-                }
-                reply(slot, proto::QUIESCED, 0);
-                // Stopped receiving on TERM: anything that arrives now parks on its sender queue.
-                let (what, _, _) = receive(control);
-                if what != proto::CTL_RESUME {
-                    user_mode_runtime::exit()
-                }
-            }
+            proto::OPERATION_QUIESCE => self.quiesce(slot),
             proto::OPERATION_INTRCOUNT => {
                 // The shell's ^C sensor: reply immediately with the running count. Never blocks, so
                 // the shell can busy-poll it while watching a foreground job (DECISIONS §24).
-                reply(slot, intr_count, 0);
+                reply(slot, self.intr_count, 0);
             }
             _ => {
                 reply(slot, proto::BAD_REQUEST, 0);
             }
+        }
+    }
+
+    /// `OPERATION_BYTES` in raw mode. Per keystroke, so inlined.
+    #[inline]
+    fn bytes_raw(&mut self, w0: u64, w1: u64, slot: Reply) {
+        // Raw mode: no echo, no interpretation, straight into the raw queue. A burst past
+        // RAW_QUEUE_MAX is dropped audibly, the same overflow contract `disc.feed` uses.
+        let n = proto::len(w0).min(8);
+        let bytes = w1.to_le_bytes();
+        if self.raw_queue.push(&bytes[..n]) < n {
+            self.con.put(&[0x07]);
+            self.con.flush();
+        }
+        reply(slot, 0, 0);
+        deliver_raw(self.raw_queue, &mut self.pending_raw);
+    }
+
+    /// `OPERATION_BYTES` through the line discipline. Per keystroke, so inlined.
+    #[inline]
+    fn bytes_cooked(&mut self, w0: u64, w1: u64, slot: Reply) {
+        let n = proto::len(w0).min(8);
+        for i in 0..n {
+            let b = (w1 >> (8 * i)) as u8;
+            match self.disc.feed(b, &mut self.con) {
+                Event::Line => self.queue.push(self.disc.line(), 0, &mut self.con),
+                Event::Eof => self.queue.push(&[], proto::FLAG_EOF, &mut self.con),
+                Event::Interrupt => {
+                    // ^C: the discipline discarded the edit line. We discard the type-ahead
+                    // and fail a pending read (case 1, the shell is at the prompt). And we
+                    // bump the interrupt count, which the shell polls (OPERATION_INTRCOUNT) when a
+                    // foreground job is running and no read is parked (case 2,
+                    // DECISIONS §24). One ^C, both effects; whichever the shell is watching.
+                    self.intr_count = self.intr_count.wrapping_add(1);
+                    self.queue.clear();
+                    if let Some(p) = self.pending.take() {
+                        reply(p, 0, proto::FLAG_INTERRUPTED);
+                    }
+                }
+                // Tab is the application's (§227 (how Tab reaches the shell)): a
+                // client that wants completion runs the engine itself over raw mode.
+                Event::None | Event::Tab => {}
+            }
+        }
+        self.con.flush();
+        reply(slot, 0, 0);
+        deliver(self.queue, &mut self.pending);
+    }
+
+    /// `OPERATION_RAWMODE`: switch modes, abandoning the one being left.
+    fn set_raw_mode(&mut self, w0: u64, slot: Reply) {
+        let on = proto::len(w0) != 0;
+        // Abandon whichever mode's in-progress line we're leaving: the edit buffer (and
+        // any parked OPERATION_READLINE, which raw mode would otherwise never complete) going
+        // into raw mode, the unread raw queue (and any parked OPERATION_READRAW) coming out of
+        // it. A session must never resume half a line typed under the mode it just left.
+        if on {
+            self.disc.abandon();
+            self.queue.clear();
+            if let Some(p) = self.pending.take() {
+                reply(p, proto::BAD_REQUEST, 0);
+            }
+        } else {
+            *self.raw_queue = RawQueue::new();
+            if let Some(p) = self.pending_raw.take() {
+                reply(p, proto::BAD_REQUEST, 0);
+            }
+        }
+        self.raw_mode = on;
+        reply(slot, 0, 0);
+    }
+
+    /// `OPERATION_WRITE`: copy the client's page out through newline expansion.
+    fn write(&mut self, w0: u64, slot: Reply) {
+        let len = proto::len(w0).min(PAGE);
+        // Stream the client's text through newline expansion into the console page, in
+        // small chunks so the expansion never needs a buffer the size of its input.
+        let mut done = 0;
+        let mut chunk = [0u8; 256];
+        while done < len {
+            let n = (len - done).min(chunk.len());
+            copy_in(APP_OUT_VA, done, &mut chunk[..n]);
+            line_editor::expand_output(&chunk[..n], &mut self.con);
+            done += n;
+        }
+        self.con.flush();
+        reply(slot, len as u64, 0);
+    }
+
+    /// `OPERATION_READLINE` in cooked mode: paint the prompt and park the reader.
+    fn read_line(&mut self, w0: u64, slot: Reply) {
+        if self.pending.is_some() {
+            // One outstanding read per terminal (the contract). A second caller while
+            // one is parked is a protocol violation; refuse it loudly.
+            reply(slot, proto::BAD_REQUEST, 0);
+            return;
+        }
+        let plen = proto::len(w0).min(PROMPT_MAX);
+        let mut prompt = [0u8; PROMPT_MAX];
+        copy_in(APP_OUT_VA, 0, &mut prompt[..plen]);
+        if core::mem::replace(&mut self.resuming_line, false) {
+            self.disc.resume_line(&prompt[..plen]);
+        } else {
+            self.disc.start_line(&prompt[..plen], &mut self.con);
+            self.con.flush();
+        }
+        self.pending = Some(slot);
+        deliver(self.queue, &mut self.pending);
+    }
+
+    /// `OPERATION_QUIESCE` with a control endpoint: release parked readers, write the handoff
+    /// blob, reply, and wait on the control endpoint; exits unless told to resume.
+    fn quiesce(&mut self, slot: Reply) {
+        // A reply capability cannot leave this process, so a parked reader is answered
+        // now or never. It asks again, and whoever receives next answers it.
+        if let Some(p) = self.pending.take() {
+            reply(p, 0, proto::FLAG_RETRY);
+            self.resuming_line = true;
+        }
+        if let Some(p) = self.pending_raw.take() {
+            reply(p, 0, proto::FLAG_RETRY);
+        }
+        if self.start & proto::START_HANDOFF != 0 {
+            // Written before the reply, so the supervisor's QUIESCED is also the receipt
+            // that the page holds this instance's final state.
+            // SAFETY: START_HANDOFF means the page is mapped read/write at HANDOFF_VA.
+            let page =
+                unsafe { core::slice::from_raw_parts_mut(HANDOFF_VA as *mut u8, HANDOFF_BYTES) };
+            let mut w = line_editor::handoff::Writer::new(page);
+            self.disc.save(&mut w);
+            self.queue.save(&mut w);
+            self.raw_queue.save(&mut w);
+            w.u32(self.raw_mode as u32);
+            w.u32(self.intr_count as u32);
+            w.u32(self.resuming_line as u32);
+            if w.finish().is_none() {
+                // Cannot happen at these sizes (the blob is under 4 KiB); if it did, the
+                // replacement's reader refuses a truncated blob and the swap rolls back.
+                page[..4].copy_from_slice(&[0; 4]);
+            }
+        }
+        reply(slot, proto::QUIESCED, 0);
+        // Stopped receiving on TERM: anything that arrives now parks on its sender queue.
+        let (what, _, _) = receive(self.control);
+        if what != proto::CTL_RESUME {
+            user_mode_runtime::exit()
         }
     }
 }

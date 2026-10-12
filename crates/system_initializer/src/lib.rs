@@ -307,6 +307,7 @@
 mod activation;
 mod announcement;
 mod boot_sequence;
+mod boot_steps;
 mod children;
 mod client_windows;
 mod endowment;
