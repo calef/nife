@@ -5,6 +5,8 @@
 extern crate std;
 use std::vec::Vec;
 
+use domain_name_system::Name;
+
 use super::*;
 
 fn grant(g: &mut Grants, badge: u32, zone: &str) -> Control {
@@ -183,6 +185,51 @@ fn the_longest_zone_with_a_trailing_dot_is_granted_and_one_byte_more_is_not() {
         g.control(control_word(OPERATION_GRANT, 0, total, 4), 0),
         Control::Refused(Refusal::TooLong)
     );
+}
+
+/// Milestone 892 (a std program at the prompt holds the network and a resolver): a spawner that
+/// outlives its clients forgets each one, and the window comes back, so the ninth client of a
+/// resolver whose first eight have ended is not refused.
+#[test]
+fn a_forgotten_badge_is_denied_and_its_window_serves_the_next_grant() {
+    let mut g = Grants::new();
+    for badge in 1..=GRANTS_MAX as u32 {
+        grant(&mut g, badge, "nife.test");
+    }
+    let (w0, w1) = forget_message(3).unwrap();
+    assert_eq!(g.control(w0, w1), Control::Forgotten(2));
+    assert_eq!(g.check(3, &name("nife.test")), Err(Denied::NoGrant));
+    assert_eq!(g.granted(3), None);
+    // The others are untouched.
+    assert_eq!(g.check(4, &name("packages.nife.test")), Ok(3));
+    // A fresh badge takes the freed window, not a new one.
+    assert_eq!(grant(&mut g, 99, ""), Control::Granted(2));
+    assert_eq!(g.check(99, &name("example.com")), Ok(2));
+    // The forgotten badge stays forgotten: forgetting is not a re-grant of anything.
+    assert_eq!(g.check(3, &name("example.com")), Err(Denied::NoGrant));
+}
+
+#[test]
+fn forgetting_a_badge_with_no_window_or_badge_zero_is_refused() {
+    let mut g = Grants::new();
+    let (w0, w1) = forget_message(5).unwrap();
+    assert_eq!(g.control(w0, w1), Control::Refused(Refusal::NoSuchGrant));
+    assert!(forget_message(0).is_none());
+    assert_eq!(
+        g.control(control_word(OPERATION_FORGET, 0, 0, 0), 0),
+        Control::Refused(Refusal::BadgeZero)
+    );
+    // A half-sent grant holds a window, and a forget frees it too.
+    let first = grant_messages(6, b"packages.nife.test")
+        .unwrap()
+        .next()
+        .unwrap();
+    assert_eq!(g.control(first.0, first.1), Control::Partial);
+    assert_eq!(
+        g.control(forget_message(6).unwrap().0, 0),
+        Control::Forgotten(0)
+    );
+    assert_eq!(grant(&mut g, 7, "nife.test"), Control::Granted(0));
 }
 
 #[test]

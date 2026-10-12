@@ -551,42 +551,57 @@ impl Host {
             last: BootReport::RELEASED,
             keys: Keyboard::new(),
         };
-        let usbcmd = host.op(regs::USBCMD);
-        let usbsts = host.op(regs::USBSTS);
+        host.halt_and_reset(h.dma_pages)?;
+        host.lay_out();
+        host.run()?;
+        host.power_ports();
+        Ok(host)
+    }
+
+    /// Halt the controller (the firmware may have left it running), reset it, and check it can
+    /// use this driver's pages and that `dma_pages` holds everything it will lay out.
+    fn halt_and_reset(&self, dma_pages: u32) -> Result<(), Fail> {
+        let usbcmd = self.op(regs::USBCMD);
+        let usbsts = self.op(regs::USBSTS);
 
         // Halt (the firmware may have left it running), then reset.
-        host.set_reg(usbcmd, host.reg(usbcmd) & !regs::CMD_RUN);
+        self.set_reg(usbcmd, self.reg(usbcmd) & !regs::CMD_RUN);
         let end = deadline(100);
-        while host.reg(usbsts) & regs::STS_HALTED == 0 {
+        while self.reg(usbsts) & regs::STS_HALTED == 0 {
             if past(end) {
-                return Err((Step::HaltTimeout, host.reg(usbsts)));
+                return Err((Step::HaltTimeout, self.reg(usbsts)));
             }
             core::hint::spin_loop();
         }
-        host.set_reg(usbcmd, regs::CMD_RESET);
+        self.set_reg(usbcmd, regs::CMD_RESET);
         let end = deadline(1000);
-        while host.reg(usbcmd) & regs::CMD_RESET != 0 || host.reg(usbsts) & regs::STS_NOT_READY != 0
+        while self.reg(usbcmd) & regs::CMD_RESET != 0 || self.reg(usbsts) & regs::STS_NOT_READY != 0
         {
             if past(end) {
-                return Err((Step::ResetTimeout, host.reg(usbsts)));
+                return Err((Step::ResetTimeout, self.reg(usbsts)));
             }
             core::hint::spin_loop();
         }
-        if host.reg(host.op(regs::PAGESIZE)) & 1 == 0 {
-            return Err((Step::NoFourKibibytePages, host.reg(host.op(regs::PAGESIZE))));
+        if self.reg(self.op(regs::PAGESIZE)) & 1 == 0 {
+            return Err((Step::NoFourKibibytePages, self.reg(self.op(regs::PAGESIZE))));
         }
-        if u64::from(h.dma_pages) < dma::region_pages(caps.scratchpads) {
-            return Err((Step::RegionTooSmall, caps.scratchpads.into()));
+        if u64::from(dma_pages) < dma::region_pages(self.caps.scratchpads) {
+            return Err((Step::RegionTooSmall, self.caps.scratchpads.into()));
         }
+        Ok(())
+    }
 
+    /// Lay out the slot array, the command ring and the event ring, and enable interrupter 0.
+    fn lay_out(&self) {
+        let phys = |page: u64| self.dma_phys + page * PAGE;
         // One slot: this driver serves one device at a time, and gives a slot back before it
         // asks for another.
-        let config = host.op(regs::CONFIG);
-        host.set_reg(config, (host.reg(config) & !0xff) | 1);
+        let config = self.op(regs::CONFIG);
+        self.set_reg(config, (self.reg(config) & !0xff) | 1);
 
         // The slot array, its entry 0 the scratchpad array when the controller wants one.
-        if caps.scratchpads > 0 {
-            for i in 0..u64::from(caps.scratchpads) {
+        if self.caps.scratchpads > 0 {
+            for i in 0..u64::from(self.caps.scratchpads) {
                 DMA.w64(
                     dma::SCRATCHPAD_ARRAY * PAGE + 8 * i,
                     phys(dma::WORK_PAGES + i),
@@ -598,42 +613,53 @@ impl Host {
             );
         }
         barrier();
-        host.set_reg64(host.op(regs::DCBAAP), phys(dma::DEVICE_CONTEXT_ARRAY));
-        host.set_reg64(host.op(regs::CRCR), host.commands.dequeue_pointer());
+        self.set_reg64(self.op(regs::DCBAAP), phys(dma::DEVICE_CONTEXT_ARRAY));
+        self.set_reg64(self.op(regs::CRCR), self.commands.dequeue_pointer());
 
         // The event ring: its one segment table entry, then interrupter 0, base last.
-        let entry = host.events.segment_table_entry();
+        let entry = self.events.segment_table_entry();
         for (i, w) in entry.iter().enumerate() {
             DMA.w32(dma::EVENT_SEGMENT_TABLE * PAGE + 4 * i as u64, *w);
         }
         barrier();
-        host.set_reg(caps.interrupter(regs::ERSTSZ), 1);
-        host.set_reg64(caps.interrupter(regs::ERDP), host.events.dequeue_pointer());
-        host.set_reg64(
-            caps.interrupter(regs::ERSTBA),
+        self.set_reg(self.caps.interrupter(regs::ERSTSZ), 1);
+        self.set_reg64(
+            self.caps.interrupter(regs::ERDP),
+            self.events.dequeue_pointer(),
+        );
+        self.set_reg64(
+            self.caps.interrupter(regs::ERSTBA),
             phys(dma::EVENT_SEGMENT_TABLE),
         );
-        host.set_reg(
-            caps.interrupter(regs::IMAN),
+        self.set_reg(
+            self.caps.interrupter(regs::IMAN),
             regs::IMAN_ENABLE | regs::IMAN_PENDING,
         );
+    }
 
-        host.set_reg(usbcmd, regs::CMD_RUN | regs::CMD_INTERRUPTS);
+    /// Set the controller running with interrupts on, and wait for it to leave the halted state.
+    fn run(&self) -> Result<(), Fail> {
+        let usbcmd = self.op(regs::USBCMD);
+        let usbsts = self.op(regs::USBSTS);
+        self.set_reg(usbcmd, regs::CMD_RUN | regs::CMD_INTERRUPTS);
         let end = deadline(100);
-        while host.reg(usbsts) & regs::STS_HALTED != 0 {
+        while self.reg(usbsts) & regs::STS_HALTED != 0 {
             if past(end) {
-                return Err((Step::RunTimeout, host.reg(usbsts)));
+                return Err((Step::RunTimeout, self.reg(usbsts)));
             }
             core::hint::spin_loop();
         }
+        Ok(())
+    }
 
-        // Power every port that is not powered (only on a controller with port power control),
-        // and give a device the specification's 20 ms to come up on it.
+    /// Power every port that is not powered (only on a controller with port power control),
+    /// and give a device the specification's 20 ms to come up on it.
+    fn power_ports(&self) {
         let mut powered = false;
-        for n in 1..=caps.max_ports {
-            let sc = host.reg(caps.portsc(n));
+        for n in 1..=self.caps.max_ports {
+            let sc = self.reg(self.caps.portsc(n));
             if sc & port::POWER == 0 {
-                host.set_reg(caps.portsc(n), port::write_value(sc, port::POWER));
+                self.set_reg(self.caps.portsc(n), port::write_value(sc, port::POWER));
                 powered = true;
             }
         }
@@ -643,7 +669,6 @@ impl Host {
                 core::hint::spin_loop();
             }
         }
-        Ok(host)
     }
 
     /// **Try every connected port until one is a keyboard.** `(connected, last refusal)`.

@@ -2,7 +2,7 @@
 status: NOT-STARTED
 raised: 2026-10-07
 promoted_from: lab-machines-update-themselves
-milestone_dependencies: 198, 809, 805, 23, 666, 592, 593, 53
+milestone_dependencies: 198, 809, 805, 23, 666, 592, 593, 53, 911
 decision_dependencies: unwritten
 machine_requirements: x86_64 and riscv64 silicon with a writable boot disk and a hardware watchdog
 specific_machine: radon (calef's preferred lab machine, and the one whose chooser, disk writes and watchdog are unbuilt)
@@ -44,6 +44,11 @@ calef ruled every fork on #1805 on 2026-10-07 (UTC), relayed by the maintainer i
 Fork 6 and the owner-source requirement are recorded as calef's ruling in §250 (an image names its
 distribution's package index)'s amendment of 2026-10-07. The cordoba spec is
 [notes/lab-index-on-cordoba.md](../../notes/lab-index-on-cordoba.md).
+
+An automatic update installs only within an approval file the owner wrote, through an installer
+endpoint badged to it: milestone 911 (scripted installs grant only what the owner's approval file
+allows), added 2026-10-12 (UTC). Fork 6 said automatic updates are an owner setting; 911 is what
+bounds one.
 
 This file stayed a proposal until 2026-10-09 (UTC). #1796's all-ruled proposal stayed one with its
 worklist, and milestone 809 was promoted only on calef's word. Every number below is the
@@ -125,7 +130,9 @@ Each line is one lane. "Proposed" means a new milestone an integrator would numb
    (`notes/packages.md`), so no lab machine can fetch anything until this lands.
 6. Proposed, generations get tries (Fork 1).
 7. Proposed, a supervisor restarts a service from new bytes (Fork 3), §159's restart tier, with the
-   report; live swap stays milestone 23's.
+   report; live swap stays milestone 23's. Milestone 910 (a package declares a service: install
+   starts it, boot starts it, update restarts it) builds the mechanism for a package's declared
+   service (added 2026-10-12 UTC); this item extends it to base services.
 8. The health checks of Fork 4, built with items 6 and 7.
 9. basalt (out of tree): pin bump per nife merge; on each passing gate, publish a TUF repository
    whose release manifest pins a kernel and its base (Fork 5).

@@ -29,19 +29,23 @@ fn main() {
     }
 }
 
-/// relibc's one C file (`../vendor/relibc/c/stdlib.c`: `long double` conversions), compiled with
-/// the flags every C program for nife takes, into a static library linked with this crate.
+/// The C this crate carries, compiled with the flags every C program for nife takes into one
+/// static library linked with it: relibc's one C file (`../vendor/relibc/c/stdlib.c`: `long double`
+/// conversions) and nife's own `c/thread_start.c` (milestone 836 (a C library, stage 2: threads)),
+/// where a thread made by `pthread_create` starts.
 fn compile_seeded_c(dir: &str) {
     println!("cargo::rerun-if-changed=../vendor/relibc/c/stdlib.c");
+    println!("cargo::rerun-if-changed=c/thread_start.c");
     println!("cargo::rerun-if-changed=../helpers/c-library-cflags.sh");
     println!("cargo::rerun-if-env-changed=NIFE_CC");
     let target = std::env::var("TARGET").unwrap();
     let out = std::env::var("OUT_DIR").unwrap();
-    // x86_64: clang refuses `long double` with the x87 off, so the file cannot be compiled there
+    let mut sources = vec![format!("{dir}/c/thread_start.c")];
+    // x86_64: clang refuses `long double` with the x87 off, so `stdlib.c` cannot be compiled there
     // and no C program there can pass the type; `src/long_double.rs` supplies the one symbol
     // relibc's `printf` links against.
-    if target.starts_with("x86_64") {
-        return;
+    if !target.starts_with("x86_64") {
+        sources.push(format!("{dir}/../vendor/relibc/c/stdlib.c"));
     }
     let flags = Command::new(format!("{dir}/../helpers/c-library-cflags.sh"))
         .arg(&target)
@@ -53,32 +57,33 @@ fn compile_seeded_c(dir: &str) {
     );
     let flags = String::from_utf8(flags.stdout).unwrap();
     let cc = clang();
-    let obj = format!("{out}/stdlib.o");
-    let ok = Command::new(&cc)
-        .args(flags.split_whitespace())
-        .args([
-            "-O2",
-            "-c",
-            &format!("{dir}/../vendor/relibc/c/stdlib.c"),
-            "-o",
-            &obj,
-        ])
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
-    assert!(
-        ok,
-        "c_library: {cc} could not compile ../vendor/relibc/c/stdlib.c"
-    );
+    let mut objs = Vec::new();
+    for src in &sources {
+        let stem = std::path::Path::new(src)
+            .file_stem()
+            .unwrap()
+            .to_string_lossy();
+        let obj = format!("{out}/{stem}.o");
+        let ok = Command::new(&cc)
+            .args(flags.split_whitespace())
+            .args(["-O2", "-c", src, "-o", &obj])
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        assert!(ok, "c_library: {cc} could not compile {src}");
+        objs.push(obj);
+    }
     let ar = llvm_tool("llvm-ar");
     let lib = format!("{out}/libc_library_seeded.a");
     let _ = std::fs::remove_file(&lib);
     let ok = Command::new(&ar)
-        .args(["rcs", &lib, &obj])
+        .arg("rcs")
+        .arg(&lib)
+        .args(&objs)
         .status()
         .map(|s| s.success())
         .unwrap_or(false);
-    assert!(ok, "c_library: {ar} could not archive stdlib.o");
+    assert!(ok, "c_library: {ar} could not archive the C objects");
     println!("cargo::rustc-link-search=native={out}");
     println!("cargo::rustc-link-lib=static=c_library_seeded");
 }

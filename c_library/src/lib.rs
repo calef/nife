@@ -27,6 +27,8 @@
 #![feature(core_intrinsics)]
 #![feature(linkage)]
 #![feature(macro_derive)]
+// relibc's read-write lock guards are `!Send` (milestone 836 (a C library, stage 2: threads)).
+#![feature(negative_impls)]
 #![feature(ptr_as_uninit)]
 #![feature(slice_ptr_get)]
 #![feature(stmt_expr_attributes)]
@@ -45,6 +47,7 @@ extern crate std;
 #[macro_use]
 #[allow(
     dead_code,
+    dropping_copy_types,
     non_camel_case_types,
     non_upper_case_globals,
     non_snake_case,
@@ -61,4 +64,6 @@ pub use relibc::{
 
 #[cfg(target_arch = "x86_64")]
 mod long_double;
+// POSIX threads on `std`'s, in place of relibc's own module (milestone 836).
+pub mod pthread;
 pub mod start;

@@ -731,6 +731,21 @@ pub(super) fn swish_check_boot(
         ) {
             failed.push(complaint);
         }
+        // **And a boot with a network starts a name resolver on it** (milestone 892 (a std
+        // program at the prompt holds the network and a resolver)), asking the name server the
+        // lease named, which under slirp is always its own 10.0.2.3. A boot with no NIC (the
+        // keyboard boot) says neither sentence and is not asked.
+        let now = after_hand_over(&transcript_now(&seen));
+        if now.contains("network stack up; DHCP leased")
+            && let Some(complaint) = boot_claim_complaint(
+                &now,
+                "its name resolver",
+                "name resolver up; asks 10.0.2.3, the lease's name server",
+                "no name resolver",
+            )
+        {
+            failed.push(complaint);
+        }
         // **x86_64: let the kernel finish its hand-over report first**, then press Enter for a
         // fresh prompt (this function's doc says why). The report is the boot thread's last
         // output, so after it the shell is the UART's only writer until something faults.

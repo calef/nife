@@ -66,10 +66,10 @@
 //!
 //! # BUGS
 //!
-//! - **A grant lasts as long as the resolver.** There is no verb to withdraw one, and a badge's
-//!   window is never reused, so a resolver serves at most [`GRANTS_MAX`] clients in its life. A
-//!   spawner that outlives its clients wants a forget verb, and that verb wants a way to unmap the
-//!   client's page that the resolver does not yet have.
+//! - **A grant lasts until the spawner forgets it** ([`OPERATION_FORGET`], milestone 892 (a std
+//!   program at the prompt holds the network and a resolver)). At most [`GRANTS_MAX`] clients hold
+//!   a grant at once; a spawner that never forgets serves only that many in the resolver's life,
+//!   which is what this line said before the verb existed.
 //! - **One zone per badge.** A client that needs two unrelated domains needs two badges, or a
 //!   grant of their common parent, which may be the root.
 //! - **Grant messages carry eight bytes each**, because the resolver receives with `RECEIVE_CAP`
@@ -86,7 +86,6 @@
 
 mod wire;
 
-use domain_name_system::Name;
 pub use wire::*;
 
 /// The resolver's own copy of the bound, checked against the parser's, because `wire` is copied
@@ -114,6 +113,15 @@ pub fn grant_messages(badge: u32, zone: &[u8]) -> Option<impl Iterator<Item = (u
             u64::from_le_bytes(bytes),
         )
     }))
+}
+
+/// The [`OPERATION_FORGET`] message that withdraws `badge`'s grant: the control word, and an unused
+/// second word. `None` for badge 0, the spawner's own, which holds no grant to withdraw.
+pub const fn forget_message(badge: u32) -> Option<(u64, u64)> {
+    if badge == 0 {
+        return None;
+    }
+    Some((control_word(OPERATION_FORGET, 0, 0, badge), 0))
 }
 
 /// A stable small number for each `domain_name_system::Reject`, the detail of a
@@ -169,6 +177,13 @@ pub mod endowment {
     pub const fn port_and_transport_fields(word: u64) -> (u16, u64) {
         (word as u16, word >> 16)
     }
+
+    /// **Slot 4: the resolver's own address space, `WRITE`**, so a forget can `UNMAP` the page the
+    /// forgotten badge attached (`abi::address_space::UNMAP`), as `net_stack` gives up a closed
+    /// socket's page through `socket_protocol::stack_slots::OWN_SPACE`. Slots 0 to 3 are the
+    /// resolver's own business (`components/src/name_resolver.rs`); this one is here because the
+    /// progenitor and the kernel's test harness both place it. Provisional (milestone 892).
+    pub const OWN_SPACE_SLOT: u64 = 4;
 }
 
 /// **The boot test's cases**, in one place for the two programs that must agree on them: the test
@@ -254,181 +269,8 @@ pub mod fixture {
     ];
 }
 
-// =================================================================================================
-// The grant table.
-// =================================================================================================
-
-/// Why [`Grants::check`] refused.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Denied {
-    /// No grant was ever completed for this badge.
-    NoGrant,
-    /// The badge has a grant, and the name is not within its zone.
-    OutsideZone,
-}
-
-/// What a control message did, for the resolver to ignore and a test to read.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Control {
-    /// A piece of a grant was taken; more are due.
-    Partial,
-    /// The last piece arrived and the zone parsed: the badge's grant is in force in this window.
-    Granted(usize),
-    /// Refused, and the badge's grant (if this was a re-grant) is gone rather than half-written.
-    Refused(Refusal),
-}
-
-/// Why a control message was refused.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Refusal {
-    /// Not an operation the spawner has.
-    UnknownOperation,
-    /// Badge 0 is the spawner's own capability, so it cannot be granted anything.
-    BadgeZero,
-    /// A piece arrived out of order, or a continuation for a grant nobody started.
-    OutOfOrder,
-    /// The zone is longer than a name can be.
-    TooLong,
-    /// The zone's text is not a name `Name::from_dotted` accepts.
-    BadZone,
-    /// Every window already belongs to another badge.
-    Full,
-}
-
-#[derive(Clone, Copy)]
-struct Entry {
-    /// 0 for a free entry: no client's badge is 0.
-    badge: u32,
-    /// In force only when `complete`.
-    zone: Name,
-    complete: bool,
-    /// The zone's text so far, while the spawner's messages arrive.
-    text: [u8; NAME_TEXT_MAX + 1],
-    text_len: u8,
-    text_total: u8,
-}
-
-impl Entry {
-    const FREE: Entry = Entry {
-        badge: 0,
-        zone: Name::root(),
-        complete: false,
-        text: [0; NAME_TEXT_MAX + 1],
-        text_len: 0,
-        text_total: 0,
-    };
-}
-
-/// **Which badge may resolve which zone**, and which window its page lives in.
-///
-/// An entry's index is its client's window, fixed for the resolver's life (see the crate's BUGS),
-/// so the resolver maps a client's page at the same place every time and a re-grant does not move
-/// it.
-pub struct Grants {
-    entries: [Entry; GRANTS_MAX],
-}
-
-impl Default for Grants {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Grants {
-    /// No grants: every badge is denied.
-    pub const fn new() -> Grants {
-        Grants {
-            entries: [Entry::FREE; GRANTS_MAX],
-        }
-    }
-
-    /// **Take one control message from the spawner.** The caller has already established that it
-    /// arrived with badge 0; this reads only the words.
-    pub fn control(&mut self, w0: u64, w1: u64) -> Control {
-        let (op, offset, total, badge) = control_fields(w0);
-        if op != OPERATION_GRANT {
-            return Control::Refused(Refusal::UnknownOperation);
-        }
-        if badge == 0 {
-            return Control::Refused(Refusal::BadgeZero);
-        }
-        if total as usize > NAME_TEXT_MAX + 1 {
-            return self.refuse(badge, Refusal::TooLong);
-        }
-        let at = match self.position(badge) {
-            Some(at) => at,
-            None if offset == 0 => match self.entries.iter().position(|e| e.badge == 0) {
-                Some(free) => free,
-                None => return Control::Refused(Refusal::Full),
-            },
-            None => return Control::Refused(Refusal::OutOfOrder),
-        };
-        let e = &mut self.entries[at];
-        if offset == 0 {
-            // A fresh grant, or a re-grant: the old zone stops applying now, not when the new one
-            // completes, so there is never a moment where a half-sent zone is in force.
-            e.badge = badge;
-            e.complete = false;
-            e.text_len = 0;
-            e.text_total = total;
-        } else if e.complete || offset != e.text_len || total != e.text_total {
-            return self.refuse(badge, Refusal::OutOfOrder);
-        }
-        let bytes = w1.to_le_bytes();
-        let n = (e.text_total - e.text_len).min(8) as usize;
-        let start = e.text_len as usize;
-        e.text[start..start + n].copy_from_slice(&bytes[..n]);
-        e.text_len += n as u8;
-        if e.text_len < e.text_total {
-            return Control::Partial;
-        }
-        let zone = core::str::from_utf8(&e.text[..e.text_len as usize])
-            .ok()
-            .and_then(|text| Name::from_dotted(text).ok());
-        match zone {
-            Some(zone) => {
-                e.zone = zone;
-                e.complete = true;
-                Control::Granted(at)
-            }
-            None => self.refuse(badge, Refusal::BadZone),
-        }
-    }
-
-    /// **May `badge` ask about `name`?** The window its page is in, or why not.
-    pub fn check(&self, badge: u32, name: &Name) -> Result<usize, Denied> {
-        let at = self.granted(badge).ok_or(Denied::NoGrant)?;
-        if name.is_within(&self.entries[at].zone) {
-            Ok(at)
-        } else {
-            Err(Denied::OutsideZone)
-        }
-    }
-
-    /// The window of `badge`'s grant, if one is in force. Where its page goes when it attaches one.
-    pub fn granted(&self, badge: u32) -> Option<usize> {
-        self.position(badge).filter(|&at| self.entries[at].complete)
-    }
-
-    fn position(&self, badge: u32) -> Option<usize> {
-        if badge == 0 {
-            return None;
-        }
-        self.entries.iter().position(|e| e.badge == badge)
-    }
-
-    /// A refused grant leaves nothing behind: the badge keeps its window (it is still the badge's,
-    /// see the BUGS), and has no zone.
-    fn refuse(&mut self, badge: u32, why: Refusal) -> Control {
-        if let Some(at) = self.position(badge) {
-            let e = &mut self.entries[at];
-            e.complete = false;
-            e.text_len = 0;
-            e.text_total = 0;
-        }
-        Control::Refused(why)
-    }
-}
+mod grants;
+pub use grants::*;
 
 #[cfg(test)]
 mod tests;

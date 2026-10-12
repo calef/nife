@@ -296,17 +296,7 @@ fn is_diag_op(line: &[u8], i: usize, word_start: usize) -> bool {
 /// three rules it enforces and why each one exists.
 pub fn split(line: &[u8]) -> Result<Line<'_>, Refusal> {
     let mut stages = [&b""[..]; MAX_STAGES];
-    let mut ins: [Option<&[u8]>; MAX_STAGES] = [None; MAX_STAGES];
-    let mut outs: [Option<&[u8]>; MAX_STAGES] = [None; MAX_STAGES];
-    let mut diags: [Option<&[u8]>; MAX_STAGES] = [None; MAX_STAGES];
-    // Whether each redirection's name arrived quoted. A quoted name is not a pattern, whatever
-    // bytes are in it, so `date > "*.txt"` writes to a file called `*.txt` rather than being
-    // refused for designating a set (milestone 67, notes/swish-language.md).
-    let mut in_q = [false; MAX_STAGES];
-    let mut out_q = [false; MAX_STAGES];
-    let mut diag_q = [false; MAX_STAGES];
-    let mut apps = [false; MAX_STAGES];
-    let mut diag_apps = [false; MAX_STAGES];
+    let mut r = Redirects::new();
     let mut n = 0usize;
 
     let mut i = 0usize;
@@ -314,88 +304,12 @@ pub fn split(line: &[u8]) -> Result<Line<'_>, Refusal> {
         if n == MAX_STAGES {
             return Err(Refusal::TooManyStages);
         }
-        // The command words: everything up to the first **bare** operator or the end of the line.
-        // Quoted is the whole of what milestone 67 added here: `echo "a > b"` has no redirection on
-        // it, because the `>` arrives while the cursor is inside a quote.
         let start = i;
-        let mut c = word::Cursor::new();
-        while i < line.len() {
-            if !c.is_open() && (is_op(line[i]) || is_diag_op(line, i, start)) {
-                break;
-            }
-            c.step(line[i]);
-            i += 1;
-        }
-        if c.is_open() {
-            return Err(Refusal::UnclosedQuote);
-        }
+        i = scan_command_words(line, start)?;
         stages[n] = crate::trim(&line[start..i]);
 
         // Then the redirections, which must all come after the command words.
-        while i < line.len() && (line[i] == b'<' || line[i] == b'>' || is_diag_op(line, i, i)) {
-            // Which stream this operator names, and how many characters spell it. `>>` is one
-            // operator written with two characters and `2>>` one written with three; the extra
-            // characters are consumed here rather than left to be read as operators with empty
-            // names. A second `<` is not consumed: there is no here-document, so `<<` falls through
-            // and is refused for the name it does not have.
-            #[derive(PartialEq)]
-            enum Which {
-                In,
-                Out,
-                Diag,
-            }
-            let (which, append, width) = match line[i] {
-                b'<' => (Which::In, false, 1),
-                b'>' => {
-                    let a = line.get(i + 1) == Some(&b'>');
-                    (Which::Out, a, if a { 2 } else { 1 })
-                }
-                _ => {
-                    let a = line.get(i + 2) == Some(&b'>');
-                    (Which::Diag, a, if a { 3 } else { 2 })
-                }
-            };
-            i += width;
-            while i < line.len() && line[i].is_ascii_whitespace() {
-                i += 1;
-            }
-            // **The name, which may be quoted** (milestone 67). The scan stops at a *bare*
-            // whitespace or operator byte, so `> "my out.txt"` is one name and the space in it is
-            // part of what is designated rather than the end of it. That is the correctness gap this
-            // shell had: a file with a space in its name could not be written to at all.
-            let t = i;
-            i = word::span(line, i, &|b| b.is_ascii_whitespace() || is_op(b));
-            if i == t {
-                return Err(Refusal::NoRedirectTarget);
-            }
-            let name = word::read(&line[t..i])?;
-            let (slot, quoted) = match which {
-                Which::In => (&mut ins, &mut in_q),
-                Which::Out => {
-                    apps[n] = append;
-                    (&mut outs, &mut out_q)
-                }
-                Which::Diag => {
-                    diag_apps[n] = append;
-                    (&mut diags, &mut diag_q)
-                }
-            };
-            if slot[n].is_some() {
-                return Err(Refusal::RedirectRepeated);
-            }
-            slot[n] = Some(name.text);
-            quoted[n] = name.quoted;
-            // A word after the name is the `< f wc` spelling. Refused rather than reordered: see
-            // the module note.
-            let mut j = i;
-            while j < line.len() && line[j].is_ascii_whitespace() {
-                j += 1;
-            }
-            if j < line.len() && !is_op(line[j]) && !is_diag_op(line, j, j) {
-                return Err(Refusal::WordAfterRedirect);
-            }
-            i = j;
-        }
+        i = read_redirections(line, i, n, &mut r)?;
 
         n += 1;
         if i >= line.len() {
@@ -407,6 +321,153 @@ pub fn split(line: &[u8]) -> Result<Line<'_>, Refusal> {
         i += 1;
     }
 
+    check_placement(&stages, n, &r)?;
+    check_redirect_patterns(n, &r)?;
+
+    Ok(Line {
+        stages,
+        nstages: n,
+        input: r.ins[0],
+        output: r.outs[n - 1],
+        diagnostics: r.diags[n - 1],
+        append: r.apps[n - 1],
+        diag_append: r.diag_apps[n - 1],
+    })
+}
+
+/// Each stage's redirection names, as [`split`] reads them: one slot per stream per stage.
+struct Redirects<'a> {
+    ins: [Option<&'a [u8]>; MAX_STAGES],
+    outs: [Option<&'a [u8]>; MAX_STAGES],
+    diags: [Option<&'a [u8]>; MAX_STAGES],
+    // Whether each redirection's name arrived quoted. A quoted name is not a pattern, whatever
+    // bytes are in it, so `date > "*.txt"` writes to a file called `*.txt` rather than being
+    // refused for designating a set (milestone 67, notes/swish-language.md).
+    in_q: [bool; MAX_STAGES],
+    out_q: [bool; MAX_STAGES],
+    diag_q: [bool; MAX_STAGES],
+    apps: [bool; MAX_STAGES],
+    diag_apps: [bool; MAX_STAGES],
+}
+
+impl Redirects<'_> {
+    /// No redirection on any stage.
+    fn new() -> Self {
+        Redirects {
+            ins: [None; MAX_STAGES],
+            outs: [None; MAX_STAGES],
+            diags: [None; MAX_STAGES],
+            in_q: [false; MAX_STAGES],
+            out_q: [false; MAX_STAGES],
+            diag_q: [false; MAX_STAGES],
+            apps: [false; MAX_STAGES],
+            diag_apps: [false; MAX_STAGES],
+        }
+    }
+}
+
+/// One stage's command words, from `start`: answers the index of the first bare operator, or the
+/// line's end.
+fn scan_command_words(line: &[u8], start: usize) -> Result<usize, Refusal> {
+    // The command words: everything up to the first **bare** operator or the end of the line.
+    // Quoted is the whole of what milestone 67 added here: `echo "a > b"` has no redirection on
+    // it, because the `>` arrives while the cursor is inside a quote.
+    let mut i = start;
+    let mut c = word::Cursor::new();
+    while i < line.len() {
+        if !c.is_open() && (is_op(line[i]) || is_diag_op(line, i, start)) {
+            break;
+        }
+        c.step(line[i]);
+        i += 1;
+    }
+    if c.is_open() {
+        return Err(Refusal::UnclosedQuote);
+    }
+    Ok(i)
+}
+
+/// Stage `n`'s redirections, read from `i` into `r`. Answers where the next stage's `|` (or the
+/// line's end) is.
+fn read_redirections<'a>(
+    line: &'a [u8],
+    mut i: usize,
+    n: usize,
+    r: &mut Redirects<'a>,
+) -> Result<usize, Refusal> {
+    while i < line.len() && (line[i] == b'<' || line[i] == b'>' || is_diag_op(line, i, i)) {
+        // Which stream this operator names, and how many characters spell it. `>>` is one
+        // operator written with two characters and `2>>` one written with three; the extra
+        // characters are consumed here rather than left to be read as operators with empty
+        // names. A second `<` is not consumed: there is no here-document, so `<<` falls through
+        // and is refused for the name it does not have.
+        #[derive(PartialEq)]
+        enum Which {
+            In,
+            Out,
+            Diag,
+        }
+        let (which, append, width) = match line[i] {
+            b'<' => (Which::In, false, 1),
+            b'>' => {
+                let a = line.get(i + 1) == Some(&b'>');
+                (Which::Out, a, if a { 2 } else { 1 })
+            }
+            _ => {
+                let a = line.get(i + 2) == Some(&b'>');
+                (Which::Diag, a, if a { 3 } else { 2 })
+            }
+        };
+        i += width;
+        while i < line.len() && line[i].is_ascii_whitespace() {
+            i += 1;
+        }
+        // **The name, which may be quoted** (milestone 67). The scan stops at a *bare*
+        // whitespace or operator byte, so `> "my out.txt"` is one name and the space in it is
+        // part of what is designated rather than the end of it. That is the correctness gap this
+        // shell had: a file with a space in its name could not be written to at all.
+        let t = i;
+        i = word::span(line, i, &|b| b.is_ascii_whitespace() || is_op(b));
+        if i == t {
+            return Err(Refusal::NoRedirectTarget);
+        }
+        let name = word::read(&line[t..i])?;
+        let (slot, quoted) = match which {
+            Which::In => (&mut r.ins, &mut r.in_q),
+            Which::Out => {
+                r.apps[n] = append;
+                (&mut r.outs, &mut r.out_q)
+            }
+            Which::Diag => {
+                r.diag_apps[n] = append;
+                (&mut r.diags, &mut r.diag_q)
+            }
+        };
+        if slot[n].is_some() {
+            return Err(Refusal::RedirectRepeated);
+        }
+        slot[n] = Some(name.text);
+        quoted[n] = name.quoted;
+        // A word after the name is the `< f wc` spelling. Refused rather than reordered: see
+        // the module note.
+        let mut j = i;
+        while j < line.len() && line[j].is_ascii_whitespace() {
+            j += 1;
+        }
+        if j < line.len() && !is_op(line[j]) && !is_diag_op(line, j, j) {
+            return Err(Refusal::WordAfterRedirect);
+        }
+        i = j;
+    }
+    Ok(i)
+}
+
+/// Every stage has a command, and each redirection is on the stage it belongs to.
+fn check_placement(
+    stages: &[&[u8]; MAX_STAGES],
+    n: usize,
+    r: &Redirects<'_>,
+) -> Result<(), Refusal> {
     // A pipeline stage with no command in it. A single empty stage is the empty line, which is a
     // prompt press and not a mistake.
     if n > 1 && stages[..n].iter().any(|s| s.is_empty()) {
@@ -415,19 +476,24 @@ pub fn split(line: &[u8]) -> Result<Line<'_>, Refusal> {
     // Input belongs to the head and output to the tail. Anywhere else the line is answering the
     // same question twice.
     for k in 0..n {
-        if ins[k].is_some() && k != 0 {
+        if r.ins[k].is_some() && k != 0 {
             return Err(Refusal::RedirectMidPipeline);
         }
-        if outs[k].is_some() && k + 1 != n {
+        if r.outs[k].is_some() && k + 1 != n {
             return Err(Refusal::RedirectMidPipeline);
         }
         // `2>` goes where `>` goes. What it names belongs to the line rather than to the stage it
         // is written on (the shell mints one diagnostic endpoint for the whole line), so putting it
         // anywhere but the tail would suggest a per-stage choice this shell does not make.
-        if diags[k].is_some() && k + 1 != n {
+        if r.diags[k].is_some() && k + 1 != n {
             return Err(Refusal::RedirectMidPipeline);
         }
     }
+    Ok(())
+}
+
+/// No unquoted redirection name on the line is a pattern.
+fn check_redirect_patterns(n: usize, r: &Redirects<'_>) -> Result<(), Refusal> {
     // A redirection designates one destination, so a pattern in one designates the wrong number of
     // things. Refused here, where the token is read, rather than expanded and then counted.
     //
@@ -436,9 +502,9 @@ pub fn split(line: &[u8]) -> Result<Line<'_>, Refusal> {
     // only way to write to a file somebody managed to call `*.txt`. The check is about how many
     // things the token designates, and a quoted token designates one.
     for (t, quoted) in [
-        (ins[0], in_q[0]),
-        (outs[n - 1], out_q[n - 1]),
-        (diags[n - 1], diag_q[n - 1]),
+        (r.ins[0], r.in_q[0]),
+        (r.outs[n - 1], r.out_q[n - 1]),
+        (r.diags[n - 1], r.diag_q[n - 1]),
     ] {
         if let Some(t) = t
             && !quoted
@@ -447,16 +513,7 @@ pub fn split(line: &[u8]) -> Result<Line<'_>, Refusal> {
             return Err(Refusal::PatternInRedirect);
         }
     }
-
-    Ok(Line {
-        stages,
-        nstages: n,
-        input: ins[0],
-        output: outs[n - 1],
-        diagnostics: diags[n - 1],
-        append: apps[n - 1],
-        diag_append: diag_apps[n - 1],
-    })
+    Ok(())
 }
 
 #[cfg(test)]

@@ -9,7 +9,7 @@ use crate::{
 use alloc::vec::Vec;
 use core::{cell::Cell, fmt, ptr};
 
-pub use self::pal::{Pal, PalSignal};
+pub use self::pal::{Pal, PalSignal, PalSocket};
 
 mod pal;
 
@@ -30,28 +30,42 @@ pub use self::allocator::{alloc, alloc_align, alloc_usable_size, free, realloc};
 #[path = "../../../c_library/src/platform/allocator.rs"]
 mod allocator;
 
+// nife: the wait-on-address pair, and pipes, socket pairs and `poll`, nife's code (milestone 836).
+#[path = "../../../c_library/src/platform/futex.rs"]
+pub(crate) mod futex;
+#[path = "../../../c_library/src/platform/stream.rs"]
+mod stream;
+
 use self::types::{c_char, c_int};
 pub mod types;
 
 /// The global `errno` variable used internally in relibc.
 ///
-/// nife: one cell for the whole process, not `#[thread_local]`, because a stage-1 program has one
-/// thread (the userspace targets are `singlethread`). Stage 2 (milestone 836) makes it per thread.
-pub static ERRNO: ErrnoCell = ErrnoCell(Cell::new(0));
+/// nife: one per thread through `std`'s `thread_local!`, not relibc's `#[thread_local]`, because
+/// nife's targets have no ELF TLS: each thread's thread pointer names `std`'s own block
+/// (`notes/thread-pointer.md`), and a `#[thread_local]` would address through it as if it were
+/// the ELF layout. Stage 1 kept one cell for the process; stage 2 (milestone 836) made it per
+/// thread.
+pub static ERRNO: ErrnoCell = ErrnoCell;
 
-/// A `Cell` the one thread of a stage-1 program may share with itself as a `static`.
-pub struct ErrnoCell(Cell<c_int>);
-// SAFETY: a stage-1 process has exactly one thread, so no second thread can observe the cell.
-unsafe impl Sync for ErrnoCell {}
+std::thread_local! {
+    /// This thread's `errno`. Never moved while the thread lives, so `&errno` is stable.
+    static THREAD_ERRNO: Cell<c_int> = const { Cell::new(0) };
+}
+
+/// The calling thread's `errno`, reached through `std`'s thread-locals.
+pub struct ErrnoCell;
 impl ErrnoCell {
     pub fn get(&self) -> c_int {
-        self.0.get()
+        THREAD_ERRNO.with(Cell::get)
     }
     pub fn set(&self, v: c_int) {
-        self.0.set(v)
+        THREAD_ERRNO.with(|e| e.set(v))
     }
+    /// The calling thread's `errno` as C's `errno` macro reaches it (`__errno_location`): valid
+    /// for as long as the thread runs, and only on it.
     pub fn as_ptr(&self) -> *mut c_int {
-        self.0.as_ptr()
+        THREAD_ERRNO.with(Cell::as_ptr)
     }
 }
 

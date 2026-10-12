@@ -1119,7 +1119,9 @@ mod tests {
         );
         for (name, file) in &named {
             assert!(
-                declared.iter().any(|d| d == name) || BUILT_ELSEWHERE.contains(&name.as_str()),
+                declared.iter().any(|d| d == name)
+                    || BUILT_ELSEWHERE.contains(&name.as_str())
+                    || C_PROGRAMS.contains(&name.as_str()),
                 "{} looks up `{name}` by name, and no [[bin]] in components/ or fixtures/ builds it",
                 file.display()
             );

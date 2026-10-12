@@ -145,8 +145,10 @@ KEPT = {
         ({'cap', 'Cap', 'CAP_INSERT', 'address_space_cap', 'current_cap', 'delete_current_cap',
           'memory_region_cap', 'rendezvous_cap', 'thread_control_block_cap',
           'thread_control_block_insert_cap'}, _CALLS),
+    # Milestone 836 (a C library, stage 2: threads), 2026-10-12 (UTC), added `page_frame_cap`: a
+    # threaded C program's argument and clock pages are granted by the existing constructor.
     'system_tests/src/user/std_threads_tests.rs':
-        ({'cap', 'address_space_cap', 'memory_region_cap', 'rendezvous_cap',
+        ({'cap', 'address_space_cap', 'memory_region_cap', 'page_frame_cap', 'rendezvous_cap',
           'thread_control_block_cap', 'thread_control_block_insert_cap'}, _CALLS),
 }
 

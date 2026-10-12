@@ -61,6 +61,9 @@ Nothing. The block is NOT-STARTED until a proposal below has a lane.
 The proposals, none minted, in the recommended order. §235 has the reasoning.
 
 1. The image is assembled from base packages by digest (host side; waits on nothing).
+   Since 2026-10-12 (UTC) this is milestone 909 (basalt composes the bootable image from its
+   packages): calef ruled that basalt composes it, under §297 (software reaches a nife system as a
+   package `jig` installs from basalt's index, the kernel included).
 2. The kernel crate stops carrying the userspace bring-up and the system tests (decided; in the
    lane `milestone/609-system-tests-leave-the-kernel`).
 3. A contract never links the runtime: `supervision_protocol` and `swap_protocol` (waits on nothing).

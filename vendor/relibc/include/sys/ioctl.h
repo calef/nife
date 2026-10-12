@@ -14,6 +14,11 @@
 #define _IOWR(a,b,c) _IOC(_IOC_READ|_IOC_WRITE,(a),(b),sizeof(c))
 
 
+/**
+ * Not recommended, should use POSIX `O_NONBLOCK` instead.
+ */
+#define FIONBIO 21537
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -21,7 +26,7 @@ extern "C" {
 /**
  * See <https://pubs.opengroup.org/onlinepubs/9799919799/functions/ioctl.html>.
  */
-int ioctl(int _fd, unsigned long _request, ...);
+int ioctl(int fd, unsigned long request, ...);
 
 #ifdef __cplusplus
 }  // extern "C"

@@ -3,7 +3,10 @@
 //!
 //! See <https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/sys_types.h.html>.
 
-use crate::platform::types::{c_uchar, size_t};
+use crate::{
+    platform::types::{c_uchar, size_t},
+    pthread_assert_equal_size,
+};
 
 /// Used to identify a thread attribute object.
 #[repr(C)]
@@ -12,4 +15,4 @@ pub union pthread_attr_t {
     __relibc_internal_align: size_t,
 }
 
-// nife: stage 1 seeds no `RlctAttr`; this size check returns with stage 2 (milestone 836).
+pthread_assert_equal_size!(pthread_attr_t, RlctAttr);

@@ -15,7 +15,14 @@ runs real workloads) claims.
 **The experiment:** milestone 121 (`ripgrep`: enumeration as a capability), for its real dependency
 tree, its filesystem walk and its threads.
 
-AMBER since 2026-10-06 (GREEN on all three architectures from 2026-09-16): a stranger's program
+GREEN since 2026-10-12 (UTC), ruled by calef once all three gaps below met his conditions. Asked
+whether it goes green now or stays amber until milestone 810 (`ripgrep` is packaged in basalt and
+installed with `jig`), he answered: *"Track packaging separately. We already do."* (recorded on #2016).
+Packaging is tracked by milestones 810 (`ripgrep` is packaged in basalt) and 897 (SQLite is packaged
+in basalt), and by a decision in flight (#2023) that foreign programs reach nife through `jig` from
+basalt.
+
+Earlier verdicts: amber from 2026-10-06 (green on all three architectures from 2026-09-16): a stranger's program
 builds and runs here unmodified, and has never yet done its job. The blocker was not what anyone
 predicted. Unmodified `ripgrep` 14.1.1, forty transitive crates, zero
 patches, and three byte-identical transcripts from three separately built binaries
@@ -57,7 +64,7 @@ riscv64 and 345.8 s on x86_64 (both TCG). The same limits as above still hold: i
 installed by `jig`. Its peak memory at the prompt is unmeasured; it finished within the `std` heap.
 
 Ruled 2026-10-08 (UTC), on the evidence above. calef: *"I would keep it amber and we prioritize
-the path to green."* The verdict stays AMBER. The path to GREEN is three gaps, each with an owner:
+the path to green."* The verdict stayed amber. The path to green was three gaps, each with an owner:
 
 1. Nothing re-checked the claim. Owner: lane `milestone/121-rg-ci` (#1853). Its `swish-check` rows
    build `rg` in CI, type the walk on every pull request, and refuse to skip it there.
@@ -66,11 +73,20 @@ the path to green."* The verdict stays AMBER. The path to GREEN is three gaps, e
    count as risk 1's second foreign program."* Milestone 835 (a C library, stage 1: files, clock and memory) runs both
    unmodified (#1896).
 3. Threads were never exercised. nife answers `available_parallelism()` with `Ok(1)`, and §105
-   declines `std::thread::spawn`, so no foreign program here has run a second thread. Open: it
-   waits on a §105 question to calef. Fact, 2026-10-12: milestone 812 (`std::thread::spawn` runs
+   declines `std::thread::spawn`, so no foreign program here has run a second thread. Closed
+   2026-10-12 (UTC) by #2016 (below), with calef's ruling above. Fact, 2026-10-12: milestone 812 (`std::thread::spawn` runs
    real threads in one address space) is BUILT (#1892), and 836 (a C library, stage 2: threads) is
    the C half, claimed today. calef, the same day, on what closes this gap: *"the path to green on
    risk 1 requires a foreign program running a second thread."* A thread library alone does not.
+   Fact, 2026-10-12 (UTC), lane milestone/121-rg-threads: unmodified `ripgrep` 14.1.1 ran its
+   parallel walker on five threads, its main thread and four workers, on aarch64, riscv64 and
+   x86_64 at `-smp 4`, both with no thread flag and with `--threads 4`. The count is the kernel's,
+   read from the process after it ended, not the program's. Each run printed exactly the tree's 138
+   match lines, which are the host `rg`'s lines once both are sorted. CI's `rg-threads` rows re-check
+   it on every pull request and fail at one thread
+   ([`notes/ripgrep-on-nife.md`](../../notes/ripgrep-on-nife.md)). The parallel walk needs the
+   `ignore` patch described below; `ripgrep`'s own source is untouched. Under §216 (fatal-risk
+   facts are correctable, and verdicts are the architect's) the verdict is calef's, quoted above.
 
 DECISIONS §105 (`std::thread::spawn` stays declined, until a customer needs it) was never reached,
 and that reverses the premise. `ripgrep` asks `available_parallelism()` rather than assuming it, and
@@ -103,6 +119,15 @@ SQLite 3.50.4's `speedtest1` and ioping 1.3 run under QEMU on all three architec
 `speedtest1` prints the same verification hash as on macOS. Like `rg` before #1853, they run only
 where their helpers were run, never in CI. Whether this closes gap 2 is calef's, under §216
 (fatal-risk facts are correctable, and verdicts are the architect's), so the verdict stays AMBER.
+
+Fact, 2026-10-12 (UTC): every foreign program this page counts runs today from a binary a
+`helpers/build-*.sh` script built, not from a package. That is `rg`, `speedtest1` and ioping on
+`main`, and hackbench once #2009 (milestone 836 (a C library, stage 2: threads)) lands. calef ruled
+the same day that every program reaches nife that way: §297 (software reaches a nife system as a
+package `jig` installs from basalt's index, the kernel included). Their packaging is milestone 810 (`ripgrep` is packaged in basalt and installed with
+`jig`), milestone 897 (SQLite is packaged in basalt, and its tests run in basalt's package build),
+milestone 906 (ioping is packaged in basalt, and its test installs it with `jig`) and milestone 907
+(hackbench is packaged in basalt, and its test installs it with `jig`). The verdict is unchanged.
 
 ## Benchmarks that inform this risk
 

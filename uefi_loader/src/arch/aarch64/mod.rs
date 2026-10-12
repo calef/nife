@@ -355,6 +355,43 @@ fn tree_from_acpi(
     let body = &madt[acpi::SDT_HEADER_LEN..];
 
     // --- The interrupt controller, which is the one thing a boot cannot do without ---
+    let entries = read_madt(body);
+    let gic = gic_from_madt(&entries)?;
+
+    // --- The rest, every one of which a machine may legitimately not have ---
+    let (timer, psci_hvc, uart) = optional_tables(rsdp);
+
+    let mut ram = [device_tree_from_acpi::Ram::default(); device_tree_from_acpi::MAX_RAM];
+    let ram_count = read_ram(services, &mut ram)?;
+
+    let machine = device_tree_from_acpi::Machine {
+        gic,
+        cpus: entries.cpus,
+        cpu_count: entries.cpu_count,
+        psci_hvc,
+        timer,
+        uart,
+        ram,
+        ram_count,
+    };
+    let base = write_tree(services, &machine)?;
+    say_acpi_machine(table, &machine, entries.distributor);
+    Ok(base as *const u8)
+}
+
+/// What the MADT's entries say about the interrupt controller and the cores.
+struct Madt {
+    distributor: u64,
+    version: u8,
+    redistributors: Region,
+    cpu_interface: u64,
+    per_cpu_redistributor: u64,
+    cpus: [device_tree_from_acpi::Cpu; device_tree_from_acpi::MAX_CPUS],
+    cpu_count: usize,
+}
+
+/// Walk the MADT's entries once, keeping the GIC's frames and up to `MAX_CPUS` cores.
+fn read_madt(body: &[u8]) -> Madt {
     let mut distributor = 0u64;
     let mut version = 0u8;
     let mut redistributors = Region { start: 0, size: 0 };
@@ -406,7 +443,24 @@ fn tree_from_acpi(
             _ => {}
         }
     }
-    if distributor == 0 {
+    Madt {
+        distributor,
+        version,
+        redistributors,
+        cpu_interface,
+        per_cpu_redistributor,
+        cpus,
+        cpu_count,
+    }
+}
+
+/// Decide the GIC's version and frames from what the MADT stated, or refuse to guess.
+fn gic_from_madt(madt: &Madt) -> Result<Gic, &'static str> {
+    let version = madt.version;
+    let cpu_interface = madt.cpu_interface;
+    let per_cpu_redistributor = madt.per_cpu_redistributor;
+    let mut redistributors = madt.redistributors;
+    if madt.distributor == 0 {
         return Err("this machine's MADT names no GIC distributor");
     }
     // **A version byte of zero means "work it out"**, and the evidence is which spelling the CPU
@@ -416,7 +470,7 @@ fn tree_from_acpi(
     let v3 = version >= 3 || redistributors.size != 0 || per_cpu_redistributor != 0;
     let v2 = version == 2 || (version == 0 && cpu_interface != 0);
     let distributor = Region {
-        start: distributor,
+        start: madt.distributor,
         size: device_tree_from_acpi::GICD_LEN,
     };
     let gic = if v3 {
@@ -427,7 +481,7 @@ fn tree_from_acpi(
             // confirms when the kernel walks them.
             redistributors = Region {
                 start: per_cpu_redistributor,
-                size: 0x2_0000 * cpu_count.max(1) as u64,
+                size: 0x2_0000 * madt.cpu_count.max(1) as u64,
             };
         }
         Gic::V3 {
@@ -445,9 +499,19 @@ fn tree_from_acpi(
     } else {
         return Err("this machine's MADT names a GIC whose version this loader cannot work out");
     };
+    Ok(gic)
+}
 
-    // --- The rest, every one of which a machine may legitimately not have ---
-    // SAFETY: as above, for the same root pointer.
+/// The timer, PSCI and console tables, each of which a machine may legitimately not have.
+fn optional_tables(
+    rsdp: u64,
+) -> (
+    Option<acpi::Gtdt>,
+    Option<bool>,
+    Option<device_tree_from_acpi::Uart>,
+) {
+    // SAFETY: `rsdp` came from the firmware's own configuration table, and every table reached
+    // from it is checksummed before a field is read.
     let timer = unsafe { find_table(rsdp, b"GTDT") }
         .and_then(|t| acpi::parse_gtdt(&t[acpi::SDT_HEADER_LEN..]).ok());
     // SAFETY: as above.
@@ -468,56 +532,56 @@ fn tree_from_acpi(
             address: spcr.address,
             interrupt: spcr.interrupt,
         });
+    (timer, psci_hvc, uart)
+}
 
-    let mut ram = [device_tree_from_acpi::Ram::default(); device_tree_from_acpi::MAX_RAM];
-    let ram_count = read_ram(services, &mut ram)?;
-
-    let machine = device_tree_from_acpi::Machine {
-        gic,
-        cpus,
-        cpu_count,
-        psci_hvc,
-        timer,
-        uart,
-        ram,
-        ram_count,
-    };
-
+/// Allocate pages below the kernel's reach and write the device tree for `machine` into them.
+fn write_tree(
+    services: &BootServices,
+    machine: &device_tree_from_acpi::Machine,
+) -> Result<u64, &'static str> {
     let pages = (device_tree_from_acpi::output_len() as u64).div_ceil(PAGE) as usize;
     let base = allocate_below(services, pages, memory_type::LOADER_DATA)
         .ok_or("no memory below the kernel's reach for a device tree written from ACPI")?;
     // SAFETY: `pages` pages at `base` were just granted exclusively.
     let out = unsafe { core::slice::from_raw_parts_mut(base as *mut u8, pages * PAGE as usize) };
-    device_tree_from_acpi::build(&machine, out).map_err(device_tree_patch::Error::reason)?;
+    device_tree_from_acpi::build(machine, out).map_err(device_tree_patch::Error::reason)?;
+    Ok(base)
+}
 
+/// Say what the ACPI tables described, and which optional pieces the kernel will do without.
+fn say_acpi_machine(
+    table: &SystemTable,
+    machine: &device_tree_from_acpi::Machine,
+    distributor: u64,
+) {
     say(
         table,
         "uefi_loader: no device tree; describing this machine from ACPI\r\n",
     );
     say(table, "uefi_loader:   ");
-    say_decimal(table, cpu_count as u32);
+    say_decimal(table, machine.cpu_count as u32);
     say(
         table,
-        match gic {
+        match machine.gic {
             Gic::V2 { .. } => " core(s), GICv2 at ",
             Gic::V3 { .. } => " core(s), GICv3 at ",
         },
     );
-    say_hex(table, distributor.start);
+    say_hex(table, distributor);
     say(table, ", ");
-    say_decimal(table, ram_count as u32);
+    say_decimal(table, machine.ram_count as u32);
     say(table, " RAM region(s)\r\n");
-    if uart.is_none() {
+    if machine.uart.is_none() {
         say(
             table,
             "uefi_loader:   no SPCR names a PL011; the kernel will fall back for its console irq\r\n",
         );
     }
-    if psci_hvc.is_none() {
+    if machine.psci_hvc.is_none() {
         say(
             table,
             "uefi_loader:   the FADT does not claim PSCI; the kernel will run one core\r\n",
         );
     }
-    Ok(base as *const u8)
 }

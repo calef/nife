@@ -380,6 +380,74 @@ pub extern "C" fn _start(caretaker_len: u64, table_len: u64, schedule_len: u64) 
         user_mode_runtime::is_granted(RUN_UNVOUCHED),
         core::sync::atomic::Ordering::Relaxed,
     );
+    let (care_elf, table) = vouched_caretaker(caretaker_len, table_len);
+
+    // **What a durable session is built from** (milestone 152): `user_timetable_keeper` and `timetable`, each
+    // checked against the same table the caretaker is, and the caretaker itself, since each
+    // session's timetable reads the store through two of them (Fork 8 D). Anything unvouched and no
+    // schedule opens on this boot, which is the caretaker's own fold: `SCHEDULE` is then answered
+    // as `LOGIN` is.
+    let schedule = care_elf
+        .as_ref()
+        .and_then(|care| schedule_images(schedule_len, care, table));
+
+    let Ok(own_ut) = memory_region_split(CONSTRUCTION_UT, OWN_UT_PAGES) else {
+        fail(1)
+    };
+    // Split once, and only when a schedule can be opened at all: see [`DURABLE_UT_PAGES`].
+    let durable_ut = match schedule {
+        Some(_) => memory_region_split(CONSTRUCTION_UT, DURABLE_UT_PAGES).ok(),
+        None => None,
+    };
+    let mut durables = Durables::new();
+    // Why the start-up pass below skipped what it skipped (milestone 152, 2026-09-27): one count
+    // per `login_protocol::durable::RederiveSkip` reason, read back over `REDERIVE_SKIPS`.
+    let mut rederive_skips = [0u32; login_protocol::durable::REDERIVE_SKIP_REASONS];
+    // Split once, here, and never anywhere else: [`CHANNEL_UT_PAGES`]' own doc explains why a
+    // channel's region must come from a budget nothing else spends.
+    let Ok(channel_ut) = memory_region_split(CONSTRUCTION_UT, CHANNEL_UT_PAGES) else {
+        fail(2)
+    };
+    // The owner's list is read through the file page ([`listed`]). A map that fails leaves every
+    // session without the run-unvouched capability, which is the list's own default.
+    LIST_MAPPED.store(
+        map_page_frame(FS_PAGE_FRAME, LIST_VA, true, own_ut),
+        core::sync::atomic::Ordering::Relaxed,
+    );
+
+    // **Boot re-derivation, before the front door opens** (milestone 152, Fork 7 ruled A by calef
+    // on 2026-09-27; DECISIONS §123 (the boot-time re-derivation privilege) as amended). Every
+    // durable session the manifest names and the owner has not suspended is opened again, by the
+    // code that opens one at a login. No session is live yet, so the file page is this process's
+    // alone.
+    if let (Some(images), Some(ut)) = (schedule, durable_ut) {
+        rederive(own_ut, images, ut, &mut durables, &mut rederive_skips);
+    }
+
+    let mut door = FrontDoor {
+        own_ut,
+        channel_ut,
+        care: care_elf.as_ref(),
+        schedule,
+        durable_ut,
+        durables,
+        rederive_skips,
+        seq: 0,
+        connect_seq: 0,
+        terminal_held: false,
+    };
+    loop {
+        let (w0, _w1, _w2) = receive(REQUEST);
+        door.serve(w0);
+    }
+}
+
+/// The caretaker's image and the measurement table the spawner mapped, the image only if the table
+/// vouches for it.
+fn vouched_caretaker(
+    caretaker_len: u64,
+    table_len: u64,
+) -> (Option<elf::Elf<'static>>, &'static str) {
     // **Two blobs rather than the archive** (milestone 233). Whoever started this process mapped
     // `fs_subtree_caretaker`'s ELF bytes read-only at `login_protocol::CARETAKER_ELF_VA` and the
     // measurement table at `login_protocol::PROGRAM_MEASUREMENTS_VA`, with their lengths in the first
@@ -440,12 +508,16 @@ pub extern "C" fn _start(caretaker_len: u64, table_len: u64, schedule_len: u64) 
     let care_elf = elf::Elf::parse(care_bytes).ok().filter(|_| {
         measured_boot::verify_in_manifest(table, "fs_subtree_caretaker", care_bytes).is_ok()
     });
+    (care_elf, table)
+}
 
-    // **What a durable session is built from** (milestone 152): `user_timetable_keeper` and `timetable`, each
-    // checked against the same table the caretaker is, and the caretaker itself, since each
-    // session's timetable reads the store through two of them (Fork 8 D). Anything unvouched and no
-    // schedule opens on this boot, which is the caretaker's own fold: `SCHEDULE` is then answered
-    // as `LOGIN` is.
+/// The two durable-session images the spawner mapped, vouched for against `table` beside the
+/// caretaker `care`; `None` when either is missing or unvouched.
+fn schedule_images<'e>(
+    schedule_len: u64,
+    care: &'e elf::Elf<'static>,
+    table: &str,
+) -> Option<ScheduleImages<'e>> {
     let (keeper_len, timetable_len) = login_protocol::split_schedule_lengths(schedule_len);
     // SAFETY: the spawner maps each image's bytes read-only at its address for the life of this
     // process before `_start` runs (`login_protocol::USER_TIMETABLE_KEEPER_ELF_VA`'s contract).
@@ -461,58 +533,37 @@ pub extern "C" fn _start(caretaker_len: u64, table_len: u64, schedule_len: u64) 
             ),
         )
     };
-    let schedule = care_elf
-        .as_ref()
-        .and_then(|care| vouched_schedule(keeper_bytes, timetable_bytes, care, table));
+    vouched_schedule(keeper_bytes, timetable_bytes, care, table)
+}
 
-    let Ok(own_ut) = memory_region_split(CONSTRUCTION_UT, OWN_UT_PAGES) else {
-        fail(1)
-    };
-    // Split once, and only when a schedule can be opened at all: see [`DURABLE_UT_PAGES`].
-    let durable_ut = match schedule {
-        Some(_) => memory_region_split(CONSTRUCTION_UT, DURABLE_UT_PAGES).ok(),
-        None => None,
-    };
-    let mut durables = Durables::new();
-    // Why the start-up pass below skipped what it skipped (milestone 152, 2026-09-27): one count
-    // per `login_protocol::durable::RederiveSkip` reason, read back over `REDERIVE_SKIPS`.
-    let mut rederive_skips = [0u32; login_protocol::durable::REDERIVE_SKIP_REASONS];
-    // Split once, here, and never anywhere else: [`CHANNEL_UT_PAGES`]' own doc explains why a
-    // channel's region must come from a budget nothing else spends.
-    let Ok(channel_ut) = memory_region_split(CONSTRUCTION_UT, CHANNEL_UT_PAGES) else {
-        fail(2)
-    };
-    // The owner's list is read through the file page ([`listed`]). A map that fails leaves every
-    // session without the run-unvouched capability, which is the list's own default.
-    LIST_MAPPED.store(
-        map_page_frame(FS_PAGE_FRAME, LIST_VA, true, own_ut),
-        core::sync::atomic::Ordering::Relaxed,
-    );
-
-    // **Boot re-derivation, before the front door opens** (milestone 152, Fork 7 ruled A by calef
-    // on 2026-09-27; DECISIONS §123 (the boot-time re-derivation privilege) as amended). Every
-    // durable session the manifest names and the owner has not suspended is opened again, by the
-    // code that opens one at a login. No session is live yet, so the file page is this process's
-    // alone.
-    if let (Some(images), Some(ut)) = (schedule, durable_ut) {
-        rederive(own_ut, images, ut, &mut durables, &mut rederive_skips);
-    }
-
+/// **The front door's state**, carried across requests: the budgets this process split at start-up,
+/// what a login is built from, the durable sessions it keeps, and the counters below.
+struct FrontDoor<'e> {
+    own_ut: u64,
+    channel_ut: u64,
+    care: Option<&'e elf::Elf<'static>>,
+    schedule: Option<ScheduleImages<'e>>,
+    durable_ut: Option<u64>,
+    durables: Durables,
+    /// The start-up pass's skip counts, one per reason; see `_start`.
+    rederive_skips: [u32; login_protocol::durable::REDERIVE_SKIP_REASONS],
     // How many logins this process has established, in order. The audit trail's sequence number,
     // not a capacity: `CONSTRUCTION_UT` is what actually bounds how many logins this process can
     // serve (see BUGS).
-    let mut seq: u64 = 0;
+    seq: u64,
     // How many channels this process has minted, in order: [`connect`]'s own bump allocator for a
     // fresh scratch VA per channel (see `CONNECT_VA_BASE`'s own doc on why a VA is never reused).
-    let mut connect_seq: u64 = 0;
+    connect_seq: u64,
     // **Whether [`TERM_EP`] is currently on loan to a session** (milestone 49's terminal update).
     // `false` at start-up: nobody has logged in yet, so the terminal is free. See this program's
     // module docs, "The terminal: single-session, deny cleanly", for the whole design and this
     // program's BUGS for what freeing it does and does not guarantee.
-    let mut terminal_held = false;
+    terminal_held: bool,
+}
 
-    loop {
-        let (w0, _w1, _w2) = receive(REQUEST);
+impl FrontDoor<'_> {
+    /// Answer one request on the front door.
+    fn serve(&mut self, w0: u64) {
         let operation = login_protocol::operation(w0);
         if operation == login_protocol::LOGOUT {
             // **Travels on the front door itself**, unlike an actual login: it carries no secret,
@@ -520,9 +571,9 @@ pub extern "C" fn _start(caretaker_len: u64, table_len: u64, schedule_len: u64) 
             // `login_protocol`'s own BUGS on what this does and does not authenticate). Idempotent: a
             // logout that arrives when nobody holds the terminal simply finds `terminal_held`
             // already `false`.
-            terminal_held = false;
+            self.terminal_held = false;
             send(RESULT, login_protocol::LOGGED_OUT, 0, 0);
-            continue;
+            return;
         }
         if operation == login_protocol::SUSPEND {
             // **The §108 (disabling credentials kills the durable session) cascade** (milestone 152, calef's ruling of 2026-09-26): reread the owner's
@@ -532,22 +583,8 @@ pub extern "C" fn _start(caretaker_len: u64, table_len: u64, schedule_len: u64) 
             // Not while a session holds the terminal: reading the list takes the file page that
             // session's caretaker shares with the server (see [`listed`]). The cascade then runs at
             // the suspended identity's next login instead, which ends its durable session too.
-            let mut ended = 0;
-            for kept in &mut durables.held {
-                if !terminal_held
-                    && kept
-                        .as_ref()
-                        .is_some_and(|d| on_list(login_protocol::SUSPENDED_LIST, d.name()))
-                    && let Some(d) = kept.take()
-                {
-                    match d.end() {
-                        Ok(()) => ended += 1,
-                        Err(d) => *kept = Some(d),
-                    }
-                }
-            }
-            send(RESULT, login_protocol::APPLIED, ended, 0);
-            continue;
+            self.suspend_listed();
+            return;
         }
         if operation == login_protocol::REDERIVE_SKIPS {
             // Unauthenticated, like `SUSPEND` and `LOGOUT`: see `login_protocol::REDERIVE_SKIPS`'s
@@ -555,26 +592,51 @@ pub extern "C" fn _start(caretaker_len: u64, table_len: u64, schedule_len: u64) 
             send(
                 RESULT,
                 login_protocol::SKIP_COUNTS,
-                login_protocol::durable::pack_skip_counts(&rederive_skips),
+                login_protocol::durable::pack_skip_counts(&self.rederive_skips),
                 0,
             );
-            continue;
+            return;
         }
         if operation != login_protocol::CONNECT {
             // The front door's only other legal word; see `login_protocol`'s own module docs. Not an
             // authentication outcome (no identity has been presented yet), so `MALFORMED` rather
             // than `DENIED`.
             send(RESULT, login_protocol::MALFORMED, 0, 0);
-            continue;
+            return;
         }
-        let Some(channel) = connect(channel_ut, connect_seq) else {
+        self.serve_connect();
+    }
+
+    /// `SUSPEND`: end the durable session of everyone on the owner's suspended list, and say how
+    /// many ended.
+    fn suspend_listed(&mut self) {
+        let mut ended = 0;
+        for kept in &mut self.durables.held {
+            if !self.terminal_held
+                && kept
+                    .as_ref()
+                    .is_some_and(|d| on_list(login_protocol::SUSPENDED_LIST, d.name()))
+                && let Some(d) = kept.take()
+            {
+                match d.end() {
+                    Ok(()) => ended += 1,
+                    Err(d) => *kept = Some(d),
+                }
+            }
+        }
+        send(RESULT, login_protocol::APPLIED, ended, 0);
+    }
+
+    /// `CONNECT`: mint a private channel, serve one login on it, and reclaim it.
+    fn serve_connect(&mut self) {
+        let Some(channel) = connect(self.channel_ut, self.connect_seq) else {
             // The construction budget is spent (see BUGS); folded into `DENIED` for
             // `login_protocol::DENIED`'s own stated reason, even though no identity is in play yet:
             // this program has exactly one code for "authenticated or not, I could not serve you".
             send(RESULT, login_protocol::DENIED, 0, 0);
-            continue;
+            return;
         };
-        connect_seq += 1;
+        self.connect_seq += 1;
         send(RESULT, login_protocol::CONNECTED, 0, 0);
         // Delegate narrowed copies and **keep our own for the width of this one exchange**: unlike
         // `FS_PAGE_FRAME` (shared with every future client, forever), this channel is this process's
@@ -586,14 +648,14 @@ pub extern "C" fn _start(caretaker_len: u64, table_len: u64, schedule_len: u64) 
 
         serve_login(
             &channel,
-            own_ut,
-            care_elf.as_ref(),
-            &mut seq,
-            &mut terminal_held,
+            self.own_ut,
+            self.care,
+            &mut self.seq,
+            &mut self.terminal_held,
             &mut Schedules {
-                archive: schedule,
-                durable_ut,
-                durables: &mut durables,
+                archive: self.schedule,
+                durable_ut: self.durable_ut,
+                durables: &mut self.durables,
             },
         );
         // **Reclaim the whole channel by destroying the region it was built from, not by deleting
@@ -657,6 +719,81 @@ fn serve_login(
     terminal_held: &mut bool,
     schedules: &mut Schedules,
 ) {
+    let Some(Authenticated {
+        wants_schedule,
+        identity_buf,
+        identity_len,
+        hint,
+    }) = authenticate(channel, *terminal_held)
+    else {
+        return;
+    };
+    // **Suspended** (milestone 152, the §108 ruling): checked after authentication, so only the
+    // holder of the secret learns it. A durable session this identity still has ends here too, so
+    // the cascade holds even if the owner's console never sent `SUSPEND`.
+    if is_suspended(&identity_buf[..identity_len]) {
+        if let Some(k) = schedules.durables.find(&identity_buf[..identity_len])
+            && let Some(d) = schedules.durables.held[k].take()
+            && let Err(d) = d.end()
+        {
+            schedules.durables.held[k] = Some(d);
+        }
+        send(channel.result, login_protocol::SUSPENDED, 0, 0);
+        return;
+    }
+
+    let identity = &identity_buf[..identity_len];
+
+    let Some((budget, page, keep_budget)) =
+        session_budget(own_ut, identity, wants_schedule, schedules, channel)
+    else {
+        return;
+    };
+
+    // **The client's own caretaker, minted after any durable session is opened**, and the order is
+    // for the capability table: a durable session's two store caretakers (Fork 8 D) are built while
+    // this process holds as little as it can, and one ordinary login's peak comes after, as it
+    // does beside a kept session. Counted in `login_protocol::durable`.
+    let Some((dir_ep, region)) = mint(own_ut, care, identity) else {
+        // Authenticated, and the service still could not serve it (the construction budget is
+        // spent, or the caretaker's descent was refused). Answered identically to a wrong
+        // secret; see login_protocol::DENIED's own doc on why that fold is deliberate rather than
+        // a missed distinction. A durable session opened above stays kept, as one re-derived at
+        // start-up does, for its user's next login.
+        if !keep_budget {
+            discard(budget);
+        }
+        send(channel.result, login_protocol::DENIED, 0, 0);
+        return;
+    };
+
+    hand_over(channel, identity, dir_ep, region, budget, page);
+    *terminal_held = true;
+    cap_delete(dir_ep);
+    cap_delete(region);
+    // A durable session's budget stays named here, which is the whole of reattachment.
+    if !keep_budget {
+        cap_delete(budget);
+    }
+    send(AUDIT, login_protocol::ATTRIBUTED, *seq, hint);
+    *seq += 1;
+}
+
+/// What [`authenticate`] carries out of the request page, which is wiped by the time it returns.
+struct Authenticated {
+    /// `SCHEDULE` rather than `LOGIN`.
+    wants_schedule: bool,
+    /// An owned copy of the identity: its first `identity_len` bytes.
+    identity_buf: [u8; login_protocol::MAX_IDENTITY],
+    identity_len: usize,
+    /// [`login_protocol::identity_hint`] of the identity, for the audit record.
+    hint: u64,
+}
+
+/// **Receive the one request on `channel`, and relay its identity and secret to the credential
+/// service.** `None` once the refusal has been sent (malformed, the terminal is held, or a wrong
+/// secret); either way `channel.request` and `channel.page` are dropped and the page wiped.
+fn authenticate(channel: &Channel, terminal_held: bool) -> Option<Authenticated> {
     let (w0, _w1, _w2) = receive(channel.request);
     cap_delete(channel.request);
     // `LOGIN`, or `SCHEDULE`: log in and open this identity's schedule (milestone 152).
@@ -669,7 +806,7 @@ fn serve_login(
         wipe_page(channel.va);
         cap_delete(channel.page);
         send(channel.result, login_protocol::MALFORMED, 0, 0);
-        return;
+        return None;
     };
     // **The terminal check runs before anything about `identity` or `secret` is acted on**
     // (milestone 49's terminal update). This is global, caller-independent state (there is exactly
@@ -677,11 +814,11 @@ fn serve_login(
     // identity, so checking it first costs nothing an attacker could turn into a per-identity
     // timing or outcome oracle, and it saves a round trip to the credential service on every
     // refusal while the terminal is spoken for.
-    if *terminal_held {
+    if terminal_held {
         wipe_page(channel.va);
         cap_delete(channel.page);
         send(channel.result, login_protocol::NO_TERMINAL, 0, 0);
-        return;
+        return None;
     }
     // Computed before the page is wiped: `identity` borrows `channel.va` and must not be read after.
     let hint = login_protocol::identity_hint(identity);
@@ -711,31 +848,33 @@ fn serve_login(
     cap_delete(channel.page);
     let Some(cw0) = placed else {
         send(channel.result, login_protocol::MALFORMED, 0, 0);
-        return;
+        return None;
     };
     let (cr0, _) = call(VERIFY, cw0, 0);
     credential_protocol::wipe(cred_page);
 
     if !credential_protocol::is_authenticated(cr0) {
         send(channel.result, login_protocol::DENIED, 0, 0);
-        return;
+        return None;
     }
-    // **Suspended** (milestone 152, the §108 ruling): checked after authentication, so only the
-    // holder of the secret learns it. A durable session this identity still has ends here too, so
-    // the cascade holds even if the owner's console never sent `SUSPEND`.
-    if is_suspended(&identity_buf[..identity_len]) {
-        if let Some(k) = schedules.durables.find(&identity_buf[..identity_len])
-            && let Some(d) = schedules.durables.held[k].take()
-            && let Err(d) = d.end()
-        {
-            schedules.durables.held[k] = Some(d);
-        }
-        send(channel.result, login_protocol::SUSPENDED, 0, 0);
-        return;
-    }
+    Some(Authenticated {
+        wants_schedule,
+        identity_buf,
+        identity_len,
+        hint,
+    })
+}
 
-    let identity = &identity_buf[..identity_len];
-
+/// **The budget this login's session spends**, reattaching or opening a durable session where one
+/// is due: `(budget, registration page, whether the budget stays named here)`. `None` once
+/// `DENIED` has been sent because no budget could be split.
+fn session_budget(
+    own_ut: u64,
+    identity: &[u8],
+    wants_schedule: bool,
+    schedules: &mut Schedules,
+    channel: &Channel,
+) -> Option<(u64, Option<u64>, bool)> {
     // **An identity whose session is already durable gets that session back** (milestone 152,
     // reattachment). If its timetable has stopped, the session is retired first and this login is
     // an ordinary one; see [`Durable::exited`].
@@ -780,7 +919,7 @@ fn serve_login(
             };
             let Ok(budget) = split else {
                 send(channel.result, login_protocol::DENIED, 0, 0);
-                return;
+                return None;
             };
             let opened = match (opening, schedules.archive, room) {
                 (true, Some(images), Some(k)) => {
@@ -804,24 +943,18 @@ fn serve_login(
             }
         }
     };
+    Some((budget, page, keep_budget))
+}
 
-    // **The client's own caretaker, minted after any durable session is opened**, and the order is
-    // for the capability table: a durable session's two store caretakers (Fork 8 D) are built while
-    // this process holds as little as it can, and one ordinary login's peak comes after, as it
-    // does beside a kept session. Counted in `login_protocol::durable`.
-    let Some((dir_ep, region)) = mint(own_ut, care, identity) else {
-        // Authenticated, and the service still could not serve it (the construction budget is
-        // spent, or the caretaker's descent was refused). Answered identically to a wrong
-        // secret; see login_protocol::DENIED's own doc on why that fold is deliberate rather than
-        // a missed distinction. A durable session opened above stays kept, as one re-derived at
-        // start-up does, for its user's next login.
-        if !keep_budget {
-            discard(budget);
-        }
-        send(channel.result, login_protocol::DENIED, 0, 0);
-        return;
-    };
-
+/// **Answer `OK` and delegate the session's capabilities**, in the order the client reads them.
+fn hand_over(
+    channel: &Channel,
+    identity: &[u8],
+    dir_ep: u64,
+    region: u64,
+    budget: u64,
+    page: Option<u64>,
+) {
     // Read after the session is built, so a list read that fails costs the grant and nothing else
     // (DECISIONS §221 ruling 2: only a listed identity's session gets it).
     let run_unvouched =
@@ -865,15 +998,6 @@ fn serve_login(
     if let Some(page) = page {
         delegate(channel.result, page, abi::rights::WRITE);
     }
-    *terminal_held = true;
-    cap_delete(dir_ep);
-    cap_delete(region);
-    // A durable session's budget stays named here, which is the whole of reattachment.
-    if !keep_budget {
-        cap_delete(budget);
-    }
-    send(AUDIT, login_protocol::ATTRIBUTED, *seq, hint);
-    *seq += 1;
 }
 
 /// **The schedule side of this process's state** (milestone 152), passed to [`serve_login`] as one

@@ -132,6 +132,45 @@ fn r1_ok(index: u8, r1: u32) -> Result<(), InitError> {
 ///
 /// The step that failed; see [`InitError`].
 pub fn identify<R: Registers>(host: &mut Host<R>, max_bus_width: u8) -> Result<Card, InitError> {
+    let v2 = go_idle_and_check_interface(host)?;
+    let (kind, ocr) = power_up(host, v2)?;
+    let (cid_raw, rca, csd_raw) = address_and_select(host, kind)?;
+
+    let mut card = Card {
+        kind,
+        rca,
+        ocr,
+        cid_raw,
+        csd_raw,
+        cid: if kind == Kind::Mmc {
+            Cid::mmc(&cid_raw)
+        } else {
+            Cid::sd(&cid_raw)
+        },
+        blocks: 0,
+        block_addressed: match kind {
+            Kind::SdHighCapacity => true,
+            Kind::Mmc => ocr & OCR_HIGH_CAPACITY != 0,
+            _ => false,
+        },
+        bus_width: 1,
+        clock_hz: 0,
+    };
+
+    if kind == Kind::Mmc {
+        configure_mmc(host, &mut card, &csd_raw)?;
+    } else {
+        configure_sd(host, &mut card, &csd_raw, max_bus_width)?;
+    }
+    if card.blocks == 0 {
+        return Err(InitError::Capacity(Csd::sd(&csd_raw).structure));
+    }
+    Ok(card)
+}
+
+/// Steps 1 and 2: reset the controller at the identification clock, `CMD0`, then `CMD8`. Returns
+/// whether the card echoed the check pattern (SD 2.0 or later).
+fn go_idle_and_check_interface<R: Registers>(host: &mut Host<R>) -> Result<bool, InitError> {
     host.reset().map_err(InitError::Controller)?;
     host.power_on();
     host.set_clock(IDENTIFY_HZ).map_err(InitError::Controller)?;
@@ -146,7 +185,12 @@ pub fn identify<R: Registers>(host: &mut Host<R>, max_bus_width: u8) -> Result<C
         Err(Error::NoResponse(_)) => false,
         Err(e) => return Err(InitError::Identify(c::SEND_IF_COND, e)),
     };
+    Ok(v2)
+}
 
+/// Step 3: `ACMD41` until the card is powered up, or `CMD1` for an eMMC. Returns which kind of card
+/// answered and its OCR.
+fn power_up<R: Registers>(host: &mut Host<R>, v2: bool) -> Result<(Kind, u32), InitError> {
     let (kind, ocr) = match sd_power_up(host, v2) {
         Ok(ocr) => {
             let kind = if ocr & OCR_HIGH_CAPACITY != 0 {
@@ -167,7 +211,15 @@ pub fn identify<R: Registers>(host: &mut Host<R>, max_bus_width: u8) -> Result<C
         }
         Err(e) => return Err(e),
     };
+    Ok((kind, ocr))
+}
 
+/// Step 4: `CMD2` for the CID, `CMD3` for the relative address, `CMD9` for the CSD, `CMD7` to
+/// select. Returns the raw CID, the address and the raw CSD.
+fn address_and_select<R: Registers>(
+    host: &mut Host<R>,
+    kind: Kind,
+) -> Result<([u32; 4], u16, [u32; 4]), InitError> {
     let cid_raw = host
         .command(&Command::new(c::ALL_SEND_CID, 0, Response::R2))
         .map_err(|e| InitError::Identify(c::ALL_SEND_CID, e))?;
@@ -207,82 +259,74 @@ pub fn identify<R: Registers>(host: &mut Host<R>, max_bus_width: u8) -> Result<C
     r1_ok(c::SELECT_CARD, r1[0])?;
     host.wait_not_busy()
         .map_err(|e| InitError::Identify(c::SELECT_CARD, e))?;
+    Ok((cid_raw, rca, csd_raw))
+}
 
-    let mut card = Card {
-        kind,
-        rca,
-        ocr,
-        cid_raw,
-        csd_raw,
-        cid: if kind == Kind::Mmc {
-            Cid::mmc(&cid_raw)
-        } else {
-            Cid::sd(&cid_raw)
+/// Steps 5 and 6 for an eMMC: the transfer clock, then `EXT_CSD` for the true sector count.
+fn configure_mmc<R: Registers>(
+    host: &mut Host<R>,
+    card: &mut Card,
+    csd_raw: &[u32; 4],
+) -> Result<(), InitError> {
+    let csd = Csd::mmc(csd_raw);
+    card.blocks = csd.blocks;
+    // The clock first: EXT_CSD is 512 bytes, and at 400 kHz on one line that is 10 ms.
+    card.clock_hz = host
+        .set_clock(TRANSFER_HZ)
+        .map_err(|e| InitError::Configure(c::SEND_IF_COND, e))?;
+    let mut ext = [0u8; BLOCK];
+    let cmd = Command::with_data(
+        c::SEND_IF_COND,
+        0,
+        Response::R1,
+        Data {
+            block_size: BLOCK as u32,
+            blocks: 1,
+            write: false,
         },
-        blocks: 0,
-        block_addressed: match kind {
-            Kind::SdHighCapacity => true,
-            Kind::Mmc => ocr & OCR_HIGH_CAPACITY != 0,
-            _ => false,
-        },
-        bus_width: 1,
-        clock_hz: 0,
-    };
+    );
+    let r1 = host
+        .read(&cmd, &mut ext)
+        .map_err(|e| InitError::Configure(c::SEND_IF_COND, e))?;
+    r1_ok(c::SEND_IF_COND, r1[0])?;
+    // Above 2 GB the CSD's size is a placeholder; EXT_CSD's count is the truth.
+    let sectors = card::ext_csd_sectors(&ext);
+    if card.block_addressed && sectors != 0 {
+        card.blocks = sectors;
+    }
+    Ok(())
+}
 
-    if kind == Kind::Mmc {
-        let csd = Csd::mmc(&csd_raw);
-        card.blocks = csd.blocks;
-        // The clock first: EXT_CSD is 512 bytes, and at 400 kHz on one line that is 10 ms.
-        card.clock_hz = host
-            .set_clock(TRANSFER_HZ)
-            .map_err(|e| InitError::Configure(c::SEND_IF_COND, e))?;
-        let mut ext = [0u8; BLOCK];
-        let cmd = Command::with_data(
-            c::SEND_IF_COND,
-            0,
-            Response::R1,
-            Data {
-                block_size: BLOCK as u32,
-                blocks: 1,
-                write: false,
-            },
-        );
-        let r1 = host
-            .read(&cmd, &mut ext)
-            .map_err(|e| InitError::Configure(c::SEND_IF_COND, e))?;
-        r1_ok(c::SEND_IF_COND, r1[0])?;
-        // Above 2 GB the CSD's size is a placeholder; EXT_CSD's count is the truth.
-        let sectors = card::ext_csd_sectors(&ext);
-        if card.block_addressed && sectors != 0 {
-            card.blocks = sectors;
-        }
-    } else {
-        let csd = Csd::sd(&csd_raw);
-        if csd.blocks == 0 {
-            return Err(InitError::Capacity(csd.structure));
-        }
-        card.blocks = csd.blocks;
-        if max_bus_width >= 4 {
-            app_command(host, &card)?;
-            let r1 = host
-                .command(&Command::new(c::SD_SET_BUS_WIDTH, 2, Response::R1))
-                .map_err(|e| InitError::Configure(c::SD_SET_BUS_WIDTH, e))?;
-            r1_ok(c::SD_SET_BUS_WIDTH, r1[0])?;
-            host.set_bus_width(4);
-            card.bus_width = 4;
-        }
-        let r1 = host
-            .command(&Command::new(c::SET_BLOCKLEN, BLOCK as u32, Response::R1))
-            .map_err(|e| InitError::Configure(c::SET_BLOCKLEN, e))?;
-        r1_ok(c::SET_BLOCKLEN, r1[0])?;
-        card.clock_hz = host
-            .set_clock(TRANSFER_HZ)
-            .map_err(|e| InitError::Configure(c::SET_BLOCKLEN, e))?;
+/// Steps 5 and 6 for an SD card: the capacity from the CSD, `ACMD6` to 4-bit if the slot allows,
+/// `CMD16` to 512 bytes, then the transfer clock.
+fn configure_sd<R: Registers>(
+    host: &mut Host<R>,
+    card: &mut Card,
+    csd_raw: &[u32; 4],
+    max_bus_width: u8,
+) -> Result<(), InitError> {
+    let csd = Csd::sd(csd_raw);
+    if csd.blocks == 0 {
+        return Err(InitError::Capacity(csd.structure));
     }
-    if card.blocks == 0 {
-        return Err(InitError::Capacity(Csd::sd(&csd_raw).structure));
+    card.blocks = csd.blocks;
+    if max_bus_width >= 4 {
+        app_command(host, card)?;
+        let r1 = host
+            .command(&Command::new(c::SD_SET_BUS_WIDTH, 2, Response::R1))
+            .map_err(|e| InitError::Configure(c::SD_SET_BUS_WIDTH, e))?;
+        r1_ok(c::SD_SET_BUS_WIDTH, r1[0])?;
+        host.set_bus_width(4);
+        card.bus_width = 4;
     }
-    Ok(card)
+    let r1 = host
+        .command(&Command::new(c::SET_BLOCKLEN, BLOCK as u32, Response::R1))
+        .map_err(|e| InitError::Configure(c::SET_BLOCKLEN, e))?;
+    r1_ok(c::SET_BLOCKLEN, r1[0])?;
+    card.clock_hz = host
+        .set_clock(TRANSFER_HZ)
+        .map_err(|e| InitError::Configure(c::SET_BLOCKLEN, e))?;
+    Ok(())
 }
 
 fn app_command<R: Registers>(host: &mut Host<R>, card: &Card) -> Result<(), InitError> {

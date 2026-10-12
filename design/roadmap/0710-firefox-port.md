@@ -2,7 +2,7 @@
 status: NOT-STARTED
 raised: 2026-10-03
 promoted_from: firefox-port
-milestone_dependencies: none
+milestone_dependencies: 809, 801
 decision_dependencies: 131, 145
 machine_requirements: none
 specific_machine: none
@@ -57,6 +57,19 @@ nife's std PAL and libc layer provide.
 - What it would decide: whether the port is one milestone or a program of milestones.
 
 Until it is run, nothing here is an estimate.
+
+## Done when
+
+*Amended 2026-10-12 (UTC) under §297 (software reaches a nife system as a package `jig` installs
+from basalt's index, the kernel included). calef, that day: "They should all be installed via jig
+through basalt."*
+
+Firefox must run on nife installed by `jig install` from basalt's package index. basalt builds the
+package against the nife commit it pins. A binary from a `helpers/build-*.sh` script may feed the
+work until then. So may one packed into an image or copied onto a disk. No exit is taken on either.
+The install waits on milestone 809 (the package client becomes a program, `jig`, with the verbs an
+index needs). It also waits on milestone 801 (packages over the internet: a host name, HTTPS and the
+distribution's index).
 
 ## Index row
 

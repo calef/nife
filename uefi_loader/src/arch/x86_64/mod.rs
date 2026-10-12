@@ -125,8 +125,62 @@ pub fn hand_over(
     // it (`boot_slot::medium`; calef's ruling on PR #1652, 2026-10-04 UTC).
     on_nvme: bool,
 ) -> Result<(), &'static str> {
-    // --- The page the kernel's AP bring-up needs, asked for by name ---
+    reserve_ap_page(table, services);
+    let mut handoff = allocate_handoff(services)?;
+    let trampoline = place_trampoline(services)?;
+
+    // Everything the kernel is handed has to be reachable from 32 bits. Checked here, with a
+    // console still available, rather than discovered as a triple fault on somebody's desk.
+    if kernel.entry >= ALLOCATION_CEILING || handoff.start_info_at >= ALLOCATION_CEILING {
+        return Err("the kernel entry or the handoff landed above 4 GiB");
+    }
+
+    say(
+        table,
+        "uefi_loader: kernel placed, exiting boot services\r\n",
+    );
+
+    // --- The final map, then the point of no return ---
     //
+    // NOTHING may allocate between these two calls. `ExitBootServices` compares the key against the
+    // map's current generation and refuses if anything has changed, which is the specification
+    // protecting the kernel from being handed a map that no longer describes the machine.
+    let mut final_bytes = handoff.map_capacity;
+    if (services.get_memory_map)(
+        &mut final_bytes,
+        handoff.raw_map_at as *mut u8,
+        &mut handoff.map_key,
+        &mut handoff.descriptor_size,
+        &mut handoff.descriptor_version,
+    ) != SUCCESS
+    {
+        return Err("the firmware's memory map grew between the two GetMemoryMap calls");
+    }
+    if (services.exit_boot_services)(handle, handoff.map_key) != SUCCESS {
+        return Err("ExitBootServices refused the map key");
+    }
+
+    // --- From here the firmware is gone. No console, no allocation, no going back. ---
+    let written = write_memory_map(&handoff, final_bytes);
+    let cmdline = write_cmdline(&found, from_slot, on_nvme, handoff.cmdline_at);
+    write_start_info(&handoff, &found, module, boot_file, written, cmdline);
+    paint_last_word(found.screen);
+
+    // The trampoline was copied to an executable page below 4 GiB and its GDT pointer patched;
+    // every argument is a physical address below 4 GiB, which is the contract stated at the top of
+    // leave_long_mode.s. It does not return, so this expression's type is `!` and the `Ok` arm of
+    // this function's signature is unreachable.
+    (trampoline.enter)(
+        kernel.entry,
+        handoff.start_info_at,
+        trampoline.gdtr,
+        trampoline.pmode32,
+    )
+}
+
+/// **The page the kernel's AP bring-up needs, asked for by name.** A refusal is reported and the
+/// boot carries on single-core.
+fn reserve_ap_page(table: &SystemTable, services: &BootServices) {
     // A STARTUP IPI names a physical PAGE below 1 MiB (`vector << 12`), so `arch::x86_64::ap_boot`
     // copies its real-mode trampoline to a fixed low address that `kernel/link-x86_64.ld` picks at
     // link time (`AP_TRAMPOLINE_PHYS`). Until milestone 195 this loader never mentioned that page,
@@ -160,9 +214,24 @@ pub fn hand_over(
             "uefi_loader: secondary cores will not be brought up\r\n",
         );
     }
+}
 
-    // --- Size the memory map, then allocate everything the handoff needs in one block ---
-    //
+/// The handoff block's addresses, and the memory-map sizes the final `GetMemoryMap` reuses.
+struct Handoff {
+    map_capacity: usize,
+    entry_capacity: usize,
+    map_key: usize,
+    descriptor_size: usize,
+    descriptor_version: u32,
+    start_info_at: u64,
+    module_list_at: u64,
+    cmdline_at: u64,
+    memmap_at: u64,
+    raw_map_at: u64,
+}
+
+/// Size the memory map, then allocate everything the handoff needs in one block below 4 GiB.
+fn allocate_handoff(services: &BootServices) -> Result<Handoff, &'static str> {
     // The sizing call is expected to fail with EFI_BUFFER_TOO_SMALL and to report the size it
     // wanted; a firmware that returned success for a zero-length buffer would be reporting an empty
     // machine, which is why the size is checked rather than the status.
@@ -213,9 +282,22 @@ pub fn hand_over(
     let cmdline_at = handoff_base + CMDLINE_OFFSET;
     let memmap_at = handoff_base + PAGE;
     let raw_map_at = memmap_at + entries_bytes.next_multiple_of(PAGE);
+    Ok(Handoff {
+        map_capacity,
+        entry_capacity,
+        map_key,
+        descriptor_size,
+        descriptor_version,
+        start_info_at,
+        module_list_at,
+        cmdline_at,
+        memmap_at,
+        raw_map_at,
+    })
+}
 
-    // --- The mode-switch trampoline, in a page the firmware will let us execute ---
-    //
+/// **The mode-switch trampoline, in a page the firmware will let us execute.**
+fn place_trampoline(services: &BootServices) -> Result<Trampoline, &'static str> {
     // `LOADER_CODE` rather than `LOADER_DATA`, and that is not tidiness: firmware with a memory
     // protection policy (OVMF has one, and so does every recent vendor firmware) sets the
     // execute-disable bit on data allocations, and the first instruction of the copy would fault
@@ -233,49 +315,22 @@ pub fn hand_over(
     {
         return Err("no executable page below 4 GiB for the mode-switch trampoline");
     }
-    let trampoline = copy_trampoline(trampoline_base)?;
+    copy_trampoline(trampoline_base)
+}
 
-    // Everything the kernel is handed has to be reachable from 32 bits. Checked here, with a
-    // console still available, rather than discovered as a triple fault on somebody's desk.
-    if kernel.entry >= ALLOCATION_CEILING || start_info_at >= ALLOCATION_CEILING {
-        return Err("the kernel entry or the handoff landed above 4 GiB");
-    }
-
-    say(
-        table,
-        "uefi_loader: kernel placed, exiting boot services\r\n",
-    );
-
-    // --- The final map, then the point of no return ---
-    //
-    // NOTHING may allocate between these two calls. `ExitBootServices` compares the key against the
-    // map's current generation and refuses if anything has changed, which is the specification
-    // protecting the kernel from being handed a map that no longer describes the machine.
-    let mut final_bytes = map_capacity;
-    if (services.get_memory_map)(
-        &mut final_bytes,
-        raw_map_at as *mut u8,
-        &mut map_key,
-        &mut descriptor_size,
-        &mut descriptor_version,
-    ) != SUCCESS
-    {
-        return Err("the firmware's memory map grew between the two GetMemoryMap calls");
-    }
-    if (services.exit_boot_services)(handle, map_key) != SUCCESS {
-        return Err("ExitBootServices refused the map key");
-    }
-
-    // --- From here the firmware is gone. No console, no allocation, no going back. ---
-    let descriptors = final_bytes / descriptor_size;
-    let written = descriptors.min(entry_capacity);
+/// Translate the firmware's final memory map into the PVH one, after `ExitBootServices`. Makes no
+/// firmware call and no allocation; returns how many entries it wrote.
+fn write_memory_map(handoff: &Handoff, final_bytes: usize) -> usize {
+    let descriptors = final_bytes / handoff.descriptor_size;
+    let written = descriptors.min(handoff.entry_capacity);
     for i in 0..written {
         // SAFETY: `raw_map_at` holds `final_bytes` of descriptors and `i < final_bytes /
         // descriptor_size`. Read unaligned because the firmware chooses `descriptor_size` and
         // nothing promises the stride keeps 8-byte alignment.
         let descriptor = unsafe {
             ptr::read_unaligned(
-                (raw_map_at as usize + i * descriptor_size) as *const efi::MemoryDescriptor,
+                (handoff.raw_map_at as usize + i * handoff.descriptor_size)
+                    as *const efi::MemoryDescriptor,
             )
         };
         let bytes = encode_memmap_entry(
@@ -287,12 +342,17 @@ pub fn hand_over(
         unsafe {
             ptr::copy_nonoverlapping(
                 bytes.as_ptr(),
-                (memmap_at as usize + i * MEMMAP_ENTRY_LEN) as *mut u8,
+                (handoff.memmap_at as usize + i * MEMMAP_ENTRY_LEN) as *mut u8,
                 MEMMAP_ENTRY_LEN,
             );
         }
     }
+    written
+}
 
+/// Write the boot command line into page 0 of the handoff block, after `ExitBootServices`.
+/// Returns its address, or 0 when there is nothing to put on it.
+fn write_cmdline(found: &Found, from_slot: Option<u8>, on_nvme: bool, cmdline_at: u64) -> u64 {
     // The command line, NUL-terminated, in the page reserved for it above. Written after
     // `ExitBootServices` like everything else in this section: it names memory this loader already
     // owns and needs no firmware call, so there is nothing here that could invalidate the map key.
@@ -305,15 +365,26 @@ pub fn hand_over(
     // `handoff::cmdline` says what each token is and what `screen_hold` adds.
     let written =
         uefi_loader::handoff::cmdline(found.screen.as_ref(), from_slot, on_nvme, &mut token);
-    let cmdline = if written == 0 {
+    if written == 0 {
         0
     } else {
         // SAFETY: `CMDLINE_OFFSET + CMDLINE_LEN` is inside page 0 of the handoff block, which was
         // allocated and zeroed above, and `written + 1` is at most `CMDLINE_LEN`.
         unsafe { ptr::copy_nonoverlapping(token.as_ptr(), cmdline_at as *mut u8, written + 1) };
         cmdline_at
-    };
+    }
+}
 
+/// Write the module list and the `hvm_start_info` into page 0 of the handoff block, after
+/// `ExitBootServices`.
+fn write_start_info(
+    handoff: &Handoff,
+    found: &Found,
+    module: Option<(u64, u64)>,
+    boot_file: Option<(u64, u64)>,
+    written: usize,
+    cmdline: u64,
+) {
     // **Module 0 is the archive and module 1 is this loader's own file, in that order, and the
     // order is the contract.** `arch::x86_64::machine::initial_ramdisk` reads module 0 and has
     // since milestone 87; `machine::boot_file` reads module 1 and is milestone 198 (a package
@@ -328,9 +399,13 @@ pub fn hand_over(
 
     let info = StartInfo {
         rsdp: found.rsdp,
-        modules: if module_count > 0 { module_list_at } else { 0 },
+        modules: if module_count > 0 {
+            handoff.module_list_at
+        } else {
+            0
+        },
         module_count,
-        memmap: memmap_at,
+        memmap: handoff.memmap_at,
         memmap_entries: written as u32,
         cmdline,
     };
@@ -342,17 +417,25 @@ pub fn hand_over(
         unsafe {
             ptr::copy_nonoverlapping(
                 bytes.as_ptr(),
-                (module_list_at + (index * MODULE_ENTRY_LEN) as u64) as *mut u8,
+                (handoff.module_list_at + (index * MODULE_ENTRY_LEN) as u64) as *mut u8,
                 MODULE_ENTRY_LEN,
-            )
-        };
+            );
+        }
     }
     let bytes = info.encode();
     // SAFETY: page 0 of the handoff block, 56 bytes.
-    unsafe { ptr::copy_nonoverlapping(bytes.as_ptr(), start_info_at as *mut u8, START_INFO_LEN) };
+    unsafe {
+        ptr::copy_nonoverlapping(
+            bytes.as_ptr(),
+            handoff.start_info_at as *mut u8,
+            START_INFO_LEN,
+        );
+    }
+}
 
-    // **The last word anything says before the kernel exists** (milestone 243's early-boot half).
-    //
+/// **The last word anything says before the kernel exists** (milestone 243's early-boot half):
+/// clear the screen and paint one sentence, after `ExitBootServices`.
+fn paint_last_word(screen: Option<Framebuffer>) {
     // From `ExitBootServices` to the kernel's own `attach_screen` nothing can speak on a machine
     // with no serial port: the firmware's console is gone, the kernel's is not up, and a fault in
     // between (the trampoline below, `boot.s`'s 32-bit half, the page tables, the long-mode jump)
@@ -367,7 +450,7 @@ pub fn hand_over(
     // and writing the aperture underneath it would race the firmware's own scrolling. The aperture
     // survives that call, which is the founding observation of milestone 243 (a machine with no
     // serial port): what ends is the firmware's *console*, not the *display*.
-    if let Some(screen) = found.screen
+    if let Some(screen) = screen
         && let Some(span) = screen.span()
     {
         // SAFETY: `screen` came from this firmware's own `EFI_GRAPHICS_OUTPUT_PROTOCOL` and
@@ -378,17 +461,6 @@ pub fn hand_over(
         let pixels = unsafe { core::slice::from_raw_parts_mut(screen.base as *mut u8, span) };
         let _ = uefi_loader::screen::paint_handoff(screen, pixels);
     }
-
-    // The trampoline was copied to an executable page below 4 GiB and its GDT pointer patched;
-    // every argument is a physical address below 4 GiB, which is the contract stated at the top of
-    // leave_long_mode.s. It does not return, so this expression's type is `!` and the `Ok` arm of
-    // this function's signature is unreachable.
-    (trampoline.enter)(
-        kernel.entry,
-        start_info_at,
-        trampoline.gdtr,
-        trampoline.pmode32,
-    )
 }
 
 /// Where the copied trampoline's three interesting addresses ended up.

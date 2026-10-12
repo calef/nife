@@ -266,6 +266,17 @@ pub(super) const NET_STACK_BUDGET_PAGES: u64 = 128;
 /// on the stack"), and nine is those together, since `build_child` counts the whole stack.
 pub(super) const NET_STACK_STACK_PAGES: u64 = 9;
 
+/// **`name_resolver`'s untyped budget** (milestone 892 (a std program at the prompt holds the
+/// network and a resolver)): its socket page and the page tables for up to
+/// `name_resolution_protocol::GRANTS_MAX` client pages. The kernel harness's
+/// `name_resolver_tests::BUDGET_PAGES`, which every resolver test runs under.
+pub(super) const RESOLVER_BUDGET_PAGES: u64 = 16;
+
+/// `name_resolver`'s stack, in pages, counted whole as [`NET_STACK_STACK_PAGES`] is: the kernel
+/// harness's eight extra (measured: the debug build faulted below three on its first resolve,
+/// 2026-10-06 UTC) and the one every process gets.
+pub(super) const RESOLVER_STACK_PAGES: u64 = 9;
+
 /// `net_stack`'s own spawn-argument convention: entry role 0 is the server
 /// (`components/src/net_stack.rs`'s
 /// `_start`). [`RNG_MODE_VIRTIO`]'s reasoning.

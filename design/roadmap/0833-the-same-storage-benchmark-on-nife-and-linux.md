@@ -2,7 +2,7 @@
 status: NOT-STARTED
 raised: 2026-10-07
 promoted_from: the-same-storage-benchmark-on-nife-and-linux
-milestone_dependencies: 261, 812, 835
+milestone_dependencies: 261, 812, 835, 809, 801
 decision_dependencies: 262, 265
 machine_requirements: x86_64 silicon with VT-d and an NVMe drive
 specific_machine: xenon (the Micron 2450 the first comparison was taken on)
@@ -73,6 +73,19 @@ Threads. fio times its jobs with its own threads even when jobs are processes. T
 (`std::thread::spawn` stays declined, until a customer needs it), reopened 2026-10-07 and not yet
 scheduled. Until then, milestone 834 (ioping) answers risk 6's read gap at queue depth 1 without
 threads.
+
+## Done when
+
+*Amended 2026-10-12 (UTC) under §297 (software reaches a nife system as a package `jig` installs
+from basalt's index, the kernel included). calef, that day: "They should all be installed via jig
+through basalt."*
+
+fio must run on nife installed by `jig install` from basalt's package index. basalt builds the
+package against the nife commit it pins. A binary from a `helpers/build-*.sh` script may feed the
+work until then. So may one packed into an image or copied onto a disk. No exit is taken on either.
+The install waits on milestone 809 (the package client becomes a program, `jig`, with the verbs an
+index needs). It also waits on milestone 801 (packages over the internet: a host name, HTTPS and the
+distribution's index).
 
 ## Index row
 

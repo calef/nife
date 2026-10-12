@@ -172,40 +172,9 @@ impl LineDisc {
             return Event::None;
         }
 
-        match core::mem::replace(&mut self.esc, EscState::Idle) {
-            EscState::Idle => {}
-            EscState::Esc => {
-                match b {
-                    b'[' => {
-                        self.esc = EscState::Csi {
-                            params: [0; 2],
-                            n: 0,
-                        }
-                    }
-                    b'O' => self.esc = EscState::Ss3,
-                    _ => {} // an escape we do not speak; drop it and the introducer
-                }
-                return Event::None;
-            }
-            EscState::Csi { mut params, mut n } => {
-                match b {
-                    b'0'..=b'9' => {
-                        let i = n.min(1);
-                        params[i] = params[i].saturating_mul(10) + (b - b'0') as u16;
-                        self.esc = EscState::Csi { params, n };
-                    }
-                    b';' => {
-                        n += 1;
-                        self.esc = EscState::Csi { params, n };
-                    }
-                    // A final byte: dispatch. Unknown finals are dropped whole, which is what
-                    // makes unrecognized keys (F-keys, mouse noise) harmless.
-                    0x40..=0x7e => return self.csi_final(b, params[0], out),
-                    _ => {} // malformed; abandon
-                }
-                return Event::None;
-            }
-            EscState::Ss3 => return self.csi_final(b, 0, out),
+        let state = core::mem::replace(&mut self.esc, EscState::Idle);
+        if let Some(event) = self.continue_escape(state, b, out) {
+            return event;
         }
 
         match b {
@@ -225,14 +194,7 @@ impl LineDisc {
                 Event::Interrupt
             }
             b'\t' => Event::Tab,
-            0x04 => {
-                if self.len == 0 {
-                    Event::Eof
-                } else {
-                    self.delete_at(out);
-                    Event::None
-                }
-            }
+            0x04 => self.eof_or_delete(out),
             0x01 => {
                 self.home(out);
                 Event::None
@@ -251,31 +213,17 @@ impl LineDisc {
             }
             0x0b => {
                 // ^K: kill to end of line.
-                self.kill[..self.len - self.cur].copy_from_slice(&self.buf[self.cur..self.len]);
-                self.kill_len = self.len - self.cur;
-                self.len = self.cur;
-                out.put(b"\x1b[K");
+                self.kill_to_end(out);
                 Event::None
             }
             0x15 => {
                 // ^U: kill to start of line.
-                self.kill[..self.cur].copy_from_slice(&self.buf[..self.cur]);
-                self.kill_len = self.cur;
-                self.delete_range(0, self.cur, out);
+                self.kill_to_start(out);
                 Event::None
             }
             0x17 => {
                 // ^W: kill the word before the cursor (blanks, then non-blanks, like bash).
-                let mut a = self.cur;
-                while a > 0 && self.buf[a - 1] == b' ' {
-                    a -= 1;
-                }
-                while a > 0 && self.buf[a - 1] != b' ' {
-                    a -= 1;
-                }
-                self.kill[..self.cur - a].copy_from_slice(&self.buf[a..self.cur]);
-                self.kill_len = self.cur - a;
-                self.delete_range(a, self.cur, out);
+                self.kill_word_before(out);
                 Event::None
             }
             0x19 => {
@@ -285,10 +233,7 @@ impl LineDisc {
             0x0c => {
                 // ^L: clear the screen, repaint prompt and line. The one operation that needs the
                 // prompt, which is why READLINE carries it.
-                out.put(b"\x1b[2J\x1b[H");
-                out.put(&self.prompt[..self.prompt_len]);
-                out.put(&self.buf[..self.len]);
-                csi_left(out, self.len - self.cur);
+                self.clear_and_repaint(out);
                 Event::None
             }
             BS | 0x7f => {
@@ -301,6 +246,93 @@ impl LineDisc {
             }
             _ => Event::None, // other control bytes: ignored, deliberately unecho'd
         }
+    }
+
+    /// The byte after an escape introducer, or inside a CSI sequence, in escape state `state`.
+    /// `None` when no escape was in progress and the byte is an ordinary key.
+    fn continue_escape(&mut self, state: EscState, b: u8, out: &mut impl Sink) -> Option<Event> {
+        match state {
+            EscState::Idle => None,
+            EscState::Esc => {
+                match b {
+                    b'[' => {
+                        self.esc = EscState::Csi {
+                            params: [0; 2],
+                            n: 0,
+                        }
+                    }
+                    b'O' => self.esc = EscState::Ss3,
+                    _ => {} // an escape we do not speak; drop it and the introducer
+                }
+                Some(Event::None)
+            }
+            EscState::Csi { mut params, mut n } => {
+                match b {
+                    b'0'..=b'9' => {
+                        let i = n.min(1);
+                        params[i] = params[i].saturating_mul(10) + (b - b'0') as u16;
+                        self.esc = EscState::Csi { params, n };
+                    }
+                    b';' => {
+                        n += 1;
+                        self.esc = EscState::Csi { params, n };
+                    }
+                    // A final byte: dispatch. Unknown finals are dropped whole, which is what
+                    // makes unrecognized keys (F-keys, mouse noise) harmless.
+                    0x40..=0x7e => return Some(self.csi_final(b, params[0], out)),
+                    _ => {} // malformed; abandon
+                }
+                Some(Event::None)
+            }
+            EscState::Ss3 => Some(self.csi_final(b, 0, out)),
+        }
+    }
+
+    /// ^D: end of input on an empty line, otherwise delete the byte under the cursor.
+    fn eof_or_delete(&mut self, out: &mut impl Sink) -> Event {
+        if self.len == 0 {
+            Event::Eof
+        } else {
+            self.delete_at(out);
+            Event::None
+        }
+    }
+
+    /// ^K: move everything from the cursor to the end of the line into the kill buffer.
+    fn kill_to_end(&mut self, out: &mut impl Sink) {
+        self.kill[..self.len - self.cur].copy_from_slice(&self.buf[self.cur..self.len]);
+        self.kill_len = self.len - self.cur;
+        self.len = self.cur;
+        out.put(b"\x1b[K");
+    }
+
+    /// ^U: move everything before the cursor into the kill buffer.
+    fn kill_to_start(&mut self, out: &mut impl Sink) {
+        self.kill[..self.cur].copy_from_slice(&self.buf[..self.cur]);
+        self.kill_len = self.cur;
+        self.delete_range(0, self.cur, out);
+    }
+
+    /// ^W: move the word before the cursor (blanks, then non-blanks) into the kill buffer.
+    fn kill_word_before(&mut self, out: &mut impl Sink) {
+        let mut a = self.cur;
+        while a > 0 && self.buf[a - 1] == b' ' {
+            a -= 1;
+        }
+        while a > 0 && self.buf[a - 1] != b' ' {
+            a -= 1;
+        }
+        self.kill[..self.cur - a].copy_from_slice(&self.buf[a..self.cur]);
+        self.kill_len = self.cur - a;
+        self.delete_range(a, self.cur, out);
+    }
+
+    /// ^L: clear the screen and paint the prompt and the line, cursor where it was.
+    fn clear_and_repaint(&mut self, out: &mut impl Sink) {
+        out.put(b"\x1b[2J\x1b[H");
+        out.put(&self.prompt[..self.prompt_len]);
+        out.put(&self.buf[..self.len]);
+        csi_left(out, self.len - self.cur);
     }
 
     /// A CSI (or SS3) final byte, with its first numeric parameter.

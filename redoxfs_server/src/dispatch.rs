@@ -108,8 +108,49 @@ impl<D: Disk> Server<D> {
         let len = fs::req_len(w0).min(BLOCK);
         let bulk_len = fs::req_len(w0).min(fs::TRANSFER_MAX);
         let offset = w1;
+        let request = Request {
+            code,
+            badge,
+            handle,
+            len,
+            bulk_len,
+            offset,
+        };
+        let result = self.dispatch_file_verbs(&request, window, edges);
 
-        let result: Result<i64> = match code {
+        // A handle a bound badge minted is that badge's, and no other badge can name it.
+        if let (fs::OPEN | fs::OPENDIR | fs::CREATE | fs::MKDIR, Ok(h)) = (code, &result) {
+            self.claim(*h as u32, badge);
+        }
+        // `OPEN`'s reply carries the file's size in its second word (milestone 606, ruling B), so
+        // a client reading the whole file needs no `FSTAT` to size its buffer. Every other verb's
+        // second reply word is 0, as it always was.
+        let size = match (code, &result) {
+            (fs::OPEN, Ok(h)) => self.fstat(*h as u32).unwrap_or(0),
+            _ => 0,
+        };
+        // The one error-mapping site: RedoxFS's Error -> the negated-errno wire value.
+        (result.unwrap_or_else(|e| reply_err(e.errno)), size)
+    }
+
+    /// **The file and directory verbs**: open, read, write, create, list, rename and remove. Any
+    /// other code goes on to [`Server::dispatch_other_verbs`].
+    #[inline]
+    fn dispatch_file_verbs(
+        &mut self,
+        request: &Request,
+        window: &mut [u8],
+        edges: &mut impl ServeEdges,
+    ) -> Result<i64> {
+        let Request {
+            code,
+            badge,
+            handle,
+            len,
+            bulk_len,
+            offset,
+        } = *request;
+        match code {
             // The handle field is the **parent directory**, not a file: `fs::ROOT` is the endpoint's
             // bound directory, which is what every client that predates directory handles sends.
             fs::OPEN => match core::str::from_utf8(&window[..len]) {
@@ -158,21 +199,7 @@ impl<D: Disk> Server<D> {
             // (handle, length) rather than a scalar and both names ride in the channel, source
             // first. The page is the bound: a pair of names longer than it is EINVAL here rather
             // than a clamp, because clamping a name is renaming something else.
-            fs::RENAME => {
-                let dst_len = fs::dst_len(offset);
-                if len + dst_len > BLOCK {
-                    Err(Error::new(EINVAL))
-                } else {
-                    let (src, dst) = window[..len + dst_len].split_at(len);
-                    match (core::str::from_utf8(src), core::str::from_utf8(dst)) {
-                        (Ok(src), Ok(dst)) => self
-                            .admit(badge, fs::dst_handle(offset))
-                            .and_then(|to| self.rename(handle, src, to, dst))
-                            .map(|()| 0),
-                        _ => Err(Error::new(EINVAL)),
-                    }
-                }
-            }
+            fs::RENAME => self.rename_request(badge, handle, len, offset, window),
             // `rm`'s two verbs. OPEN's shape again (a name at the start of the channel, resolved
             // under the handle), and the reply is 0 rather than a handle: they hand nothing back,
             // which is the whole difference between removing a name and destroying an object.
@@ -184,38 +211,38 @@ impl<D: Disk> Server<D> {
                 Ok(name) => self.rmdir(handle, name).map(|()| 0),
                 Err(_) => Err(Error::new(EINVAL)),
             },
+            _ => self.dispatch_other_verbs(request, window, edges),
+        }
+    }
+
+    /// **Every verb that is not a file or directory verb**: attributes, truncation, durability,
+    /// the filesystem's size, mtimes and binding. An unknown code is `EINVAL` here.
+    #[inline]
+    fn dispatch_other_verbs(
+        &mut self,
+        request: &Request,
+        window: &mut [u8],
+        edges: &mut impl ServeEdges,
+    ) -> Result<i64> {
+        let Request {
+            code,
+            badge,
+            handle,
+            len,
+            offset,
+            ..
+        } = *request;
+        match code {
             // **Extended attributes** (milestone 57). The handle field is the file or directory the
             // attribute is on rather than a parent directory, which is the one shape difference from
             // OPEN: an attribute has no name in any namespace, so there is nothing to resolve it
             // under.
-            fs::GETXATTR => {
-                // The name comes in on the page and the value goes back out on it, so the name is
-                // copied to the stack before the reply is written over it. 255 bytes against a
-                // measured 127 KiB high-water on a 397 KiB grant (notes/fs-server.md).
-                let mut name = [0u8; xattr::MAX_NAME];
-                if len > name.len() {
-                    Err(Error::new(xattr::ERANGE))
-                } else {
-                    name[..len].copy_from_slice(&window[..len]);
-                    // The server refuses a value that will not fit rather than writing past it.
-                    self.get_xattr(handle, &name[..len], &mut window[..BLOCK])
-                        .map(|(kind, n)| xattr::reply(kind, n))
-                }
-            }
+            fs::GETXATTR => self.get_xattr_request(handle, len, window),
             // The only verb here carrying two payloads: the name is `len` bytes at the start of the
             // page and the value follows it, with the value's length and its type code packed into
             // the second word. The page is the bound, and a pair that overruns it is EINVAL rather
             // than a clamp, for RENAME's reason: clipping a value stores something nobody wrote.
-            fs::SETXATTR => {
-                let value_len = xattr::spec_value_len(offset);
-                if len + value_len > BLOCK {
-                    Err(Error::new(EINVAL))
-                } else {
-                    let (name, value) = window[..len + value_len].split_at(len);
-                    self.set_xattr(handle, name, xattr::spec_kind(offset), value)
-                        .map(|()| 0)
-                }
-            }
+            fs::SETXATTR => self.set_xattr_request(handle, len, offset, window),
             fs::LISTXATTR => self
                 .list_xattr(handle, &mut window[..BLOCK])
                 .map(|n| n as i64),
@@ -267,20 +294,80 @@ impl<D: Disk> Server<D> {
             fs::UNBIND => self.unbind(badge, offset).map(|()| 0),
             fs::BIND_SYNC => self.bind_sync_only(badge, offset).map(|()| 0),
             _ => Err(Error::new(EINVAL)),
-        };
-
-        // A handle a bound badge minted is that badge's, and no other badge can name it.
-        if let (fs::OPEN | fs::OPENDIR | fs::CREATE | fs::MKDIR, Ok(h)) = (code, &result) {
-            self.claim(*h as u32, badge);
         }
-        // `OPEN`'s reply carries the file's size in its second word (milestone 606, ruling B), so
-        // a client reading the whole file needs no `FSTAT` to size its buffer. Every other verb's
-        // second reply word is 0, as it always was.
-        let size = match (code, &result) {
-            (fs::OPEN, Ok(h)) => self.fstat(*h as u32).unwrap_or(0),
-            _ => 0,
-        };
-        // The one error-mapping site: RedoxFS's Error -> the negated-errno wire value.
-        (result.unwrap_or_else(|e| reply_err(e.errno)), size)
     }
+
+    /// `RENAME`: both names ride in the channel, source first, and the second word packs the
+    /// destination's handle and length.
+    fn rename_request(
+        &mut self,
+        badge: u64,
+        handle: u32,
+        len: usize,
+        offset: u64,
+        window: &[u8],
+    ) -> Result<i64> {
+        let dst_len = fs::dst_len(offset);
+        if len + dst_len > BLOCK {
+            Err(Error::new(EINVAL))
+        } else {
+            let (src, dst) = window[..len + dst_len].split_at(len);
+            match (core::str::from_utf8(src), core::str::from_utf8(dst)) {
+                (Ok(src), Ok(dst)) => self
+                    .admit(badge, fs::dst_handle(offset))
+                    .and_then(|to| self.rename(handle, src, to, dst))
+                    .map(|()| 0),
+                _ => Err(Error::new(EINVAL)),
+            }
+        }
+    }
+
+    /// `GETXATTR`: copy the name off the page, then write the attribute's value onto it.
+    fn get_xattr_request(&mut self, handle: u32, len: usize, window: &mut [u8]) -> Result<i64> {
+        // The name comes in on the page and the value goes back out on it, so the name is
+        // copied to the stack before the reply is written over it. 255 bytes against a
+        // measured 127 KiB high-water on a 397 KiB grant (notes/fs-server.md).
+        let mut name = [0u8; xattr::MAX_NAME];
+        if len > name.len() {
+            Err(Error::new(xattr::ERANGE))
+        } else {
+            name[..len].copy_from_slice(&window[..len]);
+            // The server refuses a value that will not fit rather than writing past it.
+            self.get_xattr(handle, &name[..len], &mut window[..BLOCK])
+                .map(|(kind, n)| xattr::reply(kind, n))
+        }
+    }
+
+    /// `SETXATTR`: the name and then the value on the page, the value's length and type code in
+    /// the second word.
+    fn set_xattr_request(
+        &mut self,
+        handle: u32,
+        len: usize,
+        offset: u64,
+        window: &[u8],
+    ) -> Result<i64> {
+        let value_len = xattr::spec_value_len(offset);
+        if len + value_len > BLOCK {
+            Err(Error::new(EINVAL))
+        } else {
+            let (name, value) = window[..len + value_len].split_at(len);
+            self.set_xattr(handle, name, xattr::spec_kind(offset), value)
+                .map(|()| 0)
+        }
+    }
+}
+
+/// One admitted request's decoded words, as the dispatch below [`Server::handle`] reads them.
+#[derive(Clone, Copy)]
+struct Request {
+    code: u64,
+    badge: u64,
+    handle: u32,
+    /// The name or reply length, clamped to one page.
+    len: usize,
+    /// `READ`'s and `WRITE`'s length, clamped to the whole channel.
+    bulk_len: usize,
+    /// The second request word, whatever the verb makes of it.
+    offset: u64,
 }

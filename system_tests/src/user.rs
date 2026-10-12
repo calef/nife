@@ -339,11 +339,23 @@ mod std_threads_tests;
 #[cfg(all(test, initial_ramdisk))]
 mod ripgrep_tests;
 
+/// **`ripgrep`'s parallel walker on more than one thread** (milestone 121 (`ripgrep` on nife), fatal risk 1's third
+/// gap): `rg` run as a process, and the kernel's count of the threads it started. Skips without
+/// `rg`, like the module above.
+#[cfg(all(test, initial_ramdisk))]
+mod ripgrep_threads_tests;
+
 /// **Somebody else's C, unmodified, on nife's C library**: SQLite's `speedtest1` and ioping
 /// (milestone 835 (a C library, stage 1: files, clock and memory)). Each skips unless somebody ran
 /// its `helpers/build-<name>.sh`. Every ISA, per DECISIONS §19.
 #[cfg(all(test, initial_ramdisk))]
 mod c_program_tests;
+
+/// **Somebody else's threaded C, unmodified**: hackbench's thread mode on nife's C library's POSIX
+/// threads (milestone 836 (a C library, stage 2: threads)). Skips unless somebody ran
+/// `helpers/build-hackbench.sh`. Every ISA, per DECISIONS §19.
+#[cfg(all(test, initial_ramdisk))]
+mod c_thread_tests;
 
 /// **A TLS crypto provider's primitives against published test vectors**, for milestone 442 (a
 /// crypto provider `rustls` can use on all three bare-metal targets). `cargo xtask test` builds the

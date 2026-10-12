@@ -89,3 +89,7 @@ faster in two (riscv64 at 1.07 times, `x86_64`'s one-core leg at 1.05).
 - A timed wait spins on `yield` until its deadline, because the kernel's `WAIT` has no timeout.
 - One TCB page per spawn is spent for good, and 16 threads at most per process
   (`notes/processes.md`).
+- **Fixed 2026-10-12 (UTC): the file page's lock spun.** `std::fs` shares one page per process with
+  the file server and held a spinlock on it across each `CALL`, so under `rg`'s parallel walk the
+  waiting workers spun while the holder slept in `CALL`. It is a futex mutex now
+  (`sys/fs/nife/page.rs`, lane milestone/121-rg-threads).
