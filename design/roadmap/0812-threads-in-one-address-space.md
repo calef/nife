@@ -156,7 +156,7 @@ exit. A second check runs `rayon`'s parallel sum to the same answer.
 
 - The standard benchmarks that need threads, minted by lane/standard-benchmarks (#1854, numbers
   provisional). 833 (`fio`) serves risk 6 (a confined driver at real speed) and risk 1 (only
-  software written for nife runs on nife). 827 (`hackbench`) and 830 (`schbench`) serve risk 5 (not
+  software written for nife runs on nife). 827 (`hackbench`) and 830 (wakeup latency) serve risk 5 (not
   reliable on multicore). 828 is `iperf3` 3.16 and later, which is multithreaded. 832 (STREAM)
   needs a thread per core for its per-core figure.
 - Risk 1's third gap: `ripgrep`'s threads, which nife has never run.
@@ -195,7 +195,7 @@ exit. A second check runs `rayon`'s parallel sum to the same answer.
 - **Limits recorded where a reader meets them**: no futex timeout, 16 threads a process, no guard
   page on a spawned stack, a killed member running until its next preemption, one TCB page spent
   per spawn. See the notes above.
-- This block gives Rust programs threads. `fio`, `hackbench`, `schbench` and `iperf3` are C, and
+- This block gives Rust programs threads. `fio`, `hackbench` and `iperf3` are C, and
   want pthreads from a C library nife does not have. §31 (the foreign-language seam: C holds no
   capabilities and makes no syscalls) bars C from syscalls. Full POSIX, milestone 478 (tier three),
   is refused. How those benchmarks get threads is not decided here; the maintainer is taking it to
@@ -215,5 +215,5 @@ exit. A second check runs `rayon`'s parallel sum to the same answer.
 
 Real shared-memory threads: `std::thread::spawn` on all three architectures, threads joining a
 process object by `BIND` (§269, ruled 2026-10-09 and on #1892 2026-10-10), proven by four `std`
-threads and by unmodified `rayon`. It unlocks `fio`, `schbench`,
+threads and by unmodified `rayon`. It unlocks `fio`,
 `hackbench`, `iperf3`, parallel `rg`, read-write ZFS and parallel builds.

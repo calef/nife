@@ -97,7 +97,7 @@ Each risk file lists its own under *Benchmarks that inform this risk*. None has 
 |---|---|
 | 1, the ecosystem | 831 (SQLite), 833 (fio), 834 (ioping) |
 | 4, the per-crossing cost | 25 (`sel4bench`), 826 (lmbench), 827 (hackbench), 828 (iperf3), 829 (netperf), 831, 832 (STREAM) |
-| 5, multicore | 827, 830 (schbench) |
+| 5, multicore | 827, 830 (wakeup latency) |
 | 6, a confined driver | 828, 829, 833, 834 |
 
 Risks 2, 3, 7, 8 and 9 have none. They are claims about proofs, tests, confinement, demand and
