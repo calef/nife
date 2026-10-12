@@ -165,7 +165,7 @@ fn zero(r: i64) -> Result<(), Refused> {
 #[inline(never)]
 fn map_job() -> Result<u64, Refused> {
     let t0 = now();
-    let region = slot(user_mode_runtime::split_region(
+    let region = slot(user_mode_runtime::split_memory_region(
         job_mix::SLOT_BUDGET,
         job_mix::MAP_REGION_PAGES,
     ))?;
@@ -186,7 +186,7 @@ fn map_job() -> Result<u64, Refused> {
         i += 1;
     }
     let t1 = now();
-    zero(user_mode_runtime::destroy_region(region))?;
+    zero(user_mode_runtime::destroy_memory_region(region))?;
     region_ticks += now() - t1;
     // The objects are gone with their region; the slots that named them are not, and a fixed
     // table would fill over a subrun if they stayed.
@@ -208,7 +208,7 @@ fn spawn_job(code_frame: u64) -> Result<u64, Refused> {
     let mut n = 0;
     while n < job_mix::SPAWN_CALLS {
         let t0 = now();
-        let child = slot(user_mode_runtime::split_region(
+        let child = slot(user_mode_runtime::split_memory_region(
             job_mix::SLOT_BUDGET,
             job_mix::CHILD_PAGES,
         ))?;
@@ -254,7 +254,7 @@ fn spawn_job(code_frame: u64) -> Result<u64, Refused> {
         let _ = receive(job_mix::SLOT_CHILD_DONE);
         loop {
             let t1 = now();
-            let r = user_mode_runtime::destroy_region(child);
+            let r = user_mode_runtime::destroy_memory_region(child);
             region_ticks += now() - t1;
             if r == 0 {
                 break;

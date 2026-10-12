@@ -69,7 +69,7 @@ use supervision_protocol::{ChildEndowment, Retention};
 use swap_protocol::log_checks as lc;
 use user_mode_runtime::{
     cap_delete, cntfrq, map_into, map_page_frame, now, receive, receive_bound, receive_fault,
-    revoke_frame, send, timer_arm,
+    revoke_page_frame, send, timer_arm,
 };
 
 /// What the kernel grants us, and nothing else.
@@ -357,7 +357,7 @@ fn direct(fs: &nifefs::Fs, w: &Wiring) -> ! {
     // keep ours, which is what makes this a transfer rather than a demolition (DECISIONS §41).
     // ------------------------------------------------------------------------------------------
 
-    if revoke_frame(DEVICE) != 0 {
+    if revoke_page_frame(DEVICE) != 0 {
         bail(23)
     }
     send(
@@ -1125,7 +1125,7 @@ fn hung(fs: &nifefs::Fs, w: &Wiring) -> ! {
     // the change that would demonstrate it.
     // ------------------------------------------------------------------------------------------
 
-    if revoke_frame(DEVICE) != 0 {
+    if revoke_page_frame(DEVICE) != 0 {
         bail(82)
     }
     send(

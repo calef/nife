@@ -139,8 +139,8 @@
 
 use user_mode_runtime::mapped_window::MappedWindow;
 use user_mode_runtime::{
-    call, destroy_region, exit, map_page_frame, receive, receive_cap, retype_into_page_frame, send,
-    send_cap, split_region, yield_now,
+    call, destroy_memory_region, exit, map_page_frame, receive, receive_cap, retype_into_page_frame, send,
+    send_cap, split_memory_region, yield_now,
 };
 
 /// The login service's front-door request endpoint (slot 0), `WRITE`.
@@ -476,15 +476,15 @@ pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
     // attempt, not `destroy_with_retry`, because this refusal is not a kill waiting for a tick. It is
     // permanent until the child goes, and retrying would only spend the watchdog.
     if behaviour == PENDING_WORK {
-        let job = split_region(budget, PENDING_JOB_PAGES);
+        let job = split_memory_region(budget, PENDING_JOB_PAGES);
         if job >= 0 {
-            if destroy_region(budget) == abi::Error::NotPermitted as i64 {
+            if destroy_memory_region(budget) == abi::Error::NotPermitted as i64 {
                 flags |= F_LOGOUT_REFUSED_WHILE_PENDING;
             }
             if retype_into_page_frame(budget) >= 0 {
                 flags |= F_SESSION_SURVIVED_REFUSAL;
             }
-            if destroy_region(job as u64) == 0 {
+            if destroy_memory_region(job as u64) == 0 {
                 flags |= F_PENDING_WORK_DESTROYED;
             }
         }
@@ -662,7 +662,7 @@ fn schedule(behaviour: u64, budget: u64, dir: u64) -> u64 {
         flags |= F_TIMETABLE_EXITED;
     }
     // Both detach with the session still standing, so the budget must refuse to come down.
-    if destroy_region(budget) == abi::Error::NotPermitted as i64 {
+    if destroy_memory_region(budget) == abi::Error::NotPermitted as i64 {
         flags |= F_LOGOUT_REFUSED_WHILE_PENDING;
     }
     flags
@@ -876,7 +876,7 @@ fn destroy_with_retry(ut: u64) -> bool {
     let ceiling = user_mode_runtime::cntfrq().saturating_mul(DESTROY_WAIT_SECS);
     let started = user_mode_runtime::now();
     loop {
-        if destroy_region(ut) == 0 {
+        if destroy_memory_region(ut) == 0 {
             record(user_mode_runtime::now().wrapping_sub(started));
             return true;
         }

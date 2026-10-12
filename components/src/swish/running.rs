@@ -187,7 +187,7 @@ pub(super) fn release_argv(a: Argv, unsent: bool) {
 }
 
 fn release_region(region: u64) {
-    user_mode_runtime::destroy_region(region);
+    user_mode_runtime::destroy_memory_region(region);
     cap_delete(region);
 }
 
@@ -421,7 +421,7 @@ pub(super) fn run_image(nav: &mut Nav, spec: RunSpec) {
     }
     // The frames are spent: the child was built from the progenitor's copy. Destroying the region
     // revokes every mapping of them, ours and the progenitor's, and returns the pages.
-    user_mode_runtime::destroy_region(staging);
+    user_mode_runtime::destroy_memory_region(staging);
     cap_delete(staging);
     if let Some(w) = &set_grant {
         release_words_grant(w, false);
@@ -657,7 +657,7 @@ pub(super) fn vouch(nav: &mut Nav, path: Option<&[u8]>) {
     let (lo, hi) = filesystem_protocol::grant::pack_name(name);
     send(SPAWN, lo, hi, name.len() as u64);
     let (r0, r1, _) = receive(RESULT);
-    user_mode_runtime::destroy_region(staging);
+    user_mode_runtime::destroy_memory_region(staging);
     cap_delete(staging);
     if !read_ok {
         print(b"  (this shell could not read the whole file, so those were not its bytes)\n");

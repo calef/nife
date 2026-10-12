@@ -301,7 +301,7 @@ const RECLAIM_PATIENCE_NS: u64 = 1_000_000_000;
 pub(super) fn reclaim(job_ut: u64) -> bool {
     let start = monotonic_nanos();
     loop {
-        if destroy_region(job_ut) == 0 {
+        if destroy_memory_region(job_ut) == 0 {
             return true;
         }
         if monotonic_nanos().wrapping_sub(start) > RECLAIM_PATIENCE_NS {

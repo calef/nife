@@ -29,8 +29,8 @@
 #![no_main]
 
 use user_mode_runtime::{
-    cap_delete, destroy_region, exit, map_into, map_page_frame, now, receive, retype_into_kernel_object,
-    retype_into_page_frame, send, split_region, tcb_cap_insert, tcb_configure, tcb_start, yield_now,
+    cap_delete, destroy_memory_region, exit, map_into, map_page_frame, now, receive, retype_into_kernel_object,
+    retype_into_page_frame, send, split_memory_region, tcb_cap_insert, tcb_configure, tcb_start, yield_now,
 };
 
 /// The endpoint the bench boot grants us (slot 0): we SEND `[ticks, iters, 0]` here per primitive.
@@ -340,7 +340,7 @@ fn spawn_bench() -> ! {
 #[inline(never)]
 fn spawn_one(code_frame: u64) {
     // The child's own region, so it is independently reclaimable.
-    let child_ut = split_region(SP_UNTYPED, CHILD_PAGES) as u64;
+    let child_ut = split_memory_region(SP_UNTYPED, CHILD_PAGES) as u64;
     let aspace = retype_into_kernel_object(child_ut, abi::objtype::ADDRESS_SPACE) as u64;
     // Alias the shared code frame as the child's code; a stack from the child's own region.
     map_into(
@@ -364,7 +364,7 @@ fn spawn_one(code_frame: u64) {
     // between the child's SEND and its SYS_EXIT: DESTROY refuses a region with a still-live thread,
     // so yield until the child has finished exiting.
     let _ = receive(SP_CHILD_DONE);
-    while destroy_region(child_ut) != 0 {
+    while destroy_memory_region(child_ut) != 0 {
         yield_now();
     }
     // Free the slots this child used (the address space cap was consumed by CONFIGURE) so the fixed capability table

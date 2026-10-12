@@ -932,7 +932,12 @@ pub fn retype_into_kernel_object(memory_region_slot: u64, objtype: u64) -> i64 {
 /// untyped. Returns the slot holding a full-rights capability to the child, or a negative
 /// `abi::Error` (`NotPermitted` without `WRITE`, `OutOfMemory` when the budget or a table is
 /// exhausted).
-pub fn split_region(memory_region_slot: u64, pages: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2). His words: "Ratify split_memory_region, destroy_memory_region,
+/// map_memory_region_page, revoke_page_frame, ..." Refused `split_region` (round 7's provisional
+/// name; the object is a memory region).
+pub fn split_memory_region(memory_region_slot: u64, pages: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates `WRITE` and the remaining budget before it splits
     // anything off.
     unsafe { invoke(memory_region_slot, abi::memory_region::SPLIT, pages, 0, 0) }
@@ -942,7 +947,12 @@ pub fn split_region(memory_region_slot: u64, pages: u64) -> i64 {
 /// (object revocation, the region-owner's half). `0` on success; a negative `abi::Error`
 /// (`NotPermitted` while a live thread still occupies it, or if it has been `SPLIT` into children,
 /// or without `WRITE`).
-pub fn destroy_region(memory_region_slot: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2). His words: "Ratify split_memory_region, destroy_memory_region,
+/// map_memory_region_page, revoke_page_frame, ..." Refused `destroy_region` (round 7's provisional
+/// name).
+pub fn destroy_memory_region(memory_region_slot: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates `WRITE` and that nothing still occupies or splits
     // from the region before it reclaims anything.
     unsafe { invoke(memory_region_slot, abi::memory_region::DESTROY, 0, 0, 0) }
@@ -955,7 +965,12 @@ pub fn destroy_region(memory_region_slot: u64) -> i64 {
 /// The one-step twin of [`retype_into_page_frame`] followed by [`map_page_frame`]: this never produces
 /// a `PageFrame` capability the caller can delegate or revoke, it just spends the untyped's budget
 /// directly on a mapped page.
-pub fn map_region_page(memory_region_slot: u64, va: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2). His words: "Ratify split_memory_region, destroy_memory_region,
+/// map_memory_region_page, revoke_page_frame, ..." Refused `map_region_page` (round 7's provisional
+/// name).
+pub fn map_memory_region_page(memory_region_slot: u64, va: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the untyped, the address, and maps a fresh page
     // from its own budget.
     unsafe { invoke(memory_region_slot, abi::memory_region::MAP, va, 0, 0) }
@@ -964,7 +979,12 @@ pub fn map_region_page(memory_region_slot: u64, va: u64) -> i64 {
 /// `REVOKE` the `PageFrame` in `frame_slot`: un-share it (or, on a device capability, take it back;
 /// see `abi::page_frame::REVOKE`'s own doc for the asymmetry). `0` on success; a negative
 /// `abi::Error` (`NotPermitted` without `GRANT`).
-pub fn revoke_frame(frame_slot: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2). His words: "Ratify split_memory_region, destroy_memory_region,
+/// map_memory_region_page, revoke_page_frame, ..." Refused `revoke_frame` (round 7's provisional
+/// name; the kernel already spells the object `page_frame`).
+pub fn revoke_page_frame(frame_slot: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates `GRANT` before it unmaps and deletes every
     // capability to the page.
     unsafe { invoke(frame_slot, abi::page_frame::REVOKE, 0, 0, 0) }

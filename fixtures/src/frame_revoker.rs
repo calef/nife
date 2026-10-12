@@ -23,7 +23,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use user_mode_runtime::{exit, map_page_frame, retype_into_page_frame, revoke_frame, send};
+use user_mode_runtime::{exit, map_page_frame, retype_into_page_frame, revoke_page_frame, send};
 
 const MEMORY_REGION: u64 = 0; // retype + page tables
 const REPORT: u64 = 1;
@@ -41,7 +41,7 @@ pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
 
     // Revoke: unmap the page everywhere and delete every capability to it, ours included. The
     // frame was retyped with GRANT, so we are allowed to.
-    let revoked = revoke_frame(frame);
+    let revoked = revoke_page_frame(frame);
     // Our PageFrame capability is gone now: a second operation on that slot must fail
     // (NoSuchSlot). We do NOT touch VA again, which is unmapped and would fault.
     let after = if map_page_frame(frame, VA, true, MEMORY_REGION) {

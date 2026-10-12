@@ -121,8 +121,8 @@ use line_editor::proto;
 use swish::{Route, Say, Status, Untimed, sequence};
 use user_mode_runtime::mapped_window::MappedWindow;
 use user_mode_runtime::{
-    call, cap_delete, cntfrq, destroy_region, exit, monotonic_nanos, now, reap, receive,
-    receive_fault, retype_into_kernel_object, retype_sleeper, send, sleep_until, split_region, yield_now,
+    call, cap_delete, cntfrq, destroy_memory_region, exit, monotonic_nanos, now, reap, receive,
+    receive_fault, retype_into_kernel_object, retype_sleeper, send, sleep_until, split_memory_region, yield_now,
 };
 
 // **The shell is a directory of modules** (milestone 844 (the shell program is split along its
@@ -1035,7 +1035,7 @@ fn run(nav: &mut Nav, cmd: &[u8], spec: RunSpec) {
 /// Carve `pages` off our own untyped budget (slot 3) into a delegatable child untyped. `None` when
 /// the budget is exhausted.
 fn memory_region_split(pages: u64) -> Option<u64> {
-    let r = split_region(BUDGET, pages);
+    let r = split_memory_region(BUDGET, pages);
     if r < 0 { None } else { Some(r as u64) }
 }
 
