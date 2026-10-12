@@ -119,24 +119,8 @@ under §212's cap, and is
 
 ## What other operating systems do
 
-### seL4: notification objects, bound to TCBs (the model we adopt)
-
-seL4 has a separate `Notification` object type: a data word (an array of binary semaphores) plus a
-queue of TCBs. `seL4_Signal` ORs the capability's badge into the word and wakes the head waiter (or
-counts the signal if nobody is waiting). `seL4_Wait` blocks if the word is zero, returns the word
-and clears it if non-zero. `seL4_Poll` is the non-blocking version.
-
-The key mechanism is binding (`seL4_TCB_BindNotification`): a notification bound to a TCB
-delivers signals even while the thread is blocked in `RECV` on an endpoint. The receiver
-distinguishes "this was IPC" from "this was a notification" by checking the badge. This is how seL4
-does `select` without a `select` syscall: one blocking wait point that can be woken by either a
-synchronous IPC message or an async notification, and the badge tells you which.
-
-### Unix, Fuchsia, Mach and Redox
-
-Cut on 2026-09-26 to fit the amendment under §212 (a prose budget)'s cap; the survey is
-[at `256815e56`](https://github.com/nifeos/nife/blob/256815e5609cfb961ccb6526f8a0d3316e589402/design/decisions/0101-notification-objects.md#unixlinux-selectpollepollkqueue).
-Mach's port sets are what seL4 replaced.
+Moved to [`prior-art.md`](0101-notification-objects/prior-art.md): seL4, then Unix, Fuchsia, Mach
+and Redox.
 
 ## The design
 
@@ -331,43 +315,8 @@ waking it from whichever child's endpoint delivers first. That is now possible b
 
 ## Why not the alternatives
 
-### Wait-any on endpoints (the port-set model)
-
-A `RECV` that waits on a *set* of endpoints. Mach's port sets, and the form notes/compositor.md
-considered.
-
-Rejected for the reason seL4 rejected it: the set is a new container object with its own lifetime
-and revocation, and every endpoint in the set gains a second wait queue (the set's). The
-notification object is simpler: one queue, one word, no container, and the binding mechanism gives
-the multiplexing without the set's complexity.
-
-### Non-blocking RECV (the poll model)
-
-A `RECV` that returns immediately if no message is pending. seL4 has this (`seL4_NBRecv`,
-`seL4_Poll`), and it is part of this design (`POLL` on a notification). But non-blocking RECV alone
-does not solve the multiplexing problem - it turns "block" into "spin," and a spin loop burns a hart
-(milestone 106's current answer, which the notes call "the honest interim a riscv-SMP lost wakeup
-forced"). The notification object is what makes non-blocking RECV useful: poll the endpoint, poll
-the notification, and if nothing is ready, `WAIT` on the notification (which blocks until something
-is).
-
-### Pull-based source (the single-endpoint model)
-
-Restructure the sink contract so a stage `CALL`s for input and `SEND`s output on one endpoint, and
-the shell's loop is one `RECV` that either replies with bytes or writes bytes out. notes/pipes.md
-records this as a design fork and calef's call.
-
-Rejected for the reason the notes give: it destroys the property that the read end and write end are
-separate capabilities, so the program on the right of a `|` could write back up its own input. That
-property is called "load-bearing" and the notification object preserves it: read and write stay
-separate endpoints, and the multiplexing happens at the wait level, not the protocol level.
-
-### Buffering stage
-
-Measured and rejected (notes/pipes.md, 2026-08-03; full text [at
-`256815e56`](https://github.com/nifeos/nife/blob/256815e5609cfb961ccb6526f8a0d3316e589402/design/decisions/0101-notification-objects.md#buffering-stage)).
-A buffer doubles the per-message cost and buys decoupling, not bandwidth, and the notification
-object solves the deadlock it was proposed for.
+Moved to [`alternatives.md`](0101-notification-objects/alternatives.md): wait-any on endpoints,
+non-blocking `RECV`, a pull-based source, and a buffering stage.
 
 ## The honest caveats
 

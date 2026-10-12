@@ -12,8 +12,8 @@ current index at merge; two other numbers in this neighborhood were already take
 requests when this was written, one of them proposing a milestone for the JH7110's PLDA PCIe root
 complex driver, unmerged as of this writing so not cited here by number). Scoped the same day as
 that other proposal, as a parallel check of whether x86_64 can reach a real-hardware data point for
-[DECISIONS §86](../decisions/0086-el0-nvme-driver.md) faster and cheaper than a from-scratch JH7110
-driver would, given that x86's PCIe discovery is ACPI-described and architecturally identical
+[DECISIONS §86 (whether an NVMe driver can leave the kernel)](../decisions/0086-el0-nvme-driver.md)
+faster and cheaper than a from-scratch JH7110 driver would. The reason to expect so: x86's PCIe discovery is ACPI-described and architecturally identical
 between QEMU's `q35` and real x86 hardware (unlike RISC-V's QEMU-only fake ECAM device).
 
 It never needed a syscall surface, a new dependency or a `DECISIONS.md` section of its own, and it
@@ -72,78 +72,21 @@ probe here with nobody home", true of x86_64 unconditionally, since it has no de
    not pass. `script/test` on all three architectures: aarch64 295/1, riscv64 298/1, x86_64 99/6 (one
    skip converted to one pass versus the pre-existing baseline; no regressions). `script/lint` green.
 
-## What was deliberately not built
+## What was not built, and what this means for §86, in appendices
 
-- **`helpers/qemu-runner-x86_64.sh` was not touched.** q35 already presents six PCI functions with
-  zero `-device` flags (host bridge, VGA, a default NIC, ISA bridge, SATA/AHCI, SMBus; measured via
-  QEMU's monitor `info pci`), which is what made proof possible without changing the runner's default
-  device set at all, the exact fork the brief for this lane flagged as needing to stop and report
-  rather than silently changing. It did not arise.
-
-- **An actual `-device nvme` attach was investigated and is NOT safe today**, which is worth
-  recording precisely because it looked free. `xtask` already sets `NIFE_NVME` unconditionally for
-  every architecture's leg, and both aarch64 and riscv64 runners already wire it; only x86_64's
-  does not. But `kernel::nvme::tests::the_nvme_disk_serves_the_block_interface_end_to_end` hard-
-  asserts `crate::iommu::active()`, and `arch::x86_64::iommu::active()` is a permanent `false` (no
-  VT-d built; roadmap item 6 of milestone 161). `nvme::bring_up()` itself tolerates an inactive
-  IOMMU (it runs the controller unconfined, printing nothing), so attaching the device would not
-  skip the existing test, it would turn it into a **hard failure** on the confinement assertion.
-  Getting a real NVMe device working on x86, confined, is therefore gated on VT-d/DMAR parsing, not
-  on anything this milestone touches. This was established by reading `nvme.rs` and
-  `arch/x86_64/iommu.rs` directly rather than by running the experiment and breaking the suite.
-
-## What this does and does not establish for DECISIONS §86
-
-What it establishes: the *discovery* half of what a real hardware data point needs. x86's PCIe
-enumeration mechanism (ACPI's MCFG naming an ECAM window, a chipset register enabling its decode,
-then ordinary config-space reads) is now proven under QEMU using the same mechanism real x86
-hardware uses; nothing about the mechanism itself is QEMU-specific the way the device is on RISC-V.
-Milestone 87's OptiPlex, once it boots this kernel, should need no code change here to also
-enumerate its own real PCI bus; only the values (its own MCFG base, its own BAR hole) will differ,
-and if real UEFI leaves ECAM already enabled, `enable_pcie_ecam`'s rewrite should be a no-op.
-
-**What it does not establish**: §86 is about a *confined userspace NVMe driver*, and confinement is
-exactly the piece this milestone cannot touch. x86 has no IOMMU driver at all (VT-d, item 6), so
-there is no path from what is built here to "NVMe behind a real IOMMU" without first building VT-d,
-which is a materially larger piece of work than this one (a DMAR table walk, translation table
-setup, and fault handling, the same shape §16b's SMMUv3/RISC-V IOMMU drivers took) and is out of
-this lane's scope by the brief that started it. The proposed JH7110 driver (see the note about it
-above) has the same gap in reverse shape: it would reach real NVMe hardware over a real
-(non-QEMU-fake) discovery mechanism, but RISC-V's IOMMU driver already exists (milestone 16b), so
-its path to a *confined* data point is shorter once its hardware bring-up lands. Read plainly: x86
-got the cheaper half of §86's evidence (discovery) at low cost; the JH7110 path still owns the
-harder half (confinement over a real, non-fake root complex) for its own architecture, and x86 needs
-VT-d built first to catch up on that half here. Neither path alone gives §86 the full data point it
-is holding out for.
+- [`not-built.md`](0165-x86-64-pci-acpi-mcfg/not-built.md): the runner this block left alone, and the
+  NVMe attach it investigated and did not make.
+- [`decision-86.md`](0165-x86-64-pci-acpi-mcfg/decision-86.md): which half of the evidence
+  [DECISIONS §86](../decisions/0086-el0-nvme-driver.md) waits on this work reaches, and which half it
+  cannot.
 
 ## What 2026-09-02 found, and what it corrects
 
 Three things, and the first of them is why this block did not stay closed as a wiring exercise.
 
-### The ACPI walk refused every table on a machine with real RAM
-
-`arch::x86_64::machine::reachable` bounded the walk at 1 GiB, on a comment saying the boot map
-"aliases only the low gigabyte". `boot.s` has never done that: it builds 2048 page-directory
-entries of 2 MiB covering the low 4 GiB, points both the identity entry and the direct map at them,
-and says so in its own comment, because the APICs and the ECAM window are all above 1 GiB.
-
-Nothing caught the disagreement, and the reason is the interesting part. Firmware places its ACPI
-tables just under the top of RAM, and both QEMU runners pass `-m 256M`, so the tables landed at
-`0x0fb7e014` and fit under a bound four times too small. Booted under OVMF with `-m 2048` they land
-at `0x7fb7e014`, and the same kernel came up with **no RSDP, no MADT, no MCFG and no DMAR**:
-no APIC, no timer, no PCI, no VT-d, on a machine that had described all four. Every real x86 machine
-has more than 1 GiB, so this was unconditional on xenon and invisible in every gate.
-
-With the bound at the boot map's real extent the same 2 GiB boot reads the XSDT, the MADT and the
-MCFG, enables the ECAM window at `0xe0000000`, brings up both APICs and the timer, and completes.
-
-The gate moved to where the bug was, rather than a test being added beside it: the UEFI runner
-now boots at 2 GiB by default (`NIFE_MEM` sets it back for the memory-map comparison in
-notes/x86-uefi-boot.md), and `cargo xtask uefi-boot` asserts the end of the chain, a PCIe window
-enabled from an MCFG entry read at a high physical address. Falsified rather than assumed: with the
-bound put back to 1 GiB that gate fails on all three of its assertions. It also fails on the
-"outside the boot map" line the walk now prints, because this is the one failure that looks like a
-healthy boot from outside, a tour that completes on a machine that simply has no devices.
+The first, the ACPI walk refusing every table on a machine with real RAM, is told in
+[`acpi-walk-bound.md`](0165-x86-64-pci-acpi-mcfg/acpi-walk-bound.md) with the gate that now watches
+for it.
 
 ### The PCIEXBAR write was unconditional, and the fault that justified it does not reproduce
 
@@ -234,6 +177,18 @@ proven here is the handoff below: the suite does not run under real firmware, on
   the same way real firmware does.
 - VT-d and PCI interrupt routing, which this block owed and no longer does: milestone 161's item
   6 and milestone 215 respectively.
+
+## BUGS
+
+- The Index row still says x86 has no IOMMU driver ("VT-d, unbuilt"). The status paragraph says
+  milestone 161's item 6 has since built it, and so does the Follow-on. The Index row is kept as
+  written because `script/roadmap` parses it (found 2026-10-12, UTC). The appendices
+  [`not-built.md`](0165-x86-64-pci-acpi-mcfg/not-built.md) and
+  [`decision-86.md`](0165-x86-64-pci-acpi-mcfg/decision-86.md) record the same claim as it stood at
+  first landing.
+- "What is owed" still lists two proposed milestones as unnumbered. The Follow-on records them as
+  milestone 195 (finish the UEFI boot path), which shipped the suite under real firmware, and milestone 256 (x86_64 places PCI BARs in a hardcoded window), which takes the BAR
+  window from the machine (found 2026-10-12, UTC).
 
 ## Follow-on
 
