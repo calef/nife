@@ -1,7 +1,7 @@
 ---
-status: IN-PROGRESS
+status: BUILT
 raised: 2026-10-11
-branch: milestone/875-the-acpi-table-parser-is-split-along-its-seams
+built: 2026-10-12
 milestone_dependencies: none
 decision_dependencies: 266, 282, 293
 machine_requirements: none
@@ -28,7 +28,8 @@ decisions had answered forks 1 and 2 below by then: §272 (the grant-plan crate 
 private modules), §274 (the filesystem-protocol crate root splits into its module files) and §279
 (the system-initializer crate root splits into private modules). §282 (when a file is split, the
 parent becomes an index) moves the RSDP, header and root walk out of `acpi.rs` too. §293 applies
-them and asks nothing. Every module name ships provisional.
+them and asks nothing. The maintainer recorded it as settled by precedent on #1972 the same day,
+and §293 is decided. Every module name ships provisional.
 
 Reuse: not applicable; this moves code and adds none. The precedent is in this module already.
 The IVRS, AMD's counterpart of the DMAR, lives in `acpi/ivrs.rs` (694 lines) with its own tests.
@@ -165,6 +166,29 @@ Found with `grep` at `396187b0b`. A lane has to carry each one.
 4. The 8 harnesses pass, and their 8 patches apply and fail under their new names.
 5. `cargo doc` for the crate reports no broken intra-doc link.
 6. Each new module carries a `//! Name:` block marked provisional.
+
+## What was built
+
+Built 2026-10-12 (UTC). `crates/machine_discovery/src/acpi.rs` went from 3,009 lines to 94, an
+index of module docs and BUGS, `mod` lines and named re-exports, so its file-length and
+parent-index rows are gone. Every name below is provisional.
+
+| file | lines | holds |
+|---|---|---|
+| `acpi/sdt.rs` | 150 | `AcpiError`, the checksum, the table header; 1 harness, 2 tests |
+| `acpi/root.rs` | 299 | the RSDP and the root walk; 2 harnesses, 7 tests |
+| `acpi/madt.rs` | 775 | the MADT and legacy IRQ routing; 2 harnesses, 18 tests |
+| `acpi/mcfg.rs` | 195 | the MCFG; 1 harness, 3 tests |
+| `acpi/dmar.rs` | 1,143 | the DMAR and `DmarUnits`; 2 harnesses, 23 tests |
+| `acpi/gtdt.rs`, `acpi/spcr.rs`, `acpi/fadt.rs` | 91, 97, 219 | one table each; 2, 2 and 3 tests |
+| `acpi/bytes.rs` | 21 | the three readers `ivrs` also uses |
+| `acpi/tests.rs` | 150 | shared fixtures and the one test that reads four tables |
+
+Each item on the list above holds. The 61 tests pass under the same names with no body changed.
+The 8 harnesses verify, and their patches, renamed to `acpi.<table>.verification.*`, apply and
+go red. `cargo doc` with private items reports no warning. `script/test` passes on all three
+architectures. `git diff --color-moved` shows every changed code line moved, except visibility,
+imports and module scaffolding.
 
 ## Index row
 

@@ -1,6 +1,8 @@
 ---
-status: PROPOSED
+status: DECIDED
 raised: 2026-10-12
+decided: 2026-10-12
+ratified_by: calef
 ---
 
 # 293. The ACPI table parser splits into one private module per table
@@ -11,9 +13,23 @@ says is calef's call before a line moves. Written by lane
 `milestone/875-the-acpi-table-parser-is-split-along-its-seams`. *(Section number provisional until
 the merge queue lands it.)*
 
-Nothing in it asks calef for a ruling. The block named three forks on 2026-10-11, and by the time a
-lane took it, decisions already on main answered each one. They are applied below, with the
-decision that answers each, so that a reader can check the reading rather than re-decide it.
+It blocked the move and nothing else.
+
+## The ruling
+
+calef asked nothing separate on this section. The block named three forks on 2026-10-11, before
+§282 (when a file is split, the parent becomes an index) was ruled, and rulings he had already
+given answer each. Modules are private with named re-exports, per §272 (the grant-plan crate root
+splits into private modules), whose fork 1 he answered *"Private modules"*, and §279 (the
+system-initializer crate root splits into private modules); `ivrs` stays public because it already
+is. Tests and Kani harnesses sit beside their table, per §274 (the filesystem-protocol crate root
+splits into its module files) and his rulings on [#1913](https://github.com/nifeos/nife/pull/1913)
+and [#1915](https://github.com/nifeos/nife/pull/1915). `acpi.rs` becomes an index, per §282, which
+calef set on [#1959](https://github.com/nifeos/nife/pull/1959): *"Agreed, make the parent an
+index."* That overrides the block's cut, which kept the RSDP, header and root walk in `acpi.rs`.
+Names stay provisional for his naming pass. The maintainer recorded this as settled by precedent
+on [PR #1972](https://github.com/nifeos/nife/pull/1972#issuecomment-6117079229) at 03:13 (UTC) on
+2026-10-12. The forks are kept below as they were raised.
 
 ## What the file was
 
@@ -50,7 +66,7 @@ No file is over 1,500. The block's own cut kept the RSDP, header and root walk i
 about 570 lines; §282 (when a file is split, the parent becomes an index) landed the same day and
 moves them into `root` and `sdt`.
 
-## The forks, and what answers each
+## The forks, as raised, and what answers each
 
 1. **Private modules with named re-exports, or public modules like `ivrs`.** Answered by §272 (the
    grant-plan crate root splits into private modules) and §279 (the system-initializer crate root
