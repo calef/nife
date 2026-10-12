@@ -1043,3 +1043,7 @@ usb,find_boot_keyboard,replace && with ||,killed,killed by a_boot_mouse_with_a_w
 usb,find_boot_keyboard,replace < with <=,killed,killed by a_short_descriptor_is_skipped_and_two_bytes_is_enough
 usb,find_boot_keyboard,replace match guard len >= ENDPOINT_LEN with true,killed,killed by a_short_descriptor_is_skipped_and_two_bytes_is_enough
 usb,find_boot_keyboard,replace match guard len >= INTERFACE_LEN with true,killed,killed by a_short_descriptor_is_skipped_and_two_bytes_is_enough
+video_terminal,Keyboard::event,replace != with ==,killed,killed by control_and_a_letter_is_a_control_character (releasing right control types letters again)
+video_terminal,Keyboard::event,replace == with !=,equivalent,"the surviving site (keymap.rs, code == KEY_LEFTCTRL inside the control branch) swaps which of two flags each control key sets, and only their OR is ever read, so the swap is unobservable; the key's other sites are killed by the keymap tests; the 2026-10-12 per-crate re-run still reports it"
+video_terminal,Vt::clamp_rows,replace < with <=,equivalent,"the expression is min(fit, MAX_ROWS) and at fit == MAX_ROWS both arms yield the same number; the 2026-10-12 per-crate re-run still reports it"
+video_terminal,Vt::scrollback_depth,replace < with <=,equivalent,"the expression is min(fit, SCROLLBACK_ROWS) and at the tie both arms yield the same number; the 2026-10-12 per-crate re-run still reports it"
