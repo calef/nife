@@ -89,8 +89,8 @@ list is short and it is what makes the blockers concrete:
 1. **Find `job_mix_task`'s ELF in the initrd archive.** `nifefs::Fs::parse(archive).read(..)` plus
    `elf::Elf::parse`, the shape `components/src/root_supervisor.rs:63-67` already uses.
 2. **Create 67 rendezvous objects** out of its own budget: one report, 32 go, 32 child-done, 2 echo.
-   `retype_object(budget, abi::objtype::RENDEZVOUS)`, which `fixtures/src/rendezvous_minter.rs`
-   proves works from EL0.
+   `retype_into_kernel_object(budget, abi::objtype::RENDEZVOUS)`, which
+   `fixtures/src/rendezvous_minter.rs` proves works from EL0.
 3. Build and start 34 processes with a per-child grant set, each carrying its own rights.
    `supervision_protocol::build_child` and `start_child`.
 4. Split 32 per-task budgets off its own region (`job_mix::TASK_BUDGET_PAGES` is 25 pages each,
@@ -113,7 +113,7 @@ milestone 126 (the `procps` package: who else is running, and who is allowed to 
 and milestone 281 (`watch` holds exactly what `ps` holds, so it is nothing). Of the thirteen programs the shell can run
 (`least_authority_demo`, `memory_grant_depleter`, `interrupt_heeder`, `interrupt_ignorer`, `date`,
 `rm`, `wc`, `mdr`, `ps`, `pgrep`, `uptime`, `printenv`, `uuid`), **not one** contains a
-`build_child`, a `retype_object(.., RENDEZVOUS)` or a `memory_region_split`. Even
+`build_child`, a `retype_into_kernel_object(.., RENDEZVOUS)` or a `memory_region_split`. Even
 `memory_grant_depleter`, the only one holding an untyped at all, only maps frames with it.
 
 A job-mix supervisor is a program whose entire job is building 34 processes. Admitting it to that

@@ -30,9 +30,9 @@ which no user workload could reach.
 
 Four properties, each of which was a requirement rather than a bonus:
 
-- No syscall is added. The userspace half already existed: `abi::irq::WAIT` is a method on an `Irq`
-  capability, and `user_mode_runtime::irq_wait` calls it. Only the *raise* was missing, and the
-  kernel is already the thing that raises interrupts.
+- No syscall is added. The userspace half already existed: `abi::irq::WAIT` is a method on an
+  `Irq` capability, and `user_mode_runtime::interrupt_wait` calls it. Only the *raise* was
+  missing, and the kernel is already the thing that raises interrupts.
 - Nothing exists in a production build. That is proved in [qemu-baselines.md](qemu-baselines.md),
   not asserted.
 - It is architecture-neutral, and that is load-bearing. riscv64 has no software-raisable line that
