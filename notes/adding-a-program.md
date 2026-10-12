@@ -151,7 +151,7 @@ Three edits, and after the first the machine names each of the others.
    exception it allows (a program a transcript cannot drive, listed with the reason).
 
 And a fourth only if your manifest says `output: OutputSpec::Words`, meaning the answer is a
-number in a register rather than a stream: an arm in `write_outcome` in `crates/swish/src/lib.rs`
+number in a register rather than a stream: an arm in `write_outcome` in `crates/swish/src/sentences.rs`
 that renders it. `every_program_that_answers_in_words_renders_its_answer` fails without one. A
 byte-stream program needs nothing there.
 

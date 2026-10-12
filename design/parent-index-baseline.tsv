@@ -28,7 +28,6 @@ crates/name_resolution_protocol/src/lib.rs	402
 crates/paging/src/lib.rs	590
 crates/stick_maker/src/host/mod.rs	106
 crates/stick_maker/src/lib.rs	4
-crates/swish/src/lib.rs	2525
 crates/system_log/src/lib.rs	503
 crates/usb/src/lib.rs	37
 crates/user_mode_runtime/src/lib.rs	542

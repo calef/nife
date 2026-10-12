@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-11
+built: 2026-10-12
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 282, 290
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -25,6 +26,13 @@ decides what a typed line is, with no capability in hand.
 The cut and every module name below are calef's call. A lane writes them up as a
 `status: PROPOSED` file in `design/decisions/` before it moves a line, and its pull request
 carries `needs-architect`.
+
+The lane wrote it up on 2026-10-12 (UTC) as §290 (the shell logic crate root splits into private
+modules by feature). It asks nothing. §272 (the grant-plan crate root splits into private modules)
+and §279 (the system-initializer crate root splits into private modules) answer the first two
+questions below, and names go to calef's naming pass. §282 (when a file is split, the parent
+becomes an index) was decided after this block was written, and it moves out of `lib.rs` the items
+the cut below kept there.
 
 Reuse: not applicable; this moves code and adds none. The crate already has four submodules
 (`bare`, `complete`, `jig_versions`, `sequence`), each under 500 lines, which is the precedent.
@@ -157,6 +165,58 @@ Found with `grep` at `396187b0b`.
    the `lib.rs:598` row and the file-length row removed.
 5. `cargo doc` for the crate reports no broken intra-doc link.
 6. Each new module carries a `//! Name:` block marked provisional.
+
+## What was built
+
+Built 2026-10-12 (UTC) on `17b23264e`. `crates/swish/src/lib.rs` went from 3,850 lines to 133, an
+index of the crate docs (unchanged), `mod` and `use` lines and named re-exports, so its file-length
+and parent-index rows are gone. Every name below is provisional and carries a `//! Name:` line.
+
+| file | lines | tests | holds |
+|---|---|---|---|
+| `lib.rs` | 133 | | crate docs, `mod` and `use` lines, every public item re-exported by name |
+| `say.rs` | 106 | 50 | `Say`, `HEAP_MAX_BYTES`, `write_say` |
+| `status.rs` | 105 | 73 | `Status`, `STATUS_WORD` |
+| `routing.rs` | 77 | 60 | `Route`, `route` |
+| `words.rs` | 259 | 348 | pattern versus text, `designation`, `write_set`, `echo`, quoting |
+| `batching.rs` | 132 | 49 | `Sweep`, `write_sweep`, `write_batch` |
+| `number.rs` | 23 | 14 | `write_num` |
+| `apropos.rs` | 89 | 100 | `write_found`, `write_apropos` |
+| `timing.rs` | 114 | 76 | `Untimed`, `write_untimed`, `write_duration`, `write_timing` |
+| `sentences.rs` | 285 | 152 | `pwd`, `help`, refusals, the fixed sentences, `write_vouch`, `write_outcome` |
+| `endowment.rs` | 162 | 186 | `write_holdings`, `write_census`, the bind row, `write_config_values` |
+| `preview.rs` | 672 | 740 | `Vouched`, `caps <path>`, `write_capabilities`, `write_preview`, the row writer |
+| `test_support.rs` | 54 | | `shown`, `spec_of`, `listing`, `endowment` |
+
+The tests column is each module's `tests.rs` child. The 83 tests moved unchanged, split by what each
+calls rather than by the banner it sat under. Two were added: `script/coverage` counts no doctest,
+and `write_sweep` and `route`'s `time` and `xargs` arms ran only in doctests, which the crate root's
+average had hidden. Alone, `batching.rs` measured 18.9% against the 85% floor. Each child takes `use super::*` except `status`,
+which needs nothing from the root. `write_config_values` became `pub(super)` and the test helpers
+`pub(crate)`; nothing public widened.
+
+One change reaches past `crates/swish/src`, beyond the comment in `xtask/src/swish_check.rs`.
+Re-exporting `write_caps` and `write_image_caps` by name would grow the cap ratchet. So a commit
+ahead of the move applies calef's 2026-10-06 (UTC) ruling against abbreviating capability early, as
+#1913 did for `CapKind`. They are `write_capabilities` and `write_image_capabilities`, the
+worklist's own target, and `components/src/swish/capabilities.rs` calls them by the new names.
+
+`write_sweep`'s 45-line doc carried its comment-block row to `batching.rs`, and the heap cap test
+its `cap` allowance to `say/tests.rs`. The notes that sent a reader to `lib.rs` for `write_outcome`,
+the status and quoting name the module now.
+
+## Follow-on
+
+- **Decision.** §290,
+  `design/decisions/0290-the-shell-logic-crate-root-splits-into-private-modules-by-feature.md`,
+  asks nothing; it is the maintainer's to record as decided by precedent. Every module name is
+  calef's in his naming pass.
+- **Recorded.** `design/naming/capability-worklist.md` still lists `write_caps` and
+  `write_image_caps`. A developer lane edits no record under `design/` but its own block, so the
+  row is the maintainer's to mark done.
+- **Refused.** Repointing the line-number citation of `write_apropos` in
+  `design/roadmap/0279-documentation-service.md` here, for the same reason. The function is now in
+  `crates/swish/src/apropos.rs`.
 
 ## Index row
 
