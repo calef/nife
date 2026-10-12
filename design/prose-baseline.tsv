@@ -112,7 +112,7 @@ design/decisions/0119-oom-causes-declined.md	-	20.5	45	-	-
 design/decisions/0120-boot-entropy-stopgap-declined.md	-	21	82	-	-
 design/decisions/0121-port-io-capability.md	3398	21	67	-	-
 design/decisions/0122-durable-schedule-store-format.md	-	27	60	-	-
-design/decisions/0123-boot-time-rederivation-privilege.md	3153	24	72	-	-
+design/decisions/0123-boot-time-rederivation-privilege.md	-	24	72	-	-
 design/decisions/0124-x86-64-syscall-abi.md	-	21.5	52	-	-
 design/decisions/0125-durable-schedule-manifest.md	-	31	77	-	-
 design/decisions/0126-two-directory-cwd.md	-	-	55	-	-
