@@ -184,8 +184,9 @@ sites, each a small change.
 
 ## Follow-on
 
-- The 27 in `components/` convert in milestone 812 (real threads in one address space), each one
-  lowering the ceiling. Open question 3 stands.
+- **Milestone 812.** The 27 in `components/` convert in milestone 812 (real threads in one address
+  space), each one lowering the ceiling. Open question 3 stands.
+- **Done.** `SERVER_MAPS`, held for #1988, converted in this lane once it landed.
 
 ## Index row
 
