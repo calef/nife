@@ -798,7 +798,7 @@ pub fn preemptions() -> u64 {
 /// Preemptions taken **on this core**, which is the question the global counter cannot answer.
 ///
 /// A window with interrupts masked takes none of these however long it lasts, and that property is
-/// what `kernel/src/bench.rs`'s `map_new` is built on.
+/// what `kernel/src/bench/spawn_map.rs`'s `map_new` is built on.
 /// See milestone 541 (a timed window that excludes preemption), and
 /// `kernel/src/preemption_window_tests.rs`.
 ///

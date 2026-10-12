@@ -9,7 +9,7 @@ program being confined.
 The contract lives with its code in `crates/filesystem_protocol` (the `dir` and `dirent` modules, and the
 `OPENDIR`/`READDIR`/`MKDIR`/`RENAME` verbs in `fs`). The engine-side implementation is
 `redoxfs_server/src/lib.rs`; the caretaker is `components/src/fs_subtree_caretaker.rs`; the wiring and the
-attacks are `kernel/src/user/fs_service.rs`'s `start_granted_dir` and
+attacks are `kernel/src/user/fs_service/directory_grant.rs`'s `start_granted_dir` and
 `system_tests/src/user/dir_capability_tests.rs`. This note is the argument around them. Read
 [fs-server.md](fs-server.md) first for the contract this extends. The evidence behind it is in
 [dir-capability/](dir-capability/README.md).

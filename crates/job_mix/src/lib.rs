@@ -70,7 +70,7 @@
 //! A process kernel's cost is the kernel stack a blocking thread leaves behind, so the quantity that
 //! matters is how many *distinct* stacks the machine cycles through and how much of the cache each
 //! displaces between visits. [`COMPUTE`] and [`TOUCH`] are what displace it: the "application"
-//! that runs between two kernel entries, the thing `kernel/src/bench.rs`'s `app_displacement`
+//! that runs between two kernel entries, the thing `kernel/src/bench/app_displacement.rs`'s `app_displacement`
 //! (milestone 134 (the register of measures)'s E4) measures in isolation and a ping-pong micro-benchmark leaves out entirely.
 //!
 //! # BUGS
