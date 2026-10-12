@@ -21,7 +21,6 @@ too_many_lines	components/src/timetable.rs	_start	155
 too_many_lines	components/src/usb_keyboard_driver.rs	Host::bring_up	102
 too_many_lines	crates/designware_mobile_storage/src/sd.rs	identify	138
 too_many_lines	crates/grant_plan/src/program/manifests.rs	Prog::manifest	555
-too_many_lines	crates/manifest_note/src/lib.rs	decode	106
 too_many_lines	crates/swish/src/preview.rs	write_preview_rows	263
 too_many_lines	crates/system_initializer/src/activation.rs	edit	155
 too_many_lines	crates/system_initializer/src/boot_sequence.rs	boot	847
