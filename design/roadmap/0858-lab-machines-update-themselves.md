@@ -2,7 +2,7 @@
 status: NOT-STARTED
 raised: 2026-10-07
 promoted_from: lab-machines-update-themselves
-milestone_dependencies: 198, 809, 805, 23, 666, 592, 593, 53
+milestone_dependencies: 198, 809, 805, 23, 666, 592, 593, 53, 911
 decision_dependencies: unwritten
 machine_requirements: x86_64 and riscv64 silicon with a writable boot disk and a hardware watchdog
 specific_machine: radon (calef's preferred lab machine, and the one whose chooser, disk writes and watchdog are unbuilt)
@@ -44,6 +44,11 @@ calef ruled every fork on #1805 on 2026-10-07 (UTC), relayed by the maintainer i
 Fork 6 and the owner-source requirement are recorded as calef's ruling in §250 (an image names its
 distribution's package index)'s amendment of 2026-10-07. The cordoba spec is
 [notes/lab-index-on-cordoba.md](../../notes/lab-index-on-cordoba.md).
+
+An automatic update installs only within an approval file the owner wrote, through an installer
+endpoint badged to it: milestone 911 (scripted installs grant only what the owner's approval file
+allows), added 2026-10-12 (UTC). Fork 6 said automatic updates are an owner setting; 911 is what
+bounds one.
 
 This file stayed a proposal until 2026-10-09 (UTC). #1796's all-ruled proposal stayed one with its
 worklist, and milestone 809 was promoted only on calef's word. Every number below is the
