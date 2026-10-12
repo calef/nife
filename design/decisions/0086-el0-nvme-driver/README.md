@@ -1,0 +1,23 @@
+# §86's appendices
+
+[`../0086-el0-nvme-driver.md`](../0086-el0-nvme-driver.md) is the page to read. It holds the
+question, the options, the recommendation as first made, the research pass's repriced options and
+costs, and the decision, and a reader can act on it without opening anything here. calef ruled on
+2026-10-12 (UTC) that §86 is split under §212 (a prose budget) rather than given an exception. These
+files hold what its prose budget has no room for:
+
+- [`vt-d-and-interrupts.md`](vt-d-and-interrupts.md): the fixes the VT-d exercise needed,
+  interrupt remapping, and reversibility.
+- [`research-findings.md`](research-findings.md): the research pass on the hold, the premise, this
+  tree's analogues and prior art, and the research lane's reading.
+
+*Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-cap-86-and-27, which split the
+parent under §212 (a prose budget). The directory follows §212's siting default. calef names
+directories.*
+
+- `vt-d-and-interrupts` Name: provisional, minted 2026-10-12 (UTC) by
+  maintainer/prose-cap-86-and-27, for the end of the parent's "Recommendation", "The axis nothing
+  in this section has named" and "Reversibility, and who has acted". calef names files.
+- `research-findings` Name: provisional, minted 2026-10-12 (UTC) by
+  maintainer/prose-cap-86-and-27, for five sections of the parent's research pass. calef names
+  files.
