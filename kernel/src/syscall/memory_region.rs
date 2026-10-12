@@ -1,4 +1,5 @@
-//! **The `MemoryRegion` methods**: map, retype, split, destroy and the usage records.
+//! **The `MemoryRegion` methods**: map, retype, split, destroy and the usage records, and since
+//! 2026-10-12 (UTC) the arm of [`invoke`](super::invoke) that decodes them.
 //!
 //! Cut out of `syscall.rs` unchanged on 2026-10-12 (UTC) by lane maintainer/near-ceiling-splits,
 //! so the parent stays under §266 (a Rust source file stays under 2,000 lines) and moves toward
@@ -12,6 +13,70 @@
 
 use super::*;
 use crate::arch::mmu;
+
+/// **The `MemoryRegion` arm of [`invoke`](super::invoke)**: the WRITE check each spending method
+/// asks for, then the method's out-of-line body.
+///
+/// Cut out of [`invoke`](super::invoke) on 2026-10-12 (UTC) by lane
+/// maintainer/long-function-paydown-invoke, for milestone 888 (a ratchet on function length), with
+/// its rights checks and its order unchanged. **`#[inline(always)]`, unlike every body below**,
+/// because this is decoder rather than method: the checks sat inline in `invoke` and are counted in
+/// `script/fastpath-footprint`'s flat `syscall_entry`, and this crate builds in several codegen
+/// units, where a plain function in a child module may not be inlined at all. Out of line, the
+/// arm would leave the measured set under a symbol the gate does not count and read as a shrink
+/// that nothing on the syscall path earned. Each body keeps the `#[inline(never)]` it had.
+///
+/// Name: provisional (lane maintainer/long-function-paydown-invoke, 2026-10-12 UTC).
+#[inline(always)]
+pub(super) fn memory_region_invoke(
+    capability: crate::cap::Cap,
+    region: u64,
+    method: u64,
+    [a0, a1, a2]: [u64; 3],
+) -> Result<i64, Error> {
+    match method {
+        // Body extracted (milestone 156): all five `MemoryRegion` methods are memory-management
+        // administration a spawner runs while building a process, never a step of the IPC round
+        // trip `script/fastpath-footprint` bounds, so each stays out of `invoke`'s own bytes and
+        // `#[inline(never)]` on purpose. See `address_space_list`, the pattern this copies.
+        abi::memory_region::MAP => {
+            if !capability.rights.allows(Rights::WRITE) {
+                return Err(Error::NotPermitted);
+            }
+            memory_region_map(region, a0)
+        }
+        abi::memory_region::RETYPE_OBJ => {
+            if !capability.rights.allows(Rights::WRITE) {
+                return Err(Error::NotPermitted);
+            }
+            super::retype::memory_region_retype_obj(region, a0, a1, a2)
+        }
+        abi::memory_region::RETYPE => {
+            if !capability.rights.allows(Rights::WRITE) {
+                return Err(Error::NotPermitted);
+            }
+            memory_region_retype(region, a0)
+        }
+        abi::memory_region::SPLIT => {
+            if !capability.rights.allows(Rights::WRITE) {
+                return Err(Error::NotPermitted);
+            }
+            memory_region_split(capability, region, a0)
+        }
+        abi::memory_region::DESTROY => {
+            if !capability.rights.allows(Rights::WRITE) {
+                return Err(Error::NotPermitted);
+            }
+            memory_region_destroy(region)
+        }
+        // What the region was spent on (milestone 126's `free`, DECISIONS §225 (`free` sees the
+        // machine and your share) part 1). Under `ENUMERATE` alone, `address_space::LIST`'s rule
+        // one object type over: learning what a budget went to is not the authority to spend it.
+        // An unknown record is refused before the region is looked up, `SURVEY`'s order.
+        abi::memory_region::USAGE => memory_region_usage(capability, region, a0),
+        _ => Err(Error::BadMethod),
+    }
+}
 
 /// `MemoryRegion::MAP`: retype a page out of the untyped and map it, writable, at `va` in the caller's
 /// own address space. Both the page and any page tables come from the untyped, so the KERNEL
