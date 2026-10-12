@@ -15,6 +15,10 @@ number is provisional until the merge queue lands it; the title and slug are dra
 
 calef, 2026-10-12 (UTC): *"We want to be able to update the kernel through packages."*
 
+Asked the same day whether aarch64 under QEMU boots `uefi_loader` through edk2 (a) or through
+U-Boot's `bootefi` (b), calef answered *"a"* (2026-10-12 UTC). aarch64 takes the UEFI path x86_64
+takes under OVMF.
+
 ## What already plans it
 
 - Milestone 858 (lab machines update themselves through packages, and only a new kernel reboots
@@ -40,9 +44,10 @@ calef, 2026-10-12 (UTC): *"We want to be able to update the kernel through packa
 3. The loader finds the active kernel. On x86_64 that is 525's chooser. On aarch64 and riscv64 there
    is no chooser, and milestone 568 (the boot file has nowhere to go on a device-tree machine)
    blocks one.
-4. Each architecture's boot path. x86_64 boots `uefi_loader` from OVMF. aarch64 under QEMU can boot
-   it from edk2. riscv64 boots OpenSBI, then U-Boot, which runs `uefi_loader` with `bootefi`, as
-   858's fork 7 ruled for radon and argon.
+4. Each architecture's boot path. x86_64 boots `uefi_loader` from OVMF. aarch64 under QEMU boots
+   it from edk2, the same UEFI path, so 525's slot chooser is reused rather than written twice.
+   riscv64 boots OpenSBI, then U-Boot, which runs `uefi_loader` with `bootefi`, as 858's fork 7
+   ruled for radon and argon.
 5. Rollback. A new kernel that never confirms (554) spends its tries, and the chooser starts the
    previous slot.
 
@@ -60,8 +65,8 @@ kernel package, moved to QEMU rather than redesigned.
 
 ## BUGS
 
-- Whether aarch64 under QEMU boots through edk2 or through U-Boot's `bootefi` is open. It is asked
-  on #2023, with edk2 recommended.
+- argon's own path, U-Boot's `bootefi` (858's fork 7), is not what this milestone tests on
+  aarch64. The loader is UEFI code either way, so the gap is the firmware, not the chooser.
 
 ## Index row
 
