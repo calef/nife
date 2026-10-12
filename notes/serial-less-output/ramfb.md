@@ -46,7 +46,7 @@ QEMU's version.
 
 Two things the first red CI run settled, both worth knowing before touching this gate.
 
-The archive is chosen per architecture at the spawn. `cargo()` exports `NIFE_INITRD` pointing at
+The archive is chosen per architecture at the spawn. `cargo()` exports `NIFE_INITIAL_RAMDISK` pointing at
 the aarch64 archive, and every riscv64 caller in `xtask` has to override it. `screen_boot` did not,
 at first, which on a machine with the aarch64 archive already on disk produced
 `MEASURED BOOT REFUSED` inside an otherwise passing run, and in a CI job that never built one

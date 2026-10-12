@@ -23,7 +23,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use user_mode_runtime::{exit, map_page_frame, retype_page_frame, send_cap};
+use user_mode_runtime::{exit, map_page_frame, retype_into_page_frame, send_capability};
 
 const MEMORY_REGION: u64 = 0; // retype the frame and draw page tables from here
 const CHANNEL: u64 = 1; // delegate the frame to the consumer over here
@@ -33,7 +33,7 @@ const PAGE_FRAME_VA: u64 = address_space_map::pair_page(0x0000_0000_00A0_0000);
 pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
     // Retype: a page out of our budget becomes a PageFrame capability we hold. Nothing is mapped
     // yet.
-    let frame = retype_page_frame(MEMORY_REGION);
+    let frame = retype_into_page_frame(MEMORY_REGION);
     check(frame >= 0);
 
     // Map it read/write; the page tables to reach PAGE_FRAME_VA come from the same region.
@@ -54,7 +54,7 @@ pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
     }
 
     // Delegate a READ-only view: drop WRITE and GRANT on the way over.
-    send_cap(CHANNEL, frame as u64, abi::rights::READ, 0);
+    send_capability(CHANNEL, frame as u64, abi::rights::READ, 0);
 
     exit()
 }

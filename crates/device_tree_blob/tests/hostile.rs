@@ -570,12 +570,12 @@ fn node_props_tells_missing_prop_from_missing_node() {
     assert_eq!(out[1], None);
 }
 
-/// The initrd contract, boundary by boundary: 4-byte ints (the 32-bit platform shape, and the
-/// deleted-match-arm survivor), an exclusive end so start == end is "no initrd", and the chosen
-/// node found by NAME at depth 2, so a depth-2 node of another name carrying the same props is
-/// not an initrd.
+/// The initial ramdisk contract, boundary by boundary: 4-byte ints (the 32-bit platform shape, and
+/// the deleted-match-arm survivor), an exclusive end so start == end is "no initial ramdisk", and
+/// the chosen node found by NAME at depth 2, so a depth-2 node of another name carrying the same
+/// props is not an initial ramdisk.
 #[test]
-fn initrd_reads_widths_and_refuses_the_empty_and_the_misnamed() {
+fn initial_ramdisk_reads_widths_and_refuses_the_empty_and_the_misnamed() {
     let build = |name: &[u8], start: u32, end: u32| {
         let mut b = Blob::new();
         b.begin_node(b"");
@@ -589,19 +589,26 @@ fn initrd_reads_widths_and_refuses_the_empty_and_the_misnamed() {
 
     let blob = build(b"chosen", 0x4800_0000, 0x4800_8000);
     let dt = DeviceTreeBlob::from_bytes(&blob).unwrap();
-    let r = dt.initrd().unwrap().expect("a real initrd range");
+    let r = dt
+        .initial_ramdisk()
+        .unwrap()
+        .expect("a real initial ramdisk range");
     assert_eq!((r.start, r.size), (0x4800_0000, 0x8000));
 
     let blob = build(b"chosen", 0x4800_0000, 0x4800_0000);
     let dt = DeviceTreeBlob::from_bytes(&blob).unwrap();
-    assert_eq!(dt.initrd(), Ok(None), "start == end is an empty initrd");
+    assert_eq!(
+        dt.initial_ramdisk(),
+        Ok(None),
+        "start == end is an empty initial ramdisk"
+    );
 
     let blob = build(b"notchosen", 0x4800_0000, 0x4800_8000);
     let dt = DeviceTreeBlob::from_bytes(&blob).unwrap();
     assert_eq!(
-        dt.initrd(),
+        dt.initial_ramdisk(),
         Ok(None),
-        "the props only mean initrd inside /chosen"
+        "the props only mean initial ramdisk inside /chosen"
     );
 }
 
@@ -785,9 +792,9 @@ fn reserved_memory_honours_its_own_declared_widths() {
 
 /// `/chosen` stops meaning chosen when it closes: with the `END_NODE` comparison inverted the
 /// walker keeps attributing properties to it, and a later sibling's `linux,initrd-end`
-/// overwrites the real one, returning an initrd of the wrong size.
+/// overwrites the real one, returning an initial ramdisk of the wrong size.
 #[test]
-fn initrd_properties_after_chosen_closes_do_not_count() {
+fn initial_ramdisk_properties_after_chosen_closes_do_not_count() {
     let mut b = Blob::new();
     b.begin_node(b"");
     b.begin_node(b"chosen");
@@ -801,7 +808,10 @@ fn initrd_properties_after_chosen_closes_do_not_count() {
     let blob = b.finish();
     let dt = DeviceTreeBlob::from_bytes(&blob).unwrap();
 
-    let r = dt.initrd().unwrap().expect("the real range from /chosen");
+    let r = dt
+        .initial_ramdisk()
+        .unwrap()
+        .expect("the real range from /chosen");
     assert_eq!((r.start, r.size), (0x4800_0000, 0x2_0000));
 }
 

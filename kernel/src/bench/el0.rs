@@ -39,7 +39,8 @@ const MAP_EL0_WARMUP: u64 = 8;
 const MAP_EL0_OVERHEAD: u64 = 32;
 
 /// Spawn the `os_primitives_benchmarker` EL0 program in a given role, granting it `report` (slot 0) to answer on.
-/// `false` if there is no `os_primitives_benchmarker` in the initrd (the bench boot then skips that line).
+/// `false` if there is no `os_primitives_benchmarker` in the initial ramdisk (the bench boot then
+/// skips that line).
 fn spawn_os_primitives_benchmarker(role: u64, report: sched::RendezvousId) -> bool {
     let Some(image) = crate::trust::require_program("os_primitives_benchmarker") else {
         return false;
@@ -68,7 +69,9 @@ fn spawn_os_primitives_benchmarker(role: u64, report: sched::RendezvousId) -> bo
 pub(super) fn null_syscall_el0() {
     let report = sched::create_rendezvous();
     if !spawn_os_primitives_benchmarker(EL_NULL_SYSCALL, report) {
-        println!("bench: null_syscall skipped (no os_primitives_benchmarker in the initrd)");
+        println!(
+            "bench: null_syscall skipped (no os_primitives_benchmarker in the initial ramdisk)"
+        );
         return;
     }
     let [ticks, iters, ..] = sched::ipc_receive(report);
@@ -85,7 +88,7 @@ pub(super) fn ctx_switch_el0() {
     // The peer first, so the timer always has something to switch to. It shares the report endpoint
     // (it never sends on it); the spawn shape stays uniform.
     if !spawn_os_primitives_benchmarker(EL_YIELDER, report) {
-        println!("bench: ctx_switch skipped (no os_primitives_benchmarker in the initrd)");
+        println!("bench: ctx_switch skipped (no os_primitives_benchmarker in the initial ramdisk)");
         return;
     }
     if !spawn_os_primitives_benchmarker(EL_CTX_SWITCH, report) {
@@ -101,7 +104,7 @@ pub(super) fn ctx_switch_el0() {
 /// waiting receiver. Grants differ per role, so the spawns are inline rather than via `spawn_os_primitives_benchmarker`.
 pub(super) fn ipc_rtt_el0() {
     let Some(image) = crate::trust::require_program("os_primitives_benchmarker") else {
-        println!("bench: ipc_rtt skipped (no os_primitives_benchmarker in the initrd)");
+        println!("bench: ipc_rtt skipped (no os_primitives_benchmarker in the initial ramdisk)");
         return;
     };
     let request = sched::create_rendezvous();
@@ -165,7 +168,9 @@ pub(super) fn ipc_rtt_el0() {
 /// Only the first pair is apples to apples.
 pub(super) fn sink_throughput() {
     let Some(image) = crate::trust::require_program("os_primitives_benchmarker") else {
-        println!("bench: sink_throughput skipped (no os_primitives_benchmarker in the initrd)");
+        println!(
+            "bench: sink_throughput skipped (no os_primitives_benchmarker in the initial ramdisk)"
+        );
         return;
     };
     let pipe = sched::create_rendezvous();
@@ -221,7 +226,7 @@ pub(super) fn sink_throughput() {
 /// whoever owns the space. See `fixtures/src/os_primitives_benchmarker.rs`.
 pub(super) fn map_el0() {
     let Some(image) = crate::trust::require_program("os_primitives_benchmarker") else {
-        println!("bench: map_el0 skipped (no os_primitives_benchmarker in the initrd)");
+        println!("bench: map_el0 skipped (no os_primitives_benchmarker in the initial ramdisk)");
         return;
     };
     // The target space, backed by its own region. The region pays for the root, the intermediate
@@ -278,7 +283,7 @@ pub(super) fn map_el0() {
 /// See `fixtures/src/os_primitives_benchmarker.rs`.
 pub(super) fn spawn_el0() {
     let Some(image) = crate::trust::require_program("os_primitives_benchmarker") else {
-        println!("bench: spawn_el0 skipped (no os_primitives_benchmarker in the initrd)");
+        println!("bench: spawn_el0 skipped (no os_primitives_benchmarker in the initial ramdisk)");
         return;
     };
     let Some(region) = crate::memory_region::create(SPAWN_EL0_BUDGET) else {

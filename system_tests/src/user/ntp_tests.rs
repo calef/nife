@@ -24,24 +24,24 @@ fn wait_for(mut cond: impl FnMut() -> bool) -> bool {
 /// the split each test says which program it is spawning, and a test that spawns the witness where
 /// it meant the client now fails to compile rather than passing for the wrong reason.
 fn client_image() -> &'static [u8] {
-    program("network_time_client").expect("no network_time_client program in the initrd archive")
+    program("network_time_client").expect("no network_time_client program in the initial ramdisk")
 }
 
 fn test_server_image() -> &'static [u8] {
     program("network_time_test_server")
-        .expect("no network_time_test_server program in the initrd archive")
+        .expect("no network_time_test_server program in the initial ramdisk")
 }
 
 fn witness_image() -> &'static [u8] {
     program("unwritable_clock_witness")
-        .expect("no unwritable_clock_witness program in the initrd archive")
+        .expect("no unwritable_clock_witness program in the initial ramdisk")
 }
 
 /// **A fresh clock service per test.** Each one allocates its own page and reads the RTC again,
 /// so a step taken in one test cannot bias the next one's bounds, and each test's "before" is
 /// genuinely before.
 fn clock() -> clock_service::Wiring {
-    let image = program("clock").expect("no clock program in the initrd archive");
+    let image = program("clock").expect("no clock program in the initial ramdisk");
     let w = clock_service::start(image);
     let report = crate::sched::ipc_receive(w.report);
     assert!(
@@ -54,7 +54,7 @@ fn clock() -> clock_service::Wiring {
 /// The entropy service's request endpoint: the client's whole authority over randomness, and it
 /// names no device. `ensure` wires the service once per boot; whichever test asks first pays.
 fn entropy() -> Option<crate::sched::RendezvousId> {
-    let image = program("entropy").expect("no entropy program in the initrd archive");
+    let image = program("entropy").expect("no entropy program in the initial ramdisk");
     let w = entropy_service::ensure(image, entropy_service::Bus::Mmio)?;
     if let Some(report) = w.wait_for_ready() {
         assert_eq!(

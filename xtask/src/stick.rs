@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use super::{RISCV_TARGET, TARGET, cargo_profiled, profile_dir, user};
-use crate::archive::{initrd_path, initrd_riscv, riscv_initrd_path};
+use crate::archive::{initial_ramdisk_path, initial_ramdisk_riscv, riscv_initial_ramdisk_path};
 use crate::host::workspace_root;
 use crate::uefi::uefi_image;
 
@@ -78,7 +78,7 @@ fn build_loader(target: &str, kernel: &str, archive: &str, extra: &[(&str, &str)
     command
         .args(&args)
         .env("NIFE_UEFI_KERNEL", kernel)
-        .env("NIFE_UEFI_INITRD", archive);
+        .env("NIFE_UEFI_INITIAL_RAMDISK", archive);
     for (key, value) in extra {
         if *key == "--target-dir" {
             command.args(["--target-dir", value]);
@@ -111,14 +111,18 @@ fn payload_aarch64() -> bool {
         .join(format!("target/{TARGET}/{}/kernel", profile_dir()))
         .display()
         .to_string();
-    build_loader("aarch64-unknown-uefi", &kernel, &initrd_path(), &[])
-        && copy_into_stick(
-            &workspace_root().join(format!(
-                "target/aarch64-unknown-uefi/{}/uefi_loader.efi",
-                profile_dir()
-            )),
-            "BOOTAA64.EFI",
-        )
+    build_loader(
+        "aarch64-unknown-uefi",
+        &kernel,
+        &initial_ramdisk_path(),
+        &[],
+    ) && copy_into_stick(
+        &workspace_root().join(format!(
+            "target/aarch64-unknown-uefi/{}/uefi_loader.efi",
+            profile_dir()
+        )),
+        "BOOTAA64.EFI",
+    )
 }
 
 /// **`BOOTRISCV64.EFI`**, the one that is not built as PE: rustc has no riscv64 UEFI target, so the
@@ -140,7 +144,7 @@ fn payload_aarch64() -> bool {
 ///
 /// A separate target directory, so these flags never touch the kernel's riscv64 build artifacts.
 fn payload_riscv64() -> bool {
-    if !initrd_riscv()
+    if !initial_ramdisk_riscv()
         || !cargo_profiled(&[
             "build",
             "-p",
@@ -164,7 +168,7 @@ fn payload_riscv64() -> bool {
     if !build_loader(
         RISCV_TARGET,
         &kernel,
-        &riscv_initrd_path(),
+        &riscv_initial_ramdisk_path(),
         &[
             ("RUSTFLAGS", rustflags),
             ("--target-dir", &target_dir.display().to_string()),

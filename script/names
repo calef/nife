@@ -553,8 +553,8 @@ PLURAL = {"directory": "directories"}
 # The tier is the KIND, deliberately, and not "programs a person actually types". That second split
 # is the two-tier rule calef rejected on 2026-08-01, keyed on a property that is not stable: `wc`
 # went from internal plumbing to a prompt-typed pipeline stage inside a day. Every program in
-# `components/src/` and `fixtures/src/` is in the initrd and can be typed, so the kind is the
-# honest tier and needs no
+# `components/src/` and `fixtures/src/` is in the initial ramdisk and can be typed, so the kind is
+# the honest tier and needs no
 # classification anybody could get wrong.
 EXPOSURE = {"program": 0, "crate": 1, "package": 2, "item": 3, "module": 3,
             "directory": 4, "document": 4, "script": 5}

@@ -18,7 +18,7 @@ use crate::sched;
 /// `riscv_virtio_tests`.
 #[cfg(target_arch = "aarch64")]
 fn net_stack_image() -> &'static [u8] {
-    program("net_stack").expect("no net_stack program in the initrd archive")
+    program("net_stack").expect("no net_stack program in the initial ramdisk")
 }
 
 /// The net client's test selectors and its success word, matching `components/src/socket_test_client.rs`. The
@@ -360,7 +360,7 @@ fn a_client_echoes_over_tcp_through_the_socket_contract() {
 #[test_case]
 fn a_package_fetched_over_http_is_accepted_only_by_the_image_digest() {
     let catalogue = program(package_archive::CATALOG)
-        .expect("no package catalogue in the initrd archive: the archive build packs one");
+        .expect("no package catalogue in the initial ramdisk: the archive build packs one");
     let Some((report, net)) = virtio_service::start_package_fetch(
         net_stack_image(),
         NET_TEST_HTTP_PACKAGE,

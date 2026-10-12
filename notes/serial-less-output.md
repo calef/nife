@@ -208,10 +208,10 @@ Each row rules out everything above it.
 | `nife uefi_loader:` then a message and a halt | the loader refused, and it says why | every string is a literal in `uefi_loader/src/main.rs` |
 | `uefi_loader: no linear framebuffer` | the adapter is `PixelBltOnly` or `PixelBitMask` | this machine cannot use this milestone; record the model, it is the first one |
 | `wanted 0x...` and `in the way:` lines | the firmware will not give up the kernel's 32 MiB load range | milestone 195's `BUGS`: the image is not physically relocatable. Record the descriptors printed |
-| The screen clears and shows `nife loader: firmware released, entering the kernel.` and nothing more | the kernel never reached its first statement: the trampoline, `boot.s`, the page tables or the long-mode jump | build with no archive (`NIFE_UEFI_INITRD` unset); a triple fault here reboots instead, so a *stuck* banner is a hang rather than a fault |
+| The screen clears and shows `nife loader: firmware released, entering the kernel.` and nothing more | the kernel never reached its first statement: the trampoline, `boot.s`, the page tables or the long-mode jump | build with no archive (`NIFE_UEFI_INITIAL_RAMDISK` unset); a triple fault here reboots instead, so a *stuck* banner is a hang rather than a fault |
 | The loader's banner clears and then **nothing** | the kernel armed its console and died after | the window below `attach_screen`; on a machine with a serial port the transcript is the diagnosis |
 | Text, but sheared or in the wrong colors | the stride or the pixel order | the `screen :` line says what the loader read; compare against the machine's real mode |
-| The machine reboots in a loop | a triple fault | build with no archive (`NIFE_UEFI_INITRD` unset) to halve what is copied |
+| The machine reboots in a loop | a triple fault | build with no archive (`NIFE_UEFI_INITIAL_RAMDISK` unset) to halve what is copied |
 | The tour, the second clear, then **nothing** | the userspace terminal took the screen and drew nothing | milestone 400's defect; on a machine with a serial port its two `screen    :` lines say whether the driver came up |
 
 ## The window between the firmware and the kernel, and what can be bought in it

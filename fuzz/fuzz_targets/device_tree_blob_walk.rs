@@ -40,7 +40,7 @@ fuzz_target!(|data: &[u8]| {
     let _ = dtb.reserved_regions(&mut out);
     let _ = dtb.memory_regions(&mut out);
     let _ = dtb.reserved_memory_regions(&mut out);
-    let _ = dtb.initrd();
+    let _ = dtb.initial_ramdisk();
 
     // The three lookups that take a caller-supplied needle. The kernel's real needles are what the
     // arch layer asks for: `intc`/`plic` for the interrupt controller, `pl031`/`goldfish-rtc` for

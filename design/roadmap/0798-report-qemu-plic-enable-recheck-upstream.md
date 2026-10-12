@@ -76,7 +76,7 @@ def boot(i):
     sock = f"/tmp/usbloop-{os.getpid()}-{i}.sock"
     env = {k: v for k, v in os.environ.items() if k not in DROP}
     env.update(NIFE_USB_KEYBOARD="1", NIFE_USB_KEYBOARD_OPTS=",usb_version=1", NIFE_SCREEN_MON=sock,
-               NIFE_INITRD=os.path.join(WT, "target/initrd-riscv.img"))
+               NIFE_INITIAL_RAMDISK=os.path.join(WT, "target/initial-ramdisk-riscv.img"))
     p = subprocess.Popen(["helpers/qemu-bounded.sh", "120", "helpers/qemu-runner-riscv64.sh",
                           "target/riscv64imac-unknown-none-elf/debug/kernel"], cwd=WT, env=env,
                          stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)

@@ -8,7 +8,7 @@
 //! build, see `kernel/build.rs`), hashes the archive entry it is about to load, and refuses to
 //! enter userspace on a mismatch. "This kernel runs exactly this progenitor," enforced.
 //!
-//! **Why SHA-256, hand-written.** The threat is an attacker who can substitute the initrd bytes, so
+//! **Why SHA-256, hand-written.** The threat is an attacker who can substitute the archive bytes, so
 //! the hash must be collision- and preimage-resistant; a fast non-crypto hash (the FNV that xtask
 //! uses to notice stale build inputs) would let someone craft a colliding progenitor. Among the
 //! collision-resistant options SHA-256 is the one that costs the trusted computing base least:

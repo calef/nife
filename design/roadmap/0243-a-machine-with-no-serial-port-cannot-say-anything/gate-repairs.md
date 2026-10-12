@@ -45,7 +45,7 @@ milestone's block, so it is named here and in this lane's report for the integra
 CI found a wiring bug this lane had already been told about and had dismissed. It is worth
 recording at more length than the fix deserves, because the dismissal is the reusable part.
 
-`cargo xtask test`'s riscv64 leg exports `NIFE_INITRD` pointing at the riscv64 archive, explicitly,
+`cargo xtask test`'s riscv64 leg exports `NIFE_INITIAL_RAMDISK` pointing at the riscv64 archive, explicitly,
 with a comment saying it has to. `cargo()` exports the aarch64 one, because it is the aarch64
 path's helper. `screen_boot` went through `cargo()` and never overrode it, so the riscv64 leg handed
 a riscv kernel an aarch64 archive.

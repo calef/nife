@@ -72,7 +72,7 @@
 //! so a reader there learns that somebody agreed rather than why; the reason is the two citations
 //! above. no architect has ratified it.
 
-use abi::irq;
+use abi::interrupt;
 use filesystem_protocol::blk;
 use user_mode_runtime::virtio::virtio_ring_barrier;
 use user_mode_runtime::{exit, invoke, receive_request, reply, send};
@@ -159,13 +159,13 @@ const BLOCK: usize = 512;
 /// Read a device register, through the kernel. Reads are DMA-safe, so any register is allowed.
 fn mr(off: u64) -> u32 {
     // SAFETY: `svc`; the kernel validates the Virtio capability in slot 2.
-    unsafe { invoke(VIRTIO, abi::virtio::READ_REG, off, 0, 0) as u32 }
+    unsafe { invoke(VIRTIO, abi::virtio::READ_REGISTER, off, 0, 0) as u32 }
 }
 /// Write a DMA-*safe* device register (status, features, interrupt-ack) through the kernel. The
 /// queue-address and notify registers are NOT writable this way: the kernel owns them.
 fn mw(off: u64, v: u32) {
     // SAFETY: `svc`.
-    unsafe { invoke(VIRTIO, abi::virtio::WRITE_REG, off, v as u64, 0) };
+    unsafe { invoke(VIRTIO, abi::virtio::WRITE_REGISTER, off, v as u64, 0) };
 }
 
 fn direct_memory_access_write<T>(off: u64, val: T) {
@@ -576,7 +576,7 @@ fn complete_block(used_before: u16) {
         // notification, and wakes us. If the interrupt already fired between the notify above and
         // this call, the kernel's pending count makes WAIT return at once instead of blocking on
         // an event that is already over. SAFETY: `svc`; the kernel validates the Irq capability.
-        unsafe { invoke(IRQ, irq::WAIT, 0, 0, 0) };
+        unsafe { invoke(IRQ, interrupt::WAIT, 0, 0, 0) };
 
         // Quiet the device (read its interrupt-status, acknowledge it), then re-enable the line at
         // the controller, which the kernel masked when it fired. SAFETY: `svc`.
@@ -585,7 +585,7 @@ fn complete_block(used_before: u16) {
         // SAFETY: `invoke` traps to the kernel, which validates the capability and the method
         // before acting (user_mode_runtime's contract). A caller cannot break an invariant by passing a
         // bad slot or method; it gets an error back.
-        unsafe { invoke(IRQ, irq::ACK, 0, 0, 0) };
+        unsafe { invoke(IRQ, interrupt::ACK, 0, 0, 0) };
 
         virtio_ring_barrier();
         if direct_memory_access_read::<u16>(OFF_USED + 2) != used_before {
@@ -899,11 +899,11 @@ fn build_dhcp_discover() -> u64 {
 fn wait_rx(rx_used_before: u16) -> bool {
     for _ in 0..64 {
         // SAFETY: `svc`; blocks until the device raises its line.
-        unsafe { invoke(IRQ, abi::irq::WAIT, 0, 0, 0) };
+        unsafe { invoke(IRQ, abi::interrupt::WAIT, 0, 0, 0) };
         let istatus = mr(INTERRUPT_STATUS);
         mw(INTERRUPT_ACK, istatus);
         // SAFETY: `svc`; re-enable the line the kernel masked when it fired.
-        unsafe { invoke(IRQ, abi::irq::ACK, 0, 0, 0) };
+        unsafe { invoke(IRQ, abi::interrupt::ACK, 0, 0, 0) };
         virtio_ring_barrier();
         if direct_memory_access_read::<u16>(NET_RX_USED + 2) != rx_used_before {
             return true;
@@ -1026,7 +1026,7 @@ const BLK_OFF_DATA: u64 = 0x1000;
 const BLK_READY: u64 = 3;
 
 /// virtio-mmio device-config window; virtio-blk's capacity (u64, in 512-byte sectors) is at its
-/// start. Reads are DMA-safe, so the kernel's `READ_REG` permits this offset.
+/// start. Reads are DMA-safe, so the kernel's `READ_REGISTER` permits this offset.
 const CONFIG: u64 = 0x100;
 
 /// **The block server.** Bring the device up, then serve blk IPC forever. Every request is a CALL
@@ -1116,11 +1116,11 @@ fn complete_blk(used_before: u16) {
     // rather than blocking on an event already over. See notes/dma.md.
     loop {
         // SAFETY: as above: the kernel validates the capability and the method.
-        unsafe { invoke(IRQ, irq::WAIT, 0, 0, 0) };
+        unsafe { invoke(IRQ, interrupt::WAIT, 0, 0, 0) };
         let istatus = mr(INTERRUPT_STATUS);
         mw(INTERRUPT_ACK, istatus);
         // SAFETY: as above: the kernel validates the capability and the method.
-        unsafe { invoke(IRQ, irq::ACK, 0, 0, 0) };
+        unsafe { invoke(IRQ, interrupt::ACK, 0, 0, 0) };
         virtio_ring_barrier();
         if direct_memory_access_read::<u16>(OFF_USED + 2) != used_before {
             break; // our request is on the used ring; this wakeup was really ours
@@ -1229,11 +1229,11 @@ fn submit_flush(direct_memory_access_phys: u64) -> u16 {
 fn complete_flush(used_before: u16) -> bool {
     loop {
         // SAFETY: `svc`; the kernel validates the capability and the method.
-        unsafe { invoke(IRQ, irq::WAIT, 0, 0, 0) };
+        unsafe { invoke(IRQ, interrupt::WAIT, 0, 0, 0) };
         let istatus = mr(INTERRUPT_STATUS);
         mw(INTERRUPT_ACK, istatus);
         // SAFETY: as above.
-        unsafe { invoke(IRQ, irq::ACK, 0, 0, 0) };
+        unsafe { invoke(IRQ, interrupt::ACK, 0, 0, 0) };
         virtio_ring_barrier();
         if direct_memory_access_read::<u16>(OFF_USED + 2) != used_before {
             break; // our request is on the used ring; this wakeup was really ours

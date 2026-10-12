@@ -227,7 +227,7 @@ pub(super) fn direct_map_claims(each: &mut dyn FnMut(Claim)) {
 }
 
 /// The loader-reserved half of [`direct_map_claims`]: the low megabyte, every reserved entry below
-/// [`firmware_fill_ceiling`], and the initrd.
+/// [`firmware_fill_ceiling`], and the initial ramdisk.
 ///
 /// Physical page 0 is deliberately left out, so that `phys_to_virt(0)` faults instead of quietly
 /// naming the interrupt vector table.
@@ -280,19 +280,20 @@ fn firmware_claims(each: &mut dyn FnMut(Claim)) {
         });
     }
 
-    // **The initrd, explicitly, regardless of how the memmap classified the bytes it occupies.**
-    // Found 2026-08-25 (decisions §86's VT-d/NVMe data point): attaching an NVMe controller grows
-    // the ACPI tables enough that the memmap's reserved entry immediately above the top of RAM
-    // widens to swallow the initrd's last few hundred bytes (PVH's loader places it at a fixed
-    // offset below the top of guest memory, sized for a smaller device set than this boot's
-    // tables need). The ceiling above exists to keep this loop out of the MMIO hole, so widening
-    // it is not the fix. Claiming the initrd's own recorded bounds directly sidesteps the question
-    // of which reserved entry is real backing memory and which is not: `bring_up_memory` already
-    // claimed this exact range as `forbidden` before this runs, so nothing else can be relying on
-    // it staying unmapped, and a guarded claim is idempotent over anything already covered.
-    if let Some((istart, isize)) = memory::initrd_region() {
+    // **The initial ramdisk, explicitly, regardless of how the memmap classified the bytes it
+    // occupies.** Found 2026-08-25 (decisions §86 (whether an NVMe driver can leave the kernel)'s
+    // VT-d/NVMe data point): attaching an NVMe controller grows the ACPI tables enough that the
+    // memmap's reserved entry immediately above the top of RAM widens to swallow the initial
+    // ramdisk's last few hundred bytes (PVH's loader places it at a fixed offset below the top of
+    // guest memory, sized for a smaller device set than this boot's tables need). The ceiling above
+    // exists to keep this loop out of the MMIO hole, so widening it is not the fix. Claiming the
+    // initial ramdisk's own recorded bounds directly sidesteps the question of which reserved entry
+    // is real backing memory and which is not: `bring_up_memory` already claimed this exact range
+    // as `forbidden` before this runs, so nothing else can be relying on it staying unmapped, and a
+    // guarded claim is idempotent over anything already covered.
+    if let Some((istart, isize)) = memory::initial_ramdisk_region() {
         each(Claim {
-            what: "initrd",
+            what: "initial ramdisk",
             lo: istart & !(PAGE_SIZE - 1),
             hi: (istart + isize).next_multiple_of(PAGE_SIZE),
             flags: Flags::kernel_data(),

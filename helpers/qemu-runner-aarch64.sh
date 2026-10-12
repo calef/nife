@@ -221,13 +221,13 @@ IMG="$ELF.img"
 # notes/cfi-unwind.md.
 "$OBJCOPY" -O binary --remove-section=.eh_frame --remove-section=.eh_frame_hdr "$ELF" "$IMG"
 
-# The userspace program rides in as an initrd, exactly the way Linux gets its initramfs: QEMU
-# loads the file into RAM and writes the address into /chosen/linux,initrd-start in the device
+# The userspace program rides in as an initial ramdisk, exactly the way Linux gets its initramfs:
+# QEMU loads the file into RAM and writes the address into /chosen/linux,initrd-start in the device
 # tree it generates. The kernel finds it there. Nothing about the binary is compiled into the
 # kernel. See notes/elf.md and kernel/src/memory.rs.
-INITRD=""
-if [ -n "$NIFE_INITRD" ] && [ -f "$NIFE_INITRD" ]; then
-    INITRD="-initrd $NIFE_INITRD"
+INITIAL_RAMDISK=""
+if [ -n "$NIFE_INITIAL_RAMDISK" ] && [ -f "$NIFE_INITIAL_RAMDISK" ]; then
+    INITIAL_RAMDISK="-initrd $NIFE_INITIAL_RAMDISK"
 fi
 
 # Attach the nifefs image as a virtio-blk device. `if=none` + `-device virtio-blk-device`
@@ -575,7 +575,8 @@ SMP="${NIFE_SMP:-4}"
 # the suite, which is the "unrelated test failing to get memory" shape disk_service.rs and
 # fs_service.rs already narrate from 128 MiB days. The kernel asserts this size in memory.rs, so
 # a drift between the two files fails loudly rather than silently changing what the suite means.
-# shellcheck disable=SC2086  # $INITRD, $DISK, $NET, $GPU, $SCREEN, $KBD, $RNG and $NVME are deliberately word-split or empty
+# shellcheck disable=SC2086  # $INITIAL_RAMDISK, $DISK, $NET, $GPU, $SCREEN, $KBD, $RNG and $NVME
+# are deliberately word-split or empty
 exec qemu-system-aarch64 \
     -machine "$MACHINE" \
     -cpu "$CPU" \
@@ -585,7 +586,7 @@ exec qemu-system-aarch64 \
     -serial stdio \
     -semihosting \
     -kernel "$IMG" \
-    $INITRD \
+    $INITIAL_RAMDISK \
     $MMIO_MODERN \
     $DISK \
     $NET \

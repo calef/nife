@@ -107,7 +107,7 @@ use socket_protocol as socket;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{
     Delivered, call, call_receiving, cap_delete, map_page_frame, receive_request, reply,
-    retype_page_frame, send_cap,
+    retype_into_page_frame, send_capability,
 };
 
 /// Slot 0: where grants and requests arrive.
@@ -390,7 +390,7 @@ fn open(server: &Server, operation: u64) -> Result<u64, Fail> {
     let (socket::REP_OK, _, Some(socket)) = call_receiving(STACK, operation, 0) else {
         return Err(Fail::Status(network(step::OPEN)));
     };
-    if send_cap(
+    if send_capability(
         socket,
         frame,
         rights::READ | rights::WRITE,
@@ -507,7 +507,7 @@ fn exchange_tcp(
 /// handed a copy, or `None` at any step, and the resolver then answers every request with the step
 /// that failed.
 fn socket_page() -> Option<u64> {
-    let frame = u64::try_from(retype_page_frame(MEMORY_REGION)).ok()?;
+    let frame = u64::try_from(retype_into_page_frame(MEMORY_REGION)).ok()?;
     map_page_frame(frame, SOCKET_VA, true, MEMORY_REGION).then_some(frame)
 }
 

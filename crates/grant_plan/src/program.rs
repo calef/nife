@@ -79,8 +79,8 @@ macro_rules! programs {
                 None
             }
 
-            /// The name the progenitor loads it by in the initrd (nifefs), and the shell prints.
-            /// It is also the `[[bin]]` name in `components/` or `fixtures/`, which `xtask`
+            /// The name the progenitor loads it by in the initial ramdisk (nifefs), and the shell
+            /// prints. It is also the `[[bin]]` name in `components/` or `fixtures/`, which `xtask`
             /// checks every time it packs an archive.
             pub fn name(self) -> &'static str {
                 match self {

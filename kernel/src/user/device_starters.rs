@@ -52,10 +52,11 @@ pub(super) fn boot_usb_keyboard() -> Option<usb_keyboard_service::Wiring> {
 ///
 /// The grant is **unconditional**, and that is the design rather than an oversight. A zeroed page
 /// reads as `clock_protocol::state::UNKNOWN` (`a_zeroed_page_reads_as_unknown`), so a boot with no
-/// `clock` program in its initrd hands the progenitor a page that honestly says "the machine has no clock it
-/// believes" instead of no page at all. That keeps the slot numbering the same on every boot, which
-/// matters more than it sounds: the progenitor's capability table is read positionally, and a capability whose *slot*
-/// depends on what the machine turned out to have is a wiring nobody can check by reading.
+/// `clock` program in its initial ramdisk hands the progenitor a page that honestly says "the
+/// machine has no clock it believes" instead of no page at all. That keeps the slot numbering the
+/// same on every boot, which matters more than it sounds: the progenitor's capability table is read
+/// positionally, and a capability whose *slot* depends on what the machine turned out to have is a
+/// wiring nobody can check by reading.
 ///
 /// It is also the DECISIONS §43 split, delivered: the progenitor gets `READ` on a frame. Nothing on this path
 /// can hand a child the writable mapping that would let it set the time, because the progenitor never had one.
@@ -103,10 +104,10 @@ pub(super) struct VirtioBootGrant {
     /// ring descriptors, which are physical-address-based by the spec, not a fact any capability
     /// exposes), and there is no fourth `START` argument word to carry it across the kernel/progenitor
     /// boundary (`start_thread_control_block`'s own `[u64; 3]`, already spent on
-    /// `role`/`initrd_len`/`fs_rights`). So it travels the way the page's *contents* already do: written
-    /// into the page itself at [`VIRTIO_DMA_PHYS_OFFSET`], which the progenitor reads back out once,
-    /// after mapping the granted frame briefly, and relays to entropy's own `arg1` exactly the way
-    /// it already relays `fs_rights`.
+    /// `role`/`initial_ramdisk_len`/`fs_rights`). So it travels the way the page's *contents*
+    /// already do: written into the page itself at [`VIRTIO_DMA_PHYS_OFFSET`], which the progenitor
+    /// reads back out once, after mapping the granted frame briefly, and relays to entropy's own
+    /// `arg1` exactly the way it already relays `fs_rights`.
     pub(super) dma: u64,
 }
 

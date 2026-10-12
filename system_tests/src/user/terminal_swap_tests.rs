@@ -87,8 +87,8 @@ fn spawn_reader(term: sched::RendezvousId, report: sched::RendezvousId, lines: u
 #[test_case]
 fn the_terminal_is_replaced_under_a_person_typing_and_nothing_they_typed_is_lost() {
     let supervisor_image =
-        program("terminal_supervisor").expect("no terminal_supervisor in the initrd archive");
-    let editor_image = program("line_editor").expect("no line_editor in the initrd archive");
+        program("terminal_supervisor").expect("no terminal_supervisor in the initial ramdisk");
+    let editor_image = program("line_editor").expect("no line_editor in the initial ramdisk");
 
     let ep_region = crate::memory_region::create(8).expect("no endpoint region");
     let term = sched::create_rendezvous_from(ep_region).expect("term");

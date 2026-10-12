@@ -2,7 +2,10 @@
 
 use std::process::Command;
 
-use crate::archive::{initrd_path, initrd_riscv, initrd_x86, riscv_initrd_path, x86_initrd_path};
+use crate::archive::{
+    initial_ramdisk_path, initial_ramdisk_riscv, initial_ramdisk_x86, riscv_initial_ramdisk_path,
+    x86_initial_ramdisk_path,
+};
 use crate::host::{flag_value, run};
 use crate::{RISCV_TARGET, RUNNER, TARGET, X86_TARGET, profile_dir, user};
 
@@ -135,21 +138,21 @@ pub(crate) fn boot_check() -> bool {
             TARGET,
             RUNNER,
             user as fn() -> bool,
-            initrd_path as fn() -> String,
+            initial_ramdisk_path as fn() -> String,
         ),
         (
             "riscv64",
             RISCV_TARGET,
             "helpers/qemu-runner-riscv64.sh",
-            initrd_riscv as fn() -> bool,
-            riscv_initrd_path as fn() -> String,
+            initial_ramdisk_riscv as fn() -> bool,
+            riscv_initial_ramdisk_path as fn() -> String,
         ),
         (
             "x86_64",
             X86_TARGET,
             "helpers/qemu-runner-x86_64.sh",
-            initrd_x86 as fn() -> bool,
-            x86_initrd_path as fn() -> String,
+            initial_ramdisk_x86 as fn() -> bool,
+            x86_initial_ramdisk_path as fn() -> String,
         ),
     ]
     .into_iter()
@@ -224,7 +227,7 @@ fn boot_check_leg(
     // **The archive, which is the one thing a prompt cannot be reached without**, and nothing else:
     // no disk, because this gate types nothing and so needs no filesystem.
     //
-    // The two removals are not tidiness. `host::cargo` sets `NIFE_INITRD`, `NIFE_DISK` and
+    // The two removals are not tidiness. `host::cargo` sets `NIFE_INITIAL_RAMDISK`, `NIFE_DISK` and
     // `NIFE_NET` **in this process's own environment** for every cargo invocation it makes, and
     // the archive packers above go through it, so by the time the runner is spawned it would
     // inherit a `NIFE_DISK` naming a file `mkdisk` may never have written. The aarch64 and
@@ -233,7 +236,7 @@ fn boot_check_leg(
     // first time it packed an archive. Setting the environment a child is spawned with, here,
     // beats inheriting whatever a sibling left behind; it also means an exported `NIFE_DISK` in a
     // developer's shell cannot change what this gate boots.
-    cmd.env("NIFE_INITRD", archive());
+    cmd.env("NIFE_INITIAL_RAMDISK", archive());
     cmd.env_remove("NIFE_DISK");
     cmd.env_remove("NIFE_NET");
     cmd.stdout(std::process::Stdio::piped());

@@ -14,7 +14,7 @@ const CONFIG_VA: u64 = address_space_map::pair_page(0x00e0_0000);
 /// [`grant_plan::Manifest::config`]. `None` grants no capability at all, which is the other
 /// "nothing to print" cause and a different message.
 fn spawn_printenv(endpoints: u64, page: Option<u64>) -> RendezvousId {
-    let image = program("printenv").expect("no printenv program in the initrd archive");
+    let image = program("printenv").expect("no printenv program in the initial ramdisk");
     let out = crate::sched::create_rendezvous_from(endpoints).expect("no stdout rendezvous");
     crate::sched::spawn(move || match page {
         Some(phys) => run(

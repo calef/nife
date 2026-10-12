@@ -23,13 +23,14 @@ shift
 # NS16550 console is on the `virt` machine at 0x1000_0000; `-serial stdio` wires it to this terminal.
 SMP="${NIFE_SMP:-4}"
 
-# The userspace program rides in as an initrd, exactly as on aarch64: QEMU loads the file into RAM
-# and writes its address into /chosen/linux,initrd-start in the device tree, where memory::init reads
-# it. Set NIFE_INITRD to a riscv64 user ELF (or a nifefs archive) to hand it to the kernel; the
-# milestone-20 boot loads and runs it at U-mode. Unset, the kernel prints "no -initrd" and moves on.
-INITRD=""
-if [ -n "$NIFE_INITRD" ]; then
-    INITRD="-initrd $NIFE_INITRD"
+# The userspace program rides in as an initial ramdisk, exactly as on aarch64: QEMU loads the file
+# into RAM and writes its address into /chosen/linux,initrd-start in the device tree, where
+# memory::init reads it. Set NIFE_INITIAL_RAMDISK to a riscv64 user ELF (or a nifefs archive) to
+# hand it to the kernel; the milestone-20 boot loads and runs it at U-mode. Unset, the kernel prints
+# "no -initrd" and moves on.
+INITIAL_RAMDISK=""
+if [ -n "$NIFE_INITIAL_RAMDISK" ]; then
+    INITIAL_RAMDISK="-initrd $NIFE_INITIAL_RAMDISK"
 fi
 
 # Attach the nifefs image as a virtio-mmio block device (parity C), exactly as the aarch64 runner
@@ -327,7 +328,7 @@ exec qemu-system-riscv64 \
     -serial stdio \
     -kernel "$ELF" \
     $IOMMU \
-    $INITRD \
+    $INITIAL_RAMDISK \
     $MMIO_MODERN \
     $DISK \
     $NET \

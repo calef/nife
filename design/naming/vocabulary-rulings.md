@@ -72,6 +72,8 @@ meets it. `crates/user_rt/src/initrd.rs` carries that expansion as of 2026-09-13
 *Corrected 2026-09-24: that file is `crates/user_mode_runtime/src/initrd.rs` today, and its header
 still opens with the expansion.*
 
+*Overruled 2026-10-08 (UTC), #1842: the foreign spelling stops at the boundary.*
+
 And the defect the pricing found was not the name. `initrd` appeared about 1,300 times and was
 expanded in full exactly once, in `crates/dtb` (`crates/device_tree_blob` since 2026-09-19). That is
 a crate about device trees rather than the one named for the thing. The abbreviation was never the

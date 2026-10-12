@@ -5,31 +5,40 @@
 //! call sites in all, every one carrying the identical `// SAFETY:` comment: "the kernel validates
 //! the capability and the method before acting." That comment is `invoke`'s own contract, not a
 //! per-call obligation any of these four methods add: `abi::virtio`'s own doc already states what
-//! the kernel checks (`WRITE_REG` refuses the queue-address and notify registers; `SETUP_QUEUE`
-//! and `NOTIFY` are bounds-checked against the driver's DMA region and its own high-water mark),
+//! the kernel checks (`WRITE_REGISTER` refuses the queue-address and notify registers;
+//! `SETUP_QUEUE` and `NOTIFY` are bounds-checked against the DMA region and its high-water mark),
 //! so the raw `invoke` site could not add anything a wrapper cannot add just as well.
 //!
 //! Scoped to a module, not lifted into the crate root, because unlike [`super::send`] or
 //! [`super::reply`] these four methods are meaningful to exactly the programs that own a `Virtio`
 //! capability: the same "opt in by importing the module" shape [`super::heap`],
-//! [`super::initrd`] and [`super::mapped_window`] already use for functionality most programs
+//! [`super::initial_ramdisk`] and [`super::mapped_window`] already use for functionality most programs
 //! never touch.
 
-/// `READ_REG` at `off` on the `Virtio` capability in `virtio_slot`. Reads are DMA-safe, so any
+/// `READ_REGISTER` at `off` on the `Virtio` capability in `virtio_slot`. Reads are DMA-safe, so any
 /// register. Returns the register value, or a negative `abi::Error`.
-pub fn virtio_read_reg(virtio_slot: u64, off: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2), with [`write_register`], [`setup_queue`] and [`notify`]. His words: "Yes". Refused
+/// `virtio_read_reg` (round 7's provisional name; the module already says virtio, and reg is an
+/// abbreviation).
+pub fn read_register(virtio_slot: u64, off: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the Virtio capability before it reads the
     // register; every register is DMA-safe to read.
-    unsafe { super::invoke(virtio_slot, abi::virtio::READ_REG, off, 0, 0) }
+    unsafe { super::invoke(virtio_slot, abi::virtio::READ_REGISTER, off, 0, 0) }
 }
 
-/// `WRITE_REG` `val` at `off` on the `Virtio` capability in `virtio_slot`. `0` on success; a
+/// `WRITE_REGISTER` `val` at `off` on the `Virtio` capability in `virtio_slot`. `0` on success; a
 /// negative `abi::Error` (`NotPermitted` for a queue-address or notify register, which only
-/// [`virtio_setup_queue`]/[`virtio_notify`] may touch).
-pub fn virtio_write_reg(virtio_slot: u64, off: u64, val: u64) -> i64 {
+/// [`setup_queue`]/[`notify`] may touch).
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2), with [`read_register`]. His words: "Yes". Refused `virtio_write_reg` (round 7's
+/// provisional name).
+pub fn write_register(virtio_slot: u64, off: u64, val: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the Virtio capability and refuses any register
     // this call is not DMA-safe to write.
-    unsafe { super::invoke(virtio_slot, abi::virtio::WRITE_REG, off, val, 0) }
+    unsafe { super::invoke(virtio_slot, abi::virtio::WRITE_REGISTER, off, val, 0) }
 }
 
 /// `SETUP_QUEUE` virtqueue `queue` (0-indexed; a virtio-net device uses 0 = receive, 1 = transmit)
@@ -37,7 +46,11 @@ pub fn virtio_write_reg(virtio_slot: u64, off: u64, val: u64) -> i64 {
 /// ring addresses to the fixed offsets of that queue's ring block in the driver's own DMA region;
 /// the driver never chooses them. `0` on success; a negative `abi::Error` (`BadQueue`/`WrongObject`
 /// if `queue` is out of range or the block does not fit the region).
-pub fn virtio_setup_queue(virtio_slot: u64, num: u64, queue: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2), with [`read_register`]. His words: "Yes". Refused `virtio_setup_queue` (round 7's
+/// provisional name).
+pub fn setup_queue(virtio_slot: u64, num: u64, queue: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the Virtio capability, `queue`, and that the
     // ring block fits the driver's DMA region before it programs anything.
     unsafe { super::invoke(virtio_slot, abi::virtio::SETUP_QUEUE, num, queue, 0) }
@@ -46,7 +59,11 @@ pub fn virtio_setup_queue(virtio_slot: u64, num: u64, queue: u64) -> i64 {
 /// `NOTIFY` the device that virtqueue `queue` has new descriptors, on the `Virtio` capability in
 /// `virtio_slot`. `0` on success; a negative `abi::Error` (`DeviceRefused` if a newly-published
 /// descriptor points outside the driver's DMA region, in which case the device is not told to go).
-pub fn virtio_notify(virtio_slot: u64, queue: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2), with [`read_register`]. His words: "Yes". Refused `virtio_notify` (round 7's
+/// provisional name).
+pub fn notify(virtio_slot: u64, queue: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates every published descriptor on `queue` against the
     // driver's own high-water mark before it lets the device see them.
     unsafe { super::invoke(virtio_slot, abi::virtio::NOTIFY, queue, 0, 0) }
@@ -57,7 +74,9 @@ pub fn virtio_notify(virtio_slot: u64, queue: u64) -> i64 {
 /// that index and the notify, and between reading a used index and the payload that index gates.
 ///
 /// Name is **provisional** (a lane's, not ratified): it sits in this module beside the four
-/// capability wrappers and carries their `virtio_` prefix.
+/// capability wrappers and took the `virtio_` prefix they then carried. calef's ruling of
+/// 2026-10-08 (UTC), #1842, dropped that prefix from those four ([`read_register`] and its
+/// siblings); whether this one follows is not yet ruled.
 ///
 /// **Why one function rather than five.** This body was copied into `crates/virtio` and four
 /// programs under `components/src/`, and every copy had an `aarch64` arm, a `riscv64` arm, and no

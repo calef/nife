@@ -57,7 +57,7 @@ diff --git a/fixtures/src/c_confiner.rs b/fixtures/src/c_confiner.rs
 index 4649cb2b..5d851fe2 100644
 --- a/fixtures/src/c_confiner.rs
 +++ b/fixtures/src/c_confiner.rs
-@@ -138,7 +138,7 @@ pub extern "C" fn _start(_a0: u64, initrd_len: u64, _a2: u64) -> ! {
+@@ -138,7 +138,7 @@ pub extern "C" fn _start(_a0: u64, initial_ramdisk_len: u64, _a2: u64) -> ! {
                  // instead of a corruption. Nothing maps WITNESS_FAR here, deliberately.
                  maps: &[
                      (c_seam::GRANT_VA, grant, abi::address_space::MAP_RW),

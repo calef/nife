@@ -54,9 +54,9 @@ fn a_tls_client_speaks_to_its_pinned_peer_and_refuses_every_other() {
 
     use crate::arch::exceptions::USER_FAULTS;
 
-    let net_stack = program("net_stack").expect("no net_stack program in the initrd archive");
-    let clock = program("clock").expect("no clock program in the initrd archive");
-    let entropy = program("entropy").expect("no entropy program in the initrd archive");
+    let net_stack = program("net_stack").expect("no net_stack program in the initial ramdisk");
+    let clock = program("clock").expect("no clock program in the initial ramdisk");
+    let entropy = program("entropy").expect("no entropy program in the initial ramdisk");
 
     let w = match e1000e_service::start_net_server(net_stack, socket_protocol::NO_LISTEN_GRANT) {
         Ok(w) => w,

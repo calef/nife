@@ -104,7 +104,7 @@ boot. Hand-built trees now pin:
 - one distinct console sentence per refusal.
 
 `output_len` is now exact rather than padded by two unexplained eights, and a test holds it equal
-to what `with_initrd` writes for the one tree shape that needs all of it. Fifteen of its mutants
+to what `with_initial_ramdisk` writes for the one tree shape that needs all of it. Fifteen of its mutants
 had survived because a bound with slack cannot be told from a wrong one. Rung one: four of them no
 longer exist.
 

@@ -369,9 +369,9 @@ fn a_whole_std_program_runs_on_the_native_abi() {
 
     use crate::arch::exceptions::USER_FAULTS;
 
-    let image = program("std_exerciser").expect("no std_exerciser program in the initrd archive");
-    let clock = program("clock").expect("no clock program in the initrd archive");
-    let entropy = program("entropy").expect("no entropy program in the initrd archive");
+    let image = program("std_exerciser").expect("no std_exerciser program in the initial ramdisk");
+    let clock = program("clock").expect("no clock program in the initial ramdisk");
+    let entropy = program("entropy").expect("no entropy program in the initial ramdisk");
     let faults_before = USER_FAULTS.load(Ordering::Relaxed);
     let run = std_service::start_reclaimable(image, clock, entropy);
     let (report, tid) = (run.report, run.thread);
@@ -428,8 +428,8 @@ fn a_std_program_gives_back_every_frame_it_was_given() {
     let Some(image) = std_service::std_exerciser_image() else {
         crate::testing::skip!(std_service::NO_STD_EXERCISER);
     };
-    let clock = program("clock").expect("no clock program in the initrd archive");
-    let entropy = program("entropy").expect("no entropy program in the initrd archive");
+    let clock = program("clock").expect("no clock program in the initial ramdisk");
+    let entropy = program("entropy").expect("no entropy program in the initial ramdisk");
     run_and_give_back(image, clock, entropy);
     let before = crate::memory::free_page_frames();
     run_and_give_back(image, clock, entropy);

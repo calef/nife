@@ -19,10 +19,10 @@ pub(super) fn blk_server_image() -> &'static [u8] {
 fn attack_a_subtree(rights: u64, run: u64) -> Option<u64> {
     let Some(report) = fs_service::start_granted_dir(
         blk_server_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
         program("fs_subtree_caretaker")
-            .expect("no fs_subtree_caretaker program in the initrd archive"),
-        program("fs_test_client").expect("no fs_test_client program in the initrd archive"),
+            .expect("no fs_subtree_caretaker program in the initial ramdisk"),
+        program("fs_test_client").expect("no fs_test_client program in the initial ramdisk"),
         fs_service::DirGrant {
             name: filesystem_protocol::fixture::tree::SUB,
             rights,
@@ -221,10 +221,10 @@ fn a_name_set_capability_reads_its_attributes_and_still_names_only_its_set() {
     }
     let Some(report) = fs_service::start_granted_set(
         blk_server_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
         program("fs_nameset_caretaker")
-            .expect("no fs_nameset_caretaker program in the initrd archive"),
-        program("fs_test_client").expect("no fs_test_client program in the initrd archive"),
+            .expect("no fs_nameset_caretaker program in the initial ramdisk"),
+        program("fs_test_client").expect("no fs_test_client program in the initial ramdisk"),
         fs_service::SetGrant {
             dir: filesystem_protocol::fixture::tree::SUB,
             // Exactly one name, and `deeper` deliberately left out of it.

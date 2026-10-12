@@ -118,21 +118,22 @@ pub(super) fn print_machine_description(boot_info_pointer: usize) {
         );
     }
 
-    // 6. The initrd. Two facts, printed apart on purpose, because a boot where the loader passed
-    //    an image the kernel cannot parse looks identical to a boot with no image at all from any
-    //    test's point of view (the x86 arm learned this at milestone 161).
-    match memory::initrd_region() {
-        None => println!("  initrd          : none (nothing was passed to this boot)"),
-        Some((at, size)) => match user::initrd().map(nifefs::Fs::parse) {
+    // 6. The initial ramdisk. Two facts, printed apart on purpose, because a boot where the
+    //    loader passed an image the kernel cannot parse looks identical to a boot with no image at
+    //    all from any test's point of view (the x86 arm learned this at milestone 161 (the
+    //    `x86_64` kernel port)).
+    match memory::initial_ramdisk_region() {
+        None => println!("  initial ramdisk : none (nothing was passed to this boot)"),
+        Some((at, size)) => match user::initial_ramdisk().map(nifefs::Fs::parse) {
             Some(Ok(fs)) => println!(
-                "  initrd          : {size} bytes at {at:#018x}, a nifefs archive of {} program(s)",
+                "  initial ramdisk : {size} bytes at {at:#018x}, a nifefs archive of {} program(s)",
                 fs.len(),
             ),
             Some(Err(e)) => println!(
-                "  initrd          : {size} bytes at {at:#018x}, but it does not parse: {e:?}",
+                "  initial ramdisk : {size} bytes at {at:#018x}, but it does not parse: {e:?}",
             ),
             None => println!(
-                "  initrd          : {size} bytes at {at:#018x}, recorded but not reachable",
+                "  initial ramdisk : {size} bytes at {at:#018x}, recorded but not reachable",
             ),
         },
     }

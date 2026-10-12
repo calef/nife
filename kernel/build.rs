@@ -77,37 +77,39 @@ fn main() {
     println!("cargo::rerun-if-changed={boot_asm}");
     println!("cargo::rustc-link-arg=-T{manifest_dir}/{link_script}");
 
-    declare_initrd_cfg(&arch);
+    declare_initial_ramdisk_cfg(&arch);
     generate_trust_root(&manifest_dir, &arch);
 }
 
-/// **`cfg(initrd)`: does this target have user programs to pack into one?** (milestone 161, roadmap
-/// item 4.)
+/// **`cfg(initial_ramdisk)`: does this target have user programs to pack into one?** (milestone
+/// 161, roadmap item 4.)
 ///
 /// A great many `#[test_case]`s in `kernel/src/user/` are portable in every respect except that
-/// their fixture is a **real ELF binary read out of the initrd archive**, so a target with no
-/// archive cannot compile them into its test binary.
+/// their fixture is a **real ELF binary read out of the initial ramdisk archive**, so a target with
+/// no archive cannot compile them into its test binary.
 ///
 /// **The cfg names the reason rather than the architecture**, which is the whole point of spending a
-/// build script on it. `#[cfg(all(test, initrd))]` on a module reads "this needs an initrd", and
-/// stays true; `#[cfg(not(target_arch = "x86_64"))]` would have said "not on x86" thirty times over
-/// and would be wrong the day x86 gets user programs, in thirty places nobody would think to look.
+/// build script on it. `#[cfg(all(test, initial_ramdisk))]` on a module reads "this needs an
+/// initial ramdisk", and stays true; `#[cfg(not(target_arch = "x86_64"))]` would have said "not on
+/// x86" thirty times over and would be wrong the day x86 gets user programs, in thirty places
+/// nobody would think to look.
 ///
 /// **That day came, and it was one arm** (milestone 161, item 4's hand-off, 2026-08-24). `user_mode_runtime`
 /// grew its `x86_64` arms, `fixtures/build.rs` learned to compile the C components for the target,
-/// and `xtask`'s `initrd-x86` packs the archive; every one of those thirty modules came back at once,
-/// with nothing else edited. That is the prediction the cfg was written to make and it held, which
-/// is worth recording here rather than only in the roadmap: the alternative spelling would have
-/// needed thirty edits and would have been found by whoever hit the thirty-first.
+/// and `xtask`'s `initial-ramdisk-x86` packs the archive; every one of those thirty modules came
+/// back at once, with nothing else edited. That is the prediction the cfg was written to make and
+/// it held, which is worth recording here rather than only in the roadmap: the alternative spelling
+/// would have needed thirty edits and would have been found by whoever hit the thirty-first.
 ///
-/// Name: provisional (milestone 161 (the `x86_64` kernel port)): an architect names things, and a `cfg` a
-/// reader meets in front of a module is as reader-facing as a crate.
-fn declare_initrd_cfg(arch: &str) {
+/// Name: ratified 2026-10-12 (calef, #1998, milestone 139 (drive the unsafe count down) round 11),
+/// with the `cfg` it declares. His words: "B for #1998." Refused `declare_initrd_cfg` and
+/// `cfg(initrd)` (the foreign spelling, which stops at the boundary where it arrives).
+fn declare_initial_ramdisk_cfg(arch: &str) {
     // Declare it whatever the answer, so `unexpected_cfgs` stays a useful lint rather than being
     // silenced: a typo'd `#[cfg(initd)]` should still be caught.
-    println!("cargo::rustc-check-cfg=cfg(initrd)");
+    println!("cargo::rustc-check-cfg=cfg(initial_ramdisk)");
     match arch {
-        "aarch64" | "riscv64" | "x86_64" => println!("cargo::rustc-cfg=initrd"),
+        "aarch64" | "riscv64" | "x86_64" => println!("cargo::rustc-cfg=initial_ramdisk"),
         // Anything a fourth port adds before it can build userspace.
         _ => {}
     }
@@ -115,18 +117,20 @@ fn declare_initrd_cfg(arch: &str) {
 
 /// **Compile the boot program's measurement into the kernel image** (milestone 22 phase B.1).
 ///
-/// The build packs the initrd archive first (`xtask::initrd_aarch64` / `initrd_riscv` / `initrd_x86`), hashes the entries
-/// the kernel may enter as the progenitor, and writes `target/init-measure-<arch>.txt`. Here we turn that
-/// manifest into `TRUST_ROOT`, a `&[measured_boot::Measurement]` in the kernel's own `.rodata`. That is
-/// what makes the check mean "this kernel image runs exactly this progenitor" with no key management: the
-/// expected digest is part of the thing doing the checking.
+/// The build packs the initial ramdisk archive first (`xtask::initial_ramdisk_aarch64` /
+/// `initial_ramdisk_riscv` / `initial_ramdisk_x86`), hashes the entries the kernel may enter as the
+/// progenitor, and writes `target/init-measure-<arch>.txt`. Here we turn that manifest into
+/// `TRUST_ROOT`, a `&[measured_boot::Measurement]` in the kernel's own `.rodata`. That is what
+/// makes the check mean "this kernel image runs exactly this progenitor" with no key management:
+/// the expected digest is part of the thing doing the checking.
 ///
 /// **The ordering, and why it is not circular.** The kernel image contains the hash of a
-/// separately-built initrd, so the initrd must exist first: userspace builds, the archive is packed,
-/// the manifest is written, *then* the kernel compiles. Every xtask path already had that order
-/// (`user()` before the kernel build, because the kernel boots with the archive as `-initrd`), so
-/// nothing needed resequencing. The hash never feeds back into the initrd, so there is no
-/// chicken-and-egg: it is a one-way dependency the build already had, now made explicit.
+/// separately-built initial ramdisk, so the initial ramdisk must exist first: userspace builds, the
+/// archive is packed, the manifest is written, *then* the kernel compiles. Every xtask path already
+/// had that order (`user()` before the kernel build, because the kernel boots with the archive as
+/// `-initrd`), so nothing needed resequencing. The hash never feeds back into the initial ramdisk,
+/// so there is no chicken-and-egg: it is a one-way dependency the build already had, now made
+/// explicit.
 ///
 /// A **missing** manifest yields an empty trust root rather than a build failure, so a bare
 /// `cargo clippy -p kernel` (script/lint) and a bare `cargo build` still work. The kernel refuses to

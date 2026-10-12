@@ -116,8 +116,8 @@ fn two_badged_writers_are_attributed_by_the_badge_and_a_per_user_read_filters() 
     let Some(service) = program("system_log") else {
         crate::testing::skip!("no system_log program in this archive");
     };
-    let writer =
-        program("sink_transcript_writer").expect("no sink_transcript_writer in the initrd archive");
+    let writer = program("sink_transcript_writer")
+        .expect("no sink_transcript_writer in the initial ramdisk");
 
     let region = crate::memory_region::create(4).expect("no region for the log's objects");
     let intake = crate::sched::create_rendezvous_from(region).expect("no intake rendezvous");
@@ -293,8 +293,8 @@ fn badge_of_every_message(ep: RendezvousId) -> u64 {
 /// The second half pins the value every unbadged sender in the tree still relies on.
 #[test_case]
 fn a_plain_send_arrives_with_its_capabilitys_badge_on_receive_and_receive_cap() {
-    let writer =
-        program("sink_transcript_writer").expect("no sink_transcript_writer in the initrd archive");
+    let writer = program("sink_transcript_writer")
+        .expect("no sink_transcript_writer in the initial ramdisk");
     let region = crate::memory_region::create(2).expect("no region for the test's endpoints");
     let ep = crate::sched::create_rendezvous_from(region).expect("no rendezvous");
     let report = crate::sched::create_rendezvous_from(region).expect("no rendezvous");

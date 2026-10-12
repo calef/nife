@@ -15,8 +15,8 @@
 //!
 //! Forging an ELF64 image by hand is twenty lines, and **that is the argument for this crate being a
 //! host crate rather than kernel code.** Writing a malicious binary costs nothing here; producing one
-//! from a real toolchain, getting it into an initrd, and booting QEMU to watch it be refused would be
-//! a day's work and a slower test.
+//! from a real toolchain, getting it into an initial ramdisk, and booting QEMU to watch it be
+//! refused would be a day's work and a slower test.
 //!
 //! ```
 //! use elf::{Elf, Error, FOREIGN_MACHINES, NATIVE_MACHINE, PF_R, PF_W, PF_X};
@@ -705,8 +705,8 @@ mod tests {
     /// Build an ELF64 image by hand, so the tests can lie about anything they like.
     ///
     /// **This is the whole reason the parser is a host crate.** Forging a malicious binary is
-    /// eleven lines here. Producing one from a real toolchain, getting it into an initrd, and
-    /// booting QEMU to watch it be rejected would be a day's work and a slower test.
+    /// eleven lines here. Producing one from a real toolchain, getting it into an initial ramdisk,
+    /// and booting QEMU to watch it be rejected would be a day's work and a slower test.
     struct Builder {
         e_type: u16,
         e_machine: u16,

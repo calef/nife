@@ -18,7 +18,7 @@ use std::process::{Command, ExitCode, Stdio};
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
-use crate::archive::initrd_x86;
+use crate::archive::initial_ramdisk_x86;
 use crate::host::workspace_root;
 use crate::uefi::uefi_stage;
 use crate::{RELEASE, X86_TARGET, cargo_profiled, profile_dir};
@@ -78,7 +78,7 @@ pub(crate) fn network_bench() -> ExitCode {
     RELEASE.store(!debug, Ordering::Relaxed);
     // SAFETY: xtask is single-threaded here; nothing else reads the environment concurrently.
     unsafe { std::env::set_var("NIFE_NETWORK_BENCH_PEER", &peer) };
-    if !initrd_x86()
+    if !initial_ramdisk_x86()
         || !cargo_profiled(&[
             "build",
             "-p",

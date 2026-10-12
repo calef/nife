@@ -22,7 +22,7 @@ use crate::host::workspace_root;
 
 /// The names `script/board-image` writes and copies onto a card.
 const CARD_KERNEL: &str = "nife-vf2.img";
-const CARD_ARCHIVE: &str = "nife-initrd.img";
+const CARD_ARCHIVE: &str = "nife-initial-ramdisk.img";
 
 /// Where the last `script/board-image` left the payload.
 fn built_payload() -> PathBuf {

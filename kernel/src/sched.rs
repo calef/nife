@@ -349,8 +349,8 @@ mod trace {
 }
 
 /// **A corruption tripwire over `IpcTables`'s registries** (first-silicon diagnostics,
-/// 2026-08-15; module name provisional). Armed around the initrd demo on the board tour, it
-/// re-reads the watched ranges on the timer tick and prints every byte that changed since the
+/// 2026-08-15; module name provisional). Armed around the initial ramdisk demo on the board tour,
+/// it re-reads the watched ranges on the timer tick and prints every byte that changed since the
 /// last look: address, tick, before and after. A legal change (a spawn writing a fresh `ThreadControlBlockPointer`, a
 /// reap bumping a generation) prints as a recognizable delta at a table offset; a stray write
 /// prints as bytes nothing in the choreography explains. The instrument does not judge, it shows,
@@ -380,10 +380,10 @@ mod trace {
 ///   `crates/memory_corruption_canary_gate` for both holes and the harnesses that falsify the old spelling.
 #[cfg(not(feature = "bench"))]
 // **No caller since milestone 295, and kept deliberately** (2026-09-14). Its one consumer was the
-// hang watcher inside `kernel::user::riscv_initrd_demo`, which armed it around that demo's blocking
-// receive; calef retired the program that demo loaded and the function went with it. This is the
-// `AGENTS.md` "an exception is allowed and must say so" case, written where a reader meets it: the
-// instrument stays because it is how a board hang gets diagnosed, it was the evidence that
+// hang watcher inside `kernel::user::riscv_initial_ramdisk_demo`, which armed it around that demo's
+// blocking receive; calef retired the program that demo loaded and the function went with it. This
+// is the `AGENTS.md` "an exception is allowed and must say so" case, written where a reader meets
+// it: the instrument stays because it is how a board hang gets diagnosed, it was the evidence that
 // overturned the VisionFive 2 "hang" (notes/visionfive2.md, fifth stop), its own serialization is
 // loom-checked in `crates/memory_corruption_canary_gate`, and re-deriving it at a bench at 2am is
 // the cost this avoids. Unarmed it is one relaxed load on the tick path, which is what makes
@@ -733,9 +733,9 @@ pub fn on_tick() {
     // **And the machine's own view of the same tick** (milestone 126, DECISIONS §225): busy or
     // idle, and how many threads were waiting, for `vmstat` and `top`'s summary.
     count_tick();
-    // The corruption tripwire, when armed (the board tour's initrd-demo window). One relaxed
-    // load when it is not, which is every other tick everywhere. IRQ context is safe for its
-    // println: the console's IrqSafeMutex masks interrupts while held, so the interrupted
+    // The corruption tripwire, when armed (the board tour's initial ramdisk demo window). One
+    // relaxed load when it is not, which is every other tick everywhere. IRQ context is safe for
+    // its println: the console's IrqSafeMutex masks interrupts while held, so the interrupted
     // context on this core cannot be mid-print (the irq_notify argument, one lock over).
     // The answer is ignored on purpose: a sampling instrument may skip a beat when another
     // core's pass (or an arm) holds the gate, and the tick must never spin in IRQ context.

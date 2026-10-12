@@ -31,12 +31,14 @@ pub struct Witness {
 /// name) and is `fixtures/src/process_composition_witness.rs` now.
 ///
 /// **Its endowment is the progenitor's shape**, which is `builder`'s: the archive read-only at
-/// `INITRD_VA` with its length in `x1`, a memory region in slot 0 and a report line in slot 1. The
-/// region is the spend-only `memory_region_cap` rather than the progenitor's delegable root, because
-/// the witness passes no memory on; the claim is about the floor, so it gets the narrower one.
+/// `INITIAL_RAMDISK_VA` with its length in `x1`, a memory region in slot 0 and a report line in
+/// slot 1. The region is the spend-only `memory_region_cap` rather than the progenitor's delegable
+/// root, because the witness passes no memory on; the claim is about the floor, so it gets the
+/// narrower one.
 pub fn wire() -> Witness {
-    let (initrd_start, initrd_len) = memory::initrd_region().expect("no initrd region");
-    let initrd_pages = initrd_len.div_ceil(FRAME_SIZE);
+    let (initial_ramdisk_start, initial_ramdisk_len) =
+        memory::initial_ramdisk_region().expect("no initial ramdisk region");
+    let initial_ramdisk_pages = initial_ramdisk_len.div_ceil(FRAME_SIZE);
     let bytes = program("process_composition_witness")
         .expect("no process_composition_witness in the archive");
     let elf = Elf::parse(bytes).expect("process_composition_witness is not loadable");
@@ -51,8 +53,8 @@ pub fn wire() -> Witness {
         })
         .sum::<u64>()
         + 1
-        + initrd_pages / 512
-        + crate::revoke::log_pages_for(initrd_pages)
+        + initial_ramdisk_pages / 512
+        + crate::revoke::log_pages_for(initial_ramdisk_pages)
         + INIT_STACK_PAGES
         + 8;
     let mut space = AddressSpace::new(content).expect("no memory for the witness");
@@ -64,15 +66,15 @@ pub fn wire() -> Witness {
     }
     #[cfg(any(target_arch = "x86_64", target_arch = "riscv64"))]
     map_timebase_page(&mut space).expect("could not map the witness's timebase page");
-    for i in 0..initrd_pages {
+    for i in 0..initial_ramdisk_pages {
         space
             .map_physical(
-                INITRD_VA + i * FRAME_SIZE,
-                initrd_start + i * FRAME_SIZE,
+                INITIAL_RAMDISK_VA + i * FRAME_SIZE,
+                initial_ramdisk_start + i * FRAME_SIZE,
                 Flags::user_rodata(),
                 crate::revoke::PageMapSource::NoCapability,
             )
-            .expect("could not map the initrd");
+            .expect("could not map the initial ramdisk");
     }
     let aspace = readopt_user_address_space(space).expect("register the witness's space");
 
@@ -92,7 +94,8 @@ pub fn wire() -> Witness {
     }
     crate::sched::configure_thread_control_block(tid, elf.entry(), USER_STACK_TOP, aspace)
         .expect("configure the witness");
-    crate::sched::start_thread_control_block(tid, [0, initrd_len, 0]).expect("start the witness");
+    crate::sched::start_thread_control_block(tid, [0, initial_ramdisk_len, 0])
+        .expect("start the witness");
 
     Witness {
         report,
