@@ -317,7 +317,7 @@ table alone, ran the pass. It found no escape. It booted new hostile tests on aa
 x86_64 for rows 1 to 3. `SEND_CAP` refused a widening rights register and a `GRANT`-less source.
 `SPLIT` off a `WRITE`-only budget stayed narrow. `RETYPE` and `RETYPE_OBJ` off the same budget
 minted `Rights::ALL` for a frame and for kernel objects. That is the retype gap calef ruled on
-2026-10-07 and milestone 824 fixes, now shown to reach every kernel object; a near miss, since the
+2026-10-07 and milestone 824 (a retype mints no right its budget lacks) fixes, now shown to reach every kernel object; a near miss, since the
 objects are the holder's own. The other 31 rows are graded `read`, about half of them resting on
 the row's own cited test. The refusal log holds two external safety-system stops during
 orientation and the first reviewer's independence slip, none on a shipped path.

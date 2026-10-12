@@ -29,7 +29,7 @@
 //! architect's call.
 //!
 //! Cross-ISA: `invoke`, the retype paths and the rights model are portable kernel code, so the same
-//! body runs on each architecture (DECISIONS §19, architectural parity is a tenet).
+//! body runs on each architecture (DECISIONS §19 (architectural parity is a tenet)).
 
 use abi::Error;
 

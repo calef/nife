@@ -24,7 +24,7 @@
 //! "the rendezvous was not touched."
 //!
 //! Name: provisional (this pass's lane, 2026-10-12 UTC). Cross-ISA: `invoke`, the delegation rule
-//! (`Delegation::derive`) and the rendezvous are portable kernel code (DECISIONS §19).
+//! (`Delegation::derive`) and the rendezvous are portable kernel code (DECISIONS §19 (architectural parity is a tenet)).
 
 use abi::Error;
 
