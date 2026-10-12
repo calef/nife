@@ -71,6 +71,15 @@ the path to green."* The verdict stays AMBER. The path to GREEN is three gaps, e
    real threads in one address space) is BUILT (#1892), and 836 (a C library, stage 2: threads) is
    the C half, claimed today. calef, the same day, on what closes this gap: *"the path to green on
    risk 1 requires a foreign program running a second thread."* A thread library alone does not.
+   Fact, 2026-10-12 (UTC), lane milestone/121-rg-threads: unmodified `ripgrep` 14.1.1 ran its
+   parallel walker on five threads, its main thread and four workers, on aarch64, riscv64 and
+   x86_64 at `-smp 4`, both with no thread flag and with `--threads 4`. The count is the kernel's,
+   read from the process after it ended, not the program's. Each run printed exactly the tree's 138
+   match lines, which are the host `rg`'s lines once both are sorted. CI's `rg-threads` rows re-check
+   it on every pull request and fail at one thread
+   ([`notes/ripgrep-on-nife.md`](../../notes/ripgrep-on-nife.md)). The parallel walk needs the
+   `ignore` patch described below; `ripgrep`'s own source is untouched. Whether this meets the
+   gap is calef's, under §216 (fatal-risk facts are correctable, and verdicts are the architect's).
 
 DECISIONS §105 (`std::thread::spawn` stays declined, until a customer needs it) was never reached,
 and that reverses the premise. `ripgrep` asks `available_parallelism()` rather than assuming it, and
