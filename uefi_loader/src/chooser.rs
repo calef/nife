@@ -177,15 +177,41 @@ const PRIMARY_BLOCKS: usize = 34;
 #[repr(C, align(4096))]
 struct Aligned<const N: usize>([u8; N]);
 
-/// LBA 0 through 33 of the candidate disk, read once and then used as the staging buffer for the
-/// rewrite. Static rather than stack: 17 KiB, and this runs before the kernel exists.
-static mut PRIMARY: Aligned<{ PRIMARY_BLOCKS * LBA }> = Aligned([0; PRIMARY_BLOCKS * LBA]);
+/// **The chooser's buffers, in one firmware allocation that [`choose`] makes and lends down.**
+///
+/// They were three `static mut`s until milestone 891 (a mutable static becomes an atomic, a lock or
+/// a recorded cell), reached through safe functions that each handed out a fresh `&'static mut`, so
+/// nothing but a comment stopped two live borrows of one buffer. Owned here, the borrow checker
+/// does that. Pages rather than the stack: 24 KiB, and the frame that holds them is still live
+/// while the child image runs on the same firmware stack. Never freed, which is what
+/// [`Self::options`] needs: the child reads its `LoadOptions` after this loader has handed off.
+#[repr(C)]
+struct Scratch {
+    /// LBA 0 through 33 of the candidate disk, read once and then used as the staging buffer for
+    /// the rewrite.
+    primary: Aligned<{ PRIMARY_BLOCKS * LBA }>,
+    /// One block of scratch for the backup header, which is the only block written on its own.
+    block: Aligned<LBA>,
+    /// The `LoadOptions` handed to a chain-loaded image: [`STARTED_BY_CHOOSER`] and a digit.
+    options: [u8; 16],
+}
 
-/// One block of scratch for the backup header, which is the only block written on its own.
-static mut BLOCK: Aligned<LBA> = Aligned([0; LBA]);
-
-/// The `LoadOptions` handed to a chain-loaded image: [`STARTED_BY_CHOOSER`] and a digit.
-static mut OPTIONS: [u8; 16] = [0; 16];
+impl Scratch {
+    /// Ask the firmware for zeroed, page-aligned pages to hold one, or `None` if it has none.
+    fn allocate(services: &BootServices) -> Option<&'static mut Self> {
+        let pages = size_of::<Self>().div_ceil(PAGE as usize);
+        let base = allocate_below(services, pages, memory_type::LOADER_DATA)?;
+        let scratch = base as *mut Self;
+        // SAFETY: the firmware just granted `pages` pages at `base` to this loader alone, which is
+        // at least `size_of::<Self>()` bytes and page-aligned, more than `Self`'s alignment. Every
+        // field is bytes, so the zeroing makes a valid value before the reference exists, and the
+        // pages are never freed, so `'static` holds.
+        unsafe {
+            scratch.write_bytes(0, 1);
+            Some(&mut *scratch)
+        }
+    }
+}
 
 /// **Which boot slot started this image, if a chooser did.**
 ///
@@ -229,7 +255,14 @@ pub fn choose(handle: Handle, table: &SystemTable, services: &BootServices) {
         );
         return;
     };
-    let Some(mut disk) = the_disk_with_slots(table, services, own) else {
+    let Some(scratch) = Scratch::allocate(services) else {
+        say(
+            table,
+            "uefi_loader: no memory for the boot slot chooser; using the image in this file\r\n",
+        );
+        return;
+    };
+    let Some(mut disk) = the_disk_with_slots(table, services, own, scratch) else {
         // Not an installed machine, or a stick on one. Both are ordinary.
         return;
     };
@@ -246,7 +279,7 @@ pub fn choose(handle: Handle, table: &SystemTable, services: &BootServices) {
         let spent = disk.states[slot].attempted();
         if spent != disk.states[slot] {
             disk.states[slot] = spent;
-            if !disk.write_back(table, services, slot) {
+            if !disk.write_back(table, services, slot, scratch) {
                 say(table, "uefi_loader: the disk refused the boot state; ");
                 say(
                     table,
@@ -257,12 +290,12 @@ pub fn choose(handle: Handle, table: &SystemTable, services: &BootServices) {
         }
 
         tried |= 1 << slot;
-        match disk.start(handle, table, services, slot) {
+        match disk.start(handle, table, services, slot, scratch) {
             Started::Unreadable => {
                 // A failure the chooser watched happen. Give up on the slot now rather than over
                 // three reboots of a machine somebody is waiting on.
                 disk.states[slot] = disk.states[slot].unreadable();
-                let _ = disk.write_back(table, services, slot);
+                let _ = disk.write_back(table, services, slot, scratch);
             }
             Started::Refused => {}
         }
@@ -304,7 +337,12 @@ struct Disk {
 /// carrying slots that is not that medium is another machine's system as far as this boot is
 /// concerned (an installed disk under a stick), and is said out loud and left alone: not read past
 /// its table, and never written.
-fn the_disk_with_slots(table: &SystemTable, services: &BootServices, own: &[u8]) -> Option<Disk> {
+fn the_disk_with_slots(
+    table: &SystemTable,
+    services: &BootServices,
+    own: &[u8],
+    scratch: &mut Scratch,
+) -> Option<Disk> {
     let mut count = 0usize;
     let mut handles: *mut Handle = ptr::null_mut();
     if (services.locate_handle_buffer)(
@@ -324,7 +362,7 @@ fn the_disk_with_slots(table: &SystemTable, services: &BootServices, own: &[u8])
 
     let mut elsewhere = false;
     for &h in handles {
-        let Some(disk) = read_table(h, services) else {
+        let Some(disk) = read_table(h, services, scratch) else {
             continue;
         };
         if path_of(h, services).is_some_and(|path| device_path::is_on(own, path)) {
@@ -384,7 +422,7 @@ fn path_of(handle: Handle, services: &BootServices) -> Option<&'static [u8]> {
 }
 
 /// Read one handle's table, and answer `Some` only if it is a whole disk carrying boot slots.
-fn read_table(handle: Handle, services: &BootServices) -> Option<Disk> {
+fn read_table(handle: Handle, services: &BootServices, scratch: &mut Scratch) -> Option<Disk> {
     let mut interface: *mut c_void = ptr::null_mut();
     if (services.handle_protocol)(handle, &BLOCK_IO_PROTOCOL_GUID, &mut interface) != SUCCESS
         || interface.is_null()
@@ -406,7 +444,7 @@ fn read_table(handle: Handle, services: &BootServices) -> Option<Disk> {
         return None;
     }
 
-    let head = primary();
+    let head = &mut scratch.primary.0;
     // SAFETY: `block_io` is the firmware's protocol, `head` is page-aligned and exactly
     // `PRIMARY_BLOCKS` blocks long, and the disk has at least that many.
     if unsafe {
@@ -453,11 +491,17 @@ impl Disk {
     ///
     /// `false` if any part of it was refused, and the caller's answer to that is not to start the
     /// slot: an image tried without its try being recorded is an image that will be tried forever.
-    fn write_back(&mut self, table: &SystemTable, services: &BootServices, slot: usize) -> bool {
+    fn write_back(
+        &mut self,
+        table: &SystemTable,
+        services: &BootServices,
+        slot: usize,
+        scratch: &mut Scratch,
+    ) -> bool {
         let at = self.at[slot];
         self.parts[at].attributes = self.states[slot].into_attributes(self.parts[at].attributes);
 
-        let (head, array) = primary().split_at_mut(2 * LBA);
+        let (head, array) = scratch.primary.0.split_at_mut(2 * LBA);
         let Ok(built) = Table::create(
             self.disk_guid,
             LBA,
@@ -481,7 +525,7 @@ impl Disk {
         let backup_entry_lba = built.backup_entry_lba();
         let backup_header_lba = built.backup_header_lba();
 
-        let backup_header = one_block();
+        let backup_header = &mut scratch.block.0;
         backup_header.fill(0);
         if built.write_backup_header(backup_header).is_err() {
             return false;
@@ -501,7 +545,7 @@ impl Disk {
     /// One `WriteBlocks`, with the caller's buffer already a whole number of blocks.
     fn write(&self, lba: u64, bytes: &[u8]) -> bool {
         // SAFETY: `block_io` is the firmware's protocol for this disk; `bytes` lives in the
-        // page-aligned statics above and its length is a whole number of blocks.
+        // page-aligned [`Scratch`] and its length is a whole number of blocks.
         unsafe {
             ((*self.block_io).write_blocks)(
                 self.block_io,
@@ -526,9 +570,10 @@ impl Disk {
         table: &SystemTable,
         services: &BootServices,
         slot: usize,
+        scratch: &mut Scratch,
     ) -> Started {
         let first = self.parts[self.at[slot]].first_lba;
-        let block = one_block();
+        let block = &mut scratch.block.0;
         // SAFETY: `block_io` is the firmware's protocol and `block` is one page-aligned block.
         if unsafe {
             ((*self.block_io).read_blocks)(
@@ -613,7 +658,7 @@ impl Disk {
             return Started::Unreadable;
         }
 
-        tell_it_which_slot(child, services, slot);
+        tell_it_which_slot(child, services, slot, &mut scratch.options);
 
         let mut exit_size = 0usize;
         let mut exit_data: *mut u16 = ptr::null_mut();
@@ -633,11 +678,10 @@ impl Disk {
 /// A failure here is not fatal and is not reported: the child then looks like an image the firmware
 /// started directly, which means it boots its own kernel, which is what it was going to do anyway.
 /// What it loses is the ability to say which slot it came from.
-fn tell_it_which_slot(child: Handle, services: &BootServices, slot: usize) {
+fn tell_it_which_slot(child: Handle, services: &BootServices, slot: usize, options: &mut [u8; 16]) {
     let Some(loaded) = loaded_image(child, services) else {
         return;
     };
-    let options = options();
     options[..STARTED_BY_CHOOSER.len()].copy_from_slice(STARTED_BY_CHOOSER);
     options[STARTED_BY_CHOOSER.len()] = b'0' + (slot as u8 % 10);
     let len = STARTED_BY_CHOOSER.len() + 1;
@@ -645,7 +689,7 @@ fn tell_it_which_slot(child: Handle, services: &BootServices, slot: usize) {
     let loaded = ptr::from_ref(loaded).cast_mut();
     // SAFETY: the firmware's `EFI_LOADED_IMAGE_PROTOCOL` for an image that has been loaded and not
     // yet started is the caller's to fill in; that is the specified way to pass load options, and
-    // `OPTIONS` is a static that outlives the child.
+    // `options` is in [`Scratch`]'s pages, which are never freed and so outlive the child.
     unsafe {
         (*loaded).load_options = options.as_ptr().cast::<c_void>();
         (*loaded).load_options_size = len as u32;
@@ -663,32 +707,6 @@ fn loaded_image(handle: Handle, services: &BootServices) -> Option<&'static Load
     // SAFETY: the firmware answered with its own protocol interface for this image handle, and it
     // outlives boot services.
     Some(unsafe { &*interface.cast::<LoadedImage>() })
-}
-
-/// [`PRIMARY`] as a slice.
-///
-/// # Safety
-/// One thread, no interrupts, and the chooser runs to completion before anything else in this
-/// binary touches it. Taking the raw pointer first is what `static_mut_refs` asks for.
-fn primary() -> &'static mut [u8] {
-    let p = &raw mut PRIMARY;
-    // SAFETY: see above.
-    unsafe { &mut (*p).0 }
-}
-
-/// [`BLOCK`] as a slice. Same reasoning as [`primary`].
-fn one_block() -> &'static mut [u8] {
-    let p = &raw mut BLOCK;
-    // SAFETY: see above.
-    unsafe { &mut (*p).0 }
-}
-
-/// [`OPTIONS`] as a slice. Same reasoning as [`primary`], with one addition: the buffer must
-/// outlive the child image, which a static does and a stack array would not.
-fn options() -> &'static mut [u8] {
-    let p = &raw mut OPTIONS;
-    // SAFETY: see above.
-    unsafe { &mut *p }
 }
 
 /// What the firmware says the medium behind a `BlockIo` is, or `None` for a null description.

@@ -77,12 +77,20 @@
 
 #![no_std]
 
+use core::sync::atomic::AtomicU64;
+use core::sync::atomic::Ordering::Relaxed;
+
 #[unsafe(no_mangle)]
 static RODATA_MARKER: [u8; 4] = [0xc0, 0xff, 0xee, 0xd0];
+// Atomics rather than `static mut` (milestone 891 (a mutable static becomes an atomic, a lock or a
+// recorded cell)). The markers land where the test needs them: an atomic is interior-mutable, so it
+// can never be placed in `.rodata`, and it is laid out as a plain `u64`, so a nonzero initializer
+// is `.data` and a zero one is `.bss`, exactly as the `u64`s were. An atomic load is not folded to
+// the initializer, which is what the volatile reads used to guarantee.
 #[unsafe(no_mangle)]
-static mut DATA_MARKER: u64 = 0x0000_c0ff_ee00_d0d0;
+static DATA_MARKER: AtomicU64 = AtomicU64::new(0x0000_c0ff_ee00_d0d0);
 #[unsafe(no_mangle)]
-static mut BSS_MARKER: u64 = 0;
+static BSS_MARKER: AtomicU64 = AtomicU64::new(0);
 
 /// Check this process's own image, calling `fail` if any part of it is wrong.
 ///
@@ -95,13 +103,10 @@ pub fn verify(fail: fn() -> !) {
         }
     };
     check(RODATA_MARKER == [0xc0, 0xff, 0xee, 0xd0]);
-    // SAFETY: single-threaded, sole owner of this address space.
-    unsafe {
-        check(core::ptr::read_volatile(&raw const DATA_MARKER) == 0x0000_c0ff_ee00_d0d0);
-        check(core::ptr::read_volatile(&raw const BSS_MARKER) == 0); // .bss was zeroed
-        core::ptr::write_volatile(&raw mut BSS_MARKER, 1);
-        check(core::ptr::read_volatile(&raw const BSS_MARKER) == 1); // .data is writable
-    }
+    check(DATA_MARKER.load(Relaxed) == 0x0000_c0ff_ee00_d0d0);
+    check(BSS_MARKER.load(Relaxed) == 0); // .bss was zeroed
+    BSS_MARKER.store(1, Relaxed);
+    check(BSS_MARKER.load(Relaxed) == 1); // .bss is writable
     check(stack_works(7));
 }
 
@@ -128,8 +133,7 @@ mod tests {
         // `verify` writes `.bss` to prove it is writable, and it is the only thing here that can
         // be seen from outside: a `verify` that did nothing would pass the line above. This test
         // is the one caller in this binary, so the marker is not raced.
-        // SAFETY: single caller, reading a static this crate owns.
-        let marker = unsafe { core::ptr::read_volatile(&raw const super::BSS_MARKER) };
+        let marker = super::BSS_MARKER.load(super::Relaxed);
         assert_eq!(marker, 1, "verify did not run its checks");
     }
 

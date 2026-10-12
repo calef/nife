@@ -239,13 +239,11 @@ design/roadmap/0045-codeql-triage.md	-	27	58	-	-
 design/roadmap/0046-component-renames.md	-	-	60	-	-
 design/roadmap/0047-navigation-and-naming.md	-	-	102	-	-
 design/roadmap/0048-job-control.md	-	-	44	-	-
-design/roadmap/0049-users-and-attribution.md	4603	25	100	-	-
 design/roadmap/0050-pipes-and-redirection.md	-	-	71	-	-
 design/roadmap/0051-wall-clock-time.md	-	-	55	-	-
 design/roadmap/0052-subshells.md	-	-	96	-	-
 design/roadmap/0053-board-peripherals.md	-	-	50	-	-
 design/roadmap/0054-network-file-service.md	-	-	62	-	-
-design/roadmap/0055-time-machine.md	5077	21	55	-	-
 design/roadmap/0056-secrets-and-entropy.md	-	22	68	-	-
 design/roadmap/0057-partitioning-and-xattrs.md	4309	-	64	-	-
 design/roadmap/0058-riscv-tlb-shootdown.md	-	-	63	-	-
@@ -303,8 +301,7 @@ design/roadmap/0113-proofs-under-the-unsafe-lints.md	-	-	46	-	-
 design/roadmap/0114-decisions-split.md	-	-	48	-	-
 design/roadmap/0115-ratified-names.md	-	-	90	-	-
 design/roadmap/0116-one-sided-fences.md	-	-	54	-	-
-design/roadmap/0117-newcomer-onboarding.md	8695	-	81	-	-
-design/roadmap/0118-constitution-budget.md	8983	-	94	-	-
+design/roadmap/0118-constitution-budget.md	-	-	49	-	-
 design/roadmap/0119-merge-throughput.md	-	-	57	-	-
 design/roadmap/0120-nife-and-the-organization.md	-	-	62	-	-
 design/roadmap/0121-ripgrep-and-enumeration.md	-	-	46	-	-
@@ -317,15 +314,15 @@ design/roadmap/0130-the-copy-that-outlived-its-reason.md	-	-	53	-	-
 design/roadmap/0131-share-configuration-and-secrets.md	-	-	63	-	-
 design/roadmap/0132-the-fastpath-footprint.md	-	-	54	-	-
 design/roadmap/0133-blocked-thread-teardown.md	-	22	73	-	-
-design/roadmap/0134-the-measurements-that-decide.md	5262	-	85	-	-
+design/roadmap/0134-the-measurements-that-decide.md	-	-	83	-	-
 design/roadmap/0135-loom-region-claim.md	-	22	74	-	-
 design/roadmap/0136-one-decision-path.md	-	-	51	-	-
 design/roadmap/0137-mac-file-server.md	-	22	60	-	-
-design/roadmap/0138-file-io-throughput.md	7875	21	73	-	-
+design/roadmap/0138-file-io-throughput.md	-	-	73	-	-
 design/roadmap/0139-drive-down-unsafe.md	-	21.5	123	-	-
 design/roadmap/0140-foreign-filesystems.md	-	-	57	-	-
 design/roadmap/0141-a-palette-worth-looking-at.md	-	-	42	-	-
-design/roadmap/0142-a-text-display-worth-living-in.md	8315	-	83	-	-
+design/roadmap/0142-a-text-display-worth-living-in.md	-	-	50	-	-
 design/roadmap/0143-silicon-iommu.md	-	-	47	-	-
 design/roadmap/0144-sandbox-screendump-gap.md	-	-	56	-	-
 design/roadmap/0145-test-fixture-skip.md	-	-	58	-	-
@@ -342,9 +339,9 @@ design/roadmap/0155-user-provisioning.md	-	28	64	-	-
 design/roadmap/0156-syscall-entry-diet.md	-	21	62	-	-
 design/roadmap/0157-uboot-framebuffer-handoff.md	-	-	51	-	-
 design/roadmap/0158-kernel-object-rename-build.md	4100	35	167	-	-
-design/roadmap/0159-jh7110-trng-driver.md	5291	-	82	-	-
+design/roadmap/0159-jh7110-trng-driver.md	-	-	54	-	-
 design/roadmap/0160-pub-fn-naming-review.md	-	21	66	-	-
-design/roadmap/0161-x86-64-kernel-port.md	9655	22	150	-	-
+design/roadmap/0161-x86-64-kernel-port.md	-	-	106	-	-
 design/roadmap/0162-cpu-instruction-entropy.md	-	24	78	-	-
 design/roadmap/0163-jh7110-pcie-root-complex.md	-	23	71	-	-
 design/roadmap/0164-x86-64-fs-server-aes.md	-	21.5	49	-	-
@@ -370,7 +367,7 @@ design/roadmap/0183-capability-holder-index.md	-	26	60	-	-
 design/roadmap/0185-userspace-retry-sweep.md	-	30.5	53	-	-
 design/roadmap/0186-architecture-list-derivation.md	-	-	80	-	-
 design/roadmap/0187-x86-64-arch-audit.md	4460	-	67	-	-
-design/roadmap/0188-ipc-fastpath.md	6790	-	68	-	-
+design/roadmap/0188-ipc-fastpath.md	-	-	53	-	-
 design/roadmap/0189-per-architecture-frame-budget.md	-	-	55	-	-
 design/roadmap/0190-ext4-read-write.md	-	-	86	-	-
 design/roadmap/0191-proof-retrospective.md	-	-	55	-	-
@@ -444,7 +441,7 @@ design/roadmap/0264-sixty-names-nobody-wrote-down.md	-	-	53	-	-
 design/roadmap/0265-proto-is-a-truncation-not-an-abbreviation.md	3294	-	53	-	-
 design/roadmap/0266-init-is-an-action-and-the-thing-is-a-process.md	3622	-	56	-	-
 design/roadmap/0267-the-tour-is-three-things-wearing-one-name.md	3418	-	59	-	-
-design/roadmap/0268-the-boot-ladder.md	5495	-	66	-	-
+design/roadmap/0268-the-boot-ladder.md	-	-	46	-	-
 design/roadmap/0269-machine-as-a-program.md	-	-	47	-	-
 design/roadmap/0271-pcide-measurement.md	-	25	58	-	-
 design/roadmap/0273-x86-64-scaling-benchmarks.md	-	24.5	-	-	-
@@ -498,7 +495,7 @@ design/roadmap/0320-every-pci-bus-the-machine-has.md	-	-	59	-	-
 design/roadmap/0321-a-corpse-on-four-real-cores.md	-	-	51	-	-
 design/roadmap/0322-machine-matrix.md	-	-	66	-	-
 design/roadmap/0323-falsification-record-completeness.md	-	-	56	-	-
-design/roadmap/0324-the-bench-console-cannot-speak-to-a-board.md	4855	21	71	-	-
+design/roadmap/0324-the-bench-console-cannot-speak-to-a-board.md	-	-	47	-	-
 design/roadmap/0325-what-the-pci-scan-does-not-yet-program.md	-	-	64	-	-
 design/roadmap/0326-turn-a-mutation-score-upward.md	3743	-	64	-	-
 design/roadmap/0327-a-credential-endpoint-per-resource.md	-	-	60	-	-
@@ -621,7 +618,7 @@ design/roadmap/0443-derived-files-and-numbers-make-lanes-wait.md	-	-	51	-	-
 design/roadmap/0444-a-citation-says-what-it-cites.md	-	-	45	-	-
 design/roadmap/0445-the-screen-check-stops-sampling-and-starts-asking.md	-	-	56	-	-
 design/roadmap/0446-the-naming-worklist-says-what-it-covers.md	-	-	57	-	-
-design/roadmap/0447-vector-registers-are-a-thread-s-own.md	5206	-	63	-	-
+design/roadmap/0447-vector-registers-are-a-thread-s-own.md	-	-	62	-	-
 design/roadmap/0448-a-refusal-gets-a-number.md	-	21	71	-	-
 design/roadmap/0450-a-signature-over-the-init-image.md	-	21	48	-	-
 design/roadmap/0451-more-than-eight-names-in-a-grant.md	-	23	-	-	-
@@ -678,7 +675,6 @@ design/roadmap/0527-the-survey-selector-and-a-threads-placement.md	-	23	56	-	-
 design/roadmap/0528-cheri-capabilities-are-not-these-capabilities.md	-	-	58	-	-
 design/roadmap/0529-does-one-nife-crate-parse-under-verus.md	-	23.5	56	-	-
 design/roadmap/0530-name-a-customer.md	-	-	52	-	-
-design/roadmap/0531-no-gate-records-when-it-fires.md	5354	-	137	-	-
 design/roadmap/0532-the-census-writes-its-own-row.md	-	-	56	-	-
 design/roadmap/0533-the-roadmap-after-the-split.md	4567	-	53	-	-
 design/roadmap/0534-the-soft-float-targets-could-now-be-flipped.md	-	-	67	-	-
@@ -710,7 +706,7 @@ design/roadmap/0574-what-a-lane-spent-on-its-milestone.md	-	-	58	-	-
 design/roadmap/0575-a-delegated-reviewer-found-ten-defects-nobody-was-going-to-find.md	-	-	52	-	-
 design/roadmap/0577-icount-baselines-drift-after-a-toolchain-bump.md	-	-	69	-	-
 design/roadmap/0578-acpi-on-aarch64.md	-	-	62	-	-
-design/roadmap/0579-constitution-carry-vs-brief.md	5029	22	63	-	-
+design/roadmap/0579-constitution-carry-vs-brief.md	-	-	49	-	-
 design/roadmap/0580-nobody-reads-branches.md	3547	22	56	-	-
 design/roadmap/0582-decision-status-becomes-frontmatter.md	-	-	52	-	-
 design/roadmap/0583-citations-across-lines.md	-	-	55	-	-

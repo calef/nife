@@ -206,6 +206,30 @@ git -C "$repo_root" fetch origin
 echo "==> creating worktree at $worktree on branch $branch"
 git -C "$repo_root" worktree add "$worktree" -b "$branch" origin/main
 
+# Lanes build without incremental compilation; the main checkout keeps it (2026-10-12 UTC,
+# maintainer/build-output-size). On 2026-10-12 the disk nearly filled with every lane worktree
+# holding 6 to 10 GB of `target/`, and in one lane worker's ~6 GB, 2.7 GB was `incremental/`
+# (host debug 1.1 GB, aarch64 788 MB, riscv64 362 MB, x86_64 368 MB, uefi 75 MB). A lane builds
+# its tree a handful of times and is pruned, so it rarely earns back a cache that size; the main
+# checkout is long-lived and edited in place, so it does. The switch is cargo's own `build.incremental`
+# in a `.cargo/config.toml` at the worktree root, which cargo finds by walking up from any lane's
+# directory and never from the main checkout beside it. It is written once, here, because every lane
+# is cut here; a lane cut before 2026-10-12 picks it up as soon as any later claim has run. The file
+# is the machine's, not the tree's, so it is not under version control. CI is unaffected: it never
+# sees this directory, and Swatinem/rust-cache already exports CARGO_INCREMENTAL=0 in the jobs that
+# use it. `CARGO_INCREMENTAL=1` in the environment overrides it for one command.
+lanes_root="$(dirname "$worktree")"
+if [ ! -e "$lanes_root/.cargo/config.toml" ]; then
+    echo "==> lane builds go non-incremental: writing $lanes_root/.cargo/config.toml"
+    mkdir -p "$lanes_root/.cargo"
+    cat >"$lanes_root/.cargo/config.toml" <<'EOF_CONFIG'
+# Written by nife's script/claim; its comment above `lanes_root` says why. Every lane worktree in
+# this directory builds without incremental compilation; the main checkout, outside it, keeps it.
+[build]
+incremental = false
+EOF_CONFIG
+fi
+
 # The pre-push hook's fleet half (the queued-branch refusal, script/lint-fleet and the ready-status
 # check) runs only where `nife.fleet` is set (milestone 889 (the tree's gates stop depending on the
 # fleet tooling), provisional), so that a stranger's push asks GitHub nothing. A machine that cuts
