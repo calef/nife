@@ -26,4 +26,3 @@ too_many_lines	kernel/src/user/compositor_service.rs	start	101
 too_many_lines	kernel/src/user/login_service.rs	start	148
 too_many_lines	kernel/src/user/progenitor_boot.rs	boot_progenitor	404
 too_many_lines	kernel/src/user/rmle_service.rs	start	115
-too_many_lines	redoxfs_server/src/dispatch.rs	Server::handle	128
