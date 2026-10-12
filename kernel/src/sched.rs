@@ -95,6 +95,7 @@ mod process;
 mod region_reaping;
 mod rendezvous;
 mod spawning;
+mod switch_decision;
 mod thread_control_block;
 mod thread_table;
 mod timer;
@@ -817,15 +818,16 @@ fn install_cycle_counter_grant(granted: bool) {
 /// the call site says why. The lazy write
 /// lives in `arch::segments`.
 ///
-/// **`x86_64` only, and both the read (in `schedule`) and this install are `#[cfg]`-gated at the
-/// switch site**, not carried through the shared switch tuple. An earlier version threaded the value
-/// through the tuple the way the cycle-counter grant then did and trusted the optimizer to fold a
-/// constant `None` away on the other two architectures; it did not (icount measured `yield_switch`
-/// and `ctx_switch` up 13% on aarch64). The cycle-counter grant turned out to leak the same way for
-/// the same reason (the fold does not happen in the debug build the icount gate measures), and
-/// milestone 300 gave it this exact treatment; see `install_cycle_counter_grant`. A port grant is
-/// present in every x86 build, so keeping it off the other two ISAs' switch path takes a `#[cfg]`,
-/// not a constant. See DECISIONS §152's x86-only rationale.
+/// **`x86_64` only, and both the read (in `switch_operands`) and this install are `#[cfg]`-gated
+/// at the switch site**, not carried through the shared switch tuple. An earlier version threaded
+/// the value through the tuple the way the cycle-counter grant then did and trusted the optimizer
+/// to fold a constant `None` away on the other two architectures; it did not (icount measured
+/// `yield_switch` and `ctx_switch` up 13% on aarch64). The cycle-counter grant turned out to leak
+/// the same way for the same reason (the fold does not happen in the debug build the icount gate
+/// measures), and milestone 300 (decompose the icount baseline drift) gave it this exact treatment;
+/// see `install_cycle_counter_grant`. A port grant is present in every x86 build, so keeping it off
+/// the other two ISAs' switch path takes a `#[cfg]`, not a constant. See the x86-only rationale in
+/// DECISIONS §152 (the port-range capability).
 #[cfg(target_arch = "x86_64")]
 fn install_port_grant(grant: Option<(u16, u16)>) {
     crate::arch::segments::set_port_range_grant(grant);
@@ -904,74 +906,12 @@ pub fn schedule() {
         }) {
             finish_killed_current(sched, current);
         }
-        let state = sched.threads.get(current).map(|t| t.handshake.state);
 
-        // **Only a still-Running thread goes back on the ready queue.** A thread that reached
-        // here after marking itself `Blocked` (it is waiting for IPC), `Finished`, or `Dead` (a
-        // supervised corpse) must not be rescheduled, and this one line is what makes blocking work:
-        // `schedule()` can be called from the timer IRQ *while* a thread is mid-way through blocking
-        // itself, and it must not undo that by helpfully requeueing it.
-        let runnable = state == Some(State::Running);
-
-        let idle_tid = cpu::current().idle.load(Ordering::Relaxed);
-
-        let next = match cpu::current().with_runq(|q| q.pop_front()) {
-            // The popped token goes home to its thread, which holds it while it runs, and the id is
-            // what everything below uses.
-            Some(t) => hold_token(t),
-            None => {
-                if runnable {
-                    // Keep it. A thread yielding into an empty run queue simply carries on. (The
-                    // idle thread lands here too: nothing to do, so it wfi's again.) No switch.
-                    break 'decide None;
-                }
-                // Current is Blocked or Finished and the ready queue is empty. This is NOT a
-                // deadlock: a thread blocked on a device interrupt is waiting for an event that
-                // will arrive. Fall back to the idle thread, which wfi's until it does.
-                if idle_tid == u64::MAX || current == idle_tid {
-                    // No idle thread yet (before init finished), or the idle thread itself is
-                    // somehow not runnable, which cannot happen. Either way there is genuinely
-                    // nothing to run.
-                    match state {
-                        Some(State::Finished) => {
-                            panic!("the last thread exited; nothing left to run")
-                        }
-                        _ => panic!("nothing runnable and no idle thread"),
-                    }
-                }
-                idle_tid
-            }
-        };
-
-        // **The running thread must never come off its own run queue** (boot 8's downstream
-        // catastrophe, guarded here on its own merits). The pop above precedes the requeue below,
-        // so a legal schedule can never hand back `current`; if it ever does, something queued a
-        // thread that was still running, and switching into it would restore `t.context`, a
-        // pointer to a frame this very thread has already resumed and consumed: execution
-        // time-travels to its previous switch-out point on a reused stack and spins there
-        // forever, off every instrument. Debug builds fail loudly; the board build heals by
-        // keeping the thread running, which is the only state that is still coherent.
-        if next == current {
-            heal_self_pop(sched, current);
+        // The pick: this core's queue, the idle thread when it is empty, and the outgoing thread
+        // requeued if it can still run. `None` keeps the current thread with no switch.
+        let Some(next) = switch_decision::choose_next(sched, current) else {
             break 'decide None;
-        }
-
-        // Requeue the outgoing thread if it can still run, but never the idle thread, which lives
-        // outside the ready queue. A killed thread is already `Finished` (handled at the top), so it
-        // is not runnable here and is reaped by `finish_switch` after the switch, no queue surgery.
-        if runnable && current != idle_tid {
-            // `preempt` marks Ready and deliberately leaves `on_cpu` set: the thread is in a
-            // queue AND still standing on this core until finish_switch runs, which is the one
-            // legal overlap and the reason only this core may pop its own queue (the extracted
-            // protocol's steal-vs-switch-out rule; see crates/wake_handshake).
-            let t = sched.threads.get_mut(current).unwrap();
-            t.handshake.preempt();
-            // The token a running thread holds on its own TCB. Round robin: the back.
-            let Some(token) = t.own_token.take() else {
-                missing_token()
-            };
-            cpu::current().with_runq(|q| q.push_back(token));
-        }
+        };
 
         // Running, with on_cpu set until ITS successor's finish_switch, one switch from now.
         // **Did this thread just cross cores?** Recorded here rather than at any wake site, because
@@ -1011,117 +951,22 @@ pub fn schedule() {
         here.switched_from.store(current, Ordering::Relaxed);
         here.switches.fetch_add(1, Ordering::Relaxed);
 
-        // The incoming thread's low half. A kernel thread gets the empty reserved table, which
-        // makes every low address fault, which is exactly right: it has no business down there.
-        //
-        // **And its current-CPU page, off the same borrow**, which is the whole of this kernel's
-        // half of calef's 2026-09-21 ruling that a thread observing itself is a page rather than a
-        // crossing. Here rather than at any wake or placement site for `last_cpu`'s reason one
-        // field over: this is the one point every path to a CPU passes through, whatever moved the
-        // thread. And on this core rather than the one that queued it, which is what makes writer
-        // and reader the same hardware thread and the ordering argument a short one
-        // (`crates/current_cpu_protocol`). A kernel thread has no space and needs no page: it has
-        // no userspace to read one from.
-        let next_root = match sched.threads.get(next).unwrap().space.as_ref() {
-            Some(space) => {
-                space.publish_current_cpu(cpu::id() as u64);
-                space.ttbr0()
-            }
-            None => crate::arch::mmu::reserved_root(),
-        };
-
         // The incoming thread's cycle-counter grant (milestone 229, DECISIONS §139 option 4), read
-        // here for the same reason the root is: this is the last point the lock is held. A kernel
-        // thread's is `false`, like every user thread nobody granted it to. Written into the
-        // `#[cfg]`-gated variable declared above the block, not the switch tuple, so it costs the
-        // shipping build nothing at all (milestone 300; see `install_cycle_counter_grant` for why the
-        // old tuple-and-fold did not fold in the debug build the icount gate measures).
+        // here for the same reason `switch_operands` reads the root: this is the last point the
+        // lock is held. A kernel thread's is `false`, like every user thread nobody granted it to.
+        // Written into the `#[cfg]`-gated variable declared above the block, not the switch tuple,
+        // so it costs the shipping build nothing at all (milestone 300; see
+        // `install_cycle_counter_grant` for why the old tuple-and-fold did not fold in the debug
+        // build the icount gate measures).
         #[cfg(any(test, feature = "system_tests", feature = "cycle_counter_grant"))]
         {
             next_cycle_counter = sched.threads.get(next).unwrap().cycle_counter_grant;
         }
 
-        // Copy the raw pointers out before the lock drops. The assembly writes through the
-        // context slot and reads the incoming context, and both threads' TCB pages keep their
-        // contents pinned.
-        //
-        // **The TCB page pointer rather than `get_mut`** (milestone 447), and it is one probe per
-        // side rather than the two the obvious shape would cost. Each thread's FP register file
-        // lives in the free space of the same page, past the end of the struct, so a `&mut Thread`
-        // is exactly the wrong thing to hold: its provenance stops at the struct.
-        // `Threads::pointer` hands back the page cast unnarrowed and both addresses fall out of it.
-        let prev_ptr = sched.threads.pointer(current).unwrap();
-
-        // The thread pointer, from the outgoing thread to the incoming one (milestone 812), here
-        // because nothing returns to user mode before the switch; `arch::thread_pointer` has each
-        // architecture's half.
-        //
-        // SAFETY: live threads' TCB pages from the table, under `IPC_TABLES`; one field each.
-        unsafe {
-            crate::arch::thread_pointer::hand_over(
-                &mut (*prev_ptr).thread_pointer,
-                (*next_tcb).thread_pointer,
-            );
-        }
-
-        // SAFETY: a live thread's TCB page, held under IPC_TABLES. Field projection through a raw
-        // pointer, and `fp_state_of`'s contract is exactly what `pointer` returns.
-        let (prev_slot, prev_fp): (*mut *mut Context, *mut crate::arch::fp::FpState) = unsafe {
-            (
-                &raw mut (*prev_ptr).context,
-                crate::thread::fp_state_of(prev_ptr),
-            )
-        };
-
-        // `next_ctx`, and on x86 the incoming thread's port grant (milestone 299) beside it, out of
-        // ONE lookup. The two arms are byte-identical bar the port read, and the split is
-        // deliberate: the port read goes into the `x86_64`-only variable declared above the block,
-        // not the switch tuple, so it costs the other two architectures nothing at all. The
-        // cycle-counter grant is carried the same way, by milestone 300 (decompose the icount
-        // baseline drift, and re-baseline only what is proven), so neither grant widens this
-        // tuple: it is back to its pre-139 width `(prev_slot, next_ctx, next_root)` on every
-        // shipping build, plus milestone 447's two register-file pointers.
-        #[cfg(not(target_arch = "x86_64"))]
-        // SAFETY: as `prev_ptr`; `next` was popped off this core's run queue and marked `Running`
-        // inside this same locked block.
-        let (next_ctx, next_fp): (*mut Context, *const crate::arch::fp::FpState) = unsafe {
-            let next_ptr = sched.threads.pointer(next).unwrap();
-            (
-                (*next_ptr).context,
-                crate::thread::fp_state_of(next_ptr).cast_const(),
-            )
-        };
-        #[cfg(target_arch = "x86_64")]
-        // SAFETY: as the arm above, plus the port grant, which is a plain field read.
-        let (next_ctx, next_fp, next_port_grant): (
-            *mut Context,
-            *const crate::arch::fp::FpState,
-            Option<(u16, u16)>,
-        ) = unsafe {
-            let next_ptr = sched.threads.pointer(next).unwrap();
-            (
-                (*next_ptr).context,
-                crate::thread::fp_state_of(next_ptr).cast_const(),
-                (*next_ptr).port_range_grant,
-            )
-        };
-
-        // **The incoming thread's authority to reach x86 I/O ports from ring 3, installed here and
-        // not after the lock drops** (milestone 315; it was beside the address-space install until
-        // then). The TSS I/O-bitmap grant is the one per-core fact a *revocation* has to be able to
-        // take back from a core it is not running on, and `delete_port_range_caps_impl` does that by
-        // NMI while holding this lock. Reading the grant under the lock and installing it outside
-        // left two windows that broadcast could not close: a core could install a grant the sweep had
-        // already cleared, and the NMI could land in the middle of the install. Both shut if every
-        // writer of a bitmap holds `IPC_TABLES`, which costs, on a machine where nothing holds a
-        // port, one compare inside the critical section instead of one outside it.
-        //
-        // Nothing can execute a ring-3 `in`/`out` between here and the switch: this core is in the
-        // kernel with interrupts masked the whole way.
-        #[cfg(target_arch = "x86_64")]
-        install_port_grant(next_port_grant);
-
-        Some((prev_slot, next_ctx, next_root, prev_fp, next_fp))
+        // The incoming root and the four raw pointers the switch needs, read under the lock.
+        // SAFETY: the lock is held and interrupts are masked, both tids are live, and `next_tcb`
+        // is `next`'s page pointer, switched in and made current just above.
+        Some(unsafe { switch_decision::switch_operands(sched, current, next, next_tcb) })
     };
     // Rule 1: THE LOCK IS RELEASED HERE, before the switch. Holding it across `switch_to` would
     // leave it held by a thread that is not running, and the next thread to want it would spin
