@@ -28,5 +28,4 @@ too_many_lines	kernel/src/user/progenitor_boot.rs	boot_progenitor	404
 too_many_lines	kernel/src/user/rmle_service.rs	start	115
 too_many_lines	redoxfs_server/src/dispatch.rs	Server::handle	128
 too_many_lines	uefi_loader/src/arch/aarch64/mod.rs	tree_from_acpi	145
-too_many_lines	uefi_loader/src/arch/x86_64/mod.rs	hand_over	157
 too_many_lines	uefi_loader/src/device_tree_patch.rs	with_initrd	124
