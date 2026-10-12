@@ -1,5 +1,5 @@
 ---
-status: NOT-STARTED
+status: PARTIAL
 raised: 2026-09-23
 promoted_from: constitution-carry-vs-brief
 milestone_dependencies: none
@@ -9,6 +9,11 @@ specific_machine: none
 needs_person: no
 ---
 # 579. Which of the constitution must be carried, and which is a brief
+
+PARTIAL, ruled by calef on 2026-10-12 (UTC). Shipped: two of the five briefs, as files in `briefs/`
+(commit cc49c2acc), and three more passages carried by skills in `notes/skills/` rather than by
+briefs (pull request #1726). What remains is the one passage the table left `uncertain` that still
+sits in `AGENTS.md`, listed under Follow-on.
 
 *(Number minted at promotion.)* Promoted from the proposal `constitution-carry-vs-brief`, filed
 2026-09-23. calef's instruction of 2026-09-23 was to give the two unnumbered proposals on `main` a
@@ -56,8 +61,7 @@ of what it proposed has happened, in a different form than it recommended:
   `AGENTS.md`. Its first two (vendor lock-in, principle 3) were met by keeping the files plain and
   linked rather than by refusing the format.
 
-Whether the block is now BUILT, PARTIAL or superseded is calef's call; this edit records the facts
-and does not change the status.
+calef ruled on 2026-10-12 (UTC) that the block is PARTIAL, on these facts.
 
 ## Why this differs from milestone 118's budget
 
@@ -215,6 +219,20 @@ one CLI fails principle 3 (a newcomer must succeed alone). And on-demand loading
 direction for anything that must fire unprompted, which is most of the carry column. `briefs/`
 already does the job in plain Markdown. [Since this was filed](#since-this-was-filed) says how the
 tree later resolved this.
+
+## Follow-on
+
+- **Done.** Briefs 2 and 3, `briefs/merge-and-cleanup.md` and `briefs/session-start.md`, built on
+  2026-09-23 in commit cc49c2acc.
+- **Done.** Briefs 1, 4 and 5 were carried by skills rather than briefs: the claim recipe in
+  `notes/skills/developer-lane/SKILL.md`, the leaked-QEMU recipe in `notes/skills/qemu-hygiene/SKILL.md`,
+  and the seven questions in `notes/skills/decisions/SKILL.md` (commit 8f8aeddf1, pull request #1726).
+  That also settles where the fifth belonged.
+- **Outstanding.** Of the three `uncertain` passages, the opening line every agent-written pull
+  request and comment carries is still in `AGENTS.md`, under "Pull requests and comments an agent
+  writes" (checked 2026-10-12, UTC). Whether it moves is calef's call, as the block said. The other
+  two left: work waiting on calef is in the `decisions` skill, and the documentation standard is in
+  `design/tenets/documentation-standard.md`.
 
 ## Index row
 
