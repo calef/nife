@@ -2087,6 +2087,16 @@ REGISTRY = {
         "hand-written assertion that a trait's contract holds for a type",
         lambda: _unsafe_census()['trait_claims'],
     ),
+    # The census's fourth population, added 2026-10-12 (UTC) by milestone 891 (a mutable static
+    # becomes an atomic, a lock or a recorded cell); name provisional. A ratchet ceiling, so it
+    # fails in both directions: a new `static mut` stops the lane that adds it, and one converted
+    # away has to be banked by lowering the marker. notes/unsafe-obligations/ceilings.md has the
+    # scope.
+    'static-mut-declarations': (
+        'how many `static mut` declarations the Rust that runs on nife makes outside its test '
+        'harnesses, each one shared mutable state whose soundness argument is a comment',
+        lambda: _unsafe_census()['static_mut'],
+    ),
 }
 
 # --- finding the markers ------------------------------------------------------------------------
@@ -2154,10 +2164,14 @@ MARKER = re.compile(r'<!--count(-at-least|-at-most)?:([a-z0-9-]+)-->')
 # with its reason written beside it, and a gate that forbade them would be deleted the first time
 # one was right. The raise shows in the diff; the reader of that diff is the check.
 #
-# Empty since 2026-10-06 (UTC): calef dropped the line limit of milestone 118 (CLAUDE.md has a
+# Empty from 2026-10-06 to 2026-10-12 (UTC): calef dropped the line limit of milestone 118 (CLAUDE.md has a
 # budget), "drop 118's limit and rely on §212's cap", so AGENTS.md is budgeted in words by the prose
 # ratchet and `agents-md-lines` is gone. The mechanism stays for the next ceiling that must sit at the tree's exact value.
-RATCHET_CEILINGS = set()
+#
+# `static-mut-declarations` is that next one (milestone 891, 2026-10-12 UTC): a population of a few
+# dozen that should only ever fall, where a fixed ceiling would let a converted static be quietly
+# spent again.
+RATCHET_CEILINGS = {'static-mut-declarations'}
 
 # Prose explaining this convention has to be able to spell it, which is the same exemption the
 # "daemon" check below carries for the documents that argue about the word. A marker inside a
@@ -2324,7 +2338,8 @@ if _census:
           f'outside kernel/src/arch/, {_census["density"]} per 10,000 (ceiling); '
           f'{_census["inside_arch"]} blocks inside arch/ (no target: rule 1 puts assembly there); '
           f'{_census["thread_safety"]} Send/Sync claims (ceiling); '
-          f'{_census["trait_claims"]} other unsafe trait impls (ceiling). '
+          f'{_census["trait_claims"]} other unsafe trait impls (ceiling); '
+          f'{_census["static_mut"]} static mut declarations (ceiling, follows the tree down). '
           f'See notes/register-of-measures.md')
 
 # --- the three derivations that could not be made one (milestone 236) ----------------------------
