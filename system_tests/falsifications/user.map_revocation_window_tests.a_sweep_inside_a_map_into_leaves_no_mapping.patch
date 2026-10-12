@@ -20,11 +20,10 @@ sweep reached the builder's own table.
 
 Nothing here is architecture-specific, so one patch serves every leg.
 
-diff --git a/kernel/src/syscall.rs b/kernel/src/syscall.rs
-index 98f833e7c..4092fbcd0 100644
---- a/kernel/src/syscall.rs
-+++ b/kernel/src/syscall.rs
-@@ -900,11 +900,11 @@ fn address_space_map_into(
+diff --git a/kernel/src/syscall/address_space.rs b/kernel/src/syscall/address_space.rs
+--- a/kernel/src/syscall/address_space.rs
++++ b/kernel/src/syscall/address_space.rs
+@@ -92,11 +92,11 @@
      // section of its own, and a sweep could fall between that read and the record and leave the
      // mapping live: `revoke::MappingHold` has the whole account. The space's registry comes first
      // because it ranks above the mapping registry; neither touches `IPC_TABLES`.
