@@ -260,6 +260,15 @@ through SBI, so it works on both.
   quiet, and check `top` rather than only the load average. The CI job is five sequential QEMU runs
   where `test` does one: more exposure to a noisy runner, not a new kind of risk.
 
+  The network checks are the second place this shows. On 2026-10-12 (UTC) the CI shard that runs
+  `rva23s64` and `thead-c906` failed twice on guest networking, on two unrelated pull requests, and
+  passed both times on a rerun. The first, on #1964, failed the `std_resolve` lookup and the inbound
+  check. The second, #1967's merge group (run 38222292949), failed the inbound check on `rva23s64`.
+  Its guest served 2 of the 4 connections against a floor of 3, and 65 of 69 attempts failed to
+  connect. The job reported the runner was not oversubscribed. Neither change touched the network
+  path, so this is recorded as a flake, cause not yet found, rather than a model defect. A third
+  occurrence is the signal to look at the forwarded port's readiness rather than rerun.
+
   The converse of that rule is a tool, and it went unused for a month. "A green matrix under
   load is conclusive" also means loading the host on purpose is the cheapest way to *find* a
   load-sensitive assertion, which is a different question from finding a model-specific bug. The
