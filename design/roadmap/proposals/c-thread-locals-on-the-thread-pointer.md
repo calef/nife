@@ -12,6 +12,11 @@ needs_person: no
 Raised on 2026-10-12 (UTC) by lane `milestone/836-a-c-library-stage-two-threads`, which built POSIX
 threads for nife's C library and found that a C program's own thread-locals cannot be linked.
 
+Reuse: the layouts are the ELF TLS ABI's, and musl's and relibc's `__init_tls` and dynamic-linker
+code show how a C library copies the template into each thread's block. Neither can be taken
+whole, because the block must also be `std`'s, so the copy is written against `std`'s
+`thread_local/key/nife.rs`.
+
 ## What is missing
 
 A C variable declared `__thread` or `_Thread_local` is ELF thread-local storage. The compiler
