@@ -673,6 +673,68 @@ mod tests {
         assert!(u.truncated);
     }
 
+    /// **A block that fits but is too short for its type is reported, not skipped.** A four-byte
+    /// block is the smallest the walk accepts, and one ending the table exactly is still walked.
+    #[test]
+    fn a_block_too_short_for_its_type_marks_the_table_truncated() {
+        for kind in [0x10u8, 0x11, 0x21] {
+            let stub = std::vec![kind, 0, 4, 0];
+            let u = IvrsUnits::parse(&body(&[stub]));
+            assert!(u.truncated, "a 4-byte {kind:#x} block");
+            assert!(u.units().is_empty() && u.unity_regions().is_empty());
+        }
+    }
+
+    /// The fixed part alone is a table with no blocks, and its `IVinfo` is still read.
+    #[test]
+    fn a_table_of_only_the_fixed_part_still_has_its_ivinfo() {
+        let u = IvrsUnits::parse(&body(&[]));
+        assert_eq!(u.ivinfo, 1 | (40 << 8));
+        assert!(!u.truncated);
+    }
+
+    /// An IVHD of exactly its header names a unit with no devices: recorded, not truncated.
+    #[test]
+    fn an_ivhd_of_only_its_header_is_a_unit() {
+        let u = IvrsUnits::parse(&body(&[ivhd(0x11, 0xfed8_0000, &[])]));
+        assert_eq!(u.units().len(), 1);
+        assert!(!u.truncated);
+    }
+
+    /// **The variable-length ACPI HID entry is sized and stepped over**, so the select after it
+    /// is still read.
+    #[test]
+    fn the_acpi_hid_entry_is_skipped_by_its_own_length() {
+        let mut e = std::vec![0u8; 22];
+        e[0] = 0xf0;
+        e[21] = 3;
+        e.extend_from_slice(b"uid");
+        e.extend_from_slice(&entry4(0x02, 0x00a0));
+        let u = IvrsUnits::parse(&body(&[ivhd(0x10, 0xfed8_0000, &e)]));
+        assert!(!u.truncated);
+        assert_eq!(u.owner_index(0x00a0), Ok(Some((0, Ownership::Named))));
+    }
+
+    /// A range whose end is below its start names no device, and the table is reported as read
+    /// only in part rather than as owning an inverted range.
+    #[test]
+    fn a_range_that_ends_before_it_starts_is_refused() {
+        let mut e = Vec::new();
+        e.extend_from_slice(&entry4(0x03, 0x0200));
+        e.extend_from_slice(&entry4(0x04, 0x0100));
+        let u = IvrsUnits::parse(&body(&[ivhd(0x10, 0xfed8_0000, &e)]));
+        assert!(u.truncated);
+        assert!(u.ranges().is_empty());
+    }
+
+    /// An IVMD of type 20h applies to every device, whatever its device-id bytes hold.
+    #[test]
+    fn a_type_20h_ivmd_covers_every_device() {
+        let u = IvrsUnits::parse(&body(&[ivmd(0x20, 1 << 1, 0, 0, 0x1000, 0x1000)]));
+        let r = u.unity_regions()[0];
+        assert_eq!((r.first, r.last), (0, 0xffff));
+    }
+
     /// **Every prefix of a real table decodes without panicking**, and never invents a unit the
     /// bytes do not hold. Firmware hands this parser whatever it wrote, and the walk runs on the
     /// boot path.

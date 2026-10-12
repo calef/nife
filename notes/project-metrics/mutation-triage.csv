@@ -918,3 +918,12 @@ jh7110_clock_and_reset,standard_mode_100k,replace < with <=,equivalent,"at tot =
 jh7110_clock_and_reset,standard_mode_100k,replace | with ^,equivalent,"IC_CON_MM (bit 0), IC_CON_SPD_SS (bit 1), IC_CON_RE (bit 5) and IC_CON_SD (bit 6) are disjoint, so | equals ^; the word itself is pinned by the_standard_mode_timing_is_the_vendor_formula_worked_by_hand; the 2026-10-12 per-crate re-run still reports it"
 jh7110_clock_and_reset,with_parent,replace | with ^,equivalent,"word & !CLOCK_MUX_MASK and (parent << shift) & CLOCK_MUX_MASK are disjoint by their masks, so | equals ^; the 2026-10-12 per-crate re-run still reports it"
 line_editor,req,replace | with ^,equivalent,"operation << OPERATION_SHIFT (56) and len & 0xffff_ffff occupy disjoint bits, so | and ^ agree on every input; the 2026-10-12 per-crate re-run still reports it"
+machine_discovery,IvrsUnits::parse,replace < with <=,killed,killed by a_table_of_only_the_fixed_part_still_has_its_ivinfo
+machine_discovery,IvrsUnits::read_device_entries,replace match guard e.len() >= 22 with false,killed,killed by the_acpi_hid_entry_is_skipped_by_its_own_length
+machine_discovery,IvrsUnits::read_device_entries,replace match guard first <= id with true,killed,killed by a_range_that_ends_before_it_starts_is_refused
+machine_discovery,IvrsUnits::read_ivhd,replace < with <=,killed,killed by an_ivhd_of_only_its_header_is_a_unit
+machine_discovery,IvrsUnits::read_ivhd,replace < with ==,killed,killed by a_block_too_short_for_its_type_marks_the_table_truncated and an_ivhd_of_only_its_header_is_a_unit
+machine_discovery,IvrsUnits::read_ivmd,delete match arm 0x20,killed,killed by a_type_20h_ivmd_covers_every_device
+machine_discovery,IvrsUnits::read_ivmd,replace < with >,killed,killed by a_block_too_short_for_its_type_marks_the_table_truncated
+machine_discovery,blocks,replace < with <=,killed,killed by a_block_too_short_for_its_type_marks_the_table_truncated
+machine_discovery,blocks,replace > with >=,killed,killed by a_block_too_short_for_its_type_marks_the_table_truncated
