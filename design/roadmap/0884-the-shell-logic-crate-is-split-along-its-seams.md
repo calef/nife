@@ -177,9 +177,9 @@ and parent-index rows are gone. Every name below is provisional and carries a `/
 | `lib.rs` | 133 | | crate docs, `mod` and `use` lines, every public item re-exported by name |
 | `say.rs` | 106 | 50 | `Say`, `HEAP_MAX_BYTES`, `write_say` |
 | `status.rs` | 105 | 73 | `Status`, `STATUS_WORD` |
-| `routing.rs` | 77 | 45 | `Route`, `route` |
+| `routing.rs` | 77 | 60 | `Route`, `route` |
 | `words.rs` | 259 | 348 | pattern versus text, `designation`, `write_set`, `echo`, quoting |
-| `batching.rs` | 132 | 17 | `Sweep`, `write_sweep`, `write_batch` |
+| `batching.rs` | 132 | 49 | `Sweep`, `write_sweep`, `write_batch` |
 | `number.rs` | 23 | 14 | `write_num` |
 | `apropos.rs` | 89 | 100 | `write_found`, `write_apropos` |
 | `timing.rs` | 114 | 76 | `Untimed`, `write_untimed`, `write_duration`, `write_timing` |
@@ -189,7 +189,9 @@ and parent-index rows are gone. Every name below is provisional and carries a `/
 | `test_support.rs` | 54 | | `shown`, `spec_of`, `listing`, `endowment` |
 
 The tests column is each module's `tests.rs` child. The 83 tests moved unchanged, split by what each
-calls rather than by the banner it sat under. Each child takes `use super::*` except `status`,
+calls rather than by the banner it sat under. Two were added: `script/coverage` counts no doctest,
+and `write_sweep` and `route`'s `time` and `xargs` arms ran only in doctests, which the crate root's
+average had hidden. Alone, `batching.rs` measured 18.9% against the 85% floor. Each child takes `use super::*` except `status`,
 which needs nothing from the root. `write_config_values` became `pub(super)` and the test helpers
 `pub(crate)`; nothing public widened.
 

@@ -49,9 +49,9 @@ under. Lines are measured after `cargo fmt`.
 | `lib.rs` | crate docs (unchanged), `mod` lines, imports, named re-exports | 133 | |
 | `say.rs` | `Say`, `HEAP_MAX_BYTES`, `write_say` | 106 | 50 |
 | `status.rs` | `Status`, `STATUS_WORD` | 105 | 73 |
-| `routing.rs` | `Route`, `route` | 77 | 45 |
+| `routing.rs` | `Route`, `route` | 77 | 60 |
 | `words.rs` | `is_pattern`, `expansion`, `designation`, `write_set`, `echo`, quoting (`Piece`, `pieces`) | 259 | 348 |
-| `batching.rs` | `Sweep`, `write_sweep`, `write_batch` | 132 | 17 |
+| `batching.rs` | `Sweep`, `write_sweep`, `write_batch` | 132 | 49 |
 | `number.rs` | `write_num` | 23 | 14 |
 | `apropos.rs` | `write_found`, `write_apropos` and their layout constants | 89 | 100 |
 | `timing.rs` | `Untimed`, `write_untimed`, `write_duration`, `write_timing` | 114 | 76 |
