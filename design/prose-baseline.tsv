@@ -40,7 +40,7 @@ design/decisions/0029-framebuffer-grant.md	-	21	65	-	-
 design/decisions/0030-dma-boundary-proof.md	-	-	64	-	-
 design/decisions/0031-foreign-language-seam.md	-	-	62	-	-
 design/decisions/0033-compositor-authority.md	-	22	74	-	-
-design/decisions/0034-redoxfs-primary.md	4118	-	71	-	-
+design/decisions/0034-redoxfs-primary.md	-	-	71	-	-
 design/decisions/0035-scanner-findings.md	-	-	59	-	-
 design/decisions/0036-repository-in-the-tcb.md	-	22	62	-	-
 design/decisions/0037-text-as-a-value.md	-	-	82	-	-

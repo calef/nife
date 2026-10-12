@@ -101,22 +101,8 @@ no xattrs at all. So Time Machine runs on RedoxFS today; what is unavailable is 
 it. The preference for xattrs is right (we will want them anyway) but there is no time pressure, and
 that distinction is what let this be decided by measurement.
 
-The check that decided it, and its result. The question was whether a layer *above* the filesystem
-could be crash-atomic, since a rename must move a file and its metadata together or a crash leaves
-them inconsistent (§42's territory). RedoxFS groups arbitrary mutations into one transaction:
-`fs.tx(|tx| …)` exposes `create_node`, `write_node`, `rename_node`, `truncate_node` and `remove_node`
-on one `Transaction`, committed together, and `fs_server` already relies on it ("existence is checked
-inside the same transaction as the create"). So the layer is safe, the format stays unforked, and
-§34 stands.
-
-The layer is also the *anti*-lock-in option rather than the sunk-cost one: xattrs implemented in the
-FS server work over any backing filesystem, so they decouple the requirement from this decision.
-Normally such a layer is bypassable and therefore worthless; here nothing can bypass it, because all
-access goes through `fs_proto`. That is a capability-system property doing real work.
-
-Also found, and it corrects a claim made in milestone 55: `rename_node` and
-`rename_node_no_replace` already exist in RedoxFS. `fruit:posix_rename` and §42's rename work are
-blocked on `fs_proto` lacking the verb, **not** on the engine.
+The check that settled this, and the finding that rename is blocked on `fs_proto` rather than the
+engine, are in [`crash-consistency.md`](0034-redoxfs-primary/crash-consistency.md).
 
 ## Amendment (2026-07-31): the xattr fork is closed, the layer, and it is reversible
 
@@ -168,44 +154,8 @@ deferred. calef's objection to "patching it in" was right, and the answer is not
 
 ## Amendment (2026-07-30): ZFS and XFS, and why RedoxFS is better-shaped than its size suggests
 
-calef asked whether OpenZFS is best in class. For a backup server, yes: end-to-end checksums with
-*repair*, snapshots, `send`/`recv`, scrub, no RAID write hole. And it is unavailable to us, for a
-reason worth distinguishing from "too big": at roughly 400k lines of C it would *be* the project, but
-more decisively **it is not a component you confine, it is a subsystem you host.** OpenZFS needs a
-Solaris Porting Layer (kmem, mutexes, condvars, taskqs, VFS integration, page cache); §31's seam
-confines a narrow interface, and ZFS's interface to its host kernel is enormous. Its ARC also expects
-gigabytes where the VisionFive 2 has 4 to 8, and CDDL is worth checking against our license posture
-before publication.
-
-XFS: excellent, aimed at another problem, and weakest exactly where this application cares. XFS v5
-checksums metadata only; file data is unprotected, so bit rot in a backup is invisible until
-restore. Its strengths (allocation groups for parallel metadata, extents, large-file throughput) target
-a workload we do not have. It is journaling rather than copy-on-write, has no snapshots, cannot shrink,
-and is ~100k lines of C more entangled with Linux VFS than ext4.
-
-The finding that reframes the comparison. RedoxFS is architecturally ZFS-shaped where it counts:
-copy-on-write, transactions, and checksums stored in the parent `BlockPtr` and verified on every
-`read_block` (seahash recomputed, `EIO` on mismatch). The hash living in the *pointer* rather than
-the block makes it a Merkle tree, which is ZFS's design and is strictly stronger than a header
-checksum, because a header checksum cannot catch a misdirected write. It also encrypts. So RedoxFS
-beats XFS on data integrity and matches ZFS's integrity architecture, at a fraction of the size.
-
-What it genuinely lacks: snapshots, self-healing, scrub, compression, RAID-Z.
-
-And on a single disk, ZFS's headline advantage largely evaporates, which is the observation that
-should settle the anxiety. Self-healing requires redundancy; with one drive ZFS also only *detects*
-corruption. calef's topology is a single USB drive, so the real gap is snapshots, scrub and
-compression rather than integrity. Scrub is buildable on what exists today: read every block, let the
-checksums verify themselves, report failures. That is a small program, not a filesystem feature.
-
-**So the direction is snapshots, not migration.** Copy-on-write makes them tractable, and it is the one
-missing property that matters for backups. If ZFS-class *redundancy* is ever wanted, that is a
-multi-disk story and nothing within reach provides it.
-
-The pattern across the whole survey, now covering ext2, ext4, XFS, btrfs, ZFS, F2FS, FAT and
-littlefs: every mature filesystem with the properties we want is a large C codebase entangled with a
-Unix kernel. That is not a coincidence to route around; it is why the choice was a small Rust
-filesystem with the right architecture rather than a large one with more features.
+The comparison, and why the direction is snapshots rather than migration, is in
+[`zfs-and-xfs.md`](0034-redoxfs-primary/zfs-and-xfs.md).
 
 ## The alternative that could supersede this, and is not a filesystem choice
 
@@ -216,11 +166,6 @@ story* than a writable RedoxFS root, it sidesteps the repair question above by m
 reproducible rather than repairable, and it is the shape Android and ChromeOS chose (dm-verity plus an
 overlay). It is recorded here as the thing most likely to make this section a footnote, and it competes
 on architecture rather than on engine quality, which is why choosing RedoxFS now costs little.
-
-Note that switching engines would not address condition 1 at all: **no candidate's crash consistency
-is tested here.** That is a gap in our harness, not in RedoxFS, and it is why the conditions matter
-more than the choice. *That sentence was true when it was written and is now the thing milestone 37
-fixed; the harness exists, and it would measure any engine put behind the same trait.*
 
 ## Amendment (milestone 37, 2026-07-30): condition 1 is met, and the claim is narrower than the words it replaces
 
@@ -243,13 +188,8 @@ non-decreasing as the cut point advances, so a later crash can never lose more t
 one; and at the last cut point `p` must be the whole workload, so a filesystem that recovered the
 initial state every time (perfectly prefix-consistent, perfectly useless) fails.
 
-The numbers, host side, exhaustive (`fs_server/tests/crash_consistency.rs`, 0.6 s):
-
-| injection | fault points | result |
-|---|---|---|
-| power cut, every write | 93 | all prefix-consistent, `p` monotonic, `p` = 7 with nothing lost |
-| power cut with the last write **torn**, 4 offsets | 372 | all prefix-consistent |
-| a device that **lies** (drop or tear one write, keep persisting after) | 186 | 112 recovered, 1 refused at the mount, 73 refused at a read, **0 silently wrong** |
+The fault-injection table whose third row the next paragraph cites, its controls, the on-device
+run and why the harness matters more than the engine are in [`crash-consistency.md`](0034-redoxfs-primary/crash-consistency.md).
 
 The limit, stated as plainly as the guarantee, because it is real. RedoxFS's `Disk` trait has no
 flush and no barrier, so write *ordering* is the device's job. A device that acknowledges a write it
@@ -260,43 +200,6 @@ checked on every read, so a lost or torn block is an error rather than a wrong a
 server issues no `VIRTIO_BLK_T_FLUSH`, so on real hardware with a volatile write cache the durability
 of the *last* acknowledged write is the device's word rather than ours; that is a gap in our driver,
 not in the engine, and it is recorded here rather than in a footnote.
-
-The controls, which are the reason the rest counts. Three, of increasing directness. The
-lying-device sweep needs no tampering at all and still produces 74 images the filesystem refuses, so
-the injector is demonstrably destructive. Removing the header ring's older generations leaves 92 of
-93 fault points unmountable, which isolates the fallback as the mechanism rather than a guess. And
-a commit torn at 2048 bytes fails `Header::valid()` outright while the previous generation's slot
-stays valid and stays older, which is the whole recovery argument in three assertions and no mount.
-
-A fourth control arrived unbidden and is worth more than the other three. The first version of
-the harness read *any* failed lookup as "the name is absent", so a dropped write to a directory's
-tree block produced what looked like a filesystem that never existed, empty root and all. Nine fault
-points reported a filesystem bug that was a test bug: `ENOENT` is the only error that means absence,
-and the engine refusing to guess at a block whose checksum did not match is the property working.
-An instrument that can produce a false positive and did is an instrument that is connected to
-something.
-
-Two mechanisms we had named wrong, corrected here. `cleanup: true` is **not** the header-ring
-replay; `FileSystem::open` scans all 256 slots and keeps the newest valid one unconditionally, and
-`cleanup` only releases unused nodes and commits on top. And the recovery is not "the newest
-consistent generation" in any sense the engine computes: it is the newest generation whose *header*
-still hashes, which is enough only because a commit's blocks are all written before it.
-
-On device, both ISAs, on a disk of its own. The FS server is killed one block write into its
-second transaction, with that block torn in half by a real virtio write, announcing the cut on its
-readiness endpoint so the kill is provably the injector's. A different FS-server process then
-mounts the same disk through the same block server, which is endpoint-only naming doing its job: the
-block server never learns its client died and was replaced, because it never knew who its client was.
-Its readiness sentinel is the consistency result, since `Server::open` refuses an image it cannot
-make sense of. Both legs recover the acknowledged payload, whole, and the host tool re-reads the image
-afterwards with the pinned engine and agrees.
-
-The crash test owns its disk, and that is §27's lesson applied before the fact rather than after.
-This test deliberately leaves a filesystem half-written. On the shared fixture, every other FS test's
-result would have depended on whether this one ran first, which is precisely the order-coupled gate
-that manufactured three incompatible root causes from three honest investigations. The fixture is
-regenerated every run, `NIFE_KEEP_REDOXFS` deliberately does not apply to it, and on the host every
-fault point starts from a byte-identical clone of one image built in-process.
 
 What is still a design claim. Ordering and durability at the device, above. Repair and recovery
 tooling for an image the checksums *do* reject, which "What would reverse this" already names as
