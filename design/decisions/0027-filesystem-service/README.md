@@ -14,6 +14,6 @@ room for:
 parent under §212 (a prose budget). The directory follows §212's siting default. calef names
 directories.*
 
-- `the-2026-07-29-amendment` Name: provisional, minted 2026-10-12 (UTC) by
-  maintainer/prose-cap-86-and-27, for the body of the parent's 2026-07-29 amendment. calef names
-  files.
+- `the-2026-07-29-amendment` Name: ratified 2026-10-12 (calef, on #2015: "Rename to prior-art,
+  keep the other two."). Minted that day by maintainer/prose-cap-86-and-27, for the body of the
+  parent's 2026-07-29 amendment.

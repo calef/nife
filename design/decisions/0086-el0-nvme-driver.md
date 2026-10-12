@@ -105,13 +105,13 @@ rewrites, the way the two findings above it did.
 
 ### The hold is spent, and it was measuring the wrong variable
 
-Moved to [`research-findings.md`](0086-el0-nvme-driver/research-findings.md): the research pass on
-the hold condition.
+Moved to [`prior-art.md`](0086-el0-nvme-driver/prior-art.md): the research pass on the hold
+condition.
 
 ### The premise is false, and that is the largest single finding
 
-Moved to [`research-findings.md`](0086-el0-nvme-driver/research-findings.md): the NVM Express
-specification's account of the doorbell, and what the premise garbled.
+Moved to [`prior-art.md`](0086-el0-nvme-driver/prior-art.md): the NVM Express specification's
+account of the doorbell, and what the premise garbled.
 
 ### The options, repriced
 
@@ -155,8 +155,8 @@ board this project owns, it is the only option in this list that confines anythi
 
 ### What this tree already does, item by item
 
-Moved to [`research-findings.md`](0086-el0-nvme-driver/research-findings.md): the table of what an
-EL0 NVMe driver needs and what supplies it today.
+Moved to [`prior-art.md`](0086-el0-nvme-driver/prior-art.md): the table of what an EL0 NVMe driver
+needs and what supplies it today.
 
 ### What each option costs, counted
 
@@ -197,8 +197,8 @@ matters. Nobody should assert it either way from this section.
 
 ### Prior art, fetched rather than recalled
 
-Moved to [`research-findings.md`](0086-el0-nvme-driver/research-findings.md): seL4, Genode, Redox,
-Linux VFIO and SPDK, and software mediation of NVMe queues.
+Moved to [`prior-art.md`](0086-el0-nvme-driver/prior-art.md): seL4, Genode, Redox, Linux VFIO and
+SPDK, and software mediation of NVMe queues.
 
 ### The axis nothing in this section has named: who may forge an interrupt
 
@@ -212,8 +212,8 @@ reversibility, and who has acted on it.
 
 ### What this lane would decide, and what is left to calef
 
-Moved to [`research-findings.md`](0086-el0-nvme-driver/research-findings.md): the research lane's
-reading of the options, and what it left to calef.
+Moved to [`prior-art.md`](0086-el0-nvme-driver/prior-art.md): the research lane's reading of the
+options, and what it left to calef.
 
 ## The decision, 2026-09-03
 
