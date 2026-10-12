@@ -1889,6 +1889,11 @@ def replay_swish_check_on(t, arch):
 # its own name. A `--> started` line says what is in flight, for a cancelled run that never reaches a
 # verdict. Kernel tests and swish-check records boot QEMU against one shared image, so a sweep that
 # holds any runs with one job and says so.
+#
+# BUGS: a worker builds its package cold in its own `target/`, which the estimate does not count
+# (measured on the first probe runs: shards finished within 17% of it). A sweep killed mid-run
+# leaves its worker worktrees registered; `git worktree prune` drops them once the temporary
+# directory is gone.
 PARALLEL_KINDS = ("kani", "host test")
 
 
