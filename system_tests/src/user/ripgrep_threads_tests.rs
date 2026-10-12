@@ -151,7 +151,7 @@ impl Line {
 }
 
 /// One threaded run and its verdict: the lines, and `1 + workers` threads started.
-fn threaded_run(line: &str, workers: usize) {
+fn threaded_run(line: &str, workers: usize, before_counting: impl FnOnce()) {
     use filesystem_protocol::dir;
     let mut got = [0u8; 8192];
     let Some((len, started, spent)) =
@@ -165,6 +165,7 @@ fn threaded_run(line: &str, workers: usize) {
          {len} bytes, {spent} heap pages"
     );
     assert_the_fixture_lines(text, line);
+    before_counting();
     assert_eq!(
         started as usize,
         1 + workers,
@@ -206,11 +207,13 @@ fn ripgrep_walks_on_every_online_core_by_default() {
     use filesystem_protocol::fixture::walk as tree;
     skip_without_rg!();
     let online = crate::smp::online_harts_mask().count_ones() as usize;
-    assert!(
-        online > 1,
-        "booted with {online} core: rg's default is one thread here, and this test is about more"
-    );
-    threaded_run(tree::RG_SEARCH_THREADED, online.min(12));
+    // Asked after the run, so a boot with no disk (x86_64's one-core OVMF leg) skips first.
+    threaded_run(tree::RG_SEARCH_THREADED, online.min(12), || {
+        assert!(
+            online > 1,
+            "booted with {online} core: rg's default is one thread here, and this test is about more"
+        );
+    });
 }
 
 /// **`rg --threads 4` starts four workers**, whatever the core count, and they find exactly what
@@ -221,5 +224,5 @@ fn ripgrep_walks_on_every_online_core_by_default() {
 fn ripgrep_told_four_threads_starts_four_workers() {
     use filesystem_protocol::fixture::walk as tree;
     skip_without_rg!();
-    threaded_run(tree::RG_SEARCH_FOUR_THREADS, tree::RG_FOUR);
+    threaded_run(tree::RG_SEARCH_FOUR_THREADS, tree::RG_FOUR, || {});
 }

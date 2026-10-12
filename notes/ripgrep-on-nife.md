@@ -110,8 +110,7 @@ in `rg` is asked to say how many threads it ran.
 | riscv64 | 5 | 5 | 267 |
 | `x86_64` (PVH leg) | 5 | 5 | 269 |
 
-Five is the main thread and four workers, which the test asserts exactly: a serial walk, or a spawn
-that failed, reads 1. Both lines print the fixture's 138 match lines, each once and in whatever
+Five is the main thread and four workers, asserted exactly; a serial walk reads 1. Both lines print the fixture's 138 match lines, each once and in whatever
 order the workers finished, and the test holds them to `fixture::walk::rg_match_path`'s list. The
 host's `rg`, run over the same staged tree with the same two lines, is held to the same list by
 `walk_pricing`'s `the_hosts_parallel_rg_prints_the_fixture_lines`, so nife and macOS agree byte for
@@ -123,8 +122,10 @@ pages `ripgrep_tests` gives the serial walk, the fourth spawn was refused for wa
 thread control block, so the threaded tests give `rg` 512. CI's `rg-threads` rows run them on
 every pull request (`script/ci-build`).
 
-`--threads 1` stays on the measured line in the comparison with Linux below, which is serial on both
-sides. A threaded comparison is not measured yet.
+The first full `x86_64` suite hung the four-thread test past its 90 s ceiling at two cores: the
+PAL held a spinlock on its one file page across each `CALL`, so idle workers spun while the holder
+waited on the caretaker. It is `std`'s futex mutex now (`sys/fs/nife/page.rs`), and the test takes
+about 0.5 s there. The comparison with Linux below stays serial on both sides.
 
 ## The refusal, through `rg`
 
