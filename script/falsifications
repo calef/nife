@@ -93,10 +93,10 @@
 #
 # **A swish-check record is the third thing a block can sit above** (milestone 742 (every test is
 # falsified as routine), provisional). Milestone 673 (the confinement table lists the unvouched
-# child) recorded `xtask/falsifications/swish_check.swish_check_boot.patch` against row 31 of
+# child) recorded `xtask/falsifications/swish_check.boot.swish_check_boot.patch` against row 31 of
 # notes/confinement-claims.md and could only replay it by hand. Now a block above a function in
-# `xtask/src/swish_check.rs` is swept with `script/swish-check --arch <a>`, opt-in like a kernel
-# test, and the patch must name the typed line it breaks (`Line:`, provisional) because red counts
+# the harness (`xtask/src/swish_check/` today) is swept with `script/swish-check --arch <a>`,
+# opt-in like a kernel test, and the patch must name the typed line it breaks (`Line:`, provisional) because red counts
 # only when swish-check's own FAILED report names that line. **Only one such record can exist
 # today**: the path is keyed on a function and every line is typed by `swish_check_boot`, so a
 # second line's record has no name to take. That is a §134 (a harness carries a machine-replayable falsification record) spelling question and an architect's;
@@ -343,7 +343,7 @@ UNFALSIFIABLE_REASON_MIN = 200
 # arguments. Matched on the stripped line so indentation inside `mod verification` does not matter.
 PROOF = re.compile(r"^#\[kani::proof")
 ATTR = re.compile(r"^#\[")
-FN = re.compile(r"^(?:pub\s+)?(?:unsafe\s+)?fn\s+(\w+)")
+FN = re.compile(r"^(?:pub(?:\([^)]*\))?\s+)?(?:unsafe\s+)?fn\s+(\w+)")
 COMMENT = re.compile(r"^//")
 RECORD = re.compile(r"^//[/!]?\s*Falsification:\s*(.*)$")
 
@@ -374,10 +374,24 @@ ENV_DECL = re.compile(r"^Environment:\s*(.+?)\s*$", re.M)
 ENV_PAIR = re.compile(r"^NIFE_[A-Z0-9_]+=[A-Za-z0-9_.,-]+$")
 
 # **A swish-check record** (milestone 742, provisional): a `Falsification:` block above a function
-# in this one file, replayed by booting `script/swish-check`. One file rather than a pattern,
-# because swish-check IS one file: its script is a table of typed lines and the function the
-# record sits above is the boot that types them.
+# in the harness, replayed by booting `script/swish-check`. The harness is `swish_check.rs` and the
+# modules under `swish_check/` (milestone 847 (the swish-check harness is split along its seams)
+# made it a directory), so the walk is the parent and every file under it. It was one file until
+# then, and a walk that kept reading only the parent would have dropped both records in silence.
 SWISH_CHECK_SOURCE = "xtask/src/swish_check.rs"
+SWISH_CHECK_DIR = "xtask/src/swish_check"
+
+
+def swish_check_sources():
+    """The harness's files, parent first, then its modules in path order."""
+    out = [SWISH_CHECK_SOURCE]
+    top = os.path.join(root, SWISH_CHECK_DIR)
+    for here, dirs, files in sorted(os.walk(top)):
+        dirs.sort()
+        for f in sorted(files):
+            if f.endswith(".rs"):
+                out.append(os.path.relpath(os.path.join(here, f), root))
+    return out
 
 # `Line: installed/unvouched` in a swish-check patch's prose head: the typed line whose failure is
 # the red. The field name is provisional (an architect names things). It is required, because
@@ -887,7 +901,7 @@ class KernelTest(Harness):
 
 
 class SwishCheckRecord(KernelTest):
-    """A record above a function in `xtask/src/swish_check.rs` (milestone 742, provisional).
+    """A record above a function in the swish-check harness (milestone 742, provisional).
 
     The four states, the patch path and `Architecture:` are a kernel test's. What differs is the
     replay verb, `script/swish-check --arch <a>`, and that the red must be about the line the
@@ -996,12 +1010,20 @@ def host_tests(pkgs=None):
 
 
 def swish_check_records(pkgs=None):
-    """Every function in `SWISH_CHECK_SOURCE` that carries a `Falsification:` block.
+    """Every function in the harness's files (`swish_check_sources`) that carries a
+    `Falsification:` block.
 
     Opt-in, like a kernel test: a function with no block is skipped, not reported.
     """
     pkgs = pkgs if pkgs is not None else packages()
-    rel = SWISH_CHECK_SOURCE
+    out = []
+    for rel in swish_check_sources():
+        out += swish_check_records_in(pkgs, rel)
+    return out
+
+
+def swish_check_records_in(pkgs, rel):
+    """The records in one of the harness's files."""
     if not os.path.exists(os.path.join(root, rel)):
         return []
     pkg = next((p for p in pkgs if rel.startswith(p.prefix)), None)

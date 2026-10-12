@@ -49,8 +49,8 @@ Only a weekly sweep replays a kernel record; nothing does so per pull request.
 2. The weekly sweep's run goes red on a finding (rung 2 for visibility, still not a gate): a
    survivor, a stale record or no verdict now fails the job after the summary publishes.
 3. A swish-check record is swept (rung 2). `script/falsifications` reads a block above a function
-   in `xtask/src/swish_check.rs`, boots `script/swish-check --arch <a>` with the patch applied, and
-   calls it red only when swish-check's FAILED report names the patch's `Line:` (provisional). Row 31
+   in the harness under `xtask/src/swish_check/`, boots `script/swish-check --arch <a>` with the
+   patch applied, and calls it red only when swish-check's FAILED report names the patch's `Line:` (provisional). Row 31
    moves from replayed by hand to replayed weekly.
 4. A host `#[test]` with a record is swept (rung 2) by `cargo test ... --exact`, red only when
    exactly one test ran and failed. It costs seconds, so it also rides the per-pull-request replay.
