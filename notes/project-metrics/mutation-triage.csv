@@ -666,3 +666,4 @@ capability_witness_protocol,,replace | with ^,equivalent,"the six step constants
 compositor,Rect::extent,replace > with ==,killed,killed by an_extent_past_i32_max_clamps_rather_than_wraps
 compositor,Rect::extent,replace > with >=,equivalent,"at n == i32::MAX both arms return i32::MAX, so > and >= agree; the 2026-10-12 per-crate re-run still reports it"
 compositor,commit_damage,replace == with !=,killed,killed by a_commit_says_whether_its_damage_was_clipped
+current_cpu_protocol,thread_page_va,replace * with /,killed,"killed by the_thread_page_slots_fill_the_process_pages_band, which now pins slot 1 one page below PAGE_VA"
