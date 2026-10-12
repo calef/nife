@@ -348,7 +348,7 @@ mod c_program_tests;
 /// **Somebody else's threaded C, unmodified**: hackbench's thread mode on nife's C library's POSIX
 /// threads (milestone 836 (a C library, stage 2: threads)). Skips unless somebody ran
 /// `helpers/build-hackbench.sh`. Every ISA, per DECISIONS §19.
-#[cfg(all(test, initrd))]
+#[cfg(all(test, initial_ramdisk))]
 mod c_thread_tests;
 
 /// **A TLS crypto provider's primitives against published test vectors**, for milestone 442 (a
