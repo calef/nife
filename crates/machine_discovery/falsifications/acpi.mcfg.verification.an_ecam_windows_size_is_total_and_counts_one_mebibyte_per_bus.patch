@@ -1,4 +1,4 @@
-Falsifies `machine_discovery::acpi::verification::an_ecam_windows_size_is_total_and_counts_one_mebibyte_per_bus`.
+Falsifies `machine_discovery::acpi::mcfg::verification::an_ecam_windows_size_is_total_and_counts_one_mebibyte_per_bus`.
 
 **This is the second defect as it actually shipped**, restored: `size()` subtracts
 `start_bus` from `end_bus` in `u64` with nothing checking which is larger. Nothing
@@ -14,10 +14,10 @@ Expected to fail: the arithmetic-overflow check on
 `self.end_bus as u64 - self.start_bus as u64`, and the `assert_eq!(size, 0)` behind
 it.
 
-diff --git a/crates/machine_discovery/src/acpi.rs b/crates/machine_discovery/src/acpi.rs
---- a/crates/machine_discovery/src/acpi.rs
-+++ b/crates/machine_discovery/src/acpi.rs
-@@ -488,9 +488,6 @@ impl McfgEntry {
+diff --git a/crates/machine_discovery/src/acpi/mcfg.rs b/crates/machine_discovery/src/acpi/mcfg.rs
+--- a/crates/machine_discovery/src/acpi/mcfg.rs
++++ b/crates/machine_discovery/src/acpi/mcfg.rs
+@@ -29,9 +29,6 @@ impl McfgEntry {
      /// Zero is the honest answer: there is no bus in the range, so there is no configuration space
      /// to map.
      pub const fn size(&self) -> u64 {

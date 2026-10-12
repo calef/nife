@@ -10,7 +10,6 @@
 # needs §266 amended by an architect, not an edit here.
 path	lines
 crates/line_editor/src/lib.rs	2290
-crates/machine_discovery/src/acpi.rs	3009
 crates/swish/src/lib.rs	3885
 crates/timetable/src/lib.rs	2468
 crates/video_terminal/src/lib.rs	3242

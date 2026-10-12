@@ -1,4 +1,4 @@
-Falsifies `machine_discovery::acpi::verification::no_override_writes_outside_the_sixteen_legacy_irqs`.
+Falsifies `machine_discovery::acpi::madt::verification::no_override_writes_outside_the_sixteen_legacy_irqs`.
 
 The defect: the bound on an override's `source` field is gone, so a MADT interrupt
 source override naming source 200 indexes a sixteen-entry array at 200. The field
@@ -13,10 +13,10 @@ makes it read as though it had already been checked.
 
 Expected to fail: the bounds check on `table[source as usize]`.
 
-diff --git a/crates/machine_discovery/src/acpi.rs b/crates/machine_discovery/src/acpi.rs
---- a/crates/machine_discovery/src/acpi.rs
-+++ b/crates/machine_discovery/src/acpi.rs
-@@ -450,7 +450,6 @@ pub fn isa_irq_table(body: &[u8]) -> [IsaIrqRouting; ISA_IRQ_COUNT] {
+diff --git a/crates/machine_discovery/src/acpi/madt.rs b/crates/machine_discovery/src/acpi/madt.rs
+--- a/crates/machine_discovery/src/acpi/madt.rs
++++ b/crates/machine_discovery/src/acpi/madt.rs
+@@ -285,7 +285,6 @@ pub fn isa_irq_table(body: &[u8]) -> [IsaIrqRouting; ISA_IRQ_COUNT] {
              flags,
          } = entry
              && bus == ISA_BUS

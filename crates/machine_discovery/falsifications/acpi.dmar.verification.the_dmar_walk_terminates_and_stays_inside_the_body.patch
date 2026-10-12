@@ -1,4 +1,4 @@
-Falsifies `machine_discovery::acpi::verification::the_dmar_walk_terminates_and_stays_inside_the_body`.
+Falsifies `machine_discovery::acpi::dmar::verification::the_dmar_walk_terminates_and_stays_inside_the_body`.
 
 The defect: the DMAR's minimum structure length becomes two, which is the MADT's
 minimum one table over. The two walks look alike and are not: a MADT entry is a
@@ -14,10 +14,10 @@ file's tests write a zero length and nothing else, so they stay green.
 
 Expected to fail: `assert!(it.at >= last + 4)`.
 
-diff --git a/crates/machine_discovery/src/acpi.rs b/crates/machine_discovery/src/acpi.rs
---- a/crates/machine_discovery/src/acpi.rs
-+++ b/crates/machine_discovery/src/acpi.rs
-@@ -615,7 +615,7 @@ impl Iterator for DmarStructures<'_> {
+diff --git a/crates/machine_discovery/src/acpi/dmar.rs b/crates/machine_discovery/src/acpi/dmar.rs
+--- a/crates/machine_discovery/src/acpi/dmar.rs
++++ b/crates/machine_discovery/src/acpi/dmar.rs
+@@ -115,7 +115,7 @@ impl Iterator for DmarStructures<'_> {
          }
          let kind = u16(self.body, self.at);
          let len = u16(self.body, self.at + 2) as usize;

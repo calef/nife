@@ -1,4 +1,4 @@
-Falsifies `machine_discovery::acpi::verification::the_root_tables_entry_count_and_its_entry_reader_agree`.
+Falsifies `machine_discovery::acpi::root::verification::the_root_tables_entry_count_and_its_entry_reader_agree`.
 
 The defect: `root_entry`'s bound check compares the body length against the entry's
 *start* offset rather than against its end, so the reader accepts one entry more
@@ -16,10 +16,10 @@ bounds coincide.
 Expected to fail: the `assert_eq!` that the reader returning `Some` and the index
 being below the count are the same condition.
 
-diff --git a/crates/machine_discovery/src/acpi.rs b/crates/machine_discovery/src/acpi.rs
---- a/crates/machine_discovery/src/acpi.rs
-+++ b/crates/machine_discovery/src/acpi.rs
-@@ -226,7 +226,7 @@ pub const fn root_entry_count(length: u32, entries_are_64_bit: bool) -> usize {
+diff --git a/crates/machine_discovery/src/acpi/root.rs b/crates/machine_discovery/src/acpi/root.rs
+--- a/crates/machine_discovery/src/acpi/root.rs
++++ b/crates/machine_discovery/src/acpi/root.rs
+@@ -105,7 +105,7 @@ pub const fn root_entry_count(length: u32, entries_are_64_bit: bool) -> usize {
  pub fn root_entry(body: &[u8], index: usize, entries_are_64_bit: bool) -> Option<u64> {
      let width = if entries_are_64_bit { 8 } else { 4 };
      let at = index.checked_mul(width)?;

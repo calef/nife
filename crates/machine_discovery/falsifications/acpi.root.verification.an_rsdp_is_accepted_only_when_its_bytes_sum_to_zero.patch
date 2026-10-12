@@ -1,4 +1,4 @@
-Falsifies `machine_discovery::acpi::verification::an_rsdp_is_accepted_only_when_its_bytes_sum_to_zero`.
+Falsifies `machine_discovery::acpi::root::verification::an_rsdp_is_accepted_only_when_its_bytes_sum_to_zero`.
 
 The defect: the 20-byte checksum is not checked at all, so a revision-0 RSDP is
 accepted on its signature alone. The RSDP is found by scanning low memory for the
@@ -14,10 +14,10 @@ wrote.
 
 Expected to fail: `assert!(is_checksum_ok(&bytes[..RSDP_V1_LEN]))`.
 
-diff --git a/crates/machine_discovery/src/acpi.rs b/crates/machine_discovery/src/acpi.rs
---- a/crates/machine_discovery/src/acpi.rs
-+++ b/crates/machine_discovery/src/acpi.rs
-@@ -126,9 +126,6 @@ pub fn parse_rsdp(bytes: &[u8]) -> Result<Rsdp, AcpiError> {
+diff --git a/crates/machine_discovery/src/acpi/root.rs b/crates/machine_discovery/src/acpi/root.rs
+--- a/crates/machine_discovery/src/acpi/root.rs
++++ b/crates/machine_discovery/src/acpi/root.rs
+@@ -54,9 +54,6 @@ pub fn parse_rsdp(bytes: &[u8]) -> Result<Rsdp, AcpiError> {
      if &bytes[0..8] != RSDP_SIGNATURE {
          return Err(AcpiError::BadSignature);
      }

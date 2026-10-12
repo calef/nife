@@ -1,4 +1,4 @@
-Falsifies `machine_discovery::acpi::verification::the_madt_walk_terminates_and_stays_inside_the_body`.
+Falsifies `machine_discovery::acpi::madt::verification::the_madt_walk_terminates_and_stays_inside_the_body`.
 
 The defect: the minimum entry length drops from two to one. A MADT entry is
 `[type, length, ...]`, so an entry claiming a length of one advances the cursor by
@@ -15,10 +15,10 @@ stays green, because the only malformed lengths they write are zero and 200.
 Expected to fail: `assert!(it.at >= last + 2)`, and with a deeper unwind the
 `seen <= N / 2` bound behind it.
 
-diff --git a/crates/machine_discovery/src/acpi.rs b/crates/machine_discovery/src/acpi.rs
---- a/crates/machine_discovery/src/acpi.rs
-+++ b/crates/machine_discovery/src/acpi.rs
-@@ -330,7 +330,7 @@ impl Iterator for MadtEntries<'_> {
+diff --git a/crates/machine_discovery/src/acpi/madt.rs b/crates/machine_discovery/src/acpi/madt.rs
+--- a/crates/machine_discovery/src/acpi/madt.rs
++++ b/crates/machine_discovery/src/acpi/madt.rs
+@@ -143,7 +143,7 @@ impl Iterator for MadtEntries<'_> {
          // A zero (or absurdly short) length is a malformed table, and continuing would either loop
          // forever or read the next entry from the middle of this one. Stop, which reports the
          // entries read so far rather than inventing more.
