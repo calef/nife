@@ -23,7 +23,6 @@ crates/globally_unique_identifier_partition_table/src/lib.rs	550
 crates/grant_plan/src/lib.rs	40
 crates/grant_plan/src/program.rs	129
 crates/inter_process_communication/src/lib.rs	553
-crates/machine_discovery/src/acpi.rs	1968
 crates/memory_regions/src/lib.rs	183
 crates/name_resolution_protocol/src/lib.rs	402
 crates/paging/src/lib.rs	590

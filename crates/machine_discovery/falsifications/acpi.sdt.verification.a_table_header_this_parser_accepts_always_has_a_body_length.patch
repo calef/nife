@@ -1,4 +1,4 @@
-Falsifies `machine_discovery::acpi::verification::a_table_header_this_parser_accepts_always_has_a_body_length`.
+Falsifies `machine_discovery::acpi::sdt::verification::a_table_header_this_parser_accepts_always_has_a_body_length`.
 
 The defect: the length guard asks whether the table claims a length at all instead
 of whether it claims one long enough to cover its own header. `SdtHeader::body_len`
@@ -15,10 +15,10 @@ test stays green while the property is false for `length = 1` through `9` and
 Expected to fail: `assert_eq!(h.length as usize, SDT_HEADER_LEN + h.body_len())`,
 or the arithmetic-overflow check inside `body_len` itself.
 
-diff --git a/crates/machine_discovery/src/acpi.rs b/crates/machine_discovery/src/acpi.rs
---- a/crates/machine_discovery/src/acpi.rs
-+++ b/crates/machine_discovery/src/acpi.rs
-@@ -192,7 +192,7 @@ pub fn parse_sdt_header(bytes: &[u8]) -> Result<SdtHeader, AcpiError> {
+diff --git a/crates/machine_discovery/src/acpi/sdt.rs b/crates/machine_discovery/src/acpi/sdt.rs
+--- a/crates/machine_discovery/src/acpi/sdt.rs
++++ b/crates/machine_discovery/src/acpi/sdt.rs
+@@ -66,7 +66,7 @@ pub fn parse_sdt_header(bytes: &[u8]) -> Result<SdtHeader, AcpiError> {
          return Err(AcpiError::Truncated);
      }
      let length = u32(bytes, 4);
