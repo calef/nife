@@ -34,11 +34,11 @@ The real surface:
 - `untyped_map`/`untyped_retype`/`untyped_retype_obj`/`untyped_split`/`untyped_destroy` -> their
   `memory_region_*` equivalents. These are in `kernel/src/syscall.rs`'s dispatch. They are also
   repeated local wrapper fns of the same names in `crates/system_initializer`,
-  `crates/supervision_proto`, and several `user/src/*.rs` programs that each define their own tiny
-  syscall wrapper;
+  `crates/supervision_proto` (now `crates/supervision_protocol`), and several `user/src/*.rs`
+  programs that each define their own tiny syscall wrapper;
 - `UntypedHeap` -> `MemoryRegionHeap`, and `untyped_slot`/`UNTYPED_SLOT`/`NET_UNTYPED_SLOT` -> their
   `memory_region`-spelled equivalents (`crates/user_rt/src/heap.rs`, `crates/user_rt/src/lib.rs`,
-  `patches/std-nife`'s std overlay);
+  `patches/std-nife`'s std overlay; `crates/user_rt` is now `crates/user_mode_runtime`);
 - two test names, `a_process_spends_untyped_and_the_kernel_never_allocates` and
   `a_process_runs_alloc_collections_on_its_own_untyped`.
 

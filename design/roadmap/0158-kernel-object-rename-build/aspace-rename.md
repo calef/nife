@@ -30,8 +30,9 @@ files, not 17 across 9, because the type name was the smallest part of the surfa
   `reap_aspaces_in_region` -> `reap_address_spaces_in_region`, `readopt_user_aspace` ->
   `readopt_user_address_space`, and `aspace_list` -> `address_space_list`;
 - a whole kernel test-infra module file, `kernel/src/user/aspace_service.rs` ->
-  `kernel/src/user/address_space_service.rs`. Its `aspace_builder`/`ASPACE_BUILDER` sibling in
-  `fixtures/src/hello.rs` was renamed to `address_space_builder`/`ADDRESS_SPACE_BUILDER` to match;
+  `kernel/src/user/address_space_service.rs` (moved to `system_tests/` on 2026-09-26, deleted on
+  2026-10-05). Its `aspace_builder`/`ASPACE_BUILDER` sibling in `fixtures/src/hello.rs` was renamed
+  to `address_space_builder`/`ADDRESS_SPACE_BUILDER` to match;
 - a lock-rank constant, `kernel/src/sync.rs`'s `ASPACES` -> `ADDRESS_SPACES`;
 - per-program constants: `components/src/pmap.rs`'s `ASPACE_SLOT` -> `ADDRESS_SPACE_SLOT`, and
   `fixtures/src/os_primitives_benchmarker.rs`'s `MAP_ASPACE` -> `MAP_ADDRESS_SPACE`.

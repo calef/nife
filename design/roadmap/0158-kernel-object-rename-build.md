@@ -54,7 +54,7 @@ Plus the four companions §113 also decided in the same entry: `TcbPtr` -> `Thre
 (done, with `Tcb`; 11 occurrences, `kernel/src/sched.rs` only), `TidSet` -> `ThreadIdSet`
 (done, with `Tcb`; 6 occurrences, `kernel/src/user/survey_tests.rs` only), `EpFail` ->
 `RendezvousFailure` (done, with `Endpoint`), `FreeVas` -> `FreeAddressSpace` (done, with
-`Aspace`).
+`Aspace`). That test file has since moved to `system_tests/src/user/`.
 
 Re-measure before starting, not from this table. §113's own count is from 2026-08-23 and this
 tree changes fast; a lane that trusts a stale number here repeats §76's own recorded mistake.
@@ -114,15 +114,6 @@ actually reflecting it, which is its own reason to exist per DECISIONS §113's w
 name only works if a reader meets it. All eleven names are done (`Endpoint`/`EpId`/`EpFail`,
 `Tcb`/`TcbPtr`/`Tid`/`TidSet`, `Aspace`/`FreeVas`, `Frame`, and `Untyped`); no reader meets a
 contraction or borrowed abbreviation from this list anywhere in the tree anymore.
-
-## BUGS
-
-- Some paths in this block and its appendices are stale, kept as written because they record what
-  was true when each rename landed (found 2026-10-12, UTC). `kernel/src/user/page_frame_service.rs`
-  and `kernel/src/user/survey_tests.rs` are now under `system_tests/src/user/`.
-  `kernel/src/user/address_space_service.rs` and `kernel/src/user/watch_tests.rs` no longer exist.
-  `crates/user_rt` is now `crates/user_mode_runtime`, and `crates/supervision_proto` is now
-  `crates/supervision_protocol`.
 
 ## Follow-on
 
