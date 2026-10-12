@@ -62,10 +62,14 @@ the path to green."* The verdict stays AMBER. The path to GREEN is three gaps, e
 1. Nothing re-checked the claim. Owner: lane `milestone/121-rg-ci` (#1853). Its `swish-check` rows
    build `rg` in CI, type the walk on every pull request, and refuse to skip it there.
 2. One program is one data point. A second foreign program, unrelated to `ripgrep` and ideally not
-   written in Rust, is untested. Open: it waits on calef's choice of program.
+   written in Rust, is untested. Closed 2026-10-12 (UTC), calef: *"835's speedtest1 and ioping
+   count as risk 1's second foreign program."* Milestone 835 (a C library, stage 1: files, clock and memory) runs both
+   unmodified (#1896).
 3. Threads were never exercised. nife answers `available_parallelism()` with `Ok(1)`, and §105
    declines `std::thread::spawn`, so no foreign program here has run a second thread. Open: it
-   waits on a §105 question to calef.
+   waits on a §105 question to calef. Fact, 2026-10-12: milestone 812 (`std::thread::spawn` runs
+   real threads in one address space) is BUILT (#1892), and 836 (a C library, stage 2: threads) is
+   the C half, claimed today.
 
 DECISIONS §105 (`std::thread::spawn` stays declined, until a customer needs it) was never reached,
 and that reverses the premise. `ripgrep` asks `available_parallelism()` rather than assuming it, and
