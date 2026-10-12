@@ -770,10 +770,10 @@ pub fn deactivate_user() {
 /// accident.
 ///
 /// It is kept, not speculative, and it is **proved rather than merely allowed**:
-/// `the_hardware_says_el0_cannot_read_the_kernels_memory` in `user.rs` asserts the silicon says no
-/// to a kernel address and yes to the process's own text, so the technique notes/capabilities.md
-/// leans on is exercised on every test run. Hence `cfg_attr(not(test), ...)`: the attribute names
-/// the one configuration with no caller, instead of blanket-suppressing a function that has one.
+/// `system_tests::user::tests::the_hardware_says_el0_cannot_read_the_kernels_memory` asserts the
+/// silicon says no to a kernel address and yes to the process's own text, so the technique
+/// notes/capabilities.md leans on is exercised on every system-test run. Hence the `cfg_attr`
+/// below names the one configuration with no caller, instead of blanket-suppressing a function.
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
 pub fn user_can_read(va: u64) -> bool {
     // SAFETY: address translation has no side effects beyond PAR_EL1.

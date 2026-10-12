@@ -58,8 +58,8 @@ fn jh7110_uart_is_plic_source_32_in_both_trees() {
 
 /// **QEMU aarch64 `virt` says 33**: the pl011's `interrupts = <0 1 4>` is SPI 1 in the GIC's
 /// three-cell form, and the INTID the GIC delivers is bank base 32 plus 1, exactly the number
-/// `user.rs` has always hardcoded as `UART_RX_INTID`. The parent here is inherited from the root,
-/// the third spelling.
+/// the kernel has always hardcoded as `user::UART_RX_INTID`. The parent here is inherited from the
+/// root, the third spelling.
 #[test]
 fn qemu_aarch64_virt_pl011_is_intid_33() {
     let id = interrupt_id::of_node(&tree(QEMU_AARCH64_VIRT), b"pl011@9000000").unwrap();

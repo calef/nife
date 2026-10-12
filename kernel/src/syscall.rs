@@ -962,7 +962,7 @@ fn address_space_map_into(
                     // child's code, MAP_CODE), the instruction fetcher must be made to see
                     // the bytes the writer stored: RISC-V's `fence.i`, aarch64's
                     // dcache-clean + icache-invalidate, both behind `sync_icache`. The
-                    // kernel-side ELF loader does this (user.rs map_segments); this is the
+                    // kernel-side ELF loader does this (user/loader.rs map_segments); this is the
                     // userspace-built path, which a fast spawn+reap loop (bench::spawn_el0)
                     // is the first thing to stress. A child that fetches unsynced code
                     // takes an illegal-instruction fault at its entry.

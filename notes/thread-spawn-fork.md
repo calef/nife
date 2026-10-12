@@ -50,7 +50,7 @@ mechanism at reduced scope.
 ## 2. What this tree already does in the analogous case
 
 **Process spawn already does exactly the RETYPE/CONFIGURE/CAP_INSERT/START sequence Option B
-would reuse**, unprivileged, from userspace: `kernel/src/user.rs`'s `Spawn` struct documents a
+would reuse**, unprivileged, from userspace: `kernel/src/user/entry.rs`'s `Spawn` struct documents a
 process's entire authority as "a function of `arg0`, `grants`, and `maps`", and the progenitor itself
 becomes "the spawn service" after boot (`PROGENITOR_ROLE`'s doc comment) and spawns every other
 process the same way a std program's PAL would spawn a thread. So Option B needs no new
