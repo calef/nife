@@ -54,9 +54,9 @@ falsification. SQLite's `speedtest1` and ioping still pass on the threaded libra
 The library ([`c_library/README.md`](../../c_library/README.md) is the guide, with its `BUGS`):
 
 - relibc's `pthread.h` (attributes, mutexes, condition variables, read-write locks, barriers, spin
-  locks, keys, `pthread_once`) and its `sync` module are seeded, with `sched.h`, `semaphore.h`,
-  `setjmp.h` (musl's assembly, less the float registers a soft-float process has none of),
-  `poll.h`, `sys/socket.h`, `netinet/in.h`, `arpa/inet.h` and `sys/un.h`.
+  locks, keys, `pthread_once`) and its `sync` module are seeded. So are `sched.h`, `semaphore.h`,
+  `poll.h`, `sys/socket.h`, `netinet/in.h`, `arpa/inet.h` and `sys/un.h`, and `setjmp.h` with
+  musl's assembly, less the float registers a soft-float process has none of.
 - `pthread_create` is a `std` spawn (`c_library/src/pthread.rs`), not relibc's `clone` and
   dynamic-linker control block. `pthread_exit` `longjmp`s back to `c_library/c/thread_start.c`.
 - relibc's wait-on-address pair is built on `std`'s thread parking (`futex.rs`), a parking lot
@@ -75,16 +75,16 @@ lines `helpers/c-library-cflags.sh` prints, so neither got nife's headers. Both 
 
 Each is reversible:
 
-- **The thread is `std`'s.** The platform layer is on `std`, as milestone 835 (a C library, stage
+- The thread is `std`'s. The platform layer is on `std`, as milestone 835 (a C library, stage
   1: files, clock and memory) decided, and `std` already has the thread, its stack and its thread
   pointer, so no second spawn path was written.
-- **The futex is a parking lot on `std`**, not a new `std` export of the kernel's
+- The futex is a parking lot on `std`, not a new `std` export of the kernel's
   `AddressSpace::WAIT` and `WAKE`. It costs a second wake per handoff (`futex.rs`'s `BUGS`) and
   adds no public API to `std`.
-- **Pipes and socket pairs are process-local queues.** No kernel object is needed while both ends
+- Pipes and socket pairs are process-local queues. No kernel object is needed while both ends
   are in one process.
-- **`FIONBIO` is the one `ioctl` kept**, as `fcntl`'s `O_NONBLOCK`.
-- **hackbench's build passes `-Wno-incompatible-pointer-types`**: glibc's socket calls take a
+- `FIONBIO` is the one `ioctl` kept, as `fcntl`'s `O_NONBLOCK`.
+- hackbench's build passes `-Wno-incompatible-pointer-types`. glibc's socket calls take a
   transparent union under `_GNU_SOURCE`, and relibc's take `struct sockaddr *`.
 
 ## What schbench needs, and why it is not here
