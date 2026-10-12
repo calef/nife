@@ -258,8 +258,8 @@ kernel/src/arch/x86_64/reset.rs:1	44
 kernel/src/arch/x86_64/rtc.rs:1	61
 kernel/src/arch/x86_64/tco.rs:1	73
 kernel/src/arch/x86_64/timer.rs:1	117
-kernel/src/bench.rs:589	64
-kernel/src/bench.rs:1868	42
+kernel/src/bench/cycle_probe.rs:13	50
+kernel/src/bench/smp_throughput.rs:13	42
 kernel/src/cap.rs:218	79
 kernel/src/cap.rs:315	117
 kernel/src/drivers/gic.rs:1	56

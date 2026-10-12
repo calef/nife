@@ -1,7 +1,7 @@
 """The lint ratchet: clippy lints that are counted against a baseline that only falls.
 
 Built by milestone 888 (a ratchet on function length) to the specification in
-`design/roadmap/proposals/panics-in-the-kernel-and-the-parsers-are-counted-and-fall.md` ("The
+`design/roadmap/0896-panics-in-the-kernel-and-the-parsers-are-counted-and-fall.md` ("The
 mechanism, and its rung"), so the other lint proposals register a lint here instead of writing a
 gate. It copies `helpers/file_length_ratchet.py`'s rules (milestone 841 (a ratchet on Rust file length)), which
 copied the prose
