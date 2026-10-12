@@ -125,7 +125,7 @@ places, both timing-shaped and both green on a developer machine:
 - `kernel::smp::tests::every_secondary_runs_scheduled_work`: "secondary cores did not run scheduled
   work in time" (`kernel/src/smp.rs:239`).
 - `kernel::user::tests::the_hardware_says_el0_cannot_read_the_kernels_memory`: "EL0 cannot read its
-  own .text, so the check refuses everything and proves nothing" (`kernel/src/user.rs:5056`).
+  own .text, so the check refuses everything and proves nothing" (`system_tests/src/user/tests.rs`).
 
 A four-vCPU shared runner emulating a four-core guest under TCG is a much slower and much noisier
 machine than the laptop these deadlines were calibrated on. This is a real bug in the tests' timing

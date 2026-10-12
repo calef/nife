@@ -47,6 +47,15 @@ not a caption, it is a register entry.
 **File size:** 18 Rust files over 2,000 lines, holding 18.4% of all Rust lines; largest kernel/src/sched.rs (8,888); 95th percentile 1,463.
 <!-- /file-size -->
 
+## The prose budget
+
+![Words over the cap](project-metrics/prose-budget.svg)
+
+![Documents over the cap](project-metrics/prose-budget-documents.svg)
+
+calef ratified a 3,000-word cap per document on 2026-09-23, enforced as a ratchet. The first chart
+is the debt in words and the second the documents holding it.
+
 ## Function length
 
 ![Function length](project-metrics/function-length.svg)
@@ -71,6 +80,14 @@ The same census split by what confines the code: kernel privilege, userspace con
 the pre-kernel boot chain. Before 2026W38 the `unclassified` band is crates whose names have since
 changed, so read those weeks as undercounts of both sides.
 
+## Debt paydown
+
+![Debt paydown share](project-metrics/debt-paydown.svg)
+
+The share of each week's merged pull requests labeled `debt-paydown` ([what
+counts](debt-paydown.md)). The label is chosen at the claim and judged from titles, so a lane that
+became a repair is missed.
+
 ## Milestones built each week
 
 ![Milestones built each week](project-metrics/velocity.svg)
@@ -88,14 +105,6 @@ The second flow, counted from `main`'s merge subjects, not the API, so it
 backfills to the first commit. 2026W29 and 2026W30 are zeros: the practice starts in
 2026W31.
 The line is the same trailing mean.
-
-## Debt paydown
-
-![Debt paydown share](project-metrics/debt-paydown.svg)
-
-The share of each week's merged pull requests labeled `debt-paydown` ([what
-counts](debt-paydown.md)). The label is chosen at the claim and judged from titles, so a lane that
-became a repair is missed.
 
 ## Merge queue ejections
 
@@ -207,15 +216,6 @@ The aggregate above can hold steady while one file slides, so this is the panel 
 failing build. 2026W31 to 2026W38 were backfilled on 2026-09-24 from each week's own lcov;
 2026W30 is empty because the floor did not exist yet. The provenance is in the register's
 [proofs and coverage](register-of-measures/code-proofs-and-coverage.md) appendix.
-
-## The prose budget
-
-![Words over the cap](project-metrics/prose-budget.svg)
-
-![Documents over the cap](project-metrics/prose-budget-documents.svg)
-
-calef ratified a 3,000-word cap per document on 2026-09-23, enforced as a ratchet. The first chart
-is the debt in words and the second the documents holding it.
 
 ## Homes
 

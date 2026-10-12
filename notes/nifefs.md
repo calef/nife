@@ -92,7 +92,7 @@ from before the change fail loudly, and it forced every reader to be visited rat
 
 A format change has to reach all of them, and one of them was the reason this needed care.
 
-1. The kernel (`kernel/src/user.rs`, `kernel/src/main.rs`), which parses the initrd to find
+1. The kernel (`kernel/src/user/loader.rs`, `kernel/src/main.rs`), which parses the initrd to find
    `progenitor`. Uses `nifefs::Fs`.
 2. **`xtask`** (`initrd_aarch64`, `initrd_riscv`, `initrd_x86`, `mkdisk`), which writes every image and then parses it
    back to hash the boot programs. Uses `nifefs::write_image` and `Fs`.
