@@ -16,9 +16,12 @@
 //!
 //! **Why nothing blocks.** `ipc_send_cap_from` runs the source derivation first, under the hold, and
 //! returns its error before the rendezvous is ever touched (`kernel/src/sched/rendezvous.rs`). So a
-//! refused delegation never parks a sender: a regression here is a wrong `Ok`/slot at an assertion,
-//! not a watchdog hang. The endpoint's waiting-sender count is asserted to stay zero after each
-//! refusal, the other half of "the rendezvous was not touched."
+//! refused delegation never parks a sender. A regression does: with the subset check dropped, the
+//! widening `SEND_CAP` derives a copy and parks the test thread on the receiverless rendezvous, and
+//! the run fails by the watchdog's thread dump, not at an assertion (the lane's falsification,
+//! aarch64, 2026-10-12 UTC). Red either way, but a reader of the failure sees a hang. The
+//! endpoint's waiting-sender count is asserted to stay zero after each refusal, the other half of
+//! "the rendezvous was not touched."
 //!
 //! Name: provisional (this pass's lane, 2026-10-12 UTC). Cross-ISA: `invoke`, the delegation rule
 //! (`Delegation::derive`) and the rendezvous are portable kernel code (DECISIONS §19).
@@ -57,7 +60,9 @@ fn call(slot: u64, method: u64, a0: u64, a1: u64, a2: u64) -> Result<i64, Error>
 /// kernel's own record that the refused delegation never parked anything.
 ///
 /// Falsification: a patch that dropped the subset check (claim 1) or the GRANT check (the lend gate)
-/// in `Delegation::derive` turns the matching assertion red.
+/// in `Delegation::derive` turns this test red. Dropping the subset check was replayed on aarch64
+/// on 2026-10-12 (UTC): the run failed by the watchdog, since the derived copy parks the sender (see
+/// the module header). Not recorded as a replayable patch.
 #[test_case]
 fn a_send_cap_cannot_widen_a_right_or_lend_a_grant_less_capability() {
     let region = crate::memory_region::create(4).expect("no region for the endpoint");

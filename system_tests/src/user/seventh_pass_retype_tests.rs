@@ -59,7 +59,7 @@ fn rights_at(slot: u64) -> Rights {
 ///
 /// The SPLIT step is the positive control and the claim's cited property: a non-delegating budget
 /// cannot carve a delegating child, because `MemoryRegion::SPLIT` mints through `Cap::mint_child`,
-/// which inherits the parent's rights. The RETYPE and RETYPE_OBJ steps are the characterization: the
+/// which inherits the parent's rights. The RETYPE and `RETYPE_OBJ` steps are the characterization: the
 /// same budget, through the same dispatcher, hands back `Rights::ALL`.
 ///
 /// Shaped so a regression is observable at an assertion, not a hang: nothing here blocks. Each
