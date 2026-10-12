@@ -778,3 +778,4 @@ designware_ethernet,vendor_phy,replace & with |,killed,killed by jh7110::tests::
 designware_ethernet,volt_mv,delete match arm CHIP_CONFIG_LDO_2V5,killed,killed by motorcomm::tests::the_ldo_field_alone_names_the_voltage
 designware_ethernet,volt_mv,delete match arm CHIP_CONFIG_LDO_3V3,killed,killed by motorcomm::tests::the_ldo_field_alone_names_the_voltage
 designware_ethernet,volt_mv,replace & with |,killed,killed by motorcomm::tests::the_ldo_field_alone_names_the_voltage
+direct_memory_access_validator,verification::ChainMem::racing,delete field racing from struct ChainMem expression,gap,"ChainMem::racing is in the cfg(kani) verification module, which no host build compiles; cargo-mutants 27.1.0 applies the verification:: exclude_re to function mutants but not to this struct-field deletion, so the mutant is generated and no cargo test can reach it. script/verify (Kani) is what runs this code"
