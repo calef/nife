@@ -30,41 +30,36 @@ refuses. So this milestone is a port with two named changes, and it says so.
 
 Read from the monit 5.35.2 release tarball (mmonit.com/monit/dist/, the newest on 2026-10-12 UTC).
 
-- Process statistics go through a per-OS layer, `src/process/sysdep_<OS>.c`, behind
-  `process_sysdep.h`: `init_systeminfo_sysdep`, `init_processtree_sysdep`,
-  `used_system_memory_sysdep`, `used_system_cpu_sysdep`, `used_system_filedescriptors_sysdep`,
-  `getloadavg_sysdep`, `available_statistics` and `Sysdep_getMainThread`. A twin layer,
+- Process statistics go through a per-OS layer, `src/process/sysdep_<OS>.c`, eight functions
+  behind `process_sysdep.h`, from `init_processtree_sysdep` to `Sysdep_getMainThread`. A twin layer,
   `src/device/sysdep_<OS>.c`, does filesystems. Both exist for AIX, Darwin, DragonFly, FreeBSD,
   Linux, NetBSD, OpenBSD and Solaris, plus an `UNKNOWN` stub.
-- Linux's layer reads `/proc`: `glob("/proc/[0-9]*")`, then per process `stat`, `status`, `io`,
-  `cmdline`, `attr/current`, `limits` and the entries of `fd`; system-wide `/proc/meminfo`,
-  `/proc/stat`, `/proc/loadavg` and `/proc/sys/fs/file-nr`; mounts from `/proc/self/mounts`, usage
-  from `statvfs`, I/O from `/proc/diskstats` and `/sys/dev/block`.
+- Linux's layer reads `/proc`: `glob("/proc/[0-9]*")`, then per process `stat`, `status`,
+  `cmdline` and the rest; system-wide `/proc/meminfo`, `/proc/stat` and `/proc/loadavg`; mounts
+  from `/proc/self/mounts` and usage from `statvfs`.
 - Porting is by adding a layer. `configure.ac` (and libmonit's) switch on the build host's `uname`
   and compile `sysdep_@ARCH@.c`; anything unrecognized warns "Architecture not supported" and gets
-  `UNKNOWN`. No porting document ships. So a new OS is a new pair of `sysdep` files plus a `uname`
-  case in two `configure.ac` files, and that is the shape the tree is built for. `UNKNOWN` alone is
+  `UNKNOWN`. No porting document ships, but a new pair of `sysdep` files plus a `uname` case in two
+  `configure.ac` files is the shape the tree is built for. `UNKNOWN` alone is
   not enough: its `Sysdep_getMainThread` returns 0, so every pidfile check reads as "not running".
 - Starting a program: `libmonit/src/system/Command.c`'s `Command_execute` calls plain `fork`, then
   `setsid`, `dup2`, closes descriptors to 256, `setgid`/`setgroups`/`setuid`, `umask` and `execve`,
-  with no shell. A comment above it rejects `posix_spawn` by name, for want of `setsid`, privilege
-  changes, close-all, `chdir` and `umask`. Exit status is collected only by a `SIGCHLD` handler
+  with no shell. A comment above it rejects `posix_spawn` by name (below). Exit status is collected only by a `SIGCHLD` handler
   that loops `waitpid`; `Process_exitStatus` says "Trust SIGCHLD handler to set status".
 - Existence: a pidfile read by `Util_getPid`, or a regex over every command line; then `getpgid`
   and `Sysdep_getMainThread`.
-- Signals: `sigaction` for `SIGTERM`/`SIGINT` (stop), `SIGHUP` (reload) and `SIGUSR1` (wake up).
-  `monit reload` and `monit quit` find the daemon by pidfile and signal it. `monit status`,
+- Signals: `SIGTERM` stops, `SIGHUP` reloads, `SIGUSR1` wakes; `monit reload` and `monit quit`
+  signal the daemon found by pidfile. `monit status`,
   `summary` and the start and stop actions are HTTP requests to the daemon's own web server, over
   TCP to `localhost` or a Unix socket. `daemonize` forks twice; `-I` runs in the foreground.
 - Threads: pthreads are required. One thread runs the web server, one request at a time over
   `poll`; one sends heartbeats to M/Monit. Nothing else.
 - Sockets: listening TCP and Unix sockets, `getaddrinfo`, `poll` (never `select`), `getifaddrs`,
   raw ICMP for `ping`, SMTP for alerts, and 36 protocol tests in `src/protocols/`.
-- Files: `stat` (the control file must be owned by `geteuid()` with mode at most 0700), checksums
-  from bundled MD5 and SHA-1 sources, `regcomp`, `syslog`, `getpwnam`, `crypt`, `glob`.
-- Build: autotools, libmonit as a configured subdirectory. OpenSSL and PAM are on by default and
-  turned off by `--without-ssl` and `--without-pam`; zlib is required unless `--without-zlib`. The
-  parser's yacc and lex output ships pre-generated.
+- Files: `stat` (the control file must be owned by `geteuid()`), bundled MD5 and SHA-1,
+  `regcomp`, `syslog`, `getpwnam`, `crypt`, `glob`.
+- Build: autotools, libmonit as a configured subdirectory. OpenSSL, PAM and zlib are on by default,
+  each turned off by a `--without-` flag.
 
 ## What each need maps onto in nife
 
@@ -104,10 +99,9 @@ stop programs, timeouts and retry limits. Its health checks look past "is it ali
 answers, a protocol that speaks, a file's checksum or age, a filesystem's free space. And it has
 alerts by mail, a status page and a CLI. None of that should be rebuilt in the kernel or the progenitor.
 
-The tension is that monit's model of a stranger's process is a pid read from a file, which is
-exactly the ambient naming §223 refuses. On nife monit sees only what it was handed: the services
-it spawned, or a domain somebody granted it. That is a narrower monit than Linux's, and the
-narrowing is the point.
+monit's model of a stranger's process is a pid read from a file, the ambient naming §223 refuses.
+On nife it sees only the services it spawned or a domain it was granted: a narrower monit, on
+purpose.
 
 ## The modification question
 
@@ -121,15 +115,40 @@ this tree applies to foreign software, and monit cannot meet it.
   the one upstream could take. The alternative that leaves monit untouched is a C library serving a
   `/proc`-shaped directory over the granted domain, so a Linux-host build's `sysdep_LINUX.c` runs
   as is. That puts a compatibility filesystem in the C library to avoid one file in monit.
-- `Command_execute` on `posix_spawn` is a patch, and the kind upstream has said in its own comment
-  it does not want. It is §264's stated consequence for a C program that forks. The same patch has
-  to stop trusting `SIGCHLD` and collect status with `waitpid(WNOHANG)` on its poll, or every start
-  program waits out its timeout.
+- A nife-only `Command_execute` on `posix_spawn` (milestone 838) is a patch. It is selected the
+  way monit selects a `sysdep`, so `fork` stays the path on every other system. It is §264's stated
+  consequence for a C program that forks. It also stops trusting `SIGCHLD` and collects status with
+  `waitpid(WNOHANG)` on its poll, or every start program waits out its timeout.
 - What does not work and is not patched: `monit reload` and `monit quit` (signals), `ping` (raw
   sockets), PAM, and `getifaddrs` link checks. Each goes in the block's `BUGS` when built.
 
 So monit reaches nife as a port with two named changes, the ripgrep precedent: `rg`'s own source
 untouched, a ten-line patch in a dependency, and the patch nife's to maintain (#1892).
+
+Ruled by calef, 2026-10-12 (UTC), on question 1 (#2022): *"monit 1 of 4, ship it patched as you
+recommend."* basalt's recipe carries both changes, both are offered upstream as a platform port,
+and monit is recorded as a port with two named changes.
+
+### Why upstream's objections to `posix_spawn` do not hold on nife
+
+The comment above `Command_execute` (`libmonit/src/system/Command.c`, lines 838 to 871) gives six
+reasons for `fork`. Each assumes a Unix child that inherits its parent's state and must shed it.
+A nife child inherits nothing it is not handed, so each step `fork` exists to run has nothing to do.
+
+- `setsid`, to leave the controlling terminal. A child holds a terminal only if spawn grants one;
+  there is no session to leave. `setsid` answers `EPERM` in `c_library` today.
+- `setuid` and `setgid`. nife has no users: `geteuid` is `NOBODY`. Authority is the capabilities
+  the spawn request grants, so changing privilege means granting less, which `posix_spawn` can say.
+- Closing every descriptor. A child's capability table starts empty apart from its grants, so
+  close-all is the default rather than a step.
+- `chdir`. A process stands in the directory it was granted, and `chdir` answers `ENOSYS`. The
+  service's directory is a grant in the spawn request, milestone 838's file actions.
+- `umask`. It is C-library state with no kernel counterpart; `c_library` answers `0o022` and
+  enforces no mask. The child starts with its own.
+- The `clone` and `vfork` limits. No code runs in a nife child before its image starts. Spawn is a
+  request to the spawner, under §219 (how the shell names an installed program to the spawner).
+  Milestone 172 (a capability-native subprocess primitive) builds the child from an image. The
+  `getpwuid` and `getgrouplist` calls the comment worries about have no users to look up.
 
 ## Delivery: a package from basalt
 
@@ -159,11 +178,10 @@ repairs, and every other program is a package)). It is a package `jig` installs.
    HTTPS and the distribution's index). If monit is served from the opt-in copyleft repository (below), the
    test first runs `jig add-repository`, milestone 809's unbuilt item 7.
 
-The order across repositories is the workspace's. The nife side lands first, each piece through nife's
-queue: the C library's `posix_spawn`, sockets and process ids, and the manifest support. basalt
-then bumps its pin in a separate pull request citing the landed commit (`nifeos/nife@<sha>`), and
-the recipe lands in basalt on that pin. The basalt pull request records that it waits on nife; this
-block, on the nife side, does not need basalt to know about it.
+The order across repositories: the nife pieces (`posix_spawn`, sockets, process ids, the manifest
+support) land first through nife's queue. basalt then bumps its pin in a separate pull request
+citing the landed commit (`nifeos/nife@<sha>`) and adds the recipe; that pull request records the
+dependency.
 
 ## The license, as facts
 
@@ -181,7 +199,7 @@ block, on the nife side, does not need basalt to know about it.
   source: the tarball, the `sysdep` pair, the patch and the build scripts.
 - Section 13 applies to a modified version, and this one is modified. Whoever runs it must
   prominently offer users who interact with it over a network (its web UI is that interaction)
-  the source of that version. Upstream's page footer links only to mmonit.com.
+  the source of that version. Upstream's footer links only to mmonit.com.
 
 ## Done when
 
@@ -210,10 +228,8 @@ real C daemon needs about one file and one patch, and that `fork` is the cost.
 
 ## Open questions for calef
 
-1. **Ship monit patched?** It cannot run here without a `sysdep` pair and a `Command.c` patch
-   onto `posix_spawn`. Recommended: yes, carried in basalt's recipe, offered upstream, and
-   recorded as a port, not as risk 1's unmodified evidence. The alternative, a `/proc`-shaped
-   directory in the C library, removes only the `sysdep` and keeps the patch.
+1. **Ship monit patched?** Ruled 2026-10-12 (UTC): yes, as recommended. See *The modification
+   question*.
 2. **How does the daemon outlive the prompt?** swish has no background jobs (milestone 48 (job
    control: `jobs`, `wait`, `kill`, `fg`, `bg`, and a stopped state) is NOT-STARTED), and monit's
    `daemonize` forks. Recommended: a package may declare a service the progenitor starts at boot
