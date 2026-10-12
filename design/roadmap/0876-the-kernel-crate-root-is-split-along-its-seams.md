@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-11
+built: 2026-10-12
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 282, 284
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -157,13 +158,65 @@ Found with `grep` at `396187b0b`. A lane has to carry each one.
 
 1. `kernel/src/lib.rs` is under 2,000 lines, no new file is over 1,500, and the file-length row is
    gone.
-2. No Rust file outside `kernel/src/` changes, and no item's visibility widens.
-3. `script/test` passes on aarch64, riscv64 and x86_64, with the 7 boot self-tests still in
-   `lib.rs` and no test body changed. `script/swish-check` passes on all three.
+2. No Rust code outside `kernel/src/` changes, and no item's visibility widens. *(Amended
+   2026-10-12 (UTC) by the lane: comments outside it that named `lib.rs` for a moved item are
+   repointed, as "What moving the code breaks" already required for `xtask/src/swish_check.rs`.)*
+3. `script/test` passes on aarch64, riscv64 and x86_64, with the 7 boot self-tests still at
+   `crate::tests` and no test body changed. `script/swish-check` passes on all three. *(Amended
+   2026-10-12 (UTC): "still in `lib.rs`" predates §282, under which they move to `tests.rs`.)*
 4. `script/fastpath-footprint`, `script/icount` and `script/stack-frame-check` are unchanged, or
    each difference is explained. `script/bench` floors hold.
 5. `script/lint` passes, its milestone 267 check and the arch-parity lint among them.
 6. Each new module carries a `//! Name:` block marked provisional.
+
+## What was built
+
+Built 2026-10-12 (UTC) on `17b23264e` by lane
+`milestone/876-the-kernel-crate-root-is-split-along-its-seams`, carrying the function-length ratchet
+lane's `kernel_main` split by boot phase (calef's ruling of 2026-10-09 (UTC), moved here by his "A"
+on #1963). The cut is
+[§284 (the kernel crate root splits into child modules, one per boot)](../decisions/0284-the-kernel-crate-root-splits-into-child-modules-one-per-boot.md),
+decided. Its questions 1 and 3 above were answered by those rulings and by §282 (when a file is
+split, the parent becomes an index); calef answered question 2 on 2026-10-12 (UTC): the crate root,
+with both boots temporary.
+
+`kernel/src/lib.rs` went from 2,984 lines to 293, an index, so its file-length and parent-index
+rows are gone. `kernel_main` went from 977 code lines to 59. Every name is provisional.
+
+| file | lines | holds |
+|---|---|---|
+| `lib.rs` | 293 | crate docs, `mod` lines, `system_test_access`, re-exports |
+| `boot.rs` | 432 | `kernel_main`, `DTB`, `device_tree`, the aarch64 bring-up, the test-suite hook, the measurement boots |
+| `x86_64_boot.rs` | 768 | the `x86_64` boot's phases, `x86_hand_over` |
+| `riscv64_boot.rs` | 1,093 | the riscv64 boot's phases, its timing helpers, `riscv_hand_over` |
+| `milestone_tour.rs` | 260 | aarch64's tour, `image_for_virtio` |
+| `machine_description.rs` | 206 | `print_machine_description`, `stack_top` |
+| `tests.rs` | 124 | the seven boot self-tests |
+
+One correction rode along, found by building the lint's feature matrix. The phase split had
+gathered the three measurement tails into a `run_measurement_boot` returning `()`, which stopped
+`soak_test`, `job_mix` and `lock_wait` kernels type-checking, and it had moved `bench::run()` out
+from under the `allow(unreachable_code)` that covered the `x86_64` arm. `run_measurement_boot` is
+now `-> !` in a build with a measurement feature and a no-op without, which lets both boots say
+`-> !`; `x86_64_scheduler` carries the bench allows. The two drifted doc comments are back on
+`interrupts_init` and `mode_note`.
+
+## Follow-on
+
+- **Decision.** calef ruled §284's question on 2026-10-12 (UTC), "We should treat them as
+  temporary": the two boots stay at the crate root as each port's route to the shared path. Every
+  module name is still his:
+  `design/decisions/0284-the-kernel-crate-root-splits-into-child-modules-one-per-boot.md`.
+- **Proposed.** Bringing riscv64 and `x86_64` onto the shared path, which retires the two boot
+  files: `design/roadmap/proposals/riscv64-and-x86-64-join-the-shared-boot-path.md`.
+- **Recorded.** AGENTS.md's Testing section names `kernel/src/lib.rs` for the boot self-tests,
+  which are in `kernel/src/tests.rs` now. A developer lane does not edit AGENTS.md, so the
+  pull request names it for the maintainer.
+- **Refused.** Repointing the 12 citations of `lib.rs` by line in milestone 811's block. A developer
+  lane edits no record under `design/` but its own block. The pull request lists each with the
+  symbol it should name.
+- **Done.** `kernel_main`'s row in `design/lint-baseline.tsv` (977 code lines) is removed, since it
+  is 59 now, and criterion 4 of milestone 888 (a ratchet on function length) is marked done.
 
 ## Index row
 
