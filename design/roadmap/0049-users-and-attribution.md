@@ -107,10 +107,10 @@ milestone builds, it is now decided at run time.
 
 ## What is built
 
-`login` (provisional name) is `components/src/login.rs`, with its wire contract `crates/login_proto`
+`login` (provisional name) is `components/src/login.rs`, with its wire contract `crates/login_protocol`
 (provisional). It holds the credential service's verify endpoint (milestone 56, unmodified), the file
 service's root directory capability, and a construction budget. A client first sends
-`login_proto::CONNECT` and gets a private request/result pair and staging page of its own. It then
+`login_protocol::CONNECT` and gets a private request/result pair and staging page of its own. It then
 presents an identity and a secret. On a match, `login` builds a fresh `fs_subtree_caretaker` scoped
 to that identity's own subtree, splits a fresh budget, and delegates both over
 `abi::endpoint::SEND_CAP`. It also delegates a logout ticket and, to the first caller, the terminal.
@@ -168,16 +168,16 @@ Named here as well as at the component, so a reader meets the scope where they m
 `components/src/login.rs`'s own BUGS words each item more precisely.
 
 - Resolved, 2026-08-23: per-identity subtrees. Every principal used to get the same subtree,
-  `fs_proto::fixture::tree::SUB`, with the same rights. Each identity now gets a subtree named by the
+  `filesystem_protocol::fixture::tree::SUB`, with the same rights. Each identity now gets a subtree named by the
   identity string itself (§117), created at provisioning time by milestone 155 (a provisioning tool)'s
   `identity_provisioner`, not auto-vivified at login. Two bounds came with it. An identity longer
-  than sixteen bytes (`fs_proto::grant::MAX_NAME`) cannot get a per-identity subtree at all. An
+  than sixteen bytes (`filesystem_protocol::grant::MAX_NAME`) cannot get a per-identity subtree at all. An
   authenticated identity with no provisioned subtree is refused indistinguishably from a wrong
   password, a considered fold.
 - Resolved, 2026-08-27: the terminal. The roadmap's recorded recommendation, the deny-cleanly shape,
   is what got built. The first successful caller gets `WRITE` on the terminal. Every later login is
-  refused with `login_proto::NO_TERMINAL` (a dedicated code, not folded into `DENIED`) before its
-  secret is relayed, until a bare `login_proto::LOGOUT` frees it. Named limitations, scoped to
+  refused with `login_protocol::NO_TERMINAL` (a dedicated code, not folded into `DENIED`) before its
+  secret is relayed, until a bare `login_protocol::LOGOUT` frees it. Named limitations, scoped to
   today's single-tenant boot: `LOGOUT` is unauthenticated, and nothing checks the liveness of an
   abandoned holder. Real multiplexing stays unbuilt on purpose; the narrow shape commits to nothing
   the wider one would later have to unwind.
@@ -202,11 +202,6 @@ Named here as well as at the component, so a reader meets the scope where they m
   request arrived on. `login` is only the first half. No server here needs the second: every
   multi-client server either serves one principal by construction (`fs_subtree_caretaker`) or is
   anonymous by design (the credential service). Milestone 480 carries the refusal.
-- Some paths in this block and its appendices are stale, kept as written because they record what
-  was true when each piece landed (found 2026-10-12, UTC). `crates/login_proto` is now
-  `crates/login_protocol`, and `crates/regions` is now `crates/memory_regions`.
-  `kernel/src/user/login_tests.rs` is now `system_tests/src/user/login_tests.rs`, and `fs_proto` is
-  probably `filesystem_protocol` today.
 
 ## Follow-on
 
@@ -227,7 +222,7 @@ Named here as well as at the component, so a reader meets the scope where they m
   parent nothing long-lived is carved from, sits with the mechanism in
   `crates/memory_regions/src/lib.rs`.
 - **Recorded.** An identity longer than sixteen bytes cannot get a per-identity subtree, because the
-  grant name travels in two argument words (`fs_proto::grant::MAX_NAME`) and `login_proto` allows
+  grant name travels in two argument words (`filesystem_protocol::grant::MAX_NAME`) and `login_protocol` allows
   sixty-four; `login` refuses rather than truncating. An authenticated identity with no provisioned
   subtree is refused indistinguishably from a wrong password, a considered fold. Both are in
   `components/src/login.rs`.

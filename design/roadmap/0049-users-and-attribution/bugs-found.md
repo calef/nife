@@ -19,7 +19,7 @@ and never the `MemoryRegion` capability *naming the region being destroyed*.
 
 So a server that destroys a region per request runs out of its sixteen-slot capability table while
 its memory budget still looks healthy. The failure arrives as whatever that server says when it
-cannot serve. Here that was `login_proto::DENIED` on a correct password, on the second login after
+cannot serve. Here that was `login_protocol::DENIED` on a correct password, on the second login after
 start-up, for two days.
 
 The kernel's `Error::OutOfMemory` made it expensive to find. It collapses "your budget is empty"
@@ -28,7 +28,7 @@ hypotheses were measured and ruled out first.
 
 ### A region destroyed out of LIFO order strands its pages
 
-The pages stay stranded until the region's parent dies. That is `crates/regions`'
+The pages stay stranded until the region's parent dies. That is `crates/memory_regions`'
 `return_to_parent`, DECISIONS §16 (object revocation)'s documented half-answer.
 
 A channel is minted before the login it carries and destroyed after it. Suppose its region is carved
