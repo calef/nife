@@ -30,7 +30,6 @@ crates/paging/src/lib.rs	590
 crates/stick_maker/src/host/mod.rs	106
 crates/stick_maker/src/lib.rs	4
 crates/swish/src/lib.rs	2525
-crates/system_initializer/src/lib.rs	2875
 crates/system_log/src/lib.rs	503
 crates/timetable/src/lib.rs	1514
 crates/usb/src/lib.rs	37

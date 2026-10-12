@@ -3,6 +3,9 @@
 Appendix to [untested-error-paths.md](../untested-error-paths.md), generated 2026-10-04 (UTC) by
 `helpers/error_paths.py` from the coverage report of merge-queue run 37167533332 at base
 `1a145fcaa`. Regenerate rather than edit: the EXAMPLES section of the note has the commands.
+The `crates/system_initializer` rows link to that base as GitHub permalinks, which cannot drift.
+Milestone 843 (the system-initializer crate root is split along its seams) moved the file they
+cite, and §277 (cite a heading or a symbol, never a line number) exempts a pinned link.
 
 ## Measured: every host crate with an error path
 
@@ -178,30 +181,30 @@ destroy, reclaim). None is in a host crate, so no coverage run has a verdict on 
 | `components/src/timetable.rs:999` | none_return | `fire_with_grant` |
 | `components/src/timetable.rs:1003` | none_return | `fire_with_grant` |
 | `crates/user_mode_runtime/src/lib.rs:560` | none_return | `retype_sleeper` |
-| `crates/system_initializer/src/lib.rs:4025` | none_return | `build_caretaker` |
-| `crates/system_initializer/src/lib.rs:4352` | err_arm | `build_graphical_terminal_session` |
-| `crates/system_initializer/src/lib.rs:4392` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4394` | err_arm | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4416` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4426` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4431` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4438` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4442` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4446` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4448` | err_arm | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4478` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4485` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4490` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4496` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4510` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4514` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4518` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4539` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4571` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4578` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4583` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4628` | err_return | `graphical_terminal_session_children` |
-| `crates/system_initializer/src/lib.rs:4712` | err_arm | `copy_args` |
-| `crates/system_initializer/src/lib.rs:5047` | option_else | `bound_channel` |
-| `crates/system_initializer/src/lib.rs:5074` | option_else | `job_channel` |
-| `crates/system_initializer/src/lib.rs:5836` | err_return | `stage_pages` |
+| [`crates/system_initializer/src/lib.rs` line 4025](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4025) | none_return | `build_caretaker` |
+| [`crates/system_initializer/src/lib.rs` line 4352](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4352) | err_arm | `build_graphical_terminal_session` |
+| [`crates/system_initializer/src/lib.rs` line 4392](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4392) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4394](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4394) | err_arm | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4416](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4416) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4426](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4426) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4431](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4431) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4438](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4438) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4442](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4442) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4446](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4446) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4448](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4448) | err_arm | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4478](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4478) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4485](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4485) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4490](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4490) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4496](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4496) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4510](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4510) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4514](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4514) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4518](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4518) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4539](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4539) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4571](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4571) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4578](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4578) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4583](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4583) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4628](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4628) | err_return | `graphical_terminal_session_children` |
+| [`crates/system_initializer/src/lib.rs` line 4712](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L4712) | err_arm | `copy_args` |
+| [`crates/system_initializer/src/lib.rs` line 5047](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L5047) | option_else | `bound_channel` |
+| [`crates/system_initializer/src/lib.rs` line 5074](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L5074) | option_else | `job_channel` |
+| [`crates/system_initializer/src/lib.rs` line 5836](https://github.com/nifeos/nife/blob/1a145fcaa920346bd03bc4ef1d7e3ebb675dd2a0/crates/system_initializer/src/lib.rs#L5836) | err_return | `stage_pages` |
