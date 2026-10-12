@@ -202,6 +202,11 @@ Named here as well as at the component, so a reader meets the scope where they m
   request arrived on. `login` is only the first half. No server here needs the second: every
   multi-client server either serves one principal by construction (`fs_subtree_caretaker`) or is
   anonymous by design (the credential service). Milestone 480 carries the refusal.
+- Some paths in this block and its appendices are stale, kept as written because they record what
+  was true when each piece landed (found 2026-10-12, UTC). `crates/login_proto` is now
+  `crates/login_protocol`, and `crates/regions` is now `crates/memory_regions`.
+  `kernel/src/user/login_tests.rs` is now `system_tests/src/user/login_tests.rs`, and `fs_proto` is
+  probably `filesystem_protocol` today.
 
 ## Follow-on
 

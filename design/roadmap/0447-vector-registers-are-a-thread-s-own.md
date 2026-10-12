@@ -194,6 +194,10 @@ could now be flipped) carries it now.
   silicon is the one QEMU cannot falsify. `arch::fp::init` writes `CPACR_EL1` to a value QEMU's
   reset already supplies, so on the emulator it could be deleted without a test noticing. The
   architecture says the reset value is UNKNOWN.
+- The block once called riscv64's `syscall_entry` increase "the +2.5% row", but the measured
+  table reads +2.2% and no row reads +2.5%. The table is taken as the record;
+  [`costs.md`](0447-vector-registers-are-a-thread-s-own/costs.md) notes the mismatch, and nobody has
+  re-measured to say which figure was a typo (found 2026-10-12, UTC).
 
 ## Follow-on
 

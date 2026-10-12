@@ -158,6 +158,12 @@ Nothing here says the driver is fast, and the block should not be quoted as if i
 - The 128-bit-mode question was recorded as a `BUGS` entry in `components/src/jh7110_entropy.rs`,
   to stay until a bench session read `STAT.R256` off the board. The 2026-09-04 success line read
   it (`0x00040308`, bit 3 set), but the entry still says nobody has.
+- The Index row still ends "none of it yet run on silicon", though the status is BUILT and the
+  2026-09-04 success run is recorded above. The row is left as written because `script/roadmap`
+  parses it; it wants its own edit (found 2026-10-12, UTC).
+- [`notes/visionfive2/bench-questions.md`](../../notes/visionfive2/bench-questions.md) speaks of
+  five possible lines, but the outcome table in
+  [`bench-procedure.md`](0159-jh7110-trng-driver/bench-procedure.md) has six rows.
 
 ## Follow-on
 

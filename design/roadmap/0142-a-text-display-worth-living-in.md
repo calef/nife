@@ -212,6 +212,11 @@ Nothing blocks increment three now. The family was §104's (2026-08-20) and the 
   the same time as the table.
 - "Rich text" is read here as terminal attributes, not as a document model. If calef meant
   proportional type, embedded images, or anything a terminal is not, the right answer is rung three.
+- This section contradicts itself, found 2026-10-12 (UTC) by the §212 (a prose budget) split. One
+  entry says no rasterizer has been run on either target; another says both targets were built and
+  run. Which is true is not settled here.
+- The Index row says increments three, four and six remain NOT-STARTED, but increment six is built.
+  The row is left as written because `script/roadmap` parses it; it wants its own edit.
 
 ## Follow-on
 

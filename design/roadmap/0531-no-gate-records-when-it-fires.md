@@ -259,6 +259,12 @@ is about. Three bound this proposal, argued in full in
 If only one is taken, take the first. The other three are opinions about where the next defect
 will come from. The first is the instrument that would tell us whether this proposal was right.
 
+## BUGS
+
+- Finding 2 says the defect appears in twelve places, but its list names ten instances. Either the
+  count is stale or two instances were never written down (found 2026-10-12, UTC, by the §212 (a
+  prose budget) split).
+
 ## Index row
 
 Nothing in this tree should be deleted on the evidence available, and that is the finding rather
