@@ -74,8 +74,13 @@ difference. A setting changed by hand in the web interface is then a red run, no
   protection, and Dependabot alerts, security updates and version updates for `cargo` and
   `github-actions`.
 - Actions: only SHA-pinned actions from GitHub, verified creators and an allowlist naming
-  `kani-github-action`. The default `GITHUB_TOKEN` is read-only, the release job alone gets
-  `id-token: write`, and workflows from a fork's pull request need approval.
+  `kani-github-action`. The default `GITHUB_TOKEN` is read-only, and the release job alone gets
+  `id-token: write`. A fork's pull request runs no workflow until a maintainer approves it, for
+  every outside contributor and every time. That is the `all_external_contributors` approval
+  policy nife has had since milestone 588 (a merge needs a review no fork can supply), not
+  GitHub's default of first-time contributors only. calef asked for it here on 2026-10-12 (UTC).
+  The settings script sets it on each repository rather than trusting an organization default,
+  and the drift check reads it back.
 - Files: a README, and `LICENSE-MIT` and `LICENSE-APACHE` with `license = "MIT OR Apache-2.0"`
   as in nife's workspace manifest. Then `SECURITY.md`, `CHANGELOG.md`, and `CONTRIBUTING.md`, which
   says our work is disclosed as agent-written (Fork 8) and outside contributions are welcome. Then

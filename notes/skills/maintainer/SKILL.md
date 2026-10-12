@@ -62,7 +62,7 @@ will this lane touch, and who else is in them". The measurement that overturned 
 the three ceilings below, are in [design/tenets/lane-count.md](../../../design/tenets/lane-count.md).
 
 - Disjoint subsystems: launch freely. Four is a reasonable working number, not a ceiling.
-- Two lanes in the test-wiring hotspot (`system_tests/src/user/tests.rs`, the QEMU runners,
+- Two lanes in the test-wiring hotspot (`system_tests/src/user.rs`, the QEMU runners,
   `xtask/src/main.rs`): expect to resolve a conflict by hand, and brief the second one to fold into
   the first's shape rather than inventing a third. It is often cheaper to sequence those two.
 - The real ceilings are elsewhere, and they are worth naming so they are decided rather than

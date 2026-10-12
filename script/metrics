@@ -1279,17 +1279,35 @@ def effort_by_week():
     return out
 
 
+# A decision file, and the frontmatter status milestone 582 (a decision's status becomes a field,
+# and the index becomes generated) gave it on 2026-09-23. A tree from before that carries
+# `**Status: X.**` prose instead and is counted from the index table it also carried, because that
+# table was the reader's record then and the prose form is the one that once printed a word nobody
+# wrote (§211 (what a fatal-risk verdict says, and what the chart can plot as a result)).
+_DECISION_FILE = re.compile(r'^design/decisions/(\d+)-[a-z0-9][a-z0-9-]*\.md$')
+_DECISION_STATUS = re.compile(r'\A---\n(?:[a-z_]+: .*\n)*?status: *([A-Z]+)\s*\n')
+
+
 def decisions(tree):
     """Decision counts by status, and the honest bucket for the years before there was one.
 
-    `design/decisions/README.md` is the index milestone 114 split `DECISIONS.md` into, and it is
-    the first version of that record to carry a status per decision at all. Before it, a decision
-    was a `## N.` heading in one 5,320-line file and nothing said whether it still held. Those
-    weeks are counted as UNRECORDED rather than as DECIDED, because reading them as decided would
-    invent a status the record never carried, which is the failure `script/names` refuses one
-    directory over.
+    Three records, newest first, and a tree is counted from the newest it has. Since milestone 582
+    each file's frontmatter holds its status, and that is the only record from 2026-10-12 (UTC),
+    when calef retired the README's index table. Between milestone 114 (split `DECISIONS.md`, and give
+    a decision a status) and 582 the table in
+    `design/decisions/README.md` was the record. Before 114 a decision was a `## N.` heading in one
+    5,320-line file and nothing said whether it still held. Those weeks are counted as UNRECORDED
+    rather than as DECIDED, because reading them as decided would invent a status the record never
+    carried, which is the failure `script/names` refuses one directory over.
     """
     counts = dict.fromkeys(DECISION_STATUSES, 0)
+    for path, text in tree.text.items():
+        if _DECISION_FILE.match(path):
+            match = _DECISION_STATUS.match(text)
+            if match and match.group(1) in counts:
+                counts[match.group(1)] += 1
+    if sum(counts.values()):
+        return counts
     text = tree.text.get('design/decisions/README.md')
     if text:
         seen = set()
@@ -1674,9 +1692,9 @@ def prose_budget(tree):
     this keeps the ratified definition so the series is not restated a second time. An appendix is
     its own document under the same cap, which is what the ruling intends.
 
-    The one thing both skip is a generated table (`prose_ratchet.GENERATED_TABLES`, the decisions
-    index today), since nobody can cut words a script writes. That steps the series down from
-    2026W39, by the index's words.
+    The one thing both skip is a generated table (`prose_ratchet.GENERATED_TABLES`), since nobody
+    can cut words a script writes. The decisions index was one until calef retired it on
+    2026-10-12 (UTC), and skipping it steps the series down from 2026W39 by the index's words.
 
     Read from each week's own revision, unlike the cost columns: a week's prose debt is a property
     of that week's tree and git can answer for it, so `--backfill` restates the whole history.
@@ -2642,7 +2660,7 @@ CHARTS = [
       ('Removed', 'milestones_removed'),
       ('Proposal, no number yet', 'proposals_unnumbered')], 1.0, None, None),
     ('decisions.svg', 'Architecture decisions by status',
-     'design/decisions/README.md; before milestone 114 split it, a decision carried no status',
+     'design/decisions/; before milestone 114 split it, a decision carried no status',
      [('Decided', 'decisions_decided'), ('Amended', 'decisions_amended'),
       ('Superseded', 'decisions_superseded'), ('Proposed', 'decisions_proposed'),
       ('No status recorded', 'decisions_unrecorded')], 1.0, None, None),
@@ -3302,6 +3320,35 @@ def print_table(row):
 # that loses the page around its own output. Each case below is one of those, fixture-built, no
 # git and no real file written. Deliberately not in `script/lint`: run it when touching those.
 
+def _decision_cases():
+    """The three records a decision's status has lived in, newest first, driven with fixtures."""
+    from types import SimpleNamespace
+
+    def counted(text):
+        return {k: v for k, v in decisions(SimpleNamespace(text=text)).items() if v}
+
+    table = ('# Decisions\n\n| # | Status | Decision |\n|---|---|---|\n'
+             '| 1 | DECIDED | [A](0001-a.md) |\n| 2 | SUPERSEDED BY 1 | [B](0002-b.md) |\n')
+    files = {
+        'design/decisions/0001-a.md': '---\nstatus: DECIDED\nraised: 2026-09-23\n---\n# 1. A\n',
+        'design/decisions/0002-b.md': '---\nstatus: SUPERSEDED\nsuperseded_by: 1\n---\n# 2. B\n',
+        'design/decisions/0003-c.md': '---\nraised: 2026-09-23\nstatus: PROPOSED\n---\n# 3. C\n',
+    }
+    return [
+        ('decisions count from frontmatter, whatever key comes first, with no table at all',
+         counted(files), {'DECIDED': 1, 'SUPERSEDED': 1, 'PROPOSED': 1}),
+        ('frontmatter wins over a table that disagrees with it',
+         counted(dict(files, **{'design/decisions/README.md': table.replace('| 2 |', '| 9 |')})),
+         {'DECIDED': 1, 'SUPERSEDED': 1, 'PROPOSED': 1}),
+        ('a tree from before frontmatter counts from its table',
+         counted({'design/decisions/README.md': table,
+                  'design/decisions/1-a.md': '# 1. A\n\n**Status: DECIDED.**\n'}),
+         {'DECIDED': 1, 'SUPERSEDED': 1}),
+        ('a tree from before the split is UNRECORDED, not DECIDED',
+         counted({'DECISIONS.md': '## 1. A\n\n## 2. B\n'}), {'UNRECORDED': 2}),
+    ]
+
+
 def _fatal_risk_cases():
     """The frontmatter reader and the appendix pattern, driven with fixture trees."""
     from types import SimpleNamespace
@@ -3537,6 +3584,7 @@ def selftest():
         ('a chart with no notes left is back to its original bytes', gone, original_page),
     ]
     cases += _fatal_risk_cases()
+    cases += _decision_cases()
     failed = [(name, got, want) for name, got, want in cases if got != want]
     for name, got, want in failed:
         print('metrics selftest: %s\n  got  %r\n  want %r' % (name, got, want), file=sys.stderr)
