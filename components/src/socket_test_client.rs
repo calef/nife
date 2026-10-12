@@ -784,11 +784,28 @@ fn tcp_accept_inbound() -> ! {
     done(OK);
 }
 
+/// How many of `net_stack`'s 15 s bounded accept waits a round sits through before it calls the
+/// round lost: 75 s, inside the test's 90 s budget (`test_times::DEFAULT_BUDGET_SECS`).
+///
+/// **One wait was a fifteen-second window against a timer nothing here controls** (milestone 514
+/// (the HVF std listener hangs in some full runs), measured 2026-10-12 UTC). The host prober's
+/// first connection is opened at boot, long before this listener exists, and slirp retransmits its
+/// SYN into the guest with exponential backoff, so by the time this program listens the gaps
+/// between retransmits are 16 and then 32 seconds. A single window that falls inside one of those
+/// gaps sees nothing, and the round fails with nobody having been refused. On this leg's HVF runs
+/// the first round was answered 10.3 s into a 15 s window from a connection held 31 s. Re-arming
+/// spans the gap. `std_exerciser`'s `serve_one_inbound` does the same for the same reason.
+///
+/// Name: provisional, milestone 514's lane, 2026-10-12 (UTC). The same name `std_exerciser` uses.
+const ACCEPT_TRIES: usize = 5;
+
 /// Accept one inbound connection, check what the host sent, answer it, and close. Reports through
 /// `done` on any failure, so `base` distinguishes the first connection from the second.
 fn serve_one_inbound(base: u64) {
-    if accept(LISTENER, CONNECTION) != REP_OK {
-        done(base); // nobody connected within the server's bounded wait
+    // `REP_ERR` is the bounded wait expiring with the listener still armed (`net_stack`'s
+    // `tcp_accept` re-arms on every exit), so a server that means to serve asks again.
+    if !(0..ACCEPT_TRIES).any(|_| accept(LISTENER, CONNECTION) == REP_OK) {
+        done(base); // nobody connected within ACCEPT_TRIES of the server's bounded waits
     }
 
     let (rlen, _) = on(CONNECTION, OPERATION_RECEIVE, 0);
