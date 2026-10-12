@@ -81,7 +81,7 @@ use crate::fmt;
 use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Component, Path, PathBuf};
-use crate::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering};
+use crate::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 use crate::sys::pal::nife::fsproto::{self, fs as proto};
 use crate::sys::pal::nife::rt;
 use crate::sys::time::{SystemTime, UNIX_EPOCH};

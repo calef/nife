@@ -339,6 +339,12 @@ mod std_threads_tests;
 #[cfg(all(test, initial_ramdisk))]
 mod ripgrep_tests;
 
+/// **`ripgrep`'s parallel walker on more than one thread** (milestone 121 (`ripgrep` on nife), fatal risk 1's third
+/// gap): `rg` run as a process, and the kernel's count of the threads it started. Skips without
+/// `rg`, like the module above.
+#[cfg(all(test, initial_ramdisk))]
+mod ripgrep_threads_tests;
+
 /// **Somebody else's C, unmodified, on nife's C library**: SQLite's `speedtest1` and ioping
 /// (milestone 835 (a C library, stage 1: files, clock and memory)). Each skips unless somebody ran
 /// its `helpers/build-<name>.sh`. Every ISA, per DECISIONS §19.
