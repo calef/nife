@@ -158,10 +158,10 @@ directory and budget work.
 Per-identity subtree scoping (DECISIONS §117), landed in this update. `login` now attenuates
 each authenticated identity to a subtree named by the identity string itself, used directly with no
 lookup table, matching exactly what milestone 155's `identity_provisioner` creates at provisioning
-time. Proven by `login_scopes_each_identity_to_its_own_provisioned_subtree`: `chris` and `corinne`
+time. Proven by `login_scopes_each_identity_to_its_own_provisioned_subtree`: `alice` and `bob`
 each write a self-naming marker into the directory `login` delegated and confirm the old, shared
 fixture subtree's own file is absent from it (proof, not assertion, that neither landed there);
-`chris` then logs in a second, independent time and reads back `chris`'s own marker, not `corinne`'s,
+`alice` then logs in a second, independent time and reads back `alice`'s own marker, not `bob`'s,
 which is the isolation property stated positively. A companion test,
 `login_denies_an_authenticated_identity_with_no_provisioned_subtree`, checks the considered fold for
 a real credential with no provisioned subtree: refused, indistinguishably from a wrong password (see

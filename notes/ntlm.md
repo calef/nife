@@ -179,9 +179,9 @@ use cred_proto as proto;
 
 let page = /* the mapped provision page, 4096 bytes */;
 for (resource, password, user, domain) in [
-    (&b"backups-chris"[..],   &b"Password"[..], &b"User"[..],    &b"Domain"[..]),
-    (b"backups-corinne",      b"another share secret", b"corinne", b"WORKGROUP"),
-    (b"backups-graeme",       b"a third share secret", b"graeme",  b"WORKGROUP"),
+    (&b"backups-alice"[..],   &b"Password"[..], &b"User"[..],    &b"Domain"[..]),
+    (b"backups-bob",          b"another share secret", b"bob",   b"WORKGROUP"),
+    (b"backups-carol",        b"a third share secret", b"carol", b"WORKGROUP"),
 ] {
     let (w0, w1) = proto::place_ntlm_put(page, resource, password, user, domain).unwrap();
     let (r0, _) = call(SERVICE, w0, w1);
@@ -205,7 +205,7 @@ and never needs the service to split them.
 let (proof, blob) = ntchallengeresponse.split_at(proto::KEY_LEN);
 let w0 = proto::place_ntlm_proof(
     page,
-    b"backups-chris",
+    b"backups-alice",
     &server_challenge,          // the 8 bytes we put in the CHALLENGE_MESSAGE
     blob,                       // the client's temp, unexamined
     proof.try_into().unwrap(),
