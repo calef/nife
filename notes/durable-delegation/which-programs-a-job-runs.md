@@ -18,15 +18,15 @@ that set?
   the timetable (`components/src/user_timetable_keeper.rs:57`, BUGS). The timetable resolves every entry's program
   against that archive when a document arrives (`components/src/timetable.rs:324`) and loads it
   itself at each fire (`components/src/timetable.rs:616`). No other process sees a job's bytes.
-- The real boot passes a zero length (`crates/system_initializer/src/lib.rs:2161`), so `SCHEDULE`
-  is a plain login there. The kernel harness passes one program, `least_authority_demo`
+- The real boot passes a zero length (`system_initializer::boot`, where it starts `login`), so
+  `SCHEDULE` is a plain login there. The kernel harness passes one program, `least_authority_demo`
   (`system_tests/src/user/login_tests.rs:103`).
 - The prompt, the analogous case. A bare name resolves through the live activation generation, one
   entry per name, and ignores owner-vouch rows. That is the bare-name ruling, B2, whose decision
   file is on #1374's branch and not yet on `main` (`components/src/swish.rs:1337` and `:3233` there). The spawner then
-  checks the bytes' digest against the same generation (`crates/system_initializer/src/lib.rs:3856`,
-  `vouched`). An unvouched image runs only for a holder of the run-unvouched capability (gate D2),
-  which fork 3 keeps from every job.
+  checks the bytes' digest against the same generation (`system_initializer::vouched`). An
+  unvouched image runs only for a holder of the run-unvouched capability (gate D2), which fork 3
+  keeps from every job.
 - The threadbare-base ruling (B2, on #1421) moves every candidate job program out of the slot. The command-line tools, `timetable`
   and `login` become packages in the default set, and the slot keeps the floor (the progenitor, the
   console, `swish`, storage, `net_stack`).
@@ -85,9 +85,9 @@ nothing from it, since the timetable endows a job only with what its entry grant
 - **If no:** F stands. `SCHEDULE` on the real boot stays a plain login and 152's durable half
   runs only in the kernel harness. If calef prefers E, the next step is the snapshot's build in
   `login`, with fork 3's text saying revocation waits for a boot.
-- **Blocking now, whatever the answer:** `LOGIN_CONSTRUCTION_PAGES` (768,
-  `crates/system_initializer/src/lib.rs:857`) must rise past the 800 pages `login` splits once it
-  has any schedule archive (`login.rs:290`).
+- **Blocking now, whatever the answer:** `LOGIN_CONSTRUCTION_PAGES` (768, in
+  `crates/system_initializer`) must rise past the 800 pages `login` splits once it has any
+  schedule archive (`login.rs:290`).
 - **Eventually calef's, not blocking:** the D build's contract change for the timetable (a grant in
   place of `a1`'s archive), and the names that come with it.
 - **Found on the way:** the three decision files #1361 minted (the line editor, the set of names,

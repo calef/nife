@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-08
+built: 2026-10-11
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 279
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -20,6 +21,12 @@ Rust source file stays under 2,000 lines) sets the ceiling and a 2026-12-31 goal
 The cut and every module name below are calef's call. A lane writes them up as a
 `status: PROPOSED` file in `design/decisions/` before it moves a line, and its pull request
 carries `needs-architect`.
+
+The lane wrote it up on 2026-10-11 (UTC) as §279 (the system-initializer crate root splits into
+private modules), with the file re-measured on main at `ae6b91e79` (5,850 lines). calef ruled the
+same day: the move alone now, with `boot` decomposed as the follow-on, and the crate root an index,
+by the precedent he set for every split on #1959. §279 records both. Every module name still ships
+provisional.
 
 Reuse: not applicable; this moves code and adds none.
 
@@ -119,6 +126,49 @@ Found with `grep` at `0435a9aeb`.
 4. Both falsification patches apply and fail their lines.
 5. Each new module carries a `//! Name:` block marked provisional.
 6. The follow-on that decomposes `boot` is filed, with its measured step boundaries.
+
+## What was built
+
+Built 2026-10-11 (UTC) on `42e0d1db6`. `crates/system_initializer/src/lib.rs` went from 5,850 lines
+to 350, an index of crate docs, `mod` and `use` lines and re-exports, so its file-length row is
+gone. Every name below is provisional.
+
+| file | lines | holds |
+|---|---|---|
+| `lib.rs` | 350 | crate docs, `mod` and `use` lines, the eight public items re-exported by name |
+| `boot_sequence.rs` | 1,755 | `boot`, the password helpers, `EndowmentSlices` |
+| `spawn_loop.rs` | 1,176 | the slot helpers, `Channels`, `Fs`, `spawn_service` |
+| `children.rs` | 861 | the builders, `reclaim`, `memory_region_split` |
+| `image_request.rs` | 572 | `SpawnEndpoint`, frames, staging, vouching |
+| `client_windows.rs` | 473 | client windows, bound channels, `FsCalls`, `PAGE_BYTES` |
+| `layout.rs` | 391 | the layout constants, page budgets and each stack's constants, whole |
+| `endowment.rs` | 269 | `BootEndowment`, `SecondDirGrant` |
+| `announcement.rs` | 66 | `announce`, `sentence` |
+| `fault.rs` | 29 | `must`, `must_ok`, `fail` |
+| `measurement.rs` | 28 | `measured` |
+
+`activation.rs` and `std_layout.rs`, cut earlier by milestones 809 (the package client becomes a
+program) and 812 (`std::thread::spawn` runs real threads in one address space), are unchanged. Each
+child takes `use super::*`; an item reached across a seam became `pub(super)`, and no Rust file
+outside the crate changed. One correction rode along: `measured`'s doc comment had come apart from
+it and sat at the top of `build_terminal`'s, and it is back on `measured`.
+
+The two `swish_check` falsification patches were regenerated against `spawn_loop.rs` and
+`boot_sequence.rs`. The citations of `system_initializer/src/lib.rs` by line under `notes/` now name
+a symbol, or for the generated untested-error-paths table, a permalink to the commit it was
+generated from.
+
+## Follow-on
+
+- **Proposed.** `design/roadmap/proposals/the-progenitors-boot-is-split-by-phase.md`: `boot` along its
+  twelve measured phases, and `spawn_service` along its request's stages. §279 records calef's
+  ruling that this is the next step.
+- **Decision.** Every module name is provisional and is calef's to rule in his naming pass, per
+  `design/decisions/0279-the-system-initializer-crate-root-splits-into-private-modules.md`.
+- **Refused.** Repointing the 17 citations of `system_initializer/src/lib.rs` by line under
+  `design/` here. A developer lane edits no record under `design/` but its own block, and §277 (cite
+  a heading or a symbol, never a line number) holds them in its code ratchet. Pull request #1957
+  lists each with the symbol it should name, for the maintainer's sweep.
 
 ## Index row
 

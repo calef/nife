@@ -395,6 +395,7 @@ place instead of moving text between two systems. Numbers 68 to 73 are the six t
 | 276 | DECIDED | [The thread syscalls as built: the process object, `BIND`, futexes, the thread pointer and `SYS_EXIT_THREAD`](0276-the-thread-syscalls-as-built.md) |
 | 277 | DECIDED | [Cite a heading or a symbol, never a line number](0277-cite-a-heading-or-a-symbol-never-a-line-number.md) |
 | 278 | DECIDED | [An ACPI machine reaches the aarch64 kernel as a device tree the loader writes](0278-an-acpi-machine-reaches-the-aarch64-kernel-as-a-device-tree.md) |
+| 279 | DECIDED | [The system-initializer crate root splits into private modules](0279-the-system-initializer-crate-root-splits-into-private-modules.md) |
 | 281 | DECIDED | [The kernel's user-mode file splits into child modules of `user`](0281-the-kernels-user-mode-file-splits-into-child-modules-of-user.md) |
 | 282 | DECIDED | [When a file is split, the parent becomes an index](0282-when-a-file-is-split-the-parent-becomes-an-index.md) |
 

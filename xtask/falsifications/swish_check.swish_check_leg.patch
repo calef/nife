@@ -26,11 +26,10 @@ shell reports `slots held: 0 1 2 3 4 5 20 21 22 23 24 25 62`. Replayed 2026-10-0
 at that line; the fixed tree reads `slots held: 0 1 2 3 4 5 20 21 62` and exits 0 past it. (The
 run-unvouched slot was 30 on that date and is 62 since milestone 754 (the capability table grows to 64 slots); the replay was not repeated.)
 
-diff --git a/crates/system_initializer/src/lib.rs b/crates/system_initializer/src/lib.rs
-index 41bfd4914..4af5fef66 100644
---- a/crates/system_initializer/src/lib.rs
-+++ b/crates/system_initializer/src/lib.rs
-@@ -2011,6 +2011,18 @@ pub fn boot(
+diff --git a/crates/system_initializer/src/boot_sequence.rs b/crates/system_initializer/src/boot_sequence.rs
+--- a/crates/system_initializer/src/boot_sequence.rs
++++ b/crates/system_initializer/src/boot_sequence.rs
+@@ -1040,6 +1040,18 @@ pub fn boot(
      // session: the prompt asks for a launch and cannot hand a device to anything. They stay in the
      // boot endowment's own slots, read from [`GraphicalTerminalCaps`]; [`graphical_terminal_grants`]
      // already deleted whatever no session can be built from.

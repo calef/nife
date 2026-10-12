@@ -25,10 +25,10 @@ to ask), which introduced the process domain.
 Expected to fail: the `installed/unvouched` line wants `domain: refused (no capability at slot 7)`
 and `slots held: 0 1 2\n`, and the child reports `domain: REACHED` and `slots held: 0 1 2 7`.
 
-diff --git a/crates/system_initializer/src/lib.rs b/crates/system_initializer/src/lib.rs
---- a/crates/system_initializer/src/lib.rs
-+++ b/crates/system_initializer/src/lib.rs
-@@ -3262,7 +3262,7 @@
+diff --git a/crates/system_initializer/src/spawn_loop.rs b/crates/system_initializer/src/spawn_loop.rs
+--- a/crates/system_initializer/src/spawn_loop.rs
++++ b/crates/system_initializer/src/spawn_loop.rs
+@@ -528,7 +528,7 @@ pub(super) fn spawn_service(
          // Same reasoning, one authority over (milestone 126): a **process domain** is not something
          // a person designates either. There is no /proc to name and no pid space to scan, so what a
          // program may see is decided here, by which supervision endpoint the progenitor puts in its capability table.
