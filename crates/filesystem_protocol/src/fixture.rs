@@ -692,7 +692,8 @@ pub mod walk {
     /// it into an argv with `grant_plan::argv`, the shell's own function, and
     /// `walk_pricing`'s `rg_host` example runs the same words on a host, so nife and Linux run
     /// one command. `--threads 1` and `--no-mmap` are the block's two honesty pins: nife
-    /// answers one thread and has no `mmap`, so the host must be held to the same. `--stats`
+    /// answered one thread when this was written and has no `mmap`, so the host must be held to
+    /// the same. The threaded lines are below. `--stats`
     /// is what makes the search measurable from inside both: ripgrep times its own walk and
     /// search. Name: provisional.
     pub const RG_SEARCH: &str = "rg --threads 1 --no-mmap --stats 'walk entry'";
@@ -705,6 +706,49 @@ pub mod walk {
     /// with neither pin: a single named file is where `ripgrep` tries a memory map, so this
     /// also shows nife needs no `--no-mmap`. Name: provisional.
     pub const RG_NAMED: &str = "rg 'walk entry' narrow/n000";
+
+    /// **[`RG_SEARCH`] without `--threads 1`**: `ripgrep` picks its own thread count from
+    /// `available_parallelism`, the online core count, and takes `ignore`'s parallel walker when
+    /// that is more than one. A line a person would type, apart from the measurement pins.
+    /// Name: provisional (lane milestone/121-rg-threads, 2026-10-12 UTC).
+    pub const RG_SEARCH_THREADED: &str = "rg --no-mmap --stats 'walk entry'";
+    /// **[`RG_SEARCH`] told four threads**, whatever the core count. Name: provisional.
+    pub const RG_SEARCH_FOUR_THREADS: &str = "rg --threads 4 --no-mmap --stats 'walk entry'";
+    /// The thread count [`RG_SEARCH_FOUR_THREADS`] names.
+    pub const RG_FOUR: usize = 4;
+
+    /// **The path of the `i`th file [`RG_SEARCH`] matches**, `i` below [`RG_MATCHES`], written
+    /// into `buf` as `ripgrep` prints it relative to the tree: the chain's files from the top
+    /// down, then [`WIDE`]'s in name order, then [`NARROW`]'s. Returns its length. Each matching
+    /// line is this, `:` and [`SMALL_BODY`]. The kernel harness and the host's `rg` are both held
+    /// to this one list, so a parallel walk that prints in another order, or prints a line twice,
+    /// is caught on either side. Name: provisional (lane milestone/121-rg-threads).
+    pub fn rg_match_path(i: usize, buf: &mut [u8; 32]) -> usize {
+        let mut len = 0;
+        let mut put = |bytes: &[u8], len: &mut usize| {
+            buf[*len..*len + bytes.len()].copy_from_slice(bytes);
+            *len += bytes.len();
+        };
+        if i <= DEPTH {
+            put(CHAIN.as_bytes(), &mut len);
+            put(b"/", &mut len);
+            for _ in 0..i {
+                put(LEVEL.as_bytes(), &mut len);
+                put(b"/", &mut len);
+            }
+            put(LEVEL_FILE.as_bytes(), &mut len);
+        } else {
+            let (dir, n) = if i - (DEPTH + 1) < WIDE_COUNT {
+                (WIDE, i - (DEPTH + 1))
+            } else {
+                (NARROW, 0)
+            };
+            put(dir.as_bytes(), &mut len);
+            put(b"/", &mut len);
+            put(&wide_name(n), &mut len);
+        }
+        len
+    }
 }
 
 /// **The directory attacker's report** (milestone 47), a bitmap for the same reason the per-file
