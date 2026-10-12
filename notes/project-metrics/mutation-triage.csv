@@ -989,3 +989,39 @@ screen_console,ScreenConsole::draw,replace > with >=,killed,killed by a_glyph_at
 screen_console,ScreenConsole::scroll,replace + with *,killed,killed by a_console_that_fills_the_grid_scrolls_without_reading_past_it
 screen_console,ScreenConsole::scroll,replace < with <=,killed,killed by a_console_that_fills_the_grid_scrolls_without_reading_past_it
 swish,write_vouch,delete match arm S::StoreFailed,killed,"killed by a_vouch_answer_says_what_is_live, which now asserts the StoreFailed sentence"
+system_log_protocol,console::Inserter::finish_line,replace + with *,killed,killed by the_queue_flushes_only_past_its_size_and_only_at_a_line_end
+system_log_protocol,console::Inserter::finish_line,replace == with !=,equivalent,"at a line start with an empty queue the mutant takes the else branch, whose overflow check cannot fire with nothing queued and whose own at_line_start branch writes the line the same way; mid-line both take the else branch; the 2026-10-12 per-crate re-run still reports it"
+system_log_protocol,console::Inserter::finish_line,replace > with <,killed,killed by the_queue_flushes_only_past_its_size_and_only_at_a_line_end
+system_log_protocol,console::Inserter::finish_line,replace > with ==,killed,killed by the_queue_flushes_only_past_its_size_and_only_at_a_line_end
+system_log_protocol,console::Inserter::finish_line,replace > with >=,killed,killed by the_queue_flushes_only_past_its_size_and_only_at_a_line_end
+system_log_protocol,console::Inserter::wrote,replace && with ||,killed,killed by nothing_queued_is_nothing_written and the_queue_flushes_only_past_its_size_and_only_at_a_line_end
+system_log_protocol,console::Inserter::wrote,replace < with <=,killed,killed by a_partial_line_past_its_buffer_is_not_redrawn
+system_log_protocol,console::Inserter::wrote,replace > with >=,killed,killed by nothing_queued_is_nothing_written and the_queue_flushes_only_past_its_size_and_only_at_a_line_end
+system_log_protocol,console::chunk,replace << with >>,killed,killed by a_kernel_chunk_word_is_its_opcode_and_its_count
+system_log_protocol,console::chunk,replace console::chunk -> u64 with 0,killed,killed by a_kernel_chunk_word_is_its_opcode_and_its_count
+system_log_protocol,console::chunk,replace console::chunk -> u64 with 1,killed,killed by a_kernel_chunk_word_is_its_opcode_and_its_count
+system_log_protocol,console::chunk,replace | with &,killed,killed by a_kernel_chunk_word_is_its_opcode_and_its_count
+system_log_protocol,console::chunk,replace | with ^,equivalent,"OPERATION_KERNEL_LINE << 56 and a chunk's count (at most sixteen) occupy disjoint bits, so | and ^ agree; the 2026-10-12 per-crate re-run still reports it"
+system_log_protocol,console::operation,replace >> with <<,killed,killed by a_kernel_chunk_word_is_its_opcode_and_its_count
+system_log_protocol,console::operation,replace console::operation -> u64 with 0,killed,killed by a_kernel_chunk_word_is_its_opcode_and_its_count
+system_log_protocol,console::operation,replace console::operation -> u64 with 1,killed,killed by a_kernel_chunk_word_is_its_opcode_and_its_count
+system_log_protocol,kernel_ring::Cursor<'_>::get,replace kernel_ring::Cursor<'_>::get -> u64 with 0,killed,killed by the_kernel_ring_keeps_each_record_and_its_counters
+system_log_protocol,kernel_ring::Cursor<'_>::get,replace kernel_ring::Cursor<'_>::get -> u64 with 1,killed,killed by the_kernel_ring_keeps_each_record_and_its_counters
+system_log_protocol,kernel_ring::Cursor<'_>::set,replace kernel_ring::Cursor<'_>::set with (),killed,killed by the_kernel_ring_keeps_each_record_and_its_counters
+system_log_protocol,kernel_ring::Ring<'a>::add_flags,replace | with ^,killed,killed by the_kernel_ring_keeps_each_record_and_its_counters
+system_log_protocol,kernel_ring::Ring<'a>::append,replace + with -,killed,killed by the_kernel_ring_keeps_each_record_and_its_counters
+system_log_protocol,kernel_ring::Ring<'a>::count_fallback,replace kernel_ring::Ring<'a>::count_fallback with (),killed,killed by the_kernel_ring_keeps_each_record_and_its_counters
+system_log_protocol,kernel_ring::Ring<'a>::fallback,replace kernel_ring::Ring<'a>::fallback -> u64 with 0,killed,killed by the_kernel_ring_keeps_each_record_and_its_counters
+system_log_protocol,kernel_ring::Ring<'a>::fallback,replace kernel_ring::Ring<'a>::fallback -> u64 with 1,killed,killed by the_kernel_ring_keeps_each_record_and_its_counters
+system_log_protocol,kernel_ring::Ring<'a>::is_formatted,replace && with ||,killed,killed by the_kernel_ring_keeps_each_record_and_its_counters
+system_log_protocol,kernel_ring::Ring<'a>::oldest,replace kernel_ring::Ring<'a>::oldest -> u64 with 0,killed,killed by the_kernel_ring_keeps_each_record_and_its_counters
+system_log_protocol,kernel_ring::Ring<'a>::oldest,replace kernel_ring::Ring<'a>::oldest -> u64 with 1,killed,killed by the_kernel_ring_keeps_each_record_and_its_counters
+system_log_protocol,kernel_ring::Ring<'a>::read,replace & with ^,killed,killed by the_kernel_ring_keeps_each_record_and_its_counters
+system_log_protocol,kernel_ring::Ring<'a>::read,replace & with |,killed,killed by the_kernel_ring_keeps_each_record_and_its_counters
+system_log_protocol,kernel_ring::Ring<'a>::read,replace + with *,killed,killed by the_kernel_ring_keeps_each_record_and_its_counters
+system_log_protocol,kernel_ring::Ring<'a>::read,replace + with -,killed,killed by the_kernel_ring_keeps_each_record_and_its_counters
+system_log_protocol,kernel_ring::Ring<'a>::read,replace < with <=,killed,killed by the_kernel_ring_keeps_each_record_and_its_counters
+system_log_protocol,kernel_ring::Ring<'a>::read,replace < with ==,killed,killed by the_kernel_ring_keeps_each_record_and_its_counters
+system_log_protocol,kernel_ring::Ring<'a>::read,replace >> with <<,equivalent,"meta never writes above bit 32 (severity, flags << 8, len << 16), so the kind byte reads 0 either way: (m >> 32) & 0xff and (m << 32) & 0xff are both 0; the 2026-10-12 per-crate re-run still reports it"
+system_log_protocol,kernel_ring::meta,replace | with ^,equivalent,"severity (a byte), flags << 8 (a byte) and len << 16 occupy disjoint bits, so | and ^ agree; the 2026-10-12 per-crate re-run still reports it"
+system_log_protocol,kernel_ring::slot,replace % with /,killed,killed by the_kernel_ring_keeps_each_record_and_its_counters
