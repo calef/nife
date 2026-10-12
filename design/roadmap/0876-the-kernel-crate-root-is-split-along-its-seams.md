@@ -207,8 +207,9 @@ now `-> !` in a build with a measurement feature and a no-op without, which lets
   temporary": the two boots stay at the crate root as each port's route to the shared path. Every
   module name is still his:
   `design/decisions/0284-the-kernel-crate-root-splits-into-child-modules-one-per-boot.md`.
-- **Proposed.** Bringing riscv64 and `x86_64` onto the shared path, which retires the two boot
-  files: `design/roadmap/proposals/riscv64-and-x86-64-join-the-shared-boot-path.md`.
+- **Milestone 890.** Bringing riscv64 and `x86_64` onto the shared path, which retires the two boot
+  files, as milestone 890 (riscv64 and x86_64 join the shared boot path):
+  `design/roadmap/0890-riscv64-and-x86-64-join-the-shared-boot-path.md`.
 - **Recorded.** AGENTS.md's Testing section names `kernel/src/lib.rs` for the boot self-tests,
   which are in `kernel/src/tests.rs` now. A developer lane does not edit AGENTS.md, so the
   pull request names it for the maintainer.
