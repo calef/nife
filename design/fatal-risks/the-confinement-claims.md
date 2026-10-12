@@ -304,6 +304,27 @@ yet.
 The 34-row sweep did not run; with the count at zero it could not have made this pass clean. The
 verdict is unchanged, and moving the color stays calef's.
 
+### The seventh outsider pass (2026-10-12, milestone 903)
+
+Added under §216, from milestone 903 (a seventh outsider pass attacks the confinement claim), whose
+number is PROVISIONAL. The seventh pass was blind, milestone 633's posture: a fresh Claude agent on
+Fable, briefed with only the 34-row claims table and the source, and none of the audit reports,
+earlier pass notes or history. The record is
+[`notes/confinement-outsider-pass-7.md`](../../notes/confinement-outsider-pass-7.md).
+
+A first reviewer read past the table into earlier findings and was discounted; a second, given the
+table alone, ran the pass. It found no escape. It booted new hostile tests on aarch64, riscv64 and
+x86_64 for rows 1 to 3. `SEND_CAP` refused a widening rights register and a `GRANT`-less source.
+`SPLIT` off a `WRITE`-only budget stayed narrow. `RETYPE` and `RETYPE_OBJ` off the same budget
+minted `Rights::ALL` for a frame and for kernel objects. That is the retype gap calef ruled on
+2026-10-07 and milestone 824 fixes, now shown to reach every kernel object; a near miss, since the
+objects are the holder's own. The other 31 rows are graded `read`, about half of them resting on
+the row's own cited test. The refusal log holds two external safety-system stops during
+orientation and the first reviewer's independence slip, none on a shipped path.
+
+By criterion (c)'s letter this is a clean pass by an Anthropic model. Whether a pass this read-heavy
+counts is calef's to rule. The verdict is unchanged, and moving the color stays calef's.
+
 ### Added 2026-10-03: row 27's hand-off was tested on one of the two `x86_64` boots
 
 From 2026-09-23 to 2026-10-03 (UTC), `port_holder_transmits_then_a_non_holder_faults` (row 27 of

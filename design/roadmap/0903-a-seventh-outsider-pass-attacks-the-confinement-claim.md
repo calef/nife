@@ -1,7 +1,7 @@
 ---
-status: IN-PROGRESS
-branch: milestone/903-a-seventh-outsider-pass-attacks-the-confinement-claim
+status: BUILT
 raised: 2026-10-12
+built: 2026-10-12
 milestone_dependencies: none
 decision_dependencies: none
 machine_requirements: none
@@ -44,7 +44,23 @@ collects, reproduces each claimed escape by test or boot, and records.
 
 ## Result
 
-Running.
+BUILT, 2026-10-12 (UTC). No escape. The record is `notes/confinement-outsider-pass-7.md`, which
+holds the per-row table and the refusal log.
+
+- **Two attempts.** The first reviewer read past the claims table into earlier findings, said so,
+  and was discounted. A second fresh reviewer, handed the table alone, ran the pass.
+- **Booted.** Two new tests in `system_tests/src/user/` (names provisional), green on aarch64,
+  riscv64 and x86_64, reproduced by the lane on each: `SEND_CAP` cannot widen a right through its
+  rights register or lend a `GRANT`-less capability (rows 1 and 2), and a `WRITE`-only budget
+  narrows a `SPLIT` child but mints `Rights::ALL` on every `RETYPE` and `RETYPE_OBJ` (row 3).
+- **One near miss, already ruled.** The retype half of row 3 is the gap milestone 824 (a retype
+  mints no right its budget lacks) fixes. New: it reaches every kernel object, not only frames.
+- **Read.** The other 31 rows, about half resting on the row's own cited test.
+- **Refusal log.** Two external safety-system stops during orientation, one per attempt, and the
+  first attempt's independence slip. None on a shipped path.
+
+By criterion (c)'s letter this is a clean pass by an Anthropic model, so the count would be 1.
+Whether a pass with 31 of 34 rows read counts is calef's to rule.
 
 ## Done means
 
@@ -55,6 +71,11 @@ Running.
   correctable, and verdicts are the architect's). Moving the color stays calef's.
 
 ## Follow-on
+
+- **Milestone 824.** When it lands, `seventh_pass_retype_tests` goes red on purpose; its `GRANT`
+  assertions flip with the existing frame-only characterization.
+- **Recorded.** Unreached by this pass: The package fetch (no row until milestone 855 (the TLS graph enters the gated
+  build)) and hostile clients of userspace servers. A later pass's targets, recorded in the note.
 
 - **Milestone 198.** A human review, or a public bounty once a stranger can install nife, is the
   stronger form and waits on milestone 198 (a package manager, and the trivial install that makes a
