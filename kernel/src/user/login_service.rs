@@ -278,7 +278,8 @@ pub fn start(
     }
 }
 
-/// The four blobs `login` is started against, read out of the initrd; an empty one maps nothing.
+/// The four blobs `login` is started against, read out of the initial ramdisk; an empty one maps
+/// nothing.
 struct LoginBlobs {
     caretaker: &'static [u8],
     measurements: &'static [u8],
@@ -287,7 +288,7 @@ struct LoginBlobs {
 }
 
 /// Read the caretaker, the program measurements and, when `schedule` is set, the durable-session
-/// programs out of the initrd.
+/// programs out of the initial ramdisk.
 fn read_login_blobs(schedule: bool) -> LoginBlobs {
     // **The two blobs `login`'s `_start` is started against** (milestone 233), read out of the same
     // archive this harness used to map wholesale.
