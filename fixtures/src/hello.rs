@@ -177,7 +177,7 @@ const CHILD_WORD: u64 = 0xC0FFEE;
 /// of its own budget through the granular verbs (retype an address space, copy each segment into
 /// retyped frames and map them in, retype a TCB, endow it, configure, start). The child reports
 /// a word home; receiving it proves init parsed a real ELF and built a running process, with the
-/// kernel never touching the child's bytes. See kernel/src/user.rs `spawn_hello`.
+/// kernel never touching the child's bytes. See kernel/src/user/entry.rs `spawn_hello`.
 fn init(initrd_len: u64) -> ! {
     init_build(initrd_len, false)
 }

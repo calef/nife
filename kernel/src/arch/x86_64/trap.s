@@ -197,9 +197,10 @@ isr_restore:
     #
     # THE FRAME'S OWN ADDRESS IS THE ANSWER, which is what makes this a rule rather than a
     # bookkeeping duty somebody has to remember at each switch. Every thread's TrapFrame lives at
-    # `stack_top - 176` for the life of the thread (kernel/src/user.rs `enter_frame`, milestone 71),
-    # so the top is `rsp + 176` at this instant, computed from the frame we are about to load rather
-    # than from any record of who is running. RISC-V does exactly this, at exactly this point, in
+    # `stack_top - 176` for the life of the thread (`user::enter_frame`; milestone 71 (the
+    # thread-start fault: a user thread dispatched with `sepc` = 0)), so the top is `rsp + 176` at
+    # this instant, computed from the frame we are about to load rather than from any record of who
+    # is running. RISC-V does exactly this, at exactly this point, in
     # `trap_return`.
     #
     # Two writes, because x86 has two doors and they find their stack differently: a trap reads

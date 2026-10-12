@@ -56,7 +56,7 @@
 //! ```
 
 /// Where the kernel maps the initrd archive before any program's `_start` runs. Must match
-/// `kernel::user::INITRD_VA` (`kernel/src/user.rs`), the kernel-side constant this value mirrors,
+/// `kernel::user::INITRD_VA`, the kernel-side constant this value mirrors,
 /// which every kernel-side spawn path (`kernel::user::riscv_shell_boot` on RISC-V, `spawn_init` on
 /// aarch64) maps this many bytes at, read-only, before starting the process. Every `_start` that
 /// receives an initrd receives it at this same VA; the seven callers this module replaces had each

@@ -556,8 +556,8 @@ pub const ESCAPE_MAGIC: u64 = 0xE5CA_9E00_4E56_4D45;
 /// the authority this split exists to withhold. And the doorbell stride is told because it lives
 /// in `CAP`, in the controller register page this process is deliberately not mapped.
 ///
-/// **Three `u64`s because a spawn carries three scalars** (`kernel/src/user.rs`'s `Spawn`), which
-/// is the constraint that shaped the packing rather than any property of NVMe. This is the
+/// **Three `u64`s because a spawn carries three scalars** (`kernel/src/user/entry.rs`'s `Spawn`),
+/// which is the constraint that shaped the packing rather than any property of NVMe. This is the
 /// kernel's own convention with the one program it spawns, not a contract between two user
 /// programs, so rule 7 does not apply to it; it lives here anyway because packing that is written
 /// twice is packing that can disagree with itself, and because a Kani round trip is cheaper than
