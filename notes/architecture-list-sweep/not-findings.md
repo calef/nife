@@ -14,7 +14,7 @@ Listed so the next reader does not count them twice.
 | ~~`xtask/src/swish_check.rs` `swish_check`, refusing `--arch x86_64`~~ | ~~an x86_64 leg~~ | **Closed**: the leg runs (`swish_check::swish_check`'s `--arch` match), milestone 182 (x86-64's own interactive-boot entry point) built it, and milestone 177 (wire the graphical terminal stack into the real interactive boot) is BUILT |
 | `xtask/src/icount.rs` `icount`, which refuses `--arch x86_64` | an x86_64 icount leg | The real reason is at `bench_x86`'s doc comment (the LAPIC timer is a periodic hardware reload with no re-armed deadline to compare against). **The inline comment at the match arm gives a different and now-stale reason** ("needs a userspace this port cannot build"), which stopped being true when milestone 161 item 4 landed. Worth a one-line correction by whoever next touches it |
 | `script/lint`, the boot-mode feature loops `for tgt in aarch64... riscv64...` | x86_64 | Thirty lines above the loop, naming each narrowing, why it is a scope gap rather than an oversight, what is still covered, and **the trigger that retires the suppression**. This is the model |
-| `kernel/src/user/fs_service.rs` `NO_FS_SERVER`, `NO_MKFS`; `clock_service.rs` `NO_RTC`; `user.rs` `NO_UART_PAGE`; `std_service.rs` `NO_STD_EXERCISER` | per-test x86_64 coverage | The `skip!()` mechanism, whose whole design is that a skipped fixture prints why |
+| `kernel/src/user/fs_service.rs` `NO_FS_SERVER`, `NO_MKFS`; `clock_service.rs` `NO_RTC`; `user/console_device.rs` `NO_UART_PAGE`; `std_service.rs` `NO_STD_EXERCISER` | per-test x86_64 coverage | The `skip!()` mechanism, whose whole design is that a skipped fixture prints why |
 
 ## Legitimately architecture-specific, which are not findings
 

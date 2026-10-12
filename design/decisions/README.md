@@ -397,9 +397,11 @@ place instead of moving text between two systems. Numbers 68 to 73 are the six t
 | 278 | DECIDED | [An ACPI machine reaches the aarch64 kernel as a device tree the loader writes](0278-an-acpi-machine-reaches-the-aarch64-kernel-as-a-device-tree.md) |
 | 279 | DECIDED | [The system-initializer crate root splits into private modules](0279-the-system-initializer-crate-root-splits-into-private-modules.md) |
 | 280 | DECIDED | [The swish-check harness splits into submodules, with its script in one](0280-the-swish-check-harness-splits-into-submodules-with-its-script-in-one.md) |
+| 281 | DECIDED | [The kernel's user-mode file splits into child modules of `user`](0281-the-kernels-user-mode-file-splits-into-child-modules-of-user.md) |
 | 282 | DECIDED | [When a file is split, the parent becomes an index](0282-when-a-file-is-split-the-parent-becomes-an-index.md) |
 | 283 | DECIDED | [A function is held to 100 code lines by a lint ratchet](0283-a-function-is-held-to-100-code-lines-by-a-lint-ratchet.md) |
 | 284 | DECIDED | [The kernel crate root splits into child modules, one per boot](0284-the-kernel-crate-root-splits-into-child-modules-one-per-boot.md) |
+| 296 | DECIDED | [The component-plan crate root's proofs move into a child module](0296-the-component-plan-crate-roots-proofs-move-into-a-child-module.md) |
 
 Two blocks that lived among the decisions are not decisions and moved out with the split, the same
 way milestone 76 moved four essays out of the roadmap: [the open design

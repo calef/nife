@@ -117,7 +117,7 @@ unsafe extern "C" {
 /// places it at the top of the current thread's kernel stack, and calls this.
 ///
 /// **`#[inline(always)]` is load-bearing, not cosmetic.** The frame sits at the *top of the caller's
-/// own kernel stack*, overlapping the caller's live call frames (see `enter_frame` in user.rs). It is
+/// own kernel stack*, overlapping the caller's live call frames (see `user::enter_frame`). It is
 /// intact only until `enter_userspace` does `mov sp, x0`, and only if nothing pushes onto the stack
 /// in between. A real call here would push a return address and prologue into exactly that region and
 /// corrupt the frame (observed as a child thread getting `sp_el0 = 0`). Inlining makes the caller
