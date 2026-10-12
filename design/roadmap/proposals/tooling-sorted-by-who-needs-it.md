@@ -164,16 +164,16 @@ So class 2 should become a reusable toolkit only in its generic half. The nife-r
 | 2, nife records | Stays in nife. |
 | 2, generic checks | Into 887's template repository once 887 is built, consumed by nife at a pin like any crate repository. Until then, nothing moves. |
 | 3, governance mechanism | The rules stay in each repository as data; the bots become reusable workflows in 887's template (Fork 1, ruled A). |
-| 3, the rest | One new public repository (provisionally `nifeos/fleet`, name not yet ratified, not yet created), consumed by nife at a pin (Fork 2, ruled A). Order is Fork 4. |
-| 3, method metrics | Fork 3. |
+| 3, the rest | One new public repository (provisionally `nifeos/fleet`, name not yet ratified, not yet created), consumed by nife at a pin (Fork 2, ruled A), after the edges are cut (Fork 4, ruled A). |
+| 3, method metrics | Collectors move with the fleet; series, charts and caveats stay in nife (Fork 3, ruled A). |
 | 4 | The two constants go to an environment variable with no default, and their values to the lab record. |
 
 ## Fork 1, ruled A: where the architect governance sits
 
-Ruled by calef on 2026-10-12 (UTC), relayed by the maintainer session on pull request #1976: *"A"*.
+calef, 2026-10-12 (UTC), [relayed by the maintainer session](https://github.com/nifeos/nife/pull/1976#issuecomment-6117241317): *"A"*.
 Each repository keeps its own architect rules as in-tree data, and the label, hold and
 `record-ruling` bots become reusable workflows in 887's template. The options below stay as the
-record of what was weighed. The pull request records one ruling once all four forks are answered.
+record of what was weighed.
 
 Background. §88 (`needs-architect` as a check) made the hold a required status check. The machinery
 is eight helpers, four workflows and `script/record-ruling`: `architect-label-rules.py` (1,496 lines) decides from a diff
@@ -195,7 +195,7 @@ the template. Had calef said no, B was the fallback and 887 would have grown a c
 
 ## Fork 2, ruled A: one new public repository or several
 
-Ruled by calef on 2026-10-12 (UTC), relayed by the maintainer session on pull request #1976: *"A"*.
+calef, 2026-10-12 (UTC), [relayed by the maintainer session](https://github.com/nifeos/nife/pull/1976#issuecomment-6117241317): *"A"*.
 One fleet repository, provisionally `nifeos/fleet`, beside 887's template. The name waits for his
 naming pass, and no repository is created yet. The options below stay as the record of what was
 weighed.
@@ -216,7 +216,11 @@ boundary. B would ship a merge queue's tooling to
 repositories that 887 says have no queue. Naming the repository and making it public is the
 irreversible part; the code can move back. That part waits for the naming pass.
 
-## Fork 3: whether method metrics stay with nife
+## Fork 3, ruled A: whether method metrics stay with nife
+
+calef, 2026-10-12 (UTC), [relayed by the maintainer session](https://github.com/nifeos/nife/pull/1976#issuecomment-6117241317): *"A"*.
+The collectors move with the fleet tooling, and the series, the charts and their caveats stay in
+nife.
 
 Background. Principle 2 says the method is a result and must be recorded with its caveats. The
 method series are effort, context per turn, commits and lines per model, merge-queue share,
@@ -235,7 +239,13 @@ Recommendation: A. The claim belongs in nife, since nife is what it is a claim a
 reading `how-this-is-built.md` should meet the numbers without leaving the tree. The collectors
 would measure any repository run this way. Fully reversible.
 
-## Fork 4: the order of extraction
+## Fork 4, ruled A: the order of extraction
+
+calef, 2026-10-12 (UTC), [relayed by the maintainer session](https://github.com/nifeos/nife/pull/1976#issuecomment-6117241317): *"A"*.
+The edges are cut in place first, in one nife lane, and then class 3 moves as a unit. That lane is
+the proposal
+[the tree's gates stop depending on the fleet tooling](the-trees-gates-stop-depending-on-the-fleet-tooling.md),
+ready to claim; its number is minted at merge.
 
 Background. Edges 1 to 6 are why a move today would be a rewrite. Every option keeps class 1 where
 it is.
