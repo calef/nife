@@ -147,6 +147,14 @@ lines to 198, an index with no exception, and its file-length row is gone. The l
 and `cargo doc` reports no broken link. The 12 mutation-ledger keys that lost their `handoff::`
 prefix are rewritten. Every new module and file name is provisional.
 
+## Follow-on
+
+- **Decision.** Every new module and file name is provisional and is calef's to rule in his naming
+  pass, per `design/decisions/0295-the-line-editors-crate-root-splits-into-module-files.md`.
+- **Refused.** Repointing the citation of `csi_final` in `lib.rs` in milestone 668 (scrollback
+  from the keyboard) here. A developer lane edits no record under `design/` but its own block. Pull request #1969 lists it with its new
+  home, `LineDisc::csi_final` in `line_disc.rs`, for the maintainer's sweep.
+
 ## Index row
 
 The line editor's file is 2,290 lines, and most of its growth is two modules added inline for live
