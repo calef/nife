@@ -87,7 +87,9 @@ launchd job (its plist kept off-tree by the maintainers) runs:
     python3 helpers/prune_build_output.py --remove
 
 It deletes `target/` only, for a worktree whose branch has a merged pull request and no open one,
-and only when nothing has written there for an hour. The worktree and its work stay for this step.
+and only when nothing has written there for an hour. A `wip/<slug>-<x>` worker, which never opens a
+pull request, is judged by its lane's branch instead: its `target/` goes once that lane merges or
+already holds the worker's commits. The worktree and its work stay for this step.
 
 ### 4. The toolchains
 

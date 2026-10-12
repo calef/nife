@@ -8,7 +8,7 @@ ratified_by: calef
 # 268. The cast ratchet does not count a 64-bit integer cast to `usize`
 
 Raised 2026-10-09 (UTC) by a maintainer session. It answers
-[the cast proposal](../roadmap/proposals/narrowing-casts-and-unchecked-arithmetic-on-addresses-are-counted-and-fall.md)'s
+[the cast proposal](../roadmap/0895-narrowing-casts-and-unchecked-arithmetic-on-addresses-are-counted-and-fall.md)'s
 first open question. *(Section number provisional until the merge queue lands it.)*
 
 ## The ruling

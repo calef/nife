@@ -1028,8 +1028,11 @@ sweep under the record's patch re-found the defect at seed 559, green on the cle
 Milestone 752 (a seeded syscall driver with a shadow model)'s replay table still names 342; that
 block is the integrator's to edit, and the fuzzer module's BUGS names it.
 
-No ceiling was cinched in this round's commits. The number is taken at merge, from the merged
-tree; the integrator's cinch is one line in the three notes files.
+## 2026-10-12 (UTC): the ceiling at the tree's own value
+
+Not a reduction. Four days of lane traffic took the density from 59.7 to 61.09 (1,103 blocks over
+180,545 lines, base `0e72ca92a`) under a ceiling of 66, so the marker went 66 to 61, the truncated
+value. That gives up round 1's headroom: `notes/unsafe-obligations/ceilings.md` says what it costs.
 
 ## What is still open
 
@@ -1160,8 +1163,8 @@ proofs and the type system are standing aside and a person's comment is the whol
 ## BUGS
 
 - This block sets no target number, and no ceiling has ever fired on honest work: across ten
-  rounds the density has stayed 5 to 17 points under whatever the ceiling was (93.4 down to 77 at
-  the widest, round 7). `script/lint` has had three checks deleted for only ever rejecting
+  rounds the density stayed 5 to 17 points under the ceiling, until 2026-10-12 set it at the
+  tree. `script/lint` has had three checks deleted for only ever rejecting
   legitimate work, and a too-tight ceiling would be the fourth. Round 6 bounded `user/`'s floor
   at 160 to 260 blocks depending on the `invoke` cluster; round 7 resolved it to 162, essentially
   all of the cluster being wrappable.
@@ -1169,11 +1172,8 @@ proofs and the type system are standing aside and a person's comment is the whol
   wrappers (round 7), one stays raw with its reason at the call site, and the rest is device
   registers, `asm!` entry stubs, deliberate-fault test programs and one-off writes, each
   investigated and either migrated or deliberately left in rounds 1-6.
-- `sched.rs` is the kernel's largest single share (90 blocks on 2026-10-07, up from round 8's 47).
-  21 of them hand a thread pointer to a queue under one sentence (*live, and on no other queue*),
-  which the caller establishes, so a safe wrapper would only relocate it. calef ruled the real
-  reduction on 2026-10-08 (UTC): an ownership token only a transition can mint (option C, "What is
-  still open"). Until that lands, this entry is the record.
+- `sched.rs` was the kernel's largest share, 21 of its blocks handing a thread to a queue under a
+  fact the caller established. Round 10 replaced those with `Unqueued<T>`, option C.
 - **A reduction can be real and still not show in the count**, and round 6 is the sharpest example
   on record of the inverse: a real reduction (eighteen independently worded page-sharing
   invariants collapsed to six canonical declarations) that shows as a raw block-count **increase**
@@ -1195,8 +1195,8 @@ proofs and the type system are standing aside and a person's comment is the whol
   fifteen names, the `initial_ramdisk` sweep, `abi::interrupt` and the `abi::virtio` constants.
 - **Done.** Round 6's slice accessors stay: calef, 2026-10-08 (UTC), "Keep. We don't want to
   penalize reuse." `as_slice`, `as_mut_slice` and `is_granted` are ratified as is.
-- **Outstanding.** The scheduler's ownership token (`Unqueued<T>`), ruled option C by calef on
-  2026-10-08 (UTC) and built under this milestone, not a new one. See "What is still open".
+- **Done.** The scheduler's ownership token (`Unqueued<T>`), option C: round 10 (#1852). calef's
+  confirmation of `Thread::own_token` over a per-core slot is pending.
 - **Done.** Round 5's caveat that whichever concurrent lane landed second would find the ceiling
   arithmetic stale was discharged by round 8, which re-measured from the merged tree.
 - **Done.** The `tock_registers` follow-on round 3 named was taken in round 5.
@@ -1210,8 +1210,8 @@ proofs and the type system are standing aside and a person's comment is the whol
   the register stride is a runtime fact no register-layout macro can express.
 - **Recorded.** `hello.rs`, `flaky.rs`, `outlaw.rs`, `memory_grant_depleter.rs` and `swapper.rs`
   are deliberately not candidates.
-- **Recorded.** No target number, by design. The ceiling stands at 66, seven points over round 10's
-  59, and there is still no near-miss on record after ten rounds.
+- **Recorded.** No target number, by design. The ceiling stands at 61, the tree's own value on
+  2026-10-12 (UTC), with no headroom.
 - **Refused.** `kernel/src/arch/` is not a target and this block will not accept a reduction there.
   It is 346 blocks today.
 

@@ -11,7 +11,7 @@ macOS mounts a plain SMB2 share and never offers one as a Time Machine destinati
 is a create context. It hangs an `AAPL`-tagged blob off the first CREATE of a tree connect, and reads
 the server's answering context off the response. That is the whole of `fruit:aapl = yes` on the
 reference implementation. It is the first line of the working configuration
-design/roadmap/0055-time-machine.md records.
+design/roadmap/0055-time-machine/reference.md records.
 
 Two modules, because they are two things:
 

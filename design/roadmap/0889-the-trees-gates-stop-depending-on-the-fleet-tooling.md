@@ -17,7 +17,7 @@ below are drafts for calef's naming pass.)*
 
 Raised 2026-10-12 (UTC) by lane `maintainer/tooling-inventory`. It is the first step calef ruled
 on pull request #1976: Fork 4 of
-[nife's tooling, sorted by who needs it](proposals/tooling-sorted-by-who-needs-it.md), answered
+[nife's tooling, sorted by who needs it](0902-tooling-sorted-by-who-needs-it.md), answered
 [*"A"*](https://github.com/nifeos/nife/pull/1976#issuecomment-6117241317) on 2026-10-12 (UTC). The
 edges are cut in place, in one nife lane, before any fleet tooling leaves. The title, the slug and
 every new name below are provisional, for calef's naming pass.
@@ -138,9 +138,10 @@ Exit checks, as run:
   `verify-shard-refresh` with the App absent, on a fork or with the secrets unset, and record the
   runs. Checked 2026-10-12: each skips its token step when `AUTOMATION_APP_ID` is empty, as
   `toolchain-bump.yml` already did.
-- **Proposed.** Moving class 3 as a unit, with the six `Recorded.` paths and the class-3 notes
-  that make the stranger clone's two record checks fail, is the inventory's next step:
-  `design/roadmap/proposals/tooling-sorted-by-who-needs-it.md`.
+- **Milestone 902.** Milestone 902 (nife's tooling, sorted by who needs it, before any of it moves).
+  Moving class 3 as a unit, with the six `Recorded.` paths and the class-3 notes that make the
+  stranger clone's two record checks fail, is the inventory's next step:
+  `design/roadmap/0902-tooling-sorted-by-who-needs-it.md`.
 - **Recorded.** The three stale "`script/lint` 4b" mentions, in BUGS above.
 
 ## Index row

@@ -27,13 +27,13 @@
 # **Two closures and not one, since 2026-09-04 (milestone 188 phase 1).** This gate measured only
 # the SEND/RECEIVE shape until then, which is the shape of the `ipc_rtt_el0` benchmark and of
 # essentially no service in this tree: a client issues `CALL` and a server issues `RECEIVE_CAP` then
-# `REPLY`, and `kernel/src/bench.rs`'s own `call_reply` doc calls that "the one-endpoint shape real
-# services use". Measured on the same binary, the CALL/reply closure is **29% larger** on aarch64
-# (7,576 against 5,888), because `ipc_receive_cap` and `ipc_call` carry the one-shot Reply mint, the
-# capability-table insert and the `WaitRole::Reply` parking that DECISIONS §12 requires. Averaging
-# them would hide both, and reporting only the smaller one understated the number this gate exists
-# to bound. `ipc_fastpath` is the max rather than the sum because one round trip is one shape or the
-# other, never both.
+# `REPLY`, and `kernel/src/bench/ipc.rs`'s own `call_reply` doc calls that "the one-endpoint shape
+# real services use". Measured on the same binary, the CALL/reply closure is **29% larger** on
+# aarch64 (7,576 against 5,888), because `ipc_receive_cap` and `ipc_call` carry the one-shot Reply
+# mint, the capability-table insert and the `WaitRole::Reply` parking that DECISIONS §12 (Call/Reply
+# IPC: a one-shot reply capability) requires. Averaging them would hide both, and reporting only the
+# smaller one understated the number this gate exists to bound. `ipc_fastpath` is the max rather
+# than the sum because one round trip is one shape or the other, never both.
 #
 # Names: `ipc_send_receive` and `ipc_call_reply` are **provisional** (milestone 188's lane, 2026-09-04).
 # Every name in this tree is an architect's; these two are shipped so the measurement can exist and

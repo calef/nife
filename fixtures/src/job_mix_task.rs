@@ -33,9 +33,9 @@
 //!   task can be told from one with many evenly slow ones.
 //! - **The compute grind can be recognised by a future compiler.** It is an LCG folded into a value
 //!   that leaves through a `#[inline(never)]` return and is accumulated across rounds, which is the
-//!   same defence `kernel/src/bench.rs`'s `busy` uses; nothing checks that it still holds. A
-//!   compute job optimised to nothing would show as an implausible jump in the whole sweep rather
-//!   than as a subtle skew, which is the failure mode to hope for and not a guarantee.
+//!   same defence `kernel/src/bench/smp_throughput.rs`'s `busy` uses; nothing checks that it still
+//!   holds. A compute job optimised to nothing would show as an implausible jump in the whole sweep
+//!   rather than as a subtle skew, which is the failure mode to hope for and not a guarantee.
 //! - **The touch job walks this task's own `.bss`.** It is not a fresh mapping per iteration, so it
 //!   measures cache displacement and not the page-table work AIM7's virtual-memory jobs also do.
 //!   That work is [`job_mix::MAP`]'s, added 2026-09-19.
@@ -91,9 +91,9 @@ static mut WORKING_SET: [u64; job_mix::TOUCH_WORDS] = [0; job_mix::TOUCH_WORDS];
 /// slot check.
 const EMPTY_SLOT: u64 = 63;
 
-/// A non-elidable integer grind, the same shape as `kernel/src/bench.rs`'s `busy`: an LCG mixed
-/// with an xorshift, folded into a returned value the caller accumulates so the optimizer cannot
-/// delete the loop.
+/// A non-elidable integer grind, the same shape as `kernel/src/bench/smp_throughput.rs`'s `busy`:
+/// an LCG mixed with an xorshift, folded into a returned value the caller accumulates so the
+/// optimizer cannot delete the loop.
 #[inline(never)]
 fn grind(iters: u64, seed: u64) -> u64 {
     let mut x = seed | 1;

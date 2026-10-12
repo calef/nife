@@ -151,10 +151,12 @@ red on aarch64. The sweep and the aarch64 leg (77 s) ran again on `17b23264e`.
 - **Decision.** Every module name ships provisional, for calef's name-ratification pass, as
   `design/decisions/0280-the-swish-check-harness-splits-into-submodules-with-its-script-in-one.md`
   records.
-- **Proposed.** The script table crosses §266's ceiling on its own within weeks:
-  `design/roadmap/proposals/the-swish-check-script-splits-by-topic-before-it-crosses-the-ceiling.md`.
-- **Proposed.** `swish_check_boot` moved whole and is still 1,051 lines:
-  `design/roadmap/proposals/swish-check-boot-is-decomposed.md`.
+- **Milestone 900.** Milestone 900 (the swish-check script splits by topic before it crosses the
+  ceiling). The script table crosses §266's ceiling on its own within weeks:
+  `design/roadmap/0900-the-swish-check-script-splits-by-topic-before-it-crosses-the-ceiling.md`.
+- **Milestone 898.** Milestone 898 (`swish_check_boot` is decomposed into its phases).
+  `swish_check_boot` moved whole and is still 1,051 lines:
+  `design/roadmap/0898-swish-check-boot-is-decomposed.md`.
 
 ## Index row
 
