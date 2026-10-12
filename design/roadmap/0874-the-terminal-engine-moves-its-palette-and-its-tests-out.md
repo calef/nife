@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: IN-PROGRESS
 raised: 2026-10-11
+branch: milestone/874-the-terminal-engine-moves-its-palette-and-its-tests-out
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 292
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -20,6 +21,14 @@ Milestone 846 (the file-server core moves its tests out) is the model for most o
 The cut and every module name below are calef's call. A lane writes them up as a
 `status: PROPOSED` file in `design/decisions/` before it moves a line, and its pull request
 carries `needs-architect`.
+
+The lane wrote it up on 2026-10-12 (UTC) as §292 (the terminal engine's crate root becomes an
+index), `status: PROPOSED`, number provisional. This block was minted before §282 (when a file is
+split, the parent becomes an index) was decided the same day. §282 answers its ruling 1
+differently, since the reason given below for keeping `Attr` and `Vt` in `lib.rs` is the one
+§282's third reason refused. §267's amendment of 2026-10-11 (UTC) answers ruling 2, since a listed comment
+block now keeps its row when a split moves it unchanged. So §292 asks one question, whether the crate
+root becomes an index in this milestone, and recommends that it does.
 
 Reuse: not applicable; this moves code and adds none. The crate already has two child modules in
 their own files, `keymap` and `script`, which is the precedent.
