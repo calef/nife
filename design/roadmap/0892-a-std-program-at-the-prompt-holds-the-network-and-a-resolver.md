@@ -1,5 +1,5 @@
 ---
-status: NOT-STARTED
+status: PARTIAL
 raised: 2026-10-09
 promoted_from: a-std-program-at-the-prompt-holds-the-network-and-a-resolver
 milestone_dependencies: 384, 595
@@ -10,11 +10,17 @@ needs_person: no
 ---
 # 892. A std program at the prompt holds the network and a name resolver
 
+**PARTIAL, 2026-10-12 (UTC).** Items 1 and 3 are built for `jig`, and a forget verb the block did
+not foresee is built under them. Item 4 is met: its positive and refusal halves are proved in the
+kernel harness, which calef accepted as the proof (ruling B on #2011, 2026-10-12 UTC). He approved
+the forget verb as written (Q2, "Approve", the same day). What is left is item 3 for every program
+but `jig`, a fork.
+
 *(Promoted from the proposal pile on 2026-10-12 (UTC) by lane
 `maintainer/promote-proposals`; number provisional until the merge queue lands it. Title
 and slug are drafts.)*
 
-Raised 2026-10-09 (UTC) by milestone 801 (packages over the internet)'s lane, which built a std
+Raised 2026-10-09 (UTC) by milestone 801 (packages over the internet)'s lane. It built a std
 program resolving a name through `std::net` and fetching the package index over TLS, and could only
 start it from the kernel test harness.
 
@@ -51,9 +57,53 @@ Three pieces exist and are not joined at the prompt.
 
 Reuse: everything named above is in the tree; this is wiring.
 
+## Built 2026-10-12 (UTC), and a premise that was wrong
+
+Lane `milestone/892-a-std-program-at-the-prompt-holds-the-network-and-a-resolver`. "Reuse: this
+is wiring" was false. The resolver had eight windows for its life and no way to withdraw a grant
+(`name_resolution_protocol`'s BUGS), and the progenitor outlives every job it spawns, so wiring
+alone would have let the ninth `jig` of a boot be refused.
+
+- The forget verb. `OPERATION_FORGET` (provisional) frees a badge's window; the resolver
+  unmaps and deletes the page that badge attached, through its own address space at slot 4, as
+  `net_stack` gives up a closed socket's page. Kernel test
+  `a_forgotten_badge_is_denied_and_its_window_serves_the_next_client` fills every other window,
+  forgets one, and requires the next badge to resolve there; without the `UNMAP` it answers
+  `NOT_ATTACHED` (falsification patch in `system_tests/falsifications/`).
+- Item 1. The progenitor starts `name_resolver` once the lease arrives, on either stack,
+  told the lease's name server over UDP, and says so: `progenitor: name resolver up; asks
+  10.0.2.3, the lease's name server`. `script/swish-check` requires that sentence on every boot
+  with a network. One more resting capability slot: `CAPABILITY_TABLE_PEAK_MEASURED` is 34.
+- Item 2 was built for `jig` by milestone 809 (the package client becomes a program).
+- Item 3, for `jig`. `grant_plan::Prog::resolver_zone` (provisional) names the zone in the
+  program table, not in `Manifest`, so installed bytes can never carry one. Each `jig` job whose
+  verb holds the network gets a fresh badge granted the root zone (Q5), placed at slot 9, and
+  forgotten at its reap. `caps jig install greeting@0.1.0` prints the row.
+- Item 4. The swish script now starts nine `jig install`s in one boot. With the
+  forget at reap removed, the ninth answered "could not spawn" on aarch64 (2026-10-12): the
+  lifecycle is gated at the prompt. A name resolved at the prompt is not. Under slirp the lease's
+  name server is always slirp's own proxy to the host's resolver, and QEMU refuses a `guestfwd`
+  on its DNS address ("Conflicting/invalid host:port", measured 2026-10-12), so the runners' peer
+  cannot answer there. calef ruled on #2011 (2026-10-12 UTC, "B") that the kernel harness's
+  `a_std_program_resolves_its_granted_zone_and_nothing_without_a_grant`, green on all three
+  architectures, is the proof that a program at the prompt resolves a name. No prompt line
+  through the host's DNS and no name-server setting are owed.
+
 ## BUGS
 
 - Item 3's fork is open for every program but `jig`.
+- No program at the prompt resolves a name yet. `jig` holds the badge and fetches by a fixed
+  address until milestone 809's item 6.
+- A screen-narrowed job gets no resolver. The shell, not `job_undertaker`, reaps it, so the
+  spawn service would never hear to forget its badge.
+- The spawn service waits on the resolver. A grant or a forget is a `SEND` the resolver takes
+  between requests, so a resolve nobody answers (three 15-second waits) delays the next spawn.
+- At most eight resolving jobs at once; a ninth live one is refused rather than queued.
+
+## Follow-on
+
+- **Outstanding.** Item 3's zone for any program but `jig`, the fork above.
+- **Milestone 809.** `jig` resolves the index's host through this badge at item 6.
 
 ## Index row
 
