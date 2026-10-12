@@ -443,11 +443,40 @@ jobs:
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
 
-  test:
-    name: test (host crates and the kernel suite under QEMU)
+  # **Two shards and an aggregate, because one runner ran out of budget** (lane
+  # maintainer/split-test-job, 2026-10-12 UTC, #1930; the job id and shard names are provisional).
+  # Measured on seven green merge-group runs on 2026-10-12, the whole job took 17.4 to 18.4 minutes
+  # against its 20, and the phases of `script/ci-build test` held to a tenth of a minute run to run:
+  # setup 0.6, the host pass 1.9, the std farm and TLS graph 2.7, the aarch64 leg 2.8, riscv64 3.4,
+  # x86_64 6.6 (its PVH suite, the root-port boot, the whole suite again under AMD-Vi, and two OVMF
+  # boots). It had been 13.6 on 2026-10-09: the TLS graph took the std phase from 1.0 to 2.7, and
+  # x86_64 grew from 4.9 to 6.6. No step regressed, so there was nothing cheap to fix.
+  #
+  # Host crates against the kernel suite was the obvious seam and the wrong one: the host pass is
+  # two minutes, so the kernel half would have been about 15.5 and back at the line within days.
+  # The seam is the architectures, the same one `swish-check` was cut along. The first shard runs
+  # the host pass and the two board legs (projected 10.9 minutes), the second the x86_64 leg with
+  # `--no-host` (projected 9.1), each paying its own setup and std farm, which costs about 2.3
+  # runner-minutes a run over the single job. The x86_64 leg stays on arm64 under TCG: moving it to
+  # the x86_64 pool, as `swish-check-x86_64` did, changes the emulator under the suite and is
+  # unmeasured. If one shard nears the line, the next cut is the x86_64 leg's AMD-Vi pass.
+  #
+  # The required check keeps its name on the aggregate below, as `cpu-matrix` does.
+  test-shard:
+    name: test shard (${{ matrix.legs }})
     runs-on: ubuntu-24.04-arm
     needs: gate
     if: ${{ !cancelled() && needs.gate.outputs.run != 'false' && needs.gate.outputs.prose != 'true' }}
+    strategy:
+      # Both shards finish, so a red one says which architectures failed and the other still
+      # reports.
+      fail-fast: false
+      matrix:
+        include:
+          - check: test-aarch64-riscv64
+            legs: host crates, aarch64 and riscv64
+          - check: test-x86_64
+            legs: x86_64
     # A hung kernel means QEMU never exits and the runner would block until the 6-hour default.
     # Fail loudly instead. The bound is a hang detector, not a budget, so it sits well above an
     # honest run. Derivation: this job runs a subset of the legs the chained job ran, whose whole
@@ -505,7 +534,8 @@ jobs:
       # out of `script/ci-build`'s table, which is the one place the gating set lives;
       # `script/ci-build --list` prints it. Until 2026-09-30 this step chained three more checks
       # behind it in one runner; the three jobs below carry them, each for its own recorded reasons.
-      - run: script/ci-build test
+      # Since 2026-10-12 each shard runs one of the two `ci` rows that together are the `test` row.
+      - run: script/ci-build ${{ matrix.check }}
       # Where the suite's time went (milestone 807 (the kernel suite reports what each test cost),
       # §254 (a gate prints what each item cost), Fork 3): every leg's phases and every test's
       # time, written by `cargo xtask test` as it ran. The step summary costs nothing unless someone
@@ -517,11 +547,36 @@ jobs:
         if: always() && hashFiles('target/time-record.tsv') != ''
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: time-record-test
+          name: time-record-${{ matrix.check }}
           path: target/time-record.tsv
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
+
+  # The name the ruleset requires, kept stable over the shards. It reads one result and boots
+  # nothing, so it runs on the x86_64 pool and has no checkout (helpers/job-budget.py exempts a job
+  # without one from the clock steps; the timeout still binds).
+  test:
+    name: test (host crates and the kernel suite under QEMU)
+    runs-on: ubuntu-24.04
+    needs: [gate, test-shard]
+    # The shards' own condition, so a draft or a prose-only change skips this by condition (which
+    # reports Success) rather than leaving the required check unreported. `!cancelled()` reaches the
+    # condition when a shard failed, which is the case this job exists to report.
+    if: ${{ !cancelled() && needs.gate.outputs.run != 'false' && needs.gate.outputs.prose != 'true' }}
+    timeout-minutes: 5
+    steps:
+      - name: Report the shards' combined result
+        run: |
+          result="${{ needs['test-shard'].result }}"
+          if [ "$result" = success ]; then
+            echo "==> test shards: the host crates and every kernel leg passed"
+          else
+            # script/ci-log-baseline attributes this job by its last `==>` line; the failing
+            # shard's own job names the leg.
+            echo "==> test shards: $result (the failing shard's job names the leg)"
+            exit 1
+          fi
 
   swish-check:
     # **The job keeps its name, "three architectures", while it runs two**, because the name is a
@@ -1111,8 +1166,9 @@ jobs:
       # prose-only change does not skip.** The gate's classifier names every package whose Rust
       # walks a directory the change touched (`crates/documentation`'s corpus test walks `notes/`,
       # `design/decisions/` and `design/roadmap/`, and went red on main on 2026-09-23 while the old
-      # step-level skip hid it). On any other change `test` runs these tests inside
-      # `script/ci-build test`, so between the two the corpus is checked on every pull request.
+      # step-level skip hid it). On any other change the first `test-shard` runs these tests in the
+      # host pass of `script/ci-build test-aarch64-riscv64`, so between the two the corpus is
+      # checked on every pull request.
       - name: The tests of the code that reads the prose this change touched
         if: needs.gate.outputs.prose == 'true' && needs.gate.outputs.prose_tests != ''
         # Through the environment, never spliced into the script: the names come from the tree
