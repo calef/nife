@@ -48,7 +48,7 @@ does.
 ## Where the pool is used
 
 - `kernel/src/user/fs_service.rs` allocates all eight windows as one contiguous run, and
-  `kernel/src/user.rs` grants the progenitor a run capability over it at slot 6.
+  `kernel/src/user/progenitor_boot.rs` grants the progenitor a run capability over it at slot 6.
 - `crates/system_initializer`: a job behind a directory grant gets window `w` (round robin over
   1 to 7), sliced for its caretaker and the job, with the file service's endpoint badged `w`. The
   shell, `login`, the identity provisioner and the progenitor's own activation calls keep window 0,

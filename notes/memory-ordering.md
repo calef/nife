@@ -74,7 +74,7 @@ Each of these now carries a `PAIR:` comment at the site naming where its other h
 | `crates/credential_protocol` `wipe` | neither | none, and none wanted | **Sound.** A `compiler_fence` emits no instruction and orders nothing between cores. Now says so |
 | `kernel/src/arch/aarch64/exceptions.rs` `last_user_fault` | acquire | `USER_FAULTS.fetch_add(1, Release)` in `user_fault` | **Sound, and the model for the tree.** Both halves present, both load-bearing, both explained at the site before this milestone |
 | `kernel/src/arch/riscv64/exceptions.rs` `last_user_fault` | acquire | the same pair on the other ISA | **Sound.** Parity holds |
-| `kernel/src/user.rs` `term_print` | release | none; the `ipc_call` below it is the edge | **Sound, redundant.** The terminal is blocked in `receive_cap` |
+| `kernel/src/user/terminal_print.rs` `term_print` | release | none; the `ipc_call` below it is the edge | **Sound, redundant.** The terminal is blocked in `receive_cap` |
 | `components/src/console.rs` `show` | release | none; the `call` below it is the edge | **Sound, redundant.** `term_print`'s case from userspace: `display_terminal` is blocked in `receive_cap` (milestone 400 (shell firmware's)) |
 | `kernel/src/user/keyboard_service.rs` `take_typed` | acquire | `ring_publish`'s fence in `components/src/keyboard_driver.rs` | **Sound.** The reader milestone 43 named as getting it right |
 | `kernel/src/user/compositor_service.rs` `type_bytes` | release | `drain_input` in `components/src/compositor.rs` | **Sound, redundant** (the doorbell `CALL` follows). **A fourth writer the audit's count of three missed**; see below |

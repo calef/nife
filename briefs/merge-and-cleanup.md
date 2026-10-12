@@ -79,6 +79,16 @@ machine on 2026-09-23, ten lane worktrees held between 1.0 GB and 4.8 GB of `tar
 check at the top of this brief and the reason not to reach for `--force`. If it refuses, go back and
 find out whose work you are about to delete.
 
+The build output does not wait for this step. On 2026-10-12 (UTC) 32 merged lanes' worktrees filled
+the disk and every running lane failed with ENOSPC, so calef asked for it to go on its own. An hourly
+launchd job (its plist kept off-tree by the maintainers) runs:
+
+    python3 helpers/prune_build_output.py           # dry run
+    python3 helpers/prune_build_output.py --remove
+
+It deletes `target/` only, for a worktree whose branch has a merged pull request and no open one,
+and only when nothing has written there for an hour. The worktree and its work stay for this step.
+
 ### 4. The toolchains
 
 There is no relink. Since 2026-10-10 each worktree links its farm under its own name,
