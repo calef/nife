@@ -340,14 +340,20 @@ def run_row(run, jobs):
             "slowest_minutes": "%.1f" % max(every)}
 
 
+# Workflow-run listings are fetched 50 to a page rather than the API's maximum of 100. The
+# metrics workflow on 2026-10-12 got HTTP 502 from a 100-run page on three retries running,
+# for a query that succeeded at once from a laptop; a smaller page asks less of the server.
+RUNS_PAGE = 50
+
+
 def runs_on(day):
     """Successful verify runs created on `day`, newest first."""
     out, page = [], 1
     while True:
-        data = gh_json("repos/%s/actions/workflows/%s/runs?status=success&created=%s&per_page=100&page=%d"
-                       % (REPO, WORKFLOW, day, page))
+        data = gh_json("repos/%s/actions/workflows/%s/runs?status=success&created=%s&per_page=%d&page=%d"
+                       % (REPO, WORKFLOW, day, RUNS_PAGE, page))
         out += data["workflow_runs"]
-        if len(data["workflow_runs"]) < 100:
+        if len(data["workflow_runs"]) < RUNS_PAGE:
             return out
         page += 1
 
@@ -372,9 +378,9 @@ def jobs_of(run_id):
 def recent_prove_runs(count):
     """The newest `count` runs whose prove shards all passed: [(run, jobs)]."""
     found, page = [], 1
-    while len(found) < count and page <= 20:
-        data = gh_json("repos/%s/actions/workflows/%s/runs?status=success&per_page=100&page=%d"
-                       % (REPO, WORKFLOW, page))
+    while len(found) < count and page <= 40:
+        data = gh_json("repos/%s/actions/workflows/%s/runs?status=success&per_page=%d&page=%d"
+                       % (REPO, WORKFLOW, RUNS_PAGE, page))
         for run in data["workflow_runs"]:
             if not long_enough(run):
                 continue
