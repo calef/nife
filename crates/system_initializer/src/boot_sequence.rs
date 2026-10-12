@@ -135,6 +135,7 @@ pub fn boot(
         p.fs_scoped,
         &devices.entropy,
         devices.network,
+        devices.resolver.is_some(),
         &login,
     );
 
@@ -181,7 +182,8 @@ fn announce_outcomes(
     spawnable: &Spawnable,
     fs_scoped: bool,
     entropy: &Entropy,
-    network: Option<(u64, u64)>,
+    network: Option<(u64, u64, u64)>,
+    resolver: bool,
     login: &Login,
 ) {
     let term_ep = w.term.ep;
@@ -237,19 +239,9 @@ fn announce_outcomes(
             },
         );
     }
-    // **The network stack's outcome** (milestone 590 (provisional)), said here for
-    // `entropy_ready`'s
-    // reason. The address is the lease `net_stack` reported, so the line is evidence rather than
-    // an intention: DHCP completed through the confined NIC before the prompt existed.
-    if let Some((_, lease)) = network {
-        let mut line = [0u8; 80];
-        let head = b"progenitor: network stack up; DHCP leased ";
-        line[..head.len()].copy_from_slice(head);
-        let mut n = head.len();
-        n += render_ipv4(lease as u32, &mut line[n..]);
-        line[n] = b'\n';
-        announce(term_ep, &line[..n + 1]);
-    }
+    // **The network stack's outcome, and the resolver's** (milestones 590 and 892), said here for
+    // `entropy_ready`'s reason; [`announce_network`] has both sentences.
+    announce_network(term_ep, network, resolver);
     if login.ready {
         announce_login_credentials(term_ep, &login.password);
     }
@@ -387,7 +379,9 @@ fn spawn_channels(
         entropy: devices.entropy.client,
         // **The stack's client endpoint, if this boot built one** (milestone 590
         // (provisional)), `entropy`'s shape one service over.
-        network: devices.network.map(|(stack, _)| stack),
+        network: devices.network.map(|(stack, ..)| stack),
+        // **The resolver's unbadged endpoint, if this boot started one** (milestone 892).
+        resolver: devices.resolver,
         // **The reboot object** (milestone 805), kept for the one program that declares it.
         reboot: is_granted(w.g.reboot).then_some(w.g.reboot),
         catalogue: catalog,

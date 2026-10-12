@@ -26,8 +26,18 @@
 use abi::Error;
 
 use crate::arch::exceptions::TrapFrame;
-use crate::cap::{Rights, rendezvous_cap};
-use crate::sched;
+// The `cap` module and these names still carry their pre-sweep spelling
+// (design/naming/capability-worklist.md renames them when the tree is quiet); aliased here so
+// this file spells `capability` out everywhere a reader looks (calef, 2026-10-06).
+use crate::cap::{
+    self as kernel_capability, Rights, memory_region_cap as memory_region_capability,
+    rendezvous_cap as rendezvous_capability,
+};
+use crate::sched::{
+    self, current_cap as current_capability, delete_current_cap as delete_current_capability,
+};
+
+const RECEIVE_CAPABILITY: u64 = abi::rendezvous::RECEIVE_CAP;
 use crate::syscall::invoke;
 
 /// `invoke` through the real dispatcher, the way a program's `svc`/`ecall` reaches it. Returns the
@@ -75,7 +85,8 @@ fn a_write_only_rendezvous_holder_cannot_receive_reap_or_survey() {
 
     // The would-be server's capability: WRITE only, the right a client holds. GRANT is absent too,
     // so this is strictly a client's authority.
-    let client = sched::grant(rendezvous_cap(ep, Rights::WRITE)).expect("grant the WRITE cap");
+    let client =
+        sched::grant(rendezvous_capability(ep, Rights::WRITE)).expect("grant the WRITE cap");
 
     assert_eq!(
         call(client, abi::rendezvous::RECEIVE, 0, 0, 0),
@@ -88,7 +99,7 @@ fn a_write_only_rendezvous_holder_cannot_receive_reap_or_survey() {
         "a refused RECEIVE still consumed the queued sender",
     );
     assert_eq!(
-        call(client, abi::rendezvous::RECEIVE_CAP, 0, 0, 0),
+        call(client, RECEIVE_CAPABILITY, 0, 0, 0),
         Err(Error::NotPermitted),
         "a WRITE-only holder RECEIVE_CAPd: a client became its server",
     );
@@ -119,7 +130,7 @@ fn a_write_only_rendezvous_holder_cannot_receive_reap_or_survey() {
     // Positive control: a READ capability on the same endpoint receives the still-queued message
     // through the same dispatcher. This both proves the sender really was parked (so the refusals
     // above meant something) and drains it so the sender thread exits.
-    let server = sched::grant(rendezvous_cap(ep, Rights::READ)).expect("grant the READ cap");
+    let server = sched::grant(rendezvous_capability(ep, Rights::READ)).expect("grant the READ cap");
     let got = call(server, abi::rendezvous::RECEIVE, 0, 0, 0);
     assert_eq!(
         got,
@@ -132,8 +143,8 @@ fn a_write_only_rendezvous_holder_cannot_receive_reap_or_survey() {
         "the queued sender was not released by the legitimate receive",
     );
 
-    let _ = sched::delete_current_cap(client);
-    let _ = sched::delete_current_cap(server);
+    let _ = delete_current_capability(client);
+    let _ = delete_current_capability(server);
     assert!(
         super::wait_for(|| !sched::is_thread_present(sender)),
         "the sender thread never finished after its message was collected",
@@ -170,7 +181,8 @@ fn a_read_only_holder_cannot_send_and_an_ungranted_slot_names_nothing() {
         "the receiver never parked, so a let-open SEND would hang rather than be observed",
     );
 
-    let read_only = sched::grant(rendezvous_cap(ep, Rights::READ)).expect("grant the READ cap");
+    let read_only =
+        sched::grant(rendezvous_capability(ep, Rights::READ)).expect("grant the READ cap");
     assert_eq!(
         call(read_only, abi::rendezvous::SEND, 1, 0, 0),
         Err(Error::NotPermitted),
@@ -184,9 +196,9 @@ fn a_read_only_holder_cannot_send_and_an_ungranted_slot_names_nothing() {
 
     // A slot never granted in this table. The highest table index exists, so this is "empty", not
     // "out of range", and both answer NoSuchSlot.
-    let ungranted = (crate::cap::CAPABILITY_TABLE_SLOTS as u64) - 2;
+    let ungranted = (kernel_capability::CAPABILITY_TABLE_SLOTS as u64) - 2;
     assert!(
-        sched::current_cap(ungranted).is_err(),
+        current_capability(ungranted).is_err(),
         "the slot chosen as ungranted was occupied; pick another",
     );
     assert_eq!(
@@ -196,14 +208,15 @@ fn a_read_only_holder_cannot_send_and_an_ungranted_slot_names_nothing() {
     );
 
     // Positive control and cleanup: a WRITE capability delivers to the parked receiver, releasing it.
-    let writer = sched::grant(rendezvous_cap(ep, Rights::WRITE)).expect("grant the WRITE cap");
+    let writer =
+        sched::grant(rendezvous_capability(ep, Rights::WRITE)).expect("grant the WRITE cap");
     assert_eq!(
         call(writer, abi::rendezvous::SEND, 1, 0, 0),
         Ok(0),
         "a WRITE holder could not send: the endpoint was not really live",
     );
-    let _ = sched::delete_current_cap(read_only);
-    let _ = sched::delete_current_cap(writer);
+    let _ = delete_current_capability(read_only);
+    let _ = delete_current_capability(writer);
     assert!(
         super::wait_for(|| !sched::is_thread_present(receiver)),
         "the receiver thread never finished after a message reached it",
@@ -235,16 +248,16 @@ fn a_read_only_holder_cannot_send_and_an_ungranted_slot_names_nothing() {
 fn a_grant_less_budget_mints_a_grant_bearing_frame() {
     let region = crate::memory_region::create(8).expect("no region");
     // WRITE alone: no GRANT. The spend-only leaf budget a child is handed.
-    let budget = sched::grant(crate::cap::memory_region_cap(region)).expect("grant the budget");
+    let budget = sched::grant(memory_region_capability(region)).expect("grant the budget");
     assert_eq!(
-        sched::current_cap(budget).expect("budget cap").rights,
+        current_capability(budget).expect("budget cap").rights,
         Rights::WRITE,
         "the spend-only budget should hold WRITE alone, with no GRANT",
     );
     // Retype one page out of it, through the real dispatcher.
     let slot = call(budget, abi::memory_region::RETYPE, 0, 0, 0)
         .expect("RETYPE refused a WRITE-only budget");
-    let frame = sched::current_cap(slot as u64).expect("no frame capability at the returned slot");
+    let frame = current_capability(slot as u64).expect("no frame capability at the returned slot");
     assert!(
         frame.rights.allows(Rights::GRANT),
         "a GRANT-less budget minted a frame without GRANT ({:?}); if this ever holds, the retype \
@@ -257,7 +270,7 @@ fn a_grant_less_budget_mints_a_grant_bearing_frame() {
         "the retyped frame should carry full rights, the Rights::ALL invariant RETYPE documents; a \
          GRANT-less budget thus hands on a fully delegatable frame",
     );
-    let _ = sched::delete_current_cap(slot as u64);
-    let _ = sched::delete_current_cap(budget);
+    let _ = delete_current_capability(slot as u64);
+    let _ = delete_current_capability(budget);
     sched::reclaim_region(region).expect("the budget region did not come back");
 }

@@ -297,6 +297,7 @@ fn write_preview_rows(
     write_file_and_directory_rows(e, m, holdings, std, out);
     write_page_rows(m, config, std, out);
     write_service_rows(m, std, out);
+    write_resolver_row(e, m, std, out);
     write_machine_rows(m, out);
     write_stream_rows(e, out);
     out(b"    arg    ");
@@ -591,6 +592,32 @@ fn write_service_rows(m: &grant_plan::Manifest, std: bool, out: &mut dyn FnMut(&
         // milestone, and notes/process-view.md's `BUGS` carries the disposition.
         out(b"                              outside this domain but that it exists\n");
     }
+}
+
+/// **The name resolver, beside the network** (milestone 892 (a std program at the prompt holds the
+/// network and a resolver)): the zone is the table's (`Prog::resolver_zone`), so a person reads
+/// which names the program may look up before it runs, where on Unix every process may read
+/// `/etc/resolv.conf` and ask about anything.
+fn write_resolver_row(
+    e: &Endowment,
+    m: &grant_plan::Manifest,
+    std: bool,
+    out: &mut dyn FnMut(&[u8]),
+) {
+    let (true, true, Some(zone)) = (m.network, std, e.prog.resolver_zone()) else {
+        return;
+    };
+    write_slot(std_runtime_protocol::RESOLVER_SLOT, out);
+    out(b"endpoint  resolver  WRITE. it may look up the addresses of ");
+    if zone.is_empty() {
+        out(b"any name\n");
+    } else {
+        out(b"names in ");
+        out(zone.as_bytes());
+        out(b"\n");
+    }
+    out(b"                              and nothing else: a name outside that is refused unasked.\n");
+    out(b"                              held only on a boot whose lease named a name server\n");
 }
 
 /// The machine-level grants: the statistics page, the budget view, reboot, sync, the installer

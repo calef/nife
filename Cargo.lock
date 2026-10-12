@@ -1189,6 +1189,7 @@ dependencies = [
  "machine_statistics_protocol",
  "manifest_note",
  "measured_boot",
+ "name_resolution_protocol",
  "nifefs",
  "package_archive",
  "socket_protocol",

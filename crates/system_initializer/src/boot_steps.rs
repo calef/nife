@@ -105,7 +105,10 @@ pub(super) struct DeviceServices {
     pub(super) screen: GraphicalTerminalCaps,
     pub(super) has_screen: bool,
     pub(super) entropy: Entropy,
-    pub(super) network: Option<(u64, u64)>,
+    /// `(stack, lease, the lease's name server)`.
+    pub(super) network: Option<(u64, u64, u64)>,
+    /// The name resolver's unbadged endpoint, if this boot started one (milestone 892).
+    pub(super) resolver: Option<u64>,
 }
 
 /// The terminal contract's endpoint and the shell's two pages, which the progenitor retypes.
@@ -472,11 +475,19 @@ pub(super) fn start_device_services(
     // exactly what it was before this amendment existed.
     let entropy = start_entropy(g, ut, ent_elf, kernel_built_entropy);
     let network = start_network(g, ut, net_elf);
+    // **The name resolver** (milestone 892 (a std program at the prompt holds the network and a
+    // resolver)), on the stack just built, asking the name server the lease named. Optional in the
+    // stack's own sense: no stack, no lease name server, no entropy (it asks nothing without
+    // unguessable ids), or an archive whose table refuses `name_resolver`, and the prompt's
+    // programs resolve no names, which each says when it tries. It serves nobody until the spawn
+    // service grants a job a zone.
+    let resolver = start_name_resolver((fs, table, ut), network, entropy.client);
     DeviceServices {
         screen,
         has_screen,
         entropy,
         network,
+        resolver,
     }
 }
 
@@ -641,13 +652,13 @@ fn start_virtio_entropy(
 }
 
 /// Build `net_stack` on a granted virtio-net device, or take the stack the kernel built on an
-/// `e1000e`, and wait for its DHCP lease. `Some((endpoint, lease))` when the boot has a network.
+/// `e1000e`, and wait for its DHCP lease. `Some((endpoint, lease, name server))` when the boot has a network.
 #[inline(never)]
 fn start_network(
     g: &BootEndowment,
     ut: u64,
     net_elf: Option<&elf::Elf<'static>>,
-) -> Option<(u64, u64)> {
+) -> Option<(u64, u64, u64)> {
     // **The network stack** (milestone 590 (provisional), the booted system starts its network
     // stack), when the kernel granted a virtio-net device (slots 13-15) and the archive carries
     // `net_stack`. Built here, straight after entropy and before any of the terminal plumbing, for
@@ -668,21 +679,21 @@ fn start_network(
     // milestone 590's BUGS: on QEMU's user-mode network the answer is immediate, and on a network
     // with a NIC and no DHCP server the prompt would never appear. The lease is what
     // `net_stack`'s first message says, and it cannot serve a client before it has sent it.
-    let mut network: Option<(u64, u64)> = None;
+    let mut network: Option<(u64, u64, u64)> = None;
     if is_granted(g.virtio_net) {
         if let Some(net_program) = net_elf {
             network = Some(build_net_stack(ut, net_program, g));
         }
-        cap_delete(g.virtio_net_irq);
-        cap_delete(g.virtio_net);
-        cap_delete(g.virtio_net_dma);
+        for trio in [g.virtio_net_irq, g.virtio_net, g.virtio_net_dma] {
+            cap_delete(trio);
+        }
     } else if is_granted(g.net_stack_ep) {
         // **Or the stack the kernel built on an `e1000e`** (milestone 198 (a package manager)),
         // [`BootEndowment::net_stack_ep`]. Nothing to build, so nothing spent; the lease is taken
         // here for the same reason [`build_net_stack`] takes it, and blocks the boot the same way.
-        let (lease, _, _) = receive(g.net_stack_report);
+        let (lease, server, _) = receive(g.net_stack_report);
         cap_delete(g.net_stack_report);
-        network = Some((g.net_stack_ep, lease));
+        network = Some((g.net_stack_ep, lease, server));
     }
     network
 }
