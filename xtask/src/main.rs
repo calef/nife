@@ -323,7 +323,7 @@ fn main() -> ExitCode {
                 "       cargo xtask bench [--riscv | --x86] [--real] [--release] [--smp] [--check] [--save --why <reason>]"
             );
             eprintln!(
-                "       cargo xtask test [--arch aarch64|riscv64|x86_64] [--cpu <qemu-cpu-model>] [--hvf] [--test <substring>]"
+                "       cargo xtask test [--arch aarch64|riscv64|x86_64[,...]] [--no-host] [--cpu <qemu-cpu-model>] [--hvf] [--test <substring>]"
             );
             eprintln!("       cargo xtask icount [--arch aarch64|riscv64]");
             eprintln!(

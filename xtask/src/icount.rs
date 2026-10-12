@@ -28,9 +28,9 @@ use crate::{RISCV_TARGET, RUNNER, TARGET};
 /// prints `[PANIC]` and is a failure; so is reaching end of output with neither.
 pub(crate) fn icount() -> bool {
     let legs = match flag_value("--arch").as_deref() {
-        None => ArchLegs::All,
-        Some("aarch64") => ArchLegs::Aarch64,
-        Some("riscv64") => ArchLegs::Riscv64,
+        None => ArchLegs::ALL,
+        Some("aarch64") => ArchLegs::AARCH64,
+        Some("riscv64") => ArchLegs::RISCV64,
         // x86_64 has no icount leg: the instrument compares against a deadline the kernel re-armed,
         // and this port's LAPIC timer is a periodic hardware reload (`bench_x86`'s doc). The
         // userspace reason this line used to give stopped being true with milestone 161 (the x86-64
