@@ -178,5 +178,5 @@ $ helpers/c-library-headers.sh stdio
 - **Nothing runs this in CI.** The two programs are fetched from their projects' servers, so the
   tests skip unless their `helpers/build-*.sh` ran. calef ruled on #1896 that foreign programs are
   tested in basalt's package build, not in nife
-  (`design/roadmap/proposals/sqlite-is-packaged-in-basalt.md`). Milestone 869 (the C library's
+  (`design/roadmap/0897-sqlite-is-packaged-in-basalt.md`). Milestone 869 (the C library's
   headers cannot drift, and its contract is tested in nife) gives the library its own tests in CI.

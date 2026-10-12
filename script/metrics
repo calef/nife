@@ -2660,7 +2660,8 @@ CHARTS = [
       ('Removed', 'milestones_removed'),
       ('Proposal, no number yet', 'proposals_unnumbered')], 1.0, None, None),
     ('decisions.svg', 'Architecture decisions by status',
-     'design/decisions/; before milestone 114 split it, a decision carried no status',
+     'design/decisions/; before milestone 114 (split `DECISIONS.md`, and give a decision a status), '
+     'a decision carried no status',
      [('Decided', 'decisions_decided'), ('Amended', 'decisions_amended'),
       ('Superseded', 'decisions_superseded'), ('Proposed', 'decisions_proposed'),
       ('No status recorded', 'decisions_unrecorded')], 1.0, None, None),

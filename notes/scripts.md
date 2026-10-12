@@ -19,7 +19,7 @@ Full rows: [build-test-and-gate.md](scripts/build-test-and-gate.md).
 | `script/bootstrap` | Install the pinned toolchain and QEMU. Idempotent. `NIFE_SKIP_LINT_TOOLS=1` skips the lint-only tools (cargo-machete, typos). |
 | `script/setup` | First run after a clone: `bootstrap`, then build. |
 | `script/update` | After a pull: `bootstrap`, then rebuild. |
-| `script/test` | The suite: host-logic crates, then the kernel under QEMU. The gate. `--arch`, `--cpu`, `--hvf`, `--test` narrow it. |
+| `script/test` | The suite: host-logic crates, then the kernel under QEMU. The gate. `--arch`, `--no-host`, `--cpu`, `--hvf`, `--test` narrow it. |
 | `script/verify` | The Kani proofs over the pure-logic crates. |
 | `script/verify-riscv64` | The `kernel` row for riscv64, under Kani patched from `patches/`. Provisional name. |
 | `script/bench` | icount microbenchmarks; `--check` fails on drift from the baseline. |
@@ -183,9 +183,9 @@ four, recorded where somebody about to run a gate is already reading.
 
 Every job in `.github/workflows/ci.yml` names one check out of `script/ci-build`'s table,
 from milestone 286 (one enumeration of the checks that gate a pull request). The format job runs
-`script/ci-build fmt`, the lint job `script/ci-build lint`, the suite job `script/ci-build test`, the swish job `script/ci-build swish-check`, the bench job
-`script/ci-build bench` and `script/ci-build icount`, and so on. CI executes the same commands a
-developer does, from the same list, and a job without a row is the defect that list prevents. `verify.yml` is the exception and says so: Kani is sharded
+`script/ci-build fmt`, the lint job `script/ci-build lint`, the suite jobs `script/ci-build test-aarch64-riscv64` and `test-x86_64`, the swish job `script/ci-build swish-check`, the bench job
+`script/ci-build bench` and `script/ci-build icount`, and so on. CI runs the commands a
+developer does, from one list, and a job without a row is the defect that list prevents. `verify.yml` is the exception and says so: Kani is sharded
 across jobs with its own scope predicate, and the table does not claim it.
 
 The lint job was named `clippy` until 2026-10-08 (UTC). It runs every check in `script/lint`, then

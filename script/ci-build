@@ -121,6 +121,11 @@ cd "$(dirname "$0")/.."
 # Together they are exactly the `local` row, which is what a developer runs. ci.yml's
 # `swish-check-x86_64` job has the measurement.
 #
+# **CI runs `test` as the two `ci` rows after it** (lane maintainer/split-test-job, 2026-10-12 UTC,
+# #1930; the row names are provisional): the host pass with the aarch64 and riscv64 legs, and the
+# x86_64 leg alone with `--no-host`, because the first row ran the host pass on the same commit.
+# Together they are exactly the `local` row. ci.yml's `test-shard` job has the measurement.
+#
 # Adding a check here is the whole of adding a check: the no-argument path picks it up if the tier
 # is `local`, `--list` prints it, and `ci.yml` names it in a job. Adding it to `ci.yml` WITHOUT a row
 # here is the defect this table exists to prevent.
@@ -132,6 +137,8 @@ image-permissions|local|script/image-permissions
 icount|local|script/icount
 build-is-reproducible|local|script/build-is-reproducible
 test|local|script/test
+test-aarch64-riscv64|ci|script/test --arch aarch64,riscv64
+test-x86_64|ci|script/test --arch x86_64 --no-host
 swish-check|local|cargo xtask std-exerciser && helpers/build-ripgrep.sh && script/swish-check
 swish-check-aarch64-riscv64|ci|cargo xtask std-exerciser && NIFE_RIPGREP_TRIPLES="aarch64-unknown-nife riscv64-unknown-nife" helpers/build-ripgrep.sh && script/swish-check --arch aarch64 && script/swish-check --arch riscv64
 swish-check-x86_64|ci|cargo xtask std-exerciser && NIFE_RIPGREP_TRIPLES=x86_64-unknown-nife helpers/build-ripgrep.sh && script/swish-check --arch x86_64
@@ -153,6 +160,8 @@ TABLE
 # Why each `ci` row is not `local`. Kept beside the tier it explains, because the three comments
 # this milestone deleted from `ci.yml` were each correct when written and each drifted.
 #
+#   test-aarch64-riscv64 and test-x86_64  the `test` row cut in two for CI's 20-minute job budget;
+#                       a developer runs the whole row.
 #   fastpath-footprint  builds two RELEASE kernels, which no other check builds, so there is
 #                       nothing warm to share and a developer would wait for a cold build.
 #   boot-file-size-check builds the release x86_64 UEFI image (a release kernel and archive, which

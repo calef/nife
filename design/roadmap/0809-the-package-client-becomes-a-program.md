@@ -231,10 +231,10 @@ the installer. The progenitor's stack went from twelve pages to fourteen, measur
   2026-10-10: the catalog carries digests only, so there is nothing to compare until item 6.
 - **Outstanding.** `--upgradable` (the ruling) or `--upgradeable` (apt(8) as read 2026-10-10). Only
   item 6's spelling waits on it.
-- **Proposed.** `design/roadmap/proposals/a-std-program-at-the-prompt-holds-the-network-and-a-resolver.md`:
-  its item 2 is built here for `jig`. Its items 1, 3 and 4 remain, and `jig` needs them to reach
-  `basalt.nifeos.org` by name, for milestone 810 (`ripgrep` is packaged in basalt and installed with
-  `jig`).
+- **Milestone 892.** Milestone 892 (a std program at the prompt holds the network):
+  `design/roadmap/0892-a-std-program-at-the-prompt-holds-the-network-and-a-resolver.md`. Item 2 is
+  built here for `jig`; 1, 3 and 4 remain, and `jig` needs them to resolve `basalt.nifeos.org` for
+  milestone 810 (`ripgrep` is packaged in basalt).
 - **Milestone 696.** Milestone 696 (the spawn service runs outside `boot`'s frame),
   `design/roadmap/0696-the-spawn-service-runs-outside-boots-frame.md`, is the trim that would let
   the progenitor's stack come back down from the fourteen pages this block raised it to.

@@ -1,0 +1,140 @@
+//! **A set grant** (milestone 47 (navigation and naming)'s globbing lane): a caretaker that answers
+//! only for the names in a set, the set mapped read-only into it on a frame of its own.
+//!
+//! Cut out of `fs_service.rs` unchanged by lane `maintainer/last-three-over-2000`, which left
+//! the parent an index (§282 (when a file is split, the parent becomes an index)) and under §266
+//! (a Rust source file stays under 2,000 lines).
+//!
+//! Name: provisional (lane `maintainer/last-three-over-2000`, 2026-10-12 UTC), for the module and
+//! the file.
+
+use super::*;
+
+/// Where the nameset caretaker expects its read-only name-set page
+/// (`components/src/fs_nameset_caretaker.rs`'s `SET_VA`).
+const SET_VA_CARETAKER: u64 = 0x0000_0000_0070_0000;
+
+/// **Wire a set grant and the program confined to it** (milestone 47's globbing lane,
+/// notes/glob-grant.md). [`start_granted_dir`]'s shape with a narrower namespace:
+///
+/// ```text
+///   FS server ──file IPC──► fs_nameset_caretaker ──narrowed file IPC──► the confined program
+///            (the image root)         (one directory, and only the names in the set)
+/// ```
+///
+/// The interesting difference from every other grant here is **where the grant lives**. A name
+/// rides in two `START` argument words; a set does not fit in any number of registers, so it is
+/// encoded into a **frame of its own and mapped read-only** into the caretaker, which copies it
+/// into a local before it does anything else. That is the honest place for `ARG_MAX` to
+/// reappear: it is the size of a capability now, not the size of a buffer, and it is bounded by
+/// `filesystem_protocol::nameset::MAX_NAMES` at both ends.
+///
+/// The set is written **before the caretaker is spawned**, into a frame nothing else has ever
+/// been handed, which is why it needs none of [`wait_for_caretaker`]'s ordering care: unlike
+/// the shared page, no client can reach it at all.
+#[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
+pub struct SetGrant<'a> {
+    /// The directory the caretaker descends into, one component under the image root. The set's
+    /// names are the names *in* it that the grant designates.
+    pub dir: &'static str,
+    /// The set, as `(name, is_dir)`: what the shell's expansion produced. At most
+    /// `filesystem_protocol::nameset::MAX_NAMES` of them, and an over-long set is a panic here because the
+    /// shell refuses it at the prompt (`grant_plan::Refusal::TooManyNames`), so one arriving means
+    /// the wiring built a grant no command line could have expressed.
+    pub names: &'a [(&'a [u8], bool)],
+    /// The [`filesystem_protocol::dir`] rights the caretaker asks for on its descent.
+    pub rights: u64,
+    /// The confined program's three `START` words. `rm` is started with a grant's spec and two
+    /// name words rather than a role and a number; see [`DirGrant`].
+    pub role: u64,
+    pub arg: u64,
+    pub arg2: u64,
+    /// Stack pages beyond the one `run` maps.
+    pub stack_pages: usize,
+}
+
+#[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
+pub fn start_granted_set(
+    blk_image: &'static [u8],
+    fs_server_image: &'static [u8],
+    caretaker_image: &'static [u8],
+    client_image: &'static [u8],
+    grant: SetGrant<'_>,
+) -> Option<RendezvousId> {
+    let SetGrant {
+        dir,
+        names,
+        rights,
+        role: client_role,
+        arg: client_arg,
+        arg2: client_arg2,
+        stack_pages,
+    } = grant;
+    assert!(
+        filesystem_protocol::grant::fits(dir.as_bytes()),
+        "a granted directory's name rides in two argument words; this one does not fit",
+    );
+    let (file_ep, file_shared, readiness) = ensure(blk_image, fs_server_image)?;
+    let narrow_ep = crate::sched::create_rendezvous();
+    let caretaker_ready = crate::sched::create_rendezvous();
+
+    // The set, encoded into its own frame before anything can see it. `encode` refuses rather
+    // than truncating, and a truncated set would be a capability nobody planned.
+    let set_phys = page_frame();
+    let mut encoded = [0u8; filesystem_protocol::nameset::BYTES];
+    let n = filesystem_protocol::nameset::encode(names, &mut encoded)
+        .expect("this set does not fit one grant, so no command line could have named it");
+    // SAFETY: a fresh frame of FRAME_SIZE bytes reachable through the direct map, and `n` is at
+    // most `nameset::BYTES`, which is far smaller.
+    unsafe {
+        core::ptr::copy_nonoverlapping(encoded.as_ptr(), mmu::phys_to_virt(set_phys) as *mut u8, n);
+    };
+
+    let (lo, hi) = filesystem_protocol::grant::pack_name(dir.as_bytes());
+    let spec = filesystem_protocol::grant::spec(dir.len(), rights);
+
+    crate::sched::spawn(move || {
+        run(
+            caretaker_image,
+            Spawn {
+                arg0: lo,
+                arg1: hi,
+                arg2: spec,
+                grants: &[
+                    rendezvous_cap(file_ep, Rights::WRITE), // slot 0: CALL the FS server
+                    rendezvous_cap(narrow_ep, Rights::READ), // slot 1: serve the narrowed capability
+                    rendezvous_cap(caretaker_ready, Rights::WRITE), // slot 2: readiness, once
+                ],
+                maps: &[
+                    Mapping {
+                        va: FILE_VA_CLIENT,
+                        phys: file_shared,
+                        flags: Flags::user_data(),
+                    },
+                    // **Read-only, and that is not decoration.** The set is the namespace this
+                    // process serves; a writable mapping would let the one program that must not
+                    // be able to widen its own grant do exactly that.
+                    Mapping {
+                        va: SET_VA_CARETAKER,
+                        phys: set_phys,
+                        flags: Flags::user_rodata(),
+                    },
+                ],
+            },
+        )
+    })
+    .expect("could not spawn the nameset caretaker");
+
+    wait_for_service(readiness);
+    wait_for_caretaker(caretaker_ready);
+
+    Some(spawn_fs_client(
+        client_image,
+        narrow_ep,
+        file_shared,
+        client_role,
+        client_arg,
+        client_arg2,
+        stack_pages,
+    ))
+}

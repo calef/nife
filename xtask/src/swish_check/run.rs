@@ -106,9 +106,9 @@ pub(crate) fn swish_check() -> bool {
     };
     let _ = PROBE.set(probe);
     let legs = match flag_value("--arch").as_deref() {
-        None => ArchLegs::All,
-        Some("aarch64") => ArchLegs::Aarch64,
-        Some("riscv64") => ArchLegs::Riscv64,
+        None => ArchLegs::ALL,
+        Some("aarch64") => ArchLegs::AARCH64,
+        Some("riscv64") => ArchLegs::RISCV64,
         // The third leg (milestone 182), since milestone 299 gave x86_64 a userspace console to
         // reach a prompt through. It boots under OVMF rather than PVH; see `swish_check_leg`.
         Some("x86_64") => ArchLegs::X86_64,

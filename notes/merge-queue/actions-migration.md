@@ -68,7 +68,7 @@ $ launchctl list | grep nife          # expect nothing yet
 
 Then install the one watch that stays per developer. Retiring `com.nife.trunk-health` retires the
 at-risk check with it (it was folded into that script's loop), and that is the watch AGENTS.md calls
-the more valuable of the two. Write `~/Library/LaunchAgents/com.nife.at-risk.plist`, substituting
+the more valuable of the two. Write `~/Library/LaunchAgents/org.nifeos.at-risk.plist`, substituting
 your own paths:
 
 ```xml
@@ -76,7 +76,7 @@ your own paths:
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>Label</key><string>com.nife.at-risk</string>
+  <key>Label</key><string>org.nifeos.at-risk</string>
   <key>ProgramArguments</key>
   <array>
     <string>/bin/sh</string>
@@ -91,9 +91,9 @@ your own paths:
 ```
 
 ```console
-$ launchctl load -w ~/Library/LaunchAgents/com.nife.at-risk.plist
+$ launchctl load -w ~/Library/LaunchAgents/org.nifeos.at-risk.plist
 $ launchctl list | grep nife
--	0	com.nife.at-risk
+-	0	org.nifeos.at-risk
 ```
 
 An already-installed plist names its script by absolute path. So the rename of `scripts/` to
@@ -104,6 +104,18 @@ stops reporting. Fix an existing one in place, or reinstall it from the block ab
 $ sed -i '' 's|/scripts/|/helpers/|' ~/Library/LaunchAgents/com.nife.at-risk.plist
 $ launchctl unload ~/Library/LaunchAgents/com.nife.at-risk.plist
 $ launchctl load -w ~/Library/LaunchAgents/com.nife.at-risk.plist
+```
+
+The label follows the project's domain, nifeos.org, from 2026-10-12 (UTC); before that it was
+`com.nife.at-risk`, and the two fix-up commands above name the file as it was then. Rename an
+older install in place:
+
+```console
+$ launchctl unload ~/Library/LaunchAgents/com.nife.at-risk.plist
+$ sed 's/com\.nife\.at-risk/org.nifeos.at-risk/' ~/Library/LaunchAgents/com.nife.at-risk.plist \
+    > ~/Library/LaunchAgents/org.nifeos.at-risk.plist
+$ rm ~/Library/LaunchAgents/com.nife.at-risk.plist
+$ launchctl load -w ~/Library/LaunchAgents/org.nifeos.at-risk.plist
 ```
 
 `launchd` is the loop here, which is why `helpers/at-risk-check.sh` did not grow one. It does a pass

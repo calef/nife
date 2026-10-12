@@ -63,11 +63,12 @@ worktrees and nothing else can:
 
     launchctl list | grep nife
 
-One entry must be present, `com.nife.at-risk`. If it is missing, `notes/merge-queue.md` has the
-plist; until it is loaded, `helpers/at-risk-check.sh` is one pass you can run by hand from the main
-checkout. Nothing else should be in that list: `com.nife.merge-drain` and `com.nife.trunk-health`
-are retired, and a laptop still running either is a second watcher acting beside the workflow, an
-old enough one still arming pull requests. The retirement commands are in `notes/merge-queue.md`.
+One entry must be present, `org.nifeos.at-risk`. An install from before 2026-10-12 (UTC) is
+labeled `com.nife.at-risk`, which still works. If it is missing, `notes/merge-queue.md` has the
+plist and the rename; until it is loaded, `helpers/at-risk-check.sh` is one pass you can run by
+hand from the main checkout. Nothing else should be in that list: `com.nife.merge-drain` and
+`com.nife.trunk-health` are retired, and a laptop still running either is a second watcher acting
+beside the workflow, an old enough one still arming pull requests. The retirement commands are in `notes/merge-queue.md`.
 
 In a cloud session there is no `launchctl` and no lane worktree to watch, so skip this check and
 go to step 2. The risk it covers moves to you: an ephemeral container that ends with uncommitted
@@ -215,7 +216,7 @@ old is a stopped watcher wearing a green badge.
 The one that stays on your machine, alive (real output shape, patagonia):
 
     $ launchctl list | grep nife
-    -	0	com.nife.at-risk
+    -	0	org.nifeos.at-risk
 
 The first column is the process id, `-` meaning the job is loaded but not currently running, which is
 correct for an interval job between ticks. The second column is the last exit status: `0` is what
@@ -225,7 +226,7 @@ healthy one if you only check that the line exists.
 A session that finds the retirement half-done:
 
     $ launchctl list | grep nife
-    -	0	com.nife.at-risk
+    -	0	org.nifeos.at-risk
     -	0	com.nife.merge-drain
 
 That second line is a second drain beside the workflow, acting as `calef` where the workflow acts
