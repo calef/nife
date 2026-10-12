@@ -16,12 +16,13 @@
 /// 60 s hang watchdog, so a genuine hang still fails.
 ///
 /// It lives **here** rather than in `tests` because six sibling modules use it and that one does
-/// not compile on every architecture: `user::tests` needs a real ELF program out of the initrd
-/// and is `#[cfg(all(test, initrd))]`, which would have taken this helper down with it on a
-/// target that packs none (milestone 161, roadmap item 4). A helper every module uses does not
-/// belong inside one of them. Milestone 81 needed it in two of them: running on the physical core makes the
-/// yield-count version fail for the *mirror* reason it fails on a loaded host, since a yield on an
-/// idle core costs nanoseconds there. See notes/hvf-leg.md.
+/// not compile on every architecture: `user::tests` needs a real ELF program out of the initial
+/// ramdisk and is `#[cfg(all(test, initial_ramdisk))]`, which would have taken this helper down
+/// with it on a target that packs none (milestone 161 (the x86_64 kernel port), roadmap item 4). A
+/// helper every module uses does not belong inside one of them. Milestone 81 (an HVF leg) needed it
+/// in two of them: running on the physical core makes the yield-count version fail for the *mirror*
+/// reason it fails on a loaded host, since a yield on an idle core costs nanoseconds there. See
+/// notes/hvf-leg.md.
 pub fn wait_for(mut done: impl FnMut() -> bool) -> bool {
     let deadline = crate::arch::timer::now() + 2 * crate::arch::timer::frequency();
     while crate::arch::timer::now() < deadline {

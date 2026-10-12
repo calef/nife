@@ -165,19 +165,19 @@ fn zero(r: i64) -> Result<(), Refused> {
 #[inline(never)]
 fn map_job() -> Result<u64, Refused> {
     let t0 = now();
-    let region = slot(user_mode_runtime::split_region(
+    let region = slot(user_mode_runtime::split_memory_region(
         job_mix::SLOT_BUDGET,
         job_mix::MAP_REGION_PAGES,
     ))?;
     let mut region_ticks = now() - t0;
-    let aspace = slot(user_mode_runtime::retype_object(
+    let aspace = slot(user_mode_runtime::retype_into_kernel_object(
         region,
         abi::objtype::ADDRESS_SPACE,
     ))?;
-    let frame = slot(user_mode_runtime::retype_page_frame(region))?;
+    let frame = slot(user_mode_runtime::retype_into_page_frame(region))?;
     let mut i = 0;
     while i < job_mix::MAP_CALLS {
-        zero(user_mode_runtime::map_into(
+        zero(user_mode_runtime::address_space_map_into(
             aspace,
             MAP_TARGET_VA + i * PAGE,
             frame,
@@ -186,7 +186,7 @@ fn map_job() -> Result<u64, Refused> {
         i += 1;
     }
     let t1 = now();
-    zero(user_mode_runtime::destroy_region(region))?;
+    zero(user_mode_runtime::destroy_memory_region(region))?;
     region_ticks += now() - t1;
     // The objects are gone with their region; the slots that named them are not, and a fixed
     // table would fill over a subrun if they stayed.
@@ -208,34 +208,34 @@ fn spawn_job(code_frame: u64) -> Result<u64, Refused> {
     let mut n = 0;
     while n < job_mix::SPAWN_CALLS {
         let t0 = now();
-        let child = slot(user_mode_runtime::split_region(
+        let child = slot(user_mode_runtime::split_memory_region(
             job_mix::SLOT_BUDGET,
             job_mix::CHILD_PAGES,
         ))?;
         region_ticks += now() - t0;
-        let aspace = slot(user_mode_runtime::retype_object(
+        let aspace = slot(user_mode_runtime::retype_into_kernel_object(
             child,
             abi::objtype::ADDRESS_SPACE,
         ))?;
-        zero(user_mode_runtime::map_into(
+        zero(user_mode_runtime::address_space_map_into(
             aspace,
             CHILD_CODE_VA,
             code_frame,
             abi::address_space::MAP_CODE,
         ))?;
-        let stack = slot(user_mode_runtime::retype_page_frame(child))?;
-        zero(user_mode_runtime::map_into(
+        let stack = slot(user_mode_runtime::retype_into_page_frame(child))?;
+        zero(user_mode_runtime::address_space_map_into(
             aspace,
             CHILD_STACK_VA,
             stack,
             abi::address_space::MAP_RW,
         ))?;
         user_mode_runtime::cap_delete(stack);
-        let tcb = slot(user_mode_runtime::retype_object(
+        let tcb = slot(user_mode_runtime::retype_into_kernel_object(
             child,
             abi::objtype::THREAD_CONTROL_BLOCK,
         ))?;
-        slot(user_mode_runtime::tcb_cap_insert(
+        slot(user_mode_runtime::thread_control_block_capability_insert(
             tcb,
             job_mix::SLOT_CHILD_DONE,
             abi::rights::WRITE,
@@ -245,16 +245,20 @@ fn spawn_job(code_frame: u64) -> Result<u64, Refused> {
         // Its result is the child's current-CPU page address since milestone 812
         // (`std::thread::spawn` runs real threads in one address space), so success is
         // any non-negative answer.
-        let configured =
-            user_mode_runtime::tcb_configure(tcb, CHILD_CODE_VA, CHILD_STACK_VA + PAGE, aspace);
+        let configured = user_mode_runtime::thread_control_block_configure(
+            tcb,
+            CHILD_CODE_VA,
+            CHILD_STACK_VA + PAGE,
+            aspace,
+        );
         zero(configured.min(0))?;
-        zero(user_mode_runtime::tcb_start(tcb, 0, 0, 0))?;
+        zero(user_mode_runtime::thread_control_block_start(tcb, 0, 0, 0))?;
         // The child's done word. Then reclaim: `DESTROY` refuses a region a live thread occupies,
         // and the child is between its `SEND` and its exit for a moment after this returns.
         let _ = receive(job_mix::SLOT_CHILD_DONE);
         loop {
             let t1 = now();
-            let r = user_mode_runtime::destroy_region(child);
+            let r = user_mode_runtime::destroy_memory_region(child);
             region_ticks += now() - t1;
             if r == 0 {
                 break;
@@ -275,7 +279,9 @@ fn spawn_job(code_frame: u64) -> Result<u64, Refused> {
 /// splits it, so it outlives every child and every `DESTROY` (a region reclaims in reverse order of
 /// what was taken from it). Filled once with [`user_mode_runtime::child_stub::SEND_THEN_EXIT`].
 fn prepare_child_code() -> Result<u64, Refused> {
-    let frame = slot(user_mode_runtime::retype_page_frame(job_mix::SLOT_BUDGET))?;
+    let frame = slot(user_mode_runtime::retype_into_page_frame(
+        job_mix::SLOT_BUDGET,
+    ))?;
     if !user_mode_runtime::map_page_frame(frame, STUB_SCRATCH_VA, true, job_mix::SLOT_BUDGET) {
         return Err(abi::Error::OutOfMemory as i64);
     }

@@ -52,8 +52,8 @@ recursively), ruled 2026-09-18. Ask it again of any acronym inside the expansion
 `dma_validator`, `nvme`, `gpt`, `dtb`, `ipc` and `asid`.
 
 The test applies to names this tree authors. A name that arrives across somebody else's interface
-keeps their spelling, with an expansion written where the reader meets it. `initrd` is a Devicetree
-property and a QEMU flag, so it stays.
+keeps their spelling, with an expansion written where the reader meets it. The foreign spelling
+stops there: inside, `initrd` is `initial_ramdisk` (#1842).
 
 ### Nouns, not verbs
 

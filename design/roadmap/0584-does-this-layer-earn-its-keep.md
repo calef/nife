@@ -10,18 +10,18 @@ needs_person: no
 ---
 # 584. A mechanism owes evidence that it caught something a person would have missed
 
-*(Number minted at promotion.)* Promoted from the proposal
-`does-this-layer-earn-its-keep`, filed 2026-09-23, on calef's instruction of 2026-09-24 to promote the proposals.
-The text below is the proposal's own, unedited except for this paragraph, the
-`## Index row` and `## BUGS` sections, and the nine layer headings, which read `### 1. The watchers` and so
-looked like milestone headings to `script/roadmap --check`; they now read `### Layer 1: the
-watchers`: the argument is its author's and promotion is not the moment to
-improve it. On 2026-10-12 (UTC) the layers and the notes on the measure table moved whole into
+*(Number minted at promotion.)* Promoted from the proposal `does-this-layer-earn-its-keep`, filed
+2026-09-23, on calef's instruction of 2026-09-24 to promote the proposals. The text below is the
+proposal's own, unedited except for this paragraph, the `## Index row` section, the correction about
+pull request #1170, and the nine layer headings, which read `### 1. The watchers` and so looked like
+milestone headings to `script/roadmap --check`; they now read `### Layer 1: the watchers`: the
+argument is its author's and promotion is not the moment to improve it. On 2026-10-12 (UTC) the
+layers and the notes on the measure table moved whole into
 [layers.md](0584-does-this-layer-earn-its-keep/layers.md) under §212 (a prose budget), and a
-paragraph and a sentence that restated others were cut. As filed: raised by calef the same day: *"I also want to have metrics on our
-actions so that we can assess the effectiveness of our various layers. They need to demonstrate
-their value."* Written by a lane after four mechanisms were found on one day reporting success while
-checking nothing.
+paragraph and a sentence that restated others were cut. As filed: raised by calef the same day: *"I
+also want to have metrics on our actions so that we can assess the effectiveness of our various
+layers. They need to demonstrate their value."* Written by a lane after four mechanisms were found
+on one day reporting success while checking nothing.
 
 No hardware, no other milestone. One decision was put to calef and he deferred
 it on 2026-09-24; the deferral, its reason and its trigger are the last section of this file, and
@@ -64,8 +64,9 @@ Each is a mechanism that reported success while doing nothing, and no two are th
   same result for both.
 - `helpers/trunk-health.sh` reads CI's conclusion to say when `main` goes red. `ci.yml` skipped
   `build + test` for documentation-only commits, so `main` was red for hours with every signal
-  green. The watcher's own header claims *"The signal was never missing."* Pull request #1170 is
-  correcting that claim.
+  green. The watcher's own header claimed *"The signal was never missing."* Pull request #1170
+  corrected that claim and merged on 2026-09-24. *(Corrected 2026-10-12 from "claims" and "is
+  correcting": the proposal was filed before #1170 merged.)*
 - `helpers/merge-drain.sh` logs a snapshot and never an event. A pass writes
   `10 armed, 7 stalled, of 17 unheld`. There are 3,355 passes on record in
   `~/Library/Logs/nife/merge-drain.log` and not one of them answers "how often did the drain act."
@@ -265,12 +266,6 @@ specific check while looking at it is deciding under attachment, and waiting for
 remove that pressure, it postpones meeting it. Whoever takes this up should write the rule for
 rung-two and rung-three mechanisms as a class first, then apply it, rather than reading nine rows
 and arguing about the smallest number.
-
-## BUGS
-
-- Stale since 2026-09-24: the proposal, as filed, calls pull request #1170
-  (`maintainer/when-main-goes-red`) unmerged and says it "is correcting" `helpers/trunk-health.sh`'s
-  header. It merged on 2026-09-24 (05:33 UTC). The text is left as filed; this entry is the record.
 
 ## Index row
 

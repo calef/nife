@@ -33,10 +33,10 @@ fn run_rm(rights: u64, name: &str, flags: u64) -> Option<Outcome> {
     let (lo, hi) = filesystem_protocol::grant::pack_name(name.as_bytes());
     let report = fs_service::start_granted_dir(
         dir_capability_tests::blk_server_image(),
-        program("redoxfs_server").expect("no redoxfs_server program in the initrd archive"),
+        program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
         program("fs_subtree_caretaker")
-            .expect("no fs_subtree_caretaker program in the initrd archive"),
-        program("rm").expect("no rm program in the initrd archive"),
+            .expect("no fs_subtree_caretaker program in the initial ramdisk"),
+        program("rm").expect("no rm program in the initial ramdisk"),
         fs_service::DirGrant {
             name: tree::RMTREE,
             rights,

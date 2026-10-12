@@ -30,10 +30,10 @@
 //! through untouched, and that nothing of it reached this program's page.
 //!
 //! It rides in the `net_stack` binary beside `socket_test_client` for the same reason that client
-//! does: the initrd directory holds at most 15 files on aarch64. That makes the `net_stack` image
-//! the booted system runs carry a hostile client nothing in the boot ever starts, which is an
-//! exception to keeping test roles out of shipped images, recorded here so the next hostile fixture
-//! does not extend it unmarked.
+//! does: the initial ramdisk directory holds at most 15 files on aarch64. That makes the
+//! `net_stack` image the booted system runs carry a hostile client nothing in the boot ever starts,
+//! which is an exception to keeping test roles out of shipped images, recorded here so the next
+//! hostile fixture does not extend it unmarked.
 //!
 //! Name: provisional, milestone 649's lane, 2026-10-07 (UTC), keeping the file name milestone 800's
 //! lane gave the program it replaces.
@@ -50,7 +50,7 @@ use socket_protocol::*;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{
     badge, call, call_receiving, cap_delete, exit, map_page_frame, now, receive, receive_cap,
-    retype_page_frame, send, send_cap, yield_now,
+    retype_into_page_frame, send, send_capability, yield_now,
 };
 
 use crate::socket_test_client::TFTP_NAME;
@@ -93,7 +93,7 @@ static WINDOW: MappedWindow = unsafe { MappedWindow::new(PAGE_FRAME_VA, PAGE) };
 
 /// **The squat, against capabilities.** See the module doc for the five steps.
 pub fn run() -> ! {
-    let frame = retype_page_frame(MEMORY_REGION);
+    let frame = retype_into_page_frame(MEMORY_REGION);
     if frame < 0 || !map_page_frame(frame as u64, PAGE_FRAME_VA, true, MEMORY_REGION) {
         send(REPORT, 0, 0xE001, 0);
         exit();
@@ -102,7 +102,7 @@ pub fn run() -> ! {
 
     // 1. The old squat: a page through the front door. The stack drops it, and no reply could say
     //    so, so the proof is step 5's watch.
-    let _ = send_cap(
+    let _ = send_capability(
         STACK,
         frame,
         rights::READ | rights::WRITE,

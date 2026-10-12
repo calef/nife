@@ -19,11 +19,11 @@ fn wait_for(mut cond: impl FnMut() -> bool) -> bool {
 }
 
 fn surveyor_image() -> &'static [u8] {
-    program("disk_surveyor").expect("no disk_surveyor program in the initrd archive")
+    program("disk_surveyor").expect("no disk_surveyor program in the initial ramdisk")
 }
 
 fn partitioner_image() -> &'static [u8] {
-    program("disk_partitioner").expect("no disk_partitioner program in the initrd archive")
+    program("disk_partitioner").expect("no disk_partitioner program in the initial ramdisk")
 }
 
 // The report's flag words. Must match components/src/disk_surveyor.rs.
@@ -251,7 +251,7 @@ const R_NO_FS: u64 = 0x_4E_4F_46_53_00;
 /// Returns `None` if the mmio virtio-rng device is not attached (milestone 145: correct on a bare
 /// board boot with no `NIFE_RNG`-equivalent).
 fn entropy_rendezvous() -> Option<crate::sched::RendezvousId> {
-    let image = program("entropy").expect("no entropy program in the initrd archive");
+    let image = program("entropy").expect("no entropy program in the initial ramdisk");
     let w = entropy_service::ensure(image, entropy_service::Bus::Mmio)?;
     if let Some(report) = w.wait_for_ready() {
         assert_eq!(
@@ -309,7 +309,7 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
     let Some(entropy) = entropy_rendezvous() else {
         crate::testing::skip!("no virtio-rng device on the mmio bus (NIFE_RNG not set?)");
     };
-    let maker = program("mkfs").expect("no mkfs program in the initrd archive");
+    let maker = program("mkfs").expect("no mkfs program in the initial ramdisk");
     use filesystem_protocol::fixture::blank;
 
     // 1. The partitioner, with the disk and NO entropy rendezvous. It must refuse, and it must refuse

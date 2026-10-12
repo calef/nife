@@ -232,11 +232,6 @@ decided which markdown moved.
   `network_time_protocol` and `counter_frequency_protocol` carry stems calef ruled and whole names he
   has not been shown. They stay on `script/names --unratified` and that is the correct place for
   them.
-- The Index row, left as written because `script/roadmap` parses it, is wrong twice (found
-  2026-10-12 by maintainer/prose-budget-backlog). It says `timebase_proto`'s provenance records calef
-  refusing `timebase_protocol`; the body above says the refusal on record is of `timebase_proto`, and
-  that `timebase_protocol` is not itself refused. And it says `login_protocol` will move a second
-  time, which the 2026-09-15 correction above withdrew.
 
 ## Follow-on
 
@@ -262,4 +257,4 @@ decided which markdown moved.
 
 ## Index row
 
-calef, 2026-09-05: it was lazy and should have been `_protocol` globally. `proto` is equally short for `prototype`, which this tree uses for a real thing, and design/naming.md already refuses truncation. The block's own numbers were wrong and are corrected in it: 15 crates, not 14 (`capability_demo_proto` arrived with milestone 291 after it was written), across 424 files, not 349. Five stems calef ruled on 2026-09-13 travelled in the same pass rather than renaming the same files twice, and the block's table listed four: `timebase_proto`'s provenance records him ruling `counter_frequency_proto` that day and refusing `timebase_protocol`, the name a lane working from the table alone would have created. `mdns_config` and `mdns_responder` moved with their protocol's stem. The sweep took five records it should not have (a refusal, two accounts of what the 2026-08-23 renames produced, the 2026-07-30 four-ways account in four crates, and `socket_proto`'s ratification), all restored by enumerating the diff, and `script/lint`'s `crates/*proto` glob would have gone blind rather than red. `login_protocol` keeps a stem calef has not ruled and will move a second time, accepted knowingly
+calef, 2026-09-05: it was lazy and should have been `_protocol` globally. `proto` is equally short for `prototype`, which this tree uses for a real thing, and design/naming.md already refuses truncation. The block's own numbers were wrong and are corrected in it: 15 crates, not 14 (`capability_demo_proto` arrived with milestone 291 (`fixtures/src/hello.rs` was thirty-one programs wearing one name) after it was written), across 424 files, not 349. Five stems calef ruled on 2026-09-13 travelled in the same pass rather than renaming the same files twice, and the block's table listed four: `timebase_proto`'s provenance records him ruling `counter_frequency_proto` that day and refusing `timebase_proto`, whose suffixed form `timebase_protocol` a lane working from the table alone would have created. `mdns_config` and `mdns_responder` moved with their protocol's stem. The sweep took five records it should not have (a refusal, two accounts of what the 2026-08-23 renames produced, the 2026-07-30 four-ways account in four crates, and `socket_proto`'s ratification), all restored by enumerating the diff, and `script/lint`'s `crates/*proto` glob would have gone blind rather than red. `login_protocol` took the suffix with its stem still open, accepting a second rename that calef's 2026-09-15 ruling (the stem stays) made unnecessary

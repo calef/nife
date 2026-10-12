@@ -10,8 +10,9 @@ added.
 The seven crates this block names are triaged, and none carries an untriaged survivor. Measured
 per crate with `script/mutation -p <crate>` on the lane's own worktree, before and after; every kill
 was verified by re-running the sweep and watching the mutant die, and every equivalence claim is a
-mutant the second run still reports. The reasons are in `notes/mutation-testing.md`'s
-`## 2026-09-20` section, crate by crate, which is where a reader should go to disagree with one.
+mutant the second run still reports. The reasons are in
+`notes/mutation-testing/new-crate-backlog.md`'s `## 2026-09-20` section, crate by crate, which is
+where a reader should go to disagree with one.
 
 | crate | before | after | killed by a test | equivalent | excluded | recorded gap |
 |---|---|---|---|---|---|---|

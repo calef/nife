@@ -78,7 +78,7 @@ pub(crate) fn package_fetch_exerciser_elf(triple: &str) -> PathBuf {
 ///
 /// `helpers/build-ripgrep.sh` puts it here. Nothing in this build produces it, and that is the
 /// point: fetching `ripgrep` and its transitive crates is a crates.io dependency tree, which
-/// DECISIONS §46 makes calef's decision rather than a gate's. So the initrd carries it when it is
+/// DECISIONS §46 makes calef's decision rather than a gate's. So the archive carries it when it is
 /// on disk and does not when it is not, exactly as `std_exerciser` rides along, and
 /// `system_tests/src/user/ripgrep_tests.rs` skips rather than fails when the archive has no `rg`.
 pub(crate) fn ripgrep_elf(triple: &str) -> PathBuf {

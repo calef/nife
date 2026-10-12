@@ -9,8 +9,8 @@
 //! Every unmap sweep in `crate::revoke` is driven by the mapping log, and the only way into that
 //! log is [`crate::revoke::MappingHold::record_mapping`]. `AddressSpace::map_physical` did not call it. So a
 //! page the kernel wires into a process it is building (a [`super::Spawn`]`::maps` entry, a
-//! [`super::DeviceRun`], the initrd read-only, the `x86_64` timebase page) was mapped into a live
-//! address space with no record anywhere that it had been, and `PageFrame::REVOKE`,
+//! [`super::DeviceRun`], the initial ramdisk read-only, the `x86_64` timebase page) was mapped into
+//! a live address space with no record anywhere that it had been, and `PageFrame::REVOKE`,
 //! `DeviceFrame::REVOKE` and `MemoryRegion::DESTROY` all walked straight past it. The capability
 //! went and the mapping stayed, which is a take-back doing half its job.
 //!

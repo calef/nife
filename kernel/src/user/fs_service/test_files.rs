@@ -33,7 +33,7 @@ fn set_file(dir: Option<&[u8]>, file: &str, contents: Option<&[u8]>) {
     use filesystem_protocol::{dir as rights, fs};
     let (fs_ep, fs_page_frame) = root_directory(
         blk_server_image(),
-        crate::user::program("redoxfs_server").expect("no redoxfs_server in the initrd"),
+        crate::user::program("redoxfs_server").expect("no redoxfs_server in the initial ramdisk"),
     )
     .expect("wired() already brought the file service up");
     // SAFETY: as in `ensure_home_subtree`: the file service's own shared page, idle between logins.
@@ -94,7 +94,7 @@ pub fn read_root_file(file: &str, out: &mut [u8]) -> Option<usize> {
     use filesystem_protocol::fs;
     let (fs_ep, fs_page_frame) = root_directory(
         blk_server_image(),
-        crate::user::program("redoxfs_server").expect("no redoxfs_server in the initrd"),
+        crate::user::program("redoxfs_server").expect("no redoxfs_server in the initial ramdisk"),
     )?;
     // SAFETY: as in `set_root_list`: the file service's own shared page, idle between logins.
     let page = unsafe {

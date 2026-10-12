@@ -123,7 +123,7 @@ it again costs directory entries per block, so do not let a name spend it.
 There is also a ceiling on how many programs an archive holds, `nifefs::MAX_FILES`, 127 since
 milestone 291 raised `DIR_BLOCKS` from 6 to 10. Every archive packs 87 programs plus up to five
 optional entries as of 2026-09-19, so the headroom is about thirty. It fails loudly: `write_image`
-returns `TooManyFiles` and each `initrd_*` function prints the error, the file count and the size.
+returns `TooManyFiles` and each `initial_ramdisk_*` function prints the error, the file count and the size.
 
 ### 5. If the shell should be able to spawn it
 
@@ -196,8 +196,8 @@ script/swish-check   # if the shell spawns it: both ISAs, and much faster than t
 script/test          # all three architectures
 ```
 
-`cargo xtask build` packs the aarch64 archive only, whatever the name suggests; `initrd_riscv()` and
-`initrd_x86()` are called by `test` and `swish-check`. That no longer hides a packing mistake,
+`cargo xtask build` packs the aarch64 archive only, whatever the name suggests; `initial_ramdisk_riscv()` and
+`initial_ramdisk_x86()` are called by `test` and `swish-check`. That no longer hides a packing mistake,
 because all three archives pack one list, but it is still not a check of the other two builds.
 
 **Run swish-check once with a deliberately wrong expectation.** A green harness only proves the

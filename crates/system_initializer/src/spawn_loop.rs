@@ -32,7 +32,7 @@ pub(super) fn archive_name(p: Prog) -> Option<&'static str> {
 /// an explicit target, which the ABI numbers from one). `false` if the slot was taken or the right
 /// could not be granted.
 pub(super) fn place_at(tcb: u64, cap: u64, rights: u64, slot: u64) -> bool {
-    user_mode_runtime::tcb_cap_insert(tcb, cap, rights, slot + 1) >= 0
+    user_mode_runtime::thread_control_block_capability_insert(tcb, cap, rights, slot + 1) >= 0
 }
 
 // The slot the run-unvouched capability is placed in sits just under the kernel's reserved fault
@@ -72,8 +72,9 @@ pub(super) struct Channels {
     pub(super) config_page: u64,
     /// WRITE-delegable: the endpoint the terminal's sink adapter serves, which is where a declared
     /// second stream goes when the command line named no file for it (DECISIONS §67). `None` when
-    /// this initrd carried no adapter, and then a declaring child simply gets no second stream.
-    /// This is authority to *print*, and nothing else: the adapter holds the terminal, we do not.
+    /// this initial ramdisk carried no adapter, and then a declaring child simply gets no second
+    /// stream. This is authority to *print*, and nothing else: the adapter holds the terminal, we
+    /// do not.
     pub(super) term_sink: Option<u64>,
     /// **The file service and the page its clients share with it** (milestone 31 phase 3), or `None`
     /// on a boot with no disk. `WRITE | GRANT` on the endpoint: this is the directory capability a
@@ -86,9 +87,10 @@ pub(super) struct Channels {
     pub(super) fs: Option<Fs>,
     /// **A client view of the entropy service** (milestone 111), endowed to a child whose manifest
     /// declares [`grant_plan::Manifest::entropy`]. `None` on a boot that built no entropy service
-    /// (no virtio-rng device, no `entropy` program in the initrd, or a service that did not answer
-    /// `READY`), and then a declaring child is spawned with an empty [`grant_plan::ENTROPY_SLOT`]
-    /// and says so on its second stream rather than drawing predictable bytes.
+    /// (no virtio-rng device, no `entropy` program in the initial ramdisk, or a service that did
+    /// not answer `READY`), and then a declaring child is spawned with an empty
+    /// [`grant_plan::ENTROPY_SLOT`] and says so on its second stream rather than drawing
+    /// predictable bytes.
     ///
     /// [`deaths`](Channels::deaths)'s shape rather than [`clock_page`](Channels::clock_page)'s: an
     /// endpoint the progenitor holds and places a narrowed copy of, not a frame it maps. `WRITE` is what a

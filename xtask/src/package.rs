@@ -277,9 +277,9 @@ fn write_out(root: &std::path::Path, built: &Built) -> Result<PathBuf, String> {
 /// serves it from, and return the catalogue lines for the image to carry.
 ///
 /// This is DECISIONS §195's "the image's measured table becomes the first source" made literal: the
-/// catalogue goes into the initrd archive *before* the measurement table is computed, so the kernel's
-/// trust root vouches for the catalogue and the catalogue vouches for the package. A package fetched
-/// over plain HTTP is then checked against a digest that never crossed the network.
+/// catalogue goes into the initial ramdisk archive *before* the measurement table is computed, so
+/// the kernel's trust root vouches for the catalogue and the catalogue vouches for the package. A
+/// package fetched over plain HTTP is then checked against a digest that never crossed the network.
 ///
 /// It also means every archive build runs the producer end to end, which is the gate
 /// notes/packages.md's BUGS said nothing ran.
@@ -363,7 +363,7 @@ fn resolve(root: &std::path::Path, architecture: &str, source: &Source) -> Resul
                 Ok(path)
             } else {
                 Err(format!(
-                    "{} is not built; build it first (cargo xtask initrd-{})",
+                    "{} is not built; build it first (cargo xtask initial-ramdisk-{})",
                     relative(root, &path),
                     if architecture == "aarch64" {
                         "aarch64"

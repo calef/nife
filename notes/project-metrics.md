@@ -37,14 +37,6 @@ not a caption, it is a register entry.
 
 - 2026W41: risk 4 went green on 2026-10-05 UTC (calef); milestones 761 and 766 cut the null syscall's growth to four tasks from 48 to 10 ticks.
 
-## Rust file size
-
-![Share of Rust lines in files over 2,000](project-metrics/file-size.svg)
-
-<!-- file-size: script/metrics writes this -->
-**File size:** 0 Rust files over 2,000 lines, holding 0.0% of all Rust lines; largest crates/pci/src/lib.rs (1,785); 95th percentile 1,194.
-<!-- /file-size -->
-
 ## The prose budget
 
 ![Words over the cap](project-metrics/prose-budget.svg)
@@ -278,6 +270,14 @@ code: unharnessed code is outside it ([what each ratio is of](denominators.md#th
 
 Open while what an item names is not done; the direction is down (`script/roadmap --coe-actions`).
 Each week is read from its own commit, so 2026W39 is the first correction, already in this form.
+
+## Rust file size
+
+![Share of Rust lines in files over 2,000](project-metrics/file-size.svg)
+
+<!-- file-size: script/metrics writes this -->
+**File size:** 0 Rust files over 2,000 lines, holding 0.0% of all Rust lines; largest crates/pci/src/lib.rs (1,785); 95th percentile 1,194.
+<!-- /file-size -->
 
 ## How it stays current
 

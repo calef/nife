@@ -343,4 +343,34 @@ mod tests {
         assert_eq!(command(33, 0, false), command(1, 0, false));
         assert_eq!(command(0, 0x3f, false) & (1 << PA_SHIFT), 0);
     }
+
+    /// A restart asked of a PHY already negotiating (both bits read set) leaves both set rather
+    /// than toggling them off.
+    #[test]
+    fn restarting_a_negotiation_already_running_keeps_it_running() {
+        let mut phy = Latched {
+            regs: [0; 32],
+            link_now: false,
+            dropped_since_read: false,
+        };
+        phy.regs[BMCR as usize] = 0x1300;
+        restart_autonegotiation(&mut phy, 0).unwrap();
+        assert_eq!(phy.regs[BMCR as usize], 0x1300);
+    }
+
+    /// Clause 22's bits as IEEE 802.3 numbers them (22.2.4.1 and 22.2.4.2), written out: the
+    /// simulated PHY reads the same names, so only a literal tells a misplaced bit from a right one.
+    #[test]
+    fn the_clause_22_bits_are_the_standards() {
+        assert_eq!(
+            [
+                BMCR_ANRESTART,
+                BMCR_ANENABLE,
+                BMCR_RESET,
+                BMSR_LINK,
+                BMSR_ANEG_COMPLETE
+            ],
+            [0x0200, 0x1000, 0x8000, 0x0004, 0x0020]
+        );
+    }
 }

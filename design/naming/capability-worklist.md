@@ -99,12 +99,15 @@ names quote it.
 | `SYS_CAP_DELETE` | `SYS_CAPABILITY_DELETE` |
 | `CapSlot` | `CapabilitySlot` |
 | `SEND_CAP`, `RECEIVE_CAP`, `NO_CAP`, `CAP_INSERT` | `SEND_CAPABILITY`, `RECEIVE_CAPABILITY`, `NO_CAPABILITY`, `CAPABILITY_INSERT` |
-| `cap_delete`, `send_cap`, `receive_cap`, `receive_cap_badged`, `receive_cap_bound`, `try_receive_cap` (`crates/user_mode_runtime`) | `capability_delete`, `send_capability`, `receive_capability` and so on |
-| `tcb_cap_insert` | `thread_control_block_capability_insert`, the kernel's spelling of `tcb` |
+| `cap_delete`, `receive_cap`, `receive_cap_badged`, `receive_cap_bound`, `try_receive_cap` (`crates/user_mode_runtime`) | `capability_delete`, `receive_capability` and so on |
 | `Cap<O>` (`crates/capability`), `type Cap` (`kernel/src/cap.rs`) | `Capability<O>`, `Capability` |
 
 No method number, constant value or wire layout changes. These names cross every program and the
 kernel at once, so they go in one batch, after the rest has landed.
+
+Two left the batch early. calef ratified `send_capability` (was `send_cap`) and
+`thread_control_block_capability_insert` (was `tcb_cap_insert`) on 2026-10-08 (UTC), #1842, and
+milestone 139 (drive the unsafe count down) applied both on 2026-10-12.
 
 ## Sweep order
 

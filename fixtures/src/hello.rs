@@ -67,7 +67,7 @@
 /// interactive boot's own use of it is in `crates/system_initializer`; what is left here is milestone
 /// 19d's test roles, which build a child out of one budget and hand it two or three capabilities.
 use supervision_protocol::{Child, ChildEndowment, Retention};
-use user_mode_runtime::{exit, irq_wait, map_page_frame, receive, send};
+use user_mode_runtime::{exit, interrupt_wait, map_page_frame, receive, send};
 
 /// Roles, as passed in `x0` by the kernel.
 // Roles 0, 2, 7, 9 to 19 and 42 were the milestone 7-19 capability demonstrations and the granted
@@ -93,20 +93,21 @@ const IRQ_CHILD: u64 = 26;
 // that role is `components/src/progenitor.rs` now (milestone 266), and the parameter stays in the
 // signature because the kernel passes three words to every program it enters.
 //
-// The second word is `initrd_len`, and it was called `dma_phys` until milestone 291, when it was
-// wrong for every role that read it. To a virtio driver the second `START` word is a DMA region's
-// physical address; to an init role it is the initrd archive's length. This binary carried both
-// kinds, so one parameter had two meanings and was named after the one the init roles never used.
-// The seven virtio roles are `block_driver`'s now, so only the archive length is left.
-pub extern "C" fn _start(role: u64, initrd_len: u64, _arg2: u64) -> ! {
+// The second word is `initial_ramdisk_len`, and it was called `dma_phys` until milestone 291
+// (`fixtures/src/hello.rs` was thirty-one programs wearing one name), when it was wrong for every
+// role that read it. To a virtio driver the second `START` word is a DMA region's physical address;
+// to an init role it is the initial ramdisk archive's length. This binary carried both kinds, so
+// one parameter had two meanings and was named after the one the init roles never used. The seven
+// virtio roles are `block_driver`'s now, so only the archive length is left.
+pub extern "C" fn _start(role: u64, initial_ramdisk_len: u64, _arg2: u64) -> ! {
     match role {
-        INIT => init(initrd_len),
-        INIT_DEV => init_dev(initrd_len),
-        INIT_CONSOLE => init_console(initrd_len),
-        INIT_IRQ => init_irq(initrd_len),
+        INIT => init(initial_ramdisk_len),
+        INIT_DEV => init_dev(initial_ramdisk_len),
+        INIT_CONSOLE => init_console(initial_ramdisk_len),
+        INIT_IRQ => init_irq(initial_ramdisk_len),
         IRQ_CHILD => irq_child(),
-        INIT_LEAST_AUTHORITY_DEMO => init_least_authority_demo(initrd_len),
-        INIT_COREMARK => init_coremark(initrd_len),
+        INIT_LEAST_AUTHORITY_DEMO => init_least_authority_demo(initial_ramdisk_len),
+        INIT_COREMARK => init_coremark(initial_ramdisk_len),
         CHILD => child(),
         DEV_CHILD => dev_child(),
         // **A role this binary does not have is a fault, not a default.** The arm here was
@@ -118,17 +119,18 @@ pub extern "C" fn _start(role: u64, initrd_len: u64, _arg2: u64) -> ! {
     }
 }
 
-/// The bytes of the program named `name` in the initrd (milestone 19f). The initrd is a nifefs
-/// archive the kernel maps read-only at [`user_mode_runtime::initrd::INITRD_VA`]; init indexes it by name
-/// rather than treating the whole blob as a single ELF. `initrd_len` (the archive length) arrives
-/// in `x1` at entry. Returns `None` if the archive will not parse or holds no such program.
+/// The bytes of the program named `name` in the initial ramdisk (milestone 19f). The initial
+/// ramdisk is a nifefs archive the kernel maps read-only at
+/// [`user_mode_runtime::initial_ramdisk::INITIAL_RAMDISK_VA`]; init indexes it by name rather than
+/// treating the whole blob as a single ELF. `initial_ramdisk_len` (the archive length) arrives in
+/// `x1` at entry. Returns `None` if the archive will not parse or holds no such program.
 ///
 /// Through 19f.1 every program was a role of *this* binary, so callers looked up the one entry the
 /// kernel had loaded and re-entered it at a different role; 19f.2 added distinct entries a caller
 /// can name directly (`"least_authority_demo"` and so on).
-fn program(initrd_len: u64, name: &str) -> Option<&'static [u8]> {
-    // SAFETY: forwarded from user_mode_runtime::initrd::initrd_bytes's own contract.
-    let archive = unsafe { user_mode_runtime::initrd::initrd_bytes(initrd_len) };
+fn program(initial_ramdisk_len: u64, name: &str) -> Option<&'static [u8]> {
+    // SAFETY: forwarded from user_mode_runtime::initial_ramdisk::bytes's own contract.
+    let archive = unsafe { user_mode_runtime::initial_ramdisk::bytes(initial_ramdisk_len) };
     nifefs::Fs::parse(archive).ok()?.read(name)
 }
 
@@ -142,10 +144,10 @@ fn program(initrd_len: u64, name: &str) -> Option<&'static [u8]> {
 /// (there hello also carried the boot role) while the other two boards packed it as `hello`. That
 /// asymmetry cost a real bug before it was understood: a hardcoded `"init"` was right on aarch64
 /// and silently wrong on RISC-V, so this program happily built a child out of `builder`'s ELF and
-/// started it at a role `builder` does not have; the child reached for an initrd mapping it did not
-/// own, faulted, was killed, and the test waiting on its report blocked until the watchdog fired.
-/// Nothing said "wrong program"; it just never answered. One progenitor retired the alias, and the
-/// three arms with it.
+/// started it at a role `builder` does not have; the child reached for an initial ramdisk mapping
+/// it did not own, faulted, was killed, and the test waiting on its report blocked until the
+/// watchdog fired. Nothing said "wrong program"; it just never answered. One progenitor retired the
+/// alias, and the three arms with it.
 const ROLES_ENTRY: &str = "hello";
 
 /// The init role that builds a device-driver child (milestone 19d.2); matches kernel test wiring.
@@ -169,8 +171,9 @@ const CHILD_WORD: u64 = 0xC0FFEE;
 /// and starts a child, with the loader in userspace rather than in the kernel. It is **not** the
 /// first process; since milestone 266 that is `progenitor`, and this role's name has not followed
 /// it (the constants below are unratified, and a rename of them is an architect's). init holds a
-/// building untyped (slot 0) and a report endpoint (slot 1, `WRITE|GRANT`); the initrd is mapped
-/// read-only at [`user_mode_runtime::initrd::INITRD_VA`], and its length arrives in `x1`.
+/// building untyped (slot 0) and a report endpoint (slot 1, `WRITE|GRANT`); the initial ramdisk is
+/// mapped read-only at [`user_mode_runtime::initial_ramdisk::INITIAL_RAMDISK_VA`], and its length
+/// arrives in `x1`.
 ///
 /// It parses that ELF (the `elf` crate, linked into userspace) and loads it as a **child**: a
 /// second instance of this same program, entered at role [`CHILD`], built entirely by init out
@@ -178,8 +181,8 @@ const CHILD_WORD: u64 = 0xC0FFEE;
 /// retyped frames and map them in, retype a TCB, endow it, configure, start). The child reports
 /// a word home; receiving it proves init parsed a real ELF and built a running process, with the
 /// kernel never touching the child's bytes. See kernel/src/user/entry.rs `spawn_hello`.
-fn init(initrd_len: u64) -> ! {
-    init_build(initrd_len, false)
+fn init(initial_ramdisk_len: u64) -> ! {
+    init_build(initial_ramdisk_len, false)
 }
 
 /// **init delegates an interrupt to a driver it builds, milestone 19d.2b.** The third and last
@@ -188,12 +191,12 @@ fn init(initrd_len: u64) -> ! {
 /// that Irq cap, then starts the child. The child blocks in the interrupt's `WAIT` until the
 /// interrupt fires, then reports. Receiving the report proves init can build an interrupt-driven
 /// driver -- the mechanism the input and virtio drivers need for their completions.
-fn init_irq(initrd_len: u64) -> ! {
+fn init_irq(initial_ramdisk_len: u64) -> ! {
     const MEMORY_REGION: u64 = 0;
     const REPORT: u64 = 1;
     const TEST_IRQ: u64 = 3; // the Irq cap the kernel granted this program (spawn_hello)
 
-    let Some(init_bytes) = program(initrd_len, ROLES_ENTRY) else {
+    let Some(init_bytes) = program(initial_ramdisk_len, ROLES_ENTRY) else {
         fail_report(REPORT)
     };
     let Ok(elf) = elf::Elf::parse(init_bytes) else {
@@ -219,13 +222,13 @@ fn init_irq(initrd_len: u64) -> ! {
 /// (the second `START` argument, new in 19e). The `least_authority_demo` squares it and reports home. Receiving
 /// `WORKER_INPUT * WORKER_INPUT` proves the argument crossed the `START` boundary intact: the
 /// mechanism the interactive `run <n>` command and, later, real spawned services stand on.
-fn init_least_authority_demo(initrd_len: u64) -> ! {
+fn init_least_authority_demo(initial_ramdisk_len: u64) -> ! {
     const MEMORY_REGION: u64 = 0;
     const REPORT: u64 = 1;
 
     // The least_authority_demo is its own binary now (19f.2), loaded from the archive by name, not a role of this
     // one. init parses it exactly as it parses any program it did not write.
-    let Some(demo_bytes) = program(initrd_len, "least_authority_demo") else {
+    let Some(demo_bytes) = program(initial_ramdisk_len, "least_authority_demo") else {
         fail_report(REPORT)
     };
     let Ok(elf) = elf::Elf::parse(demo_bytes) else {
@@ -249,11 +252,11 @@ fn init_least_authority_demo(initrd_len: u64) -> ! {
 /// (a CoreMark-derived run) rather than a toy square. init grants it the report endpoint (slot 0)
 /// and starts it; the workload runs a fixed iteration count and SENDs the run's CRC home. Receiving
 /// `coremark::PINNED_CRC_64` proves a real compute program ran correctly against the native ABI.
-fn init_coremark(initrd_len: u64) -> ! {
+fn init_coremark(initial_ramdisk_len: u64) -> ! {
     const MEMORY_REGION: u64 = 0;
     const REPORT: u64 = 1;
 
-    let Some(bytes) = program(initrd_len, "coremark") else {
+    let Some(bytes) = program(initial_ramdisk_len, "coremark") else {
         fail_report(REPORT)
     };
     let Ok(elf) = elf::Elf::parse(bytes) else {
@@ -277,7 +280,7 @@ fn irq_child() -> ! {
     const IRQ: u64 = 1;
     const IRQ_WORD: u64 = 0x1590; // "IRQ 0" ish; any fixed value the test asserts
 
-    let _ = irq_wait(IRQ); // blocks until the interrupt the kernel routed for this cap fires
+    let _ = interrupt_wait(IRQ); // blocks until the interrupt the kernel routed for this cap fires
     send(REPORT, IRQ_WORD, 0, 0);
     exit();
 }
@@ -292,7 +295,7 @@ fn irq_child() -> ! {
 /// shared page, sends the length, the server prints it to the real UART and acks, and init reports
 /// the acked length home. The report proves the whole userspace-built console works: a driver init
 /// constructed, wired to a channel init created, driving hardware init delegated.
-fn init_console(initrd_len: u64) -> ! {
+fn init_console(initial_ramdisk_len: u64) -> ! {
     const MEMORY_REGION: u64 = 0;
     const REPORT: u64 = 1;
     const UART_DEV: u64 = 2;
@@ -301,7 +304,7 @@ fn init_console(initrd_len: u64) -> ! {
 
     // The console server is its own binary now (19f.3): init loads "console" by name and builds it,
     // rather than entering hello at a console role.
-    let Some(con_bytes) = program(initrd_len, "console") else {
+    let Some(con_bytes) = program(initial_ramdisk_len, "console") else {
         send(REPORT, 0, 0, 0);
         exit();
     };
@@ -360,17 +363,17 @@ fn fail_report(report: u64) -> ! {
 
 /// A variant of init that builds the **device driver** child (19d.2): same loader, but it hands
 /// the child the UART device capability it holds (slot 2). Entered at role [`INIT_DEV`].
-fn init_dev(initrd_len: u64) -> ! {
-    init_build(initrd_len, true)
+fn init_dev(initial_ramdisk_len: u64) -> ! {
+    init_build(initial_ramdisk_len, true)
 }
 
-fn init_build(initrd_len: u64, device: bool) -> ! {
+fn init_build(initial_ramdisk_len: u64, device: bool) -> ! {
     const MEMORY_REGION: u64 = 0;
     const REPORT: u64 = 1;
     const UART_DEV: u64 = 2; // the UART device cap the kernel granted this program (spawn_hello)
     const CHILD_UART_VA: u64 = address_space_map::pair_page(0x0070_0000);
 
-    let Some(init_bytes) = program(initrd_len, ROLES_ENTRY) else {
+    let Some(init_bytes) = program(initial_ramdisk_len, ROLES_ENTRY) else {
         send(REPORT, 0, 0, 0);
         exit();
     };

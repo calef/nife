@@ -672,6 +672,61 @@ fn reg_cells_parse_in_both_spellings() {
     assert_eq!(parse_reg(&two), Some((0x1205_0000, 0x1_0000)));
     // A truncated property is not a window.
     assert_eq!(parse_reg(&[0, 0, 0]), None);
+    // Four cells carry a high word in both the address and the size, and it lands above bit 31
+    // rather than being dropped: <0x1 0x12050000 0x2 0x10000>.
+    let high = [1u32, 0x1205_0000, 2, 0x1_0000]
+        .iter()
+        .flat_map(|c| c.to_be_bytes())
+        .collect::<Vec<u8>>();
+    assert_eq!(parse_reg(&high), Some((0x1_1205_0000, 0x2_0001_0000)));
+}
+
+/// **The PLL2 chain's guards and its post-divider**, each on its own. The vendor table's rows all
+/// have postdiv1 at 0 (divide by one), so the field is exercised here with a 1 (divide by two);
+/// and integer mode needs both of dacpd and dsmpd and a nonzero fbdiv, not any one of them.
+#[test]
+fn the_pll2_chain_needs_both_mode_bits_and_honors_its_post_divider() {
+    let integer = IcClkWords {
+        bus_root: 1 << 24,
+        axi_cfg0: 1,
+        stg_axiahb: 1,
+        apb_bus_func: 1,
+        pll2_dacpd_dsmpd_fbdiv: (1 << 15) | (1 << 16) | (768 << 17),
+        pll2_postdiv1: 1 << 28,
+        pll2_prediv: 15,
+    };
+    assert_eq!(i2c5_ic_clk(&integer), 1_228_800_000 / 2);
+    // dacpd alone is fractional mode, which is the vendor's default rate.
+    let dacpd_only = IcClkWords {
+        pll2_dacpd_dsmpd_fbdiv: (1 << 15) | (768 << 17),
+        ..integer
+    };
+    assert_eq!(i2c5_ic_clk(&dacpd_only), PLL2_DEFAULT_HZ);
+    // Integer mode with fbdiv 0 would be a zero rate; it is the default instead.
+    let no_fbdiv = IcClkWords {
+        pll2_dacpd_dsmpd_fbdiv: (1 << 15) | (1 << 16),
+        ..integer
+    };
+    assert_eq!(i2c5_ic_clk(&no_fbdiv), PLL2_DEFAULT_HZ);
+}
+
+/// `every_reset_released` compares the two counts, so a plan with one reset that read back still
+/// asserted is not released, and a plan with no reset step is (vacuously) released.
+#[test]
+fn every_reset_released_counts_the_released_against_the_planned() {
+    assert!(Report::default().every_reset_released());
+    let one_of_two = Report {
+        resets: 2,
+        resets_released: 1,
+        ..Report::default()
+    };
+    assert!(!one_of_two.every_reset_released());
+    let both = Report {
+        resets: 2,
+        resets_released: 2,
+        ..Report::default()
+    };
+    assert!(both.every_reset_released());
 }
 
 // The SD/MMC bring-up plans (milestone 53 (the board's own peripherals: network and storage on

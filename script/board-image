@@ -54,7 +54,8 @@
 #
 # BUGS
 #
-# - **The kernel is release and the userspace archive is debug.** `cargo xtask initrd-riscv` packs
+# - **The kernel is release and the userspace archive is debug.** `cargo xtask
+# initial-ramdisk-riscv` packs
 #   target/<target>/debug/ because nothing on this path sets xtask's release flag, so every board
 #   payload, and every job-mix and soak number taken from one, runs debug programs under a release
 #   kernel. On radon (2026-10-05) the syscall stub alone was 3 to 8 ticks of a 110-tick null-syscall
@@ -244,9 +245,9 @@ if [ "$TH1520" = yes ]; then IMG="$OUT/nife-th1520.img"; fi
 # 2026-08-15 the VisionFive 2 refused the pair at the bench (MEASURED BOOT REFUSED, boot 12): the
 # gate working, aimed at our own build script. QEMU never hit it because xtask orders these
 # correctly; this script did not.
-cargo xtask initrd-riscv
+cargo xtask initial-ramdisk-riscv
 mkdir -p "$OUT"
-cp target/initrd-riscv.img "$OUT/nife-initrd.img"
+cp target/initial-ramdisk-riscv.img "$OUT/nife-initial-ramdisk.img"
 
 cargo build -p kernel --release --target "$TARGET" --features "$FEATURES"
 
@@ -315,7 +316,7 @@ if [ "$TH1520" = yes ]; then
         };
         ramdisk {
             description = "nife userspace archive, measured by the kernel";
-            data = /incbin/("nife-initrd.img");
+            data = /incbin/("nife-initial-ramdisk.img");
             type = "ramdisk";
             arch = "riscv";
             os = "linux";
@@ -364,12 +365,12 @@ ITS
     echo "built, for the TH1520 (Scaleway EM-RV1):"
     echo "  features: $FEATURES$E3"
     echo "  $IMG  ($SIZE bytes, Image header verified)"
-    echo "  $OUT/nife-initrd.img  (the userspace archive this kernel measures; one pair with it)"
+    echo "  $OUT/nife-initial-ramdisk.img  (the userspace archive this kernel measures; one pair with it)"
     echo "  $ITS"
     echo "  $ENV"
     echo
     echo "Copy all four to the RV1 and build boot.itb there (milestone 89's block is the runbook):"
-    echo "  scp $IMG $OUT/nife-initrd.img $ITS $ENV <user>@<rv1-ip>:nife/"
+    echo "  scp $IMG $OUT/nife-initial-ramdisk.img $ITS $ENV <user>@<rv1-ip>:nife/"
     exit 0
 fi
 
@@ -393,12 +394,12 @@ else
 fi
 
 SIZE="$(wc -c < "$IMG" | tr -d ' ')"
-ARCHIVE_SIZE="$(wc -c < "$OUT/nife-initrd.img" | tr -d ' ')"
+ARCHIVE_SIZE="$(wc -c < "$OUT/nife-initial-ramdisk.img" | tr -d ' ')"
 echo
 echo "built:"
 echo "  features: $FEATURES$E3"
 echo "  $IMG  ($SIZE bytes, Image header verified)"
-echo "  $OUT/nife-initrd.img  ($ARCHIVE_SIZE bytes, the userspace archive this kernel measures)"
+echo "  $OUT/nife-initial-ramdisk.img  ($ARCHIVE_SIZE bytes, the userspace archive this kernel measures)"
 if [ "$TFTP" = yes ]; then
     echo "  boot.scr.uimg fetches over the network first and falls back to the card (257)"
     echo "  serve them:  script/board-netboot"
@@ -432,12 +433,12 @@ if [ -n "$CARD" ]; then
     fi
 
     cp "$IMG" "$CARD/nife-vf2.img"
-    cp "$OUT/nife-initrd.img" "$CARD/nife-initrd.img"
+    cp "$OUT/nife-initial-ramdisk.img" "$CARD/nife-initial-ramdisk.img"
     cp "$OUT/boot.scr.uimg" "$CARD/boot.scr.uimg"
     sync
 
     echo "copied onto $CARD, as one set:"
-    echo "  nife-vf2.img, nife-initrd.img, boot.scr.uimg"
+    echo "  nife-vf2.img, nife-initial-ramdisk.img, boot.scr.uimg"
     echo
     # And again against the card itself (milestone 223), which is a different claim from the one
     # above: this reads what actually landed, so a copy that ran out of space or wrote onto a card
@@ -478,7 +479,7 @@ If the board reaches the `StarFive #` prompt instead, the script did not run, an
 commands typed by hand are still the fallback (this is what boot.scr.uimg contains):
 
   StarFive # load mmc 1:1 ${kernel_addr_r} /nife-vf2.img
-  StarFive # load mmc 1:1 0x90000000 /nife-initrd.img
+  StarFive # load mmc 1:1 0x90000000 /nife-initial-ramdisk.img
   StarFive # setenv nife_archive_size ${filesize}
   StarFive # fdt addr ${fdtcontroladdr}
   StarFive # fdt move ${fdtcontroladdr} 0x86000000

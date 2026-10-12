@@ -216,8 +216,8 @@ impl<'a> Registry<'a> {
     /// The point of it being computable at registration: reading the printed plan tells you the
     /// complete set of programs this process will ever start, and a Kani-free host test can hold
     /// that against the document. It is what makes the honest caveat in
-    /// `components/src/timetable.rs`'s `BUGS` (the program is handed the whole initrd archive, which is
-    /// wider than its plan) a *stated* residual rather than an unbounded one.
+    /// `components/src/timetable.rs`'s `BUGS` (the program is handed the whole initial ramdisk
+    /// archive, which is wider than its plan) a *stated* residual rather than an unbounded one.
     pub fn programs(&self) -> u64 {
         let mut set = 0u64;
         for r in self.rows() {

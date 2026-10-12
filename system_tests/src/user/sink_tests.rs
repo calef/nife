@@ -64,7 +64,7 @@ fn spawn_writer(
 ///
 /// The answer endpoint is carved from `endpoints`, a region the caller owns and reclaims.
 fn spawn_wc(source: RendezvousId, endpoints: u64) -> RendezvousId {
-    let image = program("wc").expect("no wc program in the initrd archive");
+    let image = program("wc").expect("no wc program in the initial ramdisk");
     let out = crate::sched::create_rendezvous_from(endpoints).expect("no wc answer endpoint");
     crate::sched::spawn(move || {
         run(
@@ -127,10 +127,10 @@ fn one_reader_two_sources_and_the_same_answer() {
     if fs_service::fs_server_image().is_none() {
         crate::testing::skip!(fs_service::NO_FS_SERVER);
     }
-    let writer_image =
-        program("sink_transcript_writer").expect("no sink_transcript_writer in the initrd archive");
-    let file_sink_image = program("file_sink").expect("no file_sink in the initrd archive");
-    let file_source_image = program("file_source").expect("no file_source in the initrd archive");
+    let writer_image = program("sink_transcript_writer")
+        .expect("no sink_transcript_writer in the initial ramdisk");
+    let file_sink_image = program("file_sink").expect("no file_sink in the initial ramdisk");
+    let file_source_image = program("file_source").expect("no file_source in the initial ramdisk");
     // **The block server, whichever binary carries it here.** This named `"init"` outright, which
     // was the aarch64 convention: there `init` *was* the hello binary and hello carried the role. On
     // both other architectures `init` was the portable `builder` demo, which has no such role, so
@@ -260,11 +260,11 @@ fn a_program_cannot_tell_what_its_output_slot_holds() {
         crate::testing::skip!(std_service::NO_STD_EXERCISER);
     }
     let std_exerciser =
-        program("std_exerciser").expect("no std_exerciser program in the initrd archive");
-    let clock = program("clock").expect("no clock program in the initrd archive");
-    let entropy = program("entropy").expect("no entropy program in the initrd archive");
-    let file_sink_image = program("file_sink").expect("no file_sink in the initrd archive");
-    let file_source_image = program("file_source").expect("no file_source in the initrd archive");
+        program("std_exerciser").expect("no std_exerciser program in the initial ramdisk");
+    let clock = program("clock").expect("no clock program in the initial ramdisk");
+    let entropy = program("entropy").expect("no entropy program in the initial ramdisk");
+    let file_sink_image = program("file_sink").expect("no file_sink in the initial ramdisk");
+    let file_source_image = program("file_source").expect("no file_source in the initial ramdisk");
     let Some(redoxfs_server) = program("redoxfs_server") else {
         crate::testing::skip!("no redoxfs_server program in this archive");
     };
@@ -371,8 +371,8 @@ fn a_program_cannot_tell_what_its_output_slot_holds() {
 /// never given a console.
 #[test_case]
 fn a_destroyed_sink_ends_the_writer_and_an_absent_one_does_not() {
-    let image =
-        program("sink_transcript_writer").expect("no sink_transcript_writer in the initrd archive");
+    let image = program("sink_transcript_writer")
+        .expect("no sink_transcript_writer in the initial ramdisk");
 
     // Four pages: the live sink and the three writers' reports.
     let endpoints = crate::memory_region::create(4).expect("no endpoint region");
@@ -459,9 +459,9 @@ fn a_destroyed_sink_ends_the_writer_and_an_absent_one_does_not() {
 #[test_case]
 fn the_terminal_is_a_sink_like_any_other_and_the_writer_cannot_tell() {
     let adapter = program("terminal_sink_caretaker")
-        .expect("no terminal_sink_caretaker program in the initrd");
-    let writer =
-        program("sink_transcript_writer").expect("no sink_transcript_writer in the initrd archive");
+        .expect("no terminal_sink_caretaker program in the initial ramdisk");
+    let writer = program("sink_transcript_writer")
+        .expect("no sink_transcript_writer in the initial ramdisk");
 
     // The adapter serves `sink_ep` in a loop that never ends and ignores a failed receive, so its
     // endpoints go back only once it has been killed: a `Holding` does both, in that order.

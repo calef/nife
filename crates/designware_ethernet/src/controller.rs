@@ -518,4 +518,237 @@ mod tests {
         nic.wedge_transmit_flush();
         assert_eq!(stop(&mut nic), Err(Error::FlushTimeout));
     }
+    /// **A register file left by whoever ran last**: every register reads `fill` until written,
+    /// and every write is logged in order. Nothing self-clears. Zero and all-ones together are the
+    /// two states a read-modify-write must be right from: zero shows every bit that is set, all
+    /// ones every bit that is cleared, and a sequence that only works from the reset value fails
+    /// one of them.
+    struct Seeded {
+        fill: u32,
+        regs: std::collections::BTreeMap<u32, u32>,
+        writes: std::vec::Vec<(u32, u32)>,
+    }
+
+    impl Seeded {
+        fn new(fill: u32) -> Seeded {
+            Seeded {
+                fill,
+                regs: std::collections::BTreeMap::new(),
+                writes: std::vec::Vec::new(),
+            }
+        }
+        fn reg(&self, off: u32) -> u32 {
+            self.regs.get(&off).copied().unwrap_or(self.fill)
+        }
+    }
+
+    impl Hw for Seeded {
+        fn read(&mut self, off: u32) -> u32 {
+            self.reg(off)
+        }
+        fn write(&mut self, off: u32, v: u32) {
+            self.writes.push((off, v));
+            self.regs.insert(off, v);
+        }
+        fn delay_us(&mut self, _us: u64) {}
+    }
+
+    /// 40-bit addressing and 2 KiB FIFOs, the simulated controller's identity.
+    const FORTY_BIT: Identity = Identity {
+        version: 0x1052,
+        features: [0, 1 << 14 | 4 << 6 | 4, 0, 0],
+    };
+
+    /// A bus unlike radon's in every field, with values wider than their fields, so each field's
+    /// mask and shift is seen: `PBLx8` on, store and forward, one burst length, and 4 KiB FIFOs
+    /// (big enough for flow control) at 32 bits.
+    const ODD: Bus = Bus {
+        fixed_burst: false,
+        pbl_x8: true,
+        tx_pbl: 0x48,
+        rx_pbl: 0x41,
+        threshold_mode: false,
+        burst_lengths: regs::DMA_SYSBUS_MODE_BLEN_32,
+        read_outstanding: 0x13,
+        write_outstanding: 0x25,
+    };
+    const THIRTY_TWO_BIT: Identity = Identity {
+        version: 0x1052,
+        features: [0, 5 << 6 | 5, 0, 0],
+    };
+
+    fn configured(fill: u32, id: &Identity, bus: &Bus, region: u64) -> Seeded {
+        let mut hw = Seeded::new(fill);
+        configure(&mut hw, id, bus, region, MAC).unwrap();
+        hw
+    }
+
+    /// **Every word `configure` writes, from both starting states, for radon's bus above 4 GiB.**
+    /// The values are worked from the header's fields by hand: the bus mode is fixed burst,
+    /// enhanced addressing, both outstanding limits 15 and the four burst lengths; channel 0
+    /// carries 16-beat bursts, operate-on-second-frame, and a 2048-byte buffer in bits 14:1;
+    /// the queues are in threshold mode at 2 KiB, size field 7; transmit flow control pauses for
+    /// `0xffff` quanta.
+    #[test]
+    fn configure_writes_each_field_and_keeps_every_other_bit() {
+        let region = 0x1_4800_0000;
+        let zero = configured(0, &FORTY_BIT, &BUS, region);
+        let ones = configured(u32::MAX, &FORTY_BIT, &BUS, region);
+        for (reg, from_zero, from_ones) in [
+            (regs::DMA_SYSBUS_MODE, 0x0f0f_08f1, 0xffff_ffff),
+            (regs::CHAN_CONTROL, 0, 0xfffe_ffff),
+            (regs::CHAN_TX_CONTROL, 0x0010_0010, 0xffd0_ffff),
+            (regs::CHAN_RX_CONTROL, 0x0010_1000, 0xffd0_9001),
+            (regs::MTL_RXQ0_OP_MODE, 0x0070_0018, 0xc07f_ffdf),
+            (regs::MTL_TXQ0_OP_MODE, 0x0007_0078, 0xfe07_fff9),
+            (regs::MAC_Q0_TX_FLOW_CTRL, 0xffff_0001, 0xffff_ffff),
+            (regs::MAC_RX_FLOW_CTRL, 1, 0xffff_ffff),
+        ] {
+            assert_eq!(zero.reg(reg), from_zero, "{reg:#x} from zero");
+            assert_eq!(ones.reg(reg), from_ones, "{reg:#x} from all ones");
+        }
+        for hw in [&zero, &ones] {
+            assert_eq!(hw.reg(regs::CHAN_TX_BASE_HI), 1);
+            assert_eq!(hw.reg(regs::CHAN_TX_BASE), 0x4800_1000);
+            assert_eq!(hw.reg(regs::CHAN_RX_BASE_HI), 1);
+            assert_eq!(hw.reg(regs::CHAN_RX_BASE), 0x4800_0000);
+        }
+    }
+
+    /// The same for a bus unlike radon's at 32 bits: no enhanced addressing, each field masked to
+    /// its width (`0x13` is 3, `0x48` is 8), `PBLx8` set, store and forward, and the flow control
+    /// thresholds a 4 KiB receive FIFO gets.
+    #[test]
+    fn configure_masks_each_bus_field_to_its_width() {
+        let zero = configured(0, &THIRTY_TWO_BIT, &ODD, PHYS);
+        let ones = configured(u32::MAX, &THIRTY_TWO_BIT, &ODD, PHYS);
+        for (reg, from_zero, from_ones) in [
+            (regs::DMA_SYSBUS_MODE, 0x0503_0010, 0xf5f3_ffff),
+            (regs::CHAN_CONTROL, 0x0001_0000, 0xffff_ffff),
+            (regs::CHAN_TX_CONTROL, 0x0008_0010, 0xffc8_ffff),
+            (regs::CHAN_RX_CONTROL, 0x0001_1000, 0xffc1_9001),
+            (regs::MTL_RXQ0_OP_MODE, 0x00f0_c1a0, 0xc0f0_c1ff),
+            (regs::MTL_TXQ0_OP_MODE, 0x000f_000a, 0xfe0f_fffb),
+        ] {
+            assert_eq!(zero.reg(reg), from_zero, "{reg:#x} from zero");
+            assert_eq!(ones.reg(reg), from_ones, "{reg:#x} from all ones");
+        }
+    }
+
+    /// Both queue modes in both modes from both starting states, at a FIFO big enough for flow
+    /// control: threshold mode clears store-and-forward and sets the threshold, store-and-forward
+    /// sets its bit, the size is `bytes / 256 - 1`, and receive flow control is enabled with
+    /// RFD 3 and RFA 1 in place of whatever was there.
+    #[test]
+    fn the_queue_modes_from_zero_and_from_all_ones() {
+        let sf = Bus {
+            threshold_mode: false,
+            ..BUS
+        };
+        assert_eq!(rx_queue_mode(0, &BUS, 2048), 0x0070_0018);
+        assert_eq!(rx_queue_mode(u32::MAX, &BUS, 2048), 0xc07f_ffdf);
+        assert_eq!(rx_queue_mode(0, &sf, 8192), 0x01f0_c1a0);
+        assert_eq!(rx_queue_mode(u32::MAX, &sf, 8192), 0xc1f0_c1ff);
+        assert_eq!(tx_queue_mode(0, &BUS, 2048), 0x0007_0078);
+        assert_eq!(tx_queue_mode(u32::MAX, &BUS, 2048), 0xfe07_fff9);
+        assert_eq!(tx_queue_mode(0, &sf, 8192), 0x001f_000a);
+        assert_eq!(tx_queue_mode(u32::MAX, &sf, 8192), 0xfe1f_fffb);
+    }
+
+    /// The MAC word from zero and from all ones: the speed and duplex bits are replaced, every
+    /// bit `mac_conf` sets is set whatever was there, and nothing else moves.
+    #[test]
+    fn the_mac_word_from_zero_and_from_all_ones() {
+        let gig = Link {
+            speed: Speed::Thousand,
+            full_duplex: true,
+        };
+        let ten_half = Link {
+            speed: Speed::Ten,
+            full_duplex: false,
+        };
+        assert_eq!(mac_conf(0, gig, false), 0x0006_2203);
+        assert_eq!(mac_conf(u32::MAX, gig, false), 0xffff_2fff);
+        assert_eq!(mac_conf(u32::MAX, ten_half, true), 0xffff_9fff);
+        assert_eq!(
+            mac_conf(
+                u32::MAX,
+                Link {
+                    speed: Speed::Hundred,
+                    full_duplex: false
+                },
+                false
+            ),
+            0xffff_cfff
+        );
+    }
+
+    /// `start` sets the two start bits and `stop` clears them and the MAC's enables, from either
+    /// starting state, in OpenBSD's order. Nothing here clears the flush bit, so `stop` reports
+    /// the timeout after writing everything it writes.
+    #[test]
+    fn start_and_stop_change_only_their_own_bits() {
+        let gig = Link {
+            speed: Speed::Thousand,
+            full_duplex: true,
+        };
+        for (fill, set, cleared) in [(0, 1, 0), (u32::MAX, u32::MAX, 0xffff_fffe)] {
+            let mut hw = Seeded::new(fill);
+            start(&mut hw, gig, false);
+            assert_eq!(hw.reg(regs::CHAN_RX_CONTROL), set);
+            assert_eq!(hw.reg(regs::CHAN_TX_CONTROL), set);
+            let mut hw = Seeded::new(fill);
+            assert_eq!(stop(&mut hw), Err(Error::FlushTimeout));
+            assert_eq!(
+                hw.writes,
+                [
+                    (regs::MAC_CONF, cleared),
+                    (regs::CHAN_RX_CONTROL, cleared),
+                    (regs::CHAN_TX_CONTROL, cleared),
+                    (regs::MTL_TXQ0_OP_MODE, fill | 1),
+                    (regs::MAC_CONF, cleared & !2),
+                    (regs::CHAN_INTR_ENA, 0),
+                ]
+            );
+        }
+    }
+
+    /// A reset asked for while the bit already reads set (one still running, or a word left that
+    /// way) still writes the bit set rather than toggling it off.
+    #[test]
+    fn a_reset_writes_the_bit_set_whatever_it_read() {
+        let mut hw = Seeded::new(u32::MAX);
+        assert_eq!(soft_reset(&mut hw), Err(Error::ResetTimeout));
+        assert_eq!(hw.writes, [(regs::DMA_MODE, u32::MAX)]);
+    }
+
+    /// The address width's every encoding, and a FIFO field past the largest the databook names
+    /// saturating at 256 KiB rather than shifting bits off the word.
+    #[test]
+    fn every_address_width_encoding_and_a_saturating_fifo() {
+        let width = |bits: u32| {
+            Identity {
+                version: 0,
+                features: [0, bits << 14, 0, 0],
+            }
+            .dma_bits()
+        };
+        assert_eq!([0, 1, 2, 3].map(width), [32, 40, 48, 32]);
+        let fifo = |field: u32| {
+            Identity {
+                version: 0,
+                features: [0, field, 0, 0],
+            }
+            .rx_fifo_bytes()
+        };
+        assert_eq!(fifo(11), 256 * 1024);
+        assert_eq!(fifo(0x1f), 256 * 1024);
+    }
+
+    /// A region that ends exactly at a 4 GiB boundary is in reach: its last byte is below it.
+    #[test]
+    fn a_region_ending_at_4_gib_is_in_reach() {
+        let bytes = layout::BYTES;
+        assert!(region_in_reach(0x1_0000_0000 - bytes, bytes, 32));
+    }
 }

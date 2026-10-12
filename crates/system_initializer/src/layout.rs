@@ -9,8 +9,9 @@
 
 use super::*;
 
-/// Where the kernel maps the initrd archive, read-only. Must match `kernel::user::INITRD_VA`.
-pub(super) const INITRD_VA: u64 = address_space_map::runtime_window(0x2000_0000);
+/// Where the kernel maps the initial ramdisk archive, read-only. Must match
+/// `kernel::user::INITIAL_RAMDISK_VA`.
+pub(super) const INITIAL_RAMDISK_VA: u64 = address_space_map::runtime_window(0x2000_0000);
 
 /// Stack pages every child the progenitor builds gets, mapped down from `supervision_protocol::CHILD_STACK_VA`.
 ///
@@ -73,8 +74,8 @@ pub(super) const SH_BUDGET_PAGES: u64 = spawnproto::SHELL_BUDGET_PAGES;
 /// **Bounded since milestone 604 (provisional).** The loader's cursor used to climb forever, so this
 /// budget was spent one table per 2 MiB of everything ever built, and ran dry after about 200 MiB of
 /// builds past boot (the block has the arithmetic): about seventy-five `ripgrep`-sized spawns, a
-/// little before the cursor would have reached the initrd window. Now the cursor wraps inside
-/// `supervision_protocol::SCRATCH_WINDOW`, whose tables cost at most
+/// little before the cursor would have reached the initial ramdisk window. Now the cursor wraps
+/// inside `supervision_protocol::SCRATCH_WINDOW`, whose tables cost at most
 /// `supervision_protocol::SCRATCH_TABLE_PAGES` (32) however long the machine runs. The assertion
 /// below keeps that half of this budget spoken for; the other half pays for `job_undertaker`, which
 /// is built out of this region (its image, twelve stack pages, its tables, its address space and

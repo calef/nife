@@ -527,13 +527,13 @@ pub fn invoke(
             // the `Rendezvous` fastpath uses, but the caller here is a driver waiting on a device
             // interrupt, not the IPC round trip this gate bounds, so it moves out of `invoke`'s
             // own bytes with the rest. See `memory_region_map`'s doc comment for the full reasoning.
-            abi::irq::WAIT => {
+            abi::interrupt::WAIT => {
                 if !cap.rights.allows(Rights::READ) {
                     return Err(Error::NotPermitted);
                 }
                 irq_wait(frame, intid)
             }
-            abi::irq::ACK => {
+            abi::interrupt::ACK => {
                 if !cap.rights.allows(Rights::READ) {
                     return Err(Error::NotPermitted);
                 }

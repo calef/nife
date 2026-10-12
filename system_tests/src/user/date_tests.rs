@@ -27,7 +27,7 @@ fn spawn_date(
     offset_minutes: i64,
     provenance: u64,
 ) -> (RendezvousId, u64) {
-    let image = program("date").expect("no date program in the initrd archive");
+    let image = program("date").expect("no date program in the initial ramdisk");
     let region = crate::memory_region::create(1).expect("no region for date's stdout");
     let out = crate::sched::create_rendezvous_from(region).expect("no rendezvous from region");
     crate::sched::spawn(move || match page {
@@ -77,7 +77,7 @@ fn spawn_date(
 /// honest way to reach the sentence §67 was taken for is a `date` that was granted no clock, which
 /// is one of the two real unknown-clock causes rather than a fault injected for the test.
 fn spawn_date_with_diagnostics() -> (RendezvousId, RendezvousId, u64) {
-    let image = program("date").expect("no date program in the initrd archive");
+    let image = program("date").expect("no date program in the initial ramdisk");
     let region = crate::memory_region::create(2).expect("no region for date's two streams");
     let out = crate::sched::create_rendezvous_from(region).expect("no rendezvous from region");
     let diag = crate::sched::create_rendezvous_from(region).expect("no rendezvous from region");
@@ -134,7 +134,7 @@ fn line(out: RendezvousId, buf: &mut [u8; 128]) -> usize {
 /// Start the clock service and take its startup report, so the page has been published to
 /// before anything reads it.
 fn clock() -> clock_service::Wiring {
-    let image = program("clock").expect("no clock program in the initrd archive");
+    let image = program("clock").expect("no clock program in the initial ramdisk");
     let w = clock_service::start(image);
     let _ = crate::sched::ipc_receive(w.report);
     w

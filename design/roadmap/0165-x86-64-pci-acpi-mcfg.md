@@ -161,34 +161,23 @@ real function's MSI-X table is reachable once *firmware* rather than this kernel
 BARs". Under OVMF firmware does place them, and the census says where: outside this kernel's window,
 so `place_bars` moves them and the MSI-X table is reached through the kernel's own address rather
 than firmware's. What is still unproven is the same thing on silicon, and the reason it cannot be
-proven here is the handoff below: the suite does not run under real firmware, only the tour does.
+proven here is the handoff below. When this was written the suite did not run under real firmware,
+only the tour did. Milestone 195 (finish the UEFI boot path) now runs it under OVMF.
 
 ## What is owed
 
-- **The 32-bit MMIO window should come from the machine, not from a constant.** Proposed milestone,
-  unnumbered (numbers are the integrator's). `_CRS` is AML and stays refused, but AML is not the
-  only source: the memory map firmware already hands over names the gaps, and Intel's host bridge
-  reports `TOLUD` in its own configuration space. Its measure is `pci::bar_census`'s second number
-  becoming zero, or the window being one this machine agreed to.
-- **Run the x86_64 suite under real firmware, not only the tour.** Proposed milestone, unnumbered.
-  `cargo xtask uefi-image` stages the boot-tour kernel; the test kernel is a different binary and
-  nothing stages it. Doing so would close two of milestone 215's three xenon-only questions on
-  patagonia rather than at a null modem, because OVMF places BARs and enables interrupt remapping
-  the same way real firmware does.
+- **The 32-bit MMIO window should come from the machine, not from a constant.** Now milestone 256
+  (x86_64 places PCI BARs in a hardcoded window), built 2026-09-04. `_CRS` is AML and stays
+  refused, but AML is not the only source: the memory map firmware already hands over names the
+  gaps, and Intel's host bridge reports `TOLUD` in its own configuration space. Its measure is
+  `pci::bar_census`'s second number becoming zero, or the window being one this machine agreed to.
+- **Run the x86_64 suite under real firmware, not only the tour.** Now milestone 195 (finish the
+  UEFI boot path), built 2026-09-02. `cargo xtask uefi-image` staged the boot-tour kernel; the test
+  kernel is a different binary and nothing staged it. Doing so would close two of milestone 215 (a PCI function's interrupt reaches nothing on x86_64)'s
+  three xenon-only questions on patagonia rather than at a null modem, because OVMF places BARs and
+  enables interrupt remapping the same way real firmware does.
 - VT-d and PCI interrupt routing, which this block owed and no longer does: milestone 161's item
   6 and milestone 215 respectively.
-
-## BUGS
-
-- The Index row still says x86 has no IOMMU driver ("VT-d, unbuilt"). The status paragraph says
-  milestone 161's item 6 has since built it, and so does the Follow-on. The Index row is kept as
-  written because `script/roadmap` parses it (found 2026-10-12, UTC). The appendices
-  [`not-built.md`](0165-x86-64-pci-acpi-mcfg/not-built.md) and
-  [`decision-86.md`](0165-x86-64-pci-acpi-mcfg/decision-86.md) record the same claim as it stood at
-  first landing.
-- "What is owed" still lists two proposed milestones as unnumbered. The Follow-on records them as
-  milestone 195 (finish the UEFI boot path), which shipped the suite under real firmware, and milestone 256 (x86_64 places PCI BARs in a hardcoded window), which takes the BAR
-  window from the machine (found 2026-10-12, UTC).
 
 ## Follow-on
 
@@ -238,9 +227,10 @@ MCFG instead of a device-tree node, and finds a real complication along the way:
 firmware, so nothing has enabled the chipset's ECAM decode, which this milestone does itself
 (measured on QEMU's monitor: the address faults until the host bridge's PCIEXBAR register is
 programmed). Proven under `q35`: real PCI enumeration finds the machine's own host bridge over the
-ACPI-sourced window. Does not, and cannot yet, reach §86's confinement half: x86 has no IOMMU
-driver (VT-d, unbuilt), so a real NVMe-behind-IOMMU data point is still blocked on that, not on
-anything here. Closed 2026-09-02, and the thing that kept it open was not the wiring: the ACPI
+ACPI-sourced window. Does not reach §86's confinement half: x86 had no IOMMU driver when this
+was raised, so a real NVMe-behind-IOMMU data point was gated on VT-d, not on anything here. VT-d
+landed 2026-08-25 as milestone 161's item 6 (the x86_64 kernel port). Closed 2026-09-02, and the
+thing that kept it open was not the wiring: the ACPI
 walk bounded itself at 1 GiB while `boot.s`'s direct map covers 4, and both runners passed `-m
 256M`, so firmware's tables fit and every gate passed. At 2 GiB under OVMF the same kernel found
 no ACPI at all, so no APIC, no timer, no PCI and no VT-d, which was unconditional on any real

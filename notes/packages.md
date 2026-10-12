@@ -112,8 +112,8 @@ What proves the producer, and what running and installing cost, is in
 
 Built 2026-09-24 by the rung 3a consumer lane. Three pieces, each doing one thing:
 
-- The image carries its own package source. Every archive build (`cargo xtask initrd-aarch64`
-  and `initrd-riscv`) runs every recipe under `packages/` for its architecture, writes the package
+- The image carries its own package source. Every archive build (`cargo xtask initial-ramdisk-aarch64`
+  and `initial-ramdisk-riscv`) runs every recipe under `packages/` for its architecture, writes the package
   to `target/packages/`, and packs the catalog lines as the archive entry
   `package_archive::CATALOG` (provisional name), above the measurement table. So the kernel's
   trust root vouches for the catalog, and the catalog vouches for the package. That is §195's

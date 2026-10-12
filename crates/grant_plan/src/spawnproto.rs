@@ -1,10 +1,10 @@
 //! **The spawn protocol: the wire half of the shell-to-progenitor grant expression.**
 //!
 //! When the shell resolves a `run` into an [`Endowment`](crate::Endowment), it does not build the
-//! child itself: the progenitor holds the initrd and is the ELF loader (the parser stays in one place, out of
-//! the shell). So the shell tells the progenitor what to spawn and, crucially, *delegates the capabilities it
-//! grants* over the same endpoint. This module is that contract's word layout, the capability-shell
-//! analogue of `line_editor::proto`.
+//! child itself: the progenitor holds the initial ramdisk and is the ELF loader (the parser stays
+//! in one place, out of the shell). So the shell tells the progenitor what to spawn and, crucially,
+//! *delegates the capabilities it grants* over the same endpoint. This module is that contract's
+//! word layout, the capability-shell analogue of `line_editor::proto`.
 //!
 //! It is a **userspace** protocol, not kernel ABI. The kernel routes these words the way it routes
 //! any IPC (DECISIONS §10, §12, §21); it never reads them. Adding a field is a change here, not to
@@ -925,6 +925,13 @@ pub const SPAWN_OK: u64 = 0;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The reaped message carries the label and the thread id, in that order, and a zero third
+    /// word, so it cannot be read as a delegated capability's.
+    #[test]
+    fn a_reaped_message_is_label_then_thread() {
+        assert_eq!(reaped(6, 9), (6, 9, 0));
+    }
 
     #[test]
     fn request_round_trips() {

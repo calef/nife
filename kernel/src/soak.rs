@@ -190,7 +190,7 @@ pub fn run() -> ! {
     // nobody checked, and using the trust root is what keeps it in the image for `uefi_loader`'s
     // seal and `script/card-check` to find.
     let Some(image) = crate::trust::require_program("soaker") else {
-        println!("soak-test: FAILED: no 'soaker' program in the initrd archive; nothing to run");
+        println!("soak-test: FAILED: no 'soaker' program in the initial ramdisk; nothing to run");
         arch::halt(arch::HaltReason::measurement_boot());
     };
 

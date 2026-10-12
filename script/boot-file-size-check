@@ -116,7 +116,7 @@ fi
 
 efi=target/esp/EFI/BOOT/BOOTX64.EFI
 kernel=target/x86_64-unknown-none/release/kernel.stripped
-archive=target/initrd-x86_64.img
+archive=target/initial-ramdisk-x86_64.img
 for f in "$efi" "$kernel" "$archive"; do
     if [ ! -f "$f" ]; then
         echo "boot-file-size-check: $f is missing; run without --no-build" >&2

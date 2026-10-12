@@ -499,4 +499,71 @@ mod tests {
         apply_speed(&mut phy, 0, &s, Speed::Hundred).unwrap();
         assert_eq!(phy.ext(EXT_RGMII_CONFIG1) & RGMII_CONFIG1_TX_CLK_SEL, 0);
     }
+    /// The extended registers' bits as Linux's `motorcomm.c` names them, written out: the
+    /// simulated PHY reads the same names, so only a literal tells a misplaced bit from a right one.
+    #[test]
+    fn the_extended_register_bits_are_motorcomms() {
+        assert_eq!(
+            [
+                EXT_CLOCK_GATING_RX_CLK_EN,
+                EXT_SLEEP_CONTROL1_SLEEP_SW,
+                CHIP_CONFIG_RXC_DLY_EN,
+                CHIP_CONFIG_LDO_2V5,
+                PAD_DRIVE_RXD_MASK,
+                SYNCE_CFG_EN,
+            ],
+            [0x1000, 0x8000, 0x0100, 0x0010, 0x1030, 0x0040]
+        );
+    }
+
+    #[test]
+    fn each_speed_is_its_megabits() {
+        assert_eq!(
+            [Speed::Ten, Speed::Hundred, Speed::Thousand].map(Speed::mbps),
+            [10, 100, 1000]
+        );
+        assert_eq!(
+            link_from_status(STATUS_LINK | STATUS_RESOLVED | STATUS_DUPLEX),
+            Some(Link {
+                speed: Speed::Ten,
+                full_duplex: true
+            })
+        );
+    }
+
+    /// Each LDO strap, whatever the bits around the field hold.
+    #[test]
+    fn the_ldo_field_alone_names_the_voltage() {
+        assert_eq!(volt_mv(0), 3300);
+        assert_eq!(volt_mv(0xffcf), 3300);
+        assert_eq!(volt_mv(0x0010), 2500);
+        assert_eq!(volt_mv(0x0020), 1800);
+        assert_eq!(volt_mv(0x0030), 1800);
+    }
+
+    /// A delay rounds to the nearest 150 ps step: 1450 ps is nearer 1500 than 1350.
+    #[test]
+    fn a_delay_rounds_to_the_nearest_step() {
+        let s = Settings::from_mainline(1450, 1420, 0, 0, None);
+        assert_eq!((s.rx_delay, s.tx_delay), (10, 9));
+    }
+
+    /// `configure` replaces both delay fields and leaves the rest of the RGMII word, and writes
+    /// the drive codes into a pad word that held nothing, so a stray bit would show.
+    #[test]
+    fn configure_replaces_the_delay_and_drive_fields_and_nothing_else() {
+        let mut phy = Phy::yt8531_at_1v8();
+        write_ext(&mut phy, 0, EXT_RGMII_CONFIG1, 0xffff).unwrap();
+        write_ext(&mut phy, 0, EXT_PAD_DRIVE, 0).unwrap();
+        let s = Settings {
+            rx_data_drive: Drive::Code(7),
+            ..Settings::FALLBACK_GMAC0
+        };
+        let a = configure(&mut phy, 0, &s).unwrap();
+        // 0xffff with bits 13:10 and 3:0 replaced by 0xa each.
+        assert_eq!(a.rgmii_config1, 0xebfa);
+        // Clock drive 6 in bits 15:13; data drive 7 as 0b11 in bits 5:4 and 0b1 in bit 12.
+        assert_eq!(a.pad_drive, 0xd030);
+        assert_eq!(phy.ext(EXT_PAD_DRIVE), 0xd030);
+    }
 }

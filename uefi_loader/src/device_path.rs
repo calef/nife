@@ -168,5 +168,8 @@ mod tests {
         assert_eq!(measure(&[long, end()].concat()), None);
         // The empty path is just an end node.
         assert_eq!(measure(&end()), Some(0));
+        // A node of only its header is the smallest there is, and is walked past.
+        assert_eq!(measure(&path(&[node(0x01, 0x01, &[]), end()])), Some(4));
+        assert!(is_nvme(&path(&[node(0x01, 0x01, &[]), nvme()])));
     }
 }

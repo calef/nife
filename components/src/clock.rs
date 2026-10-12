@@ -3,9 +3,9 @@
 //! The one process that owns the real-time clock's registers and the wall clock's offset. Its
 //! entire authority is four things placed before it ran: the propose endpoint (slot 0, RECEIVE), a
 //! report endpoint (slot 1, WRITE, for whoever wired it), the **clock page** mapped read/write, and
-//! the **RTC's registers** as a device mapping. No initrd, no budget, no network, nothing it could
-//! build anything with. A compromised clock service is a machine that believes the wrong time,
-//! which is exactly as much damage as owning the clock should be worth.
+//! the **RTC's registers** as a device mapping. No initial ramdisk, no budget, no network, nothing
+//! it could build anything with. A compromised clock service is a machine that believes the wrong
+//! time, which is exactly as much damage as owning the clock should be worth.
 //!
 //! # What it does, in order
 //!

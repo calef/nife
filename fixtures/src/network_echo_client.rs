@@ -46,8 +46,8 @@ use socket_protocol::fixture::{ECHO_PEER_IP, ECHO_PEER_PORT};
 use socket_protocol::*;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{
-    call, call_receiving, cap_delete, exit, is_granted, map_page_frame, retype_page_frame, send,
-    send_cap,
+    call, call_receiving, cap_delete, exit, is_granted, map_page_frame, retype_into_page_frame,
+    send, send_capability,
 };
 
 /// The output slot: the sink contract.
@@ -95,7 +95,7 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
 /// Mint a page, open a socket, attach the page, connect, send, receive, close. `Ok` carries the received length; `Err`
 /// names the step that failed, which is all a person at the prompt can act on.
 fn exchange() -> Result<usize, &'static [u8]> {
-    let frame = retype_page_frame(MEMORY_REGION);
+    let frame = retype_into_page_frame(MEMORY_REGION);
     if frame < 0 {
         return Err(b"minting the shared page (was --mem given?)");
     }
@@ -116,7 +116,7 @@ fn exchange() -> Result<usize, &'static [u8]> {
 /// Attach the page to `socket`, connect, send, receive: the length received, or the step that
 /// failed.
 fn converse(socket: u64, frame: u64) -> Result<usize, &'static [u8]> {
-    if send_cap(
+    if send_capability(
         socket,
         frame,
         rights::READ | rights::WRITE,

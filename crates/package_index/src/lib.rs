@@ -530,6 +530,52 @@ mod tests {
         assert_eq!(Location::parse(&long), None);
     }
 
+    /// **Each limit is inclusive.** A port is at most five digits and nothing but digits, so a
+    /// sign or zero padding past five is refused, and a path of exactly [`PATH_MAX`] fits.
+    #[test]
+    fn a_location_at_each_limit_is_read_and_one_past_it_is_not() {
+        assert_eq!(Location::parse("https://h:65535/p").unwrap().port, 65535);
+        assert_eq!(Location::parse("https://h:+80/p"), None);
+        assert_eq!(Location::parse("https://h:000080/p"), None);
+        let path = format!("/{}", "a".repeat(PATH_MAX - 1));
+        let at_limit = format!("https://h{path}");
+        assert_eq!(Location::parse(&at_limit).unwrap().path, path);
+    }
+
+    /// A stem may be [`STEM_LEN`] bytes and no more, and not empty. The longest one still fits
+    /// the one-line catalog `accept` writes for it, so a package is judged rather than a buffer
+    /// overrun.
+    #[test]
+    fn a_stem_of_the_longest_length_is_read_and_judged() {
+        let n = package_archive::NAME_LEN;
+        let stem = format!("{}-{}-{}", "a".repeat(n), "1".repeat(n), "c".repeat(n));
+        assert_eq!(stem.len(), STEM_LEN);
+        let bytes = package("greeting", "0.1.0", b"\x7fELF g");
+        let text = line(&stem, &bytes, "");
+        let index = Index::parse(&text).unwrap();
+        let entry = index.entries().next().unwrap();
+        assert_eq!(entry.stem, stem);
+        assert_eq!(
+            accept(&entry, &bytes).map(|i| i.program),
+            Err(Refusal::NotRequested)
+        );
+
+        let long = format!("a{stem}");
+        assert!(Index::parse(&line(&long, &bytes, "")).is_err());
+        let digest = digest_text(&sha256(b"a"));
+        let empty = format!(" {}\n", core::str::from_utf8(&digest).unwrap());
+        assert!(Index::parse(&empty).is_err());
+    }
+
+    /// The same line twice is one package, not two versions of it.
+    #[test]
+    fn the_same_line_twice_is_one_package() {
+        let one = line("greeting-0.1.0-aarch64", b"a", "https://h/1");
+        let twice = format!("{one}{one}");
+        let index = Index::parse(&twice).unwrap();
+        assert!(index.find("greeting", "aarch64").is_ok());
+    }
+
     /// Q1's safeguard, on address literals and as the check a client runs on resolved addresses.
     #[test]
     fn a_listed_location_never_reaches_a_private_or_link_local_address() {

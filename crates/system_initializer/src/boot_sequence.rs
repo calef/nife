@@ -51,22 +51,24 @@ fn hex_password(bytes: &[u8], out: &mut [u8]) {
 /// **Build the interactive system and become its spawn service.** Never returns: the last thing it
 /// does is park in `RECEIVE` on the shell's spawn channel for the life of the boot.
 ///
-/// `initrd_len` is the archive length the kernel passed at entry; `fs_rights` is the `filesystem_protocol::dir`
-/// rights the file-service endpoint carries, and 0 means this boot attached no disk. `second_dir`
-/// is milestone 154's addition: `Some` hands the shell a second, disjoint directory capability
-/// (see [`SecondDirGrant`] for what this does and does not decide); every real entry point passes
-/// `None` today.
+/// `initial_ramdisk_len` is the archive length the kernel passed at entry; `fs_rights` is the
+/// `filesystem_protocol::dir` rights the file-service endpoint carries, and 0 means this boot
+/// attached no disk. `second_dir` is milestone 154 (a process that holds two directory
+/// capabilities)'s addition: `Some` hands the shell a second, disjoint directory capability (see
+/// [`SecondDirGrant`] for what this does and does not decide); every real entry point passes `None`
+/// today.
 pub fn boot(
     g: &BootEndowment,
-    initrd_len: u64,
+    initial_ramdisk_len: u64,
     fs_rights: u64,
     second_dir: Option<SecondDirGrant>,
 ) -> ! {
     // The archive the kernel mapped read-only; its length arrived at entry.
-    // SAFETY: the kernel mapped `initrd_len` bytes of reserved RAM, read-only, at INITRD_VA. It is
-    // reserved memory that outlives every process, so the borrow is honest for the whole boot.
-    let archive =
-        unsafe { core::slice::from_raw_parts(INITRD_VA as *const u8, initrd_len as usize) };
+    let len = initial_ramdisk_len as usize;
+    // SAFETY: the kernel mapped `initial_ramdisk_len` bytes of reserved RAM, read-only, at
+    // INITIAL_RAMDISK_VA. It is reserved memory that outlives every process, so the borrow is
+    // honest for the whole boot.
+    let archive = unsafe { core::slice::from_raw_parts(INITIAL_RAMDISK_VA as *const u8, len) };
     let Ok(fs) = nifefs::Fs::parse(archive) else {
         fail()
     };
@@ -121,17 +123,18 @@ pub fn boot(
     let ts_elf = measured(&fs, table, "terminal_supervisor");
     let sh_elf = measured(&fs, table, "swish");
     // **The terminal's sink adapter** (milestone 50's last remainder). Optional on purpose: an
-    // initrd built without it still boots, and a program that declares a second stream then finds
-    // an empty slot and says what it has to say in-band. A missing component should cost a feature,
-    // not a prompt. An adapter the table refuses costs exactly the same feature, which is the whole
-    // policy in one line: the progenitor treats what it cannot vouch for as what is not there.
+    // initial ramdisk built without it still boots, and a program that declares a second stream
+    // then finds an empty slot and says what it has to say in-band. A missing component should cost
+    // a feature, not a prompt. An adapter the table refuses costs exactly the same feature, which
+    // is the whole policy in one line: the progenitor treats what it cannot vouch for as what is
+    // not there.
     let sink_elf = measured(&fs, table, "terminal_sink_caretaker").elf;
     // **The entropy service** (DECISIONS §120's 2026-08-26 amendment), optional in exactly the
-    // adapter's own sense: a boot with no `entropy` program in its initrd, or a table that refuses
-    // it, simply never builds the service, and [`g.virtio_rng`](BootEndowment::virtio_rng)'s own
-    // probe finds nothing to build it *from* either way on most boots (real hardware, or a run
-    // with `NIFE_RNG` unset). Neither case is a broken boot, so neither belongs with the required
-    // three below.
+    // adapter's own sense: a boot with no `entropy` program in its initial ramdisk, or a table that
+    // refuses it, simply never builds the service, and
+    // [`g.virtio_rng`](BootEndowment::virtio_rng)'s own probe finds nothing to build it *from*
+    // either way on most boots (real hardware, or a run with `NIFE_RNG` unset). Neither case is a
+    // broken boot, so neither belongs with the required three below.
     let ent_elf = measured(&fs, table, "entropy").elf;
     // **The network stack** (milestone 590 (provisional)), optional in the entropy service's sense
     // and for its reasons: a boot with no NIC, or an archive whose table refuses `net_stack`, comes
@@ -230,7 +233,8 @@ pub fn boot(
     //
     // The refusals are collected in the same pass, because a second pass would hash every program a
     // second time. Only entries the archive **has** count as refusals: `rm` is deliberately not
-    // loadable here, and a program this initrd never packed was never spawnable, so neither is news.
+    // loadable here, and a program this initial ramdisk never packed was never spawnable, so
+    // neither is news.
     let mut progs: [Option<elf::Elf>; grant_plan::PROG_COUNT] = core::array::from_fn(|_| None);
     let mut refused = [""; grant_plan::PROG_COUNT];
     let mut refused_n = 0usize;
@@ -361,7 +365,7 @@ pub fn boot(
         // SAFETY: `invoke` traps to the kernel, which validates the capability and the method
         // before acting; a probe against an empty slot is exactly what that contract is built to
         // answer safely.
-        let magic = unsafe { invoke(g.virtio_rng, abi::virtio::READ_REG, 0, 0, 0) };
+        let magic = unsafe { invoke(g.virtio_rng, abi::virtio::READ_REGISTER, 0, 0, 0) };
         if magic >= 0 {
             // SAFETY: as above.
             if unsafe {
@@ -810,9 +814,7 @@ pub fn boot(
     // anything that could fail to come. Both sources then feed one line discipline, and a person
     // can type on the keyboard or the serial line alike.
     if is_granted(g.usb_keyboard_attach) {
-        must_ok(
-            user_mode_runtime::send_cap(g.usb_keyboard_attach, term_ep, abi::rights::WRITE, 0) >= 0,
-        );
+        must_ok(send_capability(g.usb_keyboard_attach, term_ep, abi::rights::WRITE, 0) >= 0);
         cap_delete(g.usb_keyboard_attach);
     }
 
@@ -1704,10 +1706,10 @@ pub fn boot(
             images_ut,
             clock_page: g.clock_page,
             config_page: g.config_page,
-            // The terminal's sink, if this initrd carried an adapter to serve it. This is what a
-            // declared second stream gets by default (DECISIONS §67): the shell names a file with
-            // `2>` and otherwise the bytes go straight to the screen, through a process that can do
-            // nothing else with them.
+            // The terminal's sink, if this initial ramdisk carried an adapter to serve it. This is
+            // what a declared second stream gets by default (DECISIONS §67 (a program's second
+            // stream is a declaration)): the shell names a file with `2>` and otherwise the bytes
+            // go straight to the screen, through a process that can do nothing else with them.
             term_sink: sink_elf.is_some().then_some(term_sink),
             fs,
             // **The client view of the entropy service, if this boot has one** (milestone 111).

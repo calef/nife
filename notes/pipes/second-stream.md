@@ -181,7 +181,7 @@ about which program it runs on aarch64. Building `2>` found it the hard way: the
 diagnostic endpoint, nobody received it, and the prompt hung on the first `date` with no fault and
 no message.
 
-`kernel/src/main.rs` hands off to `user::initrd()`, which loads the program named `init`, and on
+`kernel/src/main.rs` hands off to `user::initial_ramdisk()`, which loads the program named `init`, and on
 aarch64 that is `fixtures/src/hello.rs`'s `init_boot` role. `components/src/progenitor.rs` is
 riscv64's. Both serve `grant_plan::spawnproto`, and the serving loop was written twice, once in each
 file, about a hundred and forty near-identical lines: the same delegation order, the same slot

@@ -12,7 +12,7 @@ const DONE: &[u8] = b"== timings done\n";
 /// the second and third runs the first one's answer.
 fn transcript(clock: Option<u64>, out: &mut [u8; 2048]) -> usize {
     let Some(w) = pipeline_service::start_timing(clock) else {
-        panic!("no swish program in the initrd archive, or no memory to wire one");
+        panic!("no swish program in the initial ramdisk, or no memory to wire one");
     };
     pipeline_service::transcript(&w, DONE, out)
 }
@@ -20,7 +20,7 @@ fn transcript(clock: Option<u64>, out: &mut [u8; 2048]) -> usize {
 /// Start the clock service and take its startup report, so the page has been published to before
 /// anything reads it. The same helper `date_tests` uses, and for the same reason.
 fn clock() -> clock_service::Wiring {
-    let image = program("clock").expect("no clock program in the initrd archive");
+    let image = program("clock").expect("no clock program in the initial ramdisk");
     let w = clock_service::start(image);
     let _ = crate::sched::ipc_receive(w.report);
     w

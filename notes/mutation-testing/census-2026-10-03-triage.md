@@ -102,11 +102,11 @@ would tell them apart, and no caller builds one.
   The four left are `output_len`'s subtractions and a multiplication inside its slack.
 - `device_tree_patch.rs` (2, equivalent): `find_string`'s `at < strings.len()` against `<=`. An
   empty tail finds no NUL and returns `None`, as falling out of the loop does.
-- `with_initrd`'s `next > struct_end` against `>=` is the other. A property ending exactly at the
+- `with_initial_ramdisk`'s `next > struct_end` against `>=` is the other. A property ending exactly at the
   struct end reaches the loop head's `at >= struct_end` and refuses with the same error.
 - Gaps (12): `device_tree_from_acpi::output_len` (4) and `handoff::CMDLINE_LEN` (8). Both are
   bounds with deliberate slack, so a mutant that shrinks or grows one by less than the slack
-  changes nothing a caller can see. `with_initrd`'s bound had the same shape until milestone 326 (nobody has been assigned to turn a mutation score upward)
+  changes nothing a caller can see. `with_initial_ramdisk`'s bound had the same shape until milestone 326 (nobody has been assigned to turn a mutation score upward)
   made it exact and a test hold the two equal. The same move would close these: size the buffer from
   the layout, or assert the exact sum. The second costs a test that restates the constant, which is
   why it was not written here.

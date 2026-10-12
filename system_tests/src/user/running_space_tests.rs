@@ -514,18 +514,18 @@ fn a_corpse_does_not_keep_a_space_rooted_in_a_destroyed_region() {
 
 /// The witness's three report words. Mirrored from `fixtures/src/scratch_release_witness.rs`, as
 /// `authority_tests` mirrors `root_supervisor`'s.
-#[cfg(initrd)]
+#[cfg(initial_ramdisk)]
 const REPORT_BUILT: u64 = 1;
-#[cfg(initrd)]
+#[cfg(initial_ramdisk)]
 const REPORT_WRITE_LANDED: u64 = 2;
-#[cfg(initrd)]
+#[cfg(initial_ramdisk)]
 const REPORT_FAILED: u64 = 9;
 
 /// **Start the witness, with or without a capability to its own space at slot 3**, the way the
 /// kernel starts the progenitor (`user::boot_progenitor`): a space it builds and names, caps
 /// inserted by slot, `CONFIGURE` by name. Returns `(tid, report, regions)`; the last region holds
 /// `report`, so the caller gives it back after the others.
-#[cfg(initrd)]
+#[cfg(initial_ramdisk)]
 fn start_witness(own_space: bool) -> (u64, sched::RendezvousId, [u64; 4]) {
     let bytes = program("scratch_release_witness").expect("no scratch_release_witness program");
     let elf = Elf::parse(bytes).expect("scratch_release_witness is not loadable");
@@ -580,7 +580,7 @@ fn start_witness(own_space: bool) -> (u64, sched::RendezvousId, [u64; 4]) {
 }
 
 /// The witness's next report, or `None` if it sent nothing within two seconds.
-#[cfg(initrd)]
+#[cfg(initial_ramdisk)]
 fn next_report(report: sched::RendezvousId) -> Option<[u64; 5]> {
     wait_for(2, || sched::rendezvous_waiting_senders(report) > 0)
         .then(|| sched::ipc_receive(report))
@@ -598,7 +598,7 @@ fn next_report(report: sched::RendezvousId) -> Option<[u64; 5]> {
 /// mapped there in the first place.
 ///
 /// Falsification: replayable `system_tests/falsifications/user.running_space_tests.a_builder_that_gave_its_scratch_up_faults_writing_to_a_childs_page.patch`
-#[cfg(initrd)]
+#[cfg(initial_ramdisk)]
 #[test_case]
 fn a_builder_that_gave_its_scratch_up_faults_writing_to_a_childs_page() {
     // The control first: the window exists without the capability.

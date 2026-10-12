@@ -21,17 +21,17 @@
 //! panic handler above: the invariant was one thing asserted N times by hand, and only the
 //! declaration needed to be per-caller.
 //!
-//! And a fourth, in the same round: [`initrd`], the `INITRD_VA` slice seven `init`-shaped programs
-//! each reconstructed by hand with `core::slice::from_raw_parts`. A different pattern from
-//! `mapped_window` (a whole `'static` slice, not a bounds-checked per-offset accessor), but the
+//! And a fourth, in the same round: [`initial_ramdisk`], the `INITIAL_RAMDISK_VA` slice seven
+//! `init`-shaped programs each rebuilt by hand with `core::slice::from_raw_parts`. A different
+//! pattern from `mapped_window` (a whole `'static` slice, not a bounds-checked accessor), but the
 //! same §94 shape underneath: one invariant, copied verbatim into seven declarations.
 //!
 //! Round 7 read every remaining raw `invoke(...)` call site in `user/` (123 of them, the
 //! milestone's own largest unmigrated cluster) and found the same shape at nearly all of them: a
 //! method whose own `# Safety` obligation is [`invoke`]'s own ("the kernel validates the capability
 //! and the method before acting"), asserted by hand at every call site with nothing
-//! call-site-specific to check. Fourteen new thin wrappers below (`retype_page_frame` through
-//! `send_cap`), plus [`is_granted`] (the shape of §94 (what may live in a userspace library) again:
+//! call-site-specific to check. Fourteen thin wrappers below (`retype_into_page_frame` through
+//! `send_capability`), plus [`is_granted`] (§94 (what may live in a userspace library) again:
 //! five programs' identical probe) and the opt-in [`virtio`] module (device-specific, so scoped
 //! like `mapped_window` rather than added here), cover all but one of them; see that one call
 //! site's own comment (`window.rs`'s refusal probe) for why it stays raw.
@@ -150,7 +150,7 @@
 pub mod child_stub;
 pub mod entropy;
 pub mod heap;
-pub mod initrd;
+pub mod initial_ramdisk;
 pub mod mapped_window;
 pub mod virtio;
 
@@ -636,11 +636,11 @@ pub fn retype_sleeper(memory_region_slot: u64, reserved: u64) -> Option<(u64, u6
             return None;
         }
     }
-    let n = retype_object(memory_region_slot, abi::objtype::NOTIFICATION);
+    let n = retype_into_kernel_object(memory_region_slot, abi::objtype::NOTIFICATION);
     if n < 0 {
         return None;
     }
-    let t = retype_object(memory_region_slot, abi::objtype::TIMER);
+    let t = retype_into_kernel_object(memory_region_slot, abi::objtype::TIMER);
     if t < 0 {
         cap_delete(n as u64);
         return None;
@@ -871,7 +871,11 @@ pub fn is_granted(slot: u64) -> bool {
 /// `RETYPE` one page out of the untyped in `memory_region_slot` into a `PageFrame` capability the
 /// caller now holds. Returns the slot the frame landed in, or a negative `abi::Error`
 /// (`OutOfMemory` when the untyped is exhausted or the caller's table is full).
-pub fn retype_page_frame(memory_region_slot: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2), with [`retype_into_kernel_object`]. His words: "`retype_into_page_frame` and
+/// `retype_into_kernel_object`". Refused `retype_page_frame` (round 7's provisional name).
+pub fn retype_into_page_frame(memory_region_slot: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the untyped capability and its remaining budget.
     unsafe { invoke(memory_region_slot, abi::memory_region::RETYPE, 0, 0, 0) }
 }
@@ -887,7 +891,7 @@ pub fn retype_page_frame(memory_region_slot: u64) -> i64 {
 /// Name: provisional (the lane for milestone 23 (a capability-routed component OS with live
 /// replacement), 2026-09-26).
 pub fn retype_page_frame_run(memory_region_slot: u64, pages: u64) -> i64 {
-    // SAFETY: as `retype_page_frame`; the kernel checks the count against the remaining budget.
+    // SAFETY: as `retype_into_page_frame`; the kernel checks the count against the remaining budget.
     unsafe { invoke(memory_region_slot, abi::memory_region::RETYPE, pages, 0, 0) } // run wrapper
 }
 
@@ -901,29 +905,31 @@ pub fn slice_page_frame(frame_slot: u64, first: u64, count: u64) -> i64 {
     unsafe { invoke(frame_slot, abi::page_frame::SLICE, first, count, 0) }
 }
 
-/// `RETYPE_OBJ` one page out of the untyped in `memory_region_slot` into a kernel object of
+/// `RETYPE_OBJ` one page out of the untyped in `region` into a kernel object of
 /// `objtype` (see [`abi::objtype`]). Returns the slot holding a full-rights capability to the new
 /// object, or a negative `abi::Error` (`BadMethod` for an unknown `objtype`, `OutOfMemory` when the
 /// untyped or either table is exhausted).
-pub fn retype_object(memory_region_slot: u64, objtype: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2), with [`retype_into_page_frame`]. His words: "`retype_into_page_frame` and
+/// `retype_into_kernel_object`". Refused `retype_object` (round 7's provisional name),
+/// `retype_kernel_object` (ratified earlier the same day, then superseded by this ruling).
+pub fn retype_into_kernel_object(region: u64, objtype: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the untyped, the objtype and the budget before it
     // touches a page.
-    unsafe {
-        invoke(
-            memory_region_slot,
-            abi::memory_region::RETYPE_OBJ,
-            objtype,
-            0,
-            0,
-        )
-    }
+    unsafe { invoke(region, abi::memory_region::RETYPE_OBJ, objtype, 0, 0) }
 }
 
 /// `SPLIT` `pages` off the untyped's unspent budget in `memory_region_slot` into a new child
 /// untyped. Returns the slot holding a full-rights capability to the child, or a negative
 /// `abi::Error` (`NotPermitted` without `WRITE`, `OutOfMemory` when the budget or a table is
 /// exhausted).
-pub fn split_region(memory_region_slot: u64, pages: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2). His words: "Ratify `split_memory_region`, `destroy_memory_region`,
+/// `map_memory_region_page`, `revoke_page_frame`, ..." Refused `split_region` (round 7's
+/// provisional name; the object is a memory region).
+pub fn split_memory_region(memory_region_slot: u64, pages: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates `WRITE` and the remaining budget before it splits
     // anything off.
     unsafe { invoke(memory_region_slot, abi::memory_region::SPLIT, pages, 0, 0) }
@@ -933,7 +939,12 @@ pub fn split_region(memory_region_slot: u64, pages: u64) -> i64 {
 /// (object revocation, the region-owner's half). `0` on success; a negative `abi::Error`
 /// (`NotPermitted` while a live thread still occupies it, or if it has been `SPLIT` into children,
 /// or without `WRITE`).
-pub fn destroy_region(memory_region_slot: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2). His words: "Ratify `split_memory_region`, `destroy_memory_region`,
+/// `map_memory_region_page`, `revoke_page_frame`, ..." Refused `destroy_region` (round 7's
+/// provisional name).
+pub fn destroy_memory_region(memory_region_slot: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates `WRITE` and that nothing still occupies or splits
     // from the region before it reclaims anything.
     unsafe { invoke(memory_region_slot, abi::memory_region::DESTROY, 0, 0, 0) }
@@ -943,10 +954,15 @@ pub fn destroy_region(memory_region_slot: u64) -> i64 {
 /// writable, at `va` in the caller's own address space, in one step. `0` on success; a negative
 /// `abi::Error` (`OutOfMemory` when the untyped is exhausted).
 ///
-/// The one-step twin of [`retype_page_frame`] followed by [`map_page_frame`]: this never produces
+/// The one-step twin of [`retype_into_page_frame`] followed by [`map_page_frame`]: this never produces
 /// a `PageFrame` capability the caller can delegate or revoke, it just spends the untyped's budget
 /// directly on a mapped page.
-pub fn map_region_page(memory_region_slot: u64, va: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2). His words: "Ratify `split_memory_region`, `destroy_memory_region`,
+/// `map_memory_region_page`, `revoke_page_frame`, ..." Refused `map_region_page` (round 7's
+/// provisional name).
+pub fn map_memory_region_page(memory_region_slot: u64, va: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the untyped, the address, and maps a fresh page
     // from its own budget.
     unsafe { invoke(memory_region_slot, abi::memory_region::MAP, va, 0, 0) }
@@ -955,13 +971,18 @@ pub fn map_region_page(memory_region_slot: u64, va: u64) -> i64 {
 /// `REVOKE` the `PageFrame` in `frame_slot`: un-share it (or, on a device capability, take it back;
 /// see `abi::page_frame::REVOKE`'s own doc for the asymmetry). `0` on success; a negative
 /// `abi::Error` (`NotPermitted` without `GRANT`).
-pub fn revoke_frame(frame_slot: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2). His words: "Ratify `split_memory_region`, `destroy_memory_region`,
+/// `map_memory_region_page`, `revoke_page_frame`, ..." Refused `revoke_frame` (round 7's
+/// provisional name; the kernel already spells the object `page_frame`).
+pub fn revoke_page_frame(frame_slot: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates `GRANT` before it unmaps and deletes every
     // capability to the page.
     unsafe { invoke(frame_slot, abi::page_frame::REVOKE, 0, 0, 0) }
 }
 
-/// `MAP_INTO`: map the frame in `frame_slot` into the address space named by `aspace_slot`, at
+/// `MAP_INTO`: map the frame in `frame_slot` into the address space named by `aspace`, at
 /// `va`, per `mode` (`abi::address_space::MAP_RO`/`MAP_RW`/`MAP_CODE`). `0` on success; a negative
 /// `abi::Error`.
 ///
@@ -973,25 +994,32 @@ pub fn revoke_frame(frame_slot: u64) -> i64 {
 /// the address) before it touches a page table. A caller aliasing or racing what this call changes
 /// is a correctness question for the caller's own code, not a Rust-safety obligation this wrapper
 /// could check and the raw `invoke` site could not.
-pub fn map_into(aspace_slot: u64, va: u64, frame_slot: u64, mode: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2). His words: "Ratify `retype_kernel_object` `address_space_map_into`." Refused
+/// `map_into` (round 7's provisional name; the method is `address_space::MAP_INTO`).
+pub fn address_space_map_into(aspace: u64, va: u64, frame_slot: u64, mode: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the address-space capability, the frame's rights
     // against `mode`, and the address before it touches a page table.
-    unsafe {
-        invoke(
-            aspace_slot,
-            abi::address_space::MAP_INTO,
-            va,
-            frame_slot,
-            mode,
-        )
-    }
+    unsafe { invoke(aspace, abi::address_space::MAP_INTO, va, frame_slot, mode) }
 }
 
 /// `CAP_INSERT`: copy the capability in the caller's `cap_slot`, narrowed to `rights`, into the
 /// child TCB's capability table. `target = 0` places it in the first free slot; `target = n` places
 /// it in slot `n - 1` (see `abi::thread_control_block::CAP_INSERT`'s own doc for the supervision-slot
 /// use of an explicit target). Returns the slot it landed in, or a negative `abi::Error`.
-pub fn tcb_cap_insert(tcb_slot: u64, cap_slot: u64, rights: u64, target: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2). His words: "Ratify ... `thread_control_block_capability_insert`,
+/// `thread_control_block_configure`, `thread_control_block_start`, ..." Refused `tcb_cap_insert`
+/// (round 7's provisional name; §154 (the acronym test is whether the phrase is spoken) spells out
+/// thread control block, and capability is spelled out).
+pub fn thread_control_block_capability_insert(
+    tcb_slot: u64,
+    cap_slot: u64,
+    rights: u64,
+    target: u64,
+) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates `WRITE` on the TCB and `GRANT` on the inserted
     // capability before it copies anything.
     unsafe {
@@ -1012,7 +1040,17 @@ pub fn tcb_cap_insert(tcb_slot: u64, cap_slot: u64, rights: u64, target: u64) ->
 /// child's current-CPU page (milestone 812 (`std::thread::spawn` runs real threads in one address
 /// space)), never negative; a negative `abi::Error` otherwise, `WrongObject` for a space already
 /// bound.
-pub fn tcb_configure(tcb_slot: u64, entry: u64, user_sp: u64, aspace_slot: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2). His words: "Ratify ... `thread_control_block_capability_insert`,
+/// `thread_control_block_configure`, `thread_control_block_start`, ..." Refused `tcb_configure`
+/// (round 7's provisional name).
+pub fn thread_control_block_configure(
+    tcb_slot: u64,
+    entry: u64,
+    user_sp: u64,
+    aspace_slot: u64,
+) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates `WRITE` on both capabilities before it binds them.
     unsafe {
         invoke(
@@ -1031,7 +1069,12 @@ pub fn tcb_configure(tcb_slot: u64, entry: u64, user_sp: u64, aspace_slot: u64) 
 /// stale: `kernel/src/syscall.rs`'s `START` arm forwards all three to `sched::start_thread_control_block`
 /// unconditionally). Refuses a half-built thread (no bound address space, or no entry). `0` on
 /// success; a negative `abi::Error`.
-pub fn tcb_start(tcb_slot: u64, x0: u64, x1: u64, x2: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2). His words: "Ratify ... `thread_control_block_capability_insert`,
+/// `thread_control_block_configure`, `thread_control_block_start`, ..." Refused `tcb_start` (round
+/// 7's provisional name).
+pub fn thread_control_block_start(tcb_slot: u64, x0: u64, x1: u64, x2: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates `WRITE` and that the TCB is whole before it joins
     // the run queue.
     unsafe { invoke(tcb_slot, abi::thread_control_block::START, x0, x1, x2) }
@@ -1039,16 +1082,25 @@ pub fn tcb_start(tcb_slot: u64, x0: u64, x1: u64, x2: u64) -> i64 {
 
 /// `WAIT` on the `Irq` capability in `irq_slot`: block until the interrupt fires. The kernel masks
 /// it when it fires and hands it to us as a message; nothing device-specific happens in the kernel.
-pub fn irq_wait(irq_slot: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2), with [`interrupt_acknowledge`] and `abi::interrupt`. His words: "Ratify those
+/// three." Refused `irq_wait` (round 7's provisional name; a newcomer says interrupt, per §154 (the
+/// acronym test is whether the phrase is spoken)).
+pub fn interrupt_wait(irq_slot: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the Irq capability before it blocks the caller.
-    unsafe { invoke(irq_slot, abi::irq::WAIT, 0, 0, 0) }
+    unsafe { invoke(irq_slot, abi::interrupt::WAIT, 0, 0, 0) }
 }
 
 /// `ACK` the `Irq` capability in `irq_slot`: re-enable the interrupt at the GIC once the device has
 /// been quieted. Until this is called, the interrupt stays masked and cannot storm.
-pub fn irq_ack(irq_slot: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2), with [`interrupt_wait`]. His words: "Ratify those three." Refused `irq_ack` (round
+/// 7's provisional name), `irq_acknowledge` (the alternative round 9 recommended).
+pub fn interrupt_acknowledge(irq_slot: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the Irq capability before it re-enables anything.
-    unsafe { invoke(irq_slot, abi::irq::ACK, 0, 0, 0) }
+    unsafe { invoke(irq_slot, abi::interrupt::ACK, 0, 0, 0) }
 }
 
 /// **Invoke the reboot object in `slot`** (milestone 805 (`reboot` at the prompt), DECISIONS §251
@@ -1066,7 +1118,11 @@ pub fn reboot(slot: u64) -> i64 {
 /// `SEND_CAP` on the endpoint capability in `slot`: delegate a (possibly narrowed) copy of the
 /// capability in `cap_slot`, narrowed to `rights`, alongside the data word `w1`, and block until a
 /// receiver takes them. `0` or a positive ack on success; a negative `abi::Error`.
-pub fn send_cap(slot: u64, cap_slot: u64, rights: u64, w1: u64) -> i64 {
+///
+/// Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
+/// question 2). His words: "Ratify ... `send_capability`, ..." Refused `send_cap` (round 7's
+/// provisional name; capability is spelled out, calef, 2026-10-06).
+pub fn send_capability(slot: u64, cap_slot: u64, rights: u64, w1: u64) -> i64 {
     // SAFETY: `svc`/`ecall`. The kernel validates the endpoint, `GRANT` on the delegated capability,
     // and narrows it to `rights` before it delegates anything.
     unsafe { invoke(slot, abi::rendezvous::SEND_CAP, cap_slot, rights, w1) }

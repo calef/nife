@@ -17,18 +17,17 @@ The claim was checked here against `script/audits`, `design/audit-reports/README
 `.github/workflows/audit-cadence.yml`. It holds, and it is worse than stated in one respect and
 better in another.
 
-Worse: the counted triggers are measurably blind to an ISA. `script/audits` has four,
-DECISIONS §74 (audits run on change, not on the calendar): milestones BUILT, components
-(`crates/*/` plus `[[bin]]` targets), ABI constants, and external packages. At commit `797a20ac`,
-which added fourteen files under `kernel/src/arch/x86_64/` in a 2,241-line commit, every one of the
-four was unchanged: built 97 to 97, components 122 to 122, ABI constants 51 to 51, external packages
-108 to 108. An
+Worse: the counted triggers are measurably blind to an ISA. `script/audits` has four, DECISIONS §74
+(audits run on change, not on the calendar): milestones BUILT, components (`crates/*/` plus
+`[[bin]]` targets), ABI constants, and external packages. At commit `797a20ac`, which added fourteen
+files under `kernel/src/arch/x86_64/` in a 2,241-line commit, every one of the four was unchanged:
+built 97 to 97, components 122 to 122, ABI constants 51 to 51, external packages 108 to 108. An
 architecture adds no crate, no program, no syscall constant, and no dependency, so the only counter
-it can ever move is `milestones built`, by one, when milestone 161's row flips from PARTIAL. Against
-a security cadence that fires at 15, an entire instruction set is worth one fifteenth of a
-trigger. The script's own BUGS predicts this in general terms ("a change that lands as neither a
-milestone nor a component moves no number here") without noticing that the largest single addition
-to the TCB in the project's history is that shape.
+it can ever move is `milestones built`, by one, when milestone 161 (the x86_64 kernel port)'s row flipped from PARTIAL
+(2026-09-19). Against a security cadence that fires at 15, an entire instruction set is worth one
+fifteenth of a trigger. The script's own BUGS predicts this in general terms ("a change that lands
+as neither a milestone nor a component moves no number here") without noticing that the largest
+single addition to the TCB in the project's history is that shape.
 
 Worse still: the cadence's unit is the kind, not the lens. `notes/arch-audit.md` is on record as
 a `security` audit dated 2026-07-29. Three later `security` audits have run, so `script/audits`

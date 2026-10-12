@@ -81,7 +81,7 @@
 //! - **A reader holding one block cannot see the whole directory.** The EL0 blk driver
 //!   (`crates/virtio`) buffers block 0 only, so it can find the first
 //!   [`ENTRIES_IN_FIRST_BLOCK`] files and no more. It is used on the tiny test disk, not the
-//!   initrd, but the limit is real and nothing in the format announces it.
+//!   initial ramdisk, but the limit is real and nothing in the format announces it.
 //! - **No directories, no writes, no permissions.** This is a boot archive. The read-write
 //!   filesystem is the RedoxFS server in `redoxfs_server/` (DECISIONS §34), which is a different job.
 //!
@@ -171,10 +171,10 @@ pub const ENTRIES_IN_FIRST_BLOCK: usize = (BLOCK - HEADER_LEN) / ENTRY_LEN;
 /// **127 at `DIR_BLOCKS = 10` and `ENTRY_LEN = 40`.**
 ///
 /// **`DIR_BLOCKS` moved from 4 to 6 with the wider entry, on purpose.** Widening alone would have
-/// dropped the ceiling from 63 files to 50, and the riscv64 initrd holds **exactly 50 files today**,
-/// so the next program added to it would have failed the build. This ceiling is crossed by lanes
-/// that cannot see each other, which is how it was crossed last time. 6 blocks put it at 76 and cost
-/// 1 KB of image, once, in a multi-megabyte initrd.
+/// dropped the ceiling from 63 files to 50, and the riscv64 initial ramdisk holds **exactly 50
+/// files today**, so the next program added to it would have failed the build. This ceiling is
+/// crossed by lanes that cannot see each other, which is how it was crossed last time. 6 blocks put
+/// it at 76 and cost 1 KB of image, once, in a multi-megabyte initial ramdisk.
 ///
 /// **It costs no kernel stack, which is new.** It used to: [`Fs`] copied every entry into a fixed
 /// `[Entry; MAX_FILES]` and is a stack local on the boot and spawn paths, so 63 entries was ~2 KB of
@@ -245,7 +245,7 @@ impl Entry {
 /// to copy every directory entry into a fixed `[Entry; MAX_FILES]`, which made [`MAX_FILES`] a charge
 /// against the *kernel stack*: `Fs` is a stack local in the boot and spawn paths, and raising the
 /// limit from 31 to 63 entries on 2026-07-30 overflowed a 4-page kernel stack immediately, faulting
-/// on the guard page while parsing the initrd.
+/// on the guard page while parsing the initial ramdisk.
 /// Entries are decoded from the borrowed image on demand instead, which costs a few instructions per
 /// lookup on a path that runs a handful of times per boot, and retires the stack cost and the ceiling
 /// together. The image is already borrowed for exactly this reason.
@@ -452,8 +452,9 @@ mod tests {
     /// them: every other test compares an image against the same constant it was built from, so an
     /// operator slip in the formula moves both sides together and no round trip notices. The values
     /// are load-bearing outside this crate (the EL0 blk driver stops at `ENTRIES_IN_FIRST_BLOCK`;
-    /// the initrd build fails at `MAX_FILES`), so a wrong one is a wrong bound in another program.
-    /// A deliberate resize of `DIR_BLOCKS` or `ENTRY_LEN` updates this test in the same commit.
+    /// the initial ramdisk build fails at `MAX_FILES`), so a wrong one is a wrong bound in another
+    /// program. A deliberate resize of `DIR_BLOCKS` or `ENTRY_LEN` updates this test in the same
+    /// commit.
     #[test]
     fn the_capacity_constants_are_the_documented_values() {
         // (BLOCK - HEADER_LEN) / ENTRY_LEN = (512 - 12) / 40 = 12. The doc comment says 12.
@@ -637,7 +638,7 @@ mod tests {
     /// to every file, so a directory that mixed up `start_block`s would still read the same byte back
     /// and pass. This one gives every file its own contents and name and checks each reads back
     /// byte-for-byte, the integrity guard for the multi-block directory. It is the case the riscv
-    /// initrd hit (its per-role driver binaries push it past fifteen).
+    /// initial ramdisk hit (its per-role driver binaries push it past fifteen).
     #[test]
     fn a_directory_spanning_two_blocks_round_trips() {
         // Twenty files, each with distinct contents longer than a name so a shifted or truncated
@@ -680,11 +681,11 @@ mod tests {
 
 /// Machine-checked proofs (`script/verify`; notes/verification.md).
 ///
-/// The initrd is parsed by the KERNEL (`kernel::user::program`), which puts this parser inside
-/// the TCB on externally-supplied bytes, the same position the `device_tree_blob` parser is in. And
-/// the same wall: the first attempt proved the WHOLE parse over a symbolic image, on the theory
-/// that a 15-entry bounded loop is tractable; CBMC disagreed (20+ CPU-minutes and climbing), so as
-/// in `device_tree_blob` the proof is decomposed to what converges and carries the weight:
+/// The initial ramdisk is parsed by the KERNEL (`kernel::user::program`), which puts this parser
+/// inside the TCB on externally-supplied bytes, the same position the `device_tree_blob` parser is
+/// in. And the same wall: the first attempt proved the WHOLE parse over a symbolic image, on the
+/// theory that a 15-entry bounded loop is tractable; CBMC disagreed (20+ CPU-minutes and climbing),
+/// so as in `device_tree_blob` the proof is decomposed to what converges and carries the weight:
 ///
 /// - the **validation-implies-safe-read** arithmetic, for every entry value and image length
 ///   (no symbolic arrays; this is the kernel-facing guarantee), and

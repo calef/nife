@@ -135,6 +135,8 @@ mod tests {
         assert_eq!(e[1] >> 16, 8);
         assert_eq!(e[2], 0x1234_5001);
         assert_eq!(e[4], 8 | 8 << 16);
+        // A ring above 4 GiB: dword 3 is the dequeue pointer's high half.
+        assert_eq!(endpoint(INTERRUPT_IN, 8, 6, 0x5_0000_1000, 8)[3], 5);
     }
 
     /// **Drop flags first, add flags second** (xHCI 1.2 section 6.2.5.1): the controller reads

@@ -105,7 +105,7 @@ pub use address_space_registry::*;
 /// **Load and run a real compiled ELF at U-mode on RISC-V** (milestone 20, the user-ELF step).
 ///
 /// This takes the bytes of the `least_authority_demo` program (a Rust binary compiled to a riscv64 ELF, delivered
-/// as the initrd)
+/// as the initial ramdisk)
 /// and runs them through the kernel's *real* ELF loader. [`load`] parses the file, builds an address
 /// space with each `PT_LOAD` segment mapped W^X at the VA it names, and maps a stack; nothing here is
 /// riscv-specific except that the loader was just taught to accept `EM_RISCV`. The `least_authority_demo` is granted
@@ -117,8 +117,8 @@ pub use address_space_registry::*;
 /// SEND, all from a program the kernel did not hand-write. `load` is arch-neutral; this is the same
 /// code aarch64 runs, now on the RISC-V address space and trap path.
 /// The hand-assembled `x86_64` programs. Compiled ones now exist (item 4's hand-off), but these
-/// stay: the boot tour runs before any archive is parsed, and a fixture that needs no initrd is
-/// what lets the userspace demo run on a `cargo run` with no `-initrd` at all.
+/// stay: the boot tour runs before any archive is parsed, and a fixture that needs no initial
+/// ramdisk is what lets the userspace demo run on a `cargo run` with no `-initrd` at all.
 #[cfg(target_arch = "x86_64")]
 pub mod x86_programs;
 
@@ -363,11 +363,12 @@ pub mod designware_ethernet_service;
 /// **`x86_64` only, and the gap is the loader's rather than this module's.** It needs two things
 /// the other two architectures do not have: a copy of the file this machine booted from
 /// (`memory::boot_file_region`, which is `None` wherever `uefi_loader` cannot hand over a second
-/// module, and a device-tree handoff has one initrd slot in `/chosen` and no second one), and a
-/// console it can read a line back from (`console::read_line`, which the aarch64 console's PL011
-/// driver has no receive path for). Both are recorded where they are, and both would have to move
-/// before this module could. Written as a `cfg` rather than as a no-op body on purpose: a module
-/// that compiled everywhere and could only ever decline on two of three would read as portable.
+/// module, and a device-tree handoff has one initial ramdisk slot in `/chosen` and no second one),
+/// and a console it can read a line back from (`console::read_line`, which the aarch64 console's
+/// PL011 driver has no receive path for). Both are recorded where they are, and both would have to
+/// move before this module could. Written as a `cfg` rather than as a no-op body on purpose: a
+/// module that compiled everywhere and could only ever decline on two of three would read as
+/// portable.
 #[cfg(target_arch = "x86_64")]
 pub mod install_service;
 

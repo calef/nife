@@ -942,7 +942,7 @@ fn three_clients_compose_into_one_scanout_and_the_host_sees_it() {
     // an honest, expected gap rather than a bug -- milestone 164's own shape (a scope gap named
     // where the reader meets the feature) rather than a loud panic. Skipping either way keeps the
     // one thing this test cannot tell apart from a hardware absence out of its own hands.
-    let gpu_driver = program("gpu_driver").expect("no gpu_driver program in the initrd archive");
+    let gpu_driver = program("gpu_driver").expect("no gpu_driver program in the initial ramdisk");
     let Some((driver_report, display, screen)) = display_service::start_driver(gpu_driver) else {
         crate::testing::skip!(
             "no virtio-gpu-pci function on the bus: either this kernel enumerated no PCI at all, \

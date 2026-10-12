@@ -1,6 +1,6 @@
 //! `elf_loader_tests`: the ELF loader. Forged images that ask for the kernel's addresses, a
 //! writable executable page or room outside the image band are refused; a real image from the
-//! initrd loads and runs at EL0.
+//! initial ramdisk loads and runs at EL0.
 //!
 //! Name: provisional, minted 2026-10-12 (UTC) by the lane for milestone 873 (the catch-all
 //! userspace test file is split by topic).
@@ -164,12 +164,16 @@ fn a_bad_binary_is_refused_rather_than_panicking() {
     // And we are still executing, which is the assertion.
 }
 
-/// The initrd is there, and it is the program we built, for **this** machine: `Elf::parse`
+/// The initial ramdisk is there, and it is the program we built, for **this** machine: `Elf::parse`
 /// refuses a foreign `e_machine`, so parsing at all is half the assertion.
+///
+/// Falsification: unfalsified. Renamed from `the_initrd_holds_a_native_executable` on 2026-10-12
+/// (UTC) under calef's ruling B on #1998; the body is unchanged and nobody has yet broken it to
+/// watch it fail.
 #[test_case]
-fn the_initrd_holds_a_native_executable() {
+fn the_initial_ramdisk_holds_a_native_executable() {
     let image = loader_subject_image();
-    let e = elf::Elf::parse(image).expect("the initrd is not a loadable native ELF");
+    let e = elf::Elf::parse(image).expect("the initial ramdisk is not a loadable native ELF");
 
     assert_eq!(
         e.entry(),
@@ -194,8 +198,8 @@ fn the_initrd_holds_a_native_executable() {
     );
 }
 
-/// **The whole of 7c.** A separately compiled binary, arriving in the initrd, running at user
-/// mode.
+/// **The whole of 7c.** A separately compiled binary, arriving in the initial ramdisk, running at
+/// user mode.
 ///
 /// The program checks its own image and speaks with the only two words it has: a syscall if
 /// every expectation about its own memory holds, a trap instruction if not. **No data crosses
@@ -205,8 +209,12 @@ fn the_initrd_holds_a_native_executable() {
 /// from the file, `.bss` was zeroed (the file does not contain those bytes), and the stack
 /// worked well enough to recurse eight frames. That is hello's `SELF_CHECK` role, which is the
 /// same source compiled for whichever machine this build is.
+///
+/// Falsification: unfalsified. Renamed from
+/// `a_real_elf_from_the_initrd_runs_at_el0_and_verifies_itself` on 2026-10-12 (UTC) under calef's
+/// ruling B on #1998; the body is unchanged and nobody has yet broken it to watch it fail.
 #[test_case]
-fn a_real_elf_from_the_initrd_runs_at_el0_and_verifies_itself() {
+fn a_real_elf_from_the_initial_ramdisk_runs_at_el0_and_verifies_itself() {
     let svc = SVC_COUNT.load(Ordering::Relaxed);
     let faults = USER_FAULTS.load(Ordering::Relaxed);
 

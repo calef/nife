@@ -80,4 +80,13 @@ mod tests {
         assert_eq!(CycleMeaning::from_word(0), None);
         assert_eq!(CycleMeaning::from_word(4), None);
     }
+
+    /// Two meanings count the core's own clock and the third a fixed-rate reference, which is
+    /// the one a reader must not compare with the others as the same unit.
+    #[test]
+    fn only_the_reference_clock_is_not_core_cycles() {
+        assert!(CycleMeaning::CoreCyclesUserAndKernel.is_core_cycles());
+        assert!(CycleMeaning::CoreCyclesEveryMode.is_core_cycles());
+        assert!(!CycleMeaning::ConstantRateReferenceCycles.is_core_cycles());
+    }
 }

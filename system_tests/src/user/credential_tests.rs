@@ -40,7 +40,7 @@ pub(super) fn provisioned() -> Option<(cs::Wiring, [u64; 3], [u64; 3])> {
     static SAVED: [AtomicU64; 11] = [ZERO; 11];
 
     if !DONE.load(Ordering::Acquire) {
-        let rng = program("entropy").expect("no entropy program in the initrd archive");
+        let rng = program("entropy").expect("no entropy program in the initial ramdisk");
         let Some(e) = entropy_service::ensure(rng, entropy_service::Bus::Mmio) else {
             DONE.store(true, Ordering::Release);
             return None;
@@ -52,9 +52,9 @@ pub(super) fn provisioned() -> Option<(cs::Wiring, [u64; 3], [u64; 3])> {
                 "the entropy service did not come up, so no salt could be drawn",
             );
         }
-        let svc = program("credentialer").expect("no credentialer program in the initrd archive");
+        let svc = program("credentialer").expect("no credentialer program in the initial ramdisk");
         let cli = program("credentialer_test_client")
-            .expect("no credentialer_test_client program in the initrd archive");
+            .expect("no credentialer_test_client program in the initial ramdisk");
         let w = cs::start(svc, e.request);
         let report = cs::provisioner(cli, &w);
         let ready = crate::sched::ipc_receive(w.ready);
@@ -173,7 +173,7 @@ fn a_client_gets_a_correct_yes_or_no_and_nothing_else() {
         crate::testing::skip!("no virtio-rng device on the mmio bus (NIFE_RNG not set?)");
     };
     let cli = program("credentialer_test_client")
-        .expect("no credentialer_test_client program in the initrd archive");
+        .expect("no credentialer_test_client program in the initial ramdisk");
     let r = cs::client(cli, &w, cs::ROLE_HONEST);
     assert_eq!(r[0], cs::RPT_DONE, "the client did not report");
     let codes = r[1];
@@ -219,7 +219,7 @@ fn the_same_endowment_cannot_write_the_store() {
         crate::testing::skip!("no virtio-rng device on the mmio bus (NIFE_RNG not set?)");
     };
     let cli = program("credentialer_test_client")
-        .expect("no credentialer_test_client program in the initrd archive");
+        .expect("no credentialer_test_client program in the initial ramdisk");
     let r = cs::client(cli, &w, cs::ROLE_ATTACKER);
     assert_eq!(r[0], cs::RPT_DONE, "the attacker did not report");
     let codes = r[1];

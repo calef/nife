@@ -191,6 +191,15 @@ mod tests {
         );
     }
 
+    /// A modifier held across two reports changes nothing, and letting it go is a release.
+    #[test]
+    fn a_held_modifier_is_quiet_and_its_release_is_a_release() {
+        let shift_a = report(0x20, &[0x04]);
+        let shift_ab = report(0x20, &[0x04, 0x05]);
+        assert_eq!(diff(&shift_a, &shift_ab), [(48, true)]);
+        assert_eq!(diff(&shift_ab, &report(0, &[0x04, 0x05])), [(54, false)]);
+    }
+
     /// A roll: `a` still held, `b` pressed, then `a` released while `b` stays.
     #[test]
     fn a_roll_presses_each_key_once_and_releases_it_once() {

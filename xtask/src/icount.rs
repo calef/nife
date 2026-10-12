@@ -92,7 +92,7 @@ fn icount_leg(arch: &str, runner: &str, target: &str) -> bool {
         "NIFE_NVME",
         "NIFE_NET",
         "NIFE_DISK",
-        "NIFE_INITRD",
+        "NIFE_INITIAL_RAMDISK",
         "NIFE_GPU_MON",
         // The `ramfb` of milestone 243 (a machine with no serial port). Not an interrupt source
         // like the rest of this list, but it is a device the guest talks to during the boot this

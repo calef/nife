@@ -29,8 +29,10 @@
 #![no_main]
 
 use user_mode_runtime::{
-    cap_delete, destroy_region, exit, map_into, map_page_frame, now, receive, retype_object,
-    retype_page_frame, send, split_region, tcb_cap_insert, tcb_configure, tcb_start, yield_now,
+    address_space_map_into, cap_delete, destroy_memory_region, exit, map_page_frame, now, receive,
+    retype_into_kernel_object, retype_into_page_frame, send, split_memory_region,
+    thread_control_block_capability_insert, thread_control_block_configure,
+    thread_control_block_start, yield_now,
 };
 
 /// The endpoint the bench boot grants us (slot 0): we SEND `[ticks, iters, 0]` here per primitive.
@@ -268,7 +270,7 @@ fn map_bench() -> ! {
 /// Returns the syscall result: 0 on success, a negative error otherwise.
 #[inline(never)]
 fn map_one(va: u64) -> i64 {
-    map_into(
+    address_space_map_into(
         MAP_ADDRESS_SPACE,
         va,
         MAP_PAGE_FRAME,
@@ -301,7 +303,7 @@ fn spawn_bench() -> ! {
     // One shared code frame, retyped from our OWN untyped so destroying a child never frees it. Map
     // it writable in our own space, write the child stub once, and keep the cap to alias into every
     // child. The kernel makes the icache coherent when we later map it as CODE into a child.
-    let code_frame = retype_page_frame(SP_UNTYPED) as u64;
+    let code_frame = retype_into_page_frame(SP_UNTYPED) as u64;
     map_page_frame(code_frame, SPAWN_SCRATCH_VA, true, SP_UNTYPED);
     // Copied as **bytes**, not as elements, because the stub's element type differs by
     // architecture: two fixed-width ISAs spell it as `[u32; 9]` and x86_64 has to spell it as
@@ -340,31 +342,31 @@ fn spawn_bench() -> ! {
 #[inline(never)]
 fn spawn_one(code_frame: u64) {
     // The child's own region, so it is independently reclaimable.
-    let child_ut = split_region(SP_UNTYPED, CHILD_PAGES) as u64;
-    let aspace = retype_object(child_ut, abi::objtype::ADDRESS_SPACE) as u64;
+    let child_ut = split_memory_region(SP_UNTYPED, CHILD_PAGES) as u64;
+    let aspace = retype_into_kernel_object(child_ut, abi::objtype::ADDRESS_SPACE) as u64;
     // Alias the shared code frame as the child's code; a stack from the child's own region.
-    map_into(
+    address_space_map_into(
         aspace,
         CHILD_CODE_VA,
         code_frame,
         abi::address_space::MAP_CODE,
     );
-    let stack = retype_page_frame(child_ut) as u64;
-    map_into(aspace, CHILD_STACK_VA, stack, abi::address_space::MAP_RW);
+    let stack = retype_into_page_frame(child_ut) as u64;
+    address_space_map_into(aspace, CHILD_STACK_VA, stack, abi::address_space::MAP_RW);
     cap_delete(stack);
 
     // The thread: give it CHILD_DONE (narrowed to WRITE) in its slot 0, configure (which consumes
     // the address space cap), and start. The child drops to EL0, SENDs its done word, and exits.
-    let tcb = retype_object(child_ut, abi::objtype::THREAD_CONTROL_BLOCK) as u64;
-    tcb_cap_insert(tcb, SP_CHILD_DONE, abi::rights::WRITE, 0);
-    tcb_configure(tcb, CHILD_CODE_VA, CHILD_STACK_VA + SPAWN_PAGE, aspace);
-    tcb_start(tcb, 0, 0, 0);
+    let tcb = retype_into_kernel_object(child_ut, abi::objtype::THREAD_CONTROL_BLOCK) as u64;
+    thread_control_block_capability_insert(tcb, SP_CHILD_DONE, abi::rights::WRITE, 0);
+    thread_control_block_configure(tcb, CHILD_CODE_VA, CHILD_STACK_VA + SPAWN_PAGE, aspace);
+    thread_control_block_start(tcb, 0, 0, 0);
 
     // Wait for the child to run and signal, then reclaim its region. The retry covers the sliver
     // between the child's SEND and its SYS_EXIT: DESTROY refuses a region with a still-live thread,
     // so yield until the child has finished exiting.
     let _ = receive(SP_CHILD_DONE);
-    while destroy_region(child_ut) != 0 {
+    while destroy_memory_region(child_ut) != 0 {
         yield_now();
     }
     // Free the slots this child used (the address space cap was consumed by CONFIGURE) so the fixed capability table

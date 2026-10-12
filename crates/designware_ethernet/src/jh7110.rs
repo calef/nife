@@ -264,6 +264,9 @@ mod tests {
 
     const VENDOR: &[u8] = include_bytes!("../tests/fixtures/jh7110-gmac-vendor.dtb");
     const MAINLINE: &[u8] = include_bytes!("../tests/fixtures/jh7110-gmac-mainline.dtb");
+    const ONE_DELAY: &[u8] = include_bytes!("../tests/fixtures/jh7110-gmac-one-delay.dtb");
+    const VENDOR_ADDRESSED: &[u8] =
+        include_bytes!("../tests/fixtures/jh7110-gmac-vendor-addressed.dtb");
     const QEMU_RISCV64_VIRT: &[u8] =
         include_bytes!("../../device_tree_blob/tests/fixtures/qemu-riscv64-virt.dtb");
 
@@ -329,5 +332,37 @@ mod tests {
         assert_eq!(interface(select_rgmii(0x0010_0000)), PHY_INTERFACE_RGMII);
         // The vendor U-Boot's mask, 0x1c0000, is exactly this field.
         assert_eq!(SYSCON_FIELD << GMAC0_SYSCON_SHIFT, 0x1c_0000);
+        assert_eq!(interface(0), 0);
+        assert_eq!(interface(0x0018_0000), 6);
+    }
+
+    /// `snps,blen = <256 128 64 32 0 0 0>` is bits 7 to 4 of the bus mode, all four.
+    #[test]
+    fn radons_burst_lengths_are_all_four_bits() {
+        assert_eq!(BUS.burst_lengths, 0xf0);
+    }
+
+    /// **One delay is enough to read a mainline PHY node**: the receive delay given is used, the
+    /// transmit delay takes OpenBSD's 1950 ps (select 13), and the MDIO address is the node's
+    /// `reg`. The fixture is synthetic; radon's trees give both delays at address 0.
+    #[test]
+    fn a_mainline_phy_with_one_delay_is_read_not_replaced_by_the_fallback() {
+        let tree = DeviceTreeBlob::from_bytes(ONE_DELAY).unwrap();
+        let d = discover(&tree).unwrap().unwrap();
+        assert_eq!(d.phy.source, Source::MainlineTree);
+        assert_eq!((d.phy.rx_delay, d.phy.tx_delay), (10, 13));
+        assert_eq!(d.phy_address, 3);
+        let tree = DeviceTreeBlob::from_bytes(MAINLINE).unwrap();
+        assert_eq!(discover(&tree).unwrap().unwrap().phy_address, 0);
+    }
+
+    /// A vendor PHY node that states its address in `reg` is believed. radon's does not, and
+    /// reads as 0.
+    #[test]
+    fn a_vendor_phy_reg_is_its_mdio_address() {
+        let tree = DeviceTreeBlob::from_bytes(VENDOR_ADDRESSED).unwrap();
+        let d = discover(&tree).unwrap().unwrap();
+        assert_eq!(d.phy.source, Source::VendorTree);
+        assert_eq!(d.phy_address, 3);
     }
 }

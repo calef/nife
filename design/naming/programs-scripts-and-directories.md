@@ -84,7 +84,7 @@ contract is the wire protocol it offers it over. "Server" is a fine role word in
   shorthand. Shorthand is what the third principle ("a newcomer must be able to succeed without
   asking anyone") exists to refuse.
 - The binary name, the source file name and the archive entry name are the same string. `xtask`'s
-  `initrd_aarch64` (`mkinitrd` before 2026-08-27) pairs them positionally in a flat array. So a
+  `initial_ramdisk_aarch64` (`mkinitrd` before 2026-08-27) pairs them positionally in a flat array. So a
   mismatch is a runtime "program not found" rather than a compile error, which is exactly the kind
   of thing to keep boring.
 - There used to be one deliberate exception, and milestone 266 (one progenitor) closed it. `builder`
