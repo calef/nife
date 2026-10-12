@@ -1,16 +1,21 @@
 ---
-status: PROPOSED
+status: NOT-STARTED
 raised: 2026-10-09
+promoted_from: panics-in-the-kernel-and-the-parsers-are-counted-and-fall
 milestone_dependencies: none
 decision_dependencies: 61
 machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# Panics in the kernel and in the parsers of untrusted bytes are counted, and the count falls
+# 896. Panics in the kernel and in the parsers of untrusted bytes are counted, and the count falls
+
+*(Promoted from the proposal pile on 2026-10-12 (UTC) by lane
+`maintainer/promote-proposals`; number provisional until the merge queue lands it. Title
+and slug are drafts.)*
 
 Raised by a maintainer session on 2026-10-09 (UTC), one of five lint proposals asked for together.
-Its numbers are in [notes/lint-census-2026-10-09.md](../../../notes/lint-census-2026-10-09.md),
+Its numbers are in [notes/lint-census-2026-10-09.md](../../notes/lint-census-2026-10-09.md),
 which says how each was taken. This one also specifies the lint ratchet the other four reuse.
 
 Reuse: clippy's own `unwrap_used`, `expect_used`, `panic`, `unreachable`, `todo`, `unimplemented`
@@ -25,7 +30,7 @@ calef ruled on three of this proposal's questions on 2026-10-09 (UTC).
 - Open question 1, the untrusted-input scope: all 32 crates the note lists. Device drivers count as
   untrusted, so a device is a less-trusted party here, IOMMU or not.
 - Open question 2, what is syscall-reachable in the kernel: the same 16 files as
-  [the cast proposal](narrowing-casts-and-unchecked-arithmetic-on-addresses-are-counted-and-fall.md)'s scope. A file is added only when a concrete
+  [the cast proposal](0895-narrowing-casts-and-unchecked-arithmetic-on-addresses-are-counted-and-fall.md)'s scope. A file is added only when a concrete
   path from a syscall argument into it is shown.
 - The thresholds: panic counts are frozen per file at today's value and may only go down. That is
   the mechanism. Zero stays the end goal, with no date attached, so done criteria 3 and 4 below
@@ -143,3 +148,8 @@ The customer path is vacant, so the tie breaks toward the fatal risks. This prop
 (the confinement claim is false). Risk 7's entry already records a denial of service as a
 finding, and a reachable kernel panic is one. It also serves risk 2 (the proofs prove trivia), since
 Kani proves panic-freedom only where a harness reaches. It ranks first of the five.
+
+## Index row
+
+Panics in the kernel's syscall-reachable files and in the crates that parse untrusted bytes are
+counted by clippy's panic lints, held per file by the lint ratchet so the count only falls.

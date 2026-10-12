@@ -1,13 +1,18 @@
 ---
-status: PROPOSED
+status: NOT-STARTED
 raised: 2026-10-10
+promoted_from: sqlite-is-packaged-in-basalt
 milestone_dependencies: 835, 810
 decision_dependencies: 265
 machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# SQLite is packaged in basalt, and its tests run in basalt's package build
+# 897. SQLite is packaged in basalt, and its tests run in basalt's package build
+
+*(Promoted from the proposal pile on 2026-10-12 (UTC) by lane
+`maintainer/promote-proposals`; number provisional until the merge queue lands it. Title
+and slug are drafts.)*
 
 Raised 2026-10-10 (UTC) by lane `milestone/835-a-c-library-stage-one-files-clock-and-memory`, from
 calef's ruling the same day: *"We can't add testing of every program that nife will ever run into

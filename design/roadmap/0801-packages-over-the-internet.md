@@ -121,7 +121,7 @@ exists. aarch64 silicon waits on an aarch64 board.
 - Nothing installs from an index yet. The progenitor installs only what the image's catalog
   vouches for; an index copy it trusts is `jig` writing one, milestone 809's ruling I2.
 - The index client cannot run at the prompt: the booted system starts no resolver and gives a std
-  program no network. Proposed: `design/roadmap/proposals/a-std-program-at-the-prompt-holds-the-network-and-a-resolver.md`.
+  program no network. Proposed: `design/roadmap/0892-a-std-program-at-the-prompt-holds-the-network-and-a-resolver.md`.
 - `notes/packages/over-the-internet.md`'s BUGS carry the stand-in's limits (no "moved to", one plain
   HTTP location, no producer in the tree).
 
@@ -131,17 +131,20 @@ exists. aarch64 silicon waits on an aarch64 board.
 
 ## Follow-on
 
-- **Proposed.** `design/roadmap/proposals/an-image-carries-its-distributions-root-as-a-default-trust-line.md`:
-  calef's Q3, basalt's root SHA-256 as a default owner trust line. The §220 and §195 amendments
-  the ruling makes are the integrator's text.
+- **Milestone 894.** Milestone 894 (an image carries its distribution's TUF root as a default owner
+  trust line):
+  `design/roadmap/0894-an-image-carries-its-distributions-root-as-a-default-trust-line.md`: calef's
+  Q3, basalt's root SHA-256 as a default owner trust line. The §220 and §195 amendments the ruling
+  makes are the integrator's text.
 - **Milestone 809.** `jig` holds the root zone (Q5) and installs from any repository whose root is
   an owner trust line with a §220 ceiling: its `add-index`.
 - **Milestone 858.** Who signs a target's locations, decided with the signing setup (Q1), and
   following a root that names a new location (Q2).
 
-- **Proposed.** `design/roadmap/proposals/a-std-program-at-the-prompt-holds-the-network-and-a-resolver.md`:
-  the booted system starts the resolver from the lease, and a std program at the prompt is granted
-  the network and a resolver zone. `jig` needs it to reach the index by name.
+- **Milestone 892.** Milestone 892 (a std program at the prompt holds the network):
+  `design/roadmap/0892-a-std-program-at-the-prompt-holds-the-network-and-a-resolver.md`: the booted
+  system starts the resolver from the lease, and a std program at the prompt is granted the network
+  and a resolver zone. `jig` needs it to reach the index by name.
 - **Milestone 809.** `jig` adopts `package_index` and `package_fetch_exerciser`'s fetch, writes the
   index copy, and installs from it. That is this rung's exit criterion short of xenon.
 - **Milestone 855.** Whether a gate builds the TLS graph, which is whether item 4's test runs in CI.

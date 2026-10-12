@@ -1,13 +1,18 @@
 ---
-status: PROPOSED
+status: NOT-STARTED
 raised: 2026-10-09
+promoted_from: a-std-program-at-the-prompt-holds-the-network-and-a-resolver
 milestone_dependencies: 384, 595
 decision_dependencies: none
 machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# A std program at the prompt holds the network and a name resolver
+# 892. A std program at the prompt holds the network and a name resolver
+
+*(Promoted from the proposal pile on 2026-10-12 (UTC) by lane
+`maintainer/promote-proposals`; number provisional until the merge queue lands it. Title
+and slug are drafts.)*
 
 Raised 2026-10-09 (UTC) by milestone 801 (packages over the internet)'s lane, which built a std
 program resolving a name through `std::net` and fetching the package index over TLS, and could only
@@ -49,3 +54,9 @@ Reuse: everything named above is in the tree; this is wiring.
 ## BUGS
 
 - Item 3's fork is open for every program but `jig`.
+
+## Index row
+
+A `std` program started at the prompt can hold the network and a name resolver. Today the pieces
+exist but join only when the kernel test harness starts them, so a package client cannot run from
+the shell.

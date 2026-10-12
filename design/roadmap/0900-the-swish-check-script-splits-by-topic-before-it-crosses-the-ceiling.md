@@ -1,13 +1,18 @@
 ---
-status: PROPOSED
+status: NOT-STARTED
 raised: 2026-10-12
+promoted_from: the-swish-check-script-splits-by-topic-before-it-crosses-the-ceiling
 milestone_dependencies: 847
 decision_dependencies: 266, 280
 machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# The swish-check script splits by topic before it crosses the ceiling
+# 900. The swish-check script splits by topic before it crosses the ceiling
+
+*(Promoted from the proposal pile on 2026-10-12 (UTC) by lane
+`maintainer/promote-proposals`; number provisional until the merge queue lands it. Title
+and slug are drafts.)*
 
 Raised by the lane of milestone 847 (the swish-check harness is split along its seams) on
 2026-10-12 (UTC). It moved the script table into its own module.
@@ -30,3 +35,8 @@ Reuse: not applicable; this moves rows and adds only the assembly.
 
 Done when every file under `script/` is under 1,500 lines. `script/swish-check` must pass on
 aarch64, riscv64 and x86_64, typing the same lines in the same order.
+
+## Index row
+
+The swish-check script table is cut into topic files before it reaches the 2,000-line ceiling,
+assembled into the same slice so no transcript changes.

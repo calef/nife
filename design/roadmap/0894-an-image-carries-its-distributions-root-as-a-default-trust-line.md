@@ -1,13 +1,18 @@
 ---
-status: PROPOSED
+status: NOT-STARTED
 raised: 2026-10-10
+promoted_from: an-image-carries-its-distributions-root-as-a-default-trust-line
 milestone_dependencies: 666, 858
 decision_dependencies: unwritten
 machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# An image carries its distribution's TUF root as a default owner trust line
+# 894. An image carries its distribution's TUF root as a default owner trust line
+
+*(Promoted from the proposal pile on 2026-10-12 (UTC) by lane
+`maintainer/promote-proposals`; number provisional until the merge queue lands it. Title
+and slug are drafts.)*
 
 Raised 2026-10-10 (UTC) by milestone 801 (packages over the internet)'s lane, from calef's ruling
 of Q3 on #1884 that day ("K4, a default owner trust line"). The comment there is the record.
@@ -42,3 +47,8 @@ Nothing here is new code beyond the line's kind and its placement.
   are amended by the ruling, and the integrator writes that text.
 - Key custody: who holds basalt's root keys, and how many. calef's, later.
 - A root to carry: none exists until basalt publishes a TUF repository.
+
+## Index row
+
+The measured image carries basalt's TUF root as a default owner trust line, which the owner may
+remove or replace, so a fresh install trusts its own distribution and nothing else.

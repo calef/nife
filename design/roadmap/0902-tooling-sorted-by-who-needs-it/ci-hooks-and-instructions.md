@@ -1,6 +1,6 @@
 # CI, hooks, instructions and notes
 
-An appendix of [nife's tooling, sorted by who needs it](../tooling-sorted-by-who-needs-it.md),
+An appendix of [nife's tooling, sorted by who needs it](../0902-tooling-sorted-by-who-needs-it.md),
 measured 2026-10-12 (UTC) against `e3cc3f128`.
 Everything under `.github/`, `.githooks/`, `.claude/`, `briefs/` and `notes/skills/`, the notes and tenets that exist only to run the agent workflow, and, last, the sections of `AGENTS.md`.
 
