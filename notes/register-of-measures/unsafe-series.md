@@ -139,6 +139,10 @@ marker lowered 72 to 66 over the merged tree's 59.7 (1,029 blocks over 172,506 l
 milestone's seven points of headroom. The open question above, which population the ceiling should
 measure, is untouched; the cinch moved the number, not the population.
 
+Cinched again 2026-10-12 (UTC), 66 to 61, with no reduction behind it: the tree had grown to 61.09
+(1,103 blocks over 180,545 lines), and the ceiling now sits at its truncated value with no
+headroom. [ceilings.md](../unsafe-obligations/ceilings.md) records why and what it costs.
+
 ### The backfill, and its gap
 
 `script/metrics --backfill` restated the whole series with this split. It is the same move milestone
