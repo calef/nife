@@ -7,11 +7,6 @@ ratified_by: calef
 
 # 170. How a foreign program is told what to do
 
-Raised 2026-09-19 by milestone 435 (forty-five milestones are gated on a decision nobody wrote
-down)'s lane, which found milestone 205 (how a foreign program is told what to do) gated on
-`DECISION` with no decision anywhere a reader can open. The block was minted 2026-08-31 out of
-milestone 121's lane. *(Section number provisional until the merge queue lands it.)*
-
 Ruled by calef on 2026-09-26 (UTC), built up over one conversation with the maintainer after the
 shim was priced in [notes/foreign-program-arguments.md](../../notes/foreign-program-arguments.md)
 (#1314).
@@ -148,7 +143,7 @@ pay.
 
 ## Amendment (2026-09-27, 06:35Z): there is no mark
 
-This resolves the "Still open" item above this section used to carry: the mark's spelling. calef's
+This resolves the mark's spelling, which the clauses above leave open. calef's
 ruling is that there is no mark to spell.
 
 - An unvouched program is granted read-only on each word on its command line that names an
