@@ -81,6 +81,10 @@ which is the debt itself, and the count of documents over the cap. The first say
 tree is paying the debt down, the second says whether the ratchet is holding. Both were measured at
 569,775 words and 174 documents on 2026-09-23.
 
+The gate and the graph count words the same way, through one function: every whitespace-separated
+word in the file, less a generated table. §213's sentence and bold measures read prose alone. calef
+ruled this on 2026-10-13 (UTC), choosing the option "Gate counts every word".
+
 What this section does not yet decide: whether the cap applies to every document or to a class of
 them (question 2, where the recommendation below argues for every document, and where the two marked
 exceptions to date, `AGENTS.md` at 5,873 words of imperatives and `design/fatal-risks/README.md` at 4,235

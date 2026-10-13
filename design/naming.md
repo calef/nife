@@ -298,25 +298,8 @@ caught it was a person not knowing the word, and that remains the test.
 ## Appendices
 
 Every former section kept its heading, so a citation by section name resolves in the file listed.
-The directory and stems are provisional, minted 2026-09-24.
-
-| Appendix | Former sections |
-|---|---|
-| [programs-scripts-and-directories.md](naming/programs-scripts-and-directories.md) | The rule everything else is a corollary of; Components; Shell builtins; Scripts; Directories |
-| [crates.md](naming/crates.md) | Crates; What `crates/` holds |
-| [provenance.md](naming/provenance.md) | Where a name's provenance lives; The three states; The three forms; EXAMPLES |
-| [provenance-limits.md](naming/provenance-limits.md) | the provenance BUGS |
-| [documents-numbers-and-gates.md](naming/documents-numbers-and-gates.md) | Where a document goes; `§N`; Branches; What is checked |
-| [vocabulary-rulings.md](naming/vocabulary-rulings.md) | the rulings above, the received abbreviation, and the casing of `nife` |
-| [spelled-out-rulings.md](naming/spelled-out-rulings.md) | new, 2026-10-04: `op` and `cap` spelled out |
-| [command-line-rulings.md](naming/command-line-rulings.md) | `jig`'s |
-| [capability-worklist.md](naming/capability-worklist.md) | the `cap` sweep's worklist |
-| [boolean-predicates.md](naming/boolean-predicates.md) | new, 2026-09-24: the argument for functions that answer yes or no |
-| [boolean-predicates-worklist.md](naming/boolean-predicates-worklist.md) | new, 2026-09-24: every non-conforming predicate, and what became of it |
-| [rename-what-moves.md](naming/rename-what-moves.md) | Performing a ratified rename, through A quotation never moves |
-| [rename-where-names-hide.md](naming/rename-where-names-hide.md) | program strings, copied crates, crates outside the compiler, the census |
-| [rename-traps.md](naming/rename-traps.md) | A sweep can turn a stale pointer into a fabricated one, and six other traps |
-| [what-milestone-63-left-alone.md](naming/what-milestone-63-left-alone.md) | the former BUGS |
+The directory and stems are provisional, minted 2026-09-24. Which file holds which former section
+is the table in [naming/README.md](naming/README.md).
 
 ## BUGS
 
