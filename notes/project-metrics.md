@@ -46,14 +46,6 @@ not a caption, it is a register entry.
 calef ratified a 3,000-word cap per document on 2026-09-23, enforced as a ratchet. The first chart
 is the debt in words and the second the documents holding it.
 
-## Function length
-
-![Function length](project-metrics/function-length.svg)
-
-<!-- function-length: script/metrics writes this -->
-[0.0%](register-of-measures/function-length.md), 0 functions, 0 lines past 100.
-<!-- /function-length -->
-
 ## unsafe blocks outside kernel/src/arch/
 
 ![unsafe density](project-metrics/unsafe.svg)
@@ -279,6 +271,14 @@ Each week is read from its own commit, so 2026W39 is the first correction, alrea
 <!-- file-size: script/metrics writes this -->
 **File size:** 0 Rust files over 2,000 lines, holding 0.0% of all Rust lines; largest crates/system_initializer/src/boot_steps.rs (1,904); 95th percentile 1,188.
 <!-- /file-size -->
+
+## Function length
+
+![Function length](project-metrics/function-length.svg)
+
+<!-- function-length: script/metrics writes this -->
+[0.0%](register-of-measures/function-length.md), 0 functions, 0 lines past 100.
+<!-- /function-length -->
 
 ## How it stays current
 
