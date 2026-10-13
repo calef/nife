@@ -189,6 +189,10 @@ Stage 2 (milestone 836) added these, also reversible:
   with `has an STT_TLS symbol but doesn't have a PT_TLS segment`: nife's thread pointer names
   `std`'s block, and nothing lays out an ELF one beside it. The proposal is
   `design/roadmap/proposals/c-thread-locals-on-the-thread-pointer.md`; fio needs it.
+- **`stdlib.h` does not compile first.** It uses `__noreturn` and `__deprecated` without including
+  `features.h`, so a file that includes it before anything else fails; `-include features.h` works
+  around it. `sys/select.h` defines `fd_set` but declares no `select`, which is not built either.
+  Both were found compiling fio (`notes/fio-on-nife.md`).
 - **16 threads a process**, the main thread included (`std`'s limit). One more `pthread_create`
   answers `EAGAIN`.
 - **Every stack comes out of the heap**, which on nife is memory already committed. relibc's
