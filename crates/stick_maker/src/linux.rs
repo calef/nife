@@ -157,53 +157,7 @@ pub fn assemble(sys_block: &Path, mounts: &str, udev: &Path) -> Vec<Disk> {
             "Other"
         };
 
-        // Partitions are the subdirectories that carry a `partition` file.
-        let mut parts: Vec<String> = fs::read_dir(&dir)
-            .map(|rd| {
-                rd.filter_map(|e| e.ok())
-                    .filter(|e| e.path().join("partition").exists())
-                    .map(|e| e.file_name().to_string_lossy().into_owned())
-                    .collect()
-            })
-            .unwrap_or_default();
-        parts.sort();
-        let volume_names: Vec<String> = if parts.is_empty() {
-            vec![name.clone()] // a whole-disk filesystem, if it has one
-        } else {
-            parts
-        };
-        let mut volumes = Vec::new();
-        for vname in volume_names {
-            let vdir = if vname == name {
-                dir.clone()
-            } else {
-                dir.join(&vname)
-            };
-            let device = format!("/dev/{vname}");
-            let dev = read_trimmed(&vdir.join("dev")).unwrap_or_default();
-            let (udev_type, udev_label) = udev_filesystem(udev, &dev);
-            let mount = mounted(mounts, &device);
-            let fs_name = mount
-                .as_ref()
-                .map(|(_, fs)| fs.clone())
-                .or(udev_type)
-                .unwrap_or_default();
-            if vname == name && fs_name.is_empty() && mount.is_none() {
-                continue; // a whole disk with no filesystem on it is not a volume
-            }
-            let size = read_trimmed(&vdir.join("size"))
-                .and_then(|s| s.parse::<u64>().ok())
-                .unwrap_or(0)
-                * 512;
-            volumes.push(Volume {
-                id: vname,
-                label: udev_label.unwrap_or_default(),
-                filesystem: filesystem_from(&fs_name),
-                mount: mount.map(|(m, _)| m),
-                free: None,
-                size,
-            });
-        }
+        let volumes = volumes_of(&dir, &name, mounts, udev);
 
         disks.push(Disk {
             id: name,
@@ -217,6 +171,59 @@ pub fn assemble(sys_block: &Path, mounts: &str, udev: &Path) -> Vec<Disk> {
         });
     }
     disks
+}
+
+/// The volumes on one block device: each partition (a subdirectory that carries a `partition`
+/// file), or with none, the whole disk if it has a filesystem.
+fn volumes_of(dir: &Path, name: &str, mounts: &str, udev: &Path) -> Vec<Volume> {
+    // Partitions are the subdirectories that carry a `partition` file.
+    let mut parts: Vec<String> = fs::read_dir(dir)
+        .map(|rd| {
+            rd.filter_map(|e| e.ok())
+                .filter(|e| e.path().join("partition").exists())
+                .map(|e| e.file_name().to_string_lossy().into_owned())
+                .collect()
+        })
+        .unwrap_or_default();
+    parts.sort();
+    let volume_names: Vec<String> = if parts.is_empty() {
+        vec![name.to_owned()] // a whole-disk filesystem, if it has one
+    } else {
+        parts
+    };
+    let mut volumes = Vec::new();
+    for vname in volume_names {
+        let vdir = if vname == name {
+            dir.to_path_buf()
+        } else {
+            dir.join(&vname)
+        };
+        let device = format!("/dev/{vname}");
+        let dev = read_trimmed(&vdir.join("dev")).unwrap_or_default();
+        let (udev_type, udev_label) = udev_filesystem(udev, &dev);
+        let mount = mounted(mounts, &device);
+        let fs_name = mount
+            .as_ref()
+            .map(|(_, fs)| fs.clone())
+            .or(udev_type)
+            .unwrap_or_default();
+        if vname == name && fs_name.is_empty() && mount.is_none() {
+            continue; // a whole disk with no filesystem on it is not a volume
+        }
+        let size = read_trimmed(&vdir.join("size"))
+            .and_then(|s| s.parse::<u64>().ok())
+            .unwrap_or(0)
+            * 512;
+        volumes.push(Volume {
+            id: vname,
+            label: udev_label.unwrap_or_default(),
+            filesystem: filesystem_from(&fs_name),
+            mount: mount.map(|(m, _)| m),
+            free: None,
+            size,
+        });
+    }
+    volumes
 }
 
 /// The device node of partition 1 on `disk`: `sdb1`, but `mmcblk0p1`, `nvme0n1p1`, `loop0p1`,
