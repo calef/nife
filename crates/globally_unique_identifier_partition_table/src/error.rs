@@ -168,3 +168,63 @@ impl core::fmt::Display for Error {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    extern crate std;
+    use std::string::{String, ToString};
+    use std::vec::Vec;
+
+    use super::*;
+
+    /// **Every refusal reads as its own sentence.** The message is what a person sees when a disk
+    /// will not open, so two checks that rendered the same text would leave them unable to tell
+    /// which one failed. One value of every variant, each rendered, and no two alike.
+    #[test]
+    fn every_refusal_renders_a_distinct_message() {
+        let all = [
+            Error::BlockSize(1000),
+            Error::Signature,
+            Error::Revision(2),
+            Error::HeaderSize(10),
+            Error::ReservedNotZero,
+            Error::BlockTailNotZero,
+            Error::HeaderCrc {
+                stored: 1,
+                computed: 2,
+            },
+            Error::EntrySize(7),
+            Error::EntryCount(0),
+            Error::EntryArrayLen { need: 2, have: 1 },
+            Error::EntryArrayShape { have: 3 },
+            Error::EntryArrayCrc {
+                stored: 1,
+                computed: 2,
+            },
+            Error::NotPrimary { my_lba: 9 },
+            Error::UsableRange { first: 5, last: 4 },
+            Error::TableOverlapsUsable,
+            Error::PartitionRange { index: 1 },
+            Error::PartitionOutsideUsable { index: 1 },
+            Error::PartitionsOverlap { a: 0, b: 1 },
+            Error::Backup(BackupMismatch::DiskGuid),
+            Error::Mbr(MbrProblem::Signature),
+            Error::DiskTooSmall {
+                blocks: 1,
+                need: 68,
+            },
+            Error::TooManyPartitions {
+                given: 200,
+                room: 128,
+            },
+            Error::NameTooLong,
+        ];
+        let rendered: Vec<String> = all.iter().map(ToString::to_string).collect();
+        for (i, a) in rendered.iter().enumerate() {
+            assert!(!a.is_empty(), "{:?} renders nothing", all[i]);
+            for (j, b) in rendered.iter().enumerate().skip(i + 1) {
+                assert_ne!(a, b, "{:?} and {:?} read the same", all[i], all[j]);
+            }
+        }
+    }
+}

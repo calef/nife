@@ -32,3 +32,18 @@ impl PageTable {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// **A default table maps nothing.** A table is built before it is linked into a walk, and an
+    /// entry left over from anything would be a translation nobody asked for. `Default` is how a
+    /// collection of tables gets made, so it has to agree with `new`: every entry zero.
+    #[test]
+    fn a_default_table_holds_no_entry() {
+        let table = PageTable::default();
+        assert!(table.entries.iter().all(|&e| e == 0));
+        assert_eq!(table.entries, PageTable::new().entries);
+    }
+}
