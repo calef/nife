@@ -60,8 +60,8 @@ The milestone widens it: `RETYPE` gains an object-type argument, and the kernel 
 syscall creates lives in the page it just carved.
 
 What we deliberately do not copy: seL4's CNode trees, object-size arguments, and the full CDT.
-Our objects are page-granular (a 4 KiB page holds one kernel object or many of one kind; we
-decide per type), because page granularity is what `retype_page` already speaks and sub-page
+Our objects are page-granular (a 4 KiB page holds one kernel object or many of one kind; we decide
+per type). Page granularity is what `retype_page` already speaks, and sub-page
 retype bookkeeping is complexity the demonstrator does not need yet.
 
 ## The phases
@@ -78,8 +78,8 @@ valuable: the hot paths become O(1) and heap-free even before retype lands.
 
 **Phase B: kernel objects stop touching the heap (decided 2026-07-23, after the conversation).**
 The original sketch here widened `RETYPE` with object types. The conversation found the sketch
-premature: no syscall lets a process create a thread or an endpoint today, so a user-facing
-retype would be API with no caller, and a user-created TCB is inert without a thread-control
+premature: no syscall lets a process create a thread or an endpoint today, so a user-facing retype
+would be API with no caller. A user-created TCB is inert without a thread-control
 surface (configure, start, cap installation) whose requirements only the milestone 19 init task
 can supply. **Decided: the surface stays narrow; the API is designed against init's real
 requirements later.** What phase B builds instead, per the decisions:
@@ -103,9 +103,9 @@ requirements later.** What phase B builds instead, per the decisions:
 
 **Phase C: charge the revocation database, then delete the heap. (Built; milestone complete.)**
 The mapping records moved into log pages retyped from each mapping process's own region, found
-through a fixed registry of live address spaces: the mapper pays for its own records, a mapping
-that cannot afford its record is refused (and unmapped), and the records are reclaimed with the
-region at teardown, so "forget this space" became one registry slot going empty. Then the
+through a fixed registry of live address spaces. The mapper pays for its own records, and a mapping
+that cannot afford its record is refused (and unmapped). The records are reclaimed with the region
+at teardown, so "forget this space" became one registry slot going empty. Then the
 `GlobalAlloc`, the slab wiring, and `kernel/src/heap.rs` were removed from the kernel build (the
 heap and slab crates stay: host-tested logic whose notes tell their story). **The kernel that
 boots after phase C cannot allocate, structurally: there is no allocator to call.**
@@ -153,17 +153,17 @@ The path runs through the intrusive-list work, one Tid use at a time:
    precisely because a dead Tid fails the lookup. seL4 makes raw pointers safe with the CDT
    (destroying a TCB revokes every capability naming it); we deferred the CDT deliberately.
 
-The interim table is therefore not a plain array but a generational slot table: a Tid is
-`(generation, slot)` packed in one u64, lookup is an index plus a generation compare, and slot
-reuse bumps the generation, so **a dead thread's name can never resolve again**. That property,
+The interim table is therefore not a plain array but a generational slot table. A Tid is
+`(generation, slot)` packed in one u64, lookup is an index plus a generation compare, and slot reuse
+bumps the generation, so **a dead thread's name can never resolve again**. That property,
 stale names fail safely, is the same one that eventually lets capabilities carry direct thread
 names without a CDT. The table is not a rival to capability-only that later gets demolished;
 built generationally, it is the first step of it. Steps 1 to 3 hollow out its callers until its
 one remaining job is validating the long-lived names inside capabilities, which is exactly what
 a generation check is for.
 
-The table is pure logic (a fixed-capacity generational map, generic over the entry), so it
-lives in a host crate with milestone 18-style proofs: a removed name never resolves again, two
+The table is pure logic (a fixed-capacity generational map, generic over the entry), so it lives in
+a host crate with proofs in the style of milestone 18 (verify the capability core). A removed name never resolves again, two
 live entries never share a name, reuse changes the name. Those are the properties step 4 will
 one day lean on, proved before anything leans on them.
 

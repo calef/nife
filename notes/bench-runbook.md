@@ -135,9 +135,9 @@ of nife has run on it. A third prerequisite, the board memory map, is unbuilt
 (2026-09-02, rehearsed under QEMU with `virtualization=on`), and the cycle-counter authority
 question that milestone 74's aarch64 half was waiting on (DECISIONS 139, answered 2026-09-02).
 
-127's own block lists what to verify at the bench, and it is the honest list of unknowns rather than
-a procedure: kit contents, the flashed L4T revision and whether U-Boot comes up without a JetPack
-detour, the entry exception level and the DTB register from *this* U-Boot, PSCI visibility to a
+127's own block lists what to verify at the bench. It is the honest list of unknowns rather than a
+procedure. Kit contents, the flashed L4T revision and whether U-Boot comes up without a JetPack
+detour. The entry exception level and the DTB register from *this* U-Boot, PSCI visibility to a
 non-Linux payload, `PMCCNTR_EL0` readable at EL1, and what pins the 1.9 GHz clock.
 
 **What argon is for** is milestone 25's comparison against seL4's published 413 and 426 cycle
@@ -153,14 +153,14 @@ made that instrument a feature rather than something production carries.
   TX1, delivered as a 32-bit Jetson TK1 that sat unopened in its bag.
 
   Proposed mechanism, not built: every bench machine's row in `notes/target-hardware.md` cites
-  provenance under `bench/<name>/identity/`, either a photo of the board's markings (the SoC label
-  and the PCB number) or a captured boot log that prints the CPU's own identity (a U-Boot banner, a
-  `MIDR_EL1` or `mvendorid`/`marchid` line, or firmware's CPUID). A `script/lint` check fails a row
-  whose provenance path is missing, which is rung 2: a name with no evidence fails loudly instead of
-  waiting for someone to open a bag. A row may say `identity: unverified` as a marked exception, so
-  a machine that has not arrived is still recordable. The check cannot judge whether the photo shows
-  what the row says; it makes the claim and its evidence sit together. Proposed 2026-10-06 by
-  `lane/argon-is-a-tk1`; it wants a milestone number from the integrator.
+  provenance under `bench/<name>/identity/`. That is either a photo of the board's markings (the SoC
+  label and the PCB number) or a captured boot log that prints the CPU's own identity (a U-Boot
+  banner, a `MIDR_EL1` or `mvendorid`/`marchid` line, or firmware's CPUID). A `script/lint` check
+  fails a row whose provenance path is missing, which is rung 2: a name with no evidence fails
+  loudly instead of waiting for someone to open a bag. A row may say `identity: unverified` as a
+  marked exception, so a machine that has not arrived is still recordable. The check cannot judge
+  whether the photo shows what the row says; it makes the claim and its evidence sit together.
+  Proposed 2026-10-06 by `lane/argon-is-a-tk1`; it wants a milestone number from the integrator.
 - This page is an index and will rot if a procedure moves. It cites by milestone and by note
   path rather than copying steps, which is the cheapest defence available and not a guarantee.
 - It assumes one person at one bench. Nothing here says what to do if a machine needs two

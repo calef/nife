@@ -62,7 +62,7 @@ that cannot answer one should say so rather than leave it implied.
    and dissolved the argument.
 5. What does each option cost, measured rather than asserted? A flag either exists or it does
    not. The block of milestone 106 (a wait that ends on either the interrupt or the deadline) priced
-   a timed wait as "a timer wheel or an ordered deadline list" and measurement found every candidate
+   a timed wait as "a timer wheel or an ordered deadline list". Measurement found every candidate
    structure costs one comparison per tick, with the ordered list the *worst* of the three. §32 (a
    supervisor may collect a corpse) said a hung child needs the stronger right; measurement found
    the mechanism is about thirty lines and the authority is the whole problem.

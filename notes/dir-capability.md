@@ -71,9 +71,9 @@ a bit this contract has not defined.
 The server *separately* refuses a request whose intersection came up short (`EPERM`), and it is
 worth being clear about what that refusal is for. It is not the safety property. Delete it and the
 intersection above still holds and the child is still bounded. What it does is refuse to hand back
-less than was asked for without saying so, which is DECISIONS §42 (A filesystem declares what it offers and must)'s rule against silent
-degradation: a caller that asked for `CREATE` and got a capability without it should find out now
-rather than at its first write.
+less than was asked for without saying so. That is DECISIONS §42 (A filesystem declares what it
+offers and must)'s rule against silent degradation: a caller that asked for `CREATE` and got a
+capability without it should find out now rather than at its first write.
 
 The sabotage check confirms it is load-bearing: replacing the body with `Rights(requested)` turns
 three host tests and two Kani harnesses red.
@@ -93,13 +93,13 @@ decision rather than a detail.
   policy here, only what the capability is.
 - `ENUMERATE` withheld answers `EPERM`, and it is the one rung where neither of the other two
   works. "No such name" is nonsense when you are holding the directory. An empty listing would be a
-  statement about *the directory* rather than about the capability, and it would be false, which is
+  statement about *the directory* rather than about the capability, and it would be false. That is
   §42's silent degradation exactly: a verb that is not offered has to fail loudly rather than
   degrade into a plausible lie.
 
-Two more, which are facts about a handle rather than about a right: reading through a write-only
-handle is `EBADF` (POSIX's own answer), and opening a directory as a file is `EISDIR` rather than a
-handle onto a directory's raw bytes.
+Two more are facts about a handle rather than about a right. Reading through a write-only handle is
+`EBADF` (POSIX's own answer), and opening a directory as a file is `EISDIR` rather than a handle
+onto a directory's raw bytes.
 
 ## Handle 0 is the bound directory
 
@@ -130,7 +130,7 @@ that reaches nothing else, which means a caretaker process, exactly as a per-fil
 (§27's amendment, notes/grant-expression.md). The narrowing is an address space, not a branch.
 
 Serving a second, narrower endpoint from the FS server itself would need a receive over a *set* of
-endpoints, which this kernel does not offer; adding it means giving endpoint capabilities a badge
+endpoints, which this kernel does not offer. Adding it means giving endpoint capabilities a badge
 (seL4's answer), which is a design fork and is recorded as the alternative rather than taken.
 
 `fs_subtree_caretaker` is that process, and it performs no rights checks by design. At startup it

@@ -20,14 +20,14 @@ rather than a backlog, and depth stopped predicting anything.
 
 The measurement that overturned it. In the twenty hours after the queue went live: 28 merges
 through 8 group builds, with four to five lanes running against a queue that sat six to twelve deep
-for most of it. The old table would have prescribed one lane for nearly all of that night. Of
-the four things that actually stalled the queue, three do not scale with lane count at all: a lint
-that rejected GitHub's own synthetic branch names and so failed every group build (one bug, fixed),
-evictions that GitHub does not auto-retry (queue behavior, and the operator must re-enqueue), and
-seven per-pull-request `rustfmt` failures (now caught by the pre-push hook). Only the fourth scales,
-and it scales through files rather than numbers: four merge conflicts, every one of them in the
-same small hotspot where every lane wires its test (`kernel/src/user/tests.rs`, the QEMU runners,
-`xtask/src/main.rs`). Lanes in disjoint subsystems collided zero times.
+for most of it. The old table would have prescribed one lane for nearly all of that night. Of the
+four things that actually stalled the queue, three do not scale with lane count at all. A lint
+rejected GitHub's own synthetic branch names and so failed every group build (one bug, fixed).
+GitHub does not auto-retry evictions (queue behavior, and the operator must re-enqueue). Seven pull
+requests failed `rustfmt` (now caught by the pre-push hook). Only the fourth scales, and it scales
+through files rather than numbers: four merge conflicts, every one of them in the same small hotspot
+where every lane wires its test (`kernel/src/user/tests.rs`, the QEMU runners, `xtask/src/main.rs`).
+Lanes in disjoint subsystems collided zero times.
 
 So the question to ask before launching is not "how deep is the queue" but "what files will this
 lane touch, and who else is in them". Concretely:
@@ -36,9 +36,9 @@ lane touch, and who else is in them". Concretely:
 - Two lanes in the test-wiring hotspot: expect to resolve a conflict by hand, and brief the
   second one to fold into the first's shape rather than inventing a third. It is often cheaper to
   sequence those two than to merge them.
-- The real ceilings are elsewhere, and they are worth naming so they are decided rather than
-  discovered: the attention to read reports and resolve conflicts, the token budget, and runner
-  concurrency, since group builds and per-branch CI compete for the same machines.
+- The real ceilings are elsewhere. Name them so they are decided rather than discovered: the
+  attention to read reports and resolve conflicts, the token budget, and runner concurrency, since
+  group builds and per-branch CI compete for the same machines.
 
 And there is a second ceiling, which is the machine and not the collision surface (2026-08-31,
 learned three times in one day). Lane count is bounded by files; concurrent heavy jobs are bounded
@@ -58,19 +58,19 @@ And a third ceiling, which was disk and is no longer the binding one (2026-09-14
 in one session; repriced 2026-09-22). Five lanes at roughly 3 GB of `target/` each, plus 7.2 GB in
 the main checkout's own, took a 252 GB volume to 1.9 GB free and then to a command failing
 mid-write with `No space left on device`. Pruning fixed it, and what decides lane count now is the
-memory and cores above. So the lever moved with it: lanes gate in CI rather than here
+memory and cores above. So the lever moved with it. Lanes gate in CI rather than here
 (`briefs/gate-in-ci.md`), which takes QEMU and `script/verify` off this machine and unbinds lane
-count from 16 GB. The trade is wall-clock, 23 to 29 minutes a round, and lanes are asynchronous,
-so it costs nothing a person waits for. Two habits survive the repricing: run any local gate from
-a lane's worktree rather than the main checkout, the build tree nobody watches because it never
-appears in `git worktree list`; and prune promptly, because disk is still the only pressure here
-that destroys work rather than delaying it, and deletes keep succeeding while writes fail.
+count from 16 GB. The trade is wall-clock, 23 to 29 minutes a round. Lanes are asynchronous, so it
+costs nothing a person waits for. Two habits survive the repricing. Run any local gate from a lane's
+worktree rather than the main checkout, the build tree nobody watches because it never appears in
+`git worktree list`. And prune promptly, because disk is still the only pressure here that destroys
+work rather than delaying it, and deletes keep succeeding while writes fail.
 
 The prover is the queue's long pole, not the queue itself: a group's CI goes green while
 `verify` is still running, every time. Milestone 119 (the merge queue) measured that and is BUILT.
 
 **Prune a lane's worktree the moment its pull request merges**, and never prune one with uncommitted
-work in it. Those are the two clauses that have to be known before the cleanup starts;
+work in it. Those are the two clauses that have to be known before the cleanup starts.
 `briefs/merge-and-cleanup.md` has the commands, the order, and both recorded failures (eight
 finished worktrees, one at 3.3 GB; and 2026-07-31's zero bytes free with 42 worktrees holding 78 GB,
 which killed two lanes mid-work).

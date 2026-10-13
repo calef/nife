@@ -3,13 +3,13 @@ branch's git worktree, your work is written, and you are ready to prove it local
 Do the work; do not ask questions.
 
 **Why this brief exists rather than four commands typed from memory.** Every lane brief in this
-directory ends with some version of this sequence, and a maintainer retyped its clauses into lane
-brief after lane brief on 2026-09-22 and 2026-09-23: the order, the fact that the citation ratchet
-reads the committed tip rather than the working tree, the exact shape a gloss has to take, the
-memory ceiling that keeps `script/verify` off this machine. Written from memory each time, one of
-those clauses gets dropped, and the one that gets dropped is usually the ratchet's commit-first
-rule, because it is the one whose failure looks like the tool being broken rather than like a
-missed step.
+directory ends with some version of this sequence. A maintainer retyped its clauses into lane brief
+after lane brief on 2026-09-22 and 2026-09-23. They are the order, the fact that the citation
+ratchet reads
+the committed tip rather than the working tree, the exact shape a gloss has to take, and the memory
+ceiling that keeps `script/verify` off this machine. Written from memory each time, one of those
+clauses gets dropped. It is usually the ratchet's commit-first rule, because its failure looks like
+the tool being broken rather than like a missed step.
 
 ## The four gates, in this order
 
@@ -19,7 +19,7 @@ missed step.
     script/citations --ratchet
 
 Run them in that order because the first three are cheap and independent, and `script/fmt` can fix
-what `script/lint` only reports; running it after `lint` means you gate the corrected tree instead
+what `script/lint` only reports. Running it after `lint` means you gate the corrected tree instead
 of gating once, formatting, and having to gate again. `script/citations --ratchet` goes last because
 it reads **committed** state (see below), so it is the one gate a fix-and-rerun loop can silently
 stop trusting.
@@ -29,8 +29,8 @@ otherwise be discovered thirty minutes into a CI run (`briefs/gate-in-ci.md`).
 
 ## `script/citations --ratchet` reads the committed tip, not your working tree
 
-This is the trap that costs real time, and it costs it in a specific, confusing shape: you fix a
-gloss, rerun the ratchet, and read back the **identical failure**, because your fix is sitting
+This is the trap that costs real time, in a specific, confusing shape. You fix a gloss, rerun the
+ratchet, and read back the **identical failure**, because your fix is sitting
 uncommitted and the ratchet diffed the last commit, not the file on disk. It says so when it
 happens (`citations: N modified file(s) not checked; --ratchet reads the committed tip. Commit
 first.`), but that message is easy to miss under everything else a gate prints.
@@ -46,8 +46,8 @@ form:
     §92 (a caretaker is supervised by the client it serves)
 
 The gloss sits in parentheses immediately after the number (one optional comma allowed between
-them), on the same line or wrapping onto one continuation line, never introduced with a colon or a
-dash and never left for a later sentence to explain. It has to be grounded: built substantially
+them), on the same line or wrapping onto one continuation line. It is never introduced with a colon
+or a dash, nor left for a later sentence to explain. It has to be grounded: built substantially
 from words in the target record's own first line (its H1) or body, not a paraphrase from memory. If
 you are not sure what a number's own first line says, look at
 `design/decisions/<NNNN>-*.md` or `design/roadmap/<NNNN>-*.md` (four digits, zero-padded) and quote it, rather than guessing at what
@@ -181,8 +181,8 @@ A lane that hits the commit-first trap, and the fix:
   whether your change actually builds or boots. Green here is necessary, not sufficient;
   `briefs/gate-in-ci.md` is what proves the rest.
 - The QEMU check is best-effort. `pgrep -l qemu` matches both `qemu-system-aarch64` and
-  `qemu-system-riscv64`; it will not catch an emulator started under a name this brief did not
-  anticipate, and it says nothing about a leaked process on a machine other than the one you are
+  `qemu-system-riscv64`. It will not catch an emulator started under a name this brief did not
+  anticipate. It says nothing about a leaked process on a machine other than the one you are
   running on (`cordoba`, a board rig).
 - **Nothing here measures whether following this brief actually stops the clause-dropping it was
   written to fix.** The evidence for writing it down is `notes/effort-levels.md`'s finding that
