@@ -1,6 +1,6 @@
 # Cycle counters: the aarch64 half as built
 
-Moved from [milestone 74 (cycle counters)](../0074-cycle-counters.md) under §212 (a prose budget).
+An appendix to [milestone 74 (cycle counters)](../0074-cycle-counters.md), under §212 (a prose budget).
 This appendix holds what the aarch64 lane built on 2026-09-19, the defect it found on the way, and
 which path each QEMU configuration took.
 

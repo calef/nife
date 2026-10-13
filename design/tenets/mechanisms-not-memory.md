@@ -42,10 +42,10 @@ as a design, and the next person extends it.
 
 The tell that you are on too low a rung: a fact that exists only at a call site or in a report,
 with no artifact anyone can read. That shape recurred three times in one day, each wearing different
-clothes: roadmap status that was wrong in both records and invisible to the gate comparing them (§76
-(what catches a milestone status wrong in both places)), naming decisions that lived in one table
-cell nobody could find (milestone 115), and a merge-order coupling that only a lane's report
-mentioned. When you notice it, move up a rung.
+clothes. Roadmap status was wrong in both records and invisible to the gate comparing them (§76
+(what catches a milestone status wrong in both places)). Naming decisions lived in one table cell
+nobody could find (milestone 115). And a merge-order coupling that only a lane's report mentioned.
+When you notice it, move up a rung.
 
 ## We are all owners: see a problem, drive it to an owner, and if none, own it
 

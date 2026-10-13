@@ -10,7 +10,7 @@ needs_person: no
 ---
 # 364. Most x86_64 tests take a "no RedoxFS disk attached" arm, because the runner attaches little
 
-Superseded 2026-09-19, in two parts. The first piece this file names, making the FS
+Milestones 303 and 420 cover this block, in two parts. The first piece this file names, making the FS
 server's disk lookup transport-blind and attaching the RedoxFS image, was built by milestone 303 on
 2026-09-16. The rest was restated by the milestone 303 lane the same day as the proposal
 `the-rest-of-the-x86-64-fixture-set`, which milestone 433 numbers 420, with the device list

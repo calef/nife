@@ -14,10 +14,11 @@ together would prove nothing, and this one cannot.
 levels and the `x86_64` one reverses the level numbering; all three are defects in the same
 default method in `lib.rs`, caught by three ISAs' proofs.
 
-diff --git a/crates/paging/src/lib.rs b/crates/paging/src/lib.rs
---- a/crates/paging/src/lib.rs
-+++ b/crates/paging/src/lib.rs
-@@ -477,7 +477,7 @@ pub trait PageFormat {
+diff --git a/crates/paging/src/page_format.rs b/crates/paging/src/page_format.rs
+index 476dfcac4..4b3509b1f 100644
+--- a/crates/paging/src/page_format.rs
++++ b/crates/paging/src/page_format.rs
+@@ -106,7 +106,7 @@ pub trait PageFormat {
      /// covers the highest translated bits; each lower level shifts down by 9. Derived from
      /// [`LEVELS`](Self::LEVELS) so it is right for both a 4- and a 3-level walk.
      fn index(va: u64, level: usize) -> usize {

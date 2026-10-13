@@ -155,11 +155,11 @@ That is `plan()`'s job, and its answer is a value the operator reports rather th
 ## How it is gated, and what the gate actually shows
 
 The existing three live-swap tests are unchanged in what they assert and now run entirely on
-manifest-wired components: the client's own verdict from its own replies, the operator's witness page
-read after every writer is dead, the attacker holding the honest client's exact capabilities, the
-control that must fail (a post-revoke device read that faults, with the kernel as witness), and the C
-replacement over §31's seam. Both architectures, the same suite. That is the demonstration: the
-whole flagship still holds with the endowment removed from the operator.
+manifest-wired components. The client gives its own verdict from its own replies, and the operator's
+witness page is read after every writer is dead. The attacker holds the honest client's exact
+capabilities. There is the control that must fail (a post-revoke device read that faults, with the
+kernel as witness), and the C replacement over §31's seam. Both architectures, the same suite. That
+is the demonstration: the whole flagship still holds with the endowment removed from the operator.
 
 Two things were added.
 
@@ -173,18 +173,18 @@ and reports the refusal:
 
 Neither is a fixture. Each is the other role's component, asked for by a supervisor that genuinely
 cannot provide for it. The test asserts the refusal is the *typed* one (a role went unrouted) and
-that it arrives ahead of every build step and every instance that started, which is what makes a
+that it arrives ahead of every build step and every instance that started. That is what makes a
 manifest a request the supervisor may refuse rather than an instruction it carries out half way.
 
 A greppable claim. `components/src/swapper.rs` contains no `abi::rights::*` and no
 `abi::aspace::MAP_R*`. There is nothing left in the operator to type wrong.
 
 Plus thirteen host tests and three Kani harnesses on the pure logic, which is where `component_plan`
-lives for exactly that reason. The three proofs are the ones a case-by-case test cannot close: that no
-routing table ever gives a component a right its declaration did not ask for (and never `GRANT`), that
-a missing route refuses rather than falling through to slot zero (which in every program in this tree
-is its construction budget), and that the device split is a partition for every declaration, whichever
-order and kinds were declared.
+lives for exactly that reason. The three proofs are the ones a case-by-case test cannot close. No
+routing table ever gives a component a right its declaration did not ask for (and never `GRANT`). A
+missing route refuses rather than falling through to slot zero (which in every program in this tree
+is its construction budget). The device split is a partition for every declaration, whichever order
+and kinds were declared.
 
 ## EXAMPLES
 
@@ -301,9 +301,10 @@ not that another component is what supplies it.
 ## See also
 
 - DECISIONS §41 (the endpoint is the broker, and a device is revoked by taking it back), §32 (a
-  supervisor may collect a corpse without being able to build one), §31 (the foreign-language seam: C
-  holds no capabilities and makes no syscalls), §12 (call/reply IPC: a one-shot reply capability),
-  §16 (object revocation: reclaim the objects a process built)
+  supervisor may collect a corpse without being able to build one)
+- DECISIONS §31 (the foreign-language seam: C holds no capabilities and makes no syscalls), §12
+  (call/reply IPC: a one-shot reply capability), §16 (object revocation: reclaim the objects a
+  process built)
 - notes/live-replacement.md for the swap itself, its two witnesses, and the latency ladder
 - notes/program-manifest.md and notes/grant-expression.md for `grant_plan::Manifest`, the sibling
 - notes/verification.md for what the Kani harnesses cover and what they do not

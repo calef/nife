@@ -95,7 +95,7 @@ everything.
 | `HCR_EL2.RW` | EL1 is AArch64. Zero means AArch32, which is what a cleared `HCR_EL2` gives. Every other bit stays zero, which is what says stage-2 is off and EL1 does not trap up. |
 | `CPTR_EL2` = `0x33ff` | RES1 with `TFP` clear, so FP and SIMD work at EL1 and EL0. A set `TFP` faults the first floating-point instruction anywhere in the system, which on this ISA includes the compiler's own `q`-register `memcpy`. |
 | `HSTR_EL2` = 0 | No AArch32 system-register traps. One instruction to make the answer definite rather than inherited. |
-| `MDCR_EL2` | No debug or PMU traps to EL2, and `HPMN` = `PMCR_EL0.N` so every event counter is EL1's. **This one is on the other prerequisite's path**: `MDCR_EL2.TPM` traps every EL1 access to `PMCCNTR_EL0`, which is exactly what milestone 74's aarch64 half reads. It was written as a flat zero until 2026-09-19, when 74's boot line showed `0 event counters visible` under `NIFE_EL2=1`: zero is a reserved `HPMN` without FEAT_HPMN0, which the A57 lacks. Linux's `init_el2` writes `PMCR_EL0.N`, and so does this now. |
+| `MDCR_EL2` | No debug or PMU traps to EL2, and `HPMN` = `PMCR_EL0.N` so every event counter is EL1's. **This one is on the other prerequisite's path**: `MDCR_EL2.TPM` traps every EL1 access to `PMCCNTR_EL0`, which is exactly what the aarch64 half of milestone 74 (cycle counters) reads. A flat zero is wrong: zero is a reserved `HPMN` without FEAT_HPMN0, which the A57 lacks, and 74's boot line then shows `0 event counters visible` under `NIFE_EL2=1`. Linux's `init_el2` writes `PMCR_EL0.N`, and so does this. |
 | `MDSCR_EL1` = 0 | No EL1 debug exceptions armed. A bootloader that was itself debugged can leave single-stepping on. |
 | `CNTHCTL_EL2` bits 0-1 | `EL1PCTEN` and `EL1PCEN`: EL1 access to the physical counter and timer does not trap. |
 | `CNTVOFF_EL2` = 0 | Subtracted from the physical counter to make the **virtual** one, which is the counter `arch/aarch64/timer.rs` deliberately uses. Leaving it is leaving the system clock offset by an arbitrary 64-bit number. |
@@ -201,9 +201,8 @@ Run with a 3.3 V USB-TTL cable on the J21 header at 115200, per the survey's cos
      `timer::init`, which runs on core 0 *before* the banner and on each secondary during step 5.
      If TF-A left `MDCR_EL3.TPM` set, that write traps to EL3 and the boot stops there, so the
      earlier step list's promise that nothing touches the PMU until step 6 no longer holds. The
-     last line printed says how far it got. This step used to say it was listed last because a
-     trap here is a hang; with the kernel making the first PMU access at init, the order is no
-     longer the procedure's to choose, so the procedure now says where to look instead.
+     last line printed says how far it got. The kernel makes the first PMU access at init, so the
+     order is not the procedure's to choose, and the procedure says where to look instead.
 
 ## Scope note
 

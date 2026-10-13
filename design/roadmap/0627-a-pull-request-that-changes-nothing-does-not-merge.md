@@ -22,7 +22,7 @@ against its base is empty. The instance is #1460 ("fatal risk colours, counted b
 2026-09-30 carrying only its §90 (the claim is a draft pull request) `claim:` commit, while the finished work sat on a differently named
 branch for three days.
 
-## What happened, from the timeline
+## What happened, read from GitHub
 
 Read from `gh api repos/nifeos/nife/issues/1460/timeline`, not recalled.
 

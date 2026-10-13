@@ -1,12 +1,7 @@
-//! **The wall-clock contract** (milestone 51 lane A; DECISIONS §43, notes/clock.md).
-//!
-//! One definition of the three things the parties to wall-clock time have to agree on, so the
-//! clock service, its readers, the std PAL and the kernel-side tests cannot drift: the layout of
-//! the **shared clock page**, the small **propose protocol**, and the **policy** the service
-//! applies to a proposal. The same split `filesystem_protocol` makes for the filesystem and `graphics_protocol` for
-//! the framebuffer.
-//!
-//! # Three authorities, three different objects
+//! **The wall-clock contract** (§43 (reading the clock is a page, setting it is a page you may
+//! write, proposing is an endpoint), notes/clock.md): the shared clock page's layout, the propose
+//! protocol, and the policy the service applies, defined once for the clock service, its readers,
+//! the std PAL and the kernel-side tests.
 //!
 //! ```text
 //!                              the RTC's registers (a DeviceFrame, one holder)
@@ -22,100 +17,23 @@
 //!                                    readers
 //! ```
 //!
-//! - **Read** is a **read-only mapping of the clock page** plus the ambient monotonic counter.
-//!   No endpoint, no syscall, no server round trip: reading the time costs two loads and an add.
-//!   A process with no such mapping does not know what time it is, and can say so.
-//! - **Set** is a **read/write mapping of the same page**. Writing the offset *is* setting the
-//!   clock; nothing polices it, which is what makes it the authority.
-//! - **Propose** is an **endpoint** the service serves. A proposer holds no writable page, so the
-//!   only thing it can do is ask, and [`policy::decide`] is what answers.
+//! - **Read** is a read-only mapping of the page plus the ambient monotonic counter: two loads and
+//!   an add, no syscall. A process with no mapping does not know the time, and can say so.
+//! - **Set** is a read/write mapping of the same page: writing the offset is setting the clock.
+//! - **Propose** is an endpoint; a proposer holds no writable page, so [`policy::decide`] answers.
+//!   Its bounds are asymmetric: forward skips instants nobody observed, backward repeats them.
 //!
-//! The rights ladder is therefore the kernel's own: no capability, a `PageFrame` with `READ`, a
-//! `PageFrame` with `WRITE`, an `Rendezvous` with `WRITE`. Nothing new in the syscall surface, and the
-//! authority a process holds is visible to `caps`.
+//! So the rights ladder is the kernel's own (no capability, `PageFrame` `READ`, `PageFrame`
+//! `WRITE`, `Rendezvous` `WRITE`), visible to `caps`, with nothing new in the syscall surface.
+//! Wall-clock time is [`wall_nanos`], the monotonic counter in nanoseconds plus an offset, and only
+//! the offset is ever written, so a clock step cannot perturb `Instant` by construction.
+//! A step is an offset write, and the counter never sees it.
 //!
-//! # Wall clock is counter plus offset
+//! Everything is nanoseconds since the Unix epoch in a `u64`, one unit everywhere so no conversion
+//! sits at a boundary. It runs out in 2554, past every horizon here.
 //!
-//! `Instant` stays the raw monotonic counter, ambient and untouched. Wall-clock time is
-//! [`wall_nanos`]: the counter converted to nanoseconds, plus an **offset**, which is the only
-//! thing anyone ever writes. So adjusting the wall clock cannot perturb monotonic time **by
-//! construction rather than by discipline**: a step is an offset write, and the counter never
-//! sees it.
-//!
-//! # Examples
-//!
-//! Setting the wall clock is writing an offset, and the monotonic counter is not in the expression.
-//! That is the section above stated as code, and it is the reason a clock step here cannot make
-//! `Instant` go backwards the way a Unix `settimeofday` once could:
-//!
-//! ```
-//! use clock_protocol::{NANOS_PER_SEC, offset_for, wall_nanos};
-//!
-//! // The machine has been up for 5 seconds and the service has just learned the wall time.
-//! let monotonic = 5 * NANOS_PER_SEC;
-//! let now = 1_800_000_000 * NANOS_PER_SEC;
-//! let offset = offset_for(now, monotonic);
-//! assert_eq!(wall_nanos(offset, monotonic), now);
-//!
-//! // Two seconds later, with nobody having touched anything.
-//! let monotonic = 7 * NANOS_PER_SEC;
-//! assert_eq!(wall_nanos(offset, monotonic), now + 2 * NANOS_PER_SEC);
-//!
-//! // An operator steps the clock a minute forward. Only the offset changes.
-//! let stepped = offset_for(now + 60 * NANOS_PER_SEC, monotonic);
-//! assert_eq!(wall_nanos(stepped, monotonic), now + 60 * NANOS_PER_SEC);
-//! assert_eq!(monotonic, 7 * NANOS_PER_SEC); // untouched, and there is no way to touch it
-//! ```
-//!
-//! The other thing worth showing is **what a compromised network time client can and cannot do**,
-//! because that is what makes the propose endpoint safe to hand out. It can lie inside
-//! [`policy`]'s bounds and it can do nothing else, and the bounds are deliberately asymmetric:
-//! forward skips instants nobody has observed, backward makes instants happen twice.
-//!
-//! ```
-//! use clock_protocol::{NANOS_PER_SEC, policy, state, status};
-//!
-//! let now = 1_800_000_000 * NANOS_PER_SEC;
-//!
-//! // A small correction, in either direction, is what a time client is for.
-//! assert_eq!(policy::decide(state::SYNCED, now, now + NANOS_PER_SEC / 2), status::ACCEPTED);
-//!
-//! // Walking the clock past a certificate expiry in one step is the classic attack.
-//! assert_eq!(
-//!     policy::decide(state::SYNCED, now, now + 2 * policy::MAX_STEP_FORWARD_NANOS),
-//!     status::REFUSED_TOO_FAR_FORWARD,
-//! );
-//!
-//! // And the tighter half: a second forward is fine, a second and a half backward is not.
-//! assert_eq!(policy::decide(state::SYNCED, now, now + 3 * NANOS_PER_SEC / 2), status::ACCEPTED);
-//! assert_eq!(
-//!     policy::decide(state::SYNCED, now, now - 3 * NANOS_PER_SEC / 2),
-//!     status::REFUSED_TOO_FAR_BACKWARD,
-//! );
-//!
-//! // The bootstrap case: a machine that does not know the time has no belief for a step limit to
-//! // protect, so a plausible proposal is accepted outright. The sanity window still applies.
-//! assert_eq!(policy::decide(state::UNKNOWN, 0, now), status::ACCEPTED);
-//! assert_eq!(policy::decide(state::UNKNOWN, 0, 0), status::REFUSED_IMPLAUSIBLE);
-//! assert!(!policy::is_plausible(0)); // 1970 plus uptime is not a time this code can be running at
-//! ```
-//!
-//! # Everything is nanoseconds since the Unix epoch, in a `u64`
-//!
-//! One unit everywhere, so no conversion sits at a boundary where it can be forgotten. A `u64` of
-//! nanoseconds runs out in the year 2554, which is recorded rather than defended: it is past every
-//! horizon this project has, and picking `u64` keeps the wire words, the page words and the
-//! arithmetic identical.
-//!
-//! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review, confirming
-//! milestone 46's own reasoning). The wire contract was spelled four ways (`filesystem_proto`,
-//! `graphics_proto`, `netproto`, `line_editor::proto`) for one concept; `*_proto` won on
-//! 2026-07-30 under DECISIONS §39, and `script/lint` has checked it since. **Milestone 265
-//! reopened the suffix and not the rule**: `_proto` became `_protocol` on 2026-09-05 because it is
-//! a truncation that is equally short for `prototype`, so the two crates named above are
-//! `filesystem_protocol` and `graphics_protocol` today. The 2026-07-30 spellings are kept here
-//! because the sentence is an account of what was decided then.
-//! The stem is the service's own word (`clock`, DECISIONS §43), which is itself unrecorded.
+//! Name: ratified 2026-08-23 (calef): the service's own word, `clock`, with the contract suffix
+//! `_protocol` (calef's 2026-09-05 ruling).
 
 #![cfg_attr(not(test), no_std)]
 
@@ -153,6 +71,29 @@ pub const NANOS_PER_SEC: u64 = 1_000_000_000;
 ///
 /// Saturating rather than wrapping: an implausible offset should read as an implausible time, not
 /// as a plausible one on the other side of the wrap.
+///
+/// # Examples
+///
+/// Setting the wall clock is writing an offset; the monotonic counter is not in the expression:
+///
+/// ```
+/// use clock_protocol::{NANOS_PER_SEC, offset_for, wall_nanos};
+///
+/// // The machine has been up for 5 seconds and the service has just learned the wall time.
+/// let monotonic = 5 * NANOS_PER_SEC;
+/// let now = 1_800_000_000 * NANOS_PER_SEC;
+/// let offset = offset_for(now, monotonic);
+/// assert_eq!(wall_nanos(offset, monotonic), now);
+///
+/// // Two seconds later, with nobody having touched anything.
+/// let monotonic = 7 * NANOS_PER_SEC;
+/// assert_eq!(wall_nanos(offset, monotonic), now + 2 * NANOS_PER_SEC);
+///
+/// // An operator steps the clock a minute forward. Only the offset changes.
+/// let stepped = offset_for(now + 60 * NANOS_PER_SEC, monotonic);
+/// assert_eq!(wall_nanos(stepped, monotonic), now + 60 * NANOS_PER_SEC);
+/// assert_eq!(monotonic, 7 * NANOS_PER_SEC); // untouched, and there is no way to touch it
+/// ```
 pub const fn wall_nanos(offset_nanos: u64, monotonic_nanos: u64) -> u64 {
     offset_nanos.saturating_add(monotonic_nanos)
 }
@@ -528,6 +469,38 @@ pub mod policy {
     /// nothing to step *from*, so a plausible proposal is accepted outright. That is not a hole,
     /// because a machine that does not know the time has no belief for a step limit to protect;
     /// the sanity window is the only guard that means anything, and it is applied.
+    ///
+    /// # Examples
+    ///
+    /// A compromised time client can lie inside these bounds and do nothing else:
+    ///
+    /// ```
+    /// use clock_protocol::{NANOS_PER_SEC, policy, state, status};
+    ///
+    /// let now = 1_800_000_000 * NANOS_PER_SEC;
+    ///
+    /// // A small correction, in either direction, is what a time client is for.
+    /// assert_eq!(policy::decide(state::SYNCED, now, now + NANOS_PER_SEC / 2), status::ACCEPTED);
+    ///
+    /// // Walking the clock past a certificate expiry in one step is the classic attack.
+    /// assert_eq!(
+    ///     policy::decide(state::SYNCED, now, now + 2 * policy::MAX_STEP_FORWARD_NANOS),
+    ///     status::REFUSED_TOO_FAR_FORWARD,
+    /// );
+    ///
+    /// // And the tighter half: a second forward is fine, a second and a half backward is not.
+    /// assert_eq!(policy::decide(state::SYNCED, now, now + 3 * NANOS_PER_SEC / 2), status::ACCEPTED);
+    /// assert_eq!(
+    ///     policy::decide(state::SYNCED, now, now - 3 * NANOS_PER_SEC / 2),
+    ///     status::REFUSED_TOO_FAR_BACKWARD,
+    /// );
+    ///
+    /// // The bootstrap case: a machine that does not know the time has no belief for a step limit to
+    /// // protect, so a plausible proposal is accepted outright. The sanity window still applies.
+    /// assert_eq!(policy::decide(state::UNKNOWN, 0, now), status::ACCEPTED);
+    /// assert_eq!(policy::decide(state::UNKNOWN, 0, 0), status::REFUSED_IMPLAUSIBLE);
+    /// assert!(!policy::is_plausible(0)); // 1970 plus uptime is not a time this code can be running at
+    /// ```
     pub const fn decide(current_state: u64, current_nanos: u64, proposed_nanos: u64) -> u64 {
         if !is_plausible(proposed_nanos) {
             return status::REFUSED_IMPLAUSIBLE;

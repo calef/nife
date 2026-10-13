@@ -1,16 +1,15 @@
 # Wall-clock time
 
 What the machine knows about the time, who is allowed to change it, and why the three answers are
-three different capabilities. Milestone 51 lane A; the decision and its argument are
-[DECISIONS §43](../design/decisions/0043-clock-authority.md), the contract is `crates/clock_protocol`.
+three different capabilities. Milestone 51 (wall-clock time) lane A. The decision and its argument are [DECISIONS
+§43 (reading the clock is a page)](../design/decisions/0043-clock-authority.md), the contract is `crates/clock_protocol`.
 
 ## Why not the counter alone
 
 `SystemTime` is not the monotonic counter offset from `UNIX_EPOCH`, because that reports 1 January
-1970 plus however long the machine has been up, and the interface says nothing about it. A caveat
-in the notes does not fix that: a program does not read the notes. Differencing two `SystemTime`s
-would give a correct duration; any absolute reading would be a fiction that looked exactly like a
-fact.
+1970 plus however long the machine has been up. The interface says nothing about it. A caveat in the
+notes does not fix that: a program does not read the notes. Differencing two `SystemTime`s would
+give a correct duration. Any absolute reading would be a fiction that looked exactly like a fact.
 
 The defect is not missing hardware. It is an interface that lies, which is the same shape
 [§42](../design/decisions/0042-truthful-filesystem.md) forbids for filesystems: not that FAT is weak, but that `rename()` on it
@@ -23,12 +22,12 @@ succeeds and the caller cannot tell.
    wall     =  counter + offset            (the offset is the only writable thing here)
 ```
 
-The counter is `CNTVCT_EL0` on aarch64 and the `time` CSR on RISC-V, readable from EL0/U-mode
+The counter is `CNTVCT_EL0` on aarch64 and the `time` CSR on RISC-V. It is readable from EL0/U-mode
 because the kernel opened it (see notes/abi.md). Nothing in this design writes it, and nothing can.
 
 That is the whole payoff: **adjusting the wall clock cannot perturb monotonic time by construction.**
 Unix has `adjtime` slewing partly because a backwards step breaks code that assumed time only moves
-forward. Here a step is an offset write and `Instant` never observes it, so slewing becomes a policy
+forward. Here a step is an offset write and `Instant` never observes it. So slewing becomes a policy
 choice for wall-clock readers rather than a correctness requirement. The kernel test
 `adjusting_the_wall_clock_leaves_the_monotonic_counter_alone` steps the clock half a second and
 requires the counter to have moved only by the cost of the round trip.
@@ -64,14 +63,14 @@ introspectable, so `caps` shows which rung a process is on.
 kernel has no wait-any primitive and no threads sharing an address space. Two message-borne
 authorities would therefore need two server processes, and the second would hold full set authority
 anyway. Making set a page write is not a workaround for that limitation: writing the offset is what
-setting the clock *means*, and §33 settled the same shape for the compositor ("the compositor's
+setting the clock *means*. §33 (the compositor's authority is memory) settled the same shape for the compositor ("the compositor's
 authority is memory, not messages"). §43 records the alternative (a minted endpoint carrying a
 badge, §25's tracked later step) and why this design does not need it.
 
 ## The seqlock, and why the memory ordering is load-bearing
 
 The clock page is four words: a magic, a sequence, a state, and the offset. Readers are many and
-writers are few, and there is no lock a process could hold across an address-space boundary, so it is
+writers are few. There is no lock a process could hold across an address-space boundary, so it is
 a seqlock:
 
 - a writer claims the sequence with a compare-exchange from even to odd (writers are multiple by
@@ -80,10 +79,10 @@ a seqlock:
 - a reader takes the sequence, reads the data, fences, and takes the sequence again; equal and even
   means the reading is whole.
 
-This is the project's rule 4 in a place where it matters: on a strongly ordered machine a sloppy
+This is the project's rule 4 in a place where it matters. On a strongly ordered machine a sloppy
 version passes every test forever, and on ARM and RISC-V it does not. The acquire on the writer's
-claim keeps its stores from being hoisted above it; the release keeps them all visible to any reader
-that sees the even sequence; the reader's fence keeps its data loads from sinking below the second
+claim keeps its stores from being hoisted above it. The release keeps them all visible to any reader
+that sees the even sequence. The reader's fence keeps its data loads from sinking below the second
 sequence read, which is what makes the check mean anything.
 
 A torn read here would be a wrong time rather than a crash, which is the worst kind of bug to leave
@@ -144,10 +143,10 @@ address and knowing nothing else (rule 2).
 
 Discovery is by `compatible`, not by node name. The aarch64 board calls the node
 `pl031@9010000`; the RISC-V board calls its RTC `rtc@101000`. No name prefix finds both, so this
-uses `dtb::node_reg_compatible`. Two wrinkles the fixture tests pin: `compatible` is a NUL-separated
-list and a match on any entry counts (the PL031 declares `"arm,pl031", "arm,primecell"`), and the
-node writes `reg` before `compatible`, so the decode has to wait for the node to close rather
-than decide at the `reg` property.
+uses `dtb::node_reg_compatible`. Two wrinkles the fixture tests pin. `compatible` is a NUL-separated
+list and a match on any entry counts (the PL031 declares `"arm,pl031", "arm,primecell"`). The node
+writes `reg` before `compatible`, so the decode has to wait for the node to close rather than decide
+at the `reg` property.
 
 The kernel passes the *binding* to the service at spawn, so the driver picks its layout from what
 the machine said rather than from `target_arch`. That is not fastidiousness: the VisionFive 2 is

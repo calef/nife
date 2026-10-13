@@ -12,10 +12,11 @@ bit 20 (the top bit of the last level's field). The harness masks its inputs to
 **The index math is shared and the proof is not.** The `aarch64` record widens the stride's
 overlap and the `x86_64` one replaces the mask with a modulo.
 
-diff --git a/crates/paging/src/lib.rs b/crates/paging/src/lib.rs
---- a/crates/paging/src/lib.rs
-+++ b/crates/paging/src/lib.rs
-@@ -478,7 +478,7 @@ pub trait PageFormat {
+diff --git a/crates/paging/src/page_format.rs b/crates/paging/src/page_format.rs
+index 476dfcac4..81bb0344c 100644
+--- a/crates/paging/src/page_format.rs
++++ b/crates/paging/src/page_format.rs
+@@ -107,7 +107,7 @@ pub trait PageFormat {
      /// [`LEVELS`](Self::LEVELS) so it is right for both a 4- and a 3-level walk.
      fn index(va: u64, level: usize) -> usize {
          let shift = 9 * (Self::LEVELS - 1 - level) as u32 + 12;

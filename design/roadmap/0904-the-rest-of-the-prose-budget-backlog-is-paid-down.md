@@ -54,7 +54,7 @@ split only re-punctuates, adding "It", "it is" or "that is" where a split needs 
 word-level diff of each old page against its new page and appendices shows no word removed.
 
 One correction to the account below. For §27 it says the six-sentence cut moves the three
-superseded accounts; it moves only the first. The rest of the amendment stays on the page, because
+replaced accounts; it moves only the first. The rest of the amendment stays on the page, because
 moving it as well would have split three more sentences than the six calef was asked about.
 
 ## How it is done
@@ -81,10 +81,10 @@ sentences as they move, as he allowed for §139 (who may read the cycle counter)
 
 §27 has thirteen bold spans, so a page under 3,000 words must lose two of them. Only two paragraphs
 carrying bold can move intact, and neither moves coherently on its own: one is the opening of the
-2026-07-29 amendment, whose body cannot move with it. The superseded accounts, the natural thing to
+2026-07-29 amendment, whose body cannot move with it. The replaced accounts, the natural thing to
 move, hold sentences of 45 and 57 words. A search of every run of movable paragraphs, alone and in
 pairs, found no cut that meets all three limits. The smallest change that works moves the
-amendment's body (its account of the missing `TRUNCATE`, and the three superseded accounts) into an
+amendment's body (its account of the missing `TRUNCATE`, and the three replaced accounts) into an
 appendix, with six long sentences split and two bold byte counts made plain. That rewords ruled text,
 so it waits on calef the same way.
 

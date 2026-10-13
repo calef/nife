@@ -24,6 +24,41 @@ const BEL: u8 = 0x07;
 const ESC: u8 = 0x1b;
 
 /// What one input byte amounted to.
+///
+/// # Examples
+///
+/// `^D` ends input on an empty line and deletes on a non-empty one; `^C` discards the line.
+///
+/// ```
+/// # use line_editor::{Event, LineDisc, Sink};
+/// # struct Echo(Vec<u8>);
+/// # impl Sink for Echo {
+/// #     fn put(&mut self, bytes: &[u8]) { self.0.extend_from_slice(bytes); }
+/// # }
+/// let mut out = Echo(Vec::new());
+/// let mut ld = LineDisc::new();
+/// ld.start_line(b"$ ", &mut out);
+///
+/// // ^D on an empty line: end of input.
+/// assert_eq!(ld.feed(0x04, &mut out), Event::Eof);
+///
+/// // ^C discards whatever was in progress.
+/// ld.start_line(b"$ ", &mut out);
+/// for b in b"rm -rf" {
+///     ld.feed(*b, &mut out);
+/// }
+/// assert_eq!(ld.feed(0x03, &mut out), Event::Interrupt);
+///
+/// // On a non-empty line, ^D deletes at the cursor instead. ^A goes to the start first.
+/// ld.start_line(b"$ ", &mut out);
+/// for b in b"xls" {
+///     ld.feed(*b, &mut out);
+/// }
+/// ld.feed(0x01, &mut out); // ^A: home
+/// assert_eq!(ld.feed(0x04, &mut out), Event::None); // deletes the 'x', does NOT end input
+/// assert_eq!(ld.feed(b'\r', &mut out), Event::Line);
+/// assert_eq!(ld.line(), b"ls");
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Event {
     /// Nothing the caller needs to act on (echo may still have been emitted).
@@ -49,6 +84,41 @@ enum EscState {
 }
 
 /// The editing engine. One per terminal; a few KiB of fixed buffers, no allocation.
+///
+/// # Examples
+///
+/// Typing a line, editing it, and getting it back. The [`Sink`] is where echo goes; here a `Vec`,
+/// in the running system an endpoint.
+///
+/// ```
+/// use line_editor::{Event, LineDisc, Sink};
+///
+/// struct Echo(Vec<u8>);
+/// impl Sink for Echo {
+///     fn put(&mut self, bytes: &[u8]) {
+///         self.0.extend_from_slice(bytes);
+///     }
+/// }
+///
+/// let mut out = Echo(Vec::new());
+/// let mut ld = LineDisc::new();
+/// ld.start_line(b"$ ", &mut out);
+///
+/// // Type "13", then fix it: ^B moves the cursor left one, onto the 3, and typing 2 **inserts**
+/// // before it rather than overwriting it.
+/// for b in b"13" {
+///     assert_eq!(ld.feed(*b, &mut out), Event::None);
+/// }
+/// ld.feed(0x02, &mut out); // ^B
+/// ld.feed(b'2', &mut out);
+///
+/// // Carriage return ends the line. The caller reads it before feeding the next byte.
+/// assert_eq!(ld.feed(b'\r', &mut out), Event::Line);
+/// assert_eq!(ld.line(), b"123");
+///
+/// // The prompt was echoed, and so was everything typed.
+/// assert!(out.0.starts_with(b"$ "));
+/// ```
 pub struct LineDisc {
     pub(super) buf: [u8; LINE_MAX],
     pub(super) len: usize,
@@ -165,6 +235,28 @@ impl LineDisc {
     }
 
     /// Feed one wire byte; echo goes to `out`. See [`Event`] for what came of it.
+    ///
+    /// # Examples
+    ///
+    /// The LF of a CRLF pair is not a second, empty line.
+    ///
+    /// ```
+    /// # use line_editor::{Event, LineDisc, Sink};
+    /// # struct Echo(Vec<u8>);
+    /// # impl Sink for Echo {
+    /// #     fn put(&mut self, bytes: &[u8]) { self.0.extend_from_slice(bytes); }
+    /// # }
+    /// let mut out = Echo(Vec::new());
+    /// let mut ld = LineDisc::new();
+    /// ld.start_line(b"", &mut out);
+    ///
+    /// ld.feed(b'a', &mut out);
+    /// assert_eq!(ld.feed(b'\r', &mut out), Event::Line);
+    /// assert_eq!(ld.line(), b"a");
+    ///
+    /// // The LF of the CRLF pair is not a second, empty line.
+    /// assert_eq!(ld.feed(b'\n', &mut out), Event::None);
+    /// ```
     pub fn feed(&mut self, b: u8, out: &mut impl Sink) -> Event {
         // A bare LF right after a CR is the second half of a CRLF, not a second Enter.
         let was_cr = core::mem::replace(&mut self.last_was_cr, false);

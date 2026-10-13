@@ -15,10 +15,11 @@ once notices, since each one alone still answers questions.
 **The half test is shared and the proof is not.** The `aarch64` record makes the low half an
 inclusive range and the `sv39` one moves the sign bit.
 
-diff --git a/crates/paging/src/lib.rs b/crates/paging/src/lib.rs
---- a/crates/paging/src/lib.rs
-+++ b/crates/paging/src/lib.rs
-@@ -488,7 +488,7 @@ pub trait PageFormat {
+diff --git a/crates/paging/src/page_format.rs b/crates/paging/src/page_format.rs
+index 476dfcac4..7505d5481 100644
+--- a/crates/paging/src/page_format.rs
++++ b/crates/paging/src/page_format.rs
+@@ -117,7 +117,7 @@ pub trait PageFormat {
          let top = va >> Self::SPLIT_SHIFT;
          match half {
              Half::Low => top == 0,
