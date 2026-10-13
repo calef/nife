@@ -179,7 +179,7 @@ needs it is the one about to propose it again.
 Name: ratified <YYYY-MM-DD> (<who>, <where>). Refused `x` (why), `y` (why).
 Name: recorded (<where>). <what the tree already argues, and what it does not settle>
 Name: unrecorded. <what the history does and does not say>
-Name: provisional, <who minted it, and when>. <what was considered>
+Name: provisional. <what was considered>
 ```
 
 - The date on `ratified` sits outside the parentheses, and `recorded` names its citation. Both are

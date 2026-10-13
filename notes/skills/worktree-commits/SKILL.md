@@ -10,14 +10,15 @@ description: >-
 
 # Commits, and git in a worktree
 
-Moved whole from `AGENTS.md` on 2026-10-06 (UTC) by lane/agents-md-skills, wording unchanged apart
-from heading levels and link paths, so where it says "this file" it means `AGENTS.md`. Its name was
-ratified by calef on 2026-10-06 (UTC); notes/skills/README.md records it.
+Where this says "this file", it means `AGENTS.md`. Its name was ratified by calef on 2026-10-06
+(UTC); notes/skills/README.md records it.
 
 ## Commits
 
 One purpose per commit. The message explains why, not what (the diff shows what). If a commit
-records a correction or a surprise, say so in the message. Why these rules read as opposites and are
+records a correction or a surprise, say so in the message. The message is also where history goes:
+what a document said before, which ruling a new one replaces, which lane did what. The document
+states only what is now true (§298 (a document states what is in force now)). Why these rules read as opposites and are
 not, with the failure behind each, is in
 [design/tenets/git-in-a-worktree.md](../../../design/tenets/git-in-a-worktree.md).
 

@@ -3176,6 +3176,16 @@ echo "==> American spelling and metric units (calef, 2026-10-06)"
 # listed in the helper's header. Fixtures first, so a green check is not a counter matching nothing.
 python3 helpers/house_style.py --selftest
 python3 helpers/house_style.py --check
+echo "==> §298 (a document states what is in force now), calef 2026-10-13"
+# calef ruled on 2026-10-13 (UTC): "We do not need the history in the text. That is what revision
+# control is for." helpers/history_ratchet.py counts the phrases that only a document's own history
+# uses (supersede, "used to say", "was ... until" a date, "renamed from", "moved from" a document,
+# a Timeline heading, a history appendix) in Markdown, fails a count over its ceiling, and fails a
+# branch that adds any net against its merge base. Records of an event are out of scope: a
+# correction of error under §210 (a correction of error), an audit report, a file named for a
+# date. Fixtures first.
+python3 helpers/history_ratchet.py --selftest
+python3 helpers/history_ratchet.py --check
 echo "==> capability is not abbreviated cap (calef, 2026-10-06)"
 # calef ruled on 2026-10-06 (UTC): "I don't think we should abbreviate capability as cap." New
 # code spells it out; the existing identifiers are renamed in one sweep when the tree is quiet,

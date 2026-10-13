@@ -49,9 +49,8 @@ now a conflict in its prose, so read both sides.
 
 If two decision files claim the same section number, `script/decisions --check` fails. The file
 already on `origin/main` keeps the number, and this branch's moves to the lowest free number above
-the highest on `main`. Rename the file with `git mv`, change its H1 to match, and add one sentence
-to its status paragraph saying it was renumbered, with the date, because a concurrently merged lane
-had taken the old number.
+the highest on `main`. Rename the file with `git mv` and change its H1 to match. The commit message
+says it was renumbered and why; the file does not, per §298 (a document states what is in force now).
 
 ### 5. A heading was renamed on `main` while this branch inserted prose next to it
 
@@ -179,9 +178,8 @@ Two failures are common after a rebase and both are yours to fix:
 
 - A milestone number collision (`milestone N is claimed by two files`). The file *this branch*
   introduced moves to a free number; the one already on `origin/main` keeps it. Pick the lowest free
-  number above 557. Rename with `git mv`, change the H1's number to match, and add a sentence to
-  the status paragraph saying it was renumbered, with the date, because a concurrently merged lane
-  had taken the old number. Retitle the pull request with the new number and keep the branch name,
+  number above 557. Rename with `git mv` and change the H1's number to match. The commit message
+  and the pull request body say it was renumbered and why; the block does not (§298). Retitle the pull request with the new number and keep the branch name,
   since renaming an open pull request's branch closes it ([the developer
   lane](../notes/skills/developer-lane/SKILL.md), shared state).
 - A compile error about a function taking more arguments than were supplied. Some function grew
