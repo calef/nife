@@ -175,7 +175,9 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         1,
         "jig update",
         &[
-            "index updated: 4 packages for ",
+            // Four from the fixtures, and one more per package from basalt's repository when the
+            // gate is handed one (milestone 810), so the count is not asserted.
+            "index updated: ",
             "from basalt.test over TLS",
         ],
     ),
@@ -216,7 +218,25 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         "packages/greeting/0.3.0/greeting",
         &["hello from a package this image never carried"],
     ),
+    // **`ripgrep`, built and published by basalt** (milestone 810 (`ripgrep` is packaged in
+    // basalt and installed with `jig`)): basalt's gate hands this gate the repository it built
+    // (`disk::BASALT_REPOSITORY`), whose index lines the peer serves beside the fixtures'. The
+    // package is `ripgrep`; its program is the member `bin/rg`
+    // (`package_archive::PROGRAM_PREFIX`), so the bare word is `rg`. Skipped without a repository.
+    line(
+        1,
+        "jig install ripgrep",
+        &[
+            "fetched ripgrep-",
+            "from basalt.test over TLS",
+            "fetched and installed; generation 7 is live",
+        ],
+    ),
+    line(1, "rg --version", &["ripgrep "]),
 ];
+
+/// The lines that need a repository from basalt (milestone 810), skipped without one.
+pub(super) const FROM_BASALT: &[&str] = &["jig install ripgrep", "rg --version"];
 
 /// The text this gate types and what each line must answer. `None` is a line whose answer is
 /// checked by a later one rather than by itself, which is every line that writes a file.

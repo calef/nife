@@ -406,6 +406,11 @@ pub(super) const RG_WALK_SECS: u64 = 600;
 /// Loading a 2.8 MiB image is most of it: under the same load those lines took 3.8 to 30.1 s on
 /// aarch64 and up to 38.7 s on `x86_64`, so the shared 30 s bound failed them on two legs before
 /// this. Where the time goes inside a spawn of that size is not measured (milestone 121's BUGS).
+///
+/// The two lines that install `rg` from basalt and run it (milestone 810 (`ripgrep` is packaged
+/// in basalt and installed with `jig`)) take it too: fetching 2.8 MiB over software TLS under TCG
+/// took 21.0 s on aarch64, 28.7 s on riscv64 and 46.1 s on x86_64 under TCG, on patagonia under
+/// load (2026-10-12 UTC).
 pub(super) const RG_LINE_SECS: u64 = 90;
 
 /// **Whether `rg`'s answer at the prompt is the host's answer**, as a set of lines: every line the

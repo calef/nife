@@ -368,8 +368,21 @@ pub(super) fn swish_check_boot(
             crate::disk::INSTALLED_RIPGREP
         );
     }
+    // **`ripgrep` from basalt** (milestone 810 (`ripgrep` is packaged in basalt and installed with
+    // `jig`)): its lines run only when the gate is handed a repository basalt built
+    // (`disk::BASALT_REPOSITORY`), which basalt's own gate does. nife's CI builds no basalt
+    // package, so here they are skipped, and said so.
+    let basalt = std::env::var_os(crate::disk::BASALT_REPOSITORY).is_some();
+    if fresh && !basalt {
+        eprintln!(
+            "swish-check ({arch}): skipping the `jig install ripgrep` lines: no repository from \
+             basalt was named (set {}; basalt's gate does)",
+            crate::disk::BASALT_REPOSITORY
+        );
+    }
     let skipped = |line: &str| {
         swish_check_omits(arch, line).is_some()
+            || (crate::swish_check::script::FROM_BASALT.contains(&line) && !basalt)
             || ((line.contains(crate::disk::INSTALLED_RIPGREP) || line == RG_WALK_CD) && !rg_built)
             || ((line.starts_with("std_exerciser")
                 // The line after `std_exerciser redirected > args.txt` reads the file it wrote, so
@@ -823,7 +836,10 @@ pub(super) fn swish_check_boot(
             // wait for this prompt is the previous line's run.
             let bound = match previous {
                 Some((RG_WALK_LINE, _)) => RG_WALK_SECS,
-                Some((prev, _)) if prev.contains(crate::disk::INSTALLED_RIPGREP) => {
+                Some((prev, _))
+                    if prev.contains(crate::disk::INSTALLED_RIPGREP)
+                        || crate::swish_check::script::FROM_BASALT.contains(&prev) =>
+                {
                     line_secs.max(RG_LINE_SECS)
                 }
                 _ => line_secs,

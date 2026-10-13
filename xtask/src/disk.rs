@@ -769,6 +769,7 @@ fn stage_index(
         line(format!("greeting-0.1.0-{architecture}"), greeting),
         line(format!("uptime-0.1.0-{architecture}"), uptime),
         line(indexed_stem.clone(), &indexed),
+        basalt_lines(source, architecture)?,
     ]
     .concat();
     std::fs::write(source.join("catalog"), &catalog)
@@ -777,6 +778,46 @@ fn stage_index(
         indexed_stem,
         "helpers/tls-peer serves an index of greeting 0.1.0, uptime and greeting 0.3.0".into(),
     ))
+}
+
+/// **The environment variable naming a repository basalt built** (milestone 810 (`ripgrep` is
+/// packaged in basalt and installed with `jig`)): a directory holding `rolling/metadata/stand-in-index`
+/// and `rolling/targets/<stem>.nifepkg`, as basalt's package build writes it. When it is set, this
+/// architecture's lines of that index join the fixtures' in the index the peer serves, and their
+/// packages are copied beside them. Name: provisional 2026-10-12 (UTC).
+pub(crate) const BASALT_REPOSITORY: &str = "NIFE_BASALT_REPOSITORY";
+
+/// This architecture's `<stem> <digest>` lines of the repository [`BASALT_REPOSITORY`] names, with
+/// each package copied into `source`. Empty when it is not set.
+fn basalt_lines(source: &std::path::Path, architecture: &str) -> Result<String, String> {
+    let Some(repository) = std::env::var_os(BASALT_REPOSITORY) else {
+        return Ok(String::new());
+    };
+    let repository = std::path::PathBuf::from(repository);
+    let index_path = repository.join("rolling/metadata/stand-in-index");
+    let text = std::fs::read_to_string(&index_path)
+        .map_err(|e| format!("{}: {e}", index_path.display()))?;
+    let index = package_index::Index::parse(&text)
+        .map_err(|e| format!("{} has an unreadable line: {e:?}", index_path.display()))?;
+    let mut lines = String::new();
+    for entry in index.entries() {
+        if !entry.stem.ends_with(&format!("-{architecture}")) {
+            continue;
+        }
+        let file = format!("{}.nifepkg", entry.stem);
+        std::fs::copy(
+            repository.join("rolling/targets").join(&file),
+            source.join(&file),
+        )
+        .map_err(|e| format!("basalt's {file}: {e}"))?;
+        let digest = measured_boot::digest_text(&entry.digest);
+        lines.push_str(&format!(
+            "{} {}\n",
+            entry.stem,
+            String::from_utf8_lossy(&digest)
+        ));
+    }
+    Ok(lines)
 }
 
 /// The version of the package only the index offers (milestone 801 (packages over the internet)),

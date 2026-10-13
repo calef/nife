@@ -692,7 +692,9 @@ fn answer(verb: Activation, fetched: bool, (status, live): (S, u64)) -> ExitCode
         (S::NotCataloged, _) => {
             "refused: neither this image's catalog nor its index copy vouches for those bytes"
         }
-        (S::NoProgram, _) => "refused: that package carries no program named after it",
+        (S::NoProgram, _) => {
+            "refused: that package carries no program: no member named after it, and not one bin/ member"
+        }
         (S::NotInstalled, _) => "refused: no program of that name is in the live generation",
         (S::NoEarlier, _) => "refused: there is no generation before the live one",
         (S::StoreFailed, _) => "could not write the activation set",

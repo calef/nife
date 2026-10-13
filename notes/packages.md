@@ -288,8 +288,8 @@ removed) is met, and so is §219's gate D2. The boot prompt is the owner's conso
 - Nothing collects `packages/`. A removed program's bytes stay, which is what rollback needs.
 - Rollback is by number, to the generation one below the live one, as Nix's is (recalled, not
   read). Undoing a rollback is another install.
-- The member named after the package is the program, by the installer's convention; the format
-  marks no member executable. A package whose program has another name installs nothing.
+- The program is the member named after the package, or else the one `bin/<program>` member
+  (milestone 810 (`ripgrep` is packaged in basalt)); the format marks none executable.
 - The `SYNC` before the reply is not falsified. QEMU keeps a killed guest's writes, so no gate
   here can lose a generation that was not synced.
 - A note may declare only what an image request can carry (`grant_plan::image_can_carry`): no

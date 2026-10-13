@@ -443,9 +443,12 @@ pub enum Refusal {
 ///    image's own ([`CATALOG`]), measured with every other archive entry, so this is DECISIONS §195's
 ///    "the image's measured table becomes the first source" taken literally: a person cannot install
 ///    what the image does not vouch for, whatever file they point at.
-/// 3. The member named after the package is the program. **That convention is this function's and
-///    is provisional**: a recipe's `program` line names a member, and nothing in the format marks
-///    which member is executable. A package whose program has another name, or that carries two,
+/// 3. The member named after the package is the program; failing that, the one member named
+///    `bin/<program>` ([`PROGRAM_PREFIX`]), whose program is the name after the prefix. **That
+///    convention is this function's and is provisional**: nothing in the format marks which member
+///    is executable. The second half is milestone 810 (`ripgrep` is packaged in basalt)'s, whose
+///    package is `ripgrep` and whose program is `rg`, as Debian's is; it is a question put to calef
+///    on that milestone's pull request. A package with neither, or with two `bin/` members,
 ///    installs nothing. Where a program's manifest travels is DECISIONS §197 (a package is one
 ///    archive file)'s open question, and this does not answer it.
 /// 4. Its bytes are checked against the table of contents' digest, so what is recorded is a digest
@@ -461,8 +464,7 @@ pub fn installable<'a>(catalogue: &str, bytes: &'a [u8]) -> Result<Installable<'
     if sha256(bytes) != expected {
         return Err(Refusal::NotCataloged);
     }
-    let program = package.name();
-    let index = package.index_of(program).ok_or(Refusal::NoProgram)?;
+    let (program, index) = program_member(&package).ok_or(Refusal::NoProgram)?;
     let (Some(member), Some(digest)) = (package.member(index), package.member_digest(index)) else {
         return Err(Refusal::NoProgram);
     };
@@ -474,6 +476,34 @@ pub fn installable<'a>(catalogue: &str, bytes: &'a [u8]) -> Result<Installable<'
         bytes: member,
         digest,
     })
+}
+
+/// **The prefix that marks a member as a program not named after its package** (milestone 810
+/// (`ripgrep` is packaged in basalt)): `bin/rg` in the package `ripgrep` is the program `rg`.
+/// Name: provisional 2026-10-12 (UTC), as is the convention, which [`installable`]'s step 3 states.
+pub const PROGRAM_PREFIX: &str = "bin/";
+
+/// The program member and the program's name: the member named after the package, or else the one
+/// `bin/<program>` member, whose program is a single non-empty component.
+fn program_member<'a>(package: &Package<'a>) -> Option<(&'a str, usize)> {
+    let name = package.name();
+    if let Some(index) = package.index_of(name) {
+        return Some((name, index));
+    }
+    let mut found = None;
+    for index in 0..package.len() {
+        let Some(program) = package
+            .member_name(index)
+            .and_then(|m| m.strip_prefix(PROGRAM_PREFIX))
+        else {
+            continue;
+        };
+        if program.is_empty() || program.contains('/') || found.is_some() {
+            return None;
+        }
+        found = Some((program, index));
+    }
+    found
 }
 
 /// **The catalog's stem for a package asked for by name** (milestone 198 (a package manager)
@@ -897,6 +927,32 @@ mod tests {
             installable(&catalogue_for(&file), &file),
             Err(Refusal::NoProgram)
         );
+    }
+
+    /// **A program named otherwise is its one `bin/` member** (milestone 810): `uptime`'s package
+    /// carrying `bin/up` installs the program `up`. Two such members, an empty name or a deeper
+    /// path install nothing, and a member named after the package still wins.
+    #[test]
+    fn a_bin_member_is_the_program_when_none_is_named_after_the_package() {
+        fn install(file: &[u8]) -> Result<(std::string::String, usize), Refusal> {
+            let digest = measured_boot::digest_text(&sha256(file));
+            let vouched = std::format!(
+                "uptime-0.1.0-aarch64 {}",
+                core::str::from_utf8(&digest).unwrap()
+            );
+            installable(&vouched, file).map(|g| (g.program.into(), g.bytes.len()))
+        }
+        let file = written(&[("bin/up", b"\x7fELF up"), ("uptime.license", b"MIT")]);
+        assert_eq!(install(&file), Ok(("up".into(), 7)));
+        for refused in [
+            &[("bin/a", &b"a"[..]), ("bin/b", &b"b"[..])][..],
+            &[("bin/", &b"a"[..])][..],
+            &[("bin/x/y", &b"a"[..])][..],
+        ] {
+            assert_eq!(install(&written(refused)), Err(Refusal::NoProgram));
+        }
+        let file = written(&[("bin/up", b"other"), ("uptime", b"\x7fELF")]);
+        assert_eq!(install(&file), Ok(("uptime".into(), 4)));
     }
 
     /// **A name finds its package's stem on this architecture and nowhere else** (rung 3a's
