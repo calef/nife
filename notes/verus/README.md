@@ -15,6 +15,7 @@ budget has no room for. All of it was read or run on 2026-09-20.
   and Rust, and the rest of its trusted base.
 - [`proof-effort.md`](proof-effort.md): the proof-effort figures and tables, seL4's cost,
   Atmosphere's syscall figures second-hand, and the extrapolation to this kernel.
+- [`examples.md`](examples.md): the parent's EXAMPLES, each command and its output whole.
 
 *Name: provisional, minted 2026-10-11 (UTC) by lane/seventh-ten-longest-notes, which split the
 parent under §212 (a prose budget). The directory follows §212's siting default, `notes/X/` beside
@@ -33,3 +34,5 @@ names files.
   lane/seventh-ten-longest-notes, for the trusted computing base it quotes.
 - `proof-effort` Name: provisional, minted 2026-10-11 (UTC) by lane/seventh-ten-longest-notes,
   after the parent's "The number that decides it: proof effort".
+- `examples` Name: provisional, minted 2026-10-13 (UTC) by lane/prose-cap-notes-c, for the
+  parent's EXAMPLES section.

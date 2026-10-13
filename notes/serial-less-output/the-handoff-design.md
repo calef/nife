@@ -3,7 +3,7 @@
 An appendix to [`notes/serial-less-output.md`](../serial-less-output.md), which holds what was
 chosen: the firmware's framebuffer, carried across the handoff. This file holds why the address
 rides PVH's command line rather than a new structure field, and why the kernel's screen console is
-not `video_terminal`.
+not `video_terminal`, and the gate's first green run in full.
 
 ### Why it rides a command line and not a new structure field
 
@@ -40,3 +40,28 @@ one. It is deliberately not this, for three reasons that all point the same way:
 
 What *is* shared is the font, so the letters on an early boot screen and the letters in the
 graphical terminal are the same letters, which is what makes the gate below possible.
+
+### The gate's first green run, in full
+
+Moved verbatim from the parent's "The gate: a program reading a screen" under §212 (a prose budget)
+on 2026-10-13 (UTC).
+
+Measured, 2026-09-04, OVMF on QEMU 11.x, `-display none`:
+
+```console
+$ cargo xtask uefi-boot
+nife uefi_loader: milestone 87
+uefi_loader: screen at 0x0000000080000000..0x00000000803e8000
+uefi_loader:   1280x800, stride 5120, bgrx
+uefi_loader: kernel placed, exiting boot services
+
+nife on x86_64 (long mode, ring 0, 4-level paging)
+  screen      : 1280x800 bgrx at 0x80000000, 182x100 cells (boot cmdline)
+  ...
+nife x86_64: boot complete, halting.
+uefi-boot: read 96 non-blank row(s) of text back off the framebuffer, ending
+uefi-boot:   |   next        : real ELF user programs (user_mode_runtime has no x86_64 arms), ...
+uefi-boot:   | nife x86_64: boot complete, halting.
+uefi-boot:   |   capability slots: 2 of 24 at peak
+uefi-boot: booted under OVMF from \EFI\BOOT\BOOTX64.EFI
+```

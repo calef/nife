@@ -91,3 +91,64 @@ is fetched through a broken mapping, the CPU takes a page fault with no IDT, esc
 fault with no IDT, and triple-faults. On QEMU that is a machine reset with no output. The
 diagnostic is `-d int,cpu_reset -no-reboot`, which prints the full register state at each
 escalation.
+
+## The tour's expected output, and how to read it
+
+Moved verbatim from the parent's "Reproducing it" under §212 (a prose budget) on 2026-10-13 (UTC).
+
+Expected output, 2026-08-24 (the memory-map and ACPI blocks elided; they are quoted in full
+in [acpi-and-pci.md](acpi-and-pci.md)):
+
+```
+nife on x86_64 (long mode, ring 0, 4-level paging)
+  cpu 0 booted: high-half kernel, .bss, and the 16550 console are up.
+  running at  : 0xffffffff8010b4b0  (high half: the long-mode jump landed)
+  boot info   : 0x0000000000001580  (PVH hvm_start_info, not a device tree)
+  cpu         : x86_64, vendor AuthenticAMD, cpuid leaves 0..0xd
+  traps       : idt installed; a breakpoint was caught and stepped over (1)
+  memory      : 9 regions from the PVH handoff, rsdp 0x0
+                ...
+  acpi        : rsdp at 0xf52e0 (revision 0), root table 0xffe2344 (rsdt)
+                ...
+  apic        : local apic 0xfee00000 up, id 0, version 0x14, 8259s masked
+  clocks      : tsc 1001 MHz, apic timer 62 MHz (both measured against the PIT)
+  timer       : 20 ticks in ~0.2s at 100 Hz (20 routed, 0 spurious)
+  io apic     : id 0 at 0xfec00000 up, version 0x20, 24 redirection entries, gsi base 0
+  device irq  : pit irq 0 -> gsi 2 on vector 0x32: 20 interrupts in ~0.2s at 100 Hz
+  frames      : allocator up over 1 ram region(s) (first frame 0x21e000)
+  memory          : 254 MiB total, 253 MiB free (1148 KiB in use)
+  mmu         : fine W^X 4-level map installed (cr3 0x21f000), image 0xffffffff80000000, direct map 0xffff888000000000
+                560 KiB of page tables, no identity map, guard pages are holes
+  image       : text 0xffffffff80109000..0xffffffff80144000, stack 0xffffffff8015c000..0xffffffff8016c000
+  entropy     : rdseed supported (cpuid leaf 7 ebx.18), drew 0x48d292e828c52899
+  scheduler   : up on 1 cpu, preempting at 100 Hz (idle thread registered)
+  smp: none yet (x86 uses INIT-SIPI-SIPI via the local APIC; milestone 161)
+  smp: 1 core(s) online
+  kernel task : a spawned thread ran and carried its captured state (0x16100004)
+
+  user thread 8589934594 killed: vector 14 (page fault)
+    rip 0x0000000000400005   addr 0x0000000000a50000   user rsp 0x0000000000501000   err 0x00000004
+  the kernel is fine.
+
+  user thread 17179869186 killed: vector 14 (page fault)
+    rip 0x0000000000400005   addr 0x0000000000a50000   user rsp 0x0000000000501000   err 0x00000004
+  the kernel is fine.
+  userspace   : a process built from untyped ran at cpl 3 and sent 0x1610004 on a granted cap
+                thread 8589934594 died at pc 0x400005 on addr 0xa50000, delivered to its supervisor
+                two children cost 0 frames the first round and 0 the second (steady state)
+
+  next        : real ELF user programs (user_mode_runtime has no x86_64 arms), then SMP.
+nife x86_64: boot complete, halting.
+```
+
+The two `user thread ... killed` blocks are the *faulting* child of each round dying, printed by the
+trap path on its way to `sched::fault`. They are the demo working, not a failure; the tour's
+`userspace` lines are what assert on them.
+
+**The lines after the `mmu` one are the proof, not the `mmu` line itself.** They are printed after
+the `mov cr3`, through a console the new tables do not describe (COM1 is a port) but from code and a
+stack they do.
+
+The frame numbers and the `rdseed` word change from boot to boot; everything else is stable.
+
+The vendor string is whatever `-cpu` was asked for; `max` on this host reports `AuthenticAMD`.

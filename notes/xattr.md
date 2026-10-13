@@ -192,7 +192,7 @@ through rather than an inconsistency:
 | `fs_subtree_caretaker` | **the FS server.** The caretaker performs no checks at all; a file handle inherits `READ`/`WRITE` from the directory it was opened through, so a read-only subtree grant is refused on the handle the server minted |
 | `fs_nameset_caretaker` | **the FS server**, as above. The caretaker filters *directory names*, and an attribute name is not one, so it passes the filter without being compared against the set |
 
-That last row is the one worth staring at. `fs_nameset_caretaker` asks "is this name in the set" on
+`fs_nameset_caretaker` asks "is this name in the set" on
 every verb whose operand is a name in the granted directory, and the four attribute verbs carry a
 name in the shared page that is not such a name. Filtering it would have refused a program its
 own file's attributes on the grounds that `user.com.apple.metadata` is not a name the pattern
@@ -252,8 +252,6 @@ type codes stay, since no host filesystem has a field for one), and anything the
 counted and named. See [notes/host-recovery.md](host-recovery.md).
 
 ## BUGS
-
-Named here because a reader who meets the feature deserves to meet its edges at the same time.
 
 - **You cannot create a file called `.nife-attrs` anywhere**, at any rights, in any directory.
   The refusal is `EINVAL`, the same one `..` gets, because the name is not expressible here rather
