@@ -661,10 +661,13 @@ pub fn spin_for(counter_ticks: u64) {
 /// Scheduler ticks taken on `cpu`.
 ///
 /// # BUGS
-/// **There is one CPU, so this ignores its argument and reports the global count.** The other two
-/// architectures keep a per-CPU array so a before/after pair names one CPU even if the caller
-/// migrated; nothing can migrate here yet. It becomes wrong the moment SMP lands, which is why it
-/// says so rather than looking finished.
+/// **This ignores its argument and reports the global count**, which was harmless when there was
+/// one CPU and is wrong now that there are several. The other two architectures keep a per-CPU
+/// array so a before/after pair names one CPU even if the caller migrated. It also blinds
+/// `sched::dump_threads`, whose per-core `ticks` column is how a dump tells a core wedged with
+/// interrupts masked from one that is merely idle: here every core prints the same number, and the
+/// other core's ticks hide the wedged one (corrected 2026-10-13 UTC by lane
+/// `maintainer/supervision-label-hang`, whose hang was exactly that shape).
 #[allow(dead_code)]
 pub fn ticks_on(cpu: usize) -> u64 {
     let _ = cpu;

@@ -35,24 +35,8 @@ A riscv64 host is not needed, and would not help. CBMC does not care which machi
 It checks a goto program, and the machine model is data written into that program. So what Kani
 lacks is a riscv64 *target*, not a riscv64 *host*. A patched Kani 0.67.0 on patagonia (aarch64
 macOS, stock CBMC 6.8.0) compiled the whole nife kernel for `riscv64gc-unknown-linux-gnu` and ran
-its harnesses:
-
-```console
-$ KANI_TARGET=riscv64gc-unknown-linux-gnu cargo-kani -p kernel -Z unstable-options \
-    --ignore-global-asm --output-format=terse
-Checking harness arch::riscv64::mmu::riscv64_reach_probe::reaches_sfence...
-Failed Checks: TerminatorKind::InlineAsm is not currently supported by Kani. Please post your example at https://github.com/model-checking/kani/issues/2
- File: "kernel/src/arch/riscv64/mmu.rs", line 681, in arch::riscv64::mmu::flush_asid
-VERIFICATION:- FAILED
-Checking harness arch::riscv64::mmu::riscv64_reach_probe::satp_asid_round_trips...
-VERIFICATION:- SUCCESSFUL
-Checking harness syscall::proofs::every_page_between_the_checked_ends_is_itself_a_user_page...
-VERIFICATION:- SUCCESSFUL
-Checking harness syscall::proofs::the_run_end_is_exact_and_refuses_exactly_what_does_not_fit...
-VERIFICATION:- SUCCESSFUL
-Complete - 3 successfully verified harnesses, 1 failures, 4 total.
-        7.27 real         2.27 user         0.68 sys
-```
+its harnesses: three of four verified, one failed, 7.27 s real
+([transcript](0589-kani-can-target-riscv64-from-the-hosts-we-have/transcripts.md)).
 
 The failure is the point of the second probe. It calls `flush_asid`, which runs `sfence.vma`, and
 Kani reports the reachable `asm!` as unsupported rather than refusing to compile. That is the same
@@ -62,18 +46,7 @@ round-trip the ASID and the root for every page-aligned root below 2^56. It sits
 `crate::arch`. Nothing here is a fiction about which architecture is underneath.
 
 A third probe stubbed `read_satp` (a one-instruction `csrr` wrapper) with a model and proved
-`current_root_pa` extracts the root it was given:
-
-```console
-$ KANI_TARGET=riscv64gc-unknown-linux-gnu cargo-kani -p kernel -Z unstable-options -Z stubbing \
-    --ignore-global-asm --harness current_root_is_the_ppn_field
-Checking harness arch::riscv64::mmu::riscv64_stub_probe::current_root_is_the_ppn_field...
-VERIFICATION:- SUCCESSFUL
-Complete - 1 successfully verified harnesses, 0 failures, 1 total.
-```
-
-So the target flag and the maintainer's containment idea combine. The flag makes every riscv64 line
-compile; stubs on thin wrappers make the logic around `asm!` reachable.
+`current_root_pa` extracts the root it was given.
 
 ## Part 1: What Kani needs per architecture, read in the source
 
@@ -123,9 +96,8 @@ become an error, so an upstream version has to find the right place to set it.
 | runs on every PR | yes, on the existing `ubuntu-24.04-arm` runner | only with a self-hosted runner; GitHub's hosted runners are x86_64 and arm64 (recalled, not checked) |
 | machine | none | `radon` or the Scaleway RV1, as a Linux box |
 
-(b) is (a) plus a machine. It still needs the compiler patch, because `new_machine_model` panics
-on a riscv64 host exactly as on any other. It saves only the driver's four lines, and pays with a
-from-source CBMC, a Linux host and a self-hosted runner.
+(b) is (a) plus a machine. `new_machine_model` panics on a riscv64 host exactly as on any other,
+so it still needs the patch, and saves only the driver's four lines.
 
 Why `radon` is the wrong host. `radon` runs nife by netboot on the bench: UART into patagonia,
 smart plug 2. Milestone 225 (run the soak on radon, argon and xenon) and pull request #1275's bench
@@ -242,10 +214,9 @@ first riscv64 `kani::stub` harnesses need. aarch64 and x86_64 follow the same pa
 
 ## The seven questions
 
-1. Considered and lost. Native host lost because it is option 1 plus a machine: same compiler
-   patch, more cost, and it takes `radon` from the bench. Upstream-only lost on unknown latency, not
-   merit. #1276's option 1 lost on the `crate::arch` fiction the flag removes. Containment's host
-   swap lost to the flag for the same reason; its stub half is kept.
+1. Considered and lost. Native host: option 1 plus a machine, and it takes `radon` from the
+   bench. Upstream-only: unknown latency, not merit. #1276's option 1 and containment's host swap:
+   the `crate::arch` fiction the flag removes. Containment's stub half is kept.
 2. What the tree does in the analogous case. `patches/README.md`: carry a patch in format-patch
    form, submit it, drop it when the pin passes a release with the fix. And milestone 304 (`cargo kani
    -p kernel` only ever compiled one architecture) answered the x86_64 gap with a second CI row, which

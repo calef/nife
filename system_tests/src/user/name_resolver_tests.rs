@@ -483,13 +483,15 @@ fn std_resolve_prints(
 /// `PermissionDenied`, which only the grant can say, since the peer would have answered `REFUSED`.
 /// Without it, the PAL finds the slot empty and answers `Unsupported` before minting a page.
 ///
-/// BUGS: failed once on CI, 2026-10-12 (UTC), `thead-c906`, #1964, green on rerun. The first lookup
-/// answered `NetworkUnreachable` (the resolver's socket was refused a step) and every later one,
-/// the echo by name included, succeeded. Milestone 801's first-`CONNECT` failure had this shape
-/// before ephemeral ports were seeded on 2026-10-10; this is the one occurrence since. The PAL now
-/// names the step, so the next one says where to look (an injected `CONNECT` refusal printed
-/// "the resolver's connection to its name server was not established"). Not reproduced in 11
-/// filtered runs on `thead-c906` at load 13 to 24 on 8 cores, 2026-10-13.
+/// Failed on CI twice, cause found and fixed 2026-10-13 (UTC). On #1964 (2026-10-12, `thead-c906`)
+/// this test's first lookup answered `NetworkUnreachable`; in run 38357922842 (2026-10-13, riscv64)
+/// the test above answered `loop.nife.test` with `NETWORK`/`CONNECT` after 15 s. The cause: a fresh
+/// `net_stack` handing out a local port the previous test's stack had used moments before, while
+/// slirp still held that 4-tuple in `TIME_WAIT` and dropped the SYN, whose random sequence number
+/// was below the old one. CI logs carry no ports, so that is inferred, not read: starting every
+/// stack at the same port failed 9 of 10 runs (riscv64 and aarch64), each in one of these two
+/// shapes, and a capture showed the dropped SYNs. Ports now follow the boot clock;
+/// `socket_protocol::ephemeral` has the capture, the fix and what it still does not cover.
 ///
 /// Falsification: replayable `system_tests/falsifications/user.name_resolver_tests.a_std_program_resolves_its_granted_zone_and_nothing_without_a_grant.patch`
 #[test_case]

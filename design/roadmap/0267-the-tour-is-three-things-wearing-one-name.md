@@ -12,8 +12,7 @@ list and the measurement are below and all three stand.
 
 The narrative program was deleted on 2026-09-13, by calef's ruling, on `maintainer/delete-narrator`.
 The next section is what it said and why it went, and it is deliberately the first thing in this
-block rather than a footnote at the end. This block turned BUILT at that deletion rather than
-before it, and the reason is worth stating because the word looks wrong at a glance. The only
+block rather than a footnote at the end. This block turned BUILT at that deletion. The only
 thing holding 267 at PARTIAL was that the program could not be typed at a prompt. Deleting the
 program does not deliver that half, it dissolves it. There is no program, so there is nothing
 left outstanding, and `PARTIAL` asserts remaining work that no lane could now pick up.
@@ -132,8 +131,7 @@ top of the tour to feed it, which kept the transcript in the order it always rea
 printing client it used to feed went at the same time: running two programs to demonstrate one thing
 was one program too many.
 
-This closed a gap nobody had named (the section above describes it), and that is the part of item 2 that survives the
-deletion. The kernel used to print *"a userspace program printed to the screen, and the kernel
+This closed a gap nobody had named, and that is the part of item 2 that survives the deletion. The kernel used to print *"a userspace program printed to the screen, and the kernel
 does not contain a line of code that puts a user's bytes on the wire"* on the program's behalf. For
 four days the narrator said it, through a driver at EL0 that holds the UART, from an address space
 that could not reach the device at all. The default boot now prints no narrative at all. The BUGS
@@ -150,8 +148,6 @@ entry needs:
 | the virtio and PCIe block demos | the kernel enumerates the bus and mints registers, a DMA page and an interrupt into a driver's world, then reads the report with `sched::ipc_recv`. The granter cannot be the grantee |
 | the outlaw | `&raw const USER_FAULTS` is the address of a kernel static, handed to a program that faults reading it and increments the counter it reached for. A program cannot name that address |
 | the memory-region demo | it prints `memory::stats().used` before and after a process spends its own budget, and the claim is that the number did not move. That number is the kernel's own frame accounting and is not exposed to EL0 |
-
-4. The measurement is above.
 
 ## What must not break, and did not
 

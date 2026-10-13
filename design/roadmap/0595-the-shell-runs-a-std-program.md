@@ -17,9 +17,8 @@ provisional: the integrator mints the number at merge, and the title is a draft 
 names it.)* The progenitor's `std` layout was built on 2026-09-26 by lane
 `milestone/595-std-layout`. Its x86_64 half was promoted from the proposal
 `the-x86-64-progenitor-serves-entropy-from-rdseed` and built the same day by lane
-`milestone/595-x86-std`. See "What is built" below.
-
-Built 2026-10-07 by lane `milestone/595-rg-at-prompt`, which ran `rg` at the prompt.
+`milestone/595-x86-std`. Lane `milestone/595-rg-at-prompt` finished it on 2026-10-07. See "What
+is built" below.
 
 ## The gap, checked 2026-09-25
 
@@ -84,8 +83,7 @@ virtio-mmio slot, and `q35` has no mmio bus.
 
 ### Who confirms `RDSEED` exists: the kernel
 
-That was the proposal's open question, and it was
-decided as a reversible choice, for three reasons that do not depend on effort:
+The proposal's open question, decided as reversible, for three reasons not about effort:
 
 - The tree already does it this way. `entropy_service::is_instruction_backend_available` reads the
   feature bit from `arch::isa`'s boot record, `components/src/entropy.rs` says it trusts its
@@ -132,8 +130,7 @@ Every fork was ruled by 2026-09-27. §219 (how the shell names an installed prog
 spawner) option D lets an unvouched `rg` run by its path; installing it with `jig` is milestone 121
 (`ripgrep` and enumeration)'s, on calef's 2026-10-07 ruling. Milestones 205 (how a foreign program
 is told what to do), 665 (designating a foreign program's words) and 206 (a program image has under
-896 KiB) gave it words, a grant from a word, and room. The last two steps were this milestone's:
-see "What is built: `rg` at the prompt".
+896 KiB) gave it words, a grant from a word, and room.
 
 ## What is built: an image as large as `rg` (2026-09-27, lane `milestone/595-std-image`)
 
@@ -195,8 +192,7 @@ What it took:
 ## What it unblocks
 
 - Milestone 121's three outstanding items: the confined demonstration, the loud refusal of a
-  directory lacking `ENUMERATE`, and the benchmark that prices the walk. Each becomes a typed line
-  rather than a harness call.
+  directory lacking `ENUMERATE`, and the benchmark that prices the walk. Each becomes a typed line.
 - Milestone 123 (the demonstration: somebody else's software, running narrow). Its first element is
   a ported tool run here and on Linux over one corpus. A tool a person cannot type is a harness
   result, not a demonstration.
@@ -222,8 +218,8 @@ kernel harness would only imitate.
   wherever `target/ripgrep/<triple>/rg` is absent, CI included. Making CI build `rg` is the §46 (thin
   primitives or whole subsystems) decision nobody has made, and nothing in this milestone needed it.
 
-The answers are substrings of the transcript, not the byte-for-byte comparison first proposed.
-That is how every swish-check line is judged.
+The answers are substrings of the transcript, as for every swish-check line, not the
+byte-for-byte comparison first proposed.
 
 ## BUGS
 
