@@ -14,11 +14,11 @@ Regenerated 2026-10-11 (UTC) for milestone 840 (the scheduler file is split alon
 the same lines, moved out of `kernel/src/sched.rs` into `kernel/src/sched.rs` unchanged, so the defect is
 the same and only the path and line numbers differ.
 
-diff --git a/kernel/src/sched.rs b/kernel/src/sched.rs
-index e8c8cd6a6..f8f634bd5 100644
---- a/kernel/src/sched.rs
-+++ b/kernel/src/sched.rs
-@@ -1779,9 +1779,7 @@ fn reap_switched_out(guard: crate::sync::IrqSafeGuard<'_, Option<IpcTables>>, pr
+diff --git a/kernel/src/sched/switch.rs b/kernel/src/sched/switch.rs
+index 82ba2d245..027fe8963 100644
+--- a/kernel/src/sched/switch.rs
++++ b/kernel/src/sched/switch.rs
+@@ -579,9 +579,7 @@ pub(super) fn reap_switched_out(
          .and_then(|s| s.threads.get(prev))
          .and_then(|t| t.process);
      process::reap_corpse(guard, prev);
@@ -28,4 +28,4 @@ index e8c8cd6a6..f8f634bd5 100644
 +    let _ = process;
  }
  
- /// Move a blocked thread back to the ready queue. Caller holds the lock.
+ /// **Record that the running thread has started using the floating-point unit** (milestone 447).
