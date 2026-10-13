@@ -190,7 +190,7 @@ mod departure;
 mod ipc_outcome;
 mod preemption;
 mod switch;
-mod wake;
+mod waking;
 
 use current::*;
 use departure::*;
@@ -202,4 +202,4 @@ pub use preemption::{on_tick, preempt_if_needed};
 pub(crate) use switch::finish_switch;
 use switch::*;
 pub use switch::{init, is_running, mark_current_fp_live, schedule};
-use wake::*;
+use waking::*;
