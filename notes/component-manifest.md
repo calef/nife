@@ -48,16 +48,15 @@ accepts, `clock`, `domain`. `caps <program>` prints a program's endowment before
 declared without saying so. A second parallel manifest concept with a similar name would be a
 comprehension disaster in a tree whose first tenet is that a reader meets a name before anything else.
 
-The answer is that they are siblings, not one thing, and the difference fits in a sentence.
+They are siblings, not one thing, and the difference fits in a sentence.
 `grant_plan::Manifest` declares **what a human at a prompt may designate** for a program;
 `component_plan::Requirements` declares **what a supervisor must route before a component can serve
-anyone**. Four falsifiable differences follow, and they are checkable against the code rather than
-matters of taste.
+anyone**. Four differences follow, each checkable against the code rather than a matter of taste.
 
 There is no command line and no human. `grant_plan` exists to make designation authorization: a
 person types a file name and the typing is the grant. Every field of its manifest is about placing a
 token from a line into a slot, or about refusing a line at the prompt. A component is started by a
-supervisor with nothing typed. There is no token to place and no prompt to refuse at.
+supervisor with nothing typed.
 
 The vocabularies are disjoint. Nothing in `grant_plan::Manifest` can name an endpoint, a device
 or a shared page. Nothing in `Requirements` can name an argument or a short option. The nearest thing
@@ -93,7 +92,7 @@ half of that agreement. Putting it there is the same rule as rule 7 one level ou
 its smallest true form: two builds of one contract, in two languages, and the operator does not
 distinguish them.
 
-The interesting consequence is that a manifest is **not the build's request**. A build that needed
+So a manifest is **not the build's request**. A build that needed
 something a console component does not need would not be substitutable for one that did not, so
 letting each build declare its own needs would be letting an untrusted party ask for authority. That
 is Fuchsia's `use`/`offer` split and it is the security posture worth stating out loud:
@@ -129,8 +128,8 @@ them misbehaves rather than escaping.
 
 ## The two rungs, and why they are different rungs
 
-AGENTS.md's ladder says to reach for the highest rung that fits. This mechanism ends up on two,
-because the two halves of "is this declaration right" are answerable at different times.
+This mechanism ends up on two of AGENTS.md's rungs, because the two halves of "is this declaration
+right" are answerable at different times.
 
 Structure is a compile error. `Requirements::problem()` is a `const fn`, and every real
 declaration in the tree asserts on it in a `const` item:
@@ -160,8 +159,7 @@ manifest-wired components: the client's own verdict from its own replies, the op
 read after every writer is dead, the attacker holding the honest client's exact capabilities, the
 control that must fail (a post-revoke device read that faults, with the kernel as witness), and the C
 replacement over §31's seam. Both architectures, the same suite. That is the demonstration: the
-whole flagship still holds with the endowment removed from the operator, and `c_swappable` is wired
-from the same declaration `rust_swappable` is.
+whole flagship still holds with the endowment removed from the operator.
 
 Two things were added.
 
@@ -233,28 +231,14 @@ supervisor:
    ```
 
 Substitute a component's peer without touching the component. Route its `service` name somewhere
-else. That is the whole of what the queued channel does to `chatty`:
-
-```rust
-let to_producer = Provisions {
-    held: &[("service", front), ("report", REPORT), ("operator", w.note)],
-};
-```
+else. That is the whole of what the queued channel does to `chatty`: `to_producer`, in
+`components/src/swapper.rs` `plan_queued`, routes `service` to the broker's `front` endpoint.
 
 Hand a device over on the far side of a revoke. `component_plan` sorts device mappings last, so
-both halves are slices of one plan:
-
-```rust
-// Build with everything except what the revoke is about to take.
-let (child, aspace) = build_child_space(ROOT_UT, region, &elf, &ChildEndowment {
-    caps: plan.caps(), maps: plan.maps_without_devices(),
-    ..ChildEndowment::new(Retention::Nothing) // DECISIONS §142: what we keep, said out loud
-})?;
-// ... Frame::REVOKE ...
-for &(va, slot, mode) in plan.devices() {
-    invoke(aspace, abi::aspace::MAP_INTO, va, slot, mode);
-}
-```
+both halves are slices of one plan: build the child from `plan.maps_without_devices()` with
+`Retention::Nothing` (§142 (what a spawner retains over a child)), and after `Frame::REVOKE` map
+each of `plan.devices()` with `abi::aspace::MAP_INTO`. `components/src/swapper.rs`
+`build_without_devices` is the build half.
 
 ## BUGS
 
@@ -309,8 +293,8 @@ The role names are provisional. A lane may not mint a name, and `service`, `repo
 `component_plan` itself, and so are `Requirements`, `Provisions`, `Plan`, `CapNeed`, `MapNeed` and
 `Direction`.
 
-Three residuals of milestone 23 (a capability-routed component OS with live replacement) remain
-and this lane did not touch them: state handoff (the crux,
+Three residuals of milestone 23 (a capability-routed component OS with live replacement) remain,
+untouched here: state handoff (the crux,
 and the reason the component here is near-stateless), dependency-aware orchestration, and the
 hung-component case (§32's watchdog). A manifest is what dependency-aware orchestration will need to
 read a dependency graph out of, and it does not carry one yet: a component declares what it needs but

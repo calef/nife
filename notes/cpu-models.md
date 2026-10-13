@@ -134,7 +134,7 @@ sets both eagerly, with a comment saying why, so this was already closed; the ma
 Sv57 versus Sv39. `rv64` advertises `mmu-type = riscv,sv57`. Every narrow model advertises
 `riscv,sv39`, which is what the U74 has. We run Sv39 on all of them.
 
-**The `sstc` extension**, which `rv64` and `rva23s64` have and `sifive-u54` does not: it puts the
+The `sstc` extension, which `rv64` and `rva23s64` have and `sifive-u54` does not: it puts the
 timer compare in a CSR (`stimecmp`) instead of behind an SBI call. `arch/riscv64/timer.rs` goes
 through SBI, so it works on both.
 
@@ -147,30 +147,10 @@ through SBI, so it works on both.
 - A green matrix is not a portable kernel. It is the absence of one specific class of failure.
 
 - `the_canary_reports_a_byte_that_changed_behind_its_back` flaked on `thead-c906`, and the
-  model was innocent: the flake was a race in the canary's own single-flight protocol (observed
-  2026-08-15, four runs of one tree: two failures with the flipped byte uncounted, two passes;
-  diagnosed and fixed the same day). The canary's `check()` was single-flight behind an
-  `IN_CHECK` flag and returned silently when it lost the compare-exchange. Timer ticks on other
-  harts call `check()` too (secondaries are online in the suite), so the test's decisive check
-  could lose the slot to a tick's pass that had read the scratch byte *before* the flip; the
-  test's call then checked nothing, and the flip went uncounted. Nothing in that is c906-specific
-  beyond timing; this model, the matrix's slowest, is merely where the window landed twice. The
-  suite's logs show the benign half of the same interleaving routinely on every model and both
-  ISAs: a tick's pass absorbing the flip (the `0xa5 -> 0x5a` canary line) before the test's own
-  check runs. The fix (crates/memory_corruption_canary_gate, loom-searched): the serialization is one state word
-  with exclusive guards, `check()` reports whether a pass actually ran, the tick shrugs at a
-  refusal, and the test loops until a pass of its own completes. The rework also closed a second
-  hole the old spelling permitted and loom falsifies (an `arm()` could rewrite the watch plan
-  under a checker that had seen `ARMED` but not yet won `IN_CHECK`, a torn-plan wild read),
-  which no observed failure required but a corruption instrument must not contain.
-
-  Two CI failures were briefly attributed to this bug and are NOT it, recorded here because they
-  were sighted through this entry: an aarch64 kernel-suite death (PR #204's branch, run
-  31907966383 attempt 1) read as "same-EL data abort just after the canary line", and a c906
-  matrix death (milestone 54's branch, run 31910308865 attempt 1) at the riscv trap reporter.
-  The logs acquit the canary: both are the thread-stack overflow in the next entry, right after
-  the user-fault kill report (slot 87 on aarch64, slot 102 on c906; on aarch64 the canary had
-  disarmed 21 seconds earlier).
+  model was innocent: a race in the canary's own single-flight protocol, diagnosed and fixed
+  2026-08-15 (crates/memory_corruption_canary_gate, loom-searched). Two CI deaths briefly blamed on
+  it were the stack overflow in the next entry. Both are in full in
+  [cpu-models/canary-flake.md](cpu-models/canary-flake.md).
 
 - The 2026-08-15 attempt-1 deaths on loaded runners were a real kernel thread-stack overflow,
   since diagnosed and fixed (aarch64 run 31907966383 and c906 run 31910308865, both during

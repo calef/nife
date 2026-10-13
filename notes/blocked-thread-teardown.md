@@ -9,8 +9,7 @@ by side. The survey and the proposals in full are in
 
 The fork is answered. calef chose proposal A on 2026-09-03, and milestone 133 (ending) built it
 (design/roadmap/0133-blocked-thread-teardown.md). The argument is kept as it was written, because
-it is what the decision was made against. A note edited into agreement with its own outcome is worth
-nothing to the next reader.
+it is what the decision was made against.
 
 What changed against the text. The mechanism landed in `sched::finish_blocked_resident` and
 `RegionReap::FinishInPlace`. `Endpoint` is spelled `Rendezvous` in this tree, and `remove_receiver`
@@ -139,14 +138,7 @@ Two fixes exist, and both have prior art below:
 
 
 Zircon documents the same hazard as a consequence of `zx_channel_call` timing out, in its own
-vocabulary:
-
-> "If a `zx_channel_call()` returns due to `ZX_ERR_TIMED_OUT`, if the server eventually replies, at
-> some point in the future, the reply _could_ match another outbound request [...] This syscall is
-> designed around the expectation that timeouts are generally fatal and clients do not expect to
-> continue communications on a channel that is timing out."
->
-> Source: [`zx_channel_call`](https://fuchsia.dev/reference/syscalls/channel_call)
+vocabulary; the quote is in [`prior-art.md`](blocked-thread-teardown/prior-art.md).
 
 ## Prior art
 
@@ -212,7 +204,6 @@ authority, cost, what it breaks and how it fails.
 - D, accept the leak, bound it with the existing quotas and say so. Argued properly, because
   Zircon removed thread killing and a capacity failure is survivable. It leaves this kernel alone
   in the survey with no way out at all.
-
 
 ### Side by side
 
