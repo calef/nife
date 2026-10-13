@@ -21,12 +21,10 @@ matter.
 
 ### Evidence today
 
-112+ Kani harnesses and `notes/verification.md`. Against: the VisionFive 2's undelivered-wake bug
-was found by a bench on three harts, invisible in QEMU, and no proof was positioned to see it.
-*(Corrected 2026-09-25 under §216 (fatal-risk facts are correctable, and verdicts are the architect's): that reading is retracted. `notes/visionfive2.md`'s fifth bench stop, 2026-08-15,
-found a completed tour's terminal state rather than a stranded receiver, and milestone 201 (is
-multicore reliability converging) keeps it as row D6, class `retracted`. The timer re-arm drift
-below is the counterfactual that stands.)*
+112+ Kani harnesses and `notes/verification.md`. Against: the timer re-arm drift below, the
+counterfactual that stands. The VisionFive 2's bench stop is not one: `notes/visionfive2.md`'s fifth
+bench stop, 2026-08-15, found a completed tour's terminal state rather than a stranded receiver, and
+milestone 201 (is multicore reliability converging) keeps it as row D6, class `retracted`.
 
 ### The experiment
 
@@ -51,15 +49,14 @@ prover) removed on 2026-08-30.)*
   64,818 lines of `kernel/src` were out of reach by construction. And that is exactly where every
   concurrency, hardware-contract and resource-accounting defect lived. The proofs were not failing
   to catch bugs in the code they covered; they did not cover the code the bugs were in.
-  *(Corrected 2026-09-25 by milestone 536 (two records still say the prover cannot see
-  `kernel/src`), under §216: this bullet stayed in the present tense for three weeks. Milestone
-  193 made the header line false the same day, and PR #1276 corrected the header itself.
-  Measured from the merged tree on 2026-09-25: `kernel/src` is 86,528 lines, 42,953 of them
+  Milestone 193 made the header line false the same day, and PR #1276 fixed the header itself.
+  Measured from the merged tree on 2026-09-25 by milestone 536 (two records still say the prover
+  cannot see `kernel/src`): `kernel/src` is 86,528 lines, 42,953 of them
   non-blank non-comment, and eight harnesses prove code in it. What stops a harness now is `asm!`, a
   fixed-address MMIO read, or an `arch/` subtree the host does not compile. Files calling `asm!`
   hold 15,966 lines, every one under `arch/`; that overcounts, because Kani refuses on the call
   graph rather than the file. [`notes/kernel-proofs.md`](../../notes/kernel-proofs.md) has
-  the per-host table.)*
+  the per-host table.
 - Why it is amber and not red. Two real defects were caught *while harnesses were being written*
   (`dtb::be32`'s unchecked `at + 4`, reachable from a corrupt device tree on the boot path;
   `pci::intx_irq`'s pin-0 underflow). That is the survivorship asymmetry this file's rule 1 warned
@@ -113,11 +110,10 @@ defect of milestone 142 (a text display good enough that people use it instead o
 watching them turn red. That is the counterfactual this study said the tree did not have, and it now
 exists. It cost about 10 seconds of `script/verify`. `kernel/src/arch/`, `user/` and `xtask` were
 still out of reach that day, so the amber stood; what changed is that the reason became a worklist
-rather than a wall. *(Corrected 2026-09-24: this read "are still out of reach" long after it
-stopped being true. `user/` came within reach with milestone 197 above, `xtask` compiles and is
+rather than a wall. Today `user/` is within reach through milestone 197 above, `xtask` compiles and is
 refused on value, and milestone 304 below put `arch/x86_64/` beside `arch/aarch64/`. Only
 `arch/riscv64/` is still out of reach, and the amber now rests on that and on the survivorship
-caveat, not on reach.)*
+caveat, not on reach.
 
 And on 2026-09-16 a proof caught a real kernel defect, on an architecture the prover had never
 compiled. Milestone 304 (only ever compiled one architecture, and it was the runner's) found that
@@ -140,16 +136,13 @@ test in this tree could have reached. It is the class this risk was written to a
 the first time this tree has an instance of it. The survivorship caveat above still applies with
 full force: the harness caught it *while being written*, like `dtb::be32` and `pci::intx_irq` before
 it. So it is evidence that pointing the prover somewhere new pays, not yet evidence that a standing
-proof catches regressions. riscv64 remains unreachable to the prover and nobody here can change
-that: no GitHub image, no Kani cross-target flag, and CBMC needs a goto-binary for its own host.
-*(Corrected 2026-09-25 under §216: "nobody here can change that" is too strong. PR #1276 measured
-that `arch/riscv64/iommu.rs`, which has no `asm!`, compiles unchanged under Kani on an aarch64 host
-as a proof-only module. It also read from Kani 0.67's source that Kani supports only the x86_64
-and aarch64 machine models, so a riscv64 runner would not have helped either. The files that do call
-`asm!` fail in rustc before Kani runs. Milestone 432 (the RISC-V IOMMU driver has no counterpart to
-the SMMU's proofs) then proved that file from an aarch64 host on 2026-09-25 Corrected again 2026-09-25 under §216: CI run 36088566670 proved riscv64 with a
-patched Kani.)* The
-fix was deliberately not made in that lane, because it changes a public signature and a documented
+proof catches regressions. Kani has no cross-target flag, and Kani 0.67's source supports only the
+x86_64 and aarch64 machine models, so a riscv64 runner would not help; the riscv64 files that call
+`asm!` fail in rustc before Kani runs. A riscv64 file without `asm!` is within reach from an aarch64
+host: PR #1276 measured that `arch/riscv64/iommu.rs` compiles unchanged under Kani there as a
+proof-only module, milestone 432 (the RISC-V IOMMU driver has no counterpart to the SMMU's proofs)
+proved that file from an aarch64 host on 2026-09-25, and CI run 36088566670 proved riscv64 with a
+patched Kani. The fix was deliberately not made in that lane, because it changes a public signature and a documented
 policy. It was raised as a proposal with gate `DECISION`, calef chose to route by redirection index
 on 2026-09-16. It was built the same day as milestone 308 (a GSI reaches its vector by redirection
 index, not by its own number). That block is
@@ -210,9 +203,9 @@ The two that are left are deliberate, and §134 gained a fourth state for them t
   counter, so no mistake in it can enqueue anything. It guards against `signal` growing an enqueue
   path later. It is not evidence about the code today.
 - `direct_memory_access_validator::a_descriptor_mutated_after_validation_cannot_reach_the_device`
-  was listed here as holding by design. Corrected 2026-10-06 (UTC) by #1747: it was falsifiable
-  all along. Its memory model was a fixed table, so a double fetch could not show. `ChainMem::racing`
-  models a racing driver, and a double-fetch patch turns the harness red. `unfalsifiable` stands at 1.
+  is falsifiable (#1747). A fixed-table memory model could not show a double fetch;
+  `ChainMem::racing` models a racing driver, and a double-fetch patch turns the harness red.
+  `unfalsifiable` stands at 1.
 
 What this does and does not move. It closes the question milestone 191 opened about chaff, whether
 harnesses prove properties nothing could have made false: every harness but two now has a recorded

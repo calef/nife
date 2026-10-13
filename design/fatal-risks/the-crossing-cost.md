@@ -46,10 +46,9 @@ What is measured, and it is a lot.
 - A committed floor per crossing, in counter ticks. `bench/baseline-aarch64.txt`: `ipc_rtt`
   1,032 ticks, `call_reply` 1,059, `relay_rtt` 2,058, `ctx_switch` 612, `spawn_reap` 3,383,
   `null_syscall` 20.5. Deterministic and comparable across runs, gated at a coarse 10%.
-  *(Corrected 2026-09-30: this bullet said "in guest instructions"; one aarch64 bench tick is 16
-  guest instructions under `-icount shift=0` (`CNTFRQ` 62.5 MHz), so the floors in instructions are
-  the numbers times 16. The floors stand; the unit label was wrong. See
-  [notes/benchmarks/icount-tick-scales.md](../../notes/benchmarks/icount-tick-scales.md).)*
+  One aarch64 bench tick is 16 guest instructions under `-icount shift=0` (`CNTFRQ` 62.5 MHz), so
+  the floors in instructions are the numbers times 16
+  ([notes/benchmarks/icount-tick-scales.md](../../notes/benchmarks/icount-tick-scales.md)).
 - A bounded footprint for the crossing itself, which is the mechanism by which a per-crossing cost
   would fail to amortize in the first place. `bench/fastpath-aarch64.txt`, written by
   `script/fastpath-footprint`: `ipc_call_reply` 7,028 bytes plus `syscall_entry` 1,508. The first

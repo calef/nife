@@ -21,9 +21,8 @@ implementation grain is the earlier warning, and the only one that can be bought
 
 GREEN.
 Milestone 87 (the x86_64 bare-metal machine) reached `nife self-test: 5 of 5 passed` on xenon's own
-firmware, so nife runs on all three declared architectures on real hardware. *(Corrected
-2026-10-06: on bare metal, two of three. aarch64 has run only under HVF on patagonia, which is
-virtualization; `notes/bench-runbook.md`.)* Everything it needed
+firmware, so nife runs on bare metal on two of its three declared architectures. aarch64 has run
+only under HVF on patagonia, which is virtualization (`notes/bench-runbook.md`). Everything it needed
 lives under `kernel/src/arch/x86_64/`, and its one defect was fixed inside `arch/x86_64/mmu.rs`. The
 cost was measured rather than merely passed: 42 compiler errors, every one "this `arch::` name does
 not exist yet", with `crates/paging` unchanged.

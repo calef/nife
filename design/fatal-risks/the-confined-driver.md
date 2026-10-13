@@ -42,12 +42,11 @@ The risk names three things and they were never one claim. Measured on radon, tr
 - Drives real hardware: yes, 2026-09-04, reproducibly. `served 32+32 bytes`, two boots, first draws
   `3faa07e1` and `731191ba`, each boot's two draws differing from each other. Reseeded per boot
   rather than a constant in silicon or a stale register file.
-- At real speed: MEASURED on silicon, 2026-09-16. 955,223 bytes/s, 64 bytes in 67 us over eight
-  `entropy_protocol` round trips, which is about 8.4 us per round trip; bring-up 562 us. Corrected
-  2026-10-03 (§216 (fatal-risk facts are correctable, and verdicts are the architect's), from #1495): that figure has no committed transcript. It was cited to
-  `bench/radon-2026-09-16/tour-083200.log`, which has no `hw entropy` line, and no committed log
-  holds 955,223 (commit `4af8ff980` carries only the number). Four committed boots of radon
-  measure the same step: 988,416, 992,248 and 992,248 bytes/s on 2026-09-16 (`jobmix-boot3.log:721`,
+- At real speed: MEASURED on silicon, 2026-09-16. A first figure, 955,223 bytes/s, 64 bytes in 67 us
+  over eight `entropy_protocol` round trips, which is about 8.4 us per round trip, bring-up 562 us,
+  has no committed transcript (#1495): `bench/radon-2026-09-16/tour-083200.log`, which it cites, has
+  no `hw entropy` line, and no committed log holds 955,223 (commit `4af8ff980` carries only the
+  number). Four committed boots of radon measure the same step: 988,416, 992,248 and 992,248 bytes/s on 2026-09-16 (`jobmix-boot3.log:721`,
   `jobmix-boot5.log:736`, `jobmix-boot4.log:814` under `bench/radon-2026-09-16/`) and 973,384 on
   2026-09-25 (`bench/radon-2026-09-25/soak-8h.log:208`), a spread of about 4%. The instrument is the one built on
   2026-09-10 (the tour reads the timebase around the step and the `hw entropy` line carries three
@@ -117,11 +116,9 @@ That splits this risk into three, and two of them are now answered:
   a ring buffer.
 - At real speed: measured on silicon 2026-09-16, and the small-device question is closed. 973,384 to
   992,248 bytes/s over four committed boots (the first figure, 955,223, has no committed transcript;
-  see the correction at the head of this entry), 8.4 us per round trip, bring-up 562 us. The full figures and what they do and do not
-  count are at the head of this entry. Corrected 2026-09-11: this used to read "nothing in the boot
-  tour timestamps the step, so the only available clock is a person watching a serial console". And
-  that stopped being true on 2026-09-10 when the step began timing itself. The boot that read it
-  came five days after that.
+  see the head of this entry), 8.4 us per round trip, bring-up 562 us. The full figures and what
+  they do and do not count are at the head of this entry. The step times itself, so the clock is the
+  boot tour's own timebase rather than a person watching a serial console.
 
 The decisive experiment above is unchanged, because throughput is what a TRNG cannot test.
 
@@ -139,14 +136,13 @@ boot reported `iommu : VT-d drhd at 0x00000000fed90000, root table default-deny,
 `pci : 15 function(s) on the bus`, so the IOMMU this experiment needs came up on its own hardware
 rather than under emulation.
 
-Corrected 2026-09-25 (UTC), from pull request #1275 (milestone 261's bench rehearsal). The sentence
-above claims more than that boot showed. The kernel brought up the DMAR's first unit and reported a
-device confined whenever any unit was translating. On the OptiPlex 7040, which shares xenon's
-register addresses, the first unit (`0xfed90000`, flags `0x0`) covers only the integrated graphics.
-The catch-all unit there is `0xfed91000`. So the line shows that a VT-d unit came up on xenon, not
-that the unit in front of the NVMe did. That is an inference from a sibling machine, not a reading
-of xenon's own table, and it stays unverified until milestone 261's bench evening reads xenon's DMAR
-(`notes/risk-6-bench-evening.md`, added by #1275).
+That line shows that a VT-d unit came up on xenon, not that the unit in front of the NVMe did. The
+kernel brought up the DMAR's first unit and reported a device confined whenever any unit was
+translating. On the OptiPlex 7040, which shares xenon's register addresses, the first unit
+(`0xfed90000`, flags `0x0`) covers only the integrated graphics (#1275, milestone 261's bench
+rehearsal, `notes/risk-6-bench-evening.md`). The unit in front of the
+NVMe is the catch-all unit `0xfed91000`, which owns 01:00.0 by the preflight of the 2026-10-04 run
+(`bench/xenon-2026-10-04/`, milestone 261 (the NVMe driver leaves the kernel)).
 
 What it does not touch. No result recorded on xenon asserted that a PCI device was confined. The
 2026-09-17 NVMe attempts crashed or skipped, and xenon's entropy source is `rdseed`, which has no

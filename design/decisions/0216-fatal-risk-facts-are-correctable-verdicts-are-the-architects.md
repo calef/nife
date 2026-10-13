@@ -1,5 +1,5 @@
 ---
-status: DECIDED
+status: AMENDED
 raised: 2026-09-25
 decided: 2026-09-25
 ratified_by: calef
@@ -12,10 +12,12 @@ calef ruled on 2026-09-25 (UTC). *(Section number provisional until the merge qu
 
 ## The ruling
 
-The maintainer may correct a factual error in `design/fatal-risks.md`, or in an appendix under
+The maintainer may correct a factual error in a fatal-risk entry or in an appendix under
 `design/fatal-risks/`, without asking the architect first. A factual error is a wrong date, a wrong
-instrument, or a claim the machine disproves. Each correction is dated and cites the source that
-disproves the old text.
+instrument, or a claim the machine disproves. A correction fixes the fact in place and cites the
+source that disproves the old text, such as a measurement, a commit or a test. The date and the old
+wording go in the commit message and the pull request body, per §298 (a document states what is in
+force now, and its history is in git).
 
 Three things stay the architect's, and a correction does not touch them:
 
@@ -34,7 +36,7 @@ Milestone 536 (two records still say the prover cannot see `kernel/src`) is the 
 Risk 2 said `cargo kani` never compiles the kernel for three weeks after milestone 193 (put
 `kernel/src` within reach of the prover) made it compile. The correction sat behind a `DECISION`
 gate because the file was treated as wholly calef's, so a sentence the machine had already disproved
-waited on his attention. That is the wrong side of AGENTS.md's reversibility line: a dated
+waited on his attention. That is the wrong side of AGENTS.md's reversibility line: a
 correction citing its source is cheap and reversible, while a verdict is a published claim a
 stranger may quote.
 
@@ -49,7 +51,7 @@ stranger may quote.
 
 ## How it is enforced
 
-Rung three of AGENTS.md's ladder: the rule is written in `design/fatal-risks.md` under *Who may change
-an entry*, where an editor meets it. `script/fatal-risks --check` already fails a status word that
+Rung three of AGENTS.md's ladder: the rule is written in `design/fatal-risks/README.md` under *Who may
+change an entry*, where an editor meets it. `script/fatal-risks --check` already fails a status word that
 contradicts the record it names, which covers half of the verdict side mechanically. Nothing gates
 the line between a fact and a verdict, and no check could tell them apart in prose.

@@ -90,7 +90,7 @@ does correct.
 
 The syscall surface and IPC model were the untaken lens until the 2026-09-29 audit took it
 (`design/audit-reports/2026-09-29-syscall-surface-whole.md`: fixed 0, minted 0, accepted 3, no
-confinement claim false; corrected 2026-10-03, §216 (fatal-risk facts are correctable, and verdicts are the architect's), from #1495). The
+confinement claim false; #1495). The
 adversarial half this entry has always called for is an outsider trying to escape, rather than us
 demonstrating that a planned escape fails. It is now partly built, and still gated behind
 milestone 198 (the trivial install that makes a second customer possible). An adversarial pass on 2026-09-21
@@ -105,10 +105,10 @@ keeps the gate closed: it was us attacking our own system, which is the thing mi
 to stop being the only kind of attack this project has seen. And one window was accepted rather than
 closed at the time: `PortRange::REVOKE` reached one core, so a revoked holder on another core kept
 its bitmap for at most one tick. That window is recorded in §152 (the port-range capability)'s
-`BUGS`, corrected the same day, and in [milestone 315](../roadmap/0315-port-revoke-every-core.md),
+`BUGS` and in [milestone 315](../roadmap/0315-port-revoke-every-core.md),
 which the audit raised as finding 4 and calef promoted out of this entry's proposal on 2026-09-17.
 
-### Corrected 2026-09-23: that window is closed
+### That window is closed
 
 Milestone 315 (a port revoke that reaches every core) is BUILT. The revoke now resets this core and
 rides the TLB shootdown's NMI to the rest, and `install_port_grant` moved inside the locked region
