@@ -968,7 +968,11 @@ fn the_hung_service_is_restored(msgs: &[[u64; 5]]) -> (&[u64; 5], &[u64; 5]) {
 
 /// Result 4 of the hung case: the caller was stranded, and only the component that stranded it
 /// could let go.
-fn the_stranded_caller_is_released_only_by_its_server(msgs: &[[u64; 5]], client: &[u64; 5], log: &[u64; 5]) {
+fn the_stranded_caller_is_released_only_by_its_server(
+    msgs: &[[u64; 5]],
+    client: &[u64; 5],
+    log: &[u64; 5],
+) {
     assert_ne!(
         client[1] & CL_WAS_RELEASED,
         0,

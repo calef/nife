@@ -382,7 +382,6 @@ impl CallServerRound {
 /// Falsification: replayable `system_tests/falsifications/user.receive_cap_attack_tests.a_call_server_tells_its_reply_from_a_delegation_on_both_arrival_orders.patch`
 #[test_case]
 fn a_call_server_tells_its_reply_from_a_delegation_on_both_arrival_orders() {
-
     for server_first in [true, false] {
         let round = &CALL_SERVER_ROUND;
         round.reset();

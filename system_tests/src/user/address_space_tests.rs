@@ -175,7 +175,9 @@ fn an_asid_flush_reaches_the_other_cpus() {
     // SAFETY: the allocator just handed us this frame exclusively; the direct map reaches it.
     unsafe { core::ptr::write_volatile(mmu::phys_to_virt(fresh.addr()) as *mut u8, NEW) };
 
-    let probe = sched::spawn_on(target, move || probe_across_the_flush(handshake, installed, VA))
+    let probe = sched::spawn_on(target, move || {
+        probe_across_the_flush(handshake, installed, VA)
+    })
     .expect("spawn_on failed");
 
     assert!(
@@ -270,7 +272,9 @@ fn probe_across_the_flush(handshake: &AsidFlushProbe, installed: u64, va: u64) {
     // hang rather than lie, which is the right way round.
     let was_enabled = crate::arch::interrupts::disable();
     let could_reach_user = mmu::permit_kernel_access_to_user_pages(true);
-    handshake.probe_cpu.store(crate::cpu::id(), Ordering::SeqCst);
+    handshake
+        .probe_cpu
+        .store(crate::cpu::id(), Ordering::SeqCst);
 
     // **The space stays installed across both reads**, which is deliberate and is the realistic
     // shape: the hazard is a core actively running an address space whose mapping changes under
@@ -319,13 +323,11 @@ fn remap_with_no_invalidation(space: &AddressSpace, va: u64, frame: u64) {
     // SAFETY: `space.root()` is this live space's low-half root, and the direct map makes
     // `phys_to_ptr` valid for its tables. `|| None`: the tables reaching `VA` already exist, so
     // the mapper never allocates.
-    let mut mapper = unsafe {
-        Mapper::<_, _, mmu::Format>::new(space.root(), Half::Low, || None, phys_to_ptr)
-    };
+    let mut mapper =
+        unsafe { Mapper::<_, _, mmu::Format>::new(space.root(), Half::Low, || None, phys_to_ptr) };
     let (old, flush) = mapper.unmap(va).expect("VA was not mapped");
     assert_ne!(
-        old,
-        frame,
+        old, frame,
         "the allocator handed back the frame we just unmapped: nothing would change"
     );
     mapper

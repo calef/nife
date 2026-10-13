@@ -242,8 +242,7 @@ fn write_what_it_made(created: i64) -> u64 {
             0,
         );
         get_page(tree::MADE_BODY.len(), &mut buf);
-        if rb as usize != tree::MADE_BODY.len()
-            || &buf[..tree::MADE_BODY.len()] != tree::MADE_BODY
+        if rb as usize != tree::MADE_BODY.len() || &buf[..tree::MADE_BODY.len()] != tree::MADE_BODY
         {
             v |= esc::GRANTED_ACCESS_FAILED;
         }
