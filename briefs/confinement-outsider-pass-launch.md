@@ -80,7 +80,9 @@ calef's one prompt: start GLM 5.3's harness (opencode, as for pass 4) in `$scrat
 
 The runner shares no file system with the lane, so the table goes inline, and the report comes
 back as a committed file on a pushed branch. Run the setup-only dry run that 914 requires first:
-send the "Setup" steps below alone and record what they print.
+send the "Setup" steps below alone and record what they print. 914's block holds that run. Its
+`apt-get update` line is there because the runner starts with empty apt lists, and `script/ci-qemu`
+at the pinned commit installs a package before it updates them.
 
 ```sh
 {
@@ -96,6 +98,7 @@ Run these in the repository, in order. Record each command's output tail and wal
 report. If one fails, stop and report it; do not change the tree to get past it.
 
     git reset --hard $sha
+    apt-get update
     script/ci-qemu
     NIFE_SKIP_LINT_TOOLS=1 script/bootstrap
     script/qemu-check
