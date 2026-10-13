@@ -203,8 +203,9 @@ struct ConsoleArgs {
     replay: Option<PathBuf>,
     log: Option<PathBuf>,
     policy: board_console::watch::Policy,
-    /// **The writing mode** (milestone 324). `None` is every reading session, which is still the
-    /// default and still the common case. `Some(n)` is `--stop-after n`, and `--stop` is `Some(1)`:
+    /// **The writing mode** (milestone 324 (the bench console cannot speak to any of the three
+    /// boards)). `None` is every reading session, which is still the default and still the common
+    /// case. `Some(n)` is `--stop-after n`, and `--stop` is `Some(1)`:
     /// one mechanism with two spellings, so the two flags cannot disagree about anything.
     stop_after: Option<usize>,
     /// Whether `--for` and `--until` were given, as opposed to left at their defaults. A stop mode
