@@ -59,7 +59,15 @@ pub(super) enum Probe {
     Flood,
     FloodDetached,
     Panic,
+    /// `--input-race`: the input driver holds after every drain (`components/input_race_probe`)
+    /// and Enter follows each line by [`INPUT_RACE_ENTER_PAUSE_MS`], so Enter lands inside the
+    /// hold on every line. That is the window where clearing the PL011's interrupt after the
+    /// drain would strand a byte in its FIFO and stop all input. One boot, the first script.
+    InputRace,
 }
+
+/// The pause before Enter under `--input-race`, in ms: well inside the driver's 200 ms hold.
+pub(super) const INPUT_RACE_ENTER_PAUSE_MS: u64 = 50;
 
 static PROBE: std::sync::OnceLock<Probe> = std::sync::OnceLock::new();
 
@@ -74,7 +82,13 @@ pub(super) fn probe_features() -> &'static str {
         Probe::Flood => "console_flood",
         Probe::FloodDetached => "console_flood,kernel_log_detached",
         Probe::Panic => "kernel_log_panic_probe",
+        Probe::InputRace => "",
     }
+}
+
+/// The `components` feature a probe adds, or `None`. Read by `crate::build_programs`.
+pub(crate) fn probe_program_feature() -> Option<&'static str> {
+    (probe() == Probe::InputRace).then_some("components/input_race_probe")
 }
 
 /// What a flood line looks like: `kernel::kernel_log::flood_tick`'s sentence, indent included.
@@ -101,6 +115,8 @@ pub(crate) fn swish_check() -> bool {
         Probe::FloodDetached
     } else if std::env::args().any(|a| a == "--panic-probe") {
         Probe::Panic
+    } else if std::env::args().any(|a| a == "--input-race") {
+        Probe::InputRace
     } else {
         Probe::None
     };

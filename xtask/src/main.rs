@@ -141,6 +141,10 @@ pub(crate) fn build_programs(target: &str) -> bool {
     if CONFINEMENT_ATTACKERS.load(Ordering::Relaxed) {
         args.extend(["--features", "components/confinement_attackers"]);
     }
+    // A swish-check probe's own program feature (`--input-race`), on no other boot.
+    if let Some(feature) = swish_check::probe_program_feature() {
+        args.extend(["--features", feature]);
+    }
     cargo_profiled(&args)
 }
 
