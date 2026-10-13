@@ -98,9 +98,10 @@ Each is reversible:
 
 ## Follow-on
 
-- **Proposed.** `design/roadmap/proposals/c-thread-locals-on-the-thread-pointer.md`: C's own
+- **Milestone 912.** Milestone 912 (C thread-locals on nife's thread pointer): C's own
   `__thread`, which fio (milestone 833 (the same storage benchmark on nife and Linux, by porting
-  real fio)) uses.
+  real fio)) uses only when it links. Without it fio falls back to `pthread_getspecific`
+  (corrected 2026-10-12 UTC by milestone 912's lane).
 - **Milestone 827.** Milestone 827 (hackbench on nife and Linux, as a scheduler benchmark and a
   multicore soak): the same program on silicon beside Linux, now that its thread mode runs here.
 - **Recorded.** The per-call limits, in `c_library/README.md`'s `BUGS`.

@@ -209,9 +209,9 @@ checks each, built by `helpers/build-c-library-contract.sh` and run by `c_thread
 
 - **C's own thread-locals do not link.** A `__thread` or `_Thread_local` variable stops the link
   with `has an STT_TLS symbol but doesn't have a PT_TLS segment`: nife's thread pointer names
-  `std`'s block, and nothing lays out an ELF one beside it. The proposal is
-  `design/roadmap/proposals/c-thread-locals-on-the-thread-pointer.md`. fio does not need it: its
-  `configure` falls back to `pthread_getspecific` (`notes/fio-on-nife.md`).
+  `std`'s block, and nothing lays out an ELF one beside it. It is
+  milestone 912 (C thread-locals on nife's thread pointer). fio does not need it: its `configure`
+  finds `__thread` missing and uses `pthread_getspecific` instead.
 - **`getrusage` answers zeros.** The kernel keeps each thread's on-CPU time (milestone 282 (a
   thread's CPU time, and the `top` it makes possible), §150 (how does a thread's CPU time reach
   userspace?)), but a program reads it only through `SURVEY` on a capability it does not hold, and
