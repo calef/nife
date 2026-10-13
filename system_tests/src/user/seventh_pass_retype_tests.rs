@@ -1,29 +1,19 @@
-//! **A spend-only (GRANT-less) budget narrows a SPLIT child but mints full-rights objects on every
-//! RETYPE** (milestone 903 (a seventh outsider pass attacks the confinement claim), fatal risk 7's
-//! confinement claim, claim 3).
+//! **A spend-only (GRANT-less) budget narrows a SPLIT child and every RETYPE alike** (milestone
+//! 903 (a seventh outsider pass attacks the confinement claim), fatal risk 7's confinement claim,
+//! claim 3).
 //!
 //! Claim 3 ("a budget that cannot delegate cannot split itself a child that can") is proved on its
-//! SPLIT side by `capability::split_never_widens_rights` and characterized on its RETYPE side, for a
-//! page frame only, by `confinement_attack_tests::a_grant_less_budget_mints_a_grant_bearing_frame`.
-//! This module drives the real dispatcher (`syscall::invoke`) and does two things that test does
-//! not:
+//! SPLIT side by `capability::split_never_widens_rights`. Its retype side is held by
+//! `confinement_attack_tests::a_retype_mints_no_right_its_budget_lacks`. This module, written by
+//! the seventh pass's reviewer, puts the two sides next to each other in one boot through the real
+//! dispatcher (`syscall::invoke`): the same WRITE-only budget shape is SPLIT and RETYPEd, and both
+//! come back WRITE-only.
 //!
-//! 1. It puts the two sides next to each other in one boot: the same WRITE-only budget shape is
-//!    SPLIT (the child comes back WRITE-only, the claim holding) and RETYPEd (the frame comes back
-//!    `Rights::ALL`, GRANT included, the gap).
-//! 2. It shows the gap is not confined to page frames. `MemoryRegion::RETYPE_OBJ` mints a
-//!    `Rights::ALL` capability for a rendezvous, a notification and a timer alike, so a holder of a
-//!    non-delegating budget obtains a GRANT-bearing capability to a kernel object it made, which it
-//!    can then pass on (GRANT is exactly the right `SEND_CAP`/`SLICE`/`CAP_INSERT` consult). The
-//!    page-frame characterization does not reach `RETYPE_OBJ`.
-//!
-//! This is a near miss, not an escape: every object is made in the holder's own region, so the
-//! holder reaches no object it was not granted. What leaks is the *delegability* a GRANT-less budget
-//! was supposed to withhold. The gap is known and ruled: calef's ruling (a) of 2026-10-07 (recorded
-//! in `kernel/src/cap.rs` at `memory_region_cap`) is that a retype mints the intersection, not
-//! `Rights::ALL`, and milestone 824 (a retype mints no right its budget lacks) is the fix. When that
-//! lands, the GRANT assertions below flip and this module is what announces it: the characterization
-//! becomes a held assertion that a GRANT-less budget mints GRANT-less objects.
+//! **It was a characterization until milestone 824 (a retype mints no right its budget lacks).**
+//! The pass found `RETYPE` and `RETYPE_OBJ` minting `Rights::ALL` for a frame and for every kernel
+//! object kind, so a holder of a non-delegating budget could lend what it carved: a near miss, the
+//! gap calef ruled on 2026-10-07 (UTC), option (a). The test asserted the gap so that 824 would turn
+//! it red. 824's lane flipped the assertions on 2026-10-12 (UTC) in the same commit as the fix.
 //!
 //! Name: provisional (this pass's lane, 2026-10-12 UTC), for the module and the file; a rename is an
 //! architect's call.
@@ -37,7 +27,7 @@ use crate::arch::exceptions::TrapFrame;
 // The `cap` module and these names still carry their pre-sweep spelling
 // (design/naming/capability-worklist.md renames them when the tree is quiet); aliased here so
 // this file spells `capability` out everywhere a reader looks (calef, 2026-10-06).
-use crate::cap::{Object, Rights, memory_region_cap as memory_region_capability};
+use crate::cap::{Object, Rights, memory_region_cap_rights as memory_region_capability_rights};
 use crate::sched::{
     self, current_cap as current_capability, delete_current_cap as delete_current_capability,
 };
@@ -58,29 +48,29 @@ fn rights_at(slot: u64) -> Rights {
         .rights
 }
 
-/// **A WRITE-only budget's SPLIT child is WRITE-only (claim 3 holds), but every RETYPE off the same
-/// budget mints a GRANT-bearing capability (the gap), for a page frame and for three kernel object
-/// kinds alike.**
+/// **A `WRITE`-only budget's `SPLIT` child is `WRITE`-only, and so is everything a `RETYPE` carves
+/// off the same budget, a page frame and three kernel object kinds alike.**
 ///
 /// The SPLIT step is the positive control and the claim's cited property: a non-delegating budget
 /// cannot carve a delegating child, because `MemoryRegion::SPLIT` mints through `Cap::mint_child`,
-/// which inherits the parent's rights. The RETYPE and `RETYPE_OBJ` steps are the characterization: the
-/// same budget, through the same dispatcher, hands back `Rights::ALL`.
+/// which inherits the parent's rights. Since milestone 824 `RETYPE` and `RETYPE_OBJ` mint through
+/// the same function, so the same budget hands back `WRITE` alone.
 ///
 /// Shaped so a regression is observable at an assertion, not a hang: nothing here blocks. Each
 /// minted capability is deleted and each region reclaimed, so the suite's frame and region ledgers
 /// are flat across the test.
 ///
-/// Falsification: unfalsified. It characterizes behavior the tree has today. When milestone 824
-/// lands (a retype intersecting rights with its budget), the `allows(Rights::GRANT)` assertions
-/// below go red, which is the change this module exists to announce; the SPLIT assertion stays
-/// green.
+/// Name: provisional. Renamed by milestone 824's lane on 2026-10-12 (UTC) from
+/// `a_grant_less_budget_narrows_a_split_child_but_mints_full_rights_on_every_retype`, which the fix
+/// made false.
+///
+/// Falsification: replayable `system_tests/falsifications/user.seventh_pass_retype_tests.a_grant_less_budget_narrows_a_split_child_and_every_retype_alike.patch`
 #[test_case]
-fn a_grant_less_budget_narrows_a_split_child_but_mints_full_rights_on_every_retype() {
+fn a_grant_less_budget_narrows_a_split_child_and_every_retype_alike() {
     // --- The SPLIT side: claim 3's cited property, which holds. ---------------------------------
     let region_b = crate::memory_region::create(8).expect("no region for the split side");
-    let budget_b =
-        sched::grant(memory_region_capability(region_b)).expect("grant the WRITE-only budget");
+    let budget_b = sched::grant(memory_region_capability_rights(region_b, Rights::WRITE))
+        .expect("grant the WRITE-only budget");
     assert_eq!(
         rights_at(budget_b),
         Rights::WRITE,
@@ -104,33 +94,28 @@ fn a_grant_less_budget_narrows_a_split_child_but_mints_full_rights_on_every_rety
     let _ = delete_current_capability(budget_b);
     sched::reclaim_region(region_b).expect("the split-side region did not come back");
 
-    // --- The RETYPE side: the gap, for a page frame and three object kinds. ---------------------
+    // --- The RETYPE side, for a page frame and three object kinds. ------------------------------
     let region_a = crate::memory_region::create(16).expect("no region for the retype side");
-    let budget_a =
-        sched::grant(memory_region_capability(region_a)).expect("grant the WRITE-only budget");
+    let budget_a = sched::grant(memory_region_capability_rights(region_a, Rights::WRITE))
+        .expect("grant the WRITE-only budget");
     assert_eq!(
         rights_at(budget_a),
         Rights::WRITE,
         "the leaf budget should be WRITE-only"
     );
 
-    // A page frame: the case the existing characterization covers, replayed here for the contrast.
+    // A page frame.
     let frame_slot = call(budget_a, abi::memory_region::RETYPE, 0, 0, 0)
         .expect("RETYPE refused a WRITE-only budget") as u64;
-    assert!(
-        rights_at(frame_slot).allows(Rights::GRANT),
-        "a WRITE-only budget RETYPEd a frame WITHOUT GRANT: milestone 824 has landed and this \
-         characterization should become a held assertion",
-    );
     assert_eq!(
         rights_at(frame_slot),
-        Rights::ALL,
-        "the retyped frame should carry the full Rights::ALL the retype path documents today",
+        Rights::WRITE,
+        "a WRITE-only budget RETYPEd a frame carrying more than WRITE: the retype side of claim 3 \
+         is open again, and a non-delegating budget can lend what it carves",
     );
 
-    // Three kernel object kinds via RETYPE_OBJ: the case no existing test reaches. Each must come
-    // back GRANT-bearing for the gap to generalize; a holder of a non-delegating budget thus holds a
-    // delegatable capability to every object it carves out of its own memory.
+    // Three kernel object kinds via RETYPE_OBJ, the case the pass found the frame-only test did not
+    // reach. Each must come back WRITE-only.
     for &(kind, name) in &[
         (abi::objtype::RENDEZVOUS, "rendezvous"),
         (abi::objtype::NOTIFICATION, "notification"),
@@ -139,16 +124,11 @@ fn a_grant_less_budget_narrows_a_split_child_but_mints_full_rights_on_every_rety
         let obj_slot = call(budget_a, abi::memory_region::RETYPE_OBJ, kind, 0, 0)
             .unwrap_or_else(|e| panic!("RETYPE_OBJ {name} refused a WRITE-only budget: {e:?}"))
             as u64;
-        assert!(
-            rights_at(obj_slot).allows(Rights::GRANT),
-            "a WRITE-only budget RETYPE_OBJ'd a {name} WITHOUT GRANT: milestone 824 has landed for \
-             objects too and this should become a held assertion",
-        );
         assert_eq!(
             rights_at(obj_slot),
-            Rights::ALL,
-            "the retyped {name} should carry Rights::ALL: a GRANT-less budget minted a fully \
-             delegatable {name} in its own memory",
+            Rights::WRITE,
+            "a WRITE-only budget RETYPE_OBJ'd a {name} carrying more than WRITE: a GRANT-less \
+             budget minted a delegatable {name} in its own memory",
         );
         let _ = delete_current_capability(obj_slot);
     }

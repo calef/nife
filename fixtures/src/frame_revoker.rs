@@ -40,7 +40,8 @@ pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
     unsafe { core::ptr::write_volatile(VA as *mut u64, 0xABCD) };
 
     // Revoke: unmap the page everywhere and delete every capability to it, ours included. The
-    // frame was retyped with GRANT, so we are allowed to.
+    // frame was retyped from a budget holding GRANT (since milestone 824 (a retype mints no right
+    // its budget lacks) a frame carries its budget's rights), so we are allowed to.
     let revoked = revoke_page_frame(frame);
     // Our PageFrame capability is gone now: a second operation on that slot must fail
     // (NoSuchSlot). We do NOT touch VA again, which is unmapped and would fault.

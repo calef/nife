@@ -12,15 +12,25 @@
 
 use abi::Error;
 
-use crate::cap::Rights;
+use crate::cap::{Capability, Object, Rights};
 use crate::sched;
 
 /// `MemoryRegion::RETYPE_OBJ`: retype a page into a page-resident KERNEL OBJECT the caller now owns
-/// (19a). The object lives in the carved page, the region is pinned (a live endpoint's page must
-/// never be freed under a blocked thread), and the caller gets full rights on its own object,
-/// delegation narrowing them as ever. `#[inline(never)]` for the reason `memory_region_map` gives.
+/// (19a). The object lives in the carved page, and the region is pinned (a live endpoint's page must
+/// never be freed under a blocked thread). `#[inline(never)]` for the reason `memory_region_map`
+/// gives.
+///
+/// **The object carries the budget's rights and no others**, for every kind (milestone 824 (a
+/// retype mints no right its budget lacks), calef's ruling (a) of 2026-10-07 UTC, which named
+/// frames; milestone 903 (a seventh outsider pass attacks the confinement claim) showed this arm minted the same way). Each arm mints
+/// through `budget.mint_child`, `SPLIT`'s inheriting mint, which `split_never_widens_rights`
+/// proves. Until 824 every arm minted `Rights::ALL`, "full rights on its own object", so a
+/// `WRITE`-only budget made `GRANT`-bearing objects its holder could lend. The root budget carries
+/// `Rights::ALL` (`cap::memory_region_root_cap`), so the progenitor still gets every right on what
+/// it makes, and a right added later reaches it without a hand-kept list.
 #[inline(never)]
 pub(super) fn memory_region_retype_obj(
+    budget: Capability,
     region: u64,
     kind: u64,
     space_slot: u64,
@@ -29,14 +39,12 @@ pub(super) fn memory_region_retype_obj(
     match kind {
         abi::objtype::RENDEZVOUS => {
             let ep = sched::create_rendezvous_from(region).ok_or(Error::OutOfMemory)?;
-            // `Rights::ALL`, not a list. The comment above has always said the creator gets full
-            // rights on its own object; spelling the set out meant "full" silently stopped being
-            // full the day `ENUMERATE` was added, and the symptom was three steps away: the progenitor
+            // The budget's rights, never a hand-written list. Spelling a set out here once meant
+            // "full" silently stopped being full the day `ENUMERATE` was added: the progenitor
             // could not narrow `deaths` to a right it did not itself hold, `CAP_INSERT` refused
-            // the widen, and the spawn surfaced as `OutOfMemory` at a prompt. A rights set that
-            // must be updated by hand whenever a right is added is rung four; `ALL` is the
-            // invariant.
-            let slot = sched::grant_from(floor, crate::cap::rendezvous_cap(ep, Rights::ALL))
+            // the widen, and the spawn surfaced as `OutOfMemory` at a prompt. Inheriting from the
+            // budget keeps that fixed, because the root budget is `Rights::ALL`.
+            let slot = sched::grant_from(floor, budget.mint_child(Object::Rendezvous(ep, 0)))
                 .map_err(|_| Error::OutOfMemory)?;
             Ok(slot as i64)
         }
@@ -45,12 +53,8 @@ pub(super) fn memory_region_retype_obj(
         // design/init-and-granular-spawn.md).
         abi::objtype::ADDRESS_SPACE => {
             let name = crate::user::user_address_space_create(region).ok_or(Error::OutOfMemory)?;
-            // `Rights::ALL` for the RENDEZVOUS arm's reason: "full rights on its own object" is the
-            // invariant, and a hand-listed set stops being full the next time a right is added.
-            // `AddressSpace` does not consult `ENUMERATE` today and is expected to when `pmap` is
-            // built; holding a right nothing checks confers nothing, and not holding it is what
-            // blocks a future grant.
-            let slot = sched::grant_from(floor, crate::cap::address_space_cap(name, Rights::ALL))
+            // The budget's rights, for the RENDEZVOUS arm's reason.
+            let slot = sched::grant_from(floor, budget.mint_child(Object::AddressSpace(name)))
                 .map_err(|_| Error::OutOfMemory)?;
             Ok(slot as i64)
         }
@@ -58,33 +62,30 @@ pub(super) fn memory_region_retype_obj(
         // until CONFIGURE + START. The page is the creator's region's.
         abi::objtype::THREAD_CONTROL_BLOCK => {
             let tid = sched::create_thread_control_block(region).ok_or(Error::OutOfMemory)?;
-            let slot = sched::grant_from(
-                floor,
-                crate::cap::thread_control_block_cap(tid, Rights::ALL),
-            )
-            .map_err(|_| Error::OutOfMemory)?;
+            let slot = sched::grant_from(floor, budget.mint_child(Object::ThreadControlBlock(tid)))
+                .map_err(|_| Error::OutOfMemory)?;
             Ok(slot as i64)
         }
         // A notification (milestone 151, DECISIONS §101): a word and a wait queue in the page.
-        // `Rights::ALL` for the RENDEZVOUS arm's reason.
+        // The budget's rights, for the RENDEZVOUS arm's reason.
         abi::objtype::NOTIFICATION => {
             let id = sched::create_notification_from(region).ok_or(Error::OutOfMemory)?;
-            let slot = sched::grant_from(floor, crate::cap::notification_cap(id, Rights::ALL))
+            let slot = sched::grant_from(floor, budget.mint_child(Object::Notification(id)))
                 .map_err(|_| Error::OutOfMemory)?;
             Ok(slot as i64)
         }
         // A timer (milestone 106, DECISIONS §147): one deadline and its target in the page.
-        // `Rights::ALL` for the RENDEZVOUS arm's reason.
+        // The budget's rights, for the RENDEZVOUS arm's reason.
         abi::objtype::TIMER => {
             let id = sched::create_timer_from(region).ok_or(Error::OutOfMemory)?;
-            let slot = sched::grant_from(floor, crate::cap::timer_cap(id, Rights::ALL))
+            let slot = sched::grant_from(floor, budget.mint_child(Object::Timer(id)))
                 .map_err(|_| Error::OutOfMemory)?;
             Ok(slot as i64)
         }
         // A process (milestone 812 (`std::thread::spawn` runs real threads in one address space)),
         // holding the space whose `WRITE` capability is in `space_slot`, which is consumed as
-        // `CONFIGURE` consumes one. `Rights::ALL`, `BIND` among them, for the RENDEZVOUS arm's
-        // reason.
+        // `CONFIGURE` consumes one. The budget's rights, `BIND` among them when the budget has it,
+        // for the RENDEZVOUS arm's reason.
         abi::objtype::PROCESS => {
             let space = sched::current_cap(space_slot).map_err(|_| Error::NoSuchSlot)?;
             let crate::cap::Object::AddressSpace(name) = space.object else {
@@ -95,7 +96,7 @@ pub(super) fn memory_region_retype_obj(
             }
             let pid = sched::create_process_from(region, name)?;
             let _ = sched::delete_current_cap(space_slot);
-            let slot = sched::grant_from(floor, crate::cap::process_capability(pid, Rights::ALL))
+            let slot = sched::grant_from(floor, budget.mint_child(Object::Process(pid)))
                 .map_err(|_| Error::OutOfMemory)?;
             Ok(slot as i64)
         }

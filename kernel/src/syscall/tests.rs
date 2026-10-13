@@ -237,7 +237,7 @@ fn split_inherits_the_parent_capabilitys_rights_never_widening() {
     // `for_user_entry` is the portable frame constructor (both ISAs); SPLIT does not read it.
     let mut frame = TrapFrame::for_user_entry(0, 0, [0, 0, 0]);
 
-    // A spend-only (WRITE, no GRANT) untyped, exactly what a leaf child is handed.
+    // A spend-only (every right but GRANT) untyped, exactly what a leaf child is handed.
     let spend_only_region = crate::memory_region::create(8).expect("a region to split");
     let parent =
         sched::grant(crate::cap::memory_region_cap(spend_only_region)).expect("grant parent");

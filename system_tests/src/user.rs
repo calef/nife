@@ -1207,7 +1207,8 @@ mod page_table_region_tests;
 /// (milestone 633 (an outside agent attacks the confinement claim), fatal risk 7's confinement
 /// claim, third outsider pass). The kernel half of claim 26 ("a client cannot become its server")
 /// and claim 2 ("userspace cannot forge a right out of a syscall register"), driven through the real
-/// dispatcher. Its own header has the reasoning and why it sits beside `live_swap_tests` rather than
+/// dispatcher, and since milestone 824 claim 3's retype side (a retype mints no right its budget
+/// lacks). Its own header has the reasoning and why it sits beside `live_swap_tests` rather than
 /// extending it. A module of its own for `tests`' merge-hotspot reason, named to sort near the other
 /// adversarial modules.
 ///
@@ -1215,13 +1216,12 @@ mod page_table_region_tests;
 #[cfg(test)]
 mod confinement_attack_tests;
 
-/// **A spend-only budget narrows a SPLIT child but mints full-rights objects on every RETYPE**
-/// (milestone 903 (a seventh outsider pass attacks the confinement claim), fatal risk 7's
-/// confinement claim, claim 3). Drives the real dispatcher: SPLIT off a WRITE-only budget inherits
-/// WRITE (the claim holds), while RETYPE and `RETYPE_OBJ` hand back `Rights::ALL` for a frame and for
-/// a rendezvous, a notification and a timer alike (the gap ruling (a) of 2026-10-07 and milestone
-/// 824 address). Its header has the reasoning and why it extends `confinement_attack_tests`'
-/// page-frame-only characterization. A near miss, not an escape: the objects are the holder's own.
+/// **A spend-only budget narrows a SPLIT child and every RETYPE alike** (milestone 903 (a seventh
+/// outsider pass attacks the confinement claim), fatal risk 7's confinement claim, claim 3). Drives
+/// the real dispatcher: SPLIT off a WRITE-only budget inherits WRITE, and so do RETYPE and
+/// `RETYPE_OBJ` for a frame, a rendezvous, a notification and a timer. A characterization of the gap
+/// until milestone 824 (a retype mints no right its budget lacks) closed it; its header has the
+/// history.
 ///
 /// Cross-ISA: the retype paths and the rights model are portable kernel code (DECISIONS §19).
 #[cfg(test)]

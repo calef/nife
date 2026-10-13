@@ -30,7 +30,7 @@ use crate::arch::exceptions::TrapFrame;
 // (design/naming/capability-worklist.md renames them when the tree is quiet); aliased here so
 // this file spells `capability` out everywhere a reader looks (calef, 2026-10-06).
 use crate::cap::{
-    self as kernel_capability, Rights, memory_region_cap as memory_region_capability,
+    self as kernel_capability, Rights, memory_region_cap_rights as memory_region_capability_rights,
     rendezvous_cap as rendezvous_capability,
 };
 use crate::sched::{
@@ -224,53 +224,117 @@ fn a_read_only_holder_cannot_send_and_an_ungranted_slot_names_nothing() {
     sched::reclaim_region(region).expect("the endpoint's region did not come back");
 }
 
-/// **A spend-only (GRANT-less) budget still mints a GRANT-bearing frame** (claim 3's retype side,
-/// milestone 633 third pass). Characterization, booted.
+/// **A retype mints no right its budget lacks** (claim 3's retype side; milestone 824 (a retype
+/// mints no right its budget lacks), calef's ruling (a) of 2026-10-07 UTC). Held, booted.
 ///
-/// `memory_region_cap` hands a child a `WRITE`-only untyped so it may spend memory but not lend it,
-/// and `SPLIT` honors that: the budget cannot split a GRANT-bearing child, which claim 3's host
-/// proof `split_never_widens_rights` covers. But `MemoryRegion::RETYPE` needs only `WRITE` and
-/// returns the new `PageFrame` with `Rights::ALL`, GRANT included, through the real dispatcher, so a
-/// holder of a non-delegating budget can retype a page and then delegate it. The "rights only
-/// narrow" sentence is true of the region, not of what is carved from it. It is the holder's own
-/// memory, so this is a scope gap rather than a cross-domain reach, and the ruling it was owed has
-/// come (`kernel/src/cap.rs` records it). This asserts the gap at boot so it cannot close unnoticed:
-/// should the retype side ever withhold GRANT, the GRANT assertion below flips and this test is the
-/// thing that says so.
+/// A leaf child is handed a budget without `GRANT` so it may spend memory but not lend it. `SPLIT`
+/// always honored that (`split_never_widens_rights`). Until milestone 824, `RETYPE` and `RETYPE_OBJ`
+/// did not: they minted `Rights::ALL`, so a holder of a non-delegating budget could carve a page or
+/// an object and lend it. Milestone 633's passes characterized the frame case here, and milestone
+/// 903's pass showed every kernel object kind minted the same way.
 ///
-/// Falsification: unfalsified. It characterizes behavior the tree has today rather than guarding a
-/// property: a patch that withheld `GRANT` from a retype would turn it red, and that is the change it
-/// exists to announce, not a break. Ruled (a) (calef, 2026-10-07, PR #1798): retypes should
-/// withhold `GRANT`, the intersection rule, so when the fix lands this characterization becomes a
-/// held assertion. The question was carried in milestone 633's block, which records the ruling;
-/// the fix is milestone 824 (a retype mints no right its budget lacks).
+/// Through the real dispatcher, for two `GRANT`-less budgets, `WRITE` alone and the spend-only
+/// budget `memory_region_cap` hands a leaf (every right but `GRANT`): the frame and every object
+/// kind come back with exactly the budget's rights, and the frame cannot be passed on, since
+/// `PageFrame::SLICE`, the one delegating method that does not block, is refused `NotPermitted` for
+/// want of `GRANT`. The process is retyped around the address space just made. Then two controls
+/// that the mint is the budget's rights and not a fixed narrow set: a `READ | WRITE` budget's frame
+/// carries exactly that, and the root budget's (`Rights::ALL`) carries every right, so the
+/// progenitor loses nothing.
+///
+/// Nothing blocks, so a regression is red at an assertion. Each capability is deleted and each region
+/// reclaimed, so the frame and region ledgers are flat across the test.
+///
+/// Name: provisional (milestone 824's lane, 2026-10-12 UTC), renamed from
+/// `a_grant_less_budget_mints_a_grant_bearing_frame`, the characterization it replaces.
+///
+/// Falsification: replayable `system_tests/falsifications/user.confinement_attack_tests.a_retype_mints_no_right_its_budget_lacks.patch`
 #[test_case]
-fn a_grant_less_budget_mints_a_grant_bearing_frame() {
-    let region = crate::memory_region::create(8).expect("no region");
-    // WRITE alone: no GRANT. The spend-only leaf budget a child is handed.
-    let budget = sched::grant(memory_region_capability(region)).expect("grant the budget");
-    assert_eq!(
-        current_capability(budget).expect("budget cap").rights,
-        Rights::WRITE,
-        "the spend-only budget should hold WRITE alone, with no GRANT",
-    );
-    // Retype one page out of it, through the real dispatcher.
-    let slot = call(budget, abi::memory_region::RETYPE, 0, 0, 0)
-        .expect("RETYPE refused a WRITE-only budget");
-    let frame = current_capability(slot as u64).expect("no frame capability at the returned slot");
-    assert!(
-        frame.rights.allows(Rights::GRANT),
-        "a GRANT-less budget minted a frame without GRANT ({:?}); if this ever holds, the retype \
-         side of claim 3 was closed and this characterization should become a held assertion",
-        frame.rights,
-    );
-    assert_eq!(
-        frame.rights,
-        Rights::ALL,
-        "the retyped frame should carry full rights, the Rights::ALL invariant RETYPE documents; a \
-         GRANT-less budget thus hands on a fully delegatable frame",
-    );
-    let _ = delete_current_capability(slot as u64);
-    let _ = delete_current_capability(budget);
-    sched::reclaim_region(region).expect("the budget region did not come back");
+fn a_retype_mints_no_right_its_budget_lacks() {
+    for rights in [Rights::WRITE, kernel_capability::SPEND_ONLY] {
+        let region = crate::memory_region::create(16).expect("no region");
+        let budget = sched::grant(memory_region_capability_rights(region, rights))
+            .expect("grant the budget");
+        let minted = |slot: u64| {
+            current_capability(slot)
+                .expect("nothing at the slot")
+                .rights
+        };
+        let frame = call(budget, abi::memory_region::RETYPE, 0, 0, 0)
+            .expect("RETYPE refused a GRANT-less budget") as u64;
+        assert_eq!(
+            minted(frame),
+            rights,
+            "a GRANT-less budget RETYPEd a frame carrying rights it lacks: the holder of a \
+             non-delegating budget can lend what it carves",
+        );
+        assert_eq!(
+            call(frame, abi::page_frame::SLICE, 0, 1, 0),
+            Err(Error::NotPermitted),
+            "a frame retyped from a GRANT-less budget was sliced: it was passed on without GRANT",
+        );
+        for &(kind, name) in &[
+            (abi::objtype::RENDEZVOUS, "rendezvous"),
+            (abi::objtype::NOTIFICATION, "notification"),
+            (abi::objtype::TIMER, "timer"),
+            (abi::objtype::THREAD_CONTROL_BLOCK, "thread control block"),
+        ] {
+            let object = call(budget, abi::memory_region::RETYPE_OBJ, kind, 0, 0)
+                .unwrap_or_else(|e| panic!("RETYPE_OBJ {name} refused: {e:?}"))
+                as u64;
+            assert_eq!(
+                minted(object),
+                rights,
+                "a GRANT-less budget RETYPE_OBJ'd a {name} carrying rights it lacks",
+            );
+            let _ = delete_current_capability(object);
+        }
+        let space = call(
+            budget,
+            abi::memory_region::RETYPE_OBJ,
+            abi::objtype::ADDRESS_SPACE,
+            0,
+            0,
+        )
+        .expect("RETYPE_OBJ refused an address space") as u64;
+        assert_eq!(
+            minted(space),
+            rights,
+            "a GRANT-less budget RETYPE_OBJ'd an address space carrying rights it lacks",
+        );
+        let process = call(
+            budget,
+            abi::memory_region::RETYPE_OBJ,
+            abi::objtype::PROCESS,
+            space,
+            0,
+        )
+        .expect("RETYPE_OBJ refused a process around the space it was given")
+            as u64;
+        assert_eq!(
+            minted(process),
+            rights,
+            "a GRANT-less budget RETYPE_OBJ'd a process carrying rights it lacks",
+        );
+        let _ = delete_current_capability(process);
+        let _ = delete_current_capability(frame);
+        let _ = delete_current_capability(budget);
+        sched::reclaim_region(region).expect("the GRANT-less budget's region did not come back");
+    }
+
+    for rights in [Rights::READ.union(Rights::WRITE), Rights::ALL] {
+        let region = crate::memory_region::create(2).expect("no region");
+        let budget = sched::grant(memory_region_capability_rights(region, rights))
+            .expect("grant the budget");
+        let frame = call(budget, abi::memory_region::RETYPE, 0, 0, 0)
+            .expect("RETYPE refused a budget holding WRITE") as u64;
+        assert_eq!(
+            current_capability(frame).expect("no frame").rights,
+            rights,
+            "a frame did not carry exactly its budget's rights",
+        );
+        let _ = delete_current_capability(frame);
+        let _ = delete_current_capability(budget);
+        sched::reclaim_region(region).expect("the control budget's region did not come back");
+    }
 }

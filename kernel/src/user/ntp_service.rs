@@ -15,7 +15,7 @@
 //! how a confinement claim decays without breaking a build (milestone 117's `swish` `caps` bug).
 
 use super::*;
-use crate::cap::{Rights, memory_region_cap, rendezvous_cap};
+use crate::cap::{Rights, memory_region_cap, memory_region_lending_capability, rendezvous_cap};
 use crate::sched::RendezvousId;
 
 /// The words the three network time programs report. Must match `RPT_*` in
@@ -174,11 +174,11 @@ fn spawn_with_client_endowment(
                 arg1: a1,
                 arg2: 0,
                 grants: &[
-                    rendezvous_cap(report, Rights::WRITE),  // slot 0: the verdict
-                    rendezvous_cap(stack, Rights::WRITE),   // slot 1: the network
-                    memory_region_cap(budget),              // slot 2: the shared frame
-                    rendezvous_cap(propose, Rights::WRITE), // slot 3: ask, never tell
-                    rendezvous_cap(entropy, Rights::WRITE), // slot 4: the nonce
+                    rendezvous_cap(report, Rights::WRITE),    // slot 0: the verdict
+                    rendezvous_cap(stack, Rights::WRITE),     // slot 1: the network
+                    memory_region_lending_capability(budget), // slot 2: the shared frame
+                    rendezvous_cap(propose, Rights::WRITE),   // slot 3: ask, never tell
+                    rendezvous_cap(entropy, Rights::WRITE),   // slot 4: the nonce
                 ][..n_grants],
                 maps: &maps,
             },

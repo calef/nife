@@ -52,6 +52,39 @@ thirty thousand pages and the kernel loses thirty thousand frames).
   That single allocation is the seL4 boundary, where all free RAM becomes a region handed to the
   first process. Everything after spends it.
 
+## What a retype mints
+
+Since milestone 824 (a retype mints no right its budget lacks), on calef's ruling (a) of 2026-10-07
+(UTC) on PR #1798: a frame or kernel object retyped from a region carries the region capability's
+rights, no more. `RETYPE` and every `RETYPE_OBJ` arm mint through `Cap::mint_child`, the inheriting
+mint `SPLIT` already used and `split_never_widens_rights` proves. Before 824 each minted
+`Rights::ALL`, so a holder of a budget without `GRANT` could carve a page and lend it. `GRANT` is
+now delegated down the budget tree and never minted at a leaf.
+
+seL4 gives a retyped object full rights over itself (recalled, not read). nife departs from that
+because its leaf budgets withhold `GRANT` on purpose, and a full-rights mint made the withholding
+cosmetic. Revoking afterwards was refused with the ruling: the window opens at the mint.
+
+What a budget carries is now what everything made from it carries, so three shapes matter:
+
+| Budget | Rights | Who holds it |
+|---|---|---|
+| The root (`cap::memory_region_root_cap`) | every right | the progenitor, which hands `BIND` and `GRANT` on |
+| A lending budget (`abi::rights::ALL`, `cap::memory_region_lending_capability`) | every right | a builder, a shell, a program that lends a page it retyped: a networked program's socket pages, `jig`'s staged package |
+| Spend-only (`abi::rights::SPEND_ONLY`, `cap::memory_region_cap`) | every right but `GRANT` | a leaf |
+
+The spend-only budget was `WRITE` alone until 824. It gained `READ`, `ENUMERATE` and `BIND` so a
+leaf can still wait on its own notification and join its own process. On a region those rights
+grant nothing new: no method consults `READ` or `BIND`, and `ENUMERATE` answers `USAGE`, the
+holder's own spending.
+
+`BUGS`: a builder that lends what it carves now holds `GRANT` on its budget, which is also the right
+to lend the budget. The sharpest case is a networked `std` program (`std_layout.rs`'s slot 3): it
+needs `GRANT` to lend socket pages, so it may also hand its whole job region to a server it holds,
+which could then spend or destroy the program's heap. It reaches nothing outside its own grant. A
+separate socket-page region split off the job region would narrow this to the pages lent, at the
+cost of a region per networked job and a reclaim that must destroy the child first.
+
 ## What this is, and what it is not
 
 This converts a process's memory (its pages and their page tables) to region-backed, and

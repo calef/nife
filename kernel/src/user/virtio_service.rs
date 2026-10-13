@@ -431,7 +431,7 @@ pub(super) fn spawn_stack_client(
     stack: RendezvousId,
     held: &mut Holding,
 ) -> RendezvousId {
-    use crate::cap::memory_region_cap;
+    use crate::cap::memory_region_lending_capability;
 
     // The client's report endpoint and its stack pages share one region with the budget's
     // lifetime rules: the report endpoint may go while the client still exists (that is the wake),
@@ -500,7 +500,7 @@ pub(super) fn spawn_stack_client(
             // slot 1: the stack endpoint, WRITE to send requests and to delegate the
             // shared frame onto it (the frame it mints already carries GRANT).
             rendezvous_cap(stack, Rights::WRITE),
-            memory_region_cap(cli_budget), // slot 2: mint and map the shared frame
+            memory_region_lending_capability(cli_budget), // slot 2: mint and map the shared frame
         ];
         run(
             image,
@@ -553,7 +553,7 @@ pub fn start_net_std(
     std_image: &'static [u8],
     listen_grant: u64,
 ) -> Option<(RendezvousId, crate::thread::ThreadId, Holding)> {
-    use crate::cap::memory_region_cap;
+    use crate::cap::{memory_region_cap, memory_region_lending_capability};
 
     let dev = crate::virtio::find_net_device()?;
     let transport = crate::virtio::Transport::Mmio {
@@ -594,10 +594,10 @@ pub fn start_net_std(
                 arg1: 0,
                 arg2: 0,
                 grants: &[
-                    memory_region_cap(heap),               // slot 0: the heap's budget
-                    rendezvous_cap(report, Rights::WRITE), // slot 1: stdout/stderr
-                    rendezvous_cap(stack, Rights::WRITE),  // slot 2: the Stack endpoint
-                    memory_region_cap(frames),             // slot 3: mint per-socket shared frames
+                    memory_region_cap(heap),                  // slot 0: the heap's budget
+                    rendezvous_cap(report, Rights::WRITE),    // slot 1: stdout/stderr
+                    rendezvous_cap(stack, Rights::WRITE),     // slot 2: the Stack endpoint
+                    memory_region_lending_capability(frames), // slot 3: mint per-socket shared frames
                 ],
                 maps: &stackmaps,
             },

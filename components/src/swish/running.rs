@@ -294,7 +294,9 @@ pub(super) fn run_image(nav: &mut Nav, spec: RunSpec) {
         send_set(w);
     }
     if let Some(slot) = mem_slot {
-        delegate(slot, abi::rights::WRITE | abi::rights::GRANT);
+        // Every right: the progenitor builds the child from it, and since milestone 824 (a retype
+        // mints no right its budget lacks) what it builds carries the budget's rights.
+        delegate(slot, abi::rights::ALL);
         cap_delete(slot);
     }
     // **The presentation, last** (`spawnproto::RUN_UNVOUCHED_BIT`): one word on the endpoint only a
@@ -938,10 +940,14 @@ pub(super) fn spawn(e: Endowment, argv: Option<Argv>) {
         send_set(w);
     }
 
-    // If a budget rode along, delegate it now, narrowed to WRITE|GRANT so the progenitor can re-insert it into
-    // the child (the progenitor narrows it again to WRITE there: the child spends it, it does not lend it).
+    // If a budget rode along, delegate it now with every right so the progenitor can re-insert it into
+    // the child (the progenitor narrows it there to `SPEND_ONLY`: the child spends it, it does not
+    // lend it). Every right and not WRITE|GRANT since milestone 824: a budget's rights are what its
+    // retypes carry.
     if let Some(slot) = mem_slot {
-        delegate(slot, abi::rights::WRITE | abi::rights::GRANT);
+        // Every right: the progenitor builds the child from it, and since milestone 824 (a retype
+        // mints no right its budget lacks) what it builds carries the budget's rights.
+        delegate(slot, abi::rights::ALL);
         cap_delete(slot); // our copy is delegated; free the slot
     }
     delegate_machine_page(machine_wiring(&e));

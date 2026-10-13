@@ -301,7 +301,7 @@ pub(super) fn spawn_el0() {
                 arg2: 0,
                 grants: &[
                     rendezvous_cap(report, Rights::WRITE), // slot 0: report the result home
-                    memory_region_cap(region),             // slot 1: the spawner's whole budget
+                    crate::cap::memory_region_lending_capability(region), // slot 1: the spawner's whole budget
                     rendezvous_cap(
                         child_done,
                         Rights::READ.union(Rights::WRITE).union(Rights::GRANT),

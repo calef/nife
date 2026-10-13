@@ -197,6 +197,10 @@ pub enum Object {
 
 pub type Cap = capability::Cap<Object>;
 
+/// [`Cap`] spelled out, for new code under calef's 2026-10-06 ruling that `capability` is not
+/// abbreviated. Name: provisional (milestone 824's lane, 2026-10-12 UTC).
+pub type Capability = Cap;
+
 // **What a slot costs, pinned** (milestone 142's review, MINOR 9).
 //
 // DECISIONS §102 rejected growing `CAPABILITY_TABLE_SLOTS` on an arithmetic that starts from "24
@@ -631,35 +635,55 @@ pub fn irq_cap_rights(intid: u32, rights: Rights) -> Cap {
     }
 }
 
-/// A capability to an untyped memory region with `WRITE` only: the holder may spend it (retype pages
-/// and objects, `SPLIT`, `MAP`, `DESTROY`) but **not delegate it**, because `SEND_CAP` and
-/// `CAP_INSERT` both gate on `GRANT`. This is the spend-only budget a leaf child is handed: least
-/// authority for a process that consumes memory and passes none on.
+/// A capability to an untyped memory region with **every right but `GRANT`**: the holder may spend
+/// it (retype pages and objects, `SPLIT`, `MAP`, `DESTROY`) but **not delegate it**, because
+/// `SEND_CAP` and `CAP_INSERT` both gate on `GRANT`. This is the spend-only budget a leaf child is
+/// handed: least authority for a process that consumes memory and passes none on.
 ///
-/// # BUGS
-///
-/// **What this budget mints is delegable even though the budget is not.** `RETYPE` and
-/// `RETYPE_OBJ` need only `WRITE` on the region and hand back the new frame or object with
-/// `Rights::ALL`, `GRANT` included, so a holder of this capability can retype a page and `SEND_CAP`
-/// the result onward. The sentence on [`memory_region_cap_rights`] that rights "only ever narrow
-/// downward" is true of the region and not of what is carved from it. That is ordinary capability
-/// semantics (full authority over an object you created) and probably the intended design, but
-/// `notes/confinement-claims.md` row 3's test exercises `SPLIT` alone, so nothing stated the
-/// retype half. Found by milestone 633 (an outside agent attacks the confinement claim)'s second
-/// pass. **Ruled (a), 2026-10-07 (calef, PR #1798's thread): the mint is the intersection, not
-/// `Rights::ALL`.** A frame retyped from a `WRITE`-only budget carries `WRITE` only; `GRANT`
-/// cannot be minted, only delegated. The fix is milestone 824 (a retype mints no right its budget
-/// lacks): the kernel intersecting rights at retype and the characterization test
-/// flipping to a held assertion, which its own messages say it exists to announce.
+/// **Not `WRITE` alone, since milestone 824** (a retype mints no right its budget lacks). A retype
+/// now mints the budget's rights, calef's ruling (a) of 2026-10-07 (UTC, PR #1798), so what a budget
+/// carries is what everything carved from it carries. With `WRITE` alone a leaf's own notification
+/// could not be waited on (`READ`), its own rendezvous not received on, its own process not joined
+/// (`BIND`). On the region itself `READ` and `BIND` are consulted by no method and `ENUMERATE` only
+/// by `USAGE`, which answers what the holder's own budget was spent on, so the widening confers
+/// nothing over the region. `GRANT` is the one right left out, and it is the one the ruling is
+/// about: a leaf cannot lend its budget, and since 824 cannot lend anything it carves from it. A
+/// builder that must lend what it makes is handed a budget with `GRANT`, delegated from the root.
 pub fn memory_region_cap(region: u64) -> Cap {
     Cap {
         object: Object::MemoryRegion(region),
-        rights: Rights::WRITE,
+        rights: SPEND_ONLY,
     }
 }
 
+/// **A budget whose holder lends what it carves from it**: every right, `GRANT` included. Since
+/// milestone 824 (a retype mints no right its budget lacks) a frame or object carries its budget's
+/// rights, so a program that retypes a page and `SEND_CAP`s it, or builds a child and endows it,
+/// needs `GRANT` on the budget itself; [`memory_region_cap`] withholds it. The kernel-side harnesses
+/// hand this to exactly those programs. It is [`memory_region_root_cap`]'s rights under a name that
+/// says why, since none of these holders is the root.
+///
+/// Name: provisional (milestone 824's lane, 2026-10-12 UTC).
+#[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
+pub fn memory_region_lending_capability(region: u64) -> Capability {
+    Capability {
+        object: Object::MemoryRegion(region),
+        rights: Rights::ALL,
+    }
+}
+
+/// The rights of the spend-only budget [`memory_region_cap`] mints: [`Rights::ALL`] without
+/// `GRANT`, the kernel's spelling of `abi::rights::SPEND_ONLY`, which a userspace builder hands its
+/// leaves. Name: provisional (milestone 824's lane, 2026-10-12 UTC).
+pub const SPEND_ONLY: Rights = Rights::from_bits(abi::rights::SPEND_ONLY as u32);
+
+// `abi::rights::ALL` is what userspace hands a builder and `Rights::ALL` what the kernel's root
+// budget carries; a right added to one and not the other would make a builder's objects silently
+// narrower than the progenitor's.
+const _: () = assert!(Rights::ALL.bits() as u64 == abi::rights::ALL);
+
 /// A capability to an untyped region with explicit rights (milestone 31). Its one caller is
-/// [`memory_region_root_cap`], which builds the delegable root from `READ|WRITE|GRANT`. `MemoryRegion::SPLIT`
+/// [`memory_region_root_cap`], which builds the delegable root from `Rights::ALL`. `MemoryRegion::SPLIT`
 /// used to build its child here too; since milestone 35 it mints through `Cap::mint_child` instead
 /// (the inheriting mint the `split_never_widens_rights` proof covers), so the child's rights are
 /// pinned to the parent's by proved code rather than by passing `cap.rights` here.
@@ -686,14 +710,16 @@ pub fn memory_region_cap_rights(region: u64, rights: Rights) -> Cap {
 /// holder a view narrowed to `ENUMERATE` alone, which is `free`'s "yours" line. The audit §114 (`ENUMERATE` extends to the address-space object) asked
 /// for when `ENUMERATE` first reached the address-space object applies here the same way: a holder
 /// that could already spend, split and destroy the region learns nothing new by asking what it spent.
+///
+/// **`Rights::ALL`, every defined bit, since milestone 824** (a retype mints no right its budget
+/// lacks). A retype now mints the budget's rights and no others, so the root is where every right on
+/// every object ultimately comes from: the progenitor's processes need `BIND` to hand a `std`
+/// program its own process, and that `BIND` has to be on the budget they are retyped from. `READ`
+/// and `BIND` are consulted by no `MemoryRegion` method, so on the region itself they confer
+/// nothing. `ALL` rather than a list for the reason `syscall::retype` gives: a list stops being
+/// full the next time a right is added.
 pub fn memory_region_root_cap(region: u64) -> Cap {
-    memory_region_cap_rights(
-        region,
-        Rights::READ
-            .union(Rights::WRITE)
-            .union(Rights::GRANT)
-            .union(Rights::ENUMERATE),
-    )
+    memory_region_cap_rights(region, Rights::ALL)
 }
 
 /// A capability to a virtio device's transport. `WRITE` lets the holder operate it.
@@ -729,7 +755,9 @@ pub fn port_range_cap(base: u16, count: u16, rights: Rights) -> Cap {
     }
 }
 
-/// A capability naming a thread under construction (milestone 19c.3). Full rights at creation.
+/// A capability naming a thread under construction (milestone 19c (run a real workload), step 19c.3), for tests that build one by
+/// hand. `RETYPE_OBJ` mints its own through the budget's `mint_child` since milestone 824.
+#[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
 pub fn thread_control_block_cap(tid: crate::thread::ThreadId, rights: Rights) -> Cap {
     Cap {
         object: Object::ThreadControlBlock(tid),
@@ -737,8 +765,8 @@ pub fn thread_control_block_cap(tid: crate::thread::ThreadId, rights: Rights) ->
     }
 }
 
-/// A capability naming a notification (milestone 151). Full rights at creation, from
-/// `RETYPE_OBJ`; delegation narrows.
+/// A capability naming a notification (milestone 151). `RETYPE_OBJ` mints one with its budget's
+/// rights (milestone 824); delegation narrows.
 pub fn notification_cap(id: crate::sched::NotificationId, rights: Rights) -> Cap {
     Cap {
         object: Object::Notification(id),
@@ -757,8 +785,8 @@ pub fn reboot_capability(rights: Rights) -> Cap {
     }
 }
 
-/// A capability naming a timer (milestone 106). Full rights at creation, from `RETYPE_OBJ`;
-/// delegation narrows.
+/// A capability naming a timer (milestone 106). `RETYPE_OBJ` mints one with its budget's rights
+/// (milestone 824); delegation narrows.
 pub fn timer_cap(id: crate::sched::TimerId, rights: Rights) -> Cap {
     Cap {
         object: Object::Timer(id),
@@ -766,8 +794,9 @@ pub fn timer_cap(id: crate::sched::TimerId, rights: Rights) -> Cap {
     }
 }
 
-/// A capability naming a process (milestone 812). Full rights at creation, `BIND` among them, from
-/// `RETYPE_OBJ`; delegation narrows.
+/// A capability naming a process (milestone 812), for tests that build one by hand. `RETYPE_OBJ`
+/// mints its own with its budget's rights, `BIND` among them when the budget has it (milestone 824).
+#[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
 pub fn process_capability(id: crate::sched::ProcessId, rights: Rights) -> Cap {
     Cap {
         object: Object::Process(id),
@@ -775,8 +804,8 @@ pub fn process_capability(id: crate::sched::ProcessId, rights: Rights) -> Cap {
     }
 }
 
-/// A capability naming an address space under construction (milestone 19b). Full rights at
-/// creation; delegation narrows, as everywhere.
+/// A capability naming an address space under construction (milestone 19b). `RETYPE_OBJ` mints one
+/// with its budget's rights (milestone 824); delegation narrows, as everywhere.
 pub fn address_space_cap(name: u64, rights: Rights) -> Cap {
     Cap {
         object: Object::AddressSpace(name),

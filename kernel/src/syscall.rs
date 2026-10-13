@@ -36,7 +36,7 @@
 use abi::Error;
 
 use crate::arch::exceptions::TrapFrame;
-use crate::cap::{Object, Rights};
+use crate::cap::{Capability, Object, Rights};
 use crate::sched;
 
 // **The `ThreadControlBlock` methods, in a file of their own** because this one reached §266 (a Rust

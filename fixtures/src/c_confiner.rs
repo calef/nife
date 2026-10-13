@@ -135,7 +135,10 @@ pub extern "C" fn _start(_a0: u64, initial_ramdisk_len: u64, _a2: u64) -> ! {
                 // The shell's whole authority: say what happened, and spend the region it lives in
                 // (which is what pays for `malloc`). No GRANT on either, so it can neither lend the
                 // report endpoint on nor hand its budget to anyone.
-                caps: &[(REPORT, abi::rights::WRITE), (region, abi::rights::WRITE)],
+                caps: &[
+                    (REPORT, abi::rights::WRITE),
+                    (region, abi::rights::SPEND_ONLY),
+                ],
                 // The grant is read/write, which is the authority the C code abuses. The witness page
                 // right behind it is read-only, which is what turns an off-by-one into a fault
                 // instead of a corruption. Nothing maps WITNESS_FAR here, deliberately.

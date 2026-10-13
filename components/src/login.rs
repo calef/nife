@@ -974,11 +974,9 @@ fn hand_over(
     // only `WRITE | GRANT` on the real file service's shared page, so a real boot could never have
     // delegated `READ` here at all (found by `script/swish-check` refusing this exact `SEND_CAP`).
     delegate(channel.result, FS_PAGE_FRAME, abi::rights::WRITE);
-    delegate(
-        channel.result,
-        budget,
-        abi::rights::WRITE | abi::rights::GRANT,
-    );
+    // Every right (milestone 824 (a retype mints no right its budget lacks)): the session builds
+    // from it, and what it builds carries the budget's rights.
+    delegate(channel.result, budget, abi::rights::ALL);
     // The logout ticket: `WRITE` is the one right `MemoryRegion::DESTROY` needs (this program's own
     // module docs, "Reclaiming a session"). Not `GRANT`: a client that could delegate its own
     // logout ticket onward could hand another principal the means to end this one's session.
@@ -1370,7 +1368,7 @@ fn open_schedule(
                 // `GRANT` too: a region split off this one inherits its rights, and the session
                 // process hands its timetable a split of it, which `CAP_INSERT` refuses without
                 // `GRANT`.
-                (its_budget, abi::rights::WRITE | abi::rights::GRANT),
+                (its_budget, abi::rights::ALL),
                 (page, abi::rights::WRITE),
                 // `GRANT` on the two endpoints `user_timetable_keeper` only hands on; the page it
                 // only maps into its timetable, which `WRITE` alone allows.

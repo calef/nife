@@ -101,8 +101,9 @@ pub extern "C" fn _start(_a0: u64, initial_ramdisk_len: u64, _a2: u64) -> ! {
         bail(9)
     };
 
-    // 1. The construction sub-server. It holds a budget (WRITE only: it may *spend* memory, never
-    //    lend it), the request pair, a grantable report endpoint so it can endow the children it
+    // 1. The construction sub-server. It holds a budget (`SPEND_ONLY`, every right but GRANT: it
+    //    may *spend* memory, never lend it, nor since milestone 824 (a retype mints no right its
+    //    budget lacks) anything it retypes from it), the request pair, a grantable report endpoint so it can endow the children it
     //    builds, a grantable view of the child fault endpoint so children are born supervised, and
     //    the one program image. It cannot build anything else, because it has nothing else to build.
     let Ok(child) = supervision_protocol::build_child(
@@ -113,7 +114,7 @@ pub extern "C" fn _start(_a0: u64, initial_ramdisk_len: u64, _a2: u64) -> ! {
             caps: &[
                 (req, abi::rights::READ),
                 (rep, abi::rights::WRITE),
-                (sp_ut, abi::rights::WRITE),
+                (sp_ut, abi::rights::SPEND_ONLY),
                 (REPORT, abi::rights::WRITE | abi::rights::GRANT),
                 (childfault, abi::rights::READ | abi::rights::GRANT),
             ],

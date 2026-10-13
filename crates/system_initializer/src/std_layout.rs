@@ -12,7 +12,7 @@
 /// heap budget, so a `std` program built natively dies on its first `println!`. This is the other
 /// shape, from the decisions [`spawn_service`](super::spawn_service) already made.
 ///
-/// - slot 0: the job's own region, narrowed to `WRITE`, as the heap's budget. See
+/// - slot 0: the job's own region, `SPEND_ONLY`, as the heap's budget. See
 ///   [`grant_plan::STD_REGION_PAGES`] for why it is the same region the child is built from.
 /// - slot 1: the output, exactly the capability a native child would get at slot 0.
 /// - slot 4 and a page at `FS_PAGE`: the caretaker's narrowed endpoint, if the line granted a
@@ -22,12 +22,14 @@
 /// - slot 6: the entropy service, `WRITE`, if the manifest declared it and this boot built one.
 /// - slot 8 and a read-only page at `ARGS_PAGE`: the line's argv (milestone 205, DECISIONS §170),
 ///   if the shell sent one. The page is the child's own, copied out of the shell's frame.
-/// - slots 2 and 3: the network stack and the job's region again, both `WRITE`; the net PAL
-///   retypes each socket's page from the region (milestone 809 (the package client becomes a
-///   program)). Slots 15, 16 and 17: the installer endpoint, its reply endpoint and the catalog
-///   page, mapped at `CATALOG_PAGE` (milestone 809; `grant_plan::INSTALLER_SLOT` has the rights).
-///   Slot 18 and a read-only page at `INDEX_SOURCES_PAGE`: the image's index sources, beside the
-///   index store at slot 4 (milestone 801 (packages over the internet)).
+/// - slots 2 and 3: the network stack, `WRITE`, and the job's region again, `ALL`; the net PAL
+///   retypes each socket's page from the region and lends it (milestone 809 (the package client
+///   becomes a program)), and since milestone 824 (a retype mints no right its budget lacks) the
+///   lending `GRANT` has to be on the region. Slots 15, 16 and 17: the installer endpoint, its
+///   reply endpoint and the catalog page, mapped at `CATALOG_PAGE` (milestone 809;
+///   `grant_plan::INSTALLER_SLOT` has the rights). Slot 18 and a read-only page at
+///   `INDEX_SOURCES_PAGE`: the image's index sources, beside the index store at slot 4 (milestone
+///   801 (packages over the internet)).
 /// - slot 9: the name resolver, `WRITE`, badged with `Prog::resolver_zone`'s zone, for a job holding
 ///   the network (milestone 892 (a std program at the prompt holds the network and a resolver)).
 ///
@@ -95,8 +97,17 @@ impl StdLayout {
             resolver,
             index_sources,
         } = g;
+        // The heap's budget is spend-only, unless the child holds the installer: `jig` stages a
+        // package in pages retyped from its heap and lends them to the progenitor, and since
+        // milestone 824 (a retype mints no right its budget lacks) a page carries its budget's
+        // rights, so the lending `GRANT` has to be on the budget.
+        let heap = if installer.is_some() {
+            abi::rights::ALL
+        } else {
+            abi::rights::SPEND_ONLY
+        };
         let mut l = StdLayout {
-            caps: [(region, abi::rights::WRITE), out],
+            caps: [(region, heap), out],
             placed: [(0, 0, 0); 15],
             placed_n: 0,
             maps: [(0, 0, 0); 6],
@@ -117,7 +128,9 @@ impl StdLayout {
         l.page(args, rt::ARGS_SLOT, rt::ARGS_PAGE);
         if let Some(stack) = network {
             l.place(rt::STACK_SLOT, stack, WRITE);
-            l.place(rt::NET_MEMORY_REGION_SLOT, region, WRITE);
+            // Lent pages carry this budget's rights, milestone 824 (a retype mints no right its
+            // budget lacks), so `GRANT` is delegated here rather than minted with a page.
+            l.place(rt::NET_MEMORY_REGION_SLOT, region, abi::rights::ALL);
         }
         if let Some((endpoint, reply)) = installer {
             l.place(grant_plan::INSTALLER_SLOT, endpoint, WRITE);

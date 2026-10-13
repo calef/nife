@@ -261,7 +261,7 @@ pub(super) fn build_net_stack(ut: u64, program: &elf::Elf, g: &BootEndowment) ->
                 (report, abi::rights::WRITE),
                 (g.virtio_net_irq, abi::rights::READ),
                 (g.virtio_net, abi::rights::WRITE),
-                (budget, abi::rights::WRITE),
+                (budget, abi::rights::SPEND_ONLY),
                 (stack, abi::rights::READ),
             ],
             // §255 (each socket is its own capability): slot 7, our endpoint again with `WRITE |
@@ -379,7 +379,7 @@ pub(super) fn build_name_resolver(
             placed: &[
                 (0, service, abi::rights::READ),
                 (1, stack, abi::rights::WRITE),
-                (2, budget, abi::rights::WRITE),
+                (2, budget, abi::rights::SPEND_ONLY),
                 (3, entropy, abi::rights::WRITE),
                 (
                     endowment::OWN_SPACE_SLOT,
@@ -709,7 +709,7 @@ fn start_gpu_driver(l: &GraphicalTerminalLaunch, gpu_program: &elf::Elf) -> Resu
                 (gpu[1], abi::rights::READ),
                 (gpu[0], abi::rights::WRITE),
                 (display, abi::rights::READ),
-                (budget, abi::rights::WRITE),
+                (budget, abi::rights::SPEND_ONLY),
                 (gpu[2], abi::rights::READ | abi::rights::WRITE),
             ],
             ..ChildEndowment::new(Retention::Nothing)
@@ -773,7 +773,7 @@ fn start_display_terminal(
                 (term_report, abi::rights::WRITE),
                 (display, abi::rights::WRITE),
                 (term, abi::rights::READ),
-                (budget, abi::rights::WRITE),
+                (budget, abi::rights::SPEND_ONLY),
                 (gpu[3], abi::rights::READ | abi::rights::WRITE),
                 (out, abi::rights::READ | abi::rights::WRITE),
             ],
@@ -999,7 +999,7 @@ pub(super) fn build_terminal(
     use line_editor::component::supervisor as s;
     let budget_pages = must(memory_region_split(budget, s::BUDGET_PAGES));
     let mut all = [(0u64, 0u64); 8];
-    all[0] = (budget_pages, abi::rights::WRITE | abi::rights::GRANT);
+    all[0] = (budget_pages, abi::rights::ALL);
     all[1..=caps.len()].copy_from_slice(caps);
     let sup = must(build_child(
         ut,

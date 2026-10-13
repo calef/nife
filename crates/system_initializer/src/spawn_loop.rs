@@ -1240,8 +1240,17 @@ impl Service<'_> {
             n += 1;
         }
         if let Some(b) = req.delegated.budget {
-            // Narrowed to WRITE: the child may spend it, not lend it.
-            caps[n] = (b, abi::rights::WRITE);
+            // Narrowed to `SPEND_ONLY`: the child may spend it, not lend it, nor since milestone
+            // 824 (a retype mints no right its budget lacks) lend anything it retypes from it.
+            // Every right for a child holding the network, which lends the stack a page per
+            // socket out of this budget (`network_echo_client --mem`), the reason a `std`
+            // child's slot 3 carries every right.
+            let rights = if wants.network {
+                abi::rights::ALL
+            } else {
+                abi::rights::SPEND_ONLY
+            };
+            caps[n] = (b, rights);
             n += 1;
         }
         let (placed_buf, placed_n) = self.named_slots(req, manifest, wants, dir.sync_ep);
