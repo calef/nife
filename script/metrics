@@ -195,11 +195,13 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, 'helpers')
 import baseline_drift                                                       # noqa: E402
 import coe_actions                                                          # noqa: E402
+import comment_block_ratchet                                                # noqa: E402
 import crate_release                                                        # noqa: E402
 import function_length                                                      # noqa: E402
 import interface_stability                                                  # noqa: E402
 import name_provenance                                                      # noqa: E402
 import packages as package_boundaries                                       # noqa: E402
+import parent_index                                                         # noqa: E402
 import prose_ratchet                                                        # noqa: E402
 import roadmap_block                                                        # noqa: E402
 import roadmap_proposals                                                    # noqa: E402
@@ -482,6 +484,14 @@ MEASURES = [
                       for part in ('harnesses', 'patches', 'proven', 'required')]
      + ['crate_properties_proven', 'crate_properties_owed', 'crate_properties_required']),
     ('prose-budget', ['prose_excess_words', 'prose_documents_over_cap']),
+    # Three ratchets' debt, calef's ask of 2026-10-13 (UTC), each read from the week's tree by the
+    # gate's own measure (`writing_standards`, `comment_block_debt`, `parent_index_debt` below).
+    # File, column and chart names provisional, minted 2026-10-13 (UTC) by lane/ratchet-metrics;
+    # notes/register-of-measures/ratchet-debt.md defines them.
+    ('writing-standards', ['writing_over_median', 'writing_over_longest', 'writing_over_bold']),
+    ('comment-blocks', ['comment_block_files_over_cap', 'comment_blocks_over_cap',
+                        'comment_block_excess_lines']),
+    ('parent-index', ['parents_over_index', 'parent_index_lines', 'parent_index_marked_lines']),
     # `bold-backlog.csv` (2026W29 to 2026W41) is history that nothing writes or reads any more. The
     # bold backlog reached zero on 2026-10-06 (UTC) and calef asked that it stop being tracked; the
     # gate that holds it at zero is `check` in helpers/prose_ratchet.py, which refuses any bold
@@ -1709,6 +1719,64 @@ def prose_budget(tree):
     return {'prose_excess_words': excess, 'prose_documents_over_cap': over}
 
 
+# The three ratchets below (calef, 2026-10-13 UTC) are charted the way `prose_budget` is: from the
+# week's tree, never from a baseline's rows, through the gate's own functions and scope, so the
+# chart and the gate cannot disagree about a file. Every item counts, an exempted one included: the
+# graph measures the debt and the gate decides what passes. Each helper is today's, applied to the
+# week's text, so a week from before a gate existed reads as the debt that gate would have found.
+
+def writing_standards(tree):
+    """Documents over each of the three limits of §213 (writing standards), as
+    `prose_ratchet.over` judges them: median sentence over 20 words, longest over 40, bold over 4
+    per 1,000 words. The 200-word floor is the gate's. A document over two limits counts in both columns. A `writing-standards` exception
+    marker excuses a document at the gate and not here."""
+    counts = {'writing_over_median': 0, 'writing_over_longest': 0, 'writing_over_bold': 0}
+    for path, text in _prose_documents(tree):
+        over = prose_ratchet.over(prose_ratchet.measured(path, text))
+        counts['writing_over_median'] += 'median' in over
+        counts['writing_over_longest'] += 'longest' in over
+        counts['writing_over_bold'] += 'bold_lead' in over
+    return counts
+
+
+def comment_block_debt(tree):
+    """Comment blocks over the 40-line cap of §267 (a comment states the constraint as it is now),
+    by `comment_block_ratchet.blocks_over` over its `in_scope` files: files holding one, the
+    blocks, and the lines past the cap summed."""
+    cap = comment_block_ratchet.CEILING
+    files = blocks = excess = 0
+    for path, text in tree.text.items():
+        if not comment_block_ratchet.in_scope(path):
+            continue
+        over = comment_block_ratchet.blocks_over(text)
+        if over:
+            files += 1
+            blocks += len(over)
+            excess += sum(size - cap for _first, size in over)
+    return {'comment_block_files_over_cap': files, 'comment_blocks_over_cap': blocks,
+            'comment_block_excess_lines': excess}
+
+
+def parent_index_debt(tree):
+    """Split parents holding more than an index under §282 (when a file is split, the parent
+    becomes an index), by `parent_index.judge`: the parents, and the code lines of the items an
+    index may not hold. A marked item (`// Index exception`) counts
+    here; `parent_index_marked_lines` says how many of those lines the marks excuse."""
+    parents = lines = marked = 0
+    for path, text in tree.text.items():
+        if not parent_index.in_scope(path) or not parent_index.MAYBE_PARENT.search(text):
+            continue
+        judged = parent_index.judge(text)
+        if judged is None:
+            continue
+        held = judged['number'] + judged['marked_lines']
+        parents += held > 0
+        lines += held
+        marked += judged['marked_lines']
+    return {'parents_over_index': parents, 'parent_index_lines': lines,
+            'parent_index_marked_lines': marked}
+
+
 # Cumulative icount drift since a fixed anchor: milestone 415 item 3, which calef ruled on
 # 2026-09-26 (UTC) is a report and not a gate (§190). The arithmetic and its selftest are
 # helpers/baseline_drift.py. Three outputs: two cells per architecture in
@@ -2058,6 +2126,7 @@ def row_for(rev, week, coverage='', person_weeks='', coverage_min=''):
                  harnesses(tree),
                  unsafe_census(tree), unsafe_trust_census(tree),
                  fatal_risks_colors(tree), coe_action_counts(tree), prose_budget(tree),
+                 writing_standards(tree), comment_block_debt(tree), parent_index_debt(tree),
                  homes(tree), crate_release_cells(tree)):
         row.update(part)
     row.update(baseline_drift.series_cells(rev))
@@ -2788,6 +2857,29 @@ CHARTS = [
      'the same debt by where it sits; one split book moves the chart above and not this one',
      [('documents over the cap', 'prose_documents_over_cap')], 1.0, None,
      'prose_documents_over_cap'),
+    # The three ratchets' debt (lane/ratchet-metrics; chart names provisional). §213's limits are
+    # grouped, not stacked: a document over two limits is in two bars, so a sum would count it
+    # twice. The comment-block pair is two panels for the prose-budget pair's reason.
+    ('writing-standards.svg', 'Documents over a writing-standards limit',
+     'helpers/prose_ratchet.py\'s measure and scope; a document over two limits is in both bars, '
+     'and an exempted document counts',
+     [('median sentence over 20 words', 'writing_over_median'),
+      ('longest sentence over 40 words', 'writing_over_longest'),
+      ('bold over 4 per 1,000 words', 'writing_over_bold')], 1.0, None, 'writing_over_longest'),
+    ('comment-blocks.svg', 'Rust files with a comment block over 40 lines',
+     'helpers/comment_block_ratchet.py\'s measure, over every .rs file outside vendor/; the '
+     'chart below is the same debt in lines',
+     [('files with an over-cap block', 'comment_block_files_over_cap')], 1.0, None,
+     'comment_block_files_over_cap'),
+    ('comment-blocks-excess.svg', 'Comment lines past the 40-line cap, in thousands',
+     'each over-cap block\'s lines beyond 40, summed; shortening a block moves this and not the '
+     'file count',
+     [('lines past the cap', 'comment_block_excess_lines')], 1000.0, None,
+     'comment_block_excess_lines'),
+    ('parent-index.svg', 'Split parents holding more than an index',
+     'helpers/parent_index.py\'s verdict; an item a mark excuses counts, since the chart '
+     'measures the debt and the gate decides what passes',
+     [('parents over the index limit', 'parents_over_index')], 1.0, None, 'parents_over_index'),
     # Milestone 611. Packages stack by where their home stands, with the ones that have left on
     # top: the end state is one band. Paths are a separate panel because a path that has left is
     # not in the tree to count, so that panel's end state is empty rather than full.
@@ -3118,9 +3210,10 @@ def github_anchor(heading):
 # from 8 to 49 to 13 in three weeks cannot be read for direction by eye. It is drawn and never stored, like the fatal-risks chart's unclassified band:
 # it is arithmetic over a column already in the CSV, and a stored copy could disagree with it.
 # Charts whose series stand side by side rather than stacked, and charts that carry stored columns
-# as lines over the bars: [(legend label, column)]. Both are the build chart's alone since
-# verify-shards.svg was retired on 2026-10-11 (UTC).
-GROUPED = {'ci-jobs.svg'}
+# as lines over the bars: [(legend label, column)]. The build chart's jobs run side by side, and
+# §213's limits overlap (one document can be over two), so neither may be summed. Only the build
+# chart carries lines.
+GROUPED = {'ci-jobs.svg', 'writing-standards.svg'}
 # Two lines, so the second is dotted with open markers: solid and dashed already mean a trailing
 # mean's full and short window on this page (TRENDS).
 LINES = {'ci-jobs.svg': [('median build', 'ci_build_median_minutes'),
@@ -3394,6 +3487,46 @@ def _fatal_risk_cases():
     ]
 
 
+def _ratchet_debt_cases():
+    """The three ratchet-debt series, driven with fixture trees: each counts what its gate's
+    function finds, an exempted item included, and nothing outside the gate's scope."""
+    def tree(text):
+        t = Tree.__new__(Tree)
+        t.text = text
+        return t
+
+    long_sentence = ' '.join(['word'] * 45) + '.'
+    over_bold = '**One** **two** **three**. ' + 'Words in a short sentence. ' * 60
+    prose = tree({
+        'notes/long.md': 'Short. ' + long_sentence + '\n',
+        'notes/exempt.md': ('<!-- writing-standards: exception. 2026-10-13. Reason: a fixture. -->\n'
+                            + long_sentence + '\n'),
+        'notes/bold.md': over_bold + '\n',
+        'kernel/README.md': long_sentence + '\n',
+    })
+    block = ''.join('// line %d\n' % k for k in range(45)) + 'fn f() {}\n'
+    at_cap = ''.join('// line %d\n' % k for k in range(40)) + 'fn g() {}\n'
+    rust = tree({'a.rs': block + block, 'b.rs': at_cap,
+                 'vendor/x.rs': block, 'notes/a.md': block})
+    four = 'pub fn four(x: u32) -> u32 {\n    let y = x + 1;\n    y * 2\n}\n'
+    mark = '// Index exception (2026-10-13): every child reads this one.\n'
+    parents = tree({'p.rs': 'mod child;\n' + four, 'q.rs': 'mod child;\n' + mark + four,
+                    'r.rs': 'mod child;\npub use child::X;\n', 's.rs': four,
+                    'vendor/v.rs': 'mod child;\n' + four})
+    return [
+        ('writing standards: the gate\'s verdict, an exempted document counted, scope kept',
+         writing_standards(prose),
+         {'writing_over_median': 0, 'writing_over_longest': 2, 'writing_over_bold': 1}),
+        ('comment blocks: files, blocks and lines past 40, outside vendor/ and .md alike',
+         comment_block_debt(rust),
+         {'comment_block_files_over_cap': 1, 'comment_blocks_over_cap': 2,
+          'comment_block_excess_lines': 10}),
+        ('parent index: a marked item is debt here and is counted apart',
+         parent_index_debt(parents),
+         {'parents_over_index': 2, 'parent_index_lines': 8, 'parent_index_marked_lines': 4}),
+    ]
+
+
 def selftest():
     rows = {}
     chain = [('2026W01', {'kernel_code_lines': '100'}),
@@ -3586,6 +3719,7 @@ def selftest():
     ]
     cases += _fatal_risk_cases()
     cases += _decision_cases()
+    cases += _ratchet_debt_cases()
     failed = [(name, got, want) for name, got, want in cases if got != want]
     for name, got, want in failed:
         print('metrics selftest: %s\n  got  %r\n  want %r' % (name, got, want), file=sys.stderr)

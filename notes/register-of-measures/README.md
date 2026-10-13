@@ -8,7 +8,12 @@ hold each measure's argument.
 directory and every stem in it. Naming is an architect's; `script/names --unratified` lists each
 stem.*
 
-One appendix is linked from here rather than from that table:
-[function-length.md](function-length.md), milestone 888 (a ratchet on function length)'s series. The
-register was at exactly its 3,000-word cap when it landed on 2026-10-11 (UTC), so its row waits for
-the register's next split.
+Two appendices are indexed here rather than in that table, because the register is at or near its
+3,000-word cap and their rows wait for its next split:
+
+- [function-length.md](function-length.md), milestone 888 (a ratchet on function length)'s series.
+- [ratchet-debt.md](ratchet-debt.md), the debt the writing-standards, comment-block and parent-index ratchets still hold, which
+  the register's *The weekly series* table routes to.
+
+`ratchet-debt` Name: provisional, minted 2026-10-13 (UTC) by lane/ratchet-metrics, with the files
+and charts it defines. Naming is an architect's.
