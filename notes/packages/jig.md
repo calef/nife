@@ -25,6 +25,31 @@ $ installed/jig rollback
   this jig holds no installer endpoint; only the owner's console grants one
 ```
 
+From the second boot, after `update` (milestone 801 (packages over the internet), 2026-10-12 UTC),
+riscv64's transcript:
+
+```
+$ jig update
+  index updated: 4 packages for riscv64, from basalt.test over TLS
+$ jig list
+  packages the index offers (the copy jig update wrote):
+  greeting 0.1.0
+  rebound 0.1.0
+  uptime 0.1.0
+  greeting 0.3.0
+$ jig install uptime
+  passed over https://packages.basalt.test:8443/rolling/targets/uptime-0.1.0-riscv64.nifepkg: NotFound
+  refused: the index does not vouch for the bytes that arrived; nothing was sent to the installer
+$ jig install greeting@0.3.0
+  passed over https://packages.basalt.test:8443/rolling/targets/greeting-0.3.0-riscv64.nifepkg: NotFound
+  fetched greeting-0.3.0-riscv64 from basalt.test over TLS
+  fetched and installed; generation 6 is live
+```
+
+The image's catalog names no `greeting` 0.3.0, so the installer took it on the index copy's word.
+The listed location is passed over because this prompt cannot resolve it; the repository's own
+copy is the fallback.
+
 The verbs are apt's where apt has one; [the record](../../design/naming/command-line-rulings.md#jig-takes-apts-verbs)
 has each spelling. A word with a `/` is a file, so a package file in this directory is `./<file>`.
 It is installed from the directory it is in, because a word is designated at the current directory,
@@ -42,6 +67,13 @@ and the root cannot be narrowed to one name.
 | 16 | the endpoint its answers come back on, `READ` | the same |
 | 17, and a page | a copy of the image's catalog | `Manifest::catalog` |
 | 4 | the file a word names, read-only | the line, for `install <path>` |
+| 4 | the index store, `activation/indexes`: read and write for `update`, read for `list` and `install <name>` | `Manifest::indexes`, on a line that names no directory |
+| 18, and a page | the image's index sources: where its index is, and the root its TLS must chain to | `Manifest::indexes` |
+| 5, 6 | the clock and entropy, for TLS | `update` and `install` |
+
+Only the owner's console grants the index store, as it grants the installer, and no note may ask for
+it. The image's index sources are a measured archive entry (`package_index::SOURCES_ENTRY`), so
+basalt can name another index without rebuilding `jig`.
 
 **Each line holds what its verb needs and no more** (option V2, milestone 281 (`watch` holds
 exactly what `ps` holds)'s test): `list` the catalog alone, `remove` and `rollback` the installer
@@ -78,11 +110,19 @@ region one package larger, from the progenitor's image pool (`grant_plan::named_
 
 ## BUGS
 
-- `list` reads the image's catalog, not an index: milestone 809's item 6. The copy is one page, so
-  `xtask` refuses a catalog of a page or more.
+- Before any `update`, `list` reads the image's catalog, and a name is fetched over plain HTTP
+  from the LAN source. The catalog and the index copy are each one page, so `xtask` refuses a
+  catalog of a page or more and `update` refuses an index whose lines for this architecture are.
+- Every image names the test peer and root (`xtask`'s `image_index_sources`), reached at 10.0.2.9
+  by the sources' address. The production sources wait on a host for `basalt.nifeos.org`.
+- `update` keeps no record of which address answered, and `install` tries the image's addresses
+  in order again.
+- The index store needs a file server that binds grants itself; on one that does not, `jig` is
+  not granted it and says so.
 - Its own refusals name no generation, and a `remove <program>@<version>` it cannot pick names no
   candidates. It holds no view of `activation/`.
-- The package source is the runners' fixture peer, plain HTTP; outside QEMU there is none.
+- Before `update`, the package source is the runners' fixture peer, plain HTTP; outside QEMU there
+  is none.
 - Nothing gates its dependencies to the public contracts the block names; `jig/Cargo.toml` lists
   them with that argument.
 - A copy run by path carries a note that asks for less than the image's `jig` holds, so it lists

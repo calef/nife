@@ -105,10 +105,11 @@ pub use image::{
 };
 pub use manifest::{
     ArgSpec, CATALOG_SLOT, DIAGNOSTICS_SLOT, DOMAIN_SLOT, DirSpec, ENTROPY_SLOT, FileSpec, Flags,
-    INSTALLER_REPLY_SLOT, INSTALLER_SLOT, InputSpec, MACHINE_SLOT, MAX_DECLARED_FLAGS, Manifest,
-    MemSpec, NETWORK_SLOT, NO_FLAGS, OutputSpec, REBOOT_SLOT, Runtime, SHARE_SLOT,
-    SHELL_CONFIG_SLOT, SHELL_CONFIG_VA, STD_REGION_PAGES, SYNC_SLOT, UNVOUCHED_MANIFEST,
-    UNVOUCHED_STD_MANIFEST, WordGrant, image_region_pages, named_std_region_pages,
+    INDEX_SOURCES_SLOT, INSTALLER_REPLY_SLOT, INSTALLER_SLOT, IndexStore, InputSpec, MACHINE_SLOT,
+    MAX_DECLARED_FLAGS, Manifest, MemSpec, NETWORK_SLOT, NO_FLAGS, OutputSpec, REBOOT_SLOT,
+    Runtime, SHARE_SLOT, SHELL_CONFIG_SLOT, SHELL_CONFIG_VA, STD_REGION_PAGES, SYNC_SLOT,
+    UNVOUCHED_MANIFEST, UNVOUCHED_STD_MANIFEST, WordGrant, image_region_pages,
+    named_std_region_pages,
 };
 pub use parsing::{
     BUILTINS, MAX_POSITIONALS, RunSpec, UserVerb, argv, check_words, each_word, parse, parse_run,

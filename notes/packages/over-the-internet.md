@@ -111,16 +111,14 @@ greeting-0.1.0-aarch64 sha256:<64 hex> https://packages.basalt.test:8443/rolling
 | ISRG Root X1, for the index and (if question B is ruled so) listed locations | the test authority in `pinned_tls_client/fixtures/` | ruled for the index; X1 meets a real chain only in 501's ignored host test |
 | The index's format | the stand-in encoding | the TUF client, milestone 858 |
 | The resolver started from the lease | the test harness starts it, pointed at `helpers/name-server-peer` | identified work (milestone 801's block) |
-| `jig` installing what it fetched | the program fetches and judges, and installs nothing | milestone 809 |
+| Where the image says its index is | `package_index::SOURCES_ENTRY` names `basalt.test` at 10.0.2.9 and the test root | milestone 909 (basalt composes the bootable image from its packages) writes basalt's |
 
 ## BUGS
 
-- Nothing is installed. Taking an index's word for what may be installed is `jig` writing the
-  index copy, milestone 809's ruling I2, and that program does not exist yet.
-- No program at the prompt does this yet. The booted system starts the resolver on the lease's
-  name server, and `jig install` holds the network and a root-zone badge: milestone 892 (a std
-  program at the prompt holds the network and a resolver). But `jig` fetches by a fixed address
-  until milestone 809 (the package client becomes a program)'s item 6 adopts this client.
+- `package_fetch_exerciser` installs nothing; `jig` does since 2026-10-12, at the prompt, from the
+  copy `jig update` writes ([jig.md](jig.md)). At the prompt it reaches the index by the address the
+  image's sources give, since slirp's name server is the host's (milestone 892 (a std program at
+  the prompt holds the network and a resolver)).
 - The stand-in has no signed root, so no "moved to" (Q2's move is a signed root's), and no
   version, expiry or signature. Each is the TUF client's.
 - No producer in this tree. The test host composes the stand-in from the build's catalog, in

@@ -321,6 +321,44 @@ pub(crate) fn image_catalogue(architecture: &str) -> Result<String, String> {
     Ok(catalogue)
 }
 
+/// **The image's index sources** (milestone 801 (packages over the internet)): the text
+/// `package_index::Sources` reads, packed as `package_index::SOURCES_ENTRY` above the measurement
+/// table, as the catalog is, so the kernel's trust root vouches for where the image says its index
+/// is and which root that index's TLS must chain to.
+///
+/// **Every image names the test peer today**: `helpers/tls-peer`, which every runner forwards at
+/// 10.0.2.9:8443 and which presents a chain for `basalt.test` from the committed test authority.
+/// The production text is two lines, `repository basalt.nifeos.org 443 rolling` and `root
+/// isrg-root-x1` (§250 (an image names its distribution's package index)), and it waits on two
+/// things outside this tree: a host for `basalt.nifeos.org`, and milestone 909 (basalt composes
+/// the bootable image from its packages), where basalt writes this entry for the images it
+/// publishes. Until then a production image would name a host nobody answers on, so the test text
+/// is the only one any boot here can use. The address after the host is there because a guest
+/// under QEMU's slirp asks the host's resolver, which knows no `.test` name: milestone 892 (a std
+/// program at the prompt holds the network and a name resolver) measured it.
+pub(crate) fn image_index_sources() -> Result<String, String> {
+    let root = workspace_root().join("pinned_tls_client/fixtures/pinned-root.der");
+    let der =
+        std::fs::read(&root).map_err(|e| format!("could not read {}: {e}", root.display()))?;
+    let hex: String = der.iter().map(|b| format!("{b:02x}")).collect();
+    let text = format!(
+        "# The image's package index (milestone 801): helpers/tls-peer under every runner, pinned\n\
+         # to the test authority in pinned_tls_client/fixtures. See xtask's image_index_sources.\n\
+         repository basalt.test 8443 rolling 10.0.2.9\n\
+         root {hex}\n"
+    );
+    // Read back with the target's own reader before it is packed, as a package is.
+    package_index::Sources::parse(&text)
+        .map_err(|e| format!("the index sources this build wrote are refused: {e:?}"))?;
+    if text.len() >= 4096 {
+        return Err(format!(
+            "the index sources are {} bytes, and jig is handed them in one 4096-byte page",
+            text.len()
+        ));
+    }
+    Ok(text)
+}
+
 /// Append a catalogue line, replacing any earlier line for the same name so a rebuild does not
 /// leave two answers to one question.
 fn append(path: &std::path::Path, line: &str) -> std::io::Result<()> {

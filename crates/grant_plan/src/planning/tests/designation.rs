@@ -225,6 +225,7 @@ const STAMPS_A_FILE: Manifest = Manifest {
     sync: false,
     installer: false,
     catalog: false,
+    indexes: IndexStore::Forbidden,
     runtime: Runtime::Native,
 };
 

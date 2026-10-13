@@ -72,6 +72,10 @@ impl core::fmt::Debug for pollfd {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn poll(fds: *mut pollfd, nfds: nfds_t, timeout: c_int) -> c_int {
     let fd_buf = unsafe { slice::from_raw_parts_mut(fds, nfds as usize) };
+    // nife: the platform layer takes a `Duration`, `None` for no limit (`stream.rs`).
+    let timeout = u64::try_from(timeout)
+        .ok()
+        .map(core::time::Duration::from_millis);
     crate::platform::sys::poll(fd_buf, timeout).or_minus_one_errno()
 }
 
@@ -90,14 +94,18 @@ pub unsafe extern "C" fn ppoll(
     tmo_p: *const timespec,
     sigmask: *const sigset_t,
 ) -> c_int {
+    // nife: the wait is passed whole, as a `Duration`. relibc rounded it down to milliseconds for
+    // epoll, so a `ppoll` asked to wait 500 microseconds did not wait at all.
     let timeout = if tmo_p.is_null() {
-        -1
+        None
     } else {
         let tmo = unsafe { &*tmo_p };
-        if tmo.tv_sec > (c_int::MAX / 1000).into() {
-            c_int::MAX
-        } else {
-            ((tmo.tv_sec as c_int) * 1000) + ((tmo.tv_nsec as c_int) / 1000000)
+        match (u64::try_from(tmo.tv_sec), u32::try_from(tmo.tv_nsec)) {
+            (Ok(s), Ok(ns)) if ns < 1_000_000_000 => Some(core::time::Duration::new(s, ns)),
+            _ => {
+                crate::platform::ERRNO.set(crate::header::errno::EINVAL);
+                return -1;
+            }
         }
     };
     let fd_buf = unsafe { slice::from_raw_parts_mut(fds, nfds as usize) };

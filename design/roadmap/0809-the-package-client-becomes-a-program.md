@@ -11,9 +11,10 @@ needs_person: no
 # 809. The package client becomes a program, `jig`, with the verbs an index needs
 
 **PARTIAL, 2026-10-10 (UTC).** Items 1 to 5 and item 8's digest check are built, and pass
-`script/swish-check` on aarch64, riscv64 and x86_64 under QEMU. Left: item 6 (`update`, `list
---upgradable`, the index copy), item 7 (`add-repository`) and item 8's index half. The program is
-[notes/packages/jig.md](../../notes/packages/jig.md); "Follow-on" says what item 6 needs first.
+`script/swish-check` on aarch64, riscv64 and x86_64 under QEMU. `update` and the index copy were
+built by milestone 801's lane on 2026-10-12 (UTC). Left: `list --upgradable`, item 7
+(`add-repository`) and item 8's index half. The program is
+[notes/packages/jig.md](../../notes/packages/jig.md).
 
 *(Promoted from the proposal pile on 2026-10-07 (UTC), calef: "Promote jig to a milestone." The
 number is provisional until the merge queue lands it. `jig` is ratified; the title, slug and verb
@@ -42,12 +43,12 @@ His wording is the intent.
 
 | Intent | Spelling (ruled 2026-10-10) | Built |
 |---|---|---|
-| List available packages, from the local copy of the index | `jig list` (apt's) | from the image's catalog, and says so |
+| List available packages, from the local copy of the index | `jig list` (apt's) | yes; the catalog before any `update` |
 | Install a package from the index | `jig install <name>` (apt's) | yes; `jig` fetches |
 | Install a local package, an archive already on the system | `jig install <path>` (apt's verb); a word with a `/` is a file (§219 (how the shell names an installed program to the spawner)) | yes |
 | Add another index | `jig add-repository <url>` (nife's; apt has no verb) | no, item 7 |
 | List what is outdated | `jig list --upgradable` (apt's, as ruled) | no, item 6 |
-| Update the local copy of the index | `jig update` (apt's) | no, item 6 |
+| Update the local copy of the index | `jig update` (apt's) | yes (801) |
 | Remove a program | `jig remove <program>` (apt's) | yes |
 | Roll back a generation | `jig rollback` (nife's; apt has none) | yes |
 
@@ -80,7 +81,7 @@ reversible.
 | Capability | Verbs that use it | How it is granted | Exists today? |
 |---|---|---|---|
 | A client view of the network stack (`NETWORK_SLOT`; slots 2 and 3 for a `std` program) | `install <name>`, `update` | `Manifest::network` | yes (milestone 590 (the booted system starts its network stack)); for a `std` program at the prompt, since this block |
-| The index directory, read and write | `list`, `list --upgradable`, `update`, `add-repository`, `install <name>` | a directory grant; path provisional, `packages/indexes/` | the caretaker, yes; a grant the manifest fixes rather than a word designates, no (item 6) |
+| The index directory, read and write | `list`, `list --upgradable`, `update`, `add-repository`, `install <name>` | `Manifest::indexes`, a directory grant on `activation/indexes`, owner's console only | yes (801) |
 | `activation/`, read only | `list --upgradable` | a directory grant | as above |
 | The file a line names | `install <path>` | `ArgSpec::Words` designation (§170 (how a foreign program is told what to do)) | yes |
 | A request to the installer | `install`, `remove`, `rollback` | `Manifest::installer`, below | yes, since this block (§270) |
@@ -221,10 +222,8 @@ the installer. The progenitor's stack went from twelve pages to fourteen, measur
 
 ## Follow-on
 
-- **Outstanding.** Item 6, `update` and `list --upgradable`. Checked 2026-10-10 against
-  `grant_plan::DirSpec`: a directory grant is what a word designates, and `update` must write the
-  index copy, and `list --upgradable` read `activation/`, where no word points. How a manifest names
-  a fixed directory, and who grants it, goes to calef first (ruling I2 says the owner's console).
+- **Outstanding.** `list --upgradable`, which must read `activation/`; the index store grant does
+  not reach it.
 - **Outstanding.** Item 7, `add-repository`, waiting on the many-indexes details below. Checked
   2026-10-10: none of the four is ruled.
 - **Outstanding.** Item 8's index half, the needs against metadata and manifests. Checked
@@ -256,12 +255,10 @@ the installer. The progenitor's stack went from twelve pages to fourteen, measur
 | Verb spellings (plan fork 4) | ruled 2026-10-10, calef: "Lets use apt's verbs."; `add-repository`, same day | nothing |
 | 801's items 1 and 2 here (plan fork 5) | moot: 801 built them; `jig` adopts them at item 6 | nothing |
 | `--upgradable` or apt's documented `--upgradeable` | open, found by the lane 2026-10-10 | item 6's spelling only |
-| How a manifest names a fixed directory | open, found by the lane 2026-10-10 | item 6 |
+| How a manifest names a fixed directory | decided by 801's lane 2026-10-12, reversible: `Manifest::indexes` | nothing |
 
 ## BUGS
 
-- Until an index exists, `list` can only read the image's catalog. That is a list of what this
-  image vouches for, not of what a distribution offers.
 - Retiring `Activation::Fetch` changed a wire format that only this tree speaks.
 - Until I3, `jig` is inside the trusted base for installs, and the activation set's provenance for
   an index install is `jig`'s claim.

@@ -22,10 +22,14 @@
 /// - slot 6: the entropy service, `WRITE`, if the manifest declared it and this boot built one.
 /// - slot 8 and a read-only page at `ARGS_PAGE`: the line's argv (milestone 205, DECISIONS §170),
 ///   if the shell sent one. The page is the child's own, copied out of the shell's frame.
-/// - slots 2 and 3: the network stack, `WRITE`, and the job's region again, `ALL`, from which the net
-///   PAL lends socket pages (milestone 809 (the package client becomes a program)) since milestone 824.
-/// - slots 15, 16 and 17: the installer endpoint, its reply endpoint and the catalog page, mapped at
-///   `CATALOG_PAGE` (milestone 809; `grant_plan::INSTALLER_SLOT` has the rights).
+/// - slots 2 and 3: the network stack, `WRITE`, and the job's region again, `ALL`; the net PAL
+///   retypes each socket's page from the region and lends it (milestone 809 (the package client
+///   becomes a program)), and since milestone 824 (a retype mints no right its budget lacks) the
+///   lending `GRANT` has to be on the region. Slots 15, 16 and 17: the installer endpoint, its
+///   reply endpoint and the catalog page, mapped at `CATALOG_PAGE` (milestone 809;
+///   `grant_plan::INSTALLER_SLOT` has the rights). Slot 18 and a read-only page at
+///   `INDEX_SOURCES_PAGE`: the image's index sources, beside the index store at slot 4 (milestone
+///   801 (packages over the internet)).
 /// - slot 9: the name resolver, `WRITE`, badged with `Prog::resolver_zone`'s zone, for a job holding
 ///   the network (milestone 892 (a std program at the prompt holds the network and a resolver)).
 ///
@@ -40,16 +44,11 @@
 ///   pool is one region smaller until reboot. nife's `std` never splits (its allocator only
 ///   `MAP`s), so this takes a program written to do it. Closing it needs a right that allows `MAP`
 ///   and not `SPLIT`, which is the syscall surface and an architect's call.
-/// - **The directory half is built and never exercised at the prompt.** No `std` manifest declares
-///   a directory yet. DECISIONS §170 (how a foreign program is told what to do) ruled that the
-///   directories granted on a line bound what a word reaches, and granting one to a `std` program
-///   from the prompt is milestone 205's designation half, not built yet. The kernel harness proves
-///   the same slot and page from its side (`fs_service::start_std_full`).
 pub(super) struct StdLayout {
     pub(super) caps: [(u64, u64); 2],
-    placed: [(u64, u64, u64); 14],
+    placed: [(u64, u64, u64); 15],
     placed_n: usize,
-    maps: [(u64, u64, u64); 5],
+    maps: [(u64, u64, u64); 6],
     maps_n: usize,
 }
 
@@ -72,6 +71,8 @@ pub(super) struct StdGrants {
     pub(super) catalog: Option<u64>,
     /// The name resolver's endpoint, badged with the zone this job was granted (milestone 892).
     pub(super) resolver: Option<u64>,
+    /// The child's own copy of the image's index sources (milestone 801).
+    pub(super) index_sources: Option<u64>,
 }
 
 // `caps` lands in order from slot 0, so the two in-order slots must be 0 and 1. Checked here rather
@@ -94,6 +95,7 @@ impl StdLayout {
             installer,
             catalog,
             resolver,
+            index_sources,
         } = g;
         // The heap's budget is spend-only, unless the child holds the installer: `jig` stages a
         // package in pages retyped from its heap and lends them to the progenitor, and since
@@ -106,89 +108,78 @@ impl StdLayout {
         };
         let mut l = StdLayout {
             caps: [(region, heap), out],
-            placed: [(0, 0, 0); 14],
+            placed: [(0, 0, 0); 15],
             placed_n: 0,
-            maps: [(0, 0, 0); 5],
+            maps: [(0, 0, 0); 6],
             maps_n: 0,
         };
-        let place = |l: &mut StdLayout, slot: u64, cap: u64, rights: u64| {
-            l.placed[l.placed_n] = (slot, cap, rights);
-            l.placed_n += 1;
-        };
-        let map = |l: &mut StdLayout, va: u64, cap: u64, mode: u64| {
-            l.maps[l.maps_n] = (va, cap, mode);
-            l.maps_n += 1;
-        };
+        use abi::address_space::MAP_RW;
+        use abi::rights::{BIND, READ, WRITE};
+        // Each grant at its slot, and a page grant mapped where `std` reads it too.
         if let Some((ep, page)) = dir {
-            place(&mut l, rt::FS_DIR_SLOT, ep, abi::rights::WRITE);
-            map(&mut l, rt::FS_PAGE, page, abi::address_space::MAP_RW);
+            l.place(rt::FS_DIR_SLOT, ep, WRITE);
+            l.map(rt::FS_PAGE, page, MAP_RW);
         }
-        if let Some(page) = clock {
-            place(&mut l, rt::CLOCK_SLOT, page, abi::rights::READ);
-            map(&mut l, rt::CLOCK_PAGE, page, abi::address_space::MAP_RO);
-        }
+        l.page(clock, rt::CLOCK_SLOT, rt::CLOCK_PAGE);
         if let Some(ep) = entropy {
-            place(&mut l, rt::ENTROPY_SLOT, ep, abi::rights::WRITE);
+            l.place(rt::ENTROPY_SLOT, ep, WRITE);
         }
-        if let Some(page) = config {
-            place(&mut l, rt::CONFIG_SLOT, page, abi::rights::READ);
-            map(&mut l, rt::CONFIG_PAGE, page, abi::address_space::MAP_RO);
-        }
-        if let Some(page) = args {
-            place(&mut l, rt::ARGS_SLOT, page, abi::rights::READ);
-            map(&mut l, rt::ARGS_PAGE, page, abi::address_space::MAP_RO);
-        }
+        l.page(config, rt::CONFIG_SLOT, rt::CONFIG_PAGE);
+        l.page(args, rt::ARGS_SLOT, rt::ARGS_PAGE);
         if let Some(stack) = network {
-            place(&mut l, rt::STACK_SLOT, stack, abi::rights::WRITE);
+            l.place(rt::STACK_SLOT, stack, WRITE);
             // Lent pages carry this budget's rights, milestone 824 (a retype mints no right its
             // budget lacks), so `GRANT` is delegated here rather than minted with a page.
-            place(&mut l, rt::NET_MEMORY_REGION_SLOT, region, abi::rights::ALL);
+            l.place(rt::NET_MEMORY_REGION_SLOT, region, abi::rights::ALL);
         }
         if let Some((endpoint, reply)) = installer {
-            place(
-                &mut l,
-                grant_plan::INSTALLER_SLOT,
-                endpoint,
-                abi::rights::WRITE,
-            );
-            place(
-                &mut l,
-                grant_plan::INSTALLER_REPLY_SLOT,
-                reply,
-                abi::rights::READ,
-            );
+            l.place(grant_plan::INSTALLER_SLOT, endpoint, WRITE);
+            l.place(grant_plan::INSTALLER_REPLY_SLOT, reply, READ);
         }
         if let Some(endpoint) = resolver {
-            place(&mut l, rt::RESOLVER_SLOT, endpoint, abi::rights::WRITE);
+            l.place(rt::RESOLVER_SLOT, endpoint, WRITE);
         }
-        if let Some(page) = catalog {
-            place(&mut l, grant_plan::CATALOG_SLOT, page, abi::rights::READ);
-            map(&mut l, rt::CATALOG_PAGE, page, abi::address_space::MAP_RO);
-        }
+        l.page(catalog, grant_plan::CATALOG_SLOT, rt::CATALOG_PAGE);
+        l.page(
+            index_sources,
+            grant_plan::INDEX_SOURCES_SLOT,
+            rt::INDEX_SOURCES_PAGE,
+        );
         // **Threads** (milestone 812 (`std::thread::spawn` runs real threads in one address
         // space)): every `std` program is built as a process of its own and may add threads to it,
         // within its own region's budget. Its own process with `BIND` and nothing more, its own
         // first thread to set its thread pointer through, and its own space with `READ` for the
         // futex waits its locks make. None of the three reaches anything outside the program.
-        place(
-            &mut l,
+        l.place(
             rt::PROCESS_SLOT,
             supervision_protocol::CHILDS_OWN_PROCESS,
-            abi::rights::BIND,
+            BIND,
         );
-        place(
-            &mut l,
+        l.place(
             rt::THREAD_SLOT,
             supervision_protocol::CHILDS_OWN_THREAD,
-            abi::rights::WRITE,
+            WRITE,
         );
-        place(
-            &mut l,
-            rt::SPACE_SLOT,
-            supervision_protocol::CHILDS_OWN_SPACE,
-            abi::rights::READ,
-        );
+        l.place(rt::SPACE_SLOT, supervision_protocol::CHILDS_OWN_SPACE, READ);
         l
+    }
+
+    fn place(&mut self, slot: u64, cap: u64, rights: u64) {
+        self.placed[self.placed_n] = (slot, cap, rights);
+        self.placed_n += 1;
+    }
+
+    fn map(&mut self, va: u64, cap: u64, mode: u64) {
+        self.maps[self.maps_n] = (va, cap, mode);
+        self.maps_n += 1;
+    }
+
+    /// A read-only page, if the child is given it: its capability at `slot`, mapped at `va`.
+    fn page(&mut self, page: Option<u64>, slot: u64, va: u64) {
+        if let Some(page) = page {
+            self.place(slot, page, abi::rights::READ);
+            self.map(va, page, abi::address_space::MAP_RO);
+        }
     }
 
     pub(super) fn placed(&self) -> &[(u64, u64, u64)] {

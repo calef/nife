@@ -560,6 +560,297 @@ pub mod fixture {
     pub const REBOUND: &str = "rebound@0.1.0";
 }
 
+// **An image's index sources** (milestone 801 (packages over the internet), 2026-10-12 UTC).
+// **Where an image says its distribution's index is, and the root its TLS must chain to**, read
+// from the image's `package_index_sources` archive entry ([`SOURCES_ENTRY`]), for milestone 801
+// (packages over the internet).
+//
+// §250 (an image names its distribution's package index, and the bytes may live anywhere) puts
+// the index's address in the image, and calef's Q2 on #1884 gave it a backup address tried when
+// the first stops answering. Both live here as text the archive build writes and the kernel's
+// measurement table vouches for, so the image, not the program, names its index: basalt can
+// compose an image that names another (milestone 909 (basalt composes the bootable image from its
+// packages)) without rebuilding `jig`.
+//
+// ```text
+// # comments and blank lines are skipped
+// repository basalt.nifeos.org 443 rolling
+// repository basalt.test 8443 rolling 10.0.2.9
+// root isrg-root-x1
+// ```
+//
+// - `repository <host> <port> <channel> [<address>]`, one per index address, in the order they
+//   are tried. The optional address is where to connect for that host, asked of no resolver, as
+//   curl's `--resolve` does. It exists for the test image: under QEMU's slirp every name is asked
+//   of the host's own resolver, which knows no test host (measured by milestone 892 (a std
+//   program at the prompt holds the network and a name resolver)), and
+//   pinning an IP address instead is refused by `pinned_tls_client`. The host stays the TLS
+//   server name either way.
+// - `root <name>` or `root <hex>`: the one root every repository here must chain to (§196 (nife
+//   carries TLS) clause 4: one root per source; recommended as one pin in question A of
+//   `notes/packages/the-index-format.md`). A name is one the client carries (`isrg-root-x1`, §250's
+//   production pin); hex is a whole certificate in DER, for a root no client carries, such as the
+//   test authority.
+//
+// Every line must be read or the whole text is refused, [`crate::Index::parse`]'s rule, and there
+// must be at least one repository and exactly one root.
+//
+// Every name in this section, the entry's and the keywords included, is provisional: minted
+// 2026-10-12 (UTC) by lane `milestone/801-jig-installs-from-the-index`.
+
+/// **The archive entry an image's index sources travel in**, packed before the measurement table
+/// so the table vouches for it, as `package_archive::CATALOG` is. Name: provisional.
+pub const SOURCES_ENTRY: &str = "package_index_sources";
+
+/// **The index store's directory**, inside the activation directory: `activation/indexes`, which
+/// the progenitor opens for a package manager holding `grant_plan::Manifest::indexes` (milestone
+/// 801 (packages over the internet), ruling I2). Name: provisional 2026-10-12 (UTC).
+pub const STORE_DIRECTORY: &str = "indexes";
+
+/// **The copy of the image's own index** in that directory, which `jig update` writes and the
+/// progenitor's installer reads: this architecture's lines of the index the image's sources named,
+/// as they arrived. At most a page, so the installer reads it in one call. Name: provisional
+/// 2026-10-12 (UTC).
+pub const IMAGE_INDEX_COPY: &str = "image";
+
+/// The largest index copy, in bytes: less than a page, so the end of the text is in it.
+pub const COPY_MAX: usize = 4095;
+
+/// The most repositories an image may name: the index's address and a backup (Q2), and room for
+/// one more. A fixed bound so the reader allocates nothing.
+pub const MAX_REPOSITORIES: usize = 4;
+
+/// One index address the image names, with where to connect for it when the image says.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Configured<'a> {
+    /// The host is also the TLS server name.
+    pub repository: Repository<'a>,
+    /// Where to connect, if the image says; otherwise the host is resolved.
+    pub address: Option<Ipv4Addr>,
+}
+
+/// The root every repository must chain to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Root<'a> {
+    /// A root the client carries, by name: `isrg-root-x1` is the only one today.
+    Named(&'a str),
+    /// A certificate in DER, as hex; [`Root::der`] decodes it.
+    Der(&'a str),
+}
+
+impl Root<'_> {
+    /// Decode a [`Root::Der`] into `out`, or `None` for a named root or one that does not fit.
+    pub fn der<'o>(&self, out: &'o mut [u8]) -> Option<&'o [u8]> {
+        let Root::Der(hex) = self else {
+            return None;
+        };
+        let n = hex.len() / 2;
+        let out = out.get_mut(..n)?;
+        for (i, b) in out.iter_mut().enumerate() {
+            *b = u8::from_str_radix(hex.get(2 * i..2 * i + 2)?, 16).ok()?;
+        }
+        Some(out)
+    }
+}
+
+/// **An image's index sources, every line read.**
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Sources<'a> {
+    repositories: [Option<Configured<'a>>; MAX_REPOSITORIES],
+    /// The one root.
+    pub root: Root<'a>,
+}
+
+/// Why [`Sources::parse`] refused the text, with the line's number from 1 where one line is why.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SourcesRefusal {
+    /// That line is not one of the two shapes.
+    BadLine(usize),
+    /// More than [`MAX_REPOSITORIES`] repositories.
+    TooMany,
+    /// No repository at all.
+    NoRepository,
+    /// No root, or a second one.
+    OneRoot,
+}
+
+impl<'a> Sources<'a> {
+    /// Read the text, refusing it whole at the first line that is neither shape.
+    pub fn parse(text: &'a str) -> Result<Sources<'a>, SourcesRefusal> {
+        let mut repositories = [None; MAX_REPOSITORIES];
+        let mut count = 0;
+        let mut root = None;
+        for (i, line) in text.split('\n').enumerate() {
+            let number = i + 1;
+            let line = line.trim_end_matches('\r');
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            let mut words = line.split(' ');
+            match words.next() {
+                Some("repository") => {
+                    let configured =
+                        repository(&mut words).ok_or(SourcesRefusal::BadLine(number))?;
+                    let slot = repositories.get_mut(count).ok_or(SourcesRefusal::TooMany)?;
+                    *slot = Some(configured);
+                    count += 1;
+                }
+                Some("root") => {
+                    let named = words.next().ok_or(SourcesRefusal::BadLine(number))?;
+                    if words.next().is_some() {
+                        return Err(SourcesRefusal::BadLine(number));
+                    }
+                    if root.is_some() {
+                        return Err(SourcesRefusal::OneRoot);
+                    }
+                    root = Some(root_word(named).ok_or(SourcesRefusal::BadLine(number))?);
+                }
+                _ => return Err(SourcesRefusal::BadLine(number)),
+            }
+        }
+        if count == 0 {
+            return Err(SourcesRefusal::NoRepository);
+        }
+        Ok(Sources {
+            repositories,
+            root: root.ok_or(SourcesRefusal::OneRoot)?,
+        })
+    }
+
+    /// The repositories, in the order they are tried.
+    pub fn repositories(&self) -> impl Iterator<Item = Configured<'a>> + '_ {
+        self.repositories.iter().flatten().copied()
+    }
+}
+
+fn repository<'a>(words: &mut core::str::Split<'a, char>) -> Option<Configured<'a>> {
+    let host = words.next()?;
+    let port = words.next()?;
+    let channel = words.next()?;
+    let address = match words.next() {
+        None => None,
+        Some(a) => Some(Ipv4Addr::from(canonical_ipv4(a)?)),
+    };
+    if words.next().is_some() || port.len() > 5 || !port.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    let repository = Repository::new(host, port.parse().ok()?, channel)?;
+    Some(Configured {
+        repository,
+        address,
+    })
+}
+
+/// A root's word: a name of lowercase letters, digits and hyphens, or an even run of hex digits
+/// long enough to be a certificate (a name is never all hex, since every name the client carries
+/// has a hyphen).
+fn root_word(word: &str) -> Option<Root<'_>> {
+    let hex = word.len() >= 64
+        && word.len().is_multiple_of(2)
+        && word.bytes().all(|b| b.is_ascii_hexdigit());
+    if hex {
+        return Some(Root::Der(word));
+    }
+    let named = !word.is_empty()
+        && word.contains('-')
+        && word
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-');
+    named.then_some(Root::Named(word))
+}
+
+#[cfg(test)]
+mod sources_tests {
+    use super::*;
+
+    const TEST: &str = "# the test image\n\
+        repository gone.basalt.test 8443 rolling\n\
+        repository basalt.test 8443 rolling 10.0.2.9\n\
+        root 3082aabb3082aabb3082aabb3082aabb3082aabb3082aabb3082aabb3082aabb\n";
+
+    #[test]
+    fn the_test_images_sources_read_in_order_with_their_root() {
+        let s = Sources::parse(TEST).unwrap();
+        let r: Vec<_> = s.repositories().collect();
+        assert_eq!(r.len(), 2);
+        assert_eq!(r[0].repository.host, "gone.basalt.test");
+        assert_eq!(r[0].address, None);
+        assert_eq!(r[1].repository.port, 8443);
+        assert_eq!(r[1].address, Some(Ipv4Addr::new(10, 0, 2, 9)));
+        let mut out = [0u8; 64];
+        assert_eq!(
+            &s.root.der(&mut out).unwrap()[..4],
+            &[0x30, 0x82, 0xaa, 0xbb]
+        );
+    }
+
+    #[test]
+    fn the_production_pin_is_named() {
+        let s = Sources::parse("repository basalt.nifeos.org 443 rolling\nroot isrg-root-x1\n")
+            .unwrap();
+        assert_eq!(s.root, Root::Named("isrg-root-x1"));
+        assert_eq!(s.root.der(&mut [0u8; 8]), None);
+    }
+
+    #[test]
+    fn one_unreadable_line_refuses_the_whole() {
+        let refused = [
+            (
+                "repository h 443\nroot isrg-root-x1\n",
+                SourcesRefusal::BadLine(1),
+            ),
+            (
+                "repository h 0 rolling\nroot isrg-root-x1\n",
+                SourcesRefusal::BadLine(1),
+            ),
+            (
+                "repository h 443 Rolling\nroot isrg-root-x1\n",
+                SourcesRefusal::BadLine(1),
+            ),
+            (
+                "repository h 443 rolling 010.0.2.9\nroot a-b\n",
+                SourcesRefusal::BadLine(1),
+            ),
+            (
+                "repository h 443 rolling 10.0.2.9 x\nroot a-b\n",
+                SourcesRefusal::BadLine(1),
+            ),
+            (
+                "repository h 443 rolling\nroot ISRG\n",
+                SourcesRefusal::BadLine(2),
+            ),
+            (
+                "repository h 443 rolling\nroot abc\n",
+                SourcesRefusal::BadLine(2),
+            ),
+            (
+                "repository h 443 rolling\nmirror x\nroot a-b\n",
+                SourcesRefusal::BadLine(2),
+            ),
+            ("root a-b\n", SourcesRefusal::NoRepository),
+            ("repository h 443 rolling\n", SourcesRefusal::OneRoot),
+            (
+                "repository h 443 rolling\nroot a-b\nroot c-d\n",
+                SourcesRefusal::OneRoot,
+            ),
+            (
+                "repository a 1 c\nrepository b 1 c\nrepository c 1 c\nrepository d 1 c\n\
+                 repository e 1 c\nroot a-b\n",
+                SourcesRefusal::TooMany,
+            ),
+        ];
+        for (text, why) in refused {
+            assert_eq!(Sources::parse(text), Err(why), "{text:?}");
+        }
+    }
+
+    #[test]
+    fn hex_that_does_not_fit_is_not_decoded() {
+        let s = Sources::parse(TEST).unwrap();
+        assert_eq!(s.root.der(&mut [0u8; 8]), None);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use measured_boot::sha256;

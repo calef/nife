@@ -2,8 +2,10 @@
 # program built for the `*-unknown-nife` targets with `-Zbuild-std` against the patched rust-src
 # (patches/std-nife; `cargo xtask std-src`), as `std_exerciser` is, and for that crate's reason not
 # a member of the main workspace: it builds under the farm's toolchain with flags the workspace's
-# crates must never inherit. `cargo xtask std-exerciser` builds it beside that workspace, into the
-# same target directory, so the standard library is compiled once for both.
+# crates must never inherit. `cargo xtask std-exerciser` builds it after that workspace. Since
+# milestone 801 (packages over the internet) it links the TLS graph, so it builds where that graph
+# does (`target/tls-graph`, with `cryptography_exerciser/.cargo/config.toml`'s flags), and the
+# standard library under it is compiled once for the TLS programs rather than once more.
 #
 # Name: ratified 2026-10-06 (calef): the guide that makes flat-pack assembly come out the same
 # every time. The record is `grant_plan::Prog::Jig`'s doc.
@@ -36,6 +38,17 @@ package_archive = { path = "../crates/package_archive" }
 socket_protocol = { path = "../crates/socket_protocol" }
 std_runtime_protocol = { path = "../crates/std_runtime_protocol" }
 user_mode_runtime = { path = "../crates/user_mode_runtime" }
+# **The index over HTTPS** (milestone 801 (packages over the internet)): the index's reader and the
+# image's sources (`package_index`, in-tree and `no_std`), the pinned TLS client §196 (nife carries
+# TLS) ruled, and the `getrandom` hooks over the entropy service. The same graph
+# `pinned_tls_exerciser` links, built with `cryptography_exerciser/.cargo/config.toml`'s flags by
+# `cargo xtask std-exerciser`, which passes that file with `--config` rather than keep a copy here.
+package_index = { path = "../crates/package_index" }
+pinned_tls_client = { path = "../pinned_tls_client" }
+entropy_backend = { path = "../entropy_backend" }
+# `force-soft` is a feature rather than a cfg, so a binary that links the provider has to name it:
+# `pinned_tls_exerciser/Cargo.toml` says why.
+sha2 = { version = "0.10", default-features = false, features = ["force-soft"] }
 
 # `std_exerciser`'s profile, for its reasons: overflow checks in release (calef, 2026-10-04 (UTC),
 # notes/overflow-checks.md), a small deterministic image, no unwinding.

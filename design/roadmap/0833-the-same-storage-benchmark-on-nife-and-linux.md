@@ -50,6 +50,15 @@ These are questions the port answers, not assumptions. Each is a dependency foun
   both sides, or the two numbers are not comparable.
 - What std and libc fio's build wants that nife lacks, found by the first compile.
 
+Answered in part on 2026-10-12 (UTC) by compiling fio 3.40 against the C library without linking
+it: `notes/fio-on-nife.md` has the list. fio needs no C thread-locals, since its `configure` falls
+back to `pthread_getspecific`, which costs nife one key lookup per timestamp that Linux does not pay.
+On the benchmark's path it needs `sys/resource.h`, `libgen.h`, `select`, two header fixes and an
+`os/os-nife.h`; the rest can stay stubs with `thread=1` and `--disable-shm`. The C library side
+was built the same day by lane `lane/fio-c-library-pieces`: every piece on that list, with the off-path
+calls refusing honestly rather than missing, checked by `fixtures/c/c_library_contract.c` on all three
+architectures.
+
 ## What it must answer
 
 Why the 2026-10-04 read was 2.16x Linux's (272 MB/s against 126 MB/s) when polled Linux reads were
@@ -81,11 +90,13 @@ from basalt's index, the kernel included). calef, that day: "They should all be 
 through basalt."*
 
 fio must run on nife installed by `jig install` from basalt's package index. basalt builds the
-package against the nife commit it pins. A binary from a `helpers/build-*.sh` script may feed the
-work until then. So may one packed into an image or copied onto a disk. No exit is taken on either.
-The install waits on milestone 809 (the package client becomes a program, `jig`, with the verbs an
-index needs). It also waits on milestone 801 (packages over the internet: a host name, HTTPS and the
-distribution's index).
+package against the nife commit it pins. The install waits on milestone 809 (the package client
+becomes a program, `jig`, with the verbs an index needs). It also waits on milestone 801 (packages
+over the internet: a host name, HTTPS and the distribution's index). The rest of the port does not
+start until those milestones are built (calef, 2026-10-12 UTC: "For our other programs let's block
+start on packaging. That was the point but if we are done with fio let's not throw out the work.").
+The C library work already done for fio stays: the needs #2038 recorded and the pieces #2040 built
+(`getrusage`, `basename`, `select`, `O_SYNC` and a `stdlib.h` fix).
 
 ## Index row
 

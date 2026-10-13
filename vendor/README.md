@@ -184,7 +184,11 @@ that compiles it, and nife's own half (the platform layer, `malloc`, the start o
   threads)) added, at the same commit on 2026-10-12 (UTC): all of `pthread`, the rest of `sync`
   (`barrier`, `cond`, `rwlock`, `semaphore`, `waitval`), `sched`, `semaphore`, `setjmp` with
   musl's assembly for the three architectures, `poll`, `sys_socket`, `netinet_in`, `arpa_inet`,
-  `sys_un`, the `PalSocket` trait, and the static `setjmp.h` and `sys/poll.h`.
+  `sys_un`, the `PalSocket` trait, and the static `setjmp.h` and `sys/poll.h`. For fio (milestone
+  833 (the same storage benchmark on nife and Linux)), at the same commit on 2026-10-12 (UTC):
+  `libgen`, `sys_ipc` and `netinet_tcp` whole; `sys_resource` without its limits; the constants
+  and types of `dlfcn`, `sys_syslog`, `netdb` and `sys_shm`, whose functions nife wrote (they
+  refuse, each saying how); and the static `syslog.h`.
 - **What was left behind:** `redox-rt`, `platform/redox`, `platform/linux`, `ld_so` (the dynamic
   linker and TLS), `start.rs` and `crt0`, dlmalloc, relibc's own `pthread` module (its `clone` and
   thread control block; nife's is `c_library/src/pthread.rs`), epoll, sockets beyond `socketpair`
@@ -197,7 +201,9 @@ that compiles it, and nife's own half (the platform layer, `malloc`, the start o
   thread pointer names `std`'s block, which an ELF thread-local would misread); `setjmp` saves no
   float registers (a soft-float process has none); `poll` and `FIONBIO` call the platform layer;
   the `syscall()` function and the Linux signal trampoline are not built (no syscalls, §31 rule 1);
-  functions that need what stage 1 lacks were removed (pseudo-terminals, `crypt`, `alarm`, timers); time zones are UTC
+  functions that need what stage 1 lacks were removed (pseudo-terminals, `crypt`, `alarm`, timers); `select` and
+  `pselect` are written on the platform layer's `poll` rather than epoll; relibc's misspelled
+  `POSIX_MADV_WONTNEED` is `POSIX_MADV_DONTNEED`; time zones are UTC
   on `crates/calendar`; `printf` reads a `double` vararg as the soft-float ABI passes it; and
   `getopt_long_only`, which relibc lacks, was added.
 - **The headers** in `relibc/include/` are generated from the modules by cbindgen 0.29.0, as relibc

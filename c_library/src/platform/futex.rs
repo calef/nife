@@ -120,7 +120,10 @@ pub fn wait_on(word: &AtomicU32, val: u32, deadline: Option<&timespec>) -> Resul
         }
         match deadline {
             None => std::thread::park(),
-            Some(at) => match at.checked_sub(super::sys::monotonic()).filter(|d| !d.is_zero()) {
+            Some(at) => match at
+                .checked_sub(super::sys::monotonic())
+                .filter(|d| !d.is_zero())
+            {
                 Some(left) => std::thread::park_timeout(left),
                 None => {
                     // Out of time. Leave the queue, unless a waker has already taken us out of it,

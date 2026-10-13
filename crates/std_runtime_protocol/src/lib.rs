@@ -125,6 +125,13 @@ pub const RESOLVER_PAGE: u64 = 0x1500_0000;
 /// above the resolver's. Provisional.
 pub const CATALOG_PAGE: u64 = 0x1600_0000;
 
+/// **Where the loader maps a copy of the image's index sources**, read-only, for a program that
+/// holds `grant_plan::Manifest::indexes` (milestone 801 (packages over the internet)): the
+/// `package_index::SOURCES_ENTRY` text, padded with zero bytes to the page's end, as
+/// [`CATALOG_PAGE`] is. Its capability is at `grant_plan::INDEX_SOURCES_SLOT`. One page above the
+/// catalog's. Provisional, 2026-10-12 (UTC).
+pub const INDEX_SOURCES_PAGE: u64 = 0x1700_0000;
+
 /// Where the heap starts: the start of the address-space map's heap band, and the same value as
 /// `user_mode_runtime::heap::DEFAULT_BASE`.
 pub const HEAP_BASE: u64 = 0x4000_0000;

@@ -59,11 +59,18 @@ pub(crate) fn std_resolve_elf(triple: &str) -> PathBuf {
 }
 
 /// **`jig`, the package manager** (milestone 809 (the package client becomes a program)): its own
-/// workspace, built by `cargo xtask std-exerciser` into `std_exerciser`'s target directory, and
-/// packed into every archive as `grant_plan::Prog::Jig`.
+/// workspace, built by `cargo xtask std-exerciser`, and packed into every archive as
+/// `grant_plan::Prog::Jig`. Since milestone 801 (packages over the internet) it links the TLS
+/// graph and builds in that graph's target directory, [`TLS_GRAPH_TARGET`].
 pub(crate) fn jig_elf(triple: &str) -> PathBuf {
-    workspace_root().join(format!("std_exerciser/target/{triple}/release/jig"))
+    workspace_root().join(format!("{TLS_GRAPH_TARGET}/{triple}/release/jig"))
 }
+
+/// **Where the TLS graph builds**: `helpers/build-cryptography-exerciser.sh` and
+/// `helpers/build-pinned-tls-exerciser.sh` share it, with `cryptography_exerciser/.cargo/config.toml`'s
+/// flags, and `jig` joins them (milestone 801), so the standard library is built once for all
+/// three. Name: provisional 2026-10-12 (UTC).
+pub(crate) const TLS_GRAPH_TARGET: &str = "target/tls-graph";
 
 /// **The package index's in-guest client**: milestone 801 (packages over the internet). The second
 /// binary of `pinned_tls_exerciser`'s workspace, which `helpers/build-pinned-tls-exerciser.sh`
@@ -88,8 +95,12 @@ pub(crate) fn ripgrep_elf(triple: &str) -> PathBuf {
 /// **The C programs milestones 835 (a C library, stage 1: files, clock and memory) and 836 (a C
 /// library, stage 2: threads) run unmodified, by name.** Each is built by its own
 /// `helpers/build-<name>.sh`, which fetches somebody else's C and links it with nife's C library;
-/// the archive carries whichever are on disk.
-pub(crate) const C_PROGRAMS: [&str; 3] = ["speedtest1", "ioping", "hackbench"];
+/// the archive carries whichever are on disk. `c_library_contract` is the exception that fetches
+/// nothing: the C library's own contract program (`fixtures/c/c_library_contract.c`, milestone
+/// 833), here until milestone 869 (the C library's headers cannot drift, and its contract is tested
+/// in nife) builds it in the gate.
+pub(crate) const C_PROGRAMS: [&str; 4] =
+    ["speedtest1", "ioping", "hackbench", "c_library_contract"];
 
 /// **One of [`C_PROGRAMS`], if somebody built it**, on [`ripgrep_elf`]'s terms and for its reason:
 /// fetching SQLite or ioping in a gate is a dependency decision (§46 (thin primitives or whole

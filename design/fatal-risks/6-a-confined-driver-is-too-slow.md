@@ -28,7 +28,7 @@ original 955,223 bytes/s has no committed transcript, corrected 2026-10-03 per �
 **The path back to GREEN (proposed 2026-10-08, not ruled).**
 
 1. The same unmodified storage benchmark, run on nife and on Linux on xenon, with real logs (not photographs), repeated passes and per-request latency, so the 2.16x read is either explained or corrected. calef is leaning to `ioping` for this; that choice is proposed, not ruled.
-2. `fio` at queue depths 1, 4 and 32, one job file on both systems, per milestone 833 (the same storage benchmark on nife and Linux, by porting real fio). It waits on threads, §105 (`std::thread::spawn` stays declined until a customer needs it).
+2. `fio` at queue depths 1, 4 and 32, one job file on both systems, per milestone 833 (the same storage benchmark on nife and Linux, by porting real fio). Corrected 2026-10-12 (UTC) under §216 (fatal-risk facts are correctable, and verdicts are the architect's): it no longer waits on threads, since milestones 812 and 836 are built. It waits on packaging: calef ruled the same day that ports wait on 809 and 801.
 3. Still open from the caveats: one device, one board (xenon).
 
 GREEN needs 1 and 2; whether 3 does is the architect's call.
@@ -43,10 +43,14 @@ threads wait on a C library's pthreads (milestone 836 (a C library, stage 2: thr
 queue-depth comparison above is no closer and the risk's status is unchanged.
 
 2026-10-12 (UTC): milestone 836 is built (#2009), so a C program has pthreads, and hackbench's
-thread mode runs unmodified on all three architectures. `fio` still does not build: it uses C's
-own `__thread` variables, which do not link on nife yet
-(`design/roadmap/proposals/c-thread-locals-on-the-thread-pointer.md`). The comparison is no
-closer, and the status is unchanged.
+thread mode runs unmodified on all three architectures. `fio` still does not build. Corrected the
+same day under §216 (fatal-risk facts are correctable, and verdicts are the architect's), from a
+compile of fio 3.40 for aarch64 against nife's C library (#2038): the cause is not C's `__thread`.
+fio's `configure` falls back to `pthread_getspecific` when `__thread` does not link, and 836 built
+that. What fio lacks is in the C library: `sys/resource.h` with `getrusage`, `libgen.h`, `select`,
+`O_SYNC`, two header bugs, and its own `os/os-nife.h`, listed in milestone 833 (the same storage
+benchmark on nife and Linux, by porting real fio)'s block. The comparison is no closer, and the
+status is unchanged.
 
 ## Benchmarks that inform this risk
 
@@ -58,5 +62,5 @@ lacks, such as threads or sockets.
 
 - [Milestone 828 (iperf3 on nife and Linux)](../roadmap/0828-iperf3-on-nife-and-linux.md), the NIC half.
 - [Milestone 829 (netperf TCP_RR on nife and Linux)](../roadmap/0829-netperf-tcp-rr-on-nife-and-linux.md), a driver's fixed delay.
-- [Milestone 833 (the same storage benchmark on nife and Linux, by porting real fio)](../roadmap/0833-the-same-storage-benchmark-on-nife-and-linux.md), at queue depths 1, 4 and 32. Waits on threads.
-- [Milestone 834 (ioping on nife and Linux)](../roadmap/0834-ioping-on-nife-and-linux.md), one request at a time. Runs on nife since 835; the Linux row is open.
+- [Milestone 833 (the same storage benchmark on nife and Linux, by porting real fio)](../roadmap/0833-the-same-storage-benchmark-on-nife-and-linux.md), at queue depths 1, 4 and 32. Waits on packaging (809 and 801), corrected 2026-10-12 (UTC); threads are built.
+- [Milestone 834 (ioping on nife and Linux)](../roadmap/0834-ioping-on-nife-and-linux.md), one request at a time. Runs on nife since 835; the Linux row is open, and the run that counts waits on its package, milestone 906 (ioping is packaged in basalt).

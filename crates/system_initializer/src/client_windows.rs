@@ -127,6 +127,18 @@ pub(super) fn bound_channel(
         name,
         filesystem_protocol::grant::spec_rights(spec),
     );
+    bind_window(fs, &files, (windows, w), handle)
+}
+
+/// **Bind window `w`'s badge to the directory `handle` names, and hand back the window's page and
+/// endpoint**: the half [`bound_channel`] and [`bound_index_store`] share once each has opened its
+/// directory. A negative `handle` is a failure already; a refused `BIND` closes it.
+fn bind_window(
+    fs: Fs,
+    files: &FsCalls,
+    (windows, w): (&mut Windows, u64),
+    handle: i64,
+) -> Option<Fs> {
     if handle < 0 {
         return None;
     }
@@ -155,6 +167,43 @@ pub(super) fn bound_channel(
         return None;
     };
     Some(Fs { ep, page })
+}
+
+/// **A bound channel to the machine's index store** (milestone 801 (packages over the internet),
+/// ruling I2): [`bound_channel`]'s shape for the one directory the progenitor names rather than
+/// the line, `activation/indexes`, made if it is not there yet and then opened with `rights`. It
+/// lives under `activation/` because what it holds decides what installs, the same trust as the
+/// generations beside it, and a path the progenitor names cannot collide with a package's name the
+/// way `packages/indexes` would.
+///
+/// Name: provisional 2026-10-12 (UTC), lane `milestone/801-jig-installs-from-the-index`, as is
+/// the directory's name.
+pub(super) fn bound_index_store(
+    fs: Fs,
+    (windows, w): (&mut Windows, u64),
+    own_ut: u64,
+    mapped: &mut bool,
+    rights: u64,
+) -> Option<Fs> {
+    let files = FsCalls::map(Some(fs), own_ut, mapped)?;
+    files.unbind(windows, w);
+    let act = files.directory(fs_operation::ROOT, activation_set::DIRECTORY);
+    if act < 0 {
+        return None;
+    }
+    // Made with every right if it is not there, then opened again with only the verb's.
+    let made = files.directory(act as u64, package_index::STORE_DIRECTORY);
+    if made >= 0 {
+        files.close(made);
+    }
+    let handle = files.named(
+        fs_operation::OPENDIR,
+        act as u64,
+        package_index::STORE_DIRECTORY,
+        rights,
+    );
+    files.close(act);
+    bind_window(fs, &files, (windows, w), handle)
 }
 
 /// **A sync-only endpoint for one job** (milestone 805 (`reboot` at the prompt),
@@ -376,6 +425,37 @@ impl FsCalls {
 
     /// **Generation `number`'s table**, read whole into `out`; its length. `Err` if it cannot be
     /// opened or read, or fills the page.
+    /// **The copy of the image's index** in the index store under `act` (milestone 801 (packages
+    /// over the internet)), read into `out`. `Err` when there is none, or when it fills the page,
+    /// for [`FsCalls::generation`]'s reason: a copy cut short vouches for nothing.
+    pub(super) fn index_copy(&self, act: u64, out: &mut [u8; PAGE_BYTES]) -> Result<usize, ()> {
+        let store = self.named(
+            fs_operation::OPENDIR,
+            act,
+            package_index::STORE_DIRECTORY,
+            dir::READ,
+        );
+        if store < 0 {
+            return Err(());
+        }
+        let t = self.named(
+            fs_operation::OPEN,
+            store as u64,
+            package_index::IMAGE_INDEX_COPY,
+            0,
+        );
+        self.close(store);
+        if t < 0 {
+            return Err(());
+        }
+        let n = self.read(t as u64, &mut out[..]);
+        self.close(t);
+        match n {
+            Some(n) if n <= package_index::COPY_MAX => Ok(n),
+            _ => Err(()),
+        }
+    }
+
     pub(super) fn generation(
         &self,
         act: u64,

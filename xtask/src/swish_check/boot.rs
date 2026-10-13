@@ -1277,7 +1277,9 @@ pub(super) fn swish_check_boot(
         eprintln!(
             "swish-check ({arch}): rebooted against the same disk, ran the two packages installed \
              before the reboot, removed one and saw its vouch gone while the other still ran, \
-             rolled back, and ran it again{}",
+             rolled back, and ran it again, then fetched the distribution's index over pinned TLS, \
+             refused a lying copy by its digest and installed a package only the index vouches \
+             for{}",
             if graphics.is_some() {
                 ", then launched `graphical_terminal` from the prompt with a gpu and no keyboard"
             } else {

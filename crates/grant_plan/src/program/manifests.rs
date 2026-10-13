@@ -8,8 +8,8 @@
 //! Name: provisional (milestone 842, 2026-10-11), as are its sibling modules' names.
 
 use crate::{
-    ArgSpec, DIAGNOSTICS_SLOT, DirSpec, FileSpec, Flags, InputSpec, Manifest, MemSpec, NO_FLAGS,
-    OutputSpec, Prog, Runtime, VerbGrant, WordGrant, verbs,
+    ArgSpec, DIAGNOSTICS_SLOT, DirSpec, FileSpec, Flags, IndexStore, InputSpec, Manifest, MemSpec,
+    NO_FLAGS, OutputSpec, Prog, Runtime, VerbGrant, WordGrant, verbs,
 };
 
 impl Prog {
@@ -104,6 +104,7 @@ const fn least_authority_demo_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -135,6 +136,7 @@ const fn memory_grant_depleter_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -169,6 +171,7 @@ const fn interrupt_heeder_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -196,6 +199,7 @@ const fn interrupt_ignorer_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -252,6 +256,7 @@ const fn date_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -293,6 +298,7 @@ const fn rm_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -329,6 +335,7 @@ const fn wc_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -366,6 +373,7 @@ const fn mdr_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -406,6 +414,7 @@ const fn ps_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -449,6 +458,7 @@ const fn pgrep_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -486,6 +496,7 @@ const fn top_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -516,6 +527,7 @@ const fn printenv_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -549,6 +561,7 @@ const fn uptime_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -582,6 +595,7 @@ const fn network_echo_client_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -611,6 +625,7 @@ const fn unreachable_network_witness_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -652,6 +667,7 @@ const fn uuid_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -684,6 +700,7 @@ const fn free_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -715,6 +732,7 @@ const fn vmstat_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -745,6 +763,7 @@ const fn slabtop_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -778,6 +797,7 @@ const fn graphical_terminal_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -814,6 +834,7 @@ const fn reboot_manifest() -> Manifest {
         sync: true,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Native,
     }
 }
@@ -851,6 +872,7 @@ const fn std_exerciser_manifest() -> Manifest {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime: Runtime::Std,
     }
 }
@@ -870,10 +892,12 @@ const fn jig_manifest() -> Manifest {
         input: InputSpec::Forbidden,
         reports: true,
         interruptible: false,
-        clock: false,
+        // TLS to the index (milestone 801): a certificate's dates are checked against the
+        // clock, and a handshake takes randomness.
+        clock: true,
         domain: false,
         config: false,
-        entropy: false,
+        entropy: true,
         // `install <name>` fetches the package from the package source itself.
         network: true,
         machine: false,
@@ -884,6 +908,9 @@ const fn jig_manifest() -> Manifest {
         // package name against.
         installer: true,
         catalog: true,
+        // The index copy it writes at `update` and resolves a name against after that
+        // (milestone 801 (packages over the internet), ruling I2).
+        indexes: IndexStore::ReadWrite,
         runtime: Runtime::Std,
     }
 }
