@@ -43,10 +43,14 @@ threads wait on a C library's pthreads (milestone 836 (a C library, stage 2: thr
 queue-depth comparison above is no closer and the risk's status is unchanged.
 
 2026-10-12 (UTC): milestone 836 is built (#2009), so a C program has pthreads, and hackbench's
-thread mode runs unmodified on all three architectures. `fio` still does not build: it uses C's
-own `__thread` variables, which do not link on nife yet
-(`design/roadmap/proposals/c-thread-locals-on-the-thread-pointer.md`). The comparison is no
-closer, and the status is unchanged.
+thread mode runs unmodified on all three architectures. `fio` still does not build. Corrected the
+same day under §216 (fatal-risk facts are correctable, and verdicts are the architect's), from a
+compile of fio 3.40 for aarch64 against nife's C library (#2038): the cause is not C's `__thread`.
+fio's `configure` falls back to `pthread_getspecific` when `__thread` does not link, and 836 built
+that. What fio lacks is in the C library: `sys/resource.h` with `getrusage`, `libgen.h`, `select`,
+`O_SYNC`, two header bugs, and its own `os/os-nife.h`, listed in milestone 833 (the same storage
+benchmark on nife and Linux, by porting real fio)'s block. The comparison is no closer, and the
+status is unchanged.
 
 ## Benchmarks that inform this risk
 
