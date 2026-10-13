@@ -621,6 +621,23 @@ impl BootProgress {
     fn observe(&mut self, line: &str, complete: bool) {
         let line = line.trim_end_matches(['\r', '\n']);
 
+        self.observe_stages(line, complete);
+        // Failures. Recorded once: the first thing that went wrong is the one worth reporting,
+        // and everything after it is downstream.
+        if self.failure.is_none() {
+            self.failure = self.failure_in(line, complete);
+        }
+
+        // Last, and only for a complete line: this is what the NEXT line may need, so recording a
+        // partial here would hand the refusal a truncated reason.
+        if complete && !line.trim().is_empty() {
+            self.last_line = line.trim().to_string();
+        }
+    }
+
+    /// Ratchet every stage `line` shows, and capture what a complete line carries: the banner,
+    /// machine and self-test lines, the soak heartbeat and the sweep's numbers.
+    fn observe_stages(&mut self, line: &str, complete: bool) {
         // **The firmware prologue, from the board profile** (milestone 324 part 3). Four `if`s
         // with radon's markers written into them used to stand here; the rungs are now declared in
         // `crate::board` and this loop is the whole of what reads them, which is what makes adding
@@ -728,71 +745,67 @@ impl BootProgress {
         if complete && let Some(at) = line.find(job_mix::POINT) {
             self.observe_sweep_point(&line[at..]);
         }
+    }
 
-        // Failures. Recorded once: the first thing that went wrong is the one worth reporting,
-        // and everything after it is downstream.
-        if self.failure.is_none() {
-            // **The firmware's own refusals, from the board profile** (milestone 324 part 3).
-            // First, because a firmware that gave up did so before the kernel ran and everything
-            // after it is downstream. `reason_is_the_line_before` deliberately reads `last_line`
-            // before the update at the bottom of this function, because U-Boot puts the refusal on
-            // one line and its reason on the one before.
-            if let Some(refusal) = self
-                .board
-                .refusals
-                .iter()
-                .find(|refusal| line.contains(refusal.marker))
-            {
-                self.failure = Some(Failure::FirmwareRefused {
-                    diagnosis: refusal.diagnosis,
-                    reason: if refusal.reason_is_the_line_before {
-                        self.last_line.clone()
-                    } else {
-                        String::new()
-                    },
-                });
-            } else if line.contains("MEASURED BOOT REFUSED") {
-                self.failure = Some(Failure::MeasuredBootRefused);
-            } else if complete && let Some(at) = line.find(job_mix::FAILED) {
-                // Before the panic arm because the sweep's refusal is its own announcement and
-                // carries a better reason than the halt that follows it.
-                self.failure = Some(Failure::SweepFailed(
-                    line[at + job_mix::FAILED.len()..].trim().to_string(),
-                ));
-            } else if complete && let Some(at) = line.find("[PANIC] ") {
-                self.failure = Some(Failure::KernelPanic(
-                    line[at + "[PANIC] ".len()..].to_string(),
-                ));
-            } else if complete
-                && let Some(at) = line.find(boot_ladder::SELF_TEST)
-                && let Some(failed) = line[at..].find(boot_ladder::SELF_TEST_FAILED)
-            {
-                // **Both markers, on one complete line.** `FAILED:` on its own is a word the boot
-                // tour has used since milestone 267 for its preemption check, so matching it alone
-                // would report that unrelated line as a self-test failure; and the verdict prefix
-                // alone is every green boot. The names are what follows the token.
-                let names = line[at + failed + boot_ladder::SELF_TEST_FAILED.len()..].trim();
-                self.failure = Some(Failure::SelfTestFailed(names.to_string()));
-            } else if complete
-                && let Some(at) = line.find(boot_ladder::SELF_TEST)
-                && let Some(total) = Self::verdict_total(&line[at + boot_ladder::SELF_TEST.len()..])
-                && total != boot_ladder::SELF_TEST_CHECKS.len()
-            {
-                // **A green verdict over the wrong set is not green** (milestone 268). The kernel
-                // counts against `boot_ladder::SELF_TEST_CHECKS`, so a total that differs is a
-                // kernel built against a different list: an older one, or one architecture whose
-                // set was cut and the count adjusted to hide it, which printed `4 of 4 passed`.
-                self.failure = Some(Failure::SelfTestFailed(format!(
-                    "the verdict counted {total} checks and boot_ladder lists {}",
-                    boot_ladder::SELF_TEST_CHECKS.len()
-                )));
-            }
-        }
-
-        // Last, and only for a complete line: this is what the NEXT line may need, so recording a
-        // partial here would hand the refusal a truncated reason.
-        if complete && !line.trim().is_empty() {
-            self.last_line = line.trim().to_string();
+    /// The failure `line` announces, if any, in the order the arms are tried: the firmware's
+    /// refusals, measured boot, the sweep, a panic, then the self-test verdict.
+    fn failure_in(&self, line: &str, complete: bool) -> Option<Failure> {
+        // **The firmware's own refusals, from the board profile** (milestone 324 part 3).
+        // First, because a firmware that gave up did so before the kernel ran and everything
+        // after it is downstream. `reason_is_the_line_before` deliberately reads `last_line`
+        // before `observe` updates it for this line, because U-Boot puts the refusal on one line
+        // and its reason on the one before.
+        if let Some(refusal) = self
+            .board
+            .refusals
+            .iter()
+            .find(|refusal| line.contains(refusal.marker))
+        {
+            Some(Failure::FirmwareRefused {
+                diagnosis: refusal.diagnosis,
+                reason: if refusal.reason_is_the_line_before {
+                    self.last_line.clone()
+                } else {
+                    String::new()
+                },
+            })
+        } else if line.contains("MEASURED BOOT REFUSED") {
+            Some(Failure::MeasuredBootRefused)
+        } else if complete && let Some(at) = line.find(job_mix::FAILED) {
+            // Before the panic arm because the sweep's refusal is its own announcement and
+            // carries a better reason than the halt that follows it.
+            Some(Failure::SweepFailed(
+                line[at + job_mix::FAILED.len()..].trim().to_string(),
+            ))
+        } else if complete && let Some(at) = line.find("[PANIC] ") {
+            Some(Failure::KernelPanic(
+                line[at + "[PANIC] ".len()..].to_string(),
+            ))
+        } else if complete
+            && let Some(at) = line.find(boot_ladder::SELF_TEST)
+            && let Some(failed) = line[at..].find(boot_ladder::SELF_TEST_FAILED)
+        {
+            // **Both markers, on one complete line.** `FAILED:` on its own is a word the boot
+            // tour has used since milestone 267 for its preemption check, so matching it alone
+            // would report that unrelated line as a self-test failure; and the verdict prefix
+            // alone is every green boot. The names are what follows the token.
+            let names = line[at + failed + boot_ladder::SELF_TEST_FAILED.len()..].trim();
+            Some(Failure::SelfTestFailed(names.to_string()))
+        } else if complete
+            && let Some(at) = line.find(boot_ladder::SELF_TEST)
+            && let Some(total) = Self::verdict_total(&line[at + boot_ladder::SELF_TEST.len()..])
+            && total != boot_ladder::SELF_TEST_CHECKS.len()
+        {
+            // **A green verdict over the wrong set is not green** (milestone 268). The kernel
+            // counts against `boot_ladder::SELF_TEST_CHECKS`, so a total that differs is a
+            // kernel built against a different list: an older one, or one architecture whose
+            // set was cut and the count adjusted to hide it, which printed `4 of 4 passed`.
+            Some(Failure::SelfTestFailed(format!(
+                "the verdict counted {total} checks and boot_ladder lists {}",
+                boot_ladder::SELF_TEST_CHECKS.len()
+            )))
+        } else {
+            None
         }
     }
 
