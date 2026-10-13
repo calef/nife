@@ -1,31 +1,11 @@
-//! **The GUID Partition Table**: reading one, writing one, and refusing a bad one.
+//! **The GUID Partition Table** (UEFI 2.10 section 5.3): reading one, writing one, and refusing a
+//! bad one. Reading is how a kernel finds a partition on a disk it has never seen; writing is the
+//! `parted mkpart` equivalent. See notes/globally-unique-identifier-partition-table.md.
 //!
-//! (The three letters are the disk format from UEFI 2.10 §5.3, which predates the machine-learning
-//! sense of them by about fifteen years. There are no language models in here.)
-//!
-//! A partition table is the map that says "the filesystem starts at block 2048 and stops at block
-//! 32767". Milestone 57 needs it in both directions: **reading** one is how a kernel finds a
-//! partition on a disk it has never seen, and there is no way around that; **writing** one is the
-//! `parted mkpart` equivalent, the first of the three steps in calef's router setup that this OS
-//! has no answer to.
-//!
-//! # This crate does no I/O, on purpose
-//!
-//! Nothing here reads or writes a block device. Every function takes a byte buffer the caller
-//! filled and returns bytes the caller will place. That is the same discipline `device_tree_blob`
-//! and `elf` follow, and the reason is not purity: it is that the whole crate then compiles for the
-//! host and its tests run in milliseconds against real disks made by real tools, instead of inside
-//! a QEMU boot (DECISIONS §7, §14).
-//!
-//! It also allocates nothing and has no `unsafe`. The entry array is a caller-supplied buffer, so a
-//! kernel can hand it a stack array and a userspace tool can hand it a `Vec`.
-//!
-//! [`span`] does not break that rule and is worth saying why: it computes *where* to read, and
-//! arithmetic between two block sizes is exactly the kind of thing this crate is for. A GPT counts
-//! in 512-byte logical blocks; the block service a nife program holds moves 4096 bytes per
-//! request. Somebody has to reconcile those, and doing it in a driver means doing it three times.
-//!
-//! # What a GPT actually is, in the order the bytes appear
+//! No I/O, no allocation, no `unsafe`: every function takes a buffer the caller filled and returns
+//! bytes the caller places, as `device_tree_blob` and `elf` do, so the tests run on the host against
+//! real disks made by real tools. [`span`] reconciles a GPT's 512-byte blocks with the 4096-byte
+//! requests a nife block service moves, so no driver does it separately.
 //!
 //! ```text
 //!   LBA 0     protective MBR   one fake "the whole disk is in use" record, type 0xEE
@@ -36,104 +16,17 @@
 //!   LBA n-1   backup header    the same header, with my_lba and alternate_lba swapped
 //! ```
 //!
-//! Four things carry the integrity of that: the header CRC and the array CRC, each stored twice.
-//! **A GPT is a format that can tell you it is broken**, which is exactly why every check in here
-//! is an error and none of them is a warning. A table that half-validates is a table you are about
-//! to write a filesystem on top of.
+//! **A GPT can tell you it is broken**, through two CRCs each stored twice, so every check here is
+//! an error and none is a warning: a table that half-validates is one you are about to write a
+//! filesystem on. [`header::Header::decode`] judges one block; [`entry::Entry::decode`] is total and
+//! judges nothing; [`GloballyUniqueIdentifierPartitionTable::parse`] holds every geometry rule (the
+//! array CRC, the usable range, overrun, overlap); and
+//! [`GloballyUniqueIdentifierPartitionTable::check_backup`] refuses a disk whose copies disagree.
 //!
-//! # The layering, and why the errors are where they are
-//!
-//! - [`header::Header::decode`] judges one block on its own terms: is this a GPT header at all?
-//! - [`entry::Entry::decode`] judges nothing. It is **total**, every bit pattern decodes, and the
-//!   round trip is the identity. There is no such thing as a malformed entry, only an entry that
-//!   makes no sense on a particular disk.
-//! - [`GloballyUniqueIdentifierPartitionTable::parse`] is where the disk shows up, and therefore
-//!   where every geometry rule lives: the array CRC, the usable range, partitions that run off the
-//!   end, partitions that overlap.
-//! - [`GloballyUniqueIdentifierPartitionTable::check_backup`] compares the two copies. A disk whose
-//!   halves disagree has had something happen to it and is not to be trusted.
-//!
-//! # Using it
-//!
-//! Reading, given a way to fetch blocks:
-//!
-//! ```
-//! # use globally_unique_identifier_partition_table::GloballyUniqueIdentifierPartitionTable;
-//! # use globally_unique_identifier_partition_table::guid::types;
-//! # let disk = globally_unique_identifier_partition_table::testing::sample_disk();
-//! # let (header_block, entry_array) = (&disk[512..1024], &disk[1024..1024 + 16384]);
-//! let table = GloballyUniqueIdentifierPartitionTable::parse(header_block, entry_array)?;
-//! for (index, part) in table.partitions() {
-//!     let mut label = [0u8; 4 * globally_unique_identifier_partition_table::entry::NAME_UNITS];
-//!     let n = part.name_utf8(&mut label)?;
-//!     println!(
-//!         "{}: {} blocks of {}, {:?}",
-//!         index + 1,
-//!         part.blocks().unwrap(),
-//!         types::name(part.type_guid).unwrap_or("unknown"),
-//!         core::str::from_utf8(&label[..n]).unwrap(),
-//!     );
-//! }
-//! # Ok::<(), globally_unique_identifier_partition_table::Error>(())
-//! ```
-//!
-//! Writing, which is four block ranges the caller then puts on the disk:
-//!
-//! ```
-//! # use globally_unique_identifier_partition_table::Entry;
-//! # use globally_unique_identifier_partition_table::GloballyUniqueIdentifierPartitionTable;
-//! # use globally_unique_identifier_partition_table::guid::types;
-//! # use universally_unique_identifier::Uuid;
-//! # let disk_guid = Uuid::NIL;
-//! # let part_guid = Uuid::NIL;
-//! let mut array = [0u8; globally_unique_identifier_partition_table::ENTRY_ARRAY_BYTES];
-//! let table = GloballyUniqueIdentifierPartitionTable::create(
-//!     disk_guid,
-//!     512,
-//!     131_072, // a 64 MiB disk
-//!     &[Entry::new(types::NIFE_DATA, part_guid, 2048, 131_038).with_name("nife data")?],
-//!     &mut array,
-//! )?;
-//!
-//! let mut block = [0u8; 512];
-//! table.write_protective_mbr(&mut block)?; // to LBA 0
-//! table.write_primary_header(&mut block)?; // to LBA 1
-//! table.write_backup_header(&mut block)?;  // to table.backup_header_lba()
-//! let bytes = table.entry_array();          // to LBA 2 and to table.backup_entry_lba()
-//! # Ok::<(), globally_unique_identifier_partition_table::Error>(())
-//! ```
-//!
-//! See notes/globally-unique-identifier-partition-table.md for the format walk-through and the
-//! surprises the fixtures pinned.
-//!
-//! Name: ratified 2026-09-18 (calef, `design/decisions/` §154), **deratifying the 2026-08-01
-//! ratification** to do it, and performed on 2026-09-18. Refused `gpt` and
-//! `guid_partition_table`, the one-level spelling; §154 asks the question again of `GUID`.
-//!
-//! §154's test is whether the expansion is a phrase people actually say. "GUID partition table" is,
-//! so it goes, where `pci` stays because "peripheral component interconnect" is not. It expands
-//! **all the way**, because §154 asks the same question of an acronym left inside an expansion and
-//! "globally unique identifier" is spoken too.
-//!
-//! The 2026-08-01 block called this one of the standard terms "already right and must not be
-//! touched". That was an exemption rather than a test, and §154 records the three-layer
-//! contradiction the exemptions left behind.
-//!
-//! **Known cost**: datasheets, error messages and this kernel's own output say `gpt`, so a reader
-//! grepping the word the machine printed will not find this identifier. Weighed and accepted.
-//!
-//! **What the rename did not move, and why.** 636 occurrences of the three letters before, 421
-//! after, not counting this paragraph. Of the 421: 136 are UEFI's own vocabulary (`GPT`, the GUID
-//! Partition Table, the GPT header), 130 are the `Gpt` type, which the ruling did not name, 31 are
-//! the test disk image and the `xtask` helpers that build it (`nifefs-gpt.img`, `mkgptdisk`), 13
-//! are the fuzz target `gpt_table`, 10 are `gptfdisk`, somebody else's tool, 30 sit in
-//! `design/decisions/`, 3 in bench transcripts and photographs, and 68 are the old name inside an
-//! account, a measurement or a refusal. The `Gpt` type and the fuzz target are the two a later
-//! ruling might still move; both name the format rather than this crate, which is why they stayed.
-//! A later ruling did move both (calef, 2026-09-19: a crate's own public type named for the
-//! acronym, and a fuzz target named for the crate, follow the crate). The type is
-//! `GloballyUniqueIdentifierPartitionTable` and the fuzz target
-//! `globally_unique_identifier_partition_table`; the counts above were taken before that.
+//! Name: ratified 2026-09-18 (calef, §154 (the acronym test is whether the phrase is spoken)),
+//! deratifying the 2026-08-01 ratification. Refused `gpt` and `guid_partition_table`: "GUID
+//! partition table" is spoken, and so is "globally unique identifier", so it expands all the way.
+//! The known cost is that the machine prints `gpt`, so grepping its output will not find this name.
 
 #![no_std]
 // milestone 68's ratchet is workspace-wide (§107); this crate opts out until its 23-item
@@ -324,6 +217,30 @@ impl<'a> GloballyUniqueIdentifierPartitionTable<'a> {
     /// [`GloballyUniqueIdentifierPartitionTable::check_backup`], which is separate because reading
     /// the last block of the disk is a second I/O the caller may not want to do before it knows the
     /// primary is sound.
+    ///
+    /// # Examples
+    ///
+    /// Reading, given a way to fetch blocks:
+    ///
+    /// ```
+    /// # use globally_unique_identifier_partition_table::GloballyUniqueIdentifierPartitionTable;
+    /// # use globally_unique_identifier_partition_table::guid::types;
+    /// # let disk = globally_unique_identifier_partition_table::testing::sample_disk();
+    /// # let (header_block, entry_array) = (&disk[512..1024], &disk[1024..1024 + 16384]);
+    /// let table = GloballyUniqueIdentifierPartitionTable::parse(header_block, entry_array)?;
+    /// for (index, part) in table.partitions() {
+    ///     let mut label = [0u8; 4 * globally_unique_identifier_partition_table::entry::NAME_UNITS];
+    ///     let n = part.name_utf8(&mut label)?;
+    ///     println!(
+    ///         "{}: {} blocks of {}, {:?}",
+    ///         index + 1,
+    ///         part.blocks().unwrap(),
+    ///         types::name(part.type_guid).unwrap_or("unknown"),
+    ///         core::str::from_utf8(&label[..n]).unwrap(),
+    ///     );
+    /// }
+    /// # Ok::<(), globally_unique_identifier_partition_table::Error>(())
+    /// ```
     pub fn parse(
         header_block: &[u8],
         entry_array: &'a [u8],
@@ -386,7 +303,7 @@ impl<'a> GloballyUniqueIdentifierPartitionTable<'a> {
         })
     }
 
-    /// Build a new table. The `mkpart` half of the milestone.
+    /// Build a new table: the `mkpart` half.
     ///
     /// `entry_array` is the caller's buffer for the entry array and must be a whole number of
     /// entries; its size sets `NumberOfPartitionEntries`, so pass `[0u8; `[`ENTRY_ARRAY_BYTES`]`]`
@@ -399,6 +316,33 @@ impl<'a> GloballyUniqueIdentifierPartitionTable<'a> {
     /// caller's job**, deliberately: alignment (the 2048-block, 1 MiB convention that keeps a
     /// partition from straddling an SSD erase block) is policy, and a format crate that silently
     /// moved a partition would be doing policy behind the caller's back.
+    ///
+    /// # Examples
+    ///
+    /// Writing, which is four block ranges the caller then puts on the disk:
+    ///
+    /// ```
+    /// # use globally_unique_identifier_partition_table::{Entry, guid::types};
+    /// # use globally_unique_identifier_partition_table::GloballyUniqueIdentifierPartitionTable;
+    /// # use universally_unique_identifier::Uuid;
+    /// # let disk_guid = Uuid::NIL;
+    /// # let part_guid = Uuid::NIL;
+    /// let mut array = [0u8; globally_unique_identifier_partition_table::ENTRY_ARRAY_BYTES];
+    /// let table = GloballyUniqueIdentifierPartitionTable::create(
+    ///     disk_guid,
+    ///     512,
+    ///     131_072, // a 64 MiB disk
+    ///     &[Entry::new(types::NIFE_DATA, part_guid, 2048, 131_038).with_name("nife data")?],
+    ///     &mut array,
+    /// )?;
+    ///
+    /// let mut block = [0u8; 512];
+    /// table.write_protective_mbr(&mut block)?; // to LBA 0
+    /// table.write_primary_header(&mut block)?; // to LBA 1
+    /// table.write_backup_header(&mut block)?;  // to table.backup_header_lba()
+    /// let bytes = table.entry_array();          // to LBA 2 and to table.backup_entry_lba()
+    /// # Ok::<(), globally_unique_identifier_partition_table::Error>(())
+    /// ```
     pub fn create(
         disk_guid: Uuid,
         block_size: usize,

@@ -1,141 +1,22 @@
-//! The synchronous-rendezvous state machine (DECISIONS §14, milestone 18; intrusive as of
-//! milestone 14 phase A.3).
+//! The synchronous-rendezvous state machine: the decision core of the kernel's IPC. It owns the two
+//! wait queues and the pending-signal count, and decides what a send, a receive or a signal does
+//! with them; the kernel wraps it with what the queues cannot express (mailboxes, waking a thread
+//! onto a run queue, the one-shot Reply). The policy lives here, proved, so the scheduler calls it
+//! rather than hand-rolling the same branch six times.
 //!
-//! This owns the decision core of `kernel/src/sched.rs`'s IPC: the two wait queues and the
-//! pending-signal count, and what a send, a receive, or a signal *does* with them. The kernel
-//! wraps it with the bookkeeping the queues cannot express (mailboxes, waking a thread onto a
-//! run queue, the one-shot Reply that leaves a caller blocked); the *policy* lives here, proved,
-//! and the scheduler calls it rather than hand-rolling the same branch six times.
+//! The wait queues are intrusive (`crates/intrusive_fifo`): in the kernel a queue entry is the TCB,
+//! threaded through the link the run queues use, so a blocked thread waits on exactly one
+//! rendezvous because there is one field, and queueing cannot allocate.
 //!
-//! The wait queues are **intrusive** (`crates/intrusive_fifo`): generic over the node type, so in the
-//! kernel a queue entry *is* the TCB, threaded through the same link the run queues use. One link
-//! means one queue, so "a blocked thread waits on exactly one rendezvous" is a property of there
-//! being one field, not a rule anyone keeps. The queues are the kernel's real rendezvous state, not
-//! a model kept in sync; what changed at A.3 is only what a queue entry is (a TCB pointer, no
-//! longer a `ThreadId` to be looked up) and that queueing can no longer allocate.
+//! The load-bearing invariant: **at most one wait queue is ever non-empty.** A sender that finds a
+//! receiver rendezvouses instead of queueing, so a thread queues only when nobody was waiting for
+//! it. Every operation is proved to preserve it over the real intrusive queues; the `Fifo`'s own
+//! ordering is proved in its crate.
 //!
-//! The load-bearing invariant, unchanged since the original `Rendezvous`: **"at most one wait
-//! queue is ever non-empty."** A sender that finds a receiver rendezvouses instead of joining a
-//! queue, so a thread only queues when nobody was waiting for it. Every operation is proved to
-//! preserve it, now over the real intrusive queues (the `Fifo`'s own FIFO correctness is proved
-//! separately, in its crate; here we prove the *decisions* made over it).
-//!
-//! # Examples
-//!
-//! The three decisions an rendezvous makes, and the invariant holding across all of them. `T` is the
-//! kernel's TCB; here it is a stand-in with the same one link, because one link is the whole reason
-//! the invariant is structural rather than remembered.
-//!
-//! ```
-//! use core::ptr::NonNull;
-//! use intrusive_fifo::{Node, Unqueued};
-//! use inter_process_communication::{Rendezvous, Receive, Send};
-//!
-//! struct ThreadControlBlock {
-//!     next: Option<NonNull<ThreadControlBlock>>,
-//! }
-//!
-//! // SAFETY: plain field storage, which is the whole of the `Node` contract.
-//! unsafe impl Node for ThreadControlBlock {
-//!     fn next(&self) -> Option<NonNull<Self>> {
-//!         self.next
-//!     }
-//!     fn set_next(&mut self, next: Option<NonNull<Self>>) {
-//!         self.next = next;
-//!     }
-//! }
-//!
-//! // Declared before the rendezvous, so they outlive it.
-//! let mut server = ThreadControlBlock { next: None };
-//! let mut client = ThreadControlBlock { next: None };
-//! let mut ep: Rendezvous<ThreadControlBlock> = Rendezvous::new();
-//! assert!(ep.is_idle());
-//!
-//! // Each thread's token, minted once. The kernel does this when a thread is created.
-//! // SAFETY: both are live locals declared before `ep`, on no queue, each minted once, and this is
-//! // the only accessor.
-//! let (server_token, client_token) = unsafe {
-//!     (Unqueued::new(NonNull::from(&mut server)), Unqueued::new(NonNull::from(&mut client)))
-//! };
-//!
-//! // The server calls receive with nobody sending, so it queues, giving up its token. The caller
-//! // blocks it.
-//! let waiting = ep.receive(server_token);
-//! assert_eq!(waiting, Receive::Blocked);
-//! assert!(!ep.is_idle());
-//! assert!(ep.one_queue_invariant());
-//!
-//! // Now a client sends. There is a receiver, so it **rendezvouses instead of queueing**, which is
-//! // why at most one of the two queues is ever non-empty. Both tokens come back: the receiver's,
-//! // because it left the queue, and the sender's, because it never joined one.
-//! match ep.send(client_token) {
-//!     Send::Rendezvous(receiver, sender) => {
-//!         assert!(receiver == NonNull::from(&mut server));
-//!         assert!(sender == NonNull::from(&mut client));
-//!     }
-//!     other => panic!("{other:?}"),
-//! }
-//! assert!(ep.is_idle()); // the receiver left the queue and the sender never joined one
-//! assert!(ep.one_queue_invariant());
-//! ```
-//!
-//! A signal is the operation that is deliberately **not** a rendezvous: it never queues the signaller
-//! and it is never lost, which is what lets an interrupt handler use one.
-//!
-//! ```
-//! # use core::ptr::NonNull;
-//! # use intrusive_fifo::{Node, Unqueued};
-//! # use inter_process_communication::{Rendezvous, Receive};
-//! # struct ThreadControlBlock { next: Option<NonNull<ThreadControlBlock>> }
-//! # unsafe impl Node for ThreadControlBlock {
-//! #     fn next(&self) -> Option<NonNull<Self>> { self.next }
-//! #     fn set_next(&mut self, next: Option<NonNull<Self>>) { self.next = next; }
-//! # }
-//! let mut driver = ThreadControlBlock { next: None };
-//! let mut ep: Rendezvous<ThreadControlBlock> = Rendezvous::new();
-//!
-//! // Two interrupts arrive with nobody in receive. Neither is dropped; both are counted.
-//! assert!(ep.signal().is_none());
-//! assert!(ep.signal().is_none());
-//!
-//! // SAFETY: `driver` is a live local declared before `ep`, on no queue, minted once.
-//! let token = unsafe { Unqueued::new(NonNull::from(&mut driver)) };
-//!
-//! // The driver's next two receives drain them, and it never blocks: each hands its token back.
-//! let Receive::Signal(token) = ep.receive(token) else { panic!("not drained") };
-//! let Receive::Signal(token) = ep.receive(token) else { panic!("not drained") };
-//! // The third finds nothing left and queues.
-//! assert_eq!(ep.receive(token), Receive::Blocked);
-//!
-//! // And a signal arriving now wakes it, already dequeued, with its token.
-//! assert!(ep.signal().is_some_and(|t| t == NonNull::from(&mut driver)));
-//! assert!(ep.is_idle());
-//! ```
-//!
-//! Name: ratified 2026-09-18 (calef, `design/decisions/` §154), **deratifying the 2026-08-01
-//! ratification** to do it, and performed 2026-09-19. Refused `ipc`.
-//!
-//! §154's test is whether the expansion is a phrase people actually say. "inter-process communication" is,
-//! so it goes, where `pci` stays because "peripheral component interconnect" is not.
-//!
-//! The 2026-08-01 block called this one of the standard terms "already right and must not be
-//! touched". That was an exemption rather than a test, and §154 records the three-layer
-//! contradiction the exemptions left behind.
-//!
-//! **Performed 2026-09-19**, the last of §154's renames. No public type or fuzz target carried the
-//! acronym, so only the crate moved. **IPC the concept did not move with it**: it keeps its name
-//! when this crate is deleted, so the lock §118 named and its type, the syscall-path
-//! `ipc_send`/`ipc_receive`/`ipc_call`/`ipc_reply` family, `notes/ipc-naming.md` and the word in prose
-//! all stay.
-//!
-//! Census of lowercase `ipc` as a word, outside this file: 206 before, 138 after. Of the
-//! survivors, 61 name the concept's own files (`notes/ipc-naming.md`,
-//! `notes/ipc-tables-lock-inventory.md`, roadmap and decision slugs), 35 are in `design/decisions/`
-//! or `design/naming.md`, which this rename did not edit, 25 are the old name in an account or a
-//! measurement, 9 are the concept in code (`bench`'s "ipc server", `board_console`'s `ipc` field),
-//! and 5 are `ipc::Endpoint` pointers that were already stale when `Endpoint` became `Rendezvous`
-//! (§113) and were deliberately not repointed. The last three are a quoted command and the clause
-//! beside it, and `README.md`'s crate list, whose other entries are stale too.
+//! Name: ratified 2026-09-18 (calef, §154 (the acronym test is whether the phrase is spoken)),
+//! deratifying the 2026-08-01 ratification: "inter-process communication" is a phrase people say,
+//! where "peripheral component interconnect" is not. IPC the concept keeps its name everywhere
+//! else. Refused `ipc`.
 
 #![cfg_attr(not(test), no_std)]
 
@@ -148,6 +29,44 @@ pub mod notification;
 pub mod timer;
 
 /// One IPC rendezvous: two intrusive wait queues and the pending-signal count.
+///
+/// # Examples
+///
+/// The three decisions, and the invariant across them. `T` stands in for the kernel's TCB, with
+/// the same one link.
+///
+/// ```
+/// # use core::ptr::NonNull;
+/// # use intrusive_fifo::{Node, Unqueued};
+/// # use inter_process_communication::{Rendezvous, Receive, Send};
+/// # struct ThreadControlBlock { next: Option<NonNull<ThreadControlBlock>> }
+/// # // SAFETY: plain field storage, which is the whole of the `Node` contract.
+/// # unsafe impl Node for ThreadControlBlock {
+/// #     fn next(&self) -> Option<NonNull<Self>> { self.next }
+/// #     fn set_next(&mut self, next: Option<NonNull<Self>>) { self.next = next; }
+/// # }
+/// let mut server = ThreadControlBlock { next: None }; // declared first, so they outlive `ep`
+/// let mut client = ThreadControlBlock { next: None };
+/// let mut ep: Rendezvous<ThreadControlBlock> = Rendezvous::new();
+/// // SAFETY: both are live locals declared before `ep`, on no queue, each minted once.
+/// let (server_token, client_token) = unsafe {
+///     (Unqueued::new(NonNull::from(&mut server)), Unqueued::new(NonNull::from(&mut client)))
+/// };
+///
+/// // A receive with nobody sending queues, giving up its token; the caller blocks it.
+/// assert_eq!(ep.receive(server_token), Receive::Blocked);
+/// assert!(!ep.is_idle() && ep.one_queue_invariant());
+///
+/// // A send that finds a receiver rendezvouses instead of queueing, and both tokens come back.
+/// match ep.send(client_token) {
+///     Send::Rendezvous(receiver, sender) => {
+///         assert!(receiver == NonNull::from(&mut server));
+///         assert!(sender == NonNull::from(&mut client));
+///     }
+///     other => panic!("{other:?}"),
+/// }
+/// assert!(ep.is_idle() && ep.one_queue_invariant());
+/// ```
 pub struct Rendezvous<T: Node> {
     /// Senders blocked here, waiting for a receiver.
     senders: Fifo<T>,
@@ -429,6 +348,40 @@ impl<T: Node> Rendezvous<T> {
     /// An async signal arrives. Wake a waiting receiver (returned, already dequeued), or count it
     /// for the next receive. **Not a rendezvous:** it never joins the sender queue and is never
     /// lost. Safe: signalling queues nothing.
+    ///
+    /// # Examples
+    ///
+    /// Two interrupts with nobody receiving are counted, not dropped, and drained without blocking:
+    ///
+    /// ```
+    /// # use core::ptr::NonNull;
+    /// # use intrusive_fifo::{Node, Unqueued};
+    /// # use inter_process_communication::{Rendezvous, Receive};
+    /// # struct ThreadControlBlock { next: Option<NonNull<ThreadControlBlock>> }
+    /// # unsafe impl Node for ThreadControlBlock {
+    /// #     fn next(&self) -> Option<NonNull<Self>> { self.next }
+    /// #     fn set_next(&mut self, next: Option<NonNull<Self>>) { self.next = next; }
+    /// # }
+    /// let mut driver = ThreadControlBlock { next: None };
+    /// let mut ep: Rendezvous<ThreadControlBlock> = Rendezvous::new();
+    ///
+    /// // Two interrupts arrive with nobody in receive. Neither is dropped; both are counted.
+    /// assert!(ep.signal().is_none());
+    /// assert!(ep.signal().is_none());
+    ///
+    /// // SAFETY: `driver` is a live local declared before `ep`, on no queue, minted once.
+    /// let token = unsafe { Unqueued::new(NonNull::from(&mut driver)) };
+    ///
+    /// // The driver's next two receives drain them, and it never blocks: each hands its token back.
+    /// let Receive::Signal(token) = ep.receive(token) else { panic!("not drained") };
+    /// let Receive::Signal(token) = ep.receive(token) else { panic!("not drained") };
+    /// // The third finds nothing left and queues.
+    /// assert_eq!(ep.receive(token), Receive::Blocked);
+    ///
+    /// // And a signal arriving now wakes it, already dequeued, with its token.
+    /// assert!(ep.signal().is_some_and(|t| t == NonNull::from(&mut driver)));
+    /// assert!(ep.is_idle());
+    /// ```
     pub fn signal(&mut self) -> Option<Unqueued<T>> {
         if let Some(receiver) = self.receivers.pop_front() {
             Some(receiver)

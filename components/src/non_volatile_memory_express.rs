@@ -1,12 +1,7 @@
-//! **The NVMe block server, at EL0** (milestone 261;
-//! [DECISIONS §86](../../design/decisions/0086-el0-nvme-driver.md), DECIDED 2026-09-03 as option 2a;
-//! notes/non-volatile-memory-express.md).
-//!
-//! An unprivileged process that drives a real, non-virtio DMA device: it builds 64-byte commands,
-//! rings a hardware doorbell, and watches a completion ring's phase tag, while holding no
-//! authority to reset the controller, to move a queue, or to reach a byte of memory outside the
-//! region an IOMMU has already confined the controller to. That combination is the microkernel
-//! thesis for storage, and until this program existed the NVMe driver was kernel code.
+//! **The NVMe block server, at EL0**: option 2a of §86 (whether an NVMe driver can leave the
+//! kernel), and notes/non-volatile-memory-express.md. It drives a real DMA device with no authority
+//! to reset the controller, move a queue, or reach memory outside the region an IOMMU already
+//! confined the controller to.
 //!
 //! ```text
 //!   NVMe controller ──doorbell page (1 page of BAR0)──► this program ──blk IPC──► clients
@@ -15,121 +10,34 @@
 //!    the kernel's DMA region                                and a transfer buffer
 //! ```
 //!
-//! # What it holds, and what it is denied
+//! Held, the complete list: slot 0, the request endpoint (`filesystem_protocol::blk`, as the virtio
+//! block server speaks); slot 1, a readiness endpoint; the data plane's pages at [`DATA_PLANE_VA`]
+//! (the I/O rings and [`TRANSFER_BLOCKS`] pages of buffer); and one page of BAR0, the doorbells, at
+//! [`DOORBELL_VA`]. Denied, each by decision: BAR0's register page (`CC`, `CSTS`, the admin ring
+//! registers), which NVMe 1.4 puts on its own page so this split costs no syscall; the admin
+//! plane's pages; every admin command, so where the rings live is the kernel's statement; an `Irq`;
+//! a `Virtio`; any name for the two windows, installed before `_start`; and everything else.
 //!
-//! **Held**, and this is the complete list, because a capability system has no ambient
-//! environment:
-//!
-//! - slot 0, the **request** endpoint (RECEIVE): clients `CALL` here, `filesystem_protocol::blk`'s
-//!   wire format, the same contract the virtio block server speaks;
-//! - slot 1, a **readiness** endpoint (WRITE): one message, once the first command has
-//!   round-tripped;
-//! - mapped at [`DATA_PLANE_VA`]: the **data plane's** pages of the DMA region, read/write: the
-//!   I/O submission ring, the I/O completion ring, and [`TRANSFER_BLOCKS`] pages of buffer;
-//! - mapped at [`DOORBELL_VA`]: **one page of BAR0**, device-typed, at `bar0 + 0x1000`.
-//!
-//! **Denied**, and every line of it is a decision rather than an omission:
-//!
-//! - **BAR0's controller register page.** `CC`, `CSTS`, `AQA`, `ASQ` and `ACQ` live at offsets
-//!   0x000..0x1000 and this process is not mapped them. It cannot reset the controller, cannot
-//!   disable it, and cannot repoint the admin rings. NVMe 1.4 §3.1 put a page boundary exactly
-//!   where the authority boundary belongs, which is why this split costs no new syscall.
-//! - **The admin plane's pages of the DMA region.** The two admin rings and the IDENTIFY buffer
-//!   are in the same confined region and are not in this address space.
-//! - **Any admin command at all.** Creating a queue is what names the physical address a ring
-//!   lives at; this process never issues one, so where its rings live is the kernel's statement
-//!   and not its own.
-//! - **An `Irq` capability**, because this server polls. One authority fewer than
-//!   `entropy.rs` holds, and see `BUGS`.
-//! - **A `Virtio` capability**, because there is no kernel-mediated transport here: that is the
-//!   whole reason §86 existed.
-//! - **A `DeviceFrame` or `PageFrame` capability.** The two windows were installed by the spawner
-//!   before `_start` ran, so this process holds no *name* for either and can neither delegate nor
-//!   remap them. Milestone 159's TRNG driver made the same choice, and its header records why an
-//!   earlier draft's capability slot was describing a thing nobody hands over.
-//! - **The initial ramdisk, a budget, a filesystem, a network, a clock.** None of them is here.
-//!
-//! # What is proven, and where
-//!
-//! Every piece of arithmetic is in `crates/non_volatile_memory_express`, host-tested and Kani-reachable: the ring
-//! indices and the phase discipline, the doorbell offsets, the PRP pair, the identify decode, and
-//! (milestone 261) the spawn handoff's round trip and the block-range check
-//! [`non_volatile_memory_express::Handoff::transfer_command`] refuses outside. What is left in this file is what cannot
-//! be tested without a device: volatile reads and writes, two barriers, and a bounded poll.
+//! All the arithmetic is in `crates/non_volatile_memory_express`, host-tested and Kani-reachable,
+//! including the block-range check [`non_volatile_memory_express::Handoff::transfer_command`]
+//! applies. What is left here is volatile access, two barriers and a bounded poll.
 //!
 //! # BUGS
 //!
-//! **One command in flight.** Each request completes before the next is submitted, so the ring
-//! depth buys nothing and any throughput measured against this server is a lower bound on the
-//! device rather than a measurement of it. Inherited from the kernel-resident driver this
-//! replaced; notes/non-volatile-memory-express.md carries it.
+//! - One command in flight, so measured throughput is a lower bound on the device.
+//! - It polls: the controller is created with no interrupt vector, and nothing would confine an
+//!   interrupt a userspace driver aimed on these machines (§86's interrupt finding).
+//! - A hung controller is a timeout after [`SPIN_BOUND`] polls, `EIO`, because reading `CSTS.CFS`
+//!   needs the register page this process cannot map.
+//! - A PRP computed backwards from [`Handoff::data_plane_phys`] could overwrite the admin ring: not
+//!   an escape, and §86 option 4's doorbell validator would close it.
+//! - One command per filesystem block, since `non_volatile_memory_express::prp_pair` builds no PRP
+//!   list; bulk transfers are slower than virtio's by construction.
 //!
-//! **It polls rather than waiting on an interrupt**, so a request costs a spin instead of a
-//! block, and a busy server is a busy core. The controller is created with `IEN=0` and names no
-//! vector (`non_volatile_memory_express::Command::create_io_cq`), so there is no interrupt to grant and switching would
-//! change the admin plane as well as this file. It also keeps `Object::Irq` off this program's
-//! list, which is a smaller authority, and §86's own interrupt finding is the reason not to reach
-//! for MSI-X casually: this machine runs `-device intel-iommu` with no `intremap=on` and
-//! `gic-version=2` with no ITS, so nothing would confine an interrupt a userspace driver aimed.
-//!
-//! **A hung controller presents as a timeout, not as `CSTS.CFS`.** Reading the fatal-error bit
-//! means reading the controller register page, which this process deliberately cannot. So
-//! [`SPIN_BOUND`] polls with no completion becomes `EIO` and the reason is lost. That is the
-//! direct price of the split, and it is a worse diagnostic than the kernel-resident driver gave.
-//!
-//! **A confined driver can still aim DMA inside its own confinement.** The IOMMU bounds the
-//! controller to the whole allocation, admin rings included, because the controller fetches from
-//! both halves; so a PRP computed backwards from [`Handoff::data_plane_phys`] could make the
-//! controller overwrite the admin ring. Not an escape, and §86's option 2a says so in those
-//! terms; option 4's doorbell validator is what would close it.
-//!
-//! **A transfer is one command per filesystem block**, even when a request carries
-//! [`TRANSFER_BLOCKS`] contiguous ones. `non_volatile_memory_express::prp_pair` refuses anything needing a PRP *list*
-//! (notes/non-volatile-memory-express.md: "One namespace, PRP-only, no SGLs, no PRP lists"), and a 16-page transfer needs
-//! one. The virtio block server issues a single request for the same range, so this server is
-//! slower on bulk by construction and the fix is a PRP list rather than anything about this file.
-//!
-//! Name: ratified 2026-09-17 (calef, DECISIONS §154) for the whole family rather than for this
-//! program alone, with the program's own half ruled on 2026-09-18 and performed the same day. The
-//! argument, the refusals and what did not move are recorded once, beside the crate, in
-//! `crates/non_volatile_memory_express`. Refused `nvme_server`, `nvme_driver` and
-//! `non_volatile_memory_express_server`.
-//!
-//! **This program takes the crate's own name, and calef ruled that on 2026-09-18 rather than a
-//! lane inferring it.** The obvious spelling does not exist: `non_volatile_memory_express_server`
-//! is **34 bytes** against `nifefs`'s 32-byte `NAME_LEN`, which bounds a program's name and not a
-//! crate's, so the family ruling could not reach this program by itself. The options were to share
-//! the crate's name (27 bytes), to raise `NAME_LEN` to 40, or to name the program something else
-//! entirely.
-//!
-//! **Raising `NAME_LEN` was refused on its cost**, which is measured rather than asserted: it is a
-//! format two programs agree on, which AGENTS.md's *move fast on what can be undone* puts in the
-//! expensive category, and it would take the archive from 127 entries to 106 against 87 in use
-//! today and about 93 after the tracked nine-role split. The naming rules already say not to let
-//! the limit pick a name and not to spend a format change on bytes nothing needs; this is the
-//! second half of that.
-//!
-//! **What sharing buys beyond fitting.** It is the pair AGENTS.md blesses and says *means*
-//! something: the crate is this program's logic, lifted out to be host-tested and Kani-reachable,
-//! while the program keeps the IO, exactly as `compositor` and `line_editor` do. And it settles
-//! the `_server`-versus-`_driver` split this block used to raise, by removing the suffix rather
-//! than choosing between them, which puts this program with `entropy`, `clock` and `input`: named
-//! for the thing, not for the role.
-//!
-//! **The precedent, stated because §154 will produce more of these**: a long expansion reaches a
-//! program by sharing its crate's name. `acpi` and `uart` expand to 42 and 43 bytes if they are
-//! ever ruled, and neither could ever name a program on its own.
-//!
-//! `nvme_server` was §86's name for this program in passing, and §86 said plainly that was not a
-//! ratification. Two things were wrong with it. It carries the unexpanded acronym, which is what
-//! the ruling is about. And it was the tree's **only** `_server` against four `_driver` programs
-//! (`block_driver`, `gpu_driver`, `keyboard_driver`, `serial_driver`), drawing a distinction no
-//! reader can recover from the name: `block_driver` serves a contract too, and `crates/virtio`'s
-//! own prose calls that program's role *"the block server"*.
-//!
-//! **That inconsistency outlives this ruling and is not settled here.** `block_driver` and this
-//! program will spell the same role two ways until somebody rules on the `_driver`/`_server` split
-//! itself, which is an architect's and is a separate question from the acronym.
+//! Name: ratified 2026-09-17 (calef, §154 (the acronym test is whether the phrase is spoken)), the
+//! program's half 2026-09-18: it shares the crate's name, as `compositor` does. Refused
+//! `nvme_server`, `nvme_driver` and `non_volatile_memory_express_server` (34 bytes, past the
+//! 32-byte `NAME_LEN`, which was not raised for it).
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

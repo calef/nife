@@ -1,26 +1,9 @@
-//! **`package_archive`**: the one file a nife package is, read and written by one definition.
-//!
-//! DECISIONS §197 (a package is one archive file), in
-//! [its own file](../../../design/decisions/0197-a-package-is-one-archive-file.md), ruled the container: **one archive file per package**, identified by name and
-//! version, in the shape `.deb`, `.apk` and `.hpkg` all use, with
-//! DECISIONS §195 (a reviewed recipe vouches for a package), in
-//! [its own file](../../../design/decisions/0195-a-recipe-vouches-and-the-owner-may-overrule.md),'s reviewed recipe carrying the digest that decides
-//! whether the bytes may run. This crate is that container's bytes: a host tool writes one with
-//! [`write_package`] and a target reads it with [`Package::parse`], so **one definition of the
-//! format serves both**, which is the same arrangement `crates/nifefs` has and for the same reason.
-//!
-//! Pure logic, host-tested, `no_std`, no allocation. A reader borrows out of the buffer it is given
-//! and builds nothing, because the first consumer of this format is a program on a system whose
-//! loader has no allocator.
-//!
-//! **This is rung 3a's producer half and the parser it implies.** It deliberately does *not*
-//! install anything: what installing a package *does* to a running system is the activation fork
-//! (milestone 507 (installing a package: mutate, compose, or widen what can be spawned),
-//! options with no winner), which is an architect's and is not decided. A package that
-//! can be built, named, verified and read is what that ruling will act on, and it is buildable
-//! without it.
-//!
-//! # The layout
+//! **`package_archive`**: the one file a nife package is, read and written by one definition. §197
+//! (a package is one archive file) ruled the container, and §195 (a reviewed recipe vouches for a
+//! package) puts the digest that decides whether the bytes may run in the recipe. A host tool
+//! writes a package with [`write_package`] and a target reads it with [`Package::parse`], as with
+//! `crates/nifefs`. Pure logic, `no_std` and allocation-free: a reader borrows out of its buffer,
+//! because the first consumer's loader has no allocator.
 //!
 //! ```text
 //!   header, HEADER_LEN = 112 bytes
@@ -40,108 +23,21 @@
 //!   member bytes, each starting at an 8-byte boundary
 //! ```
 //!
-//! **Three choices in that table are worth their reasons.**
-//!
-//! `offset` is absolute rather than relative to the member area, so a reader never has to know
-//! where the table ends to find data; only the writer computes that. `crates/nifefs` made the same
-//! call about `start_block` and says so.
-//!
-//! Each member carries **its own digest**, where `.hpkg` carries none and keeps SHA-256 in the
-//! repository index. §195 puts a digest over the whole file in the recipe, which answers "are these
-//! the reviewed bytes"; a per-member digest answers "is *this* member the one that was reviewed",
-//! which is the question a spawner asks when it is handed one program out of a package. The
-//! measurement table the progenitor already enforces (`crates/measured_boot`) is exactly a
-//! name-to-digest map, so a package's table of contents is that table traveling with its bytes.
-//!
-//! Member bytes are **8-byte aligned** because the largest member is an ELF and the cheapest way to
-//! be wrong later is to hand a parser an odd address. It costs at most seven bytes per member.
-//!
-//! # Names, and the ceiling on them
-//!
-//! A name is at most [`NAME_LEN`] bytes and is **not** NUL-terminated when it uses all of them, so
-//! a reader compares against `NAME_LEN` bytes and stops at the first NUL if there is one. That is
-//! `nifefs`'s rule, kept deliberately: `NAME_LEN` there is the ceiling on every spawnable name in
-//! this system, so a package member that cannot be an archive entry would be a member nothing could
-//! install.
-//!
-//! # EXAMPLES
-//!
-//! Write a package, read it back, and check a member against its digest:
-//!
-//! ```
-//! # use package_archive::{Attributes, Package, package_size, write_package};
-//! let members: [(&str, &[u8]); 2] = [("uptime", b"\x7fELF..."), ("uptime.license", b"MIT")];
-//! let attributes = Attributes { name: "uptime", version: "0.1.0", architecture: "aarch64" };
-//!
-//! let mut file = vec![0u8; package_size(&members)];
-//! write_package(&attributes, &members, &mut file).unwrap();
-//!
-//! let package = Package::parse(&file).unwrap();
-//! assert_eq!(package.name(), "uptime");
-//! assert_eq!(package.version(), "0.1.0");
-//! assert_eq!(package.read("uptime"), Some(&b"\x7fELF..."[..]));
-//! package.verify().unwrap();
-//! ```
-//!
-//! Refuse a file that has been edited since it was written:
-//!
-//! ```
-//! # use package_archive::{Attributes, Package, VerifyError, package_size, write_package};
-//! # let members: [(&str, &[u8]); 1] = [("uptime", b"\x7fELF...")];
-//! # let attributes = Attributes { name: "uptime", version: "0.1.0", architecture: "aarch64" };
-//! # let mut file = vec![0u8; package_size(&members)];
-//! # write_package(&attributes, &members, &mut file).unwrap();
-//! let last = file.len() - 1;
-//! file[last] ^= 0xff;
-//! assert_eq!(Package::parse(&file).unwrap().verify(), Err(VerifyError { index: 0 }));
-//! ```
-//!
 //! # BUGS
 //!
-//! - **Nothing installs a package.** This crate produces and reads one; the activation fork
-//!   (milestone 507) decides what installing means, and until it is ruled a package is a file with
-//!   no consumer on the target. That is the honest state of rung 3a, not an oversight.
-//! - **The encoding is provisional**, and so is the crate's name. §197 ruled the *container*, not
-//!   these offsets. Two of its own open questions are deliberately not answered here: where a
-//!   program's manifest travels (a sibling member is merely *possible* under this layout, because
-//!   a member is any named bytes; nothing in this crate requires or names one) and whether the
-//!   digest is a Merkle root (this takes the plain SHA-256 §197 records as the default). Nobody
-//!   outside this repository has a nife package, so the encoding is still free to move; §197 says
-//!   the day one is fetched by somebody else is the day it is fixed.
-//! - **No compression.** `.hpkg` chunks its heap with zlib and `.apk` is three gzip streams; this
-//!   stores members whole. The first packages are ELFs that were about to be written to a disk
-//!   anyway, and a compressor is a second hostile-input parser on the same path. It is a size cost,
-//!   measured nowhere yet.
-//! - **`a_short_file_is_refused` carries `#[kani::unwind(9)]`, and proves nothing less for it.**
-//!   Unbounded, its falsification took **20 to 31 minutes** at **3.0-3.6 GB** of solver memory
-//!   (patagonia, other lanes running, so an order of magnitude). The cause is the harness's shape
-//!   and it is `nifefs`'s exactly: once the weakened guard admits the one concrete length, symbolic
-//!   execution reaches the member loop, bounded by a `count` read from symbolic bytes, and CBMC has
-//!   to unroll it. `nifefs`'s did not finish at all. On the correct tree the guard returns first and
-//!   no loop is reachable, so the bound adds no unwinding assertion and cuts no path. Measured
-//!   2026-09-24, three runs each, Kani 0.67.0: **before**, SUCCESSFUL, 0 of 343 checks failed (25
-//!   unreachable), 0.19 to 0.22 s; **after**, the same 0 of 343 (25 unreachable), 0.18 to 0.23 s.
-//!   The falsification now goes red in **1.3 s**, on the harness's own `assert_eq!` and nothing
-//!   else. 9 is the least bound that lets the 8-byte magic compare finish, the reason `nifefs`
-//!   chose it.
-//! - **A package is bounded by `u32`.** A member longer than 4 GiB, or a file longer than 4 GiB,
-//!   cannot be represented. The largest member anyone has packed is `rg` at 10.7 MB.
-//! - **A duplicate member name is refused by the writer and first-wins in the reader**, which is
-//!   `nifefs`'s split exactly. A reader cannot refuse it cheaply without comparing every pair, and
-//!   the producer is the place that knows.
-//! - **[`Package::parse`] does not check that members do not overlap**, nor that they lie after the
-//!   table. Every accessor is bounds-checked against the buffer, so an overlapping file is readable
-//!   rather than unsafe, and [`Package::verify`] is what makes an unreviewed arrangement of bytes
-//!   fail: a member that overlaps another cannot match both digests unless the bytes really are
-//!   shared.
-//! - **Nothing here says where a package came from.** §195's per-source trust is the client's
-//!   business, and there is no client yet.
+//! - Nothing installs a package: that is milestone 507 (installing a package)'s activation fork.
+//! - The encoding and the crate's name are provisional: §197 ruled the container, and the day
+//!   somebody else fetches a package fixes these offsets. Where a manifest travels, and whether
+//!   the digest is a Merkle root, are open.
+//! - No compression, which would be a second hostile-input parser; the size cost is unmeasured.
+//! - Members and files are bounded by `u32` (4 GiB).
+//! - A duplicate member name is refused by the writer and first-wins in the reader, as in `nifefs`.
+//! - [`Package::parse`] does not check that members do not overlap or follow the table: accessors
+//!   are bounds-checked, and [`Package::verify`] fails any arrangement the digests do not match.
+//! - Nothing here says where a package came from; §195's per-source trust is a client's job.
 //!
-//! Name: provisional 2026-09-23 (milestone 198 (a package manager, and the trivial install)'s
-//! rung 3a lane). `package_archive` because the
-//! thing is an archive of a package's files and both words are the ones the field uses; a bare
-//! `package` would be the generic-word failure `design/naming.md` names, and `pkg` the abbreviation
-//! one. Not ratified by an architect.
+//! Name: provisional 2026-09-23 (milestone 198's rung 3a lane): an archive of a package's files, in
+//! the field's words; `package` alone is too generic and `pkg` an abbreviation. Not ratified.
 
 #![no_std]
 
@@ -175,6 +71,13 @@ pub const NAME_LEN: usize = 32;
 pub const HEADER_LEN: usize = 8 + NAME_LEN * 3 + 4 + 4;
 
 /// One table-of-contents entry: the name, `offset` and `len` as `u32`s, then the member's digest.
+///
+/// `offset` is absolute rather than relative to the member area, so a reader never has to know
+/// where the table ends. Each member carries its own digest, so a spawner handed one program can
+/// ask whether that member is the reviewed one; the table of contents is `crates/measured_boot`'s
+/// name-to-digest map travelling with its bytes. Members are 8-byte aligned because the largest is
+/// an ELF. A name uses at most [`NAME_LEN`] bytes, unterminated when full, which is `nifefs`'s
+/// ceiling on every spawnable name.
 pub const MEMBER_LEN: usize = NAME_LEN + 4 + 4 + DIGEST_LEN;
 
 /// The alignment every member's bytes start on. See the crate docs for why it is not 1.
@@ -357,6 +260,21 @@ impl<'a> Package<'a> {
     /// The whole point of the per-member digest: a caller that trusts the file (a recipe vouched
     /// for its digest, §195) still learns *which* member it is holding, and a caller that does not
     /// learns whether anything in the file has moved.
+    ///
+    /// # Examples
+    ///
+    /// Refuse a file that has been edited since it was written:
+    ///
+    /// ```
+    /// # use package_archive::{Attributes, Package, VerifyError, package_size, write_package};
+    /// # let members: [(&str, &[u8]); 1] = [("uptime", b"\x7fELF...")];
+    /// # let attributes = Attributes { name: "uptime", version: "0.1.0", architecture: "aarch64" };
+    /// # let mut file = vec![0u8; package_size(&members)];
+    /// # write_package(&attributes, &members, &mut file).unwrap();
+    /// let last = file.len() - 1;
+    /// file[last] ^= 0xff;
+    /// assert_eq!(Package::parse(&file).unwrap().verify(), Err(VerifyError { index: 0 }));
+    /// ```
     pub fn verify(&self) -> Result<(), VerifyError> {
         for index in 0..self.count {
             self.verify_member(index)?;
@@ -663,6 +581,25 @@ pub fn package_size(members: &[(&str, &[u8])]) -> usize {
 /// **No timestamp, no ordering pass, no padding byte that is not zero.** The bytes are a function of
 /// the inputs alone, so two hosts building the same recipe produce the same digest, which is the
 /// property §195's reviewed recipe rests on.
+///
+/// # Examples
+///
+/// Write a package, read it back, and check a member against its digest:
+///
+/// ```
+/// # use package_archive::{Attributes, Package, package_size, write_package};
+/// let members: [(&str, &[u8]); 2] = [("uptime", b"\x7fELF..."), ("uptime.license", b"MIT")];
+/// let attributes = Attributes { name: "uptime", version: "0.1.0", architecture: "aarch64" };
+///
+/// let mut file = vec![0u8; package_size(&members)];
+/// write_package(&attributes, &members, &mut file).unwrap();
+///
+/// let package = Package::parse(&file).unwrap();
+/// assert_eq!(package.name(), "uptime");
+/// assert_eq!(package.version(), "0.1.0");
+/// assert_eq!(package.read("uptime"), Some(&b"\x7fELF..."[..]));
+/// package.verify().unwrap();
+/// ```
 pub fn write_package(
     attributes: &Attributes<'_>,
     members: &[(&str, &[u8])],
@@ -1197,7 +1134,9 @@ mod verification {
 
     /// **A file shorter than the header is refused rather than indexed.** `nifefs` proves the same
     /// boundary and for the same reason: the header read is the one place a short buffer would be
-    /// indexed before anything had checked its length.
+    /// indexed before anything had checked its length. `unwind(9)` lets the 8-byte magic compare
+    /// finish and cuts no path on the correct tree, where the guard returns before any loop; with
+    /// no bound the falsification took 20 to 31 minutes, unrolling the member loop.
     ///
     /// Falsification: replayable `crates/package_archive/falsifications/verification.a_short_file_is_refused.patch`
     #[kani::proof]
