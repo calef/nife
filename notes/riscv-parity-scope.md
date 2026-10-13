@@ -31,7 +31,6 @@ software interrupt, `scause` = 1, draining the inbox), lighting up `send_resched
 tests un-gated and generalized off "boot core is 0". The subtle one was TLB shootdown: RISC-V has
 no hardware TLB broadcast, so `flush_tlb` follows its local `sfence.vma` with an SBI RFENCE to the
 other online harts, or a thread migrated to a core faults on a stale translation of its own stack.
-The original scope is in [riscv-parity-scope/original-scope.md](riscv-parity-scope/original-scope.md).
 
 ### B. In-kernel test suite on RISC-V: DONE.
 
@@ -44,8 +43,7 @@ SMP tests (workstream A), and the two SGI interrupt tests. Three real things sur
 watchdog needed wiring into riscv `timer::tick`; and a genuine race: a timer tick landing inside
 `sched::init` ran the deferred `schedule()` before the idle thread was registered ("nothing runnable
 and no idle thread"), fixed by masking interrupts across init, which aarch64 gets for free by bringing
-the scheduler up before enabling interrupts. The original scope is in
-[riscv-parity-scope/original-scope.md](riscv-parity-scope/original-scope.md).
+the scheduler up before enabling interrupts.
 
 Follow-on (§19 (architectural parity)): the suite was at parity on the portable tests and not on the arch ones.
 `arch/aarch64` carried 21 unit tests and `arch/riscv64` carried zero, across the same three files, so
@@ -89,31 +87,26 @@ host load: a wider deadline changed nothing, which is what ruled out slowness. A
 `kernel::smp::tests` is genuinely host-load sensitive on `main`, so run the same load against `main`
 before blaming a diff. Each is in [riscv-parity-scope/suite-gaps.md](riscv-parity-scope/suite-gaps.md).
 
-### C. virtio-blk + on-disk filesystem: DONE, over BOTH transports; and the "blocked" record was WRONG (correction below).
+### C. virtio-blk + on-disk filesystem: DONE, over BOTH transports
 
-Correction (2026-07-27, evening). The blocker once recorded here does not reproduce. Booting the
-riscv kernel with the runner's exact flags (QEMU 11.0.2, `-global virtio-mmio.force-legacy=false
--device virtio-blk-device`) finds a modern virtio-mmio block device at slot 7 (0x10008000, PLIC
-IRQ 8); `find_block_device` reports it and the kernel registers the transport. The most likely
-mechanism for the false record, stated as inference: both runners silently dropped the disk when
-`NIFE_DISK` named a file that did not exist (`[ -f ]` guard), and no riscv xtask path builds
-`nifefs.img`, so a riscv run on a clean target directory booted disklessly and every slot
-honestly read device-id 0 ("empty"). The conclusion "QEMU prefers PCIe for riscv" was reasonable
-and wrong; the machine was never asked the question. Both runners now fail loudly on a missing
-disk file so this class of record cannot be manufactured again. The machine overrules the
-documentation; the PCIe transport keeps its own justification (notes/pcie-transport-scope.md: the
-door to NVMe and real hardware) but is not a parity-C prerequisite. The original, wrong entry
-is kept unedited in [riscv-parity-scope/original-scope.md](riscv-parity-scope/original-scope.md),
-because the correction is the instructive part.
+Booting the riscv kernel with the runner's exact flags (QEMU 11.0.2, `-global
+virtio-mmio.force-legacy=false -device virtio-blk-device`) finds a modern virtio-mmio block device
+at slot 7 (0x10008000, PLIC IRQ 8); `find_block_device` reports it and the kernel registers the
+transport. Both runners fail loudly on a missing disk file. A runner that silently drops the disk
+when `NIFE_DISK` names a file that does not exist boots disklessly, every slot honestly reads
+device-id 0 ("empty"), and it looks like QEMU preferring PCIe for riscv, which it does not. The
+PCIe transport keeps its own justification (notes/pcie-transport-scope.md: the door to NVMe and
+real hardware) but is not a parity-C prerequisite.
 
-Completed (2026-07-27, the same night). Over mmio: the `blk` dedicated binary (the shared
+Over mmio: the `blk` dedicated binary (the shared
 `virtio` module behind the 19f skeleton), `virtio_service` wiring unchanged, and the three disk
-tests (read, DMA-escape attacker, indirect attacker) green on riscv; found and fixed the PLIC
-boot-hart-lottery bug on the way (every plic::init site hardcoded context 1 while sie.SEIE was set
-on whatever hart OpenSBI elected). Then over PCIe as well: the PCIe transport (DECISIONS §18,
+tests (read, DMA-escape attacker, indirect attacker) green on riscv. The PLIC is programmed for
+the boot hart's own context, not a hardcoded context 1, because `sie.SEIE` is set on whatever hart
+OpenSBI elects.
+Over PCIe as well: the PCIe transport (DECISIONS §18 (the PCIe transport: one driver, two buses),
 notes/pcie.md) runs the byte-identical driver against the same image attached as virtio-blk-pci,
-with the completion arriving as INTx through the PLIC. Every parity workstream (A-E) is now
-done; aarch64 and riscv64 are at feature parity, DMA confinement included.
+with the completion arriving as INTx through the PLIC. Every parity workstream (A-E) is done;
+aarch64 and riscv64 are at feature parity, DMA confinement included.
 
 ### D. Full integrated boot + interactive shell: DONE.
 
@@ -127,8 +120,7 @@ wiring is arch-neutral: `system_initializer` maps whatever device cap the kernel
 Irq cap it is handed, so the same binary would drive a PL011. `--features shell` selects it (the
 riscv counterpart of the aarch64 handoff, which this note called `initboot` when it was written;
 milestone 296 deleted that feature as a duplicate of `shell`). aarch64 keeps hello's init_boot; its
-shell still works. The original scope is in
-[riscv-parity-scope/original-scope.md](riscv-parity-scope/original-scope.md).
+shell still works.
 
 ### E. Benchmarks: DONE.
 
@@ -145,17 +137,7 @@ the timer and inflate the spawn primitives), with its own baseline (`bench/basel
 `--check`/`--save`. The comparable metric is ns/iter: under `-icount shift=0` virtual time advances
 ~1 ns/instruction, and ns/iter divides out each arch's timer frequency (aarch64 CNTFRQ vs riscv's
 10 MHz), so it is frequency-normalized instructions-per-primitive. CoreMark lands within ~7% across
-the two ISAs (same workload), which is the sanity check that the comparison is sound. The original
-scope is in [riscv-parity-scope/original-scope.md](riscv-parity-scope/original-scope.md).
-
-## The original scope, and the sequence it recommended
-
-Every workstream above began as a scope with an effort and a risk, and B, then A, then C, E and D
-was the recommended order by kernel value per effort. A + B + C + E was the set for "the kernel is
-at parity"; D was system integration. The scopes as written, the superseded "blocked" record for C,
-and the dependency sketch are in [riscv-parity-scope/original-scope.md](riscv-parity-scope/original-scope.md).
-
----
+the two ISAs (same workload), which is the sanity check that the comparison is sound.
 
 ## Post-parity correction (2026-07-27, milestone 32): user faults did not kill on riscv
 

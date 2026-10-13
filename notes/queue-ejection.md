@@ -135,8 +135,8 @@ a draft, because a draft is its lane's, and that only holds while the lane is al
 head commit's committer date, since `updatedAt` moves with every bot comment and every retarget.
 A draft holding only its claim commit is not exempt, as it is the clearest sign of a dead lane.
 
-The eighth, `orphan`, came on 2026-10-06, when calef found worktrees with no pull request: "a
-problem that leads to lack of visibility and progress on that work." It reads remote branches, the
+The eighth, `orphan`, exists because a worktree with no pull request is, in calef's words
+(2026-10-06), "a problem that leads to lack of visibility and progress on that work." It reads remote branches, the
 one ledger every session sees, and labels the pull request the branch last had: a merged one that
 gained commits after it merged, or a closed one still holding work. A branch that never had a pull
 request has nothing to label, so the drain opens a draft for it, marked with the head it adopted.

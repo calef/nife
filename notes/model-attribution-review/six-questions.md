@@ -1,7 +1,6 @@
 # The six questions, answered for this fork
 
-An appendix of [reviewing the work of one model](../model-attribution-review.md), moved from its
-section "The six questions" on 2026-10-11 (UTC) under §212 (a prose budget). The parent keeps a
+An appendix of [reviewing the work of one model](../model-attribution-review.md). The parent keeps a
 one-line answer to each; this file keeps the answers whole. "Finding 6" is in
 [reconnaissance.md](reconnaissance.md), and "above" means the parent.
 

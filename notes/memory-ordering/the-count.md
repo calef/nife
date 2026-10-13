@@ -33,10 +33,10 @@ says "Release" and "Acquire" constantly: `kernel/src/sync.rs`'s header, `redoxfs
 
 ## The test-code exclusion hid a real fence
 
-The first version of this scan was wrong here, and wrong in the direction that hides things. The
-kernel's tests are separate files pulled in with `#[cfg(test)] mod disk_tests;`, which has no brace.
-A scan that looked for the next `{` after the attribute swallowed the following 400 lines of live
-kernel. It quietly classified a real fence in `kernel/src/user.rs` as test code.
+This is the place a scan goes wrong in the direction that hides things. The kernel's tests are
+separate files pulled in with `#[cfg(test)] mod disk_tests;`, which has no brace. A scan that looks
+for the next `{` after the attribute swallows the following 400 lines of live kernel, and quietly
+classifies a real fence in `kernel/src/user.rs` as test code.
 
 An attribute followed by a semicolon before any brace marks a whole file, not a region. Both forms
 exist in this tree, and a scan has to know the difference.

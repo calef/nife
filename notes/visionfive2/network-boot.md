@@ -49,10 +49,9 @@ StarFive # source ${scriptaddr}
 
 ## It reads interfaces, not the routing table
 
-The first version did the opposite and was wrong. The obvious trick is a connected UDP socket whose
-local address the kernel picks from the route. On patagonia the default route belongs to a
-Tailscale interface. So every probe answered `100.75.22.70`, a CGNAT address radon has no path to.
-Interfaces are enumerated instead, and anything outside RFC 1918 is dropped.
+Not a connected UDP socket whose local address the kernel picks from the route, because the default
+route can belong to a VPN interface, and every probe would then answer a CGNAT address the board
+has no path to. Interfaces are enumerated instead, and anything outside RFC 1918 is dropped.
 
 patagonia has two addresses on the bench LAN: `en0` at `.216` and a USB adapter at `.206`. Either
 serves equally well, because the server binds every interface. The first is taken, and both are

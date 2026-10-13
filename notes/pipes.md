@@ -310,15 +310,14 @@ $ wc motd | wc | wc
 
 ## BUGS
 
-One line each, as of 2026-09-25 (UTC). Each entry's full text and history is in
-[the BUGS history](pipes/bugs-history.md).
+One line each. Each entry's full text is in [the BUGS appendix](pipes/bugs-history.md).
 
 - An unredirected tail stage's output goes to the terminal's sink adapter (DECISIONS §106), which
   carries a display race tracked at milestone 151 (notification objects). notes/documentation.md's `BUGS` has the worked case.
 - `OPERATION_PRINT` carries eight bytes, so each sixteen-byte sink message is two calls to the terminal.
 - `script/swish-check` is not in `script/test` or CI, and it is the only gate on the real
   progenitor.
-- `fixtures/src/file_sink.rs` and `file_source.rs` are proven by `sink_tests` but no longer on the
+- `fixtures/src/file_sink.rs` and `file_source.rs` are proven by `sink_tests` but not on the
   shell's path.
 - The interactive prompt holds the image root, unnarrowed. That is a default, not a recorded
   decision.

@@ -14,8 +14,8 @@ isolation wrong somewhere the others had not:
 - Run 4's `pkill` shim was right because somebody remembered, not because anything held it.
 
 That was rung four of CLAUDE.md's ladder holding up the milestone that exists to move things off
-rung four. [The BUGS history](bugs-history.md) had said so since run 1. The main page lists what the
-harness now holds; each item there is something a person previously had to remember. Telling the
+rung four, as [the BUGS history](bugs-history.md) says from run 1 on. The main page lists what the
+harness holds; each item there is something a person would otherwise have to remember. Telling the
 stranger it is measured is run 4's finding acted on, not a softening. The `nife-dev` link is
 restored because a stranger's `script/test` takes it like any other lane, and unlike a lane its tree
 is disposable.
@@ -32,8 +32,7 @@ un-read `AGENTS.md`. And it cannot stop the tree leaking that a test exists, whi
 `script/` entry point and a row in `notes/scripts.md`'s table. The response to the second is
 disclosure, not concealment.
 
-On 2026-09-24 the note was split into a main page and these appendices, under §212 (a prose budget).
-The harness now withholds the appendices along with the main page.
+The harness withholds these appendices along with the main page.
 
 ## Amendments, 2026-08-18, forced by run 3 and applied before run 4
 
@@ -103,4 +102,4 @@ never reads a sentence. So the calendar does the whole job here, where for audit
 Revisit it the first time a run comes back saying nothing had changed.
 
 Run 6 showed that the notification has no reader yet; see [the BUGS history](bugs-history.md). That
-gap is milestone 495 (a cadence that says "due" reaches nobody), not started as of 2026-09-24.
+gap is milestone 495 (a cadence that says "due" reaches nobody).

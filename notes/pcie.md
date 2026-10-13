@@ -101,13 +101,12 @@ Enable, the bus-level DMA switch the kernel now controls explicitly.
 
 ## More than one bus (milestone 320)
 
-The line above used to read "bus 0 only is mapped and enumerated (QEMU `virt` is flat; widening is
-one constant)". It was true and it cost a day, which is worth keeping rather than quietly deleting:
-a limitation recorded honestly still hides, when the machine that violates it is the first real one
-you meet. On xenon, a Dell OptiPlex 7050, the M.2 NVMe sits behind a PCIe root port. The kernel
-enumerated bus 0, `find_nvme_device` returned `None`, and the confinement test skipped with
-QEMU's explanation for an absence (`NIFE_NVME not set on this leg?`) that had a different cause
-entirely. Nothing failed. `bench/xenon-2026-09-17/nvme-attempt-2-no-controller-found.log`.
+The kernel enumerates every bus behind a bridge, not bus 0 alone. QEMU's `virt` is flat, but on
+xenon, a Dell OptiPlex 7050, the M.2 NVMe sits behind a PCIe root port. Enumerating bus 0 alone,
+`find_nvme_device` returns `None` and the confinement test skips with QEMU's explanation for an
+absence (`NIFE_NVME not set on this leg?`), which has a different cause entirely, and nothing fails
+(`bench/xenon-2026-09-17/nvme-attempt-2-no-controller-found.log`). A limitation recorded honestly
+still hides when the machine that violates it is the first real one you meet.
 
 **Where the topology is written down is the bridge**, not ACPI and not the device tree. A PCIe root
 port is a PCI function with a type-1 header, and bytes 0x18..0x1a of that header are the primary,

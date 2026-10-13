@@ -1,7 +1,6 @@
 # What each specification actually says
 
-An appendix of [can a userspace process hold a timer?](../timer-capability.md), moved from its
-section of the same name on 2026-10-11 (UTC) under §212 (a prose budget). The parent keeps the
+An appendix of [can a userspace process hold a timer?](../timer-capability.md). The parent keeps the
 verdict per architecture. This file keeps the working: the register fields, the specification text
 quoted, and the tree's own code each verdict rests on. It is the "full working, with the
 specification citations" that [§147 (a timer a userspace service cannot

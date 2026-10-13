@@ -8,12 +8,9 @@ budget has no room for.
 - [`transcription.md`](transcription.md): every page of the 70 photographs of 2026-09-04 (UTC),
   menu by menu, each with its `IMG_` number.
 
-*Name: provisional, minted 2026-10-11 (UTC) by lane/fifth-ten-longest-notes, which split the parent
-under §212 (a prose budget). The directory follows §212's siting default, `notes/X/` beside
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default, `notes/X/` beside
 `notes/X.md`. calef names directories.*
 
-The stem below was minted the same day by the same lane. It is named for its content, and calef
-names files.
+The stem below is named for its content, and calef names files.
 
-- `transcription` Name: provisional, minted 2026-10-11 (UTC) by lane/fifth-ten-longest-notes,
-  after the parent's own heading.
+- `transcription` Name: provisional. After the parent's own heading.

@@ -13,15 +13,13 @@ carries the evidence its prose budget has no room for.
 - [`six-questions.md`](six-questions.md): the six questions a fork answers before it reaches calef,
   answered whole.
 
-*Name: provisional, minted 2026-10-11 (UTC) by lane/final-longest-notes, which split the parent
-under §212 (a prose budget). The directory follows §212's siting default, `notes/X/` beside
-`notes/X.md`. calef names directories.*
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default, `notes/X/`
+beside `notes/X.md`. calef names directories.*
 
-- `handed-numbers` Name: provisional, minted 2026-10-11 (UTC) by lane/final-longest-notes, for the
-  parent's "First: the numbers this lane was handed do not reproduce". calef names files.
-- `reconnaissance` Name: provisional, minted 2026-10-11 (UTC) by lane/final-longest-notes, after
-  the parent's "What the reconnaissance found". calef names files.
-- `blinding` Name: provisional, minted 2026-10-11 (UTC) by lane/final-longest-notes, after the
-  parent's "Blinding, and the honest statement that it leaks". calef names files.
-- `six-questions` Name: provisional, minted 2026-10-11 (UTC) by lane/final-longest-notes, after the
-  parent's "The six questions". calef names files.
+- `handed-numbers` Name: provisional. For the parent's "First: the numbers this lane was handed do
+  not reproduce". calef names files.
+- `reconnaissance` Name: provisional. After the parent's "What the reconnaissance found". calef
+  names files.
+- `blinding` Name: provisional. After the parent's "Blinding, and the honest statement that it
+  leaks". calef names files.
+- `six-questions` Name: provisional. After the parent's "The six questions". calef names files.

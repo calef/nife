@@ -1,40 +1,32 @@
-# Rented aarch64: the offers, the correction, and the blocker
+# Rented aarch64: the offers and the blocker
 
 An appendix to [`notes/rented-metal.md`](../rented-metal.md), which holds the four requirements,
-the recommendation for each architecture and BUGS. This file holds the aarch64 section as written on
-2026-09-23: the first draft's two errors, why no aarch64 cloud machine booted nife, the offers
-table, and the Oracle Ampere A1 experiment.
+the recommendation for each architecture and BUGS. This file holds why no aarch64 cloud machine
+boots nife, the offers table as read on 2026-09-23, and the Oracle Ampere A1 experiment.
 
-*Corrected 2026-10-11 (UTC), verified against `uefi_loader/src/arch/aarch64/mod.rs` and
-[`notes/boot-stick/device-tree-handover.md`](../boot-stick/device-tree-handover.md): the first
-blocker below is lifted.* On 2026-09-23 the loader learned to write a device tree from the ACPI
-tables (`uefi_loader/src/device_tree_from_acpi.rs`). Under QEMU with ACPI on, the stick now reaches
-the same shell prompt as with a firmware tree. The second blocker, the kernel's link address, still
-stands. No cloud machine has been booted, so every `no (nife)` below is now unverified rather than
-known. The text below is the section as written on 2026-09-23, kept because it is the record of
-the correction.
+The loader writes a device tree from the ACPI tables (`uefi_loader/src/device_tree_from_acpi.rs`),
+and under QEMU with ACPI on the stick reaches the same shell prompt as with a firmware tree
+(verified against `uefi_loader/src/arch/aarch64/mod.rs` and
+[`notes/boot-stick/device-tree-handover.md`](../boot-stick/device-tree-handover.md)). So the first
+blocker below, the loader reading only a firmware device tree, is lifted. The second, the kernel's
+link address, stands. No cloud machine has been booted, so every `no (nife)` below is unverified
+rather than known.
 
-## The first draft, and its two errors
+## The image exists, and requirement 1 is unverified rather than failed
 
-This section was wrong on 2026-09-23 and is rewritten rather than quietly amended. It said
-*"none of these qualifies"* and priced the aarch64 leg as needing *"a UEFI-bootable image that does
-not exist yet"*. calef pushed back: *"aarch64 has no cloud options. That doesn't seem right. What
-about AWS?"* He was right to. Two errors, of different kinds:
+calef, 2026-09-23: *"aarch64 has no cloud options. That doesn't seem right. What about AWS?"*
 
 1. The image exists. `xtask/src/stick.rs`'s `payload_aarch64` builds `BOOTAA64.EFI` for the
    `aarch64-unknown-uefi` target, out of the aarch64 archive, the kernel, and `uefi_loader/`.
    `BOOTAA64.EFI` at the EFI system partition's default path is exactly what a UEFI aarch64 machine
-   boots. That was checkable in this repository and was not checked, which makes it the worse of the
-   two errors.
-2. "Unverified" was reported as "disqualified". A requirement nobody checked is a gap in the
-   evidence, not a failure by the offer. The tables now score requirement 1 with a vocabulary that
-   keeps the two apart, and it applies to every architecture. The four values are in the parent's
-   table under "The four hard requirements". The last, `no (nife)`, did not exist in the first draft
-   and it is where this whole column actually lands.
+   boots.
+2. "Unverified" is not "disqualified". A requirement nobody checked is a gap in the evidence, not a
+   failure by the offer. The tables score requirement 1 with a vocabulary that keeps the two apart,
+   and it applies to every architecture. The four values are in the parent's table under "The four
+   hard requirements". The last, `no (nife)`, is where this whole column lands.
 
-And the corrected answer is more interesting than the error. Every aarch64 offer below passes
-requirements 2, 3 and 4 and lets you bring your own image. The blocker is in this repository, it is
-already written down, and no amount of money moves it.
+Every aarch64 offer below passes requirements 2, 3 and 4 and lets you bring your own image. The
+blocker is in this repository, it is written down, and no amount of money moves it.
 
 ## Why no aarch64 cloud machine booted nife on 2026-09-23
 
@@ -100,8 +92,8 @@ supported on *"All virtualized instances built on the Nitro System"*, the EC2 AP
 `c7g.large` has two cores. So the relevant aarch64 price is $0.073 an hour, not $2.32 -- a factor
 of 32 -- and a 16-core `c7g.4xlarge` at $0.58 sits between them. Bare metal buys removed
 virtualization, which matters for a timing claim and not for a soak that only has to cross cores.
-The first draft priced the most expensive row in the family and called the architecture
-unaffordable.
+Pricing the most expensive row in the family makes the architecture look unaffordable when it is
+not.
 
 One caveat on bare metal specifically cuts the other way. AWS's boot-mode page says *"All
 instances built on the AWS Nitro System support both UEFI and Legacy BIOS, except the following: bare
@@ -111,13 +103,11 @@ better target anyway.
 
 ## Oracle Ampere A1, and exactly what would resolve it
 
-The first draft called this *"genuinely ambiguous"* and passing three of four, and said the ambiguity
-was the most valuable thing in the section. It was, and it is now resolved far enough to act on,
-in the unfavorable direction.
+Oracle's offer is resolved far enough to act on, in the unfavorable direction.
 
-The Oracle page's ambiguity was about Linux guests: Arm shapes take custom imported images in
+The Oracle page's ambiguity is about Linux guests: Arm shapes take custom imported images in
 paravirtualized mode only, the listed guests are all Linux or Windows, and the stated requirement is
-a *"Linux kernel version 3.4 or later"*. That ambiguity is no longer the deciding one. Ampere A1
+a *"Linux kernel version 3.4 or later"*. That ambiguity is not the deciding one. Ampere A1
 instances boot UEFI and are SBBR-class, so they present ACPI and no device tree, and nife's
 aarch64 path needs a device tree. Requirement 1 is `no (nife)` for the same reason as every other
 row, and Oracle's own wording is not what settles it.

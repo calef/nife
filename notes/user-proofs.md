@@ -46,11 +46,10 @@ That is the size of the document's text, not the size of what `save` writes. The
 permit it, and typing 31 characters onto the last line of a freshly loaded full file reaches it. It
 staged 3231 bytes into a 3200-byte buffer and panicked the editor on `^S`.
 
-Nothing found this in the five days `rmle` had existed. *(Corrected 2026-10-11 UTC: this said
-"eight months". The editor landed on 2026-08-27 UTC as `kilo`, commit `f3d119d6e`.)* It was found
-by trying to state the property, before any harness ran. That is the mechanism milestone 191 (did
-the proofs catch the bugs?) said the tree was missing. A property has to be written down before it
-can be checked, and writing it down is where the two constants got compared for the first time.
+No test found this. It was found by trying to state the property, before any harness ran. That is
+the mechanism milestone 191 (did the proofs catch the bugs?) said the tree was missing. A property
+has to be written down before it can be checked, and writing it down is where the two constants got
+compared for the first time.
 
 The fix is the buffer sized as `MAX_ROWS * (MAX_COLS + 1)`, one separator budgeted per row rather
 than per gap, and a `const` assertion beside it rather than a proof:
@@ -182,13 +181,10 @@ Four reasons it is not worth it, in the order they matter:
    runtime, and holds no capability. Its failure mode is a wrong gate result, not a compromised
    system. Every argument in DECISIONS §14 for a verified core is an argument about the core.
 2. **Proving its parsers would destroy the thing that makes them worth having.** `xtask`'s
-   hand-written decoders (the screendump readers, and until 2026-09-15 the mDNS prober) exist
-   *precisely* to be a second opinion: `xtask/Cargo.toml`'s comment said the prober's wire-format side
-   was deliberately not shared with `multicast_dns_protocol`, "or the gate would be checking
-   `multicast_dns_protocol` against itself." Both were retired by milestone 298; the argument
-   outlived them. Aiming the same
-   prover at both halves of a deliberately independent pair narrows the independence that is their
-   entire justification.
+   hand-written decoders exist *precisely* to be a second opinion on the shared crate they check,
+   which is why such a decoder does not share that crate's wire-format code: otherwise the gate
+   would be checking the crate against itself. Aiming the same prover at both halves of a
+   deliberately independent pair narrows the independence that is their entire justification.
 3. **It is the environment Kani is least differentiated in.** `xtask` is host code with `std`, a
    heap, `#[test]`s, `cargo test`, a debugger and a stack trace. Kani earns its keep where testing
    cannot go: no allocator, no scheduler, an input space nobody can enumerate. None of that is true

@@ -2,10 +2,8 @@
 
 *An appendix to [`notes/std.md`](../std.md), which is the page to read. This file holds the five
 calls that compiled and then killed the process, and the `cargo xtask std-aborts` check with its
-EXAMPLES and BUGS. It was moved here verbatim from the main page on 2026-09-25 (UTC), under [§212 (a
-prose budget)](../../design/decisions/0212-a-prose-budget-for-every-document.md). The directory
-`notes/std/` and this file's stem are provisional names, minted that day by the lane that split the
-file. Naming is calef's.*
+EXAMPLES and BUGS. The directory `notes/std/` and this file's stem are provisional names. Naming is
+calef's.*
 
 The records this file cites by number:
 
@@ -80,8 +78,8 @@ $ cargo xtask std-aborts
 std-aborts: 26 process-ending bodies across 79 compiled std sources, all accounted for
 ```
 
-The fix the check prompted, read off the binary rather than off the source, which is the form of
-evidence this milestone is short of:
+What the check holds `exit` to, read off the binary rather than off the source, which is the form
+of evidence this milestone is short of:
 
 ```
 $ llvm-objdump -d --demangle std_exerciser/target/aarch64-unknown-nife/release/std_exerciser
@@ -97,16 +95,17 @@ $ llvm-objdump -d --demangle std_exerciser/target/aarch64-unknown-nife/release/s
   40c2b0: brk  #0                               ; still a fault, which is what abort MEANS
 ```
 
-`exit` used to be the second of those two. That is the whole bug in six instructions: the same
-`brk`, under the name of the call that is supposed to be the clean one.
+`exit` flushes and calls `SYS_EXIT`; only `abort` is the `brk`. The bug this check exists for is
+`exit` compiling to that same `brk`, under the name of the call that is supposed to be the clean
+one.
 
 ### BUGS
 
 - It covers `sys/` and nothing else, on purpose, and that is a real gap. `sys` *is* std's
   platform layer: a panic under it says "this platform has nothing to offer", while a panic in
-  `path.rs` or `thread/scoped.rs` says "you called this wrong" and says it identically on Linux. The
-  first version swept all of std, found about forty of the second kind and none of the first, and
-  would have been abandoned within a week. The cost of the narrowing is that portable std code
+  `path.rs` or `thread/scoped.rs` says "you called this wrong" and says it identically on Linux. A
+  sweep of all of std finds about forty of the second kind and none of the first, which is a list
+  nobody keeps reading. The cost of the narrowing is that portable std code
   which is only reachable on a platform this thin is invisible here (a `LazyLock` poisoned by an
   earlier panic, say), and finding those still needs somebody reading.
 - An accepted entry matches a substring of a line, not a line number. That is what stops a

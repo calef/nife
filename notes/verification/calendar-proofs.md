@@ -54,9 +54,8 @@ The composition is stated in the crate. `from_unix` is `civil_from_days(secs.div
 plus a time of day. `to_unix` is `days_from_civil(...) * 86_400` plus the same time of day. So the
 two halves join.
 
-Iterating a slice whose length is symbolic costs more than the parser it wraps. Three harnesses
-originally went through `&str`, and each ran past ten minutes *in symbolic execution*, before the
-solver saw anything. The cause was not the calendar or the grammar. It was `core::str::from_utf8`
+Iterating a slice whose length is symbolic costs more than the parser it wraps. Through `&str`,
+three harnesses each ran past ten minutes *in symbolic execution*, before the solver saw anything. The cause was not the calendar or the grammar. It was `core::str::from_utf8`
 and `for &b in slice` over a variable-length slice, which makes CBMC branch on the length at every
 step. Two changes fixed it, and both improved the code rather than weakening the proof:
 

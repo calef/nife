@@ -1,11 +1,8 @@
 # The proof: one binary, three behaviors
 
 *An appendix to [`notes/std.md`](../std.md), which is the page to read. This file holds what
-`std_exerciser` does under each grant, and which kernel tests spawn it. It was moved here verbatim
-from the main page on 2026-09-25 (UTC), under [§212 (a prose
-budget)](../../design/decisions/0212-a-prose-budget-for-every-document.md). The directory
-`notes/std/` and this file's stem are provisional names, minted that day by the lane that split the
-file. Naming is calef's.*
+`std_exerciser` does under each grant, and which kernel tests spawn it. The directory `notes/std/`
+and this file's stem are provisional names. Naming is calef's.*
 
 The records this file cites by number:
 
@@ -48,7 +45,7 @@ a directory capability (`File::open` on the fixture name) and then for the netwo
   in one message, and removes the tree with `remove_dir_all`. The tree it lists is one it built,
   deliberately, and not the fixture's `sub`. Milestone 47's directory-capability attacker is granted
   exactly that directory and writes into it. So `sub`'s contents depend on which tests ran first in
-  this boot, and the first version of this transcript asserted them and failed. `sub/inner` and
+  this boot, so the transcript does not assert them. `sub/inner` and
   `sub/deeper/leaf` are safe to *read* because the post-run host check pins them. It cleans up
   before it starts rather than after, because `NIFE_KEEP_REDOXFS=1` runs the suite against an image
   a previous boot wrote. The kernel test
