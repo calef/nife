@@ -98,7 +98,7 @@ static RELEASE: AtomicBool = AtomicBool::new(false);
 /// (`components/confinement_attackers`, milestone 261's DMA-escape test). Only `test` sets it, so
 /// the suite and its falsification replays (`cargo xtask test --test ...`) get the attacker
 /// `non_volatile_memory_express` server and every other boot (`run`, `stick`, `install`, the
-/// benches, the soaks, swish-check) packs the shipped one. Read by [`build_programs`]. Name
+/// benches, the soaks, swish-check) packs the shipped one. Read by `archive::build_programs`. Name
 /// provisional.
 static CONFINEMENT_ATTACKERS: AtomicBool = AtomicBool::new(false);
 
@@ -119,33 +119,6 @@ fn cargo_profiled(args: &[&str]) -> bool {
         v.push("--release");
     }
     cargo(&v)
-}
-
-/// **Build the two program packages, `components` and `fixtures`, for `target`**, in the run's
-/// profile and with the attacker roles only when [`CONFINEMENT_ATTACKERS`] says so. The one place
-/// the three initial ramdisk builders ([`user`], [`archive::initial_ramdisk_riscv`],
-/// [`archive::initial_ramdisk_x86`]) spell that build, so the feature cannot reach one
-/// architecture's archive and not another's. Switching between a test and any other boot recompiles
-/// `components`, because cargo fingerprints features; that is the price of the shipped image not
-/// containing the attacker. Name provisional.
-pub(crate) fn build_programs(target: &str) -> bool {
-    let mut args = vec![
-        "build",
-        "-p",
-        "components",
-        "-p",
-        "fixtures",
-        "--target",
-        target,
-    ];
-    if CONFINEMENT_ATTACKERS.load(Ordering::Relaxed) {
-        args.extend(["--features", "components/confinement_attackers"]);
-    }
-    // A swish-check probe's own program feature (`--input-race`), on no other boot.
-    if let Some(feature) = swish_check::probe_program_feature() {
-        args.extend(["--features", feature]);
-    }
-    cargo_profiled(&args)
 }
 
 fn main() -> ExitCode {
@@ -329,7 +302,7 @@ fn build() -> bool {
 /// an **ELF**: the kernel's loader wants program headers, unlike the kernel itself, which QEMU
 /// wants as a flat image. See notes/elf.md.
 pub(crate) fn user() -> bool {
-    build_programs(TARGET) && initial_ramdisk_aarch64()
+    archive::build_programs(TARGET) && initial_ramdisk_aarch64()
 }
 
 /// The packed initial ramdisk archive ([`archive::initial_ramdisk_path`]) is what

@@ -86,7 +86,7 @@ pub(super) fn probe_features() -> &'static str {
     }
 }
 
-/// The `components` feature a probe adds, or `None`. Read by `crate::build_programs`.
+/// The `components` feature a probe adds, or `None`. Read by `archive::build_programs`.
 pub(crate) fn probe_program_feature() -> Option<&'static str> {
     (probe() == Probe::InputRace).then_some("components/input_race_probe")
 }
