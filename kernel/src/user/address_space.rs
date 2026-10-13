@@ -431,11 +431,24 @@ impl AddressSpace {
     ///
     /// Not for a test that reads through the user translation itself or installs a space on
     /// another core: those carry their own arguments (`system_tests::user::tests` keeps both).
+    ///
+    /// **Interrupts are masked from the install to the uninstall, so `body` must be short and must
+    /// not block or yield.** The scheduler does not know about this install: the calling kernel
+    /// thread has no space of its own, so a switch back to it puts the reserved root in place of
+    /// this one. A timer tick inside `body` that switched away and back therefore uninstalled the
+    /// space under the question being asked, and `translate_user` answered for the kernel's empty
+    /// low half instead. That was the x86_64 OVMF flake of 2026-10-13 (UTC), merge-group run
+    /// 38345573542 ("shared page not mapped"), and it was the same race on all three
+    /// architectures. Masking also keeps the thread on this core, which a migration would break the
+    /// same way. `address_space_tests::an_installed_space_stays_installed_across_a_timer_tick` is
+    /// the witness. A body that has to block would need the space bound to the thread
+    /// (`sched::adopt_address_space`), so the switch puts it back.
     #[cfg_attr(
         not(any(feature = "system_tests", target_arch = "riscv64")),
         allow(dead_code)
     )]
     pub fn while_installed<R>(&self, body: impl FnOnce() -> R) -> R {
+        let interrupts_were_enabled = crate::arch::interrupts::disable();
         // SAFETY: `ttbr0` composes this space's own root (built by a `Mapper` over `Half::Low`,
         // with the kernel's high half shared into it by both constructors) with the ASID allocated
         // to it, which is every architecture's contract. The root lives as long as `self`, which
@@ -444,6 +457,7 @@ impl AddressSpace {
         unsafe { mmu::activate_user(self.ttbr0()) };
         let result = body();
         mmu::deactivate_user();
+        crate::arch::interrupts::restore(interrupts_were_enabled);
         result
     }
 }

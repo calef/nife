@@ -4,7 +4,7 @@
 //! Name: provisional, minted 2026-10-12 (UTC) by the lane for milestone 873 (the catch-all
 //! userspace test file is split by topic).
 
-use core::sync::atomic::{AtomicBool, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use super::test_programs::{a_kernel_address, loader_subject_image, outlaw_image};
 use super::*;
@@ -355,6 +355,90 @@ fn a_read_only_segment_is_mapped_read_only() {
         );
     });
     drop(space);
+}
+
+/// **A space installed with `while_installed` is still installed when its body asks, however many
+/// timer ticks the body spans.**
+///
+/// The witness for the x86_64 OVMF flake of 2026-10-13 (UTC), merge-group run 38345573542, where
+/// `map_physical_maps_a_shared_frame_and_a_device_page` read "shared page not mapped" from a page it
+/// had just mapped. `translate_user` walks the root the CPU holds now, and a kernel thread has no
+/// space of its own, so a context switch back to it installs the kernel's reserved root. A
+/// preemption between the install and the walk therefore took the space away under the body. It
+/// needs a tick inside a window a few microseconds wide and another runnable thread on the same
+/// core, and the one-core OVMF leg had that thread: `a_user_client_moves_data_through_shared_memory`,
+/// the test just before, leaves its client spinning forever.
+///
+/// This test makes both conditions certain rather than lucky: a competitor is resident on this
+/// thread's core, and the body spans five tick periods before it walks. Without interrupts held
+/// off inside `while_installed` it failed on every run on all three architectures (2026-10-13 UTC).
+///
+/// Name: provisional, lane maintainer/map-physical-flake, 2026-10-13 (UTC).
+///
+/// Falsification: replayable `system_tests/falsifications/user.address_space_tests.an_installed_space_stays_installed_across_a_timer_tick.patch`
+#[test_case]
+fn an_installed_space_stays_installed_across_a_timer_tick() {
+    const VA: u64 = address_space_map::pair_page(0x0000_0000_0060_0000);
+    static STOP: AtomicBool = AtomicBool::new(false);
+    static SEEN_ON: AtomicU64 = AtomicU64::new(0);
+    static DONE: AtomicU64 = AtomicU64::new(0);
+    STOP.store(false, Ordering::SeqCst);
+    SEEN_ON.store(0, Ordering::SeqCst);
+    DONE.store(0, Ordering::SeqCst);
+
+    // One competitor per online core. Each never yields and keeps saying which core it is on.
+    let mut spawned = 0u64;
+    for target in crate::smp::online_cpus() {
+        sched::spawn_on(target, || {
+            while !STOP.load(Ordering::Relaxed) {
+                SEEN_ON.fetch_or(1 << crate::cpu::id(), Ordering::Relaxed);
+                core::hint::spin_loop();
+            }
+            DONE.fetch_add(1, Ordering::SeqCst);
+        })
+        .expect("spawn failed");
+        spawned += 1;
+    }
+    // **The precondition: a competitor is resident on the core this thread is on.** `spawn_on` is
+    // a hint, so on two cores both can land on the other one; then nothing here is runnable when
+    // the tick comes and the window proves nothing (the first two-core run without the fix passed
+    // that way). `wait_for` yields, and a core left idle by that yield steals a competitor, so the
+    // bit for this core does come up. Once it has, no core is idle and nothing steals it back.
+    assert!(
+        wait_for(|| SEEN_ON.load(Ordering::Relaxed) & (1 << crate::cpu::id()) != 0),
+        "no competitor ever ran on this thread's core, so the window below would prove nothing",
+    );
+
+    let mut space = AddressSpace::new(2).expect("no address space");
+    let frame = crate::memory::alloc().expect("no frame").addr();
+    space
+        .map_physical(
+            VA,
+            frame,
+            Flags::user_data(),
+            crate::revoke::PageMapSource::NoCapability,
+        )
+        .expect("map failed");
+
+    let seen = space.while_installed(|| {
+        timer::spin_for(5 * timer::interval());
+        mmu::translate_user(VA).map(|(pa, _)| pa)
+    });
+
+    STOP.store(true, Ordering::SeqCst);
+    assert!(
+        wait_for(|| DONE.load(Ordering::SeqCst) == spawned),
+        "the competitors never stopped",
+    );
+    drop(space);
+    crate::memory::free(PageFrame::from_addr(frame));
+
+    assert_eq!(
+        seen,
+        Some(frame),
+        "the space was uninstalled under the body: a tick switched away and back, and the switch \
+         back put the kernel's reserved root in its place",
+    );
 }
 
 /// A dead user thread's address space is freed, all of it, including its page tables.
