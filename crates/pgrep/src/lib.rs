@@ -1,42 +1,14 @@
-//! **`pgrep`: a domain names its members, and that is all naming buys you** (milestone 126,
-//! notes/process-view.md).
+//! **`pgrep`: a domain names its members, and that is all naming buys you** (notes/process-view.md).
+//! This is the filter, lifted out so it runs on the host; `components/src/pgrep.rs` is the syscall
+//! and the output. It takes a finished [`ps::Survey`] from [`ps::collect`] rather than walking,
+//! because two implementations of `SURVEY`'s resume protocol could disagree.
 //!
-//! This is the filter, lifted out of the program so it runs on the host in milliseconds;
-//! `components/src/pgrep.rs` is the syscall and the two output streams. The crate and the program share a
-//! name for the reason the naming tenet gives: they are one thing split at the IO boundary, as
-//! `ps`, `coremark`, `line_editor` and `compositor` all are.
+//! **There is no `pkill`, and the ABI is why.** A survey returns a tid, a tid is a name, and
+//! [`abi::thread_control_block`] has no `DESTROY`: killing a child is `DESTROY` on the region it was
+//! built from, held by whoever spawned it (§24 (interrupting the foreground process)). Nothing this
+//! program prints carries authority over what it printed.
 //!
-//! # It filters; it does not walk
-//!
-//! The domain is walked by [`ps::collect`], which is the loop `components/src/ps.rs` runs, and this crate
-//! takes the finished [`ps::Survey`]. That is deliberate rather than tidy: a second cursor walk
-//! would be a second implementation of `abi::rendezvous::SURVEY`'s resume protocol, and the one thing
-//! worse than one walk that can be wrong is two that can disagree.
-//!
-//! # The demonstration is asymmetric on purpose, and the missing half is the claim
-//!
-//! On Unix, `pgrep` and `pkill` do the same lookup and differ only in what they do with the answer.
-//! The split between them is convention: `kill(pid)` turns a **name** into an **action**, so
-//! anything that can find a process can end it.
-//!
-//! **A domain names its members and does not act on them** (calef, 2026-08-17). So this system has
-//! `pgrep` and **cannot have `pkill`**, and the reason is in the ABI rather than in a policy: a
-//! survey returns a tid, a tid is a name, [`abi::thread_control_block`] has no `DESTROY`, and killing a live child is
-//! `abi::memory_region::DESTROY` on the region it was built from, held by whoever spawned it (DECISIONS
-//! §24's forcible `^C`). There is no path from the output of this program to authority over anything
-//! it printed.
-//!
-//! What that costs, said plainly rather than dropped: `caps pgrep` prints a scope and **there is no
-//! `caps pkill` to print beside it**, so the side-by-side comparison the milestone originally
-//! promised does not exist. A reader who expects `kill` to be a program in this port will not find
-//! one. The claim is stronger and the demonstration is thinner, and both halves of that are true.
-//!
-//! # Four answers, and telling them apart is the deliverable
-//!
-//! `ps` has three (a listing, an empty domain, a refusal) and this adds one: a selector that
-//! **matched nothing** in a domain that really has members. On Unix these two collapse, because
-//! `pgrep` prints nothing and exits 1 whether the pattern missed or the caller could not look, and
-//! a monitor cannot tell "no cron running" from "you may not ask".
+//! Four answers, kept apart because Unix collapses the last two into "prints nothing, exits 1":
 //!
 //! | what happened | output stream | diagnostics |
 //! |---|---|---|
@@ -45,104 +17,26 @@
 //! | the domain is empty | nothing | `pgrep: this domain holds no processes` |
 //! | the walk was refused | nothing | `pgrep: this endpoint may be sent to, but not looked at ...` |
 //!
-//! The refusal wording is [`ps::Survey::complaint`]'s, reused rather than restated, so the two
-//! programs cannot drift into describing the same refusal differently.
-//!
-//! # What the pattern is, and where it is resolved
-//!
-//! **Upstream `pgrep`'s pattern matches a process name, and this system has none** (`ps`'s `BUGS`:
-//! there is `arg0` in `Spawn` and no display name at all). So the pattern here matches the one
-//! other thing a domain honestly knows about a member, which is its **run state**:
-//! `pgrep dead` names this domain's corpses, `pgrep 'r*'` names the ready and the running, `pgrep
-//! '*'` names everything.
-//!
-//! The pattern never crosses a process boundary. [`Selector::from_pattern`] resolves it into a
-//! [`Selector`], which is a small bitmask, and the mask is what a spawner hands the program. That
-//! is the same move `rm -r` makes: the recursion flag is resolved at the prompt into the *rights*
-//! the granted capability carries, so the program is handed authority rather than text. It also
-//! happens to be the only option available, and that is worth saying rather than dressing up as
-//! taste: see this module's `BUGS`.
-//!
-//! # EXAMPLES
-//!
-//! At the prompt. With no selector the answer is every member, one tid per line, which is `ps`
-//! without the columns and is what pipes:
-//!
-//! ```text
-//! $ pgrep
-//! 5
-//! 9
-//! $ pgrep | wc          the domain, counted
-//! ```
-//!
-//! And the answer with no Unix equivalent, because on Unix "nothing matched" and "you may not look"
-//! are one output:
-//!
-//! ```text
-//! $ pgrep               pgrep: none of the 2 processes in this domain are dead
-//! $ pgrep               pgrep: this process holds no process-domain capability
-//! ```
-//!
-//! From a host test, with no kernel and no emulator:
-//!
-//! ```
-//! use ps::{MAX_ROWS, Row};
-//!
-//! // A domain of one blocked thread and one corpse.
-//! let mut reader = |cursor: u64| match cursor {
-//!     0 => (1, 7, abi::survey::BLOCKED),
-//!     1 => (2, 9, abi::survey::DEAD),
-//!     _ => (abi::survey::DONE as i64, 0, 0),
-//! };
-//! let mut rows = [Row::default(); MAX_ROWS];
-//! let survey = ps::collect(&mut rows, &mut reader);
-//!
-//! let corpses = pgrep::Selector::from_pattern(b"dead");
-//! let found = pgrep::select(&survey, corpses);
-//! assert_eq!(found.matched(), 1);
-//!
-//! let mut text = Vec::new();
-//! found.write_report(&mut |b| text.extend_from_slice(b));
-//! assert_eq!(String::from_utf8(text).unwrap(), "9\n");
-//! ```
+//! The refusal wording is [`ps::Survey::complaint`]'s, so the two programs cannot drift. With no
+//! process names in this system, the pattern matches a member's run state (`pgrep dead`,
+//! `pgrep 'r*'`), and [`Selector::from_pattern`] resolves it into a bitmask before it crosses a
+//! process boundary, so the program is handed a mask rather than text.
 //!
 //! # BUGS
 //!
-//! - **The selector cannot be typed at the prompt, and the reason is a property of this system
-//!   rather than a gap in this program.** Nothing here delivers *bytes* from a command line to a
-//!   program: `grant_plan::Endowment::arg` is one `u64`, `grant_plan::spawnproto` carries three
-//!   words, and every string-shaped designation on a line (a file, a directory) arrives as a
-//!   **capability** instead of as text, which is what `rm logs/old` and `doc notes/glob.md` both
-//!   are. So the shipped `pgrep` is `pgrep '*'`: it names every member. This is `date`'s deliberate
-//!   under-declaration verbatim (`grant_plan::Prog::Date` reads three registers the shell cannot
-//!   set and takes the defaults), and it lifts when `ArgSpec` grows the positional arity milestone
-//!   47 deferred.
-//! - **It is glob, and upstream is an extended regular expression.** `crates/glob` is proven, has a
-//!   `cost_bound` nothing can blow past, and matches the shape of what is being matched here (four
-//!   short names); a regex engine does not exist in this tree and importing one to match one of four
-//!   words would be the dependency DECISIONS §46 declines. `pgrep 'r.*'` therefore does not mean
-//!   what a `procps` user expects, and `pgrep 'r*'` does.
-//! - **A pattern is matched with `glob::Dot::Ordinary`**, not the leading-dot rule `glob::matches`
-//!   defaults to. A state name never begins with a dot, and the rule exists for user-facing filename
-//!   listings; applying it here would be borrowing a filesystem convention for something that is
-//!   not a filesystem.
-//! - **There is no exit status to report with**, so "nothing matched" is a sentence on diagnostics
-//!   rather than upstream's exit 1. A caller that wanted to branch on the answer would have to count
-//!   the lines. `user_mode_runtime::exit` takes no code and giving it one is a syscall-surface change.
-//! - **The count in "none of the N processes" is the domain as this walk saw it**, which is a
-//!   sequence of snapshots (notes/process-view.md). A member born mid-walk is not in it.
-//! - **The cursor is not exposed here and must not become so.** `ps`'s rows carry tids and states
-//!   and nothing else, and `SURVEY`'s cursor leaks the machine's thread-table density to anyone who
-//!   can subtract two of them (notes/process-view.md's `BUGS`, and a proposed milestone). This
-//!   filter reads `ps::Survey`, which never held a cursor, so there is nothing here to widen.
+//! - The selector cannot be typed at the prompt: a command line delivers capabilities and a few
+//!   words, never bytes, so the shipped `pgrep` is `pgrep '*'` until `ArgSpec` gains positional
+//!   arguments.
+//! - It is glob, not an extended regex (no regex engine here, §46 (thin primitives or whole
+//!   subsystems)), so `pgrep 'r*'` works and `pgrep 'r.*'` does not; matched with
+//!   `glob::Dot::Ordinary`, since a state name is not a filename.
+//! - No exit status: "nothing matched" is a diagnostic sentence, since `exit` takes no code.
+//! - "none of the N processes" counts the domain as this walk saw it; a member born mid-walk is not
+//!   in it.
+//! - The survey cursor must never be exposed here: it leaks thread-table density.
 //!
-//! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review, confirming milestone
-//! 126's own reasoning). `pgrep` is upstream's, in the group of standard terms the tenet says are
-//! already right and must not be respelled; sharing it with `components/src/pgrep.rs` is the
-//! crate-and-program pair the same tenet describes, as `ps` and `crates/ps` already are.
-//! `Selector` is a type inside a crate rather than a
-//! crate, a program or a shared module, so it is outside the tenet's scope; it is **provisional** all
-//! the same, and a lane that finds a better word for it should take it.
+//! Name: ratified 2026-08-23 (calef): upstream's name, shared with `components/src/pgrep.rs` as
+//! one thing split at the IO boundary. `Selector` is provisional.
 
 #![cfg_attr(not(test), no_std)]
 
@@ -303,6 +197,31 @@ pub struct Selection<'a> {
 /// **Apply a selector to a walked domain.** Counts here rather than at print time, because
 /// DECISIONS §67 makes a program say everything it has to complain about *before* it writes a byte
 /// of output, and "nothing matched" is a complaint that needs the count.
+///
+/// # Examples
+///
+/// From a host test, with no kernel and no emulator:
+///
+/// ```
+/// use ps::{MAX_ROWS, Row};
+///
+/// // A domain of one blocked thread and one corpse.
+/// let mut reader = |cursor: u64| match cursor {
+///     0 => (1, 7, abi::survey::BLOCKED),
+///     1 => (2, 9, abi::survey::DEAD),
+///     _ => (abi::survey::DONE as i64, 0, 0),
+/// };
+/// let mut rows = [Row::default(); MAX_ROWS];
+/// let survey = ps::collect(&mut rows, &mut reader);
+///
+/// let corpses = pgrep::Selector::from_pattern(b"dead");
+/// let found = pgrep::select(&survey, corpses);
+/// assert_eq!(found.matched(), 1);
+///
+/// let mut text = Vec::new();
+/// found.write_report(&mut |b| text.extend_from_slice(b));
+/// assert_eq!(String::from_utf8(text).unwrap(), "9\n");
+/// ```
 pub fn select<'s>(survey: &'s ps::Survey<'_>, selector: Selector) -> Selection<'s> {
     let rows = survey.rows();
     Selection {

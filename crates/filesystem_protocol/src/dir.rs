@@ -124,6 +124,27 @@ pub const fn explain(errno: i32) -> &'static str {
 /// **A rights set on one directory or file handle.** Opaque on purpose: the only ways to make
 /// one are [`Rights::root`], which the mount calls once for the directory the endpoint is bound
 /// to, and [`Rights::attenuate`], which cannot widen.
+///
+/// # Examples
+///
+/// Attenuation is a bitwise AND, so no chain of calls widens a child past its parent.
+///
+/// ```
+/// use filesystem_protocol::dir::{self, Rights};
+///
+/// // What a shell holds over the user's home directory.
+/// let home = Rights::root(dir::ALL);
+///
+/// // What it hands a log writer: somewhere to write, and no power to delete what is there.
+/// let logs = home.attenuate(dir::READ | dir::WRITE | dir::CREATE);
+/// assert!(logs.allows(dir::WRITE));
+/// assert!(logs.denies_all(dir::REMOVE));
+///
+/// // The log writer passing its authority on cannot widen it back, however it asks.
+/// let narrower = logs.attenuate(dir::ALL);
+/// assert_eq!(narrower.bits(), logs.bits());
+/// assert!(narrower.denies_all(dir::REMOVE));
+/// ```
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Rights(u64);
 

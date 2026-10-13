@@ -1,28 +1,9 @@
-//! **glob: does this pattern match this name?** (milestone 47, the navigation-and-naming lane).
-//!
-//! A pattern and a name go in, a `bool` comes out. That is the whole crate. It performs no IO,
-//! makes no syscalls, reads no directory, allocates nothing, and holds no capability. It does not
-//! know what a file is.
-//!
-//! That narrowness is the point rather than an accident of scheduling. Milestone 47's finding is
-//! that the interesting question about globbing here is not *how to match*, which is a solved
-//! problem with fifty years of prior art, but **what a match grants**: `rm *.txt` with five hundred
-//! hits must convey exactly those five hundred files and nothing else, which the roadmap answers
-//! with an `fs_file_caretaker` attenuated to a **name set** rather than a directory capability.
-//! That wiring needs the directory-capability verb and the shell's expansion path, and it is a
-//! different lane. What is left over is exactly this: a total function on two byte strings, which
-//! is the part that can be machine-checked.
-//!
-//! The property the rest of the milestone wants from this crate is small and worth stating: **the
-//! expansion you see is the grant.** `echo *.txt` prints literally the authority `rm *.txt` would
-//! transfer, because the matched set *is* the namespace the caretaker will serve. That only means
-//! anything if the matcher is the same matcher in both places and cannot be talked into a different
-//! answer, so it lives here, once, with proofs.
-//!
-//! DECISIONS §46 rule 1 is why it is written rather than depended on: it is on the verification
-//! path, and you cannot restructure someone else's crate to make a model checker tractable.
-//!
-//! # What a pattern is
+//! **glob: does this pattern match this name?** A total function on two byte strings: no IO, no
+//! syscalls, no allocation, no capability. What a match grants is the shell's question, and the
+//! answer is that the expansion you see is the grant: `echo *.txt` prints exactly what `rm *.txt`
+//! would hand over, which only holds if one matcher serves both. So it lives here once, with
+//! proofs, and is written rather than depended on because it is on the verification path (§46
+//! (thin primitives or whole subsystems; we write everything in between)). See notes/glob.md.
 //!
 //! | syntax | meaning |
 //! |---|---|
@@ -34,123 +15,20 @@
 //! | `\x` | the byte `x`, with no special meaning |
 //! | anything else | itself |
 //!
-//! Everything is **bytes**, not characters. A name on this system is a byte string
-//! (`filesystem_protocol::grant::MAX_NAME` is sixteen of them), and a matcher that decoded UTF-8 would have to
-//! decide what to do with a name that is not valid UTF-8, which is a question the filesystem does
-//! not ask. `?` therefore matches one *byte*, so it matches half of a two-byte UTF-8 character. That
-//! is the same behaviour as `fnmatch(3)` in the C locale and as every shell running under it.
+//! Everything is bytes, as `fnmatch(3)` in the C locale: a name is a byte string, so `?` can match
+//! half of a UTF-8 character. There is no error case, because a pattern is untrusted input: an
+//! unclosed `[` and a trailing `\` mean themselves, as in bash. A leading `.` in a name is matched
+//! only by a literal `.` ([`Dot::Special`], glibc's `FNM_PERIOD`), because `rm *` grants what it
+//! matches and the default should grant less. One name only: `**`, qualifiers and POSIX classes are
+//! out permanently (notes/glob-scope.md).
 //!
-//! # There is no error case
+//! It cannot be made to hang. It keeps one backtrack point, the latest `*`, so retries advance
+//! monotonically: at most `name.len() + 1`, each one pass over the pattern. [`cost_bound`] computes
+//! that from the lengths alone, Kani proves [`match_steps`] never exceeds it, and a host test runs
+//! the exponential-shaped pattern against a hundred thousand bytes. A caller can refuse an
+//! expensive pattern before starting.
 //!
-//! [`matches()`] is total and infallible. There is no `Result`, because there is no malformed
-//! pattern: a `[` with no closing `]` is a literal `[`, and a trailing `\` is a literal `\`. Both
-//! follow `fnmatch(3)` and bash, and both matter here for a reason beyond compatibility. A pattern
-//! is untrusted input, typed by a person or produced by a program, and the alternative to "it means
-//! itself" is an error path in the shell's grant planner for every typo. `ls [foo` should list the
-//! file called `[foo` if there is one, which is what it does.
-//!
-//! # A leading dot, and why the default is the smaller grant
-//!
-//! By default (`Dot::Special`, what [`matches()`] uses) a name beginning with `.` is matched only by a
-//! pattern beginning with a literal `.`. So `*` does not match `.config`, and neither does `?` match
-//! `.`, and neither does `[.]config`, which is glibc's rule for `FNM_PERIOD` exactly. Pass
-//! [`Dot::Ordinary`] to [`matches_with`] to turn the rule off.
-//!
-//! This is a *policy*, not a matching fact, and in fnmatch it is a flag for that reason. It is the
-//! default here because of what a match means in this system: `rm *` hands the child authority over
-//! everything it matched, so the default should be the interpretation that grants less. A user who
-//! wants the dotfiles asks for them by name, and gets the larger grant deliberately.
-//!
-//! # `**` and qualifiers are not here, and that is a decision
-//!
-//! This crate matches **one name**, a single path component, the thing `filesystem_protocol`
-//! actually carries. Recursive descent (`**`) is out **permanently, not "not yet"**: it is a
-//! traversal feature, and descending means holding a capability, which is an authority question a
-//! pure function must not hide. zsh-style qualifiers (`*(.)`, `*(om[1])`) are out for the same
-//! shape of reason: a qualifier needs a read right beyond enumerate, which changes what the
-//! command is. POSIX character classes are out because a locale has no meaning here, and their
-//! quiet misparse is pinned by a test. The arguments, and the `/`-is-a-byte cost of matching one
-//! name, are [notes/glob-scope.md](../../notes/glob-scope.md).
-//!
-//! # Why it cannot be made to hang
-//!
-//! A pattern is untrusted input, so "pathological pattern makes the shell stop responding" is a
-//! denial of service, not a performance note. The classic way to earn one is the recursive matcher
-//! everybody writes first: `a*a*a*a*b` against a long run of `a` makes it try every way of splitting
-//! the run between the stars, which is exponential.
-//!
-//! This matcher does not backtrack that way. It keeps **one** backtrack point, the most recent `*`,
-//! and on a mismatch retries with that `*` absorbing one more byte. A later `*` overwrites the
-//! saved one, because anything an earlier `*` could have absorbed a later one can absorb instead.
-//! The consequence is that the retry position advances monotonically and never resets: at most
-//! `name.len() + 1` retries, each costing at most one pass over the pattern.
-//!
-//! That bound is not left as prose. [`cost_bound`] computes it from the two lengths alone, before
-//! any matching happens, and [`match_steps`] reports what a match actually cost. Kani proves
-//! `match_steps(..).1 <= cost_bound(..)` over arbitrary short inputs, which is what says the
-//! accounting is sound; a host test then runs the exponential-shaped pattern against a hundred
-//! thousand bytes and checks the same inequality, which is what says the matcher is. A caller that
-//! wants to refuse an expensive pattern before running it can ask [`cost_bound`] and never start.
-//!
-//! # EXAMPLES
-//!
-//! ```
-//! use glob::{matches, matches_with, has_magic, literal, Dot};
-//!
-//! assert!(matches(b"*.txt", b"notes.txt"));
-//! assert!(!matches(b"*.txt", b"notes.md"));
-//!
-//! // One byte, not one character, and not a leading dot.
-//! assert!(matches(b"?ar", b"bar"));
-//! assert!(!matches(b"*", b".hidden"));
-//! assert!(matches_with(b"*", b".hidden", Dot::Ordinary));
-//!
-//! // Classes, ranges, negation.
-//! assert!(matches(b"[abc]at", b"cat"));
-//! assert!(matches(b"log[0-9].txt", b"log7.txt"));
-//! assert!(matches(b"[!a]at", b"cat"));
-//! assert!(!matches(b"[!c]at", b"cat"));
-//!
-//! // A malformed pattern is a literal, not an error.
-//! assert!(matches(b"[foo", b"[foo"));
-//!
-//! // The shell asks two questions of a word: is it a pattern at all, and if not, what name is it?
-//! assert!(has_magic(b"*.txt"));
-//! assert!(!has_magic(br"a\*b"));
-//! let mut buf = [0u8; 16];
-//! assert_eq!(literal(br"a\*b", &mut buf), Some(&b"a*b"[..]));
-//! assert_eq!(literal(b"*.txt", &mut buf), None); // it has magic; expand it instead
-//! ```
-//!
-//! # Examples
-//!
-//! ```
-//! use glob::{matches, has_magic};
-//!
-//! assert!(matches(b"*.rs", b"main.rs"));
-//! assert!(!matches(b"*.rs", b"main.c"));
-//! assert!(matches(b"src/?????.rs", b"src/hello.rs"));
-//! assert!(matches(b"[abc]at", b"cat"));
-//!
-//! // A pattern with no metacharacters is just a name, which callers use to skip the walk.
-//! assert!(has_magic(b"*.rs"));
-//! assert!(!has_magic(b"Cargo.toml"));
-//! ```
-//!
-//! A leading dot is special, the way a shell user expects, and [`matches_with`] is how you opt out:
-//!
-//! ```
-//! use glob::{matches, matches_with, Dot};
-//!
-//! assert!(!matches(b"*", b".config"));                       // `*` does not list dotfiles
-//! assert!(matches(b".*", b".config"));                       // an explicit dot does
-//! assert!(matches_with(b"*", b".config", Dot::Ordinary));    // ... unless you ask otherwise
-//! ```
-//!
-//! Name: ratified 2026-08-01 (calef, the naming tenet in CLAUDE.md). Named in the group of standard
-//! terms that are already right and must not be touched, because a name a reader knows from outside
-//! this project costs nothing to learn and renaming it would destroy the recognition the tenet
-//! exists to buy.
+//! Name: ratified 2026-08-01 (calef, the naming tenet): a standard term that is already right.
 
 #![no_std]
 
@@ -172,11 +50,51 @@ pub enum Dot {
 /// **Does `pattern` match `name`?** A leading `.` in the name is special; see [`Dot`].
 ///
 /// Total: every pair of byte strings has an answer, and no pattern makes this panic or hang.
+///
+/// # Examples
+///
+/// ```
+/// use glob::{matches, matches_with, has_magic, literal, Dot};
+///
+/// assert!(matches(b"*.txt", b"notes.txt"));
+/// assert!(!matches(b"*.txt", b"notes.md"));
+///
+/// // One byte, not one character, and not a leading dot.
+/// assert!(matches(b"?ar", b"bar"));
+/// assert!(!matches(b"*", b".hidden"));
+/// assert!(matches_with(b"*", b".hidden", Dot::Ordinary));
+///
+/// // Classes, ranges, negation.
+/// assert!(matches(b"[abc]at", b"cat"));
+/// assert!(matches(b"log[0-9].txt", b"log7.txt"));
+/// assert!(matches(b"[!a]at", b"cat"));
+/// assert!(!matches(b"[!c]at", b"cat"));
+///
+/// // A malformed pattern is a literal, not an error.
+/// assert!(matches(b"[foo", b"[foo"));
+///
+/// // The shell asks two questions of a word: is it a pattern at all, and if not, what name is it?
+/// assert!(has_magic(b"*.txt"));
+/// assert!(!has_magic(br"a\*b"));
+/// let mut buf = [0u8; 16];
+/// assert_eq!(literal(br"a\*b", &mut buf), Some(&b"a*b"[..]));
+/// assert_eq!(literal(b"*.txt", &mut buf), None); // it has magic; expand it instead
+/// ```
 pub fn matches(pattern: &[u8], name: &[u8]) -> bool {
     match_steps(pattern, name, Dot::Special).0
 }
 
 /// [`matches()`], with the leading-dot rule under the caller's control.
+///
+/// # Examples
+///
+/// ```
+/// use glob::{matches, matches_with, Dot};
+///
+/// assert!(!matches(b"*", b".config"));                       // `*` does not list dotfiles
+/// assert!(matches(b".*", b".config"));                       // an explicit dot does
+/// assert!(matches_with(b"*", b".config", Dot::Ordinary));    // ... unless you ask otherwise
+/// ```
 pub fn matches_with(pattern: &[u8], name: &[u8], dot: Dot) -> bool {
     match_steps(pattern, name, dot).0
 }
