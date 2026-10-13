@@ -248,23 +248,12 @@ delivers its file, and ranking divides by page length. What each was and why, in
 one wait point that made the first one hard, is in
 [documentation/resolved-bugs.md](documentation/resolved-bugs.md).
 
-- The caretaker-hop display race is a known, accepted interim, not a bug this decision missed. A
-  page's last line and the shell's next `$ ` prompt can interleave under contention. Kernel
-  exit-delivery (DECISIONS §26 (the fault endpoint)) tells the shell a child is dead-until-reaped,
-  but `terminal_sink_caretaker`'s own trailing `CALL` to `line_editor` is a second, independent call
-  with no ordering primitive against the shell's next prompt. It is a display glitch, not a
-  confinement or correctness failure, because no capability changes hands and no byte reaches the
-  wrong reader. Tracked at milestone 151 (notification objects), the kernel build of DECISIONS §101
-  (notification objects), which lets the shell `WAIT` on "the caretaker's queue for this client has
-  drained" instead of racing it. See notes/tail-output-narrowing.md.
-- A screen-narrowed child is invisible to a concurrent `ps`/`pgrep` for its short life. Its
-  DECISIONS §26 fault target is a fresh endpoint this shell minted, not the progenitor's `deaths`
-  domain channel, because the shell needs to `RECEIVE` its own child's exit directly rather than
-  race `job_undertaker` for the same message. Its memory still returns to the progenitor's job pool
-  when this shell reaps it (§26: a corpse's region returns to its *builder*, not its supervisor), so
-  nothing leaks; it simply does not appear in a domain survey while it runs. Given `mdr`'s render is
-  a handful of milliseconds, this is unlikely to matter in practice and is recorded here rather than
-  fixed because nothing asked for it.
+- A page's last line and the shell's next `$ ` prompt can interleave under contention: an
+  accepted interim display race, not a confinement or correctness failure, tracked at milestone 151
+  (notification objects). See notes/tail-output-narrowing.md.
+- A screen-narrowed child is invisible to a concurrent `ps`/`pgrep` for its short life, though
+  nothing leaks. Both entries are in full in
+  [documentation/narrowing-limitations.md](documentation/narrowing-limitations.md).
 - **No pager, and the reason is authority rather than effort.** Paging needs a keypress; a keypress
   needs `line_editor::proto::OPERATION_READLINE`; and that opcode rides on the terminal endpoint
   whose read side *is* the keyboard. The spawn protocol has no way to hand a child the right to read
@@ -308,27 +297,9 @@ one wait point that made the first one hard, is in
 
 ## Where this goes next
 
-The guest-side `apropos`, `mdr <page>` at the prompt and length ranking, which used to head this
-list, are all built. What is left, in the order it pays off:
-
-1. **Color and the pager, which are the same decision's other two thirds.** DECISIONS §106 took
-   the narrowing for a tail stage's *primary* output; it did not extend the same bit to "tell this
-   stage it ends at a real screen" (color, the honest replacement for `isatty`) or to granting one
-   line of *input* without granting the keyboard (the pager). Both still want the wiring bit this
-   entry originally scoped for all three; §106 built the narrowest slice that unblocks `mdr <page>`.
-   This is a spawn-protocol decision, the same shape as §106 itself, so it is not this lane's call
-   to make unilaterally.
-2. The store as something a package installs, rather than a table in `xtask`. `DOC_BUNDLES` is
-   the shape milestone 40 asked for minus a package manager, and milestone 39 is where the manifest,
-   the hash and the version it should hang off already live. Blocked on milestone 39 itself, whose
-   own Gate is `DECISION, MILESTONE 23` with no decision taken.
-
-Phase 3 of the roadmap (a graphical viewer as a compositor client) is untouched and still wants
-milestone 33's rungs, which are themselves blocked (notes/frames.md's `Frame`-sizing fork, milestone
-29's status).
-
-## Prior art
-
-`man` plus `apropos` plus `mandb` for the split between format, index and pager, which is this
-architecture minus the troff. Dash and Zeal *docsets* for the bundle shape. `cargo doc`'s HTML as
-the road not taken: it would need a browser engine, which is a mountain with no thesis behind it.
+Two things are left, in the order they pay off. Color and the pager are one spawn-protocol decision
+(the wiring bit §106 did not extend, so not this lane's call). The store as something a package
+installs is blocked on milestone 39 (repository structure for a loosely-coupled OS). A graphical
+viewer waits on milestone 33 (a compositor). Each, with
+its reasoning, and the prior art (`man`, `apropos` and `mandb`, docsets, `cargo doc`) are in
+[documentation/where-next.md](documentation/where-next.md).

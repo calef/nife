@@ -9,6 +9,9 @@ a one-line BUGS list. These files carry the detail its prose budget has no room 
 - [`design.md`](design.md): partial lines, the reader thread, opening the port before configuring
   it, why there is no serial dependency, and how it is tested with no board.
 - [`limitations.md`](limitations.md): the BUGS list in full.
+- [`job-mix-examples.md`](job-mix-examples.md): watching a job-mix sweep under QEMU, its three
+  endings as real runs, and why their numbers moved after milestone 168 (a multi-tasking workload
+  benchmark).
 
 *Name: provisional, minted 2026-10-11 (UTC) by lane/third-ten-longest-notes, which split the parent
 under §212 (a prose budget). The directory follows §212's siting default, `notes/X/` beside
@@ -21,3 +24,5 @@ names files.
 - `design` Name: provisional, minted 2026-10-11 (UTC) by lane/third-ten-longest-notes.
 - `limitations` Name: provisional, minted 2026-10-11 (UTC) by lane/third-ten-longest-notes, after
   `notes/soak/limitations.md` and `notes/frames/limitations.md`.
+- `job-mix-examples` Name: provisional, minted 2026-10-13 (UTC) by lane/prose-cap-notes-a, for the
+  parent's job-mix EXAMPLES moved under §212's cap.
