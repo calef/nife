@@ -12,14 +12,11 @@ since. These files carry the phases in full.
 - [`chain-past-the-progenitor.md`](chain-past-the-progenitor.md): milestone 104 (the measurement continues past init), the progenitor
   measuring what it loads, with its BUGS and what is still not covered.
 
-*Name: provisional, minted 2026-10-11 (UTC) by lane/next-ten-longest-notes, which split the parent
-under §212 (a prose budget). The directory follows §212's siting default, `notes/X/` beside
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default, `notes/X/` beside
 `notes/X.md`. calef names directories.*
 
-The stems below were minted the same day by the same lane. Each is named for its content, and calef
-names files.
+Each stem below is named for its content, and calef names files.
 
-- `supervision-tree` Name: provisional, minted 2026-10-11 (UTC) by lane/next-ten-longest-notes.
-- `interactive-boot` Name: provisional, minted 2026-10-11 (UTC) by lane/next-ten-longest-notes.
-- `chain-past-the-progenitor` Name: provisional, minted 2026-10-11 (UTC) by
-  lane/next-ten-longest-notes.
+- `supervision-tree` Name: provisional.
+- `interactive-boot` Name: provisional.
+- `chain-past-the-progenitor` Name: provisional.

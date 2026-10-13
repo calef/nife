@@ -5,10 +5,8 @@ built: 2026-09-19
 ---
 # 243. A machine with no serial port has no way to say anything, and no gate can read it
 
-Built 2026-09-19. Minted 2026-09-03 by calef, from asking how nife reaches commodity
-hardware. Built in two passes: 2026-09-04 put the boot tour on a UEFI machine's framebuffer and
-gave a gate a way to read it under QEMU; 2026-09-19 closed the block's two remaining Outstanding
-items, early boot and the other two architectures. See `notes/serial-less-output.md`.
+Built. The boot tour reaches a UEFI machine's framebuffer from early boot on, on all three
+architectures, and a gate reads it under QEMU. See `notes/serial-less-output.md`.
 
 What BUILT means here, stated plainly, because two of the three problems below are answered
 rather than solved. A kernel that can write its diagnostics somewhere other than a UART now does

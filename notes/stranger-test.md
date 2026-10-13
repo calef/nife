@@ -62,8 +62,7 @@ Each thing it does is something an earlier run got wrong by hand:
   `NONE`.
 - It debriefs the stranger in two passes, contamination first and then the rubric's questions.
 - It leaves the machine's toolchain links alone. The clone links its own (`nife-dev-nife-<hash>`),
-  which the next `cargo xtask std-src` anywhere removes once the clone is gone. Until 2026-10-10 it
-  restored a shared `nife-dev` link instead.
+  which the next `cargo xtask std-src` anywhere removes once the clone is gone.
 
 The rubric's questions are read out of this page, so the table below is the only rubric. Only the
 question column ever leaves this file. [The instrument's history](stranger-test/instrument.md)
@@ -265,8 +264,8 @@ Each entry's history, with the run that found it and how it was resolved, is in
 - The withheld key is recoverable from git. `git show HEAD~1:notes/stranger-test.md` returns it.
   Closing that would rewrite every commit, so it is a deliberate trade, recorded in the harness's
   `BUGS`.
-- The harness isolates a tree, not a machine. A stranger could reach the account-wide `nife-dev` link
-  (shared until 2026-10-10) and can reach the QEMU prefix, and run 6 did. A container is the only real answer.
+- The harness isolates a tree, not a machine. A stranger can reach the QEMU prefix and other
+  machine-wide state, and run 6 did. A container is the only real answer.
 - The cadence has no reader. `--due` goes red in an Actions tab that nobody watches, and the watcher
   cannot tell due from dead. That is milestone 495 (a cadence that says "due" reaches nobody), not
   started. Run 6 happened because a maintainer briefed a lane.

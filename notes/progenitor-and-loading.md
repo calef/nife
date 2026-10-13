@@ -24,7 +24,7 @@ ordinary confined program where a parser bug is that program's problem, confined
 capability walls as any workload.
 
 That program is the progenitor: the first process, the one the kernel starts and from which
-every other descends. It was called init until milestone 266.
+every other descends. Older records call it init.
 
 ## What still loads the progenitor (the honest residue)
 
@@ -183,15 +183,11 @@ stayed out of it, each for a stated reason.
 Each step, its call sites, its proof and those reasons are in
 [`progenitor-and-loading/the-binary-split.md`](progenitor-and-loading/the-binary-split.md).
 
-## Where the claim lives now that `builder` is gone (milestone 295, 2026-09-14)
+## Where the claim lives (milestone 295 (retire `components/src/builder.rs`))
 
-**The claim is "userspace, not the kernel, composes a process", and it used to be made twice on
-riscv64.** `components/src/builder.rs` made it in miniature as a step in the boot tour. The kernel
-loaded that one program out of the archive and granted it a budget and a report endpoint and nothing
-else. It parsed `least_authority_demo` out of the same archive in userspace, built a child from its
-own budget and started it. The kernel never touched the child's bytes. The progenitor makes the same
-claim at the scale of a whole system, and since milestone 268 (every architecture boots the same
-way) item 4 the default riscv64 boot reaches it too, so calef retired `builder`.
+**The claim is "userspace, not the kernel, composes a process".** The progenitor makes it at the
+scale of a whole system, and the default riscv64 boot reaches it too, per milestone 268 (every
+architecture boots the same way) item 4, so there is no separate `builder` making it in miniature.
 
 **Split the claim in two, because only one half moved cleanly.**
 
@@ -200,17 +196,16 @@ way) item 4 the default riscv64 boot reaches it too, so calef retired `builder`.
 on the boot a card performs. On `x86_64` the progenitor composes the system but its console
 server and input driver stop on first use, because a ring-3 process cannot reach port I/O (DECISIONS
 §121); how a shell gets a console there is DECISIONS §149.
-This half is better off than it was: the progenitor composes the console server, the line
+The progenitor composes the console server, the line
 discipline, the input driver and `swish`, and a person can then type at the result.
 
-*...from an authority you can count on one hand.* This is the half `builder` carried alone. The
-progenitor does not carry it: it is granted the NS16550 and the UART's interrupt line as well,
+*...from an authority you can count on one hand.* The progenitor does not carry this half: it is granted the NS16550 and the UART's interrupt line as well,
 because it is building a system rather than demonstrating a floor.
 
-What carries it since 2026-10-05 is `fixtures/src/process_composition_witness.rs`. It was built for
+What carries it is `fixtures/src/process_composition_witness.rs`. It was built for
 §185 (what carries the claim that userspace composes a process from an authority you can count on
 one hand), as milestone 404 (composing a process from two capabilities is proved for two verbs and
-no more). It holds the same two capabilities `builder` held, a memory region in slot 0 and a report
+no more). It holds two capabilities, a memory region in slot 0 and a report
 line in slot 1, plus the archive mapped read-only. From those it reads `least_authority_demo` out of
 the archive by name, mints a rendezvous and builds the child through
 `supervision_protocol::build_child_space`. It maps a frame of its own into the child's space and is

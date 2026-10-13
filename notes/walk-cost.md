@@ -129,12 +129,11 @@ client channel) landed badged endpoints under §230 (badged endpoint capabilitie
 
 ### Is the premise true?
 
-Half. The first version of this page said the server could not tell which endpoint a request came
-through. Since milestone 599 it can: `rendezvous::BADGE` mints a badged copy of an endpoint
-capability, and `RECEIVE_CAP` returns the badge in x3. That part of the premise is now false.
+Half. The server can tell which endpoint a request came through, since milestone 599 (a frame per
+filesystem client channel): `rendezvous::BADGE` mints a badged copy of an endpoint capability, and
+`RECEIVE_CAP` returns the badge in x3. So the premise that it cannot is false.
 
-The other half was that the caretaker is where confinement is enforced. That is only partly
-true. The rights arithmetic is already the server's, with three Kani harnesses in `filesystem_protocol` (`attenuate_never_widens`,
+The other half, that the caretaker is where confinement is enforced, is only partly true. The rights arithmetic is already the server's, with three Kani harnesses in `filesystem_protocol` (`attenuate_never_widens`,
 `a_grandchild_is_bounded_by_the_root`, `a_root_carries_nothing_undefined`). What the subtree
 caretaker adds is handle scoping. The server's handle table is one per server, and handle 0 is the
 image root with every right. The caretaker keeps its own 64-slot table, so a client can only name

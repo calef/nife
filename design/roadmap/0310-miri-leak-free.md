@@ -5,8 +5,6 @@ built: 2026-09-17
 ---
 # 310. The Miri leak check stays on, and the test pool it caught cannot leak again
 
-Built by a lane on `milestone/310-miri-leak-free`.
-*(Number provisional until the merge queue lands it.)*
 
 `.github/workflows/undefined-behavior-check.yml` had **never once succeeded**. Five scheduled runs
 since 2026-08-11, all red, with `script/cadence-check` (milestone 238) reporting it DEAD. The cause

@@ -14,17 +14,12 @@ section's number and heading, because other files cite the sections by number.
 - [`the-cost-of-spinning.md`](the-cost-of-spinning.md): section 5, the derivation of what today's
   yield-spin costs against a deadline wait.
 
-*Name: provisional, minted 2026-10-11 (UTC) by lane/sixth-ten-longest-notes, which split the parent
-under §212 (a prose budget). The directory follows §212's siting default, `notes/X/` beside
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default, `notes/X/` beside
 `notes/X.md`. calef names directories.*
 
-The stems below were minted the same day by the same lane. Each is named for its content, and calef
-names files.
+Each stem below is named for its content, and calef names files.
 
-- `the-three-structures` Name: provisional, minted 2026-10-11 (UTC) by
-  lane/sixth-ten-longest-notes.
-- `the-tick-path` Name: provisional, minted 2026-10-11 (UTC) by lane/sixth-ten-longest-notes.
-- `the-interrupt-stack` Name: provisional, minted 2026-10-11 (UTC) by
-  lane/sixth-ten-longest-notes.
-- `the-cost-of-spinning` Name: provisional, minted 2026-10-11 (UTC) by
-  lane/sixth-ten-longest-notes.
+- `the-three-structures` Name: provisional.
+- `the-tick-path` Name: provisional.
+- `the-interrupt-stack` Name: provisional.
+- `the-cost-of-spinning` Name: provisional.

@@ -25,16 +25,16 @@ because on commodity hardware the keyboard is not a UART). A boot test needs out
 
 Two qualifications, both worth stating rather than discovering:
 
-- The Apple Silicon MacBooks are not in this fleet, and not for the reason first given. They boot
-  non-Apple kernels legitimately, and `notes/target-hardware.md` records that Asahi Linux is built on
-  a documented permissive-security mode with an Apple-signed `m1n1` payload. But they have no
-  UEFI, so a `BOOTX64.EFI` stick will not start one. That is a port, filed in that note as
-  "possibly the fifth", not a boot. An Intel MacBook is in the fleet. Worth knowing for later: m1n1
-  offers a serial console over USB-C. That is more than any commodity x86 machine here offers.
+- The Apple Silicon MacBooks are not in this fleet. They boot non-Apple kernels legitimately, and
+  `notes/target-hardware.md` records that Asahi Linux is built on a documented permissive-security
+  mode with an Apple-signed `m1n1` payload. But they have no UEFI, so a `BOOTX64.EFI` stick will not
+  start one. That is a port, filed in that note as "possibly the fifth", not a boot. An Intel
+  MacBook is in the fleet. Worth knowing for later: m1n1 offers a serial console over USB-C. That is
+  more than any commodity x86 machine here offers.
 - Milestone 195 (finish the UEFI boot path) created a question each machine answers for itself.
-  `PHYS_START` moved from 1 MiB to 32 MiB, because OVMF holds ACPI NVS and its own allocations across
+  `PHYS_START` is 32 MiB, not 1 MiB, because OVMF holds ACPI NVS and its own allocations across
   the low range. Whether a given machine leaves 32 MiB free is that machine's answer. The loader
-  now prints which range it wanted and which descriptors are in the way, rather than `Load Error`.
+  prints which range it wanted and which descriptors are in the way, rather than `Load Error`.
 
 The cheap experiment this makes available: build a stick, boot one of those machines, and read
 what the loader says on the screen. Even with the kernel silent afterwards, that establishes three

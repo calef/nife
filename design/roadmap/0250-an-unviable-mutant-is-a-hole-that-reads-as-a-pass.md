@@ -9,9 +9,8 @@ needs_person: no
 ---
 # 250. An unviable mutant is a hole in the measurement that reads as a pass
 
-Minted 2026-09-03 by calef, from milestone 246's (measured boot's refusal
-path is tested by nothing, and one mutant turns it off) handoff. *(Number provisional until the merge
-queue lands it.)*
+This follows milestone 246 (measured boot's refusal path is tested by nothing, and one mutant turns
+it off).
 
 `cargo mutants --list` already reports what this needs.
 

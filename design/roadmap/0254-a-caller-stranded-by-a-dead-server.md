@@ -5,9 +5,8 @@ built: 2026-09-04
 ---
 # 254. A caller stranded by a server that died is stranded forever, and nothing records that as intended
 
-Built (2026-09-04). Split out of milestone 133 (ending a permanently blocked thread,
-and deciding who may) on 2026-09-03 by calef, who took this half first on the argument that it is a
-defect rather than a fork.
+Built. This is the half of milestone 133 (ending a permanently blocked thread, and deciding who may)
+that is a defect rather than a fork, which is why calef took it first.
 
 In brief. `abi::Error::Gone` does not reach a reply-parked caller. The abort machinery walks an
 endpoint's wait queues, but a caller whose request was *taken* was popped off at the rendezvous; it is

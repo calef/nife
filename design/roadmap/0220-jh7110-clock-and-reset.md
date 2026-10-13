@@ -5,9 +5,8 @@ built: 2026-09-04
 ---
 # 220. This kernel drives no clock or reset controller, and the first real device will need one
 
-Minted 2026-09-01 by the maintainer, from milestone 159's (a real hardware
-entropy source: the JH7110's TRNG) lane, which named it as the most likely reason its own first
-bench boot will fail. *(Number provisional until the merge queue lands it.)*
+Milestone 159 (a real hardware entropy source: the JH7110's TRNG) names this as the most likely
+reason a first bench boot of its driver fails.
 
 two lines off a serial console. See "The bench settled the premise" below.
 

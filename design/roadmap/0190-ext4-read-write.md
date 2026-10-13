@@ -9,10 +9,6 @@ needs_person: no
 ---
 # 190. ext4, read and write: a Rust implementation with libext2fs as the host-side oracle
 
-Minted 2026-08-30 by calef, from a session that costed the entire option
-space before any code was written. *(Number provisional until the merge queue lands it, per
-AGENTS.md's rule that anything global to the tree stays provisional until the queue arbitrates.)*
-
 Phase 1 needs nothing that does not exist, which is what the gate records. Phases 3
 and 4 carry forks named below, and phase 4's is a real one; a single gate on the front of an arc this
 long would block the part that is buildable today.
@@ -276,9 +272,10 @@ drives, so the feature set phase 1 must support is a measured list rather than a
 
 ## Index row
 
-Minted by calef on 2026-08-30, after a session costed the whole option space. His ext4 drives hold
-the family's borg repositories, so nife must eventually read and write the format Linux wrote; the
-requirement is standing and has no deadline. Four phases: read-only, then a differential oracle
-against libext2fs and Linux, then write with `metadata_csum`, then jbd2-format journaling. The
-refusals are the valuable half: `lwext4` is GPLv2 where it counts, `ext4plus` cannot update `metadata_csum` on write, LKL needs §105's declined shared-address-space threads, and shipping
-libext2fs itself was an argument from effort. C stays on the host as the oracle, the way `tools/redoxfs_host` already does.
+calef's ext4 drives hold the family's borg repositories, so nife must eventually read and write the
+format Linux wrote; the requirement is standing and has no deadline. Four phases: read-only, then a
+differential oracle against libext2fs and Linux, then write with `metadata_csum`, then jbd2-format
+journaling. The refusals are the valuable half: `lwext4` is GPLv2 where it counts, `ext4plus` cannot
+update `metadata_csum` on write, LKL needs §105's declined shared-address-space threads, and
+shipping libext2fs itself was an argument from effort. C stays on the host as the oracle, the way
+`tools/redoxfs_host` already does.

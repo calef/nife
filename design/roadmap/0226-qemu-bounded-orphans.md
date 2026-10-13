@@ -5,8 +5,7 @@ built: 2026-09-03
 ---
 # 226. `qemu-bounded.sh` leaves an emulator behind, and the next run blames the wrong thing
 
-Minted 2026-09-02 by the maintainer, from milestone 127's EL2 entry
-lane, which hit it twice in one session. *(Number provisional until the merge queue lands it.)*
+A QEMU left behind by a gate holds its images and a host core until something kills it.
 
 Both shapes, because they answer different failures. The leak is prevented everywhere anything
 can prevent it, and the one case macOS cannot prevent now arrives as a sentence instead of a
@@ -45,12 +44,10 @@ the installed `qemu-system-aarch64` still leaves it running eight seconds later.
 **The lock diagnostic.** On a failing exit, and only then, the wrapper runs `lsof` over the image
 paths in its own command line and prints the pid, ppid, start time and command of anyone holding one
 **for writing**. The write filter is not a refinement, it is the difference between a diagnostic and
-noise: the first version reported readers, and `script/test`'s three legs share one read-only OVMF
-firmware file, so every green run that overlapped another lane's x86_64 gate printed a holder and
-was wrong to. Found by running the suite rather than by reading the code, and the false positive was
-itself the case the message warns about, since the other QEMU was milestone 235's lane mid-gate with
-a live harness up its parent chain. It reports rather than kills, and says to walk the parent chain up first, because a QEMU whose
-parent is a live harness is somebody's gate rather than a leak (AGENTS.md, 2026-08-15).
+noise: `script/test`'s three legs share one read-only OVMF firmware file, so reporting readers would
+print a holder for every green run that overlapped another lane's x86_64 gate. It reports rather
+than kills, and says to walk the parent chain up first, because a QEMU whose parent is a live
+harness is somebody's gate rather than a leak (AGENTS.md, 2026-08-15).
 
 In brief. `helpers/qemu-bounded.sh` exists because `timeout(1)` does not exist on macOS and
 `perl -e 'alarm N; exec @ARGV'` does not work on QEMU, which installs its own `SIGALRM` handler and

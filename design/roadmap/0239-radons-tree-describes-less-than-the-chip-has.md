@@ -9,22 +9,20 @@ needs_person: yes
 ---
 # 239. radon's device tree does not describe the TRNG, so a working driver never runs
 
-Minted 2026-09-03 by calef, from the first bench session that ran milestone
-159's (a real hardware entropy source: the JH7110's TRNG) driver on the board it was written for.
 The premise in that title is false and the title is kept anyway, because milestone 241 (what a
 fourth board would have to be for, so that GICv3 is bought rather than justified) cites this
-milestone by that name and a lane does not edit another milestone's block. Read the title as the
-diagnosis this work was minted on; the section below is what it turned out to be. The token follows
-milestone 218's (every boot of the VisionFive 2 needs a human typing four commands into U-Boot)
-precedent exactly: **a route was taken on 2026-09-03 and radon was powered off, so the status says
-what the outcome is rather than what was built.**
+milestone by that name. The sections below say what is actually true of the board that runs
+milestone 159 (a real hardware entropy source: the JH7110's TRNG). The token follows milestone
+218's (every boot of the VisionFive 2 needs a human typing four commands into U-Boot) precedent:
+the route is built and has not run on radon, so the status says what the outcome is rather than
+what was built.
 
 Everything that does not need the board is built, host-tested and merged; what
 remains is two commands at a U-Boot prompt and one boot, and QEMU cannot stand in, because the
 `virt` machine has no JH7110 anything.
 
-In brief, and the brief is a correction. radon booted nife hands-free on 2026-09-03 (milestone
-218) and the tour reported:
+In brief. radon booted nife hands-free on 2026-09-03 (milestone 218 (every boot of the VisionFive 2
+needs a human typing four commands into U-Boot)) and the tour reported:
 
 ```
 hw entropy  : skipped (this machine's tree describes no starfive,jh7110-trng; QEMU virt has none)
@@ -162,14 +160,12 @@ there was no bench session. Two commands and one boot settle all of it.
 
 - **Done.** `crates/jh7110_entropy::discover` accepts both spellings, carries which one matched and the
   node's `status`, and is host-tested against a fixture transcribed from the firmware's own source.
-- **Done.** notes/visionfive2.md's "The TRNG is not in the tree" section carries the correction
-  beside the original reading, rather than replacing it, and its "To measure at the bench" item 9
-  now asks the question that can actually be answered.
+- **Done.** notes/visionfive2.md's "The TRNG is not in the tree" section and its "To measure at the
+  bench" item 9 ask the question that can actually be answered.
 - **Recorded.** Milestone 159's step-4 outcome table still quotes the old skip line
   (`... describes no starfive,jh7110-trng; ...`) and still reads that line as "the board's own
-  device tree has no TRNG node". Both are now stale. A lane does not edit another milestone's block,
-  so the corrected table is the one above and 159's is superseded by it; the maintainer owns
-  reconciling them.
+  device tree has no TRNG node". Both are stale; the corrected table is the one above, not 159's,
+  and the maintainer owns reconciling them.
 - **Milestone 220.** A clock and reset controller. If the bench run comes back with an all-zero
   bring-up diagnostic, that is not a defect in this milestone or in 159: it is the firmware never
   having ungated a block it calls disabled, and 220 is where it goes. This milestone's work makes
@@ -181,11 +177,10 @@ there was no bench session. Two commands and one boot settle all of it.
   U-Boot's `fdt` subcommands and on a node path with an upper-case C in it. The one thing they would
   buy over the decoder change is flipping `status` to `okay`, and that buys nothing: U-Boot has no
   driver for this block either way, so no `fdt set` ungates a clock.
-- **Refused.** Further work on the device-tree source itself. The general worry this block was
-  minted with, that a tree describing less than the chip has is a limit on every future driver, did
-  not survive contact: the vendor tree describes 56 nodes under `/soc` including this one. What it
-  has is stale *names*, and the answer to a stale name is to match both, at the one place that reads
-  it.
+- **Refused.** Further work on the device-tree source itself. The worry that a tree describing less
+  than the chip has is a limit on every future driver does not hold: the vendor tree describes 56
+  nodes under `/soc` including this one. What it has is stale *names*, and the answer to a stale
+  name is to match both, at the one place that reads it.
 
 ## BUGS
 

@@ -36,7 +36,7 @@ Three pieces, in the tree's usual split:
 - **`kernel/src/user/non_volatile_memory_express_service.rs`**: the wiring, and the whole of the
   confinement claim: what that process is handed and what it is refused, in one `Spawn` literal.
 - **`kernel/src/pci.rs::find_nvme_device`**: enumeration and transport bring-up over the §18 PCIe
-  machinery, matching the NVMe **class code** (`01:08:02`) rather than a vendor id, because the
+  machinery, matching the NVMe class code (`01:08:02`) rather than a vendor id, because the
   class triple is the one identity the spec requires of every controller, QEMU's included.
 
 ## How the protocol works, in one sitting
@@ -197,9 +197,10 @@ already proved IOMMU-backed isolation against emulated silicon; risk 6's open cl
 real device at real speed, on xenon, photographed. The boot that takes it, its two preflights and
 what each outcome means are [risk-6-bench-evening.md](risk-6-bench-evening.md).
 
-Since 2026-09-24, "confined" means the IOMMU unit that owns the controller is the one translating. It used to mean that some unit was up, which on a machine with two VT-d units (a client
-Intel part: one for the GPU, one catch-all) is a different and weaker claim; see that page's first
-night-of condition. And a controller the driver refuses now fails the test rather than skipping it.
+"Confined" means the IOMMU unit that owns the controller is the one translating. Some unit being up
+is not enough. On a machine with two VT-d units (a client Intel part: one for the GPU, one
+catch-all), that is a weaker claim; see that page's first night-of condition. A controller the
+driver refuses fails the test.
 
 The parity note milestone 53 requires: what ships on all three architectures is this driver
 against QEMU's `-device nvme`, on the two `virt` machines and on `q35`. The VisionFive 2's PLDA
@@ -210,12 +211,8 @@ it.
 
 ## BUGS
 
-- The driver was kernel-resident until 2026-09-17, and the two entries that stood here
-  (the limitation, and §86's two corrections to it) are answered: milestone 261 built option 2a and
-  the correction's prediction held exactly. The page boundary at offset `1000h` was enough, and the
-  split cost no syscall surface. What replaces them is the honest remainder, which is the paragraph
-  "What it does not withhold" above: the IOMMU bounds the *controller* to a region that contains
-  the admin rings, so the server can aim DMA at them, and with stride 0 it can ring the admin
+- What the driver does not withhold ("What it does not withhold", above): the IOMMU bounds the *controller* to a
+  region that contains the admin rings, so the server can aim DMA at them, and with stride 0 it can ring the admin
   doorbell. Neither is an escape and both are option 4's to close.
 - Nothing but the test serves it over blk IPC. `non_volatile_memory_express` speaks the four
   blk verbs, but

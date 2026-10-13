@@ -1,11 +1,8 @@
 # Honest caveats: what is Unsupported, and why
 
 *An appendix to [`notes/std.md`](../std.md), which is the page to read. This file holds the full
-caveat list the main page's BUGS section summarizes, with the reasoning and history of each. It was
-moved here verbatim from the main page on 2026-09-25 (UTC), under [§212 (a prose
-budget)](../../design/decisions/0212-a-prose-budget-for-every-document.md). The directory
-`notes/std/` and this file's stem are provisional names, minted that day by the lane that split the
-file. Naming is calef's.*
+caveat list the main page's BUGS section summarizes, with the reasoning for each. The directory
+`notes/std/` and this file's stem are provisional names. Naming is calef's.*
 
 The records this file cites by number:
 
@@ -135,8 +132,7 @@ The records this file cites by number:
   multicast options) accept and return plausible values rather than fail; they change nothing on the
   wire.
 - `SystemTime` is real wall-clock time when the program was granted a clock (milestone 51,
-  DECISIONS §43, notes/clock.md). It used to be the monotonic counter offset from `UNIX_EPOCH`, so
-  the machine reported 1970 plus uptime and nothing in the interface said so; that is gone.
+  DECISIONS §43, notes/clock.md).
   A std program's wall-clock authority is slot 5 (a `Frame` capability naming the clock page,
   with `READ`) plus a read-only mapping of that page at `rt::CLOCK_PAGE`. `SystemTime::now()` is
   the offset it finds there plus the ambient monotonic counter: two loads and an add, no server
@@ -171,29 +167,18 @@ The records this file cites by number:
   which is the intended tripwire: re-point the anchor, do not paper over it. `rust-toolchain.toml`
   pins the channel; the coupling is the price of build-std against a std we do not fork.
 
-## `cargo xtask` through the rustup proxy built against unpatched std (2026-10-03, fixed 2026-10-06 in #1784)
+## The farm copies `rustc` and its driver rather than linking them
 
-`cargo xtask std-exerciser` (and so `cargo xtask test`) run through the rustup proxy built the exerciser
-against unpatched std in one fresh worktree on 2026-10-03: `std` failed in its `cfg_select!`
-dispatchers. Running `target/debug/xtask` directly with `CARGO_MANIFEST_DIR` exported worked. Found
-by the lane for milestone 714 (the sibling RECEIVE_CAP paths get a receiver-first test).
-
-**Cause, measured 2026-10-06 by lane/calendar-test-time.** The farm's `bin/rustc` and
-`lib/librustc_driver-*.dylib` were hard links (`cp -al` in `xtask/src/farm.rs`) to the same inodes as
-the pinned nightly's, and rustc finds its sysroot from where its own image lives. `rustc --print
-sysroot` through the proxy named the real nightly in 1 of 8 runs, and every time under `cargo xtask
-std-exerciser`; a `cargo build -Zbuild-std` then compiled
-`~/.rustup/toolchains/nightly-2026-10-05-*/lib/rustlib/src/.../std` and failed in `cfg_select!`.
-With real copies of those two files it named the farm in 30 runs of 30. The mechanism is inferred,
+rustc finds its sysroot from where its own image lives. When a farm's `bin/rustc` and
+`lib/librustc_driver-*.dylib` are hard links to the pinned nightly's inodes, `rustc --print sysroot`
+through the rustup proxy can name the real nightly instead of the farm. A `cargo build -Zbuild-std`
+then compiles unpatched std and fails in its `cfg_select!` dispatchers. The mechanism is inferred,
 not proven: macOS appears to report one path for an inode with several links, so whichever link ran
-last can win. It also fits the 2026-09-30 sighting of `rustc --print sysroot` naming another
-worktree's farm ([std.md](../std.md)), since every farm linked the same inodes. `std-aborts` blames
-this on a `nife-dev` relink race, which it is not.
+last can win.
 
-**Fixed 2026-10-06 (UTC) in #1784.** `std_src` now replaces those two hard links with real copies
-(`unlink_sysroot_anchors`, about 90 MB per farm on nightly-2026-10-06) and keeps everything else
-hard-linked; `STD_SRC_PATCH_VERSION` went to 10 so every warm farm rebuilds once and picks it up. On
-the rebuilt farm, `rustc --print sysroot` through the proxy named the farm 60 times of 60
-(`rustup run` and `RUSTUP_TOOLCHAIN`, 30 each), and `cargo xtask std-exerciser` compiled std from the
-farm. The same 60 runs against a farm built before the fix named the nightly 15 times. A host test,
-`the_farm_copies_rustc_and_its_driver_and_links_the_rest`, pins which files are copies.
+So `std_src` replaces those two hard links with real copies (`unlink_sysroot_anchors`, about 90 MB
+per farm on nightly-2026-10-06) and keeps everything else hard-linked. Measured 2026-10-06 (UTC),
+#1784: through the proxy (`rustup run` and `RUSTUP_TOOLCHAIN`, 30 runs each), `rustc --print
+sysroot` named a copying farm 60 times of 60 and named the nightly 15 times of 60 against a linking
+one. A host test, `the_farm_copies_rustc_and_its_driver_and_links_the_rest`, pins which files are
+copies.

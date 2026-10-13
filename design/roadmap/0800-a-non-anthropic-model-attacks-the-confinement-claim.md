@@ -11,9 +11,7 @@ needs_person: yes
 # 800. A non-Anthropic model attacks the confinement claim
 
 Raised 2026-10-06 (UTC) by calef: "Tomorrow GLM 5.3 can do an attack. We should probably have a
-milestone for that." Minted by milestone 633 (an outside agent attacks the confinement claim)'s lane
-as the maintainer's delegate. The number 800 is provisional; other lanes are minting from 769 to 799,
-so expect renumbering at merge. *(Title, slug and every name below are drafts.)*
+milestone for that." *(Title, slug and every name below are drafts.)*
 
 **Reuse:** the counting rule and the report format are milestone 633's third pass, unchanged, so the
 passes compare row for row. The isolation is not: this attack is informed.
@@ -177,13 +175,11 @@ The pass ran informed, per the brief, and its note is `notes/confinement-outside
   exchange. `ATTACH` is a `SEND_CAP` with no reply and the id namespace has no per-caller scope, so
   the victim's attach fails silently. Pinned while the pass ran by the opt-in red
   `net_confinement_tests::a_squatter_at_a_shared_stack_endpoint_cannot_capture_the_clients_traffic`
-  and a BUGS entry in `net_stack.rs`. The fix shape was first ruled per-caller windows keyed
-  by badge, the resolver's exact shape, refusals silent (calef, 2026-10-07 UTC, about 03:50Z,
-  PR #1798). Superseded the same day (15:04Z): each socket is its own capability; the stack
-  mints a badged endpoint per socket on open, every later call is made on it, and the `sid`
-  leaves the wire. Built as milestone 649 in #1817 (merged 2026-10-07 UTC), which rewrote the
-  server, the contract and this pass's pinned test. The test now runs green in the default suite
-  on all three ISAs with a replayable falsification, and the BUGS entry went with the defect.
+  and a BUGS entry in `net_stack.rs`. The fix (calef, 2026-10-07 UTC, PR #1798): each socket is its own capability; the stack mints
+  a badged endpoint per socket on open, every later call is made on it, and the `sid` leaves the
+  wire. Built as milestone 649 (every client of a network stack shares its socket numbers) in
+  #1817. The pinned test runs green in the default suite on all three ISAs with a replayable
+  falsification.
   Whether refusals also become answerable is a smaller second call, still open. Ruled the same
   day, tree-wide and still standing: per-caller scoping is a written rule for every multi-client
   window server, recorded as §256 (a server that keeps windows for many clients scopes each by the

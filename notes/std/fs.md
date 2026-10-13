@@ -2,10 +2,8 @@
 
 *An appendix to [`notes/std.md`](../std.md), which is the page to read. This file holds how `File`
 and the namespace verbs map onto the file contract, why a path is relative to a granted directory,
-and what stays `Unsupported`. It was moved here verbatim from the main page on 2026-09-25 (UTC),
-under [§212 (a prose budget)](../../design/decisions/0212-a-prose-budget-for-every-document.md). The
-directory `notes/std/` and this file's stem are provisional names, minted that day by the lane that
-split the file. Naming is calef's.*
+and what stays `Unsupported`. The directory `notes/std/` and this file's stem are provisional names.
+Naming is calef's.*
 
 The records this file cites by number:
 
@@ -52,8 +50,8 @@ else). Doing it here as well is not redundant, it is what turns a would-be escap
   directory, and no capability designates what is out there. This is what makes the slash safe: an
   absolute path can reach the root and never above it.
 - A nested path is a chain of descents (milestone 122). `File::open("a/b/c")` is `OPENDIR a`,
-  `OPENDIR b`, then `OPEN c` against `b`'s handle. It used to be refused outright. The grant is
-  exactly as tight as it was: every hop resolves under the capability this process holds, rights
+  `OPENDIR b`, then `OPEN c` against `b`'s handle. The grant is exactly as tight as a single
+  open: every hop resolves under the capability this process holds, rights
   only ever narrow, and there are no symlinks to escape through. What changed is only whether the
   program has to spell the descent itself.
 - A name that IS expressible but absent is an ordinary `NotFound`, which is what makes the three
@@ -86,11 +84,10 @@ and it is an `FSTAT` on a handle number the server's table can never contain:
 
 The answer is cached, because a capability table slot's contents are fixed at spawn on this ABI.
 
-A wart of the contract, and this paragraph used to be wrong about it. The wire's error space (a
+A wart of the contract. The wire's error space (a
 negated errno) overlaps the kernel's invoke-error space (-1..-8), so `-2` is both `ENOENT` and
-`WrongObject`, `-5` is both `EIO` and `BadMethod`, and `-1` is both `EPERM` and `NoSuchSlot`. This
-note said the overlap was harmless because neither `EPERM` nor `ESRCH` is in the FS server's
-vocabulary; `EPERM` has been since milestone 47 and nobody noticed for four milestones. Milestone
+`WrongObject`, `-5` is both `EIO` and `BadMethod`, and `-1` is both `EPERM` and `NoSuchSlot`.
+`EPERM` is in the FS server's vocabulary, so the overlap is not harmless. Milestone
 122 resolved `-1` in favor of the server (see [the descent appendix](fs-descent.md)): every entry
 point checks reachability first, so a kernel `NoSuchSlot` cannot follow a reply. The cost of that
 choice is that a revoked FS endpoint now reads as `PermissionDenied` rather than `Unsupported`,
@@ -109,8 +106,7 @@ position lives on the client side because the contract's read and write are both
 positional, so there is no cursor in the server to get out of step with. A seek costs no message at
 all except `SeekFrom::End`.
 
-Also bound since milestone 31 phase 2 (this used to be the head of the Unsupported list):
-`File::create`, `OpenOptions::create_new`, `create(true)`, and `OpenOptions::truncate`, backed by
+Also bound, since milestone 31 phase 2: `File::create`, `OpenOptions::create_new`, `create(true)`, and `OpenOptions::truncate`, backed by
 the contract's new `CREATE` and `TRUNCATE` verbs. So `std::fs::write` works.
 
 Two things about that are worth keeping. The order in `File::open` is POSIX's and it is
@@ -172,9 +168,8 @@ Four behaviors are worth knowing before you use them:
   about the name.
 - `metadata` answers for a directory now, at no extra message. `OPEN` refuses one with `EISDIR`, and
   that refusal *is* the answer to "what kind of thing is this name", so it is read as one rather
-  than propagated. `Path::is_dir()` used to be false for every directory that exists. So
-  `std::fs::create_dir_all` was not idempotent: it recovers from `AlreadyExists` by asking whether
-  the name is already a directory and got told it was not. The `metadata(".")` call answers without
+  than propagated. That is what makes `std::fs::create_dir_all` idempotent: it recovers from
+  `AlreadyExists` by asking whether the name is already a directory. The `metadata(".")` call answers without
   a message at all, because the granted directory is what the endpoint is bound to rather than a
   name inside it. The size reported is 0 and is a placeholder. `modified` answers for a directory as
   for a file since milestone 64's last pass ([file times](file-times.md)); `accessed` and `created`
@@ -199,6 +194,10 @@ Still Unsupported, and now genuinely because no verb in the contract backs it:
   `Permissions::readonly` is honestly `false`: authority here is a capability, not a mode bit. The
   modification time is bound by name ([file
   times](file-times.md)); the rest of the time surface has no verb.
+- `rename_noreplace` (unstable, from the 2026-10-13 nightly). `RENAME` always replaces, and
+  [§129 (whether `RENAME` grows a `NOREPLACE` flag)](../../design/decisions/0129-rename-noreplace-flag.md)
+  holds the flag until a customer needs one. The server could check it atomically; a client-side
+  stat-then-rename could not, so the PAL refuses rather than emulate it.
 - File locks and `File::try_lock`.
 - `File::duplicate`. A handle is a token the server minted for one session; copying the number
   would forge a second owner of the same handle, including its close.

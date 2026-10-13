@@ -5,12 +5,11 @@ built: 2026-09-02
 ---
 # 196. A physical address on `elf::Segment`, or a second ELF reader forever
 
-The field shipped (`milestone/196-elf-paddr`, 2026-08-31). **The
-second reader did not go then**, for a reason nobody predicted, and milestone 208 (the x86_64 kernel
-image ships an RWX segment, and it is the reason a second ELF reader exists) is what removed it: the
-image was refused by `Elf::parse` as writable-and-executable, so the loader could not use the shared
-parser however many fields it had. With the linker script split, `uefi_loader` now calls
-`elf::Elf::parse` and its own reader is gone, proved by booting under OVMF rather than by reading.
+The field is built. `uefi_loader` calls `elf::Elf::parse` with no reader of its own. That is proved
+by booting under OVMF, not by reading. The field alone was not enough, for a reason nobody
+predicted: `Elf::parse` refused the image as writable-and-executable. Milestone 208 (the x86_64
+kernel image ships an RWX segment, and it is the reason a second ELF reader exists) split the linker
+script, which removed that.
 
 What survives in `uefi_loader/src/image.rs` is not a reader: it is `physical_span` over
 `elf::Segment::paddr` plus this loader's own wording for every `elf::Error`, in an exhaustive match
@@ -18,9 +17,7 @@ so growing the enum breaks the build. `Elf::parse` deliberately does not provide
 because a program loader maps at `p_vaddr` and a firmware loader places at `p_paddr`, and on this
 image they are unrelated.
 
-The original PARTIAL text and its reason are below, unchanged, because the reason nobody
-predicted is the useful half of this block. Minted 2026-08-30 from milestone 87's (the x86_64 bare-metal machine) lane.
-*(Number provisional until the merge queue lands it.)*
+The reasoning below is kept because the reason nobody predicted is the useful half of this block.
 
 **The gate is discharged**, and is recorded here rather than deleted. It read
 `Gate: DECISION`, because `crates/elf` is a shared definition, which AGENTS.md rule 7 makes global

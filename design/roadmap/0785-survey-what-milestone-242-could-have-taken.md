@@ -10,8 +10,7 @@ needs_person: no
 ---
 # 785. Survey what milestone 242 could have taken
 
-Raised on 2026-10-04 (UTC) by `lane/s46-reuse-default`, the lane that wrote the 2026-10-04
-amendment to §46 (thin primitives or whole subsystems). Title and slug are drafts.
+Raised by §46 (thin primitives or whole subsystems)'s reuse default. Title and slug are drafts.
 
 In brief. Milestone 242 (USB host and HID), in pull request #1629, wrote its xHCI and USB logic
 here, as host crates `usb` and `extensible_host_controller_interface` (names provisional) with six

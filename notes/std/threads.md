@@ -55,9 +55,8 @@ worker per online core, its parallel count over four million items must come to 
 The block's item 12 asked for a measurement before any change to the heap's spinlock.
 `std_heap_contention` does 200,000 small allocations and frees with one thread, then splits the same
 work across four. Measured 2026-10-10 (UTC) under QEMU's TCG emulation by
-`std_threads_tests::the_std_heap_is_measured_under_four_threads`. Corrected 2026-10-11 (UTC) by
-milestone 561's lane: this said four emulated cores on every architecture. aarch64 and riscv64 have
-four. `x86_64` has two in its PVH leg, taken in turn on one host thread, and one in its OVMF leg
+`std_threads_tests::the_std_heap_is_measured_under_four_threads`. aarch64 and riscv64 have four
+emulated cores. `x86_64` has two in its PVH leg, taken in turn on one host thread, and one in its OVMF leg
 (`helpers/qemu-runner-x86_64.sh`). Its figures show what the lock costs and not how it scales.
 
 | architecture | one thread | four threads | four against one |

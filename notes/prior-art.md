@@ -74,8 +74,7 @@ else's kernel:
 - smoltcp. The no_std TCP/IP stack, kernel-agnostic and event-driven, proven across
   embedded Rust (Redox has shipped on it). Named in milestone 30 as the plan's easiest reuse
   call: the thesis is the kernel confining the network stack, never the stack itself.
-- libghostty-vt (Ghostty's extracted VT core). No libc, C ABI, supplied allocator
-  (corrected 2026-10-03 UTC): nearly a purpose-built description of "runnable as a nife userspace component",
+- libghostty-vt (Ghostty's extracted VT core). No libc, C ABI, supplied allocator: nearly a purpose-built description of "runnable as a nife userspace component",
   and in Zig, which makes it the strongest candidate anywhere for milestone 23's full claim (a
   confined vendor component in a foreign language). Named in milestone 29; API still in flux,
   so any adoption pins a version. The single-toolchain fallback is `vte`.

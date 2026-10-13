@@ -18,21 +18,11 @@ than assumed. With the banner's paint disabled and nothing else changed, the sam
 two runs in four, which is worse. The banner is not the cause, and the ninety seconds that test
 cost were the cheapest ninety seconds in this lane.
 
-The actual cause is a premise that was false when it was written. The marker was
-`boot_ladder::SELF_TEST`, chosen "near the end of the boot on purpose". A 1280x800 screen is 100
-character rows and the boot was believed to be longer, so early lines would have scrolled off.
-Measured, the tour tops out at 98 non-blank rows, so nothing scrolls and the first line is on
-the screen the whole time. What the marker actually selected for was the *last* line before the
-handover's clear. That is a window of a few hundred milliseconds, and exactly the race the comment
-claimed to be avoiding.
-
-The marker is now the banner, the first line. Five consecutive runs read 52, 68, 78, 84 and 89
-rows and all passed, where the same machine had been failing one run in two.
-
-*Corrected 2026-10-12 (UTC): the 98-row measurement did not hold. Milestone 445 (the screen check
-stops sampling and starts asking) held the boot at the handover the next day and found that the
-tour scrolls on OVMF, so the banner is gone by the end. It moved the marker back to the self-test
-verdict (`UEFI_SCREEN_MARKER` in `xtask/src/uefi.rs`), now read behind a handshake.*
+The marker is the self-test verdict, `boot_ladder::SELF_TEST` (`UEFI_SCREEN_MARKER` in
+`xtask/src/uefi.rs`). The tour scrolls on OVMF, so a first-line marker is gone by the end, and the
+last line before the handover's clear is on screen for only a few hundred milliseconds. Milestone
+445 (the screen check stops sampling and starts asking) holds the boot at the handover and reads the
+marker behind a handshake, so the check asks rather than races.
 
 The total claim is unchanged, which is the thing to check before believing any gate got easier.
 The screen's job is to prove the *pixels*: `LocateProtocol`, the byte order, the stride, the mapping

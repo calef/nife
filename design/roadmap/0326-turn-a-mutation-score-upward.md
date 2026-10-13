@@ -9,12 +9,9 @@ needs_person: no
 ---
 # 326. Nobody has been assigned to turn a mutation score upward
 
-Minted 2026-09-19 by calef, from the gap his own fatal-risk-3 ruling named
-the same day. *(Number provisional until the merge queue lands it.)* Parts 1 and 2 are done, on
-`milestone/326-mutation-survivor-triage`. Part 3's seven named crates are done (2026-09-20, on
-`milestone/326-new-crate-backlog`), and the 2026-09-21 census is classified with 89 survivors left
-(`## The 2026-09-21 census` below). Part 4 is
-untouched and must stay last for the reason its own paragraph gives.
+calef's fatal-risk-3 ruling (2026-09-19) named the gap. Parts 1 and 2 are done. Part 3's seven named
+crates are done, and the 2026-09-21 census is classified with 89 survivors left (`## The 2026-09-21
+census` below). Part 4 is untouched and must stay last for the reason its own paragraph gives.
 
 Everything this needs exists: `script/mutation -p <crate>` runs one package,
 `.cargo/mutants.toml` is where an exclusion goes with its reason, and milestone 85 (mutation testing over the host crates) already set the
@@ -64,7 +61,7 @@ Detail: `notes/mutation-testing/inflow-2026-10-03.md`.
 
 ## What the work is, in priority order, and the order is the argument
 
-1. The seven regressions, because each is a property that used to hold. This is the only part
+1. The seven regressions, because each lost a property the crate had. This is the only part
    that is not ordinary backlog: a crate that never had coverage is a gap, while a crate that scored
    100% and now does not has lost something it had. A census is the first instrument in this project
    able to tell those apart, because a sample cannot distinguish an absent mutant from a killed one.
@@ -230,7 +227,7 @@ Parts 1 and 2 only. Each of these was checked against the tree on 2026-09-19, on
 2026-09-14 mutation census have never been looked at, and milestone 85's rule is that every one
 becomes a test, an exclusion with a reason, or a recorded gap. Four milestones touch mutation
 testing and three are repairs to the instrument; only 85 ever turned a score, in August. The order
-here is the argument: seven crates that regressed from a score they used to hold, `capability`
+here is the argument: seven crates that regressed from a score they held, `capability`
 first; then `timetable`'s 48 survivors, because it carries the proof risk 2 calls its strongest
 counterfactual; then the new-crate backlog as backlog; then the six-week-old baseline every weekly
 report still diffs against.

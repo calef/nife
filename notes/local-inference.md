@@ -11,7 +11,7 @@ folded into this note below.
    (rebases, citation fixes, PR landings, lint repairs, ruling records, condensing to a word budget)
    is 36% of tokens and 36% of API-equivalent cost. That is about $980/week of a measured
    $2,733/week mean, double the ~18% [notes/open-model-lanes.md](open-model-lanes.md) guessed from
-   one example on 2026-09-22; this note supersedes that guess.
+   one example; this measurement replaces that guess.
 2. Only a slice of the 36% is safely offloadable today. The narrowest, most lookup-like tasks (plain
    rebases, renumbering, reference sweeps, format and lint fixes) are about 8% of the gated class by
    cost, roughly $80-100/week. The rest still ends in a gate but needs more autonomy, which is the
@@ -22,11 +22,10 @@ folded into this note below.
    runs p50 165K tokens, p90 358K (sub-agent lanes only). A quarter of requests need over 256K, up to
    854K measured. Every open model plausible for a home rig caps out at or under 256K natively, or
    needs a hardware tier with no published long-context benchmark at all.
-4. No researched hardware tier is a clear buy. Corrected 2026-09-27: this note first ruled out the
-   128GB unified-memory tier by checking a 4-bit fit against the 8-bit weight size. It fits
+4. No researched hardware tier is a clear buy. The 128GB unified-memory tier fits
    Qwen3.5-122B-A10B at 4-bit and Qwen3.8-27B at 8-bit; quality untested in this tree. The 2026-09-27
    stage-1 bake-off (#1425) found the different, already-proven Qwen3-Coder-480B-A35B only 2 of 6
-   correct, so the tier question is open again for these two models. The two tiers that can hold
+   correct, so the tier question is open for these two models. The two tiers that can hold
    Qwen3-Coder-480B-A35B itself at long context, a maxed Mac Studio or four RTX PRO 6000 Blackwell
    cards, cost $10K-70K+ with zero published prefill numbers at this size. Every such number below is
    this note's own arithmetic.
@@ -108,7 +107,7 @@ scores 88.2 on Terminal-Bench 2.1 and 28.3 on 3.0, per the vendor's own numbers)
 
 | tier | price (2026-09-27) | usable memory | fits |
 |---|---|---:|---|
-| 128GB unified memory (DGX Spark, Strix Halo) | $3,449-5,000 | 128GB | Qwen3.5-122B-A10B at 4-bit, Qwen3.8-27B at 8-bit; quality untested (corrected 2026-09-27, see below) |
+| 128GB unified memory (DGX Spark, Strix Halo) | $3,449-5,000 | 128GB | Qwen3.5-122B-A10B at 4-bit, Qwen3.8-27B at 8-bit; quality untested (see below) |
 | Mac Studio, 256GB | $9,499-10,799 | 256GB | Qwen3.5-122B-A10B, comfortably |
 | Mac Studio, 512GB (not yet priced, ships "late October," may slip) | absent | up to 512GB | Qwen3-Coder-480B-A35B, tight: ~300GB weights plus 67-178GB KV at 256K-700K context (Est) |
 | 1x RTX PRO 6000 Blackwell | $16,000 | 96GB | Qwen3.8-27B or GLM-4.5-Air at 8-bit |

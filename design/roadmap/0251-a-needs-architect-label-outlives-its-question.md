@@ -9,8 +9,7 @@ needs_person: no
 ---
 # 251. A `needs-architect` label outlives the question that earned it, so the queue lies
 
-Minted 2026-09-03 by calef, immediately after a label stayed on a pull
-request he had already answered. *(Number provisional until the merge queue lands it.)*
+A `needs-architect` label can stay on a pull request calef has already answered.
 
 It needs `gh` and a delivery point that already runs.
 

@@ -5,9 +5,8 @@ built: 2026-09-02
 ---
 # 221. The soak never crosses cores, so build the hook that makes it
 
-Built (2026-09-02). Minted 2026-09-02 by the maintainer, the moment calef approved
-option D in DECISIONS 138 (how a saturated workload is made to hand threads across cores). *(Number
-provisional until the merge queue lands it.)*
+Built. It is option D of DECISIONS §138 (how a saturated workload is made to hand threads across
+cores). calef approved it on 2026-09-02.
 
 In brief. Milestone 219 (the boot tour ends and the kernel halts, so there is nothing to soak)
 built a workload that lasts and then found something nobody expected: **a saturated workload never

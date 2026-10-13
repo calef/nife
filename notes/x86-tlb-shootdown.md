@@ -141,16 +141,9 @@ shootdown:
 and passes with it. The suite then reaches `test result: ok. 177 passed` at `NIFE_SMP=2`, and 20
 further runs produced no paint fault at all.
 
-It is gated as of 2026-09-23, and it took three more fixes to get there.
-`helpers/qemu-runner-x86_64.sh` defaulted `NIFE_SMP` to 1 for a year of this port's life because
-other failures could fail a two-core run, and they were closed one at a time: the boot-core-identity
-bug that made `smp::tests::every_secondary_runs_scheduled_work` fail about half the time at two
-(milestone 316 (which core booted)), the AP-bring-up flake that counted a started core as absent (`ap_boot`'s `BUGS` #1,
-milestone 161 (the x86_64 kernel port), 2026-09-19), and last the one-tick port-revocation window
-that made
-`user::x86_port_tests::a_revoked_holder_faults_on_its_next_port_write` red in 7 of 12 two-core runs
-(milestone 315 (a port revoke that reaches every core), below). All are recorded in `arch::x86_64::ap_boot`'s `BUGS`. The default is now 2,
-so every `script/test --arch x86_64` exercises this code.
+It is gated: `helpers/qemu-runner-x86_64.sh` defaults `NIFE_SMP` to 2, so every `script/test --arch
+x86_64` exercises this code. The two-core failures and their fixes are recorded in
+`arch::x86_64::ap_boot`'s `BUGS`.
 
 ## A second rider: taking a port grant off another core
 

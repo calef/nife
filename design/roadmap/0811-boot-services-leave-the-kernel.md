@@ -9,8 +9,7 @@ needs_person: no
 ---
 # 811. The boot services leave the kernel: the kernel starts only the progenitor
 
-*(Minted 2026-10-07 (UTC) by lane `boot-services-leave-the-kernel`. The number is provisional until
-the merge queue lands it; the title and slug are drafts.)*
+*(Title and slug are drafts.)*
 
 calef, 2026-10-07 (UTC): *"'move the boot service starters from the kernel to the progenitor' seems
 like a milestone that's part of making nife ready for customers."*

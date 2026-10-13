@@ -1,11 +1,9 @@
 # How far the 81.6% can be trusted: the cut date and the old lines
 
 An appendix to [milestone 517 (what fraction of survivor growth arrives on lines a pull request
-touched)](../0517-survivor-growth-on-the-lines-a-diff-touched.md), moved out of that page on
-2026-10-12 (UTC) under [§212 (a prose
-budget)](../../decisions/0212-a-prose-budget-for-every-document.md). The main page is complete
-without it. It holds the two checks on the fraction's edges. One is how the share moves with the cut date. The
-other is whether the survivors on lines older than the window were there when it opened.
+touched)](../0517-survivor-growth-on-the-lines-a-diff-touched.md). The main page is complete without
+it. It holds the two checks on the fraction's edges. One is how the share moves with the cut date.
+The other is whether the survivors on lines older than the window were there when it opened.
 
 ## The bound on 81.6%, stated as a range
 
@@ -28,8 +26,9 @@ not there because 68.1% is a candidate answer.
 
 The 142 survivors on old lines are the population an inflow gate is structurally blind to. Whether
 that matters depends entirely on what they are. Old survivors are the corpus rate's to own, and no
-inflow gate was ever meant to catch them. Regressions are code that used to be tested and quietly
+inflow gate was ever meant to catch them. Regressions are code that was once tested and quietly
 stopped being.
+
 
 That is answerable without a census. Run the mutation over the tree as it stood at the window's
 start, and ask of each of the 142 whether it was already a survivor then. The tree at

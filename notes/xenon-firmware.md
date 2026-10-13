@@ -85,13 +85,13 @@ bench and photograph a screen" into "read the DMAR", which is code this kernel c
 and a lane can write without a null modem. `notes/confinement-claims.md`'s fifth claim (a confined
 component's MSI-X write is a memory write, so DMA remapping does not cover it, which is why VFIO
 refuses userspace drivers without interrupt remapping) stays latent, and now has a defined next
-step. A proposal was filed: `design/roadmap/0378-read-the-dmar-on-xenon.md`.
+step: `design/roadmap/0378-read-the-dmar-on-xenon.md`.
 
-The unit's half has since been answered (corrected 2026-10-11 UTC). Milestone 317 (the
-interrupt-remapping flags) reads `ECAP.IR` on every boot. xenon's tour of 2026-09-17 at 22:51 UTC
-printed `interrupt remapping offered (unused)` on its `iommu` line
-(`bench/xenon-2026-09-17/tour-display-225100.log`, line 119). The DMAR's own `INTR_REMAP` flag is
-still parsed and not printed, which is what milestone 378 (read the DMAR) has left.
+The unit's half is answered. Milestone 317 (the interrupt-remapping flags) reads `ECAP.IR` on every
+boot. xenon's tour of 2026-09-17 at 22:51 UTC printed `interrupt remapping offered (unused)` on its
+`iommu` line (`bench/xenon-2026-09-17/tour-display-225100.log`, line 119). The DMAR's own
+`INTR_REMAP` flag is still parsed and not printed, which is what milestone 378 (read the DMAR) has
+left.
 
 ### A number that disagrees with the boot tour, recorded rather than resolved
 
@@ -193,6 +193,6 @@ list rather than a disclaimer.
 - The two memory figures in this tree disagree and this note does not resolve which is right;
   see "A number that disagrees with the boot tour" above.
 - A ticked `Enable VT for Direct I/O` is a firmware intention, not an observed IOMMU. The kernel
-  has since read xenon's DMAR and the unit's `ECAP.IR` (question 2), so the IOMMU is observed. The
-  DMAR's own `INTR_REMAP` flag is still not printed; that is what
-  `design/roadmap/0378-read-the-dmar-on-xenon.md` has left (corrected 2026-10-11 UTC).
+  reads xenon's DMAR and the unit's `ECAP.IR` (question 2), so the IOMMU is observed. The DMAR's
+  own `INTR_REMAP` flag is still not printed; that is what
+  `design/roadmap/0378-read-the-dmar-on-xenon.md` has left.

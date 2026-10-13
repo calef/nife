@@ -5,8 +5,7 @@ built: 2026-09-01
 ---
 # 212. `script/falsifications` walks `crates/` only, so the ratio it prints is not the tree's
 
-Built 2026-09-01. Minted 2026-08-31 from milestone 197's (`user/` and `xtask` are out of
-reach of the prover) lane. *(Number provisional until the merge queue lands it.)*
+Built.
 
 What it found. The walk comes from `cargo metadata` now, and the correction is smaller than the
 block expected and worth reporting as measured rather than as feared: 141 harnesses in 24 crates

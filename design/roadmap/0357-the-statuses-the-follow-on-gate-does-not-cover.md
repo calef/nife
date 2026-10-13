@@ -9,20 +9,18 @@ needs_person: no
 ---
 # 357. `NOT-STARTED` is the third status that can be false, and milestone 75 is the proof
 
-Filed as a proposal on 2026-09-03 by the milestone 252 sweep; promoted by
-milestone 433 on 2026-09-19. Both halves checked against the tree that day and both still hold.
+Both halves checked against the tree on 2026-09-19, and both held.
 `design/roadmap/0075-cycle-counter-authority.md` still reads `NOT-STARTED` with `Gate: DECISION`,
 though DECISIONS §139 answered that decision on 2026-09-02 and milestone 74's own gate line now
 opens *"Both halves of this line are under correction"* and says in full why 75's status is false.
-`script/roadmap`'s `ANSWERS` tuple is still `BUILT`, `REMOVED` and `PARTIAL`. One count in the body
-below has moved: `SUPERSEDED` was minted on 2026-09-15, so the uncovered statuses are now five
-rather than the three the title claims (`NOT-STARTED`, `IN-PROGRESS`, `OPTIONAL`, `RECORDED`,
-`SUPERSEDED`), and `IN-PROGRESS` keeps the one mechanical check it was given on 2026-08-17.
+`script/roadmap`'s `ANSWERS` tuple is still `BUILT`, `REMOVED` and `PARTIAL`. With `SUPERSEDED`, the
+uncovered statuses are five rather than the three the title claims (`NOT-STARTED`, `IN-PROGRESS`,
+`OPTIONAL`, `RECORDED`, `SUPERSEDED`), and `IN-PROGRESS` keeps its one mechanical check.
 
 Fixing milestone 75's status is a paragraph and a word, and the design question
 behind it is answerable by reading `script/roadmap` and the four uncovered statuses.
 
-In brief. Milestone 247 gated `BUILT` and `REMOVED`; milestone 252 gated `PARTIAL`. Three
+In brief. Milestone 247 (follow-on work named by a finished milestone goes nowhere) gated `BUILT` and `REMOVED`. Milestone 252 (a `PARTIAL` block claims work is remaining and nobody re-reads it) gated `PARTIAL`. Three
 statuses are left uncovered (`NOT-STARTED`, `IN-PROGRESS`, `OPTIONAL`, `RECORDED`), and at least one
 of them rots the same way. **`design/roadmap/0075-cycle-counter-authority.md` reads `NOT-STARTED` with
 `Gate: DECISION` for a decision calef made on 2026-09-02 (§139) and two milestones built the same
@@ -42,7 +40,7 @@ into the readiness report a maintainer uses to brief lanes.
   case for a gate line; it does not connect a `DECISION` gate to any file, because a gate line does
   not name one. Making it name one would be a real check and a real cost.
 - `IN-PROGRESS` is already the one status with a mechanical check (its branch must not have merged),
-  minted for the same reason on 2026-08-17 after all six were found false, and it is evidence that
+  added for the same reason after all six were found false, and it is evidence that
   this family of defect is worth gating where it can be.
 
 ## BUGS

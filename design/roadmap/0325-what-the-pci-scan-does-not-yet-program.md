@@ -9,9 +9,7 @@ needs_person: no
 ---
 # 325. Four things the PCI scan reads and does not yet program, each found by a different lane
 
-Minted 2026-09-18 by calef, promoting a cluster rather than its members:
-four proposals from four lanes, all in the discovery-and-enumeration seam. *(Number provisional until
-the merge queue lands it.)*
+Four proposals from four lanes, all in the discovery-and-enumeration seam, carried as one block.
 
 Every part is reachable from a machine this project already runs: QEMU's `q35` with
 `-device intel-iommu` for parts 1 and 4, `NIFE_PCIE_ROOT_PORT=1` on the x86_64 runner for part 2, and

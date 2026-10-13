@@ -31,10 +31,9 @@ The pattern is the one milestone 92 (security audits as a mechanism) argues abou
 that lives in memory gets skipped exactly when it matters, and the maintainer is structurally worst at this particular duty because
 merging happens *between* conversations rather than during them.
 
-The steward was supposed to cover that and did not, for a reason worth recording: it reported and
-never acted. "The queue is stalled" arriving in a message is only useful if someone reads the
-message and does something. These two scripts act. (Until 2026-10-03 the drain acted by arming;
-now it acts by labeling, which is the same lesson one level along: see the drain's section.)
+A steward that reports and never acts does not cover it. "The queue is stalled" arriving in a
+message is only useful if someone reads the message and does something. These two scripts act. (The
+drain acts by labeling rather than arming: see its section.)
 
 ## `helpers/merge-drain.sh`
 
@@ -167,8 +166,8 @@ $ helpers/at-risk-check.sh
 at-risk-check: UNCOMMITTED. /path/to/nife-worktrees/atrisk (maintainer/work-one-prune-from-gone) has 2 changed file(s), newest touched 41 minutes ago. One prune away from gone; commit and push.
 ```
 
-Uncommitted work in a lane worktree is the only failure here that destroys rather than delays, and
-on 2026-09-23 three pieces of it were found by luck. This reads every lane worktree's
+Uncommitted work in a lane worktree is the only failure here that destroys rather than delays. This
+reads every lane worktree's
 `git status --porcelain` and reports any whose newest changed file is older than `AT_RISK_MINUTES`
 (default 30). It reports and never acts, and never uses `git stash`, whose stack is shared across
 worktrees. It runs from `launchd` on each developer's machine, because it reads that machine's

@@ -51,15 +51,18 @@ pub(super) fn swish_check_leg(arch: &str) -> bool {
     // attaches a gpu and a keyboard for the other arm. aarch64 and riscv64 only: x86_64 has no
     // virtio-gpu in its runner (`design/roadmap/0632-*.md`'s BUGS has what it would take).
     let graphical = arch != "x86_64";
+    // The panic probe halts the kernel and the input-race probe proves itself on the first
+    // script, so neither boots again.
+    let one_boot = matches!(probe(), Probe::Panic | Probe::InputRace);
     swish_check_boot(arch, SWISH_CHECK_SCRIPT, true, None)
-        && (probe() == Probe::Panic
+        && (one_boot
             || swish_check_boot(
                 arch,
                 SWISH_CHECK_AFTER_REBOOT,
                 false,
                 graphical.then_some(Keystrokes::Serial),
             ))
-        && (probe() == Probe::Panic
+        && (one_boot
             || !graphical
             || swish_check_boot(
                 arch,
@@ -67,7 +70,7 @@ pub(super) fn swish_check_leg(arch: &str) -> bool {
                 false,
                 Some(Keystrokes::Device),
             ))
-        && (probe() == Probe::Panic || usb_keyboard_boot(arch))
+        && (one_boot || usb_keyboard_boot(arch))
 }
 
 /// The boot line the kernel prints when the USB keyboard driver configured a keyboard. Spelled
@@ -1141,9 +1144,11 @@ fn type_one_line(
     // kernel line queued at the prompt is drawn above a redraw of the whole typed line,
     // which is the window the noteless flake fell into once in hundreds of runs; this
     // opens it on every line, so [`without_redraws`] is tested by a boot and not by luck.
+    // `--input-race` sets its own, so Enter lands inside the input driver's hold.
     let pause = std::env::var("NIFE_SWISH_ENTER_PAUSE_MS")
         .ok()
         .and_then(|ms| ms.parse().ok())
+        .or((probe() == Probe::InputRace).then_some(INPUT_RACE_ENTER_PAUSE_MS))
         .map(Duration::from_millis);
     let typed = match pause {
         Some(p) if !enter.is_empty() => {

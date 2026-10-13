@@ -5,7 +5,7 @@
 //! nothing, and interprets nothing; the editing, echo, and line assembly that used to live here
 //! moved to the line discipline component (`line_editor`), where Unix keeps them too (a UART driver
 //! feeds the tty layer; it is not the tty layer). What remains is the irreducible driver loop:
-//! WAIT on the interrupt, drain the FIFO, hand the bytes on, ACK.
+//! WAIT on the interrupt, clear it at the device, drain the FIFO, hand the bytes on, ACK.
 //!
 //! Bytes travel packed in the words of an `OPERATION_BYTES` CALL (up to 8 per message, the terminal
 //! contract's driver half; see notes/terminal-contract.md). A keystroke is one byte and control
@@ -229,13 +229,13 @@ mod uart {
 
 /// Forward wire bytes forever. No arguments: a standalone binary.
 ///
-/// **Interrupt-driven on all three architectures**: WAIT on the receive interrupt, drain the FIFO,
-/// hand the bytes on, ACK. Until milestone 505 (an x86_64 input driver that never lets the core
-/// idle) x86 had a polled twin, `loop { drain(); yield_now(); }`. A thread that always yields is
-/// always runnable, so the run queue was never empty and the idle loop never ran on that core: QEMU
-/// sat at 99 to 100% of a host core at an idle prompt (76 CPU-seconds in 78 wall-seconds, milestone
-/// 182's measurement), and the capability-slot gauge the idle loop prints never moved past the
-/// hand-over.
+/// **Interrupt-driven on all three architectures**: WAIT on the receive interrupt, clear it at
+/// the device, drain the FIFO, hand the bytes on, ACK. Until milestone 505 (an x86_64 input driver
+/// that never lets the core idle) x86 had a polled twin, `loop { drain(); yield_now(); }`. A thread
+/// that always yields is always runnable, so the run queue was never empty and the idle loop never
+/// ran on that core: QEMU sat at 99 to 100% of a host core at an idle prompt (76 CPU-seconds in 78
+/// wall-seconds, measured by milestone 182 (x86_64's own interactive-boot entry point)), and the
+/// capability-slot gauge the idle loop prints never moved past the hand-over.
 #[unsafe(no_mangle)]
 pub extern "C" fn _start(_x0: u64, _x1: u64, _x2: u64) -> ! {
     // Drain anything already in the FIFO by POLLING, before arming the interrupt: input piped in at
@@ -249,11 +249,37 @@ pub extern "C" fn _start(_x0: u64, _x1: u64, _x2: u64) -> ! {
 
     loop {
         interrupt_wait(IRQ);
+        // **Clear, then drain, never the other way round.** QEMU's PL011 raises its receive
+        // interrupt only when the FIFO goes from empty to one byte (`read_trigger` is 1), and
+        // `ICR` lowers it whatever the FIFO holds. Cleared after the drain, a byte that lands
+        // between the drain's last empty check and the clear has its interrupt wiped while it
+        // sits in the FIFO, and every byte behind it lands on a non-empty FIFO and raises
+        // nothing: input stops for good. A line longer than the 16-byte FIFO arrives in two
+        // pieces, so every such line opens that window (`script/swish-check --input-race`).
+        // Cleared first, a byte that arrives after the drain's last check leaves the interrupt
+        // raised, and the next wait returns at once.
+        uart::clear_interrupt(); // PL011: ICR; 16550: nothing, reading RBR clears it
         drain();
-        uart::clear_interrupt(); // quiet the device (PL011: ICR; 16550: reading RBR already did)
-        interrupt_acknowledge(IRQ); // re-enable the line at the controller now that the device is quiet
+        hold_after_drain();
+        interrupt_acknowledge(IRQ); // re-enable the line at the controller
     }
 }
+
+/// **The probe's hold** (`input_race_probe`, for `script/swish-check --input-race`; name
+/// provisional): spin 200 ms after each drain, standing in for a host that deschedules this vCPU
+/// there. The harness presses Enter 50 ms after the line, so Enter always arrives inside the
+/// hold, the window a lost interrupt needs. Off in every shipped image.
+#[cfg(feature = "input_race_probe")]
+fn hold_after_drain() {
+    const HOLD_NANOS: u64 = 200_000_000;
+    let start = user_mode_runtime::monotonic_nanos();
+    while user_mode_runtime::monotonic_nanos().wrapping_sub(start) < HOLD_NANOS {
+        core::hint::spin_loop();
+    }
+}
+
+#[cfg(not(feature = "input_race_probe"))]
+fn hold_after_drain() {}
 
 /// Read everything in the FIFO and forward it, up to 8 bytes per `OPERATION_BYTES` message, packed
 /// little-endian in the second word. The CALL blocks until the discipline has taken the bytes;

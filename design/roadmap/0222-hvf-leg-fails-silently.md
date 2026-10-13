@@ -5,9 +5,7 @@ built: 2026-09-02
 ---
 # 222. The one command a person runs before pushing has a leg that fails instead of skipping
 
-Minted 2026-09-02 by the maintainer, from milestone 208's (the x86_64
-kernel image ships an RWX segment) lane, which hit it while proving an unrelated boot path and
-reproduced it outside this project. *(Number provisional until the merge queue lands it.)*
+The failure reproduces outside this project.
 
 It was minted with no gate, on the grounds that the diagnosis was done and nothing here needed
 hardware this project does not have. That held: the whole of it was measured and built on
@@ -95,13 +93,12 @@ only visible by running the thing.
 - This machine now has no accelerated coverage at all. Every gate a contributor can run is TCG,
   and until a GICv3 driver exists that is the state. A loud skip is a record of the gap, not a
   substitute for it, and the closing line of `script/gates` says so on every run.
-- PROPOSED MILESTONE: a GICv3 driver for aarch64 (number to be minted by the integrator). What
-  it is and what it costs are priced in `notes/interrupts.md`'s "What a GICv3 driver would actually
-  be". It is worth its own block for two reasons that do not overlap: it is what puts the HVF leg
-  back, and `notes/aarch64-board-survey.md` already records GICv3 as the largest single item barring
-  most modern aarch64 boards, which is a customer-path constraint rather than a test-harness one.
-  Milestone 127 (the sel4 machine) said the same thing from its own side and asked for it to be
-  minted deliberately.
+- Milestone 227 (a GICv3 driver, because GICv2 boots and silently loses every interrupt) is the
+  GICv3 driver for aarch64. What it is and what it costs are priced in `notes/interrupts.md`'s "What
+  a GICv3 driver would actually be". It is worth its own block for two reasons that do not overlap:
+  it is what puts the HVF leg back, and `notes/aarch64-board-survey.md` already records GICv3 as the
+  largest single item barring most modern aarch64 boards, which is a customer-path constraint rather
+  than a test-harness one. Milestone 127 (the sel4 machine) says the same thing from its own side.
 - **This is not a fatal risk and does not pretend to be.** It is a gate telling a contributor
   something false, which this tree treats as a defect in the tree rather than in the contributor.
 - **The probe answers about the machine, not about the suite.** A QEMU that starts

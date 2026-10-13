@@ -1,9 +1,8 @@
 # Blinding the review, and the three leaks it cannot close
 
-An appendix of [reviewing the work of one model](../model-attribution-review.md), moved from its
-section "Blinding, and the honest statement that it leaks" on 2026-10-11 (UTC) under §212 (a prose
-budget). The parent keeps the conclusion: blinding is partial, and only the same-window control
-makes it hold. This file keeps the mechanism, the five-step scheme and the leaks.
+An appendix of [reviewing the work of one model](../model-attribution-review.md). The parent keeps
+the conclusion: blinding is partial, and only the same-window control makes it hold. This file keeps
+the mechanism, the five-step scheme and the leaks.
 
 Blinding is implementable and is the difference between a study and a confirmation exercise. The
 mechanism already exists in this tree. `script/stranger-test` runs a separate `claude` process

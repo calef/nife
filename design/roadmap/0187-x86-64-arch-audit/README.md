@@ -10,13 +10,10 @@ should do, and its `BUGS`. This directory carries what its prose budget has no r
 - [`the-cadence-question.md`](the-cadence-question.md): the check of the audit cadence's blindness
   to an architecture, the argument for a second milestone, and that milestone's content as proposed.
 
-*Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog, which split the
-parent under §212 (a prose budget). The directory follows §212's siting default, `design/roadmap/X/`
-beside `design/roadmap/X.md`. calef names directories.*
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default,
+`design/roadmap/X/` beside `design/roadmap/X.md`. calef names directories.*
 
-- `method` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog, for the
-  parent's "What the existing audit actually did" and the counting method from "The scale,
-  measured". calef names files.
-- `the-cadence-question` Name: provisional, minted 2026-10-12 (UTC) by
-  maintainer/prose-budget-backlog, after the parent's "The cadence question, and why it is a second
-  milestone rather than half of this one". calef names files.
+- `method` Name: provisional. For the parent's "What the existing audit actually did" and the
+  counting method from "The scale, measured". calef names files.
+- `the-cadence-question` Name: provisional. After the parent's "The cadence question, and why it is
+  a second milestone rather than half of this one". calef names files.

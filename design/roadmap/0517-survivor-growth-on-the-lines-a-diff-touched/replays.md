@@ -1,11 +1,9 @@
 # Does the blame proxy tell the truth: the six replays
 
 An appendix to [milestone 517 (what fraction of survivor growth arrives on lines a pull request
-touched)](../0517-survivor-growth-on-the-lines-a-diff-touched.md), moved out of that page on
-2026-10-12 (UTC) under [§212 (a prose
-budget)](../../decisions/0212-a-prose-budget-for-every-document.md). The main page is complete
-without it. This is the replay of `cargo mutants --in-diff` against six commits, which checked that
-blame attributes each survivor to a commit whose own diff-scoped run would have reported it.
+touched)](../0517-survivor-growth-on-the-lines-a-diff-touched.md). The main page is complete without
+it. This is the replay of `cargo mutants --in-diff` against six commits, which checked that blame
+attributes each survivor to a commit whose own diff-scoped run would have reported it.
 
 ## The replays
 
@@ -34,8 +32,9 @@ attributed survivor.
 
 One of them nearly read as a failure and the reason is worth keeping. `858a1268` reported
 `crates/isa/src/plic.rs: replace < with <= in PlicContexts::from_device_tree`. The census names
-`crates/machine_discovery/src/plic.rs` for the same mutant: `isa` was renamed to
-`machine_discovery` later in the window. A comparison keyed on the path scores that as a miss.
+`crates/machine_discovery/src/plic.rs` for the same mutant: by the window's end the crate `isa` is
+`machine_discovery`.
+ A comparison keyed on the path scores that as a miss.
 Mutants have to be matched on the function and the mutation, not on where the file lived that week.
 
 ## Why the replays report more than blame attributes

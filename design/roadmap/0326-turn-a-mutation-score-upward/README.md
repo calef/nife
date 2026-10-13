@@ -8,11 +8,10 @@ budget has no room for.
 - [`parts-1-and-2.md`](parts-1-and-2.md): parts 1 and 2 of 2026-09-19, crate by crate.
 - [`part-3-head.md`](part-3-head.md): the seven crates part 3 named, 2026-09-20.
 
-*Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog, which split the
-parent under §212 (a prose budget). The directory follows §212's siting default, `design/roadmap/X/`
-beside `design/roadmap/X.md`. calef names directories.*
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default,
+`design/roadmap/X/` beside `design/roadmap/X.md`. calef names directories.*
 
-- `parts-1-and-2` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog,
-  after the parent's "Parts 1 and 2, 2026-09-19". calef names files.
-- `part-3-head` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog, after
-  the parent's "Part 3's head, 2026-09-20". calef names files.
+- `parts-1-and-2` Name: provisional. After the parent's "Parts 1 and 2, 2026-09-19". calef names
+  files.
+- `part-3-head` Name: provisional. After the parent's "Part 3's head, 2026-09-20". calef names
+  files.

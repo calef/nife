@@ -5,9 +5,8 @@ built: 2026-09-02
 ---
 # 228. The cycle counters are closed by assumption, and on two architectures the assumption is a comment
 
-Minted 2026-09-02 by the maintainer, from the research lane that
-produced DECISIONS 139 (who may read the cycle counter, and by what authority), which found this
-while checking that decision's premise. *(Number provisional until the merge queue lands it.)*
+Checking the premise of DECISIONS §139 (who may read the cycle counter, and by what authority)
+found this.
 
 It was minted `Gate: NONE`, and that held: this was a defect fix, deliberately independent of the
 authority decision, and it is what the tree should do whichever way that decision goes.

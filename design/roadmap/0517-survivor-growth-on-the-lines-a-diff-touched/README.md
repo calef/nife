@@ -12,14 +12,12 @@ prose budget has no room for.
 - [`kernel-pricing.md`](kernel-pricing.md): what putting `kernel/**` and `components/**` in the
   corpus would cost, and why.
 
-*Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog, which split the
-parent under §212 (a prose budget). The directory follows §212's siting default, `design/roadmap/X/`
-beside `design/roadmap/X.md`. calef names directories.*
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default,
+`design/roadmap/X/` beside `design/roadmap/X.md`. calef names directories.*
 
-- `bounds` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog, for the
-  parent's "The bound on 81.6%, stated as a range" and "The other 18.4%". calef names files.
-- `replays` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog, after
-  the parent's "Does the proxy tell the truth: six replays, 197 of 197". calef names files.
-- `kernel-pricing` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog,
-  after the parent's "What it would take to put `kernel/**` and `components/**` in the corpus".
-  calef names files.
+- `bounds` Name: provisional. It holds the parent's "The bound on 81.6%, stated as a range" and "The
+  other 18.4%". calef names files.
+- `replays` Name: provisional. After the parent's "Does the proxy tell the truth: six replays, 197
+  of 197". calef names files.
+- `kernel-pricing` Name: provisional. After the parent's "What it would take to put `kernel/**` and
+  `components/**` in the corpus". calef names files.

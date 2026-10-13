@@ -5,9 +5,6 @@ built: 2026-09-16
 ---
 # 307. Which assertion actually fires when a confinement claim is broken
 
-Built 2026-09-16. Minted 2026-09-16 by the maintainer. *(Number provisional until the
-merge queue lands it.)*
-
 ## Why this exists
 
 Milestone 305 found two independent cases where **the assertion a reader would quote is not the
@@ -21,7 +18,7 @@ reader would quote reachable at all?*
 The framing matters because `AGENTS.md`'s first principle says an experiment that can only confirm is
 not a test, and `design/fatal-risks/README.md`'s risk 7 is the claim that the property the whole system is
 built to provide does not hold. Risk 3's mutation census, which measures exactly this property, runs
-over host crates and cannot see kernel tests; nothing the project owns would have found 305's
+over host crates and cannot see kernel tests. Nothing the project owns would have found 305's
 survivor, and nothing would have found this one.
 
 ## The finding: a second proof that could not fail
@@ -78,7 +75,7 @@ defect in microseconds, which is where this tree prefers to catch things.
 305 promoted *"in a test that states its property twice, the readable statement is usually the
 unreachable one"* from an anecdote about §31 to a thing to look for. Eight rows carry such an
 assertion. Three were removed because they restate the *guard itself* and no defect can separate them
-(rows 13, 14, 18); five are left in place because they are genuine redundancy that costs a line, and
+(rows 13, 14, 18). Five are left in place because they are genuine redundancy that costs a line, and
 the distinction between redundancy and decoration is the thing worth keeping. Every one is recorded
 beside its claim in `notes/confinement-claims.md`.
 
@@ -103,7 +100,7 @@ are exactly what they look like is what makes the other nine worth reading.
 Reading is what found all nine unreachable assertions and it is nearly free. Breaking is the only
 instrument that can find a survivor, and it costs one solver run or one boot per defect: the row 12
 measurement above is three `cargo kani` invocations at about two seconds each. The asymmetry is the
-practical lesson. Reading predicts; only breaking decides; and a prediction about a proof is cheap
+practical lesson. Reading predicts. Only breaking decides; and a prediction about a proof is cheap
 enough to confirm that there is no excuse for leaving one unconfirmed.
 
 ## BUGS
@@ -166,12 +163,12 @@ enough to confirm that there is no excuse for leaving one unconfirmed.
   gap in the census worth its own work.
 - **Done.** `paging::x86_64::no_vtd_entry_ever_sets_a_reserved_bit`, which could not fail on the
   address half of its own claim, and its host twin, which could not fail on it for a second reason.
-  Both fixed and measured both ways; the recorded falsification is now the defect the harness was
-  blind to rather than the one it always caught, with the superseded defect and its measurement kept
+  Both fixed and measured both ways. The recorded falsification is now the defect the harness was
+  blind to rather than the one it always caught, with the earlier defect and its measurement kept
   in the patch's prose.
 - **Done.** The stale paragraph in `notes/confinement-claims.md` that credited row 18's `& GRANT == 0`
   assertion as the only live one, four weeks after milestone 211 made it the dead one.
 
 ## Index row
 
-Milestone 305 found two cases where the assertion a reader would quote is not the assertion doing the work and predicted a sweep would find more; this is that sweep, over all 26 rows of `notes/confinement-claims.md`. **The finding is a second proof that could not fail**, and it is a Kani harness rather than a kernel test, which is where nobody was looking: `no_vtd_entry_ever_sets_a_reserved_bit` stated all three assertions *and* its `assume` through the three constants the encoder builds its entry out of, so `(pa & M) | bits` setting no bit outside `M | R | W` held for every value of `M`. Widening `VTD_ADDR_MASK` over bits a VT-d entry really reserves left it **SUCCESSFUL, 0 of 45 failed**, while every translated DMA would fault as broken hardware. The tree had recorded the opposite forty lines away, citing this harness as the example of avoiding that exact trap. Fixed, measured both ways, and the shape found six more times: 17 rows fire as advertised, 8 have a quotable assertion that cannot run, 1 was answered by refusing to look.
+Milestone 305 (the six kernel confinement rows get a falsification a machine can replay) found two cases where the assertion a reader would quote is not the assertion doing the work and predicted a sweep would find more. This is that sweep, over all 26 rows of `notes/confinement-claims.md`. **The finding is a second proof that could not fail**, and it is a Kani harness rather than a kernel test, which is where nobody was looking: `no_vtd_entry_ever_sets_a_reserved_bit` stated all three assertions *and* its `assume` through the three constants the encoder builds its entry out of, so `(pa & M) | bits` setting no bit outside `M | R | W` held for every value of `M`. Widening `VTD_ADDR_MASK` over bits a VT-d entry really reserves left it **SUCCESSFUL, 0 of 45 failed**, while every translated DMA would fault as broken hardware. The tree had recorded the opposite forty lines away, citing this harness as the example of avoiding that exact trap. Fixed, measured both ways, and the shape found six more times: 17 rows fire as advertised, 8 have a quotable assertion that cannot run, 1 was answered by refusing to look.

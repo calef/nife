@@ -28,16 +28,14 @@ a chat message. All three of those are the failure this note records.
 
 (There is a fifth below, found the same evening and ours rather than GitHub's.)
 
-Each of these is why a step of the procedure exists, and every one of them was learned by doing it
-wrong on 2026-09-23 unless another date is given.
+Each of these is why a step of the procedure exists.
 
 1. Dequeuing does not stick while auto-merge is armed. A pull request removed from the queue with
-   its auto-merge request still live re-enqueues itself within minutes. The maintainer drained the
-   queue, reported it drained, and found all seven entries back. Disable auto-merge first, then
-   dequeue.
+   its auto-merge request still live re-enqueues itself within minutes, so a drained queue fills
+   again. Disable auto-merge first, then dequeue.
 2. `gh pr merge --disable-auto` does not remove an entry already in the queue. The two operations
    are independent, and only the GraphQL mutation dequeues. Its input field is `id`, not
-   `pullRequestId`, which cost an attempt:
+   `pullRequestId`:
 
        gh api graphql -f query='mutation($pr:ID!){dequeuePullRequest(input:{id:$pr}){clientMutationId}}' -f pr="$node_id"
 
@@ -114,8 +112,7 @@ overturn.
 each pull request's auto-merge state at hold time and restores exactly that. It cannot be built:
 GitHub clears `autoMergeRequest` the moment a pull request enters the queue, so "armed and queued"
 and "never armed" are indistinguishable through the API. Release therefore re-arms every held pull
-request under `helpers/queue-eligible.jq`'s admission policy, which until 2026-10-03 is what the
-drain would have done on its next pass anyway.
+request under `helpers/queue-eligible.jq`'s admission policy.
 
 ## How it was rehearsed, since the live queue was not available
 

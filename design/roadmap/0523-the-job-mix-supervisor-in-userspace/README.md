@@ -8,10 +8,8 @@ directory carries what its prose budget has no room for.
 - [`what-provoked-it.md`](what-provoked-it.md): the `NOT SEALED` reading that started the lane, its
   cause, and why it is a separate milestone.
 
-*Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog, which split the
-parent under §212 (a prose budget). The directory follows §212's siting default, `design/roadmap/X/`
-beside `design/roadmap/X.md`. calef names directories.*
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default,
+`design/roadmap/X/` beside `design/roadmap/X.md`. calef names directories.*
 
-- `what-provoked-it` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog,
-  after the parent's "What provoked it, and the cause is now measured rather than inferred". calef
-  names files.
+- `what-provoked-it` Name: provisional. After the parent's "What provoked it, and the cause is now
+  measured rather than inferred". calef names files.

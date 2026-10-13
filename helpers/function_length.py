@@ -9,19 +9,22 @@ compares it with clippy on every function clippy reports, failing on any differe
 that says when they drift.
 
 **The count is clippy's, line for line.** The scan below is written from memory of clippy's
-`too_many_lines` and checked by measurement, not by reading its source: on 2026-10-11 (UTC), clippy
-0.1.101 at a threshold of 0 over the lint census's five configurations, the two agreed on all 5,181
-functions both saw. Take the body's source text, drop its outer braces, trim it, and count each line
+`too_many_lines` and checked by measurement, not by reading its source: on 2026-10-13 (UTC), clippy
+0.1.101 at a threshold of 0 over the lint ratchet's eight passes reported 11,217 functions in scope,
+and the two agreed on all but 8, each a `fn` written inside a `macro_rules!` body (below). Take the body's source text, drop its outer braces, trim it, and count each line
 that has code on it after leading whitespace and block comments are skipped. A line that opens with
 `//` does not count; a line with code before a `//` does, and a `//` inside a string literal ends
 the line's code there too. Because clippy reads source text, a block a `#[cfg]` removes from one
-target still counts on every target, so the five configurations agree on every function. Closures are not functions here: their lines count in the function around them.
+target still counts on every target, so the configurations agree on every function. Closures are not functions here: their lines count in the function around them.
 
-**Which functions.** Every `fn` with a body in the census scope (`notes/lint-census-2026-10-09.md`):
-tracked Rust that runs on nife, minus test code, host tools, `vendor/`, and items under a `#[cfg]`
-that holds only in a test configuration. The scope is copied from the census's `scope.py`, which
-stays as it ran, so the gate and the chart share one copy of it. A `fn` written inside a `macro_rules!` body is skipped, since clippy
-skips code from a macro expansion.
+**Which functions.** Every `fn` with a body in every tracked `.rs` file outside `vendor/`: the Rust
+that runs on nife, host tools, `xtask`, build scripts, tests, benches, fixtures and items under
+`#[cfg(test)]` alike. That is §283 (a function is held to 100 code lines by a lint ratchet), as
+calef widened it on 2026-10-13 (UTC): "Yes, widen the gate". `in_scope` is the one scope function:
+the lint ratchet's gate and `script/metrics`' chart both read it, so they count the same files. A
+`fn` written inside a `macro_rules!` body is skipped. Clippy reports such a function at its span in
+the macro, which this scan does not try to follow; all 8 today are under 10 code lines, and the
+gate's comparison fails if one ever passes 100.
 
 **A function's name** is its row key: `Type::name` inside an `impl` (the self type, generics
 dropped), `Trait::name` for a trait's default body, `outer::name` for a `fn` inside a `fn`, and the
@@ -42,138 +45,20 @@ import rust_source as rs  # noqa: E402
 
 THRESHOLD = 100
 
-# --- the scope, copied from notes/lint-census-2026-10-09/scope.py ---------------------------------
-
-TEST_FEATURES = re.compile(r'system_tests|soak_test|hosttest|confinement_attackers|ipc_stack_depth')
-HOST_TOOL = tuple(f'crates/{c}/' for c in sorted(rs.HOST_TOOL_CRATES))
-TEST_DIRS = ('system_tests/', 'fixtures/', 'bench/', 'notes/', 'std_exerciser/',
-             'pinned_tls_exerciser/', 'cryptography_exerciser/')
-
+# --- the scope ------------------------------------------------------------------------------------
 
 def in_scope(path):
-    """The census's file scope: Rust that runs on nife and is not a test, a tool or vendored."""
-    if not path.endswith('.rs'):
-        return False
-    if path.startswith(('vendor/',) + rs.HOST_ONLY + HOST_TOOL + TEST_DIRS):
-        return False
-    return not ('/tests/' in path or '/benches/' in path or path.endswith('build.rs'))
-
-
-def _split_args(s):
-    out, depth, cur = [], 0, ''
-    for c in s:
-        depth += (c == '(') - (c == ')')
-        if c == ',' and depth == 0:
-            out.append(cur)
-            cur = ''
-        else:
-            cur += c
-    out.append(cur)
-    return out
-
-
-def _cfg_values(pred):
-    """The values a `cfg` predicate can take in a build that is not a test: a subset of {True,
-    False}. `test`, `kani`, `loom` and the test-only features are off; any other atom (a target, a
-    build-mode feature) may be either.
-
-    The census's `scope.py` counted an unknown atom as on, which is right until a `not` reads it:
-    `not(any(test, feature = "shell"))` then came out false, and the milestone tour, which ships in
-    every boot without `shell`, was dropped as test code. Found by milestone 888 when `kernel_main`'s
-    tour became functions under that `cfg`.
-    """
-    pred = pred.strip()
-    m = re.match(r'(all|any|not)\s*\((.*)\)$', pred, re.S)
-    if m:
-        vals = [_cfg_values(a) for a in _split_args(m.group(2)) if a.strip()]
-        if m.group(1) == 'not':
-            return {not v for v in vals[0]}
-        if m.group(1) == 'all':
-            return ({True} if all(True in v for v in vals) else set()) | \
-                   ({False} if any(False in v for v in vals) else set())
-        return ({True} if any(True in v for v in vals) else set()) | \
-               ({False} if all(False in v for v in vals) else set())
-    if pred in ('test', 'kani', 'loom'):
-        return {False}
-    m = re.match(r'feature\s*=\s*"([^"]*)"', pred)
-    if m and TEST_FEATURES.search(m.group(1)):
-        return {False}
-    return {True, False}
-
-
-def cfg_can_ship(pred):
-    """False when the predicate holds only in a test configuration."""
-    return True in _cfg_values(pred)
-
-
-def _item_end(code, start):
-    depth = 0
-    k = start
-    while k < len(code):
-        c = code[k]
-        if c in '([':
-            depth += 1
-        elif c in ')]':
-            depth -= 1
-        elif c == '{' and depth == 0:
-            d, k = 1, k + 1
-            while k < len(code) and d:
-                d += (code[k] == '{') - (code[k] == '}')
-                k += 1
-            return k
-        elif c in ';,' and depth == 0:
-            return k + 1
-        elif c == '}' and depth == 0:
-            return k
-        k += 1
-    return len(code)
-
-
-def strip_test_items(code):
-    """Blank test-only items in comment-stripped source. Returns (code, out-of-line mods dropped)."""
-    inner = re.search(r'#!\[cfg\((.*?)\)\]', code, re.S)
-    if inner and not cfg_can_ship(inner.group(1)):
-        return re.sub(r'[^\n]', ' ', code), []
-    out, dropped = list(code), []
-    for m in re.finditer(r'#\[cfg\(', code):
-        j, depth = m.end(), 1
-        while j < len(code) and depth:
-            depth += (code[j] == '(') - (code[j] == ')')
-            j += 1
-        if cfg_can_ship(code[m.end():j - 1]):
-            continue
-        body = code.index(']', j) + 1
-        end = _item_end(code, body)
-        mod = re.search(r'\bmod\s+(\w+)\s*;', code[body:end])
-        if mod:
-            dropped.append(mod.group(1))
-        for x in range(m.start(), end):
-            if out[x] != '\n':
-                out[x] = ' '
-    return ''.join(out), dropped
+    """Every Rust file outside `vendor/`, test code included."""
+    return path.endswith('.rs') and not path.startswith('vendor/')
 
 
 def scoped(files):
     """{path: (text, stripped)} for the in-scope files among `files`, a {path: text} map.
 
-    `stripped` has comments, literals and test-only items blanked, with line structure kept. An
-    out-of-line `mod x;` under a test-only `cfg` drops its file, as the census did.
+    `stripped` has comments and literals blanked, with line structure kept.
     """
-    out, drop = {}, set()
-    for path in sorted(files):
-        if not in_scope(path):
-            continue
-        text = files[path]
-        code, mods = strip_test_items(rs.strip_non_code(text))
-        out[path] = (text, code)
-        stem = os.path.splitext(os.path.basename(path))[0]
-        base = os.path.dirname(path)
-        sub = base if stem in ('lib', 'main', 'mod') else os.path.join(base, stem)
-        for md in mods:
-            drop.update({os.path.join(sub, md + '.rs'), os.path.join(sub, md, 'mod.rs')})
-    for d in drop:
-        out.pop(d, None)
-    return out
+    return {path: (files[path], rs.strip_non_code(files[path]))
+            for path in sorted(files) if in_scope(path)}
 
 
 # --- clippy's count -------------------------------------------------------------------------------
@@ -314,7 +199,7 @@ def _impl_name(header):
 def functions(text, code):
     """[(name, start_line, n, lines)] for every fn with a body in one file.
 
-    `text` is the source and `code` the same with comments, literals and test items blanked.
+    `text` is the source and `code` the same with comments and literals blanked.
     `start_line` is the 1-based line of the item's first qualifier, which is where clippy's span
     starts; `n` is `code_lines` over the body; `lines` is `code_line_set`'s set.
     """
@@ -397,8 +282,8 @@ def measure(files):
 
 
 def tree_code_lines(files):
-    """In-scope code lines, the denominator of the share: non-blank lines once comments, literals
-    and test items are blanked, `helpers/rust_source.py`'s code-line measure."""
+    """In-scope code lines, the denominator of the share: non-blank lines once comments and
+    literals are blanked, `helpers/rust_source.py`'s code-line measure."""
     return sum(rs.non_blank(code) for _text, code in scoped(files).values())
 
 

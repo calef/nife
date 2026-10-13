@@ -1,12 +1,9 @@
 # Milestone 531 appendix: what was measured, and the mined CI baseline
 
 The evidence behind [milestone 531 (no gate in this tree records when it
-fires)](../0531-no-gate-records-when-it-fires.md): how the audit measured, the correction that
-added the GitHub Actions record, the per-check baseline mined from it on 2026-09-21, and what it
-could not establish. Moved out of that page on 2026-10-12 (UTC) under [§212 (a prose
-budget)](../../decisions/0212-a-prose-budget-for-every-document.md). The main page is complete
-without this one, which exists to verify or challenge it. Two sentences over the 40-word limit of
-§213 (writing standards) were split; no number changed.
+fires)](../0531-no-gate-records-when-it-fires.md): how the audit measured, why Actions is the firing
+record, the per-check baseline mined from it on 2026-09-21, and what it could not establish. The
+main page is complete without this one, which exists to verify or challenge it.
 
 ## What was measured, and how
 
@@ -19,31 +16,24 @@ without this one, which exists to verify or challenge it. Two sentences over the
   record-parsing legs are the cheap end: `roadmap --check` 0.27 s, `decisions --check` 0.08 s,
   `citations --check` 1.06 s, `fatal-risks --check` 0.65 s, `names --check` 0.13 s,
   `falsifications --check` 0.61 s. The ten clippy passes are the other 80 seconds.
-- The GitHub Actions failure record, mined. This was added after a first draft of this proposal
-  claimed the record did not exist; see the correction below. `gh api
+- The GitHub Actions failure record, mined: `gh api
   'repos/nifeos/nife/actions/runs?status=failure' --paginate`, then `/jobs` for each run, then
   `/logs` for each failed `clippy` and `bench` job.
 - The live state of the machine, because two candidates are about state no file describes.
 
-## A correction, recorded rather than smoothed over
+## Why the firing record is not silent
 
-The first draft of this proposal said the firing record was silent by construction. Its reasoning
-was that a blocking gate fires on a lane branch that is later force-pushed away. The evidence goes
-with it. That is true of git and false of GitHub Actions, which keeps a run per commit
-whatever happens to the branch afterwards, and nobody had mined it. The correction came from the
-maintainer and it is the right kind: it changed a justification and left the conclusion standing.
-The justification is stronger for it, because it now says exactly what the ledger buys over what is
-already there.
-
-The mined record is below. It shortens the list of checks with no trail, and it overturns one
-paragraph of this proposal outright.
+A blocking gate fires on a lane branch that is later force-pushed away, and git loses the evidence
+with it. GitHub Actions does not: it keeps a run per commit whatever happens to the branch
+afterwards. That is what the ledger has to buy over what is already there, and the mined record
+below shortens the list of checks with no trail.
 
 ## The mined baseline, 2026-09-21
 
 909 failed workflow runs are retained, the oldest from 2026-07-23, which is the day after CI was
 added to this repository, against 14,295 runs in total. 894 of them name at least one failed job,
-1,312 failed jobs in all. So the record reaches the whole of this project's CI history rather than
-a recent window, which is more than the first draft assumed and more than the correction assumed.
+1,312 failed jobs in all. So the record reaches the whole of this project's CI history rather than a
+recent window.
 
 Failed jobs by name, whole history:
 
@@ -104,16 +94,14 @@ encodes a fix already made, and nothing says any of them later caught a new inst
 evidence against them, because a ratchet that holds leaves no trace by design, and it is exactly the
 case the first recommendation exists to settle.
 
-The one conclusion this proposal retracts is about `script/icount --check`. The first draft named
-it as the single existing gate whose worth could not be established, on the grounds that no commit
-records it catching a regression. The mined logs overturn that. Of its 99 failed `bench` jobs,
-43 carry the tripwire's own `CHECK FAIL` line, across seven distinct days between 2026-08-14 and
-2026-09-15, naming specific benchmarks: `spawn_el` 21 times, `map_new` 16, `yield_switch` and
-`ctx_switch` 4 each. It is not a gate that never fires. The retraction is recorded here rather than
-edited away, because the draft's reasoning was the reasoning this whole proposal argues against:
-absence of a commit message was read as absence of a firing.
+`script/icount --check` fires, though no commit records it catching a regression. Of its 99 failed
+`bench` jobs, 43 carry the tripwire's own `CHECK FAIL` line, across seven distinct days between
+2026-08-14 and 2026-09-15, naming specific benchmarks: `spawn_el` 21 times, `map_new` 16,
+`yield_switch` and `ctx_switch` 4 each. Absence of a commit message is not absence of a firing,
+which is the reasoning this whole proposal argues against.
 
-Two things survive the retraction and are worth having, both measured rather than argued. The
+Two further facts are worth having, both measured rather than argued. The
+
 other 56 failures are not the tripwire, so the majority failure mode of a required check named
 `bench (icount regression tripwire)` is something other than the tripwire, which is a fact about
 what its red means. And 43 firings across seven days is on the order of seven episodes, since the

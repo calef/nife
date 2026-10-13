@@ -16,7 +16,7 @@ unambiguous phrase in a conversation. One noble gas per architecture:
 |---|---|---|---|
 | **argon** | aarch64 | Jetson TX1, milestone 127 (the seL4 machine) | awaited (2026-10-06) |
 | **radon** | riscv64 | StarFive VisionFive 2, JH7110 | boots nife, wired as a bench target |
-| **xenon** | x86_64 | Dell OptiPlex, serial port and null modem (milestone 87) | **boots nife**, first light 2026-09-05 (the cell said "no first light yet" until 2026-09-05) |
+| **xenon** | x86_64 | Dell OptiPlex, serial port and null modem (milestone 87) | **boots nife**, first light 2026-09-05 |
 
 Why they earn names rather than descriptions. This project's own tenet is that a name is a
 claim and a reader meets it before anything else. "The board" was serviceable while there was
@@ -42,13 +42,11 @@ The analysis is in [`target-hardware/without-an-mmu.md`](target-hardware/without
 
 ## The ISA is almost never the constraint
 
-"Does it run aarch64" is the wrong question. And the answer splits in two, which this note ran
-together until 2026-09-04 (calef: *"nife should be able to run on hardware without a serial
-console"*). Some of these are properties a machine must have to run nife at all; one is a property
+"Does it run aarch64" is the wrong question. And the answer splits in two (calef, 2026-09-04:
+*"nife should be able to run on hardware without a serial console"*). Some of these are properties a machine must have to run nife at all; one is a property
 *we* need to bring nife up on it, and confusing them makes the supported set look smaller than it is.
 
-To run nife, and item 0 was missing from this list until 2026-09-04 although it excludes more
-than the rest put together:
+To run nife (item 0 excludes more than the rest put together):
 
 0. Is there an MMU? nife is a capability microkernel with per-process address spaces; every
    driver and server is an EL0 process behind its own page tables. There is no configuration in

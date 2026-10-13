@@ -11,23 +11,21 @@ needs_person: no
 ---
 # 513. The decision index is still hand-maintained
 
-Superseded 2026-10-12 (UTC), by milestone 582 (a decision's status becomes a field, and the index becomes generated). It generated the table from the files on 2026-09-23, which is the work below. Then calef retired the table on 2026-10-12 (maintainer/retire-decisions-index). `script/decisions` prints the index from the files. *(Number provisional until the merge queue lands it.)* Promoted from the
-proposal `the-decision-index-is-still-hand-maintained`, filed 2026-09-19, on calef's instruction of
-2026-09-20 to give every proposal on `main` a number. The text below is the proposal's own, unedited
-except for this paragraph: the argument is its author's and promotion is not the moment to improve
-it. Filed by milestone 443 (lanes wait on each other for three)'s lane, which took the gates off the generated roadmap index and found
-the same hotspot one directory over, untouched.
+The work is milestone 582 (a decision's status becomes a field, and the index becomes generated).
+`script/decisions` prints the index from the files. The text below is the proposal of the lane of
+milestone 443 (lanes wait on each other for three). That lane took the gates off the generated
+roadmap index. It found the same hotspot one directory over.
 
-It is milestone 294's shape applied to `design/decisions/`, over files already in
-the tree.
+It is the shape of milestone 294 (`design/roadmap/README.md`'s index is generated, not
+hand-maintained) applied to `design/decisions/`, over files already in the tree.
 
 ## The shape, because it is the one already solved next door
 
-`design/roadmap/README.md` used to be the tree's worst merge conflict, structurally rather than by
-bad luck: every lane edits its own milestone's block, every milestone also needs a row in one sorted
-table, so every lane in flight collided with every other lane in flight, always, in that one file.
-Eight conflicts in a single session on 2026-09-14. Milestone 294 derived the row from the block and
-the conflicts stopped.
+Hand-maintained, `design/roadmap/README.md` was the tree's worst merge conflict, structurally rather
+than by bad luck: every lane edits its own milestone's block, every milestone also needs a row in
+one sorted table, so every lane in flight collided with every other lane in flight, always, in that
+one file. Eight conflicts in a single session on 2026-09-14. Milestone 294 derived the row from the
+block and the conflicts stopped.
 
 `design/decisions/README.md` is 194 rows of exactly that table and nothing derives it. Every lane
 that lands a decision edits the index by hand, and §194 names it in passing as one of the two
@@ -63,6 +61,6 @@ be its second customer rather than a second instance of it.
 
 ## Index row
 
-`design/roadmap/README.md` used to be the tree's worst merge conflict, structurally rather than by
-bad luck: every lane edits its own milestone's block, every milestone also needs a row in one sorted
-table, so every lane in flight...
+Hand-maintained, `design/roadmap/README.md` was the tree's worst merge conflict, structurally rather
+than by bad luck: every lane edits its own milestone's block, every milestone also needs a row in
+one sorted table, so every lane in flight...

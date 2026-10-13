@@ -5,9 +5,8 @@ built: 2026-09-03
 ---
 # 232. Audit every check against two questions: does anything run it, and does it block
 
-Minted 2026-09-02 by calef, after four independent findings in one
-day, each a different way for this tree's verification to report something that was not true.
-*(Number provisional until the merge queue lands it.)*
+Four independent findings show four different ways for this tree's verification to report
+something that is not true.
 
 The inventory is `notes/check-inventory.md`, measured 2026-09-03 against `a0059022`: every
 workflow job, every `script/` entry point that renders a verdict, and the two checks that are

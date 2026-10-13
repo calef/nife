@@ -5,16 +5,7 @@ half; the attribution half is [DECISIONS §109 (attribution is a property of a c
 
 The contract is `crates/login_protocol`, the service is `components/src/login.rs`, and its test
 client is `fixtures/src/login_test_client.rs`. The names were ratified 2026-09-15 (calef, the
-whole `login` family); this note's old claim that they were still provisional was stale and is
-corrected here, 2026-10-09 (UTC).
-
-Corrected and extended 2026-10-09 (UTC) by milestone 860 (comments state the constraint as it is
-now). Sections below still described the slice as first built: one subtree for everyone, one
-shared staging page, no terminal, no reclamation. The module doc's design argument and history
-moved here the same day, and the sections now say what holds, with the ruling that changed each
-thing linked where it changed it. The resolved records this note used to carry as appendices
-were removed on 2026-10-10 under the amendment to §267 (a comment states the constraint as it is
-now): history lives in git, not in documents. The removal commit's message says what each held.
+whole `login` family).
 
 ## The problem this exists to solve
 
@@ -60,9 +51,8 @@ independently revocable object per principal.
 
 ### Which subtree a principal gets (§117 (a principal's subtree is named by its identity string))
 
-Every login used to be attenuated to `filesystem_protocol::fixture::tree::SUB` with the same
-rights; §117 (2026-08-23) changed that, and each identity is now attenuated to the subtree named by
-its identity string itself, used directly, with no separate lookup table. `alice` and `bob`
+Each identity is attenuated to the subtree named by its identity string itself (§117, 2026-08-23),
+used directly, with no separate lookup table. `alice` and `bob`
 land in two different, independently-scoped subtrees; neither can name the other's. The subtree
 must already exist: `identity_provisioner` (milestone 155 (a provisioning tool)) provisions it at provisioning time, and
 this program never creates one (§117's own file records why provision-time creation was chosen over

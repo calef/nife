@@ -10,8 +10,7 @@ needs_person: yes
 ---
 # 793. One crate for the right-aligned number writer three programs each copy
 
-Found on 2026-10-05 (UTC) by the lane `lane/326-survivors` at base `269c1d48c`, while triaging
-mutation survivors. Title and slug are provisional.
+Found while triaging mutation survivors (at `269c1d48c`). Title and slug are provisional.
 
 ## What is duplicated
 

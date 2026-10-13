@@ -5,8 +5,6 @@ built: 2026-09-21
 ---
 # 522. A boundary drawn by dependency, not by path, is what finds the 117 blocks a path split misses
 
-*(Number provisional until the merge queue lands it.)*
-
 **The contribution is the boundary, not the count.** `script/metrics`'s `unsafe_outside_arch` (824,
 density 77 per 10,000, `script/lint`'s ceiling 88) answers "how much of the tree's Rust is unsafe
 outside `kernel/src/arch/`", and nothing in that number distinguishes code nothing confines from
@@ -72,7 +70,7 @@ crates is a real, small correction (it would move the published 824 to 818 and t
 to roughly 81), but it is a decision about an existing gate's inputs, not a byproduct of drawing a
 new one, and it is an architect's to make.
 
-## The history, and why a gap in it is not a bug
+## The earlier weeks, and why a gap in them is not a bug
 
 `script/metrics --backfill` restated this split across all ten prior weeks. **Eight of them carry a
 nonzero `unsafe_trust_unclassified`** (57 to 188 blocks): this tree spells its crate names out
@@ -130,9 +128,9 @@ number; this milestone does not touch it.
   `pgrep`, `pmap` and `soak_page` all showed as unused kernel dependencies for at least one
   target/feature combination in one run, which is consistent with (but does not prove) test-only use.
 - `notes/register-of-measures.md` says the live ceiling is 94; the actual gate
-  (`notes/unsafe-obligations.md`) is 88. Found while reading the register to place this split
-  beside it; a note wanted the correction pointed out, not made, since the historical ratchet
-  narrative needs care this milestone did not budget for.
+  (`notes/unsafe-obligations.md`) is 88. Found while reading the register to place this split beside
+  it. A note wanted the correction pointed out, not made, since the historical ratchet narrative
+  needs care this milestone did not budget for.
 
 ## Follow-on
 

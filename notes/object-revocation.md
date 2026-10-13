@@ -92,18 +92,18 @@ straight back to the parent's budget (the watermark un-bumps), so they are re-sp
 spawn-then-reap loop (split, run, destroy, split the next) therefore runs forever on a budget of one
 child. The benchmark proves it: a 100-iteration spawn loop runs on a 64-page budget that could hold only ~6
 children at once. A child freed *out of order* leaves a hole until no child above it is live, and the
-last such return reclaims it. Until 2026-10-03 (UTC) it lasted until the parent died, which leaked
-the progenitor's job pool (`notes/swish-check-flake.md`). Reusing a hole under a live child is what a
+last such return reclaims it, rather than the parent's death, which would leak the progenitor's job
+pool (`notes/swish-check-flake.md`). Reusing a hole under a live child is what a
 derivation tree buys, and we still do not build one.
 
 ## Region slots became generational, retiring the lifetime cap
 
-The untyped region table used to be a fixed count-based array whose slots were never reused, so its
-256 entries bounded region *creations over the kernel's lifetime*, not concurrent use. A system that
-spawns and reaps without end would wedge after 256 regions ever. Object revocation made the table a
-generational `generational_table::Table`: `destroy` removes a region's slot, bumping its generation (so every stale
-`Untyped` capability fails, the same stale-safety as everything else), and the next `create` reuses it.
-Now the bound is on *concurrent* regions, which turns a one-shot reclaim into a repeatable one.
+The untyped region table is a generational `generational_table::Table`: `destroy` removes a region's
+slot, bumping its generation (so every stale `Untyped` capability fails, the same stale-safety as
+everything else), and the next `create` reuses it. The bound is on *concurrent* regions, which turns
+a one-shot reclaim into a repeatable one. Not a fixed array whose slots are never reused, because
+its entries would bound region *creations over the kernel's lifetime*, and a system that spawns and
+reaps without end would wedge after 256 regions ever.
 
 ## Endpoints: wake a blocked waiter with an error
 
@@ -116,20 +116,21 @@ reclaim always makes progress.
 
 ### The sweep runs before the refusal, and that ordering is the whole of milestone-scale bug
 
-Changed 2026-08-16. The sweep used to sit *after* the live-thread refusal, so it never ran when
-most needed. A `Blocked` thread never reaches `schedule()`, so it never spends
-the kill the refusal arms, so a region holding a server parked in `RECEIVE` was refused on every pass
-forever, and its memory was gone until the machine stopped. `DESTROY`'s documented contract ("the
-owner retries and reclaims") was false for that case, which is the ordinary case: a server blocks.
+The sweep runs *before* the live-thread refusal. A `Blocked` thread never reaches `schedule()`, so
+it never spends the kill the refusal arms. With the sweep after the refusal, a region holding a
+server parked in `RECEIVE` would be refused on every pass forever, its memory gone until the machine
+stopped, and `DESTROY`'s documented contract ("the owner retries and reclaims") would be false for
+the ordinary case: a server blocks.
 
-The aarch64 test boot is what made it visible. `userspace_init_brings_up_the_console_server` builds a
-console server out of the progenitor's 2048-frame budget, and that server blocks in its serve loop, so those
-2048 frames were unreclaimable by construction. Six such tests, and the boot finished with 216
-free frames of 29307 and no free run longer than 117, failing as `Unmappable(OutOfFrames)` in
-whichever unlucky later test asked for a long run. notes/frames.md is the full receipt.
+The aarch64 test boot shows the cost. `userspace_init_brings_up_the_console_server` builds a console
+server out of the progenitor's 2048-frame budget, and that server blocks in its serve loop, so
+without the sweep those 2048 frames are unreclaimable. With the sweep after the refusal, six such
+tests left the boot with 216 free frames of 29307 and no free run longer than 117, failing as
+`Unmappable(OutOfFrames)` in whichever later test asked for a long run. notes/frames.md is the full
+receipt.
 
-Sweeping first fixes it with no new mechanism: removing an endpoint already aborts and wakes its
-waiters, the transition a doomed resident needs before it can die. The region's endpoints now go on
+Sweeping first needs no new mechanism: removing an endpoint already aborts and wakes its
+waiters, the transition a doomed resident needs before it can die. The region's endpoints go on
 every pass, refusal or not.
 
 The objection worth answering is that this makes a *refused* reclaim destructive. It already was, and
@@ -262,8 +263,7 @@ timing exposed it.
   2026-08-18, milestone 135). The literal double free needs two `untyped::destroy` calls to overlap
   between the refusal check and the slot removal, and no test in this tree can schedule that: the
   deterministic test asserts the property that makes the overlap harmless (a lent region is never
-  freed by its borrower) rather than the overlap itself. The single-winner claim used to be argued
-  from the lock discipline at the call site and gated by nothing. It is now the whole of
+  freed by its borrower) rather than the overlap itself. The single-winner claim is the whole of
   `RegionTable::claim_for_destroy` in `crates/memory_regions`, which decides and removes the name in one
   `&mut self` borrow, and `script/interleaving-check` searches every interleaving of it. The
   falsification is standing rather than remembered: one harness reconstructs the pre-fix protocol

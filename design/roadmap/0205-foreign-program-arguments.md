@@ -10,13 +10,9 @@ needs_person: no
 ---
 # 205. How a foreign program is told what to do
 
-Minted 2026-08-31 from milestone 121's (`ripgrep`: enumeration as a
-capability) lane. *(Number provisional until the merge queue lands it.)*
-
-§170 (how a foreign program is told what to do), the decision this block depends on, was decided
-by calef on 2026-09-26. He ruled twice more on 2026-09-27 (UTC), both recorded below: "N1" at
-06:27Z, and "no mark" at 06:35Z. The argument page's layout is still his, built provisionally and
-proposed.
+§170 (how a foreign program is told what to do), the decision this block depends on, was decided by
+calef on 2026-09-26, with two rulings of 2026-09-27 (UTC) recorded below: "N1" and "no mark". The
+argument page's layout is still his, built provisionally and proposed.
 
 In brief. Unmodified `ripgrep` ran on nife and stopped at argument parsing, because the native ABI
 had no argument vector and `std::env::args()` compiled std's `unsupported` backend and yielded

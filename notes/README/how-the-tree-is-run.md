@@ -41,7 +41,7 @@ Part of [the notes index](../README.md), which says how to add a line.
 - [Rustdoc coverage](../doc-coverage.md): the doc-example floor and the `missing_docs` ratchet.
 - [The documentation sweep](../documentation-audit.md): how to run a documentation sweep, and what counts.
 - [Prior art and reuse](../prior-art.md): where to look before building, and the build-versus-reuse rule.
-- [Handing a session over](../session-handoff.md): superseded 2026-07-29 restart point, kept as history.
+- [Handing a session over](../session-handoff.md): the 2026-07-29 restart point, a record of that session.
 - [Corrections of error](../coes/README.md): the register of recorded errors and the mechanisms
   that replaced them, one dated file each.
 - [Cobble, the mascot](../mascot.md): the project's mascot, drawn by calef's kid.
@@ -49,4 +49,5 @@ Part of [the notes index](../README.md), which says how to add a line.
 - [The suite's frame budget](../frame-budget.md): what the system tests may leave unreturned, what they legitimately keep, the conventions, and every number the ceiling has been. Name provisional.
 - [The swish-check CI flake, measured](../swish-check-flake.md): two timing-race reds at one gate, counted over 30 days, explained mechanically. Name provisional.
 - [swish-check failures, 2026W40](../swish-check-flake-2026w40.md): the week's 18 failures classified; the echo splice that looked like it survived milestone 342 (the kernel and the `console` server drive one UART from two address spaces) all predates it. Name provisional.
+- [The truncated echo, 2026W42](../swish-check-flake-2026w42.md): a typed line whose input stopped mid-echo on aarch64, a receive interrupt cleared while a byte waited in the PL011's FIFO, and the `--input-race` boot that proves the fix. Name provisional.
 - [Crates that could be released on their own, 2026-10-07](../releasable-crates-2026-10-07.md): which crates could leave, who else implements each, and whether to offer them our proofs. Name provisional.

@@ -1,9 +1,8 @@
 # The first scaffold: what the fourth shape costs, 2026-09-05
 
-An appendix of [can a userspace process hold a timer?](../timer-capability.md), moved from its
-section "What the fourth shape costs" on 2026-10-11 (UTC) under §212 (a prose budget). The parent
-keeps the shape and the three headline figures. This file keeps the scaffold's method, the tables
-and what the scaffold did not price. The scaffold was built and deleted on 2026-09-05.
+An appendix of [can a userspace process hold a timer?](../timer-capability.md). The parent keeps the
+shape and the three headline figures. This file keeps the scaffold's method, the tables and what the
+scaffold did not price. The scaffold was built and deleted on 2026-09-05.
 
 ## What was already priced, and what was not
 

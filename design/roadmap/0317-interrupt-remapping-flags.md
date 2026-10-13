@@ -5,9 +5,8 @@ built: 2026-09-17
 ---
 # 317. The interrupt-remapping flags, and where MSI confinement actually lives
 
-Minted by the maintainer on 2026-09-17 out of
-[DECISIONS §86](../decisions/0086-el0-nvme-driver.md)'s research pass, which found the gap while
-pricing an EL0 NVMe driver. *(Number provisional until the merge queue lands it.)*
+[DECISIONS §86](../decisions/0086-el0-nvme-driver.md)'s research pass found the gap while pricing
+an EL0 NVMe driver.
 
 ## What this is, and what it deliberately is not
 

@@ -10,8 +10,8 @@ needs_person: no
 ---
 # 776. A weekly check that every proof can still fail
 
-Raised by the risk-2 reach study (`lane/kani-reach`, milestone 741 (does a standing proof notice a
-regression)) on 2026-10-04 (UTC). Title and slug are drafts.
+Raised by the risk-2 reach study, milestone 741 (does a standing proof notice a regression). Title
+and slug are drafts.
 
 The study is a single measurement. A harness that can fail today can be weakened tomorrow (an
 added `kani::assume`, a bound lowered). Nothing would say so. `.github/workflows/kani-reach.yml`

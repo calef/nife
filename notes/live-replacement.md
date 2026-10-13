@@ -170,10 +170,9 @@ reclaiming the budget at the end can only *succeed* if all five splits are gone:
 whose children are still carved out of it.
 
 That is an assertion rather than housekeeping, for a reason with nothing to do with tidiness.
-`untyped::create` takes a contiguous run of frames; the first version of these tests leaked all
-three systems, which fragmented the frame allocator badly enough that a *later, unrelated* test could
-not get the progenitor's own eight-megabyte region. The failure surfaced nowhere near its cause, which is the
-usual signature of a leak.
+`untyped::create` takes a contiguous run of frames, so leaking the three systems fragments the frame
+allocator badly enough that a *later, unrelated* test cannot get the progenitor's own eight-megabyte
+region. The failure surfaces nowhere near its cause, which is the usual signature of a leak.
 
 ### BUGS: the frame-hygiene `debug_assert!` was a race, and it fired on CI
 
@@ -228,44 +227,43 @@ not.
 `0x3100005` is `DEV_VA + 5`. That is the outgoing instance dying on the device it no longer has,
 which is the control this whole milestone rests on and which the test asserts on directly.
 
+## What is built beside it
+
+- **State handoff**, to §209 (state handoff is an opaque blob over a granted frame, and it is
+  optional): `swapper`'s `ROLE_HANDOFF` carries a component's tally across the swap on a handoff
+  page, and a replacement that cannot absorb it does not commit. It runs on all three
+  architectures. See notes/state-handoff.md, including the one-page limit that `redoxfs_server`
+  will hit.
+- **A component manifest**: the operator's endowments are not literals in its own source.
+  `swap_protocol` carries the capability half of its own contract, `swapper` wires every component
+  from a declaration, and the slot agreement is a compile-time derivation. See
+  notes/component-manifest.md, including the honest limit: a manifest is compiled in rather than
+  shipped beside a binary, which is a wire format and so a decision left to the architect.
+- **Dependency-aware orchestration**: `component_plan::depends_on` names which contracts a component
+  cannot silently tolerate the absence of, and `dependents` answers who must be warned before a
+  given contract is swapped. `queued()`'s `BOP_DOWN`/`BOP_UP` are driven by that answer rather than
+  sent unconditionally. Direct dependents only; see notes/dependency-orchestration.md.
+- **A hung component**: `swapper`'s `ROLE_HUNG` runs the swap against an incumbent that stops
+  answering and gets the service back with no authority the operator did not already hold, because
+  the one step that needed the incumbent's cooperation (`OPERATION_QUIESCE`) is the step a hang
+  makes redundant. Reclaiming a livelocked instance's memory still needs the stronger right, §32's
+  recorded watchdog case; restarting its service does not.
+- **A dependent that will not answer its warning**: skipping the warning costs latency and loses
+  nothing (`ROLE_UNWARNED`), and the warning is advisory, per DECISIONS §231 (a swap's warning to a
+  dependent is advisory, and the supervisor never waits for it). See
+  notes/non-cooperative-fallback.md.
+
 ## What this does not yet demonstrate
 
-- ~~State handoff.~~ Built 2026-09-26 to §209 (state handoff is an opaque blob over a
-  granted frame, and it is optional): `swapper`'s `ROLE_HANDOFF` carries a component's tally across
-  the swap on a handoff page, and a replacement that cannot absorb it does not commit. It runs on all
-  three architectures. See notes/state-handoff.md, including the one-page limit that
-  `redoxfs_server` will hit.
-- ~~A component manifest.~~ Built 2026-08-17: the operator's endowments are no longer
-  literals in its own source. `swap_protocol` carries the capability half of its own contract, `swapper`
-  wires every component from a declaration, and the slot agreement that used to be a comment in two
-  files is now a compile-time derivation. See notes/component-manifest.md, including the honest limit:
-  a manifest is compiled in rather than shipped beside a binary, which is a wire format and so a
-  decision left to the architect.
-- ~~Dependency-aware orchestration.~~ Built 2026-08-23: `component_plan::depends_on` names
-  which contracts a component cannot silently tolerate the absence of, and `dependents` answers who
-  must be warned before a given contract is swapped. `queued()`'s `BOP_DOWN`/`BOP_UP` are driven by
-  that answer now rather than sent unconditionally. Direct dependents only; see
-  notes/dependency-orchestration.md, including the non-cooperative fallback it still owes
-  notes/hung-component.md.
-- ~~A hung component.~~ **Demonstrated 2026-08-17, and it half-corrects the sentence that used to
-  stand here.** The old text said a livelocked instance "needs the stronger right, which is §32's
-  recorded watchdog case". That is right about reclaiming its memory and **wrong about restarting its
-  service**: `swapper`'s `ROLE_HUNG` runs the swap against an incumbent that stops answering and gets
-  the service back with no authority the operator did not already hold, because the one step that
-  needed the incumbent's cooperation (`OPERATION_QUIESCE`) is the step a hang makes redundant. What the test
-  also shows is the harder half: the domain reports the hang as `BLOCKED`, which is what a healthy
-  idle server reports as, and `Endpoint::REAP` answers `StillAlive` for every member. See
+- A hung component a supervisor can *see*. The domain reports the hang as `BLOCKED`, which is what a
+  healthy idle server reports as, and `Endpoint::REAP` answers `StillAlive` for every member. See
   notes/hung-component.md, including the two decisions this cannot pass without (how a supervisor
-  *notices*, which needs milestone 106's timed wait, and what it may do to a component that never
+  *notices*, which needs the timed wait of milestone 106 (a wait that ends on either the interrupt
+  or the deadline), and what it may do to a component that never
   cooperates) and the finding that `abi::Error::Gone` does not reach a caller stranded mid-`CALL`.
-- The console proper. The component swapped here owns the real UART and is shaped like a console
-  server, but `line_editor`/`display_terminal`/`compositor` are not themselves swapped. The reason
-  given here until 2026-09-26 (not running under the test harness) stopped being true; the real
-  reasons differ per component and two of them are contract decisions. See
-  notes/interactive-stack-swap.md (PROPOSED).
-- A dependent that will not answer its warning. Measured rather than open since 2026-09-26:
-  skipping the warning costs latency and loses nothing (`ROLE_UNWARNED`). What to do instead of a
-  blocking warn is notes/non-cooperative-fallback.md (PROPOSED).
+- The whole console. The component swapped here owns the real UART and is shaped like a console
+  server. `line_editor` is swapped live by `terminal_supervisor`; `display_terminal` and
+  `compositor` are not, and each is a different problem. See notes/interactive-stack-swap.md.
 
 ### BUGS: one unexplained riscv64 failure under load
 

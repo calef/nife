@@ -11,8 +11,7 @@ needs_person: no
 ---
 # 715. The spawn service holds the display grants, and the shell holds none
 
-Promoted from `design/roadmap/proposals/the-spawn-service-holds-the-display-grants-and-the-shell-holds-none.md` on 2026-10-03 (UTC). The number 715 was minted by the maintainer in a batch promotion of the proposal pile and is provisional until the queue lands it. *(Title and slug are drafts.)*
-
+*Title and slug are drafts.*
 Raised by the 2026-10-03 security audit's follow-up (item (a) of
 `design/audit-reports/2026-10-03-eight-constants-and-thirteen-components.md`'s reconciliation).
 

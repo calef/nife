@@ -5,16 +5,12 @@ built: 2026-08-31
 ---
 # 202. Every confinement test is a ritual until somebody breaks the confinement and watches it fail
 
-Minted 2026-08-31 by calef, scoping `design/fatal-risks/README.md`'s risk 7,
-which its own `BUGS` recorded as unowned and needing framing before a lane. *(Number provisional
-until the merge queue lands it.)*
-
-What landed. The enumeration is in notes/confinement-claims.md: twenty-six confinement
-claims, where each is stated, which test checks it, and whether that test has been shown to fail
-when the claim is broken. Twenty-five Kani harnesses now carry a replayable falsification in
-milestone 194's shape, up from six, and `script/falsifications --sweep` turns every one of them red
-in about thirty seconds. The §31 worked example this block names was run by hand, twice, and the
-second run is the one that counts.
+This scopes `design/fatal-risks/README.md`'s risk 7. The enumeration is in
+notes/confinement-claims.md: twenty-six confinement claims, where each is stated, which test checks
+it, and whether that test has been shown to fail when the claim is broken. Twenty-five Kani
+harnesses carry a replayable falsification in milestone 194's shape, and `script/falsifications
+--sweep` turns every one of them red in about thirty seconds. The §31 worked example this block
+names was run by hand, twice, and the second run is the one that counts.
 
 Say it the narrow way. Nothing here supports "the confinement holds." What it supports is that
 *these named claims are tested, and each test has been shown to fail when the claim is broken*, and

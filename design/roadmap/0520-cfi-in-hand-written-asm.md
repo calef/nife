@@ -5,9 +5,7 @@ built: 2026-09-21
 ---
 # 520. Call-frame information in hand-written assembly, and the link-script line that was hiding the compiler's own
 
-Built 2026-09-21. Minted 2026-09-21 by the maintainer, assigning the number to a lane's
-already-completed work adding CFI to `kernel/src/arch/`'s hand-written `.s` files.
-*(Number provisional until the merge queue lands it.)*
+Built 2026-09-21: CFI in `kernel/src/arch/`'s hand-written `.s` files.
 
 **The larger finding is not the assembly directives; it is what they exposed.** All three link
 scripts (`kernel/link-{aarch64,riscv64,x86_64}.ld`) carried `*(.eh_frame*)` in their `/DISCARD/`
@@ -25,8 +23,8 @@ directives are what made the defect visible, by giving a reason to go looking at
 
 Twelve hand-written `.s` files under `kernel/src/arch/` carried zero CFI: no `.cfi_startproc`,
 `.type`, or `.size`. A debugger stopped inside a context switch or a trap handler had nothing
-describing the frame, and the hardest defects this project expects to chase are concurrency bugs on
-real silicon where a backtrace at a breakpoint is the main instrument. The brief named twelve files;
+describing the frame. The hardest defects this project expects to chase are concurrency bugs on real
+silicon where a backtrace at a breakpoint is the main instrument. The brief named twelve files;
 there are thirteen -- `kernel/src/arch/x86_64/fp.s` (FXSAVE/FXRSTOR) is the same shape as the other
 two `fp.s` files and was simply missing from the original list. It got the same treatment.
 
@@ -55,7 +53,7 @@ Stays ALLOC (bytes survive), keeps LLD's normal sequential layout (lands right a
 enough to `.text` that nothing overflows), and costs `__image_size` nothing because that symbol is
 assigned before this section exists.
 
-**Verified, not assumed.** A from-scratch build of the commit immediately before this milestone
+Verified, not assumed. A from-scratch build of the commit immediately before this milestone
 (`ece6d72c`) gives `__image_size = 0x350000` on aarch64. This tree, with CFI present throughout,
 gives the identical `0x350000`. The flat `Image` binary the two builds' `objcopy -O binary` produce
 -- the actual bytes a bootloader or QEMU's `-kernel Image` path loads -- is byte-for-byte
@@ -128,8 +126,8 @@ riscv64's `_start` carries the identical Linux Image header shape and gets the i
 
 Captured with GDB 17.2 against two builds of the identical source tree -- commit `ece6d72c`
 (immediately before this milestone) and this branch's tip -- on aarch64, the only architecture
-`cargo xtask gdb` currently drives. Full transcripts were in `notes/cfi-unwind.md`. (Corrected
-2026-10-11 UTC: #1937 moves them to the note's appendix "Before and after: the GDB transcripts".)
+`cargo xtask gdb` currently drives. Full transcripts are in `notes/cfi-unwind.md`'s appendix
+"Before and after: the GDB transcripts".
 
 Before, breaking on `switch_to` and asking for a backtrace: GDB's own frame-pointer fallback
 (there was no CFI at all to consult, the compiler's included, because of the discard line above)
@@ -171,13 +169,12 @@ transcripts above, not the gate.
   either port grows a real flat-image path this is the thing to revisit.
 - `cargo xtask gdb` is aarch64-only, so the live-GDB evidence above is aarch64-only too. x86_64's
   and riscv64's CFI is built and inspected with `llvm-objdump --dwarf=frames` but not exercised
-  against a live GDB session in this pass. (Corrected 2026-10-11 UTC: this bullet said
-  `notes/cfi-unwind.md` has the FDE listings. No version of that note ever held them; its BUGS
-  section says the inspection is recorded in this milestone's pull request.)
-- The gate is a presence check, at file granularity, stated above and repeated here because it
-  is the kind of limit that is easy to forget once the check is green: it cannot confirm every
-  function in a multi-function file has its own directives, or that an offset is right rather than
-  merely present.
+  against a live GDB session. The FDE listings are not in `notes/cfi-unwind.md`; its BUGS section
+  says the inspection is recorded in this milestone's pull request.
+
+- The gate is a presence check, at file granularity. That is stated above and repeated here, because
+  the limit is easy to forget once the check is green. It cannot confirm every function in a
+  multi-function file has its own directives, or that an offset is right rather than merely present.
 
 ## Follow-on
 

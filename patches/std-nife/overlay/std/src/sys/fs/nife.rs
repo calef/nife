@@ -97,6 +97,17 @@ use crate::sys::{unsupported, unsupported_err};
 mod unsupported_fs;
 pub use unsupported_fs::{canonicalize, link, readlink, symlink};
 
+/// **`std::fs::rename_noreplace` stays Unsupported** (added upstream in the 2026-10-13 nightly).
+///
+/// `RENAME` replaces an existing destination and has no flag to refuse one. DECISIONS §129 (whether
+/// `RENAME` grows a `NOREPLACE` flag) holds that flag until a customer needs it, while recording
+/// that `redoxfs_server` could check it atomically for one branch and a spare bit in `rename_dst`'s
+/// word. Building it here instead, as a `stat` of the destination followed by `rename`, would be
+/// two requests with another client free to create the name between them: the racy emulation §42
+/// (a filesystem declares what it offers and must be truthful) refuses. So this is upstream's own
+/// `unsupported` version, and wiring it is one line here once the verb grows the flag.
+pub use unsupported_fs::rename_noreplace;
+
 /// **`remove_dir_all` needed no code** (milestone 122), and that is the whole finding.
 ///
 /// It used to come from `unsupported.rs` with a note saying the recursion has to descend and a

@@ -10,8 +10,7 @@ needs_person: yes
 ---
 # 773. A live stick: boot a PC into nife without touching its disk
 
-Asked for by calef on 2026-10-04 (UTC). Written by the lane `lane/live-stick-proposal` at base
-`2d154f848`. Title, slug and every new name here are provisional.
+Asked for by calef (2026-10-04 UTC). Title, slug and every new name here are provisional.
 
 ## What "live stick" means
 

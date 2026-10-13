@@ -11,10 +11,9 @@ needs_person: no
 ---
 # 714. The sibling RECEIVE_CAP paths get a receiver-first test
 
-Promoted from `design/roadmap/proposals/the-sibling-recv-cap-paths-get-a-receiver-first-test.md` on 2026-10-03 (UTC). The number 714 was minted by the maintainer in a batch promotion of the proposal pile and is provisional until the queue lands it. *(Title and slug are drafts.)*
-
-Raised by the lane for milestone 634 (a plain SEND received by RECEIVE_CAP never hands the receiver a
-sender-chosen slot). It fixed the plain-SEND leak but left two sibling paths reasoned from the
+*Title and slug are drafts.*
+Raised by milestone 634 (a plain SEND received by RECEIVE_CAP never hands the receiver a
+sender-chosen slot), which fixed the plain-SEND leak and left two sibling paths reasoned from the
 code rather than measured.
 
 ## The finding

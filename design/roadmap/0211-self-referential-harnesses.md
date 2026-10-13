@@ -5,18 +5,15 @@ built: 2026-09-01
 ---
 # 211. A harness that states its property through the function under test cannot see that function break
 
-Minted 2026-08-31 after the pattern was found twice in two days, by two
-different lanes, in two different crates. Swept 2026-09-01: **146 harnesses read, 11 measured
-blind, all 11 rewritten, and each now carries a machine-replayable record of the defect its old
-phrasing could not see.** The result and its method are in notes/falsification.md, under "The
-sweep for self-referential harnesses". *(Number provisional until the merge queue lands it.)*
+Swept 2026-09-01: 146 harnesses read, 11 measured blind, all 11 rewritten, and each carries a
+machine-replayable record of the defect its old phrasing could not see. The result and its method
+are in notes/falsification.md, under "The sweep for self-referential harnesses".
 
-It never had a gate and could not have one, which turned out to be the right call: no check
-distinguishes "asserts through the function under test" from "legitimately asserts agreement", so
-the sweep's output is eleven falsification patches rather than a lint. `script/falsifications`
-went from 25 of 141 replayable to 33 of 141 on this lane's own base, and the merged tree reads
-35 of 145: milestone 212 (`script/falsifications` walks `crates/` only, so the ratio it prints is not the tree's) landed first and widened
-the denominator under it.
+It has no gate and cannot have one: no check distinguishes "asserts through the function under
+test" from "legitimately asserts agreement", so the sweep's output is eleven falsification patches
+rather than a lint. After it, `script/falsifications` reads 35 of 145 replayable, over the wider
+walk of milestone 212 (`script/falsifications` walks `crates/` only, so the ratio it prints is not
+the tree's).
 
 ## What the sweep found
 

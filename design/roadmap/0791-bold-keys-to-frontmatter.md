@@ -7,14 +7,11 @@ built: 2026-10-07
 # 791. Bold that a script reads: where it is tracked, and which of it should become frontmatter
 
 Asked for by calef on 2026-10-05 (UTC): "Can we keep track of where scripts track bolded keys and
-consider that for frontmatter?" Written by the lane `lane/bold-keys`, base `7a039b4b0`. Title and
-slug are provisional; the two frontmatter keys were ratified by calef on 2026-10-05.
+consider that for frontmatter?" Title and slug are provisional; the two frontmatter keys were ratified by calef on 2026-10-05.
 
-Built in three pull requests. The first, #1702 (`lane/bold-keys`), built the tracking mechanism
-and this proposal. calef ruled on it the same day, and #1714 (`lane/experiment-frontmatter`) did the
-nine files, both readers and the `_APPENDIX` tightening. The last, #1821
-(`lane/791-bold-keys-to-frontmatter`, 2026-10-07), did the rest of the verdict table below and found
-that one claim in this block was wrong; see *What the last lane found*. The inventory and the reasoning below are as written on 2026-10-05.
+Built in three pull requests: #1702 (the tracking mechanism and this proposal), #1714 (the nine
+files, both readers and the `_APPENDIX` tightening) and #1821 (the rest of the verdict table
+below). *The ban is not a key*, below, qualifies the inventory.
 
 Reuse: `helpers/prose_ratchet.py` already derives the exempt set from the parsers, and
 `helpers/roadmap_block.py` already reads the roadmap's frontmatter. This proposal extends both and
@@ -37,8 +34,8 @@ or recorded below.
 - A bold written `\*{2}` or `[*]{2}` is not found by derivation, and neither is a reader in shell,
   awk, jq, Rust or a workflow. None exists today.
 - Derivation also picks up the bans. `script/decisions` refuses a `**Status:` line and `RESTATED`
-  refuses a restated status, and both are exempted as if they were keys. This said the
-  over-exemption costs nothing. It does not; see *What the last lane found*.
+  refuses a restated status. Exempting a ban as if it were a key is not free; see *The ban is
+  not a key*.
 
 ## Inventory: every reader of a bold key
 
@@ -166,19 +163,17 @@ The rest of the verdict table needed no ruling and landed in #1821:
 - `selftest` now fails on a `NOT_MARKERS` or `OPAQUE_OK` entry that names a pattern no parser
   carries, so the two registries cannot go stale quietly.
 
-## What the last lane found
+## The ban is not a key
 
-The ban over-exemption was load-bearing, and is gone. Naming `script/decisions`' `^\*\*Status:` in
-`NOT_MARKERS` put four documents over the bold density of §213 (writing standards), because it was the
-only exemption for 25 free-form `**Status:` lines in notes and design documents that no script reads.
-It stayed exempt, marked as an exception, until those lines lost their bold (see Follow-on).
+`script/decisions`' `^\*\*Status:` is named in `NOT_MARKERS`, so a bold `**Status:` line elsewhere
+counts as emphasis under §213 (writing standards). The free-form `**Status:` lines in notes and
+design documents, which no script reads, are plain (see Follow-on).
 
 ## Follow-on
 
 - **Done.** The tracking mechanism, by #1702; the nine experiment-status lines, by #1714; the plain
   `Reuse:` line and the registry staleness check, by #1821.
-- **Done.** 2026-10-07 (UTC), by lane/bold-status-sweep. Sixteen of the 25 line-opening `**Status:`
-  spans lost their bold. The other nine sit inside code fences as quotations of the old spellings
+- **Done.** The line-opening `**Status:` spans are plain, except nine that sit inside code fences as quotations of the old spellings
   (eight in `notes/roadmap.md`, one in milestone 253 (a status that can only become wrong after the
   merge)) and stay as written. `('script/decisions', r'^\*\*Status:')` joined `NOT_MARKERS`, so the ban
   is not a key. `script/roadmap`'s `RESTATED` did not fire on the plain form.

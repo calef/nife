@@ -5,19 +5,10 @@ built: 2026-10-04
 ---
 # 320. Every PCI bus the machine has, not just bus zero
 
-Built 2026-09-17 and gated under QEMU; confirmed on xenon 2026-10-04 (UTC; status corrected
-2026-10-07, when it still read PARTIAL). The first bench boots found the Micron NVMe at `01:00.0`
-behind root port `00:1b.0`, the topology this block predicted: `disk-throughput` preflight 1 names
-it (`bench/xenon-2026-10-04/boot-e-main-clflush-1.log`) and `boot-c-diag.log` names the bridge. Minted 2026-09-17 by the maintainer,
-from `design/roadmap/proposals/a-kernel-that-maps-one-pci-bus.md`, which this block replaces and
-which carries the full argument. *(Number provisional until the merge queue lands it.)*
-
-The walk was writable and testable without hardware and is built and gated under
-QEMU. What remains is a xenon boot: whether it finds the Micron is a question only that machine
-answers.
-
-**This is the one thing standing between `design/fatal-risks/README.md` risk 6 and its decisive
-experiment.** Everything else that experiment needs is built, tested and on `main`.
+Built and gated under QEMU, and confirmed on xenon (2026-10-04 UTC). The bench boots find the
+Micron NVMe at `01:00.0` behind root port `00:1b.0`, the topology this block predicted:
+`disk-throughput` preflight 1 names it (`bench/xenon-2026-10-04/boot-e-main-clflush-1.log`) and
+`boot-c-diag.log` names the bridge.
 
 ## What was wrong
 

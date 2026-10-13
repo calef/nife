@@ -5,10 +5,9 @@ built: 2026-09-20
 ---
 # 518. A census that cannot be attributed is a number nobody can act on
 
-*(Number provisional until the merge queue lands it.)* The record
-exists, it is backfilled to the first census this project ever completed, and the first question it
-was asked returned a finding: **the fall that `design/fatal-risks/README.md`'s risk 3 stands on did not
-happen.** It is an artifact of two rows computed two different ways.
+The record exists, it is backfilled to the first census this project ever completed, and the first
+question it was asked returned a finding: **the fall that `design/fatal-risks/README.md`'s risk 3
+stands on did not happen.** It is an artifact of two rows computed two different ways.
 
 Built from artifacts GitHub still holds and from `.cargo/mutants-baseline.txt`; no mutation run was
 needed and none was made, which is the point.

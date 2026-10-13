@@ -15,8 +15,7 @@ Part (a) was built as milestone 751 (fuzz the services' request handlers) and pa
 milestone 752 (a seeded syscall driver with a shadow model), the kernel-thread driver. This block
 now
 records part (b)'s completion in the form the proposal actually recommended, an **EL0** driver:
-the lane `lane/779-confined-fuzz` (adopted by the maintainer after its session died, 2026-10-06
-UTC) built `fixtures/src/confined_syscall_fuzzer.rs` plus its conductor,
+`fixtures/src/confined_syscall_fuzzer.rs` plus its conductor,
 `system_tests/src/user/confined_fuzzer_tests.rs`. Two arrivals this driver cannot reach are
 recorded as misses below rather than reached; proof condition 2 allows a miss whose reason is in
 the driver's `BUGS`. The block is BUILT with that limitation recorded.
@@ -62,8 +61,8 @@ walk now. The driver's own planted
 escape (a `RETYPE_OBJ` that carves from the machine's free list) is also recorded and replayed
 red at seed 0.
 
-Corrected 2026-10-06 (UTC): the scaffolding's conductor channel sat in slot 63, which `user::run`
-cannot grant to and the witness would have fuzzed; it is slot 0, and the endowment slots 1..6.
+The scaffolding's conductor channel is slot 0, and the endowment slots 1..6. Not slot 63, which
+`user::run` cannot grant to and the witness would fuzz.
 
 ## Follow-on
 
@@ -94,10 +93,8 @@ comment block is at its ceiling under §267 (a comment states the constraint as 
 
 ## (a) Host fuzz targets for the services' request handlers
 
-calef asked for this on 2026-10-04 (UTC), and asked that it be a proposal, not a build. Written by
-the proposal lane `lane/fuzz-surface-proposal`. It proposes two milestones, (a) and (b), with
-provisional numbers the integrator mints at promotion; it may split them into two files then. Title
-and slug are drafts.
+calef asked for this on 2026-10-04 (UTC), as a proposal, not a build. It proposes two milestones,
+(a) and (b). Title and slug are drafts.
 
 ## The premise, checked
 
