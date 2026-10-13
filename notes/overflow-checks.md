@@ -265,7 +265,7 @@ Instructions (CI's icount bench against a `main` run one merge behind the base):
 more than 1.8% either way. The dev kernel already carried the checks, and the rewrite removed some.
 
 Cycles (`script/bench --release`, HVF on patagonia, 2026-10-04, fourteen interleaved runs each,
-median ns and range, on a busier machine than the first measurement's):
+median ns and range):
 
 | Benchmark | off | on | median change |
 |---|---|---|---|
@@ -278,9 +278,9 @@ median ns and range, on a busier machine than the first measurement's):
 | `spawn_reap` | 2033 [1913-3324] | 2221.5 [1875-10496] | noise |
 | `coremark` | 9427 [9209-15513] | 9655 [9285-10245] | **+2.4%**, both halves |
 
-**`ipc_rtt_el0`'s +5.5% was not real.** Fourteen runs put the medians 0.8% apart, and twelve of the
-"on" readings fall inside the "off" range. CoreMark's +2.4% reproduced in each batch of seven and
-matches the first measurement: that is the price, in userspace integer code.
+**`ipc_rtt_el0` is noise.** Fourteen runs put the medians 0.8% apart, and twelve of the "on"
+readings fall inside the "off" range. CoreMark's +2.4% reproduced in each batch of seven: that is
+the price, in userspace integer code.
 
 ### What it found
 

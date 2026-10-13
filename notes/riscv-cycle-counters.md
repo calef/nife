@@ -104,10 +104,9 @@ twice in one run on 2026-09-03. The logs are `target/cpu-matrix/*.log`.
 what OpenSBI does when the fixed counter is available. `rv64`, `rva22s64`, `sifive-u54` and
 `thead-c906` all agree.
 
-`rva23s64` answers counter 3, CSR `0xc03`, a programmable `hpmcounter`. That is legitimate, and
-it killed the first version of the test that asserted the CSR number: the counter a caller gets is
-firmware's choice, not a constant. Step 2's table below already listed this as a legitimate second
-answer, and it is now an observation rather than a prediction.
+`rva23s64` answers counter 3, CSR `0xc03`, a programmable `hpmcounter`. That is legitimate, and it
+is why no test asserts the CSR number: the counter a caller gets is firmware's choice, not a
+constant. Step 2's table below lists it as a legitimate second answer, observed.
 
 The second lesson is the one worth having. That counter is described by `counter_get_info` as a
 64-bit hardware counter, `csrr` on it is a legal instruction, and after a `counter_stop` and a

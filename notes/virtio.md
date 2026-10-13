@@ -87,24 +87,15 @@ The fix is the idle thread every real kernel has: a thread whose entire body is 
 the ready queue and scheduled only when nothing else can run. It parks the CPU until an interrupt
 makes something runnable. See notes on the scheduler.
 
-## And a real race it also flushed out
+## Interrupts are restored only after the scheduler lock drops
 
-While chasing the above, the test suite started failing intermittently with a lock-order
-violation: `schedule()` taking the run-queue lock while it was already held. The cause was a
-one-instruction window that had been latent since milestone 6:
-
-> `schedule()`'s "nobody else is ready, keep running" path called
-> `interrupts::restore(was_enabled)` while still holding the scheduler lock, then returned
-> (which is what actually dropped the lock). Between the restore and the return, interrupts were
-> on and the lock was held. A timer firing in that window re-entered `schedule()` and tried
-> to take the lock again.
-
-It was invisible until milestone 9 added enough scheduler churn (more threads, the idle thread, a
-driver blocking and waking on interrupts) to hit the window. The fix: never restore interrupts or
-return from inside the locked block. All paths now leave through one point, the lock drops, and
-*then* interrupts are restored, once. Recorded here because it is exactly the kind of "cheap to
-follow, expensive to retrofit" ordering rule DECISIONS §9 is about, and we got it wrong for three
-milestones.
+`schedule()` never restores interrupts or returns from inside the locked block. Every path leaves
+through one point: the lock drops, and *then* interrupts are restored, once. Restoring first leaves
+a one-instruction window with interrupts on and the run-queue lock held. A timer firing in it
+re-enters `schedule()` and takes the lock again, a lock-order violation that the test suite hits
+only intermittently, under enough scheduler churn (more threads, the idle thread, a driver blocking
+and waking on interrupts). It is the kind of "cheap to follow, expensive to retrofit" ordering rule
+DECISIONS §9 (locking: IrqSafeMutex, plus a discipline) is about.
 
 ## What a driver bug, and a driver's malice, cost
 

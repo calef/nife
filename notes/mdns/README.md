@@ -12,14 +12,11 @@ tense.
 - [`qemu-gate.md`](qemu-gate.md): how the gate went under slirp, each step of the exchange, and
   the two findings it cost.
 
-*Name: provisional, minted 2026-10-11 (UTC) by lane/fourth-ten-longest-notes, which split the parent
-under §212 (a prose budget). The directory follows §212's siting default, `notes/X/` beside
-`notes/X.md`. calef names directories.*
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default, `notes/X/`
+beside `notes/X.md`. calef names directories.*
 
-The stems below were minted the same day by the same lane. Each is named for its content, and calef
-names files.
+Each stem below is named for its content, and calef names files.
 
-- `router-capture` Name: provisional, minted 2026-10-11 (UTC) by lane/fourth-ten-longest-notes.
-- `smoltcp-multicast` Name: provisional, minted 2026-10-11 (UTC) by lane/fourth-ten-longest-notes.
-- `qemu-gate` Name: provisional, minted 2026-10-11 (UTC) by lane/fourth-ten-longest-notes, after
-  the main page's own heading.
+- `router-capture` Name: provisional.
+- `smoltcp-multicast` Name: provisional.
+- `qemu-gate` Name: provisional. After the main page's own heading.

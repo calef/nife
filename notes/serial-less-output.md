@@ -168,11 +168,9 @@ Everything is on the monitor. Nothing else is connected.
 3. The boot tour, beginning `nife on x86_64 (long mode, ring 0, 4-level paging)`, with a
    `screen      :` line naming the geometry.
 4. The screen clears a second time and the shell's banner and `$ ` fill it at the tour's
-   scale (137x67 on 1920x1080). When this was written there was no keyboard on a machine without
-   a serial port, so the prompt was as far as it went. *Corrected 2026-10-11 (UTC), from milestone
-   242 (USB host and HID)'s block:* a USB keyboard has typed into the shell under QEMU on all three
-   architectures since 2026-10-04, and nobody has yet typed on a real one. If the keyboard answers
-   here, that is the first record; `notes/usb.md` is the page.
+   scale (137x67 on 1920x1080). A USB keyboard types into the shell under QEMU on all three
+   architectures (milestone 242 (USB host and HID)), and nobody has yet typed on a real one. If
+   the keyboard answers here, that is the first record; `notes/usb.md` is the page.
 
 Photograph the screen at that point. That is the record, and it is the only record this machine
 can produce today (see `BUGS`).
@@ -249,11 +247,9 @@ speak, the experiment, and the boards' reason in full.
   BAR the firmware placed, and a machine that puts it high would be handing the kernel an address
   its early direct map does not cover. Nothing has been seen doing this and nothing would notice if
   one did.
-- **The aperture is mapped uncacheable**, like every other device window, so writing a screenful is
-  slow on real silicon in a way it is not under QEMU. Write-combining is a PAT entry and this kernel
-  does not program the PAT at all; a framebuffer is the first thing in it that would care.
-  Scrolling additionally *reads* the aperture back, which is the worse half. The boot tour is shorter
-  than a 1280x800 screen is tall, so this does not bite during the boot it was built for.
+- **The screen shows a grid instead of text on xenon**, the one real machine that has run it.
+  [serial-less-output/the-xenon-grid.md](serial-less-output/the-xenon-grid.md) has what rules out
+  scrolling and the halt path, and the experiment that would measure a pitch mismatch.
 - **Only ASCII appears.** A byte outside `0x20..0x7f` is drawn as a space, so `§121` in the tour's
   last line reads as two blanks and a number on the screen. The serial console shows it correctly and
   the two transcripts therefore differ by exactly the non-ASCII characters in them.

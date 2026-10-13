@@ -1,26 +1,13 @@
 #![no_std]
-//! **The wire contract between a client and the login service** (milestone 49's login half).
-//!
-//! Unix login authenticates and then mutates a global identity field. This contract is the other
-//! shape: a client presents an identity and a secret, and on success the service delegates a fresh
-//! **capability set** back over the same channel rather than changing anything ambient. See
-//! `components/src/login.rs` for the service and notes/login.md for the design.
+//! **The wire contract between a client and the login service**: on success it
+//! delegates capabilities back rather than changing anything ambient. See notes/login.md.
 //!
 //! # The exchange
 //!
-//! Not a `CALL`: a one-shot reply capability carries two words and nothing else (`abi::reply`), and
-//! a successful login has to hand back capabilities, which only `abi::rendezvous::SEND_CAP` can do.
-//! So this is two persistent endpoints and a fixed message order, the same shape
-//! `grant_plan::spawnproto` already uses for exactly this reason (a shell's spawn request that may
-//! carry a delegated budget).
-//!
-//! **Two phases, not one, since milestone 49's channel-per-client update.** `REQUEST`/`RESULT` (the
-//! endpoints every client is handed at spawn) are a **front door**, shared by every client this
-//! service will ever see, for the width of exactly one message each: a bare [`CONNECT`], answered
-//! with a fresh, private [`CONNECTED`] channel. The identity and secret an actual login needs never
-//! touch the front door at all, which is what removes the hazard the front door used to carry (see
-//! this service's BUGS, "One client at a time", for what that hazard was and why a shared front door
-//! carrying only [`CONNECT`] does not reintroduce it):
+//! Not a `CALL`: a reply carries two words, and only `abi::rendezvous::SEND_CAP` hands back
+//! capabilities. `REQUEST`/`RESULT` are a front door shared by every client, carrying only a bare
+//! [`CONNECT`] (answered with a private [`CONNECTED`] channel) and [`LOGOUT`]. Neither carries a
+//! page or a secret, so the identity and secret travel only on the private channel.
 //!
 //! ```text
 //!   client --send(REQUEST, connect_word(), 0, 0)------------------------> login
@@ -36,133 +23,20 @@
 //!   client <----------------- receive(RESULT) -> LOGGED_OUT ----------------- login
 //! ```
 //!
-//! [`CONNECT`] carries no page: there is nothing in it a client did not already know, so the front
-//! door never maps or reads a shared staging page at all, and two clients racing to connect can only
-//! ever contend for two harmless, empty, freshly-minted objects, never for each other's identity or
-//! secret. Login answers [`CONNECT`]s one at a time (this process has one thread and no wait-any
-//! primitive), but that is service order, not shared state: each answer is a private key handed to
-//! exactly one holder before login goes on to serve the actual login it just enabled.
-//!
-//! **[`LOGOUT`] travels on the front door itself, not on a private channel** (milestone 49's
-//! terminal update): unlike [`CONNECT`], it carries no secret and needs no private staging, so
-//! there is nothing a shared front door would expose by handling it directly. See
-//! [`logout_word`] and this contract's own BUGS for what it does and does not authenticate.
-//!
-//! On [`OK`], login sends five capabilities over `priv_result`, or six when the reply's second word
-//! carries [`RUN_UNVOUCHED_FOLLOWS`], in this order:
-//!
-//! 1. the **directory** capability: a freshly built `fs_subtree_caretaker`'s endpoint, `WRITE`;
-//! 2. the **filesystem's shared page**, a `PageFrame`, `READ | WRITE`: the client maps it itself
-//!    (`user_mode_runtime::map_page_frame`) at whatever address it chooses, and uses it for both the request it
-//!    stages to the directory endpoint and the caretaker's own hop to the file service, which is
-//!    sound for the reason `crates/system_initializer` gives (`fs_subtree_caretaker` and its client
-//!    share one frame because every request on both hops is a blocking `CALL`);
-//! 3. the **budget**: a `MemoryRegion`, `WRITE | GRANT`, freshly split so the client's memory is
-//!    genuinely its own and it may in turn split, spend, or hand pieces of it on. `WRITE` is also
-//!    what `MemoryRegion::DESTROY` needs, so this capability doubles as its own reclaim: a client that
-//!    calls `DESTROY` on it, alongside the fourth capability below, gives back everything a session
-//!    spent rather than only the caretaker's half;
-//! 4. the **logout ticket**: a `MemoryRegion`, `WRITE` only, the exact region the directory capability's
-//!    caretaker was built from (`components/src/login.rs`'s `mint`, see that program's module docs,
-//!    "Reclaiming a session"). It has nothing left to `SPLIT` or `RETYPE` (its whole budget went
-//!    into building the caretaker), so its only remaining use is `invoke(cap, abi::memory_region::DESTROY,
-//!    0, 0, 0)`, which reclaims the caretaker's TCB, address space and endpoint and returns the
-//!    pages to `login`'s own construction budget. **A client should retry `DESTROY` a bounded few
-//!    times on refusal rather than treat one attempt as final**: the caretaker can be transiently
-//!    mid-request to the file service when a logout arrives, which refuses the very first `DESTROY`
-//!    (the same shape `crates/system_initializer::reclaim` already retries for a directory grant's
-//!    own caretaker); it never refuses permanently, because the caretaker's own client-facing
-//!    endpoint is retyped from this same region, so its steady state (parked in `receive` between
-//!    requests) is always reclaimable, never the permanently-blocked case
-//!    `notes/hung-component.md` documents as unfixable. Logging out is optional: a client that never
-//!    calls `DESTROY` costs `login` exactly what it always cost (see that program's BUGS on
-//!    `CONSTRUCTION_UT` exhaustion), this ticket just makes not costing it possible.
-//! 5. **the terminal** (milestone 49's terminal update, DECISIONS-recommended "deny cleanly" shape,
-//!    `design/roadmap/0049-users-and-attribution.md`'s own BUGS): a `Rendezvous`, `WRITE` only, the
-//!    same right the interactive boot's shell already holds on it. **Only ever present because it
-//!    could be**: `login`'s own `serve_login` refuses with [`NO_TERMINAL`] before authentication is
-//!    even attempted while another session already holds it, so every `OK` this contract answers
-//!    carries this fifth capability too. There is exactly one physical terminal and exactly one
-//!    holder at a time; see this contract's own BUGS and `components/src/login.rs`'s module docs for the
-//!    single-session design this is deliberately not more than.
-//! 6. **the run-unvouched capability**, only when [`OK`]'s second word says so (DECISIONS §219 (how the shell names an installed program to the spawner)
-//!    gate D2, milestone 198 (a package manager) rung 3a): a `Rendezvous`, `WRITE` only, the one the progenitor
-//!    receives on. A session that holds it may run bytes nobody vouched for, with only what it
-//!    delegates and the clock and configuration pages; a session that was not given it cannot, and
-//!    that is how a machine can have users who may not run new native code (calef's consequence in
-//!    §219). No `GRANT`, so the session cannot hand it on, and for the same reason it cannot ride a
-//!    `SEND_CAP` anywhere: it is used by sending on it (`grant_plan::spawnproto::
-//!    RUN_UNVOUCHED_BIT`). `login` gives it only to an identity on the owner's list,
-//!    [`RUN_UNVOUCHED_LIST`] (DECISIONS §221 (the boot prompt is the owner's console)), and only
-//!    when it holds one itself.
-//!
-//! **A full logout destroys capability 3 before capability 4, and the order is load-bearing.**
-//! `mint()` splits the fourth capability's region from `login`'s own `CONSTRUCTION_UT` first and the
-//! third capability's budget second, so the budget sits above the region in `CONSTRUCTION_UT`'s
-//! watermark. `crates/regions`' own reclaim only returns a freed child's pages to a reusable state
-//! when it is the *top* of its parent's watermark (LIFO, the same rule §16's object revocation and
-//! `job_undertaker`'s pool already live under, and DECISIONS §92 already named for a caretaker's own
-//! region); destroying the region first, while the budget above it is still alive, still reclaims the
-//! caretaker's TCB, address space and endpoint (`DESTROY` still returns success), but leaves its
-//! pages a stranded hole that does not come back to `login`'s reusable capacity until
-//! `CONSTRUCTION_UT` itself is destroyed. Destroy the budget first, then the region, and both spans
-//! return cleanly. **This is a property of this specific pair, not a general promise**: it holds
-//! regardless of what any other client does, because nothing else is ever split from
-//! `CONSTRUCTION_UT` *between* one login's own two capabilities (`mint()` builds both, back to back,
-//! before either is delegated); it does not extend to reclaiming *two different logins'* memory out
-//! of the order they were minted in, which needs the same LIFO discipline this tree already accepts
-//! elsewhere.
-//!
-//! On [`DENIED`], [`MALFORMED`] or [`NO_TERMINAL`], nothing follows: the client holds exactly what
-//! it held before it asked.
+//! [`OK`]'s doc gives what follows it. On [`DENIED`], [`MALFORMED`] or [`NO_TERMINAL`] nothing
+//! does. The request page is [`credential_protocol`]'s, reused because login relays it unchanged.
 //!
 //! # BUGS
 //!
-//! **Which identities get the run-unvouched capability is a file the owner writes**
-//! ([`RUN_UNVOUCHED_LIST`], DECISIONS §221 (the boot prompt is the owner's console), ruling 2).
-//! It is read on every login, so an owner's edit holds from the next login on, and it shares the
-//! file service's one page with every session: sound only while the terminal rule keeps one
-//! session live at a time, which is the assumption every client of that page already makes. No
-//! session `login` builds can spawn anything today (none holds a spawn endpoint), so a listed
-//! session's capability is delivered and not yet usable; the boot prompt is the only session that
-//! presents it. Taking a name off the list holds from that identity's next login; a session
-//! already built keeps its copy, because nothing revokes a delegated capability here.
+//! - [`RUN_UNVOUCHED_LIST`] (§221 ruling 2) is read on every login through the file service's one
+//!   shared page, sound only while one session is live. Delisting holds from the next login; a
+//!   built session keeps its copy, since nothing revokes a delegated capability.
+//! - [`LOGOUT`] authenticates nothing: any holder of `REQUEST` can free the terminal from under its
+//!   user. Accepted for one boot with one terminal and no untrusted co-tenant; a hostile deployment
+//!   needs `LOGOUT` to carry a capability only the session holds.
+//! - A terminal holder that exits without logging out wedges it until `login` restarts.
 //!
-//! **[`LOGOUT`] authenticates nothing.** It is a bare word on the shared front door, deliberately:
-//! unlike a login it carries no secret to protect and needs no private channel, but the flip side is
-//! that any process holding the front-door request endpoint (every client this service will ever
-//! see, by construction)
-//! can free the terminal out from under whoever is using it. That is a real, unauthenticated
-//! interruption a hostile co-tenant could perform, not merely a discourtesy; it is accepted here
-//! because today's actual deployment is one interactive boot with one physical terminal and no
-//! untrusted co-tenant reaching this endpoint at all, which is exactly the scope
-//! `design/roadmap/0049-users-and-attribution.md`'s own terminal BUGS entry names as this slice's
-//! bound. A deployment that must defend against a hostile holder of `REQUEST` needs `LOGOUT` to
-//! carry proof (the identity that is logging out, or better, a capability only that session holds),
-//! which is real work this slice does not build.
-//!
-//! **A stale terminal handoff has no automatic recovery.** If the process holding the terminal
-//! capability exits, crashes, or simply never calls [`logout_word`], `login`'s own `terminal_held`
-//! flag stays set forever and every later login is refused `NO_TERMINAL`, indistinguishably from a
-//! session that is genuinely still in use. There is no liveness check on the holder (this tree's
-//! usual "no wait-any primitive" bound: `login` cannot watch its client and also keep serving new
-//! connections), so recovering from an abandoned session today means restarting `login` itself. See
-//! `components/src/login.rs`'s own BUGS for the same limitation stated at the component a reader meets
-//! first.
-//!
-//! # The request page
-//!
-//! Identical in shape to [`credential_protocol`]'s: an identity and a secret, because this service's whole
-//! first act is relaying the presented pair to the credential service's own `VERIFY` unchanged. Its
-//! `place`/`read`/`req`/`operation` do not encode anything specific to that service's own semantics (`operation`
-//! is a caller-supplied word), so this contract reuses them rather than defining a second copy of
-//! the same layout and risking the two drifting the way `credentialer.rs`'s own compile-time
-//! assertions exist to catch for `cred`/`credential_protocol`.
-//!
-//! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review), minted 2026-08-22
-//! for milestone 49 (users, login, and attribution); suffix `_protocol` at milestone 265
-//! (calef, 2026-09-05), stem stays (calef, 2026-09-15). The argument is in
-//! `design/naming/vocabulary-rulings.md`.
+//! Name: ratified 2026-08-23 (calef); see `design/naming/vocabulary-rulings.md`.
 
 pub use credential_protocol::{MAX_IDENTITY, MAX_SECRET, PAGE, operation, place, read, wipe};
 
@@ -243,7 +117,24 @@ pub fn logout_word() -> u64 {
 pub const CONNECTED: u64 = 4;
 
 /// **Authenticated.** Five capabilities follow on the private result endpoint, or six when the
-/// reply's second word carries [`RUN_UNVOUCHED_FOLLOWS`]; see the module docs for the order.
+/// reply's second word carries [`RUN_UNVOUCHED_FOLLOWS`], in this order:
+///
+/// 1. the directory: a freshly built `fs_subtree_caretaker`'s endpoint, `WRITE`;
+/// 2. the file service's shared page, `READ | WRITE`, mapped wherever the client chooses and used
+///    for both hops, which is sound because every request on both is a blocking `CALL`;
+/// 3. the budget: a freshly split `MemoryRegion`, `WRITE | GRANT`, the client's own;
+/// 4. the logout ticket: the caretaker's construction region, `WRITE` only, whose one use is
+///    `abi::memory_region::DESTROY`. Retry a refused `DESTROY` a bounded few times: the caretaker
+///    can be mid-request to the file service, but never blocks permanently;
+/// 5. the terminal, `WRITE` only. Always present, since login refuses with [`NO_TERMINAL`] before
+///    authenticating while another session holds it;
+/// 6. only with [`RUN_UNVOUCHED_FOLLOWS`]: run-unvouched, `WRITE` without `GRANT` (gate D2 of §219
+///    (how the shell names an installed program to the spawner)), for identities on
+///    [`RUN_UNVOUCHED_LIST`], so the session may run unvouched bytes and cannot pass that on.
+///
+/// A full logout destroys 3 before 4, and the order is load-bearing. `mint` splits 4 then 3 back to
+/// back from login's construction budget, and LIFO reclaim returns a child's pages only from the top
+/// of the watermark; destroying 4 first strands its pages. Logging out is optional.
 pub const OK: u64 = 1;
 
 /// **A bit of [`OK`]'s second word: the sixth capability, the run-unvouched one, follows**

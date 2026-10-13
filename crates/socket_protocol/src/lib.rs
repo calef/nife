@@ -1,34 +1,18 @@
 #![cfg_attr(not(test), no_std)]
-//! The socket contract wire format, shared by the net server (`net_stack`) and its clients (milestone
-//! 30, piece 3 phase B; DECISIONS §25).
+//! The socket contract wire format, shared by `net_stack` and its clients. See notes/net.md.
 //!
-//! **Each socket is its own capability** (§255 (each socket is its own capability), milestone 649
-//! (every client of a network stack shares its socket numbers)). A process holds a **front door**,
-//! a `Stack` endpoint capability that can make sockets and do nothing else, and one capability per
-//! socket it has open. Every operation is one message:
+//! **Each socket is its own capability** (§255 (each socket is its own capability)). A process
+//! holds a front door, a `Stack` endpoint that can only make sockets, and one capability per open
+//! socket. `OPEN_UDP`, `OPEN_TCP`, `BIND_UDP` and `LISTEN` are `CALL`s on the front door, answered
+//! by `REPLY_CAPABILITY` with the socket's capability (`user_mode_runtime::call_receiving`).
+//! `ATTACH_PAGE_FRAME` is a `SEND_CAP` on a socket. Every other operation is a `CALL` on a socket:
+//! opcode, one argument, one reply word; `ACCEPT` answers with the connection's capability. The
+//! stack names a socket only by the kernel-stamped badge it arrived on ([`SOCKET_BADGE`]), minted
+//! from a counter that never rewinds and dropped at `CLOSE`, so a closed socket's copies reach
+//! nothing and passing a socket is passing its capability.
 //!
-//! - `OPEN_UDP`, `OPEN_TCP`, `BIND_UDP` and `LISTEN` are `CALL`s on the front door. A success is
-//!   answered by `REPLY_CAPABILITY` with the new socket's capability, which the client's `CALL` finds
-//!   in `x2` (`user_mode_runtime::call_receiving`).
-//! - `ATTACH_PAGE_FRAME` is a `SEND_CAP` on a socket's capability: it carries the socket's shared
-//!   frame and gets no reply.
-//! - every other operation is a `CALL` on a socket's capability, the opcode alone in the request
-//!   word, one argument in the second word, and a reply word back. `ACCEPT`, on a listener's
-//!   capability, is answered with the connection's capability as an open is.
-//!
-//! **The stack names a socket by the kernel-stamped badge on the capability a request arrived
-//! on**, never by a number the client wrote. It mints each socket's capability from its own
-//! endpoint with a badge in the [`SOCKET_BADGE`] range, from a counter it never rewinds, and drops
-//! the badge at `CLOSE`, so any copy of a closed socket's capability reaches nothing. Passing a
-//! socket to another program is passing its capability. Before milestone 649 a socket was a small
-//! integer every client of one stack shared, so one client could send on, read, close or redirect
-//! another's sockets; that finding, and the attack that booted it, are in milestone 649's block.
-//!
-//! **`PageFrame` layout, pinned.** One data region, reused per operation, NOT a split TX/RX ring. The
-//! phase-one contract is one *synchronous* exchange per `CALL` (the client blocks in the CALL while
-//! the server drives the network), so a request's payload and its reply never coexist in the frame
-//! and a single region is sufficient and simpler. A split TX/RX ring becomes necessary only with
-//! asynchronous or streaming sockets, which the concurrency model defers (notes/net.md).
+//! The frame is one data region reused per operation, not a TX/RX ring: each `CALL` is one
+//! synchronous exchange, so a request and its reply never coexist in it.
 //!
 //! ```text
 //!   +0x000  u8[4]  dst_ip      destination address, octets (SENDTO / CONNECT);
@@ -39,124 +23,22 @@
 //!   +0x008  ...    payload     up to DATA_MAX bytes
 //! ```
 //!
-//! **A UDP `RECEIVE` reply carries the datagram's source endpoint** in the `dst_ip`/`dst_port`
-//! fields. Those fields are request state that the reply never needed until a server-shaped
-//! client existed: a UDP responder must see who asked, both to answer unicast and because mDNS's
-//! semantics turn on the querier's source port (RFC 6762 §6.7, legacy unicast). The fields are
-//! dead space on a reply, so the source rides there with no format change; a client that only
-//! ever speaks to one peer can keep ignoring them, at the cost of re-writing the destination
-//! before its next `SENDTO`. On a TCP `RECEIVE` they are untouched: the peer is fixed by the
-//! connection and already known to whoever made or accepted it.
+//! A UDP responder must see who asked (mDNS turns on the querier's port, RFC 6762 section 6.7), so a UDP
+//! `RECEIVE` reply carries the source in those otherwise dead fields; a TCP reply leaves them.
 //!
-//! # The inbound half: a listener is not a connection (milestone 107)
+//! A listener and a connection are two authorities: a listener receives connections on one
+//! exclusive port and carries no frame, since no bytes cross it; a connection speaks with one peer.
+//! Claiming a port, by `LISTEN` or a fixed `BIND_UDP`, is a claim on a shared namespace, so it is
+//! granted, never assumed: the stack is spawned with [`listen_grant`] and [`udp_bind_grant`] in one
+//! word, and refuses outside them with [`LISTEN_DENIED`].
 //!
-//! `LISTEN` and `ACCEPT` add the direction the contract did not have. The shape is **not** POSIX's,
-//! where a listening socket and an accepted one are both file descriptors and the only difference
-//! is which calls happen to work on them. Here they are two objects because they are two
-//! authorities:
+//! # BUGS
 //!
-//! - A **listener** is the authority to *receive connections on a port*. It is port-scoped, it is
-//!   exclusive (two programs cannot both hold port 80), and **it carries no shared frame at all**,
-//!   because no bytes ever cross on it. That last part is not a rule anyone imposed; it falls out
-//!   of §25's decision that the frame is the real granted resource. A listener has nothing to grant.
-//! - A **connection** is the authority to *speak with one peer*. It is 4-tuple-scoped, and it is
-//!   exactly the object `CONNECT` already produced, reached the other way round.
+//! - A grant is the stack's, shared by every holder of its front door; a per-client grant would
+//!   ride on a badged front door, which nothing builds yet.
+//! - A listener's backlog is one connection: a second arriving before `ACCEPT` is refused by TCP.
 //!
-//! So `ACCEPT` is made on the listener's capability and answered with the connection's, which the
-//! client then attaches a frame to, exactly as it does to a socket `OPEN_TCP` made. This is the tree's existing habit of splitting authority by what a
-//! holder can *do* rather than by what it names: `PageFrame` versus `DeviceFrame`, `WRITE` versus
-//! `GRANT` on the same object.
-//!
-//! # Who binds the port: the listen grant
-//!
-//! Outbound needs no permission beyond the `Stack` capability, because an ephemeral local port is
-//! allocated by the server and contended by nobody. **Inbound is different in kind:** a listening
-//! port is a claim on an exclusive name in a shared namespace, which is the same thing that makes a
-//! directory a capability rather than a path. A shell that could hand out "listen on 80" would be
-//! handing out something categorically larger than "here is a connection".
-//!
-//! So the port is not the client's to choose freely. A net server is spawned with a **listen
-//! grant**, an inclusive port range packed by [`listen_grant`], and refuses `LISTEN` outside it with
-//! [`LISTEN_DENIED`]. [`NO_LISTEN_GRANT`] (the default, and what every outbound-only test spawns
-//! with) means the server accepts nothing from anywhere: **inbound authority is granted, never
-//! assumed.**
-//!
-//! **A fixed UDP port is the same claim, and gets the same answer** (milestone 55's mDNS stack
-//! half). `OPEN_UDP` allocates an ephemeral local port, contended by nobody; an mDNS responder
-//! must bind 5353, which is an exclusive name in the same shared namespace a TCP listen port is.
-//! So `BIND_UDP` is checked against a **UDP bind grant**, a second inclusive range packed by
-//! [`udp_bind_grant`] into the *same spawn word* (the listen grant lives in the low 32 bits, this
-//! one in the high 32; the two compose with `|`), and it answers with `LISTEN`'s own vocabulary,
-//! because the three outcomes are properties of claiming a port, not of TCP: granted, refused as
-//! a matter of authority, or held by somebody else. The zero word still means no inbound
-//! authority of either kind.
-//!
-//! **BUGS / limits, named here because this is where a reader meets the feature.** The grant's
-//! granularity is the *stack*, not the client: every holder of a front door to one stack shares its
-//! grant, because the grant is a spawn argument of the stack. A per-client grant would ride on a
-//! badged front door, which the [`SOCKET_BADGE`] split leaves room for and nothing builds yet. The
-//! backlog is **one connection deep** per listener (see `net_stack`'s `OPERATION_ACCEPT`, which re-arms
-//! immediately), so a second connection arriving while a first is un-accepted is refused by TCP
-//! rather than queued.
-//! # Examples
-//!
-//! The claim worth checking in code is that **the two inbound authorities are independent**. They
-//! ride in one spawn word and compose with `|`, which is exactly the shape that invites a reader to
-//! assume one implies the other. It does not: an mDNS responder granted UDP 5353 cannot listen on
-//! TCP 5353, and a web server granted TCP 80 cannot bind UDP 80.
-//!
-//! ```
-//! use socket_protocol::{
-//!     NO_LISTEN_GRANT, grant_allows, listen_grant, udp_bind_grant, udp_grant_allows,
-//! };
-//!
-//! // What an mDNS responder is spawned with: one UDP port, no TCP listen authority at all.
-//! let responder = udp_bind_grant(5353, 5353);
-//! assert!(udp_grant_allows(responder, 5353));
-//! assert!(!grant_allows(responder, 5353)); // the same number, and not the same authority
-//!
-//! // What a file server is spawned with: SMB's port, and nothing on the UDP side.
-//! let smb = listen_grant(445, 445);
-//! assert!(grant_allows(smb, 445));
-//! assert!(!udp_grant_allows(smb, 445));
-//!
-//! // Both at once is one word, and neither half leaks into the other.
-//! let both = smb | responder;
-//! assert!(grant_allows(both, 445) && udp_grant_allows(both, 5353));
-//! assert!(!grant_allows(both, 5353) && !udp_grant_allows(both, 445));
-//!
-//! // The default, and what every outbound-only client is spawned with: nothing inbound.
-//! assert!(!grant_allows(NO_LISTEN_GRANT, 445));
-//! assert!(!udp_grant_allows(NO_LISTEN_GRANT, 5353));
-//! ```
-//!
-//! A grant is also **safe to get wrong at the spawn site**, which is why the degenerate cases
-//! collapse to one value a reader can recognise rather than to a wide range:
-//!
-//! ```
-//! use socket_protocol::{NO_LISTEN_GRANT, listen_grant};
-//!
-//! assert_eq!(listen_grant(0, 65535), NO_LISTEN_GRANT); // port 0 is not a port
-//! assert_eq!(listen_grant(8080, 80), NO_LISTEN_GRANT); // an inverted range grants nothing
-//! ```
-//!
-//! And the badge split is the whole of how a request is read: a badge in the socket range names a
-//! socket, and any other badge is a front door, which names none.
-//!
-//! ```
-//! use socket_protocol::{SOCKET_BADGE, names_a_socket};
-//!
-//! assert!(names_a_socket(SOCKET_BADGE | 1));
-//! assert!(!names_a_socket(0)); // the unbadged front door a spawner hands out
-//! assert!(!names_a_socket(7)); // a front door a spawner badged for its own reasons
-//! ```
-//!
-//! Name: ratified 2026-08-01 (calef, the naming tenet), which names `socket_proto` among the
-//! standard terms that are already right. It graduated from a module inside `net_stack` to a crate
-//! on 2026-07-31 under rule 7, taking the spelling the suffix rule already required. That suffix
-//! rule changed at milestone 265, on calef's ruling of 2026-09-05 that `_proto` is a truncation and
-//! is equally short for `prototype`, so the crate is `socket_protocol` now; `socket`, the half the 2026-08-01
-//! ruling was about, is untouched.
+//! Name: ratified 2026-08-01 (calef, the naming tenet); `_protocol` per calef's 2026-09-05 ruling.
 
 /// Operations. The opcode is the whole request word (milestone 649: it carried a socket id beside
 /// it until a socket became a capability).
@@ -202,6 +84,18 @@ pub const SOCKET_BADGE: u64 = 1 << 63;
 
 /// Does a request that arrived with `badge` name a socket? `false` means it came through a front
 /// door. Name provisional.
+///
+/// # Examples
+///
+/// A badge in the socket range names a socket; any other badge is a front door:
+///
+/// ```
+/// use socket_protocol::{SOCKET_BADGE, names_a_socket};
+///
+/// assert!(names_a_socket(SOCKET_BADGE | 1));
+/// assert!(!names_a_socket(0)); // the unbadged front door a spawner hands out
+/// assert!(!names_a_socket(7)); // a front door a spawner badged for its own reasons
+/// ```
 pub const fn names_a_socket(badge: u64) -> bool {
     badge & SOCKET_BADGE != 0
 }
@@ -236,6 +130,17 @@ pub const NO_LISTEN_GRANT: u64 = 0;
 /// Pack an inclusive listen-port range into the one word a net server is spawned with. `lo == 0` is
 /// [`NO_LISTEN_GRANT`] whatever `hi` says, because port 0 is not a port and a grant that starts at
 /// "no port" grants nothing; that keeps the "no grant" case a single value a reader can recognise.
+///
+/// # Examples
+///
+/// The degenerate cases collapse to one value a reader can recognise:
+///
+/// ```
+/// use socket_protocol::{NO_LISTEN_GRANT, listen_grant};
+///
+/// assert_eq!(listen_grant(0, 65535), NO_LISTEN_GRANT); // port 0 is not a port
+/// assert_eq!(listen_grant(8080, 80), NO_LISTEN_GRANT); // an inverted range grants nothing
+/// ```
 pub const fn listen_grant(lo: u16, hi: u16) -> u64 {
     if lo == 0 || hi < lo {
         return NO_LISTEN_GRANT;
@@ -256,6 +161,35 @@ pub const fn grant_allows(grant: u64, port: u16) -> bool {
 /// mDNS stack half; the [`listen_grant`] holds the low half, and the two compose with `|`). The
 /// same degenerate cases as the listen grant, for the same reasons: `lo == 0` grants nothing, and
 /// an inverted range is a spawn-site mistake whose safe reading is "grants nothing".
+///
+/// # Examples
+///
+/// The two inbound authorities share one word and are independent: UDP 5353 is not TCP 5353.
+///
+/// ```
+/// use socket_protocol::{
+///     NO_LISTEN_GRANT, grant_allows, listen_grant, udp_bind_grant, udp_grant_allows,
+/// };
+///
+/// // What an mDNS responder is spawned with: one UDP port, no TCP listen authority at all.
+/// let responder = udp_bind_grant(5353, 5353);
+/// assert!(udp_grant_allows(responder, 5353));
+/// assert!(!grant_allows(responder, 5353)); // the same number, and not the same authority
+///
+/// // What a file server is spawned with: SMB's port, and nothing on the UDP side.
+/// let smb = listen_grant(445, 445);
+/// assert!(grant_allows(smb, 445));
+/// assert!(!udp_grant_allows(smb, 445));
+///
+/// // Both at once is one word, and neither half leaks into the other.
+/// let both = smb | responder;
+/// assert!(grant_allows(both, 445) && udp_grant_allows(both, 5353));
+/// assert!(!grant_allows(both, 5353) && !udp_grant_allows(both, 445));
+///
+/// // The default, and what every outbound-only client is spawned with: nothing inbound.
+/// assert!(!grant_allows(NO_LISTEN_GRANT, 445));
+/// assert!(!udp_grant_allows(NO_LISTEN_GRANT, 5353));
+/// ```
 pub const fn udp_bind_grant(lo: u16, hi: u16) -> u64 {
     if lo == 0 || hi < lo {
         return NO_LISTEN_GRANT;

@@ -162,8 +162,8 @@ So the briefs live in `briefs/` as checked-in assets rather than being retyped f
 a brief written fresh each time loses a clause a month and the clause it loses is the one that stops
 a wrong conflict resolution shipping as housekeeping.
 
-**This estimate is superseded.** The 18% figure above was a guess from one example, on the day this
-note was written. [notes/local-inference.md](local-inference.md) measured the real split over 28
+**The 18% figure above is a guess from one example.** [notes/local-inference.md](local-inference.md)
+measured the real split over 28
 days, ending 2026-09-27: work with a crisp gate (`mechanical_gated`) is 36% of tokens and 36% of
 spend, a ceiling, not a number to plan against today. Only a narrow slice of that class, the tasks
 shaped like the one proven win above, is safely offloadable now. The realistic share is 5-10% of
@@ -189,9 +189,8 @@ it run the gate, did it read the exit code, and how many rounds did green take.
   gate is judged partly by the lane's own version of that gate. Such a result needs a reviewer.
   `Cargo.toml` and in-source `#[allow]` are outside the lock (lanes add dependencies), so the lock
   stops the failure measured, not a determined one.
-- Prompt caching misses on an unpinned route, and the cause is routing, not markers. *(Corrected
-  2026-09-27: this entry said caching was billed as a miss because the gateway drops
-  `cache_control`.)* LiteLLM does drop the markers, but OpenRouter's non-Alibaba providers cache
+- Prompt caching misses on an unpinned route, and the cause is routing, not markers. LiteLLM does
+  drop the markers, but OpenRouter's non-Alibaba providers cache
   without them. Measured through the gateway on `open-lane-qwen`, three identical 36K-token turns:
   pinned to one provider, turns 2 and 3 read 35,872 tokens from cache and cost a third as much;
   unpinned, each turn landed cold. The spend log's `cost_usd` already reflects the discount. The

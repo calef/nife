@@ -141,9 +141,8 @@ outside a test run.
 
 ## The appendices
 
-Everything else that used to live on this page moved into [`notes/net/`](net/README.md) on
-2026-09-25 (UTC), verbatim apart from the links that had to follow it, under §212 (a prose budget).
-None of it is needed to use the contract.
+Everything else is in [`notes/net/`](net/README.md), under §212 (a prose budget). None of it is
+needed to use the contract.
 
 | appendix | what it holds |
 |---|---|
@@ -186,26 +185,25 @@ written, in [the-inbound-check.md](net/the-inbound-check.md).*
 
 ### What is still not proven, and what is deliberately out of scope
 
-- **`std::net::TcpListener` is bound** (milestone 64, 2026-08-18; this bullet used to say it was
-  still `Unsupported`). The prediction above was right in every particular: `bind` is `OPERATION_LISTEN` on
-  a client-allocated socket id, `accept` is `OPERATION_ACCEPT` into another one the PAL allocates and
-  attaches a frame to, and the std client's stack is now spawned with a real listen grant. See "The
+- **`std::net::TcpListener` is bound** (milestone 64 (enough `std` to run somebody else's crate)),
+  as predicted above: `bind` is `OPERATION_LISTEN` on a client-allocated socket id, `accept` is
+  `OPERATION_ACCEPT` into another one the PAL allocates and attaches a frame to, and the std
+  client's stack is spawned with a real listen grant. See "The
   std client is a server too" in [std-tcp-listener.md](net/std-tcp-listener.md), and notes/std.md.
 - **Only the mmio transport carries the inbound gate.** A PCIe twin would need a second host port,
   and the transport is orthogonal to the accept path, which the outbound gates already prove over
   both buses. This is the same reasoning that retired the PCIe DNS variant.
-- **Inbound UDP is now built, and it is a grant of its own** (milestone 55's mDNS stack half; this
-  bullet used to say "not built"). `BIND_UDP` claims a fixed UDP port the way `LISTEN` claims a TCP
+- **Inbound UDP is built, and it is a grant of its own** (the mDNS stack half of milestone 55 (Time
+  Machine: SMB3 with Apple's extensions, and mDNS)). `BIND_UDP` claims a fixed UDP port the way `LISTEN` claims a TCP
   one, checked against a UDP bind grant the spawn site packs into the high half of the same
   spawn word the listen grant rides in (`socket_protocol::udp_bind_grant`; the halves are independent
   authorities, and the zero word still grants nothing anywhere). It answers with `LISTEN`'s own
-  vocabulary because the three outcomes are properties of claiming a port, not of TCP. In the same
-  change, a UDP `RECEIVE` reply now carries the datagram's source endpoint in the frame's dst
+  vocabulary because the three outcomes are properties of claiming a port, not of TCP. A UDP
+  `RECEIVE` reply carries the datagram's source endpoint in the frame's dst
   fields (dead space on a reply), because a responder must see who asked and RFC 6762 §6.7 turns on
   the querier's source port; the TFTP gate consumes it by ACKing to the DATA packet's reported
-  source, which is what TFTP's TID scheme wanted all along. The stack also joins 224.0.0.251 at
-  startup (smoltcp's `multicast` feature, switched on in the same milestone). The whole story,
-  including what QEMU could and could not prove about multicast, is notes/mdns.md's. **The
-  multicast half was retired on 2026-09-15** (milestone 298): the group join, the feature and the
-  runners' injection hub went with the responder, so nothing proves multicast now. The UDP bind
-  grant and the `RECEIVE` source endpoint stayed, still proved by the accept test and the TFTP gate.
+  source, which is what TFTP's TID scheme wanted all along. The stack joins no multicast group:
+  milestone 298 (retire the multicast DNS responder and its two crates) removed the join, smoltcp's
+  `multicast` feature and the runners' injection hub with the responder, so nothing proves
+  multicast. The UDP bind grant and the `RECEIVE` source endpoint are proved by the accept test and
+  the TFTP gate. What QEMU could and could not prove about multicast is in notes/mdns.md.

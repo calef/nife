@@ -8,8 +8,7 @@ the prevention half was never these scripts.
 
 GitHub's merge queue was enabled on this repository by the organization move of milestone 120 (the
 rename: the OS becomes `nife`, and the project gets an organization). The setting exists only for
-organization-owned repositories, which is why it used to be absent rather than hidden. On 2026-08-16
-the drain lost about 150 lines to it. The queue serializes candidates, tests each against the tip,
+organization-owned repositories. The queue serializes candidates, tests each against the tip,
 and ejects what fails. That is precisely what the script had been reconstructing from outside. Three
 things changed at once:
 

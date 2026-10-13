@@ -56,7 +56,7 @@ ones into the field of the live `satp`, reads back which stuck, and counts them;
 refuse to boot a machine that works.
 
 The threshold is derived (`(address_space_identifier::ASIDS - 1).ilog2() + 1`) rather than written as `8`, so raising the
-allocator moves the gate with it instead of leaving a constant behind that used to be right.
+allocator moves the gate with it instead of leaving a stale constant behind.
 
 ### 3. An ASID must be swept from *every* hart before it is reused
 

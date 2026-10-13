@@ -6,9 +6,8 @@ of milestone 225 (run the soak on radon, argon and xenon)'s legs, the recommenda
 These files carry the tables, sources and arguments its prose budget has no room for. Every figure in them was read on 2026-09-23.
 
 - [`x86_64.md`](x86_64.md): the x86_64 table and the case against each offer not recommended.
-- [`aarch64.md`](aarch64.md): the first draft's two errors, why no aarch64 cloud machine booted
-  nife on 2026-09-23, the offers table, and the Oracle Ampere A1 experiment, under a correction
-  dated 2026-10-11.
+- [`aarch64.md`](aarch64.md): why no aarch64 cloud machine boots nife, the offers table, and the
+  Oracle Ampere A1 experiment.
 - [`riscv64.md`](riscv64.md): the one RISC-V offer, the free runners that cannot boot a kernel, and
   why no rental substitutes for radon.
 - [`a-second-provider.md`](a-second-provider.md): a second x86_64 provider as an experiment, the
@@ -16,16 +15,12 @@ These files carry the tables, sources and arguments its prose budget has no room
 - [`settling-milestone-225.md`](settling-milestone-225.md): the price of one bench evening per leg,
   and why a rented machine substitutes for xenon and argon in a soak and nowhere else.
 
-*Name: provisional, minted 2026-10-11 (UTC) by lane/seventh-ten-longest-notes, which split the
-parent under §212 (a prose budget). The directory follows §212's siting default, `notes/X/` beside
-`notes/X.md`. calef names directories.*
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default, `notes/X/`
+beside `notes/X.md`. calef names directories.*
 
-The stems below were minted the same day by the same lane. Each is named for its content, and calef
-names files.
+Each stem below is named for its content, and calef names files.
 
-- `x86_64`, `aarch64` and `riscv64` Name: provisional, minted 2026-10-11 (UTC) by
-  lane/seventh-ten-longest-notes, after the parent's own architecture headings.
-- `a-second-provider` Name: provisional, minted 2026-10-11 (UTC) by lane/seventh-ten-longest-notes,
-  after the parent's "What a second provider is a test of".
-- `settling-milestone-225` Name: provisional, minted 2026-10-11 (UTC) by
-  lane/seventh-ten-longest-notes, after the parent's "What it would cost to settle milestone 225".
+- `x86_64`, `aarch64` and `riscv64` Name: provisional. After the parent's own architecture headings.
+- `a-second-provider` Name: provisional. After the parent's "What a second provider is a test of".
+- `settling-milestone-225` Name: provisional. After the parent's "What it would cost to settle
+  milestone 225".

@@ -192,8 +192,8 @@ crate is picked up with no change.
   host-compiled. Bounded model checking is happiest there.
 - Spread inward from the capability core, the order §14 sets: `capability`, then IPC (rendezvous,
   one-shot reply), then the MMU isolation invariants. All three steps are done (milestone 18 (verify
-  the capability core, then spread inward)). Each proved a property the security story previously
-  rested on by argument. The frontier now moves with milestone 14 (kernel objects from untyped):
+  the capability core, then spread inward)). Each proves a property the security story would
+  otherwise rest on by argument. The frontier now moves with milestone 14 (kernel objects from untyped):
   proving properties *of the kernel* at scale wants a kernel that does not allocate.
 - **A harness that needs a huge bound is a design smell.** If a property needs Kani to explore an
   unbounded loop or a giant structure, that is often the code telling you the logic is not as local

@@ -209,7 +209,7 @@ it.
   virtio-rng device: retry, bounded, then tell the caller the truth. Whether that hardware bit is
   *enough* before trusting these bytes for anything security-shaped, or whether this tree needs a
   software statistical test (repetition-count, adaptive-proportion) over and above it, is not
-  decided; see `crates/jh7110_entropy/src/lib.rs`'s "Health testing" section and
+  decided; see [entropy/jh7110-trng.md](entropy/jh7110-trng.md), "Health testing", and
   `design/roadmap/0159-jh7110-trng-driver.md` for the argument, which a lane deliberately did not
   resolve on its own initiative.
 - **A second backend exists on aarch64 and x86_64, milestone 162.** `entropy` can now be spawned in

@@ -2,10 +2,8 @@
 
 *An appendix to [`notes/std.md`](../std.md), which is the page to read. This file holds milestone
 184's reasoning for each field of `targets/x86_64-unknown-nife.json`, the SSE probe and the
-entry-point stub. It was moved here verbatim from the main page on 2026-09-25 (UTC), under [§212 (a
-prose budget)](../../design/decisions/0212-a-prose-budget-for-every-document.md). The directory
-`notes/std/` and this file's stem are provisional names, minted that day by the lane that split the
-file. Naming is calef's.*
+entry-point stub. The directory `notes/std/` and this file's stem are provisional names. Naming is
+calef's.*
 
 The records this file cites by number:
 

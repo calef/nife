@@ -27,11 +27,9 @@ cost = t1 - t0        // cycles, resolvable to nearly a single cycle
 ```
 
 A whole seL4 IPC is a few hundred cycles, so a single-shot measurement of it *needs* this resolution.
-(This line read "~200-400 cycles" until 2026-08-16, which was folklore about the L4 lineage rather
-than a figure anyone here had read. seL4's one published aarch64 platform measures 413 for the
-call and 426 for the reply, one-way each; notes/benchmarks.md compares against that pair and
-notes/aarch64-board-survey.md says which machine it is. The argument is unchanged either way: at
-~0.25 ns per cycle, one operation of that size is unresolvable by a 41 ns tick.)
+seL4's one published aarch64 platform measures 413 for the call and 426 for the reply, one-way
+each; notes/benchmarks.md compares against that pair and notes/aarch64-board-survey.md says which
+machine it is. At ~0.25 ns per cycle, one operation of that size is unresolvable by a 41 ns tick.
 That is exactly how `sel4bench` works (notes/benchmarks.md), and exactly why it could not run on this
 Mac.
 
@@ -91,10 +89,11 @@ notes/abi.md for how EL0 got read access to the generic timer.
 
 ## How this kernel starts it, and what it prints (milestone 74's aarch64 half)
 
-Until 2026-09-19 this kernel never started the counter. `PMCR_EL0.E` and `PMCNTENSET_EL0.C` were
-never written, so `PMCCNTR_EL0` was a stopped counter that a thread holding milestone 229's grant
-could read legally and get the same number from every time. `kernel/src/arch/aarch64/pmu.rs` now does
-this on every core, from `timer::init`, gated on `ID_AA64DFR0_EL1.PMUVer` the way the `PMUSERENR_EL0`
+The cycle counter does not run until the kernel starts it. Without `PMCR_EL0.E` and
+`PMCNTENSET_EL0.C`, `PMCCNTR_EL0` is a stopped counter that a thread holding milestone 229's grant
+can read legally and get the same number from every time (milestone 229 (build the
+cycle-counter grant DECISIONS 139 decided)). `kernel/src/arch/aarch64/pmu.rs` starts it
+on every core, from `timer::init`, gated on `ID_AA64DFR0_EL1.PMUVer` the way the `PMUSERENR_EL0`
 write beside it is:
 
 1. `PMCCFILTR_EL0 = 0`: EL0 and EL1 counted, EL2 not, on every board. calef ruled it on

@@ -7,9 +7,8 @@ table with an unusual shape.
 
 **The console that user programs use is now a userspace process.** A program that wants to print
 holds a `WRITE` capability on the console server's endpoint and sends to it. The server, running
-at EL0, owns a mapping of the PL011's registers and does the `while TXFF { } ; DR = byte`
-that used to live in `kernel/src/drivers/pl011.rs`. That loop is the same; only its exception
-level changed.
+at EL0, owns a mapping of the PL011's registers and runs the `while TXFF { } ; DR = byte` loop
+itself.
 
 What stays in the kernel is a *debug* UART: `println!`, for boot messages, panics, and the
 test harness. This is not a cheat and it is not a failure of the thesis. **seL4 does exactly
