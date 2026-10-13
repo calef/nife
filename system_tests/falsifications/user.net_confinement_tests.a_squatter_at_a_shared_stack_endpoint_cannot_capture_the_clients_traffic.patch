@@ -14,11 +14,11 @@ squatter's ten attempts ...")`. Confirmed red on 2026-10-07 (UTC) at
 socket (`left: 1007`, bit 4 clear). The hunk is portable code, so one patch serves every leg;
 riscv64 and x86_64 were not replayed by hand.
 
-diff --git a/components/src/net_stack.rs b/components/src/net_stack.rs
-index 95c4491c6..69869e558 100644
---- a/components/src/net_stack.rs
-+++ b/components/src/net_stack.rs
-@@ -336,7 +336,12 @@ fn server(mut dev: Nic, grant_word: u64) -> ! {
+diff --git a/components/src/socket_server.rs b/components/src/socket_server.rs
+index 5e2b1b9d6..7faffc0d5 100644
+--- a/components/src/socket_server.rs
++++ b/components/src/socket_server.rs
+@@ -138,7 +138,12 @@ pub(crate) fn server(mut dev: Nic, grant_word: u64) -> ! {
  
          // **The front door makes sockets and does nothing else** (§255 (each socket is its own
          // capability)). A badge outside the socket range is a front door, whoever badged it.
@@ -32,7 +32,7 @@ index 95c4491c6..69869e558 100644
              let opened = match operation {
                  OPERATION_OPEN_UDP => open_udp(&mut sockets, &mut table, &mut ports),
                  OPERATION_OPEN_TCP => open_tcp(&mut sockets, &mut table, &mut ports),
-@@ -355,7 +360,10 @@ fn server(mut dev: Nic, grant_word: u64) -> ! {
+@@ -157,7 +162,10 @@ pub(crate) fn server(mut dev: Nic, grant_word: u64) -> ! {
  
          // A socket's capability. A badge the table does not hold is a closed socket's, or one
          // nobody minted: it reaches nothing.

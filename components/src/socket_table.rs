@@ -9,11 +9,11 @@ use super::*;
 /// no longer of the wire: a client never names an entry. Sixteen, from the six the wire allowed,
 /// because the table is now shared by every client of the stack rather than divided among them by
 /// convention. A socket's real cost, its buffers and its mapped page, is paid only while it is open.
-pub(super) const SOCKETS: usize = 16;
+pub(crate) const SOCKETS: usize = 16;
 
 /// Where the shared frame of the socket in table entry `entry` is mapped in `net_stack`'s address
 /// space. Above the DMA page (`0x90_0000`) and well below the heap (1 GiB).
-pub(super) fn socket_va(entry: usize) -> u64 {
+pub(crate) fn socket_va(entry: usize) -> u64 {
     0x0000_0000_00A0_0000 + entry as u64 * 0x1000
 }
 
@@ -24,7 +24,7 @@ pub(super) fn socket_va(entry: usize) -> u64 {
 /// None`, and it never needs one, because no bytes cross on a listener), and its port is the one it
 /// was granted rather than one the allocator handed out.
 #[derive(Clone, Copy)]
-pub(super) struct Sock {
+pub(crate) struct Sock {
     pub(crate) handle: SocketHandle,
     pub(crate) kind: Kind,
     pub(crate) window: Option<MappedWindow>,
@@ -34,19 +34,19 @@ pub(super) struct Sock {
 
 /// What a socket is, which decides what its capability may ask.
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) enum Kind {
+pub(crate) enum Kind {
     Udp,
     Tcp,
     Listener,
 }
 
 /// The largest datagram/segment buffered per socket.
-pub(super) const SOCK_BUF: usize = 2048;
+pub(crate) const SOCK_BUF: usize = 2048;
 
 /// **The open sockets of every client, keyed by the badge on each one's capability** (§255 (each
 /// socket is its own capability)). An entry is a place in this table and a window VA, never a
 /// name any client sees.
-pub(super) struct Table {
+pub(crate) struct Table {
     pub(crate) socks: [Option<Sock>; SOCKETS],
     /// Whether entry `i`'s window VA has a page mapped. A closed socket's page is unmapped, and an
     /// entry whose page could not be unmapped never takes another frame, so no socket ever reads
@@ -212,7 +212,7 @@ impl Table {
 }
 
 /// `OPERATION_OPEN_UDP`: a UDP socket on an ephemeral port, in a free entry.
-pub(super) fn open_udp(
+pub(crate) fn open_udp(
     sockets: &mut SocketSet,
     table: &mut Table,
     ports: &mut ephemeral::Ports,
@@ -226,7 +226,7 @@ pub(super) fn open_udp(
 }
 
 /// `OPERATION_OPEN_TCP`: an unconnected TCP socket with an ephemeral port, in a free entry.
-pub(super) fn open_tcp(
+pub(crate) fn open_tcp(
     sockets: &mut SocketSet,
     table: &mut Table,
     ports: &mut ephemeral::Ports,
@@ -241,7 +241,7 @@ pub(super) fn open_tcp(
     Ok((entry, REP_OK))
 }
 
-pub(super) fn udp_socket() -> udp::Socket<'static> {
+pub(crate) fn udp_socket() -> udp::Socket<'static> {
     udp::Socket::new(
         udp::PacketBuffer::new(vec![udp::PacketMetadata::EMPTY; 8], vec![0u8; SOCK_BUF]),
         udp::PacketBuffer::new(vec![udp::PacketMetadata::EMPTY; 8], vec![0u8; SOCK_BUF]),
@@ -249,7 +249,7 @@ pub(super) fn udp_socket() -> udp::Socket<'static> {
 }
 
 /// Read the destination (octets + little-endian port) from a shared frame's header.
-pub(super) fn read_dst(window: MappedWindow) -> IpEndpoint {
+pub(crate) fn read_dst(window: MappedWindow) -> IpEndpoint {
     let ip = Ipv4Address::new(
         window.r8(OFF_DST_IP),
         window.r8(OFF_DST_IP + 1),

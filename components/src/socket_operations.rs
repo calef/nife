@@ -8,7 +8,7 @@ use super::*;
 /// Drive the poll loop until `cond` holds, servicing the NIC on each wakeup. Bounded so a stuck
 /// exchange returns rather than spinning forever; a genuinely lost packet still relies on the
 /// QEMU-level timeout, the disk driver's discipline.
-pub(super) fn service_until(
+pub(crate) fn service_until(
     iface: &mut Interface,
     dev: &mut Nic,
     sockets: &mut SocketSet,
@@ -31,7 +31,7 @@ pub(super) fn service_until(
     }
 }
 
-pub(super) fn udp_sendto(
+pub(crate) fn udp_sendto(
     iface: &mut Interface,
     dev: &mut Nic,
     sockets: &mut SocketSet,
@@ -64,7 +64,7 @@ pub(super) fn udp_sendto(
     REP_OK
 }
 
-pub(super) fn sock_receive(
+pub(crate) fn sock_receive(
     iface: &mut Interface,
     dev: &mut Nic,
     sockets: &mut SocketSet,
@@ -122,7 +122,7 @@ pub(super) fn sock_receive(
     n as u64
 }
 
-pub(super) fn tcp_connect(
+pub(crate) fn tcp_connect(
     iface: &mut Interface,
     dev: &mut Nic,
     sockets: &mut SocketSet,
@@ -166,7 +166,7 @@ pub(super) fn tcp_connect(
 /// Park a fresh TCP socket in `Listen` state on `port`. `None` if smoltcp refuses the port (only
 /// port 0 does that), in which case the socket is removed rather than left in the set as a
 /// `Closed` socket nothing owns.
-pub(super) fn arm_listener(sockets: &mut SocketSet, port: u16) -> Option<SocketHandle> {
+pub(crate) fn arm_listener(sockets: &mut SocketSet, port: u16) -> Option<SocketHandle> {
     let s = tcp::Socket::new(
         tcp::SocketBuffer::new(vec![0u8; SOCK_BUF]),
         tcp::SocketBuffer::new(vec![0u8; SOCK_BUF]),
@@ -188,7 +188,7 @@ pub(super) fn arm_listener(sockets: &mut SocketSet, port: u16) -> Option<SocketH
 ///
 /// A listener gets no shared frame. That is the contract's claim that a listener and a connection
 /// are different objects, made concrete: there is nothing to map, because nothing is carried.
-pub(super) fn tcp_listen(
+pub(crate) fn tcp_listen(
     sockets: &mut SocketSet,
     table: &mut Table,
     port_word: u64,
@@ -235,7 +235,7 @@ pub(super) fn tcp_listen(
 /// arriving in the window between a handshake completing and this call re-arming gets a RST rather
 /// than a wait. Bounded by `service_until`'s 15 s, so an `ACCEPT` nobody ever connects to returns
 /// `REP_ERR` instead of holding the server forever.
-pub(super) fn tcp_accept(
+pub(crate) fn tcp_accept(
     iface: &mut Interface,
     dev: &mut Nic,
     sockets: &mut SocketSet,
@@ -298,7 +298,7 @@ pub(super) fn tcp_accept(
 /// sockets, so a fixed bind cannot silently shadow an ephemeral port a live socket was allocated).
 /// Unlike a listener the socket carries bytes, so its holder attaches a frame to it exactly as to
 /// one `OPERATION_OPEN_UDP` made.
-pub(super) fn udp_bind(
+pub(crate) fn udp_bind(
     sockets: &mut SocketSet,
     table: &mut Table,
     port_word: u64,
@@ -328,7 +328,7 @@ pub(super) fn udp_bind(
     Ok((entry, LISTEN_GRANTED))
 }
 
-pub(super) fn tcp_send(
+pub(crate) fn tcp_send(
     iface: &mut Interface,
     dev: &mut Nic,
     sockets: &mut SocketSet,

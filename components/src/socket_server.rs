@@ -6,30 +6,30 @@
 
 use super::*;
 
-pub(super) const REPORT: u64 = 0;
+pub(crate) const REPORT: u64 = 0;
 
-pub(super) const IRQ: u64 = 1;
+pub(crate) const IRQ: u64 = 1;
 
-pub(super) const MEMORY_REGION: u64 = 3;
+pub(crate) const MEMORY_REGION: u64 = 3;
 
-pub(super) const STACK: u64 = 4;
+pub(crate) const STACK: u64 = 4;
 
 /// The lease word an `e1000e` server sends instead of an address when its spawn arguments were
 /// not a handoff the kernel could have made. Outside every private /24 a test accepts.
-pub(super) const BAD_HANDOFF: u64 = 0xDEAD_0001;
+pub(crate) const BAD_HANDOFF: u64 = 0xDEAD_0001;
 
 /// The notification bound to this thread, which the retransmit timer signals (milestone 106 (a wait
 /// that ends on either the interrupt or the deadline)). The spawner makes and binds it.
-pub(super) const WAKE: u64 = 5;
+pub(crate) const WAKE: u64 = 5;
 
 /// The retransmit timer: armed for smoltcp's next deadline while this server waits for a frame.
-pub(super) const RETRANSMIT: u64 = 6;
+pub(crate) const RETRANSMIT: u64 = 6;
 
 /// Our own endpoint again, `WRITE | GRANT`, and our own address space (§255 (each socket is its own
 /// capability)); `socket_protocol::stack_slots` says what each is for.
-pub(super) const MINT: u64 = socket_protocol::stack_slots::MINT;
+pub(crate) const MINT: u64 = socket_protocol::stack_slots::MINT;
 
-pub(super) const OWN_SPACE: u64 = socket_protocol::stack_slots::OWN_SPACE;
+pub(crate) const OWN_SPACE: u64 = socket_protocol::stack_slots::OWN_SPACE;
 
 /// The heap smoltcp allocates against, capped under the granted budget.
 ///
@@ -39,10 +39,10 @@ pub(super) const OWN_SPACE: u64 = socket_protocol::stack_slots::OWN_SPACE;
 /// regions are held for the whole boot and never reclaimed, and the aarch64 suite ran out of memory
 /// when an eleventh net test arrived; see `kernel/src/user/virtio_service.rs` for the measurement.
 /// If either number moves, both must.
-pub(super) const HEAP_MAX: u64 = 96 * 4096;
+pub(crate) const HEAP_MAX: u64 = 96 * 4096;
 
 #[global_allocator]
-pub(super) static HEAP: user_mode_runtime::heap::MemoryRegionHeap =
+pub(crate) static HEAP: user_mode_runtime::heap::MemoryRegionHeap =
     user_mode_runtime::heap::MemoryRegionHeap::new();
 
 /// Entry role 0 is the net server; any other role runs the socket-contract client (the same
@@ -96,7 +96,7 @@ pub extern "C" fn _start(role: u64, direct_memory_access_phys: u64, a2: u64) -> 
 }
 
 /// The net server: bring the NIC up, run DHCP, then serve the socket contract.
-pub(super) fn server(mut dev: Nic, grant_word: u64) -> ! {
+pub(crate) fn server(mut dev: Nic, grant_word: u64) -> ! {
     let mut iface = heap_and_interface(&mut dev);
     let mut sockets = SocketSet::new(vec![]);
 

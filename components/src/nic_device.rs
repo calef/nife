@@ -6,10 +6,10 @@
 use super::*;
 
 /// Our MAC. Locally administered; slirp routes DHCP regardless.
-pub(super) const MAC: [u8; 6] = [0x52, 0x54, 0x00, 0x12, 0x34, 0x56];
+pub(crate) const MAC: [u8; 6] = [0x52, 0x54, 0x00, 0x12, 0x34, 0x56];
 
 /// smoltcp's clock, from the monotonic counter, in milliseconds.
-pub(super) fn instant() -> Instant {
+pub(crate) fn instant() -> Instant {
     let ms = (now() as u128 * 1000 / cntfrq() as u128) as i64;
     Instant::from_millis(ms)
 }
@@ -17,7 +17,7 @@ pub(super) fn instant() -> Instant {
 /// **The NIC this server drives**: virtio-net (milestone 30 (the network stack as a confined
 /// component)) or the `e1000e` family (milestone 494). One enum rather than a generic parameter,
 /// so the dispatch below is compiled once.
-pub(super) enum Nic {
+pub(crate) enum Nic {
     Virtio(virtio_net_transport::VirtioNet),
     Gigabit(e1000e_transport::GigabitNic),
     DesignWare(designware_ethernet_transport::DesignWareNic),
@@ -77,7 +77,7 @@ impl smoltcp::phy::Device for Nic {
     }
 }
 
-pub(super) struct NicRxToken {
+pub(crate) struct NicRxToken {
     frame: alloc::vec::Vec<u8>,
 }
 
@@ -90,7 +90,7 @@ impl smoltcp::phy::RxToken for NicRxToken {
     }
 }
 
-pub(super) struct NicTxToken {
+pub(crate) struct NicTxToken {
     dev: *mut Nic,
 }
 
