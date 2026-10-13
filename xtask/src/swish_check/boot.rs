@@ -1403,8 +1403,8 @@ fn kernel_fault_failure(transcript: &str) -> Option<String> {
     ))
 }
 
-/// **And the capability-slot gauge** (milestone 231), which is the other half of this pair of
-/// milestones. Two claims, and neither is a margin picked out of the air.
+/// **And the capability-slot gauge** (milestone 231 (nothing counts how many capability slots a
+/// boot actually uses)), which is the other half of this pair of milestones. Two claims, and neither is a margin picked out of the air.
 ///
 /// The line must be *there*, because a gauge that stopped printing is a gauge nobody would miss
 /// until the wall arrived again, which is exactly how `CAPABILITY_TABLE_SLOTS` came to be raised
@@ -1503,8 +1503,9 @@ fn job_pool_failure(filtered: &str) -> Option<String> {
     })
 }
 
-/// **Milestone 342's flood verdict**: every kernel flood line on a line of its own, or, for the
-/// detached control, how many were not. `None` when no flood probe is running.
+/// **Milestone 342's flood verdict** (milestone 342 (the kernel and the `console` server drive one
+/// UART from two address spaces, and nothing arbitrates)): every kernel flood line on a line of its
+/// own, or, for the detached control, how many were not. `None` when no flood probe is running.
 fn flood_failure(arch: &str, raw: &Mutex<String>) -> Option<String> {
     if !matches!(probe(), Probe::Flood | Probe::FloodDetached) {
         return None;
