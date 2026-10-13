@@ -1307,8 +1307,8 @@ fn one_answer_failures(l: &Line, answer: &str, before_next: &str) -> Vec<String>
     // independent claims and checking one of them makes the rest decoration. `caps`
     // is the case that forced it: it prints the shell's whole endowment, and a gate
     // that read only the clock row would pass a boot that had stopped granting the
-    // shell a directory, which is the wiring milestone 31's headline (a capability shell:
-    // designation is authorization) rests on.
+    // shell a directory, which is the wiring the headline of milestone 31 (a capability
+    // shell: designation is authorization) rests on.
     // **And whether the program said it anyway** (the noteless flake, 2026-10-04
     // UTC): an answer cut short by something the gate read as a prompt is a
     // misread transcript, not a silent program, and the line says which.
