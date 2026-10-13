@@ -697,8 +697,7 @@ struct ScreenReadings {
 ///
 /// Stops early when the monitor stops answering after having answered once (QEMU is gone and no
 /// later dump can be better), and at a deadline that bounds the whole watch. A dump that fails to
-/// decode is never fatal: `screendump` writes the file asynchronously, so a read that lands
-/// mid-write is short and ordinary, and the retry is the answer.
+/// decode is never fatal, and the retry is the answer.
 fn screen_watch(
     sock: &str,
     shot: &Path,
@@ -717,6 +716,11 @@ fn screen_watch(
     /// the kernel's ten-second bound. Three retries is already more than an asynchronous
     /// `screendump` write has ever needed once the guest stopped spinning; see
     /// `console::hold_screen_for_host`, which is where that turned out to matter.
+    ///
+    /// Corrected 2026-10-12 (lane/scanout-referee-flake): `screendump` now waits for QEMU's answer,
+    /// and QEMU answers only once the file is written, so a read can no longer land mid-write. The
+    /// retries and the pause below were sized for that and are now margin; they are kept, not
+    /// re-measured.
     const HELD_DUMPS: u32 = 4;
     let mut dumps_while_held = 0u32;
     while std::time::Instant::now() < deadline {
@@ -770,8 +774,7 @@ fn screen_watch(
             //
             // The second condition is what keeps the verdict honest in both directions. The state
             // is stable while the kernel is held, so a dump that does not show the tour is a real
-            // answer rather than bad luck; `HELD_DUMPS` retries only because `screendump` writes
-            // its file asynchronously and a read can land mid-write. And the boot must be released
+            // answer rather than bad luck; `HELD_DUMPS` retries are margin (see its note). And the boot must be released
             // either way: a held kernel is a stopped boot, and the verdict below can say more about
             // a boot that finished than about one this watcher wedged.
             if seen.held && !released && (seen.tour.is_some() || dumps_while_held >= HELD_DUMPS) {
@@ -790,8 +793,7 @@ fn screen_watch(
         // is a millisecond of a bounded hold being spent. After it, the stages wait on a
         // person-speed shell.
         // The kernel is parked while it holds the screen, so there is no hurry and no window to
-        // race: the pause is short enough to spend few of the hold's ten seconds and long enough
-        // that `screendump`'s asynchronous write has landed before the read.
+        // race: the pause is short enough to spend few of the hold's ten seconds.
         let pause = 250;
         std::thread::sleep(std::time::Duration::from_millis(pause));
     }

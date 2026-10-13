@@ -87,3 +87,52 @@ monitor client is xtask itself over `std::os::unix::net::UnixStream`.
     different host-side probe replaces `screendump`. A different QEMU version is the first thing
     worth trying.
   - This paragraph is wrong; see the RESOLVED entry above it.
+
+## A dump refused at the door: 2026-10-12
+
+The flake: the scanout check failed while every guest test passed, once in a local `--hvf` run on
+2026-10-12 and once in eleven local riscv64 runs on 2026-10-13. CI never showed it. Of 654 failed
+test and cpu-matrix jobs from 2026-08-17 to 2026-10-13, 31 logged a failed scanout check, and every
+one followed an earlier stop (a guest panic, or a build that never booted).
+
+**The question:** does a poll during a picture's three-second hold reliably produce a dump?
+
+**What the referee did.** Each 100 ms poll connected to the monitor, wrote `sendkey`, and hung up,
+then connected again, wrote `screendump`, slept 150 ms and hung up, never reading a reply. QEMU's
+monitor socket serves one client and listens with a backlog of one. A connection made while the
+previous one is still waiting to be accepted is refused on macOS, and `screendump` treated a refusal
+as "try again next poll".
+
+**Measured.** Against an idle QEMU, a connection opened just after a `sendkey` connection was
+refused 9 times in 10. Traced in real suites, one line per poll (the patch was not kept).
+
+| run | polls that took a dump | longest run of refused polls |
+|---|---|---|
+| riscv64 TCG, another lane's QEMUs on the host (load 14 to 19) | 54 of 260 (21%) | 25 polls, 2.6 s |
+| riscv64 TCG, four spinners | 116 of 268, 121 of 275 | 8 polls, 0.8 s |
+| aarch64 TCG, four spinners | 87 of 118 | 4 polls, 0.4 s |
+| aarch64 HVF, four spinners | 19 of 58 | 7 polls, 0.7 s |
+
+A 2.6 s blind stretch against a 3 s hold is the miss. The refusal rate tracks how quickly QEMU's
+main loop accepts, which is why a neighboring emulator mattered more than the spinners did. None of
+these five runs went red; the miss itself was not reproduced, its mechanism was. CI runs on Linux,
+where a connect to a full unix-socket backlog waits rather than failing, which fits zero CI sightings
+but was not tested here.
+
+**The fix.** `scanout::Monitor` holds one connection for the whole run and reads up to QEMU's
+`(qemu) ` prompt after every command. QEMU prints the prompt only when the command has finished, and
+for `screendump` the file is whole by then (50 of 50 dumps measured). No connection waits in the
+backlog, and the fixed sleep is gone. The free `sendkey` and `screendump` that `screen.rs`,
+`uefi.rs` and swish-check use go through the same type.
+
+**After.** Under the same four spinners every poll took a dump: riscv64 418, 411 and 445 dumps;
+aarch64 233; HVF 80 and 80. All green. One more aarch64 run went red on a guest panic
+(`an_installed_space_stays_installed_across_a_timer_tick`, the panic CI showed the same day). It is the new report's first
+secondary: the composed screen lists 17 dumps graded, and the text and pattern say "never looked
+for" rather than the old "no screendump was ever taken". A controlled loop against a paused QEMU,
+100 polls each: the old poll took 35 and 48 dumps (idle host, eight spinners), the new one 100 and
+100.
+
+**Host tests.** `a_screendump_returns_only_once_the_file_is_written` (falsified: the old
+write-and-sleep returns before the file exists), `the_monitor_reply_is_read_past_the_line_editors_echo`
+on QEMU 11.1.2's own bytes, and `an_unmatched_picture_says_whether_it_was_ever_looked_for`.

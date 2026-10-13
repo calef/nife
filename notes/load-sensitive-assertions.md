@@ -78,8 +78,7 @@ milestone 6 (threads, the context switch, and preemption) entirely, and an injec
 A guest cannot know that eleven other emulators shared its eight cores. So `xtask` samples the host's load average during each emulated leg and prints it when a leg goes red,
 with the core count and the oversubscription factor
 ([the host-load line](load-sensitive-assertions/host-load-line.md)). Read that line before
-theorizing. Three host-side checks (`inbound`, `multicast`, `smb`) also fail together when the host
-is saturated, so all three red at once is a load gauge, not three regressions.
+theorizing; it covers the host-side checks (`inbound`, `scanout`) too.
 
 ## The rule for fixing one
 
@@ -139,6 +138,7 @@ remains) or fixed. A fixed site can still carry a residual in BUGS below.
 | `holding_a_lock_masks_the_timer`, the masking window | both `timer.rs` | fixed | both reads moved inside the critical section; `ticks_on(core)` (08-04) | [second round](load-sensitive-assertions/measurement-windows-and-the-load-recipe.md) |
 | `holding_a_lock_masks_the_timer`, liveness and release; `the_timer_is_ticking` | both `timer.rs` | fixed | wait for the pending bit, or the property (09-24) | [preemption window](load-sensitive-assertions/preemption-window-tick.md) |
 | `unmasking_delivers_the_tick_that_was_held`, `a_masked_window_takes_no_preemption` | `preemption_window_tests.rs` | fixed | waits for `timer::is_tick_pending`; QEMU raised ticks 86 ms late (09-24) | [preemption window](load-sensitive-assertions/preemption-window-tick.md) |
+| `scanout check` (host referee) | `xtask/src/scanout.rs` | fixed | QEMU's monitor refused its dumps; one connection now (10-12) | [referee](framebuffer-contract/scanout-referee.md) |
 | `inbound check` (host prober) | `xtask/src/inbound.rs` | fixed | an `EINTR` read dropped a held connection, losing its round (09-24) | [inbound EINTR](load-sensitive-assertions/inbound-eintr.md) |
 | `work_can_be_placed_on_every_cpu` | `smp.rs` | fixed | asserts arrival at the named core (`PerCpu::adopted`), not execution (08-04) | [second round](load-sensitive-assertions/measurement-windows-and-the-load-recipe.md) |
 | `a_thread_that_never_yields_is_preempted_anyway` | `sched.rs` | fixed | the spinner is waited on, not sampled; the budget is 200 delivered ticks (08-04) | [second round](load-sensitive-assertions/measurement-windows-and-the-load-recipe.md) |

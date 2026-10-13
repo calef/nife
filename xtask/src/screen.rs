@@ -190,9 +190,8 @@ pub(crate) fn screen_boot(arch: &str) -> bool {
 /// Poll the monitor for a screendump until the tour's marker is on the screen.
 ///
 /// Returns the decoded screen that carried the marker, or the last non-blank one seen, or `None` if
-/// nothing ever decoded. A dump that fails to decode is never fatal: `screendump` writes the file
-/// asynchronously, so a read that lands mid-write is short and ordinary, and the retry is the
-/// answer.
+/// nothing ever decoded. A dump that fails to decode is never fatal; the retry is the answer.
+/// (`screendump` waits for QEMU's answer since 2026-10-12, so the file is whole when it returns.)
 fn watch(sock: &str, shot: &std::path::Path) -> Option<String> {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(WATCH_SECONDS);
     let mut answered = false;
