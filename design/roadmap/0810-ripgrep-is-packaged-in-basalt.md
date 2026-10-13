@@ -124,6 +124,12 @@ Debian's `ripgrep` installs `/usr/bin/rg`; nife's installer had no way to say th
 Reversible: only this tree and basalt's one recipe use it. If calef refuses (1), the recipe and the
 installer's fallback change together and nothing else moves.
 
+Ruled 2026-10-12 (UTC). calef: *"A package can contain many programs and they may be different from
+the package name."* That takes (1) and widens it: a package carries any number of `bin/<program>`
+members, and no program need share the package's name. What is built is the one-program case, so
+`ripgrep`'s `bin/rg` already follows the ruling; a package with two `bin/` members is still
+refused (see `BUGS`).
+
 ## Exit
 
 On aarch64, riscv64 and x86_64: a nife at basalt's pinned commit runs `jig install ripgrep` against
@@ -146,6 +152,9 @@ would replace only the download (unverified for `cargo-binstall`'s custom-target
 - A search may not fit a `std` program's heap. PR #1777 measured `rg --threads 1 --no-mmap` over
   this tree at a 3.0 MiB peak on macOS, against about 1 MiB of `std` heap. That is milestone 121's
   to solve, but `rg --version` passing here says nothing about it.
+- A package with more than one `bin/` member is refused, though calef ruled that a package may carry
+  many programs. The installer, the shell's bare-name lookup (§229 (how a bare name at the prompt
+  reaches an installed program)) and `jig remove` each handle one program per package today.
 - basalt's gate is one job for three architectures (its README's BUGS), so a red riscv64 build can
   hide behind a red aarch64 one.
 
@@ -155,7 +164,9 @@ would replace only the download (unverified for `cargo-binstall`'s custom-target
   DNS query. A host, DNS and a certificate are calef's.
 - **Outstanding.** The package's digest in the recipe: needs a build reproducible across machines,
   not measured. Checked 2026-10-12: the recipe records the sources' digests only.
-- **Outstanding.** calef's ruling on `bin/<program>` (above).
+- **Outstanding.** Several programs in one package, as calef ruled: the installer, §229's lookup and
+  `jig remove` taking every `bin/` member. Two packages offering the same program name is a question
+  for calef when that work starts, not before.
 - **Recorded.** Item 7, `rg` packed into the archive for milestone 121's tests, is unchanged; this
   block's "Built 2026-10-12" says why it does not reach an installed `rg`.
 
