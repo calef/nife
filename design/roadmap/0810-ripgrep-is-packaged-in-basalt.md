@@ -149,6 +149,16 @@ would replace only the download (unverified for `cargo-binstall`'s custom-target
 - basalt's gate is one job for three architectures (its README's BUGS), so a red riscv64 build can
   hide behind a red aarch64 one.
 
+## Follow-on
+
+- **Outstanding.** Publishing at `basalt.nifeos.org`: checked 2026-10-12, `nifeos.org` answers no
+  DNS query. A host, DNS and a certificate are calef's.
+- **Outstanding.** The package's digest in the recipe: needs a build reproducible across machines,
+  not measured. Checked 2026-10-12: the recipe records the sources' digests only.
+- **Outstanding.** calef's ruling on `bin/<program>` (above).
+- **Recorded.** Item 7, `rg` packed into the archive for milestone 121's tests, is unchanged; this
+  block's "Built 2026-10-12" says why it does not reach an installed `rg`.
+
 ## Index row
 
 The first third-party program nife ships the way every later one will. A recipe in the
