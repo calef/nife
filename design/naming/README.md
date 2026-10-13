@@ -2,8 +2,7 @@
 
 [`design/naming.md`](../naming.md) is the page to read; it is written so a reader can act without
 opening anything here. These files hold the mechanisms, measurements and histories behind the
-naming rules, and the table below is their index. It moved here from that page's Appendices section
-on 2026-10-13 (UTC), unchanged but for the links' directory prefix and one cell's "above".
+naming rules, and the table below is their index.
 
 *Name: provisional, minted 2026-09-24 by the lane that split the file (`2ea02d231`), for the
 directory and every stem in it. Each appendix's own preamble says the same of its stem. Naming is

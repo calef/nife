@@ -185,7 +185,7 @@ this system's whole claim about everything else.
 
 ## Prior art, read 2026-09-26
 
-Moved to [`prior-art.md`](0219-naming-an-installed-program-to-the-spawner/prior-art.md), verbatim.
+In [`prior-art.md`](0219-naming-an-installed-program-to-the-spawner/prior-art.md).
 
 ## The seven questions
 

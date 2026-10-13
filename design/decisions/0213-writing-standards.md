@@ -54,7 +54,7 @@ block-aware step is load-bearing, and the next section says why.
 
 ### The first measurement was wrong, and the error is instructive
 
-Moved to [`first-measurement.md`](0213-writing-standards/first-measurement.md), verbatim: a splitter that ignored block boundaries inflated four figures, and the table above replaces them.
+In [`first-measurement.md`](0213-writing-standards/first-measurement.md): a splitter that ignored block boundaries inflated four figures, and the table above replaces them.
 
 ### Most bold in this tree is a heading that lost its syntax
 

@@ -1,9 +1,7 @@
 # §101's methods and rights, as ruled
 
-Moved verbatim from [`0101-notification-objects.md`](../0101-notification-objects.md) on 2026-10-13
-(UTC) to bring that page under §212 (a prose budget)'s 3,000-word cap by the whole-file count. The
-page keeps both headings, and the text below is unchanged. This is the surface as §101 ruled it; the
-shipped ABI is `crates/abi/src/notification.rs`.
+An appendix of [`0101-notification-objects.md`](../0101-notification-objects.md): the surface as §101 ruled it. The shipped ABI is
+`crates/abi/src/notification.rs`.
 
 ## New methods
 

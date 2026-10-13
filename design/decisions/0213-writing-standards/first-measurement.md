@@ -1,8 +1,6 @@
 # §213's first measurement, and why it was wrong
 
-Moved verbatim from [`0213-writing-standards.md`](../0213-writing-standards.md) on 2026-10-13 (UTC) to bring that
-page under §212 (a prose budget)'s 3,000-word cap by the whole-file count. The page keeps the
-heading, and the text below is unchanged.
+An appendix of [`0213-writing-standards.md`](../0213-writing-standards.md), which keeps the heading.
 
 ## The first measurement was wrong, and the error is instructive
 

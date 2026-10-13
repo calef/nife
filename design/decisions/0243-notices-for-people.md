@@ -275,7 +275,7 @@ Derived, nothing is built or measured.
 
 ## The seven questions
 
-Moved to [`seven-questions.md`](0243-notices-for-people/seven-questions.md), verbatim.
+In [`seven-questions.md`](0243-notices-for-people/seven-questions.md).
 
 ## What it unblocks, and what remains
 

@@ -1,8 +1,6 @@
 # §242's seven questions, answered before calef ruled
 
-Moved verbatim from [`0242-a-system-log.md`](../0242-a-system-log.md) on 2026-10-13 (UTC) to bring that
-page under §212 (a prose budget)'s 3,000-word cap by the whole-file count. The page keeps the
-heading, and the text below is unchanged.
+An appendix of [`0242-a-system-log.md`](../0242-a-system-log.md), which keeps the heading.
 
 ## The seven questions, answered before calef ruled
 

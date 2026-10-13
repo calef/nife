@@ -203,7 +203,7 @@ The proposals, none minted:
 
 ## The seven questions
 
-Moved to [`seven-questions.md`](0235-packages-build-the-os-and-the-tree-divides-by-release/seven-questions.md), verbatim, with the refusals each question turned up.
+In [`seven-questions.md`](0235-packages-build-the-os-and-the-tree-divides-by-release/seven-questions.md), with the refusals each question turned up.
 
 ## What cannot be undone, and what can
 

@@ -1,8 +1,6 @@
 # §219's prior art, read 2026-09-26
 
-Moved verbatim from [`0219-naming-an-installed-program-to-the-spawner.md`](../0219-naming-an-installed-program-to-the-spawner.md) on 2026-10-13 (UTC) to bring that
-page under §212 (a prose budget)'s 3,000-word cap by the whole-file count. The page keeps the
-heading, and the text below is unchanged.
+An appendix of [`0219-naming-an-installed-program-to-the-spawner.md`](../0219-naming-an-installed-program-to-the-spawner.md), which keeps the heading.
 
 ## Prior art, read 2026-09-26
 

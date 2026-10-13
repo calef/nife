@@ -257,4 +257,4 @@ first customer installs by digest vouching.
 
 ## Prior art, read 2026-09-26
 
-Moved to [`prior-art.md`](0220-signed-builds-and-scoped-key-trust/prior-art.md), verbatim.
+In [`prior-art.md`](0220-signed-builds-and-scoped-key-trust/prior-art.md).

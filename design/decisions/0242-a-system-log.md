@@ -221,7 +221,7 @@ covering what persists, boot handoff, retention and rotation, crash consistency 
 
 ## The seven questions, answered before calef ruled
 
-Moved to [`seven-questions.md`](0242-a-system-log/seven-questions.md), verbatim.
+In [`seven-questions.md`](0242-a-system-log/seven-questions.md).
 
 ## What this unblocks
 

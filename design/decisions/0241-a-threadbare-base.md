@@ -181,7 +181,7 @@ for spawn. Recorded in BUGS.
 
 ## Prior art
 
-Moved to [`prior-art.md`](0241-a-threadbare-base/prior-art.md), verbatim.
+In [`prior-art.md`](0241-a-threadbare-base/prior-art.md).
 
 ## Options
 
