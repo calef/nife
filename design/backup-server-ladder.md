@@ -21,7 +21,7 @@ honest correction is only to the consequence of failure, not to the standard.
 
 And it is the best security claim the thesis can make, because backup servers hold everything. On
 a Linux box, Samba runs with broad authority over the machine. Here the file-serving component would
-hold one directory capability and one network endpoint and nothing else, so a compromise reaches
-the backup share and stops: not by policy, not by a hardening guide, but because no capability naming
+hold one directory capability and one network endpoint and nothing else. A compromise reaches the
+backup share and stops: not by policy, not by a hardening guide, but because no capability naming
 anything else was ever given to it. That is worth more on a backup server than on almost any other
 workload.

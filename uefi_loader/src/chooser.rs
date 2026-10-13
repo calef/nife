@@ -1,135 +1,40 @@
-//! **The chooser**: the half of this loader that decides *which* image boots, so that a bad
-//! upgrade cannot brick the machine (rung 2b of milestone 198 (a package manager, and the trivial install that makes a second customer possible); calef ruled it on 2026-09-21).
+//! **The chooser**: the half of this loader that decides which image boots, so a bad upgrade
+//! cannot brick the machine. The file the firmware starts, `\EFI\BOOT\BOOTX64.EFI`, reads the slot
+//! state from the GPT (`crates/boot_slot`, which carries the policy and the layout), picks a slot,
+//! **spends one of its tries and writes that to disk**, and chain-loads the image in it. It has to
+//! be ours: UEFI reserves GPT attribute bits 48 to 63 to the owner of the partition type, so
+//! ordinary firmware never reads them. See notes/boot-slots.md for the failure table.
 //!
-//! An installed nife machine keeps two copies of its boot image in two partitions of its own type
-//! (`crates/boot_slot`). The file the firmware starts, at `\EFI\BOOT\BOOTX64.EFI`, is a third copy,
-//! and its extra job is this module: read the slot state out of the GPT, pick a slot, **spend one
-//! of that slot's tries and write it to the disk**, and chain-load the image in it. If an upgrade
-//! never comes up, its tries run out and the machine returns to the previous image on its own, with
-//! nobody at the console.
+//! The chooser and the image it starts are the same binary, so there is no second program to keep
+//! in step, and a machine whose slots are all bad still boots the image doing the choosing.
+//! [`STARTED_BY_CHOOSER`] in the child's `LoadOptions` is what stops it chain-loading itself.
 //!
-//! # Why the chooser is here and not in the firmware
-//!
-//! Because it cannot be anywhere else. UEFI 2.11 section 5.3.3 reserves GPT attribute bits 48 to 63 for
-//! the owner of the partition's type GUID and tells everyone else to leave them alone, so OVMF and
-//! ordinary firmware do not read them and were never going to. ChromeOS, which is where this design
-//! comes from, gets firmware-level selection because depthcharge is a coreboot payload that
-//! *replaces* UEFI. We have UEFI, so **the first code of ours that runs is the selector**, and the
-//! first code of ours that runs is this file.
-//!
-//! `crates/boot_slot` carries the policy, the bit layout and the refusal of the `Boot####` variable
-//! design; what is here is the firmware work.
-//!
-//! # The shape, and the one thing that keeps it from recursing
-//!
-//! The chooser and the image it starts are **the same binary**. That is the elegant half: there is
-//! no second program to build, keep in step, or seal against the kernel, and a machine whose slots
-//! are all unbootable still has a complete, known-good nife image to fall back to, namely the one
-//! doing the choosing.
-//!
-//! What stops it chain-loading itself forever is [`STARTED_BY_CHOOSER`]: the chooser writes that
-//! marker and a slot number into the child's `LoadOptions`, and an image that finds it there knows
-//! it is the one being tried and goes straight on to boot its own kernel.
-//!
-//! # What it does, in order
-//!
-//! 1. Find the disk **this file is on**, and read the boot slots in its GPT. Slots on any other disk
-//!    are another system's and are never started or written: a stick booted on an installed machine
-//!    boots the stick (the live stick proposal's G1, measured in boot 3 of `cargo xtask
-//!    install-boot`). Which disk is "this one" is a device-path prefix, `uefi_loader::device_path`.
+//! 1. Find the disk this file is on (a device-path prefix, `uefi_loader::device_path`) and read its
+//!    slots. Slots on any other disk are another system's: a stick booted on an installed machine
+//!    boots the stick.
 //! 2. Pick the bootable slot of highest priority ([`boot_slot::select_excluding`]).
-//! 3. **Spend a try and write the table back, flushed, before anything else.** This is the crux of
-//!    the design rather than an ordering detail; the next section is about it.
-//! 4. Read the slot header and the image, and check the image against the header's checksum.
+//! 3. **Spend a try and write the table back, flushed, before anything else**: an image that hangs
+//!    is caught only by a try already on the disk, on the next boot.
+//! 4. Read the slot header and image, and check the image against the header's checksum.
 //! 5. `LoadImage` from that buffer, `StartImage`, and never come back.
 //!
-//! A slot the chooser cannot read at all is given up on immediately
-//! ([`boot_slot::State::unreadable`]) and the next slot is tried **in the same boot**, because
-//! making somebody reboot to recover from a failure the chooser watched happen would be a worse
-//! machine for no gain.
-//!
-//! # Which failures this catches, and which it does not
-//!
-//! The honest table, because a rollback mechanism that is vague about this is worse than none:
-//!
-//! | failure | caught | by what |
-//! |---|---|---|
-//! | the slot was never written, or its header is corrupt | yes, in the same boot | the header's own CRC |
-//! | the copy into the slot died partway | yes, in the same boot | the image CRC in the header |
-//! | the image is not a PE the firmware will start | yes, in the same boot | `LoadImage` refuses, the next slot is tried |
-//! | the image starts and returns an error | yes, in the same boot | `StartImage` returns, the next slot is tried |
-//! | **the image starts and hangs**, before or after `ExitBootServices` | yes, on the **next** boot | the try spent at step 3, which is already on the disk |
-//! | the image comes up but is subtly wrong | **no** | nothing here can tell, and nothing will |
-//! | the machine loses power during step 3 | **no** | see `BUGS` |
-//! | every slot is bad | the machine still boots | the image in this file is started instead |
-//!
-//! The row in bold is the reason step 3 is where it is. A chooser that only read the state, leaving
-//! the booted system to mark itself good, would handle every row above it and none of that one: a
-//! machine that wedges before userspace would retry the same bad image forever and show nothing to
-//! the console nobody is standing at. ChromeOS's firmware decrements before the launch for exactly
-//! this reason.
-//!
-//! # EXAMPLES
-//!
-//! An ordinary boot of an installed machine, where slot 0 was confirmed at install time and
-//! therefore spends nothing:
-//!
-//! ```text
-//! nife uefi_loader: milestone 87 (the x86_64 bare-metal machine)
-//! uefi_loader: boot slots on one disk, 2 of them
-//! uefi_loader: starting boot slot 0
-//! nife uefi_loader: milestone 87 (the x86_64 bare-metal machine)
-//! uefi_loader: started from boot slot 0
-//! ```
-//!
-//! The boot after an upgrade that hung, where nobody did anything:
-//!
-//! ```text
-//! uefi_loader: boot slots on one disk, 2 of them
-//! uefi_loader: boot slot 1 has no tries left
-//! uefi_loader: starting boot slot 0
-//! ```
+//! A slot that fails a check, `LoadImage` or `StartImage` is given up
+//! ([`boot_slot::State::unreadable`]) and the next is tried in the same boot.
 //!
 //! # BUGS
 //!
-//! - **It sees only the disks the firmware connected.** Started from a boot option naming only the
-//!   stick, OVMF connects the stick alone and this loader sees no other disk at all (measured
-//!   2026-10-04: two `BlockIo` handles). That is harmless now that only this file's own disk counts,
-//!   and it is why `install-boot`'s third boot names the disk as a second boot option.
-//! - **The logical block size is assumed to be 512.** A disk reporting anything else is skipped
-//!   rather than misread, which is the honest half; the GPT crate reads other sizes and nothing
-//!   here passes the size through. `system_installer` has the same assumption and the same note.
-//! - **A power cut during the write at step 3 is not survivable by this design.** The table is
-//!   rewritten in four block ranges and there is no journal; a machine interrupted between them can
-//!   come up with a primary and backup table that disagree, which this loader's own `parse` will
-//!   then refuse, and the machine falls back to the image in the chooser's file. That is a safe
-//!   outcome rather than a good one, and it is untested: nothing in this tree cuts power to a QEMU
-//!   between two block writes.
-//! - **This chooser's four block writes go primary-first**, so there is a window in which neither
-//!   copy of the table parses: the primary's array is new while its header still describes the old
-//!   one, and the backup has not been touched. `system_installer`'s `ROLE_CONFIRM` writes the same four
-//!   ranges **backup-first**, which leaves one complete self-consistent copy on the disk at every
-//!   instant and costs nothing. Making this one agree is a reordering of four lines and belongs to
-//!   whoever next touches this function; it is recorded here rather than done because the
-//!   interrupted case is untested either way (see the entry above) and changing an untested
-//!   failure path on the way past is how a rollback stops working.
-//! - **Nothing here reads the backup table when the primary fails to parse.** With the reordering
-//!   above that would be a real recovery; without it, it is what lets a foreign tool repair a
-//!   machine this loader has given up on.
-//! - **An image started from a slot has no boot file**, because `LoadImage` from a buffer leaves
-//!   the child's `DeviceHandle` null and there is no volume to read a file back from. So an
-//!   installed machine cannot install itself onto a second disk; only a machine booted from the
-//!   stick or from the chooser's own file can. That is a narrowing rather than a loss; the fix
-//!   would hand the child the slot's device path, which nothing here builds yet.
-//! - **A slot-started image says it came from the NVMe disk without looking**, in
-//!   [`booted_from_nvme`], because it has no device handle to look with. That holds while the
-//!   installer writes slots only to NVMe (`system_installer`'s whole-disk, NVMe-only scope). A slot on
-//!   another kind of disk would have its kernel mount the NVMe one; passing the medium in the
-//!   child's load options is the fix, and nothing needs it yet.
-//! - **x86_64 only**, the same scope as the rest of rung 2a and 2b (DECISIONS §19 (architectural parity is a tenet; the targets are aarch64, riscv64 and x86_64)): the
-//!   device-tree architectures have no second module slot for a boot file, which
-//!   `design/roadmap/0568-the-boot-file-has-nowhere-to-go-on-a-device-tree-machine.md` prices.
-//!   Nothing about the slot format is x86-specific; the chooser is what has not been built there.
+//! - It sees only the disks the firmware connected, which is why `install-boot` names the disk as
+//!   a second boot option.
+//! - The logical block size is assumed to be 512; other disks are skipped.
+//! - A power cut during step 3's four block writes can leave the copies disagreeing; `parse` then
+//!   refuses and the chooser's own image boots. Untested.
+//! - The writes go primary-first, so for a moment neither copy parses; `ROLE_CONFIRM` writes
+//!   backup-first, which leaves a consistent copy throughout. Reordering is untested either way.
+//! - Nothing reads the backup table when the primary fails to parse.
+//! - An image started from a slot has no boot file (its `DeviceHandle` is null), so it cannot
+//!   install onto a second disk, and [`booted_from_nvme`] assumes NVMe without looking.
+//! - x86_64 only: device-tree architectures have nowhere for a boot file
+//!   (`design/roadmap/0568-the-boot-file-has-nowhere-to-go-on-a-device-tree-machine.md`).
 
 use core::ffi::c_void;
 use core::ptr;

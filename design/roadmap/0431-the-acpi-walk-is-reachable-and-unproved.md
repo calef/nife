@@ -11,7 +11,7 @@ needs_person: no
 ---
 # 431. The ACPI walk is reachable by the prover for the first time, and proved by nothing
 
-Superseded 2026-09-19, by milestone 319 and milestone 423. Promoted from the proposal
+Milestones 319 and 423 cover this block. Promoted from the proposal
 `the-acpi-walk-is-reachable-and-unproved`, filed 2026-09-18, split out of milestone 304's
 `## Follow-on` because the proposal 304 was promoted from had been discharged and the work it
 carried had no home. *(Number provisional until the merge queue lands it.)*
@@ -65,6 +65,6 @@ will lie about. This block was filed on 2026-09-18 on the premise that the walk'
 `crates/machine_discovery` carried no harnesses and no `script/verify` row, and that premise was one
 day stale: milestone 319 proved that crate on 2026-09-17 with fifteen harnesses, three of them false
 as first written. What remains is the volatile half, one bounded read against the direct map, and
-milestone 423 states it with the narrower framing 319 made possible. Promoted and superseded in one
+milestone 423 (a checked direct-map reader for the x86 ACPI walk) states it with the narrower framing 319 made possible. Promoted and closed in one
 act on 2026-09-19, because a proposal cannot be disposed of in place and two blocks for one accessor
 would be two places for the work to rot.

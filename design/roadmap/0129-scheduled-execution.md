@@ -48,7 +48,7 @@ made a capability. That is why a scheduled entry can be refused a clock at all.
 
 ## Built: the archive narrowed to the plan, 2026-08-18
 
-The scheduler used to be handed the whole initrd. It now holds exactly the programs its plan builds,
+The scheduler holds exactly the programs its plan builds, not the whole initrd,
 because `Registry::programs` is known before the first tick. The set is a written list at the spawn
 site, kept honest by a host test. `script/stack-frame-check` refuses computing it in the kernel,
 since `Registry::register` carries a 21,632-byte frame against a 4,096-byte guard page. The program
@@ -84,8 +84,7 @@ such as `wc report.txt`. Host test:
   ends the process, since an idle timetable would hold its session up under §16 (object
   revocation). A timetable handed the run-unvouched capability runs nothing, so no job can hold it,
   which is what lets §220 (signed builds, and trusting a key is scoped) reach scheduled work.
-- `system_tests/src/user/timetable_tests.rs` was the registrar until milestone 152 built the session. It
-  sends `schedule_store::fixture::DEMO_SCHEDULE_DOC`, the bytes the store test writes to disk, then
+- `system_tests/src/user/timetable_tests.rs` sends `schedule_store::fixture::DEMO_SCHEDULE_DOC`, the bytes the store test writes to disk, then
   a document that does not parse, an edit and an empty document. A second test hands the timetable
   the run-unvouched capability and asserts it refuses. Both run on all three architectures.
 

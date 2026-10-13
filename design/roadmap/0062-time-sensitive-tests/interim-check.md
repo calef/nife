@@ -1,7 +1,7 @@
 # The interim check of 2026-08-18: an appendix to milestone 62
 
-Moved from [milestone 62 (tests that assert on time)](../0062-time-sensitive-tests.md) on 2026-10-12
-(UTC) under §212 (a prose budget). It is the first installment of evidence after the disposition,
+An appendix to [milestone 62 (tests that assert on time)](../0062-time-sensitive-tests.md), kept
+apart under §212 (a prose budget). It is the first installment of evidence after the disposition,
 the two reds it found, and what was still needed at the time to move the block off PARTIAL.
 
 The first installment of the evidence was taken the same day as the disposition (`script/repeat-under-load -n 18 -s 8`,

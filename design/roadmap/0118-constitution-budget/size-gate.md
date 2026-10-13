@@ -91,7 +91,7 @@ among the largest things a home system can be asked to be. Principle 2's figures
 the same commit and cost two lines net, since every number in them had drifted since 2026-08-05.
 
 Twenty-two of the twenty-seven lines proposed were kept and five were cut before raising this,
-which is the order the rule intends. The superseded figures went to git, two bullets saying one
+which is the order the rule intends. The stale figures went to git, two bullets saying one
 thing became one, and a paragraph lost a clause. A ceiling raised without that pass is a ceiling
 that is not doing anything.
 

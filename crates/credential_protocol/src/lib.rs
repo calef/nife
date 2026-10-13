@@ -1,11 +1,5 @@
-//! **The credential contract** (milestone 56, the credential half; notes/credentials.md).
-//!
-//! One definition of the two request shapes a credential service serves, so the service, the
-//! program that provisions it, the client that authenticates against it, and the kernel-side tests
-//! share one definition and cannot drift. The same split `filesystem_protocol` makes for the filesystem,
-//! `clock_protocol` for the wall clock, and `entropy_protocol` for randomness.
-//!
-//! # Two endpoints, two phases, and that is the whole security argument
+//! **The credential contract** (notes/credentials.md): the two request shapes a credential service
+//! serves, defined once for the service, its provisioner, its clients and the kernel-side tests.
 //!
 //! ```text
 //!                    ┌──────────────────────┐
@@ -23,116 +17,23 @@
 //!                    └──────────────────────┘             holder of it would have computed?"
 //! ```
 //!
-//! A client that holds the verify endpoint can **use** a credential. It cannot read one, and the
-//! reason is not that the service checks: it is that no message exists that would return one, no
-//! page carries one, and the endpoint that could have written one was destroyed before the client
-//! was given anything. That is the same attenuation-by-operation the clock's propose endpoint and
-//! the entropy service's request endpoint are: a smaller *object*, not a flag on a bigger one.
+//! A verify holder can use a credential and cannot read one: no message returns one, no page
+//! carries one, and the endpoint that could write one was destroyed before any client existed. A
+//! smaller object, not a flag on a bigger one.
 //!
-//! # An opcode is not an authority
+//! **An opcode is not an authority.** [`provision::PUT`] and [`verify::VERIFY`] are both opcode 1
+//! on purpose: the endpoint gives a number its meaning, so a `PUT` sent to the verify endpoint is a
+//! verify, answered [`MISMATCH`], and there is no privileged request to refuse. Separating the
+//! spaces would imply a forbidden-versus-unknown distinction this design does not have.
 //!
-//! [`provision::PUT`] and [`verify::VERIFY`] are **both opcode 1**. That is deliberate rather than
-//! an oversight to be tidied away. The two opcode spaces are independent because **the endpoint
-//! gives a number its meaning, not the number itself**: a request is interpreted by whichever
-//! serve loop received it, and a client cannot choose which one that is.
+//! Every reply is one word, and the second is always [`NO_DATA`]: the store's Argon2id tags and its
+//! membership never cross, under any opcode, so a verifier cannot become a decryption oracle
+//! without a visible change to this contract. [`MISMATCH`] answers a wrong secret and an unknown
+//! identity alike, and `credentialer::Store` spends the same work on both, so the verify endpoint is
+//! not an identity oracle either.
 //!
-//! The consequence is worth seeing, because it is the model working. A program holding the verify
-//! endpoint that sends `PUT` does not get "permission denied". It gets [`MISMATCH`], because what
-//! it actually sent was a verify of an identity and a secret, and the honest answer to that
-//! question is no. There was never a privileged request to refuse.
-//!
-//! Renumbering the two spaces apart would make an attacker's mistake more legible in a log, and it
-//! would also be a small lie: it would imply the service distinguishes a forbidden opcode from an
-//! unknown one, and that distinction is exactly what this design does not have and does not want.
-//!
-//! **Milestone 65 demonstrated this rather than only asserting it, and the demonstration is now
-//! history rather than code.** Adding a second verify opcode at 2 collided with
-//! [`provision::SEAL`], and the kernel test that had asserted "a `SEAL` on the verify endpoint is
-//! MALFORMED" started failing: a `SEAL` was then read as a proof for a resource nobody
-//! provisioned, and the honest answer to that is no. Growing one endpoint's opcode space silently
-//! changed what a word meant on the other, and nothing broke, because a word arriving at a serve
-//! loop never carried authority in the first place. That second opcode was removed on 2026-08-30
-//! with the SMB implementation (notes/smb.md), so the collision is gone and the principle it
-//! illustrated is not.
-//!
-//! # The reply carries a verdict and no data
-//!
-//! Every reply here is **one word, and the second word is always zero** ([`NO_DATA`]).
-//!
-//! That was amended once and then unamended. Milestone 65 added an NTLM opcode that wrote a
-//! `SessionBaseKey` into the shared page on a match, because an SMB server that authenticates a
-//! session and cannot sign it cannot serve SMB2; that opcode and its derived value were removed on
-//! 2026-08-30 with the SMB implementation (notes/smb.md), so the original claim holds again
-//! without an exception. The episode is recorded rather than deleted because "the reply carries no
-//! data" is a security claim, and a claim that changes should change visibly in both directions.
-//!
-//! **What crosses, and what never does.** The store holds an Argon2id tag. It never leaves the
-//! service, in any reply, in any page, under any opcode: there is no message that would return
-//! one.
-//!
-//! Nothing about the store's *membership* crosses either, under any opcode. A service that
-//! answered a verify with the stored tag would be a decryption oracle wearing a verifier's
-//! clothes, and the shape of this contract is what makes that a change to the contract rather than
-//! a bug in a serve loop.
-//!
-//! # Examples
-//!
-//! A verify is one page write and one `CALL`. Both halves are here, because the client side and the
-//! server side of this contract are the same two functions read in opposite directions:
-//!
-//! ```
-//! use credential_protocol::{PAGE, place, read, verify, wipe};
-//!
-//! // Client: put the identity and the presented secret in the page both parties map.
-//! let mut page = [0u8; PAGE];
-//! let w0 = place(&mut page, b"bob", b"hunter2", verify::VERIFY).expect("within bounds");
-//!
-//! // Server: every `u64` either names a well-formed request or is refused, so the serve loop has
-//! // no arithmetic that could run off the page.
-//! let (identity, secret) = read(&page, w0).expect("a well-formed request");
-//! assert_eq!(identity, b"bob");
-//! assert_eq!(secret, b"hunter2");
-//!
-//! // Then the service wipes the request area, so the frame holds no secret once the reply lands.
-//! wipe(&mut page);
-//! assert!(!page.windows(7).any(|w| w == b"hunter2"));
-//!
-//! // An empty identity is a caller bug and never becomes a message: it is the one string that
-//! // would collide with an unwritten slot in the service's fixed-size store.
-//! assert_eq!(place(&mut page, b"", b"hunter2", verify::VERIFY), None);
-//! ```
-//!
-//! [`is_authenticated`] is the one function a caller must not get wrong, and what makes it safe is
-//! that **every way of not being an unambiguous match is `false`**, including the case where there
-//! is no credential service to ask. A caller that read a missing capability as a successful login
-//! would be the worst bug this crate could permit, so the contract refuses to let it be written:
-//!
-//! ```
-//! use credential_protocol::{MALFORMED, MATCH, MISMATCH, OK, code, is_authenticated};
-//!
-//! assert!(is_authenticated(MATCH));
-//!
-//! assert!(!is_authenticated(MISMATCH)); // the wrong secret, or an identity not in the store
-//! assert!(!is_authenticated(OK)); // a provisioning success is not an authentication
-//! assert!(!is_authenticated(MALFORMED));
-//!
-//! // `abi::Error` is -1 to -8. As a `u64` each is enormous, so no reply code collides with one,
-//! // and an empty capability slot is distinguishable from an answer without a probe request.
-//! assert_eq!(code(-4i64 as u64), None);
-//! assert!(!is_authenticated(-4i64 as u64));
-//! ```
-//!
-//! # A miss and a wrong password are the same answer
-//!
-//! [`MISMATCH`] means "not this secret for this identity", and it is what an identity that is not
-//! in the store gets too. Distinguishing them would turn the verify endpoint into an identity
-//! oracle: ask about a thousand names and learn which three exist. `credentialer::Store` also spends the
-//! same work on both, so the timing does not distinguish them either; see notes/credentials.md.
-//!
-//! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review). Renamed from
-//! `cred_proto`: spell out the contraction fully. The suffix then became `_protocol` at milestone 265
-//! (calef, 2026-09-05), which spells out the other truncation in the same name; the stem and the
-//! 2026-08-23 ruling are untouched.
+//! Name: ratified 2026-08-23 (calef), renamed from `cred_proto` to spell out the contraction;
+//! `_protocol` per calef's 2026-09-05 ruling.
 
 #![cfg_attr(not(test), no_std)]
 
@@ -255,6 +156,33 @@ pub const fn secret_len(w0: u64) -> usize {
 /// An empty identity is refused here and not merely at the server, because "the empty name" is the
 /// one string that would otherwise collide with an unwritten slot in the service's fixed-size
 /// store. `credentialer::Store` refuses it too; two refusals for one hazard is deliberate.
+///
+/// # Examples
+///
+/// A verify is one page write and one `CALL`; client and server read the same two functions in
+/// opposite directions:
+///
+/// ```
+/// use credential_protocol::{PAGE, place, read, verify, wipe};
+///
+/// // Client: put the identity and the presented secret in the page both parties map.
+/// let mut page = [0u8; PAGE];
+/// let w0 = place(&mut page, b"bob", b"hunter2", verify::VERIFY).expect("within bounds");
+///
+/// // Server: every `u64` either names a well-formed request or is refused, so the serve loop has
+/// // no arithmetic that could run off the page.
+/// let (identity, secret) = read(&page, w0).expect("a well-formed request");
+/// assert_eq!(identity, b"bob");
+/// assert_eq!(secret, b"hunter2");
+///
+/// // Then the service wipes the request area, so the frame holds no secret once the reply lands.
+/// wipe(&mut page);
+/// assert!(!page.windows(7).any(|w| w == b"hunter2"));
+///
+/// // An empty identity is a caller bug and never becomes a message: it is the one string that
+/// // would collide with an unwritten slot in the service's fixed-size store.
+/// assert_eq!(place(&mut page, b"", b"hunter2", verify::VERIFY), None);
+/// ```
 pub fn place(page: &mut [u8], identity: &[u8], secret: &[u8], operation: u64) -> Option<u64> {
     if page.len() < SECRET_OFF + MAX_SECRET {
         return None;
@@ -331,6 +259,23 @@ pub const fn code(r0: u64) -> Option<u64> {
 /// A missing capability, a malformed request, a service that died, and a wrong password all become
 /// `false` here. That is the safe direction, and having it in the contract means no caller has to
 /// remember which of five codes were the good ones.
+///
+/// # Examples
+///
+/// ```
+/// use credential_protocol::{MALFORMED, MATCH, MISMATCH, OK, code, is_authenticated};
+///
+/// assert!(is_authenticated(MATCH));
+///
+/// assert!(!is_authenticated(MISMATCH)); // the wrong secret, or an identity not in the store
+/// assert!(!is_authenticated(OK)); // a provisioning success is not an authentication
+/// assert!(!is_authenticated(MALFORMED));
+///
+/// // `abi::Error` is -1 to -8. As a `u64` each is enormous, so no reply code collides with one,
+/// // and an empty capability slot is distinguishable from an answer without a probe request.
+/// assert_eq!(code(-4i64 as u64), None);
+/// assert!(!is_authenticated(-4i64 as u64));
+/// ```
 pub const fn is_authenticated(r0: u64) -> bool {
     matches!(code(r0), Some(MATCH))
 }

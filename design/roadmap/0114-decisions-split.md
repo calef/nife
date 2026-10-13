@@ -24,11 +24,11 @@ giving each entry its own file and leaving the number to the integrator at merge
 
 Two things this adds that the roadmap split did not need.
 
-A decision has no status today, and that is why supersession rots. A milestone says NOT-STARTED
+A decision has no status today, so nothing marks one a later ruling replaced. A milestone says NOT-STARTED
 or BUILT; a decision says nothing about whether it still holds. Milestone 94's sweep found §11
-carrying a paragraph superseded by §28, invisible to every gate because `script/decisions --check`
+carrying a paragraph §28 (SMP placement) had overruled, invisible to every gate because `script/decisions --check`
 verifies that a cited `§N` resolves to *some* section, never that the section still means what it
-said. A lifecycle (`PROPOSED`, `DECIDED`, `SUPERSEDED BY N`, `AMENDED`) makes supersession a checked
+said. A lifecycle (`PROPOSED`, `DECIDED`, `SUPERSEDED BY N`, `AMENDED`) makes replacement a checked
 fact. The vocabulary is provisional and calef's.
 
 It absorbs `design/open-decisions.md`. That file was created hours before this milestone, and it
@@ -118,6 +118,6 @@ document.
 ## Index row
 
 The same case milestone 76 made, with nearly the same numbers: 5,320 lines, 71 sections, 2,017 `§N` citations, 126 commits in ten days, and three section-number collisions in one day already on
-the record. Adds two things the roadmap split did not need: a status, so supersession is a checked
+the record. Adds two things the roadmap split did not need: a status, so a replaced ruling is a checked
 fact rather than prose nobody notices, and a home for `design/open-decisions.md`, which is the
 same object one lifecycle step earlier

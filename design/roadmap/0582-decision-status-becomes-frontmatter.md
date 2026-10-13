@@ -93,7 +93,7 @@ package is one archive file) to the proposal file it was promoted from, and §10
 names) to its first number.
 
 `decided` is the first commit whose text reads DECIDED or AMENDED, in either spelling. A section
-filed into `DECISIONS.md` was filed decided, since open questions lived elsewhere until milestone 114
+filed into `DECISIONS.md` was filed decided, since open questions lived elsewhere before milestone 114
 absorbed them, so for those 42 files it is the raise commit. Author dates, UTC.
 
 | key | from the prose | from git | total |

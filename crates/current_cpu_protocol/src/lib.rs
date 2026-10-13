@@ -1,177 +1,43 @@
-//! **A thread's own CPU, as a page rather than a crossing.**
-//!
-//! calef ruled on 2026-09-21 (§204 (how userspace asks where a thread runs)) that two different
-//! questions get two different mechanisms: observing *another* thread is a selector on the
-//! rendezvous surface, and a thread observing *itself* is a per-thread page on the shape Linux's
-//! `rseq(2)` uses. This crate is the self half: one definition of the page the kernel writes the
-//! running core's id into, so the kernel (the one writer) and `user_mode_runtime::current_cpu`
-//! (every reader) cannot drift on the layout or the fixed virtual address (AGENTS.md rule 7).
-//!
-//! # Why a page and not a syscall
-//!
-//! It was shaped for a per-CPU allocator, which asks which CPU it is on **once per allocation**,
-//! millions of times a second. An IPC round trip here is ~705 ns and a bare syscall less, neither
-//! in a load's decade; `rseq` exists for this, and Linux measured 20x on x86 and 35x on ARM moving
-//! from the vDSO to a memory read.
-//!
-//! # Why a page and not a register, which is the question a reader asks next
-//!
-//! Checked against the three architectures this tree targets rather than taken from Linux's
-//! experience:
-//!
-//! - **`aarch64`.** `MPIDR_EL1` is EL1 and above, so EL0 cannot read the core's identity at all.
-//!   There is one register a kernel could abuse for this, `TPIDRRO_EL0`, which is EL1-writable and
-//!   EL0-readable, and this tree does not use it for anything today, and the refusal was a
-//!   ruling rather than an oversight.
-//! - **`riscv64`.** `mhartid` is M-mode. S-mode has `sscratch` and U-mode has nothing, so there is no
-//!   register path at all, not even an abusable one. This is the architecture that decides it.
-//! - **`x86_64`.** `RDPID`, and the older `LSL` against a GDT limit, do give ring 3 a core id, which
-//!   is why the Linux vDSO's `getcpu` is an x86 story and arm64 ships no `__vdso_getcpu`.
-//!
-//! So a register path exists on one of three targets and half exists on a second. Architectural
-//! parity is a gate here, §19 (architectural parity is a tenet),
-//! and a mechanism that is a register on `x86_64` and a page on `riscv64` is two mechanisms to learn,
-//! two to test and two to document, for a saving that is one load either way. The page is also the
-//! shape that survives the next fact: the deciding argument in the 2026-09-21 ruling was that calef
-//! expects a third and a fourth per-thread fact, and a page has room for them where a register does
-//! not.
+//! **A thread's own CPU, as a page rather than a crossing** (§204 (how userspace asks where a
+//! thread runs)). Observing another thread is a rendezvous selector; a thread observing itself
+//! reads a per-thread page shaped like Linux's `rseq(2)`. This crate is that page's one
+//! definition, so the kernel (the one writer) and `user_mode_runtime::current_cpu` (every reader)
+//! cannot drift on its layout or address (AGENTS.md rule 7). It serves a per-CPU allocator, which
+//! asks once per allocation, where a crossing would cost a decade more than a load. It is a page
+//! and not a register because EL0 has no core-id register on `aarch64` or `riscv64`, and §19
+//! (architectural parity is a tenet) wants one mechanism; a page also has room for more.
 //!
 //! # One writer, and it is the reader's own core
 //!
-//! This page's word changes while the process runs, which is the one way it differs from
-//! `counter_frequency_protocol`'s page (written once at boot, then never again). The discipline that
-//! makes it safe is stronger than a seqlock and needs no ordering argument beyond naming it:
+//! The kernel writes the word in `schedule()` on the destination core, on the way in (and in
+//! `sched::adopt_address_space`, the same write arriving late), so writer and reader are the same
+//! hardware thread and program order suffices. A migration's handoff between two writers is
+//! ordered by the scheduler's own release/acquire pair on the run queue. So the store and the load
+//! are `Relaxed`, and an aligned 64-bit access does not tear on any target. A reader can still be
+//! stale the instruction after it reads: a per-CPU cache built on this must be correct, not merely
+//! fast, when the answer is the last core's.
 //!
-//! - A thread runs on exactly one core at a time, and **the core that writes this word is the core
-//!   that is about to execute the thread**: the kernel writes it in `schedule()`, on the way in,
-//!   on the destination core itself (and in `sched::adopt_address_space`, for a thread that gains
-//!   a space while already running, which is that same write arriving late). Writer and reader are
-//!   the same hardware thread, so program order does the work and there is nothing to fence.
-//! - The handoff between two *successive* writers (this thread moving from one core to another) is
-//!   ordered by the scheduler's own release/acquire pair on the run queue, the same pair that
-//!   publishes the thread's saved context. This word rides that; it does not need its own.
-//! - The store and the load are therefore **`Relaxed`**, and the counterpart is that existing
-//!   release/acquire handoff rather than a fence of this crate's own. An aligned 64-bit access is
-//!   single-copy-atomic on all three targets, so nothing tears.
-//!
-//! **A reader can be stale, inherently, and no ordering fixes that**: the thread may be migrated
-//! the instruction after it reads. `rseq`'s restartable sequences are Linux's answer to that and
-//! are deliberately not attempted here; a per-CPU cache built on this page must be correct (not
-//! merely fast) when the answer turns out to be last core's.
-//!
-//! # The unset case is representable, because a wrong number is worse than no number
-//!
-//! calef ruled that the same day, about the counter frequency. Two states read as [`None`] rather
-//! than as a plausible zero:
-//!
-//! - A frame nobody prepared reads as zeroes, and zero is a **valid CPU id**. So the page carries
-//!   [`MAGIC`] and an unrecognized page has no answer at all.
-//! - A prepared page whose thread has never been switched in carries [`UNSCHEDULED`], written at
-//!   page-build time, not zero. In practice no code *inside* the thread can observe it, because a
-//!   thread cannot execute an instruction without having been switched in first, which is the same
-//!   argument by which the value is never stale-in-a-harmful-way on its first read.
-//!
-//! # A CPU id is not an index, and this is the trap the tree has already paid for
-//!
+//! Unset reads as [`None`], never a plausible zero, because zero is a valid CPU id: an unprepared
+//! frame lacks [`MAGIC`], and a page whose thread never ran holds [`UNSCHEDULED`].
 //! The word is a **cpu id**, the kernel's own numbering, and the online set is not `0..count`. On
-//! the VisionFive 2 it is `{1, 2, 3}`: slot 0 is an M-mode monitor core with no MMU, and treating
-//! the count as a bound put `init` into a parked core's inbox and cost three boots on first
-//! silicon (`crates/cpu_set` is the crate that exists because of it). A userspace consumer sizing a
-//! per-CPU array must size it by [`CPU_ID_BOUND`] and never by however many cores it has seen.
-//!
-//! # EXAMPLES
-//!
-//! A built page reads back the core the kernel last published:
-//!
-//! ```
-//! use current_cpu_protocol::{CurrentCpuPage, build_page, publish};
-//!
-//! # #[repr(align(8))]
-//! # struct Aligned([u8; current_cpu_protocol::PAGE_BYTES]);
-//! // The kernel's page is a frame; a test's must be given the frame's alignment by hand.
-//! let mut bytes = Aligned(build_page());
-//! let va = bytes.0.as_mut_ptr() as u64;
-//! // SAFETY: `bytes` is a live, 8-aligned buffer of exactly `PAGE_BYTES` for this block, built
-//! // by `build_page`, and this thread is its only writer.
-//! unsafe { publish(va, 3) };
-//! // SAFETY: as above.
-//! let page = unsafe { CurrentCpuPage::new(va) };
-//! assert_eq!(page.cpu(), Some(3));
-//! ```
-//!
-//! Sizing a per-CPU array, which is the consumer this page exists for:
-//!
-//! ```
-//! # use current_cpu_protocol::{CurrentCpuPage, build_page, publish, CPU_ID_BOUND};
-//! let mut caches = [0u64; CPU_ID_BOUND]; // never `[0; cores_i_have_seen]`
-//! # #[repr(align(8))]
-//! # struct Aligned([u8; current_cpu_protocol::PAGE_BYTES]);
-//! # let mut bytes = Aligned(build_page());
-//! # let va = bytes.0.as_mut_ptr() as u64;
-//! # // SAFETY: as the example above.
-//! # unsafe { publish(va, 3) };
-//! # // SAFETY: as the example above.
-//! # let page = unsafe { CurrentCpuPage::new(va) };
-//! if let Some(cpu) = page.cpu() {
-//!     caches[cpu] += 1;
-//! }
-//! ```
-//!
-//! Neither a zeroed frame nor a thread that has never run fabricates an answer:
-//!
-//! ```
-//! use current_cpu_protocol::{CurrentCpuPage, PAGE_BYTES, build_page};
-//!
-//! # #[repr(align(8))]
-//! # struct Aligned([u8; PAGE_BYTES]);
-//! let mut zeroed = Aligned([0u8; PAGE_BYTES]);
-//! // SAFETY: a live, aligned buffer of exactly `PAGE_BYTES` for this block.
-//! assert_eq!(unsafe { CurrentCpuPage::new(zeroed.0.as_mut_ptr() as u64) }.cpu(), None);
-//!
-//! let mut fresh = Aligned(build_page());
-//! // SAFETY: as above.
-//! assert_eq!(unsafe { CurrentCpuPage::new(fresh.0.as_mut_ptr() as u64) }.cpu(), None);
-//! ```
+//! the VisionFive 2 it is `{1, 2, 3}`, so size per-CPU arrays by [`CPU_ID_BOUND`] (`crates/cpu_set`).
 //!
 //! # BUGS
 //!
-//! - **Nothing outside tests reads the CPU word**, written on every switch (#1904). The write costs
-//!   under 1.5 ns a round trip on an M3, inside layout noise: 0561's Follow-on in design/roadmap/.
-//! - **The reader forms an `&AtomicU64` over memory its process maps read-only.** Miri cannot model
-//!   a mapping, but it does reject the same shape over an immutable Rust binding (milestone 636
-//!   (the scheduled workflows are failing) found it while repairing this crate's tests, which now
-//!   pass writable buffers). Whether a relaxed load through that reference is sound on a
-//!   read-only page is a language-level question, not settled here; a raw atomic load that never
-//!   forms the reference is the likely shape if it is not.
-//! - **A process has at most [`THREAD_PAGE_SLOTS`] threads**, because each has a page of its own in
-//!   `PROCESS_PAGES` (milestone 812 (`std::thread::spawn` runs real threads in one address space),
-//!   §269 (how threads share a process) fork 6, which chose a page per thread over slots in one
-//!   page). `user_mode_runtime::current_cpu` reads [`PAGE_VA`], which is a process's first thread's
-//!   page; any other thread must read the address `CONFIGURE` answered for it, which `std` keeps in
-//!   the thread's thread-local block.
-//! - **A process whose address space was built by userspace and never bound to a TCB has no page
-//!   here**, and a call to `user_mode_runtime::current_cpu` from it faults on an unmapped read
-//!   rather than returning [`None`]. The kernel maps this page when it takes the space
-//!   (`AddressSpace::new` for the spaces it builds, `sched::configure_thread_control_block` for the
-//!   ones userspace hands it), and those two cover every space that ever runs a thread. The uncovered
-//!   shape is a bare address-space object that is used for something other than running a thread,
-//!   which by construction has no thread to ask. Deliberately **not** mapped in
-//!   `user::user_address_space_create`: doing that for the timebase page cost two regressions on a
-//!   hand-sized demo region, and that comment is still beside that function.
-//! - **The value can be stale by the time it is used**, for the reason the ordering section gives.
-//!   This crate will not fix that, and a consumer that cannot tolerate it wants `rseq`'s
-//!   restartable sequences, which are a milestone of their own and not proposed here.
-//! - **[`CPU_ID_BOUND`] is a compile-time constant, not this machine's online set.** It is the
-//!   kernel's `MAX_CPUS`, single-sourced here so the two cannot drift, and it is deliberately not
-//!   the live count: a bound that grew when a secondary came online would be a number userspace
-//!   had already sized an array against. Correct for sizing, useless for iterating, and a consumer
-//!   that wants to iterate the online set is asking the other question, which the selector answers.
+//! - Nothing outside tests reads the word yet; the write costs under 1.5 ns on an M3 (#1904).
+//! - The reader forms an `&AtomicU64` over read-only memory. Miri rejects that shape over an
+//!   immutable binding; whether it is sound on a read-only mapping is unsettled, and a raw atomic
+//!   load that never forms the reference is the fallback.
+//! - At most [`THREAD_PAGE_SLOTS`] threads per process (§269 fork 6). [`PAGE_VA`] is the first
+//!   thread's page; others read the address `CONFIGURE` answered, which `std` keeps in TLS.
+//! - A userspace-built address space never bound to a TCB has no page, and
+//!   `user_mode_runtime::current_cpu` there faults rather than returning [`None`]. Deliberately not
+//!   mapped in `user::user_address_space_create`; that function's comment says why.
+//! - [`CPU_ID_BOUND`] is the kernel's compile-time `MAX_CPUS`, not the online set: right for
+//!   sizing, useless for iterating, which is the selector's question.
 //!
-//! Name: provisional (this lane, 2026-09-21); calef names the crates. `current_cpu` is the
-//! vocabulary the field already uses for exactly this quantity (Linux's `sched_getcpu`, `rseq`'s
-//! own `cpu_id` field), and `_protocol` is the suffix ruling `counter_frequency_protocol` carries.
-//! The refused names (`self_cpu_protocol`, `cpu_id_protocol`, `rseq_protocol`, the register-shaped
-//! ones) and their reasons are in git history.
+//! Name: provisional (2026-09-21); calef names the crates. `current_cpu` is the field's own word
+//! for this quantity, and `_protocol` follows `counter_frequency_protocol`.
 
 #![cfg_attr(not(test), no_std)]
 
@@ -184,6 +50,24 @@ pub const MAGIC: [u8; 8] = *b"CURRCPU1";
 /// **What the CPU word holds before the kernel has ever switched this thread in.** Not zero,
 /// because zero is a valid CPU id on every machine this tree runs on except the VisionFive 2, and
 /// "a wrong number is worse than no number" (calef, 2026-09-21).
+///
+/// # Examples
+///
+/// Neither a zeroed frame nor a thread that has never run fabricates an answer:
+///
+/// ```
+/// use current_cpu_protocol::{CurrentCpuPage, PAGE_BYTES, build_page};
+///
+/// # #[repr(align(8))]
+/// # struct Aligned([u8; PAGE_BYTES]);
+/// let mut zeroed = Aligned([0u8; PAGE_BYTES]);
+/// // SAFETY: a live, aligned buffer of exactly `PAGE_BYTES` for this block.
+/// assert_eq!(unsafe { CurrentCpuPage::new(zeroed.0.as_mut_ptr() as u64) }.cpu(), None);
+///
+/// let mut fresh = Aligned(build_page());
+/// // SAFETY: as above.
+/// assert_eq!(unsafe { CurrentCpuPage::new(fresh.0.as_mut_ptr() as u64) }.cpu(), None);
+/// ```
 pub const UNSCHEDULED: u64 = u64::MAX;
 
 /// **One past the highest CPU id this kernel will ever hand out**: the size a per-CPU array in
@@ -192,6 +76,26 @@ pub const UNSCHEDULED: u64 = u64::MAX;
 ///
 /// **Not the online count.** See the crate's `BUGS` section, and `crates/cpu_set` for why counting
 /// is not indexing.
+///
+/// # Examples
+///
+/// Sizing a per-CPU array, which is the consumer this page exists for:
+///
+/// ```
+/// # use current_cpu_protocol::{CurrentCpuPage, build_page, publish, CPU_ID_BOUND};
+/// let mut caches = [0u64; CPU_ID_BOUND]; // never `[0; cores_i_have_seen]`
+/// # #[repr(align(8))]
+/// # struct Aligned([u8; current_cpu_protocol::PAGE_BYTES]);
+/// # let mut bytes = Aligned(build_page());
+/// # let va = bytes.0.as_mut_ptr() as u64;
+/// # // SAFETY: as in `CurrentCpuPage`'s example.
+/// # unsafe { publish(va, 3) };
+/// # // SAFETY: as in `CurrentCpuPage`'s example.
+/// # let page = unsafe { CurrentCpuPage::new(va) };
+/// if let Some(cpu) = page.cpu() {
+///     caches[cpu] += 1;
+/// }
+/// ```
 pub const CPU_ID_BOUND: usize = 8;
 
 const OFF_MAGIC: usize = 0;
@@ -312,6 +216,26 @@ pub unsafe fn publish(page_va: u64, cpu: u64) {
 }
 
 /// **The current-CPU page**, as seen through one thread's read-only mapping of it at [`PAGE_VA`].
+///
+/// # Examples
+///
+/// A built page reads back the core the kernel last published:
+///
+/// ```
+/// use current_cpu_protocol::{CurrentCpuPage, build_page, publish};
+///
+/// # #[repr(align(8))]
+/// # struct Aligned([u8; current_cpu_protocol::PAGE_BYTES]);
+/// // The kernel's page is a frame; a test's must be given the frame's alignment by hand.
+/// let mut bytes = Aligned(build_page());
+/// let va = bytes.0.as_mut_ptr() as u64;
+/// // SAFETY: `bytes` is a live, 8-aligned buffer of exactly `PAGE_BYTES` for this block, built
+/// // by `build_page`, and this thread is its only writer.
+/// unsafe { publish(va, 3) };
+/// // SAFETY: as above.
+/// let page = unsafe { CurrentCpuPage::new(va) };
+/// assert_eq!(page.cpu(), Some(3));
+/// ```
 #[derive(Debug, Clone, Copy)]
 pub struct CurrentCpuPage {
     base: *const u8,

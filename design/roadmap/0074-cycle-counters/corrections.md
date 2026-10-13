@@ -1,6 +1,6 @@
 # Cycle counters: the corrections this block carries
 
-Moved from [milestone 74 (cycle counters)](../0074-cycle-counters.md) under §212 (a prose budget).
+An appendix to [milestone 74 (cycle counters)](../0074-cycle-counters.md), under §212 (a prose budget).
 This appendix holds three things the block once said wrongly, kept rather than silently corrected:
 two misquotations of `notes/benchmarks.md`, a parity heading, and a wrong mechanism for x86_64.
 
@@ -38,7 +38,7 @@ records the gap and the plan. This block had the gap and no note. It has one now
 
 ## The wrong mechanism for x86_64
 
-The parity section used to name the wrong mechanism for x86_64. It is kept here because it is the
+The parity section named the wrong mechanism for x86_64. It is kept here because it is the
 reasoning most likely to be re-derived. It said "x86_64 already reads `rdtsc` in
 `arch/x86_64/timer.rs` for its own calibration", implying the probe could be built on that read. It
 cannot: `arch::x86_64::timer::now()` is `rdtsc`, so such a probe divides one counter by itself and

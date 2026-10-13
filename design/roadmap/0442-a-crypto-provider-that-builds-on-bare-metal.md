@@ -83,7 +83,7 @@ are not) rather than only a lane report. calef, 2026-09-20: *"rustls-rustcrypto 
 high quality dependency."* The numbers are in that section and in
 [notes/cryptography-provider.md](../../notes/cryptography-provider.md): 0.0.2-alpha published
 2024-04-24, three versions ever with two yanked, 73 crates, pinning majors of `sha2`, `aes-gcm` and
-`p256` that were all superseded during 2026.
+`p256` that all had newer majors during 2026.
 
 `rsa` is taken. calef, 2026-09-20: *"Take rsa."* The provider had been built without it, at 53
 crates, and that could not honestly be called right: measured with `openssl s_client`,

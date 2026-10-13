@@ -1,30 +1,12 @@
-//! An intrusive FIFO queue: **the link lives inside the node.**
+//! An intrusive FIFO queue: **the link lives inside the node.** The queue is two pointers and a
+//! count; push and pop are a few pointer writes that cannot allocate or fail, and a pop hands back
+//! the object itself, as Linux's `list_head` and seL4's TCB queues do. The kernel's per-CPU run
+//! queues and migration inboxes use it, which is why the IRQ path never allocates for them.
 //!
-//! Milestone 14 phase A.2 (design/kernel-objects-from-untyped.md, decision D1). The per-CPU run
-//! queues and migration inboxes used to be `VecDeque<ThreadId>`: every entry was heap-backed, pushing
-//! could allocate (which is why the scheduler pre-reserved capacity, a standing apology to the
-//! IRQ path), and every pop handed back a number that still had to be looked up.
-//!
-//! An intrusive queue stores nothing. The "next" pointer lives inside the thing being queued,
-//! and the queue itself is two pointers, head and tail. Push and pop are a couple of pointer
-//! writes, they cannot allocate and cannot fail, and what a pop hands back is the object itself.
-//! This is what every kernel we learn from does (Linux `list_head`, seL4's TCB queues), for
-//! exactly these reasons.
-//!
-//! # The price, stated plainly
-//!
-//! **One link means one queue.** A node can be on at most one `Fifo` at a time, because there is
-//! only one `next` inside it. For a scheduler this is not a restriction, it is the *invariant*:
-//! a thread is ready on one core's queue, or parked in one inbox, or blocked on one endpoint, or
-//! running, and never two of those at once. The queue makes the state machine physical.
-//!
-//! **And the compiler checks half of it.** A `VecDeque` owns its entries; this queue borrows its
-//! nodes with no lifetime the borrow checker can see. What it can see is an [`Unqueued`] token:
-//! a non-`Clone` proof that one node is on no queue. A push consumes one and a pop hands one back,
-//! so "on at most one queue" is the compiler's fact rather than the caller's (milestone 139 (drive
-//! the unsafe count down), round 10; calef's ruling C on #1842). The only `unsafe` left to a caller
-//! is minting a token, once per node, which is where rule 2 (the node outlives its time on a queue)
-//! is still argued by hand.
+//! **One link means one queue.** A node can be on at most one `Fifo` at a time. For a scheduler
+//! that is the invariant, not a restriction: a thread is ready on one queue, parked in one inbox,
+//! blocked on one endpoint, or running. An [`Unqueued`] token, a non-`Clone` proof that one node is
+//! on no queue, makes it the compiler's fact: a push consumes one and a pop hands it back.
 //!
 //! # The caller's contract
 //!
@@ -36,116 +18,14 @@
 //!    queue is single-core with interrupts masked; an inbox is behind its mutex). Enforced for the
 //!    queue by `&mut self`; for the links, also stated at [`Unqueued::new`].
 //!
-//! # Examples
-//!
-//! A run queue, with the three contract rules visible in the code rather than only in the list
-//! above. Note where the nodes are declared: **before** the queue, so they outlive it, because
-//! locals drop in reverse and rule 2 is otherwise nothing but a promise.
-//!
-//! ```
-//! use core::ptr::NonNull;
-//! use intrusive_fifo::{Fifo, Node, Unqueued};
-//!
-//! struct Thread {
-//!     tid: u32,
-//!     next: Option<NonNull<Thread>>,
-//! }
-//!
-//! // SAFETY: `next` and `set_next` are plain field storage and touch nothing else, which is the
-//! // whole of the `Node` contract. A clever implementation here is a corrupted queue.
-//! unsafe impl Node for Thread {
-//!     fn next(&self) -> Option<NonNull<Self>> {
-//!         self.next
-//!     }
-//!     fn set_next(&mut self, next: Option<NonNull<Self>>) {
-//!         self.next = next;
-//!     }
-//! }
-//!
-//! // Rule 2, as drop order: these outlive `q`.
-//! let mut a = Thread { tid: 1, next: None };
-//! let mut b = Thread { tid: 2, next: None };
-//! let mut q: Fifo<Thread> = Fifo::new();
-//!
-//! // The one unsafe step: minting each node's token, once. Both are live locals declared before
-//! // `q`, neither is on a queue and neither has a token yet, and this doctest is the only accessor.
-//! let (ta, tb) = unsafe { (Unqueued::new(NonNull::from(&mut a)), Unqueued::new(NonNull::from(&mut b))) };
-//!
-//! // Pushing is safe: the token is the proof that the node is on no queue, and the push takes it.
-//! q.push_back(ta);
-//! q.push_back(tb);
-//! assert_eq!(q.len(), 2);
-//! assert!(!q.is_empty());
-//!
-//! // Round robin: threads leave in the order they arrived, and a pop hands back the token, which is
-//! // the object itself rather than a number somebody has to look up.
-//! let first = q.pop_front().unwrap();
-//! // SAFETY: the token's node is one of the live locals above.
-//! assert_eq!(unsafe { (*first.as_ptr()).tid }, 1);
-//!
-//! // A drained-then-refilled queue takes nodes correctly, which is where the classic tail-pointer
-//! // bug lives; and the popped token is what makes pushing `a` again legal.
-//! q.push_back(first);
-//! let order: Vec<u32> = core::iter::from_fn(|| q.pop_front())
-//!     // SAFETY: each token's node is one of the live locals above.
-//!     .map(|t| unsafe { (*t.as_ptr()).tid })
-//!     .collect();
-//! assert_eq!(order, vec![2, 1]);
-//! assert!(q.is_empty());
-//! ```
-//!
-//! Rule 1 is no longer something a caller keeps. A node is pushed by giving up its token, and a
-//! token is not `Clone`, so the second push of the same node does not compile:
-//!
-//! ```compile_fail
-//! # use core::ptr::NonNull;
-//! # use intrusive_fifo::{Fifo, Node, Unqueued};
-//! # struct T { next: Option<NonNull<T>> }
-//! # unsafe impl Node for T {
-//! #     fn next(&self) -> Option<NonNull<Self>> { self.next }
-//! #     fn set_next(&mut self, next: Option<NonNull<Self>>) { self.next = next; }
-//! # }
-//! # let mut b = T { next: None };
-//! # let (mut ready, mut inbox) = (Fifo::<T>::new(), Fifo::<T>::new());
-//! // SAFETY: `b` is live, on no queue, and has no token yet.
-//! let token = unsafe { Unqueued::new(NonNull::from(&mut b)) };
-//! ready.push_back(token);
-//! inbox.push_back(token); // error[E0382]: use of moved value: `token`
-//! ```
-//!
-//! # What a static analyser sees here, and why it is right (DECISIONS §35)
-//!
-//! CodeQL flagged the dereferences in [`Fifo::push_back`] and [`Fifo::pop_front`] as
-//! `rust/access-invalid-pointer`. **Both alerts are now fixed rather than dismissed**, and the
-//! measurement is worth recording because the expectation was wrong: the rule reads as being about
-//! pointer validity in general, so the prediction was that moving to [`NonNull`] would improve the
-//! code without satisfying the tool. It satisfied the tool outright, main going from two open alerts
-//! to zero on this change (`/language:rust`: 2 results on `refs/heads/main`, 0 on `refs/pull/5/head`).
-//! The rule was more precise than it looked, and it was pointing at nullness.
-//!
-//! **Nullness is gone from the contract**: the API takes and returns [`NonNull`] (inside an
-//! [`Unqueued`] since milestone 139's round 10), and every caller converts from a reference
-//! (`NonNull::from`, never `NonNull::new(..).unwrap()`), so non-nullness is a fact of construction
-//! rather than a promise anyone keeps.
-//!
-//! **Validity is still not expressible**, and no tool result changes that. Rule 2 above says a node outlives its
-//! time on the queue, and no type available to us can carry that for a structure whose entire purpose
-//! is that the queue does *not* own its nodes. What upholds it is the kernel's state machine: only
-//! `Finished` threads are ever freed, a `Finished` thread is on no queue, and one token per node
-//! makes "on at most one queue" a type error rather than a corrupted list.
-//!
-//! So the honest statement is that **this queue is safe because its callers are correct, and nothing
-//! in this crate can check that**. The Kani harness below proves the FIFO's *logic* over a symbolic
-//! operation sequence against nodes it holds valid by construction; it answers "is the ordering
-//! right", never "did a caller free a queued node". Neither tool covers that, and a reader should
-//! know it rather than infer safety from two green checkmarks.
+//! Rule 2 is not expressible in any type available here, because the queue deliberately does not
+//! own its nodes. **This queue is safe because its callers are correct, and nothing in this crate
+//! can check that.** The API traffics in [`NonNull`] built from references, so nullness is a fact
+//! of construction (which is what CodeQL's `rust/access-invalid-pointer` was pointing at), and
+//! the Kani harness proves the ordering logic, never that a caller kept a queued node alive.
 //!
 //! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review). Renamed from
-//! `intrusive`: a bare adjective without its noun; the primary type is `Fifo<T: Node>`, and
-//! "intrusive" describes a *style* of data structure, not a thing on its own. The term itself is
-//! still grounded in the prior art this project learns from, Linux's `list_head` and seL4's TCB
-//! queues; only the missing noun was the defect. Introduced 2026-07-23 when the run queues and
-//! inboxes went intrusive.
+//! `intrusive`, an adjective without its noun; the primary type is `Fifo<T: Node>`.
 
 #![cfg_attr(not(test), no_std)]
 
@@ -158,6 +38,31 @@ use core::ptr::NonNull;
 /// `next`/`set_next` must be plain storage: reading back exactly what was stored, touching
 /// nothing else. The queue threads its structure through these two methods, so a clever
 /// implementation is a corrupted queue.
+///
+/// # Examples
+///
+/// The implementation every node writes, and the only correct one:
+///
+/// ```
+/// use core::ptr::NonNull;
+/// use intrusive_fifo::Node;
+///
+/// struct Thread {
+///     tid: u32,
+///     next: Option<NonNull<Thread>>,
+/// }
+///
+/// // SAFETY: `next` and `set_next` are plain field storage and touch nothing else, which is the
+/// // whole of the `Node` contract. A clever implementation here is a corrupted queue.
+/// unsafe impl Node for Thread {
+///     fn next(&self) -> Option<NonNull<Self>> {
+///         self.next
+///     }
+///     fn set_next(&mut self, next: Option<NonNull<Self>>) {
+///         self.next = next;
+///     }
+/// }
+/// ```
 pub unsafe trait Node: Sized {
     /// Read back the link stored by the most recent [`set_next`](Self::set_next).
     fn next(&self) -> Option<NonNull<Self>>;
@@ -236,6 +141,43 @@ impl<T> core::fmt::Debug for Unqueued<T> {
 /// The queue: two pointers into nodes it does not own, plus a count.
 ///
 /// FIFO because the scheduler's queues are round-robin: threads leave in the order they arrived.
+///
+/// # Examples
+///
+/// A run queue: threads leave in the order they arrived.
+///
+/// ```
+/// # use core::ptr::NonNull;
+/// # use intrusive_fifo::{Fifo, Node, Unqueued};
+/// # struct Thread { tid: u32, next: Option<NonNull<Thread>> }
+/// # // SAFETY: plain field storage, which is the whole of the `Node` contract.
+/// # unsafe impl Node for Thread {
+/// #     fn next(&self) -> Option<NonNull<Self>> { self.next }
+/// #     fn set_next(&mut self, next: Option<NonNull<Self>>) { self.next = next; }
+/// # }
+/// // Rule 2, as drop order: the nodes are declared before the queue, so they outlive it.
+/// let mut a = Thread { tid: 1, next: None };
+/// let mut b = Thread { tid: 2, next: None };
+/// let mut q: Fifo<Thread> = Fifo::new();
+///
+/// // SAFETY: both are live locals declared before `q`, on no queue and with no token yet.
+/// let (ta, tb) = unsafe { (Unqueued::new(NonNull::from(&mut a)), Unqueued::new(NonNull::from(&mut b))) };
+/// q.push_back(ta);
+/// q.push_back(tb);
+/// assert_eq!(q.len(), 2);
+///
+/// let first = q.pop_front().unwrap();
+/// // SAFETY: the token's node is one of the live locals above.
+/// assert_eq!(unsafe { (*first.as_ptr()).tid }, 1);
+///
+/// // A drained-then-refilled queue is where the classic tail-pointer bug lives.
+/// q.push_back(first);
+/// let order: Vec<u32> = core::iter::from_fn(|| q.pop_front())
+///     // SAFETY: each token's node is one of the live locals above.
+///     .map(|t| unsafe { (*t.as_ptr()).tid })
+///     .collect();
+/// assert_eq!(order, vec![2, 1]);
+/// ```
 pub struct Fifo<T: Node> {
     head: Option<NonNull<T>>,
     tail: Option<NonNull<T>>,
@@ -269,6 +211,26 @@ impl<T: Node> Fifo<T> {
 
     /// Append a node, consuming its token. Safe: the token is the proof that the node is valid
     /// and on no queue, and taking it by value is what stops the same node being pushed twice.
+    ///
+    /// # Examples
+    ///
+    /// A token is not `Clone`, so pushing one node onto two queues does not compile:
+    ///
+    /// ```compile_fail
+    /// # use core::ptr::NonNull;
+    /// # use intrusive_fifo::{Fifo, Node, Unqueued};
+    /// # struct T { next: Option<NonNull<T>> }
+    /// # unsafe impl Node for T {
+    /// #     fn next(&self) -> Option<NonNull<Self>> { self.next }
+    /// #     fn set_next(&mut self, next: Option<NonNull<Self>>) { self.next = next; }
+    /// # }
+    /// # let mut b = T { next: None };
+    /// # let (mut ready, mut inbox) = (Fifo::<T>::new(), Fifo::<T>::new());
+    /// // SAFETY: `b` is live, on no queue, and has no token yet.
+    /// let token = unsafe { Unqueued::new(NonNull::from(&mut b)) };
+    /// ready.push_back(token);
+    /// inbox.push_back(token); // error[E0382]: use of moved value: `token`
+    /// ```
     pub fn push_back(&mut self, node: Unqueued<T>) {
         let node = node.0;
         // SAFETY: valid and on no queue, which is what `Unqueued::new`'s caller promised for this

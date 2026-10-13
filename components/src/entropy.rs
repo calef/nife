@@ -1,123 +1,43 @@
-//! **The entropy service** (milestone 56; DECISIONS §44, notes/entropy.md).
-//!
-//! The one process that owns a virtio-rng device, and the only thing in the system that can read
-//! it. Everything else holds an endpoint that means *"you may obtain randomness"*, which is a
-//! strictly smaller authority than *"you may reach the device"*: a client cannot program the
-//! queue, cannot see the DMA region the device writes into, and cannot ask the device for anything
-//! this service did not ask on its behalf.
+//! **The entropy service** (§44 (entropy is a capability), notes/entropy.md): the one process that
+//! reaches the entropy source. Clients hold an endpoint that means "you may obtain randomness", a
+//! strictly smaller authority than reaching the device: no queue, no DMA region, no request this
+//! service did not make for them.
 //!
 //! ```text
-//!   virtio-rng ──virtio (mmio or PCIe, §18)──► entropy ──the request endpoint──► clients
+//!   virtio-rng ──virtio (mmio or PCIe)─────► entropy ──the request endpoint──► clients
 //!    (a device)                                  │        (CALL, bytes in the reply)
 //!                                                └── its DMA page: nobody else maps it
 //! ```
 //!
-//! Its whole authority is four things placed before it ran:
+//! Its authority: slot 0, the request endpoint (RECEIVE); slot 1, the device's `Irq`; slot 2, the
+//! confined `Virtio` transport; slot 3, a readiness endpoint (WRITE); and one DMA page. Owning it
+//! is worth exactly an attacker choosing random numbers, no more.
 //!
-//! - slot 0, the **request** endpoint (RECEIVE): clients `CALL` here and nothing else;
-//! - slot 1, an **`Irq`**: the device's completion interrupt;
-//! - slot 2, a **`Virtio`**: the confined transport, and the only way it can reach the device;
-//! - slot 3, a **readiness** endpoint (WRITE): one message once the first bytes are in hand;
-//! - mapped: one DMA page, which nobody else maps.
+//! **These are the device's bytes**: no pool, whitening, mixing or DRBG, since without a one-way
+//! function every transformation is reversible and only blurs the claim. It keeps a buffer of
+//! [`POOL_LEN`] bytes, handed out in order to exactly one client each and zeroed behind the cursor:
+//! a cache for round trips, not a transformation. virtio-rng may return fewer bytes than asked, and
+//! QEMU's does, so [`Pool::take`] gathers across refills and never pads or repeats; a device that
+//! yields nothing for [`REFILL_TRIES`] tries answers [`entropy_protocol::NO_ENTROPY`].
 //!
-//! No initial ramdisk, no budget, no filesystem, no network. A compromised entropy service is a
-//! machine whose random numbers an attacker chooses, which is exactly as much damage as owning the
-//! entropy source should be worth, and it is why the device does not sit inside every program.
-//!
-//! # It passes the device's bytes through, and computes nothing
-//!
-//! No pool, no whitening, no mixing, no DRBG. There is no cryptography in this tree yet (that is
-//! milestone 56's other half), and without a one-way function every transformation available here
-//! is a reversible permutation: it would change the bytes without adding an unpredictability an
-//! attacker could not undo, while making the security claim harder to state. So the claim stays
-//! one sentence long: **these are the device's bytes**. See DECISIONS §44.
-//!
-//! What it does keep is a **buffer**, which is a different thing from a pool. One virtio request
-//! fetches [`POOL_LEN`] bytes and the service hands them out in order, refilling when they run
-//! out. Byte *i* out is byte *i* in, unmodified, handed to exactly one client, and zeroed behind
-//! the cursor. That is a cache for round trips, not an entropy transformation, and it turns 32
-//! device round trips into one.
-//!
-//! # When the device gives less than it was asked for
-//!
-//! virtio-rng is allowed to return fewer bytes than the buffer holds, and the used ring's `len` is
-//! where it says so. **QEMU's really does**, which is worth stating as a measurement rather than a
-//! spec allowance: the first version of this file passed a short buffer straight through to the
-//! client, and the milestone-56 test caught a five-byte reply to an eight-byte request thirty draws
-//! in. So the service takes what arrived and asks again for the rest, gathering across the boundary
-//! (see [`Pool::take`]). It never pads, never repeats a byte it has already served, and never
-//! substitutes a pseudo-random stand-in. If the device produces nothing at all across
-//! [`REFILL_TRIES`] attempts, the reply is [`entropy_protocol::NO_ENTROPY`] and the caller finds out,
-//! because a caller who cannot be given randomness must not be told otherwise (DECISIONS §42).
-//!
-//! Name: ratified 2026-09-14 (calef, working the unratified worklist), confirming milestone 63's
-//! name table (design/roadmap/0063-name-spellings.md). Introduced 2026-07-30 with milestone 56. The
-//! same argument `clock` carries, made in the same sentence: 63 cites the two together as the
-//! resource-name pattern it departed from for `credentialer`, on the ground that a credential
-//! service never hands you a credential. This service does hand you entropy, so the pattern holds.
-//! The word is also the field's own for the quantity, which the protected class keeps.
-//!
-//! The ratification also settles the pair: calef ratified `jh7110_entropy` on 2026-09-13 for the
-//! other backend of this same contract, refusing `_source` there partly because this peer carries
-//! no such suffix. Naming one of two backends for one contract decides how the other reads, so the
-//! two are one decision made a day apart.
-//!
-//! # A second backend, and a smaller authority than the first (milestone 162)
-//!
-//! RDRAND/RDSEED (`x86_64`) and RNDR/RNDRRS (aarch64, `FEAT_RNG`) are **unprivileged CPU instructions**:
-//! no MMIO, no capability, no device discovery, executable at any privilege level. That is exactly
-//! the trap DECISIONS §44 exists to name: if this service let a client obtain those bytes by
-//! executing the instruction itself, the request endpoint above would be theatre, because ambient
-//! authority to the CPU is ambient authority to entropy. So [`instr`] is not a function a client
-//! links; it is the same shape as the virtio backend above, a second way *this* process reaches
-//! bytes, still gated behind the one endpoint every client already holds.
-//!
-//! **The kernel decides which backend a boot gets, the same way it decides `Bus::Mmio` vs.
-//! `Bus::Pci`.** `ID_AA64ISAR0_EL1.RNDR` (aarch64) is only readable at EL1 (a userspace `MRS` on it
-//! traps as an unknown register, `arch::isa::init` already reads it into the boot-time record), so
-//! this process never probes for the feature itself; it trusts the kernel's choice of which mode to
-//! spawn it in the same way it already trusts a granted `Virtio` capability to name a real device.
-//! See `kernel/src/user/entropy_service.rs::ensure_instruction`.
-//!
-//! **Why RDSEED/RNDRRS and not RDRAND/RNDR.** Intel's own DRNG Software Implementation Guide (rev.
-//! 2.2) documents `RDRAND` as SP800-90C RBG2(P) output: a hardware `CTR_DRBG` seeded from the
-//! conditioned entropy source, servicing up to 511 draws per reseed. `RDSEED` instead comes
-//! straight off the SP800-90C RBG3(XOR) enhanced non-deterministic generator, one draw, one fresh
-//! sample of the conditioned entropy source, no DRBG in the path. ARM's RNDR/RNDRRS pair is the same
-//! split (RNDR may be DRBG-buffered the way RDRAND is; RNDRRS forces a reseed from the entropy
-//! source before it answers, the way RDSEED does). This service's whole discipline is "no pool, no
-//! whitening, no mixing, **no DRBG**", stated two paragraphs up; taking RDRAND or RNDR would
-//! silently reintroduce, in hardware, the exact primitive this file already refuses to add in
-//! software. RDSEED/RNDRRS are the instructions that keep the claim "these are the device's bytes"
-//! true. The cost is real and is not hidden: both are rate-limited by the physical entropy source
-//! and can run dry under load in a way RDRAND/RNDR, buffered by their DRBG, do not; a caller that
-//! exhausts the retry budget gets [`proto::NO_ENTROPY`], the same honest answer a dry virtio device
-//! gives, rather than a fallback to the DRBG-backed sibling instruction.
+//! The second backend, [`instr`], runs RDSEED (`x86_64`) or RNDRRS (aarch64) inside this process,
+//! behind the same endpoint, because an unprivileged instruction a client ran itself would make the
+//! endpoint theatre. The kernel picks the backend, since `ID_AA64ISAR0_EL1.RNDR` is EL1-only
+//! (`kernel/src/user/entropy_service.rs::ensure_instruction`). RDRAND and RNDR are refused: they may
+//! answer from a hardware DRBG, which this file refuses in software. RDSEED and RNDRRS can run dry
+//! under load, and then the answer is [`proto::NO_ENTROPY`], never the DRBG sibling. On-die
+//! conditioning is part of each instruction's contract and is not a DRBG.
 //!
 //! # BUGS
 //!
-//! **A first bufferful of zeros is reported as a dead device, and it could in principle be
-//! randomness.** Both backends here refuse to report [`proto::READY`] when their first draw is all
-//! zero (`entropy_protocol::readiness`), and then answer every request `NO_ENTROPY` for the rest of
-//! the boot rather than serving those bytes. On a working source that is wrong with probability
-//! 2^-2048 for the virtio backend's 256-byte bufferful and 2^-64 for the instruction backend's
-//! eight bytes. The trade is deliberate and is stated where the contract is:
-//! `entropy_protocol`'s own `BUGS`, and the roadmap block that recorded the defect
-//! (`design/roadmap/0159-jh7110-trng-driver/bench-runs.md`, "The bench ran it, 2026-09-04").
+//! - An all-zero first draw condemns the backend: `NO_ENTROPY` for the rest of the boot, wrong
+//!   with probability 2^-2048 (virtio) or 2^-64 (instruction), as `entropy_protocol`'s `BUGS` says.
+//! - A condemned backend does not recover short of restarting the service.
+//! - Nothing checks a byte after bring-up; continuous health testing is
+//!   `design/decisions/0137-trng-health-tests.md`, proposed.
 //!
-//! **A condemned backend does not recover.** There is no path back short of restarting the
-//! service, even if the device starts producing bytes a moment later.
-//!
-//! **Nothing checks a byte after bring-up.** A device that answers correctly once and degrades, or
-//! whose buffer latches and repeats, is served through untouched. Continuous health testing is
-//! `design/decisions/0137-trng-health-tests.md`'s question and is `PROPOSED`, not decided here.
-//!
-//! On-die conditioning is a different question from a DRBG and this service does not refuse it:
-//! both Intel's noise source and ARM's entropy source run an AES-CBC-MAC-shaped conditioner
-//! (SP800-90B's noise-source-plus-conditioning-function model) before either instruction's output is
-//! ever visible to software. That conditioning is part of the instruction's own architectural
-//! contract, the same way it is part of what "a device" means for virtio-rng; this file adds nothing
-//! on top of it either way.
+//! Name: ratified 2026-09-14 (calef): the resource name, like `clock`, because this service does
+//! hand you entropy. It pairs with `jh7110_entropy`, ratified the day before.
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

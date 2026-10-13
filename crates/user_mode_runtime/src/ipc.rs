@@ -88,6 +88,31 @@ pub fn list(slot: u64, cursor: u64) -> (i64, u64, u64) {
 
 /// `RECEIVE` three words on the endpoint capability in `slot`. Blocks until a sender arrives; returns
 /// the three words the sender passed in `x0`, `x1`, `x2`.
+///
+/// # Examples
+///
+/// A pipeline stage. There is no `open` and no path: nothing that was not handed over can be named.
+/// The rendezvous is the flow control, and `Gone` from `send` is this system's SIGPIPE.
+///
+/// ```no_run
+/// use user_mode_runtime::{exit, receive, send};
+///
+/// /// A pipeline stage: read three words off the endpoint in slot 0, pass them to slot 1.
+/// fn relay() -> ! {
+///     const IN: u64 = 0;
+///     const OUT: u64 = 1;
+///     loop {
+///         // `receive` blocks until a sender rendezvouses. The rendezvous IS the flow control: there
+///         // is no buffer to fill and no back-pressure to invent.
+///         let (w0, w1, w2) = receive(IN);
+///         if send(OUT, w0, w1, w2) < 0 {
+///             // A negative return is an `abi::Error`. `Gone` here means the reader exited, which
+///             // is this system's SIGPIPE, arriving as a return code rather than as a signal.
+///             exit();
+///         }
+///     }
+/// }
+/// ```
 pub fn receive(slot: u64) -> (u64, u64, u64) {
     // SAFETY: forwarded from `invoke5`'s contract; RECEIVE reads no more than the three words used.
     let (w0, w1, w2, ..) = unsafe { invoke5(slot, abi::rendezvous::RECEIVE, 0, 0, 0) };
@@ -324,6 +349,24 @@ pub fn sleep_until(timer_slot: u64, notification_slot: u64, deadline: u64) -> i6
 /// `CALL` on the endpoint capability in `slot`: send two words and block until the server
 /// replies through the one-shot Reply capability the kernel mints (milestone 12). Returns the
 /// two reply words. The atomic send-and-wait that makes a request unmistakably answerable.
+///
+/// # Examples
+///
+/// The client never names the server and the server never names the client:
+///
+/// ```no_run
+/// use user_mode_runtime::call;
+///
+/// # fn ask() {
+/// const SERVICE: u64 = 2;
+/// let (r0, r1) = call(SERVICE, 0x0100_0000_0000_0008, 0);
+///
+/// // Negative-as-u64 is enormous, which is how a wire contract tells "no capability in that slot"
+/// // from an answer without a probe request. See `entropy_protocol::delivered`.
+/// assert!((r0 as i64) >= 0 || abi::Error::from_ret(r0 as i64).is_some());
+/// # let _ = r1;
+/// # }
+/// ```
 pub fn call(slot: u64, w0: u64, w1: u64) -> (u64, u64) {
     // SAFETY: forwarded from `invoke5`'s contract; CALL reads no more than the two words used.
     let (r0, r1, ..) = unsafe { invoke5(slot, abi::rendezvous::CALL, w0, w1, 0) };

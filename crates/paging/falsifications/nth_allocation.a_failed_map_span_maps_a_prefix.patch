@@ -17,11 +17,11 @@ Expected to fail: assertion (2), "what is left mapped is not a prefix of the req
 
 Run on 2026-10-04 (UTC), patagonia: red as predicted, green again after the revert.
 
-diff --git a/crates/paging/src/lib.rs b/crates/paging/src/lib.rs
-index 2c96e5bfc..12b38fd9f 100644
---- a/crates/paging/src/lib.rs
-+++ b/crates/paging/src/lib.rs
-@@ -803,12 +803,16 @@ where
+diff --git a/crates/paging/src/mapper.rs b/crates/paging/src/mapper.rs
+index 57461d545..b81d5e418 100644
+--- a/crates/paging/src/mapper.rs
++++ b/crates/paging/src/mapper.rs
+@@ -230,12 +230,16 @@ where
              return Err(MapError::Misaligned);
          }
          let mut done = 0;

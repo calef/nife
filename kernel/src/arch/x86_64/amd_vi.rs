@@ -1,128 +1,42 @@
-//! **The AMD-Vi driver: AMD's IOMMU, in front of the PCIe bus** (lane `amd-vi`; module name and
-//! milestone number provisional).
+//! **The AMD-Vi driver: AMD's IOMMU, in front of the PCIe bus.** VT-d's counterpart on an AMD
+//! machine, behind the same calls the portable seam makes (`attach`, `scope_of`, `is_active`,
+//! `take_fault`, `for_each_reserved_region`), which [`super::iommu`] hands over whenever a unit
+//! here is up. Formats are from AMD document 48882 revision 2.62; QEMU (`hw/i386/amd_iommu.c`,
+//! 11.1.1) is the only AMD-Vi this has run on, and notes/amd-vi.md tables where it diverges.
 //!
-//! VT-d's counterpart on an AMD machine, behind the same five calls the portable seam makes
-//! (`attach`, `scope_of`, `is_active`, `take_fault`, `for_each_reserved_region`), which
-//! [`super::iommu`] hands over whenever a unit here is up. Every register, table and command
-//! format below is from AMD document 48882 revision 2.62 (February 2015), read for this driver.
-//! Where a choice rests on what QEMU's model does (`hw/i386/amd_iommu.c`, read at QEMU 11.1.1),
-//! the comment says so, because QEMU is the only AMD-Vi this has run on and it diverges from the
-//! specification in four places this driver had to know about (see BUGS).
+//! AMD-Vi is driven through memory, like the SMMUv3 and the RISC-V IOMMU: one device table (a
+//! 256-bit entry per 16-bit device id), a command ring the unit consumes, and an event log it
+//! writes. Invalidation is a command followed by a polled `COMPLETION_WAIT`. No cache maintenance
+//! is needed, by specification: the device table is snooped while `Control.Coherent` is 1 (its
+//! reset value, never cleared), walks while an entry's `SD` is 0 (always here), and the command
+//! ring always.
 //!
-//! # The shape, and how it differs from VT-d
-//!
-//! VT-d is driven through registers. **AMD-Vi is driven through memory**, the way the SMMUv3 and
-//! the RISC-V IOMMU are: one device table the unit reads (one 256-bit entry per 16-bit device id,
-//! no per-bus level), one command ring the driver writes and the unit consumes, and one event log
-//! the unit writes and the driver drains. Invalidation is a command (`INVALIDATE_DEVTAB_ENTRY`,
-//! `INVALIDATE_IOMMU_PAGES`) followed by a `COMPLETION_WAIT` whose store the driver polls for, and
-//! a fault is a 128-bit record in the event log rather than a fault-recording register.
-//!
-//! **No cache maintenance is needed, and that is the specification's answer, not an assumption.**
-//! The device table read is snooped while `Control.Coherent` is 1 (its reset value, section 3.3.1,
-//! which this driver never clears); page-table walks are snooped while a device table entry's `SD`
-//! bit is 0 (Table 7), which every entry here leaves clear; and the command ring is always read
-//! coherently (section 2.4). So the `clflush` VT-d's [`Unit::publish`](super::iommu) needs on a
-//! unit with `ECAP.C` clear has no counterpart here.
-//!
-//! # Default deny, and what quarantine means here
-//!
-//! `init` fills every device table entry with [`blocked_dte`] before the unit is enabled: valid,
-//! translating, four levels, rooted at one all-zero table, with read and write permission both
-//! clear. Every DMA from a device nobody confined walks to a not-present entry and is
-//! target-aborted and logged as an `IO_PAGE_FAULT`. A device id past the end of the table is
-//! target-aborted by the hardware itself (section 2.2.2). So translation turns on over a
-//! deny-everything table, the same property the other three drivers' `init` establishes.
-//!
-//! **That blocked entry is also §163 (where a confined device's IOMMU fault is delivered)'s
-//! quarantine**: the entry a faulted driver's device is
-//! switched to so it cannot keep issuing DMA, as VT-d clears `CTX_ENTRY_P`. [`quarantine`] writes
-//! it; milestone 102 (what a confined device's fault reaches) is the caller that does not exist
-//! yet on any architecture.
-//!
-//! **Why not the simpler "translation disabled, no permission" entry** (`Mode` 0, `IR` = `IW` =
-//! 0), which the specification says blocks everything (Table 7: with `Mode` 0, "access controlled
-//! by IR and IW")? Because QEMU does not implement it: its model treats every `Mode` 0 entry as
-//! pass-through and ignores `IR` and `IW` (`amdvi_update_addr_translation_mode`, then
-//! `enable_nodma_mode`). An entry that blocks on silicon and passes everything under QEMU would be
-//! a default-deny claim no test here could check. The four-level walk to an empty table blocks on
-//! both, and logs on both, which is what a test needs to see.
+//! **Default deny.** `init` fills every entry with [`blocked_dte`] before enabling the unit: four
+//! levels rooted at one all-zero table, no read or write, so undeclared DMA is target-aborted and
+//! logged as `IO_PAGE_FAULT`. That entry is also the quarantine of §163 (where a confined device's
+//! IOMMU fault is delivered), which [`quarantine`] writes. Not the specification's simpler `Mode` 0
+//! entry with `IR` = `IW` = 0: QEMU treats every `Mode` 0 entry as pass-through, so it would block
+//! on silicon and pass everything under test. `init` also clears firmware's exclusion range
+//! ([`clear_exclusion_range`]) and invalidates every entry one command at a time, since QEMU
+//! translates a device only once `INVALIDATE_DEVTAB_ENTRY` names it.
 //!
 //! # BUGS
 //!
-//! - **QEMU confines nothing unless the unit is created with `dma-remap=on`**, and nothing in the
-//!   guest can tell. Without it QEMU routes every device's DMA around the unit whatever the device
-//!   table says (`amdvi_switch_address_space`); `helpers/qemu-runner-x86_64.sh` sets it. Silicon
-//!   has no such switch.
-//! - **QEMU switches a device to translated DMA only when `INVALIDATE_DEVTAB_ENTRY` names it.**
-//!   Until then its DMA passes through untranslated, however the table reads. So `init` invalidates
-//!   every entry in the table one command at a time, which is also what Linux does
-//!   (`iommu_flush_dte_all`, from memory, not re-read). A device id past the table's end is never
-//!   named, and under QEMU passes through rather than being target-aborted as section 2.2.2 says.
-//!   QEMU lists every device it has in the IVRS, so no device it models is in that position.
-//! - **QEMU 11.1.1 writes no address into any event record.** `amdvi_setevent_bits` builds the
-//!   address field's mask with a shift of 64, which is undefined in C and comes out zero in the
-//!   Homebrew build this tree runs (QEMU's own trace shows the right address on the same fault).
-//!   Fixed upstream by commit 4adfb431c0 (2026-08-14), which is in no release as of 2026-10-05,
-//!   11.1.2 included. So [`take_fault`] reports a zero address as unknown (`Fault::addr` is
-//!   `None`), and the DMA-escape tests tie such a fault to their device by requester id; the NVMe
-//!   test's canary is what still proves its escape did not land. Silicon fills the field.
-//! - **QEMU's `IO_PAGE_FAULT` record carries the device's `devfn` alone, not its bus**, sets the
-//!   `I` (interrupt) bit on a memory fault, and leaves the domain id zero (`amdvi_page_fault`). A
-//!   fault from a device off bus 0 would be reported against the wrong requester id. Every device
-//!   QEMU's `q35` runner attaches is on bus 0.
-//! - **There is a window at enable where a stale cached entry could still be used.** The unit
-//!   reads commands only once `IommuEn` is set, so the invalidations that empty firmware's caches
-//!   can only run after the unit is translating with whatever it cached. Linux has the same window.
-//!   Firmware that hands over with the unit enabled is unseen so far.
-//! - **Interrupt remapping is part of the base architecture and is never enabled.** Every device
-//!   table entry here leaves `IV` clear, so interrupts pass through untranslated (Table 9), the
-//!   same posture as VT-d's driver. Whether to remap is design/roadmap/317's question, not this
-//!   driver's.
-//! - **No fault interrupt.** The event log is drained by [`take_fault`], which only tests call,
-//!   exactly as VT-d's fault-recording register is. Milestone 102 owns the interrupt.
-//! - **An IVMD that names every device (type 20h) is added to every domain `confine` builds, but
-//!   no device is pre-attached for it**, because pre-attaching all 65,536 ids would be 65,536
-//!   domains. A device the firmware is still DMA-ing for stays blocked until its driver confines
-//!   it. No AMD machine this tree has met publishes an IVMD of any type (QEMU writes none), so the
-//!   whole IVMD path has run zero times.
-//! - **Domain ids are never reused.** Each attach takes the next one, and a unit has 65,535; a
-//!   boot that confined more devices than that would panic. Every change to a device's entry also
-//!   flushes the domain the device leaves (`Unit::set_entry` says why), which for the blocked
-//!   domain 0 empties every unconfined device's cached faults along with it; a cache miss, not a
-//!   correctness cost.
-//!
-//! Milestone 633 (an outside agent attacks the confinement claim)'s second pass (2026-10-05 UTC)
-//! read this driver as a confinement boundary and recorded five gaps. Provisional milestone 767
-//! (AMD-Vi hardening before the first AMD boot) closed four the same day: the exclusion range is
-//! cleared at enable ([`clear_exclusion_range`]), alias entries are never shared and are
-//! quarantined with their device ([`attach`], [`quarantine`]), a mapping carries its region's
-//! rights (`DmaRegion::writable`), and the entries are built and proved in `paging::AmdVi`. What
-//! stays open from that pass, and what 767 left:
-//!
-//! - **Nothing revokes a device's domain in production.** [`quarantine`] is called only by this
-//!   module's tests; `confine` has no inverse at the seam, so a device keeps its reach for the
-//!   whole boot after its driver dies, and a re-attach leaks the previous domain's tables
-//!   (`kernel/src/iommu.rs` records the leak). VT-d, the SMMUv3 and the RISC-V IOMMU have the same
-//!   gap, so the inverse is the seam's question rather than this driver's; milestone 102 (what a
-//!   confined device's fault reaches) is the caller §163 names.
-//! - **The exclusion clear is proved only in half under QEMU, and its effect not at all.** QEMU
-//!   11.1.1 drops writes to the Exclusion Base register and consults neither register, so
-//!   `a_firmware_exclusion_range_is_cleared` proves the limit half and that the boot left both
-//!   zero. Whether firmware on a real AMD board sets a range, and that clearing it takes nothing a
-//!   device still needs, is the first AMD boot's to show. The boot line prints what was found.
-//! - **Two devices behind one alias cannot both work.** The unit cannot tell their DMA apart, so
-//!   the second attach blocks the alias and both lose DMA, loudly. The alternative, one domain
-//!   carrying both devices' grants on purpose (Linux's IOMMU group), needs the portable seam to
-//!   know about groups. No machine this tree has met puts two drivers' devices behind one
-//!   PCIe-to-PCI bridge; QEMU's alias test runs on an empty bridge.
-//! - **An alias in another unit, or an alias that is itself a device's own id, is handled only as
-//!   far as the holder record reaches.** [`attach`] assumes a device and its alias are served by
-//!   the same unit, which every IVRS this tree has read satisfies, and the holder record tracks at
-//!   most [`MAX_ALIASES`] aliases per unit, failing closed past that.
-//! - **The root is checked against the 52-bit field, not against the unit's real address width**,
-//!   which revision 2.62 does not report in the EFR. A frame above the platform's width would be
-//!   refused by the hardware rather than by this driver.
+//! - QEMU confines nothing without `dma-remap=on` (the runner sets it), writes no address into
+//!   event records ([`take_fault`] reports `None`), and records `devfn` without the bus.
+//! - At enable, a stale cached entry can be used until the invalidations run, as on Linux.
+//! - Interrupt remapping is never enabled (`IV` clear), as with VT-d.
+//! - No fault interrupt: only tests drain the event log, until milestone 102 (what a confined
+//!   device's fault reaches).
+//! - A type 20h IVMD is added to every domain but pre-attaches no device; no IVMD has ever run.
+//! - Domain ids are never reused; past 65,535 attaches a boot panics.
+//! - Nothing revokes a device's domain in production, and a re-attach leaks the old tables
+//!   (`kernel/src/iommu.rs`), the same gap every IOMMU driver here has at the seam.
+//! - The exclusion clear is half proved under QEMU, which ignores those registers.
+//! - Two devices behind one alias cannot both work: the second attach blocks the alias, loudly.
+//!   [`attach`] assumes an alias is served by its device's unit and tracks at most
+//!   [`MAX_ALIASES`] per unit, failing closed past that.
+//! - The root is checked against the 52-bit field, not the unit's real address width.
 
 use machine_discovery::acpi::ivrs::{IvrsUnits, MAX_IVHDS};
 

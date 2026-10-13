@@ -13,6 +13,8 @@ and BUGS. These files carry the arguments and detail its prose budget has no roo
   settled, and its own BUGS.
 - [`the-early-boot-window.md`](the-early-boot-window.md): why the window cannot be narrated, the
   banner that bounds it, and the halted-loader experiment.
+- [`the-xenon-grid.md`](the-xenon-grid.md): the grid xenon's screen shows instead of text, and
+  the experiment that would measure it.
 
 *Name: provisional. The directory follows the siting default of §212 (a prose budget), `notes/X/`
 beside `notes/X.md`. calef names directories.*
@@ -25,3 +27,4 @@ Each stem below is named for its content, and calef names files.
 - `ramfb` Name: provisional, for the QEMU device it describes.
 - `the-early-boot-window` Name: provisional, after the parent's "The window between the firmware and
   the kernel".
+- `the-xenon-grid` Name: provisional, for the finding it holds.

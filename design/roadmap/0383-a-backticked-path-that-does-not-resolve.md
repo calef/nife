@@ -16,7 +16,7 @@ drain of the proposal pile. Premise re-read against the tree on 2026-09-19 and s
 and nothing else, and its own comment still says backticked repo paths are "deliberately NOT
 checked". That comment has already retracted half its own justification: it was re-measured by
 milestone 93's documentation sweep at 31 unresolvable backticked paths over 379 markdown files,
-where it used to claim a checker would be 100% false positives, and it now rests on the
+where it had claimed a checker would be 100% false positives, and it now rests on the
 false-positive *rate* rather than on perfection. This block is the proposal that the rate is
 enumerable. *(Number provisional until the merge queue lands it.)*
 

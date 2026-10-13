@@ -111,8 +111,7 @@ strongest-first in AGENTS.md's ladder because the ordering is the argument.
    by an operator about to write a card that makes their board reset itself. The name has to say
    what the machine will do.
 2. **A build that cannot reboot must not pass for one.** It would look exactly like a board that
-   drew the same placement fifty times. This was a `compile_error!` off riscv64 until 2026-09-24;
-   now `script/soak-test --reboot` fails any build that does not come back.
+   drew the same placement fifty times. `script/soak-test --reboot` fails any build that does not come back.
 3. The kernel polls the console UART's data-ready bit, every beat and again through the five
    seconds before each reset. The bit is sticky (set while a byte is unread, cleared only by
    reading it, and nothing in a soak boot reads it), so a five-second poll cannot miss a keypress:
