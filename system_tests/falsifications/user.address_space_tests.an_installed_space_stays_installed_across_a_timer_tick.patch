@@ -11,6 +11,9 @@ Expected to fail: `assert_eq!(seen, Some(frame), "the space was uninstalled unde
 with `left: None`. Confirmed red on 2026-10-13 (UTC) on all three architectures with
 `cargo xtask test --arch <arch> --test an_installed_space_stays_installed_across`: x86_64 at two
 cores (PVH, 4 of 4 runs) and one core (OVMF), aarch64 and riscv64 at four cores (1 of 1 each).
+Replayed again on 2026-10-13 (UTC) after the precondition moved into the window (lane
+maintainer/installed-space-tick-flake): red with `left: None` on riscv64 under `--cpu rva23s64` and
+`--cpu thead-c906`, and on aarch64 (1 of 1 each).
 
 diff --git a/kernel/src/user/address_space.rs b/kernel/src/user/address_space.rs
 index 871577d2e..67f57dc66 100644
