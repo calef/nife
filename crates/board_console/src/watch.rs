@@ -297,21 +297,14 @@ where
                 sink.write_all(&chunk)?;
                 sink.flush()?;
 
-                let feeding = feeder.feed(&chunk);
-                for line in &feeding.lines {
-                    progress.observe_line(line);
-                    // The writing mode, and the only place in this crate a byte goes to the board.
-                    // After `observe_line` so the escape's own log annotation lands below the line
-                    // that provoked it, which is the order a reader of the capture needs.
-                    if let Some(escape) = escape.as_mut() {
-                        escape.observe_line(line, started.elapsed(), &mut *sink)?;
-                    }
-                }
-                // The incomplete tail too, or U-Boot's newline-less `StarFive #` prompt is never
-                // seen. Offered as a *partial*, which is a weaker kind of evidence for the reasons
-                // `observe_partial` records; safe to re-offer as it grows, because the ratchet
-                // only moves forward.
-                progress.observe_partial(&feeding.tail);
+                feed_lines(
+                    &chunk,
+                    &mut feeder,
+                    &mut progress,
+                    escape.as_mut(),
+                    started,
+                    sink,
+                )?;
 
                 // Failure first, so a chunk that both reaches the banner and announces a refusal
                 // (which is exactly what boot 12 looked like) reports the refusal.
@@ -360,36 +353,7 @@ where
             break;
         }
 
-        // Silence, and the two things that are not it. A board still inside its settle window is
-        // quiet because we asked it to be. A board that finished its tour is quiet because the
-        // kernel halted in `wfi`, which is how a good boot ends.
-        //
-        // Named stages rather than `< Tour` (milestone 219): the exemption belongs to the stages
-        // where quiet is the correct end state and not to everything past them. A soak has started
-        // and is under contract to keep speaking, so its silence is the hang this tool exists to
-        // name.
-        //
-        // **[`Stage::Prompt`] joined the exemption at milestone 268**, and for a different reason
-        // from `Tour`'s: a kernel that finished its tour is quiet because it halted, and a system
-        // sitting at a `swish` prompt is quiet because it is *waiting for somebody to type*. Both
-        // are correct terminal states of a boot, and since that milestone the prompt is the one a
-        // default boot is supposed to reach.
-        //
-        // **[`Stage::SweepDone`] joined it at milestone 324 part 2**, on `Tour`'s reason exactly:
-        // `kernel/src/job_mix.rs` halts in `wfi` after `job-mix: done`. [`Stage::Sweep`] is
-        // deliberately NOT here, and that asymmetry is the whole of what part 2 bought: a sweep
-        // that started and stopped is the wedge this tool exists to name, where before it and a
-        // finished sweep both ended as the clock running out. What the exemption cannot do is
-        // shorten a subrun, so see `Stage::Sweep`'s own documentation on sizing `quiet_after`
-        // against the slowest one.
-        if let (Some(limit), Some(last)) = (policy.quiet_after, spoke_at)
-            && settling.is_none()
-            && !matches!(
-                progress.reached(),
-                Stage::Tour | Stage::Prompt | Stage::SweepDone
-            )
-            && last.elapsed() >= limit
-        {
+        if went_quiet(policy, spoke_at, settling, &progress) {
             outcome = Outcome::WentQuiet;
             break;
         }
@@ -399,20 +363,7 @@ where
         outcome = Outcome::Reached(progress.reached());
     }
 
-    // Nothing more is coming, so the tail is as complete as it will ever be. This is what catches
-    // a last line printed without a newline, which a panic on a machine that then halts can be.
-    // It can only ever turn an inconclusive ending into a named failure, never the other way.
-    if !feeder.tail().is_empty() {
-        progress.observe_line(feeder.tail());
-        if let Some(failure) = progress.failure()
-            && matches!(
-                outcome,
-                Outcome::RanOut | Outcome::WentQuiet | Outcome::Ended
-            )
-        {
-            outcome = Outcome::Announced(failure.clone());
-        }
-    }
+    let outcome = judge_the_tail(&feeder, &mut progress, outcome);
 
     let session = Session {
         outcome,
@@ -438,6 +389,93 @@ fn settled_or(settling: &Option<Instant>, progress: &BootProgress, otherwise: Ou
     } else {
         otherwise
     }
+}
+
+/// Feed one chunk's complete lines to the stage ratchet and, when a writing mode is attached, to
+/// its escape; then offer the incomplete tail as a partial.
+fn feed_lines(
+    chunk: &[u8],
+    feeder: &mut LineFeeder,
+    progress: &mut BootProgress,
+    mut escape: Option<&mut Escape<'_>>,
+    started: Instant,
+    sink: &mut dyn Write,
+) -> io::Result<()> {
+    let feeding = feeder.feed(chunk);
+    for line in &feeding.lines {
+        progress.observe_line(line);
+        // The writing mode, and the only place in this crate a byte goes to the board.
+        // After `observe_line` so the escape's own log annotation lands below the line
+        // that provoked it, which is the order a reader of the capture needs.
+        if let Some(escape) = escape.as_mut() {
+            escape.observe_line(line, started.elapsed(), &mut *sink)?;
+        }
+    }
+    // The incomplete tail too, or U-Boot's newline-less `StarFive #` prompt is never
+    // seen. Offered as a *partial*, which is a weaker kind of evidence for the reasons
+    // `observe_partial` records; safe to re-offer as it grows, because the ratchet
+    // only moves forward.
+    progress.observe_partial(&feeding.tail);
+    Ok(())
+}
+
+/// Whether the board has been silent past `quiet_after` at a stage where silence is a hang.
+///
+/// Silence, and the two things that are not it. A board still inside its settle window is quiet
+/// because we asked it to be. A board that finished its tour is quiet because the kernel halted in
+/// `wfi`, which is how a good boot ends.
+///
+/// Named stages rather than `< Tour`, since milestone 219 (the boot tour ends and the kernel halts,
+/// so there is nothing to soak): the exemption belongs to the stages where quiet is the correct end
+/// state and not to everything past them. A soak has started and is under contract to keep
+/// speaking, so its silence is the hang this tool exists to name.
+///
+/// **[`Stage::Prompt`] joined the exemption at milestone 268** (every architecture boots the same
+/// way: describe the machine, test yourself, hand over), and for a different reason from `Tour`'s:
+/// a kernel that finished its tour is quiet because it halted, and a system sitting at a `swish`
+/// prompt is quiet because it is *waiting for somebody to type*. Both are correct terminal states
+/// of a boot, and since that milestone the prompt is the one a default boot is supposed to reach.
+///
+/// **[`Stage::SweepDone`] joined it in part 2 of milestone 324** (the bench console cannot speak
+/// to any of the three boards), on `Tour`'s reason exactly: `kernel/src/job_mix.rs` halts in `wfi`
+/// after `job-mix: done`. [`Stage::Sweep`] is deliberately NOT here, and that asymmetry is the
+/// whole of what part 2 bought: a sweep that started and stopped is the wedge this tool exists to
+/// name, where before it and a finished sweep both ended as the clock running out. What the
+/// exemption cannot do is shorten a subrun, so see `Stage::Sweep`'s own documentation on sizing
+/// `quiet_after` against the slowest one.
+fn went_quiet(
+    policy: &Policy,
+    spoke_at: Option<Instant>,
+    settling: Option<Instant>,
+    progress: &BootProgress,
+) -> bool {
+    let (Some(limit), Some(last)) = (policy.quiet_after, spoke_at) else {
+        return false;
+    };
+    settling.is_none()
+        && !matches!(
+            progress.reached(),
+            Stage::Tour | Stage::Prompt | Stage::SweepDone
+        )
+        && last.elapsed() >= limit
+}
+
+/// Nothing more is coming, so the tail is as complete as it will ever be. This is what catches
+/// a last line printed without a newline, which a panic on a machine that then halts can be.
+/// It can only ever turn an inconclusive ending into a named failure, never the other way.
+fn judge_the_tail(feeder: &LineFeeder, progress: &mut BootProgress, outcome: Outcome) -> Outcome {
+    if !feeder.tail().is_empty() {
+        progress.observe_line(feeder.tail());
+        if let Some(failure) = progress.failure()
+            && matches!(
+                outcome,
+                Outcome::RanOut | Outcome::WentQuiet | Outcome::Ended
+            )
+        {
+            return Outcome::Announced(failure.clone());
+        }
+    }
+    outcome
 }
 
 fn reader<R: Read>(mut source: R, tx: &mpsc::Sender<Read1>, stream_never_ends: bool) {

@@ -106,74 +106,11 @@ fn attributes_written_by_the_redoxfs_server_come_back_onto_host_files() {
     tool(&["mkfs", img.to_str().unwrap(), "16"]);
     tool(&["import", img.to_str().unwrap(), src.to_str().unwrap()]);
 
-    // ---- the attributes, written by the FS SERVER's own core --------------------------------
-    let finder = noise(1024, 0x1234_5678);
-    {
-        let disk = DiskFile::open(&img).expect("open the image read-write");
-        let mut srv =
-            redoxfs_server::Server::open(disk).expect("mount the image as the FS server does");
+    let finder = write_attributes_as_the_server_does(&img);
 
-        let top = srv.open_file("top.txt").unwrap();
-        srv.set_xattr(top, b"user.com.apple.FinderInfo", xattr::RAW, &finder)
-            .unwrap();
-        srv.set_xattr(
-            top,
-            b"user.com.apple.metadata:tags",
-            CSTR,
-            b"green,backed-up",
-        )
-        .unwrap();
+    the_listing_marks_what_carries_attributes(&img);
 
-        let nested = srv
-            .open_dir(fs::ROOT as u32, "nested", dir::ALL)
-            .expect("descend into nested");
-        srv.set_xattr(nested, b"user.nife.kind", xattr::RAW, b"directory")
-            .unwrap();
-
-        let note = srv.open_file_at(nested, "note.txt").unwrap();
-        srv.set_xattr(note, b"user.nife.note", xattr::RAW, b"deep")
-            .unwrap();
-    }
-
-    // ---- the listing says which entries carry metadata --------------------------------------
-    let (listing, _) = tool(&["ls", img.to_str().unwrap(), "/"]);
-    let top_line = listing
-        .lines()
-        .find(|l| l.ends_with("top.txt"))
-        .unwrap_or_else(|| panic!("top.txt is missing from the listing:\n{listing}"));
-    assert!(
-        top_line.contains('@'),
-        "a file with attributes must be marked in the listing, got: {top_line}",
-    );
-    let store_line = listing
-        .lines()
-        .find(|l| l.ends_with(xattr::STORE_DIR))
-        .unwrap_or_else(|| panic!("the store is missing from the listing:\n{listing}"));
-    assert!(
-        !store_line.contains('@'),
-        "the store directory itself carries no attributes: {store_line}",
-    );
-
-    // ---- `xattr` renders them, so a recovery never has to open a blob by hand ----------------
-    let (rendered, _) = tool(&["xattr", img.to_str().unwrap(), "top.txt"]);
-    assert!(
-        rendered.contains("user.com.apple.FinderInfo") && rendered.contains("1024"),
-        "the listing must name the attribute and its length:\n{rendered}",
-    );
-    assert!(
-        rendered.contains("'CSTR'"),
-        "a printable type code is rendered as its four-character code:\n{rendered}",
-    );
-    let value = tool_bytes(&[
-        "xattr",
-        img.to_str().unwrap(),
-        "top.txt",
-        "user.com.apple.FinderInfo",
-    ]);
-    assert_eq!(
-        value, finder,
-        "`xattr IMAGE PATH NAME` must write the value verbatim, as `cat` does",
-    );
+    xattr_renders_them(&img, &finder);
 
     // ---- the extraction ---------------------------------------------------------------------
     let supported = host_holds_attributes(&scratch("probe-dir"));
@@ -209,7 +146,93 @@ fn attributes_written_by_the_redoxfs_server_come_back_onto_host_files() {
         "nothing should have been refused on this host:\n{summary}",
     );
 
-    // ---- the round trip, closed on the host file --------------------------------------------
+    the_round_trip_closes_on_the_host_files(&out, &finder);
+
+    the_system_xattr_agrees(&out);
+
+    cleanup(&[&src, &out], &img);
+}
+
+/// The attributes, written by the FS server's own core, the way the board writes them. Returns the
+/// 1 KiB FinderInfo value so the later checks can compare against it.
+fn write_attributes_as_the_server_does(img: &Path) -> Vec<u8> {
+    let finder = noise(1024, 0x1234_5678);
+    {
+        let disk = DiskFile::open(img).expect("open the image read-write");
+        let mut srv =
+            redoxfs_server::Server::open(disk).expect("mount the image as the FS server does");
+
+        let top = srv.open_file("top.txt").unwrap();
+        srv.set_xattr(top, b"user.com.apple.FinderInfo", xattr::RAW, &finder)
+            .unwrap();
+        srv.set_xattr(
+            top,
+            b"user.com.apple.metadata:tags",
+            CSTR,
+            b"green,backed-up",
+        )
+        .unwrap();
+
+        let nested = srv
+            .open_dir(fs::ROOT as u32, "nested", dir::ALL)
+            .expect("descend into nested");
+        srv.set_xattr(nested, b"user.nife.kind", xattr::RAW, b"directory")
+            .unwrap();
+
+        let note = srv.open_file_at(nested, "note.txt").unwrap();
+        srv.set_xattr(note, b"user.nife.note", xattr::RAW, b"deep")
+            .unwrap();
+    }
+    finder
+}
+
+/// The listing marks the entries that carry metadata, and not the store itself.
+fn the_listing_marks_what_carries_attributes(img: &Path) {
+    let (listing, _) = tool(&["ls", img.to_str().unwrap(), "/"]);
+    let top_line = listing
+        .lines()
+        .find(|l| l.ends_with("top.txt"))
+        .unwrap_or_else(|| panic!("top.txt is missing from the listing:\n{listing}"));
+    assert!(
+        top_line.contains('@'),
+        "a file with attributes must be marked in the listing, got: {top_line}",
+    );
+    let store_line = listing
+        .lines()
+        .find(|l| l.ends_with(xattr::STORE_DIR))
+        .unwrap_or_else(|| panic!("the store is missing from the listing:\n{listing}"));
+    assert!(
+        !store_line.contains('@'),
+        "the store directory itself carries no attributes: {store_line}",
+    );
+}
+
+/// `xattr` names, sizes and renders each attribute, and writes one value verbatim, so a recovery
+/// never has to open a blob by hand.
+fn xattr_renders_them(img: &Path, finder: &[u8]) {
+    let (rendered, _) = tool(&["xattr", img.to_str().unwrap(), "top.txt"]);
+    assert!(
+        rendered.contains("user.com.apple.FinderInfo") && rendered.contains("1024"),
+        "the listing must name the attribute and its length:\n{rendered}",
+    );
+    assert!(
+        rendered.contains("'CSTR'"),
+        "a printable type code is rendered as its four-character code:\n{rendered}",
+    );
+    let value = tool_bytes(&[
+        "xattr",
+        img.to_str().unwrap(),
+        "top.txt",
+        "user.com.apple.FinderInfo",
+    ]);
+    assert_eq!(
+        value, finder,
+        "`xattr IMAGE PATH NAME` must write the value verbatim, as `cat` does",
+    );
+}
+
+/// The round trip, closed on the host files `extract` wrote under `out`.
+fn the_round_trip_closes_on_the_host_files(out: &Path, finder: &[u8]) {
     let get = |p: &Path, n: &str| {
         redoxfs_host::host_xattr::get(p, n.as_bytes())
             .unwrap_or_else(|e| panic!("{}: cannot read back {n}: {e}", p.display()))
@@ -245,8 +268,10 @@ fn attributes_written_by_the_redoxfs_server_come_back_onto_host_files() {
         blobs, 3,
         "one blob per node that carries attributes: top.txt, nested, nested/note.txt",
     );
+}
 
-    // ---- confirmed by a program we did not write --------------------------------------------
+/// Confirmed by a program we did not write, where the host has one.
+fn the_system_xattr_agrees(out: &Path) {
     // Our own getter agreeing with our own setter proves less than it looks. macOS ships `xattr(1)`;
     // where it exists, ask it. Where it does not, the assertion above stands alone and says so.
     if Path::new("/usr/bin/xattr").exists() {
@@ -260,8 +285,6 @@ fn attributes_written_by_the_redoxfs_server_come_back_onto_host_files() {
             "the system's own xattr(1) does not see the attribute we reattached:\n{listed}",
         );
     }
-
-    cleanup(&[&src, &out], &img);
 }
 
 fn cleanup(dirs: &[&PathBuf], img: &Path) {

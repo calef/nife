@@ -106,73 +106,14 @@ fn session(u: &mut Unstructured) -> ArbResult<()> {
         let badge = BADGES[u.choose_index(BADGES.len())?];
         match u.int_in_range(0u8..=15)? {
             // Writers' bytes, most of the time.
-            0..=7 => {
-                let mut chunk = Vec::new();
-                while chunk.len() < 16 && !u.ratio(1, 3)? {
-                    chunk.extend_from_slice(FRAGMENTS[u.choose_index(FRAGMENTS.len())?]);
-                }
-                chunk.truncate(16);
-                let (mut w0, w1, w2, _) = pack(&chunk);
-                if u.ratio(1, 4)? {
-                    w0 = with_severity(w0, u.int_in_range(0..=7)?);
-                }
-                if u.ratio(1, 32)? {
-                    w0 = u.arbitrary()?;
-                }
-                log.handle(badge, w0, w1, w2, now);
-            }
+            0..=7 => write_chunk(u, &mut log, badge, now)?,
             8 => {
                 log.handle(badge, eof(), 0, 0, now);
             }
             // The spawner names a badge's program or user.
-            9 | 10 => {
-                if !control::badge_fits(badge) {
-                    continue;
-                }
-                let field = if u.arbitrary()? {
-                    control::PROGRAM
-                } else {
-                    control::USER
-                };
-                let name = NAMES[u.choose_index(NAMES.len())?];
-                for m in control::name_messages(badge as u32, field, name)
-                    .into_iter()
-                    .flatten()
-                {
-                    log.handle(0, m.0, m.1, m.2, now);
-                }
-                let e = model.entries.entry(badge).or_default();
-                let kept = name[..name.len().min(control::NAME_MAX)].to_vec();
-                let ever = if field == control::PROGRAM {
-                    e.program = kept.clone();
-                    &mut model.programs
-                } else {
-                    e.user = kept.clone();
-                    &mut model.users
-                };
-                ever.entry(badge).or_default().insert(kept);
-            }
+            9 | 10 => name_badge(u, &mut log, &mut model, badge, now)?,
             // The spawner makes a badge a reader, of either scope, at a window.
-            11 => {
-                if !control::badge_fits(badge) {
-                    continue;
-                }
-                let system = u.arbitrary()?;
-                let scope = if system {
-                    control::SCOPE_SYSTEM
-                } else {
-                    control::SCOPE_USER
-                };
-                let win = u.int_in_range(0u8..=5)?;
-                log.handle(
-                    0,
-                    control::word(control::OPERATION_READER, scope, win as u64, badge as u32),
-                    0,
-                    0,
-                    now,
-                );
-                model.entries.entry(badge).or_default().reader = Some((win, system));
-            }
+            11 => make_reader(u, &mut log, &mut model, badge, now)?,
             12 => {
                 if !control::badge_fits(badge) {
                     continue;
@@ -201,38 +142,136 @@ fn session(u: &mut Unstructured) -> ArbResult<()> {
                 model.entries.entry(badge).or_default();
             }
             // A read, at the reader's last cursor, from the start, or anywhere.
-            _ => {
-                let cursor = match u.int_in_range(0u8..=3)? {
-                    0 => 0,
-                    1 => u.arbitrary()?,
-                    _ => model.cursors.get(&badge).copied().unwrap_or(0),
-                };
-                let reader = model.entries.get(&badge).and_then(|e| e.reader);
-                let got = log.handle(badge, read::request(), cursor, 0, now);
-                match (reader, got) {
-                    (
-                        Some((win, _)),
-                        Handled::Read {
-                            window: w,
-                            cursor: c,
-                        },
-                    ) => {
-                        assert_eq!(
-                            (w, c),
-                            (win, cursor),
-                            "the read named another window or cursor"
-                        );
-                    }
-                    (None, Handled::Refused) => continue,
-                    (r, g) => panic!("badge {badge}: model reader {r:?}, service answered {g:?}"),
-                }
-                window.fill(0xa5);
-                log.fill(badge, cursor, &mut window);
-                let next = check(&model, badge, cursor, &window);
-                model.cursors.insert(badge, next);
-            }
+            _ => read_and_check(u, &mut log, &mut model, &mut window, badge, now)?,
         }
     }
+    Ok(())
+}
+
+/// A writer's chunk of up to sixteen bytes built from [`FRAGMENTS`], sometimes with a severity and
+/// rarely with a wholly arbitrary first word.
+fn write_chunk(u: &mut Unstructured, log: &mut Log, badge: u64, now: u64) -> ArbResult<()> {
+    let mut chunk = Vec::new();
+    while chunk.len() < 16 && !u.ratio(1, 3)? {
+        chunk.extend_from_slice(FRAGMENTS[u.choose_index(FRAGMENTS.len())?]);
+    }
+    chunk.truncate(16);
+    let (mut w0, w1, w2, _) = pack(&chunk);
+    if u.ratio(1, 4)? {
+        w0 = with_severity(w0, u.int_in_range(0..=7)?);
+    }
+    if u.ratio(1, 32)? {
+        w0 = u.arbitrary()?;
+    }
+    log.handle(badge, w0, w1, w2, now);
+    Ok(())
+}
+
+/// The spawner names `badge`'s program or user, and the model records the name as one a record
+/// from that badge may now be stamped with.
+fn name_badge(
+    u: &mut Unstructured,
+    log: &mut Log,
+    model: &mut Model,
+    badge: u64,
+    now: u64,
+) -> ArbResult<()> {
+    if !control::badge_fits(badge) {
+        return Ok(());
+    }
+    let field = if u.arbitrary()? {
+        control::PROGRAM
+    } else {
+        control::USER
+    };
+    let name = NAMES[u.choose_index(NAMES.len())?];
+    for m in control::name_messages(badge as u32, field, name)
+        .into_iter()
+        .flatten()
+    {
+        log.handle(0, m.0, m.1, m.2, now);
+    }
+    let e = model.entries.entry(badge).or_default();
+    let kept = name[..name.len().min(control::NAME_MAX)].to_vec();
+    let ever = if field == control::PROGRAM {
+        e.program = kept.clone();
+        &mut model.programs
+    } else {
+        e.user = kept.clone();
+        &mut model.users
+    };
+    ever.entry(badge).or_default().insert(kept);
+    Ok(())
+}
+
+/// The spawner makes `badge` a reader of either scope at a window.
+fn make_reader(
+    u: &mut Unstructured,
+    log: &mut Log,
+    model: &mut Model,
+    badge: u64,
+    now: u64,
+) -> ArbResult<()> {
+    if !control::badge_fits(badge) {
+        return Ok(());
+    }
+    let system = u.arbitrary()?;
+    let scope = if system {
+        control::SCOPE_SYSTEM
+    } else {
+        control::SCOPE_USER
+    };
+    let win = u.int_in_range(0u8..=5)?;
+    log.handle(
+        0,
+        control::word(control::OPERATION_READER, scope, win as u64, badge as u32),
+        0,
+        0,
+        now,
+    );
+    model.entries.entry(badge).or_default().reader = Some((win, system));
+    Ok(())
+}
+
+/// A read at the reader's last cursor, from the start, or anywhere: the service must answer a
+/// registered reader with its own window and refuse anyone else, and what it fills is held to
+/// rules 1 to 4 by [`check`].
+fn read_and_check(
+    u: &mut Unstructured,
+    log: &mut Log,
+    model: &mut Model,
+    window: &mut [u8],
+    badge: u64,
+    now: u64,
+) -> ArbResult<()> {
+    let cursor = match u.int_in_range(0u8..=3)? {
+        0 => 0,
+        1 => u.arbitrary()?,
+        _ => model.cursors.get(&badge).copied().unwrap_or(0),
+    };
+    let reader = model.entries.get(&badge).and_then(|e| e.reader);
+    let got = log.handle(badge, read::request(), cursor, 0, now);
+    match (reader, got) {
+        (
+            Some((win, _)),
+            Handled::Read {
+                window: w,
+                cursor: c,
+            },
+        ) => {
+            assert_eq!(
+                (w, c),
+                (win, cursor),
+                "the read named another window or cursor"
+            );
+        }
+        (None, Handled::Refused) => return Ok(()),
+        (r, g) => panic!("badge {badge}: model reader {r:?}, service answered {g:?}"),
+    }
+    window.fill(0xa5);
+    log.fill(badge, cursor, window);
+    let next = check(model, badge, cursor, window);
+    model.cursors.insert(badge, next);
     Ok(())
 }
 
