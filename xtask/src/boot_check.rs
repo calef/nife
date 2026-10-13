@@ -191,9 +191,6 @@ fn boot_check_leg(
     pack: fn() -> bool,
     archive: fn() -> String,
 ) -> bool {
-    use board_console::progress::{Failure, Stage};
-    use board_console::watch::{Outcome, Policy};
-
     eprintln!();
     eprintln!(
         "--- boot-check ({arch}): boot the default kernel and climb the ladder to the prompt{} ---",
@@ -218,6 +215,61 @@ fn boot_check_leg(
         return false;
     }
 
+    let Some((mut child, stdout)) = start_boot_check_leg(arch, target, runner, archive) else {
+        return false;
+    };
+
+    // The same recogniser `cargo xtask board-console` points at a real board, which is the point:
+    // a gate that used a second reader would be gating something the bench does not measure.
+    let policy = boot_check_policy();
+
+    let log_path = format!(
+        "target/boot-check-{arch}{}.log",
+        if inject { "-injected" } else { "" }
+    );
+    let mut sink: Box<dyn std::io::Write> = match std::fs::File::create(&log_path) {
+        Ok(f) => Box::new(std::io::BufWriter::new(f)),
+        Err(e) => {
+            eprintln!("boot-check ({arch}): cannot write {log_path}: {e}");
+            let _ = child.kill();
+            let _ = child.wait();
+            return false;
+        }
+    };
+    // `stream_never_ends: false`: this is a pipe, so a zero-byte read means the emulator is gone.
+    let session = board_console::watch::watch(stdout, &mut *sink, &policy, false);
+    let _ = sink.flush();
+
+    stop_boot_check_leg(&mut child);
+
+    let session = match session {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("boot-check ({arch}): reading the console failed: {e}");
+            eprintln!("boot-check ({arch}): log at {log_path}");
+            return false;
+        }
+    };
+
+    eprintln!("boot-check ({arch}): {}", session.summary());
+    if let Some(line) = session.progress.machine_line() {
+        eprintln!("boot-check ({arch}): {line}");
+    }
+    if let Some(line) = session.progress.self_test_line() {
+        eprintln!("boot-check ({arch}): {line}");
+    }
+
+    boot_check_verdict(&session, arch, inject, &log_path)
+}
+
+/// **Start the leg's emulator** on the kernel just built and the archive `archive` names, its
+/// console piped. `None` after saying why it did not start.
+fn start_boot_check_leg(
+    arch: &str,
+    target: &str,
+    runner: &str,
+    archive: fn() -> String,
+) -> Option<(std::process::Child, std::process::ChildStdout)> {
     // The runner directly rather than through `cargo run`, so the process this owns is the
     // emulator (or, on x86, its wrapper; see the kill below). A `cargo run` in between would leave
     // the emulator alive when the kill lands on cargo, which is the leak AGENTS.md's QEMU rule
@@ -247,15 +299,19 @@ fn boot_check_leg(
         Ok(c) => c,
         Err(e) => {
             eprintln!("boot-check ({arch}): failed to start {runner}: {e}");
-            return false;
+            return None;
         }
     };
-    let runner_pid = child.id();
     let stdout = child.stdout.take().expect("piped stdout");
 
-    // The same recogniser `cargo xtask board-console` points at a real board, which is the point:
-    // a gate that used a second reader would be gating something the bench does not measure.
-    let policy = Policy {
+    Some((child, stdout))
+}
+
+/// **What the leg waits for and how long**, in `board_console`'s terms.
+fn boot_check_policy() -> board_console::watch::Policy {
+    use board_console::progress::Stage;
+
+    board_console::watch::Policy {
         // Generous: a debug kernel under TCG on a loaded CI runner is slow, and the cost of a
         // too-short cap is a red build that means nothing.
         total: std::time::Duration::from_secs(180),
@@ -277,52 +333,33 @@ fn boot_check_leg(
         // changes no behaviour, since an absent marker is never matched either way; it changes
         // what a report says the tool was expecting.
         board: &board_console::board::XENON,
-    };
+    }
+}
 
-    let log_path = format!(
-        "target/boot-check-{arch}{}.log",
-        if inject { "-injected" } else { "" }
-    );
-    let mut sink: Box<dyn std::io::Write> = match std::fs::File::create(&log_path) {
-        Ok(f) => Box::new(std::io::BufWriter::new(f)),
-        Err(e) => {
-            eprintln!("boot-check ({arch}): cannot write {log_path}: {e}");
-            let _ = child.kill();
-            let _ = child.wait();
-            return false;
-        }
-    };
-    // `stream_never_ends: false`: this is a pipe, so a zero-byte read means the emulator is gone.
-    let session = board_console::watch::watch(stdout, &mut *sink, &policy, false);
-    let _ = sink.flush();
-
-    // Kill any QEMU the runner spawned before killing the runner itself. On `q35` the runner is a
+/// Kill any QEMU the runner spawned before killing the runner itself.
+fn stop_boot_check_leg(child: &mut std::process::Child) {
+    // On `q35` the runner is a
     // *wrapper* that runs the emulator as a plain child rather than `exec`-ing into it, so
     // `child.kill()` alone orphans the emulator rather than ending it. The other two runners
     // `exec`, so this finds nothing there. Best effort, silent either way. Same reasoning as
     // `run_bench`; see AGENTS.md, "Never leave QEMU running".
     let _ = Command::new("pkill")
-        .args(["-9", "-P", &runner_pid.to_string()])
+        .args(["-9", "-P", &child.id().to_string()])
         .status();
     let _ = child.kill();
     let _ = child.wait();
+}
 
-    let session = match session {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("boot-check ({arch}): reading the console failed: {e}");
-            eprintln!("boot-check ({arch}): log at {log_path}");
-            return false;
-        }
-    };
-
-    eprintln!("boot-check ({arch}): {}", session.summary());
-    if let Some(line) = session.progress.machine_line() {
-        eprintln!("boot-check ({arch}): {line}");
-    }
-    if let Some(line) = session.progress.self_test_line() {
-        eprintln!("boot-check ({arch}): {line}");
-    }
+/// **The leg's verdict**: green climbed to the prompt with nothing failed, and an injected run
+/// must come back red instead. A failure says which, and where the log is.
+fn boot_check_verdict(
+    session: &board_console::watch::Session,
+    arch: &str,
+    inject: bool,
+    log_path: &str,
+) -> bool {
+    use board_console::progress::{Failure, Stage};
+    use board_console::watch::Outcome;
 
     let red = matches!(
         session.outcome,
