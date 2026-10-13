@@ -19,9 +19,8 @@ Plus an A record (`192.168.8.1`) and an AAAA in every response. Findings that be
 
 - One `_adisk` instance for all shares. The disks are `dkN=` entries inside a single TXT record.
   Emitting one announcement per share would be wrong.
-- Two disks is correct. The roadmap block described three users; one moved from macOS to
-  Windows and that share was dropped, so the reference advertises two (calef confirmed,
-  2026-08-15).
+- Two disks is correct. Of the three users the roadmap block names, one is on Windows and has no
+  share, so the reference advertises two (calef confirmed, 2026-08-15).
 - `model=MacSamba`, not `TimeCapsule`. The router's own Samba config sets
   `fruit:model = TimeCapsule`, and its mDNS advertisement says `MacSamba` anyway: the SMB-side AAPL
   model and the `_device-info` TXT are separate knobs, and the working reference runs with them

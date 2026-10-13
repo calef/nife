@@ -15,9 +15,8 @@ Both of those lines are from the first run it ever did, which is the only eviden
 ## The gap it watches
 
 It watches the gap the drain and the trunk watcher cannot see. Everything they do starts from
-`gh pr list`, so a lane that pushed a branch and opened nothing is invisible to both. Invisible is
-exactly what it was. On 2026-08-31 two lanes did that, and it was noticed because calef asked. The
-rule they broke is AGENTS.md §90 (the claim is a draft pull request; the status flip is a gate): *a
+`gh pr list`, so a lane that pushed a branch and opened nothing is invisible to both. The rule such
+a lane breaks is AGENTS.md §90 (the claim is a draft pull request; the status flip is a gate): *a
 lane's first act is a draft pull request*. That rule exists because the draft is the claim. It is the
 whole mechanism preventing two lanes from silently taking the same milestone, and the board is one
 command.

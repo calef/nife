@@ -3,9 +3,8 @@
 *An appendix to [`notes/net.md`](../net.md), which is the page to read. This file holds the two
 design questions `LISTEN` and `ACCEPT` raised, the concurrency they ship with, and the host-to-guest
 gate. It exists to verify or challenge the main page. A reader who only needs to use the socket
-contract should not have to open it. Moved from the main page on 2026-09-25 (UTC), verbatim apart
-from links that had to follow it. The directory `notes/net/` and this file's stem are provisional
-names, minted by the lane that split the file; naming is calef's.*
+contract should not have to open it. The directory `notes/net/` and this file's stem are provisional
+names; naming is calef's.*
 
 *Records cited below: milestone 32 (a real filesystem), milestone 54 (a network file service a Mac
 can mount), milestone 55 (Time Machine), milestone 64 (enough `std` to run somebody else's crate),
