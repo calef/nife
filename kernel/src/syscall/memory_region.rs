@@ -49,13 +49,13 @@ pub(super) fn memory_region_invoke(
             if !capability.rights.allows(Rights::WRITE) {
                 return Err(Error::NotPermitted);
             }
-            super::retype::memory_region_retype_obj(region, a0, a1, a2)
+            super::retype::memory_region_retype_obj(capability, region, a0, a1, a2)
         }
         abi::memory_region::RETYPE => {
             if !capability.rights.allows(Rights::WRITE) {
                 return Err(Error::NotPermitted);
             }
-            memory_region_retype(region, a0)
+            memory_region_retype(capability, region, a0)
         }
         abi::memory_region::SPLIT => {
             if !capability.rights.allows(Rights::WRITE) {
@@ -143,13 +143,18 @@ pub(super) fn memory_region_map(region: u64, va: u64) -> Result<i64, Error> {
 }
 
 /// `MemoryRegion::RETYPE`: retype `a0` pages (`0` meaning one) into one `PageFrame` capability the
-/// caller now holds, instead of mapping them in one shot. The caller gets full rights on its own
-/// frame (read, write, and the right to pass it on); delegation is where those narrow. Nothing is
-/// mapped yet. The count arrived with calef's ruling of 2026-09-26 and a run is the `PageFrame` run of
+/// caller now holds, instead of mapping them in one shot. **The frame carries the budget's rights
+/// and no others** (milestone 824 (a retype mints no right its budget lacks), calef's ruling (a) of
+/// 2026-10-07 UTC): a `WRITE`-only budget mints a `WRITE`-only frame, so `GRANT` is delegated down
+/// the budget tree and never minted at a leaf. Nothing is mapped yet. The count arrived with calef's ruling of 2026-09-26 and a run is the `PageFrame` run of
 /// §102 (a Frame names a run of pages); every caller before it passed `0`. `#[inline(never)]` for the reason `memory_region_map`
 /// gives.
 #[inline(never)]
-pub(super) fn memory_region_retype(region: u64, requested: u64) -> Result<i64, Error> {
+pub(super) fn memory_region_retype(
+    capability: Capability,
+    region: u64,
+    requested: u64,
+) -> Result<i64, Error> {
     let (phys, count) =
         crate::memory_region::retype_run(region, requested).ok_or(Error::OutOfMemory)?;
     // The run is non-empty by construction (`retype_pages` never returns zero).
@@ -161,7 +166,9 @@ pub(super) fn memory_region_retype(region: u64, requested: u64) -> Result<i64, E
     // a run has no such inverse today. `memory_region_retype_obj`'s arms are the same shape, an
     // object nobody can name. Bounded by the caller's own region, so a self-inflicted cost, not a
     // leak into anyone else's budget.
-    let slot = sched::grant(crate::cap::page_frame_run_cap(phys, count, Rights::ALL))
+    // `mint_child`, `SPLIT`'s inheriting mint and the one `split_never_widens_rights` proves: the
+    // intersection of the budget's rights with `Rights::ALL` is the budget's rights.
+    let slot = sched::grant(capability.mint_child(Object::PageFrame(phys, count)))
         .map_err(|_| Error::OutOfMemory)?;
     Ok(slot as i64)
 }

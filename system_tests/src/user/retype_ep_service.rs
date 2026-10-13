@@ -1,5 +1,5 @@
 use super::*;
-use crate::cap::{Rights, memory_region_cap, rendezvous_cap};
+use crate::cap::{Rights, memory_region_lending_capability, rendezvous_cap};
 use crate::sched::RendezvousId;
 
 /// Spawn the pair; returns the report endpoint carrying the word that crossed the minted
@@ -23,8 +23,8 @@ pub fn wire(endpoints: u64) -> RendezvousId {
                 arg1: 0,
                 arg2: 0,
                 grants: &[
-                    memory_region_cap(region),              // slot 0: the budget to mint from
-                    rendezvous_cap(channel, Rights::WRITE), // slot 1: delegate the mint here
+                    memory_region_lending_capability(region), // slot 0: the budget to mint from
+                    rendezvous_cap(channel, Rights::WRITE),   // slot 1: delegate the mint here
                 ],
                 maps: &[],
             },

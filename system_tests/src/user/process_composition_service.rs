@@ -1,5 +1,5 @@
 use super::*;
-use crate::cap::{Rights, memory_region_cap, rendezvous_cap};
+use crate::cap::{Rights, memory_region_lending_capability, rendezvous_cap};
 use crate::sched::RendezvousId;
 use crate::thread::ThreadId;
 
@@ -85,7 +85,7 @@ pub fn wire() -> Witness {
     let tid = crate::sched::create_thread_control_block(thread_control_block_region)
         .expect("no tcb for the witness");
     for (want, cap, what) in [
-        (0, memory_region_cap(budget), "the budget"),
+        (0, memory_region_lending_capability(budget), "the budget"),
         (1, rendezvous_cap(report, Rights::WRITE), "the report line"),
     ] {
         let slot = crate::sched::thread_control_block_insert_cap(tid, cap, None)

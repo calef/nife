@@ -173,6 +173,10 @@ impl<O> Cap<O> {
     /// [`split_never_widens_rights`](../src/lib.rs) proof, so a spend-only (GRANT-less) untyped cannot
     /// split itself a GRANT-bearing child and manufacture the right its own capability was denied. See
     /// DECISIONS §16 and notes/verification.md.
+    ///
+    /// `MemoryRegion::RETYPE` and every `RETYPE_OBJ` arm mint here too since milestone 824 (a retype
+    /// mints no right its budget lacks): a page frame or kernel object carved from a budget carries
+    /// the budget's rights, so the same proof covers what a budget makes as well as how it divides.
     pub fn mint_child(&self, object: O) -> Cap<O> {
         Cap {
             object,
@@ -910,7 +914,7 @@ mod verification {
     /// syscall layer relies on is checked here and not inferred by a reader).
     ///
     /// The delegability is therefore a property of the *root's* mint, not a widening at `SPLIT`:
-    /// `memory_region_root_cap` mints once with `READ|WRITE|GRANT`, `SPLIT` inherits whatever the parent
+    /// `memory_region_root_cap` mints once with `Rights::ALL`, `SPLIT` inherits whatever the parent
     /// holds, `CAP_INSERT` narrows on the way into a child. Rights down a budget tree are monotonically
     /// non-increasing from the root, a child holds `GRANT` only because the root did, and a spend-only
     /// untyped provably cannot split itself a `GRANT`-bearing child.

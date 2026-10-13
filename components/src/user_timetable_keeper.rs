@@ -157,7 +157,7 @@ pub extern "C" fn _start(image_len: u64, _a1: u64, _a2: u64) -> ! {
         &elf,
         &ChildEndowment {
             placed: &[
-                (tt::BUDGET_SLOT, jobs, abi::rights::WRITE),
+                (tt::BUDGET_SLOT, jobs, abi::rights::SPEND_ONLY),
                 (
                     tt::DEATHS_SLOT,
                     deaths,

@@ -54,8 +54,11 @@ type Granted = crate::cap::Cap;
 fn endpoint(ep: RendezvousId, rights: Rights) -> Granted {
     crate::cap::rendezvous_cap(ep, rights)
 }
+/// A lending budget: each client retypes its socket page from it and lends the page to the stack,
+/// and since milestone 824 (a retype mints no right its budget lacks) the page carries the budget's
+/// rights.
 fn budget(region: u64) -> Granted {
-    crate::cap::memory_region_cap(region)
+    crate::cap::memory_region_lending_capability(region)
 }
 
 /// Bounded by wall clock, `ntp_tests`' discipline: a lost wakeup fails loudly instead of hanging.

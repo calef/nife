@@ -222,14 +222,15 @@ fn a_cancelled_or_rearmed_timer_never_fires_stale() {
     reclaim(r);
 }
 
-/// **The syscall layer**: `RETYPE_OBJ` mints a full-rights timer; `ARM` needs `WRITE` on the timer
+/// **The syscall layer**: `RETYPE_OBJ` mints a full-rights timer from a full-rights budget (since
+/// milestone 824 (a retype mints no right its budget lacks) it carries the budget's rights); `ARM` needs `WRITE` on the timer
 /// and on the notification and refuses a slot that is not a notification; a deadline already
 /// passed signals before `ARM` returns; and a notification destroyed under an armed timer turns the
 /// expiry into a no-op rather than a fault in interrupt context.
 #[test_case]
 fn arm_checks_both_capabilities_and_a_past_deadline_signals_at_once() {
     let r = region();
-    let ut = sched::grant(crate::cap::memory_region_cap(r)).expect("grant the region");
+    let ut = sched::grant(crate::cap::memory_region_root_cap(r)).expect("grant the region");
     let full = invoke(
         ut,
         abi::memory_region::RETYPE_OBJ,

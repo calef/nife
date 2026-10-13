@@ -101,7 +101,7 @@ use job_mix::{
     SUBRUN, TASK_SWEEP,
 };
 
-use crate::cap::{Rights, memory_region_cap, rendezvous_cap};
+use crate::cap::{Rights, memory_region_lending_capability, rendezvous_cap};
 use crate::user::{self, Spawn};
 use crate::{arch, println, sched, smp};
 
@@ -242,7 +242,7 @@ fn spawn_tasks(image: &'static [u8], pool: &Pool, placed: &mut [u8; ECHO_SERVERS
             rendezvous_cap(report, Rights::WRITE),
             rendezvous_cap(go[i], Rights::READ),
             rendezvous_cap(echo[i % ECHO_SERVERS], Rights::WRITE),
-            memory_region_cap(budget[i]),
+            memory_region_lending_capability(budget[i]),
             rendezvous_cap(
                 child_done[i],
                 Rights::READ.union(Rights::WRITE).union(Rights::GRANT),

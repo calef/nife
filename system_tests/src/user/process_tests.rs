@@ -160,8 +160,12 @@ fn lay_out(region: u64, programs: &[&[u32]]) -> (u64, u64) {
 }
 
 /// **A process around `space`, through the real `RETYPE_OBJ`.** Returns `(capability slot, id)`.
+/// Retyped from the root budget's rights, as the progenitor's are, because since milestone 824 (a
+/// retype mints no right its budget lacks) the process carries its budget's rights and the joins
+/// below need `BIND`.
 fn create_process(region: u64, space: u64) -> (u64, sched::ProcessId) {
-    let untyped = sched::grant(crate::cap::memory_region_cap(region)).expect("grant");
+    let untyped =
+        sched::grant(crate::cap::memory_region_lending_capability(region)).expect("grant");
     let given = sched::grant(crate::cap::address_space_cap(space, Rights::WRITE)).expect("grant");
     let slot = call(
         untyped,

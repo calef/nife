@@ -1,6 +1,7 @@
 use super::*;
 use crate::cap::{
-    Rights, memory_region_cap, page_frame_cap, rendezvous_cap, rendezvous_cap_badged,
+    Rights, memory_region_cap, memory_region_lending_capability, page_frame_cap, rendezvous_cap,
+    rendezvous_cap_badged,
 };
 use crate::sched::RendezvousId;
 use crate::user::holding::Holding;
@@ -363,8 +364,14 @@ fn spawn_std(
         if let Some(net) = net {
             crate::sched::grant_at(STACK_SLOT, rendezvous_cap(net.stack, Rights::WRITE))
                 .expect("the std stack slot was already occupied");
-            crate::sched::grant_at(NET_MEMORY_REGION_SLOT, memory_region_cap(net.frames))
-                .expect("the std socket-frame slot was already occupied");
+            // Lending, because the socket pages retyped from it are lent to the stack, and since
+            // milestone 824 (a retype mints no right its budget lacks) a page carries its budget's
+            // rights (`std_layout`'s slot 3 says why).
+            crate::sched::grant_at(
+                NET_MEMORY_REGION_SLOT,
+                memory_region_lending_capability(net.frames),
+            )
+            .expect("the std socket-frame slot was already occupied");
             if let Some((resolver, badge)) = net.resolver {
                 crate::sched::grant_at(
                     std_runtime_protocol::RESOLVER_SLOT,

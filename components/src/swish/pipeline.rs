@@ -1047,7 +1047,9 @@ fn spawn_stage(
         delegate(slot, abi::rights::READ | abi::rights::GRANT);
     }
     if let Some(slot) = mem_slot {
-        delegate(slot, abi::rights::WRITE | abi::rights::GRANT);
+        // Every right, for `running`'s reason (milestone 824 (a retype mints no right its budget
+        // lacks)).
+        delegate(slot, abi::rights::ALL);
         cap_delete(slot);
     }
     delegate_machine_page(wiring.machine);
@@ -1095,7 +1097,9 @@ fn release_pipeline(region: u64, pipes: &[u64]) {
 }
 
 /// RETYPE one page of `region` into an `Rendezvous` we hold with full rights, which is what lets us
-/// delegate a narrowed view of it to each end of a pipe.
+/// delegate a narrowed view of it to each end of a pipe. Full because the shell's budget carries
+/// every right, and since milestone 824 (a retype mints no right its budget lacks) a retype mints
+/// its budget's rights.
 pub(super) fn retype_rendezvous(region: u64) -> Option<u64> {
     let r = retype_into_kernel_object(region, abi::objtype::RENDEZVOUS);
     if r < 0 { None } else { Some(r as u64) }

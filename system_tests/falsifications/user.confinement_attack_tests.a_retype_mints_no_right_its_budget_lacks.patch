@@ -1,0 +1,28 @@
+Falsifies `system_tests::user::confinement_attack_tests::a_retype_mints_no_right_its_budget_lacks`.
+
+Architecture: aarch64
+
+The patch puts back the mint milestone 824 (a retype mints no right its budget lacks) removed:
+`MemoryRegion::RETYPE` hands back its frame with `Rights::ALL` whatever the budget holds, so a
+`GRANT`-less budget carves a frame its holder can lend.
+
+Expected to fail: `assert_eq!` "a GRANT-less budget RETYPEd a frame carrying rights it lacks", with
+`left: Rights(31)` and `right: Rights(2)`. Replayed on 2026-10-12 (UTC) by milestone 824's lane:
+red at exactly that assertion on aarch64.
+
+diff --git a/kernel/src/syscall/memory_region.rs b/kernel/src/syscall/memory_region.rs
+index a29098864..91fdb0988 100644
+--- a/kernel/src/syscall/memory_region.rs
++++ b/kernel/src/syscall/memory_region.rs
+@@ -168,7 +168,10 @@ pub(super) fn memory_region_retype(
+     // leak into anyone else's budget.
+     // `mint_child`, `SPLIT`'s inheriting mint and the one `split_never_widens_rights` proves: the
+     // intersection of the budget's rights with `Rights::ALL` is the budget's rights.
+-    let slot = sched::grant(capability.mint_child(Object::PageFrame(phys, count)))
++    let slot = sched::grant(Capability {
++        rights: Rights::ALL,
++        ..capability.mint_child(Object::PageFrame(phys, count))
++    })
+         .map_err(|_| Error::OutOfMemory)?;
+     Ok(slot as i64)
+ }

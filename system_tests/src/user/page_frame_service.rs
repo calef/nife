@@ -1,5 +1,5 @@
 use super::*;
-use crate::cap::{Rights, memory_region_cap, rendezvous_cap};
+use crate::cap::{Rights, memory_region_cap, memory_region_lending_capability, rendezvous_cap};
 use crate::sched::RendezvousId;
 
 /// Spawn the pair, each with its own untyped budget, and return the endpoint the consumer
@@ -26,7 +26,10 @@ pub fn wire(endpoints: u64) -> RendezvousId {
                 arg1: 0,
                 arg2: 0,
                 grants: &[
-                    memory_region_cap(prod_ut), // slot 0: retype the frame + page tables
+                    // slot 0: retype the frame + page tables. Every right, because the frame is
+                    // lent, and since milestone 824 (a retype mints no right its budget
+                    // lacks) a frame carries its budget's rights.
+                    memory_region_lending_capability(prod_ut),
                     rendezvous_cap(channel, Rights::WRITE), // slot 1: delegate the frame
                 ],
                 maps: &[],

@@ -315,11 +315,12 @@ fn bind_is_once_per_side_and_a_destroyed_binding_frees_the_thread() {
 /// **The rights are §101's, enforced at the syscall layer**: `WRITE` signals and binds, `READ`
 /// waits and polls, and neither does the other's job. Driven through `syscall::invoke` so the
 /// boundary is what is proved, not the helper behind it. `RETYPE_OBJ` mints the object, and the
-/// creator's capability carries every right.
+/// creator's capability carries every right its budget holds (milestone 824 (a retype mints no
+/// right its budget lacks)); the budget here is the root's, `Rights::ALL`.
 #[test_case]
 fn the_rights_are_101s_and_retype_obj_mints_a_full_rights_notification() {
     let r = region();
-    let ut = sched::grant(crate::cap::memory_region_cap(r)).expect("grant the region");
+    let ut = sched::grant(crate::cap::memory_region_root_cap(r)).expect("grant the region");
     let (minted, _) = invoke(
         ut,
         abi::memory_region::RETYPE_OBJ,
@@ -449,7 +450,7 @@ fn a_program_binds_a_notification_and_receive_tells_a_signal_from_a_forgery() {
                 arg1: 0,
                 arg2: 0,
                 grants: &[
-                    crate::cap::memory_region_cap(budget),
+                    crate::cap::memory_region_lending_capability(budget),
                     crate::cap::thread_control_block_cap(me, Rights::WRITE),
                     crate::cap::rendezvous_cap(ep, Rights::READ),
                     crate::cap::rendezvous_cap(report, Rights::WRITE),

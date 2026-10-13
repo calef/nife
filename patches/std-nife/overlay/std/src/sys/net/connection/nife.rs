@@ -323,7 +323,8 @@ fn take_socket(id: u64, socket: u64, carries_bytes: bool) -> io::Result<()> {
         return Ok(());
     }
     let page = ensure_page(id).and_then(|frame| {
-        // SAFETY: plain syscall; the frame carries GRANT (minted by RETYPE), narrowed here.
+        // SAFETY: plain syscall; the frame carries its budget's GRANT (slot 3's, milestone 824 (a
+        // retype mints no right its budget lacks)), narrowed here.
         let sent = unsafe {
             rt::invoke(
                 socket,
@@ -1093,7 +1094,8 @@ fn ensure_resolver_page(_held: &ResolverGuard) -> io::Result<()> {
     if unsafe { rt::invoke(frame, abi::page_frame::MAP, rt::RESOLVER_PAGE, 1, NET_MEMORY_REGION) } < 0 {
         return Err(io::const_error!(io::ErrorKind::Other, "mapping the resolver page failed"));
     }
-    // SAFETY: plain syscall; the frame carries GRANT (minted by RETYPE), narrowed here.
+    // SAFETY: plain syscall; the frame carries its budget's GRANT (slot 3's, milestone 824 (a
+    // retype mints no right its budget lacks)), narrowed here.
     let sent = unsafe {
         rt::invoke(
             rt::RESOLVER_SLOT,

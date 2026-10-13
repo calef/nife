@@ -1197,7 +1197,9 @@ pub(super) fn build_shell(
     n_caps += 1;
     sh_caps[n_caps] = (chan.result_ep, abi::rights::READ);
     n_caps += 1;
-    sh_caps[n_caps] = (sh_budget, abi::rights::WRITE | abi::rights::GRANT);
+    // Every right: the shell builds and lends from it, and since milestone 824 (a retype mints no
+    // right its budget lacks) what it retypes carries the budget's rights.
+    sh_caps[n_caps] = (sh_budget, abi::rights::ALL);
     n_caps += 1;
     sh_maps[n_maps] = (SH_OUT_VA, w.term.out, abi::address_space::MAP_RW); // text and prompts
     n_maps += 1;
@@ -1464,7 +1466,7 @@ fn start_credential_services(
                 (prov, abi::rights::READ),
                 (verify, abi::rights::READ),
                 (request, abi::rights::WRITE),
-                (cred_budget, abi::rights::WRITE),
+                (cred_budget, abi::rights::SPEND_ONLY),
                 (cred_ready, abi::rights::WRITE),
             ],
             maps: &[
@@ -1715,7 +1717,7 @@ fn start_login(
                 // too, in total silence, the same way every other capacity mismatch in
                 // `boot` has.
                 (login_page, abi::rights::WRITE | abi::rights::GRANT),
-                (login_ut, abi::rights::WRITE | abi::rights::GRANT),
+                (login_ut, abi::rights::ALL),
                 (audit, abi::rights::WRITE),
                 (term_ep, abi::rights::WRITE | abi::rights::GRANT),
             ],

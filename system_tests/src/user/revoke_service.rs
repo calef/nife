@@ -1,5 +1,5 @@
 use super::*;
-use crate::cap::{Rights, memory_region_cap, rendezvous_cap};
+use crate::cap::{Rights, memory_region_lending_capability, rendezvous_cap};
 use crate::sched::RendezvousId;
 
 /// Spawn the revoker with an 8-page memory region; returns the endpoint it reports its verdict on.
@@ -20,8 +20,8 @@ pub fn wire(endpoints: u64) -> RendezvousId {
                 arg1: 0,
                 arg2: 0,
                 grants: &[
-                    memory_region_cap(region),             // slot 0: retype + page tables
-                    rendezvous_cap(report, Rights::WRITE), // slot 1: report the verdict
+                    memory_region_lending_capability(region), // slot 0: retype + page tables
+                    rendezvous_cap(report, Rights::WRITE),    // slot 1: report the verdict
                 ],
                 maps: &[],
             },

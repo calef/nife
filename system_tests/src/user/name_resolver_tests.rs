@@ -23,7 +23,7 @@ use name_resolution_protocol::{
 };
 
 use super::*;
-use crate::cap::{Rights, memory_region_cap, rendezvous_cap, rendezvous_cap_badged};
+use crate::cap::{Rights, memory_region_lending_capability, rendezvous_cap, rendezvous_cap_badged};
 use crate::sched::RendezvousId;
 use crate::user::holding::Holding;
 
@@ -133,7 +133,7 @@ pub(super) fn start_resolver(
                 grants: &[
                     rendezvous_cap(service, Rights::READ), // slot 0: grants and requests
                     rendezvous_cap(stack, Rights::WRITE),  // slot 1: the network
-                    memory_region_cap(budget),             // slot 2: the pages
+                    memory_region_lending_capability(budget), // slot 2: the pages
                     rendezvous_cap(entropy, Rights::WRITE), // slot 3: transaction ids
                 ],
                 maps: &maps[..RESOLVER_STACK_PAGES as usize],
@@ -179,7 +179,7 @@ fn start_client(
         let grants = [
             rendezvous_cap(report, Rights::WRITE), // slot 0
             rendezvous_cap_badged(service, Rights::WRITE, badge as u64), // slot 1
-            memory_region_cap(budget),             // slot 2
+            memory_region_lending_capability(budget), // slot 2
             rendezvous_cap(stack.unwrap_or(report), Rights::WRITE), // slot 3
         ];
         run(

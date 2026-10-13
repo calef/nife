@@ -97,9 +97,11 @@ pub(super) fn spawn_interruptible(e: Endowment) {
     jf.write(job_page_frame::STATUS as u64, 0u64);
     jf.write(job_page_frame::HEARTBEAT as u64, 0u64);
 
-    // Direct the progenitor: an interruptible request, then the job untyped and the job frame, both delegated
-    // WRITE|GRANT (the progenitor builds from the untyped and maps the frame). We keep our own copies: the
-    // untyped to tear the job down, the frame to signal it and read it.
+    // Direct the progenitor: an interruptible request, then the job untyped, delegated with every
+    // right (the progenitor builds from it, and since milestone 824 (a retype mints no right its
+    // budget lacks) what it builds carries the budget's rights), and the job frame, WRITE|GRANT (the
+    // progenitor maps it). We keep our own copies: the untyped to tear the job down, the frame to
+    // signal it and read it.
     let (w0, w1, w2) = spawnproto::request(
         e.prog.id(),
         e.arg,
@@ -141,7 +143,7 @@ pub(super) fn spawn_interruptible(e: Endowment) {
     leave_raw();
     CONSUMED.store(intr_count(), core::sync::atomic::Ordering::Relaxed);
     send(SPAWN, w0, w1, w2);
-    send_cap(job_ut);
+    delegate(job_ut, abi::rights::ALL);
     send_cap(job_fr);
 
     // The progenitor acks once the child is running: that is the shell's go-ahead to start watching.

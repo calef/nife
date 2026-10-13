@@ -36,7 +36,7 @@
 
 use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use crate::cap::{Rights, address_space_cap, memory_region_cap, page_frame_cap, rendezvous_cap};
+use crate::cap::{Rights, address_space_cap, page_frame_cap, rendezvous_cap};
 use crate::{println, sched};
 
 // **Every function of `bench` lives in a child named for it**, and this file is the index (§282

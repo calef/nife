@@ -556,7 +556,7 @@ fn start_witness(own_space: bool) -> (u64, sched::RendezvousId, [u64; 4]) {
     let tcb_region = crate::memory_region::create(2).expect("no tcb region");
     let tid = sched::create_thread_control_block(tcb_region).expect("no tcb");
     let caps = [
-        crate::cap::memory_region_cap(budget),
+        crate::cap::memory_region_lending_capability(budget),
         crate::cap::rendezvous_cap(report, Rights::WRITE),
         crate::cap::memory_region_cap(tables),
     ];
