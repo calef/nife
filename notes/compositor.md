@@ -73,8 +73,7 @@ So the design inverts it. The message says nothing; the memory says everything.
   learning who asked.
 
 The result is a compositor with no authorization code in it. It never asks "may you?" about
-anything, because there is no request it could receive that would need the question. It cannot leak
-the screen to a client that asks nicely, since handing over the screen is not an operation it has.
+anything, because there is no request it could receive that would need the question.
 
 That is the difference in kind from Wayland: a Wayland compositor decides in code what each
 identified client may do, and here the authority to read anything is a mapping the kernel
@@ -90,8 +89,6 @@ made at spawn ([compositor/wayland.md](compositor/wayland.md)).
 3. Composite the damage: background first, then every window in stacking order, each clipped to the
    damage. Opaque windows, so the last writer wins and the stacking order is visible in the result.
 4. `gfx FLUSH(damage)` to the display, and reply to whoever rang.
-
-Two properties of that loop are worth naming.
 
 The caller is blocked in `CALL` for the whole of composition, which is what makes reading a client's
 pixels safe with no lock and no double buffering: the client that rang cannot be writing while the
@@ -140,8 +137,7 @@ source rings `COMMIT` itself. The test and the confined keyboard driver it broug
 
 The roadmap's requirement is that window enumeration, screenshots, and screen sharing be **grants,
 not defaults**, and that a refusal read as "you hold no such capability" rather than as a permission
-error. Both halves are proved, and the refusal turns out to have two forms, which is a pleasing
-thing to be able to say:
+error. Both halves are proved, and the refusal turns out to have two forms:
 
 - An empty capability table slot. A client that was not granted an input endpoint has *nothing* in
   slot 2. Its `RECEIVE` there returns `abi::Error::NoSuchSlot` (-1), whose doc comment has said the
@@ -201,8 +197,7 @@ authority is memory, not messages) as the fork it is.
 
 ## Who is trusted with what, stated exactly
 
-The claim this rung proves is client-to-client isolation, and the boundary deserves to be drawn
-rather than implied.
+The claim this rung proves is client-to-client isolation.
 
 The compositor sees every client's pixels. It has to: compositing is reading them. So a client's
 confidentiality is against *other clients*, not against the compositor, and `compositor` is in every
@@ -222,8 +217,6 @@ of the four tests). That is worth saying so that "the kernel checked it" is not 
 distrusted component was checked".
 
 ## What this does not do that a real compositor would
-
-Stated plainly, because a demonstrator's honest limits are part of the deliverable:
 
 - No window management. The scene is a compile-time constant (`compositor::SCENE`): three windows,
   fixed sizes, fixed positions, fixed stacking order. A real compositor learns its windows from
