@@ -113,8 +113,13 @@ region one package larger, from the progenitor's image pool (`grant_plan::named_
 - Before any `update`, `list` reads the image's catalog, and a name is fetched over plain HTTP
   from the LAN source. The catalog and the index copy are each one page, so `xtask` refuses a
   catalog of a page or more and `update` refuses an index whose lines for this architecture are.
-- Every image names the test peer and root (`xtask`'s `image_index_sources`), reached at 10.0.2.9
-  by the sources' address. The production sources wait on a host for `basalt.nifeos.org`.
+- An image names the test peer and root (`xtask`'s `image_index_sources`), reached at 10.0.2.9 by
+  the sources' address, unless it is built with `NIFE_INDEX_SOURCES=basalt`, which packs
+  `package_index::BASALT_SOURCES` (`basalt.nifeos.org` pinned to ISRG Root X1). No boot proves the
+  production text.
+- A listed location on `github.com` (a GitHub Release asset) is passed over: its certificate chains
+  to USERTrust ECC and the answer is a redirect, and `jig` pins X1 and follows none. The question is
+  C in `notes/packages/the-index-format.md`.
 - `update` keeps no record of which address answered, and `install` tries the image's addresses
   in order again.
 - The index store needs a file server that binds grants itself; on one that does not, `jig` is

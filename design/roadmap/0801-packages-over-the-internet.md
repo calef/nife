@@ -108,9 +108,33 @@ there, with options, under `needs-architect` (`notes/packages/the-index-format.m
   (recommended: one index at up to two addresses on different registrable domains, one pin).
 - B. Which root a listed HTTPS location must chain to (recommended: the index's own pin).
 - The channel's name. `rolling` is provisional.
+- C. How `jig` reaches a GitHub Release asset, whose download starts at `github.com` (USERTrust
+  ECC, not X1) and redirects. Asked on #2048; the options are in
+  `notes/packages/the-index-format.md`.
 
 Not rulings but calef's hands: DNS and a host for `basalt.nifeos.org`, and the exit criterion on
-xenon. Checked 2026-10-12 (UTC): `nifeos.org` answers no DNS query at all.
+xenon. Corrected 2026-10-13 (UTC): `nifeos.org` now has a zone (Netlify DNS) with no record for
+`basalt`; on 2026-10-12 it answered no query at all. basalt's README lists the steps.
+
+## Ruled 2026-10-12 (UTC): where `basalt.nifeos.org` is served
+
+calef was asked whether the host should be a VPS running Caddy, GitHub Pages, Cloudflare, or S3 and
+CloudFront. He answered *"b"*, GitHub Pages. Asked how adoption would then be measured, he answered
+*"Packages on Releases, index on Pages"*. Later the same day: basalt must not become the
+organization's Pages site, since `www.nifeos.org` will be its own site from
+`nifeos/nifeos.github.io`; basalt is a project site of `nifeos/basalt` at its own custom domain.
+
+- The index (`/rolling/metadata/`) is served by GitHub Pages at `basalt.nifeos.org`, a CNAME to
+  `nifeos.github.io`, whose certificate chains to ISRG Root X1 (measured 2026-10-13), so §250's pin
+  holds unchanged.
+- Package bytes are GitHub Release assets, one Release per publish, each listed in its index line
+  as a location. §250 clause 2 already lets bytes live anywhere. An asset's `download_count` is the
+  first adoption signal (milestone 576).
+- basalt's `publish` job (nifeos/basalt#13) builds this. It also keeps clause 9's copy under
+  `targets/` on Pages, which is the one copy `jig` can fetch until question C is ruled.
+- The image's production sources exist: `package_index::BASALT_SOURCES`, packed when an image is
+  built with `NIFE_INDEX_SOURCES=basalt` (lane `lane/basalt-on-pages-and-releases`). Every check
+  still boots the test peer.
 
 One fork this lane decided rather than asked, because it is reversible and in-tree: how a manifest
 names a fixed directory (809's open fork). `Manifest::indexes`, granted like the installer, puts
@@ -143,8 +167,12 @@ exists. aarch64 silicon waits on an aarch64 board.
 
 ## BUGS
 
-- Every image names the test peer (`basalt.test`, at 10.0.2.9 by the sources' address) and the
-  test root. The production sources wait on a host for `basalt.nifeos.org` and on milestone 909.
+- An image names the test peer (`basalt.test`, at 10.0.2.9 by the sources' address) and the test
+  root unless it is built with `NIFE_INDEX_SOURCES=basalt`. Nothing builds it that way until
+  milestone 909, and no boot here proves the production text, since a check may not depend on a
+  host outside the runner.
+- `jig` follows no redirect and pins one root for every host, so it passes over a GitHub Release
+  asset and installs from basalt's `targets/` copy, which is not counted (question C).
 - At the prompt the index host is reached by the address the sources give, not by name, because
   slirp's name server is the host's (milestone 892 (a std program at the prompt holds the network
   and a name resolver)). Resolution by name is proved in the kernel harness.
