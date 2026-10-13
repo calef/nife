@@ -90,6 +90,10 @@ pub const TEST_TCP_DRAIN: u64 = 7;
 pub const TEST_SOCKET_GIVE: u64 = 9;
 pub const TEST_SOCKET_TAKE: u64 = 10;
 pub const TEST_UDP_TFTP_HELD: u64 = 11;
+/// **One `ACCEPT` that nobody answers**, on a NIC with no `hostfwd`: it must come back refused at
+/// `net_stack`'s bound rather than block. [`tcp_accept_unheard`] says why. Name: provisional, the
+/// riscv-cpu-net-flake lane, 2026-10-13 (UTC).
+pub const TEST_TCP_ACCEPT_UNHEARD: u64 = 12;
 /// The first word a waiting role reports before it waits.
 pub const READY: u64 = 0x5EAD;
 /// Slot 3 of the three roles above: the hand-off endpoint (`WRITE` to the giver, `READ` to the
@@ -784,6 +788,26 @@ fn tcp_accept_inbound() -> ! {
     done(OK);
 }
 
+/// **An accept nobody connects to ends at `net_stack`'s bound** (the riscv-cpu-net-flake lane,
+/// 2026-10-13 UTC). Listen on the granted port and accept once on a NIC no host process can reach.
+/// The stack's wait must end by its own 15 s bound with `REP_ERR`. Until `nic_wait` learned the
+/// caller's deadline it blocked for a frame that never came, so every retry built on that bound
+/// (this client's [`ACCEPT_TRIES`], `std_exerciser`'s) was a retry on nothing, and a listener whose
+/// peer went silent hung the suite into a 60 s watchdog. `OK` when refused, `0xE0C0`/`0xE0C1` if the
+/// listen or the refusal went wrong. How long it took is the kernel test's to judge.
+///
+/// Name: provisional, the riscv-cpu-net-flake lane, 2026-10-13 (UTC).
+fn tcp_accept_unheard() -> ! {
+    if open(OPERATION_LISTEN, LISTENER, LISTEN_PORT) != LISTEN_GRANTED {
+        done(0xE0C0);
+    }
+    if accept(LISTENER, CONNECTION) == REP_OK {
+        done(0xE0C1); // somebody connected to a port nothing forwards to
+    }
+    let _ = close(LISTENER);
+    done(OK);
+}
+
 /// How many of `net_stack`'s 15 s bounded accept waits a round sits through before it calls the
 /// round lost: 75 s, inside the test's 90 s budget (`test_times::DEFAULT_BUDGET_SECS`).
 ///
@@ -1043,6 +1067,7 @@ pub fn run(test: u64, arg: u64) -> ! {
         TEST_SOCKET_GIVE => socket_give(),
         TEST_SOCKET_TAKE => socket_take(),
         TEST_UDP_TFTP_HELD => udp_tftp_held(),
+        TEST_TCP_ACCEPT_UNHEARD => tcp_accept_unheard(),
         _ => done(0xE0FF),
     }
 }

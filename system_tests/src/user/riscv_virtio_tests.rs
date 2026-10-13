@@ -28,6 +28,7 @@ const NET_TEST_TCP_REOPEN: u64 = 3;
 const NET_TEST_UDP_TFTP: u64 = 4;
 const NET_TEST_TCP_ACCEPT: u64 = 5;
 const NET_TEST_HTTP_PACKAGE: u64 = 6;
+const NET_TEST_TCP_ACCEPT_UNHEARD: u64 = 12;
 /// `TEST_HTTP_PACKAGE`'s refusal word, reported for a package whose digest disagrees.
 const NET_CLIENT_DIGEST_REFUSED: u64 = 3;
 /// The one port the inbound gate is granted (milestone 107); the runners forward a host port to
@@ -565,6 +566,34 @@ fn a_client_echoes_over_tcp_through_the_socket_contract_pci() {
     assert_eq!(
         verdict, NET_CLIENT_OK,
         "the TCP echo round trip over PCIe failed (client code {verdict:#x})",
+    );
+    net.release_or_fail("a net test's net_stack");
+}
+
+/// **An accept nobody answers ends at `net_stack`'s bound** (the riscv-cpu-net-flake lane,
+/// 2026-10-13 UTC). The aarch64 twin in `network_tests` carries the reasoning.
+///
+/// Falsification: replayable `system_tests/falsifications/user.riscv_virtio_tests.an_accept_nobody_answers_ends_at_the_stacks_bound.patch`
+#[test_case]
+fn an_accept_nobody_answers_ends_at_the_stacks_bound() {
+    let started = crate::arch::timer::now();
+    let Some((report, net)) = virtio_service::start_net_stack(
+        net_stack_image(),
+        NET_TEST_TCP_ACCEPT_UNHEARD,
+        true,
+        socket_protocol::listen_grant(NET_LISTEN_PORT, NET_LISTEN_PORT),
+    ) else {
+        crate::testing::skip!("no virtio-net-pci device attached");
+    };
+    let verdict = sched::ipc_receive(report)[0];
+    let waited_ms = (crate::arch::timer::now() - started) * 1000 / crate::arch::timer::frequency();
+    assert_eq!(
+        verdict, NET_CLIENT_OK,
+        "an accept nobody could reach did not come back refused (client code {verdict:#x})",
+    );
+    assert!(
+        waited_ms >= 15_000,
+        "the accept was refused after {waited_ms} ms, before net_stack's 15 s bound",
     );
     net.release_or_fail("a net test's net_stack");
 }
