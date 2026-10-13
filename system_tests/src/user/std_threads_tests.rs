@@ -74,32 +74,7 @@ pub(super) fn run_as_process_with(
     setup: &Setup,
 ) -> Ran {
     let (mut space, entry) = load(image, 0).expect("could not load the program");
-    let map = |space: &mut AddressSpace, va: u64, phys: u64, flags: Flags| {
-        space
-            .map_physical(va, phys, flags, crate::revoke::PageMapSource::NoCapability)
-            .expect("could not map a page into the program's space");
-    };
-
-    // The deep stack a std program's main thread needs, from a region this test gives back.
-    let stack_region =
-        crate::memory_region::create(std_runtime_protocol::STACK_PAGES).expect("no stack region");
-    for k in 1..std_runtime_protocol::STACK_PAGES {
-        let frame = crate::memory_region::retype_page(stack_region).expect("no stack frame");
-        map(
-            &mut space,
-            USER_STACK_VA - k * FRAME_SIZE,
-            frame,
-            Flags::user_data(),
-        );
-    }
-    for &(va, phys, writable) in setup.maps {
-        let flags = if writable {
-            Flags::user_data()
-        } else {
-            Flags::user_rodata()
-        };
-        map(&mut space, va, phys, flags);
-    }
+    let stack_region = map_the_stack_and_setup_pages(&mut space, setup);
     let name = readopt_user_address_space(space).expect("register the program's space");
 
     let process_region = crate::memory_region::create(4).expect("no process region");
@@ -122,39 +97,7 @@ pub(super) fn run_as_process_with(
         n => n,
     };
     let budget = crate::memory_region::create(heap_pages).expect("no heap budget for the program");
-    let insert = |slot, capability| {
-        sched::thread_control_block_insert_cap(tid, capability, Some(slot))
-            .expect("could not fill a runtime slot in the process's table");
-    };
-    // `WRITE` on an endpoint: the program's stdout, and any endpoint `setup` grants.
-    let writer = |ep| capabilities::rendezvous_cap(ep, Rights::WRITE);
-    for (slot, capability) in [
-        (
-            std_runtime_protocol::MEMORY_REGION_SLOT,
-            capabilities::memory_region_cap(budget),
-        ),
-        (std_runtime_protocol::STDOUT_SLOT, writer(report)),
-        (
-            std_runtime_protocol::PROCESS_SLOT,
-            capabilities::process_capability(pid, Rights::BIND),
-        ),
-        (
-            std_runtime_protocol::THREAD_SLOT,
-            capabilities::thread_control_block_cap(tid, Rights::WRITE),
-        ),
-        (
-            std_runtime_protocol::SPACE_SLOT,
-            capabilities::address_space_cap(name, Rights::READ),
-        ),
-    ] {
-        insert(slot, capability);
-    }
-    for &(slot, ep) in setup.endpoints {
-        insert(slot, writer(ep));
-    }
-    for &(slot, phys) in setup.read_pages {
-        insert(slot, capabilities::page_frame_cap(phys, Rights::READ));
-    }
+    fill_the_runtime_slots(tid, pid, name, budget, report, setup);
     sched::start_thread_control_block(tid, [0; 3]).expect("start the program");
 
     let len = drain_until_end(report, pid, out, what);
@@ -187,6 +130,83 @@ pub(super) fn run_as_process_with(
         len,
         started,
         heap_spent,
+    }
+}
+
+/// Map the deep stack a std program's main thread needs, from a region of its own, and every page
+/// `setup` adds. Returns the stack's region, for the caller to give back.
+fn map_the_stack_and_setup_pages(space: &mut AddressSpace, setup: &Setup) -> u64 {
+    let map = |space: &mut AddressSpace, va: u64, phys: u64, flags: Flags| {
+        space
+            .map_physical(va, phys, flags, crate::revoke::PageMapSource::NoCapability)
+            .expect("could not map a page into the program's space");
+    };
+
+    // The deep stack a std program's main thread needs, from a region this test gives back.
+    let stack_region =
+        crate::memory_region::create(std_runtime_protocol::STACK_PAGES).expect("no stack region");
+    for k in 1..std_runtime_protocol::STACK_PAGES {
+        let frame = crate::memory_region::retype_page(stack_region).expect("no stack frame");
+        map(
+            space,
+            USER_STACK_VA - k * FRAME_SIZE,
+            frame,
+            Flags::user_data(),
+        );
+    }
+    for &(va, phys, writable) in setup.maps {
+        let flags = if writable {
+            Flags::user_data()
+        } else {
+            Flags::user_rodata()
+        };
+        map(space, va, phys, flags);
+    }
+    stack_region
+}
+
+/// The runtime's fixed slots in the process's shared table, then every endpoint and page `setup`
+/// grants.
+fn fill_the_runtime_slots(
+    tid: crate::thread::ThreadId,
+    pid: sched::ProcessId,
+    name: u64,
+    budget: u64,
+    report: sched::RendezvousId,
+    setup: &Setup,
+) {
+    let insert = |slot, capability| {
+        sched::thread_control_block_insert_cap(tid, capability, Some(slot))
+            .expect("could not fill a runtime slot in the process's table");
+    };
+    // `WRITE` on an endpoint: the program's stdout, and any endpoint `setup` grants.
+    let writer = |ep| capabilities::rendezvous_cap(ep, Rights::WRITE);
+    for (slot, capability) in [
+        (
+            std_runtime_protocol::MEMORY_REGION_SLOT,
+            capabilities::memory_region_cap(budget),
+        ),
+        (std_runtime_protocol::STDOUT_SLOT, writer(report)),
+        (
+            std_runtime_protocol::PROCESS_SLOT,
+            capabilities::process_capability(pid, Rights::BIND),
+        ),
+        (
+            std_runtime_protocol::THREAD_SLOT,
+            capabilities::thread_control_block_cap(tid, Rights::WRITE),
+        ),
+        (
+            std_runtime_protocol::SPACE_SLOT,
+            capabilities::address_space_cap(name, Rights::READ),
+        ),
+    ] {
+        insert(slot, capability);
+    }
+    for &(slot, ep) in setup.endpoints {
+        insert(slot, writer(ep));
+    }
+    for &(slot, phys) in setup.read_pages {
+        insert(slot, capabilities::page_frame_cap(phys, Rights::READ));
     }
 }
 
