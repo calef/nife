@@ -2,7 +2,7 @@
 //!
 //! Name: provisional (lane maintainer/split-parents-to-zero, 2026-10-13 UTC).
 
-/// Why [`Elf::parse`] refused a file.
+/// Why [`Elf::parse`](crate::Elf::parse) refused a file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
     /// Smaller than an ELF header. Not even worth looking at.
