@@ -74,10 +74,8 @@ the whole block, and then finds only a paragraph addressed to one person.
 2. Correct the token with the reason written where the gate is, the way 421's correction records
    that it carried `NONE` for two days and why that was the failure the vocabulary exists to prevent.
 3. Or write the decision up, `**Status: PROPOSED.**`, with what is being decided, the options,
-   a recommendation and its reason, and what is blocked until it is answered. AGENTS.md's seven
-   questions are the standard, and questions 2 to 5 are lookups rather than arguments: what this tree
-   does in the analogous case, what the prior art is, whether the premise is true, and what
-   each option costs measured rather than asserted.
+   a recommendation and its reason, and what is blocked until it is answered. The seven questions in
+   [the decisions skill](../../notes/skills/decisions/SKILL.md) are the standard.
 4. Or cite the decision that exists, in the gate paragraph, where a reader meets the gate.
 5. Cite the new section from the block's gate paragraph either way, so the two records agree.
 
@@ -94,7 +92,7 @@ one reading each, no code touched.
 
 Sections minted: §160 to §171 (where), provisional until the merge queue lands them.
 
-The denominator is the useful part, and it argues against this block's own framing. This
+The denominator argues against this block's own framing. This
 milestone was written as though the work were mostly writing forks up. In the first slice it mostly
 was, but three of the fifteen were records that had fallen behind the tree, and a fourth and
 fifth were blocks whose gate deferred to a decision that had since been taken:
@@ -121,9 +119,8 @@ had since answered it, which took a grep of `design/decisions/` per block and fo
 ## Slice B, fifteen blocks, resolved 2026-09-19
 
 `224 241 260 271 327 328 330 335 340 341 342 347 350 360 388`, on `milestone/435-slice-b`, with
-sections minted in a reserved range of twenty numbers beginning at §172. Every number here is
-provisional until the
-merge queue lands it.
+sections minted in a reserved range of twenty numbers beginning at §172, provisional until the
+merge queue lands them.
 
 Five tokens were wrong, which is a third of the slice and is the answer to the question this
 milestone could not ask in advance:

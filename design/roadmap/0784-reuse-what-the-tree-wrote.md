@@ -18,8 +18,8 @@ needs a recorded reason. The amendment's text was still in flight as pull reques
 commit only), so the `Reuse:` lines below use the ruling's terms and should be conformed to the
 landed wording. Title and slug are drafts.
 
-This is a proposal, not a decision. Every replacement below adds a dependency, which §46 makes an
-architect's call, so each milestone waits on its own ruling.
+This is a proposal, not a decision: every replacement below adds a dependency, an architect's call
+under §46.
 
 ## Method, and what the numbers mean
 
@@ -113,8 +113,8 @@ Measure throughput with `script/bench` before and after each device.
 4. Measure `user_mode_heap` against `talc`, then decide. 272 lines of first-fit free list in every
 process. `talc` is maintained (2026-09) and `no_std`. The prior art cuts both ways:
 `linked_list_allocator`, the same algorithm as ours, had out-of-bounds writes (RUSTSEC-2022-0063),
-which is the class of bug a hand-written heap carries. Measure first, per the tenet: allocation
-latency and fragmentation on the `job_mix` workload, then rule. Retires little code; the case is exposure.
+which is the class of bug a hand-written heap carries. Measure allocation latency and
+fragmentation on `job_mix` first, then rule. Retires little code; the case is exposure.
 
 5. Replace `uefi_loader/src/efi.rs` with `r-efi`. 307 lines of hand-transcribed UEFI tables, whose
 own header names the foot gun: "`BootServices`'s field order is the ABI ... getting the count of
@@ -139,7 +139,7 @@ the same `kilo` `rmle` is modeled on) needs `libc` termios and raw stdin, which 
 bind. GNU `nano` is the GPL-as-package path (milestone 170). `rmle` is `optional`, so either can
 replace it without touching base.
 
-9a. Adapt `mdr` to `pulldown-cmark`, as a std program. The first draft refused this for being
+9a. Adapt `mdr` to `pulldown-cmark`, as a std program. The first draft refused this as
 std-only, the wrong test (see the next section). `mdr` is a userspace reader of shipped
 documentation; it holds a terminal and a directory, so it can be built against `nife-dev`. Read in
 0.13.4: no `std::thread`, no runtime, three small dependencies, and the `html` and `getopts` defaults
@@ -211,13 +211,13 @@ on the customer path.
    are ordinary dependencies; `httparse`, `vte` and `r-efi` fit that shape. `virtio-drivers` needs a
    patch, which is RedoxFS's shape (§34).
 3. Prior art. In the tables above.
-4. Is the premise true? Mostly. The surprise is that the kernel's dependency on `video_terminal`
-   and `line_editor` is constants only, so the kernel exemption does not cover their engines.
+4. Is the premise true? Mostly. The kernel uses only `video_terminal`'s and `line_editor`'s
+   constants (the surprise above), so its exemption does not cover their engines.
 5. Cost. Lines retired are measured above; lane time is estimated. Throughput and heap numbers are
    owed by candidates 3 and 4 before any ruling.
 6. Reversibility. Each replacement is reversible code; adding a crate to the base graph is §46's
    expensive category, and nobody has acted yet.
-7. Same cost? Yes for 1, 2, 5 and 6: with equal effort, the exposed library wins on trust. 3 is
+7. Same cost? Yes for 1, 2, 5 and 6: at equal effort the exposed library wins on trust. 3 is
    closer, because the fork risk is real. Nothing here is recommended because it is less work.
 
 ## Proposed milestones, one replacement each
