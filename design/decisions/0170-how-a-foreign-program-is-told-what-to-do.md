@@ -153,7 +153,7 @@ ruling is that there is no mark to spell.
 - Clause 4's "read-write or create each need an explicit mark on the word" is withdrawn. There is
   no mark, so an unvouched program cannot be handed read-write or create authority on the line at
   all.
-- Clause 3's "This holds for vouched and unvouched programs alike" no longer covers the unvouched
+- Clause 3's "This holds for vouched and unvouched programs alike" is superseded for the unvouched
   case: an unvouched program's own note grants nothing, so it cannot declare its own create-path
   clause. Only a vouched program's manifest can still say "may create the named path".
 
