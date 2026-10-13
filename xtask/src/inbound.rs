@@ -412,7 +412,7 @@ struct InboundTrace {
     attempts: usize,
     counts: std::collections::BTreeMap<&'static str, usize>,
     /// `(ms since the prober started, outcome, held ms, bytes)` for connections worth a line: the
-    /// ones that collected bytes, and the ones held over a second. A connection that was reset in
+    /// ones that collected bytes, the ones the guest closed empty, and the ones held over a second. A connection that was reset in
     /// under a millisecond with nothing on it is the boring majority and is only counted.
     events: Vec<(u128, &'static str, u128, usize, Option<String>)>,
     started: Option<std::time::Instant>,
@@ -443,7 +443,14 @@ impl InboundTrace {
         self.attempts += 1;
         *self.counts.entry(outcome).or_insert(0) += 1;
         let held = opened.elapsed().as_millis();
-        if bytes > 0 || held >= 1000 || outcome == "answered" || error.is_some() {
+        // A guest closing a connection with nothing on it is what `net_stack`'s listener reset
+        // looks like from here (milestone 514), so it gets a line however brief: it shows a race
+        // with the re-armed listener happening and being recovered, on green runs too.
+        if bytes > 0
+            || held >= 1000
+            || matches!(outcome, "answered" | "closed-empty")
+            || error.is_some()
+        {
             let at = self
                 .started
                 .map(|s| s.elapsed().as_millis())
