@@ -204,9 +204,44 @@ that could go this route was in fact backfilled at the commit that added it: `mi
 four cost columns) are recomputed for every row on every run regardless of mode. They cannot hold a
 stale blank this way.
 
+## Adding a measure to the register, worked on the unsafe census
+
+Moved verbatim from the register's EXAMPLES under §212 (a prose budget) on 2026-10-13 (UTC).
+
+The unsafe census went from calef's question to a gated row in four steps.
+
+1. Apply the test. Unsafe is where verification stops, so something depends on it. 42 non-merge
+   commits changed it in fourteen days, so it moves.
+2. Take the number more than once. A single measurement cannot tell a direction from a level:
+
+   ```sh
+   # blocks outside kernel/src/arch/, at four points in the tree's history
+   2026-07-15   171 blocks in   7,508 lines   227.8 per 10,000
+   2026-08-04   728 blocks in  58,351 lines   124.8 per 10,000
+   2026-08-16   817 blocks in  73,129 lines   111.7 per 10,000
+   2026-08-18   747 blocks in  80,359 lines    93.0 per 10,000
+   ```
+
+   The count more than quadrupled and the density more than halved. A ceiling on the count would
+   have fired on nearly every lane.
+3. Choose the relation from the shape of the quantity. Equality for a census somebody maintains,
+   `count-at-least` where a deletion is the bad event, `count-at-most` where a drift up is. See
+   notes/counted-claims.md.
+4. Watch it fail. Add one `unsafe impl Send` anywhere and run `script/lint`:
+
+   ```sh
+   $ script/lint
+   lint: a counted claim disagrees with the tree:
+     notes/unsafe-obligations.md:461: claims at most 17, the tree has 18
+   ```
+
+   The density ceiling's first marker never fired. Written as `at most 91 blocks per 10,000
+   lines`, it bound to the line's last number and compared 10,000 against 92. A marker now sits
+   right after its own number.
+
 ## The ceiling's failure message, in full
 
-The register's EXAMPLES section shows the first lines of what `script/lint` prints when one
+The worked example above shows the first lines of what `script/lint` prints when one
 `unsafe impl Send` is added past the ceiling. This is the whole message, as recorded when the
 ceiling was 17.
 

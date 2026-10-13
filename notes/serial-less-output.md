@@ -16,13 +16,10 @@ stick is the removable-media fallback every UEFI firmware looks for with no conf
 >
 > -- calef, 2026-09-03
 
-Not one of those machines has a serial port. This note is what was chosen, what it cost, what it
-does not solve, and the procedure for the bench nobody in this lane could reach. The arguments
+Not one of those machines has a serial port. The arguments
 behind each choice are in [`serial-less-output/`](serial-less-output/README.md).
 
 ## The two halves, and they are not equally hard
-
-The block separates them and the separation survived the work, so it is the first thing to say.
 
 |  | a **human** watching a machine boot | a **gate** reading a machine |
 |---|---|---|
@@ -38,8 +35,7 @@ and the follow-on proposals are where it goes.
 ## What was chosen: the firmware's framebuffer, carried across the handoff
 
 UEFI's `EFI_GRAPHICS_OUTPUT_PROTOCOL` reports a *linear framebuffer*, and its address survives
-`ExitBootServices`. That is the fact the whole design rests on, and it is worth being precise
-about why. The aperture is a BAR on the display adapter, not firmware memory, so ending the boot phase
+`ExitBootServices`. That is the fact the whole design rests on. The aperture is a BAR on the display adapter, not firmware memory, so ending the boot phase
 takes away the firmware's *console* and not the *display*. The pixels stay where they were and
 anyone holding the address can keep writing to them.
 
@@ -92,25 +88,9 @@ transcript it already checked would read identically if the screen were black. T
 fails if the loader's `LocateProtocol` regressed, if the pixel order flipped, if the stride were taken as
 the width, or if `mmu::init` stopped carrying the aperture's mapping.
 
-Measured, 2026-09-04, OVMF on QEMU 11.x, `-display none`:
-
-```console
-$ cargo xtask uefi-boot
-nife uefi_loader: milestone 87
-uefi_loader: screen at 0x0000000080000000..0x00000000803e8000
-uefi_loader:   1280x800, stride 5120, bgrx
-uefi_loader: kernel placed, exiting boot services
-
-nife on x86_64 (long mode, ring 0, 4-level paging)
-  screen      : 1280x800 bgrx at 0x80000000, 182x100 cells (boot cmdline)
-  ...
-nife x86_64: boot complete, halting.
-uefi-boot: read 96 non-blank row(s) of text back off the framebuffer, ending
-uefi-boot:   |   next        : real ELF user programs (user_mode_runtime has no x86_64 arms), ...
-uefi-boot:   | nife x86_64: boot complete, halting.
-uefi-boot:   |   capability slots: 2 of 24 at peak
-uefi-boot: booted under OVMF from \EFI\BOOT\BOOTX64.EFI
-```
+Measured 2026-09-04 under OVMF on QEMU 11.x with `-display none`, it read 96 non-blank rows of text
+back off the framebuffer, ending at the tour's last lines; the transcript is in
+[`the-handoff-design.md`](serial-less-output/the-handoff-design.md#the-gates-first-green-run-in-full).
 
 `-display none` suppresses the host window, not the emulated adapter, which is why any of this
 works headlessly: OVMF finds a GOP here for the same reason a real machine's firmware finds one.
@@ -285,7 +265,7 @@ speak, the experiment, and the boards' reason in full.
   arch-neutral halves (`machine_discovery::framebuffer`, `screen_console`) were written for exactly
   this and needed no change: what was missing was the discovery, and on QEMU's `virt` boards there is
   nothing to discover, because nothing lit a display. `ramfb` is what those boards can present
-  instead, and it inverts the arrangement (see below). On the VisionFive 2 there is no `ramfb` and
+  instead. On the VisionFive 2 there is no `ramfb` and
   the answer is milestone 157's U-Boot `simple-framebuffer` handoff. Rule 5's scope note, recorded
   here: the *console* has parity, the *discovery* does not, and the gap is one board's firmware.
 - `ramfb` has three limits of its own, kept beside it in [`ramfb.md`](serial-less-output/ramfb.md).
