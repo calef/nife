@@ -8,6 +8,7 @@
 //! and endpoint contexts in the same order, one index along. A context is 32 or 64 bytes depending
 //! on the controller (`HCCPARAMS1.CSZ`); only the first 32 carry fields.
 
+use crate::port;
 use crate::port::speed;
 
 /// Endpoint type: control, bidirectional (xHCI 1.2 Table 6-9).
@@ -103,6 +104,31 @@ pub const fn control_endpoint(max_packet: u16, dequeue: u64) -> [u32; 8] {
 /// Whether `speed` is one at which `bMaxPacketSize0` is an exponent.
 pub const fn is_superspeed(s: u8) -> bool {
     s == speed::SUPER || s == speed::SUPER_PLUS
+}
+
+/// **The `bInterval` of an interrupt endpoint as the xHCI Interval field**, which is an exponent:
+/// the period is `2^Interval` microframes of 125 µs (xHCI 1.2 section 6.2.3.6).
+///
+/// Full- and low-speed devices state the period in 1 ms frames (1 to 255), so the field is the
+/// largest exponent whose period does not exceed it, clamped to the specification's 3 (1 ms) to
+/// 10 (128 ms). High-speed and `SuperSpeed` devices already state an exponent, plus one (1 to 16),
+/// so the field is that minus one.
+pub const fn interrupt_interval(speed: u8, b_interval: u8) -> u8 {
+    if speed == port::speed::FULL || speed == port::speed::LOW {
+        let microframes = (if b_interval == 0 { 1 } else { b_interval }) as u32 * 8;
+        let exponent = 31 - microframes.leading_zeros();
+        let exponent = if exponent < 3 { 3 } else { exponent };
+        (if exponent > 10 { 10 } else { exponent }) as u8
+    } else {
+        let b = if b_interval == 0 {
+            1
+        } else if b_interval > 16 {
+            16
+        } else {
+            b_interval
+        };
+        b - 1
+    }
 }
 
 #[cfg(test)]

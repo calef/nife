@@ -1,5 +1,5 @@
 //! **The witness roles**: the six test roles `system_tests` spawns this shell in, and the
-//! helpers only they use. [`_start`] dispatches them by role number.
+//! helpers only they use. [`_start`](crate::entry::_start) dispatches them by role number.
 //!
 //! **This is a temporary home** (calef, 2026-10-11 UTC, on §273's first fork: "Proceed with
 //! both"). Pull request #1922 gives the shell a non-interactive script mode, turns these roles

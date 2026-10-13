@@ -9,14 +9,12 @@
 # is the remedy; a mark beside the item (`// Index exception (YYYY-MM-DD): reason.`) is the
 # exception §282 allows, and it is reviewed like any other line.
 path	code_lines
-components/src/swish/main.rs	458
 crates/bitmap_font/src/lib.rs	160
 crates/board_console/src/lib.rs	6
 crates/designware_ethernet/src/lib.rs	284
 crates/designware_mobile_storage/src/lib.rs	77
 crates/e1000e/src/lib.rs	326
 crates/e1000e/src/pch/mod.rs	74
-crates/extensible_host_controller_interface/src/lib.rs	401
 crates/grant_plan/src/lib.rs	40
 crates/grant_plan/src/program.rs	129
 crates/inter_process_communication/src/lib.rs	310
@@ -31,7 +29,6 @@ kernel/src/arch/mod.rs	95
 kernel/src/arch/riscv64/mod.rs	148
 kernel/src/arch/x86_64/mod.rs	203
 kernel/src/reboot.rs	170
-kernel/src/sched.rs	458
 patches/std-nife/overlay/std/src/sys/alloc/nife/mod.rs	141
 patches/std-nife/overlay/std/src/sys/pal/nife/mod.rs	27
 system_tests/src/main.rs	5
