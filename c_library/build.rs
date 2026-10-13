@@ -21,7 +21,7 @@ fn main() {
         println!("cargo::rustc-link-arg-bins={archive}");
     }
     // The program's manifest note (milestone 597 (a program carries its manifest in an ELF note)),
-    // the object `cargo xtask foreign-note` writes, as `helpers/build-ripgrep.sh` links one into
+    // the object `cargo xtask foreign-note` writes, as basalt's package build links one into
     // `rg`.
     if let Ok(note) = std::env::var("NIFE_C_NOTE") {
         println!("cargo::rerun-if-changed={note}");

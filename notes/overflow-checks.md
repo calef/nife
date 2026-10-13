@@ -229,8 +229,8 @@ in one change, which is how it had to land: the profile flip alone fails the foo
 
 Milestone 750 (provisional). `overflow-checks = true` in the root `[profile.release]` (kernel,
 `uefi_loader`, `stick_maker`, each workspace program) and `std_exerciser`, `redoxfs_server` and
-`cryptography_exerciser`, whose profiles also build their `std`. `helpers/build-ripgrep.sh` sets it
-by environment, and the probe scripts write it into their manifests. `fuzz/` had it already; `tools/redoxfs_host` builds `dev`.
+`cryptography_exerciser`, whose profiles also build their `std`. basalt's package build sets it for
+`rg` by environment, and the probe scripts write it into their manifests. `fuzz/` had it already; `tools/redoxfs_host` builds `dev`.
 
 ### The fast paths
 

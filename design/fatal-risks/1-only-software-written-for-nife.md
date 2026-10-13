@@ -47,7 +47,7 @@ match in the directory the word `docs` granted. It could not open `../hay/secret
 the needle too: the caretaker refused the `..`. The transcript is byte-identical on the three
 architectures. The 256 KiB ceiling named above was raised to 4 MiB by milestone 595 on 2026-09-27,
 and the two last steps were a manifest note linked into `rg` and a disk copy without its symbol
-table. Two limits on what this shows: the lines run only where `helpers/build-ripgrep.sh` was run,
+table. Two limits on what this shows: the lines run only where nife's ripgrep build script was run,
 never in CI (§46 (thin primitives or whole subsystems)), and one file in one directory is not the
 walk `ripgrep` was chosen to exercise. That walk is measured in the kernel harness,
 `notes/ripgrep-on-nife.md`.
@@ -60,7 +60,7 @@ now walked a real tree at the prompt. In `/search`, holding a copy of this repos
 files, and the gate compared them line for line with what `rg` 14.1.1 built for the host printed
 over the same copy: no line missing, none extra. The walk took 14.9 s on aarch64 (HVF), 40.8 s on
 riscv64 and 345.8 s on x86_64 (both TCG). The same limits as above still hold: it runs only where
-`helpers/build-ripgrep.sh` was run, never in CI, and `rg` sits on the data disk rather than being
+nife's ripgrep build script was run, never in CI, and `rg` sits on the data disk rather than being
 installed by `jig`. Its peak memory at the prompt is unmeasured; it finished within the `std` heap.
 
 Ruled 2026-10-08 (UTC), on the evidence above. calef: *"I would keep it amber and we prioritize
