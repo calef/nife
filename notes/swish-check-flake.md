@@ -5,8 +5,8 @@ swish-check step, on pull requests touching no runtime code: #1444 (hooks only, 
 spawn (the progenitor is out of memory)", run 36619551608) and #1442 (ledger only, aarch64, "the
 prompt never echoed `packages/greeting/0.1.0/greeting`", run 36622549563). Both were green on rerun.
 This note asks whether swish-check is flaky in CI, how often and by what mechanism, or whether the
-evening was unlucky; it prices remediations without enacting any. Written by an investigation lane on
-`maintainer/swish-flake-measurement`; every date is UTC.
+evening was unlucky; it prices remediations without enacting any. Every date is UTC. A typed line
+whose input stopped mid-echo is [2026W42](swish-check-flake-2026w42.md).
 
 ## Method, and its limits
 
