@@ -103,8 +103,11 @@ def kind(target):
     return 'doc' if target.endswith('.md') else 'code'
 
 
-def file_hits(text, path=''):
-    """[(line, target, kind)] for every line-number citation in one file's text."""
+def file_hits(text, path='', honor_marks=True):
+    """[(line, target, kind)] for every line-number citation in one file's text.
+
+    `honor_marks=False` reads the text as if no marker were there, so the citations a marker excuses
+    are the difference (helpers/exception_markers.py)."""
     out = []
     markdown = path.endswith('.md')
     fenced = None
@@ -134,7 +137,7 @@ def file_hits(text, path=''):
             in_list = bool(LIST_ITEM.match(line)) or (in_list and line.startswith(' '))
         marked = MARKER in line or MARKER in previous
         previous = line
-        if marked:
+        if marked and honor_marks:
             continue
         for m in CITATION.finditer(line):
             # `path:LINE:COLUMN` is a diagnostic or a panic message, quoted.
