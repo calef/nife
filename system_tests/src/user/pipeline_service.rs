@@ -1,7 +1,9 @@
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use super::*;
-use crate::cap::{Rights, memory_region_lending_capability, page_frame_cap, rendezvous_cap};
+use crate::cap::{
+    Capability, Rights, memory_region_lending_capability, page_frame_cap, rendezvous_cap,
+};
 use crate::sched::RendezvousId;
 
 /// The `swish` binary's pipeline role (`components/src/swish.rs`).
@@ -262,7 +264,7 @@ fn shell_grants(
     budget: u64,
     dir: Option<(RendezvousId, u64)>,
     clock: Option<u64>,
-) -> ([crate::cap::Cap; 6], usize, u64) {
+) -> ([Capability; 6], usize, u64) {
     // Filled in the order the shell's own constants name, because a `Spawn` fills a capability table from
     // zero: slot 0 the terminal, 1 the spawn channel, 2 the result channel, 3 the budget, then
     // whichever of the directory and the clock this wiring has.

@@ -463,7 +463,7 @@ impl Model {
         &mut self,
         a: usize,
         ep: usize,
-        cap: MCap,
+        capability: MCap,
         method: u64,
         [a0, a1, a2]: [u64; 3],
         woken: &mut [Option<Answer>; ACTORS],
@@ -471,10 +471,10 @@ impl Model {
         use abi::rendezvous as r;
         match method {
             r::SEND => {
-                if !cap.allows(Rights::WRITE) {
+                if !capability.allows(Rights::WRITE) {
                     return refuse(Error::NotPermitted);
                 }
-                let msg = [a0, a1, a2, cap.badge, 0];
+                let msg = [a0, a1, a2, capability.badge, 0];
                 match self.receivers[ep].pop() {
                     Some(rx) => {
                         woken[rx] = Some(self.deliver_plain(rx, msg));
@@ -485,14 +485,14 @@ impl Model {
                         self.park[a] = Park::Send {
                             ep,
                             msg: [a0, a1, a2],
-                            badge: cap.badge,
+                            badge: capability.badge,
                         };
                         None
                     }
                 }
             }
             r::RECEIVE | r::RECEIVE_CAP => {
-                if !cap.allows(Rights::READ) {
+                if !capability.allows(Rights::READ) {
                     return refuse(Error::NotPermitted);
                 }
                 let with_cap = method == r::RECEIVE_CAP;
@@ -503,13 +503,19 @@ impl Model {
                 };
                 Some(self.collect(a, tx, with_cap, woken))
             }
-            r::SEND_CAP => self.send_capability(a, ep, cap, [a0, a1, a2], woken),
-            r::CALL => self.call(a, ep, cap, [a0, a1], woken),
+            r::SEND_CAP => self.send_capability(a, ep, capability, [a0, a1, a2], woken),
+            r::CALL => self.call(a, ep, capability, [a0, a1], woken),
             r::BADGE => {
-                if !cap.allows(Rights::GRANT) || a0 == 0 || cap.badge != 0 {
+                if !capability.allows(Rights::GRANT) || a0 == 0 || capability.badge != 0 {
                     return refuse(Error::NotPermitted);
                 }
-                match self.insert(a, MCap { badge: a0, ..cap }) {
+                match self.insert(
+                    a,
+                    MCap {
+                        badge: a0,
+                        ..capability
+                    },
+                ) {
                     NO_CAP => refuse(Error::OutOfMemory),
                     s => Some(Answer::ok(s as i64)),
                 }
@@ -523,11 +529,11 @@ impl Model {
         &mut self,
         a: usize,
         ep: usize,
-        cap: MCap,
+        capability: MCap,
         [a0, a1, a2]: [u64; 3],
         woken: &mut [Option<Answer>; ACTORS],
     ) -> Option<Answer> {
-        if !cap.allows(Rights::WRITE) {
+        if !capability.allows(Rights::WRITE) {
             return refuse(Error::NotPermitted);
         }
         let Some(src) = self.cap(a, a0) else {
@@ -554,7 +560,7 @@ impl Model {
                     true => 0,
                 };
                 self.park[rx] = Park::Idle;
-                woken[rx] = Some(Answer::msg([a2, s, 0, cap.badge, 0]));
+                woken[rx] = Some(Answer::msg([a2, s, 0, capability.badge, 0]));
                 Some(Answer::ok(0))
             }
             None => {
@@ -563,7 +569,7 @@ impl Model {
                     ep,
                     data: a2,
                     cap: Some(delegated),
-                    badge: cap.badge,
+                    badge: capability.badge,
                 };
                 None
             }
@@ -575,24 +581,24 @@ impl Model {
         &mut self,
         a: usize,
         ep: usize,
-        cap: MCap,
+        capability: MCap,
         [a0, a1]: [u64; 2],
         woken: &mut [Option<Answer>; ACTORS],
     ) -> Option<Answer> {
-        if !cap.allows(Rights::WRITE) {
+        if !capability.allows(Rights::WRITE) {
             return refuse(Error::NotPermitted);
         }
         match self.receivers[ep].pop() {
             Some(rx) if self.plain_receive(rx) => {
                 // §246: the words arrive and the caller is answered Gone.
                 self.park[rx] = Park::Idle;
-                woken[rx] = Some(Answer::msg([a0, a1, 0, cap.badge, 0]));
+                woken[rx] = Some(Answer::msg([a0, a1, 0, capability.badge, 0]));
                 return refuse(Error::Gone);
             }
             Some(rx) => {
                 let s = self.insert(rx, reply_of(a));
                 self.park[rx] = Park::Idle;
-                woken[rx] = Some(Answer::msg([a0, s, a1, cap.badge, reply_tag(s)]));
+                woken[rx] = Some(Answer::msg([a0, s, a1, capability.badge, reply_tag(s)]));
                 self.park[a] = Park::AwaitReply;
             }
             None => {
@@ -600,7 +606,7 @@ impl Model {
                 self.park[a] = Park::Call {
                     ep,
                     msg: [a0, a1],
-                    badge: cap.badge,
+                    badge: capability.badge,
                 };
             }
         }
@@ -611,7 +617,7 @@ impl Model {
     fn invoke_notification(
         &mut self,
         a: usize,
-        cap: MCap,
+        capability: MCap,
         method: u64,
         a0: u64,
         woken: &mut [Option<Answer>; ACTORS],
@@ -619,7 +625,7 @@ impl Model {
         use abi::notification as n;
         match method {
             n::SIGNAL => {
-                if !cap.allows(Rights::WRITE) {
+                if !capability.allows(Rights::WRITE) {
                     return refuse(Error::NotPermitted);
                 }
                 if a0 != 0 {
@@ -634,7 +640,7 @@ impl Model {
                 Some(Answer::ok(0))
             }
             n::WAIT => {
-                if !cap.allows(Rights::READ) {
+                if !capability.allows(Rights::READ) {
                     return refuse(Error::NotPermitted);
                 }
                 if self.word != 0 {
@@ -646,13 +652,13 @@ impl Model {
                 }
             }
             n::POLL => {
-                if !cap.allows(Rights::READ) {
+                if !capability.allows(Rights::READ) {
                     return refuse(Error::NotPermitted);
                 }
                 Some(Answer::ok(core::mem::take(&mut self.word) as i64))
             }
             n::BIND => {
-                if !cap.allows(Rights::WRITE) {
+                if !capability.allows(Rights::WRITE) {
                     return refuse(Error::NotPermitted);
                 }
                 // No actor holds a thread capability, so BIND reaches only its refusals.
@@ -666,11 +672,11 @@ impl Model {
     }
 
     /// A page frame's one method, `REVOKE`.
-    fn invoke_frame(&mut self, fr: usize, cap: MCap, method: u64) -> Option<Answer> {
+    fn invoke_frame(&mut self, fr: usize, capability: MCap, method: u64) -> Option<Answer> {
         use abi::page_frame as f;
         match method {
             f::REVOKE => {
-                if !cap.allows(Rights::GRANT) {
+                if !capability.allows(Rights::GRANT) {
                     return refuse(Error::NotPermitted);
                 }
                 // Every copy in every table goes, the invoker's too, and so does a copy staged
