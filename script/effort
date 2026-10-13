@@ -297,11 +297,23 @@ MAXED = ('peak_context_tokens',)
 IDLE_GAP_S = float(os.environ.get('IDLE_GAP_S', 30 * 60))
 
 # Where the harness keeps its records, and which of its project directories are this project's. The
-# slug is the working directory with the separators replaced, so the rename on 2026-08-15 (milestone
-# 120) left the old name behind as a second directory rather than moving anything.
+# slug is the working directory with the separators replaced, so each directory a session starts in
+# (this checkout under its old name, and the workspace that holds it) is a directory of its own. A
+# slug is matched by its last component, not by a home path: `nife` is this checkout, `nifeos` is
+# the workspace sessions start in to work across its repositories (that one also holds work on
+# sibling repositories, counted here because the records do not say which repository a turn
+# served), and `cricker-os` is the old name.
 RECORDS_ROOT = pathlib.Path(os.environ.get(
     'NIFE_SESSION_RECORDS', os.path.expanduser('~/.claude/projects')))
-PROJECT_SLUGS = ('-Users-calef-projects-nife', '-Users-calef-projects-cricker-os')
+PROJECT_SLUG_ENDINGS = ('-nife', '-nifeos', '-cricker-os')
+
+
+def project_slugs():
+    """The harness's project directories that are this project's, by the slug's last component."""
+    if not RECORDS_ROOT.is_dir():
+        return []
+    return sorted(entry.name for entry in RECORDS_ROOT.iterdir()
+                  if entry.is_dir() and entry.name.endswith(PROJECT_SLUG_ENDINGS))
 
 # The machine-local cache. Outside the repository on purpose: `--snapshot` must be safe to run from
 # `launchd` while lanes are working, and anything that wrote into a worktree would not be.
@@ -379,7 +391,7 @@ def read_records():
     rows = {}
     streams = 0
     dirs = []
-    for slug in PROJECT_SLUGS:
+    for slug in project_slugs():
         root = RECORDS_ROOT / slug
         if not root.is_dir():
             continue
