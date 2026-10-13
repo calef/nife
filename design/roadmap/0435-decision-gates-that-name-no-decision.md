@@ -40,11 +40,7 @@ the file AGENTS.md names, and the measurement says the exception is the rule.
 `design/decisions/` section and no `§`. The other 13 do, so the convention exists and is followed
 about a quarter of the time.
 
-```
-52 66 95 102 105 131 142 147 178 180 188 198 205 206 207 224 241 260
-271 327 328 330 335 340 341 342 347 350 360 388 391 394 395 397 398
-400 403 404 406 407 408 413 415 419 423
-```
+The forty-five are the union of the three slice lists below.
 
 Twenty-four of the forty-five are numbered 327 or above, so they arrived hours earlier from
 milestone 433 (drain)'s drain of the proposal pile. Promotion carried each block's gate token across
@@ -94,7 +90,7 @@ one reading each, no code touched.
 
 Sections minted: §160 to §171 (where), provisional until the merge queue lands them.
 
-The denominator is the useful part, and it argues against this block's own framing. This
+The denominator argues against this block's own framing. This
 milestone was written as though the work were mostly writing forks up. In the first slice it mostly
 was, but three of the fifteen were records that had fallen behind the tree, and a fourth and
 fifth were blocks whose gate deferred to a decision that had since been taken:
@@ -121,9 +117,8 @@ had since answered it, which took a grep of `design/decisions/` per block and fo
 ## Slice B, fifteen blocks, resolved 2026-09-19
 
 `224 241 260 271 327 328 330 335 340 341 342 347 350 360 388`, on `milestone/435-slice-b`, with
-sections minted in a reserved range of twenty numbers beginning at §172. Every number here is
-provisional until the
-merge queue lands it.
+sections minted in a reserved range of twenty numbers beginning at §172, provisional until the
+merge queue lands them.
 
 Five tokens were wrong, which is a third of the slice and is the answer to the question this
 milestone could not ask in advance:

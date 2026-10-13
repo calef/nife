@@ -10,12 +10,11 @@ needs_person: no
 ---
 # 849. A package declares what it needs at run time, apart from what it links
 
-*(Minted 2026-10-09 (UTC) by lane/promote-proposals from the proposal `a-package-declares-what-it-needs-at-run-time`. The number is provisional until the merge queue lands it; the title and slug are drafts.)*
+*(Minted 2026-10-09 (UTC) by lane/promote-proposals from its proposal; number provisional until the merge queue lands it, title and slug drafts.)*
 
 
 calef asked on 2026-10-06 (UTC) how a nife package says what it needs at run time, as distinct from
 what it links. Written by lane `package-runtime-requirements`, which built nothing but this file.
-Every name below is provisional. The forks at the end are what calef is asked to rule.
 
 Reuse: the per-program half reuses `grant_plan::Manifest` and `crates/manifest_note` as they
 stand, and the gate extends `helpers/packages.py`. No outside tool fits, for the reasons in
@@ -23,7 +22,7 @@ stand, and the gate extends `helpers/packages.py`. No outside tool fits, for the
 
 ## The gap
 
-A package has one relationship to another today, and it is about linking.
+A package has one relationship to another today: linking.
 
 - `depends` is checked only for link edges across a package boundary. `helpers/packages.py:410`
   allows a link if the target crate is an `interface` or its package is in `depends`, and nothing
@@ -89,8 +88,8 @@ shape, and a word such as `.` then designates the directory, as §170 (how a for
 ## What a runtime need is here
 
 A need is a capability, not a process: a program needs a `WRITE` endpoint that answers
-`entropy_protocol`, not "the entropy package". And absence is supported, since every provider in
-`system_initializer` is optional, so most needs are wants in systemd's sense, not requirements.
+`entropy_protocol`, not "the entropy package". And absence is supported (every provider in
+`system_initializer` is optional), so most needs are wants in systemd's sense, not requirements.
 
 ## Options and prior art
 
@@ -109,7 +108,7 @@ Options A to F are in the
 
 ## Recommendation
 
-Fork 1 is ruled, so needs live only in program manifests and the build derives the rest.
+Per fork 1, needs live only in program manifests and the build derives the rest.
 
 1. Use: `grant_plan::Manifest`, carried as in fork A. Add `Manifest::contracts()`, mapping each
    service field to a contract identifier. Write it as a destructure with no `..`, so a new field is
@@ -153,8 +152,7 @@ shell that holds every capability, and the C makes no syscalls. Full POSIX, §31
 unbuilt. C++, Zig and Swift need a libc or their own runtime ported; nothing has started. Go is
 different: its runtime makes system calls itself per `GOOS` rather than through a libc (recalled),
 so Go needs a `GOOS=nife` port. `git grep GOOS` finds nothing. §83 (take the Rust one) still
-applies, so a C path is for software with no Rust equivalent. A native program carries its note by
-linking an object, the same as `rg`.
+applies, so a C path is for software with no Rust equivalent.
 
 Interpreted. The interpreter is the ELF the progenitor builds, shared by every script. Its note
 cannot carry a script's needs, because it would have to be the union of every script's, which is
@@ -221,8 +219,7 @@ A. Where a manifest travels. Revised by calef, 2026-10-07 (UTC), on his question
    The consequence. One digest covers code and manifest together, for a script as for an ELF, so
    the earlier draft's separate manifest file and its own entry in the activation set go away. The
    cost. `jig` and the spawner each need one small reader per format, so `jig` grows as language
-   support grows. That belongs to milestone 809 (the package client becomes a program), and this
-   block does not edit it.
+   support grows. That belongs to milestone 809 (the package client becomes a program).
 
    Prior art is in the appendix. Refused: a sidecar for every format, which separates the manifest
    from the bytes §197's option M2 hashes, and a stub ELF per script.
@@ -295,8 +292,8 @@ Every fork is ruled except fork 5. Names still provisional: `contracts`, `runner
   of what the shell itself holds and need no block. Prior art for that path is in
   [the appendix](0849-a-package-declares-what-it-needs-at-run-time/prior-art.md). It needs a
   measurement once a first interpreter runs.
-- Proposed milestone (candidate, not a fork): an ad hoc script runs from the prompt with a subset of
-  the shell's authority and no block, measured against the installed path on the first interpreter.
+- Proposed milestone (candidate, not a fork): that ad hoc path, measured against the installed path
+  on the first interpreter.
 
 ## Index row
 
