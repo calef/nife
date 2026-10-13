@@ -180,7 +180,7 @@ kernel/src/arch/riscv64/instructions.rs:1	42
 kernel/src/arch/riscv64/iommu.rs:1	54
 kernel/src/arch/riscv64/pmu.rs:1	66
 kernel/src/arch/x86_64/isa.rs:1	75
-kernel/src/arch/x86_64/mod.rs:570	44
+kernel/src/arch/x86_64/cpu_init.rs:147	44
 kernel/src/arch/x86_64/reset.rs:1	44
 kernel/src/arch/x86_64/rtc.rs:1	61
 kernel/src/arch/x86_64/tco.rs:1	73
