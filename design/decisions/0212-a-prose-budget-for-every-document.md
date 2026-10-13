@@ -65,7 +65,9 @@ On 2026-09-25 (UTC) calef granted two more, and ruled that neither block is spli
 words and [`design/roadmap/0139-drive-down-unsafe.md`](../roadmap/0139-drive-down-unsafe.md) at
 13,846. His reason was that both are large and rarely referenced. The maintainer counted 7 files
 linking the first and 2 the second. Roadmap blocks as a class stay under the cap, so question 2's
-refusal of a class exemption stands. Each marker lives in its block. No
+refusal of a class exemption stands. calef superseded both rulings on 2026-10-13 (UTC): "Lets
+launch a lane to bring the two exceptions and 0139 under the cap safely." Each block is now a
+page under the cap with its appendices beside it, and neither carries a marker. No
 migration sweep: the 174
 documents over the cap are worked worst-first by words times readers, and the ones nobody reads are
 left alone or archived.

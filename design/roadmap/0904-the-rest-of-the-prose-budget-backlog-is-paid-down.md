@@ -38,7 +38,8 @@ documents this file listed under the cap. Each commit says what moved and why. T
 Two decisions remained, 3,563 words over between them, and both waited
 on calef. The marked exceptions for
 [`0047-navigation-and-naming.md`](0047-navigation-and-naming.md) and
-[`0139-drive-down-unsafe.md`](0139-drive-down-unsafe.md) are not in this list.
+[`0139-drive-down-unsafe.md`](0139-drive-down-unsafe.md) are not in this list. calef ordered
+both split on 2026-10-13 (UTC), and `maintainer/cap-0047-0139` did it.
 
 | decision | words over the cap |
 |---|---|
