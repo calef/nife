@@ -935,7 +935,12 @@ mod tests {
     #[test]
     fn a_bin_member_is_the_program_when_none_is_named_after_the_package() {
         fn install(file: &[u8]) -> Result<(std::string::String, usize), Refusal> {
-            installable(&catalogue_for(file), file).map(|g| (g.program.into(), g.bytes.len()))
+            let digest = measured_boot::digest_text(&sha256(file));
+            let vouched = std::format!(
+                "uptime-0.1.0-aarch64 {}",
+                core::str::from_utf8(&digest).unwrap()
+            );
+            installable(&vouched, file).map(|g| (g.program.into(), g.bytes.len()))
         }
         let file = written(&[("bin/up", b"\x7fELF up"), ("uptime.license", b"MIT")]);
         assert_eq!(install(&file), Ok(("up".into(), 7)));
