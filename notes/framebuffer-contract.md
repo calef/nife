@@ -184,7 +184,8 @@ QEMU's monitor works headlessly: `screendump FILE` writes a PPM of the scanout e
 (`NIFE_GPU_MON`), and `cargo xtask`'s `cargo_test_with_scanout_check` drives it while the
 ordinary test run is happening: it spawns the suite, and beside it polls the monitor every 100 ms,
 dumps the scanout, and compares the PPM against `graphics_protocol::pixel`, the same definition the client
-painted from. The first match ends the polling. Both ISAs. On success it prints:
+painted from. The first match ends the polling. Both ISAs. Every command goes over one monitor
+connection and waits for QEMU's prompt, so a dump is whole when it is read. On success it prints:
 
 ```text
 scanout check (aarch64): the 128x64 pattern reached the DEVICE's scanout, verified pixel for pixel
@@ -251,6 +252,20 @@ its first flush, and while it waits there nothing is in `RECEIVE` on the display
 test spawners read it because they want the digest; the boot now reads it because it must. Nothing
 enforces this: `display_service::start_terminal`'s doc says so and names it a foot gun, because the
 tests need the digest and the wiring function therefore cannot swallow it for them.
+
+RESOLVED 2026-10-12 (lane/scanout-referee-flake): **the referee missed pictures because QEMU
+refused its dumps.** The monitor socket serves one client with a listen backlog of one, and the
+referee opened a connection for `sendkey` and another for `screendump` microseconds apart without
+reading either reply. On macOS the second connect was refused while the first sat in the backlog,
+so most polls took no dump; one loaded riscv64 run went 25 polls (2.6 s) without one, against a
+picture held for 3 s. That is the failure seen on 2026-10-12 (HVF) and 2026-10-13 (riscv64, which
+PR #2047 recorded as an unconfirmed reading). The referee now holds one connection and waits for
+QEMU's prompt after each command, and an unmatched picture says whether it was ever looked for.
+[framebuffer-contract/scanout-referee.md](framebuffer-contract/scanout-referee.md) has the runs.
+
+The red report still opens "the compositor test passed" for every unmatched picture, though the
+referee cannot know that: when the guest panicked first, that test may never have run. Read the
+guest's verdict above the scanout lines before the scanout lines.
 
 RESOLVED 2026-09-19 (milestone 177): the second `FLUSH` on the real boot never returned because
 nobody received the driver's `FLUSHED` report. The terminal's first flush came before its `TERM_UP`,

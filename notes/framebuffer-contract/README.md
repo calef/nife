@@ -7,7 +7,7 @@ the pieces are. These files carry the evidence its prose budget has no room for.
 - [`iommu-escape-test.md`](iommu-escape-test.md): why the escape test reads the IOMMU's fault queue
   and not the device, and the RISC-V fault-queue overflow it ran into.
 - [`scanout-referee.md`](scanout-referee.md): what makes the host-side scanout check a real check,
-  and the 2026-08-26 resize bug that was a guest hang.
+  the 2026-08-26 resize bug that was a guest hang, and the 2026-10-12 dumps QEMU's monitor refused.
 - [`later-rungs.md`](later-rungs.md): what the compositor (milestone 33 (a compositor)) and the
   display terminal (milestone 29 (a display terminal)'s text increment) did with this contract.
 - [`flushed-hang.md`](flushed-hang.md): the second `FLUSH` that never returned, and the boot

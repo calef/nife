@@ -320,7 +320,8 @@ pub(crate) fn screendump(sock: &str, out: &Path) -> bool {
 /// QEMU prints its `(qemu) ` prompt only after a command has finished, `screendump` included (the
 /// file is complete and closed by then: 50 of 50 dumps measured whole the moment the prompt came
 /// back). So waiting for the prompt makes each command synchronous, and a client that does that
-/// never has a connection waiting in the backlog. notes/framebuffer-contract.md has the runs.
+/// never has a connection waiting in the backlog. notes/framebuffer-contract/scanout-referee.md
+/// has the runs.
 ///
 /// Name: provisional, minted 2026-10-12 by lane/scanout-referee-flake.
 pub(crate) struct Monitor {
