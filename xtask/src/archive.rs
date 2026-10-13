@@ -353,150 +353,24 @@ pub(crate) fn initial_ramdisk_riscv() -> bool {
     let Some(mut blobs) = declared_program_blobs("initial-ramdisk-riscv", bin) else {
         return false;
     };
-    // The std demo (milestone 27 (Rust `std` on the native ABI)), built through the patched std
-    // farm for the riscv custom target, rides along when present, exactly as on aarch64. `test`
-    // builds it first.
-    if let Ok(bytes) = read_stripped(
-        &std_exerciser_elf("riscv64-unknown-nife")
-            .display()
-            .to_string(),
-    ) {
-        blobs.push(("std_exerciser", bytes));
-    }
-    // `std_resolve` (milestone 801 (packages over the internet)), built by the same step.
-    if let Ok(bytes) = read_stripped(
-        &std_resolve_elf("riscv64-unknown-nife")
-            .display()
-            .to_string(),
-    ) {
-        blobs.push(("std_resolve", bytes));
-    }
-    // `jig` (milestone 809 (the package client becomes a program)), built by the same step.
-    if let Ok(bytes) = read_stripped(&jig_elf("riscv64-unknown-nife").display().to_string()) {
-        blobs.push(("jig", bytes));
-    }
-    // Milestone 812 (`std::thread::spawn` runs real threads in one address space)'s exit test, on
-    // the same terms.
-    if let Ok(bytes) = read_stripped(
-        &std_threads_elf("riscv64-unknown-nife")
-            .display()
-            .to_string(),
-    ) {
-        blobs.push(("std_threads", bytes));
-    }
-    if let Ok(bytes) = read_stripped(
-        &std_heap_contention_elf("riscv64-unknown-nife")
-            .display()
-            .to_string(),
-    ) {
-        blobs.push(("std_heap_contention", bytes));
-    }
-    if let Ok(bytes) = read_stripped(&std_rayon_elf("riscv64-unknown-nife").display().to_string()) {
-        blobs.push(("std_rayon", bytes));
-    }
-    // **Unmodified `ripgrep`** (milestone 121), on the same terms as aarch64's: present iff
-    // `helpers/build-ripgrep.sh` has been run, absent from every ordinary build and from CI.
-    // DECISIONS §19 is why this leg exists at all: the same experiment on both ISAs, or a scope
-    // note says which one it skipped and why.
-    if let Ok(bytes) = read_stripped(&ripgrep_elf("riscv64-unknown-nife").display().to_string()) {
-        blobs.push(("rg", bytes));
-    }
-    // **The unmodified C programs** (milestone 835), on `rg`'s terms: each present iff its
-    // `helpers/build-<name>.sh` has been run.
-    for name in C_PROGRAMS {
-        let path = c_program_elf(name, "riscv64-unknown-nife")
-            .display()
-            .to_string();
-        if let Ok(bytes) = read_stripped(&path) {
-            blobs.push((name, bytes));
-        }
-    }
-    // **The crypto-provider workload** of milestone 442 (a crypto provider `rustls` can use on all
-    // three bare-metal targets): present iff `helpers/build-cryptography-exerciser.sh` has run,
-    // which `cargo xtask test` does since milestone 855 (`farm::tls_graph`).
-    if let Ok(bytes) = read_stripped(
-        &cryptography_exerciser_elf("riscv64-unknown-nife")
-            .display()
-            .to_string(),
-    ) {
-        blobs.push(("cryptography_exerciser", bytes));
-    }
-    // **The pinned TLS client's workload** of milestone 501 (a TLS client that speaks to one pinned
-    // peer), on the same terms: present iff `helpers/build-pinned-tls-exerciser.sh` has been run.
-    if let Ok(bytes) = read_stripped(
-        &pinned_tls_exerciser_elf("riscv64-unknown-nife")
-            .display()
-            .to_string(),
-    ) {
-        blobs.push(("pinned_tls_exerciser", bytes));
-    }
-    // The package index's client (milestone 801), built by the same helper, on the same terms.
-    if let Ok(bytes) = read_stripped(
-        &package_fetch_exerciser_elf("riscv64-unknown-nife")
-            .display()
-            .to_string(),
-    ) {
-        blobs.push(("package_fetch_exerciser", bytes));
-    }
-    // The FS server (milestone 32 phase 2), built for the riscv bare target, rides along when
-    // present, exactly as std_exerciser does; `test` builds it first.
-    if let Ok(bytes) = read_stripped(&redoxfs_server_elf(RISCV_TARGET)) {
-        blobs.push(("redoxfs_server", bytes));
-    }
-    // And `mkfs` (milestone 57's write half), on the same terms.
-    if let Ok(bytes) = read_stripped(&mkfs_elf(RISCV_TARGET)) {
-        blobs.push(("mkfs", bytes));
-    }
-    let mut files: Vec<(&str, &[u8])> = blobs.iter().map(|(n, b)| (*n, b.as_slice())).collect();
-    // The image's package source, on the same terms as aarch64's (see there).
-    let catalogue = match crate::package::image_catalogue("riscv64") {
-        Ok(catalogue) => catalogue,
-        Err(complaint) => {
-            eprintln!("initial-ramdisk-riscv: the image's package source: {complaint}");
-            return false;
-        }
-    };
-    files.push((package_archive::CATALOG, catalogue.as_bytes()));
-    // And where the image says its index is (milestone 801), measured the same way.
-    let sources = match crate::package::image_index_sources() {
-        Ok(sources) => sources,
-        Err(complaint) => {
-            eprintln!("initial-ramdisk-riscv: the image's index sources: {complaint}");
-            return false;
-        }
-    };
-    files.push((package_index::SOURCES_ENTRY, sources.as_bytes()));
-    // The measurement table (milestone 104), on the same terms as aarch64's: last, so it measures
-    // everything above it, and vouched for by the kernel's trust root so the progenitor's refusals mean
-    // something. Parity is the point (§19): the same table, the same parser, the same policy.
-    if !programs_fit_the_address_space_map("initial-ramdisk-riscv", &files) {
-        return false;
-    }
-    let table = measurement_table(&files);
-    files.push((measured_boot::PROGRAM_MEASUREMENTS, table.as_bytes()));
-    let size = nifefs::image_size(&files);
-    let mut img = std::vec![0u8; size];
-    // Carry the reason. "could not build the archive" with the error thrown away sent me hunting
-    // through MAX_FILES, image_size and write_image's bounds check by hand; the error names which.
-    if let Err(e) = nifefs::write_image(&files, &mut img) {
-        eprintln!(
-            "initial-ramdisk-riscv: could not build the archive: {e:?} ({} files, {} bytes)",
-            files.len(),
-            size
-        );
-        return false;
-    }
-    if let Err(e) = std::fs::write(riscv_initial_ramdisk_path(), &img) {
-        eprintln!(
-            "initial-ramdisk-riscv: could not write {}: {e}",
-            riscv_initial_ramdisk_path()
-        );
-        return false;
-    }
+    // The `std` programs and the ported ones, exactly as on aarch64. DECISIONS §19 is why `rg`'s
+    // leg exists here at all: the same experiment on both ISAs, or a scope note says which one it
+    // skipped and why.
+    blobs.extend(std_program_blobs("riscv64-unknown-nife"));
+    blobs.extend(ported_program_blobs("riscv64-unknown-nife"));
+    // The FS server (milestone 32 phase 2) and `mkfs`, built for the riscv bare target, ride along
+    // when present, exactly as std_exerciser does; `test` builds them first.
+    blobs.extend(file_server_blobs(RISCV_TARGET));
     // Measure the boot programs before the riscv kernel is built (milestone 22 phase B.1).
-    if !write_measure_manifest("riscv64", &img) {
+    let Some((size, _)) = write_archive(
+        "initial-ramdisk-riscv",
+        "riscv64",
+        &riscv_initial_ramdisk_path(),
+        "the archive",
+        &blobs,
+    ) else {
         return false;
-    }
+    };
     eprintln!(
         "wrote {} ({size} bytes): progenitor, least_authority_demo",
         riscv_initial_ramdisk_path()
@@ -581,143 +455,33 @@ pub(crate) fn initial_ramdisk_x86() -> bool {
     // they could not be built for this target at all, because the vendored RedoxFS engine's `aes`
     // dependency would not codegen without SSE; `.cargo/config.toml`'s `--cfg aes_force_soft` on
     // this target is what changed that.
-    if let Ok(bytes) = read_stripped(&redoxfs_server_elf(X86_TARGET)) {
-        blobs.push(("redoxfs_server", bytes));
-    }
-    if let Ok(bytes) = read_stripped(&mkfs_elf(X86_TARGET)) {
-        blobs.push(("mkfs", bytes));
-    }
-    // The std demo (milestone 184), on the terms both other archives carry it: present iff
-    // `cargo xtask std-exerciser` built it for `x86_64-unknown-nife`, which `test` does first.
-    if let Ok(bytes) = read_stripped(
-        &std_exerciser_elf("x86_64-unknown-nife")
-            .display()
-            .to_string(),
-    ) {
-        blobs.push(("std_exerciser", bytes));
-    }
-    // `std_resolve` (milestone 801 (packages over the internet)), built by the same step.
-    if let Ok(bytes) = read_stripped(&std_resolve_elf("x86_64-unknown-nife").display().to_string())
-    {
-        blobs.push(("std_resolve", bytes));
-    }
-    // `jig` (milestone 809 (the package client becomes a program)), built by the same step.
-    if let Ok(bytes) = read_stripped(&jig_elf("x86_64-unknown-nife").display().to_string()) {
-        blobs.push(("jig", bytes));
-    }
-    // Milestone 812 (`std::thread::spawn` runs real threads in one address space)'s exit test, on
-    // the same terms.
-    if let Ok(bytes) = read_stripped(&std_threads_elf("x86_64-unknown-nife").display().to_string())
-    {
-        blobs.push(("std_threads", bytes));
-    }
-    if let Ok(bytes) = read_stripped(
-        &std_heap_contention_elf("x86_64-unknown-nife")
-            .display()
-            .to_string(),
-    ) {
-        blobs.push(("std_heap_contention", bytes));
-    }
-    if let Ok(bytes) = read_stripped(&std_rayon_elf("x86_64-unknown-nife").display().to_string()) {
-        blobs.push(("std_rayon", bytes));
-    }
-    // **Unmodified `ripgrep`** (milestones 121 and 184), present iff `helpers/build-ripgrep.sh` ran.
-    if let Ok(bytes) = read_stripped(&ripgrep_elf("x86_64-unknown-nife").display().to_string()) {
-        blobs.push(("rg", bytes));
-    }
-    // **The unmodified C programs** (milestone 835), each present iff its helper ran.
-    for name in C_PROGRAMS {
-        let path = c_program_elf(name, "x86_64-unknown-nife")
-            .display()
-            .to_string();
-        if let Ok(bytes) = read_stripped(&path) {
-            blobs.push((name, bytes));
-        }
-    }
-    // **The crypto-provider workload** (milestone 442): present iff
-    // `helpers/build-cryptography-exerciser.sh` has run, which `cargo xtask test` does since 855.
-    if let Ok(bytes) = read_stripped(
-        &cryptography_exerciser_elf("x86_64-unknown-nife")
-            .display()
-            .to_string(),
-    ) {
-        blobs.push(("cryptography_exerciser", bytes));
-    }
-    // **The pinned TLS client's workload** of milestone 501 (a TLS client that speaks to one pinned
-    // peer), on the same terms: present iff `helpers/build-pinned-tls-exerciser.sh` has been run.
-    if let Ok(bytes) = read_stripped(
-        &pinned_tls_exerciser_elf("x86_64-unknown-nife")
-            .display()
-            .to_string(),
-    ) {
-        blobs.push(("pinned_tls_exerciser", bytes));
-    }
-    // The package index's client (milestone 801), built by the same helper, on the same terms.
-    if let Ok(bytes) = read_stripped(
-        &package_fetch_exerciser_elf("x86_64-unknown-nife")
-            .display()
-            .to_string(),
-    ) {
-        blobs.push(("package_fetch_exerciser", bytes));
-    }
-    let mut files: Vec<(&str, &[u8])> = blobs.iter().map(|(n, b)| (*n, b.as_slice())).collect();
-    // The image's package source, on the same terms as aarch64's (see there). Since milestone 198
-    // rung 3a's installer the progenitor reads it for every install, and `jig` (milestone 809) is handed a copy, so x86_64 carries one too
-    // (§19 (architectural parity is a tenet)); no fetch test reads it here, because this runner attaches no network.
-    let catalogue = match crate::package::image_catalogue("x86_64") {
-        Ok(catalogue) => catalogue,
-        Err(complaint) => {
-            eprintln!("initial-ramdisk-x86: the image's package source: {complaint}");
-            return false;
-        }
-    };
-    files.push((package_archive::CATALOG, catalogue.as_bytes()));
-    // And where the image says its index is (milestone 801), measured the same way.
-    let sources = match crate::package::image_index_sources() {
-        Ok(sources) => sources,
-        Err(complaint) => {
-            eprintln!("initial-ramdisk-x86: the image's index sources: {complaint}");
-            return false;
-        }
-    };
-    files.push((package_index::SOURCES_ENTRY, sources.as_bytes()));
-    // The measurement table (milestone 104), on the same terms as the other two: last, so it
-    // measures everything above it, and vouched for by the kernel's trust root so the progenitor's refusals
-    // mean something. Parity is the point (§19): the same table, the same parser, the same policy.
-    if !programs_fit_the_address_space_map("initial-ramdisk-x86", &files) {
-        return false;
-    }
-    let table = measurement_table(&files);
-    files.push((measured_boot::PROGRAM_MEASUREMENTS, table.as_bytes()));
-    let size = nifefs::image_size(&files);
-    let mut img = std::vec![0u8; size];
-    if let Err(e) = nifefs::write_image(&files, &mut img) {
-        eprintln!(
-            "initial-ramdisk-x86: could not build the archive: {e:?} ({} files, {} bytes)",
-            files.len(),
-            size
-        );
-        return false;
-    }
-    if let Err(e) = std::fs::write(x86_initial_ramdisk_path(), &img) {
-        eprintln!(
-            "initial-ramdisk-x86: could not write {}: {e}",
-            x86_initial_ramdisk_path()
-        );
-        return false;
-    }
+    blobs.extend(file_server_blobs(X86_TARGET));
+    // The std demo (milestone 184) and the rest of the `std` and ported programs, on the terms both
+    // other archives carry them: each present iff it was built for `x86_64-unknown-nife`.
+    blobs.extend(std_program_blobs("x86_64-unknown-nife"));
+    blobs.extend(ported_program_blobs("x86_64-unknown-nife"));
+    // The image's package source, as on the other two: since milestone 198 rung 3a's installer the
+    // progenitor reads it for every install, and `jig` (milestone 809) is handed a copy, so x86_64
+    // carries one too (§19 (architectural parity is a tenet)); no fetch test reads it here, because
+    // this runner attaches no network.
+    //
     // **Measure the boot programs before the x86 kernel is built** (milestone 22 phase B.1), and on
     // this architecture that is not a nicety: with no manifest the generated `TRUST_ROOT` is empty
     // and `trust::require` refuses every boot program as `Unmeasured`, so the kernel would come up
     // and refuse to start the progenitor with an error about measurement rather than about the
     // archive.
-    if !write_measure_manifest("x86_64", &img) {
+    let Some((size, entries)) = write_archive(
+        "initial-ramdisk-x86",
+        "x86_64",
+        &x86_initial_ramdisk_path(),
+        "the archive",
+        &blobs,
+    ) else {
         return false;
-    }
+    };
     eprintln!(
-        "wrote {} ({size} bytes): progenitor plus {} entries",
+        "wrote {} ({size} bytes): progenitor plus {entries} entries",
         x86_initial_ramdisk_path(),
-        files.len()
     );
     true
 }
@@ -753,139 +517,129 @@ pub(crate) fn initial_ramdisk_aarch64() -> bool {
     // same list the other two archives pack ([`declared_programs`]). This function carried its own
     // hand-written table before that, and an older three-way copy of it before milestone 130; the
     // table had drifted from riscv64's and `x86_64`'s by two programs when it was deleted.
-    let Some(blobs) = declared_program_blobs("initial-ramdisk-aarch64", bin_elf) else {
+    let Some(mut blobs) = declared_program_blobs("initial-ramdisk-aarch64", bin_elf) else {
         return false;
     };
-    let mut files: Vec<(&str, &[u8])> = blobs.iter().map(|(n, b)| (*n, b.as_slice())).collect();
-    // The std demo (milestone 27) rides along IFF it has been built (`cargo xtask std-exerciser`, which
-    // `test` runs). It builds through a separate toolchain and target, so an interactive `run` that
-    // never built it simply ships an initial ramdisk without it; nothing loads it there.
-    let std_exerciser = read_stripped(
-        &std_exerciser_elf("aarch64-unknown-nife")
-            .display()
-            .to_string(),
+    blobs.extend(std_program_blobs("aarch64-unknown-nife"));
+    blobs.extend(file_server_blobs(TARGET));
+    blobs.extend(ported_program_blobs("aarch64-unknown-nife"));
+    // Measure the boot program before the kernel is built (milestone 22 phase B.1). Every caller
+    // reaches the kernel build through `user()`, which calls this, so the manifest is always current
+    // by the time `kernel/build.rs` reads it.
+    write_archive(
+        "initial-ramdisk-aarch64",
+        "aarch64",
+        &initial_ramdisk_path(),
+        "the initial ramdisk archive",
+        &blobs,
     )
-    .ok();
-    if let Some(bytes) = &std_exerciser {
-        files.push(("std_exerciser", bytes.as_slice()));
-    }
-    // `std_resolve` (milestone 801 (packages over the internet)), built by the same step.
-    let std_resolve = read_stripped(
-        &std_resolve_elf("aarch64-unknown-nife")
-            .display()
-            .to_string(),
-    )
-    .ok();
-    if let Some(bytes) = &std_resolve {
-        files.push(("std_resolve", bytes.as_slice()));
-    }
-    // `jig` (milestone 809 (the package client becomes a program)), built by the same step.
-    let jig = read_stripped(&jig_elf("aarch64-unknown-nife").display().to_string()).ok();
-    if let Some(bytes) = &jig {
-        files.push(("jig", bytes.as_slice()));
-    }
-    // Milestone 812 (`std::thread::spawn` runs real threads in one address space)'s exit test, on
-    // the same terms.
-    let std_threads = read_stripped(
-        &std_threads_elf("aarch64-unknown-nife")
-            .display()
-            .to_string(),
-    )
-    .ok();
-    if let Some(bytes) = &std_threads {
-        files.push(("std_threads", bytes.as_slice()));
-    }
-    let std_heap_contention = read_stripped(
-        &std_heap_contention_elf("aarch64-unknown-nife")
-            .display()
-            .to_string(),
-    )
-    .ok();
-    if let Some(bytes) = &std_heap_contention {
-        files.push(("std_heap_contention", bytes.as_slice()));
-    }
-    let std_rayon =
-        read_stripped(&std_rayon_elf("aarch64-unknown-nife").display().to_string()).ok();
-    if let Some(bytes) = &std_rayon {
-        files.push(("std_rayon", bytes.as_slice()));
-    }
-    // The FS server (milestone 32 phase 2) rides along IFF built (its own workspace/target; `test`
-    // builds it). Absent for a plain interactive boot, which simply skips the FS-server test.
-    let redoxfs_server = read_stripped(&redoxfs_server_elf(TARGET)).ok();
-    if let Some(bytes) = &redoxfs_server {
-        files.push(("redoxfs_server", bytes.as_slice()));
-    }
-    // `mkfs` (milestone 57's write half) rides along on the same terms: the same package, the
-    // same build, and absent from an interactive boot that never built it.
-    let mkfs = read_stripped(&mkfs_elf(TARGET)).ok();
-    if let Some(bytes) = &mkfs {
-        files.push(("mkfs", bytes.as_slice()));
-    }
-    // **Unmodified `ripgrep`** (milestone 121), on exactly the terms above: present iff
-    // `helpers/build-ripgrep.sh` has been run, absent from every ordinary build and from CI. The
-    // archive name is `rg`, which is what the program is called everywhere else in the world.
-    let ripgrep = read_stripped(&ripgrep_elf("aarch64-unknown-nife").display().to_string()).ok();
-    if let Some(bytes) = &ripgrep {
-        files.push(("rg", bytes.as_slice()));
-    }
+    .is_some()
+}
+
+/// **The `std` programs the patched farm builds for `triple`**, each packed iff it was built: an
+/// interactive `run` that never built them simply ships an archive without them, and nothing loads
+/// them there. Every archive packs them in this order.
+fn std_program_blobs(triple: &str) -> Vec<(&'static str, Vec<u8>)> {
+    let programs: [FarmProgram; 6] = [
+        // The std demo (milestone 27 (Rust `std` on the native ABI)), built by `cargo xtask
+        // std-exerciser`, which `test` runs, through a separate toolchain and target.
+        ("std_exerciser", std_exerciser_elf),
+        // `std_resolve` (milestone 801 (packages over the internet)), built by the same step.
+        ("std_resolve", std_resolve_elf),
+        // `jig` (milestone 809 (the package client becomes a program)), built by the same step.
+        ("jig", jig_elf),
+        // Milestone 812 (`std::thread::spawn` runs real threads in one address space)'s exit test,
+        // on the same terms, and its two companions.
+        ("std_threads", std_threads_elf),
+        ("std_heap_contention", std_heap_contention_elf),
+        ("std_rayon", std_rayon_elf),
+    ];
+    present_blobs(triple, &programs)
+}
+
+/// **The ported programs and the TLS graph's workloads for `triple`**, each packed iff its helper
+/// has been run, in the order every archive packs them.
+fn ported_program_blobs(triple: &str) -> Vec<(&'static str, Vec<u8>)> {
+    // **Unmodified `ripgrep`** (milestone 121), present iff `helpers/build-ripgrep.sh` has been
+    // run, absent from every ordinary build and from CI. The archive name is `rg`, which is what
+    // the program is called everywhere else in the world.
+    let mut blobs = present_blobs(triple, &[("rg", ripgrep_elf)]);
     // **The unmodified C programs** (milestone 835 (a C library, stage 1: files, clock and
     // memory)), on exactly `rg`'s terms: each present iff its `helpers/build-<name>.sh` has run.
-    let c_programs: Vec<(&str, Vec<u8>)> = C_PROGRAMS
+    for name in C_PROGRAMS {
+        let path = c_program_elf(name, triple).display().to_string();
+        if let Ok(bytes) = read_stripped(&path) {
+            blobs.push((name, bytes));
+        }
+    }
+    let workloads: [FarmProgram; 3] = [
+        // **The crypto-provider workload** (milestone 442): present iff
+        // `helpers/build-cryptography-exerciser.sh` has run, which `cargo xtask test` does for
+        // every leg it boots since milestone 855 (the TLS graph enters the gated build). Other
+        // boots (`cargo xtask run`, a bench) carry it only if somebody ran the helper.
+        ("cryptography_exerciser", cryptography_exerciser_elf),
+        // **The pinned TLS client's workload** (milestone 501 (a TLS client that speaks to one
+        // pinned peer)), on exactly those terms: present iff
+        // `helpers/build-pinned-tls-exerciser.sh` has run.
+        ("pinned_tls_exerciser", pinned_tls_exerciser_elf),
+        // The package index's client (milestone 801), built by the same helper, on the same terms.
+        ("package_fetch_exerciser", package_fetch_exerciser_elf),
+    ];
+    blobs.extend(present_blobs(triple, &workloads));
+    blobs
+}
+
+/// A program's archive name, and where its build for a triple puts it.
+type FarmProgram = (&'static str, fn(&str) -> std::path::PathBuf);
+
+/// The stripped bytes of each of `programs` built for `triple`, skipping any that was not built.
+fn present_blobs(triple: &str, programs: &[FarmProgram]) -> Vec<(&'static str, Vec<u8>)> {
+    programs
         .iter()
-        .filter_map(|&name| {
-            let path = c_program_elf(name, "aarch64-unknown-nife")
-                .display()
-                .to_string();
-            read_stripped(&path).ok().map(|bytes| (name, bytes))
+        .filter_map(|&(name, elf)| {
+            read_stripped(&elf(triple).display().to_string())
+                .ok()
+                .map(|bytes| (name, bytes))
         })
-        .collect();
-    for (name, bytes) in &c_programs {
-        files.push((name, bytes.as_slice()));
+        .collect()
+}
+
+/// **The FS server (milestone 32 phase 2) and `mkfs` (milestone 57's write half) for a bare
+/// `target`**, each packed iff built: they are their own workspace and target, `test` builds them,
+/// and a plain interactive boot without them simply skips the FS-server test.
+fn file_server_blobs(target: &str) -> Vec<(&'static str, Vec<u8>)> {
+    let mut blobs = Vec::new();
+    if let Ok(bytes) = read_stripped(&redoxfs_server_elf(target)) {
+        blobs.push(("redoxfs_server", bytes));
     }
-    // **The crypto-provider workload** (milestone 442): present iff
-    // `helpers/build-cryptography-exerciser.sh` has run, which `cargo xtask test` does for every
-    // leg it boots since milestone 855 (the TLS graph enters the gated build). Other boots
-    // (`cargo xtask run`, a bench) carry it only if somebody ran the helper.
-    let cryptography = read_stripped(
-        &cryptography_exerciser_elf("aarch64-unknown-nife")
-            .display()
-            .to_string(),
-    )
-    .ok();
-    if let Some(bytes) = &cryptography {
-        files.push(("cryptography_exerciser", bytes.as_slice()));
+    if let Ok(bytes) = read_stripped(&mkfs_elf(target)) {
+        blobs.push(("mkfs", bytes));
     }
-    // **The pinned TLS client's workload** (milestone 501 (a TLS client that speaks to one pinned
-    // peer)), on exactly those terms: present iff `helpers/build-pinned-tls-exerciser.sh` has run.
-    let pinned_tls = read_stripped(
-        &pinned_tls_exerciser_elf("aarch64-unknown-nife")
-            .display()
-            .to_string(),
-    )
-    .ok();
-    if let Some(bytes) = &pinned_tls {
-        files.push(("pinned_tls_exerciser", bytes.as_slice()));
-    }
-    // The package index's client (milestone 801), built by the same helper, on the same terms.
-    let package_fetch = read_stripped(
-        &package_fetch_exerciser_elf("aarch64-unknown-nife")
-            .display()
-            .to_string(),
-    )
-    .ok();
-    if let Some(bytes) = &package_fetch {
-        files.push(("package_fetch_exerciser", bytes.as_slice()));
-    }
+    blobs
+}
+
+/// **Pack `blobs` and the entries every archive carries into one nifefs image**, write it to
+/// `path`, and write the measurement manifest the kernel build reads. `Some((bytes, entries))` on
+/// success; `None` after saying why, prefixed with `label`. `what` names the archive in the one
+/// message that has always spelled it per architecture.
+fn write_archive(
+    label: &str,
+    arch: &str,
+    path: &str,
+    what: &str,
+    blobs: &[(&'static str, Vec<u8>)],
+) -> Option<(usize, usize)> {
+    let mut files: Vec<(&str, &[u8])> = blobs.iter().map(|(n, b)| (*n, b.as_slice())).collect();
     // **The image's package source** (milestone 198 (a package manager) rung 3a): every recipe under `packages/` for
     // this architecture is built, written where the package tests' HTTP peer serves it, and its
     // catalogue line packed here, *above* the measurement table so the kernel's trust root vouches
     // for it. `package_archive::CATALOG`'s doc has why. It also runs the producer end to end on
     // every archive build, which nothing did before.
-    let catalogue = match crate::package::image_catalogue("aarch64") {
+    let catalogue = match crate::package::image_catalogue(arch) {
         Ok(catalogue) => catalogue,
         Err(complaint) => {
-            eprintln!("initial-ramdisk-aarch64: the image's package source: {complaint}");
-            return false;
+            eprintln!("{label}: the image's package source: {complaint}");
+            return None;
         }
     };
     files.push((package_archive::CATALOG, catalogue.as_bytes()));
@@ -893,46 +647,42 @@ pub(crate) fn initial_ramdisk_aarch64() -> bool {
     let sources = match crate::package::image_index_sources() {
         Ok(sources) => sources,
         Err(complaint) => {
-            eprintln!("initial-ramdisk-aarch64: the image's index sources: {complaint}");
-            return false;
+            eprintln!("{label}: the image's index sources: {complaint}");
+            return None;
         }
     };
     files.push((package_index::SOURCES_ENTRY, sources.as_bytes()));
     // **The measurement table, last, so it measures everything above it** (milestone 104). The progenitor
     // reads this entry out of the archive it already holds and refuses to load a program whose
-    // bytes it does not match. See [`measurement_table`] for why it lives here rather than inside
-    // the progenitor's own image.
-    if !programs_fit_the_address_space_map("initial-ramdisk-aarch64", &files) {
-        return false;
+    // bytes it does not match, vouched for by the kernel's trust root so its refusals mean
+    // something. Parity is the point (§19): the same table, the same parser, the same policy on
+    // every architecture. See [`measurement_table`] for why it lives here rather than inside the
+    // progenitor's own image.
+    if !programs_fit_the_address_space_map(label, &files) {
+        return None;
     }
     let table = measurement_table(&files);
     files.push((measured_boot::PROGRAM_MEASUREMENTS, table.as_bytes()));
 
     let size = nifefs::image_size(&files);
     let mut img = std::vec![0u8; size];
-    // Carry the reason, as `initial_ramdisk_riscv` already does. "could not build the initial
-    // ramdisk archive" with the error thrown away is what milestone 291 hit on the commit that
-    // crossed `MAX_FILES`, and it cost a hunt through three candidate bounds by hand; the error
-    // names which one.
+    // Carry the reason. "could not build the initial ramdisk archive" with the error thrown away is
+    // what milestone 291 hit on the commit that crossed `MAX_FILES`, and it cost a hunt through
+    // three candidate bounds by hand (`MAX_FILES`, `image_size` and `write_image`'s bounds check);
+    // the error names which one.
     if let Err(e) = nifefs::write_image(&files, &mut img) {
         eprintln!(
-            "initial-ramdisk-aarch64: could not build the initial ramdisk archive: {e:?} ({} files, {} bytes)",
+            "{label}: could not build {what}: {e:?} ({} files, {} bytes)",
             files.len(),
             size
         );
-        return false;
+        return None;
     }
-    if let Err(e) = std::fs::write(initial_ramdisk_path(), &img) {
-        eprintln!(
-            "initial-ramdisk-aarch64: could not write {}: {e}",
-            initial_ramdisk_path()
-        );
-        return false;
+    if let Err(e) = std::fs::write(path, &img) {
+        eprintln!("{label}: could not write {path}: {e}");
+        return None;
     }
-    // Measure the boot program before the kernel is built (milestone 22 phase B.1). Every caller
-    // reaches the kernel build through `user()`, which calls this, so the manifest is always current
-    // by the time `kernel/build.rs` reads it.
-    write_measure_manifest("aarch64", &img)
+    write_measure_manifest(arch, &img).then_some((size, files.len()))
 }
 
 /// **Every program in an archive fits the address-space map's image band**, checked when the
