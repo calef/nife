@@ -165,6 +165,14 @@ of a false claim is a consequence nobody measured until now. Whether corrections
 or the bold backlog gets a lane that retires these markers, is calef's call; this note records the
 measured class so the next reader does not rediscover it one frozen document at a time.
 
+## Design note, 2026-10-13: the word count is the whole file
+
+The `words` measure is `budget_words`: every whitespace-separated word in the file, less a generated
+table, the one function `script/metrics`' prose-budget graph also calls (MEASURE 3). calef ruled it
+on 2026-10-13 (UTC), choosing the option "Gate counts every word"; §212 records it. §213's measures
+read prose, so its 200-word floor and bold density count prose words. An exception marker's grant
+is read as `wc -w` without frontmatter (`counted_words`).
+
 ## Follow-on
 
 - **Outstanding.** Measure baseline churn over the first week, from 2026-09-24: how many merged pull

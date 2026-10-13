@@ -19,7 +19,7 @@ which is §212's half alone and the name `script/metrics` already gives its grap
 
 | measure | limit | decision |
 |---|---|---|
-| words of main body | 3,000 | §212 (a prose budget) |
+| words, whole file (`budget_words`) | 3,000 | §212 (a prose budget) |
 | median sentence, in words | 20 | §213 (writing standards) rule 1 |
 | longest sentence, in words | 40 | §213 rule 2 |
 | bold spans per 1,000 words | 4 | §213 rule 3, held as two counts: line-opening and inline |
@@ -51,8 +51,11 @@ its files must be linked from its own `README.md`. An appendix nothing links to 
 **What is counted, exactly**, because §213 records a first measurement that was wrong by ten words
 of median and a gate built on it would fail documents that pass:
 
-- Fenced code, HTML comments and YAML frontmatter are not prose and are stripped before anything.
-- Words are whitespace-separated tokens of what remains, tables included (a table is read).
+- §212's words are whitespace-separated tokens over the whole file, code, comments, frontmatter and
+  tables included, less a generated table: `budget_words`, the one function `script/metrics`' graph
+  calls too (calef, 2026-10-13 UTC, "Gate counts every word").
+- For §213's measures, fenced code, HTML comments and YAML frontmatter are not prose and are
+  stripped before anything. Its 200-word floor and its bold density count the prose words left.
 - Sentences are split on block boundaries first (blank lines, headings, list-item starts, table
   rows, blockquotes), and only then within a block, on `.`, `!` or `?` followed by whitespace and
   anything that can open a sentence, unless the word before the stop is an abbreviation. §213's
@@ -323,7 +326,7 @@ GENERATED_TABLES = {'## The decisions'} | {
 
 
 def without_generated_tables(text):
-    """`text` minus the rows of every table in GENERATED_TABLES. `script/metrics` counts through it,
+    """`text` minus the rows of every table in GENERATED_TABLES, which `budget_words` counts through,
     so the prose-budget graph and this gate agree on what a generated table is."""
     out, generated = [], False
     for line in text.split('\n'):
@@ -335,6 +338,19 @@ def without_generated_tables(text):
             generated = False
         out.append(line)
     return '\n'.join(out)
+
+
+def budget_words(text):
+    """§212's word count: whitespace-separated tokens over the whole file, generated tables out.
+
+    The one function both halves of §212's enforcement call, this gate's `words` measure and
+    `script/metrics`' prose-budget graph, so the two cannot disagree about a document (calef,
+    2026-10-13 UTC, "Gate counts every word"; §212 records it). §213's sentence and bold measures
+    read prose only (`prose_lines`).
+
+    Name: provisional, minted 2026-10-13 (UTC) by lane/prose-gate-whole-file. calef names things.
+    """
+    return len(without_generated_tables(text).split())
 
 
 def prose_lines(text):
@@ -774,16 +790,26 @@ def granted_words(text):
 # MEASURE numbers the measurement. The baseline records the one it was written with, and a baseline
 # written with a newer one may re-measure rows upward once, in the same change as the code that
 # moved (see `check`). That is a re-measurement of the same prose, not a relaxed limit.
-MEASURE = 2
+#
+# REMEASURED names the columns the current MEASURE moved: `check` lets those cells rise, or a row
+# holding only them appear, in the change that bumps MEASURE and nowhere else. MEASURE 3 made
+# `words` the whole-file count (`budget_words`).
+MEASURE = 3
+REMEASURED = ('words',)
 
 
 def measured(path, text):
     """`measure`, with a roadmap document's field tokens read as syntax rather than sentences, and
     a mechanical rename (`RENAME_PAIRS`) read as the form it replaced, per calef's 2026-09-27
-    ruling: such a substitution does not count as growth against the baseline."""
+    ruling. Both readings apply to §213's measures only. `words` is `budget_words` of the file as
+    written, the graph's count. A rename that adds words is not a touch for the bold rule (`check`),
+    but its words count against the cap."""
+    whole = text
     if path.startswith('design/roadmap/'):
         text = roadmap_block.without_field_tokens(promotion_masked(text))
-    return measure(rename_masked(text))
+    m = measure(rename_masked(text))
+    m['words'] = budget_words(whole)
+    return m
 
 
 def only_fields_moved(path, base):
@@ -838,6 +864,10 @@ def only_paths_renamed(path, base, renamed):
 def counted_words(text):
     """The word count a prose-budget grant is held to: the file's `wc -w`, frontmatter excluded.
 
+    Not `budget_words`: a grant is the number calef wrote into a marker, which was measured this
+    way, and reading it any other way would fail a document for words nobody added. The marker
+    itself exempts the `words` measure.
+
     Frontmatter is a record's fields, which `prose_lines` already leaves out of the main-body count;
     counting it here meant a block that moved its status into frontmatter grew against its grant.
     """
@@ -853,12 +883,15 @@ def median(xs):
 
 
 def measure(text):
+    """`words` is §212's whole-file count (`budget_words`). `prose_words` is the prose alone, which
+    §213 asks about: the 200-word floor and bold per 1,000 words are a density of prose."""
     lines = list(prose_lines(text))
-    words = sum(len(line.split()) for line in lines)
+    prose = sum(len(line.split()) for line in lines)
     lengths = [n for b in blocks(lines) for n in sentences(b)]
     lead, inline = bold_counts(lines)
-    return {'words': words, 'median': median(lengths), 'longest': max(lengths, default=0),
-            'bold_lead': lead, 'bold_inline': inline, 'sentences': len(lengths)}
+    return {'words': budget_words(text), 'prose_words': prose, 'median': median(lengths),
+            'longest': max(lengths, default=0), 'bold_lead': lead, 'bold_inline': inline,
+            'sentences': len(lengths)}
 
 
 def bold_allowed(words):
@@ -868,10 +901,10 @@ def bold_allowed(words):
 
 def bold_excess(m):
     """Bold spans over the density limit, 0 for a document under the 200-word floor: what a document
-    the gate refuses has to remove."""
-    if m['words'] < SMALL_DOCUMENT:
+    the gate refuses has to remove. Both read prose words, not §212's whole-file count."""
+    if m['prose_words'] < SMALL_DOCUMENT:
         return 0
-    return max(0, m['bold_lead'] + m['bold_inline'] - bold_allowed(m['words']))
+    return max(0, m['bold_lead'] + m['bold_inline'] - bold_allowed(m['prose_words']))
 
 
 def over(m):
@@ -879,12 +912,12 @@ def over(m):
     out = {}
     if m['words'] > LIMITS['words']:
         out['words'] = m['words']
-    big = m['words'] >= SMALL_DOCUMENT
+    big = m['prose_words'] >= SMALL_DOCUMENT
     if big and m['median'] > LIMITS['median']:
         out['median'] = m['median']
     if m['longest'] > LIMITS['longest']:
         out['longest'] = m['longest']
-    if big and (m['bold_lead'] + m['bold_inline']) * 1000 > LIMITS['bold_per_1000'] * m['words']:
+    if big and (m['bold_lead'] + m['bold_inline']) * 1000 > LIMITS['bold_per_1000'] * m['prose_words']:
         out['bold_lead'] = m['bold_lead']
         out['bold_inline'] = m['bold_inline']
     return out
@@ -1015,7 +1048,7 @@ def orphans(paths):
     return bad
 
 
-NAMES = {'words': 'words of main body', 'median': 'median sentence', 'longest': 'longest sentence',
+NAMES = {'words': 'words (whole file)', 'median': 'median sentence', 'longest': 'longest sentence',
          'bold_lead': 'line-opening bold spans', 'bold_inline': 'inline bold spans'}
 LIMIT_TEXT = {'words': 'the 3,000-word cap (§212)', 'median': 'the 20-word median (§213 rule 1)',
               'longest': 'the 40-word limit (§213 rule 2)',
@@ -1033,8 +1066,9 @@ def check():
     # The baseline may only go down. Rows are compared with the merge base's copy of the file.
     if base:
         old_text = at(base, BASELINE)
-        # A change that moves MEASURE re-measures the roadmap's rows once, with the code that
-        # moved it: those rows may rise or appear in that change and in no other.
+        # A change that moves MEASURE re-measures the columns it moved (REMEASURED) once, with the
+        # code that moved them: those cells may rise, and a row holding only them may appear, in
+        # that change and in no other.
         remeasured = (old_text is not None and baseline_measure(old_text) < MEASURE
                       and baseline_measure(open(BASELINE).read()) == MEASURE)
         if old_text is not None:
@@ -1045,14 +1079,17 @@ def check():
                 if cells[0].startswith('R') and len(cells) == 3:
                     renames[cells[2]] = cells[1]
             for path, row in baseline.items():
-                if remeasured and path.startswith('design/roadmap/'):
-                    continue
                 prior = old.get(path) or old.get(renames.get(path, ''))
+                held_cells = {c for c in COLUMNS if row.get(c) is not None}
+                if prior is None and remeasured and held_cells <= set(REMEASURED):
+                    continue
                 if prior is None:
                     bad.append(f'{BASELINE}: {path} was added. The baseline only shrinks; a new '
                                f'document meets the limits outright, or carries a marked exception')
                     continue
                 for c in COLUMNS:
+                    if remeasured and c in REMEASURED:
+                        continue
                     was, now = prior.get(c), row.get(c)
                     if now is not None and (was is None or now > was):
                         bad.append(f'{BASELINE}: {path} raised {NAMES[c]} from {fmt(was)} to '
@@ -1125,9 +1162,10 @@ def check():
         doc_held = False
         if path in touched and 'bold_lead' in now_over and FAMILY['bold_lead'] not in exc:
             spans = m['bold_lead'] + m['bold_inline']
-            bad.append(f'{path}: {spans} bold spans in {m["words"]:,} words, and this change touches '
-                       f'it. A touched document meets 4 bold per 1,000 words (calef, 2026-09-26), '
-                       f'which here is {bold_allowed(m["words"])}: remove {bold_excess(m)} (promote a '
+            bad.append(f'{path}: {spans} bold spans in {m["prose_words"]:,} words of prose, and this '
+                       f'change touches it. A touched document meets 4 bold per 1,000 words (calef, '
+                       f'2026-09-26), which here is {bold_allowed(m["prose_words"])}: remove '
+                       f'{bold_excess(m)} (promote a '
                        f'label to a heading, or drop the bold)')
             now_over = {c: v for c, v in now_over.items() if c not in ('bold_lead', 'bold_inline')}
         for c, v in now_over.items():
@@ -1162,26 +1200,25 @@ def check():
 
 
 def remeasure():
-    """Raise or add the baseline rows a new MEASURE moved, and touch no other row.
+    """Raise or add the baseline cells a new MEASURE moved, and touch no other cell.
 
-    Only documents whose measure the change actually moved are visited (`measured` differs from
-    `measure`), and only a measure now over its row is written, at what it now measures. Every other
-    row is copied as it stands, so this cannot lower or loosen anything the measurement did not
-    reach. Run once, in the change that bumps MEASURE; `check` refuses the raise anywhere else.
+    Only the columns in REMEASURED are written, and only where a document now measures over its
+    limit there, at what it now measures; no marked exception's measure is written. Every other cell
+    is copied as it stands, so this cannot lower or loosen anything the measurement did not reach.
+    Run once, in the change that bumps MEASURE; `check` refuses the raise anywhere else. MEASURE 3
+    moved `words` for nearly every document, so every document is visited.
     """
     docs = documents(tracked())
     rows = read_baseline(open(BASELINE).read()) if os.path.exists(BASELINE) else {}
     moved = []
     for path in docs:
         text = open(path).read()
-        new, old = measured(path, text), measure(text)
-        if new == old:
-            continue
+        new = measured(path, text)
         exc = exceptions(text)
         row = dict(rows.get(path, {}))
         changed = False
         for c, v in over(new).items():
-            if FAMILY[c] in exc:
+            if FAMILY[c] in exc or c not in REMEASURED:
                 continue
             if row.get(c) is None or v > row[c]:
                 row[c] = v
@@ -1233,14 +1270,17 @@ def selftest():
         ('inline code is one word', f'Run `{long}` now.', lambda m: m['longest'] == 3),
         ('lowercase starts split', f'{long} one. calef ruled {long}.', lambda m: m['longest'] == 32),
         ('abbreviations do not split', 'Use a tool, e.g. the linter, here.', lambda m: m['sentences'] == 1),
-        ('code fences are not prose', f'Short.\n```\n{long} {long}\n```\n', lambda m: m['words'] == 1),
-        ('comments are not prose', f'Short.\n<!-- {long} -->\n', lambda m: m['words'] == 1),
+        ('code fences are not prose', f'Short.\n```\n{long} {long}\n```\n', lambda m: m['prose_words'] == 1),
+        ('comments are not prose', f'Short.\n<!-- {long} -->\n', lambda m: m['prose_words'] == 1),
+        # §212's count is the whole file (MEASURE 3, calef 2026-10-13): code, comments and all.
+        ('the word budget counts code and comments',
+         f'Short.\n```\n{long}\n```\n<!-- {long} -->\n', lambda m: m['words'] == 65),
         ('a generated table is not prose',
          '## The decisions\n\n| # | Status | Decision |\n|---|---|---|\n| 1 | DECIDED | [A](a.md) |\n',
          lambda m: m['words'] == 3),
         # Decision files open with YAML frontmatter since #1195; their status is a field, not prose.
         ('frontmatter is not prose', '---\nstatus: DECIDED\nraised: 2026-09-23\n---\n\n# T\n\nShort.\n',
-         lambda m: m['words'] == 3),
+         lambda m: m['prose_words'] == 3 and m['words'] == 9),
         ('line-opening and inline bold', '**Lead.** text **inline** more\n- **Item** x\n> **Q** y',
          lambda m: (m['bold_lead'], m['bold_inline']) == (3, 1)),
         ('a bold span may wrap', '**A lead-in that\nwraps.** Then prose.\n\nMore **wrapped\ninline** text.',
@@ -1256,6 +1296,11 @@ def selftest():
          lambda m: (m['bold_lead'], m['bold_inline']) == (1, 0)),
     ]
     failed = [name for name, text, ok in cases if not ok(measure(text))]
+    # The gate's `words` is the graph's count of the file as written, whatever `measured` reads
+    # through for §213: a roadmap block's field tokens and a mechanical rename both still count.
+    block = "---\nstatus: BUILT\n---\n\n**Status: BUILT.** an architect's call.\n"
+    if measured('design/roadmap/0001-x.md', block)['words'] != budget_words(block):
+        failed.append('the gate\'s word count differs from script/metrics\' (budget_words)')
     # A counted claim's number moving is not a touch; a word moving on the same line is.
     # The marker is assembled, so `script/lint`'s counted-claims reader does not take it for a claim.
     a = 'We carry **188 widgets** <!-' + '-count:widgets--> today.\nOther **bold** here.'
