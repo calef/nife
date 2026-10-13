@@ -34,7 +34,9 @@ use std::sync::{Condvar, Mutex, MutexGuard};
 use crate::error::{Errno, Result};
 use crate::header::errno::{EAGAIN, EPIPE, ETIMEDOUT};
 use crate::header::limits::PIPE_BUF;
-use crate::header::poll::{POLLERR, POLLHUP, POLLIN, POLLNVAL, POLLOUT, POLLRDNORM, POLLWRNORM, pollfd};
+use crate::header::poll::{
+    POLLERR, POLLHUP, POLLIN, POLLNVAL, POLLOUT, POLLRDNORM, POLLWRNORM, pollfd,
+};
 use crate::header::time::timespec;
 use crate::platform::types::{c_int, c_short, time_t};
 
@@ -165,7 +167,11 @@ impl End {
         let mut st = pipe.lock();
         while done < buf.len() {
             if st.readers == 0 {
-                return if done > 0 { Ok(done) } else { Err(Errno(EPIPE)) };
+                return if done > 0 {
+                    Ok(done)
+                } else {
+                    Err(Errno(EPIPE))
+                };
             }
             let room = CAPACITY - st.bytes.len();
             let want = buf.len() - done;
@@ -180,7 +186,11 @@ impl End {
                 continue;
             }
             if self.nonblocking() {
-                return if done > 0 { Ok(done) } else { Err(Errno(EAGAIN)) };
+                return if done > 0 {
+                    Ok(done)
+                } else {
+                    Err(Errno(EAGAIN))
+                };
             }
             st = pipe.changed.wait(st).unwrap_or_else(|e| e.into_inner());
         }
@@ -262,14 +272,16 @@ fn advance() {
 }
 
 /// **`poll`** over the calling process's descriptors. `revents_of` answers one descriptor's
-/// events now (`POLLNVAL` for one that is not open); `timeout` is milliseconds, negative for none.
+/// events now (`POLLNVAL` for one that is not open); `timeout` is how long to wait, `None` for no
+/// limit. It is a `Duration` rather than `poll`'s milliseconds so that `ppoll` and `select`, which
+/// are given nanoseconds and microseconds, do not round a short wait down to none.
 pub(crate) fn poll(
     fds: &mut [pollfd],
-    timeout: c_int,
+    timeout: Option<Duration>,
     revents_of: impl Fn(c_int, c_short) -> c_short,
 ) -> Result<c_int> {
-    let deadline = (timeout >= 0).then(|| {
-        let at = super::sys::monotonic() + Duration::from_millis(timeout as u64);
+    let deadline = timeout.map(|t| {
+        let at = super::sys::monotonic() + t;
         timespec {
             tv_sec: at.as_secs() as time_t,
             tv_nsec: at.subsec_nanos().into(),
@@ -289,7 +301,7 @@ pub(crate) fn poll(
                 ready += 1;
             }
         }
-        if ready > 0 || timeout == 0 {
+        if ready > 0 || timeout == Some(Duration::ZERO) {
             POLLERS.fetch_sub(1, Ordering::SeqCst);
             return Ok(ready);
         }

@@ -92,7 +92,9 @@ as if it were something else (BUGS).
 | process | `exit`, `atexit`, `getenv`, `uname` (`nife`); `getpid` 0 and the user and group calls 65534 (`nobody`), because nife issues no process identifier and attaches no identity to a process; `fork` and `exec*` refused (§264 (`fork` is declined for good)) |
 | signals | `sigaction` records, `sigprocmask` masks, and `raise` (or `kill` of this process) delivers synchronously; nothing else ever sends one |
 | threads | `pthread_create` is `std::thread::Builder::spawn`; mutexes, condition variables, read-write locks, barriers, semaphores and `pthread_once` are relibc's, waiting through `futex.rs`; keys, `errno` and the locale per thread |
-| pipes and sockets | `pipe`, `pipe2` and `socketpair(AF_UNIX, SOCK_STREAM)` are byte queues in the process; `poll` waits on any of them; every other socket call is `ENOSYS` until stage 3 |
+| pipes and sockets | `pipe`, `pipe2` and `socketpair(AF_UNIX, SOCK_STREAM)` are byte queues in the process; `poll` and `select` wait on any of them; every other socket call is `ENOSYS` until stage 3, and so is `getaddrinfo` |
+| resources | `getrusage` answers zeros (BUGS); `getpriority` answers nice 0, and `setpriority` takes only 0 |
+| refused by design | `dlopen` finds nothing (a program is one static image), `shmget` and its family answer `ENOSYS`, and `syslog` writes to standard error only under `LOG_PERROR` or `LOG_CONS` |
 
 An error from `std` becomes an `errno` by meaning: a missing name is `ENOENT`, a grant without the
 right is `EACCES`, no capability at all is `ENOSYS`. `crates/c_library_errno` holds the table.
@@ -128,6 +130,19 @@ test system_tests::user::c_thread_tests::unmodified_hackbench_threads_over_pipes
 Running in threaded mode with 2 groups using 6 file descriptors each (== 12 tasks)
 Each sender will pass 100 messages of 100 bytes
 Time: 0.050
+```
+
+The library's own contract program fetches nothing:
+
+```
+$ helpers/build-c-library-contract.sh
+$ script/test --arch x86_64 --test c_library_keeps
+test system_tests::user::c_thread_tests::the_c_library_keeps_the_pieces_fio_needed ...
+ok basename
+...
+ok select is woken by another thread
+...
+contract: 0 failed
 ```
 
 Those latencies are QEMU's, under HVF on an Apple laptop, and are not a benchmark: milestones 831
@@ -183,6 +198,13 @@ Stage 2 (milestone 836) added these, also reversible:
 - **Pipes and socket pairs are queues in the process**, needing no kernel object while both ends
   are in one process.
 
+fio (milestone 833 (the same storage benchmark on nife and Linux)) added these on 2026-10-12 (UTC),
+also reversible: `sys/resource.h` without its limits, `libgen.h`, `select` and `pselect` on the
+platform layer's `poll`, `O_SYNC` and `O_DSYNC` (a write is synced before it returns), and the
+honest refusals in `dlfcn.h`, `syslog.h`, `netdb.h` and `sys/shm.h`, so a program that only links
+them builds. `notes/fio-on-nife.md` has what fio needed and why. `fixtures/c/c_library_contract.c`
+checks each, built by `helpers/build-c-library-contract.sh` and run by `c_thread_tests`.
+
 ## BUGS
 
 - **C's own thread-locals do not link.** A `__thread` or `_Thread_local` variable stops the link
@@ -190,10 +212,22 @@ Stage 2 (milestone 836) added these, also reversible:
   `std`'s block, and nothing lays out an ELF one beside it. It is
   milestone 912 (C thread-locals on nife's thread pointer). fio does not need it: its `configure`
   finds `__thread` missing and uses `pthread_getspecific` instead.
-- **`stdlib.h` does not compile first.** It uses `__noreturn` and `__deprecated` without including
-  `features.h`, so a file that includes it before anything else fails; `-include features.h` works
-  around it. `sys/select.h` defines `fd_set` but declares no `select`, which is not built either.
-  Both were found compiling fio (`notes/fio-on-nife.md`).
+- **`getrusage` answers zeros.** The kernel keeps each thread's on-CPU time (milestone 282 (a
+  thread's CPU time, and the `top` it makes possible), §150 (how does a thread's CPU time reach
+  userspace?)), but a program reads it only through `SURVEY` on a capability it does not hold, and
+  `std` has no way to it. Elapsed time is not passed off as CPU time, so fio prints `usr=0.00%,
+  sys=0.00%`, which here means "not measured". The other fields are zero for the same reason, except
+  `RUSAGE_CHILDREN`'s, which are true: there are none.
+- **No resource limits.** `getrlimit`, `setrlimit` and the `RLIMIT_*` constants are not declared,
+  because nife keeps no per-process limit to report; the bounds a process meets are its granted
+  memory and 16 threads.
+- **`select` leaves `timeout` as it was given**, which POSIX allows; Linux writes back the time
+  left, so a program that reuses it without resetting it waits longer here.
+- **`O_DSYNC` costs what `O_SYNC` does.** The file contract has one sync, `fsync`'s, so a data-only
+  sync also waits for the metadata.
+- **No log service.** `syslog` drops a message unless `openlog` asked for `LOG_PERROR` or
+  `LOG_CONS`, and then writes it to standard error with `%m` unexpanded.
+- **`sys/user.h` does not compile**: it includes relibc's `arch/*/user.h`, which were not seeded.
 - **16 threads a process**, the main thread included (`std`'s limit). One more `pthread_create`
   answers `EAGAIN`.
 - **Every stack comes out of the heap**, which on nife is memory already committed. relibc's

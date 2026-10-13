@@ -10,9 +10,11 @@
 #
 # POSIX allows inclusion of stdint.h via: fcntl.h > unistd.h > stdint.h (our fcntl.h doesn't include unistd.h so just include stdint.h here directly instead)
 # stdint.h needed for unintptr_t for __stack_chk_guard
-# sys/wait.h brings in signal.h which brings in features.h
 # features required for deprecated and no return annotations
-sys_includes = ["stddef.h", "sys/wait.h", "stdint.h"]
+# nife: features.h is included directly. relibc counted on sys/wait.h bringing in signal.h, which
+# brings in features.h, but nife's sys/wait.h includes neither, so a file whose first include was
+# stdlib.h failed on `__noreturn` (found compiling fio 3.40, milestone 833, 2026-10-12 UTC).
+sys_includes = ["features.h", "stddef.h", "sys/wait.h", "stdint.h"]
 include_guard = "_RELIBC_STDLIB_H"
 after_includes = """
 #include <bits/open-flags.h> // for O_* constants, shared with fcntl.h

@@ -2,6 +2,7 @@
 #ifndef _RELIBC_STDLIB_H
 #define _RELIBC_STDLIB_H
 
+#include <features.h>
 #include <stddef.h>
 #include <sys/wait.h>
 #include <stdint.h>

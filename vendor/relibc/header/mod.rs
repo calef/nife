@@ -83,12 +83,14 @@ pub mod ctype;
 // TODO: curses.h (deprecated)
 // TODO: devctl.h
 pub mod dirent;
+pub mod dlfcn;
 pub mod errno;
 pub mod fcntl;
 pub mod float;
 pub mod inttypes;
 // iso646.h implemented in C
 pub mod langinfo;
+pub mod libgen;
 pub mod getopt;
 pub mod limits;
 pub mod locale;
@@ -96,7 +98,9 @@ pub mod malloc;
 // nife: built unconditionally, where relibc gates it behind its opt-in `math_libm` feature and
 // otherwise uses openlibm (vendor/README.md).
 pub mod math;
+pub mod netdb;
 pub mod netinet_in;
+pub mod netinet_tcp;
 pub mod poll;
 pub mod pthread;
 pub mod sched;
@@ -115,10 +119,14 @@ pub mod stdlib;
 pub mod string;
 pub mod strings;
 pub mod sys_ioctl;
+pub mod sys_ipc;
 pub mod sys_mman;
+pub mod sys_resource;
 pub mod sys_select;
+pub mod sys_shm;
 pub mod sys_socket;
 pub mod sys_stat;
+pub mod sys_syslog;
 pub mod sys_time;
 pub mod sys_types;
 #[allow(non_camel_case_types)]
