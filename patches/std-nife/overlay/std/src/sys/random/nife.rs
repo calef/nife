@@ -32,6 +32,7 @@
 //! So the rule is one sentence: **the caller that promises cryptographic strength refuses when it
 //! cannot keep the promise, and the caller that promises nothing degrades and says so.**
 //!
+
 //! # What the bytes are
 //!
 //! Whatever the device produced, unmodified. The service pools nothing and whitens nothing (there

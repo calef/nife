@@ -29,6 +29,7 @@
 //!   answer. It measures what skipping the warning costs, and the answer is latency, not loss. See
 //!   notes/non-cooperative-fallback.md.
 //!
+
 //! # The direct swap, step by step, and why the order is this
 //!
 //! ```text

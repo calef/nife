@@ -421,13 +421,9 @@ pub(crate) fn x86_initial_ramdisk_path() -> String {
 /// packing the same programs the other two do ([`declared_programs`]), built for
 /// `x86_64-unknown-none`.
 ///
-/// **It builds the whole package rather than naming binaries.** This used to be the one structural
-/// difference from [`initial_ramdisk_riscv`], whose `--bin` list predated every program in `user/`
-/// compiling for its target and had to be kept in step with the table by hand; that list is gone as
-/// of 2026-08-27 and `initial_ramdisk_riscv` now builds unfiltered too, the same way this function
-/// always has. Since milestone 150 (adding a program should not need eight hand-maintained lists)
-/// there is no packing table either: a `[[bin]]` block is packed here and by both siblings with no
-/// second edit.
+/// **It builds the whole package rather than naming binaries**, as its siblings do: since milestone
+/// 150 (adding a program should not need eight hand-maintained lists) a `[[bin]]` block is packed
+/// here with no second edit.
 ///
 /// ```text
 /// cargo xtask initial-ramdisk-x86
@@ -437,28 +433,16 @@ pub(crate) fn x86_initial_ramdisk_path() -> String {
 ///
 /// # BUGS
 ///
-/// Two things both other archives carry were absent when this was written, and the second was a
-/// real toolchain failure rather than work not yet done. (A third, `std_exerciser`, was packed at
-/// milestone 184, when `x86_64-unknown-nife` and its farm landed.)
-///
 /// **No disk fixture is generated**, so even a packed `fs_server` would have nothing to open. The
 /// runner attaches no drive; attaching one is a smaller piece of work here than it looks (q35's
 /// virtio is PCI, and the PCIe transport of DECISIONS §18 is already built and is x86's native bus)
 /// and is not this milestone's.
 ///
-/// **`fs_server` and `mkfs` do not compile for `x86_64-unknown-none` at all**, and this one is
-/// worth writing down because it will surprise whoever tries next. The vendored RedoxFS engine
-/// pulls in the `aes` crate for its encrypted-volume support, and building `aes` for this target
-/// ends in `rustc-LLVM ERROR: Do not know how to split the result of this operator!`, at **every**
-/// optimisation level including zero. The cause is the target spec rather than the crate: this
-/// target is `-mmx,-sse,+soft-float`, so LLVM has no 128-bit vector register to legalise `aes`'s
-/// block operations into and no scalar fallback for that operator. It is not a nife bug and there
-/// is no flag on this side that fixes it; the routes out are a RedoxFS built without its crypto
-/// feature, or an x86 target spec that keeps SSE for userspace. Both are their own work.
-/// See notes/x86-port/userspace.md.
-///
-/// **Naming.** The three `initial_ramdisk_<arch>` functions and `initial-ramdisk-<arch>`
-/// subcommands share one shape; aarch64's was `mkinitrd` until 2026-08-27.
+/// **`fs_server` and `mkfs` do not compile for `x86_64-unknown-none`.** The vendored RedoxFS engine
+/// pulls in `aes`, and on this `-mmx,-sse,+soft-float` target LLVM ends in `Do not know how to
+/// split the result of this operator!` at every optimization level. The routes out are a RedoxFS
+/// without its crypto feature, or a target spec that keeps SSE for userspace
+/// (notes/x86-port/userspace.md).
 ///
 /// Name: ratified 2026-10-12 (calef, #1998, milestone 139 (drive the unsafe count down) round 11).
 /// His words: "B for #1998." Refused `initrd_x86` (the foreign spelling, which stops at the

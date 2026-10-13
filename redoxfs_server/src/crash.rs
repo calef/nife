@@ -38,6 +38,7 @@
 //! records a day lost to a gate whose fixture one run mutated and another asserted on, and a crash
 //! harness that leaves state behind between runs produces exactly that class of false result.
 //!
+
 //! # The negative control lives here too
 //!
 //! A crash suite that passes because the injector does nothing proves nothing, so

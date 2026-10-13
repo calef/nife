@@ -16,39 +16,29 @@
 //!        application ◄─lines─────────────────────└─────────────┘◄──OPERATION_WRITE / OPERATION_READLINE── application
 //! ```
 //!
-//! Nobody in that picture knows what they are talking to. The input driver holds "an endpoint I
-//! send wire bytes to"; the application holds "an endpoint that prints and reads lines"; the
-//! output sink holds "an endpoint requests arrive on". Rendezvous-only naming (notes/
-//! ipc-naming.md) is what makes the discipline swappable: rewire the endpoints and no client can
-//! tell, which is milestone 23's hot-swap claim in component form. Milestone 177 exercises that
-//! claim on the output side for real: the same server, unchanged on its input side, prints through
-//! `display_terminal`'s `OPERATION_WRITE`/one-`CALL` contract instead of the console's bespoke two-endpoint
-//! one, chosen at spawn by `mode` (see [`MODE_CONSOLE`]/[`MODE_DISPLAY`]) and nowhere else --
-//! `Con::put` writes to the same page either way, because the wire shape only differs in
-//! [`Con::flush`].
+//! Nobody in that picture knows what they are talking to: rendezvous-only naming
+//! (notes/ipc-naming.md) makes the discipline swappable. The output side is chosen at spawn by
+//! `mode` ([`MODE_CONSOLE`]/[`MODE_DISPLAY`]) and nowhere else: `Con::put` writes the same page
+//! either way, and the wire shape differs only in [`Con::flush`].
 //!
 //! The IPC protocol is the terminal contract, notes/terminal-contract.md; the framing constants
 //! are `line_editor::proto`. Every request served here is a `CALL`, served through `RECEIVE_CAP`,
-//! answered through the kernel's one-shot Reply capability (DECISIONS §12). That choice is what
-//! makes the server deadlock-free: a READLINE with no line ready is *held* (the reply capability
-//! parked in a slot) while the server keeps serving, so a client blocked printing can never
-//! interlock with a server blocked delivering. The editing itself lives in the host-tested
-//! `line_editor` crate; this file is only wiring: words in, pages copied, words out.
+//! answered through the kernel's one-shot Reply capability (DECISIONS §12), which makes the server
+//! deadlock-free: a READLINE with no line ready is *held* (the Reply parked in a slot) while the
+//! server keeps serving. The editing lives in the host-tested `line_editor`
+//! crate; this file is wiring.
 //!
 //! Its whole authority: the terminal endpoint (slot 0, RECEIVE), the output sink's request endpoint
 //! (slot 1: `CONREQ`/`SEND` in [`MODE_CONSOLE`], `display_terminal`'s served endpoint/`CALL` in
 //! [`MODE_DISPLAY`]), the console server's reply endpoint (slot 2, [`MODE_CONSOLE`] only), the
-//! output page shared with whichever sink this boot has (write), the client's output page (read)
-//! and input page (write). No UART, no interrupt, no device of any kind: the discipline touches no
-//! hardware, which is exactly why it did not exist until the drivers did and exactly why it did
-//! not need to change to gain a second one.
+//! sink's output page (write), the client's output page (read) and input page (write). No device.
 //!
-//! **Plus, when a supervisor that can replace it built it, a control endpoint** (milestone 23 (a capability-routed
-//! component OS with live replacement)):
-//! its slot is the second start argument, and `0` means there is none. With one, `OPERATION_QUIESCE`
-//! answers any parked read with `FLAG_RETRY`, replies, and waits there for `CTL_RESUME` or
-//! `CTL_QUIT`. Without one, `OPERATION_QUIESCE` is refused, because nothing could ever resume it.
+//! **Plus, when a supervisor that can replace it built it, a control endpoint** (milestone 23 (a
+//! capability-routed component OS with live replacement)) in the slot named by the second start
+//! argument (`0` for none). With one, `OPERATION_QUIESCE` answers any parked read with
+//! `FLAG_RETRY`, replies, and waits for `CTL_RESUME` or `CTL_QUIT`; without one, it is refused.
 //!
+
 //! Name: ratified 2026-07-30 (calef, DECISIONS §39, landed by milestone 46) for the word and again
 //! 2026-08-01 (milestone 63) for the spelling, replacing `termd` and then `lineedit`. Refused
 //! `termd` (the `-d` claim) and `linedisc`, the correct Unix term of art, which is the second half

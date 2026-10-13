@@ -479,13 +479,9 @@ fn overlaps(a: u64, alen: u64, b: u64, blen: u64) -> bool {
 ///
 /// The frame ledger in `testing.rs` reads the allocator twice, before the first test and after the
 /// last, and both of its gates are about that end state. What a boot actually runs out of is the
-/// middle: a service a test starts, a program another test loads while it is still running, a
-/// client whose scratch is held for the rest of the suite. The lane of milestone 198 (a package
-/// manager) added two login tests and aarch64's `std_net` failed with
-/// `Unmappable(OutOfPageFrames)` while riscv64 hung in the CPU matrix, both far from the tests that
-/// spent the memory. This is the reading that says how close the run came, and the first refusal
-/// says where it went over. Milestone 601 (the region table prints its peak), a provisional
-/// number, built it beside the region peak for that reason.
+/// middle, and an exhaustion shows up far from the tests that spent the memory. This says how close
+/// the run came, and the first refusal says where it went over (milestone 601 (the region table
+/// prints its peak)).
 ///
 /// Kept under the allocator lock by [`alloc`] and [`alloc_contiguous`], so a plain load and store
 /// is enough (the lock orders them); atomics only because a `static` must be `Sync`.
@@ -508,12 +504,9 @@ fn overlaps(a: u64, alen: u64, b: u64, blen: u64) -> bool {
 /// reservation. What moves the low from one milestone to the next is the held list growing; what
 /// catches a load that no longer fits is the refusal count, which the same summary prints.
 ///
-/// **Contiguity is not tracked per test, and that was measured.** A first version also read
-/// `largest_free_run` after every test, for the contiguity half of `notes/frames.md`'s "Two
-/// numbers, not one". On aarch64 and riscv64 its minimum was the first test's reading (29440 and
-/// 29249 frames, unchanged to the end), so it said nothing the end-of-suite line does not. And on
-/// the `x86_64` 17 GiB leg a bitmap scan per test pushed the suite past its time bound. A refused
-/// `alloc_contiguous` is the contiguity failure itself, and that is counted here instead.
+/// **Contiguity is not tracked per test**: `largest_free_run` per test never moved from the first
+/// test's reading, and a bitmap scan per test overran the `x86_64` 17 GiB leg's time bound. A
+/// refused `alloc_contiguous` is the contiguity failure itself, and that is counted here.
 ///
 /// No allocation was refused on any architecture in that run, so a refusal line is news. Reports
 /// and does not gate, for `sched::MAX_THREADS`'s reason: the held list grows on purpose, and the

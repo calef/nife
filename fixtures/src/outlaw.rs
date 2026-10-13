@@ -17,6 +17,7 @@
 //! which the frame-accounting test cares about: it spawns this program five times and asserts
 //! every frame comes back exactly.
 //!
+
 //! Name: provisional, and ruled: calef ruled **`kernel_test_subject`** on 2026-09-13, working the
 //! unratified worklist. The block stays `provisional` because the ratified name is not this file's
 //! until the rename is performed, which waits on milestone 175 moving this file and travels with

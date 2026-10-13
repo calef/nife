@@ -13,35 +13,24 @@ use super::*;
 /// Solarized Dark, with one entry moved by one unit.
 ///
 /// Indices 0..8 are the normal colours in the usual ANSI order (black, red, green, yellow, blue,
-/// magenta, cyan, white) and 8..16 their bright forms. The values and the slot each one sits in are
-/// Ethan Schoonover's published table (github.com/altercation/solarized, README, "The Values", its
-/// `16/8 TERMCOL` column), chosen by calef in §104 (the rich-text font is `DejaVu Sans Mono`, and the
-/// palette is Solarized), which narrowed his first ask to canonical Solarized Dark rather than the
-/// "Higher Contrast" variant a 2011 gist published under that name.
+/// magenta, cyan, white) and 8..16 their bright forms, from Ethan Schoonover's published table
+/// (github.com/altercation/solarized, "The Values", `16/8 TERMCOL`), chosen by calef in §104 (the
+/// rich-text font is `DejaVu Sans Mono`, and the palette is Solarized).
 ///
-/// **Solarized is not a conventional sixteen-colour table, and a reader should expect that.** Its
-/// bright half is mostly its greyscale ramp: 8 is `base03`, 10, 11, 12 and 14 are `base01`, `base00`,
-/// `base0` and `base1`, 9 is orange and 13 violet. Only the normal eight hold the six accent hues.
-/// Schoonover's own dark scheme draws body text in `base0` (12) on `base03` (8), which the defaults
-/// here do not yet do: see BUGS.
+/// **Solarized's bright half is mostly its greyscale ramp** (8, 10, 11, 12, 14; 9 orange, 13
+/// violet).
 ///
 /// **Entry 14 is `0x93a1a0`, not Schoonover's `0x93a1a1`.** That one unit of blue is the only
-/// departure from the published table, and it is there so the palette passes the gate below:
-/// `93,a1,a1` repeats a channel, so a swapped green and blue would leave it unchanged. Measured
-/// 2026-09-26, the nudge is a CIE76 colour difference of 0.56, a quarter of the roughly 2.3 usually
-/// quoted as just noticeable; `0x93a1a2` ties it exactly, and the lower was taken so no channel
-/// rises. Every other entry passes as published. The test
+/// departure from the published table, so the palette passes the gate below: `93,a1,a1` repeats a
+/// channel, so a swapped green and blue would leave it unchanged. The nudge is a CIE76 difference
+/// of 0.56, under the roughly 2.3 quoted as just noticeable.
 /// `the_palette_is_solarized_dark_but_for_one_unit` holds that this is the whole difference.
 ///
 /// # The gate
 ///
-/// This palette used to be the xterm set, chosen so a corrupted pixel would be a detectably wrong
-/// colour, and it failed every property that argument needs (measured 2026-08-19: all sixteen
-/// entries repeat a channel, eight pairs are channel permutations, all three channels saturate
-/// twice). The properties are now a compile-time check ([`PaletteFaults`], the `const` assertion
-/// below), so **any palette that compiles is as good a test instrument as the old one was meant to
-/// be**, and the choice among them is free to be about how it looks. Solarized is also better on the
-/// third property than the check requires: no channel of any entry is at `0xff`.
+/// The properties that make a corrupted pixel a detectably wrong colour are a compile-time check
+/// ([`PaletteFaults`], the `const` assertion below), so **any palette that compiles is a good test
+/// instrument**, and the choice among them is free to be about how it looks.
 ///
 /// # BUGS
 ///
@@ -51,13 +40,10 @@ use super::*;
 ///   rendition, because a background index here is three bits and cannot name 8.
 /// - **Bold is bright, and Solarized's bright slots are greys.** SGR 1 on green, yellow, blue or
 ///   cyan paints `base01`, `base00`, `base0` or `base1`, so `ls --color`'s bold blue directories come
-///   out as body-text grey. This is a consequence of this palette meeting [`Attr`]'s bold rule, not
-///   a defect in either alone. The options and a recommendation are in
-///   notes/solarized-and-bold-is-bright.md.
-/// - **The properties guard the sixteen, not every colour a cell can hold.** Once the terminal
-///   accepts 256-colour and 24-bit colour at milestone 142 (a text display good enough that people
-///   use it), a swapped channel can land on a legal colour outside this table. The pixel-exact
-///   scanout comparison was always the stronger check and carries that load.
+///   out as body-text grey (notes/solarized-and-bold-is-bright.md).
+/// - **The properties guard the sixteen, not every colour a cell can hold** (256-colour and
+///   24-bit colour can land a swapped channel on a legal colour); the pixel-exact scanout
+///   comparison carries that load.
 /// - **Changing one number may or may not leave this "Solarized"**, and [§104] names that as
 ///   calef's question. It is recorded here, where a reader meets the constant, so nobody reasons
 ///   from the belief that it is Schoonover's table untouched.

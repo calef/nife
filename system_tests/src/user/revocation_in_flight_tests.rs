@@ -37,6 +37,7 @@
 //! **This module is a new file on purpose.** `system_tests/src/user/tests.rs` is this tree's worst merge
 //! hotspot and AGENTS.md's lane rules say to stay out of it.
 //!
+
 //! # BUGS
 //!
 //! - **One object, one sweep.** The test below drives the `PageFrame` sweep. The `DeviceFrame` and

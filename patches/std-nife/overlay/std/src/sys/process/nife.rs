@@ -18,6 +18,7 @@
 //! from functions that answer `Unsupported` and this one never answers at all. It is the third
 //! instance of the same shape after `env::vars()` and `env::temp_dir()`.
 //!
+
 //! # Why the answer is `0`, which is a decision rather than a placeholder
 //!
 //! **There is no process identifier on this system to report.** The syscall surface has four calls

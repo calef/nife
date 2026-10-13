@@ -33,6 +33,7 @@
 //! therefore still a caretaker process holding the wider endpoint
 //! (`components/src/fs_subtree_caretaker.rs`), for exactly the reason `fs_file_caretaker` is one.
 //!
+
 //! # The error boundary
 //!
 //! Every method here returns `syscall::error::Result`, RedoxFS's own error type, unmapped. The

@@ -21,6 +21,7 @@
 //! requests, and adding one would mean the FS server holding a transaction open across receives,
 //! which is exactly the property its serve loop relies on not doing.
 //!
+
 //! # Capability contract (`kernel/src/user/fs_service/directory_grant.rs`, `start_granted_dir`)
 //!
 //! - **slot 0**: the narrowed directory endpoint, `WRITE`. [`fs::ROOT`] on it is the directory that

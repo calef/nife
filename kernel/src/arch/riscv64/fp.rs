@@ -32,6 +32,7 @@
 //! switch sets the live CSR from [`crate::fp::hand_over`] to match the incoming thread's `live`,
 //! and that thread's frame carries the same value because it was captured while the same flag held.
 //!
+
 //! # BUGS
 //!
 //! - **A hart with no D extension cannot run this at all**, and says so rather than looping.

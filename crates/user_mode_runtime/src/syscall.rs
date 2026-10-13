@@ -9,44 +9,25 @@
 //! the file. Named for the calls it holds, one module per seam of the old crate root; the pull
 //! request records no other name considered.
 
-/// **The one trap in this crate**, one per architecture, used by every syscall since 2026-10-05:
-/// the number in `x8`/`a7`/`rax` and six words in both directions. The kernel writes its result
-/// into the first register on the way out of *every* syscall, and some methods write up to the
-/// sixth. Until 2026-10-05 [`yield_now`] and [`cap_delete`] had their own `asm!` blocks declaring
-/// no output, a promise that `x0` survives the trap. It does not: a yield comes back with `x0 = 0`.
-/// The job mix's spawn job had its retry loop compiled with `DESTROY`'s arguments loaded before
-/// the yield, so the retry sent `invoke(0, 4)`, a `CALL` on the report endpoint, answered `Gone`
-/// (notes/job-mix/spawn-destroy-gone.md). `helpers/syscall_asm.py` now gates every userspace trap.
-/// What follows is this primitive's `SYS_INVOKE` history.
+/// **The one trap in this crate**, one per architecture, used by every syscall: the number in
+/// `x8`/`a7`/`rax` and six words in both directions. The kernel writes its result into the first
+/// register on the way out of *every* syscall, and some methods write up to the sixth, so no
+/// caller may declare a register as surviving the trap: a yield comes back with `x0 = 0`, and a
+/// retry loop that kept arguments live across one sent the wrong call
+/// (notes/job-mix/spawn-destroy-gone.md). `helpers/syscall_asm.py` gates every userspace trap.
 ///
-/// The raw six-register round trip through `SYS_INVOKE` (milestone 139 (drive the unsafe count down) round
-/// 2; the sixth register is milestone 105 (the two forks)'s). `cap`, `method`
-/// and two more arguments go in `x0..x3`/`a0..a3` (the fifth, `x4`/`a4`, is spare and always zero on
-/// input); the kernel's reply comes back in the same five registers, `x0..x4`/`a0..a4`. This is now
-/// the one place the actual trap instruction and register file appear for a `SYS_INVOKE` call:
-/// [`invoke`] and every multi-word method below ([`receive`], [`receive_cap`], [`receive_fault`], [`call`],
-/// [`survey`], [`list`]) used to each hand-roll their own `asm!` block asserting the identical
-/// invariant ("`svc`/`ecall` traps to the kernel, which validates before acting") at a register
-/// layout that differed only in which of the five words the caller happened to read back. Six
-/// functions, two architectures, twelve hand-written copies of one assertion: the §94 shape this
-/// milestone names as the reduction worth making. Now there are two, one per architecture, and
-/// every caller above is a safe wrapper that just picks which return words it wants.
+/// For `SYS_INVOKE` (milestone 139 (drive the unsafe count down) round 2), `cap`, `method` and two
+/// more arguments go in `x0..x3`/`a0..a3` (the fifth is spare and zero on input), and the reply
+/// comes back in the same five registers. [`invoke`] and every multi-word method ([`receive`],
+/// [`receive_cap`], [`receive_fault`], [`call`], [`survey`], [`list`]) are safe wrappers that pick
+/// which return words they want, so this is the one place the trap instruction appears.
 ///
-/// One behavioural note for a reader diffing this against the asm the individual functions used to
-/// carry: a few of them ([`receive`], [`receive_cap`], [`receive_fault`]) left `x2`/`a2` with no `in`
-/// operand at all, so the kernel received whatever value happened to already be in that register
-/// (harmless, since `RECEIVE`/`RECEIVE_CAP` read no input words). Routing them through this shared
-/// primitive means they now pass an explicit `0` there instead, which is a strict tightening, not a
-/// behaviour change: the kernel still ignores it.
-///
-/// **The sixth register is an output, and goes in as zero** (milestone 105, DECISIONS §148 (resolves by
-/// asking the kernel) as amended 2026-10-04). The kernel writes argument register 5 (`x5`, `a5`, `r9`) with a dead
-/// child's label when it delivers a death message to a plain `RECEIVE`, and leaves it alone on
-/// every other path. Declared as an input only, LLVM would assume the register survived the trap
-/// and keep a live value in it that a `RECEIVE` on a supervision endpoint then silently replaced.
-/// Zero in makes the result defined everywhere: [`receive_fault`] reads `0` for anything the
-/// kernel did not stamp. One `mov` per call, in userspace; the kernel paths `script/bench` gates
-/// run nothing new.
+/// **The sixth register is an output, and goes in as zero** (milestone 105 (the two forks),
+/// DECISIONS §148 (resolves by asking the kernel) as amended 2026-10-04). The kernel writes
+/// argument register 5 (`x5`, `a5`, `r9`) with a dead child's label when it delivers a death
+/// message to a plain `RECEIVE`, and leaves it alone otherwise. Declared as an input only, LLVM
+/// would keep a live value in it across the trap; zero in makes [`receive_fault`] read `0` for
+/// anything unstamped.
 ///
 /// # Safety
 /// `svc`/`ecall` traps to the kernel. The kernel validates the capability and the method before

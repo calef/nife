@@ -22,6 +22,7 @@
 //! soak, or since milestone 805 the reboot object's method) still has a running machine to report
 //! on.
 //!
+
 //! # BUGS
 //!
 //! - **A memory-space FADT reset register is not attempted.** It would need a device mapping made

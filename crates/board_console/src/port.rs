@@ -36,6 +36,7 @@
 //! device mid-session can put it back to the default, and nothing here would notice. That is the
 //! honest cost of having no dependency, and it is the case that would justify taking one.
 //!
+
 //! # `O_NONBLOCK`
 //!
 //! Not used, and the reason is that it would be redundant here. Its job would be to stop a silent

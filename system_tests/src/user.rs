@@ -586,10 +586,8 @@ mod job_undertaker_tests;
 /// its grant first, and that store must be visible; a process whose stores never worked would satisfy
 /// every witness check while proving nothing.
 ///
-/// Both ISAs, because a fault that only manifests on one would be a finding, not a pass. The two
-/// bugs take *different* fault paths on each (a permission fault on the read-only page, a translation
-/// fault on the unmapped one), which is more of each architecture's fault machinery than any previous
-/// test has exercised from userspace.
+/// Both ISAs: the two bugs take *different* fault paths on each (a permission fault on the
+/// read-only page, a translation fault on the unmapped one).
 #[cfg(all(test, initial_ramdisk))]
 mod c_seam_tests;
 

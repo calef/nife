@@ -22,6 +22,7 @@
 //! leaf (a device does not "request supervisor privilege"), which is why the seam builds domains
 //! with `user_data` flags; see `paging::domain`.
 //!
+
 //! # BUGS
 //!
 //! - **The MSI page table is offered and deliberately not used** (milestone 317). `CAPS.MSI_FLAT`

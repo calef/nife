@@ -451,58 +451,27 @@ pub(super) const EXPECTED: &[u8] = b"hello from std on nife\n\
 
 /// A whole Rust `std` program runs on the native ABI and its output is exactly right.
 ///
-/// Granted a heap, a stdout endpoint, and a clock, so both `fs` and `net` refuse: the two
-/// `unsupported` lines in the transcript are "no ambient filesystem" and "no ambient network"
-/// felt from inside std, on a binary that also runs both for real when it is granted them.
+/// Granted a heap, a stdout endpoint, a clock and a configuration page, so both `fs` and `net`
+/// refuse: the two `unsupported` lines are "no ambient filesystem" and "no ambient network" felt
+/// from inside std. Several lines guard a call that once compiled and then killed the program, so
+/// a test that only checked for no crash would have passed:
 ///
-/// The `wall clock ok` line is milestone 51's half: `SystemTime::now()` reached a real time,
-/// through a read-only page and the ambient counter, and the program asserted it was inside the
-/// same sanity window the clock service applies. Before that milestone the same call returned
-/// 1970 plus uptime and would have passed any test that only checked it did not crash.
-///
-/// The `config seeded` line is milestone 47's environment-variable fork (DECISIONS §111): this
-/// process is granted an inert-configuration page unconditionally
-/// (`std_service::start_on_full`/`CONFIG_SLOT`/`CONFIG_PAGE_STD`), assembled once from
-/// `environment_protocol::PageBuilder` before the program exists, and `pal::nife::init` reads `TZ`, `LANG`
-/// and `TERM` off it into `std::env`'s table before `main` runs. The line proves the whole path:
-/// the kernel assembled and validated the page, mapped it read-only, the std PAL's probe found
-/// the granted capability, and the values it read back are the exact ones the kernel wrote. The
-/// `env ok` line just below depends on it: `vars().count()` is asserted at 3 rather than 0
-/// precisely because this line's three keys are already there.
-///
-/// The `env ok` line is milestone 64's, and it is a third correction of the same shape, found by a
-/// different method. `std::env::vars()` used to **abort the process**: nife had no `sys::env`
-/// backend, so it fell through to the unsupported one whose `env()` is a `panic!`. Nothing in a
-/// build failure list showed it, because it compiled. The line asserts three things at once: that
-/// the call returns, that the listing holds exactly what this process's grants seeded and nothing
-/// more (three keys from the config page above, not zero: milestone 47 gave the count a nonzero
-/// honest answer where it used to be an always-empty one), and that `set_var` takes, since that
-/// is what `set_var` means on every other platform.
-///
-/// The `paths ok` line is the same finding a third time, and it is why this test grew rather than
-/// a new one appearing. `std::env::temp_dir()`, `std::env::split_paths()` and `std::process::id()`
-/// were all `panic!` in the fallbacks nife had no arm in, so each of them **killed the program**
-/// while compiling perfectly; `tempfile::NamedTempFile::new()` reached the first of them before it
-/// ever got to its own "operation not supported" arm, which is not what the measurement note said
-/// it did. The line asserts the two that now answer (`temp_dir` is the granted directory and
-/// `TMPDIR` steers it; a path list survives a join and a split) and, just as deliberately, the
-/// three that still refuse (`current_dir`, `current_exe`, `home_dir`), so that a later lane cannot
-/// quietly turn a refusal into a fabricated answer.
-///
-/// The `entropy ok` line is milestone 56's half, and it is the same shape of correction:
-/// `std::random` reached a virtio-rng device, through one endpoint that names no device, and
-/// the program asserted two draws differ. Before that milestone the same call returned
-/// splitmix64 seeded from boot-relative time, which would also have passed any test that only
-/// checked it did not crash.
-///
-/// The `exiting through process::exit` line, and the two assertions after the transcript, are
-/// milestone 64's fourth pass and the same shape a fourth time. `std::process::exit` fell through
-/// to `crate::intrinsics::abort()`, so a program ending the way almost every CLI-shaped `main`
-/// ends executed a trap and was reported to its supervisor as a crash. It was invisible to the
-/// three earlier passes for a reason worth keeping: `sys/exit.rs` is not a `sys/<module>/mod.rs`
-/// backend, so "read every module the PAL falls through" does not reach it, and `_start` calls
-/// the PAL's own exit directly, so the *usual* way a program ends never went near the broken one.
-/// `cargo xtask std-aborts` is the mechanism that replaces that reading.
+/// - `wall clock ok` (milestone 51 (wall-clock time)): `SystemTime::now()` reached a real time
+///   through a read-only page and the ambient counter, inside the clock service's sanity window,
+///   not 1970 plus uptime.
+/// - `config seeded` (milestone 47 (navigation and naming), DECISIONS §111 (inert configuration is
+///   a read-only page)): the kernel assembled the inert-configuration page
+///   (`std_service::start_on_full`/`CONFIG_SLOT`/`CONFIG_PAGE_STD`) and `pal::nife::init` read back
+///   exactly `TZ`, `LANG` and `TERM`.
+/// - `env ok` (milestone 64 (enough `std` to run somebody else's crate)): `std::env::vars()`
+///   returns, holds exactly the three seeded keys, and `set_var` takes.
+/// - `paths ok`: `temp_dir` is the granted directory and `TMPDIR` steers it, a path list survives a
+///   join and a split, and `current_dir`, `current_exe` and `home_dir` still refuse.
+/// - `entropy ok` (milestone 56 (secrets, credentials, and the entropy to make them safe)):
+///   `std::random` reached a virtio-rng device through one endpoint, and two draws differ.
+/// - `exiting through process::exit`, and the two assertions after the transcript:
+///   `std::process::exit` ends the program as an exit, not a trap. `sys/exit.rs` is not a
+///   `sys/<module>/mod.rs` backend, so `cargo xtask std-aborts` is what finds such fall-throughs.
 #[test_case]
 fn a_whole_std_program_runs_on_the_native_abi() {
     if std_service::std_exerciser_image().is_none() {

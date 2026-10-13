@@ -112,49 +112,24 @@ pub fn cntfrq_checked() -> Option<u64> {
 /// needing `scounteren.TM`, with the difference that here the permissive state is the default and
 /// the kernel would have to act to *close* it.
 ///
-/// **`rdtsc` returns the count split across two 32-bit registers** (`edx:eax`), a shape inherited
-/// from the Pentium that introduced it, so this is a shift and an or rather than a move. Writing it
-/// as a single `out(reg)` compiles and reads only the low half, which is a counter that wraps every
-/// four seconds at 1 GHz and looks correct in any test short enough to run.
+/// **`rdtsc` returns the count split across `edx:eax`**, so this is a shift and an or. A single
+/// `out(reg)` compiles and reads only the low half, which wraps every four seconds at 1 GHz.
 ///
-/// **No serialisation, deliberately.** `rdtsc` is not ordered against surrounding instructions, so
-/// a sufficiently tight measurement wants `lfence` or `rdtscp` around it. Pair this with [`cntfrq`]
-/// and the granularity that buys is nanoseconds; the reordering window is tens of cycles, and the
-/// kernel's own calibration accepts the same trade for the same reason
-/// (`kernel/src/arch/x86_64/timer.rs`).
+/// **No serialization, deliberately.** `rdtsc` is not ordered against surrounding instructions; the
+/// reordering window is tens of cycles, the trade the kernel's own calibration accepts.
 ///
 /// # BUGS
 ///
-/// **On `x86_64` the cycle counter is ambient, and nobody chose that.** The other two architectures
-/// give userspace a *coarse* counter and keep the fine one shut: aarch64 opens `CNTVCT_EL0` and, as
-/// of milestone 228 (the cycle counters are closed by assumption, and on two architectures the
-/// assumption is a comment), writes `PMUSERENR_EL0 = 0` so `PMCCNTR_EL0` stays closed; riscv64 opens
-/// `scounteren.TM` and clears `CY`. Here there is one register for both jobs. The TSC *is* the
-/// coarse clock and the cycle counter, `CR4.TSD` is clear at reset, this kernel never writes it, and
-/// so every ring-3 program on this architecture holds a sub-nanosecond timing instrument it was
-/// never granted. That is a state inherited from the reset value, not a position anyone argued for,
-/// and it is recorded here rather than in a tracker so the next reader of this function meets it.
-///
-/// **The `rdpmc` door beside it did close.** `CR4.PCE` is a different bit from `CR4.TSD` and gates a
-/// different instruction, and since fixed counter 2 runs at the TSC rate it is a second path to a
-/// cycle-rate reading. Milestone 228 established it clear in `arch::init`, per core, because nothing
-/// in this tree reads a performance counter from ring 3 and so closing it cost nothing. So the gap
-/// below is `rdtsc` specifically, not "x86 counters" in general.
-///
-/// **It is not closed because closing it today would take the clock away.** Setting `CR4.TSD` with
-/// nothing to replace it breaks `Instant`, `thread::sleep`, the random seed, smoltcp's timestamps in
-/// `std_net`, and the benchmark harness, all at once and on the same instruction. So this is a
-/// limitation with a price rather than an oversight, and paying it needs a second time source first:
-/// a coarse monotonic value published in a page, which is DECISIONS §43's move (reading the clock is
-/// a page, which put the wall clock in a page rather than a register) one axis over. Nothing here
-/// proposes building that.
-///
-/// **What it costs meanwhile**, stated so §19 (architectural parity is a tenet) reports a known gap
-/// rather than a silent one: `x86_64` answers milestone 75 (who may read the cycle counter, and by
-/// what authority) with "everyone, always", by inheritance, whatever that decision concludes for the
-/// other two. Linux names this exact asymmetry from the other side; its arm64 per-task
-/// `PMUSERENR_EL0` work says it opens the counter only on request to avoid "the information leaks
-/// x86 has".
+/// **On `x86_64` the cycle counter is ambient, and nobody chose that.** aarch64 and riscv64 give
+/// userspace a *coarse* counter and keep the fine one shut (milestone 228 (the cycle counters are
+/// closed by assumption, and on two architectures the assumption is a comment)). Here the TSC is
+/// both, `CR4.TSD` is clear at reset and never written, so every ring-3 program holds a
+/// sub-nanosecond timing instrument it was never granted. (`CR4.PCE`, the `rdpmc` door, is closed
+/// per core in `arch::init`.) Setting `CR4.TSD` would take away `Instant`, `thread::sleep`, the
+/// random seed and smoltcp's timestamps at once; it needs a coarse monotonic page first,
+/// DECISIONS §43 (reading the clock is a page)'s move one axis over. Until then `x86_64` answers
+/// milestone 75 (who may read the cycle counter, and by what authority) with "everyone, always"
+/// (§19 (architectural parity is a tenet)).
 #[cfg(target_arch = "x86_64")]
 pub fn now() -> u64 {
     let (lo, hi): (u32, u32);
@@ -169,64 +144,25 @@ pub fn now() -> u64 {
 /// read-only into every process at [`counter_frequency_protocol::PAGE_VA`] (milestone 161's `cntfrq`
 /// follow-up).
 ///
-/// aarch64 has `CNTFRQ_EL0`, which states the rate. RISC-V has none, but the device tree does,
-/// and the process cannot read it. x86 has **no architected rate a ring-3 program can ask for
-/// directly**: `CPUID` leaf `0x15` gives the TSC's ratio to a crystal clock on the parts that
-/// implement it, but a ring-3 program cannot calibrate one for itself the way the kernel's
-/// fallback does, against the 8254 PIT: the PIT is at I/O ports `0x40..0x43`, `IOPL` is 0 and the
-/// TSS's I/O permission bitmap is empty, so `in`/`out` from a process is a general protection
-/// fault. That is not an oversight to route around, it is
-/// [DECISIONS §121](../../../design/decisions/0121-port-io-capability.md), which closed port I/O
-/// to userspace **permanently**: a program that could calibrate its own clock by touching the PIT
-/// would be a program that had escaped the confinement this kernel exists to enforce.
-///
-/// So the kernel is the only party that can ever know this number, and it publishes rather than
-/// gates: `arch::x86_64::timer::init_frequency` reads `CPUID` leaf `0x15` first and falls back to
-/// PIT calibration only if the part does not report one (see that function's own docs; under this
-/// project's QEMU invocation the leaf is unavailable and calibration is what every boot actually
-/// uses), then every kernel-side function that builds a top-level process's address space writes
-/// the result into a page and maps it, read-only, before the process ever runs: `kernel::user::load`
-/// (the generic ELF loader every ordinary test fixture calls) and the handful of functions that
-/// build one by hand for a narrower world (`spawn_init`, and the `spawn_<program>`-shaped test
-/// harnesses: `timetable_tests::spawn_timetable`, `authority_tests`' `root_supervisor` spawn,
-/// `c_seam_tests::spawn_confiner`, `login_service`, `live_swap_tests`' `swapper` spawn; see
-/// `kernel::user::map_x86_timebase_page`, which all of them call). This function is the reader: a
-/// plain load through an unsafe pointer, no syscall, the same "ambient, no capability" shape
-/// [`now`] already has.
+/// x86 has **no architected rate a ring-3 program can ask for**: `CPUID` leaf `0x15` is absent on
+/// many parts, and calibrating against the 8254 PIT needs port I/O, which DECISIONS §121 (what a
+/// device capability is when the device has no page: x86 port I/O) closed to userspace
+/// permanently. So the kernel publishes
+/// the rate: `arch::x86_64::timer::init_frequency` reads the leaf or calibrates, and every kernel
+/// path that builds a top-level address space maps the page
+/// (`kernel::user::map_x86_timebase_page`). `supervision_protocol::build_child_space` fills a
+/// child's page from its own rate, so a subtree inherits the measured number. This is a plain load,
+/// no syscall, the same "ambient, no capability" shape [`now`] has.
 ///
 /// # Panics
 ///
-/// If the rate is unknown, which is a zeroed or unrecognized page. **It used to return 1 GHz
-/// instead**, and that fallback was deleted on 2026-09-21 under calef's ruling: *"We should ensure
+/// If the rate is unknown (a zeroed or unrecognized page): calef, 2026-09-21, *"We should ensure
 /// that the program only returns accurate numbers versus leveraging hard coded ones."* A plausible
-/// wrong rate is worse than no rate, because it produces a benchmark figure somebody quotes; a
-/// process that dies on the read produces nothing to quote. [`cntfrq_checked`] is this without the
-/// panic, for a caller that would rather cope than die.
-///
-/// **The argument that fallback rested on has expired.** It was that widening this one architecture
-/// to `Option<u64>` would make every caller of the portable [`monotonic_nanos`] handle a case the
-/// other two could not produce. Two of three architectures read a page now, so the case is no
-/// longer peculiar, and the shape this tree already uses for exactly this question is the kernel's
-/// own: `arch::timer::frequency` panics and `arch::timer::frequency_checked` returns an `Option`,
-/// with the reason written beside them ("a plausible zero is worse than a panic naming this file").
-/// This is that pair, one privilege level down, so `monotonic_nanos` keeps its `u64` and nothing
-/// fabricates a rate.
-///
-/// **What the panic costs, honestly**: a userspace panic here traps (see [`trap`]) and the kernel
-/// kills the process, with no message, because a program with no console cannot print one. So the
-/// symptom a reader meets is a killed process and a fault line, not a diagnostic naming the page.
-/// That is the same floor every `expect` in userspace has and it is not special to this one.
-///
-/// # BUGS
-///
-/// **The one case that used to reach the fallback is gone, not merely refused.** A process built by
-/// `supervision_protocol::build_child_space` (the tree's one userspace ELF loader, used by
-/// `root_supervisor`, `spawner`, `system_initializer`, and every role `hello` builds, `coremark` and
-/// `timetable`'s own `least_authority_demo` included) used to map a freshly retyped, *zeroed*
-/// placeholder and so read 1 GHz. It now gets a page that crate fills from its own rate, read
-/// through [`cntfrq_checked`], so a child inherits its parent's measured number. The residue is
-/// real and small: a parent that does not know the rate writes a zeroed page, and the whole subtree
-/// below it refuses rather than guessing.
+/// wrong rate produces a benchmark figure somebody quotes. [`cntfrq_checked`] is this without the
+/// panic, the same pair as the kernel's `arch::timer::frequency`/`frequency_checked`, so
+/// [`monotonic_nanos`] keeps its `u64`. The panic traps (see [`trap`]) and the kernel kills the
+/// process with no message, the floor every userspace `expect` has. A parent that does not know
+/// the rate writes a zeroed page, and its whole subtree refuses rather than guessing.
 #[cfg(target_arch = "x86_64")]
 pub fn cntfrq() -> u64 {
     cntfrq_checked().expect(
@@ -269,11 +205,9 @@ pub struct CycleReading {
 }
 
 /// **Read the CPU's cycle counter from user mode, paired with what it counts** (milestone 353,
-/// calef's ruling B4 step 1, 2026-10-07 UTC).
-///
-/// One instruction per architecture, no syscall, which is the property DECISIONS §139 (who may read the cycle counter, and by what
-/// authority) option 4
-/// chose the grant to keep:
+/// calef's ruling B4 step 1, 2026-10-07 UTC). One instruction per architecture, no syscall, the
+/// property DECISIONS §139 (who may read the cycle counter, and by what authority) option 4 chose
+/// the grant to keep:
 ///
 /// | architecture | instruction | [`CycleMeaning`] |
 /// |---|---|---|
@@ -281,15 +215,9 @@ pub struct CycleReading {
 /// | riscv64 | `csrr cycle` | [`CycleMeaning::CoreCyclesEveryMode`]: every privilege mode |
 /// | `x86_64` | `rdtsc` | [`CycleMeaning::ConstantRateReferenceCycles`]: not core cycles |
 ///
-/// # Who may call it
-///
-/// **Only a program granted the cycle counter, on aarch64 and riscv64.** There the read is legal
-/// at EL0 or U-mode only if the kernel opened `PMUSERENR_EL0` or `scounteren.CY` for this thread
-/// (milestone 229 (the cycle-counter grant)). An ungranted call traps, and the kernel kills the thread: the read does not
-/// fail softly, because a program is expected to know from its own manifest whether it holds the
-/// grant, and there is no question to ask the kernel first. On `x86_64` the TSC is ambient in ring
-/// 3 and every program may call it. A kernel-provided way to ask "may I read" is step 2 of the
-/// ruling, a syscall-surface fork that is recorded and not built.
+/// **Only a program granted the cycle counter may call it on aarch64 and riscv64**, where the
+/// kernel opens `PMUSERENR_EL0` or `scounteren.CY` per thread (milestone 229 (the cycle-counter
+/// grant)); an ungranted call traps and the thread is killed. On `x86_64` the TSC is ambient.
 ///
 /// # Examples
 ///
@@ -306,22 +234,16 @@ pub struct CycleReading {
 ///
 /// # BUGS
 ///
-/// - **No manifest field grants the cycle counter yet**, so outside the kernel's own test (which
-///   grants through a test-only door) no aarch64 or riscv64 program can call this without being
-///   killed. DECISIONS §139 put the grant in the spawn manifest; carrying it there is milestone 75
-///   (who may read the cycle counter, and by what authority), and milestone 229 left the kernel
-///   side without a setter on purpose.
-/// - **riscv64 cannot say whether its counter is the kernel's.** The `cycle` CSR is `mcycle`, and the
-///   kernel's bench probe may have been handed `hpmcounter3` by firmware instead. Flagging that in
-///   the reading needs a kernel-to-process channel that does not exist; milestone 856 (a program
-///   asks whether it may read the cycle counter) proposes it with step 2.
-/// - **Under QEMU every count is emulator time**, an instruction count or a virtual clock, never a
-///   measurement of a core.
+/// - **No manifest field grants the cycle counter yet**, so outside the kernel's own test no
+///   aarch64 or riscv64 program can call this without being killed (milestone 75's work).
+/// - **riscv64 cannot say whether its counter is the kernel's**: `cycle` is `mcycle`, and the
+///   kernel's probe may hold `hpmcounter3` (milestone 856 (a program asks whether it may read the
+///   cycle counter)).
+/// - **Under QEMU every count is emulator time**, never a measurement of a core.
 ///
-/// Name: provisional, minted by milestone 353's lane on 2026-10-07 (UTC). A noun, Rust's getter
-/// shape (`now`, `cntfrq`). Refused `cycles` (the kernel's `arch::pmu::cycles` already means core
-/// cycles on all three architectures, and on `x86_64` this is the TSC, which is not), and
-/// `read_cycle_counter` (the fixture's private name for the raw read, and a verb).
+/// Name: provisional, minted by milestone 353's lane on 2026-10-07 (UTC), Rust's getter shape.
+/// Refused `cycles` (the kernel's `arch::pmu::cycles` means core cycles, and the TSC is not).
+/// Refused `read_cycle_counter` (a verb, and the fixture's private name).
 pub fn cycle_reading() -> CycleReading {
     CycleReading {
         count: read_cycle_counter(),

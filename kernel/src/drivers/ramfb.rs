@@ -27,6 +27,7 @@
 //! after boot there is nothing more to say to it, and a window nobody can reach is a window nobody
 //! can be wrong about.
 //!
+
 //! # BUGS
 //!
 //! - **It polls, and the bound is a spin count rather than a clock.** Nothing this early has a

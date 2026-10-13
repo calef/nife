@@ -26,6 +26,7 @@
 //! architectures since milestone 268, and it is shared by every board this tool will ever watch.
 //! `crates/boot_ladder` holds its markers; a board profile may not name one.
 //!
+
 //! # BUGS
 //!
 //! **A marker is shared; the fields inside the line are not, and that gap is silent.** The sweep's

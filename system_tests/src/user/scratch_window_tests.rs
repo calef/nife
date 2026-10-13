@@ -18,6 +18,7 @@
 //! on each architecture. `x86_64` and `riscv64` build one more scratch page per child (the timebase
 //! page), which the fixture counts.
 //!
+
 //! # BUGS
 //!
 //! - **CI does not run it.** The whole suite skips it; it runs only when named

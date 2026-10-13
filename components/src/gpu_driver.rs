@@ -33,6 +33,7 @@
 //! client's place unchanged, and the security story is that a hostile client can draw nonsense and
 //! nothing more.
 //!
+
 //! # The memory story, because a framebuffer does not fit in a page
 //!
 //! Every other driver here gets one 4 KiB DMA page. A framebuffer does not fit in one, and the

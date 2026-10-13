@@ -41,17 +41,12 @@ use super::*;
 // (one pipeline) and `smp_pipe_all` (N pipelines); the scaling factor is the solo ns/iter divided
 // by the all ns/iter, and it should land near `online_count()`.
 //
-// **A methodology note about the solo baseline, learned by getting it wrong first.** The whole
-// result is only as honest as its single-core reference, and the obvious way to take it is a trap.
-// The main thread must **block** (a real `RECEIVE`) while a batch runs, exactly as `ipc_rtt` above does,
-// NOT busy-yield waiting on a counter. A yield-spinning main stays runnable, so on the solo batch
-// the scheduler sees main plus the pair (three runnable-ish threads) and scatters them, turning each
-// local rendezvous into a cross-core wake; the solo pair then clocked ~60x slower than `ipc_rtt`'s
-// identical pair and the derived scaling went *superlinear* (>cores), which is not physical. With
-// main blocked, the solo pair co-locates and runs at the `ipc_rtt` rate, and scaling lands at or
-// below `cores`, as it must. Each batch is also run a few times and the **minimum** ticks kept: on a
-// shared desktop under HVF the host preempts guest vCPUs, and the min is the least-contended sample,
-// the closest thing to the true rate. Loose bounds, read by a human.
+// **The solo baseline needs the main thread to block** (a real `RECEIVE`, as `ipc_rtt` does), not
+// busy-yield: a runnable main makes the scheduler scatter the solo pair, every rendezvous becomes a
+// cross-core wake, and the derived scaling goes superlinear, which is not physical. Each batch is
+// also run a few times and the **minimum** ticks kept: on a shared desktop under HVF the host
+// preempts guest vCPUs, and the min is the least-contended sample, the closest thing to the true
+// rate. Loose bounds, read by a human.
 
 /// Independent ping-pong pipelines. 16 on a 4-hart boot is four per core, enough that placement and
 /// stealing fill every core and the aggregate is not starved by too few streams.

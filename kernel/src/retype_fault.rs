@@ -34,6 +34,7 @@
 //! shipping builds, and it would buy nothing, because an unarmed hook costs one relaxed load on a
 //! path that is never the IPC round trip.
 //!
+
 //! # BUGS
 //!
 //! - **One thread, not a process.** A process with two threads that both spend is counted on the

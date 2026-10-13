@@ -17,6 +17,7 @@
 //! | `ICC_AP1R0_EL1` | active-priority bits, for firmware that left some set | a stale bit masks everything at or below its priority |
 //! | `ICC_IGRPEN1_EL1` | Group 1 on, at this core | the distributor signals, the core never listens: milestone 222's silence |
 //!
+
 //! # The barriers, read from Linux (v6.16) rather than recalled
 //!
 //! A system-register write is not a memory access, so neither program order nor a `dmb` orders it

@@ -29,6 +29,7 @@
 //! their own shared page, the exact same duplicated-invariant shape as the `r8`/`w8` cluster above,
 //! just returning a slice instead of one field.
 //!
+
 //! # Examples
 //!
 //! Bare-metal only, like the rest of this crate (see the crate-level doc for why the examples below

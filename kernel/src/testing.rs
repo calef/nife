@@ -25,21 +25,13 @@ use crate::{print, println};
 // observable kernel step: a completed IPC rendezvous or device-IRQ wake (`sched::wake` /
 // `wake_load_aware`) and every line of console output (`console::_print`, which covers each test's
 // "ok"). Progress is also credited when any online core is running a real, non-idle thread
-// ([`any_cpu_running_real_work`]). If none of that happens for ~60 s the run fails. That second
-// signal is what let `std_net` pass honestly when it spent ~300 s in net_stack's *userspace* smoltcp
-// poll, CPU-bound, making no wake and no output for stretches over a minute, yet a real thread ran
-// the whole time. A genuine lost wakeup is the opposite: every thread `Blocked`, every core parked on
-// its idle thread.
+// ([`any_cpu_running_real_work`]), so a CPU-bound userspace poll with no wake and no output counts.
+// If none of that happens for ~60 s the run fails: every thread `Blocked`, every core idle.
 //
 // **2. The per-test wall-clock ceiling (a livelock).** The heartbeat above cannot see a livelock that
-// *makes progress*, and that is not hypothetical: the RedoxFS repeat-write loop spins in an allocator
-// commit while still doing blk IPC, so every rendezvous reset the heartbeat and a failure that used to
-// be a loud 60 s trip became an infinite silent hang at ~400% CPU. A progress-only instrument cannot
-// distinguish that from healthy work, so it needs a second question: not "is anything happening?" but
-// "has this test taken longer than it is allowed to?" [`Testable::run`] stamps a start time and a
-// budget per test; this fails the run when the budget is exceeded **even though progress is being
-// made**. Turning a loud failure into a silent hang is strictly worse than the flake the heartbeat
-// fixed, which is why both mechanisms are live.
+// *makes progress* (a loop spinning while still doing IPC resets it on every rendezvous).
+// [`Testable::run`] stamps a start time and a budget per test, and this fails the run when the
+// budget is exceeded **even though progress is being made**.
 //
 // What each can and cannot see, stated plainly:
 //
@@ -49,19 +41,13 @@ use crate::{print, println};
 //     it looks. It cannot fire faster than the budget, so it is a backstop, not a diagnostic.
 //   - Neither can tell a livelock from slow-but-correct work *while it is running*; only the budget,
 //     which is a human declaration of expected cost, separates them. That is the honest limit.
-//   - **The heartbeat credits work by ANY thread, including leftovers from earlier tests, and that
-//     blinded it once for real** (milestone 31 phase 2). The FS server died of a stack overflow, its
-//     client blocked on a `CALL` nobody would ever answer, and nothing in that test made progress
-//     again; but processes left spinning by earlier tests kept `any_cpu_running_real_work` true, so
-//     the 60 s stall never registered and only the ceiling fired. Attributing a thread to the running
-//     test would fix it and the kernel cannot: a test's processes are ordinary processes. The defence
-//     is the ceiling, plus reading the thread dump's **address-space roots** rather than its program
-//     counters, which is what tells a leftover spinner from the process under test.
-//   - **A ceiling failure reports the ceiling, not the cost.** "ran 900 s" against a 900 s budget is
-//     the budget being spent and says nothing about how long the work would take. The same incident
-//     had that number read as evidence of honest slowness, which sent an investigation looking for a
-//     slow path in a test whose server was already dead. Raising a budget to "measure" something
-//     returns only the new budget.
+//   - **The heartbeat credits work by ANY thread, including leftovers from earlier tests**, so a
+//     test whose server died can look busy; the kernel cannot attribute a thread to a test. The
+//     defense is the ceiling, plus reading the thread dump's **address-space roots** rather than
+//     its program counters, which tells a leftover spinner from the process under test.
+//   - **A ceiling failure reports the ceiling, not the cost.** "ran 900 s" against a 900 s budget
+//     says nothing about how long the work would take, and raising a budget returns only the new
+//     budget.
 //   - Both run off the boot core's timer IRQ, so a kernel that loses it loses both. The backstop
 //     for that is xtask's host watchdog (`time_record::HOST_GRACE_SECS`, notes/scheduler.md), which
 //     kills QEMU at the test's budget plus a grace. This ceiling still fires first; its dump says more.

@@ -38,6 +38,7 @@
 //! It proves the path and a manifest's travel, and nothing about the program: a line of text is
 //! the least a program can do, and it does not read the clock it holds.
 //!
+
 //! Name: provisional (2026-09-26). Says what it prints; GNU `hello`, which exists to demonstrate
 //! packaging, would be the prior art, and `hello` is already a fixture here.
 

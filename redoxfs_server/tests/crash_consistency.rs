@@ -34,6 +34,7 @@
 //! whose fixture one run mutated and another asserted on, producing three incompatible root causes
 //! from three honest investigations; this is that lesson applied before the fact rather than after.
 //!
+
 //! # The controls
 //!
 //! `the_ring_is_what_saves_it` and `a_torn_commit_is_a_header_the_engine_rejects` are the negative

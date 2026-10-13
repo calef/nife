@@ -37,6 +37,7 @@
 //! test fail if the page were ever mapped read-only, which would be a *weaker* system passing a
 //! stricter-looking assertion.
 //!
+
 //! # BUGS
 //!
 //! - **This proves an absence, so it can only ever be a witness to one wiring.** It shows that the

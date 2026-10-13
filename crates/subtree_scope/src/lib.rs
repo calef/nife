@@ -27,6 +27,7 @@
 //! path and every handle through here, and the progenitor chooses per mount from what the
 //! filesystem's package declares.
 //!
+
 //! # BUGS
 //!
 //! - **A badge is a window and a grant at once.** Under §230 (badged endpoint capabilities) a badge

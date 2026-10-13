@@ -25,6 +25,7 @@
 //! `ExitBootServices` there is no console**: a failure past that point can only halt, so everything
 //! checkable is checked while there is still something to report it on.
 //!
+
 //! # BUGS
 //!
 //! - **Secure Boot must be off.** This image is unsigned and nothing here signs it. On the `OptiPlex`

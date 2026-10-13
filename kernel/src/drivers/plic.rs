@@ -28,6 +28,7 @@
 //! owns a lock, as `drivers/gic.rs` does, which is not a kernel global: it is this driver's own
 //! state, and the rank constant is the only thing it borrows from above.)
 //!
+
 //! # Exactly one register in this map needs serializing, and it is not the hot one
 //!
 //! Audited register by register (finding 3 of notes/arch-audit.md):

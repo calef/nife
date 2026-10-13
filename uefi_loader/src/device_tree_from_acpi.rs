@@ -26,6 +26,7 @@
 //! the readers cannot drift apart without a host test failing in milliseconds. That is the rule
 //! `handoff.rs` and `device_tree_patch.rs` already follow.
 //!
+
 //! # BUGS
 //!
 //! - **No PCI.** An ECAM window is in the MCFG, but a PCI node also needs `ranges` (the 32-bit and

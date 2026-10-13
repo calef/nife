@@ -31,6 +31,7 @@
 //!   failures, both are caught by the same stall check, and the kernel's report cannot tell them
 //!   apart from this page alone; the thread dump it prints on failure can.
 //!
+
 //! Name: ratified 2026-09-13 (calef, working the unratified worklist). Coined by milestone 219's
 //! lane on 2026-09-01. A noun for the thing it describes: the one page the soak workload and the
 //! kernel share.

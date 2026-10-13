@@ -34,6 +34,7 @@
 //! replaced about twenty-five seconds in by one that then holds for hours. The spawn census is the
 //! lottery's *ticket*; the settled one is what the machine ran.
 //!
+
 //! # BUGS
 //!
 //! - **A draw with no census at all is still a draw**, and it reports `clean=?`. A pre-milestone-240

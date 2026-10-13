@@ -27,6 +27,7 @@
 //! own, like `sfence.vma` with no operands), and each one's documentation says what a model of it
 //! must honour.
 //!
+
 //! # Codegen
 //!
 //! Every function is `#[inline(always)]`, so the instruction lands in its caller exactly where the
