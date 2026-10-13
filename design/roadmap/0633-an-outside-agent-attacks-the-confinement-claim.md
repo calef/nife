@@ -106,7 +106,6 @@ of `ipc_receive_cap`.
 - Proven by `system_tests::user::receive_cap_attack_tests::a_send_cap_collected_by_a_plain_receive_stages_nothing_for_a_later_plain_send`,
   red before the fix, with a replayable falsification patch.
 
-This is a cheap, reversible fix and so was fixed with its test rather than raised as a proposal.
 Milestone 634 merged as #1503 earlier the same day, so there was nothing to sequence against.
 
 ### Every claim, attacked, and what each ISA actually evidences
@@ -157,10 +156,9 @@ five ways, and each was found by a different lane)'s and is not re-raised here.
   staged; closed by the `ipc_receive` clear, with the replayable falsification above. The same class as
   #1494 and milestone 634, reached by a third mechanism (the successful-collect path, not an abort and
   not the mailbox slot).
-- A clean result on every claim this pass could reach by reading or by a host or kernel test, which
-  is the evidence the premise check scopes: thirty claims survived a second, differently trained
-  attacker one step further from self-review. It does not support green; the human half still waits
-  on milestone 198.
+- A clean result on every claim this pass could reach by reading or by a host or kernel test, the
+  evidence the premise check scopes. It does not support green; the human half still waits on
+  milestone 198.
 
 ### Observations that are not escapes
 

@@ -15,13 +15,12 @@ Promoted from `design/roadmap/proposals/who-took-the-step.md` on 2026-10-03 (UTC
 
 Raised by the `maintainer/what-the-machinery-did` lane, which was
 sent to make the merge drain's actions countable and found that the logging half (landed in the same
-pull request) cannot answer the question calef actually asked. **Name provisional**, this file's and
-nothing else's: `who-took-the-step.md` is a lane's coinage and `design/naming.md` is the rule.
+pull request) cannot answer the question calef actually asked. The file name is a lane's coinage,
+provisional under `design/naming.md`.
 
 Every option below except the refusal puts a long-lived credential on patagonia
-or adds an account to the organization. That is calef's call, it is a security decision, and it is
-close to irreversible in the sense `AGENTS.md` means: a key that has been on a machine has been on
-it. The one credential this milestone caused was the App user token (`ghu_`) calef authorized on
+or adds an account to the organization. That is calef's call, a security decision, and close to
+irreversible (see "Reversibility, and who has already acted"). The one credential this milestone caused was the App user token (`ghu_`) calef authorized on
 2026-10-04 (UTC) for the #1580 measurement. calef revoked that authorization, which kills its
 refresh token too, and disabled Device Flow on `nife-smelter` on 2026-10-04 (UTC), after the test;
 the local token file was deleted.

@@ -21,10 +21,6 @@ needed. `NIFE_ACPI=on helpers/qemu-stick.sh aarch64 target/stick` reaches the sh
 ([the measurement](../../notes/boot-stick/device-tree-handover.md#edk2-on-aarch64-hid-the-device-tree-when-it-presented-acpi)).
 The rest of this block is the plan as written on 2026-09-23. What is left is under Follow-on.
 
-A lane can start today, on this laptop, with no account and no board. The failure reproduces
-under QEMU by changing one flag, and the first two items below are host-tested table parsing. One
-item reaches an architect's fork, named where it sits rather than gating the whole thing.
-
 ## What this is, and why it is not a purchasing problem
 
 The pricing lane priced aarch64 cloud compute against four requirements and found that **every
@@ -107,9 +103,6 @@ start beside it.
 | Legacy ISA IRQ routing through the overrides | `isa_irq_table` | no, x86 only |
 | MCFG: the PCIe ECAM windows | `mcfg_entry` | yes, unchanged, and it is the same question on both |
 | DMAR: Intel VT-d remapping units | `parse_dmar`, `dmar_structures`, `first_drhd` | no. aarch64's IOMMU is the SMMU, described by IORT |
-
-So the table machinery is architecture-neutral and the *contents* it decodes are entirely x86:
-nothing has to be restructured, and four or five decoders have to be written.
 
 ## What aarch64 additionally needs, item by item
 
