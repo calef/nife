@@ -1271,3 +1271,23 @@ mod eighth_pass_rendezvous_scope_tests;
 /// Cross-ISA for the seam test; the port test is `x86_64` only (DECISIONS §19).
 #[cfg(test)]
 mod eighth_pass_delegation_race_tests;
+
+/// **Forged ELF images the cited tests do not shape** (an eighth outsider pass at the confinement
+/// claim, claim 22): a segment whose arithmetic overflows the address space, one that starts in
+/// band and claims to reach the kernel half, an image whose *second* program header names the
+/// kernel while the first is benign, and a `W|X` request dressed in vendor OS bits. Each refusal
+/// is pinned to the error that names why.
+///
+/// Cross-ISA: the band, the halves and `load` are portable over each ISA's `Mapper` (DECISIONS §19).
+#[cfg(all(test, initial_ramdisk))]
+mod eighth_pass_elf_attack_tests;
+
+/// **A user program cannot read the kernel through its other addresses either** (an eighth
+/// outsider pass at the confinement claim, claim 21). The outlaw is aimed at kernel text and at
+/// the direct-map alias of a page the cited test already proves unreadable at its link-time
+/// address, on every ISA the suite boots, each fault asserted to be a read at the exact address
+/// handed in.
+///
+/// Cross-ISA by construction: the claim is (DECISIONS §19).
+#[cfg(all(test, initial_ramdisk))]
+mod eighth_pass_kernel_address_tests;
