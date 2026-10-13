@@ -64,7 +64,7 @@ exists to stop it. What changed is only where the work is written down: the word
 point at, the file needed a number, and the number is what a lane could not mint. The 2026-09-19
 ruling removed that constraint instead of routing around it.
 
-So every cut below either carries its argument forward to the thing that superseded it or says
+So every cut below either carries its argument forward to the thing that replaced it or says
 plainly that the argument went with the directory.
 
 ### `script/roadmap`
@@ -191,7 +191,7 @@ required it to name a file under a directory that no longer existed, still carri
 a `--unclaimed` mode that could only print nothing, and still spent sixty lines of header prose on
 a queue nobody is in. `script/fatal-risks` and `script/metrics` each kept a piece of the same
 machinery. This block cuts the token, the two modes and the two checks that can no longer fail,
-keeps the argument for why the word existed beside what superseded it, and turns the file loop's
+keeps the argument for why the word existed beside what replaced it, and turns the file loop's
 existing "nothing else lives here" check into the guard that the directory cannot come back in
 silence. `helpers/roadmap_proposals.py` survives on one caller, because `script/metrics --backfill`
 restates every week from git history and deleting the parse would rewrite two true weeks to zero.

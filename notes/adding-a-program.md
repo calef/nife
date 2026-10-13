@@ -31,9 +31,9 @@ small programs with specific functions"*, and, on the binary that had accumulate
 *"31 role binary is not the right shape."*
 
 The cost is not aesthetic. A role is dispatched on a word the kernel puts in `x0`, so it is a value
-the kernel's wiring and the program agree on that nothing checks; its name lives in a `const` two
-files apart rather than in the archive; the binary links everything every role needs, so a fixture
-spawned to prove one syscall drags in an ELF parser; and the program's name has to describe all of
+the kernel's wiring and the program agree on that nothing checks. Its name lives in a `const` two
+files apart rather than in the archive. The binary links everything every role needs, so a fixture
+spawned to prove one syscall drags in an ELF parser. And the program's name has to describe all of
 them at once, which it stops doing at about the third.
 
 Milestone 291 (fixtures) is the worked example. `fixtures/src/hello.rs` reached thirty-one roles one

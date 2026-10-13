@@ -88,9 +88,10 @@ for this user" is expressible without a special case.
 
 **The honest limit.** Haiku's model gives atomicity and rollback, not confinement: an activated
 package's binaries run with the user's full authority exactly as an installed one would. The
-composition is a *naming* mechanism there. Here it would be a naming mechanism too: milestone 47 is
-explicit that extending a namespace requires already holding the capability, so it is not an authority
-increase, and the confinement comes from what a spawned program is granted, not from how it was
+composition is a *naming* mechanism there. Here it would be a naming mechanism too. Milestone 47 (navigation and naming) is
+explicit that extending a namespace requires already holding the capability, so it is not an
+authority increase. The confinement comes from what a spawned program is granted, not from how it
+was
 installed. Do not let the resemblance suggest Haiku solved a security problem it did not address.
 
 ## See also

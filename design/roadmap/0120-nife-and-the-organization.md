@@ -141,8 +141,8 @@ stops being the product and becomes the publisher.
 1. **This is not a `sed`.** CLAUDE.md records a blind `sed` that swept a rename across the tree and
    rewrote the very row recording that the name had been *refused*, destroying an expensive record
    with a cheap edit. A thousand occurrences in two hundred files is exactly the scale at which that
-   recurs. Rename by category, reviewing each: identifiers, filenames, prose, and the history that
-   must not be rewritten because it describes what the name used to be.
+   recurs. Rename by category, reviewing each: identifiers, filenames, prose, and the records that
+   must not be rewritten because they describe the old name.
 
 2. **§45's partition GUID must not move.** That decision says a `cricker-os` partition is
    `EC5CC08B-D749-4434-AC38-A274C50385BA` **and that never changes**. The GUID is an on-disk

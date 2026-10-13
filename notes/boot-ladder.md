@@ -52,8 +52,8 @@ it for every tool are `Machine` and `SelfTest`, which every architecture reaches
 
 `Prompt` needs an archive on every architecture, because the shell that prints it is loaded out
 of one. On `x86_64`, DECISIONS §149 (may the kernel answer on an endpoint) settles how `swish` gets
-a console, milestone 299 (the x86 port-range capability) built the capability that makes `console`
-a userspace driver on that machine, and milestone 182 (x86_64's own interactive-boot entry point)
+a console. Milestone 299 (the x86 port-range capability) built the capability that makes `console` a
+userspace driver on that machine, and milestone 182 (x86_64's own interactive-boot entry point)
 added the `script/swish-check` leg that types at it. `script/boot-check` asserts this rung on all
 three architectures.
 
@@ -76,9 +76,9 @@ these lines *were* the transcript.
 
 ## The self-test: it reports, it does not gate
 
-`kernel/src/self_test.rs` runs five checks between the description and the hand-off: `exceptions`
-(a breakpoint is caught and stepped over), `mapping` (a fresh page is mapped, written, read back and
-unmapped at an address computed from this machine's own RAM), `frames` (one frame out of the
+`kernel/src/self_test.rs` runs five checks between the description and the hand-off: `exceptions` (a
+breakpoint is caught and stepped over) and `mapping` (a fresh page is mapped, written, read back and
+unmapped at an address computed from this machine's own RAM). Then `frames` (one frame out of the
 allocator and back, with the accounting agreeing at both ends), `timer` (the counter advances and a
 tick interrupt arrives), `scheduler` (a spawned kernel thread runs and carries its captured state).
 

@@ -11,8 +11,8 @@ does not prove.
 
 Milestone 59 built it. The question that started it was calef's, on 2026-08-01: should we modify
 QEMU to match the chip? No. A forked emulator is a machine that exists nowhere, so it proves nothing
-about the real chip and nothing about the standard emulator, and we pin QEMU (`.qemu-version`, and
-CI builds it from source) for benchmark determinism, so a fork multiplies that maintenance. QEMU
+about the real chip and nothing about the standard emulator. We pin QEMU (`.qemu-version`, and CI
+builds it from source) for benchmark determinism, so a fork multiplies that maintenance. QEMU
 already lets us narrow with `-cpu`, and narrowing is the whole idea.
 
 ## How to run it
@@ -152,17 +152,17 @@ through SBI, so it works on both.
   it were the stack overflow in the next entry. Both are in full in
   [cpu-models/canary-flake.md](cpu-models/canary-flake.md).
 
-- The 2026-08-15 attempt-1 deaths on loaded runners were a real kernel thread-stack overflow,
-  since diagnosed and fixed (aarch64 run 31907966383 and c906 run 31910308865, both during
-  `supervision_tests::a_faulting_child_reports_to_its_supervisor_and_is_reaped_then_respawned`,
-  both a store into a THREAD stack guard page with `sp` 4096 bytes past the bottom of a 16 KiB
-  stack). Symbolized against bit-identical rebuilds of CI's binaries: no frame outran the guard;
-  the sum of a deep standing path, a blocked thread's residue, and a preemption landing at the
-  deepest instant simply exceeded 16 KiB, and a loaded host multiplies preemptions until one
-  lands there. Fixed 2026-08-15: thread stacks are 24 KiB, the tick path's disarmed canary check
-  no longer bills a 592-byte frame, the thread high-water tripwire is sized against worst-case
-  stacking, and a thread-guard fault now prints the dead stack's `.text`-pointing words so the
-  next such report symbolizes itself. The full analysis is in notes/stack/overflow-2026-08-15.md; the load-legibility
+- The 2026-08-15 attempt-1 deaths on loaded runners were a real kernel thread-stack overflow, since
+  diagnosed and fixed. They were aarch64 run 31907966383 and c906 run 31910308865, both during
+  `supervision_tests::a_faulting_child_reports_to_its_supervisor_and_is_reaped_then_respawned`. Both
+  were a store into a THREAD stack guard page with `sp` 4096 bytes past the bottom of a 16 KiB
+  stack). Symbolized against bit-identical rebuilds of CI's binaries, no frame outran the guard. The
+  sum of a deep standing path, a blocked thread's residue, and a preemption landing at the deepest
+  instant simply exceeded 16 KiB. A loaded host multiplies preemptions until one lands there. Fixed
+  2026-08-15: thread stacks are 24 KiB, and the tick path's disarmed canary check no longer bills a
+  592-byte frame. The thread high-water tripwire is sized against worst-case stacking, and a
+  thread-guard fault now prints the dead stack's `.text`-pointing words so the next such report
+  symbolizes itself. The full analysis is in notes/stack/overflow-2026-08-15.md; the load-legibility
   rule stands, but this failure was never a false one.
 
   One c906-specific residue: the c906 report's `sepc` named an `auipc`, an instruction that
@@ -184,15 +184,14 @@ through SBI, so it works on both.
   `cortex-a53` is the same exercise and the mechanism is already there.
 
   **Run by hand, `--cpu max` is the aarch64 model that has found something**, and the matrix would
-  have found it on the first run: `crates/machine_discovery` must read
-  `ID_AA64MMFR0_EL1.TGran4 = 0b0001` (4 KiB with `FEAT_LPA2`, a stronger yes) as a 4 KiB granule,
-  or a real Armv8.7+ part is refused at boot. `cargo xtask test --arch aarch64 --cpu max` passed on
-  2026-09-19
-  (325 passed, 2 skipped, both skips unrelated to the model), including the `RNDRRS` entropy test
-  the default `cortex-a72` always skips. So `max` is worth adding if the matrix grows an aarch64
-  leg: it has the most features switched on, as `rv64` does on riscv64.
-  That leg is milestone 274's first item (Apple Silicon's own core is untested) and part of
-  milestone 322's (one machine matrix for three architectures).
+  have found it on the first run. `crates/machine_discovery` must read `ID_AA64MMFR0_EL1.TGran4 =
+  0b0001` (4 KiB with `FEAT_LPA2`, a stronger yes) as a 4 KiB granule, or a real Armv8.7+ part is
+  refused at boot. `cargo xtask test --arch aarch64 --cpu max` passed on 2026-09-19 (325 passed, 2
+  skipped, both skips unrelated to the model), including the `RNDRRS` entropy test the default
+  `cortex-a72` always skips. So `max` is worth adding if the matrix grows an aarch64 leg: it has the
+  most features switched on, as `rv64` does on riscv64. That leg is the first item of milestone 274
+  (Apple Silicon's own core is untested) and part of milestone 322 (one machine matrix for three
+  architectures).
 
 - Vendor extensions are advertised, not exercised. `thead-c906` passing says our code does not
   trip over a machine that lacks standard extensions. It says nothing about the C906's non-standard
@@ -241,16 +240,16 @@ through SBI, so it works on both.
   where `test` does one: more exposure to a noisy runner, not a new kind of risk.
 
   The network checks are the second place this shows, and the 2026-10-12 pair was not the model
-  either. The `rva23s64` inbound red (run 38222292949), and one on `thead-c906` on 2026-09-26, were
-  the race of milestone 514 (the HVF std listener hangs in some full runs) on TCG. #2029 fixed it:
-  forced, both models fail without it and pass with it. A silent listener then hung into the
-  watchdog because `net_stack`'s bound needed a frame to fire; fixed 2026-10-13. The counts are in
+  either. The `rva23s64` inbound red (run 38222292949) was the race of milestone 514 (the HVF std
+  listener hangs in some full runs) on TCG. So was one on `thead-c906` on 2026-09-26. #2029 fixed
+  it: forced, both models fail without it and pass with it. A silent listener then hung into the
+  watchdog because `net_stack`'s bound needed a frame to fire. Fixed 2026-10-13. The counts are in
   notes/net/the-inbound-check.md. The `std_resolve` red on #1964 is a separate cause, recorded at
   its test.
 
   The converse of that rule is a tool, and it went unused for a month. "A green matrix under
   load is conclusive" also means loading the host on purpose is the cheapest way to *find* a
-  load-sensitive assertion, which is a different question from finding a model-specific bug. The
+  load-sensitive assertion. That is a different question from finding a model-specific bug. The
   recipe is in notes/load-sensitive-assertions.md; on its first use it turned up two assertions in
   one run that a month of CI had not.
 
@@ -262,8 +261,8 @@ through SBI, so it works on both.
 
   This job then became a merge blocker, on 2026-08-04, and that is what finished the family.
   Three sites failed across four models in a handful of runs, on pull requests whose diffs could
-  not reach them (an `xargs` change failed a timer assertion): `arch/riscv64/timer.rs`'s masking
-  test on `rv64`, the control; `smp.rs`'s placement probe on `rva23s64` and `thead-c906`;
+  not reach them (an `xargs` change failed a timer assertion). They were `arch/riscv64/timer.rs`'s
+  masking test on `rv64`, the control; `smp.rs`'s placement probe on `rva23s64` and `thead-c906`;
   `sched.rs`'s preemption test on `sifive-u54`. None was a timing budget either. Each measured
   across instructions outside the property, and contention widened the window until a race that had
   never lost started losing. The second round's verdicts are in the same note. One of them was not

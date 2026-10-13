@@ -22,13 +22,14 @@ principle.
 ## Why the graph cannot live where the roadmap's own wording suggests
 
 The natural first reading is "a `CapNeed` should say which contract satisfies it." That does not
-survive contact with a manifest already in this tree: `swap_protocol::CLIENT` declares one `Use` need
-named `service`, and the supervisor routes that name to a console (or backend) instance on the direct
-channel and to `broker`'s front endpoint on the queued one, per `notes/component-manifest.md`'s own
-rule (the name is the component's and the object is the supervisor's). A `CapNeed` that named its
-supplier would be wrong on one of the two wirings, every time, by construction: role resolution is
-the supervisor's business and a capability-level dependency claim cannot be, on pain of contradicting
-the manifest mechanism's own reason for existing.
+survive contact with a manifest already in this tree. `swap_protocol::CLIENT` declares one `Use`
+need named `service`. The supervisor routes that name to a console (or backend) instance on the
+direct channel and to `broker`'s front endpoint on the queued one, per
+`notes/component-manifest.md`'s own rule (the name is the component's and the object is the
+supervisor's). A `CapNeed` that named its supplier would be wrong on one of the two wirings, every
+time, by construction. Role resolution is the supervisor's business and a capability-level
+dependency claim cannot be, on pain of contradicting the manifest mechanism's own reason for
+existing.
 
 So the graph lives one level up, on `Requirements` itself, as a set of contract names rather than
 role names: `depends_on: &'static [&'static str]`. This is coarser than "which capability," and the
@@ -43,9 +44,9 @@ A pure consumer, no matter which contract answers its `service` need, never need
 finds nobody receiving parks on the endpoint's own sender queue, and the *next* server to `RECEIVE_CAP`
 drains it, in order, with nothing lost. That is exactly the mechanism that made the roadmap's
 imagined forwarding broker unnecessary in the simple case (notes/live-replacement.md's "three things
-the build settled"), and it generalizes for free: any component whose only relationship to a
-dependency is calling through it and blocking has nothing that needs warning, because blocking is
-already the correct, lossless behavior.
+the build settled"). It generalizes for free: any component whose only relationship to a dependency
+is calling through it and blocking has nothing that needs warning, because blocking is already the
+correct, lossless behavior.
 
 What does need warning is a component that would otherwise stop serving its own clients while its
 dependency is down, because it cannot afford to let its one serving thread sit inside a blocked
@@ -67,12 +68,12 @@ name `target_contract` in their own `depends_on`. An instance of the target cont
 its own answer even if a malformed declaration named itself.
 
 Direct dependents only, and no attempt at transitivity. A three-hop chain (`C` depends on `B`
-depends on `A`) is not walked to find `C` when `A` is the swap target, because whether `C` needs
-telling depends on whether `B`'s own quiescence protocol keeps `B` available to `C` throughout, which
-is a property of `B`'s implementation this crate has no way to see from two contract names. Guessing
-wrong in either direction is a real cost: telling `C` when it did not need it is unnecessary latency,
-and not telling it when it did is the failure this whole residual exists to prevent. Recorded as
-`BUGS` rather than built speculatively.
+depends on `A`) is not walked to find `C` when `A` is the swap target. Whether `C` needs telling
+depends on whether `B`'s own quiescence protocol keeps `B` available to `C` throughout. That is a
+property of `B`'s implementation this crate has no way to see from two contract names. Guessing
+wrong in either direction is a real cost: telling `C` when it did not need it is unnecessary
+latency, and not telling it when it did is the failure this whole residual exists to prevent.
+Recorded as `BUGS` rather than built speculatively.
 
 ## What runs under test
 
@@ -84,10 +85,10 @@ of that same order on the way back up. In this tree's one queued system that is 
 message each way, because there is exactly one component with a `depends_on` edge to `backend`. The
 behavior is unchanged; what changed is which code decided it.
 
-The direct channel gets the negative case for the same reason `component_plan`'s own test suite pairs
-every positive assertion with one: `dependents("console", &[(1, CONSOLE)])` must return empty, because
-nothing in that system declares a dependency on `console`, and a mechanism that only ever returns
-something has not been shown to refuse correctly.
+The direct channel gets the negative case for the same reason `component_plan`'s own test suite
+pairs every positive assertion with one. `dependents("console", &[(1, CONSOLE)])` must return empty,
+because nothing in that system declares a dependency on `console`. A mechanism that only ever
+returns something has not been shown to refuse correctly.
 
 Both are asserted in `system_tests/src/user/live_swap_tests.rs` via `RPT_DEPENDENTS`, on both architectures.
 
@@ -139,7 +140,7 @@ pub const CACHE: Requirements = Requirements {
 ## BUGS
 
 **No transitive orchestration.** `dependents` finds direct dependents only, and the reason is not an
-oversight but the finding stated above: whether a dependent's own dependents need telling in turn is
+oversight but the finding stated above. Whether a dependent's own dependents need telling in turn is
 a property of that dependent's own decoupling mechanism, which two contract names cannot express. A
 supervisor with a chain deeper than one hop must currently walk it by hand, calling `dependents`
 again from each dependent found, and deciding case by case whether to stop.
@@ -164,11 +165,11 @@ re-decided.
 **`depends_on` is unchecked for self-reference and cycles at the declaration level.**
 `Requirements::problem()` does not look at `depends_on` at all. A contract that named itself would be
 caught at the query site (`dependents` excludes the target instance from its own answer, by
-`contract`, unconditionally), but a two-contract cycle (`A` depends on `B`, `B` depends on `A`) would
-compile and would produce a `dependents` answer for each target that is technically correct and
-operationally useless: a supervisor swapping `A` would be told to warn `B`, and warning `B` (a
-contract that itself depends on `A`) while `A` is mid-swap is not obviously safe and this crate has no
-opinion about it. No contract in this tree declares one, so this was not exercised, and a lane
+`contract`, unconditionally). But a two-contract cycle (`A` depends on `B`, `B` depends on `A`)
+would compile. It would produce a `dependents` answer for each target that is technically correct
+and operationally useless. A supervisor swapping `A` would be told to warn `B`. Warning `B` (a
+contract that itself depends on `A`) while `A` is mid-swap is not obviously safe, and this crate has
+no opinion about it. No contract in this tree declares one, so this was not exercised, and a lane
 building a second forwarding contract should check its own graph by hand until this has a mechanism.
 
 **Every name here is provisional**: `depends_on`, `LiveInstance`, `Dependents`, `dependents`,
@@ -186,7 +187,8 @@ second consumer.
 - notes/hung-component.md for the non-cooperative case this residual's fallback still owes, and the
   two decisions (a timed wait, and what may be done to an uncooperative component) it is blocked on
 - Fuchsia's component topology (`offer`, transitively resolved through a component's ancestors) is
-  the nearest prior art for naming a supplier by contract rather than by object; Kubernetes'
-  `readinessProbe`/graceful-shutdown ordering and systemd's `Before=`/`After=` unit ordering are the
-  general shape of "tell a dependent before you take its dependency away," checked rather than
-  copied: neither is capability-routed and neither has this tree's single-hop scope limit
+  the nearest prior art for naming a supplier by contract rather than by object.
+- Kubernetes' `readinessProbe`/graceful-shutdown ordering and systemd's `Before=`/`After=` unit
+  ordering are the general shape of "tell a dependent before you take its dependency away." They
+  were checked rather than copied: neither is capability-routed and neither has this tree's
+  single-hop scope limit

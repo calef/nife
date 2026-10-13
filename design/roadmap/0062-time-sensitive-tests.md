@@ -14,7 +14,7 @@ shipped for the same reason. Closed 2026-08-22/23 by the confirmation run descri
 45 green, the block's own acceptance standard, met on the tree as it now stands.
 
 The premise this block stated was wrong, and the correction matters more than the disposition.
-The paragraph below used to say that `script/icount` "asserts zero missed ticks on both ISAs, which
+It held that `script/icount` "asserts zero missed ticks on both ISAs, which
 a contended host cannot falsify and which is strictly stronger than either of the two wall-clock
 assertions". Milestone 62's lane checked that by injecting the drift defect rather than by reading
 the code, and the instrument was blind to it: `script/test` went red and `script/icount` went
@@ -34,7 +34,7 @@ against elapsed counter time (`kernel/src/arch/aarch64/timer.rs`,
 `testing::note_progress` (`kernel/src/testing.rs`), bumped on every IPC rendezvous, wake and
 console line, beside a per-test wall-clock ceiling.
 
-What was left after 2026-08-18, and why it took until 2026-08-22/23 to close. Both items in the
+What was left after 2026-08-18, and why it closed only on 2026-08-22/23. Both items in the
 gate line above were answered on 2026-08-17, and the block still was not done, which was worth
 saying plainly rather than rounding up. The icount instrument landed with milestone 78 (the
 load-sensitive assertions), as `script/icount`; its note is notes/instruction-clock.md. The

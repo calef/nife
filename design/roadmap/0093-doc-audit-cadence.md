@@ -27,7 +27,7 @@ The evidence that rot is real here, all found in one day (2026-08-03): notes/ver
 said the proof suite ran in "a few minutes" a month after that stopped being true; two roadmap
 status rows claimed more remained than their own blocks said; milestone 47's in-brief listed work
 as pending that had shipped; notes/cpu-models.md's closing line prescribed a fix a later milestone
-had superseded. Every one was found by accident, while looking for something else. The mechanism
+had replaced. Every one was found by accident, while looking for something else. The mechanism
 exists so finding them stops being luck.
 
 What already exists, so this builds on it rather than beside it: the structural gates catch
@@ -44,7 +44,7 @@ The mechanism, mirroring 92 where the shape is the same:
    machinery rather than growing a twin; one audit index with a type column beats two files.
 2. Each audit is a sweep with a scope: a set of notes read against the tree as it is, plus
    against the roadmap as it stands, because "proposed state" rots too: a note describing planned
-   work as built, or a plan a later decision superseded, is the same defect in the other
+   work as built, or a plan a later decision overrode, is the same defect in the other
    direction. The sweep's output is per-claim: still true, corrected (loudly, per the house
    rule), or moved to the honest tense.
 3. **Shrink the auditable surface over time**: each audit should convert some checkable claims

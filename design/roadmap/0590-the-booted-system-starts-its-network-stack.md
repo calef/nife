@@ -108,13 +108,10 @@ move is milestone 198's, and needs no new mechanism from this one.
 - x86_64's network is the kernel's to build, not the progenitor's. Since 2026-10-05 the kernel
   builds `net_stack` on the `e1000e` when there is no virtio-mmio NIC and grants the progenitor
   its endpoint (milestone 198 (a package manager)); it leaves a PCH part such as xenon's I219
-  alone. **Correction
-  (2026-10-04 UTC, from milestone 494's lane):** this block used to say the x86_64 runner attaches
-  no `-netdev`. That was true of the command line and misleading about the machine: the OVMF runner
-  named no network, so QEMU's default filled the gap, an `e1000e` on user networking, and every boot
-  carried that NIC. Milestone 494 (a driver for the network card a PC actually has) names it
-  explicitly. `swish-check`'s x86_64 leg used to omit the two echo runs for want of a stack; it
-  types them since 2026-10-05.
+  alone. An OVMF runner that names no `-netdev` still has a NIC: QEMU's default fills the gap
+  with an `e1000e` on user networking (milestone 494's lane, 2026-10-04 UTC). Milestone 494 (a
+  driver for the network card a PC actually has) names it explicitly. `swish-check`'s x86_64 leg
+  types the two echo runs.
 - A socket client pays for its own page with `--mem 4`. The network grant carries no memory,
   deliberately; a person has to type the budget.
 

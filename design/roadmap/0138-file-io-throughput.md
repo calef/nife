@@ -145,8 +145,8 @@ rather than asserted, and this is the measurement that most weakens it.
 - This block once asserted that RedoxFS is not the cause on a reading of the code. That is now
   measured twice over: the sweep held the prediction (5.6x on a read, 3.0x on a write), and the
   fixed term was counted as five repeated block reads. The block went on describing the sweep as
-  unrun after it ran. Since 2026-10-12 the pre-sweep text lives in
-  [options.md](0138-file-io-throughput/options.md), marked as superseded, beside the sweep's
+  unrun after it ran. The pre-sweep text lives in
+  [options.md](0138-file-io-throughput/options.md), beside the sweep's
   correction of milestone 38's 46.2 us per block to a 39.0 us marginal cost plus a 208 us walk.
 - `Transaction::write_node` compares before writing, so rewriting a block with identical contents
   costs a read and no write. A benchmark that sends one constant page repeatedly measures the
