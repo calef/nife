@@ -19,7 +19,7 @@ cost is architectural rather than a matter of tuning.
 
 ### The verdict of record
 
-Superseded 2026-10-04 (UTC): the sweep ran on radon, five boots, and matched step 7's first outcome
+The sweep ran on radon on 2026-10-04 (UTC), five boots, and matched step 7's first outcome
 in `notes/job-mix.md`. The risk 4 entry has the result and its caveats, and
 [the evening's page](../../notes/job-mix/radon-2026-10-04.md) has the numbers. The paragraph below is
 the 2026-09-23 state.

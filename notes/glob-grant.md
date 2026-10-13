@@ -100,7 +100,7 @@ and the frame a set needs at start, are weighed in
 [glob-grant/third-caretaker.md](glob-grant/third-caretaker.md).
 
 Milestone 61 removed the *other* duplication, which was the dangerous one. Which verbs got asked "is
-this name in the set" used to be a list of match arms in this program. So a name-taking verb added
+this name in the set" was a list of match arms in this program. So a name-taking verb added
 to the contract would have arrived unfiltered and a set capability would quietly have reached a name
 the pattern never matched. It is now `filesystem_protocol::verb`'s `takes_name()`, one row per verb,
 in a host-testable crate: the filter covers a new verb from the moment its row exists. The

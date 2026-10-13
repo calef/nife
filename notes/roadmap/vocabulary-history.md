@@ -8,7 +8,7 @@ for the dependency fields, and how the follow-on dispositions arrived.
 
 A detail block may narrate its state in prose (that is where the evidence belongs). But the
 `status` key is what answers "where do we stand", and since 2026-09-21 it is the only record of it
-there is. The rule here used to read *"if the two disagree, the column is wrong and the block is
+there is. The rule here once read *"if the two disagree, the column is wrong and the block is
 right"*. That was the correct answer to a question that should not have existed: two hand-maintained
 records, both looking authoritative, and a reader with no way to tell which was lying. Milestone 69
 (split `kernel/src/user.rs` by service) had a row saying `NOT-STARTED` while its block said

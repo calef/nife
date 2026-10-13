@@ -1,7 +1,7 @@
 # Narrowing the archive: where the program set is computed
 
-An appendix of [scheduled execution](../scheduled-execution.md), moved from its section "The
-archive it holds is narrowed to the plan" on 2026-10-11 (UTC) under §212 (a prose budget). The
+An appendix of [scheduled execution](../scheduled-execution.md), for its section "The archive it
+holds is narrowed to the plan", under §212 (a prose budget). The
 parent keeps what is narrowed and why. This file keeps why the set is not computed at the spawn
 site, how a written list is held equal to the plan, and the audit line that measures the result.
 
