@@ -1,121 +1,31 @@
-//! **The inert-configuration contract** (milestone 47's environment-variable fork, DECISIONS
-//! §111). One definition of the read-only page that carries `TZ`, `LANG` and `TERM` into a
-//! process, so whoever assembles it (init, or a kernel test harness standing in for init today)
-//! and whoever reads it (the `std` PAL, and eventually a `no_std` program through `user_mode_runtime`)
-//! cannot drift. The same split `clock_protocol` makes for the wall clock and `filesystem_protocol` makes for
-//! the filesystem.
+//! **The inert-configuration contract** (§111 (inert configuration is a read-only page)): the
+//! read-only page that carries `TZ`, `LANG` and `TERM` into a process, defined once for whoever
+//! assembles it (init, or a kernel test harness) and whoever reads it (the `std` PAL). Of Unix's
+//! environment, names are the namespace's and secrets are endpoints (§41 (the endpoint is the
+//! broker)); this is the inert third, a page a process is granted with `READ` or is not.
 //!
-//! # Why a page, and why validated
+//! **Validated, because a capability governs reach, not meaning**: once a value is bytes on a page,
+//! nothing can tell a password from a timezone. So a value must parse as a member of a known-safe
+//! [`domain`] to reach the page at all, enforced by [`PageBuilder`]'s setters before the page
+//! exists: an API key does not parse as `America/Los_Angeles`.
 //!
-//! Milestone 47 splits what Unix puts in one string-to-string environment map into three parts:
-//! inert configuration (`TZ`, `LANG`, `TERM`, genuinely just data), names (`PATH`, `HOME`,
-//! already answered by the namespace half), and secrets (already answered, an endpoint, §41).
-//! DECISIONS §111 decided the inert third's wire encoding: a read-only page a process is either
-//! granted or is not (the same rights ladder the clock page uses: no capability, or a `PageFrame`
-//! with `READ`), because a config value is never something a person designates on a command
-//! line and there is nothing to propose or set from inside the process that holds it.
-//!
-//! **Why validated rather than a free-form string.** A capability governs reach, not meaning:
-//! once a value is bytes on a page, nothing about the capability model can tell a password from
-//! a timezone, and `AWS_SECRET_KEY`-as-env-var is a real, repeated Unix problem for exactly that
-//! reason. §111's answer is this tree's strongest tool applied to value shape instead of
-//! authority: **make the wrong state unrepresentable.** A byte sequence has to parse as a member
-//! of a specific, known-safe [`domain`] to go onto this page at all, so an API key does not
-//! parse as `America/Los_Angeles` and cannot ride through disguised as one. [`PageBuilder`]'s
-//! three setters are where that is enforced, at assembly time, before the page exists to anyone.
-//!
-//! # The page has one writer, once, before it has a second reader
-//!
-//! Unlike [`clock_protocol`](../clock_protocol)'s page, which is published to repeatedly by a running
-//! service while readers hold a stale mapping, this page is assembled once, in a buffer nothing
-//! else can see, and only *then* mapped read-only into the process that will read it. There is
-//! no seqlock here because there is nothing to race: the writer finishes before the page has a
-//! second observer. [`ConfigPage::new`]'s contract is the same "stays mapped, never written by
-//! this process" shape the clock page's reader relies on; it just does not need the seqlock's
-//! seq-and-fence dance to get there.
-//!
-//! # A zeroed frame reads as "no configuration", by construction
-//!
-//! [`MAGIC`] is checked before anything else is read, the same default-honest shape
-//! `clock_protocol::ClockPage` uses: a frame nobody has assembled a page into, or a page belonging
-//! to something else entirely, answers `None` for every key rather than inventing a locale
-//! nobody chose (DECISIONS §42's no-silent-degradation rule, applied here rather than to time).
-//!
-//! # Examples
-//!
-//! Assembling a page is validate-then-write, and an unrecognized value is refused before it
-//! reaches the page at all:
-//!
-//! ```
-//! use environment_protocol::{ConfigPage, PageBuilder, Refused};
-//!
-//! let page = PageBuilder::new()
-//!     .tz("America/Los_Angeles").unwrap()
-//!     .lang("en_US.UTF-8").unwrap()
-//!     .term("xterm-256color").unwrap()
-//!     .build();
-//!
-//! // SAFETY: `page` is a live, aligned buffer of exactly `PAGE_BYTES`, alive for this block.
-//! let read = unsafe { ConfigPage::new(page.as_ptr() as u64) };
-//! assert_eq!(read.tz(), Some("America/Los_Angeles"));
-//! assert_eq!(read.lang(), Some("en_US.UTF-8"));
-//! assert_eq!(read.term(), Some("xterm-256color"));
-//!
-//! // A value outside the domain is refused when the page is built, not carried through
-//! // disguised as configuration.
-//! assert_eq!(
-//!     PageBuilder::new().tz("definitely-not-a-timezone"),
-//!     Err(Refused::UnknownTz),
-//! );
-//! ```
-//!
-//! A key nobody declared reads as absent, and a frame nobody has assembled a page into reads as
-//! "no configuration" rather than as empty strings:
-//!
-//! ```
-//! use environment_protocol::{ConfigPage, PageBuilder};
-//!
-//! let page = PageBuilder::new().tz("UTC").unwrap().build(); // LANG and TERM left undeclared
-//! // SAFETY: as above.
-//! let read = unsafe { ConfigPage::new(page.as_ptr() as u64) };
-//! assert_eq!(read.tz(), Some("UTC"));
-//! assert_eq!(read.lang(), None);
-//! assert_eq!(read.term(), None);
-//!
-//! let zeroed = [0u8; environment_protocol::PAGE_BYTES];
-//! // SAFETY: as above.
-//! let nothing = unsafe { ConfigPage::new(zeroed.as_ptr() as u64) };
-//! assert_eq!(nothing.tz(), None);
-//! assert_eq!(nothing.lang(), None);
-//! assert_eq!(nothing.term(), None);
-//! ```
+//! The page is assembled once in a private buffer and only then mapped read-only, so unlike the
+//! clock page it needs no seqlock. [`MAGIC`] is checked first, so a zeroed or foreign frame answers
+//! `None` for every key rather than inventing a locale nobody chose.
 //!
 //! # BUGS
 //!
-//! - **The domains are curated, real, and deliberately not exhaustive.** [`domain::KNOWN_TZ`] is
-//!   not the ~600-zone IANA timezone database, [`domain::KNOWN_LANG`] is not glibc's locale
-//!   list, and [`domain::KNOWN_TERM`] is not terminfo's. Vendoring any of those wholesale is a
-//!   dependency decision (DECISIONS §46) this crate does not make on its own; the lists here are
-//!   grown on demand, the same posture `clock_protocol::rtc` takes toward RTC bindings. Every entry
-//!   is a real, checkable value; the list is short, not fabricated.
-//! - **A value longer than its key's cap is a build-time bug, not a runtime refusal.** The
-//!   domains are curated short on purpose (§111 does not ask this crate to support arbitrary
-//!   IANA identifiers), so every member of every `KNOWN_*` list fits under its field's cap by
-//!   construction, and [`PageBuilder::build`] truncates rather than panics if that invariant is
-//!   ever violated by a future addition to a domain list. A host test pins it instead: growing a
-//!   domain with an over-length member fails the suite, not a process at spawn.
-//! - **No wire announcement exists yet**, because nothing that spawns through `grant_plan`'s
-//!   shell protocol declares wanting this page: `Manifest` carries no `config` field, the way it
-//!   carries `clock` for `date`. What is built end to end is the page format and the kernel- and
-//!   `std`-PAL-side wiring that grants it to a std program, proven by `std_exerciser`
-//!   (`system_tests/src/user/std_service.rs`, `patches/std-nife/overlay/std/src/sys/env/nife.rs`). A
-//!   shell-facing program that wants a declared key, and the `caps` preview extension §111 also
-//!   asks for, wait on a real customer the way `clock` waited on `date`.
+//! - The domains are curated and short: [`domain::KNOWN_TZ`], [`domain::KNOWN_LANG`] and
+//!   [`domain::KNOWN_TERM`] are not the IANA, glibc or terminfo lists, which would be a dependency
+//!   decision (§46 (thin primitives or whole subsystems)). They grow on demand.
+//! - Every domain member fits its field's cap by construction; [`PageBuilder::build`] truncates if
+//!   that ever breaks, and a host test fails the suite first.
+//! - No `grant_plan::Manifest` field declares wanting the page yet, so only the kernel- and
+//!   std-PAL-side wiring is built (proven by `std_exerciser`), not a shell-facing grant or `caps`
+//!   preview.
 //!
-//! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review). Renamed from
-//! `env_proto`: spell out the contraction fully. The suffix then became `_protocol` at milestone 265
-//! (calef, 2026-09-05), which spells out the other truncation in the same name; the stem and the
-//! 2026-08-23 ruling are untouched.
+//! Name: ratified 2026-08-23 (calef), renamed from `env_proto` to spell out the contraction;
+//! `_protocol` per calef's 2026-09-05 ruling.
 
 #![cfg_attr(not(test), no_std)]
 
@@ -248,6 +158,33 @@ pub enum Refused {
 /// before accepting the value, so a page this type builds can never carry a value outside its
 /// key's closed set. A key never given a value stays absent: [`ConfigPage`] reads it back as
 /// `None`, not as an empty string.
+///
+/// # Examples
+///
+/// Assembling is validate-then-write; a value outside the domain is refused before it reaches the page:
+///
+/// ```
+/// use environment_protocol::{ConfigPage, PageBuilder, Refused};
+///
+/// let page = PageBuilder::new()
+///     .tz("America/Los_Angeles").unwrap()
+///     .lang("en_US.UTF-8").unwrap()
+///     .term("xterm-256color").unwrap()
+///     .build();
+///
+/// // SAFETY: `page` is a live, aligned buffer of exactly `PAGE_BYTES`, alive for this block.
+/// let read = unsafe { ConfigPage::new(page.as_ptr() as u64) };
+/// assert_eq!(read.tz(), Some("America/Los_Angeles"));
+/// assert_eq!(read.lang(), Some("en_US.UTF-8"));
+/// assert_eq!(read.term(), Some("xterm-256color"));
+///
+/// // A value outside the domain is refused when the page is built, not carried through
+/// // disguised as configuration.
+/// assert_eq!(
+///     PageBuilder::new().tz("definitely-not-a-timezone"),
+///     Err(Refused::UnknownTz),
+/// );
+/// ```
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
 pub struct PageBuilder<'a> {
     tz: Option<&'a str>,
@@ -335,6 +272,28 @@ fn read_field(page: &[u8], len_off: usize, data_off: usize) -> Option<&str> {
 ///
 /// See the crate's own docs for why this needs no seqlock: the page has exactly one writer, and
 /// that writer finishes before the page has a second reader.
+///
+/// # Examples
+///
+/// An undeclared key reads as absent, and an unassembled frame as no configuration at all:
+///
+/// ```
+/// use environment_protocol::{ConfigPage, PageBuilder};
+///
+/// let page = PageBuilder::new().tz("UTC").unwrap().build(); // LANG and TERM left undeclared
+/// // SAFETY: `page` is a live, aligned buffer of exactly `PAGE_BYTES`, alive for this block.
+/// let read = unsafe { ConfigPage::new(page.as_ptr() as u64) };
+/// assert_eq!(read.tz(), Some("UTC"));
+/// assert_eq!(read.lang(), None);
+/// assert_eq!(read.term(), None);
+///
+/// let zeroed = [0u8; environment_protocol::PAGE_BYTES];
+/// // SAFETY: as above.
+/// let nothing = unsafe { ConfigPage::new(zeroed.as_ptr() as u64) };
+/// assert_eq!(nothing.tz(), None);
+/// assert_eq!(nothing.lang(), None);
+/// assert_eq!(nothing.term(), None);
+/// ```
 #[derive(Debug, Clone, Copy)]
 pub struct ConfigPage {
     base: *const u8,

@@ -6,12 +6,16 @@ own writer just made.
 
 Expected to fail: the harness's `assert!(h.last_usable_lba + span < h.alternate_lba)`.
 
-diff --git a/crates/globally_unique_identifier_partition_table/src/lib.rs b/crates/globally_unique_identifier_partition_table/src/lib.rs
-index 9445bae78..52b142db9 100644
---- a/crates/globally_unique_identifier_partition_table/src/lib.rs
-+++ b/crates/globally_unique_identifier_partition_table/src/lib.rs
-@@ -437,3 +437,3 @@ impl<'a> GloballyUniqueIdentifierPartitionTable<'a> {
+diff --git a/crates/globally_unique_identifier_partition_table/src/table.rs b/crates/globally_unique_identifier_partition_table/src/table.rs
+index 33636ffdc..455a9534c 100644
+--- a/crates/globally_unique_identifier_partition_table/src/table.rs
++++ b/crates/globally_unique_identifier_partition_table/src/table.rs
+@@ -146,7 +146,7 @@ impl<'a> GloballyUniqueIdentifierPartitionTable<'a> {
+                 need,
+             });
          }
 -        let last_usable = block_count - array_blocks - 2;
 +        let last_usable = block_count - array_blocks - 1;
  
+         entry_array.fill(0);
+         for (i, part) in partitions.iter().enumerate() {

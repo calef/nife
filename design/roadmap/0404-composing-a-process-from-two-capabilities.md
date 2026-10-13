@@ -59,8 +59,8 @@ knowingly. The fixture's header says so; 19b's account stays as it was written.
 Performed in its own commit, under the procedure in `design/naming.md`. The fixture's `Name:` block
 lists what moved and what kept `address_space_witness` as an account. `script/names` refusals held
 at 400 across it. The test wiring module moved with it, to
-`system_tests/src/user/process_composition_service.rs` (a derived name, provisional), and the test
-was renamed for the claim it now makes.
+`system_tests/src/user/process_composition_service.rs` (a derived name, provisional), and the test's
+name states the claim it makes.
 
 ## Follow-on
 
@@ -77,7 +77,7 @@ was renamed for the claim it now makes.
 ## Index row
 
 A process composed from two capabilities now runs in the space it built, on every pull request.
-`process_composition_witness` (renamed from `address_space_witness`, calef's ruling in §185) holds a
+`process_composition_witness` (calef's name, ruled in §185) holds a
 memory region and a report line, reads a child out of the archive by name, builds its space through
 the shared loader, keeps milestone 19b's break-before-make probe in that space, starts the thread
 and receives its answer. The test asserts the whole verdict on all three architectures, waits with a

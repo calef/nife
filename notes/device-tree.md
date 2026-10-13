@@ -120,11 +120,11 @@ The UART's *address* is still hardcoded, and that is correct, for a nice chicken
 reason: the parser is the thing most likely to have a bug, and `println!` is how you would debug
 it. So the console has to come up *before* the device tree is parsed, which means the console
 cannot depend on it. What it can do is be checked against the tree afterwards, which
-`crates/device_tree_blob/tests/qemu_aarch64_virt.rs` does. Everything else about the UART now does come from
-the tree, per the row above: the register shape adopted before the first `println!`, and the
-interrupt line, whose QEMU constant armed an unrelated PLIC source on the JH7110 until boot 13
-proved it (notes/visionfive2.md, BUGS). The constant survives only as the documented fallback for
-a tree that does not say, and the boot prints which source won.
+`crates/device_tree_blob/tests/qemu_aarch64_virt.rs` does. Everything else about the UART now does
+come from the tree, per the row above. That is the register shape adopted before the first
+`println!`, and the interrupt line. Its QEMU constant armed an unrelated PLIC source on the JH7110
+until boot 13 proved it (notes/visionfive2.md, BUGS). The constant survives only as the documented
+fallback for a tree that does not say, and the boot prints which source won.
 
 The Pi port wants all of it, because none of the addresses will match.
 

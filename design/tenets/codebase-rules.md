@@ -2,9 +2,9 @@
 
 *Appendix to [`AGENTS.md`](../../AGENTS.md), which carries the seven rules themselves. This file
 carries the reason behind each: the Raspberry Pi port that becomes a directory rather than a diff,
-the driver that knows only a base address, what §46 (thin primitives or whole subsystems) means by
-write it or vendor it, and why a `#[path]` module shared by two binaries is checked by nothing.
-Moved here 2026-09-23 (UTC) on calef's authorization, unchanged in substance.*
+and the driver that knows only a base address. Also what §46 (thin primitives or whole subsystems)
+means by write it or vendor it, and why a `#[path]` module shared by two binaries is checked by
+nothing. Moved here 2026-09-23 (UTC) on calef's authorization, unchanged in substance.*
 
 
 These come from `design/decisions/`. They are cheap to follow and expensive to retrofit.

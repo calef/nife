@@ -26,12 +26,11 @@ from seL4's own trees, not from the marketing page:
   Source: `.github/workflows/sel4bench.yml` `hw-run` matrix in <https://github.com/seL4/sel4bench>,
   and `sel4bench-hw/builds.yml` in <https://github.com/seL4/ci-actions>.
 - Builds only. sel4bench CI builds images for essentially every armv8a platform in
-  `seL4-platforms/platforms.yml`, including rpi4, odroid_c4, and rpi5, but never runs them:
-  RPI4 is marked `no_hw_test: true` (the Foundation runs no hardware CI on it at all, sel4test
-  included), and RPI5's entry says in a comment "the seL4 foundation has no RPI5 hardware".
-  ODROID-C4 has two units in the machine queue for sel4test but is absent from the bench matrix.
-  Source: `seL4-platforms/platforms.yml` and `sel4bench/build.py` in
-  <https://github.com/seL4/ci-actions>.
+  `seL4-platforms/platforms.yml`, including rpi4, odroid_c4, and rpi5, but never runs them. RPI4 is
+  marked `no_hw_test: true` (the Foundation runs no hardware CI on it at all, sel4test included),
+  and RPI5's entry says in a comment "the seL4 foundation has no RPI5 hardware". ODROID-C4 has two
+  units in the machine queue for sel4test but is absent from the bench matrix. Source:
+  `seL4-platforms/platforms.yml` and `sel4bench/build.py` in <https://github.com/seL4/ci-actions>.
 
 A builds-only board would mean producing the seL4 side's numbers ourselves on a configuration the
 Foundation has never validated, which is the "seL4 only boots there" failure with extra steps.
@@ -82,12 +81,12 @@ research. Nobody has checked which BL31 argon's L4T flash actually carries.
 | ODROID-C4 | 4x A55 | 4 GB | GIC-400 (v2) | Amlogic meson | yes, BL31 | sel4test hardware, **not** in bench matrix | ~$50-65 new, stock thinning (DRAM prices) |
 
 Sources for the board facts: TX1 serial and 16550 compatibility
-(<https://jetsonhacks.com/2015/12/01/serial-console-nvidia-jetson-tx1/>, J21 pins 8/9/10, `ttyS0`),
+(<https://jetsonhacks.com/2015/12/01/serial-console-nvidia-jetson-tx1/>, J21 pins 8/9/10, `ttyS0`).
 TF-A Tegra and Raspberry Pi 4 platform docs
 (<https://trustedfirmware-a.readthedocs.io/en/latest/plat/nvidia-tegra.html>,
 <https://trustedfirmware-a.readthedocs.io/en/latest/plat/rpi4.html>, the rpi4 port patches the DTB
-to advertise PSCI and enters the kernel at EL2), seL4's per-board pages
-(<https://docs.sel4.systems/Hardware/>), BCM2712's GIC-400
+to advertise PSCI and enters the kernel at EL2). seL4's per-board pages
+(<https://docs.sel4.systems/Hardware/>). BCM2712's GIC-400
 (<https://forums.raspberrypi.com/viewtopic.php?t=371974>), i.MX8MM's GICv3
 (<https://community.arm.com/support-forums/f/architectures-and-processors-forum/54702/gicv3-interrupt-configuration-i-mx-8m-mini---arm-cortex-a53>),
 Hardkernel's shop pages for C2/C4 status, and eBay listings for the used prices.
@@ -96,11 +95,11 @@ Hardkernel's shop pages for C2/C4 status, and eBay listings for the used prices.
 
 What is genuinely new for nife on each board, given rule 1's board boundary and the
 VisionFive 2 experience (a board directory, not a diff across the tree). Every board below shares
-three items, so they are the baseline rather than rows: an EL2 to EL1 entry drop in `boot.s`
-(every real bootloader here enters at EL2; QEMU's ELF path enters at EL1, so this code does not
-exist yet), a **board memory map** (DRAM base, MMIO windows), and the bench runbook work 16a
-already modeled. The aarch64 `image_header.s` (Linux Image header) already exists, so U-Boot
-`booti` and the Pi's `kernel8.img` load path are covered.
+three items, the baseline rather than rows. The first is an EL2 to EL1 entry drop in `boot.s` (every
+real bootloader here enters at EL2; QEMU's ELF path enters at EL1, so this code does not exist yet).
+The others are a **board memory map** (DRAM base, MMIO windows) and the bench runbook work 16a
+already modeled. The aarch64 `image_header.s` (Linux Image header) already exists, so U-Boot `booti`
+and the Pi's `kernel8.img` load path are covered.
 
 | board | UART work | GIC work | boot handoff | SMP | net new beyond the baseline |
 |---|---|---|---|---|---|

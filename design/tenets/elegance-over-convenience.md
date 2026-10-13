@@ -13,9 +13,9 @@ project's reason for existing.
 
 **The failure mode is not laziness, it is a recommendation that sounds like design.** The tell is a
 case made in the vocabulary of architecture whose actual load-bearing clause is effort. §92 is the
-worked example, recorded there on purpose: the caretaker-lifetime question got a first
+worked example, recorded there on purpose. The caretaker-lifetime question got a first
 recommendation (job membership) over the better one (supervision: §40 (a supervisor's death is its
-subtree's death)), and the honest reason was that it was the smaller change to make. It took calef
+subtree's death)), for the honest reason that it was the smaller change to make. It took calef
 asking "why not option 2?" to surface that, and the better answer was not merely better, it was
 *simpler to live with*: the chained case fell out for free instead of needing bookkeeping.
 

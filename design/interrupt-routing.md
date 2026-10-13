@@ -2,15 +2,14 @@
 
 Status: DECIDED 2026-07-28 (calef), then BUILT: the two-tier design (option C), interrupt
 capability held by the shell, `Tcb::SUSPEND` still deferred. See DECISIONS §24 and its
-implementation amendment for what shipped (the cooperative tier is a shared-memory flag, not the
-endpoint notification this proposal imagined, because a running compute job cannot poll an endpoint;
-the forcible tier is `Untyped::DESTROY` on a region the shell holds). This document stays as the
-original design record. Milestone 28 built the
-terminal that *detects* `^C` and wrote down the contract's hook for it (`FLAG_INTERRUPTED`), and
-deliberately stopped there. How the interrupt actually reaches the foreground process is a
-capability-routing question with real forks, and this project's answer will not be Unix signals.
-This note frames the problem, lays out candidate mechanisms, reads the prior art, and recommends
-a direction. It builds no kernel mechanism.
+implementation amendment for what shipped. The cooperative tier is a shared-memory flag, not the
+endpoint notification this proposal imagined, because a running compute job cannot poll an endpoint.
+The forcible tier is `Untyped::DESTROY` on a region the shell holds. This document stays as the
+original design record. Milestone 28 (a solid terminal) built the terminal that *detects* `^C` and wrote down the
+contract's hook for it (`FLAG_INTERRUPTED`), and deliberately stopped there. How the interrupt
+actually reaches the foreground process is a capability-routing question with real forks, and this
+project's answer will not be Unix signals. This note frames the problem, lays out candidate
+mechanisms, reads the prior art, and recommends a direction. It builds no kernel mechanism.
 
 ## The problem
 
@@ -66,10 +65,10 @@ frees what it holds, and returns to the shell.
 ### B. A forcible abort capability (the holder can tear the job down)
 
 The foreground job is represented by a capability the terminal holds that can destroy or
-suspend it: either the job's `Tcb` capability with a suspend/kill method, or a revocable "job"
-capability whose revocation reclaims the job's objects (DECISIONS §13, §16, which already reclaim
-a process's frames and objects). On `^C`, the terminal invokes it; the job stops regardless of
-what it was doing.
+suspend it. Either the job's `Tcb` capability with a suspend/kill method, or a revocable "job"
+capability whose revocation reclaims the job's objects (DECISIONS §13 (capability revocation) and §16 (object revocation), which already reclaim a
+process's frames and objects). On `^C`, the terminal invokes it; the job stops regardless of what it
+was doing.
 
 - *Strength:* works for the runaway case, because it does not need the target's cooperation. Reuses
   object revocation, which exists.

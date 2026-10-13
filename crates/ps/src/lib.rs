@@ -1,139 +1,36 @@
-//! **`ps`: what a process listing is when there is no `/proc`** (milestone 126,
-//! notes/process-view.md).
+//! **`ps`: what a process listing is when there is no `/proc`** (notes/process-view.md). The
+//! program's logic, lifted out to run on the host; `components/src/ps.rs` is the syscall and the
+//! two output streams. The listing is a capability, not ambient `/proc`: this crate is handed a
+//! function that reads one entry of a domain, backed by `abi::rendezvous::SURVEY` on an endowed
+//! supervision endpoint, so it cannot widen the domain or learn that another exists.
 //!
-//! This is the program's logic, lifted out so it runs on the host in milliseconds; `components/src/ps.rs`
-//! is the syscall and the two output streams and nothing else. The crate and the program share a
-//! name because they are one thing split at the IO boundary, which is the convention `coremark`,
-//! `line_editor` and `compositor` already follow.
+//! A monitor that reports nothing because it could not look reads exactly like a quiet machine, so
+//! three answers stay distinct to the terminal: rows on the output stream; an empty domain, said on
+//! diagnostics; and a refusal, named on diagnostics with no rows.
 //!
-//! # What it does not do, which is the whole point
-//!
-//! `ps aux` on Linux reads `/proc`, which is **ambient**: any process gets it with no grant from
-//! anyone, so the listing is every process on the machine, including the command lines with
-//! secrets in `argv`. Nobody defends that; `hidepid` exists because enough people stopped wanting
-//! it.
-//!
-//! Here the listing is a **capability**. What this crate is handed is a function that reads one
-//! entry of a domain, and that function is backed by `abi::rendezvous::SURVEY` on a supervision
-//! endpoint the program was endowed. It cannot widen the domain, cannot ask about a tid it was not
-//! shown, and cannot discover that any other domain exists. There is no path here that reaches a
-//! process this program's caller did not already have authority over, because the only input is the
-//! reader itself.
-//!
-//! # Three answers, and telling them apart is the deliverable
-//!
-//! A monitor that reports nothing because it **could not look** is the worst failure this tool has
-//! available: it reads exactly like a quiet machine. So the three cases are kept distinct all the
-//! way to the terminal:
-//!
-//! - **A domain with processes in it.** A table on the output stream.
-//! - **A domain that is empty.** No rows, and a line on the *diagnostics* stream saying the domain
-//!   is empty. Not an error: the caller's authority was never in question.
-//! - **A refusal.** No rows at all, and a line on diagnostics naming the reason. `filesystem_protocol` chose
-//!   `EPERM` over an empty listing for this exact reason, and so does this.
-//!
-//! # Collect first, complain second, print third
-//!
-//! DECISIONS §67 gives a program a second output stream and one rule with it: everything it has to
-//! complain about is said, and that stream closed, **before** it writes a byte of output. Its reader
-//! is single-threaded and drains diagnostics to end-of-stream first, so a program that interleaved
-//! the two would block in a rendezvous nobody is listening for.
-//!
-//! A survey cannot know its complaints up front: an endpoint can be destroyed halfway through a
-//! walk. So [`collect`] takes the whole domain into a buffer first, and the caller then emits
-//! [`Survey::write_diagnostics`] and [`Survey::write_report`] in that order.
-//!
-//! **The buffer is the caller's**, which is not ceremony. It was a `[Row; MAX_ROWS]` local until
-//! `script/stack-frame-check` failed the build: two kilobytes of rows made `collect`'s frame 4,336
-//! bytes, larger than the 4,096-byte guard page under every kernel thread stack, so one call could
-//! move `sp` past the guard in a single step and write into a neighbouring thread's stack without
-//! ever faulting. A caller-provided slice is the fix that gate recommends, and it is better anyway:
-//! a program that sizes its own listing knows where the memory came from.
-//!
-//! Sizing it at [`MAX_ROWS`] makes truncation unreachable, because that is the kernel's whole thread
-//! table. `ps` does exactly that. A shorter buffer is allowed and is **not silent**: the survey says
-//! it was truncated, on diagnostics, for the same reason a refusal is not an empty list.
-//!
-//! # EXAMPLES
-//!
-//! At the prompt, in a domain holding two jobs and `ps` itself:
-//!
-//! ```text
-//! $ ps
-//!          TID  STATE     TIME(ms)
-//!            5  blocked         20
-//!            9  running        310
-//! 4294967302  dead             150
-//! ```
-//!
-//! The empty and the refused cases, which differ in a way `ps` on Linux has no way to express:
-//!
-//! ```text
-//! $ ps                 ps: this domain holds no processes
-//! $ ps                 ps: this endpoint does not carry the right to look
-//! ```
-//!
-//! Driving it from a host test is the whole contract, and it needs no kernel:
-//!
-//! ```
-//! use ps::{MAX_ROWS, Row, collect};
-//!
-//! // A domain of one running thread: cursor 0 yields it, cursor 1 says done.
-//! let mut reader = |cursor: u64| match cursor {
-//!     0 => (1, 7, abi::survey::RUNNING),
-//!     _ => (abi::survey::DONE as i64, 0, 0),
-//! };
-//! let mut rows = [Row::default(); MAX_ROWS];
-//! let survey = collect(&mut rows, &mut reader);
-//! assert_eq!(survey.rows().len(), 1);
-//! assert_eq!(survey.rows()[0].tid, 7);
-//!
-//! let mut text = Vec::new();
-//! survey.write_report(&mut |b| text.extend_from_slice(b));
-//! assert!(String::from_utf8(text).unwrap().contains("running"));
-//! ```
+//! §67 (a program's second stream is a declaration) requires every complaint said, and that
+//! stream closed, before a byte of output, and an endpoint can be destroyed mid-walk. So [`collect`] takes the whole domain
+//! into the caller's buffer first, then the caller emits [`Survey::write_diagnostics`] and
+//! [`Survey::write_report`] in that order. The buffer is the caller's because a `[Row; MAX_ROWS]`
+//! local made `collect`'s frame larger than the 4,096-byte guard page under every kernel thread
+//! stack (`script/stack-frame-check`). Sized at [`MAX_ROWS`], the kernel's whole thread table,
+//! truncation cannot happen; a shorter buffer says it was truncated, on diagnostics.
 //!
 //! # BUGS
 //!
-//! - **A process has no name here, so there is no `CMD` column.** This system has `arg0` in `Spawn`
-//!   and no display name at all, so the columns are the tid and the run state and that is
-//!   everything. A name is information rather than authority, but a confined viewer may still not
-//!   be entitled to it and there is no design for that today; a `CMD` column that appeared without
-//!   one would be a leak wearing a familiar heading.
-//! - **The tid is a generational name, so it is a large and ugly number** after any slot reuse
-//!   (`(generation << 32) | slot`, `crates/slots`). It is printed as the one integer
-//!   `abi::rendezvous::REAP` would accept, because splitting it into `gen:slot` would publish the
-//!   shape of the kernel's thread table to every program that can run `ps`.
-//! - **`ps` itself does not sort.** Rows come out in the kernel's slot order, which is neither
-//!   creation order nor tid order once a slot has been reused. There is now something to sort by
-//!   (milestone 282 (a thread's CPU time, and the `top` it makes possible)) and
-//!   [`Survey::rank_by_cpu_time`] does it, but `ps` does not call it: ranking is what makes a
-//!   listing a `top`, and `components/src/top.rs` is the program that does. `ps` has no flag for it
-//!   because `ArgSpec` carries one integer and this program spends none, the same limit
-//!   `crates/pgrep`'s `BUGS` names for its missing pattern.
-//! - **The `TIME` column is two walks, not one.** `abi::rendezvous::SURVEY` answers one record per
-//!   call, so a listing with both the state and the CPU time asks the kernel for each thread twice
-//!   and joins on the tid ([`Survey::join_cpu_time`]). A thread that dies between the two walks has
-//!   a row with no figure in it, printed as `-` rather than as a zero. DECISIONS §204 (how userspace asks where a thread runs) priced the
-//!   extra syscall at about 45 microseconds per second for sixty-four threads.
-//! - **The state is a snapshot per row, not per table.** See the `BUGS` section of
-//!   notes/process-view.md: a row read early in the walk may be stale by the time the table prints.
-//! - **No automated run spawns `ps` or `pgrep`.** This crate's own logic has host tests
-//!   and `kernel::user::survey_tests` covers the syscall underneath, but both shipped
-//!   programs are reachable only from an interactive prompt (`script/shell`): neither
-//!   `script/test` nor `script/swish-check` types them. (It said "three" and named `watch` until
-//!   milestone 281 deleted that program.) Found 2026-08-27 while raising
-//!   [`MAX_ROWS`] with the kernel's thread ceiling, which left a static measurement
-//!   (`-Z emit-stack-sizes` against `system_initializer::CHILD_STACK_PAGES`; the numbers are on
-//!   [`MAX_ROWS`]) as the only check that the bigger stack-resident buffer still fits. That is a
-//!   real check and it is not a run, so anything that only shows up when the program executes has
-//!   nothing standing in its way.
+//! - No `CMD` column: there is no display name, and no design for whether a confined viewer may
+//!   see one.
+//! - The tid is printed whole, `(generation << 32) | slot`, as `abi::rendezvous::REAP` takes it;
+//!   splitting it would publish the thread table's shape.
+//! - `ps` does not sort; [`Survey::rank_by_cpu_time`] is for `components/src/top.rs`.
+//! - `TIME` is a second walk joined on the tid ([`Survey::join_cpu_time`]); a thread that dies
+//!   between them prints `-`.
+//! - Each row is its own snapshot, so an early row may be stale when the table prints.
+//! - Nothing automated spawns `ps` or `pgrep`; host tests and `kernel::user::survey_tests` cover
+//!   the logic and the syscall, and only a static stack measurement covers the buffer.
 //!
-//! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review). `ps` is the name
-//! every reader already knows from outside this project, which the naming tenet calls the best
-//! name available and not one to spend a rename on. Sharing it with `components/src/ps.rs` is the
-//! crate-and-program pair the same tenet describes: splitting them would hide the relationship, so
-//! `coremark`, `line_editor` and `compositor` all keep one name across the two.
+//! Name: ratified 2026-08-23 (calef): the name every reader knows, shared with
+//! `components/src/ps.rs` as one thing split at the IO boundary.
 
 #![cfg_attr(not(test), no_std)]
 
@@ -220,6 +117,28 @@ pub struct Survey<'a> {
 /// The walk stops at the first refusal and reports it, rather than skipping the entry and carrying
 /// on. A survey that silently dropped an entry it could not read would be the failure this whole
 /// program exists to avoid, one row smaller.
+///
+/// # Examples
+///
+/// Driving it from a host test is the whole contract, and it needs no kernel:
+///
+/// ```
+/// use ps::{MAX_ROWS, Row, collect};
+///
+/// // A domain of one running thread: cursor 0 yields it, cursor 1 says done.
+/// let mut reader = |cursor: u64| match cursor {
+///     0 => (1, 7, abi::survey::RUNNING),
+///     _ => (abi::survey::DONE as i64, 0, 0),
+/// };
+/// let mut rows = [Row::default(); MAX_ROWS];
+/// let survey = collect(&mut rows, &mut reader);
+/// assert_eq!(survey.rows().len(), 1);
+/// assert_eq!(survey.rows()[0].tid, 7);
+///
+/// let mut text = Vec::new();
+/// survey.write_report(&mut |b| text.extend_from_slice(b));
+/// assert!(String::from_utf8(text).unwrap().contains("running"));
+/// ```
 pub fn collect<'a>(
     rows: &'a mut [Row],
     read: &mut dyn FnMut(u64) -> (i64, u64, u64),

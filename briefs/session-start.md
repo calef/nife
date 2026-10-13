@@ -89,9 +89,9 @@ together, because the issues endpoint returns both (a row marked `pr` is a pull 
 command rather than `gh pr list` plus `gh issue list`, since a second command is one more thing a
 session must remember (milestone 808 (every gate accounts for its time), §254 (a gate prints what
 each item cost)).
-The drain labels a pull request that was The drain labels one that was
-ejected from the merge queue, conflicts with `main`, is still queued after it merged, or has been
-ready and unarmed for 30 minutes, and comments once with the evidence (milestone 727 (a queue eviction goes to a maintainer session), provisional,
+The drain labels a pull request that was ejected from the merge queue, conflicts with `main`, is
+still queued after it merged, or has been ready and unarmed for 30 minutes. It comments once with
+the evidence (milestone 727 (a queue eviction goes to a maintainer session), provisional,
 and so is the label's name). It also labels orphan work, a branch holding commits that no open pull
 request carries, and opens a draft for one that never had a pull request; notes/queue-ejection.md
 lists every cause. Read the comment, then fix it or hand it to its lane: rebase, re-arm a
@@ -113,10 +113,11 @@ Then read the rest of the queue by running the brief that already exists:
 
     briefs/survey-the-queue.md
 
-That brief is the queue read, in full: it fetches, lists `mergeStateStatus` and `statusCheckRollup`,
-distinguishes a `DIRTY`/`CONFLICTING` pull request that needs a rebase from a `BLOCKED` one whose
-checks are merely still running, treats a `needs-architect` hold as a deliberate hold rather than a
-failure, and names the traps (`auto=false` does not mean unqueued; an absent pull request may have
+That brief is the queue read, in full. It fetches and lists `mergeStateStatus` and
+`statusCheckRollup`. It distinguishes a `DIRTY`/`CONFLICTING` pull request that needs a rebase from
+a `BLOCKED` one whose checks are merely still running. It treats a `needs-architect` hold as a
+deliberate hold rather than a failure, and names the traps (`auto=false` does not mean unqueued; an
+absent pull request may have
 merged rather than vanished). Do not restate its commands here or type them from memory. This
 step is one line on purpose: a second copy of those instructions is a second thing to keep correct,
 and the copy that drifts is always the one nobody is looking at.
@@ -170,12 +171,12 @@ launch on Sonnet (Agent `model: "sonnet"`), per §202 (mechanical work goes to a
 **A lane parked waiting on another pull request, not on CI or on calef, says so where a machine can
 act on it.** Add `Blocked-by: #N[, #M ...]` to the draft's own body before ending the turn (a
 stacked branch, a shared file, a decision only that other pull request settles). Without it, the
-pause lives only in prose, and prose is not a mechanism: draft #1289 was paused on 2026-09-25
+pause lives only in prose, and prose is not a mechanism. Draft #1289 was paused on 2026-09-25
 waiting on #1288, #1288 merged an hour later, and nobody resumed #1289 for two days because nothing
 was watching the pause itself. `helpers/merge-drain.sh` labels a draft `unblocked` and comments once
 every listed pull request has merged or closed (`notes/blocked-by-drafts.md` has the mechanism,
 alongside `notes/merge-queue.md`'s older `Blocked-by:` section for a queued, non-draft pull
-request); a listed pull request closed without merging is called out rather than silently released,
+request). A listed pull request closed without merging is called out rather than silently released,
 because it usually means the plan changed. The label removes itself on the next commit or on
 `ready_for_review`, so it never has to be remembered either.
 
