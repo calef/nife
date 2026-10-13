@@ -1299,3 +1299,14 @@ mod eighth_pass_kernel_address_tests;
 /// and one range in two slots survives one delete and falls on the second. `x86_64` only.
 #[cfg(all(test, target_arch = "x86_64"))]
 mod eighth_pass_port_boundary_tests;
+
+/// **What a spawned child actually holds, and what a child with nothing can still build: nothing**
+/// (an eighth outsider pass at the confinement claim, claims 23, 31 and 32). A real spawned
+/// program granted the unvouched shape (one endpoint, two read-only pages) has its whole table
+/// read back slot for slot: exactly those three, and no device capability of any kind. The
+/// outlaw's `BUILD_WITH_NOTHING` role answers NoSuchSlot to every minting attempt from inside,
+/// through the real `SYS_INVOKE`.
+///
+/// Cross-ISA: the spawn path, the census and the outlaw are portable (DECISIONS §19).
+#[cfg(all(test, initial_ramdisk))]
+mod eighth_pass_spawn_audit_tests;
