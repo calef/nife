@@ -1310,3 +1310,14 @@ mod eighth_pass_port_boundary_tests;
 /// Cross-ISA: the spawn path, the census and the outlaw are portable (DECISIONS §19).
 #[cfg(all(test, initial_ramdisk))]
 mod eighth_pass_spawn_audit_tests;
+
+/// **A client trying to upgrade itself into the server** (an eighth outsider pass at the
+/// confinement claim, claim 26). The two roads around the cited rights gates: a self-upgrade
+/// `SEND_CAP` asking for READ through the rights register, and a badged copy of the client's own
+/// capability tried against every server method. The badge labels a sender; it is not a right.
+/// Nothing blocks, and a positive control proves the endpoint live.
+///
+/// Cross-ISA: the delegation rule, the badge rule and the rendezvous are portable kernel code
+/// (DECISIONS §19).
+#[cfg(test)]
+mod eighth_pass_endpoint_usurper_tests;
