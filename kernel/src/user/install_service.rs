@@ -203,81 +203,35 @@ pub fn offer() {
 }
 
 /// **Say that this boot worked**, so an upgrade that came up is not rolled back once its tries run
-/// out (rung 2b of milestone 198's other half).
+/// out (rung 2b of milestone 198's other half). A no-op on every boot no chooser started (a stick,
+/// a `-kernel` boot, an installed machine whose chooser fell back to its own file).
 ///
-/// A no-op on every boot no chooser started, which is a stick, a `-kernel` boot, and an installed
-/// machine whose chooser fell back to the image in its own file. All three reach a running kernel
-/// with nothing to confirm.
+/// **The criterion: the machine got far enough that a person can log in and fix what else is
+/// wrong.** At this call site the kernel passed its self-tests and reached userspace, the NVMe
+/// server answered from ring 3, the filesystem server **mounted the installed disk and reported
+/// ready**, and the progenitor was loaded, measured and built. Earlier would confirm an upgrade
+/// with no working disk; later needs a person, and an unattended machine has none (the Boot Loader
+/// Specification and ChromeOS's update engine make the same call). Such a boot can still be wrong
+/// about anything boot does not exercise (the network, the compositor), about the shell, which
+/// nothing has typed at yet, and about anything that fails after the first seconds; this is a
+/// statement about coming up, repeated in `crates/boot_slot`'s `BUGS`.
 ///
-/// # What "this boot worked" means here, and it is a promise rather than a mechanism
+/// **The authority**: `components/src/system_installer.rs`'s [`ROLE_CONFIRM`], spawned with four
+/// capabilities: the report endpoint, the disk's `blk` endpoint, the page it shares with that
+/// disk's server, and a budget for the one page it maps. **No entropy endpoint**, so the only table
+/// it can write is the one it read; **no boot file**, so it cannot rewrite the image it vouches
+/// for. A `blk` endpoint is the whole disk (nothing in `filesystem_protocol::blk` bounds a client
+/// to a block range), so it *could* write anywhere on that disk, as `system_installer`'s `BUGS`
+/// records.
 ///
-/// **The criterion is: the machine got far enough that a person can log in and fix whatever else is
-/// wrong.** Concretely, at this call site, all of the following already happened:
-///
-/// | |
-/// |---|
-/// | the kernel came up, its self-tests passed, and it reached userspace |
-/// | the NVMe controller was brought up and its server answered requests from ring 3 |
-/// | the block server and the filesystem server started, and the filesystem server **mounted the installed disk and reported ready** |
-/// | the progenitor was loaded out of the archive, measured against the trust root, and built |
-///
-/// Nothing is confirmed unless every one of those held, because this runs after all of them and
-/// the boot does not reach here otherwise.
-///
-/// **Why not earlier, and why not later.** Confirming at the kernel's self-test would mark an
-/// upgrade good that has no working disk and no userspace, which is the failure the whole feature
-/// exists to prevent; the bias has to be late. Confirming later is what the rest of this comment
-/// is about, and the honest answer is that later is not reachable automatically on this system
-/// today: past this point the machine is waiting for a person, and an unattended appliance has
-/// nobody to ask. The Boot Loader Specification leaves the call to the operating system for the
-/// same reason, and ChromeOS's update engine sets the bit from userspace on the same judgement.
-///
-/// **What a boot that satisfies this criterion can still be wrong about**, which is the honest half
-/// of the feature and is repeated in `crates/boot_slot`'s `BUGS` where a reader meets it:
-///
-/// - **Anything nothing exercises at boot.** The network stack, the compositor, a driver for a
-///   device this machine has and the boot path does not touch. An upgrade that breaks only those
-///   is confirmed and kept.
-/// - **The shell**, which is the one thing the proposal's recommended criterion names and this does
-///   not reach. The filesystem is mounted and the progenitor is built, but nothing has typed
-///   anything. A regression between here and a prompt survives.
-/// - **Anything that fails after the first few seconds**: a leak, a wedge under load, a filesystem
-///   that mounts and then corrupts. This is a statement about coming up, not about running.
-///
-/// # What holds the authority to write the partition table, and how narrow it is
-///
-/// `components/src/system_installer.rs`'s [`ROLE_CONFIRM`], spawned here with four capabilities and
-/// nothing else: the report endpoint, the disk's `blk` endpoint, the page it shares with that
-/// disk's server, and a budget for the one page it maps itself. **No entropy endpoint**, so it
-/// cannot draw the unique ids a new partition table carries and the only table it can write is the
-/// one it read; **no boot file**, so it cannot rewrite the image it is vouching for; no console, no
-/// filesystem, no network.
-///
-/// It is not as narrow as it should be, and the gap is named rather than papered over: a `blk`
-/// endpoint is the whole disk, because nothing in `filesystem_protocol::blk` bounds a client to a
-/// block range. So this process *could* write anywhere on that disk. That is the same limitation
-/// `system_installer`'s own `BUGS` records for the filesystem server, it is one wire field away from
-/// fixed, and it is the reason this is a boot-path call rather than something a program could ask
-/// for later.
-///
-/// # What serialises this against the filesystem server, and the answer is an ordering
-///
-/// **Nothing enforces it.** One NVMe server has one transfer region, shared by every client of its
-/// endpoint, and a client stages bytes into that region before it calls. Two clients staging at
-/// once would corrupt each other, and no lock, lease or range check prevents it.
-///
-/// What makes this write safe is where it is: **after the filesystem server's ready report and
-/// before the progenitor's first instruction.** In that window the filesystem server is blocked in
-/// receive with no client that could wake it, because the kernel boot path is single-threaded and
-/// is the only thing that can hand its endpoint to anybody. So the region has one user.
-///
-/// That is rung three of `AGENTS.md`'s ladder, a written record at the thing itself, and it is an
-/// **exception** to the rule that the higher rung wins. It is stated as one: **this is a foot gun.**
-/// The day something spawns a second disk client before the progenitor runs, or this call moves
-/// after it, the ordering silently stops holding and the symptom is a corrupted partition table on
-/// somebody's installed machine. The mechanism that would make it hold is a transfer region per
-/// client, or a `blk` endpoint bounded to a block range; both are wire decisions and neither is
-/// this lane's.
+/// **Nothing serializes this against the filesystem server; an ordering does.** One NVMe server has
+/// one transfer region shared by every client, and two clients staging at once would corrupt each
+/// other. This write is safe only because it runs **after the filesystem server's ready report and
+/// before the progenitor's first instruction**, when the single-threaded boot path is the only
+/// thing that could wake that server. **This is a foot gun**: if something spawns a second disk
+/// client before the progenitor runs, or this call moves after it, the symptom is a corrupted
+/// partition table on an installed machine. A transfer region per client, or a `blk` endpoint
+/// bounded to a block range, would make it hold; both are wire decisions.
 pub fn confirm() {
     let Some(slot) = crate::memory::boot_slot() else {
         return; // No chooser started this boot: there is nothing to confirm.

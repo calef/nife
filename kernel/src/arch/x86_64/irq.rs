@@ -1118,15 +1118,10 @@ mod proofs {
     /// `no_stream_can_reach_another_streams_tables` one architecture over: a firmware-supplied
     /// identifier, one bounds check, and a write that cannot be taken back.
     ///
-    /// **`base` used to carry an assumption, and the assumption was the finding** (milestone 304).
-    /// `kani::assume(base == 0)` narrowed this to the single-IO-APIC machine, because without it
-    /// the harness failed and the counterexample was real rather than pathological: a base of 127
-    /// with 129 entries admits GSI 255, and the old `gsi_vector(255)` was
-    /// `0x30.wrapping_add(255)` = `0x2f`, inside the local APIC's own band. **Milestone 308 removed
-    /// the assumption by fixing the code**, routing by redirection index, and this harness now
-    /// states the property over every `base`, every entry count an eight-bit version field can
-    /// report, and every `gsi` in `u32`. There is no precondition left, which is the outcome worth
-    /// naming: a proof with no assume is a proof that owes the reader nothing.
+    /// **No precondition on `base`**: the property holds over every `base`, every entry count an
+    /// eight-bit version field can report, and every `gsi` in `u32`, because routing is by
+    /// redirection index (a GSI-based map once put GSI 255 on a base of 127 at `0x2f`, inside the
+    /// local APIC's own band).
     ///
     /// **The second assertion is the one milestone 308 added**, and it is a claim about two
     /// functions rather than one. [`is_device_vector`] has always defined the band by *index*

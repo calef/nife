@@ -236,7 +236,6 @@ kernel/src/arch/riscv64/pmu.rs:1	66
 kernel/src/arch/x86_64/amd_vi.rs:1	125
 kernel/src/arch/x86_64/ap_boot.rs:1	131
 kernel/src/arch/x86_64/iommu.rs:1	164
-kernel/src/arch/x86_64/irq.rs:1110	43
 kernel/src/arch/x86_64/isa.rs:1	75
 kernel/src/arch/x86_64/mmu.rs:1	116
 kernel/src/arch/x86_64/mod.rs:570	44
@@ -281,7 +280,6 @@ kernel/src/testing.rs:20	48
 kernel/src/user/address_space.rs:307	46
 kernel/src/user/e1000e_service.rs:1	54
 kernel/src/user/holding.rs:1	56
-kernel/src/user/install_service.rs:205	76
 kernel/src/user/non_volatile_memory_express_service.rs:1	81
 kernel/src/user/progenitor_boot.rs:59	52
 kernel/src/user/usb_keyboard_service.rs:1	45
