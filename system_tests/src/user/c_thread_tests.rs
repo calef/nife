@@ -84,6 +84,84 @@ fn run_hackbench(line: &str, out: &mut [u8]) -> usize {
     len
 }
 
+/// **Run the C program `name` as a process holding `c-library` with every right and a clock**,
+/// told `line`, with a heap of `heap_pages`, and return what it printed. It is
+/// [`run_hackbench`]'s process with what a program that keeps files adds, as
+/// `ripgrep_threads_tests` adds it for `rg`: the caretaker's endpoint at the filesystem slot and
+/// the file page it shares mapped where the PAL reads it. Everything comes back before this
+/// returns. `None` when this boot has no file service.
+///
+/// Name: provisional, lane lane/fio-c-library-pieces, 2026-10-12 (UTC), for the C library's
+/// contract program and fio (milestone 833), which both need a thread and a directory at once.
+pub(super) fn run_in_grant(
+    name: &str,
+    line: &str,
+    heap_pages: u64,
+    out: &mut [u8],
+) -> Option<usize> {
+    let image = program(name)?;
+    let (dir_ep, file_page, report, caretaker) = fs_service::narrow_dir_held(
+        program("block_driver")?,
+        fs_service::fs_server_image()?,
+        program("fs_subtree_caretaker")?,
+        c_program_fixture::ROOT,
+        filesystem_protocol::dir::ALL,
+    )?;
+    let region =
+        crate::memory_region::create(clock_service::REGION_PAGES).expect("no region for a clock");
+    let (clock, clock_thread) =
+        clock_service::start_in(program("clock").expect("no clock in the archive"), region);
+    let mut clock_held = crate::user::holding::Holding::new();
+    clock_held.add_thread(clock_thread);
+    clock_held.add_region(region);
+    // Its startup verdict first, so the offset is published before the program reads the page.
+    let _ = crate::sched::ipc_receive(clock.report);
+    let args_region = crate::memory_region::create(1).expect("no argument page region");
+    let args = crate::memory_region::retype_page(args_region).expect("no argument page");
+    {
+        // SAFETY: a frame just retyped for this page alone, direct-mapped, which nothing else
+        // holds until the program is given it read-only.
+        let page = unsafe {
+            &mut *(crate::arch::mmu::phys_to_virt(args) as *mut [u8; FRAME_SIZE as usize])
+        };
+        page.fill(0);
+        grant_plan::argv(line.as_bytes(), page).expect("the test's line is not an argv");
+    }
+    let len = super::std_threads_tests::run_as_process_with(
+        image,
+        name,
+        out,
+        &super::std_threads_tests::Setup {
+            maps: &[
+                (std_runtime_protocol::FS_PAGE, file_page, true),
+                (std_runtime_protocol::ARGS_PAGE, args, false),
+                (std_runtime_protocol::CLOCK_PAGE, clock.page_phys, false),
+            ],
+            endpoints: &[(std_runtime_protocol::FS_DIR_SLOT, dir_ep)],
+            read_pages: &[
+                (std_runtime_protocol::ARGS_SLOT, args),
+                (std_runtime_protocol::CLOCK_SLOT, clock.page_phys),
+            ],
+            report: Some(report),
+            heap_pages,
+        },
+    )
+    .len;
+    assert!(
+        super::wait_for(|| crate::sched::reclaim_region(args_region).is_ok()),
+        "{name}'s argument page did not come back"
+    );
+    assert!(
+        caretaker.release(),
+        "{name}'s caretaker outlived its holding: a service this test cannot give back",
+    );
+    assert!(
+        clock_held.release(),
+        "{name}'s clock service outlived its holding: a service this test cannot give back",
+    );
+    Some(len)
+}
+
 /// `args` formatted into `buf`, as a `&str`; the suite has no allocator to `format!` with.
 fn line<'a>(buf: &'a mut [u8; 160], args: core::fmt::Arguments) -> &'a str {
     use core::fmt::Write;
@@ -187,4 +265,41 @@ fn unmodified_hackbench_threads_over_socket_pairs() {
     let text = core::str::from_utf8(&got[..len]).unwrap_or("<not utf-8>");
     crate::println!("    hackbench -T printed:\n{text}");
     assert_hackbench_complete(text, 1, 7, 100);
+}
+
+/// **The C library keeps the promises fio 3.40 needed** (milestone 833 (the same storage benchmark
+/// on nife and Linux, by porting real fio)): `fixtures/c/c_library_contract.c`, written for the
+/// purpose, checks `basename` and `dirname`, `getrusage`'s zeros, `getpriority`'s nice value,
+/// `select`'s timeout, readiness and wake-up from another thread, an `O_SYNC` write read back, and
+/// the honest refusals of `dlopen`, `shmget` and `getaddrinfo`. Each check prints `ok` or `FAIL`.
+///
+/// Falsification: attested 2026-10-12. On patagonia, aarch64 under HVF, with `select`'s
+/// timeout rounded down to whole milliseconds as `ppoll`'s was: `FAIL select times out` (a 500 us
+/// wait returned at once), and this test failed. A replay needs the program in the archive, which
+/// `helpers/build-c-library-contract.sh` builds and no gate does yet (milestone 869 (the C
+/// library's headers cannot drift, and its contract is tested in nife)).
+#[test_case]
+fn the_c_library_keeps_the_pieces_fio_needed() {
+    if program("c_library_contract").is_none() {
+        crate::testing::skip!(
+            "no c_library_contract in this archive: build it with \
+             helpers/build-c-library-contract.sh (milestone 833)"
+        );
+    }
+    if clock_service::machine_has_no_rtc() {
+        crate::testing::skip!(clock_service::NO_RTC);
+    }
+    let mut got = [0u8; 2048];
+    let Some(len) = run_in_grant("c_library_contract", "c_library_contract", 0, &mut got) else {
+        crate::testing::skip!("no RedoxFS disk attached");
+    };
+    let text = core::str::from_utf8(&got[..len]).unwrap_or("<not utf-8>");
+    crate::println!("    c_library_contract printed:\n{text}");
+    if let Some(l) = text.lines().find(|l| l.starts_with("FAIL ")) {
+        panic!("the C library broke a promise: {l}");
+    }
+    assert!(
+        text.lines().any(|l| l == "contract: 0 failed"),
+        "the contract program did not finish: {text}",
+    );
 }

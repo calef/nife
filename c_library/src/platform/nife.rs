@@ -53,6 +53,7 @@ use crate::header::errno::*;
 use crate::header::fcntl::*;
 use crate::header::signal::{sigaction, siginfo_t, sigval, stack_t};
 use crate::header::sys_mman::{MAP_ANONYMOUS, MAP_FIXED};
+use crate::header::sys_resource::rusage;
 use crate::header::sys_select::timeval;
 use crate::header::sys_socket::{msghdr, socklen_t};
 use crate::header::sys_stat::{S_IFDIR, S_IFREG, stat};
@@ -631,7 +632,47 @@ impl Pal for Sys {
     }
 
     fn getpriority(_which: c_int, _who: id_t) -> Result<c_int> {
-        Ok(0)
+        // The `Pal` answers as Linux's system call does, 20 minus the nice value, which
+        // `getpriority` and `nice` undo. nife's scheduler has one class and no nice value, so the
+        // answer is nice 0. It was `Ok(0)` until 2026-10-12 (UTC), which read back as nice 20.
+        Ok(20)
+    }
+
+    fn getrusage(who: c_int, mut r_usage: Out<rusage>) -> Result<()> {
+        use crate::header::sys_resource::{RUSAGE_CHILDREN, RUSAGE_SELF, RUSAGE_THREAD};
+        if !matches!(who, RUSAGE_SELF | RUSAGE_THREAD | RUSAGE_CHILDREN) {
+            return Err(Errno(EINVAL));
+        }
+        // Every field is zero, and only `RUSAGE_CHILDREN`'s zeros are a measurement (a nife process
+        // has no children). The kernel keeps a thread's on-CPU time (milestone 282 (a thread's CPU
+        // time, and the `top` it makes possible), §150 (how does a thread's CPU time reach
+        // userspace?)), but it is read through `SURVEY` on a capability an ordinary program does
+        // not hold, and `std` offers no way to it. Elapsed time is not CPU time (§150 refused it
+        // for `top`), so it is not passed off as one here. fio prints `usr=0.00%, sys=0.00%`, which
+        // means "not measured" (BUGS).
+        let zero = || timeval {
+            tv_sec: 0,
+            tv_usec: 0,
+        };
+        r_usage.write(rusage {
+            ru_utime: zero(),
+            ru_stime: zero(),
+            ru_maxrss: 0,
+            ru_ixrss: 0,
+            ru_idrss: 0,
+            ru_isrss: 0,
+            ru_minflt: 0,
+            ru_majflt: 0,
+            ru_nswap: 0,
+            ru_inblock: 0,
+            ru_oublock: 0,
+            ru_msgsnd: 0,
+            ru_msgrcv: 0,
+            ru_nsignals: 0,
+            ru_nvcsw: 0,
+            ru_nivcsw: 0,
+        });
+        Ok(())
     }
 
     fn getrandom(_buf: &mut [u8], _flags: c_uint) -> Result<usize> {
@@ -1024,8 +1065,10 @@ impl Pal for Sys {
         Err(Errno(EPERM))
     }
 
-    fn setpriority(_which: c_int, _who: id_t, _prio: c_int) -> Result<()> {
-        Err(Errno(EPERM))
+    fn setpriority(_which: c_int, _who: id_t, prio: c_int) -> Result<()> {
+        // The one nice value nife has is 0 (`getpriority`), so setting it is the one change that
+        // can be honored; `nice(0)` must succeed. Any other value would go unenforced.
+        if prio == 0 { Ok(()) } else { Err(Errno(EPERM)) }
     }
 
     fn setresgid(_rgid: gid_t, _egid: gid_t, _sgid: gid_t) -> Result<()> {
@@ -1090,7 +1133,11 @@ impl Pal for Sys {
             return end.write(buf);
         }
         with_fd(fildes, |d| match d {
-            Description::File { file, .. } => io(file.write(buf)),
+            Description::File { file, flags, .. } => {
+                let n = io(file.write(buf))?;
+                synced(file, *flags)?;
+                Ok(n)
+            }
             Description::Stdout => io(std::io::stdout().write(buf)),
             Description::Stderr => io(std::io::stderr().write(buf)),
             Description::Directory { .. } => Err(Errno(EISDIR)),
@@ -1101,12 +1148,13 @@ impl Pal for Sys {
     fn pwrite(fildes: c_int, buf: &[u8], offset: off_t) -> Result<usize> {
         let at = u64::try_from(offset).map_err(|_| Errno(EINVAL))?;
         with_fd(fildes, |d| match d {
-            Description::File { file, .. } => {
+            Description::File { file, flags, .. } => {
                 // As `pread`: seek, write, seek back, under the table's lock.
                 let was = io(file.stream_position())?;
                 io(file.seek(SeekFrom::Start(at)))?;
                 let r = io(file.write_all(buf)).map(|()| buf.len());
                 io(file.seek(SeekFrom::Start(was)))?;
+                synced(file, *flags)?;
                 r
             }
             Description::Directory { .. } => Err(Errno(EISDIR)),
@@ -1135,12 +1183,27 @@ impl Pal for Sys {
     }
 }
 
+/// **`O_SYNC` and `O_DSYNC`**: after a write on a file opened with either, sync it before the write
+/// returns, as POSIX's synchronized I/O asks. Both are the file contract's one sync, which is
+/// `fsync`'s (`O_DSYNC` could skip the metadata, and the contract has no way to say so).
+fn synced(file: &std::fs::File, flags: c_int) -> Result<()> {
+    if flags & (O_SYNC | O_DSYNC) != 0 {
+        io(file.sync_all())
+    } else {
+        Ok(())
+    }
+}
+
 // --- poll ----------------------------------------------------------------------------------------
 
-/// **`poll`**, for `poll.h` (relibc's own is on epoll, which is not seeded). A stream answers what
-/// it holds; a file, a directory or a standard stream never makes its caller wait, so it is ready
-/// for whichever direction it allows (`stream.rs`).
-pub fn poll(fds: &mut [crate::header::poll::pollfd], timeout: c_int) -> Result<c_int> {
+/// **`poll`**, for `poll.h` and `sys/select.h` (relibc's own are on epoll, which is not seeded). A
+/// stream answers what it holds; a file, a directory or a standard stream never makes its caller
+/// wait, so it is ready for whichever direction it allows (`stream.rs`). `timeout` is `None` for
+/// no limit.
+pub fn poll(
+    fds: &mut [crate::header::poll::pollfd],
+    timeout: Option<core::time::Duration>,
+) -> Result<c_int> {
     use super::stream::{NOT_OPEN, always_ready};
     super::stream::poll(fds, timeout, |fd, events| {
         let stream = match stream_of(fd) {

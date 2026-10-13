@@ -50,7 +50,7 @@
 
 #define POSIX_MADV_WILLNEED 3
 
-#define POSIX_MADV_WONTNEED 4
+#define POSIX_MADV_DONTNEED 4
 
 #if (defined(__linux__) || defined(__nife__))
 #define PROT_READ 1

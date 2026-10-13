@@ -28,7 +28,7 @@ original 955,223 bytes/s has no committed transcript, corrected 2026-10-03 per �
 **The path back to GREEN (proposed 2026-10-08, not ruled).**
 
 1. The same unmodified storage benchmark, run on nife and on Linux on xenon, with real logs (not photographs), repeated passes and per-request latency, so the 2.16x read is either explained or corrected. calef is leaning to `ioping` for this; that choice is proposed, not ruled.
-2. `fio` at queue depths 1, 4 and 32, one job file on both systems, per milestone 833 (the same storage benchmark on nife and Linux, by porting real fio). It waits on threads, §105 (`std::thread::spawn` stays declined until a customer needs it).
+2. `fio` at queue depths 1, 4 and 32, one job file on both systems, per milestone 833 (the same storage benchmark on nife and Linux, by porting real fio). Corrected 2026-10-12 (UTC) under §216 (fatal-risk facts are correctable, and verdicts are the architect's): it no longer waits on threads, since milestones 812 and 836 are built. It waits on packaging: calef ruled the same day that ports wait on 809 and 801.
 3. Still open from the caveats: one device, one board (xenon).
 
 GREEN needs 1 and 2; whether 3 does is the architect's call.
@@ -62,5 +62,5 @@ lacks, such as threads or sockets.
 
 - [Milestone 828 (iperf3 on nife and Linux)](../roadmap/0828-iperf3-on-nife-and-linux.md), the NIC half.
 - [Milestone 829 (netperf TCP_RR on nife and Linux)](../roadmap/0829-netperf-tcp-rr-on-nife-and-linux.md), a driver's fixed delay.
-- [Milestone 833 (the same storage benchmark on nife and Linux, by porting real fio)](../roadmap/0833-the-same-storage-benchmark-on-nife-and-linux.md), at queue depths 1, 4 and 32. Waits on threads.
-- [Milestone 834 (ioping on nife and Linux)](../roadmap/0834-ioping-on-nife-and-linux.md), one request at a time. Runs on nife since 835; the Linux row is open.
+- [Milestone 833 (the same storage benchmark on nife and Linux, by porting real fio)](../roadmap/0833-the-same-storage-benchmark-on-nife-and-linux.md), at queue depths 1, 4 and 32. Waits on packaging (809 and 801), corrected 2026-10-12 (UTC); threads are built.
+- [Milestone 834 (ioping on nife and Linux)](../roadmap/0834-ioping-on-nife-and-linux.md), one request at a time. Runs on nife since 835; the Linux row is open, and the run that counts waits on its package, milestone 906 (ioping is packaged in basalt).

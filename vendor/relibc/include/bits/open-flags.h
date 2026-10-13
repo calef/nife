@@ -172,6 +172,39 @@
 
 #if (defined(__linux__) || defined(__nife__))
 /**
+ * Write according to synchronized I/O data integrity completion.
+ *
+ * nife: added 2026-10-12 (UTC) for fio (milestone 833), with Linux's generic values, which relibc's
+ * Linux arm lacked. A write on a descriptor opened with this or [`O_SYNC`] returns after the file
+ * server has the data on its disk (`c_library/src/platform/nife.rs`).
+ */
+#define O_DSYNC 4096
+#endif
+
+#if (defined(__linux__) || defined(__nife__))
+/**
+ * Write according to synchronized I/O file integrity completion.
+ */
+#define O_SYNC 1052672
+#endif
+
+#if defined(__redox__)
+/**
+ * Write according to synchronized I/O file integrity completion.
+ */
+#define O_SYNC O_FSYNC
+#endif
+
+#if (defined(__linux__) || defined(__nife__))
+/**
+ * Synchronized read I/O operations. Linux makes it [`O_SYNC`]; a read on nife never waits on a
+ * write, so it changes nothing.
+ */
+#define O_RSYNC O_SYNC
+#endif
+
+#if (defined(__linux__) || defined(__nife__))
+/**
  * Atomically set the `FD_CLOEXEC` flag on the new file desciptor.
  */
 #define O_CLOEXEC 524288
@@ -246,13 +279,6 @@
 
 #if defined(__redox__)
 #define O_FSYNC 8388608
-#endif
-
-#if defined(__redox__)
-/**
- * Write according to synchronized I/O file integrity completion.
- */
-#define O_SYNC O_FSYNC
 #endif
 
 #if defined(__redox__)
