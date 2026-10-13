@@ -475,7 +475,7 @@ pub const PORT_IN_THEN_OUT_OUT_PC_OFFSET: u64 = 7;
 /// **A child that deletes two capability slots, then writes one byte to a port, then exits.**
 /// [`cap_delete_then_port_out`]'s two-slot twin, for a child holding the same port range in two
 /// slots: deleting one must leave the `out` permitted (the other slot's grant stands), and deleting
-/// both must revoke it. The `out` is at [`TWO_CAP_DELETES_THEN_PORT_OUT_PC_OFFSET`].
+/// both must revoke it. The `out` is at [`TWO_CAPABILITY_DELETES_THEN_PORT_OUT_PC_OFFSET`].
 ///
 /// ```text
 ///   bf xx xx xx xx    mov edi, slot1
@@ -493,7 +493,7 @@ pub const PORT_IN_THEN_OUT_OUT_PC_OFFSET: u64 = 7;
 ///
 /// Name: provisional (the eighth outsider pass's lane, 2026-10-13 UTC).
 #[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
-pub const fn two_cap_deletes_then_port_out(
+pub const fn two_capability_deletes_then_port_out(
     slot1: u32,
     slot2: u32,
     port: u16,
@@ -520,10 +520,10 @@ pub const fn two_cap_deletes_then_port_out(
     ])
 }
 
-/// The faulting pc offset for [`two_cap_deletes_then_port_out`]'s `out`: two delete sequences (12
+/// The faulting pc offset for [`two_capability_deletes_then_port_out`]'s `out`: two delete sequences (12
 /// bytes each) then [`port_out`]'s six bytes.
 #[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
-pub const TWO_CAP_DELETES_THEN_PORT_OUT_PC_OFFSET: u64 = 24 + PORT_OUT_PC_OFFSET;
+pub const TWO_CAPABILITY_DELETES_THEN_PORT_OUT_PC_OFFSET: u64 = 24 + PORT_OUT_PC_OFFSET;
 
 /// The faulting pc offset for [`receive_then_port_out`]'s `out`: the RECEIVE invocation (25 bytes:
 /// two `mov r32, imm32`s, three operand setups and the `syscall`) then [`port_out`]'s six bytes.

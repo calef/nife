@@ -47,7 +47,10 @@ fn call(slot: u64, method: u64, a0: u64, a1: u64, a2: u64) -> Result<i64, Error>
 ///
 /// The positive control closes it: a `READ` capability on the same object, granted after the
 /// deletion, still receives a message the deleted capability sent before it died. Deletion
-/// consumed the one capability, not the object and not its neighbours' access to it.
+/// consumed the one capability, not the object and not its neighbors' access to it.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_consumed_capability_cannot_be_used_again_even_by_number() {
     let region = crate::memory_region::create(4).expect("no region for the endpoint");
@@ -130,7 +133,7 @@ fn a_consumed_capability_cannot_be_used_again_even_by_number() {
     assert_eq!(
         call(reader, abi::rendezvous::RECEIVE, 0, 0, 0),
         Ok(7),
-        "a READ holder could not receive after a neighbour's capability was deleted: deletion \
+        "a READ holder could not receive after a neighbor's capability was deleted: deletion \
          disturbed more than its own slot",
     );
     assert_eq!(
@@ -154,8 +157,11 @@ fn a_consumed_capability_cannot_be_used_again_even_by_number() {
 /// still be present with exactly the rights it had and still work through the dispatcher. Then the
 /// freed slot is filled again with a strictly narrower capability, and the regrant must carry
 /// exactly the narrow rights: no bit of the deleted capability's rights may survive in the slot.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
-fn deleting_one_capability_leaves_its_neighbours_alone_and_mints_nothing_stale() {
+fn deleting_one_capability_leaves_its_neighbors_alone_and_mints_nothing_stale() {
     let region = crate::memory_region::create(4).expect("no region for the endpoint");
     let ep = sched::create_rendezvous_from(region).expect("no rendezvous");
 
@@ -175,7 +181,7 @@ fn deleting_one_capability_leaves_its_neighbours_alone_and_mints_nothing_stale()
     );
 
     // The survivor must still work, not merely be present. A sender is queued and received through
-    // the dispatcher with the deleted slot's neighbour.
+    // the dispatcher with the deleted slot's neighbor.
     let sender = sched::spawn(move || {
         sched::ipc_send(ep, [9, 0, 0]);
     })
@@ -187,7 +193,7 @@ fn deleting_one_capability_leaves_its_neighbours_alone_and_mints_nothing_stale()
     assert_eq!(
         call(first, abi::rendezvous::RECEIVE, 0, 0, 0),
         Ok(9),
-        "a capability neighbouring a deleted one no longer works through the dispatcher",
+        "a capability neighboring a deleted one no longer works through the dispatcher",
     );
 
     // The freed slot, filled again, carries exactly what the new grant asked: nothing of the old

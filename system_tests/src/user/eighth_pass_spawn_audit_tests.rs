@@ -68,6 +68,9 @@ fn census(tid: u64) -> ([(u64, Object, Rights); 8], usize) {
 /// never named: no untyped budget (the difference between unvouched and endowed), no second
 /// endpoint, and no device capability of any kind, which is claim 32's half: a display device is
 /// a capability, and it does not exist in a table nobody granted it into.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_child_holds_exactly_what_its_caller_granted_and_no_device() {
     let region = crate::memory_region::create(4).expect("no region");
@@ -170,6 +173,9 @@ fn a_child_holds_exactly_what_its_caller_granted_and_no_device() {
 /// authority in this kernel is a capability in a slot and no slot was ever filled. A program born
 /// with nothing cannot mint its way to anything, which is claim 23's zero-authority corner beside
 /// the cited drop-and-retry.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_child_with_no_construction_authority_cannot_build() {
     let region = crate::memory_region::create(4).expect("no region");

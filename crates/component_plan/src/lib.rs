@@ -1584,7 +1584,7 @@ mod tests {
         }
     }
     // The eighth outsider pass's host attacks (claim 18): the shapes around the cited tests.
-    // Name: provisional (this pass's lane, 2026-10-13 UTC).
+    // The test names are provisional (this pass's lane, 2026-10-13 UTC).
 
     const PEER: CapNeed = CapNeed {
         role: "peer",

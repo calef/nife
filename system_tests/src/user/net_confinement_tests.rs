@@ -344,9 +344,11 @@ fn a_socket_moves_by_its_capability_and_a_closed_one_reaches_nothing() {
 /// The squatter's ten attempts already count a re-badge of its own socket among the refused. This
 /// is the single probe with the answer's shape: the refusal must be `NotPermitted` (the badge rule:
 /// a badge is set once, at the mint, and never changed), and the socket must be undisturbed by the
-/// refused attempt, proven by the same zero-length `SENDTO` probe the hand-off test uses answering
-/// `REP_OK` afterwards. A second badge for one socket would be a second name for it, and names are
+/// refused attempt, proven by a `CLOSE` of it answering `REP_OK` afterwards. A second badge for one socket would be a second name for it, and names are
 /// how a stack tells its clients apart.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_re_badged_socket_capability_is_refused_and_the_socket_survives() {
     let Some((mut held, stack)) = start_stack() else {

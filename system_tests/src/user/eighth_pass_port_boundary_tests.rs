@@ -21,8 +21,9 @@
 //! Every child exits or faults promptly (the `EXIT`-tailed stubs), so a wrongly permitted port
 //! turns the run red as `EVENT_EXIT` where `EVENT_FAULT` was asserted, never as a hang. Parked
 //! children park on a wake endpoint of their own, so no child ever competes with the supervision
-//! endpoint the deaths arrive on. `x86_64` only, because port I/O is (DECISIONS §121, milestone
-//! 299).
+//! endpoint the deaths arrive on. `x86_64` only, because port I/O is (DECISIONS §121 (what a
+//! device capability is when the device has no page: x86 port I/O), milestone 299 (the x86
+//! port-range capability: the serial console becomes a userspace driver)).
 
 use super::supervision_tests::{CODE_VA, build_child_with};
 use super::x86_programs;
@@ -55,14 +56,14 @@ fn endpoints() -> Endpoints {
     }
 }
 
-/// Build a child from `stub` with `caps` in slots 0, 1, ... and the supervision endpoint in the
+/// Build a child from `stub` with `capabilities` in slots 0, 1, ... and the supervision endpoint in the
 /// reserved fault slot, in its own region. Returns `(tid, region)` for the reaping retry.
-fn child(stub: &[u32], caps: &[crate::cap::Cap], fault: sched::RendezvousId) -> (u64, u64) {
+fn child(stub: &[u32], capabilities: &[crate::cap::Cap], fault: sched::RendezvousId) -> (u64, u64) {
     let region = crate::memory_region::create(16).expect("no region for the child");
     let tid = build_child_with(
         region,
         stub,
-        caps,
+        capabilities,
         Some(rendezvous_capability(fault, Rights::READ)),
     );
     (tid, region)
@@ -93,6 +94,9 @@ fn reap(region: u64) {
 /// `in` succeeds and its immediately following `out` faults, with the faulting pc naming the `out`
 /// as the instruction that was refused, which is what makes the read's success observable rather
 /// than assumed.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_non_holder_cannot_read_a_port_and_a_read_only_holder_may_not_write_it() {
     let eps = endpoints();
@@ -199,6 +203,9 @@ fn a_non_holder_cannot_read_a_port_and_a_read_only_holder_may_not_write_it() {
 /// (`delete_page_frame_caps_overlapping`) is the deliberate contrast. It is recorded in this
 /// pass's results as a near miss: one design change away from an escape if a sub-range revoke ever
 /// becomes expressible.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_revoked_range_stops_its_holder_and_an_unrelated_revoke_stops_no_one() {
     let eps = endpoints();
@@ -270,6 +277,9 @@ fn a_revoked_range_stops_its_holder_and_an_unrelated_revoke_stops_no_one() {
 ///
 /// The second leg is the claim's: after deleting both slots the `out` faults on the `out`
 /// instruction itself, the duplicated form of the cited single-slot test.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn one_port_in_two_slots_falls_when_one_slot_is_deleted_though_its_twin_survives() {
     let eps = endpoints();
@@ -302,7 +312,7 @@ fn one_port_in_two_slots_falls_when_one_slot_is_deleted_though_its_twin_survives
 
     // Delete both slots: the `out` must fault at the `out`.
     let (_both, both_region) = child(
-        &x86_programs::two_cap_deletes_then_port_out(1, 2, COM1_BASE, WRITE_VAL),
+        &x86_programs::two_capability_deletes_then_port_out(1, 2, COM1_BASE, WRITE_VAL),
         &duplicated,
         eps.fault,
     );
@@ -314,7 +324,7 @@ fn one_port_in_two_slots_falls_when_one_slot_is_deleted_though_its_twin_survives
     );
     assert_eq!(
         pc,
-        CODE_VA + x86_programs::TWO_CAP_DELETES_THEN_PORT_OUT_PC_OFFSET,
+        CODE_VA + x86_programs::TWO_CAPABILITY_DELETES_THEN_PORT_OUT_PC_OFFSET,
         "the fault was not at the `out` instruction",
     );
     reap(both_region);

@@ -63,6 +63,9 @@ fn survey(slot: u64, cursor: u64) -> (i64, u64, u64) {
 /// rendezvous (claim 6). The positive control is the attacker reaping its own domain's corpse
 /// through the same capability, which is what makes the sideways refusals the domain check
 /// talking.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_supervisor_cannot_reap_across_domains_and_a_strangers_liveness_is_invisible() {
     let (budget, rendezvous_region) = arena();
@@ -108,9 +111,9 @@ fn a_supervisor_cannot_reap_across_domains_and_a_strangers_liveness_is_invisible
     );
 
     drain(parking, 1);
-    let theirs_cap = hold_supervisor(theirs);
-    collect_all(theirs_cap, &[stranger_alive, stranger_dead]);
-    tidy(budget, rendezvous_region, &[attacker, theirs_cap]);
+    let theirs_capability = hold_supervisor(theirs);
+    collect_all(theirs_capability, &[stranger_alive, stranger_dead]);
+    tidy(budget, rendezvous_region, &[attacker, theirs_capability]);
 }
 
 /// **A domain's view is exactly its own members, dead ones included, and every member the view
@@ -124,6 +127,9 @@ fn a_supervisor_cannot_reap_across_domains_and_a_strangers_liveness_is_invisible
 /// tid the view showed is one the same rendezvous's `REAP` answers for, with the live member
 /// answering `StillAlive` and the dead one collectable, while the stranger, which no view showed,
 /// is refused.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn the_view_and_the_reap_are_one_domain_dead_members_included() {
     let (budget, rendezvous_region) = arena();
@@ -202,11 +208,11 @@ fn the_view_and_the_reap_are_one_domain_dead_members_included() {
 
     drain(parking, 2);
     collect_all(supervisor, &[member_alive]);
-    let theirs_cap = hold_supervisor(theirs);
-    collect_all(theirs_cap, &[stranger]);
+    let theirs_capability = hold_supervisor(theirs);
+    collect_all(theirs_capability, &[stranger]);
     tidy(
         budget,
         rendezvous_region,
-        &[view, empty_view, supervisor, theirs_cap],
+        &[view, empty_view, supervisor, theirs_capability],
     );
 }

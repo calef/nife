@@ -1241,7 +1241,7 @@ mod seventh_pass_delegation_tests;
 /// **A consumed capability stays consumed, and deleting one disturbs nothing else** (an eighth
 /// outsider pass at the confinement claim, claims 4 and 5). Attacks the live kernel paths the host
 /// crate's pure-logic tests cannot reach: a stale slot number after `SYS_CAP_DELETE`, an
-/// out-of-range index forged in a register, a double delete, a neighbour that must keep working
+/// out-of-range index forged in a register, a double delete, a neighbor that must keep working
 /// through the real dispatcher, and a freed slot regranted with narrower rights that must carry
 /// nothing of its deleted tenant. Nothing blocks. Its own header has the reasoning.
 ///

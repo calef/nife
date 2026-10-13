@@ -332,6 +332,9 @@ fn the_supervisor_restarts_the_faulted_c_component_and_the_restart_does_real_wor
 /// the component maps. It must fault as a translation fault at exactly that address, with the
 /// in-grant store landed and both witnesses untouched: the same receipt the overruns produce, for
 /// the direction nothing had probed.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_c_underrun_below_the_grant_faults_and_changes_nothing_outside_it() {
     let msgs = run_seam();

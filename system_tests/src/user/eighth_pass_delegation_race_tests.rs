@@ -58,6 +58,9 @@ fn call(slot: u64, method: u64, a0: u64, a1: u64, a2: u64) -> Result<i64, abi::E
 /// The control run drives the same seam without the revoke: the delegation completes, parks, and
 /// a `RECEIVE_CAP` collects exactly the frame, which is what makes the refused run's emptiness the
 /// revocation talking.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_revocation_landing_inside_the_delegation_window_is_still_seen() {
     let region = crate::memory_region::create(4).expect("no region");
@@ -196,6 +199,9 @@ fn a_revocation_landing_inside_the_delegation_window_is_still_seen() {
 /// a `PortRange` capability on a rendezvous, the whole COM1 range is revoked, and the receiver
 /// must be handed nothing that names the range. A delivery here is a revived port grant the
 /// revoker believed it took back, on the one architecture whose I/O space it can reach.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[cfg(all(test, target_arch = "x86_64"))]
 #[test_case]
 fn a_port_capability_revoked_while_in_flight_does_not_reach_the_receiver() {
@@ -212,9 +218,9 @@ fn a_port_capability_revoked_while_in_flight_does_not_reach_the_receiver() {
     sched::spawn(move || {
         let slot = sched::grant(port_range_capability(PORT_BASE, PORT_COUNT, Rights::ALL))
             .expect("the sender could not be granted the range");
-        let cap = sched::current_cap(slot).expect("the grant did not land");
+        let capability = sched::current_cap(slot).expect("the grant did not land");
         PARKED.store(true, Ordering::SeqCst);
-        sched::ipc_send_cap(ep, 0, cap, 0);
+        sched::ipc_send_cap(ep, 0, capability, 0);
         SOURCE_SURVIVED.store(sched::current_cap(slot).is_ok(), Ordering::SeqCst);
     })
     .expect("no sender thread");

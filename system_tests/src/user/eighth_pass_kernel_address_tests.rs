@@ -47,6 +47,9 @@ fn is_read_fault(kind: UserFault) -> bool {
 /// present but supervisor-only, and the page absent from the low half entirely) split across
 /// targets and ISAs, and what the claim requires is that each read was stopped as a read at the
 /// exact address handed in.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_user_program_cannot_read_kernel_text_or_the_direct_map() {
     let sentinel = a_kernel_address();

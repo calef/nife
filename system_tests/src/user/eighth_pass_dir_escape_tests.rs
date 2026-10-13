@@ -32,6 +32,9 @@ use super::*;
 /// three runs. Each missing bit is asserted as strongly as each present one: a capability that
 /// quietly reached more than its rights is the escape, and one that reached less is a capability
 /// whose refusals prove nothing.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_grant_that_drops_one_right_loses_exactly_that_right() {
     if fs_service::fs_server_image().is_none() {
@@ -76,6 +79,9 @@ fn a_grant_that_drops_one_right_loses_exactly_that_right() {
 /// `other` script (every probe aims at `secret`). Both must complete the script's root-relative
 /// skeleton (`ALWAYS`), which is what makes their refusals mean anything, and both must come back
 /// with none of the probed tree's bits: no reach, no absolute reach, no sighting in a listing.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn each_shell_running_the_others_script_names_nothing_of_it() {
     if fs_service::fs_server_image().is_none() {

@@ -49,6 +49,9 @@ fn call(slot: u64, method: u64, a0: u64, a1: u64, a2: u64) -> Result<i64, Error>
 /// dispatcher; each refusal leaves the parked sender exactly where it was. The positive control
 /// closes: a real `READ` capability receives the queued message, proving the endpoint, the sender
 /// and the dispatcher were all live, which is what makes the refusals the rights rule talking.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_client_cannot_upgrade_or_badge_its_way_to_the_receiving_side() {
     let region = crate::memory_region::create(4).expect("no region for the endpoint");

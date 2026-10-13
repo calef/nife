@@ -1061,6 +1061,9 @@ fn three_clients_compose_into_one_scanout_and_the_host_sees_it() {
 /// all three commits (an error answer takes the client down at `E_COMMIT`, which reads here as a
 /// `0xDEAD` word), the victim's surface and whole control page are compared before and after, and
 /// the screen is exactly the two-window contract picture.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_forged_control_page_changes_nothing_and_stops_no_one() {
     const VICTIM: usize = 1;
@@ -1091,12 +1094,12 @@ fn a_forged_control_page_changes_nothing_and_stops_no_one() {
     assert_eq!(
         w.client_surface_digest(VICTIM),
         digest,
-        "a neighbour's forged control page changed the victim's pixels",
+        "a neighbor's forged control page changed the victim's pixels",
     );
     assert_eq!(
         w.client_control_words(VICTIM),
         ctl,
-        "a neighbour's forged control page changed the victim's control page",
+        "a neighbor's forged control page changed the victim's control page",
     );
     assert_screen_is(&w, 2);
     release(victim, victim_slot);

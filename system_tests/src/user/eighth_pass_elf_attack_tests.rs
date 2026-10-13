@@ -79,6 +79,9 @@ fn forged_two_segment(second_vaddr: u64) -> [u8; 192] {
 
 /// **A segment whose end arithmetic overflows the address space is refused as an overflow**, not
 /// wrapped into a small image that loads.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn an_elf_whose_segment_arithmetic_overflows_is_refused_as_an_overflow() {
     let image = forged(u64::MAX - 15, elf::PF_R | elf::PF_X, 16);
@@ -96,6 +99,9 @@ fn an_elf_whose_segment_arithmetic_overflows_is_refused_as_an_overflow() {
 /// `memsz` is the `.bss` trick: sixteen bytes of file, and a claimed memory size that runs from
 /// the image base to one page past the kernel half's start. No addition overflows, so the refusal
 /// has to come from the image placement or the half check, not from an accident of arithmetic.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn an_elf_that_reaches_from_its_band_into_the_kernel_half_is_refused() {
     let reach =
@@ -121,6 +127,9 @@ fn an_elf_that_reaches_from_its_band_into_the_kernel_half_is_refused() {
 /// limit before a single page of it is spent, and `image_end` in the refusal names the kernel half
 /// page it was aiming at. A loader that inspected only the first program header would have
 /// reported success here.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn an_elf_whose_second_segment_names_the_kernel_is_refused() {
     let image = forged_two_segment(mmu::KERNEL_VA_BASE);
@@ -143,6 +152,9 @@ fn an_elf_whose_second_segment_names_the_kernel_is_refused() {
 /// The standard says `PF_MASKOS` bits are ignored; a check written as equality against a known
 /// flag *set* rather than as membership would let `R|W|X|0x00ff_0000` through as an unrecognized
 /// and therefore unchecked combination.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn an_elf_dressing_writable_executable_in_vendor_bits_is_refused() {
     let image = forged(

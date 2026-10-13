@@ -246,8 +246,14 @@ fn udp_tftp_held() -> ! {
 /// [`TEST_SOCKET_GIVE`]: open a UDP socket and send it to the taker, keeping our own copy. Then wait
 /// for the go on slot 4, which the test sends once the taker has used the socket and closed it, and
 /// report whether our copy still reaches anything: `OK` when it reaches nothing, which is what a
-/// close is for. The probe is a zero-length `SENDTO`, which an open socket answers `REP_OK` at once
-/// and a closed one `REP_ERR`, so it cannot be mistaken for a receive that timed out.
+/// close is for. The probe is a zero-length `SENDTO`, which a closed socket answers `REP_ERR` at
+/// once, so it cannot be mistaken for a receive that timed out.
+///
+/// # BUGS
+///
+/// The eighth outsider pass saw an open socket refuse a zero-length `SENDTO` too, which is why its
+/// own survival probe is a `CLOSE`. If so, this probe cannot tell a closed copy from an open one,
+/// and the hand-off test's "reaches nothing" rests on the probe alone. Not yet checked by a lane.
 fn socket_give() -> ! {
     let (word, _, socket) = call_receiving(STACK, OPERATION_OPEN_UDP, 0);
     let Some(socket) = socket.filter(|_| word == REP_OK) else {
@@ -265,8 +271,8 @@ fn socket_give() -> ! {
 
 /// [`TEST_SOCKET_BADGE_FORGE`]: open one UDP socket, attempt to re-badge its capability, and
 /// report. The refusal must be `NotPermitted` (the capability is already badged, and a badge is set
-/// once), and the socket must be undisturbed by the refused attempt: the same zero-length `SENDTO`
-/// probe `socket_give` uses must still answer `REP_OK`. Reports `OK`, or a stage code.
+/// once), and the socket must be undisturbed by the refused attempt: a `CLOSE` of it must still
+/// answer `REP_OK`. Reports `OK`, or a stage code.
 fn socket_badge_forge() -> ! {
     let (word, _, socket) = call_receiving(STACK, OPERATION_OPEN_UDP, 0);
     let Some(socket) = socket.filter(|_| word == REP_OK) else {
