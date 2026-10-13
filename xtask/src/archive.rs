@@ -457,6 +457,15 @@ pub(crate) fn initial_ramdisk_riscv() -> bool {
         }
     };
     files.push((package_archive::CATALOG, catalogue.as_bytes()));
+    // And where the image says its index is (milestone 801), measured the same way.
+    let sources = match crate::package::image_index_sources() {
+        Ok(sources) => sources,
+        Err(complaint) => {
+            eprintln!("initial-ramdisk-riscv: the image's index sources: {complaint}");
+            return false;
+        }
+    };
+    files.push((package_index::SOURCES_ENTRY, sources.as_bytes()));
     // The measurement table (milestone 104), on the same terms as aarch64's: last, so it measures
     // everything above it, and vouched for by the kernel's trust root so the progenitor's refusals mean
     // something. Parity is the point (§19): the same table, the same parser, the same policy.
@@ -663,6 +672,15 @@ pub(crate) fn initial_ramdisk_x86() -> bool {
         }
     };
     files.push((package_archive::CATALOG, catalogue.as_bytes()));
+    // And where the image says its index is (milestone 801), measured the same way.
+    let sources = match crate::package::image_index_sources() {
+        Ok(sources) => sources,
+        Err(complaint) => {
+            eprintln!("initial-ramdisk-x86: the image's index sources: {complaint}");
+            return false;
+        }
+    };
+    files.push((package_index::SOURCES_ENTRY, sources.as_bytes()));
     // The measurement table (milestone 104), on the same terms as the other two: last, so it
     // measures everything above it, and vouched for by the kernel's trust root so the progenitor's refusals
     // mean something. Parity is the point (§19): the same table, the same parser, the same policy.
@@ -871,6 +889,15 @@ pub(crate) fn initial_ramdisk_aarch64() -> bool {
         }
     };
     files.push((package_archive::CATALOG, catalogue.as_bytes()));
+    // And where the image says its index is (milestone 801), measured the same way.
+    let sources = match crate::package::image_index_sources() {
+        Ok(sources) => sources,
+        Err(complaint) => {
+            eprintln!("initial-ramdisk-aarch64: the image's index sources: {complaint}");
+            return false;
+        }
+    };
+    files.push((package_index::SOURCES_ENTRY, sources.as_bytes()));
     // **The measurement table, last, so it measures everything above it** (milestone 104). The progenitor
     // reads this entry out of the archive it already holds and refuses to load a program whose
     // bytes it does not match. See [`measurement_table`] for why it lives here rather than inside

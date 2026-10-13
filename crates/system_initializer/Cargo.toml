@@ -41,6 +41,11 @@ activation_set = { version = "0.1.0", path = "../activation_set" }
 # `package install` (milestone 198 rung 3a's installer): the progenitor checks a package against
 # the image's catalogue and takes its program member out. Pure logic, bringing only `measured_boot`.
 package_archive = { version = "0.1.0", path = "../package_archive" }
+# The distribution's index (milestone 801 (packages over the internet)): the name of the image's
+# index sources entry, and the reader of the index copy `jig` writes, which the installer consults
+# when the image's catalog does not vouch for a package (ruling I2). Pure logic, `no_std`, bringing
+# only the two crates above.
+package_index = { version = "0.1.0", path = "../package_index" }
 # The sink contract, for the end-of-stream init sends on a child's behalf when the child was never
 # built and therefore cannot end its own second stream.
 byte_sink_protocol = { version = "0.1.0", path = "../byte_sink_protocol" }

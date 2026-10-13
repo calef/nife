@@ -126,6 +126,10 @@ pub(super) struct Channels {
     /// Empty when the archive carried none or the table refused it, and then every
     /// `package install` is refused as not cataloged.
     pub(super) catalogue: &'static str,
+    /// **The image's index sources**, measured (milestone 801 (packages over the internet)):
+    /// `package_index::SOURCES_ENTRY`, copied to a package manager holding the index store. Empty
+    /// when the archive carried none or the table refused it.
+    pub(super) index_sources: &'static str,
     /// **READ on the run-unvouched endpoint** (DECISIONS §219 gate D2): the only receive right on
     /// it. The boot shell and `login` hold `WRITE` at `spawnproto::RUN_UNVOUCHED_SLOT`, and `login`
     /// passes `WRITE` to each session it builds. A request that sets `spawnproto::Wiring::
@@ -334,9 +338,15 @@ impl Wants {
 /// two that its manifest declared failed.
 type PackageParts = (Option<(u64, u64)>, Option<u64>, bool, bool);
 
-/// What a `std` child is placed beyond [`Wants`]: its argv page, installer endpoints, catalog page
-/// and resolver badge.
-type StdParts = (Option<u64>, Option<(u64, u64)>, Option<u64>, Option<u64>);
+/// What a `std` child is placed beyond [`Wants`]: its argv page, installer endpoints, catalog page,
+/// resolver badge and index sources page.
+type StdParts = (
+    Option<u64>,
+    Option<(u64, u64)>,
+    Option<u64>,
+    Option<u64>,
+    Option<u64>,
+);
 
 /// The capabilities a normal job's directory grant and sync-only grant were wired from: its label,
 /// its window, the bound or caretaker channel, and what the child is handed in slot 0 and slot 8.
@@ -349,6 +359,9 @@ struct DirWiring {
     dir_failed: bool,
     sync_ep: Option<u64>,
     sync_failed: bool,
+    /// Whether `narrowed` is the machine's index store rather than a directory the line named
+    /// (milestone 801 (packages over the internet)).
+    index_store: bool,
 }
 
 /// A native child's endowment: its in-order capabilities, its named slots, and its mappings.
@@ -369,6 +382,8 @@ struct JobLeftovers {
     /// The badged copy of the resolver's endpoint the child was placed (milestone 892).
     resolver: Option<u64>,
     catalog_page: Option<u64>,
+    /// The child's copy of the image's index sources (milestone 801).
+    sources_page: Option<u64>,
     args_page: Option<u64>,
     region: Option<u64>,
     labeled: Option<u64>,
@@ -840,7 +855,20 @@ impl Service<'_> {
         let wants_installer = manifest.is_some_and(|m| m.installer);
         let region =
             self.split_job_region(req, manifest, image_region, (std_layout, wants_installer));
-        let dir = self.wire_directory(req, manifest, region, wants.sync);
+        // **The machine's index store** (milestone 801 (packages over the internet), ruling I2):
+        // for a `std` job whose verb holds it, asked on the owner's console (the unbadged spawn
+        // endpoint, as the installer is), and whose line named no directory of its own, since the
+        // `std` layout has one directory slot. Not granted is not refused: a `jig` without it says
+        // what it lacks.
+        let index_rights = manifest
+            .and_then(|m| m.indexes.rights())
+            .filter(|_| std_layout && !req.wiring.dir && req.badge == 0);
+        let dir = self.wire_directory(req, manifest, region, (wants.sync, index_rights));
+        // **And its copy of the image's index sources**, beside the store and only with it.
+        let sources_page = match (dir.index_store, region) {
+            (true, Some(r)) => copy_text(own_ut, r, self.c.index_sources),
+            _ => None,
+        };
         let (installer, catalog_page, installer_failed, catalog_failed) = self.package_parts(
             req,
             manifest,
@@ -876,7 +904,7 @@ impl Service<'_> {
         let args_failed = std_layout && req.args_seen.is_some() && args_page.is_none();
         let std_parts = match (std_layout, region) {
             (true, Some(r)) => {
-                let parts = (args_page, installer, catalog_page, resolver);
+                let parts = (args_page, installer, catalog_page, resolver, sources_page);
                 Some(self.std_layout(r, out, &wants, &dir, parts))
             }
             _ => None,
@@ -922,6 +950,7 @@ impl Service<'_> {
             installer,
             resolver,
             catalog_page,
+            sources_page,
             args_page,
             region,
             labeled,
@@ -1011,7 +1040,7 @@ impl Service<'_> {
         req: &Request,
         manifest: Option<grant_plan::Manifest>,
         region: Option<u64>,
-        wants_sync: bool,
+        (wants_sync, index_rights): (bool, Option<u64>),
     ) -> DirWiring {
         let Channels { own_ut, fs, .. } = self.c;
         let Request {
@@ -1039,14 +1068,30 @@ impl Service<'_> {
         // the reaped message carries it back. A pool whose every window is held waits for the
         // reaps that are due, then refuses.
         let label = spawn.label();
+        // **The index store** (milestone 801 (packages over the internet)): a window bound to
+        // `activation/indexes` with the verb's rights, on a line that named no directory. Only a
+        // server that enforces bindings itself can make one, since the path is longer than a
+        // caretaker's name; on any other the store is not granted and `jig` says so.
+        let index_store = !wiring.dir && self.fs_scoped && index_rights.is_some();
         // A sync-only grant takes a window too (milestone 805): its badge is bound sync-only
         // rather than to a directory, and it is held until the reap like any other.
-        let window = if (wiring.dir || wants_sync) && fs.is_some() {
+        let window = if (wiring.dir || wants_sync || index_store) && fs.is_some() {
             spawn.until_reaped(|s| s.windows.take(label))
         } else {
             None
         };
+        let bound = match (index_store, fs, index_rights, window) {
+            (true, Some(f), Some(rights), Some(w)) => bound_index_store(
+                f,
+                (&mut spawn.windows, w),
+                own_ut,
+                &mut self.fs_mapped,
+                rights,
+            ),
+            _ => None,
+        };
         let bound = match (wiring.dir && self.fs_scoped, fs, grant, window) {
+            _ if bound.is_some() => bound,
             (true, Some(f), Some((care_words, _)), Some(w)) => bound_channel(
                 f,
                 (&mut spawn.windows, w),
@@ -1103,6 +1148,7 @@ impl Service<'_> {
             dir_failed,
             sync_ep,
             sync_failed,
+            index_store: index_store && bound.is_some(),
         }
     }
 
@@ -1390,7 +1436,7 @@ impl Service<'_> {
         out: (u64, u64),
         wants: &Wants,
         dir: &DirWiring,
-        (args_page, installer, catalog_page, resolver): StdParts,
+        (args_page, installer, catalog_page, resolver, index_sources): StdParts,
     ) -> StdLayout {
         let Channels {
             clock_page,
@@ -1414,6 +1460,7 @@ impl Service<'_> {
                 installer,
                 catalog: catalog_page,
                 resolver,
+                index_sources,
             },
         )
     }
@@ -1428,6 +1475,7 @@ impl Service<'_> {
             installer,
             resolver,
             catalog_page,
+            sources_page,
             args_page,
             region,
             labeled,
@@ -1450,7 +1498,7 @@ impl Service<'_> {
                 cap_delete(reply);
             }
         }
-        if let Some(page) = catalog_page {
+        for page in [catalog_page, sources_page].into_iter().flatten() {
             cap_delete(page);
         }
         // A job that never started is never reaped, so a resolver grant made for it is forgotten

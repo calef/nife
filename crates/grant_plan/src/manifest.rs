@@ -288,6 +288,15 @@ pub const INSTALLER_REPLY_SLOT: u64 = 16;
 /// Name: provisional (milestone 809).
 pub const CATALOG_SLOT: u64 = 17;
 
+/// **Where a program that holds [`Manifest::indexes`] finds the index sources page's capability**
+/// (milestone 801 (packages over the internet)), `READ`, beside its mapping at
+/// `std_runtime_protocol::INDEX_SOURCES_PAGE`, for [`CATALOG_SLOT`]'s reason. Eighteen, one past
+/// it. The index store's directory grant is at `std_runtime_protocol::FS_DIR_SLOT`, the `std`
+/// layout's one directory slot.
+///
+/// Name: provisional 2026-10-12 (UTC), lane `milestone/801-jig-installs-from-the-index`.
+pub const INDEX_SOURCES_SLOT: u64 = 18;
+
 /// **Where a program that declares [`Manifest::machine`] finds the machine statistics page's
 /// capability** (milestone 126 (the `procps` package), DECISIONS §225 (`free` sees the machine and
 /// your share)). Eleven, one past [`NETWORK_SLOT`], for that constant's reasons. The page itself is
@@ -356,6 +365,7 @@ pub const UNVOUCHED_MANIFEST: Manifest = Manifest {
     sync: false,
     installer: false,
     catalog: false,
+    indexes: IndexStore::Forbidden,
     runtime: Runtime::Native,
 };
 
@@ -727,6 +737,22 @@ pub struct Manifest {
     ///
     /// **Provisional field name.**
     pub catalog: bool,
+    /// **Endowed the machine's index store** (milestone 801 (packages over the internet), and
+    /// item 6 of milestone 809 (the package client becomes a program)): a directory grant on
+    /// `activation/indexes`, placed where a line's own directory grant would go, and a read-only
+    /// copy of the image's index sources (`package_index::SOURCES_ENTRY`) mapped at
+    /// `std_runtime_protocol::INDEX_SOURCES_PAGE`. The directory holds the index copy a package
+    /// manager writes, which the progenitor then installs from: ruling I2 of 2026-10-06 (calef, "I
+    /// would think jig"), under which the progenitor trusts the copy in a directory only the owner's
+    /// console grants. See [`IndexStore`].
+    ///
+    /// Only the owner's console grants it, as [`installer`](Manifest::installer), and no image may
+    /// declare it ([`image_can_carry`](crate::image_can_carry)). A line that designates a
+    /// directory of its own (`jig install ./x.nifepkg`) is given that one instead: the `std` layout
+    /// has one directory slot.
+    ///
+    /// **Provisional field name.**
+    pub indexes: IndexStore,
     /// **Which runtime contract the program was built against**, and so where it expects each
     /// capability to be (milestone 595 (provisional)). See [`Runtime`].
     ///
@@ -737,6 +763,36 @@ pub struct Manifest {
     ///
     /// **Provisional field name.**
     pub runtime: Runtime,
+}
+
+/// **How much of the machine's index store a program holds** (milestone 801 (packages over the
+/// internet)); [`Manifest::indexes`] says what the store is. `jig update` writes the copy, and
+/// `jig list` and `jig install <name>` only read it, so a verb chooses between the two
+/// ([`crate::verbs::Grants::INDEXES_WRITE`]).
+///
+/// Name: provisional 2026-10-12 (UTC), lane `milestone/801-jig-installs-from-the-index`, as are
+/// the variants.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum IndexStore {
+    /// None of it. Every program but `jig`.
+    Forbidden,
+    /// The copies read, the sources page mapped.
+    ReadOnly,
+    /// The copies read and written.
+    ReadWrite,
+}
+
+impl IndexStore {
+    /// The rights the store's directory is opened with, as `filesystem_protocol::dir`'s bits:
+    /// [`WordGrant::ReadOnly`]'s for reading, and [`WordGrant::Create`]'s for writing, since the
+    /// first `update` creates the copy. `None` for [`IndexStore::Forbidden`].
+    pub const fn rights(self) -> Option<u64> {
+        match self {
+            IndexStore::Forbidden => None,
+            IndexStore::ReadOnly => Some(WordGrant::ReadOnly.rights()),
+            IndexStore::ReadWrite => Some(WordGrant::Create.rights()),
+        }
+    }
 }
 
 /// **Where a program expects its capabilities**: in the order its spawner lists them, or at the

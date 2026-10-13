@@ -26,6 +26,8 @@
 ///   retypes each socket's page from the region (milestone 809 (the package client becomes a
 ///   program)). Slots 15, 16 and 17: the installer endpoint, its reply endpoint and the catalog
 ///   page, mapped at `CATALOG_PAGE` (milestone 809; `grant_plan::INSTALLER_SLOT` has the rights).
+///   Slot 18 and a read-only page at `INDEX_SOURCES_PAGE`: the image's index sources, beside the
+///   index store at slot 4 (milestone 801 (packages over the internet)).
 /// - slot 9: the name resolver, `WRITE`, badged with `Prog::resolver_zone`'s zone, for a job holding
 ///   the network (milestone 892 (a std program at the prompt holds the network and a resolver)).
 ///
@@ -40,16 +42,11 @@
 ///   pool is one region smaller until reboot. nife's `std` never splits (its allocator only
 ///   `MAP`s), so this takes a program written to do it. Closing it needs a right that allows `MAP`
 ///   and not `SPLIT`, which is the syscall surface and an architect's call.
-/// - **The directory half is built and never exercised at the prompt.** No `std` manifest declares
-///   a directory yet. DECISIONS §170 (how a foreign program is told what to do) ruled that the
-///   directories granted on a line bound what a word reaches, and granting one to a `std` program
-///   from the prompt is milestone 205's designation half, not built yet. The kernel harness proves
-///   the same slot and page from its side (`fs_service::start_std_full`).
 pub(super) struct StdLayout {
     pub(super) caps: [(u64, u64); 2],
-    placed: [(u64, u64, u64); 14],
+    placed: [(u64, u64, u64); 15],
     placed_n: usize,
-    maps: [(u64, u64, u64); 5],
+    maps: [(u64, u64, u64); 6],
     maps_n: usize,
 }
 
@@ -72,6 +69,8 @@ pub(super) struct StdGrants {
     pub(super) catalog: Option<u64>,
     /// The name resolver's endpoint, badged with the zone this job was granted (milestone 892).
     pub(super) resolver: Option<u64>,
+    /// The child's own copy of the image's index sources (milestone 801).
+    pub(super) index_sources: Option<u64>,
 }
 
 // `caps` lands in order from slot 0, so the two in-order slots must be 0 and 1. Checked here rather
@@ -94,12 +93,13 @@ impl StdLayout {
             installer,
             catalog,
             resolver,
+            index_sources,
         } = g;
         let mut l = StdLayout {
             caps: [(region, abi::rights::WRITE), out],
-            placed: [(0, 0, 0); 14],
+            placed: [(0, 0, 0); 15],
             placed_n: 0,
-            maps: [(0, 0, 0); 5],
+            maps: [(0, 0, 0); 6],
             maps_n: 0,
         };
         let place = |l: &mut StdLayout, slot: u64, cap: u64, rights: u64| {
@@ -158,6 +158,20 @@ impl StdLayout {
         if let Some(page) = catalog {
             place(&mut l, grant_plan::CATALOG_SLOT, page, abi::rights::READ);
             map(&mut l, rt::CATALOG_PAGE, page, abi::address_space::MAP_RO);
+        }
+        if let Some(page) = index_sources {
+            place(
+                &mut l,
+                grant_plan::INDEX_SOURCES_SLOT,
+                page,
+                abi::rights::READ,
+            );
+            map(
+                &mut l,
+                rt::INDEX_SOURCES_PAGE,
+                page,
+                abi::address_space::MAP_RO,
+            );
         }
         // **Threads** (milestone 812 (`std::thread::spawn` runs real threads in one address
         // space)): every `std` program is built as a process of its own and may add threads to it,

@@ -155,7 +155,7 @@ pub fn boot(
             devices,
             p.sink_elf.is_some().then_some(term_sink),
             fs,
-            p.catalog,
+            (p.catalog, p.index_sources),
         ),
         &spawnable.progs,
         Caretakers {
@@ -354,7 +354,7 @@ fn spawn_channels(
     devices: DeviceServices,
     term_sink: Option<u64>,
     fs: Option<Fs>,
-    catalog: &'static str,
+    (catalog, index_sources): (&'static str, &'static str),
 ) -> Channels {
     Channels {
         spawn_ep: chan.spawn_ep,
@@ -385,6 +385,7 @@ fn spawn_channels(
         // **The reboot object** (milestone 805), kept for the one program that declares it.
         reboot: is_granted(w.g.reboot).then_some(w.g.reboot),
         catalogue: catalog,
+        index_sources,
         run_unvouched: kept.run_unvouched,
         // **The boot line discipline's endpoint, for a `graphical_terminal` session's UART arm** (milestone
         // 632 (provisional)); see the comment where `term_out` alone is deleted for why this

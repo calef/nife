@@ -59,11 +59,18 @@ pub(crate) fn std_resolve_elf(triple: &str) -> PathBuf {
 }
 
 /// **`jig`, the package manager** (milestone 809 (the package client becomes a program)): its own
-/// workspace, built by `cargo xtask std-exerciser` into `std_exerciser`'s target directory, and
-/// packed into every archive as `grant_plan::Prog::Jig`.
+/// workspace, built by `cargo xtask std-exerciser`, and packed into every archive as
+/// `grant_plan::Prog::Jig`. Since milestone 801 (packages over the internet) it links the TLS
+/// graph and builds in that graph's target directory, [`TLS_GRAPH_TARGET`].
 pub(crate) fn jig_elf(triple: &str) -> PathBuf {
-    workspace_root().join(format!("std_exerciser/target/{triple}/release/jig"))
+    workspace_root().join(format!("{TLS_GRAPH_TARGET}/{triple}/release/jig"))
 }
+
+/// **Where the TLS graph builds**: `helpers/build-cryptography-exerciser.sh` and
+/// `helpers/build-pinned-tls-exerciser.sh` share it, with `cryptography_exerciser/.cargo/config.toml`'s
+/// flags, and `jig` joins them (milestone 801), so the standard library is built once for all
+/// three. Name: provisional 2026-10-12 (UTC).
+pub(crate) const TLS_GRAPH_TARGET: &str = "target/tls-graph";
 
 /// **The package index's in-guest client**: milestone 801 (packages over the internet). The second
 /// binary of `pinned_tls_exerciser`'s workspace, which `helpers/build-pinned-tls-exerciser.sh`

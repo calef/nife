@@ -661,6 +661,22 @@ fn stage_installed(architecture: &str) -> Result<String, String> {
         .map_err(|e| format!("{}: {e}", source.display()))?;
     std::fs::write(source.join(format!("{stem}.nifepkg")), &tampered)
         .map_err(|e| format!("{}: {e}", source.display()))?;
+    let (indexed_stem, said) = stage_index(&source, architecture, &greeting, &package)?;
+    // **And the image's catalog must not name it**, or installing it would prove nothing about the
+    // index copy: the same claim as the archive check above, about the catalog this time.
+    let image_catalog = fs
+        .read(package_archive::CATALOG)
+        .map(String::from_utf8_lossy)
+        .unwrap_or_default();
+    if image_catalog
+        .lines()
+        .any(|l| l.split(' ').next() == Some(indexed_stem.as_str()))
+    {
+        return Err(format!(
+            "{archive}'s catalog names {indexed_stem}, so installing it would prove nothing about \
+             the index copy"
+        ));
+    }
 
     let tree = root.join("target/redoxfs-installed");
     let _ = std::fs::remove_dir_all(&tree);
@@ -706,8 +722,66 @@ fn stage_installed(architecture: &str) -> Result<String, String> {
         ))),
         source.display(),
     );
+    eprintln!("seed_installed ({architecture}): {said}; {indexed_stem} is the index's alone");
     Ok(tree.display().to_string())
 }
+
+/// **The index `helpers/tls-peer` serves this leg** (milestone 801 (packages over the internet)):
+/// a `catalog` file in the package source, which the peer turns into the stand-in index, naming
+/// `greeting` at 0.1.0, `uptime` at its genuine digest (the source holds the lying copy, so `jig`
+/// must refuse it by the index's digest), and greeting at [`INDEXED_ONLY_VERSION`], a package the image's catalog does
+/// not name, so only the index copy `jig update` writes can vouch for it at the installer.
+///
+/// That package is `greeting` 0.1.0's program with one byte after its last segment, which a loader
+/// carries, hashes and ignores ([`INSTALLED_STD_ECHO_LARGE`]'s reason): it runs and prints what
+/// 0.1.0 prints, and its digest is its own, so its activation row is not 0.1.0's. Returns its stem
+/// and a sentence for the seed's report.
+fn stage_index(
+    source: &std::path::Path,
+    architecture: &str,
+    greeting: &[u8],
+    uptime: &[u8],
+) -> Result<(String, String), String> {
+    let parsed = package_archive::Package::parse(greeting)
+        .map_err(|e| format!("greeting's package does not parse: {e:?}"))?;
+    let mut program = parsed
+        .read("greeting")
+        .ok_or("greeting's package carries no greeting member")?
+        .to_vec();
+    program.push(0);
+    let members: [(&str, &[u8]); 1] = [("greeting", &program)];
+    let attributes = package_archive::Attributes {
+        name: "greeting",
+        version: INDEXED_ONLY_VERSION,
+        architecture,
+    };
+    let mut indexed = vec![0u8; package_archive::package_size(&members)];
+    package_archive::write_package(&attributes, &members, &mut indexed)
+        .map_err(|e| format!("could not write the index-only package: {e:?}"))?;
+    let indexed_stem = format!("greeting-{INDEXED_ONLY_VERSION}-{architecture}");
+    std::fs::write(source.join(format!("{indexed_stem}.nifepkg")), &indexed)
+        .map_err(|e| format!("{}: {e}", source.display()))?;
+    let line = |stem: String, bytes: &[u8]| {
+        let digest = measured_boot::digest_text(&package_archive::sha256(bytes));
+        format!("{stem} {}\n", String::from_utf8_lossy(&digest))
+    };
+    let catalog = [
+        line(format!("greeting-0.1.0-{architecture}"), greeting),
+        line(format!("uptime-0.1.0-{architecture}"), uptime),
+        line(indexed_stem.clone(), &indexed),
+    ]
+    .concat();
+    std::fs::write(source.join("catalog"), &catalog)
+        .map_err(|e| format!("{}: {e}", source.display()))?;
+    Ok((
+        indexed_stem,
+        "helpers/tls-peer serves an index of greeting 0.1.0, uptime and greeting 0.3.0".into(),
+    ))
+}
+
+/// The version of the package only the index offers (milestone 801 (packages over the internet)),
+/// which `script/swish-check` installs with `jig install greeting@0.3.0`. Provisional.
+pub(crate) const INDEXED_ONLY_VERSION: &str = "0.3.0";
 
 /// Stage milestone 47's subtree as a host directory and return its path, for `import` to copy into
 /// the image root.
