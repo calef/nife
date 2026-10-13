@@ -1,7 +1,7 @@
 ---
 status: NOT-STARTED
 raised: 2026-10-12
-milestone_dependencies: 755, 607, 611, 810
+milestone_dependencies: 755, 607, 611, 810, 911
 decision_dependencies: 297, 235, 241, 250
 machine_requirements: none
 specific_machine: none
@@ -29,6 +29,10 @@ system needs before `jig` runs reach it this way. They are the kernel, the proge
   the package boundaries this build reads.
 - Milestone 810 (`ripgrep` is packaged in basalt and installed with `jig`) builds basalt's first
   package. This milestone extends that build to the base.
+- Milestone 911 (scripted installs grant only what the owner's approval file allows) gives the
+  composition the check it runs with nobody at a prompt. Each package's asks are tested against the
+  image's approval file, as the same grant records an interactive install writes. 911's block names
+  this dependency and leaves the edge here.
 
 ## The work
 
@@ -39,8 +43,11 @@ system needs before `jig` runs reach it this way. They are the kernel, the proge
 2. basalt composes each architecture's image from those packages, by digest, as 607's item 1
    describes. The image names basalt's index (§250 (an image names its distribution's package
    index, at `basalt.nifeos.org`, and a package's bytes may live anywhere)).
-3. basalt's gate boots the composed image rather than the one nife's tree built.
-4. nife's own image build stays for nife's tests, composed from the same package definitions, so a
+3. Each package in the image passes 911's host-side check against the image's approval file, and
+   the image's first activation set holds the resulting grant records. A package whose manifest
+   asks for more than the file allows fails the build, naming the extra grant.
+4. basalt's gate boots the composed image rather than the one nife's tree built.
+5. nife's own image build stays for nife's tests, composed from the same package definitions, so a
    nife change can be tested before basalt pins it.
 
 ## Done when
