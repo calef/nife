@@ -237,7 +237,6 @@ design/roadmap/0043-second-security-audit.md	-	24.5	58	-	-
 design/roadmap/0044-github-hardening.md	-	-	60	-	-
 design/roadmap/0045-codeql-triage.md	-	27	58	-	-
 design/roadmap/0046-component-renames.md	-	-	60	-	-
-design/roadmap/0047-navigation-and-naming.md	-	-	102	-	-
 design/roadmap/0048-job-control.md	-	-	44	-	-
 design/roadmap/0050-pipes-and-redirection.md	-	-	71	-	-
 design/roadmap/0051-wall-clock-time.md	-	-	55	-	-
@@ -318,7 +317,6 @@ design/roadmap/0135-loom-region-claim.md	-	22	74	-	-
 design/roadmap/0136-one-decision-path.md	-	-	51	-	-
 design/roadmap/0137-mac-file-server.md	-	22	60	-	-
 design/roadmap/0138-file-io-throughput.md	-	-	73	-	-
-design/roadmap/0139-drive-down-unsafe.md	-	21	123	-	-
 design/roadmap/0140-foreign-filesystems.md	-	-	57	-	-
 design/roadmap/0141-a-palette-worth-looking-at.md	-	-	42	-	-
 design/roadmap/0142-a-text-display-worth-living-in.md	-	-	50	-	-
