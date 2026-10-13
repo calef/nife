@@ -35,9 +35,8 @@ opened with had been retracted in the tree two weeks before this file was writte
 
 ### The one failure on record is not a failure, and this tree overturned it itself
 
-This entry used to say the risk had already fired. And that the VisionFive 2 had produced a receiver
-woken with nothing delivered on three harts that no emulator run had ever shown. That is
-`notes/visionfive2.md`'s fourth bench stop (boots 7 and 8, 2026-08-14). And the same note's fifth
+`notes/visionfive2.md`'s fourth bench stop (boots 7 and 8, 2026-08-14) read as the risk firing: a
+VisionFive 2 receiver woken with nothing delivered on three harts, which no emulator run had shown. And the same note's fifth
 bench stop overturned it on 2026-08-15: the dumps of boots 7 through 9 are the terminal state of a
 *completed* tour. The parked receivers are the UART demo's driver and its byte receiver, the wake
 was the worker's real send. And `svc=20` is the choreography's exact ecall total, each identified

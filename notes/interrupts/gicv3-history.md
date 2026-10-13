@@ -1,4 +1,4 @@
-# GICv3: the gate against silent loss, its history, and what no CPU matrix catches
+# GICv3: the gate against silent loss, and what no CPU matrix catches
 
 An appendix to [notes/interrupts.md](../interrupts.md), moved there on 2026-10-11 (UTC) under
 §212 (a prose budget). It holds the three points where a wrong GIC assumption now fails, the
@@ -10,7 +10,7 @@ has no CPU-model matrix.
 A GIC assumption that stops being true now fails loudly, at three points:
 
 - An `intc@` node whose binding is not a GIC this kernel knows panics in `memory::init`, naming
-  the `compatible` it found. It used to be driven as a GICv2 on the strength of its name.
+  the `compatible` it found, rather than being driven as a GICv2 on the strength of its name.
 - A tree the hardware contradicts panics in `arch::irq::init` before any configuration write,
   naming the version claimed and the revision read. This is the check that would have stopped
   milestone 222's boot: a GICv2 claim over a redistributor frame reads `GICC_IIDR` as zero.
@@ -19,13 +19,13 @@ A GIC assumption that stops being true now fails loudly, at three points:
   only the test's own, to taking interrupts; injecting "secondaries never enable Group 1" fails it
   naming core 1.
 
-## The measurement, taken 2026-09-02, and why this used to be the most dangerous line in the file
+## The measurement, taken 2026-09-02, and why the GIC pin was the most dangerous line in the file
 
 Until milestone 227 the runner's `gic-version=2` pin was protection rather than support, and this
 section said so. The measurement below is what made it load-bearing, and it is kept because it is
 the shape the gates above exist to make impossible.
 
-This section used to say `-machine virt,gic-version=3` had never been booted here, that it was one
+This section once said `-machine virt,gic-version=3` had never been booted here, that it was one
 command, and that it would turn "our driver does not support it" from an assumption into a recorded
 failure with an error message attached. Milestone 222 ran the command. There is no error message.
 

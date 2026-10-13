@@ -190,7 +190,7 @@ number stands with its meaning: building a process is cheap when a process is a 
 6.3% longer ([the spawn appendix](spawn-el0.md)). Both parts are wrong. The ~7.7 µs dates from
 2026-07-26. [The 2026-07-29 refresh](per-core-and-multi-hart.md) measured the settled per-core median
 at ~4.4 µs and called 7.7 a single sample on a busier machine. So the ~8.2 µs was computed from a
-superseded figure. The latest measured HVF value is ~4.4 µs (2026-07-29). The icount path has moved
+stale figure. The latest measured HVF value is ~4.4 µs (2026-07-29). The icount path has moved
 since (-41% on 2026-08-27, +6.3% on 2026-09-21), and no HVF reading has been taken after it.
 
 ### The context switch, the softest of the three

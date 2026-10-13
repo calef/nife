@@ -4,13 +4,11 @@ An appendix to [notes/dir-capability.md](../dir-capability.md), moved there on 2
 under §212 (a prose budget). The main page lists each limitation in a line; this is each one in
 full. Known limitations, next to the feature rather than only in a tracker.
 
-- ~~`std::fs::rename` is still `Unsupported`.~~ Closed, and this entry was stale until 2026-10-11
-  (UTC), when the lane that moved it here read the PAL. `rename` is bound in
+- ~~`std::fs::rename` is still `Unsupported`.~~ Closed. `rename` is bound in
   `patches/std-nife/overlay/std/src/sys/fs/nife.rs` on `RENAME`, with `REMOVE` asked on the source
   and `CREATE` on the destination; notes/crates-io-on-nife.md records milestone 64 (enough `std` to
-  run somebody else's crate) binding it. The
-  entry used to say the verb existed on the wire and in the server and the std PAL had not been
-  bound to it. Milestone 55 (Time Machine) depended on it (`fruit:posix_rename` in the reference
+  run somebody else's crate) binding it.
+  Milestone 55 (Time Machine) depends on it (`fruit:posix_rename` in the reference
   Samba config).
 - ~~`UNLINK` does not exist.~~ Built by the commands lane, along with the unlink/revoke split the
   roadmap argues for: see [shell-navigation.md](../shell-navigation.md). `REMOVE` now gates two

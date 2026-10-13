@@ -1,4 +1,4 @@
-# Stranger test BUGS history
+# Stranger test BUGS entries and their record
 
 *An appendix to [the stranger test](../stranger-test.md), which holds the current state. This page
 is the record for every BUGS entry as it stood on 2026-09-24, with the history of each.*

@@ -1,7 +1,7 @@
 # `next_after`'s proofs: a measurement and a gap
 
-An appendix of [scheduled execution](../scheduled-execution.md), moved from its section "The
-arithmetic, and the decision inside it" on 2026-10-11 (UTC) under §212 (a prose budget). The
+An appendix of [scheduled execution](../scheduled-execution.md), for its section "The
+arithmetic, and the decision inside it", under §212 (a prose budget). The
 parent keeps the three properties and why Kani holds them. This file keeps the two things about
 `crates/timetable/src/proofs.rs` worth knowing before anyone edits `next_after`.
 

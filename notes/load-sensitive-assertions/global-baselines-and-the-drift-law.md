@@ -121,7 +121,7 @@ with something else. No wall-clock margin could distinguish that from load eithe
 
 ### Placement probe (`smp.rs`, `work_can_be_placed_on_every_cpu`): left alone, and that was wrong
 
-*Superseded on 2026-08-04. The argument below is kept because it is the argument that failed, and
+*Withdrawn on 2026-08-04. The argument below is kept because it is the argument that failed, and
 the way it failed is instructive. The verdict that replaced it is in
 [the second round](measurement-windows-and-the-load-recipe.md).*
 
