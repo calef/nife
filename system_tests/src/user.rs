@@ -1248,3 +1248,15 @@ mod seventh_pass_delegation_tests;
 /// Cross-ISA: `invoke`, the slot lookup and the table are portable kernel code (DECISIONS §19).
 #[cfg(test)]
 mod eighth_pass_slot_lifecycle_tests;
+
+/// **A supervisor's domain is its own rendezvous on both the reap and the view side, and a
+/// stranger's liveness is invisible through either** (an eighth outsider pass at the confinement
+/// claim, claims 6, 7, 8 and 9). A fully privileged supervisor of one domain reaches sideways at
+/// another domain's members, alive and dead, through `REAP` and `SURVEY` over the real dispatcher;
+/// the liveness attack asserts the two refusals are the same error word for word. The view attack
+/// keeps a corpse in its own domain's walk and a stranger out of it, and checks the empty domain
+/// answers rather than refusing. Its own header has the reasoning.
+///
+/// Cross-ISA: the reap decision and the survey walk are portable kernel code (DECISIONS §19).
+#[cfg(test)]
+mod eighth_pass_rendezvous_scope_tests;
