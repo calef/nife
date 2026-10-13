@@ -81,6 +81,16 @@ which is the debt itself, and the count of documents over the cap. The first say
 tree is paying the debt down, the second says whether the ratchet is holding. Both were measured at
 569,775 words and 174 documents on 2026-09-23.
 
+*Amended 2026-10-13 (UTC): the gate counts what the graph counts.* The two had drifted apart. The
+graph counted every whitespace-separated word in the file, as ratified; the gate
+(`helpers/prose_ratchet.py`, milestone 586) stripped fenced code, HTML comments, frontmatter and
+roadmap field tokens first. So on 2026-10-13 the graph read 71 documents over the cap while the gate
+passed all but the two marked exceptions, 69 of them sitting between about 2,640 and 3,000 by the
+gate's count. Asked to choose, calef chose the option "Gate counts every word": trim those
+documents under the cap by the whole-file count, then switch the gate's word measure to that count,
+through one function both call, so the graph cannot climb back. The ruling moves the word count
+only; §213's sentence and bold measures still read prose alone.
+
 What this section does not yet decide: whether the cap applies to every document or to a class of
 them (question 2, where the recommendation below argues for every document, and where the two marked
 exceptions to date, `AGENTS.md` at 5,873 words of imperatives and `design/fatal-risks/README.md` at 4,235
