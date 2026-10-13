@@ -42,10 +42,6 @@ pub const USER_CODE: u16 = 0x20 | 3;
 /// 64-bit system descriptor is 16 bytes rather than 8.
 const TSS_SELECTOR: u16 = 0x28;
 
-/// The IST slot the double-fault handler runs on. **One-based**: the IDT encodes 0 as "do not
-/// switch stacks", so slot 1 is `TSS.ist[0]`.
-pub const IST_DOUBLE_FAULT: u8 = 1;
-
 /// The x86 I/O port space is 16 bits (`in`/`out` address exactly 64 Ki ports), one bit of "may this
 /// ring-3 thread touch this port" each, so a full permission bitmap is `65536 / 8 == 8192` bytes.
 const IOMAP_BYTES: usize = 65536 / 8;
@@ -90,8 +86,9 @@ struct Tss {
     rsp1: u64,
     rsp2: u64,
     _reserved1: u64,
-    /// Seven unconditional stacks, selectable per IDT entry. `ist[0]` is what
-    /// [`IST_DOUBLE_FAULT`] names.
+    /// Seven unconditional stacks, selectable per IDT entry. The first three are this core's
+    /// stacks for the double fault, the NMI and the machine check, in [`super::ist::VECTORS`]'s
+    /// order, written by [`super::ist::install`]; the other four stay 0 and no gate selects them.
     ist: [u64; 7],
     _reserved2: u64,
     _reserved3: u16,
@@ -282,6 +279,11 @@ pub unsafe fn init() {
 
     // Put the per-CPU pointer back; see the comment above the `asm!`.
     super::set_percpu(gs_base);
+
+    // This core's NMI, double-fault and machine-check stacks, before `exceptions::init` loads the
+    // IDT whose gates select them.
+    // SAFETY: once per core, on this core, before its IDT exists, with this core's own block.
+    unsafe { super::ist::install(id, gs_base as u64) };
 }
 
 // Point this CPU's ring-0 trap stack at `top`. DELETED 2026-09-30 by the CI-warnings lane:
@@ -308,6 +310,21 @@ pub unsafe fn set_interrupt_stack(slot: u8, top: u64) {
             .cast::<u64>()
             .add(slot as usize - 1)
             .write_unaligned(top);
+    }
+}
+
+/// Core `id`'s IST entry `slot` (one-based, as the IDT encodes it): the `rsp` the CPU loads for a
+/// gate that selects it. Read by the tests that check [`super::ist::install`].
+#[cfg(test)]
+pub fn interrupt_stack(id: usize, slot: u8) -> u64 {
+    assert!((1..=7).contains(&slot), "IST slots are 1..=7, not {slot}");
+    // SAFETY: reads core `id`'s `ist[slot - 1]`, in bounds by the assertion above and by indexing,
+    // unaligned because the TSS is `packed`. Written once at that core's bring-up and not after.
+    unsafe {
+        (&raw const (*TSS.get())[id].ist)
+            .cast::<u64>()
+            .add(slot as usize - 1)
+            .read_unaligned()
     }
 }
 
@@ -389,10 +406,9 @@ pub fn set_port_range_grant(grant: Option<(u16, u16)>) {
 
 /// [`set_port_range_grant`] for a core that names itself by number rather than through `gs`.
 ///
-/// **The NMI half of a revocation broadcast cannot call `cpu::id()`**, which reads `IA32_GS_BASE`,
-/// and `mmu::serve_shootdown_nmi`'s own doc has the reason: an NMI can land in the window where that
-/// MSR still holds the *user's* value while `cs` says ring 0. The handler names its core from the
-/// local APIC id register instead, which is hardware ground truth, and hands it here. On this port
+/// **The NMI half of a revocation broadcast names its core from the local APIC id register**, which
+/// is hardware ground truth, rather than through `cpu::id()`, and hands it here;
+/// `mmu::serve_shootdown_nmi`'s own doc says why. On this port
 /// the two numbers are the same (`smp::seat_cpus_from_acpi` seats every core at the slot its own
 /// APIC id names), and the sender `debug_assert`s it rather than assuming it.
 ///
@@ -453,7 +469,7 @@ pub fn revoke_installed_port_grant(base: u16, count: u16) {
 
 /// [`revoke_installed_port_grant`] for a core that names itself by number. The receiving half of
 /// [`revoke_port_grant_everywhere`], called from the NMI handler; see [`set_port_range_grant_on`]
-/// for why the handler cannot ask `cpu::id()` who it is.
+/// for why the handler names its core from the local APIC.
 pub(super) fn revoke_installed_port_grant_on(id: usize, base: u16, count: u16) {
     // SAFETY: this core's own slot; see `set_port_range_grant_on`.
     if unsafe { (*INSTALLED_PORT_GRANT.get())[id] } == Some((base, count)) {
