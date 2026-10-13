@@ -85,22 +85,22 @@ commit carries."* There is no recipe, no package build, no checksum check and no
 
 Lane `milestone/810-ripgrep-is-packaged-in-basalt`, with the basalt pull request it names.
 
-- **The recipe** is `nifeos/basalt`'s `recipes/ripgrep.toml`: the crate at 14.1.1 and its SHA-256
+- The recipe is `nifeos/basalt`'s `recipes/ripgrep.toml`: the crate at 14.1.1 and its SHA-256
   (crates.io's `cksum`), and `ignore` 0.4.23 at its SHA-256 with nife's
   `helpers/ripgrep-ignore-walk.patch`, read from the pinned commit and refused unless its SHA-256
   is the recipe's. A download that does not match is refused before anything is built (item 1).
-- **The build** is basalt's `helpers/packages.py`: the pinned nife's `cargo xtask std-src` and
+- The build is basalt's `helpers/packages.py`: the pinned nife's `cargo xtask std-src` and
   `cargo xtask foreign-note`, `helpers/build-ripgrep.sh`'s flags with symbols stripped, and the
   pinned nife's `cargo xtask package` as the one producer (items 2 to 4). Packages measured
   2026-10-12: 2,950,424 bytes on aarch64, 2,782,560 on riscv64, 2,934,096 on x86_64, under
   `spawnproto::IMAGE_MAX_PAGES`' 4 MiB. Unstripped they were 5.1, 11.7 and 4.4 MB.
-- **The program is `rg`, in a package named `ripgrep`.** The installer took the member named after
+- The program is `rg`, in a package named `ripgrep`. The installer took the member named after
   the package as the program, so a package named `ripgrep` could only install `ripgrep`. It now
   falls back to the one member named `bin/<program>` (`package_archive::PROGRAM_PREFIX`), and
   basalt packs `bin/rg`. That is the question below.
-- **The repository** basalt writes is the layout `jig` reads (`rolling/metadata/stand-in-index`,
+- The repository basalt writes is the layout `jig` reads (`rolling/metadata/stand-in-index`,
   `rolling/targets/`), kept as a workflow artifact (item 5's layout; not its publication).
-- **The proof** is basalt's `packages` workflow: it runs this tree's swish-check rows with
+- The proof is basalt's `packages` workflow: it runs this tree's swish-check rows with
   `NIFE_BASALT_REPOSITORY` naming that repository, the test index host serves its lines beside the
   fixtures', and the second boot types `jig install ripgrep` then `rg --version`, which prints
   `ripgrep 14.1.1` (item 6). Without the variable, as in nife's own CI, the two lines are skipped
