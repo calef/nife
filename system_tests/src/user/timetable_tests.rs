@@ -608,7 +608,7 @@ fn only_the_admitted_entries_fired(t: &Spawned) {
     let mut forty_nines = 0;
     let mut depleter_reports = 0;
     for _ in 0..FIRES {
-        let answer = report(&t);
+        let answer = report(t);
         match answer {
             9 => nines += 1,
             49 => forty_nines += 1,
@@ -794,7 +794,7 @@ fn the_stored_shape_is_accepted_as_it_is(t: &Spawned, page: &mut [u8]) {
     // The timetable started with an empty document; this is how its first one arrives
     // (`timetable::contract`).
     send_replace(page, 1, STORED_SCHEDULE_CONTROL.as_bytes());
-    await_reply(&t, page, 1);
+    await_reply(t, page, 1);
     let (status, _, verdicts, plan) = read_reply(page, 1);
     assert_eq!(
         status,
@@ -816,7 +816,7 @@ fn the_stored_shape_is_accepted_as_it_is(t: &Spawned, page: &mut [u8]) {
         plan.starts_with(b"timetable: the plan, before anything fires"),
         "the plan comes back in the page, which is the registrar's whole view",
     );
-    assert_eq!(report(&t), 9, "the stored at-boot line fires once");
+    assert_eq!(report(t), 9, "the stored at-boot line fires once");
 }
 
 /// Replacement 3 of [`a_registrar_replaces_the_document_whole_and_a_failed_replacement_changes_nothing`].
@@ -832,7 +832,7 @@ fn an_edit_keeps_a_resent_line_and_fires_a_new_one(t: &Spawned, page: &mut [u8])
           every 1s date\n\
           every 60m least_authority_demo 2\n",
     );
-    await_reply(&t, page, 3);
+    await_reply(t, page, 3);
     let (status, _, verdicts, plan) = read_reply(page, 3);
     assert_eq!(status, r::STATUS_REPLACED, "the edit must be accepted");
     assert_eq!(
@@ -868,7 +868,7 @@ fn an_edit_keeps_a_resent_line_and_fires_a_new_one(t: &Spawned, page: &mut [u8])
     // The new at-boot line fires once. A 49 can only be the stored schedule's 30-second line firing
     // before the edit removed it (see the doc comment), and it queued first if it did.
     loop {
-        match report(&t) {
+        match report(t) {
             16 => break,
             49 => {}
             9 => panic!("the resent at-boot line fired again: its beat was not kept"),

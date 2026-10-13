@@ -1278,7 +1278,7 @@ fn spawn_fuzzers(
     let roles = [proto::ROLE_A, proto::ROLE_B, proto::ROLE_WITNESS];
     let mut tids = [0u64; FUZZERS];
     for (x, tid) in tids.iter_mut().enumerate() {
-        let (grants, granted) = grants_for(x, go[x], own, &endowment);
+        let (grants, granted) = grants_for(x, go[x], own, endowment);
         let maps = [Mapping {
             va: proto::REPORT_VA,
             phys: reports[x],

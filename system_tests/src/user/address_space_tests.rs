@@ -176,7 +176,7 @@ fn an_asid_flush_reaches_the_other_cpus() {
     unsafe { core::ptr::write_volatile(mmu::phys_to_virt(fresh.addr()) as *mut u8, NEW) };
 
     let probe = sched::spawn_on(target, move || {
-        probe_across_the_flush(handshake, installed, VA)
+        probe_across_the_flush(handshake, installed, VA);
     })
     .expect("spawn_on failed");
 
@@ -331,7 +331,7 @@ fn remap_with_no_invalidation(space: &AddressSpace, va: u64, frame: u64) {
         "the allocator handed back the frame we just unmapped: nothing would change"
     );
     mapper
-        .map(VA, frame, Flags::user_data())
+        .map(va, frame, Flags::user_data())
         .expect("remap onto the fresh frame");
 
     // Discharged with a no-op ON PURPOSE, and this is the only place in the tree that does it.
