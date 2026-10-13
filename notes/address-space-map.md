@@ -101,7 +101,7 @@ as `Err(())`, so there the check only makes the failure early and clean.
   `STACK_TOP_PAGE`, so neither can move alone.
 - `crates/user_mode_runtime/link.ld` links at `0x6000_0000`. A linker script cannot name a Rust
   constant, so the map's host test parses the script's `. =` line and fails if the two differ.
-- `helpers/build-ripgrep.sh` and `cryptography_exerciser/build.rs` no longer relink at 16 MiB.
+- basalt's build of `rg` and `cryptography_exerciser/build.rs` link with the shared script, at its base.
 - The screen aperture is at `0x5800_0000`, outside the heap band.
 - Hand-built children in the kernel's tests and in `fixtures/` put their code at `IMAGE_BASE` and
   their stack at `STACK_TOP_PAGE`, so their page tables have a real program's shape.
