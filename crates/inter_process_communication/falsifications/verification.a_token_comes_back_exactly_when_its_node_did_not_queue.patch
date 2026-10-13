@@ -10,10 +10,11 @@ collected sender's token onto its own TCB (`sched::hold_token`) and the sender's
 handed the receiver's, so one thread would hold two tokens for the same node: the double-queue the
 token exists to make impossible.
 
-diff --git a/crates/inter_process_communication/src/lib.rs b/crates/inter_process_communication/src/lib.rs
---- a/crates/inter_process_communication/src/lib.rs
-+++ b/crates/inter_process_communication/src/lib.rs
-@@ -417,7 +417,7 @@ impl<T: Node> Rendezvous<T> {
+diff --git a/crates/inter_process_communication/src/rendezvous.rs b/crates/inter_process_communication/src/rendezvous.rs
+index 845029a65..649e6d195 100644
+--- a/crates/inter_process_communication/src/rendezvous.rs
++++ b/crates/inter_process_communication/src/rendezvous.rs
+@@ -281,7 +281,7 @@ impl<T: Node> Rendezvous<T> {
              self.pending -= 1;
              Receive::Signal(me)
          } else if let Some(sender) = self.senders.pop_front() {

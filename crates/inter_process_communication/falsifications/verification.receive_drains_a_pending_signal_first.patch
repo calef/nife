@@ -10,10 +10,11 @@ Expected to fail: the harness's `assert_eq!(unsafe { e.receive(...) }, Receive::
 rendezvous, which is the loss this ordering exists to prevent: a signal delivered with nobody
 waiting must not be overtaken by a sender that arrived later.
 
-diff --git a/crates/inter_process_communication/src/lib.rs b/crates/inter_process_communication/src/lib.rs
---- a/crates/inter_process_communication/src/lib.rs
-+++ b/crates/inter_process_communication/src/lib.rs
-@@ -413,11 +413,11 @@ impl<T: Node> Rendezvous<T> {
+diff --git a/crates/inter_process_communication/src/rendezvous.rs b/crates/inter_process_communication/src/rendezvous.rs
+index 845029a65..0d91560bc 100644
+--- a/crates/inter_process_communication/src/rendezvous.rs
++++ b/crates/inter_process_communication/src/rendezvous.rs
+@@ -277,11 +277,11 @@ impl<T: Node> Rendezvous<T> {
      /// sender), then collect a queued sender, otherwise `me` joins the receiver queue (and the
      /// caller should block it). Safe, for [`send`](Self::send)'s reason.
      pub fn receive(&mut self, me: Unqueued<T>) -> Receive<T> {
