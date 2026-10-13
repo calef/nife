@@ -11,18 +11,16 @@ needs_person: no
 # 809. The package client becomes a program, `jig`, with the verbs an index needs
 
 **PARTIAL, 2026-10-10 (UTC).** Items 1 to 5 and item 8's digest check are built, and pass
-`script/swish-check` on aarch64, riscv64 and x86_64 under QEMU. `update` and the index copy were
-built by milestone 801's lane on 2026-10-12 (UTC). Left: `list --upgradable`, item 7
+`script/swish-check` on aarch64, riscv64 and x86_64 under QEMU. `update` and the index copy are
+built (milestone 801 (packages over the internet)). Left: `list --upgradable`, item 7
 (`add-repository`) and item 8's index half. The program is
 [notes/packages/jig.md](../../notes/packages/jig.md).
 
-*(Promoted from the proposal pile on 2026-10-07 (UTC), calef: "Promote jig to a milestone." The
-number is provisional until the merge queue lands it. `jig` is ratified; the title, slug and verb
-spellings are drafts. Later rulings are in the work list and the forks table.)*
+*(calef, 2026-10-07 (UTC): "Promote jig to a milestone." `jig` is ratified; the title, slug and
+verb spellings are drafts. Later rulings are in the work list and the forks table.)*
 
-*Dependencies corrected 2026-10-07 (UTC) by this lane: 198 was dropped. 198 is the umbrella over 802,
-which names this block, so the three waited on each other. What this block uses from 198 is rung 3a,
-built inside 198 by 2026-10-05 with no milestone of its own.*
+*Not a dependency of 198: 198 is the umbrella over 802, which names this block. What this block
+uses from 198 is rung 3a, built inside 198 with no milestone of its own.*
 
 calef ruled on 2026-10-06 (UTC) that the package client must be a program, not a shell builtin, and
 named six things it must do.
@@ -57,7 +55,7 @@ manpage, read 2026-10-10 (UTC), agree. apt's `upgrade` is not built here; it is 
 #1805 amendment below will use. apt(8) spells the flag `--upgradeable`; the ruling's `--upgradable`
 is held until calef says which.
 
-*Amended 2026-10-07 (UTC), calef on #1805: `jig` must update base packages; only the slot reboots. See §159 (only a new kernel needs a reboot).*
+*calef, 2026-10-07 (UTC), on #1805: `jig` must update base packages; only the slot reboots. See §159 (only a new kernel needs a reboot).*
 
 ## What moved, and what stays the progenitor's
 
@@ -213,7 +211,7 @@ forms), `remove` and `rollback` pass `script/swish-check` with the builtin gone,
 fetched by `jig`. The progenitor has no `http_response` or `Activation::Fetch`. A program without
 the installer grant is refused.
 
-Built 2026-10-10 (UTC) by lane `milestone/809-the-package-client-becomes-a-program`, #1903, as
+Built 2026-10-10 (UTC), #1903, as
 [notes/packages/jig.md](../../notes/packages/jig.md) describes. The gate's typed text changed in four
 ways. `package` became `jig`. The file installs are typed from inside `downloads`, since the root
 cannot be narrowed. A refusal `jig` makes itself names no generation. And three lines are new: `caps

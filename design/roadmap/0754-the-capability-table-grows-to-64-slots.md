@@ -11,8 +11,7 @@ needs_person: no
 # 754. The capability table grows to 64 slots
 
 Raised 2026-10-04 (UTC) by milestone 753 (trace the progenitor's login block peak) as its option A,
-which calef chose that day on pull request #1608. The number 754 is provisional until the queue
-lands it. *(Title and slug are drafts.)*
+which calef chose that day on pull request #1608. *(Title and slug are drafts.)*
 
 ## Why
 
@@ -50,10 +49,9 @@ All of the list above, on all three ISAs, and three things it did not predict.
   2,064 bytes against 1,032 (`kernel/src/cap.rs` pins it). The TCB page still fits on all three: the
   size assertion holds, and the figures go from 1,984, 1,968 and 1,712 to 3,016, 3,000 and 2,744 of
   4,096 (arithmetic from the table's size).
-- **The run-unvouched slot moved from 30 to 62.** `grant_plan::spawnproto::RUN_UNVOUCHED_SLOT` is a
-  hand-written number that three binaries assert is `FAULT_EP_SLOT - 1`. It failed the build
-  until it moved; `script/swish-check`'s census expectation (`21 30` to `21 62`) and the notes that
-  quote slot 30 followed. It moved with the fault slot at the last raise as well.
+- **The run-unvouched slot is 62.** `grant_plan::spawnproto::RUN_UNVOUCHED_SLOT` is a
+  hand-written number that three binaries assert is `FAULT_EP_SLOT - 1`, so it moves with the fault
+  slot at every raise, and `script/swish-check`'s census expectation (`21 62`) moves with it.
 - **Two kernel stack costs had to be fixed.** See below.
 
 ## What it cost, measured

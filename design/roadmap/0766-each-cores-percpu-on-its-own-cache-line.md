@@ -11,9 +11,8 @@ needs_person: yes
 ---
 # 766. Each core's PerCpu on its own cache line
 
-Raised 2026-10-05 (UTC) by `lane/null-syscall-hvf`, measuring fatal risk 4's null syscall under
-load, and promoted from `design/roadmap/proposals/` the same day by `lane/percpu-own-line`. The
-number 766 was minted by the maintainer on 2026-10-05 (UTC). *(Title, slug and every name below are drafts.)*
+Raised by measuring fatal risk 4's null syscall under load. *(Title, slug and every name below
+are drafts.)*
 `needs_person` is yes only because the acceptance measurement is taken at radon's bench.
 
 ## Index row

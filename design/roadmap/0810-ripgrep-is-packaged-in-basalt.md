@@ -15,10 +15,9 @@ built, on all three architectures under QEMU. Left: publishing at `basalt.nifeos
 host, and recording the package's digest in the recipe. "Built 2026-10-12" below has the rest; one
 convention it needed is a question for calef there.
 
-*(Minted 2026-10-07 (UTC) by lane `package-runtime-requirements` from fork 4 of the proposal
+*(From fork 4 of
 [milestone 849 (a package declares what it needs at run time)](0849-a-package-declares-what-it-needs-at-run-time.md),
-pull request #1797. The number is provisional until the merge queue lands it; the title and slug are
-drafts.)*
+pull request #1797; the title and slug are drafts.)*
 
 The purpose: a customer runs `rg` at the swish prompt after `jig install ripgrep`. `ripgrep` is a
 customer-facing `optional` package that any customer installs from basalt's index. What is excluded
@@ -82,8 +81,6 @@ commit carries."* There is no recipe, no package build, no checksum check and no
    `rg` from `jig install`.
 
 ## Built 2026-10-12 (UTC)
-
-Lane `milestone/810-ripgrep-is-packaged-in-basalt`, with the basalt pull request it names.
 
 - The recipe is `nifeos/basalt`'s `recipes/ripgrep.toml`: the crate at 14.1.1 and its SHA-256
   (crates.io's `cksum`), and `ignore` 0.4.23 at its SHA-256 with nife's

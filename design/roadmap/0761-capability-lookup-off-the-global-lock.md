@@ -11,9 +11,7 @@ needs_person: yes
 ---
 # 761. Capability lookup off the global lock
 
-Promoted from `design/roadmap/proposals/capability-lookup-off-the-global-lock.md` on 2026-10-04
-(UTC) by the lane `lane/capability-lock-per-thread`. The number 761 is provisional until the queue
-lands it. *(Title and slug are drafts.)* `needs_person` is yes only because the result is taken at
+*(Title and slug are drafts.)* `needs_person` is yes only because the result is taken at
 radon's bench.
 
 ## Index row

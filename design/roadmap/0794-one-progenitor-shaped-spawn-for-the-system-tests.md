@@ -10,9 +10,9 @@ needs_person: no
 ---
 # 794. One progenitor-shaped spawn for the system tests
 
-Raised by the build lane of §185 (what carries the claim that userspace composes a process from
-an authority you can count on one hand) on 2026-10-05 (UTC). That lane wrote the fifth copy of this sequence
-because the four it found were private to their test modules.
+Raised by the build of §185 (what carries the claim that userspace composes a process from an
+authority you can count on one hand). The tree holds five copies of this sequence, because each is
+private to its test module.
 
 ## The duplication
 

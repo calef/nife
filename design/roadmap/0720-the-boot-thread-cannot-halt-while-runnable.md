@@ -11,10 +11,8 @@ needs_person: no
 ---
 # 720. The boot thread cannot halt while it is runnable
 
-Number provisional (the 720 lane, 2026-10-03 UTC): minted by the integrator at merge. Promoted from
-the proposal `the-boot-thread-cannot-halt-while-runnable`, raised 2026-10-03 by the maintainer
-session that wrote the merge-rate correction (`notes/coes/2026-10-03-the-merge-rate.md`); calef
-approved closing it the same day.
+Raised by the merge-rate correction (`notes/coes/2026-10-03-the-merge-rate.md`); calef approved
+closing it (2026-10-03).
 
 A thread that halts the core while it is still on the run queue costs a timer tick every time round
 robin reaches it. Milestone 628 (the x86_64 swish-check leg costs what the others do) found x86_64's
@@ -24,8 +22,8 @@ boot thread doing that after the hand-over, at 7.7 s a swish-check line, and end
 What ships:
 
 1. **`arch::halt` takes an `arch::HaltReason`**, a zero-sized token with a private field. calef
-   ratified the name on 2026-10-03, replacing the lane's provisional `Terminal`, which clashed with
-   the display terminal and tty sense the tree already uses. The constructors' names are
+   ratified the name on 2026-10-03, not `Terminal`, which clashes with the display terminal and tty
+   sense the tree already uses. The constructors' names are
    provisional. Its constructors are the whole list of who may stop a core for good.
    `panicked(&PanicInfo)` needs what only the panic handler holds, and `test_build()` exists only
    in a test image. `measurement_boot()` exists only in a `bench`, `icount`, `soak_test`,

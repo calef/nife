@@ -9,9 +9,8 @@ needs_person: yes
 ---
 # 817. `designware_mobile_storage`: a proven DesignWare SD and eMMC host, released on its own
 
-*(Minted 2026-10-07 (UTC) by lane/publish-ours-milestones from calef's rulings on pull request
-#1806. The number is provisional until the merge queue lands it; the title and slug are drafts.
-The FAT crate's block in #1811 is the shape this follows.)*
+*(From calef's rulings on pull request #1806; the title and slug are drafts. The FAT crate's block,
+milestone 813 (a proven FAT crate released on its own), is the shape this follows.)*
 
 calef's rulings, quoted from the maintainer comments on #1806 of 2026-10-07 (UTC):
 

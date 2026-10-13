@@ -11,10 +11,8 @@ needs_person: no
 ---
 # 767. AMD-Vi hardening before the first AMD boot
 
-Raised 2026-10-05 (UTC) by lane/633-outsider-2, milestone 633 (an outside agent attacks the
-confinement claim)'s second pass, and promoted from `design/roadmap/proposals/` the same day by
-`lane/amd-vi-hardening`, which calef approved. The number 767 is provisional until the queue lands
-it. *(Title, slug and every name below are drafts.)*
+Raised by milestone 633 (an outside agent attacks the confinement claim)'s second pass; calef
+approved it. *(Title, slug and every name below are drafts.)*
 
 Milestone 764 (AMD-Vi confines device DMA on x86-64) built the driver. The second outsider pass
 read it as a confinement boundary and recorded five gaps in `kernel/src/arch/x86_64/amd_vi.rs`'s

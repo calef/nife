@@ -11,9 +11,9 @@ needs_person: no
 ---
 # 725. Machine effort and commit attribution count every vendor
 
-Promoted from `design/roadmap/proposals/effort-and-attribution-count-every-vendor.md` on 2026-10-03 (UTC). The number 725 is provisional until the queue lands it. *(Title and slug are drafts.)*
+*Title and slug are drafts.*
 
-Raised 2026-10-03 by the maintainer session that wrote the merge-rate correction, from calef's question on #1513: do our metrics assume Claude is the only vendor? They did. From 2026-09-29 02:33 to 2026-10-01 05:07 UTC the work ran on z.ai (GLM models, under opencode). `script/effort` read none of it, and `script/metrics` filed its 154 commits under `unattributed`.
+Raised by calef's question on #1513: do our metrics assume Claude is the only vendor? They did. From 2026-09-29 02:33 to 2026-10-01 05:07 UTC the work ran on z.ai (GLM models, under opencode). `script/effort` read none of it, and `script/metrics` filed its 154 commits under `unattributed`.
 
 The work: `script/effort` reads opencode's session database for this project's sessions and writes the same per-model rows. Commits it can prove an opencode session made go in a committed `commit-models.csv`. `script/metrics` reads that file, so a GitHub runner with no database still attributes them. What cannot be proved stays unattributed and is counted.
 
