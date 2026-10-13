@@ -123,6 +123,6 @@ the names this run has already taken away.
 
 - DECISIONS §47 (a directory capability carries six rights), §48 (navigation is the shell
   rebinding what it holds), §42 (a filesystem declares what it offers and must be truthful).
-- Milestone 47's "`rmdir` and `rm -r`: Unix already made the safe choice" in `design/roadmap/0047-navigation-and-naming.md`.
+- Milestone 47's "`rmdir` and `rm -r`: Unix already made the safe choice" in `design/roadmap/0047-navigation-and-naming/mkdir-and-rm.md`.
 - `notes/dir-capability.md` for the rights ladder and `fs_subtree_caretaker`, and
   `notes/glob-grant.md` for the nameset caretaker a pattern operand is served by.
