@@ -190,6 +190,10 @@ Stage 2 (milestone 836) added these, also reversible:
   `std`'s block, and nothing lays out an ELF one beside it. It is
   milestone 912 (C thread-locals on nife's thread pointer). fio does not need it: its `configure`
   finds `__thread` missing and uses `pthread_getspecific` instead.
+- **`stdlib.h` does not compile first.** It uses `__noreturn` and `__deprecated` without including
+  `features.h`, so a file that includes it before anything else fails; `-include features.h` works
+  around it. `sys/select.h` defines `fd_set` but declares no `select`, which is not built either.
+  Both were found compiling fio (`notes/fio-on-nife.md`).
 - **16 threads a process**, the main thread included (`std`'s limit). One more `pthread_create`
   answers `EAGAIN`.
 - **Every stack comes out of the heap**, which on nife is memory already committed. relibc's

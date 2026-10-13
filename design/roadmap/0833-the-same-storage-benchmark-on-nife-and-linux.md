@@ -50,6 +50,12 @@ These are questions the port answers, not assumptions. Each is a dependency foun
   both sides, or the two numbers are not comparable.
 - What std and libc fio's build wants that nife lacks, found by the first compile.
 
+Answered in part on 2026-10-12 (UTC) by compiling fio 3.40 against the C library without linking
+it: `notes/fio-on-nife.md` has the list. fio needs no C thread-locals, since its `configure` falls
+back to `pthread_getspecific`, which costs nife one key lookup per timestamp that Linux does not pay.
+On the benchmark's path it needs `sys/resource.h`, `libgen.h`, `select`, two header fixes and an
+`os/os-nife.h`; the rest can stay stubs with `thread=1` and `--disable-shm`.
+
 ## What it must answer
 
 Why the 2026-10-04 read was 2.16x Linux's (272 MB/s against 126 MB/s) when polled Linux reads were
