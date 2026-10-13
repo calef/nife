@@ -106,6 +106,13 @@ is not a fork. Three facts follow:
   which `std`'s block already has as its first field.
 - The pointer must be aligned to the segment's alignment on every architecture.
 
+## Parked, 2026-10-12 (UTC)
+
+calef parked this milestone the day it was minted: *"Park it."* fio, the program that prompted it,
+does not need it, and no other program on the path to a fatal risk does. The question below stays
+open and unasked until a C program that needs `__thread` is about to be ported; that lane brings it
+back to calef with this analysis.
+
 ## Open questions for calef
 
 1. Where does `std`'s block sit relative to the ELF block? §269 fork 4 ruled one thread-pointer
