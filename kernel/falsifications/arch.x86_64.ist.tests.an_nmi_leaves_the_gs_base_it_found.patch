@@ -1,0 +1,26 @@
+Falsifies `kernel::arch::x86_64::ist::tests::an_nmi_leaves_the_gs_base_it_found`.
+
+Architecture: x86_64
+
+The defect: `isr_paranoid` installs the kernel's GS base and never puts back the one it found, so
+an NMI taken in the window between the exit `swapgs` and `iretq` returns to ring 3 with the
+kernel's per-CPU address in `IA32_GS_BASE`, and an NMI in the `syscall` entry window leaves
+`swapgs` to exchange the wrong pair.
+
+Expected to fail: "the NMI returned with a different GS base from the one it interrupted".
+Replayed red on patagonia, 2026-10-13 UTC, `script/test --arch x86_64 --no-host --test an_nmi_leaves_the_gs_base_it_found`
+(QEMU q35 under PVH, two cores); green with the fix.
+
+diff --git a/kernel/src/arch/x86_64/trap.s b/kernel/src/arch/x86_64/trap.s
+index aefb92483..4c08e72ce 100644
+--- a/kernel/src/arch/x86_64/trap.s
++++ b/kernel/src/arch/x86_64/trap.s
+@@ -503,7 +503,7 @@ isr_paranoid:
+     call x86_paranoid_dispatch
+ 
+     cmp rbx, [rsp + 176]
+-    je 2f
++    jmp 2f
+     mov ecx, 0xC0000101             # IA32_GS_BASE
+     mov rax, rbx
+     mov rdx, rbx

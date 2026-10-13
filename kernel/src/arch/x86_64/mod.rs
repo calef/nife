@@ -52,6 +52,9 @@ pub mod interrupts;
 pub mod iommu;
 pub mod irq;
 pub mod isa;
+// The NMI, double-fault and machine-check stacks the TSS's IST names: milestone 915 (NMI, double
+// fault and machine check run on their own stacks), provisional.
+pub mod ist;
 // What the loader said (milestone 161): the kernel side of `machine_discovery::x86_64`.
 pub mod machine;
 pub mod mmu;
@@ -249,11 +252,10 @@ pub fn set_percpu(ptr: usize) {
 /// `rcx`, and this runs several times per syscall: every lock, unlock and current-thread read.
 /// Inlined, it was the largest single line in x86_64's IPC fast-path closures on 2026-10-04 UTC.
 ///
-/// It reads through `gs` where the old one read the MSR, so the window where `IA32_GS_BASE` holds
-/// the user's value (between the exit `swapgs` and `iretq`, `trap.s`) is now a load from a user
-/// address rather than a wrong number. Nothing may call this in that window either way, and the
-/// two code paths that can land there (the shootdown NMI and `segments::set_port_range_grant_on`)
-/// already name their core from the local APIC instead; `mmu::serve_shootdown_nmi` says why.
+/// It reads through `gs`, so in the windows where `IA32_GS_BASE` holds the user's value (around
+/// the `swapgs` at `syscall` entry and before `iretq`, `trap.s`) it would be a load from a user
+/// address. Nothing ordinary runs there: interrupts are masked, and the NMI, double fault and
+/// machine check enter through `isr_paranoid`, which puts the kernel's GS base in place first.
 pub fn percpu() -> usize {
     let p: usize;
     // SAFETY: after `set_percpu` on this core, `gs:[PERCPU_SELF_OFF]` is this core's own

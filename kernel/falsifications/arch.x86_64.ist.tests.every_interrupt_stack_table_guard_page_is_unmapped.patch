@@ -1,0 +1,38 @@
+Falsifies `kernel::arch::x86_64::ist::tests::every_interrupt_stack_table_guard_page_is_unmapped`.
+
+Architecture: x86_64
+
+The defect: `map_everything` maps each IST stack from its guard page up, and `verify` no longer
+checks the IST guards. An overflow of one of these stacks then runs into the stack below it (another
+vector's, or another core's) instead of faulting. Two edits, because `verify` alone would refuse
+the map at boot before any test ran.
+
+Expected to fail: "cpu 0: vector 8's IST guard page ... is mapped".
+Replayed red on patagonia, 2026-10-13 UTC, `script/test --arch x86_64 --no-host --test every_interrupt_stack_table_guard_page_is_unmapped`
+(QEMU q35 under PVH, two cores); green with the fix.
+
+diff --git a/kernel/src/arch/x86_64/mmu/fine_map.rs b/kernel/src/arch/x86_64/mmu/fine_map.rs
+index 015fb5ec1..4f09d21d6 100644
+--- a/kernel/src/arch/x86_64/mmu/fine_map.rs
++++ b/kernel/src/arch/x86_64/mmu/fine_map.rs
+@@ -159,7 +159,7 @@ where
+     for id in 0..crate::cpu::MAX_CPUS {
+         for k in 0..super::super::ist::VECTORS.len() {
+             let (bottom, top) = super::super::ist::span(id, k);
+-            va("IST stack", bottom, top, Flags::kernel_data())?;
++            va("IST stack", bottom - 4096, top, Flags::kernel_data())?;
+         }
+     }
+ 
+@@ -299,10 +299,7 @@ where
+             "an interrupt stack's guard page IS mapped: its overflow protection is off"
+         );
+         for k in 0..super::super::ist::VECTORS.len() {
+-            assert!(
+-                m.translate(super::super::ist::guard(id, k)).is_none(),
+-                "an IST stack's guard page IS mapped: its overflow protection is off"
+-            );
++            let _ = k;
+         }
+     }
+ }
