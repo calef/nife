@@ -159,8 +159,8 @@ would replace only the download (unverified for `cargo-binstall`'s custom-target
 
 - **Outstanding.** Publishing at `basalt.nifeos.org`: checked 2026-10-12, `nifeos.org` answers no
   DNS query. A host, DNS and a certificate are calef's.
-- **Outstanding.** The package's digest in the recipe: needs a build reproducible across machines,
-  not measured. Checked 2026-10-12: the recipe records the sources' digests only.
+- **Milestone 917.** Milestone 917 (basalt's packages build reproducibly, and the recipe records each
+  package's digest).
 - **Outstanding.** Several programs in one package, as calef ruled: the installer, §229's lookup and
   `jig remove` taking every `bin/` member. Two packages offering the same program name is a question
   for calef when that work starts, not before.
