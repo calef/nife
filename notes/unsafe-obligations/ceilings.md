@@ -13,9 +13,8 @@ of those has a safe wrapper somebody could write. The ceiling was first written 
 tree crossed the day before, rather than at slack. Every sample before 2026-08-18 would have failed
 it, 2026-08-16 included at 111.7. That is what makes it a ratchet instead of decoration.
 
-Every move of this ceiling came behind a measured reduction. The per-round accounting (what
-collapsed, the diff each was measured from, the base commit) is in milestone 139's appendices,
-`design/roadmap/0139-drive-down-unsafe/`, one file per round or two, and is not repeated here.
+Every move of this ceiling came behind a measured reduction. The rule each move follows is milestone
+139's block, `design/roadmap/0139-drive-down-unsafe.md`.
 
 | Round | Date | Ceiling | Density after | What collapsed |
 |---|---|---|---|---|

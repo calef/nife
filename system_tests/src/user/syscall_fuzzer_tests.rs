@@ -429,125 +429,8 @@ impl Model {
         [a0, a1, a2]: [u64; 3],
         woken: &mut [Option<Answer>; ACTORS],
     ) -> Option<Answer> {
-        use abi::{notification as n, page_frame as f, rendezvous as r};
-        let refuse = |e| Some(Answer::err(e));
         match cap.obj {
-            Obj::Ep(ep) => match method {
-                r::SEND => {
-                    if !cap.allows(Rights::WRITE) {
-                        return refuse(Error::NotPermitted);
-                    }
-                    let msg = [a0, a1, a2, cap.badge, 0];
-                    match self.receivers[ep].pop() {
-                        Some(rx) => {
-                            woken[rx] = Some(self.deliver_plain(rx, msg));
-                            Some(Answer::ok(0))
-                        }
-                        None => {
-                            self.senders[ep].push(a);
-                            self.park[a] = Park::Send {
-                                ep,
-                                msg: [a0, a1, a2],
-                                badge: cap.badge,
-                            };
-                            None
-                        }
-                    }
-                }
-                r::RECEIVE | r::RECEIVE_CAP => {
-                    if !cap.allows(Rights::READ) {
-                        return refuse(Error::NotPermitted);
-                    }
-                    let with_cap = method == r::RECEIVE_CAP;
-                    let Some(tx) = self.senders[ep].pop() else {
-                        self.receivers[ep].push(a);
-                        self.park[a] = Park::Recv { ep, cap: with_cap };
-                        return None;
-                    };
-                    Some(self.collect(a, tx, with_cap, woken))
-                }
-                r::SEND_CAP => {
-                    if !cap.allows(Rights::WRITE) {
-                        return refuse(Error::NotPermitted);
-                    }
-                    let Some(src) = self.cap(a, a0) else {
-                        return refuse(Error::NoSuchSlot);
-                    };
-                    if !src.allows(Rights::GRANT) {
-                        return refuse(Error::NotPermitted);
-                    }
-                    let narrowed = (a1 as u32) & Rights::ALL.bits();
-                    if narrowed & !src.rights != 0 {
-                        return refuse(Error::NotPermitted);
-                    }
-                    let delegated = MCap {
-                        obj: src.obj,
-                        rights: narrowed,
-                        badge: src.badge,
-                    };
-                    match self.receivers[ep].pop() {
-                        // Receiver-first: only a RECEIVE_CAP takes the capability (§246, see
-                        // `plain_receive`).
-                        Some(rx) => {
-                            let s = match self.plain_receive(rx) {
-                                false => self.insert(rx, delegated),
-                                true => 0,
-                            };
-                            self.park[rx] = Park::Idle;
-                            woken[rx] = Some(Answer::msg([a2, s, 0, cap.badge, 0]));
-                            Some(Answer::ok(0))
-                        }
-                        None => {
-                            self.senders[ep].push(a);
-                            self.park[a] = Park::SendCap {
-                                ep,
-                                data: a2,
-                                cap: Some(delegated),
-                                badge: cap.badge,
-                            };
-                            None
-                        }
-                    }
-                }
-                r::CALL => {
-                    if !cap.allows(Rights::WRITE) {
-                        return refuse(Error::NotPermitted);
-                    }
-                    match self.receivers[ep].pop() {
-                        Some(rx) if self.plain_receive(rx) => {
-                            // §246: the words arrive and the caller is answered Gone.
-                            self.park[rx] = Park::Idle;
-                            woken[rx] = Some(Answer::msg([a0, a1, 0, cap.badge, 0]));
-                            return refuse(Error::Gone);
-                        }
-                        Some(rx) => {
-                            let s = self.insert(rx, reply_of(a));
-                            self.park[rx] = Park::Idle;
-                            woken[rx] = Some(Answer::msg([a0, s, a1, cap.badge, reply_tag(s)]));
-                            self.park[a] = Park::AwaitReply;
-                        }
-                        None => {
-                            self.senders[ep].push(a);
-                            self.park[a] = Park::Call {
-                                ep,
-                                msg: [a0, a1],
-                                badge: cap.badge,
-                            };
-                        }
-                    }
-                    None
-                }
-                r::BADGE => {
-                    if !cap.allows(Rights::GRANT) || a0 == 0 || cap.badge != 0 {
-                        return refuse(Error::NotPermitted);
-                    }
-                    match self.insert(a, MCap { badge: a0, ..cap }) {
-                        NO_CAP => refuse(Error::OutOfMemory),
-                        s => Some(Answer::ok(s as i64)),
-                    }
-                }
-                _ => refuse(Error::BadMethod),
-            },
+            Obj::Ep(ep) => self.invoke_endpoint(a, ep, cap, method, [a0, a1, a2], woken),
             Obj::Reply(caller) => match method {
                 abi::reply::REPLY => {
                     if !cap.allows(Rights::WRITE) {
@@ -570,79 +453,253 @@ impl Model {
                 }
                 _ => refuse(Error::BadMethod),
             },
-            Obj::Note => match method {
-                n::SIGNAL => {
-                    if !cap.allows(Rights::WRITE) {
-                        return refuse(Error::NotPermitted);
-                    }
-                    if a0 != 0 {
-                        match self.waiters.pop() {
-                            Some(w) => {
-                                self.park[w] = Park::Idle;
-                                woken[w] = Some(Answer::ok(a0 as i64));
-                            }
-                            None => self.word |= a0,
-                        }
-                    }
-                    Some(Answer::ok(0))
+            Obj::Note => self.invoke_notification(a, cap, method, a0, woken),
+            Obj::Frame(fr) => self.invoke_frame(fr, cap, method),
+        }
+    }
+
+    /// An endpoint's methods: the rendezvous itself.
+    fn invoke_endpoint(
+        &mut self,
+        a: usize,
+        ep: usize,
+        capability: MCap,
+        method: u64,
+        [a0, a1, a2]: [u64; 3],
+        woken: &mut [Option<Answer>; ACTORS],
+    ) -> Option<Answer> {
+        use abi::rendezvous as r;
+        match method {
+            r::SEND => {
+                if !capability.allows(Rights::WRITE) {
+                    return refuse(Error::NotPermitted);
                 }
-                n::WAIT => {
-                    if !cap.allows(Rights::READ) {
-                        return refuse(Error::NotPermitted);
+                let msg = [a0, a1, a2, capability.badge, 0];
+                match self.receivers[ep].pop() {
+                    Some(rx) => {
+                        woken[rx] = Some(self.deliver_plain(rx, msg));
+                        Some(Answer::ok(0))
                     }
-                    if self.word != 0 {
-                        Some(Answer::ok(core::mem::take(&mut self.word) as i64))
-                    } else {
-                        self.waiters.push(a);
-                        self.park[a] = Park::Wait;
+                    None => {
+                        self.senders[ep].push(a);
+                        self.park[a] = Park::Send {
+                            ep,
+                            msg: [a0, a1, a2],
+                            badge: capability.badge,
+                        };
                         None
                     }
                 }
-                n::POLL => {
-                    if !cap.allows(Rights::READ) {
-                        return refuse(Error::NotPermitted);
+            }
+            r::RECEIVE | r::RECEIVE_CAP => {
+                if !capability.allows(Rights::READ) {
+                    return refuse(Error::NotPermitted);
+                }
+                let with_cap = method == r::RECEIVE_CAP;
+                let Some(tx) = self.senders[ep].pop() else {
+                    self.receivers[ep].push(a);
+                    self.park[a] = Park::Recv { ep, cap: with_cap };
+                    return None;
+                };
+                Some(self.collect(a, tx, with_cap, woken))
+            }
+            r::SEND_CAP => self.send_capability(a, ep, capability, [a0, a1, a2], woken),
+            r::CALL => self.call(a, ep, capability, [a0, a1], woken),
+            r::BADGE => {
+                if !capability.allows(Rights::GRANT) || a0 == 0 || capability.badge != 0 {
+                    return refuse(Error::NotPermitted);
+                }
+                match self.insert(
+                    a,
+                    MCap {
+                        badge: a0,
+                        ..capability
+                    },
+                ) {
+                    NO_CAP => refuse(Error::OutOfMemory),
+                    s => Some(Answer::ok(s as i64)),
+                }
+            }
+            _ => refuse(Error::BadMethod),
+        }
+    }
+
+    /// `SEND_CAP`: delegate the capability in slot `a0`, narrowed to rights `a1`, with data word `a2`.
+    fn send_capability(
+        &mut self,
+        a: usize,
+        ep: usize,
+        capability: MCap,
+        [a0, a1, a2]: [u64; 3],
+        woken: &mut [Option<Answer>; ACTORS],
+    ) -> Option<Answer> {
+        if !capability.allows(Rights::WRITE) {
+            return refuse(Error::NotPermitted);
+        }
+        let Some(src) = self.cap(a, a0) else {
+            return refuse(Error::NoSuchSlot);
+        };
+        if !src.allows(Rights::GRANT) {
+            return refuse(Error::NotPermitted);
+        }
+        let narrowed = (a1 as u32) & Rights::ALL.bits();
+        if narrowed & !src.rights != 0 {
+            return refuse(Error::NotPermitted);
+        }
+        let delegated = MCap {
+            obj: src.obj,
+            rights: narrowed,
+            badge: src.badge,
+        };
+        match self.receivers[ep].pop() {
+            // Receiver-first: only a RECEIVE_CAP takes the capability (§246, see
+            // `plain_receive`).
+            Some(rx) => {
+                let s = match self.plain_receive(rx) {
+                    false => self.insert(rx, delegated),
+                    true => 0,
+                };
+                self.park[rx] = Park::Idle;
+                woken[rx] = Some(Answer::msg([a2, s, 0, capability.badge, 0]));
+                Some(Answer::ok(0))
+            }
+            None => {
+                self.senders[ep].push(a);
+                self.park[a] = Park::SendCap {
+                    ep,
+                    data: a2,
+                    cap: Some(delegated),
+                    badge: capability.badge,
+                };
+                None
+            }
+        }
+    }
+
+    /// `CALL`: words `a0` and `a1`, and a reply capability for the receiver.
+    fn call(
+        &mut self,
+        a: usize,
+        ep: usize,
+        capability: MCap,
+        [a0, a1]: [u64; 2],
+        woken: &mut [Option<Answer>; ACTORS],
+    ) -> Option<Answer> {
+        if !capability.allows(Rights::WRITE) {
+            return refuse(Error::NotPermitted);
+        }
+        match self.receivers[ep].pop() {
+            Some(rx) if self.plain_receive(rx) => {
+                // §246: the words arrive and the caller is answered Gone.
+                self.park[rx] = Park::Idle;
+                woken[rx] = Some(Answer::msg([a0, a1, 0, capability.badge, 0]));
+                return refuse(Error::Gone);
+            }
+            Some(rx) => {
+                let s = self.insert(rx, reply_of(a));
+                self.park[rx] = Park::Idle;
+                woken[rx] = Some(Answer::msg([a0, s, a1, capability.badge, reply_tag(s)]));
+                self.park[a] = Park::AwaitReply;
+            }
+            None => {
+                self.senders[ep].push(a);
+                self.park[a] = Park::Call {
+                    ep,
+                    msg: [a0, a1],
+                    badge: capability.badge,
+                };
+            }
+        }
+        None
+    }
+
+    /// A notification's methods. Only `SIGNAL` and `BIND` read an argument, `a0`.
+    fn invoke_notification(
+        &mut self,
+        a: usize,
+        capability: MCap,
+        method: u64,
+        a0: u64,
+        woken: &mut [Option<Answer>; ACTORS],
+    ) -> Option<Answer> {
+        use abi::notification as n;
+        match method {
+            n::SIGNAL => {
+                if !capability.allows(Rights::WRITE) {
+                    return refuse(Error::NotPermitted);
+                }
+                if a0 != 0 {
+                    match self.waiters.pop() {
+                        Some(w) => {
+                            self.park[w] = Park::Idle;
+                            woken[w] = Some(Answer::ok(a0 as i64));
+                        }
+                        None => self.word |= a0,
                     }
+                }
+                Some(Answer::ok(0))
+            }
+            n::WAIT => {
+                if !capability.allows(Rights::READ) {
+                    return refuse(Error::NotPermitted);
+                }
+                if self.word != 0 {
                     Some(Answer::ok(core::mem::take(&mut self.word) as i64))
+                } else {
+                    self.waiters.push(a);
+                    self.park[a] = Park::Wait;
+                    None
                 }
-                n::BIND => {
-                    if !cap.allows(Rights::WRITE) {
-                        return refuse(Error::NotPermitted);
-                    }
-                    // No actor holds a thread capability, so BIND reaches only its refusals.
-                    match self.cap(a, a0) {
-                        None => refuse(Error::NoSuchSlot),
-                        Some(_) => refuse(Error::WrongObject),
-                    }
+            }
+            n::POLL => {
+                if !capability.allows(Rights::READ) {
+                    return refuse(Error::NotPermitted);
                 }
-                _ => refuse(Error::BadMethod),
-            },
-            Obj::Frame(fr) => match method {
-                f::REVOKE => {
-                    if !cap.allows(Rights::GRANT) {
-                        return refuse(Error::NotPermitted);
-                    }
-                    // Every copy in every table goes, the invoker's too, and so does a copy staged
-                    // in a parked SEND_CAP (the 2026-09-21 fix).
-                    for t in self.tables.iter_mut() {
-                        for s in t.iter_mut() {
-                            if matches!(s, Some(c) if c.obj == Obj::Frame(fr)) {
-                                *s = None;
-                            }
+                Some(Answer::ok(core::mem::take(&mut self.word) as i64))
+            }
+            n::BIND => {
+                if !capability.allows(Rights::WRITE) {
+                    return refuse(Error::NotPermitted);
+                }
+                // No actor holds a thread capability, so BIND reaches only its refusals.
+                match self.cap(a, a0) {
+                    None => refuse(Error::NoSuchSlot),
+                    Some(_) => refuse(Error::WrongObject),
+                }
+            }
+            _ => refuse(Error::BadMethod),
+        }
+    }
+
+    /// A page frame's one method, `REVOKE`.
+    fn invoke_frame(&mut self, fr: usize, capability: MCap, method: u64) -> Option<Answer> {
+        use abi::page_frame as f;
+        match method {
+            f::REVOKE => {
+                if !capability.allows(Rights::GRANT) {
+                    return refuse(Error::NotPermitted);
+                }
+                // Every copy in every table goes, the invoker's too, and so does a copy staged
+                // in a parked SEND_CAP (the 2026-09-21 fix).
+                for t in self.tables.iter_mut() {
+                    for s in t.iter_mut() {
+                        if matches!(s, Some(c) if c.obj == Obj::Frame(fr)) {
+                            *s = None;
                         }
                     }
-                    self.census.revoked += 1;
-                    for p in self.park.iter_mut() {
-                        if let Park::SendCap { cap: c, .. } = p
-                            && matches!(c, Some(c) if c.obj == Obj::Frame(fr))
-                        {
-                            *c = None;
-                            self.census.staged_frame_revoked += 1;
-                        }
-                    }
-                    Some(Answer::ok(0))
                 }
-                _ => refuse(Error::BadMethod),
-            },
+                self.census.revoked += 1;
+                for p in self.park.iter_mut() {
+                    if let Park::SendCap { cap: c, .. } = p
+                        && matches!(c, Some(c) if c.obj == Obj::Frame(fr))
+                    {
+                        *c = None;
+                        self.census.staged_frame_revoked += 1;
+                    }
+                }
+                Some(Answer::ok(0))
+            }
+            _ => refuse(Error::BadMethod),
         }
     }
 
@@ -743,6 +800,11 @@ impl Model {
         }
         woken
     }
+}
+
+/// The model's answer for a refused invocation, shared by every object's methods.
+fn refuse(e: Error) -> Option<Answer> {
+    Some(Answer::err(e))
 }
 
 fn reply_of(caller: usize) -> MCap {

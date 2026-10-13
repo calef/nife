@@ -422,20 +422,12 @@ pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
     if registration.is_some() {
         flags |= F_SCHEDULE_ANNOUNCED;
     }
-    let mut hint = 0u64;
-
     // **Prove the sixth is real (for one behaviour), then that it cannot be passed on.** In that
     // order, because the delegation is attempted on the report endpoint, which the kernel test
     // reads only after it has taken the proof of life: a capability wrongly carrying `GRANT` is then
     // sent there and garbles the report, failing the test rather than hanging it.
     if let Some(ru) = run_unvouched {
-        if behaviour == PRESENT_RUN_UNVOUCHED {
-            send(ru, RUN_UNVOUCHED_MAGIC, 0, 0);
-            flags |= F_RUN_UNVOUCHED_WORKS;
-        }
-        if send_capability(REPORT, ru, abi::rights::WRITE, 0) == abi::Error::NotPermitted as i64 {
-            flags |= F_RUN_UNVOUCHED_NOT_GRANTABLE;
-        }
+        flags |= prove_run_unvouched(behaviour, ru);
     }
 
     // **Prove the terminal, before anything else touches `budget`/`region`.** `send` on a plain
@@ -476,18 +468,7 @@ pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
     // attempt, not `destroy_with_retry`, because this refusal is not a kill waiting for a tick. It is
     // permanent until the child goes, and retrying would only spend the watchdog.
     if behaviour == PENDING_WORK {
-        let job = split_memory_region(budget, PENDING_JOB_PAGES);
-        if job >= 0 {
-            if destroy_memory_region(budget) == abi::Error::NotPermitted as i64 {
-                flags |= F_LOGOUT_REFUSED_WHILE_PENDING;
-            }
-            if retype_into_page_frame(budget) >= 0 {
-                flags |= F_SESSION_SURVIVED_REFUSAL;
-            }
-            if destroy_memory_region(job as u64) == 0 {
-                flags |= F_PENDING_WORK_DESTROYED;
-            }
-        }
+        flags |= hold_pending_work(budget);
     }
 
     // **`LOGOUT` destroys `budget` before `region`, and the order is load-bearing, not a
@@ -516,73 +497,12 @@ pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
         }
     }
 
-    if mapped {
-        let (r0, _) = call(
-            dir_ep,
-            filesystem_protocol::fs::req(
-                filesystem_protocol::fs::READDIR,
-                filesystem_protocol::fs::ROOT,
-                0,
-            ),
-            0,
-        );
-        // `call` returns the reply word as a `u64`; a negative errno reads as a huge one
-        // (`entropy_protocol`'s convention, followed here and by `smb_server.rs`'s own `fs_readdir`).
-        // A `READDIR` answers the byte count written (>= 0) or a negative errno. Any non-negative
-        // answer is the capability working; this test does not pin the fixture's exact contents,
-        // which is a fact about the image and not about this capability.
-        if (r0 as i64) >= 0 {
-            flags |= F_DIR_WORKS;
-
-            // DECISIONS §117's own proof: which subtree did this login actually land in? Only the
-            // `WRITE_MARKER`/`READ_MARKER` do this; `LOGIN` stops at proving what it received.
-            match behaviour {
-                // **One arm where there were two.** `alice`'s and `bob`'s halves of this proof
-                // differed only in the name written into the marker, and that name is the identity
-                // this run authenticated as, which it now holds as an argument rather than as a
-                // second copy of the same fact in a second match arm.
-                WRITE_MARKER => {
-                    if write_marker(dir_ep, identity) {
-                        flags |= F_MARKER_WRITTEN;
-                    }
-                    if is_absent(dir_ep, filesystem_protocol::fixture::tree::INNER) {
-                        flags |= F_NOT_SHARED_SUBTREE;
-                    }
-                }
-                READ_MARKER => {
-                    if let Some(h) = read_marker(dir_ep) {
-                        hint = h;
-                    }
-                }
-                // `budget` is already gone by construction (above); `region` is now the top of
-                // `CONSTRUCTION_UT`'s watermark, so this `DESTROY` un-bumps it too, and this
-                // login's whole 128-page contribution comes home.
-                LOGOUT => {
-                    flags |= teardown_directory(dir_ep, region);
-                    // The third report word, for this behaviour only: how many microseconds the
-                    // caretaker region's `DESTROY` waited (the budget's own wait is not reported;
-                    // nothing lives in that region, so it has never needed one). The kernel test
-                    // quotes it in the failure message.
-                    hint = waited_micros();
-                }
-                // `HOLD_TERMINAL` shares the teardown but not the wait report (see the module
-                // docs: freeing the session's memory and freeing the terminal are two independent
-                // acts, and this behaviour deliberately only does the first). It keeps the identity
-                // hint every other behaviour puts in the third word, so the wait report stays
-                // `LOGOUT`'s alone, exactly as that comment above claims.
-                HOLD_TERMINAL => flags |= teardown_directory(dir_ep, region),
-                // Torn down as `HOLD_TERMINAL` is, and for a measured reason: left standing, its
-                // caretaker lived for the rest of the suite and a later, unrelated test
-                // (`timetable_tests`) hung on riscv64 and aarch64 for want of what it held.
-                PRESENT_RUN_UNVOUCHED => flags |= teardown_directory(dir_ep, region),
-                // Its whole point is that the session comes home once the work is gone.
-                PENDING_WORK => flags |= teardown_directory(dir_ep, region),
-                // Detach: the directory goes, the durable budget stays with its session.
-                OPEN_SCHEDULE | EMPTY_SCHEDULE => flags |= teardown_directory(dir_ep, region),
-                _ => {}
-            }
-        }
-    }
+    let (directory_flags, hint) = if mapped {
+        prove_the_directory(behaviour, identity, dir_ep, region)
+    } else {
+        (0, 0)
+    };
+    flags |= directory_flags;
 
     // **`LOGOUT` deliberately does not also free the terminal here.** `login`'s own thread is
     // blocked inside `send(AUDIT, ...)` (a blocking rendezvous) until the *caller* drains it, which
@@ -594,6 +514,113 @@ pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
     // `kernel::user::login_tests::free_terminal`, used exactly this way by
     // `caretaker_teardown_reclaims_a_full_session_worth_of_memory`.
     done(RPT_OK, flags, hint);
+}
+
+/// Prove the directory capability works, mapped at [`FS_VA`]: list the granted subtree, then do
+/// what `behavior` asks of it. Returns the flags it earned and the third report word.
+fn prove_the_directory(behavior: u64, identity: &[u8], dir_ep: u64, region: u64) -> (u64, u64) {
+    let mut flags = 0u64;
+    let mut hint = 0u64;
+    let (r0, _) = call(
+        dir_ep,
+        filesystem_protocol::fs::req(
+            filesystem_protocol::fs::READDIR,
+            filesystem_protocol::fs::ROOT,
+            0,
+        ),
+        0,
+    );
+    // `call` returns the reply word as a `u64`; a negative errno reads as a huge one
+    // (`entropy_protocol`'s convention, followed here and by `smb_server.rs`'s own `fs_readdir`).
+    // A `READDIR` answers the byte count written (>= 0) or a negative errno. Any non-negative
+    // answer is the capability working; this test does not pin the fixture's exact contents,
+    // which is a fact about the image and not about this capability.
+    if (r0 as i64) >= 0 {
+        flags |= F_DIR_WORKS;
+
+        // DECISIONS §117's own proof: which subtree did this login actually land in? Only the
+        // `WRITE_MARKER`/`READ_MARKER` do this; `LOGIN` stops at proving what it received.
+        match behavior {
+            // **One arm where there were two.** `alice`'s and `bob`'s halves of this proof
+            // differed only in the name written into the marker, and that name is the identity
+            // this run authenticated as, which it now holds as an argument rather than as a
+            // second copy of the same fact in a second match arm.
+            WRITE_MARKER => {
+                if write_marker(dir_ep, identity) {
+                    flags |= F_MARKER_WRITTEN;
+                }
+                if is_absent(dir_ep, filesystem_protocol::fixture::tree::INNER) {
+                    flags |= F_NOT_SHARED_SUBTREE;
+                }
+            }
+            READ_MARKER => {
+                if let Some(h) = read_marker(dir_ep) {
+                    hint = h;
+                }
+            }
+            // `budget` is already gone by construction (above); `region` is now the top of
+            // `CONSTRUCTION_UT`'s watermark, so this `DESTROY` un-bumps it too, and this
+            // login's whole 128-page contribution comes home.
+            LOGOUT => {
+                flags |= teardown_directory(dir_ep, region);
+                // The third report word, for this behavior only: how many microseconds the
+                // caretaker region's `DESTROY` waited (the budget's own wait is not reported;
+                // nothing lives in that region, so it has never needed one). The kernel test
+                // quotes it in the failure message.
+                hint = waited_micros();
+            }
+            // `HOLD_TERMINAL` shares the teardown but not the wait report (see the module
+            // docs: freeing the session's memory and freeing the terminal are two independent
+            // acts, and this behavior deliberately only does the first). It keeps the identity
+            // hint every other behavior puts in the third word, so the wait report stays
+            // `LOGOUT`'s alone, exactly as that comment above claims.
+            HOLD_TERMINAL => flags |= teardown_directory(dir_ep, region),
+            // Torn down as `HOLD_TERMINAL` is, and for a measured reason: left standing, its
+            // caretaker lived for the rest of the suite and a later, unrelated test
+            // (`timetable_tests`) hung on riscv64 and aarch64 for want of what it held.
+            PRESENT_RUN_UNVOUCHED => flags |= teardown_directory(dir_ep, region),
+            // Its whole point is that the session comes home once the work is gone.
+            PENDING_WORK => flags |= teardown_directory(dir_ep, region),
+            // Detach: the directory goes, the durable budget stays with its session.
+            OPEN_SCHEDULE | EMPTY_SCHEDULE => flags |= teardown_directory(dir_ep, region),
+            _ => {}
+        }
+    }
+    (flags, hint)
+}
+
+/// The sixth capability, `ru`: used once (for [`PRESENT_RUN_UNVOUCHED`] only), then offered on to
+/// the report endpoint, which must refuse it. Answers the flags it earned.
+fn prove_run_unvouched(behavior: u64, ru: u64) -> u64 {
+    let mut flags = 0u64;
+    if behavior == PRESENT_RUN_UNVOUCHED {
+        send(ru, RUN_UNVOUCHED_MAGIC, 0, 0);
+        flags |= F_RUN_UNVOUCHED_WORKS;
+    }
+    if send_capability(REPORT, ru, abi::rights::WRITE, 0) == abi::Error::NotPermitted as i64 {
+        flags |= F_RUN_UNVOUCHED_NOT_GRANTABLE;
+    }
+    flags
+}
+
+/// [`PENDING_WORK`]'s logout attempt with a pending-job child split off `budget`: refused while the
+/// child lives, the session intact after the refusal, and the child itself destroyable. Answers the
+/// flags it earned.
+fn hold_pending_work(budget: u64) -> u64 {
+    let mut flags = 0u64;
+    let job = split_memory_region(budget, PENDING_JOB_PAGES);
+    if job >= 0 {
+        if destroy_memory_region(budget) == abi::Error::NotPermitted as i64 {
+            flags |= F_LOGOUT_REFUSED_WHILE_PENDING;
+        }
+        if retype_into_page_frame(budget) >= 0 {
+            flags |= F_SESSION_SURVIVED_REFUSAL;
+        }
+        if destroy_memory_region(job as u64) == 0 {
+            flags |= F_PENDING_WORK_DESTROYED;
+        }
+    }
+    flags
 }
 
 /// **Drive the registration page for [`OPEN_SCHEDULE`] or [`EMPTY_SCHEDULE`]**, mapped at

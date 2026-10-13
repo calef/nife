@@ -809,10 +809,17 @@ fn a_component_that_stops_answering_without_dying_is_invisible_to_its_supervisor
         wedged[2],
     );
 
-    // ---------------------------------------------------------------------------------------
-    // Result 1: the domain does not report a hang.
-    // ---------------------------------------------------------------------------------------
+    a_hang_reads_as_an_idle_domain(msgs);
 
+    no_member_of_a_hung_domain_can_be_collected(msgs);
+
+    let (client, log) = the_hung_service_is_restored(msgs);
+
+    the_stranded_caller_is_released_only_by_its_server(msgs, client, log);
+}
+
+/// Result 1 of the hung case: the domain does not report a hang.
+fn a_hang_reads_as_an_idle_domain(msgs: &[[u64; 5]]) {
     let survey = of_kind(msgs, RPT_SURVEY)
         .next()
         .expect("the operator never surveyed its domain");
@@ -862,11 +869,10 @@ fn a_component_that_stops_answering_without_dying_is_invisible_to_its_supervisor
         "a death reached the operator (report {first_death}) before it surveyed the hang (report \
          {at_survey}): something died, so this was not the hung case",
     );
+}
 
-    // ---------------------------------------------------------------------------------------
-    // Result 2: every member refuses to be collected.
-    // ---------------------------------------------------------------------------------------
-
+/// Result 2 of the hung case: every member refuses to be collected.
+fn no_member_of_a_hung_domain_can_be_collected(msgs: &[[u64; 5]]) {
     let uncollectable = of_kind(msgs, RPT_UNCOLLECTABLE)
         .next()
         .expect("the operator never tried to collect its domain");
@@ -883,11 +889,11 @@ fn a_component_that_stops_answering_without_dying_is_invisible_to_its_supervisor
          here would mean something had died.",
         uncollectable[2], uncollectable[1],
     );
+}
 
-    // ---------------------------------------------------------------------------------------
-    // Result 3: the service comes back, and step 2 of the four never happened.
-    // ---------------------------------------------------------------------------------------
-
+/// Result 3 of the hung case: the service comes back, and step 2 of the four never happened.
+/// Returns the client's verdict and the operator's log, which result 4 reads again.
+fn the_hung_service_is_restored(msgs: &[[u64; 5]]) -> (&[u64; 5], &[u64; 5]) {
     for (step, what) in [
         (STEP_BUILT, "build the replacement"),
         (
@@ -957,11 +963,16 @@ fn a_component_that_stops_answering_without_dying_is_invisible_to_its_supervisor
         log[1] & LOG_BOTH_VERSIONS != 0,
         log[1] & LOG_REVOKE_ENFORCED != 0,
     );
+    (client, log)
+}
 
-    // ---------------------------------------------------------------------------------------
-    // Result 4: the caller was stranded, and only the component that stranded it could let go.
-    // ---------------------------------------------------------------------------------------
-
+/// Result 4 of the hung case: the caller was stranded, and only the component that stranded it
+/// could let go.
+fn the_stranded_caller_is_released_only_by_its_server(
+    msgs: &[[u64; 5]],
+    client: &[u64; 5],
+    log: &[u64; 5],
+) {
     assert_ne!(
         client[1] & CL_WAS_RELEASED,
         0,
@@ -1091,6 +1102,20 @@ fn a_component_keeps_its_state_across_a_swap_and_a_swap_that_cannot_absorb_it_do
         "a third instance came up: the refusing replacement served after it refused",
     );
 
+    the_client_and_the_page_saw_the_swap_at(msgs, absorbed);
+
+    // Four children, four corpses, none of them a fault: the refuser exited, the incumbent was
+    // retired on commit, the client finished, and the replacement was retired at the end.
+    assert_eq!(of_kind(msgs, RPT_DEATH).count(), 4);
+    assert!(
+        of_kind(msgs, RPT_DEATH).all(|m| m[2] != abi::fault::EVENT_FAULT),
+        "a child of the handoff system faulted",
+    );
+}
+
+/// The handoff case's two independent witnesses, the client and the page, each put the swap at
+/// `absorbed`, the tally the replacement took over.
+fn the_client_and_the_page_saw_the_swap_at(msgs: &[[u64; 5]], absorbed: u64) {
     // Witness one: the client. Every flag, and the swap landed exactly where the tally says.
     let client = of_kind(msgs, RPT_CLIENT)
         .next()
@@ -1132,14 +1157,6 @@ fn a_component_keeps_its_state_across_a_swap_and_a_swap_that_cannot_absorb_it_do
     assert_eq!(
         log[2], absorbed,
         "the witness page puts the swap somewhere else"
-    );
-
-    // Four children, four corpses, none of them a fault: the refuser exited, the incumbent was
-    // retired on commit, the client finished, and the replacement was retired at the end.
-    assert_eq!(of_kind(msgs, RPT_DEATH).count(), 4);
-    assert!(
-        of_kind(msgs, RPT_DEATH).all(|m| m[2] != abi::fault::EVENT_FAULT),
-        "a child of the handoff system faulted",
     );
 }
 

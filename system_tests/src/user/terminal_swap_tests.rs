@@ -104,44 +104,7 @@ fn the_terminal_is_replaced_under_a_person_typing_and_nothing_they_typed_is_lost
     let alloc = || crate::memory_region::retype_page(frames).expect("frame region exhausted");
     let (console_page, app_out, app_in) = (alloc(), alloc(), alloc());
 
-    // The `line_editor` image, copied into fresh frames the supervisor maps at ELF_VA: the kernel's
-    // stand-in for `system_initializer`'s `blobs` copy.
-    let pages = editor_image.len().div_ceil(FRAME_SIZE as usize);
-    assert!(
-        pages <= MAX_ELF_PAGES,
-        "line_editor's stripped image outgrew the test's mapping"
-    );
-    // The spawn closure below borrows this static because a closure that captured the array
-    // itself would be over the 1 KiB `spawn` allows.
-    let maps_p = &raw mut ELF_MAPS;
-    // SAFETY: this test is the only user of `ELF_MAPS`, and it runs once.
-    let maps: &'static mut [Mapping; MAX_ELF_PAGES + EXTRA_STACK_PAGES] = unsafe { &mut *maps_p };
-    for (i, chunk) in editor_image.chunks(FRAME_SIZE as usize).enumerate() {
-        let phys = alloc();
-        // SAFETY: a frame just allocated for this copy and not yet mapped anywhere else.
-        unsafe {
-            core::ptr::copy_nonoverlapping(
-                chunk.as_ptr(),
-                mmu::phys_to_virt(phys) as *mut u8,
-                chunk.len(),
-            );
-        }
-        maps[i] = Mapping {
-            va: s::ELF_VA + i as u64 * FRAME_SIZE,
-            phys,
-            flags: Flags::user_rodata(),
-        };
-    }
-
-    for k in 0..EXTRA_STACK_PAGES {
-        maps[pages + k] = Mapping {
-            va: USER_STACK_VA - (k as u64 + 1) * FRAME_SIZE,
-            phys: alloc(),
-            flags: Flags::user_data(),
-        };
-    }
-    let windows = pages + EXTRA_STACK_PAGES;
-    let maps_ro: &'static [Mapping; MAX_ELF_PAGES + EXTRA_STACK_PAGES] = maps;
+    let (maps_ro, windows) = copy_the_editor_into_frames(editor_image, alloc);
     let console_tid = sched::spawn(move || {
         loop {
             sched::ipc_receive(conreq);
@@ -213,6 +176,79 @@ fn the_terminal_is_replaced_under_a_person_typing_and_nothing_they_typed_is_lost
         "the reader parked across the swap was not handed back with FLAG_RETRY",
     );
 
+    the_replacement_finishes_the_line_and_recalls_history(term, report, app_in);
+
+    // A second swap works too, which is the control endpoints alternating.
+    let again = sched::ipc_call(swap, [s::SWAP, 0]);
+    assert_eq!(
+        (again[0], again[1]),
+        (s::SWAPPED, 3),
+        "a second swap did not commit"
+    );
+
+    // Retire the terminal so every instance's region comes home to the budget.
+    let stopped = sched::ipc_call(swap, [s::STOP, 0]);
+    assert_eq!(stopped[0], s::STOPPED);
+    settle();
+    held.release_or_fail("terminal_supervisor");
+    sched::reclaim_region(budget)
+        .expect("the supervisor's budget would not reclaim: an instance's region never came home");
+}
+
+/// Copy the `line_editor` image into fresh frames from `alloc`, and add its extra stack pages.
+/// Returns the mappings the supervisor is spawned with and how many of them are in use.
+fn copy_the_editor_into_frames(
+    editor_image: &[u8],
+    alloc: impl Fn() -> u64,
+) -> (&'static [Mapping; MAX_ELF_PAGES + EXTRA_STACK_PAGES], usize) {
+    // The `line_editor` image, copied into fresh frames the supervisor maps at ELF_VA: the kernel's
+    // stand-in for `system_initializer`'s `blobs` copy.
+    let pages = editor_image.len().div_ceil(FRAME_SIZE as usize);
+    assert!(
+        pages <= MAX_ELF_PAGES,
+        "line_editor's stripped image outgrew the test's mapping"
+    );
+    // The supervisor's spawn closure borrows this static because a closure that captured the array
+    // itself would be over the 1 KiB `spawn` allows.
+    let maps_p = &raw mut ELF_MAPS;
+    // SAFETY: this test is the only user of `ELF_MAPS`, and it runs once.
+    let maps: &'static mut [Mapping; MAX_ELF_PAGES + EXTRA_STACK_PAGES] = unsafe { &mut *maps_p };
+    for (i, chunk) in editor_image.chunks(FRAME_SIZE as usize).enumerate() {
+        let phys = alloc();
+        // SAFETY: a frame just allocated for this copy and not yet mapped anywhere else.
+        unsafe {
+            core::ptr::copy_nonoverlapping(
+                chunk.as_ptr(),
+                mmu::phys_to_virt(phys) as *mut u8,
+                chunk.len(),
+            );
+        }
+        maps[i] = Mapping {
+            va: s::ELF_VA + i as u64 * FRAME_SIZE,
+            phys,
+            flags: Flags::user_rodata(),
+        };
+    }
+
+    for k in 0..EXTRA_STACK_PAGES {
+        maps[pages + k] = Mapping {
+            va: USER_STACK_VA - (k as u64 + 1) * FRAME_SIZE,
+            phys: alloc(),
+            flags: Flags::user_data(),
+        };
+    }
+    let windows = pages + EXTRA_STACK_PAGES;
+    let maps_ro: &'static [Mapping; MAX_ELF_PAGES + EXTRA_STACK_PAGES] = maps;
+    (maps_ro, windows)
+}
+
+/// After the first swap: the replacement finishes the line the incumbent started, and recalls
+/// the line typed before the swap.
+fn the_replacement_finishes_the_line_and_recalls_history(
+    term: sched::RendezvousId,
+    report: sched::RendezvousId,
+    app_in: u64,
+) {
     // The replacement finishes the line the incumbent started.
     bytes_call(term, b"ho\r");
     let r = sched::ipc_receive(report);
@@ -236,20 +272,4 @@ fn the_terminal_is_replaced_under_a_person_typing_and_nothing_they_typed_is_lost
         "history typed before the swap is not recallable after it"
     );
     assert_eq!(&line_at(app_in, 5)[..5], b"first");
-
-    // A second swap works too, which is the control endpoints alternating.
-    let again = sched::ipc_call(swap, [s::SWAP, 0]);
-    assert_eq!(
-        (again[0], again[1]),
-        (s::SWAPPED, 3),
-        "a second swap did not commit"
-    );
-
-    // Retire the terminal so every instance's region comes home to the budget.
-    let stopped = sched::ipc_call(swap, [s::STOP, 0]);
-    assert_eq!(stopped[0], s::STOPPED);
-    settle();
-    held.release_or_fail("terminal_supervisor");
-    sched::reclaim_region(budget)
-        .expect("the supervisor's budget would not reclaim: an instance's region never came home");
 }

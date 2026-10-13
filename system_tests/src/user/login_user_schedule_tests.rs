@@ -263,16 +263,7 @@ fn suspending_a_user_ends_their_schedule_and_refuses_them_until_resumed() {
         "the schedule did not open, so there is nothing for a suspension to end",
     );
 
-    // `user suspend alice`, as the owner's console does it.
-    fs_service::set_root_list(login_protocol::SUSPENDED_LIST, Some(b"alice\n"));
-    sched::ipc_send(w.request, [login_protocol::suspend_word(), 0, 0]);
-    let applied = sched::ipc_receive(w.result);
-    assert_eq!(
-        applied[0],
-        login_protocol::APPLIED,
-        "SUSPEND was not answered APPLIED"
-    );
-    assert_eq!(applied[1], 1, "SUSPEND did not end alice's durable session");
+    suspend_alice(&w);
 
     let refused = session(ls::LOGIN);
     assert_eq!(
@@ -304,26 +295,7 @@ fn suspending_a_user_ends_their_schedule_and_refuses_them_until_resumed() {
         ls::RPT_OK,
         "a resumed identity was not let back in"
     );
-    for (bit, what) in [
-        (
-            ls::F_SCHEDULE_ANNOUNCED,
-            "the stored schedule did not come back at the login after resume",
-        ),
-        (
-            ls::F_REATTACHED,
-            "the page carried no reply, so login did not put the stored document in force",
-        ),
-        (
-            ls::F_STORED,
-            "the empty document was not written to the store first",
-        ),
-        (
-            ls::F_TIMETABLE_EXITED,
-            "emptying the restored schedule did not stop its timetable",
-        ),
-    ] {
-        assert_eq!(back[1] & bit, bit, "{what}");
-    }
+    the_stored_schedule_came_back_and_was_emptied(back);
 
     // Emptied by its user, the schedule does not come back, and alice leaves the manifest.
     let last = session(ls::LOGOUT);
@@ -346,6 +318,45 @@ fn suspending_a_user_ends_their_schedule_and_refuses_them_until_resumed() {
         !manifest_lists(b"alice"),
         "alice is still on the durable-session manifest after emptying her schedule",
     );
+}
+
+/// List `alice` as suspended and send `SUSPEND` on the front door, which must end her one
+/// durable session.
+fn suspend_alice(w: &ls::Wiring) {
+    // `user suspend alice`, as the owner's console does it.
+    fs_service::set_root_list(login_protocol::SUSPENDED_LIST, Some(b"alice\n"));
+    sched::ipc_send(w.request, [login_protocol::suspend_word(), 0, 0]);
+    let applied = sched::ipc_receive(w.result);
+    assert_eq!(
+        applied[0],
+        login_protocol::APPLIED,
+        "SUSPEND was not answered APPLIED"
+    );
+    assert_eq!(applied[1], 1, "SUSPEND did not end alice's durable session");
+}
+
+/// The flags of the first login after `user resume alice`, `back`.
+fn the_stored_schedule_came_back_and_was_emptied(back: [u64; 5]) {
+    for (bit, what) in [
+        (
+            ls::F_SCHEDULE_ANNOUNCED,
+            "the stored schedule did not come back at the login after resume",
+        ),
+        (
+            ls::F_REATTACHED,
+            "the page carried no reply, so login did not put the stored document in force",
+        ),
+        (
+            ls::F_STORED,
+            "the empty document was not written to the store first",
+        ),
+        (
+            ls::F_TIMETABLE_EXITED,
+            "emptying the restored schedule did not stop its timetable",
+        ),
+    ] {
+        assert_eq!(back[1] & bit, bit, "{what}");
+    }
 }
 
 /// Whether the durable-session manifest at the file service's root names `identity`.

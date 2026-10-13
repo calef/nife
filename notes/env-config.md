@@ -66,8 +66,8 @@ atomics at all.
 
 - Corrected 2026-09-26: a shipped program does declare this page. This bullet said no
   `Manifest` field existed; `grant_plan::Manifest::config` and `printenv` landed 2026-08-26 and
-  the real progenitor endows the page to any child that declares it (milestone 47 (navigation and naming)'s block,
-  "The shell-facing customer was built 2026-08-26"). `date` still does not read `TZ`, for the
+  the real progenitor endows the page to any child that declares it (milestone 47 (navigation and naming)'s
+  `design/roadmap/0047-navigation-and-naming/environment.md`). `date` still does not read `TZ`, for the
   reason `notes/calendar.md` gives.
 - The `caps` preview extension DECISIONS §111 (inert configuration is a validated page) asks for is built (2026-09-26). The progenitor
   places the frame it endows children with in the boot shell too, `READ` without `GRANT`, at
