@@ -2,36 +2,24 @@
 //!
 //! *Module name provisional (AGENTS.md: an architect names modules).*
 //!
-//! Milestone 243 (a machine with no serial port) built the whole console-on-a-framebuffer path arch-neutrally and then wired it up
-//! on `x86_64` alone, because `x86_64` is the only one of the three whose boot chain includes a
-//! stage that has already lit a display. Its own block records the gap in one line: *"aarch64 and
-//! riscv64 have no screen. `machine_discovery::framebuffer` and `screen_console` are arch-neutral
-//! and unused there."* This module is the discovery half for those two, under the emulator.
-//!
-//! # Two halves, and only one of them is here
+//! Only `x86_64`'s boot chain includes a stage that has already lit a display. This module is the
+//! discovery half for aarch64 and riscv64, under the emulator; the console-on-a-framebuffer path
+//! itself (`machine_discovery::framebuffer`, `screen_console`) is arch-neutral.
 //!
 //! - **On real boards**, the answer is milestone 157 (real display output on the board): U-Boot
-//!   has already configured the DC8200 and advertises a `simple-framebuffer` node, and the kernel
-//!   reads where it is. That is board work, it needs the board on the desk, and it stays in 157
-//!   rather than being half-done here.
-//! - **Under QEMU**, there is no such stage, so nothing can be read. What `virt` offers instead is
-//!   [`ramfb`](crate::drivers::ramfb), which inverts the arrangement: the guest provides the
-//!   memory and the emulator scans it out. That is this module.
+//!   configures the display and advertises a `simple-framebuffer` node, and the kernel reads where
+//!   it is. That is board work and stays in 157.
+//! - **Under QEMU**, nothing has lit a display, so [`ramfb`](crate::drivers::ramfb) inverts the
+//!   arrangement: the guest provides the memory and the emulator scans it out. That is this module.
 //!
-//! Both halves end at the same call, `console::attach_screen`, with the same five-field
-//! [`Framebuffer`]. So when 157 lands it adds a branch above this one and changes nothing below it.
+//! Both end at `console::attach_screen` with the same [`Framebuffer`], so 157 adds a branch above
+//! this one and changes nothing below it.
 //!
-//! # Why the pixels are a static
+//! The pixels are a static because a `ramfb` needs a physically contiguous, permanently owned
+//! region **before the frame allocator exists** (the boot-tour console is armed before
+//! `memory::init`), and the allocator has no contiguous multi-frame request anyway.
 //!
-//! A `ramfb` needs a physically contiguous, permanently owned region, and it needs it **before the
-//! frame allocator exists**: the whole value of a boot-tour console is that it is armed before the
-//! tour, and `memory::init` is thirty lines into it. The frame allocator is also page-granular with
-//! no contiguous multi-frame request, so 469 pages of aperture is not a thing it could serve.
-//!
-//! The cost is honest and is recorded in BUGS: [`SPAN`] bytes of `.bss` on every boot of both
-//! architectures, including the board boots where `ramfb` does not exist and the region is never
-//! touched.
-//!
+
 //! # EXAMPLES
 //!
 //! There is one caller, `kernel_main`'s boot tour, and the whole of it is:
@@ -43,29 +31,18 @@
 //! }
 //! ```
 //!
-//! To see it, ask QEMU for the device and for a monitor to photograph it through:
-//!
-//! ```text
-//! qemu-system-aarch64 -M virt -device ramfb -display none \
-//!     -monitor unix:/tmp/mon,server,nowait -kernel target/.../nife.img
-//! echo screendump /tmp/shot.ppm | nc -U /tmp/mon
-//! ```
-//!
-//! `cargo xtask test --arch aarch64` does exactly that and decodes the result back into text with
-//! `board_console::screen`, which is the gate that proves the glyphs and not merely the boot line.
+//! `cargo xtask test --arch aarch64` asks QEMU for `-device ramfb` and a monitor, takes a
+//! `screendump`, and decodes it back into text with `board_console::screen`, the gate that proves
+//! the glyphs and not merely the boot line.
 //!
 //! # BUGS
 //!
-//! - **[`SPAN`] bytes of `.bss` are spent whether or not there is a screen.** On the VisionFive 2,
-//!   where `ramfb` cannot exist, that is 1.9 MB of RAM this kernel zeroes at boot and never writes
-//!   again. Milestone 157's handoff needs no buffer at all (U-Boot's aperture is already somewhere),
-//!   so this cost belongs to the emulator's answer and not to the boards'.
-//! - **The geometry is fixed at compile time.** `ramfb` will scan out whatever is asked for, so a
-//!   larger screen is a constant away and a larger `.bss` with it. 800x600 is chosen to be the
-//!   smallest thing that holds the boot tour without scrolling being the common case.
+//! - **[`SPAN`] bytes of `.bss` are spent whether or not there is a screen**: 1.9 MB zeroed and
+//!   never written on the VisionFive 2, where `ramfb` cannot exist.
+//! - **The geometry is fixed at compile time**: 800x600, the smallest that holds the boot tour
+//!   without scrolling being the common case.
 //! - **Nothing here runs on `x86_64`**, which has its own discovery in
-//!   `arch::x86_64::machine::attach_screen` and a real aperture rather than guest RAM. The two do
-//!   not share a code path and deliberately share a *type*.
+//!   `arch::x86_64::machine::attach_screen` and a real aperture. The two share a type, not a path.
 
 use core::cell::SyncUnsafeCell;
 

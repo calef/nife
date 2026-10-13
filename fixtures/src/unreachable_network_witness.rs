@@ -3,11 +3,11 @@
 //! rung 3a for milestone 202 (every confinement test is a ritual until somebody breaks the
 //! confinement)).
 //!
-//! The negative control for `network_echo_client`, and since DECISIONS §219 (how the shell names an installed program to the spawner) gate D2 the fixture
-//! for an unvouched child as well. Its manifest (`grant_plan::Prog::UnreachableNetworkWitness`)
-//! declares nothing, so the progenitor's spawn service must leave the process domain, entropy and
-//! network slots empty. It asks each of them anyway, with a real request, and then lists every slot
-//! it holds:
+//! The negative control for `network_echo_client`, and the fixture for an unvouched child of
+//! DECISIONS §219 (how the shell names an installed program to the spawner) gate D2. Its manifest
+//! (`grant_plan::Prog::UnreachableNetworkWitness`) declares nothing, so the progenitor's spawn
+//! service must leave the process domain, entropy and network slots empty. It asks each of them
+//! anyway, with a real request, and then lists every slot it holds:
 //!
 //! ```text
 //! nife> unreachable_network_witness
@@ -18,53 +18,37 @@
 //! slots held: 0
 //! ```
 //!
+//! An endowed authority turns its line into `REACHED` and the census gains that slot;
+//! `script/swish-check` fails on either. Only a child the spawn service spawned can report what it
+//! was given.
+//!
+
 //! **Two ways to be run, one claim each.** By name it is a vouched program with an empty manifest,
-//! and the progenitor must endow it the output alone. As `installed/unvouched` (`xtask/src/
-//! disk.rs`), stripped so no digest in any table matches, it is bytes nobody vouched for, run by a
-//! session holding the run-unvouched capability, and the progenitor must endow it what the line
-//! delegated plus the clock and configuration pages (`grant_plan::UNVOUCHED_MANIFEST`), which is
-//! `slots held: 0 1 2`. That is milestone 202's claim that an unvouched child holds no capability
-//! the caller did not delegate beyond the two pages the ruling allows.
+//! endowed the output alone. As `installed/unvouched` (`xtask/src/disk.rs`), stripped so no digest
+//! matches, it is bytes nobody vouched for, run by a session holding the run-unvouched capability,
+//! and must be endowed what the line delegated plus the clock and configuration pages
+//! (`grant_plan::UNVOUCHED_MANIFEST`): `slots held: 0 1 2`.
 //!
-//! **Its note asks for all three, and that is deliberate** (milestone 597 (a program carries its
-//! manifest in an ELF note), provisional). The program carries a manifest note ([`NOTE_ASKS`])
-//! declaring the network, entropy and the process domain, which its compiled-in manifest does not.
-//! Run by name, the note is never read. Run as `installed/unvouched`, it is the only manifest the
-//! bytes have, and DECISIONS §219 says an unvouched program's note grants nothing: the census must
-//! still read `0 1 2`, while `caps installed/unvouched` prints what the note asks beside what will
-//! be granted. A progenitor that honoured an unvouched note turns all three lines here into
-//! `REACHED`.
+//! **Its note asks for all three, deliberately** (milestone 597 (a program carries its manifest in
+//! an ELF note)). [`NOTE_ASKS`] declares the network, entropy and the process domain. Run by name,
+//! the note is never read; run unvouched, §219 says it grants nothing, so the census must still
+//! read `0 1 2` while `caps installed/unvouched` prints what the note asks.
 //!
-//! A progenitor that endowed any of the three authorities to a child that did not declare it turns
-//! its line into `REACHED`, and the census gains that slot; `script/swish-check` fails on either.
-//! That is the whole reason this is a program rather than a sentence in a doc: the claim is about
-//! what the spawn service does, and only a child it spawned can report what it was given.
+//! **And the reboot object** (milestone 805 (`reboot` at the prompt)), probed by invoking it: a
+//! spawn service that endowed it would reset the machine mid-`script/swish-check`, and the gate
+//! fails on the lines that never come back. A note cannot spell it (`manifest_note::encode`).
 //!
-//! **And the reboot object** (milestone 805 (`reboot` at the prompt), DECISIONS §251 (restarting
-//! the machine is a kernel object the progenitor hands out), exit criterion 3), probed by invoking
-//! it. That is deliberate rather than reckless: a spawn service that endowed it here would reset
-//! the machine in the middle of `script/swish-check`, and the gate fails on the lines that never
-//! come back, which is louder than any sentence this program could print. Its note does not ask for
-//! it, because a note cannot spell it (`manifest_note::encode`).
+//! **The census asks the kernel.** Each slot below the reserved fault slot is invoked with a method
+//! no object defines (`user_mode_runtime::is_granted`): an empty slot answers `NoSuchSlot`, so a
+//! capability at a slot nobody thought to probe is still counted.
 //!
-//! **The census asks the kernel, not the program's own expectations.** Each slot below the reserved
-//! fault slot is invoked with a method no object defines (`user_mode_runtime::is_granted`): an empty
-//! slot answers `NoSuchSlot`, anything else is held. So a capability placed at a slot nobody thought
-//! to probe is still counted.
-//!
-//! `unwritable_clock_witness`'s shape, three authorities over.
-//!
-//! # What this program holds
-//!
-//! - slot 0: its output, the sink contract (`crates/byte_sink_protocol`).
-//! - slots 1 and 2, only when run unvouched: the clock and configuration pages, which it does not
-//!   read.
+//! It holds slot 0, its output (`crates/byte_sink_protocol`), and, only when run unvouched, slots
+//! 1 and 2, the clock and configuration pages, which it does not read.
 //!
 //! # BUGS
 //!
-//! - **The name says less than the program does**: it now witnesses three unreachable authorities,
-//!   not one. Renaming is an architect's call; `installed/unvouched` is the name the milestone 202
-//!   test uses.
+//! - **The name says less than the program does**: it witnesses three unreachable authorities, not
+//!   one. Renaming is an architect's call.
 //!
 //! Name: provisional. Introduced 2026-09-24 for milestone 590, after `unwritable_clock_witness`.
 

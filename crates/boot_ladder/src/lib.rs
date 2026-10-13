@@ -1,73 +1,37 @@
 //! **The rungs of the boot ladder, as the exact bytes that appear on a console** (milestone 268).
 //!
-//! A boot on this system climbs a fixed ladder: the console works, the machine has described
-//! itself, the kernel has tested itself, the machine has been handed to userspace. Each rung
-//! announces itself with a line, and each of those lines is **a contract between the program that
-//! prints it and the programs that read it**: `crates/board_console` on a bench or in CI, and a
-//! person reading a photograph of a monitor.
-//!
-//! Rule 7 of `AGENTS.md` ("anything two binaries must agree on is a crate, never a `#[path]`
-//! module") is why this is a crate rather than a `const` in each place. Three binaries agree on
-//! these strings today: the kernel prints [`BANNER`], [`MACHINE`] and [`SELF_TEST`]; `swish` prints
-//! [`PROMPT`]; `board_console` matches all of them. Before this crate, the one marker that existed
-//! was a string literal inside one architecture's arm of `kernel/src/lib.rs` and a second copy of
-//! it inside a recogniser, which is milestone 268's finding 3: the two could not disagree *loudly*,
-//! only silently.
+//! A boot climbs a fixed ladder: the console works, the machine has described itself, the kernel
+//! has tested itself, the machine has been handed to userspace. Each rung announces itself with a
+//! line, and each line is **a contract between the program that prints it and the programs that
+//! read it**: `crates/board_console` on a bench or in CI, and a person reading a photograph of a
+//! monitor. The kernel prints [`BANNER`], [`MACHINE`] and [`SELF_TEST`]; `swish` prints
+//! [`PROMPT`]; `board_console` matches all of them (rule 7 of `AGENTS.md`).
 //!
 //! # Why a prefix rather than a whole line
 //!
-//! Every constant here is the **stable head** of a line whose tail carries numbers. That split is
-//! the design: the head is what a matcher keys on and never changes, the tail is what a human
-//! reads and is free to improve. A contract on the whole line would make every improvement to the
-//! diagnosis a breaking change, and this tree has learned twice that a marker nobody may touch is
-//! a marker that stops describing the boot.
-//!
-//! Each carries its own trailing space or punctuation where it has one, so a match is a match on a
-//! boundary rather than on the start of a longer word.
+//! Every constant here is the **stable head** of a line whose tail carries numbers: the head is
+//! what a matcher keys on and never changes, the tail is what a human reads and is free to
+//! improve. Each carries its own trailing space or punctuation where it has one, so a match is a
+//! match on a boundary rather than on the start of a longer word.
 //!
 //! # BUGS
 //!
-//! - **Nothing gates the kernel against this crate.** The kernel *uses* these constants, so its own
-//!   output cannot drift from them; what nothing checks is that a new rung is added here rather
-//!   than as a fresh literal somewhere, which is the mistake this crate exists to have already
-//!   made once. Review is the mechanism, which is rung four of `AGENTS.md`'s ladder, and it is
-//!   named here rather than implied.
-//! - **[`PROMPT`] is `swish`'s banner, not its prompt.** The prompt itself is `$ `, two bytes, which
-//!   is far too weak to key on in a console log that has just carried a kilobyte of hex. The banner
-//!   is printed immediately before the first prompt by the same program, so a reader that finds it
-//!   knows the shell is up; what it does not know is that the *prompt* came out, which is a
-//!   distinction `cargo xtask swish-check` cares about and this crate cannot make.
-//! - **The wordings are provisional** (milestone 268 (every architecture boots the same way)). They
-//!   are contracts, so they are an architect's under `AGENTS.md`'s *move fast on what can be
-//!   undone* tenet; a lane ships one and says so rather than waiting, which is what the milestone
-//!   block instructed.
+//! - **Nothing gates that a new rung is added here** rather than as a fresh literal somewhere; the
+//!   kernel uses these constants, so its own output cannot drift from them. Review is the mechanism.
+//! - **[`PROMPT`] is `swish`'s banner, not its prompt.** The prompt is `$ `, too weak to key on in
+//!   a console log; the banner is printed immediately before the first prompt by the same program,
+//!   but whether the prompt itself came out is `cargo xtask swish-check`'s question.
+//! - **The wordings are provisional** (milestone 268 (every architecture boots the same way)): they
+//!   are contracts, so they are an architect's.
 //!
-//! Name: ratified 2026-09-14 (calef, working the unratified worklist), the same day milestone
-//! 268's lane minted it. A noun for the thing it describes: the ladder a boot climbs.
-//!
-//! **The collision was weighed and accepted, and that is the part worth recording.** `AGENTS.md`
-//! already spends *ladder* on its own most-cited metaphor: make the wrong state unrepresentable,
-//! then a gate, then a record at the thing, then a note. So a reader who has internalised the
-//! constitution meets this crate carrying a different sense of the word. It was kept because the
-//! two are unambiguous in context (nothing here is about mechanism strength, and nothing there is
-//! about a console), because *rungs of a boot* is legible on sight, and because the alternatives
-//! each lose something this keeps: `boot_stages` and `boot_markers` drop the ordering that is the
-//! whole claim, and `console_contract` describes the mechanism rather than the thing.
-//!
-//! **Coined rather than standard**, so it is not the protected class `virtio` and `elf` sit in and
-//! it earned no shelter from being the field's word. It is this tree's metaphor, ratified as one.
-//!
-//! Refusals, because they are the valuable half:
-//!
-//! - **`boot_markers`** was refused for naming the *mechanism* (they are strings that get matched)
-//!   rather than the thing. The tree's own habit is against it: `block_roster` is not
-//!   `block_records`, `soak_page` is not `soak_layout`.
-//! - **`boot_proto`** was refused on `soak_page`'s line, which this tree already draws: the
-//!   `_proto` suffix names a request/reply vocabulary (`clock_protocol`, `cred_proto`,
-//!   `supervision_protocol`), and nothing here is a protocol. It is one-way text on a console.
-//! - **`boot_stages`** was refused as the plural of a word `board_console` already spends:
-//!   `progress::Stage` is the recogniser's ordered enum, and a crate with almost that name holding
-//!   almost that content is the collision a reader pays for.
+
+//! Name: ratified 2026-09-14 (calef, working the unratified worklist). A noun for the ladder a boot
+//! climbs, coined rather than standard. `AGENTS.md` spends *ladder* on its mechanism-strength
+//! metaphor; the two are unambiguous in context, and *rungs of a boot* is legible on sight.
+//! Refused `boot_markers` (names the mechanism, strings that get matched, rather than the thing).
+//! Refused `boot_proto` (the `_protocol` suffix names a request/reply vocabulary; this is one-way
+//! text on a console). Refused `boot_stages` (`board_console`'s `progress::Stage` already spends
+//! the word). Refused `console_contract` (describes the mechanism).
 
 #![no_std]
 

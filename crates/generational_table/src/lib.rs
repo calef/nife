@@ -1,9 +1,8 @@
 //! A fixed-capacity generational table: **names that die with what they named.**
 //!
-//! Milestone 14 phase A (design/kernel-objects-from-untyped.md, decision D2). The scheduler's
-//! thread table used to be a `BTreeMap<ThreadId, Box<Thread>>` fed by a global counter: every spawn
-//! allocated map nodes, and the map was unbounded. This replaces it with an array, and it
-//! replaces the counter with something better than a counter.
+//! Milestone 14 (kernel objects from untyped) phase A (design/kernel-objects-from-untyped.md,
+//! decision D2): a bounded array with
+//! no allocation on insert, and a name better than a counter.
 //!
 //! # The name is the safety mechanism
 //!
@@ -23,45 +22,10 @@
 //!   caller decides what a full table means (for the kernel: spawn fails, the same contract as
 //!   out-of-memory today, and N becomes a documented limit of the image).
 //! - **Generations are 32-bit.** A slot must be reused 2^32 times before an ancient name could
-//!   resolve again. At one spawn per microsecond against a single slot, that is an hour and a
-//!   quarter of doing nothing else; a real workload spreads reuse over every free slot. Recorded
-//!   because "never" is not the same as 2^32, but this is not a bound anything will meet.
+//!   resolve again: at one spawn per microsecond against a single slot, an hour and a quarter of
+//!   doing nothing else, and a real workload spreads reuse over every free slot.
 //! - **Insert scans for a free slot, O(N).** Spawn-rate work, not switch-rate work. The switch
 //!   path only ever does `get`/`get_mut`, which are O(1).
-//!
-//! # Examples
-//!
-//! A name is a slot index plus a generation, so a name never refers to a later occupant of the
-//! same slot. That is the property worth showing:
-//!
-//! ```
-//! use generational_table::Table;
-//!
-//! let mut t: Table<&str, 4> = Table::new();
-//! let a = t.insert_with(|_name| "first").unwrap();
-//! assert_eq!(t.get(a), Some(&"first"));
-//! assert_eq!(t.len(), 1);
-//!
-//! // Remove it, then fill the same slot again.
-//! assert_eq!(t.remove(a), Some("first"));
-//! let b = t.insert_with(|_name| "second").unwrap();
-//!
-//! // The old name does NOT resolve to the new occupant.
-//! assert_ne!(a, b);
-//! assert_eq!(t.get(a), None);
-//! assert_eq!(t.get(b), Some(&"second"));
-//! ```
-//!
-//! The table is fixed-size, so a full one refuses rather than allocating:
-//!
-//! ```
-//! use generational_table::Table;
-//!
-//! let mut t: Table<u32, 2> = Table::new();
-//! assert!(t.insert_with(|_| 1).is_some());
-//! assert!(t.insert_with(|_| 2).is_some());
-//! assert!(t.insert_with(|_| 3).is_none(), "a full table refuses");
-//! ```
 //!
 //! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review). Renamed from
 //! `slots`: flagged in CLAUDE.md's own text as an example of a too-generic name; matches the
@@ -78,6 +42,29 @@
 ///   the boot thread keeps its traditional tid without a special case.
 /// - With any sane `N`, no name ever equals `u64::MAX`, so a caller may keep using it as a
 ///   "no thread" sentinel (`cpu::NO_TID`).
+///
+/// # Examples
+///
+/// A name is a slot index plus a generation, so a name never refers to a later occupant of the
+/// same slot. That is the property worth showing:
+///
+/// ```
+/// use generational_table::Table;
+///
+/// let mut t: Table<&str, 4> = Table::new();
+/// let a = t.insert_with(|_name| "first").unwrap();
+/// assert_eq!(t.get(a), Some(&"first"));
+/// assert_eq!(t.len(), 1);
+///
+/// // Remove it, then fill the same slot again.
+/// assert_eq!(t.remove(a), Some("first"));
+/// let b = t.insert_with(|_name| "second").unwrap();
+///
+/// // The old name does NOT resolve to the new occupant.
+/// assert_ne!(a, b);
+/// assert_eq!(t.get(a), None);
+/// assert_eq!(t.get(b), Some(&"second"));
+/// ```
 pub struct Table<T, const N: usize> {
     slots: [Option<T>; N],
     /// The current generation of each slot: the one a live occupant's name carries, and the one
@@ -130,6 +117,19 @@ impl<T, const N: usize> Table<T, N> {
 
     /// Insert, minting the entry's name first so the entry can carry it: `f` receives the name
     /// and returns the value to store. `None` (and `f` never called) if every slot is live.
+    ///
+    /// # Examples
+    ///
+    /// The table is fixed-size, so a full one refuses rather than allocating:
+    ///
+    /// ```
+    /// use generational_table::Table;
+    ///
+    /// let mut t: Table<u32, 2> = Table::new();
+    /// assert!(t.insert_with(|_| 1).is_some());
+    /// assert!(t.insert_with(|_| 2).is_some());
+    /// assert!(t.insert_with(|_| 3).is_none(), "a full table refuses");
+    /// ```
     pub fn insert_with(&mut self, f: impl FnOnce(u64) -> T) -> Option<u64> {
         let slot = self.slots.iter().position(|s| s.is_none())?;
         let name = Self::name(slot, self.gens[slot]);

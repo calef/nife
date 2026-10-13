@@ -26,43 +26,18 @@
 //! - **Lines end in CRLF**, a header section is at most [`HEAD_MAX`] bytes, a duplicated
 //!   `Content-Length` must agree with itself, and a body longer than it said is refused.
 //!
-//! # EXAMPLES
-//!
-//! ```
-//! use http_response::{Response, get_request};
-//!
-//! let mut request = [0u8; 128];
-//! let n = get_request("10.0.2.9", "/uptime-0.1.0-aarch64.nifepkg", &mut request).unwrap();
-//! assert!(request[..n].starts_with(b"GET /uptime-0.1.0-aarch64.nifepkg HTTP/1.0\r\n"));
-//!
-//! let mut response = Response::new();
-//! // The reads a socket hands back need not line up with anything.
-//! let body = response.feed(b"HTTP/1.0 200 OK\r\nContent-Le").unwrap();
-//! assert!(body.is_empty());
-//! let body = response.feed(b"ngth: 5\r\n\r\nhel").unwrap();
-//! assert_eq!(body, b"hel");
-//! assert_eq!(response.status(), Some(200));
-//! assert!(!response.is_complete());
-//! assert_eq!(response.feed(b"lo").unwrap(), b"lo");
-//! assert!(response.is_complete());
-//! ```
-//!
+
 //! # BUGS
 //!
 //! - **No redirects, no keep-alive, no `Range`.** One request per connection, and a `3xx` is a
-//!   status like any other that the caller refuses. A package source that moves is found again by
-//!   its catalogue, not by following a server.
+//!   status like any other that the caller refuses.
 //! - **A close-delimited body is refused**, per the list above. A server that omits
 //!   `Content-Length` cannot serve a package to nife.
 //! - **Header values other than the two it reads are not validated.** They are skipped, not
 //!   interpreted, so a malformed `Date` costs nothing; a malformed line (no colon) is refused.
 //! - **Fuzzed, not proved.** `fuzz/fuzz_targets/http_response_feed.rs` checks that how the reads
-//!   fall never changes the answer (46 million inputs in fifteen minutes on 2026-09-25, no crash).
-//!   A Kani harness over two symbolic 22-byte reads was still in the solver after twenty minutes,
-//!   and one over a single 36-byte read had not finished unwinding after five: the `contains` and
-//!   per-byte `ends_with` scans unroll badly. That is a CI shard's minutes for a bound far below
-//!   the 2 KiB head the fuzzer reaches, so the treatment `crates/elf` carries is not proportionate
-//!   here yet.
+//!   fall never changes the answer. A Kani harness over even two symbolic 22-byte reads does not
+//!   finish in a CI shard's minutes (the `contains` and per-byte `ends_with` scans unroll badly).
 //!
 //! Name: provisional 2026-09-24 (milestone 198's rung 3a consumer lane). `http` alone would claim
 //! more than a request writer and a response reader; `design/naming.md` is the rule and calef's the
@@ -142,6 +117,27 @@ enum State {
 
 /// A response being read. See the crate documentation for what it accepts. `N` is the most its
 /// status line and headers may take: [`HEAD_MAX`] unless it was made with [`Response::with_room`].
+///
+/// # Examples
+///
+/// ```
+/// use http_response::{Response, get_request};
+///
+/// let mut request = [0u8; 128];
+/// let n = get_request("10.0.2.9", "/uptime-0.1.0-aarch64.nifepkg", &mut request).unwrap();
+/// assert!(request[..n].starts_with(b"GET /uptime-0.1.0-aarch64.nifepkg HTTP/1.0\r\n"));
+///
+/// let mut response = Response::new();
+/// // The reads a socket hands back need not line up with anything.
+/// let body = response.feed(b"HTTP/1.0 200 OK\r\nContent-Le").unwrap();
+/// assert!(body.is_empty());
+/// let body = response.feed(b"ngth: 5\r\n\r\nhel").unwrap();
+/// assert_eq!(body, b"hel");
+/// assert_eq!(response.status(), Some(200));
+/// assert!(!response.is_complete());
+/// assert_eq!(response.feed(b"lo").unwrap(), b"lo");
+/// assert!(response.is_complete());
+/// ```
 pub struct Response<const N: usize = HEAD_MAX> {
     head: [u8; N],
     head_len: usize,

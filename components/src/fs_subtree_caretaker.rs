@@ -1,71 +1,55 @@
 //! **The subtree caretaker: a directory capability attenuated to one subtree** (milestone 47,
 //! notes/dir-capability.md).
 //!
-//! `fs_file_caretaker` narrows a directory capability to one *file*. This narrows it to one
-//! *subtree*, which is the shape `cd`, a per-process namespace, and every "here is somewhere to
-//! write your logs" grant actually want. It is the same caretaker pattern (Mark Miller's term): it
-//! holds the wider capability, exports a narrower one, and is the only path between them.
-//!
-//! **Subtree, not directory, and the name now says which.** The old name said "directory", and that
-//! distinguished nothing: all three filesystem caretakers *hold* a directory capability. What this
-//! one serves is the directory **and everything beneath it**, reached through the handle the FS
-//! server minted, so `fs_subtree` is what a reader should predict from the name.
+//! `fs_file_caretaker` narrows a directory capability to one *file*; this narrows it to one
+//! *subtree*, the directory **and everything beneath it**, which is the shape `cd`, a per-process
+//! namespace and every "here is somewhere to write your logs" grant want. It is the caretaker
+//! pattern (Mark Miller's term): it holds the wider capability, exports a narrower one, and is the
+//! only path between them.
 //!
 //! # It performs no checks, and that is the design
 //!
-//! `fs_file_caretaker` has to inspect requests, because a file capability and a directory
-//! capability speak different protocols and it is translating between them. This one does not. At
-//! startup it sends **one** [`fs::OPENDIR`], which asks the FS server for a handle to the granted
+//! At startup it sends **one** [`fs::OPENDIR`], asking the FS server for a handle to the granted
 //! name carrying the granted rights; the server intersects those rights with its own and refuses if
-//! the answer came up short. Everything the client can reach afterwards is reached *through that
-//! handle*, so the attenuation lives in the handle the server minted and not in any branch here.
+//! the answer came up short. Everything the client reaches afterwards goes *through that handle*,
+//! so the attenuation lives in the handle the server minted, not in any branch here.
 //!
-//! What this process actually does is **translate a namespace**. The client numbers handles in its
-//! own space starting at [`filesystem_protocol::fs::ROOT`], which is the granted directory; this maps each one
-//! to the FS server's number and forwards. A client that guesses a handle is guessing in a table
-//! with a handful of inhabitants, none of which it chose, and a handle this process never minted is
-//! `EBADF` from one check.
-//!
-//! Two consequences worth stating, because they are what the confinement rests on:
+//! What this process does is **translate a namespace**: the client numbers handles from
+//! [`filesystem_protocol::fs::ROOT`], which is the granted directory, and this maps each to the FS
+//! server's number and forwards. A handle this process never minted is `EBADF` from one check.
 //!
 //! - **The confined program holds an endpoint to this process and nothing that names the FS
-//!   server**, so "it cannot reach the parent directory" is a property of its capability table rather than of
-//!   a branch it is trusted to take. The boundary is an address space, which is why
-//!   `fs_file_caretaker`'s tests are witnesses and not assertions, and why this one's are too.
+//!   server**, so "it cannot reach the parent directory" is a property of its capability table.
 //! - **A rights-carrying handle alone would not confine it.** The FS server's handle table is per
-//!   server, not per client, so a program holding the FS-service endpoint could always name
-//!   [`filesystem_protocol::fs::ROOT`] and be back at the image root. The handle is the authority; the endpoint
-//!   is the boundary. That is the whole argument for this process existing.
+//!   server, not per client, so a program holding the FS-service endpoint could name
+//!   [`filesystem_protocol::fs::ROOT`] and be back at the image root. The handle is the
+//!   authority; the endpoint is the boundary.
 //!
+
 //! # Capability contract (`kernel/src/user/fs_service/directory_grant.rs`, `start_granted_dir`)
 //!
 //! - **slot 0**: the FS-service endpoint, `WRITE`. The directory capability being attenuated.
 //! - **slot 1**: the narrowed endpoint, `READ`. The confined program `CALL`s here; this endpoint IS
 //!   the subtree capability.
-//! - **slot 2**: a report endpoint, `WRITE`. Readiness ([`filesystem_protocol::fixture::READY`]) once the
-//!   descent has succeeded, or [`filesystem_protocol::fixture::DESCENT_REFUSED`] with the errno if it did not,
-//!   after which this process exits without serving.
-//! - **[`PAGE_VA`]**: the page shared with the FS server *and* with the client, one frame for all
-//!   three, sound for the reason `fs_file_caretaker`'s note gives: every request on both hops is a
-//!   blocking `CALL`, so the client is parked inside its own call for the whole time this process
-//!   is using the page.
+//! - **slot 2**: a report endpoint, `WRITE`. Readiness ([`filesystem_protocol::fixture::READY`])
+//!   once the descent has succeeded, or [`filesystem_protocol::fixture::DESCENT_REFUSED`] with the
+//!   errno, after which this process exits without serving.
+//! - **[`PAGE_VA`]**: the page shared with the FS server *and* with the client, sound because
+//!   every request on both hops is a blocking `CALL`, so the client is parked inside its own call
+//!   while this process uses the page.
 //!
 //! The granted name and the requested rights arrive in the three `START` argument words
-//! ([`filesystem_protocol::grant`], whose spec word carries a rights mask of any width), so a subtree grant
-//! costs no extra frame.
-//!
-//! Name: ratified 2026-08-01 (calef, milestone 61), replacing `dwarden`, which is the name that
-//! made the case for the whole naming tenet: it was named for what it **holds** while both siblings
-//! are named for what they **serve**, and all three hold a directory, so the old name distinguished
-//! nothing. Refused `dwarden`, the `warden` family, and bare `subtree`, because subtree already
-//! means three things here (the supervision tree, this repository, and git's own `subtree`);
-//! carrying the disambiguation in the name beats carrying it in the doc comment.
+//! ([`filesystem_protocol::grant`]), so a subtree grant costs no extra frame.
 //!
 //! # BUGS
 //!
-//! **No host fuzz target reaches this caretaker's decode** (proposal #1592 part a, rank 4). It is
-//! inline in this EL0 binary with no library half, so a target would need it extracted first, the
-//! way `redoxfs_server::Server::handle` was. See `notes/fuzzing-the-services.md`.
+//! **No host fuzz target reaches this caretaker's decode.** It is inline in this EL0 binary with no
+//! library half, so a target would need it extracted first (`notes/fuzzing-the-services.md`).
+//!
+//! Name: ratified 2026-08-01 (calef, milestone 61 (the caretakers)), replacing `dwarden`, named
+//! for what it **holds** while both siblings are named for what they **serve**. Refused `dwarden`
+//! and the `warden` family. Refused bare `subtree`, which already means the supervision tree, this
+//! repository and git's own `subtree`.
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

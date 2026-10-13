@@ -4,8 +4,7 @@
 //! hardware attaches to every TLB entry created from a non-global (`nG`) mapping, and compares
 //! on every lookup against the ASID in `TTBR0_EL1`'s top bits. With every user mapping tagged,
 //! a context switch stops flushing anything: entries from other address spaces simply stop
-//! matching. Before this, every switch ran `tlbi vmalle1is`, discarding every EL1 translation
-//! on every core, the kernel's included.
+//! matching.
 //!
 //! # Why a bitmap and not Linux's generation scheme
 //!
@@ -37,39 +36,11 @@
 //! kernel probes `satp.ASID`'s implemented width at boot and keeps flushing on every switch if it
 //! is narrower than the numbers this crate hands out.
 //!
-//! # Examples
-//!
-//! ```
-//! use address_space_identifier::Allocator;
-//!
-//! let mut a = Allocator::new();
-//! let first = a.alloc().expect("a fresh allocator has one to give");
-//! let second = a.alloc().expect("and another");
-//! assert_ne!(first, second, "two live address spaces never share an ASID");
-//!
-//! // Freeing puts it back in circulation.
-//! a.free(first);
-//! assert!(a.alloc().is_some());
-//! ```
-//!
-//! Name: ratified 2026-09-18 (calef, `design/decisions/` §154), **deratifying the 2026-08-01
-//! ratification** to do it, and performed the same day. Refused `asid`.
-//!
-//! §154's test is whether the expansion is a phrase people actually say. "address space identifier" is,
-//! so it goes, where `pci` stays because "peripheral component interconnect" is not.
-//!
-//! The 2026-08-01 block called this one of the standard terms "already right and must not be
-//! touched". That was an exemption rather than a test, and §154 records the three-layer
-//! contradiction the exemptions left behind.
-//!
-//! **The rename removed a `script/lint` `-d` allow-list entry rather than editing one**: that entry
-//! existed only because the name was an acronym the rule cannot read, and an expanded name needs no
-//! exemption.
-//!
-//! **The hardware field did not move with the crate.** `satp.ASID` and `TTBR0_EL1.ASID` are
-//! citations of two instruction-set manuals, so `ASID` stays wherever this tree is naming the field
-//! rather than the crate, `asid_bits()` and `flush_asid()` included. That is the bulk of the word's
-//! occurrences in the tree, and it is why the rename touched far fewer lines than a grep suggests.
+
+//! Name: ratified 2026-09-18 (calef, `design/decisions/` §154 (the acronym test is whether the
+//! phrase is spoken)): "address space identifier" is a phrase people say, so the expansion is the
+//! name. Refused `asid`. The hardware fields `satp.ASID` and `TTBR0_EL1.ASID` keep their manuals'
+//! spelling wherever the tree names the field rather than the crate (`asid_bits()`, `flush_asid()`).
 
 #![cfg_attr(not(test), no_std)]
 
@@ -80,6 +51,21 @@ pub const ASIDS: usize = 256;
 /// The allocator: one bit per ASID, set = in use. ASID 0 is born allocated and is never freed:
 /// it is the kernel's, carried by the reserved "nobody is home" table, so a user address space
 /// can never share a tag with the state that means no user at all.
+///
+/// # Examples
+///
+/// ```
+/// use address_space_identifier::Allocator;
+///
+/// let mut a = Allocator::new();
+/// let first = a.alloc().expect("a fresh allocator has one to give");
+/// let second = a.alloc().expect("and another");
+/// assert_ne!(first, second, "two live address spaces never share an ASID");
+///
+/// // Freeing puts it back in circulation.
+/// a.free(first);
+/// assert!(a.alloc().is_some());
+/// ```
 pub struct Allocator {
     bitmap: [u64; ASIDS / 64],
 }

@@ -4,79 +4,22 @@ use login_service as ls;
 use super::*;
 use crate::sched;
 
-/// The login service's construction budget (`components/src/login.rs`'s `CONSTRUCTION_UT`), sized for
-/// this suite's exact needs rather than guessed generously: `crate::memory_region::create` reserves this
-/// many frames from the boot's free pool the moment `ls::start` runs, and this number is a direct,
-/// permanent charge against `kernel::testing::SUITE_PAGE_FRAME_BUDGET` **for the logins this suite never
-/// tears down**. The first version of this constant (2048) blew that budget by itself; this is the
-/// account the ledger's own message asks for.
+/// The login service's construction budget (`components/src/login.rs`'s `CONSTRUCTION_UT`).
+/// `crate::memory_region::create` reserves this many frames from the boot's free pool when
+/// `ls::start` runs, and it is a permanent charge against `kernel::testing::SUITE_PAGE_FRAME_BUDGET`
+/// for the logins this suite never tears down.
 ///
-/// 128 for `login`'s own scratch (`OWN_UT_PAGES`), plus 128 per successful login that this suite
-/// leaves logged in (that program's `CARETAKER_REGION_PAGES` 64 + `CLIENT_BUDGET_PAGES` 64) for the
-/// twelve it performs in total: one in the headline test, two in the two-identity test, six in
-/// `the_login_service_serves_past_the_old_capability_table_ceiling`, and three in
-/// `login_scopes_each_identity_to_its_own_provisioned_subtree` (DECISIONS §117's per-identity
-/// scoping: `alice`'s mark, `bob`'s mark, and `alice`'s second, independent session). 128 +
-/// 12*128 = 1664. `login_denies_an_authenticated_identity_with_no_provisioned_subtree`'s own login
-/// (`carol`, a real credential and no home subtree) used to add a permanent 64-page charge on top
-/// (`mint`'s descent-refused path leaked `region` before this milestone's fix); it does not anymore,
-/// `mint` reclaims it before returning, so it costs this ledger nothing.
+/// The itemized minimum: 128 (`login`'s `OWN_UT_PAGES`) + 32 (`login::CHANNEL_UT_PAGES`) + 16 * 64
+/// (a caretaker region for every permanently kept login, the four detaching durable clients
+/// included) + 12 * 64 (the ordinary sessions' client budgets) = 1952. Tests that log back out
+/// (`caretaker_teardown_reclaims_a_full_session_worth_of_memory` and the terminal test) and refusals
+/// that never reach `mint` add nothing permanent, and `connect`'s channels are carved from
+/// `CHANNEL_UT_PAGES`, so they always return as the LIFO top.
 ///
-/// **`caretaker_teardown_reclaims_a_full_session_worth_of_memory` below adds no permanent charge at
-/// all**, which is the property that test exists to demonstrate: every login it performs logs back
-/// out before the next one starts, so its own peak transient need (one login's 128 pages, on top of
-/// the 1664 permanent above) is smaller than the headroom already here, and it proves reclaim works
-/// by needing far more than that headroom would allow if it did not. 1856 - 1664 = 192, still more
-/// than the 128 that test (or `mint`'s own scratch bookkeeping) ever needs live at once, so this
-/// number is unchanged by this milestone's fix rather than lowered to the new, tighter 1664 + 128 =
-/// 1792 minimum: the margin costs nothing further against `SUITE_PAGE_FRAME_BUDGET` and a lane six months
-/// from now adding one more permanent login to this suite should not have to touch this constant to
-/// do it. Raising this past 640 raised `kernel::testing::SUITE_PAGE_FRAME_BUDGET` too; that comment
-/// carries the account.
-///
-/// **Raised, milestone 49's channel-per-client update: 1856 -> 2176, and the account is two lines
-/// rather than the four figures an earlier version of this comment carried.** That version set this
-/// to 4096 while chasing this suite's second-login failure, on the theory that the failure was a
-/// sizing problem. It was not (it was `login`'s own sixteen-slot capability table; see that file's
-/// BUGS), and neither 16384 here nor 8192 for `OWN_UT_PAGES` ever changed the outcome. Both are back
-/// to sizes with a measurement behind them:
-///
-/// - **+256, two more permanently-logged-in sessions.** This update adds
-///   `two_clients_connecting_together_get_independent_channels_and_neither_observes_the_others_secret`,
-///   whose two roles both log in and neither logs out, at the same 128 pages a live session costs
-///   every other test above. Fourteen, not twelve.
-/// - **+32, `login::CHANNEL_UT_PAGES`**, split from this budget once at that process's startup, the
-///   same one-time shape `OWN_UT_PAGES` already has. See that constant's own doc for why a channel's
-///   region must come from a budget with exactly one spender.
-///
-/// `connect`'s own channel objects spend nothing permanent: each channel is retyped from a small,
-/// dedicated region that is destroyed once the channel is served, and because that region is carved
-/// from `CHANNEL_UT_PAGES` rather than from here, it is always the LIFO top when it is destroyed, so
-/// its pages actually come home (`crates/regions`' `return_to_parent`). The earlier arrangement,
-/// carving it from this budget, stranded **368 pages of holes** in one run, measured.
-///
-/// 128 (`OWN_UT_PAGES`) + 32 (`CHANNEL_UT_PAGES`) + 14 * 128 = 1952 permanently resident; 2176 is
-/// that with the same margin 1856 carried over 1664.
-///
-/// **Unchanged by milestone 49's terminal update.**
-/// `login_hands_out_the_terminal_once_and_denies_a_concurrent_second_login_until_logout` performs
-/// two successful logins, both of `caretaker_teardown_reclaims_a_full_session_worth_of_memory`'s own
-/// "logs back out before returning" shape, plus one refusal that never reaches `mint` at all
-/// (`NO_TERMINAL`, checked before authentication) and one bare front-door word: no new permanent
-/// charge.
-///
-/// **Raised 2176 -> 3088 for milestone 152's durable tests (2026-09-30).** The itemised minimum is
-/// now 160 + 16 * 64 (a caretaker region for every permanently-kept login, the four detaching
-/// durable clients' included) + 12 * 64 (the ordinary sessions' client budgets) = 1952, but the
-/// flat sum is not what the budget must hold: `caretaker_teardown`'s ten logout cycles and the
-/// refused logins' churn split and return **out of order**, and a split needs contiguous pages, so
-/// LIFO holes strand some of the slack (the same rule `DURABLE_UT_PAGES`'s own comment states for
-/// its budget). At 2688 the stranded holes caught up with the suite at its ~23rd login and the
-/// answer was `DENIED` on a correct password, which is what a spent construction budget looks like
-/// from outside (`mint`'s `None`, folded into `DENIED`); at 3088 the whole suite runs green and the
-/// kernel ledger reads 24829 kept (`kernel::testing::SUITE_PAGE_FRAME_BUDGET`'s own account). Every
-/// earlier full run died in `a_durable_session_is_re_derived_at_start_up_unless_suspended` before
-/// reaching any of this.
+/// The flat sum is not enough: logout cycles and refused logins split and return **out of order**,
+/// and a split needs contiguous pages, so LIFO holes strand some slack (as `DURABLE_UT_PAGES`'s
+/// budget states). At 2688 the suite ran out at about its 23rd login, seen as `DENIED` on a correct
+/// password (`mint`'s `None`, folded into `DENIED`); 3088 runs the whole suite green.
 pub(super) const CONSTRUCTION_PAGES: u64 = 3088;
 
 /// **What `login` splits off its construction budget at start-up for durable sessions** (milestone
