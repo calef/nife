@@ -8,8 +8,7 @@
 //! ranking and the table are all `ps`'s ([`ps::collect`], [`ps::Survey::join_cpu_time`],
 //! [`ps::Survey::rank_by_cpu_time`], [`ps::Survey::write_report`]); this holds the summary line
 //! ([`write_summary`]), which a ranked view needs because the head of a distribution says nothing
-//! about its size. Whether this is a program or a flag on `ps` is an architect's question: it holds
-//! exactly `ps`'s authority, and asks a different question of it.
+//! about its size.
 //!
 //! ```text
 //! $ top
@@ -32,8 +31,8 @@
 //! - The summary counts this domain, not the machine, because nothing here is ambient.
 //! - Ties break by tid, so a quiet machine ranks in slot order.
 //!
-//! Name: provisional: the name every reader knows, pending calef's ruling and the program-or-flag
-//! question.
+//! Name: provisional here; calef ratified the program's name on 2026-10-06 and kept it a program
+//! of its own rather than a flag on `ps`.
 
 #![cfg_attr(not(test), no_std)]
 
