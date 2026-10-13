@@ -5,10 +5,9 @@ built: 2026-09-02
 ---
 # 208. The x86_64 kernel image ships an RWX segment, and it is the reason a second ELF reader exists
 
-Minted 2026-08-31, found by milestone 196's (a physical address on
-`elf::Segment`) lane while trying to delete a duplicate ELF parser. Built 2026-09-02.
-*(Number provisional until the merge queue lands it.)* It needed no ruling to start: the change was
-one linker script and the parser that refused the image already existed.
+Built. It stood between milestone 196 (a physical address on `elf::Segment`) and deleting a
+duplicate ELF parser. It needed no ruling: the change was one linker script, and the parser that
+refused the image already existed.
 
 In brief. `kernel/link-x86_64.ld` folded `KEEP(*(.text.boot))` and `KEEP(*(.data.boot))` into one
 output section, so the 32-bit trampoline shipped as a single `RWX` `PT_LOAD` at `0x101000`.
@@ -20,7 +19,7 @@ else in the tree.
 ## How it was found, which is the useful part
 
 Milestone 196's premise was that `uefi_loader` carries its own forty-line ELF reader because
-`elf::Segment` exposed no physical address. **That was true and it was not the blocker.** The lane
+`elf::Segment` exposed no physical address. That was true and it was not the blocker. The lane
 added the field, then measured rather than assumed: it built the kernel for `x86_64-unknown-none`,
 dumped the program headers, and ran the real bytes through `Elf::parse`.
 

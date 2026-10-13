@@ -9,9 +9,8 @@ needs_person: no
 ---
 # 209. A session starts in a fit state, or says which part is not
 
-Minted 2026-08-31 by calef, after a day in which the machine slept twice and
-killed two lanes mid-response, the `launchd` watchers were found unloaded, and the toolchain link
-pointed into a worktree about to be pruned. *(Number provisional until the merge queue lands it.)*
+A session can start on a machine that sleeps and kills lanes mid-response, with the `launchd`
+watchers unloaded, or with the toolchain link pointing into a worktree about to be pruned.
 
 Every check it makes is a command that already exists; what is missing is anything
 that runs them together and says which one is false.

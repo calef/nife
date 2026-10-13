@@ -9,8 +9,8 @@ needs_person: no
 ---
 # 189. A page-frame budget per architecture, so the ledger constrains all three
 
-Minted 2026-08-28, calef, out of his own question about why x86_64 has no
-page-frame budget. It has one; it has the same one, which is the problem.
+Why does x86_64 have no page-frame budget? It has one; it has the same one as the other two, which
+is the problem.
 
 The ledger already prints, on every leg, the figure this needs. Splitting one
 constant into three is not a design fork, and the shape it splits into is the one

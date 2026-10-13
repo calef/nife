@@ -141,11 +141,7 @@ is missing.
   reader meets the harness.
 - `kernel/src/arch/` stays unreachable under every option here, which means the architecture
   layer is not what this fixes. Saying so plainly is what keeps this milestone from being quoted as
-  more than it is. (This entry used to name the VisionFive 2's "undelivered-wake" defect as the thing
-  that lived there and went unfixed. That reading is retracted, `notes/visionfive2.md`'s fifth
-  bench stop, 2026-08-15: it was a completed tour's terminal state, not a stranded receiver, and it
-  never happened. Found still repeating it here 2026-09-23. The point about `arch/` staying
-  unreachable holds on its own regardless of that example.)
+  more than it is.
 
 ## Follow-on
 
@@ -169,7 +165,7 @@ is missing.
 
 ## Index row
 
-Minted by calef on 2026-08-30 from milestone 191's finding: no Kani harness has ever caught a
+From milestone 191 (did the proofs catch the bugs?)'s finding: no Kani harness has ever caught a
 defect after the day it was written, because `script/verify`'s own header says `cargo kani` never
 compiles the kernel. 64,818 lines of `kernel/src` are out of reach by construction, and that is
 where every concurrency, hardware-contract and resource-accounting defect lived. Measured the same

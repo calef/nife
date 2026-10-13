@@ -5,64 +5,34 @@ built: 2026-09-19
 ---
 # 182. x86_64's own interactive-boot entry point
 
-Built 2026-09-19. Split off from [milestone 177](0177-graphical-interactive-boot.md),
-2026-08-27, once that milestone's build lane found piece 3 (originally scoped as "build x86_64's
-own interactive-boot entry point first") needs a from-scratch ELF-loading boot path, not wiring: a
-substantially larger, separate undertaking than pieces 1-2's device attachment and program swap.
-Built in part on 2026-09-14, inside [milestone 268](0268-the-boot-ladder.md)'s lane, because 268's
-top rung on x86_64 is not reachable any other way; the prompt came with
-milestone 299 (the x86 port-range capability) on 2026-09-15; the third `script/swish-check` leg,
-the last outstanding item, on 2026-09-19 (below, "The third leg").
+Built. A default x86_64 boot reaches a `swish` prompt through its own interactive-boot entry point,
+and `script/swish-check --arch x86_64` types at it (below, "The third leg"). x86's console is a
+userspace driver holding a port-range capability, from milestone 299 (the x86 port-range
+capability), under
+[DECISIONS §149 (may the kernel answer on an endpoint, where §121 leaves no userspace holder?)](../decisions/0149-kernel-served-console-endpoint.md);
+DECISIONS §121 (what a device capability is when the device has no page) is `AMENDED` to match.
 
-DECISIONS §149 was resolved 2026-09-15 by reversing DECISIONS §121 (`AMENDED`):
-x86's console is a userspace driver holding a port-range capability, not a kernel thread. The
-narrative from the next paragraph down to "The third leg" predates that ruling and still weighs
-§149's options; it is kept as the record, and its BUGS entries that 299 answered are marked so.
-
-Amended 2026-09-09: this block's central premise no longer holds, and the milestone is smaller
-than it reads. It says the graphical stack is x86_64's *only possible* route to an interactive
-shell, because DECISIONS §121 makes the console permanently kernel-resident and there is therefore
-no userspace console server to talk to. §121 does make the driver kernel-resident, and that part
-stands. What was missed is that `swish` never talks to a UART on any architecture: it talks to a
-console server over an endpoint. So the question was never "can x86 have a userspace console
-driver" (it cannot) but "can something else answer on that endpoint", and a kernel thread can:
-`inter_process_communication::Rendezvous` is generic over `T: Node`, privilege-free, and kernel threads already exist.
-
-Two consequences. Milestone 177 (wire the graphical terminal stack into the real interactive boot) is no longer a prerequisite for this milestone, which
-restores the agreed order of software parity before hardware parity. And the route is serial,
-which is what a bench session needs, since `board_console` reads a wire and cannot read a monitor.
-
-DECISIONS §149 carries that decision. This milestone waits on it, and on nothing else it did not
-already wait on.
-
-## What was missing (as of 2026-08-27)
-
-x86_64 had no third function beside `spawn_init`/`riscv_shell_boot`. What existed instead,
-`kernel::user::x86_userspace_demo`, is a fixture: it builds two children directly from a hand-built
-region, each carved from a budget with every kernel object built in place, with no ELF parsed and
-no archive loaded (its own doc: "the loader-shaped path minus the ELF"). It proves the scheduler and
-the fault path can build and run real EL0-equivalent (ring 3) processes; it does not prove a real
-`init` reached from a real archive, the thing `spawn_init`/`riscv_shell_boot` each already are for
-their own architecture.
+The entry point needs a real ELF-loading boot path, not wiring, so it is its own milestone rather
+than a piece of milestone 177 (wire the graphical terminal stack into the real interactive boot).
+The route is serial, which is what a bench session needs, since `board_console` reads a wire and
+cannot read a monitor.
 
 ## What this needs
 
-1. A real ELF-loading boot entry, matching `spawn_init`/`riscv_shell_boot`'s shape: parse the
+1. A real ELF-loading boot entry, matching `spawn_init`/`boot_progenitor`'s shape: parse the
    initrd archive, measure and verify `init` against the boot's own measurement table (DECISIONS
    §104's discipline, the same check the other two architectures' entries already make), build its
-   address space, grant it the boot's own capability set, and dispatch it to ring 3. Built
-   2026-09-14.
+   address space, grant it the boot's own capability set, and dispatch it to ring 3. Built.
 2. The x86_64-specific capability grants the other two boots each hand-assemble for their own
-   architecture. Built for everything but the console, which is the question of §149 (may the kernel answer on an endpoint, where §121 leaves no userspace holder?).
-3. A third `script/swish-check` `--arch` leg. Built 2026-09-19; see "The third leg".
+   architecture. Built; the console is COM1's `PortRange`, per §149.
+3. A third `script/swish-check` `--arch` leg. Built; see "The third leg".
 
-## What was built (2026-09-14)
+## What was built
 
 ### The entry point, and the progenitor at ring 3
 
-x86_64's default boot used to end in `nife x86_64: boot complete, halting.` after a green self-test
-verdict. It now ends by handing the machine to the progenitor, through the same function
-riscv64's boot uses, `kernel::user::riscv_shell_boot`, rather than a third copy of it. That
+After a green self-test verdict, x86_64's default boot hands the machine to the progenitor, through
+the same function riscv64's boot uses, `user::boot_progenitor`, rather than a third copy of it. That
 function parses the archive, measures `progenitor` against the trust root and the program table
 against the kernel's vouching (`trust::require`, `trust::require_program_measurements`), builds the
 address space with the archive mapped read-only, endows the progenitor, and starts it. Three
@@ -78,7 +48,8 @@ changes made one body serve both architectures:
 
 `main.rs`'s new `x86_hand_over` calls it and then watches, bounded, because on this architecture a
 progenitor that cannot reach a console has nothing to print through, and a silent machine reads as
-a hang. The transcript, QEMU `q35`, one core, the x86 archive attached:
+a hang. The transcript of the first hand-over, before milestone 299 gave it a console, QEMU `q35`,
+one core, the x86 archive attached:
 
 ```
 nife self-test: 5 of 5 passed
@@ -102,26 +73,16 @@ nife x86_64: the progenitor is running at ring 3; 2 of the processes it built st
 
 ### The gates that keyed on the halt line
 
-Three things waited for `nife x86_64: boot complete, halting.`: `cargo xtask uefi-boot`'s serial
-check, its screen marker, and `script/netboot-rehearsal`. All three now wait for the self-test
-verdict (`boot_ladder::SELF_TEST`), the last line every boot prints whatever it hands over to next,
-and `uefi-boot` also requires the hand-over line, since that boot carries the archive. `uefi-boot`
-passed under OVMF after the change.
+`cargo xtask uefi-boot`'s serial check, its screen marker, and `script/netboot-rehearsal` wait for
+the self-test verdict (`boot_ladder::SELF_TEST`), the last line every boot prints whatever it hands
+over to next, and `uefi-boot` also requires the hand-over line, since that boot carries the archive.
+`uefi-boot` passed under OVMF after the change.
 
-### The empty slot, and §149's options as priced then
-
-Parts of this record were overtaken by the ruling on §149 and milestone 299, and are in
-[`before-the-ruling.md`](0182-x86-64-interactive-boot/before-the-ruling.md). They are milestone
-177's superseded claim about the only route, what the two faults in the transcript above were, the
-correction that put a placeholder frame in slot 1, and what each of §149's options would have taken
-from the tree.
-
-
-## The third leg (2026-09-19)
+## The third leg
 
 `script/swish-check --arch x86_64` boots x86_64 to its prompt and types the same
-`SWISH_CHECK_SCRIPT` the other two legs type, over COM1, and checks every answer. `script/swish-check`
-with no arguments now runs all three.
+`SWISH_CHECK_SCRIPT` the other two legs type, over COM1, and checks every answer.
+`script/swish-check` with no arguments runs all three.
 
 ### Which boot it drives, and what that costs
 
@@ -185,8 +146,7 @@ says so where the step is), or the flush cost comes down in milestone 400's code
 - The checks read from the hand-over on. The tour's userspace demonstration kills two threads on
   purpose (`x86_userspace_demo`'s supervised deaths), so the killed-thread check and the
   "was the kernel writing during the boot" test start at `nife: handing the system to the userspace
-  progenitor.` The first version read the whole transcript and failed on those two deaths, which is
-  how this was found.
+  progenitor.`, since reading the whole transcript would fail on those two deaths.
 - It waits for the kernel's hand-over report, then presses Enter. `x86_hand_over` watches the
   progenitor for ten seconds and prints two lines after the prompt, so the transcript does not end
   in `$ ` and a line typed in that window could have the report spliced through its echo. The leg
@@ -235,17 +195,13 @@ before assuming parity with aarch64/riscv64 on every point.
 
 ## What this unblocks
 
-The top rung of milestone 268 (every architecture boots the same way: describe the machine, test yourself, hand over) on x86_64: a default x86_64 boot reaches `swish`, and now a gate types
-at it. What 268 still owes there is its own item, `script/boot-check` asserting the prompt, which
-this milestone does not build.
+The top rung of milestone 268 (every architecture boots the same way: describe the machine, test
+yourself, hand over) on x86_64: a default x86_64 boot reaches `swish`, and a gate types at it. What
+268 still owes there is its own item, `script/boot-check` asserting the prompt, which this milestone
+does not build.
 
 ## BUGS
 
-- Answered by milestone 505 (an x86_64 input driver that never lets the core idle), kept as the
-  record: "the x86_64 capability-slot gauge reports the hand-over, not the peak" and "an x86_64
-  prompt holds a host core at 100%". Both had one cause: x86_64's input driver polled COM1 and
-  yielded, so the idle loop never ran again after the hand-over (5 of 24 printed against a real peak
-  of 17; 76 CPU-seconds in 78 wall-seconds at an idle prompt). It now waits on IRQ 4.
 - The x86_64 leg is about forty times slower per line than the other two, because the console
   waits for the screen (above), and so it carries a 90 s per-line bound where they carry 30 s: a
   real hang on that leg is reported a minute later. A wedged screen terminal would stall this leg's serial transcript as well, which is
@@ -259,20 +215,13 @@ this milestone does not build.
   2026-09-19. The PVH leg a minute earlier passed the same test against the same image and wrote to
   it, so the likeliest reading is `mkredoxfs`'s own second-boot case (a mount of an image a previous
   boot wrote), not firmware. Not investigated. Recorded at the runner's opt-in.
-- Answered by milestone 299, kept as the record: "there is no prompt on x86_64" (there is), "slot
-  1 is a placeholder frame" (it holds COM1's `PortRange`), and "two of the progenitor's children die
-  at every x86_64 boot" (zero do; the report says `0 of the processes it built stopped`).
-- Answered by a ratification: `riscv_shell_boot` is `user::boot_progenitor` (ratified
-  2026-09-15). `riscv_hand_over`/`x86_hand_over` are still provisional.
+- `riscv_hand_over`/`x86_hand_over` are provisional names.
 
 ## Follow-on
 
-- **Milestone 505.** milestone 505 (an x86_64 input driver that never lets), `design/roadmap/0505-an-x86-64-input-driver-that-never-lets-the-core-idle.md`:
-  interrupt-driven x86_64 input. Milestone 299 recorded the poll as a latency and CPU limitation; this
-  milestone measured that it also starves the idle loop, which takes the slot gauge and the core's
-  halt with it.
-- **Done.** The stale gauge and the 100% core, by milestone 505 (an x86_64 input driver that never
-  lets the core idle); BUGS above keeps the record.
+- **Milestone 505.** Milestone 505 (an x86_64 input driver that never lets the core idle),
+  `design/roadmap/0505-an-x86-64-input-driver-that-never-lets-the-core-idle.md`: interrupt-driven
+  x86_64 input, so the idle loop runs after the hand-over.
 - **Recorded.** `uefi-test` red with the RedoxFS disk attached, in BUGS above and at
   `helpers/qemu-uefi-x86_64.sh`'s `NIFE_UEFI_REDOXFS`.
 - **Recorded.** The leg's CI cost, in `script/swish-check`'s header and `.github/workflows/ci.yml`;

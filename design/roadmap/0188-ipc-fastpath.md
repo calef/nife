@@ -9,25 +9,22 @@ needs_person: yes
 ---
 # 188. The IPC fastpath: the gate measures a shape userspace does not use, and three cheaper cuts come before a hand-written path
 
-Partial as of 2026-09-04. Phases 1 to 3 are built and measured; phase 4 is an architect's and is
-untouched. The results change the recommendation's arithmetic without changing its conclusion.
+Partial. Phases 1 to 3 are built and measured; phase 4 is an architect's and is untouched. The
+results change the recommendation's arithmetic without changing its conclusion.
 
-Minted 2026-08-28, calef, out of the lane that gated the fastpath footprint on the third
-architecture (pull request #574). The provisional framing he gave it was *"a hand-maintained IPC
-fastpath, so the common case stops paying for the general one."* The title changed because scoping
-found that the premise needs checking before the fastpath does. The gate that says we are over
-target measures an IPC shape that no userspace program in this tree performs. And the largest single
-item it reports on aarch64 is a symbol of which 94% is never fetched.
+calef's framing: *"a hand-maintained IPC fastpath, so the common case stops paying for the general
+one."* The title says the premise needs checking before the fastpath does. The gate that says we are
+over target measures an IPC shape that no userspace program in this tree performs. And the largest
+single item it reports on aarch64 is a symbol of which 94% is never fetched.
 
 Phase 4 only needs a decision; phases 1 to 3 were a lane's own call, needed nobody, and are done.
-The decision is [§95 (hand-written IPC)](../decisions/0095-a-proven-ipc-fastpath.md), a
-hand-written IPC fastpath and whether it can stay proven. This gate did not cite it until
-2026-09-19. It is `DECIDED`, and what calef decided is *"don't decide yet"*, in two tiers. The
-eligibility predicate and its proof in `crates/ipc` are ratified as buildable now. The fastpath
-itself stays gated on the one measurement that would justify it: milestone 74 (cycle counters) on
-milestone 127 (the seL4 machine). So the token stays `DECISION`, because the spend is still calef's.
-Phase 4 is a standing verification obligation and a permanent maintenance cost, and this block
-recommends against starting it until the measurement exists.
+The decision is [§95 (hand-written IPC)](../decisions/0095-a-proven-ipc-fastpath.md), a hand-written
+IPC fastpath and whether it can stay proven. It is `DECIDED`, and what calef decided is *"don't
+decide yet"*, in two tiers. The eligibility predicate and its proof in `crates/ipc` are ratified as
+buildable now. The fastpath itself stays gated on the one measurement that would justify it:
+milestone 74 (cycle counters) on milestone 127 (the seL4 machine). So the token stays `DECISION`,
+because the spend is still calef's. Phase 4 is a standing verification obligation and a permanent
+maintenance cost, and this block recommends against starting it until the measurement exists.
 
 ## Appendices
 
@@ -38,8 +35,6 @@ This page is complete on its own. The working behind it is in
   tables behind the three findings.
 - [design-space.md](0188-ipc-fastpath/design-space.md): what a fastpath may skip and must keep,
   the proofs and invariants, how two paths stay in agreement, and alternatives A to F priced.
-- [original-plan.md](0188-ipc-fastpath/original-plan.md): the four phases and the recommendation
-  as written before phase 1.
 - [phases-1-to-3.md](0188-ipc-fastpath/phases-1-to-3.md): what pull request #732 measured, with
   the before and after on every architecture.
 - [phase-4-evidence.md](0188-ipc-fastpath/phase-4-evidence.md): the case for and against phase 4,

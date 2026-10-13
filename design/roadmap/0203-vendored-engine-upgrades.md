@@ -105,9 +105,8 @@ divergences, stay on 0.9.1 and record why, or fork permanently and stop pretendi
 upstream. A lane that meets this should stop and write the fork up rather than forcing a patch
 through, because which of the three is right is not a lane's call.
 
-We are current as of 2026-08-31, with 0.9.1 published 2026-07-01 and still the maximum. So the
-first run of this check should report nothing, which is the cheapest possible way to verify the
-mechanism works before it ever has to be right about something.
+Checked 2026-08-31: 0.9.1, published 2026-07-01, is the maximum, so the check reports nothing while
+that holds.
 
 ## BUGS
 

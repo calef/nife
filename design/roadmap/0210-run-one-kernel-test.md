@@ -5,10 +5,8 @@ built: 2026-08-31
 ---
 # 210. No kernel test can be run by name, so one falsification costs a whole suite
 
-Built (2026-08-31). Minted 2026-08-31 from milestone 202's (falsify the confinement claims)
-lane, which paid the cost twenty-five times. *(Number provisional until the merge queue lands it.)*
-`cargo xtask test --test <substring>` filters the kernel suite; the filter is baked into the test
-binary by `kernel/build.rs` and read by `kernel/src/testing.rs`'s runner. See notes/scripts.md.
+Built. `cargo xtask test --test <substring>` filters the kernel suite; the filter is baked into the
+test binary by `kernel/build.rs` and read by `kernel/src/testing.rs`'s runner. See notes/scripts.md.
 
 The boot was measured and the premise below is wrong, in the direction that makes this worth
 more rather than less. QEMU start to `running 312 tests` is 0.50 s; the 312 tests are 53.1

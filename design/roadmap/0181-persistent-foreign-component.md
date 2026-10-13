@@ -9,10 +9,9 @@ needs_person: no
 ---
 # 181. The foreign-language seam, extended to a process the shell calls more than once
 
-Minted 2026-08-27, calef, on hearing that milestone 169's own C-seam goal
-(DECISIONS §31's first real, load-bearing C program) had been quietly answered by building `kilo`
-in Rust instead. His reservation was not about `kilo` specifically: *"My only reservation is we
-need an answer to running open source programs we don't build."*
+Milestone 169 (`kilo`: the smallest real text editor) is built in Rust, so DECISIONS §31 (the
+foreign-language seam) still has no real, load-bearing C program. calef, 2026-08-27: *"My only
+reservation is we need an answer to running open source programs we don't build."*
 
 The seam's per-call ABI (`(u8*, usize) -> u32`, DECISIONS §31 rule 2) does not need
 to change; what has never been built is calling into an already-running C component's exported

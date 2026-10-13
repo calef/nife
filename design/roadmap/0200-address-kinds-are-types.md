@@ -9,9 +9,8 @@ needs_person: no
 ---
 # 200. A virtual address and a physical address stop being the same type
 
-Minted 2026-08-31 by calef, out of milestone 196's (a physical address on
-`elf::Segment`) naming discussion, when the question *"what is wrong with the tree-wide refactor"*
-turned out to have no answer on merit. *(Number provisional until the merge queue lands it.)*
+The question *"what is wrong with the tree-wide refactor"* has no answer on merit, so the refactor
+is a milestone.
 
 Nothing needs deciding. The names are ratified below and the sequencing constraint is
 practical rather than a fork.
@@ -123,9 +122,10 @@ Two things the probe settles for whoever builds this:
 
 ## Index row
 
-Minted by calef on 2026-08-31, when "what is wrong with the tree-wide refactor" turned out to have
-no answer on merit. Physical and virtual addresses are bare `u64` across `paging`, `memory_regions`, three `arch/*/mmu.rs`, `user.rs` and `syscall.rs`, and the confusion is recorded
-rather than hypothetical: `notes/higher-half.md` has a test dereferencing a physical address that
-the identity map made work by accident, and names the consequence as a security hole once
-userspace exists. Names ratified: `VirtualCpuAddress`, `VirtualDeviceAddress`, `PhysicalMemoryAddress`. Two virtual views, one physical fact. Do it when `kernel/src` is quiet,
-and check Kani first.
+"What is wrong with the tree-wide refactor" has no answer on merit. Physical and virtual addresses
+are bare `u64` across `paging`, `memory_regions`, three `arch/*/mmu.rs`, `user.rs` and `syscall.rs`,
+and the confusion is recorded rather than hypothetical: `notes/higher-half.md` has a test
+dereferencing a physical address that the identity map made work by accident, and names the
+consequence as a security hole once userspace exists. Names ratified: `VirtualCpuAddress`,
+`VirtualDeviceAddress`, `PhysicalMemoryAddress`. Two virtual views, one physical fact. Do it when
+`kernel/src` is quiet, and check Kani first.

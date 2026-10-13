@@ -5,12 +5,9 @@ built: 2026-09-02
 ---
 # 195. Finish the UEFI boot path: the suite under firmware, the memory it gives back, and a second core
 
-Built (2026-09-02). Minted 2026-08-30 from milestone 87's (the x86_64 bare-metal machine)
-lane, whose three ordinary handoffs otherwise lived only in a pull request body.
-
-In brief. The UEFI loader boots the kernel's tour under OVMF and, once calef has run it, on the
-OptiPlex. Three things it did not do yet, each small and each already scoped by the lane that found
-it. All three are done, and the first one was not small.
+Built. The UEFI loader boots the kernel's tour under OVMF and, once calef has run it, on the
+OptiPlex. This milestone is the three follow-ons of milestone 87 (the x86_64 bare-metal machine).
+All three are done, and the first one was not small.
 
 ## The three, and what each turned out to be
 
@@ -29,7 +26,7 @@ nothing else.
 
 Two things came of that:
 
-- `PHYS_START` moved from 1 MiB to 32 MiB. 1 MiB is the *lowest* address multiboot permits, never
+- `PHYS_START` is 32 MiB, not 1 MiB. 1 MiB is the *lowest* address multiboot permits, never
   the only one, and under a hypervisor's loader nothing else is in low memory to say otherwise. This
   is a larger gap rather than a fix, and the linker script says so where the constant is.
 - The loader names what is in the way. `uefi_loader::say_conflict` walks the memory map on that
@@ -100,11 +97,11 @@ the bus and places every BAR before nife exists:
   firmware twice, once for the tour and once for the suite, because they carry two different
   kernels and the tour is the one that goes on the stick. Gating the suite alone would leave the
   shipping image gated by nothing.
-- **Milestone 348.** Make the x86_64 kernel
-  image physically relocatable instead of linked at one address. `PHYS_START` moved from 1 MiB to 32
-  MiB to clear OVMF's low reservations, which buys a larger gap rather than a fix, and `.boot`'s
-  absolute self-references have to become position-independent because a 32-bit instruction stream
-  cannot name a 64-bit one.
+- **Milestone 348.** Milestone 348 (the x86_64 kernel is linked at one physical address): make the
+  x86_64 kernel image physically relocatable instead of linked at one address. `PHYS_START` is 32
+  MiB, not 1 MiB, to clear OVMF's low reservations, which buys a larger gap rather than a fix, and
+  `.boot`'s absolute self-references have to become position-independent because a 32-bit
+  instruction stream cannot name a 64-bit one.
 
 ## Index row
 
