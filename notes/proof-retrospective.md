@@ -54,9 +54,6 @@ then compiled, out of 206,728 lines of Rust. There were 19 `kani::cover!` vacuit
 crates. [`the-counts.md`](proof-retrospective/the-counts.md) has every figure, the command that
 produced it, and the re-derivation.
 
-Two of those numbers are findings, picked up below: the gap between 145 and 140, and twenty of
-twenty-four harness crates with no vacuity guard.
-
 ## The method
 
 Four fixed questions per defect, from milestone 191's block:
@@ -184,19 +181,8 @@ $ grep -rn "^\s*#\[kani::proof\]" --include="*.rs" . | grep -v target | wc -l
      145
 ```
 
-Packages carrying harnesses, and which ones the suite actually proves (as captured on 2026-08-30,
-before the crate rename):
-
-```
-$ grep -rln "^\s*#\[kani::proof\]" --include="*.rs" crates/ vendor/ \
-    | sed -E 's|^(crates\|vendor)/([^/]*)/.*|\2|' | sort -u | while read c; do
-        grep -q "^$c	" script/verify || echo "in no shard: $c"
-      done
-in no shard: jh7110_trng
-in no shard: redoxfs
-```
-
-[`the-counts.md`](proof-retrospective/the-counts.md) has the rest: the looser pattern that
+[`the-counts.md`](proof-retrospective/the-counts.md) has the rest: the packages no shard proves (as
+captured on 2026-08-30, before the crate rename), the looser pattern that
 over-counts, the source-line counts, every harness name and the vacuity guards by crate.
 
 ## BUGS
@@ -247,8 +233,6 @@ failure `notes/fs-server.md` records about its own injector counts and the roadm
 - `notes/mutation-testing.md` for the third tool and the gpt defect.
 - `notes/arch-audit.md` for the compensating control where no prover reaches at all, and for the two
   defects it cleared and the one it fixed.
-- `notes/exceptions.md`, `notes/intrusive-queues.md`, `notes/instruction-clock.md`,
-  `notes/fs-server.md`, `notes/visionfive2.md`, `notes/load-sensitive-assertions.md` for the defects
-  themselves.
+- The corpus sources, listed under [the defect corpus](#the-defect-corpus), for the defects themselves.
 - `design/decisions/0014-project-direction.md` for the thesis this is measured against, and
   `design/decisions/0076-roadmap-status-versus-tree.md` for the record-level defect with the same shape.

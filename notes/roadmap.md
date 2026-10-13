@@ -13,8 +13,7 @@ vocabulary, the frontmatter every block opens with, the follow-on dispositions, 
 proposal, and the history of the table itself. The rows are not here and are not anywhere, because
 every one of them was generated from its own block's `## Index row` section and still lives there.
 
-The queries are the other half of the index, and they are what a reader wants more often than a
-list of 522 rows:
+The queries are the other half of the index, and what a reader wants more often than 522 rows:
 
 ```console
 $ script/roadmap --ready          # nothing open that it depends on, NOT-STARTED or PARTIAL: startable today
@@ -132,7 +131,7 @@ The `status` key is the only record of a milestone's state, and since 2026-09-21
 second one to disagree with it. A detail block may narrate its state in prose, where the evidence
 belongs, but the key answers "where do we stand". `REMOVED` and `IN-PROGRESS` each oblige the block
 to say something no other status asks: when the code went and why, or which branch holds the work.
-`REFUSED` obliges a `## Revisit` section. The `built` date is UTC, like every date in this tree.
+`REFUSED` obliges a `## Revisit` section.
 Why each word exists, and the failures that minted `REMOVED`, `REFUSED` and the `IN-PROGRESS`
 check, are in [roadmap/vocabulary-history.md](roadmap/vocabulary-history.md).
 
@@ -255,19 +254,10 @@ split it, so the field names the part (calef, 2026-10-06).
 
 ## Effort
 
-Effort, calibrated from git history (2026-07-30), not guessed. The milestone files give effort in
-lanes: one lane is one agent session end to end. Measured across the fourteen milestone branches
-merged so far, a lane is 31 to 57 minutes of wall clock, 1 to 9 commits, 7 to 30 files, and 694 to
-4,351 inserted lines. That is a much narrower band than the work's apparent ambition suggests.
-Proving the DMA boundary, building a compositor, and confining a C component all cost about the same.
-Milestones that took more than one lane took them as *phases that landed separately* (27 and 30 took
-three each, 22, 29, 31 and 35 two each), not as one long push.
-
-This replaces an S/M/L scale that was written before any of it was built. It was systematically
-pessimistic where it can now be checked: 27, 29, 30 and 32 were each labeled "Effort L", and each
-came in at roughly a lane per phase. Anything still labeled by feel rather than by history says so.
-Re-derive with `git log --first-parent` over the merge commits rather than trusting these numbers as
-they age.
+The milestone files give effort in lanes: one lane is one agent session end to end, which measured
+31 to 57 minutes of wall clock across the first fourteen merged milestone branches (2026-07-30).
+That calibration, the S/M/L scale it replaced and how to re-derive it are in
+[roadmap/effort.md](roadmap/effort.md).
 
 ## Why this is markdown in the tree and not GitHub Issues
 

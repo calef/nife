@@ -34,7 +34,7 @@ only ever compiled one architecture, and it was the runner's) put two inside `ar
 added an x86_64 verify job. `notes/kernel-proofs.md` is the record, and this lane confirmed it runs.
 
 So the question is not *"can Kani reach `kernel/src`"*. It is "what is left after milestone 193,
-and does Verus reach that residue", a narrower question, and the residue is where Verus turns out
+and does Verus reach that residue", and the residue is where Verus turns out
 to stop too.
 
 ## What Kani actually stops at, measured rather than described
@@ -137,8 +137,8 @@ error: Verus does not support this cast: `usize` to `*const u32`
 idiom, not an incidental one: every fixed-address device register in this kernel is reached that way.
 Outside the `verus!{}` macro, or under `external_body`, both compile and are simply not verified.
 
-`no_std` works: the `run_end_va`-shaped function above is `#![no_std]`, verified, and took 0.83
-seconds of wall clock on this Mac.
+`no_std` works: the `run_end_va` probe in [`examples.md`](verus/examples.md) is `#![no_std]` and
+verified in 0.83 seconds on this Mac.
 
 ### And the paper draws the boundary in the same place, by hand
 
@@ -183,8 +183,7 @@ this tree are six because nobody has written more, not because Kani cannot see t
 2. Where Verus is genuinely stronger is unboundedness, and this tree has the receipts for why that
 matters. Every wall `notes/verification.md` and `notes/user-proofs.md` record is a bounded-model-
 checking wall: unwind bounds, a symbolic index into a 3.5 KB struct, counting, division chains. None
-of those is a Verus wall. A loop invariant costs a human an afternoon and costs the solver nothing,
-and `run_end_va`'s Verus version verified here in 0.83 seconds against a 42-minute `script/verify`.
+of those is a Verus wall. A loop invariant costs a human an afternoon and costs the solver nothing.
 If proofs about `kernel/src` ever stop because the solver ran out of memory rather than because the
 code touched hardware, that is the moment this question becomes urgent. It has not happened yet:
 the four kernel harnesses cost five seconds, almost all of it compiling.
@@ -198,20 +197,19 @@ leaves concurrency as future work, the defect class `notes/proof-retrospective.m
 missed. [`proof-effort.md`](verus/proof-effort.md) has the extrapolation and each reason quoted.
 
 Ten-plus person-years against one architect and a lane budget is not a schedule. Whole-kernel
-functional correctness in Verus is not available to this project at this size. That is the answer,
-and it is a no.
+functional correctness in Verus is not available to this project at this size.
 
 4. A subset is a different question and is not obviously a no. The papers' unit of work is a
 subsystem with a written-down abstract state. The ratio that matters for a first attempt is not
 3.32:1 across a kernel but whatever one property costs. This lane wrote one, from a cold start,
-knowing no Verus, in a scratch file: a `requires`/`ensures` pair for `run_end_va`'s exact shape,
-`no_std`, verified in 0.83 seconds. It took one failed compile (`nat` versus `int`). That is not
+knowing no Verus: the `run_end_va` probe above, verified in 0.83 seconds against a 42-minute
+`script/verify`. It took one failed compile (`nat` versus `int`). That is not
 evidence that a subsystem is cheap; it is evidence that the first hour is cheap, which is the only
 thing a bounded experiment can establish and is exactly what one is for.
 
 The strongest single argument for looking harder is not a proof at all, it is the 20 seconds. A
-verifier that runs faster than the compiler changes what verification *is* in a workflow. This tree's
-`script/verify` takes 42 minutes. It runs on one heavy job at a time because a harness reached
+verifier that runs faster than the compiler changes what verification *is* in a workflow.
+`script/verify` runs on one heavy job at a time because a harness reached
 3.5 GB. It is the merge queue's long pole, and needed an `--affected-since` mode to avoid paying for itself on
 changes it could not possibly affect. None of that is a property of proving things; it is a property
 of bounded model checking.
@@ -229,82 +227,9 @@ of bounded model checking.
 
 ## EXAMPLES
 
-Reproduce the `asm!` boundary in Kani. Append to `kernel/src/arch/aarch64/timer.rs`, run, then
-`git checkout` the file:
-
-```rust
-#[cfg(kani)]
-mod scratch_proofs {
-    #[kani::proof]
-    fn the_rearm_scratch_probe() {
-        let interval: u64 = kani::any();
-        kani::assume(interval > 0 && interval < 1_000_000);
-        super::rearm(interval);
-    }
-}
-```
-
-```console
-$ cargo kani -p kernel -Z unstable-options --ignore-global-asm \
-      --harness the_rearm_scratch_probe
-...
-Failed Checks: TerminatorKind::InlineAsm is not currently supported by Kani.
-VERIFICATION:- FAILED
-```
-
-Run Verus at all, from nothing, on this Mac (about 450 MB and one toolchain):
-
-```console
-$ curl -sL -o verus.zip https://github.com/verus-lang/verus/releases/download/\
-release%2F0.2026.09.20.aef82ed/verus-0.2026.09.20.aef82ed-arm64-macos.zip
-$ unzip -q verus.zip -d verus
-$ rustup toolchain install 1.98.1-aarch64-apple-darwin
-$ verus/verus-arm64-macos/verus probe.rs --crate-type=lib
-verification results:: 1 verified, 0 errors
-```
-
-The probe, which is `run_end_va`'s property in `no_std` Verus:
-
-```rust
-#![no_std]
-use vstd::prelude::*;
-verus!{
-pub open spec fn last_of(va: nat, count: nat) -> int { va + (count - 1) * 4096 }
-
-pub fn run_end_va(va: u64, count: u64) -> (r: Option<u64>)
-    requires count >= 1,
-    ensures match r {
-        Some(last) => last as int == last_of(va as nat, count as nat),
-        None => va as nat + (count as nat - 1) * 4096 > u64::MAX as nat,
-    }
-{
-    let pages = (count - 1) as u128 * 4096u128;
-    let last = va as u128 + pages;
-    if last > u64::MAX as u128 { None } else { Some(last as u64) }
-}
-}
-```
-
-Watch a false axiom pass, which is the caveat that matters most:
-
-```console
-$ cat seam.rs
-#![no_std]
-use vstd::prelude::*;
-verus!{
-#[verifier::external_body]
-pub fn read_counter() -> (r: u64) ensures r > 0 {
-    let v: u64;
-    unsafe { core::arch::asm!("mrs {}, cntvct_el0", out(reg) v) };
-    v
-}
-pub fn nonzero_counter() -> (r: u64) ensures r >= 1 { read_counter() }
-}
-$ verus/verus-arm64-macos/verus seam.rs --crate-type=lib
-verification results:: 1 verified, 0 errors
-```
-
-`CNTVCT_EL0` is zero at reset. The green line does not know that.
+[`examples.md`](verus/examples.md) has each one whole: the `asm!` boundary reproduced in Kani, a
+from-nothing Verus install and run on this Mac, the `no_std` `run_end_va` probe, and the false
+axiom (`seam.rs`, the worked example above) passing green.
 
 ## BUGS
 

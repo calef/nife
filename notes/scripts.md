@@ -153,31 +153,16 @@ has the reasons, the exceptions and the 2026-09-23 rename from `scripts/`.
 
 ## A piped gate reports the pipe's status, not the gate's
 
-`script/lint | tail -30; echo $?` prints `tail`'s exit code. So does `| grep`, `| head`, and
-every other filter used to make a long gate readable. The gate can fail and the shell will say `0`.
-
-This is not theoretical. A rename lane on 2026-09-18 read exit 0 from a piped
-`script/lint` while clippy was failing on a `doc_markdown` error that lane's own edit had
-introduced; it was caught only by re-running the command unpiped. The maintainer session briefing
-that lane had been using the same shape earlier the same night.
-
-It is the worst kind of gate defect, because it fails in the safe-looking direction: a red gate
-reporting green looks like a green one, and the point of `script/lint` is that nobody has to read
-it.
-
-Write it as a redirect, and read `$?` before anything else touches it:
+`script/lint | tail -30; echo $?` prints `tail`'s exit code, so a red gate can read green. Write it
+as a redirect, and read `$?` before anything else touches it:
 
 ```console
 $ script/lint > /tmp/lint.txt 2>&1; echo "exit=$?"
-exit=0
-$ grep -iE "^error|PROBLEM" /tmp/lint.txt      # now filter, having already read the status
 ```
 
-`set -o pipefail` fixes it, and `script/` entry points use it; it is off by default in an
-interactive shell and most one-liners, which is where this bites.
-
-Nothing gates this, and nothing could: the repository cannot inspect a shell pipeline. It is rung
-four, recorded where somebody about to run a gate is already reading.
+`set -o pipefail` also fixes it, and `script/` entry points use it. Nothing can gate this.
+[piped-gate.md](scripts/piped-gate.md) has the 2026-09-18 lane that read exit 0 over a failing
+clippy, and why it stays rung four.
 
 ## CI leverages them
 
@@ -188,23 +173,9 @@ from milestone 286 (one enumeration of the checks that gate a pull request). The
 developer does, from one list, and a job without a row is the defect that list prevents. `verify.yml` is the exception and says so: Kani is sharded
 across jobs with its own scope predicate, and the table does not claim it.
 
-The lint job was named `clippy` until 2026-10-08 (UTC). It runs every check in `script/lint`, then
-`script/lint-fleet`, and
-a red `clippy` was usually a citation, decision or roadmap check. calef asked "Should the gate named
-clippy be renamed? It seems to cause you some confusion when I cite it", then said "Go ahead with
-lint". A required check is matched by name, so the rename goes in three steps, each safe
-alone. First, `ci.yml` gains `lint` and keeps a `clippy` job that only re-reports `lint`'s verdict.
-Second, once every open pull request has run that workflow, ruleset 19596094 requires `lint` in
-place of `clippy`. Third, the `clippy` job is deleted. The second step, by the maintainer:
-
-```sh
-gh pr list --state open --json number,isDraft,statusCheckRollup --jq '.[] | select(.isDraft | not)
-  | select([.statusCheckRollup[].name] | index("lint") | not) | .number'  # must print nothing
-gh api repos/nifeos/nife/rulesets/19596094 --jq '{rules: [.rules[]
-  | if .type == "required_status_checks" then .parameters.required_status_checks
-    |= map(if .context == "clippy" then {context: "lint"} else . end) else . end]}' \
-  | gh api -X PUT repos/nifeos/nife/rulesets/19596094 --input -
-```
+The lint job was named `clippy` until 2026-10-08 (UTC), when calef asked for `lint`. It runs every
+check in `script/lint`, then `script/lint-fleet`. The three-step rename of a required check, with the
+maintainer's ruleset commands, is in [lint-job-rename.md](scripts/lint-job-rename.md).
 
 Before that milestone the set was written twice, here and in `script/gates`, and nothing compared
 them. All three places explaining the difference were stale by 2026-09-13:
@@ -356,3 +327,5 @@ The directory and stems are provisional names; [the directory's README](scripts/
 | [analysis-and-supply-chain.md](scripts/analysis-and-supply-chain.md) | full rows for analysis, proofs and the supply chain |
 | [helpers-and-bootstrap.md](scripts/helpers-and-bootstrap.md) | Two things that are deliberately the way they are |
 | [one-kernel-test.md](scripts/one-kernel-test.md) | How the filter reaches the kernel; What the flag turns off |
+| [piped-gate.md](scripts/piped-gate.md) | a piped gate's exit status, the incident and the fix |
+| [lint-job-rename.md](scripts/lint-job-rename.md) | why the lint job was renamed from `clippy`, and the three steps |
