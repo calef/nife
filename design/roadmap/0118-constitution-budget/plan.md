@@ -17,8 +17,7 @@ lane should say how it judged that rather than picking a round number.
 
 ## The first cut: delete the eight rules a gate already enforces
 
-Superseded in part by [the applicable cut](applicable-cut.md), which executed this and found four
-of the eight unenforced. The reasoning below stands and is why the cut is worth making at all; the
+[The applicable cut](applicable-cut.md) executed this and found four of the eight unenforced. The reasoning below stands and is why the cut is worth making at all; the
 estimate of "on the order of 90 lines" does not, and the verified figure is about 15.
 
 calef, 2026-08-18, asked whether a rule with a mechanism can simply be eliminated. Yes, and the

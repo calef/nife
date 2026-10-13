@@ -1,133 +1,43 @@
-//! **The workload that does not stop, and the thing that watches it** (milestone 219).
-//!
-//! `design/fatal-risks/README.md`'s fifth entry says the concurrency may be wrong in ways QEMU cannot show
-//! and that arrive one at a time, forever, and names its decisive experiment as sustained
-//! multi-core stress with the load-sensitive assertions live. Until this module existed there was
-//! nothing to sustain: the boot tour printed its last line and called `arch::halt()`, and a board
-//! sat in `wfi` indefinitely.
-//!
-//! This is the other end of the boot. With `--features soak_test` the tour does not halt; it builds a
-//! pool of user-mode workers and then watches them forever.
-//!
-//! # The division of labour, which is the design decision this module embodies
+//! **The workload that does not stop, and the thing that watches it.** The fifth entry of
+//! `design/fatal-risks/README.md` says the concurrency may be wrong in ways QEMU cannot show, and
+//! names sustained multi-core stress with the load-sensitive assertions live as its experiment.
+//! With `--features soak_test` the boot tour does not halt: it builds a pool of user-mode workers
+//! and watches them forever. See notes/soak.md.
 //!
 //! **The workload is a user program and the detection is in the kernel.** The defect this risk
-//! actually produced was `sched::wake_load_aware` making a receiver `Ready` without a delivery,
-//! which is observable *and causable* from userspace through the real syscall path. A kernel-mode
-//! stress loop would drive a path no real program takes, which is the weaker experiment: it would
-//! be testing an artefact of the test. But a user program cannot assert about kernel internals and
-//! should not try, so the assertions stay here, where the trace counters are.
+//! produced (a receiver made `Ready` without a delivery) is causable from userspace through the
+//! real syscall path, so a kernel-mode stress loop would test an artefact of the test; and a user
+//! program cannot assert about kernel internals, so the assertions stay here with the trace
+//! counters. `fixtures/src/soaker.rs` is the workload; this file wires the pairs, samples them, and
+//! decides.
 //!
-//! `fixtures/src/soaker.rs` is the workload and its header carries the argument for *what* it stresses.
-//! This file is the supervisor: it wires the pairs, samples them, and decides.
+//! **The tick route.** A saturated workload never crosses cores: a rendezvous wake is local, and
+//! `sched::wake_load_aware` is reachable only from an interrupt (§138 (how a saturated workload is
+//! made to hand threads across cores)). So [`signal_waiters`] signals a rendezvous from
+//! `sched::on_tick` on every core, and one worker role blocks on it through `Irq::WAIT`, running
+//! the device-interrupt sequence: `sched::irq_notify` -> `Rendezvous::signal` ->
+//! `handshake.serve` -> `wake_load_aware` -> `place_on` -> the reschedule IPI. What crosses is the
+//! waiters, not the pairs, and the heartbeat says so on every run.
 //!
-//! # The tick route, and what it is for (milestone 221)
-//!
-//! The workload above is saturated, and a saturated workload **never crosses cores**. Milestone
-//! 219 measured that and DECISIONS 138 (*how a saturated workload is made to hand threads across
-//! cores*) explained it: a rendezvous wake is local by design (DECISIONS §28.2),
-//! `sched::wake_load_aware` is reachable only from a device interrupt, and a work steal needs an
-//! idle core and a queued thread at the same moment, which a busy machine never has. So the
-//! `crossings` count froze at fifteen inside the first second and stayed there through two million
-//! round trips.
-//!
-//! That mattered because `design/fatal-risks/README.md`'s fifth entry has two halves and only one of them
-//! was runnable. The half that was not is the one the risk's single observed defect lived on: a
-//! receiver made `Ready` with nothing delivered, on JH7110 silicon (radon, the board it was seen
-//! on), in `wake_load_aware`, reached from `sched::irq_notify`. Silicon is the load-bearing half:
-//! it appeared on three harts and no emulator run had ever shown it.
-//!
-//! **So this module signals a rendezvous from `sched::on_tick`**, which all three architectures'
-//! timer dispatchers call in real interrupt context on every core, and adds one worker role that
-//! blocks on that rendezvous through the `Irq::WAIT` a device driver already uses. A tick then runs
-//! the identical sequence a device interrupt runs: [`signal_waiters`] -> `sched::irq_notify` ->
-//! `Rendezvous::signal` -> `handshake.serve` -> `wake_load_aware` -> `pick_wake_target` ->
-//! `place_on` -> the reschedule IPI.
-//!
-//! **What crosses is the waiters, not the pairs**, and nothing here may be read as saying
-//! otherwise. Rendezvous wakes stay local whatever else is happening, so the callers and responders
-//! are exactly as pinned as they were before. This sustains the *wake protocol* across cores under
-//! load. It does not make the IPC workload migrate, and only a periodic rebalancer would, which
-//! DECISIONS 138 declines. The heartbeat says so in words on every run.
-//!
-//! # What "it passed" means
-//!
-//! A soak that ends with nothing printed proves very little, so this one does not end with nothing
-//! printed. Every [`BEAT_SECONDS`] it prints one line carrying a **round-trip total**, which is the
-//! number a later run is compared against, plus the counters that make the total interpretable:
-//! how many of those handoffs actually crossed cores, how contended the machine was, and whether
-//! the wake gate ever refused anything.
-//!
-//! What the number is *for* is comparison, and it has three honest uses and no fourth:
-//!
-//! - **Between architectures**, so a rate that is an order of magnitude off on one of them is a
-//!   question rather than a surprise.
-//! - **Between QEMU and silicon**, which is the comparison risk 5 is actually about.
-//! - **Against the same machine a month later**, where a large drop is a regression in the IPC path
-//!   that no functional test would fail on.
-//!
-//! It is **not** evidence that the concurrency is correct. See this module's `BUGS`.
-//!
-//! # How a hang is told from a slow run, agreed with the watcher rather than invented here
-//!
-//! The heartbeat is on the **wall clock**, not on the work. A machine doing one round trip a second
-//! still prints every [`BEAT_SECONDS`], with a rate that says so; a machine doing none still prints,
-//! and its stall check fires. Silence means the thing that prints is itself wedged, which is the
-//! only thing silence is allowed to mean.
-//!
-//! `crates/board_console` is the other half of that agreement. It watches for a gap longer than its
-//! `--quiet-after` (fifteen seconds by default, three missed beats) and reports `WentQuiet`, exit
-//! status 2. Its `Stage::Soak` is reached by [`START_MARKER`] below, and reaching it is what
-//! re-arms the quiet check that a completed boot tour otherwise suppresses: a kernel that has
-//! halted is *supposed* to be quiet, and one that is soaking is not.
+//! Every [`BEAT_SECONDS`] of wall clock it prints a round-trip total with the counters that make it
+//! interpretable (crossings, contention, gate refusals), for comparison between architectures,
+//! between QEMU and silicon, and with the same machine later. A slow machine still prints; only a
+//! wedged printer is silent. `crates/board_console` reports `WentQuiet` after `--quiet-after`, and
+//! [`START_MARKER`] re-arms that check, which a finished boot tour suppresses.
 //!
 //! # BUGS
 //!
-//! - **A soak that finds nothing is weak evidence, and a green run must never be quoted as proof
-//!   that the concurrency is correct.** This is the milestone's own headline caveat and it is
-//!   repeated here because this file is where a reader meets the green run. What a clean eight
-//!   hours licenses is one sentence: *this machine did N cross-core IPC round trips without the
-//!   wake gate refusing one, without a wrong reply, and without a worker stalling.* It licenses
-//!   nothing about the interleavings that did not occur, and the ones that did not occur are where
-//!   the remaining bugs are.
-//! - **The supervisor burns a thread's worth of scheduling.** It yields in a loop rather than
-//!   blocking on a timer, because this kernel has no sleep-until primitive a kernel thread can use.
-//!   That is load on the machine under test, which is not entirely a cost (it is one more thread
-//!   contending) but it is not free either, and it is why the round-trip rate here is not
-//!   comparable with `script/bench`'s IPC numbers.
-//! - **A worker that panics takes its thread with it and nothing restarts it.** The stall check
-//!   sees a counter stop and fails the run, which is the right outcome, but the report says
-//!   "stalled" where "died" would be more use. Reviving workers would need a supervision tree here
-//!   and would blur what the run is measuring.
-//! - **The round-trip total is sampled while workers are writing it** and may be a few short. See
-//!   `soak_page`'s own `BUGS`.
-//! - **The tick route does not exercise an interrupt controller.** The timer is not a
-//!   controller-routed source, so the claim, mask and complete sequence (the GIC on aarch64, the
-//!   PLIC on riscv64, the local APIC on `x86_64`) is not on this path. What is on it is the wake
-//!   protocol, which is what the defect was on.
-//! - **The hook fires on a timer, which is the one thing the workload cannot starve.** That is why
-//!   it works, and it is also why a run with it on says nothing about what happens without it.
-//! - **A soak with the tick route on is a different soak.** Every waiter is one more thread and
-//!   every migration is real work, so the round-trip rate falls. The rate is comparable with
-//!   another run of this same build and with nothing else; see notes/soak.md's table.
-//! - **Nothing here sets a duration, and nothing here should.** The kernel soaks until the power
-//!   goes away. The watcher decides when enough is enough, which is what makes the QEMU run and the
-//!   bench run the same experiment with a different deadline. `--features reboot_soak_test` is the one
-//!   exception and it is a different quantity: [`REBOOT_AFTER_SECONDS`] is how long one *draw* of
-//!   the placement lottery lasts, not how long the experiment does, and the experiment is still the
-//!   watcher's to end.
-//! - **The escape is a poll of one bit and nothing verifies that the bit can ever be set**
-//!   (milestone 249 (the boot lottery is sampled by a person walking to the board)).
-//!   `console::is_byte_waiting` reads LSR's data-ready flag, and a console whose receive path is
-//!   miswired, unpowered at the adapter, or held by something else reads zero forever, which is
-//!   indistinguishable from nobody typing. Nothing in this kernel can prove otherwise, because a
-//!   UART cannot receive a byte it sends. What closes it is a procedure rather than a mechanism:
-//!   the bench run presses a key on the first boot and confirms the `DISARMED` line before anyone
-//!   walks away. See notes/soak.md, "Verifying the reset before anything is left unattended".
-//! - **A rebooting soak destroys the comparison a long run buys.** Fifty two-minute draws and one
-//!   hundred-minute run are not the same experiment: the first measures the distribution over
-//!   placements and the second measures what one placement does over time. Neither substitutes for
-//!   the other, and the three-hour run in notes/soak.md is why the second is worth keeping.
+//! - **A green soak is never proof the concurrency is correct**: it licenses only "this machine did
+//!   N cross-core round trips without a refusal, a wrong reply or a stall".
+//! - The supervisor yields in a loop (no kernel sleep), so its rate is not `script/bench`'s.
+//! - A panicked worker is reported "stalled", not "died", and is not restarted.
+//! - The round-trip total is sampled while workers write it (`soak_page`'s `BUGS`).
+//! - The tick route skips the interrupt controller's claim, mask and complete, and a run with it on
+//!   is a different soak, comparable only with the same build.
+//! - Nothing sets a duration; the watcher ends the run. [`REBOOT_AFTER_SECONDS`] is one draw of the
+//!   placement lottery under `reboot_soak_test`, and many draws do not replace one long run.
+//! - The escape polls one LSR bit nothing can prove is wired; the bench procedure confirms
+//!   `DISARMED` before walking away (notes/soak.md).
 
 // **The rebooting soak runs on all three architectures** (milestone 249 (the boot lottery is sampled by a person walking to the board)'s parity half,
 // 2026-09-24). It was riscv64's alone, and a `compile_error!` said so, for a reason that still

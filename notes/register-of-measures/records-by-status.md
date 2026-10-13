@@ -101,7 +101,7 @@ walks four kinds today and finds the fourth missing from the weeks before it exi
 with a hole answering confidently is the failure `script/names`' own header records.
 
 2026W36 is one milestone doing one thing. `Unrecorded` goes from 60 to zero, `Recorded` from 9 to 37
-and `Provisional` from 18 to 63. That is milestone 264 (sixty names the history cannot justify, and
+and `Provisional` from 18 to 63. That is milestone 264 (sixty names git history cannot justify, and
 the research that would let calef rule on them). It gave every name nobody had written a reason for
 one that says something. Where the history supplies the reasoning, the block records it; where it
 does not, the block carries an argued proposal. The bar is the height it would have been without

@@ -98,8 +98,8 @@ Two second-level pieces, host-tested and guest-tested rather than left as design
 Kept as the 2026-08-25 record. Its labeled presentation (`/a/...`, `/b/...`, two labeled `caps`
 rows) was replaced on 2026-09-26 by calef's one-tree ruling; see "The shell across two trees".
 
-[DECISIONS §126](../decisions/0126-two-directory-cwd.md) closed the ambiguity the first bullet
-below used to name. A two-grant shell gets a real, single, moving `cwd`: state `(which, pos)`
+[DECISIONS §126](../decisions/0126-two-directory-cwd.md) closed an ambiguity in the first bullet
+below. A two-grant shell gets a real, single, moving `cwd`: state `(which, pos)`
 in place of one-grant `Holdings`' bare `Cwd`, a bare relative name resolves against `pos` inside
 whichever tree `which` currently names, an absolute `/a/...`/`/b/...` path both resolves and moves
 between trees, and `..` at either tree's own root refuses exactly the way one-grant `Cwd::apply`

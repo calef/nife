@@ -56,10 +56,10 @@ assert an equality rather than an implication.
 ### The range: years 0000 through 9999
 
 `MIN_TIMESTAMP` is 0000-01-01T00:00:00Z and `MAX_TIMESTAMP` is 9999-12-31T23:59:59Z. The bound comes
-from RFC 3339, whose `date-fullyear` is exactly four digits: a year outside it cannot be *written* in
-the interchange format the crate parses and prints, so admitting it would create values that can be
-computed and not spoken. Outside the range is `Error::OutOfRange`, never a wrapped or saturated date.
-Silent degradation is what DECISIONS §42 forbids for filesystems and it is no better here.
+from RFC 3339, whose `date-fullyear` is exactly four digits. A year outside it cannot be *written*
+in the interchange format the crate parses and prints, so admitting it would create values that can
+be computed and not spoken. Outside the range is `Error::OutOfRange`, never a wrapped or saturated
+date. Silent degradation is what DECISIONS §42 (a filesystem must be truthful) forbids for filesystems and it is no better here.
 
 The calendar is **proleptic Gregorian**: the Gregorian rules projected backwards past the 1582 reform
 rather than switching to Julian. Every library that speaks Unix time does this, because a Unix
@@ -162,27 +162,27 @@ minutes to seventeen seconds; see notes/verification.md.
 ## What is proved, and the bounds
 
 Eleven harnesses, all `SUCCESSFUL`, about seven minutes. See notes/verification.md for the table and
-for the finding that came out of building them, which is worth more than the harnesses themselves:
-the calendar arithmetic is cheap to prove and a 64-bit division by 86,400 is not, and iterating a
-slice whose length is symbolic costs more than the parser wrapped around it.
+for the finding that came out of building them, which is worth more than the harnesses themselves.
+The calendar arithmetic is cheap to prove and a 64-bit division by 86,400 is not. Iterating a slice
+whose length is symbolic costs more than the parser wrapped around it.
 
-Ten of the eleven run over the full supported range, unbounded below the type: the two Hinnant
-algorithms are mutual inverses for every one of the 3,652,425 days, every day number decodes to a
-date that exists, the calendar never steps backwards, day-of-year is 366 exactly on 31 December of a
-leap year, the parser is total on arbitrary bytes, and everything the crate prints it reads back for
-every representable date at every legal offset. The eleventh, the seconds round trip, is bounded to a
-four-year window straddling the epoch, because that one division is what bounded model checking here
-cannot swallow whole; the window is chosen so it contains the bug it exists to catch (truncating
-division, which only shows up on a negative timestamp).
+Ten of the eleven run over the full supported range, unbounded below the type. The two Hinnant
+algorithms are mutual inverses for every one of the 3,652,425 days, and every day number decodes to
+a date that exists. The calendar never steps backwards, and day-of-year is 366 exactly on 31
+December of a leap year. The parser is total on arbitrary bytes, and everything the crate prints it
+reads back for every representable date at every legal offset. The eleventh, the seconds round trip,
+is bounded to a four-year window straddling the epoch, because that one division is what bounded
+model checking here cannot swallow whole. The window is chosen so it contains the bug it exists to
+catch (truncating division, which only shows up on a negative timestamp).
 
 Both load-bearing properties were falsified before being believed: reducing the leap-year rule to
 "divisible by four" fails the round trip in 8 seconds, and replacing `div_euclid` with `/` fails the
 seconds harness in 32.
 
-The unit tests are the complement, not a duplicate: they pin the cases that historically break date
+The unit tests are the complement, not a duplicate. They pin the cases that historically break date
 code (1900 and 2000, every month-end rollover, the epoch, `-1`, 2038) against values cross-checked
-with Python's `datetime` rather than against this crate's own output. A proof says the algorithms are
-mutual inverses; only an independent witness says they are inverses of the *right* function.
+with Python's `datetime` rather than against this crate's own output. A proof says the algorithms
+are mutual inverses; only an independent witness says they are inverses of the *right* function.
 
 ## What it deliberately does not do
 

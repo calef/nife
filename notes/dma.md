@@ -94,11 +94,11 @@ catches it, on both ISAs, by asserting on the hardware's own fault queue.
 
 And this is exactly where the argument for proving the validator now, rather than later, inverts.
 The reason milestone 35 was load-bearing is that milestone 16a's board, the VisionFive 2, **has no
-IOMMU**: on first silicon the validator stops being defense in depth and becomes the sole DMA
+IOMMU**. On first silicon the validator stops being defense in depth and becomes the sole DMA
 confinement, so it had better be proved rather than sampled. That reasoning holds for the descriptor
 path because the validator covers it. For the payload path there is no such comfort: with no IOMMU,
-**nothing covers it.** Not the validator (wrong input), not the hardware (absent). A display driver on
-that board is therefore either trusted with all of physical memory, or the transport grows a
+**nothing covers it.** Not the validator (wrong input), not the hardware (absent). A display driver
+on that board is therefore either trusted with all of physical memory, or the transport grows a
 virtio-gpu-aware check and pays the §18 cost on purpose. Whoever sequences 16a picks one; this note
 exists so it is a decision and not a discovery. Under HVF the same gap is open, PCIe DMA being
 unconfined there by standing default.
@@ -107,17 +107,16 @@ unconfined there by standing default.
 
 Since milestone 35 (prove the DMA-confinement boundary) the validation logic lives in
 `crates/direct_memory_access_validator`, a host-testable pure-logic crate the kernel's
-`validate_and_shadow` calls, and it is
-**machine-checked**: seven Kani harnesses prove no descriptor the walk copies into the shadow
-escapes the granted region or is indirect, for every input (both directions, multi-queue, chain
-cycles, ring-index wraparound, and the mutated-after-validation race), and that the walk terminates.
-This was the last isolation boundary that was attacker-tested but not proved; notes/verification.md
-has the harness table and, more important, the bounds with their justifications (the short
-version: the queue size the proof fixes is the system's own `QSIZE`, not a proof convenience, and
-the loop bounds are set one above what the code can need so Kani's unwinding assertion turns them
-into a termination proof). The crate also now *owns* the ring layout constants that
-`kernel/src/virtio.rs` aliases, because a proof about a copy of the layout proves nothing about the
-layout that runs. The rest of this section describes what that logic does.
+`validate_and_shadow` calls. It is **machine-checked**. Seven Kani harnesses prove that the walk
+terminates, and that no descriptor it copies into the shadow escapes the granted region or is
+indirect. That holds for every input (both directions, multi-queue, chain cycles, ring-index
+wraparound, and the mutated-after-validation race). This was the last isolation boundary that was
+attacker-tested but not proved. notes/verification.md has the harness table and, more important, the
+bounds with their justifications. The short version: the queue size the proof fixes is the system's
+own `QSIZE`, not a proof convenience. The loop bounds are set one above what the code can need so
+Kani's unwinding assertion turns them into a termination proof. The crate also now *owns* the ring
+layout constants that `kernel/src/virtio.rs` aliases, because a proof about a copy of the layout
+proves nothing about the layout that runs. The rest of this section describes what that logic does.
 
 `kernel/src/virtio.rs::validate_and_shadow` is the security-critical code. On `NOTIFY` it walks the
 available ring from the last-validated index to the current one, and for each new head follows the
@@ -190,12 +189,12 @@ what the device writes back, and it cannot: the used ring is inside the driver's
 region, so a device writing it is a device doing its job.
 
 Milestone 43's audit (notes/shared-page-audit.md, finding 6) found two drivers reading that as a
-guarantee it never was. `components/src/virtio_net_transport.rs` and `components/src/keyboard_driver.rs` took the 32-bit buffer
-index out of the used ring and used it unchecked: `rx_buf(id) = 0x400 + id * 0x2C0` leaves the
-one-page DMA region at `id = 4` and lands on the driver's own heap around 1.5 million, so a device
-that lies once makes the network driver copy its heap into a frame and hand it to smoltcp. The
-receive length was unbounded the same way. Both now fail closed, and `entropy.rs` had always
-clamped, so the shape was an omission and not a policy.
+guarantee it never was. `components/src/virtio_net_transport.rs` and
+`components/src/keyboard_driver.rs` took the 32-bit buffer index out of the used ring and used it
+unchecked. `rx_buf(id) = 0x400 + id * 0x2C0` leaves the one-page DMA region at `id = 4` and lands on
+the driver's own heap around 1.5 million. So a device that lies once makes the network driver copy
+its heap into a frame and hand it to smoltcp. The receive length was unbounded the same way. Both
+now fail closed, and `entropy.rs` had always clamped, so the shape was an omission and not a policy.
 
 What is still missing is the negative control. This tree tests DMA confinement by making the
 *driver* attack (`crates/virtio`'s `run_attack` and the indirect-descriptor variant, both proving
@@ -223,8 +222,8 @@ So the clean answer is now the real answer for the PCIe transport.
 This shadow ring is not removed. It is demoted to defense in depth. Two reasons it stays. First,
 virtio-mmio has no IOMMU in front of it on either board, so the software confinement is still the
 only thing guarding the mmio disk. Second, even where the IOMMU is present, keeping both means a
-regression in either layer is caught by the other: the transport still refuses a format it cannot
-police (indirect, packed) before a descriptor is built, and the IOMMU still faults an escaping
-address even if a validator bug ever let one through. The feature-stripping and the shadow copy cost
-almost nothing and buy a second independent barrier, which is the right trade for the one DMA path
-that can reach the whole machine.
+regression in either layer is caught by the other. The transport still refuses a format it cannot
+police (indirect, packed) before a descriptor is built. The IOMMU still faults an escaping address
+even if a validator bug ever let one through. The feature-stripping and the shadow copy cost almost
+nothing and buy a second independent barrier, which is the right trade for the one DMA path that can
+reach the whole machine.

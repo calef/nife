@@ -21,7 +21,7 @@ shifts. That happened four times on 2026-09-19 in two and a half hours: §156, t
 then §159, each landing moving one branch's run up by one, from §156-§189 to §160-§194. The shift itself is mechanical. The hazard is the
 citations, and it is specific: a `§` rewritten by number can be silently wrong and still pass
 every gate in the tree, because the section it now names exists. `script/decisions --check` verifies
-that §174 resolves. Nothing can tell it the sentence meant the section that used to be §173.
+that the rewritten number resolves. Nothing can tell it the sentence meant the section one below.
 
 ## What the tool does, because it was written before it was proposed
 

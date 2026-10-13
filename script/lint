@@ -848,8 +848,8 @@ echo "module-wide suppression: none"
 # The boot shell allocates only where every allocation can fail (milestone 47 (navigation and
 # naming), calef's ruling of 2026-09-26: the boot shell is the owner's root console, so running out
 # of heap is a refusal and never a panic). The compiler does most of it: `alloc` is nameable only
-# where `extern crate alloc` is declared, and the shell declares it inside `mod heap` in
-# components/src/swish/main.rs, whose one type exposes no allocating method. This holds the part the
+# where `extern crate alloc` is declared, and the shell declares it in `mod heap`
+# (components/src/swish/heap.rs), whose one type exposes no allocating method. This holds the part the
 # compiler cannot: that the declaration stays there. A second one, or one at the crate root, would
 # let the whole shell name `Vec::push` again. crates/swish is the shell's host-tested half and
 # declares none at all.
@@ -857,25 +857,25 @@ echo "module-wide suppression: none"
 # **The whole directory is read, not one file** (milestone 844 (the shell program is split along
 # its seams), §273 (the shell program becomes a directory of modules)). An `extern crate` is legal
 # in any module, so once the shell became a directory a declaration in a submodule would let that
-# module allocate, and a check that read main.rs alone would not see it. The one hit must be in
-# main.rs. A missing directory gives no hit at all, which fails, so renaming the directory cannot
+# module allocate, and a check that read one file alone would not see it. The one hit must be in
+# heap.rs, and main.rs must declare `mod heap`. A missing directory gives no hit at all, which fails, so renaming the directory cannot
 # quietly turn this check off.
 echo "==> the shell allocates only where it can fail"
 shell_dir=components/src/swish
 shell_alloc=$(grep -rn 'extern crate alloc' "$shell_dir" 2>/dev/null || true)
 if [ "$(printf '%s\n' "$shell_alloc" | grep -c 'extern crate alloc')" -ne 1 ] \
-    || ! printf '%s\n' "$shell_alloc" | grep -q "^$shell_dir/main.rs:[0-9]*:    extern crate alloc;" \
-    || ! awk '/^mod heap \{/ { inside = 1 } inside && /extern crate alloc/ { found = 1 } inside && /^}/ { inside = 0 } END { exit !found }' "$shell_dir/main.rs" \
+    || ! printf '%s\n' "$shell_alloc" | grep -q "^$shell_dir/heap.rs:[0-9]*:extern crate alloc;" \
+    || ! grep -q '^mod heap;' "$shell_dir/main.rs" \
     || grep -rn 'extern crate alloc' crates/swish/src >/dev/null; then
-    echo "lint: $shell_dir/ must declare \`extern crate alloc\` exactly once, in main.rs inside" >&2
-    echo "\`mod heap\`, and crates/swish must not declare it. Found:" >&2
+    echo "lint: $shell_dir/ must declare \`extern crate alloc\` exactly once, in heap.rs (the" >&2
+    echo "\`mod heap\` main.rs declares), and crates/swish must not declare it. Found:" >&2
     printf '%s\n' "$shell_alloc" >&2
     grep -rn 'extern crate alloc' crates/swish/src >&2 || true
     echo "Every allocation in the boot shell goes through \`mod heap\`, which cannot panic on" >&2
     echo "failure. See the comment above this check." >&2
     exit 1
 fi
-echo "shell allocation: one declaration, inside mod heap"
+echo "shell allocation: one declaration, in heap.rs"
 
 # No merge conflict markers, anywhere. This is not a style rule, it is a scar: a compositor merge
 # resolved only the conflicts visible in a truncated `git merge` summary, and `git add -A` then

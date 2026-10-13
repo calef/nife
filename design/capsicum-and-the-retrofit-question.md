@@ -86,8 +86,8 @@ remove the ambience.
 It sandboxes real, useful programs on a production operating system that people run in anger. We
 confine `worker`, `memory_grant_depleter`, `heeder`, `spinner`, a C component, and a filesystem we vendored.
 
-That gap is the honest one, and closing part of it is what milestones 53 to 55 are for: a Time Machine
-backup server is a real workload with a real user, and it is the first thing here that could be
+That gap is the honest one, and closing part of it is what milestones 53 to 55 are for. A Time
+Machine backup server is a real workload with a real user. It is the first thing here that could be
 compared with a Capsicum-sandboxed daemon on its merits rather than on architecture diagrams.
 
 ## See also
