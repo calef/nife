@@ -5,13 +5,13 @@ use super::*;
 use crate::sched;
 
 /// The `swish` binary's navigating role (`components/src/swish.rs`).
-const ROLE_NAVIGATE: u64 = 1;
+pub(super) const ROLE_NAVIGATE: u64 = 1;
 
 /// The bits every navigating shell must report whatever it was rooted in: `pwd` at its root,
 /// `..` clamped, `/` naming its own root and stopping there, a listing, and the whole
 /// `mkdir` / create / `rm` / `touch` sequence including the two halves of "unlink is not revoke"
 /// and the two halves of `touch`'s own "create absent, leave present alone".
-const ALWAYS: u64 = nb::PWD_IS_ROOT
+pub(super) const ALWAYS: u64 = nb::PWD_IS_ROOT
     | nb::CLAMPED_AT_ROOT
     // The namespace half (2026-08-18): `/` is the root of your own namespace, and it stops there.
     | nb::ABSOLUTE_IS_MY_ROOT
@@ -58,7 +58,7 @@ const ALWAYS: u64 = nb::PWD_IS_ROOT
 /// wider than the parent rather than narrowing it (notes/shell-navigation.md).
 ///
 /// `None` when no RedoxFS disk is attached.
-fn navigate(root: &'static str, run: u64) -> Option<u64> {
+pub(super) fn navigate(root: &'static str, run: u64) -> Option<u64> {
     let report = fs_service::start_granted_dir(
         dir_capability_tests::blk_server_image(),
         program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),

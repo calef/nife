@@ -1321,3 +1321,12 @@ mod eighth_pass_spawn_audit_tests;
 /// (DECISIONS §19).
 #[cfg(test)]
 mod eighth_pass_endpoint_usurper_tests;
+
+/// **The attenuation lattice, one right at a time, and each shell running the other's script**
+/// (an eighth outsider pass at the confinement claim, claims 19 and 24). Grants dropping exactly
+/// one right lose exactly that right's bit; shells running the other root's script complete the
+/// skeleton and reach nothing of the tree every probe aims at, absolute paths included.
+///
+/// Cross-ISA: the caretaker, the protocol and the shell are portable programs (DECISIONS §19).
+#[cfg(all(test, initial_ramdisk))]
+mod eighth_pass_dir_escape_tests;
