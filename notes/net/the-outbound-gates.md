@@ -52,10 +52,23 @@ net_stack stalled in its bounded connect poll forever. Bisection confirmed it: a
 reused id hangs.
 
 The fix is what any real stack does: net_stack allocates ephemeral local ports from a private range with a
-rotating allocator independent of the socket id (`components/src/net_stack.rs`, `PortAllocator`). Each open
-advances the cursor, so a just-closed connection's port is not handed out again until the whole range
-has cycled. A port a live socket still holds is skipped outright. Socket-id reuse is then safe:
-the reopened socket gets a new local port, a new 4-tuple, and a new slirp flow.
+rotating allocator independent of the socket id (`socket_protocol::ephemeral` since 2026-10-13).
+Each open advances the cursor, so a just-closed
+connection's port is not handed out again until the whole range has cycled. A port a live socket
+still holds is skipped outright. Socket-id reuse is then safe: the reopened socket gets a new local
+port, a new 4-tuple, and a new slirp flow.
+
+The same stall crosses stacks, and it is slirp's `TIME_WAIT`, measured by capturing the e1000e's
+slirp side with `-object filter-dump` (2026-10-13 UTC). slirp closes first in these exchanges and
+holds the 4-tuple for 10 s. A SYN reusing it is recycled only when its sequence number is above the
+old connection's last one; smoltcp's are random. In the capture every reused SYN above the old
+sequence was answered at once, and every one below went unanswered, retransmits included, until the
+15 s bound failed the `CONNECT`. Starting every stack at one port failed 9 of 10 filtered name
+resolver runs on riscv64 and aarch64. Milestone 801 (packages over the internet) started each stack
+at a counter-derived point instead, which made an overlap rare but not impossible: CI hit it on
+#1964 (2026-10-12, `thead-c906`, the `std_resolve` lookup) and in run 38357922842 (2026-10-13,
+riscv64, `loop.nife.test`). The cursor now follows the boot clock, so a later stack starts past an
+earlier one's ports. `socket_protocol::ephemeral` has the bound and its BUGS.
 
 The regression is `a_reopened_socket_id_connects_again_over_tcp` (both ISAs): open a TCP socket,
 connect to the guestfwd echo peer, close, reopen the *same* id, and connect again; the client reports
