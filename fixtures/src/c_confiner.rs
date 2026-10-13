@@ -185,11 +185,10 @@ pub extern "C" fn _start(_a0: u64, initial_ramdisk_len: u64, _a2: u64) -> ! {
             bail(13)
         }
 
-        if event != abi::fault::EVENT_FAULT {
-            // A clean exit is "finished", not "crashed", and that distinction is why §26 delivers both
-            // events. It is also what ends this run: the honest attempt is the last one.
-            break;
-        }
+        // The honest attempt's clean exit is "finished", not "crashed", and that distinction is
+        // why §26 delivers both events. It used to end this run too, when the honest attempt was
+        // the last one; the underrun (the eighth pass's addition) runs after it, so the loop's
+        // own bound is what ends the run now.
         attempt += 1;
     }
 
@@ -237,6 +236,9 @@ fn verdict(attempt: u64, event: u64, pc: u64, addr: u64) -> u64 {
     let expect_addr = match attempt {
         c_seam::ATTEMPT_OVERRUN => Some(c_seam::WITNESS_RO_VA),
         c_seam::ATTEMPT_WILD => Some(c_seam::WITNESS_FAR_VA),
+        // The underrun aims one page below the grant, an address nothing in the component maps:
+        // a translation fault at a site no other attempt reaches.
+        c_seam::ATTEMPT_UNDERRUN => Some(c_seam::GRANT_VA - c_seam::PAGE),
         _ => None,
     };
     let site_ok = match expect_addr {

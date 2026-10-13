@@ -24,7 +24,7 @@ const CONFINED: u64 =
 const CONFINED_AND_CORRECT: u64 = CONFINED | OUTPUT_CORRECT;
 
 /// The attempts, matching `crates/c_seam`.
-const ATTEMPTS: usize = 3;
+const ATTEMPTS: usize = 4;
 const ATTEMPT_HONEST: u64 = 2;
 
 /// The confiner's budget. It builds three instances of the shim, one at a time, reaping each
@@ -313,13 +313,55 @@ fn the_supervisor_restarts_the_faulted_c_component_and_the_restart_does_real_wor
     );
 
     // A clean exit reads as EXIT, which is what lets a userspace policy tell "finished" from
-    // "crashed" without guessing.
-    let last = of_kind(&msgs, RPT_DEATH)
-        .last()
+    // "crashed" without guessing. The honest attempt is the third child, and since the underrun
+    // was added it is no longer the last, so its death is taken by position rather than by
+    // `last()`.
+    let honest_death = of_kind(&msgs, RPT_DEATH)
+        .nth(2)
         .expect("no death messages at all");
     assert_eq!(
-        last[2],
+        honest_death[2],
         abi::fault::EVENT_EXIT,
         "the honest attempt exited cleanly, so its supervisor must see EXIT, not FAULT",
     );
+}
+
+/// **The underrun: a store a whole page below the grant** (an eighth outsider pass at the
+/// confinement claim, claim 20). The cited bugs both aim upward, past the end; this one aims
+/// down, the direction a negative index or a `size_t` underflow reaches for, at a page nothing in
+/// the component maps. It must fault as a translation fault at exactly that address, with the
+/// in-grant store landed and both witnesses untouched: the same receipt the overruns produce, for
+/// the direction nothing had probed.
+#[test_case]
+fn a_c_underrun_below_the_grant_faults_and_changes_nothing_outside_it() {
+    let msgs = run_seam();
+
+    let verdict = of_kind(&msgs, RPT_VERDICT)
+        .find(|v| v[1] == 3)
+        .expect("no verdict for the underrun attempt");
+    assert_eq!(
+        verdict[2], CONFINED,
+        "the underrun attempt was not confined: bits {:#x} against {:#x}",
+        verdict[2], CONFINED
+    );
+
+    // The fault deaths, in attempt order, are the overruns and the underrun (the honest attempt
+    // exits cleanly), so the underrun's is the third.
+    let underrun_death = of_kind(&msgs, RPT_DEATH)
+        .filter(|d| d[2] == abi::fault::EVENT_FAULT)
+        .nth(2)
+        .expect("the underrun attempt produced no fault death");
+    assert_ne!(
+        underrun_death[1], 0,
+        "the underrun's fault message carried no tid"
+    );
+
+    // The site: exactly one page below the grant, the address the C computed and nothing else.
+    let underrun_site = of_kind(&msgs, RPT_SITE)
+        .filter(|s| {
+            s[2] == address_space_map::service_window(0x5000_0000) - page_frames::FRAME_SIZE
+        })
+        .next()
+        .expect("no fault site one page below the grant: the underrun faulted elsewhere");
+    assert_ne!(underrun_site[1], 0, "no faulting pc for the underrun");
 }

@@ -164,8 +164,13 @@ pub const ATTEMPT_WILD: u64 = 1;
 /// Attempt 2: `c_seam_transform`, the real work, run after both crashes to prove the
 /// supervisor's restart left the component actually usable rather than merely alive.
 pub const ATTEMPT_HONEST: u64 = 2;
+
 /// How many attempts a full run makes.
-pub const ATTEMPTS: u64 = 3;
+/// The underrun: a store one whole page **below** the grant, the downward direction the
+/// over-running bugs never aimed. The eighth outsider pass's addition.
+pub const ATTEMPT_UNDERRUN: u64 = 3;
+
+pub const ATTEMPTS: u64 = 4;
 
 /// **The attempt selectors are dense and start at zero, because the C indexes an array with them.**
 /// Asserted at compile time rather than in a test: every operand is a `const`, so a runtime check
@@ -174,7 +179,7 @@ pub const ATTEMPTS: u64 = 3;
 /// assertion (notes/rm.md).
 const _: () = assert!(ATTEMPT_OVERRUN == 0);
 const _: () = assert!(ATTEMPT_WILD < ATTEMPTS && ATTEMPT_HONEST < ATTEMPTS);
-const _: () = assert!(ATTEMPTS == 3);
+const _: () = assert!(ATTEMPTS == 4);
 
 // =========================================================================================== The
 // report protocol. `c_confiner` and `c_shim` hold a WRITE view of one report endpoint; the kernel
