@@ -5,8 +5,7 @@ built: 2026-09-02
 ---
 # 217. The card carries a kernel and an archive from different builds, and the gate is the only thing that noticed
 
-Built 2026-09-02. Minted 2026-09-01 by the maintainer, from a boot driven over the
-serial console the same hour. *(Number provisional until the merge queue lands it.)*
+Built.
 
 In brief. The VisionFive 2 boots, starts a user program at U-mode, and then halts:
 

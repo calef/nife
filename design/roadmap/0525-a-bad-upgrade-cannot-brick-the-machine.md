@@ -5,9 +5,8 @@ built: 2026-09-21
 ---
 # 525. A bad upgrade cannot brick the machine: two boot slots, tries and priority
 
-*(Number provisional until the merge queue lands it; 524 onward is contested
-between branches in flight.)* Built 2026-09-21 by the lane `abboot/tries-and-priority`, on calef's
-ruling of the same day: *"Yes, write the tries and priority attributes in 2b."*
+Built 2026-09-21, on calef's ruling of the same day: *"Yes, write the tries and priority attributes
+in 2b."*
 
 This is the design half of rung 2b of milestone 198 (a package manager, and the trivial install that
 makes a second customer possible). The bench half is not this: 2b's own row asks for the rung 2a
@@ -105,24 +104,21 @@ the try was spent and nothing came back, and it is the one failure class the cho
 for itself. The upgrade staged into slot 1 is a byte-for-byte copy of the working image on purpose:
 garbage would be caught by the slot header's checksum inside one boot and would test the cheap half.
 
-`cargo xtask install-boot` also grew two assertions, so an ordinary installed boot is now held to
-going through the chooser.
+`cargo xtask install-boot` carries two assertions, so an ordinary installed boot is held to going
+through the chooser.
 
-## The one thing this found that was already broken
+## The revocation log charge on a mapped window
 
-Every `Spawn::maps` page has cost a share of a revocation log page since `map_physical` started
-recording on 2026-09-21. Four call sites were updated to pay for it and the installer's
-eleven-megabyte boot-file window could not be, because it goes through `user::run` and `run` had
-nowhere to put the number; it fitted inside `AS_OVERHEAD`'s slack by luck. Growing the boot image by
-a megabyte took the luck away, and the failure was an `OutOfPageFrames` panic three frames from
-anything that mentions memory. The accounting now happens in `user::load`, from `spawn.maps` itself,
-so no caller has to remember.
+Every `Spawn::maps` page costs a share of a revocation log page. The installer's eleven-megabyte
+boot-file window goes through `user::run`. So the accounting happens in `user::load`, from
+`spawn.maps` itself, and no caller has to remember it. Without it the window fits inside
+`AS_OVERHEAD`'s slack only by luck. A bigger boot image then fails with an `OutOfPageFrames` panic,
+three frames from anything that mentions memory.
 
-The first version of it overcharged and the frame ledger said so, deterministically and on the
-first run: charging the whole window took a frame per long-lived process, permanently, into a region
-that never used it, and the aarch64 suite went from 22249 kept frames to 22317. A caller owes the
-cost above what `AS_OVERHEAD`'s margin already carried, which is what `WINDOW_IN_OVERHEAD`
-names. That gate is the reason this landed right rather than landing quietly wrong.
+A caller owes the cost above what `AS_OVERHEAD`'s margin already carries. That is what
+`WINDOW_IN_OVERHEAD` names. Charging the whole window would take a frame per long-lived process,
+permanently, into a region that never uses it. The frame ledger catches that on the first run,
+deterministically: the aarch64 suite's kept frames rise from 22249 to 22317.
 
 ## Scope note (DECISIONS §19 (architectural parity is a tenet; the targets are aarch64, riscv64 and x86_64))
 

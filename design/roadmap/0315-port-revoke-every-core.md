@@ -6,16 +6,9 @@ promoted_from: a-port-revoke-that-reaches-every-core
 ---
 # 315. A port revoke that reaches every core
 
-Built by a lane on `milestone/315-port-revocation-two-core`. Promoted
-from `design/roadmap/proposals/a-port-revoke-that-reaches-every-core.md` by calef on 2026-09-17, the
-day milestone 313 (the security audit that was due since August) raised it as finding 4.
-*(Number provisional until the merge queue lands it.)*
-
-It was gated `DECISION` until 2026-09-18, when calef answered
-§153 (how a two-core x86_64 test earns its place),
-[the decision file](../decisions/0153-two-core-x86-test-sequencing.md): close this milestone
-first, then default
-`NIFE_SMP` to 2. Both halves are done, and the second is the verification of the first.
+Finding 4 of milestone 313 (the security audit that was due since August). calef ruled §153 (how a
+two-core x86_64 test earns its place), [the decision file](../decisions/0153-two-core-x86-test-sequencing.md),
+on 2026-09-18: close this milestone first, then default `NIFE_SMP` to 2. Both halves are done, and the second is the verification of the first.
 
 ## What it owed, and what landed
 
@@ -95,7 +88,7 @@ The cost on a machine where nothing holds a port is one compare inside the criti
 of one outside it, because `set_port_range_grant` returns after a single comparison when the grant
 has not changed.
 
-`delete_current_cap` owes **no** broadcast: the thread dropping its own capability is the thread
+`delete_current_cap` owes no broadcast: the thread dropping its own capability is the thread
 whose grant is installed, and it is running on this core, so this core is the only core to tell.
 
 ## What proves it
@@ -115,7 +108,7 @@ been verified by hand and gated by nothing.
   `smp: N core(s) online`.
 - **Every number here is QEMU TCG on one host**, and on an aarch64 host QEMU runs an x86_64 guest
   round-robin unless `NIFE_TCG_THREAD=multi` is set, so two cores take turns rather than executing
-  in the same instant. The window this closes was wide enough to fire anyway; a narrower one might
+  in the same instant. The window this closes was wide enough to fire anyway. A narrower one might
   not be visible here at all.
 - **The broadcast is unbatched and unmeasured**, like the TLB shootdown it rides. A revoke of one
   range costs one full round trip to every online core. Nothing in `script/bench` prices it, and
@@ -153,7 +146,7 @@ been verified by hand and gated by nothing.
 
 `PortRange::REVOKE` cleared the capability table and the cached grants but reset the TSS I/O bitmap
 on the revoker's core only, which was the whole machine when DECISIONS §152 recorded it and stopped
-being so when `smp::seat_cpus_from_acpi` made x86 multi-core; a revoked holder running on another
+being so when `smp::seat_cpus_from_acpi` made x86 multi-core. A revoked holder running on another
 core kept COM1 until that core's next context switch. Milestone 313's audit accepted the window on
 reasoning, and at two cores it was red in 7 of 12 full runs of the test written to see it. This lane
 reproduced it (3 of 12, then 2 of 30 on a filtered leg), named the cause with a snapshot of

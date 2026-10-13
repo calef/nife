@@ -125,15 +125,13 @@ account, including the 592 transcript's one gap and the discarded card boot befo
 *(Awaiting the board, 2026-10-06: what is on the desk is a TK1 going back, not argon. The tegra210
 facts below are the TX1's and stand. The "20 minutes at argon" steps wait for the TX1.)*
 
-calef ruled argon first on 2026-10-05. This lane set out to make its soak one command and found
-the premise false one step earlier than this block's `BUGS` says: argon has never booted nife,
-**and as built it cannot**. The aarch64 kernel is linked, mapped and consoled for QEMU `virt`
-only (RAM at 0x4000_0000, a PL011 at 0x0900_0000), and tegra210 puts DRAM at 0x8000_0000 and a
-16550 at 0x7000_6000. A `booti` today would be silent, and that silence would be misread at the
-bench as cabling or firmware. Milestone 127's two named prerequisites are built; the third, the
-board memory map, is unbuilt and unowned.
-`design/roadmap/0803-argon-boots-the-aarch64-kernel.md` is that work, with the fork (one
-binary or two) that is the architect's.
+calef ruled argon first on 2026-10-05. argon has never booted nife, **and as built it cannot**. The
+aarch64 kernel is linked, mapped and consoled for QEMU `virt` only (RAM at 0x4000_0000, a PL011 at
+0x0900_0000), and tegra210 puts DRAM at 0x8000_0000 and a 16550 at 0x7000_6000. A `booti` today
+would be silent, and that silence would be misread at the bench as cabling or firmware. Milestone
+127's two named prerequisites are built; the third, the board memory map, is unbuilt and unowned.
+`design/roadmap/0803-argon-boots-the-aarch64-kernel.md` is that work, with the fork (one binary or
+two) that is the architect's.
 
 What this lane built instead, which every board's soak uses: `script/board-console --exposure
 <log> --machine <name> --build <sha> --start '<utc>'` reads a capture into the curve's exposure row

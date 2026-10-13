@@ -9,11 +9,10 @@ needs_person: yes
 ---
 # 802. The trivial install that makes a second customer possible: a web page a stranger follows
 
-Split out of milestone 198 (a package manager) on 2026-10-06 (UTC), where it was rungs 1d and 4 and
-the "trivial install" half of 198's title. calef, the same day: *"Don't fix the tooling to name a
+Rungs 1d and 4 of milestone 198 (a package manager), the "trivial install" half of 198's title, as
+a milestone of its own. calef, 2026-10-06 (UTC): *"Don't fix the tooling to name a
 rung. We should make our milestones finer grained if we're going to express dependencies on a
-fraction of them."* The number is provisional until the merge queue lands it, and the title and
-slug are drafts. `raised` is 198's, because this is the half of calef's 2026-08-30 sentence that is
+fraction of them."* The title and slug are drafts. `raised` is 198's, because this is the half of calef's 2026-08-30 sentence that is
 still open: *"I don't think we expose nife to third parties (aka other customers) until we have a
 package manager and a trivial install process."*
 
@@ -115,8 +114,7 @@ procedure on the page when a machine a stranger plausibly owns exists for it.
 ## Index row
 
 The door principle 1 names: calef, 2026-08-30, no third party sees nife until there is a package
-manager and a trivial install. Split out of milestone 198 on 2026-10-06, which keeps the package
-manager. A stranger follows a web page from a download to a stick to an installed system that grows
+manager and a trivial install. Milestone 198 keeps the package manager. A stranger follows a web page from a download to a stick to an installed system that grows
 by packages over the internet (§157). It holds rungs 1d (a second PC) and 4 (the page), and waits
 on the screen (400), the USB keyboard (242), the installer (515), packages over the internet (801),
 the Secure Boot ruling and calef's act of publication.

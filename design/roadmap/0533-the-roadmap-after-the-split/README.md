@@ -13,15 +13,12 @@ checks and reading that its prose budget has no room for.
 - [`cost-of-nothing.md`](cost-of-nothing.md): what stays painful once the decouple-the-lanes work on
   #999 lands, and the proposal's answer to calef's question.
 
-*Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog, which split the
-parent under §212 (a prose budget). The directory follows §212's siting default, `design/roadmap/X/`
-beside `design/roadmap/X.md`. calef names directories.*
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default,
+`design/roadmap/X/` beside `design/roadmap/X.md`. calef names directories.*
 
-- `tracker-checks` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog,
-  for the parent's "What a tracker can and cannot carry, checked rather than asserted". calef names
-  files.
-- `prior-art` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog, after
-  the parent's "Prior art, read rather than recalled". calef names files.
-- `cost-of-nothing` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog,
-  after the parent's "What it costs to do nothing, after the decouple-the-lanes work lands". calef
+- `tracker-checks` Name: provisional. It holds the parent's "What a tracker can and cannot carry,
+  checked rather than asserted". calef names files.
+- `prior-art` Name: provisional. After the parent's "Prior art, read rather than recalled". calef
   names files.
+- `cost-of-nothing` Name: provisional. After the parent's "What it costs to do nothing, after the
+  decouple-the-lanes work lands". calef names files.

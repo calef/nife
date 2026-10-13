@@ -9,9 +9,9 @@ needs_person: no
 ---
 # 180. Copy and paste: a clipboard in a system with no ambient authority
 
-Minted 2026-08-26, calef, checking the roadmap for a gap that turned out
-not to be a gap at all: nothing in `design/` or `notes/` mentions a clipboard, not even as a
-named limitation the way mouse support is (see milestone 179). This file is that gap's first record.
+Nothing else in `design/` or `notes/` mentions a clipboard, not even as a named limitation the way
+mouse support is (see milestone 179 (pointer input: a mouse in text mode)). This file is that gap's
+record.
 
 Not a driver or a wiring question, as milestone 179 (pointer input) was: a clipboard is shared,
 mutable state that more than one principal reads and writes, and this tree has a standing rule

@@ -5,10 +5,8 @@ built: 2026-09-03
 ---
 # 235. A command that faults hangs the prompt, because nothing has a word for it
 
-Built (2026-09-03). Minted 2026-09-02 by calef, from the lane that built milestones 231
-(nothing counts how many capability slots a boot actually uses) and 233 (`login` dies on every boot),
-which found it while proving its own gate could fail. *(Number provisional until the merge queue
-lands it.)*
+Built. Milestones 231 (nothing counts how many capability slots a boot actually uses) and 233
+(`login` dies on every boot) found it. They were proving their own gate could fail.
 
 In brief. A spawned command that traps hangs the prompt. `swish` waits on the job's result
 endpoint and a killed thread never sends, so the shell waits forever. An ordinary non-zero exit is

@@ -10,8 +10,6 @@ needs_person: no
 ---
 # 806. Concurrent login sessions: more than one person on the machine at once
 
-*(Promoted from the proposal pile on 2026-10-06 (UTC); number provisional until the merge queue lands it.)*
-
 *(All six forks ruled by calef on 2026-10-06 (UTC), on #1769. §253 (concurrent login sessions: a
 greeter per terminal, authority granted at login, memory from a broker) records each ruling in his
 words with the refused options. The forks below keep the argument; their recommendations are now
@@ -25,9 +23,9 @@ wrote it and built nothing.
 Every name here is provisional: `greeter`, `console_multiplexer`, `grant_broker`, `memory_broker`,
 the policy files and the gate.
 
-This supersedes milestone 481 (real terminal multiplexing), which milestone 49 (users, login, and
-attribution) refused with one condition: "somebody needing two sessions at once." calef's request
-meets it, so 481 now points here rather than standing as a parallel record.
+Milestone 481 (real terminal multiplexing) points here. Milestone 49 (users, login, and
+attribution) refused it with one condition, "somebody needing two sessions at once", and calef's
+request meets it.
 
 ## Why, and its honest rank
 
@@ -123,9 +121,9 @@ first slice's step 0, before anything is built on it.
 
 ### Fork 4: Memory, CPU, and the owner
 
-**Ruled D**, calef, 2026-10-06 (UTC): "D on Fork 4". He had refused the first draft's fixed
-per-session budget: "that likely means we're just limiting a single session to how much memory can
-be used since most of the time there will be a single session."
+**Ruled D**, calef, 2026-10-06 (UTC): "D on Fork 4". Not a fixed per-session budget, because
+"that likely means we're just limiting a single session to how much memory can be used since most
+of the time there will be a single session."
 
 What the kernel allows, read in `crates/abi` and `kernel/src/memory_region.rs`:
 
@@ -270,7 +268,7 @@ Under QEMU on aarch64 (`virt`), riscv64 (`virt`) and x86_64 (`q35`), one `cargo 
     recovery boot reaches a shell with no password and is logged. A release image carries no preset
     credential, checked by the gate.
 13. A `design/decisions/` section records the session object, the spawn endpoint's restriction and
-    the broker's wire format, minted by the integrator. §253 records the rulings, not these.
+    the broker's wire format. §253 records the rulings, not these.
 
 ## Follow-ons, proposed, unnumbered
 

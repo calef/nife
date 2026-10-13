@@ -11,10 +11,8 @@ needs_person: no
 ---
 # 762. A mapping cannot outlive its frame's revoke
 
-Promoted from `design/roadmap/proposals/a-mapping-cannot-outlive-its-frames-revoke.md` on
-2026-10-04 (UTC) by the lane `lane/map-revocation-window`. The number 762 is provisional until the
-queue lands it. *(Title and slug are drafts.)* Stacked on #1640 (the delegation side of the same
-window), which is stacked on milestone 761 (capability lookup off the global lock).
+*(Title and slug are drafts.)* It follows #1640 (the delegation side of the same window) and
+milestone 761 (capability lookup off the global lock).
 
 ## Why
 

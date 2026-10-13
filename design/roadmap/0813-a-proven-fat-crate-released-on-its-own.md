@@ -9,9 +9,8 @@ needs_person: no
 ---
 # 813. `file_allocation_table`: a proven FAT crate, released on its own
 
-*(Minted 2026-10-07 (UTC) by lane/file-allocation-table-milestone from calef's rulings on pull
-requests #1803 and #1806. The number is provisional until the merge queue lands it; the title and
-slug are drafts. On the customer path: milestone 140 (mount a drive this system did not create)
+*(From calef's rulings on pull requests #1803 and #1806; the title and slug are drafts. On the
+customer path: milestone 140 (mount a drive this system did not create)
 needs it for its FAT32 stratum.)*
 
 calef's rulings, quoted from the maintainer comments of 2026-10-07 (UTC):

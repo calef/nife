@@ -9,10 +9,9 @@ needs_person: no
 ---
 # 183. A physical-range index for capability holders, so revocation stops scanning every thread
 
-Minted 2026-08-28, calef, out of a measured cost finding from milestone
-142's own review pass (DECISIONS §102, the CRITICAL 1 fix for reclamation-time capability deletion,
-and DECISIONS §132's capability-scoped `REVOKE`). Discussed directly with calef, who asked for this
-to be tracked as a milestone rather than only a `BUGS` line.
+This tracks a measured cost: reclamation-time capability deletion (DECISIONS §102 (a Frame names a
+run of pages), the CRITICAL 1 fix) and DECISIONS §132's capability-scoped `REVOKE` both pay for
+finding a capability's holders. calef asked for it to be a milestone rather than only a `BUGS` line.
 
 The data-structure shape (extend an existing structure vs. build a new one, see "The
 starting point" below) is a real choice but not one that needs calef's decision before a lane starts:

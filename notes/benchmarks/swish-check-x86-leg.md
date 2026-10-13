@@ -34,7 +34,7 @@ only when nothing else can run, takes the core.
 Why aarch64 and riscv64 never showed it was an inference until milestone 720 (the boot thread
 cannot halt while it is runnable). Their boot paths also ended in `arch::halt()`, but their input
 is interrupt-driven, so no thread keeps the rotation turning while the shell waits. Milestone 720
-(number provisional) ended both in `sched::exit()`, made `arch::halt` take a token an ordinary boot
+ended both in `sched::exit()`, made `arch::halt` take a token an ordinary boot
 cannot make, and measured both legs before and after; its roadmap block has the numbers.
 
 ## Per-line seconds, one change at a time (patagonia, TCG, local)

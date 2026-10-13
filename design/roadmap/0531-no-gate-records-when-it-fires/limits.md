@@ -2,11 +2,8 @@
 
 The full case behind two sections of [milestone 531 (no gate in this tree records when it
 fires)](../0531-no-gate-records-when-it-fires.md): the `script/cadence-check` false positives, and
-the three things no gate can check. Moved out of that page on 2026-10-12 (UTC) under [§212 (a prose
-budget)](../../decisions/0212-a-prose-budget-for-every-document.md). The main page is complete
-without this one, which exists to verify or challenge it. Sentences over the 40-word limit of §213
-(writing standards) were split; no finding changed. "Today" means 2026-09-21, when this was
-measured.
+the three things no gate can check. The main page is complete without this one, which exists to
+verify or challenge it. "Today" means 2026-09-21, when this was measured.
 
 ## What to weaken, with evidence
 

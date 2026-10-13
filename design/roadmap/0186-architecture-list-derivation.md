@@ -10,13 +10,11 @@ needs_person: no
 ---
 # 186. Derive the architecture list, and close what it does not reach
 
-Built 2026-10-03; it was partial as of 2026-09-23. Seven of the sweep's eleven silent gaps closed, three were already
-closed by other lanes before this one looked (findings 3, 6 and 11, which is the reason this block
-now says to re-check a row before acting on it), one is milestone 187's, and one is left open with
-its reason below. Phase 1, phase 2 and phase 3 are done. Minted 2026-08-28, on calef's question against the sweep in pull request
-#568: is there a milestone for actually fixing these and driving parity, and there was not. The
-sweep is `notes/architecture-list-sweep.md` and it is this milestone's worklist; this block
-says what "done" means and in what order, and does not restate the table.
+Built. Of the sweep's eleven silent gaps, ten are closed (findings 3, 6 and 11 by other work, which
+is why this block says to re-check a row before acting on it), one is milestone 187's, and one is
+left open with its reason below. Phases 1, 2 and 3 are done. The sweep is
+`notes/architecture-list-sweep.md` and it is this milestone's worklist; this block says what "done"
+means and in what order, and does not restate the table.
 
 No design fork. The recommendation is argued and priced in the note, the tree
 already holds every mechanism it proposes, and every part of it is reversible.

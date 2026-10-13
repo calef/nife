@@ -10,8 +10,7 @@ needs_person: no
 ---
 # 755. basalt v0 pins nife and runs its gate
 
-*(Number provisional until the merge queue lands it. Title and slug are drafts.)* Minted 2026-10-04
-(UTC) by the lane `lane/split-order-proposal` from calef's ruling of the same day, recorded in §247
+*(Title and slug are drafts.)* From calef's ruling of 2026-10-04 (UTC), recorded in §247
 (the split begins with basalt holding nife, and `procps` moves first). basalt v0 is the first step
 of the repository split. The ruling includes the go-ahead for a lane's first write to
 `nifeos/basalt`. The reasoning and the measurements are in
@@ -19,8 +18,7 @@ of the repository split. The ruling includes the go-ahead for a lane's first wri
 
 ## What was built
 
-Built 2026-10-04 (UTC) by the lane `lane/basalt-v0`, in `nifeos/basalt` pull request #1, which
-calef merged at 19:24 UTC as `f5bb505a5`. Nothing in this repository changed. Every name below is
+Built 2026-10-04 (UTC) in `nifeos/basalt` pull request #1, merged as `f5bb505a5`. Nothing in this repository changed. Every name below is
 provisional and calef's to name.
 
 - `pins.toml`, the manifest: one TOML table per component, `[nife]` with `repository` (a
@@ -31,7 +29,7 @@ provisional and calef's to name.
   host crates, then each architecture's kernel and programs built and the system test suite booted
   under QEMU on aarch64, riscv64 and x86_64. QEMU comes from the pinned commit's `script/ci-qemu`, the
   toolchain from its `script/bootstrap`. One job on `ubuntu-24.04-arm`, 75-minute ceiling,
-  superseded branch runs cancelled. It keeps each architecture's system-test kernel and the three
+  a branch's older runs cancelled by its newer one. It keeps each architecture's system-test kernel and the three
   program archives (`initrd*.img`) as a 14-day artifact.
 - The workflow `pin bump` (`.github/workflows/pin-bump.yml`, job `propose`): daily at 06:17 UTC,
   it reads nife's `main` head, rewrites the pin on the force-pushed branch `pin/nife` and opens or

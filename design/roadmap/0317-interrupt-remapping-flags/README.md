@@ -11,12 +11,10 @@ which its prose budget has no room for.
 - [`riscv64.md`](riscv64.md): the `CAPS` reading, why riscv64 needs no flag, the inversion against
   x86_64, and what is a reading of the specification rather than a measurement.
 
-*Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog, which split the
-parent under §212 (a prose budget). The directory follows §212's siting default, `design/roadmap/X/`
-beside `design/roadmap/X.md`. calef names directories.*
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default,
+`design/roadmap/X/` beside `design/roadmap/X.md`. calef names directories.*
 
-- `x86-64` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog, after the
-  parent's "x86_64: the premise was false, and that is the finding". calef names files.
-- `riscv64` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog, after the
-  parent's "riscv64: offered, declined in one word, and untestable on silicon we own". calef names
-  files.
+- `x86-64` Name: provisional. After the parent's "x86_64: the premise was false, and that is the
+  finding". calef names files.
+- `riscv64` Name: provisional. After the parent's "riscv64: offered, declined in one word, and
+  untestable on silicon we own". calef names files.

@@ -5,24 +5,11 @@ built: 2026-09-23
 ---
 # 302. A baseline records what it was saved against, and a stale one fails loudly
 
-Corrected 2026-09-23 from `NOT-STARTED`, which it had been since promotion
-while two of its three items were already in the tree. Promoted 2026-09-16 from
-`design/roadmap/proposals/a-toolchain-bump-that-leaves-the-baselines-stale.md`, which was Decision 2
-of the finding milestone 299's lane surfaced (originally
-`design/roadmap/proposals/icount-baselines-drift-after-a-toolchain-bump.md`, which is now
-milestone 577 (the icount baselines predate the pinned nightly), promoted and superseded in one act
-on 2026-09-23, on PR #883). Milestone
-300 executed Decision 1, decompose and re-baseline. *(Number provisional until the merge queue lands
-it.)*
+This is Decision 2 of the finding in milestone 577 (the icount baselines predate the pinned
+nightly), ruled by calef on 2026-09-16. Milestone 300 (decompose the icount baseline drift)
+executed Decision 1, decompose and re-baseline.
 
-**No gate, and there was one.** calef ruled on 2026-09-16, which cleared the `DECISION` token this
-carried as a proposal; the status above now says the rest.
-
-## What landed, and when
-
-Two commits, six days apart, and the block said `NOT-STARTED` through both of them. That misrecord
-is why the block on PR #1122 (the icount baselines predate the pinned nightly) was filed and then
-superseded in one act: a reader with only this file could not tell that most of the mechanism existed.
+## What landed
 
 - **2026-09-21, commit `99f13dad`** ("A toolchain bump cannot silently revalue the icount floors"):
   items 2 and 3, plus the toolchain half of item 1. `cargo xtask bench --save` writes a

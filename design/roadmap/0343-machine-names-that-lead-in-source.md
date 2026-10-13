@@ -54,7 +54,7 @@ already on AGENTS.md's record.
 
 ## Follow-on
 
-- **Done.** The last two comments are in §143's shape as of 2026-10-03 (UTC). `kernel/src/arch/riscv64/iommu.rs:52`
+- **Done.** The last two comments are in §143's shape. `kernel/src/arch/riscv64/iommu.rs:52`
   now reads "the JH7110 (radon, the `VisionFive` 2) has no IOMMU at all", hardware first. The
   `xtask/src/main.rs:2658` comment no longer exists: it went when `xtask` was split into modules
   and the cargo-feature pack (`5d210e035`), and grepping `kernel/`, `crates/`, `components/`,

@@ -3,10 +3,8 @@
 The full assessment of the four additions [milestone 531 (no gate in this tree records when it
 fires)](../0531-no-gate-records-when-it-fires.md) proposes. Each answers the same questions: what it
 is, which recorded failure it would have caught, its cost, its false-positive risk, and what it
-cannot check. Moved out of that page on 2026-10-12 (UTC) under [§212 (a prose
-budget)](../../decisions/0212-a-prose-budget-for-every-document.md). The main page is complete
-without this one, which carries each addition's summary and the ranking. Sentences over the 40-word
-limit of §213 (writing standards) were split; no finding or number changed.
+cannot check. The main page is complete without this one, which carries each addition's summary and
+the ranking.
 
 ## Addition A: a gate-firing ledger
 
@@ -22,9 +20,8 @@ harness that should have found it) had to assemble an eighteen-row corpus by han
 establish that no Kani harness has ever caught a defect after the day it was written. That finding
 is the single most load-bearing fact in `design/fatal-risks/README.md`.
 
-The first draft claimed the equivalent fact about the lint checks was unobtainable. It is
-obtainable, it was obtained (see [the mined baseline](ci-baseline.md)), and the ledger is still
-worth building, for three reasons that are now stated rather than assumed:
+The equivalent fact about the lint checks is obtainable from Actions (see [the mined
+baseline](ci-baseline.md)), and the ledger is still worth building, for three reasons:
 
 - The structural bias, which is the big one and which the mined data confirms rather than
   predicts. Actions sees only the failures that escaped local gating. Thirty-two of the 47 checks
@@ -66,11 +63,12 @@ fired.
 ## Addition B: a gate carries a selftest, or it is not evidence
 
 What it is. §134 (a harness carries a machine-replayable falsification record, or it is not
-evidence)'s convention, moved from proofs onto checks. Each `script/` entry point that renders a
-verdict grows a `--selftest` that runs it against fixtures which must fail and fixtures which must
-stay quiet. And `script/lint` gains one check: an entry point with a verdict and no `--selftest` is
-refused. The shape is already in the tree and does not need designing; `script/fatal-risks
---selftest` is the worked example and it costs 0.65 s combined with its `--check`.
+evidence)'s convention, applied to checks as it is to proofs. Each `script/` entry point that
+renders a verdict grows a `--selftest` that runs it against fixtures which must fail and fixtures
+which must stay quiet. And `script/lint` gains one check: an entry point with a verdict and no
+`--selftest` is refused. The shape is already in the tree and does not need designing;
+`script/fatal-risks --selftest` is the worked example and it costs 0.65 s combined with its
+`--check`.
 
 Which recorded failures it would have caught. `script/fmt` ignoring `--check`, which the record
 calls the same defect as the `tee` fail-open and which went unnoticed for months. The `--shard 4/4`

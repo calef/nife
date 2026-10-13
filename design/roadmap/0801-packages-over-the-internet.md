@@ -9,12 +9,10 @@ needs_person: yes
 ---
 # 801. Packages over the internet: a host name, HTTPS and the distribution's index
 
-Split out of milestone 198 (a package manager) on 2026-10-06 (UTC), where it was rung 3c. calef,
-the same day: *"Don't fix the tooling to name a rung. We should make our milestones finer grained if
+Rung 3c of milestone 198 (a package manager), as a milestone of its own. calef, 2026-10-06 (UTC): *"Don't fix the tooling to name a rung. We should make our milestones finer grained if
 we're going to express dependencies on a fraction of them."* Milestone 576 (how many systems are out
 there, and what do they run) depends on this rung and on nothing else of 198, and a dependency
-field names whole milestones. The number is provisional until the merge queue lands it, and the
-title and slug are drafts. `raised` is the day §157 put the rung on the path.
+field names whole milestones. The title and slug are drafts. `raised` is the day §157 put the rung on the path.
 
 ## What it is
 
@@ -54,7 +52,7 @@ calef ruled item 2's five questions on #1884 on 2026-10-10 (UTC), and they add t
 
 ## Built 2026-10-09 (UTC): items 1, 3 and 4 under QEMU, and item 2's survey
 
-Lane `milestone/801-packages-over-the-internet` (PR #1884). The account, the transcripts and the
+PR #1884. The account, the transcripts and the
 seams are `notes/packages/over-the-internet.md`.
 
 - Item 1. `crates/package_index` (provisional) reads an index, finds the one entry a name asks for,
@@ -77,7 +75,7 @@ seams are `notes/packages/over-the-internet.md`.
 
 ## Built 2026-10-12 (UTC): `jig` installs from the index at the prompt
 
-Lane `milestone/801-jig-installs-from-the-index`. This is the exit criterion short of xenon, on all
+This is the exit criterion short of xenon, on all
 three architectures under QEMU, in `script/swish-check`'s second boot. [notes/packages/jig.md](../../notes/packages/jig.md)
 has the transcript and the BUGS.
 
@@ -112,10 +110,10 @@ there, with options, under `needs-architect` (`notes/packages/the-index-format.m
   X1) and redirects. Ruled 2026-10-12 (UTC) on #2048, below.
 
 Not rulings but calef's hands: DNS and a host for `basalt.nifeos.org`, and the exit criterion on
-xenon. Corrected 2026-10-13 (UTC): `nifeos.org` now has a zone (Netlify DNS) with no record for
-`basalt`; on 2026-10-12 it answered no query at all. basalt's README lists the steps.
+xenon. `nifeos.org` has a zone (Netlify DNS) with no record for `basalt` (2026-10-13 UTC).
+basalt's README lists the steps.
 
-One fork this lane decided rather than asked, because it is reversible and in-tree: how a manifest
+One fork was decided rather than asked, because it is reversible and in-tree: how a manifest
 names a fixed directory (809's open fork). `Manifest::indexes`, granted like the installer, puts
 `activation/indexes` at the directory slot. It lives under `activation/` because it decides what
 installs, and because `packages/indexes` could collide with a package named `indexes`.
@@ -137,7 +135,7 @@ organization's Pages site, since `www.nifeos.org` will be its own site from
 - basalt's `publish` job (nifeos/basalt#13) builds this. It also keeps clause 9's copy under
   `targets/` on Pages, the fallback when the Release cannot be reached.
 - The image's production sources exist: `package_index::BASALT_SOURCES`, packed when an image is
-  built with `NIFE_INDEX_SOURCES=basalt` (lane `lane/basalt-on-pages-and-releases`). Every check
+  built with `NIFE_INDEX_SOURCES=basalt`. Every check
   still boots the test peer.
 
 ## Ruled 2026-10-12 (UTC): a listed location names its root, and one redirect is followed
@@ -153,7 +151,7 @@ Question C, asked on #2048 with the options in `notes/packages/the-index-format.
   its host is held to Q1's public-address check and to the index's root, and a second is refused.
 - The digest check is unchanged.
 
-Built 2026-10-13 (UTC), lane `lane/basalt-on-pages-and-releases`. `pinned_tls_client::listed` is
+Built 2026-10-13 (UTC). `pinned_tls_client::listed` is
 the fetch, which `jig` and `package_fetch_exerciser` both call. `package_index` reads the root
 token, `Sources::root_for` chooses it, and `pinned_tls_client::SECTIGO_ROOT_E46` is the root,
 checked byte for byte against Sectigo's and macOS's copies. An ignored host test fetched ripgrep's
@@ -247,7 +245,7 @@ exists. aarch64 silicon waits on an aarch64 board.
 
 ## Index row
 
-Rung 3c of the trivial install, split out of milestone 198 so that milestone 576 (how many systems
+Rung 3c of the trivial install, a milestone of its own so that milestone 576 (how many systems
 are out there) can depend on it alone. A package is fetched from xenon's installed system through
 `basalt.nifeos.org`'s index by host name, over HTTPS, verified by digest and installed. It waits on
 the resolver (384), the TLS client (501) and xenon's network card (494). Built under QEMU

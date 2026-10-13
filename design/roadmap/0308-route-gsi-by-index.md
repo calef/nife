@@ -5,13 +5,8 @@ built: 2026-09-16
 ---
 # 308. A GSI reaches its vector by redirection index, not by its own number
 
-Built 2026-09-16. Minted 2026-09-16 by the maintainer, promoting
-`design/roadmap/proposals/the-gsi-vector-map-wraps-on-a-second-io-apic.md`, written the same day by
-milestone 304's lane. *(Number provisional until the merge queue lands it.)*
-
-The proposal's gate was `DECISION`, because this changes a public function's signature and a
-vector-assignment policy four doc comments rested on. calef chose option 1 on 2026-09-16, route
-by index, over refusing a nonzero base (option 2) and correcting only the documentation (option 3).
+This changes a public function's signature and a vector-assignment policy four doc comments
+rested on, so it was calef's: he chose option 1 on 2026-09-16, route by index, over refusing a nonzero base (option 2) and correcting only the documentation (option 3).
 
 ## The defect, and why a cap that bounds the wrong quantity is worse than no cap
 
@@ -106,7 +101,7 @@ restores `wrapping_add`. Measured on patagonia, 2026-09-16: **RED**, on the firs
 test body, `left: 2` and `right: 58`. Those two integers are the whole milestone. 58 is `0x3a`, the
 vector entry 10 of a part based at 200 is routed to; 2 is the NMI.
 
-The same patch turns the Kani harness red, attested on cordoba (x86_64 Linux) on **both** of its
+The same patch turns the Kani harness red, attested on cordoba (x86_64 Linux) on both of its
 assertions, the band one and the `is_device_vector` agreement one. That second red is the evidence
 that the agreement assertion is load-bearing rather than decorative: the two functions really did
 disagree. Clean, the same command is 4 of 4 harnesses SUCCESSFUL with 131 checks on that one.

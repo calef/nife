@@ -112,7 +112,7 @@ done
 helpers/pre-push-selftest.sh >/dev/null
 
 echo "==> the commit-msg hook (an agent's commit carries a Co-Authored-By trailer)"
-# Milestone 725 (provisional): `.githooks/commit-msg` refuses a commit made under an agent harness
+# Milestone 725 (machine effort and commit attribution count every vendor): `.githooks/commit-msg` refuses a commit made under an agent harness
 # (CLAUDECODE=1 or OPENCODE=1) with no trailer. Same reasoning as the pre-push contract above: a
 # hook that is deleted or loses its executable bit stops gating with no signal, so its absence
 # fails here, and its behaviour is proved against a scratch repository (no cargo, so it runs in

@@ -5,18 +5,13 @@ built: 2026-08-31
 ---
 # 204. A pushed lane branch with no draft pull request is a claim nobody can see
 
-Built (2026-08-31). Minted 2026-08-31 by calef, after two lanes in one session pushed
-their branches and never opened the draft pull request their briefs named as the first act. *(Number
-provisional until the merge queue lands it.)*
+Built. In brief. AGENTS.md §90 (the claim is a draft pull request) says a lane's first act is a
+draft pull request, and says why: the draft is the claim. It is how two lanes cannot silently take
+the same milestone, the board is `gh pr list --draft`, it costs one command, and a draft cannot be
+stuck in the merge queue because a draft cannot be merged.
 
-In brief. AGENTS.md §90 says a lane's first act is a draft pull request, and says why: the draft
-is the claim. It is how two lanes cannot silently take the same milestone, the board is
-`gh pr list --draft`, it costs one command, and a draft cannot be stuck in the merge queue because a
-draft cannot be merged.
-
-Nothing checks it. On 2026-08-31 the lanes for milestones 121 and 194 both pushed
-`milestone/*` branches and opened nothing. The board was empty while two milestones were being
-worked, and it was noticed only because calef asked.
+Without this, nothing checks it: two lanes can push `milestone/*` branches and open nothing, and the
+board is empty while two milestones are being worked.
 
 ## Why prose was never going to hold this
 
@@ -74,7 +69,7 @@ brief cannot be run straight through. 15 is five times the observed case and wel
 `merge-drain.sh`'s 75-minute stale-draft threshold, which is the neighboring report and the one
 this must not shadow.
 
-**The clock runs from branch creation and a later push does not reset it**, which is the opposite
+The clock runs from branch creation and a later push does not reset it, which is the opposite
 choice from `stale_drafts` next door and is deliberate: a lane that keeps committing is exactly the
 lane whose missing claim matters, so a last-commit clock would go quiet for the branches being
 worked hardest. The birth time comes from the repository activity feed, because a commit date cannot
@@ -131,15 +126,12 @@ missing claim.
 
 ## Index row
 
-Minted by calef on 2026-08-31, after two lanes in one session pushed `milestone/*` branches and
-never opened the draft pull request their briefs named as the first act. §90 says the draft is
-the claim and nothing checks it; the board was empty while two milestones were being worked. Prose
-in a brief is rung four and behaved like it, for the second time in this project's history. A
-report in `helpers/merge-drain.sh`'s family, never a gate, comparing `git ls-remote --heads origin
-'milestone/*'` against `gh pr list --draft`. Shipped as `helpers/lane-claim-check.sh`, called once
-per pass from the merge drain, which is the only unattended runner this project has. Grace period
-15 minutes, measured: the branch that built it took 3 minutes from branch creation to draft, and
-that included writing the file GitHub requires before it will accept a pull request at all. The
-clock runs from branch birth and a later push does not reset it, which is the opposite of the
-stale-draft report next door and for the opposite reason. Found a live unclaimed branch on its
-first run.
+§90 says the draft is the claim and nothing checks it, so the board can be empty while two
+milestones are being worked. Prose in a brief is rung four. A report in `helpers/merge-drain.sh`'s
+family, never a gate, comparing `git ls-remote --heads origin 'milestone/*'` against `gh pr list
+--draft`. Shipped as `helpers/lane-claim-check.sh`, called once per pass from the merge drain, which
+is the only unattended runner this project has. Grace period 15 minutes, measured: the branch that
+built it took 3 minutes from branch creation to draft, and that included writing the file GitHub
+requires before it will accept a pull request at all. The clock runs from branch birth and a later
+push does not reset it, which is the opposite of the stale-draft report next door and for the
+opposite reason. Found a live unclaimed branch on its first run.

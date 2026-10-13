@@ -9,13 +9,11 @@ needs_person: no
 ---
 # 187. Read the x86_64 arch tree through the lens the first arch audit used
 
-Minted 2026-08-27 by calef, from finding 8 of the architecture-list parity sweep. That sweep asked
-how many siblings `script/stack-frame-check`'s hardcoded `arches="aarch64 riscv64"` had and found
-eleven. Ten are strings in shell scripts that a one-line edit fixes, and they are the worklist of
-the sweep's own milestone, milestone 186 (derive the architecture list), minted on pull request #568
-and BUILT 2026-10-03. This one is not a string: `notes/arch-audit.md` read no x86_64 code, and that
-directory is the largest of the three. (Corrected 2026-10-11 UTC: it had no "x86" when this was
-written; its BUGS has named the gap since 2026-08-28 UTC, `5624f1bb8`.)
+This is finding 8 of the architecture-list parity sweep, which found eleven siblings of
+`script/stack-frame-check`'s hardcoded `arches="aarch64 riscv64"`. Ten are strings in shell scripts
+that a one-line edit fixes, and they are the worklist of milestone 186 (derive the architecture
+list). This one is not a string: `notes/arch-audit.md` read no x86_64 code, and its BUGS names the
+gap, and that directory is the largest of the three.
 
 The lens exists, the template exists, and the disposition vocabulary exists
 (DECISIONS §35, how a scanner's findings get dispositioned). Nothing here is a design fork. Findings

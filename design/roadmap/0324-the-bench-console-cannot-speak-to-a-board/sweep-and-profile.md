@@ -52,7 +52,7 @@ the machine line, the five-of-five verdict and the measured-boot refusal, with a
 That pair is the ruling made mechanical.
 
 `--until spl` against a board with no SPL is now refused rather than waited out. That is the
-smallest visible benefit and the one an operator meets: it used to be a two-minute watch ending in
+smallest visible benefit and the one an operator meets, instead of a two-minute watch ending in
 "the time ran out".
 
 ## The hoist, which was not optional
@@ -137,8 +137,7 @@ says so plainly rather than claiming a milestone number, which is the integrator
 `kernel/src/soak.rs` prints every five seconds whatever the workload is doing. That is what lets a
 watcher call a hang after three missed beats and be right about it. `kernel/src/job_mix.rs` prints
 only when a subrun ends, so the sweep's wedge timer is fifteen times the slowest subrun anybody has
-measured, and a slow board reads as wedged. (This record said twenty until 2026-10-12; that was the
-ratio before milestone 168's merge.) It is a kernel change (the supervisor would have to print from
+measured, and a slow board reads as wedged. It is a kernel change (the supervisor would have to print from
 a timer rather than between subruns) and it is outside parts 2 and 3. It is recorded in
 `script/job-mix`'s and `notes/board-console.md`'s `BUGS` as well, where a reader meets the number
 that would stop being a guess.

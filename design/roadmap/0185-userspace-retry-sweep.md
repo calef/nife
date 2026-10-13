@@ -9,11 +9,10 @@ needs_person: no
 ---
 # 185. Sweep userspace's bounded retry loops onto a clock
 
-Minted 2026-08-27, calef, from a finding milestone 78's own lane left
-unowned. Fixing `fixtures/src/login_test_client.rs`'s `destroy_with_retry` (a fixed 64-attempt loop
-that was giving up before the tick it was waiting for arrived, at roughly 2x host oversubscription)
-turned up four siblings, over the same refusal, none of them fixed there because doing so was not
-that lane's brief. See notes/load-sensitive-assertions/caretaker-teardown-wait.md, "The disposition,
+Four bounded retry loops in userspace count attempts instead of watching a clock. They are siblings
+of `fixtures/src/login_test_client.rs`'s `destroy_with_retry`, over the same refusal. That one was a
+fixed 64-attempt loop. It gave up before the tick it waited for arrived, at roughly 2x host
+oversubscription. See notes/load-sensitive-assertions/caretaker-teardown-wait.md, "The disposition,
 2026-08-28".
 
 The shape is already built once, in the same lane's fix to `login_test_client.rs`:

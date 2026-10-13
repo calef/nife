@@ -11,12 +11,12 @@ needs_person: no
 ---
 # 514. The HVF leg's std listener test hangs in some full runs and passes alone
 
-*(Number provisional until the merge queue lands it.)* Promoted from the
-proposal `the-hvf-std-listener-hangs-in-some-full-runs`, filed 2026-09-19, on calef's instruction of
-2026-09-20 to give every proposal on `main` a number. The text below is the proposal's own, unedited
-except for this paragraph: the argument is its author's and promotion is not the moment to improve
-it. Found by milestone 227 (a GICv3 driver, because GICv2 boots and)'s lane (a GICv3 driver), on the first two full `script/test --hvf` runs
-this machine could make since milestone 222 (the one command a person runs before).
+Promoted from the proposal `the-hvf-std-listener-hangs-in-some-full-runs`, filed 2026-09-19, on
+calef's instruction of 2026-09-20 to give every proposal on `main` a number. The text below is the
+proposal's own, unedited except for this paragraph: the argument is its author's and promotion is
+not the moment to improve it. Found by milestone 227 (a GICv3 driver, because GICv2 boots and)'s
+lane (a GICv3 driver), on the first two full `script/test --hvf` runs this machine could make since
+milestone 222 (the one command a person runs before).
 
 It needs patagonia, or any Apple Silicon Mac with HVF, and nothing else.
 
@@ -97,9 +97,9 @@ Both instruments the block asked for were built first, and the evidence then pic
   `network_tests` run failed in exactly the recorded shape (the connection held 91 s, the std
   listener to its 90 s test budget). With the fix and the same forcing it was green twice, the
   prober reconnecting about 400 ms later.
-- The std listener's retry did not cover it. Milestone 649 (each socket is its own capability)
-  gave `std_exerciser` eight 15 s accept windows on 2026-10-07, before this lane. The forced run
-  above had them and still failed, because the prober opens nothing new while it holds a
+- The std listener's retry does not cover it. Milestone 649 (each socket is its own capability)
+  gives `std_exerciser` eight 15 s accept windows. The forced run above had them and still failed,
+ because the prober opens nothing new while it holds a
   connection.
 
 ## What was built

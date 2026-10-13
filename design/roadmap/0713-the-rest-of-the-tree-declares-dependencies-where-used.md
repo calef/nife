@@ -10,10 +10,9 @@ needs_person: no
 ---
 # 713. The rest of the tree declares its dependencies where they are used
 
-Promoted from `design/roadmap/proposals/the-rest-of-the-tree-declares-dependencies-where-used.md` on 2026-10-03 (UTC). The number 713 was minted by the maintainer in a batch promotion of the proposal pile and is provisional until the queue lands it. *(Title and slug are drafts.)*
-
-Raised 2026-10-03 (UTC) by the lane that built milestone 631 (the kernel declares each dependency
-where it is used), from its own `script/lint` transcript. That milestone covered the kernel only.
+*Title and slug are drafts.*
+Raised by milestone 631 (the kernel declares each dependency where it is used), which covered the
+kernel only.
 The same `cargo::unused_dependencies` lint (new in `nightly-2026-10-02`, warning-only) fires on two
 other manifests during `script/lint`'s clippy passes:
 

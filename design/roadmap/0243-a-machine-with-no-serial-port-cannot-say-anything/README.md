@@ -11,13 +11,11 @@ has no room for.
 - [`gate-repairs.md`](gate-repairs.md): the x86_64 screen marker that asserted a race, and the
   riscv64 leg's first red run in CI with the diagnostic line that made it readable.
 
-*Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog, which split the
-parent under §212 (a prose budget). The directory follows §212's siting default, `design/roadmap/X/`
-beside `design/roadmap/X.md`. calef names directories.*
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default,
+`design/roadmap/X/` beside `design/roadmap/X.md`. calef names directories.*
 
-- `the-fleet` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog, after
-  the parent's "The fleet this unlocks, which calef named on the day this was minted". calef names
-  files.
-- `gate-repairs` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog, for
-  the parent's "The x86_64 gate was asserting a race, and a measured premise was wrong" and "The
-  gate's first red run, and the line that made it readable". calef names files.
+- `the-fleet` Name: provisional. After the parent's "The fleet this unlocks, which calef named on
+  the day this was minted". calef names files.
+- `gate-repairs` Name: provisional. For the parent's "The x86_64 gate was asserting a race, and a
+  measured premise was wrong" and "The gate's first red run, and the line that made it readable".
+  calef names files.

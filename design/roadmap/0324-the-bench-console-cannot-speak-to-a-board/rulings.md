@@ -60,10 +60,3 @@ Part 4's reason for a possible "no" was spent by milestone 218 on 2026-09-16. Pa
 falsified by xenon's own capture on 2026-09-17. Both happened after filing and before promotion on
 2026-09-18. See 323's *What the two decisions cost*, which argues that promotion is where a stale
 premise is cheapest to catch; four instances across two clusters is the evidence for it.
-
-## The title changed with the ruling
-
-The file was renamed with it. The title read *"reads one board of three and cannot speak to any of
-them"* when minted on 2026-09-18, and the first half of that was already false: xenon had been
-captured the day before. Only the generated index cited the path, so the rename cost nothing. A
-block whose own H1 states a falsehood is the thing this tree objects to hardest.

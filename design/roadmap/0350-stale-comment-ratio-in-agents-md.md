@@ -10,9 +10,10 @@ needs_person: no
 ---
 # 350. The comment ratio AGENTS.md quotes is wrong, and it climbs every week
 
-Superseded 2026-09-24, by §177 (whether AGENTS.md quotes measured numbers at all), which calef decided that day: AGENTS.md drops its counts and points at `notes/project-metrics.md`, so the sentence this block would have corrected no longer exists (commit `e23df4a4d`, PR #1198). The rest of this block is the record as it stood before that ruling. Filed 2026-09-03 as an unnumbered proposal by the sweep of milestone 247 (follow-on work named by a finished milestone goes nowhere),
-from milestone 234's block; numbered 2026-09-19 by milestone 433. **Premise re-checked 2026-09-19 and
-it holds, and the number has drifted further.** `AGENTS.md` line 111 still reads "`kernel/src`
+AGENTS.md quotes no counts and points at `notes/project-metrics.md` (§177 (whether AGENTS.md quotes
+measured numbers at all)), so the sentence this block would have corrected does not exist. The rest
+of this block is the record as filed. **Premise checked 2026-09-19, and the number had drifted
+further.** `AGENTS.md` line 111 still reads "`kernel/src`
 measures 40% of them". `notes/project-metrics/weekly.csv`'s latest row (2026W38, 2026-09-14) gives
 `kernel_code_lines` 36,157 and `kernel_comment_lines` 31,309, which is 46.4%; 2026W36 was 46.0%.
 So the figure a reader meets in the front-door file is six and a half points low and still

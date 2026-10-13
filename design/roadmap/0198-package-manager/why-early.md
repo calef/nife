@@ -1,10 +1,8 @@
 # Milestone 198 appendix: why a package manager comes early
 
-An appendix to [milestone 198 (a package manager)](../0198-package-manager.md), moved out of that
-page on 2026-10-12 (UTC) under [§212 (a prose
-budget)](../../decisions/0212-a-prose-budget-for-every-document.md). The main page is complete
-without it. This is the block's case, as minted on 2026-08-30, for doing the work before any third
-party exists, and the prior art it builds on.
+An appendix to [milestone 198 (a package manager)](../0198-package-manager.md). The main page is
+complete without it. This is the block's case for doing the work before any third party exists, and
+the prior art it builds on.
 
 calef's two halves, from 2026-08-30: no third party sees nife until there is a package manager and a
 trivial install, and he wants it early, to make our own lives easier. Both halves matter and they
@@ -12,9 +10,9 @@ point the same way.
 
 ## This is a precondition on principle 1, not an item under it
 
-AGENTS.md ranks work by the shortest path to a system a customer runs. As of 2026-08-30 that path is
-vacant, and the reason is now two reasons. The first customer's deadline passed and they went to
-borg over SSH, and this system could not accept a second one if it appeared.
+AGENTS.md ranks work by the shortest path to a system a customer runs. That path is vacant, for two
+reasons. The first customer's deadline passed and they went to borg over SSH, and this system could
+not accept a second one if it appeared.
 
 That makes packaging structurally different from the milestones it sits beside. It is not on the
 customer path; it is the door. A roadmap that ranks by the shortest path to a customer while

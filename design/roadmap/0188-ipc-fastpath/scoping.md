@@ -1,10 +1,9 @@
 # The scoping: the starting numbers and three findings, 2026-08-28 to 2026-09-04
 
-An appendix of [milestone 188 (the IPC fastpath)](../0188-ipc-fastpath.md), moved out of it on
-2026-10-12 (UTC) under §212 (a prose budget). The main page is complete without it and keeps each
-finding as a summary. This file keeps the numbers the block was minted with, their sources, and the
-working behind the three findings. Every figure here predates phases 1 to 3; what those phases
-re-measured is in [phases-1-to-3.md](phases-1-to-3.md).
+An appendix of [milestone 188 (the IPC fastpath)](../0188-ipc-fastpath.md). The main page is
+complete without it and keeps each finding as a summary. This file keeps the starting numbers, their
+sources, and the working behind the three findings. Every figure here predates phases 1 to 3; what
+those phases re-measured is in [phases-1-to-3.md](phases-1-to-3.md).
 
 ## The starting numbers, and where each comes from
 

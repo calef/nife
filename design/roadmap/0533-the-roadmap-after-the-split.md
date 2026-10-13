@@ -10,11 +10,13 @@ needs_person: no
 ---
 # 533. Whether the roadmap should become issues, and what a citation means after the repository split
 
-*(Number provisional until the merge queue lands it.)* Promoted from the proposal `the-roadmap-after-the-split`, filed 2026-09-19, on calef's instruction of 2026-09-20 to give every proposal on `main` a number. The text below is the proposal's own, unedited except for this paragraph: the argument is its author's and promotion is not the moment to improve it. Written by `maintainer/roadmap-after-the-split`, on calef's
-question of 2026-09-19: *"We have a lot of machinery now for managing milestones. We could use
-issues. Are we sure our current approach is still the right approach? How will we manage this when
-we break up the repo and build packages?"* Shaped for the integrator to mint as a
-`design/decisions/` section.
+Promoted from the proposal `the-roadmap-after-the-split`, filed 2026-09-19, on calef's instruction
+of 2026-09-20 to give every proposal on `main` a number. The text below is the proposal's own,
+unedited except for this paragraph: the argument is its author's and promotion is not the moment to
+improve it. Written by `maintainer/roadmap-after-the-split`, on calef's question of 2026-09-19: *"We
+have a lot of machinery now for managing milestones. We could use issues. Are we sure our current
+approach is still the right approach? How will we manage this when we break up the repo and build
+packages?"* Shaped for the integrator to mint as a `design/decisions/` section.
 
 The record's *location* is reversible (a `git mv`). The **citation convention is
 not**: 3,148 `milestone N` sites in 288 Rust files follow it, and it is in a reader's head. Options
@@ -194,7 +196,6 @@ file, and it is the only part of this page that is cheap in every option.
 The proposal's reading of eight other projects (Rust, Go, Kubernetes, Fuchsia, Python, Debian,
 FreeBSD ports, Homebrew), with the LLVM move and a withdrawn claim from this lane's first pass, is in
 [`prior-art.md`](0533-the-roadmap-after-the-split/prior-art.md).
-
 
 ## Recommendation, with the test from §92 (a caretaker is supervised by the client it serves)
 

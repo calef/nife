@@ -10,11 +10,9 @@ needs_person: no
 ---
 # 717. x86_64's double fault runs on a stack of its own
 
-Promoted from `design/roadmap/proposals/x86-64s-double-fault-runs-on-a-stack-of-its-own.md` on 2026-10-03 (UTC). The number 717 was minted by the maintainer in a batch promotion of the proposal pile and is provisional until the queue lands it. *(Title and slug are drafts.)*
-
-Raised 2026-10-03 (UTC) by the maintainer at calef's request, from the first of two findings in
-`notes/ci.md` (PR #1472, branch `maintainer/ci-warnings`, not merged when this was written). The
-second finding is the sibling proposal
+*Title and slug are drafts.*
+Raised at calef's request, from the first of two findings in `notes/ci.md`. The second is the
+sibling proposal
 [x86_64 names a kernel stack overflow the way aarch64 and riscv64 do](0716-x86-64-names-a-kernel-stack-overflow-the-way-aarch64-and-riscv64-do.md).
 Title and slug are drafts.
 

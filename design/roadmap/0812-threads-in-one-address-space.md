@@ -10,15 +10,13 @@ needs_person: no
 ---
 # 812. `std::thread::spawn` runs real threads in one address space
 
-*(Minted 2026-10-07 (UTC) by lane/filesystem-crate-probe from fork 5 of pull request #1803. The
-number is provisional until the merge queue lands it; the title and slug are drafts. Scheduled
-2026-10-08 (UTC) by §263 (threads are built: more than one thread in an address space), recorded by
-lane/threads-and-fork.)*
+*(From fork 5 of pull request #1803; the title and slug are drafts. Scheduled by §263 (threads are
+built: more than one thread in an address space).)*
 
 calef reopened DECISIONS §105 (`std::thread::spawn` stays declined, until a customer needs it) on
 2026-10-07 (UTC) for read-write ZFS, and did not schedule it. On 2026-10-08 (UTC) he did: *"We
 should do threads. We deferred them because we didn't have a use. Now we've backed up uses."* §263
-records that ruling and supersedes §105. This block is §105's option A, as
+records that ruling. This block is §105's option A, as
 `notes/thread-spawn-fork.md` costed it.
 
 ## What exists, checked 2026-10-07 (UTC)
@@ -154,8 +152,7 @@ exit. A second check runs `rayon`'s parallel sum to the same answer.
 
 ## What it unlocks
 
-- The standard benchmarks that need threads, minted by lane/standard-benchmarks (#1854, numbers
-  provisional). 833 (`fio`) serves risk 6 (a confined driver at real speed) and risk 1 (only
+- The standard benchmarks that need threads (#1854). 833 (`fio`) serves risk 6 (a confined driver at real speed) and risk 1 (only
   software written for nife runs on nife). 827 (`hackbench`) and 830 (wakeup latency) serve risk 5 (not
   reliable on multicore). 828 is `iperf3` 3.16 and later, which is multithreaded. 832 (STREAM)
   needs a thread per core for its per-core figure.

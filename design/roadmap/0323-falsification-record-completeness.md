@@ -10,19 +10,10 @@ needs_person: no
 ---
 # 323. The falsification record is incomplete in five ways, and each was found by a different lane
 
-Minted 2026-09-18 by calef, promoting a cluster rather than its members:
-five proposals, written by five lanes between 2026-09-03 and 2026-09-17, are all about the same
-record. *(Number provisional until the merge queue lands it.)*
-
-It was `DECISION` on parts 4 and 5 when this block was minted. Both were reviewed
-with calef on 2026-09-18 and 2026-09-19, and both turned out to be already answered by the tree,
-which is the finding at the bottom of this block rather than a footnote to it. A lane can take every
-part today.
-
-Taken 2026-09-23, and three of five closed. Parts 1 and 5 were built by that lane and part 4 had
-been closed by calef before it started. Parts 2 and 3 needed a QEMU boot and were closed on
-2026-10-03 (UTC) by the lane on `milestone/323-falsification-gaps`, which also replayed the
-aarch64-only records for confinement rows 22, 23, 24 and 30. All five parts are built.
+Five proposals from five lanes were about the same record, and this block carries them as one.
+Parts 4 and 5 were already answered by the tree, which is the finding at the bottom of this block
+rather than a footnote to it. All five parts are built, and the aarch64-only records for
+confinement rows 22, 23, 24 and 30 are replayed.
 
 Part 4 was decided on 2026-09-18, and it was a ratification rather than a minting. calef ratified
 `Expected to fail:` as the line a record carries, in
@@ -200,21 +191,20 @@ tell a stale premise from a live one. It is rung three, written where the next p
 
 - **Done.** Part 1. `crates/device_tree_blob`'s four harnesses each carry a `replayable` record,
   falsified by hand before being written down. `script/falsifications --sweep device_tree_blob`:
-  4 swept, 0 survivors, 0 stale. Checked 2026-09-23.
+  4 swept, 0 survivors, 0 stale.
 - **Done.** Part 2, in `system_tests/falsifications/` on branch `milestone/323-falsification-gaps`:
   the NVMe end-to-end test carries a `replayable` record, red on aarch64 at
-  `non_volatile_memory_express_tests.rs:151`. Checked 2026-10-03.
+  `non_volatile_memory_express_tests.rs:151`.
 - **Done.** Part 3, same branch: `script/falsifications` takes a comma list in `Architecture:`,
   row 21 is red on aarch64 and `x86_64`, and rows 22, 23, 24 and 30 are red on all three ISAs.
-  A sweep of `system_tests` on 2026-10-03 reported 18 swept, 0 survivors. Checked 2026-10-03.
+  A sweep of `system_tests` on 2026-10-03 reported 18 swept, 0 survivors.
 - **Done.** Part 4. `Expected to fail:` was ratified by calef on 2026-09-18, before the first lane
   started, and held on re-check: 73 of 74 records carry the exact line, and the 74th carries the
   same sentence in different words, which is what the gate (a non-empty prose head) asks for.
-  Checked 2026-09-23.
 - **Done.** Part 5. The named patch's stale "no script will apply it" paragraph is corrected in
   place, and a grep for its phrasing found two more unstruck instances: one in
   `design/roadmap/0197-user-and-xtask-proofs.md`, one in `notes/user-proofs.md`. A third, in the same
-  roadmap block (a patch location stale since milestone 175), is also corrected. Checked 2026-09-23.
+  roadmap block (a patch location stale since milestone 175), is also corrected.
 - **Recorded.** Row 19's four `kernel::user::dir_capability_tests` tests carry no falsification
   record. The `attenuate` defect turns the read-only one red on aarch64 only through a vacuity
   guard at line 974 of `kernel/src/user/fs_service.rs`, so it would show the test is wired and not that a

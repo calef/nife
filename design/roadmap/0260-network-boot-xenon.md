@@ -9,11 +9,10 @@ needs_person: yes
 ---
 # 260. Boot xenon over the network, because the stick is the tax and the router is ours
 
-Minted 2026-09-05 by calef, in one sentence: *"xenon already hurts. We can
-control our router since it runs OpenWRT."* *(Number provisional until the merge queue lands it.)*
-Built 2026-09-05: everything that does not need xenon or the house router, which is more of it than
-this block predicted. What remains is one bench session and one router edit, both calef's, and
-both now written down as procedures rather than as intentions.
+calef, 2026-09-05: *"xenon already hurts. We can control our router since it runs OpenWRT."*
+Everything that does not need xenon or the house router is built. What remains is one bench
+session and one router edit, both calef's, and both written down as procedures rather than as
+intentions.
 
 In the second sense `notes/roadmap.md` names: xenon is here, the
 router is here, and what remains is a person standing at both. Two firmware settings (tick `Enable
@@ -91,7 +90,7 @@ Measured, `script/netboot-rehearsal --check`, in under a second and with no emul
 
 | Client | option 93 | Offered |
 |---|---|---|
-| xenon in UEFI mode | 7 | `EFI/BOOT/BOOTX64.EFI` from 192.168.8.138 (was .216; corrected 2026-10-04) |
+| xenon in UEFI mode | 7 | `EFI/BOOT/BOOTX64.EFI` from 192.168.8.138 |
 | xenon, firmware sending the other EFI x86-64 value | 9 | the same |
 | xenon after somebody sets Boot List Option to Legacy | 0 | nothing |
 | xenon asking for an HTTP boot | 16 | nothing |
@@ -197,23 +196,21 @@ faster bench session, not an unattended one.**
 - Nothing here has run on xenon, and nothing here can tell you it will. What is proven is OVMF,
   which is EDK2, which is the same codebase Dell's firmware is built from; xenon is at BIOS 1.27.0
   with an Intel I219-LM onboard NIC (the e1000e family) rather than QEMU's e1000, and the two
-  firmware settings that would make it try at all were unticked until 2026-10-04 (see Status
-  below). Correction (2026-10-04 UTC): this sentence used to say "a Broadcom LOM", with no source.
-  Source for the fix: the PCI survey line in the 2026-10-04 photos, class `020000`,
-  `00:1f.6 8086:15e3`, an Intel I219-LM; milestone 494 (a driver for the network card a PC actually
-  has) and `notes/e1000e.md` (on its branch until #1632 lands) say the same.
+  firmware settings that make it try at all are described under Status below. The NIC's source is
+  the PCI survey line in the 2026-10-04 photos, class `020000`, `00:1f.6 8086:15e3`, an Intel
+  I219-LM; milestone 494 (a driver for the network card a PC actually has) and `notes/e1000e.md` say
+  the same.
 - Nothing in this repository has ever talked to the house router. The rehearsal implements what
   the `dnsmasq` lines *mean*; it does not prove `dnsmasq` implements them the same way, and it does
   not prove OpenWRT's UI will accept them. The `dhcp-match` half has no UCI form and has to go
   into `/etc/dnsmasq.conf` directly, which is the part of the runbook most likely to be wrong.
 - The `dhcp-boot` server address is patagonia's current lease, and a lease that moves makes xenon
-  TFTP into nothing with no console to say so. That happened on 2026-10-04 (UTC): patagonia was
-  at `192.168.8.138` on Wi-Fi `en0` (MAC `10:9f:41:d4:8c:0e`), not the `.216` this block recorded, and
-  the config is corrected to `.138`. The pin is now in place, but it is bound to macOS's private
-  Wi-Fi address `9e:1a:a1:57:40:a6`, not the hardware MAC, and matches only while patagonia's Private
-  Wi-Fi Address for the home network is Fixed or Off. Set to Rotating, the reservation silently stops
-  matching and `.138` can move again. That condition is met: calef confirmed on 2026-10-04 (UTC) that
-  the setting is Fixed. Anyone changing it owes this line an edit.
+  TFTP into nothing with no console to say so. patagonia is at `192.168.8.138` on Wi-Fi `en0` (MAC
+  `10:9f:41:d4:8c:0e`), and the pin is in place, but it is bound to macOS's private Wi-Fi address
+  `9e:1a:a1:57:40:a6`, not the hardware MAC, and matches only while patagonia's Private Wi-Fi
+  Address for the home network is Fixed or Off. Set to Rotating, the reservation silently stops
+  matching and `.138` can move again. That condition is met: calef confirmed on 2026-10-04 (UTC)
+  that the setting is Fixed. Anyone changing it owes this line an edit.
 - The transfer rate is a loopback number and is not a LAN number. 9,210,880 bytes in 1.40s
   (6,429 KiB/s) is python talking to itself through a synthetic ethernet with no cable, no switch
   and no loss. radon's real measurement over TFTP on this LAN was 428 KiB/s, and nobody has measured
@@ -230,8 +227,8 @@ faster bench session, not an unattended one.**
   list are `Windows Boot Manager` and whatever removable media is present. That is somebody's
   installed Windows, which argues for leaving a stick in the machine rather than removing it.
 - `board-netboot` serves one transfer at a time, and a UEFI client makes two requests per boot
-  where U-Boot makes one. The probe is now cancelled promptly rather than held for eighteen seconds,
-  so the two no longer collide; two *machines* booting at once still would.
+  where U-Boot makes one. The probe is cancelled promptly rather than held for eighteen seconds, so
+  the two do not collide; two *machines* booting at once still would.
 
 ## Follow-on
 

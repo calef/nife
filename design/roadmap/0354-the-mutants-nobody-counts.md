@@ -10,10 +10,8 @@ needs_person: no
 ---
 # 354. An unviable mutant is a hole in the measurement that reads as a pass
 
-Superseded 2026-09-19, by milestone 250, which carries the same title and more of the
-argument. Filed as a proposal on 2026-09-03 by the milestone 246 lane. Checked on 2026-09-19:
-milestone 250 was minted by calef on the day this file was written, before
-`design/roadmap/proposals/` existed, and its block holds every part of this one (the `Verdict`
+Milestone 250 (an unviable mutant is a hole in the measurement that reads as a pass) carries the same title and more of the argument. Its block holds every part of this
+one (the `Verdict`
 worked example, the nine unviable mutants in `measured_boot`, the ledger that counts missed,
 equivalent and hang and not unviable, the anti-gaming test) plus two things this file never had: the
 `uefi_loader::image::parse` disposition of 2026-09-04, and the reverse defect of 154 mutants scored
@@ -49,12 +47,7 @@ where the default is meaningless adds a mutant any test kills and proves nothing
 the default is a value the code could plausibly be wrong with; for `Verdict` it is both the fail-safe
 value and exactly the dangerous wrong answer, an absence where there was a refusal.
 
-**Superseded in part:** milestone 250 was minted from this on the day it was written, before the
-`proposals/` directory existed. This file is the record of where it came from.
-
 ## Index row
 
-Filed 2026-09-03 by the milestone 246 lane and superseded on arrival: calef minted milestone 250
-from it the same day, under the same title, before the proposals directory existed. The work lives
-there, with two worked examples this file never carried. Promoted and disposed of in one act by
-milestone 433, because a proposal cannot be retired in place and a deleted one is not a record.
+The work lives in milestone 250, under the same title, with two worked examples this file never
+carried.

@@ -11,8 +11,8 @@ needs_person: no
 # 763. A destroyed region cannot take a live space's page tables with it
 
 Approved by calef on 2026-10-05 (UTC) as a follow-on of milestone 762 (a mapping cannot outlive its
-frame's revoke). That lane recorded the hole in `revoke::revoke_region`'s `BUGS` without driving
-it. Built by the lane `lane/page-tables-outlive-destroy`; 763 is minted, landed by #1665. *(Title and slug are drafts.)*
+frame's revoke), whose `revoke::revoke_region` `BUGS` recorded the hole. Built in #1665. *(Title
+and slug are drafts.)*
 
 ## Why
 
@@ -62,9 +62,9 @@ replayed red on aarch64 at its own headline.
 
 aarch64 icount (`script/bench`), against 762's tip: `spawn_el0` 1,426,806 to 1,425,693 ticks
 (-0.1%), `map_el0` 353,554 to 354,085 (+0.15%, about one tick a map), every other row within a few
-hundred ticks of noise or lower. riscv64 and x86_64 pass `script/bench --check`. The first version
-ran the cut as a second scan of every log after the leaf pass, and that empty scan cost `spawn_el0`
-3,072 ticks a spawn (+21.5%) and failed CI's tripwire; one scan now finds both kinds.
+hundred ticks of noise or lower. riscv64 and x86_64 pass `script/bench --check`. One scan finds
+both kinds: a second scan of every log after the leaf pass costs `spawn_el0` 3,072 ticks a spawn
+(+21.5%) and fails CI's tripwire.
 
 ## Gates
 

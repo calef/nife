@@ -119,25 +119,25 @@ by step, including which flag builds the payload in the order the measured-boot 
 None of the three has been run at a bench yet. That is the remaining half of this milestone and
 it needs a person, a board and an evening, not a lane.
 
-## The gate this got wrong first, and what it cost
+## Why the instrumentation is behind a feature
 
-The instrumentation shipped unconditionally in the first version of this lane, and
-`script/fastpath-footprint` caught it: `ipc_fastpath` grew 5.7% on aarch64 (5,788 -> 6,120
-bytes), over milestone 132's 5% bound, with riscv64 and x86_64 at 4.7% and 4.6% behind it. One cause
-with three effects; aarch64 was merely the one that tipped. The single largest contributor is the
-`Thread::last_cpu` write, which sits in `schedule()`'s switch, the hottest line of the hottest
-function, and the per-event counter increments are the rest.
+Built unconditionally, the instrumentation grows `ipc_fastpath` 5.7% on aarch64 (5,788 -> 6,120
+bytes), over the 5% bound of milestone 132 (the fast path's footprint), with riscv64 and x86_64 at
+4.7% and 4.6%, and `script/fastpath-footprint` refuses it. One cause with three effects; aarch64 was
+merely the one that tipped. The single largest contributor is the `Thread::last_cpu` write, which
+sits in `schedule()`'s switch, the hottest line of the hottest function, and the per-event counter
+increments are the rest.
 
-The fix is `#[cfg(feature = "soak")]` on the counters, the accessors and the `last_cpu` field, so a
-production build is byte-identical to what it was: measured at 5,852 / 5,132 / 6,687 on this
-branch against exactly those three numbers at the commit it was cut from. The 5% bound was not
-touched, and it should not be: it is Liedtke's cache-footprint argument, which is the oldest
-performance case in microkernels and the reason the gate exists.
+So the counters, the accessors and the `last_cpu` field are `#[cfg(feature = "soak")]`, and a
+production build is byte-identical without them: measured at 5,852 / 5,132 / 6,687, the same three
+numbers as the build with no instrumentation. The 5% bound was not touched, and it should not be: it
+is Liedtke's cache-footprint argument, which is the oldest performance case in microkernels and the
+reason the gate exists.
 
 Two consequences worth stating rather than leaving to be found. **A soak build is not a production
 build**, its IPC path is five to six per cent larger, and the round-trip figures above are therefore
 soak-build figures; `notes/soak.md` carries the per-architecture table. And a `cfg`-gated instrument
-is invisible to clippy, so `script/lint`'s per-feature loop now includes `soak` on both ISAs, which
+is invisible to clippy, so `script/lint`'s per-feature loop includes `soak` on both ISAs, which
 on its first run found two real warnings in code nothing had ever linted.
 
 ## BUGS

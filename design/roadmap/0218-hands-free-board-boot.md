@@ -5,10 +5,7 @@ built: 2026-09-16
 ---
 # 218. Every boot of the VisionFive 2 needs a human typing four commands into U-Boot
 
-Minted 2026-09-01 by the maintainer, after driving the board from a
-script made the cost of the manual path concrete. The artifact shipped 2026-09-02 and **sat
-unconfirmed for fourteen days for want of a powered board**; the boot that confirmed it happened on
-2026-09-16. *(Number provisional until the merge queue lands it.)*
+Built: radon boots from its card with nobody typing, confirmed on 2026-09-16.
 
 ## The boot, 2026-09-16
 
@@ -96,25 +93,12 @@ it depends on catching a two-second window.
   `notes/visionfive2.md` refers to this as the gigapage-1 fix, which makes it the route the tree has
   already been contemplating; it is also the only one that fixes the class rather than this board.
 
-## What was built on 2026-09-02, and why the status did not move
+## What was built
 
-**A lane replaced the extlinux path with a U-Boot script on the card and could not power the
-board on**, which is the whole reason this section exists rather than a status word. radon was
-down, its Kasa plug unreachable from the development Mac, and its serial console needs a person.
-
-`NOT-STARTED` is wrong about the artifact and right about the outcome, and that is the honest way
-to leave it. `PARTIAL` means some phase shipped and more remains, and this milestone has exactly
-one phase, which is that a boot happens with nobody typing. No such boot has happened. Nor is
-there anywhere else it could have: `PARTIAL` earns itself elsewhere in this tree by running end to
-end in QEMU first, and QEMU's `virt` machine has no U-Boot, no SD card and no distro boot, so
-there is no rehearsal available. The token stays `NOT-STARTED` and this paragraph is what the
-reader should believe instead of it.
-
-That was true until 2026-09-16 and is kept as the account it is. The boot happened, on the
-artifact this section describes and with no change to it, and the status is `BUILT`. What the
-paragraph got right is worth keeping visible: it refused to call a shipped artifact `PARTIAL` when
-the one phase that defines the milestone had not occurred, and fourteen days later the only thing
-that had to change was that somebody powered the board on.
+A U-Boot script on the card replaces the extlinux path. The status is `BUILT` because a boot
+happened with nobody typing (radon, 2026-09-16), on this artifact with no change to it. That boot
+is the milestone's one phase; QEMU's `virt` machine has no U-Boot, no SD card and no distro boot, so
+there is no rehearsal short of it.
 
 ### The route, and what killed the other two
 
@@ -274,11 +258,8 @@ Everything above is reasoning. This is what settles it. Steps 1 and 2 need no bo
 
 ## Index row
 
-the board cannot boot unattended and fatal risk 5 wants sustained runs. A route was taken
-2026-09-02 and radon was unreachable to try it on, so the token still says what the outcome is
-rather than what was built: the card now carries a U-Boot script issuing the same sequence the
-successful bench capture proves, and no `extlinux.conf`, which U-Boot hangs on. The captured
-failure refuted the premise this row used to state: U-Boot handed `bootm` no device tree at all,
-so nothing of ours ran and the DTB address was never reached, which retires the gigapage route and
-makes the SPI-flash one unnecessary. The block carries the ordered bench procedure and what each
-failure would mean
+radon boots with nobody typing, which fatal risk 5's sustained runs need. The card carries a U-Boot
+script issuing the same sequence the successful bench capture proves, and no `extlinux.conf`, which
+U-Boot hangs on. U-Boot hands `bootm` no device tree, which retires the gigapage route and makes the
+SPI-flash one unnecessary. The confirming boot is radon, 2026-09-16. The block carries the ordered
+bench procedure and what each failure would mean.

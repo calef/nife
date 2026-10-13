@@ -9,30 +9,15 @@ needs_person: no
 ---
 # 207. The four things GitHub asks for, and which of them this project actually wants
 
-Minted 2026-08-31 by calef, from GitHub's Community Standards checklist. The
-pull request template and the issue templates shipped the same day, and the code of conduct and
-the content-reports setting were delivered within the week (see `## Follow-on`). One item is left:
-a gate that checks the issue forms render. *(Number provisional until the merge queue lands it.)*
+This answers GitHub's Community Standards checklist. The pull request template, the issue
+templates, the code of conduct and the content-reports setting are delivered (see `## Follow-on`).
+One item is left, and it needs nobody: nothing verifies the issue forms render, which is a gate to
+write rather than a decision to take.
 
-This carried `DECISION` until 2026-09-19 and both things it named had been done
-for weeks, which is recorded here rather than silently fixed. The gate said two policy questions
-were open: who a code of conduct names as its enforcement contact, and the content-reports setting.
-`CODE_OF_CONDUCT.md` shipped on 2026-08-31 (commit `7ffa8f3b`) with an enforcement section naming an
-address and a subject line, saying outright that it is one person with no rota and that it becomes a
-role address when there is a second maintainer; and GitHub's community profile reports
-`content_reports_enabled` true, so calef delivered the one item no pull request could. Both are
-recorded as `Done` in this block's own Follow-on section, and the gate was left pointing at
-them. That is [§76](../decisions/0076-roadmap-status-versus-tree.md)'s defect class again, and it is
-the second time this block has had it: its gap table and its gate disagreed for three weeks about
-TCP listen and accept. The gate is read when ranking work and the follow-on list is read when
-picking it up, so the two audiences saw different answers. What is left needs nobody: nothing
-verifies the issue forms render, which is a gate to write rather than a decision to take.
-
-In brief. Measured against `repos/nifeos/nife/community/profile` on 2026-08-31: `README`,
-`CONTRIBUTING` and `LICENSE` are present; `CODE_OF_CONDUCT`, an issue template and a pull request
-template are missing. GitHub's checklist also offers a fourth item, *Repository admins accept
-content reports*, which is a setting rather than a file and cannot be delivered by a pull
-request.
+GitHub's checklist (`repos/nifeos/nife/community/profile`) asks for `README`, `CONTRIBUTING`,
+`LICENSE`, `CODE_OF_CONDUCT`, an issue template and a pull request template, and offers a fourth
+item, *Repository admins accept content reports*, which is a setting rather than a file and cannot
+be delivered by a pull request.
 
 This matters for AGENTS.md's third principle rather than for tidiness. A newcomer must be able to
 succeed without asking anyone, and these are among the first things a stranger meets.
@@ -162,12 +147,11 @@ project has no third-party contributors.
 
 ## Index row
 
-Minted by calef on 2026-08-31 from GitHub's Community Standards checklist. Measured: `README`, `CONTRIBUTING` and `LICENSE` present; `CODE_OF_CONDUCT`, issue template and pull request template
-missing. The PR template is the one with a mechanism behind it, making AGENTS.md's required lane
-line a default rather than a thing to remember. Shipped by 2026-09-03: the pull request template and three routing issue forms. They are a bug
-report asking for the sha, the ISA and how it was run, a feature request whose outcome is a roadmap
-block, and a design argument whose outcome is a decisions file. Also shipped: a vulnerability
-contact link, blank issues off, `CODE_OF_CONDUCT.md` with a named enforcement contact, and the
-content-reports setting. Issues were never premature, because calef enabled them on 2026-08-31.
-Open: nothing checks that the issue forms render, a gate that needs no decision, no person and no
-hardware.
+From GitHub's Community Standards checklist. The PR template is the one with a mechanism behind it,
+making AGENTS.md's required lane line a default rather than a thing to remember. Shipped: the pull
+request template and three routing issue forms. They are a bug report asking for the sha, the ISA
+and how it was run, a feature request whose outcome is a roadmap block, and a design argument whose
+outcome is a decisions file. Also shipped: a vulnerability contact link, blank issues off,
+`CODE_OF_CONDUCT.md` with a named enforcement contact, and the content-reports setting. Issues are
+enabled. Open: nothing checks that the issue forms render, a gate that needs no decision, no person
+and no hardware.

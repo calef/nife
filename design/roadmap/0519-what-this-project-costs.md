@@ -5,21 +5,15 @@ built: 2026-09-21
 ---
 # 519. What this project costs, tracked where it cannot rot
 
-Built 2026-09-21. Minted 2026-09-21 by calef, from a conversation about what nife would
-have to be to change anyone else's behavior. Every honest answer began with a cost number this tree
-cannot state. *(Number provisional until the merge queue lands it.)*
-
-Built the same day it was minted, and the sequencing was the deadline's: the capture ran and was
-committed before any of the machinery around it was written, because this week's session records
-existed on 2026-09-21 and were not promised to exist on 2026-09-28. What the first capture found, and
-what it found already gone, is in the record below.
+Built 2026-09-21, on calef's request (2026-09-21). What nife would have to be to change anyone
+else's behavior starts with a cost number, and this block makes the tree able to state one. What
+the first capture found, and what it found already gone, is in the record below.
 
 ## Why this is a milestone and not a note
 
 `AGENTS.md`'s second principle says the method is a result. A method's result is a cost, and this
-tree measures only scale: milestones, lines, harnesses, proofs, and since 2026-09-20 a velocity
-chart. None of it answers what an outsider asks, which is what a trustworthy system costs to build
-this way.
+tree measures only scale: milestones, lines, harnesses, proofs, and a velocity chart. None of it
+answers what an outsider asks, which is what a trustworthy system costs to build this way.
 
 The literature this project is compared against is denominated in exactly that unit. seL4 reports
 about eleven person-years plus nine more at a 20:1 proof-to-code ratio; Atmosphere reports 1.5
@@ -96,9 +90,10 @@ number would have had no derivation behind it, which is what the dollar refusal 
 Five columns in `notes/project-metrics/weekly.csv`, exactly as the table above specifies, filled
 from two committed records rather than from any revision: `effort.csv` and a new
 `notes/project-metrics/ledger.md`. Both are read from the working tree for every week, which is
-`built_by_week`'s precedent and is there for its reason. A sixth column, `merged_pull_requests`,
-arrived on calef's request the same day and is derived from git's own first-parent log: 996 merges,
-backfilled to the first commit, with no dependence on an API that retains ninety days.
+`built_by_week`'s precedent and is there for its reason. A sixth column, `merged_pull_requests`, on
+calef's request, is derived from git's own first-parent log: 996 merges, back to the first commit,
+with no dependence on an API that retains ninety days.
+
 
 One chart, `effort.svg`, and it is a ratio: millions of tokens per milestone built, beside the
 velocity chart. It fell from 307 in 2026W34 to 73 and 68 in 2026W36 and 2026W38.

@@ -5,10 +5,8 @@ built: 2026-09-17
 ---
 # 311. The audit cadence tripwire, and the month of correct alarms nobody acted on
 
-Minted by the maintainer after `script/cadence-check` (milestone 238)
-reported `audit cadence` as a workflow with no successful run. Built by a lane on
-`milestone/311-audit-cadence-path`.
-*(Number provisional until the merge queue lands it.)*
+`script/cadence-check` (milestone 238 (two scheduled checks have never once succeeded)) reported `audit cadence` as a workflow with no successful
+run.
 
 ## What it reports, first, because it is the deliverable
 

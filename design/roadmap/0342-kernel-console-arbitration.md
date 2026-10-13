@@ -19,11 +19,8 @@ own `BUGS` still describes the interleaving as a live defect in the system rathe
 and milestone 243 (a machine with no serial port has no way to say anything)'s `BUGS` still records
 that it "has its own home", which is this block.
 
-**Corrected 2026-09-27**: this block's earlier text said "nothing in `design/decisions/` answers
-it." That was true on 2026-09-19 and stopped being true the same day. Milestone 435 (forty-five
-milestones are gated on a decision nobody wrote down) raised §175 (where the kernel's own output
-goes once userspace owns the console) as this question's actual home, status PROPOSED still.
-`decision_dependencies` above pointed at `unwritten` regardless; it now points at `175`.
+The question's home is §175 (where the kernel's own output goes once userspace owns the console),
+which `decision_dependencies` names.
 
 ## Priced, 2026-09-27 (PRICING lane, calef's approval)
 
@@ -51,10 +48,8 @@ variations on one, and the choice binds every architecture and every future cons
 ## Decided, 2026-09-27
 
 calef ruled §175: **B, with a panic escape and a fallback**, the same shape as pull request #1423's
-system log proposal (`design/decisions/0242-a-system-log.md`, now landed and DECIDED). See §175's
-"The ruling" for the full record and why A and E lost and C and D are superseded.
-`decision_dependencies` stays `175`; the citation now resolves to a DECIDED section instead of a
-PROPOSED one.
+system log (`design/decisions/0242-a-system-log.md`). See §175's "The ruling" for the full record
+and why A, C, D and E lost.
 
 The ruling names a customer for the kernel's ring: the log service is milestone 613 (a system log
 service: the in-memory half), which drains the ring and forwards whole lines to the console. 613

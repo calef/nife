@@ -6,11 +6,6 @@ promoted_from: the-prover-only-ever-sees-one-architecture
 ---
 # 304. `cargo kani -p kernel` only ever compiled one architecture, and it was the runner's
 
-Promoted from
-`design/roadmap/proposals/the-prover-only-ever-sees-one-architecture.md`, written by milestone 255's
-lane on 2026-09-04 out of what it found while looking for the largest asm-free files in
-`kernel/src/arch/`. *(Number provisional until the merge queue lands it.)*
-
 ## The premise, re-measured rather than inherited
 
 The proposal's claim was that `arch/mod.rs` selects its subtree with `#[cfg(target_arch = ...)]`,
@@ -52,7 +47,7 @@ pins `nightly-2025-11-21`, rustc 1.93.0). The repo's own nightly compiles the sa
 `x86_64-unknown-linux-gnu` with no errors at all, which is how the skew was attributed rather than
 guessed at.
 
-So `arch/x86_64/` was out of the prover's reach for **two** independent reasons, and the proposal
+So `arch/x86_64/` was out of the prover's reach for two independent reasons, and the proposal
 knew about one. The fix is `isa::cpuid` and `isa::cpuid_count`, two private helpers that wrap the
 intrinsic in an `unsafe` block the old toolchain needs and an `#[allow(unused_unsafe)]` the new one
 needs. That allow is an **exception and is labeled as one** where a reader meets it, per AGENTS.md's
@@ -65,7 +60,7 @@ auditing". It comes out when Kani's pin passes the change.
 |---|---|---|
 | aarch64 (dev Mac, `ubuntu-24.04-arm` runners) | `arch/aarch64/` | 4: two in `syscall.rs`, two in `arch/aarch64/iommu.rs` |
 | x86_64 (cordoba, the new `ubuntu-24.04` runner) | `arch/x86_64/` | 4: the same two in `syscall.rs`, two new in `arch/x86_64/irq.rs` |
-| riscv64 | nothing | nothing, and nothing can |
+| riscv64 | nothing | nothing here; milestone 589 reaches it |
 
 Six distinct harnesses in `kernel`, up from four. No harness went red on a newly-reachable
 architecture, which is the question this lane was sent to answer: the two portable `syscall.rs`
@@ -74,13 +69,10 @@ architecture-specific. That is a clean result and a small one, because the porta
 the only pre-existing candidates: the two `arch/aarch64/iommu.rs` harnesses cannot run on an x86_64
 host for the same `cfg` reason this milestone is about, and are not expected to.
 
-riscv64 stays unreachable, and the honest version of that is that nobody can fix it here. GitHub
-offers no riscv64 image; Kani has no cross-target flag (`cargo kani --help` carries `--target-dir`
-and nothing else); CBMC needs a goto-binary for the host it runs on; `radon` is a lab board, not a
-runner. `arch/riscv64/iommu.rs`'s own property, which milestone 255 was careful to say has no
-counterpart in the SMMUv3 harnesses, can be written and cannot be run. *(Corrected by milestone 589 (Kani can prove riscv64 from the hosts we already have),
-2026-09-25: the premise was about stock Kani, not about CBMC, which checks riscv64 goto programs on
-any host. A carried Kani patch now proves the `kernel` row for riscv64 from the arm64 runner.)*
+riscv64 is out of this milestone's reach: GitHub offers no riscv64 image, stock Kani has no
+cross-target flag, and `radon` is a lab board, not a runner. Milestone 589 (Kani can prove riscv64
+from the hosts we already have) reaches it, because CBMC checks riscv64 goto programs on any host:
+a carried Kani patch proves the `kernel` row for riscv64 from the arm64 runner.
 
 ## The finding, which is worth more than the plumbing
 
@@ -172,8 +164,7 @@ aarch64. It is now in `script/falsifications`' `BUGS`.
 
 ## What this does not close
 
-- `arch/riscv64/` is still zero, for the reasons above, and this milestone cannot change that.
-  One third of the architecture layer remains outside the prover.
+- `arch/riscv64/` is zero here, for the reasons above; milestone 589 is what proves it.
 - `arch/x86_64/` is four harnesses in one file. The proposal's strongest candidate was
   `x86_64/machine.rs`, the ACPI walk, which is 836 lines of untrusted firmware parsing and is now
   *reachable* for the first time. It is not proved. Its parsing half already lives in
@@ -203,10 +194,9 @@ aarch64. It is now in `script/falsifications`' `BUGS`.
   `arch.aarch64.iommu` patches since milestone 255 and unnoticed because every machine here was
   aarch64. Teaching the sweep to skip what it cannot compile is deliberately refused: a skip is the
   invisible direction, and a per-record host statement is a format change and so calef's.
-- **Recorded.** notes/kernel-proofs.md, the stub list (new item 3) and `BUGS`. `arch/riscv64/` is
-  compiled by nothing and no runner exists that could, so its IOMMU property can be written and not
-  run. Also that the `kernel` row now means something different on each of two hosts, which no
-  single number in `script/verify`'s table can say.
+- **Recorded.** notes/kernel-proofs.md, the stub list (new item 3) and `BUGS`. Also that the
+  `kernel` row now means something different on each of two hosts, which no single number in
+  `script/verify`'s table can say.
 - **Milestone 423.** This
   milestone came from `the-prover-only-ever-sees-one-architecture`, which is now marked promoted and
   so is no longer where untaken work can live. Its strongest target,

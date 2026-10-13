@@ -5,11 +5,9 @@ built: 2026-09-26
 ---
 # 206. A program image has under 896 KiB, and the failure names an overlap rather than a size
 
-Minted 2026-08-31 from the lane for milestone 121 (`ripgrep`: enumeration as a
-capability), which hit it the hard way. Built 2026-09-26 by the lane on
-`milestone/206-address-space-map`, the day calef ruled DECISIONS §171 (where a program image starts,
-and where the stack goes): option D, with option A inside it. *(Number provisional until the merge
-queue lands it.)*
+Built, under DECISIONS §171 (where a program image starts, and where the stack goes), ruled by calef
+on 2026-09-26: option D, with option A inside it. Milestone 121 (`ripgrep`: enumeration as a
+capability) is the program that needs it.
 
 **What was built.** The user address-space map, as a crate: `crates/address_space_map` (name
 provisional). Eight bands tile the first 2 GiB of every process. Every constant several programs
@@ -52,10 +50,10 @@ for 190 of it.
   `pair_page(..)`, `runtime_window(..)` or `service_window(..)`, which stop the build if the address
   leaves its band. Hand-built children put their code at `IMAGE_BASE` and their stack at
   `STACK_TOP_PAGE`.
-- The current-CPU page moved from `0x3FFF_F000` to `0x7FFF_F000`, into the stack's leaf table.
+- The current-CPU page is at `0x7FFF_F000`, in the stack's leaf table (not `0x3FFF_F000`).
   Counted, the page tables per process are unchanged for a program with no pair pages, one more
   for a program with pair pages, one fewer for a std program.
-- The screen aperture moved from `0x4000_0000` (the heap band's first page) to `0x5800_0000`.
+- The screen aperture is at `0x5800_0000`, not `0x4000_0000` (the heap band's first page).
 
 - Two things the map caught on its first CI run. `mkfs` had never been linked with the shared
   script (lld's default put it at `0x20_0000`); it is now. And the progenitor's job regions were one

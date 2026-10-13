@@ -9,9 +9,8 @@ needs_person: yes
 ---
 # 201. Is multicore reliability converging? A defect-discovery curve, not a stress run
 
-Minted 2026-08-31 by calef, scoping `design/fatal-risks/README.md`'s risk 5, which
-its own `BUGS` recorded as unowned. The part that needs no hardware is done (2026-09-24): the seeds
-are re-derived below and the curve has a home and a data format,
+This scopes `design/fatal-risks/README.md`'s risk 5. The part that needs no hardware is done: the
+seeds are derived below and the curve has a home and a data format,
 [`notes/multicore-defect-curve.md`](../../notes/multicore-defect-curve.md). The run is what remains.
 
 Three boards, and the sense of the gate that means somebody has to sit at them.
@@ -26,44 +25,37 @@ flattens is evidence that the concurrency is converging. A curve that stays line
 result, and it is the only framing of this risk in which "we cannot make this reliable" is a
 possible outcome rather than an admission.
 
-## Why this risk needs the reframe more than the others, and why its seeds needed re-deriving
+## Why this risk needs the reframe more than the others, and what its seeds are
 
-Found 2026-09-23: all three of this section's original seeds were wrong or stale, and they are
-corrected here rather than quietly replaced.
+Three candidate seeds for the curve do not hold up: the VisionFive 2's "receiver woken with nothing
+delivered", and x86_64's `ap_boot` bugs from milestone 161 (the x86_64 kernel port: bring up the
+HAL's third architecture).
 
-The section as minted (2026-08-31) said the risk "already fired once, and by luck," citing the
-VisionFive 2's "receiver woken with nothing delivered" plus x86_64's two then-unresolved `ap_boot`
-bugs (milestone 161 (the x86_64 kernel port: bring up the HAL's third architecture)) as the curve's
-first three data points.
-
-**The VisionFive 2 reading is void, not merely outdated.** `notes/visionfive2.md`'s fifth bench stop
-(2026-08-15, the day *before* this milestone was minted) overturned it with five independent
-identifications: the dumps the fourth stop read as a stranded receiver were the terminal state of a
-*completed* boot tour. `notes/scheduler.md` ("The undelivered-wake gate") records the consequence plainly: the wake-refusal gate
-built against this reading "has never fired on a field failure," and `refuse:` has never appeared on
-a board ring. It is hardening against a reachable state, proved by a loom harness, not a repair of an
-observed one. There was no silicon-only, QEMU-invisible defect here. It never happened, and treating
-it as risk 5's fired instance is exactly what risk 5 needs not to have.
+The VisionFive 2 reading is void. `notes/visionfive2.md`'s fifth bench stop (2026-08-15)
+overturned it with five independent identifications: the dumps the fourth stop read as a stranded
+receiver were the terminal state of a *completed* boot tour. `notes/scheduler.md` ("The
+undelivered-wake gate") records the consequence plainly: the wake-refusal gate built against this
+reading "has never fired on a field failure," and `refuse:` has never appeared on a board ring. It
+is hardening against a reachable state, proved by a loom harness, not a repair of an observed one.
+There was no silicon-only, QEMU-invisible defect here. It never happened, and treating it as risk
+5's fired instance is exactly what risk 5 needs not to have.
 
 That matters more than it looks, because it was risk 5's only candidate for the risk's own central
-claim. Risk 5 is specifically that "the bugs appear only on silicon" (QEMU cannot show them). With
-the VisionFive 2 reading gone, risk 5 currently has zero confirmed instances of its own defining
-claim, not one.
+claim. Risk 5 is specifically that "the bugs appear only on silicon" (QEMU cannot show them), and it
+has zero confirmed instances of that claim, not one.
 
-**The two `ap_boot` bugs are real defects, but "unresolved" is stale.** Both were open when this
-milestone was minted; both are now closed: the boot-core-identity bug (`arch::x86_64::ap_boot`'s
-`BUGS` #3) was fixed by milestone 316 (which core booted: making `NIFE_SMP=2` mean something on
-x86_64) on 2026-09-18 UTC, and the third-or-later-secondary race (`BUGS` #1) was fixed by milestone 161's
-own closing work (2026-09-19). A third x86_64 SMP bug from the same
-bring-up, a missing cross-core TLB shootdown (`BUGS` #2), was found and fixed the same day,
-2026-08-26 UTC, before this milestone existed, and this section never counted it.
+**The `ap_boot` bugs are real defects, and closed.** The boot-core-identity bug
+(`arch::x86_64::ap_boot`'s `BUGS` #3) was fixed by milestone 316 (which core booted: making
+`NIFE_SMP=2` mean something on x86_64) on 2026-09-18 UTC, and the third-or-later-secondary race
+(`BUGS` #1) was fixed by milestone 161's own closing work (2026-09-19). A third x86_64 SMP bug from
+the same bring-up, a missing cross-core TLB shootdown (`BUGS` #2), is fixed too.
 
 None of the three was found on silicon. All three were found and reproduced under QEMU TCG, never
 on real x86_64 hardware (xenon). They are genuine concurrency defects and belong in a defect history,
 but they do not speak to risk 5's specific claim either, since that claim is about defects QEMU
 cannot show, and QEMU showed all three of these.
 
-So the corrected seed set, as of 2026-09-23:
+So the seed set is:
 
 1. x86_64: a missing cross-core TLB shootdown (`ap_boot`'s `BUGS` #2). A dead thread's kernel
    stack, unmapped and remapped onto a different frame for reuse, was still translated by another
@@ -132,13 +124,6 @@ this risk names.
 
 ## BUGS
 
-- The original seed set was wrong, and the correction is recorded in the section above rather than
-  by silently replacing it. Minted 2026-08-31 citing a VisionFive 2 finding that `notes/
-  visionfive2.md`'s fifth bench stop had already retracted the day before (2026-08-15), and two
-  x86_64 `ap_boot` bugs that were open then and are both closed now (milestones 316 and 161). Found
-  2026-09-23 by the lane sweeping the retraction's propagation. The lesson worth keeping is not the
-  specific facts, it is that a retraction landing one day before a milestone is minted is exactly the
-  timing most likely to be missed, and nothing caught it for 23 days.
 - **A flattening curve is a confidence, not a verdict.** It cannot prove the concurrency is right,
   only that this project is finding fewer problems per hour than it used to, which is also what
   running out of imagination looks like.

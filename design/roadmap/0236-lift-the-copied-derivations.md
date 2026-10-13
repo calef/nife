@@ -5,9 +5,9 @@ built: 2026-09-03
 ---
 # 236. Three derivations are copied between scripts, and nothing notices when they drift
 
-Minted 2026-09-02 by calef, from milestone 234's (the project's own numbers,
-one row per ISO week) lane, which had to copy them to do its job. Built 2026-09-03; what was
-actually decided, and what the block deliberately left open, is at the bottom.
+Built. Milestone 234 (the project's own numbers, one row per ISO week) had to copy these
+derivations to do its job. What was decided, and what the block deliberately left open, is at the
+bottom.
 
 In brief. Three derivations now exist twice:
 
@@ -119,11 +119,12 @@ diff.
 - **It compares one number, not a breakdown.** A per-package comparison would fail on a scope
   difference the three derivations deliberately have, so the count that actually reaches a reader is
   what is checked.
-- **`helpers/rust_source.py` is a provisional name.** Minted by this lane; names are an architect's.
-  Refused: `source_census`, because this tree already spends "census" on the `unsafe` count
-  specifically and a module named for it would read as holding only that; `measures`, which collides
-  with `notes/register-of-measures.md`, the same collision `script/metrics`' own header refused;
-  `common` and `util`, which claim nothing, and DECISIONS §39 says a name is a claim.
+- **`helpers/rust_source.py` is a provisional name.** Names are an architect's. Refused:
+  `source_census`, because this tree already spends "census" on the `unsafe` count specifically and
+  a module named for it would read as holding only that; `measures`, which collides with
+  `notes/register-of-measures.md`, the same collision `script/metrics`' own header refused; `common`
+  and `util`, which claim nothing. DECISIONS §39 (a component is named for what it is) says a name
+  is a claim.
 - The module is Python in a tree that is otherwise Rust and shell. It adds no dependency
   (DECISIONS §46 untouched: it imports `re` and nothing else) and no build step, but it is a third
   language in the tooling, and that was accepted rather than argued for at length because the
@@ -148,8 +149,8 @@ diff.
   adds no dependency and no build step, and the third tooling language was accepted rather than
   argued for, because the alternative was a `cargo build` in front of three `script/` commands.
 - **Recorded.** `design/roadmap/0236-lift-the-copied-derivations.md` carries the provisional name.
-  `helpers/rust_source.py` was minted by the lane, names are an architect's, and what was refused
-  and why is written down beside it.
+  `helpers/rust_source.py` is provisional, names are an architect's, and what was refused and why
+  is written down beside it.
 
 ## Index row
 

@@ -5,8 +5,8 @@ built: 2026-09-01
 ---
 # 215. A PCI function's interrupt reaches nothing on x86_64, so no userspace driver can run there
 
-Minted 2026-09-01 by milestone 164's lane, which built the disk
-wiring, ran it, watched it wedge, and reverted it.
+The x86_64 disk wiring of milestone 164 (x86_64 userspace can't build `aes`) wedged, because a PCI
+function's interrupt reached nothing.
 
 It was minted with no hardware gate, on the grounds that QEMU's `q35` reproduces all of it, and
 that held: this whole milestone was made on patagonia.
@@ -189,14 +189,9 @@ arriving on a machine whose firmware turns it on.
 - **Recorded.** `kernel/src/arch/x86_64/exceptions.rs`'s `BUGS`: the vector-to-intid inversion is
   still owed. MSI never needs it, because an MSI intid is its vector; it is now owed only for the
   console UART, which is the last candidate.
-- **Milestone 364.** `design/roadmap/0364-x86-64-test-fixtures.md`, attach the rest of the x86_64
-  test fixtures now that a function's interrupt works: the RedoxFS image, the GPT and blank disks,
-  the NIC, the GPU, the keyboard and the RNG, each a line in `helpers/qemu-runner-x86_64.sh` plus
-  its wiring, starting with making the FS server's disk lookup transport-blind. The measure is the
-  count of tests taking a "no RedoxFS disk attached" arm, 36 when this was written and 50 on
-  2026-09-19. That block is SUPERSEDED: milestone 303 built the transport-blind lookup and attached
-  the RedoxFS image on 2026-09-16, and its lane restated the remaining devices as a newer numbered
-  block the same day.
+- **Milestone 303.** The x86_64 test fixtures now that a function's interrupt works: milestone 303
+  (x86_64's FS service has a server and no disk it can find) builds the FS server's transport-blind
+  disk lookup and attaches the RedoxFS image, and the remaining devices are a newer numbered block.
 
 ## Index row
 

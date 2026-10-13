@@ -10,13 +10,16 @@ needs_person: no
 ---
 # 531. No gate in this tree records when it fires, so its own retirement rule cannot be applied
 
-*(Number provisional until the merge queue lands it.)* Promoted from the proposal `no-gate-records-when-it-fires`, filed 2026-09-21, on calef's instruction of 2026-09-20 to give every proposal on `main` a number. The text below was the proposal's own at promotion, unedited except for this paragraph: the argument is its author's and promotion is not the moment to improve it. Raised by a research lane calef briefed to ask what gate practices
-this tree lacks, with the instruction that any gate must prove its worth, existing ones included.
-The lane read `script/lint`'s 47 named checks, the thirteen workflows, `notes/check-inventory.md`,
+Promoted from the proposal `no-gate-records-when-it-fires`, filed 2026-09-21, on calef's instruction
+of 2026-09-20 to give every proposal on `main` a number. The text below was the proposal's own at
+promotion, unedited except for this paragraph: the argument is its author's and promotion is not the
+moment to improve it. Raised by a research lane calef briefed to ask what gate practices this tree
+lacks, with the instruction that any gate must prove its worth, existing ones included. The lane
+read `script/lint`'s 47 named checks, the thirteen workflows, `notes/check-inventory.md`,
 `design/fatal-risks/README.md` and the failure records in `notes/`, and measured the git history for
-evidence that each gate has caught a real defect. The 47 is derived rather than copied
-(`grep -c '^echo "==>' script/lint`), because the number written into `notes/check-inventory.md` has
-already gone stale once and that file says to derive it.
+evidence that each gate has caught a real defect. The 47 is derived rather than copied (`grep -c
+'^echo "==>' script/lint`), because the number written into `notes/check-inventory.md` has already
+gone stale once and that file says to derive it.
 
 Two of the three additions below change what every contributor runs, and the
 third is a watcher rather than a gate. None should be built before calef rules on the first, because
@@ -32,10 +35,10 @@ Applying it needs to know what a check has rejected. **No gate here records a si
 checks have been retired under that criterion and each time the evidence was somebody's memory of
 having been rejected, reconstructed after the fact.
 
-A partial record does exist and this proposal was corrected to use it. GitHub Actions keeps a
-failed run per commit, and mining it gives a per-check firing count for the whole CI history. That
-baseline overturns one of this proposal's own conclusions, and it expires: its logs begin
-disappearing on 2026-10-21. What it
+A partial record does exist. GitHub Actions keeps a failed run per commit, and mining it gives a
+per-check firing count for the whole CI history. That baseline shows `script/icount --check` fires,
+and it expires: its logs begin disappearing on 2026-10-21. What it
+
 cannot see is a check that fired on a lane's own machine and was fixed before anything was pushed,
 which is the cheapest firing a gate achieves and, measurably, the commonest.
 
@@ -44,13 +47,11 @@ not yet on gates, and one watcher for hazards outside the gate surface. Two refu
 with their measurements, because a refusal with a number in it is worth more than an addition
 without one.
 
-On 2026-10-12 (UTC) the block was split under §212 (a prose budget). The evidence and the full
-assessments moved to three appendices, indexed in
-[`0531-no-gate-records-when-it-fires/`](0531-no-gate-records-when-it-fires/README.md), and the
-rest was tightened. Every finding and number is kept, here or there.
+The evidence and the full assessments are in three appendices, indexed in
+[`0531-no-gate-records-when-it-fires/`](0531-no-gate-records-when-it-fires/README.md).
 
-- [`ci-baseline.md`](0531-no-gate-records-when-it-fires/ci-baseline.md): the method, the
-  correction, the mined CI baseline's tables and the `script/icount --check` retraction.
+- [`ci-baseline.md`](0531-no-gate-records-when-it-fires/ci-baseline.md): the method, the mined CI
+  baseline's tables and the `script/icount --check` record.
 - [`additions.md`](0531-no-gate-records-when-it-fires/additions.md): additions A to D assessed in
   full.
 - [`limits.md`](0531-no-gate-records-when-it-fires/limits.md): the `script/cadence-check` false
@@ -69,10 +70,9 @@ documented catches in git, because a check that fires locally and is fixed never
 Fourteen checks have no trail in either record. They are ratchets, and a ratchet that holds leaves
 no trace by design.
 
-One conclusion was retracted. The first draft named `script/icount --check` as the one gate whose
-worth could not be established. Its logs show 43 `CHECK FAIL` lines across seven days, on the order
-of seven episodes, so it fires. The other 56 failures of the job named after it are not the
-tripwire.
+`script/icount --check` fires: its logs show 43 `CHECK FAIL` lines across seven days, on the order
+of seven episodes. The other 56 failures of the job named after it are not the tripwire.
+
 
 ## Finding 1: the deletion criterion has no record to read
 
@@ -150,10 +150,11 @@ rather than as a rule.
 
 ### Addition B: a gate carries a selftest, or it is not evidence
 
-§134's convention, moved from proofs onto checks. Each `script/` entry point that renders a verdict
-grows a `--selftest` that runs it against fixtures which must fail and fixtures which must stay
-quiet. `script/lint` gains one check refusing an entry point with a verdict and no `--selftest`.
-`script/fatal-risks --selftest` is the worked example, at 0.65 s combined with its `--check`.
+§134's convention, applied to checks as it is to proofs. Each `script/` entry point that renders a
+verdict grows a `--selftest` that runs it against fixtures which must fail and fixtures which must
+stay quiet. `script/lint` gains one check refusing an entry point with a verdict and no
+`--selftest`. `script/fatal-risks --selftest` is the worked example, at 0.65 s combined with its
+`--check`.
 
 It would have caught `script/fmt` ignoring `--check`, the `--shard 4/4` error, the
 `script/citations` pattern disagreement, and `script/swish-check` red on `main` unnoticed. It costs

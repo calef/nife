@@ -5,10 +5,10 @@ built: 2026-09-21
 ---
 # 517. What fraction of survivor growth arrives on lines a pull request touched
 
-Built 2026-09-21 (all dates UTC; the measurements ran through the evening of
-2026-09-20 UTC and the block landed just after midnight). Minted provisionally by the maintainer after calef asked for the
+Built 2026-09-21 (all dates UTC; the measurements ran through the evening of 2026-09-20 UTC and the
+block landed just after midnight). Minted provisionally by the maintainer after calef asked for the
 number milestone 438 (would a diff-scoped mutation check have caught the 55) named as his to ask
-rather than a lane's to answer. *(Number provisional until the merge queue lands it.)*
+rather than a lane's to answer.
 
 The answer is 81.6%, and the shape of the other 18.4% is the part that decides anything. Of the
 771 survivors standing in the 2026-09-14 census, 629 sit on a line a pull request in the window
@@ -103,8 +103,9 @@ because the tree renames.
 ## The other 18.4%: pre-existing, with exactly one exception
 
 The 142 survivors on old lines are the population an inflow gate is structurally blind to. Whether
-that matters depends on whether they are old survivors or regressions, code that used to be tested
-and quietly stopped being. Each was checked against a mutation run of the tree as it stood when the
+that matters depends on whether they are old survivors or regressions, code that was once tested
+and quietly stopped being.
+ Each was checked against a mutation run of the tree as it stood when the
 window opened, and every one but one was already a survivor then.
 
 The one regression is `compositor`'s `replace * with + in Rect::area`, a survivor at the census on

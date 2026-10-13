@@ -1,8 +1,8 @@
 # Part 3's head, 2026-09-20: an appendix to milestone 326
 
-Moved from [milestone 326 (nobody has been assigned to turn a mutation score upward)](../0326-turn-a-mutation-score-upward.md)
-on 2026-10-12 (UTC) under §212 (a prose budget). It is the block's record of the seven crates part 3
-named: the per-crate table, the two artifacts, the deadlocks, what was found and the one exclusion
+An appendix to [milestone 326 (nobody has been assigned to turn a mutation score
+upward)](../0326-turn-a-mutation-score-upward.md). It is the block's record of the seven crates part
+3 named: the per-crate table, the two artifacts, the deadlocks, what was found and the one exclusion
 added.
 
 ## Part 3's head, 2026-09-20
@@ -45,8 +45,8 @@ and that stands. What part 3 adds is that noticing by hanging is worth convertin
 failing where the crate allows it. `memory_corruption_canary_gate` now runs each test body on a
 worker with a deadline (four converted). `job_mix`'s hand-rolled index became a `for` (one removed
 at rung one). `jh7110_entropy`'s four were left because `Pool`'s doctest calls `take` directly, a
-hang confirmed by hand-applying the mutant. (Corrected 2026-09-26, UTC: this said a doctest has
-nowhere to put a deadline. #1323 disproved it, with hidden `# ` lines that `recv_timeout` a worker.)
+hang confirmed by hand-applying the mutant. A doctest can carry a deadline, with hidden `# ` lines
+that `recv_timeout` a worker (#1323).
 
 Nothing found here is a defect in shipped behavior, which is the answer to the question this
 milestone exists to ask. The closest are three places where a plausible-looking mistake was

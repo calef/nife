@@ -10,8 +10,6 @@ needs_person: yes
 ---
 # 805. `reboot` at the prompt: a person restarts the machine without touching its power
 
-*(Promoted from the proposal pile on 2026-10-06 (UTC); number provisional until the merge queue lands it.)*
-
 *(Ruled 2026-10-06 (UTC), calef on PR #1766: "Approved, go with the new reboot object." §251
 (restarting the machine is a kernel object the progenitor hands out) records the object, its one
 method and the refused options. The fork below is kept as the argument; the recommendations in it
@@ -191,7 +189,7 @@ reset belongs to milestone 249's bench steps. If it fails there, that is a `BUGS
 
 ## What was built
 
-Built 2026-10-06 (UTC) by lane/805-reboot. Every name below is provisional.
+Built 2026-10-06 (UTC). Every name below is provisional.
 
 - **The object.** `Object::Reboot` (`kernel/src/cap.rs`), payload-free, with one method,
   `abi::reboot::REBOOT` (`kernel/src/reboot.rs`, dispatched by `syscall::reboot_invoke`). It

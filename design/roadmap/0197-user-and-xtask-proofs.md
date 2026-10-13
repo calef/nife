@@ -5,10 +5,8 @@ built: 2026-08-31
 ---
 # 197. `user/` and `xtask` are out of reach of the prover, for exactly the reason the kernel was
 
-Built 2026-08-31, the `user/` half; `xtask` is refused with an argument, and the timer
-seam below is untouched and still a fork. Minted 2026-08-30 from milestone 193's (put `kernel/src`
-within reach of the prover) lane. notes/user-proofs.md is the record. *(Number provisional until the
-merge queue lands it.)*
+Built, the `user/` half. `xtask` is refused with an argument. The timer seam below is untouched and
+still a fork. notes/user-proofs.md is the record.
 
 ## What was built, and where the block was wrong
 

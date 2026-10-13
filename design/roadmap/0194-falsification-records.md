@@ -5,13 +5,10 @@ built: 2026-08-31
 ---
 # 194. Build §134: the falsification record, its lint, and the sweep that replays it
 
-Minted 2026-08-30. DECISIONS §134 (a harness carries a
-machine-replayable falsification record, or it is not evidence) was decided the same day and had no
-tracked work, which is the state AGENTS.md says a finding may never be left in. All five increments
-landed: the record and its two-directional lint, `script/falsifications`, the weekly sweep, the
-per-pull-request half in `verify.yml`, and the retroactive pass putting all 141 harnesses at
-`unfalsified` with six real falsifications on top. *(Number provisional until the merge queue lands
-it.)*
+This is the build work for DECISIONS §134 (a harness carries a machine-replayable falsification
+record, or it is not evidence). All five increments are built: the record and its two-directional
+lint, `script/falsifications`, the weekly sweep, the per-pull-request half in `verify.yml`, and the
+retroactive pass putting all 141 harnesses at `unfalsified` with six real falsifications on top.
 
 **The Inductive Validity Core check came back no**, which this block asked for first: an IVC comes
 out of an induction step, and Kani is a bounded model checker that has none. `notes/falsification.md`

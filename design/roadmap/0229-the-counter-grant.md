@@ -5,9 +5,7 @@ built: 2026-09-02
 ---
 # 229. Build the cycle-counter grant DECISIONS 139 decided
 
-Minted 2026-09-02 by the maintainer, the moment calef finished answering
-DECISIONS 139 (who may read the cycle counter, and by what authority). *(Number provisional until
-the merge queue lands it.)*
+This is the build work for DECISIONS §139 (who may read the cycle counter, and by what authority).
 
 It was minted `Gate: NONE`, and that held: DECISIONS 139 was already answered, the default was made
 a fact rather than an assumption by milestone 228 (the cycle counters are closed by assumption), and

@@ -10,8 +10,8 @@ needs_person: no
 ---
 # 799. The shadow descriptor is published in two stores
 
-Raised by lane/633-outsider-2, milestone 633 (an outside agent attacks the confinement claim)'s
-second pass, on 2026-10-05 (UTC). Title and slug provisional.
+Raised by milestone 633 (an outside agent attacks the confinement claim)'s second pass. Title and
+slug provisional.
 
 Reuse: the validate-then-publish shape is the one `crates/virtio`'s own avail-ring publish
 already uses (the `avail.idx` write is the single publish point). Variant 2 reuses the used
