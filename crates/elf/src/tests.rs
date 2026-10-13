@@ -251,6 +251,16 @@ fn foreign_machines_is_every_known_machine_but_this_builds() {
     }
 }
 
+/// **The derivation gives the same answer when it runs**, not only when the compiler folds it.
+/// `FOREIGN_MACHINES` is evaluated in a `const`, so its build-time asserts are the real check, and
+/// line coverage cannot see a `const` evaluation: without a runtime call, `foreign_machines` reads
+/// as never executed. This runs it, and holds the result to the constant the rest of the suite
+/// iterates.
+#[test]
+fn foreign_machines_derives_the_same_list_at_runtime() {
+    assert_eq!(core::hint::black_box(foreign_machines)(), FOREIGN_MACHINES);
+}
+
 /// **The compile-time guard hands back what it was given**, which is the half a caller relies
 /// on: `const EM_SPARC: u16 = machine_no_nife_build_accepts(2)` is only useful if the 2 comes
 /// back. Replacing the function with a constant survived the suite (milestone 326), because
