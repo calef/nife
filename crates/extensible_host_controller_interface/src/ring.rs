@@ -8,10 +8,10 @@ use super::*;
 /// always a link TRB back to the first.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ProducerRing {
-    base: u64,
-    entries: u16,
-    enqueue: u16,
-    cycle: bool,
+    pub(crate) base: u64,
+    pub(crate) entries: u16,
+    pub(crate) enqueue: u16,
+    pub(crate) cycle: bool,
 }
 
 /// **What [`ProducerRing::enqueue`] says to write**: the TRB at `index`, stamped with this lap's
