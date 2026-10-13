@@ -564,6 +564,38 @@ extern "C" fn riscv_trap_body(frame: &mut TrapFrame) -> bool {
     false
 }
 
+/// **What the hardware walked, beside the root this thread's own space has**, for a user page
+/// fault's kill report. A page fault at a pc the thread had just been executing is otherwise
+/// undiagnosable from a CI transcript (merge-group run 38284891615; notes/riscv-tlb-shootdown.md,
+/// BUGS).
+///
+/// The thread's own root comes from `sched::thread_space_root`, which exists only in a
+/// `system_tests` build, so a shipping kernel prints the live `satp` and the leaf and leaves the
+/// comparison out. Kept out of line and cold for `script/fastpath-footprint`, which measures the
+/// trap dispatcher as part of `syscall_entry`. A new function in `sched` itself is not neutral
+/// either: one added for this report moved the codegen-unit split and grew riscv64's
+/// `syscall_entry` from 2,010 to 2,604 bytes on 2026-10-13 (UTC), whatever its attributes.
+#[cold]
+#[inline(never)]
+fn report_translation(stval: u64) {
+    let (satp, leaf) = super::mmu::installed_satp_and_leaf(stval);
+    let live = super::mmu::current_user_root();
+    #[cfg(feature = "system_tests")]
+    let own = crate::sched::thread_space_root(crate::sched::current());
+    #[cfg(not(feature = "system_tests"))]
+    let own: Option<u64> = None;
+    match own {
+        Some(own) if own != live => crate::println!(
+            "    satp {satp:#018x} (root {live:#x}, NOT the thread's own root {own:#x}), leaf at \
+             stval {leaf:x?}"
+        ),
+        Some(_) => crate::println!(
+            "    satp {satp:#018x} (root {live:#x}, the thread's own), leaf at stval {leaf:x?}"
+        ),
+        None => crate::println!("    satp {satp:#018x} (root {live:#x}), leaf at stval {leaf:x?}"),
+    }
+}
+
 /// A user thread did something it is not allowed to do. Kill it; keep the machine.
 ///
 /// The mechanism is aarch64's `user_fault`, verbatim in spirit: we are in the trap handler on the
@@ -606,6 +638,12 @@ fn user_fault(frame: &TrapFrame, scause: u64, code: u64) -> ! {
         frame.stval,
         frame.x[2],
     );
+    if matches!(
+        code,
+        CAUSE_INSTRUCTION_PAGE_FAULT | CAUSE_LOAD_PAGE_FAULT | CAUSE_STORE_PAGE_FAULT
+    ) {
+        report_translation(frame.stval);
+    }
     crate::println!("  the kernel is fine.");
 
     // Deliver the fault to a supervisor if this thread had one, and become a corpse; otherwise the

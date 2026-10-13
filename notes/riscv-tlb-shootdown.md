@@ -233,3 +233,18 @@ the executing hart's own page-table writes.
   it. Pre-existing, untouched by this milestone, and not currently reachable (the direct map covers
   all of RAM from `mmu::init`), but it is the neighboring hazard a reader of this file should know
   about.
+- **A user thread can lose the translation of its own text while it runs, cause unknown.** Seen
+  once: merge-group run 38284891615 (2026-10-12 UTC), `thead-c906`, where `network_time_client`
+  was killed by an instruction page fault with `pc == stval == 0x60000f36`. That is the second
+  instruction of a function in its first text page, so the page had translated an instruction
+  earlier. The test reported it as "the client failed before it reached the network", and the
+  inbound check failed beside it only because the suite had already stopped. It is not load and
+  not the network. Under QEMU the TLB is flushed on every `satp` change, so a stale tagged entry
+  cannot explain it: at the refill, either the live `satp` was not the thread's or the thread's
+  tables no longer mapped its text. 231 riscv64 CPU-matrix transcripts from failed CI runs since
+  2026-10-01 hold no other instruction page fault inside program text. Fifteen local full
+  `thead-c906` legs with two probes, each checked by an injected fault, found neither half: no
+  return to U-mode under a root other than the thread's own, and no write into any frame between
+  its free and its next allocation. The kill report now prints the live `satp`, the leaf a walk of
+  `stval` finds and, in a `system_tests` build, whether the live root is the thread's own, so the
+  next CI occurrence names the half.

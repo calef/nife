@@ -1187,6 +1187,17 @@ pub fn translate_user(va: u64) -> Option<(u64, Flags)> {
 /// Both halves, because a user thread reaching for the *kernel's* memory names a high-half address,
 /// and the process root carries the kernel half ([`share_kernel_half`]). [`translate_user`] alone
 /// would say "not mapped" for it and turn the most interesting case into the wrong answer.
+/// **The live `satp`, and the leaf a walk of it finds for `va` now**, for the user-fault report.
+/// RISC-V's page-fault causes do not say why the walk refused, so after the fact the only evidence
+/// is these two: a `satp` that is not the faulting thread's own says the wrong space was live, and
+/// a leaf that permits the access says the tables were right and the refusal came from something
+/// cached. `classify`'s BUGS note applies: this is read after the fault, not during it.
+///
+/// Name: provisional (lane maintainer/ntp-c906-flake, 2026-10-13 UTC).
+pub fn installed_satp_and_leaf(va: u64) -> (u64, Option<Flags>) {
+    (read_satp(), translate_in_either_half(va).map(|(_, f)| f))
+}
+
 pub fn is_mapped_in_current_space(va: u64) -> bool {
     let root = current_root_pa();
     // SAFETY: `root` is the live installed root; the direct map makes `phys_to_ptr` valid; a
