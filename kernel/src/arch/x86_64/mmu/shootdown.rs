@@ -18,9 +18,9 @@ pub(super) const SHOOTDOWN_ALL: u64 = u64::MAX;
 /// **The one shootdown in flight**, and the lock that makes it one.
 ///
 /// A raw `AtomicBool` rather than an [`crate::sync::IrqSafeMutex`], deliberately, and the reason is
-/// the whole design below: this is taken from inside `KERNEL_MMU`, which has already masked
-/// interrupts, so there is nothing left to mask and no rank to check. A core spinning here is still
-/// reachable, because the message that ends the spin is an NMI.
+/// the whole design below: a core spinning here is still reachable, because the message that ends
+/// the spin is an NMI. [`broadcast`] masks interrupts itself for as long as it holds this, because
+/// not every caller arrives masked (see its own comment for the hang that taught that).
 static SHOOTDOWN_LOCK: AtomicBool = AtomicBool::new(false);
 
 /// The payload of the round in flight, read according to [`SHOOTDOWN_KIND`]: a virtual address (or
@@ -71,6 +71,7 @@ static SHOOTDOWN_PENDING: AtomicUsize = AtomicUsize::new(0);
 ///
 /// This is called from inside [`unmap_page`], which holds `KERNEL_MMU`, an `IrqSafeMutex`: **this
 /// core reaches here with interrupts masked, and so does every other core running the same code.**
+/// (`flush_asid` reaches it unmasked, which is why [`broadcast`] masks for itself.)
 /// A maskable IPI would therefore deadlock on the first concurrent spawn-and-reap: core A holds
 /// `KERNEL_MMU` and waits for core B's acknowledgement, while core B spins for `KERNEL_MMU` with
 /// interrupts off and can never take the message that would let A finish. That is not a corner
@@ -121,8 +122,28 @@ fn broadcast(kind: u8, word: u64) {
     if !super::irq::is_local_apic_ready() {
         return;
     }
+
+    // **Masked for the whole round, whatever the caller held** (2026-10-13 UTC). This function was
+    // written for `unmap_page`, which calls it under `KERNEL_MMU` and so with interrupts already
+    // off, and it assumed every caller would. `flush_asid` does not: an `AddressSpace` drop calls it
+    // with no lock held and interrupts on. A tick landing in the ack wait below then preempted a
+    // thread that held `SHOOTDOWN_LOCK`. When that thread was switched back in, its `finish_switch`
+    // reaped the corpse that had run in between, the reap freed the corpse's kernel stack, and
+    // `unmap_page` came back here to spin, interrupts masked, on the lock its own thread held. The
+    // other core then spun on `KERNEL_MMU`, also masked, and the machine stopped taking ticks, so
+    // even the test watchdogs went quiet. That is the x86_64 hang in
+    // `a_child_can_neither_learn_nor_forge_its_label`, recorded in the BUGS of milestone 105 (the
+    // two forks), caught with both cores' stacks under gdb. Masking here also pins the `cpu::id()`
+    // read below to the core the round runs on, which a preemptible caller could otherwise leave
+    // behind.
+    let irqs_were_enabled = crate::arch::interrupts::disable();
+    #[cfg(test)]
+    if crate::arch::interrupts::is_enabled() {
+        ROUND_RAN_UNMASKED.store(true, Ordering::Relaxed);
+    }
     let others = crate::smp::online_harts_mask() & !(1usize << crate::cpu::id());
     if others == 0 {
+        crate::arch::interrupts::restore(irqs_were_enabled);
         return;
     }
 
@@ -159,6 +180,7 @@ fn broadcast(kind: u8, word: u64) {
     }
 
     SHOOTDOWN_LOCK.store(false, Ordering::Release);
+    crate::arch::interrupts::restore(irqs_were_enabled);
 }
 
 /// **Serve a shootdown NMI**: the receiving half of [`shoot_down_others`].
@@ -200,4 +222,41 @@ pub fn serve_shootdown_nmi() -> bool {
     // and go on to hand the frame to somebody else.
     SHOOTDOWN_PENDING.fetch_and(!bit, Ordering::Release);
     true
+}
+
+/// Set if a round ever ran with interrupts enabled: the witness [`tests`] reads. Test builds only.
+#[cfg(test)]
+static ROUND_RAN_UNMASKED: AtomicBool = AtomicBool::new(false);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// **A shootdown round masks interrupts even when its caller did not.** `flush_asid` is the
+    /// caller that arrives unmasked (an `AddressSpace` drop), and a tick taken inside its round
+    /// could preempt the holder of [`SHOOTDOWN_LOCK`] and deadlock the machine; [`broadcast`]'s
+    /// comment has the hang. Red without the masking: this calls `flush_asid` with interrupts on,
+    /// on the two-core machine the x86_64 leg boots, and the round records that it ran unmasked.
+    ///
+    /// Falsification: replayable `kernel/falsifications/arch.x86_64.mmu.shootdown.tests.a_shootdown_round_masks_interrupts_whatever_its_caller_held.patch`
+    ///
+    /// Name: provisional (lane `maintainer/supervision-label-hang`, 2026-10-13 UTC).
+    #[test_case]
+    fn a_shootdown_round_masks_interrupts_whatever_its_caller_held() {
+        let others = crate::smp::online_harts_mask() & !(1usize << crate::cpu::id());
+        if others == 0 {
+            crate::testing::skip!("one core online: no round is sent, so there is nothing to mask");
+        }
+        let was = crate::arch::interrupts::disable();
+        crate::arch::interrupts::enable();
+        ROUND_RAN_UNMASKED.store(false, Ordering::Relaxed);
+        super::super::flush_asid(0);
+        let unmasked = ROUND_RAN_UNMASKED.load(Ordering::Relaxed);
+        crate::arch::interrupts::restore(was);
+        assert!(
+            !unmasked,
+            "a shootdown round ran with interrupts enabled: a tick inside it can preempt the \
+             holder of SHOOTDOWN_LOCK and wedge every core"
+        );
+    }
 }
