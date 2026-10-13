@@ -35,8 +35,10 @@ fn the_noteless_install_line_names_the_seeded_file() {
 /// Bare names this script installs before it types them (§229 (how a bare name at the prompt
 /// reaches an installed program), B2), which run as programs without being the image's, and
 /// the version-qualified ask, which is not a bare name but resolves to one of these rows the
-/// same way (milestone 614, ruling 4).
-const INSTALLED_BY_THE_SCRIPT: [&str; 3] = ["greeting", "noteless", "greeting@0.1.0"];
+/// same way (milestone 614 (two installed versions of one program, each runnable), ruling 4).
+/// `rg` is the program `jig install ripgrep` installs from basalt's index (milestone 810
+/// (`ripgrep` is packaged in basalt and installed with `jig`)).
+const INSTALLED_BY_THE_SCRIPT: [&str; 4] = ["greeting", "noteless", "greeting@0.1.0", "rg"];
 
 /// **The second version's install line names the file the seed writes** (milestone 614), the
 /// same pairing the two tests above hold for 0.1.0's lines.
