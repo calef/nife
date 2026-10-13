@@ -10,12 +10,16 @@ model calls, so the harness is untouched.
 Expected to fail: the harness's last assertion, `is_user_page_va(page_va)` ("every page the map loop touches is an
 aligned user-half page"), at the middle page `k` the solver picks.
 
-diff --git a/crates/paging/src/lib.rs b/crates/paging/src/lib.rs
-index ef038ca6d..68600478d 100644
---- a/crates/paging/src/lib.rs
-+++ b/crates/paging/src/lib.rs
-@@ -545,3 +545,3 @@ pub trait PageFormat {
+diff --git a/crates/paging/src/page_format.rs b/crates/paging/src/page_format.rs
+index 476dfcac4..d5c3d2ee6 100644
+--- a/crates/paging/src/page_format.rs
++++ b/crates/paging/src/page_format.rs
+@@ -116,7 +116,7 @@ pub trait PageFormat {
+     fn is_in_half(half: Half, va: u64) -> bool {
+         let top = va >> Self::SPLIT_SHIFT;
          match half {
 -            Half::Low => top == 0,
 +            Half::Low => top == 0 || top == 2,
              Half::High => top == (u64::MAX >> Self::SPLIT_SHIFT),
+         }
+     }

@@ -17,16 +17,13 @@ crates/designware_mobile_storage/src/lib.rs	77
 crates/e1000e/src/lib.rs	326
 crates/e1000e/src/pch/mod.rs	74
 crates/extensible_host_controller_interface/src/lib.rs	401
-crates/globally_unique_identifier_partition_table/src/lib.rs	550
 crates/grant_plan/src/lib.rs	40
 crates/grant_plan/src/program.rs	129
 crates/inter_process_communication/src/lib.rs	310
 crates/memory_regions/src/lib.rs	183
 crates/name_resolution_protocol/src/lib.rs	102
-crates/paging/src/lib.rs	590
 crates/stick_maker/src/host/mod.rs	106
 crates/stick_maker/src/lib.rs	4
-crates/system_log/src/lib.rs	503
 crates/usb/src/lib.rs	37
 cryptography_provider/src/lib.rs	91
 kernel/src/arch/aarch64/mod.rs	161
