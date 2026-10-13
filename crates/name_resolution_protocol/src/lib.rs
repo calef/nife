@@ -29,6 +29,7 @@
 //! | [`OFF_NAME`].. | the host name, dotted ASCII, at most [`NAME_TEXT_MAX`] bytes | the client |
 //! | [`OFF_ADDRESSES`].. | up to [`MAX_ADDRESSES`] IPv4 addresses, four bytes each | the resolver |
 //!
+
 //! # BUGS
 //!
 //! - A grant lasts until the spawner sends [`OPERATION_FORGET`]; at most [`GRANTS_MAX`] at once.
@@ -36,8 +37,9 @@
 //! - Grant messages carry eight bytes each (`RECEIVE_CAP` returns two words, one the control word),
 //!   so a 253-byte zone is 32 messages, once per client.
 //!
-//! Name: provisional (milestone 384's lane): named for what it is the protocol of. Refused
-//! `resolver_protocol` (the program, not the act) and `dns_protocol` (§154 (the acronym test)).
+//! Name: provisional (milestone 384 (in a capability system the resolver is a grant)'s lane):
+//! named for what it is the protocol of. Refused `resolver_protocol` (the program, not the act)
+//! and `dns_protocol` (§154 (the acronym test)).
 
 #![no_std]
 
