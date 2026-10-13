@@ -370,6 +370,31 @@ impl Vt {
     /// Taking the report also fixes the cursor into it: from this moment the engine knows where
     /// the cursor was last drawn ([`Vt::drawn`]'s own doc says why that has to survive scrolls),
     /// and the next report will name the row the old block has to be lifted from.
+    ///
+    /// # Examples
+    ///
+    /// Bytes in, a grid out, and the rectangle that changed, taken once:
+    ///
+    /// ```
+    /// use video_terminal::Vt;
+    ///
+    /// let mut vt = Vt::new(8, 4);
+    /// vt.feed(b"hello\r\nworld");
+    ///
+    /// let mut row = [0u8; 8];
+    /// let n = vt.row_bytes(0, &mut row);
+    /// assert_eq!(&row[..n], b"hello   "); // the rest of the row is blanks, not garbage
+    /// vt.row_bytes(1, &mut row);
+    /// assert_eq!(&row[..5], b"world");
+    /// assert_eq!(vt.cursor(), (5, 1));
+    ///
+    /// // Damage is in cells and is taken, not read: the caller repaints exactly what changed and the
+    /// // record clears. That is the whole reason the engine reports a rectangle instead of "redraw".
+    /// let dirty = vt.take_damage().expect("something changed");
+    /// assert!(dirty.rect.rows >= 2, "two rows were written to");
+    /// assert_eq!(dirty.scrolled, 0, "nothing scrolled");
+    /// assert_eq!(vt.take_damage(), None); // taken once
+    /// ```
     pub fn take_damage(&mut self) -> Option<Damage> {
         // The cursor is part of the picture, so the report has to cover it moving, appearing or
         // vanishing since the last take. `feed` already dirties the endpoints of every move it
@@ -406,6 +431,24 @@ impl Vt {
     /// `no_std`. ASCII characters pass through unchanged; anything else (a non-ASCII `char`, since
     /// milestone 142's UTF-8 increment) becomes `?`, the conventional lossy placeholder, since the
     /// return type has no room for anything wider than a byte.
+    ///
+    /// # Examples
+    ///
+    /// `CSI 2J` clears the screen and `CSI H` homes the cursor:
+    ///
+    /// ```
+    /// use video_terminal::Vt;
+    ///
+    /// let mut vt = Vt::new(8, 4);
+    /// vt.feed(b"one\r\ntwo\r\n");
+    ///
+    /// // CSI H homes the cursor; CSI 2J clears the screen.
+    /// vt.feed(b"\x1b[2J\x1b[H");
+    /// assert_eq!(vt.cursor(), (0, 0));
+    /// let mut row = [0u8; 8];
+    /// let n = vt.row_bytes(0, &mut row);
+    /// assert_eq!(&row[..n], b"        ");
+    /// ```
     pub fn row_bytes(&self, row: u32, out: &mut [u8]) -> usize {
         let n = (self.cols as usize).min(out.len());
         for (i, o) in out.iter_mut().enumerate().take(n) {
@@ -455,6 +498,33 @@ impl Vt {
     /// echo: a line that exactly fills the width would otherwise scroll the screen before anything
     /// asked it to, and a `CR` arriving right after the last character would find the cursor a row
     /// too low. Any cursor motion, `CR`, or `LF` cancels the pending wrap.
+    ///
+    /// # Examples
+    ///
+    /// A line that exactly fills the width does not wrap until the next printable byte:
+    ///
+    /// ```
+    /// use video_terminal::Vt;
+    ///
+    /// let mut vt = Vt::new(4, 4);
+    /// vt.feed(b"abcd"); // exactly fills row 0
+    ///
+    /// // The cursor stays on the last cell it wrote, with a wrap pending. It has NOT moved to row 1.
+    /// assert_eq!(vt.cursor(), (3, 0));
+    ///
+    /// // A CR arriving now finds the cursor on row 0, which is where a line discipline expects it. If
+    /// // the wrap had already happened it would be a row too low.
+    /// vt.feed(b"\r");
+    /// assert_eq!(vt.cursor(), (0, 0));
+    ///
+    /// // And when the next printable byte does arrive without an intervening CR, it wraps first.
+    /// let mut vt = Vt::new(4, 4);
+    /// vt.feed(b"abcde");
+    /// assert_eq!(vt.cursor(), (1, 1));
+    /// let mut row = [0u8; 4];
+    /// vt.row_bytes(1, &mut row);
+    /// assert_eq!(row[0], b'e');
+    /// ```
     pub fn feed(&mut self, bytes: &[u8]) {
         // New output snaps the view back to live, the same convention every real terminal follows:
         // typing (or a program printing) while scrolled into history is disorienting otherwise, and
