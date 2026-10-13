@@ -28,6 +28,9 @@ publish = false
 
 [dependencies]
 rustls = { version = "0.23", default-features = false, features = ["std"] }
+# `listed`'s locations, their address check and the one-redirect bound (calef's C2 on #2048,
+# 2026-10-12 UTC). In-tree and `no_std`; jig and package_fetch_exerciser already link it.
+package_index = { path = "../crates/package_index" }
 cryptography_provider = { path = "../cryptography_provider" }
 http_response = { path = "../crates/http_response" }
 

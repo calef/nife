@@ -70,8 +70,8 @@
 //!   reaching its index. ISRG Root X1's certificate says it is valid until 2035-06-04 (read from
 //!   the certificate in `roots/`, 2026-10-06), and the chains Let's Encrypt serves today reach it
 //!   only through cross-signatures that end sooner: see `PinnedPeer::basalt_index`.
-//! - **One request per connection**, HTTP/1.0, `Content-Length` required, no redirects. Those are
-//!   `http_response`'s limits, taken whole.
+//! - **One request per connection**, HTTP/1.0, `Content-Length` required. [`Session::fetch`]
+//!   reports a redirect; only [`listed`] follows one, on a new session with its own pin.
 //! - **No resolver.** The caller connects the stream; milestone 384 (in a capability system the
 //!   resolver is a grant) owns turning a name into an
 //!   address, and the name verified here is whatever the pin says, never what the resolver used.
@@ -96,6 +96,27 @@ pub const ISRG_ROOT_X1: &[u8] = include_bytes!("../roots/isrg-root-x1.der");
 pub const ISRG_ROOT_X1_SHA256: [u8; 32] = [
     0x96, 0xbc, 0xec, 0x06, 0x26, 0x49, 0x76, 0xf3, 0x74, 0x60, 0x77, 0x9a, 0xcf, 0x28, 0xc5, 0xa7,
     0xcf, 0xe8, 0xa3, 0xc0, 0xaa, 0xe1, 0x1a, 0x8f, 0xfc, 0xee, 0x05, 0xc0, 0xbd, 0xdf, 0x08, 0xc6,
+];
+
+/// **Sectigo Public Server Authentication Root E46**, as DER: the root `github.com` chains to, and
+/// so the root a GitHub Release asset's download URL needs before it redirects to an X1 host.
+/// calef ruled on 2026-10-12 (UTC) on #2048 (*"a"*, option C2 of `notes/packages/the-index-format.md`)
+/// that the signed index may name it for a listed location; it is never a root for an index host.
+///
+/// Read 2026-10-13 (UTC) from macOS's `SystemRootCertificates.keychain` and compared byte for byte
+/// with `http://crt.sectigo.com/SectigoPublicServerAuthenticationRootE46.crt`: identical. Its public
+/// key is the one in the cross-signed E46 `github.com` sends, and its certificate says it is valid
+/// from 2021-03-22 to 2046-03-21. [`SECTIGO_ROOT_E46_SHA256`] is its fingerprint, which a test
+/// recomputes.
+///
+/// Name: provisional, minted 2026-10-13 (UTC) by lane `lane/basalt-on-pages-and-releases`.
+pub const SECTIGO_ROOT_E46: &[u8] =
+    include_bytes!("../roots/sectigo-public-server-authentication-root-e46.der");
+
+/// The SHA-256 of [`SECTIGO_ROOT_E46`]: `C9:0F:26:F0:...:53:83`. Name: provisional, as above.
+pub const SECTIGO_ROOT_E46_SHA256: [u8; 32] = [
+    0xc9, 0x0f, 0x26, 0xf0, 0xfb, 0x1b, 0x40, 0x18, 0xb2, 0x22, 0x27, 0x51, 0x9b, 0x5c, 0xa2, 0xb5,
+    0x3e, 0x2c, 0xa5, 0xb3, 0xbe, 0x5c, 0xf1, 0x8e, 0xfe, 0x1b, 0xef, 0x47, 0x38, 0x0c, 0x53, 0x83,
 ];
 
 /// basalt's index host, from §250.
@@ -238,14 +259,29 @@ impl<S: Read + Write> Session<S> {
     /// Send one `GET path` and hand the body to `body` as it arrives, never holding it. Returns
     /// the status; the caller decides what a status other than 200 means. Consumes the session,
     /// because `http_response` speaks one request per connection.
-    pub fn get(mut self, path: &str, mut body: impl FnMut(&[u8])) -> Result<u16, Error> {
-        let mut request = [0u8; 512];
+    pub fn get(self, path: &str, body: impl FnMut(&[u8])) -> Result<u16, Error> {
+        self.fetch(path, body).map(|reply| reply.status)
+    }
+
+    /// **[`Session::get`], and the `Location` of a redirect.** The body reaches `body` only when
+    /// the status is 200, so a redirect's own body (GitHub's is empty) is read and dropped rather
+    /// than mistaken for the package. The head may be up to
+    /// `http_response::REDIRECT_HEAD_MAX` bytes, because `github.com`'s `302` is 5,291.
+    ///
+    /// Name: provisional, minted 2026-10-13 (UTC) by lane `lane/basalt-on-pages-and-releases`,
+    /// with [`Reply`].
+    pub fn fetch(mut self, path: &str, mut body: impl FnMut(&[u8])) -> Result<Reply, Error> {
+        // Sized for the path: a redirect's target can be a 930-byte signed URL (GitHub's, measured
+        // 2026-10-13 UTC), and the bound that matters is the caller's, not a fixed buffer here.
+        let mut request = vec![0u8; path.len() + self.host.len() + 64];
         let n = http_response::get_request(&self.host, path, &mut request)
             .ok_or(Error::RequestTooLong)?;
         self.tls.write_all(&request[..n])?;
         self.tls.flush()?;
 
-        let mut response = http_response::Response::new();
+        let mut response = Box::new(http_response::Response::<
+            { http_response::REDIRECT_HEAD_MAX },
+        >::with_room());
         let mut buf = vec![0u8; 16 * 1024];
         while !response.is_complete() {
             let got = match self.tls.read(&mut buf) {
@@ -257,12 +293,180 @@ impl<S: Read + Write> Session<S> {
                 Err(e) => return Err(e.into()),
             };
             let part = response.feed(&buf[..got]).map_err(Error::Http)?;
-            body(part);
+            if response.status() == Some(200) {
+                body(part);
+            }
         }
         let status = response.status().ok_or(Error::Truncated)?;
+        let location = if (300..400).contains(&status) {
+            response
+                .header(b"location")
+                .and_then(|l| core::str::from_utf8(l).ok())
+                .map(str::to_owned)
+        } else {
+            None
+        };
         // Say goodbye properly; a peer that is already gone does not change the answer.
         self.tls.conn.send_close_notify();
         let _ = self.tls.conn.complete_io(&mut self.tls.sock);
-        Ok(status)
+        Ok(Reply { status, location })
+    }
+}
+
+/// What [`Session::fetch`] read besides the body.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Reply {
+    /// The status code.
+    pub status: u16,
+    /// The `Location` header of a `3xx`, as sent, when it is UTF-8. `None` for any other status.
+    pub location: Option<String>,
+}
+
+// Inline rather than a child file, so this file stays one module and not a split parent (§282
+// (when a file is split, the parent becomes an index)).
+/// **A package's bytes from a location the index listed, through at most one redirect** (calef's
+/// C2, ruled *"a"* on #2048, 2026-10-12 UTC; `notes/packages/the-index-format.md`, question C).
+///
+/// A GitHub Release asset's download URL is on `github.com`, which chains to Sectigo Root E46, and
+/// it answers `302` with a signed URL on `release-assets.githubusercontent.com`, which chains to
+/// ISRG Root X1. So a fetch from a listed location is up to two hops, and each is held to what the
+/// ruling says:
+///
+/// | hop | its root | its address |
+/// |---|---|---|
+/// | the listed location | the one the signed index named for it, among those the image carries (`package_index::Sources::root_for`) | Q1's check: every resolved address public, and only those dialed |
+/// | the one redirect | the index's own root (X1 in production), whatever the first hop's was | Q1's check again, on the new host |
+/// | a second redirect | refused, never followed | |
+///
+/// The redirect must be an absolute `https://` URL (`package_index::Location::redirect`). Nothing
+/// here decides whether the bytes are authentic: the caller judges them by the index's digest, as
+/// it judges bytes from anywhere.
+///
+/// `jig` and `package_fetch_exerciser` both fetch through `listed::fetch`, so the boot test that proves
+/// the refusals proves `jig`'s path, not a copy of it.
+///
+/// Name: provisional, minted 2026-10-13 (UTC) by lane `lane/basalt-on-pages-and-releases`, with
+/// everything in it.
+pub mod listed {
+    use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
+
+    use package_index::{AddressRefusal, Location, MAX_REDIRECTS, Root};
+
+    use crate::{ISRG_ROOT_X1, PinnedPeer, SECTIGO_ROOT_E46, Session};
+
+    /// **A root as DER**: one this client carries, by the name an image's sources and a signed index
+    /// use (`isrg-root-x1`, `sectigo-root-e46`), or the hex an image gave. Every name here is one
+    /// calef ruled a client carries: X1 for the index (§250 (an image names its distribution's package index)),
+    /// E46 for a listed location (C2, #2048).
+    pub fn root_der(root: &Root<'_>) -> Result<Vec<u8>, &'static str> {
+        match root {
+            Root::Named("isrg-root-x1") => Ok(ISRG_ROOT_X1.to_vec()),
+            Root::Named("sectigo-root-e46") => Ok(SECTIGO_ROOT_E46.to_vec()),
+            Root::Named(_) => Err("a root this client does not carry"),
+            Root::Der(_) => {
+                let mut out = vec![0u8; 4096];
+                let n = root
+                    .der(&mut out)
+                    .ok_or("a root that cannot be decoded")?
+                    .len();
+                out.truncate(n);
+                Ok(out)
+            }
+        }
+    }
+
+    /// Where the bytes came from.
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct Fetched {
+        /// The host that sent them.
+        pub host: String,
+        /// The listed host that redirected there, when one did.
+        pub redirected_from: Option<String>,
+    }
+
+    /// **Fetch from `at`**, its first hop pinned to `root` and a redirect's target to
+    /// `redirect_root`, every address judged by `public` (`package_index::public_address`, except in
+    /// the boot test: see `package_index::Location::check_by`). The body of the one `200` goes to
+    /// `body`; no redirect's body ever does. The error is why, in words a client prints.
+    pub fn fetch(
+        at: &Location<'_>,
+        root: &[u8],
+        redirect_root: &[u8],
+        public: fn([u8; 4]) -> bool,
+        body: &mut dyn FnMut(&[u8]),
+    ) -> Result<Fetched, String> {
+        let Hop::Redirect(mut to) = hop(at, root, public, body)? else {
+            return Ok(Fetched {
+                host: at.host.to_owned(),
+                redirected_from: None,
+            });
+        };
+        let mut followed = 0;
+        loop {
+            let next = Location::redirect(&to)
+                .map_err(|why| format!("a redirect to {} refused: {why}", shown(&to)))?;
+            followed += 1;
+            match hop(&next, redirect_root, public, body)
+                .map_err(|why| format!("redirected to {}: {why}", next.host))?
+            {
+                Hop::Bytes => {
+                    return Ok(Fetched {
+                        host: next.host.to_owned(),
+                        redirected_from: Some(at.host.to_owned()),
+                    });
+                }
+                Hop::Redirect(_) if followed == MAX_REDIRECTS => {
+                    return Err(format!(
+                        "redirected to {}, which redirected again: {MAX_REDIRECTS} redirect is followed, \
+                         no more",
+                        next.host
+                    ));
+                }
+                Hop::Redirect(again) => to = again,
+            }
+        }
+    }
+
+    /// A redirect's URL as a person reads it: the scheme and host, not a kilobyte of signature.
+    fn shown(url: &str) -> &str {
+        let scheme = url.len() - url.strip_prefix("https://").unwrap_or(url).len();
+        let end = url[scheme..].find('/').map_or(url.len(), |i| scheme + i);
+        &url[..end]
+    }
+
+    enum Hop {
+        Bytes,
+        Redirect(String),
+    }
+
+    /// One `GET` at one location: resolved once, checked, dialed only at what passed, pinned to `root`.
+    fn hop(
+        at: &Location<'_>,
+        root: &[u8],
+        public: fn([u8; 4]) -> bool,
+        body: &mut dyn FnMut(&[u8]),
+    ) -> Result<Hop, String> {
+        let resolved: Vec<SocketAddr> = (at.host, at.port)
+            .to_socket_addrs()
+            .map_err(|e| format!("{:?}", e.kind()))?
+            .collect();
+        let checked = at.check_by(&resolved, public).map_err(|why| match why {
+            AddressRefusal::Private(ip) => format!("a private address ({ip})"),
+            other => format!("{other:?}"),
+        })?;
+        let peer = PinnedPeer::new(checked.host(), root).map_err(|e| format!("{e:?}"))?;
+        let tcp = TcpStream::connect(checked.addresses()).map_err(|e| format!("{:?}", e.kind()))?;
+        let session = Session::handshake(&peer, tcp).map_err(|e| format!("{e:?}"))?;
+        let reply = session
+            .fetch(checked.path(), |part| body(part))
+            .map_err(|e| format!("{e:?}"))?;
+        match reply.status {
+            200 => Ok(Hop::Bytes),
+            301 | 302 | 303 | 307 | 308 => reply
+                .location
+                .map(Hop::Redirect)
+                .ok_or_else(|| format!("status {} with no Location", reply.status)),
+            status => Err(format!("status {status}")),
+        }
     }
 }

@@ -57,6 +57,8 @@ const NO_PROGRAM: &str = "no package_fetch_exerciser in this archive: `cargo xta
 /// three with the patch reverted. The x86_64 leg under OVMF, re-booted once its runner exported
 /// the boot tag, went the same way: green, and red under the patch. A replay needs `package_fetch_exerciser` in the archive, which
 /// no gate builds until milestone 855 (the TLS graph enters the gated build).
+/// Redirects (C2, #2048): six probes through a second test authority, one fetched, five refused.
+/// Their falsification is recorded in `notes/packages/the-index-format.md`, question C.
 #[test_case]
 fn a_package_is_fetched_through_the_index_by_name_over_tls_and_judged_by_its_digest() {
     let Some(exerciser) = program("package_fetch_exerciser") else {
@@ -93,7 +95,7 @@ fn a_package_is_fetched_through_the_index_by_name_over_tls_and_judged_by_its_dig
         Some((service, GRANTED)),
     );
     let run = &spawned.run;
-    let mut got = [0u8; 2048];
+    let mut got = [0u8; 4096];
     let len = super::std_tests::drain_sink(run.report, &mut got, "package_fetch_exerciser");
     let text = core::str::from_utf8(&got[..len]).unwrap_or("<not utf-8>");
     crate::println!("    package_fetch_exerciser printed {len} bytes:\n{text}");
@@ -129,8 +131,28 @@ fn a_package_is_fetched_through_the_index_by_name_over_tls_and_judged_by_its_dig
         "refused nosuch: not in the index",
         "package_fetch_exerciser done",
     ];
+    // calef's C2 (2026-10-12 UTC, #2048): a listed location naming the second root, one redirect.
+    let mut redirected = [0u8; 112];
+    let redirected = format_into(
+        &mut redirected,
+        &[
+            "redirect releases: fetched greeting-0.1.0-",
+            arch,
+            " from basalt.test via releases.basalt.test",
+        ],
+    );
+    let probes: [&str; 6] = [
+        redirected,
+        // Without its root named, the index's root does not admit github.com's stand-in.
+        "redirect unnamed: refused: Tls(InvalidCertificate(",
+        "redirect uncarried: refused: it names a root this image does not carry",
+        "redirect twice: refused: redirected to basalt.test, which redirected again",
+        "redirect private: refused: redirected to private.basalt.test: a private address (10.0.2.2)",
+        "redirect offroot: refused: redirected to offroot.basalt.test: Tls(InvalidCertificate(",
+    ];
     let mut from = 0;
-    for line in lines {
+    let (before_done, done) = lines.split_at(lines.len() - 1);
+    for line in before_done.iter().chain(probes.iter()).chain(done) {
         match text[from..].find(line) {
             Some(at) => from += at + line.len(),
             None => {

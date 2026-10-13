@@ -47,9 +47,10 @@ use entropy_backend as _;
 use grant_plan::spawnproto::{self, Activation, ActivationStatus as S};
 use grant_plan::{CATALOG_SLOT, INDEX_SOURCES_SLOT, INSTALLER_REPLY_SLOT, INSTALLER_SLOT};
 use package_index::{
-    AddressRefusal, Configured, Entry, IMAGE_INDEX_COPY, Index, Location, Miss, PATH_MAX, Root,
-    STAND_IN_INDEX_FILE, Source, Sources,
+    Configured, Entry, IMAGE_INDEX_COPY, Index, Miss, PATH_MAX, Root, STAND_IN_INDEX_FILE, Source,
+    Sources,
 };
+use pinned_tls_client::listed::{self, root_der};
 use pinned_tls_client::{PinnedPeer, Session};
 use socket_protocol::fixture::{PACKAGE_PEER_HOST, PACKAGE_PEER_IP, PACKAGE_PEER_PORT};
 use user_mode_runtime as rt;
@@ -402,25 +403,6 @@ fn sources() -> Result<Sources<'static>, &'static str> {
     Sources::parse(text).map_err(|_| "this image's index sources cannot be read")
 }
 
-/// **The pin**: the root every repository must chain to, as DER. A named root is one this program
-/// carries (`isrg-root-x1`, the production pin of §250 (an image names its distribution's package
-/// index)); hex is the image's own.
-fn root_der(root: &Root<'_>) -> Result<Vec<u8>, &'static str> {
-    match root {
-        Root::Named("isrg-root-x1") => Ok(pinned_tls_client::ISRG_ROOT_X1.to_vec()),
-        Root::Named(_) => Err("this image names a root this jig does not carry"),
-        Root::Der(_) => {
-            let mut out = vec![0u8; 4096];
-            let n = root
-                .der(&mut out)
-                .ok_or("this image's root cannot be decoded")?
-                .len();
-            out.truncate(n);
-            Ok(out)
-        }
-    }
-}
-
 /// Where to connect for one configured repository: the address the image gave, or the host
 /// resolved once, through the resolver badge the progenitor placed (milestone 892 (a std program
 /// at the prompt holds the network and a name resolver)).
@@ -543,9 +525,32 @@ fn install_indexed(entry: &Entry<'_>) -> ExitCode {
     });
     let mut whence = None;
     for at in listed {
-        match fetch_listed(&at, &root, &mut staged) {
-            Ok(()) => {
-                whence = Some(at.host);
+        // The root the signed index named for this location, among those the image carries
+        // (calef's C2 on #2048, 2026-10-12 UTC); a redirect's target is held to the index's own.
+        let fetched = sources
+            .root_for(&at)
+            .ok_or_else(|| "it names a root this image does not carry".to_string())
+            .and_then(|named| root_der(&named).map_err(str::to_string))
+            .and_then(|first_root| {
+                let mut got = None;
+                fill(&mut staged, |sink| {
+                    got = Some(listed::fetch(
+                        &at,
+                        &first_root,
+                        &root,
+                        package_index::public_address,
+                        sink,
+                    )?);
+                    Ok(())
+                })?;
+                got.ok_or_else(|| "nothing arrived".to_string())
+            });
+        match fetched {
+            Ok(from) => {
+                whence = Some(match from.redirected_from {
+                    Some(via) => format!("{} via {via}", from.host),
+                    None => from.host,
+                });
                 break;
             }
             Err(why) => println!(
@@ -565,7 +570,7 @@ fn install_indexed(entry: &Entry<'_>) -> ExitCode {
                 .and_then(|to| fill(&mut staged, |sink| get(repo.host, &to, &root, path, sink)));
             match fetched {
                 Ok(()) => {
-                    whence = Some(repo.host);
+                    whence = Some(repo.host.to_string());
                     break;
                 }
                 Err(why) => println!("  {}'s copy did not arrive: {why}", repo.host),
@@ -587,28 +592,6 @@ fn install_indexed(entry: &Entry<'_>) -> ExitCode {
         true,
         ask(Activation::Install, Some(&staged), None),
     )
-}
-
-/// A listed location, if every address its host resolves to is public (Q1's safeguard), fetched
-/// from exactly those addresses.
-fn fetch_listed(at: &Location<'_>, root: &[u8], staged: &mut Staged) -> Result<(), String> {
-    let resolved: Vec<SocketAddr> = (at.host, at.port)
-        .to_socket_addrs()
-        .map_err(|e| format!("{:?}", e.kind()))?
-        .collect();
-    let checked = at.check(&resolved).map_err(|why| match why {
-        AddressRefusal::Private(ip) => format!("a private address ({ip})"),
-        other => format!("{other:?}"),
-    })?;
-    fill(staged, |sink| {
-        get(
-            checked.host(),
-            checked.addresses(),
-            root,
-            checked.path(),
-            sink,
-        )
-    })
 }
 
 /// Run one fetch into the staging run from its start, and set the run's length to what arrived.

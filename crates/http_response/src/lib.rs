@@ -75,11 +75,22 @@
 /// refused rather than read forever.
 pub const HEAD_MAX: usize = 2048;
 
+/// **A head big enough for `github.com`'s redirect**, for a reader made with
+/// [`Response::with_room`]. A GitHub Release download answers `302` with a head of 5,291 bytes
+/// (measured 2026-10-13 UTC with an HTTP/1.0 `GET`), about 970 of them the `Location` URL and most
+/// of the rest security headers. `pinned_tls_client` reads with this bound, so a package client can
+/// follow the one redirect calef ruled on 2026-10-12 (UTC) on #2048; the plain LAN reader keeps
+/// [`HEAD_MAX`], because its consumers include a `no_std` test component with a small stack.
+///
+/// Name: provisional, minted 2026-10-13 (UTC) by lane `lane/basalt-on-pages-and-releases`.
+pub const REDIRECT_HEAD_MAX: usize = 8192;
+
 /// Why a response was refused. Every variant is a peer that is not speaking the HTTP this reader
 /// accepts; none of them is recoverable by reading more.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
-    /// The status line and headers ran past [`HEAD_MAX`] without the blank line that ends them.
+    /// The status line and headers ran past the reader's bound ([`HEAD_MAX`] unless it was made
+    /// with more room) without the blank line that ends them.
     HeadTooLong,
     /// The first line is not `HTTP/1.<digit> <three digits> ...`.
     BadStatusLine,
@@ -129,16 +140,17 @@ enum State {
     Body { length: u64, seen: u64 },
 }
 
-/// A response being read. See the crate documentation for what it accepts.
-pub struct Response {
-    head: [u8; HEAD_MAX],
+/// A response being read. See the crate documentation for what it accepts. `N` is the most its
+/// status line and headers may take: [`HEAD_MAX`] unless it was made with [`Response::with_room`].
+pub struct Response<const N: usize = HEAD_MAX> {
+    head: [u8; N],
     head_len: usize,
     status: Option<u16>,
     state: State,
 }
 
-/// The head buffer is left out: it is up to [`HEAD_MAX`] bytes of whatever the peer sent.
-impl core::fmt::Debug for Response {
+/// The head buffer is left out: it is up to `N` bytes of whatever the peer sent.
+impl<const N: usize> core::fmt::Debug for Response<N> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Response")
             .field("status", &self.status)
@@ -154,14 +166,41 @@ impl Default for Response {
 }
 
 impl Response {
-    /// A reader that has seen nothing.
+    /// A reader that has seen nothing, with room for a [`HEAD_MAX`] head.
     pub const fn new() -> Self {
+        Self::with_room()
+    }
+}
+
+impl<const N: usize> Response<N> {
+    /// A reader that has seen nothing, with room for an `N`-byte head: `Response::<{
+    /// REDIRECT_HEAD_MAX }>::with_room()` for a host whose redirects are long.
+    pub const fn with_room() -> Self {
         Self {
-            head: [0; HEAD_MAX],
+            head: [0; N],
             head_len: 0,
             status: None,
             state: State::Head,
         }
+    }
+
+    /// **The value of the first header called `name`** (any case), once the head has been read,
+    /// trimmed of spaces and tabs. `None` before the head is complete or when there is none. A
+    /// package client reads `Location` here, and only on a `3xx`.
+    pub fn header(&self, name: &[u8]) -> Option<&[u8]> {
+        if self.state == State::Head {
+            return None;
+        }
+        let head = &self.head[..self.head_len - 2];
+        head.split_inclusive(|&b| b == b'\n')
+            .skip(1)
+            .find_map(|line| {
+                let line = strip_crlf(line)?;
+                let colon = line.iter().position(|&b| b == b':')?;
+                line[..colon]
+                    .eq_ignore_ascii_case(name)
+                    .then(|| trim(&line[colon + 1..]))
+            })
     }
 
     /// Take the next bytes off the connection, and return the part of them that is body.
@@ -176,7 +215,7 @@ impl Response {
             let mut taken = 0;
             let mut ended = false;
             for &byte in input {
-                if self.head_len == HEAD_MAX {
+                if self.head_len == N {
                     return Err(Error::HeadTooLong);
                 }
                 self.head[self.head_len] = byte;
@@ -467,5 +506,35 @@ mod tests {
         assert!(shown.starts_with("Response"), "{shown}");
         assert!(shown.contains("200"), "{shown}");
         assert!(!shown.contains("Server"), "{shown}");
+    }
+
+    /// GitHub's redirect, cut down: the `Location` comes back whole and trimmed, in any case, and
+    /// a header nobody sent is `None`. Before the head ends there are no headers at all.
+    #[test]
+    fn a_redirects_location_is_read_from_the_head() {
+        let mut r = Response::new();
+        r.feed(b"HTTP/1.1 302 Found\r\nDate: x\r\nlocation:  https://a.example/p?q=1 \r\n")
+            .unwrap();
+        assert_eq!(r.header(b"Location"), None);
+        r.feed(b"Content-Length: 0\r\n\r\n").unwrap();
+        assert_eq!(r.status(), Some(302));
+        assert_eq!(r.header(b"LOCATION"), Some(&b"https://a.example/p?q=1"[..]));
+        assert_eq!(r.header(b"Server"), None);
+        assert!(r.is_complete());
+    }
+
+    /// A head of GitHub's measured size (5,291 bytes) is refused by the default reader and read by
+    /// one made with [`REDIRECT_HEAD_MAX`] of room.
+    #[test]
+    fn a_long_head_needs_a_reader_made_with_room() {
+        let mut head = Vec::from(&b"HTTP/1.1 302 Found\r\nContent-Length: 0\r\n"[..]);
+        while head.len() < 5291 - 4 {
+            head.extend_from_slice(b"X-Filler: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\r\n");
+        }
+        head.extend_from_slice(b"\r\n");
+        assert_eq!(Response::new().feed(&head), Err(Error::HeadTooLong));
+        let mut roomy = Response::<REDIRECT_HEAD_MAX>::with_room();
+        assert_eq!(roomy.feed(&head), Ok(&b""[..]));
+        assert_eq!(roomy.status(), Some(302));
     }
 }

@@ -13,6 +13,12 @@
 //! | `refused uptime-...: NotCataloged` | a repository copy with one byte flipped: only the digest can tell |
 //! | `refused nosuch: not in the index` | nothing is fetched for a name the index does not list |
 //! | `passed over https://rebind.basalt.test...` then `fetched rebound-... from basalt.test's targets` | the twin listed under the rebinding name: the client dials only the public address its check passed, never the private one a second resolution would name (milestone 871 (a sixth outsider pass attacks the confinement claim)) |
+//! | `redirect releases: fetched greeting-... via releases.basalt.test` | one redirect under the root the location names, admitted by the digest (calef's C2 on #2048) |
+//! | `redirect <probe>: refused: ...` | an unnamed root, an uncarried root, a second redirect, a private address, a host off the index's root |
+//!
+//! The probes call `pinned_tls_client::listed::fetch`, as `jig` does, judging addresses with
+//! [`stand_in_public`]: slirp reaches no public address (a `guestfwd` outside 10.0.2.0/24 is
+//! refused), so the peer at 10.0.2.9 stands in. Every other fetch uses `public_address`.
 //!
 //! It installs nothing: installing from an index is milestone 809 (the package client becomes a
 //! program)'s `jig`. Under slirp every listed location is private, so taking bytes from one is
@@ -40,7 +46,12 @@ use package_index::{
     AddressRefusal, Entry, Index, Location, Miss, PATH_MAX, PROVISIONAL_CHANNEL, Repository,
     STAND_IN_INDEX_FILE, Source, accept,
 };
+use pinned_tls_client::listed::{self, root_der};
 use pinned_tls_client::{PinnedPeer, Session};
+
+/// The second test authority, the stand-in for Sectigo E46 (calef's C2 on #2048): what
+/// `releases.basalt.test`, `github.com`'s stand-in, chains to. Test-only.
+const SECOND_ROOT: &[u8] = include_bytes!("../../../pinned_tls_client/fixtures/second-root.der");
 
 /// The test authority `helpers/tls-peer` chains `basalt.test` to. Test-only. Listed locations are
 /// pinned to it too: §196 (nife carries TLS) holds one root per source, and which root a listed
@@ -150,6 +161,84 @@ fn install_check(index: &Index<'_>, from: &Repository<'_>, name: &str, architect
     }
 }
 
+/// The redirect probes' judge of a public address: `package_index::public_address`, and the
+/// runners' peer, which stands in for the internet because slirp offers no public address to
+/// reach. Never a client's.
+fn stand_in_public(ip: [u8; 4]) -> bool {
+    ip == [10, 0, 2, 9] || package_index::public_address(ip)
+}
+
+/// The test image's sources as `jig` would read them, with the second authority carried under the
+/// name the probes' locations give it.
+fn test_sources() -> String {
+    let hex = |der: &[u8]| der.iter().map(|b| format!("{b:02x}")).collect::<String>();
+    format!(
+        "repository {BACKUP_HOST} {INDEX_PORT} {PROVISIONAL_CHANNEL}\n\
+         root {}\n\
+         location-root test-second-root {}\n",
+        hex(PINNED_ROOT),
+        hex(SECOND_ROOT)
+    )
+}
+
+/// **calef's C2 (2026-10-12 UTC, #2048), at the client `jig` runs**: `greeting`'s bytes through
+/// each redirect probe, judged by the index's digest when they arrive.
+fn redirect_checks(index: &Index<'_>, architecture: &str) {
+    let text = test_sources();
+    let sources = package_index::Sources::parse(&text).expect("the test sources are refused");
+    let index_root = root_der(&sources.root).expect("the test root");
+    let entry = index
+        .find(GENUINE, architecture)
+        .expect("greeting is in the index");
+    for (probe, root_name) in [
+        ("releases", "test-second-root="),
+        ("releases", ""),
+        ("releases", "no-such-root="),
+        ("twice", "test-second-root="),
+        ("private", "test-second-root="),
+        ("offroot", "test-second-root="),
+    ] {
+        let label = match (probe, root_name) {
+            ("releases", "") => "unnamed",
+            ("releases", "no-such-root=") => "uncarried",
+            _ => probe,
+        };
+        let listed = format!(
+            "{root_name}https://releases.basalt.test:{INDEX_PORT}/{probe}/{}.nifepkg",
+            entry.stem
+        );
+        let at = Location::parse(&listed).expect("a probe's location is refused");
+        let mut bytes = Vec::new();
+        let fetched = sources
+            .root_for(&at)
+            .ok_or_else(|| "it names a root this image does not carry".to_string())
+            .and_then(|named| root_der(&named).map_err(str::to_string))
+            .and_then(|first_root| {
+                listed::fetch(
+                    &at,
+                    &first_root,
+                    &index_root,
+                    stand_in_public,
+                    &mut |part| bytes.extend_from_slice(part),
+                )
+            });
+        match fetched {
+            Ok(from) => match accept(&entry, &bytes) {
+                Ok(ok) => println!(
+                    "redirect {label}: fetched {} from {} via {}, {} bytes, program {}",
+                    entry.stem,
+                    from.host,
+                    from.redirected_from.as_deref().unwrap_or("nothing"),
+                    bytes.len(),
+                    ok.program
+                ),
+                Err(why) => println!("redirect {label}: refused by the digest: {why:?}"),
+            },
+            Err(why) => println!("redirect {label}: refused: {why}"),
+        }
+    }
+}
+
 fn main() {
     // The panic-to-exit hook `pinned_tls_exerciser` carries, for its reason.
     std::panic::set_hook(Box::new(|info| {
@@ -172,5 +261,6 @@ fn main() {
     for name in [GENUINE, TAMPERED, ABSENT, REBOUND] {
         install_check(&index, from, name, architecture);
     }
+    redirect_checks(&index, architecture);
     println!("package_fetch_exerciser done");
 }

@@ -159,6 +159,61 @@ fn the_production_pin_is_isrg_root_x1() {
 }
 
 #[test]
+fn the_release_root_is_sectigo_e46() {
+    use sha2::Digest;
+    let digest = sha2::Sha256::digest(pinned_tls_client::SECTIGO_ROOT_E46);
+    assert_eq!(
+        digest.as_slice(),
+        pinned_tls_client::SECTIGO_ROOT_E46_SHA256
+    );
+    PinnedPeer::new("github.com", pinned_tls_client::SECTIGO_ROOT_E46).unwrap();
+}
+
+/// **The peer's redirect probes, as `listed::fetch` meets them** (calef's C2 on #2048): the
+/// second test authority admits `releases.basalt.test` and the pinned one does not, each probe
+/// answers `302` with the `Location` the boot test expects, and no redirect's body reaches the
+/// sink.
+#[test]
+fn the_releases_stand_in_chains_to_the_second_root_and_redirects() {
+    let second =
+        std::fs::read(repository().join("pinned_tls_client/fixtures/second-root.der")).unwrap();
+    let pinned = PinnedPeer::new("releases.basalt.test", &pinned_root()).unwrap();
+    assert!(matches!(
+        Session::handshake(&pinned, Peer::start()),
+        Err(Error::Tls(rustls::Error::InvalidCertificate(_)))
+    ));
+    let peer = PinnedPeer::new("releases.basalt.test", &second).unwrap();
+    for (kind, to) in [
+        (
+            "releases",
+            "https://basalt.test:8443/rolling/targets/x.nifepkg",
+        ),
+        ("twice", "https://basalt.test:8443/twice-again/x.nifepkg"),
+        (
+            "twice-again",
+            "https://basalt.test:8443/rolling/targets/x.nifepkg",
+        ),
+        (
+            "private",
+            "https://private.basalt.test:8443/rolling/targets/x.nifepkg",
+        ),
+        (
+            "offroot",
+            "https://offroot.basalt.test:8443/rolling/targets/x.nifepkg",
+        ),
+    ] {
+        let session = Session::handshake(&peer, Peer::start()).unwrap();
+        let reply = session
+            .fetch(&format!("/{kind}/x.nifepkg"), |_| {
+                panic!("a redirect's body reached the sink")
+            })
+            .unwrap();
+        assert_eq!(reply.status, 302, "{kind}");
+        assert_eq!(reply.location.as_deref(), Some(to), "{kind}");
+    }
+}
+
+#[test]
 fn a_pin_names_a_host_not_an_address() {
     assert!(matches!(
         PinnedPeer::new("10.0.2.9", &pinned_root()),
@@ -194,4 +249,35 @@ fn real_lets_encrypt_hosts_chain_to_isrg_root_x1() {
             started.elapsed()
         );
     }
+}
+
+/// **A GitHub Release download, as `jig` meets it** (calef's C2 on #2048, 2026-10-12 UTC):
+/// `github.com` chains to [`pinned_tls_client::SECTIGO_ROOT_E46`] and answers `302` with a
+/// `Location` on `release-assets.githubusercontent.com`, which chains to ISRG Root X1 and serves
+/// the bytes. Any public Release asset will do; this is ripgrep's.
+#[test]
+#[ignore = "needs the internet"]
+fn a_release_download_is_e46_then_one_redirect_to_x1() {
+    let path = "/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz";
+    let peer = PinnedPeer::new("github.com", pinned_tls_client::SECTIGO_ROOT_E46).unwrap();
+    let session = Session::handshake(
+        &peer,
+        std::net::TcpStream::connect(("github.com", 443)).unwrap(),
+    )
+    .expect("github.com did not chain to Sectigo E46");
+    let reply = session
+        .fetch(path, |_| panic!("a redirect's body reached the sink"))
+        .unwrap();
+    assert_eq!(reply.status, 302);
+    let to = reply.location.expect("a 302 with no Location");
+    let rest = to.strip_prefix("https://").unwrap();
+    let (host, target) = rest.split_at(rest.find('/').unwrap());
+    eprintln!("redirected to {host}, a {}-byte path", target.len());
+    let peer = PinnedPeer::new(host, pinned_tls_client::ISRG_ROOT_X1).unwrap();
+    let session = Session::handshake(&peer, std::net::TcpStream::connect((host, 443)).unwrap())
+        .unwrap_or_else(|e| panic!("{host} did not chain to ISRG Root X1: {e:?}"));
+    let mut n = 0usize;
+    let reply = session.fetch(target, |part| n += part.len()).unwrap();
+    assert_eq!(reply.status, 200);
+    assert!(n > 1_000_000, "only {n} bytes arrived");
 }
