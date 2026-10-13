@@ -1,134 +1,43 @@
-//! **The login service's test client** (milestone 49; see `components/src/login.rs`).
+//! **The login service's test client**: one binary and one endowment, run as `_start(behaviour,
+//! identity, secret)`, the last two indices into [`credential_protocol::fixture::PEOPLE`]. So
+//! `(ALICE, WRONG)` is the honest program presenting a secret that is nobody's, and a refusal is
+//! tested on the honest path. Each behaviour constant ([`LOGIN`] through [`EMPTY_SCHEDULE`])
+//! documents its own flow; the properties they share:
 //!
-//! **One binary, one endowment, and two separate things a run is handed: a behaviour and a
-//! credential** (milestone 293). It shares `credentialer_test_client`'s reason for being one
-//! program rather than several (a program that shares the honest path with an attempted-wrong-secret
-//! run is a fairer test of a refusal than a different program failing for its own reasons), but it
-//! delivers that by construction rather than by convention: the wrong-secret run is not a separate
-//! arm that could drift away from the honest one, it is [`LOGIN`] with a different secret.
-//!
-//! Until 293 this file had **eleven roles** and its first act was a lookup from role number to a
-//! pair of byte strings. Five of the eleven ran byte-identical code and differed only in that pair
-//! (`alice`, `bob`, the same `alice` with a wrong secret, a `carol` with no home subtree, and a
-//! `bob` presenting a real credential while the terminal was on loan), and two more differed
-//! only in which identity they wrote into a marker file. A role that differs only in its credentials
-//! is not a role.
-//!
-//! So a run is `_start(behaviour, identity, secret)`:
-//!
-//! - **`behaviour`** is what this process does with the session it gets, and the eight below are
-//!   eight genuinely different flows rather than eight spellings of one.
-//! - **`identity` and `secret`** are indices into [`credential_protocol::fixture::PEOPLE`], the roster
-//!   three files used to keep their own copy of. They are composed at the call site, so
-//!   `(ALICE, ALICE)` is an honest login and `(ALICE, WRONG)` is the same program presenting a
-//!   secret that is nobody's. [`FREE_TERMINAL`] takes `(NONE, NONE)` and authenticates nothing.
-//!
-//! Every behaviour holds the identical endowment: the login service's front-door request endpoint,
-//! its front-door result endpoint, a report endpoint, and a small scratch region (milestone 49's
-//! channel-per-client update: a run must map the page [`login_protocol::CONNECTED`] delegates before it
-//! holds anything else of its own to draw page tables from).
-//!
-//! # The eight behaviours
-//!
-//! - [`LOGIN`] presents the credential it was handed and stops at the verdict, then proves what it
-//!   received. Every credential case is this one behaviour: two identities' correct credentials
-//!   (both must succeed, and the kernel test compares what each received; two distinct caretaker
-//!   endpoints is the channel-shaped attribution DECISIONS §109 decided on), a real identity with
-//!   the wrong secret (must be refused, and nothing may follow: this behaviour never calls
-//!   `RECEIVE_CAP` after a refusal, because the protocol promises nothing does on a denial and a client
-//!   that tried would block forever), a real authenticated identity nobody provisioned a subtree for
-//!   (refused identically, DECISIONS §117's "no distinguishable signal" answer; see `login.rs`'s own
-//!   BUGS), and a real credential presented while [`HOLD_TERMINAL`]'s loan is outstanding (refused
-//!   [`login_protocol::NO_TERMINAL`], which the same "nothing follows a refusal" flow covers for free
-//!   since `NO_TERMINAL != OK`).
-//! - [`WRITE_MARKER`] (DECISIONS §117) logs in and then, through the delegated directory, `CREATE`s
-//!   a one-shot marker file naming **the identity it was handed**, and checks that
-//!   [`filesystem_protocol::fixture::tree::INNER`] is *not* there (that name lives only in the old,
-//!   shared fixture subtree every identity used to be attenuated to before §117; its absence is this
-//!   client's own proof that the granted directory is not that one). Two identities run it; it is
-//!   one behaviour because the only thing that differed was the name it wrote, and that name is now
-//!   an argument.
-//! - [`READ_MARKER`] logs in in a second, independent channel and reads the marker back: the kernel
-//!   test compares what it reads against what each [`WRITE_MARKER`] run wrote, which is the whole
-//!   property under test: two different identities land in two different, isolated subtrees, and the
-//!   same identity's two sessions land in the *same* one.
-//! - [`LOGOUT`] logs in, proves the directory works exactly like [`LOGIN`] does, then calls
-//!   `MemoryRegion::DESTROY` on the fourth delegated capability (`login_protocol`'s own logout ticket)
-//!   and proves the *directory* came down with it: a further `READDIR` through it must fail. This is
-//!   milestone 49's caretaker-teardown fix, proven end to end rather than merely by the syscall's own
-//!   return code. It reports how long that `DESTROY` waited (microseconds) in the third report word,
-//!   where the others put an identity hint; see `destroy_with_retry`.
-//! - [`HOLD_TERMINAL`] (milestone 49's terminal update) logs in, proves the fifth delegated
-//!   capability (the terminal) actually names a real, working endpoint by sending a known word
-//!   through it (which the kernel test catches with its own `sched::ipc_receive` on the stand-in
-//!   `Wiring::term_ep`, the same "prove it works, not merely that it arrived" standard the directory
-//!   and budget already get), then tears its own session down exactly like [`LOGOUT`] -- but,
-//!   deliberately, **without** sending [`login_protocol::logout_word`], so the terminal itself stays on
-//!   loan even though the session's memory came home. That is the property under test: session
-//!   teardown and freeing the terminal are two independent acts.
-//! - [`PRESENT_RUN_UNVOUCHED`] (DECISIONS §219 (how the shell names an installed program to the spawner) gate D2) logs in like [`LOGIN`] and sends a known
-//!   word on the sixth delegated capability, the run-unvouched endpoint, which the kernel test
-//!   catches on the endpoint it gave `login`. Every successful login that was announced a sixth
-//!   capability also tries to delegate it and reports the refusal ([`F_RUN_UNVOUCHED_NOT_GRANTABLE`]).
-//! - [`PENDING_WORK`], for milestone 152 (durable delegation), logs in, splits a one-page child off
-//!   the delegated budget to stand for a scheduled job's authority, and then attempts the logout
-//!   [`LOGOUT`] performs. The first step of that logout, `MemoryRegion::DESTROY` on the budget, must
-//!   be refused `NotPermitted` while the child lives, the live-children rule of DECISIONS §16 (object
-//!   revocation), and the budget must still work after the refusal. Only once the child is
-//!   destroyed does the logout go through, in [`LOGOUT`]'s order and with its proofs. This is the property milestone 152's
-//!   durable session leans on, proven on the object a login session actually is.
-//! - [`FREE_TERMINAL`] sends [`login_protocol::logout_word`] on the front door directly, without ever
-//!   calling `CONNECT`: there is no identity or secret in this word at all (`login_protocol`'s own BUGS
-//!   on what this does and does not authenticate). It is the one behaviour that takes no credential,
-//!   and it says so with [`credential_protocol::fixture::NONE`] rather than by convention.
-//!
-//! A run that succeeds does not stop at the verdict. It **uses** what it received: a directory
-//! read through the caretaker's endpoint, the file service's shared frame mapped and used for that
-//! read, and a page retyped from the delegated budget. A capability that arrived but does not work
-//! would pass every earlier assertion and fail only this one.
+//! - After any refusal ([`login_protocol::DENIED`], [`login_protocol::NO_TERMINAL`]) nothing
+//!   follows, so a run never calls `RECEIVE_CAP`, which would block forever. An identity with no
+//!   subtree is refused identically to a wrong secret (§117 (a principal's subtree is named by its
+//!   identity string)).
+//! - A run that succeeds uses what it received: a directory read through the caretaker, the file
+//!   service's frame mapped for that read, and a page retyped from the delegated budget. A
+//!   capability that arrived but does not work fails only this.
+//! - Two identities' correct logins must yield two distinct caretaker endpoints, the channel-shaped
+//!   attribution of §109 (attribution is a channel property); [`WRITE_MARKER`] and [`READ_MARKER`]
+//!   prove two identities land in isolated subtrees and one identity's two sessions in the same.
+//! - Session teardown and freeing the terminal are independent acts ([`HOLD_TERMINAL`]).
 //!
 //! # Capability contract
 //!
-//! - slot 0: the login service's front-door request endpoint, `WRITE`. Carries exactly one word
-//!   this program ever sends: [`login_protocol::connect_word`].
-//! - slot 1: the login service's front-door result endpoint, `READ`. [`login_protocol::CONNECTED`],
-//!   then three delegated capabilities: a private request endpoint, a private result endpoint, and
-//!   a staging page. The actual [`login_protocol::LOGIN`] exchange happens on the first two of those,
-//!   never on slots 0/1 again. [`login_protocol::logout_word`] also travels here directly ([`FREE_TERMINAL`]),
-//!   since it needs no private channel at all.
+//! - slot 0: the front-door request endpoint, `WRITE`; it only ever carries
+//!   [`login_protocol::connect_word`] and, for [`FREE_TERMINAL`], [`login_protocol::logout_word`].
+//! - slot 1: the front-door result endpoint, `READ`: [`login_protocol::CONNECTED`], then a private
+//!   request endpoint, a private result endpoint and a staging page, on which the login happens.
 //! - slot 2: a report endpoint, `WRITE`.
-//! - slot 3: a small `MemoryRegion`, `WRITE`: this program's own scratch, for `map_page_frame`'s
-//!   page-table cost when it self-maps the page [`login_protocol::CONNECTED`] delegates (see
-//!   `kernel::user::login_service::CLIENT_SCRATCH_UT_PAGES`).
-//! - `a0`: the behaviour.
-//! - `a1`: the identity, an index into [`credential_protocol::fixture::PEOPLE`].
-//! - `a2`: the secret: the same index for that person's own, [`credential_protocol::fixture::WRONG`]
-//!   for one that is nobody's, [`credential_protocol::fixture::NONE`] for no credential at all.
+//! - slot 3: a small `MemoryRegion`, `WRITE`, for the page tables of mapping the staging page
+//!   (`kernel::user::login_service::CLIENT_SCRATCH_UT_PAGES`).
+//! - `a0` the behaviour, `a1` the identity, `a2` the secret: the same index for the person's own,
+//!   [`credential_protocol::fixture::WRONG`] for nobody's, [`credential_protocol::fixture::NONE`]
+//!   for none.
 //!
 //! # BUGS
 //!
-//! - **The identity and the secret travel as indices, not as bytes, because nothing in this tree can
-//!   hand a `no_std` program a string it was not compiled against.** A process is born with three
-//!   integer registers, a capability list and a set of mappings (`kernel::user::Spawn`), and that is
-//!   the whole of it: `grant_plan::ArgSpec` carries exactly one *integer*, `environment_protocol`'s
-//!   config page is validated against curated domains precisely so a secret cannot ride on it, and
-//!   a page of bytes needs a frame the spawner allocates, writes and maps. So the bytes live in a
-//!   crate both sides link and the register names which one. That is enough for a fixture and is not
-//!   a credential-passing mechanism: a real program needs a capability to something that holds the
-//!   secret, which is DECISIONS §41's answer and already what `login` itself uses.
-//! - **A spawn argument is visible wherever a spawn is recorded.** These indices are not, which is
-//!   an accident of them being small integers rather than a property anything enforces; had the
-//!   bytes themselves gone into the register the same argument would print. `swish`'s `caps` preview
-//!   reads a manifest and this program has none (it is spawned by the kernel test harness, not by
-//!   the shell), so nothing prints them today. Nothing here is a design for carrying real secrets.
+//! - The credential travels as indices because nothing can hand a `no_std` program a string it was
+//!   not compiled against. That suits a fixture; a real program needs a capability to whatever
+//!   holds the secret (§41 (the endpoint is the broker)), as `login` itself has.
+//! - A spawn argument is visible wherever a spawn is recorded; nothing prints these today.
 //!
-//! Name: ratified 2026-09-14 (calef, milestone 293), **on the name and not the shape**: the same
-//! ruling minted 293 to decide what the eleven roles should have been, so that this file's shape
-//! could be fixed without the name blocking it. Minted 2026-08-22 for milestone 49 on the
-//! `<service>_test_client` pattern, which was not that lane's invention: calef signed that exact
-//! shape for the credential service, turning down `credcli` as a squished abbreviation and
-//! `credentialer_client` because that name belongs to the real client a later milestone needs. The
-//! same reservation holds here, so a future real login client is not squatted.
+//! Name: ratified 2026-09-14 (calef), on the `<service>_test_client` pattern, which keeps
+//! `login_client` free for a real client.
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks
@@ -184,7 +93,7 @@ pub const WRITE_MARKER: u64 = 1;
 /// ([`login_protocol::identity_hint`]). See the module docs.
 pub const READ_MARKER: u64 = 2;
 /// Log in, prove the directory and budget work exactly like [`LOGIN`], then use the fourth delegated
-/// capability (the logout ticket; `login_protocol`'s own module docs) to tear the session down and
+/// capability (the logout ticket; [`login_protocol::OK`]'s doc) to tear the session down and
 /// confirm it actually came down: a further `READDIR` through the now-`DESTROY`ed directory
 /// capability must fail. See the module docs.
 pub const LOGOUT: u64 = 3;
@@ -261,7 +170,7 @@ pub const F_NOT_SHARED_SUBTREE: u64 = 1 << 2;
 pub const F_MARKER_WRITTEN: u64 = 1 << 3;
 /// **Set when the fourth capability's `MemoryRegion::DESTROY` returned success.** Set only by
 /// [`LOGOUT`]; retried on refusal until the region comes down or [`DESTROY_WAIT_SECS`] runs out
-/// (`login_protocol`'s own module docs, on the fourth capability, name the transient window this
+/// ([`login_protocol::OK`]'s doc, on the fourth capability, name the transient window this
 /// covers, and `destroy_with_retry` says why the bound is a clock).
 pub const F_TEARDOWN_OK: u64 = 1 << 4;
 /// **Set when a `READDIR` through the directory capability failed *after* teardown.** Set only by
@@ -865,7 +774,7 @@ const DESTROY_WAIT_SECS: u64 = 5;
 
 /// **`MemoryRegion::DESTROY` on `ut`, retried until the region actually becomes destroyable.** Used
 /// on both the fourth delegated capability (the caretaker's construction region) and the third (the
-/// client's own budget, already held with `WRITE` by every behaviour): `login_protocol`'s own module docs, on
+/// client's own budget, already held with `WRITE` by every behaviour): `login_protocol::OK`'s doc, on
 /// the fourth capability, name the one transient refusal the *caretaker's* region can give
 /// (mid-`forward` to the file service, blocked on an endpoint the region does not own, at the exact
 /// instant `DESTROY` is attempted; that window closes on its own). The budget has no such window:

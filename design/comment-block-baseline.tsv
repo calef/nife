@@ -18,7 +18,6 @@ components/src/date.rs:1	96
 components/src/disk_partitioner.rs:1	105
 components/src/disk_surveyor.rs:1	79
 components/src/display_terminal.rs:1	60
-components/src/entropy.rs:1	120
 components/src/framebuffer_driver.rs:1	75
 components/src/fs_file_caretaker.rs:1	53
 components/src/fs_nameset_caretaker.rs:1	68
@@ -31,7 +30,6 @@ components/src/job_undertaker.rs:1	86
 components/src/keyboard_driver.rs:1	69
 components/src/line_editor.rs:1	56
 components/src/login_audit_receiver.rs:1	65
-components/src/mdr.rs:1	116
 components/src/name_resolver.rs:1	91
 components/src/net_stack.rs:1	58
 components/src/network_time_client.rs:1	112
@@ -52,14 +50,12 @@ components/src/terminal_sink_caretaker.rs:1	56
 components/src/top.rs:1	90
 components/src/usb_keyboard_driver.rs:1	55
 components/src/user_timetable_keeper.rs:1	69
-components/src/uuid.rs:1	123
 components/src/wc.rs:1	75
 crates/abi/src/lib.rs:1	110
 crates/abi/src/rendezvous.rs:58	46
 crates/abi/src/rendezvous.rs:142	68
 crates/activation_set/src/lib.rs:1	106
 crates/address_space_identifier/src/lib.rs:1	72
-crates/address_space_map/src/lib.rs:1	120
 crates/argument_protocol/src/lib.rs:1	68
 crates/bitmap_font/examples/specimen.rs:1	59
 crates/bitmap_font/src/glyphs.rs:44	128
@@ -71,14 +67,12 @@ crates/board_console/src/lottery.rs:1	51
 crates/board_console/src/port.rs:1	52
 crates/board_console/src/progress.rs:1	60
 crates/board_console/src/screen.rs:1	62
-crates/board_console/src/stop.rs:1	124
 crates/boot_ladder/src/lib.rs:1	70
 crates/boot_slot/src/lib.rs:378	65
 crates/c_seam/src/lib.rs:2	89
 crates/calendar/src/lib.rs:1	113
 crates/capability/src/lib.rs:1	55
 crates/capability_witness_protocol/src/lib.rs:1	83
-crates/clock_protocol/src/lib.rs:1	118
 crates/component_plan/src/lib.rs:775	46
 crates/coremark/src/lib.rs:1	53
 crates/designware_ethernet/src/lib.rs:2	110
@@ -94,8 +88,6 @@ crates/e1000e/src/pch/phy.rs:1	62
 crates/e1000e/src/pch/sequence.rs:1	57
 crates/elf/src/lib.rs:1	90
 crates/elf/src/note.rs:1	58
-crates/entropy_protocol/src/lib.rs:1	116
-crates/environment_protocol/src/lib.rs:1	118
 crates/extensible_host_controller_interface/src/lib.rs:2	87
 crates/file_allocation_table/src/lib.rs:2	95
 crates/filesystem_protocol/src/fs.rs:127	52
@@ -179,7 +171,6 @@ crates/user_mode_runtime/src/initial_ramdisk.rs:1	56
 crates/user_mode_runtime/src/mapped_window.rs:1	57
 crates/user_mode_runtime/src/process.rs:112	47
 crates/user_mode_runtime/src/syscall.rs:12	45
-crates/video_terminal/src/lib.rs:1	130
 crates/video_terminal/src/palette.rs:12	54
 crates/virtio/src/lib.rs:2	72
 crates/walk_pricing/src/lib.rs:1	49
@@ -194,7 +185,6 @@ fixtures/src/file_source.rs:1	68
 fixtures/src/greeting.rs:1	42
 fixtures/src/hello.rs:1	57
 fixtures/src/job_mix_task.rs:1	70
-fixtures/src/login_test_client.rs:1	131
 fixtures/src/network_time_test_server.rs:1	57
 fixtures/src/outlaw.rs:1	52
 fixtures/src/process_composition_witness.rs:1	93
@@ -211,8 +201,6 @@ kernel/src/arch/riscv64/fp.rs:1	44
 kernel/src/arch/riscv64/instructions.rs:1	42
 kernel/src/arch/riscv64/iommu.rs:1	54
 kernel/src/arch/riscv64/pmu.rs:1	66
-kernel/src/arch/x86_64/amd_vi.rs:1	125
-kernel/src/arch/x86_64/ap_boot.rs:1	131
 kernel/src/arch/x86_64/irq.rs:1	106
 kernel/src/arch/x86_64/irq.rs:1181	43
 kernel/src/arch/x86_64/isa.rs:1	75
@@ -222,7 +210,6 @@ kernel/src/arch/x86_64/pmu.rs:1	108
 kernel/src/arch/x86_64/reset.rs:1	44
 kernel/src/arch/x86_64/rtc.rs:1	61
 kernel/src/arch/x86_64/tco.rs:1	73
-kernel/src/arch/x86_64/timer.rs:1	117
 kernel/src/bench/cycle_probe.rs:13	50
 kernel/src/bench/smp_throughput.rs:13	42
 kernel/src/cap.rs:228	79
@@ -252,7 +239,6 @@ kernel/src/sched/ipc_tables.rs:32	95
 kernel/src/sched/ipc_tables.rs:194	45
 kernel/src/screen.rs:1	68
 kernel/src/self_test.rs:1	66
-kernel/src/soak.rs:1	130
 kernel/src/stack.rs:166	43
 kernel/src/sync.rs:1	47
 kernel/src/sync.rs:55	64
