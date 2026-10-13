@@ -20,6 +20,9 @@ this block names 297, 909 and 910 by bare number and leaves them out of its fron
 marked exception: whoever lands the later of the two restores the citations and the
 dependencies.)*
 
+*Name: provisional, minted 2026-10-12 (UTC) by maintainer/911-rulings: `--json` and the file's
+keys, after common package-tool spellings. calef names them.*
+
 calef, 2026-10-12 (UTC): *"If the owner does approvals, how will we script installs?"* The
 maintainer proposed the design below, and he answered: *"Yes, write it up as a milestone."*
 
@@ -82,8 +85,9 @@ waits on silicon and a person, and putting it here would hold scripted installs 
 
 ## The approval file
 
-The format's details are the lane's to propose, and everything in this section is provisional. What
-it must hold:
+The file is TOML, like the manifests of milestone 611 (every program and crate belongs to a
+package), ruled by calef on 2026-10-12 (UTC) after he asked for "something more standard like JSON
+or yaml". What it must hold:
 
 - Its name, so a delegation and an error can say which file refused.
 - Per package, by name:
@@ -98,13 +102,24 @@ it must hold:
   installs is the question of §195 (a reviewed recipe vouches for a package, and the machine's owner
   may overrule it), not of this file.
 
-An illustration, not a format:
+An illustration, with provisional keys:
 
-```
-approval lab-runner
-package monit        zones: none         service: yes  dirs: monit/state rw  update: yes  remove: no
-package ripgrep      zones: none         service: no   dirs: none            update: yes  remove: yes
-package vaultwarden  zones: example.org  service: yes  dirs: vault rw        update: yes  remove: no
+```toml
+approval = "lab-runner"
+
+[package.monit]
+zones   = []
+service = true
+dirs    = { "monit/state" = "rw" }
+update  = true
+remove  = false
+
+[package.vaultwarden]
+zones   = ["example.org"]
+service = true
+dirs    = { "vault" = "rw" }
+update  = true
+remove  = false
 ```
 
 The rule is a subset test. An install or update passes when the manifest's asks are a subset of the
@@ -112,11 +127,12 @@ file's entry for that package, and the grants given are exactly the asks. When t
 file, the install fails before anything is fetched past the manifest, and the error names each extra
 grant, for example `refused: monit 5.36 asks for zone example.net, which lab-runner does not
 allow`. It never grants the intersection: a program that silently got less than it asked would fail
-at run time, far from the cause. A removal passes when the entry says `remove: yes`.
+at run time, far from the cause. A removal passes when the entry says `remove = true`.
 
-`jig` compiles the file, on the owner's console, into canonical grant records: one per package,
-sorted, in the encoding the activation set already stores (`crates/activation_set`, §208). A
-human-readable file is for the owner; the progenitor compares records and never parses the file.
+Only `jig` parses the file. It compiles it, on the owner's console, into canonical grant records:
+one per package, sorted, in the encoding the activation set already stores (`crates/activation_set`,
+§208). A human-readable file is for the owner; the progenitor compares records and never parses the
+file.
 
 ## The grant record, which every path writes
 
@@ -146,10 +162,13 @@ differs from `apt -y`, which runs with all of root's authority whatever the scri
 file contains, flags any root-zone entry the way an interactive install does, and asks once. On
 yes, `jig` sends the compiled records to the progenitor on its installer endpoint as a new
 activation request, `Approve`, which only an owner's (undelegated) badge may send. The progenitor
-stores the approval by name and digest. The owner then starts the job that will install, a script
-or a service, with the grant "installer, within approval X". The progenitor places an installer
-endpoint whose badge carries X, through §230 (badged endpoint capabilities: how a server learns
-which client's frame a request is in), so no holder can forge or widen it. That grant has two forms:
+stores the approval by name and digest. Approving a name again shows only the grants changed since
+the stored digest. On yes the name's records are replaced, and delegations already running under it
+are checked against them from their next request, with no restart and no new endpoint. The owner
+then starts the job that will install, a script or a service, with the grant "installer, within
+approval X". The progenitor places an installer endpoint whose badge carries X, through §230
+(badged endpoint capabilities: how a server learns which client's frame a request is in), so no
+holder can forge or widen it. That grant has two forms:
 
 - one run: the owner's console starts a script's job with it, and it ends when the job is reaped;
 - standing: a service package (910) whose manifest asks for "installer, within approval X", granted
@@ -166,7 +185,25 @@ send `Approve` or `Vouch`, so it can neither widen X nor make a new approval.
 every later request under a badge that carries X is answered `Revoked` with nothing read past its
 first message. Held endpoint copies die with their jobs, as §270's reply endpoints already do at
 reap. Removing the service package that held a standing grant drops that grant with it. Editing the
-file changes nothing until the owner runs `jig approve` again (open question 1).
+file changes nothing until the owner runs `jig approve` again (ruled 2026-10-12).
+
+## `jig` stays on one machine
+
+calef, 2026-10-12 (UTC): *"maybe we are overloading jig. It should handle installs to the local
+system. So adding repositories, removing repositories, installing, upgrading, removing packages,
+updating its local index. There are other layers handling the automation of groups of servers,
+etc."* And: *"I just want to ensure that a fleet options is possible. I don't want to define it
+now."*
+
+So `jig` covers one machine: repositories (add, remove), its local index, install, upgrade, remove,
+rollback and approvals. Managing a fleet (role files, schedules, signing, fleet status) is a
+separate layer, out of scope and not defined. Two hooks keep it possible:
+
+1. A constraint: `Approve` leaves room for a later second form, the records plus an owner's
+   signature checked against a key the owner trusted at the console. Nothing is built for it, and
+   nothing in the format rules it out.
+2. Results and refusals in a machine-readable form, such as `--json` with stable exit codes (item 7
+   of the work).
 
 ## Prior art
 
@@ -199,20 +236,26 @@ Read 2026-10-12 (UTC) unless marked.
   That is the nearest model: allowlists checked by the authority that grants, not by the client
   asking. This file puts the list per package rather than per capability, because a package is what
   the owner approves.
+- One machine and many (recalled, not read today). apt manages one machine, and Ansible or
+  unattended-upgrades drive it across many. Trusting a repository key (`signed-by`) is local apt
+  configuration even when Ansible places it.
 
 ## The work
 
 1. The grant record: one canonical encoding in `crates/activation_set`, written by interactive
    install, and the "how it was answered" column beside it. Host tests that two paths agree.
-2. The approval file: the lane proposes the format; `jig` parses it and compiles it to grant
-   records. Host tests for the subset test and its error, which names every extra grant.
+2. The approval file, in TOML: `jig` parses it and compiles it to grant records. Host tests for
+   the subset test and its error, which names every extra grant.
 3. `jig install --approved <file>`, and the same flag on update and `remove`.
 4. `Approve` and `Revoke` on the installer endpoint, and the badge that carries an approval, as
    §270's semantics amended in `design/decisions/` (a new method on an existing endpoint, recorded
    there per §10 (process model: capability-based, microkernel; untyped memory deferred)).
+   Re-approval as ruled, and room in `Approve` for the signed form.
 5. The two delegation forms: a one-run grant at spawn from the owner's console, and the standing ask
    in a service manifest beside 910's declaration.
 6. A host-side check basalt's composition can call, sharing item 1's crate, so 909 can adopt it.
+7. A machine-readable form of `jig`'s results and refusals (`--json`), with documented, stable
+   exit codes. A refusal names each extra grant as data.
 
 ## Done when
 
@@ -226,19 +269,25 @@ Under QEMU on aarch64, riscv64 and x86_64, in `script/swish-check`, with fixture
    asking more than its entry, nor send `Approve`. After `jig revoke`, it can install nothing.
 4. The grant record from an interactive yes is byte-identical to the scripted one for the same
    grants.
+5. An edited file changes nothing until `jig approve` runs again, which shows only the changed
+   grants; a delegation already running then installs within the new records, with no restart and
+   no new endpoint.
+6. A refused scripted install exits with its documented code, and `--json` names each extra
+   grant.
 
 Reuse: §270's badge and activation request, `crates/activation_set`, and 910's and 892's grant
 encodings, extended rather than duplicated. The file's design takes Fuchsia's checked-by-the-granter
 allowlist and Android's per-permission grant state; debconf preseeding was read as the shape that
 pre-answers questions without bounding them.
 
+## Ruled 2026-10-12 (UTC)
+
+calef answered "Yes, record them", recorded on #2030, and the body now carries each. Open question
+1 is (a): an approval binds to the file's digest at `jig approve`. The file is TOML. `jig` keeps to
+one machine.
+
 ## Open questions for calef
 
-1. **When the owner edits an approval file, does a delegation see the edit?** (a) A delegation binds
-   to the file's digest at `jig approve`; an edit does nothing until the owner approves again. (b)
-   It binds to the name, and edits take effect at once. *Recommended: (a).* A file a script can
-   reach is a file a script might write, and under (b) a widening would happen with nobody reading
-   it, which is exactly what `--yes` was refused for. (a) costs one command per edit.
 2. **May a delegated holder roll back?** (a) No; rollback stays the owner's. (b) Yes, when every row
    the previous generation restores lies within its approval. *Recommended: (b).* 858's updater must
    undo a bad update with nobody present, and a rollback inside the file grants nothing the owner
