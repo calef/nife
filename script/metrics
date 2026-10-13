@@ -1665,8 +1665,8 @@ def harnesses(tree):
 # documents would hide the debt rather than measure it. If the gate wants a column for what it
 # excuses, that is its own column; it does not get to edit this one.
 #
-# The scope is `helpers/prose_ratchet.py`'s, shared with the gate so the two cannot drift
-# (milestone 586 (a prose ratchet in lint) moved it there): every `.md` directly under
+# The scope and the count are `helpers/prose_ratchet.py`'s, shared with the gate so the two cannot
+# drift (milestone 586 (a prose ratchet in lint); the count is `budget_words`, calef 2026-10-13 UTC): every `.md` directly under
 # `design/`, `design/decisions/`, `design/roadmap/`, `notes/` and `briefs/`, plus `AGENTS.md`, plus
 # the appendices §212 (a prose budget) puts under the same cap. Before 586 this graph's scope was "directly under"
 # alone and could not see one appendix, although the docstring below said it counted them; the
@@ -1687,12 +1687,11 @@ def prose_budget(tree):
     """Words over the 3,000-word cap, and how many documents hold them.
 
     Whitespace-separated words over the whole file, which is what was measured and what was
-    ratified. The gate (`helpers/prose_ratchet.py`) counts the same documents but strips fenced code
-    and HTML comments first, so a document near the cap can read a little differently in the two;
-    this keeps the ratified definition so the series is not restated a second time. An appendix is
-    its own document under the same cap, which is what the ruling intends.
+    ratified, counted by `prose_ratchet.budget_words`, which is also the gate's `words` measure
+    (calef, 2026-10-13 UTC, "Gate counts every word"), so the graph and the gate cannot disagree. An
+    appendix is its own document under the same cap, which is what the ruling intends.
 
-    The one thing both skip is a generated table (`prose_ratchet.GENERATED_TABLES`), since nobody
+    What `budget_words` skips is a generated table (`prose_ratchet.GENERATED_TABLES`), since nobody
     can cut words a script writes. The decisions index was one until calef retired it on
     2026-10-12 (UTC), and skipping it steps the series down from 2026W39 by the index's words.
 
@@ -1702,7 +1701,7 @@ def prose_budget(tree):
     excess = 0
     over = 0
     for _path, text in _prose_documents(tree):
-        words = len(prose_ratchet.without_generated_tables(text).split())
+        words = prose_ratchet.budget_words(text)
         if words > PROSE_CAP:
             over += 1
             excess += words - PROSE_CAP
