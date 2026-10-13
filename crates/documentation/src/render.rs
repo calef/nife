@@ -57,6 +57,23 @@ pub const TABLE_ROWS: usize = 48;
 pub const TABLE_TEXT: usize = 8192;
 
 /// How the renderer is asked to draw.
+///
+/// # Examples
+///
+/// Colour on, which is what `doc` emits when it is writing to a terminal:
+///
+/// ```
+/// # use documentation::{Renderer, Sink, Style};
+/// # struct Buf(String);
+/// # impl Sink for Buf {
+/// #     fn put(&mut self, bytes: &[u8]) { self.0.push_str(core::str::from_utf8(bytes).unwrap()); }
+/// # }
+/// let mut out = Buf(String::new());
+/// let mut r = Renderer::new(Style { width: 80, color: true });
+/// r.feed(b"a **b** c\n", &mut out);
+/// r.finish(&mut out);
+/// assert!(out.0.contains("\x1b[1mb"));
+/// ```
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Style {
     /// The terminal's width in columns. Text wraps to it; a code block and a long word do not.
@@ -150,10 +167,36 @@ struct Table {
     delimited: bool,
 }
 
-/// The renderer.
+/// The renderer: a stream, not a parser.
+///
+/// [`Renderer::feed`] takes whatever bytes arrived and writes whatever output they completed. It
+/// never holds a document, builds a tree or allocates, because `doc` receives its input as
+/// sixteen-byte `byte_sink_protocol` messages, and holding a whole document would need a memory
+/// grant the program otherwise does without.
 ///
 /// It is about eight kilobytes, which is twice a user process's whole stack, so a program keeps one
 /// in `.bss` rather than on the stack. `components/src/mdr.rs` shows the shape.
+///
+/// # Examples
+///
+/// Render a document to plain text at eighty columns:
+///
+/// ```
+/// use documentation::{Renderer, Sink, Style};
+///
+/// struct Buf(String);
+/// impl Sink for Buf {
+///     fn put(&mut self, bytes: &[u8]) {
+///         self.0.push_str(core::str::from_utf8(bytes).unwrap());
+///     }
+/// }
+///
+/// let mut out = Buf(String::new());
+/// let mut r = Renderer::new(Style { width: 80, color: false });
+/// r.feed(b"# Title\n\nSome **strong** text.\n", &mut out);
+/// r.finish(&mut out);
+/// assert_eq!(out.0, "TITLE\n\n  Some strong text.\n");
+/// ```
 pub struct Renderer {
     style: Style,
 

@@ -1,167 +1,43 @@
-//! **The VT-d driver: Intel's IOMMU, in front of the PCIe bus.**
+//! **The VT-d driver: Intel's IOMMU, in front of the PCIe bus.** The register
+//! file, the root and context tables, and register-based invalidation live here; the translation
+//! tables are the portable seam's, built in [`paging::x86_64::Vtd`], not the CPU's
+//! [`paging::x86_64::Ia32e`]. See notes/iommu.md. Unlike SMMUv3 and the RISC-V IOMMU, VT-d's legacy interface, which every unit supports, is
+//! driven through registers: invalidation is a register write-and-poll and faults land in Fault
+//! Recording Registers, with no command or fault queue. The root table (one entry per bus) points
+//! at per-bus context tables (one entry per device/function), each naming a domain and the
+//! second-level root [`crate::iommu::confine`] built. Both are allocated lazily and default
+//! absent, and `init` points `RTADDR_REG` at an all-absent root before setting `GCMD.TE`, so no
+//! device is ever unconstrained by omission.
 //!
-//! Milestone 16b's role, x86's device (milestone 161, roadmap item 6). The register file, the
-//! root/context tables, and register-based invalidation live here; the translation tables
-//! themselves are the portable seam's job (`paging::domain` via `crate::iommu`), built in
-//! [`paging::x86_64::Vtd`] rather than the CPU's own [`paging::x86_64::Ia32e`] (that module's own
-//! doc says why the two must not be confused).
+//! Every DRHD the DMAR names gets its own root table, and `attach` goes to the unit the DMAR says
+//! owns the device (`machine_discovery::acpi::DmarUnits::owner_index`, VT-d 4.1 section 8.3).
+//! `GCMD` is written per section 11.4.4 (read `GSTS`, clear the one-shot bits, change one bit).
+//! RMRRs are identity-mapped for their devices before any unit translates, and stay in every
+//! domain those devices join (section 3.16). A device no unit owns gets no context entry and
+//! [`scope_of`] answers `Elsewhere { owner: None, .. }`, as Linux leaves it untranslated; refusing
+//! its bus mastering would confine nothing and silence the preflight that reports the gap.
 //!
-//! # The shape of the hardware, and how it differs from the other two
-//!
-//! SMMUv3 and the RISC-V IOMMU are both driven almost entirely through memory: a stream/device
-//! table the driver writes and queues the driver pushes commands into. **VT-d is driven through
-//! registers**, and that is the real architectural difference, not a detail: there is no command
-//! queue and no fault queue here, because the *legacy* (non-scalable, non-queued) interface this
-//! driver speaks does invalidation with a register write-and-poll (`CCMD_REG`, the IOTLB invalidate
-//! register) and reports faults through a small bank of Fault Recording Registers instead of a
-//! ring in memory. That interface is what every VT-d unit supports unconditionally; the queued
-//! (`ECAP.QI`) and scalable-mode interfaces are supersets this driver does not need yet.
-//!
-//! Two levels of memory-resident table stand between a register write and a working translation:
-//!
-//! - The **root table**: one page, 256 entries (one per PCI bus), each either absent or pointing
-//!   at a context table.
-//! - The **context table**: one page per bus that has an attached device, 256 entries (one per
-//!   PCI device/function), each either absent or naming a domain id and a second-level page-table
-//!   root, the tables [`crate::iommu::confine`] built.
-//!
-//! Both tables are allocated **lazily and default-absent**, which is the same default-deny posture
-//! `init` gives the SMMUv3 and the RISC-V IOMMU: a bus with no context table, or a context entry
-//! with its present bit clear, faults every transaction rather than routing it anywhere.
-//!
-//! # What is built, against what QEMU's `-device intel-iommu` on `q35` presents
-//!
-//! **Every DRHD the DMAR names** (milestone 594 (every VT-d unit translates its own devices), provisional number), each with its own root
-//! table, and every `attach` routed to the unit the DMAR says owns the device
-//! (`machine_discovery::acpi::DmarUnits::owner_index`, VT-d 4.1 section 8.3). Translation
-//! enable/disable through `GCMD`/`GSTS`, written the way section 11.4.4 prescribes (read `GSTS`,
-//! clear the one-shot bits, change one bit), the root and context tables, register-based
-//! context-cache and IOTLB invalidation (global granularity only), and fault detection through
-//! `FSTS.PPF` and the first Fault Recording Register of each unit. The firmware's reserved memory
-//! regions (RMRRs) are identity-mapped for the devices they name before any unit translates, and
-//! stay mapped in every domain those devices are later confined to (section 3.16). Interrupt
-//! remapping, queued invalidation and PASID/scalable mode are real VT-d features this driver does
-//! not build; see the BUGS section for what each costs and where the next piece would go.
-//!
-//! # This file is also `x86_64`'s IOMMU front door, and AMD-Vi lives next door
-//!
-//! An AMD machine has no VT-d. Its IOMMU is AMD-Vi, described by the IVRS rather than the DMAR,
-//! driven by a command ring rather than registers, and walking its own page-table format; that
-//! driver is [`super::amd_vi`] (lane `amd-vi`, provisional name). A machine has one kind or the
-//! other, so every public entry point the portable seam calls (`attach`, `scope_of`, `is_active`,
-//! `take_fault`, `for_each_reserved_region`, `build_domain`, `print_summary`) first asks whether
-//! an AMD-Vi unit is up and hands the call over if one is. That is the only AMD-Vi code in this
-//! file. The forwarding sits here rather than in a dispatcher module of its own because this
-//! file's path is cited across the tree as where `x86_64`'s IOMMU lives, §163 (where a confined
-//! device's IOMMU fault is delivered) among them, and moving VT-d out from under it would leave
-//! every one of those citations naming the wrong code.
-//!
-//! # A device no unit owns
-//!
-//! Section 8.3 requires at least one DRHD per PCI segment and says the `INCLUDE_PCI_ALL` unit
-//! takes every device no other unit names, and section 8.4 requires every device an RMRR names to
-//! be under some unit. So on firmware that follows the specification, every PCI function has an
-//! owner. The specification does not say what the hardware does with a requester no scope
-//! covers, because by its own rules there is none. **This driver does what Linux does**: Linux's
-//! `intel_iommu_probe_device` returns `-ENODEV` when `dmar_find_matched_drhd_unit` finds no unit,
-//! and the device is left out of the IOMMU layer with its DMA untranslated. Here `attach` for such
-//! a device writes no context entry anywhere (there is no root table it would be read from), and
-//! [`scope_of`] answers `Elsewhere { owner: None, .. }`, so no caller that asks can claim the
-//! device confined. The NVMe bench boot's `bypass` rehearsal is that case. Refusing the device's
-//! bus mastering instead was refused: it changes what a non-compliant machine does without
-//! confining anything, and silences the preflight that reports the firmware's gap.
-//!
-//! # Default deny
-//!
-//! `init` zeroes the root table and points `RTADDR_REG` at it before setting `GCMD.TE`, so
-//! translation turns on over an all-absent root: every bus faults until its context table exists,
-//! and every device on a bus that does have one faults until `attach` writes its entry. There is
-//! no window where translation is on and a device is unconstrained by omission, the same property
-//! the other two drivers' `init` establishes for their own table shapes.
+//! This file is also `x86_64`'s IOMMU front door: every public entry point first hands the call to
+//! [`super::amd_vi`] if an AMD-Vi unit is up. It stays here because the tree cites this path as
+//! where `x86_64`'s IOMMU lives, §163 (where a confined device's IOMMU fault is delivered) among
+//! them.
 //!
 //! # BUGS
 //!
-//! - **Only segment 0 is brought up.** A unit on another PCI segment is reported and refused,
-//!   because this kernel reads only one ECAM window and so cannot resolve a scope path elsewhere.
-//!   No machine this tree has met has a second segment.
-//! - **A unit whose scope names only absent devices is still brought up.** Linux ignores such a
-//!   unit (`init_no_remapping_devices`); this driver translates it with nothing attached, which
-//!   denies nothing that exists. It differs from Linux only when the firmware names a unit whose
-//!   register file is not really there, and then `init` panics on the first status poll instead
-//!   of carrying on.
-//! - **An RMRR that names a bridge is not mapped until the device below it is confined.** Before
-//!   translation turns on, `init` pre-attaches the devices RMRR *endpoint* scopes name;
-//!   a sub-hierarchy scope would mean walking every function below the bridge, and no machine
-//!   this tree has met writes one. [`crate::iommu::confine`] still adds the region to any such
-//!   device's domain. Until that confine, such a device's firmware DMA faults.
-//! - **The graphics unit translates, and nothing here drives the GPU.** Its only mapping is the
-//!   graphics RMRR, so the display engine keeps scanning out of stolen memory if and only if the
-//!   firmware's RMRR covers the memory it scans. Linux translates the same unit on Skylake and Kaby
-//!   Lake without a quirk (its `quirk_iommu_igfx` list stops at Broadwell), which is the evidence
-//!   this is safe; xenon is the first run, and whether the RMRR covers the scanout is still
-//!   unread (notes/risk-6-bench-evening.md says what to watch).
-//! - **No interrupt remapping.** `ECAP.IR` is read and *reported* since milestone 317
-//!   (the interrupt-remapping flags, and where MSI confinement actually lives) by
-//!   [`interrupt_remapping_available`] and the bring-up line `print_summary` writes, and that
-//!   is all: this driver never sets `GCMD.IRE`, never allocates an interrupt-remapping table, and
-//!   never programs an entry in one. MSI/MSI-X delivery is unaffected (this kernel remaps
-//!   interrupts nowhere yet), but a future PCI MSI driver wants to know before assuming a table
-//!   exists to program.
-//!
-//!   The capability is on in every default boot: QEMU's `intremap` defaults to `auto`, which
-//!   resolves on with no in-kernel irqchip (DECISIONS §86 (whether an NVMe driver can leave the
-//!   kernel)'s 2026-09-18 amendment, which struck the claim that it was off). `NIFE_INTREMAP=off`
-//!   (provisional name) is the way to reach a machine without it. Nothing here writes an `IRTE`,
-//!   forges an MSI, or proves a remapped interrupt lands where the table says: that is the
-//!   confinement claim notes/confinement-claims.md carries as stated nowhere, and
-//!   design/roadmap/0317-interrupt-remapping-flags.md says what it would take.
-//! - **Invalidation is global, never domain- or device-selective.** Every `attach` invalidates the
-//!   *entire* context cache and the *entire* IOTLB rather than just the entry that changed, which
-//!   is correct (nothing survives that should not) and expensive on a machine with many attached
-//!   devices, exactly the same trade the RISC-V driver's `IOTINVAL.VMA` with no address makes.
-//! - **`RWBF` (`CAP_REG` bit 4) is honoured but has never been exercised.** QEMU's model does not
-//!   set it, and neither do the 7040's two units, so the write-buffer-flush branch in
-//!   [`invalidate_all`] has run zero times. It waited for `GSTS.WBFS` to be *set* until milestone
-//!   594; section 11.4.4 says hardware clears it when the flush completes, which is what it now
-//!   waits for (Linux's `iommu_flush_write_buffer` agrees).
-//! - **Protected memory regions are switched off, never used.** A unit offering them
-//!   (`CAP.PLMR`/`PHMR`, which the 7040's units both set) has `PMEN.EPM` cleared once translation
-//!   is on, as Linux does, in case firmware left one enabled. QEMU's model offers none, so this has
-//!   run zero times.
-//! - **FIXED (2026-10-04): a unit that does not snoop read stale tables.** `ECAP.C` clear means
-//!   the hardware walks root, context and second-level tables in DRAM, and this driver wrote
-//!   every table through the cache and never flushed. xenon's catch-all unit (`ecap 0xf050da`)
-//!   faulted the NVMe's first admin fetch with reason 0x01 (root entry not present) while the
-//!   CPU read the entry as present: notes/risk-6-bench-evening.md, "What the first evening
-//!   found". QEMU reports `C=0` too but reads guest memory directly, so no rehearsal could show
-//!   it. [`Unit::publish`] now `clflush`es each line written and fences with `mfence`, per line
-//!   rather than `wbinvd`: an attach writes about 260 lines, while `wbinvd` flushes every cache
-//!   in the package for the same bytes, uninterruptibly, on every core. Neither cost is measured;
-//!   unverified on silicon when written.
-//! - **FIXED (2026-09-27): an unconfined sibling disk could win the one fault-recording
-//!   register and starve a test's own fault.** The kernel's test runners attach a second,
-//!   unregistered virtio-blk-pci disk (the RedoxFS fixture from milestone 303 (x86_64's FS
-//!   service has a server and no disk it can find)), and the moment any `attach` globally
-//!   invalidates, that disk faults default-deny on every retry and can occupy a unit's single
-//!   fault-recording register indefinitely, so the fault a test provokes on its own device could
-//!   be the one dropped (`FSTS.PFO`). Both devices fault *correctly*: the confinement was
-//!   working; only the test's observation was wrong, and the test now resets every other block
-//!   device on the bus before provoking its own. The sibling was no QEMU quirk: its Bus Master
-//!   Enable was already set before this kernel ran, which is
-//!   `design/roadmap/0693-reset-unowned-pci-functions-before-iommu-enable.md`'s question. Green
-//!   on all three architectures.
-//! - **The fault path decodes and clears exactly one Fault Recording Register per unit.** `CAP.NFR` is read
-//!   to find where the bank starts, not to size it; QEMU's model reports `NFR = 0` (one register),
-//!   so a real unit with more than one is read at the same fixed offset only. A burst of faults past
-//!   that one register sets `FSTS.PFO`, and the hardware records nothing new until it is cleared;
-//!   [`take_fault`] clears it, so the faults lost in a burst are lost but the next one is recorded.
-//!   **This is why a caller that reads faults for one device must first make sure no other device
-//!   on the bus is still faulting**: the one slot is shared across every requester id this unit
-//!   serves, so an unrelated device's repeating fault can occupy it indefinitely and there is no
-//!   way to read "the next fault for rid X" directly. The confinement test above is the first
-//!   caller this has bitten; it quiesces every other block device rather than this driver growing
-//!   a per-rid filter that a single hardware record cannot actually satisfy (filtering by rid at
-//!   read time cannot recover a fault the register already dropped in favour of a different one).
+//! - Only PCI segment 0 is brought up; a unit elsewhere is reported and refused.
+//! - A unit whose scope names only absent devices is still brought up, and `init` panics on its
+//!   first status poll if its register file is not really there (Linux ignores such a unit).
+//! - An RMRR naming a bridge is mapped only when the device below is confined; until then that
+//!   device's firmware DMA faults.
+//! - The graphics unit translates with only its RMRR mapped, so scanout survives only if the RMRR
+//!   covers it; unread on xenon (notes/risk-6-bench-evening.md).
+//! - No interrupt remapping: `ECAP.IR` is only reported ([`interrupt_remapping_available`]); no
+//!   `IRTE` is ever written (`design/roadmap/0317-interrupt-remapping-flags.md`).
+//! - Invalidation is always global, correct and expensive with many devices.
+//! - `RWBF` and protected-memory disabling have never run: QEMU sets neither.
+//! - One Fault Recording Register per unit is read, shared by every requester, so a repeating
+//!   fault from one device can hide another's and a burst past it is lost (`FSTS.PFO`). A caller
+//!   reading one device's faults must first quiesce every other device on the bus.
 
 use machine_discovery::acpi::{DmarUnits, Drhd, MAX_DRHDS, MAX_RMRR_SCOPES, SCOPE_PCI_ENDPOINT};
 use paging::PageFormat;
