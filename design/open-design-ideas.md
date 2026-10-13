@@ -23,7 +23,7 @@ endgame, and POSIX posture). The entries here remain the detailed source for eac
 
 - [Driver domains, and the DMA-confinement design space](driver-domains.md): the
   principled version of the DMA hole we closed in software (notes/dma.md): run each driver in its
-  own VM with nife as the hypervisor at EL2, and confine its DMA with the SMMU's stage-2. The
+  own VM with nife as the hypervisor at EL2. Confine its DMA with the SMMU's stage-2. The
   strongest driver isolation there is, and the opposite of a shortcut: it needs EL2, an SMMU
   driver, and is impossible under HVF. Parked as the most interesting unbuilt direction.
 
@@ -32,7 +32,7 @@ endgame, and POSIX posture). The entries here remain the detailed source for eac
   we wire an explicit reply endpoint per client at spawn. seL4 mints a one-shot `Reply` cap on
   `Call` so a server can answer whoever called, with a kernel-tracked call chain that also enables
   priority donation. We can emulate reply-to-caller with `SEND_CAP` (the client passes a
-  reply-endpoint cap in the request), but *not* the one-shot safety or the call chain: those need a
+  reply-endpoint cap in the request), but *not* the one-shot safety or the call chain. Those need a
   `Reply` object and a `Call` method, which widen the §4 syscall surface and so should not be added
   speculatively.
 
@@ -46,8 +46,8 @@ endgame, and POSIX posture). The entries here remain the detailed source for eac
 
   Where we stand today (checked, 2026-07-22): safe, but by *convention*, not guarantee. The
   console server shares one `reply` endpoint across clients yet is correct because it is
-  single-threaded and IPC is synchronous rendezvous: it handles one request-reply cycle at a
-  time, so the only client in `RECEIVE(reply)` when it replies is the one it just served. Workers and
+  single-threaded and IPC is synchronous rendezvous. It handles one request-reply cycle at a time,
+  so the only client in `RECEIVE(reply)` when it replies is the one it just served. Workers and
   drivers use a per-request result endpoint (no sharing). The safety trigger fires the moment
   either of those stops holding: a server thread pool on a shared reply path, or pipelined /
   asynchronous requests.
@@ -67,8 +67,8 @@ endgame, and POSIX posture). The entries here remain the detailed source for eac
   A granted
   capability cannot be retracted: no capability-derivation tree, no refcount, no `revoke`
   (untyped.rs). This is not a memory-safety hole: frames come from spend-only untyped and
-  teardown never frees a shared leaf, so a surviving peer maps valid, non-reused memory, but it
-  means you cannot *un-share* a frame from a live peer (only destroy the peer) and never *reclaim*
+  teardown never frees a shared leaf, so a surviving peer maps valid, non-reused memory. But you
+  cannot *un-share* a frame from a live peer (only destroy the peer) and never *reclaim*
   the page. seL4's mechanism is a capability-derivation tree plus a recursive `revoke` that unmaps
   the object from every holder; expensive and kernel-tracked, which is why it is a first-class
   object there and "the harder story parked for later" here. Trigger to build: needing to

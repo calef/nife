@@ -107,8 +107,7 @@ ambient counter: `CR4.TSD` is clear at reset, this kernel never writes it, so ri
 skips its negative half there, saying so in the comment beside the `cfg`. That is §19 (architectural parity is a tenet) working: an
 exception with a reason, where a reader meets it.
 
-The measurement half is three ISAs and is three (it was one until 2026-09-17 and two until
-2026-09-19).
+The measurement half is three ISAs.
 `bench::cycles_per_tick`, the probe that converts every tick-denominated board row to cycles, was
 `#[cfg(target_arch = "riscv64")]`; milestone 309 added the x86_64 arm. The ratio is the thing
 cross-machine comparison needs, which is this milestone's whole purpose and milestone 25's and
@@ -199,8 +198,7 @@ QEMU configuration took.
   now says what that looks like.
 - Per-core counters are unrelated numbers. `C` zeroes each at its own init; `arch::pmu::cycles`
   reads the current core's, and only a same-core difference means anything.
-- The user-mode read was the fixture's until 2026-10-07; it is now `user_mode_runtime::cycle_reading()`
-  (decision B, step 1).
+- The user-mode read is `user_mode_runtime::cycle_reading()` (decision B, step 1).
 
 ### argon's first evening, for this half
 

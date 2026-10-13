@@ -20,7 +20,7 @@ which RedoxFS keeps *inline in the node*. That is the cheapest read this server 
 explained every other figure: an inline read is 4.5 blocks, a sequential write is 55, a random write
 is 74.
 
-Two things about that paragraph are now superseded, and it is kept because the reasoning is why. The
+Two things in that paragraph no longer hold, and it is kept because the reasoning is why. The
 46.2 us was an *average* that charged the per-request tree walk to the blocks. The sweep of milestone 138
 (close the read gap: a 4 KiB request must stop moving 128 KiB) separated the two with six points and
 a slope. The marginal cost of a block is 39.0 us, with a separate ~208 us walk per request. And the
@@ -50,7 +50,7 @@ per-request cost to within 3% (1.51, 1.48 and 1.48 ms). A path with a cache or a
 that. It also finally retired a comment in `fs_test_client` that had claimed `fs_read` was a warm
 measurement.
 
-Superseded 2026-08-19 (milestone 138 step 2). `IpcDisk` is now wrapped in `CachedDisk`
+Milestone 138's step 2 wraps `IpcDisk` in `CachedDisk`
 (`redoxfs_server::CachedDisk`, `redoxfs_server/src/block.rs`). It is a small direct-mapped
 write-through cache of single-block reads: 64 slots, ~257 KiB. It answers exactly the repetition
 milestone 38 found and this section names above. That is `Transaction::read_tree_and_addr`'s

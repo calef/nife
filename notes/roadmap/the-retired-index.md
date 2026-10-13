@@ -2,8 +2,8 @@
 
 An appendix to [notes/roadmap.md](../roadmap.md), which summarizes it.
 
-The table was hand-maintained until 2026-09-14, generated from the blocks until 2026-09-21, and is
-now not built at all. The two changes had different reasons and the second did not undo the first:
+The table was hand-maintained, then generated from the blocks (2026-09-14), and is not built at
+all (2026-09-21). The two changes had different reasons and the second did not undo the first:
 generating it fixed a merge problem, and retiring it answered a readability one. Five hundred rows of a
 five-column layout with paragraph-length cells is not a document anybody reads, and a derived
 document nobody reads is work the tree was doing for itself.
@@ -36,7 +36,7 @@ every other milestone in flight, always, in that one file. `AGENTS.md` names
 file: only some lanes wire a test, and every lane adds a row.
 
 The strongest argument is that `script/roadmap` exists because of this table. Its header records
-that milestone status used to be prose phrased a dozen ways. It records that a sweep mis-reported
+that milestone status in prose was phrased a dozen ways. It records that a sweep mis-reported
 eight milestones, and that *"milestone 69's row said NOT-STARTED while its block said BUILT"*. Milestone 69 (split
 `kernel/src/user.rs` by service) was that case. One of the script's checks was that the row and the block
 must agree. Generating the row makes that check vacuously

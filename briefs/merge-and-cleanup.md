@@ -10,7 +10,7 @@ Why the mechanics belong in a file rather than in prose nobody re-reads. The fai
 prevents is the one failure in this system that destroys work rather than delaying it, and it has
 happened at two scales. Eight finished worktrees accumulated before anyone looked, one of them
 holding 3.3 GB. Then on 2026-07-31 the volume hit zero bytes free with 42 worktrees holding
-78 GB, two lanes died mid-work, and those lanes could not even run `pgrep` to check for leaked
+78 GB and two lanes died mid-work. Those lanes could not even run `pgrep` to check for leaked
 emulators, because every tool must create an output file before it runs. The warning signs had been
 noted hours earlier, not acted on, and four more lanes were launched on top of them.
 
@@ -49,8 +49,8 @@ shapes, and "worth doing someday" is neither:
 - a recorded limitation in the `BUGS` section beside the feature a reader meets.
 
 A finding with no home holds the merge. If the pull request has already landed and you find a
-homeless item in the report, file it now rather than deciding it was minor: a lane report is read
-once, by one person, on the day it is written, which is exactly why this check is a step in a
+homeless item in the report, file it now rather than deciding it was minor. A lane report is read
+once, by one person, on the day it is written. That is exactly why this check is a step in a
 checklist and not a habit.
 
 ### 2. The branch
@@ -168,10 +168,10 @@ Three things are outside this brief. Stop and hand them back rather than guessin
   `No space left on device`.
 - Step 1 is unmechanisable on purpose. No check can tell an intention from an observation in
   prose; a lint that tried would carry `git grep -w TODO`'s 82% false-positive rate wearing a
-  different hat. So the homeless-finding check is a human reading a report, and it has already failed
-  once at scale: milestone 94 (the untracked-work sweep, and the convention that ends the category)
-  left its own inventory in a pull request body for twelve days, by which point the item-level list
-  was gone and had to be re-derived (`notes/untracked-work-sweep.md`).
+  different hat. So the homeless-finding check is a human reading a report, and it has already
+  failed once at scale. Milestone 94 (the untracked-work sweep, and the convention that ends the
+  category) left its own inventory in a pull request body for twelve days. By then the item-level
+  list was gone and had to be re-derived (`notes/untracked-work-sweep.md`).
 - **A pruned worktree's toolchain link lingers until some worktree next runs `std-src`.** It is
   dangling and breaks nothing, since no other worktree resolves through it.
 - The example paths are invented. The main checkout is whatever your clone is, and lanes live in

@@ -58,10 +58,10 @@ it in `x19`, which the `eret` in `enter_el1` preserves along with every other ge
 **What is verified here and what is only promised.** That QEMU puts a device tree in `x0` is
 verified on every run: `device_tree_pointer_was_provided` fails on a zero, and it exists because
 milestone 1 printed `x0` and got one. That U-Boot's `booti` does the same is Linux's boot
-protocol in the same document as the header above (x0 is the DTB's physical address, x1 to x3
-zero), which is a firmware contract this project has not yet held a board to. Milestone 127's
-bench list checks it first, for the reason this file exists at all: the last time this tree
-believed a boot-register claim without printing it, the claim was wrong.
+protocol in the same document as the header above (x0 is the DTB's physical address, x1 to x3 zero).
+That is a firmware contract this project has not yet held a board to. Milestone 127's bench list
+checks it first, for the reason this file exists at all: the last time this tree believed a
+boot-register claim without printing it, the claim was wrong.
 
 ### The failure mode has no diagnostics
 

@@ -33,7 +33,7 @@ It costs no memory: the granted name and the rights mask ride in the three `STAR
 
 ## The verb table, and how it stayed a translation (milestone 61 (the caretakers: one verb table))
 
-Each of the three caretakers used to be a hand-written `match` over the opcode, and nothing made a
+Each of the three caretakers had a hand-written `match` over the opcode, and nothing made a
 `match` and the contract agree. So the way it failed was that a verb added to `filesystem_protocol`
 was absent from a caretaker, and the capability silently was not there. That is not hypothetical.
 Milestone 57 (partitioning and formatting a real drive, and extended attributes) added the four

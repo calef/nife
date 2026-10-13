@@ -1,4 +1,4 @@
-# Pipes BUGS history
+# Pipes BUGS entries and their record
 
 *An appendix to [`notes/pipes.md`](../pipes.md), which is the page to read. This file holds every
 BUGS entry as it stood on 2026-09-25 (UTC), with the history of each; the main page holds the

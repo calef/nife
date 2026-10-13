@@ -249,9 +249,9 @@ So the prediction splits in three, and each part answers a different question:
    substantially more, something is wrong somewhere nobody has looked, which is still the more
    valuable outcome.
 2. **The same file read again.** Redox's cache holds the data blocks and this one does not, so Redox
-   should win by roughly the device term of every record. That prices a data cache this system
-   chose not to build (the page-cache gap milestone 138 (close the read gap) scoped out), not the
-   architecture, and it has to be reported as such or it will be quoted as the latter.
+   should win by roughly the device term of every record. That prices a data cache this system chose
+   not to build (the page-cache gap milestone 138 (close the read gap) scoped out), not the
+   architecture. It has to be reported as such or it will be quoted as the latter.
 3. **Several files open at once.** 64 direct-mapped slots collide across the tree's shared upper
    levels, the case step 2's BUGS says nobody has measured. A gap here is cache capacity and policy.
    It is worth running because it is the first workload that would show a reader the collision

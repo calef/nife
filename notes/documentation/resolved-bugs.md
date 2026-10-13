@@ -3,7 +3,7 @@
 An appendix to [`notes/documentation.md`](../documentation.md), whose `BUGS` section now carries
 only what is still true. These entries are resolved and kept for their reasons.
 
-## `mdr <page>` on its own used to be refused
+## `mdr <page>` on its own was refused
 
 DECISIONS §106 (take the `terminal_sink_caretaker` narrowing), 2026-08-22, closed it, and it now
 renders. It deadlocked when phase 1 shipped. From milestone 50 (pipes and redirection) and its chain
@@ -76,9 +76,8 @@ The guest-side `apropos` that used to head this list is built (phase 2), and it 
 the entry predicted. The spawn-protocol decision that used to head this list is also built
 (DECISIONS §106, 2026-08-22). `mdr <page>` renders at the prompt with no `| wc` in front of it. The
 caretaker-hop race it flagged before the decision was made is a named, accepted interim rather than
-a surprise. Both are recorded in the main page's `BUGS` section now rather than there. The ranking
-item that used to be third there is built too (2026-08-22, same day), and this page says what
-changed.
+a surprise. Both are recorded in the main page's `BUGS` section now rather than there. The third
+ranking item there is built too (2026-08-22, same day), and this page says what changed.
 
 ## The `LINE_MAX` count drifted
 

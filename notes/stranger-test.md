@@ -225,7 +225,7 @@ contaminated and no score was recorded. [Run 1](stranger-test/run-1.md).
 ### Run 2, 2026-08-16: a stock Linux box, and a stranger that was not one
 
 Green on both ISAs, with a program added. `script/setup` could not complete on stock Ubuntu, and the
-first fix for that was half a fix until 2026-09-13. The stranger was a subagent with `AGENTS.md` in
+first fix for that was half a fix, completed on 2026-09-13. The stranger was a subagent with `AGENTS.md` in
 context at turn zero, so five rubric rows went unscored. [Run 2](stranger-test/run-2.md).
 
 ### Run 3, 2026-08-18: a process that could not see the repository, and a harness that told it anyway

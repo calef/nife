@@ -139,7 +139,7 @@ Three shapes, priced. Decided 2026-08-27, calef: A.
   a system DECISIONS §33 already found has exactly one blocking wait point per process.
 - C. Have `display_terminal` relay (already the compositor's focused client, already receives
   `OP_BYTES`; forward to `line_editor` instead of only feeding its own renderer). Raised in the same
-  conversation as an alternative to A/B before the reframing above; superseded by it, since C keeps
+  conversation as an alternative to A/B; the reframing above rules it out, since C keeps
   the compositor load-bearing for input in exactly the case that does not need multiplexing at all,
   the pattern the reframing names as the thing to be wary of.
 
@@ -262,8 +262,7 @@ keep their names, retargeted from "the boot brings up the stack" to "the launch 
   moot. 55 is REMOVED as of 2026-08-30 and 49 is BUILT and already wired into the real interactive
   boot on both ISAs.
 - **Milestone 182.** Piece 5, x86_64's own entry point, is
-  `design/roadmap/0182-x86-64-interactive-boot.md`, which this block already names; the earlier
-  sentence saying neither architecture plans it is superseded by the split recorded lower down.
+  `design/roadmap/0182-x86-64-interactive-boot.md`, which this block already names.
 
 ## Index row
 

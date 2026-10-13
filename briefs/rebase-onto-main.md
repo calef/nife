@@ -52,7 +52,7 @@ already on `origin/main` keeps the number, and this branch's moves to the lowest
 the highest on `main`. Rename the file with `git mv` and change its H1 to match. The commit message
 says it was renumbered and why; the file does not, per §298 (a document states what is in force now).
 
-### 5. A heading was renamed on `main` while this branch inserted prose next to it
+### 5. `main` renamed a heading while this branch inserted prose next to it
 
 Git flags the
 adjacency and it reads like a disputed heading. Take `origin/main`'s heading line, keep this
@@ -89,8 +89,8 @@ And rule 7 has a residue clause. When `main` makes a tree-wide mechanical change
 prefix, a helper call) and this branch *adds* a new line of the old shape, that line does not
 conflict and merges in inconsistent. After resolving, grep the file for the old shape, not just
 for conflict markers. On 2026-09-24 a branch added `echo "merge-drain: ARMED ..."` while `main` had
-converted every other literal to `$ME:`, which would have left the script printing a mix of tagged
-and untagged lines and defeated the tagging for the one event that branch existed to add.
+converted every other literal to `$ME:`. That would have left the script printing a mix of tagged
+and untagged lines, and defeated the tagging for the one event that branch existed to add.
 
 Why `helpers/` needs its own case. `helpers/merge-drain.sh` has become what
 `system_tests/src/user/tests.rs` already was: the one file every branch in a subsystem has to edit. When
@@ -122,8 +122,8 @@ your report.
 
 ### 9. A block this branch added still has an unpadded number
 
-On 2026-10-07 (UTC) every block under `design/roadmap/` was renamed to a four-digit number
-(`7-x.md` became `0007-x.md`) in a commit of pure renames, so an edit to an existing block rebases
+Every block under `design/roadmap/` has a four-digit number (`0007-x.md`, not `7-x.md`), given on
+2026-10-07 (UTC) in a commit of pure renames, so an edit to an existing block rebases
 across it by rename detection and needs nothing. A block this branch *added* keeps the old name and
 `script/lint` fails on it. Rename it, and any appendix directory beside it, then fix the links:
 
@@ -140,9 +140,9 @@ histories, and that is a decision rather than a rebase.
 
 The tell for rename-versus-rename is a conflict marker carrying two paths:
 `<<<<<<< HEAD:script/swish-check` against `>>>>>>> :script/shell-check`. And the prose in such a
-branch is usually worse than mechanical: on 2026-09-24 one branch rewrote the watcher sections to say
-`helpers/` while `main` had rewritten the same sections to move the watchers into scheduled Actions
-workflows, so the two sides disagreed about facts rather than about a path.
+branch is usually worse than mechanical. On 2026-09-24 one branch rewrote the watcher sections to
+say `helpers/` while `main` had rewritten the same sections to move the watchers into scheduled
+Actions workflows. The two sides disagreed about facts rather than about a path.
 
 A CSV in `notes/project-metrics/`. This is the `bench/` rule one level over: do not hand-merge
 measurements. Both sides typically carry the same week measured at two different trees, so taking
@@ -197,5 +197,5 @@ Do not push unless your brief says to. Do not enqueue, enable auto-merge, or mer
 re-presents the whole diff to `architect-label.yml` and `coe-architect-label.yml`, so
 `needs-architect` may reappear; that is expected and not yours to remove. If an architect has
 already ruled on this pull request's surface and the maintainer applied `architect-ruled`,
-`architect-label.yml` skips re-adding it instead; `coe-architect-label.yml` never re-adds it in the
+`architect-label.yml` skips re-adding it instead. `coe-architect-label.yml` never re-adds it in the
 first place (its own detection asks what THIS push added, not what the whole diff still contains).

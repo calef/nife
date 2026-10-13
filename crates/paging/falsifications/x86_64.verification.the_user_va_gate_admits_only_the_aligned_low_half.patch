@@ -17,11 +17,11 @@ function in `lib.rs`, and DECISIONS §19 has each ISA state the property itself.
 `aarch64` and `sv39` records break the same function in two other ways; the three
 patches are not copies.
 
-diff --git a/crates/paging/src/lib.rs b/crates/paging/src/lib.rs
-index 98df8b66..d8fab919 100644
---- a/crates/paging/src/lib.rs
-+++ b/crates/paging/src/lib.rs
-@@ -335,7 +335,7 @@ pub enum Half {
+diff --git a/crates/paging/src/page_format.rs b/crates/paging/src/page_format.rs
+index 476dfcac4..deed2b425 100644
+--- a/crates/paging/src/page_format.rs
++++ b/crates/paging/src/page_format.rs
+@@ -39,7 +39,7 @@ pub enum Half {
  ///
  /// Generic over the format so the split lands at the right bit for the running architecture.
  pub fn is_user_page_va<F: PageFormat>(va: u64) -> bool {

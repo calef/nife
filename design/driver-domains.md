@@ -102,7 +102,7 @@ There is a real tension worth naming. A microkernel's whole thesis is a *small* 
 Becoming a hypervisor adds EL2 mechanism, a vGIC, stage-2 management, and a vCPU model to that core,
 which cuts against "small." The counter-argument, and the reason seL4 does exactly this, is that the
 added mechanism is *general* (it isolates any guest, not any specific device), so the privileged
-core stays conceptually simple even as it grows: it is still "isolate and route," now with VMs as
+core stays conceptually simple even as it grows. It is still "isolate and route," now with VMs as
 the unit of isolation. Whether that trade is worth it for nife depends entirely on whether
 driver isolation at VM strength is a goal, or whether process-strength isolation plus software DMA
 validation is enough. For a learning OS, the latter has already taught the lesson; the former is a

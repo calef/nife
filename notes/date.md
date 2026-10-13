@@ -5,7 +5,7 @@ first thing in the tree that puts [the clock service](clock.md) and [the calenda
 crate](calendar.md) in the same process. The program is `components/src/date.rs`; the guest tests are
 `kernel::user::date_tests`.
 
-It is a hundred lines and most of them are comments, which is the point: the design decided
+It is a hundred lines and most of them are comments, which is the point. The design decided
 everything interesting before the program existed, so what is left is a page read, an add, and a
 call into a crate that was proved on the host.
 
@@ -24,8 +24,8 @@ at all gets what a person typing `date` wants.
 
 `a1` is a UTC offset in minutes, signed. `a1 = 330` prints `Thu 2026-07-30 18:04:56 +05:30`.
 That is a fixed offset and not a time zone: `-480` is Pacific Standard Time for part of the year and
-wrong for the rest, and notes/calendar.md records why the IANA database is a data-distribution
-problem rather than a calendar one.
+wrong for the rest. notes/calendar.md records why the IANA database is a data-distribution problem
+rather than a calendar one.
 
 `a2`, when non-zero, adds a second line naming where the time came from:
 
@@ -41,7 +41,7 @@ person typing `date` wants; a manifest that could express the selectors needs po
 ## The provenance line, and why it is worth a line
 
 `clock_protocol::state` has four values and they are not a boolean. `rtc` means the machine read its
-hardware clock at startup; `set` means somebody holding the page read/write wrote the offset;
+hardware clock at startup. `set` means somebody holding the page read/write wrote the offset.
 `synced` means the service accepted a proposal it bounded. "A human told me" and "an external source
 I checked" are different claims, and the difference is what a caller weighing a certificate expiry
 actually wants (DECISIONS §43).
@@ -101,9 +101,9 @@ Three, all arch-neutral, so both ISAs run literally the same ones (DECISIONS §1
 
 **`date_prints_the_wall_clock_it_was_granted`** is not "it printed something shaped like a date".
 The kernel computes the wall clock itself, straight from the page's offset plus the ambient counter,
-then requires `date`'s output to name the same instant: the `Unix` rendering compared as a number,
-the `Rfc3339` one parsed back, and the `Human` one reduced to RFC 3339 (drop the weekday, close the
-space before the offset) and parsed too. A wrong epoch, a nanoseconds-for-seconds confusion, an
+then requires `date`'s output to name the same instant. The `Unix` rendering is compared as a number
+and the `Rfc3339` one parsed back. The `Human` one is reduced to RFC 3339 (drop the weekday, close
+the space before the offset) and parsed too. A wrong epoch, a nanoseconds-for-seconds confusion, an
 offset applied twice, or a calendar that is simply wrong all fail that, and none of them fails a
 regex.
 
@@ -140,11 +140,11 @@ Named here rather than in a tracker, next to the feature.
   would be a mechanism with no requirement. An audit may pass over it; see
   notes/untracked-work-sweep.md.
 - **The clock is the progenitor's to endow, and the shell cannot hand one on.** The interactive boot starts the
-  clock service and hands *the progenitor* the page read-only, so `date` at the prompt prints a real time; but
-  the grant comes from `Prog::Date`'s manifest rather than from the command line, because there is no
-  token a person could type that designates a clock. `caps date` prints the row anyway (a preview
-  showing only what the line designates would be off by one capability), and that is the honest shape
-  rather than a gap.
+  clock service and hands *the progenitor* the page read-only, so `date` at the prompt prints a real
+  time. But the grant comes from `Prog::Date`'s manifest rather than from the command line, because
+  there is no token a person could type that designates a clock. `caps date` prints the row anyway
+  (a preview showing only what the line designates would be off by one capability), and that is the
+  honest shape rather than a gap.
 
   Since milestone 86 the shell holds a clock of its own, which it reads to time a command, and it
   holds it with `READ` and no `GRANT`. So the sentence that matters is unchanged: the shell cannot
@@ -152,7 +152,7 @@ Named here rather than in a tracker, next to the feature.
   the progenitor reads. See notes/time-command.md.
 - The clock service is parked in its startup announcement for the whole interactive boot. It
   publishes the RTC reading and *then* announces, with a blocking send, so the page is right before
-  anybody could read it; the boot spawns one thread whose only job is to take that message, which
+  anybody could read it. The boot spawns one thread whose only job is to take that message, which
   leaves the propose endpoint live. Nothing at the prompt proposes a time, so nothing exercises it,
   and the first `date` after a boot with a broken RTC would read `UNKNOWN` rather than block.
 - Nothing at the prompt can set or propose a time, and `date -s` is still not a missing flag. The

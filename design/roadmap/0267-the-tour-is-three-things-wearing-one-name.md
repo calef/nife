@@ -48,7 +48,7 @@ milestone 7: and now it runs a binary it did not compile, unprivileged.
 ```
 
 And the observation that made this milestone happen, which should outlive the program it
-produced. That closing claim used to be printed by the kernel, on the program's behalf. It was
+produced. That closing claim had been printed by the kernel, on the program's behalf. It was
 the one line of the tour not demonstrated by the thing saying it: a `println!` at EL1 asserting that
 no kernel code puts a user's bytes on the wire. Noticing that a record can be in the wrong mouth is
 what 267 is about, and it is a reusable way to read this tree. The fix held for four days and is

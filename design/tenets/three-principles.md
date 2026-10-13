@@ -6,7 +6,7 @@ wording. A reader who only needs to act can stay in `AGENTS.md`; this is where t
 checked or challenged. Moved here 2026-09-23 (UTC) on calef's authorization, unchanged in
 substance.*
 
-These are not aspirations. Each names a mechanism that keeps it true when nobody is watching, which
+These are not aspirations. Each names a mechanism that keeps it true when nobody is watching. That
 is the only kind of principle a free software project can enforce: a volunteer cannot be made to
 care, so the work has to carry the standard on its own.
 
@@ -71,8 +71,8 @@ What that means concretely, and it is a reordering rather than a slogan:
 
 **The honest caveat: the system is not ready for a customer, this one included, and 2026-08-30
 settled how far off that is rather than leaving it as a feeling.** Saying the principle out loud is
-what stops the roadmap drifting into a collection of interesting kernels, and the drift is a live
-risk now rather than a hypothetical one, because with no customer named there is nothing but this
+what stops the roadmap drifting into a collection of interesting kernels. The drift is a live risk
+now rather than a hypothetical one, because with no customer named there is nothing but this
 principle and the fatal-risk list holding the ordering together.
 
 ## 2. The method is a result: the 2026-08-30 measurement, as a historical record
@@ -85,7 +85,7 @@ written against and a dated measurement stays true.
 
 On 2026-08-30, 49 days after the first commit on 2026-07-12, the tree measured 103 milestones built
 of 193, 65 crates, 69 user programs, about 194,000 lines of Rust, 145 Kani proof harnesses and 3,099
-commits, on three architectures, with a booting kernel on real RISC-V silicon, a shell, a
+commits. All on three architectures, with a booting kernel on real RISC-V silicon, a shell, a
 filesystem, a network stack and a compositor. That line count included comments, and `kernel/src`
 measured 40% of them on that date, so a size comparison against another project belonged in code
 lines then as it does now. Earlier figures are in git.

@@ -1,7 +1,7 @@
 # The problem as raised: an appendix to milestone 62
 
-Moved from [milestone 62 (tests that assert on time)](../0062-time-sensitive-tests.md) on 2026-10-12
-(UTC) under §212 (a prose budget). It is the block's framing as raised on 2026-08-01, with the
+An appendix to [milestone 62 (tests that assert on time)](../0062-time-sensitive-tests.md), kept
+apart under §212 (a prose budget). It is the block's framing as raised on 2026-08-01, with the
 watchdog section added on 2026-08-04, and the later correction to its count of spins.
 
 ## A correction to the count below

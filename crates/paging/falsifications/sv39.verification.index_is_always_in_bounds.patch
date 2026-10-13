@@ -14,10 +14,11 @@ nothing else can fail first.
 `lib.rs`; the `aarch64` record widens the mask to ten bits and the `x86_64` one shrinks the
 table under it, so the three patches break the same line in three ways.
 
-diff --git a/crates/paging/src/lib.rs b/crates/paging/src/lib.rs
---- a/crates/paging/src/lib.rs
-+++ b/crates/paging/src/lib.rs
-@@ -478,7 +478,7 @@ pub trait PageFormat {
+diff --git a/crates/paging/src/page_format.rs b/crates/paging/src/page_format.rs
+index 476dfcac4..2922cb4a7 100644
+--- a/crates/paging/src/page_format.rs
++++ b/crates/paging/src/page_format.rs
+@@ -107,7 +107,7 @@ pub trait PageFormat {
      /// [`LEVELS`](Self::LEVELS) so it is right for both a 4- and a 3-level walk.
      fn index(va: u64, level: usize) -> usize {
          let shift = 9 * (Self::LEVELS - 1 - level) as u32 + 12;

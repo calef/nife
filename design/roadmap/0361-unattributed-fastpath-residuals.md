@@ -10,7 +10,7 @@ needs_person: no
 ---
 # 361. The riscv64 and x86_64 fastpath residuals are unattributed, so their baselines cannot be re-saved
 
-Superseded 2026-09-19, by milestone 188's phases 1 to 3, which re-measured and
+Phases 1 to 3 of milestone 188 (the IPC fastpath) cover this block: they re-measured and
 re-recorded all three baselines on 2026-09-04 (pull request #732). Filed as a proposal on
 2026-09-03 by the milestone 247 sweep, from milestone 237's block, and re-measured by the pull
 request #716 lane on 2026-09-04. Checked on 2026-09-19: the numbers this file is written against no
