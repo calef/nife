@@ -153,6 +153,14 @@ What that leaves to build, beside item 3's four pieces and in the same places:
    zones. Milestone 910 (a package declares a service) builds that confirmation for every grant a
    manifest asks for, so this is a line in it rather than a listing of its own.
 
+The grant stays one flag, ruled 2026-10-12 (UTC). Once the network grant was found to bound no
+addresses, calef was asked whether it should be limited per destination now (b), or kept as one flag
+with per-destination limits recorded as a gap (a). He answered "a". The reasons he accepted: Flatpak's
+`--share=network` and Android's `INTERNET` permission are all or nothing too (recalled, not read
+today), and a per-destination limit comes from a filter layer such as Little Snitch on macOS. Zones
+already bound which names a program can look up, and a filter in the network stack is a milestone of
+its own. (a) can be undone; (b) would have committed to building that filter now.
+
 ## BUGS
 
 - Item 3 is built for `jig` only; "Item 3, ruled" says what is left.
@@ -165,14 +173,15 @@ What that leaves to build, beside item 3's four pieces and in the same places:
 - At most eight resolving jobs at once; a ninth live one is refused rather than queued.
 - The network grant is one flag and bounds no addresses. A program holding it can connect to any
   address it knows; its zones bound which names it can turn into addresses, not where it connects.
-  A weather app and a browser differ in their zones, not in their network grant.
+  A weather app and a browser differ in their zones, not in their network grant. This is the gap
+  calef ruled to keep for now; a per-destination filter is unowned.
 
 ## Follow-on
 
 - **Outstanding.** Item 3 for installed programs: the four pieces under "Item 3, ruled".
 - **Outstanding.** The network at install: the three pieces under "The network at install, ruled".
-- **Milestone 911.** Its approval file's "the network's socket budget" is this grant. That section
-  can cite the ruling here once 911's edits in flight have landed.
+- **Milestone 911.** Its approval file's "the network's socket budget" is this grant, and now cites
+  this block.
 - **Milestone 809.** `jig` resolves the index's host through this badge at item 6.
 
 ## Index row
