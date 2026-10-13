@@ -1,138 +1,29 @@
-//! **The byte-sink contract** (milestone 50): one framing for *write these bytes there*.
+//! **The byte-sink contract**: one framing for *write these bytes there*, so a writer cannot tell
+//! what is underneath its output.
 //!
-//! Before this crate there were four of them. std's `println!` SENT three registers on the
-//! endpoint in slot 1; `line_editor` CALLed with an opcode and a shared page; `filesystem_protocol` CALLed with
-//! a handle, an offset and a shared page; the console server took a length on one endpoint and
-//! acknowledged on another. Four shapes for one verb, which is exactly as many as it takes to make
-//! a program's output destination something the program has to *know about*. This is the one
-//! shape, and the point of having it is negative: a writer stops being able to tell what is
-//! underneath.
+//! **A sink is a `Rendezvous` capability with `WRITE`, and nothing else**: no shared page and no
+//! acknowledgement channel. Redirection is putting a different capability in a slot, and a sink
+//! that needed a page at an agreed address would turn that into a spawn-time negotiation. So the
+//! payload rides in registers, up to [`INLINE_MAX`] bytes in two words with the opcode and length
+//! in the first (the three-word fastpath, notes/abi.md).
 //!
-//! # The shape, and why it is this one
+//! **`SEND`, not `CALL`**: a reply could only say "all of them", at a round trip on the hottest path
+//! in the system. `SEND` blocks until a receiver takes the message, so the rendezvous is the flow
+//! control, and a pipe's reader is an ordinary program that only receives.
 //!
-//! **A sink is an `Rendezvous` capability with `WRITE`, and nothing else.** Not an endpoint plus a
-//! shared page, not an endpoint plus an acknowledgement channel. That restriction is the whole
-//! design, because milestone 50's finding is that redirection is *putting a different capability in
-//! a slot*: the moment a sink needs a page mapped at an agreed address, substituting one for
-//! another stops being one grant and starts being a spawn-time negotiation, and the finding is
-//! gone.
+//! [`Sent`] tells a writer the one thing it must know. [`Sent::NoSink`]: the slot is empty, so this
+//! program has no output destination and writing into the void is correct. [`Sent::Gone`]: the sink
+//! existed and was destroyed (§16 (object revocation)), so **the writer must end**. That is `SIGPIPE` as a
+//! return code: the writer is making a syscall on a capability the kernel can see is dead.
 //!
-//! It follows that the payload rides in registers. A message carries up to [`INLINE_MAX`] bytes in
-//! two words, with the opcode and the length in the first, which is the three-word fastpath
-//! notes/abi.md §2 describes and the one std's stdout already used.
+//! Deliberately not carried: a per-write error code (a sink that cannot accept bytes destroys its
+//! receiving end, so the writer learns that the sink is over and not why, as with `EPIPE`; a sink
+//! whose failures matter is a service with a `CALL` protocol), types (typed pipelines are a separate
+//! fork, design/roadmap/0050-pipes-and-redirection.md), and seeking, truncating, re-reading or stat:
+//! a sink appends, so `> report.txt` hands a program strictly less than a Unix fd 1.
 //!
-//! **`SEND`, not `CALL`.** A `CALL` would tell the writer how many bytes the sink took, and it
-//! would cost a round trip on the hottest path in the system to say "all of them", which is the
-//! only answer a self-framing message has. Back-pressure is not lost by dropping the reply,
-//! because `SEND` blocks until a receiver takes the message: the rendezvous *is* the flow control,
-//! which is the property `line_editor::proto::OPERATION_BYTES` already documented. And it is what lets the
-//! reader of a pipe be an ordinary program that does nothing but `receive`, with no reply to send and
-//! no protocol knowledge at all.
-//!
-//! # What a writer learns, which is the one thing it must
-//!
-//! A sink that has ended is not the same fact as a sink that was never granted, and [`Sent`] is
-//! that distinction:
-//!
-//! - **[`Sent::NoSink`]**: the slot is empty (or holds something that is not a writable endpoint).
-//!   This program was not given an output destination. Writing into the void is correct; every OS
-//!   does it to a process whose stdout is closed, and the program keeps running.
-//! - **[`Sent::Gone`]**: there *was* a sink and it has been destroyed. The reader exited, its
-//!   endpoint died with it (DECISIONS §16 revocation), and the bytes have nowhere to go. **The
-//!   writer must end.** This is Unix's `SIGPIPE`, arriving as a return code rather than a signal,
-//!   for the same reason milestone 48 retired `SIGTTIN`: the question the signal answered is
-//!   already answered by who holds what.
-//!
-//! Unix needs a signal here because an anonymous file descriptor gives the kernel no other way to
-//! reach a writer that is not making a syscall. A capability system has a better channel: the
-//! writer *is* making a syscall, on a capability the kernel can see is dead.
-//!
-//! # Examples
-//!
-//! A writer chunks; the sink reassembles. Sixteen bytes per message is not a tuning parameter, so
-//! an example that writes more than that is the honest one:
-//!
-//! ```
-//! use byte_sink_protocol::{INLINE_MAX, Msg, eof, pack, unpack};
-//!
-//! let line = b"the quick brown fox\n"; // 20 bytes, so two messages and an EOF
-//! let mut messages = 0;
-//! let mut received = [0u8; 32];
-//! let mut got = 0;
-//! let mut ended = false;
-//!
-//! let mut rest = &line[..];
-//! while !rest.is_empty() {
-//!     let (w0, w1, w2, taken) = pack(rest);
-//!     messages += 1;
-//!     rest = &rest[taken..]; // `pack` never drops a tail silently; the count says what it took
-//!
-//!     // The other end of the SEND.
-//!     let mut buf = [0u8; INLINE_MAX];
-//!     match unpack(w0, w1, w2, &mut buf) {
-//!         Msg::Bytes(n) => {
-//!             received[got..got + n].copy_from_slice(&buf[..n]);
-//!             got += n;
-//!         }
-//!         Msg::Eof | Msg::Malformed => unreachable!(),
-//!     }
-//! }
-//! // The writer is finished, and says so rather than leaving it to be inferred.
-//! let (w0, w1, w2) = (eof(), 0, 0);
-//! if let Msg::Eof = unpack(w0, w1, w2, &mut [0u8; INLINE_MAX]) {
-//!     ended = true;
-//! }
-//!
-//! assert_eq!(messages, 2); // 16 + 4
-//! assert_eq!(&received[..got], line);
-//! assert!(ended);
-//! ```
-//!
-//! Two claims in the constants are worth checking in code rather than trusting in prose. The first
-//! is why [`OPERATION_BYTES`] is zero: with that opcode the first word **is** the byte count, which is
-//! bit-for-bit the framing std's stdout sent before this crate existed, so unifying the protocol
-//! cost no instruction on the hottest path in the system. The second is that a length the message
-//! cannot hold is refused rather than obeyed, because obeying it is a read past the end of a
-//! buffer:
-//!
-//! ```
-//! use byte_sink_protocol::{INLINE_MAX, Msg, OPERATION_BYTES, len, operation, pack, req, unpack};
-//!
-//! let (w0, ..) = pack(b"hi");
-//! assert_eq!(w0, 2); // the whole word, not just its low bits
-//! assert_eq!(operation(w0), OPERATION_BYTES);
-//! assert_eq!(len(w0), 2);
-//!
-//! // A writer claiming more bytes than three words can carry is malformed, not generous.
-//! let lying = req(OPERATION_BYTES, INLINE_MAX as u64 + 1);
-//! assert_eq!(unpack(lying, 0, 0, &mut [0u8; INLINE_MAX]), Msg::Malformed);
-//! ```
-//!
-//! # What this contract deliberately does not carry
-//!
-//! **A per-write error code.** A sink that cannot accept bytes any more says so by ceasing to
-//! exist, and a disk-full file sink is required to destroy its receiving end rather than reply
-//! with an errno. That collapses "the reader exited", "the device is gone" and "the file system is
-//! full" into one fact, and the honest caveat is that the writer loses the *reason*: it learns that
-//! this sink is over, not why. That is the right trade for a byte stream, whose only available
-//! response to any of the three is to stop, and it is the trade Unix makes too (a writer gets
-//! `EPIPE`, never the reader's reason). A sink whose failures a client must distinguish is not a
-//! sink; it is a service, and it should be a `CALL` protocol like `filesystem_protocol`.
-//!
-//! **Types.** This carries bytes. A method implies an object with a type, and typed pipelines are a
-//! separate and larger fork (design/roadmap/0050-pipes-and-redirection.md records it as one); nothing in
-//! this framing should be read as a step toward one.
-//!
-//! **Seeking, truncating, re-reading, or stat.** A sink appends. That is the payoff milestone 50
-//! claims over Unix: `> report.txt` hands a program strictly less than fd 1 with full file
-//! semantics does, and it is this crate's opcode list that makes the claim true rather than
-//! policy.
-//!
-//! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review) as
-//! `byte_sink_proto`, itself renamed from `sink_proto`: matches the crate's own opening line
-//! ("the byte-sink contract"). The suffix became `_protocol` at milestone 265, on calef's ruling of
-//! 2026-09-05 that `_proto` is a truncation and is equally short for `prototype`; the stem is
-//! untouched and the 2026-08-23 ruling stands.
+//! Name: ratified 2026-08-23 (calef) as `byte_sink_proto`, renamed from `sink_proto` to match "the
+//! byte-sink contract"; `_protocol` per calef's 2026-09-05 ruling.
 
 #![no_std]
 
@@ -195,6 +86,43 @@ pub const fn eof() -> u64 {
 /// Pack up to [`INLINE_MAX`] bytes into the three words of a `SEND`. Bytes past the sixteenth are
 /// **not** silently dropped: the caller chunks, and the returned count says how many were taken, so
 /// a caller that ignores it writes a short message rather than losing a tail without knowing.
+///
+/// # Examples
+///
+/// ```
+/// use byte_sink_protocol::{INLINE_MAX, Msg, eof, pack, unpack};
+///
+/// let line = b"the quick brown fox\n"; // 20 bytes, so two messages and an EOF
+/// let mut messages = 0;
+/// let mut received = [0u8; 32];
+/// let mut got = 0;
+/// let mut ended = false;
+///
+/// let mut rest = &line[..];
+/// while !rest.is_empty() {
+///     let (w0, w1, w2, taken) = pack(rest);
+///     messages += 1;
+///     rest = &rest[taken..]; // `pack` never drops a tail silently; the count says what it took
+///
+///     // The other end of the SEND.
+///     let mut buf = [0u8; INLINE_MAX];
+///     match unpack(w0, w1, w2, &mut buf) {
+///         Msg::Bytes(n) => {
+///             received[got..got + n].copy_from_slice(&buf[..n]);
+///             got += n;
+///         }
+///         Msg::Eof | Msg::Malformed => unreachable!(),
+///     }
+/// }
+/// let (w0, w1, w2) = (eof(), 0, 0);
+/// if let Msg::Eof = unpack(w0, w1, w2, &mut [0u8; INLINE_MAX]) {
+///     ended = true;
+/// }
+///
+/// assert_eq!(messages, 2); // 16 + 4
+/// assert_eq!(&received[..got], line);
+/// assert!(ended);
+/// ```
 pub fn pack(bytes: &[u8]) -> (u64, u64, u64, usize) {
     let n = if bytes.len() < INLINE_MAX {
         bytes.len()
@@ -278,6 +206,24 @@ pub enum Msg {
 }
 
 /// Unpack a received message into `out`. See [`Msg`].
+///
+/// # Examples
+///
+/// With [`OPERATION_BYTES`] the first word is the byte count, and a length the message cannot
+/// hold is refused rather than obeyed:
+///
+/// ```
+/// use byte_sink_protocol::{INLINE_MAX, Msg, OPERATION_BYTES, len, operation, pack, req, unpack};
+///
+/// let (w0, ..) = pack(b"hi");
+/// assert_eq!(w0, 2); // the whole word, not just its low bits
+/// assert_eq!(operation(w0), OPERATION_BYTES);
+/// assert_eq!(len(w0), 2);
+///
+/// // A writer claiming more bytes than three words can carry is malformed, not generous.
+/// let lying = req(OPERATION_BYTES, INLINE_MAX as u64 + 1);
+/// assert_eq!(unpack(lying, 0, 0, &mut [0u8; INLINE_MAX]), Msg::Malformed);
+/// ```
 pub fn unpack(w0: u64, w1: u64, w2: u64, out: &mut [u8; INLINE_MAX]) -> Msg {
     match operation(w0) {
         OPERATION_BYTES => {
