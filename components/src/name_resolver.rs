@@ -100,7 +100,7 @@ use abi::rights;
 use domain_name_system::{Answer, Name, Query, Reject, TcpReply};
 use name_resolution_protocol::{
     self as protocol, Grants, MAX_ADDRESSES, NAME_TEXT_MAX, OFF_ADDRESSES, OFF_NAME, Outcome,
-    endowment, status,
+    endowment, network_step, status,
 };
 use socket_protocol as socket;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
@@ -142,14 +142,6 @@ const DATAGRAMS_PER_ATTEMPT: u32 = 8;
 /// with eight addresses is a few hundred, and a reply past this is refused as malformed rather than
 /// truncated, because over TCP there is nothing left to fall back to.
 const TCP_REPLY_MAX: usize = 2048;
-
-/// The network step that failed, in [`status::NETWORK`]'s detail byte.
-mod step {
-    pub const NO_SOCKET_PAGE: u8 = 1;
-    pub const OPEN: u8 = 2;
-    pub const SEND: u8 = 3;
-    pub const CONNECT: u8 = 4;
-}
 
 /// Everything too large for a one-page stack, in `.bss`. One thread, so one reference.
 struct State {
@@ -240,7 +232,7 @@ fn serve(state: &mut State, server: &Server, socket_ready: bool) {
             let (outcome, ttl) = if socket_ready {
                 resolve(state, server, badge, r.w1)
             } else {
-                (network(step::NO_SOCKET_PAGE), 0)
+                (network(network_step::NO_SOCKET_PAGE), 0)
             };
             let _ = reply(to, outcome.word(), ttl);
         }
@@ -416,9 +408,9 @@ fn over_udp(state: &mut State, server: &Server, query: &Query) -> Result<Answer,
 fn open(server: &Server, operation: u64) -> Result<u64, Fail> {
     let frame = server
         .frame
-        .ok_or(Fail::Status(network(step::NO_SOCKET_PAGE)))?;
+        .ok_or(Fail::Status(network(network_step::NO_SOCKET_PAGE)))?;
     let (socket::REP_OK, _, Some(socket)) = call_receiving(STACK, operation, 0) else {
-        return Err(Fail::Status(network(step::OPEN)));
+        return Err(Fail::Status(network(network_step::OPEN)));
     };
     if send_capability(
         socket,
@@ -428,7 +420,7 @@ fn open(server: &Server, operation: u64) -> Result<u64, Fail> {
     ) < 0
     {
         close(socket);
-        return Err(Fail::Status(network(step::NO_SOCKET_PAGE)));
+        return Err(Fail::Status(network(network_step::NO_SOCKET_PAGE)));
     }
     Ok(socket)
 }
@@ -454,7 +446,7 @@ fn exchange_udp(
         set_destination(server);
         write_payload(&state.request[..n]);
         if call(socket, socket::OPERATION_SENDTO, n as u64).0 != socket::REP_OK {
-            return Err(Fail::Status(network(step::SEND)));
+            return Err(Fail::Status(network(network_step::SEND)));
         }
         for _ in 0..DATAGRAMS_PER_ATTEMPT {
             let (got, _) = call(socket, socket::OPERATION_RECEIVE, 0);
@@ -503,14 +495,14 @@ fn exchange_tcp(
 ) -> Result<Answer, Fail> {
     set_destination(server);
     if call(socket, socket::OPERATION_CONNECT, 0).0 != socket::CONNECT_ESTABLISHED {
-        return Err(Fail::Status(network(step::CONNECT)));
+        return Err(Fail::Status(network(network_step::CONNECT)));
     }
     let n = query
         .request_tcp(&mut state.request)
         .map_err(|e| Fail::Rejected(Reject::Malformed(e)))?;
     write_payload(&state.request[..n]);
     if call(socket, socket::OPERATION_SEND, n as u64).0 != n as u64 {
-        return Err(Fail::Status(network(step::SEND)));
+        return Err(Fail::Status(network(network_step::SEND)));
     }
     let mut framed = TcpReply::new(&mut state.reply);
     loop {

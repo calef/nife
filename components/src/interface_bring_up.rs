@@ -51,6 +51,6 @@ pub(super) fn dhcp_lease(iface: &mut Interface, dev: &mut Nic, sockets: &mut Soc
         // Same discipline as service_until: block on the interrupt only when smoltcp has no timer
         // pending, so a dropped DHCP OFFER is retried by smoltcp's own DISCOVER retransmit rather
         // than deadlocking on an interrupt that will not come.
-        wait_for_nic(iface, dev, sockets);
+        wait_for_nic(iface, dev, sockets, None);
     }
 }

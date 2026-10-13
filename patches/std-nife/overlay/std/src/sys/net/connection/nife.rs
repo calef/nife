@@ -1162,8 +1162,32 @@ pub fn lookup_host(host: &str, port: u16) -> io::Result<LookupHost> {
         resolve::status::BAD_NAME => io::ErrorKind::InvalidInput,
         // The resolver asked and heard nothing it could use in time.
         resolve::status::NO_ANSWER => io::ErrorKind::TimedOut,
-        // The resolver's own socket was refused a step (its detail byte names which).
-        resolve::status::NETWORK => io::ErrorKind::NetworkUnreachable,
+        // The resolver's own socket was refused a step, and the message names which, so a failure
+        // read from a transcript says where to look (2026-10-13 UTC).
+        resolve::status::NETWORK => {
+            return Err(match outcome.detail {
+                resolve::network_step::NO_SOCKET_PAGE => io::const_error!(
+                    io::ErrorKind::NetworkUnreachable,
+                    "the resolver had no socket page"
+                ),
+                resolve::network_step::OPEN => io::const_error!(
+                    io::ErrorKind::NetworkUnreachable,
+                    "the stack refused the resolver a socket"
+                ),
+                resolve::network_step::SEND => io::const_error!(
+                    io::ErrorKind::NetworkUnreachable,
+                    "the stack refused the resolver's send"
+                ),
+                resolve::network_step::CONNECT => io::const_error!(
+                    io::ErrorKind::NetworkUnreachable,
+                    "the resolver's connection to its name server was not established"
+                ),
+                _ => io::const_error!(
+                    io::ErrorKind::NetworkUnreachable,
+                    "the resolver was refused a step this program does not know"
+                ),
+            });
+        }
         // A reply came back and was not believed: forged, poisoned or malformed.
         resolve::status::REFUSED => io::ErrorKind::InvalidData,
         _ => io::ErrorKind::Other,
