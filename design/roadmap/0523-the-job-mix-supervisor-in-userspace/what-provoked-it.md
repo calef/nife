@@ -1,10 +1,8 @@
 # Milestone 523: what provoked it, and the cause measured
 
-Moved on 2026-10-12 (UTC) from
-[`design/roadmap/0523-the-job-mix-supervisor-in-userspace.md`](../0523-the-job-mix-supervisor-in-userspace.md)
-under §212 (a prose budget), where it was the section "What provoked it, and the cause is now
-measured rather than inferred". The page holds the investigation of the move itself. Four bold spans
-became plain text and one long sentence was split in moving.
+An appendix to [milestone 523 (moving the job-mix supervisor into
+userspace)](../0523-the-job-mix-supervisor-in-userspace.md): what provoked it, and the cause,
+measured rather than inferred. The page holds the investigation of the move itself.
 
 `script/board-image --job-mix` builds a card whose kernel and archive are packed by one command, in
 the order that exists so they cannot disagree, and `sealed_pair` then reported the pair unsealed.

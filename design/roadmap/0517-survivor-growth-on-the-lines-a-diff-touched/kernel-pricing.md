@@ -1,10 +1,8 @@
 # What it would take to put `kernel/**` and `components/**` in the corpus
 
 An appendix to [milestone 517 (what fraction of survivor growth arrives on lines a pull request
-touched)](../0517-survivor-growth-on-the-lines-a-diff-touched.md), moved out of that page on
-2026-10-12 (UTC) under [§212 (a prose
-budget)](../../decisions/0212-a-prose-budget-for-every-document.md). The main page is complete
-without it, and carries the verdict this working leads to. This is the pricing behind that verdict.
+touched)](../0517-survivor-growth-on-the-lines-a-diff-touched.md). The main page is complete without
+it, and carries the verdict this working leads to. This is the pricing behind that verdict.
 
 ## The question
 

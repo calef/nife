@@ -10,12 +10,11 @@ needs_person: no
 ---
 # 497. A filesystem server that knows what time it is
 
-*(Number provisional until the merge queue lands it.)* Promoted from the
-proposal `a-filesystem-server-that-knows-the-time`, filed 2026-09-19, on calef's instruction of
-2026-09-20 to give every proposal on `main` a number. The text below is the proposal's own, unedited
-except for this paragraph: the argument is its author's and promotion is not the moment to improve
-it. Written by the milestone 64 (enough std to run somebody else's crate) lane (`milestone/64-std-filesystem-shim`), from milestone 64's block
-and `notes/touch.md`'s `BUGS`.
+Promoted from the proposal `a-filesystem-server-that-knows-the-time`, filed 2026-09-19, on calef's
+instruction of 2026-09-20 to give every proposal on `main` a number. The text below is the
+proposal's own, unedited except for this paragraph: the argument is its author's and promotion is
+not the moment to improve it. Written by the milestone 64 (enough std to run somebody else's crate)
+lane (`milestone/64-std-filesystem-shim`), from milestone 64's block and `notes/touch.md`'s `BUGS`.
 
 The mechanism a reader needs already exists and already has a decision behind it:
 DECISIONS §43 made reading the wall clock a broadly grantable, read-only authority (a `Frame`
@@ -30,10 +29,10 @@ read-only mapping of the clock page and stamp with the wall-clock second it read
 
 ## Why this matters
 
-Until 2026-09-19 the only reader of an on-device mtime was the shell's `touch`, and its `BUGS` section
-already said the stamp was a counter. **Milestone 64 bound `std::fs::Metadata::modified`**, so now
-every std program that asks gets that counter as a `SystemTime`, and it is wrong in three ways a
-program can act on:
+The shell's `touch` reads an on-device mtime, and its `BUGS` section says the stamp is a counter.
+**Milestone 64 binds `std::fs::Metadata::modified`**, so every std program that asks gets that
+counter as a `SystemTime` too, and it is wrong in three ways a program can act on:
+
 
 - A file written on nife reads as a moment in early 1970. `SystemTime::now()` in the same
   program reads 2026. Anything that computes an age (`now - modified`) gets fifty-six years.

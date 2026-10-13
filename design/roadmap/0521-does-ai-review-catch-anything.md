@@ -5,8 +5,8 @@ built: 2026-09-22
 ---
 # 521. Does an AI review of a pull request catch anything the gates and the maintainer do not
 
-Minted 2026-09-21 by calef, who asked for an experiment rather than an
-opinion. *(Number provisional until the merge queue lands it.)*
+calef asked for an experiment rather than an opinion (2026-09-21).
+
 
 ## The question, stated so it can come back no
 
@@ -130,9 +130,8 @@ comparison its own methods line shows spans two boots, each with its own
 calibration error. None of that was caught by a gate or by the human who signed the diff off.
 
 And the prior in this block survives anyway, because the same model missed the four-line defect.
-Nothing named D1, the diff that replaced *(Number provisional until the merge queue lands it.)*.
-Two of `kimi-k3`'s adversarial reviews reached the observation and rejected it in their own
-reasoning, verbatim:
+Nothing named D1, the diff that replaced. Two of `kimi-k3`'s adversarial reviews reached the
+observation and rejected it in their own reasoning, verbatim:
 
 > Is there an issue with the renumbering note *replacing* rather than *supplementing* the
 > provisional note? ... That's actually a real, if subtle, point: the original note existed

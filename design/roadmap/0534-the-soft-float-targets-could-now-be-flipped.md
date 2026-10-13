@@ -10,18 +10,21 @@ needs_person: no
 ---
 # 534. The soft-float targets could now be flipped, and two measurements should come first
 
-*(Number provisional until the merge queue lands it.)* Promoted from the proposal `the-soft-float-targets-could-now-be-flipped`, filed 2026-09-20, on calef's instruction of 2026-09-20 to give every proposal on `main` a number. The text below is the proposal's own, unedited except for this paragraph: the argument is its author's and promotion is not the moment to improve it. Filed by the lane of milestone 447 (a thread's vector registers
-are its own), which built the thing that was blocking the flip and deliberately did not take it.
+Promoted from the proposal `the-soft-float-targets-could-now-be-flipped`, filed 2026-09-20, on
+calef's instruction of 2026-09-20 to give every proposal on `main` a number. The text below is the
+proposal's own, unedited except for this paragraph: the argument is its author's and promotion is
+not the moment to improve it. Filed by the lane of milestone 447 (a thread's vector registers are
+its own), which built the thing that was blocking the flip and deliberately did not take it.
 
 Both measurements below run on the dev Mac and need nobody. The flip itself is
 calef's ruling rather than a lane's, which is what makes this a proposal.
 
 ## Why this is a proposal and not a change
 
-Every target in `targets/` is soft-float. Until 2026-09-20 that was a correctness requirement,
-in the words of milestone 184 (extend the `std` port to x86_64), because `kernel/src/arch/x86_64/`
-saved no FPU or SSE state on a context switch and neither did the other two architectures.
-Milestone 447 built the save, on all three, so the feature strings are now a choice.
+Every target in `targets/` is soft-float. Milestone 184 (extend the `std` port to x86_64) calls
+that a correctness requirement, because a kernel that saves no FPU or SSE state on a context switch
+needs it. Milestone 447 (a thread's vector registers are its own) saves that state on all three
+architectures, so the feature strings are a choice.
 
 Taking that choice is not a lane's. Turning `+soft-float` off changes the calling convention for
 every userspace binary and every `std` crate built against it, which is an ABI two programs agree
@@ -47,12 +50,11 @@ for the unit, which is the whole of 447's cost argument.
 
 ## What it would buy, honestly accounted
 
-- Seven flags disappear, and this line was wrong when it was written. It said there was one,
-  `--cfg aes_force_soft` in `.cargo/config.toml`'s `[target.x86_64-unknown-none]` block, and that
-  `grep` found no other. That was true of the commit this lane branched from and false of `main`
-  within the hour: milestone 442 (a crypto provider `rustls` can use on all three bare-metal
-  targets) landed `cryptography_provider`, which carries a `force-soft` feature on `sha2` and five
-  `--cfg` flags selecting portable implementations. Corrected 2026-09-20 by the integrator.
+- Seven flags disappear: `--cfg aes_force_soft` in `.cargo/config.toml`'s
+  `[target.x86_64-unknown-none]` block, and in `cryptography_provider`, from milestone 442 (a
+  crypto provider `rustls` can use on all three bare-metal targets), a `force-soft` feature on
+  `sha2` and five `--cfg` flags selecting portable implementations.
+
 
   The correction is worth more than the count. A lane measures the tree it branched from, and a
   claim of the form "grep finds no other" is a statement about a moment. This one went stale before

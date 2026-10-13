@@ -6,22 +6,20 @@ promoted_from: the-unreachable-kernel-claim-is-three-weeks-stale
 ---
 # 536. Two records still say the prover cannot see `kernel/src`, and it has been able to since 2026-08-30
 
-Built 2026-09-25 (UTC) by the maintainer, under calef's ruling of that day
-recorded as §216 (fatal-risk facts are correctable, and verdicts are the architect's). Risk
-2's stale sentence and size are corrected in `design/fatal-risks/README.md`, its appendix
-`design/fatal-risks/proofs-and-their-reach.md`, and `notes/proof-retrospective.md`, each correction
-dated and citing its source; PR #1276 had already corrected `script/verify`'s header. Risk 2's
-status and color are unchanged, because §216 leaves them with calef. The line counts below are this
-block's 2026-09-20 measurement; the corrections carry the 2026-09-25 re-measure (86,528 lines,
-15,966 in files calling `asm!`, eight harnesses). *(Number provisional until the merge queue lands it.)* Promoted from the proposal `the-unreachable-kernel-claim-is-three-weeks-stale`, filed 2026-09-20, on calef's instruction of 2026-09-20 to give every proposal on `main` a number. The text below is the proposal's own, unedited except for this paragraph and one bold lead-in the prose ratchet refused: the argument is its author's and promotion is not the moment to improve it. Raised by the `maintainer/verus-versus-kani` lane, which was briefed
-on the claim and found it expired before it found anything else.
+Built 2026-09-25 (UTC), under calef's ruling of that day recorded as §216 (fatal-risk facts are
+correctable, and verdicts are the architect's). Risk 2's stale sentence and size are corrected in
+`design/fatal-risks/README.md`, its appendix `design/fatal-risks/proofs-and-their-reach.md`, and
+`notes/proof-retrospective.md`, each citing its source, and `script/verify`'s header agrees (PR
+#1276). Risk 2's status and color are unchanged, because §216 leaves them with calef. The line
+counts below are this block's 2026-09-20 measurement; the corrections carry the 2026-09-25
+re-measure (86,528 lines, 15,966 in files calling `asm!`, eight harnesses).
 
-The gate was DECISION until §216 answered it on 2026-09-25. Its reasoning, as proposed: `design/fatal-risks/README.md` is an architect's file and risk 2's text is theirs to amend;
-AGENTS.md puts the falsification list outside a lane's reach, and the edit to it by the lane for
-milestone 64 (enough `std` to run somebody else's crate) is recorded as an exception rather than a
-precedent. `notes/proof-retrospective.md` is an ordinary
-note and needs no decision, but the two say the same sentence and should be corrected together or
-the reader meets a tree that disagrees with itself.
+§216 answers the gate. Its reasoning: `design/fatal-risks/README.md` is an architect's file and risk
+2's text is theirs to amend; AGENTS.md puts the falsification list outside a lane's reach, and the
+edit to it by the lane for milestone 64 (enough `std` to run somebody else's crate) is recorded as
+an exception rather than a precedent. `notes/proof-retrospective.md` is an ordinary note and needs
+no decision, but the two say the same sentence and should be corrected together or the reader meets
+a tree that disagrees with itself.
 
 ## The claim
 

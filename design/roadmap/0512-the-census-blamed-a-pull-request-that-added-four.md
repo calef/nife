@@ -6,13 +6,12 @@ promoted_from: the-census-blamed-a-pull-request-that-added-four
 ---
 # 512. The census blamed one pull request for 55 survivors it did not write
 
-*(Number provisional until the merge queue lands it.)* Promoted from
-the proposal `the-census-blamed-a-pull-request-that-added-four`, filed 2026-09-19, on calef's
-instruction of 2026-09-20 to give every proposal on `main` a number. The paragraph below this one
-is the proposal's own, unedited: the argument is its author's and promotion was not the moment to
-improve it. Found by milestone 438 (would a diff-scoped mutation check have caught), whose first
-measurement was a replay of the pull request `design/fatal-risks/README.md` names, and which found four
-survivors where that record accounts for 55.
+Promoted from the proposal `the-census-blamed-a-pull-request-that-added-four`, filed 2026-09-19, on
+calef's instruction of 2026-09-20 to give every proposal on `main` a number. The paragraph below
+this one is the proposal's own, unedited: the argument is its author's and promotion was not the
+moment to improve it. Found by milestone 438 (would a diff-scoped mutation check have caught), whose
+first measurement was a replay of the pull request `design/fatal-risks/README.md` names, and which
+found four survivors where that record accounts for 55.
 
 What this lane found on re-checking the proposal against the merged tree. The premise held
 for the arithmetic but not for the target: between 2026-09-19 (when the proposal was filed) and
