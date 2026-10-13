@@ -14,16 +14,13 @@ room for.
 - [`second-scaffold.md`](second-scaffold.md): the 2026-09-13 scaffold's reclamation and
   kernel-thread pricing, the four builds and their zero error bar, and the riscv64 `.rodata` cliff.
 
-*Name: provisional, minted 2026-10-11 (UTC) by lane/final-longest-notes, which split the parent
-under §212 (a prose budget). The directory follows §212's siting default, `notes/X/` beside
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default, `notes/X/` beside
 `notes/X.md`. calef names directories.*
 
-- `specifications` Name: provisional, minted 2026-10-11 (UTC) by lane/final-longest-notes, after
-  the parent's "What each specification actually says". calef names files.
-- `mmio-timers` Name: provisional, minted 2026-10-11 (UTC) by lane/final-longest-notes, for the
-  parent's "The other route: an MMIO timer the kernel already knows how to delegate". calef names
-  files.
-- `first-scaffold` Name: provisional, minted 2026-10-11 (UTC) by lane/final-longest-notes, for the
-  2026-09-05 scaffold the parent's "What the fourth shape costs" measured. calef names files.
-- `second-scaffold` Name: provisional, minted 2026-10-11 (UTC) by lane/final-longest-notes, for the
-  2026-09-13 scaffold. calef names files.
+- `specifications` Name: provisional. After the parent's "What each specification actually says".
+  calef names files.
+- `mmio-timers` Name: provisional. For the parent's "The other route: an MMIO timer the kernel
+  already knows how to delegate". calef names files.
+- `first-scaffold` Name: provisional. For the 2026-09-05 scaffold the parent's "What the fourth
+  shape costs" measured. calef names files.
+- `second-scaffold` Name: provisional. For the 2026-09-13 scaffold. calef names files.

@@ -61,24 +61,23 @@ echo 'sendkey e' | nc -U /tmp/mon.sock
 
 `NIFE_USB_KEYBOARD_OPTS` and `NIFE_USB_CONTROLLER_OPTS` are appended to the two `-device` options.
 
-## The keystroke stall, and the wrong first diagnosis
+## The keystroke stall: the PLIC enable is written first
 
-Until 2026-10-05 (UTC) the riscv64 leg stalled mid-line about one boot in thirty: the echo of
-`echo hello` stopped partway, and a byte typed on the UART released the held keys. This file's
-BUGS blamed a lost wakeup of `line_editor` across harts. **That was wrong.** A thread dump at the
-stall showed nobody sending to `line_editor`; the driver sat in `Irq::WAIT`, and its PLIC source
-was pending, enabled, above threshold and undelivered.
+`plic::enable`, which is also the driver's ACK, writes the enable bit before the priority. QEMU's
+PLIC re-evaluates delivery on a priority, threshold or completion write and on a rising line, never
+on an enable write. Written the other way round, an xHCI event raised while the driver is draining
+is stranded until another device's line rises, a UART byte for instance. On riscv64 that stalls the
+echo of `echo hello` mid-line about one boot in thirty, until a typed byte releases the held keys.
 
-QEMU's PLIC re-evaluates delivery on a priority, threshold or completion write and on a rising
-line, never on an enable write, and `plic::enable` (which is also the driver's ACK) wrote the
-priority first. An xHCI event raised while the driver was draining was stranded until another
-device's line rose, a UART byte for instance. The fix writes the enable bit first;
-`kernel/src/drivers/plic.rs` has the reasoning, and
-`sched::tests::an_interrupt_raised_while_its_line_is_masked_is_delivered_at_the_ack` holds it on
+It looks like a lost wakeup of `line_editor` across harts, and it is not one. A thread dump at the
+stall shows nobody sending to `line_editor`; the driver sits in `Irq::WAIT`, and its PLIC source is
+pending, enabled, above threshold and undelivered. `kernel/src/drivers/plic.rs` has the reasoning,
+and `sched::tests::an_interrupt_raised_while_its_line_is_masked_is_delivered_at_the_ack` holds it on
 all three architectures.
 
 Measured on patagonia with the swish-check keystrokes alone (riscv64, TCG, four harts): 10 stalls in
-300 boots with the old order, 0 in 300 with the fix. aarch64: 0 in 150. x86_64 was not counted.
+300 boots with the priority written first, 0 in 300 with the enable first. aarch64: 0 in 150. x86_64
+was not counted.
 
 ## Per architecture
 

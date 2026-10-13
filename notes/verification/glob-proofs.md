@@ -12,10 +12,10 @@ It also produced two findings worth having next to the calendar's
 ([calendar-proofs.md](calendar-proofs.md)). Both are about the same thing: the cost of a proof is
 the shape of the code, not the size of the claim.
 
-- Two loops became one, and the claim did not move. The first version found a bracket expression's
-  closing `]` in one loop, and tested membership in another, nested inside the match loop Kani was
-  already unrolling. One harness reached 3.5 GB and twelve minutes before it was killed. Scanning
-  the class once, deciding membership as it goes, removed a whole loop from the unrolling. It is less
+- One loop, not two, and the claim is the same. Finding a bracket expression's closing `]` in one
+  loop and testing membership in another, nested inside the match loop Kani already unrolls, took
+  one harness to 3.5 GB and twelve minutes before it was killed. Scanning the class once, deciding
+  membership as it goes, removes a whole loop from the unrolling. It is less
   work at runtime too. That is rule 1 of DECISIONS §46 (thin primitives or whole subsystems) in one
   edit.
 - An unwind bound too high is as expensive as a claim too big. These harnesses were first written

@@ -2,10 +2,7 @@
 
 *An appendix to [`notes/std.md`](../std.md), which is the page to read. This file holds milestone
 64's last pass: the mapping for each time call, why the handle shapes refuse, its EXAMPLES and its
-BUGS. It was moved here verbatim from the main page on 2026-09-25 (UTC), under [§212 (a prose
-budget)](../../design/decisions/0212-a-prose-budget-for-every-document.md). The directory
-`notes/std/` and this file's stem are provisional names, minted that day by the lane that split the
-file. Naming is calef's.*
+BUGS. The directory `notes/std/` and this file's stem are provisional names. Naming is calef's.*
 
 The records this file cites by number:
 
@@ -14,13 +11,9 @@ The records this file cites by number:
 - §112 (`touch`'s two behaviors need two rights)
 
 
-## File times: `modified` and `set_times` (milestone 64's last pass, 2026-09-19)
+## File times: `modified` and `set_times` (milestone 64's last pass)
 
-Neither was waiting on the contract, for three weeks, which is the fifth time this module has
-recorded that exact sentence. Milestone 47's `touch` lane added `GETMTIME`, `SETMTIME` and
-`SETMTIME_AT` on 2026-08-24 (DECISIONS §112); this note and the PAL's comments went on saying "no
-verb reports one" until 2026-09-19, and milestone 64's block carried the binding as its last
-outstanding item.
+Both bind to the contract's `GETMTIME`, `SETMTIME` and `SETMTIME_AT` verbs (DECISIONS §112).
 
 The mapping, verb by verb:
 
@@ -79,8 +72,7 @@ BUGS:
 - A write on nife never moves a real timestamp. The engine (`vendor/redoxfs`'s `write_node` and
   `truncate_node`) only ever moves an mtime *forward*, and the server's counter is always behind a
   real second. So a file the host tool made keeps its host time through every write this system
-  makes to it, and a file `set_times` put in the future stays there. Found by `std_exerciser`'s
-  first draft, which asserted a write moved a `set_times` value and failed; the test now asserts a
+  makes to it, and a file `set_times` put in the future stays there. So `std_exerciser` asserts a
   write moving a *made* file forward, before the `set_times`, which is what the stamp can promise.
 - Whole seconds only. The wire carries seconds and the server stores a zero nanosecond part, so
   `set_times` truncates. A second-granularity filesystem does the same on Unix and std documents

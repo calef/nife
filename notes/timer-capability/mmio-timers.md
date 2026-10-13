@@ -1,9 +1,8 @@
 # MMIO timers: the route the kernel already knows how to delegate
 
-An appendix of [can a userspace process hold a timer?](../timer-capability.md), moved from its
-section "The other route: an MMIO timer the kernel already knows how to delegate" on 2026-10-11
-(UTC) under §212 (a prose budget). The parent keeps why this route does not rescue a userspace
-timer service. This file keeps the per-machine table and the sources, read on 2026-09-05.
+An appendix of [can a userspace process hold a timer?](../timer-capability.md). The parent keeps why
+this route does not rescue a userspace timer service. This file keeps the per-machine table and the
+sources, read on 2026-09-05.
 
 ## The route
 
