@@ -1,16 +1,6 @@
-//! **The offer a booted stick makes, and the two programs that carry it out** (milestone 198 (a
-//! package manager, and the trivial install that makes a second customer possible), rung 2a).
-//!
-//! The proposal it follows is milestone 515 (a stick that puts itself on the machine's disk).
-//!
-//! # What this module is, and what it deliberately is not
-//!
-//! It is the **boot policy**: decide whether this boot could install at all, say what would be
-//! destroyed, ask, and then wire the two confined programs that do the work. It is not the
-//! installer. Nothing here writes a byte to a disk.
-//!
-//! The split is the whole argument, and it is the one `disk_service` already makes for milestone
-//! 57's partitioner:
+//! **The offer a booted stick makes, and the two programs that carry it out** (notes/installing.md).
+//! This is the boot policy: decide whether this boot could install, say what would be destroyed,
+//! ask, then wire the two confined programs that do the work. Nothing here writes a byte to a disk.
 //!
 //! | | holds | can destroy |
 //! |---|---|---|
@@ -18,36 +8,14 @@
 //! | `components/src/system_installer.rs` | one disk, one entropy endpoint, a read-only copy of the boot file | that disk |
 //! | `redoxfs_server`'s `mkfs` | the same disk, the same entropy endpoint | that disk |
 //!
-//! **The question is asked here rather than in the installer**, and that is not an accident of
-//! where the console is. A confirmation a program prints to itself is a confirmation that program
-//! could also decide to skip; asking before the capability is granted means the authority to wipe
-//! the disk does not exist until the answer does.
-//!
-//! # When the offer is made
-//!
-//! Three things must be true, and all three are facts about the machine rather than preferences:
-//!
-//! 1. **This boot came from a file the loader could read back** (`memory::boot_file_region`), so
-//!    there is something to install. A `-kernel` boot has no such file and is silently skipped.
-//! 2. **There is an NVMe controller**, which is the disk an install would go to.
-//! 3. **That disk does not already carry nife.** An installed machine boots from a file too, so
-//!    without this check every boot of every installed machine would pause to offer to wipe itself.
-//!    The check is a survey process, not a parse in the kernel: `system_installer`'s `ROLE_SURVEY`, spawned
-//!    with the disk and **no entropy endpoint**. That is `disk_partitioner`'s verify role, one
-//!    milestone along. **What the missing endpoint narrows is what the survey would write, not what
-//!    it can** (2026-09-24 security audit): a `blk` endpoint is the whole disk with no read-only
-//!    form, a reader of a partition table never checks that its ids were drawn from anywhere, so a
-//!    survey that chose to could write any table, or zeros, anywhere on that disk. What stops it is
-//!    the program's role, which is rung three of AGENTS.md's ladder; `confirm`'s section below
-//!    prices the read-only `blk` that would make it rung one.
-//! 4. **Somebody answers.** The wait is bounded, so a stick booted on a machine with no console
-//!    reaches the prompt instead of hanging.
-//!
-//! Anything else is a refusal, and every refusal is silent-or-explained and then continues to the
-//! ordinary boot. **Refusing by default is the whole safety property**: the only path to a write is
-//! a person typing [`CONFIRMATION`].
-//!
-//! # EXAMPLES
+//! **The question is asked here, before the capability exists**: a confirmation a program printed
+//! to itself is one it could skip. The offer is made only when this boot came from a file the
+//! loader can read back (`memory::boot_file_region`), there is an NVMe controller, the disk does
+//! not already carry nife, and somebody answers within a bounded wait. The nife check is
+//! `system_installer`'s `ROLE_SURVEY`, spawned without entropy; a `blk` endpoint has no read-only
+//! form, so what keeps the survey from writing is its role, not its authority (`confirm` below
+//! prices a read-only `blk`). **Refusing by default is the safety property**: the only path to a
+//! write is a person typing [`CONFIRMATION`].
 //!
 //! ```text
 //!   install     : this system was booted from a file and can install itself.
@@ -63,39 +31,13 @@
 //!
 //! # BUGS
 //!
-//! - **x86_64 only**, because `memory::boot_file_region` is: a device-tree handoff has one
-//!   initial ramdisk slot in `/chosen` and no second one for the loader's own file. `uefi_loader`'s
-//!   `place_boot_file` carries the argument and the gap, and
-//!   `design/roadmap/0568-the-boot-file-has-nowhere-to-go-on-a-device-tree-machine.md` prices
-//!   closing it and names the three other things that still stand between it and an install on
-//!   those architectures.
-//! - **It asks on the console, which means the kernel reads the UART** (`console::read_line`).
-//!   That is only sound because this runs before the progenitor hands the device to the input
-//!   driver, and it is the reason the offer is made at this exact point in the boot and not later.
-//! - **The disk is named by what it is, not by model and serial.** Milestone 515's `BUGS` asks for
-//!   model and size, and only the size is here: reading a controller's model is a second IDENTIFY
-//!   (`CNS_CONTROLLER`) in the admin plane and there is nowhere in
-//!   `non_volatile_memory_express::Handoff` to put forty ASCII bytes, whose three scalars are all
-//!   spent. On a machine with two disks this sentence would not say which, and that is why the
-//!   offer says "the NVMe disk attached to this machine" rather than naming an ordinal it cannot
-//!   back up. **It is the single most load-bearing sentence a stranger reads**, and it has a
-//!   milestone of its own, `design/roadmap/0569-the-disk-an-installer-names-has-no-model.md`,
-//!   which finds that the kernel-side half needs no ruling and the program-side half is the wire
-//!   question milestone 421 (the block roster cannot name an NVMe disk) is already held on.
-//! - **Nothing here is crash-atomic**, and a power cut between the partitioner and `mkfs` leaves a
-//!   partitioned disk with no filesystem, which the next boot reports as a disk it cannot mount.
-//! - **It checks for nife and for nothing else.** A disk carrying Windows, or a Linux root, looks
-//!   exactly like an empty one from here: the survey asks "is there a nife data partition" and any
-//!   other answer is "installable". A person who says yes to the question loses that disk. Naming
-//!   what is already on it is `disk_surveyor`'s job, and
-//!   `design/roadmap/0570-the-install-offer-should-say-what-is-already-on-the-disk.md` is the
-//!   milestone for it.
-//! - **A machine that already carries nife is never offered an install again**, which is what stops
-//!   an installed system offering to wipe itself on every boot and also means there is no way to
-//!   reinstall from the stick. The sharp case is a power cut between the installer and `mkfs`,
-//!   which leaves a nife data partition with no filesystem in it and a machine that will never be
-//!   offered an install again. `design/roadmap/0572-there-is-no-way-back-from-the-stick.md`
-//!   is the milestone, and the fix is a second question rather than a second mechanism.
+//! - x86_64 only (design/roadmap/0568). The kernel reads the UART to ask, before the input driver.
+//! - The disk is named by size, not model, which is the most load-bearing sentence a stranger reads
+//!   (design/roadmap/0569).
+//! - Not crash-atomic: a power cut between the partitioner and `mkfs` leaves an unmountable disk.
+//! - It checks for nife and nothing else, so a disk holding Windows looks empty (design/roadmap/0570).
+//! - A disk already carrying nife is never offered an install again, including a half-installed one
+//!   (design/roadmap/0572).
 
 use super::*;
 use crate::cap::{Rights, memory_region_cap, page_frame_cap, rendezvous_cap};

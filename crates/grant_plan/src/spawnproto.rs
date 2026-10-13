@@ -1,106 +1,42 @@
-//! **The spawn protocol: the wire half of the shell-to-progenitor grant expression.**
+//! **The spawn protocol: the wire half of the shell-to-progenitor grant expression.** The shell
+//! resolves a `run` into an [`Endowment`](crate::Endowment) but does not build the child: the
+//! progenitor holds the initial ramdisk and the ELF loader. So the shell says what to spawn and
+//! delegates the capabilities it grants over the same endpoint. A userspace protocol, not kernel
+//! ABI: the kernel routes these words as any IPC and never reads them (§10 (process model:
+//! capability-based)).
 //!
-//! When the shell resolves a `run` into an [`Endowment`](crate::Endowment), it does not build the
-//! child itself: the progenitor holds the initial ramdisk and is the ELF loader (the parser stays
-//! in one place, out of the shell). So the shell tells the progenitor what to spawn and, crucially,
-//! *delegates the capabilities it grants* over the same endpoint. This module is that contract's
-//! word layout, the capability-shell analogue of `line_editor::proto`.
-//!
-//! It is a **userspace** protocol, not kernel ABI. The kernel routes these words the way it routes
-//! any IPC (DECISIONS §10, §12, §21); it never reads them. Adding a field is a change here, not to
-//! the syscall surface.
-//!
-//! # The exchange
-//!
-//! The shell owns the sequence; the progenitor serves it in a loop.
-//!
-//! 1. **Request.** The shell `SEND`s three words on the spawn endpoint: the program id, the
-//!    integer argument, and the memory-grant page count. See [`request`] / [`prog_id`] /
-//!    [`arg`] / [`mem_pages`].
-//! 2. **The directory grant, if the request announced one** ([`Wiring::dir`], milestone 31 phase 3):
-//!    [`GRANT_WORDS`] plain `SEND`s carrying the caretaker's `START` words and then the child's.
-//!    Before the delegation rather than after, because these are **data and not capabilities** and
-//!    mixing the two orders would put a `RECEIVE` where a `RECEIVE_CAP` belongs.
-//! 3. **Delegation.** The capabilities the request announced, in a fixed order: the supervised
-//!    job's pair (untyped, frame), then the **sink** (milestone 50), then the **source**, then the
-//!    **diagnostic endpoint** (DECISIONS §67), then the **screen-narrowed tail's completion
-//!    endpoint** (DECISIONS §106), then the `--mem` untyped, then the **gpu's four** and the
-//!    **keyboard's three** (milestone 632 (provisional), graphics launched from the prompt), then
-//!    the **machine statistics page**, last. Order rather than tags, because both sides read the
-//!    same [`Wiring`] out of the same word and a promise nobody receives would deadlock both.
-//!
-//!    If `mem_pages > 0`, the shell `SEND_CAP`s exactly one capability there: an
-//!    untyped it split from *its own* budget, sized to `mem_pages`. This is the grant made real,
-//!    not parsed and dropped. Programs that grant no capability (`least_authority_demo`) skip this step, and the progenitor
-//!    knows to skip the matching `RECEIVE_CAP` from `mem_pages == 0`.
-//! 4. **Outcome.** The progenitor builds the child, endows it (the shared result endpoint always; the
-//!    delegated untyped when present), and starts it. The child reports its own answer on the
-//!    result endpoint. If the progenitor cannot build it (its own budget is spent, or the program vanished),
-//!    it sends [`SPAWN_FAILED`] on the result endpoint so the shell's read completes instead of
-//!    hanging.
-//!
-//! The result endpoint carries both the progenitor's failure sentinel and the child's success answer, and
-//! the shell reads exactly once: a well-formed spawn yields the child's word, a failed one yields
-//! [`SPAWN_FAILED`]. One reader, one word, no ambiguity.
-//!
-//! 5. **Death** (milestone 235). A child the kernel killed sends nothing, so neither of those two
-//!    words arrives and the shell's single read has nothing to complete it. `job_undertaker`, which
-//!    already holds the progenitor's supervision endpoint and already collects the corpse, sends
-//!    [`JOB_FAULTED`] there instead. It is a third value on the same one-word read rather than a
-//!    second channel, because the shell has one thread and can be blocked in exactly one `RECEIVE`;
-//!    see [`JOB_FAULTED`] for the two couplings this refused.
-//! 6. **Reaped** (milestone 685 (a job is finished when its memory is back)). After every collect,
-//!    `job_undertaker` `SEND`s [`reaped`] on the **spawn** endpoint, through a copy badged
-//!    [`UNDERTAKER_BADGE`]. The progenitor tells it from a request by the badge alone, wherever in
-//!    a request it arrives, and learns that the job's memory is back and its file-service window
-//!    is free. See [`UNDERTAKER_BADGE`] for the layout.
+//! 1. **Request.** Three words on the spawn endpoint: the program id, the integer argument, and the
+//!    memory-grant page count ([`request`], [`prog_id`], [`arg`], [`mem_pages`]).
+//! 2. **The directory grant**, if announced ([`Wiring::dir`]): [`GRANT_WORDS`] plain `SEND`s,
+//!    before the capabilities, because they are data and mixing orders would put a `RECEIVE` where
+//!    a `RECEIVE_CAP` belongs.
+//! 3. **Delegation**, in a fixed order both sides read from the same [`Wiring`]: the supervised
+//!    job's pair, the sink, the source, the diagnostic endpoint, the screen-narrowed tail's
+//!    completion endpoint, the `--mem` untyped (split from the shell's own budget), the gpu's four
+//!    and the keyboard's three, and the machine statistics page last. Order rather than tags; a
+//!    promise nobody receives would deadlock both sides.
+//! 4. **Outcome.** The progenitor builds, endows and starts the child, which answers on the result
+//!    endpoint; if it cannot, it sends [`SPAWN_FAILED`] there, so the shell's single read completes.
+//! 5. **Death.** For a killed child, `job_undertaker` sends [`JOB_FAULTED`] on that same read.
+//! 6. **Reaped.** After every collect, `job_undertaker` sends [`reaped`] on the spawn endpoint
+//!    through a copy badged [`UNDERTAKER_BADGE`], which tells the progenitor the job's memory and
+//!    file-service window are back.
 //!
 //! # BUGS
 //!
-//! The image request ([`Wiring::image`], DECISIONS §219 (how the shell names an installed program to the spawner) option D) is a first cut, and these are
-//! what it does not do yet. Milestone 198 (a package manager)'s block carries the same list.
-//!
-//! - **A caller that claims the run-unvouched capability without holding it hangs the progenitor.**
-//!   [`Wiring::run_unvouched`] promises one `SEND` on [`RUN_UNVOUCHED_SLOT`], and the progenitor
-//!   waits for it on the endpoint behind that slot, which only a holder can reach. A shell that
-//!   sets the bit and holds nothing leaves the progenitor blocked there for the life of the boot.
-//!   It is the exposure every promised message in this protocol already has (the frame entry
-//!   below), and it is reachable only by a program that holds the spawn endpoint and lies on it,
-//!   which today is the boot shell alone.
-//! - **A holder can lend its presentation.** The progenitor serves requests one at a time, so a
-//!   holder's `SEND` is taken only while some request that claimed the capability is being served.
-//!   A holder that sends one early, on purpose, can let another caller's claim through. That is a
-//!   proxy, and no capability system prevents a holder from running something on another's behalf;
-//!   it is recorded so nobody reads the missing `GRANT` as a stronger promise than it is.
-//! - **An image's manifest reaches only what the request words and the progenitor's own grants can
-//!   carry** (milestone 597 (a program carries its manifest in an ELF note), provisional). The
-//!   manifest now travels in the bytes, as an ELF note (`crates/manifest_note`, §197 (a package is
-//!   one archive file) option M2), and [`crate::image_manifest`] endows from it. But this wire has
-//!   an argument, a `--mem` count and nothing else a line designates, so a note declaring a file, a
-//!   directory, an input, an option, a supervised job, a second stream, a silent output or the
-//!   `std` runtime is refused ([`crate::image_can_carry`]) rather than run without it. Each is the
-//!   wiring a named program already has, not a new idea.
-//! - **An image's [`crate::Endowment`] names a stand-in row** ([`crate::IMAGE_ROW`]), because an
-//!   endowment names a `Prog` and a file has none. Everything about an image is decided from the
-//!   manifest [`crate::image_manifest`] returns; reading the row instead is the foot gun.
-//! - **The shell and the progenitor read two copies of the note.** The shell reads the file to bind
-//!   the line, then again to send it; the progenitor judges what arrived. A file changed in between
-//!   is judged on what arrived, and a request that no longer fits is refused with
-//!   [`SPAWN_REFUSED_BY_MANIFEST`] ([`crate::image_request_fits`]), never half-honoured.
-//! - **Only a plain line runs an image.** A path in a pipeline or behind a redirection reaches
-//!   the planner as a program name and is refused as "no such program", which is true of the name
-//!   and says nothing about the bytes. Nothing sets the bit alongside `interruptible`, and the
-//!   progenitor refuses an interruptible image request if one arrives. `dir` rides an image only for
-//!   bytes that hear words (milestone 205), whose `std` region holds the caretaker too.
-//! - **Every activation verb is open to whoever holds the spawn endpoint**, including
-//!   [`Activation::Vouch`], which vouches for any bytes at all. That is the owner's authority by
-//!   DECISIONS §221 (the boot prompt is the owner's console), and it is safe only because the boot
-//!   prompt is the one holder. A session given a spawn endpoint would be the owner too. Install,
-//!   remove and rollback have their own since milestone 809, [`INSTALLER_BADGE`]; vouch has none.
-//! - **A shell that cannot retype a frame mid-request hangs the prompt.** The staging region is
-//!   sized to the image, so this needs a full capability table in the shell, but if it happens the
-//!   progenitor waits for a frame that never comes. Nothing in the ABI lets either side abandon a
-//!   half-sent request; every capability this protocol promises has the same exposure.
+//! - Any promised message a caller withholds hangs the progenitor: claiming run-unvouched
+//!   ([`Wiring::run_unvouched`]) without holding [`RUN_UNVOUCHED_SLOT`], or a shell that cannot
+//!   retype a frame mid-request. Nothing lets either side abandon a half-sent request; today the
+//!   boot shell is the only holder. A holder can also lend its presentation to another's claim.
+//! - An image's manifest note ([`crate::image_manifest`]) reaches only what these words carry, so a
+//!   note declaring a file, directory, input, option, job, second stream, silent output or `std` is
+//!   refused ([`crate::image_can_carry`]). Its [`crate::Endowment`] names a stand-in row
+//!   ([`crate::IMAGE_ROW`]); reading that row instead of the manifest is the foot gun.
+//! - The shell reads the note twice; the progenitor judges what arrived and refuses a misfit with
+//!   [`SPAWN_REFUSED_BY_MANIFEST`]. Only a plain line runs an image, never interruptibly.
+//! - Every activation verb, [`Activation::Vouch`] included, is open to any spawn-endpoint holder,
+//!   safe only while the owner's boot prompt is the one (§221); install, remove and rollback have
+//!   [`INSTALLER_BADGE`], vouch has none.
 
 /// The interruptible bit, packed into the high half of the page-count word so one `SEND` still
 /// carries the whole request. `mem_pages` is a small count (`memory_grant_depleter`'s ceiling is

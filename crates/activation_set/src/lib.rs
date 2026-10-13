@@ -1,109 +1,38 @@
-//! **`activation_set`**: what is installed, as a table that is never edited, only succeeded.
+//! **`activation_set`**: what is installed, as a table that is never edited, only succeeded (§208
+//! (installing a package is granting it, and the activation set is versioned)). The progenitor reads
+//! the live generation on every image spawn and looks the executable's digest up ([`lookup_digest`]);
+//! the shell reads it to resolve a bare word and preview `caps`. Both take the location from here
+//! (rule 7): a directory [`DIRECTORY`] holding [`CURRENT`] and one file per generation
+//! ([`generation_name`]).
 //!
-//! DECISIONS §208 (installing a package is granting it, and the activation set is versioned) ruled
-//! that installing *records that a package exists*, and that **the table of entries is versioned**
-//! so a set can be selected and rolled back as a whole. This crate is that table's logic, pure and
-//! host-tested, for whichever process DECISIONS §219 (how the shell names an installed program to
-//! the spawner) ends up giving it to. §219 gave it to the progenitor: since milestone 198 rung 3a's
-//! image lane (2026-09-26) the progenitor reads the live generation on every image spawn and looks
-//! the executable's digest up in it ([`lookup_digest`]).
-//!
-//! # Where it lives
-//!
-//! A directory [`DIRECTORY`] at the root of the file service, holding [`CURRENT`] and one file per
-//! generation named by its decimal number ([`generation_name`]). Both the progenitor, which reads
-//! and writes it, and the shell, which reads it to resolve a bare word and to preview `caps`, read
-//! the names from here, which is rule 7: what two programs agree on is a crate. Provisional, like
-//! the crate's name.
-//!
-//! # The shape, and why it is this one
-//!
-//! **A generation is a text file that is never rewritten.** Installing and removing each produce
-//! the *next* generation from the current one ([`with_entry`], [`without_entry`],
-//! [`without_version`]); a one-line `current` file names which generation is live
-//! ([`parse_current`], [`format_current`]). So a rollback is rewriting one line to name an older
-//! generation, and every older set is still on disk, whole, to be named. That is the Nix profile's
-//! arrangement (a generation is immutable, the profile is a pointer), recorded as recalled rather
-//! than re-read.
-//!
-//! **A generation carries two kinds of line** (milestone 614 (two installed versions of one
-//! program, each runnable, and a caller granted the one it needs), rulings 2 and 3 of 2026-09-29):
+//! **A generation is a text file that is never rewritten.** Install and remove write the next
+//! generation ([`with_entry`], [`without_entry`], [`without_version`]), and a one-line `current`
+//! names the live one ([`parse_current`], [`format_current`]), so a rollback rewrites one line, as
+//! a Nix profile does. A generation holds two kinds of line:
 //!
 //! ```text
 //! <digest> <program> <version> <package> <manager>   a row: what is installed, and who installed it
 //! default <program> <digest>                         the pointer: what the bare word runs
 //! ```
 //!
-//! A `<digest>` is written `sha256:<64 hex>`, the one text form `measured_boot::digest_text`
-//! writes and `measured_boot::parse_digest` reads (DECISIONS §197 (a package is one archive
-//! file), its digest ruling of 2026-10-07).
-//!
-//! **Rows key on the digest; `program`, `version` and `package` are label columns.** The digest is
-//! the packager's attestation (the program member's SHA-256, as installing verified it); the
-//! version string is the upstream developer's claim. A rebuild claiming a version string already
-//! live is a second row, visible, never a silent replacement, because its bytes are a different
-//! digest: two versions of one program coexist as two rows, which is what one row per program name
-//! could not hold. There is no architecture column: the digest is of target-specific bytes, so
-//! builds for two ISAs never collide in one table. There is no install datetime: the generation
-//! index is a total order with no clock in it.
-//!
-//! **The default pointer lives inside the generation file**, so a rollback restores the table and
-//! the default together and `current` stays the one commit point. Every install of a program moves
-//! its pointer: the bare word means the newest install, which was the implicit rule before and is
-//! now a written one. An owner's vouch ([`OWNER`]) claims no name (DECISIONS §229 (how a bare name
-//! at the prompt reaches an installed program), B2), so a vouch never writes a pointer and
-//! [`lookup`] never answers with one.
-//!
-//! **An owner's vouch row carries `-` in the version column** ([`NO_VERSION`]): the owner vouches
-//! for bytes, not for a version anyone claimed.
-//!
-//! **Strict, because this table decides what may be spawned.** A malformed line of either kind
-//! makes the whole table unreadable ([`Error::Malformed`]) rather than skipped, for `measured_boot`'s
-//! reason: a table that half-parses vouches for whatever survived.
-//!
-//! # EXAMPLES
-//!
-//! ```
-//! use activation_set::{lookup, with_entry, without_entry, Entry, NO_VERSION, OWNER};
-//!
-//! let digest = [7u8; 32];
-//! let uptime = Entry { program: "uptime", version: "0.1.0", package: "uptime", digest, manager: "jig" };
-//! let mut first = [0u8; 512];
-//! let n = with_entry("", &uptime, false, &mut first).unwrap();
-//! let generation_1 = core::str::from_utf8(&first[..n]).unwrap();
-//! assert_eq!(lookup(generation_1, "uptime").unwrap().unwrap().version, "0.1.0");
-//!
-//! let mut second = [0u8; 512];
-//! let n = without_entry(generation_1, "uptime", &mut second).unwrap();
-//! let generation_2 = core::str::from_utf8(&second[..n]).unwrap();
-//! assert!(lookup(generation_2, "uptime").unwrap().is_none());
-//! // Generation 1 is untouched, so rolling back is naming it again.
-//! assert!(lookup(generation_1, "uptime").unwrap().is_some());
-//!
-//! // A vouch is a row with no version and no pointer: found by digest, never by name.
-//! let vouch = Entry { program: "a.out", version: NO_VERSION, package: OWNER, digest, manager: OWNER };
-//! let mut third = [0u8; 512];
-//! let n = with_entry(generation_2, &vouch, false, &mut third).unwrap();
-//! let generation_3 = core::str::from_utf8(&third[..n]).unwrap();
-//! assert!(lookup(generation_3, "a.out").unwrap().is_none());
-//! ```
+//! A `<digest>` is `sha256:<64 hex>`, as `measured_boot::digest_text` writes it. **Rows key on the
+//! digest**, the packager's attestation; `program`, `version` and `package` are labels. A rebuild
+//! claiming a live version is a second, visible row, and two versions coexist. No architecture
+//! column (the digest is of target-specific bytes) and no clock (the generation index orders).
+//! The default pointer lives in the generation file, so a rollback restores it too, and every
+//! install moves it. An owner's vouch ([`OWNER`]) has version [`NO_VERSION`], claims no name
+//! (§229 (how a bare name at the prompt reaches an installed program)) and never writes a pointer.
+//! Any malformed line makes the whole table [`Error::Malformed`]: a half-parsed table would vouch
+//! for whatever survived.
 //!
 //! # BUGS
 //!
-//! - **Nothing collects old generations.** Every install leaves one file behind, which is what
-//!   makes rollback free and is also unbounded. A retention rule (keep N, keep the last boot's) is
-//!   owed before a system installs often.
-//! - **A table is read whole into memory**, and its size is whatever the caller's buffer is. With
-//!   the version column and the pointer lines a row costs about 140 bytes (the digest's `sha256:` label added seven on 2026-10-07), so thirty-odd entries
-//!   fit a page.
-//! - **One program per package row.** A package with two programs is two rows naming the same
-//!   package, which works and is not tested beyond that.
-//! - **The `current` file is the one mutable thing**, so its write is the commit point, and nothing
-//!   here makes that write atomic. On RedoxFS it is a one-line overwrite; whether a torn write of it
-//!   is possible was not checked.
+//! - Nothing collects old generations; a retention rule is owed before frequent installs.
+//! - A table is read whole into the caller's buffer, about 140 bytes a row.
+//! - A package with two programs is two rows, untested beyond that.
+//! - Nothing makes the `current` write atomic; a torn write on RedoxFS was not checked.
 //!
-//! Name: provisional 2026-09-24 (milestone 198 (a package manager)'s rung 3a consumer lane). §208's own phrase is
-//! "activation set", which is why; `design/naming.md` is the rule and calef's the call.
+//! Name: provisional: §208's own phrase.
 
 #![no_std]
 
@@ -373,27 +302,46 @@ pub fn versions_of<'a>(
     })
 }
 
-/// The next generation: `table` with `entry` installed. Returns the length written to `out`.
+/// The next generation: `table` with `entry` installed, its length written to `out`. **Upsert by
+/// digest, then move the pointer**:
 ///
-/// **Upsert by digest, then move the pointer** (milestone 614, rulings 2 and 3):
-///
-/// - a package row with the same program **and the same digest is replaced in place**, labels and
-///   all: the bytes are the identity, and reinstalling them under a new version string relabels
-///   the row;
-/// - the same package at a **new digest is a second row**: what one row per program name could not
-///   hold, two versions of one program, is the point;
+/// - the same program **and digest replaces its row in place**, relabelling it;
+/// - the same package at a **new digest is a second row**: two versions of one program;
 /// - another package's claim on the name is still [`Error::Taken`], and nothing is written;
-/// - an owner's vouch and a package's row **sit side by side**. A vouch is found by digest and
-///   never by name ([`lookup`]), so neither displaces the other. A later vouch of a name replaces
-///   the earlier vouch of that name, as it did before rows keyed on digest.
+/// - an owner's vouch and a package's row **sit side by side**, since a vouch is found by digest
+///   and never by name ([`lookup`]); a later vouch of a name replaces the earlier one.
 ///
-/// A package install also **writes the program's default pointer**: the bare word means the newest
-/// install. A vouch writes none, because it claims no name.
+/// A package install also **writes the program's default pointer** (the bare word means the newest
+/// install); a vouch writes none. `image_carries`, whether the running image has a program of that
+/// name, makes a package's row [`Error::ImageName`] (§229), before [`Error::Taken`]; it is a
+/// required argument so an installer cannot forget to ask.
 ///
-/// `image_carries` is whether the running image has a program named `entry.program`. A package's
-/// row under such a name is [`Error::ImageName`] (§229, 2026-09-27), checked before
-/// [`Error::Taken`]; a vouch ignores it. It is a required argument rather than a second function
-/// so an installer cannot forget to ask.
+/// # Examples
+///
+/// ```
+/// use activation_set::{lookup, with_entry, without_entry, Entry, NO_VERSION, OWNER};
+///
+/// let digest = [7u8; 32];
+/// let uptime = Entry { program: "uptime", version: "0.1.0", package: "uptime", digest, manager: "jig" };
+/// let mut first = [0u8; 512];
+/// let n = with_entry("", &uptime, false, &mut first).unwrap();
+/// let generation_1 = core::str::from_utf8(&first[..n]).unwrap();
+/// assert_eq!(lookup(generation_1, "uptime").unwrap().unwrap().version, "0.1.0");
+///
+/// let mut second = [0u8; 512];
+/// let n = without_entry(generation_1, "uptime", &mut second).unwrap();
+/// let generation_2 = core::str::from_utf8(&second[..n]).unwrap();
+/// assert!(lookup(generation_2, "uptime").unwrap().is_none());
+/// // Generation 1 is untouched, so rolling back is naming it again.
+/// assert!(lookup(generation_1, "uptime").unwrap().is_some());
+///
+/// // A vouch is a row with no version and no pointer: found by digest, never by name.
+/// let vouch = Entry { program: "a.out", version: NO_VERSION, package: OWNER, digest, manager: OWNER };
+/// let mut third = [0u8; 512];
+/// let n = with_entry(generation_2, &vouch, false, &mut third).unwrap();
+/// let generation_3 = core::str::from_utf8(&third[..n]).unwrap();
+/// assert!(lookup(generation_3, "a.out").unwrap().is_none());
+/// ```
 pub fn with_entry(
     table: &str,
     entry: &Entry<'_>,

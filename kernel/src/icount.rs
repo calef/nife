@@ -1,108 +1,33 @@
-//! **The instruction-count instrument** (milestone 78), a boot mode that asserts two timing claims
-//! in a unit a busy host cannot move.
+//! **The instruction-count instrument**: a boot mode that asserts timing claims in a unit a busy
+//! host cannot move (notes/instruction-clock.md). From inside a guest, a slow handler and a
+//! descheduled emulator are the same observation (notes/load-sensitive-assertions.md). Under
+//! `-icount shift=0,sleep=off`, QEMU's virtual clock advances exactly one nanosecond per retired
+//! guest instruction and nothing else, so a claim in instructions cannot be falsified by load.
 //!
-//! *Provisional names throughout: the `icount` feature, this module, `tick_trace`, `script/icount`.
-//! calef names crates, programs and modules (AGENTS.md); a lane ships a provisional one and says so.*
+//! 1. **The timer fired at the deadline the kernel armed.** On riscv64 SBI's `set_timer` is
+//!    write-only, so nothing else proves firmware was armed with `DEADLINE`.
+//! 2. **The handler takes fewer than N instructions**, deadline to next arm: the quantity
+//!    `MISSED_TICKS` only approximates.
+//! 3. **Zero missed ticks**: in virtual time a miss cannot be the emulator.
+//! 4. **The deadline advances by exactly one interval per delivered tick.** Claims 1 to 3 compare
+//!    arrival against the deadline that fired, so a kernel that re-anchors its whole grid from
+//!    `now` passes them byte-identically while the delivered rate falls; this law catches it, with
+//!    no retry loop because claim 3 already made the window miss-free.
 //!
-//! # Why a separate boot mode rather than a wider margin
+//! It is opt-in, and not for speed (compute runs at about the same rate): every vCPU shares one
+//! virtual clock, so an idle hart in `wfi` jumps it and multi-hart timing becomes fiction (hence
+//! `-smp 1`), and a clock-bound wait costs instructions, about 3 s of wall clock per 0.64 s of
+//! virtual time. So it is its own boot, feature and command, like `script/bench`, and the
+//! `tick_trace` hooks are `#[cfg(feature = "icount")]`, absent from test and shipping builds. The
+//! feature implies `bench`, because both boots park at the same point (kernel/Cargo.toml).
 //!
-//! Milestone 78 exists because assertions were failing on pull requests that changed no executable
-//! code. Two of its claims survived every re-aiming the other rounds did, and they survived for the
-//! same reason: **from inside the guest, a slow handler and a descheduled emulator are the same
-//! observation.** `notes/load-sensitive-assertions.md` says so, and
-//! `notes/load-sensitive-assertions/known-residuals.md` records the residual window that the miss
-//! taxonomy narrowed rather than closed. The taxonomy itself was deleted on 2026-08-18, on both ISAs,
-//! so that window no longer exists anywhere; this boot's instruction-denominated claim replaced it.
+//! Every quantity is in instructions: one counter tick is `1e9 / frequency()` nanoseconds, so
+//! aarch64's 62.5 MHz counter reads in steps of 16 and riscv64's 10 MHz `rdtime` in steps of 100.
+//! That resolution is printed, since it decides what a change can show. The boot prints
+//! `icount: done` and parks in `wfi`; `xtask icount` owns and ends the QEMU child.
 //!
-//! Under `-icount shift=0,sleep=off` that confound does not exist. QEMU's virtual clock advances by
-//! exactly **one nanosecond per guest instruction retired** and by nothing else, so the host
-//! scheduler cannot move it at all. A claim denominated in instructions is therefore not
-//! falsifiable by load, which is a different thing from a claim with a generous bound: it changes
-//! what is measured rather than how loosely.
-//!
-//! # The claims
-//!
-//! 1. **The timer fired at the deadline the kernel armed.** On riscv64 this is the one this
-//!    milestone could not previously make: SBI's `set_timer` is write-only, so `DEADLINE` is our own
-//!    bookkeeping and nothing proved the firmware was armed with it. An implementation that
-//!    maintained `DEADLINE` correctly and armed SBI with something else would pass every existing
-//!    test. Here the arrival of each interrupt is compared against the deadline that fired, in
-//!    instructions, and a divergence of any size shows up on the tick it happens.
-//! 2. **The handler takes fewer than N instructions**, measured from the deadline to the moment the
-//!    next one is armed. That span is exactly the quantity `MISSED_TICKS` is a coarse proxy for: a
-//!    miss is that span exceeding a whole tick period. Bounding it directly is the assertion the
-//!    missed-tick tests could not make.
-//! 3. **Zero missed ticks**, which falls out for free and closes a recorded BUGS entry rather than
-//!    adding a feature: **under this instrument a missed tick cannot be the emulator.** The taxonomy
-//!    on both ISAs classified a miss by how late it was, and its cut left a window one tick period
-//!    wide where a host deschedule was still called a slow handler. There are no deschedules in
-//!    virtual time, so `missed_ticks() == 0` is assertable here with no taxonomy at all.
-//! 4. **The re-arm law: the deadline advanced by exactly one interval per delivered tick.**
-//!
-//! # Claim 4 was added because this instrument could not see the drift bug (milestone 62)
-//!
-//! Claim 4 is the newest and it is here because **the first three do not subsume the suite's
-//! `ticks_arrive_at_the_configured_rate`, and the record said they did.** Milestone 62's lane
-//! injected the exact defect that test was written for on 2026-08-18, re-anchoring the grid from
-//! `now` inside `rearm` (aarch64), and ran both instruments against it:
-//!
-//! | | verdict |
-//! |---|---|
-//! | `script/test --arch aarch64` | **red**, `timer drift: 20 ticks moved CNTV_CVAL_EL0 off the grid` |
-//! | `script/icount --arch aarch64`, claims 1-3 | **green**, and every number byte-identical to a clean run: arrival min/mean/max 1008, handler 1056, `missed_ticks 0` |
-//!
-//! Byte-identical is the finding rather than merely green. Claim 1 compares the arrival against
-//! **the deadline that fired**, so a kernel that re-anchors the whole grid arms the timer with the
-//! same word it records and the comparison is satisfied on every tick, forever, while the delivered
-//! rate falls to about 70 Hz. Nothing in claims 1-3 has a term that moves.
-//!
-//! So the law is asserted here too, and here it needs no retry loop: claim 3 has already established
-//! that the window contains no miss, and a miss is the only thing that legitimately re-anchors the
-//! grid. The suite's twin needs eight attempts to find such a window and on a loaded host sometimes
-//! never does, which is the whole of milestone 62's disposition; on this instrument the window is
-//! miss-free by assertion.
-//!
-//! # Why it is opt-in, and what that costs
-//!
-//! `-icount` is not a flag that observes; it changes what QEMU is. Two things about it are
-//! disqualifying for a general test path, and **neither of them is speed**, which is worth saying
-//! because the milestone block states the cost as "icount is slower and changes what the suite
-//! measures" and the first half had never been measured. It is not slower on compute (2026-08-17: an
-//! identical boot took 2.47-2.61 s under the instrument and 2.62-2.80 s without it, three runs
-//! each). The second half is right, and is what the next two paragraphs are.
-//!
-//! It makes every vCPU share **one** virtual clock, so an idle hart parked in `wfi` jumps that clock
-//! forward to the next event and multi-hart timing becomes fiction. That is why this boot and the
-//! bench boot are both `-smp 1`, and why the placement probe can never move here
-//! (notes/benchmarks.md). A suite run this way would silently stop proving every cross-core property
-//! it exists to prove.
-//!
-//! And it makes a clock-bound wait cost instructions rather than host time: 0.64 s of virtual time
-//! is 6.4x10^8 guest instructions, which this instrument spends about 3 s of wall clock retiring,
-//! where a plain TCG guest reaches the same counter value in 0.64 s. The suite is full of such
-//! waits.
-//!
-//! So the instrument is its own boot, its own feature and its own command, on the model
-//! `script/bench` already set, and **nothing on the test path changes at all**: the `tick_trace`
-//! hooks below are `#[cfg(feature = "icount")]`, so the test and shipping builds do not contain
-//! them.
-//!
-//! The feature **implies `bench`** rather than standing alone, and kernel/Cargo.toml carries the
-//! reason: both boots park at the same point, so both leave the same functions unreferenced, and
-//! `bench` already spells that set out across five files. `script/bench`'s own binary is untouched
-//! either way, which is the property that mattered.
-//!
-//! # What the numbers are
-//!
-//! Every quantity here is reported in **instructions**, converted from the counter the arch layer
-//! already exposes: one counter tick is `1e9 / frequency()` nanoseconds and one nanosecond is one
-//! instruction, so aarch64's 62.5 MHz counter reads in steps of 16 instructions and riscv64's
-//! 10 MHz `rdtime` in steps of 100. That quantization is the instrument's resolution and it is
-//! stated in the output rather than hidden, because it is what decides whether a given change is
-//! visible here at all (see BUGS in notes/instruction-clock.md).
-//!
-//! The boot never exits on its own: it prints `icount: done` and parks in `wfi`, and `xtask icount`
-//! owns the QEMU child and terminates it. Same contract as the bench boot, for the same reason.
+//! *Provisional names throughout: the `icount` feature, this module, `tick_trace`,
+//! `script/icount`.*
 
 use crate::println;
 

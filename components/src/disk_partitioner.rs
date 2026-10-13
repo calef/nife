@@ -1,54 +1,22 @@
-//! **`disk_partitioner`**: writes the map `disk_surveyor` reads (milestone 57,
-//! notes/globally-unique-identifier-partition-table.md).
-//!
-//! The destructive half of the pair, and the one whose endowment is the point. It holds exactly
-//! two things:
-//!
-//! - a **block-service endpoint** for **one** disk (`filesystem_protocol::blk`), which is the authority to
-//!   destroy that disk and no other; and
-//! - an **entropy endpoint** (`entropy_protocol`), which is the authority to obtain random bytes and
-//!   nothing else: it cannot reach the virtio-rng device, program its queue, or see the page the
-//!   device writes into.
-//!
-//! **Both are required and neither is sufficient**, which is a claim the wiring can make and
-//! `parted` cannot. A GPT gives every partition a globally unique id, and an id that is not random
-//! is not unique; `crates/globally_unique_identifier_partition_table` therefore refuses to invent
-//! one (notes/globally-unique-identifier-partition-table.md), so this program
-//! **without the entropy endpoint writes nothing at all** rather than falling back to a counter.
-//! The kernel-side test spawns it both ways and reads the disk afterwards to see which happened.
-//!
-//! Compare `parted /dev/sda` as root: one authority, obtained by typing a path, reaching every disk
-//! in the machine, with `/dev/urandom` always there for the asking. calef's own router instructions
-//! carry a "confirm the target device path before proceeding" warning precisely because nothing in
-//! that arrangement can enforce it. **Here the warning is structural**: this program was handed one
-//! disk and there is no path to type.
-//!
-//! # The two roles
+//! **`disk_partitioner`**: writes the map `disk_surveyor` reads
+//! (notes/globally-unique-identifier-partition-table.md). The destructive half of the pair, and its
+//! endowment is the point: a block-service endpoint for **one** disk (`filesystem_protocol::blk`),
+//! the authority to destroy that disk and no other, and an entropy endpoint (`entropy_protocol`),
+//! which reaches random bytes and not the device. **Both are required and neither is sufficient**:
+//! a GPT's unique ids must be random, the partition-table crate refuses to invent one, so without
+//! entropy this program writes nothing rather than fall back to a counter. Compare `parted
+//! /dev/sda` as root, which reaches every disk; here there is no path to type.
 //!
 //! | `a0` | |
 //! |---|---|
 //! | [`ROLE_PARTITION`] | draw four GUIDs, lay out a table, write both copies |
 //! | [`ROLE_VERIFY`] | read the disk back and report what is on it |
 //!
-//! `ROLE_VERIFY` is a **separate process with no entropy endpoint**, deliberately: a writer that
-//! checks its own work proves the least interesting thing available, and the verify role is also
-//! what turns "the refusal wrote nothing" from an assertion into a reading.
-//!
-//! # What it writes
-//!
-//! The layout is `filesystem_protocol::fixture::blank`, three partitions on a 64 MiB disk in the
-//! 2048-block alignment every real tool uses. Placement is this program's decision and not the
-//! crate's: `GloballyUniqueIdentifierPartitionTable::create` validates a layout and refuses to move
-//! one, because alignment is policy and a format library that quietly relocated a partition would
-//! be doing policy behind its caller's back.
-//!
-//! Every block written is **read first** and the table bytes laid over it. That matters on a disk
-//! that is not blank: the primary table is 34 logical blocks and the transfer unit is eight of
-//! them, so the tail of the last transfer block is somebody's data, and a partitioner that wrote
-//! whole transfer blocks would zero the first 3 KiB of a partition it was only supposed to be
-//! describing.
-//!
-//! # EXAMPLES
+//! `ROLE_VERIFY` is a separate process with no entropy endpoint, so "the refusal wrote nothing" is a
+//! reading, not an assertion. The layout is `filesystem_protocol::fixture::blank`, 2048-block
+//! aligned; placement is this program's policy, which the partition-table crate refuses to make.
+//! Every block is read before the table is laid over it: the primary table is 34 logical blocks and
+//! a transfer is eight, so writing whole transfer blocks would zero the start of a partition.
 //!
 //! ```text
 //!   ROLE_PARTITION, wired with a disk AND an entropy endpoint:
@@ -63,46 +31,13 @@
 //!
 //! # BUGS
 //!
-//! - **The logical block size is assumed to be 512**, the same assumption and the same reason as
-//!   `disk_surveyor`: nothing in `filesystem_protocol::blk` carries the device's, and every disk this project
-//!   has met reports 512. Writing a table with the wrong unit produces a table no other OS can
-//!   read, which is worse than a wrong answer on the read side. The fix is a field on the wire.
-//! - **It writes one hard-coded layout.** There is no `mkpart` command line, no partition sizing,
-//!   and no way to ask for a different type GUID; the layout is the fixture's. What this
-//!   demonstrates is the *authority*, and a command line is the smaller half of the work left.
-//! - **Nothing here is crash-atomic.** A kill partway through leaves a disk with one copy of the
-//!   table written and the other stale, which
-//!   `GloballyUniqueIdentifierPartitionTable::check_backup` reports as a mismatch. Real
-//!   partitioners have the same property; the difference is that milestone 37 measured the
-//!   filesystem's crash behaviour and nothing has measured this one's.
-//! - **The unique GUIDs are not checked for collision against the disk's existing table**, because
-//!   the table is being replaced wholesale. A future `mkpart` that adds an entry to a table it did
-//!   not write must check.
+//! - The logical block size is assumed to be 512. One hard-coded layout, with no `mkpart` options.
+//! - Not crash-atomic: a kill can leave the copies disagreeing, which `check_backup` reports.
+//! - New GUIDs are not checked against an existing table, which is replaced wholesale.
 //!
-//! Name: ratified 2026-09-13 (calef, working the unratified worklist), completing the pair he
-//! half-ratified on 2026-08-03: `disk_surveyor` was approved by name that day and this, its
-//! destructive half, was not. Survey and partition, read and write. Splitting the scheme across
-//! the pair would hide a relationship worth seeing.
-//!
-//! **The complaint this block used to carry was about the record rather than the word**, and it
-//! was right. The introducing commit (4db2fd7, 2026-08-03, milestone 57) says
-//! "`disk_partitioner` (provisional name) writes the map `disk_surveyor` reads" and calls its
-//! sibling "`fs_maker` (provisional name)" in the same breath. So the record does not explain the
-//! word; it records that nobody decided it. That sibling is `redoxfs_server/src/bin/mkfs.rs` now, which
-//! is a second provisional name resolved by somebody mid-task on a surface this record does not
-//! cover (see design/naming.md's BUGS). `disk_surveyor` calef approved by name the same day,
-//! and the pairing of the two (survey, partition) is visible in the tree without being written
-//! down anywhere. It is written down here now.
-//!
-//! Refused `parted`, and refusing it is the point rather than a formality: `parted /dev/sda` as
-//! root is one authority, obtained by typing a path, reaching every disk in the machine, with
-//! `/dev/urandom` always there for the asking. This program was handed one disk and there is no
-//! path to type. Borrowing the name would borrow the authority model this program exists to
-//! contrast with, which is the fault `flaky` was renamed for the same day. Refused `gpt_writer`,
-//! which names the format rather than the act, spends a stem
-//! `crates/globally_unique_identifier_partition_table` already holds, and would go stale the first
-//! time a second table type was written. Refused `disk_formatter`: formatting makes a filesystem,
-//! which is `redoxfs_server`'s `mkfs`, and this writes a partition map and touches no filesystem.
+//! Name: ratified 2026-09-13 (calef), the destructive half of `disk_surveyor`: survey and
+//! partition. Refused `parted` (it borrows the authority model this contrasts with), `gpt_writer`
+//! (names the format, not the act) and `disk_formatter` (formatting makes a filesystem).
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks
