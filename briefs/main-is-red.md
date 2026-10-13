@@ -58,9 +58,9 @@ by heart, because they are what a person doing this by hand gets wrong:
 
 ## Land the fix alone
 
-One pull request, nothing else enqueued. That is the point of the hold: a group build that mixes the
-fix with four other entries tells you nothing about the fix if it fails, and the tree is already in
-the state where you cannot afford an ambiguous result.
+One pull request, nothing else enqueued. That is the point of the hold. A group build that mixes the
+fix with four other entries tells you nothing about the fix if it fails. The tree is already in the
+state where you cannot afford an ambiguous result.
 
 If the fix itself fails in the queue, **do not release**. Fix forward on the same pull request, or
 revert the merge that broke the trunk and treat the revert as the fix. A revert is the cheaper answer

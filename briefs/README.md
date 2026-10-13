@@ -21,9 +21,10 @@ the correct answer at every level down to and including `low`. A brief is exactl
 disambiguation, done once and kept. It is worth as much to the most capable model reading it as to
 the cheapest, because the thing it fixes is not a reasoning gap, it is an instruction gap.
 
-The other half: the four gates, the ratchet reading the committed tip rather than the working
-tree, the gloss-on-the-same-line rule and the `script/verify` memory ceiling get retyped into lane
-brief after lane brief unless they are written down, for lanes on the most capable model as much as
+The other half: the four gates, the ratchet reading the committed tip rather than the working tree,
+the gloss-on-the-same-line rule and the `script/verify` memory ceiling. They get retyped into lane
+brief after lane brief unless they are written down. That holds for lanes on the most capable model
+as much as
 any. `briefs/gate-a-lane.md` holds them for that reason, not because of anything about model tier.
 
 ## Why these exist as files rather than as something typed each time
@@ -58,12 +59,12 @@ half-hour run is spent on them. `briefs/gate-a-lane.md` has the order and the tr
 Work that recurs, whose failure modes are already known, and whose correctness a gate can check.
 Rebases, triage, sweeps, the boilerplate every lane's gating step repeats. Not a one-off design
 question, not prose a reader will trust on its own authority, not anything touching the syscall
-surface or a wire format: those stay judgement calls made fresh, by whoever is making them, because
+surface or a wire format. Those stay judgement calls made fresh, by whoever is making them, because
 no brief can encode a decision that has not been made yet.
 
 Whether the *executor* is a rented open-weight model or the session's own frontier model is a
 separate question, answered by DECISIONS §202 (mechanical work goes to a cheaper model) and the
-decision recording the measurements behind it, and it is a question about routing capacity, not
+decision recording the measurements behind it. It is a question about routing capacity, not
 about what a brief is for. A brief's job is to be correct instructions; who is cheapest to run them
 on today is a cost problem that can change weekly without this directory changing at all.
 
@@ -89,11 +90,11 @@ new. The rebase brief is the worked example.
 ## BUGS
 
 - `--bare` skips `AGENTS.md`. Under the old framing this was a limitation to work around, the
-  cost of handing work to a rented model. It is now the reason this directory exists at all: `--bare`
-  is just the sharpest case of a fact that is true of every reader, including a maintainer three
+  cost of handing work to a rented model. It is now the reason this directory exists at all.
+  `--bare` is just the sharpest case of a fact true of every reader, including a maintainer three
   hours into a session who has stopped rereading `AGENTS.md` from the top. A brief carries what it
-  needs, that citations want glosses grounded in the target's H1, that a lane never edits another
-  milestone's block, that invented names are provisional, because nothing guarantees any reader has
+  needs: that citations want glosses grounded in the target's H1, that a lane never edits another
+  milestone's block, that invented names are provisional. Nothing guarantees any reader has
   that context loaded, human, cheap model, or frontier model alike.
 - Nothing here measures whether CI gating actually raised the lane ceiling. The argument is
   sound and the memory arithmetic is measured, but the number that would settle it is concurrent

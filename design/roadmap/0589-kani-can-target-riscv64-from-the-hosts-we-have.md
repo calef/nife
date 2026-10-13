@@ -199,8 +199,8 @@ today. It is also what turns option (a)'s compile reach into proof reach.
    from-source CBMC, Linux on a board whose job is running nife, and a self-hosted runner for
    pull request code.
 4. #1276's option 1 alone (compile asm-free riscv64 files as a proof-only module on the aarch64
-   host). Superseded by options 1 and 2, which reach the same files with the real `crate::arch`.
-   It is the fallback if calef refuses to change the prover.
+   host). Options 1 and 2 reach the same files with the real `crate::arch`, so this is the
+   fallback if calef refuses to change the prover.
 5. Containment, as priced above. Not an alternative to 1 or 2 for riscv64; it is the next step
    after either, and useful on aarch64 and x86_64 now.
 6. Nothing.

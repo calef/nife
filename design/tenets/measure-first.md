@@ -13,10 +13,10 @@ need time to inform that context."*
 The value under it, *make decisions with data*, `AGENTS.md` already states four times (numbers
 rather than adjectives, benchmarks first-class, question 5, a proposal that shows rather than
 argues), and a fifth copy would make every one cheaper. All four assume the data exists. This is
-the case where it does not. **Getting the data is the action**, not a prelude to one; choosing the
-remediation before the measurement is the error however obvious that remediation looks;
-remediation is separate work decided with the data in hand, it varies with context, and
-sometimes context takes time.
+the case where it does not. **Getting the data is the action**, not a prelude to one. Choosing the
+remediation before the measurement is the error, however obvious that remediation looks. Remediation
+is separate work decided with the data in hand, it varies with context, and sometimes context takes
+time.
 
 **Agreeing with the value does not prevent the error, which is why this earns a heading.** Pull
 request #1173 (a measure per mechanism, so each layer shows what it catches) asked what a zero-catch

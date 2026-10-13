@@ -7,12 +7,16 @@ boundary) no longer withholds that page. The line still reads as an overlap test
 Expected to fail: the harness's `assert!(!(a < e && s < a + len))`: the mask now contains a page the withheld
 range overlaps, which is the MSI-X table mapped into the driver.
 
-diff --git a/crates/extensible_host_controller_interface/src/lib.rs b/crates/extensible_host_controller_interface/src/lib.rs
-index 7d0a29d9f..bd7cbe503 100644
---- a/crates/extensible_host_controller_interface/src/lib.rs
-+++ b/crates/extensible_host_controller_interface/src/lib.rs
-@@ -142,3 +142,3 @@ pub fn register_window(
+diff --git a/crates/extensible_host_controller_interface/src/window.rs b/crates/extensible_host_controller_interface/src/window.rs
+index 2b6046724..e2862f73d 100644
+--- a/crates/extensible_host_controller_interface/src/window.rs
++++ b/crates/extensible_host_controller_interface/src/window.rs
+@@ -46,7 +46,7 @@ pub fn register_window(
+     let mut mask = 0u64;
+     for page in 0..pages {
          let (start, end) = (page * PAGE, (page + 1) * PAGE);
 -        if !withheld.iter().any(|&(a, b)| a < end && start < b) {
 +        if !withheld.iter().any(|&(a, b)| a <= start && start < b) {
              mask |= 1 << page;
+         }
+     }

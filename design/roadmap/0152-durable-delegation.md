@@ -121,7 +121,7 @@ points here for the mechanism.
 
 #387's runtime registration: §222 (who holds a user's schedule), built here.
 
-## What was built (2026-08-24, superseded)
+## What was built (2026-08-24) and is now retired
 
 `smb_server`'s `DurableSession` first proved §16 (object revocation) holds a budget up while it has a
 live child; it went with the SMB code on 2026-08-30. `crates/schedule_store` (provisional) holds the

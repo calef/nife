@@ -1,6 +1,6 @@
 # Why now: the case for building this operating system
 
-A position document. It assumes no knowledge of this project and answers three questions in order:
+A position document. It assumes no knowledge of this project. It answers three questions in order:
 what is wrong with the operating systems we have, why the known fix has not been adopted in forty
 years, and what changed recently enough to make the attempt worth making today.
 
@@ -15,8 +15,9 @@ from what it was handed. A process inherits its user's entire reach: every file 
 read, every socket that user can open, every other process that user can signal.
 
 This is not an abstraction. It is why a build-time dependency in a package tree can read a
-developer's private keys, why an archive extractor can write outside the directory it was pointed at,
-and why a document viewer asked to render one file can enumerate the disk it lives on. None of those
+developer's private keys. It is why an archive extractor can write outside the directory it was
+pointed at, and why a document viewer asked to render one file can enumerate the disk it lives on.
+None of those
 are bugs in those programs. Each is the operating system's model working exactly as designed, and the
 program merely doing something the design permitted and nobody expected.
 
@@ -75,9 +76,9 @@ ecosystem.
 
 The cost of rewriting software fell by something like an order of magnitude, and it fell recently.
 
-That is the whole argument for the timing. If the reason a capability operating system never
-displaced the ambient-authority one was that somebody had to rewrite the world, and rewriting the
-world stops being prohibitive, then the question that was settled by economics rather than by
+That is the whole argument for the timing. Say a capability operating system never displaced the
+ambient-authority one because somebody had to rewrite the world. If rewriting the world stops being
+prohibitive, then the question that was settled by economics rather than by
 engineering is open again.
 
 This project is the first evidence for the claim, because it is itself built that way: many agents
@@ -123,8 +124,9 @@ This is demonstrated.
 
 Second, that it can be a complete system rather than a kernel demo. The tree boots on two
 architectures at parity, aarch64 and riscv64, and runs a shell, a filesystem, a network stack, a
-compositor and a windowing scene, an NTP client, a measured boot chain and about fifty user programs,
-all as confined userspace components. Where a monolith would have put a filesystem in the kernel, this
+compositor and a windowing scene, an NTP client, a measured boot chain and about fifty user
+programs. All are confined userspace components. Where a monolith would have put a filesystem in the
+kernel, this
 one has a program you can kill. This is demonstrated.
 
 Third, that a system of this size can be built this way at all. This is the method claim, and it

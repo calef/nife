@@ -170,7 +170,7 @@ or `script/gates`, for `script/audits`' recorded reason.
   somebody runs them, and there is no way to tell a correct red from a broken one from outside.
 - Seven eighths of the mutant corpus is still unmeasured since 2026-08-03. A full refresh needs a
   run where enough shards survive, and no such run has happened yet.
-- The Miri run is no longer red, and does not yet fit the 90-minute budget it used to carry. All
+- The Miri run is no longer red, and does not yet fit a 90-minute budget. All
   three reported failures are fixed and nothing in the workspace fails under the interpreter any
   more; what remains is cost, all of it in `compositor`, handed off above. The budget is raised to
   240 minutes here rather than tuned, because the true total has still not been measured end to end:

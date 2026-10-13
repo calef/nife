@@ -1,10 +1,6 @@
-//! **The entropy contract** (milestone 56; DECISIONS §44, notes/entropy.md).
-//!
-//! One definition of the request and the reply that carry random bytes out of the entropy service,
-//! so the service, its clients, the std PAL and the kernel-side tests cannot drift. The same split
-//! `filesystem_protocol` makes for the filesystem and `clock_protocol` for the wall clock.
-//!
-//! # The shape, and why it is this small
+//! **The entropy contract** (§44 (entropy is a capability), notes/entropy.md): the request and
+//! reply that carry random bytes out of the entropy service, defined once for the service, its
+//! clients, the std PAL and the kernel-side tests.
 //!
 //! ```text
 //!   the virtio-rng device (a Virtio capability, one holder)
@@ -15,105 +11,25 @@
 //!                           in the reply)
 //! ```
 //!
-//! A client `CALL`s with a byte count and gets the bytes back **in the reply words**. There is no
-//! shared page, which is the one design choice in here worth arguing about, so it is argued about
-//! in DECISIONS §44: bulk normally rides in a page (§10), but a page shared with a client is a
-//! place the bytes *persist* and a second party can read, and random bytes are the payload whose
-//! whole value is that nobody else has seen them. Registers and the client's own stack are a
-//! smaller footprint than a page both parties map. The cost is one round trip per
-//! [`MAX_BYTES`] bytes, which is what the `entropy_rtt` benchmark prices.
-//!
-//! # Examples
-//!
-//! The one thing a client of this contract must get right is that **a reply is eight bytes, so
-//! filling anything larger is a loop**. That is the cost DECISIONS §44 accepted in exchange for
-//! never putting random bytes in a page a second party maps, so it is what an example should show:
-//! a twenty-byte key takes three round trips, and the last one is short.
-//!
-//! ```
-//! use entropy_protocol::{GET, MAX_BYTES, delivered, operation, req, take, want};
-//!
-//! // Stands in for the `CALL`: the real service reads the same two accessors off the request word
-//! // and answers with a count and a word of bytes.
-//! fn service(w0: u64) -> (u64, u64) {
-//!     assert_eq!(operation(w0), GET);
-//!     (want(w0), 0x0807_0605_0403_0201)
-//! }
-//!
-//! let mut key = [0u8; 20];
-//! let mut filled = 0;
-//! let mut round_trips = 0;
-//! while filled < key.len() {
-//!     let (r0, r1) = service(req(GET, (key.len() - filled) as u64));
-//!     round_trips += 1;
-//!     // `None` would mean the word is a kernel error rather than a count. See below.
-//!     let n = delivered(r0).expect("the service answered");
-//!     assert_ne!(n, 0, "a zero count is NO_ENTROPY: fail, do not retry");
-//!     filled += take(n, r1, &mut key[filled..]);
-//! }
-//! assert_eq!(round_trips, 3); // 8 + 8 + 4, because MAX_BYTES is 8
-//! assert_eq!(MAX_BYTES, 8);
-//! assert_eq!(&key[16..], &[0x01, 0x02, 0x03, 0x04]);
-//! ```
-//!
-//! The other property worth stating as code is the one [`delivered`] exists for, because it is a
-//! claim about two number spaces *not* overlapping. A program holding no entropy capability at all
-//! gets a kernel error in the register a count would have arrived in, and it does not have to probe
-//! to find out which it is holding:
-//!
-//! ```
-//! use entropy_protocol::{MAX_BYTES, NO_ENTROPY, delivered};
-//!
-//! // Every count the service can send.
-//! for n in 0..=MAX_BYTES {
-//!     assert_eq!(delivered(n), Some(n as usize));
-//! }
-//! // `abi::Error` is -1 to -8; as a u64 each is enormous, so none can be read as a count.
-//! assert_eq!(delivered(-4i64 as u64), None); // an empty slot: no entropy capability
-//!
-//! // And "the service has none to give" is a third answer, distinct from both.
-//! assert_eq!(delivered(NO_ENTROPY), Some(0));
-//! ```
+//! A client `CALL`s with a byte count and gets the bytes back in the reply words, at most
+//! [`MAX_BYTES`] per round trip. No shared page, against the usual bulk rule: a page shared with a
+//! client is a place the bytes persist and a second party can read, and random bytes are worth
+//! exactly that nobody else has seen them. The `entropy_rtt` benchmark prices the round trips.
+//! Nothing here transforms a byte; without a one-way function any whitening is a reversible
+//! permutation, so the claim stays "these are the device's bytes".
 //!
 //! # BUGS
 //!
-//! **A true all-zero first draw would be misread as a dead device, and this is the one place the
-//! contract knowingly gets an answer wrong.** [`readiness`] refuses a first bufferful of zeros, so
-//! a source that legitimately produced one at bring-up is condemned for the boot: 2^-64 for the
-//! instruction backend's eight bytes, 2^-256 for the JH7110's thirty-two, 2^-2048 for the
-//! virtio backend's bufferful. The trade is deliberate and is the right way round. **A false
-//! "the device is dead" costs one boot's entropy; a false "the device is alive" costs every secret
-//! derived from it**, and the second failure has no symptom, which is the whole reason
-//! [`NO_ENTROPY`] exists two paragraphs down from [`READY`].
+//! - **An all-zero first draw is read as a dead device**: [`readiness`] condemns the source for the
+//!   boot, wrongly with probability 2^-64 (instruction), 2^-256 (JH7110) or 2^-2048 (virtio). That
+//!   is the right way round: a false "dead" costs one boot's entropy, a false "alive" costs every
+//!   secret derived from it, silently.
+//! - The check is bring-up only: a source that degrades or latches a nonzero answer afterwards is
+//!   not caught here. Continuous health testing is `design/decisions/0137-trng-health-tests.md`'s
+//!   to decide.
 //!
-//! **The check is bring-up only, and so are its guarantees.** A source that answers correctly once
-//! and degrades afterwards, or one whose register file latches and repeats the same nonzero answer
-//! forever, passes [`readiness`] and is not caught anywhere in this crate. That is continuous
-//! health testing, it is a decision rather than an omission, and it is
-//! `design/decisions/0137-trng-health-tests.md`'s to make: 137 has to answer what a *running*
-//! service does when a test fails, which is a denial-of-service question this readiness handshake
-//! does not have (nothing depends on the service yet at the moment it reports). Nothing here
-//! pre-empts that decision, and the only client-side check that exists today is the riscv64 boot
-//! tour's own two-draw comparison, which is a client looking rather than the service checking.
-//!
-//! # Nothing here transforms a byte
-//!
-//! The service passes the device's bytes through. It does not hash, mix, whiten, or stretch them,
-//! and this crate has no arithmetic in it at all for exactly that reason: with no cryptographic
-//! primitive in the tree (that is the other half of milestone 56), any "whitening" would be a
-//! reversible permutation that changes the bytes without adding an unpredictability an attacker
-//! could not undo. The security property is therefore statable in one sentence: **these are the
-//! device's bytes**, and the device is named in the notes.
-//!
-//! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review, confirming
-//! milestone 46's own reasoning). The wire contract was spelled four ways (`filesystem_proto`,
-//! `graphics_proto`, `netproto`, `line_editor::proto`) for one concept; `*_proto` won on
-//! 2026-07-30 under DECISIONS §39, and `script/lint` has checked it since. **Milestone 265
-//! reopened the suffix and not the rule**: `_proto` became `_protocol` on 2026-09-05 because it is
-//! a truncation that is equally short for `prototype`, so the two crates named above are
-//! `filesystem_protocol` and `graphics_protocol` today. The 2026-07-30 spellings are kept here
-//! because the sentence is an account of what was decided then.
-//! The stem is the service's own word (`entropy`, DECISIONS §44), which is itself unrecorded.
+//! Name: ratified 2026-08-23 (calef): the service's own word, `entropy`, with the contract suffix
+//! `_protocol` (calef's 2026-09-05 ruling).
 
 #![cfg_attr(not(test), no_std)]
 
@@ -245,6 +161,24 @@ pub const NO_ENTROPY: u64 = 0;
 /// capability sees `None` and can say "this platform cannot do that" without a separate probe.
 /// `filesystem_protocol` could not manage this (its errno space collides with the kernel's, a wart
 /// notes/std.md records), and a contract this new has no excuse to inherit the collision.
+///
+/// # Examples
+///
+/// A count and a kernel error cannot be confused, and "none to give" is a third answer:
+///
+/// ```
+/// use entropy_protocol::{MAX_BYTES, NO_ENTROPY, delivered};
+///
+/// // Every count the service can send.
+/// for n in 0..=MAX_BYTES {
+///     assert_eq!(delivered(n), Some(n as usize));
+/// }
+/// // `abi::Error` is -1 to -8; as a u64 each is enormous, so none can be read as a count.
+/// assert_eq!(delivered(-4i64 as u64), None); // an empty slot: no entropy capability
+///
+/// // And "the service has none to give" is a third answer, distinct from both.
+/// assert_eq!(delivered(NO_ENTROPY), Some(0));
+/// ```
 pub const fn delivered(r0: u64) -> Option<usize> {
     if r0 <= MAX_BYTES {
         Some(r0 as usize)
@@ -258,6 +192,37 @@ pub const fn delivered(r0: u64) -> Option<usize> {
 /// Little-endian, and only the low `n` bytes are meaningful: the rest of the word is whatever the
 /// service had left in the register and carries no entropy, so a caller that read them would be
 /// mixing zeros into a key and believing otherwise.
+///
+/// # Examples
+///
+/// A reply is eight bytes, so filling anything larger is a loop: a twenty-byte key is three round
+/// trips, the last one short.
+///
+/// ```
+/// use entropy_protocol::{GET, MAX_BYTES, delivered, operation, req, take, want};
+///
+/// // Stands in for the `CALL`: the real service reads the same two accessors off the request word
+/// // and answers with a count and a word of bytes.
+/// fn service(w0: u64) -> (u64, u64) {
+///     assert_eq!(operation(w0), GET);
+///     (want(w0), 0x0807_0605_0403_0201)
+/// }
+///
+/// let mut key = [0u8; 20];
+/// let mut filled = 0;
+/// let mut round_trips = 0;
+/// while filled < key.len() {
+///     let (r0, r1) = service(req(GET, (key.len() - filled) as u64));
+///     round_trips += 1;
+///     // `None` would mean the word is a kernel error rather than a count. See below.
+///     let n = delivered(r0).expect("the service answered");
+///     assert_ne!(n, 0, "a zero count is NO_ENTROPY: fail, do not retry");
+///     filled += take(n, r1, &mut key[filled..]);
+/// }
+/// assert_eq!(round_trips, 3); // 8 + 8 + 4, because MAX_BYTES is 8
+/// assert_eq!(MAX_BYTES, 8);
+/// assert_eq!(&key[16..], &[0x01, 0x02, 0x03, 0x04]);
+/// ```
 pub fn take(n: usize, word: u64, out: &mut [u8]) -> usize {
     let n = n.min(MAX_BYTES as usize).min(out.len());
     out[..n].copy_from_slice(&word.to_le_bytes()[..n]);

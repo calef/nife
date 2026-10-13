@@ -15,12 +15,13 @@ blocks at the far end and checks the backup table against the primary. The kerne
 partition table; every byte of judgment happens in a userspace crate whose tests run on the host.
 
 The provenance is the point. The test image is built by `xtask::mkgptdisk` from
-`crates/globally_unique_identifier_partition_table/tests/fixtures/sgdisk-64m.{head,tail}`: the first 34 and last 33 blocks of a 64 MiB disk
-that `sgdisk` 1.0.10 (gptfdisk, C++) partitioned, with the 64 MiB of nothing between them left out
-and put back as zeros. So the guest parses a table written by people who have never heard of this
-project. A reader tested against its own writer proves almost nothing, because every mistake it
-makes going in it makes symmetrically coming out; that argument is why the crate's host tests use
-these fixtures, and it does not stop applying at the QEMU boundary.
+`crates/globally_unique_identifier_partition_table/tests/fixtures/sgdisk-64m.{head,tail}`. Those are
+the first 34 and last 33 blocks of a 64 MiB disk that `sgdisk` 1.0.10 (gptfdisk, C++) partitioned.
+The 64 MiB of nothing between them is left out and put back as zeros. So the guest parses a table
+written by people who have never heard of this project. A reader tested against its own writer
+proves almost nothing, because every mistake it makes going in it makes symmetrically coming out.
+That argument is why the crate's host tests use these fixtures, and it does not stop applying at the
+QEMU boundary.
 
 Nothing is *in* the partitions. What is under test is finding them.
 
@@ -92,7 +93,7 @@ one:
   already owns the function. So `pci::count_block_devices` reads config space and stops.
 
 The ordinals are the same numbers `virtio::find_block_device_n` counts by, which is a promise rather
-than a coincidence: the roster and the wiring walk the bus the same way, so a listing and a wiring
+than a coincidence. The roster and the wiring walk the bus the same way, so a listing and a wiring
 cannot disagree about which disk is which.
 
 ### The negative control
@@ -143,9 +144,9 @@ There is a fifth mmio disk, at slot 4, and it is blank on purpose.
   needed and why the first attempt at that divergence did not work.
 
 The claim both are built to make is about the pair. A disk endpoint and an entropy endpoint are
-jointly sufficient to partition and format a drive, and separately neither is; the kernel test
+jointly sufficient to partition and format a drive, and separately neither is. The kernel test
 withholds each in turn from the same binary, with the same budget, the same stack and the same
-shared page, and then *reads the disk* to show that a refused run wrote nothing.
+shared page. Then it *reads the disk* to show that a refused run wrote nothing.
 
 `mkfs`'s wiring needed `grant_at` rather than `run`'s fill-in-order grants, and the reason
 generalizes: when the missing capability is not the last slot, withholding it has to leave a
@@ -153,9 +154,9 @@ hole. A shorter grant list renumbers everything above the gap, so a program that
 slot 1 empty would instead find its report endpoint there and write a verdict into a block server.
 
 The blank disk is regenerated every run and shared with nothing, for milestone 37's reason
-(DECISIONS §27). The riscv `virt` machine now uses seven of its eight mmio transports (five
-disks, a NIC, an RNG), which is worth knowing before anything wires an eighth: QEMU drops a
-virtio-mmio device past the last transport silently, and the symptom is a test *skipping*.
+(DECISIONS §27 (the filesystem service)). The riscv `virt` machine uses seven of its eight mmio transports (five disks, a
+NIC, an RNG). That is worth knowing before anything wires an eighth: QEMU drops a virtio-mmio device
+past the last transport silently, and the symptom is a test *skipping*.
 
 ## What this lane deliberately did not do
 
@@ -178,7 +179,7 @@ data. The surveyor's 44 KiB of table buffers are all `.bss`, so it was the first
 One stack page is not enough, and the symptom is not a stack overflow. A debug-build
 `GloballyUniqueIdentifierPartitionTable::parse` walking 128 entries (an `Entry` is 128 bytes by
 value) plus a second `Header::decode` for the backup overran the single mapped stack page by about
-200 bytes, which presents as a data abort on the program's own `sp` and then, thirty seconds later,
+200 bytes. That presents as a data abort on the program's own `sp` and then, thirty seconds later,
 as the lost-wakeup watchdog, because the test was still waiting on a report from a process that had
 died. `spawn_fs_client` records exactly this twice; it is now three times.
 
@@ -188,10 +189,10 @@ fix is an unregister on process death rather than counting to seven.
 
 And then the write half counted to seven, the same day, for the blank disk's block server. The
 comment records that it was told not to and why it did anyway: the unregister has to decide what a
-`Virtio` capability *is* once its holder is dead, and whether a transport may be handed to a second
-driver after the first programmed the device, which is a lifetime decision about a kernel object
-rather than a bookkeeping change. Worth flagging as a real piece of work now: two bumps in one day
-is a different signal from one every few milestones.
+`Virtio` capability *is* once its holder is dead. It must also decide whether a transport may be
+handed to a second driver after the first programmed the device. That is a lifetime decision about a
+kernel object rather than a bookkeeping change. Worth flagging as a real piece of work now: two
+bumps in one day is a different signal from one every few milestones.
 
 ## See also
 

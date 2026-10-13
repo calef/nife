@@ -29,8 +29,9 @@ they report and commit again. Do not push until all four are clean.
     gh workflow run ci.yml --ref "$(git branch --show-current)"
     gh workflow run verify.yml --ref "$(git branch --show-current)"
 
-The second and third commands are not optional, and this is the whole trap. §90 (the claim is a draft pull request; the status flip is a gate) opens every lane
-as a draft pull request, and both workflows begin with a `draft gate` job that asks the API
+The second and third commands are not optional, and this is the whole trap. §90 (the claim is a
+draft pull request; the status flip is a gate) opens every lane as a draft pull request. Both
+workflows begin with a `draft gate` job that asks the API
 whether the pull request is a draft right now and skips the entire suite when it is. So a push to
 a lane branch raises `synchronize`, the gate reads `draft: true`, and all thirteen checks report
 "skipped". A skipped check still posts a conclusion and still satisfies a required check, which
@@ -74,11 +75,11 @@ The order is push, then let the run settle, then `gh pr ready`. The wait is the 
 order. `ready_for_review` and a `synchronize` from a push you just made land in the same per-ref
 concurrency group as `ci.yml`, `verify.yml`, and `architect-hold.yml` (Step 3's group, the one that
 cancels a second dispatch). If `ready_for_review` arrives while that push's own run is still
-starting or still running, GitHub cancels the run, not the event: the older run in the group dies
+starting or still running, GitHub cancels the run, not the event. The older run in the group dies
 and posts CANCELLED, permanently, with no way to hide it from the pull request's check list.
-Measured across the open pull requests on 2026-09-23: 15 cancelled runs against 1 apparent
-failure, and every cancelled one traced back to a push and a `ready` landing within a second or
-two of each other (confirmed on #1123: a force-push and `ready_for_review` a second apart, three
+Measured across the open pull requests on 2026-09-23: 15 cancelled runs against 1 apparent failure.
+Every cancelled one traced back to a push and a `ready` landing within a second or two of each other
+(confirmed on #1123: a force-push and `ready_for_review` a second apart, three
 jobs cancelled at the same timestamp). `briefs/triage-a-failing-check.md` already names the reading
 half of this trap, that a cancelled job is not evidence of a defect; this is the writing half, which
 is to stop generating them.
@@ -104,7 +105,7 @@ Nothing here is watched with `gh run watch` or `gh pr checks --watch`; those pol
 rule this brief and `briefs/session-start.md` both refuse.
 
 A lane that opens as a draft (§90, the claim is a draft pull request, the status flip is a gate)
-and never pushes again before its one `gh pr ready` call has nothing to race against and can skip
+and never pushes again before its one `gh pr ready` call has nothing to race against. It can skip
 this step entirely. The trap is specifically a push closely followed by a ready; a lane whose last
 push and only `ready` are not close in time never produces it. It bites hardest on the common case
 this brief itself creates: a fix pushed in response to Step 4, then marked ready right after, with no
@@ -152,13 +153,13 @@ never machine-readable.
 
 - A dispatched run and a push-triggered run share a concurrency group, so pushing immediately
   after dispatching cancels your own run. Push first, then dispatch, in that order.
-- The same group is what makes Step 5 necessary, and the fix there is to wait, not to reorder:
-  there is no event ordering that avoids the collision, only a gap wide enough that the earlier
+- The same group is what makes Step 5 necessary. The fix there is to wait, not to reorder: there is
+  no event ordering that avoids the collision, only a gap wide enough that the earlier
   event's run has already finished before the later one starts.
 - Only some workflows are actually reachable by this trap on a normal lane. A file carrying
-  `cancel-in-progress` is not enough by itself; the workflow also has to trigger on `pull_request`
-  for a lane's own ref, which only `ci.yml`, `verify.yml`, and `architect-hold.yml` do
-  unconditionally (`coe-architect-label.yml` triggers the same way but does not cancel;
+  `cancel-in-progress` is not enough by itself. The workflow also has to trigger on `pull_request`
+  for a lane's own ref. Only `ci.yml`, `verify.yml`, and `architect-hold.yml` do so unconditionally
+  (`coe-architect-label.yml` triggers the same way but does not cancel;
   `stick-maker-hosts.yml` cancels but only fires on a change under `crates/stick_maker/`). The rest
   of this tree's `cancel-in-progress` workflows are schedule- or `workflow_dispatch`-only and never
   see a lane's `synchronize` or `ready_for_review` at all. Count workflow files with the string

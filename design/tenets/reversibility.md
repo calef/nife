@@ -52,6 +52,6 @@ committing quickly to a name.**
 
 The failures on record are both of that shape. A blind `sed` swept a rename across the tree and
 rewrote the very row recording that the name had been *refused*, which is a cheap edit destroying an
-expensive record. And a lane's provisional name went unquestioned by a maintainer who endorsed it,
-against a refusal that already existed and that nobody could find, which is the whole reason for
-being of milestone 115 (the names that were ratified, and the ones that were refused).
+expensive record. And a maintainer endorsed a lane's provisional name without question, against a
+refusal that already existed and that nobody could find. That is the whole reason for being of
+milestone 115 (the names that were ratified, and the ones that were refused).

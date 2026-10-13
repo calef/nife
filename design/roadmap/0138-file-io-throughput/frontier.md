@@ -48,10 +48,9 @@ accumulation rather than by one argument at the end.
 
 ## What is out of scope, deliberately
 
-Superseded in part by step 2 (2026-08-19). This section originally said "a cache is not this
-milestone". It was written before calef's 2026-08-18 decision named the metadata cache as step 2,
-and before step 4's measurement showed the tree walk was most of what remained. What is built is
-narrower than what this paragraph warned against, and the distinction is the one worth keeping
+Step 2 is a metadata cache, by calef's 2026-08-18 decision, and step 4's measurement showed the
+tree walk was most of what remained. What is built is narrower than what this section warns
+against, and the distinction is the one worth keeping
 precise.
 
 A *data* cache is still not this milestone. Nothing here caches a record body or gives a client

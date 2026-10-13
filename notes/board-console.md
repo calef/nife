@@ -13,11 +13,11 @@ when to stop reading is what kept this a milestone. The detail behind this note 
 And since milestone 324 it writes, under one rule: *it writes only what a named mode sends,
 and every byte it sends is printed into the log.* calef ruled that on 2026-09-19, replacing this
 note's original *"it reads and never writes to the board"*. There is exactly one named mode today
-and it sends exactly one byte: `--stop`, which ends milestone 249's self-rebooting soak. The
-second clause is the half that makes the first safe, because the log is the artifact a bench run
-is judged from and a byte the board received that the capture does not show makes the capture a
-lie about the run. **This is not a keyboard**, and the narrowness is the decision rather than
-caution about it; "Writing to a board" below has the argument.
+and it sends exactly one byte: `--stop`, which ends the self-rebooting soak of milestone 249 (the boot lottery). The second
+clause is the half that makes the first safe. The log is the artifact a bench run is judged from,
+and a byte the board received that the capture does not show makes the capture a lie about the run.
+**This is not a keyboard**, and the narrowness is the decision rather than caution about it;
+"Writing to a board" below has the argument.
 
 ## The commands
 
@@ -53,9 +53,9 @@ outright, because a file has no board on the other end of it.
 
 And one mode that opens no port at all (milestone 249): `--tally <log>` reads a capture of many
 boots and reports what the thread-placement lottery drew on each. It is `board_console::lottery`
-rather than the recognizer, it answers a question no single-boot reader can be asked (how often does
-each arrangement come up), and its exit statuses are only `0` and `4`, because an analysis of a
-finished log has no board left to have gone quiet. See notes/soak.md.
+rather than the recognizer. It answers a question no single-boot reader can be asked (how often does
+each arrangement come up). Its exit statuses are only `0` and `4`, because an analysis of a finished
+log has no board left to have gone quiet. See notes/soak.md.
 
 ## The exit statuses, which are the point
 
@@ -112,11 +112,11 @@ go out. Four things follow from that one gate:
   `soak-test: started` lines `script/board-console --tally` opens a draw on, so a log produced by
   `--stop-after n` tallies as exactly n draws.
 
-So the answer to *what if `--stop` is given and the board is powered off, or at a U-Boot prompt, or
-running a kernel with no soak in it* is one answer in all three cases: nothing is sent, the
-session ends on its deadline, and the tool says no armed reboot loop announced itself. The cost of
-the gate is one sentence: a session that attaches to a board already mid-draw waits out the rest of
-that draw, up to two minutes, before the next banner arrives.
+Say `--stop` is given and the board is powered off, or at a U-Boot prompt, or running a kernel with
+no soak in it. The answer is the same in all three cases: nothing is sent, the session ends on its
+deadline, and the tool says no armed reboot loop announced itself. The cost of the gate is one
+sentence: a session that attaches to a board already mid-draw waits out the rest of that draw, up to
+two minutes, before the next banner arrives.
 
 ### What confirms it, and why that is new
 

@@ -18,7 +18,7 @@ day, found a buyable board that ships the ratified spec: the SpacemiT K3, about 
 blocks the milestone is two pieces of our own engineering rather than the silicon, a platform
 discovery path beside 16b's PCI one and an APLIC/IMSIC driver, and the gate stays HARDWARE only
 because nobody has bought the board (milestone 241, `Gate: DECISION`, holds that call). The original
-claim, that no such board exists at any price, is superseded and kept below as what it was.
+claim, that no such board exists at any price, is withdrawn and kept below as written.
 
 Split out of milestone 16 on 2026-08-20, because 16a (first silicon on the VisionFive 2) is PARTIAL
 with lane-sized engineering remaining, while this is an indefinite hardware wait. The two were
