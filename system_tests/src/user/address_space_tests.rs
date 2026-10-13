@@ -369,9 +369,23 @@ fn a_read_only_segment_is_mapped_read_only() {
 /// core, and the one-core OVMF leg had that thread: `a_user_client_moves_data_through_shared_memory`,
 /// the test just before, leaves its client spinning forever.
 ///
-/// This test makes both conditions certain rather than lucky: a competitor is resident on this
-/// thread's core, and the body spans five tick periods before it walks. Without interrupts held
-/// off inside `while_installed` it failed on every run on all three architectures (2026-10-13 UTC).
+/// This test makes both conditions certain rather than lucky: another thread is queued on this
+/// thread's core when the window opens, and the body spans five tick periods before it walks.
+/// Without interrupts held off inside `while_installed` it failed on every run on all three
+/// architectures (2026-10-13 UTC).
+///
+/// **The precondition is read inside the window, from this core's run queue**, not inferred from
+/// where a competitor once ran. The first cut waited for a competitor to report this core's bit and
+/// failed its own precondition on the riscv64 `rva23s64` CPU-matrix leg (merge-group run
+/// 38351881399, 2026-10-13 UTC). `spawn_on` is a hint, and a steal (§28 (SMP placement), whose
+/// message-shaped stealing lets an idle core pull a queued thread from a loaded one) breaks it:
+/// while the competitors were spawned in core order, a core whose own competitor had not arrived
+/// yet was idle, and it stole the one queued on this core. Every other core then held a spinner, so
+/// no core was idle again, nothing could steal one back, and this thread sat alone until `wait_for`
+/// gave up. Forcing that interleaving reproduced the panic with competitors on cores `[2, 1, 2, 3]`
+/// and this thread on core 0. So the setup now repairs the placement (a competitor spawned onto
+/// this core while its queue is empty) and the body reads the queue it is about to be preempted
+/// against.
 ///
 /// Name: provisional, lane maintainer/map-physical-flake, 2026-10-13 (UTC).
 ///
@@ -379,35 +393,28 @@ fn a_read_only_segment_is_mapped_read_only() {
 #[test_case]
 fn an_installed_space_stays_installed_across_a_timer_tick() {
     const VA: u64 = address_space_map::pair_page(0x0000_0000_0060_0000);
+    // Windows tried before the test gives up on its precondition. One is enough in every run seen;
+    // a window can open without a queued competitor only if a steal raced the repair below.
+    const ATTEMPTS: usize = 3;
     static STOP: AtomicBool = AtomicBool::new(false);
-    static SEEN_ON: AtomicU64 = AtomicU64::new(0);
     static DONE: AtomicU64 = AtomicU64::new(0);
     STOP.store(false, Ordering::SeqCst);
-    SEEN_ON.store(0, Ordering::SeqCst);
     DONE.store(0, Ordering::SeqCst);
 
-    // One competitor per online core. Each never yields and keeps saying which core it is on.
+    // A competitor never yields, so once it shares a core with this thread it stays queued there
+    // whenever this thread runs, and a tick in the window switches to it.
+    fn compete() {
+        while !STOP.load(Ordering::Relaxed) {
+            core::hint::spin_loop();
+        }
+        DONE.fetch_add(1, Ordering::SeqCst);
+    }
+    let cores = crate::smp::online_cpus().count() as u64;
     let mut spawned = 0u64;
     for target in crate::smp::online_cpus() {
-        sched::spawn_on(target, || {
-            while !STOP.load(Ordering::Relaxed) {
-                SEEN_ON.fetch_or(1 << crate::cpu::id(), Ordering::Relaxed);
-                core::hint::spin_loop();
-            }
-            DONE.fetch_add(1, Ordering::SeqCst);
-        })
-        .expect("spawn failed");
+        sched::spawn_on(target, compete).expect("spawn failed");
         spawned += 1;
     }
-    // **The precondition: a competitor is resident on the core this thread is on.** `spawn_on` is
-    // a hint, so on two cores both can land on the other one; then nothing here is runnable when
-    // the tick comes and the window proves nothing (the first two-core run without the fix passed
-    // that way). `wait_for` yields, and a core left idle by that yield steals a competitor, so the
-    // bit for this core does come up. Once it has, no core is idle and nothing steals it back.
-    assert!(
-        wait_for(|| SEEN_ON.load(Ordering::Relaxed) & (1 << crate::cpu::id()) != 0),
-        "no competitor ever ran on this thread's core, so the window below would prove nothing",
-    );
 
     let mut space = AddressSpace::new(2).expect("no address space");
     let frame = crate::memory::alloc().expect("no frame").addr();
@@ -420,10 +427,42 @@ fn an_installed_space_stays_installed_across_a_timer_tick() {
         )
         .expect("map failed");
 
-    let seen = space.while_installed(|| {
-        timer::spin_for(5 * timer::interval());
-        mmu::translate_user(VA).map(|(pa, _)| pa)
-    });
+    let mut seen = None;
+    let mut queued_at_open = [0usize; ATTEMPTS];
+    for queued in queued_at_open.iter_mut() {
+        // **Repair the placement.** A steal moves a queued thread only to an idle core, so once every
+        // core holds a spinner the layout is fixed; until then this core's competitor can be taken.
+        // An empty queue here is answered with a competitor spawned onto this core, which lands on
+        // its own run queue. Each one a steal takes makes an idle core busy for good, so at most one
+        // per core is ever needed: the cap is a bound, not a budget anyone expects to reach.
+        let resident = wait_for(|| {
+            if crate::cpu::current().runq_len() > 0 {
+                return true;
+            }
+            if spawned < 2 * cores {
+                sched::spawn_on(crate::cpu::id(), compete).expect("spawn failed");
+                spawned += 1;
+            }
+            false
+        });
+        if !resident {
+            continue;
+        }
+        // The first read inside the window is the precondition. With interrupts masked (the fix),
+        // nothing can change this core's run queue until the uninstall: a remote placement goes to
+        // the inbox, and a steal is served from the reschedule interrupt. Without the fix it is the
+        // queue the first tick is preempted against.
+        let (depth, pa) = space.while_installed(|| {
+            let depth = crate::cpu::current().runq_len();
+            timer::spin_for(5 * timer::interval());
+            (depth, mmu::translate_user(VA).map(|(pa, _)| pa))
+        });
+        *queued = depth;
+        if depth > 0 {
+            seen = Some(pa);
+            break;
+        }
+    }
 
     STOP.store(true, Ordering::SeqCst);
     assert!(
@@ -433,6 +472,13 @@ fn an_installed_space_stays_installed_across_a_timer_tick() {
     drop(space);
     crate::memory::free(PageFrame::from_addr(frame));
 
+    let Some(seen) = seen else {
+        panic!(
+            "no window opened with another thread queued on this core ({ATTEMPTS} tried, queue \
+             depths at the window's start {queued_at_open:?}, {spawned} competitors spawned for \
+             {cores} cores), so the test proved nothing"
+        );
+    };
     assert_eq!(
         seen,
         Some(frame),
