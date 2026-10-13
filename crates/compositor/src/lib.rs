@@ -1,18 +1,9 @@
-//! **The compositor contract** (milestone 33, the display ladder's rung two).
-//!
-//! One screen, several mutually distrusting clients, each with its own surface. This crate is the
-//! part of that which is arithmetic and can therefore be checked on the host in milliseconds: the
-//! scene (which windows exist, where, and in what order they stack), the clipping and
-//! damage-rectangle math, the composition itself, and the protocol the parties speak. The prose
-//! contract is notes/compositor.md; the processes are `components/src/compositor.rs` (the compositor) and
-//! `fixtures/src/window.rs` (a client).
-//!
-//! The split is the one `graphics_protocol` makes for the framebuffer and `line_editor::proto` for the
-//! terminal: one definition, shared by the compositor, its clients, the kernel-side test, and the
-//! host-side scanout check, so none of them can drift from the others about what the screen should
-//! look like.
-//!
-//! # The shape
+//! **The compositor contract**: one screen, several mutually distrusting clients, each with its own
+//! surface. This crate is the arithmetic half, checked on the host: the scene (which windows exist,
+//! where, and in what order they stack), the clipping and damage-rectangle math, the composition,
+//! and the protocol. One definition is shared by the compositor (`components/src/compositor.rs`),
+//! its clients (`fixtures/src/window.rs`), the kernel-side test and the host scanout check, so none
+//! can drift about what the screen should show. The prose contract is notes/compositor.md.
 //!
 //! ```text
 //!   virtio-gpu ──► display ──gfx FLUSH(damage)──► compositor ◄──doorbell CALL──── window clients
@@ -20,122 +11,24 @@
 //!                   └──the scanout, shared────────┘  └──per-client input endpoint (focus)
 //! ```
 //!
-//! The compositor is **rung one's client, unchanged**: it holds the display endpoint and the scanout
-//! frames exactly as `painter` did, and `gpu_driver` cannot tell the difference. Everything rung two adds
-//! is above that seam.
+//! The compositor is rung one's display client unchanged, so `gpu_driver` cannot tell it from
+//! `painter`.
 //!
-//! # Examples
+//! **There is no authorization code in it at all.** Every client rings one shared doorbell with
+//! content-free requests (`HELLO`, `COMMIT`), because a shared endpoint carries no sender identity
+//! and any request that named a surface would be forgeable. Every per-client fact lives in
+//! per-client memory (the control page in [`proto::ctl`]), every privileged answer travels through
+//! privileged memory (a screenshot lands in the requester's own capture mapping), and the reply
+//! words carry status only. Reading the screen is a mapping the compositor does not hand out, which
+//! is the difference in kind from Wayland's policy checks.
 //!
-//! The clipping is where the bugs are, and there are **two clips** because each catches a different
-//! one. A client reports damage in its own surface coordinates, and it may lie about them:
+//! Not here: GPU acceleration, fonts, window management (the scene is fixed, [`SCENE`]) and alpha
+//! blending; windows are opaque and composition is a copy in stacking order.
 //!
-//! ```
-//! use compositor::{EMPTY, Rect, SCREEN_H, SCREEN_W, Window, damage_to_screen};
-//!
-//! // A window at (8, 8), 64 by 32.
-//! let win = Window::new(8, 8, 64, 32);
-//!
-//! // Ordinary damage, placed on the screen.
-//! assert_eq!(damage_to_screen(&win, Rect::new(4, 5, 9, 7)), Rect::new(12, 13, 9, 7));
-//!
-//! // Damage past the client's OWN edge. Without the first clip the compositor would read pixels the
-//! // client does not own, so it is clipped to the surface before it is placed.
-//! let clipped = damage_to_screen(&win, Rect::new(60, 30, 100, 100));
-//! assert_eq!(clipped, Rect::new(68, 38, 4, 2));
-//!
-//! // A window hanging off the left edge, with damage in the part that is off-screen. Without the
-//! // second clip the compositor would write outside the framebuffer.
-//! let hanging = Window::new(-8, 30, 40, 40);
-//! assert_eq!(damage_to_screen(&hanging, Rect::new(0, 0, 4, 4)), EMPTY);
-//! // The part that IS on screen survives, starting at x = 0.
-//! assert_eq!(damage_to_screen(&hanging, Rect::new(0, 0, 16, 4)), Rect::new(0, 30, 8, 4));
-//!
-//! // Nothing that comes out of this function can leave the screen.
-//! let out = damage_to_screen(&hanging, Rect::new(0, 0, 999, 999));
-//! assert!(out.right() <= SCREEN_W as i32 && out.bottom() <= SCREEN_H as i32);
-//! ```
-//!
-//! Composition is checked against an **independent** definition of the finished screen, rather than
-//! against itself. [`expected_screen_pixel`] answers "which window owns this pixel" by looking down
-//! the stack; [`composite`] builds the same picture the other way round, painting the background and
-//! then blitting each window in order. They agree only if both are right:
-//!
-//! ```
-//! use compositor::{
-//!     Rect, SCENE, SCREEN_PIXELS, SCREEN_W, background_pixel, composite, expected_screen_pixel,
-//!     window_pixel,
-//! };
-//!
-//! // What each client painted into its own surface.
-//! let surfaces: Vec<Vec<u32>> = SCENE
-//!     .iter()
-//!     .enumerate()
-//!     .map(|(id, w)| {
-//!         (0..w.pixels())
-//!             .map(|i| {
-//!                 let (sx, sy) = ((i % w.w as usize) as u32, (i / w.w as usize) as u32);
-//!                 window_pixel(id as u32, sx, sy)
-//!             })
-//!             .collect()
-//!     })
-//!     .collect();
-//! let refs: Vec<&[u32]> = surfaces.iter().map(|s| s.as_slice()).collect();
-//!
-//! // Compose all three windows over the whole screen.
-//! let mut screen = vec![0u32; SCREEN_PIXELS];
-//! composite(&mut screen, &refs, SCENE.len(), Rect::screen());
-//!
-//! for i in 0..SCREEN_PIXELS {
-//!     let (x, y) = ((i % SCREEN_W as usize) as u32, (i / SCREEN_W as usize) as u32);
-//!     assert_eq!(screen[i], expected_screen_pixel(SCENE.len(), x, y), "pixel ({x}, {y})");
-//! }
-//!
-//! // Stacking order is observable, which is the point of a scene with overlap: window 1 covers part
-//! // of window 0, so the topmost one wins.
-//! assert_eq!(expected_screen_pixel(2, 45, 30), window_pixel(1, 5, 6));
-//! assert_eq!(expected_screen_pixel(1, 45, 30), window_pixel(0, 37, 22));
-//! assert_eq!(expected_screen_pixel(0, 45, 30), background_pixel(45, 30));
-//! ```
-//!
-//! # Where authority lives, and why the doorbell can be shared
-//!
-//! Every client rings **one shared endpoint** and every request on it is content-free: `HELLO` ("I
-//! have started") and `COMMIT` ("look at the surfaces"). That is deliberate, and it is the design's
-//! load-bearing idea.
-//!
-//! A shared endpoint carries **no sender identity** (there are no badged capabilities here; DECISIONS
-//! §26.5). So a protocol that named a surface, a window, or a rectangle in its *message* would be
-//! forgeable: any client could ask about any other's. Instead:
-//!
-//! - **every per-client fact lives in per-client memory** (the control page in [`proto::ctl`], which
-//!   only that client and the compositor map), so the only surface a client can describe is its own,
-//!   and the only pixels it can write are its own;
-//!
-//! - **every privileged answer travels through privileged memory**, never through the reply words. A
-//!   screenshot lands in the requester's own capture mapping; the window list is a page the
-//!   compositor publishes. A client that holds no such mapping cannot receive the answer even if it
-//!   asks, and asking is not how it would get it anyway;
-//!
-//! - the reply words carry **status only**, and they are routed by the kernel's one-shot Reply
-//!   capability, so a request is answered to whoever called without the compositor ever naming a
-//!   caller.
-//!
-//! The result is a compositor with **no authorization code in it at all**. It does not check who may
-//! read the screen, because reading the screen is a mapping it does not hand out. That is the
-//! difference in kind from Wayland, whose compositor holds every client's connection and decides by
-//! policy what each may do. See notes/compositor.md.
-//!
-//! # What deliberately is NOT here
-//!
-//! No GPU acceleration (rung four, milestone 34), no fonts or text (rung three), no window
-//! management (the scene is fixed; see [`SCENE`]), and no alpha blending: windows are opaque and
-//! composition is a copy in stacking order. The honest limits are listed in notes/compositor.md.
-//!
-//! Name: ratified 2026-08-01 (calef, milestone 63), replacing `compose`. Refused `compose` (a verb,
-//! where the tenet says a namespace is a thing; the crate's own first line already said
-//! compositor), `compositor_proto` (promises a wire definition and delivers an algorithm) and
-//! `scene` (undersells the clipping and damage arithmetic). Sharing the program's name is the point
-//! rather than a collision: the crate is that program's logic, lifted out to be host-testable.
+//! Name: ratified 2026-08-01 (calef), replacing `compose`. Refused `compose` (a verb, where a
+//! namespace is a thing), `compositor_proto` (promises a wire definition and delivers an algorithm)
+//! and `scene` (undersells the clipping and damage arithmetic). It shares the program's name
+//! because it is that program's logic, lifted out to be host-testable.
 
 #![no_std]
 // milestone 68's ratchet is workspace-wide (§107); this crate opts out until its 19-item
@@ -454,10 +347,43 @@ pub const fn background_pixel(x: u32, y: u32) -> u32 {
 /// **What screen pixel `(x, y)` must be** when the first `n` windows of [`SCENE`] are live: the
 /// topmost window covering it, or the background.
 ///
-/// This is the *independent* definition of the composed screen. [`composite`] builds the same picture
-/// the other way round (paint the background over the damage, then blit each window in stacking
-/// order), so the two agree only if both are right. The kernel test, the client that captures the
-/// screen, and the host-side `screendump` check all compare against this one.
+/// The *independent* definition of the composed screen: [`composite`] paints up the stack and this
+/// looks down it, so they agree only if both are right. The kernel test, the capturing client and
+/// the host-side `screendump` check all compare against this one.
+///
+/// # Examples
+///
+/// ```
+/// use compositor::{Rect, SCENE, SCREEN_PIXELS, SCREEN_W, background_pixel, composite};
+/// use compositor::{expected_screen_pixel, window_pixel};
+///
+/// let surfaces: Vec<Vec<u32>> = SCENE
+///     .iter()
+///     .enumerate()
+///     .map(|(id, w)| {
+///         (0..w.pixels())
+///             .map(|i| {
+///                 let (sx, sy) = ((i % w.w as usize) as u32, (i / w.w as usize) as u32);
+///                 window_pixel(id as u32, sx, sy)
+///             })
+///             .collect()
+///     })
+///     .collect();
+/// let refs: Vec<&[u32]> = surfaces.iter().map(|s| s.as_slice()).collect();
+///
+/// let mut screen = vec![0u32; SCREEN_PIXELS];
+/// composite(&mut screen, &refs, SCENE.len(), Rect::screen());
+///
+/// for i in 0..SCREEN_PIXELS {
+///     let (x, y) = ((i % SCREEN_W as usize) as u32, (i / SCREEN_W as usize) as u32);
+///     assert_eq!(screen[i], expected_screen_pixel(SCENE.len(), x, y), "pixel ({x}, {y})");
+/// }
+///
+/// // Window 1 covers part of window 0, so the topmost one wins.
+/// assert_eq!(expected_screen_pixel(2, 45, 30), window_pixel(1, 5, 6));
+/// assert_eq!(expected_screen_pixel(1, 45, 30), window_pixel(0, 37, 22));
+/// assert_eq!(expected_screen_pixel(0, 45, 30), background_pixel(45, 30));
+/// ```
 pub fn expected_screen_pixel(n: usize, x: u32, y: u32) -> u32 {
     expected_screen_pixel_with(n, x, y, |i, sx, sy| window_pixel(i as u32, sx, sy))
 }
@@ -513,6 +439,34 @@ pub fn expected_screen_checksum(n: usize) -> u64 {
 /// damage past its own edge makes the compositor read pixels it does not own. Without the second, a
 /// window that hangs off the screen makes the compositor write outside the framebuffer. The client's
 /// number is *untrusted input* to the first clip, which is why it is a clip and not an assertion.
+///
+/// # Examples
+///
+/// ```
+/// use compositor::{EMPTY, Rect, SCREEN_H, SCREEN_W, Window, damage_to_screen};
+///
+/// // A window at (8, 8), 64 by 32.
+/// let win = Window::new(8, 8, 64, 32);
+///
+/// // Ordinary damage, placed on the screen.
+/// assert_eq!(damage_to_screen(&win, Rect::new(4, 5, 9, 7)), Rect::new(12, 13, 9, 7));
+///
+/// // Damage past the client's OWN edge. Without the first clip the compositor would read pixels the
+/// // client does not own, so it is clipped to the surface before it is placed.
+/// let clipped = damage_to_screen(&win, Rect::new(60, 30, 100, 100));
+/// assert_eq!(clipped, Rect::new(68, 38, 4, 2));
+///
+/// // A window hanging off the left edge, with damage in the part that is off-screen. Without the
+/// // second clip the compositor would write outside the framebuffer.
+/// let hanging = Window::new(-8, 30, 40, 40);
+/// assert_eq!(damage_to_screen(&hanging, Rect::new(0, 0, 4, 4)), EMPTY);
+/// // The part that IS on screen survives, starting at x = 0.
+/// assert_eq!(damage_to_screen(&hanging, Rect::new(0, 0, 16, 4)), Rect::new(0, 30, 8, 4));
+///
+/// // Nothing that comes out of this function can leave the screen.
+/// let out = damage_to_screen(&hanging, Rect::new(0, 0, 999, 999));
+/// assert!(out.right() <= SCREEN_W as i32 && out.bottom() <= SCREEN_H as i32);
+/// ```
 pub fn damage_to_screen(win: &Window, damage: Rect) -> Rect {
     let inside = damage.intersect(&win.bounds());
     inside

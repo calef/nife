@@ -1,173 +1,43 @@
 #![cfg_attr(not(test), no_std)]
-//! **The `StarFive` JH7110 TRNG, as pure logic** (milestone 159; roadmap
-//! `design/roadmap/0159-jh7110-trng-driver.md`, notes/entropy.md).
+//! **The `StarFive` JH7110 TRNG, as pure logic** (notes/entropy.md): the register
+//! layout, the device-tree query that finds the device, and the decision of whether a generation
+//! attempt succeeded, failed or is still running. It never dereferences a pointer, which keeps it
+//! host-testable and Kani-reachable; `components/src/jh7110_entropy.rs` is the backend that
+//! touches the registers. [`discover`] returns the address rather than assuming one.
 //!
-//! The register layout, the DTB query that finds the device, and the decision of whether a
-//! generation attempt succeeded, failed, or is still running, with nothing an actual driver
-//! touches. The controller's register file is the future driver's (`kernel/src/user/`-side or
-//! `components/src/`-side, not yet written; see the roadmap doc's "What was deliberately not
-//! built"),
-//! the same split `pci` and `non_volatile_memory_express` already use (AGENTS.md rule 7): this crate is host-testable
-//! and Kani-reachable precisely because it never dereferences a pointer.
+//! **None of it has run against real silicon.** Offsets and bits come from Linux's driver, named
+//! from the TRM and checked against NetBSD's polling driver, whose rule this crate applies:
+//! `ISTAT.RAND_RDY` counts only when `STAT.SEEDED` is set. `notes/entropy/jh7110-trng.md` has the
+//! sources, the bring-up order all three drivers agree on, and the health-testing argument.
 //!
-//! # This has not run against real silicon
+//! # Health testing
 //!
-//! **Nothing in this crate has been verified against the JH7110's TRNG on real hardware.** Every
-//! fact below is sourced from documentation, not measurement; the roadmap doc's gate is HARDWARE
-//! for exactly this reason, and this file does not change that. What is proven is proven on the
-//! host, against values this crate makes up or a hand-written device-tree fixture, never against a
-//! live register.
-//!
-//! # Sources
-//!
-//! - **[binding]** Linux's `starfive,jh7110-trng.yaml` binding, mainline as of 2026-08-24: the
-//!   compatible string, the `reg` window, two clock inputs (`hclk`, `ahb`), one reset line, one
-//!   interrupt, and the worked example the DTB fixture is modeled on,
-//!   `rng@1600C000 { reg = <0x1600C000 0x4000>; interrupts = <30>; }`.
-//! - **[driver]** Linux's `jh7110-trng.c`, mainline as of 2026-08-24: the register offsets and
-//!   bit positions below are transcribed from it, and each constant's doc says what the driver
-//!   does with it. A real, shipped driver's register sequence, not a guess from the block
-//!   diagram.
-//! - **[ds]** `StarFive`, *JH7110 Datasheet*, v1.67 (2025-02-14),
-//!   `doc-en.rvspace.org/JH7110/PDF/JH7110_DS.pdf`, section 2.8.2 "TRNG", extracted with
-//!   `pdftotext -layout` on 2026-08-24 (a mirror at
-//!   `elecrow.com/download/product/DTN63002G/JH7110_Datasheet.pdf` served the PDF when the
-//!   `RVspace` certificate had expired). Quoted in full because it is the compliance claim (or
-//!   its absence) this crate's health-test story rests on:
-//!
-//!   > The TRNG module of JH7110 provides the following features.
-//!   > - Ring-oscillator based entropy source
-//!   > - Support LFSR based digital post process
-//!   > - Support self re-seeding
-//!   > - 256-bit random number generation
-//!
-//!   That is the entire section. **No NIST SP 800-90B, FIPS 140, or AIS-31 claim appears anywhere
-//!   in the datasheet the search above could reach.** See "Health testing" below.
-//!
-//! - **[trm]** `StarFive`, *JH7110 Technical Reference Manual*, Preliminary V2 (2023-04-24, Doc ID
-//!   `JH7110-TRMEN-001`), "TRNG > Control Registers",
-//!   `doc-en.rvspace.org/JH7110/TRM/JH7110_TRM/control_registers_trng.html`, fetched 2026-09-04.
-//!   It settles three things once recorded as unknown: `ISTAT` is `R/W1C`, `AUTO_RQSTS` and
-//!   `AUTO_AGE` are disabled by writing zero, and `MODE.R256` decides whether the answer is four
-//!   words or eight. It also names two `ISTAT` bits no Linux driver defines (`AGE_ALARM`,
-//!   `RQST_ALARM`) and the `STAT` field `LAST_RESEED`, whose `0x7` means "Unseeded (zeroized
-//!   state)". The register map it gives is `CTRL` 0x00, `STAT` 0x04,
-//!   `MODE` 0x08, `SMODE` 0x0C, `IE` 0x10, `ISTAT` 0x14, `FEATURES` 0x1C, `RAND0..7` 0x20..0x3C,
-//!   `SEED0..7` 0x40..0x5C, `AUTO_RQSTS` 0x60, `AUTO_AGE` 0x64, `BUILD_CONFIG` 0x68, which agrees
-//!   with [driver] everywhere the two overlap. **Caveat, stated because it changes what can be
-//!   claimed**: the bit *positions* live in the page's figures, which are images, so the numbering
-//!   in this file comes from [driver] and [netbsd] and the TRM supplies the names and meanings.
-//! - **[netbsd]** `NetBSD`'s `jh7110_trng.c` (revision 1.2, 2025-02-09, fetched 2026-09-04): a
-//!   third, independent driver for the same block, and the most useful one here because **it is
-//!   the only one that polls**. It supplies the bit positions mainline omits
-//!   (`IENABLE`/`ISTATUS`: `RAND_RDY` 0, `SEED_DONE` 1, `AGE_ALARM` 2, `RQST_LOCKUP` 3,
-//!   `LFSR_LOCKUP` 4, `GLOBAL` 31) and it is the source of the `SEEDED` gate this crate applies:
-//!   its poll path reads `STAT` and only trusts `ISTAT.RAND_RDY` when `STAT.SEEDED` is set,
-//!   issuing a random reseed when it is not.
-//!
-//! # The register file [driver]
-//!
-//! Eight registers wide, `CTRL` through `ISTAT`, then eight 32-bit output words. All offsets and
-//! bit positions are [regs] and the `*_` constants below, transcribed from `jh7110-trng.c`'s own
-//! `#define`s and cross-checked against [trm]'s register map and [netbsd]'s.
-//!
-//! # The bring-up order, and what each step is for
-//!
-//! **All three drivers agree on this sequence**, which is worth saying because the agreement is
-//! the evidence: [driver]'s `starfive_trng_init`, the vendor driver's function of the same name,
-//! and [netbsd]'s `jh7110_trng_init` were written by three sets of people against one IP block.
-//! A driver that skips a step is not being minimal, it is relying on a reset value nobody
-//! documented.
-//!
-//! 1. **Disable the reseed alarms**: write 0 to `AUTO_AGE` and `AUTO_RQSTS` ([regs]). [driver]
-//!    does this first, from module parameters that default to 0. Skipping it leaves whatever the
-//!    block reset to, and a nonzero counter raises [`ISTAT_AGE_ALARM`] or [`ISTAT_RQST_ALARM`]
-//!    later, in a register a driver may not be decoding.
-//! 2. **Clear `ISTAT`**, write-1-to-clear, [`ISTAT_ALL`]. This is the step whose absence is
-//!    invisible until the second generation: `RAND_RDY` is latched, so a driver that never
-//!    acknowledges it sees "ready" instantly on every request after the first, and reads the
-//!    `RAND` words without waiting for the device to refill them.
-//! 3. **Select the output width**: write [`MODE_R256`] into `MODE`. [netbsd] writes it
-//!    unconditionally; [driver] writes it and otherwise clamps its read to four words. A driver
-//!    that assembles eight words without having set this is claiming 32 bytes from a block that
-//!    may only have answered with 16.
-//! 4. **Interrupts, or deliberately not.** [driver] and [netbsd] enable the `IE` contributions
-//!    because they are interrupt-driven. A polling driver leaves `IE` at zero; see
-//!    [`IE_GLBL_EN`] for the measurement that says `ISTAT` latches anyway.
-//! 5. **Seed the core**: write [`CTRL_EXEC_RANDRESEED`] and wait for [`ISTAT_SEED_DONE`], then
-//!    acknowledge it. Until this completes, `STAT.SEEDED` is clear and [`interpret`] answers
-//!    [`Outcome::Unseeded`] to every poll.
-//!
-//! Then, per generation: acknowledge any stale [`ISTAT_RAND_RDY`], write [`CTRL_GENE_RANDNUM`],
-//! poll `(STAT, ISTAT)` through [`interpret`], and acknowledge `RAND_RDY` once the words are read.
-//!
-//! # Health testing: what the hardware gives you cheaply, and what it does not give you at all
-//!
-//! The brief for this milestone asked to check whether the JH7110 documents a hardware health-test
-//! status register before writing any software statistical tests, because a hardware bit that is
-//! merely read is nearly free and a software NIST SP 800-90B suite (repetition-count,
-//! adaptive-proportion) is real design and verification work this project should not build on
-//! spec.
-//!
-//! The answer is a partial one. **[driver] documents exactly one hardware fault signal**:
-//! `ISTAT.LFSR_LOCKUP` (bit 4), which the Linux driver's interrupt handler treats as "SEU
-//! [single-event upset] occurred, reseeding required" and answers by re-issuing
-//! `CTRL.EXEC_RANDRESEED`. That is cheap (a status bit, already read every poll) and this crate
-//! surfaces it: [`interpret`] returns [`Outcome::Lockup`] rather than folding it into "not ready
-//! yet", so a caller can count it, retry it, or refuse to serve bytes past it, the same shape
-//! `entropy.rs`'s `NO_ENTROPY` already gives a dry virtio-rng device.
-//!
-//! **What the hardware does *not* give you** is any statistical claim about the bits it is not
-//! actively refusing. `LFSR_LOCKUP` catches a specific failure mode (the digital post-processing
-//! stage getting stuck), not a degraded-but-still-running ring oscillator, and neither [ds] nor
-//! [driver] document a built-in SP 800-90B-class test. Whether *this project* needs one before
-//! trusting these bytes for anything security-shaped is a real design question the datasheet does
-//! not resolve, and it is undecided: it is an architect's call, unwritten in `design/decisions/`.
+//! The one hardware fault signal is `ISTAT.LFSR_LOCKUP`, surfaced as [`Outcome::Lockup`] rather
+//! than "not ready", so a caller can count it, retry or refuse. It does not catch a degraded ring
+//! oscillator, and whether a software SP 800-90B test is needed is an undecided architect's call.
 //!
 //! # Examples
 //!
 //! ```
 //! use jh7110_entropy::{Outcome, interpret, ISTAT_RAND_RDY, ISTAT_LFSR_LOCKUP, STAT_SEEDED};
 //!
-//! // Not ready: seeded, but the generation has not finished.
+//! // Seeded, but the generation has not finished.
 //! assert_eq!(interpret(STAT_SEEDED, 0, [0; 8]), Outcome::NotReady);
 //!
-//! // Ready: the eight output words assemble little-endian, word 0 first.
+//! // The eight output words assemble little-endian, word 0 first.
 //! let rand = [0x0403_0201, 0x0807_0605, 0, 0, 0, 0, 0, 0];
 //! match interpret(STAT_SEEDED, ISTAT_RAND_RDY, rand) {
 //!     Outcome::Ready(bytes) => assert_eq!(&bytes[..8], &[1, 2, 3, 4, 5, 6, 7, 8]),
 //!     other => panic!("expected Ready, got {other:?}"),
 //! }
 //!
-//! // A latched RAND_RDY on a core that says it was never seeded is not an answer.
+//! // A latched RAND_RDY on a core never seeded is not an answer, and a fault beats a stale one.
 //! assert_eq!(interpret(0, ISTAT_RAND_RDY, rand), Outcome::Unseeded);
-//!
-//! // A hardware fault beats a stale RAND_RDY from the same snapshot: the driver must not read a
-//! // register file mid-reseed as if it were a fresh answer.
-//! assert_eq!(
-//!     interpret(STAT_SEEDED, ISTAT_RAND_RDY | ISTAT_LFSR_LOCKUP, [0; 8]),
-//!     Outcome::Lockup
-//! );
+//! let both = ISTAT_RAND_RDY | ISTAT_LFSR_LOCKUP;
+//! assert_eq!(interpret(STAT_SEEDED, both, [0; 8]), Outcome::Lockup);
 //! ```
 //!
-//! # What was deliberately not built
-//!
-//! No unsafe register access, no capability-holding driver program, and no wiring into
-//! `entropy_service`. Rule 2's "gets what it needs passed in" is honored structurally: nothing
-//! here knows a physical address at all, `discover` returns one instead of assuming it, and the
-//! program that will eventually hold a `DeviceFrame` capability for that address is future work.
-//! See the roadmap doc for exactly what is and is not ready for a customer to pick up.
-//!
-//! Name: ratified 2026-09-13 (calef), replacing `jh7110_entropy_source`, which he ratified earlier
-//! the same day and superseded on a second pass. Kept as the crates.io name by calef on
-//! 2026-10-07 (UTC, #1806: "Names are ratified now and permanent on first publication."). The stem
-//! argument, the refused names, and the pattern it joined are in git history.
-//!
-//! [binding]: https://github.com/torvalds/linux/blob/master/Documentation/devicetree/bindings/rng/starfive%2Cjh7110-trng.yaml
-//! [driver]: https://github.com/torvalds/linux/blob/master/drivers/char/hw_random/jh7110-trng.c
-//! [ds]: https://doc-en.rvspace.org/JH7110/PDF/JH7110_DS.pdf
-//! [trm]: https://doc-en.rvspace.org/JH7110/TRM/JH7110_TRM/control_registers_trng.html
-//! [netbsd]: https://github.com/NetBSD/src/blob/trunk/sys/arch/riscv/starfive/jh7110_trng.c
+//! Name: ratified 2026-09-13 (calef); kept as the crates.io name (calef, 2026-10-07 UTC, #1806).
 
 /// Register byte offsets from the device's base, transcribed from `jh7110-trng.c`'s `#define`s
 /// (\[driver\]). `RAND0..RAND7` are the eight 32-bit words a completed generation leaves behind;

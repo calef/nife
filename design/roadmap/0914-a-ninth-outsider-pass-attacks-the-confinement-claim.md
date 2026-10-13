@@ -58,9 +58,25 @@ by test or boot before it is recorded. It does not attack and does not hint.
 
 ## Before launch: a setup-only dry run
 
-Nothing in this tree shows a Claude cloud runner building or booting nife, so the first session
-runs only the setup steps from the launch brief and reports their output and times. The pass is
-not launched until that run is green and its numbers are in this block.
+Nothing else in this tree shows a Claude cloud runner building or booting nife, so the setup
+steps from the launch brief ran alone first, on 2026-10-13 (UTC) between 19:03 and 19:21, in a
+Claude cloud runner (lane branch `claude/vibrant-meitner-pkabyk`). It is green, so the pass may
+launch.
+
+- Pinned commit: `643e0bef86a626d3be9e77e5369ee4c73e47d814`, the merge of #2035 that brings
+  milestone 824 to main. The dry run used a detached worktree at that commit.
+- Host: Ubuntu 24.04.5, `uname -m` x86_64, `nproc` 4, 15 GiB of memory, no swap, 30 GB free on
+  `/` before the run and 28 GB after it. `rustup` and `clang` came preinstalled.
+- `script/ci-qemu`: failed in 0.1 s on its first command, `apt-get install libslirp0`, with
+  "Unable to locate package", because the container starts with empty apt lists. After one
+  `apt-get update` (4 s) it built QEMU 11.1.2 cold in 7 min 30 s, and `script/qemu-check` passed.
+  `download.qemu.org` is reachable.
+- `NIFE_SKIP_LINT_TOOLS=1 script/bootstrap`: passed in 47 s. It installed the
+  `nightly-2026-10-12` toolchain and ShellCheck.
+- `script/qemu-check`: passed in 0.1 s. QEMU 11.1.2 matches the pin.
+- `script/test --arch <isa> --test seventh_pass`, each leg under TCG, one at a time: aarch64 passed
+  in 5 min 34 s, including the cold build; riscv64 in 1 min 6 s; x86_64 in 1 min 44 s. Each ran 2 of
+  2 tests, with no watchdog or timeout. No QEMU was left running.
 
 ## Done means
 
@@ -74,42 +90,41 @@ not launched until that run is green and its numbers are in this block.
 
 ## BUGS
 
-What a cloud runner needs that patagonia has, read from `script/bootstrap`, `script/ci-qemu` and
-CI's `test-shard` job. CI runs this same Linux path green on `ubuntu-24.04-arm`. Nothing here was
-run in a Claude cloud runner, so each line is unverified until the dry run.
+What a cloud runner needs that patagonia has, checked against the dry run above.
 
-- QEMU 11.1.2 is built, not installed. Ubuntu 24.04 ships QEMU 8.2, which lacks
-  `riscv-iommu-pci`, so the riscv64 leg cannot boot on it. `script/ci-qemu` builds the pinned
-  version into `~/.cache/nife-qemu`. That takes sudo, `apt-get` and a download from
-  `download.qemu.org`, and 10 to 20 minutes cold. If the runner's network allowlist omits that
-  host, the build fails at its first step, and the script has no knob for another source. Setup:
-  allow `download.qemu.org` in the runner's network settings. Failing that, build the same
-  version from a source the runner allows, with `script/ci-qemu`'s configure line, into
-  `~/.cache/nife-qemu`; `helpers/qemu-path.sh` puts it on `PATH` when its version matches.
-- The rest of the network. `script/bootstrap` needs `sh.rustup.rs` and
-  `static.rust-lang.org` for the pinned `nightly-2026-10-12`. It also needs the apt mirrors for
-  `ovmf` and `ipxe-qemu`, and the cargo registry for the first build.
-- Host architecture is unmeasured on x86_64. CI runs the test legs only on arm64 Linux, and
-  says moving a leg to an x86_64 host "changes the emulator under the suite and is unmeasured".
-  If the runner is x86_64, a watchdog may fire where patagonia passes. The brief already grades a
-  timeout inconclusive, and the lane's own rerun on patagonia settles it.
-- Homebrew paths. The brief's `/opt/homebrew/opt/python@3.14/libexec/bin` does not exist on
-  Linux and is skipped. Ubuntu 24.04's `python3` is 3.12, new enough for `tomllib`. The OVMF
-  search in `helpers/qemu-uefi-x86_64.sh` already tries `/usr/share/OVMF/OVMF_CODE_4M.fd`.
-- Results cannot stay outside the repository. The brief says to write the report outside the
-  repository and not to push, and a cloud container is discarded with its session. The prompt
-  overrides both: the report is committed last, at the repository root, and the session pushes
-  its branch once, when the report is done. A pushed branch is public, so any escape is
-  public from that push. That is no worse than every escape test this project already commits
-  in public before its fix.
-- Blind to history is honor only. The runner clones the repository with its history and every
-  branch, including 913's if it has pushed. The prompt forbids history and GitHub, as on the Mac;
-  nothing enforces it.
-- Disk and session length. `target/` reaches about 2.2 GB on patagonia, before rustup and the
-  QEMU build. A pass runs for hours. Neither limit is known for the runner.
+- Verified, and worked around. The runner starts with empty apt lists, and `script/ci-qemu` at
+  the pinned commit runs `apt-get install libslirp0` before any `apt-get update`, so it fails at
+  once. `script/ci-qemu` on main updates and retries when that install fails. The pinned commit
+  predates that, so the launch prompt runs `apt-get update` first.
+- Verified. QEMU 11.1.2 is built, not installed, because Ubuntu 24.04's QEMU 8.2 lacks
+  `riscv-iommu-pci`. The runner's allowlist permits `download.qemu.org`, and the cold build takes
+  about 7.5 minutes on 4 cores.
+- Verified for what ran. `static.rust-lang.org`, the Ubuntu apt mirrors and the cargo registry
+  all answer. `sh.rustup.rs` was not exercised, since `rustup` was preinstalled. Bootstrap does not
+  install `ovmf` or `ipxe-qemu` once the built QEMU is on `PATH`; the x86_64 leg boots with the
+  built QEMU's own `share/qemu/edk2-x86_64-code.fd`, which `helpers/qemu-uefi-x86_64.sh` finds.
+- Still open, narrowed. The runner is x86_64, and CI runs test legs only on arm64 Linux. The
+  `seventh_pass` legs passed on all three ISAs here without a watchdog, but the other rows are
+  unmeasured on this host. The brief grades a timeout inconclusive, and the lane's rerun on
+  patagonia settles it.
+- Verified harmless. The brief's `/opt/homebrew/...` `PATH` line does not exist on Linux and is
+  skipped. The runner's `python3` is 3.13, new enough for `tomllib`, and `/usr/share/OVMF` is
+  absent, which costs nothing because of the firmware above.
+- Still open. Results cannot stay outside the repository, since the container is discarded
+  with its session. The prompt has the report committed last at the repository root and the
+  branch pushed once. A pushed branch is public, so any escape is public from that push, no worse
+  than every escape test this project already commits in public before its fix. A push from the
+  runner works.
+- Still open. Blind to history is honor only. The runner's clone is shallow (553 commits, `main`
+  and its own branch), but `git fetch` reaches every branch, including 913's once it pushes. The
+  prompt forbids history and GitHub; nothing enforces it.
+- Disk verified, session length still open. After three legs, `target/` is 4.9 GB, the
+  toolchains 0.9 GB and the QEMU build 0.6 GB, against 28 GB still free. A pass runs for hours,
+  and the runner's session limit is unknown.
 
 Minimal setup, in the order the launch brief's prompt runs it:
 
+    apt-get update
     script/ci-qemu
     NIFE_SKIP_LINT_TOOLS=1 script/bootstrap
     script/qemu-check

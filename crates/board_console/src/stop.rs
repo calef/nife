@@ -1,127 +1,36 @@
-//! **The one thing this tool sends, and the log entry that makes sending it safe** (milestone 324,
-//! parts 1 and 4).
+//! **The one thing this tool sends, and the log entry that makes sending it safe.** It writes only
+//! what a named mode sends, and every byte it sends is printed into the log first (calef,
+//! 2026-09-19): [`Escape::observe_line`] is the only sender, and it writes the announcement before
+//! the byte, so a capture can never be a lie about a run. notes/board-console.md, "Writing to a
+//! board", has the whole argument.
 //!
-//! Every other module here reads. This one writes, and it exists because calef ruled on 2026-09-19
-//! that the invariant in `script/board-console`'s header changes from *"it reads and never writes
-//! to the board"* to **it writes only what a named mode sends, and every byte it sends is printed
-//! into the log.**
+//! The byte ends a self-rebooting soak: `kernel/src/soak.rs` disarms its reboot loop on any byte at
+//! the console. `--stop` ends the series at the next draw and `--stop-after <n>` at the n-th;
+//! `--stop` is `--stop-after 1`, one mechanism, so the flags cannot disagree.
 //!
-//! The second clause is the half that makes the first one safe, and it is why this module owns both
-//! the decision and the write. A bench log is the artifact a run is judged from, so a byte the
-//! board received that the capture does not show makes the capture a lie about the run. There is no
-//! path through this file that puts a byte on the wire without having already written what it is
-//! about to do into the log: [`Escape::observe_line`] is the only sender, and it writes the
-//! announcement before it writes the byte.
+//! **It sends only on the arming banner**, which `arm_reboot` prints after `console::discard_rx`
+//! drains the UART. That one line proves the drain has happened (a byte sent at
+//! `soak-test: started` is about 90 ms early and silently discarded), that a reboot loop exists to
+//! stop, and that the board is long past U-Boot's autoboot countdown, the hazard the ruling is
+//! about. It is also one per boot, so arming banners count draws one-to-one with
+//! [`lottery`](crate::lottery)'s, and `a_stop_after_n_log_tallies_as_n_draws` holds that. The cost:
+//! a session that attaches mid-draw waits up to `REBOOT_AFTER_SECONDS` for the next banner.
 //!
-//! # What it is for
-//!
-//! Milestone 249 made a board reboot itself every two minutes so that fifty draws of the
-//! thread-placement lottery fit in an evening instead of nine draws filling one. Its escape is a
-//! byte on the console UART: `kernel/src/soak.rs` polls the NS16550's data-ready bit every five
-//! seconds and again in the grace window before each reset, and any byte at all disarms the loop.
-//! Until now the only thing that could press that key was a person, because this tool held the port
-//! and could not write. So a series ended when somebody was at the bench, which is the constraint
-//! milestone 249 built the escape to remove and could not finish removing.
-//!
-//! - `--stop` ends the series at the next draw.
-//! - `--stop-after <n>` ends it at the n-th, which is 249's own wording for what a writing mode
-//!   buys: *a series with exactly the sample it was asked for.*
-//!
-//! `--stop` is `--stop-after 1` and is not a second mechanism. That is worth stating rather than
-//! implementing twice, because the two flags then cannot disagree about anything.
-//!
-//! # Why it sends on the arming announcement and on nothing else
-//!
-//! This is the whole of the safety argument, and it is a mechanism rather than a caution.
-//!
-//! `kernel/src/soak.rs`'s `arm_reboot` does two things in this order: it calls
-//! `console::discard_rx`, which throws away anything already sitting in the UART, and then it
-//! prints the banner this module matches on. The drain has a reason of its own (a console that sat
-//! in front of a person may hold a byte U-Boot's countdown collected, and firing the escape on boot
-//! 1 of 50 would produce no distribution and no explanation), and it has a consequence nobody had
-//! cause to write down: **a byte sent before that banner is a byte the kernel deliberately
-//! discards.**
-//!
-//! So a sender that fired on `soak-test: started` would lose the race almost every time. That line
-//! is printed *before* `arm_reboot`, with four more `println!`s between them: about a kilobyte, so
-//! roughly ninety milliseconds at 115200 baud, and a host that reads a line and answers it is
-//! comfortably inside ninety milliseconds. The failure would be silent and would look exactly like
-//! a board whose receive path is miswired: no acknowledgement, and a series that keeps rebooting.
-//!
-//! The arming banner closes that, and it closes three more things at the same time, which is why it
-//! is the only trigger here:
-//!
-//! - **It proves the drain has already happened**, so the byte cannot be discarded.
-//! - **It proves a reboot loop exists to stop.** A plain `--features soak_test` kernel never prints
-//!   it and never polls for an escape, so a byte sent at one would sit in the FIFO forever, which is
-//!   writing to a board with nothing to gain.
-//! - **It proves the board is past its firmware.** The hazard the ruling is actually about is an
-//!   open keyboard beside U-Boot's autoboot countdown; milestone 249's lane sent this escape by
-//!   detaching the console, hit the countdown with it, and paid a power cycle. A kernel that has
-//!   printed this banner has been running for the length of a boot tour, so the countdown is long
-//!   over. The gate rather than the byte is what makes that impossible.
-//! - **It is one per boot of a rebooting build**, so counting them counts draws.
-//!
-//! The cost of the gate is one sentence long and is the honest half of it: a session that attaches
-//! to a board already mid-draw sees no banner until that draw's reboot, so `--stop` waits out the
-//! remainder of the current draw. That is up to `REBOOT_AFTER_SECONDS`, two minutes, and it buys
-//! the four properties above.
-//!
-//! # Counting draws, and why this count is the lottery's count
-//!
-//! [`lottery`](crate::lottery) opens a draw on `soak-test: started`. This module counts arming
-//! banners. In a `--features reboot_soak_test` capture those are one-to-one and in that order, so a
-//! log produced by `--stop-after n` tallies as exactly n draws, which is the property the flag
-//! promises and which `a_stop_after_n_log_tallies_as_n_draws` asserts. They differ only for a build
-//! with no reboot loop, where the lottery has nothing to draw and this module has nothing to stop.
-//!
-//! # What confirms it
-//!
-//! The kernel prints its own line when the escape lands: `soak-test-reboot: DISARMED`, from either
-//! the beat poll or the grace window. This module waits for it, for [`CONFIRM_WINDOW`], and the
-//! session's exit status says whether it came.
-//!
-//! **That closes a gap `kernel/src/soak.rs` states in its own `BUGS` and cannot close from where it
-//! stands**: *"the escape is a poll of one bit and nothing verifies that the bit can ever be set
-//! [...] Nothing in this kernel can prove otherwise, because a UART cannot receive a byte it
-//! sends."* A host holding the far end of the cable is not under that limit. It sends a byte it did
-//! not print and reads back an acknowledgement the board printed, so a confirmed `--stop` is the
-//! first evidence in this tree that the board's receive path works end to end. The procedure that
-//! kernel BUGS entry names as the substitute (press a key on the first boot and confirm `DISARMED`
-//! before walking away) becomes something a script does and records.
+//! It then waits [`CONFIRM_WINDOW`] for `soak-test-reboot: DISARMED`, and the exit status says
+//! whether it came: the first end-to-end evidence that the board's receive path works, which the
+//! kernel cannot get by itself.
 //!
 //! # BUGS
 //!
-//! **No byte from this module has ever reached a board.** Milestone 324's lane had no board
-//! attached to it: radon and xenon were both unreachable, so everything here is exercised against
-//! captures and against a `Vec<u8>` standing in for the port. What that proves is the decision (when
-//! a byte is sent, and that it is sent only then), the exact bytes that would go on the wire, and
-//! the log entries beside them. What it does not prove is that a write to the descriptor reaches
-//! the UART, nor that the kernel's poll finds it. The first real `--stop` is the experiment, and its
-//! `DISARMED` line is the result; until then this is a tested decision attached to an untested wire.
-//!
-//! **A session that attaches mid-draw loses that draw.** Stated above and repeated here because it
-//! is what a person meets: `--stop` on a board already soaking waits for the next boot's arming
-//! banner, which is up to two minutes away. Attaching at power-on has no such gap.
-//!
-//! **An unconfirmed send is three faults wearing one report.** The byte may not have left the host,
-//! the board's receive path may be dead (`kernel/src/soak.rs`'s own BUGS), or the kernel may be
-//! wedged in a way the beat has not yet shown. The tool says the byte went out and was not
-//! acknowledged, and cannot say which of the three it is. The log's surrounding beats are what
-//! separates them by hand: beats still arriving with no `DISARMED` points at the receive path.
-//!
-//! **The markers here are string literals checked against `kernel/src/soak.rs` by a reader, not by
-//! the compiler.** `boot_ladder` exists for exactly this problem and holds the boot tour's markers
-//! as shared constants; the soak's markers were never hoisted into it, so this module repeats what
-//! [`progress`](crate::progress) already does. Hoisting `START_MARKER`, `REBOOT_MARKER` and the
-//! arming and disarming lines into `boot_ladder` would make the kernel and this module agree by
-//! construction, and it is a change to the kernel that milestone 324's parts 1 and 4 do not cover.
-//!
-//! **The firmware-refused case exits 0 for `--stop-after n` as well as for `--stop`.** A board whose
-//! OpenSBI refuses SRST reset type 1 prints `soak-test-reboot: FAILED` and never reboots, so there
-//! is no loop to stop and this module ends the session saying so. For `--stop` that is the goal
-//! reached by another route. For `--stop-after 50` it means the series never happened, and a zero
-//! exit understates that; the log and the summary line say it in words, which is the weaker rung.
+//! - No byte from this module has reached a board yet: the decision and the exact bytes are tested
+//!   against captures and a `Vec<u8>`, the wire is not.
+//! - An unconfirmed send is three possible faults (the byte never left, the receive path is dead,
+//!   the kernel is wedged); beats still arriving with no `DISARMED` point at the receive path.
+//! - The markers are string literals checked against `kernel/src/soak.rs` by a reader; hoisting them
+//!   into `boot_ladder` would make the two agree by construction.
+//! - A board whose firmware refuses the reset (`soak-test-reboot: FAILED`) ends the session with
+//!   exit 0 even for `--stop-after 50`, which understates a series that never happened; only the
+//!   log and summary say so.
 
 use std::io::{self, Write};
 use std::time::{Duration, Instant};

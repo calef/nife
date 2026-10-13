@@ -1,134 +1,43 @@
 //! **The scheduler's block/wake handshake**: the per-thread state machine that decides when a
 //! blocked thread may become runnable, lifted out of `kernel/src/sched.rs` so loom can explore
-//! every interleaving of it on the host (milestone 80's method, second retrofit after
-//! `work_steal_slot`).
+//! every interleaving of it on the host. The kernel calls these transitions rather than mirroring
+//! them (a proof over a copy proves the copy): `Thread` embeds a [`Handshake`].
 //!
-//! # What this is, and what it is not
+//! Every field is written under `IPC_TABLES`; the concurrency is in the gaps between critical
+//! sections. A thread that marks itself `Blocked` keeps running until its core's `switch_to` saves
+//! its context, and a waker on another core can take `IPC_TABLES` inside that window. Each race out
+//! of that window is a rule here:
 //!
-//! Every field here is written **under `IPC_TABLES`**. That is worth saying in the
-//! first breath, because it is the opposite of what "extract the atomic protocol" usually means:
-//! there are no hand-rolled atomics in this protocol and no orderings to tune. The concurrency is
-//! in the *gaps between critical sections*. A thread that marks itself `Blocked` releases `IPC_TABLES`
-//! and keeps running until its core's `switch_to` saves its context; a waker on another core can
-//! take `IPC_TABLES` inside that window. Three real races have come out of that window, and each one is
-//! a rule in this type:
+//! - **Wake before switch-out** (notes/intrusive-queues.md): queueing a thread still on its CPU lets
+//!   two cores run one thread. [`try_wake`](Handshake::try_wake) finding
+//!   [`on_cpu`](Handshake::on_cpu) set parks the wake in [`wake_pending`](Handshake::wake_pending),
+//!   and [`finish_switch`](Handshake::finish_switch) completes it once the context is saved.
+//! - **The undelivered wake**: completing a parked `RECEIVE` off a stale mailbox. `try_wake` makes
+//!   a waiting thread `Ready` only if the waker delivered ([`ipc_served`](Handshake::ipc_served))
+//!   or aborted the wait ([`ipc_aborted`](Handshake::ipc_aborted)). It is hardening: it has never
+//!   fired on a field failure, and the loom harness proves the transition it forbids is unsafe.
+//! - **A steal racing a switch-out**: only the owning core pops its run queue, after
+//!   `finish_switch`, so a thief never gets a thread mid-save; [`switch_in`](Handshake::switch_in)
+//!   asserts `on_cpu` is clear as the tripwire.
 //!
-//! - **Wake-before-switch-out** (found by a 2-in-10 flake; notes/intrusive-queues.md). A waker that
-//!   queues a thread still standing on its CPU lets another core switch into a stale context: two
-//!   cores in one thread. Rule: [`try_wake`](Handshake::try_wake) finding
-//!   [`on_cpu`](Handshake::on_cpu) set parks the wake in
-//!   [`wake_pending`](Handshake::wake_pending) instead,
-//!   and the thread's own core completes it in [`finish_switch`](Handshake::finish_switch) once the
-//!   context is provably saved.
-//! - **The undelivered wake.** A wake that delivers nothing would complete a parked `RECEIVE` off a
-//!   stale mailbox, with the TCB still linked on its endpoint's wait queue. Rule: the
-//!   undelivered-wake gate. `try_wake` refuses to make a waiting thread `Ready` unless the waker's
-//!   own critical section delivered something ([`ipc_served`](Handshake::ipc_served)) or aborted
-//!   the wait ([`ipc_aborted`](Handshake::ipc_aborted)).
-//!
-//!   **This one is hardening rather than a fix for an observed failure, and the correction belongs
-//!   here because this bullet is what a reader trusts.** It was built against the VisionFive 2's
-//!   boot 8 (2026-08-14), read at the time as a boot thread taking a `wake:0x0` on a boot where no
-//!   sender to its endpoint existed. The boot-8 lane's **fifth** bench stop (2026-08-15) re-read
-//!   those dumps and overturned that: the wake was the worker's real send, and the state read as a
-//!   stranded receiver was the terminal state of a completed tour. **The gate has never fired on a
-//!   field failure, and `refuse:` has never appeared on a board ring.** It stays because the
-//!   transition it forbids is genuinely unsafe and the loom harness below proves that, which is a
-//!   property rather than an anecdote. The fifth stop's own write-up is still in flight in that
-//!   lane, so no section is cited for it yet.
-//! - **A steal racing a switch-out.** A preempted thread sits `Ready` in its core's run queue with
-//!   `on_cpu` still set until that core's `finish_switch` runs; a work steal
-//!   (`sched::serve_steal_request`) hands queued threads to other cores. The single-owner run-queue
-//!   discipline (only the owning core pops, at scheduler entries that come after `finish_switch`)
-//!   is the whole reason the thief never receives a thread whose context is still being saved.
-//!   Rule: [`switch_in`](Handshake::switch_in) asserts `on_cpu` is clear, so the discipline has a
-//!   tripwire at the one place every path to a CPU passes through. (The phrase "steal-then-STOP"
-//!   has been used for this family; the nearest recorded artifacts are this edge and
-//!   `work_steal_slot`'s BUGS entry about a claimed slot a stopped victim never serves, which is a
-//!   liveness question outside both crates' models.)
-//!
-//! # The division of labor with the kernel
-//!
-//! The kernel **calls** these transitions; it does not mirror them. The memory_regions-crate precedent
-//! (DECISIONS §16's extraction rule): a proof over a copy proves the copy. `Thread` embeds a
-//! [`Handshake`] and `sched.rs` goes through these methods at every block, wake, switch and
-//! finish-switch site. What stays kernel-side, on purpose:
-//!
-//! - **The queues.** Run queues, migration inboxes and endpoint wait queues are intrusive pointer
-//!   structures under their own synchronization (notes/intrusive-queues.md). The verdict enums
-//!   ([`WakeVerdict`], [`SwitchOutVerdict`]) tell the kernel when to push; the push itself, the
-//!   trace ring, the SGI and the placement policy are the caller's.
-//! - **The out-of-protocol state writes.** Spawn making a thread `Ready`, `depart` marking
-//!   `Finished`/`Dead`, `START` promoting an `Embryo`, the killed-thread conversion, and
-//!   `schedule()`'s keep-current heal all write [`state`](Handshake::state) directly. They are
-//!   `IPC_TABLES`-held single-thread transitions with no cross-core window, and folding them in here
-//!   would grow the model without growing the checked surface.
-//! - **The self-switch refusal and the reply-role check** (boot 8's companions). Both read queue or
-//!   capability state this type cannot see (`schedule()`'s popped tid, `ipc_reply`'s
-//!   `WaitRole::Reply` match on [`wait_on`](Handshake::wait_on)'s payload).
-//!
-//! # EXAMPLES
-//!
-//! One rendezvous, as the kernel spells it, with the waker racing the receiver's switch-out:
-//!
-//! ```
-//! use thread_wake_handshake::{Handshake, RunState, SwitchOutVerdict, WakeVerdict};
-//!
-//! // The receiver, running, parks itself in ipc_receive (under IPC_TABLES):
-//! let mut hs: Handshake<(u64, char)> = Handshake::on_cpu_now();
-//! hs.park((0, 'r')); // Blocked, waiting on endpoint 0 as a receiver, nothing delivered yet
-//!
-//! // A spurious wake, nothing delivered: refused, the receiver stays parked (boot 8's gate).
-//! assert_eq!(hs.try_wake(), WakeVerdict::Refused);
-//! assert_eq!(hs.state, RunState::Blocked);
-//!
-//! // A sender stages the mailbox and wakes, but the receiver's core has not switched away yet
-//! // (on_cpu is still set): the wake is deferred, not queued.
-//! hs.serve();
-//! assert_eq!(hs.try_wake(), WakeVerdict::Deferred);
-//!
-//! // The receiver's core finishes the switch: the context is saved, the deferred wake completes,
-//! // and the caller queues the thread.
-//! assert_eq!(hs.finish_switch(), SwitchOutVerdict::WakeCompleted);
-//! assert_eq!(hs.state, RunState::Ready);
-//!
-//! // Some core pops it and switches in; the receive tail's tripwire holds.
-//! hs.switch_in();
-//! assert!(hs.is_delivered());
-//! ```
+//! Kernel-side on purpose: the queues themselves (the verdicts, [`WakeVerdict`] and
+//! [`SwitchOutVerdict`], say when to push), the single-threaded out-of-protocol writes of
+//! [`state`](Handshake::state) (spawn, `depart`, `START`, the killed-thread conversion), and the
+//! self-switch and reply-role checks, which read state this type cannot see.
 //!
 //! # BUGS
 //!
-//! - **Nothing makes a new block path use [`park`](Handshake::park).** The fields are public,
-//!   because the kernel has legitimate out-of-protocol writers (listed above), so a future block
-//!   site that writes `state = Blocked` by hand opts out of the gate silently. This is the same
-//!   limitation notes/scheduler.md records for `wait_on`, one level down. The lint-shaped fix
-//!   (private fields plus named methods for every out-of-protocol writer) was considered and not
-//!   taken: it would add a dozen passthroughs whose names would imply protocol membership they do
-//!   not have.
-//! - **A stale [`ipc_aborted`](Handshake::ipc_aborted) weakens the gate for the next park.**
-//!   [`park`](Handshake::park) clears `ipc_served` (matching the kernel's block sites) but not
-//!   `ipc_aborted`, because the kernel's syscall layer owns that flag through `take_ipc_aborted`
-//!   and clearing it here would eat the error. A kernel thread that blocks again without collecting
-//!   an abort therefore parks with the gate already half-open. Every current kernel-side caller
-//!   either collects the flag or never has it set; nothing enforces that for the next one.
-//! - **The loom model checks this protocol under the kernel's locking discipline, not the
-//!   discipline itself.** `IPC_TABLES` is modelled as a mutex and the run queue as a slot under it; that
-//!   the kernel really does take `IPC_TABLES` at every one of these sites, really does keep run queues
-//!   single-owner, and really does run `finish_switch` before the next scheduler entry is
-//!   established by reading `sched.rs`, not by the model. See notes/interleaving.md for what the
-//!   model covers and what it cannot reach.
-//! - **Liveness is out of scope**, here as in `work_steal_slot`: a refused or deferred wake depends
-//!   on a later scheduler entry that loom cannot see (the reschedule SGI, the timer tick).
+//! - Nothing makes a new block path use [`park`](Handshake::park): the fields are public for the
+//!   legitimate out-of-protocol writers, so a site writing `Blocked` by hand skips the gate.
+//! - [`park`](Handshake::park) does not clear a stale [`ipc_aborted`](Handshake::ipc_aborted)
+//!   (`take_ipc_aborted` owns it), so a thread that blocks again without collecting an abort parks
+//!   with the gate half open. Every current caller collects it; nothing enforces that.
+//! - Loom checks the protocol under the kernel's locking discipline, not the discipline itself
+//!   (notes/interleaving.md). Liveness is out of scope.
 //!
-//! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review). Renamed from
-//! `wake_handshake`: more explicit about the subject being woken (a blocked thread, coordinated
-//! between a waker on one core and that thread's own core mid-context-switch). Minted 2026-08-14
-//! (the block/wake loom extraction, the retrofit the fourth bench stop's audit asked for). Refused
-//! along the way: `block_wake` (two verbs; the tenet says nouns), `wake_gate` (names only the
-//! boot-8 rule, one of three), `sched_state` and `run_state` (generic words that could name almost
-//! anything in a scheduler), `parking` (a verb, and std's `park` vocabulary means something
-//! narrower).
+//! Name: ratified 2026-08-23 (calef), renamed from `wake_handshake`. Refused `block_wake` (two
+//! verbs), `wake_gate` (one rule of three), `sched_state` and `run_state` (too generic), `parking`
+//! (std's `park` means something narrower).
 
 #![cfg_attr(not(test), no_std)]
 
@@ -209,6 +118,36 @@ pub enum SwitchOutVerdict {
 ///
 /// Every method is written to be called **under `IPC_TABLES`**. The struct itself has no interior
 /// mutability and no atomics; see the module documentation for why that is the honest shape.
+///
+/// # Examples
+///
+/// One rendezvous, as the kernel spells it, with the waker racing the receiver's switch-out:
+///
+/// ```
+/// use thread_wake_handshake::{Handshake, RunState, SwitchOutVerdict, WakeVerdict};
+///
+/// // The receiver, running, parks itself in ipc_receive (under IPC_TABLES):
+/// let mut hs: Handshake<(u64, char)> = Handshake::on_cpu_now();
+/// hs.park((0, 'r')); // Blocked, waiting on endpoint 0 as a receiver, nothing delivered yet
+///
+/// // A spurious wake, nothing delivered: refused, the receiver stays parked (boot 8's gate).
+/// assert_eq!(hs.try_wake(), WakeVerdict::Refused);
+/// assert_eq!(hs.state, RunState::Blocked);
+///
+/// // A sender stages the mailbox and wakes, but the receiver's core has not switched away yet
+/// // (on_cpu is still set): the wake is deferred, not queued.
+/// hs.serve();
+/// assert_eq!(hs.try_wake(), WakeVerdict::Deferred);
+///
+/// // The receiver's core finishes the switch: the context is saved, the deferred wake completes,
+/// // and the caller queues the thread.
+/// assert_eq!(hs.finish_switch(), SwitchOutVerdict::WakeCompleted);
+/// assert_eq!(hs.state, RunState::Ready);
+///
+/// // Some core pops it and switches in; the receive tail's tripwire holds.
+/// hs.switch_in();
+/// assert!(hs.is_delivered());
+/// ```
 #[derive(Debug)]
 pub struct Handshake<W> {
     /// See [`RunState`]. Out-of-protocol transitions (spawn, exit, kill, `START`) write this

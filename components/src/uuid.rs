@@ -1,38 +1,9 @@
-//! **`uuid`**: print a version-4 UUID drawn from the entropy service (milestone 111, DECISIONS §44,
-//! notes/entropy.md).
-//!
-//! The whole program is: ask the entropy service for sixteen bytes, stamp the six bits RFC 9562
-//! reserves, print the canonical form. It holds two capabilities and neither of them can reach the
-//! random device, exactly `date`'s shape one manifest field over
-//! ([`grant_plan::Manifest::entropy`] rather than `Manifest::clock`).
-//!
-//! # Why this program exists, and why it is not a demonstration
-//!
-//! Milestone 56 built the entropy service and the grant that reaches it, and nothing at the prompt
-//! could pass that grant on: a program needing randomness worked when the *system* spawned it
-//! (`credentialer` at boot, `disk_partitioner` under the kernel's own test harness) and could not
-//! be run by a person. `date` before `components/src/date.rs` existed is the position that left; this is
-//! that milestone's `date`.
-//!
-//! It is **`disk_partitioner`'s draw with the disk taken away**. Both fill sixteen bytes with
-//! `user_mode_runtime::entropy::fill` and stamp them with
-//! `universally_unique_identifier::Uuid::v4_from_random`, because a GPT gives every partition a
-//! random unique id and neither crate will invent one. The partitioner also needs a disk
-//! capability, which this shell does not hold and cannot attenuate; the sixteen bytes and the
-//! stamping are the half that a prompt can reach today.
-//!
-//! # Byte order
-//!
-//! The printed form is RFC 9562's: the version nibble at character 14, the variant at 19, and the
-//! digits in the order `Uuid` holds its bytes. Until 2026-10-06 (UTC) this program stamped with the
-//! partition table's `Guid`, which held GPT's mixed-endian on-disk bytes and swapped the first
-//! three groups when printing. The output was still a well-formed version-4 UUID, because the stamp
-//! used the on-disk offsets and the printer undid them, but the bytes drawn reached the screen
-//! permuted: RFC 9562 Appendix A.3's random input printed as `F7089191-D152-4033-9BAC-...` rather
-//! than the RFC's `919108F7-52D1-4320-9BAC-...`. No one could see it in a random identifier, and
-//! `crates/universally_unique_identifier`'s tests now pin the RFC's vector.
-//!
-//! # The capability table
+//! **`uuid`**: print a version-4 UUID drawn from the entropy service (notes/entropy.md). Ask the
+//! service for sixteen bytes, stamp the six bits RFC 9562 reserves
+//! (`universally_unique_identifier::Uuid::v4_from_random`), print the canonical form in RFC order.
+//! It is `disk_partitioner`'s draw with the disk taken away, and `date`'s shape one manifest field
+//! over ([`grant_plan::Manifest::entropy`] rather than `Manifest::clock`): the part of randomness a
+//! person at the prompt can reach.
 //!
 //! | slot | what | why it is that and not wider |
 //! |---|---|---|
@@ -40,31 +11,14 @@
 //! | 8 | the diagnostics sink, `WRITE` | where the refusal goes, so `>` cannot swallow it |
 //! | 9 | the entropy service, `WRITE` | the right to `CALL` it, and nothing else |
 //!
-//! `WRITE` on slot 9 is the whole grant. `READ` would let this program `RECEIVE` on the service's own
-//! request endpoint, which is to take another client's request out from under it; `GRANT` would let
-//! it hand a random source to something it spawned. Neither is given, and neither is needed.
+//! `READ` on slot 9 would let it take another client's request off the service's endpoint, and
+//! `GRANT` would let it hand a random source on; neither is given.
 //!
-//! # The refusal is the interesting half
-//!
-//! A program spawned without [`grant_plan::Manifest::entropy`] holds an empty slot 9. Its first
-//! `CALL` comes back as `abi::Error::NoSuchSlot`, which `entropy_protocol::delivered` reports as
-//! `None` rather than as a short reply, and this program then prints **nothing at all** and says
-//! why on its second stream.
-//!
-//! That is deliberate and it is why the manifest declares `OutputSpec::BytesAndDiagnostics`. A
-//! `uuid > id.txt` on a boot with no entropy service must leave the file empty, because a file
-//! containing a predictable identifier is worse than a file containing nothing: the first is wrong
-//! and looks right. There is no counter fallback here for the same reason `disk_partitioner` has
-//! none (its `R_NO_ENTROPY`), and the same reason
-//! `crates/globally_unique_identifier_partition_table` will not invent a GUID.
-//!
-//! # Arguments: none
-//!
-//! There is no argv on this ABI (notes/abi.md) and this program needs none. Unix's `uuidgen` takes
-//! a version selector; there is one version here, and a count would want a positional argument
-//! `ArgSpec` cannot carry yet (the same gap `printenv`'s and `date`'s module docs name).
-//!
-//! # EXAMPLES
+//! **Without the entropy grant it prints nothing** and says why on its second stream:
+//! `entropy_protocol::delivered` reports the empty slot as `None`, and `uuid > id.txt` must leave
+//! the file empty, because a predictable identifier is wrong and looks right. No counter fallback,
+//! as in `disk_partitioner` and the partition table. It takes no arguments; there is no argv on
+//! this ABI (notes/abi.md).
 //!
 //! ```text
 //! uuid                     A4E1B0C7-2F3D-4A81-9C6E-5B7D0F2A1E44
@@ -75,52 +29,15 @@
 //!
 //! # BUGS
 //!
-//! - **One identifier per invocation.** `uuidgen -n 10` has no spelling here, because `ArgSpec` has
-//!   no positional argument yet. Ten invocations are ten spawns.
-//! - **Version 4 only.** No name-based (v3/v5) or time-based (v1/v7) form, which would need a
-//!   hash and a clock this program does not hold. A v7 would be worth having once something wants
-//!   sortable identifiers; nothing does.
-//! - **"Unpredictable" is a claim about the boot, not about this program.** The bytes are whatever
-//!   the entropy service delivers, and on QEMU that is a virtio-rng backed by the host
-//!   (DECISIONS §120's stopgap). Whether a real board's TRNG is sound is
-//!   `notes/entropy.md`'s open question and endowing a grant does not settle it.
-//! - **A short draw is treated as a failure.** `entropy_protocol` delivers at most eight bytes a round
-//!   trip and this program needs sixteen, so `user_mode_runtime::entropy::fill` makes two calls and
-//!   refuses if either answers with fewer than eight. It does not retry. `disk_partitioner` makes
-//!   exactly the same call.
+//! - One identifier per invocation, until `ArgSpec` has positional arguments.
+//! - Version 4 only; v1, v3, v5 and v7 need a hash or a clock this program does not hold.
+//! - "Unpredictable" is a claim about the boot: on QEMU the bytes come from a host-backed
+//!   virtio-rng (§120 (a QEMU-only virtio-rng stopgap)), and a real TRNG's soundness is open.
+//! - Two calls of eight bytes; a short draw is a failure, not retried.
 //!
-//! Name: ratified 2026-09-13 (calef, working the unratified worklist). Introduced 2026-09-05
-//! alongside `grant_plan::Manifest::entropy`. RFC 9562's own term for the object, and a term of art
-//! already right per this tree's naming convention for standard terms.
-//!
-//! Refused `uuidgen`, Unix's name for the *tool*: that name carries an argument surface this ABI
-//! cannot deliver, so it would promise a program this is not.
-//!
-//! Refused `guid`, **and the reason recorded here until 2026-09-13 was wrong in a way worth
-//! correcting rather than quietly replacing.** It said `crates/gpt` calls the same sixteen bytes a
-//! `Guid` "because GPT's spec does, but the spec is Microsoft's spelling of the same object". They
-//! are not the same object in the same layout. A GUID is **mixed-endian**: the first three groups
-//! go on disk little-endian and the last two in the order written, where RFC 9562's UUID is
-//! big-endian throughout. `crates/globally_unique_identifier_partition_table/src/guid.rs` is built
-//! around exactly that trap ("a GUID that looks plausible, matches nothing, and is byte-reversed in
-//! three places out of five") and proves its on-disk round trip for all 2^128 with
-//! `a_guid_survives_the_on_disk_layout`.
-//!
-//! So the refusal stands and is stronger than its old reason: `guid` here would not be a
-//! stylistic borrowing from another vendor, it would assert a byte order this program does not
-//! produce. For the same reason **`crates/gpt` keeps `Guid`** (calef, 2026-09-13, asked directly
-//! whether it should follow this ratification): that name distinguishes two encodings a reader
-//! will otherwise conflate, which is the load-bearing version of the argument §113's amendment
-//! found false for `crates/pci`. (The crate was `gpt` when both of these were written; §154
-//! renamed it `globally_unique_identifier_partition_table` on 2026-09-18, and `Guid` stayed.)
-//!
-//! **Superseded in part on 2026-10-06 (UTC).** calef asked why the UUID code lived in a crate named
-//! for partition tables, and approved moving it: the type is now
-//! `universally_unique_identifier::Uuid`, always in RFC 9562 order, and the mixed-endian layout is
-//! two functions in the partition table's `guid` module (`from_disk`, `to_disk`). The distinction
-//! the paragraph above defends is kept, and is now made by those two functions rather than by a
-//! second type name, so `Guid` is gone and the partition table says GUID only for UEFI's own
-//! fields.
+//! Name: ratified 2026-09-13 (calef): RFC 9562's term for the object. Refused `uuidgen` (it
+//! promises an argument surface this ABI cannot deliver) and `guid` (a GUID is mixed-endian on
+//! disk, a byte order this program does not produce).
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

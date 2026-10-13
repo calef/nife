@@ -1,157 +1,37 @@
-//! **The timebase page**, from milestone 161 (the `x86_64` kernel port) and its `cntfrq` follow-up;
-//! widened to `riscv64` 2026-09-21.
+//! **The timebase page**: how many [`user_mode_runtime::now`](../user_mode_runtime/fn.now.html)
+//! ticks make a second, on the architectures with no register that says so. aarch64 reads
+//! `CNTFRQ_EL0` and maps no page. `x86_64`'s TSC rate comes from `CPUID` leaf `0x15` or is
+//! measured, and `riscv64`'s is `/cpus/timebase-frequency` in a device tree no process can read:
+//! either way the kernel learns it once, at boot. This crate is the page's one definition, so the
+//! kernel (the one writer) and `user_mode_runtime::cntfrq` (every reader) cannot drift on its
+//! layout or address, as `clock_protocol` does for the wall clock. A hardcoded rate is not an
+//! answer: radon's `time` CSR runs at 4 MHz, not QEMU's 10 MHz (calef, 2026-09-21: "the program
+//! only returns accurate numbers").
 //!
-//! aarch64 answers "how many [`user_mode_runtime::now`](../user_mode_runtime/fn.now.html) ticks make a second" by
-//! reading `CNTFRQ_EL0`, a register the machine states. **Neither other architecture has one.**
-//! `x86_64`'s TSC rate is either reported by `CPUID` leaf `0x15` (on parts that implement it) or has
-//! to be measured against a timer the kernel already trusts. `riscv64`'s rate is stated by the
-//! device tree, at `/cpus/timebase-frequency`, which a process cannot read: it has no pointer to the
-//! blob and no capability naming the memory it sits in. Either way the number is known **once, at
-//! boot, in the privileged mode**, then never again. This crate is the one definition of the page
-//! that carries that number to every process, so the kernel (the one writer) and
-//! `user_mode_runtime::cntfrq`
-//! (every reader) cannot drift on its layout or its fixed address. The same split `clock_protocol`
-//! makes for the wall clock and `environment_protocol` makes for `TZ`/`LANG`/`TERM`.
-//!
-//! **`riscv64` used to answer from a hardcoded 10 MHz**, QEMU `virt`'s number, compiled into
-//! `user_mode_runtime::cntfrq` with a comment proposing an aux-vector as the eventual fix. radon (the
-//! VisionFive 2) runs its `time` CSR at **4 MHz**, so every userspace self-timing measurement on
-//! real RISC-V silicon read **2.5x high** and said nothing. calef ruled on 2026-09-21: *"We should
-//! ensure that the program only returns accurate numbers versus leveraging hard coded ones."* The
-//! aux-vector was never needed; this page, already built and working for `x86_64`, was the answer
-//! the tree already had. That is the shape of §19 (architectural parity is a tenet; the targets are
-//! aarch64, riscv64 and `x86_64`): a capability ships
-//! on every architecture that needs it, and the plan for the gap was a mechanism sitting one
-//! directory away.
-//!
-//! # Why a page, and why unconditional
-//!
-//! `clock_protocol`'s page is capability-gated: a process either holds a mapping or it does not, and
-//! not knowing the wall clock is a real, representable state. The timebase page is not like that.
-//! Every `x86_64` and every `riscv64` process that calls
-//! [`now`](../user_mode_runtime/fn.now.html) needs a rate to turn ticks
-//! into seconds, ambiently, with no capability to ask for (aarch64 gets this for free from
-//! `CNTFRQ_EL0`, gated on nothing, which is why that architecture maps no page). So
-//! `kernel::user::load` (the arch-neutral function every ordinary ELF-loaded test fixture passes
-//! through) and every kernel-side function that builds a top-level process's space by hand instead
-//! (`spawn_init` and the handful of `spawn_<program>`-shaped test harnesses; see
-//! `kernel::user::map_timebase_page`, the one place that logic lives) map this page
-//! **unconditionally** into the process they build, the same "grant is unconditional, a zeroed page
-//! reads as unknown" shape `kernel::user::boot_clock_page` already uses for init's clock page: a
-//! boot on which the rate somehow has not been learned yet (never observed in practice; the kernel
-//! measures the TSC, or reads the device tree, well before the first process is loaded) still hands
-//! out a page, and [`TimebasePage::hz`] reads that as `None` rather than a fabricated number.
-//!
-//! **A process built by the userspace ELF loader instead** (`supervision_protocol::build_child_space`,
-//! which every `root_supervisor`/`spawner`/`system_initializer`/`hello`-role child, `coremark`
-//! included, actually goes through) gets a page the **parent fills from its own**. That crate holds
-//! no capability naming the kernel's physical frame and needs none: its own process already has the
-//! real page mapped read-only, so it reads the rate with `user_mode_runtime::cntfrq_checked` and
-//! writes a fresh page for the child out of the child's own budget, exactly the way it already fills
-//! every other blob it hands down. The truth therefore propagates down every generation of the
-//! supervision tree, and so does its absence: a parent that does not know the rate writes a zeroed
-//! page, and the child reads "unknown" rather than inheriting a number nobody measured.
-//!
-//! # One writer, then read-only, no seqlock
-//!
-//! Same shape as `environment_protocol::ConfigPage`: the kernel writes this page's bytes once, before
-//! mapping it read-only into any process, so there is nothing to race and no seqlock is needed.
-//! Unlike the clock page, nothing ever updates it again after boot: the TSC's rate does not
-//! change while the machine is running (see the crate's own `BUGS` section for the one caveat
-//! that survives from `arch::x86_64::timer`'s own docs).
-//!
-//! # Examples
-//!
-//! ```
-//! use counter_frequency_protocol::{TimebasePage, build_page};
-//!
-//! let bytes = build_page(1_000_000_000);
-//! // SAFETY: `bytes` is a live, aligned buffer of exactly `PAGE_BYTES` for this block.
-//! let page = unsafe { TimebasePage::new(bytes.as_ptr() as u64) };
-//! assert_eq!(page.hz(), Some(1_000_000_000));
-//! ```
-//!
-//! A zeroed frame (a page nobody has written into) reads as "unknown", never as a fabricated
-//! rate:
-//!
-//! ```
-//! use counter_frequency_protocol::TimebasePage;
-//!
-//! let zeroed = [0u8; counter_frequency_protocol::PAGE_BYTES];
-//! // SAFETY: as above.
-//! let page = unsafe { TimebasePage::new(zeroed.as_ptr() as u64) };
-//! assert_eq!(page.hz(), None);
-//! ```
+//! Every process that calls `now` needs the rate, with no capability to ask for, so the page is
+//! mapped unconditionally: by `kernel::user::load` and `kernel::user::map_timebase_page` for spaces
+//! the kernel builds, and by `supervision_protocol::build_child_space`, where the parent writes a
+//! fresh page from its own `user_mode_runtime::cntfrq_checked` reading. A parent that does not know
+//! the rate writes zeroes, and [`TimebasePage::hz`] reads that as `None`, never a fabricated rate.
+//! The kernel writes the page once before mapping it read-only, so no seqlock is needed.
 //!
 //! # BUGS
 //!
-//! - **The TSC is assumed invariant, the same assumption `arch::x86_64::timer`'s own docs name.**
-//!   `CPUID.80000007H:EDX[8]` says whether the part keeps a constant TSC rate across frequency and
-//!   idle-state changes; this page is written once from whatever the kernel measured or read at
-//!   boot and never revisited, so a part that does not hold that bit and later changes its TSC
-//!   rate would leave every process reading a stale number. QEMU's TSC is invariant. Checking the
-//!   bit is milestone 87's, the same note `arch::x86_64::timer`'s own `BUGS` section carries.
-//! - **A process spawned any way other than those two paths** (`kernel::user::x86_userspace_demo`'s
-//!   hand-assembled children, and the equivalent hand-built demo spaces on `riscv64`, which run raw
-//!   machine code and never call `user_mode_runtime::cntfrq`) does not get this page mapped at all, and a
-//!   call to [`user_mode_runtime::cntfrq`](../user_mode_runtime/fn.cntfrq.html) from such a process would fault on the
-//!   unmapped read. A future spawn path that does not go through `kernel::user::load`,
-//!   `kernel::user::map_timebase_page`, or `supervision_protocol::build_child_space` must map this
-//!   page too, or must not link anything that calls `cntfrq`. **The fault is the honest outcome
-//!   here** and is deliberately not softened: a process that cannot find the page does not know how
-//!   fast its own counter runs, and dying on the read says so where returning a plausible number
-//!   would not.
-//! - **The rate is read once per process rather than watched.** Nothing re-reads the page, so a
-//!   kernel that ever learned a *better* number after a process started (recalibration, a second
-//!   device tree, a part whose TSC is not invariant) could not tell it. No architecture here does
-//!   that today; the page is written once at boot and never again.
+//! - The TSC is assumed invariant (`CPUID.80000007H:EDX[8]` is not checked, as in
+//!   `arch::x86_64::timer`); a part that changes its TSC rate leaves every process reading a stale
+//!   number. QEMU's TSC is invariant.
+//! - A process spawned another way (the hand-built demo spaces that run raw machine code) has no
+//!   page, and [`user_mode_runtime::cntfrq`](../user_mode_runtime/fn.cntfrq.html) there faults on
+//!   the unmapped read. That is deliberate: dying says the rate is unknown, a plausible number
+//!   would not. A new spawn path must map the page or not link anything that calls `cntfrq`.
+//! - The rate is read once per process, so a later, better number could not reach it.
 //!
-//! Name: provisional, and ruled: calef ruled **`counter_frequency_proto`** on 2026-09-13, working
-//! the unratified worklist. Minted by milestone 161's `cntfrq` follow-up lane as `timebase_proto`.
-//!
-//! **Performed at milestone 265 on 2026-09-14, and the name landed is `counter_frequency_protocol`**,
-//! not `counter_frequency_proto`: the stem is calef's 2026-09-13 ruling and the suffix is 265's
-//! 2026-09-05 one, and applying them separately would have renamed this crate twice for no reason.
-//! That is the same treatment `mdns_proto` and `ntp_proto` got, and **265's own block did not list
-//! this crate among them**: it named four stems ruled that day and there were five. The block now
-//! lists five. The name stays `provisional` because calef ruled the stem and has not been shown the
-//! whole name.
-//!
-//! **What `Refused` above says, exactly**: `timebase_proto`, the stem and suffix together. Applying
-//! 265's suffix rule to that name mechanically gives `timebase_protocol`, which is **not** on record
-//! as refused, so `script/names --check` would not have caught it: that check matches a refused name
-//! against a live one, and these differ by three letters. The refusal is of the stem. Nothing
-//! mechanical stood between this crate and a refused stem; reading this block did.
-//!
-//! **The block this replaces was the thinnest in the tree**, and that is worth recording rather
-//! than quietly improving: it read *"Name: provisional (this lane, milestone 161's `cntfrq`
-//! follow-up). calef names crates."* One line, no argument, no refusals. Nothing had ever been
-//! weighed, so there was no losing case for a reader to weigh against, which is the state
-//! milestone 115's provenance convention exists to prevent.
-//!
-//! **The ratified name mirrors the register this page substitutes for.** aarch64 answers "how many
-//! ticks make a second" from `CNTFRQ_EL0`, which is literally the *counter frequency*; `x86_64` has
-//! no such register, so the kernel learns the number once and publishes it here. A reader who knows
-//! why the crate exists meets a name that says so, and one who does not is told. The page carries
-//! exactly that number and a magic, which is the other half of the argument: `timebase` named the
-//! oscillator where the contents are the frequency.
-//!
-//! Refused `timebase_proto`, above. Refused `tick_rate_proto`, accurate and plainer but dropping
-//! the connection to `CNTFRQ_EL0` that explains the crate's existence. Refused `tsc_frequency_proto`
-//! for naming `x86_64`'s counter specifically, when the contract is architecture-neutral even
-//! though today's only consumer is not, and `TSC` would want expanding besides. Refused
-//! `x86_64_timebase_proto` on the same ground: `jh7110_` qualifies by chip because this tree will
-//! have a second system on a chip, but this page is the general answer to "the counter frequency is
-//! not in a register", and qualifying it by today's only caller would go stale the first time
-//! another architecture needed it.
-//!
-//! **The `_proto` suffix was not reopened here and was reopened three weeks later**, which is
-//! worth leaving standing rather than editing away. This block said the suffix was settled because
-//! `clock_proto` had been ratified with it on 2026-08-23 and this page uses the same `MAGIC` shape,
-//! so it was an established family rather than an open question. calef reopened it himself on
-//! 2026-09-05, on being shown this very crate: *"I think `_proto` was lazy on my part. It should
-//! have been `_protocol` globally to differentiate from prototype."* An established family is
-//! evidence about consistency and not about whether the thing being copied was right.
+//! Name: provisional, and ruled: calef ruled the stem **`counter_frequency`** on 2026-09-13, and
+//! `_protocol` is calef's 2026-09-05 suffix ruling. It stays `provisional` until calef
+//! sees the whole name. It mirrors `CNTFRQ_EL0`, the register this page substitutes for. Refused
+//! `timebase_proto` (the oscillator, where the contents are the frequency), `tick_rate_proto`
+//! (drops the `CNTFRQ_EL0` connection), `tsc_frequency_proto` and `x86_64_timebase_proto` (one
+//! architecture's name for a neutral contract).
 
 #![cfg_attr(not(test), no_std)]
 
@@ -260,6 +140,17 @@ pub const PAGE_VA: u64 = 0x0000_0038_0000_0000;
 /// Build a timebase page's bytes for `hz`, the calibrated (or `CPUID`-reported) TSC rate in
 /// hertz. The kernel writes the result into a fresh frame before mapping it read-only into any
 /// process; nothing else ever constructs one of these.
+///
+/// # Examples
+///
+/// ```
+/// use counter_frequency_protocol::{TimebasePage, build_page};
+///
+/// let bytes = build_page(1_000_000_000);
+/// // SAFETY: `bytes` is a live, aligned buffer of exactly `PAGE_BYTES` for this block.
+/// let page = unsafe { TimebasePage::new(bytes.as_ptr() as u64) };
+/// assert_eq!(page.hz(), Some(1_000_000_000));
+/// ```
 pub fn build_page(hz: u64) -> [u8; PAGE_BYTES] {
     let mut page = [0u8; PAGE_BYTES];
     page[OFF_MAGIC..OFF_MAGIC + 8].copy_from_slice(&MAGIC);
@@ -308,8 +199,20 @@ impl TimebasePage {
 
     /// The calibrated TSC rate in hertz, or `None` if this page is unrecognized (a zeroed frame,
     /// the state before calibration has run, or a page belonging to something else). Never a
-    /// fabricated default: see the crate's own docs for why the zeroed case is representable
-    /// rather than papered over.
+    /// fabricated default: a parent that does not know the rate writes zeroes.
+    ///
+    /// # Examples
+    ///
+    /// A zeroed frame reads as unknown, never as a fabricated rate:
+    ///
+    /// ```
+    /// use counter_frequency_protocol::TimebasePage;
+    ///
+    /// let zeroed = [0u8; counter_frequency_protocol::PAGE_BYTES];
+    /// // SAFETY: as above.
+    /// let page = unsafe { TimebasePage::new(zeroed.as_ptr() as u64) };
+    /// assert_eq!(page.hz(), None);
+    /// ```
     pub fn hz(&self) -> Option<u64> {
         let bytes = self.bytes();
         if bytes[OFF_MAGIC..OFF_MAGIC + 8] != MAGIC {

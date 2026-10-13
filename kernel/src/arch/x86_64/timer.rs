@@ -1,120 +1,34 @@
 //! **The timer, `x86_64`.** A calibrated TSC for reading time, and the local APIC timer for the tick.
 //!
-//! # Why this took a calibration loop when the other two took a register read
+//! aarch64's `CNTFRQ_EL0` and RISC-V's device tree state their counter's rate; x86 does not on the
+//! parts this runs on (`CPUID` leaf 0x15 is often absent, and nothing reports the APIC timer's bus
+//! clock). So both rates are measured, from one shared wait, against the one fixed-rate device on a
+//! PC: the 8254 PIT at 1193182 Hz, over ten-millisecond windows timed by polling.
 //!
-//! aarch64 has the architected generic timer: `CNTPCT_EL0` counts and `CNTFRQ_EL0` **says how
-//! fast**. RISC-V has `time`, and its rate is stated in the device tree. In both cases the machine
-//! tells you the number.
-//!
-//! x86 has at least four clocks and no architected way to ask any of them its rate on the parts
-//! this has to run on. `CPUID` leaf 0x15 reports the TSC's ratio to a "core crystal" whose frequency
-//! leaf 0x16 may or may not give, and neither leaf exists on everything. The local APIC timer counts
-//! the bus clock, which nothing reports at all. So the frequency of the clock everything is measured
-//! against has itself to be **measured**, against the one device on a PC whose rate is a fixed
-//! number: the 8254 PIT, at 1193182 Hz, unchanged since 1981 because it was derived by dividing the
-//! NTSC colour-burst frequency and every clone copied it.
-//!
-//! # What is calibrated against what
-//!
-//! A PIT interval of ten milliseconds, timed by polling. Across it, both the TSC and the local APIC
-//! timer's countdown are read, which gives both frequencies from one wait. That is deliberate: two
-//! separate calibrations would spend twice the boot time and produce two answers that disagree by
-//! however much the two waits differed.
-//!
-//! # Why it is several windows and why the smallest one wins
-//!
-//! It was one window until 2026-09-21, and one window is wrong by an unbounded amount. Polling can
-//! only notice the PIT's terminal count **late**, never early, and the whole TSC delta is then
-//! divided by exactly ten milliseconds, so a single host descheduling of the QEMU thread inside
-//! the window inflates the stored rate without limit. Measured against a counter known to tick at
-//! 1000.000 MHz, one window reported up to **+1153%** and was high on every boot of hundreds.
-//!
-//! The error being one-sided is also the cure. Every window is an *upper bound* on the true rate,
-//! so the smallest of several is the tightest bound taken, and an average would be a biased
-//! estimator for exactly the reason the minimum is an unbiased one. [`CALIBRATION_WINDOW_CAP`] has
-//! the measured distributions; [`CALIBRATION_AGREEMENT_PARTS_PER`] has why the boot usually stops
-//! after three or four windows rather than taking the cap.
+//! **Several windows, and the smallest wins.** Polling sees the PIT's terminal count late, never
+//! early, so every window is an upper bound on the true rate and one descheduled window inflated it
+//! by up to 1153%. The minimum is the tightest bound; an average would be biased.
+//! [`CALIBRATION_WINDOW_CAP`] has the measured distributions, and
+//! [`CALIBRATION_AGREEMENT_PARTS_PER`] why the boot usually stops after three or four windows. The
+//! APIC timer's rate is the minimum over the same windows, taken independently.
 //!
 //! # BUGS
 //!
-//! - **The TSC is assumed invariant, and the boot now refuses a part where that is false.**
-//!   `CPUID.80000007H:EDX[8]` says whether the TSC keeps a constant rate across frequency and
-//!   idle-state changes, and it is one of the three gates `arch::x86_64::isa::init` checks before
-//!   this file runs. What remains a limitation is the shape of the answer rather than its absence:
-//!   a gate is all that is available here, because the single rate measured below is correct at the
-//!   instant it is measured on a varying part too, so nothing in this file could have detected the
-//!   problem however carefully it measured. The bit is still untested on real silicon, and
-//!   milestone 87 (the `x86_64` bare-metal machine) is where that happens.
-//!
-//!   **Under QEMU the assumption is now measured rather than assumed, and it holds.** The
-//!   `tscdrift` lane compared the TSC against the CMOS RTC, which QEMU drives from host wall time
-//!   rather than from the vCPU's clock, over thirty-two-second windows: the rate is exactly
-//!   1,000,000,000 Hz and constant to within 42 ppm whatever the host or the guest is doing,
-//!   because on an aarch64 host QEMU's guest TSC *is* the host's monotonic nanosecond count. On an
-//!   `x86_64` host it is the host's own `rdtsc` instead, so that number does not carry to xenon or
-//!   to an x86 CI runner. See notes/tsc-under-tcg.md.
-//! - **The calibration is a probabilistic filter, not a bound, and a hard enough host still beats
-//!   it.** The one-window design this replaced was wrong by up to **+1153%**; the min-of-N design
-//!   above is wrong by at most +0.47% over 200 boots at load 30 on eight cores, with nothing over
-//!   +1%. That is a measured distribution rather than a guarantee, and the difference matters: the
-//!   minimum is only as good as the best window the host allowed, so a host that never leaves this
-//!   vCPU alone for ten unbroken milliseconds produces an inflated rate however many windows are
-//!   taken. [`CALIBRATION_WINDOW_CAP`] is the ceiling on how hard it will try. **What makes this
-//!   survivable is that the failure is now visible**: the boot line prints the worst window beside
-//!   the chosen one, so a calibration the host fought shows a wide gap instead of a single
-//!   confident wrong number. A reader who needs the rate to be right rather than probably right
-//!   should read that gap, and on a machine that reports `CPUID` leaf 0x15 none of this applies
-//!   because the machine states its rate (`arch::x86_64::isa::tsc_crystal_hz`; TCG does not).
-//!   Measured by the `calib` lane, 2026-09-21; see
-//!   design/roadmap/0571-the-x86-boot-calibrates-once-and-can-be-wrong-by-4x.md (the x86 boot
-//!   calibrates the TSC once, and can be wrong by 4x).
-//! - **Numbers published before 2026-09-21 came from the one-window calibration and are suspect.**
-//!   `bench --x86 --real`'s ns/iter, `Instant` and `uptime` through `counter_frequency_protocol`'s
-//!   page, and `coremark`'s self-reported rate all read the stored rate, and on x86 every one of
-//!   them was scaled by whatever that boot's single window happened to measure. `wait_for`'s
-//!   deadlines fail safe (an inflated rate makes a timeout longer in real time, never shorter),
-//!   which is why nothing ever went red and why the defect survived. notes/benchmarks.md marks the
-//!   affected figures where a reader meets them.
-//! - **Under `-icount shift=0,sleep=off` the TSC is not a clock with respect to real time at all**,
-//!   and `script/bench --x86` uses that flag by default. Measured against the RTC in one boot, its
-//!   rate moved 37% between two workloads (662 MHz while running a register loop, 486 MHz while
-//!   running port I/O), because virtual time there is a function of the instruction stream. That is
-//!   `-icount` working as designed and nothing here should change to "fix" it; it is a trap only
-//!   for a reader who takes those nanoseconds for wall time.
-//! - **`now()` is the *calling core's* TSC, and nothing synchronizes or checks the cores against
-//!   each other.** This is the one place the three ports are not interchangeable and it is worth
-//!   saying out loud: aarch64's `CNTPCT_EL0` and RISC-V's `time` are *system* counters, so a
-//!   reading taken on one core and compared against a reading taken on another is meaningful by
-//!   construction. `rdtsc` is per-core hardware. Firmware sets each core's TSC at reset and modern
-//!   single-socket parts are usually close, but "usually" is the whole of the guarantee here: this
-//!   kernel neither measures the skew nor corrects it, and `CPUID.80000007H:EDX[8]` (checked at
-//!   boot since the bullet above, and reported absent under TCG) is about rate constancy over
-//!   *time* and says nothing about agreement *between* cores. Under QEMU every vCPU derives the TSC from one host clock, so the skew is
-//!   exactly zero and no test here can see it.
-//!
-//!   **What that costs today is a deadline that spans a migration.** `kernel::user::wait_for`
-//!   takes `now()`, adds two seconds, and then compares against `now()` again after `yield_now()`
-//!   calls that may have moved the thread to another core, so its bound is only as good as the
-//!   agreement between those two cores. Milestone 321 looked hard at this as the explanation for a
-//!   supervision test that failed on xenon and **ruled it out**, on the evidence that sixty other
-//!   `wait_for` call sites passed in the same run; the asymmetry is recorded because it is real and
-//!   undocumented, not because it is known to have broken anything.
-//! - **The calibration costs boot time, and it is the only one of the three architectures that
-//!   costs any.** aarch64 reads `CNTFRQ_EL0` and riscv64 reads the device tree, both of which are
-//!   free; this spends 10 ms per window, a measured mean of 35 ms on a quiet host and up to 160 ms
-//!   on a host bad enough to reach the cap. `script/test --arch x86_64` boots the kernel **four**
-//!   times and those boots took 3, 3, 4 and 3 windows, so the suite pays **90 ms** more than the
-//!   one-window design did against a 3m38s runtime: 0.04%, and an order of magnitude below the
-//!   suite's own run-to-run variance, which is why that is a computed figure rather than a
-//!   measured delta. There is nothing to measure a 90 ms change against.
-//! - **The local APIC timer's rate is the minimum over the same windows**, taken independently of
-//!   the TSC's rather than read off whichever window was shortest. Both deltas are proportional to
-//!   the window's real duration so in practice the same window wins both, and taking them
-//!   separately costs nothing and means neither number can be dragged up by the other's outlier.
-//!   It has no `CPUID` equivalent, so unlike the TSC there is no path here that skips the
-//!   measurement.
-//! - **`init` panics if the local APIC is not up.** The ordering (APIC, then timer) is a real
-//!   constraint and is enforced loudly rather than producing a timer that never fires.
+//! - The TSC is assumed invariant; `arch::x86_64::isa::init` refuses a part whose
+//!   `CPUID.80000007H:EDX[8]` says otherwise, untested on silicon. Under QEMU on an aarch64 host
+//!   the TSC is the host's nanosecond clock (notes/tsc-under-tcg.md), which does not carry to x86.
+//! - Min-of-N is a filter, not a bound: a host that never leaves this vCPU alone for ten
+//!   milliseconds still inflates the rate. The boot line prints the worst window beside the chosen
+//!   one, so a fought calibration shows a gap. A part reporting leaf 0x15 skips all of this
+//!   (`arch::x86_64::isa::tsc_crystal_hz`).
+//! - Under `-icount shift=0,sleep=off`, `script/bench --x86`'s default, the TSC is not wall time:
+//!   its rate follows the instruction stream.
+//! - `now()` is the calling core's TSC, and nothing measures or corrects skew between cores,
+//!   unlike aarch64's and RISC-V's system counters. A `kernel::user::wait_for` deadline that spans
+//!   a migration is only as good as that agreement. QEMU's skew is zero, so no test sees it.
+//! - Calibration costs boot time no other architecture pays: about 35 ms on a quiet host, up to
+//!   160 ms at the cap.
+//! - `init` panics if the local APIC is not up, because the order (APIC, then timer) is real.
 
 use core::sync::atomic::{AtomicU64, Ordering};
 
