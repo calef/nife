@@ -203,8 +203,9 @@ pub fn offer() {
 }
 
 /// **Say that this boot worked**, so an upgrade that came up is not rolled back once its tries run
-/// out (rung 2b of milestone 198's other half). A no-op on every boot no chooser started (a stick,
-/// a `-kernel` boot, an installed machine whose chooser fell back to its own file).
+/// out (rung 2b of milestone 198 (a package manager)'s other half). A no-op on every boot no
+/// chooser started (a stick, a `-kernel` boot, an installed machine whose chooser fell back to its
+/// own file).
 ///
 /// **The criterion: the machine got far enough that a person can log in and fix what else is
 /// wrong.** At this call site the kernel passed its self-tests and reached userspace, the NVMe
