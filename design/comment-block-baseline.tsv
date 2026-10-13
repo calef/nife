@@ -322,7 +322,7 @@ uefi_loader/src/device_tree_from_acpi.rs:1	52
 uefi_loader/src/image.rs:1	41
 uefi_loader/src/main.rs:1	51
 uefi_loader/src/screen.rs:1	47
-xtask/src/archive.rs:393	46
+xtask/src/archive.rs:420	46
 xtask/src/boot_check.rs:12	94
 xtask/src/confirm.rs:1	89
 xtask/src/install.rs:1	64
