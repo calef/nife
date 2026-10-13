@@ -1,52 +1,13 @@
-//! **The job mix a multi-tasking benchmark runs, defined once** (milestone 168).
+//! **The job mix a multi-tasking benchmark runs, defined once** (milestone 168 (a multi-tasking
+//! workload benchmark)): one workload definition the kernel-side supervisor and the EL0 task both
+//! read (AGENTS.md rule 7). It feeds §96 (process kernel or event kernel, and how to decide it),
+//! whose live input is performance on a multitasking workload, where micro-benchmarks cannot see
+//! the difference. notes/job-mix.md has the AIM7 background and why Warton's 20% is not a target:
+//! this instrument asks whether the mechanism behind it, kernel cache and TLB footprint, is live
+//! here, as a knee in jobs per minute against task count.
 //!
-//! `design/decisions/0096-process-kernel-or-event-kernel.md` asks whether this kernel should keep a
-//! kernel stack per thread. Three of its four inputs are settled; the live one is performance, and
-//! the retrospective it rests on is explicit that the difference **does not appear where this
-//! project measures**: Warton's event kernel was "generally within 1% on micro-benchmarks but a 20%
-//! performance advantage of the event kernel on a multitasking workload (AIM7)" (Elphinstone and
-//! Heiser, *L4 Microkernels: The Lessons from 20 Years of Research and Deployment*, ACM TOCS 34(1),
-//! April 2016, section 4.1; read from
-//! <https://trustworthy.systems/publications/nicta_full_text/8988.pdf> on 2026-09-04).
-//!
-//! Every instrument this tree owns is on the wrong side of that sentence. This crate is the shape
-//! of the one that is not: the **workload definition** both halves of the instrument agree on, so
-//! the kernel-side supervisor and the EL0 task read one description of what a job is rather than
-//! two copies that drift. AGENTS.md rule 7 is why it is a crate and not a `#[path]` module.
-//!
-//! **What that sentence does not license is a comparison against the 20% itself**, and the first
-//! two entries in [`BUGS`](self#bugs) say why: Warton's AIM7 ran on Wombat, a hosted Linux, and the
-//! 20% is a ratio between two kernel models where this tree has one. This instrument is for finding
-//! out whether the *mechanism* behind that number is live here.
-//!
-//! # What AIM7 actually is, since the name is not self-explanatory
-//!
-//! Read rather than recalled, on 2026-09-04, from the benchmark's own README
-//! (<https://github.com/davidlohr/areaim/blob/master/osdl-aim-7/_NOTICES/README.aim7>) and the
-//! encyclopaedia entry that summarises it: AIM Multiuser Benchmark Suite VII forks many processes
-//! called **tasks**, each of which runs, **in random order**, a set of subtests called **jobs**.
-//! There are 53 job kinds covering disk-file operations, process creation, user virtual-memory
-//! operations, pipe I/O and compute-bound arithmetic, and a **workfile** sets the proportions. A run
-//! is a sequence of **subruns** with the task count incremented between them; each subrun ends when
-//! every one of its tasks has finished its jobs, and reports **jobs completed per minute**. The
-//! final report is that throughput against task count.
-//!
-//! Four properties do the work there, and this crate keeps all four:
-//!
-//! 1. **Heterogeneity.** A task alternates between unrelated kernel paths rather than hammering
-//!    one. That is the property a micro-benchmark cannot have by construction.
-//! 2. **Random order per task.** Tasks are not in lockstep, so the machine sees a mixed arrival
-//!    stream instead of a phase-aligned one.
-//! 3. **A task-count sweep.** The result is a curve, not a number.
-//! 4. **Throughput, not latency.** Jobs per minute, timed to the completion of the slowest task.
-//!
-//! **What is deliberately not kept is AIM7's own 53 jobs**, and the reason is not effort. Most of
-//! them name a Unix service this system does not have and should not grow one to be measured:
-//! `fork`, `link`, `sync`, `signal` handlers, `sbrk`. Porting the names would produce a benchmark
-//! measuring a shim. The mix below keeps AIM7's *categories* instead, expressed in this kernel's own
-//! primitives, and [`BUGS`](self#bugs) records which categories are still missing.
-//!
-//! # The seven jobs
+//! It keeps AIM7's heterogeneous jobs, random order per task, task-count sweep and throughput, and
+//! its categories rather than its 53 jobs, most of which name Unix services this system lacks.
 //!
 //! | job | AIM7 category | what it costs here |
 //! |---|---|---|
@@ -58,86 +19,25 @@
 //! | [`MAP`] | user virtual-memory operations (mapping) | split a region, build a space, 32 `MAP_INTO`s, `DESTROY` |
 //! | [`SPAWN`] | process creation | build two children from EL0, `RECEIVE` each one's exit, reclaim |
 //!
-//! [`MAP`] and [`SPAWN`] were added on 2026-09-19. They are the two jobs whose kernel path goes
-//! deepest and takes a lock other tasks' same job also wants (the memory-region table), and
-//! [`SPAWN`] is the one where a task blocks on a thread that did not exist a moment before. Both use
-//! only verbs and capability kinds that existed already: each task is granted its own untyped
-//! budget ([`SLOT_BUDGET`]) and builds the objects it maps or starts, the shape
-//! `os_primitives_benchmarker`'s `map_el0` and `spawn_el0` loops already had. No syscall, method or
-//! object type was added for them.
-//!
-//! **[`ROUND_TRIP`] is the one that answers §96 and the other six are what make it a workload.**
-//! A process kernel's cost is the kernel stack a blocking thread leaves behind, so the quantity that
-//! matters is how many *distinct* stacks the machine cycles through and how much of the cache each
-//! displaces between visits. [`COMPUTE`] and [`TOUCH`] are what displace it: the "application"
-//! that runs between two kernel entries, the thing `kernel/src/bench/app_displacement.rs`'s `app_displacement`
-//! (milestone 134 (the register of measures)'s E4) measures in isolation and a ping-pong micro-benchmark leaves out entirely.
+//! [`ROUND_TRIP`] answers §96, since a process kernel's cost is the stack a blocking thread leaves
+//! behind; [`COMPUTE`] and [`TOUCH`] displace the cache between kernel entries, which a ping-pong
+//! micro-benchmark leaves out. [`MAP`] and [`SPAWN`] build from each task's own budget
+//! ([`SLOT_BUDGET`]), with no new syscall, method or object type.
 //!
 //! # BUGS
 //!
-//! - **No number from this instrument is comparable with Warton's 20%, and the missing categories
-//!   below are not what stops it.** Checked on 2026-09-13 against both sources. The retrospective
-//!   names only "the Pistachio process kernel vs an event-based (single-stack) kernel with
-//!   continuations on an ARMv5 processor" (section 4.1, page 1:16) and never says what userland
-//!   AIM7 ran under. Warton's own thesis does
-//!   (<https://trustworthy.systems/publications/theses_public/05/Warton%3Abe.pdf>, section 5.4):
-//!   **AIM7 ran on Wombat**, the paravirtualised ARM Linux, so the 20% is a delta between two
-//!   microkernels measured through a hosted Linux's syscall path, where this is a native workload.
-//!   It is also a **ratio between two kernel models** and this tree has one, so the mix produces
-//!   one arm and no ratio, whatever jobs it contains. What the instrument can still do is show
-//!   whether the *mechanism* Warton offered as the only explanation (kernel cache and TLB
-//!   footprint) is live here, which is a knee in jobs-per-minute against task count and is a real
-//!   input to §96. See notes/job-mix.md.
-//! - **Two of the three categories below were disabled in the AIM7 run being cited, and that run
-//!   was two tasks with no sweep.** Warton's section 5.4 turned off the filesystem jobs (the
-//!   ramdisk was too small) and the network jobs (Wombat had no `GetHost`), and used "2 clients
-//!   with the normal workload file". So the disk-file gap below is not a gap against the number
-//!   this crate exists to chase, and [`TASK_SWEEP`] is this instrument's own good idea rather than
-//!   a reproduction of Warton's method. **Warton also doubted his own result**, calling it
-//!   something to treat "with scepticism until it can be satisfactorily explained" and never
-//!   running the cache simulation that would have explained it. Quote the 20% with that attached
-//!   or do not quote it.
-//! - **One of AIM7's categories is still absent: disk-file operations.** Page mapping and process
-//!   creation were added on 2026-09-19 ([`MAP`], [`SPAWN`]); the disk job was not, for two reasons
-//!   checked against the tree: nothing nife runs on radon can read a disk (every file-service path
-//!   starts at a virtio block device), and the file service maps one shared channel into every
-//!   client, which 32 concurrent tasks would race on. Both, and the options, are in
-//!   `design/roadmap/proposals/a-disk-file-job-mix-needs-a-disk-radon-can-drive.md`. The honest
-//!   reading of a result from this mix is that it covers compute, user memory, the trap,
-//!   scheduling, IPC, mapping and process creation, and no filesystem. **Closing it would make a
-//!   better likeness of AIM7 in general and would not make a number from it comparable with
-//!   Warton's**, for the two reasons the bullets above give.
-//! - **[`MAP`] and [`SPAWN`] both take the kernel's one memory-region lock**, so at the top of the
-//!   sweep part of what they measure is that lock rather than the map or spawn path. That was the
-//!   stated reason they were first refused. It is now measured rather than feared: each task times
-//!   its `SPLIT` and `DESTROY` calls separately and the supervisor prints them as `region_ticks` on
-//!   every `job-mix-kind:` line, so a reader can subtract it. Under QEMU (which is no result, only a
-//!   proof the accounting works) the region calls were 20 to 35% of a map job and 9 to 27% of a
-//!   spawn job on aarch64, with the share **falling** as tasks rose, because the rest of the job
-//!   (waiting for a child to be scheduled) grew faster. What it is on radon is a bench question.
-//! - **The per-kind breakdown is self-timed and includes preemption.** A job's ticks are wall time
-//!   from its first instruction to its last, so a task descheduled mid-job charges the wait to that
-//!   job's kind. That is the quantity a multi-tasking benchmark wants (which kinds get slower under
-//!   load), and it is why the per-kind totals do not add up to the subrun's wall clock times the
-//!   task count.
-//! - **The mix proportions are chosen, not derived.** AIM7 ships workfiles for four machine roles
-//!   (multiuser, compute server, large database, file server) and nobody here has one for a
-//!   capability microkernel. [`MIX`] is a flat-ish spread with the IPC job weighted up, on the
-//!   argument that IPC is what this kernel is for. A different mix would give a different number,
-//!   and no result from this instrument should be quoted without saying which mix produced it.
-//! - **The per-job work constants are sized for a real machine, not for TCG.** A QEMU icount run of
-//!   the full sweep takes minutes and its magnitudes are fiction, which is the same caveat every
-//!   `--real`-only benchmark in this tree carries. The rehearsal exists to prove the mechanism.
-//! - **[`order`] is a shuffle, not a random sequence.** Every task runs exactly the same multiset of
-//!   jobs, in a per-task order. That is what makes two tasks' work comparable, and it is a
-//!   simplification against AIM7, whose tasks draw independently.
+//! - No number from this is comparable with Warton's 20% (notes/job-mix.md): his ran two tasks on
+//!   a hosted Linux and is a ratio between two kernel models, and this tree has one.
+//! - Disk-file operations are absent: radon cannot read a disk, and one shared file channel would
+//!   be raced by 32 tasks (`design/roadmap/0493-a-disk-file-job-mix-needs-a-disk-radon-can-drive.md`).
+//! - [`MAP`] and [`SPAWN`] take the one memory-region lock; `region_ticks` on each `job-mix-kind:`
+//!   line lets a reader subtract it.
+//! - Per-kind ticks are wall time and include preemption, so they do not sum to the subrun.
+//! - [`MIX`] is chosen, not derived: quote a result with the mix that produced it.
+//! - The work constants are sized for real machines; TCG magnitudes are fiction.
+//! - [`order`] is a shuffle of one multiset per task, not AIM7's independent draws.
 //!
-//! Name: ratified 2026-09-13 (calef, working the unratified worklist), coined by milestone 168
-//! (a multi-tasking workload benchmark)'s lane on 2026-09-04: AIM7's workfile is a *mix* of
-//! *jobs*. The `jobmix` misspelling milestone 296 (the `initboot` feature was `shell`) found and
-//! repaired, the console-marker rule calef ratified on 2026-09-14 (a marker takes the command's
-//! spelling), and the refusals are in git history. The marker rule's full account is milestone
-//! 297 (soak becomes soak-test)'s block.
+//! Name: ratified 2026-09-13 (calef): AIM7's workfile is a *mix* of *jobs*.
 
 #![no_std]
 #![deny(missing_docs)]

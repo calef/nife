@@ -4,6 +4,7 @@
 
 extern crate std;
 use super::*;
+use crate::trb::*;
 
 fn qemu() -> Capabilities {
     Capabilities::decode(0x0100_0040, 0x0400_0840, 0, 0x0000_7000, 0x2000, 0x1000)

@@ -10,8 +10,8 @@ needs_person: no
 ---
 # 399. The six `init` roles in `hello`, which milestone 266's title says should not exist
 
-Superseded 2026-09-19, by milestone 405, which was filed one day after this one by a
-lane holding the whole inventory and which takes the same six constants as part of a larger change.
+Milestone 405 (the nine `INIT` roles) covers this block: filed one day after this one by a lane holding the whole
+inventory, it takes the same six constants as part of a larger change.
 Filed 2026-09-13 as an unnumbered proposal by the lane that finished milestone 266's prose sweep;
 numbered and disposed of in one act on 2026-09-19 by milestone 433's drain of the proposal pile,
 which is how a proposal reaches a disposition at all. **The premise was checked before it was

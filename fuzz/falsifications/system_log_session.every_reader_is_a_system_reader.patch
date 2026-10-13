@@ -17,11 +17,11 @@ not fuzz targets):
 
 Measured 2026-10-04 (UTC) on an M-series Mac, from an empty corpus: see notes/fuzzing-the-services.md.
 
-diff --git a/crates/system_log/src/lib.rs b/crates/system_log/src/lib.rs
-index 6244be70c..a3dde7baa 100644
---- a/crates/system_log/src/lib.rs
-+++ b/crates/system_log/src/lib.rs
-@@ -226,7 +226,7 @@ impl Log {
+diff --git a/crates/system_log/src/log.rs b/crates/system_log/src/log.rs
+index bf79c7523..2ba14f921 100644
+--- a/crates/system_log/src/log.rs
++++ b/crates/system_log/src/log.rs
+@@ -123,7 +123,7 @@ impl Log {
                  .map(|e| {
                      e.reader = Some(registry::Reader {
                          window: arg as u8,

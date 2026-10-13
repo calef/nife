@@ -1,16 +1,5 @@
-//! **The user address-space map**: which band of a process's low half holds what.
-//!
-//! Name: provisional. Introduced 2026-09-26 by milestone 206 (a program image has under 896 KiB),
-//! which built DECISIONS §171 (where a program image starts) option D as calef ruled it that day.
-//! `address_space_map` says what the crate is, a map of one address space, and the `_map` suffix is
-//! the noun a reader reaches for when asking "where does this page go". `user_layout` was
-//! considered and set aside because `layout` already means struct layout in this tree (every
-//! `*_protocol` crate has one). `address_space` alone would read as the kernel object of that name.
-//! The bands, the functions and the error below are named inside the same provisional scope.
-//!
-//! # The map
-//!
-//! Every address here is a user virtual address, the same on all three architectures.
+//! **The user address-space map**: which band of a process's low half holds what, the same on all
+//! three architectures (§171 (where a program image starts), option D).
 //!
 //! ```text
 //!   band              start         end           size       what goes in it
@@ -24,100 +13,31 @@
 //!   PROCESS_PAGES     0x7FFF_0000   0x8000_0000    64 KiB    per-process pages the kernel maps (current CPU)
 //! ```
 //!
-//! The bands tile `[0, 2 GiB)` with no gap, and a host test below holds them to that. Above 2 GiB
-//! is unassigned except for one page: the timebase page (`counter_frequency_protocol::PAGE_VA`),
-//! which predates this map and sits at seven-eighths of each architecture's low half. It pins
-//! itself against [`CODE_MODEL_CEILING`] in its own tests.
+//! The bands tile `[0, 2 GiB)` with no gap (a host test holds that); above 2 GiB only the timebase
+//! page (`counter_frequency_protocol::PAGE_VA`) is assigned. A new page goes in the first band that
+//! fits: the program's code or data, [`IMAGE`] (a hand-built child's code page at [`IMAGE_BASE`]
+//! too); the stack, [`STACK`]; a page the kernel maps into every process unasked,
+//! [`PROCESS_PAGES`], sharing the stack's page tables; the heap, [`HEAP`]; a window a loader or
+//! runtime places for programs that did not choose it, [`RUNTIME_WINDOWS`], sited with an argument
+//! in its protocol crate; a large window a service contract names, [`SERVICE_WINDOWS`]; otherwise
+//! a pair page, [`PAIR_PAGES`], which pairs reuse freely and [`pair_page`] checks at compile time.
 //!
-//! # Which band a new page belongs in
-//!
-//! Ask these in order and stop at the first yes.
-//!
-//! 1. **Is it the program's code or data?** [`IMAGE`]. For a loaded program the linker script put
-//!    it there; a child built from parts by hand (a benchmark's stub, a supervision test's) puts its
-//!    code page at [`IMAGE_BASE`] too, so its page tables have the shape a real program's do.
-//!    Nothing else may map in that band.
-//! 2. **Is it the stack?** [`STACK`], mapped down from [`STACK_TOP_PAGE`], by a loader or by hand.
-//! 3. **Does the kernel map it into every process, unasked?** [`PROCESS_PAGES`], beside the stack,
-//!    so it shares the stack's page tables and costs one leaf rather than three tables. The current
-//!    CPU page is here.
-//! 4. **Is it the heap?** [`HEAP`].
-//! 5. **Is it mapped by a loader or a runtime into programs that did not choose the address**: a
-//!    page std's loader hands every std program, the initial ramdisk window, a builder's own
-//!    scratch cursor, std's per-socket frames? [`RUNTIME_WINDOWS`], sited with a written argument
-//!    in the protocol crate that owns it, the way `std_runtime_protocol` sites its three pages.
-//! 6. **Is it a large window a service contract names**, shared by several programs that speak one
-//!    protocol (the block channel at `0x5000_0000`, a screen aperture)? [`SERVICE_WINDOWS`].
-//! 7. **Otherwise it is a pair page**: one builder and the one program it builds agree on it, both
-//!    written knowing each other (a harness and its fixture, the progenitor and a native child's
-//!    clock page). [`PAIR_PAGES`]. A program's own private windows, which nobody else knows about,
-//!    go here too. **Pairs reuse addresses freely**,
-//!    because two pairs never share an address space; the only thing a pair page must avoid is the
-//!    other bands, and that is what [`pair_page`] checks at compile time.
-//!
-//! The collision that motivated this list is recorded in `counter_frequency_protocol`: a page the
-//! kernel mapped into every process was first placed at `0x60_0000`, which is a pair page for
-//! `fixtures/src/window.rs`. Under this map that page answers yes at question 3 and could never have
-//! been placed among pair pages.
-//!
-//! # Why these numbers
-//!
-//! - **The image band ends at 2 GiB because `x86_64` needs it to.** `targets/x86_64-unknown-nife.json`
-//!   builds with `code-model: small` and `relocation-model: static`, which promises LLVM that every
-//!   symbol's address fits in a sign-extended 32-bit immediate, so a static image must end at or
-//!   below `0x8000_0000`. `riscv64`'s `medium` model and `aarch64`'s `small` are PC-relative and
-//!   would accept more, but a layout that differs per architecture is one more thing to be wrong
-//!   about, and parity is a gate here. [`CODE_MODEL_CEILING`] names the constraint.
-//! - **The image band starts at `0x6000_0000` because that is the first address past everything the
-//!   tree already sited.** The heap has been at `0x4000_0000` with a 256 MiB cap since milestone
-//!   27, and the block channel at `0x5000_0000` since milestone 138 (close the read gap). Moving either would change a
-//!   number std's PAL carries, for no gain.
-//! - **The stack sits directly above the image**, so the one limit on an image's size is the
-//!   stack's base, and a loader refusing an image can say exactly that. The lowest page of
-//!   [`STACK`] is never mapped (see [`MAX_STACK_PAGES`]), so a stack grown to its limit faults
-//!   before it touches the top of a maximal image.
-//! - **The stack band is 16 MiB less the process pages.** The deepest stack in the tree today is
-//!   std's 32 pages (128 KiB); Linux gives a main thread 8 MiB by default. 16 MiB holds that twice
-//!   and costs nothing, because an unmapped page of address space is free.
-//! - **The process pages share the stack's 2 MiB table.** `notes/benchmarks/spawn-el0.md`
-//!   measured the current-CPU page at 1,245 ticks per spawn when it needed three fresh tables and
-//!   741 when it needed one. With the image and the stack in the second gigabyte, the first
-//!   gigabyte's tables are no longer paid for by every process, so the page moves to where they are.
-//!
-//! # The ceiling, before and after
-//!
-//! Before: a program image had **896 KiB** (`0x40_0000` up to the std stack pages below
-//! `0x50_0000`). After: **496 MiB**, [`IMAGE`]'s whole width. `ripgrep`'s image spans 2.61 MiB
-//! (`notes/ripgrep-on-nife.md`, measured by milestone 121 (ripgrep on nife)), so it fits 190 times over.
-//!
-//! # Examples
-//!
-//! ```
-//! use address_space_map::{check_image, pair_page, ImagePlacement, IMAGE, STACK};
-//!
-//! // A fixture's shared page is a pair page, checked at compile time.
-//! const CTL_VA: u64 = pair_page(0x60_0000);
-//! assert_eq!(CTL_VA, 0x60_0000);
-//!
-//! // An image that fits is placed; one that runs into the stack is told so, in those words.
-//! assert!(check_image(IMAGE.start, IMAGE.start + 0x29_c000).is_ok());
-//! let e = check_image(IMAGE.start, IMAGE.end + 0x1000).unwrap_err();
-//! assert_eq!(e, ImagePlacement::TooLarge { image_end: IMAGE.end + 0x1000, stack_base: STACK.start });
-//! ```
+//! The image band ends at 2 GiB because `x86_64` builds with `code-model: small` and static
+//! relocation, so a static image must end below `0x8000_0000` ([`CODE_MODEL_CEILING`]); one layout
+//! for all three is parity. It starts past the heap and the block channel, whose addresses std's
+//! PAL carries. The stack sits directly above it, so a loader can name the stack's base as the
+//! limit, and [`STACK`]'s lowest page is never mapped ([`MAX_STACK_PAGES`]). The process pages
+//! share the stack's 2 MiB table: `notes/benchmarks/spawn-el0.md` measured the current-CPU page
+//! at 1,245 ticks per spawn with three fresh tables and 741 with one.
 //!
 //! # BUGS
 //!
-//! - **The pair band is checked for membership, not for collisions within one process.** Two pair
-//!   pages a single program maps may still land on each other; [`pair_page`] cannot see the other
-//!   one. The existing fixtures that map several windows carry their own disjointness asserts
-//!   (`components/src/swish.rs` is the model). A per-program list is the next rung if this bites.
-//! - **`std_runtime_protocol` and `counter_frequency_protocol` restate their numbers rather than
-//!   deriving them from here.** Both are generated verbatim into std's PAL by `cargo xtask std-src`,
-//!   where there is no crate to name, so each pins itself to this map with a dev-dependency test
-//!   instead, the precedent `byte_sink_protocol` set for `abi`. That is rung two, not rung one.
-//! - **The kernel-built harness processes do not call [`check_image`] with a sentence to print**:
-//!   the userspace loader (`supervision_protocol`) returns `Err(())` for every refusal, so a
-//!   too-large image built by a userspace builder is still reported as "could not spawn".
+//! - Pair pages are checked for membership, not for collisions within one process; fixtures with
+//!   several windows assert their own disjointness (`components/src/swish.rs`).
+//! - `std_runtime_protocol` and `counter_frequency_protocol` restate their numbers, pinned by tests.
+//! - The userspace loader reports a too-large image as "could not spawn", not [`check_image`]'s why.
+//!
+//! Name: provisional: a map of one address space; `user_layout` and `address_space` were set aside.
 
 #![cfg_attr(not(test), no_std)]
 
@@ -339,6 +259,21 @@ impl core::fmt::Display for ImagePlacement {
 /// **Does an image spanning `[start, end)` fit the map?** `start` and `end` are the lowest and
 /// highest page bounds over the image's loadable segments. Both loaders call this before mapping
 /// anything, so an image that does not fit costs nothing and says why.
+///
+/// # Examples
+///
+/// ```
+/// use address_space_map::{check_image, pair_page, ImagePlacement, IMAGE, STACK};
+///
+/// // A fixture's shared page is a pair page, checked at compile time.
+/// const CTL_VA: u64 = pair_page(0x60_0000);
+/// assert_eq!(CTL_VA, 0x60_0000);
+///
+/// // An image that fits is placed; one that runs into the stack is told so, in those words.
+/// assert!(check_image(IMAGE.start, IMAGE.start + 0x29_c000).is_ok());
+/// let e = check_image(IMAGE.start, IMAGE.end + 0x1000).unwrap_err();
+/// assert_eq!(e, ImagePlacement::TooLarge { image_end: IMAGE.end + 0x1000, stack_base: STACK.start });
+/// ```
 pub const fn check_image(start: u64, end: u64) -> Result<(), ImagePlacement> {
     if IMAGE.holds(start, end) {
         Ok(())

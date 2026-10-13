@@ -19,11 +19,11 @@ function in `lib.rs`, and DECISIONS §19 has each ISA state the property itself,
 this one function has three independent proofs over it. The `aarch64` and `x86_64`
 records break it in two other ways; the three patches are not copies.
 
-diff --git a/crates/paging/src/lib.rs b/crates/paging/src/lib.rs
-index 98df8b66..d02fdd32 100644
---- a/crates/paging/src/lib.rs
-+++ b/crates/paging/src/lib.rs
-@@ -335,7 +335,7 @@ pub enum Half {
+diff --git a/crates/paging/src/page_format.rs b/crates/paging/src/page_format.rs
+index 476dfcac4..86f6ccd7d 100644
+--- a/crates/paging/src/page_format.rs
++++ b/crates/paging/src/page_format.rs
+@@ -39,7 +39,7 @@ pub enum Half {
  ///
  /// Generic over the format so the split lands at the right bit for the running architecture.
  pub fn is_user_page_va<F: PageFormat>(va: u64) -> bool {

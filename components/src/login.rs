@@ -860,7 +860,7 @@ fn hand_over(
     // terminal, never to hand the capability to read keystrokes on to anything it spawns.
     delegate(channel.result, TERM_EP, abi::rights::WRITE);
     // **The run-unvouched capability, sixth, and only as announced** (DECISIONS §219 gate D2;
-    // `login_protocol`'s module docs). `WRITE` alone: the session may present it to the progenitor
+    // `login_protocol::OK`'s doc). `WRITE` alone: the session may present it to the progenitor
     // and may hand it to nothing.
     if run_unvouched {
         delegate(channel.result, RUN_UNVOUCHED, abi::rights::WRITE);

@@ -12,18 +12,18 @@ Identified work leaves the lane in a tracked form, or the merge waits. A lane th
 is not doing may report it in exactly two shapes, and "worth doing someday" is neither. Either a
 proposed milestone (provisional, the integrator mints the number at merge like every other
 global name), or a recorded limitation written where a reader meets the feature, in the `BUGS`
-section beside it, which is what the promotion triggers of §71 (a limitation is promoted when it
-becomes a plan) are then measured against. A finding with no home is the integrator's cue to hold
+section beside it. That section is what the promotion triggers of §71 (a limitation is promoted when
+it becomes a plan) are then measured against. A finding with no home is the integrator's cue to hold
 the merge until it has one.
 
 This is rung three of the ladder, and it is worth naming why the lower rungs fail here specifically.
 A lane report is read once, by one person, on the day it is written. A pull request body is read
 while the diff is open and never again. Both feel like records while you are writing them, which is
-what makes this the failure that recurs: milestone 90 (a guard page under the per-CPU secondary
-stacks) exists only because calef happened to be at his desk the day a report named it, and
-milestone 94 (the untracked-work sweep) swept the tree for exactly this category and then left its
-own inventory in a pull request body for twelve days, by which point the item-level list was gone
-and had to be re-derived. See notes/untracked-work-sweep.md.
+what makes this the failure that recurs. Milestone 90 (a guard page under the per-CPU secondary
+stacks) exists only because calef happened to be at his desk the day a report named it. Milestone 94
+(the untracked-work sweep) swept the tree for exactly this category, then left its own inventory in
+a pull request body for twelve days. By then the item-level list was gone and had to be re-derived.
+See notes/untracked-work-sweep.md.
 
 The merge checklist grows one line: every piece of identified work in the lane's report has a
 home. `briefs/merge-and-cleanup.md` has that checklist whole, with the prune and the relink.
@@ -59,18 +59,18 @@ something:
   reading the diff, because the point is to spend an architect's attention on the decision rather
   than on reconstructing it. It should say what happens if he says no, since a recommendation
   with no stated downside is not a recommendation. And it should separate what is blocking from
-  what is eventually his, so a naming backlog does not get tangled with a merge decision; the gate
+  what is eventually his, so a naming backlog does not get tangled with a merge decision. The gate
   of milestone 115 (the names that were ratified, and the ones that were refused) takes `unrecorded`
   as a truthful answer precisely so that provisional names never block.
 
 The watchers run unattended as `nife-smelter[bot]` in scheduled Actions workflows (calef,
-2026-09-23; the watch that reads a machine's own lane worktrees stays per developer), and a session
+2026-09-23; the watch that reads a machine's own lane worktrees stays per developer). A session
 confirms they are alive *and reads what they already found*, because `merge-drain.sh` posts once per
 stall and then goes quiet by design (calef, 2026-08-26). `briefs/session-start.md` is that check,
 deferring the queue read to `briefs/survey-the-queue.md`. A queue reports, it does not resolve.
 
-They exist because on 2026-08-04 three duties turned out to belong to whoever happened to notice:
-two green pull requests sat unmerged for hours, `main` went red with nobody assigned, and merging
+They exist because on 2026-08-04 three duties turned out to belong to whoever happened to notice.
+Two green pull requests sat unmerged for hours, `main` went red with nobody assigned, and merging
 one pull request staled eight others that nothing picked back up. The steward was meant to cover
 this and did not, for a reason worth keeping: **it reported and never acted.** A stalled queue
 announced in a message is only useful if somebody reads the message. notes/merge-queue.md has the

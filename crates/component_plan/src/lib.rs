@@ -1,161 +1,37 @@
-//! **`component_plan`: what a component declares it needs, and how a supervisor wires it**
-//! (milestone 23, DECISIONS §41).
+//! **`component_plan`: what a component declares it needs, and how a supervisor wires it.** Under
+//! §41 (the endpoint is the broker), any program that speaks the protocol and holds the right
+//! capabilities is the component; this is the capability half. No IO and no syscalls: a [`Requirements`] (what the component says it needs) and
+//! a [`Provisions`] (what the supervisor routes to this child) become a [`Plan`] (exactly what to
+//! endow) or a typed [`Refusal`]. notes/component-manifest.md has the design, including why this is
+//! not `grant_plan::Manifest`: that declares what a person at a prompt may designate, this declares
+//! what a supervisor must route, and [`Direction`] (`Serve` is `READ`, `Use` is `WRITE`) is what
+//! stops a client of a stable rendezvous becoming its server.
 //!
-//! A component is a swappable, vendor-shippable unit behind a stable contract. §41 says what makes
-//! one substitutable: *any program that speaks the protocol and holds the right capabilities **is**
-//! the component*. The protocol half of that sentence has always been in a crate. The capability
-//! half was a set of literal arrays in the operator's own source, which is the defect milestone 23's
-//! roadmap block names in six words: **"endowments are literals in the operator's source."** This
-//! crate is the capability half, lifted out to where a declaration can be read, checked, and proved.
+//! A manifest is a request; the provisions are the authority. A name the supervisor did not list
+//! resolves to [`Refusal::Unprovided`] before the component is built, so a manifest can fail to be
+//! satisfiable but cannot widen authority. The name is the component's and the object is the
+//! supervisor's, which is what makes a component substitutable: one declaration, many wirings.
 //!
-//! It performs no IO and makes no syscalls. It turns two declarations into a decision: a
-//! [`Requirements`] (what the component says it needs) plus a [`Provisions`] (what the supervisor
-//! will route to *this* child) into a [`Plan`] (exactly the capabilities and mappings to endow) or a
-//! typed [`Refusal`]. See notes/component-manifest.md.
-//!
-//! # It is not `grant_plan::Manifest`, and the difference is one sentence
-//!
-//! [`grant_plan::Manifest`](../grant_plan/struct.Manifest.html) declares **what a human at a prompt
-//! may designate** for a program; [`Requirements`] declares **what a supervisor must route before a
-//! component can serve anyone**. Four things follow from that, and they are why this is a sibling
-//! rather than a subtype:
-//!
-//! - **There is no command line and no human.** `grant_plan`'s thesis is that designation is
-//!   authorization: a person names a file and the naming is the grant. A component is started by a
-//!   supervisor with nothing typed, so every field about placing a typed token (`arg`, `flags`,
-//!   `file`, `dir`) has no meaning here, and there is no prompt at which to refuse.
-//! - **The vocabularies do not overlap.** Nothing in `grant_plan::Manifest` can name an rendezvous, a
-//!   device, or a shared page; nothing here can name an argument or a short option.
-//! - **A component *serves*, and a program only consumes.** [`Direction`] is the axis this crate
-//!   adds, and it is the axis §41's central refusal test turns on: `Serve` is `READ` on an rendezvous
-//!   and `Use` is `WRITE`, so a client of the stable rendezvous cannot become its server. `grant_plan`
-//!   has no field that could carry that, and no program it spawns would ever set one.
-//! - **The keys are different, and this is the one that decides drop-in.** `grant_plan::Manifest` is
-//!   reachable only through `Prog`, a closed enum with a static table compiled into the shell, so
-//!   admitting a new component would mean editing the shell. [`Requirements`] is a value the
-//!   *contract* owns, so a build that speaks the contract is wired by code that never heard of it.
-//!
-//! What the two **do** share is a shape, and the shape is the reusable idea rather than the struct:
-//! a declaration, plus what the wirer holds, checked into an endowment or a typed refusal, before
-//! anything is spawned. `grant_plan::plan` and [`plan`] are the same function over different worlds.
-//!
-//! # A manifest is a request; the provisions are the authority
-//!
-//! This is Fuchsia's `use`/`offer` split, and it is what keeps a vendor's manifest from being a
-//! privilege-escalation surface. A component names its needs, and it can name anything it likes. The
-//! supervisor decides, per child, which of its own objects each name resolves to, and a name it did
-//! not list resolves to nothing: [`Refusal::Unprovided`], **before the component is built**. So a
-//! manifest cannot widen a component's authority; it can only fail to be satisfiable.
-//!
-//! The corollary is the property that makes a component substitutable at all: **the name is the
-//! component's and the object is the supervisor's.** `chatty`'s manifest asks to *use* an rendezvous it
-//! calls `service`; on the direct channel the operator routes that to the shared service rendezvous,
-//! and on the queued channel it routes the same name to the broker's front rendezvous. One
-//! declaration, two wirings, and the component cannot tell which it got.
-//!
-//! # Structure is a compile error; provisioning is a runtime refusal
-//!
-//! The two halves are checked on different rungs of the ladder, deliberately.
-//!
-//! A malformed *declaration* (a role declared twice, two mappings at one address, a component that
-//! asks to exist in zero pages) is caught by [`Requirements::problem`], which is a `const fn`. Every
-//! real manifest in this tree asserts on it in a `const` item, so a malformed one **does not
-//! compile**, on both architectures, without any test having to run.
-//!
-//! A *provisioning* mismatch cannot be caught that way, because what a supervisor holds is only
-//! known when it runs. That is [`plan`]'s job, and its answer is a value the supervisor reports.
-//!
-//! # EXAMPLES
-//!
-//! A component declares two capabilities and one page, and a supervisor wires it:
-//!
-//! ```
-//! use component_plan::{CapNeed, Direction, MapNeed, PageKind, Provisions, Requirements};
-//!
-//! /// The contract's capability half. Lives beside the contract's wire half, not in the operator.
-//! pub const TALKER: Requirements = Requirements {
-//!     contract: "talker",
-//!     caps: &[
-//!         CapNeed { role: "service", direction: Direction::Serve },
-//!         CapNeed { role: "report", direction: Direction::Use },
-//!     ],
-//!     maps: &[MapNeed { role: "witness", va: 0x0300_0000, kind: PageKind::Shared }],
-//!     pages: 32,
-//!     depends_on: &[],
-//!     handoff: None,
-//! };
-//!
-//! // Malformed declarations do not compile. This one is well formed, so the assertion holds.
-//! const _: () = assert!(TALKER.problem().is_none());
-//!
-//! // The slot a component reads is derived from its own declaration, so the two cannot drift.
-//! pub const SERVICE: u64 = component_plan::slot_of(&TALKER, "service");
-//! assert_eq!(SERVICE, 0);
-//!
-//! // The supervisor routes each name to one of its own slots, per child.
-//! let plan = component_plan::plan(
-//!     &TALKER,
-//!     &Provisions { held: &[("service", 5), ("report", 1), ("witness", 9)] },
-//! )
-//! .expect("every declared role is routed");
-//!
-//! // Rights come from the declared direction. The supervisor never spells one.
-//! assert_eq!(plan.caps(), &[(5, abi::rights::READ), (1, abi::rights::WRITE)]);
-//! assert_eq!(plan.maps(), &[(0x0300_0000, 9, abi::address_space::MAP_RW)]);
-//! assert_eq!(plan.pages(), 32);
-//! ```
-//!
-//! A supervisor that does not hold what the component asks for is refused, and nothing is built:
-//!
-//! ```
-//! # use component_plan::{CapNeed, Direction, Provisions, Refusal, Requirements};
-//! # const TALKER: Requirements = Requirements {
-//! #     contract: "talker",
-//! #     caps: &[CapNeed { role: "service", direction: Direction::Serve }],
-//! #     maps: &[],
-//! #     pages: 32,
-//! #     depends_on: &[],
-//! #     handoff: None,
-//! # };
-//! let refused = component_plan::plan(&TALKER, &Provisions { held: &[("report", 1)] });
-//! assert_eq!(refused, Err(Refusal::Unprovided { role: "service" }));
-//! ```
+//! A malformed declaration (a duplicate role, two mappings at one address, zero pages) is caught by
+//! the `const fn` [`Requirements::problem`], which every real manifest asserts in a `const` item,
+//! so it does not compile. A provisioning mismatch is only known at run time, and [`plan`] reports
+//! it.
 //!
 //! # BUGS
 //!
-//! **A manifest is compiled in, not shipped with the build.** So a vendor cannot
-//! today hand over a binary and have its needs read out of it; what this crate removes is the
-//! endowment from the *operator*, not from the tree. calef ruled on 2026-09-26 that a manifest
-//! travels inside the executable as an ELF note, per DECISIONS §197 (a package is one archive file);
-//! the note's owner, type and encoding are still the architect's, and nothing reads a note yet.
-//! See notes/component-manifest.md.
+//! - A manifest is compiled in, not shipped with the build. calef ruled on 2026-09-26 that it
+//!   travels in the executable as an ELF note (§197 (a package is one archive file)); the note's
+//!   format is still the architect's, and nothing reads one yet.
+//! - [`Requirements::pages`] is a property of a build, not of the contract: two builds can honestly
+//!   differ, which is the strongest argument for shipping the manifest with the binary.
+//! - A malformed declaration's compile error names the manifest, not the role;
+//!   [`Requirements::problem`] in a host test prints the role.
+//! - [`MAX_CAPS`] and [`MAX_MAPS`] are hard bounds, about double any manifest here.
+//! - Nothing checks that a routed object is the kind the role wants; the kernel refuses the
+//!   `CAP_INSERT` or the first `RECEIVE` instead.
 //!
-//! **[`Requirements::pages`] is a property of the build, not of the contract**, and it is the only
-//! field here that is. How many pages an instance needs depends on its image size, its stack and its
-//! page tables, so two vendors' builds of one contract can honestly differ. Declaring it per contract
-//! is right only while every build of a contract fits the same number, which is true in this tree and
-//! is not true in general. It is the strongest single argument for eventually shipping the manifest
-//! with the binary.
-//!
-//! **A malformed declaration's compile error names the manifest, not the role.** `const` evaluation
-//! reports an assertion that failed, so the reader is told which `Requirements` is wrong and has to
-//! look for the duplicate themselves. [`Requirements::problem`] returns the [`Refusal`] with the role
-//! in it, and a host test that calls it prints the good message; the `const` assertion cannot.
-//!
-//! **[`MAX_CAPS`] and [`MAX_MAPS`] are fixed, and a component past them is refused rather than
-//! served.** There is no allocator here and a [`Plan`] is a value, so the bound is a real limit and
-//! not a hint. Eight and four are roughly double what any manifest in this tree asks for.
-//!
-//! **Nothing checks that a supervisor's routed object is the *kind* the role wants.** A supervisor
-//! that routes a frame where the component declared an rendezvous gets a plan, and the kernel refuses
-//! the `CAP_INSERT` or the component's first `RECEIVE` instead. The declaration carries the direction
-//! and the address, which is what a supervisor can get wrong silently; the object type is what the
-//! kernel already checks loudly.
-//!
-//! Name: provisional, and ruled: calef ruled **`capability_plan`** on 2026-09-13, working the
-//! unratified worklist. The block stays `provisional` until the rename is performed; minted by
-//! milestone 23's lane. The capability-half argument, the `grant_plan` synonymy cost, the
-//! `components/` directory collision, and the refusals are in git history.
+//! Name: provisional, and ruled: calef ruled **`capability_plan`** on 2026-09-13. The block stays
+//! `provisional` until the rename is performed.
 
 #![no_std]
 
@@ -509,6 +385,24 @@ impl<'a> Provisions<'a> {
 /// **Why a component could not be wired.** A value the supervisor reports, never a panic: a
 /// supervisor that cannot satisfy a manifest has a legible thing to say and a child it did not
 /// build.
+///
+/// # Examples
+///
+/// A supervisor that does not hold what the component asks for is refused, and nothing is built:
+///
+/// ```
+/// # use component_plan::{CapNeed, Direction, Provisions, Refusal, Requirements};
+/// # const TALKER: Requirements = Requirements {
+/// #     contract: "talker",
+/// #     caps: &[CapNeed { role: "service", direction: Direction::Serve }],
+/// #     maps: &[],
+/// #     pages: 32,
+/// #     depends_on: &[],
+/// #     handoff: None,
+/// # };
+/// let refused = component_plan::plan(&TALKER, &Provisions { held: &[("report", 1)] });
+/// assert_eq!(refused, Err(Refusal::Unprovided { role: "service" }));
+/// ```
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Refusal {
     /// The supervisor routes nothing to a role the component declared. **The security-relevant
@@ -648,10 +542,42 @@ impl Plan {
 /// **Check a component's declaration against what a supervisor will route to it**, and yield the
 /// endowment or say why not.
 ///
-/// This is the whole of the mechanism, and every check in it is one a supervisor would otherwise
-/// have made by hand or not at all. Nothing here spawns, maps or invokes: a refusal happens
-/// **before the component exists**, which is the property the guest test asserts on by reporting the
-/// refusal ahead of the first build step.
+/// Nothing here spawns, maps or invokes: a refusal happens **before the component exists**, which
+/// the guest test asserts by reporting it ahead of the first build step. Rights come from each
+/// role's declared direction, and a component's slot from its own declaration ([`slot_of`]).
+///
+/// # Examples
+///
+/// ```
+/// use component_plan::{CapNeed, Direction, MapNeed, PageKind, Provisions, Requirements};
+///
+/// pub const TALKER: Requirements = Requirements {
+///     contract: "talker",
+///     caps: &[
+///         CapNeed { role: "service", direction: Direction::Serve },
+///         CapNeed { role: "report", direction: Direction::Use },
+///     ],
+///     maps: &[MapNeed { role: "witness", va: 0x0300_0000, kind: PageKind::Shared }],
+///     pages: 32,
+///     depends_on: &[],
+///     handoff: None,
+/// };
+///
+/// const _: () = assert!(TALKER.problem().is_none());
+///
+/// pub const SERVICE: u64 = component_plan::slot_of(&TALKER, "service");
+/// assert_eq!(SERVICE, 0);
+///
+/// let plan = component_plan::plan(
+///     &TALKER,
+///     &Provisions { held: &[("service", 5), ("report", 1), ("witness", 9)] },
+/// )
+/// .expect("every declared role is routed");
+///
+/// assert_eq!(plan.caps(), &[(5, abi::rights::READ), (1, abi::rights::WRITE)]);
+/// assert_eq!(plan.maps(), &[(0x0300_0000, 9, abi::address_space::MAP_RW)]);
+/// assert_eq!(plan.pages(), 32);
+/// ```
 pub fn plan(reqs: &Requirements, provisions: &Provisions<'_>) -> Result<Plan, Refusal> {
     if let Some(problem) = reqs.problem() {
         return Err(problem);

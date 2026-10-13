@@ -158,8 +158,8 @@ The rename also resolves an inconsistency already in the source: `dwarden.rs`'s 
 | `user/c/c_seam.c` | **`user/c/c_seam.c`**, and this one is a repair |
 
 That last row fixes a split the integrator created. `c_seam` was chosen over `c_abi` partly
-*because* it keeps the Rust and C halves paired, and then only the Rust half was renamed when rule 7
-turned it into a crate. So the pairing argument is currently false in the tree: `crates/c_seam`
+*because* it keeps the Rust and C halves paired, and rule 7's crate carries the name on the Rust
+half alone. So the pairing argument is currently false in the tree: `crates/c_seam`
 faces `user/c/c_seam.c`.
 
 The pairing is not cosmetic. Both files state the same constants by hand, because a C compiler

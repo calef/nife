@@ -11,11 +11,11 @@ the span still reads back correctly.
 Expected to fail: `assert!(bytes <= remaining, ...)`, for any aligned `va` and `pa`
 with less than a block remaining.
 
-diff --git a/crates/paging/src/lib.rs b/crates/paging/src/lib.rs
-index 1d7985e7..5811315d 100644
---- a/crates/paging/src/lib.rs
-+++ b/crates/paging/src/lib.rs
-@@ -222,7 +222,7 @@ impl PageSize {
+diff --git a/crates/paging/src/page_size.rs b/crates/paging/src/page_size.rs
+index b0b98588b..d8088d2fc 100644
+--- a/crates/paging/src/page_size.rs
++++ b/crates/paging/src/page_size.rs
+@@ -59,7 +59,7 @@ impl PageSize {
          // arithmetic. Every size is a power of two, so alignment is a mask test, not a division.
          const fn fits(va: u64, pa: u64, remaining: u64, size: PageSize) -> bool {
              let bytes = size.bytes();

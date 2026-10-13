@@ -1,39 +1,39 @@
 # The automation's own identity
 
 *Name of the App: ratified 2026-09-23 (calef, milestone 128 (the automation gets its own identity)).
-`smelter`, hence the byline `smelter[bot]`. Refused `nife automation` (the lane's original: it
-names the mechanism rather than what the thing is, which is the failure mode `design/naming.md`
-warns about), `dynamo` (the maintainer's recommendation, on the grounds that the geodynamo is what
-a nickel-iron core actually does; calef chose otherwise), `mantle` (carries "take up the mantle",
-which is this milestone's own role-not-person thesis, but sits beside the namesake rather than in
-it), `lodestone` (connotes direction-finding rather than doing work), and `cobble` (the mascot; a
-byline sharing the mascot's name would confuse the two).*
+`smelter`, hence the byline `smelter[bot]`. Refused `nife automation` (the lane's original: it names
+the mechanism rather than what the thing is, which is the failure mode `design/naming.md` warns
+about). Refused `dynamo` (the maintainer's recommendation, on the grounds that the geodynamo is what
+a nickel-iron core actually does; calef chose otherwise). Refused `mantle` (carries "take up the
+mantle", which is this milestone's own role-not-person thesis, but sits beside the namesake rather
+than in it). Refused `lodestone` (connotes direction-finding rather than doing work), and `cobble`
+(the mascot; a byline sharing the mascot's name would confuse the two).*
 
 *Why `smelter` won, stated rather than implied: it is an agent noun, which is this tree's existing
-convention for actors (`caretaker`, `undertaker`, `credentialer`, `compositor`), and a smelter is
+convention for actors (`caretaker`, `undertaker`, `credentialer`, `compositor`). And a smelter is
 where iron comes from, which suits the identity that will eventually author this project's
 artifacts. The maintainer argued against it on literal process-matching grounds and withdrew the
 objection: the tree's actor names are metaphors already, so convention-match is the stronger test.*
 
 *Name of this note: provisional. `automation-identity` is a lane's coinage; `design/naming.md` is
-the rule and an architect ratifies. The alternatives considered were `github-app.md` (names the
+the rule and an architect ratifies. One alternative considered was `github-app.md` (names the
 vendor's mechanism rather than what it is for, and this note would survive a move off GitHub only by
-lying) and `bot-identity.md` (`bot` is what GitHub calls the badge, not what the thing is). The two
-secret names below, `AUTOMATION_APP_ID` and `AUTOMATION_APP_KEY`, are provisional too and are
-deliberately left alone rather than renamed to match `smelter`: a rename is a naming decision with
-extra steps.*
+lying). The other was `bot-identity.md` (`bot` is what GitHub calls the badge, not what the thing
+is). The two secret names below, `AUTOMATION_APP_ID` and `AUTOMATION_APP_KEY`, are provisional too.
+They are deliberately left alone rather than renamed to match `smelter`: a rename is a naming
+decision with extra steps.*
 
 The daily toolchain-bump workflow has to open a pull request that gets CI. GitHub's
 anti-recursion rule says a pull request opened with a workflow's own ephemeral `GITHUB_TOKEN`
 triggers no further workflow runs, so such a pull request sits with every required check stuck on
 "Expected", permanently unmergeable. The workflow therefore authenticates as something else.
 
-That something else is a GitHub App, not a personal access token, because a token on calef's
-account has two structural flaws: it expires on a personal timer that nobody reading the workflow
-can inspect, and it couples the project's automation to one person's account. A GitHub App owned
-by the `nifeos` organization, installed on `nife`, fixes both. Its
-installation tokens are minted fresh per run, so nothing stored expires, and the identity belongs to
-the role rather than to the person. That is `needs-architect`'s principle applied to credentials.
+That something else is a GitHub App, not a personal access token, because a token on calef's account
+has two structural flaws. It expires on a personal timer that nobody reading the workflow can
+inspect, and it couples the project's automation to one person's account. A GitHub App owned by the
+`nifeos` organization, installed on `nife`, fixes both. Its installation tokens are minted fresh per
+run, so nothing stored expires, and the identity belongs to the role rather than to the person. That
+is `needs-architect`'s principle applied to credentials.
 
 The App exists: `smelter`, App ID 5053502, created by calef under `nifeos` and installed on `nife`
 alone. Its two secrets exist only as secrets of the environment `automation`, which the workflows
@@ -63,28 +63,26 @@ key, both secrets. A repository for it would hold an empty tree and a README poi
 note. The breakup of the monorepo does not change that, because an App without a webhook still
 has no code to put anywhere.
 
-Two things would change the answer, and either is enough: the App grows a webhook handler, a
-service receiving events and acting on them, which is real code with its own deploy and tests and
-does not belong inside an OS repository; or it grows custom actions shared by several
-repositories and needing their own release cadence. Note what is *not* on that list. The milestone's
-stated reuse, a future workflow copying the two steps from `EXAMPLES` below, is copied steps
-rather than shared code, and triggers neither. That distinction is the whole reason this is
-written down: "reuse is the compounding value" reads like an argument for a repository, and it is
-not one.
+Two things would change the answer, and either is enough. The App grows a webhook handler, a service
+receiving events and acting on them, which is real code with its own deploy and tests and does not
+belong inside an OS repository. Or it grows custom actions shared by several repositories and
+needing their own release cadence. Note what is *not* on that list. The milestone's stated reuse, a
+future workflow copying the two steps from `EXAMPLES` below, is copied steps rather than shared
+code, and triggers neither. That distinction is the whole reason this is written down: "reuse is the
+compounding value" reads like an argument for a repository, and it is not one.
 
 What the split does change is where this note lives, and that is an open question with a
-trigger rather than a decision to make now. `smelter` is expected to serve several repositories:
-§151 (the goal of the repository split is independent release and third-party programs) is DECIDED,
-milestone 39 (repository structure for a loosely-coupled OS) names option C as the destination, and
-milestone 120 (the OS becomes `nife`, and the project gets an organization) already put the
-manifest in a separate repository, `basalt`. Once `nife` is one
-repository among several it stops being the obvious home for organization-wide tooling
-documentation, and `basalt` is the plausible destination for this page. The move happens at the
-split, not before, because today the argument for keeping it here is the stronger one: it sits
-beside `toolchain-bump.yml`, the workflow it documents, so the two version together and a change to
-that workflow cannot silently invalidate this page. When it moves, §201 (one roadmap until a
-citation has to cross) already governs how the citations survive crossing a repository boundary, so
-this is an existing framework rather than a new problem.
+trigger rather than a decision to make now. `smelter` is expected to serve several repositories.
+§151 (the goal of the repository split is independent release and third-party programs) is DECIDED.
+Milestone 39 (repository structure for a loosely-coupled OS) names option C as the destination, and
+milestone 120 (the OS becomes `nife`, and the project gets an organization) already put the manifest
+in a separate repository, `basalt`. Once `nife` is one repository among several it stops being the
+obvious home for organization-wide tooling documentation, and `basalt` is the plausible destination
+for this page. The move happens at the split, not before, because today the argument for keeping it
+here is the stronger one. It sits beside `toolchain-bump.yml`, the workflow it documents, so the two
+version together and a change to that workflow cannot silently invalidate this page. When it moves,
+§201 (one roadmap until a citation has to cross) already governs how the citations survive crossing
+a repository boundary, so this is an existing framework rather than a new problem.
 
 ## Creating the App
 
@@ -163,9 +161,9 @@ Once, by an owner of the `nifeos` organization.
         rm ~/Downloads/*.private-key.pem
 
     You cannot confirm this from the shell either, and that is not something being broken:
-    `gh secret list --org nifeos` needs the same `admin:org` scope and returns the same 403 for
-    any shell that is not an organization admin's, which is the ordinary case rather than a fault.
-    On the browser path the secrets page itself is the confirmation, and the first real proof is the
+    `gh secret list --org nifeos` needs the same `admin:org` scope. It returns the same 403 for any
+    shell that is not an organization admin's, which is the ordinary case rather than a fault. On
+    the browser path the secrets page itself is the confirmation, and the first real proof is the
     identity probe in step 11, once the workflow change has merged.
 
     This is the path that was actually used. Both `smelter` secrets were stored this way by
@@ -191,7 +189,7 @@ Once, by an owner of the `nifeos` organization.
 
     Both secret names are provisional until an architect ratifies them. They were deliberately
     not renamed to match `smelter` when the App's name was ratified: a rename is a naming decision
-    with extra steps, and `AUTOMATION_*` says what the secrets are for rather than what the App is
+    with extra steps. `AUTOMATION_*` says what the secrets are for rather than what the App is
     called, which survives the App being renamed.
 
 ## Confirming it took, and only then retiring the PAT
@@ -221,11 +219,11 @@ whole subsystems) makes taking a dependency a decision rather than a convenience
 rather than merely described. It is **maintained by GitHub** and does exactly one thing, mint an
 installation token per run. It is **outside the shipping graph**: it runs in CI and no part of the
 OS depends on it, which is the distinction §46 draws. **The alternative was worse**, and this is the
-case where §46's "write it yourself" guidance does not apply, because minting the token by hand
-means signing a JWT with the private key and exchanging it, in shell, inside a workflow: more code,
-in the least testable place this project has, handling a signing key. And **the fallback chain
-survives its absence**, since the step is skipped entirely when the App secrets are unset, so the
-action is load-bearing for neither the PAT path nor the `github.token` path.
+case where §46's "write it yourself" guidance does not apply. Minting the token by hand means
+signing a JWT with the private key and exchanging it, in shell, inside a workflow: more code, in the
+least testable place this project has, handling a signing key. And **the fallback chain survives its
+absence**, since the step is skipped entirely when the App secrets are unset, so the action is
+load-bearing for neither the PAT path nor the `github.token` path.
 
 ## EXAMPLES
 
@@ -288,7 +286,6 @@ inheriting a reason to keep a PAT beside it:
   if that changes.
 
 - This note cannot tell you when the PAT expires, and neither can anything else in the
-  repository: an Actions secret's value is opaque to every API the project can call, and only the account
-  that minted the token can see its expiry at
-  https://github.com/settings/tokens?type=beta. That opacity is not a gap in this note, it is the
-  flaw the App removes.
+  repository. An Actions secret's value is opaque to every API the project can call, and only the
+  account that minted the token can see its expiry at https://github.com/settings/tokens?type=beta.
+  That opacity is not a gap in this note, it is the flaw the App removes.

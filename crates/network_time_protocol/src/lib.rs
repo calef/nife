@@ -1,40 +1,15 @@
-//! **The NTPv4 wire format** (RFC 5905), as pure computation.
+//! **The NTPv4 wire format** (RFC 5905), as pure computation, with no socket, clock, service or
+//! policy: the clock service owns the offset and the authority to set it; these 48 bytes and the
+//! arithmetic over them are here. The parser, the fixed-point conversion and the response checks
+//! are host-tested and Kani-checked. See notes/ntp.md.
 //!
-//! Milestone 51 gives the machine a wall clock. This crate is the third lane of it: the bytes on
-//! the wire and the arithmetic over them, with no socket, no clock, no service and no policy. The
-//! clock service owns the offset and the authority to set it; a later phase carries these 48 bytes
-//! over `net_stack`. Keeping the protocol here means the parser, the fixed-point conversion and the
-//! response checks are host-tested in milliseconds and machine-checked by Kani, rather than being
-//! debugged inside a QEMU boot against a live server (DECISIONS §14's rule about what compiles for
-//! the host, and the same split `filesystem_protocol` and `graphics_protocol` make for their contracts).
+//! **Unauthenticated NTPv4 only**: no NTS (RFC 8915) and no RFC 5905 symmetric-key MAC. An
+//! off-path attacker must guess the 64-bit nonce [`Query::accept`] checks; an on-path attacker
+//! reads it and wins, and nothing here pretends otherwise. So a time from this crate is untrusted
+//! input that the NTP client may propose and never set. notes/ntp.md has why NTS is a separate
+//! decision (it needs TLS, which needs a roughly correct clock).
 //!
-//! # Scope: unauthenticated NTPv4, deliberately and only
-//!
-//! **This crate implements plain, unauthenticated NTPv4. It does not implement NTS (RFC 8915), and
-//! it does not implement the RFC 5905 symmetric-key MAC.** That is a scope decision, not an
-//! oversight, so here is exactly what it does and does not buy.
-//!
-//! What it buys: correct time from a server you can reach, on a path where nobody is injecting
-//! packets. That is the ordinary case, and it is why plain NTP is still what most machines run.
-//!
-//! What it does not buy: any defence against an attacker who can see your request and beat the real
-//! server's reply back to you. Everything standing between this crate and that attacker is in
-//! [`Query::accept`]: the mode must be right, the origin timestamp must match the nonce we sent, the
-//! stratum must be sane, the timestamps must be self-consistent. An off-path attacker who cannot see
-//! the request has to guess the 64-bit nonce; an on-path attacker reads it and wins. **Plain NTP has
-//! no answer to an on-path attacker and this crate does not pretend otherwise.** Treat a time
-//! obtained through it as untrusted input to a service that applies bounds, which is precisely how
-//! milestone 51 arranges the authority: the NTP client can *propose* a time and cannot set one.
-//!
-//! NTS is the real answer and it is a **separate decision**, because it is not a small addition:
-//! NTS-KE is TLS 1.3, TLS needs certificate validation, and certificate validation needs a roughly
-//! correct clock, which is the thing we are trying to obtain. The standard escape (a build-time "not
-//! before" timestamp plus the RTC's rough value) is a design fork with real consequences, and the
-//! roadmap records it as one. Half-implementing NTS here, an extension-field parser with no
-//! cryptography behind it, would be worse than not having it: it would put "NTS" in the tree while
-//! authenticating nothing.
-//!
-//! # The three things that are easy to get wrong
+//! Three things are easy to get wrong:
 //!
 //! 1. **An NTP timestamp is not a Unix timestamp.** 64 bits: 32 of seconds since **1 January 1900**,
 //!    32 of fractional second. The epoch differs by [`UNIX_DELTA`] seconds and the fraction is binary
@@ -46,81 +21,9 @@
 //!    wrapping 64-bit arithmetic and read back as signed ([`Interval`]), which is what makes an
 //!    exchange that straddles the 2036 boundary come out right instead of off by 136 years.
 //!
-//! # Examples
-//!
-//! One exchange, end to end. The client is 2 seconds behind the server and the path takes 20 ms
-//! each way, and the numbers that come out say exactly that:
-//!
-//! ```
-//! use network_time_protocol::{Packet, Query, Timestamp, VERSION, leap, mode};
-//!
-//! // T1: what our clock said when we sent. The nonce is separate, and is 64 random bits.
-//! let sent = Timestamp::from_unix(1_800_000_000, 0).unwrap();
-//! let nonce = Timestamp::from_bits(0x9e37_79b9_7f4a_7c15);
-//! let query = Query::with_nonce(sent, nonce);
-//!
-//! // On the wire the transmit field is the nonce, not the time; a server never interprets it.
-//! let request = Packet::parse(&query.request()).unwrap();
-//! assert_eq!(request.transmit, nonce);
-//! assert_eq!(request.mode, mode::CLIENT);
-//!
-//! // A server whose clock is 2 seconds ahead of ours, taking 1 ms to turn the request around.
-//! let reply = Packet {
-//!     leap: leap::NONE,
-//!     version: VERSION,
-//!     mode: mode::SERVER,
-//!     stratum: 2,
-//!     origin: request.transmit, // echoed, and this is the whole off-path defence
-//!     receive: Timestamp::from_unix(1_800_000_002, 20_000_000).unwrap(), // T2
-//!     transmit: Timestamp::from_unix(1_800_000_002, 21_000_000).unwrap(), // T3
-//!     ..Packet::default()
-//! };
-//!
-//! // T4: our clock when the reply landed, 41 ms of our time after we sent.
-//! let dest = Timestamp::from_unix(1_800_000_000, 41_000_000).unwrap();
-//! let sample = query.accept(&reply.to_bytes(), dest).unwrap();
-//!
-//! // 2 seconds behind, to within the tick truncation, and 40 ms of path.
-//! assert_eq!(sample.offset.nanos() / 1_000_000, 2_000);
-//! assert_eq!(sample.delay.nanos() / 1_000_000, 40);
-//! ```
-//!
-//! The check worth demonstrating on its own is the one that runs **before any of the packet is
-//! believed**. An off-path attacker can flood us with well-formed stratum-1 replies, and without
-//! the nonce it holds there is nothing it can do with them:
-//!
-//! ```
-//! use network_time_protocol::{Packet, Query, Reject, Timestamp, VERSION, leap, mode};
-//!
-//! let sent = Timestamp::from_unix(1_800_000_000, 0).unwrap();
-//! let query = Query::with_nonce(sent, Timestamp::from_bits(0x9e37_79b9_7f4a_7c15));
-//!
-//! // A perfect packet from a perfect server, claiming the year 2000. It is simply not ours.
-//! let spoof = Packet {
-//!     leap: leap::NONE,
-//!     version: VERSION,
-//!     mode: mode::SERVER,
-//!     stratum: 1,
-//!     origin: Timestamp::from_bits(0), // the attacker had to guess, and 64 bits is a lot
-//!     receive: Timestamp::from_unix(946_684_800, 0).unwrap(),
-//!     transmit: Timestamp::from_unix(946_684_800, 1).unwrap(),
-//!     ..Packet::default()
-//! };
-//! let dest = Timestamp::from_unix(1_800_000_000, 1_000_000).unwrap();
-//! assert_eq!(query.accept(&spoof.to_bytes(), dest), Err(Reject::OriginMismatch));
-//!
-//! // An unsolicited broadcast does not even get that far: mode 5 is not a reply.
-//! let broadcast = Packet { mode: 5, ..spoof };
-//! assert_eq!(query.accept(&broadcast.to_bytes(), dest), Err(Reject::Mode(5)));
-//! ```
-//!
-//! # Layering
-//!
-//! [`Packet::parse`] is **total on a 48-byte input**: it decodes fields and judges nothing, so
-//! parse-then-serialise is the identity for every possible packet (proved, not asserted). Every
-//! semantic judgement lives in [`Query::accept`], which is the only function in the crate that can
-//! reject. That split is what lets the round-trip proof be over arbitrary bytes and the security
-//! checks be read in one place.
+//! [`Packet::parse`] is total on a 48-byte input: it decodes and judges nothing, so
+//! parse-then-serialise is the identity for every packet (proved). Every judgement is in
+//! [`Query::accept`], the only function that can reject.
 //!
 //! ```text
 //!   [u8; 48] ──parse──► Packet ──accept(nonce, sent, dest)──► Sample { offset, delay }
@@ -128,25 +31,11 @@
 //!                                       └── Reject: the response is not an answer to our question
 //! ```
 //!
-//! Name: provisional, and this **deratifies the name calef ratified on 2026-08-23**, the way the
-//! 2026-09-05 acronym test deratified `dma_validator`. He ruled the stem **`network_time`** on
-//! 2026-09-13 and reaffirmed it when shown the argument below.
-//!
-//! **The case this block used to make, which lost**: NTP is RFC 5905's own name for the protocol,
-//! the same external-standard exemption `elf`, `pci`, `dtb` and `gpt` carry. calef narrowed that
-//! exemption rather than overruling it: a standard's name stays whole where it names a format or a
-//! piece of hardware and expands where it names a network protocol, because the first is what the
-//! thing is and the second is what it does. The boundary is drawn rather than derived and
-//! milestone 265's block carries the reasoning.
-//!
-//! Expanding the stem alone would have given `network_time_protocol_proto`, which says protocol
-//! twice; 265's suffix change removed the duplication instead, and the crate is
-//! `network_time_protocol` as of 2026-09-14. The **program** `ntp` deliberately stayed short, which
-//! is the typed-command latitude that produced `mdr` the same day, recorded as an exception in
-//! 265; milestone 290 has since split that program into `network_time_client`,
-//! `network_time_test_server` and `unwritable_clock_witness`, so the pair the exception was written
-//! about no longer disagrees. The block stays **provisional** because calef ruled the stem and has
-//! not been shown the whole name.
+//! Name: provisional. calef ruled the stem **`network_time`** on 2026-09-13, which deratifies the
+//! 2026-08-23 ratification of `ntp_proto`: a standard's name stays whole for a format or hardware
+//! and expands for a network protocol. `_protocol` is milestone 265 (`_proto` is a truncation)'s
+//! suffix. The program `ntp` became `network_time_client` and its siblings. It stays provisional
+//! until calef sees the whole name.
 
 #![no_std]
 
@@ -619,6 +508,36 @@ const fn be64(w: &[u8], at: usize) -> u64 {
 /// story of unauthenticated NTP, which is why they are an enum with distinct variants rather than a
 /// bool: a client that logs *which* check failed can tell a broken server from an attack, and a
 /// kiss-o'-death is a instruction to back off rather than a failure to retry.
+///
+/// # Examples
+///
+/// The nonce check runs before any of the packet is believed, so an off-path flood of well-formed
+/// replies gets nowhere:
+///
+/// ```
+/// use network_time_protocol::{Packet, Query, Reject, Timestamp, VERSION, leap, mode};
+///
+/// let sent = Timestamp::from_unix(1_800_000_000, 0).unwrap();
+/// let query = Query::with_nonce(sent, Timestamp::from_bits(0x9e37_79b9_7f4a_7c15));
+///
+/// // A perfect packet from a perfect server, claiming the year 2000. It is simply not ours.
+/// let spoof = Packet {
+///     leap: leap::NONE,
+///     version: VERSION,
+///     mode: mode::SERVER,
+///     stratum: 1,
+///     origin: Timestamp::from_bits(0), // the attacker had to guess, and 64 bits is a lot
+///     receive: Timestamp::from_unix(946_684_800, 0).unwrap(),
+///     transmit: Timestamp::from_unix(946_684_800, 1).unwrap(),
+///     ..Packet::default()
+/// };
+/// let dest = Timestamp::from_unix(1_800_000_000, 1_000_000).unwrap();
+/// assert_eq!(query.accept(&spoof.to_bytes(), dest), Err(Reject::OriginMismatch));
+///
+/// // An unsolicited broadcast does not even get that far: mode 5 is not a reply.
+/// let broadcast = Packet { mode: 5, ..spoof };
+/// assert_eq!(query.accept(&broadcast.to_bytes(), dest), Err(Reject::Mode(5)));
+/// ```
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Reject {
     /// Not 48 bytes. See [`PACKET_LEN`] for why nothing else is accepted.
@@ -682,8 +601,43 @@ pub struct Sample {
 /// **A request in flight**, holding the two things a reply has to be checked against: the nonce we
 /// put on the wire, and the local time we actually sent at.
 ///
-/// Those are usually the same value, and separating them buys real security. See
-/// [`Query::with_nonce`].
+/// Separating them buys real security; see [`Query::with_nonce`].
+///
+/// # Examples
+///
+/// One exchange: the client is 2 seconds behind the server and the path takes 20 ms each way.
+///
+/// ```
+/// use network_time_protocol::{Packet, Query, Timestamp, VERSION, leap, mode};
+///
+/// // T1: what our clock said when we sent. The nonce is separate, and is 64 random bits.
+/// let sent = Timestamp::from_unix(1_800_000_000, 0).unwrap();
+/// let nonce = Timestamp::from_bits(0x9e37_79b9_7f4a_7c15);
+/// let query = Query::with_nonce(sent, nonce);
+///
+/// // On the wire the transmit field is the nonce, not the time; a server never interprets it.
+/// let request = Packet::parse(&query.request()).unwrap();
+/// assert_eq!(request.transmit, nonce);
+/// assert_eq!(request.mode, mode::CLIENT);
+///
+/// // A server whose clock is 2 seconds ahead of ours, taking 1 ms to turn the request around.
+/// let reply = Packet {
+///     leap: leap::NONE,
+///     version: VERSION,
+///     mode: mode::SERVER,
+///     stratum: 2,
+///     origin: request.transmit, // echoed, and this is the whole off-path defence
+///     receive: Timestamp::from_unix(1_800_000_002, 20_000_000).unwrap(), // T2
+///     transmit: Timestamp::from_unix(1_800_000_002, 21_000_000).unwrap(), // T3
+///     ..Packet::default()
+/// };
+///
+/// let dest = Timestamp::from_unix(1_800_000_000, 41_000_000).unwrap();
+/// let sample = query.accept(&reply.to_bytes(), dest).unwrap();
+///
+/// assert_eq!(sample.offset.nanos() / 1_000_000, 2_000);
+/// assert_eq!(sample.delay.nanos() / 1_000_000, 40);
+/// ```
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Query {
     nonce: Timestamp,

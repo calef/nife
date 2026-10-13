@@ -31,7 +31,7 @@ reaches userspace yet; `components/src/input.rs`), so the rotation reached the b
 constantly. The fix is that thread calling `sched::exit()` instead; the idle thread, which halts
 only when nothing else can run, takes the core.
 
-Why aarch64 and riscv64 never showed it was an inference until milestone 720 (the boot thread
+Why aarch64 and riscv64 never showed it is settled by milestone 720 (the boot thread
 cannot halt while it is runnable). Their boot paths also ended in `arch::halt()`, but their input
 is interrupt-driven, so no thread keeps the rotation turning while the shell waits. Milestone 720
 ended both in `sched::exit()`, made `arch::halt` take a token an ordinary boot

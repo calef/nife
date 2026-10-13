@@ -1,5 +1,7 @@
 # What a reader meets in an old record: two renames and one pivot
 
+<!-- history: exception. Reason: this page exists to decode the old names and framing a reader meets in older records and git log, so the renames are its subject (2026-10-13 UTC). -->
+
 *Appendix to [`AGENTS.md`](../../AGENTS.md), which keeps the operational fact that `CLAUDE.md` is a
 symlink to it. This file carries the three pieces of history a reader needs exactly once, on the day
 they open a record that uses a name or a framing the project has left behind. Moved here 2026-09-24
@@ -13,9 +15,9 @@ own the same day.*
 
 The architect is calef (GitHub username; Chris Alef): older records and commits may say Chris,
 and both are the same person, renamed 2026-08-15 at his request. Contributors are referred to by
-their GitHub username in prose, attributions, records and lane reports, so a grep for a contributor
-finds them rather than everyone sharing a first name; that rule is in `AGENTS.md` and this is the
-case that prompted it.
+their GitHub username in prose, attributions, records and lane reports. A grep for a contributor
+then finds them rather than everyone sharing a first name. That rule is in `AGENTS.md` and this is
+the case that prompted it.
 
 Since 2026-09-25, "the architect" also names a role, listed in
 [`ARCHITECTS.md`](../../ARCHITECTS.md), that more than one person can hold
@@ -39,9 +41,9 @@ The GitHub organization was renamed from crickertech to nifeos on 2026-10-03 (UT
 Claude Code keeps finding it. It addresses any competent agent, which is what it always did.
 
 **The in-tree citations of "CLAUDE.md" keep resolving through the symlink and were deliberately not
-rewritten**, per this file's own blind-sed scar: a sweep that rewrote a name across the tree also
-rewrote the row recording that the name had been *refused*, which is a cheap edit destroying an
-expensive record. A citation that still works is not worth a sweep that might not.
+rewritten**, per this file's own blind-sed scar. A sweep that rewrote a name across the tree also
+rewrote the row recording that the name had been *refused*: a cheap edit destroying an expensive
+record. A citation that still works is not worth a sweep that might not.
 
 ## It was a learning project and is a demonstrator
 

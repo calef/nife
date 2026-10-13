@@ -18,14 +18,14 @@ if !rights.is_subset_of(src.rights) { return Err(NoRights); }
 `is_subset_of` is the whole enforcement; there is no code path that widens rights, which is the
 point (DECISIONS §10 (process model: capability-based, microkernel)): if delegation could widen authority, the model is theater.
 
-`ENUMERATE` is the newest and the one that shows why the count is worth gating rather than
-retyping: it arrived on 2026-08-17 with milestone 126, this line still said three bits the next
-day, and the 2026-08-17 documentation sweep is what found it. It is the right to learn what
-exists, as distinct from acting on it, the kernel-level twin of `filesystem_protocol`'s directory
-`ENUMERATE`, and `endpoint::SURVEY` is its only consumer today. The argument for a right of its own
-rather than a corner of `READ` is on `capability::Rights::ENUMERATE`, where a reader meets it:
-`READ` on a supervision endpoint is what `RECEIVE` and `REAP` take, so a `ps` granted `READ` could
-reap a child, and a domain names its members rather than acting on them.
+`ENUMERATE` is the newest and the one that shows why the count is worth gating rather than retyping.
+It arrived on 2026-08-17 with milestone 126 (the `procps` package), this line still said three bits the next day, and the
+2026-08-17 documentation sweep is what found it. It is the right to learn what exists, as distinct
+from acting on it, the kernel-level twin of `filesystem_protocol`'s directory `ENUMERATE`, and
+`endpoint::SURVEY` is its only consumer today. The argument for a right of its own rather than a
+corner of `READ` is on `capability::Rights::ENUMERATE`, where a reader meets it. `READ` on a
+supervision endpoint is what `RECEIVE` and `REAP` take, so a `ps` granted `READ` could reap a child,
+and a domain names its members rather than acting on them.
 
 ## `SEND_CAP` is share, not move
 
@@ -115,9 +115,9 @@ server reading a buffer shared by an untrusted client:
 3. Bound everything by the frame size yourself. Never trust a producer-supplied count to stay
    within the page.
 
-**The console server is the worked example, and it is safe *because* it follows this** (checked):
-the length rides the message (`receive(REQUEST)`), the shared page holds only bytes to print (a
-content TOCTOU just prints different bytes: benign), and an over-long length is a *read out of the
+**The console server is the worked example, and it is safe *because* it follows this** (checked).
+The length rides the message (`receive(REQUEST)`), and the shared page holds only bytes to print (a
+content TOCTOU just prints different bytes: benign). An over-long length is a *read out of the
 server's own mapping* that faults the server, i.e. a crashed driver, not a corrupted kernel
 (fixtures/src/hello.rs). A future server that read a length or offset *from the page*, or indexed on
 page contents, would not be safe, and the read-only bit would not save it.

@@ -10,8 +10,8 @@ Raised 2026-08-04. Milestone 22 (trusted init) built the supervision tree and, i
 "calef's call, not a thing to slip in". This block stated them precisely enough to be decided and
 picked neither. Both are answered now, and the one that needed building is built. §164 (whether
 the kernel resolves a tid it already sent), written up 2026-09-19 by milestone 435 (forty-five
-milestones are gated on a decision nobody wrote down)'s lane, asked fork two again and is
-superseded by §148.
+milestones are gated on a decision nobody wrote down)'s lane, asked fork two again, and
+§148 answers it.
 
 ## Fork one: a reap-only right, answered without one
 

@@ -10,8 +10,9 @@ needs_person: no
 ---
 # 362. The x86_64 runner has no RNG, so four of six NTP tests skip there
 
-Superseded 2026-09-19, by the proposal `the-rest-of-the-x86-64-fixture-set`, which
-milestone 433 numbers 420 and which names the RNG as one of its six devices. Filed as a proposal on
+Milestone 420 (x86_64 has one fixture of five and no NIC, GPU, keyboard or RNG) covers this
+block: it is the proposal `the-rest-of-the-x86-64-fixture-set`, which milestone 433 (drain the
+proposal pile to zero) numbered, and it names the RNG as one of its six devices. Filed as a proposal on
 2026-09-03 by the milestone 247 sweep, from milestone 176's block. Checked on 2026-09-19 and the
 underlying gap is real: `helpers/qemu-runner-x86_64.sh` still attaches no RNG and says so in its own
 header ("no NIC, no GPU, no RNG"). This file's own instruction is what disposes of it, and it was

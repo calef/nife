@@ -31,11 +31,11 @@ and `paging`'s Kani harnesses reason about the encoder rather than the construct
 `script/test` would catch the first. This sweep boots one kernel test and does not, which is
 the honest scope of a kernel-test falsification and is stated in script/falsifications' BUGS.
 
-diff --git a/crates/paging/src/lib.rs b/crates/paging/src/lib.rs
-index 903a72a4..8b05b275 100644
---- a/crates/paging/src/lib.rs
-+++ b/crates/paging/src/lib.rs
-@@ -206,7 +206,7 @@ pub struct Flags(u64);
+diff --git a/crates/paging/src/flags.rs b/crates/paging/src/flags.rs
+index 03860e171..fa453076e 100644
+--- a/crates/paging/src/flags.rs
++++ b/crates/paging/src/flags.rs
+@@ -37,7 +37,7 @@ pub struct Flags(u64);
  impl Flags {
      /// Kernel code: readable and executable by the kernel, never writable, never user.
      pub const fn kernel_code() -> Self {

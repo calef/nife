@@ -111,7 +111,7 @@ whose entry is directly below. They are kept as written because the second one w
   reproduced on `main` exactly. 541 re-saved all three on calef's ruling; the x86_64 row reads
   176,491 in `bench/baseline-x86_64.txt` today (re-recorded for `nightly-2026-09-23`).
 
-### Superseded the same day: "the x86_64 tripwire is 26% off, and nothing has ever pulled it"
+### Withdrawn the same day: "the x86_64 tripwire is 26% off, and nothing has ever pulled it"
 
 An earlier 2026-09-21 entry, written by the lane that found the failure, said `map_new` failed at
 228,380 against 180,604 and failed identically with its own change compiled out (224,332). It read

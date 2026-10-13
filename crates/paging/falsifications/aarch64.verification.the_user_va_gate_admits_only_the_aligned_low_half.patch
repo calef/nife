@@ -20,11 +20,11 @@ makes each ISA state the property itself, so this one defect is caught three
 times over. The `sv39` and `x86_64` records break the same function in two other
 ways, so the three patches are not copies of each other.
 
-diff --git a/crates/paging/src/lib.rs b/crates/paging/src/lib.rs
-index 98df8b66..05384661 100644
---- a/crates/paging/src/lib.rs
-+++ b/crates/paging/src/lib.rs
-@@ -335,7 +335,7 @@ pub enum Half {
+diff --git a/crates/paging/src/page_format.rs b/crates/paging/src/page_format.rs
+index 476dfcac4..da7a8c450 100644
+--- a/crates/paging/src/page_format.rs
++++ b/crates/paging/src/page_format.rs
+@@ -39,7 +39,7 @@ pub enum Half {
  ///
  /// Generic over the format so the split lands at the right bit for the running architecture.
  pub fn is_user_page_va<F: PageFormat>(va: u64) -> bool {

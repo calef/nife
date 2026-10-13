@@ -15,5 +15,5 @@ For the shape rather than the list: milestone 7 (user mode: EL0, capabilities, t
 IPC) is the dividing line between a Rust program that boots and an operating system.
 
 *Name: recorded (milestone 294). Milestone 294 (`design/roadmap/README.md`'s index is generated,
-not hand-maintained) retired the hand-kept index this file used to be. The stems are milestone
+not hand-maintained) generates the index this file carries. The stems are milestone
 slugs and are not tracked by `script/names`: calef ruled milestone titles drafts on 2026-08-04.*

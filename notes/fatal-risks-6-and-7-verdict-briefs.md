@@ -51,7 +51,7 @@ attempts (a crash and a skip). The Results table in `notes/risk-6-bench-evening.
 
 Partly.
 
-- Confined and drives real hardware: yes, and these did fail first. The success line was unreachable on any device until 2026-09-04 (it asked for 32 bytes down an 8-byte channel). The block's clocks were gated and its reset asserted (milestone 220 (this kernel drives no clock or reset controller)), and the first silicon boot
+- Confined and drives real hardware: yes, and these did fail first. The success line was unreachable on any device before 2026-09-04 (it asked for 32 bytes down an 8-byte channel). The block's clocks were gated and its reset asserted (milestone 220 (this kernel drives no clock or reset controller)), and the first silicon boot
   reported ready while holding zeros (PR #724). A red was possible and was seen.
 - At real speed: could not have come back red. No threshold was written, and there is no
   comparator. The Linux `hwrng` figure is a different thing (an in-kernel read, no IPC), and the

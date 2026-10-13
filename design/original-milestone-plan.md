@@ -24,17 +24,18 @@ monolithic kernel with an unusual syscall table.
 Milestone 11 is complete *to its intent*, not to seL4's. The kernel still allocates its own
 page tables, TCBs, and endpoints from the heap; §10 chose that deliberately (Zircon's model).
 What 11 demonstrates is the half that was the point: a userspace process spends pages out of an
-`Untyped` capability and **the kernel's free-frame count does not move**, so a process cannot
-force the kernel to allocate, and kernel-memory exhaustion stops being an attack class. Taking
+`Untyped` capability and **the kernel's free-frame count does not move**. A process cannot force the
+kernel to allocate, so kernel-memory exhaustion stops being an attack class. Taking
 the allocators out of the kernel entirely stays additive and unbuilt.
 
 ## Beyond the plan (post-v1)
 
 The eleven milestones are the plan. Work since, in git order: a security audit
 (notes/security.md); per-process spawn quotas (notes/quotas.md); kernel-mediated DMA
-confinement, since QEMU `virt` has no IOMMU (notes/dma.md); capability delegation between
+confinement, since QEMU `virt` has no IOMMU (notes/dma.md). Then capability delegation between
 processes via `SEND_CAP`/`RECEIVE_CAP` (notes/delegation.md); frame capabilities, shared memory a
-process owns and delegates (notes/frames.md); SMP (§11); Call/Reply IPC, a one-shot reply capability
+process owns and delegates (notes/frames.md); SMP, §11 (per-CPU run queues). Then Call/Reply IPC, a
+one-shot reply capability
 (§12, milestone 12); and capability revocation with safe untyped reclamation, scoped to frames (§13,
 milestone 13).
 

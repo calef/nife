@@ -40,8 +40,8 @@ are an architect's and this one is not ratified.
 
 It needs the network, so it is not a CI gate and `script/test` does not run it. It builds for aarch64 only, deliberately:
 the PAL speaks the capability ABI rather than an ISA, so a second target would re-measure the same
-thing at twice the cost, and the parity that matters is `std_exerciser`'s, which `script/test` runs
-on both.
+thing at twice the cost. The parity that matters is `std_exerciser`'s, which `script/test` runs on
+both.
 
 A failing probe is rebuilt for the host, and reports `BODY` rather than `FAIL` if the host build
 fails too. That is the harness saying "my own call site is wrong, ignore this row", which is the
@@ -117,7 +117,7 @@ suggests, because that table counts functions and this counts demand.
 
 The method: for each probe, take `cargo tree -e normal --target aarch64-unknown-nife.json` (normal
 edges only, so `cc`, `autocfg`, `vcpkg` and every proc-macro crate are excluded, since those run on
-the host and can call anything they like), then grep every package's `src/` for call sites of the
+the host and can call anything they like). Then grep every package's `src/` for call sites of the
 std APIs the PAL refuses. The "probes" column is how many of the 50 dependency closures contain at
 least one call site.
 
@@ -191,9 +191,9 @@ refusal is in [crates-io-on-nife/later-passes.md](crates-io-on-nife/later-passes
 - **A gap list built from `Unsupported` counts cannot see a `panic!`**, and this note went two
   passes without noticing. Three std calls aborted a nife process while compiling perfectly
   (`env::vars`, then `env::temp_dir`, `env::split_paths` and `process::id`), and the ranked list
-  below could not have contained any of them, because a function that aborts never returns the
-  refusal the census greps for. The method that found them is not a list at all: read every module
-  the PAL falls through instead of binding, and read what its *neighbors* do.
+  below could not have contained any of them. A function that aborts never returns the refusal the
+  census greps for. The method that found them is not a list at all: read every module the PAL falls
+  through instead of binding, and read what its *neighbors* do.
 
   This is now a gate, `cargo xtask std-aborts` (milestone 64's fourth pass), and building it
   found a fifth that the reading could not have: `std::process::exit` was `intrinsics::abort()`,

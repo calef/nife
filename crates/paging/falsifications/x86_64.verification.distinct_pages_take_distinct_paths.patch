@@ -13,10 +13,11 @@ address and `0` in the other, with the rest equal.
 **The index math is shared and the proof is not.** The `aarch64` and `sv39` records break the
 stride and the field width; this one leaves both right and breaks the reduction.
 
-diff --git a/crates/paging/src/lib.rs b/crates/paging/src/lib.rs
---- a/crates/paging/src/lib.rs
-+++ b/crates/paging/src/lib.rs
-@@ -478,7 +478,7 @@ pub trait PageFormat {
+diff --git a/crates/paging/src/page_format.rs b/crates/paging/src/page_format.rs
+index 476dfcac4..ef6fe64fb 100644
+--- a/crates/paging/src/page_format.rs
++++ b/crates/paging/src/page_format.rs
+@@ -107,7 +107,7 @@ pub trait PageFormat {
      /// [`LEVELS`](Self::LEVELS) so it is right for both a 4- and a 3-level walk.
      fn index(va: u64, level: usize) -> usize {
          let shift = 9 * (Self::LEVELS - 1 - level) as u32 + 12;

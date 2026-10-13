@@ -1,135 +1,32 @@
 //! **Credentials: an identity, and a secret you can check but never read back**
-//! (milestone 56, the credential half; notes/credentials.md).
+//! (notes/credentials.md). The pure logic behind the credential service: how a secret becomes a
+//! record, how a presented secret is checked against one, and how a record is encoded. No syscalls
+//! and no allocation, so it builds for the host and every target from one source. The wire contract
+//! is `credential_protocol`; the service is `components/src/credentialer.rs`.
 //!
-//! The pure logic behind the credential service: how a secret becomes a record, how a presented
-//! secret is checked against one, and how a record is encoded. No syscalls, no allocation, no
-//! `alloc`, so it compiles for the host and for both bare-metal targets from one source and its
-//! tests run in milliseconds. The wire contract is `credential_protocol`; the service is
-//! `components/src/credentialer.rs`.
+//! A [`Record`] is an identity, a random 16-byte salt, three cost parameters and a 32-byte
+//! **Argon2id** tag, `Argon2id(secret, salt, cost)`: nothing to decrypt, so recovering a secret
+//! means finding a preimage, which the memory-hard cost prices. There is no read path, as a
+//! property of the API. Argon2id is RFC 9106's recommendation and resists both side channels and
+//! time-memory tradeoffs; it comes from RustCrypto's `argon2` because a password KDF's correctness
+//! is won by exposure (§46 (thin primitives or whole subsystems)), and the tests run the reference
+//! implementation's and RFC 9106's known-answer vectors against the version linked.
 //!
-//! # Examples
+//! Three things a naive verifier would not do:
 //!
-//! Provisioning two people and then checking a login. The cost here is a deliberately cheap one so
-//! the example runs in milliseconds; [`Cost::DEFAULT`] is what the service wires, and the parameters
-//! travel in the record rather than being compiled in, so raising them is a provisioning change.
+//! 1. **The tag comparison is constant-time** ([`subtle`]), so the tag cannot be recovered a byte
+//!    at a time.
+//! 2. **The identity lookup is constant-time** and does not stop at the match, so it does not leak
+//!    which identities exist.
+//! 3. **An unknown identity still costs one full derivation**, against a decoy record whose salt
+//!    and tag come from the entropy service, so membership is not readable from a stopwatch.
 //!
-//! ```
-//! use credentialer::{Block, Cost, SALT_LEN, Store, TAG_LEN, Verdict};
+//! Not done: persistence (a [`Store`] dies with its process; secrets at rest are an open question
+//! in notes/credentials.md), rehash when the cost moves, and lockout or rate limiting.
 //!
-//! let cost = Cost::new(64, 1, 1).expect("a cheap cost, for the example only");
-//! let mut scratch: Vec<Block> = vec![Block::new(); cost.blocks()];
-//!
-//! // The decoy salt and tag must both come from the entropy service: a decoy tag of zeros would be
-//! // one an attacker could aim a preimage at.
-//! let mut store: Store<3> = Store::new(cost, [7u8; SALT_LEN], [9u8; TAG_LEN]);
-//!
-//! // Each salt is per-identity and unpredictable. Nothing in this crate invents one, because a salt
-//! // a caller chose is a salt an attacker may have chosen too.
-//! store.put(b"bob", b"battery staple", [1u8; SALT_LEN], &mut scratch).unwrap();
-//! store.put(b"calef", b"correct horse", [2u8; SALT_LEN], &mut scratch).unwrap();
-//! assert_eq!(store.len(), 2);
-//!
-//! assert_eq!(store.verify(b"calef", b"correct horse", &mut scratch).unwrap(), Verdict::Match);
-//!
-//! // **A wrong secret and an identity nobody provisioned are the same answer.** Distinguishing them
-//! // would make this an identity oracle: ask about a thousand names and learn which three exist.
-//! // The store also spends the same work on both, so the timing does not distinguish them either.
-//! assert_eq!(store.verify(b"calef", b"hunter2", &mut scratch).unwrap(), Verdict::Mismatch);
-//! assert_eq!(store.verify(b"carol", b"anything", &mut scratch).unwrap(), Verdict::Mismatch);
-//! ```
-//!
-//! There is no read path, and that is a property of the API rather than of anyone's discipline: a
-//! [`Record`] can be encoded and decoded, and what comes out the other side is still a tag.
-//!
-//! ```
-//! use credentialer::{Block, Cost, Record, SALT_LEN};
-//!
-//! let cost = Cost::new(64, 1, 1).unwrap();
-//! let mut scratch: Vec<Block> = vec![Block::new(); cost.blocks()];
-//!
-//! let rec = Record::derive(b"calef", b"correct horse", [2u8; SALT_LEN], cost, &mut scratch).unwrap();
-//! let bytes = rec.encode();
-//!
-//! // A round trip preserves the record exactly, which is what makes the sealed store loadable.
-//! let back = Record::decode(&bytes).unwrap();
-//! assert_eq!(back.identity(), b"calef");
-//! assert_eq!(back.cost(), cost);
-//!
-//! // And the encoded form does not contain the secret, in any form: recovering it means finding a
-//! // preimage, which is the guessing attack the cost parameters exist to price.
-//! assert!(!bytes.windows(13).any(|w| w == b"correct horse"));
-//! ```
-//!
-//! A cost that Argon2 will not accept is refused where it is *written*, rather than at the
-//! derivation that would have used it:
-//!
-//! ```
-//! use credentialer::Cost;
-//!
-//! assert!(Cost::new(4096, 3, 1).is_some());
-//! assert!(Cost::new(0, 3, 1).is_none()); // no memory is not a memory-hard KDF
-//! assert!(Cost::new(Cost::MAX_M_KIB + 1, 3, 1).is_none()); // past a gibibyte is a typo, not a policy
-//! ```
-//!
-//! # What is stored, and why it cannot be turned back into a password
-//!
-//! A [`Record`] is an identity, a random 16-byte salt, three cost parameters, and a 32-byte
-//! **Argon2id** tag. The tag is `Argon2id(secret, salt, cost)`. There is no key, no cipher, and
-//! nothing to decrypt: recovering the secret means finding a preimage, which is the guessing
-//! attack the memory-hard cost parameters exist to price.
-//!
-//! ## Why Argon2id, and why a dependency rather than our own
-//!
-//! DECISIONS §46 draws the line at *exposure*: write the thing whose correctness you can argue
-//! from the spec, depend on the thing whose correctness is won by many eyes and many years against
-//! published test vectors. A password KDF is squarely the second. So this crate depends on
-//! **RustCrypto's `argon2`**, and the tests below are the **reference implementation's and RFC
-//! 9106's own known-answer vectors**, run against the version we actually link. If a future bump
-//! changes an answer, these fail.
-//!
-//! Argon2id specifically, rather than Argon2i or Argon2d: it is the RFC 9106 §4 recommendation,
-//! it is what OWASP puts first, and it is the variant that resists both a side-channel adversary
-//! (the Argon2i half) and a time-memory tradeoff (the Argon2d half). scrypt and PBKDF2 were the
-//! alternatives; PBKDF2 is not memory-hard at all, and scrypt is the older answer to the same
-//! question with no advantage here.
-//!
-//! # Three things this crate does that a naive verifier would not
-//!
-//! 1. **The tag comparison is constant-time** ([`subtle`]). A verifier that returned early on the
-//!    first differing byte would let an attacker recover the tag one byte at a time.
-//! 2. **The identity lookup is constant-time too**, and does not stop at the match. A scan that
-//!    short-circuited would leak *which* identities exist, which is the same oracle by a slower
-//!    route.
-//! 3. **An identity that is not in the store still costs one full derivation**, against a decoy
-//!    record whose salt and tag come from the entropy service. Without that, "no such user"
-//!    returns in microseconds and "wrong password" returns in milliseconds, and the store's
-//!    membership is readable from a stopwatch.
-//!
-//! # What it does not do
-//!
-//! No persistence. A [`Store`] is memory only, and everything in it dies with the process; the
-//! secrets-at-rest question is open and notes/credentials.md says so plainly rather than implying
-//! a durability we do not have. No rehash-on-verify when the cost parameters move. No lockout, no
-//! rate limit, no attempt counting; the service that owns the store is the only thing that could
-//! enforce those and it does not.
-//!
-//! Name: ratified 2026-09-13 (calef, working the unratified worklist). The lane that wrote this
-//! block proposed renaming to `credential`; that is the name calef **refused for the program on
-//! 2026-08-01** (milestone 63), on the ground that the plain resource noun follows `clock` and
-//! `entropy` and this is not that. Refusing it for the crate is the same ruling reaching the other
-//! half of one pair.
-//!
-//! **The pairing is the reason, and it is the one AGENTS.md says means something.** A crate and a
-//! program share a name when the crate is that program's logic lifted out to be host-tested and
-//! reachable by the prover, while the program keeps the IO. That is exactly this: no syscalls, no
-//! allocation, no `alloc`, tests in milliseconds, and `components/src/credentialer.rs` doing the talking.
-//! `coremark`, `line_editor` and `compositor` are the same shape. Three of this family's four names
-//! were already ratified and agreed (`credentialer` the program, `credential_protocol` the wire
-//! contract, `credentialer_test_client`); this was the loose end.
-//!
-//! The argument against, recorded because it is real: `credentialer` is an agent noun for a thing
-//! that is logic rather than an agent. It loses to the pair, and to the fact that the agent noun was
-//! already ruled for the service this belongs to.
+//! Name: ratified 2026-09-13 (calef). It shares `credentialer` with the program because it is that
+//! program's logic lifted out to be host-tested; `credential` was refused for the program on
+//! 2026-08-01, and the same ruling reaches this half of the pair.
 
 #![cfg_attr(not(test), no_std)]
 
@@ -240,6 +137,18 @@ impl Cost {
     /// denial of service on every login, so the bounds are enforced before the value crosses the
     /// boundary. Found by this crate's exhaustive record-corruption test, which is the argument
     /// for exhaustive mutation over a handful of hand-picked cases.
+    ///
+    /// # Examples
+    ///
+    /// A cost Argon2 will not accept is refused where it is written:
+    ///
+    /// ```
+    /// use credentialer::Cost;
+    ///
+    /// assert!(Cost::new(4096, 3, 1).is_some());
+    /// assert!(Cost::new(0, 3, 1).is_none()); // no memory is not a memory-hard KDF
+    /// assert!(Cost::new(Cost::MAX_M_KIB + 1, 3, 1).is_none()); // past a gibibyte is a typo, not a policy
+    /// ```
     pub fn new(m_kib: u32, t: u32, p: u32) -> Option<Self> {
         if p == 0 || p > MAX_P_COST || t == 0 {
             return None;
@@ -283,6 +192,29 @@ impl Cost {
 /// **One identity's stored credential.** Constructible only by [`Record::derive`] from a secret, or
 /// by [`Record::decode`] from a previously encoded one. A [`Store`] never gives one back, which is
 /// the point: holding this type means you made it, not that you read it out of somewhere.
+///
+/// # Examples
+///
+/// A round trip preserves the record, and the encoded form holds no trace of the secret:
+///
+/// ```
+/// use credentialer::{Block, Cost, Record, SALT_LEN};
+///
+/// let cost = Cost::new(64, 1, 1).unwrap();
+/// let mut scratch: Vec<Block> = vec![Block::new(); cost.blocks()];
+///
+/// let rec = Record::derive(b"calef", b"correct horse", [2u8; SALT_LEN], cost, &mut scratch).unwrap();
+/// let bytes = rec.encode();
+///
+/// // A round trip preserves the record exactly, which is what makes the sealed store loadable.
+/// let back = Record::decode(&bytes).unwrap();
+/// assert_eq!(back.identity(), b"calef");
+/// assert_eq!(back.cost(), cost);
+///
+/// // And the encoded form does not contain the secret, in any form: recovering it means finding a
+/// // preimage, which is the guessing attack the cost parameters exist to price.
+/// assert!(!bytes.windows(13).any(|w| w == b"correct horse"));
+/// ```
 #[derive(Clone, Copy)]
 pub struct Record {
     id_len: u8,
@@ -464,6 +396,36 @@ impl core::fmt::Debug for Record {
 /// credential service holds one of these in its own address space and serves
 /// `credential_protocol::verify::VERIFY` over an endpoint; a client cannot read a record because there is
 /// no message that returns one, no page that carries one, and no method here that produces one.
+///
+/// # Examples
+///
+/// Provisioning two people and checking a login, at a deliberately cheap cost; the service wires
+/// [`Cost::DEFAULT`], and the parameters travel in each record:
+///
+/// ```
+/// use credentialer::{Block, Cost, SALT_LEN, Store, TAG_LEN, Verdict};
+///
+/// let cost = Cost::new(64, 1, 1).expect("a cheap cost, for the example only");
+/// let mut scratch: Vec<Block> = vec![Block::new(); cost.blocks()];
+///
+/// // The decoy salt and tag must both come from the entropy service: a decoy tag of zeros would be
+/// // one an attacker could aim a preimage at.
+/// let mut store: Store<3> = Store::new(cost, [7u8; SALT_LEN], [9u8; TAG_LEN]);
+///
+/// // Each salt is per-identity and unpredictable. Nothing in this crate invents one, because a salt
+/// // a caller chose is a salt an attacker may have chosen too.
+/// store.put(b"bob", b"battery staple", [1u8; SALT_LEN], &mut scratch).unwrap();
+/// store.put(b"calef", b"correct horse", [2u8; SALT_LEN], &mut scratch).unwrap();
+/// assert_eq!(store.len(), 2);
+///
+/// assert_eq!(store.verify(b"calef", b"correct horse", &mut scratch).unwrap(), Verdict::Match);
+///
+/// // **A wrong secret and an identity nobody provisioned are the same answer.** Distinguishing them
+/// // would make this an identity oracle: ask about a thousand names and learn which three exist.
+/// // The store also spends the same work on both, so the timing does not distinguish them either.
+/// assert_eq!(store.verify(b"calef", b"hunter2", &mut scratch).unwrap(), Verdict::Mismatch);
+/// assert_eq!(store.verify(b"carol", b"anything", &mut scratch).unwrap(), Verdict::Mismatch);
+/// ```
 pub struct Store<const N: usize> {
     records: [Record; N],
     used: usize,
