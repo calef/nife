@@ -1,12 +1,7 @@
-//! **The milestone-32 filesystem wire protocols** (notes/fs-server.md).
-//!
-//! Two userspace protocols, one crate, so the four programs that speak them, the block server, the
-//! FS server, the client, and the kernel-side tests, share one definition and cannot drift. The
-//! kernel routes these words the way it routes any IPC (§10, §12): it never reads an opcode. Adding
-//! one is a change to this crate and the note, not to the syscall surface. This is the same split
-//! `line_editor::proto` makes for the terminal contract.
-//!
-//! # The two protocols
+//! **The filesystem wire protocols** (notes/fs-server.md): one crate, so the block server, the FS
+//! server, the client and the kernel-side tests share one definition and cannot drift. The kernel
+//! routes these words as any IPC and never reads an opcode, so adding one changes this crate and the
+//! note, not the syscall surface.
 //!
 //! ```text
 //!   disk ──virtio──►┌──────────────┐──blk IPC──►┌───────────┐──file IPC──► client
@@ -16,134 +11,22 @@
 //!                         confinement)             its own heap)
 //! ```
 //!
-//! Nobody names anyone else (endpoint-only naming, notes/ipc-naming.md). The FS server holds "an
-//! endpoint I read/write blocks on"; the client holds "an endpoint that opens and reads files under
-//! the one directory this endpoint is bound to." Rewire the endpoints and neither side can tell.
+//! Nobody names anyone else (notes/ipc-naming.md): the FS server holds "an endpoint I read and
+//! write blocks on", the client "an endpoint bound to one directory". Rewire them and neither side
+//! can tell.
 //!
-//! ## Control by message, bulk by shared page (DECISIONS §10)
+//! Control is by message and bulk by shared page, per §10 (process model: capability-based,
+//! microkernel). Each protocol is an endpoint `CALL` of two words, answered through the one-shot
+//! Reply capability; bytes travel only in the region the two parties share per channel:
+//! [`blk::TRANSFER_MAX`] bytes for blk IPC, [`fs::TRANSFER_MAX`] for file IPC, holding a name on
+//! open or data on read and write.
 //!
-//! Both protocols are an endpoint `CALL`: the client sends two words and blocks until the server
-//! replies through the one-shot Reply capability the kernel mints. Bulk bytes never ride in the
-//! words. They travel in a region the two parties share, one per channel. For blk IPC that region
-//! is [`blk::TRANSFER_BLOCKS`] contiguous pages ([`blk::TRANSFER_MAX`] bytes) and holds up to that
-//! many filesystem blocks; for file IPC it is [`fs::TRANSFER_PAGES`] contiguous pages
-//! ([`fs::TRANSFER_MAX`] bytes) and holds a name (on open) or file data (on read/write).
+//! Every reply's first word is an [`i64`]: non-negative is a result, negative is the negated errno
+//! ([`reply_err`], [`reply_errno`]). RedoxFS's error carries Linux errno numbers, and the FS server
+//! maps it to the wire once, at its serve loop, and nowhere else.
 //!
-//! **Both channels were one page until milestone 138**: the file channel through step 3, the blk
-//! channel through step 4. Neither change touched the packing; see [`fs::TRANSFER_PAGES`] and
-//! [`blk::TRANSFER_BLOCKS`] for what changed and, for the file channel, the one thing it does not
-//! check.
-//!
-//! ## The error boundary
-//!
-//! Every reply's first word is an [`i64`]: **non-negative is a result, negative is an error**, and
-//! the error value is exactly the negated errno ([`reply_err`]). RedoxFS's error type is
-//! `syscall::error::Error { errno: i32 }` (the Linux numbers), so the FS server maps it to the wire
-//! with `-(err.errno as i64)` at the serve loop and nowhere else, which is the "map the error type
-//! once, at the server boundary" rule the roadmap sets. The client reads it back with [`reply_errno`].
-//!
-//! # Examples
-//!
-//! The error boundary is one word wide and has no flag bit, which is what lets a caller read a
-//! length and an errno out of the same register without a mode to get wrong:
-//!
-//! ```
-//! use filesystem_protocol::{reply_err, reply_errno};
-//!
-//! // A READ that moved 4096 bytes, and a READ at end of file. Both are results.
-//! assert_eq!(reply_errno(4096), None);
-//! assert_eq!(reply_errno(0), None);
-//!
-//! // ENOENT, mapped once at the server's serve loop and nowhere else.
-//! let wire = reply_err(2);
-//! assert_eq!(wire, -2);
-//! assert_eq!(reply_errno(wire), Some(2));
-//! ```
-//!
-//! A request word packs the opcode, the handle and the length, so control needs no shared page at
-//! all: the page is for the bytes.
-//!
-//! ```
-//! use filesystem_protocol::{fs, operation};
-//!
-//! // `read(handle 3, 1024)`.
-//! let w0 = fs::req(fs::READ, 3, 1024);
-//! assert_eq!(operation(w0), fs::READ); // the opcode field is the same one in both protocols
-//! assert_eq!(fs::req_handle(w0), 3);
-//! assert_eq!(fs::req_len(w0), 1024);
-//!
-//! // An OPEN sends handle ROOT and the *name's* length; the name itself is in the page.
-//! let w0 = fs::req(fs::OPEN, fs::ROOT, b"report.txt".len() as u64);
-//! assert_eq!(fs::req_handle(w0), fs::ROOT);
-//! assert_eq!(fs::req_len(w0), 10);
-//! ```
-//!
-//! A bulk request is the same word with a bigger length, which is the whole of milestone 138 step
-//! 3: sixteen pages in one round trip instead of sixteen round trips, and no new opcode to learn.
-//!
-//! ```
-//! use filesystem_protocol::{PAGE, fs};
-//!
-//! // The largest read this contract permits, in one request.
-//! let w0 = fs::req(fs::READ, 3, fs::TRANSFER_MAX as u64);
-//! assert_eq!(fs::req_len(w0), fs::TRANSFER_MAX);
-//! assert_eq!(fs::TRANSFER_MAX, fs::TRANSFER_PAGES * PAGE);
-//!
-//! // A client that shares only the first page keeps working untouched: it asks for one page,
-//! // and one page is what the region behind its request has always been.
-//! let w0 = fs::req(fs::READ, 3, PAGE as u64);
-//! assert_eq!(fs::req_len(w0), PAGE);
-//! ```
-//!
-//! [`dir::Rights`] is where the interesting claim is, and it is a claim about what is **absent**:
-//! attenuation is the only way to make a non-root value, and it is a bitwise AND, so no chain of
-//! calls can produce a child carrying more than its parent.
-//!
-//! ```
-//! use filesystem_protocol::dir::{self, Rights};
-//!
-//! // What a shell holds over the user's home directory.
-//! let home = Rights::root(dir::ALL);
-//!
-//! // What it hands a log writer: somewhere to write, and no power to delete what is there.
-//! let logs = home.attenuate(dir::READ | dir::WRITE | dir::CREATE);
-//! assert!(logs.allows(dir::WRITE));
-//! assert!(logs.denies_all(dir::REMOVE));
-//!
-//! // The log writer passing its authority on cannot widen it back, however it asks.
-//! let narrower = logs.attenuate(dir::ALL);
-//! assert_eq!(narrower.bits(), logs.bits());
-//! assert!(narrower.denies_all(dir::REMOVE));
-//! ```
-//!
-//! And [`grant`] is the shape that makes `run wc report.txt` mean what it says: `wc` is started
-//! holding one file, read-only, with the name in two argument words rather than a frame, so a
-//! per-file grant costs no extra mapping and the caretaker needs nothing mapped before it runs.
-//!
-//! ```
-//! use filesystem_protocol::grant;
-//!
-//! assert!(grant::fits(b"report.txt"));
-//! let (lo, hi) = grant::pack_name(b"report.txt");
-//! let spec = grant::spec(b"report.txt".len(), grant::READ);
-//!
-//! // What the caretaker unpacks from its three argument words.
-//! let mut buf = [0u8; grant::MAX_NAME];
-//! let n = grant::unpack_name(lo, hi, grant::spec_len(spec), &mut buf);
-//! assert_eq!(&buf[..n], b"report.txt");
-//!
-//! // A read-only grant is not a policy that could have said yes, so a write gets EROFS.
-//! assert!(!grant::is_writable(spec));
-//! assert_eq!(grant::EROFS, 30);
-//!
-//! // A name too long to travel in two words is refused by the caller, not truncated on the wire.
-//! assert!(!grant::fits(b"a-name-longer-than-sixteen-bytes"));
-//! ```
-//!
-//! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review). Renamed from
-//! `fs_proto`: spell out the contraction fully. The suffix then became `_protocol` at milestone 265
-//! (calef, 2026-09-05), which spells out the other truncation in the same name; the stem and the
-//! 2026-08-23 ruling are untouched.
+//! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review), renamed from
+//! `fs_proto`; `_protocol` per calef's 2026-09-05 ruling.
 
 #![no_std]
 
@@ -180,6 +63,23 @@ pub const fn reply_err(errno: i32) -> i64 {
 
 /// The errno behind an error reply, or `None` if the reply is a (non-negative) success. The inverse
 /// of [`reply_err`], for a client turning a wire error back into an `ErrorKind`.
+///
+/// # Examples
+///
+/// One word, no flag bit: a length and an errno come out of the same register.
+///
+/// ```
+/// use filesystem_protocol::{reply_err, reply_errno};
+///
+/// // A READ that moved 4096 bytes, and a READ at end of file. Both are results.
+/// assert_eq!(reply_errno(4096), None);
+/// assert_eq!(reply_errno(0), None);
+///
+/// // ENOENT, mapped once at the server's serve loop and nowhere else.
+/// let wire = reply_err(2);
+/// assert_eq!(wire, -2);
+/// assert_eq!(reply_errno(wire), Some(2));
+/// ```
 pub const fn reply_errno(r0: i64) -> Option<i32> {
     if r0 < 0 { Some((-r0) as i32) } else { None }
 }
