@@ -25,7 +25,7 @@ It is a rename with a decided target vocabulary and no open question.
 What the work is. DECISIONS §113 (eleven kernel object and identifier names move from contraction
 or borrowed jargon to the plain, standard term) was decided by calef on 2026-08-23, after he said the
 old names *"are clearly not working"* because he had repeatedly had to ask what they meant. The code
-was renamed: `kernel/src/cap.rs` carries `ThreadControlBlock(ThreadId)`.
+carries the new names: `kernel/src/cap.rs` has `ThreadControlBlock(ThreadId)`.
 
 **The prose was not.** Measured 2026-09-03: 115 occurrences of the retired names across 36 files
 under `notes/` and `design/roadmap/`, excluding §113 itself, which documents the rename and should
@@ -56,8 +56,8 @@ and 36 files is a lane rather than an aside.
 
 DECISIONS §113 moved eleven kernel object and identifier names from contraction or borrowed jargon
 to the plain, standard term, decided by calef on 2026-08-23 after he said the old names "are clearly
-not working" because he had repeatedly had to ask what they meant. The code was renamed and the prose
-was not, which produces the worst of both: the reader now meets two vocabularies, the identifiers say
+not working" because he had repeatedly had to ask what they meant. The code carries the new names and
+the prose does not, which produces the worst of both: the reader now meets two vocabularies, the identifiers say
 `ThreadControlBlock` and the explanations say `Tcb`, and nothing tells them these are the same thing.
 That is §113's own reason for existing, inverted, and it is measurable rather than a matter of taste.
 Nothing caught it because no gate reads prose for retired identifiers: `script/lint` checks that

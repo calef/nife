@@ -5,9 +5,6 @@ built: 2026-09-16
 ---
 # 305. The six kernel confinement rows get a falsification a machine can replay
 
-Built 2026-09-16. Minted 2026-09-16 by the maintainer. *(Number provisional until the
-merge queue lands it.)*
-
 ## The finding this started from is that the blocker had already been removed
 
 `design/fatal-risks/README.md`'s risk 7, the claim that the confinement claim is false, says in the entry a

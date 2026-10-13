@@ -24,8 +24,7 @@ calef answered "Yes" to both as stated below. Recorded as
 [§261 (PMCCFILTR_EL0 is zero on every aarch64 board, and a cycle read carries its meaning)](../decisions/0261-pmccfiltr-el0-is-zero-on-every-aarch64-board-and-a-cycle-read-carries-its-meaning.md)
 (number provisional).
 
-Decision A: A1, zero on every aarch64 board. It supersedes the 2026-09-19 ruling "wait for
-argon's firmware value". The reason: `PMCCFILTR_EL0`'s reset value is architecturally UNKNOWN and
+Decision A: A1, zero on every aarch64 board, not argon's firmware value. The reason: `PMCCFILTR_EL0`'s reset value is architecturally UNKNOWN and
 firmware-dependent, so argon's value says what argon's firmware does and what seL4's TX1 figures
 were measured under. It cannot set nife's policy. The kernel writes `0` (EL0 and EL1 counted, EL2
 not), consistent with riscv64 and x86_64, which both count user and kernel. argon's firmware value is still read at first boot, for milestone 25
@@ -53,8 +52,7 @@ later syscall-surface fork and is not built.
 
 ## Decision A: what `PMCCFILTR_EL0` counts
 
-Superseded on 2026-10-07 (UTC) by A1, above. The 2026-09-19 (21:34 UTC) ruling it replaced was to
-wait for argon's firmware value and match it.
+The ruling is A1, above. This section holds the options as they were laid out.
 
 ### What is being decided
 

@@ -10,11 +10,9 @@ needs_person: yes
 ---
 # 347. Offer the two RedoxFS patches upstream
 
-**Refused 2026-10-07 (UTC), recorded here by lane/redoxfs-upstream-records.** §46 (Thin primitives or whole subsystems; we write everything in between)'s 2026-10-04 amendment had already decided it: *"Redox is a source we consume and never contribute to ... A patch we need is carried here (§34 (RedoxFS is the primary filesystem), `script/vendor-verify`), never offered upstream."* Redox's own policy refuses AI-generated contributions, and calef ruled on pull request #1806 (2026-10-07) that where a project bans AI work nife sends bug reports only, no code. The two patches stay in `patches/` as carried divergences. Calef ruled on #1815 (2026-10-07) that bug reports to Redox are allowed (disclosed, each approved by calef, security findings privately first) and that no code or patches go; a report about the broken `no_std` build is therefore allowed and is not this milestone. §176 (offering the RedoxFS patches upstream) is SUPERSEDED by §46 on the same ruling. The premise check and text below are as filed.
+**Refused (calef, 2026-10-07 UTC).** §46 (Thin primitives or whole subsystems; we write everything in between) decides it: *"Redox is a source we consume and never contribute to ... A patch we need is carried here (§34 (RedoxFS is the primary filesystem), `script/vendor-verify`), never offered upstream."* Redox's own policy refuses AI-generated contributions, and calef ruled on pull request #1806 (2026-10-07) that where a project bans AI work nife sends bug reports only, no code. The two patches stay in `patches/` as carried divergences. Calef ruled on #1815 (2026-10-07) that bug reports to Redox are allowed (disclosed, each approved by calef, security findings privately first) and that no code or patches go; a report about the broken `no_std` build is therefore allowed and is not this milestone. The premise check and text below are as filed.
 
-Filed 2026-09-03 as an unnumbered proposal by the milestone 247 sweep,
-from milestone 32's block; numbered 2026-09-19 by milestone 433. **Premise re-checked 2026-09-19 and
-it holds.** `patches/` still holds exactly `redoxfs-no-std-vec-import.patch` and
+**Premise checked 2026-09-19, and it held.** `patches/` still holds exactly `redoxfs-no-std-vec-import.patch` and
 `redoxfs-no-std-create-uuid.patch` beside its README, which still opens by saying each exists to be
 upstreamed and still describes the submission route in the future tense (*"fork on
 gitlab.redox-os.org, `git am` this file on a branch, push, open the MR"*). No merge request is

@@ -19,7 +19,7 @@ absolute self-references that have to become position-independent first.
 A lane can start today. OVMF under QEMU reproduces the whole problem, which is how
 milestone 195 found it, and nothing here waits on the OptiPlex.
 
-**In brief.** `PHYS_START` for the x86_64 kernel moved from 1 MiB to 32 MiB so the image would clear
+**In brief.** `PHYS_START` for the x86_64 kernel is 32 MiB rather than 1 MiB so the image clears
 the low memory OVMF reserves for itself. That buys a larger gap between us and the firmware; it does
 not make the image safe at any other address. Making it physically relocatable means the loader can
 place it wherever the memory map actually has room, and the blocker is `.boot`: the 32-bit
@@ -51,8 +51,8 @@ a 64-bit one."*
 
 ## Index row
 
-`PHYS_START` for the x86_64 kernel moved from 1 MiB to 32 MiB so the image would clear the low
-memory OVMF reserves for itself, which buys a larger gap between us and the firmware and does not
+`PHYS_START` for the x86_64 kernel is 32 MiB rather than 1 MiB so the image clears the low memory
+OVMF reserves for itself, which buys a larger gap between us and the firmware and does not
 make the image safe at any other address. The claim the current arrangement rests on is that 32 MiB
 is free on every machine that boots this kernel, and nothing verifies it; milestone 195's own `BUGS`
 says none of the UEFI path is proved on a Dell, OVMF is not a vendor firmware, and whether the

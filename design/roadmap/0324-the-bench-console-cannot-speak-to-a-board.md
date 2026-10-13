@@ -5,10 +5,8 @@ built: 2026-09-19
 ---
 # 324. The bench console cannot speak to any of the three boards
 
-Minted 2026-09-18 by calef, promoting a cluster rather than its members: four proposals from three
-lanes, all about the same tool. *(Number provisional until the merge queue lands it.)* Parts 1 and 4
-landed first (`milestone/324-board-console-write-mode`), parts 2 and 3 the same day
-(`milestone/324-sweep-recogniser-and-board-profile`). All four are in. What no part of this
+Four proposals from three lanes were about the same tool, and this block carries them as one. All
+four parts are built. What no part of this
 milestone could close is stated in each part and again below: **no byte of the writing mode has
 reached a board, and no job-mix sweep has been watched on one.**
 
@@ -49,8 +47,7 @@ measurement. Its prologue stays unwritten until a board prints something.
 
 Answering part 4 first made part 1 trivial, which is the cluster earning its keep. Two premises had
 decayed between filing and promotion, as two had in milestone 323 (the falsification record is
-incomplete in five ways), and the title was renamed because its first half was already false. The
-working is in [`rulings.md`](0324-the-bench-console-cannot-speak-to-a-board/rulings.md).
+incomplete in five ways). The working is in [`rulings.md`](0324-the-bench-console-cannot-speak-to-a-board/rulings.md).
 
 ## Why a cluster
 
@@ -89,8 +86,7 @@ being a bench session and being a job.
    milestone 216 (nothing in this tree can read a board).
 4. BUILT 2026-09-19. It cannot type at a board, and it should be able to. A named mode, its bytes
    logged, not a keyboard: `--stop`, `--stop-after <n>`, and the rewritten invariant.
-   `notes/board-console.md` carried the ruling beside each limitation it supersedes, and those
-   sentences are now true rather than pending. Found by milestone 247's sweep, from milestone 216's
+   `notes/board-console.md` states each limitation as the ruling has it. Found by milestone 247's sweep, from milestone 216's
    block.
 
 ## What landed, 2026-09-19: parts 1 and 4

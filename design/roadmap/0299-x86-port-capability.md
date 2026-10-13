@@ -5,9 +5,8 @@ built: 2026-09-15
 ---
 # 299. The x86 port-range capability: the serial console becomes a userspace driver
 
-Built 2026-09-15. Minted the same day by calef, who reversed DECISIONS §121 and ruled
-option 1, the port-range capability, straight rather than sequencing through §149's kernel thread.
-*(Number provisional until the merge queue lands it.)*
+calef ruled option 1, the port-range capability, straight rather than sequencing through §149 (may
+the kernel answer on an endpoint)'s kernel thread (2026-09-15).
 
 What was built. `Object::PortRange(base, count)` on the capability surface (semantics recorded in
 DECISIONS §152, provisional), enforced by the **lazy** TSS I/O-bitmap write on the context switch
@@ -18,7 +17,7 @@ switch), and a holder crossing writes only the bits that move, not the 8 KiB the
 (`PortRange::REVOKE`, and the kernel's own whole-machine sweep) deletes the capability, clears the
 cached grant, and resets the core's TSS, so a revoked holder faults on its next `in`/`out`. The x86
 console and input drivers are userspace processes holding COM1's `(0x3F8, 8)` ports, delegated by the
-progenitor; `swish` reaches an interactive prompt on x86_64 over serial, its console served by the
+progenitor. `swish` reaches an interactive prompt on x86_64 over serial, its console served by the
 userspace driver's `out`, with zero processes trapping (the milestone-268 gap closed). Two
 load-bearing tests pass under QEMU (`kernel/src/user/x86_port_tests.rs`): a non-holder faults on `out`
 (and a holder's grant does not leak across the switch to it), and a revoked holder faults on its next
@@ -30,7 +29,7 @@ does not yet route a device line (COM1's legacy IRQ 4) to a userspace waiter: th
 self-directed vectors to a driver today (`kernel/src/arch/x86_64/exceptions.rs`). Output (the prompt,
 and everything the shell prints) is unaffected and interrupt-independent. Interrupt-driven x86 input,
 which routes IRQ 4 through the IO APIC to the input driver's `Irq` capability and lets it block, wants
-its own milestone; the register layout it will use is already in `components/src/input.rs`'s x86 arm.
+its own milestone. The register layout it will use is already in `components/src/input.rs`'s x86 arm.
 
 ## What this is
 
@@ -52,7 +51,7 @@ Genode and L4Re.
 2. TSS I/O-bitmap enforcement on the context-switch path, the LAZY form. DECISIONS §121's own
    refinement (2026-08-25) is binding here: do **not** write the bitmap on every switch. Set the
    TSS `iomap_base` to a real bitmap only when a thread that holds a port capability is on either
-   side of the switch; every other thread switches with `iomap_base` pointing past the segment limit
+   side of the switch. Every other thread switches with `iomap_base` pointing past the segment limit
    (no bitmap, all ports denied at ring 3). In a system where realistically one process holds a port
    capability, that is near-zero cost for the overwhelming majority of switches. The naive
    always-write was measured at ~2,682 ns/switch release (`tss_iomap_switch`, notes/benchmarks.md);
@@ -86,11 +85,11 @@ architectures, no scope note.
 ## What this does not do
 
 - **It does not touch the mapping-based capability for MMIO devices.** This adds a second device
-  capability for the one class that has no page; PCI/PCIe devices are unchanged.
+  capability for the one class that has no page. PCI/PCIe devices are unchanged.
 - **It does not revive §121 option 3** (the I/O-port broker, a syscall per register access), refused
   on its measured cost and not reopened.
 - **It does not require xenon.** The real-hardware confirmation on xenon's COM1 is a later bench
-  step, not a gate on this build; QEMU enforces the same TSS mechanism.
+  step, not a gate on this build. QEMU enforces the same TSS mechanism.
 
 ## BUGS
 
@@ -107,7 +106,7 @@ architectures, no scope note.
 - **Recorded.** x86 input polls COM1 rather than blocking on the receive interrupt, recorded in
   `components/src/input.rs`'s x86 `uart` arm and this block's own scope note. COM1's legacy IRQ 4 is
   not yet routed to a userspace waiter (the kernel delivers only self-directed vectors to a driver,
-  `kernel/src/arch/x86_64/exceptions.rs`); wiring it needs the device-line delivery path (mask on
+  `kernel/src/arch/x86_64/exceptions.rs`). Wiring it needs the device-line delivery path (mask on
   fire, `irq_route`/`irq_notify`, EOI, unmask on ACK) that x86 has for the timer but not yet for a
   device. Output, and the prompt, are interrupt-independent, so this is a limitation of input
   latency and CPU spent polling, not of whether the milestone's claim holds.

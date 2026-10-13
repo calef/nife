@@ -9,16 +9,9 @@ needs_person: yes
 ---
 # 321. A corpse that did not park, on four real cores
 
-Minted 2026-09-17 by the maintainer, from
-`design/roadmap/proposals/a-corpse-that-did-not-park-on-four-real-cores.md`, which this block
-replaces. *(Number provisional until the merge queue lands it.)* Worked 2026-09-17: the transcript
-now separates all three readings, and the failure did not reproduce on anything patagonia can run.
-
-This line used to say `NONE`, on the reasoning that investigating needs no
-hardware and that *whether reproducing does* was the first thing to find out and was itself the
-finding. That question is now answered, and the answer is yes, so the gate moves: see "What the
-reproduction attempt established" below. The investigating half is done and is what this block
-delivered.
+The transcript separates all three readings, and the failure does not reproduce on anything
+patagonia can run. Reproducing it needs four-core x86_64 silicon: see "What the reproduction
+attempt established" below. The investigating half is done and is what this block delivered.
 
 This is the one failure from xenon's 2026-09-17 bench evening that is not an assertion written
 against QEMU. The other three were: a q35 chipset id, an eight-yield window, and a one-bus PCI

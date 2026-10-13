@@ -1,7 +1,7 @@
 # Parts 1 and 2, 2026-09-19: an appendix to milestone 326
 
-Moved from [milestone 326 (nobody has been assigned to turn a mutation score upward)](../0326-turn-a-mutation-score-upward.md)
-on 2026-10-12 (UTC) under §212 (a prose budget). It is the block's record of parts 1 and 2: the
+An appendix to [milestone 326 (nobody has been assigned to turn a mutation score
+upward)](../0326-turn-a-mutation-score-upward.md). It is the block's record of parts 1 and 2: the
 per-crate table, what moved the numbers, what the part did not find, and the one behavior question
 it recorded.
 
