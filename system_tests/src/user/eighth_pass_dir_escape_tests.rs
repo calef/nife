@@ -20,10 +20,9 @@
 use filesystem_protocol::dir;
 use filesystem_protocol::fixture::{dirscape as esc, navscape as nb, tree};
 
-use super::dir_capability_tests::{assert_verdict, attack_a_subtree, blk_server_image};
+use super::dir_capability_tests::{assert_verdict, attack_a_subtree};
 use super::shell_navigation_tests::{ALWAYS, navigate};
 use super::*;
-use crate::sched;
 
 /// **A grant that drops one right must lose exactly that right's capability and no other.**
 ///
