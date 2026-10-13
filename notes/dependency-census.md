@@ -21,7 +21,7 @@ is observable, so the census reads all of it.
 |---|---|
 | References classified | **3,381** (after removing 310 duplicates) |
 | Of those, genuine prerequisites | **128** |
-| Everything else | context, follow-on, or superseded |
+| Everything else | context, follow-on, or replaced |
 | Dependency edges **declared** in `Gate:` fields | **15** |
 
 The headline is the ratio, not the rate. 3.8% of references are prerequisites, which sounds like

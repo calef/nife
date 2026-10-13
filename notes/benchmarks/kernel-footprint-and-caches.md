@@ -91,7 +91,7 @@ moment xenon boots: `CPUID` leaf 4 reports cache size, ways and line size per le
 tour already decodes `CPUID`. Until then treat the asterisked cells as a strong prior rather than a
 measurement.
 
-xenon was missing from this table until 2026-09-04, and it is the binding case. It pairs the
+xenon is the binding case. It pairs the
 smallest L1i of the three targets with the largest fastpath: x86_64 measured 8,404 bytes against
 riscv64's 7,174 and aarch64's 9,156 at the time. If any machine tests Liedtke's argument first, it
 is this one. The omission has the same shape the [gate appendix](fastpath-footprint-gate.md) records

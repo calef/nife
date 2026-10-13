@@ -83,7 +83,7 @@ ruling under *The escape's home*.
 The sibling that already does it right is one component over: `name_resolver` keys its windows
 by the badge's grant index and refuses a second attach at a granted window. Its refusals are
 silent, safe there because the scoping makes every attach failure the caller's own. The first
-fix-shape ruling (03:50Z) was that shape, superseded the same day (calef, 2026-10-07 UTC,
+fix-shape ruling (03:50Z) was that shape; the ruling in force (calef, 2026-10-07 UTC,
 15:04Z, PR #1798): each socket is its own capability, built as milestone 649 in #1817 (merged
 2026-10-07 UTC). §255 (each socket is its own capability) carries both rulings.
 

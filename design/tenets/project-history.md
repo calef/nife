@@ -1,5 +1,7 @@
 # What a reader meets in an old record: two renames and one pivot
 
+<!-- history: exception. Reason: this page exists to decode the old names and framing a reader meets in older records and git log, so the renames are its subject (2026-10-13 UTC). -->
+
 *Appendix to [`AGENTS.md`](../../AGENTS.md), which keeps the operational fact that `CLAUDE.md` is a
 symlink to it. This file carries the three pieces of history a reader needs exactly once, on the day
 they open a record that uses a name or a framing the project has left behind. Moved here 2026-09-24

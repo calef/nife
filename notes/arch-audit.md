@@ -190,7 +190,7 @@ fork. §9 (locking: IrqSafeMutex, plus a discipline) already establishes `IrqSaf
 for this exact operation, and 16b added `rank::IOMMU` without escalating, so a rank is precedented.
 
 `enable` and `disable` now share one helper that holds an `IrqSafeMutex` across the read-modify-write,
-at rank `rank::IRQ_CONTROLLER` (renamed from `rank::GIC`). It must be IRQ-safe, because `disable`
+at rank `rank::IRQ_CONTROLLER`. It must be IRQ-safe, because `disable`
 runs in the handler and a plain spinlock would deadlock one hart against itself. Both icount
 baselines are byte-identical, so nothing hot was locked. No test can catch the race itself; the tests
 pin the neighbor-preserving read-modify-write and the irqsave behavior instead. Why the lock is that

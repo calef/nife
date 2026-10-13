@@ -1,7 +1,7 @@
 # The directory capability (milestone 47)
 
-Milestone 47's keystone. A directory used to be one authority: hand a program somewhere to
-write its logs and you handed it the power to read everything already there and to delete it.
+Milestone 47's keystone. Without it a directory is one authority: hand a program somewhere to
+write its logs and you hand it the power to read everything already there and to delete it.
 This note is the design that splits that into separable rights, the verb that hands a *directory*
 back rather than bytes, and the process that makes a subtree grant checkable from outside the
 program being confined.
@@ -103,7 +103,7 @@ handle onto a directory's raw bytes.
 
 ## Handle 0 is the bound directory
 
-The bound directory used to be a private field the server consulted. It is now an ordinary entry in
+The bound directory is an ordinary entry in
 the handle table at `fs::ROOT`, which is 0 because every client that ever sent an `OPEN` already
 sent 0 in that field and meant exactly this. So there is no separate "current directory" for a verb
 to forget to consult: every name-taking verb resolves under a handle, always. File handles start at

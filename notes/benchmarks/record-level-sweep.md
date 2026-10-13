@@ -25,8 +25,8 @@ Nothing can ask for a level, so the script sets one. It edits `RECORD_LEVEL` in
 `vendor/redoxfs/src/lib.rs`, rebuilds, runs, and puts the constant back. It refuses to start if that
 file is already dirty, so it cannot restore over an edit it did not make. `cargo xtask bench
 --release --real --smp` regenerates the RedoxFS image on every run, so each point is a whole
-filesystem built at that level. The tree's committed value is unchanged at 5; this sweep measures and
-does not decide. *(Superseded 2026-08-18 by milestone 138 step 1, which set `RECORD_LEVEL` to 1; see
+filesystem built at that level. This sweep ran against a committed value of 5, and it measures and
+does not decide. *(Step 1 of milestone 138 (close the read gap) sets `RECORD_LEVEL` to 1; see
 [steps 1 and 3](read-path-record-and-request-size.md).)*
 
 The machine was loaded, so the control does more here than select rounds. Twenty passes ran over the

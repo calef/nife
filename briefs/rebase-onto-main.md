@@ -52,7 +52,7 @@ already on `origin/main` keeps the number, and this branch's moves to the lowest
 the highest on `main`. Rename the file with `git mv` and change its H1 to match. The commit message
 says it was renumbered and why; the file does not, per §298 (a document states what is in force now).
 
-### 5. A heading was renamed on `main` while this branch inserted prose next to it
+### 5. `main` renamed a heading while this branch inserted prose next to it
 
 Git flags the
 adjacency and it reads like a disputed heading. Take `origin/main`'s heading line, keep this
@@ -122,8 +122,8 @@ your report.
 
 ### 9. A block this branch added still has an unpadded number
 
-On 2026-10-07 (UTC) every block under `design/roadmap/` was renamed to a four-digit number
-(`7-x.md` became `0007-x.md`) in a commit of pure renames, so an edit to an existing block rebases
+Every block under `design/roadmap/` has a four-digit number (`0007-x.md`, not `7-x.md`), given on
+2026-10-07 (UTC) in a commit of pure renames, so an edit to an existing block rebases
 across it by rename detection and needs nothing. A block this branch *added* keeps the old name and
 `script/lint` fails on it. Rename it, and any appendix directory beside it, then fix the links:
 

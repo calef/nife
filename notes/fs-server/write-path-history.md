@@ -119,7 +119,7 @@ it should have done, since there was no aliasing bug to fix.
 Both are worth recording as dead. Neither was the cause, and a disproved guess left standing sends
 the next reader down a road already walked.
 
-Heap exhaustion and accumulated mount state: dead, measured. The note used to say a used image
+Heap exhaustion and accumulated mount state: dead, measured. The hypothesis was that a used image
 carries a higher header generation, a longer allocator log and more live tree blocks. So the second
 mount would drive the FS server past its 8 MiB cap (`HEAP_MAX` in `redoxfs_server.rs`, matched by
 `FS_BUDGET_PAGES` in `kernel/src/user.rs`). It does not. `redoxfs_server/src/bin/second_mount.rs`
