@@ -25,7 +25,7 @@ process holding two labeled directory capabilities can resolve `/a/...` against 
 root to pop. That mechanism is deliberately stateless: every lookup is absolute and labeled, and a
 bare relative name (no leading `/`) is refused outright, because "a two-grant holder has two roots
 and no reason to prefer either" (`TwoRoots::resolve`'s own doc comment) is exactly the shadowing
-question [milestone 47](../roadmap/0047-navigation-and-naming.md)'s four open questions leave
+question [milestone 47](../roadmap/0047-navigation-and-naming/path-and-completion.md)'s four open questions leave
 undecided.
 
 The milestone's own text left "wiring a second grant into the real interactive boot" as calef's
@@ -79,7 +79,7 @@ already established for cspace ordering. No new precedent needed.
 
 ## What this does not decide
 
-[Milestone 47](../roadmap/0047-navigation-and-naming.md)'s four open questions (unions and shadowing
+[Milestone 47](../roadmap/0047-navigation-and-naming/path-and-completion.md)'s four open questions (unions and shadowing
 across more than two labeled sources, enumeration, the compile-time-set-to-runtime-lookup gap,
 whether `$PATH` survives as a string) remain exactly as open as they were. This decision is
 narrower than any of them: two disjoint, individually-labeled trees, one position at a time, no
