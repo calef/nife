@@ -100,6 +100,26 @@ fn a_package_is_fetched_through_the_index_by_name_over_tls_and_judged_by_its_dig
     let text = core::str::from_utf8(&got[..len]).unwrap_or("<not utf-8>");
     crate::println!("    package_fetch_exerciser printed {len} bytes:\n{text}");
 
+    every_step_was_printed_in_order(text);
+    the_rebinding_probe_reached_no_private_peer(text);
+    assert!(
+        super::wait_for(|| !crate::sched::is_thread_present(run.thread)),
+        "package_fetch_exerciser never left",
+    );
+    assert_eq!(
+        USER_FAULTS.load(Ordering::Relaxed),
+        faults_before,
+        "package_fetch_exerciser trapped instead of exiting",
+    );
+    let _ = crate::sched::reclaim_region(spawned.frames);
+    run.give_back("package_fetch_exerciser");
+    w.held
+        .release_or_fail("net_stack and name_resolver, for the package index client");
+}
+
+/// The exerciser's report, `text`, holds every step's line in order: the index, its refusals,
+/// the fetch, the redirect probes, and the final line last.
+fn every_step_was_printed_in_order(text: &str) {
     let arch = crate::arch::NAME;
     let mut passed_over = [0u8; 128];
     let mut fetched = [0u8; 64];
@@ -160,11 +180,16 @@ fn a_package_is_fetched_through_the_index_by_name_over_tls_and_judged_by_its_dig
             }
         }
     }
+}
+
+/// The rebinding probe (milestone 871), read from the exerciser's report `text`.
+fn the_rebinding_probe_reached_no_private_peer(text: &str) {
+    let arch = crate::arch::NAME;
     // The rebinding probe (milestone 871): where the client's refusal of the listed location
     // under rebind.basalt.test landed. The line must exist, and its reason must not be a TLS
     // error: only a TLS server that answered can produce one, and the only TLS peer in slirp is
     // the private one the address check refused to name. Sought in the whole report, because it
-    // prints between the lines above and the final "done".
+    // prints between the lines `every_step_was_printed_in_order` reads and the final "done".
     let mut rebind = [0u8; 104];
     let prefix = format_into(
         &mut rebind,
@@ -197,19 +222,6 @@ fn a_package_is_fetched_through_the_index_by_name_over_tls_and_judged_by_its_dig
          so the name server did not answer this boot's first query public. Is NIFE_BOOT_TAG \
          exported by this architecture's runner?",
     );
-    assert!(
-        super::wait_for(|| !crate::sched::is_thread_present(run.thread)),
-        "package_fetch_exerciser never left",
-    );
-    assert_eq!(
-        USER_FAULTS.load(Ordering::Relaxed),
-        faults_before,
-        "package_fetch_exerciser trapped instead of exiting",
-    );
-    let _ = crate::sched::reclaim_region(spawned.frames);
-    run.give_back("package_fetch_exerciser");
-    w.held
-        .release_or_fail("net_stack and name_resolver, for the package index client");
 }
 
 /// `parts` joined into `buf`, which a `no_std` test has instead of `format!`.
