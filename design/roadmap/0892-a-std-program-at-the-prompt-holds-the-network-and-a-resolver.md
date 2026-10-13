@@ -14,8 +14,9 @@ needs_person: no
 not foresee is built under them. Item 4 is met: its positive and refusal halves are proved in the
 kernel harness, which calef accepted as the proof (ruling B on #2011, 2026-10-12 UTC). He approved
 the forget verb as written (Q2, "Approve", the same day), and ruled item 3's fork, also the same
-day ("yes, record c"). What is left is building item 3 for installed programs, under "Item 3,
-ruled" below.
+day ("yes, record c"). Then he ruled that a manifest declares the network beside its zones and
+the owner grants both at install ("a", the same day). What is left is building both for installed
+programs, under "Item 3, ruled" and "The network at install, ruled" below.
 
 *(Promoted from the proposal pile on 2026-10-12 (UTC) by lane
 `maintainer/promote-proposals`; number provisional until the merge queue lands it. Title
@@ -117,9 +118,40 @@ What that leaves to build:
    "runs as a service" line to the same listing, and milestone 809 (the package client becomes a program)
    owns `jig install`. The listing belongs in one of them, and this item waits on it.
 
-Not covered by the ruling: an installed `std` program cannot declare the network at all yet
-(`grant_plan::image_can_carry` refuses it), so a zone is useless to one until that changes. Whether
-the network is granted at the same confirmation is the next question for calef.
+## The network at install, ruled 2026-10-12 (UTC)
+
+The ruling above left a gap: an installed `std` program could not hold the network, so a zone did
+nothing for one. calef was asked whether a manifest declares network use beside its zones, shown at
+install before the owner approves (a), or whether the network stays out of manifests and is granted
+by hand after install (b). He answered "a". The reason he accepted: what a program may reach
+differs by program, since a weather app that calls one API is not a browser. The network is the
+same kind of grant as a zone, so it belongs in the same declaration and the same confirmation.
+
+The question as put was loose on two points. The ruling reads as follows with both fixed:
+
+- The zones are resolver zones, the names a program may look up. They are not filesystem zones;
+  directories are a separate grant under §208 (installing a package is granting it, and the
+  activation set is versioned), and milestone 911 (scripted installs grant only what the owner's
+  approval file allows) lists them apart.
+- A manifest can already declare the network. `Manifest::network` is one flag (byte 34 of
+  `manifest_note`), and a program in the image table gets it today. What is missing is the install
+  path: `grant_plan::image_can_carry` refuses installed bytes whose note sets it, and nothing at
+  install lists it.
+
+So "network use" means the existing grant: a client view of the network stack carrying `WRITE`,
+at `NETWORK_SLOT` (slot 10) for a native program and slot 2 for a `std` one. A `std` program also
+gets the socket frames' budget at slot 3, as item 2 mints it for `jig`. It connects out and cannot
+listen (`socket_protocol::NO_LISTEN_GRANT`).
+
+What that leaves to build, beside item 3's four pieces and in the same places:
+
+1. The progenitor endows the network to an installed program only when its activation-set entry
+   records the owner's grant. `image_can_carry` keeps refusing bytes with no such entry.
+2. The granted network in the activation set's entry, in the same grant record as the zones, so an
+   owner's narrowing and 911's approval file reach it the same way.
+3. The line at install, "reaches the network (connects out)", in the one confirmation with the
+   zones. Milestone 910 (a package declares a service) builds that confirmation for every grant a
+   manifest asks for, so this is a line in it rather than a listing of its own.
 
 ## BUGS
 
@@ -131,12 +163,16 @@ the network is granted at the same confirmation is the next question for calef.
 - The spawn service waits on the resolver. A grant or a forget is a `SEND` the resolver takes
   between requests, so a resolve nobody answers (three 15-second waits) delays the next spawn.
 - At most eight resolving jobs at once; a ninth live one is refused rather than queued.
+- The network grant is one flag and bounds no addresses. A program holding it can connect to any
+  address it knows; its zones bound which names it can turn into addresses, not where it connects.
+  A weather app and a browser differ in their zones, not in their network grant.
 
 ## Follow-on
 
 - **Outstanding.** Item 3 for installed programs: the four pieces under "Item 3, ruled".
-- **Outstanding.** Whether an installed `std` program may be granted the network at install, which
-  item 3 needs first. calef's.
+- **Outstanding.** The network at install: the three pieces under "The network at install, ruled".
+- **Milestone 911.** Its approval file's "the network's socket budget" is this grant. That section
+  can cite the ruling here once 911's edits in flight have landed.
 - **Milestone 809.** `jig` resolves the index's host through this badge at item 6.
 
 ## Index row
