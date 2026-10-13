@@ -18,13 +18,11 @@ this needs a person at it. The mechanism, the escape and the reader are built an
 what a host can gate; radon's first answer, from 2026-09-04, is recorded below. See *What was
 built, with the board powered off* below, and notes/soak.md's procedure, whose first four steps are the ones a lane cannot take.
 
-`PARTIAL` rather than `IN-PROGRESS`, chosen deliberately and against the obvious answer. This
-milestone has two phases and they are not the same kind of work: build the mechanism, and run the
-series. The first shipped. The second is a bench session, so there is nothing a lane could pick up
-and no branch to name, which is what `IN-PROGRESS` is for and what its extra rule exists to keep
-honest. Milestone 218 met the same question a day earlier and answered `NOT-STARTED`, correctly,
-because it has exactly one phase and no part of it had happened; here a real artifact exists and
-saying otherwise would make the column lie in the other direction.
+`PARTIAL` rather than `IN-PROGRESS`, deliberately. Building the mechanism shipped; running the
+series is a bench session, with nothing a lane could pick up and no branch to name, which is what
+`IN-PROGRESS` is for. Milestone 218 (every boot of the VisionFive 2 needs a human) answered
+`NOT-STARTED` a day earlier, correctly, because it has one phase and none of it had happened; here a
+real artifact exists, and saying otherwise would make the column lie in the other direction.
 
 In brief. On 2026-09-03 nine boots of radon produced a fifteenfold throughput range, and
 milestone 240's census explained it: rate tracks the number of cores free of grinders and carrying an
@@ -105,9 +103,8 @@ proof and it requires the board.
 
 ## The hazard, designed first, and what each layer buys
 
-The block's own sentence is the requirement: *something must make an unattended loop stoppable
-without physical access.* Four things do, and they are listed strongest-first in AGENTS.md's ladder
-because the ordering is the argument.
+Four things make the loop stoppable without physical access (the requirement above), listed
+strongest-first in AGENTS.md's ladder because the ordering is the argument.
 
 1. The loop exists only in a build that asked for it, by a name carrying the word `reboot`.
    `boot_lottery` was the other candidate and was refused: it names the finding, and the flag is met
@@ -145,8 +142,7 @@ A magic stop character. Refused because it is a thing two programs would have to
 no gain: any byte is strictly easier to send and cannot be got wrong by a person at a terminal.
 
 Rebooting on a failure. The reset is asked for *after* the beat's verdict, and `panic!`
-diverges, so a soak that found something keeps its evidence. A loop that tidied away its own best
-result would be an instrument working against its purpose.
+diverges, so a soak that found something keeps its evidence.
 
 ### The weakest link, named rather than hidden
 
@@ -229,8 +225,8 @@ notes/board-reboot.md.
   person at the keyboard.* `script/board-console` holds the port and cannot send the byte that is
   this milestone's escape, so both the escape and its verification are rung four. A `--stop` mode
   and a `--stop-after <n>` would make each a command. Not done here because it overturns an
-  invariant stated in that script's own header, which makes the shape of it an architect's call. See
-  and it is recorded in the meantime in `notes/board-console.md`'s `BUGS`.
+  invariant stated in that script's own header, which makes the shape of it an architect's call. It
+  is recorded in the meantime in `notes/board-console.md`'s `BUGS`.
 - **Recorded.** *The escape rests on a procedure and not on a mechanism*, in the `BUGS` of
   `kernel/src/soak.rs` and notes/soak.md, and in *The weakest link* above. A UART cannot receive a
   byte it sends, so no mechanism in this kernel can close it; the proposal above is the nearest

@@ -11,6 +11,7 @@ These files carry the evidence its prose budget has no room for.
 - [`moved.md`](moved.md): why `--moved` tells rather than obliges, the four measurements behind
   it, and its cost over history.
 - [`another-medium.md`](another-medium.md): the same defect in a `// SAFETY:` comment.
+- [`first-run.md`](first-run.md): what the gate found on its first run, each wrong record named.
 - [`bugs.md`](bugs.md): every `BUGS` entry in full, including the two that are resolved.
 
 *Name: provisional, minted 2026-10-11 (UTC) by lane/fourth-ten-longest-notes, which split the parent
@@ -28,3 +29,5 @@ names files.
 - `another-medium` Name: provisional, minted 2026-10-11 (UTC) by lane/fourth-ten-longest-notes,
   after the main page's own heading.
 - `bugs` Name: provisional, minted 2026-10-11 (UTC) by lane/fourth-ten-longest-notes.
+- `first-run` Name: provisional, minted 2026-10-13 (UTC) by lane/prose-cap-notes-a, after the
+  parent's own heading, moved under §212's cap. calef names files.

@@ -64,9 +64,8 @@ built" below):
 ## The investigation, 2026-08-27: why "just wire it up" does not work
 
 A lane investigated all three pieces before writing code, and reverted the one piece it did write
-(the grant code below) once the reason became clear. Recorded here rather than only in the pull
-request that carried it (merged with no code changes; the PR is not where a future reader meets
-this).
+(the grant code below) once the reason became clear. Recorded here, not only in its pull request
+(merged with no code changes).
 
 **Finding 1: `BootEndowment` has no room for GPU/keyboard grants as piece 1 describes them
 (mechanical, not a fork).** Counted the actual slots rather than assumed them: aarch64's
@@ -142,8 +141,7 @@ Three shapes, priced. Decided 2026-08-27, calef: A.
   `OP_BYTES`; forward to `line_editor` instead of only feeding its own renderer). Raised in the same
   conversation as an alternative to A/B before the reframing above; superseded by it, since C keeps
   the compositor load-bearing for input in exactly the case that does not need multiplexing at all,
-  the pattern the reframing names as the thing to be wary of. Kept here rather than deleted so the
-  reasoning that ruled it out stays visible.
+  the pattern the reframing names as the thing to be wary of.
 
 Decided: A (calef, 2026-08-27, "Go with option A, build it"). Not merely cheapest; per the
 reframing above it is the design this journey's actual scope calls for, and B's real benefit

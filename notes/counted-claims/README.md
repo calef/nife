@@ -9,6 +9,8 @@ files carry the history its prose budget has no room for.
 - [`the-ceiling.md`](the-ceiling.md): why the ceiling relation exists, how its headroom is
   measured, the `agents-md-lines` ceiling that became a ratchet and was retired, and the auto-fix
   that was refused.
+- [`adding-a-count.md`](adding-a-count.md): the worked example of adding a marked count, with the
+  derivation checked against real shapes and the gate's output on success and failure.
 
 *Name: provisional, minted 2026-10-11 (UTC) by lane/sixth-ten-longest-notes, which split the parent
 under §212 (a prose budget). The directory follows §212's siting default, `notes/X/` beside
@@ -21,3 +23,5 @@ names files.
   the parent's own heading.
 - `the-ceiling` Name: provisional, minted 2026-10-11 (UTC) by lane/sixth-ten-longest-notes, after
   the parent's own heading.
+- `adding-a-count` Name: provisional, minted 2026-10-13 (UTC) by lane/prose-cap-notes-a, for the
+  parent's worked example moved under §212's cap.

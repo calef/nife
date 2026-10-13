@@ -181,55 +181,6 @@ enum Kind {
     Listener,
 }
 
-/// The private ephemeral-port range `net_stack` allocates local ports from, and a **rotating** allocator
-/// over it. The local port must be independent of the socket id: deriving it from the id (the
-/// original bug, found by the `std::net` PAL) means reopening a just-closed id reuses the exact port,
-/// and a TCP connect on a 4-tuple whose slirp flow has not yet cleared stalls in the bounded poll
-/// forever. Advancing monotonically hands out a fresh port each open, so a closed connection's port
-/// is not reused until the whole range has cycled; ports a live socket still holds are skipped
-/// outright. See notes/net/the-outbound-gates.md.
-///
-/// The same failure crosses stacks: a test that starts a fresh `net_stack` on the NIC a previous
-/// one used opened its first connection on 49152 again, the 4-tuple the last stack's first
-/// connection held, and slirp refused it (found 2026-10-09 (UTC) by milestone 801 (packages over the
-/// internet), a resolver's first `CONNECT` failing three runs in four after another resolver's
-/// test). So a stack starts at a point in the range taken from the counter. Milestone 783 (the
-/// network stack seeds its random generator from the clock, and TCP sequence numbers come from it)
-/// is where that seed should come from entropy instead.
-const EPHEMERAL_LO: u16 = 49152;
-const EPHEMERAL_HI: u16 = 65535;
-
-struct PortAllocator {
-    next: u16,
-}
-
-impl PortAllocator {
-    /// Start at `seed`'s point in the range.
-    fn starting_at(seed: u64) -> Self {
-        let span = (EPHEMERAL_HI - EPHEMERAL_LO) as u64 + 1;
-        Self {
-            next: EPHEMERAL_LO + (seed % span) as u16,
-        }
-    }
-
-    /// The next free ephemeral port not currently held by a live socket. Bounded by the range size,
-    /// so it always terminates; with only `SOCKETS` sockets ever live, it never exhausts.
-    fn alloc(&mut self, table: &Table) -> u16 {
-        for _ in 0..=(EPHEMERAL_HI - EPHEMERAL_LO) {
-            let port = self.next;
-            self.next = if self.next == EPHEMERAL_HI {
-                EPHEMERAL_LO
-            } else {
-                self.next + 1
-            };
-            if !table.port_held(port) {
-                return port;
-            }
-        }
-        self.next
-    }
-}
-
 /// The largest datagram/segment buffered per socket.
 const SOCK_BUF: usize = 2048;
 
@@ -299,7 +250,9 @@ fn server(mut dev: Nic, grant_word: u64) -> ! {
 
     // --- Serve the socket contract. One synchronous exchange per request. ---
     let mut table = Table::new();
-    let mut ports = PortAllocator::starting_at(now());
+    // Local ports follow the boot clock, so a stack started after another starts past its ports
+    // (socket_protocol::ephemeral says why that matters to a peer in TIME_WAIT).
+    let mut ports = ephemeral::Ports::new();
     loop {
         let req = receive_request(STACK);
         let (operation, arg, badge) = (req.w0, req.w1, req.badge);
@@ -546,11 +499,11 @@ impl Table {
 fn open_udp(
     sockets: &mut SocketSet,
     table: &mut Table,
-    ports: &mut PortAllocator,
+    ports: &mut ephemeral::Ports,
 ) -> Result<(usize, u64), u64> {
     let entry = table.free().ok_or(REP_ERR)?;
     let handle = sockets.add(udp_socket());
-    let local_port = ports.alloc(table);
+    let local_port = ports.next(instant().total_millis() as u64, |p| table.port_held(p));
     let _ = sockets.get_mut::<udp::Socket>(handle).bind(local_port);
     table.install(entry, handle, Kind::Udp, local_port);
     Ok((entry, REP_OK))
@@ -560,14 +513,14 @@ fn open_udp(
 fn open_tcp(
     sockets: &mut SocketSet,
     table: &mut Table,
-    ports: &mut PortAllocator,
+    ports: &mut ephemeral::Ports,
 ) -> Result<(usize, u64), u64> {
     let entry = table.free().ok_or(REP_ERR)?;
     let handle = sockets.add(tcp::Socket::new(
         tcp::SocketBuffer::new(vec![0u8; SOCK_BUF]),
         tcp::SocketBuffer::new(vec![0u8; SOCK_BUF]),
     ));
-    let local_port = ports.alloc(table);
+    let local_port = ports.next(instant().total_millis() as u64, |p| table.port_held(p));
     table.install(entry, handle, Kind::Tcp, local_port);
     Ok((entry, REP_OK))
 }

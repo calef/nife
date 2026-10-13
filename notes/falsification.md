@@ -31,16 +31,8 @@ attributes. At the thing, never in a registry, which is milestone 115's argument
 a new one: two lanes touching two crates cannot collide, and a computed report cannot drift from the
 tree.
 
-```rust
-/// **Userspace cannot forge a right.** `from_bits` takes an attacker-controlled syscall
-/// register (any u32) and the result holds only defined rights, for every possible input.
-/// Falsification: replayable 
-#[kani::proof]
-fn from_bits_cannot_forge_a_right() {
-    let raw: u32 = kani::any();
-    assert!(Rights::from_bits(raw).is_subset_of(Rights::ALL));
-}
-```
+`crates/capability/src/lib.rs` `from_bits_cannot_forge_a_right` is the worked example: its doc
+comment states the property and ends `Falsification: replayable` with the backticked patch path.
 
 Four states, and the unknown one is first-class, for exactly the reason `script/names` insists
 `unrecorded` stays one: inventing evidence to fill a row puts a false claim in the record whose only
@@ -56,9 +48,9 @@ job is saying what is known.
 A patch lives at `<package>/falsifications/<module.path>.<harness_fn_name>.patch`
 (`crates/capability/falsifications/verification.subset_is_reflexive.patch`,
 `kernel/falsifications/syscall.proofs.the_run_end_is_exact_and_refuses_exactly_what_does_not_fit.patch`).
-Backtick the path in the record. These harnesses live in `#[cfg(kani)]` modules, which
-`script/lint`'s kani-shim pass compiles with `-D warnings`, and `clippy::doc_markdown` rejects a
-bare dotted path in a `///` comment as an unmarked item; that pass is what found it. The reporter
+Backtick the path in the record: `script/lint`'s kani-shim pass compiles these `#[cfg(kani)]`
+modules with `-D warnings`, where `clippy::doc_markdown` rejects a bare dotted path in a `///`
+comment, and that pass is what found it. The reporter
 strips backticks rather than requiring them, so a `//` comment, which has no such rule, can carry
 the same form. Each patch opens with prose above its first `diff --git` line, which `git apply`
 ignores and a reader does not. The prose says which property the patch expects to break, because a
@@ -94,7 +86,7 @@ tree that morning. It costs seconds because a falsification runs one harness.
 ### The cost, measured
 
 `script/verify` is ~650 seconds and this milestone adds nothing to it: the sweep is a separate
-script and a separate workflow, and `script/verify` was not touched.
+script and a separate workflow.
 
 | what | cost |
 |---|---|
@@ -193,21 +185,13 @@ detail is in [falsification/machine-discovery-sweep.md](falsification/machine-di
 
 ## BUGS
 
-- The weekly sweep in CI has swept nothing since it was written, and reported success every time.
-  Found 2026-09-23 by dispatching `falsifications.yml` on a lane branch and reading the log:
-  `script/falsifications --sweep refuses to run on a dirty working tree`, because the step is
-  `script/falsifications --sweep 2>&1 | tee sweep.txt` and the redirection creates `sweep.txt` in
-  the checkout before the script reads `git status`, which counts an untracked file as dirty. The
-  refusal returns 2, `tee` is the last command in the pipe, so the step exits 0 and the job is
-  green. Every scheduled run since 2026-08-31, when the workflow was written, has this in its log.
-  The
-  refusal is the script working exactly as its own BUGS section says it should. What failed is a
-  report that says nothing and looks like a report that says everything, which is the shape this
-  whole note exists to refuse, one level out. The fix is to write the transcript outside the
-  checkout (`$RUNNER_TEMP`), and it is a workflow edit rather than a script one. So it is recorded
-  here rather than taken by the lane that found it (which was confined to
-  `crates/machine_discovery`). Until it is fixed, a `replayable` record older than the last hand-run
-  sweep is a claim nothing has re-checked.
+- ~~The weekly sweep in CI has swept nothing since it was written, and reported success every
+  time~~. Fixed 2026-09-24. The step wrote its transcript (`tee sweep.txt`) into the checkout, which
+  `script/falsifications --sweep` read as a dirty tree and refused, and the pipe made the step exit
+  0. The transcript now goes to `$RUNNER_TEMP`. Found 2026-09-23 by a lane that dispatched
+  `falsifications.yml` and read the log rather than the green tick; the account is
+  `notes/corrections/2026-09-23-the-sweep-that-swept-nothing.md`. *(Corrected 2026-10-13 (UTC): this
+  entry still read as open after the fix merged.)*
 
 - The self-referential sweep cannot be a gate and cannot be repeated cheaply. No check
   distinguishes "asserts through the function under test" from "legitimately asserts agreement",
@@ -224,8 +208,7 @@ detail is in [falsification/machine-discovery-sweep.md](falsification/machine-di
   headroom is 1.8 times one measured maximum, not a proven margin, and a timeout on a busy laptop
   that does not reproduce in CI is load.
 - Nothing forces the ratio upward. A harness may sit at `unfalsified` for ever with `script/lint`
-  green; the backlog reached zero on 2026-10-06 by work, not by gate. The ratio the reporter prints
-  is the number that matters.
+  green; the backlog reached zero on 2026-10-06 by work, not by gate.
 - **A recorded falsification proves the harness catches *that* defect, not the class.** It is a
   floor, and a low one. `derive_never_widens_rights` above is the worked example of exactly this: it
   now carries a green record and a documented blind spot at the same time, both true.
@@ -234,7 +217,7 @@ detail is in [falsification/machine-discovery-sweep.md](falsification/machine-di
   refactored crate re-falsifies often.
 - `--sweep` refuses to run on a dirty working tree. It applies and reverts with `git apply`, and
   a failure mid-run would otherwise leave a deliberate defect in somebody's source. So you cannot
-  sweep while you work, which is a real limit and not a preference.
+  sweep while you work.
 - **`--affected-since` is crate-granular, not harness-granular.** A change anywhere in a harness
   crate's dependency closure re-falsifies every replayable harness in that crate, because nothing in
   this tree knows which lines a harness covers. That is what an IVC would have bought. It fails

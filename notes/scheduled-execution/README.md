@@ -11,6 +11,9 @@ work that page points at but does not need to carry whole.
   time-of-day entries. Both are settled in calendar-grammar-g5.md (2026-09-26, UTC).
 - [calendar-grammar-g5.md](calendar-grammar-g5.md): G5, a calendar grammar in words, checked
   against its sources and priced against G3 and G4. calef ruled "G5 full" on 2026-09-26 (UTC).
+- [calendar-grammar-g5-sources.md](calendar-grammar-g5-sources.md): what each primary source G5
+  was checked against actually says, and the corrections that followed. Moved from
+  calendar-grammar-g5.md under §212 (a prose budget), 2026-10-13 (UTC).
 - [mem-entries.md](mem-entries.md): why a `--mem` grant nests inside its instance's region, why
   one is outstanding at a time, and what that costs the other entries. Moved from the program's
   BUGS by milestone 862 (comments state the constraint as it is now), 2026-10-09 (UTC). The
@@ -29,3 +32,6 @@ stem in it. `calendar-grammar-g5` was minted the same day by the lane `proposal/
   the parent's "Where the set is computed, and why not at the spawn site". calef names files.
 - `next-after-proofs` Name: provisional, minted 2026-10-11 (UTC) by lane/final-longest-notes, for
   what the parent said about `next_after`'s Kani harnesses. calef names files.
+- `calendar-grammar-g5-sources` Name: provisional, minted 2026-10-13 (UTC) by
+  lane/prose-cap-notes-c, for G5's "The premise, checked against primary sources". calef names
+  files.

@@ -18,8 +18,8 @@ improve it. Written by milestone 198 (a package manager, and the trivial install
 rung 3 of the trivial install DECISIONS §157 (a trivial install is a web page,) defines: packages over the internet need a network
 card, and the only one nife can drive is virtio-net, which no physical machine has.
 
-The driver is written and tested under QEMU, which emulates the family xenon has.
-The bench half needs xenon powered, which is the same attended boot milestone 261 needs.
+The driver is tested under QEMU. The bench half needs xenon powered, the same attended boot
+milestone 261 needs.
 
 ## What was built, 2026-10-04
 
@@ -59,7 +59,7 @@ evidence and the confinement finding: [notes/e1000e.md](../../notes/e1000e.md).
 
 ## What was built, 2026-10-05
 
-The I219's PHY half. QEMU's 82574L never takes the PCH path, so xenon is still the test.
+The I219's PHY half. QEMU's 82574L never takes the PCH path, so xenon is the test.
 
 - FreeBSD's SPT-class attach and reset path in `crates/e1000e/src/pch/` (Reuse, below): MDIO
   under the semaphore (`phy.rs`), the NVM read (`nvm.rs`), and FreeBSD's three passes
@@ -77,14 +77,9 @@ No new code. The runbook now expects what xenon already printed (below, and `BUG
 
 ## Bench runbook: one boot on xenon (calef)
 
-Whole, with every failure ending and the Results table: notes/e1000e.md, "calef's bench step on
-xenon". The one command, on patagonia, after that section's peer loop:
-
-```sh
-git log -1 --format=%h && cargo xtask network-bench --stage-only --peer "$P:9494" && cp target/esp-network-bench/EFI/BOOT/BOOTX64.EFI /Volumes/NIFE/EFI/BOOT/BOOTX64.EFI && diskutil eject /Volumes/NIFE
-```
-
-Success ends `network-bench: verdict LEASED-AND-MEASURED`.
+Whole, with every failure ending, the Results table and the one staging command (`cargo xtask
+network-bench --stage-only`, run on patagonia after the peer loop): notes/e1000e.md, "calef's bench
+step on xenon". Success ends `network-bench: verdict LEASED-AND-MEASURED`.
 
 ## Which card xenon has, and the tree disagreed with itself
 
@@ -192,8 +187,7 @@ lines and tests.
 No Rust crate covers the 82574L or any I219, and no crate on crates.io names `e1000e` at all
 (searched for `e1000`, `e1000e`, `i219`, `igb`, `intel-ethernet`).
 
-Would adapting Redox's driver have been better than writing `crates/e1000e`? No, and not now
-either. Its 364 lines map almost one for one onto this crate's 297 lines of register map and ring
+Adapting Redox's driver would not have been better than writing `crates/e1000e`, then or now. Its 364 lines map almost one for one onto this crate's 297 lines of register map and ring
 logic, which is the easy part. It would not have run under QEMU without adding `10d3`, and every
 line that allocates DMA, maps a BAR or waits on an interrupt is a Redox interface that 261's
 shape replaces with a kernel control plane and spawn-time mappings. Its data path also trusts the
@@ -220,9 +214,8 @@ Intel's license heads every adapted file. FreeBSD read at `main`, last `e1000_ic
 gave register offsets and ids as facts on 2026-10-04, and the ids were checked against FreeBSD's.
 
 Recommendation. Keep `crates/e1000e`, recorded reason: no candidate covers QEMU's part or the I219,
-and the code nife wrote is the confinement split and the input validation, which no candidate has.
-Adapt FreeBSD for the I219, with attribution, in two steps: the MAC-register half now (done here),
-and the PHY layer as its own piece (built 2026-10-05, so the one attended bench evening does not
+or has the split and validation above. Adapt FreeBSD for the I219, with attribution: the MAC-register
+half (done here), then the PHY layer (built 2026-10-05, so the one attended bench evening does not
 meet a known gap). Take no dependency; vendor nothing.
 
 ## BUGS

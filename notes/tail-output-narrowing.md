@@ -115,9 +115,8 @@ note's question is narrower and orthogonal: it is asking whether the shell shoul
 wait at all for a tail stage's primary output, not how it should wait on several things once it is.
 
 `man`/`apropos`/`mandb`, already this design's stated prior art for the whole milestone, is
-silent on this specific question because a Unix pager runs as a normal Unix process with an
-inherited tty, so the equivalent question (how does a pager get the screen) never arises there
-either, for the same fd-inheritance reason above.
+silent on this question because a Unix pager runs as a normal Unix process with an inherited tty,
+so the equivalent question (how does a pager get the screen) never arises there either.
 
 ## 4. Is the premise true?
 
@@ -125,8 +124,7 @@ Answered above, first section: yes, verified against `grant_plan::check_chain` a
 transcripts in notes/pipes.md and notes/documentation.md, on both architectures. Nothing here rests on the
 roadmap block's own framing without independent confirmation.
 
-A second premise is worth checking too, because it changes the cost estimate below: does the
-tree already have a way for the shell to learn a child has exited, independent of reading its
+A second premise changes the cost estimate below: does the tree already have a way for the shell to learn a child has exited, independent of reading its
 output stream? Yes, mostly unused today. DECISIONS §26 (the fault endpoint) built a kernel-delivered fault/exit
 endpoint in milestone 22: "when a thread faults or exits, the kernel delivers a message to the
 supervision endpoint its spawner designated," with a reserved capability table slot
@@ -161,13 +159,12 @@ paints the screen after the shell has moved on. The race that remains is one hop
 the bytes into its own address space, not that it has finished its own `CALL` to `line_editor`
 delivering them to the screen. If the shell prints its next prompt (a second, concurrent `CALL` to
 `line_editor`) before the caretaker's trailing `CALL` lands, the two interleave at the terminal
-server, which serializes them but not in a guaranteed order. This is a real, previously-unnamed
-finding of this note (notes/documentation.md flagged the shape of the question but not this specific
-mechanism): the fix, if wanted, is not part of this decision and is deferred to the same list
+server, which serializes them but not in a guaranteed order. This is this note's own finding
+(notes/documentation.md flagged the shape of the question, not this mechanism): the fix, if wanted, is not part of this decision and is deferred to the same list
 DECISIONS §101 already carries (a bound notification the shell could `WAIT` on for "the caretaker's
 queue for this client has drained," which needs the notification object §101 already decided to
 build, later). Absent that, the honest interim is that a page's last line and the next `$ `
-prompt can interleave under contention, which is a display glitch rather than a correctness or
+prompt can interleave under contention, a display glitch rather than a correctness or
 confinement failure: no capability changes hands, no byte is misdelivered to the wrong reader, and
 the caretaker's own BUGS section already documents that it serializes clients with no guarantee
 about *which* pending message the terminal shows first when more than one is in flight.
@@ -202,9 +199,7 @@ decide:
   50: "a shell that wanted a program to print straight to the screen rather than through its own
   result endpoint could hand it over, and would lose the ability to redirect that program at all."
 
-So this is not a fork with unstated options; it is a fork whose options and their costs are already
-distributed across three files, none of which closes it. This note's contribution is collecting them
-against the six questions, adding the fault-endpoint reuse finding (question 4) and the
+This note's contribution is collecting those three files' options against the six questions, adding the fault-endpoint reuse finding (question 4) and the
 caretaker-hop race finding (question 5), neither of which existed in the tree before.
 
 ## What is NOT part of this decision

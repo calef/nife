@@ -25,22 +25,14 @@ resource *is* granting it, a resource you cannot name is a resource you cannot g
 in the authority surface, not in the ergonomics, and that is why it is a milestone rather than
 polish.
 
-```text
-$ echo hello world > "my notes.txt"
-$ wc < "my notes.txt"
-  1 2 12
-$ wc "my notes.txt"
-  1 2 12
-```
-
-The third line is what makes the pair a claim rather than an assertion. `wc "my notes.txt"` is the
+The transcript under [EXAMPLES](#examples) writes `"my notes.txt"`, then reads it twice, as
+`wc < "my notes.txt"` and as `wc "my notes.txt"`, and both answer `1 2 12`. The second read is what
+makes the pair a claim rather than an assertion. `wc "my notes.txt"` is the
 same designation with the operator left out (milestone 31's headline), so if the two disagreed, one
 of them opened something else. Before this milestone neither line existed: the `>` would have
 written to a file called `"my`, and `wc` would have been handed two unplaceable tokens.
 
 ### Quoting delimits a word. It never rewrites one.
-
-This is the decision the whole design turns on, and it is forced by something real.
 
 Every token in this shell is a slice of the line you typed. Nothing is copied and nothing is
 reassembled. That is what lets a shell with no allocator hand a name straight to the grant planner,
@@ -80,19 +72,8 @@ planned against exactly what `secret.txt` is planned against. Quoting is a fact 
 and authority here is a fact about what the shell *holds*.
 
 The narrowing is visible before anything moves, which is the pairing `echo` and `caps` exist for:
-
-```text
-$ echo "*.txt"
-*.txt
-$ caps wc "my notes.txt"
-  wc would grant the new process, and nothing else:
-    cap 0  endpoint  result   report its answer back
-    output   this shell's result endpoint (it reads the bytes and prints them)
-    input    my notes.txt  (this shell reads it and streams it in; the program
-             holds an endpoint, not a file)
-    arg    (none)
-  reading the command is reading its whole authority.
-```
+`echo "*.txt"` prints `*.txt`, and `caps wc "my notes.txt"` previews the grant. Both are in the
+transcript under [EXAMPLES](#examples).
 
 ### `'` and `"` are the same today, and saying which will differ is not this milestone's call
 
@@ -106,15 +87,10 @@ both work and neither would with one form.
 
 ### Where the quote state machine lives, and why there is one of it
 
-Three scanners need to know whether a byte is quoted and none of them can share a tokenizer:
-`grant_plan::tokenize` splits on whitespace, `grant_plan::line::split` splits on `>`, `<` and `|`,
-and `swish::sequence::split` splits on `;`, `&&` and `||`. What they have in common is a two-bit
-state machine, so that is what is shared: `grant_plan::word::Cursor`, whose `step` answers "is this
-byte bare".
-
-The other half is `word::read`, which takes the quotes off one whole token. Keeping the two apart is
-what lets one place refuse `a"b"` for every scanner: the tokenizer's job is where a token *ends* and
-`read`'s is what it *means*.
+One, `grant_plan::word::Cursor`, shared by the three scanners that split on whitespace, on
+redirections and pipes, and on connectors; `word::read` takes the quotes off a whole token, which
+is what lets one place refuse `a"b"`. [`quote-state-machine.md`](swish-language/quote-state-machine.md)
+has why none of them can share a tokenizer.
 
 ## Sequencing splits outermost, and that is a decision
 
@@ -176,20 +152,8 @@ Here the two are genuinely different events and the shell knows which:
 Separating the last two is the answer, and it is worth a number because they answer different
 questions. *"Did my command fail?"* and *"was I able to ask?"* are not the same question, and a shell
 that refuses constantly and by design should be able to say which one happened. A refusal is also
-reproducible in a way a failure is not: the same line refuses again.
-
-```text
-$ least_authority_demo 3 && echo yes
-  a process at EL0 computed 3*3 = 9
-yes
-$ least_authority_demo || echo no
-  least_authority_demo: needs an integer argument
-no
-$ least_authority_demo
-  least_authority_demo: needs an integer argument
-$ echo $?
-2
-```
+reproducible in a way a failure is not: the same line refuses again. The transcript under
+[EXAMPLES](#examples) shows `least_authority_demo` with no argument refused, and `$?` reading `2`.
 
 `&&` and `||` read one bit out of it, because they ask one question and both non-zero answers
 are "no". A third connector that distinguished them would be inventing a control-flow word nobody
@@ -203,7 +167,7 @@ of those is a status. So `$?` is the shell's own reading of what happened to the
 today is all there is.
 
 Inventing a per-program status would mean a `spawnproto` bit, a delegation position, and an edit to
-every program, which is a milestone and not a field. Saying so beats a number nobody produced.
+every program, which is a milestone and not a field.
 
 ### And what it cannot carry
 

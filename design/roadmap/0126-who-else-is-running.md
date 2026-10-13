@@ -11,9 +11,8 @@ consistency with how milestone 123 (somebody else's software, running narrow) ap
 packages. The corpus is chosen by an external ordering and taken in the units that ordering uses,
 which is packages rather than programs we like. Re-swept and condensed 2026-09-26 by
 `milestone/126-procps`, which found three claims here stale and one premise false (see "Corrections,
-2026-09-26"). `free`, `vmstat` and `slabtop` built the same day by `milestone/126-free`. The
-three rows that could not be built without a ruling left the milestone that day: `pmap` from the
-prompt (pull request #1365), `pidwait`'s wait primitive, and `w`.
+2026-09-26"). `free`, `vmstat` and `slabtop` built the same day by `milestone/126-free`; the
+three rows that needed a ruling moved out that day (the table says where).
 
 Renamed `process-tools` by calef on 2026-10-06 (UTC); this account keeps `procps`.
 
@@ -60,7 +59,7 @@ moved and why, and the Kani timings the raise touched, are in
 The raise put the stack-frame and fastpath-footprint gates red; calef chose a free-slot bitmap for
 `CapabilityTable::insert` on #1360, and that note has the before and after numbers.
 
-The sweep changed the proofs' shape. A bit-scan's trip count is data-dependent, so the two
+A bit-scan's trip count is data-dependent, so the two
 table harnesses never terminated under bounded unwinding: a CI shard spent its 45-minute cap on
 them twice, and a local run passed iteration 1669 after four hours. Both now carry
 `#[kani::unwind(4)]`; the soundness argument sits beside each attribute in
@@ -76,13 +75,11 @@ something it was handed.
 On Linux the answer comes from `/proc`, which is ambient. Any process reads it with no grant from
 anyone, so `ps aux` prints every command line on the machine, including the ones with secrets in
 `argv`. Nobody defends that design; they live with it, and `hidepid` exists because enough people
-stopped wanting to. The reader already knows the Unix behavior is wrong, so the claim needs no
-setup.
+stopped wanting to.
 
 `procps` (upstream `procps-ng`) is Priority: important, so it is on essentially every Ubuntu
-install. It is the unit the distribution ships, so it is the
-unit that tests whether the approach generalizes; a port that picked the two programs with the
-tidiest capability story would prove nothing about typical software.
+install. As the unit the distribution ships, it tests whether the approach generalizes; a port that
+picked the two programs with the tidiest capability story would prove nothing about typical software.
 
 Once `/proc` is replaced by a held capability, the package stops being one thing. It stratifies by
 what each program actually needs: reading the process namespace, signaling a process, machine-wide
@@ -192,8 +189,7 @@ how they handle a process that dies mid-enumeration, which `ps`'s two-walk join 
 printing `-` for the figure it missed.
 
 A mistake to avoid: `/proc` as an ambient filesystem. Plan 9 made `/proc` cleaner than Linux did and
-still put process state in a namespace a program reaches by naming rather than by holding. Getting
-this wrong looks like `ps` working beautifully while the confinement is decorative.
+still put process state in a namespace a program reaches by naming rather than by holding.
 
 ## BUGS
 
@@ -217,8 +213,8 @@ this wrong looks like `ps` working beautifully while the confinement is decorati
   never one member picked out of a domain it was not handed. §223 (the process view is the
   supervision domain) decided this.
 - The comparison against Linux is not apples to apples. Ours lists a domain; theirs lists a machine.
-  That is the entire point, and a table putting them side by side without saying so would be
-  dishonest in the way the map "tie" caveat exists to prevent.
+  That is the point, and a side-by-side table that did not say so would break the map "tie"
+  caveat's rule.
 
 ## Follow-on
 

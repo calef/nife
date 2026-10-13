@@ -56,3 +56,37 @@ load-bearing:
 pinned engine, reading the image the run left behind. The two matched names are gone, the two
 unmatched ones are still there, and the unmatched directory still holds its file. What the guest
 displayed is what disappeared.
+
+## The two code paths, as examples
+
+Moved verbatim from the parent's EXAMPLES on 2026-10-13 (UTC) under §212 (a prose budget).
+
+Expand once and grant what was shown, from the shell's side:
+
+```rust
+// components/src/swish/: one expander, two callers
+let shown = nav.expand(b"gl-*.txt")?;              // what `echo` prints
+let e = grant_plan::plan(&spec, holdings(&nav), Expansion::at(0, shown))?;
+assert_eq!(e.dir.unwrap().names, shown);           // and what `rm` would hold
+```
+
+Wire a set grant and attack it:
+
+```rust
+// system_tests/src/user/glob_grant_tests.rs
+let report = fs_service::start_granted_set(
+    blk_server_image(),
+    program("redoxfs_server").unwrap(),
+    program("fs_nameset_caretaker").unwrap(),
+    program("rm").unwrap(),
+    fs_service::SetGrant {
+        dir: tree::GLOBSET,
+        names: &[(b"gl-one.txt", false), (b"gl-two.txt", false)],
+        rights: dir::REMOVE,                       // take names out, and nothing else
+        role: filesystem_protocol::grant::spec(0, 0),         // no name: the operand is the namespace
+        arg: 0,
+        arg2: 0,
+        stack_pages: 4,
+    },
+)?;
+```

@@ -126,38 +126,29 @@ both downward, which is what layout noise looks like when it is not a cost.
 
 ## BUGS
 
-- **`a_child_can_neither_learn_nor_forge_its_label` hung once on x86_64, cause unknown.** CI run
-  38144329675, job 114484454714 (`test (host crates and the kernel suite under QEMU)`), on PR
-  #1933 at `3a7d1eea0`, 2026-10-11 (UTC). #1933 changed only a panic message in
-  `confined_fuzzer_tests.rs`, so it could not reach this test. The aarch64 and riscv64 suites
-  passed. On x86_64 (QEMU q35) the test's name printed, then at 13:56:55 the labeled child's
+- **FIXED: `a_child_can_neither_learn_nor_forge_its_label` hung on x86_64, twice.** The first was
+  CI run 38144329675, job 114484454714, on PR #1933 at `3a7d1eea0`, 2026-10-11 (UTC). The second
+  was nifeos/basalt gate run 38411394702, job 115344364010, with nife at `6364221d1`, 2026-10-13
+  14:27 (UTC), after #2046's `while_installed` masking. Both transcripts end at the labeled child's
   expected kill (`vector 14 (page fault)`, `rip 0x60000005`, `addr 0xa50000`, `the kernel is
-  fine.`). Nothing followed. The job budget cancelled it at 14:09:15, 25.2 minutes against 20. A
-  re-run of the same job on the same commit passed. Seen once, x86_64 only so far.
+  fine.`). The second also shows that the guest's own watchdogs never fired: the host watchdog
+  killed QEMU at 150 s, past the test's 90 s budget. Both watchdogs run from the boot core's tick,
+  so a core had stopped taking interrupts. (The first run predates the x86_64 tick feeding the watchdogs.)
 
-  The kill line is the expected one: address `BAD_ADDR`, pc `CODE_VA + FAULT_PC_OFFSET` (5 on
-  x86_64). The
-  test then has two unbounded waits, `sched::ipc_receive(report)` twice, with no clock behind
-  either, so a lost message or wakeup anywhere upstream becomes a silent hang rather than a red.
-  That pair is the most likely place it stopped. Three hypotheses fit the transcript:
-  1. The death never reached the supervisor. The child dies before the supervisor exists, so its
-     death waits on `fault_ep` as a parked corpse. If that delivery is lost, the supervisor reports
-     the forger's `SEND`, blocks in its second `RECEIVE`, and the test waits forever in its second
-     `ipc_receive`.
-  2. A missed wakeup: a delivery completed (on `fault_ep` or on `report`) but its receiver was never
-     made runnable. A fault-kill on one core while a `RECEIVE` parks on another is the race to
-     look at first.
-  3. The kill itself wedged. The x86_64 handler prints `the kernel is fine.` before it calls
-     `sched::fault`, so the line proves nothing about the delivery or the corpse that follows.
+  The cause was none of the three hypotheses this entry listed. It was the x86_64 TLB shootdown.
+  `flush_asid` runs an NMI shootdown round from an `AddressSpace` drop with interrupts on, and the
+  round's `broadcast` assumed every caller arrived masked under `KERNEL_MMU`. A tick in its ack wait
+  preempted the thread holding `SHOOTDOWN_LOCK`. Switched back in, that thread's `finish_switch`
+  reaped the corpse that had run meanwhile, freeing its kernel stack, and `unmap_page` re-entered
+  `broadcast` to spin, masked, on the lock its own thread held; the other core spun, masked, on
+  `KERNEL_MMU`. This test showed it because its forger exits mid-test, so a reap's stack free and
+  an address-space drop land close together on two cores.
 
-  Four observations would tell them apart next time it fires. First, which of the two
-  `ipc_receive` calls the test thread is blocked in. Second, whether
-  `rendezvous_waiting_receivers(fault_ep)` is 1 with the supervisor parked there (hypothesis 1).
-  Third, whether a message sits delivered on `report` while the test thread is still blocked (2).
-  Fourth, whether the faulted tid ever reached `Dead` and its core kept taking ticks (3). A
-  clock-bounded wait in front of each receive, printing those quantities when it gives up, would
-  turn the next occurrence into a red that says which. That is a test change, left to whoever
-  takes this.
+  It reproduced once the test looped 1,500 times in one boot, where 900 single-test boots had all
+  passed. The unfixed kernel hung in 4 of 4 boots, after 40 to 1,345 iterations. In the three that
+  gdb was attached to, both vCPUs showed the stacks above. With the fix, 4 of 4 boots finished. `broadcast` now masks for the whole round. The witness is
+  `arch::x86_64::mmu::shootdown::tests::a_shootdown_round_masks_interrupts_whatever_its_caller_held`,
+  replayed red without the masking.
 
 ## Index row
 

@@ -13,8 +13,6 @@ tree's verification reporting something that was not true, and no two were the s
 - milestone 230 (`script/shell-check` is red on `main`, on both architectures, and nothing says so);
 - milestone 233 (`login` dies on every boot, and the boot says it is ready).
 
-A test that lies, a gate that fails
-instead of skipping, a check nothing runs, and a check that passes while what it names is dead.
 `script/lint` has had three checks deleted for the "only ever rejects legitimate work" signature, so
 the answer to four bad checks is not six more.
 
@@ -224,9 +222,7 @@ decide rather than assume. A label added to a pull request already sitting in th
 this red mid-group, and an ALLGREEN group of up to five is evicted together. That is a narrow window
 and the label is normally applied long before enqueue.
 
-**Do not add** `verify scope`, `prove (shard N/3)`, or `draft gate`. The first two are aggregated by
-a check that is already required and that treats a shard's `skipped` correctly; the third is not a
-verdict.
+**Do not add** `verify scope`, `prove (shard N/3)`, or `draft gate`, for the reasons under A.
 
 ## What this said about fatal risk 3, without changing its status
 

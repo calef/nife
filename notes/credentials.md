@@ -14,11 +14,11 @@ it for every salt it uses.
 The contract is `crates/credential_protocol`, the logic is `crates/credentialer`, the service is
 `components/src/credentialer.rs`, and its clients are `fixtures/src/credentialer_test_client.rs`.
 
-Milestone 65 (a secrets service) generalized this process in place, so that from then until
-2026-08-30 it also held an NTLM key ([NTLM](ntlm.md)). The milestone's rule was that the
-credentialer becomes *an operation in* the secrets service, because a second process holding secrets
-is what the design exists to avoid. Where this file says "the credential service", read "the secrets
-service". The phases, the seal and the wipe are exactly as described.
+Milestone 65 (a secrets service) generalized this process in place ([NTLM](ntlm.md)). The
+milestone's rule was that the credentialer becomes *an operation in* the secrets service, because a
+second process holding secrets is what the design exists to avoid. Where this file says "the
+credential service", read "the secrets service". The phases, the seal and the wipe are exactly as
+described.
 
 ## The problem this exists to solve
 
@@ -26,7 +26,7 @@ Milestone 55 wants a Mac to authenticate against an SMB share. SMB requires an i
 secret; this system had neither, and had no cryptography at all. Adding "a password file" is the
 obvious move and it is the one that gives away the property this kernel is for.
 
-Here is the tension, stated plainly, because it is the interesting part of the milestone:
+The tension is the interesting part of the milestone:
 
 > **A secret is a bearer token. A capability is an unforgeable reference. Once a component can
 > *read* a password hash, it holds it forever and can copy it anywhere; knowledge cannot be
@@ -81,9 +81,8 @@ is a phase.** Provisioning happens once, before any client exists, and then it i
 a phase rather than a privileged opcode is what turns "the service refuses to let you write" into
 "there is no object through which the request could travel".
 
-That distinction is the whole point and it is worth being precise about. A client is not
-refused permission. By the time a client holds anything, `PUT` is a word arriving at a loop that
-implements one opcode, and the endpoint that gave the word meaning has been destroyed.
+A client is not refused permission. By the time a client holds anything, `PUT` is a word arriving at
+a loop that implements one opcode, and the endpoint that gave the word meaning has been destroyed.
 
 Compare Samba: `smbd` opens the password database directly, so compromising it leaks every hash,
 crackable offline and reusable wherever the password was reused. Here a compromised client can
@@ -223,7 +222,7 @@ assert_eq!(store.verify(b"alice", b"wrong",         &mut scratch).unwrap(), Verd
 assert_eq!(store.verify(b"nobody", b"correct horse", &mut scratch).unwrap(), Verdict::Mismatch);
 ```
 
-Note what is missing: there is no `store.get()`, no `store.record_for()`, no iterator. The absence
+There is no `store.get()`, no `store.record_for()`, no iterator. The absence
 is the API expressing what the process boundary enforces.
 
 ## What is proven, and where
@@ -239,21 +238,17 @@ the shared frame left all zero. Each test and what it pins is listed in
 
 ## BUGS
 
-Named here rather than in a tracker, because a reader who meets the feature should meet its limits
-in the same place.
-
 - **Revocation is per holder, not per secret.** Destroying a client's endpoint ends its access,
   which is the thing this design buys and a stored hash could never offer. Revoking one *secret* is
   a different question, and this service cannot answer it. The store is sealed, so there is no
   object through which a record could be removed, which is the same property that makes the seal
-  worth having (see "why two phases and not two operations" above). Rotating one secret means
+  worth having. Rotating one secret means
   restarting the service and reprovisioning, which restarts every other secret with it. A
   deployment needing finer granularity runs more than one service.
 - Nothing survives a reboot. The store is memory only, provisioned at boot. Secrets at rest is
   the open question and it is the same chicken-and-egg as milestone 51's NTS problem: encrypted
   under what key, held where? `credentialer::Record` has a versioned encoding with a round-trip test
-  precisely so that question has a starting point, but nothing in the tree writes one to a disk and
-  this note does not imply a durability we do not have.
+  precisely so that question has a starting point, but nothing in the tree writes one to a disk.
 - ~~This cannot serve NTLMv2.~~ Closed by milestone 65, and since removed with SMB on 2026-08-30
   (see the scope note at the top). The gap turned out to be
   shaped differently than this entry predicted. The prediction was a second operation of the form

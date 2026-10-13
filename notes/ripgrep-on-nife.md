@@ -78,8 +78,7 @@ patched: `ignore` 0.4.23, fetched from crates.io by its checksum and given
 `helpers/ripgrep-ignore-walk.patch`, about ten lines. Milestone 812 (`std::thread::spawn` runs real
 threads in one address space) gave `rg` threads, so it walks in parallel, and `ignore`'s parallel
 walker answered "unsupported platform" for every path on a target that is neither `unix` nor
-`windows`. calef ruled the patch on pull request #1892, and nife maintains it until upstream fixes
-the bug by any route. What else differs from a Linux build is on the command line: the
+`windows`. calef ruled the patch on pull request #1892; BUGS has its upkeep. What else differs from a Linux build is on the command line: the
 target spec (`panic=abort`), `-Zbuild-std` against the patched `std` (notes/std.md),
 the link script, and `-Copt-level=s -Cstrip=debuginfo`, because ripgrep's own release profile sets
 `debug = 1` and a 25 MB ELF rides into RAM in the initrd. About 25 seconds a target from cold.
@@ -93,7 +92,7 @@ compiles its `stub.rs`, and `std::sys::args` compiles nife's own `args/nife.rs`.
 `ripgrep` does not assume parallelism, it asks. `crates/core/flags/hiargs.rs` sets its default
 thread count to `available_parallelism().map_or(1, |n| n.get()).min(12)`. Until milestone 812
 (`std::thread::spawn` runs real threads in one address space) nife's PAL answered `Ok(1)`, so `rg`
-took its serial walker and never called `thread::spawn`. That was this section's old title. Since
+took its serial walker and never called `thread::spawn`. Since
 2026-10-10 (UTC) the answer is the online core count, and `rg` takes `ignore`'s parallel walker:
 `std::thread::scope` and one worker per thread, each walking and searching, while the main thread
 waits.
@@ -114,8 +113,7 @@ Five is the main thread and four workers, asserted exactly; a serial walk reads 
 order the workers finished, and the test holds them to `fixture::walk::rg_match_path`'s list. The
 host's `rg`, run over the same staged tree with the same two lines, is held to the same list by
 `walk_pricing`'s `the_hosts_parallel_rg_prints_the_fixture_lines`, so nife and macOS agree byte for
-byte once both are sorted. Sorted because a parallel walk's order is its threads' finishing order,
-on any system.
+byte once both are sorted.
 
 Four workers spend 269 heap pages against the serial walk's 65, about 51 pages a worker. At the 256
 pages `ripgrep_tests` gives the serial walk, the fourth spawn was refused for want of a page for its
@@ -162,14 +160,9 @@ often, and nothing else, in any order, since RedoxFS and APFS list a directory d
 (aarch64, HVF), 40.8 s (riscv64) and 345.8 s (`x86_64`, both TCG). The bounds and their table are
 beside `RG_WALK_SECS` in `xtask/src/swish_check/launch.rs`.
 
-The walk exposed three faults, each fixed in the same change:
-
-- The 16 MiB image could not hold the copy: RedoxFS spends a 4 KiB node on each of 936 entries.
-  swish-check's image is now 32 MiB (`SWISH_CHECK_DISK_MIB`); every other image stays 16.
-- The shell grants a word only below `/`, so the line runs after `cd /search`.
-- The gate's transcript reader decoded each pipe read alone, so a `§` split across two reads
-  became two replacement characters, the one line of 349 that differed. `whole_characters` holds
-  the partial character for the next read, and a test splits one.
+The walk exposed three faults, each fixed in the same change, among them swish-check's image
+growing to 32 MiB (`SWISH_CHECK_DISK_MIB`); [`walk-faults.md`](ripgrep-on-nife/walk-faults.md) has
+all three.
 
 ## The heap and `--no-mmap`, decided by measurement
 
@@ -253,24 +246,20 @@ sh bench/host/run_linux_rg.sh         # needs rustup target add aarch64-unknown-
 - The walk's peak memory at the prompt is unmeasured, since the shell reports no per-job heap. It
   finished inside the `std` heap on all three legs. The host's `rg` with `--threads 1 --no-mmap`
   over the same copy peaks at a 1.42 MiB footprint (2.7 MiB resident) on macOS.
-- The corpus is whatever `crates/` holds when the gate runs, and it carries no ignore files, so
-  gitignore semantics are still untested at the prompt.
 
 - **The kernel suite's `rg` tests run in CI since 2026-10-12 (UTC)**, in the `rg-threads` rows
   (lane milestone/121-rg-threads), at four cores, with the threaded walk. The `test` job still
-  builds no `rg`, so they skip there. The paragraph below is the 2026-10-08 state.
+  builds no `rg`, so they skip there.
 - **The kernel suite still skips `rg`; the prompt does not, since 2026-10-08 (UTC).** CI's
   `swish-check` rows build `rg` with `helpers/build-ripgrep.sh` and type its lines, the walk
   included, on all three legs, and refuse to skip them there (lane milestone/121-rg-ci). The
-  four `ripgrep_tests` in the kernel harness are still proven only where somebody built the
-  binary, because the `test` job builds no `rg`. The timings above are from one machine on one
-  evening. A pinned `rg` from the packaging milestone, 810 (`ripgrep` is packaged in basalt and
-  installed with `jig`), is what would replace the fetch.
+  timings above are from one machine on one evening.
 - **The gap to Linux is not attributed.** The failed ignore-file opens are a guess, not a
   measurement; a request count like the one milestone 606 (a directory walk costs what it does on Linux) took
   with `walk_model` would settle it.
-- **Gitignore semantics are untested.** The fixture holds no ignore files, so `ignore`'s matching
-  has not been observed here, only its walking.
+- **Gitignore semantics are untested.** The fixture holds no ignore files, and neither does the
+  prompt's corpus (whatever `crates/` holds when the gate runs), so `ignore`'s matching has not
+  been observed here, only its walking.
 - **The threaded walk is proved in the kernel harness, not at the prompt.** `swish-check`'s walk
   runs with no thread flag, so on aarch64 and riscv64 at four cores it walks in parallel, but
   nothing there counts its threads, and the `x86_64` leg boots OVMF with one core. The harness is
