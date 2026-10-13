@@ -299,6 +299,7 @@ fn write_preview_rows(
     write_service_rows(m, std, out);
     write_resolver_row(e, m, std, out);
     write_machine_rows(m, out);
+    write_index_rows(e, m, out);
     write_stream_rows(e, out);
     out(b"    arg    ");
     // **Read the manifest, do not keep a second list of which programs take an argument.** This
@@ -669,6 +670,41 @@ fn write_machine_rows(m: &grant_plan::Manifest, out: &mut dyn FnMut(&[u8])) {
         out(b"frame     catalog  read-only. the packages this image vouches for, by name,\n");
         out(b"                              version and digest; knowledge, and no authority\n");
     }
+}
+
+/// **The machine's index store** (milestone 801 (packages over the internet)): the directory the
+/// index copy lives in, at the `std` layout's one directory slot, and the image's index sources.
+/// Printed only when the line designated no directory of its own, because the progenitor then
+/// places the line's and not this one (`grant_plan::Manifest::indexes`).
+fn write_index_rows(e: &Endowment, m: &grant_plan::Manifest, out: &mut dyn FnMut(&[u8])) {
+    let write = match m.indexes {
+        grant_plan::IndexStore::Forbidden => return,
+        _ if e.dir.is_some() => return,
+        grant_plan::IndexStore::ReadOnly => false,
+        grant_plan::IndexStore::ReadWrite => true,
+    };
+    write_slot(std_runtime_protocol::FS_DIR_SLOT, out);
+    out(if write {
+        b"endpoint  dir      /activation/indexes  read and write. the index copy this
+"
+        .as_slice()
+    } else {
+        b"endpoint  dir      /activation/indexes  read-only. the index copy this
+"
+    });
+    out(
+        b"                              machine installs from; only the owner's console grants it
+",
+    );
+    write_slot(grant_plan::INDEX_SOURCES_SLOT, out);
+    out(
+        b"frame     sources  read-only. where this image's index is, and the root its TLS
+",
+    );
+    out(
+        b"                              must chain to; knowledge, and no authority
+",
+    );
 }
 
 /// Where the output, the second stream and the input go.

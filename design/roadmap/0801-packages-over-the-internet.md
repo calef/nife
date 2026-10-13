@@ -75,9 +75,29 @@ seams are `notes/packages/over-the-internet.md`.
   `notes/packages/the-index-format.md` has the rulings. The encoding stays a stand-in until the
   TUF client exists.
 
-The status is PARTIAL rather than BUILT: the exit criterion is xenon's installed system, the TUF
-client is 858's, and installing from an index is `jig`'s (milestone 809 (the package client
-becomes a program)).
+## Built 2026-10-12 (UTC): `jig` installs from the index at the prompt
+
+Lane `milestone/801-jig-installs-from-the-index`. This is the exit criterion short of xenon, on all
+three architectures under QEMU, in `script/swish-check`'s second boot. [notes/packages/jig.md](../../notes/packages/jig.md)
+has the transcript and the BUGS.
+
+- The image names its index. A measured archive entry, `package_index::SOURCES_ENTRY`, lists the
+  index's addresses in the order tried and the one root their TLS must chain to (`root
+  isrg-root-x1`, or a certificate in hex). basalt can rewrite it without rebuilding `jig`
+  (milestone 909 (basalt composes the bootable image from its packages)).
+- `jig update` fetches the index from the first address that answers, pinned to that root, and
+  writes this architecture's lines to `activation/indexes/image`. `jig list` reads the copy.
+  `jig install <name>` looks the name up there first, fetches from the entry's listed locations
+  (public addresses only) and then the repository's `targets/`, and judges the bytes by the
+  entry's digest.
+- The progenitor installs on the copy's word when the image's catalog does not vouch (ruling I2).
+  `jig install greeting@0.3.0`, a package only the index names, passes; with the copy's check
+  removed it is refused (falsified on aarch64, 2026-10-12).
+- The store is a directory grant the owner's console alone makes, at the `std` layout's directory
+  slot, on a line that names no directory of its own; the sources page comes with it (slot 18).
+
+The status is PARTIAL rather than BUILT: the exit criterion is xenon's installed system, and
+`basalt.nifeos.org` has no host. The TUF client is 858's.
 
 ## What is calef's
 
@@ -90,7 +110,12 @@ there, with options, under `needs-architect` (`notes/packages/the-index-format.m
 - The channel's name. `rolling` is provisional.
 
 Not rulings but calef's hands: DNS and a host for `basalt.nifeos.org`, and the exit criterion on
-xenon.
+xenon. Checked 2026-10-12 (UTC): `nifeos.org` answers no DNS query at all.
+
+One fork this lane decided rather than asked, because it is reversible and in-tree: how a manifest
+names a fixed directory (809's open fork). `Manifest::indexes`, granted like the installer, puts
+`activation/indexes` at the directory slot. It lives under `activation/` because it decides what
+installs, and because `packages/indexes` could collide with a package named `indexes`.
 
 ## What it waits on
 
@@ -118,10 +143,12 @@ exists. aarch64 silicon waits on an aarch64 board.
 
 ## BUGS
 
-- Nothing installs from an index yet. The progenitor installs only what the image's catalog
-  vouches for; an index copy it trusts is `jig` writing one, milestone 809's ruling I2.
-- The index client cannot run at the prompt: the booted system starts no resolver and gives a std
-  program no network. Proposed: `design/roadmap/0892-a-std-program-at-the-prompt-holds-the-network-and-a-resolver.md`.
+- Every image names the test peer (`basalt.test`, at 10.0.2.9 by the sources' address) and the
+  test root. The production sources wait on a host for `basalt.nifeos.org` and on milestone 909.
+- At the prompt the index host is reached by the address the sources give, not by name, because
+  slirp's name server is the host's (milestone 892 (a std program at the prompt holds the network
+  and a name resolver)). Resolution by name is proved in the kernel harness.
+- The index copy is one page: this architecture's lines, at most 4,095 bytes.
 - `notes/packages/over-the-internet.md`'s BUGS carry the stand-in's limits (no "moved to", one plain
   HTTP location, no producer in the tree).
 
@@ -145,8 +172,8 @@ exists. aarch64 silicon waits on an aarch64 board.
   `design/roadmap/0892-a-std-program-at-the-prompt-holds-the-network-and-a-resolver.md`: the booted
   system starts the resolver from the lease, and a std program at the prompt is granted the network
   and a resolver zone. `jig` needs it to reach the index by name.
-- **Milestone 809.** `jig` adopts `package_index` and `package_fetch_exerciser`'s fetch, writes the
-  index copy, and installs from it. That is this rung's exit criterion short of xenon.
+- **Done.** `jig` adopts `package_index` and the fetch, writes the index copy, and installs from it
+  (2026-10-12, above).
 - **Milestone 855.** Whether a gate builds the TLS graph, which is whether item 4's test runs in CI.
 - **Milestone 858.** The TUF client and verifier, items 4 and 5 of its work list, replace
   `Index::parse` once item 2's questions are ruled.
@@ -172,3 +199,4 @@ the resolver (384), the TLS client (501) and xenon's network card (494). Built u
 2026-10-09 and 2026-10-10: the index split from where the bytes live, a std program resolving
 through its grant, and the whole fetch over pinned TLS. That fetch follows calef's five rulings on
 the index: HTTPS locations with a fallback, a backup address, the channel layout, the root zone.
+Since 2026-10-12 `jig update` and `jig install` do it at the prompt; what is left is a host.

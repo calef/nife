@@ -58,6 +58,8 @@ type EndowmentSlices<'a> = (&'a [(u64, u64)], &'a [(u64, u64, u64)]);
 /// The programs and blobs [`boot`] reads out of the archive in its one measured pass.
 pub(super) struct BootPrograms {
     pub(super) catalog: &'static str,
+    /// The image's index sources, measured (milestone 801); empty as the catalog is.
+    pub(super) index_sources: &'static str,
     pub(super) con_elf: measured_boot::Verdict<'static>,
     pub(super) log_elf: Option<elf::Elf<'static>>,
     pub(super) in_elf: measured_boot::Verdict<'static>,
@@ -211,6 +213,18 @@ pub(super) fn read_boot_programs(fs: &nifefs::Fs<'static>, table: &str) -> BootP
         })
         .and_then(|b| core::str::from_utf8(b).ok())
         .unwrap_or("");
+    // **And where the image says its index is** (milestone 801 (packages over the internet)):
+    // `package_index::SOURCES_ENTRY`, measured the same way, so the root a package manager pins
+    // and the addresses it asks are the image's, vouched for by the kernel's table. Empty when the
+    // table refuses it or the archive has none, and then a package manager holds no sources and
+    // says so.
+    let index_sources = fs
+        .read(package_index::SOURCES_ENTRY)
+        .filter(|bytes| {
+            measured_boot::verify_in_manifest(table, package_index::SOURCES_ENTRY, bytes).is_ok()
+        })
+        .and_then(|b| core::str::from_utf8(b).ok())
+        .unwrap_or("");
 
     let con_elf = measured(fs, table, "console");
     // **The system log service** (milestone 342): optional, like the sink adapter below. A boot
@@ -328,6 +342,7 @@ pub(super) fn read_boot_programs(fs: &nifefs::Fs<'static>, table: &str) -> BootP
     };
     BootPrograms {
         catalog,
+        index_sources,
         con_elf,
         log_elf,
         in_elf,

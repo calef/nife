@@ -78,7 +78,7 @@ pub(super) fn package_manager_parts(
         None
     };
     let page = if catalog {
-        copy_catalog(own_ut, region, lines)
+        copy_text(own_ut, region, lines)
     } else {
         None
     };
@@ -90,7 +90,10 @@ pub(super) fn package_manager_parts(
 /// a program)), and mapped read-only at `std_runtime_protocol::CATALOG_PAGE`. The rest of the page
 /// is zero, which is where the text ends. `None` if the catalog does not fit in a page or the page
 /// could not be made; the spawn is then refused rather than started with half a catalog.
-fn copy_catalog(own_ut: u64, region: u64, catalog: &str) -> Option<u64> {
+///
+/// The image's index sources travel the same way since milestone 801 (packages over the
+/// internet), to `std_runtime_protocol::INDEX_SOURCES_PAGE`.
+pub(super) fn copy_text(own_ut: u64, region: u64, catalog: &str) -> Option<u64> {
     if catalog.len() >= spawnproto::IMAGE_PAGE as usize {
         return None;
     }
@@ -437,11 +440,16 @@ fn install(
     };
     let bytes = staged_image(len);
     // Whoever fetched it (`jig`, since milestone 809) checked it was the package asked
-    // for; what decides here is only whether the image vouches for these bytes.
+    // for; what decides here is only whether the image vouches for these bytes, or, failing
+    // that, the copy of the image's index `jig update` wrote (milestone 801).
     let got = match package_archive::installable(catalog, bytes) {
         Ok(got) => got,
         Err(package_archive::Refusal::NoProgram) => return (S::NoProgram, live),
-        Err(_) => return (S::NotCataloged, live),
+        Err(_) => match indexed(files, act, bytes, new) {
+            Ok(got) => got,
+            Err(package_archive::Refusal::NoProgram) => return (S::NoProgram, live),
+            Err(_) => return (S::NotCataloged, live),
+        },
     };
     let Ok(package) = package_archive::Package::parse(bytes) else {
         return (S::NotCataloged, live);
@@ -482,6 +490,37 @@ fn install(
         return (S::StoreFailed, live);
     }
     (S::Done, m)
+}
+
+/// **Whether the copy of the image's index vouches for these bytes** (milestone 801 (packages
+/// over the internet), ruling I2 of 2026-10-06: the progenitor trusts the copy in a directory only
+/// the owner's console grants). The copy is read into `scratch`, the page the new generation is
+/// written into afterwards; nothing borrowed from it outlives this call. Its entry for the
+/// package's stem decides by `package_index::accept`, which is `package_archive::installable_as`
+/// with the entry as a one-line catalog, so the decision is the image catalog's rule on another
+/// line. A copy that does not read whole, or names the stem twice with two answers, vouches for
+/// nothing.
+fn indexed<'b>(
+    files: &FsCalls,
+    act: u64,
+    bytes: &'b [u8],
+    scratch: &mut [u8; PAGE_BYTES],
+) -> Result<package_archive::Installable<'b>, package_archive::Refusal> {
+    use package_archive::Refusal;
+    let package = package_archive::Package::parse(bytes).map_err(|_| Refusal::Unreadable)?;
+    let mut stem = [0u8; package_archive::STEM_LEN];
+    let stem = package.stem(&mut stem);
+    let n = files
+        .index_copy(act, scratch)
+        .map_err(|()| Refusal::NotCataloged)?;
+    let text = core::str::from_utf8(&scratch[..n]).map_err(|_| Refusal::NotCataloged)?;
+    let index = package_index::Index::parse(text).map_err(|_| Refusal::NotCataloged)?;
+    let mut matching = index.entries().filter(|e| e.stem == stem);
+    let entry = matching.next().ok_or(Refusal::NotCataloged)?;
+    if matching.any(|e| e != entry) {
+        return Err(Refusal::NotCataloged);
+    }
+    package_index::accept(&entry, bytes)
 }
 
 /// Write an installable package's program to `packages/<name>/<version>/<program>`, closing

@@ -356,7 +356,7 @@ fn the_reboot_preview_names_the_reboot_object_and_nothing_else_has_it() {
 }
 
 #[test]
-fn exactly_two_programs_declare_entropy() {
+fn exactly_three_programs_declare_entropy() {
     // The manifest table is the whole of who may draw random bytes at this prompt, so a count
     // of it is a claim worth gating rather than a tautology: a program declaring `entropy`
     // without anybody deciding to is exactly the drift toward ambient authority DECISIONS §44 (entropy is a capability)
@@ -367,18 +367,22 @@ fn exactly_two_programs_declare_entropy() {
     // the slot `std_runtime_protocol` fixes, and that is half of what the program is at the
     // prompt to prove. A `std` program that does not declare it still runs; its `SystemRng`
     // panics rather than inventing bytes, and its `HashMap` seeds best-effort.
+    //
+    // **The third was decided in milestone 801 (packages over the internet), 2026-10-12 (UTC)**:
+    // `jig` speaks TLS to the index, and a handshake draws its key share and nonces from it. Only
+    // the verbs that reach the index hold it (`update`, `install`), by `grant_plan::verbs`.
     let mut declared = 0;
     for &p in Prog::ALL {
         if p.manifest().entropy {
             assert!(
-                matches!(p, Prog::Uuid | Prog::StdExerciser),
+                matches!(p, Prog::Uuid | Prog::StdExerciser | Prog::Jig),
                 "{} declares entropy",
                 p.name()
             );
             declared += 1;
         }
     }
-    assert_eq!(declared, 2);
+    assert_eq!(declared, 3);
 }
 
 /// **`caps` names the slots the progenitor will use, and for a `std` program those are
