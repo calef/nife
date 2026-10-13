@@ -1,5 +1,5 @@
 //! **Reading a glyph**: its rows for a character, and whether a pixel in its cell is ink or the
-//! colour the cell shows there.
+//! color the cell shows there.
 //!
 //! Name: provisional (lane maintainer/split-parents-to-zero, 2026-10-13 UTC).
 
