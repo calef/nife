@@ -252,6 +252,14 @@ test spawners read it because they want the digest; the boot now reads it becaus
 enforces this: `display_service::start_terminal`'s doc says so and names it a foot gun, because the
 tests need the digest and the wiring function therefore cannot swallow it for them.
 
+**The host's scanout referee missed two pictures once under load** (open, seen 2026-10-13 UTC). One
+`cargo xtask test --arch riscv64 --cpu rva23s64` run, of eleven full riscv64 runs, at 1.5 times
+oversubscribed, failed the text and pattern checks while every guest test passed. The composed
+screen matched, so QEMU had a monitor. The likeliest reading, not confirmed: `ScanoutReferee::poll`
+grades the three pictures in order, so a missed text window means the pattern is never graded, and
+"no screendump was ever taken" then misdescribes it. The log is not in the tree; the next red should
+say which poll last matched.
+
 RESOLVED 2026-09-19 (milestone 177): the second `FLUSH` on the real boot never returned because
 nobody received the driver's `FLUSHED` report. The terminal's first flush came before its `TERM_UP`,
 so the driver was already blocked sending `FLUSHED` when the boot stopped listening. The keyboard had

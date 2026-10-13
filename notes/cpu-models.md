@@ -260,14 +260,13 @@ through SBI, so it works on both.
   quiet, and check `top` rather than only the load average. The CI job is five sequential QEMU runs
   where `test` does one: more exposure to a noisy runner, not a new kind of risk.
 
-  The network checks are the second place this shows. On 2026-10-12 (UTC) the CI shard that runs
-  `rva23s64` and `thead-c906` failed twice on guest networking, on two unrelated pull requests, and
-  passed both times on a rerun. The first, on #1964, failed the `std_resolve` lookup and the inbound
-  check. The second, #1967's merge group (run 38222292949), failed the inbound check on `rva23s64`.
-  Its guest served 2 of the 4 connections against a floor of 3, and 65 of 69 attempts failed to
-  connect. The job reported the runner was not oversubscribed. Neither change touched the network
-  path, so this is recorded as a flake, cause not yet found, rather than a model defect. A third
-  occurrence is the signal to look at the forwarded port's readiness rather than rerun.
+  The network checks are the second place this shows, and the 2026-10-12 pair was not the model
+  either. The `rva23s64` inbound red (run 38222292949), and one on `thead-c906` on 2026-09-26, were
+  the race of milestone 514 (the HVF std listener hangs in some full runs) on TCG. #2029 fixed it:
+  forced, both models fail without it and pass with it. A silent listener then hung into the
+  watchdog because `net_stack`'s bound needed a frame to fire; fixed 2026-10-13. The counts are in
+  notes/net/the-inbound-check.md. The `std_resolve` red on #1964 is a separate cause, recorded at
+  its test.
 
   The converse of that rule is a tool, and it went unused for a month. "A green matrix under
   load is conclusive" also means loading the host on purpose is the cheapest way to *find* a

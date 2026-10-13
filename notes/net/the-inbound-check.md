@@ -187,3 +187,40 @@ the remaining gap to CI is in the four unmatched things above and the cheapest o
 memory. The proposal in the paragraph below (several staggered connections at once) is now measurable
 for the first time. Run the fifty boots before and after it and compare the count of lost rounds.
 That is a number this instrument produces on green runs and the old evidence never had.
+
+## The CPU matrix's reds, read against milestone 514 (the HVF std listener hangs in some full runs)
+
+Written 2026-10-13 (UTC). The CPU matrix's riscv64 legs went red on networking twice on 2026-10-12.
+A search of CI from 2026-08-17 to 2026-10-13 counted them: every failed run, and every run that
+went green on a rerun, 268 failed matrix jobs in all. Three were network failures with nothing
+earlier in the boot to explain them:
+
+- 2026-09-26, `thead-c906`, on the pull request of milestone 595 (the shell runs a `std`
+  program), green on rerun: 2 of 4.
+- 2026-10-12, `rva23s64`, #1967's merge group (run 38222292949): 2 of 4.
+- 2026-10-12, `thead-c906`, #1964, green on rerun: `std_resolve`, a different cause (below).
+
+The first two are milestone 514's shape on TCG. The prober opened its third connection within a
+millisecond of the hand-written listener's second answer and held it to the end of the run. The
+std listener's test hung into the 60 s watchdog. Every other inbound red in those jobs had another
+cause: an unrelated panic or hang earlier in the boot, a branch's own change, or the `read-failed`
+cluster of 2026-09-20 and 21 (the EINTR fixed on 2026-09-24).
+
+**#2029's fix covers this path.** The CPU matrix runs the same `net_stack`, listener client,
+`std_exerciser` and prober as the HVF leg. It was forced the way 514 forced it, with 300 ms of
+polling before a listener's close. With #2029's reset taken out, both models failed in that exact
+shape (2 of 2; on `rva23s64` the connection opened at +109028 ms was held 96 s). With the reset and
+the same forcing, both were green (2 of 2), and the prober reconnected about 400 ms later.
+
+The race is routine, not rare. The prober now prints a `closed-empty` line, and all six unforced
+runs with it (three per model, all green) show the race. The third connection closed empty 2 to 7
+ms after the second answer, and a new one opened about 100 ms later. The reset makes it harmless.
+
+Why it was a watchdog and not a failed accept. `net_stack`'s 15 s bound only ended a wait when a
+frame or a smoltcp timer woke it. A connection held to nobody sends nothing, so the std listener's
+accept never expired and its retries never ran. Fixed 2026-10-13 in `components/src/nic_wait.rs`,
+held by `an_accept_nobody_answers_ends_at_the_stacks_bound`.
+
+The rate is too low to measure locally. Roughly 1,800 CI runs ran the matrix between 2026-09-26 and
+2026-10-12, five models each (estimated from a 25-run sample), for two reds: about one in 4,500
+boots. That is why the forced pair is the evidence.
