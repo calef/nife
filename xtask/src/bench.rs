@@ -546,10 +546,48 @@ fn run_bench(
     };
     let runner_pid = child.id();
 
+    let stdout = child.stdout.take().expect("piped stdout");
+    let (results, cntfrq, done) = read_bench_lines(stdout);
+    // Kill any QEMU the runner itself spawned before killing the runner: on `q35`
+    // (`helpers/qemu-runner-x86_64.sh`) `cmd` is a *wrapper* that runs `qemu-system-x86_64` as a
+    // plain foreground child rather than `exec`-ing into it (the runner's own header explains why:
+    // it has to translate `isa-debug-exit`'s odd-only exit status). `child.kill()` therefore only
+    // ever reaches the wrapper on that leg, and killing the wrapper first orphans the emulator
+    // rather than ending it, which under `-icount sleep=off` is not an idle leak: a halted guest
+    // whose virtual clock never waits on the host spins a full core forever instead of parking in
+    // `hlt`. The other two runners `exec` (their own PID already *is* QEMU's), so `pkill -P` finds
+    // nothing there and this is a no-op. Best-effort and silent either way: a runner that already
+    // exited leaves no children to find. See AGENTS.md, "Never leave QEMU running".
+    let _ = Command::new("pkill")
+        .args(["-9", "-P", &runner_pid.to_string()])
+        .status();
+    let _ = child.kill();
+    let _ = child.wait();
+
+    if !done {
+        eprintln!("bench: QEMU ended before printing `bench: done`; no results");
+        return false;
+    }
+
+    report_bench_table(&results, cntfrq, real);
+
+    *LAST_RUN.lock().unwrap_or_else(|e| e.into_inner()) = results.clone();
+
+    if save {
+        return save_bench_baseline(&results, &baseline_path, qemu_binary);
+    }
+    if check {
+        return check_bench_baseline(&results, &baseline_path, qemu_binary);
+    }
+    true
+}
+
+/// **The bench kernel's lines, read until it says `bench: done`**: each result as (name, ticks,
+/// iterations), the counter frequency, and whether `done` arrived.
+fn read_bench_lines(stdout: std::process::ChildStdout) -> (Vec<(String, u64, u64)>, u64, bool) {
     // Read lines until the guest says it is done, then kill it: it is parked in wfi and will
     // never exit by itself (deliberately; see kernel/src/bench.rs).
     use std::io::BufRead;
-    let stdout = child.stdout.take().expect("piped stdout");
     let reader = std::io::BufReader::new(stdout);
     let mut results: Vec<(String, u64, u64)> = Vec::new();
     let mut cntfrq: u64 = 0;
@@ -583,27 +621,11 @@ fn run_bench(
             _ => {}
         }
     }
-    // Kill any QEMU the runner itself spawned before killing the runner: on `q35`
-    // (`helpers/qemu-runner-x86_64.sh`) `cmd` is a *wrapper* that runs `qemu-system-x86_64` as a
-    // plain foreground child rather than `exec`-ing into it (the runner's own header explains why:
-    // it has to translate `isa-debug-exit`'s odd-only exit status). `child.kill()` therefore only
-    // ever reaches the wrapper on that leg, and killing the wrapper first orphans the emulator
-    // rather than ending it, which under `-icount sleep=off` is not an idle leak: a halted guest
-    // whose virtual clock never waits on the host spins a full core forever instead of parking in
-    // `hlt`. The other two runners `exec` (their own PID already *is* QEMU's), so `pkill -P` finds
-    // nothing there and this is a no-op. Best-effort and silent either way: a runner that already
-    // exited leaves no children to find. See AGENTS.md, "Never leave QEMU running".
-    let _ = Command::new("pkill")
-        .args(["-9", "-P", &runner_pid.to_string()])
-        .status();
-    let _ = child.kill();
-    let _ = child.wait();
+    (results, cntfrq, done)
+}
 
-    if !done {
-        eprintln!("bench: QEMU ended before printing `bench: done`; no results");
-        return false;
-    }
-
+/// The results as a table, with ns computed from `cntfrq` for a magnitude to look at.
+fn report_bench_table(results: &[(String, u64, u64)], cntfrq: u64, real: bool) {
     // Report. icount counts are the regression currency; ns is computed for both instruments
     // (fictional under icount, real under HVF) because a human wants a magnitude to look at.
     eprintln!();
@@ -611,7 +633,7 @@ fn run_bench(
         "{:<14} {:>12} {:>8} {:>12} {:>10}",
         "benchmark", "ticks", "iters", "ticks/iter", "ns/iter"
     );
-    for (name, ticks, iters) in &results {
+    for (name, ticks, iters) in results {
         // `checked_div`, not `/`: a benchmark that reports zero iterations (a skip, or a future
         // diagnostic line) must not panic the whole harness after the run already happened.
         let per = ticks.checked_div(*iters).unwrap_or(0);
@@ -624,197 +646,216 @@ fn run_bench(
     if !real {
         eprintln!("(TCG+icount: ticks are deterministic; ns are fiction. --real for magnitudes.)");
     }
+}
 
-    *LAST_RUN.lock().unwrap_or_else(|e| e.into_inner()) = results.clone();
-
-    if save {
-        // The header names the file it is in. It used to be the literal `bench/baseline.txt` for
-        // both baselines, so the riscv one claimed to be the aarch64 one; deriving it from the path
-        // makes the two agree with themselves (milestone 73).
-        let stem = baseline_path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("baseline.txt");
-        // **The nightly these counts were produced by, written into the file that holds them.**
-        // icount counts guest instructions, and a different compiler emits a different instruction
-        // sequence for the same source, so the toolchain is part of what these numbers mean in
-        // exactly the way `.qemu-version` already is. It went unrecorded until 2026-09-21, and the
-        // cost was live: `nightly-2026-09-15` was pinned without re-recording, the tripwire's
-        // headroom eroded for reasons no change was responsible for, and the tree was bumped again
-        // before anyone acted. `script/lint`'s baseline-toolchain check compares this line against
-        // `rust-toolchain.toml`, so the two cannot disagree silently. Written here, it is the
-        // nightly that produced the counts; `--restamp` may later move it to a nightly it proved
-        // produces the same counts within bounds (calef, 2026-09-26), so a reader of the file takes
-        // it as "last proven valid for" and the `# why:` lines say which.
-        //
-        // Read from the PIN rather than from the compiler that happens to be running: the pin is
-        // what CI and every other machine build with, and a `RUSTUP_TOOLCHAIN` override in one
-        // shell is not a fact about the repository. A save under such an override therefore writes
-        // the pin, which is a lie only if the override was deliberate and then committed without
-        // raising the pin, and that is the case `script/lint` catches from the other side.
-        let pinned = pinned_nightly().unwrap_or_else(|| "unrecorded".into());
-        // **The emulator that counted these instructions, read from the binary rather than from
-        // the pin.** See `running_qemu` for why this one is asked and the toolchain one is not.
-        // When the machine disagrees with `.qemu-version` the line says both, because that
-        // disagreement is a fact about the numbers below and not a thing to tidy away: it is how
-        // this project spent a month comparing counts from an emulator nobody had recorded.
-        let ran = running_qemu(qemu_binary).unwrap_or_else(|| "unrecorded".into());
-        let qemu = match pinned_qemu() {
-            Some(pin) if pin != ran => format!("{ran} (run; .qemu-version pins {pin})"),
-            _ => ran,
-        };
-        // **The third field of the ratified line, and the ledger itself.** calef ratified the
-        // format on 2026-09-16 as comment lines rather than a structured block, written as
-        // `# saved: <nightly>, qemu <version>, <date>` plus a `# why:` line. Commit `99f13dad`
-        // implemented the first of those decomposed into `# toolchain:` and `# qemu:`, one fact per
-        // line, and `script/lint` now reads `# toolchain:`. So this keeps that decomposition and
-        // adds the two parts it left out, rather than reuniting the line and breaking the gate:
-        // `# date:` is the ratified line's third field and `# why:` is the ledger.
-        //
-        // **One `# why:` line per `--why`, in the header rather than above the row that moved.**
-        // Milestone 415 item 2 words it as "beside the rows that moved", which is finer, and the
-        // ratified format is the header, which is what this follows. It is also the only one that
-        // survives: the save path rebuilds this file from a fixed header plus one `name ticks
-        // iters` line per result, so a per-row comment is destroyed by the next save, which is
-        // exactly what happened to the hand-written correction above `rfence_self` on 2026-09-21.
-        // A reason that concerns one counter names it in its own prose.
-        let mut out = baseline_header(stem, &pinned, &qemu, &today_utc(), &save_reasons());
-        for (name, ticks, iters) in &results {
-            out.push_str(&format!(
-                "{name} {ticks} {iters}
+/// **`--save`: write `results` as the baseline**, under a header that records what produced them.
+fn save_bench_baseline(
+    results: &[(String, u64, u64)],
+    baseline_path: &std::path::Path,
+    qemu_binary: &str,
+) -> bool {
+    // The header names the file it is in. It used to be the literal `bench/baseline.txt` for
+    // both baselines, so the riscv one claimed to be the aarch64 one; deriving it from the path
+    // makes the two agree with themselves (milestone 73).
+    let stem = baseline_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("baseline.txt");
+    // **The nightly these counts were produced by, written into the file that holds them.**
+    // icount counts guest instructions, and a different compiler emits a different instruction
+    // sequence for the same source, so the toolchain is part of what these numbers mean in
+    // exactly the way `.qemu-version` already is. It went unrecorded until 2026-09-21, and the
+    // cost was live: `nightly-2026-09-15` was pinned without re-recording, the tripwire's
+    // headroom eroded for reasons no change was responsible for, and the tree was bumped again
+    // before anyone acted. `script/lint`'s baseline-toolchain check compares this line against
+    // `rust-toolchain.toml`, so the two cannot disagree silently. Written here, it is the
+    // nightly that produced the counts; `--restamp` may later move it to a nightly it proved
+    // produces the same counts within bounds (calef, 2026-09-26), so a reader of the file takes
+    // it as "last proven valid for" and the `# why:` lines say which.
+    //
+    // Read from the PIN rather than from the compiler that happens to be running: the pin is
+    // what CI and every other machine build with, and a `RUSTUP_TOOLCHAIN` override in one
+    // shell is not a fact about the repository. A save under such an override therefore writes
+    // the pin, which is a lie only if the override was deliberate and then committed without
+    // raising the pin, and that is the case `script/lint` catches from the other side.
+    let pinned = pinned_nightly().unwrap_or_else(|| "unrecorded".into());
+    // **The emulator that counted these instructions, read from the binary rather than from
+    // the pin.** See `running_qemu` for why this one is asked and the toolchain one is not.
+    // When the machine disagrees with `.qemu-version` the line says both, because that
+    // disagreement is a fact about the numbers below and not a thing to tidy away: it is how
+    // this project spent a month comparing counts from an emulator nobody had recorded.
+    let ran = running_qemu(qemu_binary).unwrap_or_else(|| "unrecorded".into());
+    let qemu = match pinned_qemu() {
+        Some(pin) if pin != ran => format!("{ran} (run; .qemu-version pins {pin})"),
+        _ => ran,
+    };
+    // **The third field of the ratified line, and the ledger itself.** calef ratified the
+    // format on 2026-09-16 as comment lines rather than a structured block, written as
+    // `# saved: <nightly>, qemu <version>, <date>` plus a `# why:` line. Commit `99f13dad`
+    // implemented the first of those decomposed into `# toolchain:` and `# qemu:`, one fact per
+    // line, and `script/lint` now reads `# toolchain:`. So this keeps that decomposition and
+    // adds the two parts it left out, rather than reuniting the line and breaking the gate:
+    // `# date:` is the ratified line's third field and `# why:` is the ledger.
+    //
+    // **One `# why:` line per `--why`, in the header rather than above the row that moved.**
+    // Milestone 415 item 2 words it as "beside the rows that moved", which is finer, and the
+    // ratified format is the header, which is what this follows. It is also the only one that
+    // survives: the save path rebuilds this file from a fixed header plus one `name ticks
+    // iters` line per result, so a per-row comment is destroyed by the next save, which is
+    // exactly what happened to the hand-written correction above `rfence_self` on 2026-09-21.
+    // A reason that concerns one counter names it in its own prose.
+    let mut out = baseline_header(stem, &pinned, &qemu, &today_utc(), &save_reasons());
+    for (name, ticks, iters) in results {
+        out.push_str(&format!(
+            "{name} {ticks} {iters}
 "
-            ));
-        }
-        if let Err(e) = std::fs::write(&baseline_path, out) {
-            eprintln!("bench: cannot write {}: {e}", baseline_path.display());
-            return false;
-        }
-        eprintln!("bench: baseline saved to {}", baseline_path.display());
-        return true;
+        ));
     }
-
-    if check {
-        let Ok(text) = std::fs::read_to_string(&baseline_path) else {
-            eprintln!(
-                "bench: no baseline at {} (run `cargo xtask bench --save --why \"...\"` first)",
-                baseline_path.display()
-            );
-            return false;
-        };
-        let mut ok = true;
-
-        // **Is this the emulator that produced the floors?** An icount count is a function of two
-        // things, the compiler that emitted the instructions and the emulator that counted them,
-        // and until 2026-09-21 this tree recorded neither. The compiler half is answered
-        // statically by `script/lint`, because the pin is in the repository. This half cannot be:
-        // nothing resolves QEMU from `.qemu-version`, so the only moment the question can be asked
-        // is the moment an emulator is actually being run, which is here.
-        //
-        // **Compared against the emulator this run used, NOT against `.qemu-version`.** A check
-        // against the pin would fail any baseline honestly recorded off-pin, which is to say it
-        // would forbid the file from stating the truth; and it would still pass a comparison run
-        // on a third version. The apples-to-apples question is whether the counter that produced
-        // the floor is the counter reading it now.
-        //
-        // **`unrecorded` is a truthful answer and does not fail**, the posture
-        // milestone 115 (the names that were refused) already takes for names. Every baseline in
-        // the tree carries it today, because the emulator that produced those counts was never
-        // written down and inventing one now would be worse than the gap. So this fires at full
-        // strength from the first honest `--save` onward and never on a number nobody stamped.
-        //
-        // **What it means when it does fire**, and it is not "upgrade something": a re-record and
-        // the pin have to be decided together, since CI builds the pinned emulator
-        // (`script/ci-qemu`) and would then read these floors on it.
-        let stamped_qemu = text
-            .lines()
-            .filter_map(|l| l.trim_start().strip_prefix("# qemu:"))
-            .next()
-            .and_then(|v| v.split_whitespace().next())
-            .map(str::to_owned);
-        match (stamped_qemu.as_deref(), running_qemu(qemu_binary)) {
-            (None, _) | (Some("unrecorded"), _) => eprintln!(
-                "bench: {} does not say which emulator produced it, so this comparison is \
-                 assumed rather than known. The next --save records it.",
-                baseline_path.display()
-            ),
-            (Some(want), Some(have)) if want != have => {
-                let f = baseline_path.display();
-                eprintln!(
-                    "bench: CHECK FAIL: {f} was recorded on QEMU {want}; this run used {have}."
-                );
-                eprintln!(
-                    "  icount counts guest instructions and a different emulator counts them \
-                     differently, so a pass here would be evidence of nothing."
-                );
-                eprintln!(
-                    "  Either run the emulator these floors were recorded on, or re-record them \
-                     deliberately with --save and settle .qemu-version in the same commit."
-                );
-                ok = false;
-            }
-            (Some(want), Some(_)) => eprintln!("bench: emulator matches the baseline's ({want})"),
-            (Some(_), None) => eprintln!(
-                "bench: cannot ask {qemu_binary} its version; the emulator check is skipped."
-            ),
-        }
-
-        // `trim_start` matters: this file's own header has INDENTED comment lines, and a
-        // column-0-only check would treat them as data. A three-word one would then be parsed as a
-        // benchmark named after its first word. Filtering after `trim_start` drops every comment
-        // line whatever its indent, so the destructure below only ever sees `name ticks iters` rows.
-        for line in text.lines().filter(|l| !l.trim_start().starts_with('#')) {
-            let parts: Vec<&str> = line.split_whitespace().collect();
-            let [name, base, _iters] = parts.as_slice() else {
-                continue;
-            };
-            let base: u64 = base.parse().unwrap_or(0);
-            let Some((_, cur, _)) = results.iter().find(|(n, _, _)| n == name) else {
-                eprintln!("bench: CHECK FAIL {name}: in the baseline but not in this run");
-                ok = false;
-                continue;
-            };
-            // A COARSE tripwire: 10% either way, with a small absolute floor so tiny counts do not
-            // false-alarm. Not 2%: adding unrelated *live* code shifts even untouched benchmarks by
-            // several percent, non-uniformly, because the compiler remakes whole-crate inlining and
-            // monomorphization decisions (measured: a new bench function moved yield_switch -7% while
-            // ipc_rtt went +1.8%). So icount --check catches a gross regression, "you 3x'd IPC," not
-            // a 3% one; --real medians, read by a human, are the fine signal. See notes/benchmarks.md.
-            let slack = (base / 10).max(64);
-            let (lo, hi) = (base.saturating_sub(slack), base + slack);
-            if *cur < lo || *cur > hi {
-                let delta = *cur as i64 - base as i64;
-                eprintln!(
-                    "bench: CHECK FAIL {name}: {cur} vs baseline {base} ({delta:+} ticks,                      allowed +-{slack})"
-                );
-                ok = false;
-            }
-        }
-        if ok {
-            eprintln!("bench: check passed (all within 10% of baseline; coarse tripwire)");
-        } else {
-            eprintln!();
-            // **What the floor says about itself, printed where the reader is already looking.**
-            // The reasons are in the file, but a person reading a red gate in CI scrollback is not
-            // reading the file, and the question they are holding is exactly the one these lines
-            // answer: is this number a cost somebody chose, or drift nobody has explained? Empty
-            // on the three floors saved before milestone 302, which say `unrecorded` for the same
-            // reason the `# qemu:` line does.
-            let recorded = recorded_reasons(&text);
-            if !recorded.is_empty() {
-                eprintln!("bench: this baseline was last saved because:");
-                for r in &recorded {
-                    eprintln!("  {r}");
-                }
-                eprintln!();
-            }
-            eprintln!(
-                "bench: a benchmark moved. If intended, rerun with --save --why \"<reason>\" and                  commit the new baseline WITH the change that moved it."
-            );
-        }
-        return ok;
+    if let Err(e) = std::fs::write(baseline_path, out) {
+        eprintln!("bench: cannot write {}: {e}", baseline_path.display());
+        return false;
     }
-
+    eprintln!("bench: baseline saved to {}", baseline_path.display());
     true
+}
+
+/// **`--check`: compare `results` against the baseline** with the coarse tripwire, after asking
+/// whether the baseline was counted by this emulator.
+fn check_bench_baseline(
+    results: &[(String, u64, u64)],
+    baseline_path: &std::path::Path,
+    qemu_binary: &str,
+) -> bool {
+    let Ok(text) = std::fs::read_to_string(baseline_path) else {
+        eprintln!(
+            "bench: no baseline at {} (run `cargo xtask bench --save --why \"...\"` first)",
+            baseline_path.display()
+        );
+        return false;
+    };
+    let mut ok = true;
+
+    ok &= emulator_matches_baseline(&text, baseline_path, qemu_binary);
+
+    // `trim_start` matters: this file's own header has INDENTED comment lines, and a
+    // column-0-only check would treat them as data. A three-word one would then be parsed as a
+    // benchmark named after its first word. Filtering after `trim_start` drops every comment
+    // line whatever its indent, so the destructure below only ever sees `name ticks iters` rows.
+    for line in text.lines().filter(|l| !l.trim_start().starts_with('#')) {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        let [name, base, _iters] = parts.as_slice() else {
+            continue;
+        };
+        let base: u64 = base.parse().unwrap_or(0);
+        let Some((_, cur, _)) = results.iter().find(|(n, _, _)| n == name) else {
+            eprintln!("bench: CHECK FAIL {name}: in the baseline but not in this run");
+            ok = false;
+            continue;
+        };
+        // A COARSE tripwire: 10% either way, with a small absolute floor so tiny counts do not
+        // false-alarm. Not 2%: adding unrelated *live* code shifts even untouched benchmarks by
+        // several percent, non-uniformly, because the compiler remakes whole-crate inlining and
+        // monomorphization decisions (measured: a new bench function moved yield_switch -7% while
+        // ipc_rtt went +1.8%). So icount --check catches a gross regression, "you 3x'd IPC," not
+        // a 3% one; --real medians, read by a human, are the fine signal. See notes/benchmarks.md.
+        let slack = (base / 10).max(64);
+        let (lo, hi) = (base.saturating_sub(slack), base + slack);
+        if *cur < lo || *cur > hi {
+            let delta = *cur as i64 - base as i64;
+            eprintln!(
+                "bench: CHECK FAIL {name}: {cur} vs baseline {base} ({delta:+} ticks,                      allowed +-{slack})"
+            );
+            ok = false;
+        }
+    }
+    if ok {
+        eprintln!("bench: check passed (all within 10% of baseline; coarse tripwire)");
+    } else {
+        eprintln!();
+        // **What the floor says about itself, printed where the reader is already looking.**
+        // The reasons are in the file, but a person reading a red gate in CI scrollback is not
+        // reading the file, and the question they are holding is exactly the one these lines
+        // answer: is this number a cost somebody chose, or drift nobody has explained? Empty
+        // on the three floors saved before milestone 302, which say `unrecorded` for the same
+        // reason the `# qemu:` line does.
+        let recorded = recorded_reasons(&text);
+        if !recorded.is_empty() {
+            eprintln!("bench: this baseline was last saved because:");
+            for r in &recorded {
+                eprintln!("  {r}");
+            }
+            eprintln!();
+        }
+        eprintln!(
+            "bench: a benchmark moved. If intended, rerun with --save --why \"<reason>\" and                  commit the new baseline WITH the change that moved it."
+        );
+    }
+    ok
+}
+
+/// Whether the baseline in `text` was recorded on the emulator this run used; false only when it
+/// names a different one, after saying what to do about it.
+fn emulator_matches_baseline(
+    text: &str,
+    baseline_path: &std::path::Path,
+    qemu_binary: &str,
+) -> bool {
+    // **Is this the emulator that produced the floors?** An icount count is a function of two
+    // things, the compiler that emitted the instructions and the emulator that counted them,
+    // and until 2026-09-21 this tree recorded neither. The compiler half is answered
+    // statically by `script/lint`, because the pin is in the repository. This half cannot be:
+    // nothing resolves QEMU from `.qemu-version`, so the only moment the question can be asked
+    // is the moment an emulator is actually being run, which is here.
+    //
+    // **Compared against the emulator this run used, NOT against `.qemu-version`.** A check
+    // against the pin would fail any baseline honestly recorded off-pin, which is to say it
+    // would forbid the file from stating the truth; and it would still pass a comparison run
+    // on a third version. The apples-to-apples question is whether the counter that produced
+    // the floor is the counter reading it now.
+    //
+    // **`unrecorded` is a truthful answer and does not fail**, the posture
+    // milestone 115 (the names that were refused) already takes for names. Every baseline in
+    // the tree carries it today, because the emulator that produced those counts was never
+    // written down and inventing one now would be worse than the gap. So this fires at full
+    // strength from the first honest `--save` onward and never on a number nobody stamped.
+    //
+    // **What it means when it does fire**, and it is not "upgrade something": a re-record and
+    // the pin have to be decided together, since CI builds the pinned emulator
+    // (`script/ci-qemu`) and would then read these floors on it.
+    let stamped_qemu = text
+        .lines()
+        .filter_map(|l| l.trim_start().strip_prefix("# qemu:"))
+        .next()
+        .and_then(|v| v.split_whitespace().next())
+        .map(str::to_owned);
+    let mut ok = true;
+    match (stamped_qemu.as_deref(), running_qemu(qemu_binary)) {
+        (None, _) | (Some("unrecorded"), _) => eprintln!(
+            "bench: {} does not say which emulator produced it, so this comparison is \
+             assumed rather than known. The next --save records it.",
+            baseline_path.display()
+        ),
+        (Some(want), Some(have)) if want != have => {
+            let f = baseline_path.display();
+            eprintln!("bench: CHECK FAIL: {f} was recorded on QEMU {want}; this run used {have}.");
+            eprintln!(
+                "  icount counts guest instructions and a different emulator counts them \
+                 differently, so a pass here would be evidence of nothing."
+            );
+            eprintln!(
+                "  Either run the emulator these floors were recorded on, or re-record them \
+                 deliberately with --save and settle .qemu-version in the same commit."
+            );
+            ok = false;
+        }
+        (Some(want), Some(_)) => eprintln!("bench: emulator matches the baseline's ({want})"),
+        (Some(_), None) => {
+            eprintln!(
+                "bench: cannot ask {qemu_binary} its version; the emulator check is skipped."
+            );
+        }
+    }
+    ok
 }
 
 #[cfg(test)]

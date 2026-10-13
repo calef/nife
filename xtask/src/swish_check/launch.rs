@@ -7,6 +7,9 @@
 //! Name: provisional (milestone 847's lane, 2026-10-11 UTC; §280 (the swish-check harness
 //! splits into submodules, with its script in one)).
 
+use std::io::Write;
+use std::time::{Duration, Instant};
+
 use super::*;
 
 /// **The graphical launch, folded into the plain legs' boots** (2026-10-03 UTC, calef's ruling; it was
@@ -86,10 +89,6 @@ pub(super) enum Keystrokes {
     Serial,
 }
 
-/// **Launch `graphical_terminal` from the prompt a boot is sitting at, and read the screen**
-/// (the second and third steps of [`Keystrokes`]'s doc). Called by [`swish_check_boot`] once its
-/// script has finished and the prompt is back, on a boot that has a virtio-gpu attached; `sock` is
-/// that gpu's monitor socket, which `screendump` reads. `Ok` carries the sentence to print.
 /// The firmware line a reset must come back through, where the architecture has firmware of its own
 /// between the reset and the kernel: OpenSBI on riscv64, OVMF and `uefi_loader` on `x86_64`. aarch64
 /// `virt` boots `-kernel` with nothing in between, so there the second banner is the proof.
@@ -119,9 +118,73 @@ pub(super) fn reboot_phase(
     stdin: &mut std::process::ChildStdin,
     seen: &std::sync::Arc<std::sync::Mutex<String>>,
 ) -> Result<String, String> {
-    use std::io::Write;
-    use std::time::{Duration, Instant};
+    use RebootPhase as P;
+    let mut phase = RebootPhase { seen, stdin };
+    if !phase.wait_prompt(P::LINE_SECS) {
+        return Err(P::failure(
+            "the first boot was not at a bare prompt when the phase began",
+        ));
+    }
+    let at = phase.len();
+    phase.type_line(P::WRITE_LINE)?;
+    if phase
+        .wait_after(at, &format!("{}\n", P::WRITE_LINE), P::LINE_SECS)
+        .is_none()
+        || !phase.wait_prompt(P::LINE_SECS)
+    {
+        return Err(P::failure(&format!(
+            "`{}` never came back to a prompt",
+            P::WRITE_LINE
+        )));
+    }
+    let typed = phase.len();
+    phase.type_line("reboot")?;
+    let Some(asked) = phase.wait_after(typed, P::KERNEL_ASKED, P::LINE_SECS) else {
+        return Err(P::failure(
+            "the kernel never said it was asked to restart the machine",
+        ));
+    };
+    let before = phase.text()[typed..asked].to_string();
+    if !before.contains(P::SYNCED) {
+        return Err(P::failure(&format!(
+            "`reboot` reached the kernel without reporting a completed sync (no {:?} \
+             before the kernel's line): {:?}",
+            P::SYNCED,
+            before.trim()
+        )));
+    }
+    phase.come_back(arch, asked)?;
+    let at = phase.len();
+    phase.type_line(P::READ_LINE)?;
+    if phase.wait_after(at, P::READ_ANSWER, P::LINE_SECS).is_none() {
+        return Err(P::failure(&format!(
+            "`{}` after the reset did not answer {:?}: the file the first boot \
+             wrote is not there",
+            P::READ_LINE,
+            P::READ_ANSWER
+        )));
+    }
+    let synced = before
+        .lines()
+        .find(|l| l.contains(P::SYNCED))
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    Ok(format!(
+        "swish-check ({arch}): typed `reboot`; {synced}; the machine reset{} and came back to a \
+         prompt, and `{}` read back what the first boot wrote",
+        firmware_marker(arch).map_or(String::new(), |fw| format!(" through {fw}")),
+        P::READ_LINE
+    ))
+}
 
+/// The console [`reboot_phase`] types at and reads, and what it types and waits for.
+struct RebootPhase<'a> {
+    seen: &'a std::sync::Arc<std::sync::Mutex<String>>,
+    stdin: &'a mut std::process::ChildStdin,
+}
+
+impl RebootPhase<'_> {
     const BOOT_SECS: u64 = SWISH_CHECK_BOOT_SECS;
     const LINE_SECS: u64 = SWISH_CHECK_X86_LINE_SECS;
     const WRITE_LINE: &str = "echo survives a reboot > reboot.txt";
@@ -135,110 +198,101 @@ pub(super) fn reboot_phase(
     const KERNEL_ASKED: &str = "the kernel was asked to restart the machine";
     const KERNEL_REFUSED: &str = "every reset route was refused";
     const SYNCED: &str = "reboot: filesystem synced";
-    let x86 = arch == "x86_64";
-    let text = || degauge(&seen.lock().expect("transcript lock"));
-    let len = || text().len();
-    let wait_after = |from: usize, needle: &str, secs: u64| -> Option<usize> {
+
+    /// Every error this phase returns names it, so a red leg says it was the reboot and not a
+    /// scripted line.
+    fn failure(why: &str) -> String {
+        format!("reboot phase: {why}")
+    }
+
+    fn text(&self) -> String {
+        degauge(&self.seen.lock().expect("transcript lock"))
+    }
+
+    fn len(&self) -> usize {
+        self.text().len()
+    }
+
+    /// Where `needle` first appears after `from` in the degauged transcript, waiting up to `secs`.
+    fn wait_after(&self, from: usize, needle: &str, secs: u64) -> Option<usize> {
         let deadline = Instant::now() + Duration::from_secs(secs);
         while Instant::now() < deadline {
-            let t = text();
+            let t = self.text();
             if let Some(at) = t.get(from..).and_then(|rest| rest.find(needle)) {
                 return Some(from + at);
             }
             std::thread::sleep(Duration::from_millis(100));
         }
         None
-    };
-    let wait_prompt = |secs: u64| -> bool {
+    }
+
+    fn wait_prompt(&self, secs: u64) -> bool {
         let deadline = Instant::now() + Duration::from_secs(secs);
         while Instant::now() < deadline {
-            if seen.lock().expect("transcript lock").ends_with("$ ") {
+            if self.seen.lock().expect("transcript lock").ends_with("$ ") {
                 return true;
             }
             std::thread::sleep(Duration::from_millis(100));
         }
         false
-    };
-    let mut type_line = |line: &str| -> Result<(), String> {
-        writeln!(stdin, "{line}")
-            .and_then(|()| stdin.flush())
-            .map_err(|e| format!("reboot phase: could not type `{line}`: {e}"))
-    };
-    let fail = |why: &str| Err(format!("reboot phase: {why}"));
+    }
 
-    if !wait_prompt(LINE_SECS) {
-        return fail("the first boot was not at a bare prompt when the phase began");
+    fn type_line(&mut self, line: &str) -> Result<(), String> {
+        writeln!(self.stdin, "{line}")
+            .and_then(|()| self.stdin.flush())
+            .map_err(|e| format!("reboot phase: could not type `{line}`: {e}"))
     }
-    let at = len();
-    type_line(WRITE_LINE)?;
-    if wait_after(at, &format!("{WRITE_LINE}\n"), LINE_SECS).is_none() || !wait_prompt(LINE_SECS) {
-        return fail(&format!("`{WRITE_LINE}` never came back to a prompt"));
-    }
-    let typed = len();
-    type_line("reboot")?;
-    let Some(asked) = wait_after(typed, KERNEL_ASKED, LINE_SECS) else {
-        return fail("the kernel never said it was asked to restart the machine");
-    };
-    let before = text()[typed..asked].to_string();
-    if !before.contains(SYNCED) {
-        return fail(&format!(
-            "`reboot` reached the kernel without reporting a completed sync (no {SYNCED:?} \
-             before the kernel's line): {:?}",
-            before.trim()
-        ));
-    }
-    let resumed = match firmware_marker(arch) {
-        Some(fw) => match wait_after(asked, fw, BOOT_SECS) {
-            Some(at) => at,
-            None => {
-                let refused = text()[asked..].contains(KERNEL_REFUSED);
-                return fail(&if refused {
-                    "the firmware refused every reset route".to_string()
-                } else {
-                    format!("no {fw:?} line after the reset: the machine did not come back")
-                });
-            }
-        },
-        None => asked,
-    };
-    if text()[asked..].contains(KERNEL_REFUSED) {
-        return fail("the firmware refused every reset route");
-    }
-    let Some(second) = wait_after(resumed, "nife capability shell", BOOT_SECS) else {
-        return fail(&format!(
-            "no second prompt banner within {BOOT_SECS}s of the reset"
-        ));
-    };
-    if x86 {
-        if wait_after(second, X86_HAND_OVER_REPORT, BOOT_SECS).is_none() {
-            return fail("the second x86_64 boot never finished its hand-over report");
+
+    /// **From the kernel's restart line to a bare prompt on the second boot**: the firmware's line
+    /// where there is firmware, no refusal, a second banner, and on `x86_64` the hand-over report
+    /// and an Enter.
+    fn come_back(&mut self, arch: &str, asked: usize) -> Result<(), String> {
+        let resumed = match firmware_marker(arch) {
+            Some(fw) => match self.wait_after(asked, fw, Self::BOOT_SECS) {
+                Some(at) => at,
+                None => {
+                    let refused = self.text()[asked..].contains(Self::KERNEL_REFUSED);
+                    return Err(Self::failure(&if refused {
+                        "the firmware refused every reset route".to_string()
+                    } else {
+                        format!("no {fw:?} line after the reset: the machine did not come back")
+                    }));
+                }
+            },
+            None => asked,
+        };
+        if self.text()[asked..].contains(Self::KERNEL_REFUSED) {
+            return Err(Self::failure("the firmware refused every reset route"));
         }
-        type_line("")?;
+        let Some(second) = self.wait_after(resumed, "nife capability shell", Self::BOOT_SECS)
+        else {
+            return Err(Self::failure(&format!(
+                "no second prompt banner within {}s of the reset",
+                Self::BOOT_SECS
+            )));
+        };
+        if arch == "x86_64" {
+            if self
+                .wait_after(second, X86_HAND_OVER_REPORT, Self::BOOT_SECS)
+                .is_none()
+            {
+                return Err(Self::failure(
+                    "the second x86_64 boot never finished its hand-over report",
+                ));
+            }
+            self.type_line("")?;
+        }
+        if !self.wait_prompt(Self::LINE_SECS) {
+            return Err(Self::failure("the second boot never reached a bare prompt"));
+        }
+        Ok(())
     }
-    if !wait_prompt(LINE_SECS) {
-        return fail("the second boot never reached a bare prompt");
-    }
-    let at = len();
-    type_line(READ_LINE)?;
-    if wait_after(at, READ_ANSWER, LINE_SECS).is_none() {
-        return fail(&format!(
-            "`{READ_LINE}` after the reset did not answer {READ_ANSWER:?}: the file the first boot \
-             wrote is not there"
-        ));
-    }
-    let synced = before
-        .lines()
-        .find(|l| l.contains(SYNCED))
-        .unwrap_or("")
-        .trim()
-        .to_string();
-    Ok(format!(
-        "swish-check ({arch}): typed `reboot`; {synced}; the machine reset{} and came back to a \
-         prompt, and `{READ_LINE}` read back what the first boot wrote",
-        firmware_marker(arch).map_or(String::new(), |fw| format!(" through {fw}"))
-    ))
 }
 
+/// **Launch `graphical_terminal` from the prompt a boot is sitting at, and read the screen**
+/// (the second and third steps of [`Keystrokes`]'s doc). Called by [`swish_check_boot`] once its
+/// script has finished and the prompt is back, on a boot that has a virtio-gpu attached; `sock` is
+/// that gpu's monitor socket, which `screendump` reads. `Ok` carries the sentence to print.
 pub(super) fn launch_graphical_terminal(
     arch: &str,
     keystrokes: Keystrokes,
@@ -246,9 +300,6 @@ pub(super) fn launch_graphical_terminal(
     seen: &std::sync::Arc<std::sync::Mutex<String>>,
     sock: &str,
 ) -> Result<String, String> {
-    use std::io::Write;
-    use std::time::{Duration, Instant};
-
     // **Launch.** `graphical_terminal\n` over the UART, exactly as a person would. The prompt is
     // out and nothing was echoed since it appeared, so the line is read by the prompt, not
     // buffered ahead of it.

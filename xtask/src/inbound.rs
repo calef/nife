@@ -248,7 +248,7 @@ fn probe_inbound(
     stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
     started: std::time::Instant,
 ) -> (Result<(), String>, InboundTrace) {
-    use std::io::{ErrorKind, Read, Write};
+    use std::io::Write;
     use std::sync::atomic::Ordering;
 
     let addr: std::net::SocketAddr = ([127, 0, 0, 1], port).into();
@@ -284,55 +284,7 @@ fn probe_inbound(
             continue;
         }
 
-        let mut got = Vec::new();
-        let mut buf = [0u8; 64];
-        // What ended this connection, for the tally the failure text prints. The read loop has
-        // five exits and they mean different things: only two of them are "nothing was consumed",
-        // and telling them apart is the whole diagnosis when a round goes missing.
-        let mut outcome = "answered";
-        let mut error: Option<String> = None;
-        while got.len() < INBOUND_OUT.len() {
-            match s.read(&mut buf) {
-                Ok(0) => {
-                    // The guest had no listener and closed; nothing was consumed. Unless bytes had
-                    // already arrived, in which case a round WAS served and we lost the tail of it.
-                    outcome = if got.is_empty() {
-                        "closed-empty"
-                    } else {
-                        "closed-partial"
-                    };
-                    break;
-                }
-                Ok(n) => got.extend_from_slice(&buf[..n]),
-                Err(e) if read_error_is_not_yet(e.kind()) => {
-                    // Still waiting on a guest that has not polled yet. Hold the connection: see
-                    // this function's note on why dropping it would feed the guest a round we
-                    // cannot collect. The run ending is the only thing that ends this wait.
-                    if stop.load(Ordering::Relaxed) {
-                        last = String::from(
-                            "the run ended while a connection was still waiting for the guest to \
-                             accept it",
-                        );
-                        outcome = "stopped-while-waiting";
-                        break;
-                    }
-                }
-                Err(e) => {
-                    last = format!("reading the guest's answer failed: {e}");
-                    // Kept on the event, not only in `last`, which is printed on a red run alone.
-                    // notes/net/the-inbound-check.md: a green run's `read-failed` once threw away the one fact that
-                    // would have named it.
-                    error = Some(format!("{:?}, os error {:?}", e.kind(), e.raw_os_error()));
-                    outcome = match e.kind() {
-                        ErrorKind::ConnectionReset => "reset",
-                        ErrorKind::ConnectionAborted => "aborted",
-                        ErrorKind::BrokenPipe => "broken-pipe",
-                        _ => "read-failed",
-                    };
-                    break;
-                }
-            }
-        }
+        let (got, outcome, error) = read_the_answer(&mut s, &stop, &mut last);
         drop(s);
 
         if got == INBOUND_OUT {
@@ -340,10 +292,12 @@ fn probe_inbound(
             trace.note("answered", opened, got.len());
             continue;
         }
-        if outcome == "answered" {
-            // The loop filled its quota without matching: bytes that are not the guest's answer.
-            outcome = "wrong-bytes";
-        }
+        // The loop filled its quota without matching: bytes that are not the guest's answer.
+        let outcome = if outcome == "answered" {
+            "wrong-bytes"
+        } else {
+            outcome
+        };
         trace.note_error(outcome, opened, got.len(), error);
         // Not an answer: almost always "no listener yet", which is the normal state for most of the
         // run. Keep the last one only so a genuine failure has something to say.
@@ -375,6 +329,69 @@ fn probe_inbound(
         ))
     };
     (verdict, trace)
+}
+
+/// **Read one connection until the guest's answer is whole, it ends, or the run does.** Returns
+/// the bytes read, what ended the connection (for the timeline), and the read error's detail when
+/// an error ended it; a failure worth reporting is also left in `last`.
+fn read_the_answer(
+    s: &mut std::net::TcpStream,
+    stop: &std::sync::atomic::AtomicBool,
+    last: &mut String,
+) -> (Vec<u8>, &'static str, Option<String>) {
+    use std::io::{ErrorKind, Read};
+    use std::sync::atomic::Ordering;
+
+    let mut got = Vec::new();
+    let mut buf = [0u8; 64];
+    // What ended this connection, for the tally the failure text prints. The read loop has
+    // five exits and they mean different things: only two of them are "nothing was consumed",
+    // and telling them apart is the whole diagnosis when a round goes missing.
+    let mut outcome = "answered";
+    let mut error: Option<String> = None;
+    while got.len() < INBOUND_OUT.len() {
+        match s.read(&mut buf) {
+            Ok(0) => {
+                // The guest had no listener and closed; nothing was consumed. Unless bytes had
+                // already arrived, in which case a round WAS served and we lost the tail of it.
+                outcome = if got.is_empty() {
+                    "closed-empty"
+                } else {
+                    "closed-partial"
+                };
+                break;
+            }
+            Ok(n) => got.extend_from_slice(&buf[..n]),
+            Err(e) if read_error_is_not_yet(e.kind()) => {
+                // Still waiting on a guest that has not polled yet. Hold the connection: see
+                // [`probe_inbound`]'s note on why dropping it would feed the guest a round we
+                // cannot collect. The run ending is the only thing that ends this wait.
+                if stop.load(Ordering::Relaxed) {
+                    *last = String::from(
+                        "the run ended while a connection was still waiting for the guest to \
+                         accept it",
+                    );
+                    outcome = "stopped-while-waiting";
+                    break;
+                }
+            }
+            Err(e) => {
+                *last = format!("reading the guest's answer failed: {e}");
+                // Kept on the event, not only in `last`, which is printed on a red run alone.
+                // notes/net/the-inbound-check.md: a green run's `read-failed` once threw away the one fact that
+                // would have named it.
+                error = Some(format!("{:?}, os error {:?}", e.kind(), e.raw_os_error()));
+                outcome = match e.kind() {
+                    ErrorKind::ConnectionReset => "reset",
+                    ErrorKind::ConnectionAborted => "aborted",
+                    ErrorKind::BrokenPipe => "broken-pipe",
+                    _ => "read-failed",
+                };
+                break;
+            }
+        }
+    }
+    (got, outcome, error)
 }
 
 /// **Whether a read error means "not yet" rather than "this connection is over".**
