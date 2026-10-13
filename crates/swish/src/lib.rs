@@ -1,87 +1,32 @@
-//! **The capability shell's logic, with the IO taken out** (milestone 70).
+//! **The capability shell's logic, with the IO taken out.** `components/src/swish.rs` is the
+//! program, holding the terminal, spawn and result channels, a budget and maybe a directory; this
+//! crate is everything it decides or renders with no capability in hand, so it is host-tested. If
+//! a function here needed a capability, it would not be here.
 //!
-//! `components/src/swish.rs` is the program: it holds a terminal endpoint, a spawn channel, a result
-//! channel, a budget, and (in the wiring that has one) a directory capability. This crate is
-//! everything that shell decides or renders with **no capability in hand**, so it compiles for the
-//! host and its tests run in milliseconds instead of under QEMU.
-//!
-//! The split follows the line CLAUDE.md draws for `coremark`, `line_editor` and `compositor`: a
-//! crate and a program share a name when the crate is that program's logic. Reading it the other
-//! way is the useful direction. If a function here needed a capability, it would not be here.
-//!
-//! # What is in here
-//!
-//! - **The routing of a typed line.** [`route`] answers "what kind of thing did the user type",
-//!   including the one ordering that has a bug behind it: the prefix words (`caps`, `time`) are
-//!   answered *before* the line is split on its operators, or `caps date | wc` would lose everything
-//!   after the pipe.
-//! - **What a duration reads as.** [`write_duration`] and [`write_timing`] (milestone 86), plus
-//!   [`write_untimed`] for the three reasons there is no duration to print. The arithmetic is here
-//!   rather than in the program because it is arithmetic, and the program's half is two reads of a
-//!   page it holds a capability to.
-//! - **Pattern versus text.** [`is_pattern`] and [`expansion`], which decide whether a word is a
-//!   designation to resolve or arbitrary text to print, and which word on a line gets expanded.
-//! - **Every sentence the user reads.** [`write_say`], [`write_refusal`], [`write_outcome`],
+//! - [`route`] says what kind of thing was typed, answering the prefix words (`caps`, `time`)
+//!   before the line is split on operators, or `caps date | wc` would lose everything after the
+//!   pipe.
+//! - [`write_duration`], [`write_timing`] and [`write_untimed`] render a duration, or one of the
+//!   three reasons there is none.
+//! - [`is_pattern`] and [`expansion`] decide whether a word is a designation to resolve or text to
+//!   print, and which word on a line expands.
+//! - Every sentence the user reads: [`write_say`], [`write_refusal`], [`write_outcome`],
 //!   [`write_preview`], [`write_holdings`], [`write_help`], [`write_pwd`], [`write_num`].
 //!
-//! # How a renderer is written here
-//!
-//! Every rendering function takes `out: &mut dyn FnMut(&[u8])` rather than printing. The program
-//! passes its terminal `print`; a test passes a collector; the guest witnesses (which have no
-//! terminal at all) pass a buffer. That was already the shape `ls` and `echo` used inside the shell,
-//! so nothing about the program's IO had to be restructured to lift the rest.
-//!
-//! Anything that needs a directory listing takes a second callback, `expand`, of the same shape:
-//! the *matching* is pure and lives in `grant_plan::expand`, and only reading the directory needs a
-//! capability. So [`echo`] and [`expansion`] are testable end to end against a fake directory.
-//!
-//! ```
-//! use grant_plan::expand::NameSet;
-//! use swish::{Say, echo};
-//!
-//! // A directory holding two files, standing in for the one the shell would have to ask a server
-//! // for. Everything else on this path is the real thing.
-//! let mut listing = |_pattern: &[u8]| -> Result<NameSet, Say> {
-//!     let mut set = NameSet::empty();
-//!     set.push(b"notes.txt", false);
-//!     set.push(b"report.txt", false);
-//!     Ok(set)
-//! };
-//!
-//! let mut printed = Vec::new();
-//! let said = echo(
-//!     b"the set: *.txt",
-//!     swish::Status::Ran,
-//!     &mut listing,
-//!     &mut |b| printed.extend_from_slice(b),
-//! );
-//!
-//! assert!(matches!(said, Say::Nothing));
-//! // The words with no magic in them came through byte for byte; the pattern became what it
-//! // designates, which is exactly what `rm *.txt` would have been granted.
-//! assert_eq!(printed, b"the set: notes.txt report.txt");
-//! ```
+//! Every renderer takes `out: &mut dyn FnMut(&[u8])`: the program passes its terminal `print`, a
+//! test a collector, a guest witness a buffer. A directory listing comes through a second callback,
+//! `expand`, since only reading the directory needs a capability, so [`echo`] and [`expansion`] are
+//! testable end to end against a fake directory.
 //!
 //! # BUGS
 //!
-//! Three of the shell's functions are **not** here and could not be lifted without restructuring
-//! its IO, which milestone 70 was scoped not to do:
+//! `builtin` and `dispatch_one` (every arm is a capability invocation or a print), `run` (two
+//! already-tested `grant_plan` calls around the spawn choice) and `spawn` and below (capability
+//! movement) stay in the program; [`route`] lifts the decision they sit under.
 //!
-//! - `builtin` and `dispatch_one`, because every arm is a capability invocation (`cd`, `ls` and
-//!   `mkdir` are requests to the filesystem server) or a print. [`route`] lifts the decision they
-//!   sit under; the arms themselves stay with the wiring.
-//! - `run`, whose body is two calls into `grant_plan` (both already host-tested there) wrapped
-//!   around a choice between two spawn paths. Lifting it would have moved the spawn decision away
-//!   from the code that can act on it and bought no new coverage.
-//! - `spawn`, `pipeline` and everything below them, which is capability movement and nothing else.
-//!
-//! Name: ratified 2026-08-01 (calef, milestone 63), replacing `shell`. Refused `shell` (a category
-//! rather than a name: `bash`, `zsh`, `fish` and `rc` are identities), `capsh` (Linux's libcap
-//! ships `capsh(1)`) and `sheesh` (it carries a 2020-21 timestamp where `bash` and `fish` are
-//! era-neutral, and it is an interjection of exasperation, while this shell's most characteristic
-//! behavior is refusing things by design). A swish is the shot that goes through the net touching
-//! nothing, which is least authority in one word. The crate takes the program's name because the
-//! crate is that program's logic (DECISIONS §63); it was lifted out on 2026-08-02 by milestone 70.
+//! Name: ratified 2026-08-01 (calef), replacing `shell`. Refused `shell` (a category), `capsh`
+//! (Linux's libcap ships one) and `sheesh` (dated, and an interjection). A swish goes through the
+//! net touching nothing; the crate takes the program's name because it is the program's logic.
 
 #![no_std]
 
