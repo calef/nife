@@ -83,6 +83,9 @@ exclude_globs = [
     # now walks the target's module tree, so a new `mod` here fails the gate until it is listed.
     "uefi_loader/src/arch/**",
     "uefi_loader/src/chooser.rs",
+    "uefi_loader/src/console.rs",
+    "uefi_loader/src/loading.rs",
+    "uefi_loader/src/placement.rs",
 
     # **`stick_maker`'s host half and its entry point**, mirroring `script/coverage`'s exemption of
     # the same two paths for the same reason (the stick program, 2026-09-19). `src/host/` runs
