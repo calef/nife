@@ -288,33 +288,120 @@ pub(crate) fn scanout_rows(ppm: &[u8], alphabet: &[u8]) -> Result<Vec<String>, S
 /// keyboard driver exists go nowhere, and once it exists the next one lands. `video_terminal::script::HOST_KEY`
 /// is the one definition of which key, shared with the kernel test that asserts the byte.
 pub(crate) fn sendkey(sock: &str, key: &str) {
-    use std::io::Write;
-    use std::os::unix::net::UnixStream;
-
-    let Ok(mut s) = UnixStream::connect(sock) else {
-        return;
-    };
-    let _ = s.write_all(format!("sendkey {key}\n").as_bytes());
-    let _ = s.flush();
+    if let Ok(mut monitor) = Monitor::connect(sock) {
+        let _ = monitor.sendkey(key);
+    }
 }
 
-/// Ask the QEMU monitor on `sock` for a screendump into `out`. Returns false while the socket is not
-/// there yet (QEMU still starting, or already gone), which the caller treats as "try again".
+/// Ask the QEMU monitor on `sock` for a screendump into `out`, and return once QEMU has written it.
+/// Returns false when the monitor did not answer (QEMU still starting, or already gone) or QEMU
+/// refused the dump, which the caller treats as "try again".
 pub(crate) fn screendump(sock: &str, out: &Path) -> bool {
-    use std::io::Write;
-    use std::os::unix::net::UnixStream;
+    Monitor::connect(sock).is_ok_and(|mut monitor| monitor.screendump(out).is_ok())
+}
 
-    let Ok(mut s) = UnixStream::connect(sock) else {
-        return false;
-    };
-    // The monitor greets us, then takes one command per line. We never read the reply: the evidence is
-    // the file, and a reply we misparsed would only be a second way to be wrong.
-    let _ = s.write_all(format!("screendump {}\n", out.display()).as_bytes());
-    let _ = s.flush();
-    // Give QEMU a moment to write the file before the caller reads it. The size check in
-    // `scanout_holds_the_pattern` catches a partial write anyway, so this only reduces retries.
-    std::thread::sleep(std::time::Duration::from_millis(150));
-    true
+/// **One connection to QEMU's human monitor, which waits for each command's answer.**
+///
+/// # Why it reads the reply (2026-10-12, lane/scanout-referee-flake)
+///
+/// Until this existed, `sendkey` and `screendump` each opened a connection, wrote a line and hung
+/// up without reading anything, and `screendump` then slept 150 ms and hoped the file was there.
+/// Two things were wrong with that, and both were measured, not inferred:
+///
+/// - **QEMU's monitor socket has a listen backlog of one, and serves one client at a time.** A
+///   connection made while the previous one has not yet been accepted is refused. The referee
+///   pressed a key and then asked for a dump on two connections a few microseconds apart, so the
+///   dump's connection was usually refused: 9 of 10 times against an idle QEMU, and a refusal
+///   meant no dump that poll. A picture held for three seconds could pass through a run of
+///   refused polls unseen, and a busy host makes QEMU slower to accept, so the miss grew with load.
+/// - **A fixed sleep is a guess about how long QEMU takes.** On a loaded host the read could land
+///   before the write and grade the previous poll's file.
+///
+/// QEMU prints its `(qemu) ` prompt only after a command has finished, `screendump` included (the
+/// file is complete and closed by then: 50 of 50 dumps measured whole the moment the prompt came
+/// back). So waiting for the prompt makes each command synchronous, and a client that does that
+/// never has a connection waiting in the backlog. notes/framebuffer-contract.md has the runs.
+///
+/// Name: provisional, minted 2026-10-12 by lane/scanout-referee-flake.
+pub(crate) struct Monitor {
+    stream: std::os::unix::net::UnixStream,
+}
+
+/// What QEMU's human monitor prints when it is ready for the next command.
+const MONITOR_PROMPT: &[u8] = b"(qemu) ";
+
+/// How long one command may take before the connection is treated as dead. A screendump on an
+/// idle host answers in milliseconds; this is the bound for a host so loaded that the poll has
+/// stopped meaning anything, not a margin anything is expected to approach.
+const MONITOR_ANSWER_WITHIN: std::time::Duration = std::time::Duration::from_secs(10);
+
+impl Monitor {
+    /// Connect and wait for the greeting's prompt. Fails while the socket is not there yet.
+    pub(crate) fn connect(sock: &str) -> std::io::Result<Self> {
+        let stream = std::os::unix::net::UnixStream::connect(sock)?;
+        stream.set_read_timeout(Some(MONITOR_ANSWER_WITHIN))?;
+        stream.set_write_timeout(Some(MONITOR_ANSWER_WITHIN))?;
+        let mut monitor = Self { stream };
+        monitor.until_prompt()?;
+        Ok(monitor)
+    }
+
+    /// Run one command and return what it printed, once QEMU has finished it.
+    fn command(&mut self, line: &str) -> std::io::Result<String> {
+        use std::io::Write;
+        self.stream.write_all(format!("{line}\n").as_bytes())?;
+        let reply = self.until_prompt()?;
+        Ok(monitor_output(&reply))
+    }
+
+    /// Press and release `key` on the guest's keyboard.
+    pub(crate) fn sendkey(&mut self, key: &str) -> std::io::Result<()> {
+        self.command(&format!("sendkey {key}")).map(drop)
+    }
+
+    /// Dump the scanout into `out`. On `Ok` the file is whole. The old file is removed first, so a
+    /// dump that failed can never leave the previous picture behind to be graded as this one.
+    pub(crate) fn screendump(&mut self, out: &Path) -> std::io::Result<()> {
+        let _ = std::fs::remove_file(out);
+        let said = self.command(&format!("screendump {}", out.display()))?;
+        if said.is_empty() {
+            Ok(())
+        } else {
+            Err(std::io::Error::other(format!(
+                "QEMU refused the screendump: {said}"
+            )))
+        }
+    }
+
+    /// Read until the monitor's prompt. One command is in flight at a time, so nothing follows it.
+    fn until_prompt(&mut self) -> std::io::Result<Vec<u8>> {
+        use std::io::Read;
+        let mut reply = Vec::new();
+        let mut chunk = [0u8; 4096];
+        while !reply.ends_with(MONITOR_PROMPT) {
+            let n = self.stream.read(&mut chunk)?;
+            if n == 0 {
+                return Err(std::io::ErrorKind::UnexpectedEof.into());
+            }
+            reply.extend_from_slice(&chunk[..n]);
+        }
+        Ok(reply)
+    }
+}
+
+/// What a command printed, from the bytes the monitor sent between our line and the next prompt.
+///
+/// The monitor's line editor echoes what we typed, redrawn once per character with terminal escapes,
+/// and ends the echo with the first `\r\n`; everything after that, up to the prompt, is the
+/// command's own output. `sendkey` and a successful `screendump` print nothing.
+fn monitor_output(reply: &[u8]) -> String {
+    let text = String::from_utf8_lossy(reply);
+    let body = text
+        .strip_suffix(std::str::from_utf8(MONITOR_PROMPT).unwrap_or_default())
+        .unwrap_or(&text);
+    body.split_once("\r\n")
+        .map(|(_echo, output)| output.trim_end().to_string())
+        .unwrap_or_default()
 }
 
 /// **The host's load average across one emulated leg**, so a red timing assertion says whether the
@@ -601,9 +688,19 @@ pub(crate) struct ScanoutReferee {
     composed: Option<String>,
     text: Option<String>,
     matched: Option<String>,
-    last_composed: String,
-    last_text: String,
-    last_reason: String,
+    last_composed: Option<String>,
+    last_text: Option<String>,
+    last_reason: Option<String>,
+    /// Held across polls rather than reopened for each command; see [`Monitor`] for why a
+    /// connection per command lost dumps. `None` until QEMU is listening, and again after any
+    /// error, so the next poll reconnects.
+    monitor: Option<Monitor>,
+    /// Dumps taken and read, in all, and graded against each picture in turn. A red report prints
+    /// them, so it says how hard the referee looked rather than leaving that to a rerun.
+    dumps: u32,
+    graded: [u32; 3],
+    /// The last thing that went wrong talking to the monitor, for a report with no dumps at all.
+    monitor_error: Option<String>,
 }
 
 impl ScanoutReferee {
@@ -625,7 +722,6 @@ impl ScanoutReferee {
         // socket, and neither touches the environment.
         unsafe { std::env::set_var("NIFE_GPU_MON", &sock) };
 
-        let missing = String::from("no screendump was ever taken (did QEMU get a monitor?)");
         Self {
             arch: arch.to_string(),
             sock,
@@ -635,9 +731,13 @@ impl ScanoutReferee {
             composed: None,
             text: None,
             matched: None,
-            last_composed: missing.clone(),
-            last_text: missing.clone(),
-            last_reason: missing,
+            last_composed: None,
+            last_text: None,
+            last_reason: None,
+            monitor: None,
+            dumps: 0,
+            graded: [0; 3],
+            monitor_error: None,
         }
     }
 
@@ -656,33 +756,57 @@ impl ScanoutReferee {
         // Press a key every poll. Harmless before the keyboard driver exists (QEMU drops the event)
         // and harmless after its test has passed (the driver ends up parked in a `CALL` nobody
         // answers), so there is nothing to time.
-        sendkey(&self.sock, video_terminal::script::HOST_KEY);
-        if self.matched.is_none()
-            && screendump(&self.sock, &self.shot)
-            && let Ok(bytes) = std::fs::read(&self.shot)
-        {
+        //
+        // Both commands go over one connection and each waits for its answer, so the dump is never
+        // refused for arriving while the key's connection was still in QEMU's backlog ([`Monitor`]).
+        if self.monitor.is_none() {
+            self.monitor = Monitor::connect(&self.sock).ok();
+        }
+        let Some(monitor) = self.monitor.as_mut() else {
+            return;
+        };
+        let dumped = monitor
+            .sendkey(video_terminal::script::HOST_KEY)
+            .and_then(|()| match self.matched {
+                None => monitor.screendump(&self.shot).map(|()| true),
+                Some(_) => Ok(false),
+            });
+        match dumped {
+            Ok(true) => {}
+            Ok(false) => return,
+            Err(e) => {
+                self.monitor_error = Some(e.to_string());
+                self.monitor = None;
+                return;
+            }
+        }
+        if let Ok(bytes) = std::fs::read(&self.shot) {
+            self.dumps += 1;
             // Each picture is transient except the last (the next test on the same device replaces
             // it), so the dump that matched is copied aside: `shot` is overwritten on every poll.
             if self.composed.is_none() {
+                self.graded[0] += 1;
                 match scanout_holds_the_composed_screen(&bytes) {
                     Ok(()) => {
                         let _ = std::fs::write(&self.composed_shot, &bytes);
                         self.composed = Some(format!("{}", self.composed_shot.display()));
                     }
-                    Err(reason) => self.last_composed = reason,
+                    Err(reason) => self.last_composed = Some(reason),
                 }
             } else if self.text.is_none() {
+                self.graded[1] += 1;
                 match scanout_holds_the_terminals_text(&bytes) {
                     Ok(()) => {
                         let _ = std::fs::write(&self.text_shot, &bytes);
                         self.text = Some(format!("{}", self.text_shot.display()));
                     }
-                    Err(reason) => self.last_text = reason,
+                    Err(reason) => self.last_text = Some(reason),
                 }
             } else {
+                self.graded[2] += 1;
                 match scanout_holds_the_pattern(&bytes) {
                     Ok(()) => self.matched = Some(format!("{}", self.shot.display())),
-                    Err(reason) => self.last_reason = reason,
+                    Err(reason) => self.last_reason = Some(reason),
                 }
             }
         }
@@ -693,8 +817,21 @@ impl ScanoutReferee {
         let _ = std::fs::remove_file(&self.sock);
         let arch = &self.arch;
         let (composed, text, matched) = (&self.composed, &self.text, &self.matched);
-        let (last_composed, last_text, last_reason) =
-            (&self.last_composed, &self.last_text, &self.last_reason);
+        let seen = Seen {
+            dumps: self.dumps,
+            monitor_error: self.monitor_error.as_deref(),
+        };
+        let last_composed = seen.why_unmatched(None, self.graded[0], self.last_composed.as_deref());
+        let last_text = seen.why_unmatched(
+            Some("composed screen"),
+            self.graded[1],
+            self.last_text.as_deref(),
+        );
+        let last_reason = seen.why_unmatched(
+            Some("terminal's text"),
+            self.graded[2],
+            self.last_reason.as_deref(),
+        );
 
         let mut ok = true;
         match composed {
@@ -760,6 +897,37 @@ impl ScanoutReferee {
     }
 }
 
+/// What the referee saw over a whole run, for saying why one picture never matched.
+struct Seen<'a> {
+    dumps: u32,
+    monitor_error: Option<&'a str>,
+}
+
+impl Seen<'_> {
+    /// The "Last mismatch" a red report prints for one picture.
+    ///
+    /// **The pictures are looked for in suite order**, so a picture graded zero times was never
+    /// looked at: the referee was still waiting for the one before it (`earlier`). Before
+    /// 2026-10-12 that case printed "no screendump was ever taken", which was false (the earlier
+    /// picture had been graded against dumps all along) and sent the reader to the wrong question.
+    fn why_unmatched(&self, earlier: Option<&str>, graded: u32, last: Option<&str>) -> String {
+        if self.dumps == 0 {
+            let said = self.monitor_error.map_or(String::new(), |e| {
+                format!("; the monitor's last error: {e}")
+            });
+            return format!("no screendump was ever taken (did QEMU get a monitor?){said}");
+        }
+        match (graded, last, earlier) {
+            (0, _, Some(earlier)) => format!(
+                "never looked for: the referee looks for the pictures in suite order and was still                  waiting for the {earlier} ({} dumps taken in all)",
+                self.dumps
+            ),
+            (n, Some(last), _) => format!("{last} (the last of {n} dumps graded against it)"),
+            (n, None, _) => format!("{n} dumps graded against it, and no mismatch recorded"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -781,6 +949,99 @@ mod tests {
         assert_eq!(parse_load_average("up 3 days"), None);
         assert_eq!(parse_load_average("load average:"), None);
         assert_eq!(parse_load_average("load average: n/a"), None);
+    }
+
+    /// **The monitor's answer is read past its echo.** QEMU 11.1.2's own bytes for `sendkey a`
+    /// (copied from a socket, not reconstructed): the line editor redraws the line once per
+    /// character typed, then `\r\n`, then the output, then the prompt. A parse that took the
+    /// echo for output would call every command a refusal.
+    #[test]
+    fn the_monitor_reply_is_read_past_the_line_editors_echo() {
+        let sendkey =
+            b"s\x1b[K\x1b[Dse\x1b[K\x1b[D\x1b[Dsen\x1b[K\x1b[D\x1b[D\x1b[Dsend\x1b[K\x1b[D\
+\x1b[D\x1b[D\x1b[Dsendk\x1b[K\x1b[D\x1b[D\x1b[D\x1b[D\x1b[Dsendke\x1b[K\x1b[D\x1b[D\x1b[D\x1b[D\
+\x1b[D\x1b[Dsendkey\x1b[K\x1b[D\x1b[D\x1b[D\x1b[D\x1b[D\x1b[D\x1b[Dsendkey \x1b[K\x1b[D\x1b[D\
+\x1b[D\x1b[D\x1b[D\x1b[D\x1b[D\x1b[Dsendkey a\x1b[K\r\n(qemu) ";
+        assert_eq!(monitor_output(sendkey), "");
+        // The tail of a refused dump, from the same QEMU.
+        let refused = b"\x1b[Dscreendump /nonexistent/dir/x.ppm\x1b[K\r\nError: Could not create \
+'/nonexistent/dir/x.ppm': No such file or directory\r\n(qemu) ";
+        assert_eq!(
+            monitor_output(refused),
+            "Error: Could not create '/nonexistent/dir/x.ppm': No such file or directory"
+        );
+    }
+
+    /// **A dump is not reported done until the monitor says so.** A stand-in monitor takes 300 ms
+    /// to write the file, twice the fixed sleep the referee used to trust, and only then prints its
+    /// prompt. `Monitor::screendump` must return with the file whole. Falsified: the 2026-10-12
+    /// `screendump` (write the line, sleep 150 ms, return) returns before the file exists, and this
+    /// fails on the existence assertion.
+    #[test]
+    fn a_screendump_returns_only_once_the_file_is_written() {
+        use std::io::{BufRead, Write};
+        let dir = std::env::temp_dir().join(format!("nife-monitor-test-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let sock = dir.join("mon.sock");
+        let out = dir.join("shot.ppm");
+        let _ = std::fs::remove_file(&sock);
+        let listener = std::os::unix::net::UnixListener::bind(&sock).expect("bind");
+        let server = std::thread::spawn(move || {
+            let (stream, _) = listener.accept().expect("accept");
+            let mut w = stream.try_clone().expect("clone");
+            w.write_all(b"QEMU stand-in monitor\r\n(qemu) ")
+                .expect("greet");
+            for line in std::io::BufReader::new(stream).lines() {
+                let line = line.expect("line");
+                if let Some(path) = line.strip_prefix("screendump ") {
+                    std::thread::sleep(std::time::Duration::from_millis(300));
+                    std::fs::write(path, b"P6\n1 1\n255\n\0\0\0").expect("write");
+                }
+                w.write_all(format!("{line}\r\n(qemu) ").as_bytes())
+                    .expect("answer");
+            }
+        });
+        let mut monitor = Monitor::connect(sock.to_str().expect("utf-8")).expect("connect");
+        monitor.sendkey("a").expect("sendkey");
+        monitor.screendump(&out).expect("screendump");
+        assert_eq!(
+            std::fs::read(&out).ok().as_deref(),
+            Some(&b"P6\n1 1\n255\n\0\0\0"[..]),
+            "screendump returned before the monitor had written the file"
+        );
+        drop(monitor);
+        server.join().expect("server");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// **A red report says how far the referee got.** The case that misled two lanes: the composed
+    /// screen matched, the text never did, so the pattern was never looked for, and the report
+    /// said "no screendump was ever taken".
+    #[test]
+    fn an_unmatched_picture_says_whether_it_was_ever_looked_for() {
+        let none = Seen {
+            dumps: 0,
+            monitor_error: Some("Connection refused (os error 61)"),
+        };
+        let r = none.why_unmatched(None, 0, None);
+        assert!(r.starts_with("no screendump was ever taken"), "{r}");
+        assert!(r.contains("Connection refused"), "{r}");
+
+        let some = Seen {
+            dumps: 40,
+            monitor_error: None,
+        };
+        let pattern = some.why_unmatched(Some("terminal's text"), 0, None);
+        assert!(pattern.starts_with("never looked for"), "{pattern}");
+        assert!(
+            pattern.contains("terminal's text") && pattern.contains("40 dumps"),
+            "{pattern}"
+        );
+        let text = some.why_unmatched(Some("composed screen"), 12, Some("pixel (0, 0) is wrong"));
+        assert_eq!(
+            text,
+            "pixel (0, 0) is wrong (the last of 12 dumps graded against it)"
+        );
     }
 
     /// Build a P6 PPM of the surface's geometry from a per-pixel function, the way QEMU's
