@@ -225,84 +225,22 @@ pub type Capability = Cap;
 const _: () = assert!(core::mem::size_of::<Object>() == 24);
 const _: () = assert!(core::mem::size_of::<Cap>() == 32);
 
-/// A thread's capability table: [`CAPABILITY_TABLE_SLOTS`] slots, fixed at the type (milestone 14 (kernel objects from untyped) phase B.1). The size
-/// was already the de-facto limit (`CapabilityTable::empty()` made 16); now it is part of the
-/// type and creating a capability table cannot allocate. Growing it is a one-number change here,
-/// paid in TCB size.
+/// A thread's capability table: [`CAPABILITY_TABLE_SLOTS`] slots, fixed at the type (milestone 14
+/// (kernel objects from untyped) phase B.1), so creating a capability table cannot allocate.
+/// Growing it is a one-number change here, paid in TCB size.
 ///
-/// **Raised 16 -> 17, milestone 49's terminal update.** `components/src/login.rs` gaining an eighth
-/// permanent grant (`TERM_EP`) pushed its own peak past the old fifteen usable slots (sixteen
-/// minus the reserved fault slot, `abi::fault::FAULT_EP_SLOT`) by exactly one: the first login
-/// against a freshly built service answered `login_protocol::DENIED` instead of `OK`, on a correct
-/// password, which is the exact silent-capacity-exhaustion symptom this file's own BUGS section
-/// already describes for a different cause. Measured, not guessed: `mint`'s own peak (`region`,
-/// `narrow_ep`, `ready`, briefly `tcb`, four objects) plus what a channel still holds at that point
-/// (`channel.result`, `channel.region`, two more) plus login's own resting footprint (eight granted
-/// capabilities, `own_ut`, `channel_ut`, ten more) is sixteen simultaneous slots, one past the
-/// fifteen usable. Every other avenue was considered and rejected first (see
-/// `design/roadmap/0049-users-and-attribution.md`'s own account): none of `own_ut`, `channel_ut`, the
-/// caretaker's `region`/`narrow_ep`/`ready` triple, or the channel's own objects can be merged or
-/// deferred without reopening a bug this tree already paid to fix (the 368-page LIFO hole, or the
-/// permanently-unreclaimable caretaker). This constant's own comment already names the cost of
-/// raising it ("a one-number change here, paid in TCB size"), which is exactly the shape of trade
-/// this tree's own precedent (`MAX_REGIONS`, `nifefs::NAME_LEN`) already treats as the expected
-/// response to a real feature needing one more slot.
+/// **A full table fails silently.** The progenitor that fills its table dies at
+/// `user_mode_runtime::trap` before a console exists to carry a word, and `script/test` never boots
+/// the real progenitor (the kernel plays it); `script/swish-check` is the gate that does. Each
+/// past raise was met in that silence, so the size is set from a measured peak plus headroom:
+/// [`CAPABILITY_TABLE_PEAK_MEASURED`] keeps the account, and `notes/capability-peak-trace.md`
+/// itemizes the progenitor's login-block peak.
 ///
-/// **Raised 17 -> 24, milestone 230 (2026-09-02), and the history of that number is the whole
-/// lesson.** Milestone 49's own lane set this constant to `28 // TEMP: generous bisection value`
-/// while chasing an unrelated login-suite flake, and then built and shipped the login stack in
-/// `crates/system_initializer` against it. A cleanup commit (`d1c81062`, 2026-08-27) put it back to
-/// 17, because the doc comment above says 17 and because a full `script/test` on all three
-/// architectures was green at 17. Both of those observations were true. Neither could see the
-/// failure, because **`script/test` never boots the real progenitor**: every suite that runs the shell
-/// has the kernel play the progenitor, and the only gate that runs `system_initializer` is
-/// `script/swish-check`, which at that time ran in neither `script/test` nor CI. PR #556 landed on
-/// 2026-08-28 and `main` booted straight into the silent halt this file's BUGS section describes:
-/// with a virtio-rng attached, the progenitor fills all seventeen slots building `credentialer` and dies at
-/// `user_mode_runtime::trap` before a console exists to carry a word about it. It stayed that way for five
-/// days, through a fully green tree, because nobody asked the one question that would have shown
-/// it.
-///
-/// So 28 was never wrong, only unexplained, and reverting it to a number the prose justified
-/// removed the thing holding the boot up. This raise replaces the guess with a measurement:
-/// **21** simultaneous slots is the boot's high-water mark, in the progenitor, while `build_child` lays down
-/// `credentialer` (twelve capabilities this process never gives back, the login block's own six,
-/// and the address space and page the loader is working through). Twenty-four is twenty-one plus
-/// three. The two previous raises each took the number to exactly what that day's boot needed and
-/// both times the next addition hit the wall in the same silence; at 32 bytes a slot the three cost
-/// 96 bytes a thread, 24 KiB across `MAX_THREADS`, which is the cheapest insurance in this file.
-///
-/// **Two of those three are left** (2026-09-05, milestone 111): the measured peak is 22, not 21,
-/// because the progenitor now holds the entropy service's request endpoint for the life of the boot instead
-/// of releasing it after the login block. The insurance is being spent as intended and the ceiling
-/// is unchanged; see [`CAPABILITY_TABLE_PEAK_MEASURED`] for what moved and why the answer was not
-/// to raise this.
-///
-/// **One is left** (2026-09-24, milestone 590 (the booted system starts its network stack)): on a
-/// boot with a NIC the progenitor
-/// also holds the network stack's client endpoint for life, so the peak is 23. The next capability
-/// held across the login block meets the wall; this constant's first paragraph names the two
-/// honest candidates for buying one back first, and milestone 590's block proposes that as work.
-///
-/// **Raised 24 -> 32** (calef, 2026-09-27, UTC). The wall this doc predicted was met from a second
-/// direction before the peak reached it: milestone 126 (the `procps` package) needed a boot slot
-/// for the machine statistics page, and the GPU and keyboard grants of milestone 600 (the graphical terminal stack is built in userspace) had named every
-/// progenitor boot slot below the fault slot, some used only on some boots, so no slot was free on
-/// every boot. calef chose thirty-two over twenty-five so the next boot grant does not meet the
-/// same wall a week later. The cost is 256 bytes a thread, in a TCB page that had 2,944 idle
-/// (`crate::thread`'s page-fit assertion is the check), and no static memory at all. The fault
-/// slot, derived, moves from 23 to 31; the machine page takes 23. The headroom account is
-/// [`CAPABILITY_TABLE_PEAK_MEASURED`]'s.
-///
-/// **Raised 32 -> 64** (calef, 2026-10-04, UTC; milestone 754 (the capability table grows to 64
-/// slots), his ruling A on #1608). A gpu-and-keyboard boot under QEMU reached 31 of the
-/// progenitor's 32 slots, and the next capability added at boot would have halted that boot with
-/// no message. Milestone 753 (trace the progenitor's login block peak) itemised the 31 and replayed
-/// the alternatives (`notes/capability-peak-trace.md`); calef chose to grow the table over moving
-/// holdings into a new process. The cost is 1,032 bytes a thread, in a TCB page that had at least
-/// 2,112 bytes idle (`crate::thread`'s page-fit assertion is the check), and no static memory. The
-/// free-slot word widened from `u32` to `u64` with it, and the fault slot, derived, moves from 31
-/// to 63. Whether a table should be sized for its process instead is
+/// **64** is calef's ruling of 2026-10-04 (UTC) (milestone 754 (the capability table grows to 64
+/// slots), ruling A on #1608), chosen over moving holdings into a new process after a
+/// gpu-and-keyboard boot reached 31 of 32. The cost is 1,032 bytes a thread, inside a TCB page
+/// (`crate::thread`'s page-fit assertion is the check), and no static memory. The fault slot,
+/// derived, is 63. Whether a table should be sized for its process instead is
 /// `design/roadmap/0778-capability-tables-sized-per-process.md`.
 pub const CAPABILITY_TABLE_SLOTS: usize = 64;
 

@@ -199,7 +199,6 @@ kernel/src/arch/x86_64/rtc.rs:1	61
 kernel/src/arch/x86_64/tco.rs:1	73
 kernel/src/bench/cycle_probe.rs:13	50
 kernel/src/bench/smp_throughput.rs:13	42
-kernel/src/cap.rs:228	79
 kernel/src/drivers/gic.rs:1	56
 kernel/src/drivers/gicv3.rs:1	64
 kernel/src/drivers/jh7110_clock_and_reset.rs:1	45
