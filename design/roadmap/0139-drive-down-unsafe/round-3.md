@@ -85,7 +85,8 @@ stronger idiom already lives in this tree and is unused by these five files. Rea
   the file to collapse.
 - `console.rs`, `input.rs` and `jh7110_trng.rs` each already collapse their own register access to
   one or two functions (`uart_put`; `rd`/`wr`; `r32`/`w32`). Each has one `// SAFETY:` comment
-  apiece, reused at every call site. The §94 shape is already applied *within* each file.
+  apiece, reused at every call site. The §94 (what may live in a userspace library) shape is already applied *within* each
+  file.
 
 What is not collapsed is *across* files. The wording of each file's comment rhymes ("this VA is our
 device mapping, handed to us at spawn, for the whole lifetime of this process"). That looks like the

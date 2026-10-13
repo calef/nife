@@ -94,7 +94,7 @@ Running that gate is what caught a real bug, and it is exactly the bug `script/s
 exists to catch. The first swish-check attempt failed silently before any prompt. Init's own
 capability table has sixteen slots. This file's own comment ("milestone 50 added two more kernel
 grants... the shell's `build_child` had no slot left") already named that margin as having broken
-once before; milestone 50 is pipes and redirection. A fourth permanently-held kernel grant (the
+once before; milestone 50 (pipes and redirection) is the one it names. A fourth permanently-held kernel grant (the
 config page, beside the clock page and the filesystem pair) reproduced it. The fix moved
 `for_test_roles`'s deletion from after console, line discipline and input are all built to before
 any of them are. Nothing in between ever reads those capabilities' contents. The slots they freed
@@ -117,7 +117,7 @@ support, unchanged") is accurate but understates why. Inert configuration had a 
 the moment it had a customer. Its *mechanism* (a validated, read-only page) was already fully
 designed by DECISIONS §111 and by the 2026-08-18 pricing table in [environment.md](environment.md).
 Nothing about secrets is in that position. "Secrets become endpoints (§41)" names the *shape* of the
-answer, not a mechanism ready to extend. §41 is the endpoint-is-the-broker decision.
+answer, not a mechanism ready to extend. That is §41 (the endpoint is the broker).
 `credential_protocol`'s `PROVISION`/`VERIFY` split is the one concrete instance of that shape in
 this tree. It came from milestone 56 (secrets, credentials, and the entropy to make them safe). It
 is purpose-built for *login*: an identity and a password-shaped secret, checked but never read back.

@@ -146,7 +146,8 @@ log's page chain a safe iterator. `kernel/src/revoke.rs` walks its per-space cha
 six places. Every one of them is `let mut page_phys = space.head; while page_phys != 0 { let page =
 unsafe { log_page(page_phys) }; ... }`. Every one asserts the identical fact that `log_page`'s own
 `# Safety` already states: the page is one this module linked into a chain, and `SPACES` is held.
-Six hand-written copies of one invariant, the §94 shape exactly.
+Six hand-written copies of one invariant, the §94 (what may live in a userspace library) shape
+exactly.
 
 The collapse is not the trivial one, which is why it wants a lane rather than a paragraph here.
 Making the call sites safe means the *chain itself* has to carry the "`SPACES` is held" half, as an

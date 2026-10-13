@@ -22,13 +22,13 @@ without them.
 | Piece | Where it stands | Appendix |
 |---|---|---|
 | The status history: the stale `IN-PROGRESS` token, the 2026-08-18 discharge, and each piece as it landed | record | [status-history.md](0047-navigation-and-naming/status-history.md) |
-| `mkdir`, `rm`, `RMDIR` and `rm -r` | built 2026-07-31 (§49) | [mkdir-and-rm.md](0047-navigation-and-naming/mkdir-and-rm.md) |
-| `ln`: hard links declined (§110); symlinks superseded by `bind` (§50), with the naming search that settled it | decided | [links-and-bind.md](0047-navigation-and-naming/links-and-bind.md) |
-| `touch`, both halves (§112), and globbing with its set grant | built 2026-08-22, 2026-08-24 and 2026-07-31 | [touch-and-globbing.md](0047-navigation-and-naming/touch-and-globbing.md) |
+| `mkdir`, `rm`, `RMDIR` and `rm -r` | built 2026-07-31 (§49 (removal is a directory operation)) | [mkdir-and-rm.md](0047-navigation-and-naming/mkdir-and-rm.md) |
+| `ln`: hard links declined (§110 (hard links are declined)); symlinks superseded by `bind` (§50 (namespace composition)), with the naming search that settled it | decided | [links-and-bind.md](0047-navigation-and-naming/links-and-bind.md) |
+| `touch`, both halves (§112 (`touch`'s two behaviors need two rights)), and globbing with its set grant | built 2026-08-22, 2026-08-24 and 2026-07-31 | [touch-and-globbing.md](0047-navigation-and-naming/touch-and-globbing.md) |
 | Absolute paths, `bind`, and why milestone 64 (enough `std` to run somebody else's crate) forced the namespace half | built 2026-08-18 and 2026-08-26 | [absolute-paths-and-bind.md](0047-navigation-and-naming/absolute-paths-and-bind.md) |
-| Environment variables: the three thirds, the measured encodings, and §111's page | decided 2026-08-23 | [environment.md](0047-navigation-and-naming/environment.md) |
-| The config page, `printenv` and real init wiring; the secrets third | built 2026-08-23 and 2026-08-26; secrets moved to milestone 65 | [environment-built.md](0047-navigation-and-naming/environment-built.md) |
-| `PATH` and completion | built 2026-09-26 as §229 B2 and §227 option D | [path-and-completion.md](0047-navigation-and-naming/path-and-completion.md) |
+| Environment variables: the three thirds, the measured encodings, and the page of §111 (inert configuration is a read-only page) | decided 2026-08-23 | [environment.md](0047-navigation-and-naming/environment.md) |
+| The config page, `printenv` and real init wiring; the secrets third | built 2026-08-23 and 2026-08-26; secrets moved to milestone 65 (a secrets service) | [environment-built.md](0047-navigation-and-naming/environment-built.md) |
+| `PATH` and completion | built 2026-09-26 as §229 (how a bare name at the prompt reaches an installed program) B2 and §227 (how Tab reaches the shell) option D | [path-and-completion.md](0047-navigation-and-naming/path-and-completion.md) |
 | `file:` and `run` removed; the function-call syntax fork | built 2026-07-31; fork refused by §141 | [shell-grammar.md](0047-navigation-and-naming/shell-grammar.md) |
 
 In brief. A navigation model for a system with no global namespace. Keep the Unix command names

@@ -15,9 +15,9 @@ a note saying what got built, and the appendices keep that shape.
 - [`touch-and-globbing.md`](touch-and-globbing.md): both halves of `touch`, and globbing with the
   set grant.
 - [`absolute-paths-and-bind.md`](absolute-paths-and-bind.md): absolute paths, `bind` and its second
-  grant, and why milestone 64 forced the namespace half.
+  grant, and why milestone 64 (enough `std` to run somebody else's crate) forced the namespace half.
 - [`environment.md`](environment.md): the three thirds of the environment, the measured encodings
-  and the §111 page.
+  and the page of §111 (inert configuration is a read-only page).
 - [`environment-built.md`](environment-built.md): the config page, `printenv` and real init wiring,
   and the secrets third.
 - [`path-and-completion.md`](path-and-completion.md): `PATH`, its sizing and the activation set,

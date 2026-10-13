@@ -94,7 +94,7 @@ The shell and init both read whatever is chosen, and a stranger's program is wri
 Decided (calef, 2026-08-23, DECISIONS §111): the page, for the inert-configuration third only,
 with the declaration in the manifest that closes the `LD_PRELOAD` class. The other two thirds stay
 answered elsewhere in this milestone. Names become capabilities (the namespace work), and secrets
-become endpoints (the broker shape of §41, the endpoint is the broker).
+become endpoints (the broker shape of §41 (the endpoint is the broker)).
 
 The page's layout, the irreversible part, is also settled. Each declared key is checked against a
 closed, validated domain at assembly time rather than accepted as an arbitrary string: a real IANA
