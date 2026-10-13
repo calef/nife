@@ -18,6 +18,8 @@ manager) decision review, question 1, researched 2026-10-05 against `main` at `8
 
 *Amended again 2026-10-10 (UTC) by calef, on #1884: two index addresses, the channel path, and X1 for download hosts. See the second amendment.*
 
+*Amended a third time 2026-10-12 (UTC) by calef, on #2048: a listed location's root is named by the index, and one redirect is followed. See the third amendment.*
+
 ## The ruling
 
 1. **An image carries one fixed name: its own distribution's package index, which for basalt
@@ -174,3 +176,27 @@ ruled so the change can be read against it.
 
 The digest in the signed index still decides whether a package is authentic. What clause 10 adds
 is that the client reached the host the index named.
+
+## Amendment, 2026-10-12 (UTC): a listed location's root, and one redirect
+
+calef ruled where `basalt.nifeos.org` is served on 2026-10-12 (UTC): GitHub Pages for the index,
+and *"Packages on Releases, index on Pages"*, so each asset's download count measures adoption
+(milestone 801's block has the words). A Release download URL is on `github.com`, which chains to
+Sectigo Public Server Authentication Root E46, not ISRG Root X1, and it answers `302` to a host that
+chains to X1. Under clause 10 a client skips it, and nothing is counted. The question was put on
+#2048 with five options (`notes/packages/the-index-format.md`, question C); calef answered *"a"*,
+the recommended one. Clause 10's open "later field" is what it fills.
+
+11. The signed index may name, for each listed location, the root its certificate must chain to,
+    chosen from the roots the image carries. A location that names none chains to the index's
+    root, X1. The index chooses among roots and never adds one; an image that does not carry the
+    named root skips the location.
+12. basalt's images carry one further root for listed locations, Sectigo E46, for GitHub Release
+    downloads. It is never a root for an index address.
+13. A fetch from a listed location follows exactly one redirect: an absolute HTTPS URL, its host
+    held to clause 9's address rule and to the index's root, X1. A second redirect is refused.
+
+Clause 10 otherwise stands: one root per source, and a bundled root store and an unchecked
+certificate stay refused. The digest in the signed index still decides whether a package is
+authentic. Built by lane `lane/basalt-on-pages-and-releases` (#2048) and recorded by it; the
+section's number is unchanged.

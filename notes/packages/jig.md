@@ -117,9 +117,11 @@ region one package larger, from the progenitor's image pool (`grant_plan::named_
   the sources' address, unless it is built with `NIFE_INDEX_SOURCES=basalt`, which packs
   `package_index::BASALT_SOURCES` (`basalt.nifeos.org` pinned to ISRG Root X1). No boot proves the
   production text.
-- A listed location on `github.com` (a GitHub Release asset) is passed over: its certificate chains
-  to USERTrust ECC and the answer is a redirect, and `jig` pins X1 and follows none. The question is
-  C in `notes/packages/the-index-format.md`.
+- A listed location is fetched through `pinned_tls_client::listed`: the root the index names for it
+  among those the image carries, then at most one redirect. The redirect is held to the
+  public-address check and to the index's root, per the third amendment of §250 (an image names its
+  distribution's package index). At the prompt no listed location resolves, so the boot check never
+  takes that path; `package_fetch_exerciser` proves it, calling the same function.
 - `update` keeps no record of which address answered, and `install` tries the image's addresses
   in order again.
 - The index store needs a file server that binds grants itself; on one that does not, `jig` is

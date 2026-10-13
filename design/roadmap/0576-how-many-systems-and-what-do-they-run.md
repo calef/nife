@@ -78,10 +78,11 @@ Releases, index on Pages"*. Each package is an asset on a GitHub Release, and Gi
   withdrawn, only not first.
 - What it miscounts: a mirror, a CI run and a retry each add one; a fetch from basalt's `targets/`
   copy on Pages adds none.
-- What blocks it: today `jig` never fetches the asset, because a Release download starts at
-  `github.com`, which chains to USERTrust ECC rather than ISRG Root X1, and answers with a
-  redirect. Until question C in `notes/packages/the-index-format.md` is ruled (asked on #2048),
-  the count stays at what people download by hand.
+- How `jig` reaches it: a Release download starts at `github.com`, which chains to Sectigo E46
+  rather than ISRG Root X1, and answers with a redirect. calef ruled on 2026-10-12 (UTC), on
+  #2048, that the index names E46 for that location and `jig` follows one redirect: the third
+  amendment of §250 (an image names its distribution's package index). So every `jig install` from a published
+  basalt is one count.
 
 Reading the counts: `gh api repos/nifeos/basalt/releases --paginate --jq '.[].assets[] | [.name,
 .download_count] | @tsv'`.
