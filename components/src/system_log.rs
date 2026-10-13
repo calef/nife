@@ -20,6 +20,7 @@
 //! sixteen-byte chunks, and moves the cursor. The console writes them only at a line start; if the
 //! terminal sits mid-line, a timer 250 ms later tells it to put them on a line of their own.
 //!
+
 //! # Capability contract
 //!
 //! | slot | what | rights |
@@ -41,6 +42,7 @@
 //! copy (`abi::rendezvous::BADGE`) for each writer and reader. That is what makes attribution
 //! unforgeable: every writer is somebody's badge, and only badge 0 may say whose.
 //!
+
 //! # EXAMPLES
 //!
 //! `system_tests/src/user/system_log_tests.rs` plays the spawner and the reader:
@@ -61,18 +63,15 @@
 //! - **Four readers at most** (`system_log_protocol::read::WINDOWS`), because each is a page and
 //!   a notification the spawner provides at spawn.
 //! - **Its stack depth is measured only on the paths the QEMU test drives.** A program the kernel
-//!   spawns gets one 4 KiB stack page, and this one is built unoptimized in a debug image. The
-//!   first version overflowed it by moving 250-byte lines by value; `crates/system_log` now lends
-//!   them. The crowded-writer path (a ninth writer mid-line) runs on the host only.
-//! - **The flush deadline is the first forwarded line's, not the waiting line's** (found 2026-10-04
-//!   UTC by the lane chasing the noteless flake). `drain` arms [`FLUSH_NANOS`] when it forwards a
-//!   line and nothing is armed, whether or not the console queued that line. A line the console
-//!   wrote at once still arms it, so a later line queued mid-line can be flushed far sooner than
-//!   250 ms, and its redraw lands in the middle of what a person is typing. Harmless to what is
-//!   said (the redraw is exact) and cosmetic to a person. Whether it widened the window
-//!   `script/swish-check` misread (`without_redraws` in `xtask/src/swish_check.rs`) is unmeasured.
-//!   The service cannot see the console's queue, so the honest fix moves the deadline into the
-//!   console.
+//!   spawns gets one 4 KiB stack page, and this one is built unoptimized in a debug image, so
+//!   `crates/system_log` lends 250-byte lines rather than moving them. The crowded-writer path (a
+//!   ninth writer mid-line) runs on the host only.
+//! - **The flush deadline is the first forwarded line's, not the waiting line's.** `drain` arms
+//!   [`FLUSH_NANOS`] when it forwards a line and nothing is armed, whether or not the console
+//!   queued that line, so a later line queued mid-line can be flushed far sooner than 250 ms and
+//!   its (exact) redraw lands in the middle of what a person is typing. Whether it widened the
+//!   window `script/swish-check` misread (`without_redraws` in `xtask/src/swish_check.rs`) is
+//!   unmeasured. The service cannot see the console's queue, so the fix moves the deadline there.
 //!
 //! Name: ratified 2026-10-06 (calef, "`system_log` ratified.", in conversation). §242 calls it "the
 //! log service"; the crate and program share `system_log` so a reader finds both with one grep.

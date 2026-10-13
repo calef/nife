@@ -21,40 +21,10 @@
 //! Everything here works in **page units** (a watermark and page counts), so it is `FRAME_SIZE`- and
 //! address-agnostic; the kernel supplies the base addresses and does the byte arithmetic and the I/O.
 //!
-//! # Examples
-//!
-//! ```
-//! use memory_regions::split_new_watermark;
-//!
-//! // A 100-page parent that has spent 40: carving 10 more moves the watermark to 50.
-//! assert_eq!(split_new_watermark(100, 40, 10), Some(50));
-//!
-//! // Exactly exhausting the budget is fine.
-//! assert_eq!(split_new_watermark(100, 90, 10), Some(100));
-//!
-//! // One page beyond it is not. A child can never be bigger than what is left.
-//! assert_eq!(split_new_watermark(100, 90, 11), None);
-//! ```
-//!
-//! The two refusals that are not about the budget at all, and are the reason this is a function
-//! rather than a subtraction written at the call site:
-//!
-//! ```
-//! use memory_regions::split_new_watermark;
-//!
-//! // An empty carve would mint a zero-page region, which is not a thing.
-//! assert_eq!(split_new_watermark(100, 40, 0), None);
-//!
-//! // And a wrap would forge budget out of arithmetic.
-//! assert_eq!(split_new_watermark(100, 40, u64::MAX), None);
-//! ```
-//!
 //! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review). Renamed from
-//! `regions`: DECISIONS §113 already rejected bare "Region" for the identical `crates/compositor`
-//! collision (damaged-screen-rectangle "region") when choosing `MemoryRegion` for the kernel's
-//! own object; this crate is that type's accounting logic. The kernel type itself was `Untyped`
-//! until this same DECISIONS §113 entry, built out by milestone 158: this crate's own name and
-//! vocabulary anticipated the rename by a session.
+//! `regions`, which collides with `crates/compositor`'s damaged-screen "region". DECISIONS §113
+//! (eleven kernel object and identifier names move) found that when naming `MemoryRegion`, the
+//! kernel object whose accounting this crate is.
 
 #![cfg_attr(not(test), no_std)]
 
@@ -66,6 +36,21 @@ pub use table::{DestroyClaim, NO_PARENT, ObjectKind, PageUse, RegionTable};
 /// watermark is `parent_watermark`. `Some(new_watermark)` on success (the caller carves the run
 /// `[parent_watermark, new_watermark)` and sets the parent's watermark to `new_watermark`); `None`
 /// if the carve is empty, would overflow, or exceeds the parent's remaining budget.
+///
+/// # Examples
+///
+/// ```
+/// use memory_regions::split_new_watermark;
+///
+/// // A 100-page parent that has spent 40: carving 10 more moves the watermark to 50.
+/// assert_eq!(split_new_watermark(100, 40, 10), Some(50));
+/// // Exactly exhausting the budget is fine; one page beyond it is not.
+/// assert_eq!(split_new_watermark(100, 90, 10), Some(100));
+/// assert_eq!(split_new_watermark(100, 90, 11), None);
+/// // An empty carve would mint a zero-page region, and a wrap would forge budget.
+/// assert_eq!(split_new_watermark(100, 40, 0), None);
+/// assert_eq!(split_new_watermark(100, 40, u64::MAX), None);
+/// ```
 pub fn split_new_watermark(parent_pages: u64, parent_watermark: u64, want: u64) -> Option<u64> {
     if want == 0 {
         return None; // an empty carve makes no child; refuse rather than mint a zero-page region

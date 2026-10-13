@@ -1,23 +1,17 @@
 //! **The region table itself, and the claim that makes reclamation single-winner.**
 //!
 //! The arithmetic in the crate root ([`split_new_watermark`], [`destroy_outcome`]) is what one
-//! caller decides. This module is what happens when there are two, which is a different question
-//! and needs a different tool: Kani proves the arithmetic and does not model threads, so the
-//! racing case was argued from lock discipline and gated by nothing until milestone 135.
+//! caller decides. This module is what happens when there are two, which Kani does not model; the
+//! loom harnesses (milestone 135) do.
 //!
-//! # The bug this exists to have caught
+//! # Why the claim and the removal are one call
 //!
-//! `memory_region::destroy` used to check the region under the `REGIONS` lock, **release** it, revoke
-//! every mapping, free every page, and remove the table slot last. Two callers holding a name for
-//! one region (an owner's `MemoryRegion::DESTROY` and a supervisor's `rendezvous::REAP`, both landing in
-//! `sched::reclaim_region`) could each pass the refusal check inside that gap and each run the free
-//! loop over the same pages. It surfaced once in 45 loaded runs on riscv64 as
-//! `double free of frame 0x82a3e000`, and it needed two cores.
-//!
-//! Pull request #316 fixed it by removing the slot under the same hold that decided to destroy it.
-//! This module is that fix made structural: [`RegionTable::claim_for_destroy`] takes `&mut self`
-//! and does both, so **the gap is not expressible**. A caller cannot hold a decision without
-//! holding the table, because the decision and the removal are one call.
+//! Two callers holding a name for one region (an owner's `MemoryRegion::DESTROY` and a
+//! supervisor's `rendezvous::REAP`, both landing in `sched::reclaim_region`) must not both run the
+//! free loop over the same pages. If the region were checked under the `REGIONS` lock, the lock
+//! released, and the slot removed later, both could pass the check inside that gap (seen on
+//! riscv64 as `double free of frame 0x82a3e000`, on two cores). [`RegionTable::claim_for_destroy`]
+//! takes `&mut self` and decides and removes in one call, so **the gap is not expressible**.
 //!
 //! # What a claim is
 //!
@@ -28,55 +22,12 @@
 //! to the frame allocator (a root) or give it back to the parent's budget (a child, via
 //! [`RegionTable::return_to_parent`]).
 //!
-//! # Page numbers, not addresses
-//!
 //! Everything here is in **page units**, including `base_page`, so the crate stays `FRAME_SIZE`-
-//! and address-agnostic exactly as the crate root's doc comment claims. The kernel multiplies.
-//!
-//! # EXAMPLES
-//!
-//! The kernel's own shape, minus the I/O:
-//!
-//! ```
-//! use memory_regions::RegionTable;
-//!
-//! let mut table = RegionTable::<8>::new();
-//!
-//! // A root region over 16 pages starting at page 0x1000.
-//! let root = table.insert_root(0x1000, 16).expect("a free slot");
-//!
-//! // Carve a child off it. The parent now has a live child and cannot be reclaimed.
-//! let child = table.split(root, 4).expect("budget and a slot");
-//! assert!(table.claim_for_destroy(root).is_none(), "a parent with a live child refuses");
-//!
-//! // Reclaim the child: it returns its pages to the parent, never to the allocator.
-//! let claim = table.claim_for_destroy(child).expect("a childless, unpinned region");
-//! assert!(!claim.is_root(), "a split child is not a root");
-//! // ... the kernel revokes claim.base_page()..+claim.pages() here ...
-//! table.return_to_parent(&claim);
-//!
-//! // And now the parent is reclaimable, with the child's pages back in its budget.
-//! assert_eq!(table.usage(root), Some((0, 16)));
-//! let claim = table.claim_for_destroy(root).expect("no children left");
-//! assert!(claim.is_root(), "a created region frees to the allocator");
-//! ```
-//!
-//! The claim is single-winner, which is the whole point:
-//!
-//! ```
-//! use memory_regions::RegionTable;
-//!
-//! let mut table = RegionTable::<4>::new();
-//! let r = table.insert_root(0, 2).unwrap();
-//! assert!(table.claim_for_destroy(r).is_some());
-//! assert!(table.claim_for_destroy(r).is_none(), "the name stopped resolving at the first claim");
-//! ```
+//! and address-agnostic. The kernel multiplies.
 //!
 //! Name: provisional, for `RegionTable`, `DestroyClaim`, `insert_root`, `claim_for_destroy` and
-//! `return_to_parent`, minted 2026-08-18 by milestone 135 (the region claim, under loom)'s lane and
-//! not yet put to calef. Nouns per the naming tenet; `RegionTable` inherits its shape from the
-//! crate's own name, ratified 2026-08-23 as `memory_regions` (renamed from the unratified
-//! `regions`).
+//! `return_to_parent`, minted 2026-08-18 by milestone 135 (the region claim, under loom)'s lane.
+//! Nouns per the naming tenet; `RegionTable` takes its shape from the crate's name, `memory_regions`.
 
 use crate::{DestroyOutcome, coalesced_watermark, destroy_outcome, split_new_watermark};
 
@@ -177,33 +128,24 @@ pub enum PageUse {
 /// [`claim_for_destroy`](RegionTable::claim_for_destroy), which removes the region's table slot in
 /// the same borrow, so at most one of these can ever exist for a given region.
 ///
-/// Not `Copy` and not `Clone`, deliberately: duplicating a claim would be duplicating the right to
-/// free a run of pages, which is the bug this whole module is a reaction to.
+/// Not `Copy` and not `Clone`: duplicating a claim would duplicate the right to free the run.
 ///
-/// # The two doctests below are a gate (milestone 136)
+/// # The two doctests below are a gate
 ///
-/// Both properties above are enforced by the type system, and until milestone 136 **nothing
-/// watched them**. `#[derive(Clone)]` is one word, making a field `pub` is four characters, and
-/// either would hand the kernel back the ability to hold a right to free pages that the table no
-/// longer knows it gave out. `script/lint` pins the *set* of public items in this module; these
-/// pin the things a set cannot see, which is the visibility of the fields and the traits the
-/// claim does not implement.
-///
-/// They carry explicit error codes because a bare `compile_fail` passes when the snippet fails to
-/// compile for **any** reason, including a typo, which is how a compile-fail test rots into an
-/// assertion nobody has watched fail (milestone 62 deleted two of those this week).
+/// `#[derive(Clone)]` or a `pub` field would hand the kernel back a right to free pages the table
+/// no longer knows it gave out. `script/lint` pins the set of public items in this module; these
+/// pin field visibility and the traits the claim does not implement. Each names its error code,
+/// because a bare `compile_fail` passes on any failure, a typo included.
 ///
 /// **A claim cannot be forged.** The fields are private, so a caller cannot read the table, decide
-/// for itself, and then build its own right to free the run: that reassembled shape is exactly the
-/// pre-#316 `memory_region::destroy`, whose gap double-freed.
+/// for itself, and then build its own right to free the run.
 ///
 /// ```compile_fail,E0451
 /// let claim = memory_regions::DestroyClaim { base_page: 0, pages: 4, parent: u64::MAX, is_root: true };
 /// let _ = claim.pages();
 /// ```
 ///
-/// **A claim cannot be duplicated.** Two claims for one region is two callers in the free loop,
-/// which is the bug in its original units.
+/// **A claim cannot be duplicated.** Two claims for one region is two callers in the free loop.
 ///
 /// ```compile_fail,E0599
 /// let mut table = memory_regions::RegionTable::<2>::new();
@@ -213,8 +155,7 @@ pub enum PageUse {
 /// let _ = (claim.pages(), second.pages());
 /// ```
 ///
-/// And the same sequence without the offending line compiles and runs, which is what keeps the two
-/// above honest: they fail on the one line that is supposed to be impossible, not on the setup.
+/// The same sequence without the offending line compiles and runs, so the two above fail on it.
 ///
 /// ```
 /// let mut table = memory_regions::RegionTable::<2>::new();
@@ -255,16 +196,33 @@ impl DestroyClaim {
     }
 }
 
-/// **The untyped regions**, a generational table (`crates/generational_table`) plus every decision taken over it.
+/// **The untyped regions**, a generational table (`crates/generational_table`) plus every decision
+/// taken over it. Removing a region bumps its slot's generation, so every capability minted for it
+/// stops resolving: that is what makes [`claim_for_destroy`](Self::claim_for_destroy) single-winner.
+/// `N` bounds the regions live at once (the kernel picks 256, the loom harnesses 2 or 4).
 ///
-/// Generational because reclamation reuses slots: removing a region bumps its slot's generation, so
-/// every `MemoryRegion` capability minted for it stops resolving and the slot is available to the next
-/// create. That is also what makes [`claim_for_destroy`](Self::claim_for_destroy) single-winner: the
-/// loser's name is dead by the time it looks.
+/// # Examples
 ///
-/// `N` is the capacity, which bounds the regions live **at once** rather than over the kernel's
-/// lifetime. The kernel picks 256; the loom harnesses pick 2 or 4, because a model checker's search
-/// is exponential and nothing in the protocol depends on capacity.
+/// ```
+/// use memory_regions::RegionTable;
+///
+/// let mut table = RegionTable::<8>::new();
+///
+/// let root = table.insert_root(0x1000, 16).expect("a free slot");
+///
+/// let child = table.split(root, 4).expect("budget and a slot");
+/// assert!(table.claim_for_destroy(root).is_none(), "a parent with a live child refuses");
+///
+/// // Reclaim the child: it returns its pages to the parent, never to the allocator.
+/// let claim = table.claim_for_destroy(child).expect("a childless, unpinned region");
+/// assert!(!claim.is_root(), "a split child is not a root");
+/// // ... the kernel revokes claim.base_page()..+claim.pages() here ...
+/// table.return_to_parent(&claim);
+///
+/// assert_eq!(table.usage(root), Some((0, 16)));
+/// let claim = table.claim_for_destroy(root).expect("no children left");
+/// assert!(claim.is_root(), "a created region frees to the allocator");
+/// ```
 pub struct RegionTable<const N: usize> {
     table: generational_table::Table<Region, N>,
 }
@@ -335,10 +293,6 @@ impl<const N: usize> RegionTable<N> {
     /// on the parent and the parent keeps its bumped child count, which is the honest record that a
     /// page of it is unaccounted; that is the bump-only rule, not an oversight.
     ///
-    /// **One borrow, where the kernel used to take its lock twice.** Nothing could observe the
-    /// half-carved parent before, because the intermediate state is legal, but a window that exists
-    /// is a window someone eventually reasons about; this closes it for free.
-    ///
     /// # BUGS
     ///
     /// **A split refused for a full table leaves its parent undestroyable for the rest of the
@@ -346,15 +300,9 @@ impl<const N: usize> RegionTable<N> {
     /// never minted, so no name exists that could ever bring the count back down, and
     /// [`claim_for_destroy`](Self::claim_for_destroy) refuses the parent forever. In the kernel
     /// that is `sched::reclaim_region` refusing too: both `MemoryRegion::DESTROY` and
-    /// `rendezvous::REAP` answer `NotPermitted` for good (which a restart policy reads as "not
-    /// yet"), so the parent's slot, its pages, and every thread and address space retyped from it
-    /// are held until reboot. It also ratchets. The refusal only happens when the table is full,
-    /// and it makes the table permanently fuller by at least the parent, so the next caller to
-    /// reach the ceiling reaches it sooner. The carved pages stay spent on the parent as well,
-    /// though that half is contained by the parent never being reclaimed anyway.
-    ///
-    /// Reproduction, which runs as a doctest, so the day the rule changes this entry fails and
-    /// has to be rewritten rather than left describing a table that no longer exists:
+    /// `rendezvous::REAP` answer `NotPermitted` for good, so the parent's slot, its pages, and
+    /// everything retyped from it are held until reboot. It ratchets: each refusal makes the full
+    /// table permanently fuller. Reproduction, a doctest so a rule change fails this entry:
     ///
     /// ```
     /// let mut table = memory_regions::RegionTable::<2>::new();
@@ -375,9 +323,7 @@ impl<const N: usize> RegionTable<N> {
     /// Whether the rule should change is calef's call, not this entry's:
     /// `notes/region-split-on-a-full-table.md` has the options and a recommendation. The kernel's
     /// own `MemoryRegion::SPLIT` has a sibling with the same consequence, a child minted and then
-    /// orphaned when the caller's capability table is full; that note covers it too. Recorded
-    /// 2026-09-26 by milestone 601 (the region table prints its peak), from a finding in the lane
-    /// of milestone 152 (durable delegation).
+    /// orphaned when the caller's capability table is full; that note covers it too.
     pub fn split(&mut self, parent: u64, pages: u64) -> Option<u64> {
         let base_page = {
             let r = self.table.get_mut(parent)?;
@@ -546,6 +492,17 @@ impl<const N: usize> RegionTable<N> {
     /// Removing the slot *before* the caller does its I/O is also right for everything else that
     /// resolves the name. A retype on a region whose pages are on their way back to the allocator
     /// now fails, where before it could hand out a page about to be freed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use memory_regions::RegionTable;
+    ///
+    /// let mut table = RegionTable::<4>::new();
+    /// let r = table.insert_root(0, 2).unwrap();
+    /// assert!(table.claim_for_destroy(r).is_some());
+    /// assert!(table.claim_for_destroy(r).is_none(), "the name stopped resolving at the first claim");
+    /// ```
     pub fn claim_for_destroy(&mut self, name: u64) -> Option<DestroyClaim> {
         let r = self.table.get(name)?;
         let is_root = r.parent == NO_PARENT;
@@ -576,29 +533,21 @@ impl<const N: usize> RegionTable<N> {
     /// un-bump, so nothing can carve from the parent in between: a child sitting at the top of the
     /// parent's run gives its pages back and the run is re-splittable.
     ///
-    /// **A child freed out of order leaves a hole only until nothing above it is live** (2026-10-03,
-    /// UTC). Until then the hole lasted until the parent itself was destroyed, and that leaked a
-    /// job's pages out of the progenitor's job pool every time two jobs ended in the order they
-    /// started: every pipeline, and every job the next command was carved above before the reaper
-    /// reached it. The pool is bump-only, so the leak ratcheted, and on CI's slower riscv64 runner
-    /// a `std` job's 384 pages stopped fitting before the session ended (`notes/swish-check-flake.md`
-    /// has the trace). So after the un-bump the parent's watermark drops further, to the highest page
-    /// anything still holds: a live child's end, or [`retyped_to`](Region::retyped_to), the
-    /// region's own retypes. [`crate::coalesced_watermark`] is that rule, proved.
+    /// **A child freed out of order leaves a hole only until nothing above it is live.** Otherwise a
+    /// bump-only pool (the progenitor's job pool) leaks a job's pages every time two jobs end in the
+    /// order they started (`notes/swish-check-flake.md`). So after the un-bump the parent's watermark
+    /// drops further, to the highest page anything still holds: a live child's end, or
+    /// [`retyped_to`](Region::retyped_to), the region's own retypes. [`crate::coalesced_watermark`]
+    /// is that rule, proved.
     ///
     /// **Only when no sibling is in flight.** A sibling that has been claimed but not yet returned
     /// has left the table while its pages are still being revoked, so the scan below cannot see
     /// where it sits, and dropping the watermark under it would let the parent carve pages that a
-    /// peer may still map: the use-after-free of §13 (capability revocation and untyped reclamation). The parent's child count is what tells: it
-    /// drops at the return, not at the claim, so a count above the live children the scan found
-    /// is an in-flight sibling (or the phantom a full-table split leaves, which `split`'s `BUGS`
-    /// entry describes), and then only the LIFO un-bump happens. The holes are not lost: the next
-    /// return with nothing in flight reclaims them, because the scan starts from the live set
-    /// every time rather than from what this return knows.
-    ///
-    /// The scan walks the table once, under the borrow the caller already holds, and only on a
-    /// child's return. That is the derivation tree's question (what does this parent still have
-    /// out?) answered by search rather than by a tree, which a table of 256 makes cheap.
+    /// peer may still map: the use-after-free of §13 (capability revocation and untyped
+    /// reclamation). The parent's child count is what tells: it drops at the return, not at the
+    /// claim, so a count above the live children the scan found is an in-flight sibling (or the
+    /// phantom of `split`'s `BUGS`), and then only the LIFO un-bump happens. The next return with
+    /// nothing in flight reclaims the holes, because the scan starts from the live set each time.
     ///
     /// **The child count drops here rather than at the claim**, and the ordering carries weight: it
     /// is what stops the parent being reclaimed while this child's pages are still in flight. A
@@ -609,12 +558,10 @@ impl<const N: usize> RegionTable<N> {
     ///
     /// - **A hole under a live child is not reused while that child lives**, because
     ///   [`split`](Self::split) only bumps. A parent whose children always overlap (each carved
-    ///   before the one below it returns) never drains, so its holes never close. Measured
-    ///   2026-10-03 (UTC) with the reaper held back 150 ms on every job: the riscv64 swish-check
-    ///   pool filled by `uptime`, 40 lines in, with this fix in place. With one reap in three held
-    ///   back it passed, where the unfixed kernel failed at `std_exerciser`. A carve that searched
-    ///   the holes first would close it, at the price of the same scan on every split; not built,
-    ///   because no real workload has shown the overlap.
+    ///   before the one below it returns) never drains, so its holes never close (with every reap
+    ///   held back 150 ms, the riscv64 swish-check pool fills). A carve that searched the holes
+    ///   first would close it, at the price of the same scan on every split; not built, because no
+    ///   real workload has shown the overlap.
     /// - **A phantom child stops the reclaim for good.** A split refused for a full table counts a
     ///   child no name will ever return ([`split`](Self::split)'s `BUGS`), so the parent never
     ///   looks quiescent again and keeps only the LIFO rule.
