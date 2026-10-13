@@ -1,9 +1,9 @@
 # Packages: what proves the producer, and what running and installing cost
 
 *An appendix to [`notes/packages.md`](../packages.md), which carries the design and is written so a
-reader can act without opening this file. This one holds the producer's proof list and the measured
-costs of running an installed program by its bytes and of installing one. Name: provisional
-(2026-09-26).*
+reader can act without opening this file. This one holds the producer's and the installer's proof
+lists and the measured costs of running an installed program by its bytes and of installing one.
+Name: provisional (2026-09-26).*
 
 ## What proves the producer
 
@@ -21,6 +21,23 @@ costs of running an installed program by its bytes and of installing one. Name: 
   refuted proof. 9 is the bound that covers it, and the reason is recorded at the attribute rather
   than here, because that is where the next person raising it will be looking.
 - The end-to-end run above, which is the first package this project has produced.
+
+## What proves the installer
+
+Moved verbatim from the parent's "What proves it" on 2026-10-13 (UTC) under §212 (a prose budget).
+
+`script/swish-check` boots twice per architecture against one disk, typing the first transcript
+above and then the second (`SWISH_CHECK_AFTER_REBOOT`). The host puts a package on the disk and
+installs nothing (`seed_installed` in `xtask/src/disk.rs`). The tampered copy has one program byte
+flipped and its table of contents rewritten to agree, so the catalog is the only thing that can
+refuse it. Green on aarch64, riscv64 and x86_64 (under OVMF) on 2026-09-26. Each line was falsified
+once on aarch64:
+
+- skip the catalog check, and the tampered package installs;
+- record the program's digest with one bit flipped, and the installed program is refused;
+- give the second boot a fresh disk, and every line after the reboot fails;
+- make `remove` rewrite the old table, and the removed program still runs;
+- make `rollback` stay on the live generation, and the last line is refused.
 
 ## What running by bytes costs, measured 2026-09-26
 

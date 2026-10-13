@@ -22,40 +22,37 @@ client tests are in [`ntp/`](ntp/README.md).
 ## Why the protocol is a crate and not part of a component
 
 The same reason `filesystem_protocol` and `graphics_protocol` are crates. A wire format is arithmetic and byte layout,
-which is the cheapest thing in the system to get wrong and the most expensive to debug from inside a
-QEMU boot against a live server. Here it is 21 host tests and 7 Kani harnesses, all done in
+cheap to get wrong and expensive to debug from inside a QEMU boot against a live server. Here it is 21 host tests and 7 Kani harnesses, all done in
 under a second with no emulator.
 
-It puts the boundary in the right place ahead of time. The eventual NTP client will hold a
-network capability and a capability to *propose* a time. It will not hold the clock. Keeping the
+It also puts the boundary in the right place. The client holds a network capability and a
+capability to *propose* a time, not the clock. Keeping the
 protocol in a crate with no I/O means that client cannot accidentally grow the ability to set
 anything, because the code that knows what a time is has nothing to set.
 
 ## Scope: unauthenticated NTPv4, and what that is worth
 
 The crate implements plain NTPv4. It implements neither NTS (RFC 8915) nor the RFC 5905
-symmetric-key MAC. That is a decision, so here is the honest accounting.
+symmetric-key MAC. That is a decision, and this is its accounting.
 
 What it buys: correct time from a reachable server on a path where nobody is injecting packets,
 which is the ordinary case and is why plain NTP is what most machines still run.
 
-What it does not buy: anything at all against an attacker who can see the request and beat the real
+What it does not buy: anything against an attacker who can see the request and beat the real
 server's reply back. Everything between this crate and that attacker is the check list below plus an
 unpredictable transmit timestamp. An off-path attacker, who cannot see the request, has to guess
 a 64-bit nonce. An on-path attacker reads it and passes every check we make. Plain NTP has no
-answer to that, and the crate says so in its own documentation rather than leaving it to be
-discovered.
+answer to that, and the crate's own documentation says so.
 
 The consequence for the system is that an NTP-derived time is untrusted input, and milestone 51's
 design already treats it that way. The client proposes and the service applies bounds. A compromised
-client can lie only inside those bounds and can do nothing else.
+client can lie only inside those bounds.
 
 ### Why NTS is a separate decision and not a stretch goal
 
 NTS-KE is TLS 1.3. TLS needs certificate validation. Certificate validation needs a roughly correct
 clock, which is the thing being obtained. The standard escape is a build-time "not before" timestamp
-plus whatever the RTC says. That is a real design choice with real consequences, not a detail to
-settle mid-implementation: a machine whose image is older than its certificates fails to boot into a
+plus whatever the RTC says. That is a real design choice, not a detail to settle mid-implementation: a machine whose image is older than its certificates fails to boot into a
 usable state. The roadmap records it as a fork. What the crate deliberately does not do is
 half of it: an extension-field parser with no cryptography behind it would put the letters NTS in the
 tree while authenticating nothing, which is worse than the honest absence.
@@ -64,7 +61,7 @@ tree while authenticating nothing, which is worse than the honest absence.
 
 An NTP timestamp is 64 bits: 32 of seconds since 1 January 1900, 32 of binary fraction. The epoch is
 2,208,988,800 seconds before Unix's, and the seconds field wraps on 7 February 2036 at 06:28:16 UTC.
-The field alone cannot say which 136 years it means, so something has to decide.
+The field alone cannot say which 136 years it means.
 
 We take RFC 5905 §6 (SMP)'s convention as a fixed pivot:
 
@@ -76,8 +73,8 @@ We take RFC 5905 §6 (SMP)'s convention as a fixed pivot:
 The alternative, picking the era nearest the time you already believe, makes decoding depend on the
 clock. That makes it unprovable, and it is wrong exactly when this machine needs it, at a boot that
 believes it is 1970. So the pivot is a pure function of its input, provable, and wrong only after
-2104. The crate therefore has a documented expiry date, which is better than the undocumented one
-every implementation has. `Timestamp::from_unix` refuses anything outside the window rather than
+2104. The crate therefore has a documented expiry date, better than every implementation's undocumented
+one. `Timestamp::from_unix` refuses anything outside the window rather than
 wrapping. Offsets and delays are modular (`wrapping_sub`, read back as signed), so an exchange
 straddling 2036 comes out as three seconds. [`the-era-pivot.md`](ntp/the-era-pivot.md) has the
 epoch arithmetic, the three reasons against a nearest-era rule, and the exact window.
