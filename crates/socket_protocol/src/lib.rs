@@ -272,6 +272,168 @@ pub const fn udp_grant_allows(grant: u64, port: u16) -> bool {
     lo != 0 && port >= lo && port <= hi
 }
 
+pub mod ephemeral {
+    //! **Which local port `net_stack` gives an outbound socket**: the private ephemeral range,
+    //! walked by a cursor that never falls behind the boot clock.
+    //!
+    //! The module's name is provisional (the resolver-connect-flake lane, 2026-10-13 UTC). It is here
+    //! rather than in `components/src/net_stack.rs` so its claim is a host test; only `net_stack`
+    //! uses it.
+    //!
+    //! # Why the clock
+    //!
+    //! A peer that closed first holds the 4-tuple in `TIME_WAIT` (10 s in QEMU's slirp, 60 s on
+    //! Linux and the BSDs) and recycles it only for a SYN whose sequence number is above the old
+    //! one's. smoltcp's are random, so a reused 4-tuple's SYNs go unanswered half the time, past
+    //! `net_stack`'s 15 s bound. One stack reuses a port only after the range cycles; a fresh stack
+    //! must not start on ports an earlier stack used moments ago. A clock advancing [`PER_SECOND`]
+    //! ports a second, shared by every stack because it is the boot counter, gives that: an
+    //! allocation takes the later of the cursor and the clock, so a later stack starts past an
+    //! earlier one's ports. RFC 6528 applies the same idea to sequence numbers, which smoltcp does
+    //! not offer. The capture, and the CI failures it explained, are in
+    //! `notes/net/the-outbound-gates.md`.
+    //!
+    //! # BUGS
+    //!
+    //! - The bound is a rate, not a proof. A stack that opens `n` sockets faster than the clock and
+    //!   is replaced within `n / PER_SECOND` seconds, or within a tick (about 4 ms) of its last
+    //!   open, can hand its successor a port it used. Not measured across the suite.
+    //! - The range wraps every `SPAN / PER_SECOND` = 64 s, so a port recurs after 64 s even when
+    //!   idle, which a peer holding `TIME_WAIT` longer (Windows' default is 240 s) can refuse as
+    //!   above.
+    //! - The clock is boot-relative, so a rebooted machine's first ports land where the last boot's
+    //!   did at the same uptime, and a peer still holding one (a reboot inside its 60 s, a
+    //!   connection in the same 4 ms tick) drops the SYN half the time. The counter seed this
+    //!   replaced was random per boot. Closing it needs a per-boot offset all of a boot's stacks
+    //!   share; nothing hands one to `net_stack` today.
+    //! - The sequence-number half stays smoltcp's: a reused 4-tuple still fails half the time. That
+    //!   is the generator of milestone 783 (the network stack seeds its random generator from the
+    //!   clock), and a monotonic initial sequence number needs a change to smoltcp.
+
+    /// The lowest port of the private ephemeral range (RFC 6335).
+    pub const LO: u16 = 49152;
+    /// The highest.
+    pub const HI: u16 = 65535;
+    /// How many ports the range holds.
+    pub const SPAN: u64 = (HI - LO) as u64 + 1;
+    /// How far the clock moves the cursor each second. 256 makes one tick about 4 ms, so a stack
+    /// started a few milliseconds after another's last open already starts past it, and keeps the
+    /// wrap at 64 s, above the 60 s `TIME_WAIT` of Linux and the BSDs.
+    pub const PER_SECOND: u64 = 256;
+
+    // The wrap stays at or above the 60 s `TIME_WAIT` the BUGS section names, checked at compile
+    // time.
+    const _: () = assert!(SPAN * 1000 / PER_SECOND >= 60_000);
+
+    /// The cursor. It counts positions without wrapping; a position's port is its remainder in the
+    /// range. A new one has handed out nothing, so its first allocation starts at the clock.
+    pub struct Ports {
+        next: u64,
+    }
+
+    impl Ports {
+        /// A cursor that has handed out nothing.
+        pub const fn new() -> Self {
+            Self { next: 0 }
+        }
+
+        /// The next port at `millis` on the boot clock that `held` does not say a live socket
+        /// holds. Bounded by the range, so it always returns; a stack holds far fewer sockets than
+        /// the range has ports, so in practice the first or second candidate is free.
+        pub fn next(&mut self, millis: u64, held: impl Fn(u16) -> bool) -> u16 {
+            self.next = self.next.max(clock(millis));
+            for _ in 0..SPAN {
+                let port = port_at(self.next);
+                self.next += 1;
+                if !held(port) {
+                    return port;
+                }
+            }
+            port_at(self.next)
+        }
+    }
+
+    impl Default for Ports {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
+    /// The clock's position at `millis`.
+    fn clock(millis: u64) -> u64 {
+        millis.saturating_mul(PER_SECOND) / 1000
+    }
+
+    fn port_at(position: u64) -> u16 {
+        LO + (position % SPAN) as u16
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        /// Hand out `n` ports from a fresh cursor, `gap_ms` apart, starting at `start_ms`. Returns
+        /// the ports and the time of the last open.
+        fn run(start_ms: u64, n: u64, gap_ms: u64) -> (std::vec::Vec<u16>, u64) {
+            let mut ports = Ports::new();
+            let mut at = start_ms;
+            let mut got = std::vec::Vec::new();
+            for _ in 0..n {
+                got.push(ports.next(at, |_| false));
+                at += gap_ms;
+            }
+            (got, at - gap_ms)
+        }
+
+        /// **A stack started after another hands out none of its ports**, which is the CI failure
+        /// of 2026-10-13 (UTC) stated as a property. The shapes are the name resolver tests':
+        /// fourteen opens 50 ms apart, then a new stack whose first open comes every whole number
+        /// of milliseconds from one tick (4 ms) to 2 s later (the measured gap is about 230 ms on
+        /// riscv64), at a spread of boot times.
+        ///
+        /// Seeding the cursor once from the counter, as milestone 801 (packages over the internet)
+        /// did, fails this.
+        ///
+        /// Falsification: replayable `crates/socket_protocol/falsifications/ephemeral.tests.a_stack_started_after_another_reuses_none_of_its_ports.patch`
+        #[test]
+        fn a_stack_started_after_another_reuses_none_of_its_ports() {
+            for start in [0, 1, 7_919, 123_457, 3_600_001] {
+                let (first, last) = run(start, 14, 50);
+                for gap in 4..=2000 {
+                    let (second, _) = run(last + gap, 14, 50);
+                    for p in &second {
+                        assert!(
+                            !first.contains(p),
+                            "boot time {start} ms, gap {gap} ms: port {p} reused from {first:?}",
+                        );
+                    }
+                }
+            }
+        }
+
+        /// One stack never hands out a port twice before the range has cycled, however fast it
+        /// opens: a burst runs ahead of the clock rather than repeating it.
+        #[test]
+        fn a_burst_runs_ahead_of_the_clock_and_repeats_nothing() {
+            let mut ports = Ports::new();
+            let mut seen = std::collections::BTreeSet::new();
+            for _ in 0..SPAN {
+                assert!(seen.insert(ports.next(1_000, |_| false)));
+            }
+        }
+
+        /// A port a live socket holds is skipped, and the cursor moves past it.
+        #[test]
+        fn a_held_port_is_skipped() {
+            let mut ports = Ports::new();
+            let at = clock(10_000);
+            let held = port_at(at);
+            assert_eq!(ports.next(10_000, |p| p == held), port_at(at + 1));
+            assert_eq!(ports.next(10_000, |p| p == held), port_at(at + 2));
+        }
+    }
+}
+
 /// **Where a network stack finds the two capabilities §255 (each socket is its own capability)
 /// added to its spawn**, which its spawners (the progenitor, and the kernel's test harness) and the
 /// stack itself must agree on, so they are here under rule 7 rather than spelled per program. Names

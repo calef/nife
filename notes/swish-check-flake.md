@@ -240,7 +240,7 @@ generation 2 where the transcript wants 3.
 
 Why the second fetch, from the code. Everything the guest feeds the second fetch is identical to
 the first. The ephemeral port rotates, so the second connection is a fresh 4-tuple
-(`PortAllocator`'s own reason: reusing a port whose slirp flow had not cleared stalls). The socket
+(`socket_protocol::ephemeral`'s own reason: reusing a port whose slirp flow had not cleared stalls). The socket
 page's region and the staging region are destroyed in reverse carve order at request end, so the
 image pool returns to empty between commands. The destroy is a synchronous kernel call that revokes
 the shared page out of `net_stack` before it returns (kernel/src/memory_region.rs), so the next
