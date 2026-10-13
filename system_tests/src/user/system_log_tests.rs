@@ -159,55 +159,9 @@ fn two_badged_writers_are_attributed_by_the_badge_and_a_per_user_read_filters() 
     })
     .expect("could not spawn the system log service");
 
-    // The spawner's half, before any writer holds a capability: so a writer's first line is
-    // already attributed.
-    for (badge, user) in WRITERS {
-        register(intake, badge, b"sink_transcript_writer", user);
-    }
-    register(intake, SYSTEM_READER, b"kernel_reader", b"");
-    control(
-        intake,
-        (
-            control::word(
-                control::OPERATION_READER,
-                control::SCOPE_SYSTEM,
-                0,
-                SYSTEM_READER,
-            ),
-            0,
-            0,
-        ),
-    );
-    register(intake, ALICE_READER, b"kernel_reader", b"alice");
-    control(
-        intake,
-        (
-            control::word(
-                control::OPERATION_READER,
-                control::SCOPE_USER,
-                1,
-                ALICE_READER,
-            ),
-            0,
-            0,
-        ),
-    );
+    register_the_writers_and_readers(intake);
 
-    for (badge, _) in WRITERS {
-        spawn_writer(writer, intake, badge, report);
-    }
-    // Each writer reports after its last `SEND` returned, which is after the service received it;
-    // the service handles one message before it receives the next, so by the time both reports
-    // are in, every writer byte is in the ring ahead of the read below.
-    for _ in WRITERS {
-        let [class, total, ..] = crate::sched::ipc_receive(report);
-        assert_eq!(
-            class,
-            fixture::code(byte_sink_protocol::Sent::Ok),
-            "a writer's log sink refused it"
-        );
-        assert_eq!(total as usize, fixture::TRANSCRIPT.len());
-    }
+    run_the_writers(writer, intake, report);
 
     let text = core::str::from_utf8(fixture::TRANSCRIPT)
         .unwrap()
@@ -249,6 +203,62 @@ fn two_badged_writers_are_attributed_by_the_badge_and_a_per_user_read_filters() 
     );
     for w in windows {
         crate::memory::free(w);
+    }
+}
+
+/// Register both writers, the system reader and alice's reader with the service on `intake`.
+fn register_the_writers_and_readers(intake: RendezvousId) {
+    // The spawner's half, before any writer holds a capability: so a writer's first line is
+    // already attributed.
+    for (badge, user) in WRITERS {
+        register(intake, badge, b"sink_transcript_writer", user);
+    }
+    register(intake, SYSTEM_READER, b"kernel_reader", b"");
+    control(
+        intake,
+        (
+            control::word(
+                control::OPERATION_READER,
+                control::SCOPE_SYSTEM,
+                0,
+                SYSTEM_READER,
+            ),
+            0,
+            0,
+        ),
+    );
+    register(intake, ALICE_READER, b"kernel_reader", b"alice");
+    control(
+        intake,
+        (
+            control::word(
+                control::OPERATION_READER,
+                control::SCOPE_USER,
+                1,
+                ALICE_READER,
+            ),
+            0,
+            0,
+        ),
+    );
+}
+
+/// Spawn one `sink_transcript_writer` per badge and wait for each to report a clean run.
+fn run_the_writers(writer: &'static [u8], intake: RendezvousId, report: RendezvousId) {
+    for (badge, _) in WRITERS {
+        spawn_writer(writer, intake, badge, report);
+    }
+    // Each writer reports after its last `SEND` returned, which is after the service received it;
+    // the service handles one message before it receives the next, so by the time both reports
+    // are in, every writer byte is in the ring ahead of the read below.
+    for _ in WRITERS {
+        let [class, total, ..] = crate::sched::ipc_receive(report);
+        assert_eq!(
+            class,
+            fixture::code(byte_sink_protocol::Sent::Ok),
+            "a writer's log sink refused it"
+        );
+        assert_eq!(total as usize, fixture::TRANSCRIPT.len());
     }
 }
 
