@@ -1,8 +1,8 @@
 ---
 status: NOT-STARTED
 raised: 2026-10-12
-milestone_dependencies: 809, 892
-decision_dependencies: 208, 252, 270
+milestone_dependencies: 809, 892, 910
+decision_dependencies: 208, 252, 270, 297
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -11,17 +11,16 @@ needs_person: no
 
 *(Minted 2026-10-12 (UTC) by lane `maintainer/mint-scripted-installs` at calef's request. The
 number is provisional until the merge queue lands it; the title, the slug and every name below
-(`--approved`, `jig approve`, `jig revoke`, "approval file", "grant record") are drafts.
-
-Milestone-to-be 910 and decision-to-be 297 are dependencies as well, but their records are on #2022
-and #2023, both open when this was written. `script/roadmap --check` refuses a dependency, and
-`script/lint` a "milestone N" or section-sign citation, with no record on `main`. Until both land,
-this block names 297, 909 and 910 by bare number and leaves them out of its frontmatter. That is a
-marked exception: whoever lands the later of the two restores the citations and the
-dependencies.)*
+(`--approved`, `jig approve`, `jig revoke`, "approval file", "grant record") are drafts. Its
+citations of 909, 910 and 297, held as bare numbers until #2022 and #2023 landed, were restored on
+2026-10-12 (UTC) by maintainer/911-rollback-rulings.)*
 
 *Name: provisional, minted 2026-10-12 (UTC) by maintainer/911-rulings: `--json` and the file's
 keys, after common package-tool spellings. calef names them.*
+
+Appendices, in [this block's directory](0911-scripted-installs-grant-only-what-an-approval-file-allows/README.md):
+[an example approval file](0911-scripted-installs-grant-only-what-an-approval-file-allows/an-example-file.md)
+and [the prior art](0911-scripted-installs-grant-only-what-an-approval-file-allows/prior-art.md).
 
 calef, 2026-10-12 (UTC): *"If the owner does approvals, how will we script installs?"* The
 maintainer proposed the design below, and he answered: *"Yes, write it up as a milestone."*
@@ -39,9 +38,9 @@ of record.
 
 Three rulings of today made the install confirmation carry real authority. Under §208 (installing a
 package is granting it, and the activation set is versioned), `jig install` shows everything the
-install grants and one confirmation covers it. 910 (a package declares a service: install starts
-it, boot starts it, update restarts it), pending on #2022, adds "runs as a service, now and at
-every boot" to that list. Item 3 of milestone 892 (a std program at the prompt holds the network and
+install grants and one confirmation covers it. Milestone 910 (a package declares a service:
+install starts it, boot starts it, update restarts it) adds "runs as a service, now and at every
+boot" to that list. Item 3 of milestone 892 (a std program at the prompt holds the network and
 a name resolver) was ruled "c" on #2011. A manifest asks for its resolver zones, and the owner
 grants them at install. Several zones are allowed, with one badge each under §252 (a resolver grant
 is one zone per client badge, and a client speaks the socket contract's shape). A root-zone ask is
@@ -56,8 +55,8 @@ answer.
 
 ## What exists, and who else touches this
 
-Checked 2026-10-12 (UTC) on `main` and in the open pull requests #2011, #2022 and #2023. Nothing
-owns pre-approved or unattended installs. Each neighbor owns a piece this milestone reads.
+Checked 2026-10-12 (UTC) on `main` and in pull requests #2011, #2022 and #2023, since landed.
+Nothing owns pre-approved or unattended installs. Each neighbor owns a piece this milestone reads.
 
 - Milestone 809 (the package client becomes a program, `jig`, with the verbs an index needs),
   PARTIAL, owns `install`, `remove` and `rollback`. This adds a flag and two verbs to it.
@@ -65,15 +64,14 @@ owns pre-approved or unattended installs. Each neighbor owns a piece this milest
   of the progenitor's spawn endpoint, badged per job and narrowed to `WRITE`. Only the owner's
   console grants it, and the kernel refuses to pass it on. Delegation here is a second badge on that
   same endpoint, not a new object.
-- 910 (a package declares a service: install starts it, boot starts it, update restarts it),
-  pending on #2022, owns the service grant. Milestone 892 owns the zone grant. This milestone owns
+- Milestone 910 owns the service grant. Milestone 892 owns the zone grant. This milestone owns
   neither; it records and compares them.
-- 297 (software reaches a nife system as a package `jig` installs from basalt's index, the kernel
-  included), pending on #2023, makes every program, the kernel included, an install. Every one
-  of them then passes a confirmation, which is why scripting it cannot wait.
-- 909 (basalt composes the bootable image from its packages), pending on #2023, composes an image
-  with nobody at a prompt. It is a consumer of this file: the composition reads it, and a package
-  whose manifest asks for more than the file allows fails the build.
+- §297 (software reaches a nife system as a package `jig` installs from basalt's index, the kernel
+  included) makes every program, the kernel included, an install. Every one of them then passes a
+  confirmation, which is why scripting it cannot wait.
+- Milestone 909 (basalt composes the bootable image from its packages) composes an image with
+  nobody at a prompt. It is a consumer of this file: the composition reads it, and a package whose
+  manifest asks for more than the file allows fails the build.
 - Milestone 858 (lab machines update themselves through packages, and only a new kernel reboots
   them) ruled in its Fork 6 that automatic updates are an owner setting. Nothing said what bounds
   such an update. This file does: an unattended update installs only within it. 858 now depends on
@@ -81,7 +79,7 @@ owns pre-approved or unattended installs. Each neighbor owns a piece this milest
 
 909 and 858 are not dependencies of this block, though both use it. The edge sits on their side: 858
 waits on silicon and a person, and putting it here would hold scripted installs behind a board.
-909's block lives on #2023; once it lands, it gains this dependency in its own pull request.
+909's block gains this dependency in its own pull request.
 
 ## The approval file
 
@@ -102,25 +100,8 @@ or yaml". What it must hold:
   installs is the question of §195 (a reviewed recipe vouches for a package, and the machine's owner
   may overrule it), not of this file.
 
-An illustration, with provisional keys:
-
-```toml
-approval = "lab-runner"
-
-[package.monit]
-zones   = []
-service = true
-dirs    = { "monit/state" = "rw" }
-update  = true
-remove  = false
-
-[package.vaultwarden]
-zones   = ["example.org"]
-service = true
-dirs    = { "vault" = "rw" }
-update  = true
-remove  = false
-```
+[An example file](0911-scripted-installs-grant-only-what-an-approval-file-allows/an-example-file.md),
+named `lab-runner`, approves two packages with provisional keys.
 
 The rule is a subset test. An install or update passes when the manifest's asks are a subset of the
 file's entry for that package, and the grants given are exactly the asks. When the asks exceed the
@@ -181,6 +162,18 @@ installer, not in `jig`, because a delegated holder is trusted to be nothing mor
 that badge. `jig` runs the same test first only to give a clear error early. A holder under X cannot
 send `Approve` or `Vouch`, so it can neither widen X nor make a new approval.
 
+A `Rollback` under X passes when every row the previous generation restores lies within X's
+records, and is refused, naming the row, when one does not (ruled 2026-10-12). Returning to
+something the file already allowed grants nothing new, and it lets 858's updater undo a bad update
+with nobody present. Reserving rollback to the owner would leave an unattended machine on a broken
+package until the owner reached it.
+
+**Approvals are not generations.** The progenitor stores approvals beside the activation set's
+generations, not as rows in them, so `jig rollback` restores packages and leaves every approval as
+it was (ruled 2026-10-12). Changing an approval stays `jig approve` or `jig revoke`. An approval is
+the owner's standing decision, not a state of the machine. Were it a row, rolling back could
+silently undo a later revoke, widening what a script may do, or drop a fresh approval.
+
 **How a delegation is revoked.** `jig revoke X` at the owner's console. The progenitor drops X, and
 every later request under a badge that carries X is answered `Revoked` with nothing read past its
 first message. Held endpoint copies die with their jobs, as §270's reply endpoints already do at
@@ -207,38 +200,10 @@ separate layer, out of scope and not defined. Two hooks keep it possible:
 
 ## Prior art
 
-Read 2026-10-12 (UTC) unless marked.
-
-- Debian. `apt-get -y`: *"Automatic yes to prompts; assume "yes" as answer to all prompts and run
-  non-interactively"*, aborting only on a held package, an unauthenticated one or an essential
-  removal ([apt-get(8)](https://manpages.debian.org/bookworm/apt/apt-get.8.en.html)).
-  `DEBIAN_FRONTEND=noninteractive` makes debconf take every default (recalled, not read). Together
-  they approve everything, which is the shape refused above. apt's three aborts are the right
-  instinct: some answers are never implied.
-- Android. `pm install -g`, which `adb` runs: *"Grant all permissions listed in the app manifest"*
-  ([adb](https://developer.android.com/tools/adb)). Device management goes further:
-  `DevicePolicyManager.setPermissionPolicy` with `PERMISSION_POLICY_AUTO_GRANT` grants runtime
-  requests without prompting, new permissions arriving with app updates included, and
-  `setPermissionGrantState` sets one permission for one app (read in AOSP source, not on the
-  reference page, which did not render). The auto-grant policy widens silently on update; the
-  per-permission form is this file's shape.
-- NixOS. The owner writes *"a description of the desired configuration of your system"*,
-  `nixos-rebuild switch` builds and activates it, and each change is a boot entry to *"roll back to a
-  previous configuration if something goes wrong"*
-  ([manual](https://nixos.org/manual/nixos/stable/#sec-changing-config)). The declaration bounds
-  which packages run, but a Nix package carries no grants, so it cannot bound what they may do.
-- Fuchsia. Product assembly composes a system image from a product configuration naming its base
-  packages ([product configuration codelab](https://fuchsia.dev/fuchsia-src/concepts/software_assembly/product_configuration_codelab)).
-  Component manager's security policy holds `capability_policy` allowlists: for each routable
-  capability, the component monikers that may use it
-  ([`cm_config::SecurityPolicy`](https://docs.fuchsia.dev/rust/cm_config/struct.SecurityPolicy.html)).
-  That routing enforces them is our reading of the `routing::policy` module, not a sentence read.
-  That is the nearest model: allowlists checked by the authority that grants, not by the client
-  asking. This file puts the list per package rather than per capability, because a package is what
-  the owner approves.
-- One machine and many (recalled, not read today). apt manages one machine, and Ansible or
-  unattended-upgrades drive it across many. Trusting a repository key (`signed-by`) is local apt
-  configuration even when Ansible places it.
+Read 2026-10-12 (UTC) and kept [in an appendix](0911-scripted-installs-grant-only-what-an-approval-file-allows/prior-art.md).
+apt's `-y` and Android's auto-grant policy approve everything, including what an update newly
+asks. NixOS declares which packages run but not what they may do. Fuchsia's capability allowlists,
+checked by the authority that grants, are the nearest model; this file keeps its list per package.
 
 ## The work
 
@@ -250,7 +215,9 @@ Read 2026-10-12 (UTC) unless marked.
 4. `Approve` and `Revoke` on the installer endpoint, and the badge that carries an approval, as
    §270's semantics amended in `design/decisions/` (a new method on an existing endpoint, recorded
    there per §10 (process model: capability-based, microkernel; untyped memory deferred)).
-   Re-approval as ruled, and room in `Approve` for the signed form.
+   Re-approval as ruled, and room in `Approve` for the signed form. Approvals are stored beside
+   the activation set's generations, never as rows in them, and `Rollback` under a badge is checked
+   against that badge's approval.
 5. The two delegation forms: a one-run grant at spawn from the owner's console, and the standing ask
    in a service manifest beside 910's declaration.
 6. A host-side check basalt's composition can call, sharing item 1's crate, so 909 can adopt it.
@@ -274,6 +241,10 @@ Under QEMU on aarch64, riscv64 and x86_64, in `script/swish-check`, with fixture
    no new endpoint.
 6. A refused scripted install exits with its documented code, and `--json` names each extra
    grant.
+7. A delegated holder rolls back to a generation within its approval, and is refused a rollback to
+   one holding a row outside it, which the refusal names.
+8. A rollback leaves approvals unchanged: after `jig revoke X`, rolling back to a generation from
+   before the revoke leaves X revoked, and an approval made after the restored generation stays.
 
 Reuse: §270's badge and activation request, `crates/activation_set`, and 910's and 892's grant
 encodings, extended rather than duplicated. The file's design takes Fuchsia's checked-by-the-granter
@@ -286,16 +257,20 @@ calef answered "Yes, record them", recorded on #2030, and the body now carries e
 1 is (a): an approval binds to the file's digest at `jig approve`. The file is TOML. `jig` keeps to
 one machine.
 
-## Open questions for calef
+He then ruled the last two, recorded on #2031:
 
-2. **May a delegated holder roll back?** (a) No; rollback stays the owner's. (b) Yes, when every row
-   the previous generation restores lies within its approval. *Recommended: (b).* 858's updater must
-   undo a bad update with nobody present, and a rollback inside the file grants nothing the owner
-   did not approve. (a) would leave a lab machine on a broken package until calef reached it.
-3. **Does `jig rollback` undo an approval?** (a) Approvals live beside the generations, so a rollback
-   of packages leaves them alone. (b) They are rows in the versioned set and roll back with it.
-   *Recommended: (a).* An approval is the owner's standing word, not a state of the machine; rolling
-   back a bad package should not silently narrow or widen what a script may do.
+- Question 2, may a delegated holder roll back, is (b): yes, when every row the previous generation
+  restores lies within its approval. He answered "b" after this framing: rolling back to something
+  the file already allowed grants nothing new, and under (a), no, an unattended machine would stay
+  on a broken package until the owner reached it.
+- Question 3, does `jig rollback` undo an approval, is (a): approvals live beside the generations,
+  so a rollback of packages leaves them alone, and changing one stays `jig approve` or `jig
+  revoke`. He answered "a" after this framing: an approval is the owner's standing decision, not a
+  state of the machine. Under (b), approvals as versioned rows, a rollback could silently undo a
+  later revoke or drop a fresh approval.
+
+"The authority is a capability", the work (item 4) and Done when (items 7 and 8) carry both. No
+open questions remain.
 
 ## BUGS
 
