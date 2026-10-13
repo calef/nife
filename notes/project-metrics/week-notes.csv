@@ -15,3 +15,4 @@ week,chart,note
 2026W41,ci-jobs.svg,"prove shards rebalanced on 2026-10-07 UTC by a 40-run median and split three ways (calef, #1802), planned at 15.7 minutes each from 20.5 and 27"
 2026W41,ci-jobs.svg,CI job test ran at 89% of its budget on its newest merge-group run; tracking issue #1930
 2026W42,ci-jobs.svg,"re-falsify replays two records at a time (#1979); full-scope shards fell from 16.5 to 8.8 minutes"
+2026W42,ci-jobs.svg,CI job cpu-matrix-shard ran at 86% of its budget on its newest merge-group run; tracking issue #2055

@@ -8,41 +8,45 @@ Sorted by breaking changes in the last four weeks (2026W39 to 2026W42), then by 
 
 | crate | breaking, 4 weeks | additions, 4 weeks | breaking | additions | commits | crossing another division |
 |---|---:|---:|---:|---:|---:|---:|
-| `grant_plan` | 84 | 278 | 131 | 910 | 143 | 120 (84%) |
-| `line_editor` | 51 | 73 | 52 | 118 | 30 | 25 (83%) |
+| `grant_plan` | 84 | 280 | 131 | 912 | 151 | 124 (82%) |
+| `line_editor` | 51 | 73 | 52 | 118 | 31 | 25 (81%) |
 | `globally_unique_identifier_partition_table` | 40 | 4 | 67 | 219 | 34 | 27 (79%) |
 | `socket_protocol` | 16 | 21 | 19 | 59 | 27 | 25 (93%) |
-| `package_archive` | 14 | 110 | 14 | 110 | 19 | 14 (74%) |
-| `login_protocol` | 13 | 68 | 14 | 83 | 32 | 31 (97%) |
-| `swap_protocol` | 10 | 34 | 12 | 124 | 42 | 41 (98%) |
-| `filesystem_protocol` | 9 | 54 | 42 | 454 | 102 | 93 (91%) |
+| `package_archive` | 14 | 111 | 14 | 111 | 22 | 15 (68%) |
+| `login_protocol` | 13 | 68 | 14 | 83 | 34 | 33 (97%) |
+| `abi` | 11 | 71 | 41 | 169 | 105 | 99 (94%) |
+| `swap_protocol` | 10 | 34 | 12 | 124 | 43 | 42 (98%) |
+| `filesystem_protocol` | 9 | 58 | 42 | 458 | 105 | 96 (91%) |
 | `credential_protocol` | 8 | 6 | 35 | 70 | 32 | 29 (91%) |
-| `abi` | 7 | 65 | 37 | 163 | 102 | 97 (95%) |
-| `activation_set` | 6 | 57 | 6 | 57 | 18 | 18 (100%) |
+| `activation_set` | 6 | 57 | 6 | 57 | 19 | 18 (95%) |
 | `byte_sink_protocol` | 4 | 10 | 6 | 48 | 27 | 27 (100%) |
 | `clock_protocol` | 4 | 4 | 5 | 54 | 27 | 25 (93%) |
 | `component_plan` | 3 | 14 | 3 | 126 | 24 | 18 (75%) |
 | `graphics_protocol` | 2 | 2 | 11 | 33 | 27 | 27 (100%) |
 | `entropy_protocol` | 2 | 3 | 3 | 18 | 22 | 20 (91%) |
-| `current_cpu_protocol` | 2 | 17 | 2 | 17 | 7 | 4 (57%) |
-| `measured_boot` | 2 | 24 | 2 | 65 | 20 | 16 (80%) |
-| `supervision_protocol` | 1 | 10 | 22 | 70 | 49 | 44 (90%) |
-| `std_runtime_protocol` | 1 | 23 | 1 | 23 | 8 | 7 (88%) |
-| `nifefs` | 0 | 0 | 7 | 41 | 38 | 27 (71%) |
-| `compositor` | 0 | 1 | 4 | 93 | 27 | 22 (81%) |
-| `elf` | 0 | 1 | 3 | 53 | 41 | 33 (80%) |
+| `current_cpu_protocol` | 2 | 17 | 2 | 17 | 8 | 4 (50%) |
+| `measured_boot` | 2 | 24 | 2 | 65 | 21 | 17 (81%) |
+| `supervision_protocol` | 1 | 10 | 22 | 70 | 50 | 45 (90%) |
+| `std_runtime_protocol` | 1 | 24 | 1 | 24 | 9 | 8 (89%) |
+| `nifefs` | 0 | 0 | 7 | 41 | 39 | 28 (72%) |
+| `compositor` | 0 | 1 | 4 | 93 | 29 | 22 (76%) |
+| `elf` | 0 | 1 | 3 | 53 | 42 | 34 (81%) |
 | `counter_frequency_protocol` | 0 | 3 | 1 | 15 | 12 | 10 (83%) |
 | `environment_protocol` | 0 | 0 | 1 | 44 | 8 | 8 (100%) |
 | `user_mode_heap` | 0 | 0 | 1 | 11 | 0 | 0 |
 | `argument_protocol` | 0 | 29 | 0 | 29 | 0 | 0 |
 | `boot_slot` | 0 | 52 | 0 | 52 | 10 | 6 (60%) |
-| `capability_witness_protocol` | 0 | 7 | 0 | 10 | 13 | 11 (85%) |
-| `manifest_note` | 0 | 58 | 0 | 58 | 13 | 9 (69%) |
+| `capability_witness_protocol` | 0 | 7 | 0 | 10 | 14 | 11 (79%) |
+| `manifest_note` | 0 | 58 | 0 | 58 | 16 | 10 (62%) |
 
 ## What broke in 2026W42
 
-Read at `c6cc6cde27a5` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
+Read at `6364221d1391` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
 
+> - `abi`: syscall renamed, number kept (method or encoding), now `interrupt::ACK` `irq::ACK`
+> - `abi`: syscall renamed, number kept (method or encoding), now `interrupt::WAIT` `irq::WAIT`
+> - `abi`: syscall renamed, number kept (method or encoding), now `virtio::READ_REGISTER` `virtio::READ_REG`
+> - `abi`: syscall renamed, number kept (method or encoding), now `virtio::WRITE_REGISTER` `virtio::WRITE_REG`
 > - `credential_protocol`: removed `fixture::CHRIS`
 > - `credential_protocol`: removed `fixture::CORINNE`
 > - `credential_protocol`: removed `fixture::GRAEME`

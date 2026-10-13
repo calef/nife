@@ -51,7 +51,7 @@ is the debt in words and the second the documents holding it.
 ![Function length](project-metrics/function-length.svg)
 
 <!-- function-length: script/metrics writes this -->
-[8.1%](register-of-measures/function-length.md), 45 functions, 3,689 lines past 100.
+[0.0%](register-of-measures/function-length.md), 0 functions, 0 lines past 100.
 <!-- /function-length -->
 
 ## unsafe blocks outside kernel/src/arch/
@@ -110,6 +110,7 @@ Queue began 2026-08-15; W31 and W32 predate it.
 - 2026W41: prove shards rebalanced on 2026-10-07 UTC by a 40-run median and split three ways (calef, #1802), planned at 15.7 minutes each from 20.5 and 27
 - 2026W41: CI job test ran at 89% of its budget on its newest merge-group run; tracking issue #1930
 - 2026W42: re-falsify replays two records at a time (#1979); full-scope shards fell from 16.5 to 8.8 minutes
+- 2026W42: CI job cpu-matrix-shard ran at 86% of its budget on its newest merge-group run; tracking issue #2055
 <!-- /week-notes -->
 
 ![Where a merge-group build's time goes](project-metrics/ci-critical-path.svg)
@@ -236,7 +237,7 @@ Public items removed or changed each week: [definitions](interface-stability.md)
 [per crate](project-metrics/interface-stability.md).
 
 <!-- interface-stability: script/metrics writes this -->
-interface, 2026W39 to 2026W42: 279 breaking changes (1028 additions); 5 syscall numbers changed, 0 format bumps; 77% co-change.
+interface, 2026W39 to 2026W42: 283 breaking changes (1042 additions); 5 syscall numbers changed, 0 format bumps; 73% co-change.
 <!-- /interface-stability -->
 
 ## The crates 857 releases
@@ -276,7 +277,7 @@ Each week is read from its own commit, so 2026W39 is the first correction, alrea
 ![Share of Rust lines in files over 2,000](project-metrics/file-size.svg)
 
 <!-- file-size: script/metrics writes this -->
-**File size:** 0 Rust files over 2,000 lines, holding 0.0% of all Rust lines; largest crates/pci/src/lib.rs (1,785); 95th percentile 1,194.
+**File size:** 0 Rust files over 2,000 lines, holding 0.0% of all Rust lines; largest crates/system_initializer/src/boot_steps.rs (1,904); 95th percentile 1,188.
 <!-- /file-size -->
 
 ## How it stays current
