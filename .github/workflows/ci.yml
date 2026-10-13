@@ -914,6 +914,18 @@ jobs:
   # first shard. If the suite keeps growing at 0.1 minutes per model per day the long shard meets
   # the budget again in about three weeks; a third shard is then one more `include` entry.
   #
+  # **Each model stopped repeating the host pass** (lane maintainer/cpu-matrix-budget, 2026-10-13
+  # UTC, #2055). The three-model shard's job reached 15.8 to 17.4 minutes on 2026-10-13 merge-group
+  # runs, up from 14.6 to 15.7 a day earlier. Its time records say why: each model's system-test
+  # suite went from 157 to 184 seconds, 15 of them one new test that waits on purpose for the net
+  # stack's 15-second accept bound (#2047), and 4 to 6 more the package fetch over TLS, which grew
+  # from 16.5 to 20 to 23 seconds. Under that, each `cargo xtask test --cpu` re-ran the host pass,
+  # which `-cpu` cannot change. On the 2026-10-13 13:12 run the first model spent 4.9 of its 8.2
+  # minutes outside its two suite images (mostly cold builds, the host pass among them) and each
+  # later model 57 seconds, 206 doctests recompiled among them. `script/cpu-matrix` now
+  # passes `--no-host`; the `test-aarch64-riscv64` shard runs that pass on the same commit on the
+  # same runner type.
+  #
   # The required check keeps its name on the aggregate below, the same arrangement verify.yml's
   # header records for `verify (Kani proofs)`: a matrix renames its jobs, and a required name that
   # matches nothing blocks every pull request.
