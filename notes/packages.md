@@ -193,7 +193,7 @@ installed from inside `downloads` ([packages/jig.md](packages/jig.md)):
 ```
 $ cd downloads
 $ jig install ./tampered.nifepkg
-  refused: this image's catalog does not vouch for those bytes; nothing is installed
+  refused: neither this image's catalog nor its index copy vouches for those bytes; nothing is installed
 $ jig install ./uptime.nifepkg
   refused: the image carries a program of that name; a new base updates it, not install; nothing is installed
 $ jig install ./noteless.nifepkg
