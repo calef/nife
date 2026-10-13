@@ -6,18 +6,17 @@ Each fix's history, runs and injections are in the appendices listed at the end.
 
 A load-sensitive assertion is a test that goes red because the host was busy, not because the
 kernel was wrong. The guest runs under QEMU on a shared machine. When other emulators, lanes or CI
-jobs compete for the cores, the guest's vCPUs are descheduled for milliseconds at a time. A test
-that measured the wrong thing then fails on a pull request that could not have reached it.
+jobs compete for the cores, the guest's vCPUs are descheduled for milliseconds at a time. A test that measured the wrong thing then fails a pull request that could not have reached it.
 
 The family was named on 2026-08-03, when five assertions had failed pull requests that changed no
-executable code. Its cost is that a flaky red trains people to re-run rather than read. On
+executable code. A flaky red trains people to re-run rather than read. On
 2026-08-17 a loaded run produced nine reds: eight from two known timer assertions, and one real
 double free, wearing the same color
 ([the first loaded acceptance run](load-sensitive-assertions/first-loaded-acceptance-run.md)).
 
 ## How to recognize one
 
-Ask these in order; each was learned from a site the earlier ones missed.
+Ask these in order; each came from a site the earlier ones missed.
 
 ### 1. Which direction did it fail?
 
@@ -50,12 +49,12 @@ a timer tick has to clear cannot buy the tick with syscalls
 Some failures are positive and still wrong. The test measures across instructions that are not part
 of the claim. Examples: a tick counted between the read and the lock, a probe's execution that
 placement never promised, a spinner sampled before it had a turn. Contention does not cause these
-races. It stretches the window in wall-clock terms, so a race that never lost on a quiet machine
+races; it stretches the window, so a race that never lost on a quiet machine
 loses on a shared runner
 ([the second round](load-sensitive-assertions/measurement-windows-and-the-load-recipe.md)).
 
-A per-core counter read on both sides of a wait must name its core. Otherwise a migration silently
-changes the subject. That is why `ticks_on(core)` and `missed_ticks_on(core)` exist on both ISAs.
+A per-core counter read on both sides of a wait must name its core, or a migration silently changes
+the subject. That is why `ticks_on(core)` and `missed_ticks_on(core)` exist on both ISAs.
 
 ### 4. What else lands in the band that makes it fire?
 
@@ -67,18 +66,17 @@ rather than re-cut ([the timer disposition](load-sensitive-assertions/timer-asse
 
 ### 5. Is a count standing in for a mechanism?
 
-The first four questions find assertions that fail when they should not. This one finds assertions
-that pass when they should not. A frame count is a weak detector of a page-table leak: eight thread
+The first four find assertions that fail when they should not. This one finds assertions that pass
+when they should not. A frame count is a weak detector of a page-table leak: eight thread
 stacks are 224 KiB against a 2 MiB table span. The reaper test missed the stack-reuse leak of
 milestone 6 (threads, the context switch, and preemption) entirely, and an injection proved it
 ([stack reuse and proxy detectors](load-sensitive-assertions/stack-reuse-and-proxy-detectors.md)).
 
 ### What the harness tells you
 
-A guest cannot know that eleven other emulators shared its eight cores. So `xtask` samples the host's load average during each emulated leg and prints it when a leg goes red,
+A guest cannot know eleven other emulators shared its eight cores. So `xtask` samples the host's load average during each emulated leg and prints it when a leg goes red,
 with the core count and the oversubscription factor
-([the host-load line](load-sensitive-assertions/host-load-line.md)). Read that line before
-theorizing; it covers the host-side checks (`inbound`, `scanout`) too.
+([the host-load line](load-sensitive-assertions/host-load-line.md)). Read it before theorizing; it covers the host-side checks (`inbound`, `scanout`) too.
 
 ## The rule for fixing one
 
@@ -100,8 +98,8 @@ theorizing; it covers the host-side checks (`inbound`, `scanout`) too.
    test's own window: a whole-machine defect kills the suite before the target test runs. An
    injection that fires shows only that the assertion can fail, not that it fails for the right
    reason.
-7. Then run it under load. Two clean matrices proved nothing about the sites that failed on the
-   third, loaded one.
+7. Then run it under load. Two clean matrices proved nothing about the sites that failed on a
+   loaded third.
 
 ## The instruments
 

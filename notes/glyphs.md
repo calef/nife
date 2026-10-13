@@ -35,8 +35,7 @@ holds a license over it and no obligation travels with it. It replaced `font8x8`
 Daniel Hepper, from Marcel Sondaar's `font8x8.h`, from IBM's public-domain VGA fonts) on 2026-08-20,
 after a poll calef ran was won by the Kaypro II's character generator.
 
-The style is the Kaypro II's and the bits are not, which is a distinction the law makes and this
-tree relies on. A *typeface as typeface* is listed by 37 CFR 202.1(e) among the things not subject
+The style is the Kaypro II's and the bits are not, a distinction the law makes. A *typeface as typeface* is listed by 37 CFR 202.1(e) among the things not subject
 to copyright, along with "mere variations of typographic ornamentation, lettering or coloring", so
 the look of a font is free to reproduce. A particular file of bitmaps is somebody's work. The ROM is
 excluded on exactly that second ground, and the case is set out in
@@ -45,7 +44,7 @@ and this file's standing rule is that ambiguous is treated as obliged. So the RO
 repository, was not traced, and is not needed: it was used the way a person uses a reference,
 which is by looking at the shapes and drawing your own.
 
-A reader who wants to check that claim can. The `.art` file is the drawing, every glyph is a picture
+The claim is checkable. The `.art` file is the drawing, every glyph is a picture
 of `#` and `.`, and `crates/bitmap_font/src/glyphs.rs` is that file transcribed with a test
 (`the_art_file_and_this_table_agree`) that parses it back and fails if the two ever drift.
 
@@ -56,8 +55,8 @@ drawn rather than downloaded.
 
 ### The geometry, which is the machine's and is why the terminal got wider
 
-Seven columns, of which the middle five carry ink and the outer two are gutter. That is not a
-stylistic choice; it is what the Kaypro's video board did in hardware, shifting out a zero, five ROM
+Seven columns, of which the middle five carry ink and the outer two are gutter. That is what
+the Kaypro's video board did in hardware, shifting out a zero, five ROM
 bits and a zero (MAME's `kaypro_v.cpp`). Eight rows: 0 to 6 are the body with the baseline at row 6,
 and row 7 is the one-row descender. Caps and digits fill rows 0 to 6, x-height letters rows 2 to 6.
 
@@ -67,11 +66,11 @@ That geometry is most of the argument for the font. 128 / 7 is 18 columns where 
 No larger scanout is reachable today (a `Frame` names one page and the display driver has nine
 capability table slots left), so a narrower cell is the only lever there is.
 
-The division has a remainder, and it is handled rather than avoided: 18 cells of 7 is 126, so two
+The division has a remainder: 18 cells of 7 is 126, so two
 pixels on the right of a full-width surface belong to no cell. `Vt::pixel` already answered for
 them (a cell outside the grid is a blank on the default background), and `display_terminal` paints
-its whole surface on its first frame so that something writes them. Nothing else needed to
-change, and no surface has to be a whole number of cells any more.
+its whole surface on its first frame so that something writes them. No surface has to be a
+whole number of cells any more.
 
 ### What was done better than the ROM, and what the grid would not allow
 
