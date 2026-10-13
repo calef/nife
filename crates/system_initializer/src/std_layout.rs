@@ -102,101 +102,71 @@ impl StdLayout {
             maps: [(0, 0, 0); 6],
             maps_n: 0,
         };
-        let place = |l: &mut StdLayout, slot: u64, cap: u64, rights: u64| {
-            l.placed[l.placed_n] = (slot, cap, rights);
-            l.placed_n += 1;
-        };
-        let map = |l: &mut StdLayout, va: u64, cap: u64, mode: u64| {
-            l.maps[l.maps_n] = (va, cap, mode);
-            l.maps_n += 1;
-        };
+        use abi::address_space::MAP_RW;
+        use abi::rights::{BIND, READ, WRITE};
+        // Each grant at its slot, and a page grant mapped where `std` reads it too.
         if let Some((ep, page)) = dir {
-            place(&mut l, rt::FS_DIR_SLOT, ep, abi::rights::WRITE);
-            map(&mut l, rt::FS_PAGE, page, abi::address_space::MAP_RW);
+            l.place(rt::FS_DIR_SLOT, ep, WRITE);
+            l.map(rt::FS_PAGE, page, MAP_RW);
         }
-        if let Some(page) = clock {
-            place(&mut l, rt::CLOCK_SLOT, page, abi::rights::READ);
-            map(&mut l, rt::CLOCK_PAGE, page, abi::address_space::MAP_RO);
-        }
+        l.page(clock, rt::CLOCK_SLOT, rt::CLOCK_PAGE);
         if let Some(ep) = entropy {
-            place(&mut l, rt::ENTROPY_SLOT, ep, abi::rights::WRITE);
+            l.place(rt::ENTROPY_SLOT, ep, WRITE);
         }
-        if let Some(page) = config {
-            place(&mut l, rt::CONFIG_SLOT, page, abi::rights::READ);
-            map(&mut l, rt::CONFIG_PAGE, page, abi::address_space::MAP_RO);
-        }
-        if let Some(page) = args {
-            place(&mut l, rt::ARGS_SLOT, page, abi::rights::READ);
-            map(&mut l, rt::ARGS_PAGE, page, abi::address_space::MAP_RO);
-        }
+        l.page(config, rt::CONFIG_SLOT, rt::CONFIG_PAGE);
+        l.page(args, rt::ARGS_SLOT, rt::ARGS_PAGE);
         if let Some(stack) = network {
-            place(&mut l, rt::STACK_SLOT, stack, abi::rights::WRITE);
-            place(
-                &mut l,
-                rt::NET_MEMORY_REGION_SLOT,
-                region,
-                abi::rights::WRITE,
-            );
+            l.place(rt::STACK_SLOT, stack, WRITE);
+            l.place(rt::NET_MEMORY_REGION_SLOT, region, WRITE);
         }
         if let Some((endpoint, reply)) = installer {
-            place(
-                &mut l,
-                grant_plan::INSTALLER_SLOT,
-                endpoint,
-                abi::rights::WRITE,
-            );
-            place(
-                &mut l,
-                grant_plan::INSTALLER_REPLY_SLOT,
-                reply,
-                abi::rights::READ,
-            );
+            l.place(grant_plan::INSTALLER_SLOT, endpoint, WRITE);
+            l.place(grant_plan::INSTALLER_REPLY_SLOT, reply, READ);
         }
         if let Some(endpoint) = resolver {
-            place(&mut l, rt::RESOLVER_SLOT, endpoint, abi::rights::WRITE);
+            l.place(rt::RESOLVER_SLOT, endpoint, WRITE);
         }
-        if let Some(page) = catalog {
-            place(&mut l, grant_plan::CATALOG_SLOT, page, abi::rights::READ);
-            map(&mut l, rt::CATALOG_PAGE, page, abi::address_space::MAP_RO);
-        }
-        if let Some(page) = index_sources {
-            place(
-                &mut l,
-                grant_plan::INDEX_SOURCES_SLOT,
-                page,
-                abi::rights::READ,
-            );
-            map(
-                &mut l,
-                rt::INDEX_SOURCES_PAGE,
-                page,
-                abi::address_space::MAP_RO,
-            );
-        }
+        l.page(catalog, grant_plan::CATALOG_SLOT, rt::CATALOG_PAGE);
+        l.page(
+            index_sources,
+            grant_plan::INDEX_SOURCES_SLOT,
+            rt::INDEX_SOURCES_PAGE,
+        );
         // **Threads** (milestone 812 (`std::thread::spawn` runs real threads in one address
         // space)): every `std` program is built as a process of its own and may add threads to it,
         // within its own region's budget. Its own process with `BIND` and nothing more, its own
         // first thread to set its thread pointer through, and its own space with `READ` for the
         // futex waits its locks make. None of the three reaches anything outside the program.
-        place(
-            &mut l,
+        l.place(
             rt::PROCESS_SLOT,
             supervision_protocol::CHILDS_OWN_PROCESS,
-            abi::rights::BIND,
+            BIND,
         );
-        place(
-            &mut l,
+        l.place(
             rt::THREAD_SLOT,
             supervision_protocol::CHILDS_OWN_THREAD,
-            abi::rights::WRITE,
+            WRITE,
         );
-        place(
-            &mut l,
-            rt::SPACE_SLOT,
-            supervision_protocol::CHILDS_OWN_SPACE,
-            abi::rights::READ,
-        );
+        l.place(rt::SPACE_SLOT, supervision_protocol::CHILDS_OWN_SPACE, READ);
         l
+    }
+
+    fn place(&mut self, slot: u64, cap: u64, rights: u64) {
+        self.placed[self.placed_n] = (slot, cap, rights);
+        self.placed_n += 1;
+    }
+
+    fn map(&mut self, va: u64, cap: u64, mode: u64) {
+        self.maps[self.maps_n] = (va, cap, mode);
+        self.maps_n += 1;
+    }
+
+    /// A read-only page, if the child is given it: its capability at `slot`, mapped at `va`.
+    fn page(&mut self, page: Option<u64>, slot: u64, va: u64) {
+        if let Some(page) = page {
+            self.place(slot, page, abi::rights::READ);
+            self.map(va, page, abi::address_space::MAP_RO);
+        }
     }
 
     pub(super) fn placed(&self) -> &[(u64, u64, u64)] {
