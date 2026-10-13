@@ -775,8 +775,8 @@ fn x86_64_suite(filtered: bool) -> bool {
     true
 }
 
-/// **And one more boot, on a machine with a bridge on it** (milestone 320). `q35` is a flat
-/// root complex: every device hangs off bus 0, which is why a kernel that mapped one
+/// **And one more boot, on a machine with a bridge on it** (milestone 320 (every PCI bus the
+/// machine has, not just bus zero)). `q35` is a flat root complex: every device hangs off bus 0, which is why a kernel that mapped one
 /// megabyte of configuration space and enumerated bus 0 passed every test in this tree for a
 /// year and then found no disk at all on the first real machine it met. `NIFE_PCIE_ROOT_PORT`
 /// puts the NVMe controller behind a `pcie-root-port`, which is the topology xenon's M.2 slot
@@ -860,16 +860,19 @@ fn x86_64_on_amd_vi() -> bool {
     amd
 }
 
-/// FS-level consistency after the runs (milestone 32 phase 2): reopen the RedoxFS image with the
+/// FS-level consistency after the runs (milestone 32 (a real filesystem: RedoxFS behind a
+/// capability FS server) phase 2): reopen the RedoxFS image with the
 /// host tool and confirm the FS server's write persisted and the filesystem still parses. This
 /// checks the image of whichever leg ran LAST, each of which regenerates the fixture and then
-/// writes it: x86_64 in a full run (milestone 303 gave it a RedoxFS disk), riscv64 when
+/// writes it: x86_64 in a full run (milestone 303 (x86_64's FS service has a
+/// server and no disk it can find) gave it a RedoxFS disk), riscv64 when
 /// `--arch x86_64` was not asked for, aarch64 when it was the only leg.
 ///
 /// **The crash and blank images are aarch64's and riscv64's alone**, and that is why the x86_64
 /// arm below is separate rather than the guard simply going away. `helpers/qemu-runner-x86_64.sh`
-/// attaches two PCI functions, the nifefs image and the RedoxFS one; milestone 37's crash disk
-/// and milestone 57's GPT and blank disks are not among them, so those two checks would open
+/// attaches two PCI functions, the nifefs image and the RedoxFS one; the crash disk of milestone 37
+/// (prove RedoxFS's crash consistency) and the GPT and blank disks of milestone 57 (partitioning and
+/// formatting a real drive) are not among them, so those two checks would open
 /// whatever a previous full run left and report a true statement about a stale file and a false
 /// one about this run. A check whose subject did not happen is worse than no check.
 fn images_after_the_run(legs: ArchLegs, filtered: bool) -> bool {
