@@ -21,6 +21,14 @@ calef answered each question below "A", the recommended option, recorded on pull
 He also ruled the sequencing "A": milestone 888 lands PARTIAL, and milestone 876 (the kernel crate
 root is split along its seams) completes the `kernel_main` split.
 
+## The scope
+
+The ratchet holds every function with a body in every tracked `.rs` file outside `vendor/`. That
+includes host tools, `xtask`, build scripts, tests, benches, fixtures and items under
+`#[cfg(test)]`, as well as the Rust that runs on nife. calef ruled it on 2026-10-13 (UTC): "Yes,
+widen the gate". The gate and the function-length chart read one scope function,
+`helpers/function_length.py`'s `in_scope`, so they count the same files.
+
 ## What was already ruled
 
 calef ruled two parts on 2026-10-09 (UTC). The threshold is 100 code lines, with every function

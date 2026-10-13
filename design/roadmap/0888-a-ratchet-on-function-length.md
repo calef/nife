@@ -112,11 +112,11 @@ milestone 876 completes it. It did, on 2026-10-12 (UTC): `kernel_main` is 59 cod
 - The row value is `helpers/function_length.py`'s text replica of `too_many_lines`, which
   `script/metrics` needs because it may not build. At a threshold of 0 it matched clippy on all
   5,181 functions both saw. The gate fails on any difference.
-- The baseline, `design/lint-baseline.tsv`, holds 46 rows, not 39. The text measure reaches 7 long
-  functions in kernel build modes and the UEFI loader that no census clippy pass compiles.
+- The scope is every tracked `.rs` file outside `vendor/`, test code included (§283, calef,
+  2026-10-13 UTC). The gate and the chart read one scope function, so they count the same files.
+- The baseline, `design/lint-baseline.tsv`, holds no rows: no function in scope is over 100.
 - The chart is `notes/project-metrics/function-length.svg`, backfilled from 2026W29 with no build.
-  At 2026W41 the share is 9.1%: 46 functions, 4,566 code lines past the limit. The definition is
-  [the register's appendix](../../notes/register-of-measures/function-length.md).
+  The definition is [the register's appendix](../../notes/register-of-measures/function-length.md).
 - Every name here is provisional: both helpers, the baseline, the measure, its columns and the chart.
 
 **Criterion 4 was held on §266, and milestone 876 landed it.** The split was built and passes clippy
