@@ -128,9 +128,9 @@ use user_mode_runtime::{
 
 // **The shell is a directory of modules** (milestone 844 (the shell program is split along its
 // seams), §273 (the shell program becomes a directory of modules)), and this file is their index
-// (§282). What four or more of the modules use has children of its own: `wiring`, `terminal`,
-// `directory` and `status`. The globs below are how a module names what a sibling lends it
-// with `pub(super)`.
+// (§282 (when a file is split, the parent becomes an index)). What four or more of the modules
+// use has children of its own: `wiring`, `terminal`, `directory` and `status`. The globs below
+// are how a module names what a sibling lends it with `pub(super)`.
 mod capabilities;
 mod jobs;
 mod navigation;
