@@ -183,8 +183,7 @@ What depends on that stream being readable, beyond this gate:
 - Every bench session on argon, radon and xenon. Each of the three target boards has one serial
   line (`notes/target-hardware.md`), so a serial log is the only window into a board, and it can
   shuffle.
-- **`crates/board_console`** (milestone 216, nothing in this tree can read a board, so every hardware
-  milestone waits on a person), whose whole job is to recognize how far a boot got from the text
+- **`crates/board_console`** (milestone 216), whose whole job is to recognize how far a boot got from the text
   alone. Its `progress` recognizer matches on complete lines, which is the assumption this breaks.
 - Milestone 218's boot script, which parses the same stream.
 
@@ -250,20 +249,16 @@ accounting move together and want a lane of their own.
 
 ## Follow-on
 
-- **Milestone 233.** `login` dies on every interactive boot on both architectures, at
-  `nifefs::Fs::parse` refusing a zero-length archive, because `crates/system_initializer` starts it
-  with no mapping of the initrd while init measures the identity provisioning rather than the
-  process's survival. Left unfixed here because handing `login` the archive costs capability slots
-  at the exact peak this milestone had just sized the table against. 233 fixed the program and added
-  the assertion that a killed user thread fails the gate, which is the other item this block left
-  open.
-- **Milestone 231.** Nothing counted init's capability slots, so the high-water mark had to be
-  measured with temporary kernel `println!`s that were reverted, and three slots of headroom stood
-  in for a mechanism. 231 made every boot print `capability slots: N of M at peak` and this check
+- **Milestone 233.** Milestone 233 (`login` dies on every boot): `login` died on every interactive
+  boot on both architectures, at `nifefs::Fs::parse` refusing a zero-length archive ("`login` does not run" above). Left unfixed
+  here because handing it the archive costs capability slots at the peak this milestone had just
+  sized. 233 fixed the program and added the assertion that a killed user thread fails the gate,
+  which is the other item this block left open.
+- **Milestone 231.** Milestone 231 (nothing counts how many capability slots a boot actually uses):
+  nothing counted init's, and the BUGS above say how this block measured them. 231 made every boot print `capability slots: N of M at peak` and this check
   reads it.
 - **Milestone 177.** `script/shell-check --graphical` and `--graphical-serial` remain red behind
-  177's display driver bug. Neither `script/gates` nor CI runs them; the no-argument legs are green
-  and are what got wired in.
+  177's display driver bug, and nothing runs them (BUGS above).
 - **Recorded.** `crates/user_mode_runtime/src/lib.rs` carries it in `trap`'s own BUGS: a fault line
   cannot say where a program died, because the kernel prints the `pc` of the breakpoint inside
   `user_mode_runtime::trap`,
@@ -274,8 +269,7 @@ accounting move together and want a lane of their own.
   throughout) says where the error moved: a boot that both stopped
   reporting and faulted passes, because `boot_claim`'s third case reads a concurrent kernel write as
   the explanation for an unreadable line and cannot tell that from init having gone silent in the
-  same boot. The trade is deliberate, since a false red taxes every lane whose change had nothing to
-  do with it and a false green is undone by repetition.
+  same boot. Why that trade is deliberate is told above, under "Two matchers lost".
 - **Recorded.** `script/swish-check` also carries the residual in that third case, the six exact
   searches told in this block's `BUGS`.
 - **Recorded.** `design/roadmap/0230-shell-check-is-red.md`'s BUGS: the bisect names PR #556, not a
