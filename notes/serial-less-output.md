@@ -249,11 +249,9 @@ speak, the experiment, and the boards' reason in full.
   BAR the firmware placed, and a machine that puts it high would be handing the kernel an address
   its early direct map does not cover. Nothing has been seen doing this and nothing would notice if
   one did.
-- **The aperture is mapped uncacheable**, like every other device window, so writing a screenful is
-  slow on real silicon in a way it is not under QEMU. Write-combining is a PAT entry and this kernel
-  does not program the PAT at all; a framebuffer is the first thing in it that would care.
-  Scrolling additionally *reads* the aperture back, which is the worse half. The boot tour is shorter
-  than a 1280x800 screen is tall, so this does not bite during the boot it was built for.
+- **The screen shows a grid instead of text on xenon**, the one real machine that has run it.
+  [serial-less-output/the-xenon-grid.md](serial-less-output/the-xenon-grid.md) has what rules out
+  scrolling and the halt path, and the experiment that would measure a pitch mismatch.
 - **Only ASCII appears.** A byte outside `0x20..0x7f` is drawn as a space, so `§121` in the tour's
   last line reads as two blanks and a number on the screen. The serial console shows it correctly and
   the two transcripts therefore differ by exactly the non-ASCII characters in them.

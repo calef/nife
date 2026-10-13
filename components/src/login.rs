@@ -1,180 +1,43 @@
-//! **The login service: authentication produces capabilities** (milestone 49,
-//! design/roadmap/0049-users-and-attribution.md, §109 (attribution is a channel property)). Unix
-//! login authenticates and then mutates a global identity field, which is uid's whole trick and
-//! the thing this system refuses to have: this process authenticates a presented identity against
-//! the credential service milestone 56 (secrets and credentials) built, and on success hands back **a capability set**
-//! instead, a fresh directory, a fresh budget, a **logout ticket** (see "Reclaiming a session"
-//! below) and, when it is free, **the terminal** (see "The terminal: single-session, deny
-//! cleanly" below). It is the powerbox pattern with the human at one end, deciding at run time
-//! what `crates/system_initializer` used to bake in at build time. notes/login.md holds the design
-//! argument; the history of the resolved items is in git. The constraints, as they are now:
+//! **The login service: authentication produces capabilities** (milestone 49, §109 (attribution
+//! is a channel property)). It authenticates an identity against the credential service and, on
+//! success, hands back capabilities instead of mutating an identity field: a fresh directory, a
+//! fresh budget, a logout ticket and, when free, the terminal. See notes/login.md.
 //!
-//! - A successful login **builds** a fresh `fs_subtree_caretaker` per principal, the same
-//!   construction `crates/system_initializer` performs for a directory-granted spawn, never a
-//!   narrowed copy of a shared endpoint: two logins are two endpoint *objects*,
-//!   distinguishable, independently revocable, each nameable only by the principal that
-//!   established it, which is §109's channel-shaped attribution (the anti-pattern it refuses is
-//!   named there three times over).
-//! - The front door ([`REQUEST`]/[`RESULT`]) answers exactly one word per client,
-//!   [`login_protocol::CONNECT`]: [`connect`] mints a private request/result pair and staging
-//!   page, delegated to exactly that caller, and the identity and secret travel only on that
-//!   private pair, so concurrent clients contend for order, never for each other's secret
-//!   (`login_protocol`'s module docs have the two-phase exchange).
-//!   [`login_protocol::LOGOUT`] is the front door's only other word.
-//! - A session may run unvouched bytes only when its identity is on the owner's list
-//!   ([`login_protocol::RUN_UNVOUCHED_LIST`], empty by default; §219 (how the shell names an installed program to the spawner) gate D2, §221 ruling 2):
-//!   the run-unvouched capability, when the spawner placed one at [`RUN_UNVOUCHED`] (the
-//!   progenitor does), is delegated `WRITE` with no `GRANT`, per session, from a file the owner
-//!   writes and no session can reach ([`listed`]). No session holds a spawn endpoint to use it
-//!   with yet, so it is delivered and proven (`kernel::user::login_tests`), not exercised.
-//! - Each identity is attenuated to the subtree named by the identity string itself (§117 (a principal's subtree is named by its identity string), no
-//!   lookup table), which `identity_provisioner` (milestone 155 (a provisioning tool)) must already have provisioned;
-//!   this program never creates one. An authenticated identity with no subtree is refused,
-//!   folded into [`login_protocol::DENIED`] indistinguishably from a wrong password.
-//!
-//! # Reclaiming a session
-//!
-//! The fourth delegated capability is [`mint`]'s own construction `region`, undropped and
-//! narrowed to `WRITE` (the one right `MemoryRegion::DESTROY` needs): the client's **logout
-//! ticket**, whose only remaining use is `DESTROY`, which reclaims the caretaker's TCB, address
-//! space and endpoints; the pages come home to [`CONSTRUCTION_UT`] under §13 (capability revocation and untyped reclamation) region ownership
-//! (the builder, not the destroyer). The third capability, the client budget (`WRITE | GRANT`),
-//! already carries the same right, so a full logout destroys **the budget before the region**.
-//! The order is load-bearing: `crates/regions`' LIFO reclaim returns a freed child's pages only
-//! at the watermark top, `mint` splits `region` before `budget`, and the wrong order strands
-//! `region`'s pages until [`CONSTRUCTION_UT`] itself goes away (§92 (a caretaker is supervised by the client it serves) names the same rule). A
-//! `DESTROY` refused while the caretaker is mid-`forward` to the file service is transient:
-//! retry a bounded few times, the `crates/system_initializer::reclaim` idiom
-//! (`fixtures/src/login_test_client.rs`'s teardown role is the worked example). A channel nobody
-//! finishes connecting has no second party to trigger its destroy and is abandoned (see BUGS).
-//!
-//! # The terminal: single-session, deny cleanly
-//!
-//! One interactive boot has one physical terminal, so one session holds it at a time. A login
-//! while it is held is refused [`login_protocol::NO_TERMINAL`] **before** its identity and secret
-//! are relayed to the credential service (why first: [`serve_login`]'s own comment); the first
-//! login to arrive while it is free receives [`TERM_EP`] as its fifth delegated capability, and
-//! [`login_protocol::LOGOUT`] releases it. `LOGOUT` authenticates nothing (deliberate for this
-//! deployment; `login_protocol`'s BUGS has the hazard a hostile holder of [`REQUEST`] would pose
-//! in a different one), and there is no liveness check on the holder: a session that exits,
-//! crashes or never calls `LOGOUT` wedges the terminal for the rest of this process's life (no
-//! wait-any primitive; notes/hung-component.md's structural bound), and recovery is restarting
-//! this process. Real multiplexing is deliberately not built (the roadmap's BUGS recommends
-//! against it for the boot this program serves).
-//!
-//! # Capability contract
-//!
-//! | slot | what | why |
-//! |---|---|---|
-//! | [`REQUEST`] | the front door, `RECEIVE` | `CONNECT`/`LOGOUT` only; no page read for either |
-//! | [`RESULT`] | `WRITE \| GRANT` | `CONNECTED`, then the private triple; this process keeps its copies, because it serves the login that channel was minted for |
-//! | [`VERIFY`] | the credential service's verify endpoint, `WRITE` | the relayed `VERIFY`; the provision endpoint is deleted at both ends before any client exists (`components/src/credentialer.rs`) |
-//! | [`FS_EP`] | the file service's root directory, `WRITE \| GRANT` | what every minted caretaker attenuates; where [`listed`] reads the owner's list |
-//! | [`FS_PAGE_FRAME`] | the file service's shared page, `WRITE` | `WRITE` alone maps read+write for every holder ([`serve_login`]'s comment); delegated on to each principal |
-//! | [`CONSTRUCTION_UT`] | `WRITE \| GRANT` | what channels, caretakers and client budgets are built from; never given away, unlike `root_supervisor`'s |
-//! | [`AUDIT`] | `WRITE` | one [`login_protocol::ATTRIBUTED`] per login; **must be drained**, or the first login blocks this process forever (`system_initializer::boot` wires `login_audit_receiver`; the kernel harness drains via `Wiring::audit`) |
-//! | [`TERM_EP`] | the interactive terminal, `WRITE \| GRANT` | delegated `WRITE` to the qualifying session; `GRANT` is what lets [`delegate`] narrow and re-delegate it |
-//! | [`RUN_UNVOUCHED`] | the progenitor's run-unvouched endpoint, `WRITE \| GRANT`, when placed | delegated `WRITE` only, so presentable and not passable-on (§219 gate D2) |
-//! | [`DURABLE_WINDOW`] | one page of the file service's durable window, `WRITE \| GRANT` (milestone 152, Fork 8 D) | the channel a durable session's timetable reads the store through; [`FS_EP`] is badged with the window's number for the two store caretakers ([`open_schedule`]) |
-//!
-//! Mapped: [`CRED_VA`], the credential page. `login_protocol::CARETAKER_ELF_VA`, read-only, the
-//! length in `x0`, holds the caretaker's ELF, and `login_protocol::PROGRAM_MEASUREMENTS_VA`,
-//! read-only, the length in `x1`, holds [`measured_boot::PROGRAM_MEASUREMENTS`], so `_start` runs
-//! [`measured_boot::verify_in_manifest`] against the same table `crates/system_initializer`
-//! checks against; zero length means nothing vouched-for was handed over and every login answers
-//! [`login_protocol::DENIED`] (see BUGS). Each minted channel maps one page above
-//! [`CONNECT_VA_BASE`], never unmapped or reused in this slice: the page holds a prior client's
-//! staged secret, and the channel's region, which reclaims it, is destroyed once and never
-//! split again. A durable session maps its two timetable images at
-//! `login_protocol::USER_TIMETABLE_KEEPER_ELF_VA` and `login_protocol::TIMETABLE_ELF_VA`, the
-//! lengths in `x2` ([`login_protocol::schedule_lengths`]), checked against the table above; no
-//! job's program travels with them (Fork 8 ruled D by calef 2026-09-27, #1377: a job runs what
-//! the live activation generation names), and zero lengths answer `SCHEDULE` as a plain login
-//! ([`rederive`]). [`DURABLE_PAGE_VA`] holds the registration page, read-only, while there is
-//! one.
-//!
-//! Name: ratified 2026-09-15 (calef, for the whole `login` family: the stem stays on `login`,
-//! `login_protocol`, `login_test_client` and the kernel's `login_service` and `login_tests`).
-//! Minted 2026-08-22 for milestone 49. The argument and the refused alternatives are in
-//! `design/naming/vocabulary-rulings.md`, "The `login` stem stays".
+//! - Each login builds its own `fs_subtree_caretaker`, never a narrowed copy of a shared endpoint,
+//!   so two logins are two endpoint objects, each revocable and nameable only by its principal.
+//! - The front door ([`REQUEST`]/[`RESULT`]) takes only [`login_protocol::CONNECT`] and
+//!   [`login_protocol::LOGOUT`]. [`connect`] mints a private request/result pair and staging page
+//!   per caller, so identity and secret travel only there (`login_protocol` has the exchange).
+//! - §117 (a principal's subtree is named by its identity string): provisioned beforehand, and an
+//!   identity with none is refused as [`login_protocol::DENIED`], like a bad password.
+//! - Run-unvouched ([`RUN_UNVOUCHED`]) is delegated `WRITE` without `GRANT`, and only to identities
+//!   on the owner's list ([`listed`]; §219 (how the shell names an installed program to the
+//!   spawner) gate D2, §221 ruling 2).
+//! - The logout ticket is [`mint`]'s construction region narrowed to `WRITE`. A full logout must
+//!   destroy the budget before the region: LIFO reclaim returns pages only from the top, and
+//!   `mint` splits the region first. A `DESTROY` refused mid-`forward` is transient; retry a few
+//!   times (`fixtures/src/login_test_client.rs`'s teardown).
+//! - One session holds the terminal ([`TERM_EP`]) at a time. A login while it is held is refused
+//!   [`login_protocol::NO_TERMINAL`] before its secret is relayed; `LOGOUT` releases it,
+//!   authenticates nothing, and a holder that never sends it wedges the terminal until restart.
+//! - `_start` checks the caretaker and timetable images against
+//!   [`measured_boot::PROGRAM_MEASUREMENTS`]; with no table every login is `DENIED`. Each channel
+//!   maps one page above [`CONNECT_VA_BASE`] that is never reused, since it held a secret.
 //!
 //! # BUGS
 //!
-//! **One durable session at a time** (milestone 152), at start-up and at a login alike: each
-//! costs four capability slots, and [`DURABLE_SESSIONS`] is the fewest of three limits, today all
-//! one. The table: `login_protocol::durable::sessions_held` of `abi::CAPABILITY_TABLE_SLOTS`,
-//! 24, is one (the durable window's page is held at rest; an ordinary login beside two sessions
-//! would need 28; one session leaves no slot spare at a login's peak). The memory:
-//! [`DURABLE_UT_PAGES`] holds one budget. The channel: one durable window, and two timetables
-//! staging in one page would overwrite each other (Fork 8 D). A second identity asking while
-//! another's is durable gets an ordinary session, not a refusal; the start-up pass keeps the
-//! first identity in manifest order and leaves the rest to their next login. PR #1360 (open
-//! 2026-09-27) raises the table to 32, which derives to three with no edit here; raising the
-//! other two takes a window and a budget per session from `crates/system_initializer` and the
-//! kernel harness, and a fix for a budget retired out of order leaving a hole (the LIFO rule
-//! [`CHANNEL_UT_PAGES`] explains). Counts are from the code, not measured;
-//! `notes/durable-delegation/boot-rederivation-in-login.md` has them.
+//! - One durable session at a time ([`DURABLE_SESSIONS`]); a second identity gets an ordinary
+//!   session. Start-up waits up to [`END_WAIT_SECS`] per re-derived session, unmeasured.
+//! - A stopped durable session is retired only at its identity's next login; ending one waits for
+//!   a running job (§222 (who holds a user's schedule)), and `SUSPEND` waits on the terminal.
+//! - A `user_timetable_keeper` that fails half way leaves its splits in the user's budget.
+//! - Identities longer than `filesystem_protocol::grant::MAX_NAME` (16 bytes) get no subtree:
+//!   [`mint`] refuses rather than truncate into a name two identities could share.
+//! - The measured-boot decision is spelled here rather than through `measured_boot::verdict`.
+//! - The audit endpoint proves establishment, not per-request attribution.
+//! - Not wired into the interactive boot; `design/roadmap/0049-users-and-attribution.md` has why.
 //!
-//! **The durable window is shared by a session's two caretakers and its timetable**, and nothing
-//! else; sound as window 0 is (the timetable is the only client, every request a blocking
-//! `CALL`).
-//!
-//! **Start-up waits on each re-derived session's timetable**: [`rederive`] restores each stored
-//! document before the front door opens, [`Durable::restore`] waiting up to [`END_WAIT_SECS`]
-//! per session; the usual wait has never been measured, in the suite or on a board.
-//!
-//! **`LOGIN_CONSTRUCTION_PAGES` must hold a durable budget**: `_start` splits [`OWN_UT_PAGES`],
-//! [`DURABLE_UT_PAGES`] and [`CHANNEL_UT_PAGES`] before serving anyone, and a budget short of
-//! them stops this process at `fail(2)`. `crates/system_initializer` and the kernel harness
-//! derive the figure from `login_protocol::durable::BUDGET_PAGES`.
-//!
-//! **A `user_timetable_keeper` that fails half way leaves what it split off** a child of the
-//! user's budget, which then never comes down ([`open_schedule`] reclaims the keeper's own
-//! region on failure); only a build out of room can do it, and this suite's build is sized not
-//! to.
-//!
-//! **`SUSPEND` does nothing while a session holds the terminal** (reading the suspended list
-//! borrows the file page that session's caretaker shares, so it waits): the cascade runs at the
-//! suspended identity's next login, ending its durable session before refusing it, so a
-//! suspended user's scheduled jobs can run on. A page of this process's own would close it.
-//!
-//! **Ending a durable session waits for a running job to finish** (§222 (who holds a user's schedule): the timetable is the
-//! only process that can name its jobs' regions, and has to let a job finish; a job that never
-//! finishes keeps the session past [`END_WAIT_SECS`], and `SUSPEND` then answers that it ended
-//! nothing). Ending one outright needs a timetable operation that destroys its jobs or a kernel
-//! way to revoke a whole region subtree (§40 (a supervisor's death is its subtree's death)'s first caveat); both are architect's calls.
-//!
-//! **A durable session nobody logs back into is never retired**: retirement happens at that
-//! identity's next login, when the exit word says the timetable has stopped; until then the
-//! stopped session's region and budget stay in [`DURABLE_UT_PAGES`]'s budget.
-//!
-//! **An identity longer than `filesystem_protocol::grant::MAX_NAME` (16 bytes) cannot get a
-//! per-identity subtree in this slice**, though `login_protocol::MAX_IDENTITY` (64 bytes) would
-//! accept it: the grant name travels in two `START` argument words, not a frame, and [`mint`]
-//! refuses rather than truncate a name that two identities sharing their first 16 bytes would
-//! silently share. Lifting it means a frame for the grant, a change to
-//! `filesystem_protocol::grant`'s contract and every caretaker built against it.
-//!
-//! **This program spells measured boot's load-or-refuse decision itself** ([`_start`] runs
-//! [`measured_boot::verify_in_manifest`] and folds absent, refused and not-an-ELF into `None`)
-//! rather than calling `measured_boot::verdict`, the crate milestone 246 (measured boot's
-//! refusal path is tested by nothing) moved the decision into. Switching buys the tested refusal
-//! branch at the cost of a `Verdict` whose `unvouched` field this program has nothing to do with;
-//! not done, on the record, because it is a boot path this lane was not gating. The check's trust root is the progenitor's hand-over
-//! (bytes and table arrive already verified there), so it is a consistency check, kept because
-//! it costs one hash and catches a spawner that pairs the wrong two blobs.
-//!
-//! **The audit endpoint proves establishment, not per-request attribution** (§109 names both
-//! halves; this program is the first): no server in this tree needs the second, and wiring it
-//! into a real multi-tenant consumer is follow-on for whenever one exists.
-//!
-//! **Not wired into the interactive boot**: still spawned by the kernel's guest test harness
-//! (`kernel/src/user/login_service.rs`), not reachable from `crates/system_initializer::boot`'s
-//! prompt. The device-grant half of the blocker is built (the virtio-rng grant chain, §120 (a QEMU-only virtio-rng stopgap for the interactive boot)'s
-//! amendment); the remaining pieces (wiring `credentialer` and this program into `boot`, a real
-//! provisioned subtree and credential, and where the demo credential's password comes from, an
-//! open fork) live in `design/roadmap/0049-users-and-attribution.md`'s BUGS, being facts about
-//! the boot's wiring, not this program's contract.
+//! Name: ratified 2026-09-15 (calef, the `login` family; `design/naming/vocabulary-rulings.md`).
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks
@@ -194,18 +57,24 @@ use user_mode_runtime::{
 
 /// The front door: a bare [`login_protocol::CONNECT`], `RECEIVE` (milestone 49).
 const REQUEST: u64 = 0;
-/// [`login_protocol::CONNECTED`], then three delegated capabilities, `WRITE | GRANT`.
+/// [`login_protocol::CONNECTED`], then three delegated capabilities, `WRITE | GRANT`. This process
+/// keeps its copies, because it serves the login that channel was minted for.
 const RESULT: u64 = 1;
-/// The credential service's verify endpoint (milestone 56), `WRITE`.
+/// The credential service's verify endpoint, `WRITE`. Its provision endpoint is
+/// deleted at both ends before any client exists (`components/src/credentialer.rs`).
 const VERIFY: u64 = 2;
-/// The file service's root directory capability, `WRITE | GRANT`.
+/// The file service's root directory capability, `WRITE | GRANT`: what every minted caretaker
+/// attenuates, and where [`listed`] reads the owner's list.
 const FS_EP: u64 = 3;
-/// The file service's shared page, a `PageFrame`, `READ | WRITE`.
+/// The file service's shared page, a `PageFrame`, `READ | WRITE`, delegated on to each principal.
+/// `WRITE` alone maps read+write for every holder ([`serve_login`]'s comment).
 const FS_PAGE_FRAME: u64 = 4;
 /// Everything a connecting client's own channel, a caretaker, and a client budget are all built
-/// from, `WRITE | GRANT`.
+/// from, `WRITE | GRANT`. Never given away.
 const CONSTRUCTION_UT: u64 = 5;
-/// One [`login_protocol::ATTRIBUTED`] message per successful login, `WRITE`.
+/// One [`login_protocol::ATTRIBUTED`] message per successful login, `WRITE`. It must be drained,
+/// or the first login blocks this process forever (`system_initializer::boot` wires
+/// `login_audit_receiver`; the kernel harness drains via `Wiring::audit`).
 const AUDIT: u64 = 6;
 /// **The interactive terminal** (milestone 49's terminal update), `WRITE | GRANT`. The same
 /// endpoint `crates/system_initializer::boot` already hands the shell, `WRITE` only: this process
@@ -221,8 +90,10 @@ const TERM_EP: u64 = 7;
 /// pass it on. A named slot rather than the ninth, because a spawner that has none leaves it
 /// empty and the other eight where they were; probed once at [`_start`] ([`HOLDS_RUN_UNVOUCHED`]).
 const RUN_UNVOUCHED: u64 = grant_plan::spawnproto::RUN_UNVOUCHED_SLOT;
-/// One page of the file service's durable window, `WRITE | GRANT` (milestone 152, Fork 8 D). See
-/// the capability contract above.
+/// One page of the file service's durable window, `WRITE | GRANT` (milestone 152, Fork 8 D): the
+/// channel a durable session's timetable reads the store through. [`FS_EP`] is badged with the
+/// window's number for the two store caretakers ([`open_schedule`]). The window is shared by a
+/// session's two caretakers and its timetable and nothing else.
 const DURABLE_WINDOW: u64 = login_protocol::DURABLE_WINDOW_SLOT;
 // `grant_plan` states the slot without depending on `abi`; the relation is held by each reader.
 const _: () = assert!(RUN_UNVOUCHED == abi::fault::FAULT_EP_SLOT - 1);
@@ -334,14 +205,17 @@ const CLIENT_BUDGET_PAGES: u64 = login_protocol::durable::CLIENT_BUDGET_PAGES;
 /// when a schedule can be opened at all. Its own parent for the reason [`CHANNEL_UT_PAGES`] is:
 /// a durable session outlives the logins around it, so carving it from [`CONSTRUCTION_UT`] would
 /// leave a hole there each time one is reclaimed out of order. Room for exactly one, which is the
-/// binding term of [`DURABLE_SESSIONS`] even once the table allows more (BUGS).
+/// binding term of [`DURABLE_SESSIONS`] even once the table allows more (BUGS). `_start` splits
+/// this, [`OWN_UT_PAGES`] and [`CHANNEL_UT_PAGES`] before serving anyone and stops at `fail(2)` if
+/// `LOGIN_CONSTRUCTION_PAGES` is short; its owners derive that from
+/// `login_protocol::durable::BUDGET_PAGES`.
 const DURABLE_UT_PAGES: u64 = DURABLE_BUDGET_PAGES;
 /// **How many durable sessions this process keeps**: the fewer of what its capability table
 /// holds beside one ordinary login (`login_protocol::durable::sessions_held`, derived from
 /// `abi::CAPABILITY_TABLE_SLOTS`, so a wider table raises it with no edit here) and what
 /// [`DURABLE_UT_PAGES`] has memory for, and one, because the durable window is one channel and two
-/// timetables staging in one page would overwrite each other (Fork 8 D). One today on all three
-/// counts; BUGS says what a 32-slot table changes.
+/// timetables staging in one page would overwrite each other (Fork 8 D). Raising it past one takes
+/// a window and a budget per session from this process's spawners.
 const DURABLE_SESSIONS: usize = {
     let slots = login_protocol::durable::sessions_held(abi::CAPABILITY_TABLE_SLOTS);
     let memory = (DURABLE_UT_PAGES / DURABLE_BUDGET_PAGES) as usize;

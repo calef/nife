@@ -1,163 +1,36 @@
-//! **Text on a screen, for a machine with no serial port** (milestone 243).
+//! **Text on a screen, for a machine with no serial port.** Given a linear
+//! framebuffer the previous boot stage found ([`machine_discovery::framebuffer`]) and the tree's 7x8
+//! font ([`bitmap_font`]), put bytes on the screen. See notes/serial-less-output.md.
 //!
-//! Every word nife had ever said, it said down a UART: the boot tour on all three machines, the
-//! console server, the kernel's fault reports, and every automated gate that reads any of them.
-//! **A commodity machine does not have one.** The six machines in calef's house that milestone 87's
-//! USB stick could already boot (two desktops, a laptop, an Intel `MacBook`, cordoba) have between
-//! them no serial port at all, and until this crate existed a nife stick booted on one of them
-//! would have printed the loader's four lines through the firmware's own console and then gone
-//! permanently silent at `ExitBootServices`.
+//! It is not `video_terminal`, which is a several-hundred-kilobyte value with an escape-sequence
+//! parser: too big for a kernel static and the wrong thing to put in the TCB. What it reports is
+//! often why the machine is broken, so it holds the least state that could work: a cursor, a
+//! geometry and a scale, plus a caller-kept [`Cells`] that a scroll redraws from. No colour
+//! changes, escapes, cursor, scrollback or reflow, so it cannot be put in a surprising state. The
+//! font is shared, so early-boot letters match the graphical terminal's.
 //!
-//! This is the smallest thing that fixes that: given a linear framebuffer the previous boot stage
-//! found ([`machine_discovery::framebuffer`]) and the tree's existing 7x8 font ([`bitmap_font`]),
-//! put bytes on the screen.
-//!
-//! # Why this is not `video_terminal`
-//!
-//! `video_terminal::Vt` is the real terminal: a cell grid, a full escape-sequence parser, 300
-//! rows of scrollback, damage rectangles. It is the right engine for the interactive terminal
-//! (milestone 177 wires it) and it is deliberately **not** used here, for three reasons that all
-//! point the same way.
-//!
-//! - **It is a value of several hundred kilobytes.** Its own documentation says so and warns the
-//!   reader off putting one on a stack. In a kernel it would be a static of that size, in `.bss`,
-//!   present on every architecture, for a diagnostic path.
-//! - **It would put an escape-sequence parser in the TCB.** A state machine over untrusted-ish
-//!   bytes is exactly the kind of thing this project keeps *out* of the kernel, and the kernel's
-//!   own `println!` emits no escape sequences to parse.
-//! - **The thing being reported is often the reason the machine is broken.** That is the block's
-//!   own constraint on this milestone, and it argues for the console with the least state that
-//!   could work. This one holds a cursor, a geometry and a scale (six `u32`s), plus one byte per
-//!   character cell in a [`Cells`] the caller keeps, which is what a scroll redraws from.
-//!
-//! What is deliberately shared is the **font**, so the letters on an early boot screen and the
-//! letters in the graphical terminal are the same letters.
-//!
-//! # What it does not do, and that is a design rather than a gap
-//!
-//! No colour changes, no escape sequences, no cursor, no scrollback, no reflow. A newline moves
-//! down, a carriage return moves to column zero, everything else is a glyph, and running off the
-//! bottom scrolls the text up by one row of cells. **A console that cannot be put into a
-//! surprising state is worth more here than a capable one**, because its whole job is to be
-//! working at the moment something else is not.
-//!
-//! # Scale
-//!
-//! A wide screen draws each font pixel as a square block, at the largest integer scale that still
-//! leaves [`MIN_COLUMNS`] columns: 120, calef's choice on 2026-10-04 after 80 proved too big on
-//! xenon's monitor. A 1920x1080 monitor gets two (137 columns by 67 rows); anything under 1680
-//! wide, QEMU's 1280x800 OVMF screen among them, stays at one.
-//!
-//! # Examples
-//!
-//! A whole console, painted into ordinary memory, which is what the host tests in `tests.rs` do and
-//! what makes this crate provable without a screen:
-//!
-//! ```
-//! use machine_discovery::framebuffer::{Framebuffer, PixelOrder};
-//! use screen_console::{Cells, PixelSink, ScreenConsole};
-//!
-//! // Two cells wide, one tall: 14x8 pixels at four bytes each.
-//! let screen = Framebuffer { base: 0, width: 14, height: 8, stride: 56, order: PixelOrder::Bgrx };
-//! let mut pixels = [0u8; 56 * 8];
-//! let mut console = ScreenConsole::new(screen).expect("a screen big enough for one cell");
-//!
-//! assert_eq!(console.size(), (2, 1));
-//! let mut cells = Cells::new();
-//! console.clear(&mut cells, &mut PixelSink::new(&mut pixels));
-//! console.write(&mut cells, &mut PixelSink::new(&mut pixels), "F");
-//!
-//! // The top-left pixel of an `F` is background and the one beside it is ink, which is the
-//! // property a mirrored or transposed painter gets wrong. See `bitmap_font`'s own example.
-//! let pixel = |x: usize, y: usize| u32::from_le_bytes(
-//!     pixels[y * 56 + x * 4..y * 56 + x * 4 + 4].try_into().unwrap(),
-//! );
-//! assert_eq!(pixel(0, 0), ScreenConsole::BACKGROUND);
-//! assert_eq!(pixel(1, 0), ScreenConsole::FOREGROUND);
-//! ```
+//! Each font pixel is drawn as a square block at the largest integer scale that leaves
+//! [`MIN_COLUMNS`] columns (120, calef's choice on 2026-10-04): 1920x1080 gets two, anything under
+//! 1680 wide gets one. Scrolling redraws only the cells that changed, through a [`PixelSink`] that
+//! cannot be read, because reading the aperture back is very slow on real silicon.
 //!
 //! # BUGS
 //!
-//! - **A screen with more rows than [`Cells::CAPACITY`] holds is drawn on the top rows only.**
-//!   The grid is a fixed 36,000 bytes because it has to exist before any allocator does, and that
-//!   covers every screen up to 1200 pixels tall at scale one and any height that matters at scale
-//!   two. A 1600x1600 panel would leave its bottom 400 pixels blank. Nothing in the fleet is one.
+//! - A screen taller than [`Cells::CAPACITY`] holds is drawn on its top rows only: the grid is a
+//!   fixed 36,000 bytes because it exists before any allocator does.
+//! - A width or height that is not a whole number of cells, or of the scale, leaves an unpainted
+//!   sliver at the right and bottom edges ([`Aperture`] covers whole surface pixels).
+//! - Only 32-bit pixels: [`machine_discovery::framebuffer::PixelOrder`] has UEFI's two orders.
+//! - On xenon, the one real machine that has run it, the screen shows a grid instead of text; the
+//!   finding and the experiment that would measure it are in
+//!   `notes/serial-less-output/the-xenon-grid.md`.
+//! - Nothing here is proved on real silicon, only on the host and under OVMF.
 //!
-//!   Until 2026-10-04 this bullet said something else: **scrolling read the framebuffer back**,
-//!   with `copy_within` over the aperture, and the crate's own note called it the slowest thing
-//!   here on real silicon. On xenon calef saw the console scroll jerkily, redrawing in sections,
-//!   and the code accounts for it: 8 MB read and 8 MB written per new line through a
-//!   strong-uncacheable mapping. (The cause is read off the code; the bench has not yet confirmed
-//!   the fix.) The
-//!   console now keeps its text in a [`Cells`], redraws only the cells a scroll changes, and
-//!   reaches the screen through a [`PixelSink`] that cannot be read at all. On the 2026-09-17
-//!   xenon transcript that is no bytes read and 30% of the old bytes written
-//!   (`a_scroll_writes_only_the_cells_that_changed`). The kernel's `x86_64` mapping of the
-//!   aperture went write-combining the same day (`kernel/src/arch/x86_64/mmu.rs`).
-//! - **A screen that is not a whole multiple of its scale keeps a sliver the shell never paints.**
-//!   [`Aperture`] covers whole surface pixels, so 2560 wide at scale three leaves one pixel column
-//!   at the right edge in the kernel's black rather than the terminal's paper. xenon (1920x1080 at
-//!   two) and QEMU's 1280x800 (at one) divide exactly.
-//! - **Only 32-bit pixels.** [`machine_discovery::framebuffer::PixelOrder`] expresses the two byte
-//!   orders UEFI reports and nothing else, so a 24-bit packed or 16-bit mode has no console. Every
-//!   machine in the fleet reports one of the two.
-//! - **On the one real machine that has run this, the screen shows a regular grid instead of
-//!   text**, and it is the painting path rather than scrolling or the halt path. Observed on xenon
-//!   on 2026-09-04 and 2026-09-17. The discriminating run was the **tour** image on 2026-09-17
-//!   (`bench/xenon-2026-09-17/tour-display-225100.log`, video `IMG_4145`): about 40 lines onto a
-//!   135-row screen, so **nothing scrolled**, and it ends at a live shell rather than a panic, so
-//!   the machine was **not halted**. The grid appeared anyway, which eliminates both of the
-//!   explanations the first sighting allowed for.
-//!
-//!   **The kernel's own geometry is not wrong**: that boot reported `8294400` bytes of
-//!   framebuffer, exactly 1920 x 1080 x 4, so [`Framebuffer::span`] and a 7680-byte stride agree
-//!   with each other and with the panel. What the screen shows is single pixels at regular
-//!   vertical intervals, in columns at regular horizontal intervals, with the columns **leaning**.
-//!   A constant lean down the screen is the signature of a fixed per-row drift between the address
-//!   this crate computes for row *n* and the address the display scans out for row *n*, which is
-//!   what a pitch disagreement produces. That is a hypothesis read off a photograph and **not a
-//!   measurement**; counting columns in a JPEG is not evidence this tree accepts.
-//!
-//!   **The experiment that turns it into a number needs no bench time to write**: paint one
-//!   horizontal run of known length at a known row before printing anything. A correct pitch shows
-//!   one line; a mismatched one shows a line that steps or wraps, and the step is the delta.
-//!
-//!   Recorded here rather than fixed because an earlier session nearly wrote up a framebuffer
-//!   defect from a photograph of a halted machine that had been displaying text correctly, and the
-//!   lesson taken was to name what a photograph can and cannot settle.
-//! - **Nothing here is proved on real silicon.** It is proved on the host and under OVMF. A
-//!   framebuffer that works under QEMU's emulated adapter is not a framebuffer that works on a
-//!   family laptop with no serial port, and `notes/serial-less-output.md` carries the bench
-//!   procedure that would settle it.
-//! - **The right-hand and bottom edges are never painted** when the screen is not a whole number of
-//!   cells. 1280 is not a multiple of 7, so a 1280-pixel-wide screen owns 182 columns and leaves
-//!   six pixels of whatever the firmware last drew. The same is true of `display_terminal`'s
-//!   scanout wiring and for the same reason.
-//!
-//! Name: ratified 2026-09-13 (calef, working the unratified worklist), and ruled as half of a pair:
-//! `serial_console` and `screen_console` are two consoles over two wires, named for where the text
-//! comes out. Coined by milestone 243's lane. The other half is `crates/board_console`, whose
-//! rename to `serial_console` is recorded there and not yet performed.
-//!
-//! A noun, `snake_case`, naming what the thing is rather than how it works: a console on a screen.
-//!
-//! Refused `framebuffer_console`, because "framebuffer" already names the thing this writes *into*
-//! (`machine_discovery::framebuffer`) and a reader meeting both would have to hold two senses of
-//! one word. Refused `pixel_console`, which names the unit rather than the surface. Refused
-//! `early_console`, which says when it runs rather than what it is, and is wrong about that too:
-//! nothing here is early-only.
-//!
-//! **Refused `video_terminal`, and this is the explanation behind a standing gate NOTE.** That name
-//! is taken by the crate this one deliberately is not: `video_terminal` is the terminal *emulator*,
-//! holding escape sequences, a cursor and scrollback, where this is a place to put text. Until
-//! 2026-09-13 the distinction sat here as a parenthetical rather than a refusal, so
-//! `script/names` reported `video_terminal` as recorded-refused-and-also-live with nothing anywhere
-//! saying why both are correct.
-//!
-//! **The NOTE stays, and should.** It flags a word that is refused in one block and live in
-//! another, which is exactly true here and is the co-existence a reader should be told about; it
-//! is not a complaint that the reason is missing. Checked rather than assumed: the NOTE is still
-//! reported after this paragraph was written.
+//! Name: ratified 2026-09-13 (calef), half of a pair with `serial_console` (`crates/board_console`,
+//! rename not yet performed): two consoles named for where the text comes out. Refused
+//! `framebuffer_console` (the thing it writes into), `pixel_console` (the unit, not the surface),
+//! `early_console` (when, not what) and `video_terminal` (the terminal emulator this deliberately is
+//! not; `script/names` reports it as refused here and live there, which is true).
 
 #![no_std]
 
@@ -623,6 +496,34 @@ impl Default for Cells {
 /// It holds no picture. The screen's text lives in a [`Cells`] and the screen itself is a
 /// [`PixelSink`], both passed in on every call rather than held, so that this type is a plain value
 /// a caller can put in a `static` without a pointer to device memory living inside it.
+///
+/// # Examples
+///
+/// A whole console, painted into ordinary memory, which is what the host tests in `tests.rs` do and
+/// what makes this crate provable without a screen:
+///
+/// ```
+/// use machine_discovery::framebuffer::{Framebuffer, PixelOrder};
+/// use screen_console::{Cells, PixelSink, ScreenConsole};
+///
+/// // Two cells wide, one tall: 14x8 pixels at four bytes each.
+/// let screen = Framebuffer { base: 0, width: 14, height: 8, stride: 56, order: PixelOrder::Bgrx };
+/// let mut pixels = [0u8; 56 * 8];
+/// let mut console = ScreenConsole::new(screen).expect("a screen big enough for one cell");
+///
+/// assert_eq!(console.size(), (2, 1));
+/// let mut cells = Cells::new();
+/// console.clear(&mut cells, &mut PixelSink::new(&mut pixels));
+/// console.write(&mut cells, &mut PixelSink::new(&mut pixels), "F");
+///
+/// // The top-left pixel of an `F` is background and the one beside it is ink, which is the
+/// // property a mirrored or transposed painter gets wrong. See `bitmap_font`'s own example.
+/// let pixel = |x: usize, y: usize| u32::from_le_bytes(
+///     pixels[y * 56 + x * 4..y * 56 + x * 4 + 4].try_into().unwrap(),
+/// );
+/// assert_eq!(pixel(0, 0), ScreenConsole::BACKGROUND);
+/// assert_eq!(pixel(1, 0), ScreenConsole::FOREGROUND);
+/// ```
 #[derive(Clone, Copy, Debug)]
 pub struct ScreenConsole {
     screen: Framebuffer,

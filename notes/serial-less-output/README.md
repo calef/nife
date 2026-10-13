@@ -13,6 +13,8 @@ and BUGS. These files carry the arguments and detail its prose budget has no roo
   settled, and its own BUGS.
 - [`the-early-boot-window.md`](the-early-boot-window.md): why the window cannot be narrated, the
   banner that bounds it, and the halted-loader experiment.
+- [`the-xenon-grid.md`](the-xenon-grid.md): the grid xenon's screen shows instead of text, and
+  the experiment that would measure it.
 
 *Name: provisional, minted 2026-10-11 (UTC) by lane/seventh-ten-longest-notes, which split the
 parent under §212 (a prose budget). The directory follows §212's siting default, `notes/X/` beside
@@ -31,3 +33,5 @@ names files.
   QEMU device it describes.
 - `the-early-boot-window` Name: provisional, minted 2026-10-11 (UTC) by
   lane/seventh-ten-longest-notes, after the parent's "The window between the firmware and the kernel".
+- `the-xenon-grid` Name: provisional, minted 2026-10-13 (UTC) by lane/comment-blocks-zero-1, for
+  the finding it holds.
