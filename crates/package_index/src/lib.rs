@@ -602,6 +602,23 @@ pub mod fixture {
 /// so the table vouches for it, as `package_archive::CATALOG` is. Name: provisional.
 pub const SOURCES_ENTRY: &str = "package_index_sources";
 
+/// **basalt's production sources**: the text an image built for real machines carries, where
+/// the test image carries `helpers/tls-peer` and the test authority (xtask's
+/// `image_index_sources`, which chooses between the two).
+///
+/// `basalt.nifeos.org` on 443, the provisional channel, pinned to ISRG Root X1, as §250 (an image
+/// names its distribution's package index) rules. calef ruled on 2026-10-12 (UTC) that the host
+/// is GitHub Pages under that custom domain; `nifeos.github.io` chains to X1 (measured 2026-10-13
+/// UTC), so the pin holds there. §250's second address (its 2026-10-10 amendment, clause 6) is
+/// missing because its domain is not chosen yet.
+///
+/// Name: provisional, minted 2026-10-13 (UTC) by lane `lane/basalt-on-pages-and-releases`.
+pub const BASALT_SOURCES: &str = "\
+# basalt's index (§250): GitHub Pages under basalt.nifeos.org, pinned to ISRG Root X1.
+repository basalt.nifeos.org 443 rolling
+root isrg-root-x1
+";
+
 /// **The index store's directory**, inside the activation directory: `activation/indexes`, which
 /// the progenitor opens for a package manager holding `grant_plan::Manifest::indexes` (milestone
 /// 801 (packages over the internet), ruling I2). Name: provisional 2026-10-12 (UTC).
@@ -786,10 +803,17 @@ mod sources_tests {
 
     #[test]
     fn the_production_pin_is_named() {
-        let s = Sources::parse("repository basalt.nifeos.org 443 rolling\nroot isrg-root-x1\n")
-            .unwrap();
+        let s = Sources::parse(BASALT_SOURCES).unwrap();
         assert_eq!(s.root, Root::Named("isrg-root-x1"));
         assert_eq!(s.root.der(&mut [0u8; 8]), None);
+        let r: Vec<_> = s.repositories().collect();
+        assert_eq!(r.len(), 1);
+        assert_eq!(
+            r[0].repository,
+            Repository::new("basalt.nifeos.org", 443, PROVISIONAL_CHANNEL).unwrap()
+        );
+        // Resolved by name, never by an address the image fixes.
+        assert_eq!(r[0].address, None);
     }
 
     #[test]

@@ -326,17 +326,36 @@ pub(crate) fn image_catalogue(architecture: &str) -> Result<String, String> {
 /// table, as the catalog is, so the kernel's trust root vouches for where the image says its index
 /// is and which root that index's TLS must chain to.
 ///
-/// **Every image names the test peer today**: `helpers/tls-peer`, which every runner forwards at
-/// 10.0.2.9:8443 and which presents a chain for `basalt.test` from the committed test authority.
-/// The production text is two lines, `repository basalt.nifeos.org 443 rolling` and `root
-/// isrg-root-x1` (§250 (an image names its distribution's package index)), and it waits on two
-/// things outside this tree: a host for `basalt.nifeos.org`, and milestone 909 (basalt composes
-/// the bootable image from its packages), where basalt writes this entry for the images it
-/// publishes. Until then a production image would name a host nobody answers on, so the test text
-/// is the only one any boot here can use. The address after the host is there because a guest
-/// under QEMU's slirp asks the host's resolver, which knows no `.test` name: milestone 892 (a std
-/// program at the prompt holds the network and a name resolver) measured it.
+/// **Two texts, chosen by `NIFE_INDEX_SOURCES`.** Unset or `test`, the image names the test peer:
+/// `helpers/tls-peer`, which every runner forwards at 10.0.2.9:8443 and which presents a chain for
+/// `basalt.test` from the committed test authority. Every check boots that one, because no check
+/// may depend on a host outside the runner. `basalt` names the production host instead,
+/// `package_index::BASALT_SOURCES`: `basalt.nifeos.org`, served by GitHub Pages and pinned to ISRG
+/// Root X1 (§250 (an image names its distribution's package index); calef's 2026-10-12 (UTC)
+/// ruling on where it is served). One text, not both: `package_index::Sources` holds one root, and
+/// the two hosts chain to different ones. Milestone 909 (basalt composes the bootable image from
+/// its packages) is where basalt asks for `basalt` on the images it publishes. Anything else is
+/// refused rather than read as `test`, so a typo cannot ship a test image as a real one.
+///
+/// The address after the test host is there because a guest under QEMU's slirp asks the host's
+/// resolver, which knows no `.test` name: milestone 892 (a std program at the prompt holds the
+/// network and a name resolver) measured it.
+///
+/// The variable `NIFE_INDEX_SOURCES` and its two values are provisional names, minted 2026-10-13
+/// (UTC) by lane `lane/basalt-on-pages-and-releases`.
 pub(crate) fn image_index_sources() -> Result<String, String> {
+    match std::env::var("NIFE_INDEX_SOURCES").as_deref() {
+        Err(std::env::VarError::NotPresent) | Ok("test") => test_index_sources(),
+        Ok("basalt") => checked_index_sources(package_index::BASALT_SOURCES.to_string()),
+        Ok(other) => Err(format!(
+            "NIFE_INDEX_SOURCES is {other:?}; it may be unset, `test` or `basalt`"
+        )),
+        Err(e) => Err(format!("NIFE_INDEX_SOURCES: {e}")),
+    }
+}
+
+/// The test peer's sources, pinned to the committed test authority.
+fn test_index_sources() -> Result<String, String> {
     let root = workspace_root().join("pinned_tls_client/fixtures/pinned-root.der");
     let der =
         std::fs::read(&root).map_err(|e| format!("could not read {}: {e}", root.display()))?;
@@ -347,7 +366,11 @@ pub(crate) fn image_index_sources() -> Result<String, String> {
          repository basalt.test 8443 rolling 10.0.2.9\n\
          root {hex}\n"
     );
-    // Read back with the target's own reader before it is packed, as a package is.
+    checked_index_sources(text)
+}
+
+/// Either text, read back with the target's own reader before it is packed, as a package is.
+fn checked_index_sources(text: String) -> Result<String, String> {
     package_index::Sources::parse(&text)
         .map_err(|e| format!("the index sources this build wrote are refused: {e:?}"))?;
     if text.len() >= 4096 {
@@ -511,6 +534,24 @@ program = "uptime"
 name = "uptime.licence"
 file = "LICENSE-MIT"
 "#;
+
+    /// Both texts an image can carry fit the page `jig` reads them from, and they differ where they
+    /// must: the test peer is reached at a fixed address under its own authority, the production
+    /// host by name under ISRG Root X1. Read without `NIFE_INDEX_SOURCES`, which tests share.
+    #[test]
+    fn both_index_sources_pack_and_name_different_roots() {
+        let test = test_index_sources().unwrap();
+        let basalt = checked_index_sources(package_index::BASALT_SOURCES.to_string()).unwrap();
+        let test = package_index::Sources::parse(&test).unwrap();
+        let basalt = package_index::Sources::parse(&basalt).unwrap();
+        assert!(matches!(test.root, package_index::Root::Der(_)));
+        assert_eq!(basalt.root, package_index::Root::Named("isrg-root-x1"));
+        let first = |s: package_index::Sources<'_>| {
+            s.repositories().next().unwrap().repository.host.to_string()
+        };
+        assert_eq!(first(test), "basalt.test");
+        assert_eq!(first(basalt), "basalt.nifeos.org");
+    }
 
     #[test]
     fn a_recipe_reads_as_what_it_says() {
