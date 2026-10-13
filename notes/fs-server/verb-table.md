@@ -7,7 +7,7 @@ row that carries a security property.
 ## Why it exists
 
 Three caretakers proxy this contract over three different narrowings: `fs_file_caretaker`,
-`fs_subtree_caretaker` and `fs_nameset_caretaker`. Each used to be a hand-written `match` over the
+`fs_subtree_caretaker` and `fs_nameset_caretaker`. Each had a hand-written `match` over the
 opcode. Nothing made a `match` and this contract agree, so the failure mode was silent. A verb added
 to the contract was simply absent from a caretaker, and the capability quietly was not there.
 

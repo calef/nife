@@ -16,14 +16,14 @@ is the index, and [milestone 93](../design/roadmap/0093-doc-audit-cadence.md), w
 ## What it is looking for, and what it is not
 
 **Claim rot**: a sentence that was true when it was written and that the tree has since moved past.
-A path that was renamed. A number that grew. A "currently" or a "still open" describing a state that
-ended. A plan a later decision superseded, still written in the future tense.
+A path that moved. A number that grew. A "currently" or a "still open" describing a state that
+ended. A plan a later decision overrode, still written in the future tense.
 
 The four exhibits that raised this milestone were all found in one day, 2026-08-03, and every one of
 them by accident, while somebody was looking for something else. `notes/verification.md` said the
 proof suite ran in "a few minutes" a month after that stopped being true. Two roadmap status rows
 claimed more remained than their own blocks said. The in-brief of milestone 47 (navigation and naming) listed shipped work as
-pending. `notes/cpu-models.md`'s closing line prescribed a fix a later milestone had superseded. The
+pending. `notes/cpu-models.md`'s closing line prescribed a fix a later milestone had replaced. The
 sweep exists so that finding these stops being luck.
 
 **It is not the other four things, and the boundaries are worth knowing before you start**, because

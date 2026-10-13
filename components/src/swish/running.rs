@@ -1283,3 +1283,79 @@ fn outcome(e: Endowment, answer: u64) {
     }
     swish::write_outcome(&e, answer, &mut print);
 }
+
+/// Resolve an invocation, then either refuse it at the prompt (a mismatch the manifest caught) or
+/// spawn it, granting exactly what the command named and nothing else.
+pub(super) fn run(nav: &mut Nav, cmd: &[u8], spec: RunSpec) {
+    // **A path runs bytes, not a name** (DECISIONS §219 (how the shell names an installed program to the spawner) option D, milestone 198 (a package manager) rung 3a). A program
+    // the image names is a word with no `/` in it; anything with one is a file this shell reads and
+    // hands the progenitor as frames. `installed/uptime` and `./a.out` both land here.
+    if spec.prog.contains(&b'/') {
+        return run_image(nav, spec);
+    }
+    // **A bare word is the image's, an installed program's, or refused** (DECISIONS §229 (how a
+    // bare name at the prompt reaches an installed program), B2). An installed program runs down
+    // the same road its path does, so what it is granted and who vouched for it do not depend on
+    // how it was named.
+    match bare(nav, spec.prog) {
+        swish::bare::Bare::Installed { path, notice } => {
+            // **The spawn line says both when a version set asked for a version that is not live**
+            // (milestone 614 (two installed versions of one program, each runnable, and a caller
+            // granted the one it needs), ruling 4): what runs, and what the set specified. A
+            // preview ([`caps`]) says nothing ran, so it prints no notice.
+            if let Some(notice) = notice {
+                swish::bare::write_divergence(spec.prog, &notice, &mut print);
+            }
+            let mut by_path = spec;
+            by_path.prog = path.as_bytes();
+            return run_image(nav, by_path);
+        }
+        swish::bare::Bare::Both(path) => {
+            refused();
+            return swish::bare::write_both(spec.prog, &path, &mut print);
+        }
+        swish::bare::Bare::Image | swish::bare::Bare::Unknown => {}
+    }
+    // **Expand first.** A pattern designates the names it matched, so the planner has to see the
+    // set; and a pattern that matched nothing, or too much, is refused here with nothing spawned.
+    let expanded = match expansion(nav, &spec) {
+        Ok(e) => e,
+        // A grant refusal is attributed to the program when there is one, because "rm: no name here
+        // matches that pattern" reads better than the bare sentence and is just as true.
+        Err(Say::Cannot(r)) => return refuse(spec, r),
+        Err(said) => return say(said),
+    };
+    match grant_plan::plan(&spec, holdings(nav), expanded) {
+        Err(refusal) => refuse(spec, refusal),
+        // A supervised job runs under the two-tier ^C path (DECISIONS §24); a fast job is simply
+        // spawned and waited on.
+        Ok(endow) if endow.interruptible => spawn_interruptible(endow),
+        // **`wc report.txt`**, which is `wc < report.txt` with the operator left out: the planner
+        // put the designated name in the *source* (`grant_plan`'s input operand), so this line is a
+        // one-stage pipeline the shell feeds, and it runs down exactly the path a `<` runs down.
+        // There is no second mechanism here, which is the reason to do it this way: the bytes reach
+        // the child the same way, and the child still cannot tell a file from a pipe.
+        Ok(endow) => match endow.source {
+            Source::File(g) => {
+                // The line reparses into the one stage it is. It cannot fail (this command came out
+                // of it), and a `Line` is what `run_pipeline` reads its stage count off.
+                let Ok(l) = line::split(cmd) else { return };
+                // **One element, not `MAX_STAGES`**, and that is a stack decision rather than a
+                // tidiness one. An `Endowment` carries a whole `NameSet` by value, so a full-width
+                // array here overflowed the shell's stack at the *first* line this arm ran, which
+                // presented as a data abort one word below the lowest mapped stack page. This line
+                // is a single stage by construction, and `run_pipeline` takes a slice.
+                run_pipeline(nav, l, &[Some(endow)], false, None, Some(g), None);
+            }
+            // **A program that hears words gets the line as its argv** (milestone 205,
+            // DECISIONS §170 (how a foreign program is told what to do)). Assembled here, where a refusal can still name the program, and
+            // before anything is sent, so a line that does not fit spawns nothing.
+            _ if endow.prog.manifest().arg.hears_words() => match assemble_argv(spec.line(), 0) {
+                Ok(a) => spawn(endow, Some(a)),
+                Err(Some(r)) => refuse(spec, r),
+                Err(None) => out_of_budget(),
+            },
+            _ => spawn(endow, None),
+        },
+    }
+}

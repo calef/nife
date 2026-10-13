@@ -207,8 +207,8 @@ been read against these questions.
 
 ## Appendices
 
-Each appendix verifies a row or a rule above. Every heading this page used to carry is in one of
-them, so an older citation of a dated section still resolves.
+Each appendix verifies a row or a rule above. Every dated section an older citation names is in one
+of them, so the citation still resolves.
 
 | appendix | what it verifies | dated sections it holds |
 |---|---|---|

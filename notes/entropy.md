@@ -6,7 +6,7 @@ argument are [DECISIONS §44](../design/decisions/0044-entropy-capability.md), t
 
 ## The thing this replaced
 
-`std::random` used to be splitmix64 seeded from the virtual counter, and the file said so in its
+`std::random` was splitmix64 seeded from the virtual counter, and the file said so in its
 first line: *"not cryptographic, and saying so is the point."* The counter is the ABI's one ambient
 readable, so the stream was predictable to anyone who could guess boot-relative time. Fine for a
 `HashMap` seed. Useless for a key, a token, or a challenge.

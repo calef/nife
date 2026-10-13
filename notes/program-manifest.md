@@ -123,7 +123,7 @@ only the manifest knows what a token *is*, which is why `wc 2026` designates a f
 rather than an argument nobody declared. Two refusals fall out of the same rule:
 
 - a token past the last declared slot cannot be placed, so `least_authority_demo 5 extra` is refused. That is the
-  safety property the `file:` prefix used to be credited with, and it was always the manifest's.
+  safety property the `file:` prefix was credited with, and it was always the manifest's.
 - inside a file slot, what the *shell holds* decides whether the designation can be backed at all:
   "you hold no such capability" beats "and that name is too long", because it is the bigger fact.
 

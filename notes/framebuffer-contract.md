@@ -212,7 +212,7 @@ That is a silicon question (notes/target-hardware.md), not a QEMU one.
 On 2026-08-26 a grown 1280x720 scanout looked like a QEMU resize bug. It was a guest hang: three
 programs still looped over per-page capability slots that DECISIONS §102 (a Frame names a run of
 pages) had removed, so the driver
-died before its "UP" report. The investigation is kept, superseded, in
+died before its "UP" report. The investigation, a false lead, is in
 [framebuffer-contract/scanout-referee.md](framebuffer-contract/scanout-referee.md).
 
 ## What the next clients did with this contract

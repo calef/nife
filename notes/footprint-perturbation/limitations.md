@@ -40,10 +40,6 @@ keeps the short list. This is every entry as it was written, sentence-split for 
   card in one VisionFive 2 on one evening, and the layout confound is the reason to care. A different
   card or a different board would not change the layout. So it would reproduce the same artifact, and
   look like confirmation.
-- Superseded: "`single_hart` has never been booted on hardware either." The entry two above records
-  six hardware boots on 2026-09-04 in which nothing noticed. The two entries contradicted each other
-  from that day until 2026-09-19. This one was written before the session and the other after it, and
-  only the other was updated.
 - Nothing in CI compiles this card, or any card. `board`, `soak_test`, `job_mix`, `reboot_soak_test`,
   `single_hart` and `fastpath_pad` are built when a person runs `script/board-image`, minutes before
   walking to the bench. A refactor that breaks a card build leaves the tree green until then, and the
