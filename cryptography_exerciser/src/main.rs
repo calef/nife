@@ -174,10 +174,23 @@ fn main() {
     // vector produces silence and nothing else would tell these two apart.
     println!("cryptography_exerciser start");
 
-    // ---------------------------------------------------------------------------------------
-    // Hashing. FIPS 180-4's own examples, the same two this tree already pins for its
-    // hand-written SHA-256 in `crates/measured_boot`.
-    // ---------------------------------------------------------------------------------------
+    hashes();
+    hmac_and_hkdf();
+    record_layer_ciphers();
+    key_exchange();
+    entropy();
+    certificate_chains();
+    the_provider();
+
+    println!("exiting through process::exit");
+    std::process::exit(0);
+}
+
+// ---------------------------------------------------------------------------------------
+// Hashing. FIPS 180-4's own examples, the same two this tree already pins for its
+// hand-written SHA-256 in `crates/measured_boot`.
+// ---------------------------------------------------------------------------------------
+fn hashes() {
     check(
         "sha256",
         &sha2::Sha256::digest(b"abc"),
@@ -195,11 +208,13 @@ fn main() {
         "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed\
          8086072ba1e7cc2358baeca134c825a7",
     );
+}
 
-    // ---------------------------------------------------------------------------------------
-    // HMAC and HKDF, which are what TLS 1.3's key schedule is built out of. RFC 4231 test case 1
-    // and RFC 5869 test case 1.
-    // ---------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------
+// HMAC and HKDF, which are what TLS 1.3's key schedule is built out of. RFC 4231 test case 1
+// and RFC 5869 test case 1.
+// ---------------------------------------------------------------------------------------
+fn hmac_and_hkdf() {
     let mut mac = <hmac::Hmac<sha2::Sha256> as Mac>::new_from_slice(&[0x0b; 20])
         .expect("HMAC takes a key of any length");
     mac.update(b"Hi There");
@@ -222,11 +237,13 @@ fn main() {
         "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf\
          34007208d5b887185865",
     );
+}
 
-    // ---------------------------------------------------------------------------------------
-    // The record-layer ciphers. `TLS_AES_128_GCM_SHA256` and `TLS_CHACHA20_POLY1305_SHA256` are
-    // two of TLS 1.3's three mandatory-to-implement suites.
-    // ---------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------
+// The record-layer ciphers. `TLS_AES_128_GCM_SHA256` and `TLS_CHACHA20_POLY1305_SHA256` are
+// two of TLS 1.3's three mandatory-to-implement suites.
+// ---------------------------------------------------------------------------------------
+fn record_layer_ciphers() {
     // AES-128-GCM, the GCM specification's test case 2 (all-zero key, all-zero 96-bit IV, one
     // all-zero block of plaintext, no additional data). `encrypt` returns ciphertext with the
     // 16-byte tag appended, which is why the expected value is 32 bytes rather than 16.
@@ -294,11 +311,13 @@ If I could offer you only one tip for the future, sunscreen would be it.";
              0691",
         );
     }
+}
 
-    // ---------------------------------------------------------------------------------------
-    // Key exchange. TLS 1.3 negotiates X25519 or one of the NIST curves, and both go through
-    // large-integer arithmetic that a soft-float target has no vector unit to help with.
-    // ---------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------
+// Key exchange. TLS 1.3 negotiates X25519 or one of the NIST curves, and both go through
+// large-integer arithmetic that a soft-float target has no vector unit to help with.
+// ---------------------------------------------------------------------------------------
+fn key_exchange() {
     // RFC 7748 section 5.2, the first X25519 vector: one scalar, one u-coordinate, one answer.
     {
         let mut scalar = [0u8; 32];
@@ -335,11 +354,13 @@ If I could offer you only one tip for the future, sunscreen would be it.";
              4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5",
         );
     }
+}
 
-    // ---------------------------------------------------------------------------------------
-    // The randomness, which is the one thing here with no published vector and the one thing that
-    // is genuinely new on this system.
-    // ---------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------
+// The randomness, which is the one thing here with no published vector and the one thing that
+// is genuinely new on this system.
+// ---------------------------------------------------------------------------------------
+fn entropy() {
     // `rand_core` 0.6's `OsRng` goes to `getrandom` **0.2**, whose `__getrandom_custom` hook
     // `entropy_backend` gained at this milestone, over `std::random::SystemRng`, over the entropy
     // service's one endpoint, to virtio-rng. Two draws differing is the same claim milestone 56 (secrets, credentials, and the entropy to make them safe)
@@ -358,16 +379,17 @@ If I could offer you only one tip for the future, sunscreen would be it.";
         );
         println!("entropy 0.2 ok");
     }
+}
 
-
-    // ---------------------------------------------------------------------------------------
-    // **Two real certificate chains, from the two hosts that made the case for taking `rsa`.**
-    // calef ruled "take rsa" on 2026-09-20 because a client that cannot verify these cannot
-    // download anything: DECISIONS §196 (nife carries TLS: `rustls` for the protocol, and a crypto
-    // provider we make work) chose GitHub, `github.com` is ECDSA throughout, and the hosts that
-    // actually serve the bytes are RSA. So the proof is the hosts themselves rather than a
-    // synthetic key.
-    // ---------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------
+// **Two real certificate chains, from the two hosts that made the case for taking `rsa`.**
+// calef ruled "take rsa" on 2026-09-20 because a client that cannot verify these cannot
+// download anything: DECISIONS §196 (nife carries TLS: `rustls` for the protocol, and a crypto
+// provider we make work) chose GitHub, `github.com` is ECDSA throughout, and the hosts that
+// actually serve the bytes are RSA. So the proof is the hosts themselves rather than a
+// synthetic key.
+// ---------------------------------------------------------------------------------------
+fn certificate_chains() {
     verify_chain(
         "chain objects.githubusercontent.com",
         include_bytes!("../fixtures/objects-githubusercontent-leaf.der"),
@@ -414,64 +436,61 @@ If I could offer you only one tip for the future, sunscreen would be it.";
         );
         println!("chain refusals ok");
     }
+}
 
-    // ---------------------------------------------------------------------------------------
-    // And the provider itself, which is the object §196's ruling is about and which this tree now
-    // assembles rather than depends on. Building it forces every cipher-suite table, key-exchange
-    // group and signature algorithm to be linked and constructed.
-    // ---------------------------------------------------------------------------------------
-    {
-        let provider = cryptography_provider::provider();
+// ---------------------------------------------------------------------------------------
+// And the provider itself, which is the object §196's ruling is about and which this tree now
+// assembles rather than depends on. Building it forces every cipher-suite table, key-exchange
+// group and signature algorithm to be linked and constructed.
+// ---------------------------------------------------------------------------------------
+fn the_provider() {
+    let provider = cryptography_provider::provider();
+    assert_eq!(
+        provider.cipher_suites.len(),
+        3,
+        "the provider should offer exactly TLS 1.3's three AEAD suites"
+    );
+    assert_eq!(
+        provider.kx_groups.len(),
+        2,
+        "the provider should offer X25519 and P-256"
+    );
+    for suite in &provider.cipher_suites {
         assert_eq!(
-            provider.cipher_suites.len(),
-            3,
-            "the provider should offer exactly TLS 1.3's three AEAD suites"
-        );
-        assert_eq!(
-            provider.kx_groups.len(),
-            2,
-            "the provider should offer X25519 and P-256"
-        );
-        for suite in &provider.cipher_suites {
-            assert_eq!(
-                suite.version().version,
-                rustls::ProtocolVersion::TLSv1_3,
-                "this provider is TLS 1.3 only, and a suite says otherwise"
-            );
-        }
-        // X25519 first is a real claim rather than an accident: it is the key share a client sends
-        // in its first flight, so the order decides whether the common case costs one round trip
-        // or two.
-        assert_eq!(
-            provider.kx_groups[0].name(),
-            rustls::NamedGroup::X25519,
-            "X25519 should be the default key share"
-        );
-        assert_eq!(
-            provider.signature_verification_algorithms.all.len(),
-            9,
-            "the provider should verify three ECDSA and Ed25519 algorithms plus RSA PKCS#1 v1.5 \
-             and PSS at three digest sizes"
-        );
-        // **The key provider must refuse**, and asserting it is the point rather than tidiness: a
-        // provider that silently accepted a private key would be claiming a client-authentication
-        // path this one does not have.
-        // Built by naming the variant rather than through `try_from`, which sniffs the encoding
-        // and rejects bytes that are not a key at all. The point here is that a **well-formed**
-        // request is refused, not that a malformed one is.
-        let key = rustls::pki_types::PrivateKeyDer::Pkcs8(vec![0u8; 32].into());
-        assert!(
-            provider.key_provider.load_private_key(key).is_err(),
-            "this provider should load no private keys"
-        );
-        println!(
-            "provider ok {} suites {} groups {} signature algorithms",
-            provider.cipher_suites.len(),
-            provider.kx_groups.len(),
-            provider.signature_verification_algorithms.all.len(),
+            suite.version().version,
+            rustls::ProtocolVersion::TLSv1_3,
+            "this provider is TLS 1.3 only, and a suite says otherwise"
         );
     }
-
-    println!("exiting through process::exit");
-    std::process::exit(0);
+    // X25519 first is a real claim rather than an accident: it is the key share a client sends
+    // in its first flight, so the order decides whether the common case costs one round trip
+    // or two.
+    assert_eq!(
+        provider.kx_groups[0].name(),
+        rustls::NamedGroup::X25519,
+        "X25519 should be the default key share"
+    );
+    assert_eq!(
+        provider.signature_verification_algorithms.all.len(),
+        9,
+        "the provider should verify three ECDSA and Ed25519 algorithms plus RSA PKCS#1 v1.5 \
+         and PSS at three digest sizes"
+    );
+    // **The key provider must refuse**, and asserting it is the point rather than tidiness: a
+    // provider that silently accepted a private key would be claiming a client-authentication
+    // path this one does not have.
+    // Built by naming the variant rather than through `try_from`, which sniffs the encoding
+    // and rejects bytes that are not a key at all. The point here is that a **well-formed**
+    // request is refused, not that a malformed one is.
+    let key = rustls::pki_types::PrivateKeyDer::Pkcs8(vec![0u8; 32].into());
+    assert!(
+        provider.key_provider.load_private_key(key).is_err(),
+        "this provider should load no private keys"
+    );
+    println!(
+        "provider ok {} suites {} groups {} signature algorithms",
+        provider.cipher_suites.len(),
+        provider.kx_groups.len(),
+        provider.signature_verification_algorithms.all.len(),
+    );
 }

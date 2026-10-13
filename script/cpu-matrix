@@ -129,12 +129,18 @@ if ! traps_zba sifive-u54; then
 fi
 echo "preflight: -cpu is enforced (rv64 executes sh1add, sifive-u54 traps it)"
 
+# `--no-host` because the host pass is host code on the host, and `-cpu` reaches only QEMU
+# (`NIFE_CPU` is read by the runners and nothing else). Running it once per model ran the same
+# binaries once per model and recompiled its 206 doctests each time, which proved nothing a
+# single run does not. `script/test`, and CI's `test-aarch64-riscv64` shard on the same commit, run
+# that pass. Dropping it here was the fix for #2055 (2026-10-13 UTC), where the three-model shard
+# reached 87% of its budget; ci.yml, above `cpu-matrix-shard`, has the measurement.
 failed=""
 for m in $MODELS; do
     echo
     echo "==> $m"
     log="$OUT/$m.log"
-    if cargo xtask test --arch riscv64 --cpu "$m" > "$log" 2>&1; then
+    if cargo xtask test --arch riscv64 --cpu "$m" --no-host > "$log" 2>&1; then
         echo "    PASS  ($log)"
     else
         echo "    FAIL  ($log)"

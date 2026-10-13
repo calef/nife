@@ -9,6 +9,7 @@
 //! file.
 
 use filesystem_protocol::{dir, fixture, fs, xattr};
+use fixture::attrs;
 use user_mode_runtime::call;
 
 use crate::channel::{
@@ -67,7 +68,6 @@ fn xattr_remove(handle: u64, name: &[u8]) -> i64 {
 /// unlinked, so the image it leaves behind differs from the one it found by the store directory
 /// alone, which the host tool is expected to show (notes/host-recovery.md).
 pub(crate) fn attr_witness(scratch: u64) -> u64 {
-    use fixture::attrs;
     let mut v = 0u64;
     let mut buf = [0u8; 512];
 
@@ -130,6 +130,36 @@ pub(crate) fn attr_witness(scratch: u64) -> u64 {
         v |= attrs::GONE_AFTER_REMOVE;
     }
 
+    v |= an_attribute_follows_its_file_across_a_rename();
+
+    // 6. And the file's death takes its attributes with it: unlink the name, make it again, and the
+    //    new file has nothing on it. The node id is very likely reused, which is the case that makes
+    //    a leaked blob a correctness bug rather than wasted space.
+    if dir_unlink(fs::ROOT, attrs::PROBE_MOVED) >= 0 {
+        let fresh = dir_create(fs::ROOT, attrs::PROBE_MOVED);
+        if fresh >= 0 && xattr_list(fresh as u64) == 0 {
+            v |= attrs::GONE_AFTER_UNLINK;
+        }
+        let _ = dir_unlink(fs::ROOT, attrs::PROBE_MOVED);
+    }
+
+    // 7. The store is not in the namespace: it cannot be opened, created, or descended into.
+    if dir_open(fs::ROOT, xattr::STORE_DIR) < 0
+        && dir_create(fs::ROOT, xattr::STORE_DIR) < 0
+        && dir_descend(fs::ROOT, xattr::STORE_DIR, dir::ALL) < 0
+    {
+        v |= attrs::STORE_UNNAMEABLE;
+    }
+
+    v |= a_full_enumeration_does_not_name_the_store();
+
+    v
+}
+
+/// Step 5 of [`attr_witness`]. Returns the bits it earned.
+fn an_attribute_follows_its_file_across_a_rename() -> u64 {
+    let mut v = 0u64;
+    let mut buf = [0u8; 512];
     // 5. **The headline: an attribute follows its file across a rename.** The two names are unlinked
     //    first, because `NIFE_KEEP_REDOXFS` makes a second boot meet the first boot's leftovers
     //    and an `EEXIST` here would read as a broken layer.
@@ -157,26 +187,13 @@ pub(crate) fn attr_witness(scratch: u64) -> u64 {
     } else {
         v |= attrs::ATTRS_FAILED;
     }
+    v
+}
 
-    // 6. And the file's death takes its attributes with it: unlink the name, make it again, and the
-    //    new file has nothing on it. The node id is very likely reused, which is the case that makes
-    //    a leaked blob a correctness bug rather than wasted space.
-    if dir_unlink(fs::ROOT, attrs::PROBE_MOVED) >= 0 {
-        let fresh = dir_create(fs::ROOT, attrs::PROBE_MOVED);
-        if fresh >= 0 && xattr_list(fresh as u64) == 0 {
-            v |= attrs::GONE_AFTER_UNLINK;
-        }
-        let _ = dir_unlink(fs::ROOT, attrs::PROBE_MOVED);
-    }
-
-    // 7. The store is not in the namespace: it cannot be opened, created, or descended into.
-    if dir_open(fs::ROOT, xattr::STORE_DIR) < 0
-        && dir_create(fs::ROOT, xattr::STORE_DIR) < 0
-        && dir_descend(fs::ROOT, xattr::STORE_DIR, dir::ALL) < 0
-    {
-        v |= attrs::STORE_UNNAMEABLE;
-    }
-
+/// Step 8 of [`attr_witness`]. Returns the bits it earned.
+fn a_full_enumeration_does_not_name_the_store() -> u64 {
+    let mut v = 0u64;
+    let mut buf = [0u8; 512];
     // 8. And a full enumeration does not name it. Driven to the end with a cursor, because a listing
     //    that stopped early would be a clean report about the part it happened to read.
     let (mut cursor, mut entries, mut clean, mut finished) = (0u64, 0u64, true, false);
@@ -203,6 +220,5 @@ pub(crate) fn attr_witness(scratch: u64) -> u64 {
     if clean && finished && entries > 0 {
         v |= attrs::STORE_UNLISTED;
     }
-
     v
 }

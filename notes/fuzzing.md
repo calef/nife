@@ -28,7 +28,7 @@ Fuzzing is unbounded and random. It proves nothing. What it does is execute the 
 millions of concrete inputs an hour, with coverage feedback steering toward inputs that reach new
 branches, and it does not care how many loop iterations that takes.
 
-So the two tools divide on one line, and the line is visible in this tree rather than theoretical:
+So the two tools divide on one line:
 
 | | Kani | Fuzzing |
 |---|---|---|
@@ -121,7 +121,7 @@ million executions. What keeps those bugs from coming back is
 things once, and a host test holds them forever. The measurements are in
 [fuzzing/ci-budget.md](fuzzing/ci-budget.md).
 
-What the job is for, so it is not mistaken for something else: it is a shallow sweep, not a search
+What the job is for: it is a shallow sweep, not a search
 and not a guarantee. A minute per target from the committed seeds re-covers the ground those seeds
 reach quickly, which is where a change that breaks a parser outright will show. Finding something
 genuinely new is a long run on a developer's machine, and that is deliberately not automated. A
@@ -221,9 +221,7 @@ Shrink it before writing the test:
 cargo fuzz tmin device_tree_blob_walk fuzz/artifacts/device_tree_blob_walk/crash-b93bbc15...
 ```
 
-Then throw the artifact away and write the test. That is the last step and it is the one that
-matters: the artifact is a fact about one run, and the test is the thing that will still be checking
-in a year. Delete `fuzz/artifacts/<target>/` when you are done.
+Then throw the artifact away and write the test, for the reason under "Corpus discipline". Delete `fuzz/artifacts/<target>/` when you are done.
 
 Prune a corpus that has grown (fuzzing eats disk; a long run's corpus is not small):
 
@@ -232,8 +230,7 @@ cargo fuzz cmin device_tree_blob_walk   # keep the smallest input per edge
 rm -rf fuzz/corpus fuzz/artifacts
 ```
 
-Add a target. Four steps, and the first is the one that decides whether the other three are worth
-doing.
+Add a target. Four steps, and the first decides whether the other three are worth doing.
 
 1. **Answer "what does this find that a proof does not".** If the crate's Kani harnesses already
    cover the function's totality, do not add a panic-hunting target; add a *property* target, or
@@ -263,10 +260,8 @@ and is the obvious next step for `device_tree_blob_walk`.
 sixty seconds. Nothing here is a proof, and nothing here should be quoted as one; the proofs are in
 notes/verification.md and they say what they cover.
 
-**The CI job would not re-find either `device_tree_blob` bug.** Measured, not assumed: with both
-fixes reverted, sixty seconds from the committed seeds found nothing, and fifteen minutes found the
-overflow after 13.1 million executions. The job is a sweep over ground the seeds reach quickly. The
-regression guard is `crates/device_tree_blob/tests/hostile.rs`, which runs on every `script/test`.
+**The CI job would not re-find either `device_tree_blob` bug.** Measured, not assumed, under "The
+CI job, and its budget" above. The regression guard is `crates/device_tree_blob/tests/hostile.rs`.
 
 Only panics and hangs are caught, plus whatever a target asserts. A parser that returns the
 *wrong answer* without panicking is invisible to `device_tree_blob_walk`, `elf_parse` and

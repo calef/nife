@@ -11,8 +11,8 @@ to change.*
 ## Why this note exists at all
 
 Milestone 191 asked whether any Kani harness in this tree had ever caught a defect after the day it
-was written. None had. The cause was not the harnesses and not the technique: it was one line in
-`script/verify`'s own header, which has always been honest about it.
+was written. None had. The cause was one line in `script/verify`'s own header, which has always been
+honest about it.
 
 > `cargo kani -p <crate>` never compiles the kernel, the user programs, or xtask.
 
@@ -38,18 +38,16 @@ each:
 That is the whole list. DECISIONS §4 (kernel shape) rule 1 is why it is this short.
 Architecture-specific code lives under `kernel/src/arch/`, so `asm!` appears outside it at only
 three sites in two files (`cpu.rs` once, `user.rs` twice) and the other ~50,000 lines are ordinary
-Rust that a host compiler was always going to accept. A tree that had let `asm!` spread would not
-have had a front door here at all.
+Rust that a host compiler was always going to accept. A tree that had let `asm!` spread would have
+had no front door here.
 
 ## The stub boundary, enumerated
 
-A proof with an unexamined stub is worse than no proof, because it reads as coverage. So this is
-the exhaustive list of what a harness in `kernel/src` cannot see, and it is short enough to keep
-exhaustive. The same list is in `syscall.rs`'s `mod proofs`, where somebody writing the next harness
-will actually meet it.
+A proof with an unexamined stub is worse than no proof, because it reads as coverage. This is the
+exhaustive list of what a harness in `kernel/src` cannot see. The same list is in `syscall.rs`'s
+`mod proofs`, where the next harness's author will meet it.
 
-1. Global assembly is skipped. Boot entry, vectors, context switch, three architectures. Nothing
-   in a harness reaches it, and nothing could.
+1. Global assembly is skipped. Boot entry, vectors, context switch, three architectures. No harness reaches it, or could.
 2. `asm!` is an unsupported construct. Every `asm!` site in `kernel/src/arch/`, plus the three
    above. This is a *hard* boundary: if a
    harness ever calls into that code, Kani reports the unsupported construct instead of proving
@@ -80,30 +78,30 @@ will actually meet it.
 6. MMIO and fixed physical addresses are raw pointers to nothing under a model checker. The same
    argument applies: stub the boundary, do not pretend.
 
-   Measured 2026-09-20, and it is louder than this wording suggests (the `maintainer/verus-versus-kani`
-   lane, `notes/verus.md`). A harness doing `read_volatile` on `0x0800_0000`, QEMU `virt`'s GICv2
+   Measured 2026-09-20, it is louder than that (the `maintainer/verus-versus-kani` lane,
+   `notes/verus.md`). A harness doing `read_volatile` on `0x0800_0000`, QEMU `virt`'s GICv2
    distributor, does not quietly reason about a fiction: CBMC has no object at that address and
    reports `dereference failure: pointer NULL`, `pointer outside object bounds` and
-   `invalid integer address`. So this is a hard boundary like item 2 rather than a soft one, which is
-   the good direction. Stub it anyway; the point of the item stands.
+   `invalid integer address`. So this is a hard boundary like item 2, the good direction. Stub it anyway; the point of the item stands.
 7. `script/lint`'s harness-clippy pass excludes `kernel`, so clippy lints do not fire inside
    these harnesses. That pass's own comment carries the two tooling reasons and what still covers
-   them. Practical consequence: **keep kernel harnesses free of `unsafe`.**
+   them. **Keep kernel harnesses free of `unsafe`.**
 8. Where an aarch64 host proves `arch/riscv64/iommu.rs`, `crate::arch` is aarch64's:
    [kernel-proofs/riscv64-from-an-aarch64-host.md](kernel-proofs/riscv64-from-an-aarch64-host.md).
 
 ## What is proved today
 
 Two properties, both in `kernel/src/syscall.rs`, both about `run_end_va` and the map loops that
-guard on it. This is the code milestone 193's block predicted would never become a crate, and it is
-right: syscall dispatch is a boundary, not a library.
+guard on it. Milestone 193 (put `kernel/src` within reach of the prover) predicted this code would never become a
+crate, rightly: syscall dispatch is
+a boundary, not a library.
 
 `run_end_va` computes the last virtual address a `count`-page run starting at `va` covers.
 
 - **`the_run_end_is_exact_and_refuses_exactly_what_does_not_fit`.** For every `va` and every
   `count >= 1`: a `Some(last)` is exactly `va + (count - 1) * PAGE_SIZE` computed without wrapping,
   and a `None` is exactly a run that does not fit in a `u64`. The claim is stated in `u128`, so the
-  harness does not repeat the implementation's expression back to itself.
+  harness does not echo the implementation's expression.
 - **`every_page_between_the_checked_ends_is_itself_a_user_page`.** Both mapping paths check `va` and
   the run's last address and then walk `va + k * PAGE_SIZE` for `k` in `0..count` with nothing
   re-checking the pages between. Given the two endpoints pass `is_user_page_va`, every page in the
@@ -136,8 +134,8 @@ The detail is in [kernel-proofs/x86-irq-proofs.md](kernel-proofs/x86-irq-proofs.
 
 ## Which architecture the prover actually sees
 
-One, and it is the host's (milestone 304). This is stub-list item 3, stated as a table because it
-is the thing most often read as more coverage than it is.
+One, and it is the host's (milestone 304). This is stub-list item 3, as a table because it is most often read
+as more coverage than it is.
 
 | host | `arch/` subtree compiled | harnesses that run |
 |---|---|---|
@@ -145,15 +143,13 @@ is the thing most often read as more coverage than it is.
 | x86_64 (cordoba; the `ubuntu-24.04` runner) | `arch/x86_64/` | 5: the same two in `syscall.rs`, two in `irq.rs`, one in `fp.rs` |
 | either, via script/verify-riscv64 | `arch/riscv64/`, natively | 7: two in `syscall.rs`, two in `iommu.rs`, three in `mmu.rs` |
 
-Ten distinct harnesses, not twelve: `syscall.rs`'s two are portable, and pass identically on both
-hosts.
+Ten distinct harnesses, not twelve: `syscall.rs`'s two pass identically on both hosts.
 
 **riscv64 needed a target, not a host**: milestone 589 (Kani can prove riscv64 from the hosts we
 already have) patches Kani, since CBMC runs anywhere. See
 [kernel-proofs/riscv64-with-a-patched-kani.md](kernel-proofs/riscv64-with-a-patched-kani.md).
 
-One thing had to change before an x86_64 host could compile the kernel at all, and it was not
-about the code. `core::arch::x86_64::__cpuid` is a *safe* function on the toolchain this tree pins
+One thing had to change before an x86_64 host could compile the kernel at all. `core::arch::x86_64::__cpuid` is a *safe* function on the toolchain this tree pins
 and was an `unsafe fn` until upstream changed it; Kani bundles its own rustc, `kani-0.67.0`
 pinning `nightly-2025-11-21`. So four bare `__cpuid` calls in `arch/x86_64/` were four `E0133`s
 under the prover and nowhere else. They are wrapped in `isa::cpuid` and `isa::cpuid_count`, whose
@@ -163,17 +159,16 @@ under the prover and nowhere else. They are wrapped in `isa::cpuid` and `isa::cp
 
 Milestone 193's block nominates the milestone 6 timer re-arm drift as the first property worth
 trying, on the grounds that its property is already proved in `crates/timetable`'s `next_after` and
-the timer does not call it. That is still a good observation and a good future lane, but the re-arm
-is in `kernel/src/arch/aarch64/timer.rs` and `kernel/src/arch/riscv64/timer.rs`, which item 2 above
+the timer does not call it. That is still a good future lane, but the re-arm is in `kernel/src/arch/aarch64/timer.rs` and `kernel/src/arch/riscv64/timer.rs`, which item 2 above
 puts out of reach: `rearm` reads `CNTVCT_EL0` and writes `CNTV_CVAL_EL0`, both `asm!` through
 `aarch64-cpu`. Proving it means first lifting the arithmetic out of the register accesses, and where
-that seam goes is a design question rather than a mechanical one.
+that seam goes is a design question.
 
 `run_end_va` was chosen instead on the criterion that matters most given milestone 191's finding:
 it has a real defect on record. Milestone 142's review, MAJOR 4, found that the old
 implementation checked only the addition in `va.checked_add((count - 1) * PAGE_SIZE)`, leaving the
-multiply free to wrap. So a large `count` produced a `last_va` a few pages above `va` and the guard
-admitted a run spanning the address space.
+multiply free to wrap. So a large `count` produced a `last_va` a few pages above `va`, admitting a run that
+spanned the address space.
 
 ## EXAMPLES
 

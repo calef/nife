@@ -1,7 +1,7 @@
 # The roadmap: the appendices to notes/roadmap.md
 
 [`notes/roadmap.md`](../roadmap.md) carries the procedure for adding a milestone, every
-vocabulary's table and rule, proposals, effort and its BUGS. These files carry the history behind
+vocabulary's table and rule, proposals and its BUGS. These files carry the history behind
 it.
 
 - [`vocabulary-history.md`](vocabulary-history.md): why each status word, dependency field and
@@ -10,6 +10,8 @@ it.
   is gone.
 - [`why-not-issues.md`](why-not-issues.md): why the roadmap is markdown in the tree and not GitHub
   Issues.
+- [`effort.md`](effort.md): effort in lanes, calibrated from git history on 2026-07-30, and the
+  S/M/L scale it replaced.
 
 *Name: provisional, minted 2026-10-11 (UTC) by lane/next-ten-longest-notes, which split the parent
 under §212 (a prose budget). The directory follows §212's siting default, `notes/X/` beside
@@ -21,3 +23,5 @@ names files.
 - `vocabulary-history` Name: provisional, minted 2026-10-11 (UTC) by lane/next-ten-longest-notes.
 - `the-retired-index` Name: provisional, minted 2026-10-11 (UTC) by lane/next-ten-longest-notes.
 - `why-not-issues` Name: provisional, minted 2026-10-11 (UTC) by lane/next-ten-longest-notes.
+- `effort` Name: provisional, minted 2026-10-13 (UTC) by lane/prose-cap-notes-c, after the
+  parent's "Effort".

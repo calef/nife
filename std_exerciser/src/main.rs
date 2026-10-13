@@ -177,7 +177,8 @@ fn offline_demo() {
     // the time `main` started, `pal::nife::init` had already read `TZ`, `LANG` and `TERM` off it
     // and pushed them into `std::env`'s table (`sys/env/nife.rs::seed`). Nothing here invented
     // them: a process granted no such page is seeded with nothing, which is the same
-    // honest-absence shape `env::var("PATH")` still has below.
+    // honest-absence shape `env::var("PATH")` still has in
+    // `environment_holds_only_what_was_seeded`.
     assert_eq!(
         std::env::var("TZ").as_deref(),
         Ok("UTC"),
@@ -195,6 +196,35 @@ fn offline_demo() {
     );
     println!("config seeded");
 
+    environment_holds_only_what_was_seeded();
+
+    paths_answer_or_refuse_honestly();
+
+    // **Leave through `std::process::exit`, which used to be a trap instruction** (milestone 64,
+    // fourth pass). This is the same finding as `env::vars` and `temp_dir` one layer down, and it
+    // is the one that argues for a gate rather than another careful reading: `sys/exit.rs` is not a
+    // `sys/<module>/mod.rs` backend, so no amount of "read every module the PAL falls through"
+    // would have reached it. Its `_ =>` arm is `crate::intrinsics::abort()`, so this call compiled
+    // perfectly and then executed `brk`. The kernel reports that as `EVENT_FAULT` with a pc and an
+    // address: a clean exit arriving at a supervisor as a crash.
+    //
+    // Nothing noticed because the two ways a Rust program ends took different exits and only one
+    // was wired. Returning from `main` reaches `_start`, which calls the PAL's `rt::exit`
+    // directly; `std::process::exit` is the *only* caller of `sys::exit::exit` anywhere in std.
+    //
+    // So this transcript now ends the way a CLI-shaped program ends rather than the way a demo
+    // does, and the line above is what proves the call was reached: without it a later edit could
+    // drop the exit and the fault-count assertion in `a_whole_std_program_runs_on_the_native_abi`
+    // would still pass, having watched nothing happen.
+    //
+    // `process::exit` runs `rt::cleanup` first, so stdout is flushed and the sink contract's
+    // end-of-stream still goes out; the receiver sees exactly this transcript and then EOF.
+    println!("exiting through process::exit");
+    std::process::exit(0);
+}
+
+/// The `env ok` line of [`offline_demo`]'s transcript.
+fn environment_holds_only_what_was_seeded() {
     // **The environment** (milestone 64, rank 4 of the measured gap list). Three separate claims,
     // and the first one is why the line exists at all.
     //
@@ -202,9 +232,9 @@ fn offline_demo() {
     // through to the unsupported one whose `env()` is `panic!`, and `std::env::vars()` aborted the
     // process. That compiled perfectly. Counting the iterator is what proves the call returned.
     //
-    // It must hold EXACTLY the three keys the config grant just seeded above and nothing else,
-    // because nothing endows a nife process with variables beyond what it was granted, and
-    // inventing more would be exactly the ambient authority this system does not have.
+    // It must hold EXACTLY the three keys the config grant seeded (`config seeded`, just before)
+    // and nothing else, because nothing endows a nife process with variables beyond what it was
+    // granted, and inventing more would be exactly the ambient authority this system does not have.
     //
     // And `set_var` must actually take, because that is what `set_var` means everywhere else and a
     // library configured by its caller through the environment is an ordinary thing to do.
@@ -234,7 +264,10 @@ fn offline_demo() {
         "a removed variable still resolves",
     );
     println!("env ok");
+}
 
+/// The `paths ok` line of [`offline_demo`]'s transcript.
+fn paths_answer_or_refuse_honestly() {
     // **The path half of `std::env`, and `process::id`** (milestone 64, third pass). Every
     // assertion below used to be unreachable, because three of these calls did not refuse: they
     // were `panic!` in the shared fallbacks nife fell through to, so a program that asked was
@@ -298,28 +331,6 @@ fn offline_demo() {
         "home_dir answered, but nobody gave this program a home",
     );
     println!("paths ok");
-
-    // **Leave through `std::process::exit`, which used to be a trap instruction** (milestone 64,
-    // fourth pass). This is the same finding as `env::vars` and `temp_dir` one layer down, and it
-    // is the one that argues for a gate rather than another careful reading: `sys/exit.rs` is not a
-    // `sys/<module>/mod.rs` backend, so no amount of "read every module the PAL falls through"
-    // would have reached it. Its `_ =>` arm is `crate::intrinsics::abort()`, so this call compiled
-    // perfectly and then executed `brk`. The kernel reports that as `EVENT_FAULT` with a pc and an
-    // address: a clean exit arriving at a supervisor as a crash.
-    //
-    // Nothing noticed because the two ways a Rust program ends took different exits and only one
-    // was wired. Returning from `main` reaches `_start`, which calls the PAL's `rt::exit`
-    // directly; `std::process::exit` is the *only* caller of `sys::exit::exit` anywhere in std.
-    //
-    // So this transcript now ends the way a CLI-shaped program ends rather than the way a demo
-    // does, and the line above is what proves the call was reached: without it a later edit could
-    // drop the exit and the fault-count assertion in `a_whole_std_program_runs_on_the_native_abi`
-    // would still pass, having watched nothing happen.
-    //
-    // `process::exit` runs `rt::cleanup` first, so stdout is flushed and the sink contract's
-    // end-of-stream still goes out; the receiver sees exactly this transcript and then EOF.
-    println!("exiting through process::exit");
-    std::process::exit(0);
 }
 
 /// The same sanity window `clock_protocol::policy` applies, restated here because a std program links
@@ -693,6 +704,11 @@ fn set_len_and_copy() {
     file_times();
 }
 
+/// The file [`file_times`] makes, sets and reads the times of.
+const TIMES_SUBJECT: &str = "times-subject";
+/// The directory [`file_times`] makes and sets the time of.
+const TIMES_DIR: &str = "times-dir";
+
 /// **File times** (milestone 64, ranks 19 and 28): `Metadata::modified` over `GETMTIME` and
 /// `std::fs::set_times` over `SETMTIME_AT`, the verbs milestone 47's `touch` added (DECISIONS §112).
 /// Both were refused in the PAL for three weeks after the verbs landed, with a comment saying no
@@ -721,11 +737,8 @@ fn set_len_and_copy() {
 fn file_times() {
     use std::fs::FileTimes;
 
-    const SUBJECT: &str = "times-subject";
-    const DIR: &str = "times-dir";
-
     // Cleanup first, for `namespace_transcript`'s reason: `NIFE_KEEP_REDOXFS=1` reuses an image.
-    for (name, is_dir) in [(SUBJECT, false), (DIR, true)] {
+    for (name, is_dir) in [(TIMES_SUBJECT, false), (TIMES_DIR, true)] {
         let r = if is_dir {
             std::fs::remove_dir(name)
         } else {
@@ -752,13 +765,13 @@ fn file_times() {
 
     // A file this system makes is stamped by the FS server's own counter, so its time is small and
     // only its *order* means anything. What that order has to show is that a write moves it.
-    std::fs::write(SUBJECT, b"stamped").expect("write of the times subject failed");
-    let made = std::fs::metadata(SUBJECT)
+    std::fs::write(TIMES_SUBJECT, b"stamped").expect("write of the times subject failed");
+    let made = std::fs::metadata(TIMES_SUBJECT)
         .expect("metadata of a file this program made failed")
         .modified()
         .expect("modified() refused for a file this program made");
-    std::fs::write(SUBJECT, b"written again").expect("the second write failed");
-    let moved = std::fs::metadata(SUBJECT)
+    std::fs::write(TIMES_SUBJECT, b"written again").expect("the second write failed");
+    let moved = std::fs::metadata(TIMES_SUBJECT)
         .expect("metadata after a write failed")
         .modified()
         .expect("modified() after a write failed");
@@ -770,9 +783,9 @@ fn file_times() {
 
     // 2027-01-15, and half a second, which the wire cannot carry.
     let asserted = UNIX_EPOCH + Duration::from_millis(1_800_000_000_500);
-    std::fs::set_times(SUBJECT, FileTimes::new().set_modified(asserted))
+    std::fs::set_times(TIMES_SUBJECT, FileTimes::new().set_modified(asserted))
         .expect("set_times through a full-rights grant failed");
-    let back = std::fs::metadata(SUBJECT)
+    let back = std::fs::metadata(TIMES_SUBJECT)
         .expect("metadata after set_times failed")
         .modified()
         .expect("modified() after set_times failed");
@@ -783,81 +796,12 @@ fn file_times() {
     );
     println!("set_times ok");
 
-    std::fs::create_dir(DIR).expect("create_dir for the times directory failed");
-    let dir_time = UNIX_EPOCH + Duration::from_secs(1_900_000_000);
-    std::fs::set_times(DIR, FileTimes::new().set_modified(dir_time))
-        .expect("set_times on a directory failed");
-    assert_eq!(
-        std::fs::metadata(DIR)
-            .expect("metadata of the times directory failed")
-            .modified()
-            .expect("modified() refused for a directory reached by name"),
-        dir_time,
-        "a directory's mtime did not round-trip",
-    );
-    let listed = std::fs::read_dir(".")
-        .expect("read_dir of the granted directory failed")
-        .map(|e| e.expect("a listing entry failed"))
-        .find(|e| e.file_name() == DIR)
-        .expect("the times directory is not in the listing");
-    assert_eq!(
-        listed
-            .metadata()
-            .expect("DirEntry::metadata of a directory failed")
-            .modified()
-            .expect("modified() refused through a listing entry"),
-        dir_time,
-        "a listing entry reported a different time than the name did",
-    );
-    println!("dir mtime ok");
+    a_directory_mtime_round_trips_and_its_listing_agrees();
 
-    // Through an open handle: refused, both ways, and the time on disk is untouched.
-    let file = File::options()
-        .read(true)
-        .write(true)
-        .open(SUBJECT)
-        .expect("reopening the times subject failed");
-    match file.metadata().map(|m| m.modified()) {
-        Ok(Err(e)) if e.kind() == ErrorKind::Unsupported => {}
-        other => panic!("modified() through an open handle did not refuse: {other:?}"),
-    }
-    match file.set_modified(asserted) {
-        Err(e) if e.kind() == ErrorKind::Unsupported => {}
-        other => panic!("set_modified through an open handle did not refuse: {other:?}"),
-    }
-    drop(file);
-    println!("handle mtime refused");
+    file_time_refusals(asserted, back);
 
-    // An access time is refused whole: the mtime asked for beside it must not be written either.
-    match std::fs::set_times(
-        SUBJECT,
-        FileTimes::new()
-            .set_modified(asserted)
-            .set_accessed(asserted),
-    ) {
-        Err(e) if e.kind() == ErrorKind::Unsupported => {}
-        other => panic!("set_times with an access time did not refuse: {other:?}"),
-    }
-    assert_eq!(
-        std::fs::metadata(SUBJECT)
-            .expect("metadata after a refused set_times failed")
-            .modified()
-            .expect("modified() after a refused set_times failed"),
-        back,
-        "a refused set_times changed the mtime anyway",
-    );
-    match std::fs::set_times(".", FileTimes::new().set_modified(asserted)) {
-        Err(e) if e.kind() == ErrorKind::Unsupported => {}
-        other => panic!("set_times on the granted directory did not refuse: {other:?}"),
-    }
-    match std::fs::set_times("times-nobody-made", FileTimes::new()) {
-        Err(e) if e.kind() == ErrorKind::NotFound => {}
-        other => panic!("an empty set_times on a missing name did not say NotFound: {other:?}"),
-    }
-    println!("set_times refusals ok");
-
-    std::fs::remove_file(SUBJECT).expect("cleanup of the times subject failed");
-    std::fs::remove_dir(DIR).expect("cleanup of the times directory failed");
+    std::fs::remove_file(TIMES_SUBJECT).expect("cleanup of the times subject failed");
+    std::fs::remove_dir(TIMES_DIR).expect("cleanup of the times directory failed");
 }
 
 /// **Descent** (milestone 122): a nested path is a chain of `OPENDIR`s, and a directory is a thing a
@@ -955,6 +899,126 @@ fn descent_transcript() {
         other => panic!("a path walking through a file was not refused: {other:?}"),
     }
 
+    held_directories();
+
+    // **A move between two directories**, which is one atomic message rather than a copy and an
+    // unlink: `RENAME` carries a handle on each side and both of them are now walked to.
+    std::fs::rename(
+        format!("{TREE}/top"),
+        format!("{TREE}/{}/{}", tree::DEEPER, tree::LEAF),
+    )
+    .expect("renaming between two directories failed");
+    assert!(
+        !std::fs::exists(format!("{TREE}/top")).expect("exists after rename failed"),
+        "the source name survived a rename",
+    );
+    assert_eq!(
+        std::fs::read(format!("{TREE}/{}/{}", tree::DEEPER, tree::LEAF))
+            .expect("the renamed file would not open"),
+        tree::LEAF_BODY,
+        "the rename moved a name without its bytes",
+    );
+    println!("rename across ok");
+
+    // **`remove_dir_all` needed no nife code at all**: std's generic recursion is written over
+    // `read_dir`, `remove_file` and `remove_dir` on paths it composes with `DirEntry::path`, so
+    // it works when those do.
+    std::fs::remove_dir_all(TREE).expect("remove_dir_all failed");
+    assert!(
+        !std::fs::exists(TREE).expect("exists after remove_dir_all failed"),
+        "remove_dir_all left the tree behind",
+    );
+    println!("remove_dir_all ok");
+}
+
+/// The `dir mtime ok` line of [`file_times`].
+fn a_directory_mtime_round_trips_and_its_listing_agrees() {
+    use std::fs::FileTimes;
+
+    std::fs::create_dir(TIMES_DIR).expect("create_dir for the times directory failed");
+    let dir_time = UNIX_EPOCH + Duration::from_secs(1_900_000_000);
+    std::fs::set_times(TIMES_DIR, FileTimes::new().set_modified(dir_time))
+        .expect("set_times on a directory failed");
+    assert_eq!(
+        std::fs::metadata(TIMES_DIR)
+            .expect("metadata of the times directory failed")
+            .modified()
+            .expect("modified() refused for a directory reached by name"),
+        dir_time,
+        "a directory's mtime did not round-trip",
+    );
+    let listed = std::fs::read_dir(".")
+        .expect("read_dir of the granted directory failed")
+        .map(|e| e.expect("a listing entry failed"))
+        .find(|e| e.file_name() == TIMES_DIR)
+        .expect("the times directory is not in the listing");
+    assert_eq!(
+        listed
+            .metadata()
+            .expect("DirEntry::metadata of a directory failed")
+            .modified()
+            .expect("modified() refused through a listing entry"),
+        dir_time,
+        "a listing entry reported a different time than the name did",
+    );
+    println!("dir mtime ok");
+}
+
+/// [`file_times`]' four refusals. `asserted` is the time it set, and `back` is what that read
+/// back as, which a refused `set_times` must leave in place.
+fn file_time_refusals(asserted: SystemTime, back: SystemTime) {
+    use std::fs::FileTimes;
+
+    // Through an open handle: refused, both ways, and the time on disk is untouched.
+    let file = File::options()
+        .read(true)
+        .write(true)
+        .open(TIMES_SUBJECT)
+        .expect("reopening the times subject failed");
+    match file.metadata().map(|m| m.modified()) {
+        Ok(Err(e)) if e.kind() == ErrorKind::Unsupported => {}
+        other => panic!("modified() through an open handle did not refuse: {other:?}"),
+    }
+    match file.set_modified(asserted) {
+        Err(e) if e.kind() == ErrorKind::Unsupported => {}
+        other => panic!("set_modified through an open handle did not refuse: {other:?}"),
+    }
+    drop(file);
+    println!("handle mtime refused");
+
+    // An access time is refused whole: the mtime asked for beside it must not be written either.
+    match std::fs::set_times(
+        TIMES_SUBJECT,
+        FileTimes::new()
+            .set_modified(asserted)
+            .set_accessed(asserted),
+    ) {
+        Err(e) if e.kind() == ErrorKind::Unsupported => {}
+        other => panic!("set_times with an access time did not refuse: {other:?}"),
+    }
+    assert_eq!(
+        std::fs::metadata(TIMES_SUBJECT)
+            .expect("metadata after a refused set_times failed")
+            .modified()
+            .expect("modified() after a refused set_times failed"),
+        back,
+        "a refused set_times changed the mtime anyway",
+    );
+    match std::fs::set_times(".", FileTimes::new().set_modified(asserted)) {
+        Err(e) if e.kind() == ErrorKind::Unsupported => {}
+        other => panic!("set_times on the granted directory did not refuse: {other:?}"),
+    }
+    match std::fs::set_times("times-nobody-made", FileTimes::new()) {
+        Err(e) if e.kind() == ErrorKind::NotFound => {}
+        other => panic!("an empty set_times on a missing name did not say NotFound: {other:?}"),
+    }
+    println!("set_times refusals ok");
+}
+
+/// The `dir handle ok` line of [`descent_transcript`]: `std::fs::Dir`.
+fn held_directories() {
+    use filesystem_protocol::fixture::tree;
+
     // **`std::fs::Dir`**: std's own `openat`-shaped API, holding a capability this process was
     // handed. This is the half of milestone 122 that matters most, because it is the interface that
     // makes the system's model visible to the software running on it: the name `inner` is resolved
@@ -993,35 +1057,6 @@ fn descent_transcript() {
         "the granted directory read the wrong file"
     );
     println!("dir handle ok");
-
-    // **A move between two directories**, which is one atomic message rather than a copy and an
-    // unlink: `RENAME` carries a handle on each side and both of them are now walked to.
-    std::fs::rename(
-        format!("{TREE}/top"),
-        format!("{TREE}/{}/{}", tree::DEEPER, tree::LEAF),
-    )
-    .expect("renaming between two directories failed");
-    assert!(
-        !std::fs::exists(format!("{TREE}/top")).expect("exists after rename failed"),
-        "the source name survived a rename",
-    );
-    assert_eq!(
-        std::fs::read(format!("{TREE}/{}/{}", tree::DEEPER, tree::LEAF))
-            .expect("the renamed file would not open"),
-        tree::LEAF_BODY,
-        "the rename moved a name without its bytes",
-    );
-    println!("rename across ok");
-
-    // **`remove_dir_all` needed no nife code at all**: std's generic recursion is written over
-    // `read_dir`, `remove_file` and `remove_dir` on paths it composes with `DirEntry::path`, so
-    // it works when those do.
-    std::fs::remove_dir_all(TREE).expect("remove_dir_all failed");
-    assert!(
-        !std::fs::exists(TREE).expect("exists after remove_dir_all failed"),
-        "remove_dir_all left the tree behind",
-    );
-    println!("remove_dir_all ok");
 }
 
 /// **Milestone 121's two halves, chosen by the rights of the one directory this process holds.**

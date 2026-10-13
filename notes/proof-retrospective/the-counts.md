@@ -78,3 +78,19 @@ $ grep -rn "kani::cover" --include="*.rs" crates/ | sed -E 's|crates/([^/]*)/.*|
 
 The last three are loom crates, not Kani harness crates, which is why the figure quoted above is 19
 rather than 22.
+
+## Which harness packages no shard proves
+
+Moved verbatim from the parent's EXAMPLES under §212 (a prose budget) on 2026-10-13 (UTC).
+
+Packages carrying harnesses, and which ones the suite actually proves (as captured on 2026-08-30,
+before the crate rename):
+
+```
+$ grep -rln "^\s*#\[kani::proof\]" --include="*.rs" crates/ vendor/ \
+    | sed -E 's|^(crates\|vendor)/([^/]*)/.*|\2|' | sort -u | while read c; do
+        grep -q "^$c	" script/verify || echo "in no shard: $c"
+      done
+in no shard: jh7110_trng
+in no shard: redoxfs
+```

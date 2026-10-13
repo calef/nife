@@ -4,14 +4,9 @@ Two `build + test (host + QEMU)` failures on the evening of 2026-09-29 (UTC), bo
 swish-check step, on pull requests touching no runtime code: #1444 (hooks only, riscv64, "could not
 spawn (the progenitor is out of memory)", run 36619551608) and #1442 (ledger only, aarch64, "the
 prompt never echoed `packages/greeting/0.1.0/greeting`", run 36622549563). Both were green on rerun.
-This note measures how often that happens, explains each signature mechanically, and prices
-remediations without enacting any. Written by an investigation lane on
+This note asks whether swish-check is flaky in CI, how often and by what mechanism, or whether the
+evening was unlucky; it prices remediations without enacting any. Written by an investigation lane on
 `maintainer/swish-flake-measurement`; every date is UTC.
-
-## The question
-
-Is swish-check flaky in CI, how often, and by what mechanism; or is the evening of 2026-09-29
-unlucky?
 
 ## Method, and its limits
 
@@ -29,7 +24,7 @@ unlucky?
   `script/swish-check --arch <arch>`, one QEMU at a time, 10 runs per architecture plus warm-ups,
   `pgrep -l qemu` clean after every batch.
 
-Two lane hazards found while setting up, recorded because the next lane will hit them:
+Two lane hazards found while setting up, for the next lane:
 
 - **`CARGO_TARGET_DIR` silently drops the file server from the archive.** `redoxfs_server_build`
   honors the variable but `redoxfs_server_elf` reads `redoxfs_server/target/<triple>/release/...`
@@ -200,7 +195,7 @@ fix and its record are in milestone 614's roadmap block.
 The count above left the four truncation runs with no mechanism. A static lane (no QEMU, reading
 the tree and the CI logs) followed the sentence into the fetch path and answered it. The lane ran
 on the branch of milestone 614 (two installed versions of one program, each runnable, and a caller
-granted the one it needs). Every date here is UTC.
+granted the one it needs).
 
 **Where the sentence comes from.** `swish` renders `ActivationStatus::FetchFailed` as that one line
 (`write_activation`, crates/swish/src/lib.rs). Fourteen sites in the progenitor produce the status.
@@ -240,7 +235,7 @@ generation 2 where the transcript wants 3.
 
 Why the second fetch, from the code. Everything the guest feeds the second fetch is identical to
 the first. The ephemeral port rotates, so the second connection is a fresh 4-tuple
-(`PortAllocator`'s own reason: reusing a port whose slirp flow had not cleared stalls). The socket
+(`socket_protocol::ephemeral`'s own reason: reusing a port whose slirp flow had not cleared stalls). The socket
 page's region and the staging region are destroyed in reverse carve order at request end, so the
 image pool returns to empty between commands. The destroy is a synchronous kernel call that revokes
 the shared page out of `net_stack` before it returns (kernel/src/memory_region.rs), so the next
@@ -255,7 +250,7 @@ shown.
 
 Nothing in this tree distinguishes the fourteen sites today. One word per refusal in the answer, or
 a progenitor-side trace the shell's vocabulary leaves alone, would localize the next occurrence
-from its transcript. Priced, not enacted: the lane's brief was diagnosis.
+from its transcript. Priced, not enacted.
 
 One asymmetry found on the way, recorded here because the fetch path has no BUGS of its own and
 notes/packages.md is at its prose cap. `fetch` carves its socket page and staging with one-shot

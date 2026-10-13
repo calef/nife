@@ -494,6 +494,24 @@ impl Conductor {
         // However its CALL came back, it came back: it no longer awaits a reply.
         self.awaits_reply[x] = false;
 
+        self.check_witness(x, &call, &now);
+
+        let (justified_slot, justified_reply) = self.judge_fills(x, &call, &now);
+
+        self.check_receive_registers(x, &call, justified_slot, justified_reply);
+
+        self.note_revoke_or_badge(x, &call);
+
+        self.note_spent_delegation(x, &call);
+
+        self.check_objects(x, &now);
+        self.check_pages(x);
+        self.fuzzers[x].table = now;
+        self.fuzzers[x].steps = report_word(self, x, report::STEPS);
+    }
+
+    /// The witness's two invariants, checked on each of its steps (a no-op for any other fuzzer).
+    fn check_witness(&self, x: usize, call: &Call, now: &Snap) {
         // The witness holds only GO, which the generator never names: every invoke must be
         // refused, and its table must never fill at all.
         if x == WITNESS {
@@ -514,7 +532,11 @@ impl Conductor {
                 escape!(self, "the witness holds a capability it was never granted");
             }
         }
+    }
 
+    /// Judge every slot fuzzer `x`'s step filled. Returns the slot the step justified, if any, and
+    /// whether that fill was a one-shot Reply. A delivery is deferred to the quiet point instead.
+    fn judge_fills(&mut self, x: usize, call: &Call, now: &Snap) -> (Option<u64>, bool) {
         let mut fills = [0usize; 2];
         let mut fills_n = 0usize;
         for s in 0..SLOTS {
@@ -557,7 +579,7 @@ impl Conductor {
                 justified_slot = Some(s as u64);
                 continue;
             }
-            if self.was_receive_capability(x, &call) {
+            if self.was_receive_capability(x, call) {
                 // A delivery's justification can depend on the sender's step, which may not be
                 // collected yet: defer to the quiet point (the module's last BUGS entry).
                 if self.pending.is_some() {
@@ -573,7 +595,7 @@ impl Conductor {
                 });
                 continue;
             }
-            let ok = self.justify_fill(x, &call, obj, rights);
+            let ok = self.justify_fill(x, call, obj, rights);
             if !ok {
                 escape!(
                     self,
@@ -582,12 +604,22 @@ impl Conductor {
                     obj,
                     call.number,
                     call.words,
-                    self.held(x, &call)
+                    self.held(x, call)
                 );
             }
             justified_slot = Some(s as u64);
         }
+        (justified_slot, justified_reply)
+    }
 
+    /// Register truth for a step that was a `RECEIVE_CAP`.
+    fn check_receive_registers(
+        &self,
+        x: usize,
+        call: &Call,
+        justified_slot: Option<u64>,
+        justified_reply: bool,
+    ) {
         // Register truth for a `RECEIVE_CAP` (milestones 634 and 706): x1 names the slot that
         // actually filled (the table diff says which) or is NO_CAP, and x4 tags exactly a Reply.
         // A plain `RECEIVE` defines w0..w3 only and leaves x4 as the caller left it, so there is
@@ -595,7 +627,7 @@ impl Conductor {
         // and x4.
         if call.number == abi::SYS_INVOKE
             && (call.rets[0] as i64) >= 0
-            && self.was_receive_capability(x, &call)
+            && self.was_receive_capability(x, call)
             && (self.pending.is_none() || self.pending.as_ref().unwrap().fuzzer != x)
         {
             let want = justified_slot.unwrap_or(proto::NO_CAPABILITY);
@@ -615,7 +647,10 @@ impl Conductor {
                 );
             }
         }
+    }
 
+    /// Keep the ledger and the badge record current with a step that revoked a frame or minted a badge.
+    fn note_revoke_or_badge(&mut self, x: usize, call: &Call) {
         // A revoke kills the in-flight copy; a badge minted is a badge that may be seen.
         if call.number == abi::SYS_INVOKE {
             match call.words[1] {
@@ -637,7 +672,7 @@ impl Conductor {
                 }
                 abi::rendezvous::BADGE
                     if matches!(
-                        self.held(x, &call),
+                        self.held(x, call),
                         Some(Object::Rendezvous(ep, _)) if ep == self.world.server
                     ) =>
                 {
@@ -655,13 +690,16 @@ impl Conductor {
                 _ => {}
             }
         }
+    }
 
+    /// Record the delegation a completed `SEND_CAP` spent.
+    fn note_spent_delegation(&mut self, x: usize, call: &Call) {
         // A SEND_CAP that completed spent its delegation: its receiver may be waiting on the
         // record to judge the fill. (Gated on the slot holding an endpoint: `SEND_CAP` and
         // `RETYPE_OBJ` share the number 2.)
         if call.number == abi::SYS_INVOKE
             && call.words[1] == proto::SEND_CAPABILITY
-            && matches!(self.held(x, &call), Some(Object::Rendezvous(..)))
+            && matches!(self.held(x, call), Some(Object::Rendezvous(..)))
             && (call.rets[0] as i64) >= 0
             && let Some(Some((obj, rights))) =
                 self.fuzzers[x].table.get(call.words[2] as usize).copied()
@@ -675,11 +713,6 @@ impl Conductor {
                 revoked: false,
             });
         }
-
-        self.check_objects(x, &now);
-        self.check_pages(x);
-        self.fuzzers[x].table = now;
-        self.fuzzers[x].steps = report_word(self, x, report::STEPS);
     }
 
     /// May `call`, made by fuzzer `x`, have filled a slot with `obj` at these rights?
@@ -1175,7 +1208,6 @@ fn run_seed(image: &'static [u8], seed: u64) {
         }
     }
 
-    let roles = [proto::ROLE_A, proto::ROLE_B, proto::ROLE_WITNESS];
     let endowment = Endowment {
         server,
         client,
@@ -1183,28 +1215,7 @@ fn run_seed(image: &'static [u8], seed: u64) {
         note,
         gifts,
     };
-    let mut tids = [0u64; FUZZERS];
-    for (x, tid) in tids.iter_mut().enumerate() {
-        let (grants, granted) = grants_for(x, go[x], own, &endowment);
-        let maps = [Mapping {
-            va: proto::REPORT_VA,
-            phys: reports[x],
-            flags: Flags::user_data(),
-        }];
-        *tid = sched::spawn(move || {
-            run(
-                image,
-                Spawn {
-                    arg0: seed,
-                    arg1: roles[x],
-                    arg2: 0,
-                    grants: &grants[..granted],
-                    maps: &maps,
-                },
-            )
-        })
-        .expect("no fuzzer thread");
-    }
+    let tids = spawn_fuzzers(image, seed, &endowment, go, own, reports);
 
     {
         let mut c = CONDUCTOR.lock();
@@ -1235,43 +1246,7 @@ fn run_seed(image: &'static [u8], seed: u64) {
             };
         }
 
-        // Everyone parks on its conductor channel before the first step; the baseline (image,
-        // stack, report) is what the page oracle admits forever after.
-        for x in 0..FUZZERS {
-            let parked = wait_for(|| parked_on_go(&c, x));
-            assert!(parked, "fuzzer {x} never parked on its conductor channel");
-            // A failure here was seen once (rva23s64, merge group run 38142134083, 2026-10-11
-            // UTC) and is not yet understood; the `BUGS` section of milestone 779's block
-            // (design/roadmap/0779-fuzz-the-surface-a-confined-process-can-reach.md) holds the
-            // two hypotheses. The message reads the state again at the failure to say which: a
-            // fuzzer that is not live (or not parked on GO) means the waiter counted on GO was
-            // not this fuzzer or it died after parking; a live fuzzer parked on GO with no space
-            // means it lost its space while counted as waiting.
-            let Some(root) = sched::thread_space_root(c.fuzzers[x].tid) else {
-                panic!(
-                    "a live fuzzer has a space root: fuzzer {x} (tid {:?}, seed {:#x}) has none; \
-                     live {}, disposition {:?}, GO waiting receivers {}",
-                    c.fuzzers[x].tid,
-                    c.seed,
-                    live(&c, x),
-                    disposition(&c, x),
-                    sched::rendezvous_waiting_receivers(c.world.go[x]),
-                );
-            };
-            let mut cursor = 0;
-            while let crate::revoke::Listing::Entry(next, va) =
-                crate::revoke::list_mapping(root, cursor)
-            {
-                if c.fuzzers[x].baseline_n < c.fuzzers[x].baseline.len() {
-                    let n = c.fuzzers[x].baseline_n;
-                    c.fuzzers[x].baseline[n] = va;
-                    c.fuzzers[x].baseline_n += 1;
-                }
-                cursor = next;
-            }
-            c.fuzzers[x].table = snapshot(&c, x);
-            c.fuzzers[x].steps = report_word(&c, x, report::STEPS);
-        }
+        park_and_take_baselines(&mut c);
     }
 
     let mut rng = Rng(splitmix(seed ^ 0x5EED_C0DE));
@@ -1287,6 +1262,89 @@ fn run_seed(image: &'static [u8], seed: u64) {
         c.step_and_settle(x);
     }
 
+    wind_down(seed, conductor_region, own);
+}
+
+/// Spawn the two fuzzers and the witness, each with its grants and its report frame mapped.
+/// Returns their thread ids, in fuzzer order.
+fn spawn_fuzzers(
+    image: &'static [u8],
+    seed: u64,
+    endowment: &Endowment,
+    go: [RendezvousId; FUZZERS],
+    own: [u64; 2],
+    reports: [u64; FUZZERS],
+) -> [u64; FUZZERS] {
+    let roles = [proto::ROLE_A, proto::ROLE_B, proto::ROLE_WITNESS];
+    let mut tids = [0u64; FUZZERS];
+    for (x, tid) in tids.iter_mut().enumerate() {
+        let (grants, granted) = grants_for(x, go[x], own, endowment);
+        let maps = [Mapping {
+            va: proto::REPORT_VA,
+            phys: reports[x],
+            flags: Flags::user_data(),
+        }];
+        *tid = sched::spawn(move || {
+            run(
+                image,
+                Spawn {
+                    arg0: seed,
+                    arg1: roles[x],
+                    arg2: 0,
+                    grants: &grants[..granted],
+                    maps: &maps,
+                },
+            )
+        })
+        .expect("no fuzzer thread");
+    }
+    tids
+}
+
+/// Wait for every fuzzer to park on its conductor channel, then record its baseline: the
+/// mappings and table the page and object oracles admit from here on.
+fn park_and_take_baselines(c: &mut Conductor) {
+    // Everyone parks on its conductor channel before the first step; the baseline (image,
+    // stack, report) is what the page oracle admits forever after.
+    for x in 0..FUZZERS {
+        let parked = wait_for(|| parked_on_go(c, x));
+        assert!(parked, "fuzzer {x} never parked on its conductor channel");
+        // A failure here was seen once (rva23s64, merge group run 38142134083, 2026-10-11
+        // UTC) and is not yet understood; the `BUGS` section of milestone 779's block
+        // (design/roadmap/0779-fuzz-the-surface-a-confined-process-can-reach.md) holds the
+        // two hypotheses. The message reads the state again at the failure to say which: a
+        // fuzzer that is not live (or not parked on GO) means the waiter counted on GO was
+        // not this fuzzer or it died after parking; a live fuzzer parked on GO with no space
+        // means it lost its space while counted as waiting.
+        let Some(root) = sched::thread_space_root(c.fuzzers[x].tid) else {
+            panic!(
+                "a live fuzzer has a space root: fuzzer {x} (tid {:?}, seed {:#x}) has none; \
+                 live {}, disposition {:?}, GO waiting receivers {}",
+                c.fuzzers[x].tid,
+                c.seed,
+                live(c, x),
+                disposition(c, x),
+                sched::rendezvous_waiting_receivers(c.world.go[x]),
+            );
+        };
+        let mut cursor = 0;
+        while let crate::revoke::Listing::Entry(next, va) =
+            crate::revoke::list_mapping(root, cursor)
+        {
+            if c.fuzzers[x].baseline_n < c.fuzzers[x].baseline.len() {
+                let n = c.fuzzers[x].baseline_n;
+                c.fuzzers[x].baseline[n] = va;
+                c.fuzzers[x].baseline_n += 1;
+            }
+            cursor = next;
+        }
+        c.fuzzers[x].table = snapshot(c, x);
+        c.fuzzers[x].steps = report_word(c, x, report::STEPS);
+    }
+}
+
+/// The end of one seed, which every seed must reach so the next starts from a clean machine.
+fn wind_down(seed: u64, conductor_region: u64, own: [u64; 2]) {
     // Wind the seed down: tell every fuzzer to exit, wait for the threads, and give every region
     // back. `reclaim_region`, not `destroy`: the fuzzers pin their own regions with retyped
     // objects and the conductor's with its endpoints, and `destroy` refuses a pinned region

@@ -66,6 +66,15 @@ for everything except an NMI or a machine check. Closing it for those needs a pa
 that reads `IA32_GS_BASE` and decides, which this port does not have. Recorded rather than pretended
 away.
 
+**The same gap is open on the way in, and it is worse there** (found 2026-10-13 UTC by lane
+`maintainer/supervision-label-hang`, unfixed). `x86_syscall_entry` runs two instructions on the
+user's `rsp` before it loads the kernel's, and the NMI gate has no IST stack (only vector 8 does).
+An NMI landing there is taken at CPL 0 with no stack switch, so the CPU, `isr_common` and the
+handler's calls write a few hundred bytes below whatever address the user put in `rsp`, a kernel
+address included. NMIs are not rare here: every TLB shootdown on a machine of more than one core sends
+one to every other core. The fix is an IST stack per core for vector 2, with the nesting rules an
+NMI on an IST stack needs. It wants a milestone of its own rather than a line in a flake fix.
+
 ### `syscall` shares almost nothing with the IDT
 
 Four MSRs are its entire configuration and none has a useful default:

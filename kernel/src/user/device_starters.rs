@@ -374,7 +374,7 @@ fn boot_virtio_mmio_device(d: crate::virtio::VirtioMmioDevice) -> Option<VirtioB
 /// (`system_tests/src/user/std_service.rs`): "nothing configured this program's locale or terminal, so
 /// tell it the least assuming thing" is the honest baseline, the same posture `boot_clock_page`
 /// takes for a machine with no RTC. There is no shell-held default config set yet to pass instead
-/// (the "inheritance with visibility" shape design/roadmap/0047-navigation-and-naming.md names);
+/// (the "inheritance with visibility" shape design/roadmap/0047-navigation-and-naming/environment.md names);
 /// this is the fixed default until one exists.
 pub(super) fn boot_config_page() -> u64 {
     let bytes = environment_protocol::PageBuilder::new()

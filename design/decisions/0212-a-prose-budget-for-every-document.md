@@ -57,18 +57,10 @@ graph in the metrics deck.
 The ratchet is what the recommendation below describes. A document already over the cap may not
 grow. A document under it may not cross. A new document, or one rewritten wholesale, meets the cap
 outright. An exception is marked in the document itself and carries its reason, which is the rung the
-ladder permits when the higher one costs more than the failure does. calef granted
-`design/fatal-risks/README.md` a marked exception on 2026-09-24 (UTC) at 4,235 words against the cap, the
-first exception granted under this section, and the marker lives in that file with its reason.
-On 2026-09-25 (UTC) calef granted two more, and ruled that neither block is split:
-[`design/roadmap/0047-navigation-and-naming.md`](../roadmap/0047-navigation-and-naming.md) at 17,386
-words and [`design/roadmap/0139-drive-down-unsafe.md`](../roadmap/0139-drive-down-unsafe.md) at
-13,846. His reason was that both are large and rarely referenced. The maintainer counted 7 files
-linking the first and 2 the second. Roadmap blocks as a class stay under the cap, so question 2's
-refusal of a class exemption stands. Each marker lives in its block. No
-migration sweep: the 174
-documents over the cap are worked worst-first by words times readers, and the ones nobody reads are
-left alone or archived.
+ladder permits when the higher one costs more than the failure does. No document carries a
+prose-budget exception now. Roadmap blocks as a class stay under the cap, so question 2's refusal
+of a class exemption stands. No migration sweep: the 174 documents over the cap are worked
+worst-first by words times readers, and the ones nobody reads are left alone or archived.
 
 The graph is the half that is not a gate, and it is there because a ratchet is invisible. A gate
 fires on the change in front of it and says nothing about the trend, so the debt can sit flat for
@@ -80,6 +72,10 @@ The series to plot, recommended and not yet ratified: the excess above the cap i
 which is the debt itself, and the count of documents over the cap. The first says whether the
 tree is paying the debt down, the second says whether the ratchet is holding. Both were measured at
 569,775 words and 174 documents on 2026-09-23.
+
+The gate and the graph count words the same way, through one function: every whitespace-separated
+word in the file, less a generated table. §213's sentence and bold measures read prose alone. calef
+ruled this on 2026-10-13 (UTC), choosing the option "Gate counts every word".
 
 What this section does not yet decide: whether the cap applies to every document or to a class of
 them (question 2, where the recommendation below argues for every document, and where the two marked
@@ -238,12 +234,9 @@ First cut, in order: [`notes/benchmarks.md`](../../notes/benchmarks.md),
 [`notes/README.md`](../../notes/README.md), [`design/fatal-risks/README.md`](../fatal-risks/README.md),
 [`design/naming.md`](../naming.md).
 
-**And the counter-case, which is half the point.**
-[`design/roadmap/0047-navigation-and-naming.md`](../roadmap/0047-navigation-and-naming.md) at 17,315
-words is mentioned by 6 files; [`design/roadmap/0139-drive-down-unsafe.md`](../roadmap/0139-drive-down-unsafe.md)
-at 13,775 is mentioned by 1. Those are books nobody reads. They want archiving, or leaving alone,
-not splitting. Splitting all 190 six-pagers of excess is months of lane work and most of it would
-be spent where nobody arrives.
+The ranking has a tail, and it is half the point. Splitting all 190 six-pagers of excess is
+months of lane work, and most of it would be spent where nobody arrives, so a document few files
+cite is worked last or archived.
 
 ## What is blocked until this is answered
 

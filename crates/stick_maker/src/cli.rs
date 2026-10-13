@@ -178,23 +178,7 @@ pub fn run(
         .collect();
 
     if options.list {
-        if offered.is_empty() {
-            console.say("No removable disk found.");
-        }
-        for d in &offered {
-            console.say(&format!("  {}", describe(d)));
-        }
-        if options.all {
-            for d in &disks {
-                if let Some(refusal) = disk::refusal(d, options.policy) {
-                    console.say(&format!(
-                        "  {}\n           not offered: {}",
-                        describe(d),
-                        refusal.reason()
-                    ));
-                }
-            }
-        }
+        list(options, &disks, &offered, console);
         return Ok(());
     }
 
@@ -206,55 +190,9 @@ pub fn run(
             .map_or(0, |root| write::replaced_bytes(root, files))
     };
     let root = match disk::plan(chosen, needed, replaced) {
-        Plan::Copy { volume } => {
-            let mount = chosen.volumes[volume]
-                .mount
-                .clone()
-                .ok_or("the plan copies only to a mounted volume")?;
-            console.say(&format!(
-                "Will copy {} of boot files to {} on {} ({}). Nothing on it is erased.",
-                human_size(needed),
-                mount.display(),
-                chosen.id,
-                chosen.description
-            ));
-            if !options.yes {
-                let answer = console.ask("Type y to copy: ")?;
-                if !answer.eq_ignore_ascii_case("y") && !answer.eq_ignore_ascii_case("yes") {
-                    return Err("not confirmed; nothing was written".to_owned());
-                }
-            }
-            mount
-        }
+        Plan::Copy { volume } => confirm_copy(options, chosen, volume, needed, console)?,
         Plan::Erase { because } => {
-            console.say(&format!(
-                "{} ({}, {}) has to be ERASED first: {because}.",
-                chosen.id,
-                chosen.description,
-                human_size(chosen.size)
-            ));
-            for v in &chosen.volumes {
-                let label = if v.label.is_empty() {
-                    String::new()
-                } else {
-                    format!(" (\"{}\")", v.label)
-                };
-                console.say(&format!("  everything on {}{label} will be lost", v.id));
-            }
-            host.can_erase(chosen)?;
-            if options.disk.is_some() {
-                if !options.erase {
-                    return Err("pass --erase to allow it; nothing was written".to_owned());
-                }
-            } else {
-                let answer = console.ask(&format!(
-                    "Type the disk's name, {}, to erase it (anything else stops): ",
-                    chosen.id
-                ))?;
-                if answer != chosen.id {
-                    return Err("not confirmed; nothing was written".to_owned());
-                }
-            }
+            confirm_erase(options, chosen, &because, host, console)?;
             host.erase(chosen)?
         }
     };
@@ -286,6 +224,101 @@ pub fn run(
         console.say(&done);
     }
     console.say("");
+    say_how_to_boot(files, console);
+    Ok(())
+}
+
+/// `--list`: the offered disks, and with `--all` every refused one and why.
+fn list(options: &Options, disks: &[Disk], offered: &[&Disk], console: &mut dyn Console) {
+    if offered.is_empty() {
+        console.say("No removable disk found.");
+    }
+    for d in offered {
+        console.say(&format!("  {}", describe(d)));
+    }
+    if options.all {
+        for d in disks {
+            if let Some(refusal) = disk::refusal(d, options.policy) {
+                console.say(&format!(
+                    "  {}\n           not offered: {}",
+                    describe(d),
+                    refusal.reason()
+                ));
+            }
+        }
+    }
+}
+
+/// The copy plan: say what will be written where, ask unless `--yes`, and return the mount.
+fn confirm_copy(
+    options: &Options,
+    chosen: &Disk,
+    volume: usize,
+    needed: u64,
+    console: &mut dyn Console,
+) -> Result<PathBuf, String> {
+    let mount = chosen.volumes[volume]
+        .mount
+        .clone()
+        .ok_or("the plan copies only to a mounted volume")?;
+    console.say(&format!(
+        "Will copy {} of boot files to {} on {} ({}). Nothing on it is erased.",
+        human_size(needed),
+        mount.display(),
+        chosen.id,
+        chosen.description
+    ));
+    if !options.yes {
+        let answer = console.ask("Type y to copy: ")?;
+        if !answer.eq_ignore_ascii_case("y") && !answer.eq_ignore_ascii_case("yes") {
+            return Err("not confirmed; nothing was written".to_owned());
+        }
+    }
+    Ok(mount)
+}
+
+/// The erase plan: name everything that will be lost, ask the host whether it can erase at all,
+/// then require `--erase` with `--disk`, or the disk's name typed back.
+fn confirm_erase(
+    options: &Options,
+    chosen: &Disk,
+    because: &str,
+    host: &dyn Host,
+    console: &mut dyn Console,
+) -> Result<(), String> {
+    console.say(&format!(
+        "{} ({}, {}) has to be ERASED first: {because}.",
+        chosen.id,
+        chosen.description,
+        human_size(chosen.size)
+    ));
+    for v in &chosen.volumes {
+        let label = if v.label.is_empty() {
+            String::new()
+        } else {
+            format!(" (\"{}\")", v.label)
+        };
+        console.say(&format!("  everything on {}{label} will be lost", v.id));
+    }
+    host.can_erase(chosen)?;
+    if options.disk.is_some() {
+        if !options.erase {
+            return Err("pass --erase to allow it; nothing was written".to_owned());
+        }
+    } else {
+        let answer = console.ask(&format!(
+            "Type the disk's name, {}, to erase it (anything else stops): ",
+            chosen.id
+        ))?;
+        if answer != chosen.id {
+            return Err("not confirmed; nothing was written".to_owned());
+        }
+    }
+    Ok(())
+}
+
+/// The closing instructions, one line per architecture the stick carries a boot file for.
+fn say_how_to_boot(files: &[File], console: &mut dyn Console) {
     console.say("Done. To boot from it:");
     for file in files {
         let how = match architecture(file.path) {
@@ -305,7 +338,6 @@ pub fn run(
         };
         console.say(how);
     }
-    Ok(())
 }
 
 /// Which disk: the one named with `--disk` (if the rule offers it), or the one the person picks.

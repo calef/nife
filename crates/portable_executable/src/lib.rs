@@ -148,6 +148,34 @@ struct Load {
 
 /// **Convert** (see the module documentation).
 pub fn from_elf(elf: &[u8]) -> Result<Vec<u8>, Error> {
+    let header = read_header(elf)?;
+    let image_end = check_layout(elf, &header.loads)?;
+    let mut image = memory_image(elf, &header.loads, image_end)?;
+    let mut fixups = match header.dynamic {
+        Some(dynamic) => apply_relocations(elf, &mut image, &header, dynamic)?,
+        None => Vec::new(),
+    };
+    fixups.sort_unstable();
+    fixups.dedup();
+    let relocations = base_relocations(&fixups);
+    let reloc_va = align(image_end, PAGE);
+    let sections = sections_of(&header.loads, &image, &relocations, reloc_va);
+    write_pe(&header, &sections, &relocations, reloc_va)
+}
+
+/// What [`from_elf`] reads from the ELF header and the program headers.
+struct Header {
+    machine: u16,
+    pe_machine: u16,
+    entry: u64,
+    /// The `PT_LOAD`s, sorted by address.
+    loads: Vec<Load>,
+    /// `PT_DYNAMIC`'s file offset and size, if there is one.
+    dynamic: Option<(u64, u64)>,
+}
+
+/// The ELF identification, type and machine, then every program header this converts.
+fn read_header(elf: &[u8]) -> Result<Header, Error> {
     if elf.get(0..4) != Some(b"\x7fELF".as_slice())
         || elf.get(4) != Some(&2)
         || elf.get(5) != Some(&1)
@@ -187,7 +215,19 @@ pub fn from_elf(elf: &[u8]) -> Result<Vec<u8>, Error> {
         }
     }
     loads.sort_by_key(|l| l.vaddr);
-    for load in &loads {
+    Ok(Header {
+        machine,
+        pe_machine,
+        entry,
+        loads,
+        dynamic,
+    })
+}
+
+/// Refuse segments that are unaligned, below the headers, past the file's end or overlapping, and
+/// return the address where the last one ends.
+fn check_layout(elf: &[u8], loads: &[Load]) -> Result<u64, Error> {
+    for load in loads {
         if load.vaddr % PAGE != 0 || load.vaddr < PAGE || load.filesz > load.memsz {
             return Err(Error::SegmentLayout);
         }
@@ -204,84 +244,97 @@ pub fn from_elf(elf: &[u8]) -> Result<Vec<u8>, Error> {
             return Err(Error::SegmentLayout);
         }
     }
-    let image_end = loads
+    loads
         .last()
         .map(|l| l.vaddr + l.memsz)
-        .ok_or(Error::SegmentLayout)?;
+        .ok_or(Error::SegmentLayout)
+}
 
-    // The memory image, from address 0, holding every segment's file bytes where it will run.
+/// The memory image, from address 0, holding every segment's file bytes where it will run.
+fn memory_image(elf: &[u8], loads: &[Load], image_end: u64) -> Result<Vec<u8>, Error> {
     let mut image = vec![0u8; usize_of(image_end)?];
-    for load in &loads {
+    for load in loads {
         let (from, to) = (usize_of(load.offset)?, usize_of(load.vaddr)?);
         let len = usize_of(load.filesz)?;
         image[to..to + len].copy_from_slice(&elf[from..from + len]);
     }
+    Ok(image)
+}
 
-    // The dynamic relocations.
+/// The dynamic relocations: read `PT_DYNAMIC` for the `DT_RELA` table, write each `RELATIVE`
+/// addend into `image`, and return the addresses of the words written, unsorted.
+fn apply_relocations(
+    elf: &[u8],
+    image: &mut [u8],
+    header: &Header,
+    (offset, size): (u64, u64),
+) -> Result<Vec<u64>, Error> {
     let mut fixups: Vec<u64> = Vec::new();
-    if let Some((offset, size)) = dynamic {
-        let (mut rela, mut relasz, mut relaent) = (None, 0u64, 24u64);
-        let mut at = usize_of(offset)?;
-        let end = at + usize_of(size)?;
-        while at + 16 <= end {
-            let tag = u64_at(elf, at)?;
-            let value = u64_at(elf, at + 8)?;
-            at += 16;
-            match tag {
-                0 => break,
-                7 => rela = Some(value),
-                8 => relasz = value,
-                9 => relaent = value,
-                17 | 36 => return Err(Error::UnsupportedRelocationTable),
-                2 | 23 if value != 0 => return Err(Error::UnsupportedRelocationTable),
-                _ => {}
-            }
-        }
-        if let Some(rela) = rela {
-            // `DT_RELA` is a virtual address; its bytes are in the image built above.
-            let base = usize_of(rela)?;
-            let count = usize_of(relasz / relaent.max(1))?;
-            for i in 0..count {
-                let at = base + i * usize_of(relaent)?;
-                let r_offset = u64_at(&image, at)?;
-                let r_info = u64_at(&image, at + 8)?;
-                let r_addend = u64_at(&image, at + 16)?;
-                let kind = (r_info & 0xffff_ffff) as u32;
-                if kind == 0 {
-                    continue; // R_*_NONE
-                }
-                if kind != relative_type(machine) || r_info >> 32 != 0 {
-                    return Err(Error::UnsupportedRelocation(kind));
-                }
-                // Inside the segment's FILE bytes, not its memory size: the word is written into
-                // `image` here, but each section's raw data is only its first `filesz` bytes, so a
-                // word in `.bss` would lose its addend while its fixup stayed in `.reloc`, and the
-                // firmware would add the load base to zero. This read `memsz` until milestone 326's
-                // mutation triage (2026-09-24) wrote the boundary test and it accepted such a word.
-                let inside = loads
-                    .iter()
-                    .any(|l| r_offset >= l.vaddr && r_offset + 8 <= l.vaddr + l.filesz);
-                if !inside {
-                    return Err(Error::RelocationOutsideImage(r_offset));
-                }
-                let word = usize_of(r_offset)?;
-                image[word..word + 8].copy_from_slice(&r_addend.to_le_bytes());
-                fixups.push(r_offset);
-            }
+    let (mut rela, mut relasz, mut relaent) = (None, 0u64, 24u64);
+    let mut at = usize_of(offset)?;
+    let end = at + usize_of(size)?;
+    while at + 16 <= end {
+        let tag = u64_at(elf, at)?;
+        let value = u64_at(elf, at + 8)?;
+        at += 16;
+        match tag {
+            0 => break,
+            7 => rela = Some(value),
+            8 => relasz = value,
+            9 => relaent = value,
+            17 | 36 => return Err(Error::UnsupportedRelocationTable),
+            2 | 23 if value != 0 => return Err(Error::UnsupportedRelocationTable),
+            _ => {}
         }
     }
-    fixups.sort_unstable();
-    fixups.dedup();
-    let relocations = base_relocations(&fixups);
+    let Some(rela) = rela else {
+        return Ok(fixups);
+    };
+    // `DT_RELA` is a virtual address; its bytes are in the image built above.
+    let base = usize_of(rela)?;
+    let count = usize_of(relasz / relaent.max(1))?;
+    for i in 0..count {
+        let at = base + i * usize_of(relaent)?;
+        let r_offset = u64_at(image, at)?;
+        let r_info = u64_at(image, at + 8)?;
+        let r_addend = u64_at(image, at + 16)?;
+        let kind = (r_info & 0xffff_ffff) as u32;
+        if kind == 0 {
+            continue; // R_*_NONE
+        }
+        if kind != relative_type(header.machine) || r_info >> 32 != 0 {
+            return Err(Error::UnsupportedRelocation(kind));
+        }
+        // Inside the segment's FILE bytes, not its memory size: the word is written into
+        // `image` here, but each section's raw data is only its first `filesz` bytes, so a
+        // word in `.bss` would lose its addend while its fixup stayed in `.reloc`, and the
+        // firmware would add the load base to zero. This read `memsz` until milestone 326's
+        // mutation triage (2026-09-24) wrote the boundary test and it accepted such a word.
+        let inside = header
+            .loads
+            .iter()
+            .any(|l| r_offset >= l.vaddr && r_offset + 8 <= l.vaddr + l.filesz);
+        if !inside {
+            return Err(Error::RelocationOutsideImage(r_offset));
+        }
+        let word = usize_of(r_offset)?;
+        image[word..word + 8].copy_from_slice(&r_addend.to_le_bytes());
+        fixups.push(r_offset);
+    }
+    Ok(fixups)
+}
 
-    // --- Lay out the PE file ---
-    struct Section {
-        name: [u8; 8],
-        virtual_address: u64,
-        virtual_size: u64,
-        data: Vec<u8>,
-        characteristics: u32,
-    }
+/// One PE section: a segment's file bytes, or the `.reloc` table.
+struct Section {
+    name: [u8; 8],
+    virtual_address: u64,
+    virtual_size: u64,
+    data: Vec<u8>,
+    characteristics: u32,
+}
+
+/// A section per segment, named and flagged by its permissions, then `.reloc` if any fixups.
+fn sections_of(loads: &[Load], image: &[u8], relocations: &[u8], reloc_va: u64) -> Vec<Section> {
     let mut sections: Vec<Section> = loads
         .iter()
         .map(|l| {
@@ -302,20 +355,43 @@ pub fn from_elf(elf: &[u8]) -> Result<Vec<u8>, Error> {
             }
         })
         .collect();
-    let reloc_va = align(image_end, PAGE);
     if !relocations.is_empty() {
         sections.push(Section {
             name: *b".reloc\0\0",
             virtual_address: reloc_va,
             virtual_size: relocations.len() as u64,
-            data: relocations.clone(),
+            data: relocations.to_vec(),
             characteristics: 0x4200_0040, // INITIALIZED_DATA | DISCARDABLE | READ
         });
     }
+    sections
+}
 
-    const DOS_LEN: usize = 0x40;
-    const COFF_LEN: usize = 20;
-    const OPTIONAL_LEN: usize = 240;
+const DOS_LEN: usize = 0x40;
+const COFF_LEN: usize = 20;
+const OPTIONAL_LEN: usize = 240;
+
+fn put16(out: &mut [u8], at: usize, v: u16) {
+    out[at..at + 2].copy_from_slice(&v.to_le_bytes());
+}
+fn put32(out: &mut [u8], at: usize, v: u32) {
+    out[at..at + 4].copy_from_slice(&v.to_le_bytes());
+}
+fn put64(out: &mut [u8], at: usize, v: u64) {
+    out[at..at + 8].copy_from_slice(&v.to_le_bytes());
+}
+fn narrow(v: u64) -> Result<u32, Error> {
+    u32::try_from(v).map_err(|_| Error::SegmentLayout)
+}
+
+/// **Lay out the PE file**: headers in the first page, then each section's raw data at file
+/// alignment.
+fn write_pe(
+    header: &Header,
+    sections: &[Section],
+    relocations: &[u8],
+    reloc_va: u64,
+) -> Result<Vec<u8>, Error> {
     let headers = DOS_LEN + 4 + COFF_LEN + OPTIONAL_LEN + 40 * sections.len();
     let size_of_headers = align(headers as u64, FILE_ALIGNMENT);
     if size_of_headers > PAGE {
@@ -332,20 +408,12 @@ pub fn from_elf(elf: &[u8]) -> Result<Vec<u8>, Error> {
 
     let mut raw_at = size_of_headers;
     let mut placements = Vec::new();
-    for s in &sections {
+    for s in sections {
         let raw_size = align(s.data.len() as u64, FILE_ALIGNMENT);
         placements.push((raw_at, raw_size));
         raw_at += raw_size;
     }
     let mut out = vec![0u8; usize_of(raw_at)?];
-
-    let put16 =
-        |out: &mut Vec<u8>, at: usize, v: u16| out[at..at + 2].copy_from_slice(&v.to_le_bytes());
-    let put32 =
-        |out: &mut Vec<u8>, at: usize, v: u32| out[at..at + 4].copy_from_slice(&v.to_le_bytes());
-    let put64 =
-        |out: &mut Vec<u8>, at: usize, v: u64| out[at..at + 8].copy_from_slice(&v.to_le_bytes());
-    let narrow = |v: u64| u32::try_from(v).map_err(|_| Error::SegmentLayout);
 
     // DOS header: the magic and the offset of the PE signature, nothing else.
     out[0..2].copy_from_slice(b"MZ");
@@ -353,7 +421,7 @@ pub fn from_elf(elf: &[u8]) -> Result<Vec<u8>, Error> {
     out[DOS_LEN..DOS_LEN + 4].copy_from_slice(b"PE\0\0");
 
     let coff = DOS_LEN + 4;
-    put16(&mut out, coff, pe_machine);
+    put16(&mut out, coff, header.pe_machine);
     put16(&mut out, coff + 2, sections.len() as u16);
     // TimeDateStamp, PointerToSymbolTable, NumberOfSymbols: zero.
     put16(&mut out, coff + 16, OPTIONAL_LEN as u16);
@@ -361,39 +429,13 @@ pub fn from_elf(elf: &[u8]) -> Result<Vec<u8>, Error> {
     put16(&mut out, coff + 18, 0x0002 | 0x0020 | 0x0200);
 
     let opt = coff + COFF_LEN;
-    let code: u64 = sections
-        .iter()
-        .filter(|s| s.characteristics & 0x20 != 0)
-        .map(|s| align(s.data.len() as u64, FILE_ALIGNMENT))
-        .sum();
-    let data: u64 = sections
-        .iter()
-        .filter(|s| s.characteristics & 0x20 == 0)
-        .map(|s| align(s.data.len() as u64, FILE_ALIGNMENT))
-        .sum();
-    let base_of_code = sections
-        .iter()
-        .find(|s| s.characteristics & 0x20 != 0)
-        .map_or(0, |s| s.virtual_address);
-    put16(&mut out, opt, 0x20b); // PE32+
-    put32(&mut out, opt + 4, narrow(code)?);
-    put32(&mut out, opt + 8, narrow(data)?);
-    put32(&mut out, opt + 16, narrow(entry)?);
-    put32(&mut out, opt + 20, narrow(base_of_code)?);
-    put64(&mut out, opt + 24, 0); // ImageBase: the RVAs are the ELF's addresses from zero
-    put32(&mut out, opt + 32, PAGE as u32); // SectionAlignment
-    put32(&mut out, opt + 36, FILE_ALIGNMENT as u32);
-    put32(&mut out, opt + 56, narrow(size_of_image)?);
-    put32(&mut out, opt + 60, narrow(size_of_headers)?);
-    put16(&mut out, opt + 68, 10); // IMAGE_SUBSYSTEM_EFI_APPLICATION
-    // DllCharacteristics: HIGH_ENTROPY_VA | DYNAMIC_BASE | NX_COMPAT, which is what the image is.
-    put16(&mut out, opt + 70, 0x0020 | 0x0040 | 0x0100);
-    put32(&mut out, opt + 108, 16); // NumberOfRvaAndSizes
-    if !relocations.is_empty() {
-        // Data directory 5: the base relocation table.
-        put32(&mut out, opt + 112 + 5 * 8, narrow(reloc_va)?);
-        put32(&mut out, opt + 112 + 5 * 8 + 4, relocations.len() as u32);
-    }
+    write_optional_header(
+        &mut out[opt..opt + OPTIONAL_LEN],
+        header.entry,
+        sections,
+        [size_of_image, size_of_headers],
+        (reloc_va, relocations.len()),
+    )?;
 
     let table = opt + OPTIONAL_LEN;
     for (i, (s, (raw_at, raw_size))) in sections.iter().zip(&placements).enumerate() {
@@ -408,6 +450,52 @@ pub fn from_elf(elf: &[u8]) -> Result<Vec<u8>, Error> {
         out[at..at + s.data.len()].copy_from_slice(&s.data);
     }
     Ok(out)
+}
+
+/// The PE32+ optional header, written into its own `OPTIONAL_LEN` bytes. `sizes` is
+/// `[SizeOfImage, SizeOfHeaders]`; `reloc` is the `.reloc` section's address and length, a zero
+/// length leaving data directory 5 empty.
+fn write_optional_header(
+    opt: &mut [u8],
+    entry: u64,
+    sections: &[Section],
+    [size_of_image, size_of_headers]: [u64; 2],
+    (reloc_va, reloc_len): (u64, usize),
+) -> Result<(), Error> {
+    let code: u64 = sections
+        .iter()
+        .filter(|s| s.characteristics & 0x20 != 0)
+        .map(|s| align(s.data.len() as u64, FILE_ALIGNMENT))
+        .sum();
+    let data: u64 = sections
+        .iter()
+        .filter(|s| s.characteristics & 0x20 == 0)
+        .map(|s| align(s.data.len() as u64, FILE_ALIGNMENT))
+        .sum();
+    let base_of_code = sections
+        .iter()
+        .find(|s| s.characteristics & 0x20 != 0)
+        .map_or(0, |s| s.virtual_address);
+    put16(opt, 0, 0x20b); // PE32+
+    put32(opt, 4, narrow(code)?);
+    put32(opt, 8, narrow(data)?);
+    put32(opt, 16, narrow(entry)?);
+    put32(opt, 20, narrow(base_of_code)?);
+    put64(opt, 24, 0); // ImageBase: the RVAs are the ELF's addresses from zero
+    put32(opt, 32, PAGE as u32); // SectionAlignment
+    put32(opt, 36, FILE_ALIGNMENT as u32);
+    put32(opt, 56, narrow(size_of_image)?);
+    put32(opt, 60, narrow(size_of_headers)?);
+    put16(opt, 68, 10); // IMAGE_SUBSYSTEM_EFI_APPLICATION
+    // DllCharacteristics: HIGH_ENTROPY_VA | DYNAMIC_BASE | NX_COMPAT, which is what the image is.
+    put16(opt, 70, 0x0020 | 0x0040 | 0x0100);
+    put32(opt, 108, 16); // NumberOfRvaAndSizes
+    if reloc_len != 0 {
+        // Data directory 5: the base relocation table.
+        put32(opt, 112 + 5 * 8, narrow(reloc_va)?);
+        put32(opt, 112 + 5 * 8 + 4, reloc_len as u32);
+    }
+    Ok(())
 }
 
 /// **The `.reloc` section**: fixups grouped into one block per 4 KiB page, each block a page RVA,

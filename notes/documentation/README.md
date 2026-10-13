@@ -19,6 +19,10 @@ carry the evidence its prose budget has no room for.
   reason behind each limit.
 - [`resolved-bugs.md`](resolved-bugs.md): the `BUGS` entries that are resolved, kept for their
   reasons, and what used to head "Where this goes next".
+- [`narrowing-limitations.md`](narrowing-limitations.md): the two `BUGS` entries about the
+  caretaker hop and a screen-narrowed child, in full.
+- [`where-next.md`](where-next.md): what is left in "Where this goes next", in full, and the prior
+  art.
 
 *Name: provisional, minted 2026-10-11 (UTC) by lane/fourth-ten-longest-notes, which split the parent
 under §212 (a prose budget). The directory follows §212's siting default, `notes/X/` beside
@@ -38,3 +42,7 @@ names files.
 - `search-limitations` Name: provisional, minted 2026-10-11 (UTC) by
   lane/fourth-ten-longest-notes.
 - `resolved-bugs` Name: provisional, minted 2026-10-11 (UTC) by lane/fourth-ten-longest-notes.
+- `where-next` Name: provisional, minted 2026-10-13 (UTC) by lane/prose-cap-notes-a, for the
+  parent's "Where this goes next" and "Prior art", moved under §212's cap.
+- `narrowing-limitations` Name: provisional, minted 2026-10-13 (UTC) by lane/prose-cap-notes-a,
+  for two of the parent's `BUGS` entries moved under §212's cap.
