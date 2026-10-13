@@ -334,8 +334,8 @@ fn stop_runner(child: &mut std::process::Child, x86: bool) {
 /// Only the `x86_64` leg asks. The aarch64 and riscv64 legs stay on TCG on purpose: on CI's arm64
 /// runner, TCG is what puts their kernels in front of a weakly ordered host (ci.yml's header), and
 /// KVM there would trade that for speed the two legs do not need (0.2 s a line). The `x86_64` guest
-/// is TSO under either, so KVM gives up no ordering the leg was ever shown. Milestone 628
-/// (provisional) measured what it buys; notes/benchmarks/swish-check-x86-leg.md. The name is
+/// is TSO under either, so KVM gives up no ordering the leg was ever shown. Milestone 628 (the x86_64
+/// swish-check leg costs what the others do) measured what it buys; notes/benchmarks/swish-check-x86-leg.md. The name is
 /// provisional.
 pub(crate) fn kvm_is_usable() -> bool {
     cfg!(all(target_os = "linux", target_arch = "x86_64"))
@@ -929,8 +929,8 @@ fn after_hand_over(x86: bool, t: &str) -> String {
 /// shell the progenitor starts afterwards; there is nothing to wait for.
 fn boot_claim_failures(x86: bool, now: &dyn Fn() -> String) -> Vec<String> {
     let mut failed = Vec::new();
-    // **The progenitor gave the construction budget away, and says so from the inside** (milestone 22,
-    // the interactive increment). The progenitor prints this one line after deleting the root untyped and
+    // **The progenitor gave the construction budget away, and says so from the inside** (milestone 22
+    // (trusted init: verify it, and shrink what a broken one can do), the interactive increment). The progenitor prints this one line after deleting the root untyped and
     // before starting the shell, and it prints it only when `RETYPE` and `RETYPE_OBJ` on that
     // slot both answered `NoSuchSlot`: the capability is gone, not narrowed. The other branch
     // says "NOT dropped", so a boot that kept its budget fails here rather than passing quietly.
@@ -944,7 +944,8 @@ fn boot_claim_failures(x86: bool, now: &dyn Fn() -> String) -> Vec<String> {
     // A missing marker means a missing marker. The transcript is printed below; that is the
     // evidence, and this line's job is to say which string was wanted and how close it came.
     //
-    // **And the progenitor measured every program it loaded** (milestone 104), which is the line that
+    // **And the progenitor measured every program it loaded** (milestone 104 (the
+    // measurement continues past init)), which is the line that
     // keeps the second link of the chain from evaporating. A kernel built without the
     // measurement step refuses to boot at all, but a *table* that stopped naming things would
     // leave a system that boots, prompts, and vouches for nothing, and it would look exactly
@@ -1200,7 +1201,8 @@ fn report_line_times(
             eprintln!("swish-check ({arch}): {:6.2}s  {l}", d.as_secs_f64());
         }
     }
-    // **The leg's median line against its own baseline** (milestone 722): a cost defect
+    // **The leg's median line against its own baseline** (milestone 722 (swish-check
+    // fails a leg that costs five times the others per line)): a cost defect
     // shows as a leg far off its own history, which a per-line bound sized to hide a real hang
     // cannot see. See [`LEG_COST_BASELINE`] for why this is not a comparison between legs.
     let accel = if kvm { "kvm" } else { "tcg" };
@@ -1305,7 +1307,8 @@ fn one_answer_failures(l: &Line, answer: &str, before_next: &str) -> Vec<String>
     // independent claims and checking one of them makes the rest decoration. `caps`
     // is the case that forced it: it prints the shell's whole endowment, and a gate
     // that read only the clock row would pass a boot that had stopped granting the
-    // shell a directory, which is the wiring milestone 31's headline rests on.
+    // shell a directory, which is the wiring milestone 31's headline (a capability shell:
+    // designation is authorization) rests on.
     // **And whether the program said it anyway** (the noteless flake, 2026-10-04
     // UTC): an answer cut short by something the gate read as a prompt is a
     // misread transcript, not a silent program, and the line says which.
@@ -1339,7 +1342,8 @@ fn one_answer_failures(l: &Line, answer: &str, before_next: &str) -> Vec<String>
     failed
 }
 
-/// **And `rg`'s walk found exactly what the host's found** (milestone 121), which no list of
+/// **And `rg`'s walk found exactly what the host's found** (milestone 121 (`ripgrep` on nife:
+/// enumeration as a capability, and what the walk costs)), which no list of
 /// wanted phrases can say: a phrase list passes an answer that dropped a directory.
 fn rg_walk_failure(arch: &str, transcript: &str) -> Option<String> {
     let (answer, _) = swish_check_answer(transcript, 0, RG_WALK_LINE)?;
@@ -1356,7 +1360,8 @@ fn rg_walk_failure(arch: &str, transcript: &str) -> Option<String> {
     }
 }
 
-/// **Nothing may have died** (milestone 233), which is the ratchet milestone 230's lane
+/// **Nothing may have died** (milestone 233 (`login` dies on every boot, and the boot says it is
+/// ready)), which is the ratchet the lane of milestone 230 (`script/shell-check` is red on `main`)
 /// identified and deliberately left, because it would have been red on both architectures until
 /// `login` was fixed. It was: `login` faulted at `_start` on every interactive boot, on both
 /// ISAs, for an unknown length of time, while every check above passed and the progenitor went on printing
