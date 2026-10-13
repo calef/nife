@@ -8,7 +8,7 @@ copied the prose
 ratchet's.
 
     python3 helpers/lint_ratchet.py --flags              # the -W arguments script/lint passes clippy
-    python3 helpers/lint_ratchet.py --check DIR          # judge clippy's JSON in DIR; what script/lint runs
+    python3 helpers/lint_ratchet.py --check DIR          # judge clippy's JSON under DIR; what script/lint runs
     python3 helpers/lint_ratchet.py --bank               # lower rows to the tree; never raises or adds
     python3 helpers/lint_ratchet.py --selftest           # the rules, as fixtures
     python3 helpers/lint_ratchet.py --init               # write the baseline from scratch (milestone 888 only)
@@ -19,9 +19,13 @@ Name: provisional, minted by milestone 888's lane on 2026-10-11 (UTC). A shared 
 **Why a separate pass.** §61 (a lint is adopted on evidence from this tree) keeps `script/lint` at
 `-D warnings`, so a lint in `[workspace.lints]` must be clean on the day it lands. A lint with
 hundreds of hits can only be adopted as a count that falls. `script/lint` runs clippy once more per
-configuration, the five the lint census used (`notes/lint-census-2026-10-09.md`), with the
-ratcheted lints at `-W` and `--message-format=json`, and hands the directory to `--check`. A site
-compiled for several targets counts once, so a parity gap cannot hide a hit.
+configuration, with the ratcheted lints at `-W` and `--message-format=json`, and hands the directory
+to `--check`. The configurations are the lint census's five (`notes/lint-census-2026-10-09.md`) with
+`--all-targets` where `script/lint`'s own passes build test code, plus `system_tests` and the two
+host-only workspaces, `tools/redoxfs_host` and `fuzz`. A nested workspace's JSON sits at its own
+path under the directory (`DIR/fuzz/clippy.json`), which is how `--check` puts its
+workspace-relative paths back under the repository root. A site compiled for several targets counts
+once, so a parity gap cannot hide a hit.
 
 **Two kinds of row.** A `count` lint (the panic proposal's kind) has one row per file: the number of
 hits in it, held to the baseline, with no hit allowed in a file that has no row. A `measure` lint
@@ -42,10 +46,18 @@ lint registered today is `too_many_lines`, a measure keyed by function, at 100 c
 
 **Function length is the text measure, held to clippy.** `script/metrics` needs the same count
 without a build, so `helpers/function_length.py` reproduces `too_many_lines` from source text. The
-row value is that measure, which also reaches the 7 long functions in kernel build modes and the
-UEFI loader that the five passes do not compile. On every function clippy does report, `--check`
-requires the two to agree exactly, so a clippy upgrade that counts differently fails here loudly
-rather than drifting the chart.
+row value is that measure, over its scope: every tracked `.rs` file outside `vendor/`, test code
+included (§283 (a function is held to 100 code lines by a lint ratchet)). It also reaches files no
+clippy pass here compiles: about 1,160 functions in `patches/`, `c_library/`, the UEFI loader, the
+std exercisers, `jig/` and kernel build modes, which build only for nife's std targets or in a
+separate step. Those are held by the text measure alone. On every function clippy does report,
+`--check` requires the two to agree exactly, so a clippy upgrade that counts differently fails here
+loudly rather than drifting the chart.
+
+**A pass with no hit still checked something.** With no function over the threshold, clippy
+reports nothing, so an empty report cannot be the sign of a pass that never ran. `--check` instead
+requires every JSON file to end in a successful build and to name at least one in-scope target
+clippy compiled (milestone 401 (a gate that selects the set it judges can pass by checking nothing)).
 
 **The failure message** says the remedy, as §266 (a Rust source file stays under 2,000 lines)'s does: split the function at a seam, one step
 or phase per function. Joining lines or deleting code to buy a number is not the remedy, and
@@ -119,34 +131,66 @@ def show(key):
 
 # --- clippy's JSON --------------------------------------------------------------------------------
 
+def clippy_files(directory):
+    """[(json path, workspace prefix)] for every `*.json` under `directory`. A file in a
+    subdirectory came from the nested workspace at that path (`fuzz/clippy.json`)."""
+    out = []
+    for at, _dirs, names in sorted(os.walk(directory)):
+        rel = os.path.relpath(at, directory)
+        prefix = '' if rel == '.' else rel.replace(os.sep, '/') + '/'
+        out += [(os.path.join(at, n), prefix) for n in sorted(names) if n.endswith('.json')]
+    return out
+
+
+def clippy_messages(path):
+    with open(path) as f:
+        for line in f:
+            try:
+                yield json.loads(line)
+            except ValueError:
+                continue
+
+
+def unchecked(directory):
+    """The JSON files that do not show a pass that compiled something in scope: no successful
+    `build-finished`, or no compiler artifact for an in-scope target."""
+    root = os.path.realpath(os.getcwd())
+    bad = []
+    for path, _prefix in clippy_files(directory):
+        finished = targets = 0
+        for m in clippy_messages(path):
+            if m.get('reason') == 'build-finished' and m.get('success'):
+                finished = 1
+            if m.get('reason') != 'compiler-artifact':
+                continue
+            src = os.path.realpath((m.get('target') or {}).get('src_path') or '/')
+            if src.startswith(root + '/') and fl.in_scope(os.path.relpath(src, root)):
+                targets += 1
+        if not finished or not targets:
+            bad.append(os.path.relpath(path, directory))
+    return bad
+
+
 def clippy_hits(directory):
-    """{(lint, path, line): message} from every `*.json` clippy wrote in `directory`.
+    """{(lint, path, line): message} from every `*.json` clippy wrote under `directory`.
 
     A site reported by several configurations is one key. A path clippy gives as absolute, or
-    relative to a nested workspace (`redoxfs_server`), is made relative to the repository root.
+    relative to a nested workspace, is made relative to the repository root.
     """
     hits = {}
     root = os.getcwd()
-    for name in sorted(os.listdir(directory)):
-        if not name.endswith('.json'):
-            continue
-        prefix = name[:-5].split('@', 1)[1] + '/' if '@' in name else ''
-        with open(os.path.join(directory, name)) as f:
-            for line in f:
-                try:
-                    m = json.loads(line)
-                except ValueError:
-                    continue
-                if m.get('reason') != 'compiler-message':
-                    continue
-                msg = m['message']
-                code = ((msg.get('code') or {}).get('code') or '').split('::')[-1]
-                spans = [s for s in msg['spans'] if s.get('is_primary')]
-                if code not in LINTS or not spans:
-                    continue
-                path = spans[0]['file_name']
-                path = os.path.relpath(path, root) if path.startswith('/') else prefix + path
-                hits[(code, path, spans[0]['line_start'])] = msg['message']
+    for name, prefix in clippy_files(directory):
+        for m in clippy_messages(name):
+            if m.get('reason') != 'compiler-message':
+                continue
+            msg = m['message']
+            code = ((msg.get('code') or {}).get('code') or '').split('::')[-1]
+            spans = [s for s in msg['spans'] if s.get('is_primary')]
+            if code not in LINTS or not spans:
+                continue
+            path = spans[0]['file_name']
+            path = os.path.relpath(path, root) if path.startswith('/') else prefix + path
+            hits[(code, path, spans[0]['line_start'])] = msg['message']
     return hits
 
 
@@ -361,12 +405,17 @@ def run_check(directory):
         print(f'lint ratchet: clippy.toml must set too-many-lines-threshold = {fl.THRESHOLD}, the '
               f'threshold helpers/function_length.py measures against', file=sys.stderr)
         return 1
-    hits = clippy_hits(directory)
-    if not any(k[0] == 'too_many_lines' for k in hits):
-        print(f'lint ratchet: clippy reported no too_many_lines hit in {directory}. Forty-odd '
-              f'functions are over the threshold, so a pass that saw none checked nothing '
-              f'(design/roadmap/0401-a-gate-that-selects-the-set-it-judges.md)', file=sys.stderr)
+    if not clippy_files(directory):
+        print(f'lint ratchet: no clippy JSON under {directory}, so nothing was checked',
+              file=sys.stderr)
         return 1
+    idle = unchecked(directory)
+    if idle:
+        print(f'lint ratchet: these clippy passes show no finished build of an in-scope target, so '
+              f'they checked nothing (design/roadmap/0401-a-gate-that-selects-the-set-it-judges.md): '
+              f'{", ".join(idle)}', file=sys.stderr)
+        return 1
+    hits = clippy_hits(directory)
     values, rows, base_values, base_rows, renames, bodies, base_bodies, fns = gather(hits)
     bad = agreement(hits, fns)
     bad += problems(values, rows, base_values, base_rows, renames, bodies, base_bodies)
@@ -480,6 +529,37 @@ def selftest():
         cases.append(('clippy and the text measure disagreeing on a count fails', False))
     if not agreement({(T, 'x/a.rs', 30): 'this function has too many lines (130/100)'}, fns):
         cases.append(('a function clippy sees and the text measure misses fails', False))
+    # A pass is judged by what it compiled, not by whether it found anything, and a nested
+    # workspace's JSON sits at its own path.
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        root = os.path.realpath(os.getcwd())
+
+        def write(rel, *msgs):
+            os.makedirs(os.path.dirname(os.path.join(d, rel)), exist_ok=True)
+            with open(os.path.join(d, rel), 'w') as f:
+                f.write(''.join(json.dumps(m) + '\n' for m in msgs))
+
+        done = {'reason': 'build-finished', 'success': True}
+        art = {'reason': 'compiler-artifact', 'target': {'src_path': f'{root}/fuzz/src/lib.rs'}}
+        hit = {'reason': 'compiler-message', 'message': {
+            'code': {'code': 'clippy::too_many_lines'}, 'message': 'm',
+            'spans': [{'is_primary': True, 'file_name': 'src/lib.rs', 'line_start': 3}]}}
+        write('fuzz/clippy.json', art, hit, done)
+        if unchecked(d):
+            cases.append(('a finished pass that compiled an in-scope target passes with no hit', False))
+        if list(clippy_hits(d)) != [(T, 'fuzz/src/lib.rs', 3)]:
+            cases.append(('a nested workspace\'s path is put back under the repository root', False))
+        write('host.json', art)
+        if unchecked(d) != ['host.json']:
+            cases.append(('a pass with no successful build-finished fails', False))
+        write('host.json', {'reason': 'compiler-artifact',
+                            'target': {'src_path': f'{root}/vendor/x/src/lib.rs'}}, done)
+        if unchecked(d) != ['host.json']:
+            cases.append(('a pass that compiled nothing in scope fails', False))
+    if not (fl.in_scope('xtask/src/main.rs') and fl.in_scope('system_tests/src/user/a_tests.rs')
+            and not fl.in_scope('vendor/x/src/lib.rs') and not fl.in_scope('notes/a.md')):
+        cases.append(('the scope is every .rs file outside vendor/', False))
     # The measure itself is clippy's: comments and blank lines are free, braces are not counted,
     # a line with code before a comment counts, and a block comment spanning lines is free.
     src = 'fn f() {\n    a();\n\n    // note\n    b(); // trailing\n    /* x\n    y */\n    c();\n}\n'
