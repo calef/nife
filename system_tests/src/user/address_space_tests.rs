@@ -4,7 +4,7 @@
 //! Name: provisional, minted 2026-10-12 (UTC) by the lane for milestone 873 (the catch-all
 //! userspace test file is split by topic).
 
-use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, AtomicUsize, Ordering};
 
 use super::test_programs::{a_kernel_address, loader_subject_image, outlaw_image};
 use super::*;
@@ -138,36 +138,14 @@ fn asid_tagging_keeps_address_spaces_apart_without_flushes() {
 ///   then be about the handshake and the real cause would be one level down.
 #[test_case]
 fn an_asid_flush_reaches_the_other_cpus() {
-    use core::sync::atomic::{AtomicU8, AtomicUsize};
-
     const VA: u64 = address_space_map::pair_page(0x40_0000);
     const OLD: u8 = 0xAA;
     const NEW: u8 = 0xBB;
 
-    /// 0 = starting, 1 = the probe has cached the translation, 2 = the remap and sweep are done,
-    /// 3 = the probe has re-read. `SeqCst` throughout: this is a handshake between two cores whose
-    /// whole purpose is ordering, and shaving it would be optimizing the thing under test.
-    static STAGE: AtomicUsize = AtomicUsize::new(0);
-    static SEEN_BEFORE: AtomicU8 = AtomicU8::new(0);
-    static SEEN_AFTER: AtomicU8 = AtomicU8::new(0);
-    static PROBE_CPU: AtomicUsize = AtomicUsize::new(usize::MAX);
-    static PROBE_GAVE_UP: AtomicBool = AtomicBool::new(false);
-
-    /// Spin (never yield) until `done`, so this core stays busy and cannot steal the probe.
-    fn spin_until(mut done: impl FnMut() -> bool) -> bool {
-        let deadline = timer::now() + 5 * timer::frequency();
-        while timer::now() < deadline {
-            if done() {
-                return true;
-            }
-            core::hint::spin_loop();
-        }
-        done()
-    }
-
-    STAGE.store(0, Ordering::SeqCst);
-    PROBE_CPU.store(usize::MAX, Ordering::SeqCst);
-    PROBE_GAVE_UP.store(false, Ordering::SeqCst);
+    let handshake = &ASID_FLUSH_PROBE;
+    handshake.stage.store(0, Ordering::SeqCst);
+    handshake.probe_cpu.store(usize::MAX, Ordering::SeqCst);
+    handshake.gave_up.store(false, Ordering::SeqCst);
 
     // **A skip rather than an assert** (milestone 161). Both `virt` boards run this leg at `-smp 4`,
     // so two cores was a fact rather than a hope for as long as there were two architectures; q35
@@ -197,122 +175,48 @@ fn an_asid_flush_reaches_the_other_cpus() {
     // SAFETY: the allocator just handed us this frame exclusively; the direct map reaches it.
     unsafe { core::ptr::write_volatile(mmu::phys_to_virt(fresh.addr()) as *mut u8, NEW) };
 
-    let probe = sched::spawn_on(target, move || {
-        // Masked for the whole body. Two reasons, and the first is the one that matters: a
-        // preemption would migrate this thread and split the two reads across cores, and it would
-        // also swap the address space out from under them. This does NOT block the shootdown:
-        // RISC-V's SBI RFENCE arrives as an M-mode software interrupt, which S-mode masking does not
-        // touch, and aarch64's `tlbi` needs no interrupt at all. If that were wrong, this test would
-        // hang rather than lie, which is the right way round.
-        let was_enabled = crate::arch::interrupts::disable();
-        let could_reach_user = mmu::permit_kernel_access_to_user_pages(true);
-        PROBE_CPU.store(crate::cpu::id(), Ordering::SeqCst);
-
-        // **The space stays installed across both reads**, which is deliberate and is the realistic
-        // shape: the hazard is a core actively running an address space whose mapping changes under
-        // it. It also keeps the measurement clean, because a `satp` write between the reads is a
-        // second event an emulator or a core is entitled to treat as a flush, and then the second
-        // read would be correct for a reason that has nothing to do with the shootdown.
-        //
-        // SAFETY: nothing is at user mode on this core; we are a kernel thread with interrupts
-        // masked, and the space outlives this thread (the test waits for the reap before dropping
-        // it). The space's root carries the kernel high half, so this core's own code and stack stay
-        // mapped throughout.
-        unsafe { mmu::activate_user(installed) };
-
-        // SAFETY: `VA` is mapped user-readable in the installed space, and this ISA has been told
-        // that the kernel may read a user page.
-        SEEN_BEFORE.store(
-            unsafe { core::ptr::read_volatile(VA as *const u8) },
-            Ordering::SeqCst,
-        );
-        STAGE.store(1, Ordering::SeqCst);
-
-        let deadline = timer::now() + 5 * timer::frequency();
-        while STAGE.load(Ordering::SeqCst) < 2 {
-            if timer::now() > deadline {
-                PROBE_GAVE_UP.store(true, Ordering::SeqCst);
-                break;
-            }
-            core::hint::spin_loop();
-        }
-
-        // SAFETY: as above. Same address, same installed space, no `satp` write in between.
-        SEEN_AFTER.store(
-            unsafe { core::ptr::read_volatile(VA as *const u8) },
-            Ordering::SeqCst,
-        );
-
-        mmu::deactivate_user();
-        mmu::permit_kernel_access_to_user_pages(could_reach_user);
-        STAGE.store(3, Ordering::SeqCst);
-        crate::arch::interrupts::restore(was_enabled);
-    })
+    let probe = sched::spawn_on(target, move || probe_across_the_flush(handshake, installed, VA))
     .expect("spawn_on failed");
 
     assert!(
-        spin_until(|| STAGE.load(Ordering::SeqCst) >= 1),
+        spin_until(|| handshake.stage.load(Ordering::SeqCst) >= 1),
         "the probe never cached the translation on core {target}",
     );
 
-    // Move `VA` onto the fresh frame with NO per-address invalidation, so `flush_asid` is the only
-    // announcement in the system and the test measures it alone.
-    {
-        // SAFETY: `space.root()` is this live space's low-half root, and the direct map makes
-        // `phys_to_ptr` valid for its tables. `|| None`: the tables reaching `VA` already exist, so
-        // the mapper never allocates.
-        let mut mapper = unsafe {
-            Mapper::<_, _, mmu::Format>::new(space.root(), Half::Low, || None, phys_to_ptr)
-        };
-        let (old, flush) = mapper.unmap(VA).expect("VA was not mapped");
-        assert_ne!(
-            old,
-            fresh.addr(),
-            "the allocator handed back the frame we just unmapped: nothing would change"
-        );
-        mapper
-            .map(VA, fresh.addr(), Flags::user_data())
-            .expect("remap onto the fresh frame");
-
-        // Discharged with a no-op ON PURPOSE, and this is the only place in the tree that does it.
-        // The real per-address flush (`arch::mmu::flush_tlb`) broadcasts too, so using it here would
-        // make the test pass whatever `flush_asid` did. `assume_no_stale_entry` would be a lie: a
-        // stale entry is precisely what we arranged.
-        flush.flush(|_| {});
-    }
+    remap_with_no_invalidation(&space, VA, fresh.addr());
 
     mmu::flush_asid(asid);
-    STAGE.store(2, Ordering::SeqCst);
+    handshake.stage.store(2, Ordering::SeqCst);
 
     assert!(
-        spin_until(|| STAGE.load(Ordering::SeqCst) == 3),
+        spin_until(|| handshake.stage.load(Ordering::SeqCst) == 3),
         "the probe never finished its second read",
     );
     assert!(
-        !PROBE_GAVE_UP.load(Ordering::SeqCst),
+        !handshake.gave_up.load(Ordering::SeqCst),
         "the probe timed out waiting for the remap: the handshake, not the TLB, is broken",
     );
     assert_ne!(
-        PROBE_CPU.load(Ordering::SeqCst),
+        handshake.probe_cpu.load(Ordering::SeqCst),
         here,
         "the probe ran on this core, so a local flush would have covered it and the test proves \
          nothing about the shootdown",
     );
 
     assert_eq!(
-        SEEN_BEFORE.load(Ordering::SeqCst),
+        handshake.seen_before.load(Ordering::SeqCst),
         OLD,
         "the probe did not read the original mapping, so it never cached the entry this test is \
          about",
     );
     assert_eq!(
-        SEEN_AFTER.load(Ordering::SeqCst),
+        handshake.seen_after.load(Ordering::SeqCst),
         NEW,
         "STALE TLB ON ANOTHER CORE: core {} still translates {VA:#x} to the frame this space \
          stopped using, after a flush of its ASID. On RISC-V that means the SBI RFENCE never \
          reached it (sfence.vma is local); reuse the number and the next address space reads this \
          one's memory.",
-        PROBE_CPU.load(Ordering::SeqCst),
+        handshake.probe_cpu.load(Ordering::SeqCst),
     );
 
     assert!(
@@ -321,6 +225,118 @@ fn an_asid_flush_reaches_the_other_cpus() {
     );
     drop(space);
     crate::memory::free(fresh);
+}
+
+/// The handshake [`an_asid_flush_reaches_the_other_cpus`] runs between this core and its probe.
+struct AsidFlushProbe {
+    /// 0 = starting, 1 = the probe has cached the translation, 2 = the remap and sweep are done,
+    /// 3 = the probe has re-read. `SeqCst` throughout: this is a handshake between two cores whose
+    /// whole purpose is ordering, and shaving it would be optimizing the thing under test.
+    stage: AtomicUsize,
+    seen_before: AtomicU8,
+    seen_after: AtomicU8,
+    probe_cpu: AtomicUsize,
+    gave_up: AtomicBool,
+}
+
+static ASID_FLUSH_PROBE: AsidFlushProbe = AsidFlushProbe {
+    stage: AtomicUsize::new(0),
+    seen_before: AtomicU8::new(0),
+    seen_after: AtomicU8::new(0),
+    probe_cpu: AtomicUsize::new(usize::MAX),
+    gave_up: AtomicBool::new(false),
+};
+
+/// Spin (never yield) until `done`, so this core stays busy and cannot steal the probe.
+fn spin_until(mut done: impl FnMut() -> bool) -> bool {
+    let deadline = timer::now() + 5 * timer::frequency();
+    while timer::now() < deadline {
+        if done() {
+            return true;
+        }
+        core::hint::spin_loop();
+    }
+    done()
+}
+
+/// The probe's whole life on the other core: install the space, read `va`, wait for the remap and
+/// the sweep, and read it again, reporting both bytes and where it ran through `handshake`.
+fn probe_across_the_flush(handshake: &AsidFlushProbe, installed: u64, va: u64) {
+    // Masked for the whole body. Two reasons, and the first is the one that matters: a
+    // preemption would migrate this thread and split the two reads across cores, and it would
+    // also swap the address space out from under them. This does NOT block the shootdown:
+    // RISC-V's SBI RFENCE arrives as an M-mode software interrupt, which S-mode masking does not
+    // touch, and aarch64's `tlbi` needs no interrupt at all. If that were wrong, this test would
+    // hang rather than lie, which is the right way round.
+    let was_enabled = crate::arch::interrupts::disable();
+    let could_reach_user = mmu::permit_kernel_access_to_user_pages(true);
+    handshake.probe_cpu.store(crate::cpu::id(), Ordering::SeqCst);
+
+    // **The space stays installed across both reads**, which is deliberate and is the realistic
+    // shape: the hazard is a core actively running an address space whose mapping changes under
+    // it. It also keeps the measurement clean, because a `satp` write between the reads is a
+    // second event an emulator or a core is entitled to treat as a flush, and then the second
+    // read would be correct for a reason that has nothing to do with the shootdown.
+    //
+    // SAFETY: nothing is at user mode on this core; we are a kernel thread with interrupts
+    // masked, and the space outlives this thread (the test waits for the reap before dropping
+    // it). The space's root carries the kernel high half, so this core's own code and stack stay
+    // mapped throughout.
+    unsafe { mmu::activate_user(installed) };
+
+    // SAFETY: `VA` is mapped user-readable in the installed space, and this ISA has been told
+    // that the kernel may read a user page.
+    handshake.seen_before.store(
+        unsafe { core::ptr::read_volatile(va as *const u8) },
+        Ordering::SeqCst,
+    );
+    handshake.stage.store(1, Ordering::SeqCst);
+
+    let deadline = timer::now() + 5 * timer::frequency();
+    while handshake.stage.load(Ordering::SeqCst) < 2 {
+        if timer::now() > deadline {
+            handshake.gave_up.store(true, Ordering::SeqCst);
+            break;
+        }
+        core::hint::spin_loop();
+    }
+
+    // SAFETY: as above. Same address, same installed space, no `satp` write in between.
+    handshake.seen_after.store(
+        unsafe { core::ptr::read_volatile(va as *const u8) },
+        Ordering::SeqCst,
+    );
+
+    mmu::deactivate_user();
+    mmu::permit_kernel_access_to_user_pages(could_reach_user);
+    handshake.stage.store(3, Ordering::SeqCst);
+    crate::arch::interrupts::restore(was_enabled);
+}
+
+/// Move `va` in `space` onto `frame` with NO per-address invalidation, so `flush_asid` is the only
+/// announcement in the system and the test measures it alone.
+fn remap_with_no_invalidation(space: &AddressSpace, va: u64, frame: u64) {
+    // SAFETY: `space.root()` is this live space's low-half root, and the direct map makes
+    // `phys_to_ptr` valid for its tables. `|| None`: the tables reaching `VA` already exist, so
+    // the mapper never allocates.
+    let mut mapper = unsafe {
+        Mapper::<_, _, mmu::Format>::new(space.root(), Half::Low, || None, phys_to_ptr)
+    };
+    let (old, flush) = mapper.unmap(va).expect("VA was not mapped");
+    assert_ne!(
+        old,
+        frame,
+        "the allocator handed back the frame we just unmapped: nothing would change"
+    );
+    mapper
+        .map(VA, frame, Flags::user_data())
+        .expect("remap onto the fresh frame");
+
+    // Discharged with a no-op ON PURPOSE, and this is the only place in the tree that does it.
+    // The real per-address flush (`arch::mmu::flush_tlb`) broadcasts too, so using it here would
+    // make the test pass whatever `flush_asid` did. `assume_no_stale_entry` would be a lie: a
+    // stale entry is precisely what we arranged.
+    flush.flush(|_| {});
 }
 
 /// The loader honours the file's permissions, and does not widen them.
