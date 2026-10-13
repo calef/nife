@@ -3195,6 +3195,13 @@ echo "==> no line-number citations (§277: cite a heading or a symbol)"
 # block) is not a citation; anything else needs a marked exception. Fixtures first.
 python3 helpers/line_citations.py --selftest
 python3 helpers/line_citations.py --check
+echo "==> exception markers the ratchets honor (a warning, never a failure)"
+# A marked exception is the one way an item passes a ratchet's limit with no baseline row, so once a
+# ratchet's debt is gone it is the only way that debt comes back. helpers/exception_markers.py reads
+# each kind with its own gate's parser and prints the count per ratchet and each item; it prints
+# nothing when there are none, and it exits 0 whatever it finds. Fixtures first.
+python3 helpers/exception_markers.py --selftest
+python3 helpers/exception_markers.py
 # Milestone 415 (sub-tripwire drift accumulates across baseline saves), item 3's arithmetic
 # (helpers/baseline_drift.py), against fixtures and with no git:
 # the weekly drift report is a record other people quote, so its sums are checked where a change to
