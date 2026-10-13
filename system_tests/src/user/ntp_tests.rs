@@ -108,6 +108,11 @@ fn exchange(
     variant: u64,
     claimed_nanos: u64,
 ) -> ([u64; 5], [u64; 5]) {
+    // Counted before either program exists, so a fault during the exchange is told apart from a
+    // client that is merely slow or blocked. Merge-group run 38284891615 (2026-10-12 UTC) failed
+    // the first assertion below because the client had been killed by a page fault, and the
+    // message alone read as a network problem.
+    let faults_before = USER_FAULTS.load(Ordering::Acquire);
     let server = ntp_service::start_server(test_server_image(), variant, claimed_nanos);
     let client = ntp_service::start_client(
         client_image(),
@@ -124,12 +129,19 @@ fn exchange(
     // come back.
     assert!(
         wait_for(|| crate::sched::rendezvous_waiting_senders(server.report) > 0),
-        "the test server never saw a request: the client failed before it reached the network",
+        "the test server never saw a request: the client failed before it reached the network \
+         ({} user faults during the exchange, the last {:?}; a fault here is a dead client, not \
+         a network problem, and its kill report is in the transcript above)",
+        USER_FAULTS.load(Ordering::Acquire) - faults_before,
+        crate::arch::exceptions::last_user_fault(),
     );
     let served = crate::sched::ipc_receive(server.report);
     assert!(
         wait_for(|| crate::sched::rendezvous_waiting_senders(client) > 0),
-        "the client never reported: it is still blocked somewhere in the exchange",
+        "the client never reported: it is still blocked somewhere in the exchange ({} user \
+         faults during the exchange, the last {:?})",
+        USER_FAULTS.load(Ordering::Acquire) - faults_before,
+        crate::arch::exceptions::last_user_fault(),
     );
     let reported = crate::sched::ipc_receive(client);
     (served, reported)
