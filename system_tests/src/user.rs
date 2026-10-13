@@ -1260,3 +1260,14 @@ mod eighth_pass_slot_lifecycle_tests;
 /// Cross-ISA: the reap decision and the survey walk are portable kernel code (DECISIONS §19).
 #[cfg(test)]
 mod eighth_pass_rendezvous_scope_tests;
+
+/// **Revocation against a delegation that is still being made** (an eighth outsider pass at the
+/// confinement claim, claim 30). Two places the cited in-flight test names as unmeasured: the
+/// race window between `SEND_CAP`'s start and the filing of the copy, forced certain with the test
+/// kernel's delegation seam, and the `x86_64` PortRange sweep through a parked hand-off. The
+/// refused run answers `NoSuchSlot` and parks nothing; the control run delivers. Its own header
+/// has the reasoning.
+///
+/// Cross-ISA for the seam test; the port test is `x86_64` only (DECISIONS §19).
+#[cfg(test)]
+mod eighth_pass_delegation_race_tests;
