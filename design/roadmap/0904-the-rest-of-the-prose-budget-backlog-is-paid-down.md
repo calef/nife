@@ -36,9 +36,10 @@ documents this file listed under the cap. Each commit says what moved and why. T
 - §123 (boot-time re-derivation).
 
 Two decisions remained, 3,563 words over between them, and both waited
-on calef. The marked exceptions for
+on calef.
 [`0047-navigation-and-naming.md`](0047-navigation-and-naming.md) and
-[`0139-drive-down-unsafe.md`](0139-drive-down-unsafe.md) are not in this list.
+[`0139-drive-down-unsafe.md`](0139-drive-down-unsafe.md) are not in this list; each is a page
+under the cap, done outside this milestone.
 
 | decision | words over the cap |
 |---|---|

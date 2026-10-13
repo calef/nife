@@ -59,9 +59,8 @@ The ten hold 69,190 words above the cap, 22% of the tree's excess. `notes/unsafe
 ## The four that stay out, and where each goes
 
 - `design/roadmap/0047-navigation-and-naming.md` (16,257) and
-  `design/roadmap/0139-drive-down-unsafe.md` (14,093). calef ruled on 2026-09-25 (UTC) that
-  neither block is split, and each carries its marked exception. The gate already excuses them, so
-  they are not debt. Leave them alone.
+  `design/roadmap/0139-drive-down-unsafe.md` (14,093). Each is now a page under the cap, done
+  outside this milestone.
 - `design/decisions/0139-cycle-counter-authority.md` (9,481, 17 citing files). A developer never
   edits `design/decisions/`. It is a DECIDED section calef ratified, and its text is what other
   files quote, so a split moves words he signed and breaks glosses that point at them. It goes to
