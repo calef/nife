@@ -1,0 +1,32 @@
+/// PCI configuration offset of the descriptor ring status word.
+pub const DESC_RING_STATUS: u64 = 0xe4;
+/// The bit in it that says a flush is required.
+pub const REQUIRED: u16 = 0x100;
+/// `FEXTNVM11.DISABLE_MULR_FIX`, set before the flush.
+pub const FEXTNVM11_DISABLE_MULR_FIX: u32 = 0x0000_2000;
+/// The dummy transmit's length: FreeBSD sends 512 bytes of the ring itself.
+pub const TX_DUMMY_LEN: u16 = 512;
+
+/// Is a flush required, given the status word and `TDLEN`? FreeBSD flushes nothing when the
+/// transmit ring has no length.
+pub const fn required(status: u16, tdlen: u32) -> bool {
+    status & REQUIRED != 0 && tdlen != 0
+}
+/// The dummy transmit descriptor's second word: insert FCS, 512 bytes, no end of packet and no
+/// status report, exactly FreeBSD's `txd_lower`.
+pub const fn tx_word() -> u64 {
+    TX_DUMMY_LEN as u64 | (0x02u64 << 24)
+}
+/// **The one divergence.** FreeBSD writes the dummy at its own completion cursor and then
+/// writes that same index to `TDT`. This driver has no completion cursor at reset time, so it
+/// writes the dummy at the device's current tail and advances the tail by one, which hands the
+/// device exactly that descriptor: the effect the FreeBSD comment describes ("assign the ring
+/// itself as the data of the next descriptor").
+pub const fn tail_after(tdt: u32, entries: u16) -> u32 {
+    (tdt + 1) % entries as u32
+}
+/// `RXDCTL` for the receive flush: prefetch threshold 31, host threshold 1, granularity in
+/// descriptors, the rest of the register kept.
+pub const fn rxdctl(rxdctl: u32) -> u32 {
+    (rxdctl & 0xffff_c000) | 0x1f | 1 << 8 | 0x0100_0000
+}
