@@ -934,25 +934,20 @@ mod tests {
     /// path install nothing, and a member named after the package still wins.
     #[test]
     fn a_bin_member_is_the_program_when_none_is_named_after_the_package() {
-        let file = written(&[("bin/up", b"\x7fELF up"), ("uptime.licence", b"MIT")]);
-        let got = installable(&catalogue_for(&file), &file).unwrap();
-        assert_eq!((got.program, got.bytes), ("up", &b"\x7fELF up"[..]));
+        fn install(file: &[u8]) -> Result<(std::string::String, usize), Refusal> {
+            installable(&catalogue_for(file), file).map(|g| (g.program.into(), g.bytes.len()))
+        }
+        let file = written(&[("bin/up", b"\x7fELF up"), ("uptime.license", b"MIT")]);
+        assert_eq!(install(&file), Ok(("up".into(), 7)));
         for refused in [
             &[("bin/a", &b"a"[..]), ("bin/b", &b"b"[..])][..],
             &[("bin/", &b"a"[..])][..],
             &[("bin/x/y", &b"a"[..])][..],
         ] {
-            let file = written(refused);
-            assert_eq!(
-                installable(&catalogue_for(&file), &file),
-                Err(Refusal::NoProgram)
-            );
+            assert_eq!(install(&written(refused)), Err(Refusal::NoProgram));
         }
         let file = written(&[("bin/up", b"other"), ("uptime", b"\x7fELF")]);
-        assert_eq!(
-            installable(&catalogue_for(&file), &file).unwrap().program,
-            "uptime"
-        );
+        assert_eq!(install(&file), Ok(("uptime".into(), 4)));
     }
 
     /// **A name finds its package's stem on this architecture and nowhere else** (rung 3a's
