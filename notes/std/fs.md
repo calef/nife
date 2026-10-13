@@ -199,6 +199,10 @@ Still Unsupported, and now genuinely because no verb in the contract backs it:
   `Permissions::readonly` is honestly `false`: authority here is a capability, not a mode bit. The
   modification time is bound by name ([file
   times](file-times.md)); the rest of the time surface has no verb.
+- `rename_noreplace` (unstable, from the 2026-10-13 nightly). `RENAME` always replaces, and
+  [§129 (whether `RENAME` grows a `NOREPLACE` flag)](../../design/decisions/0129-rename-noreplace-flag.md)
+  holds the flag until a customer needs one. The server could check it atomically; a client-side
+  stat-then-rename could not, so the PAL refuses rather than emulate it.
 - File locks and `File::try_lock`.
 - `File::duplicate`. A handle is a token the server minted for one session; copying the number
   would forge a second owner of the same handle, including its close.
