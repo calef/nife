@@ -250,14 +250,27 @@ SECTIONS
         __secondary_stacks_end = .;
     }
 
-    /* The per-CPU interrupt stacks (milestone 124), laid out by kernel/src/interrupt_stack.rs. On
-     * x86_64 these are also what the TSS's IST/RSP0 entries point at, which is a use the other two
-     * architectures have no equivalent of. See notes/stack.md. */
+    /* The per-CPU interrupt stacks: milestone 124 (a thread is born where it lives), laid out by
+     * kernel/src/interrupt_stack.rs. The handler body of a trap from ring 0 moves here in
+     * software; the CPU never switches to them, and neither `TSS.rsp0` (the running thread's own
+     * kernel stack, written by trap.s on every return to ring 3) nor any IST entry points here.
+     * See notes/stack.md. */
     .interrupt_stacks (NOLOAD) : AT(ADDR(.interrupt_stacks) - KERNEL_VA_BASE) ALIGN(4096) {
         __interrupt_stacks_start = .;
         *(.interrupt_stacks)
         . = ALIGN(4096);
         __interrupt_stacks_end = .;
+    }
+
+    /* The stacks the TSS's IST entries point at: milestone 915 (NMI, double fault and machine
+     * check run on their own stacks), provisional. One each per core for the NMI, the double
+     * fault and the machine check, each over an unmapped guard page, laid out by
+     * kernel/src/arch/x86_64/ist.rs. The other two architectures have no equivalent. */
+    .ist_stacks (NOLOAD) : AT(ADDR(.ist_stacks) - KERNEL_VA_BASE) ALIGN(4096) {
+        __ist_stacks_start = .;
+        *(.ist_stacks)
+        . = ALIGN(4096);
+        __ist_stacks_end = .;
     }
 
     __image_end = .;

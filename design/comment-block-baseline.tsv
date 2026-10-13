@@ -340,7 +340,7 @@ xtask/src/install.rs:1	64
 xtask/src/package.rs:1	80
 xtask/src/rollback.rs:1	76
 xtask/src/suite.rs:1054	62
-xtask/src/swish_check/launch.rs:12	68
+xtask/src/swish_check/launch.rs:15	68
 xtask/src/swish_check/run.rs:12	44
 xtask/src/swish_check/transcript.rs:158	43
 xtask/src/time_record.rs:1	67

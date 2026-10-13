@@ -13,9 +13,8 @@ description: >-
 
 # The developer lane
 
-Moved whole from `AGENTS.md` on 2026-10-06 (UTC) by lane/agents-md-skills, wording unchanged apart
-from heading levels and link paths, so where it says "this file" it means `AGENTS.md`. Its name was
-ratified by calef on 2026-10-06 (UTC); notes/skills/README.md records it.
+Where this says "this file", it means `AGENTS.md`. Its name was ratified by calef on 2026-10-06
+(UTC); notes/skills/README.md records it.
 
 The maintainer side of the same queue is in [the maintainer](../maintainer/SKILL.md).
 
@@ -47,6 +46,10 @@ The maintainer side of the same queue is in [the maintainer](../maintainer/SKILL
 A developer's final report ends by handing off: what its work unblocked, and what it found that
 wants a lane of its own.
 
+What a lane writes into the tree states what is true when it merges. What it changed, what that
+replaced and why go in its commit messages and pull request body, never in the document (§298, a
+document states what is in force now).
+
 ## Identified work leaves the lane in a tracked form, or the merge waits
 
 A lane that finds work it is not doing may report it in exactly two shapes, and "worth doing
@@ -75,9 +78,9 @@ The collisions that produced this rule are in
 - Milestone numbers a lane mints are provisional the same way. When one collides, renumber the
   block's file and H1, the commits that name the number, and the pull request title, but keep the
   branch name: renaming the head branch of an open pull request closes the pull request (#1901,
-  2026-10-10 UTC, cut as 868 and merged as 871). The block's status paragraph says it was
-  renumbered, from what, to what, on what date and why; the pull request title carries the new
-  number; and the body's first paragraph gives the old number and the branch it kept. `script/lint`
+  2026-10-10 UTC, cut as 868 and merged as 871). The pull request title carries the new number,
+  and the body's first paragraph gives the old number, the branch it kept and why. The block states
+  only the milestone as it now is (§298 (a document states what is in force now)). `script/lint`
   4b finds the moved block when its slug equals the branch's or its text names the branch, so a
   lane that also retitles writes the branch name into the block. `script/claim` refuses a number
   an open pull request's title or branch already holds.

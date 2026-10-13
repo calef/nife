@@ -41,16 +41,14 @@ line belongs there, not in a caption.
 
 ![Documents over the cap](project-metrics/prose-budget-documents.svg)
 
-calef ratified a 3,000-word cap per document on 2026-09-23, enforced as a ratchet. The first chart
-is the debt in words and the second the documents holding it.
+The 3,000-word cap: the debt in words, then the documents holding it.
 
 ## unsafe blocks outside kernel/src/arch/
 
 ![unsafe density](project-metrics/unsafe.svg)
 
 Blocks per 10,000 code lines outside `kernel/src/arch/`, `script/lint`'s gated census; the dashed
-line is the ceiling. The absolute count rose from 171 to 704 while the density fell by two thirds,
-and only the ratio is about soundness.
+line is the ceiling. Only the ratio, not the count, is about soundness.
 
 ## The same unsafe blocks, by trust boundary
 
@@ -230,10 +228,8 @@ interface, 2026W39 to 2026W42: 283 breaking changes (1042 additions); 5 syscall 
 
 ![Properties the crate milestones require, proven and owed](project-metrics/crate-proofs.svg)
 
-Milestones 813 to 821, each crate at the furthest stage it has cleared; all nine start in the tree.
-Required properties are rows of each block's *What is proven* table. Both read git alone
-(`helpers/crate_release.py`): "standalone" is `script/crate-standalone`'s static half, and "proven"
-means the harness exists and carries a falsification patch.
+Milestones 813 to 821; all nine crates start in the tree. Both charts read git alone
+(`helpers/crate_release.py`).
 
 ## Kani proof harnesses, and what can falsify them
 
@@ -241,8 +237,7 @@ means the harness exists and carries a falsification patch.
 
 - 2026W41: unfalsified fell 56 to 0 across #1697, #1701 and #1713; the middle band is new (§134 (a harness carries a machine-replayable falsification record, or it is not evidence), amended 2026-10-06 UTC). Its two harnesses were examined and no defect in today's code can turn them red; each carries its reason.
 
-The harness count, split three ways: a falsification record, `unfalsifiable` with its reason
-written, and unfalsified. A harness with no record at all is counted as unfalsified. The denominator is harnesses, not
+A harness with no falsification record at all counts as unfalsified. The denominator is harnesses, not
 code: unharnessed code is outside it ([what each ratio is of](denominators.md#the-published-ratios-and-what-each-is-of)).
 
 ## Action items the corrections of error still owe
@@ -271,6 +266,27 @@ Each week is read from its own commit, so 2026W39 is the first correction, alrea
 <!-- function-length: script/metrics writes this -->
 [0.0%](register-of-measures/function-length.md), 0 functions, 0 lines past 100.
 <!-- /function-length -->
+
+## Writing standards
+
+![Documents over a writing-standards limit](project-metrics/writing-standards.svg)
+
+Documents over each writing-standards limit; exempted ones count
+([definitions](register-of-measures/ratchet-debt.md)).
+
+## Comment blocks
+
+![Files with a long comment block](project-metrics/comment-blocks.svg)
+
+![Comment lines past the cap](project-metrics/comment-blocks-excess.svg)
+
+The 40-line comment-block cap: files holding a longer block, then the lines past it.
+
+## Split parents
+
+![Split parents over the index limit](project-metrics/parent-index.svg)
+
+Split parents holding more than an index, marked items included.
 
 ## How it stays current
 

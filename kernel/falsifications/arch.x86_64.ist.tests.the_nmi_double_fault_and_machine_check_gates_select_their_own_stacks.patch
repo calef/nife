@@ -1,0 +1,27 @@
+Falsifies `kernel::arch::x86_64::ist::tests::the_nmi_double_fault_and_machine_check_gates_select_their_own_stacks`.
+
+Architecture: x86_64
+
+The defect: the NMI gate and the machine-check gate select each other's IST entries. Both still
+switch to a per-core stack carrying the per-CPU pointer, so the kernel boots and serves shootdowns;
+what is lost is the separation, since an NMI during a machine check now lands on the stack the
+machine check is running on.
+
+Expected to fail: "vector 2's gate does not select IST entry 2".
+Replayed red on patagonia, 2026-10-13 UTC, `script/test --arch x86_64 --no-host --test the_nmi_double_fault_and_machine_check_gates_select_their_own_stacks`
+(QEMU q35 under PVH, two cores); green with the fix.
+
+diff --git a/kernel/src/arch/x86_64/exceptions.rs b/kernel/src/arch/x86_64/exceptions.rs
+index 77ef33873..a8fa6c719 100644
+--- a/kernel/src/arch/x86_64/exceptions.rs
++++ b/kernel/src/arch/x86_64/exceptions.rs
+@@ -446,7 +446,8 @@ pub fn init() {
+         unsafe {
+             let idt = &mut *IDT.get();
+             for (vector, (gate, &stub)) in idt.iter_mut().zip(ISR_STUBS.iter()).enumerate() {
+-                *gate = IdtEntry::interrupt_gate(stub, super::ist::slot_for(vector));
++                let swapped = match vector { 2 => 18, 18 => 2, v => v };
++                *gate = IdtEntry::interrupt_gate(stub, super::ist::slot_for(swapped));
+             }
+         }
+     }

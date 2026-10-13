@@ -1,0 +1,25 @@
+Falsifies `kernel::arch::x86_64::ist::tests::an_nmi_finds_its_per_cpu_block_whatever_the_gs_base_held`.
+
+Architecture: x86_64
+
+The defect: `isr_paranoid` never writes the kernel's GS base, so the NMI handler runs with whatever
+`IA32_GS_BASE` held when the NMI arrived, which in the windows around `swapgs` is the user's. The
+saved CS says ring 0 there, so a CS-guarded `swapgs` would not fire either; this is that case.
+
+Expected to fail: "the NMI handler read its per-CPU pointer through the decoy GS base".
+Replayed red on patagonia, 2026-10-13 UTC, `script/test --arch x86_64 --no-host --test an_nmi_finds_its_per_cpu_block_whatever_the_gs_base_held`
+(QEMU q35 under PVH, two cores); green with the fix.
+
+diff --git a/kernel/src/arch/x86_64/trap.s b/kernel/src/arch/x86_64/trap.s
+index aefb92483..d0ae225de 100644
+--- a/kernel/src/arch/x86_64/trap.s
++++ b/kernel/src/arch/x86_64/trap.s
+@@ -491,7 +491,7 @@ isr_paranoid:
+     or rax, rdx
+     mov rbx, rax                    # the GS base we found, given back on the way out
+     cmp rbx, [rsp + 176]
+-    je 1f
++    jmp 1f
+     mov rax, [rsp + 176]            # this core's per-CPU pointer
+     mov rdx, rax
+     shr rdx, 32

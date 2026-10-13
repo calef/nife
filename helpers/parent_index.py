@@ -390,6 +390,8 @@ def judge(src):
     small:  [(item, code_lines)] small unmarked items the HANDFUL allowance let stand
     bad:    [(line, text)] malformed marks
     number: the code lines of `held`, the baseline's measure
+    marked_lines: the code lines of `marked`, which the gate excuses and `script/metrics`'
+            parent-index series counts as debt all the same
     """
     toks = lex(src)
     found = items(src, toks)
@@ -397,23 +399,25 @@ def judge(src):
         return None
     code = code_lines(toks)
     held, marked, small, bad = [], [], [], []
+    marked_lines = 0
     for it in found:
         if is_index_item(it):
             continue
+        size = sum(1 for row in range(it['first'], it['last'] + 1) if row in code)
         mark = mark_of(it)
         if mark and mark[0] == 'bad':
             bad.append(mark[1:])
             mark = None
         if mark:
             marked.append((it, mark[1], mark[2]))
+            marked_lines += size
             continue
-        size = sum(1 for row in range(it['first'], it['last'] + 1) if row in code)
         (small if size <= SMALL else held).append((it, size))
     if len(small) > HANDFUL:
         held = sorted(held + small, key=lambda pair: pair[0]['first'])
         small = []
     return dict(held=held, marked=marked, small=small, bad=bad,
-                number=sum(size for _it, size in held))
+                number=sum(size for _it, size in held), marked_lines=marked_lines)
 
 
 def describe(item):
@@ -450,11 +454,15 @@ def git(*args):
     return r.stdout if r.returncode == 0 else None
 
 
+def in_scope(path):
+    """A `.rs` path outside `vendor/`: the files the rules reach, here and in `script/metrics`."""
+    return path.endswith('.rs') and not path.startswith('vendor/')
+
+
 def tracked_rust():
-    """Every `.rs` path the rules reach: tracked outside `vendor/`, untracked ones too."""
+    """Every in-scope path: tracked, and untracked ones too."""
     files = git('ls-files', '-z', '--cached', '--others', '--exclude-standard') or ''
-    return {f for f in files.split('\0')
-            if f and f.endswith('.rs') and not f.startswith('vendor/') and os.path.exists(f)}
+    return {f for f in files.split('\0') if f and in_scope(f) and os.path.exists(f)}
 
 
 BASE_OVERRIDE = None  # `--check --base REV`: falsify the merge-base half against a chosen commit
@@ -713,6 +721,8 @@ pub mod gamma {
     j = judge(INDEX + MARKED)
     check('a marked item is not held, and its mark is read',
           j['number'] == 0 and j['marked'] and j['marked'][0][1] == '2026-10-11')
+    check('a marked item\'s code lines are still measured, for script/metrics\' debt series',
+          j['marked_lines'] == 5)
     j = judge(INDEX + '// Index exception (2026-10-11): because.\n' + FOUR)
     check('a mark with a reason under three words is malformed, and the item is held',
           j['bad'] and j['number'] == 4)

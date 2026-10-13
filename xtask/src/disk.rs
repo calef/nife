@@ -530,13 +530,84 @@ pub(crate) fn seed_installed(architecture: &str) -> bool {
 fn stage_installed(architecture: &str) -> Result<String, String> {
     let root = workspace_root();
     let stem = format!("uptime-0.1.0-{architecture}");
+    let (package, tampered) = genuine_and_tampered(&root, &stem)?;
+    let programs = SeededPrograms::read(&root, architecture)?;
+
+    // `greeting`, the package whose program no image carries: to the gate's package source, with
+    // the lying `uptime`. Every leg fetches it (x86_64 since 2026-10-05, over the `e1000e`).
+    let greeting_stem = format!("greeting-0.1.0-{architecture}");
+    let greeting = read_built_package(&root, &greeting_stem)?;
+    let noteless_stem = format!("noteless-0.1.0-{architecture}");
+    let noteless = read_built_package(&root, &noteless_stem)?;
+    // The second version, whose member bytes differ from 0.1.0's (milestone 614): the row it
+    // makes is a second digest, which is the whole point.
+    let greeting_v2_stem = format!("greeting-0.2.0-{architecture}");
+    let greeting_v2 = read_built_package(&root, &greeting_v2_stem)?;
+    let (archive, image) = image_lacking_the_packages(architecture)?;
+
+    let source = package_source_dir(architecture);
+    let _ = std::fs::remove_dir_all(&source);
+    std::fs::create_dir_all(&source).map_err(|e| format!("{}: {e}", source.display()))?;
+    std::fs::write(source.join(format!("{greeting_stem}.nifepkg")), &greeting)
+        .map_err(|e| format!("{}: {e}", source.display()))?;
+    std::fs::write(source.join(format!("{stem}.nifepkg")), &tampered)
+        .map_err(|e| format!("{}: {e}", source.display()))?;
+    let (indexed_stem, said) = stage_index(&source, architecture, &greeting, &package)?;
+    // **And the image's catalog must not name it**, or installing it would prove nothing about the
+    // index copy: the same claim as the archive check, about the catalog this time.
+    let fs = nifefs::Fs::parse(&image).map_err(|e| format!("{archive} does not parse: {e:?}"))?;
+    let image_catalog = fs
+        .read(package_archive::CATALOG)
+        .map(String::from_utf8_lossy)
+        .unwrap_or_default();
+    if image_catalog
+        .lines()
+        .any(|l| l.split(' ').next() == Some(indexed_stem.as_str()))
+    {
+        return Err(format!(
+            "{archive}'s catalog names {indexed_stem}, so installing it would prove nothing about \
+             the index copy"
+        ));
+    }
+
+    let tree = root.join("target/redoxfs-installed");
+    let _ = std::fs::remove_dir_all(&tree);
+    write_seed_file(tree.join(DOWNLOADED_PACKAGE), &package)?;
+    write_seed_file(tree.join(TAMPERED_PACKAGE), &tampered)?;
+    programs.write(architecture, &tree)?;
+    write_seed_file(tree.join(DOWNLOADED_NOTELESS), &noteless)?;
+    write_seed_file(tree.join(DOWNLOADED_GREETING_0_2_0), &greeting_v2)?;
+    eprintln!(
+        "seed_installed ({architecture}): {stem} ({} bytes, digest {}) at {DOWNLOADED_PACKAGE}, \
+         a tampered copy, {noteless_stem} at \
+         {DOWNLOADED_NOTELESS}, {greeting_v2_stem} at {DOWNLOADED_GREETING_0_2_0}, and three \
+         unvouched programs; no activation set. The package source at {} serves {greeting_stem} \
+         and a lying {stem}",
+        package.len(),
+        String::from_utf8_lossy(&measured_boot::digest_text(&package_archive::sha256(
+            &package
+        ))),
+        source.display(),
+    );
+    eprintln!("seed_installed ({architecture}): {said}; {indexed_stem} is the index's alone");
+    Ok(tree.display().to_string())
+}
+
+/// The package the archive build wrote as `target/packages/<stem>.nifepkg`.
+fn read_built_package(root: &std::path::Path, stem: &str) -> Result<Vec<u8>, String> {
     let built = root.join(format!("target/packages/{stem}.nifepkg"));
-    let package = std::fs::read(&built).map_err(|e| {
+    std::fs::read(&built).map_err(|e| {
         format!(
             "could not read {} (the archive build writes it): {e}",
             built.display()
         )
-    })?;
+    })
+}
+
+/// **The genuine `uptime` package `stem` names, and a tampered copy of it.**
+fn genuine_and_tampered(root: &std::path::Path, stem: &str) -> Result<(Vec<u8>, Vec<u8>), String> {
+    let built = root.join(format!("target/packages/{stem}.nifepkg"));
+    let package = read_built_package(root, stem)?;
     // Checked here with the target's own parser so a seed that could never install says so on the
     // host, rather than as a refusal at the prompt that reads like the installer's fault.
     let parsed = package_archive::Package::parse(&package)
@@ -563,81 +634,17 @@ fn stage_installed(architecture: &str) -> Result<String, String> {
     if reread.verify().is_err() {
         return Err("the tampered copy is not consistent with itself".into());
     }
+    Ok((package, tampered))
+}
 
-    let triple = match architecture {
-        "aarch64" => crate::TARGET,
-        "riscv64" => crate::RISCV_TARGET,
-        _ => crate::X86_TARGET,
-    };
-    let witness = root.join(format!(
-        "target/{triple}/{}/unreachable_network_witness",
-        crate::profile_dir()
-    ));
-    let unvouched = crate::inspect::read_stripped(&witness.display().to_string())
-        .map_err(|e| format!("could not read {}: {e}", witness.display()))?;
-    let malformed = with_note_version(&unvouched, 9)?;
-    let demo = root.join(format!(
-        "target/{triple}/{}/least_authority_demo",
-        crate::profile_dir()
-    ));
-    let asks_an_argument = crate::inspect::read_stripped(&demo.display().to_string())
-        .map_err(|e| format!("could not read {}: {e}", demo.display()))?;
-    let std_grep = crate::farm::std_grep_elf(&format!("{architecture}-unknown-nife"));
-    let std_grep = std_grep
-        .exists()
-        .then(|| crate::inspect::read_stripped(&std_grep.display().to_string()))
-        .transpose()
-        .map_err(|e| format!("could not read std_grep: {e}"))?;
-    let ripgrep = crate::farm::ripgrep_elf(&format!("{architecture}-unknown-nife"));
-    let ripgrep = ripgrep
-        .exists()
-        .then(|| without_symbols(&ripgrep, architecture))
-        .transpose()?;
-    let jig = crate::farm::jig_elf(&format!("{architecture}-unknown-nife"));
-    let jig = jig
-        .exists()
-        .then(|| crate::inspect::read_stripped(&jig.display().to_string()))
-        .transpose()
-        .map_err(|e| format!("could not read jig: {e}"))?;
-    let std_echo = crate::farm::std_echo_elf(&format!("{architecture}-unknown-nife"));
-    let std_echo = std_echo
-        .exists()
-        .then(|| crate::inspect::read_stripped(&std_echo.display().to_string()))
-        .transpose()
-        .map_err(|e| format!("could not read std_echo: {e}"))?;
-
-    // `greeting`, the package whose program no image carries: to the gate's package source, with
-    // the lying `uptime`. Every leg fetches it (x86_64 since 2026-10-05, over the `e1000e`).
-    let greeting_stem = format!("greeting-0.1.0-{architecture}");
-    let greeting_built = root.join(format!("target/packages/{greeting_stem}.nifepkg"));
-    let greeting = std::fs::read(&greeting_built).map_err(|e| {
-        format!(
-            "could not read {} (the archive build writes it): {e}",
-            greeting_built.display()
-        )
-    })?;
-    let noteless_stem = format!("noteless-0.1.0-{architecture}");
-    let noteless_built = root.join(format!("target/packages/{noteless_stem}.nifepkg"));
-    let noteless = std::fs::read(&noteless_built).map_err(|e| {
-        format!(
-            "could not read {} (the archive build writes it): {e}",
-            noteless_built.display()
-        )
-    })?;
-    // The second version, whose member bytes differ from 0.1.0's (milestone 614): the row it
-    // makes is a second digest, which is the whole point.
-    let greeting_v2_stem = format!("greeting-0.2.0-{architecture}");
-    let greeting_v2_built = root.join(format!("target/packages/{greeting_v2_stem}.nifepkg"));
-    let greeting_v2 = std::fs::read(&greeting_v2_built).map_err(|e| {
-        format!(
-            "could not read {} (the archive build writes it): {e}",
-            greeting_v2_built.display()
-        )
-    })?;
-    // **The claim the prompt cannot check: the image does not carry them.** Neither is a
-    // `grant_plan::Prog`, so the progenitor's image-name refusal (§229) cannot see them either way,
-    // and only the archive can say. Read the archive this leg boots and refuse to seed if it has
-    // either program, since every line about them after that would prove nothing.
+/// **The archive this leg boots, read and checked to carry neither `greeting` nor `noteless`.**
+///
+/// The claim the prompt cannot check: the image does not carry them. Neither is a
+/// `grant_plan::Prog`, so the progenitor's image-name refusal (§229) cannot see them either way,
+/// and only the archive can say. Read the archive this leg boots and refuse to seed if it has
+/// either program, since every line about them after that would prove nothing. Returns the
+/// archive's path and bytes.
+fn image_lacking_the_packages(architecture: &str) -> Result<(String, Vec<u8>), String> {
     let archive = match architecture {
         "aarch64" => crate::archive::initial_ramdisk_path(),
         "riscv64" => crate::archive::riscv_initial_ramdisk_path(),
@@ -653,77 +660,104 @@ fn stage_installed(architecture: &str) -> Result<String, String> {
             ));
         }
     }
+    Ok((archive, image))
+}
 
-    let source = package_source_dir(architecture);
-    let _ = std::fs::remove_dir_all(&source);
-    std::fs::create_dir_all(&source).map_err(|e| format!("{}: {e}", source.display()))?;
-    std::fs::write(source.join(format!("{greeting_stem}.nifepkg")), &greeting)
-        .map_err(|e| format!("{}: {e}", source.display()))?;
-    std::fs::write(source.join(format!("{stem}.nifepkg")), &tampered)
-        .map_err(|e| format!("{}: {e}", source.display()))?;
-    let (indexed_stem, said) = stage_index(&source, architecture, &greeting, &package)?;
-    // **And the image's catalog must not name it**, or installing it would prove nothing about the
-    // index copy: the same claim as the archive check above, about the catalog this time.
-    let image_catalog = fs
-        .read(package_archive::CATALOG)
-        .map(String::from_utf8_lossy)
-        .unwrap_or_default();
-    if image_catalog
-        .lines()
-        .any(|l| l.split(' ').next() == Some(indexed_stem.as_str()))
-    {
-        return Err(format!(
-            "{archive}'s catalog names {indexed_stem}, so installing it would prove nothing about \
-             the index copy"
+/// **The programs the seed writes onto the disk outside any package**: three unvouched ones, and
+/// the farm's builds the script's lines run when they were built.
+struct SeededPrograms {
+    unvouched: Vec<u8>,
+    asks_an_argument: Vec<u8>,
+    malformed: Vec<u8>,
+    std_grep: Option<Vec<u8>>,
+    ripgrep: Option<Vec<u8>>,
+    jig: Option<Vec<u8>>,
+    std_echo: Option<Vec<u8>>,
+}
+
+impl SeededPrograms {
+    fn read(root: &std::path::Path, architecture: &str) -> Result<Self, String> {
+        let triple = match architecture {
+            "aarch64" => crate::TARGET,
+            "riscv64" => crate::RISCV_TARGET,
+            _ => crate::X86_TARGET,
+        };
+        let witness = root.join(format!(
+            "target/{triple}/{}/unreachable_network_witness",
+            crate::profile_dir()
         ));
+        let unvouched = crate::inspect::read_stripped(&witness.display().to_string())
+            .map_err(|e| format!("could not read {}: {e}", witness.display()))?;
+        let malformed = with_note_version(&unvouched, 9)?;
+        let demo = root.join(format!(
+            "target/{triple}/{}/least_authority_demo",
+            crate::profile_dir()
+        ));
+        let asks_an_argument = crate::inspect::read_stripped(&demo.display().to_string())
+            .map_err(|e| format!("could not read {}: {e}", demo.display()))?;
+        let farm = format!("{architecture}-unknown-nife");
+        let std_grep = read_if_built(&crate::farm::std_grep_elf(&farm), "std_grep")?;
+        let ripgrep = crate::farm::ripgrep_elf(&farm);
+        let ripgrep = ripgrep
+            .exists()
+            .then(|| without_symbols(&ripgrep, architecture))
+            .transpose()?;
+        let jig = read_if_built(&crate::farm::jig_elf(&farm), "jig")?;
+        let std_echo = read_if_built(&crate::farm::std_echo_elf(&farm), "std_echo")?;
+        Ok(Self {
+            unvouched,
+            asks_an_argument,
+            malformed,
+            std_grep,
+            ripgrep,
+            jig,
+            std_echo,
+        })
     }
 
-    let tree = root.join("target/redoxfs-installed");
-    let _ = std::fs::remove_dir_all(&tree);
-    let write = |path: std::path::PathBuf, bytes: &[u8]| {
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    /// Write each to its place under `tree`, and `rg`'s corpus beside `rg`.
+    fn write(&self, architecture: &str, tree: &std::path::Path) -> Result<(), String> {
+        write_seed_file(tree.join(INSTALLED_UNVOUCHED), &self.unvouched)?;
+        write_seed_file(
+            tree.join(INSTALLED_ASKS_AN_ARGUMENT),
+            &self.asks_an_argument,
+        )?;
+        write_seed_file(tree.join(INSTALLED_MALFORMED_NOTE), &self.malformed)?;
+        if let Some(bytes) = &self.std_echo {
+            write_seed_file(tree.join(INSTALLED_STD_ECHO), bytes)?;
+            let mut large = bytes.clone();
+            large.resize(LARGE_IMAGE_BYTES.max(bytes.len()), 0);
+            write_seed_file(tree.join(INSTALLED_STD_ECHO_LARGE), &large)?;
         }
-        std::fs::write(&path, bytes).map_err(|e| format!("{}: {e}", path.display()))
-    };
-    write(tree.join(DOWNLOADED_PACKAGE), &package)?;
-    write(tree.join(TAMPERED_PACKAGE), &tampered)?;
-    write(tree.join(INSTALLED_UNVOUCHED), &unvouched)?;
-    write(tree.join(INSTALLED_ASKS_AN_ARGUMENT), &asks_an_argument)?;
-    write(tree.join(INSTALLED_MALFORMED_NOTE), &malformed)?;
-    if let Some(bytes) = &std_echo {
-        write(tree.join(INSTALLED_STD_ECHO), bytes)?;
-        let mut large = bytes.clone();
-        large.resize(LARGE_IMAGE_BYTES.max(bytes.len()), 0);
-        write(tree.join(INSTALLED_STD_ECHO_LARGE), &large)?;
+        if let Some(bytes) = &self.std_grep {
+            write_seed_file(tree.join(INSTALLED_STD_GREP), bytes)?;
+        }
+        if let Some(bytes) = &self.jig {
+            write_seed_file(tree.join(INSTALLED_JIG), bytes)?;
+        }
+        if let Some(bytes) = &self.ripgrep {
+            write_seed_file(tree.join(INSTALLED_RIPGREP), bytes)?;
+            let said = stage_ripgrep_corpus(tree)?;
+            eprintln!("seed_installed ({architecture}): {said}");
+        }
+        Ok(())
     }
-    if let Some(bytes) = &std_grep {
-        write(tree.join(INSTALLED_STD_GREP), bytes)?;
+}
+
+/// Write `bytes` to `path` under the seed's tree, making its directory first.
+fn write_seed_file(path: std::path::PathBuf, bytes: &[u8]) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    if let Some(bytes) = &jig {
-        write(tree.join(INSTALLED_JIG), bytes)?;
-    }
-    if let Some(bytes) = &ripgrep {
-        write(tree.join(INSTALLED_RIPGREP), bytes)?;
-        let said = stage_ripgrep_corpus(&tree)?;
-        eprintln!("seed_installed ({architecture}): {said}");
-    }
-    write(tree.join(DOWNLOADED_NOTELESS), &noteless)?;
-    write(tree.join(DOWNLOADED_GREETING_0_2_0), &greeting_v2)?;
-    eprintln!(
-        "seed_installed ({architecture}): {stem} ({} bytes, digest {}) at {DOWNLOADED_PACKAGE}, \
-         a tampered copy, {noteless_stem} at \
-         {DOWNLOADED_NOTELESS}, {greeting_v2_stem} at {DOWNLOADED_GREETING_0_2_0}, and three \
-         unvouched programs; no activation set. The package source at {} serves {greeting_stem} \
-         and a lying {stem}",
-        package.len(),
-        String::from_utf8_lossy(&measured_boot::digest_text(&package_archive::sha256(
-            &package
-        ))),
-        source.display(),
-    );
-    eprintln!("seed_installed ({architecture}): {said}; {indexed_stem} is the index's alone");
-    Ok(tree.display().to_string())
+    std::fs::write(&path, bytes).map_err(|e| format!("{}: {e}", path.display()))
+}
+
+/// The stripped bytes of a farm program at `elf` if it was built, named `label` in an error.
+fn read_if_built(elf: &std::path::Path, label: &str) -> Result<Option<Vec<u8>>, String> {
+    elf.exists()
+        .then(|| crate::inspect::read_stripped(&elf.display().to_string()))
+        .transpose()
+        .map_err(|e| format!("could not read {label}: {e}"))
 }
 
 /// **The index `helpers/tls-peer` serves this leg** (milestone 801 (packages over the internet)):

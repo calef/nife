@@ -232,6 +232,32 @@ This is the mechanism that makes milestone 7 (user mode) safe, and it's another 
 aarch64's clean-sheet design visibly beats x86, where the equivalent is bolted together
 out of the TSS and a privilege-change stack switch.
 
+## Where an asynchronous exception lands, per architecture
+
+The question each port has to answer: can an interrupt, an NMI or an asynchronous error arrive
+while the stack pointer, or the per-CPU pointer, still holds a value the kernel did not choose?
+
+- aarch64: no. An exception from EL0 lands on `SP_EL1`, which EL0 cannot write, and the kernel
+  runs at EL1 with `SPSel=1` throughout, so every vector (IRQ, FIQ, SError included) pushes on a
+  kernel stack. The per-CPU pointer is `TPIDR_EL1`, which EL0 cannot write either, so there is no
+  swap and no window. The kernel uses no NMI: GIC priority masking runs wide open (`ICC_PMR_EL1` =
+  `0xff`) and TLB maintenance is broadcast in hardware.
+- riscv64: no. S-mode has no NMI (a resumable NMI is M-mode's and stays in the firmware), and
+  every S-mode interrupt is gated by `sstatus.SIE`, which the hardware clears on trap entry and
+  `trap_return` and `user_return` keep clear until `sret`. `trap.s` picks the stack from
+  `sstatus.SPP`, which the hardware sets, and recovers the kernel `tp` from the per-hart stash
+  `sscratch` names, which U-mode cannot reach.
+- x86_64: yes, for three vectors, and they have their own stacks. An NMI or machine check
+  ignores `RFLAGS.IF`, and both the `syscall` entry and the exit before `iretq` run briefly in ring 0
+  with the user's GS base (and, at entry, the user's `rsp`). The NMI, double fault and machine
+  check switch to per-core IST stacks and set the GS base without trusting the saved `CS`
+  (milestone 915 (NMI, double fault and machine check run on their own stacks), provisional;
+  [ring 3](x86-port/ring-3.md) and `kernel/src/arch/x86_64/ist.rs`).
+
+A kernel stack overflow whose first fault is the vector's own frame store is a different, synchronous
+case. On aarch64 and riscv64 it still cascades, as the BUGS below record; on x86_64 it becomes a
+double fault, which reports from its own stack.
+
 ## The part that connects to everything else
 
 A thread is, essentially, a stack plus a set of register values.

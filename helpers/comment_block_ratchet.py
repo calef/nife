@@ -288,11 +288,15 @@ def git(*args):
     return r.stdout if r.returncode == 0 else None
 
 
+def in_scope(path):
+    """A `.rs` path outside `vendor/`: the files the rules reach, here and in `script/metrics`."""
+    return path.endswith('.rs') and not path.startswith('vendor/')
+
+
 def tracked_rust():
-    """Every `.rs` path the rules reach: tracked outside `vendor/`, untracked ones too."""
+    """Every in-scope path: tracked, and untracked ones too."""
     files = git('ls-files', '-z', '--cached', '--others', '--exclude-standard') or ''
-    return {f for f in files.split('\0')
-            if f and f.endswith('.rs') and not f.startswith('vendor/') and os.path.exists(f)}
+    return {f for f in files.split('\0') if f and in_scope(f) and os.path.exists(f)}
 
 
 BASE_OVERRIDE = None  # `--check --base REV`, for falsifying the merge-base half against a chosen commit

@@ -3077,7 +3077,8 @@ echo "==> the prose ratchet (§212 words, §213 sentences and bold)"
 # word cap slipped twice in one day because nothing checked it: one lane moved facts into eight
 # notes already over the cap and every one of them grew. The measuring, the baseline and the orphan
 # check live in helpers/prose_ratchet.py, whose header is the manual; the document scope there is
-# shared with script/metrics' prose-budget graph, so the gate and the graph count the same files.
+# shared with script/metrics' prose-budget graph, and so is the word count (`budget_words`, calef's
+# ruling of 2026-10-13 UTC), so the gate and the graph count the same files the same way.
 #
 # A document over a limit passes only while it is no worse than design/prose-baseline.tsv and no
 # worse than it was at the merge base, or while it carries a marked exception with a date and a
@@ -3188,6 +3189,16 @@ echo "==> American spelling and metric units (calef, 2026-10-06)"
 # listed in the helper's header. Fixtures first, so a green check is not a counter matching nothing.
 python3 helpers/house_style.py --selftest
 python3 helpers/house_style.py --check
+echo "==> §298 (a document states what is in force now), calef 2026-10-13"
+# calef ruled on 2026-10-13 (UTC): "We do not need the history in the text. That is what revision
+# control is for." helpers/history_ratchet.py counts the phrases that only a document's own history
+# uses (supersede, "used to say", "was ... until" a date, "renamed from", "moved from" a document,
+# a Timeline heading, a history appendix) in Markdown, fails a count over its ceiling, and fails a
+# branch that adds any net against its merge base. Records of an event are out of scope: a
+# correction of error under §210 (a correction of error), an audit report, a file named for a
+# date. Fixtures first.
+python3 helpers/history_ratchet.py --selftest
+python3 helpers/history_ratchet.py --check
 echo "==> capability is not abbreviated cap (calef, 2026-10-06)"
 # calef ruled on 2026-10-06 (UTC): "I don't think we should abbreviate capability as cap." New
 # code spells it out; the existing identifiers are renamed in one sweep when the tree is quiet,
@@ -3207,6 +3218,13 @@ echo "==> no line-number citations (§277: cite a heading or a symbol)"
 # block) is not a citation; anything else needs a marked exception. Fixtures first.
 python3 helpers/line_citations.py --selftest
 python3 helpers/line_citations.py --check
+echo "==> exception markers the ratchets honor (a warning, never a failure)"
+# A marked exception is the one way an item passes a ratchet's limit with no baseline row, so once a
+# ratchet's debt is gone it is the only way that debt comes back. helpers/exception_markers.py reads
+# each kind with its own gate's parser and prints the count per ratchet and each item; it prints
+# nothing when there are none, and it exits 0 whatever it finds. Fixtures first.
+python3 helpers/exception_markers.py --selftest
+python3 helpers/exception_markers.py
 # Milestone 415 (sub-tripwire drift accumulates across baseline saves), item 3's arithmetic
 # (helpers/baseline_drift.py), against fixtures and with no git:
 # the weekly drift report is a record other people quote, so its sums are checked where a change to

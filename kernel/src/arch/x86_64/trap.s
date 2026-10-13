@@ -39,8 +39,18 @@
 # CPL 0, decline to swap, and dereference the user's value. `RFLAGS.IF` is clear at every such site
 # (an interrupt gate cleared it on entry; `IA32_FMASK` clears it for `syscall`; the two entry points
 # below `cli` before they touch anything), which closes it for everything except an NMI or a machine
-# check. Those need a paranoid entry path that reads `IA32_GS_BASE` and decides, which this port
-# does not have; it is recorded in notes/x86-port/ring-3.md rather than pretended away.
+# check. The same is true on the way in: between `syscall` and its `swapgs`, CS says ring 0 and the
+# GS base is still the user's.
+#
+# SO THE NMI, THE DOUBLE FAULT AND THE MACHINE CHECK DO NOT DECIDE FROM CS AT ALL. Their stubs jump
+# to `isr_paranoid` instead of `isr_common`. They arrive on IST stacks of their own (ist.rs), and the
+# word just above each such stack's frame holds the core's own per-CPU pointer, written at bring-up.
+# `isr_paranoid` reads `IA32_GS_BASE`, and if it is not that pointer it saves it in `rbx` and writes
+# the pointer in; on the way out it writes the saved value back. That is right in every case: from
+# ring 3, from ring 0 with the kernel's base, and from either window above with the user's base,
+# because it neither trusts CS nor exchanges anything, and `IA32_KERNEL_GS_BASE` is never touched.
+# The double fault does not return, but takes this path because its report prints, and printing
+# takes a lock that reads `gs`.
 
 .section .text
 .code64
@@ -76,7 +86,12 @@ isr_\num:
     push 0
     .endif
     push \num
+    # The NMI, double fault and machine check take the paranoid path; see this file's header.
+    .if (\num == 2) || (\num == 8) || (\num == 18)
+    jmp isr_paranoid
+    .else
     jmp isr_common
+    .endif
     .cfi_endproc
     .size isr_\num, . - isr_\num
 .endm
@@ -87,38 +102,9 @@ isr_\num:
     .set vec, vec + 1
 .endr
 
-# ---------------------------------------------------------------------------------------------
-# The common path. The push order below IS the layout of `TrapFrame` in exceptions.rs, read
-# backwards: the first push lands at the highest address, so `r15` is the last field of the register
-# block and `rax` is the first. Reorder one line and Rust reads a different register's value under
-# the right name, silently.
-# ---------------------------------------------------------------------------------------------
-# CFI: this is where the real trap-frame description lives, shared by all 256 stubs (see the note
-# above ISR_STUB) because every one of them hands it an identically-shaped stack: the hardware's
-# five words, then one error-code word (real or the stub's dummy zero), then the vector number,
-# always in that order, always seven words, regardless of which vector fired.
-#
-# `.cfi_signal_frame` marks it as an interrupt frame. Unlike AArch64's vector entries and RISC-V's
-# trap_entry, this one CAN describe the interrupted context's PC and stack pointer, and so keep an
-# unwind going past the trap rather than stopping at it: the x86-64 hardware frame puts RIP and RSP
-# at fixed, known offsets from here (CFA+16 and CFA+40 below), and the SysV DWARF mapping already
-# treats register 16 as the return-address column and register 7 as an ordinary describable
-# register, so no special pseudo-register or GDB cooperation is needed the way AArch64's ELR_mode
-# would need (see vectors.s's CFI note for that comparison, and notes/cfi-unwind.md for what this
-# bought in practice).
-# From here to x86_syscall_entry's end is the pinned hot section: milestone 796 (pin the hot
-# trap path's placement).
-# See notes/benchmarks/kernel-footprint-and-caches.md, "The hot section". A `syscall` runs only
-# isr_restore and x86_syscall_entry. isr_common rides along because it falls through into
-# isr_restore, and splitting them would add a `jmp` to every IDT trap.
-.section ".text.hot.x86_syscall_entry", "ax"
-.type isr_common, @function
-isr_common:
-    .cfi_startproc
-    .cfi_signal_frame
-    .cfi_def_cfa_offset 0
-    .cfi_offset 16, 16              # rip (the return-address column): the interrupted PC
-    .cfi_offset 7, 40                # rsp: the interrupted stack pointer
+# The fifteen general registers, pushed and popped in `TrapFrame`'s order with their CFI, shared
+# by `isr_common` and `isr_paranoid` so the two cannot disagree about the frame.
+.macro PUSH_GPRS
     push r15
     .cfi_def_cfa_offset 8
     .cfi_offset r15, -8
@@ -164,6 +150,89 @@ isr_common:
     push rax
     .cfi_def_cfa_offset 120
     .cfi_offset rax, -120
+.endm
+
+.macro POP_GPRS
+    pop rax
+    .cfi_restore rax
+    .cfi_def_cfa_offset 112
+    pop rbx
+    .cfi_restore rbx
+    .cfi_def_cfa_offset 104
+    pop rcx
+    .cfi_restore rcx
+    .cfi_def_cfa_offset 96
+    pop rdx
+    .cfi_restore rdx
+    .cfi_def_cfa_offset 88
+    pop rsi
+    .cfi_restore rsi
+    .cfi_def_cfa_offset 80
+    pop rdi
+    .cfi_restore rdi
+    .cfi_def_cfa_offset 72
+    pop rbp
+    .cfi_restore rbp
+    .cfi_def_cfa_offset 64
+    pop r8
+    .cfi_restore r8
+    .cfi_def_cfa_offset 56
+    pop r9
+    .cfi_restore r9
+    .cfi_def_cfa_offset 48
+    pop r10
+    .cfi_restore r10
+    .cfi_def_cfa_offset 40
+    pop r11
+    .cfi_restore r11
+    .cfi_def_cfa_offset 32
+    pop r12
+    .cfi_restore r12
+    .cfi_def_cfa_offset 24
+    pop r13
+    .cfi_restore r13
+    .cfi_def_cfa_offset 16
+    pop r14
+    .cfi_restore r14
+    .cfi_def_cfa_offset 8
+    pop r15
+    .cfi_restore r15
+    .cfi_def_cfa_offset 0
+.endm
+
+# ---------------------------------------------------------------------------------------------
+# The common path. The push order below IS the layout of `TrapFrame` in exceptions.rs, read
+# backwards: the first push lands at the highest address, so `r15` is the last field of the register
+# block and `rax` is the first. Reorder one line and Rust reads a different register's value under
+# the right name, silently.
+# ---------------------------------------------------------------------------------------------
+# CFI: this is where the real trap-frame description lives, shared by all 256 stubs (see the note
+# above ISR_STUB) because every one of them hands it an identically-shaped stack: the hardware's
+# five words, then one error-code word (real or the stub's dummy zero), then the vector number,
+# always in that order, always seven words, regardless of which vector fired.
+#
+# `.cfi_signal_frame` marks it as an interrupt frame. Unlike AArch64's vector entries and RISC-V's
+# trap_entry, this one CAN describe the interrupted context's PC and stack pointer, and so keep an
+# unwind going past the trap rather than stopping at it: the x86-64 hardware frame puts RIP and RSP
+# at fixed, known offsets from here (CFA+16 and CFA+40 below), and the SysV DWARF mapping already
+# treats register 16 as the return-address column and register 7 as an ordinary describable
+# register, so no special pseudo-register or GDB cooperation is needed the way AArch64's ELR_mode
+# would need (see vectors.s's CFI note for that comparison, and notes/cfi-unwind.md for what this
+# bought in practice).
+# From here to x86_syscall_entry's end is the pinned hot section: milestone 796 (pin the hot
+# trap path's placement).
+# See notes/benchmarks/kernel-footprint-and-caches.md, "The hot section". A `syscall` runs only
+# isr_restore and x86_syscall_entry. isr_common rides along because it falls through into
+# isr_restore, and splitting them would add a `jmp` to every IDT trap.
+.section ".text.hot.x86_syscall_entry", "ax"
+.type isr_common, @function
+isr_common:
+    .cfi_startproc
+    .cfi_signal_frame
+    .cfi_def_cfa_offset 0
+    .cfi_offset 16, 16              # rip (the return-address column): the interrupted PC
+    .cfi_offset 7, 40                # rsp: the interrupted stack pointer
+    PUSH_GPRS
 
     # Recover the kernel's per-CPU pointer if this trap crossed a privilege boundary. `cs` is field
     # 18 of the TrapFrame (offsets are asserted against `offset_of!` in exceptions.rs), and its low
@@ -225,51 +294,7 @@ isr_restore:
     mov rcx, gs:[{TSS_RSP0_PTR_OFF}]
     mov [rcx], rax
 3:
-    pop rax
-    .cfi_restore rax
-    .cfi_def_cfa_offset 112
-    pop rbx
-    .cfi_restore rbx
-    .cfi_def_cfa_offset 104
-    pop rcx
-    .cfi_restore rcx
-    .cfi_def_cfa_offset 96
-    pop rdx
-    .cfi_restore rdx
-    .cfi_def_cfa_offset 88
-    pop rsi
-    .cfi_restore rsi
-    .cfi_def_cfa_offset 80
-    pop rdi
-    .cfi_restore rdi
-    .cfi_def_cfa_offset 72
-    pop rbp
-    .cfi_restore rbp
-    .cfi_def_cfa_offset 64
-    pop r8
-    .cfi_restore r8
-    .cfi_def_cfa_offset 56
-    pop r9
-    .cfi_restore r9
-    .cfi_def_cfa_offset 48
-    pop r10
-    .cfi_restore r10
-    .cfi_def_cfa_offset 40
-    pop r11
-    .cfi_restore r11
-    .cfi_def_cfa_offset 32
-    pop r12
-    .cfi_restore r12
-    .cfi_def_cfa_offset 24
-    pop r13
-    .cfi_restore r13
-    .cfi_def_cfa_offset 16
-    pop r14
-    .cfi_restore r14
-    .cfi_def_cfa_offset 8
-    pop r15
-    .cfi_restore r15
-    .cfi_def_cfa_offset 0
+    POP_GPRS
 
     # The registers are gone, so `cs` is now three quadwords up: vector, error code, rip, cs. Swap
     # back if we are returning to ring 3, and do it as late as possible: everything between here and
@@ -436,6 +461,61 @@ dispatch_on_interrupt_stack:
     ret
     .cfi_endproc
 .size dispatch_on_interrupt_stack, . - dispatch_on_interrupt_stack
+
+# ---------------------------------------------------------------------------------------------
+# The paranoid path: vectors 2 (NMI), 8 (double fault) and 18 (machine check), each on its own IST
+# stack. This file's header says why they cannot decide from CS; ist.rs says why they have stacks of
+# their own and why an NMI never nests on its stack.
+#
+# The frame is isr_common's, so `x86_paranoid_dispatch` reads the same `TrapFrame`. The difference
+# is the GS base. The IST entry sits 16 bytes below the top of the stack, and the CPU aligned to 16
+# (it already was), so after the hardware's five words, the error code, the vector and fifteen
+# registers (22 words, 176 bytes) the word at `rsp + 176` is the stack's top word: this core's
+# per-CPU pointer, written by `ist::install`.
+#
+# `rbx` holds the interrupted GS base across the call because it is callee-saved; its own value is
+# already in the frame. `rcx`, `rax` and `rdx` are `rdmsr`/`wrmsr`'s operands and are saved too.
+# ---------------------------------------------------------------------------------------------
+.type isr_paranoid, @function
+isr_paranoid:
+    .cfi_startproc
+    .cfi_signal_frame
+    .cfi_def_cfa_offset 0
+    .cfi_offset 16, 16              # rip: the interrupted PC
+    .cfi_offset 7, 40                # rsp: the interrupted stack pointer
+    PUSH_GPRS
+
+    mov ecx, 0xC0000101             # IA32_GS_BASE
+    rdmsr
+    shl rdx, 32
+    or rax, rdx
+    mov rbx, rax                    # the GS base we found, given back on the way out
+    cmp rbx, [rsp + 176]
+    je 1f
+    mov rax, [rsp + 176]            # this core's per-CPU pointer
+    mov rdx, rax
+    shr rdx, 32
+    wrmsr
+1:
+
+    cld
+    mov rdi, rsp                    # 16-byte aligned: the IST entry is, and the frame is 11 x 16
+    call x86_paranoid_dispatch
+
+    cmp rbx, [rsp + 176]
+    je 2f
+    mov ecx, 0xC0000101             # IA32_GS_BASE
+    mov rax, rbx
+    mov rdx, rbx
+    shr rdx, 32
+    wrmsr
+2:
+
+    POP_GPRS
+    add rsp, 16                     # discard the vector number and the error code
+    iretq
+    .cfi_endproc
+.size isr_paranoid, . - isr_paranoid
 
 # ---------------------------------------------------------------------------------------------
 # The first entry to ring 3.

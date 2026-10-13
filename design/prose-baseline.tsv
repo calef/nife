@@ -9,7 +9,7 @@
 # these rows, and a change that bumps it re-measures the rows it moved (`--remeasure`), once.
 # Limits: words 3000, median sentence 20, longest sentence 40, bold 4 per 1,000 words (held as the
 # two counts). Median and bold are not asked of documents under 200 words.
-# measure: 2
+# measure: 3
 path	words	median	longest	bold_lead	bold_inline
 briefs/README.md	-	-	52	-	-
 briefs/gate-a-lane.md	-	-	63	-	-

@@ -209,7 +209,24 @@ fn run_case(case: &Case) -> bool {
         eprintln!("disk-throughput: cannot write {}", log_path.display());
         return false;
     };
+    let Some((mut child, stdout)) = start_case(case) else {
+        return false;
+    };
+    let transcript = read_case_transcript(stdout, &mut log);
+    stop_case(&mut child);
+    let ok = judge_case(case, &transcript);
+    eprintln!(
+        "disk-throughput: {}: {} (log {})",
+        case.name,
+        if ok { "as expected" } else { "WRONG" },
+        log_path.display()
+    );
+    ok
+}
 
+/// Start `case`'s OVMF machine on a fresh NVMe image, its console piped. `None` when it did not
+/// start.
+fn start_case(case: &Case) -> Option<(std::process::Child, std::process::ChildStdout)> {
     let mut cmd = Command::new("helpers/qemu-uefi-x86_64.sh");
     cmd.arg(esp_dir())
         .args(case.qemu)
@@ -228,15 +245,19 @@ fn run_case(case: &Case) -> bool {
         Ok(c) => c,
         Err(e) => {
             eprintln!("disk-throughput: cannot start the OVMF runner: {e}");
-            return false;
+            return None;
         }
     };
-    let pid = child.id();
     let Some(stdout) = child.stdout.take() else {
         let _ = child.kill();
-        return false;
+        return None;
     };
+    Some((child, stdout))
+}
 
+/// The case's console, into `log` whole and onto this terminal where it is the kernel's verdict or
+/// the IOMMU's, until the kernel says it is done.
+fn read_case_transcript(stdout: std::process::ChildStdout, log: &mut std::fs::File) -> String {
     // Read until the kernel says it is done, then stop the machine: it halts rather than exiting.
     // The runner's own bound (300 s) is what ends a boot that never gets there.
     let started = Instant::now();
@@ -254,6 +275,12 @@ fn run_case(case: &Case) -> bool {
             break;
         }
     }
+    transcript
+}
+
+/// **Stop the case's machine and wait for its emulator to be gone.**
+fn stop_case(child: &mut std::process::Child) {
+    let pid = child.id();
     // The runner wraps QEMU (qemu-bounded.sh), so kill its children first and then it, the order
     // `soak::job_mix_sweep` uses and for its reason.
     //
@@ -289,7 +316,11 @@ fn run_case(case: &Case) -> bool {
     {
         std::thread::sleep(Duration::from_millis(100));
     }
+}
 
+/// Whether the transcript holds every line `case` wants, and exactly one verdict after the
+/// preflight.
+fn judge_case(case: &Case, transcript: &str) -> bool {
     let mut ok = true;
     for want in case.want {
         if !transcript.contains(want) {
@@ -314,11 +345,5 @@ fn run_case(case: &Case) -> bool {
         );
         ok = false;
     }
-    eprintln!(
-        "disk-throughput: {}: {} (log {})",
-        case.name,
-        if ok { "as expected" } else { "WRONG" },
-        log_path.display()
-    );
     ok
 }

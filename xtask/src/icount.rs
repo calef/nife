@@ -68,6 +68,41 @@ fn icount_leg(arch: &str, runner: &str, target: &str) -> bool {
         "--- icount: {arch}, single hart, TCG + icount (one instruction = one nanosecond) ---"
     );
 
+    let mut cmd = icount_command(runner, target);
+    let mut child = match cmd.spawn() {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("icount: failed to start the runner: {e}");
+            return false;
+        }
+    };
+
+    let finished = std::sync::Arc::new(AtomicBool::new(false));
+    let panicked = std::sync::Arc::new(AtomicBool::new(false));
+    let watchdog = start_icount_deadline(child.id(), &finished, &panicked);
+
+    let stdout = child.stdout.take().expect("piped stdout");
+    let done = relay_icount_lines(stdout, &panicked);
+    finished.store(true, Ordering::Relaxed);
+    let _ = child.kill();
+    let _ = child.wait();
+    let _ = watchdog.join();
+    let panicked = panicked.load(Ordering::Relaxed);
+
+    if panicked {
+        eprintln!("icount: {arch} FAILED a claim (the panic above says which)");
+        return false;
+    }
+    if !done {
+        eprintln!("icount: {arch} QEMU ended before printing `icount: done`; no verdict");
+        return false;
+    }
+    eprintln!("icount: {arch} claims hold");
+    true
+}
+
+/// **The instrument's QEMU command**: one hart, `-icount`, no accelerator and no devices.
+fn icount_command(runner: &str, target: &str) -> Command {
     let mut cmd = Command::new(runner);
     cmd.arg(format!("target/{target}/debug/kernel"));
     cmd.args(["-icount", "shift=0,sleep=off"]);
@@ -103,15 +138,15 @@ fn icount_leg(arch: &str, runner: &str, target: &str) -> bool {
         cmd.env_remove(device);
     }
     cmd.stdout(std::process::Stdio::piped());
+    cmd
+}
 
-    let mut child = match cmd.spawn() {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("icount: failed to start the runner: {e}");
-            return false;
-        }
-    };
-
+/// **Kill `pid` if the guest gives no verdict in time**, or a few seconds after it panics.
+fn start_icount_deadline(
+    pid: u32,
+    finished: &std::sync::Arc<AtomicBool>,
+    panicked: &std::sync::Arc<AtomicBool>,
+) -> std::thread::JoinHandle<()> {
     // **A deadline, on a thread, because the guest is not obliged to say anything.**
     //
     // The read below blocks, and a QEMU that has wedged before printing (or after panicking, since
@@ -124,43 +159,41 @@ fn icount_leg(arch: &str, runner: &str, target: &str) -> bool {
     // machine that is not making progress at all.
     const DEADLINE_SECS: u64 = 300;
     const PANIC_GRACE_SECS: u64 = 3;
-    let pid = child.id();
-    let finished = std::sync::Arc::new(AtomicBool::new(false));
-    let panicked = std::sync::Arc::new(AtomicBool::new(false));
-    let watchdog = {
-        let finished = std::sync::Arc::clone(&finished);
-        let panicked = std::sync::Arc::clone(&panicked);
-        std::thread::spawn(move || {
-            // Woken in slices so a normal run's thread goes away promptly rather than sleeping out
-            // the whole deadline after everything else is done.
-            let mut grace: Option<u64> = None;
-            for _ in 0..DEADLINE_SECS {
-                std::thread::sleep(std::time::Duration::from_secs(1));
-                if finished.load(Ordering::Relaxed) {
-                    return;
-                }
-                // A panic shortens the fuse rather than taking a path of its own. The reader below
-                // keeps printing for a few seconds, however many lines the message runs to, and then
-                // this kill closes the pipe and ends the read. Counting lines instead was the first
-                // attempt and it hung: the panic printed two and the reader waited forever for a
-                // third that a halted guest was never going to send.
-                match grace {
-                    _ if !panicked.load(Ordering::Relaxed) => {}
-                    None => grace = Some(PANIC_GRACE_SECS),
-                    Some(0) => break,
-                    Some(n) => grace = Some(n - 1),
-                }
+    let finished = std::sync::Arc::clone(finished);
+    let panicked = std::sync::Arc::clone(panicked);
+    std::thread::spawn(move || {
+        // Woken in slices so a normal run's thread goes away promptly rather than sleeping out
+        // the whole deadline after everything else is done.
+        let mut grace: Option<u64> = None;
+        for _ in 0..DEADLINE_SECS {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+            if finished.load(Ordering::Relaxed) {
+                return;
             }
-            if grace.is_none() {
-                eprintln!("icount: no verdict in {DEADLINE_SECS}s; killing QEMU (pid {pid})");
+            // A panic shortens the fuse rather than taking a path of its own. The reader below
+            // keeps printing for a few seconds, however many lines the message runs to, and then
+            // this kill closes the pipe and ends the read. Counting lines instead was the first
+            // attempt and it hung: the panic printed two and the reader waited forever for a
+            // third that a halted guest was never going to send.
+            match grace {
+                _ if !panicked.load(Ordering::Relaxed) => {}
+                None => grace = Some(PANIC_GRACE_SECS),
+                Some(0) => break,
+                Some(n) => grace = Some(n - 1),
             }
-            // `kill(1)` rather than the `Child`, which the reading thread owns.
-            let _ = Command::new("kill").arg("-9").arg(pid.to_string()).status();
-        })
-    };
+        }
+        if grace.is_none() {
+            eprintln!("icount: no verdict in {DEADLINE_SECS}s; killing QEMU (pid {pid})");
+        }
+        // `kill(1)` rather than the `Child`, which the reading thread owns.
+        let _ = Command::new("kill").arg("-9").arg(pid.to_string()).status();
+    })
+}
 
+/// **Relay the guest's `icount:` lines and any panic**, until it says `done` or the pipe closes.
+/// Whether `done` arrived; a panic is recorded in `panicked`.
+fn relay_icount_lines(stdout: std::process::ChildStdout, panicked: &AtomicBool) -> bool {
     use std::io::BufRead;
-    let stdout = child.stdout.take().expect("piped stdout");
     let reader = std::io::BufReader::new(stdout);
     let mut done = false;
     for line in reader.lines() {
@@ -183,20 +216,5 @@ fn icount_leg(arch: &str, runner: &str, target: &str) -> bool {
             panicked.store(true, Ordering::Relaxed);
         }
     }
-    finished.store(true, Ordering::Relaxed);
-    let _ = child.kill();
-    let _ = child.wait();
-    let _ = watchdog.join();
-    let panicked = panicked.load(Ordering::Relaxed);
-
-    if panicked {
-        eprintln!("icount: {arch} FAILED a claim (the panic above says which)");
-        return false;
-    }
-    if !done {
-        eprintln!("icount: {arch} QEMU ended before printing `icount: done`; no verdict");
-        return false;
-    }
-    eprintln!("icount: {arch} claims hold");
-    true
+    done
 }

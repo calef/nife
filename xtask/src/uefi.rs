@@ -367,10 +367,48 @@ pub(crate) fn uefi_boot() -> bool {
     let _ = std::fs::remove_file(&sock);
     let _ = std::fs::remove_file(&shot);
 
-    let mut child = match Command::new("helpers/qemu-uefi-x86_64.sh")
+    let Some(mut child) = start_uefi_screen_boot(&sock) else {
+        return false;
+    };
+    let (stdout, stderr, transcript_so_far) = collect_uefi_streams(&mut child);
+    let serial = child.stdin.take().expect("piped stdin");
+    let watcher = {
+        let (sock, shot) = (sock.clone(), shot.clone());
+        let wire = std::sync::Arc::clone(&transcript_so_far);
+        std::thread::spawn(move || screen_watch(&sock, &shot, serial, &wire))
+    };
+    let screen = watcher.join().unwrap_or_default();
+    // **Stop the machine once the screen has answered**, rather than waiting out the runner's
+    // bound: the kernel never exits, and everything asserted below has been printed by the time the
+    // prompt answered a command. SIGTERM to the wrapper, which is the signal `qemu-bounded.sh`
+    // forwards to QEMU; its own killer is the backstop if this is lost.
+    let _ = Command::new("kill")
+        .args(["-TERM", &child.id().to_string()])
+        .status();
+    let _ = child.wait();
+    let transcript = stdout.join().unwrap_or_default() + &stderr.join().unwrap_or_default();
+    print!("{transcript}");
+
+    let mut ok = uefi_serial_transcript_holds(&transcript);
+
+    // --- What was on the SCREEN: milestone 243's tour, then the shell ---
+    let _ = std::fs::remove_file(&sock);
+    ok &= uefi_screen_showed_the_tour(&screen, &shot);
+    ok &= uefi_screen_showed_the_shell(&screen, &shot);
+
+    if ok {
+        eprintln!("uefi-boot: booted under OVMF from \\EFI\\BOOT\\BOOTX64.EFI");
+    }
+    ok
+}
+
+/// **Start the OVMF machine [`uefi_boot`] reads**, its monitor on `sock` and all three standard
+/// streams piped. `None` after saying why it did not start.
+fn start_uefi_screen_boot(sock: &str) -> Option<std::process::Child> {
+    match Command::new("helpers/qemu-uefi-x86_64.sh")
         .arg(uefi_screen_esp_dir())
         .current_dir(workspace_root())
-        .env("NIFE_SCREEN_MON", &sock)
+        .env("NIFE_SCREEN_MON", sock)
         // **Two cores** (milestone 195), where every other x86_64 boot in this tree takes one.
         // `arch::x86_64::ap_boot` copies its real-mode trampoline to physical 0x8000, a page no
         // loader had ever asked the firmware for, so secondary cores under firmware worked or did
@@ -395,12 +433,24 @@ pub(crate) fn uefi_boot() -> bool {
         .stderr(std::process::Stdio::piped())
         .spawn()
     {
-        Ok(c) => c,
+        Ok(c) => Some(c),
         Err(e) => {
             eprintln!("uefi-boot: failed to run helpers/qemu-uefi-x86_64.sh: {e}");
-            return false;
+            None
         }
-    };
+    }
+}
+
+/// The two reader threads [`collect_uefi_streams`] starts, and the transcript they share.
+type CollectedStreams = (
+    std::thread::JoinHandle<String>,
+    std::thread::JoinHandle<String>,
+    std::sync::Arc<std::sync::Mutex<String>>,
+);
+
+/// **Collect the runner's stdout and stderr on threads of their own**, each into its own string
+/// for the join and both into one shared transcript as they arrive.
+fn collect_uefi_streams(child: &mut std::process::Child) -> CollectedStreams {
     // Both streams collected on threads of their own, because the watcher below decides when the
     // boot has said enough and a blocking read here would decide it instead.
     //
@@ -435,24 +485,12 @@ pub(crate) fn uefi_boot() -> bool {
         Box::new(child.stderr.take().expect("piped stderr")),
         std::sync::Arc::clone(&transcript_so_far),
     );
-    let serial = child.stdin.take().expect("piped stdin");
-    let watcher = {
-        let (sock, shot) = (sock.clone(), shot.clone());
-        let wire = std::sync::Arc::clone(&transcript_so_far);
-        std::thread::spawn(move || screen_watch(&sock, &shot, serial, &wire))
-    };
-    let screen = watcher.join().unwrap_or_default();
-    // **Stop the machine once the screen has answered**, rather than waiting out the runner's
-    // bound: the kernel never exits, and everything asserted below has been printed by the time the
-    // prompt answered a command. SIGTERM to the wrapper, which is the signal `qemu-bounded.sh`
-    // forwards to QEMU; its own killer is the backstop if this is lost.
-    let _ = Command::new("kill")
-        .args(["-TERM", &child.id().to_string()])
-        .status();
-    let _ = child.wait();
-    let transcript = stdout.join().unwrap_or_default() + &stderr.join().unwrap_or_default();
-    print!("{transcript}");
+    (stdout, stderr, transcript_so_far)
+}
 
+/// **The serial transcript's half of the gate**: every line the firmware path has to print, and
+/// none of the tells that it did not run. False after naming each that failed.
+fn uefi_serial_transcript_holds(transcript: &str) -> bool {
     let mut ok = true;
     for wanted in [
         // The self-test verdict and the hand-over, rather than the halt line this used to want:
@@ -496,8 +534,13 @@ pub(crate) fn uefi_boot() -> bool {
         ok = false;
     }
 
-    // --- What was on the SCREEN: milestone 243's tour, then the shell ---
-    let _ = std::fs::remove_file(&sock);
+    ok
+}
+
+/// **The screen's first reading, milestone 243's tour**, reported; false when it was not there,
+/// after saying whether the framebuffer or the handshake is to blame.
+fn uefi_screen_showed_the_tour(screen: &ScreenReadings, shot: &Path) -> bool {
+    let mut ok = true;
     match (&screen.tour, screen.held) {
         (Some(text), _) => {
             let rows = text.lines().filter(|l| !l.is_empty()).count();
@@ -558,6 +601,13 @@ pub(crate) fn uefi_boot() -> bool {
             ok = false;
         }
     }
+    ok
+}
+
+/// **The screen's last two readings, the shell's prompt and its answer to a serial command**,
+/// reported; false when either never reached the screen.
+fn uefi_screen_showed_the_shell(screen: &ScreenReadings, shot: &Path) -> bool {
+    let mut ok = true;
     match (&screen.prompt, &screen.answer) {
         (Some(_), Some(text)) => {
             eprintln!(
@@ -588,10 +638,6 @@ pub(crate) fn uefi_boot() -> bool {
             );
             ok = false;
         }
-    }
-
-    if ok {
-        eprintln!("uefi-boot: booted under OVMF from \\EFI\\BOOT\\BOOTX64.EFI");
     }
     ok
 }

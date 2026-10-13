@@ -156,6 +156,12 @@ where
         let (bottom, top) = crate::interrupt_stack::span(id);
         va("interrupt stack", bottom, top, Flags::kernel_data())?;
     }
+    for id in 0..crate::cpu::MAX_CPUS {
+        for k in 0..super::super::ist::VECTORS.len() {
+            let (bottom, top) = super::super::ist::span(id, k);
+            va("IST stack", bottom, top, Flags::kernel_data())?;
+        }
+    }
 
     Ok(())
 }
@@ -292,5 +298,11 @@ where
             m.translate(crate::interrupt_stack::guard(id)).is_none(),
             "an interrupt stack's guard page IS mapped: its overflow protection is off"
         );
+        for k in 0..super::super::ist::VECTORS.len() {
+            assert!(
+                m.translate(super::super::ist::guard(id, k)).is_none(),
+                "an IST stack's guard page IS mapped: its overflow protection is off"
+            );
+        }
     }
 }

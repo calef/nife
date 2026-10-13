@@ -188,14 +188,13 @@ fn broadcast(kind: u8, word: u64) {
 /// Called from the trap path for vector 2 and from nowhere else. Returns whether this NMI was one
 /// of ours, so the caller can tell a shootdown from an NMI this kernel did not send.
 ///
-/// # It may not touch anything reached through `gs`
+/// # It names its core from the local APIC
 ///
-/// An NMI lands wherever it lands, and `trap.s` documents one window where `IA32_GS_BASE` still
-/// holds the *user's* value while `cs` says ring 0 (between the exit `swapgs` and the `iretq`). In
-/// that window `cpu::id()`, which reads that MSR, would answer with somebody else's arithmetic. So
-/// this core names itself from the local APIC's own id register instead, which is hardware ground
-/// truth and needs no per-CPU pointer to read. Nothing else here dereferences per-CPU state, takes
-/// a lock, or prints.
+/// `isr_paranoid` (trap.s) has already put the kernel's GS base in place, so `cpu::id()` would
+/// answer correctly here even in the windows around `swapgs` where the interrupted code held the
+/// user's. This still names its core from the local APIC's own id register, which is hardware
+/// ground truth and needs no per-CPU pointer, so the shootdown does not depend on the paranoid
+/// entry being right. Nothing here takes a lock or prints.
 pub fn serve_shootdown_nmi() -> bool {
     let me = super::irq::local_apic_id() as usize;
     let bit = 1usize << me;

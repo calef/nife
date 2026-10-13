@@ -15,9 +15,8 @@ description: >-
 
 # Deciding, and taking a decision to an architect
 
-Moved whole from `AGENTS.md` on 2026-10-06 (UTC) by lane/agents-md-skills, wording unchanged apart
-from heading levels and link paths, so where it says "this file" it means `AGENTS.md`. Its name was
-ratified by calef on 2026-10-06 (UTC); notes/skills/README.md records it.
+Where this says "this file", it means `AGENTS.md`. Its name was ratified by calef on 2026-10-06
+(UTC); notes/skills/README.md records it.
 
 ## Move fast on what can be undone; be methodical on what cannot
 
@@ -107,7 +106,9 @@ you` comment, with `needs-architect`, including one first raised in a chat (lane
 only in a chat is missing from his queue, `script/architect-queue`, which lists an item when it
 carries the label or has an unanswered ask. Record his answer with `script/record-ruling`, which
 posts it and swaps `needs-architect` for `architect-ruled` (plus `held-by-lane` on a send-back) in
-one step. Where the label and the open questions disagree, the drain repairs one direction and
+one step. In the tree, write the ruling as the rule in force, with its date, rewritten in place. The
+ruling it replaces and the conversation that led to it stay on the pull request and in git, and a
+replaced decision's frontmatter names its successor (§298 (a document states what is in force now)). Where the label and the open questions disagree, the drain repairs one direction and
 flags the other (calef's ruling on #1792, 2026-10-06 UTC): an open question or a moved surface with
 no label gets `needs-architect` added by the bot, since a wrong add costs calef a glance; a label
 with no open question gets `needs-maintainer` and is never removed by the bot, since a wrong removal

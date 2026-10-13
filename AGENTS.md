@@ -24,8 +24,7 @@ piece (green tests first); push after green.
 ## Read these when the work calls for them
 
 This file is what every session and every lane needs on every turn. The rest of the rules are in
-`notes/skills/`, one directory each, moved whole from this file on 2026-10-06 (UTC) with their
-wording unchanged. Each is an Agent Skills `SKILL.md`: an agent that reads only files follows the
+`notes/skills/`, one directory each. Each is an Agent Skills `SKILL.md`: an agent that reads only files follows the
 link below at the moment named, and a tool that loads skills finds the same files through
 `.claude/skills/` and `.agents/skills/`, which link to them. A lane brief names the ones its lane
 needs.
@@ -257,6 +256,11 @@ These rules bind every note, which is prose an architect rereads for months:
 - No "delve", "comprehensive", "landscape", "moreover", "furthermore", "notably", "it's worth
   noting", "straightforward".
 - No sycophantic openers, no filler conclusions that restate what was just said.
+- State what is in force now. How it got that way (a replaced ruling, a status timeline, "was X,
+  now Y", "moved here from", which lane did what when) goes in the commit message and the pull
+  request body, where git keeps it (calef, 2026-10-13 UTC).
+  [§298 (a document states what is in force now)](design/decisions/0298-a-document-states-what-is-in-force-now.md) lists what stays, and
+  `helpers/history_ratchet.py` holds the phrases to a ratchet.
 - Plain, direct language. Vary sentence length. Write like a person. The numbers are [§213 (writing standards)](design/decisions/0213-writing-standards.md), and length is [§212 (a prose budget)](design/decisions/0212-a-prose-budget-for-every-document.md). Spelling is American and measurements metric (calef, 2026-10-06).
 
 ## Environment
