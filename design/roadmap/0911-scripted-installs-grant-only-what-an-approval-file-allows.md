@@ -93,8 +93,9 @@ or yaml". What it must hold:
     `root` spelled out rather than implied;
   - whether it may run as a service (910);
   - the directories it may hold, each with its rights;
-  - any other capability a manifest can ask for (the network's socket budget, the installer endpoint
-    itself), by the same names `jig install`'s confirmation prints;
+  - any other capability a manifest can ask for (the network, as milestone 892 (a std program at the
+    prompt holds the network and a resolver) grants it, and the installer endpoint itself), by the
+    same names `jig install`'s confirmation prints;
   - whether an update may be installed (yes or no), and whether the package may be removed.
 - Nothing else. No wildcards over packages, no "any zone", and no version ranges. Which version
   installs is the question of §195 (a reviewed recipe vouches for a package, and the machine's owner
