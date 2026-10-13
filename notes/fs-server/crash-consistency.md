@@ -6,8 +6,8 @@ milestone 55 closed, and the device-level test.
 
 ## From a claim to a measurement
 
-This used to be a sentence in "What is proven" saying RedoxFS is copy-on-write, so crash consistency
-is designed in. That was a description of somebody else's design document. DECISIONS §34 (RedoxFS is
+"RedoxFS is copy-on-write, so crash consistency is designed in" is a description of somebody else's
+design document. DECISIONS §34 (RedoxFS is
 the primary filesystem, on three conditions) made it a condition rather than a claim for exactly that
 reason. It is now a measurement.
 
@@ -44,9 +44,8 @@ is identical. What moves is *where* the lying device is caught, and it moves the
 cases go from "refused at a read" to "recovered", which is what a smaller record predicts: a dropped
 write damages less. 0 silently wrong in both.
 
-A correction this re-run forced, and it is not about the record level. The counts above used to read
-93, 372 and 186, with 112 recovered and 74 refused. Those are milestone 37's, and the workload has
-grown since: the same suite at the *old* record level counts 134 fault points today, not 93. Nothing
+A correction this re-run forced, and it is not about the record level. Milestone 37's counts were
+93, 372 and 186, with 112 recovered and 74 refused, and the workload has grown since: the same suite at the *old* record level counts 134 fault points today, not 93. Nothing
 was checking them, because they live in prose, and the tests assert the property rather than the
 count. That is rung four working as badly as rung four works. The property is gated, and the
 arithmetic describing it is not.

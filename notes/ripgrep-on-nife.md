@@ -40,19 +40,18 @@ uses, and placed as the progenitor places it: a `READ` frame mapped read-only at
 (milestone 205 (how a foreign program is told what to do)). The image loads at its own link address
 since milestone 206 (a program image has under 896 KiB) moved the ceiling to 496 MiB.
 
-`rg` reaches that archive only after somebody runs `helpers/build-ripgrep.sh`, and no gate does,
-because fetching its crate tree is a DECISIONS §46 (thin primitives or whole subsystems) decision. It
-is never part of the base image: calef ruled on 2026-10-07 (UTC) that `rg` is installed with `jig`
-from a package in nifeos/basalt. `swish` cannot name it, since its program table has no `rg`. So
-`rg pattern dir` by name waits on the packaging milestone pull request #1797 mints and on milestone
-809 (the package client becomes a program, `jig`) to install it.
+`rg` reaches that archive only after `cargo xtask basalt-fetch`, which takes the program member of
+basalt's published package, accepted under the digest `xtask/basalt-pins.index` pins (milestone
+810 (`ripgrep` is packaged in basalt and installed with `jig`)). CI's `rg-threads` and
+`swish-check` rows run it. It is never part of the base image: calef ruled on 2026-10-07 (UTC) that
+`rg` is installed with `jig` from a package in nifeos/basalt, and `swish-check` types `jig install
+ripgrep` then `rg --version` against the same package.
 
-By its path it already runs (milestone 595 (the shell runs a `std` program), 2026-10-07 (UTC)).
-`helpers/build-ripgrep.sh` links a manifest note into `rg` (`cargo xtask foreign-note`), and
-`script/swish-check` copies it to its disk as `installed/rg` without its symbol table, which put it
-over the 4 MiB image cap. Typed `/installed/rg needle docs ../hay/secret.txt`, it finds the needle in
-the granted `docs` and cannot open the path outside it, on all three architectures. The lines skip
-wherever `rg` was not built, which is CI.
+By its path it runs too (milestone 595 (the shell runs a `std` program)). basalt's build links a
+manifest note into `rg` (`cargo xtask foreign-note`), and `script/swish-check` copies the
+package's `rg` to its disk as `installed/rg` without its symbol table. Typed `/installed/rg needle
+docs ../hay/secret.txt`, it finds the needle in the granted `docs` and cannot open the path outside
+it, on all three architectures. The lines skip, and say so, only where nothing was fetched.
 
 ## Parity (DECISIONS §19)
 
@@ -62,8 +61,8 @@ wherever `rg` was not built, which is CI.
 | `riscv64-unknown-nife` | 11.5 MB | the same | the same | the same |
 | `x86_64-unknown-nife` | 4.4 MB | the same | the same | the same |
 
-Run 2026-10-07 with `script/test --arch <arch> --test ripgrep`, debug kernel under TCG, after
-`helpers/build-ripgrep.sh`. All eight tests in the file pass on each. x86_64's OVMF leg has no
+Run 2026-10-07 with `script/test --arch <arch> --test ripgrep`, debug kernel under TCG, with `rg`
+built from the same 14.1.1 source and flags basalt's recipe uses. All eight tests in the file pass on each. x86_64's OVMF leg has no
 RedoxFS disk and skips them, as it skips the walk tests.
 
 The riscv64 ELF is larger from file padding and section alignment rather than code (`.text` 1.23
@@ -72,10 +71,10 @@ loader ignores it, as it does for `std_exerciser`.
 
 ## Building it
 
-`helpers/build-ripgrep.sh` downloads the published crate and builds every target in one pass, with
-no vendored copy and no fork. `ripgrep` is untouched. Since 2026-10-10 (UTC) one dependency is
-patched: `ignore` 0.4.23, fetched from crates.io by its checksum and given
-`helpers/ripgrep-ignore-walk.patch`, about ten lines. Milestone 812 (`std::thread::spawn` runs real
+basalt builds it: `recipes/ripgrep.toml` and `helpers/packages.py` in nifeos/basalt download the
+published crate and build every target in one pass against a pinned nife, with no vendored copy
+and no fork. `ripgrep` is untouched. One dependency is patched: `ignore` 0.4.23, fetched from
+crates.io by its checksum and given basalt's `patches/ripgrep-ignore-walk.patch`, about ten lines. Milestone 812 (`std::thread::spawn` runs real
 threads in one address space) gave `rg` threads, so it walks in parallel, and `ignore`'s parallel
 walker answered "unsupported platform" for every path on a target that is neither `unix` nor
 `windows`. calef ruled the patch on pull request #1892; BUGS has its upkeep. What else differs from a Linux build is on the command line: the
@@ -142,7 +141,7 @@ refusal is about enumeration alone.
 
 ## The walk at the prompt
 
-`script/swish-check` stages a copy of `crates/` at `/search/crates` when `rg` was built, and types
+`script/swish-check` stages a copy of `crates/` at `/search/crates` when `rg` was fetched, and types
 this in `/search` (2026-10-07, milestone 121):
 
 ```
@@ -152,8 +151,8 @@ crates/abi/src/lib.rs:    /// # BUGS
 ...
 ```
 
-The gate holds no list of matches. `helpers/build-ripgrep.sh` also builds 14.1.1 for the host, and
-staging runs it over the same copy (`--no-config --no-ignore-parent`, so the host sees what the
+The gate holds no list of matches. `cargo xtask basalt-fetch` also fetches ripgrep's own 14.1.1
+build for the host, pinned by SHA-256, and staging runs it over the same copy (`--no-config --no-ignore-parent`, so the host sees what the
 guest sees) into `target/ripgrep-walk-expected.txt`. The answer must hold every line of that, as
 often, and nothing else, in any order, since RedoxFS and APFS list a directory differently. On
 2026-10-07 that was 349 lines from 136 files, matched on all three architectures, in 14.9 s
@@ -217,7 +216,7 @@ Not measured yet: each directory costs `ripgrep` failed opens for `.gitignore`, 
 caretaker, made the walk 0.35 ms, and nothing here runs `rg` through it.
 
 ```
-helpers/build-ripgrep.sh              # fetch ripgrep 14.1.1, build for all three nife targets
+cargo xtask basalt-fetch              # basalt's rg for all three targets, and the host's reference
 script/test --arch aarch64 --test ripgrep
 script/bench --real --release --smp   # rg_search, beside fs_walk
 sh bench/host/run_linux_rg.sh         # needs rustup target add aarch64-unknown-linux-musl
@@ -225,8 +224,8 @@ sh bench/host/run_linux_rg.sh         # needs rustup target add aarch64-unknown-
 
 ## BUGS
 
-- **`ignore` carries nife's own patch**: `helpers/ripgrep-ignore-walk.patch`, the parallel walker on
-  a target that is neither `unix` nor `windows` (milestone 812, #1892). nife maintains it until
+- **`ignore` carries nife's own patch**: basalt's `patches/ripgrep-ignore-walk.patch`, the parallel
+  walker on a target that is neither `unix` nor `windows` (milestone 812, #1892). nife maintains it until
   upstream fixes the bug by any route, and re-checks it whenever ripgrep or `ignore` is bumped. The
   upstream issue: (link pending). Re-checked 2026-10-12 (UTC), lane milestone/121-rg-threads: the
   patch does not exist because threads were missing, and it cannot go now that they are here. The
@@ -247,13 +246,10 @@ sh bench/host/run_linux_rg.sh         # needs rustup target add aarch64-unknown-
   finished inside the `std` heap on all three legs. The host's `rg` with `--threads 1 --no-mmap`
   over the same copy peaks at a 1.42 MiB footprint (2.7 MiB resident) on macOS.
 
-- **The kernel suite's `rg` tests run in CI since 2026-10-12 (UTC)**, in the `rg-threads` rows
-  (lane milestone/121-rg-threads), at four cores, with the threaded walk. The `test` job still
-  builds no `rg`, so they skip there.
-- **The kernel suite still skips `rg`; the prompt does not, since 2026-10-08 (UTC).** CI's
-  `swish-check` rows build `rg` with `helpers/build-ripgrep.sh` and type its lines, the walk
-  included, on all three legs, and refuse to skip them there (lane milestone/121-rg-ci). The
-  timings above are from one machine on one evening.
+- **The kernel suite's `rg` tests run in CI only in the `rg-threads` rows**, at four cores, with
+  the threaded walk. The `test` job fetches no `rg`, so they skip there. CI's `swish-check` rows
+  type `rg`'s lines, the walk included, on all three legs, and refuse to skip them. The timings
+  above are from one machine on one evening.
 - **The gap to Linux is not attributed.** The failed ignore-file opens are a guess, not a
   measurement; a request count like the one milestone 606 (a directory walk costs what it does on Linux) took
   with `walk_model` would settle it.
@@ -269,11 +265,9 @@ sh bench/host/run_linux_rg.sh         # needs rustup target add aarch64-unknown-
   `std` region is 384 (`grant_plan::STD_REGION_PAGES`). Unmeasured above four cores.
 - **One version, one program.** `ripgrep` 14.1.1 is evidence about this platform, not a survey of
   crates.io.
-- **The build script trusts crates.io's index for its one hash.** Since 2026-10-08 (UTC) it refuses
-  a `ripgrep-14.1.1.crate` whose SHA-256 is not the index's `cksum`, and builds `--locked` against
-  the crate's own `Cargo.lock`, whose checksums cargo verifies for every dependency. A version
-  given by hand is fetched unchecked and says so. Packaging, milestone 810 (`ripgrep` is packaged
-  in basalt and installed with `jig`), replaces it.
+- **The harness's `rg` is not installed by `jig`.** The kernel harness and the by-path lines run the
+  package's program member, taken out on the host with `package_index::accept`, the installer's
+  own decision. Only `swish-check`'s `jig install ripgrep` takes the installer's path.
 - **The harness's argv page is the kernel's, not the progenitor's.** It writes the same bytes with
   the same function and maps them the same way, but the path a command line takes from `swish`
   through the progenitor is milestone 205's tests, not these.

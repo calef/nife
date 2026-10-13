@@ -1,14 +1,8 @@
-//! **The network time client** (milestone 51, split out of one binary by milestone 290;
-//! DECISIONS §43 and §44, notes/ntp.md).
-//!
-//! The component that turns `network_time_protocol`'s wire format into an actual clock correction. It holds a
-//! **network capability** and a capability to **propose** a time. It does not hold the clock.
-//!
-//! Its test server is `fixtures/src/network_time_test_server.rs` and the witness that proves the
-//! missing slot is `fixtures/src/unwritable_clock_witness.rs`. Until milestone 290 all three were
-//! roles of this one binary, dispatched on `arg0`.
-//!
-//! # The endowment is the argument
+//! **The network time client** (§43 (reading the clock is a page), notes/ntp.md): turns
+//! `network_time_protocol`'s wire format into a clock correction. It holds a network capability and
+//! a capability to propose a time, and does not hold the clock. Its test server is
+//! `fixtures/src/network_time_test_server.rs`, and `fixtures/src/unwritable_clock_witness.rs`
+//! proves the missing slot.
 //!
 //! ```text
 //!   entropy ──an endpoint──►┌──────────────┐──an endpoint──► net_stack ──► the network
@@ -21,95 +15,26 @@
 //!                                                read-only or otherwise)
 //! ```
 //!
-//! Five slots, and the interesting one is the slot that is missing. There is no clock page here,
-//! writable or not, so "set the time" is not an operation this process can express: the only thing
-//! it can do with the wall clock is ask, and `clock_protocol::policy` answers. **A compromised NTP
-//! client can lie inside the service's bounds and can do nothing else.** In Unix `ntpd` runs as root
-//! and may set the clock to anything at all. `an_ntp_client_holds_no_writable_clock_page` in
-//! `system_tests/src/user/ntp_tests.rs` proves the claim the way the machine proves things: a process
-//! given **these five slots and nothing else**, plus the address at which a *setter* maps the clock
-//! page, writes there and dies of a fault.
+//! **A compromised NTP client can lie inside the service's bounds and do nothing else**: with no
+//! clock page, setting the time is not an operation it can express, where Unix `ntpd` runs as root.
+//! `an_ntp_client_holds_no_writable_clock_page` proves it: the witness, endowed by the same
+//! function as this client (`spawn_with_client_endowment`), writes where a setter maps the page and
+//! faults. One endowment function means no second capability list can drift.
 //!
-//! **What keeps that proof honest is the endowment, not the binary.** Until milestone 290 the
-//! witness was a role of this file, and this header said the proof rested on it being *the same
-//! binary*. It does not, and the correction is worth having because it was believed: the fault is
-//! caused by the capability set, so any process holding this endowment faults at that address
-//! whatever code it runs. What stops the witness drifting is that both processes are endowed by
-//! **one function** (`spawn_with_client_endowment` in `kernel/src/user/ntp_service.rs`), which takes
-//! the image as a parameter. A sixth slot added to the client is a sixth slot the witness gets, and
-//! there is no second capability list anywhere to forget to update. See milestone 290's block.
+//! The 64-bit nonce comes from the entropy service, or the client sends nothing and reports
+//! [`RPT_NO_ENTROPY`]; a guessable nonce would undo the one defence against an off-path attacker.
+//! It is a one-shot synchroniser: up to [`ATTEMPTS`] requests, sleeping on a `Timer` between them,
+//! then one proposal and exit. A long-running client is its own design question
+//! (`design/roadmap/0674-the-last-yield-spinners-sleep-on-a-timer.md`). A kiss-o'-death is never
+//! retried.
 //!
-//! **There is no test-only branch in this program**, and since milestone 290 that sentence needs no
-//! qualification. It used to sit on the same screen as `ROLE_PROBE_CLOCK`, a test-only branch in
-//! this binary, which is the contradiction 290 was minted to end.
+//! The test server is also the network, holding `READ` on this client's socket endpoint, so the
+//! client's real code runs against it. That proves the socket-contract glue, the 48-byte packet,
+//! the nonce, that a rejected reply moves nothing, and that a sample becomes a proposal. It does not
+//! prove smoltcp, UDP or the NIC (proven elsewhere), nor anything about a real internet server.
 //!
-//! # The nonce comes from the entropy service, or the client stops
-//!
-//! `Query::with_nonce` exists because a server never interprets the client's transmit timestamp; it
-//! copies it into the origin field and does nothing else. So 64 random bits on the wire, with the
-//! true send time kept locally, take an off-path attacker from about twelve bits of guesswork to
-//! sixty-four (notes/ntp.md).
-//!
-//! That is worth exactly as much as the bits are unguessable, and until 2026-07-30 the only source
-//! here was splitmix64 seeded off the virtual counter, which notes/entropy.md calls "predictable to
-//! anyone who could guess boot-relative time". So the nonce is drawn from the entropy service
-//! (DECISIONS §44), and a client with no entropy capability **refuses to send anything**: it reports
-//! [`RPT_NO_ENTROPY`] and exits. Falling back to the weak stream would be §42's silent degradation
-//! in the one place where the whole point of the value is that nobody can predict it, and it is the
-//! same call `SystemRng` makes when it panics rather than degrading.
-//!
-//! # One shot, and why that is now a choice
-//!
-//! This client was written when the kernel had no timed wait, so a poll interval was a yield-spin
-//! that kept a thread runnable for the whole of it. At NTP's ordinary 64-second poll that is not a
-//! service anybody should ship, so it is a **one-shot synchroniser**: up to [`ATTEMPTS`] requests a
-//! few milliseconds apart, one proposal, exit.
-//!
-//! Milestone 106 (a wait that ends on either the interrupt or the deadline) built the `Timer`
-//! object, and the gap between attempts now sleeps on one. So a long-running client is no longer
-//! blocked on a kernel primitive. It is a design question of its own (who supervises it, and what
-//! it does between polls), recorded in `design/roadmap/0674-the-last-yield-spinners-sleep-on-a-timer.md`.
-//!
-//! **A kiss-o'-death is not retried.** Stratum 0 is an instruction rather than a time (`RATE` means
-//! back off, `DENY` means go away), and a client that retries into one is the abusive client the
-//! packet exists to stop.
-//!
-//! # What the pair proves, and what it does not
-//!
-//! The test server is **both an NTP server and the network**: it holds `READ` on the endpoint this
-//! client was given `WRITE` on, and it speaks the same socket contract
-//! (`crates/socket_protocol/src/lib.rs`) `net_stack` does. The client cannot tell, and that is the
-//! point rather than a convenience: its network path is one endpoint capability, so substituting
-//! the peer at that boundary runs the client's **real, unmodified code**. That property comes from
-//! the capability boundary and not from co-location, which is exactly why splitting the two
-//! binaries in milestone 290 cost nothing.
-//!
-//! What that proves: the socket-contract glue (minting a frame, delegating it, the destination
-//! header, `SENDTO`/`RECEIVE` framing), that the 48 bytes on the wire are a well-formed NTPv4 client
-//! packet addressed to port 123, that the nonce is unpredictable, that a reply failing
-//! `Query::accept` moves nothing, and that an accepted sample becomes a *proposal* the clock service
-//! judges.
-//!
-//! What it does not prove: that smoltcp, UDP, IPv4 and the NIC carry those bytes. Milestone 30's
-//! socket-contract tests prove that path with a real datagram, and milestone 51 deliberately did not
-//! re-prove it. Nor does it prove anything about a real internet time server: nothing in QEMU's
-//! slirp answers UDP 123, and pointing the gate at a public server would make it depend on somebody
-//! else's network. The honest summary is that the client is proven against a server we wrote, over a
-//! network we wrote, and the parts we did not write are proven elsewhere.
-//!
-//! Name: ratified 2026-09-14 (calef, milestone 290), his own words, replacing `ntp`. The old binary
-//! was three programs dispatched on `arg0` and the header justified that shape as "how every other
-//! multi-part program here is packed and keeps the initrd's directory small", which is an argument
-//! from implementation convenience and AGENTS.md ranks it below everything else. Refused keeping
-//! `ntp` for the typed-command latitude: nothing types this name, it is loaded from the archive by
-//! the kernel's wiring, so the latitude that produced `mdr` does not reach it. `network_time`
-//! carries the stem calef ruled on 2026-09-13 for `ntp_proto`, so these three names were already
-//! spelled the way milestone 265 would spell the crate, and 265 did not have to rename them. That also
-//! **overtakes 265's "the `ntp` program stays `ntp`" exception**, which was written when there was
-//! one program to keep the short name: after 290 there is no `ntp` program, the client's name is
-//! expanded, and the pair `network_time_protocol`/`network_time_client` does not disagree.
-//! `client` rather than `synchroniser` because a client is what NTP's own mode field calls it, and
-//! the reader who knows the protocol meets the word it uses.
+//! Name: ratified 2026-09-14 (calef), replacing `ntp`. Refused keeping `ntp`: nothing types this
+//! name, so a typed command's latitude does not reach it. `client` is NTP's own mode word.
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

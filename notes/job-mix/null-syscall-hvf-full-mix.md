@@ -185,7 +185,7 @@ only differences within this batch are read.
 ## Proposed work
 
 - [Each core's `PerCpu` on its own cache line](../../design/roadmap/0766-each-cores-percpu-on-its-own-cache-line.md)
-  (milestone 766, provisional): built, PARTIAL. `align(128)` on aarch64 and riscv64, which
-  supersedes the parent note's `align(64)`. Its acceptance measurement is radon's run.
+  (milestone 766, provisional): built, PARTIAL. `align(128)` on aarch64 and riscv64, in place of
+  the parent note's `align(64)`. Its acceptance measurement is radon's run.
 - [Cross-core wake latency under HVF](../../design/roadmap/0792-cross-core-wake-latency-under-hvf.md)
   (provisional): where the spawn job's milliseconds go when another core is idle or busy.

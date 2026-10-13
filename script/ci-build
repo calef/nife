@@ -107,13 +107,14 @@ cd "$(dirname "$0")/.."
 # dependency lives in the row now, where CI and a developer both meet it, instead of in a job's
 # position in a chain.
 #
-# **The same rows build `rg` first** (lane milestone/121-rg-ci, 2026-10-08 UTC), for the same reason:
-# the check types `rg`'s lines, including milestone 121 (`ripgrep` on nife)'s walk of a copy of
-# `crates/`, only when `helpers/build-ripgrep.sh` has run, and in CI it now refuses to skip them.
-# Until then CI never built it, so nothing re-checked fatal risk 1's claim. Measured cold on patagonia under load 12 to
-# 22: 81 s for all three triples and the host's reference `rg`, about 20 s a triple. Each CI row
-# builds only its own legs' triples. The fetch is pinned by SHA-256 and `--locked`, and is a §46
-# (thin primitives or whole subsystems) question asked on that lane's pull request.
+# **The same rows fetch `rg` from basalt first** (milestone 810 (`ripgrep` is packaged in basalt and
+# installed with `jig`)), for the same reason: the check types `rg`'s lines, including milestone 121
+# (`ripgrep` on nife)'s walk of a copy of `crates/`, and `jig install ripgrep`, only when `cargo
+# xtask basalt-fetch` has fetched basalt's published package, and in CI it refuses to skip them.
+# The fetch is basalt's Release asset for each architecture, accepted only under the SHA-256
+# `xtask/basalt-pins.index` pins, and ripgrep's own host build for the reference answer, pinned the
+# same way. calef, 2026-10-13 (UTC): "1 is preferable because that tests jig and basalt's delivery
+# mechanism as well."
 #
 # **CI runs `swish-check` as the two `ci` rows after it** (milestone 628 (provisional); the row
 # names are provisional): the aarch64 and riscv64 legs on the arm64 runner, whose weakly ordered
@@ -141,11 +142,11 @@ build-is-reproducible|local|script/build-is-reproducible
 test|local|script/test
 test-aarch64-riscv64|ci|script/test --arch aarch64,riscv64
 test-x86_64|ci|script/test --arch x86_64 --no-host
-swish-check|local|cargo xtask std-exerciser && helpers/build-ripgrep.sh && script/swish-check && script/swish-check --arch aarch64 --input-race
-swish-check-aarch64-riscv64|ci|cargo xtask std-exerciser && NIFE_RIPGREP_TRIPLES="aarch64-unknown-nife riscv64-unknown-nife" helpers/build-ripgrep.sh && script/swish-check --arch aarch64 && script/swish-check --arch riscv64 && script/swish-check --arch aarch64 --input-race
-swish-check-x86_64|ci|cargo xtask std-exerciser && NIFE_RIPGREP_TRIPLES=x86_64-unknown-nife helpers/build-ripgrep.sh && script/swish-check --arch x86_64
-rg-threads-aarch64-riscv64|ci|NIFE_RIPGREP_TRIPLES="aarch64-unknown-nife riscv64-unknown-nife" helpers/build-ripgrep.sh && NIFE_RIPGREP_REQUIRED=1 cargo test -p walk_pricing && NIFE_RIPGREP_REQUIRED=1 NIFE_SMP=4 script/test --arch aarch64,riscv64 --test ripgrep
-rg-threads-x86_64|ci|NIFE_RIPGREP_TRIPLES=x86_64-unknown-nife NIFE_RIPGREP_HOST=0 helpers/build-ripgrep.sh && NIFE_RIPGREP_REQUIRED=1 NIFE_SMP=4 script/test --arch x86_64 --test ripgrep
+swish-check|local|cargo xtask std-exerciser && cargo xtask basalt-fetch && script/swish-check && script/swish-check --arch aarch64 --input-race
+swish-check-aarch64-riscv64|ci|cargo xtask std-exerciser && cargo xtask basalt-fetch && script/swish-check --arch aarch64 && script/swish-check --arch riscv64 && script/swish-check --arch aarch64 --input-race
+swish-check-x86_64|ci|cargo xtask std-exerciser && cargo xtask basalt-fetch && script/swish-check --arch x86_64
+rg-threads-aarch64-riscv64|ci|cargo xtask basalt-fetch && NIFE_RIPGREP_REQUIRED=1 cargo test -p walk_pricing && NIFE_RIPGREP_REQUIRED=1 NIFE_SMP=4 script/test --arch aarch64,riscv64 --test ripgrep
+rg-threads-x86_64|ci|cargo xtask basalt-fetch && NIFE_RIPGREP_REQUIRED=1 NIFE_SMP=4 script/test --arch x86_64 --test ripgrep
 boot-check|local|script/boot-check
 hvf|local|hvf_leg
 fastpath-footprint|ci|script/fastpath-footprint
@@ -172,7 +173,7 @@ TABLE
 #                       it at `NIFE_SMP=4`, which nothing else boots for the suite, so there is
 #                       nothing warm to share. A developer runs them by name. `NIFE_RIPGREP_REQUIRED`
 #                       turns a missing `rg` from a skip into a failure, here and in `walk_pricing`'s
-#                       host check, whose host `rg` the x86_64 row does not build.
+#                       host check, which only the aarch64 row runs.
 #   fastpath-footprint  builds two RELEASE kernels, which no other check builds, so there is
 #                       nothing warm to share and a developer would wait for a cold build.
 #   boot-file-size-check builds the release x86_64 UEFI image (a release kernel and archive, which

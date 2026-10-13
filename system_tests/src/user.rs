@@ -334,7 +334,7 @@ mod std_tests;
 mod std_threads_tests;
 
 /// **Unmodified `ripgrep` from crates.io** (milestone 121), which skips unless somebody ran
-/// `helpers/build-ripgrep.sh`. Every ISA the `std` port ships on, per DECISIONS §19, which is all
+/// `cargo xtask basalt-fetch`. Every ISA the `std` port ships on, per DECISIONS §19, which is all
 /// three since milestone 184 built `x86_64-unknown-nife`.
 #[cfg(all(test, initial_ramdisk))]
 mod ripgrep_tests;

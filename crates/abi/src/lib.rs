@@ -1,13 +1,11 @@
-//! **The syscall boundary, as a single artifact.**
-//!
-//! The kernel and every user program depend on this crate, so the ABI is *one thing* rather than
-//! two files that agree by luck. If it changes, both sides fail to compile, which is the entire
-//! point: a boundary that can drift silently is not a boundary.
+//! **The syscall boundary, as a single artifact.** The kernel and every user program depend on
+//! this crate, so the ABI is one thing rather than two files that agree by luck: if it changes,
+//! both sides fail to compile.
 //!
 //! # The surface is five calls <!--count:syscalls-->, and that is deliberate
 //!
-//! DECISIONS §4 rule 3: *the syscall surface stays narrow and explicit. It is a boundary, not
-//! a habit.* And §10 chose capabilities, which is what makes so few enough:
+//! The syscall surface stays narrow (AGENTS.md rule 3), and §10 (process model:
+//! capability-based) is what makes so few enough:
 //!
 //! ```text
 //!   exit(code)                              you always have authority over yourself
@@ -17,18 +15,11 @@
 //!   invoke(cap, method, a0, a1, a2)         EVERYTHING ELSE
 //! ```
 //!
-//! There is no `open`. No `read`. No `write`. No `fork`. **A process can only act on things it
-//! was handed**, and `invoke` is how it acts on them.
-//!
-//! `exit`, `yield` and `cap_delete` are plain syscalls rather than invocations on a TCB
-//! capability, and the reason is worth stating: **a capability is authority over something
-//! *else*.** You do not need to be granted the right to stop running, or to be granted the right
-//! to make your own capability table forget something.
-//!
-//! **So all but one are authority over yourself and the last is everything else**, which
-//! is the shape that matters rather than the number. The count carries a `<!--count:syscalls-->`
-//! marker, so `script/lint` re-derives it from the constants below and a sixth call cannot land
-//! without this sentence moving. See notes/counted-claims.md.
+//! No `open`, `read`, `write` or `fork`: **a process can only act on things it was handed**, and
+//! `invoke` is how. The first four are bare syscalls because a capability is authority over
+//! something else, and nobody needs a grant to stop running or forget a slot. A new operation is a
+//! method on a capability; a new syscall is a design fork. The count's marker makes `script/lint`
+//! re-derive it from the constants below (notes/counted-claims.md).
 //!
 //! # The register convention
 //!
@@ -45,69 +36,8 @@
 //!
 //! `x8` for the number is Linux's aarch64 convention, and there is no reason to be different.
 //!
-//! # Examples
-//!
-//! A return value carries both a result and an error in one register, with no flag bit, because the
-//! error space is a handful of small negatives and no result is ever negative:
-//!
-//! ```
-//! use abi::Error;
-//!
-//! // A successful `invoke` returning a handle, a count, or nothing.
-//! assert_eq!(Error::from_ret(0), None);
-//! assert_eq!(Error::from_ret(4096), None);
-//!
-//! // A refusal, decoded on the userspace side of the boundary.
-//! assert_eq!(Error::from_ret(-1), Some(Error::NoSuchSlot));
-//! assert_eq!(Error::from_ret(-4), Some(Error::BadPointer));
-//!
-//! // A number that is not one of the kernel's errors is not decoded as one. That is what lets a
-//! // wire contract layered on top (`entropy_protocol`, `credential_protocol`) tell "no capability" from "no".
-//! assert_eq!(Error::from_ret(-99), None);
-//! ```
-//!
-//! Two pairs of variants exist because the difference is load-bearing rather than descriptive, and
-//! that is the part of this crate worth reading twice:
-//!
-//! ```
-//! use abi::Error;
-//!
-//! // "There is nothing there" and "there was something there and it is gone" are different facts,
-//! // and a writer branches on them in **opposite** directions: a program never granted a stdout
-//! // keeps running and prints into the void; a program whose reader has exited must end. Both used
-//! // to arrive as NoSuchSlot, so the only available behaviour was the wrong one for a pipeline.
-//! assert_ne!(Error::NoSuchSlot, Error::Gone);
-//! assert_eq!(Error::NoSuchSlot as i64, -1);
-//! assert_eq!(Error::Gone as i64, -11);
-//!
-//! // And the one that is deliberately NOT split: "gone" and "not yours" are one error, because
-//! // telling them apart would let a supervisor probe the tid space of children it has no
-//! // relationship with. `Gone` can be told apart for the opposite reason: the capability is
-//! // already in the caller's own capability table, so its death reveals nothing new.
-//! assert_eq!(Error::NotSupervised as i64, -10);
-//! ```
-//!
-//! The surface itself is three numbers, and everything else is a method on a capability:
-//!
-//! ```
-//! use abi::{SYS_EXIT, SYS_INVOKE, SYS_YIELD, rendezvous};
-//!
-//! assert_eq!([SYS_EXIT, SYS_YIELD, SYS_INVOKE], [0, 1, 2]);
-//!
-//! // Sending on a rendezvous is a method number, not a syscall number. Adding an operation to the
-//! // system is a new method here; adding a *syscall* is a design fork (DECISIONS §10, §16).
-//! assert_eq!(rendezvous::SEND, 0);
-//! ```
-//!
-//! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review). Considered and
-//! declined: `application_binary_interface`, spelled out fully to match this session's other
-//! renames -- rejected on the actual test (does the architect have to ask what this means, which
-//! sank `Tcb`/`Aspace`/`Untyped`, the abbreviations these renames replaced), not on effort. "ABI"
-//! is closer to "CPU" than to "TCB" on that
-//! scale, and this is the tree's single most-imported crate, so the ergonomic cost of spelling it
-//! out would have been the highest of any rename this pass. Sits in the tenet's protected group
-//! (`elf`, `pci`, `dtb`, `gpt`, `ipc`, `paging`, `glob`, `asid`) for the same reason those do.
-//! Introduced 2026-07-14 with milestone 7d's first three syscalls.
+//! Name: ratified 2026-08-23 (calef). Declined `application_binary_interface`: "ABI" passes the
+//! test of whether an architect has to ask what it means, and this is the most-imported crate.
 
 #![no_std]
 
@@ -120,6 +50,18 @@ pub const SYS_EXIT: u64 = 0;
 pub const SYS_YIELD: u64 = 1;
 /// `invoke(cap, method, a0, a1, a2)`: the one syscall that acts on anything other than the
 /// calling thread. Every capability operation in the system goes through this number.
+///
+/// # Examples
+///
+/// ```
+/// use abi::{SYS_EXIT, SYS_INVOKE, SYS_YIELD, rendezvous};
+///
+/// assert_eq!([SYS_EXIT, SYS_YIELD, SYS_INVOKE], [0, 1, 2]);
+///
+/// // Sending on a rendezvous is a method number, not a syscall number. Adding an operation to the
+/// // system is a new method here; adding a *syscall* is a design fork (§10).
+/// assert_eq!(rendezvous::SEND, 0);
+/// ```
 pub const SYS_INVOKE: u64 = 2;
 
 /// `cap_delete(slot)`: drop a capability from the caller's own capability table, freeing the slot
@@ -430,6 +372,30 @@ pub mod port_range;
 // xtask's std generator inlines only `pub mod` children, and a public `error` module would be a
 // new path.
 /// What went wrong. Returned as a **negative** `x0`.
+///
+/// # Examples
+///
+/// Two distinctions are load-bearing. `NoSuchSlot` and `Gone` make a writer branch in opposite
+/// directions (print into the void, or end); `NotSupervised` deliberately does not split "gone"
+/// from "not yours", which would let a supervisor probe tids it has no relationship with.
+///
+/// ```
+/// use abi::Error;
+///
+/// // "There is nothing there" and "there was something there and it is gone" are different facts,
+/// // and a writer branches on them in **opposite** directions: a program never granted a stdout
+/// // keeps running and prints into the void; a program whose reader has exited must end. Both used
+/// // to arrive as NoSuchSlot, so the only available behaviour was the wrong one for a pipeline.
+/// assert_ne!(Error::NoSuchSlot, Error::Gone);
+/// assert_eq!(Error::NoSuchSlot as i64, -1);
+/// assert_eq!(Error::Gone as i64, -11);
+///
+/// // And the one that is deliberately NOT split: "gone" and "not yours" are one error, because
+/// // telling them apart would let a supervisor probe the tid space of children it has no
+/// // relationship with. `Gone` can be told apart for the opposite reason: the capability is
+/// // already in the caller's own capability table, so its death reveals nothing new.
+/// assert_eq!(Error::NotSupervised as i64, -10);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(i64)]
 pub enum Error {
@@ -519,6 +485,27 @@ pub enum Error {
 impl Error {
     /// Decode a syscall's negative return value back into the `Error` it encodes. `None` for a
     /// non-negative `v` (success) or a negative value with no assigned meaning.
+    ///
+    /// # Examples
+    ///
+    /// One register, no flag bit: no result is ever negative, and an unassigned negative is not an
+    /// error, which lets a wire contract layered on top tell "no capability" from "no".
+    ///
+    /// ```
+    /// use abi::Error;
+    ///
+    /// // A successful `invoke` returning a handle, a count, or nothing.
+    /// assert_eq!(Error::from_ret(0), None);
+    /// assert_eq!(Error::from_ret(4096), None);
+    ///
+    /// // A refusal, decoded on the userspace side of the boundary.
+    /// assert_eq!(Error::from_ret(-1), Some(Error::NoSuchSlot));
+    /// assert_eq!(Error::from_ret(-4), Some(Error::BadPointer));
+    ///
+    /// // A number that is not one of the kernel's errors is not decoded as one. That is what lets a
+    /// // wire contract layered on top (`entropy_protocol`, `credential_protocol`) tell "no capability" from "no".
+    /// assert_eq!(Error::from_ret(-99), None);
+    /// ```
     pub fn from_ret(v: i64) -> Option<Error> {
         Some(match v {
             -1 => Error::NoSuchSlot,

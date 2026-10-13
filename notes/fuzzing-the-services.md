@@ -72,7 +72,7 @@ Four real defects, all in `redoxfs_server`, each with a host test that fails wit
    target folds sizes between 64 MiB and `MAX_FILE_END` below 64 MiB so it does not re-find it on
    every run.
 
-`EFBIG` is a new reply on the file-service wire, for cases that used to be a dead server.
+`EFBIG` is a new reply on the file-service wire, for cases that would otherwise kill the server.
 The system log and compositor targets found nothing in two minutes each.
 
 ## What CI pays

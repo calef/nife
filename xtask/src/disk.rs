@@ -313,12 +313,12 @@ pub(crate) const INSTALLED_JIG: &str = "installed/jig";
 /// `std_grep`, from the same workspace, unvouched, so every word it is granted is read-only.
 /// Written only if it was built, as [`INSTALLED_STD_ECHO`] is. Provisional.
 pub(crate) const INSTALLED_STD_GREP: &str = "installed/std-grep";
-/// **Unmodified `ripgrep`, if somebody built it** (milestone 595 (the shell runs a `std` program),
-/// 2026-10-07): `helpers/build-ripgrep.sh`'s `rg`, which links the note `cargo xtask foreign-note`
+/// **Unmodified `ripgrep`, run by path** (milestone 595 (the shell runs a `std` program)): the
+/// program member of basalt's published package, which links the note `cargo xtask foreign-note`
 /// writes, so it runs by path as an unvouched `std` program that hears its words. Written only when
-/// `crate::farm::ripgrep_elf` exists, which `script/ci-build`'s `swish-check` rows arrange by
-/// running `helpers/build-ripgrep.sh` first (since 2026-10-08 UTC; its crates.io fetch is a §46
-/// (thin primitives or whole subsystems) question asked on that lane's pull request). Provisional. Installing it as a package is milestone 121's, not this.
+/// `crate::basalt::ripgrep_elf` exists, which `script/ci-build`'s `swish-check` rows arrange by
+/// running `cargo xtask basalt-fetch` first. The same check also installs the package with `jig`
+/// (milestone 810). Provisional.
 pub(crate) const INSTALLED_RIPGREP: &str = "installed/rg";
 
 /// **`std_echo` as large as `ripgrep`** (milestone 595 (the shell runs a `std` program), 2026-09-27,
@@ -361,11 +361,12 @@ pub(crate) fn ripgrep_walk_expected() -> std::path::PathBuf {
     workspace_root().join("target/ripgrep-walk-expected.txt")
 }
 
-/// **The host `rg` the expected set comes from**: `helpers/build-ripgrep.sh`'s host build, which is
-/// the same 14.1.1 source the guest runs, or failing that whatever `rg` is on `PATH`, whose version
-/// the staging line prints so a mismatch between versions is visible rather than silent.
+/// **The host `rg` the expected set comes from**: ripgrep's own 14.1.1 build for this host, which
+/// `cargo xtask basalt-fetch` fetches by SHA-256, the same version the guest runs. Failing that,
+/// whatever `rg` is on `PATH`, whose version the staging line prints so a mismatch between versions
+/// is visible rather than silent.
 fn host_ripgrep() -> String {
-    let built = crate::farm::ripgrep_elf("host");
+    let built = crate::basalt::host_ripgrep();
     if built.exists() {
         built.display().to_string()
     } else {
@@ -426,7 +427,7 @@ fn stage_ripgrep_corpus(tree: &std::path::Path) -> Result<String, String> {
         .ok_or_else(|| {
             format!(
                 "no host `rg` to compute the expected matches with ({rg}); \
-                 `helpers/build-ripgrep.sh` builds one"
+                 `cargo xtask basalt-fetch` fetches one"
             )
         })?;
     let out = std::process::Command::new(&rg)
@@ -697,7 +698,7 @@ impl SeededPrograms {
             .map_err(|e| format!("could not read {}: {e}", demo.display()))?;
         let farm = format!("{architecture}-unknown-nife");
         let std_grep = read_if_built(&crate::farm::std_grep_elf(&farm), "std_grep")?;
-        let ripgrep = crate::farm::ripgrep_elf(&farm);
+        let ripgrep = crate::basalt::ripgrep_elf(&farm);
         let ripgrep = ripgrep
             .exists()
             .then(|| without_symbols(&ripgrep, architecture))
@@ -816,19 +817,21 @@ fn stage_index(
 
 /// **The environment variable naming a repository basalt built** (milestone 810 (`ripgrep` is
 /// packaged in basalt and installed with `jig`)): a directory holding `rolling/metadata/stand-in-index`
-/// and `rolling/targets/<stem>.nifepkg`, as basalt's package build writes it. When it is set, this
-/// architecture's lines of that index join the fixtures' in the index the peer serves, and their
-/// packages are copied beside them. Name: provisional 2026-10-12 (UTC).
+/// and `rolling/targets/<stem>.nifepkg`, as basalt's package build writes it. basalt's own
+/// `packages` workflow sets it to the repository it just built. Unset, the gates read the one
+/// `cargo xtask basalt-fetch` writes from basalt's published packages (`crate::basalt`). Name:
+/// provisional 2026-10-12 (UTC).
 pub(crate) const BASALT_REPOSITORY: &str = "NIFE_BASALT_REPOSITORY";
 
-/// This architecture's `<stem> <digest>` lines of the repository [`BASALT_REPOSITORY`] names, with
-/// each package copied into `source`. Empty when it is not set.
+/// This architecture's `<stem> <digest>` lines of basalt's repository (`crate::basalt::repository`),
+/// with each package copied into `source`. Empty when there is none: no fetch ran and
+/// [`BASALT_REPOSITORY`] names nothing.
 fn basalt_lines(source: &std::path::Path, architecture: &str) -> Result<String, String> {
-    let Some(repository) = std::env::var_os(BASALT_REPOSITORY) else {
+    let index_path = crate::basalt::repository_index();
+    if !index_path.exists() {
         return Ok(String::new());
-    };
-    let repository = std::path::PathBuf::from(repository);
-    let index_path = repository.join("rolling/metadata/stand-in-index");
+    }
+    let repository = crate::basalt::repository();
     let text = std::fs::read_to_string(&index_path)
         .map_err(|e| format!("{}: {e}", index_path.display()))?;
     let index = package_index::Index::parse(&text)

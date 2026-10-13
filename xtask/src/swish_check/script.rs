@@ -175,8 +175,8 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         1,
         "jig update",
         &[
-            // Four from the fixtures, and one more per package from basalt's repository when the
-            // gate is handed one (milestone 810), so the count is not asserted.
+            // Four from the fixtures, and one more per package from basalt's repository when one
+            // was fetched (milestone 810), so the count is not asserted.
             "index updated: ",
             "from basalt.test over TLS",
         ],
@@ -219,8 +219,9 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         &["hello from a package this image never carried"],
     ),
     // **`ripgrep`, built and published by basalt** (milestone 810 (`ripgrep` is packaged in
-    // basalt and installed with `jig`)): basalt's gate hands this gate the repository it built
-    // (`disk::BASALT_REPOSITORY`), whose index lines the peer serves beside the fixtures'. The
+    // basalt and installed with `jig`)): the package basalt published, fetched by its pinned
+    // digest (`cargo xtask basalt-fetch`), or the repository basalt's own gate just built
+    // (`disk::BASALT_REPOSITORY`). The peer serves its index lines beside the fixtures'. The
     // package is `ripgrep`; its program is the member `bin/rg`
     // (`package_archive::PROGRAM_PREFIX`), so the bare word is `rg`. Skipped without a repository.
     line(
@@ -235,7 +236,7 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
     line(1, "rg --version", &["ripgrep "]),
 ];
 
-/// The lines that need a repository from basalt (milestone 810), skipped without one.
+/// The lines that need a repository from basalt (milestone 810), skipped without one outside CI.
 pub(super) const FROM_BASALT: &[&str] = &["jig install ripgrep", "rg --version"];
 
 /// The text this gate types and what each line must answer. `None` is a line whose answer is
@@ -723,7 +724,7 @@ pub(super) const SWISH_CHECK_SCRIPT: &[Line] = &[
     ),
     // **Unmodified `ripgrep` searches what its words name, from the prompt** (milestone 595 (the
     // shell runs a `std` program), fatal risk 1). The same lines `std_grep` answered, typed to
-    // somebody else's program: crates.io's `rg` 14.1.1, unvouched, carrying only the note `cargo
+    // somebody else's program: crates.io's `rg` 14.1.1 as basalt packaged it, unvouched, carrying only the note `cargo
     // xtask foreign-note` linked in. `docs` is granted read-only because a word named it, and the
     // match is found there. `../hay/secret.txt` names the same directory's other file by a path
     // whose first component is not an entry here, so nothing is granted for it and `rg` cannot
@@ -732,7 +733,7 @@ pub(super) const SWISH_CHECK_SCRIPT: &[Line] = &[
     // space) gives `rg` more than one core. With no word naming anything `rg` holds no directory and asks for its working
     // directory, which the PAL refuses by design (its `sys/paths/nife.rs`),
     // so `rg` says so with a wrong guess ("did your CWD get deleted?"). Typed only when
-    // `helpers/build-ripgrep.sh` has run, as CI's rows do.
+    // `cargo xtask basalt-fetch` has run, as CI's rows do.
     line(0, "echo the needle outside the grant > secret.txt", &[]),
     line(
         0,
@@ -766,7 +767,7 @@ pub(super) const SWISH_CHECK_SCRIPT: &[Line] = &[
     // lists every directory it meets, opens every file, skips the binary ones itself, and prints
     // every matching line. The answer is wanted whole, so this line lists nothing here and
     // [`rg_walk_verdict`] compares it line for line with what the host's `rg` printed over the same
-    // copy. Typed only when `helpers/build-ripgrep.sh` has run, like the lines above.
+    // copy. Typed only when `cargo xtask basalt-fetch` has run, like the lines above.
     line(1, RG_WALK_LINE, &[]),
     line(0, "cd /", &[]),
     // **A note that asks more than its vouch allows is refused** (milestone 597, provisional).

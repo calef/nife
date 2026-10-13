@@ -680,15 +680,13 @@ jobs:
       # thread dying while the progenitor prints shuffles the two lines together at byte
       # granularity. Local-only would have kept it invisible.
       #
-      # **The row builds `rg` and the legs walk a tree with it** (lane milestone/121-rg-ci,
-      # 2026-10-08 UTC, the first gap calef's amber ruling on fatal risk 1 names): before this,
-      # `rg`'s lines skipped here because nothing built it, so nothing re-checked the claim that
-      # a stranger's program runs on nife. `helpers/build-ripgrep.sh` fetches ripgrep 14.1.1 from
-      # crates.io, checked against its SHA-256, and cross-builds it for the two legs plus a host
-      # reference. No cache: a cold build was 81 s for three triples and the host on patagonia,
-      # and notes/actions-cache-budget-2026-10-07.md found that a merge group cannot restore any
-      # entry `main` does not hold, and `main` saves none. The added minutes are measured on that
-      # lane's pull request and recorded in milestone 121 (`ripgrep` on nife)'s block.
+      # **The row fetches `rg` from basalt and the legs walk a tree with it** (the first gap
+      # calef's amber ruling on fatal risk 1 names; milestone 810 (`ripgrep` is packaged in basalt
+      # and installed with `jig`)). `cargo xtask basalt-fetch` takes basalt's published ripgrep
+      # 14.1.1 package for each architecture, accepted only under the SHA-256
+      # `xtask/basalt-pins.index` pins, and ripgrep's own host build for the reference answer. The
+      # legs then type `jig install ripgrep` against those bytes, so this job tests `jig` and
+      # basalt's delivery too, and run the package's `rg` by path over the walk. About 9 MB.
       - run: script/ci-build swish-check-aarch64-riscv64
       - name: Check the job's wall time against its budget
         if: always()
@@ -774,7 +772,7 @@ jobs:
           sudo udevadm trigger --name-match=kvm
           ls -l /dev/kvm
 
-      # The row builds `rg` for this leg first; the `swish-check` job above says why.
+      # The row fetches `rg` from basalt first; the `swish-check` job above says why.
       - run: script/ci-build swish-check-x86_64
       - name: Check the job's wall time against its budget
         if: always()
@@ -783,7 +781,8 @@ jobs:
   # **`rg` walks in parallel, and the kernel counts its threads** (milestone 121, the third gap of
   # calef's amber ruling on fatal risk 1; lane milestone/121-rg-threads, 2026-10-12 UTC; the job id
   # and row names are provisional). calef: "the path to green on risk 1 requires a foreign program
-  # running a second thread." Each row builds `rg` for its legs and boots the kernel suite filtered
+  # running a second thread." Each row fetches `rg` from basalt (`cargo xtask basalt-fetch`, the
+  # `swish-check` job above says how) and boots the kernel suite filtered
   # to `ripgrep` at four cores, where `ripgrep_threads_tests` runs unmodified `rg` as a process,
   # with no thread flag and with `--threads 4`, and fails unless its process started the main
   # thread and one worker per thread asked for, and printed exactly the tree's 138 lines. The
