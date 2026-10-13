@@ -259,14 +259,7 @@ fn spawn_timetable_with(
     }
     #[cfg(any(target_arch = "x86_64", target_arch = "riscv64"))]
     map_timebase_page(&mut space).expect("could not map the timetable's timebase page");
-    for i in 0..archive_pages {
-        let page = space
-            .map_new(INITIAL_RAMDISK_VA + i * FRAME_SIZE, Flags::user_rodata())
-            .expect("could not map the narrowed archive");
-        let from = (i * FRAME_SIZE) as usize;
-        let to = (from + FRAME_SIZE as usize).min(archive.len());
-        page[..to - from].copy_from_slice(&archive[from..to]);
-    }
+    map_the_archive(&mut space, archive, archive_pages);
     let page = registration.then(|| {
         space
             .map_new(REGISTRATION_VA, Flags::user_data())
@@ -274,22 +267,7 @@ fn spawn_timetable_with(
     });
     // The clock page, when granted: a fresh frame the kernel initialises as UNKNOWN and publishes to
     // later, mapped read-only where `timetable::contract` says, exactly as `date`'s tests do.
-    let clock_phys = clock.then(|| {
-        let phys = crate::memory::alloc_zeroed()
-            .expect("no frame for a clock page")
-            .addr();
-        // SAFETY: a frame this test just allocated, named through the direct map.
-        unsafe { clock_protocol::ClockPage::new(mmu::phys_to_virt(phys)) }.init();
-        space
-            .map_physical(
-                timetable::contract::CLOCK_VA,
-                phys,
-                Flags::user_rodata(),
-                crate::revoke::PageMapSource::Capability(phys),
-            )
-            .expect("could not map the clock page");
-        phys
-    });
+    let clock_phys = clock.then(|| map_a_clock_page(&mut space));
     let aspace = readopt_user_address_space(space).expect("register the timetable aspace");
 
     // Four pages: the three endpoints below and the run-unvouched stand-in, when there is one.
@@ -303,37 +281,7 @@ fn spawn_timetable_with(
     let tid =
         crate::sched::create_thread_control_block(thread_control_block_region).expect("no tcb");
 
-    // Slot 0: where its own text goes. WRITE, so it can say things and cannot listen.
-    let s = crate::sched::thread_control_block_insert_cap(
-        tid,
-        rendezvous_cap(out, Rights::WRITE),
-        None,
-    )
-    .expect("insert out");
-    assert_eq!(s, 0, "the timetable's output endpoint must land in slot 0");
-    // Slot 1: what every instance is made of.
-    let s =
-        crate::sched::thread_control_block_insert_cap(tid, memory_region_root_cap(budget), None)
-            .expect("insert budget");
-    assert_eq!(s, 1, "the timetable's budget must land in slot 1");
-    // Slot 2: what each instance is handed as its own slot 0. `GRANT` because handing it on is the
-    // entire purpose; `WRITE` because a scheduled child reports and never listens.
-    let s = crate::sched::thread_control_block_insert_cap(
-        tid,
-        rendezvous_cap(child_report, Rights::WRITE.union(Rights::GRANT)),
-        None,
-    )
-    .expect("insert child report");
-    assert_eq!(s, 2, "the child report endpoint must land in slot 2");
-    // Slot 3: the supervision endpoint. `READ` is what `RECEIVE` and `Rendezvous::REAP` take (§32 (a supervisor may collect a corpse without being able to build one));
-    // `GRANT` is what lets it be placed in each child's reserved fault slot.
-    let s = crate::sched::thread_control_block_insert_cap(
-        tid,
-        rendezvous_cap(deaths, Rights::READ.union(Rights::GRANT)),
-        None,
-    )
-    .expect("insert deaths");
-    assert_eq!(s, 3, "the supervision endpoint must land in slot 3");
+    install_the_fixed_slots(tid, out, budget, child_report, deaths);
 
     if let Some(phys) = clock_phys {
         // `READ` to read it and `GRANT` to hand it to a job whose manifest declares a clock.
@@ -379,6 +327,78 @@ fn spawn_timetable_with(
         endpoints,
         clock: clock_phys,
     }
+}
+
+/// Copy `archive` into `archive_pages` fresh read-only pages at [`INITIAL_RAMDISK_VA`].
+fn map_the_archive(space: &mut AddressSpace, archive: &[u8], archive_pages: u64) {
+    for i in 0..archive_pages {
+        let page = space
+            .map_new(INITIAL_RAMDISK_VA + i * FRAME_SIZE, Flags::user_rodata())
+            .expect("could not map the narrowed archive");
+        let from = (i * FRAME_SIZE) as usize;
+        let to = (from + FRAME_SIZE as usize).min(archive.len());
+        page[..to - from].copy_from_slice(&archive[from..to]);
+    }
+}
+
+/// A fresh clock page, initialised as UNKNOWN, mapped read-only at
+/// `timetable::contract::CLOCK_VA`. Returns its frame.
+fn map_a_clock_page(space: &mut AddressSpace) -> u64 {
+    let phys = crate::memory::alloc_zeroed()
+        .expect("no frame for a clock page")
+        .addr();
+    // SAFETY: a frame this test just allocated, named through the direct map.
+    unsafe { clock_protocol::ClockPage::new(mmu::phys_to_virt(phys)) }.init();
+    space
+        .map_physical(
+            timetable::contract::CLOCK_VA,
+            phys,
+            Flags::user_rodata(),
+            crate::revoke::PageMapSource::Capability(phys),
+        )
+        .expect("could not map the clock page");
+    phys
+}
+
+/// The timetable's four fixed slots, each asserted to land where its contract says.
+fn install_the_fixed_slots(
+    tid: crate::thread::ThreadId,
+    out: RendezvousId,
+    budget: u64,
+    child_report: RendezvousId,
+    deaths: RendezvousId,
+) {
+    // Slot 0: where its own text goes. WRITE, so it can say things and cannot listen.
+    let s = crate::sched::thread_control_block_insert_cap(
+        tid,
+        rendezvous_cap(out, Rights::WRITE),
+        None,
+    )
+    .expect("insert out");
+    assert_eq!(s, 0, "the timetable's output endpoint must land in slot 0");
+    // Slot 1: what every instance is made of.
+    let s =
+        crate::sched::thread_control_block_insert_cap(tid, memory_region_root_cap(budget), None)
+            .expect("insert budget");
+    assert_eq!(s, 1, "the timetable's budget must land in slot 1");
+    // Slot 2: what each instance is handed as its own slot 0. `GRANT` because handing it on is the
+    // entire purpose; `WRITE` because a scheduled child reports and never listens.
+    let s = crate::sched::thread_control_block_insert_cap(
+        tid,
+        rendezvous_cap(child_report, Rights::WRITE.union(Rights::GRANT)),
+        None,
+    )
+    .expect("insert child report");
+    assert_eq!(s, 2, "the child report endpoint must land in slot 2");
+    // Slot 3: the supervision endpoint. `READ` is what `RECEIVE` and `Rendezvous::REAP` take (§32 (a supervisor may collect a corpse without being able to build one));
+    // `GRANT` is what lets it be placed in each child's reserved fault slot.
+    let s = crate::sched::thread_control_block_insert_cap(
+        tid,
+        rendezvous_cap(deaths, Rights::READ.union(Rights::GRANT)),
+        None,
+    )
+    .expect("insert deaths");
+    assert_eq!(s, 3, "the supervision endpoint must land in slot 3");
 }
 
 /// One line of `byte_sink_protocol` bytes off `ep`, without its newline. `None` at end of stream.
@@ -446,6 +466,43 @@ fn a_scheduled_entry_holds_what_the_plan_said_and_a_refused_one_never_runs() {
     let out = t.out;
     let mut buf = [0u8; 256];
 
+    the_plan_is_complete_before_the_first_tick(out);
+
+    only_the_admitted_entries_fired(&t);
+
+    // ---- the summary, after every corpse has been collected ----
+    //
+    // The clean-exit count is the supervision half of the claim, and it is not decoration: each of
+    // those children was born with the timetable's supervision endpoint in its reserved fault slot,
+    // died, reported its death to the timetable, and had its region reclaimed through
+    // `Rendezvous::REAP`. A scheduler that leaked a region per fire would still print the fire count
+    // and would run out of budget instead of finishing.
+    let Some(n) = line(out, &mut buf) else {
+        panic!("the timetable ended its stream without a summary");
+    };
+    let s = core::str::from_utf8(&buf[..n]).expect("non-UTF-8 summary");
+    assert_eq!(
+        s, "timetable: 4 fires, 4 clean exits, 0 faults",
+        "the summary must account for every child it started",
+    );
+
+    // The stream ends rather than stopping, and the verdict says it finished cleanly.
+    assert!(
+        line(out, &mut buf).is_none(),
+        "the timetable said something after its summary",
+    );
+    assert_eq!(
+        crate::sched::ipc_receive(out)[0],
+        0,
+        "the timetable's verdict word must be a clean finish",
+    );
+    t.reclaim();
+}
+
+/// The shipped document's plan, read from `out` up to the arming line: every grant, every
+/// refusal, and the narrowed archive, each said before anything fires.
+fn the_plan_is_complete_before_the_first_tick(out: RendezvousId) {
+    let mut buf = [0u8; 256];
     // ---- the plan, printed before the first tick ----
     //
     // Read it to the arming line, keeping the facts the assertions below need. Reading it at all is
@@ -533,7 +590,10 @@ fn a_scheduled_entry_holds_what_the_plan_said_and_a_refused_one_never_runs() {
         "the timetable reported an archive wider than its plan, so the spawn site handed it \
          programs it will never run",
     );
+}
 
+/// The [`FIRES`] reports that follow the plan: each one from an entry the plan admitted.
+fn only_the_admitted_entries_fired(t: &Spawned) {
     // ---- what actually fired ----
     //
     // `least_authority_demo` squares its argument, so the shipped document's interval and at-boot entries answer
@@ -574,34 +634,6 @@ fn a_scheduled_entry_holds_what_the_plan_said_and_a_refused_one_never_runs() {
         FIRES - 2,
         "the rest must be the repeating `least_authority_demo 7` heartbeat",
     );
-
-    // ---- the summary, after every corpse has been collected ----
-    //
-    // The clean-exit count is the supervision half of the claim, and it is not decoration: each of
-    // those children was born with the timetable's supervision endpoint in its reserved fault slot,
-    // died, reported its death to the timetable, and had its region reclaimed through
-    // `Rendezvous::REAP`. A scheduler that leaked a region per fire would still print the fire count
-    // and would run out of budget instead of finishing.
-    let Some(n) = line(out, &mut buf) else {
-        panic!("the timetable ended its stream without a summary");
-    };
-    let s = core::str::from_utf8(&buf[..n]).expect("non-UTF-8 summary");
-    assert_eq!(
-        s, "timetable: 4 fires, 4 clean exits, 0 faults",
-        "the summary must account for every child it started",
-    );
-
-    // The stream ends rather than stopping, and the verdict says it finished cleanly.
-    assert!(
-        line(out, &mut buf).is_none(),
-        "the timetable said something after its summary",
-    );
-    assert_eq!(
-        crate::sched::ipc_receive(out)[0],
-        0,
-        "the timetable's verdict word must be a clean finish",
-    );
-    t.reclaim();
 }
 
 /// **Stage `doc` in the page and publish request `seq`**: the registrar's half of
@@ -706,6 +738,57 @@ fn a_registrar_replaces_the_document_whole_and_a_failed_replacement_changes_noth
     let mut t = spawn_timetable_with(&["least_authority_demo"], 0, true, false, false);
     let page = t.page.take().expect("a registrar-mode spawn maps a page");
 
+    the_stored_shape_is_accepted_as_it_is(&t, page);
+
+    // ---- 2. a replacement that does not parse ----
+    send_replace(
+        page,
+        2,
+        b"at-boot least_authority_demo 3\nevery fortnight least_authority_demo 7\n",
+    );
+    await_reply(&t, page, 2);
+    let (status, detail, _, _) = read_reply(page, 2);
+    assert_eq!(
+        status,
+        r::STATUS_PARSE,
+        "a document that does not parse must be refused"
+    );
+    assert_eq!(detail, 2, "the page names the line that did not parse");
+
+    an_edit_keeps_a_resent_line_and_fires_a_new_one(&t, page);
+
+    // ---- 4. an empty document ends the timetable ----
+    //
+    // A timetable holding nothing would still hold its session up (the live-children rule of §16
+    // (object revocation)), so emptying it is how it goes away. This run was asked for no fire
+    // count at all, so this is the only way it can end.
+    send_replace(page, 4, b"# nothing scheduled\n");
+    await_reply(&t, page, 4);
+    let (status, _, verdicts, _) = read_reply(page, 4);
+    assert_eq!(status, r::STATUS_EMPTIED);
+    assert_eq!(verdicts, 0);
+    while exited(&t).is_none() {
+        crate::sched::yield_now();
+    }
+    assert_eq!(
+        exited(&t),
+        Some(0),
+        "a clean finish, in the page's exit word"
+    );
+    // It reached `exit` at all, which a timetable that had tried to speak down its output endpoint
+    // could not have: nobody here reads it, so that `SEND` would still be blocked.
+    assert_eq!(
+        crate::sched::rendezvous_waiting_senders(t.out),
+        0,
+        "a registrar-mode timetable is silent on its output endpoint",
+    );
+    t.reclaim();
+}
+
+/// Replacement 1 of [`a_registrar_replaces_the_document_whole_and_a_failed_replacement_changes_nothing`].
+fn the_stored_shape_is_accepted_as_it_is(t: &Spawned, page: &mut [u8]) {
+    use timetable::registration as r;
+
     // ---- 1. the stored schedule's shape, unedited apart from the name ----
     //
     // The timetable started with an empty document; this is how its first one arrives
@@ -734,21 +817,11 @@ fn a_registrar_replaces_the_document_whole_and_a_failed_replacement_changes_noth
         "the plan comes back in the page, which is the registrar's whole view",
     );
     assert_eq!(report(&t), 9, "the stored at-boot line fires once");
+}
 
-    // ---- 2. a replacement that does not parse ----
-    send_replace(
-        page,
-        2,
-        b"at-boot least_authority_demo 3\nevery fortnight least_authority_demo 7\n",
-    );
-    await_reply(&t, page, 2);
-    let (status, detail, _, _) = read_reply(page, 2);
-    assert_eq!(
-        status,
-        r::STATUS_PARSE,
-        "a document that does not parse must be refused"
-    );
-    assert_eq!(detail, 2, "the page names the line that did not parse");
+/// Replacement 3 of [`a_registrar_replaces_the_document_whole_and_a_failed_replacement_changes_nothing`].
+fn an_edit_keeps_a_resent_line_and_fires_a_new_one(t: &Spawned, page: &mut [u8]) {
+    use timetable::registration as r;
 
     // ---- 3. an edit ----
     send_replace(
@@ -802,33 +875,6 @@ fn a_registrar_replaces_the_document_whole_and_a_failed_replacement_changes_noth
             other => panic!("a scheduled child reported {other}, which nothing in force answers"),
         }
     }
-
-    // ---- 4. an empty document ends the timetable ----
-    //
-    // A timetable holding nothing would still hold its session up (the live-children rule of §16
-    // (object revocation)), so emptying it is how it goes away. This run was asked for no fire
-    // count at all, so this is the only way it can end.
-    send_replace(page, 4, b"# nothing scheduled\n");
-    await_reply(&t, page, 4);
-    let (status, _, verdicts, _) = read_reply(page, 4);
-    assert_eq!(status, r::STATUS_EMPTIED);
-    assert_eq!(verdicts, 0);
-    while exited(&t).is_none() {
-        crate::sched::yield_now();
-    }
-    assert_eq!(
-        exited(&t),
-        Some(0),
-        "a clean finish, in the page's exit word"
-    );
-    // It reached `exit` at all, which a timetable that had tried to speak down its output endpoint
-    // could not have: nobody here reads it, so that `SEND` would still be blocked.
-    assert_eq!(
-        crate::sched::rendezvous_waiting_senders(t.out),
-        0,
-        "a registrar-mode timetable is silent on its output endpoint",
-    );
-    t.reclaim();
 }
 
 /// **A timetable handed the run-unvouched capability runs nothing** (§220 (signed builds, and trusting a key is scoped), gate D2 of §219 (how the shell names an installed program to the spawner)).
