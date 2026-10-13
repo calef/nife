@@ -9,6 +9,7 @@
 //! file.
 
 use filesystem_protocol::{fixture, fs, grant, xattr};
+use fixture::escape;
 use user_mode_runtime::{call, exit, send};
 
 use crate::channel::{FILE, REPORT, get_page, put_page, put_page_at};
@@ -35,7 +36,6 @@ use crate::channel::{FILE, REPORT, get_page, put_page, put_page_at};
 /// the gate's post-run host check pins, and which this restores as its last write) rather than
 /// `motd`, which two other tests compare byte for byte.
 pub(crate) fn attacker(writable: bool) -> ! {
-    use fixture::escape;
     let mut verdict = 0u64;
     let mut buf = [0u8; 128];
 
@@ -45,36 +45,7 @@ pub(crate) fn attacker(writable: bool) -> ! {
         (fixture::MOTD_NAME, fixture::SCRATCH_NAME)
     };
 
-    // The control: the one file this capability designates must open, and read back what is on it.
-    //
-    // The read-only run compares against `MOTD`, which nothing ever writes. The writable run cannot
-    // and must not: the suite runs its tests in **alphabetical order**, so this program runs before
-    // the two clients that put a known pattern in `scratch`, and asserting on those bytes here would
-    // be asserting on a history this test did not write. That is the exact failure DECISIONS §27 was
-    // corrected four times over, met again from the other side. So the writable run's control is that
-    // the file reads back the number of bytes `FSTAT` says it has, and, further down, that the bytes
-    // it writes are the bytes it reads back.
-    put_page(granted.as_bytes());
-    let (h, _) = call(FILE, fs::req(fs::OPEN, 0, granted.len() as u64), 0);
-    if (h as i64) < 0 {
-        verdict |= escape::GRANTED_READ_FAILED;
-    } else {
-        let (size, _) = call(FILE, fs::req(fs::FSTAT, h, 0), 0);
-        let want = if writable {
-            size as usize
-        } else {
-            fixture::MOTD.len()
-        };
-        let (n, _) = call(FILE, fs::req(fs::READ, h, want as u64), 0);
-        if (size as i64) < 0 || (n as i64) < 0 || n as usize != want || want > buf.len() {
-            verdict |= escape::GRANTED_READ_FAILED;
-        } else {
-            get_page(n as usize, &mut buf);
-            if !writable && &buf[..n as usize] != fixture::MOTD {
-                verdict |= escape::GRANTED_READ_FAILED;
-            }
-        }
-    }
+    verdict |= read_the_granted_file(granted, writable);
 
     // 1. A second file, by name. It exists, it sits in the same directory, and the caretaker could
     //    open it. This capability names one file, so this must find nothing.
@@ -127,6 +98,71 @@ pub(crate) fn attacker(writable: bool) -> ! {
         guess += 1;
     }
 
+    verdict |= probe_attributes(writable);
+
+    // Leave the fixture behind, as the LAST write, on the run that was allowed to damage it. The gate
+    // reopens the image with the host tool afterwards and compares `scratch` byte for byte, so an
+    // attacker that walked away from a truncated file would fail a check three steps downstream and
+    // look like a filesystem bug. That exact coupling is what DECISIONS §27 was corrected four times
+    // over, so it is paid off here rather than left to be rediscovered.
+    if writable {
+        let pat = fixture::WRITE_PATTERN;
+        put_page(pat);
+        let (rw, _) = call(FILE, fs::req(fs::WRITE, grant::HANDLE, pat.len() as u64), 0);
+        let (rr, _) = call(FILE, fs::req(fs::READ, grant::HANDLE, pat.len() as u64), 0);
+        get_page(pat.len(), &mut buf);
+        if (rw as i64) < 0 || rr as usize != pat.len() || &buf[..pat.len()] != pat {
+            verdict |= escape::GRANTED_READ_FAILED;
+        }
+    }
+
+    send(REPORT, fixture::VERDICT, verdict, 0);
+    exit();
+}
+
+/// The control: open the one file this capability designates, `granted`, and read it back.
+/// Returns the verdict bits it earned.
+fn read_the_granted_file(granted: &str, writable: bool) -> u64 {
+    let mut verdict = 0u64;
+    let mut buf = [0u8; 128];
+    // The control: the one file this capability designates must open, and read back what is on it.
+    //
+    // The read-only run compares against `MOTD`, which nothing ever writes. The writable run cannot
+    // and must not: the suite runs its tests in **alphabetical order**, so this program runs before
+    // the two clients that put a known pattern in `scratch`, and asserting on those bytes here would
+    // be asserting on a history this test did not write. That is the exact failure DECISIONS §27 was
+    // corrected four times over, met again from the other side. So the writable run's control is that
+    // the file reads back the number of bytes `FSTAT` says it has, and, further down, that the bytes
+    // it writes are the bytes it reads back.
+    put_page(granted.as_bytes());
+    let (h, _) = call(FILE, fs::req(fs::OPEN, 0, granted.len() as u64), 0);
+    if (h as i64) < 0 {
+        verdict |= escape::GRANTED_READ_FAILED;
+    } else {
+        let (size, _) = call(FILE, fs::req(fs::FSTAT, h, 0), 0);
+        let want = if writable {
+            size as usize
+        } else {
+            fixture::MOTD.len()
+        };
+        let (n, _) = call(FILE, fs::req(fs::READ, h, want as u64), 0);
+        if (size as i64) < 0 || (n as i64) < 0 || n as usize != want || want > buf.len() {
+            verdict |= escape::GRANTED_READ_FAILED;
+        } else {
+            get_page(n as usize, &mut buf);
+            if !writable && &buf[..n as usize] != fixture::MOTD {
+                verdict |= escape::GRANTED_READ_FAILED;
+            }
+        }
+    }
+    verdict
+}
+
+/// Step 6: list, get and set an extended attribute through the grant. Returns the verdict bits
+/// it earned.
+fn probe_attributes(writable: bool) -> u64 {
+    let mut verdict = 0u64;
+    let mut buf = [0u8; 128];
     // 6. **Extended attributes** (milestone 61). Before it, all three caretakers answered
     //    `EOPNOTSUPP` to all four verbs, so a program behind a per-file grant could not reach its
     //    own file's attributes. That was uniform and honest and still a capability the confined
@@ -214,25 +250,7 @@ pub(crate) fn attacker(writable: bool) -> ! {
         // caretaker that refused every attribute request would pass the read-only run.
         verdict |= escape::GRANTED_ATTRS_FAILED;
     }
-
-    // Leave the fixture behind, as the LAST write, on the run that was allowed to damage it. The gate
-    // reopens the image with the host tool afterwards and compares `scratch` byte for byte, so an
-    // attacker that walked away from a truncated file would fail a check three steps downstream and
-    // look like a filesystem bug. That exact coupling is what DECISIONS §27 was corrected four times
-    // over, so it is paid off here rather than left to be rediscovered.
-    if writable {
-        let pat = fixture::WRITE_PATTERN;
-        put_page(pat);
-        let (rw, _) = call(FILE, fs::req(fs::WRITE, grant::HANDLE, pat.len() as u64), 0);
-        let (rr, _) = call(FILE, fs::req(fs::READ, grant::HANDLE, pat.len() as u64), 0);
-        get_page(pat.len(), &mut buf);
-        if (rw as i64) < 0 || rr as usize != pat.len() || &buf[..pat.len()] != pat {
-            verdict |= escape::GRANTED_READ_FAILED;
-        }
-    }
-
-    send(REPORT, fixture::VERDICT, verdict, 0);
-    exit();
+    verdict
 }
 
 /// How many bytes the attacker's write probe carries. A fixed length rather than the file's, because
