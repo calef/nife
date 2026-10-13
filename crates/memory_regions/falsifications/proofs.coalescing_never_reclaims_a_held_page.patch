@@ -13,7 +13,7 @@ diff --git a/crates/memory_regions/src/watermark.rs b/crates/memory_regions/src/
 index 75e9d797f..c1c1c6ab0 100644
 --- a/crates/memory_regions/src/watermark.rs
 +++ b/crates/memory_regions/src/watermark.rs
-@@ -47,7 +47,7 @@ pub fn retype_new_watermark(pages: u64, watermark: u64, requested: u64) -> Optio
+@@ -47,7 +47,7 @@
  /// revoke finishes is the use-after-free. Never above `watermark`, so a floor that somehow
  /// exceeded it cannot hand out budget the parent never had.
  pub fn coalesced_watermark(watermark: u64, retyped_to: u64, live_to: u64, quiescent: bool) -> u64 {
