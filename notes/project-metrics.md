@@ -346,11 +346,9 @@ rest.
   matches what a maintainer counted by hand on 2026-09-21, which is evidence and not proof.
 - A band that goes to zero across the whole chart window changes the colors of the bands after
   it. `series_of` drops an all-zero series and the palette is indexed over what survives, so when
-  2026W30 leaves the ten-week window the `before the convention` band disappears and every band
-  below it in the by-model legend shifts one hue. The legend is redrawn with it, so nothing is
-  mislabelled, but a color moves between screenshots.
-  It is pre-existing behavior of every chart here and it is recorded because the by-model panel is
-  the first one certain to hit it.
+  a band leaves the ten-week window every band after it shifts one hue, as the by-model legend's did
+  when 2026W30 left. The legend is redrawn with it, so nothing is mislabelled, but a color moves
+  between screenshots.
 - The cost and context columns carry seven limitations of their own, from a capture that can
   stop silently to a price [ledger](project-metrics/ledger.md) that re-prices history. They are listed where those columns are
   argued: [what this project costs, *Known limitations*](register-of-measures/project-cost.md#known-limitations).
