@@ -155,11 +155,6 @@ Before that the windows were QEMU constants, and the first bench boot paid for i
 device mapping over memory step 1 had already direct-mapped. The mapper's overwrite refusal panicked
 the boot right after the banner. It was the first casualty of a QEMU constant proven on silicon rather than predicted.
 
-A correction made while moving this, 2026-10-11 (UTC): the sentence used to call this "the first
-DECISIONS §43 casualty", after the commit that fixed it (`b74b1f88a`). But §43 (reading the clock
-is a page) was the clock decision then as now, so that citation named the wrong record. Which
-decision was meant is not recoverable from the commit.
-
 ## SBI extensions
 
 OpenSBI is the vendor firmware's M-mode resident. So TIME, IPI, RFENCE and HSM (the bring-up path

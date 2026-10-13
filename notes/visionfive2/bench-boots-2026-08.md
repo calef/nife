@@ -1,6 +1,6 @@
 # Bench boots 1 to 14, August 2026
 
-An appendix to [notes/visionfive2.md](../visionfive2.md), moved from its BUGS section. It is the
+An appendix to [notes/visionfive2.md](../visionfive2.md), beside its BUGS section. It is the
 boot-by-boot record of first silicon and the limitations found on the way.
 
 ## Boots 1 to 11, 2026-08-14 and 2026-08-15

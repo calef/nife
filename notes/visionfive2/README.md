@@ -22,21 +22,18 @@ session each, and the parent links each one where it summarizes it.
 - [`bench-questions.md`](bench-questions.md): "To measure at the bench" in full.
 - [`soak-2026-09-25.md`](soak-2026-09-25.md): the eight-hour soak.
 
-*Name: provisional, minted 2026-09-25 (UTC) by milestone 225 (run the soak on radon, argon and
-xenon)'s radon lane, for the directory and every stem in it. Naming is calef's; `script/names
+*Name: provisional, for the directory and every stem in it. Naming is calef's; `script/names
 --unratified` lists each stem.*
 
-The stems below were minted on 2026-10-11 (UTC) by `lane/ten-longest-notes`, which split the parent
-under §212 (a prose budget). Each is named for its content, and calef names files.
+Each stem below is named for its content, and calef names files.
 
-- `jh7110-against-virt` Name: provisional, minted 2026-10-11 (UTC) by lane/ten-longest-notes.
-- `hart-roster-stops` Name: provisional, minted 2026-10-11 (UTC) by lane/ten-longest-notes.
-- `boots-7-and-8` Name: provisional, minted 2026-10-11 (UTC) by lane/ten-longest-notes.
-- `boots-9-and-10` Name: provisional, minted 2026-10-11 (UTC) by lane/ten-longest-notes.
-- `bench-boots-2026-08` Name: provisional, minted 2026-10-11 (UTC) by lane/ten-longest-notes.
-- `on-board-test-suite` Name: provisional, minted 2026-10-11 (UTC) by lane/ten-longest-notes.
-- `microsd-payload` Name: provisional, minted 2026-10-11 (UTC) by lane/ten-longest-notes.
-- `network-boot` Name: provisional, minted 2026-10-11 (UTC) by lane/ten-longest-notes.
-- `read-off-the-board-2026-09-03` Name: provisional, minted 2026-10-11 (UTC) by
-  lane/ten-longest-notes.
-- `bench-questions` Name: provisional, minted 2026-10-11 (UTC) by lane/ten-longest-notes.
+- `jh7110-against-virt` Name: provisional.
+- `hart-roster-stops` Name: provisional.
+- `boots-7-and-8` Name: provisional.
+- `boots-9-and-10` Name: provisional.
+- `bench-boots-2026-08` Name: provisional.
+- `on-board-test-suite` Name: provisional.
+- `microsd-payload` Name: provisional.
+- `network-boot` Name: provisional.
+- `read-off-the-board-2026-09-03` Name: provisional.
+- `bench-questions` Name: provisional.

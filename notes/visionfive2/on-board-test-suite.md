@@ -1,6 +1,6 @@
 # The test suite on silicon, 2026-08-21
 
-An appendix to [notes/visionfive2.md](../visionfive2.md), moved from its BUGS section. It records
+An appendix to [notes/visionfive2.md](../visionfive2.md), beside its BUGS section. It records
 boot 15 onward, when the `#[test_case]` suite first ran on the board.
 
 ## Boot 15 onward: six real hardware bugs in six boots
