@@ -110,8 +110,8 @@ middle of the corrected section, which is the well-formed-but-wrong failure mode
 records as invisible to it.
 
 **One caveat on the RISC-V twin, because "it was opened by milestone 19e" is too clean.** The
-aarch64 bit was genuinely set then. The RISC-V side was *documented* as set and was not: `crates/user_rt/src/lib.rs:394`
-records that the claim "was aspirational until 2026-07-30", and U-mode `rdtime` worked only because
+aarch64 bit was genuinely set then. The RISC-V side was *documented* as set and, before 2026-07-30, was not: U-mode `rdtime` worked
+only because
 QEMU's OpenSBI leaves the bit permitted. Firmware default, not a choice this project made, and it
 would have failed on a board whose firmware clears it.
 

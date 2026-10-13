@@ -77,7 +77,7 @@ The completeness rule comes first, and no gate checks it. A reader must be able 
 page and act on it without opening an appendix. An appendix verifies or challenges the main page;
 it never carries the argument. Keep in the main page what the document is for, the procedure or
 claim a reader came for, and every conclusion. Move out what supports a conclusion: run tables,
-dated evening logs, per-board transcripts, superseded designs and their refusals, long worked
+dated evening logs, per-board transcripts, replaced designs and their refusals, long worked
 examples. Each moved block leaves behind a sentence stating what it found, plus a link.
 
 Siting is §212's default. The appendices to `notes/X.md` go in `notes/X/<topic>.md`. Each appendix

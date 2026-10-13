@@ -4,7 +4,7 @@ This appendix belongs to [milestone 138 (close the read gap)](../0138-file-io-th
 moved out of that block on 2026-10-12 (UTC) under [§212 (a prose
 budget)](../../decisions/0212-a-prose-budget-for-every-document.md), and the block is complete
 without it. It keeps the options as first written, the sweep that priced them, and the count that
-ruled out the third. Everything here was superseded by calef's decision to take all four steps.
+ruled out the third. calef's decision to take all four steps settled every option here.
 
 ## Why the options had to be priced first
 
@@ -68,7 +68,7 @@ the gap uninteresting. It would change what "close the gap" means and which mile
 
 ## The measurement was taken, and it moved two of the three
 
-Superseded 2026-08-18. The section above asked for a record-level sweep before any option was
+The section above asked for a record-level sweep before any option was
 chosen. It was run (PR #338) and the result is in notes/benchmarks.md. The question is kept because
 it is why the answer is trustworthy, so a reader can see what was asked.
 

@@ -10,10 +10,10 @@ needs_person: no
 ---
 # 577. The icount baselines predate the pinned nightly, so the tripwire's headroom is eroding unseen
 
-Superseded 2026-09-23, by milestone 300 (decompose the icount baseline drift, and
+This block's work is in milestone 300 (decompose the icount baseline drift, and
 re-baseline only what is proven), milestone 302 (a baseline records what it was saved against, and a
 stale one fails loudly) and milestone 415 (sub-tripwire drift accumulates across baseline saves).
-Promoted and superseded in one act, the shape milestone 431 (the ACPI walk is reachable by the
+Promoted and closed in one act, the shape milestone 431 (the ACPI walk is reachable by the
 prover for the first time, and proved by nothing) used, because a proposal cannot be disposed of in
 place: it was filed 2026-09-15 by the lane of milestone 299 (the x86 port-range capability), sat on
 PR #883, and both halves of it were answered while it sat. *(Number provisional until the merge
@@ -136,7 +136,7 @@ result and preserves nothing else. A row that cannot carry a reason cannot carry
   each save *recorded*, never what the tree measured between saves, which is the same limit 415's
   audit states about itself.
 - The original proposal's measurements are left above in git and not reproduced here, because
-  milestone 300 measured the toolchain term at ~0 and superseded them. Reading the pre-promotion text
+  milestone 300 measured the toolchain term at ~0, which voids them. Reading the pre-promotion text
   as current is the mistake this note exists to prevent.
 - "Compiler-dependent" is tonight's reading, not a settled cause. The hart-count reading in
   notes/benchmarks.md fits the same data. Deciding between them needs an A/B across two nightlies at
@@ -149,7 +149,7 @@ number in them, so this was filed on 2026-09-15 after a bump left the floors alo
 headroom went with it. Both of its items were answered while it sat unpromoted on a branch: milestone
 300 decomposed the drift and measured the toolchain term at ~0, and milestone 302 is an architect's
 fail-loudly ruling, most of which landed as `99f13dad`'s `script/lint` check that fires when a
-baseline's `# toolchain:` line and `rust-toolchain.toml` disagree. Promoted and superseded in one act
+baseline's `# toolchain:` line and `rust-toolchain.toml` disagree. Promoted and closed in one act
 so the number is spent and the evidence has a home: that check covers staleness and nothing else, and
 riscv64's `rfence_self` oscillating between 5991 and 6476 across consecutive saves, read as a wrong
 hart count by one lane and as compiler drift by another four days later, is what a floor that records

@@ -15,12 +15,12 @@ ratchet now, the same shape §38 already uses for dead code, tracked in notes/do
 workspace = true` (all 57) is checked by default, and the 7 crates with a real remaining worklist
 (`machine_discovery`, `smb_proto`, `mdns_proto`, `pci`, `gpt`, `grant_plan`, `compositor`) carry an explicit
 `#![allow(missing_docs)]` citing §107 and their own count. A crate added tomorrow is gated from the
-day it is written, closing the gap this block's BUGS section used to name.
+day it is written.
 
 What is now checked rather than counted, which is the change that matters most here: the examples
 are enforced by `cargo test --doc` and the item docs by `script/lint`'s `-D warnings` in the crates
-that opted in. Both remaining halves used to be numbers in this file, the shape §76 warns about, and
-both numbers had moved by the time anyone acted on them.
+that opted in. A number for either half in this file would be the shape §76 (what catches a milestone status that is wrong in both places) warns about, moving
+before anyone acted on it.
 
 ## What landed
 
