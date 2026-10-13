@@ -254,8 +254,7 @@ Summarized in [the latest result](#the-latest-result-run-6-2026-09-19). [Run
 
 ## BUGS
 
-Each entry's history, with the run that found it and how it was resolved, is in
-[the BUGS history](stranger-test/bugs-history.md). These are the limits still open on 2026-09-24.
+These are the limits still open on 2026-09-24.
 
 - The fact of the test leaks and always will. `README.md`, `CONTRIBUTING.md` and
   `notes/adding-a-program.md` cite earlier runs, and each run adds to that record. Only the answer
