@@ -26,6 +26,10 @@ license.workspace = true
 # fault. `block_driver`'s two virtio attacker roles predate this and still ship ungated.
 # The feature name was ratified by calef, 2026-10-05 (#1647).
 confinement_attackers = ["non_volatile_memory_express/confinement_attackers"]
+# **The input driver holds 200 ms after every drain**, for `script/swish-check --input-race`: the
+# window in which a receive interrupt cleared after the drain would strand typed bytes in the
+# PL011's FIFO (components/src/input.rs). Off in every shipped image. Name provisional (2026-10-13 UTC).
+input_race_probe = []
 
 # The console server (milestone 19f (run a real workload).3): the second program lifted out of
 # `hello`. `initial_ramdisk_aarch64` packs it under "console"; the progenitor loads it by name.

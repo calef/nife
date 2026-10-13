@@ -16,9 +16,9 @@ use std::process::Command;
 use boot::*;
 use gauge::*;
 use launch::*;
-/// The verb `main.rs` dispatches to, from [`run`].
-pub(crate) use run::swish_check;
 use run::*;
+/// The verb `main.rs` dispatches to, from [`run`].
+pub(crate) use run::{probe_program_feature, swish_check};
 use script::*;
 use transcript::*;
 use verdict::*;

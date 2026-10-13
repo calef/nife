@@ -4,6 +4,12 @@
 #   script/swish-check                     all three architectures
 #   script/swish-check --arch aarch64      one leg (aarch64, riscv64 or x86_64)
 #   script/swish-check --release           the optimised build a stick carries (not in CI; x86_64 untried)
+#   script/swish-check --input-race        the input driver holds 200 ms after each drain and Enter
+#                                          follows each line by 50 ms (first boot only; aarch64 in CI)
+#
+# **`--input-race` is the input driver's proof.** Enter lands while the driver holds, the window
+# in which a driver that cleared the PL011's interrupt after draining would strand a byte in the
+# FIFO and never read input again. The cause and the runs are in notes/swish-check-flake.md.
 #
 # **It also gates the progenitor's stack** (milestone progenitor-stack (provisional)): the kernel
 # prints `progenitor stack: N of M bytes at peak` each time the mark settles higher, this echoes

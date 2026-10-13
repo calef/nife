@@ -14,6 +14,33 @@ use crate::inspect::read_stripped;
 use crate::measure::{boot_programs, measurement_table, write_measure_manifest};
 use crate::{RISCV_TARGET, TARGET, X86_TARGET, profile_dir};
 
+/// **Build the two program packages, `components` and `fixtures`, for `target`**, in the run's
+/// profile and with the attacker roles only when [`crate::CONFINEMENT_ATTACKERS`] says so. The one
+/// place the three initial ramdisk builders ([`crate::user`], [`initial_ramdisk_riscv`],
+/// [`initial_ramdisk_x86`]) spell that build, so the feature cannot reach one architecture's
+/// archive and not another's. Switching between a test and any other boot recompiles
+/// `components`, because cargo fingerprints features; that is the price of the shipped image not
+/// containing the attacker. Name provisional.
+pub(crate) fn build_programs(target: &str) -> bool {
+    let mut args = vec![
+        "build",
+        "-p",
+        "components",
+        "-p",
+        "fixtures",
+        "--target",
+        target,
+    ];
+    if crate::CONFINEMENT_ATTACKERS.load(std::sync::atomic::Ordering::Relaxed) {
+        args.extend(["--features", "components/confinement_attackers"]);
+    }
+    // A swish-check probe's own program feature (`--input-race`), on no other boot.
+    if let Some(feature) = crate::swish_check::probe_program_feature() {
+        args.extend(["--features", feature]);
+    }
+    crate::cargo_profiled(&args)
+}
+
 /// Where the packed initial ramdisk archive is written.
 pub(crate) fn initial_ramdisk_path() -> String {
     workspace_root()
@@ -336,7 +363,7 @@ pub(crate) fn initial_ramdisk_riscv() -> bool {
     //
     // Profiled since `swish-check --release` (milestone progenitor-stack (provisional)), which
     // packed debug programs under a release kernel until this read `profile_dir()`.
-    if !crate::build_programs(RISCV_TARGET) {
+    if !build_programs(RISCV_TARGET) {
         return false;
     }
 
@@ -437,7 +464,7 @@ pub(crate) fn x86_initial_ramdisk_path() -> String {
 /// His words: "B for #1998." Refused `initrd_x86` (the foreign spelling, which stops at the
 /// boundary where it arrives).
 pub(crate) fn initial_ramdisk_x86() -> bool {
-    if !crate::build_programs(X86_TARGET) {
+    if !build_programs(X86_TARGET) {
         return false;
     }
 
