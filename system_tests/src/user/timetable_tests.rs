@@ -341,7 +341,7 @@ fn map_the_archive(space: &mut AddressSpace, archive: &[u8], archive_pages: u64)
     }
 }
 
-/// A fresh clock page, initialised as UNKNOWN, mapped read-only at
+/// A fresh clock page, initialized as UNKNOWN, mapped read-only at
 /// `timetable::contract::CLOCK_VA`. Returns its frame.
 fn map_a_clock_page(space: &mut AddressSpace) -> u64 {
     let phys = crate::memory::alloc_zeroed()

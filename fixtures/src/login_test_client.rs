@@ -517,8 +517,8 @@ pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
 }
 
 /// Prove the directory capability works, mapped at [`FS_VA`]: list the granted subtree, then do
-/// what `behaviour` asks of it. Returns the flags it earned and the third report word.
-fn prove_the_directory(behaviour: u64, identity: &[u8], dir_ep: u64, region: u64) -> (u64, u64) {
+/// what `behavior` asks of it. Returns the flags it earned and the third report word.
+fn prove_the_directory(behavior: u64, identity: &[u8], dir_ep: u64, region: u64) -> (u64, u64) {
     let mut flags = 0u64;
     let mut hint = 0u64;
     let (r0, _) = call(
@@ -540,7 +540,7 @@ fn prove_the_directory(behaviour: u64, identity: &[u8], dir_ep: u64, region: u64
 
         // DECISIONS §117's own proof: which subtree did this login actually land in? Only the
         // `WRITE_MARKER`/`READ_MARKER` do this; `LOGIN` stops at proving what it received.
-        match behaviour {
+        match behavior {
             // **One arm where there were two.** `alice`'s and `bob`'s halves of this proof
             // differed only in the name written into the marker, and that name is the identity
             // this run authenticated as, which it now holds as an argument rather than as a
@@ -563,7 +563,7 @@ fn prove_the_directory(behaviour: u64, identity: &[u8], dir_ep: u64, region: u64
             // login's whole 128-page contribution comes home.
             LOGOUT => {
                 flags |= teardown_directory(dir_ep, region);
-                // The third report word, for this behaviour only: how many microseconds the
+                // The third report word, for this behavior only: how many microseconds the
                 // caretaker region's `DESTROY` waited (the budget's own wait is not reported;
                 // nothing lives in that region, so it has never needed one). The kernel test
                 // quotes it in the failure message.
@@ -571,8 +571,8 @@ fn prove_the_directory(behaviour: u64, identity: &[u8], dir_ep: u64, region: u64
             }
             // `HOLD_TERMINAL` shares the teardown but not the wait report (see the module
             // docs: freeing the session's memory and freeing the terminal are two independent
-            // acts, and this behaviour deliberately only does the first). It keeps the identity
-            // hint every other behaviour puts in the third word, so the wait report stays
+            // acts, and this behavior deliberately only does the first). It keeps the identity
+            // hint every other behavior puts in the third word, so the wait report stays
             // `LOGOUT`'s alone, exactly as that comment above claims.
             HOLD_TERMINAL => flags |= teardown_directory(dir_ep, region),
             // Torn down as `HOLD_TERMINAL` is, and for a measured reason: left standing, its
@@ -591,9 +591,9 @@ fn prove_the_directory(behaviour: u64, identity: &[u8], dir_ep: u64, region: u64
 
 /// The sixth capability, `ru`: used once (for [`PRESENT_RUN_UNVOUCHED`] only), then offered on to
 /// the report endpoint, which must refuse it. Answers the flags it earned.
-fn prove_run_unvouched(behaviour: u64, ru: u64) -> u64 {
+fn prove_run_unvouched(behavior: u64, ru: u64) -> u64 {
     let mut flags = 0u64;
-    if behaviour == PRESENT_RUN_UNVOUCHED {
+    if behavior == PRESENT_RUN_UNVOUCHED {
         send(ru, RUN_UNVOUCHED_MAGIC, 0, 0);
         flags |= F_RUN_UNVOUCHED_WORKS;
     }
