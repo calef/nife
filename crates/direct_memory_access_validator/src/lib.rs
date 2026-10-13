@@ -1134,4 +1134,209 @@ mod tests {
         const { assert!(RING_END <= RING_BLOCK) };
         const { assert!(queue_block(0) + RING_END <= queue_block(1)) };
     }
+    // The eighth outsider pass's host attacks (claims 13 to 17): the shapes around the cited
+    // tests, host-run the way every test in this module is. Name: provisional (this pass's lane,
+    // 2026-10-13 UTC).
+
+    /// **An address-plus-length that wraps the u64 is refused, and so is one that straddles the
+    /// region's end by a single byte** (claim 13).
+    #[test]
+    fn a_length_that_wraps_or_straddles_the_end_is_refused() {
+        assert!(
+            !is_in_region(BASE, 0x1000, u64::MAX - 8, 16),
+            "a length whose sum wraps the u64 was treated as inside",
+        );
+        assert!(
+            !is_in_region(0, u64::MAX, 1, u64::MAX),
+            "a buffer starting one page into the widest region wrapped and claimed to fit",
+        );
+        let mut r = Rings::new();
+        r.set_desc(0, BASE + 0xfff, 2, 0, 0);
+        r.driver_ring[0] = 0;
+        r.driver_idx = 1;
+        assert!(
+            !r.run(),
+            "a buffer straddling the region's end by one byte validated",
+        );
+        assert_eq!(
+            *r.shadow_idx.borrow(),
+            0,
+            "a refused descriptor still published a shadow index",
+        );
+    }
+
+    /// **An indirect descriptor refuses the batch wherever it sits in the chain** (claim 14).
+    #[test]
+    fn an_indirect_descriptor_mid_chain_refuses_the_whole_batch() {
+        let mut r = Rings::new();
+        r.set_desc(0, BASE + 0x200, 16, F_NEXT, 1);
+        r.set_desc(1, BASE + 0x400, 16, F_INDIRECT, 0);
+        r.set_desc(2, BASE + 0x600, 16, F_NEXT, 3);
+        r.driver_ring[0] = 0;
+        r.driver_idx = 1;
+        assert!(
+            !r.run(),
+            "a chain carrying an indirect descriptor in its middle validated",
+        );
+        assert_eq!(
+            *r.shadow_idx.borrow(),
+            0,
+            "a batch refused at its second descriptor still published a shadow index",
+        );
+    }
+
+    /// **A `next` at or past the ring's size refuses the batch** (claim 15). A two-slot cycle, by
+    /// contrast, terminates and validates by design (the cited `a_next_cycle_terminates`): the
+    /// walk is bounded by the ring, so a cycle cannot make it walk forever, and this pass adds
+    /// only the edge the cited tests leave, a `next` one past the last slot.
+    #[test]
+    fn an_out_of_ring_next_refuses_the_batch() {
+        let mut r = Rings::new();
+        r.set_desc(0, BASE + 0x200, 16, F_NEXT, QSIZE);
+        r.driver_ring[0] = 0;
+        r.driver_idx = 1;
+        assert!(
+            !r.run(),
+            "a next equal to the ring's size walked outside the rings",
+        );
+
+        let mut r = Rings::new();
+        r.set_desc(0, BASE + 0x200, 16, F_NEXT, u16::MAX);
+        r.driver_ring[0] = 0;
+        r.driver_idx = 1;
+        assert!(!r.run(), "the widest next walked outside the rings",);
+    }
+
+    /// **A batch spanning the ring's wrap point validates when it fits and is refused when it does
+    /// not** (claim 15).
+    #[test]
+    fn a_batch_across_the_wrap_validates_only_while_it_fits() {
+        let mut r = Rings::new();
+        r.set_desc(7, BASE + 0x200, 16, F_NEXT, 0);
+        r.set_desc(0, BASE + 0x400, 16, 0, 0);
+        r.driver_ring[7] = 0;
+        r.driver_idx = 9;
+        assert!(
+            r.run_range(7, 9),
+            "a two-descriptor batch across the wrap was refused"
+        );
+
+        let mut r = Rings::new();
+        r.set_desc(7, BASE + 0x200, 16, F_NEXT, 0);
+        r.driver_ring[7] = 0;
+        r.driver_idx = 7;
+        assert!(
+            !r.run_range(7, 17),
+            "a batch of ten against a ring of eight validated across the wrap",
+        );
+    }
+
+    /// **One queue's validation touches nothing in another queue's block** (claim 16).
+    #[test]
+    fn a_validate_on_queue_one_touches_nothing_in_queue_zero_block() {
+        let mut other_desc = [Desc { addr: 0, word: 0 }; 8];
+        other_desc[0] = Desc {
+            addr: BASE + 0x200,
+            word: (16u64) | ((F_NEXT as u64) << 32) | (1 << 48),
+        };
+        other_desc[1] = Desc {
+            addr: BASE + 0x400,
+            word: 16,
+        };
+        let driver_ring = [0u16; 8];
+        let escaped = core::cell::RefCell::new([0u64; 8]);
+        let escapes = core::cell::Cell::new(0usize);
+        let published = core::cell::Cell::new(false);
+
+        // Queue 1's blocks sit one `queue_block` past queue 0's, the layout `queue_block` pins.
+        let dd = DD + queue_block(1);
+        let da = DA + queue_block(1);
+        let sd = SD + queue_block(1);
+        let sa = SA + queue_block(1);
+
+        let ok = validate_and_shadow(
+            BASE,
+            0x1000,
+            dd,
+            da,
+            sd,
+            sa,
+            0,
+            1,
+            QSIZE,
+            &|p| {
+                if p == da + 2 {
+                    1
+                } else {
+                    driver_ring[((p - da - 4) / 2) as usize]
+                }
+            },
+            &|p| {
+                let off = (p - dd) / 16;
+                if (p - dd) % 16 == 0 {
+                    other_desc[off as usize].addr
+                } else {
+                    other_desc[off as usize].word
+                }
+            },
+            &|p, _v| {
+                if !(sa..sa + RING_END).contains(&p) {
+                    let mut e = escaped.borrow_mut();
+                    let n = escapes.get();
+                    if n < e.len() {
+                        e[n] = p;
+                        escapes.set(n + 1);
+                    }
+                } else if p == sa + 2 {
+                    published.set(true);
+                }
+            },
+            &|p, _v| {
+                if !(sd..sd + RING_END).contains(&p) {
+                    let mut e = escaped.borrow_mut();
+                    let n = escapes.get();
+                    if n < e.len() {
+                        e[n] = p;
+                        escapes.set(n + 1);
+                    }
+                }
+            },
+        );
+        assert!(ok, "the queue-1 chain was refused");
+        assert!(
+            published.get(),
+            "queue 1's shadow index was never published"
+        );
+        assert_eq!(
+            escapes.get(),
+            0,
+            "queue 1's validation reached outside its own block",
+        );
+    }
+
+    /// **A descriptor mutated after validation cannot reach the device** (claim 17): the device
+    /// reads the shadow, and the shadow holds what was validated.
+    #[test]
+    fn a_descriptor_mutated_after_validation_reads_back_validated() {
+        let mut r = Rings::new();
+        r.set_desc(0, BASE + 0x200, 16, 0, 0);
+        r.driver_ring[0] = 0;
+        r.driver_idx = 1;
+        assert!(r.run(), "the honest descriptor was refused");
+
+        r.driver_desc[0].addr = u64::MAX - 0x1000;
+        r.driver_desc[0].word = 0xffff_ffff;
+
+        let shadow_addr = r.shadow_desc.borrow()[0].addr;
+        let shadow_word = r.shadow_desc.borrow()[0].word;
+        assert_eq!(
+            shadow_addr,
+            BASE + 0x200,
+            "the device's copy followed a mutation made after validation",
+        );
+        assert_ne!(
+            shadow_word, 0xffff_ffff,
+            "the device's copy followed a mutated length and flags word",
+        );
+    }
 }

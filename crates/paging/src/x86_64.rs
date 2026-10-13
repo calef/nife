@@ -1211,3 +1211,43 @@ mod verification {
         );
     }
 }
+
+/// **The eighth outsider pass's host attack on the VT-d encoder** (claim 12): a physical address
+/// built to carry a payload in every reserved position. Name: provisional (this pass's lane,
+/// 2026-10-13 UTC).
+#[cfg(test)]
+mod eighth_pass_attacks {
+    use super::*;
+
+    /// **A hostile physical address cannot smuggle reserved bits into an entry.**
+    ///
+    /// The address is built with a payload in every bit the format reserves: the low nibble's
+    /// bits 2 and 3, bits 4 through 9, and everything above bit 51, the set QEMU's
+    /// `VTD_SPTE_PAGE_L1_RSVD_MASK` faults on. `leaf_entry` must mask the address down to
+    /// `VTD_ADDR_MASK` and leave the payload nowhere: the encoded leaf is exactly the permitted
+    /// bits, and `entry_pa` reads back the masked address rather than the hostile one.
+    #[test]
+    fn a_hostile_address_cannot_smuggle_reserved_bits_through_vtd() {
+        let payload = u64::MAX & !VTD_ADDR_MASK;
+        let pa = (0x0040_0000_0000_0000 & VTD_ADDR_MASK) | payload;
+        assert_ne!(
+            pa & VTD_ADDR_MASK,
+            pa,
+            "the fixture: the payload is in the mask"
+        );
+
+        for flags in [Flags::user_data(), Flags::kernel_rodata()] {
+            let leaf = Vtd::leaf_entry(pa, flags);
+            assert_eq!(
+                leaf & !VTD_PERMITTED_BITS,
+                0,
+                "a reserved bit survived the encode for {flags:?}: {leaf:#x}",
+            );
+            assert_eq!(
+                Vtd::entry_pa(leaf),
+                pa & VTD_ADDR_MASK,
+                "the hostile payload reached entry_pa for {flags:?}",
+            );
+        }
+    }
+}

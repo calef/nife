@@ -1583,6 +1583,96 @@ mod tests {
             }
         }
     }
+    // The eighth outsider pass's host attacks (claim 18): the shapes around the cited tests.
+    // Name: provisional (this pass's lane, 2026-10-13 UTC).
+
+    const PEER: CapNeed = CapNeed {
+        role: "peer",
+        direction: Direction::Serve,
+    };
+    const SINK: CapNeed = CapNeed {
+        role: "sink",
+        direction: Direction::Use,
+    };
+
+    const FOUR_WAY: Requirements = Requirements {
+        contract: "four_way",
+        caps: &[SERVICE, REPORT, PEER, SINK],
+        maps: &[],
+        pages: 4,
+        depends_on: &[],
+        handoff: None,
+    };
+
+    /// **A four-role plan grants exactly each declaration's direction and nothing beside it**
+    /// (claim 18), with the expected rights written as literals the way the Kani harness writes
+    /// them, so a `Direction::rights` that drifted widens this test's answer and not its premise.
+    #[test]
+    fn a_four_role_plan_grants_exactly_the_declared_directions() {
+        let provisions = Provisions {
+            held: &[("peer", 3), ("sink", 7), ("service", 0), ("report", 9)],
+        };
+        let p = plan(&FOUR_WAY, &provisions).unwrap();
+        assert_eq!(
+            p.caps(),
+            &[
+                (0, abi::rights::READ),
+                (9, abi::rights::WRITE),
+                (3, abi::rights::READ),
+                (7, abi::rights::WRITE)
+            ],
+            "the plan's grants are not exactly one per declaration, in the declaration's order, \
+             with the direction's right",
+        );
+        assert_eq!(p.maps(), &[], "a plan with no maps granted a map");
+        assert_eq!(p.pages(), 4);
+    }
+
+    /// **A provisions table carrying a surplus role with a fat right injects nothing.** The claim
+    /// is about widening; the hostile shape is a supervisor that holds more than the component
+    /// asked for and misroutes it, and the plan must still answer with the declaration's caps and
+    /// only those.
+    #[test]
+    fn a_surplus_role_with_a_right_the_declaration_never_asked_for_grants_nothing() {
+        let greedy = Provisions {
+            held: &[
+                ("service", 5),
+                ("report", 1),
+                ("witness", 9),
+                ("uart", 2),
+                ("peer", 4),
+                ("sink", 6),
+            ],
+        };
+        let p = plan(&CONSOLE, &greedy).unwrap();
+        assert_eq!(
+            p.caps(),
+            &[(5, abi::rights::READ), (1, abi::rights::WRITE)],
+            "a role the declaration never asked for reached the plan's grants",
+        );
+    }
+
+    /// **A need routed by a role the provisions table names twice still grants one capability.**
+    /// The hostile shape is a provisions table repeating a role at two slots: the plan resolves
+    /// each declared need once, so the duplicate buys nothing.
+    #[test]
+    fn a_provisions_table_repeating_a_role_grants_one_capability() {
+        let repeated = Provisions {
+            held: &[
+                ("service", 5),
+                ("service", 6),
+                ("report", 1),
+                ("witness", 9),
+                ("uart", 2),
+            ],
+        };
+        let p = plan(&CONSOLE, &repeated).unwrap();
+        assert_eq!(
+            p.caps(),
+            &[(5, abi::rights::READ), (1, abi::rights::WRITE)],
+            "a repeated role changed what the plan granted",
+        );
+    }
 }
 
 // Machine-checked properties of the wiring (Kani), in proofs.rs. Behind `#[cfg(kani)]`, so an
