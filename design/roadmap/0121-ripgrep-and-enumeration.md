@@ -114,7 +114,7 @@ a real recursive stack walk, and `swish` walks components to navigate.
 
 The honest claim is narrower, and it is the one this milestone actually rests on: no recursive walk
 is reachable from a `std` program, because the PAL retains no directory handle. That is milestone 122,
-which is this block's gate, and the 2026-08-13 correction section below already states it correctly.
+this block's gate (the correction below).
 Nothing composes `ENUMERATE` to walk a tree it was handed, from somebody else's program, and that
 is where the interesting costs and the interesting confinement both live.
 
@@ -152,8 +152,7 @@ than a special case built for this.
 The negative half is the load-bearing one and should be a test, in the shape milestone 108 used: the
 same command, run against a directory capability that lacks `ENUMERATE`, must be refused loudly
 rather than returning nothing. A search that silently finds no matches because it could not look is
-the worst possible failure for this tool, and `fs_proto` already chose `EPERM` over an empty listing
-for exactly that reason.
+the worst possible failure for this tool, which is why `fs_proto` answers `EPERM`.
 
 This is a better first demonstration than git for one reason worth stating plainly: everybody has
 run grep. The confinement claim needs no explanation to anyone who has ever typed a search.
@@ -183,8 +182,7 @@ What to measure: wall time and instruction count over a fixed tree, and the per-
 walk separated from the per-byte cost of the search, because those two exercise different halves of
 the system and a single number hides which one is expensive.
 
-The caveat: `rg` walks in parallel since milestone 812, so the comparison pins both sides to
-`--threads 1`, stated next to the number.
+The caveat: `rg` walks in parallel since milestone 812, so both sides are pinned to `--threads 1`.
 
 An honest loss is a result. §14's framing is that a recorded loss is worth more than an overclaimed
 win, and a microkernel paying IPC per directory entry may well lose this one. That is worth knowing
@@ -223,9 +221,7 @@ ripgrep working beautifully and confinement being decorative.
   "microkernels are slow at walks".
 - `ignore` building is not `ignore` behaving. 64's probe proved it compiles. Whether its
   metadata-heavy paths and gitignore semantics behave identically here is a separate question that
-  only running it answers. The correction above is the sharp version of this: it compiles, and it
-  cannot walk past one level, and no probe that only builds a crate would have found that. Since
-  2026-10-07 it has run: the walk reaches every file in the fixture and nothing else. The fixture
+  only running it answers, as the correction above found the sharp way. Since 2026-10-07 it has run: the walk reaches every file in the fixture and nothing else. The fixture
   holds no ignore files, so gitignore semantics are still untested here.
 - A walker's cost is per component, and on 2026-09-26 it stopped being invisible: 15 to 51 us
   per component under HVF with a debug kernel, smaller than a single operation's fixed cost and

@@ -72,10 +72,9 @@ An EL0 NVMe server under §86's option 2a, against QEMU's NVMe, which the runner
 in-kernel driver milestone 53 built; the work is moving the queue mechanics out to a confined process
 that is handed a doorbell page and a DMA window and nothing else.
 
-The name is an architect's and a lane should ship a provisional one and say so. `nvme_server` is
-what §86 calls it in passing and that is not a ratification. Settled 2026-09-18: the program is
-`non_volatile_memory_express`, sharing its crate's name, under DECISIONS §154. The paragraph above
-is kept as the brief the lane worked from.
+The name is an architect's and a lane should ship a provisional one and say so; `nvme_server` is
+§86's passing use, not a ratification. Settled 2026-09-18 under DECISIONS §154 (the acronym test):
+the program is `non_volatile_memory_express`, sharing its crate's name.
 
 ## What was built, 2026-09-17
 
@@ -189,8 +188,7 @@ about a real device at real speed.
 
 ## BUGS
 
-*Reviewed 2026-09-17 against what the build learned. The first entry got sharper rather than
-weaker, the fourth is partly answered, and two are new.*
+*Reviewed 2026-09-17 against what the build learned, and since.*
 
 - Answered 2026-10-04: xenon's DMAR gives the NVMe to the catch-all unit, and preflight 1
   passed on the real table. The unit then failed to read its own tables (above), so confinement

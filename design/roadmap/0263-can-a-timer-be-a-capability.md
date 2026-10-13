@@ -56,9 +56,8 @@ rather than from the specifications, which is exactly what the spike must correc
 | riscv64 | SBI TIME (`sbi_set_timer`, an `ecall` to OpenSBI in M-mode) | one timer per hart, write-only, and U-mode cannot issue SBI calls at all: only S-mode can |
 | x86_64 | the local APIC timer | the exception. HPET exists with multiple comparators in MMIO, so a spare grantable timer plausibly exists here |
 
-Corrected against the specifications, 2026-09-05. The table above is left as written, because
-this block's own `BUGS` says it was read from this tree's doc comments and the spike existed to check
-it. This is what the specifications say instead, and the working is in
+Corrected against the specifications, 2026-09-05. The table above is left as written (`BUGS` says
+why). This is what the specifications say instead, and the working is in
 [`notes/timer-capability/specifications.md`](../../notes/timer-capability/specifications.md):
 
 | ISA | the block said | the specification says |

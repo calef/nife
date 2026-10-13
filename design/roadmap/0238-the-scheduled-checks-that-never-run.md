@@ -45,7 +45,7 @@ workflow's own comment already says so.
 `crates/manual/tests/render.rs:279` reads `CARGO_MANIFEST_DIR` at run time and **Miri does not
 forward the environment**, so the test fails there and passes under `cargo test`. **It is not
 undefined behaviour and never was.** The fix is one flag. Milestone 232's lane did not apply it
-because an audit repairs nothing, which was right.
+because an audit repairs nothing.
 
 ## Why they belong together
 
@@ -100,7 +100,7 @@ the same failure is a straight line into the wall:
 20:36:16  The runner has received a shutdown signal
 ```
 
-1.4 GB to 15.8 GB in twenty seconds. A mutant turns a bound into an unbounded allocation, the
+A mutant turns a bound into an unbounded allocation, the
 machine goes, and the runner agent goes with it. The per-mutant timeout cannot catch this: it is
 auto-derived at 28 to 51 seconds on this tree, and 16 GB is gone well inside that, so a mutant that
 allocates rather than spins is a hang the clock never gets to name. A sampler whose interval is
@@ -129,8 +129,7 @@ The baseline-era crates are broadly stable or better (`gpt` 55/1, `elf` 12/0, `c
 **The Miri fix was not one flag, and each layer hid the next because `cargo miri test` stops at the
 first failure.** `-Zmiri-env-forward=CARGO_MANIFEST_DIR` works and lands on a
 second wall, `read_dir` against Miri's isolation; behind that sat five `board_console` tests doing
-host I/O, invisible until the first two were cleared because `cargo miri test` stops at the first
-failure. Clearing all of it needs `-Zmiri-disable-isolation` for the whole workspace run, and the
+host I/O, invisible until the first two were cleared. Clearing all of it needs `-Zmiri-disable-isolation` for the whole workspace run, and the
 corpus test costs 0.74 seconds natively against more than 12 minutes under Miri, unfinished when
 killed. Both crates have no dependencies and no `unsafe`, so there is nothing there for Miri to
 judge. The tests gate themselves out under `cfg(miri)`, which is the convention `gpt`, `glob`,
@@ -227,8 +226,7 @@ The mechanism is small and the choice between three shapes is the work:
   Cleanest in principle; `target.<host>.runner` is only consulted when `--target` is passed, so it
   needs checking before it is chosen.
 
-Whichever wins, the outcome is the same and it is an improvement in what gets measured rather than a
-reduction: a runaway mutant that today destroys a shard's entire remaining run would instead be
+Whichever wins, more gets measured, not less: a runaway mutant that today destroys a shard's entire remaining run would instead be
 recorded as one caught mutant, and the other 1,200 in that shard would finish.
 
 This was not built here because each attempt costs a twenty-minute CI round trip and the failure
@@ -244,16 +242,15 @@ ship under a feedback loop that slow.
 - **Recorded.** `design/roadmap/0238-the-scheduled-checks-that-never-run.md` says in `BUGS` that a
   green mutation run is not the same as a good one.
 - **Recorded.** `notes/mutation-testing.md` tabulates what the two partial runs did and did not
-  cover. Seven eighths of the corpus is still unmeasured since 2026-08-03, because four of eight
-  shards died on the run that finally published, and a full refresh needs a run where enough shards
-  survive.
+  cover. The seven eighths still unmeasured since 2026-08-03, and why, are in `BUGS, after the
+  work`.
 - **Recorded.** `AGENTS.md` already accepts the gap `script/cadence-check` inherits from
   `helpers/trunk-health.sh`, told in `BUGS, after the work`.
 - **Recorded.** `design/decisions/0074-audit-cadence.md` holds the cadence and what it is for. Why
   `audit cadence` is red is told in `BUGS, after the work`.
 - **Recorded.** `design/roadmap/0238-the-scheduled-checks-that-never-run.md` records in `BUGS` the
-  boundary around the other seven scheduled workflows milestone 232 (audit every check against two questions)
-  inventoried and did not run.
+  boundary around the other seven scheduled workflows milestone 232 (audit every check against two
+  questions) inventoried and did not run.
   `script/cadence-check` now names any of them that has gone more than 15 days without a scheduled success.
 - **Refused.** Excluding `compositor` from the Miri run to make it fit its budget, for the reason
   given in the `compositor` handoff above.

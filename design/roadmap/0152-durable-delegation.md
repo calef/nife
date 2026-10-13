@@ -9,9 +9,8 @@ Updated 2026-10-03 (UTC). Minted 2026-08-22, from a milestone 129 (scheduled exe
 wants nife to support multiple users, and wants the jobs a user schedules to carry capabilities that
 reflect that user's own authority. Working through what that requires surfaced a gap this tree had
 not needed to close before, and #387 (milestone 129's `--mem` grant, held pending this) is where it
-was found. All four design pieces are built and tested (the durable session, the on-disk schedule
-store, boot-time re-derivation in `login`, and the real registrar), each under "What was built"
-below. Flipped to `BUILT` on 2026-10-03 after a re-check against the tree: the two residues it
+was found. All four design pieces (the durable session, the on-disk schedule store, boot-time
+re-derivation in `login`, and the real registrar) are built and tested. Flipped to `BUILT` on 2026-10-03 after a re-check against the tree: the two residues it
 carried, a real-boot gate that types `SCHEDULE` and a place for a durable job to write, are
 routed in `## Follow-on` (a proposal and milestone 687) rather than held open here.
 
@@ -38,18 +37,14 @@ supervised by, and dies with, the client it serves (§40's subtree-death rule). 
 rule for the case it was built for (a directory grant narrowed for one live command), and it is
 exactly the wrong rule for a scheduled job, which is supposed to survive its registrar disconnecting.
 
-This does not mean §92 is wrong; it means a durable delegation needs a different supervisor than a
-live connection. §92's own logic says the authority should die when *its client* dies. The design
-below answers what that client should be for a durable delegation, rather than inventing a new
+This does not make §92 wrong. Its logic says the authority dies when *its client* dies, and the
+design below answers what that client is for a durable delegation, rather than inventing a new
 supervision rule.
 
 §92's own BUGS section already named the adjacent gap: *"This says nothing about a caretaker
-with no client, because none exists yet."* This milestone is that case, with a real motivating case
-instead of a hypothetical.
+with no client, because none exists yet."* This milestone is that case.
 
 ## The design, worked out 2026-08-22
-
-Four pieces, discussed in order and each answered before moving to the next.
 
 ### The durable principal is the session itself, kept alive by its own live children
 
@@ -62,7 +57,7 @@ before was a snapshot of the user's authority or a live re-check against an exte
 source: the job's capability is the *same* live one from the original login, continuing to exist
 because nothing tore it down.
 
-This was checked against real prior art rather than assumed. systemd's `loginctl enable-linger`
+Checked against prior art: systemd's `loginctl enable-linger`
 solves almost exactly this problem (keep a user's session manager running after logout so pending
 timers keep firing), but it is a static, explicit admin toggle: an account either lingers or it
 does not, independent of whether anything is actually pending. The design here is the dynamic
