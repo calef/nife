@@ -60,7 +60,7 @@ than `Load Error`.
 
 Two things came out of that, and the second matters more than the first.
 
-`PHYS_START` moved from 1 MiB to 32 MiB (`kernel/link-x86_64.ld`). 1 MiB is the *lowest* address
+`PHYS_START` is 32 MiB, not 1 MiB (`kernel/link-x86_64.ld`). 1 MiB is the *lowest* address
 multiboot permits, never the only one, and under a hypervisor's loader nothing else is in low memory
 to say so. This is a larger gap rather than a fix. The image is still placed at one address chosen at
 link time, so a firmware that wants 32 MiB refuses the boot exactly as OVMF refused 1 MiB. The real

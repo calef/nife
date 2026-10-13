@@ -16,10 +16,40 @@ use super::*;
 ///
 /// `initial_ramdisk_len` is the archive length the kernel passed at entry; `fs_rights` is the
 /// `filesystem_protocol::dir` rights the file-service endpoint carries, and 0 means this boot
-/// attached no disk. `second_dir` is milestone 154 (a process that holds two directory
-/// capabilities)'s addition: `Some` hands the shell a second, disjoint directory capability (see
-/// [`SecondDirGrant`] for what this does and does not decide); every real entry point passes `None`
-/// today.
+/// attached no disk (so `fs_ep` and `fs_page` are empty). `second_dir`, when `Some`, hands the
+/// shell a second, disjoint directory capability (see [`SecondDirGrant`]); every real entry point
+/// passes `None`, because what that subtree should be is boot policy no call site decides.
+///
+/// # Examples
+///
+/// A progenitor's whole source, near enough: the endowment is the complete authority of the system
+/// about to exist, which is why its fields are named for what they are. A grant a boot lacks (no
+/// disk, no rng, no GPU, no NIC) is an empty slot that `boot` probes, not a failure. The real
+/// table is `components/src/progenitor.rs`'s. `no_run`, because it only runs at EL0 under
+/// `script/swish-check`.
+///
+/// ```no_run
+/// use system_initializer::{BootEndowment, boot};
+///
+/// fn init(initial_ramdisk_len: u64, fs_rights: u64) -> ! {
+///     let endowment = BootEndowment {
+///         untyped: 2, uart_dev: 3, uart_irq: 4, clock_page: 5, config_page: 6,
+///         fs_ep: 7, fs_page: 8,
+///         virtio_rng: 9, virtio_rng_irq: 10, virtio_rng_dma: 11,
+///         disp_term_ep: 12, disp_term_page: 13,
+///         virtio_net: 15, virtio_net_irq: 16, virtio_net_dma: 17,
+///         entropy_ep: 18,
+///         gpu_surface: 14, gpu: 19, gpu_irq: 20, gpu_dma: 21,
+///         keyboard: 22, keyboard_irq: 23, keyboard_dma: 1,
+///         machine_page: 0,
+///         kernel_ring: 24, kernel_ring_cursor: 25, kernel_ring_notification: 26,
+///         usb_keyboard_attach: 27, own_space: 28,
+///         net_stack_ep: 29, net_stack_report: 30, reboot: 31,
+///         for_test_roles: &[],
+///     };
+///     boot(&endowment, initial_ramdisk_len, fs_rights, None)
+/// }
+/// ```
 pub fn boot(
     g: &BootEndowment,
     initial_ramdisk_len: u64,

@@ -3,9 +3,8 @@
 *An appendix to [`notes/net.md`](../net.md), which is the page to read. This file holds the history
 of the inbound check's intermittent failure, up to the day before its cause was identified. It
 exists to verify or challenge the main page. A reader who only needs to use the socket contract
-should not have to open it. Moved from the main page on 2026-09-25 (UTC), verbatim apart from links
-that had to follow it. The directory `notes/net/` and this file's stem are provisional names, minted
-by the lane that split the file; naming is calef's.*
+should not have to open it. The directory `notes/net/` and this file's stem are provisional names;
+naming is calef's.*
 
 The state of it. `inbound check (riscv64)` has gone red twice with nothing wrong that anybody
 could name, and the floor has already been lowered once (from all four to three) to absorb it. It

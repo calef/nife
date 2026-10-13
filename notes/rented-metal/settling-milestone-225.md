@@ -22,13 +22,12 @@ So milestone 225's x86_64 leg costs under one euro of machine time and its aarch
 under six, once the right instance is priced rather than the largest one in the family. On both
 legs the money is not the constraint, and on aarch64 it never was. That is the finding. This
 milestone was gated as `HARDWARE`, and what stood between here and an aarch64 answer was an ACPI
-discovery path in `uefi_loader`, not a machine and not a budget. (That path was written on
-2026-09-23; see the correction at the top of [`aarch64.md`](aarch64.md).)
+discovery path in `uefi_loader`, not a machine and not a budget. (That path exists; see the top of
+[`aarch64.md`](aarch64.md).)
 
-This paragraph replaces a wrong one. The first draft priced this leg at $23.20 on
-`c7g.metal` and said the real cost was *"a UEFI-bootable image that does not exist yet"*. The image
-exists (`BOOTAA64.EFI`), bare metal is not required, and the actual obstacle is a different one that
-was already documented in this repository.
+Not $23.20 on `c7g.metal`, and not *"a UEFI-bootable image that does not exist yet"*: the image
+exists (`BOOTAA64.EFI`), bare metal is not required, and the actual obstacle is the one documented in
+this repository.
 
 One caveat matters more than the prices. A rented x86_64 machine is not xenon. §203 (capacity is
 rented rather than bought) records that xenon is a Core i5-7500T. The tree holds per-machine

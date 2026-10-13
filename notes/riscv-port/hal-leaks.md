@@ -1,8 +1,7 @@
 # The HAL leaks the RISC-V port exposed, and how each closed
 
-An appendix to [notes/riscv-port.md](../riscv-port.md), moved there on 2026-10-11 (UTC) under §212
-(a prose budget). It is the full account of each leak, including the user-entry frame placement
-that was wrong on RISC-V until milestone 71 (thread-start fault).
+An appendix to [notes/riscv-port.md](../riscv-port.md). It is the full account of each leak,
+including the user-entry frame placement on RISC-V that milestone 71 (thread-start fault) fixed.
 
 The port is worth doing precisely because it finds where the abstraction leaked. Two are already known:
 

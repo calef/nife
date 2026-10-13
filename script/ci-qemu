@@ -65,7 +65,14 @@ fi
 # regardless of whether the binary itself was cached. One `apt-get install` of the runtime package
 # (not `-dev`, and cheap: it is already on the image's package list) fixes the version check without
 # touching the slow path at all.
-$SUDO apt-get install -y libslirp0 >/dev/null
+#
+# A fresh container ships with empty package lists (a Claude cloud runner does; GitHub's images do
+# not), and there `apt-get install` fails with "Unable to locate package" before anything is
+# fetched. Update once and retry only on that failure, so the warm path on a runner stays one call.
+$SUDO apt-get install -y libslirp0 >/dev/null 2>&1 || {
+    $SUDO apt-get update >/dev/null
+    $SUDO apt-get install -y libslirp0 >/dev/null
+}
 
 # The warm-cache path. `--version` prints "QEMU emulator version X.Y.Z"; match the whole token so
 # 11.0.2 never satisfies a request for 11.0.20.

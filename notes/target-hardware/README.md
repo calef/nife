@@ -7,11 +7,9 @@ what happened. This directory carries the analysis its prose budget has no room 
 - [`without-an-mmu.md`](without-an-mmu.md): the three ways to isolate without an MMU (an MPU,
   software fault isolation, language-based isolation), what each costs, and why none is a milestone.
 
-*Name: provisional, minted 2026-10-11 (UTC) by lane/fifth-ten-longest-notes, which split the parent
-under §212 (a prose budget). The directory follows §212's siting default, `notes/X/` beside
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default, `notes/X/` beside
 `notes/X.md`. calef names directories.*
 
-The stem below was minted the same day by the same lane. It is named for its content, and calef
-names files.
+The stem below is named for its content, and calef names files.
 
-- `without-an-mmu` Name: provisional, minted 2026-10-11 (UTC) by lane/fifth-ten-longest-notes.
+- `without-an-mmu` Name: provisional.

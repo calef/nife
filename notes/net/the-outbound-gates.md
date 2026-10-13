@@ -2,10 +2,9 @@
 
 *An appendix to [`notes/net.md`](../net.md), which is the page to read. This file holds what phase
 B's gates prove, the ephemeral-port fix, the RX-poll lost wakeup, and the UDP gate's move off the
-host resolver. It exists to verify or challenge the main page. A reader who only needs to use
-the socket contract should not have to open it. Moved from the main page on 2026-09-25 (UTC),
-verbatim apart from links that had to follow it. The directory `notes/net/` and this file's stem are
-provisional names, minted by the lane that split the file; naming is calef's.*
+host resolver. It exists to verify or challenge the main page. A reader who only needs to use the
+socket contract should not have to open it. The directory `notes/net/` and this file's stem are
+provisional names; naming is calef's.*
 
 *Records cited below: milestone 27 (Rust `std` on the native ABI) and milestone 107 (the socket
 contract learns to accept).*
@@ -44,15 +43,14 @@ UDP, DHCP, no sockets-API mimicry beyond what the PAL needs.
 
 ## Ephemeral ports must be independent of the socket id (a fix the PAL found)
 
-The first version of net_stack derived a socket's local port from its socket id (`LOCAL_PORT_BASE + sid`).
-That is wrong, and the `std::net` PAL flushed it out. A program that opens a TCP socket, closes it,
-and opens another reuses the same socket id, so it reused the exact local port. Reconnecting to the
-same peer on an identical 4-tuple whose slirp flow had not yet cleared makes the SYN go unanswered.
-net_stack stalled in its bounded connect poll forever. Bisection confirmed it: a fresh id connects, a
-reused id hangs.
+A local port derived from the socket id (`LOCAL_PORT_BASE + sid`) is wrong, and the `std::net` PAL
+showed why. A program that opens a TCP socket, closes it, and opens another reuses the same socket
+id, so it would reuse the exact local port. Reconnecting to the same peer on an identical 4-tuple
+whose slirp flow has not yet cleared makes the SYN go unanswered, and net_stack stalls in its
+bounded connect poll forever. Bisection confirms it: a fresh id connects, a reused id hangs.
 
-The fix is what any real stack does: net_stack allocates ephemeral local ports from a private range with a
-rotating allocator independent of the socket id (`socket_protocol::ephemeral` since 2026-10-13).
+So net_stack does what any real stack does: it allocates ephemeral local ports from a private range
+with a rotating allocator independent of the socket id (`socket_protocol::ephemeral`).
 Each open advances the cursor, so a just-closed
 connection's port is not handed out again until the whole range has cycled. A port a live socket
 still holds is skipped outright. Socket-id reuse is then safe: the reopened socket gets a new local

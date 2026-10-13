@@ -20,8 +20,7 @@ It cannot tell the difference.
 
 We do, now: radon (a VisionFive 2, riscv64) boots nife from a card, and xenon (a Dell
 OptiPlex, x86_64) is the x86 target (milestones 16a and 87; see [target-hardware.md](target-hardware.md)).
-The Raspberry Pi this section originally named is not the board that got there, and QEMU is still
-the default rather than the fallback. Compare the loops:
+QEMU is still the default rather than the fallback. Compare the loops:
 
 | | Real hardware | QEMU |
 |---|---|---|
@@ -152,35 +151,23 @@ names**: a QEMU whose parent is a live harness is somebody's gate in flight, not
 `helpers/qemu-bounded-selftest.sh` checks all of this against a real emulator, including that
 `perl`'s alarm is still swallowed. It is in no gate; run it if you touch the bounding script.
 
-**It does not bound `helpers/qemu-runner-x86_64.sh`, and it looks as if it does** (found
-2026-09-19 by milestone 134's per-IPC stack-depth lane, when the maintainer reaped a halted
-`qemu-system-x86_64` with PPID 1 that the lane had started through
-`helpers/qemu-bounded.sh 240 helpers/qemu-runner-x86_64.sh ...`). The killer signals `$CHILD`,
-the process it started. The aarch64 and riscv64 runners end in `exec qemu-system-...`, so their
-child *is* QEMU. The x86_64 runner deliberately does not `exec` (its own comment: it has to turn
-`isa-debug-exit`'s odd status back into 0 afterwards), so its child is a shell with QEMU beneath
-it; the bound kills the shell on time and QEMU is re-parented to launchd, halted and holding
-nothing but a core's worth of memory. Until one of the two scripts changes (the runner trapping
-TERM and HUP and forwarding them to QEMU would be the smaller fix), after bounding an x86_64
-run, `pgrep -l qemu-system-x86` and walk the parent chain, and treat a PPID of 1 as yours.
-
-Corrected 2026-09-24: the killer now signals the child's whole tree, which closes the paragraph
-above and a wider case it did not name. The same shape hit `cargo xtask shell`: cargo, then xtask,
-then the runner that execs QEMU. A bounded run killed cargo on time and left QEMU under pid 1, three
-times out of three with a 25-second bound on patagonia (found by the `audit_sink` rename lane,
-#1228, while confirming the login stack came up). This was not a regression in milestone 226
-(`qemu-bounded.sh` leaves an emulator behind). 226 gave the killer more reasons to fire, but it
-always fired at `$CHILD` alone. `helpers/qemu-bounded.sh` now collects `$CHILD`'s descendants with
-`pgrep -P` before signaling anything, because a killed parent re-parents its children and they
-cannot be found afterwards, and it sends TERM, then KILL, to all of them. The same three runs after
-the fix left no survivor. `helpers/qemu-bounded-selftest.sh` case 9 fails on the old script and
-passes on the new one. The x86_64 runner was not rerun, because this Mac has no x86 emulator lane
-handy; it is the same shape as case 9 and should be closed with it.
+**It signals the child's whole tree, because a runner's child is not always QEMU.** The aarch64
+and riscv64 runners end in `exec qemu-system-...`, so their child *is* QEMU. The x86_64 runner
+deliberately does not `exec` (its own comment: it has to turn `isa-debug-exit`'s odd status back
+into 0 afterwards), so its child is a shell with QEMU beneath it, and `cargo xtask shell` is cargo,
+then xtask, then the runner. Signaling `$CHILD` alone kills the shell or cargo on time and leaves
+QEMU re-parented to launchd, halted and holding a core's worth of memory. So
+`helpers/qemu-bounded.sh` collects `$CHILD`'s descendants with `pgrep -P` before signaling anything,
+because a killed parent re-parents its children and they cannot be found afterwards, and it sends
+TERM, then KILL, to all of them. `helpers/qemu-bounded-selftest.sh` case 9 holds that. The x86_64
+runner has not been rerun against it, because this Mac has no x86 emulator lane handy; it is the
+same shape as case 9. After bounding an x86_64 run, `pgrep -l qemu-system-x86` and walk the parent
+chain, and treat a PPID of 1 as yours.
 
 ### 4. Killing a harness does not kill its children
 
-Moved here from `AGENTS.md` on 2026-09-23 (UTC), where it was the anecdote attached to the rule that
-a session checks for leaked emulators afterwards. The rule stayed there; this is the evidence.
+The evidence for the rule in [qemu-hygiene](skills/qemu-hygiene/SKILL.md) that a session checks for
+leaked emulators afterwards.
 
 Checking `pgrep` is not sufficient after you kill a harness, and on 2026-08-02 it took four
 attempts to notice. Killing a loop script does not kill its descendants: `pkill -f hunt-...` left
@@ -220,29 +207,28 @@ forever, by design, exactly like real hardware. So every interactive run must be
   package editable and configure stops in `mkvenv`. And a QEMU installed into `$HOME/.cache/nife-qemu` is honored by
   `helpers/qemu-path.sh` on macOS too, for every checkout on the account, which is how a build meant
   for one clone changes the emulator under every other lane.
-- `cargo xtask uefi-boot`'s screen read used to be a race, and is now a handshake (milestone
-  445, superseding this entry's previous text). The check reads the guest's framebuffer through
-  QEMU's monitor to assert the claim of milestone 243 (a machine with no serial port has no way to
-  say anything, and no gate can read it). It used to *sample*: poll every 50 ms and hope a
-  dump landed while the tour was still up. On a busy machine it did not, and on 2026-09-20 a full
-  `script/test` run read zero rows and reported *"the tour was never readable on the screen"* while
-  the same leg run alone a minute later read 56. The message then sent the reader after the loader's
-  `LocateProtocol`, the pixel order, the stride and the mapping, none of which was wrong.
+- `cargo xtask uefi-boot`'s screen read is a handshake, per milestone 445 (the screen check stops
+  sampling and starts asking). The check reads the guest's framebuffer through QEMU's monitor to
+  assert the claim of milestone 243 (a machine with no serial port has no way to say anything, and
+  no gate can read it). Sampling (poll every 50 ms and hope a dump lands while the tour is up) is
+  not enough: on a busy machine a full `script/test` run read zero rows and reported *"the tour was
+  never readable on the screen"* while the same leg run alone a minute later read 56, and the
+  message sent the reader after the loader's `LocateProtocol`, the pixel order, the stride and the
+  mapping, none of which was wrong.
 
-  The kernel is now *asked* to stop. `screen-hold` on the boot command line makes
+  So the kernel is *asked* to stop. `screen-hold` on the boot command line makes
   `kernel::console::yield_screen` announce `boot_ladder::SCREEN_HELD` on the serial line and wait up
   to ten seconds for a byte back before it clears the screen, so the dump is taken against a state
   that is not going anywhere. Three runs at a one-minute load average of 17, 32 and 38 on an
-  eight-core Mac each read exactly 95 rows. **Two things are worth carrying out of building it**:
+  eight-core Mac each read exactly 95 rows. Two things carry beyond it:
 
-  - **The tour is taller than the screen, so it scrolls**, which is the opposite of what
-    `UEFI_SCREEN_MARKER`'s previous comment said and is why the marker is the tour's *tail* again.
-    Held still, the OVMF console's first row is the middle of the firmware memory map.
-  - A spinning guest starves the emulator's own monitor. The first version of the wait polled
-    the UART with `spin_loop`, and every `screendump` taken during the ten-second hold came back a
-    file that would not decode. Parking the core with `wait_for_interrupt` between polls fixed it
-    outright. Worth remembering for anything else in this tree that busy-waits inside a guest while
-    a host is trying to talk to QEMU.
+  - **The tour is taller than the screen, so it scrolls**, which is why the marker is the tour's
+    *tail*. Held still, the OVMF console's first row is the middle of the firmware memory map.
+  - A spinning guest starves the emulator's own monitor. A wait that polls the UART with
+    `spin_loop` makes every `screendump` taken during the hold come back a file that will not
+    decode, and parking the core with `wait_for_interrupt` between polls fixes it. Remember it for
+    anything else in this tree that busy-waits inside a guest while a host is trying to talk to
+    QEMU.
 - A process that leaves the tree escapes the bound. The killer finds what to signal by walking
   `pgrep -P` down from its child at the moment it fires. A descendant that double-forks or calls
   `setsid` to reparent itself to pid 1 before then is no longer under the child, and is not

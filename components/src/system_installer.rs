@@ -1,35 +1,11 @@
-//! **`system_installer`**: the program a booted stick runs to put this system on the machine's own disk
-//! (milestone 198 (a package manager, and the trivial install that makes a second customer
-//! possible), rung 2a).
+//! **`system_installer`**: what a booted stick runs to put this system on the machine's own disk.
+//! See notes/installing.md and notes/boot-slots.md.
 //!
-//! The proposal this follows is
-//! [milestone 515 (a stick that puts itself on the machine's disk)](../../design/roadmap/0515-the-installer-a-stick-runs-to-put-itself-on-the-disk.md),
-//! under DECISIONS §157 (a trivial install is a web page, a USB drive, and packages).
-//!
-//! Name: ratified 2026-10-06 (calef, "`system_installer` ratified.", in conversation), replacing
-//! the provisional `installer` (minted 2026-09-21 by the rung 2a lane, after `crates/stick_maker`'s
-//! header set the word aside for this program). It names what gets installed, the whole system,
-//! and separates this program from `jig`, which installs packages. Refused `basalt_installer`: this
-//! program copies whatever image the stick booted, so a distribution prefix would go false the day
-//! another distribution shipped it.
-//!
-//! # This is the most destructive program in this tree, and its shape is the answer to that
-//!
-//! It replaces a disk's partition table and everything the table described. What stands between a
-//! stranger and a wiped disk is **not** this program's judgement, and that is the point:
-//!
-//! - It holds **one disk**, as a `filesystem_protocol::blk` endpoint, and there is no path to type.
-//!   `parted /dev/sda` as root reaches every disk in the machine; this reaches the one it was
-//!   handed. That is `disk_partitioner`'s claim, from milestone 57 (partitioning and formatting a
-//!   real drive), and this program inherits it whole.
-//! - It holds an **entropy endpoint** and nothing else besides, so a GPT's unique ids are drawn
-//!   rather than invented, and a run with no entropy writes nothing at all.
-//! - **It is not spawned until a person has answered a question naming the disk.** The asking is
-//!   `kernel/src/user/install_service.rs`'s, deliberately: a confirmation this program printed to
-//!   itself would be a confirmation it could also decide to skip, and the authority to wipe the
-//!   disk arrives here only after the answer.
-//!
-//! # Two roles, and the second is what keeps the first honest
+//! It is the most destructive program in the tree, so what stands between a stranger and a wiped
+//! disk is its authority, not its judgement. It holds one disk as a `filesystem_protocol::blk`
+//! endpoint, with no path to type, and an entropy endpoint so GPT ids are drawn (no entropy, no
+//! write). It is spawned only after a person answers a question naming the disk, asked by
+//! `kernel/src/user/install_service.rs`, because a confirmation it printed itself could be skipped.
 //!
 //! | `a0` | |
 //! |---|---|
@@ -37,142 +13,31 @@
 //! | [`ROLE_INSTALL`] | draw the ids, write the table, lay out the EFI system partition, copy the boot file |
 //! | [`ROLE_CONFIRM`] | mark the boot slot this machine started from successful, so a good upgrade sticks |
 //!
-//! [`ROLE_CONFIRM`] is the trial boot's other half, and it is here rather than in a program of its
-//! own for one reason: it is `ROLE_SURVEY` with a write. It reads the same 34 blocks with the same
-//! parser, finds the slot the kernel told it about, and puts back one attribute word. A second
-//! program would be a second copy of the table read, the block-page mapping, the `blk` client and
-//! the verdict convention, to change nine bits.
-//!
-//! **It holds no entropy endpoint either**, which is the sentence that makes the write narrow
-//! rather than merely small. A partition table carries unique ids, so a process with no source of
-//! randomness cannot mint one; the only table it can write is a table it read, with the bits
-//! `boot_slot` owns changed. What it *can* still do is the honest caveat, and it is in `BUGS`.
-//!
-//! `ROLE_SURVEY` is **a separate process with no entropy endpoint**, exactly as
-//! `disk_partitioner`'s verify role is, and for the same reason: a program that cannot draw a
-//! unique id cannot write a partition table anything would read back. It is what lets the boot ask
-//! "is nife already on this disk" without the kernel parsing a partition table and without granting
-//! the authority to write one.
-//!
-//! # What it writes, in order
-//!
-//! | | |
-//! |---|---|
-//! | 1 | A GPT: a **nife data partition first**, then two boot slots, then an EFI system partition at the end of the disk |
-//! | 2 | A FAT32 volume in the EFI system partition (`crates/file_allocation_table`) |
-//! | 3 | The boot file, into that volume, at `\EFI\BOOT\BOOTX64.EFI`, where it is the **chooser** |
-//! | 4 | The same boot file again, raw, into boot slot 0, with the slot marked good |
-//!
-//! ## The two boot slots, which are rung 2b and calef's ruling of 2026-09-21
-//!
-//! *"Yes, write the tries and priority attributes in 2b."* **An installed machine must not be
-//! brickable by a bad upgrade**: if a newly written boot image fails to come up, the machine has to
-//! go back to the previous one by itself, with nobody at the console.
-//!
-//! So an install lays out **two** boot slots and fills one. The image in the EFI system partition
-//! is a third copy and it has a different job: the firmware starts it, and it chooses between the
-//! slots (`uefi_loader`'s chooser). Upgrades replace a slot; the chooser stays where it is.
-//!
-//! The state that decides which slot boots is three fields in each slot partition's **GPT
-//! attribute bits**, which is `crates/boot_slot` and where the whole argument is. What belongs
-//! here is only why the slots are partitions and not files: UEFI 2.11 5.3.3 gives bits 48 to 63 to
-//! the owner of the partition's type GUID, and
-//! [`types::NIFE_BOOT`](globally_unique_identifier_partition_table::guid::types::NIFE_BOOT) is
-//! ours. On a file, or on somebody else's partition type, they would not be.
-//!
-//! This install writes **slot 0 confirmed** ([`boot_slot::State::installed`]) and leaves slot 1
-//! laid out and empty, so that an upgrade has somewhere to write without repartitioning a running
-//! machine.
-//!
-//! It does **not** create the filesystem in the data partition. `redoxfs_server`'s `mkfs` already
-//! does exactly that, finding the partition by its type GUID, and it is run next by the same
-//! service. Two programs with one capability each beats one program with two.
-//!
-//! ## Why the data partition comes first, which is the unusual half
-//!
-//! A GPT does not care about order, and every installer a reader has met puts the EFI system
-//! partition first. This one does not, and the reason is a property of the filesystem engine rather
-//! than a preference. `redoxfs`'s `FileSystem::open` scans blocks `0..65536` of whatever disk it is
-//! handed for its header, and adopts the block it finds it at as the filesystem's origin. So a
-//! RedoxFS that begins inside the first 256 MiB of a disk is mounted correctly **by a server that
-//! was given the whole disk**, and the installed system's boot needs no partition-aware mount, no
-//! base-block field on the `blk` wire, and no program in the middle.
-//!
-//! That is a real simplification and it is also a real authority loss, recorded in `BUGS` below:
-//! the filesystem server on an installed machine can address the EFI system partition and the
-//! partition table, which a partition-bounded mount would make impossible. `mkfs` shows what the
-//! bounded version looks like (its `PartitionDisk`), and closing the gap is a lane of its own.
-//!
-//! # The boot file, and why it is not in the archive
-//!
-//! The bytes written at step 3 are a copy of the file this machine was booted from, mapped
-//! read-only into this program by the kernel. It cannot come from the archive, because the file
-//! *contains* the archive; `uefi_loader`'s `place_boot_file` reads it back off the boot volume
-//! while the firmware is still up, and the whole argument is there.
-//!
-//! **The kernel and the archive therefore move as a set**, which is the failure this design had to
-//! make unexpressible: a disk carrying a new kernel beside an archive it does not vouch for halts
-//! at `MEASURED BOOT REFUSED`. They are sealed together inside the one file at build time, and this
-//! program copies the file.
-//!
-//! # EXAMPLES
-//!
-//! ```text
-//!   install: disk 1073741824 bytes, 2097152 blocks of 512
-//!   install: nife data at 2048..1046527, EFI system at 1046528..2095103
-//!   install: EFI system partition laid out, 2099 metadata sectors
-//!   install: boot file 10392064 bytes written
-//!   report: R_INSTALLED, data at 2048
-//! ```
+//! `ROLE_SURVEY` and `ROLE_CONFIRM` hold no entropy endpoint, so the only table either can write
+//! is one it read: confirm changes the attribute bits `boot_slot` owns and nothing else. An install writes, in order: a GPT with the nife data partition first, two boot slots, and an
+//! EFI system partition last; a FAT32 volume in that partition; the boot file at
+//! `\EFI\BOOT\BOOTX64.EFI`, where it is the chooser; and the same file raw into slot 0, marked
+//! good ([`boot_slot::State::installed`]). Slot 1 is laid out empty so an upgrade never
+//! repartitions. The slots are partitions because UEFI gives GPT attribute bits 48 to 63 to the
+//! owner of the type GUID, and [`types::NIFE_BOOT`](globally_unique_identifier_partition_table::guid::types::NIFE_BOOT)
+//! is ours. Data goes first because `redoxfs` finds its header within the disk's first 65,536
+//! blocks, so a whole-disk server mounts it. `redoxfs_server`'s `mkfs` makes the filesystem, not
+//! this. The boot file is the one this machine booted from, mapped read-only by the kernel: it
+//! seals the kernel and the archive together, so they cannot be installed apart.
 //!
 //! # BUGS
 //!
-//! - **Whole disk only.** The table is replaced wholesale. Installing beside another operating
-//!   system means resizing a filesystem nife cannot read, which is milestone 140 (mount a drive
-//!   this system did not create)'s territory and a different order of risk to somebody's data.
-//! - **The installed filesystem is not bounded by its partition**, for the reason the section above
-//!   gives. **The filesystem server on an installed machine holds the whole disk**, bounded only by
-//!   the extent `mkfs` recorded in the filesystem's own header, so its allocator never learns about
-//!   the blocks past the end and never reaches the EFI system partition or the table. That is a
-//!   property of the filesystem rather than a capability, which is the wrong rung of AGENTS.md's
-//!   ladder, and it is recorded here rather than papered over. Closing it means bounding the
-//!   *server*: either a base-block field on the `blk` wire, which is a value two programs agree on
-//!   and therefore calef's, or a caretaker between the disk and the FS server, which costs one IPC
-//!   hop per filesystem block. `mkfs`'s own `PartitionDisk` is what the bounded version looks like.
-//! - **The logical block size is assumed to be 512**, the same assumption and the same reason as
-//!   `disk_surveyor` and `disk_partitioner`: nothing in `filesystem_protocol::blk` carries the
-//!   device's. An NVMe namespace formatted with 4096-byte logical blocks would get a table no other
-//!   operating system can read. The fix is a field on the wire.
-//! - **The boot slots cost 128 MiB and one of them is always empty after an install.** Two 64 MiB
-//!   partitions is the price of never being one bad upgrade away from a dead machine, and it is
-//!   paid on every installed machine whether or not it is ever upgraded. 64 MiB is
-//!   `uefi_loader`'s own `BOOT_FILE_MAX` rather than a measurement of the image.
-//! - **Nothing writes slot 1**, because nothing in this tree upgrades a running machine yet. The
-//!   slot is laid out and marked never-boot so that whatever does it later does not have to
-//!   repartition a disk somebody's data is on. Until then the rollback mechanism is exercised by
-//!   `cargo xtask rollback-boot` and by nothing a person does.
-//! - **Nothing marks a trial boot successful**, so an upgrade that came up perfectly still rolls
-//!   back once its tries are spent. That fails safe and it means upgrades do not stick;
-//!   `crates/boot_slot`'s `BUGS` has the whole of it and names the proposal.
-//! - **A disk under about 700 MiB is refused**, up from about 600 before the slots. The floor is
-//!   the 512 MiB EFI system partition, two 64 MiB slots and the 64 MiB minimum for data, and
-//!   nothing tests the refusal.
-//! - **Nothing here is crash-atomic.** A power cut partway through leaves a disk that boots nothing.
-//!   Real installers share the property; nobody has measured this one.
-//! - **There is no progress report during the copy.** Ten megabytes at one 4096-byte request per
-//!   round trip is a few thousand calls, and a person watching a serial console sees nothing until
-//!   it is done.
-//! - **It writes no firmware boot entry.** The file goes at the removable-media fallback path
-//!   `\EFI\BOOT\BOOTX64.EFI` on the new disk, which OVMF starts and which most firmware starts.
-//!   Milestone 515 records this as B1 and calls it unmeasured on anything but OVMF; a firmware that
-//!   refuses it needs `SetVariable`, which is a runtime service this kernel does not map.
-//! - **A cloned disk keeps its source's ids.** [`ROLE_INSTALL`] draws a fresh disk GUID and a fresh
-//!   unique GUID per partition. [`ROLE_CONFIRM`] (and `uefi_loader`'s chooser) rewrite the table
-//!   with the ids they read, as they must for the same disk. So a disk copied block for block from
-//!   an installed one carries the same disk and partition GUIDs, and nothing here notices or
-//!   re-draws them. Nothing in nife looks a disk up by those ids today; a firmware boot entry or a
-//!   `PARTUUID` lookup on another system would find two. Recorded by lane/fresh-stick-guids,
-//!   2026-10-06 (UTC).
+//! - Whole disk only; the table is replaced wholesale.
+//! - The installed filesystem server holds the whole disk, bounded only by the extent `mkfs`
+//!   recorded. Bounding the server needs a base-block field on the `blk` wire (calef's call) or a
+//!   caretaker costing one IPC per block; `mkfs`'s `PartitionDisk` is the bounded shape.
+//! - The logical block size is assumed to be 512; a 4096-byte NVMe namespace gets a bad table.
+//! - The slots cost 128 MiB, and nothing writes slot 1 yet (`cargo xtask rollback-boot` does).
+//! - Disks under about 700 MiB are refused, untested. Not crash-atomic; the copy shows no progress.
+//! - It writes no firmware boot entry, only the removable-media path.
+//! - A block-for-block clone keeps its source's disk and partition GUIDs; nothing re-draws them.
+//!
+//! Name: ratified 2026-10-06 (calef), replacing `installer`. Refused `basalt_installer`.
 
 #![no_std]
 // Program entry points, not the crates/ library surface tracked by milestone 68 (code-quality

@@ -15,11 +15,12 @@ nothing in the crate asserts that size, which is the point.
 **The index math is shared and the proof is not.** DECISIONS §19 (architectural parity) has each ISA state the
 property itself; the `aarch64` and `sv39` records break the mask in two other ways.
 
-diff --git a/crates/paging/src/lib.rs b/crates/paging/src/lib.rs
---- a/crates/paging/src/lib.rs
-+++ b/crates/paging/src/lib.rs
-@@ -236,7 +236,7 @@ impl PageSize {
- }
+diff --git a/crates/paging/src/page_table.rs b/crates/paging/src/page_table.rs
+index fa9a5967d..4bf77b38d 100644
+--- a/crates/paging/src/page_table.rs
++++ b/crates/paging/src/page_table.rs
+@@ -3,7 +3,7 @@
+ //! Name: provisional (lane maintainer/split-parents-to-zero, 2026-10-13 UTC).
  
  /// Entries per table. 4096 bytes / 8 bytes. The same for every format we support.
 -pub const ENTRIES: usize = 512;

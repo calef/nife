@@ -225,6 +225,23 @@ enum Read1 {
 /// Returns the sink's error if the log cannot be written, and the source's error if the read
 /// failed for a reason other than reaching the end. A read error does **not** discard the session:
 /// callers get the error, and the bytes are already in the log.
+///
+/// # Examples
+///
+/// Replay a captured log, which is how a session is re-read and how the recogniser is exercised
+/// with no board present:
+///
+/// ```no_run
+/// use std::fs::File;
+/// use board_console::watch::{self, Policy};
+///
+/// let captured = File::open("target/board-console.log")?;
+/// let mut nowhere = std::io::sink();
+/// // `false`: end of file means the log is over, not that the board went quiet.
+/// let session = watch::watch(captured, &mut nowhere, &Policy::default(), false)?;
+/// println!("{}", session.summary());
+/// # Ok::<(), std::io::Error>(())
+/// ```
 pub fn watch<R>(
     source: R,
     sink: &mut dyn Write,

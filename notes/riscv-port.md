@@ -77,13 +77,11 @@ Finding these is the point; each gets pushed under `arch/`.
 - Timer: the `time` CSR + `stimecmp` (Sstc extension) or CLINT `mtimecmp`, or SBI TIME. Replaces
   the ARM generic virtual timer (`CNTV_*`).
 
-  BUGS (fixed on 2026-07-31 by the §19 (architectural parity) test lane, and worth knowing before
-  choosing SBI TIME on the next board):
-  SBI `set_timer` takes an absolute deadline but is write-only, unlike `CNTV_CVAL_EL0`, which can
-  be read back. So the fixed deadline grid that keeps the tick rate honest has to be kept in
-  software. It was not, from milestone 20 (a portable HAL) until that test lane: the handler
-  re-armed from `now()`, so the clock ran at 80 Hz against a configured 100 Hz and nothing said so.
-  See notes/riscv-arch-tests.md.
+  Worth knowing before choosing SBI TIME on the next board: SBI `set_timer` takes an absolute
+  deadline but is write-only, unlike `CNTV_CVAL_EL0`, which can be read back. So the fixed deadline
+  grid that keeps the tick rate honest is kept in software. A handler that re-arms from `now()`
+  runs the clock at 80 Hz against a configured 100 Hz and nothing says so. See
+  notes/riscv-arch-tests.md.
 - UART: QEMU virt's console is an NS16550 at `0x1000_0000`, not a PL011. A new
   `drivers/ns16550.rs` (the PL011 driver stays; this is a sibling, like a second board's UART).
 - **Paging:** Sv39 (three-level, 39-bit VA) to start, `satp` holding the root PPN + mode. The
@@ -98,20 +96,20 @@ set at boot. RISC-V has no such register. The kernel per-CPU pointer lives in `t
 entry saves the full GPR set, `tp` included (`x[4]`), because a trap from U-mode arrives with the
 *user's* `tp` and the frame has to preserve it.
 
-That save is correct. The naive *restore* is not. `trap_return` originally reloaded `x[4]`
-unconditionally, which is right for a return to U-mode (the user owns `tp`) and was harmless for a
-kernel thread as long as a kernel thread always resumed on the hart it was preempted on. DECISIONS
-§28 broke that assumption: idle harts now steal runnable threads, so a kernel thread preempted on
-hart A (its frame holding `tp = &percpu[A]`) can resume on hart B. The unconditional restore then
-loaded `&percpu[A]` while running on B, and every `cpu::current()` after that read hart A's
-per-CPU block: its `current` tid, its `idle`, its run queue, its `held_rank`.
+That save is correct. The naive *restore* is not. Reloading `x[4]` unconditionally in
+`trap_return` is right for a return to U-mode (the user owns `tp`), and harmless for a kernel thread
+only while a kernel thread always resumes on the hart it was preempted on. DECISIONS §28 (SMP placement) breaks
+that assumption: idle harts steal runnable threads, so a kernel thread preempted on hart A (its frame
+holding `tp = &percpu[A]`) can resume on hart B. An unconditional restore then loads `&percpu[A]`
+while running on B, and every `cpu::current()` after that reads hart A's per-CPU block: its
+`current` tid, its `idle`, its run queue, its `held_rank`.
 
-The failure was spectacular and non-deterministic. A migrated worker, thinking it was on A, would
-call `exit()` and mark *hart A's* current thread (often A's idle) `Finished`; A's next `schedule()`
-then panicked "the last thread exited". Other interleavings tripped the rank-`assert!` in
-`sync.rs` (a bogus `held_rank` read from the wrong hart) or lost a thread and hung. Adding
-tracing moved it, the classic weak-ordering-adjacent tell, though the root cause is not a missing
-barrier: it is reading a hart-local register that had been restored from another hart's frame.
+The failure is spectacular and non-deterministic. A migrated worker, thinking it is on A, calls
+`exit()` and marks *hart A's* current thread (often A's idle) `Finished`; A's next `schedule()` then
+panics "the last thread exited". Other interleavings trip the rank-`assert!` in `sync.rs` (a bogus
+`held_rank` read from the wrong hart) or lose a thread and hang. Adding tracing moves it, the
+classic weak-ordering-adjacent tell, though the root cause is not a missing barrier: it is reading a
+hart-local register restored from another hart's frame.
 
 **Fix (in `trap.s`, the return path):** restore `x[4]` only for a return to U-mode. For an S-mode
 (kernel) return, keep the live `tp`. It is already this hart's: `trap_entry` reloaded it from the

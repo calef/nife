@@ -26,9 +26,9 @@ swept red on 2026-09-19 (`script/falsifications --sweep paging`: 13 swept, 0 sur
 
 ## A lesson that cost a quarter of an hour
 
-The first version of `PageSize::largest_fitting` looped over the sizes and tested alignment with
-`%`. CBMC was still solving `the_chosen_leaf_is_the_largest_that_fits` after ten minutes. Written as
-two `if`s and a mask test, it proves in 0.05 s. Both changes went in together, so which one mattered
+`PageSize::largest_fitting` is two `if`s and a mask test, and proves in 0.05 s. Written as a loop
+over the sizes testing alignment with `%`, CBMC was still solving
+`the_chosen_leaf_is_the_largest_that_fits` after ten minutes. Both changes went in together, so which one mattered
 is not isolated. The harnesses themselves still use `%` (`is_multiple_of`) in their assumptions and
 prove in well under a second, which points at the loop.
 

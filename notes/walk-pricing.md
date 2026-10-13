@@ -25,9 +25,9 @@ same `stage` function a host uses:
 | everything | a recursive walk reading every file: 153 entries, 141 files, 333,984 bytes, 366 components | the total |
 
 Each slope point is the median of three timed runs after one untimed one, and the whole walk is one
-warm run. The table below was taken with the first version, five runs for every figure including
-the whole walk; the count dropped because the CI job that runs this on three emulated
-architectures is at its time limit.
+warm run. The table below was taken at five runs for every figure, including the whole walk; the
+count is three because the CI job that runs this on three emulated architectures is at its time
+limit.
 
 The grant is `ENUMERATE | READ | DESCEND` over `walk/`, behind an `fs_subtree_caretaker`. That is
 the capability the confined `rg pattern src/` will hold, and it adds one relay hop to every message.
