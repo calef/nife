@@ -51,7 +51,9 @@ pub const POSIX_MADV_NORMAL: c_int = 0;
 pub const POSIX_MADV_RANDOM: c_int = 1;
 pub const POSIX_MADV_SEQUENTIAL: c_int = 2;
 pub const POSIX_MADV_WILLNEED: c_int = 3;
-pub const POSIX_MADV_WONTNEED: c_int = 4;
+// nife: relibc spells this `POSIX_MADV_WONTNEED`, which no standard names; POSIX and every other C
+// library call it `POSIX_MADV_DONTNEED` (fio 3.40 uses it). Renamed 2026-10-12 (UTC), milestone 833.
+pub const POSIX_MADV_DONTNEED: c_int = 4;
 
 /// Non-POSIX, see <https://www.man7.org/linux/man-pages/man2/madvise.2.html>.
 #[unsafe(no_mangle)]
@@ -69,7 +71,7 @@ pub unsafe extern "C" fn posix_madvise(addr: *mut c_void, len: size_t, advice: c
         POSIX_MADV_RANDOM,
         POSIX_MADV_SEQUENTIAL,
         POSIX_MADV_WILLNEED,
-        POSIX_MADV_WONTNEED,
+        POSIX_MADV_DONTNEED,
     ]
     .contains(&advice)
     {

@@ -30,4 +30,54 @@ typedef struct {
 // } from musl license MIT
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
+/**
+ * See <https://pubs.opengroup.org/onlinepubs/9799919799/functions/select.html>.
+ *
+ * Examines the file descriptor sets whose addresses are passed in the
+ * `readfds`, `writefds` and `errorfds` parameters to see whether some of
+ * their descriptors are ready for reading, ready for writing, or have an
+ * exceptional condition pending, respectively.
+ *
+ * `timeout` is given in seconds and microseconds as represented by `timeval`.
+ * Behaves as `pselect()` does when `sigmask` is a null pointer.
+ *
+ * nife: `timeout` is left as it was given. POSIX allows either; Linux writes back the time that
+ * was left, so a program that reuses the `timeval` without resetting it waits longer here.
+ *
+ * Upon success, returns the total number of bits set in the bit masks. Upon
+ * failure, returns `-1` and sets errno to indicate the error.
+ */
+int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
+
+/**
+ * See <https://pubs.opengroup.org/onlinepubs/9799919799/functions/pselect.html>.
+ *
+ * Examines the file descriptor sets whose addresses are passed in the
+ * `readfds`, `writefds` and `errorfds` parameters to see whether some of
+ * their descriptors are ready for reading, ready for writing, or have an
+ * exceptional condition pending, respectively.
+ *
+ * `timeout` is given in seconds and nanoseconds as represented by `timespec`.
+ *
+ * nife: `sigmask` is not installed for the wait, as `ppoll`'s is not: no signal arrives from
+ * outside a process (c_library/README.md), so the mask could not change what wakes it.
+ *
+ * Upon success, returns the total number of bits set in the bit masks. Upon
+ * failure, returns `-1` and sets errno to indicate the error.
+ */
+int pselect(int nfds,
+            fd_set *readfds,
+            fd_set *writefds,
+            fd_set *exceptfds,
+            const struct timespec *timeout,
+            const sigset_t *sigmask);
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif  // __cplusplus
+
 #endif  /* _RELIBC_SYS_SELECT_H */
