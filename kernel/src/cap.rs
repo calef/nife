@@ -322,117 +322,24 @@ const _: () = assert!(
 const _: () = assert!(core::mem::size_of::<CapabilityTable>() == 2064);
 pub type CapabilityTable = capability::CapabilityTable<Object, CAPABILITY_TABLE_SLOTS>;
 
-/// **What a real interactive boot actually reaches**, and the number the three slots of headroom
-/// above it were measured from (milestone 231).
+/// **What a real interactive boot actually reaches**: the progenitor's peak capability count,
+/// measured on `script/swish-check`'s aarch64 leg. The highest is the gpu-and-keyboard boot, at 34
+/// of [`CAPABILITY_TABLE_SLOTS`]; a boot with no gpu peaks lower. `notes/capability-peak-trace.md`
+/// itemises what sits on the peak: the capabilities the progenitor never gives back (among them the
+/// entropy and network client endpoints it endows children from, the display grants, its own
+/// address space, the reboot object and the name resolver's endpoint), the login block's own, and
+/// the address space and page `build_child` is working through.
 ///
-/// Twenty-one, in the progenitor, during `build_child` for `credentialer`: twelve capabilities that process
-/// never gives back, the login block's own six, and the address space and page the loader is
-/// working through. Milestone 230 established it by instrumenting four boots; nothing in the tree
-/// could see it, which is why every raise of [`CAPABILITY_TABLE_SLOTS`] before that one was
-/// reactive, after a silent failure that named something else.
+/// **This is a record, not a target**: a reader quoting it gets the number the machine agrees with.
+/// [`report_peak`] says on the console when a boot goes past it, and `script/swish-check` fails on
+/// that sentence. When it fires, measure, update this, and re-read the headroom arithmetic in
+/// [`CAPABILITY_TABLE_SLOTS`]'s doc rather than raising that constant reflexively: every slot held
+/// for the life of the boot is one slot on the peak, and the headroom is a licence for a decision,
+/// not for a quiet spend.
 ///
-/// **This is a record, not a target**, on exactly the terms as the `size_of` assertions above: the
-/// point is that a reader quoting it gets the number the machine agrees with. [`report_peak`] is
-/// what keeps it honest, by saying on the console when a boot goes past it, and
-/// `script/swish-check` fails on that sentence. When it fires, measure, update this, and re-read
-/// the headroom arithmetic in [`CAPABILITY_TABLE_SLOTS`]'s own doc rather than raising that
-/// constant reflexively.
-///
-/// The check is deliberately against **this** rather than against the ceiling. Failing at the
-/// ceiling would be a check that only ever fires on a boot that has already died, and failing at
-/// some fraction of it would be a margin picked out of the air, which is the shape this tree has
-/// deleted three `script/lint` checks for. A recorded measurement going stale is neither: it is a
-/// fact about the tree that stopped being true.
-///
-/// **Twenty-two since 2026-09-05, milestone 111**, and this is the mechanism doing exactly what
-/// its own doc above describes rather than a surprise. The progenitor used to release the entropy service's
-/// request endpoint once `credentialer` held its own copy; it now keeps it for the life of the
-/// boot, because a child whose manifest declares `grant_plan::Manifest::entropy` is endowed a
-/// `WRITE` view of that same endpoint at spawn, and the progenitor is the only process that can make that
-/// grant. One capability held across the peak is one slot on the peak.
-///
-/// It was found by `script/swish-check` failing on this sentence, on the first run after the
-/// wiring landed, which is the whole point of milestone 231: every raise of
-/// [`CAPABILITY_TABLE_SLOTS`] before that one was reactive, after a silent halt that named
-/// something else. **The ceiling is not raised**, per this constant's own instruction: twenty-four
-/// minus twenty-two is two, and two is still headroom rather than a wall. The next addition that
-/// holds a capability across the progenitor's login block should expect to spend one of them and should read
-/// [`CAPABILITY_TABLE_SLOTS`]'s arithmetic before assuming there is a third.
-///
-/// **Twenty-three since 2026-09-24, milestone 590 (provisional)**, and it is that prediction
-/// coming true rather than a surprise. On a boot with a NIC attached (every `script/swish-check`
-/// leg that can attach one) the progenitor builds `net_stack` and keeps its client endpoint for
-/// the life of the boot, for the entropy endpoint's reason exactly: a child declaring
-/// `grant_plan::Manifest::network` is endowed a `WRITE` view of it at spawn. The NIC's own three
-/// kernel grants are spent before the terminal plumbing is built, so they never reach the peak;
-/// the endpoint does. Found the same way, by `script/swish-check` failing on this sentence on the
-/// first run after the wiring. **Still not raised**: twenty-four minus twenty-three is one, and
-/// the next permanent capability should buy a slot back rather than spend the last one.
-///
-/// **Still twenty-three at thirty-two slots** (2026-09-27, UTC), measured on `script/swish-check`'s
-/// aarch64 leg the day calef raised [`CAPABILITY_TABLE_SLOTS`] to thirty-two. The raise was for a
-/// *boot slot*, not for the peak: the machine statistics page arrives at slot 23 and the
-/// progenitor hands it to the shell before the login block, so it is never held across the peak.
-/// The headroom is now nine rather than one. That is room, and it is not a licence: the next
-/// capability held across the login block still spends one of the nine, and this record still
-/// fails `script/swish-check` the first boot that climbs past it.
-///
-/// **Twenty-four since 2026-10-02 (UTC), milestone 152 (durable delegation)**, and it is the
-/// spend that paragraph predicted. While it builds `login`, the progenitor now mints a capability
-/// to the file service's last client window (`login_protocol::DURABLE_WINDOW`), places it at
-/// `login_protocol::DURABLE_WINDOW_SLOT` and deletes its own copy, so it is held for one placement
-/// inside the login block rather than for the boot. That is enough to be one slot on the peak.
-/// Found by `script/swish-check`'s aarch64 leg failing on this sentence, in CI and again locally.
-/// Headroom is eight.
-///
-/// **Twenty-eight with a gpu and a keyboard** (2026-10-03, UTC, milestone 632 (graphics on
-/// demand)). The boot no longer builds the display stack and deletes the device grants mid-boot; it
-/// carries them until it hands them to the shell. Measured on both `swish-check` graphical arms (then `--graphical`),
-/// aarch64 and riscv64, on a tree with the twenty-four above: the keyboard arm's boot peaks at 26
-/// and a `graphical_terminal` launch, built in the spawn service, at 28; the serial arm (gpu, no
-/// keyboard) stays at 24. Which grants sit on the peak is not traced. The record is the highest a
-/// real system reaches, so it is twenty-eight. The costs: a boot with no gpu has four slots of
-/// slack before this fires, and the headroom is four.
-///
-/// **Thirty with a gpu and a keyboard, a correction** (2026-10-03, UTC, the lane that folded the
-/// `swish-check-graphical` job into `swish-check`). The paragraph above was right when it was
-/// measured and stale by the time it landed: the `--graphical` legs never read this gauge, so
-/// nothing fired when the tree moved. Folded into `script/swish-check`, whose gauge check does
-/// fire, the keyboard arm's `graphical_terminal` launch peaks at **30** on aarch64 and riscv64
-/// alike (the configuration is the old device arm's: gpu, keyboard, virtio-rng, the disk; the NIC
-/// is left off that boot, and with it on the same boot also reads 30). The serial arm (gpu, no
-/// keyboard, with the NIC and virtio-rng the plain legs attach) peaks at 27, and a boot with no
-/// gpu stays at 24. Which grants sit on the two extra slots is not traced. **The headroom is
-/// two**: the next capability held across a launch buys a slot back or raises
-/// [`CAPABILITY_TABLE_SLOTS`], and that is a decision for whoever adds it, with this paragraph in
-/// front of them.
-///
-/// **Thirty-one with a gpu and a keyboard** (2026-10-03, UTC, milestone 715 (provisional): the
-/// spawn service holds the display grants, and the shell holds none). The progenitor used to hand
-/// the gpu's four and the keyboard's three to the shell before its login block; it now keeps them
-/// for the life of the boot, so they sit on the login block's peak. Measured on `swish-check`'s
-/// aarch64 leg: the keyboard boot reads 24, 28, 30, 31 before the first prompt (it read 24, then
-/// 30 at the launch, before 715), and the serial arm (gpu, no keyboard) reads 28 (it read 27). A
-/// boot with no gpu is unchanged at 24. **This is the spend that paragraph said is a decision, and
-/// it is recorded here rather than taken quietly**: the headroom is one, on the one configuration
-/// that reaches it, which is QEMU's (argon, radon and xenon have no virtio keyboard and no
-/// virtio-gpu). Buying slots back is proposed in milestone 715's block; raising
-/// [`CAPABILITY_TABLE_SLOTS`] is not done here.
-///
-/// **Still thirty-one at sixty-four slots** (2026-10-04, UTC, milestone 754 (the capability table grows to 64 slots)): the raise bought
-/// headroom, not a different peak, so the gpu-and-keyboard boot reads 31 of 64 and the recorded
-/// figure is unchanged. The headroom is thirty-two, which is a licence for the next boot grants
-/// and still not for a reflexive spend; `notes/capability-peak-trace.md` itemises the 31.
-///
-/// **Thirty-two to thirty-four, one boot slot each, spent on purpose.** The progenitor keeps for
-/// life its own address space (slot 28, 2026-10-05, §249 (a running address space stays
-/// nameable): its spawn service gives up each scratch page with `UNMAP`), the reboot object (slot
-/// 31, 2026-10-06, milestone 805 (`reboot` at the prompt), §251 (restarting the machine is a
-/// kernel object the progenitor hands out)), and the name resolver's unbadged endpoint
-/// (2026-10-12, milestone 892 (a std program at the prompt holds the network and a resolver): it
-/// grants and forgets each resolving job's zone). Measured on `swish-check`'s aarch64 leg after
-/// the last: 29, 31 and 34 across its three boots, the keyboard boot highest. The headroom is
-/// thirty.
+/// The check is against this record rather than the ceiling, which would only fire on a boot that
+/// had already died, or a fraction of it, which would be a margin picked out of the air. A
+/// recorded measurement going stale is a fact about the tree that stopped being true.
 pub const CAPABILITY_TABLE_PEAK_MEASURED: usize = 34;
 
 // The headroom milestone 230 left is what this pair means, so the two cannot silently invert.

@@ -1,18 +1,11 @@
-//! **A program's manifest, as the bytes of an ELF note it carries** (milestone 597 (a program
-//! carries its manifest in an ELF note), whose number is provisional).
-//!
-//! DECISIONS §197 (a package is one archive file) asked where a program's manifest travels, and
-//! calef ruled option M2 on 2026-09-26 (UTC): inside the executable, as a note found through a
-//! `PT_NOTE` program header. So the manifest is in the same bytes the progenitor hashes to decide
-//! whether anybody vouched for them, and it cannot drift from the code or be separated from it.
-//! This crate is the wire format two programs agree on: the program that carries a note (through
-//! [`carry!`]) and the two that read one (the shell, which binds a line against it, and the
-//! progenitor, which endows from it). AGENTS.md rule 7 is why it is a crate.
-//!
-//! Finding the note is `crates/elf`'s job (`elf::Elf::note` and its streaming half, `elf::NoteSearch`). This crate
-//! starts at the descriptor.
-//!
-//! # The note
+//! **A program's manifest, as the bytes of an ELF note it carries.** §197 (a package is one archive
+//! file) asked where a manifest travels, and calef ruled option M2 on 2026-09-26 (UTC): inside the
+//! executable, as a note behind a `PT_NOTE` program header, so it is in the bytes the progenitor
+//! hashes and cannot drift from the code. This crate is the wire format between the program that
+//! carries a note ([`carry!`]) and the two that read one: the shell, which binds a line against
+//! it, and the progenitor, which endows from it (AGENTS.md rule 7). Finding the note is
+//! `crates/elf`'s job (`elf::Elf::note`, `elf::NoteSearch`); this crate starts at the descriptor,
+//! whose layout is below.
 //!
 //! | | |
 //! |---|---|
@@ -21,6 +14,20 @@
 //! | descriptor | [`DESCRIPTOR_LEN`] bytes, the layout below |
 //! | section | `.note.nife.manifest`, which `crates/user_mode_runtime/link.ld` keeps in a `PT_NOTE` inside the read-only load segment |
 //!
+//! **One manifest has exactly one encoding**, and [`decode`] enforces it: an unknown version, an
+//! out-of-range value, a nonzero reserved byte or a wrong length all refuse, and whatever it
+//! accepts [`encode`] turns back into the same bytes
+//! (`verification::a_decoded_manifest_encodes_back_to_its_bytes`), so two readers cannot
+//! disagree. calef amended version 1 in place while nothing outside the tree had acted on it; from
+//! here a change is a new version word, not a tolerated extension.
+//!
+//! # BUGS
+//!
+//! - A foreign build carries a note only by linking an object that holds one: `-Clink-arg=note.o`
+//!   works and `llvm-objcopy --add-section` makes no program header. Nothing writes that object yet.
+//! - Changing a manifest means relinking, and a new digest: M2's accepted cost.
+//!
+
 //! # The descriptor, version 1
 //!
 //! A version word, then little-endian fields in a fixed order (the encoding calef ratified
@@ -54,60 +61,11 @@
 //! | 54 | 1 | `share` | 0 or 1 (milestone 126, a view of the job budget) |
 //! | 55 | 1 | zero | |
 //!
-//! **One manifest has exactly one encoding**, and [`decode`] enforces it: an unknown version, a
-//! value outside its field's range, a nonzero byte where the layout says zero, a descriptor shorter
-//! or longer than [`DESCRIPTOR_LEN`], all refuse. That is what lets two readers not disagree: if
-//! `decode` accepts bytes, `encode` of the answer is those bytes again
-//! (`verification::a_decoded_manifest_encodes_back_to_its_bytes`), so there is no second spelling
-//! for one of them to read differently. A later version is a new version word, not a tolerated
-//! extension of this one.
+//! Byte 55 is the last zero, so the next field is likely version 2.
 //!
-//! **Version 1 was amended once, in place**, on 2026-09-27 (UTC): the `arg` field gained `2` for
-//! milestone 205 (how a foreign program is told what to do)'s `ArgSpec::Words`, with no version
-//! bump, on calef's ruling ("I think an incompatible change is probably fine. It has just been a
-//! few hours."). Nothing outside this tree had acted on version 1 by then.
-//!
-//! **And a second time, later the same day**: `3` and `4` for the `WordGrant` a program that hears
-//! words declares (milestone 205's designation half), under the same ruling and before anything
-//! outside the tree had acted on it. `2` kept its meaning, read-only. calef confirmed the ruling
-//! covers these on 2026-09-27 at 15:14Z (UTC), on #1402. The rule above holds from here on.
-//!
-//! **And a third time, in place**, the same day: milestone 126 (the `procps` package) gave
-//! `grant_plan::Manifest` its `machine` and `share` fields after this layout was ratified, and
-//! they take bytes 53 and 54 of the tail. calef ruled on 2026-09-27 (UTC), on #1360, that this
-//! amends version 1 in place too, for the same reason as the `arg` amendment above: nothing outside
-//! the tree had acted on version 1. An old descriptor has zeros there and decodes unchanged, as a
-//! program declaring neither. One zero byte (55) remains, so the next field is likely version 2.
-//!
-//! # EXAMPLES
-//!
-//! ```
-//! let m = grant_plan::Prog::Uptime.manifest();
-//! let bytes = manifest_note::encode(&m);
-//! assert_eq!(manifest_note::decode(&bytes), Ok(m));
-//!
-//! let mut later = bytes;
-//! later[0] = 2;
-//! assert_eq!(manifest_note::decode(&later), Err(manifest_note::Error::UnknownVersion));
-//! ```
-//!
-//! A program carries its note with one line at module scope:
-//!
-//! ```ignore
-//! manifest_note::carry!(grant_plan::Prog::Uptime.manifest());
-//! ```
-//!
-//! # BUGS
-//!
-//! - **A foreign build carries a note only by linking an object that holds one.** #1319 measured
-//!   `-Clink-arg=note.o` working and `llvm-objcopy --add-section` not: it adds a section with no
-//!   program header, which a program-header reader cannot see. Nothing in the tree writes that
-//!   object for a foreign program yet.
-//! - **Changing a manifest means relinking**, and a new digest. That is M2's recorded cost, and
-//!   §197 has why it was accepted.
-//!
-//! Name: provisional, milestone 597's lane, 2026-09-26. The owner string, the type number and the
-//! encoding are ratified; the crate name, [`carry!`] and the public functions are not.
+//! Name: provisional (milestone 597 (a program carries its manifest in an ELF note)'s lane). The
+//! owner string, the type number and the encoding are ratified; the crate name, [`carry!`] and the
+//! public functions are not.
 
 #![no_std]
 
@@ -134,7 +92,7 @@ pub const MANIFEST: u32 = 1;
 /// field order of version 1 is milestone 597's lane's design, in the module documentation.
 pub const VERSION: u32 = 1;
 
-/// How long a version 1 descriptor is, exactly.
+/// How long a version 1 descriptor is, exactly; the module documentation has the layout.
 pub const DESCRIPTOR_LEN: usize = 56;
 
 /// `OWNER` with its NUL, padded to the note's 4-byte alignment.
@@ -357,6 +315,24 @@ fn zero(d: &[u8], at: usize, len: usize) -> Result<(), Error> {
 ///
 /// Strict on purpose, for the module documentation's reason: whatever this accepts, [`encode`]
 /// turns back into the same bytes, so a descriptor has one reading.
+///
+/// # Examples
+///
+/// ```
+/// let m = grant_plan::Prog::Uptime.manifest();
+/// let bytes = manifest_note::encode(&m);
+/// assert_eq!(manifest_note::decode(&bytes), Ok(m));
+///
+/// let mut later = bytes;
+/// later[0] = 2;
+/// assert_eq!(manifest_note::decode(&later), Err(manifest_note::Error::UnknownVersion));
+/// ```
+///
+/// A program carries its note with one line at module scope:
+///
+/// ```ignore
+/// manifest_note::carry!(grant_plan::Prog::Uptime.manifest());
+/// ```
 pub fn decode(d: &[u8]) -> Result<Manifest, Error> {
     if d.len() < 4 {
         return Err(Error::NoVersion);
