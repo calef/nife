@@ -10,7 +10,7 @@
 //!
 //! Name: provisional 2026-10-09 (UTC), milestone 801's lane, beside `std_echo` and `std_grep`.
 
-use std::io::{Read, Write};
+use std::io::{ErrorKind, Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
 
 use name_resolution_protocol::fixture::CASES;
@@ -32,6 +32,11 @@ fn lookup(name: &str) {
             Some(a) => println!("lookup {name}: {a}"),
             None => println!("lookup {name}: no address"),
         },
+        // The kind is what the test matches. A refused network step also says which step, since
+        // the one CI failure of 2026-10-12 (UTC) printed only the kind.
+        Err(e) if e.kind() == ErrorKind::NetworkUnreachable => {
+            println!("lookup {name}: {:?} ({e})", e.kind())
+        }
         Err(e) => println!("lookup {name}: {:?}", e.kind()),
     }
 }

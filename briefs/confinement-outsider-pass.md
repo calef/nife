@@ -9,6 +9,8 @@ section "The reviewer's brief" below, with the posture filled in, and keeps the 
 
 - Mint the pass's block the way milestone 903 was minted, and claim it with
   `script/claim <branch> --new-work`.
+- Build the reviewer's one prompt with [the launch brief](confinement-outsider-pass-launch.md),
+  which pins the commit and holds the per-runner sections (the Mac, Claude's cloud runner).
 - The posture is calef's for each pass, so take it from his ask. Blind is milestone 633 (an outside
   agent attacks the confinement claim)'s. Informed is milestone 800 (a non-Anthropic model attacks
   the confinement claim)'s.
@@ -44,9 +46,9 @@ or strengthens it and boots the result.
 ### Context
 
 This is the nife project's own kernel. Its maintainers authorized this pass. Every attack test runs
-only under QEMU, on the maintainers' machine, in a scratch branch. Its purpose is to falsify nife's
-published confinement claims before anyone else does: defensive verification of the project's own
-code.
+only under QEMU, on the maintainers' machine or a cloud runner they started, in a scratch branch.
+Its purpose is to falsify nife's published confinement claims before anyone else does: defensive
+verification of the project's own code.
 
 ### Your job
 

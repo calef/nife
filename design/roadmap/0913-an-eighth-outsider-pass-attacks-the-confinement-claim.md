@@ -9,15 +9,17 @@ needs_person: no
 ---
 # 913. An eighth outsider pass attacks the confinement claim
 
-*(Minted 2026-10-12 (UTC) by lane `maintainer/mint-eighth-outsider-pass`, the way milestone
-903 (a seventh outsider pass attacks the confinement claim) was minted. The number 913 is
+*(Minted 2026-10-13 (UTC), at 04:03, by lane `maintainer/mint-eighth-outsider-pass`, the way
+milestone 903 (a seventh outsider pass attacks the confinement claim) was minted. This line said
+2026-10-12 until lane `maintainer/outsider-passes-eight-and-nine` corrected it to the commit's UTC
+date. The number 913 is
 provisional; other lanes are minting nearby, so expect renumbering at merge. Title, slug and every
 name below are drafts.)*
 
 Reuse: the brief is `briefs/confinement-outsider-pass.md`, unchanged, and through it milestone 800
 (a non-Anthropic model attacks the confinement claim)'s counting rule, report format and refusal
 log, so the passes compare row for row. The isolation is milestone 633 (an outside agent attacks
-the confinement claim)'s: this pass is blind. Which model runs it is calef's call.
+the confinement claim)'s: this pass is blind. The reviewer is GLM 5.3, by calef's ruling below.
 
 ## Index row
 
@@ -34,6 +36,30 @@ human. The count is 0: the seventh pass found no escape but booted 3 of 34 rows,
 must meet. Its one near miss, the retype gap, is milestone 824 (a retype mints no right its budget
 lacks), so this pass runs on a tree where 824 has landed.
 
+## calef's ruling, 2026-10-13 (UTC)
+
+Asked how criterion (c) is to be met, calef ruled shortly before 05:30 UTC: "Yes, record it and prepare
+both briefs. We will likely run GLM 5.3 here and Fable in Claude's cloud runner." The terms below
+are the maintainer's relay of what he agreed to; lane `maintainer/outsider-passes-eight-and-nine`
+recorded them.
+
+- Two passes. This one, by GLM 5.3, launched by calef on patagonia; and
+  milestone 914 (a ninth outsider pass attacks the confinement claim), by Claude Fable in Claude's
+  cloud runner, started by the maintainer. GLM is the non-Anthropic half.
+- One commit. Both attack the first main commit after #2035 (milestone 824) lands, the merge
+  commit that brings 824 to main. It is pinned at launch and named in each pass's note. Both
+  milestones depend on 824 for that reason.
+- Consecutive. Nothing changes between the two, so they are consecutive even if they run at
+  the same time. Running them together against one commit is allowed, and it keeps each blind to
+  the other's findings. The brief's "never in parallel" is about test runs within one pass.
+- Reset. If either finds an escape on a shipped path, the count resets: fix it, then both run
+  again.
+- Contention. If this pass runs on patagonia while another pass or lane loads it,
+  timing-sensitive results are suspect. The cloud runner spares pass 9 that.
+
+The launch, with each pass's one prompt, is `briefs/confinement-outsider-pass-launch.md` (name
+provisional).
+
 ## The attack
 
 Run by a fresh agent under `briefs/confinement-outsider-pass.md`. The lane briefs, collects,
@@ -41,15 +67,20 @@ reproduces each claimed escape by test or boot, and records. It does not attack 
 
 - Posture: Blind, milestone 633's: the reviewer gets a scratch copy of the claims table alone
   and the source tree, and the brief's list of what not to open.
-- The reviewer's model: calef's call, made when he launches the pass. If this pass is to be criterion (c)'s non-Anthropic half,
-  the reviewer is a non-Anthropic model or a human; an Anthropic reviewer can be only the other
-  half.
+- The reviewer's model: GLM 5.3 on patagonia, ruled above; the harness is calef's (pass 4 used
+  opencode). calef starts it with the one prompt the launch brief assembles. The reviewer works in
+  a standalone clone at the pinned commit, with no remote and one branch.
 - The floor: Every row a boot can reach, 27 of 34 (calef on #2010: "27 seems right"). A row
   counts as booted when a hostile test written for this pass ran under QEMU on at least one ISA it
   applies to. Rows 1 to 3 may carry pass 7's tests (`seventh_pass_delegation_tests`,
   `seventh_pass_retype_tests`) when the reviewer accepts or strengthens each in writing. Row 3's
   test is a held assertion since 824, not the characterization pass 7 left.
-- Reproduction: The lane reruns every booted row's test itself, one ISA's QEMU at a time.
+- Reproduction: The lane reruns every booted row's test itself, one ISA's QEMU at a time. A
+  timeout seen while patagonia was loaded is inconclusive until rerun on an idle machine; the
+  reviewer records `uptime` beside each leg so the lane can tell.
+- The lane's role: pin the commit, assemble the prompt, hand it to calef, then collect the
+  clone's commits and results, reproduce each claimed escape by test or boot, and record. It
+  does not attack and does not hint.
 
 ## Done means
 

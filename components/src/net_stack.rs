@@ -92,6 +92,10 @@ use interface_bring_up::{dhcp_lease, heap_and_interface};
 #[path = "tcp_close.rs"]
 mod tcp_close;
 use tcp_close::close_tcp;
+// Waiting for the NIC between polls, bounded by the caller's deadline as well as smoltcp's timers.
+#[path = "nic_wait.rs"]
+mod nic_wait;
+use nic_wait::wait_for_nic;
 // The socket-contract client rides in this same binary (dispatched by the entry role), because the
 // initial ramdisk directory holds at most 15 files; see components/src/socket_test_client.rs.
 #[path = "socket_test_client.rs"]
@@ -587,85 +591,6 @@ fn read_dst(window: MappedWindow) -> IpEndpoint {
     IpEndpoint::new(IpAddress::Ipv4(ip), port)
 }
 
-/// **Wait for the NIC to need attention again, without stalling smoltcp's own timers.**
-///
-/// The obvious loop, "block on the NIC interrupt, service on each wakeup," has a hole that SMP timing
-/// on riscv exposed and that a lone core hid: smoltcp drives TCP retransmits, delayed ACKs, and DNS
-/// timeouts from *its* clock, advanced only when we call `poll`. If we block on the interrupt alone
-/// and the exchange is waiting on one of those timers (a segment we must retransmit because its ACK
-/// was dropped), no RX interrupt is coming (the peer is waiting for that retransmit), so the block
-/// never returns and the whole pipeline deadlocks with every core idle. aarch64 happened never to
-/// drop a segment and so never hit it; riscv under the SMP scatter did. See notes/net/the-outbound-gates.md.
-///
-/// So: ask smoltcp when it next needs to run. When it has **no** timer pending (`poll_delay` is
-/// `None`), block on the interrupt, which is the common, efficient case (0% CPU until a frame
-/// arrives), and correct, because with nothing of our own to send we are purely waiting on the peer,
-/// whose own retransmit will wake us. When it **does** have a timer pending, do not block: yield and
-/// let the caller re-`poll`, so the timer actually fires. That confines the busy interval to the
-/// short retransmit window, not the whole exchange.
-fn wait_for_nic(iface: &mut Interface, dev: &mut Nic, sockets: &mut SocketSet) {
-    match dev {
-        Nic::Gigabit(nic) => return poll_without_interrupt(iface, nic.frame_waiting(), sockets),
-        Nic::DesignWare(nic) => {
-            return poll_without_interrupt(iface, nic.frame_waiting(), sockets);
-        }
-        Nic::Virtio(_) => {}
-    }
-    let Some(delay) = iface.poll_delay(instant(), sockets) else {
-        interrupt_wait(IRQ);
-        dev.ack_irq();
-        return;
-    };
-    // A smoltcp timer is due in `delay`: wait for a frame **or** that deadline, whichever comes
-    // first (milestone 106 (a wait that ends on either the interrupt or the deadline)). The
-    // notification in `WAKE` is bound to this thread, so `Irq::WAIT` ends on either and the hart is
-    // idle in between. Until 2026-09-26 this yielded and re-polled instead, spinning a hart through
-    // every retransmit backoff (`notes/timed-wait.md`, section 5).
-    let micros = delay.total_micros();
-    let ticks = abi::timer::counter_ticks_for(
-        micros / 1_000_000,
-        ((micros % 1_000_000) * 1000) as u32,
-        cntfrq(),
-    );
-    if timer_arm(RETRANSMIT, now().saturating_add(ticks), WAKE, 1) == 0 {
-        interrupt_wait(IRQ); // 1: a frame; BOUND: the deadline
-        // Whichever ended the wait, leave nothing behind: disarm, and clear a fire that raced the
-        // frame, so a stale deadline never ends the next `receive_cap(STACK)` as a bound delivery.
-        if timer_cancel(RETRANSMIT) == 0 {
-            notification_poll(WAKE);
-        }
-    } else {
-        // No timer granted (a spawner that predates milestone 106): the old yield, so the caller
-        // re-polls and smoltcp's timer still fires, at a hart's cost.
-        user_mode_runtime::yield_now();
-    }
-    dev.ack_irq();
-}
-
-/// **A polled NIC's wait, which is a sleep** (milestone 494 (a driver for the network card a PC
-/// actually has)): the `e1000e` server's, and since milestone 53 (the board's own peripherals:
-/// network and storage on real silicon) radon's Ethernet port's, both 1 ms. Neither holds an
-/// interrupt (`kernel/src/user/e1000e_service.rs` says why), so the wait ends at smoltcp's own
-/// deadline or after `e1000e_transport::POLL_MS`, whichever is sooner, and the caller looks at the
-/// ring again. A frame already waiting skips the sleep. The timer and notification are the same
-/// pair the virtio server's retransmit wait uses (slots 5 and 6).
-fn poll_without_interrupt(iface: &mut Interface, frame_waiting: bool, sockets: &mut SocketSet) {
-    if frame_waiting {
-        return;
-    }
-    let poll_micros = e1000e_transport::POLL_MS * 1000;
-    let micros = iface
-        .poll_delay(instant(), sockets)
-        .map_or(poll_micros, |d| d.total_micros().min(poll_micros));
-    if micros == 0 {
-        return;
-    }
-    let ticks = abi::timer::counter_ticks_for(0, (micros * 1000) as u32, cntfrq());
-    if sleep_until(RETRANSMIT, WAKE, now().saturating_add(ticks)) < 0 {
-        user_mode_runtime::yield_now();
-    }
-}
-
 /// **The NIC this server drives**: virtio-net (milestone 30 (the network stack as a confined
 /// component)) or the `e1000e` family (milestone 494). One enum rather than a generic parameter,
 /// so the dispatch below is compiled once.
@@ -772,19 +697,20 @@ fn service_until(
     sockets: &mut SocketSet,
     mut cond: impl FnMut(&mut SocketSet) -> bool,
 ) -> bool {
-    let start = instant().total_millis();
+    // A stuck exchange still returns rather than blocking a hart forever; 15 s is far beyond any
+    // slirp round trip yet well under the 60 s watchdog. The wait below ends by it too, so it holds
+    // when nothing arrives at all. The disk driver's bounded discipline.
+    let deadline = instant().total_millis() + 15_000;
     loop {
         iface.poll(instant(), dev, sockets);
         if cond(sockets) {
             return true;
         }
-        // A stuck exchange still returns rather than blocking a hart forever; 15 s is far beyond any
-        // slirp round trip yet well under the 60 s watchdog. The disk driver's bounded discipline.
-        if instant().total_millis() - start > 15_000 {
+        if instant().total_millis() >= deadline {
             iface.poll(instant(), dev, sockets);
             return cond(sockets);
         }
-        wait_for_nic(iface, dev, sockets);
+        wait_for_nic(iface, dev, sockets, Some(deadline));
     }
 }
 

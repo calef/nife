@@ -35,6 +35,8 @@ const NET_TEST_UDP_TFTP: u64 = 4;
 const NET_TEST_TCP_ACCEPT: u64 = 5;
 #[cfg(target_arch = "aarch64")]
 const NET_TEST_HTTP_PACKAGE: u64 = 6;
+#[cfg(target_arch = "aarch64")]
+const NET_TEST_TCP_ACCEPT_UNHEARD: u64 = 12;
 /// `TEST_HTTP_PACKAGE`'s refusal word, reported for a package whose digest disagrees.
 #[cfg(target_arch = "aarch64")]
 const NET_CLIENT_DIGEST_REFUSED: u64 = 3;
@@ -253,6 +255,41 @@ fn a_client_completes_a_udp_round_trip_through_the_socket_contract_pci() {
     assert_eq!(
         verdict, NET_CLIENT_OK,
         "the UDP round trip over PCIe failed (client code {verdict:#x})",
+    );
+    net.release_or_fail("a net test's net_stack");
+}
+
+/// **An accept nobody answers ends at `net_stack`'s bound** (the riscv-cpu-net-flake lane,
+/// 2026-10-13 UTC). One `ACCEPT` on the PCI NIC, which no `hostfwd` reaches, so no SYN ever
+/// arrives and smoltcp holds no timer. The stack's wait has to end by its own 15 s bound and refuse.
+/// Before `nic_wait` took the caller's deadline it blocked for a frame forever: the listener
+/// retries built on that bound never ran, and on 2026-10-12 a prober connection held to nobody
+/// turned the CPU matrix's std listener test into a 60 s watchdog. Without the fix this test is
+/// that watchdog. x86_64 has no twin: its NIC is the polled `e1000e`, whose wait is a 1 ms sleep,
+/// so the bound held there all along.
+///
+/// Falsification: replayable `system_tests/falsifications/user.network_tests.an_accept_nobody_answers_ends_at_the_stacks_bound.patch`
+#[cfg(target_arch = "aarch64")]
+#[test_case]
+fn an_accept_nobody_answers_ends_at_the_stacks_bound() {
+    let started = crate::arch::timer::now();
+    let Some((report, net)) = virtio_service::start_net_stack(
+        net_stack_image(),
+        NET_TEST_TCP_ACCEPT_UNHEARD,
+        true,
+        socket_protocol::listen_grant(NET_LISTEN_PORT, NET_LISTEN_PORT),
+    ) else {
+        crate::testing::skip!("no virtio-net-pci device attached");
+    };
+    let verdict = sched::ipc_receive(report)[0];
+    let waited_ms = (crate::arch::timer::now() - started) * 1000 / crate::arch::timer::frequency();
+    assert_eq!(
+        verdict, NET_CLIENT_OK,
+        "an accept nobody could reach did not come back refused (client code {verdict:#x})",
+    );
+    assert!(
+        waited_ms >= 15_000,
+        "the accept was refused after {waited_ms} ms, before net_stack's 15 s bound",
     );
     net.release_or_fail("a net test's net_stack");
 }

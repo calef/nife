@@ -44,7 +44,8 @@ Two things failed on the way there, and neither is the GIC:
   Apple core now, and `arch::timer::set_cycle_counter_grant`'s BUGS carries the measurement. This is
   milestone 74's finding as much as this leg's: an HVF run is not evidence about that register.
 - **`user::tests::a_std_program_serves_a_granted_listening_port` hung in two of three full `--hvf`
-  runs**, and passes when run alone and in every TCG run. Fixed by milestone 514 (the HVF std
+  runs**, and passed when run alone. It was not HVF-only: the riscv64 CPU matrix hit it under TCG
+  twice (notes/net/the-inbound-check.md, corrected 2026-10-13). Fixed by milestone 514 (the HVF std
   listener hangs in some full runs) on 2026-10-12. The prober's third connection, opened within a
   millisecond of the hand-written listener's second answer, could complete its handshake into the
   socket `net_stack` re-arms after every `ACCEPT`. The hand-written client's `CLOSE` then dropped

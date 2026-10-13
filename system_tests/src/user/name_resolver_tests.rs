@@ -483,6 +483,14 @@ fn std_resolve_prints(
 /// `PermissionDenied`, which only the grant can say, since the peer would have answered `REFUSED`.
 /// Without it, the PAL finds the slot empty and answers `Unsupported` before minting a page.
 ///
+/// BUGS: failed once on CI, 2026-10-12 (UTC), `thead-c906`, #1964, green on rerun. The first lookup
+/// answered `NetworkUnreachable` (the resolver's socket was refused a step) and every later one,
+/// the echo by name included, succeeded. Milestone 801's first-`CONNECT` failure had this shape
+/// before ephemeral ports were seeded on 2026-10-10; this is the one occurrence since. The PAL now
+/// names the step, so the next one says where to look (an injected `CONNECT` refusal printed
+/// "the resolver's connection to its name server was not established"). Not reproduced in 11
+/// filtered runs on `thead-c906` at load 13 to 24 on 8 cores, 2026-10-13.
+///
 /// Falsification: replayable `system_tests/falsifications/user.name_resolver_tests.a_std_program_resolves_its_granted_zone_and_nothing_without_a_grant.patch`
 #[test_case]
 fn a_std_program_resolves_its_granted_zone_and_nothing_without_a_grant() {
