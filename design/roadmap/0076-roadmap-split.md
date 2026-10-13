@@ -143,7 +143,7 @@ every relative markdown link resolves, so a missed one fails loudly rather than 
 Raised in the morning, bumped to the front the same day, calef's call. The single file did not
 wait for the split: nine milestone entries landed in it in one day (a postscript to 78, and 79
 through 87), it passed 6,200 lines, and it produced repeated merge conflicts between same-day
-pull requests (#46 against #47, then the #52/#53 supersede sequence), which is exactly the
+pull requests (#46 against #47, then #53 replacing #52), which is exactly the
 conflict class this entry's own rationale predicted. The entry was still NOT-STARTED while its
 motivating failure was recurring, so it stopped queueing.
 

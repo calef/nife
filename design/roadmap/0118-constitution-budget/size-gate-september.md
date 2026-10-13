@@ -132,7 +132,7 @@ already had.
 
 The ceiling read 1009 until §155 (naming conventions move out of the constitution) moved the naming
 conventions to `design/naming.md` and the file fell to 922. Milestone 262 had asked for 988 against
-its own smaller diff, which §155 superseded.
+its own smaller diff, which §155 made moot.
 
 ## 922 to 924, 2026-09-21
 

@@ -3,7 +3,7 @@ status: BUILT
 raised: 2026-09-05
 built: 2026-09-05
 ---
-# 264. Sixty names the history cannot justify, and the research that would let calef rule on them
+# 264. Sixty names git history cannot justify, and the research that would let calef rule on them
 
 It gated on nothing while it ran, which is `script/names --unratified`'s own design: a worklist
 rather than a wall, so an unratified name never fails anybody's build. `script/names --unratified`

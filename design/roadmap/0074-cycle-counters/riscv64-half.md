@@ -1,6 +1,6 @@
 # Cycle counters: the riscv64 half as built and measured
 
-Moved from [milestone 74 (cycle counters)](../0074-cycle-counters.md) under §212 (a prose budget).
+An appendix to [milestone 74 (cycle counters)](../0074-cycle-counters.md), under §212 (a prose budget).
 This appendix holds what the riscv64 lane built and left out, the emulator finding it carried out,
 and the working behind radon's measurement with the rows it converts.
 

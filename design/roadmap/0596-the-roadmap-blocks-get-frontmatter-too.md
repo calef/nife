@@ -106,7 +106,7 @@ no `decided` or `ratified_by`: nothing in a milestone is ratified the way a sect
 
 What stays prose: the H1, the `## Index row` summary (a paragraph, and 582 kept prose out of the
 frontmatter), the `## Follow-on` and `## Revisit` bullets, and the dates a block was refused,
-superseded or removed, which no script reads. After `built` moves out, `## Index row` holds only the
+replaced or removed, which no script reads. After `built` moves out, `## Index row` holds only the
 summary, under a heading named for a table that no longer exists. Renaming it is a naming call and
 not this milestone's.
 

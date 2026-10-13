@@ -142,7 +142,7 @@ reported, and that the later lander takes the next free numbers instead of displ
 - It does not remove the merge queue's serialization, which is not the problem: the queue lands
   groups of five, and today's jam was conflicts and false gate failures, not throughput.
 - **It does not touch `design/decisions/README.md`**, which is hand-maintained and is the same
-  hotspot the roadmap index used to be: every lane that lands a decision edits that one sorted
+  kind of hotspot as a hand-kept roadmap index: every lane that lands a decision edits that one sorted
   table. Deriving it from the decision files is 294's shape applied one directory over, and it is
   proposed rather than done here.
 

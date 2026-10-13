@@ -59,7 +59,7 @@ this page is complete without them.
   `Unsupported` permanently rather than pending, and milestone 149's Rayon-parallel NPB-Rust variants
   stay out of scope until one does. §105 is the record; nothing here forecloses building the
   seL4-shaped option later.
-- `env` was a table nobody seeds until 2026-08-22, when the shim began filling `TZ`, `LANG` and
+- The shim fills `env`'s `TZ`, `LANG` and
   `TERM` from a granted inert-configuration page (§111 (inert configuration is a validated page);
   see the Follow-on). A program granted no such page still starts empty, and every `env::var` it
   reads is `None`, which is the design.

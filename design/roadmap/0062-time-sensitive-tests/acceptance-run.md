@@ -1,7 +1,7 @@
 # The 2026-08-17 acceptance run: an appendix to milestone 62
 
-Moved from [milestone 62 (tests that assert on time)](../0062-time-sensitive-tests.md) on 2026-10-12
-(UTC) under §212 (a prose budget). It is the block's account of its first acceptance run, which did
+An appendix to [milestone 62 (tests that assert on time)](../0062-time-sensitive-tests.md), kept
+apart under §212 (a prose budget). It is the block's account of its first acceptance run, which did
 not pass, and of the kernel bug that run found.
 
 ## The acceptance run, 2026-08-17: 45 runs under load, 36 green

@@ -42,7 +42,7 @@ Who raised it and what they were doing at the time.
 A proposal is under the same limits as every other document: 3,000 words, and §213 (writing
 standards)'s sentence and bold rules, checked by `helpers/prose_ratchet.py` from the day it is
 written. calef ruled this on
-2026-10-06 (UTC) and removed the exemption a promotion used to carry, so a block promoted from here
+2026-10-06 (UTC): a promotion carries no exemption, so a block promoted from here
 needs no exception marker. A proposal that will not fit takes an appendix, like any block.
 
 `raised` is not decoration. A proposal nobody promotes is the same burial in a new place, and age is

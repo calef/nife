@@ -10,7 +10,7 @@ Built 2026-09-26 by lane `milestone/597-manifest-note`, promoted from the propos
 `a-program-carries-its-manifest-in-an-elf-note`, which the `maintainer/m2-ruling` lane raised
 recording calef's ruling on DECISIONS §197 (a package is one archive file). *(Number and title
 provisional: the integrator mints the number at merge, and the title is a draft until an architect
-names it.)* Supersedes the prototype in draft pull request #1319 (the price of an ELF-note manifest).
+names it.)* It replaces the prototype in draft pull request #1319 (the price of an ELF-note manifest).
 
 The gate the proposal carried (DECISION: the owner string, the type number and the encoding) was
 answered on 2026-09-26; see "What was ruled".

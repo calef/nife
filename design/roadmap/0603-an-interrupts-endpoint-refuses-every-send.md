@@ -6,8 +6,7 @@ built: 2026-09-26
 # 603. An interrupt's endpoint refuses every send
 
 Built 2026-09-26. *(Number provisional: minted by the lane, to be confirmed at merge.)* The lane is
-`milestone/603-irq-send-refused`, pull request #1383 (it replaced #1376, which closed when the
-branch was renamed).
+`milestone/603-irq-send-refused`, pull request #1383.
 
 ## The ruling
 
