@@ -261,7 +261,6 @@ kernel/src/revoke.rs:443	44
 kernel/src/revoke.rs:656	42
 kernel/src/revoke.rs:941	56
 kernel/src/sched.rs:1139	45
-kernel/src/sched/ipc_tables.rs:130	45
 kernel/src/screen.rs:1	68
 kernel/src/self_test.rs:1	66
 kernel/src/soak.rs:1	130

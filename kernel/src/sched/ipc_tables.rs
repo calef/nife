@@ -128,21 +128,15 @@ pub(super) const FUTEX_BUCKETS: usize = 64;
 pub(crate) const MAX_RENDEZVOUS: usize = 512;
 
 /// **The most rendezvous that were ever live at once on this boot**, and how many of those live at
-/// that moment sat on the kernel's own chunks. [`MAX_RENDEZVOUS`]'s instrument, built for
-/// `PEAK_THREADS`'s reason by milestone 601 (the region table prints its peak), after the lane of
-/// milestone 152 (durable delegation) met this ceiling in `timetable_tests`: a durable test created
-/// its report endpoint with [`create_rendezvous`] on every run, and kernel-chunk rendezvous are
-/// never freed (see `kernel_ep_region`), so the registry filled across the suite.
+/// that moment sat on the kernel's own chunks. [`MAX_RENDEZVOUS`]'s instrument, built by milestone
+/// 601 (the region table prints its peak). A rendezvous on a kernel chunk lives for the whole boot
+/// (`kernel_ep_region` never frees one); one retyped from a region goes when its region is
+/// reclaimed, so the kernel-chunk count only rises. Both are updated under `IPC_TABLES` at the one
+/// insert, so they never race.
 ///
-/// The split is the ledger's first cut. A rendezvous on a kernel chunk lives for the whole boot;
-/// one retyped from a region goes when its region is reclaimed. So the kernel-chunk count only
-/// ever rises, and it is the part of the peak no teardown can recover.
+/// # The ledger at the peak
 ///
-/// Both updated under `IPC_TABLES` at the one insert, so they never race.
-///
-/// # The ledger: what holds rendezvous at the peak
-///
-/// Measured 2026-09-26 with a temporary per-test print, on `main` at `484f3ebe` plus #1347:
+/// Measured 2026-09-26:
 ///
 /// | architecture | peak | spare | on kernel chunks | retyped from a region |
 /// |---|---|---|---|---|
@@ -150,28 +144,12 @@ pub(crate) const MAX_RENDEZVOUS: usize = 512;
 /// | riscv64 | **491** | 21 | 452 | 39 |
 /// | `x86_64` | **315** | 197 | 302 | 13 |
 ///
-/// The registry starts each suite empty and the peak is its last reading: it only grows, because
-/// almost everything in it sits on a kernel chunk. So the ledger is who called
-/// [`create_rendezvous`], aarch64 per module (kernel-chunk count first, then all live):
-///
-/// | module | kernel chunks | all live | |
-/// |---|---|---|---|
-/// | `kernel::sched` tests | 46 | 47 | the scheduler's own IPC tests |
-/// | `user::tests` | 45 | 46 | the oldest userspace tests, one or two each |
-/// | `ntp_tests` | 37 | 37 | |
-/// | `login_tests` | 36 | 66 | the other 30 are retyped from session regions |
-/// | `compositor_tests`, `display_tests` | 34 | 34 | |
-/// | `rm_program_tests`, `dir_capability_tests`, `disk_tests` | 51 | 51 | the file services |
-/// | `sink_tests`, `date_tests`, `time_tests` | 40 | 40 | |
-/// | 23 other modules | 97 | | |
-/// | created between tests | 80 | | services still wiring after a test returned |
-///
-/// Nothing on a kernel chunk is returned, even when the test that asked for it hands everything
-/// else back, so every test that wires a service with [`create_rendezvous`] spends the registry
-/// for the rest of the boot. The fix the lane of milestone 152 used on its own test is the
-/// pattern: retype the endpoint from the run's own region, so it goes when the region does.
-/// `design/roadmap/0671-tests-retype-their-rendezvous-from-their-own-region.md` is that work
-/// across the suite. Reports and does not gate, for [`MAX_THREADS`]'s reason.
+/// Every test that wires a service with [`create_rendezvous`] spends the registry for the rest of
+/// the boot (on aarch64 the largest spenders are the scheduler's own tests, the oldest userspace
+/// tests, `ntp_tests`, `login_tests` and the file and display services, and 80 are created between
+/// tests). The fix is to retype the endpoint from the run's own region, so it goes when the region
+/// does: `design/roadmap/0671-tests-retype-their-rendezvous-from-their-own-region.md`. Reports and
+/// does not gate, for [`MAX_THREADS`]'s reason.
 pub(super) static PEAK_RENDEZVOUS: core::sync::atomic::AtomicUsize =
     core::sync::atomic::AtomicUsize::new(0);
 pub(super) static KERNEL_CHUNK_RENDEZVOUS: core::sync::atomic::AtomicUsize =
