@@ -6,14 +6,14 @@ is linked from the rule it explains, and a reader who only needs to act never ha
 
 *Name: ratified 2026-09-24 (calef, `design/naming.md`'s "Where a document goes"). A tenet gets
 cited on its own, by the code and the notes that live under it, rather than only as `AGENTS.md`'s
-footnote, so it belongs in `design/` beside the option space and the decisions. Refused `notes/`
-(a note records what exists and what building it taught us; a tenet is an argument for how to work,
-which is what `design/` holds), and refused the reason first offered for `design/`, that thirteen
-rows would crowd the glossary index: `script/lint` reads `notes/*.md` without recursing, so a
-`notes/tenets/` subdirectory would have cost that index nothing and the argument was never real.
+footnote, so it belongs in `design/` beside the option space and the decisions. Refused `notes/` (a
+note records what exists and what building it taught us; a tenet is an argument for how to work,
+which is what `design/` holds). Also refused the reason first offered for `design/`, that thirteen
+rows would crowd the glossary index. `script/lint` reads `notes/*.md` without recursing, so a
+`notes/tenets/` subdirectory would have cost that index nothing; the argument was never real.
 `project-history.md` arrived after that ruling and was named on its own: Name: ratified 2026-09-24
-(calef, approving #1189). `measure-first.md` was named the same way: Name: ratified
-2026-09-24 (calef, approving #1182).*
+(calef, approving #1189). `measure-first.md` was named the same way: Name: ratified 2026-09-24
+(calef, approving #1182).*
 
 | appendix | what it explains |
 |---|---|

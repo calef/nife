@@ -150,15 +150,15 @@ A finite verb or a quantifier already says "this is a question" (see
 [boolean-predicates.md](boolean-predicates.md#why-a-verb-phrase-is-allowed)). The 57, by name:
 
 `allows` (twice), `survey_includes`, `denies_all`, `carries_len`, `takes_name`, `mutates`, `fits`
-(twice), `is`, `matches_with`, `opens_with_a_literal_dot`, `overlaps` (twice), `overlaps_ram`,
+(twice), `is`, `matches_with`, `opens_with_a_literal_dot`, `overlaps` (twice), `overlaps_ram`.
 `all_distinct_ids`, `all_distinct_names`, `any_core_running_real_work`, `file_name_fits`,
 `component_fits`, `was_already_up`, `status_says_okay`, `repeats_newest`, `stack_works`,
-`holds_block`, `holds`, `holds_the_system`, `selects`, `kernel_refuses`, `progenitor_refuses`,
+`holds_block`, `holds`, `holds_the_system`, `selects`. `kernel_refuses`, `progenitor_refuses`,
 `grant_allows`, `udp_grant_allows`, `runs_after`, `page_is_clean`, `pwd_is`, `userspace_ran`,
 `reached_the_goal`, `user_can_read` and `user_can_write` (twice each), `asid_tagging_is_trusted`,
 `calibration_has_converged`, `would_violate`, `machine_has_no_device_page_for_the_console`,
-`machine_has_no_rtc`, `machine_has_no_entropy`, `had_step`, `page_contains`, `has`, and in
-`xtask` `the_disk_agrees` (twice), `kernel_wrote_during_boot`, `redoxfs_reads_back`,
+`machine_has_no_rtc`, `machine_has_no_entropy`, `had_step`, `page_contains` and `has`. In `xtask`,
+`the_disk_agrees` (twice), `kernel_wrote_during_boot`, `redoxfs_reads_back`,
 `shell_navigation_landed`, `redoxfs_subtree_was_confined` and
 `redoxfs_glob_grant_took_exactly_the_match`.
 
@@ -173,10 +173,10 @@ rule does not apply and the verb stays. By place:
   `take_ipc_aborted`, `take_need_resched`, `check`, `check_armed`, `kill_thread`,
   `mark_current_fp_live`, `strand_reply_caller`, `bind_tick_routes`, `spawn_into`,
   `arm_for_start`, `enable_for_current`, `place_bars`, `adopt`, `reclaim`, `release`, `asked`,
-  `serve_shootdown_nmi`, the trap bodies and `dispatch_on_interrupt_stack` (three architectures
+  `serve_shootdown_nmi`. The trap bodies and `dispatch_on_interrupt_stack` (three architectures
   each, and also `extern` symbols), and the test drivers `until_the_tick_is_raised`,
-  `wait_for_report`, `reclaim_within_two_seconds`, `pool_came_back`, `real_single_hart_or_skip`
-  and `spawn_os_primitives_benchmarker`.
+  `wait_for_report`, `reclaim_within_two_seconds`, `pool_came_back`, `real_single_hart_or_skip` and
+  `spawn_os_primitives_benchmarker`.
 - **components, 22**: block and entropy I/O (`read_at`, `write_at`, `read_span`, `fill`,
   `refill`, `read_primary`, `reseed_and_wait`), process building (`build`, `fire`, `reap`,
   `spawn_stage`, `reclaim`, `map_page_frame`), and `push`, `page`, `handle_byte`, `removed`,

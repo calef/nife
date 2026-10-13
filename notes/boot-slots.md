@@ -155,10 +155,10 @@ cannot see is what tries are for.
 
 On the fifth row, the part worth being precise about: the machine is killed at the instant of the
 handoff, as soon as the chooser says it is starting slot 1. From the disk's point of view a kernel
-that wedges, a driver that spins and a power cut are the same event, which is that the try was spent
-and nothing came back, so this is the hang rather than a stand-in for it. And the image staged into
-slot 1 is a byte-for-byte copy of the working one on purpose: garbage would be caught by the header
-checksum inside one boot, which tests the cheap half.
+that wedges, a driver that spins and a power cut are the same event: the try was spent and nothing
+came back. So this is the hang rather than a stand-in for it. And the image staged into slot 1 is a
+byte-for-byte copy of the working one on purpose: garbage would be caught by the header checksum
+inside one boot, which tests the cheap half.
 
 ## What marks a trial boot successful
 
@@ -168,24 +168,24 @@ seconds earlier. An *upgrade* is a different claim, and something on the running
 it, or a perfectly good upgrade rolls back once its tries are spent.
 
 **The chooser tells the booted system which slot it is**, as a word on the kernel's command line
-(`boot_slot::cmdline`), and it has to be told rather than work it out: the try is spent *before* the
-handoff, so a slot started on its last try is no longer `is_bootable` and `select` now names the
-other one. The one boot a confirmation exists for is the one the inference gets backwards.
+(`boot_slot::cmdline`), and it has to be told rather than work it out. The try is spent *before* the
+handoff. A slot started on its last try is no longer `is_bootable`, and `select` now names the other
+one. The one boot a confirmation exists for is the one the inference gets backwards.
 
 The criterion is the filesystem server mounting the installed disk and reporting ready, with the
 progenitor built and measured and about to run. That is everything between power-on and the last
-thing this machine can check without a person, and the bias is deliberately late: confirming early
+thing this machine can check without a person, and the bias is deliberately late. Confirming early
 would keep an upgrade that comes up and cannot do its job, which is the failure the whole feature
 exists to prevent.
 
 **What it can still be wrong about**, which is the honest half: anything the boot path does not
-touch (the network stack, the compositor, a driver nothing opens at boot), the shell, which is one
-row stronger than this reaches, and anything that fails after the first few seconds. It is a
+touch (the network stack, the compositor, a driver nothing opens at boot). Also the shell, which is
+one row stronger than this reaches, and anything that fails after the first few seconds. It is a
 statement about coming up, not about running.
 
 **The write is `system_installer`'s `ROLE_CONFIRM`**, which is `ROLE_SURVEY` with a write: the same 34
 blocks, the same parser, one attribute word put back. It holds no entropy endpoint, so it cannot
-draw the unique ids a new table carries and the only table it can write is the one it read; and no
+draw the unique ids a new table carries. The only table it can write is the one it read. It holds no
 boot file, so it cannot rewrite the image it is vouching for.
 
 What keeps it from colliding with the filesystem server is an ordering, not a mechanism, and
@@ -213,10 +213,9 @@ more than one has slots. Telling which disk this image was started from means wa
 device path to the `HARDDRIVE` node, which is the same parser `place_boot_file` has wanted since
 rung 2a.
 
-**x86_64 only**, which is rung 2a's scope unchanged: without the loader handing the kernel its own
-file there is nothing to install and nothing to put in a slot, and a device-tree handoff has one
-initrd slot in `/chosen` and no second one. `crates/boot_slot` itself is architecture-free and
-host-tested.
+**x86_64 only**, which is rung 2a's scope unchanged. Without the loader handing the kernel its own
+file there is nothing to install and nothing to put in a slot. A device-tree handoff has one initrd
+slot in `/chosen` and no second one. `crates/boot_slot` itself is architecture-free and host-tested.
 
 ## One thing this found that was already broken
 

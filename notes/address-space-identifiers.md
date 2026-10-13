@@ -73,12 +73,12 @@ notes/verification.md predicted:
 | `free_releases_exactly_its_own_asid` | free clears its own bit and nothing else |
 
 The flush-before-reuse half of the contract is kernel-side and runs on hardware, so it is
-*witnessed* rather than proved: `asid_tagging_keeps_address_spaces_apart_without_flushes` maps
-the same VA to different bytes in two spaces, switches between them with no flush, and demands
-each space read its own byte. If `nG` were missing, the tag were not in TTBR0, or two spaces
-shared an ASID, that test reads the wrong byte. It runs on both ISAs since milestone 58; before
-that it could not be ported honestly, because RISC-V's context switch flushed everything and the
-twin would have passed for the wrong reason.
+*witnessed* rather than proved. `asid_tagging_keeps_address_spaces_apart_without_flushes` maps the
+same VA to different bytes in two spaces, switches between them with no flush, and demands each
+space read its own byte. If `nG` were missing, the tag were not in TTBR0, or two spaces shared an
+ASID, that test reads the wrong byte. It runs on both ISAs since milestone 58 (RISC-V TLB shootdown). Before that it could
+not be ported honestly, because RISC-V's context switch flushed everything and the twin would have
+passed for the wrong reason.
 
 The *machine-wide* half has its own witness since then too. `an_asid_flush_reaches_the_other_cores`
 caches a translation on another core, changes the mapping with no per-address invalidation at all,

@@ -20,11 +20,11 @@ falsification patch against its own harness and reports any that stayed green. M
 request #603 merged it to `main` on 2026-09-01 at 02:16.
 
 **The workflow was never tested when it was deployed.** Before the fix merged on 2026-09-24, no
-run of `falsifications.yml` had replayed a record, let alone watched one go red on purpose: its
-Actions history held seven runs, the first of them the cron of 2026-09-07, and six refused while
-the seventh was cancelled before its sweep step finished. The six records pull request #603 reports "all replaying
-red" were replayed by `script/falsifications --sweep` outside Actions, which tested the script and
-never the workflow that runs it.
+run of `falsifications.yml` had replayed a record, let alone watched one go red on purpose. Its
+Actions history held seven runs, the first of them the cron of 2026-09-07. Six refused while the
+seventh was cancelled before its sweep step finished. The six records pull request #603 reports "all
+replaying red" were replayed by `script/falsifications --sweep` outside Actions, which tested the
+script and never the workflow that runs it.
 
 The sweep step is
 
@@ -97,10 +97,10 @@ of a sweep is in the records it did not see last week:
 
 Nineteen commits touched `*/falsifications/*` inside that window. **Three of them redid a patch
 against code that had moved**: `651a3fa43` regenerated the x86 port-revoke patch that pull request
-#1059 staled, `00189fefa` redid the W^X record against the encoder as it then stood, and
-`8470caa21` refreshed the span falsification against a simplified harness. Stale patches are exactly
-what the weekly sweep exists to report. All three were found by a lane already working in that
-crate, which is luck rather than mechanism, and is the coverage the sweep was supposed to replace.
+#1059 staled. `00189fefa` redid the W^X record against the encoder as it then stood, and `8470caa21`
+refreshed the span falsification against a simplified harness. Stale patches are exactly what the
+weekly sweep exists to report. All three were found by a lane already working in that crate, which
+is luck rather than mechanism, and is the coverage the sweep was supposed to replace.
 
 **The kernel-test half had no second checker at all.** The per-pull-request half,
 `script/falsifications --affected-since` in `ci.yml`, did run throughout and is unaffected, but it
@@ -173,10 +173,10 @@ this document was being written; that recurrence, not the `tee`, is the finding:
   rather than a gate. It counts harnesses, so code carrying no harness is not in its denominator and
   a crate can read 100% falsified while proving nothing about most of itself. Milestone 524 (the
   three x86_64 boot gates) put 338 new lines into `crates/machine_discovery/src/x86_64.rs` on
-  2026-09-21 with no harness of their own and the number stayed clean; the milestone 319 (the crate
-  that parses firmware had no proofs, and three of its first ones were false) lane on
-  pull request #1155 closed that one hole and the blind spot is still open. `design/fatal-risks/README.md`'s
-  risk 2 is answered by this number.
+  2026-09-21 with no harness of their own and the number stayed clean. The milestone 319 (the crate
+  that parses firmware had no proofs, and three of its first ones were false) lane on pull request
+  #1155 closed that one hole. The blind spot is still open. `design/fatal-risks/README.md`'s risk 2
+  is answered by this number.
 - One found by this document's own pull request, which is the strongest evidence in it that the
   shape is a habit rather than four coincidences: the COE labeler in the timeline's 21:16:38 row,
   which reported success while applying no label. Every individual choice there is one this tree argues for on purpose, in
@@ -201,7 +201,8 @@ first green is the "checked nothing" case, and it is the case everybody reads as
 
 `coe-architect-label.yml` is the second instance, and the contrast is the measurement. It shipped
 the same way, unexercised, and was caught in hours rather than in three weeks only because a human
-happened to be reading its log for another reason, which is the same luck that found the three redone patches above and is not a mechanism.
+happened to be reading its log for another reason. That is the same luck that found the three redone
+patches above and is not a mechanism.
 
 ## Action items
 
@@ -224,8 +225,8 @@ happened to be reading its log for another reason, which is the same luck that f
   it no longer depends on a git remote that a job without a checkout does not have, and the reason
   is written beside the flag. Carried on this branch, `maintainer/the-sweep-that-swept-nothing`.
   The label on this pull request was applied by hand in the meantime, and it will stay hand-applied
-  here: the labeler's `synchronize` path diffs only the push that raised it, deliberately, so that
-  a label a human removed does not silently return. No later push to this branch adds a file under
+  here. The labeler's `synchronize` path diffs only the push that raised it, deliberately, so that a
+  label a human removed does not silently return. No later push to this branch adds a file under
   `notes/corrections/`, so nothing on this pull request will exercise the fixed step. The next COE
   is the first run that can.
 - **Recorded.** The bare `concurrency` group in `falsifications.yml`, which cancelled the only run
