@@ -407,6 +407,129 @@ pub const fn cap_delete_then_port_out(slot: u32, port: u16, val: u8) -> [u32; 7]
 #[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
 pub const CAP_DELETE_THEN_PORT_OUT_PC_OFFSET: u64 = 12 + PORT_OUT_PC_OFFSET;
 
+/// **A child that reads one byte from an I/O port and exits.** [`port_out_then_exit`]'s `in` twin:
+/// the read side of the port range, so a READ-only capability's positive control and a non-holder's
+/// fault can both be driven through a port the claim names.
+///
+/// ```text
+///   66 ba xx xx       mov dx, port
+///   ec                in al, dx         (offset 4; #GP here if the port is denied)
+///   b8 xx xx xx xx    mov eax, SYS_EXIT
+///   0f 05             syscall           (reached only if the `in` was permitted)
+/// ```
+///
+/// Name: provisional (the eighth outsider pass's lane, 2026-10-13 UTC).
+#[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
+pub const fn port_in_then_exit(port: u16) -> [u32; 4] {
+    let p = port.to_le_bytes();
+    let ext = (abi::SYS_EXIT as u32).to_le_bytes();
+    pack_4([
+        0x66, 0xBA, p[0], p[1], // mov dx, port
+        0xEC, // in al, dx (offset 4)
+        0xB8, ext[0], ext[1], ext[2], ext[3], // mov eax, SYS_EXIT
+        0x0F, 0x05, // syscall (exit)
+        NOP, NOP, NOP, NOP, // pad 12 -> 16 (4 words)
+    ])
+}
+
+/// The faulting pc offset for [`port_in_then_exit`]'s `in`: four bytes of `mov dx, port` precede it.
+#[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
+pub const PORT_IN_ONLY_PC_OFFSET: u64 = 4;
+
+/// **A child that reads one byte from a port and then writes one to it, and exits only if both were
+/// permitted.** The READ-only capability's probe: with the read granted and the write refused, the
+/// fault lands on the `out` (offset [`PORT_IN_THEN_OUT_OUT_PC_OFFSET`]), which is itself the proof
+/// the `in` at offset 4 succeeded; a capability that was dead or wrongly denied for reads would
+/// fault four bytes earlier and say so.
+///
+/// ```text
+///   66 ba xx xx       mov dx, port
+///   ec                in al, dx         (offset 4)
+///   b0 xx             mov al, val
+///   ee                out dx, al        (offset 7; #GP here if the write is denied)
+///   b8 xx xx xx xx    mov eax, SYS_EXIT
+///   0f 05             syscall           (reached only if both were permitted)
+/// ```
+///
+/// Name: provisional (the eighth outsider pass's lane, 2026-10-13 UTC).
+#[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
+pub const fn port_in_then_out(port: u16, val: u8) -> [u32; 4] {
+    let p = port.to_le_bytes();
+    let ext = (abi::SYS_EXIT as u32).to_le_bytes();
+    pack_4([
+        0x66, 0xBA, p[0], p[1], // mov dx, port
+        0xEC, // in al, dx (offset 4)
+        0xB0, val,  // mov al, val
+        0xEE, // out dx, al (offset 7)
+        0xB8, ext[0], ext[1], ext[2], ext[3], // mov eax, SYS_EXIT
+        0x0F, 0x05, // syscall (exit)
+        NOP,  // pad 15 -> 16 (4 words)
+    ])
+}
+
+/// The faulting pc offset for [`port_in_then_out`]'s `out`: the four-byte `mov dx, port`, the
+/// one-byte `in`, and the two-byte `mov al, val` precede it.
+#[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
+pub const PORT_IN_THEN_OUT_OUT_PC_OFFSET: u64 = 7;
+
+/// **A child that deletes two capability slots, then writes one byte to a port, then exits.**
+/// [`cap_delete_then_port_out`]'s two-slot twin, for a child holding the same port range in two
+/// slots: deleting one must leave the `out` permitted (the other slot's grant stands), and deleting
+/// both must revoke it. The `out` is at [`TWO_CAP_DELETES_THEN_PORT_OUT_PC_OFFSET`].
+///
+/// ```text
+///   bf xx xx xx xx    mov edi, slot1
+///   b8 xx xx xx xx    mov eax, SYS_CAP_DELETE
+///   0f 05             syscall
+///   bf xx xx xx xx    mov edi, slot2
+///   b8 xx xx xx xx    mov eax, SYS_CAP_DELETE
+///   0f 05             syscall
+///   66 ba xx xx       mov dx, port
+///   b0 xx             mov al, val
+///   ee                out dx, al        (offset 30; #GP here if every holder of the range is gone)
+///   b8 xx xx xx xx    mov eax, SYS_EXIT (reached only if the `out` was permitted)
+///   0f 05             syscall
+/// ```
+///
+/// Name: provisional (the eighth outsider pass's lane, 2026-10-13 UTC).
+#[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
+pub const fn two_cap_deletes_then_port_out(
+    slot1: u32,
+    slot2: u32,
+    port: u16,
+    val: u8,
+) -> [u32; 10] {
+    let a = slot1.to_le_bytes();
+    let b = slot2.to_le_bytes();
+    let del = (abi::SYS_CAP_DELETE as u32).to_le_bytes();
+    let p = port.to_le_bytes();
+    let ext = (abi::SYS_EXIT as u32).to_le_bytes();
+    pack_10([
+        0xBF, a[0], a[1], a[2], a[3], // mov edi, slot1
+        0xB8, del[0], del[1], del[2], del[3], // mov eax, SYS_CAP_DELETE
+        0x0F, 0x05, // syscall (CAP_DELETE)
+        0xBF, b[0], b[1], b[2], b[3], // mov edi, slot2
+        0xB8, del[0], del[1], del[2], del[3], // mov eax, SYS_CAP_DELETE
+        0x0F, 0x05, // syscall (CAP_DELETE)
+        0x66, 0xBA, p[0], p[1], // mov dx, port
+        0xB0, val,  // mov al, val
+        0xEE, // out dx, al (offset 30)
+        0xB8, ext[0], ext[1], ext[2], ext[3], // mov eax, SYS_EXIT
+        0x0F, 0x05, // syscall (exit)
+        NOP, NOP, // pad 38 -> 40 (10 words)
+    ])
+}
+
+/// The faulting pc offset for [`two_cap_deletes_then_port_out`]'s `out`: two delete sequences (12
+/// bytes each) then [`port_out`]'s six bytes.
+#[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
+pub const TWO_CAP_DELETES_THEN_PORT_OUT_PC_OFFSET: u64 = 24 + PORT_OUT_PC_OFFSET;
+
+/// The faulting pc offset for [`receive_then_port_out`]'s `out`: the RECEIVE invocation (25 bytes:
+/// two `mov r32, imm32`s, three operand setups and the `syscall`) then [`port_out`]'s six bytes.
+#[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
+pub const RECEIVE_THEN_PORT_OUT_PC_OFFSET: u64 = 25 + PORT_OUT_PC_OFFSET;
+
 /// **A child that blocks in RECEIVE on slot 1, then writes a byte to a port, then exits**
 /// (milestone 299). The revocation fixture: a holder of the `PortRange` capability naming `port`
 /// parks in RECEIVE, and while it is parked the test revokes the range and wakes it; the `out` it then

@@ -1291,3 +1291,11 @@ mod eighth_pass_elf_attack_tests;
 /// Cross-ISA by construction: the claim is (DECISIONS §19).
 #[cfg(all(test, initial_ramdisk))]
 mod eighth_pass_kernel_address_tests;
+
+/// **The port range's read side, its revocation's precision, and a duplicated holder** (an eighth
+/// outsider pass at the confinement claim, claims 27, 28, 29 and 33). A non-holder's `in` faults
+/// after a holder transmitted; a READ-only capability's `in` works while its `out` faults on the
+/// `out`; revoking a sub-range stops its holder while revoking an unrelated range stops no one;
+/// and one range in two slots survives one delete and falls on the second. `x86_64` only.
+#[cfg(all(test, target_arch = "x86_64"))]
+mod eighth_pass_port_boundary_tests;
