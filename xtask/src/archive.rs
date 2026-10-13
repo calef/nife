@@ -358,7 +358,8 @@ pub(crate) fn initial_ramdisk_riscv() -> bool {
     // skipped and why.
     blobs.extend(std_program_blobs("riscv64-unknown-nife"));
     blobs.extend(ported_program_blobs("riscv64-unknown-nife"));
-    // The FS server (milestone 32 phase 2) and `mkfs`, built for the riscv bare target, ride along
+    // The FS server (milestone 32 (a real filesystem: RedoxFS behind a capability FS server) phase
+    // 2) and `mkfs`, built for the riscv bare target, ride along
     // when present, exactly as std_exerciser does; `test` builds them first.
     blobs.extend(file_server_blobs(RISCV_TARGET));
     // Measure the boot programs before the riscv kernel is built (milestone 22 phase B.1).
@@ -456,7 +457,7 @@ pub(crate) fn initial_ramdisk_x86() -> bool {
     // dependency would not codegen without SSE; `.cargo/config.toml`'s `--cfg aes_force_soft` on
     // this target is what changed that.
     blobs.extend(file_server_blobs(X86_TARGET));
-    // The std demo (milestone 184) and the rest of the `std` and ported programs, on the terms both
+    // The std demo (milestone 184 (extend the `std` port to x86_64)) and the rest of the `std` and ported programs, on the terms both
     // other archives carry them: each present iff it was built for `x86_64-unknown-nife`.
     blobs.extend(std_program_blobs("x86_64-unknown-nife"));
     blobs.extend(ported_program_blobs("x86_64-unknown-nife"));
@@ -560,7 +561,8 @@ fn std_program_blobs(triple: &str) -> Vec<(&'static str, Vec<u8>)> {
 /// **The ported programs and the TLS graph's workloads for `triple`**, each packed iff its helper
 /// has been run, in the order every archive packs them.
 fn ported_program_blobs(triple: &str) -> Vec<(&'static str, Vec<u8>)> {
-    // **Unmodified `ripgrep`** (milestone 121), present iff `helpers/build-ripgrep.sh` has been
+    // **Unmodified `ripgrep`** (milestone 121 (`ripgrep` on nife: enumeration as a capability)),
+    // present iff `helpers/build-ripgrep.sh` has been
     // run, absent from every ordinary build and from CI. The archive name is `rg`, which is what
     // the program is called everywhere else in the world.
     let mut blobs = present_blobs(triple, &[("rg", ripgrep_elf)]);
@@ -604,7 +606,8 @@ fn present_blobs(triple: &str, programs: &[FarmProgram]) -> Vec<(&'static str, V
         .collect()
 }
 
-/// **The FS server (milestone 32 phase 2) and `mkfs` (milestone 57's write half) for a bare
+/// **The FS server (milestone 32 phase 2) and `mkfs` (milestone 57 (partitioning and formatting a
+/// real drive)'s write half) for a bare
 /// `target`**, each packed iff built: they are their own workspace and target, `test` builds them,
 /// and a plain interactive boot without them simply skips the FS-server test.
 fn file_server_blobs(target: &str) -> Vec<(&'static str, Vec<u8>)> {
