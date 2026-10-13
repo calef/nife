@@ -9,10 +9,9 @@ needs_person: no
 ---
 # 241. What a fourth board would have to be for, so that GICv3 is bought rather than justified
 
-Minted 2026-09-03 by calef, from asking the right question about milestone
-227 (a GICv3 driver, because GICv2 boots and silently loses every interrupt): not *should we build
-the driver* but *what board would force it, and what would that board prove*. *(Number provisional
-until the merge queue lands it.)*
+The question about milestone 227 (a GICv3 driver, because GICv2 boots and silently loses every
+interrupt) is not *should we build the driver* but *what board would force it, and what would that
+board prove*.
 
 Deferred rather than open. calef, 2026-09-05: *"On the fourth board,
 making the decision and making the purchase are two different things. But I think we defer both

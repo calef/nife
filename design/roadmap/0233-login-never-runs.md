@@ -131,9 +131,9 @@ is not this case.
   dying is unknown. Nobody bisected it, and there is no green-to-red transition to search for,
   because the check that would have noticed was itself not running.
 - **Recorded.** `design/roadmap/0233-login-never-runs.md`'s own `BUGS`: the measurement check
-  `login` performs is weaker than it was. It used to read the same physical archive the kernel maps
-  for init; both blobs now come from init, which has already run the identical check, so what
-  remains is a consistency check on the hand-over.
+  `login` performs is weak. Both blobs come from init, which has already run the identical check,
+  so what remains is a consistency check on the hand-over rather than a read of the physical
+  archive the kernel maps for init.
 
 ## Index row
 

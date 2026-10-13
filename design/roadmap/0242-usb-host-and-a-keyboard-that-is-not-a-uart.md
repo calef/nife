@@ -9,8 +9,7 @@ needs_person: yes
 ---
 # 242. USB host and HID, because on commodity hardware the keyboard is not a UART
 
-Minted 2026-09-03 by calef, from asking how nife reaches hardware that has
-no serial port. *(Number provisional until the merge queue lands it.)*
+How does nife reach hardware that has no serial port?
 
 Built under QEMU on all three architectures 2026-10-04; what is left is the machine. A
 confined EL0 driver holds the whole xHCI controller less its MSI-X page, enumerates a boot
@@ -38,7 +37,7 @@ sentence is this milestone.
 
 ## Why it is on the customer path rather than the risk path
 
-AGENTS.md records that the customer path is vacant as of 2026-08-30, and its own guidance is that
+AGENTS.md records that the customer path is vacant, and its own guidance is that
 a first customer should be something nife can plausibly be adequate at within a milestone or two.
 "Runs on a machine someone already owns" is the most obvious thing that would fill that path, and
 a machine someone already owns has USB and no serial header.

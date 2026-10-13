@@ -12,24 +12,14 @@ needs_person: yes
 Recorded, and what is recorded is a decision to stay manual. calef, 2026-09-04, on the four options
 below after the diagnosis was re-measured: accept manual power for now. The gate is answered
 rather than removed, so this block stays open as the place the question lives when it is revisited.
-Originally NOT-STARTED. Minted 2026-09-02 by the maintainer, from milestone 221's (the soak never
-crosses cores, so build the hook that makes it) lane, which named it as the soak's remaining gap.
-*(Number provisional until the merge queue lands it.)*
+It is the soak's remaining gap after milestone 221 (the soak never crosses cores, so build the hook
+that makes it).
 
 In the second sense `notes/roadmap.md` names, which is the one that
 never discharges by waiting: the plug is here, the board is here, and every option left below needs
 a person at the router or at the outlet. Reading the access point's configuration, moving the
 board's outlet, putting patagonia's radio on the plug's network and writing one firewall rule are
 all hands rather than decisions, and no lane can do any of them.
-
-The token was `DECISION` from 2026-09-02 to 2026-09-19, and for the last fifteen days of that it
-contradicted the status line directly above it. It is corrected here rather than quietly, because
-the contradiction is the failure the gate vocabulary exists to prevent, read from the other side
-from milestone 421's. calef answered on 2026-09-04 with all four options in front of him and chose
-manual power; the gate paragraph went on saying the question was unresolved until milestone 435's
-sweep read the two paragraphs together. Nothing reached `script/roadmap --ready` meanwhile, because
-`RECORDED` is excluded by status whatever the gate says, so the whole cost was paid by readers: the
-one paragraph a reader checks to learn what stops this said the opposite of the paragraph above it.
 
 No `design/decisions/` section is minted for it, and that is the judgment rather than an
 omission. A deferral is an answer, and filing an answered question as `**Status: PROPOSED.**` would

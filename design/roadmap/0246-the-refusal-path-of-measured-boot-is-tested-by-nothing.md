@@ -5,9 +5,8 @@ built: 2026-09-03
 ---
 # 246. Measured boot's refusal path is tested by nothing, and one mutant turns it off
 
-Minted 2026-09-03 by calef, from milestone 244's (the largest crate in the tree is
-proved by nothing a mutation can reach) recorded limitation. Built 2026-09-03 by the lane on
-`milestone/246-measured-refusal`.
+Built. It closes the recorded limitation of milestone 244 (the largest crate in the tree is proved
+by nothing a mutation can reach).
 
 ## What was built, and the falsification
 
@@ -89,10 +88,9 @@ Not a test that only takes the accept path, which `script/swish-check` already d
 - **Milestone 250.** An unviable mutant is a hole in the measurement that reads as a pass. `cargo
   mutants` never mutated this milestone's own function: its only operator on a function returning a
   struct is `Default::default()`, `Verdict` had no `Default`, so the mutant did not compile and
-  scored unviable rather than missed. `measured_boot` had nine such. calef minted milestone 250 from
-  this handoff the same day. The proposal file this bullet used to name was promoted by milestone
-  433 as `design/roadmap/0354-the-mutants-nobody-counts.md` and superseded by 250 in the same act,
-  because the two are one piece of work.
+  scored unviable rather than missed. `measured_boot` had nine such. Milestone 250 (an unviable
+  mutant is a hole in the measurement that reads as a pass) carries it;
+  `design/roadmap/0354-the-mutants-nobody-counts.md` is the same piece of work.
 - **Recorded.** `components/src/login.rs` spells the same load-or-refuse decision itself and folds all three
   outcomes into `None`, so it cannot distinguish an absent program from a refused one. `verdict`'s
   signature already fits it; it was not switched because that is a boot path this milestone did not

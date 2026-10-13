@@ -5,8 +5,7 @@ built: 2026-09-05
 ---
 # 257. Boot radon over the network, so the microSD card stops being the tax on every experiment
 
-Minted 2026-09-04 by calef, the same evening the path was proved by hand at
-radon's U-Boot prompt; built 2026-09-05. *(Number provisional until the merge queue lands it.)*
+Built. The path is proved by hand at radon's U-Boot prompt and scripted here.
 
 ## The card is the bottleneck, and the tree predicted the day this would matter
 
@@ -21,9 +20,8 @@ back, because E3 is a comparison of two builds and the interleaving that makes i
 alternating them. That session also produced the other half of the argument: the numbers it took
 were good, so the whole cost was handling.
 
-**One correction the note carries and this block does not inherit: the server belongs on patagonia,
-not cordoba.** radon's UART goes into patagonia (corrected by calef 2026-09-04; the rig note said
-cordoba and was wrong), and patagonia is where the images are built. Serving from patagonia means
+**The server belongs on patagonia, not cordoba.** radon's UART goes into patagonia (calef,
+2026-09-04), and patagonia is where the images are built. Serving from patagonia means
 there is no copy step at all: build, power cycle, watch, on one machine.
 
 ## What was proved by hand, 2026-09-04, and what it cost

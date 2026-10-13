@@ -5,10 +5,8 @@ built: 2026-09-19
 ---
 # 223. Read a card and say whether its kernel and archive match, before the power cycle
 
-Built 2026-09-19, on `milestone/223-card-check-before-boot`. Minted 2026-09-02 by the
-maintainer, from the lane for milestone 218 (every boot of the VisionFive 2 needs a human typing
-four commands into U-Boot), which named it while closing milestone 217 (the card carries a kernel and an
-archive from different builds). *(Number provisional until the merge queue lands it.)*
+Built. It follows milestone 218 (every boot of the VisionFive 2 needs a human typing four commands
+into U-Boot) and milestone 217 (the card carries a kernel and an archive from different builds).
 
 It reads a mounted filesystem and needed no board, which is why every proof below is on the
 host.

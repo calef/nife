@@ -9,13 +9,12 @@ needs_person: no
 ---
 # 253. A status that can only become wrong after the merge, so no gate can catch it in time
 
-Minted 2026-09-03 by calef, after `main` went red on a status the tree
-already had a check for. *(Number provisional until the merge queue lands it.)*
+`main` can go red on a status the tree already has a check for.
 
 `script/roadmap` already holds the check that fires too late.
 
 In brief. AGENTS.md's rule is that a milestone branch lands its status flip in the same merge
-as the work, so `main` never claims something is built while its code is on a branch. Milestone
+as the work. So `main` never claims something is built while its code is on a branch. Milestone
 193's block records the last violation and calls it the integrator's mistake.
 
 On 2026-09-03 it happened again, and this time nothing could have caught it, which is what makes

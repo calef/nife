@@ -5,10 +5,9 @@ built: 2026-09-05
 ---
 # 259. Sweep `notes/` for claims that stopped being true, because the gate cannot see them
 
-Built (2026-09-05). Minted 2026-09-05 by calef, as the other half of milestone 385,
-`design/roadmap/0385-a-note-that-cites-a-milestone-that-moved.md`, which catches the notes that
-cite a milestone and says plainly that the notes which cite nothing are the worse half.
-*(Number provisional until the merge queue lands it.)*
+Built. It is the other half of milestone 385 (when a milestone's status flips, tell the lane which
+notes cite it), which catches the notes that cite a milestone and says plainly that the notes which
+cite nothing are the worse half.
 
 ## Why a sweep rather than a check
 

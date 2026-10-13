@@ -9,9 +9,8 @@ needs_person: no
 ---
 # 258. Archive and compression: `tar` and zlib, because `git` cannot read its own objects without them
 
-Minted 2026-09-05 by calef, on finding that no milestone, proposal or line
-of code in this tree covered archive or compression of any kind. *(Number provisional until the
-merge queue lands it.)*
+No other milestone, proposal or line of code in this tree covers archive or compression of any
+kind.
 
 For half of it. `tar` is nobody's call but a lane's and can start today. The
 compressor's write-or-take question is §146 (archive and compression: which pieces we write, which we take, and which we refuse),
@@ -94,9 +93,8 @@ a fixture rather than on a running `git`, since milestone 99 is `NOT-STARTED`.
 
 ## Done when
 
-*Amended 2026-10-12 (UTC) under §297 (software reaches a nife system as a package `jig` installs
-from basalt's index, the kernel included). calef, that day: "They should all be installed via jig
-through basalt."*
+calef, 2026-10-12 (UTC), under §297 (software reaches a nife system as a package `jig` installs
+from basalt's index, the kernel included): "They should all be installed via jig through basalt."
 
 `tar` must run on nife installed by `jig install` from basalt's package index. basalt builds the
 package against the nife commit it pins. The install waits on milestone 809 (the package client

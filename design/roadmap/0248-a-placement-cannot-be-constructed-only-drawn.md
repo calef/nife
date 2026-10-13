@@ -9,9 +9,8 @@ needs_person: no
 ---
 # 248. A placement can only be drawn, never constructed, so the strongest finding on this machine rests on two boots
 
-Minted 2026-09-03 by calef, from milestone 240's (the soak reports what
-happened and not where, so an eightfold difference cannot be explained) handoff and the two censused
-boots that followed it. *(Number provisional until the merge queue lands it.)*
+This follows milestone 240 (the soak reports what happened and not where, so an eightfold difference
+cannot be explained) and two censused boots.
 
 Milestone 240 is merged and already knows where every worker is.
 

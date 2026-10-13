@@ -9,9 +9,7 @@ needs_person: no
 ---
 # 245. A soak cannot tell a flat run from a productive one, so its duration is guesswork
 
-Minted 2026-09-03 by calef, from the duration question asked of the first
-radon soaks and answered from the literature in notes/soak.md. *(Number provisional until the merge
-queue lands it.)*
+How long must a radon soak run? notes/soak.md answers that from the literature.
 
 Milestone 240 (the soak reports what happened and not where, so an eightfold
 difference cannot be explained) built the placement instrument this would histogram, and it is

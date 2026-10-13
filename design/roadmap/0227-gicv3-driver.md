@@ -5,9 +5,8 @@ built: 2026-09-19
 ---
 # 227. A GICv3 driver, because GICv2 boots and silently loses every interrupt
 
-Minted 2026-09-02 by the maintainer, from milestone 222's (the one
-command a person runs before pushing has a leg that fails instead of skipping) measurement. Built by
-the lane on `milestone/227-gicv3-driver`. *(Number provisional until the merge queue lands it.)*
+Built. The measurement behind it is from milestone 222 (the one command a person runs before
+pushing has a leg that fails instead of skipping).
 
 **In brief.** `kernel/src/drivers/gic.rs` spoke GICv2 only, and milestone 222 measured what happened
 under a GICv3: the kernel booted the whole tour, brought four cores online, printed
@@ -144,11 +143,11 @@ to run on until now.
 
 ## Correction to this block's own BUGS
 
-This block said 227 was **"not on any fatal risk's critical path"**. On 2026-09-19 that stopped being
-true: fatal risk 4's decisive experiment is milestone 168's job mix, whose HVF cross-check on real
-Apple cores could not run without this, and milestone 74's cycle-counter lane could not test under
-HVF either. It is also now the only multi-core aarch64 silicon a contributor can reach without a
-board, which is fatal risk 5's territory.
+227 is on fatal risks' critical paths. Fatal risk 4's decisive experiment is the job mix of
+milestone 168 (a multi-tasking workload benchmark), whose HVF cross-check on real Apple cores
+cannot run without this. milestone 74 (cycle counters) cannot test under HVF without it either. It
+is also the only multi-core aarch64 silicon a contributor can reach without a board, which is fatal
+risk 5's territory.
 
 ## Scope note (DECISIONS §19)
 

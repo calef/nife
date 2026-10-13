@@ -5,13 +5,11 @@ built: 2026-09-02
 ---
 # 213. A harness that re-implements the code instead of calling it proves nothing about the code
 
-Minted 2026-09-01 by milestone 211's sweep, which was looking for a
-different defect and found this one beside it. Swept 2026-09-02: **148 harnesses read, one
-measured blind, rewritten, and carrying a machine-replayable record of the defect its old
-phrasing could not see.** Two more have the shape and are recorded as *not* findings, one of
-them measured blind on its own and covered by a neighbor. The result and its method are in
-notes/falsification.md, under "The sweep for harnesses that duplicate the implementation".
-*(Number provisional until the merge queue lands it.)*
+Swept 2026-09-02: **148 harnesses read, one measured blind, rewritten, and carrying a
+machine-replayable record of the defect its old phrasing could not see.** Two more have the shape
+and are recorded as *not* findings, one of them measured blind on its own and covered by a neighbor.
+The result and its method are in notes/falsification.md, under "The sweep for harnesses that
+duplicate the implementation".
 
 It never had a gate, for 211's reason: no check tells a deliberate model apart from an accidental
 copy. That held. The discriminator the sweep worked out is a question a person answers rather
