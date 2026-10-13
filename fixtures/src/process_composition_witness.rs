@@ -1,96 +1,31 @@
-//! **A process composed from two capabilities, run in the space it was built in** (milestone 19b
-//! (run a real workload), extended by §185 (what carries the claim that userspace composes a process
-//! from an authority you can count on one hand), as milestone 404 (composing a process from two
-//! capabilities is proved for two verbs and no more)).
-//!
-//! Holds exactly two capabilities, a memory region (slot 0) and a report line (slot 1), which is
-//! what the retired `builder` held. From those and nothing else it:
+//! **A process composed from two capabilities, run in the space it was built in**, the claim of
+//! §185 (what carries the claim that userspace composes a process from an authority you can count
+//! on one hand). It holds a memory region (slot 0) and a report line (slot 1), and from those alone:
 //!
 //! 1. reads `least_authority_demo` out of the archive by name and parses its ELF,
 //! 2. mints a rendezvous out of its own memory, for the child to answer on,
 //! 3. builds the child through `supervision_protocol::build_child_space`, the loader every composer
 //!    in this tree shares: an address space retyped from the budget, each segment laid down W^X, a
 //!    stack, a thread control block, and one capability (`WRITE` on that rendezvous) in its slot 0,
-//! 4. maps a frame of its own into the same space and maps it again, which milestone 19b's claim
-//!    needs refused (break-before-make holds in a space a process built),
+//! 4. maps a frame of its own into the same space twice, which must be refused (break-before-make
+//!    holds in a space a process built),
 //! 5. configures the thread at the child's entry in that space and starts it with an input,
 //! 6. and receives the child's answer, the input squared, on the rendezvous it minted.
 //!
-//! The kernel allocates nothing on the way: every object is retyped out of the memory region it was
-//! handed. The verdict is one word, a bit per step, laid out in
-//! `capability_witness_protocol::process_composition`; the kernel's test asserts the whole word and
-//! prints the bit meanings on failure.
-//!
-//! **Reading the archive is not a third capability.** The kernel maps the archive read-only at
-//! `user_mode_runtime::initial_ramdisk::INITIAL_RAMDISK_VA` and passes its length in `x1`, which is
-//! what it did for `builder` and does for the progenitor. That mapping lets this program read
-//! bytes; it names no kernel object and can do nothing with the system. A reader who counts it as
-//! authority anyway should know it is there.
-//!
-//! **Milestone 19b's "nothing runs in the space it built" reading no longer holds.** It held while
-//! threads were 19c's object, and §185 chose to extend this fixture rather than add a second one. The
-//! account of 19b says it as it was.
+//! The kernel allocates nothing on the way: every object is retyped from the region it was handed.
+//! The verdict is one word, a bit per step (`capability_witness_protocol::process_composition`).
+//! Reading the archive is not a third capability: the kernel maps it read-only at
+//! `user_mode_runtime::initial_ramdisk::INITIAL_RAMDISK_VA`, naming no kernel object.
 //!
 //! # BUGS
 //!
-//! - **A child that never answers hangs this program**, because the receive in step 6 has no
-//!   deadline and the child is not supervised. The kernel's test waits with one instead, so the
-//!   failure is a test that says the child never answered rather than a watchdog dump; the witness
-//!   itself stays parked until the test kernel exits. Supervising the child (`fault` in the
-//!   endowment) would cost a third capability or a second minted object, and the claim is about the
-//!   floor.
-//! - **The child is loaded unmeasured**, as `builder` loaded it: nothing here consults
-//!   `measured_boot::PROGRAM_MEASUREMENTS`. notes/trusted-init.md lists the demo loaders that do not.
+//! - A child that never answers hangs this program, which has no deadline and does not supervise
+//!   it (that would cost a third capability); the kernel's test waits with one.
+//! - The child is loaded unmeasured (notes/trusted-init.md).
 //!
-//! Name: ratified 2026-10-05 (calef, §185 (what carries the claim that userspace composes a process
-//! from an authority you can count on one hand), replacing `address_space_witness`, which he
-//! ratified 2026-09-18 ruling on the provisional fixture names of milestone 291 (thirty-one
-//! programs wearing one name)). Coined by milestone 291's lane, from `hello`'s
-//! `ADDRESS_SPACE_BUILDER` role (number 19), whose role constant lowercased was the first name.
-//! Refused `address_space_builder` and `builder`; the argument for each is below.
-//!
-//! **Why it was renamed.** §185 extended this fixture to run a thread in the space it builds, and
-//! `address_space_witness` then named one step of what it proves rather than the claim. calef
-//! prefers a program that does one thing well, and accepted the extension under this name on that
-//! ground: *"The one thing it does well is test."* (his full words are in §185's ruling). The one
-//! thing is the claim it witnesses, that a process can be composed from two capabilities; building
-//! the space is a step of that, not a second job.
-//!
-//! **The ruling underneath is that a fixture is named for what it proves, not for what it does.**
-//! This tree already had one of those in `unwritable_clock_witness`, and this file's own prose
-//! reached for the same word before anyone ruled: *what this witnesses is that a process can
-//! construct one at all*. **Refused `address_space_builder`**, which the maintainer recommended on
-//! the grounds that building *is* the claim here, since 19b asked whether a process can construct a
-//! space at all, so the action and the proof coincide. calef ruled the other way: everything in
-//! `fixtures/` proves something, and naming them for the proof is the scheme rather than the
-//! exception.
-//!
-//! **That makes a scheme question live for the fixtures named for their action** (`image_self_
-//! checker`, `allocator_exerciser`, `os_primitives_benchmarker`). They are already on `script/names
-//! --unratified`, so they will reach calef on their own; nothing here rules on them, and this block
-//! should not be read as having done so.
-//!
-//! **The reason the first name gave for its qualifier had expired.** It said the qualifier existed
-//! because the name was *"deliberately not `builder`, which is already a program in every archive
-//! (milestone 20's richer-initrd demo)"*. That demo belonged to milestone 20 (a portable HAL,
-//! proven on a second architecture). Milestone 295 (retire `components/src/builder.rs`) retired
-//! that program on 2026-09-14, on calef's own ruling, so the collision the qualifier was avoiding
-//! no longer exists. The refusal survives on a different rule: `builder` alone is a **generic word
-//! that could name almost anything in an operating system**, which is AGENTS.md's second naming
-//! failure mode.
-//!
-//! **Performed twice.** The first rename (`address_space_builder` to `address_space_witness`,
-//! 2026-09-18) touched 44 occurrences in 18 files and left the old name in five
-//! `bench/radon-2026-09-16/jobmix-boot*.log` transcripts, the `BUILT` blocks of milestones 291, 295
-//! and 158, a captured `script/names --unratified` listing, and the refusals proposal's dated list.
-//! The second (2026-10-05, the §185 build lane) moved the binary, this file, the archive entry, the
-//! test wiring and the live notes. It kept `address_space_witness` in what is an account under the
-//! name it was written with: §185 itself, the `BUILT` blocks of milestones 295 and 430,
-//! `design/naming/provenance.md` and `design/naming/rename-traps.md`, the capability witness
-//! protocol's `Name:` block (which records a ruling made the same day under that name), and
-//! `notes/dependency-census/dependencies.tsv`, whose evidence column quotes roadmap text as it read
-//! on its blame date. Milestone 295's path was corrected, since a path is navigation. `hello`'s
-//! `ADDRESS_SPACE_BUILDER` role constant is a different name and was not touched.
+//! Name: ratified 2026-10-05 (calef, §185): a fixture is named for what it proves, not what it does.
+//! Refused `address_space_builder` (an action) and `builder` (a generic word that could name almost
+//! anything in an operating system).
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks
