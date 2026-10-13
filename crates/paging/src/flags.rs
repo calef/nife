@@ -29,8 +29,33 @@ pub(crate) const CAP_WRITE_COMBINE: u64 = 1 << 6;
 /// test walks the constructors it knows and does not iterate `write_combining`. So the claim in
 /// `notes/confinement-claims.md` row 11 holds for every mapping the kernel makes today and would
 /// not survive a new in-crate constructor that got it wrong. A refusal (or a `debug_assert!`) in
-/// each encoder would move it one rung up. Found by milestone 633 (an outside agent attacks the
-/// confinement claim)'s second pass.
+/// each encoder would move it one rung up.
+///
+/// # Examples
+///
+/// W^X, and no user-reachable page kernel-executable, over every constructor there is:
+///
+/// ```
+/// use paging::Flags;
+///
+/// for f in [
+///     Flags::kernel_code(),
+///     Flags::kernel_rodata(),
+///     Flags::kernel_data(),
+///     Flags::device(),
+///     Flags::user_code(),
+///     Flags::user_rodata(),
+///     Flags::user_data(),
+///     Flags::user_device(),
+/// ] {
+///     assert!(!(f.is_writable() && (f.is_kernel_executable() || f.is_user_executable())));
+///     // And the privilege split: nothing user-reachable is kernel-executable, so a wild kernel
+///     // jump into a user page faults instead of running user-chosen instructions in EL1.
+///     if f.is_user_accessible() {
+///         assert!(!f.is_kernel_executable());
+///     }
+/// }
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Flags(u64);
 

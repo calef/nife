@@ -96,6 +96,42 @@ where
 
     /// Map one 4 KiB page. Walks the levels, creating tables as needed, and writes a leaf at the
     /// bottom.
+    ///
+    /// # Examples
+    ///
+    /// Real aarch64 tables in host memory; the pointer arithmetic is the kernel's:
+    ///
+    /// ```
+    /// # use std::cell::RefCell;
+    /// # use paging::{Aarch64, Flags, Half, MapError, Mapper, PageTable};
+    /// # let tables: RefCell<Vec<*mut PageTable>> = RefCell::new(Vec::new());
+    /// # let mut fresh = || {
+    /// #     let p = Box::into_raw(Box::new(PageTable::new()));
+    /// #     tables.borrow_mut().push(p);
+    /// #     p as u64
+    /// # };
+    /// # let root = fresh();
+    /// # let to_ptr = (|pa: u64| pa as *mut PageTable) as fn(u64) -> *mut PageTable;
+    /// # // SAFETY: `root` is a fresh, zeroed, 4 KiB-aligned table, and these "physical" addresses ARE
+    /// # // host addresses, so the identity cast is the transform.
+    /// # let mut m: Mapper<_, fn(u64) -> *mut PageTable, Aarch64> =
+    /// #     unsafe { Mapper::new(root, Half::Low, || Some(fresh()), to_ptr) };
+    /// // A user text page. There is no writable-and-executable constructor to pass here at all.
+    /// m.map(0x40_0000, 0x4000_0000, Flags::user_code()).unwrap();
+    /// let (pa, flags) = m.translate(0x40_0000).unwrap();
+    /// assert!(pa == 0x4000_0000 && flags.is_user_executable() && !flags.is_writable());
+    ///
+    /// // Overwriting a live mapping would go valid to valid and leak the old frame: refused.
+    /// assert_eq!(m.map(0x40_0000, 0x5000_0000, Flags::user_data()), Err(MapError::AlreadyMapped));
+    /// // A kernel address in user tables is a mapping the CPU would never consult.
+    /// let kernel = m.map(0xffff_0000_0000_0000, 0x4000_0000, Flags::kernel_data());
+    /// assert_eq!(kernel, Err(MapError::WrongHalf));
+    /// # drop(m); // the mapper borrows the tables; it goes first
+    /// # for p in tables.borrow_mut().drain(..) {
+    /// #     // SAFETY: each `p` came from `Box::into_raw` above and is registered exactly once.
+    /// #     unsafe { drop(Box::from_raw(p)) };
+    /// # }
+    /// ```
     pub fn map(&mut self, va: u64, pa: u64, flags: Flags) -> Result<(), MapError> {
         // The hardware selects the table set from the top bits before it touches an index, so
         // mapping a high address into the low tables would build a mapping the CPU never consults.
@@ -252,16 +288,42 @@ where
         Ok(())
     }
 
-    /// Remove a mapping, and return the physical frame it pointed at.
-    ///
-    /// The frame is returned rather than freed, because the mapper does not own it: the caller took
-    /// it from the frame allocator and must give it back. This clears only the leaf and leaves the
-    /// intermediate tables standing, on purpose: break-before-make unmaps and immediately remaps the
-    /// same address, so freeing the tables here would only reallocate them a line later. Address-
-    /// space teardown does not use `unmap` at all (see notes/teardown.md); it frees the recorded
-    /// frame set wholesale.
+    /// Remove a mapping, and return the physical frame it pointed at, which the caller took from the
+    /// frame allocator and must give back. Only the leaf is cleared: break-before-make remaps the
+    /// same address at once, so the tables stay. Teardown does not use this (notes/teardown.md).
     ///
     /// Returns a [`TlbFlush`] you cannot ignore.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use std::cell::RefCell;
+    /// # use paging::{Aarch64, Flags, Half, MapError, Mapper, PageTable};
+    /// # let tables: RefCell<Vec<*mut PageTable>> = RefCell::new(Vec::new());
+    /// # let mut fresh = || {
+    /// #     let p = Box::into_raw(Box::new(PageTable::new()));
+    /// #     tables.borrow_mut().push(p);
+    /// #     p as u64
+    /// # };
+    /// # let root = fresh();
+    /// # let to_ptr = (|pa: u64| pa as *mut PageTable) as fn(u64) -> *mut PageTable;
+    /// # // SAFETY: `root` is a fresh, zeroed, 4 KiB-aligned table, and these "physical" addresses ARE
+    /// # // host addresses, so the identity cast is the transform.
+    /// # let mut m: Mapper<_, fn(u64) -> *mut PageTable, Aarch64> =
+    /// #     unsafe { Mapper::new(root, Half::Low, || Some(fresh()), to_ptr) };
+    /// # m.map(0x40_0000, 0x4000_0000, Flags::user_code()).unwrap();
+    /// let (freed, flush) = m.unmap(0x40_0000).unwrap();
+    /// assert_eq!(freed, 0x4000_0000);
+    /// flush.flush(|va| assert_eq!(va, 0x40_0000)); // the kernel's `tlbi vaae1is` goes here
+    /// assert!(m.translate(0x40_0000).is_none());
+    /// m.map(0x40_0000, 0x5000_0000, Flags::user_data()).unwrap(); // free again
+    /// # let _ = MapError::AlreadyMapped;
+    /// # drop(m); // the mapper borrows the tables; it goes first
+    /// # for p in tables.borrow_mut().drain(..) {
+    /// #     // SAFETY: each `p` came from `Box::into_raw` above and is registered exactly once.
+    /// #     unsafe { drop(Box::from_raw(p)) };
+    /// # }
+    /// ```
     pub fn unmap(&mut self, va: u64) -> Result<(u64, TlbFlush), MapError> {
         if !F::is_in_half(self.half, va) {
             return Err(MapError::WrongHalf);

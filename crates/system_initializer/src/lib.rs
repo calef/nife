@@ -39,7 +39,7 @@
 //!   grants no slot 28 leaves them all mapped.
 //! - A boot with a NIC waits for DHCP before the prompt, with no console to say why.
 //! - The capability table is finite and exhausting it inside `build_child` halts in silence.
-//!   `kernel::cap::CAPABILITY_TABLE_SLOTS` sits nine over the measured peak on purpose; the
+//!   `kernel::cap::CAPABILITY_TABLE_PEAK_MEASURED` records the peak and the headroom rule; the
 //!   buy-backs for another permanent capability are in `notes/shared-page-audit.md`.
 //!
 //! Name: ratified 2026-08-04 (calef). `BootEndowment` ratified the same day.

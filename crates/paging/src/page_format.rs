@@ -37,6 +37,19 @@ pub enum Half {
 ///   are disjoint; that is proved per format.)
 /// - **Budget.** A rejected address is rejected *before* a page is retyped for it.
 ///
+/// # Examples
+///
+/// A conjunction: the aligned high-half address is what tells `&&` from `||`.
+///
+/// ```
+/// use paging::{Aarch64, PAGE_SIZE, is_user_page_va};
+///
+/// assert!(is_user_page_va::<Aarch64>(0x40_0000));
+/// assert!(!is_user_page_va::<Aarch64>(0x40_0001)); // not page-aligned
+/// assert!(!is_user_page_va::<Aarch64>(0xffff_0000_0000_0000)); // aligned, and the kernel's half
+/// assert_eq!(PAGE_SIZE, 4096);
+/// ```
+///
 /// Generic over the format so the split lands at the right bit for the running architecture.
 pub fn is_user_page_va<F: PageFormat>(va: u64) -> bool {
     F::is_in_half(Half::Low, va) && va.is_multiple_of(PAGE_SIZE)

@@ -57,6 +57,30 @@ pub const fn fits(name: &[u8]) -> bool {
 }
 
 /// Pack the name length and the granted rights into the caretaker's third argument word.
+///
+/// # Examples
+///
+/// `wc` starts holding one file, read-only, with the name in two argument words.
+///
+/// ```
+/// use filesystem_protocol::grant;
+///
+/// assert!(grant::fits(b"report.txt"));
+/// let (lo, hi) = grant::pack_name(b"report.txt");
+/// let spec = grant::spec(b"report.txt".len(), grant::READ);
+///
+/// // What the caretaker unpacks from its three argument words.
+/// let mut buf = [0u8; grant::MAX_NAME];
+/// let n = grant::unpack_name(lo, hi, grant::spec_len(spec), &mut buf);
+/// assert_eq!(&buf[..n], b"report.txt");
+///
+/// // A read-only grant is not a policy that could have said yes, so a write gets EROFS.
+/// assert!(!grant::is_writable(spec));
+/// assert_eq!(grant::EROFS, 30);
+///
+/// // A name too long to travel in two words is refused by the caller, not truncated on the wire.
+/// assert!(!grant::fits(b"a-name-longer-than-sixteen-bytes"));
+/// ```
 pub const fn spec(len: usize, rights: u64) -> u64 {
     ((len as u64) & 0xff) | (rights << 8)
 }

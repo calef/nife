@@ -593,6 +593,24 @@ pub const TRANSFER_PAGES: usize = 16;
 /// Setting [`TRANSFER_PAGES`] to 1 makes this [`super::PAGE`] again and reproduces the
 /// contract exactly as it stood before milestone 138 step 3, which is what
 /// `bench/transfer-size-sweep.sh` uses to measure a before against an after on one harness.
+///
+/// # Examples
+///
+/// A bulk request is the same word with a bigger length, and a one-page client is untouched.
+///
+/// ```
+/// use filesystem_protocol::{PAGE, fs};
+///
+/// // The largest read this contract permits, in one request.
+/// let w0 = fs::req(fs::READ, 3, fs::TRANSFER_MAX as u64);
+/// assert_eq!(fs::req_len(w0), fs::TRANSFER_MAX);
+/// assert_eq!(fs::TRANSFER_MAX, fs::TRANSFER_PAGES * PAGE);
+///
+/// // A client that shares only the first page keeps working untouched: it asks for one page,
+/// // and one page is what the region behind its request has always been.
+/// let w0 = fs::req(fs::READ, 3, PAGE as u64);
+/// assert_eq!(fs::req_len(w0), PAGE);
+/// ```
 pub const TRANSFER_MAX: usize = TRANSFER_PAGES * super::PAGE;
 
 /// **How many client channels one file service keeps side by side** (milestone 599 (a frame per
@@ -635,6 +653,25 @@ pub const MAX_HANDLE: u64 = 0xffff;
 /// 39:0). [`OPEN`] and [`CREATE`] pass handle 0 and length = the name length;
 /// [`READ`]/[`WRITE`] pass the handle and the byte count; [`CLOSE`]/[`FSTAT`]/[`TRUNCATE`] pass
 /// the handle and length 0 ([`TRUNCATE`]'s new size rides in the second word).
+///
+/// # Examples
+///
+/// Control needs no shared page; the page is for the bytes.
+///
+/// ```
+/// use filesystem_protocol::{fs, operation};
+///
+/// // `read(handle 3, 1024)`.
+/// let w0 = fs::req(fs::READ, 3, 1024);
+/// assert_eq!(operation(w0), fs::READ); // the opcode field is the same one in both protocols
+/// assert_eq!(fs::req_handle(w0), 3);
+/// assert_eq!(fs::req_len(w0), 1024);
+///
+/// // An OPEN sends handle ROOT and the *name's* length; the name itself is in the page.
+/// let w0 = fs::req(fs::OPEN, fs::ROOT, b"report.txt".len() as u64);
+/// assert_eq!(fs::req_handle(w0), fs::ROOT);
+/// assert_eq!(fs::req_len(w0), 10);
+/// ```
 pub const fn req(operation: u64, handle: u64, len: u64) -> u64 {
     (operation << super::OPERATION_SHIFT) | ((handle & MAX_HANDLE) << 40) | (len & MAX_LEN)
 }
