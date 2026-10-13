@@ -30,8 +30,8 @@ So slots are reused (the table is a fixed array, milestone 14's requirement) whi
 as if they never were (the safety the counter used to buy). A stale name is not a dangling
 reference and not somebody else's thread; it is `None`.
 
-Game engines rediscovered this shape independently (they call it a slotmap, and entity ids in
-ECS engines are exactly generational indices), for the same reason kernels need it: many
+Game engines rediscovered this shape independently. They call it a slotmap, and entity ids in ECS
+engines are exactly generational indices. The reason is the one kernels have: many
 short-lived objects, and stored references that must fail safely rather than dangle.
 
 ## What it buys the capability model

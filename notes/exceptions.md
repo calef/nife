@@ -220,8 +220,8 @@ It costs nothing at the far end, because the `eret` restores DAIF from SPSR anyw
 return to is unchanged. It lives in the macro rather than in `enter_userspace` so that any future
 path reaching the restore with interrupts on is covered by construction.
 
-RISC-V had the same window, found by inspection rather than by a failure: `trap_return` writes
-`sepc` and then `sstatus`, and a trap taken between the two leaves `sepc` pointing at kernel code
+RISC-V had the same window, found by inspection rather than by a failure. `trap_return` writes
+`sepc` and then `sstatus`. A trap taken between the two leaves `sepc` pointing at kernel code
 while `sstatus` says "return to U-mode", so the `sret` would drop a user thread into a kernel address.
 Closed the same way, with `csrci sstatus, 2` (clear `SIE`) at the top of `trap_return`. On that side
 the trap-return path was already safe, because trap entry clears `SIE` and the frame's saved `sstatus`
@@ -235,8 +235,8 @@ There is one copy of those registers, so a nested exception is a write to the th
 So we went looking for the siblings, in both architectures' assembly, and wrote down what we found
 and what we cleared: [arch-audit.md](arch-audit.md). One correction it makes to the account above,
 worth carrying here: the claim that the mask "covers any future path by construction" is true on
-aarch64 and **not** on RISC-V, because `sstatus` is one register holding both the staged fields and
-the live `SIE` bit, so `trap_return`'s own `csrw sstatus` would put interrupts back on if a frame ever
+aarch64 and **not** on RISC-V. `sstatus` is one register holding both the staged fields and the live
+`SIE` bit, so `trap_return`'s own `csrw sstatus` would put interrupts back on if a frame ever
 carried `SIE = 1`. It never does, and now the compiler enforces that rather than a comment asking for
 it.
 

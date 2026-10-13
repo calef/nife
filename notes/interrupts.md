@@ -280,8 +280,8 @@ the measurement that made that heading dangerous is kept below.)*
 
 The kernel drives GICv2 and GICv3, and picks between them at boot from the device tree. For an
 aarch64 board the question is still which interrupt controller it has, but the answer is now a
-driver the tree carries rather than a port: a GIC-400
-(Raspberry Pi 4, the Jetson TX1 that is argon) and a GIC-500 or GIC-600 (i.MX8M, most server
+driver the tree carries rather than a port. A GIC-400 (Raspberry Pi 4, the Jetson TX1 that is argon)
+and a GIC-500 or GIC-600 (i.MX8M, most server
 parts) are both covered. Apple Silicon has AIC, not a GIC, so an Apple core meets this kernel only under a hypervisor that
 emulates one.
 
@@ -358,7 +358,7 @@ ordering no matrix catches, are in [interrupts/gicv3-history.md](interrupts/gicv
 
 calef asked on 2026-09-17 why the tree polls, the third time in two days it had come up. The answer
 is confinement, not performance. An MSI or MSI-X message is a memory write, and plain DMA remapping
-does not confine it: a component that can write a device's MSI-X table can aim an interrupt at a
+does not confine it. A component that can write a device's MSI-X table can aim an interrupt at a
 vector it was never given (§86 (whether an NVMe driver can leave the kernel)). MSI remapping is offered but never enabled on `x86_64`, and absent
 on `aarch64` (no GICv3 ITS is driven); only `riscv64` drives it. So an IRQ-driven EL0 driver would not
 be confined on two of three architectures, and milestones 159 and 261 poll. `Object::Irq` already

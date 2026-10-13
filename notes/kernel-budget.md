@@ -40,11 +40,11 @@ them. The owned-vs-borrowed split feared in round 2, and dismissed as "fifteen l
 3, turned out to be zero lines: there is only one owner.
 
 This is why the kernel stack is kernel-budget-paid and not creator-paid in the per-process
-sense, and that is correct on its own terms besides: the kernel stack is the memory kernel code
+sense, and that is correct on its own terms besides. The kernel stack is the memory kernel code
 executes on during a syscall, and letting a process supply it would hand a process the ability
-to corrupt kernel execution. seL4 sidesteps the whole question by being an event kernel (one
-stack per core, no per-thread kernel stack); we chose a process kernel at milestone 6, where blocking
-IPC resumes on a per-thread kernel stack (which is why `schedule()` is forty lines), so we own
+to corrupt kernel execution. seL4 sidesteps the whole question by being an event kernel (one stack
+per core, no per-thread kernel stack). We chose a process kernel at milestone 6 (threads, the context switch, and preemption), where blocking IPC
+resumes on a per-thread kernel stack (which is why `schedule()` is forty lines). So we own
 the stacks, now from a bounded budget.
 
 ## Recycling, not allocating

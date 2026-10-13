@@ -31,7 +31,7 @@ hw entropy  : FAILED: JH7110 TRNG at 0x1600c000 (tree says starfive,trng, status
 Transcript: `target/board/radon-2026-09-04-trng-bringup.log`. The diagnostic is the raw
 `(STAT << 32) | ISTAT`, so the whole register file read back as zeros, and the vendor device tree
 independently marks the node `status disabled`. Milestone 239 deliberately *reports* that `status`
-without acting on it (the same tree calls the S7 core `okay` and gives it an MMU it does not have),
+without acting on it. The same tree calls the S7 core `okay` and gives it an MMU it does not have,
 so the agreement between the tree and the hardware is corroboration rather than circularity.
 
 ## What the TRNG needs, from two trees that agree
@@ -85,9 +85,9 @@ Two mechanics worth knowing, both transcribed rather than inferred:
 The kernel does it, at wiring time, and no userspace program holds the controller. That is an
 exception to this project's standing direction of travel, so it owes an argument. DECISIONS §86
 (whether an NVMe driver can leave the kernel, and what capability would let it) states that
-direction in one line, *"the microkernel thesis that drivers are user programs"*, and cites §21
-(the terminal is a userspace component, and the kernel is out of the shell business) and §23
-(multi-queue DMA confinement: the validator's second direction) as the work already spent moving
+direction in one line, *"the microkernel thesis that drivers are user programs"*. It cites §21 (the
+terminal is a userspace component, and the kernel is out of the shell business) and §23 (multi-queue
+DMA confinement: the validator's second direction). Those are the work already spent moving
 components out. The argument here is §86's own, reused rather than reinvented: the kernel keeps
 the admin plane, EL0 gets the data path, and no new syscall surface is added.
 
@@ -216,7 +216,7 @@ this milestone exists to produce is a *measurement*, and a measurement nobody ca
 - Parent clocks are not programmed, and this is the first thing to suspect if the enable bits do
   not read back. The STG domain's own bus clock (`stg_axiahb`) comes from the SYSCRG at
   `0x1302_0000`, and nothing here touches it. Linux gets away with the same narrow sequence because
-  its clock framework walks parents automatically; this does not, and relies on the firmware
+  its clock framework walks parents automatically. This does not, and relies on the firmware
   having left the bus clocks running, which is plausible (U-Boot uses the STG domain for USB and
   PCIe) and unverified.
 - The deassert poll is an iteration count, not a duration. Linux uses a 1000 µs timeout;

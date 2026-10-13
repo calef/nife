@@ -41,10 +41,11 @@ Every crate under `crates/` now has at least one worked example. Three treatment
 recorded limitation rather than a pass:
 
 1. An executing doctest (28 crates). Preferred always: a doctest that runs is a test, and this
-   project's whole method is pure logic in host-testable crates. Each example was written to carry the
-   crate's own argument rather than to restate a signature, so `elf` forges a writable-and-executable
-   segment and watches it be refused, `paging` builds real page tables on the host and demonstrates
-   that break-before-make is forced, `smb_proto` performed a whole SMB2 mount, and `network_time_protocol` shows an
+   project's whole method is pure logic in host-testable crates. Each example was written to carry
+   the crate's own argument rather than to restate a signature. `elf` forges a
+   writable-and-executable segment and watches it be refused. `paging` builds real page tables on
+   the host and demonstrates that break-before-make is forced. `smb_proto` performed a whole SMB2
+   mount, and `network_time_protocol` shows an
    off-path spoof failing the origin check before any of the packet is believed.
 
 2. **`no_run`, with the reason stated in the prose** (`user_mode_runtime`, `virtio`, `system_initializer`).
@@ -63,15 +64,17 @@ recorded limitation rather than a pass:
   `script/lint`). Their examples run under `cargo test --doc -p <crate>` on an aarch64 host and
   are checked by nothing in CI. On an x86_64 host they do not even compile, which is a property of the
   packages and not of the examples. The fix is to split each crate's pure half out from its syscall
-  half, which is a lane of its own and is what would let the arithmetic in `swap_protocol::digest` and
+  half. That is a lane of its own, and is what would let the arithmetic in `swap_protocol::digest`
+  and
   the constants in `supervision_protocol` be gate-checked like every other wire contract.
 
 - **`rustdoc --show-coverage` undercounts.** See the section above. It is still the right tool for
   "does this crate have any example at all", which is what the examples half is about.
 
 - A crate can lose the ratchet by deleting one line. The `#![warn(missing_docs)]` opt-in below is
-  rung two of AGENTS.md's ladder for the crates that carry it and rung zero for the ones that do not:
-  nothing requires a crate that becomes clean to adopt it, and nothing requires a *new* crate to.
+  rung two of AGENTS.md's ladder for the crates that carry it and rung zero for the ones that do
+  not. Nothing requires a crate that becomes clean to adopt it, and nothing requires a *new* crate
+  to.
   Closing that needs a `script/lint` check, and the cost is a second workspace clippy pass with
   different flags (so a second full build, since the flags are part of cargo's cache key). That is a
   decision about gate runtime rather than about documentation, and it is not taken here.
@@ -94,10 +97,13 @@ of those 404, crate by crate, re-measuring the same way after every batch: 235 i
 a hard gate, so those crates cannot regress:
 
 `abi`, `address_space_identifier`, `bitmap_font`, `block_roster`, `c_seam`, `calendar`, `memory_corruption_canary_gate`, `capability`,
-`clock_protocol`, `component_plan`, `coremark`, `cpu_set`, `cred`, `credential_protocol`, `dma_validator`, `device_tree_blob`,
-`elf`, `entropy_protocol`, `page_frames`, `filesystem_protocol`, `graphics_protocol`, `glob`, `inter_process_communication`, `intrusive_fifo`, `line_editor`,
-`manual`, `measured_boot`, `nifefs`, `network_time_protocol`, `non_volatile_memory_express`, `paging`, `pgrep`,
-`ps`, `memory_regions`, `byte_sink_protocol`, `generational_table`, `socket_protocol`, `work_steal_slot`, `supervision_protocol`,
+`clock_protocol`, `component_plan`, `coremark`, `cpu_set`, `cred`, `credential_protocol`,
+`dma_validator`, `device_tree_blob`. `elf`, `entropy_protocol`, `page_frames`,
+`filesystem_protocol`, `graphics_protocol`, `glob`, `inter_process_communication`, `intrusive_fifo`,
+`line_editor`,
+`manual`, `measured_boot`, `nifefs`, `network_time_protocol`, `non_volatile_memory_express`,
+`paging`, `pgrep`. `ps`, `memory_regions`, `byte_sink_protocol`, `generational_table`,
+`socket_protocol`, `work_steal_slot`, `supervision_protocol`,
 `swap_protocol`, `swish`, `system_initializer`, `timetable`, `user_mode_heap`, `user_mode_runtime`, `video_terminal`,
 `virtio`, `thread_wake_handshake`.
 
