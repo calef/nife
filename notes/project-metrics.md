@@ -35,14 +35,6 @@ line belongs there, not in a caption.
 
 - 2026W41: risk 4 went green on 2026-10-05 UTC (calef); milestones 761 and 766 cut the null syscall's growth to four tasks from 48 to 10 ticks.
 
-## The prose budget
-
-![Words over the cap](project-metrics/prose-budget.svg)
-
-![Documents over the cap](project-metrics/prose-budget-documents.svg)
-
-The 3,000-word cap: the debt in words, then the documents holding it.
-
 ## unsafe blocks outside kernel/src/arch/
 
 ![unsafe density](project-metrics/unsafe.svg)
@@ -287,6 +279,14 @@ The 40-line comment-block cap: files holding a longer block, then the lines past
 ![Split parents over the index limit](project-metrics/parent-index.svg)
 
 Split parents holding more than an index, marked items included.
+
+## The prose budget
+
+![Words over the cap](project-metrics/prose-budget.svg)
+
+![Documents over the cap](project-metrics/prose-budget-documents.svg)
+
+The 3,000-word cap: the debt in words, then the documents holding it.
 
 ## How it stays current
 
