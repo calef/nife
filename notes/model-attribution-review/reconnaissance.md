@@ -1,9 +1,8 @@
 # What the reconnaissance found
 
-An appendix of [reviewing the work of one model](../model-attribution-review.md), moved from its
-section of the same name on 2026-10-11 (UTC) under §212 (a prose budget). The parent keeps one
-paragraph per finding, and the plan built on them. This file keeps the seven findings whole, with
-their tables, in the order they were run. Everything here was measured on `origin/main` at
+An appendix of [reviewing the work of one model](../model-attribution-review.md). The parent keeps
+one paragraph per finding, and the plan built on them. This file keeps the seven findings whole,
+with their tables, in the order they were run. Everything here was measured on `origin/main` at
 `0b993b27`.
 
 ### 1. Sonnet's work is one week and one session, and the session is still open

@@ -51,7 +51,7 @@ fixed it, at the cost of a whole second suite (attempt 2 ran 16:41 to 17:37).
 
 No workflow-level fix is sound. The duplicate event is GitHub's. A pending run is always cancelled
 when a newer one joins its group, whatever `cancel-in-progress` says. Putting the SHA in the group key
-would stop the duplicates cancelling each other, but a new push would then stop superseding the old
+would stop the duplicates cancelling each other, but a new push would then stop replacing the old
 one. Skipping when a same-SHA run already succeeded would also skip after a draft run that concluded
 `success` with every job skipped, which is #567 again. The detection belongs in the drain, which can
 rerun the run it finds:
@@ -66,7 +66,7 @@ rerun the run it finds:
     | $n.id'          # each id printed: gh run rerun <id>
   ```
 
-The same-second condition is what separates this from the ordinary supersede. #1207, #1209 and #1211
+The same-second condition is what separates this from an ordinary replaced run. #1207, #1209 and #1211
 each have a cancelled CI run followed 20 to 66 seconds later by a successful one. That is a draft
 marked ready, and none of them was stranded.
 

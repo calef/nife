@@ -13,10 +13,8 @@ was spent. Every figure below carries the page it came from and the date it was 
 **What this is not.** It is not a recommendation to sign up today, and it is not a benchmark. It
 prices access to machines, against the four things a machine must do before nife can use it at all.
 
-Revised the same day, after calef pushed back on the aarch64 section, which was wrong. The
-correction is kept in place rather than smoothed away: see "aarch64" below, and the last entry of
-`BUGS`. The short version is that the first draft said no aarch64 offer qualified, when in fact the
-offers qualify and nife cannot boot them, which is a different problem with a different fix.
+The aarch64 offers qualify and nife cannot yet boot them, which is a different problem from a gap
+in the market, with a different fix: see "aarch64" below.
 
 ---
 
@@ -33,8 +31,7 @@ as failing rather than as qualifying-with-a-caveat.
 3. A power or reset API, since removing the person from the loop is most of the point.
 4. Multiple cores, for fatal risk 5, whose whole premise is about multicore.
 
-**Requirement 1 is scored with four values, not two, and the first draft of this file conflated
-them.** A requirement nobody checked is a gap in the evidence, not a failure by the offer:
+**Requirement 1 is scored with four values, not two.** A requirement nobody checked is a gap in the evidence, not a failure by the offer:
 
 | Value | Means |
 |---|---|
@@ -82,31 +79,25 @@ duplicating them.
 
 ## aarch64
 
-*Corrected 2026-10-11 (UTC), verified against `uefi_loader/src/arch/aarch64/mod.rs` and
-[`notes/boot-stick/device-tree-handover.md`](boot-stick/device-tree-handover.md).* The blocker this
-section was written around is half lifted. On 2026-09-23 the loader learned to write a device tree
-from a machine's ACPI tables, so an ACPI-only machine is no longer refused outright; under QEMU with
-ACPI on, the stick reaches the shell. The kernel is still linked at QEMU `virt`'s RAM, and no cloud
-machine has been booted. So the `no (nife)` verdicts below are now unverified, and the experiment
-the recommendation names is the way to find out.
-
-As written on 2026-09-23, the first draft of this section was wrong, and calef pushed back: *"aarch64
-has no cloud options. That doesn't seem right. What about AWS?"* The image exists (`BOOTAA64.EFI`),
-and "unverified" had been reported as "disqualified". The corrected finding was that every aarch64
-offer passes requirements 2, 3 and 4 and takes a custom image: AWS, Azure and Google all sell Arm
-compute. What blocked requirement 1 was in this repository. Every aarch64 server cloud presents
-ACPI and no device tree, by Arm's Server Base Boot Requirements, and nife's aarch64 path read only a
-device tree. Behind that, the kernel is linked for `0x4008_0000`, the same limit milestone 127 (the
-seL4 machine)'s argon port has to lift. A `.metal` instance is not required: an ordinary virtualized
-Graviton meets all four requirements, so the price is $0.073 an hour, not $2.32.
-[`aarch64.md`](rented-metal/aarch64.md) has the two errors, the case from fatal risk 9, the offers
-table, and the Oracle Ampere A1 experiment.
+Every aarch64 offer passes requirements 2, 3 and 4 and takes a custom image (`BOOTAA64.EFI`
+exists): AWS, Azure and Google all sell Arm compute, and calef's question (2026-09-23) was *"aarch64
+has no cloud options. That doesn't seem right. What about AWS?"* What blocks requirement 1 is in this
+repository. Every aarch64 server cloud presents ACPI and no device tree, by Arm's Server Base Boot
+Requirements. The loader writes a device tree from a machine's ACPI tables, so an ACPI-only machine
+is not refused outright, and under QEMU with ACPI on the stick reaches the shell (verified against
+`uefi_loader/src/arch/aarch64/mod.rs` and
+[`notes/boot-stick/device-tree-handover.md`](boot-stick/device-tree-handover.md)). The kernel is
+still linked for `0x4008_0000`, QEMU `virt`'s RAM, the same limit milestone 127 (the seL4
+machine)'s argon port has to lift, and no cloud machine has been booted. So the `no (nife)`
+verdicts below are unverified, and the experiment the recommendation names is the way to find out.
+A `.metal` instance is not required: an ordinary virtualized Graviton meets all four requirements,
+so the price is $0.073 an hour, not $2.32. [`aarch64.md`](rented-metal/aarch64.md) has the case
+from fatal risk 9, the offers table, and the Oracle Ampere A1 experiment.
 
 ### aarch64 recommendation
 
-The offers qualify; nife does not. That is the corrected verdict, and it is a different sentence
-from the first draft's, because it points at work in this repository rather than at a gap in the
-market.
+The offers qualify; nife does not. That points at work in this repository rather than at a gap in
+the market.
 
 - The machine to buy, when nife can use it, is an ordinary virtualized Graviton instance, not a
   `.metal` one: `c7g.large` at $0.073 an hour for a two-core soak, `c7g.4xlarge` at $0.58 for
@@ -228,10 +219,8 @@ do this job. A soak on Scaleway metal costs less per evening than a cup of coffe
   `BOOTAA64.EFI` on one of these machines and reading the console, which is the experiment this
   file recommends precisely because the claim deserves it. If it turns out some provider does offer a
   device tree through `DEVICE_TREE_GUID`, this section is wrong and that would be good news.
-- This file was wrong once already, in the direction of confident negatives. The first draft said
-  no aarch64 offer qualified and that a UEFI-bootable image did not exist, and both were checkable
-  in this repository. The correction is kept visible in the aarch64 section rather than smoothed
-  over. Read the rest of this file's negatives with that in mind.
+- This file's negatives lean confident. A claim that no offer qualifies, or that an image does not
+  exist, is checkable in this repository; check it before relying on it.
 - **OVH's API coverage for reboot and netboot was not confirmed.** The IPMI guide documents the
   console and does not cover API-level power control, and the API documentation index did not render.
   The Rise row scores requirement 3 yes on the basis of IPMI, which is out-of-band power control by

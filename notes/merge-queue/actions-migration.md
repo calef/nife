@@ -6,9 +6,8 @@ written, what a person must run on patagonia, and what was lost.
 
 ## Why the mechanism lives here
 
-It moved here from `AGENTS.md` by the principle of `design/decisions/` §155 (the naming conventions
-move out of the constitution), which the naming pass established. The constitution keeps the duty;
-this document keeps the mechanism. What `AGENTS.md` still says is that a session confirms the
+It lives here by the principle of `design/decisions/` §155 (the naming conventions move out of the
+constitution): the constitution keeps the duty; this document keeps the mechanism. What `AGENTS.md` still says is that a session confirms the
 watchers are alive and acts on what they found.
 
 Each workflow mints a one-hour installation token with `actions/create-github-app-token`, from the
@@ -142,9 +141,8 @@ on the machine already in use. Actions closes it for the two that moved, and lea
 it was for the at-risk check. That is correct: a laptop that is asleep has no lane worktree being
 edited on it.
 
-A restraint that was reweighed rather than ignored. calef declined an unattended scheduled agent on
-2026-08-26, preferring that this shut down when the session driving it does. His 2026-09-23 approval
-supersedes that for these two. The distinction he drew in September holds here as well. What runs on
+calef approved these two scheduled workflows on 2026-09-23. An unattended scheduled *agent* is still
+declined (calef, 2026-08-26): it shuts down when the session driving it does. What runs on
 a timer is a shell script reading GitHub and labeling what a session must pick up, with no judgment
 in it. A queue reports, it does not resolve, is still the boundary. Neither workflow resolves a
 conflict, retries a failed check, or marks anybody's draft ready.
@@ -163,10 +161,10 @@ installation token carries the App and not the caller. So GitHub cannot tell a r
 acted, once the automation runs in more than one place. The comment dedupe markers are deliberately
 untagged, so two instances cannot each post the same comment once.
 
-Two fields lie to a session watching one pull request, both met on 2026-09-19 watching #965.
+Two fields lie to a session watching one pull request.
 `autoMergeRequest` goes null the moment GitHub enqueues the pull request. So "auto-merge is off"
 reads exactly like "dropped from the queue", when it means the opposite. And `statusCheckRollup`
-keeps every run, including the ones a newer push cancelled. So a `CANCELLED` conclusion is usually a
-superseded run sitting beside its own `SUCCESS`. Ask the queue itself instead: `gh api graphql` for
+keeps every run, including the ones a newer push cancelled. So a `CANCELLED` conclusion is usually an
+older run sitting beside its own `SUCCESS`. Ask the queue itself instead: `gh api graphql` for
 `pullRequest(number: N) { mergeQueueEntry { state position } }`, where no entry while open means out
 of the queue. Treat only `FAILURE` and `TIMED_OUT` as failures.

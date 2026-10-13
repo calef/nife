@@ -1,193 +1,43 @@
-//! **The timetable: scheduled execution where every entry is a grant** (milestone 129).
+//! **The timetable: scheduled execution where every entry is a grant.** A cron whose entries are
+//! grant expressions, checked at registration by `grant_plan::plan` as the shell checks a prompt
+//! line, so a scheduled child's endowment is planned, printed and fixed before the first tick.
+//! Compromising this process yields the entries' summed endowments, not the system.
 //!
-//! A cron, and the inversion of one. Unix cron reads a text file and runs arbitrary commands as
-//! ambient authority made periodic: whatever the crontab says happens, with the account's whole
-//! reach behind it, and the crontab is therefore the attack surface. This reads a text file too and
-//! the file looks similar, but an entry's command is a **grant expression** checked at registration
-//! by `grant_plan::plan`, the same function the shell checks a prompt line with. What a scheduled
-//! child holds is planned, printed, and fixed before the first tick.
+//! What it holds is `timetable::contract`'s table and nothing else: the plan page, an untyped
+//! budget (every instance's region, the loader's scratch, and the well a `--mem` grant nests in),
+//! and the supervision and reaping endpoints. `a2` is the registration page, per §222 (who holds a
+//! user's schedule); without one the document is the compiled-in `timetable.conf`. `a1` is an
+//! archive of exactly the programs the plan builds, and `timetable::Audit` prints how wide it was.
+//! No clock page unless granted, and no directory, console, network or device, which is why a
+//! scheduled `date` is refused at registration. A plan holds a kilobyte-sized
+//! `grant_plan::Endowment` per entry, so it needs a big stack; overflow reads like a wild pointer.
 //!
-//! **The claim, in one sentence:** compromising this process yields the entries' summed endowments,
-//! not the system, because there is no ambient authority for a scheduled child to fall back on and
-//! this process holds nothing it was not handed.
-//!
-//! # What it holds, and that is the whole list
-//!
-//! The slots and arguments are `timetable::contract`'s, which a session spawning this reads too;
-//! that table is the record. What the slots *are to this process*: slot 0 carries the plan and
-//! the summary, or nothing at all once a registration page holds everything; slot 1 is the
-//! untyped budget every instance is made of, the loader's scratch, and the well a `--mem` entry's
-//! grant is nested in rather than split from (see `fire` and `BUGS`); slots 2 and 3 make
-//! every scheduled child born supervised (§26 (the fault endpoint)) and reaped (§32 (a supervisor
-//! may collect a corpse without being able to build one)). Of the arguments, two carry
-//! facts worth saying here: `a2` is the registration page, without which the document is the
-//! compiled-in `timetable.conf` (milestone 129 (scheduled execution), §222 (who holds a user's
-//! schedule)); and `a1` is **not the initial ramdisk** but the archive of exactly the programs this
-//! document will ever build, because the plan is computable before the first tick, and this
-//! process audits that and says what it found, in the line after the plan.
-//!
-//! **It wants a bigger stack than a small program does**, and a spawn site has to say so: a
-//! `grant_plan::Endowment` is about a kilobyte (mostly the name set a directory grant can carry) and
-//! the plan holds one per entry, so the working set is tens of kilobytes rather than hundreds of
-//! bytes. `system_tests/src/user/timetable_tests.rs` maps 48 pages and says why; a stack overflow
-//! here reads like a wild pointer: a data abort on the stack pointer.
-//!
-//! **And nothing else beyond that budget**, except in store mode below. No clock page, no
-//! directory, no console, no network, no device. That list is not modesty: it is why a scheduled `date` in `timetable.conf` is refused at
-//! registration rather than run, and why the refusal names the timetable rather than the line.
-//! `timetable::SHIPPED_HELD` is the one fact that has widened since milestone 129's first stratum:
-//! this process now holds enough budget to back a `--mem` grant up to `SHIPPED_HELD.mem_pages`
-//! pages for a single entry, and `timetable.conf`'s `at-boot memory_grant_depleter --mem 4` line is the proof.
-//!
-//! # The archive is narrowed to the plan, and this process says so
-//!
-//! `Registry::programs` is the complete set of programs the document will ever start, and it is
-//! known before anything fires. So the spawn site builds an archive of exactly that set and hands
-//! *that* over, rather than the initial ramdisk: after milestone 129's second stratum this process
-//! cannot load `date`, `ps`, `swish` or anything else it will never run, even though it holds a
-//! working image loader.
-//!
-//! It cannot narrow its own endowment, so what it does instead is **measure it** and print the
-//! answer next to the plan (`timetable::Audit`). A scheduler handed the whole initial ramdisk still
-//! works and says a different sentence, which is the property worth having: the width of the
-//! endowment is a line on the console rather than a fact only the spawn site knows.
-//!
-//! # Store mode: a job runs what a bare word runs
-//!
-//! calef ruled milestone 152 (durable delegation)'s Fork 8 as D on 2026-09-27 (UTC, #1377). A
-//! timetable its durable session spawns holds no archive. It holds read-only views of the store's
-//! `activation/` and `packages/`, over a file-service channel of its own (`timetable::contract`),
-//! and resolves each entry's program as the prompt resolves a bare name: the live generation's
-//! entry, never an owner's vouch. A document is checked against the manifest each program's bytes
-//! carry when it is registered (`timetable::Registry::register_installed`), so a bad line is refused
-//! up front, and every fire resolves the name and plans the line again against what it finds
-//! (`timetable::Registry::plan_at_fire`). So an upgraded program's job fires the new version, and
-//! uninstalling a program, or a generation that stops naming it, stops its job at the next beat. The two views reach code, not authority: a job holds
-//! what `fire` endows and nothing that reads the store.
-//!
-//! # The loop, and the one thing it cannot do
-//!
-//! Poll the monotonic counter (ambient, `user_mode_runtime::monotonic_nanos`, no capability); fire what is
-//! due; when the budget cannot back another instance, block on the supervision endpoint until a
-//! corpse arrives and reclaim its region. That last step is the only blocking wait in the program,
-//! which matters because **this kernel has exactly one wait point per process and no timed wait at
-//! all** (milestone 106 is `NOT-STARTED` and gated on a decision). See `BUGS`.
-//!
-//! # Calendar entries and the clock
-//!
-//! Granted the clock page at `contract::CLOCK_SLOT`, this process holds `Held::clock` and can keep
-//! calendar lines (G5). It reads the page once per pass, turns it into a whole UTC minute, and
-//! hands that to `Registry::observe`, which applies S3 and the `SET` fix: dormant while the clock is
-//! unknown, one fire for a forward step, never twice after a backward one, stamps cleared by an
-//! operator's correction. A job whose manifest declares a clock gets the same page, read-only, at
-//! its slot 1, the way the progenitor endows `date`. Not granted a clock, every calendar line is
-//! `Unbacked::WallClock`, printed before anything fires like every other refusal.
-//!
-//! # Replacement
-//!
-//! A timetable spawned with a registration page is changed while it runs, by its session replacing
-//! the whole document (§222). The loop checks the page's request word once per pass, which is one
-//! load, and it has to be a poll: a blocking receive would stop it watching the clock (see
-//! `timetable::registration`). A replacement is parsed, registered and resolved against the archive
-//! in full before anything changes, so one that fails leaves the schedule in force running and
-//! says why in the page. One that succeeds keeps the beat of every line it did not change, writes
-//! its plan into the page, and re-arms. With a page, the page is the registrar's whole view: this
-//! process says nothing down [`OUT`], and leaves its exit code in the page when it stops (see
-//! [`PAGE`] and `timetable::contract`).
-//!
-//! Children already running when their entry is removed finish and are reaped as usual, because
-//! the counts of outstanding children belong to the loop and not to the document.
-//!
-//! An empty replacement ends the process. Its session is kept alive by its live children (§16
-//! (object revocation)), so a timetable left idling with nothing to fire would hold the session up
-//! for no job at all. It answers, drains what is running, prints its summary, and exits.
-//!
-//! Name: ratified 2026-09-13 (calef, working the unratified worklist), with `crates/timetable` and
-//! `components/timetable.conf` in one ruling, which is what a crate-and-program pair means. See the
-//! crate's module docs for the argument.
+//! In store mode (milestone 152's Fork 8 D) it holds read-only views of the store's `activation/`
+//! and `packages/` instead of an archive, resolves each entry as the prompt resolves a bare name,
+//! and re-plans at every fire (`Registry::plan_at_fire`), so upgrades and uninstalls take effect
+//! at the next beat. A replacement document is polled from the page once per pass, registered in
+//! full before anything changes, and an empty one ends the process. Granted the clock page, it
+//! keeps calendar lines through `Registry::observe`; without it every calendar line is
+//! `Unbacked::WallClock`. With a page, [`OUT`] is silent and the exit code goes in [`PAGE`].
 //!
 //! # BUGS
 //!
-//! - **It spins between fires, and that is a missing kernel primitive rather than a lazy loop.**
-//!   There is no sleep, no timeout and no deadline anywhere in this kernel, so a process that wants
-//!   to act at a time can only yield and re-read the counter. `Registry::next_deadline` already
-//!   computes exactly what a timed wait would block until, so the fix is one line here once
-//!   milestone 106's fork is decided; until then a running timetable costs a core's worth of yields.
-//!   **This program is that fork's fifth consumer** (the block counts four: `net_stack`'s retransmit
-//!   window, milestone 51 (wall-clock time)'s `thread::sleep`, `RECEIVE`'s no-timeout
-//!   limitation, the shell's `^C` poll), and the first whose *whole purpose* is to act at a time.
+//! - There is no timed wait, milestone 106 (a wait that ends on either the interrupt or the
+//!   deadline), so it spins between fires, polls for registrations and reaps lazily.
+//! - A hung child stops the whole timetable once the budget runs out: the loop then blocks on the
+//!   supervision endpoint, and nothing kills a livelocked child.
+//! - The archive holds every image the plan builds: code, not authority, because a job holds only
+//!   what `fire` endows (`notes/scheduled-execution/one-image-per-entry.md`).
+//! - `--mem` entries run one at a time, alone, and interval entries due meanwhile run late, once
+//!   (`notes/scheduled-execution/mem-entries.md`).
+//! - A calendar line fires up to one pass late; `Registry::next_deadline` covers only counter rows.
+//! - A replacement's printed plan is cut at `registration::BODY_MAX`; the verdict word survives.
+//!   The archive audit is printed only for the compiled-in document.
+//! - In store mode a skipped beat is recorded nowhere, a job has nowhere to write output, programs
+//!   over `contract::STAGING_BYTES` are refused without saying which refusal it was, and a fire
+//!   failure is only the page's exit word (`contract::E_BUDGET`).
 //!
-//! - **Corpses are collected lazily, when their memory is needed.** Nothing reaps between fires,
-//!   because reaping means blocking on the supervision endpoint and blocking means not watching the
-//!   clock. So the failure counts this program reports lag reality until the budget runs down.
-//!   A wait that returns on either a message or a deadline fixes this too, and it is the same fork.
-//!
-//! - **A hung scheduled child stops the whole timetable.** When the budget cannot back another
-//!   instance the loop blocks on the supervision endpoint, and a livelocked child never sends a
-//!   death message, so nothing arrives and nothing else fires. That is §32's watchdog case verbatim
-//!   (`Rendezvous::REAP` collects corpses and refuses to kill, deliberately) and it is not this
-//!   program's to fix: it waits for milestone 23. What it costs here is worth stating, because it is
-//!   worse than it is for a shell: at a prompt the person who typed the command is sitting there and
-//!   can press `^C`, and behind a schedule there is nobody.
-//!
-//! - **The archive holds every image the plan builds, and that is code, not authority.** A
-//!   compromised timetable can load any program in its archive, not only the one an entry names.
-//!   It gains nothing by it: a job holds exactly what `fire` or `fire_with_grant` endows, and
-//!   nothing reads which image is running to decide that, so a second image adds only code to a
-//!   process already running the attacker's. One image per entry was refused on 2026-09-26 for
-//!   this reason (notes/scheduled-execution/one-image-per-entry.md).
-//!
-//! - **`--mem` entries are backed, and run one at a time, alone.** The grant nests inside the
-//!   instance's own region: `regions::destroy_outcome` refuses to destroy a region with a live
-//!   child (Kani proves it), so a split-out grant could never be collected through `reap`.
-//!   `fire_with_grant` keeps the grant capability so `collect_grant` can destroy it later, by
-//!   name. While a grant is outstanding the loop is blocked in one syscall and cannot poll the
-//!   clock, so interval entries due in that window run late on resumption, once (`next_after`'s
-//!   skip-not-catch-up rule). The refused first sketch, the tid argument, and why one at a time
-//!   is the answer are
-//!   [notes/scheduled-execution/mem-entries.md](../../notes/scheduled-execution/mem-entries.md).
-//!
-//! - **Without a registration page, the document is compiled in.** `include_str!`, and the shipped
-//!   boot-time test still runs that way. With a page the document is whatever the registrar sent,
-//!   and persisting it is the registrar's job (§222's fifth sub-ruling: the session writes
-//!   `crates/schedule_store`'s file, then replaces). No session registers into a timetable yet,
-//!   because the durable session is for milestone 152 (durable delegation) to rebuild; the kernel test stands in.
-//!
-//! - **A registration is noticed by polling, not received.** The loop loads the page's request
-//!   word once per pass. A `RECEIVE` would block and stop the clock being watched, because a process
-//!   has one wait point and there is no timed wait (milestone 106 (a wait that ends on either the interrupt or the deadline)). The cost is one load per pass
-//!   on a loop that already spins; a deadline wait that also ends on a notification removes it.
-//!
-//! - **A calendar line fires up to one pass late, and has no monotonic deadline.** Its occurrence is
-//!   a wall-clock minute, compared against the page on each pass. `Registry::next_deadline` still
-//!   answers only for the counter's rows, so when a timed wait exists a calendar row's deadline
-//!   has to be converted through the page's offset, and re-converted on every step.
-//!
-//! - **A replacement's printed plan is cut at the page**, at `timetable::registration::BODY_MAX`
-//!   bytes, and with a registrar the page is the only place it goes. Eight entries of long
-//!   refusals could pass that; the verdict word still says what every entry became.
-//!
-//! - **A store-mode beat that does not fire says so to nobody.** When a name no longer resolves
-//!   in the live generation, or the current version's manifest asks for more than its line grants,
-//!   the beat is skipped and nothing records it. Nothing a durable timetable holds can reach its
-//!   owner today: the page is written only in reply to a registrar's request, and it holds no
-//!   directory, console or log. The eventual home is the system log proposed on #1423 and the
-//!   notices for people proposed on #1424; neither is built. (calef asked for this refusal to be
-//!   loud, 2026-09-27 on #1377.)
-//! - **A durable job has nowhere to write its output.** Fork 6 C gives a job only what its entry
-//!   grants, and a store-mode timetable holds no directory to narrow into a grant, so a line that
-//!   designates a file or directory is planned unbacked. The system log proposed on #1423 is the
-//!   intended grant: an entry would grant "append to the log".
-//! - **Store mode loads programs of up to `timetable::contract::STAGING_BYTES`** (128 KiB) and
-//!   refuses a document naming a larger one, the same way it refuses one naming a program that is
-//!   not installed (`registration::STATUS_NO_IMAGE`). The page does not say which of those it was.
-//! - **With a registrar, a fire failure is only an exit code.** "The budget cannot back one
-//!   instance" has no stream to go down, so the registrar learns it from the page's exit word
-//!   (`contract::E_BUDGET`) after reaping this process.
-//!
-//! - **The archive audit is printed only for the compiled-in document.** With a registrar, the
-//!   archive is what the session lets its jobs run, not the plan of a document that has not
-//!   arrived, so "exactly the programs its plan names" is not the right sentence to measure.
+//! Name: ratified 2026-09-13 (calef), with `crates/timetable` and `components/timetable.conf`.
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

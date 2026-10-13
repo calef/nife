@@ -183,6 +183,25 @@ const DEVICE_FLAG: &str = if cfg!(target_os = "linux") {
 /// If the device cannot be opened. That is the one genuinely fatal case, and its usual causes are
 /// an adapter that was unplugged, a `/dev/tty.*` path (see this module's header), and another
 /// program already holding the port.
+///
+/// # Examples
+///
+/// Watch a board boot, with the default policy's cap:
+///
+/// ```no_run
+/// use std::fs::File;
+/// use board_console::{port, watch::{self, Policy}};
+///
+/// let path = port::choose(None)?;
+/// let (device, complaint) = port::open(&path)?;
+/// if let Some(complaint) = complaint {
+///     eprintln!("board-console: {complaint}");
+/// }
+/// let mut log = File::create("target/board-console.log")?;
+/// let session = watch::watch(device, &mut log, &Policy::default(), true)?;
+/// println!("{}", session.summary());
+/// # Ok::<(), std::io::Error>(())
+/// ```
 pub fn open(path: &Path) -> io::Result<(File, Option<String>)> {
     if let Some(warning) = dial_in_warning(path) {
         eprintln!("board-console: {warning}");

@@ -1,9 +1,8 @@
 # The numbers this lane was handed do not reproduce
 
-An appendix of [reviewing the work of one model](../model-attribution-review.md), moved from its
-section of the same name on 2026-10-11 (UTC) under §212 (a prose budget). The parent keeps the
-measured counts and the conclusion; this file keeps both tables and both derivations, so the counts
-can be re-run.
+An appendix of [reviewing the work of one model](../model-attribution-review.md). The parent keeps
+the measured counts and the conclusion; this file keeps both tables and both derivations, so the
+counts can be re-run.
 
 ## First: the numbers this lane was handed do not reproduce
 

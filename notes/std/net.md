@@ -2,10 +2,7 @@
 
 *An appendix to [`notes/std.md`](../std.md), which is the page to read. This file holds how
 `TcpStream`, `TcpListener` and `UdpSocket` map onto net_stack's socket contract, and the port-reuse
-finding. It was moved here verbatim from the main page on 2026-09-25 (UTC), under [§212 (a prose
-budget)](../../design/decisions/0212-a-prose-budget-for-every-document.md). The directory
-`notes/std/` and this file's stem are provisional names, minted that day by the lane that split the
-file. Naming is calef's.*
+finding. The directory `notes/std/` and this file's stem are provisional names. Naming is calef's.*
 
 The records this file cites by number:
 
@@ -80,15 +77,6 @@ has ever carried bytes keeps one more, for its page's frame, which the next sock
 handed a copy of. So a program holding all six sockets spends twelve of its 64 slots
 on the network, and one that has closed them all still spends six.
 
-A finding, recorded honestly, and superseded: net_stack assigns ephemeral ports independently of
-the socket since the rotating allocator, and a socket has had no number at all since §255. The
-original text: net_stack derives a socket's local port from its socket id
-(`LOCAL_PORT_BASE + sid`), so an id is not an ephemeral port that rotates; reopening a just-closed
-id reuses its exact local port. Against QEMU's slirp, a TCP connect that reuses a port whose
-previous flow has not cleared stalls (the SYN's answer never comes, and net_stack blocks in its
-bounded poll on the NIC interrupt). The PAL softens this by handing out ids round-robin, so
-consecutive opens prefer different ids and ports, but a program that churns through more than
-`MAX_SOCKETS` sockets quickly can still hit a reused port. The real fix is net_stack assigning
-ephemeral local ports independent of the socket id, which is a contract-side change reported up, not
-a client workaround. The demo sidesteps it by keeping its UDP and TCP sockets on distinct ids at
-once.
+net_stack assigns ephemeral local ports with a rotating allocator, independently of the socket, and
+a socket has no number at all under §255 (each socket is its own capability). So a socket's local
+port does not follow its id, and reopening one does not reuse the port it had.

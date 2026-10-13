@@ -30,7 +30,6 @@ components/src/jh7110_entropy.rs:1	112
 components/src/job_undertaker.rs:1	86
 components/src/keyboard_driver.rs:1	69
 components/src/line_editor.rs:1	56
-components/src/login.rs:1	177
 components/src/login_audit_receiver.rs:1	65
 components/src/mdr.rs:1	116
 components/src/name_resolver.rs:1	91
@@ -49,10 +48,8 @@ components/src/socket_squatter.rs:1	44
 components/src/socket_test_client.rs:1	53
 components/src/swapper.rs:1	56
 components/src/swish/main.rs:1	100
-components/src/system_installer.rs:1	175
 components/src/system_log.rs:1	80
 components/src/terminal_sink_caretaker.rs:1	56
-components/src/timetable.rs:1	190
 components/src/top.rs:1	90
 components/src/usb_keyboard_driver.rs:1	55
 components/src/user_timetable_keeper.rs:1	69
@@ -71,7 +68,6 @@ crates/bitmap_font/src/lib.rs:1	104
 crates/block_roster/src/lib.rs:1	83
 crates/board_console/src/board.rs:1	72
 crates/board_console/src/exposure.rs:1	68
-crates/board_console/src/lib.rs:1	173
 crates/board_console/src/lottery.rs:1	51
 crates/board_console/src/port.rs:1	52
 crates/board_console/src/progress.rs:1	60
@@ -90,13 +86,11 @@ crates/compositor/src/lib.rs:1	138
 crates/coremark/src/lib.rs:1	53
 crates/credential_protocol/src/lib.rs:1	135
 crates/credentialer/src/lib.rs:1	132
-crates/current_cpu_protocol/src/lib.rs:1	174
 crates/designware_ethernet/src/lib.rs:2	110
 crates/designware_mobile_storage/src/lib.rs:2	114
 crates/device_tree_blob/src/lib.rs:1	42
 crates/direct_memory_access_validator/src/lib.rs:1	109
 crates/documentation/src/index.rs:1	74
-crates/documentation/src/lib.rs:1	161
 crates/domain_name_system/src/lib.rs:1	106
 crates/e1000e/src/lib.rs:2	83
 crates/e1000e/src/pch/mod.rs:1	92
@@ -130,13 +124,11 @@ crates/inter_process_communication/src/lib.rs:1	138
 crates/inter_process_communication/src/notification.rs:1	73
 crates/inter_process_communication/src/timer.rs:1	58
 crates/jh7110_clock_and_reset/src/lib.rs:2	103
-crates/jh7110_entropy/src/lib.rs:2	169
-crates/jh7110_entropy/src/lib.rs:363	44
-crates/jh7110_entropy/src/lib.rs:597	41
+crates/jh7110_entropy/src/lib.rs:233	44
+crates/jh7110_entropy/src/lib.rs:467	41
 crates/job_mix/src/lib.rs:1	140
 crates/line_editor/src/lib.rs:1	142
 crates/loaded_image_check/src/lib.rs:1	76
-crates/login_protocol/src/lib.rs:2	164
 crates/machine_discovery/src/aarch64.rs:1	47
 crates/machine_discovery/src/acpi.rs:1	61
 crates/machine_discovery/src/acpi/ivrs.rs:1	47
@@ -167,8 +159,7 @@ crates/pmap/src/lib.rs:1	96
 crates/portable_executable/src/lib.rs:1	64
 crates/ps/src/lib.rs:1	136
 crates/schedule_store/src/lib.rs:1	76
-crates/screen_console/src/lib.rs:1	160
-crates/screen_console/src/lib.rs:176	48
+crates/screen_console/src/lib.rs:49	48
 crates/sealed_pair/src/lib.rs:1	97
 crates/soak_page/src/lib.rs:1	54
 crates/std_runtime_protocol/src/lib.rs:1	50
@@ -181,7 +172,6 @@ crates/swish/src/batching.rs:41	45
 crates/swish/src/complete.rs:1	57
 crates/swish/src/lib.rs:1	84
 crates/swish/src/sequence.rs:1	82
-crates/system_initializer/src/lib.rs:6	300
 crates/system_log/src/lib.rs:1	96
 crates/test_times/src/lib.rs:1	64
 crates/thread_wake_handshake/src/lib.rs:1	131
@@ -234,7 +224,6 @@ kernel/src/arch/riscv64/iommu.rs:1	54
 kernel/src/arch/riscv64/pmu.rs:1	66
 kernel/src/arch/x86_64/amd_vi.rs:1	125
 kernel/src/arch/x86_64/ap_boot.rs:1	131
-kernel/src/arch/x86_64/iommu.rs:1	164
 kernel/src/arch/x86_64/irq.rs:1	106
 kernel/src/arch/x86_64/irq.rs:1181	43
 kernel/src/arch/x86_64/isa.rs:1	75

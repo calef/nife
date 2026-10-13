@@ -11,11 +11,11 @@ fires, "WATCHDOG: no progress for ~60 s. Every core idle, every thread blocked".
 2026-10-13 (UTC) on both riscv64 and aarch64 with `cargo xtask test --arch <arch> --test
 an_accept_nobody_answers_ends_at_the_stacks_bound`; green with the fix in 15.08 s and 15.06 s.
 
-diff --git a/components/src/net_stack.rs b/components/src/net_stack.rs
-index 487f67255..9574275e5 100644
---- a/components/src/net_stack.rs
-+++ b/components/src/net_stack.rs
-@@ -710,7 +710,7 @@ fn service_until(
+diff --git a/components/src/socket_operations.rs b/components/src/socket_operations.rs
+index f3df0472c..4fec0757f 100644
+--- a/components/src/socket_operations.rs
++++ b/components/src/socket_operations.rs
+@@ -27,7 +27,7 @@ pub(crate) fn service_until(
              iface.poll(instant(), dev, sockets);
              return cond(sockets);
          }

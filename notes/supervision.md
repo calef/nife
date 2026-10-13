@@ -59,7 +59,7 @@ zero, so only a supervisor reads them and no other program's `RECEIVE` changes.
 
 A sixth word, the child's label, arrives in argument register 5 (`x5`, `a5`, `r9`): the badge its
 builder put on the supervision capability with `rendezvous::BADGE` before inserting it, kept by
-the kernel at `START` (milestone 105 (the two forks), §148 (resolves by asking the kernel) as amended 2026-10-04). The kernel
+the kernel at `START` (milestone 105 (the two forks), §148 (resolves by asking the kernel)). The kernel
 writes it only on a death delivered to a plain `RECEIVE`, so the mailbox stays five words. A
 receiver zeroes the register first, as `receive_fault` does, so `0` means unbadged or not a death.
 The child holds no capability carrying its label, and a sender's badge arrives in `w3`, so a label

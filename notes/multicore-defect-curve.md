@@ -1,8 +1,8 @@
 # The multicore defect-discovery curve: its data, and how a soak appends to it
 
 *Owned by milestone 201 (is multicore reliability converging), which scopes
-[`design/fatal-risks/README.md`](../design/fatal-risks/README.md)'s risk 5. Name provisional (this file's stem),
-minted 2026-09-24 by the lane that re-derived 201's seeds; naming is an architect's.*
+[`design/fatal-risks/README.md`](../design/fatal-risks/README.md)'s risk 5. Name provisional (this
+file's stem); naming is an architect's.*
 
 Risk 5 says the concurrency is wrong in ways QEMU cannot show, arriving one at a time, forever.
 Milestone 201 turns that into a measurement: count the multicore defects found per unit of stress on
@@ -145,7 +145,7 @@ the old version; `unclassified`, not yet understood. Test-only defects (an asser
 load) do not belong here; [`load-sensitive-assertions.md`](load-sensitive-assertions.md) is their
 register.
 
-### The history before the curve
+### Defects found before exposure was measured
 
 Everything below was found before any exposure was measured, so every row's exposure is `none` and
 none of them is a point on the curve. They are here because risk 5's second clause ("the bugs appear
@@ -179,9 +179,8 @@ instrument is recorded was shown by QEMU, loom or an audit; D5's is not recorded
 reading (D6) is retracted. Milestone 514 settled D13 on 2026-10-12: a host prober's connection
 completed its handshake into a listener `net_stack` was about to close, and the close sent no reset.
 That is userspace networking and timing, not the kernel, and widening the window made it fail on
-demand. Until 2026-10-13 this paragraph called D13 the one row seen on physical cores and not under
-TCG. That was wrong: the riscv64 CPU matrix had hit it under TCG twice
-([the-inbound-check.md](net/the-inbound-check.md)). So it is no evidence for the class risk 5
+demand. The riscv64 CPU matrix hit it under TCG twice
+([the-inbound-check.md](net/the-inbound-check.md)), so it is no evidence for the class risk 5
 names.
 
 ## BUGS

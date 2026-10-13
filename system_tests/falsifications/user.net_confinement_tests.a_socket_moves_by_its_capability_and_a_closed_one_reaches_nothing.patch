@@ -13,11 +13,11 @@ still reached a socket: ...")`. Confirmed red on 2026-10-07 (UTC) at
 --test a_socket_moves_by`: the giver's copy answered its probe (`0xe0b2`). The hunk is portable
 code, so one patch serves every leg; riscv64 and x86_64 were not replayed by hand.
 
-diff --git a/components/src/net_stack.rs b/components/src/net_stack.rs
-index 95c4491c6..47403ae83 100644
---- a/components/src/net_stack.rs
-+++ b/components/src/net_stack.rs
-@@ -378,10 +378,7 @@ fn server(mut dev: Nic, grant_word: u64) -> ! {
+diff --git a/components/src/socket_server.rs b/components/src/socket_server.rs
+index 5e2b1b9d6..f459f11e2 100644
+--- a/components/src/socket_server.rs
++++ b/components/src/socket_server.rs
+@@ -180,10 +180,7 @@ pub(crate) fn server(mut dev: Nic, grant_word: u64) -> ! {
                  entry,
                  arg as usize,
              ),

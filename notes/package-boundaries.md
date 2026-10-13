@@ -2,8 +2,7 @@
 
 *Milestone 611 (every program and crate belongs to a package, and every package has a home). The
 file name, the key names of both TOML files, every package name and every home below are
-provisional, minted by that lane on 2026-09-27 (UTC); the four kinds were ratified at 07:23Z that
-day. calef ratifies the table; the questions are at the end.* What a package is as a file on a target is [notes/packages.md](packages.md). This note is
+provisional; the four kinds were ratified on 2026-09-27 (UTC). calef ratifies the table; the questions are at the end.* What a package is as a file on a target is [notes/packages.md](packages.md). This note is
 about the tree: which crate, program and path belongs to which package, and where each is going.
 
 ## What calef ruled

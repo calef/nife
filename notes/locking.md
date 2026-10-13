@@ -18,11 +18,9 @@ This is not a race. It is not "sometimes, under load." It is a *deterministic* h
 moment the timing lines up, and it will look exactly like the mystery in
 [stack.md](stack.md) that cost us two hours.
 
-And note what it does not need: a second core. This was written while §6 still said
-single-core, and the point was that the decision
-([DECISIONS](../design/decisions/0006-single-core-first.md) §6, since **superseded by §11**) did not
-protect us here at all. One core, one lock, one interrupt, dead machine. Cores 1 to n arriving at
-milestone 41 added races; it did not remove this one.
+And note what it does not need: a second core. A single-core design would not protect against it at
+all. One core, one lock, one interrupt, dead machine. More cores add races; they do not remove this
+one.
 
 ## The fix
 
