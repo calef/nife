@@ -40,7 +40,11 @@ the file AGENTS.md names, and the measurement says the exception is the rule.
 `design/decisions/` section and no `§`. The other 13 do, so the convention exists and is followed
 about a quarter of the time.
 
-The forty-five are the union of the three slice lists below.
+```
+52 66 95 102 105 131 142 147 178 180 188 198 205 206 207 224 241 260
+271 327 328 330 335 340 341 342 347 350 360 388 391 394 395 397 398
+400 403 404 406 407 408 413 415 419 423
+```
 
 Twenty-four of the forty-five are numbered 327 or above, so they arrived hours earlier from
 milestone 433 (drain)'s drain of the proposal pile. Promotion carried each block's gate token across
@@ -70,10 +74,8 @@ the whole block, and then finds only a paragraph addressed to one person.
 2. Correct the token with the reason written where the gate is, the way 421's correction records
    that it carried `NONE` for two days and why that was the failure the vocabulary exists to prevent.
 3. Or write the decision up, `**Status: PROPOSED.**`, with what is being decided, the options,
-   a recommendation and its reason, and what is blocked until it is answered. AGENTS.md's seven
-   questions are the standard, and questions 2 to 5 are lookups rather than arguments: what this tree
-   does in the analogous case, what the prior art is, whether the premise is true, and what
-   each option costs measured rather than asserted.
+   a recommendation and its reason, and what is blocked until it is answered. The seven questions in
+   [the decisions skill](../../notes/skills/decisions/SKILL.md) are the standard.
 4. Or cite the decision that exists, in the gate paragraph, where a reader meets the gate.
 5. Cite the new section from the block's gate paragraph either way, so the two records agree.
 
