@@ -23,11 +23,11 @@ a separate question this record does not answer.
 
 Replayed on all three ISAs. The hunk is portable code, so one patch serves every leg. On 2026-10-03 (UTC), `cargo xtask test --arch riscv64 --test an_elf_that_asks_for_a_writable_executable_page_is_refused` and the same with `--arch x86_64` both came back red at `system_tests/src/user/tests.rs:435`, the assertion this record predicts, which is where aarch64 was already red.
 
-diff --git a/crates/elf/src/lib.rs b/crates/elf/src/lib.rs
-index 49548666..623c49d2 100644
---- a/crates/elf/src/lib.rs
-+++ b/crates/elf/src/lib.rs
-@@ -472,9 +472,6 @@ impl<'a> Elf<'a> {
+diff --git a/crates/elf/src/parse.rs b/crates/elf/src/parse.rs
+index 51de81b47..aece4ff1b 100644
+--- a/crates/elf/src/parse.rs
++++ b/crates/elf/src/parse.rs
+@@ -122,9 +122,6 @@ impl<'a> Elf<'a> {
                  continue;
              };
  
