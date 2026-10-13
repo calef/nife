@@ -138,243 +138,27 @@ fn board_console_exposure(args: &[String]) -> ExitCode {
 pub(crate) fn board_console() -> ExitCode {
     use std::io::Write;
 
-    use board_console::watch::{Policy, watch};
-
-    let args: Vec<String> = std::env::args().skip(2).collect();
-    let mut port: Option<PathBuf> = std::env::var_os("NIFE_BOARD_PORT").map(PathBuf::from);
-    let mut replay: Option<PathBuf> = None;
-    let mut log: Option<PathBuf> = None;
-    let mut policy = Policy::default();
-    // **The writing mode** (milestone 324). `None` is every reading session, which is still the
-    // default and still the common case. `Some(n)` is `--stop-after n`, and `--stop` is `Some(1)`:
-    // one mechanism with two spellings, so the two flags cannot disagree about anything.
-    let mut stop_after: Option<usize> = None;
-    // Whether `--for` and `--until` were given, as opposed to left at their defaults. A stop mode
-    // has to know, because it changes both, and silently overriding something a person typed is
-    // worse than refusing it.
-    let mut until_given = false;
-    let mut cap_given = false;
-    // **`--until` is resolved after the loop** (milestone 324 part 3), because four of its words
-    // name rungs of a board's firmware prologue and `--board` may come after it on the line.
-    // Parsing it in place would make argument order load-bearing, which is the kind of thing
-    // nobody remembers.
-    let mut until_word: Option<String> = None;
-
-    let mut i = 0;
-    while i < args.len() {
-        let value = |i: usize| -> Result<&str, ExitCode> {
-            args.get(i + 1).map(String::as_str).ok_or_else(|| {
-                eprintln!("board-console: {} wants a value", args[i]);
-                ExitCode::from(4)
-            })
-        };
-        match args[i].as_str() {
-            "--port" => match value(i) {
-                Ok(v) => port = Some(PathBuf::from(v)),
-                Err(code) => return code,
-            },
-            "--replay" => match value(i) {
-                Ok(v) => replay = Some(PathBuf::from(v)),
-                Err(code) => return code,
-            },
-            // **Milestone 249's reader**, and it is the only mode that does not watch anything: it
-            // reads a finished capture of *many* boots and reports what the placement lottery drew
-            // each time. It returns before the log file below is created, because a tally writes no
-            // capture of its own and a fresh empty `board-console-<stamp>.log` beside a fifty-boot
-            // one is litter a reader has to tell apart.
-            "--tally" => match value(i) {
-                Ok(v) => return board_console_tally(std::path::Path::new(v)),
-                Err(code) => return code,
-            },
-            // **Milestone 225's reader**: a finished soak capture into the curve's exposure row.
-            // It takes the rest of the line, for the three columns no console line carries, and
-            // like `--tally` it returns before a capture file is created.
-            "--exposure" => return board_console_exposure(&args[i + 1..]),
-            "--log" => match value(i) {
-                Ok(v) => log = Some(PathBuf::from(v)),
-                Err(code) => return code,
-            },
-            // **A writing mode, and the only two the ruling permits** (milestone 324). Each is a
-            // command with a purpose rather than a keyboard, which is the decision rather than
-            // caution about it: milestone 249's lane sent this escape by detaching the console,
-            // hit U-Boot's autoboot countdown with it, and paid a power cycle.
-            "--stop" => {
-                stop_after = Some(1);
-                // Not `i += 2` at the bottom of the loop: this flag takes no value, and the
-                // increment below assumes every argument does.
-                i += 1;
-                continue;
-            }
-            "--stop-after" => match value(i).map(str::parse::<usize>) {
-                Ok(Ok(n)) if n >= 1 => stop_after = Some(n),
-                Ok(_) => {
-                    eprintln!(
-                        "board-console: --stop-after wants a count of draws, 1 or more. \
-                         `--stop` is `--stop-after 1`."
-                    );
-                    return ExitCode::from(4);
-                }
-                Err(code) => return code,
-            },
-            "--for" | "--timeout" => match value(i).map(parse_duration) {
-                Ok(Some(d)) => {
-                    policy.total = d;
-                    cap_given = true;
-                }
-                Ok(None) => {
-                    eprintln!("board-console: --for wants a duration like 90, 90s, 30m or 2h");
-                    return ExitCode::from(4);
-                }
-                Err(code) => return code,
-            },
-            "--quiet-after" => match value(i).map(parse_duration) {
-                // Zero disables it: on a long sustained watch, a board that is legitimately quiet
-                // for a while is not a hang, and the operator is the one who knows which.
-                Ok(Some(d)) => policy.quiet_after = if d.is_zero() { None } else { Some(d) },
-                Ok(None) => {
-                    eprintln!("board-console: --quiet-after wants a duration, or 0 to disable");
-                    return ExitCode::from(4);
-                }
-                Err(code) => return code,
-            },
-            "--until" => match value(i) {
-                Ok(v) => {
-                    until_word = Some(v.to_string());
-                    until_given = true;
-                }
-                Err(code) => return code,
-            },
-            // **Which board is on the other end** (milestone 324 part 3). It chooses the firmware
-            // prologue and nothing else: everything from the kernel banner up is shared, which is
-            // what calef's ruling settled and what `crates/board_console::board` implements.
-            "--board" => match value(i) {
-                Ok(v) => match board_console::board::profile(v) {
-                    Some(p) => policy.board = p,
-                    None => {
-                        eprintln!(
-                            "board-console: unknown board {v}. Known: {}.",
-                            board_console::board::PROFILES
-                                .iter()
-                                .map(|p| p.name)
-                                .collect::<Vec<_>>()
-                                .join(", ")
-                        );
-                        eprintln!(
-                            "board-console: argon has no profile on purpose; it has never booted \
-                             nife and a prologue read out of vendor documentation would be a guess."
-                        );
-                        return ExitCode::from(4);
-                    }
-                },
-                Err(code) => return code,
-            },
-            other => {
-                eprintln!("board-console: unknown argument {other}");
-                eprintln!(
-                    "usage: cargo xtask board-console [--port <dev>] [--replay <log>] \
-                     [--log <file>] [--for <duration>] [--until <stage>] [--quiet-after <duration>] \
-                     [--board <name>]\n\
-                     \x20      cargo xtask board-console [--stop | --stop-after <n>]\n\
-                     \x20      cargo xtask board-console --tally <log>\n\
-                     \x20      cargo xtask board-console --exposure <log> [--machine <name>] \
-                     [--build <sha>] [--start <utc>]"
-                );
-                return ExitCode::from(4);
-            }
-        }
-        i += 2;
-    }
-
-    // `--until`, now that `--board` is known. A word this board has no rung for is refused rather
-    // than watched for: `--until spl` against a machine with no SPL can only ever end in the time
-    // running out, and a refusal that names the words it does know costs the operator nothing.
-    if let Some(word) = &until_word {
-        match parse_stage(policy.board, word) {
-            Some(stage) => policy.until = stage,
-            None => {
-                eprintln!(
-                    "board-console: --until {word} is not a stage {} reaches. Known: {}.",
-                    policy.board.name,
-                    stage_words(policy.board)
-                );
-                return ExitCode::from(4);
-            }
-        }
-    }
-
-    // **What a writing mode changes about the rest of the session** (milestone 324), decided here
-    // rather than inside the crate because these are argument-shaped decisions and the crate's job
-    // is the decision to send.
-    if let Some(n) = stop_after {
-        // A replay has no board on the other end of it. Refused rather than ignored: a person who
-        // typed `--stop --replay` believes a byte is going somewhere, and silently reading a file
-        // instead would be the tool agreeing with them.
-        if replay.is_some() {
-            eprintln!(
-                "board-console: --stop writes to a board and --replay reads a file, so the \
-                 two cannot be combined. Drop --replay to watch a real port."
-            );
-            return ExitCode::from(4);
-        }
-        // Both answer "when does this session end", and a stage would usually answer it first: a
-        // soak is reached long before its reboot loop arms, so `--until soak --stop` would return
-        // before sending anything. Refused rather than overridden, for the reason above.
-        if until_given && policy.until.is_some() {
-            eprintln!(
-                "board-console: --stop and --until both say when the session ends, and \
-                 --until would win before the escape was ever sent. Drop --until; the stop is \
-                 the ending."
-            );
-            return ExitCode::from(4);
-        }
-        policy.until = None;
-        if !cap_given {
-            // **Derived from the kernel's own draw length rather than picked.** One draw is
-            // `kernel/src/soak.rs`'s `REBOOT_AFTER_SECONDS` (120s) plus the twenty-odd seconds a
-            // boot takes, so 150s per draw, and one draw's slack on top for the session that
-            // attaches mid-draw and has to wait the current one out. `--stop-after 50` then gets
-            // the two unattended hours milestone 249's block prices it at.
-            //
-            // This is a default and not an agreement: getting it wrong costs a re-run with
-            // `--for`, never a wrong answer, which is why the number is duplicated here instead of
-            // being hoisted into a shared crate.
-            policy.total = std::time::Duration::from_secs(
-                150 * u64::try_from(n).unwrap_or(u64::MAX / 300) + 120,
-            );
-        }
+    let mut args = match ConsoleArgs::parse() {
+        Ok(ConsoleCommand::Watch(args)) => args,
+        Ok(ConsoleCommand::Done(code)) | Err(code) => return code,
+    };
+    if let Err(code) = args.resolve() {
+        return code;
     }
 
     // The log path is chosen before anything can fail, and it is never optional. A console session
     // whose evidence exists only in a terminal that has since scrolled is the rung-four failure
     // this tree keeps writing down; the file is the artifact.
-    let log_path = log.unwrap_or_else(|| {
-        let stamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.as_secs());
-        PathBuf::from(format!("target/board-console-{stamp}.log"))
-    });
-    if let Some(parent) = log_path.parent()
-        && let Err(e) = std::fs::create_dir_all(parent)
-    {
-        eprintln!("board-console: cannot create {}: {e}", parent.display());
+    let Some((log_path, mut sink)) =
+        open_capture("board-console", "board-console", args.log.take())
+    else {
         return ExitCode::from(4);
-    }
-    let file = match std::fs::File::create(&log_path) {
-        Ok(f) => f,
-        Err(e) => {
-            eprintln!("board-console: cannot write {}: {e}", log_path.display());
-            return ExitCode::from(4);
-        }
-    };
-    let mut sink = Tee {
-        file,
-        terminal: std::io::stdout(),
     };
 
     // A replayed log ends; a serial port does not. That single bit is the difference between
     // "the file is over" and "the board has not said anything yet", and getting it wrong turns
     // one of them into the other.
-    let session = if let Some(path) = &replay {
+    let session = if let Some(path) = &args.replay {
         let captured = match std::fs::File::open(path) {
             Ok(f) => f,
             Err(e) => {
@@ -383,61 +167,12 @@ pub(crate) fn board_console() -> ExitCode {
             }
         };
         eprintln!("--- replaying {} ---", path.display());
-        watch(captured, &mut sink, &policy, false)
+        board_console::watch::watch(captured, &mut sink, &args.policy, false)
     } else {
-        let path = match board_console::port::choose(port.as_deref()) {
-            Ok(p) => p,
-            Err(e) => {
-                eprintln!("board-console: {e}");
-                return ExitCode::from(4);
-            }
-        };
-        let (device, complaint) = match board_console::port::open(&path) {
-            Ok(pair) => pair,
-            Err(e) => {
-                eprintln!("board-console: cannot open {}: {e}", path.display());
-                return ExitCode::from(4);
-            }
-        };
-        if let Some(complaint) = complaint {
-            // Not fatal: an adapter whose driver refused one of the flags still delivers bytes,
-            // and the deadline does not depend on the read timeout.
-            eprintln!("board-console: {complaint} (continuing; the deadline does not need it)");
+        match watch_the_port(&args, &mut sink, &log_path) {
+            Ok(session) => session,
+            Err(code) => return code,
         }
-        eprintln!(
-            "--- {} at {} baud, logging to {}, up to {:?} ---",
-            path.display(),
-            board_console::port::BAUD,
-            log_path.display(),
-            policy.total
-        );
-        // The write half of the same descriptor. A second handle rather than a shared one because
-        // `watch` moves its source onto the reader thread, and a tty is happy to be read and
-        // written through two descriptors at once.
-        let mut writer = match stop_after {
-            Some(_) => match device.try_clone() {
-                Ok(w) => Some(w),
-                Err(e) => {
-                    eprintln!(
-                        "board-console: cannot open a write handle on {}: {e}",
-                        path.display()
-                    );
-                    return ExitCode::from(4);
-                }
-            },
-            None => None,
-        };
-        let escape = match (stop_after, writer.as_mut()) {
-            (Some(n), Some(w)) => {
-                eprintln!(
-                    "--- stopping after {n} armed draw(s); one byte will be sent to the board \
-                     and printed into the log ---"
-                );
-                Some(board_console::stop::Escape::new(n, w))
-            }
-            _ => None,
-        };
-        board_console::watch::watch_with(device, &mut sink, &policy, true, escape)
     };
 
     let session = match session {
@@ -450,6 +185,307 @@ pub(crate) fn board_console() -> ExitCode {
     };
 
     let _ = sink.flush();
+    report_console_session(&session, args.replay.is_none(), &log_path);
+    ExitCode::from(u8::try_from(session.exit_code()).unwrap_or(4))
+}
+
+/// What `board-console`'s command line asked for: a session to watch, or a reader that has
+/// already run and has its exit status.
+enum ConsoleCommand {
+    Watch(ConsoleArgs),
+    Done(ExitCode),
+}
+
+/// **A watching session's command line**, as [`ConsoleArgs::parse`] reads it and
+/// [`ConsoleArgs::resolve`] finishes it.
+struct ConsoleArgs {
+    port: Option<PathBuf>,
+    replay: Option<PathBuf>,
+    log: Option<PathBuf>,
+    policy: board_console::watch::Policy,
+    /// **The writing mode** (milestone 324). `None` is every reading session, which is still the
+    /// default and still the common case. `Some(n)` is `--stop-after n`, and `--stop` is `Some(1)`:
+    /// one mechanism with two spellings, so the two flags cannot disagree about anything.
+    stop_after: Option<usize>,
+    /// Whether `--for` and `--until` were given, as opposed to left at their defaults. A stop mode
+    /// has to know, because it changes both, and silently overriding something a person typed is
+    /// worse than refusing it.
+    until_given: bool,
+    cap_given: bool,
+    /// **`--until` is resolved after the loop** (milestone 324 part 3), because four of its words
+    /// name rungs of a board's firmware prologue and `--board` may come after it on the line.
+    /// Parsing it in place would make argument order load-bearing, which is the kind of thing
+    /// nobody remembers.
+    until_word: Option<String>,
+}
+
+impl ConsoleArgs {
+    /// Read the command line after the subcommand. `--tally` and `--exposure` run their readers
+    /// here and come back as [`ConsoleCommand::Done`]. `Err` is exit status 4, after saying why.
+    fn parse() -> Result<ConsoleCommand, ExitCode> {
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        let mut c = ConsoleArgs {
+            port: std::env::var_os("NIFE_BOARD_PORT").map(PathBuf::from),
+            replay: None,
+            log: None,
+            policy: board_console::watch::Policy::default(),
+            stop_after: None,
+            until_given: false,
+            cap_given: false,
+            until_word: None,
+        };
+        let mut i = 0;
+        while i < args.len() {
+            let value = |i: usize| -> Result<&str, ExitCode> {
+                args.get(i + 1).map(String::as_str).ok_or_else(|| {
+                    eprintln!("board-console: {} wants a value", args[i]);
+                    ExitCode::from(4)
+                })
+            };
+            match args[i].as_str() {
+                "--port" => c.port = Some(PathBuf::from(value(i)?)),
+                "--replay" => c.replay = Some(PathBuf::from(value(i)?)),
+                // **Milestone 249's reader**, and it is the only mode that does not watch anything: it
+                // reads a finished capture of *many* boots and reports what the placement lottery drew
+                // each time. It returns before the log file below is created, because a tally writes no
+                // capture of its own and a fresh empty `board-console-<stamp>.log` beside a fifty-boot
+                // one is litter a reader has to tell apart.
+                "--tally" => {
+                    let v = value(i)?;
+                    return Ok(ConsoleCommand::Done(board_console_tally(
+                        std::path::Path::new(v),
+                    )));
+                }
+                // **Milestone 225's reader**: a finished soak capture into the curve's exposure row.
+                // It takes the rest of the line, for the three columns no console line carries, and
+                // like `--tally` it returns before a capture file is created.
+                "--exposure" => {
+                    return Ok(ConsoleCommand::Done(board_console_exposure(&args[i + 1..])));
+                }
+                "--log" => c.log = Some(PathBuf::from(value(i)?)),
+                // **A writing mode, and the only two the ruling permits** (milestone 324). Each is a
+                // command with a purpose rather than a keyboard, which is the decision rather than
+                // caution about it: milestone 249's lane sent this escape by detaching the console,
+                // hit U-Boot's autoboot countdown with it, and paid a power cycle.
+                "--stop" => {
+                    c.stop_after = Some(1);
+                    // Not `i += 2` at the bottom of the loop: this flag takes no value, and the
+                    // increment below assumes every argument does.
+                    i += 1;
+                    continue;
+                }
+                "--stop-after" => match value(i)?.parse::<usize>() {
+                    Ok(n) if n >= 1 => c.stop_after = Some(n),
+                    _ => {
+                        eprintln!(
+                            "board-console: --stop-after wants a count of draws, 1 or more. \
+                             `--stop` is `--stop-after 1`."
+                        );
+                        return Err(ExitCode::from(4));
+                    }
+                },
+                "--for" | "--timeout" => match parse_duration(value(i)?) {
+                    Some(d) => {
+                        c.policy.total = d;
+                        c.cap_given = true;
+                    }
+                    None => {
+                        eprintln!("board-console: --for wants a duration like 90, 90s, 30m or 2h");
+                        return Err(ExitCode::from(4));
+                    }
+                },
+                "--quiet-after" => match parse_duration(value(i)?) {
+                    // Zero disables it: on a long sustained watch, a board that is legitimately quiet
+                    // for a while is not a hang, and the operator is the one who knows which.
+                    Some(d) => c.policy.quiet_after = if d.is_zero() { None } else { Some(d) },
+                    None => {
+                        eprintln!("board-console: --quiet-after wants a duration, or 0 to disable");
+                        return Err(ExitCode::from(4));
+                    }
+                },
+                "--until" => {
+                    c.until_word = Some(value(i)?.to_string());
+                    c.until_given = true;
+                }
+                // **Which board is on the other end** (milestone 324 part 3). It chooses the firmware
+                // prologue and nothing else: everything from the kernel banner up is shared, which is
+                // what calef's ruling settled and what `crates/board_console::board` implements.
+                "--board" => c.policy.board = board_profile(value(i)?)?,
+                other => {
+                    eprintln!("board-console: unknown argument {other}");
+                    eprintln!(
+                        "usage: cargo xtask board-console [--port <dev>] [--replay <log>] \
+                         [--log <file>] [--for <duration>] [--until <stage>] [--quiet-after <duration>] \
+                         [--board <name>]\n\
+                         \x20      cargo xtask board-console [--stop | --stop-after <n>]\n\
+                         \x20      cargo xtask board-console --tally <log>\n\
+                         \x20      cargo xtask board-console --exposure <log> [--machine <name>] \
+                         [--build <sha>] [--start <utc>]"
+                    );
+                    return Err(ExitCode::from(4));
+                }
+            }
+            i += 2;
+        }
+        Ok(ConsoleCommand::Watch(c))
+    }
+
+    /// **Finish what the loop could not**: `--until` against the board now named, and what a
+    /// writing mode changes about the rest of the session. `Err` is exit status 4, after saying
+    /// why.
+    fn resolve(&mut self) -> Result<(), ExitCode> {
+        // `--until`, now that `--board` is known. A word this board has no rung for is refused rather
+        // than watched for: `--until spl` against a machine with no SPL can only ever end in the time
+        // running out, and a refusal that names the words it does know costs the operator nothing.
+        if let Some(word) = &self.until_word {
+            match parse_stage(self.policy.board, word) {
+                Some(stage) => self.policy.until = stage,
+                None => {
+                    eprintln!(
+                        "board-console: --until {word} is not a stage {} reaches. Known: {}.",
+                        self.policy.board.name,
+                        stage_words(self.policy.board)
+                    );
+                    return Err(ExitCode::from(4));
+                }
+            }
+        }
+
+        // **What a writing mode changes about the rest of the session** (milestone 324), decided here
+        // rather than inside the crate because these are argument-shaped decisions and the crate's job
+        // is the decision to send.
+        let Some(n) = self.stop_after else {
+            return Ok(());
+        };
+        // A replay has no board on the other end of it. Refused rather than ignored: a person who
+        // typed `--stop --replay` believes a byte is going somewhere, and silently reading a file
+        // instead would be the tool agreeing with them.
+        if self.replay.is_some() {
+            eprintln!(
+                "board-console: --stop writes to a board and --replay reads a file, so the \
+                 two cannot be combined. Drop --replay to watch a real port."
+            );
+            return Err(ExitCode::from(4));
+        }
+        // Both answer "when does this session end", and a stage would usually answer it first: a
+        // soak is reached long before its reboot loop arms, so `--until soak --stop` would return
+        // before sending anything. Refused rather than overridden, for the reason above.
+        if self.until_given && self.policy.until.is_some() {
+            eprintln!(
+                "board-console: --stop and --until both say when the session ends, and \
+                 --until would win before the escape was ever sent. Drop --until; the stop is \
+                 the ending."
+            );
+            return Err(ExitCode::from(4));
+        }
+        self.policy.until = None;
+        if !self.cap_given {
+            // **Derived from the kernel's own draw length rather than picked.** One draw is
+            // `kernel/src/soak.rs`'s `REBOOT_AFTER_SECONDS` (120s) plus the twenty-odd seconds a
+            // boot takes, so 150s per draw, and one draw's slack on top for the session that
+            // attaches mid-draw and has to wait the current one out. `--stop-after 50` then gets
+            // the two unattended hours milestone 249's block prices it at.
+            //
+            // This is a default and not an agreement: getting it wrong costs a re-run with
+            // `--for`, never a wrong answer, which is why the number is duplicated here instead of
+            // being hoisted into a shared crate.
+            self.policy.total = std::time::Duration::from_secs(
+                150 * u64::try_from(n).unwrap_or(u64::MAX / 300) + 120,
+            );
+        }
+        Ok(())
+    }
+}
+
+/// `--board`'s profile by name, or exit status 4 after naming the ones there are.
+fn board_profile(name: &str) -> Result<&'static board_console::board::Profile, ExitCode> {
+    board_console::board::profile(name).ok_or_else(|| {
+        eprintln!(
+            "board-console: unknown board {name}. Known: {}.",
+            board_console::board::PROFILES
+                .iter()
+                .map(|p| p.name)
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+        eprintln!(
+            "board-console: argon has no profile on purpose; it has never booted \
+             nife and a prologue read out of vendor documentation would be a guess."
+        );
+        ExitCode::from(4)
+    })
+}
+
+/// **Watch a real serial port**, the one `--port` or `NIFE_BOARD_PORT` names or the one there is,
+/// and in a writing mode open its write half for the escape. `Err` is exit status 4, after saying
+/// why.
+fn watch_the_port(
+    args: &ConsoleArgs,
+    sink: &mut Tee,
+    log_path: &std::path::Path,
+) -> Result<std::io::Result<board_console::watch::Session>, ExitCode> {
+    let path = board_console::port::choose(args.port.as_deref()).map_err(|e| {
+        eprintln!("board-console: {e}");
+        ExitCode::from(4)
+    })?;
+    let (device, complaint) = board_console::port::open(&path).map_err(|e| {
+        eprintln!("board-console: cannot open {}: {e}", path.display());
+        ExitCode::from(4)
+    })?;
+    if let Some(complaint) = complaint {
+        // Not fatal: an adapter whose driver refused one of the flags still delivers bytes,
+        // and the deadline does not depend on the read timeout.
+        eprintln!("board-console: {complaint} (continuing; the deadline does not need it)");
+    }
+    eprintln!(
+        "--- {} at {} baud, logging to {}, up to {:?} ---",
+        path.display(),
+        board_console::port::BAUD,
+        log_path.display(),
+        args.policy.total
+    );
+    // The write half of the same descriptor. A second handle rather than a shared one because
+    // `watch` moves its source onto the reader thread, and a tty is happy to be read and
+    // written through two descriptors at once.
+    let mut writer = match args.stop_after {
+        Some(_) => match device.try_clone() {
+            Ok(w) => Some(w),
+            Err(e) => {
+                eprintln!(
+                    "board-console: cannot open a write handle on {}: {e}",
+                    path.display()
+                );
+                return Err(ExitCode::from(4));
+            }
+        },
+        None => None,
+    };
+    let escape = match (args.stop_after, writer.as_mut()) {
+        (Some(n), Some(w)) => {
+            eprintln!(
+                "--- stopping after {n} armed draw(s); one byte will be sent to the board \
+                 and printed into the log ---"
+            );
+            Some(board_console::stop::Escape::new(n, w))
+        }
+        _ => None,
+    };
+    Ok(board_console::watch::watch_with(
+        device,
+        sink,
+        &args.policy,
+        true,
+        escape,
+    ))
+}
+
+/// **The session's report under its transcript**: the summary, the writing mode's verdict, and
+/// the lines a person reads instead of the log. `from_port` is false for a replay.
+fn report_console_session(
+    session: &board_console::watch::Session,
+    from_port: bool,
+    log_path: &std::path::Path,
+) {
     eprintln!();
     eprintln!("board-console: {}", session.summary());
     // The writing mode's own verdict, on its own line, whenever the session did not already end on
@@ -476,7 +512,7 @@ pub(crate) fn board_console() -> ExitCode {
     if session.progress.userspace_ran() {
         eprintln!("board-console: the userspace progenitor built its child");
     }
-    if session.bytes == 0 && replay.is_none() {
+    if session.bytes == 0 && from_port {
         // The runbook's first triage row, said here so nobody starts by suspecting the kernel.
         eprintln!(
             "board-console: not one byte arrived. Check TX/RX are crossed, that the board has \
@@ -484,7 +520,40 @@ pub(crate) fn board_console() -> ExitCode {
         );
     }
     eprintln!("board-console: log at {}", log_path.display());
-    ExitCode::from(u8::try_from(session.exit_code()).unwrap_or(4))
+}
+
+/// **The capture a console session writes beside the terminal**: `log` if one was named, or
+/// `target/<stem>-<seconds>.log`. `None` after saying, as `command`, why it could not be written.
+/// Shared by `board-console`, `soak-test` and `job-mix`.
+pub(crate) fn open_capture(
+    command: &str,
+    stem: &str,
+    log: Option<PathBuf>,
+) -> Option<(PathBuf, Tee)> {
+    let log_path = log.unwrap_or_else(|| {
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs());
+        PathBuf::from(format!("target/{stem}-{stamp}.log"))
+    });
+    if let Some(parent) = log_path.parent()
+        && let Err(e) = std::fs::create_dir_all(parent)
+    {
+        eprintln!("{command}: cannot create {}: {e}", parent.display());
+        return None;
+    }
+    let file = match std::fs::File::create(&log_path) {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("{command}: cannot write {}: {e}", log_path.display());
+            return None;
+        }
+    };
+    let sink = Tee {
+        file,
+        terminal: std::io::stdout(),
+    };
+    Some((log_path, sink))
 }
 
 /// Write every byte to the log and to this terminal at once.

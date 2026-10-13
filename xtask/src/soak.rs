@@ -12,7 +12,7 @@ use crate::archive::{
     initial_ramdisk_path, initial_ramdisk_riscv, initial_ramdisk_x86, riscv_initial_ramdisk_path,
     x86_initial_ramdisk_path,
 };
-use crate::board::{Tee, parse_duration};
+use crate::board::{open_capture, parse_duration};
 use crate::disk::mkdisk;
 use crate::host::workspace_root;
 use crate::{
@@ -122,7 +122,9 @@ pub(crate) fn job_mix_sweep() -> ExitCode {
     // The log is not optional, for `soak-test`'s reason: a console session whose evidence exists
     // only in a terminal that has since scrolled is the failure this tree keeps writing down, and a
     // capture can be re-read with `script/board-console --replay`.
-    let Some((log_path, mut sink)) = open_log("job-mix", arch, run.log.clone()) else {
+    let Some((log_path, mut sink)) =
+        open_capture("job-mix", &format!("job-mix-{arch}"), run.log.clone())
+    else {
         return ExitCode::from(4);
     };
 
@@ -313,35 +315,6 @@ fn kernel_leg(command: &str, arch: &str) -> Option<(&'static str, &'static str, 
     }
 }
 
-/// **The capture a run writes beside the terminal**: `log` if one was named, or
-/// `target/<command>-<arch>-<seconds>.log`. `None` after saying why it could not be written.
-fn open_log(command: &str, arch: &str, log: Option<PathBuf>) -> Option<(PathBuf, Tee)> {
-    let log_path = log.unwrap_or_else(|| {
-        let stamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.as_secs());
-        PathBuf::from(format!("target/{command}-{arch}-{stamp}.log"))
-    });
-    if let Some(parent) = log_path.parent()
-        && let Err(e) = std::fs::create_dir_all(parent)
-    {
-        eprintln!("{command}: cannot create {}: {e}", parent.display());
-        return None;
-    }
-    let file = match std::fs::File::create(&log_path) {
-        Ok(f) => f,
-        Err(e) => {
-            eprintln!("{command}: cannot write {}: {e}", log_path.display());
-            return None;
-        }
-    };
-    let sink = Tee {
-        file,
-        terminal: std::io::stdout(),
-    };
-    Some((log_path, sink))
-}
-
 /// **The QEMU command for a run**: the runner script on the kernel this command built, with its
 /// initial ramdisk, `smp` cores if asked, the guest's console piped back, and the runner's own
 /// diagnostics left on this terminal.
@@ -491,7 +464,9 @@ pub(crate) fn soak_test() -> ExitCode {
         return ExitCode::from(4);
     }
 
-    let Some((log_path, mut sink)) = open_log("soak-test", &arch, run.log.clone()) else {
+    let Some((log_path, mut sink)) =
+        open_capture("soak-test", &format!("soak-test-{arch}"), run.log.clone())
+    else {
         return ExitCode::from(4);
     };
 
