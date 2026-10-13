@@ -108,6 +108,63 @@ Recommended: R1. It keeps one root per source and costs nothing but a fallback. 
 listed locations to the test authority now, which is R1's shape. If no: R2 or R3 is a decision on
 §196 clause 4 first.
 
+## C. How `jig` reaches a GitHub Release asset (asked on #2048, 2026-10-13 UTC)
+
+**Ruled.** calef answered *"a"* on 2026-10-12 (UTC), C2 below; §250's third amendment records it
+as clauses 11 to 13, and milestone 801's block has what was built. The boot test's six redirect
+probes were falsified on aarch64 on 2026-10-13 (UTC), twice. With the redirect pinned to the
+location's root instead of the index's, the off-root probe was fetched and the good one refused.
+With `MAX_REDIRECTS` at 2, the second redirect was followed. Both went red, and green again
+reverted. The question as it was put follows.
+
+calef ruled on 2026-10-12 (UTC) that basalt's packages are GitHub Release assets and its index is
+on GitHub Pages (milestone 801's block). An asset's `download_count` is then the first adoption
+signal (milestone 576 (how many systems are out there, and what do they run)).
+
+This corrects a premise. B's ruling, *"X1 only"*, rests on its table's line that GitHub's release
+asset host was measured on Let's Encrypt. That holds for the host the bytes come from, not for the
+URL a client is given.
+
+Measured 2026-10-13 (UTC) with `openssl s_client` and `curl --http1.0`:
+
+| Host | Chain ends at | Role |
+|---|---|---|
+| `nifeos.github.io` (Pages, so `basalt.nifeos.org`) | ISRG Root X1 | the index, and basalt's `targets/` copy |
+| `github.com` | Sectigo Public Server Authentication Root E46, sent cross-signed by USERTrust ECC (cross certificate valid to 2038-01-18) | the stable download URL, which answers `302` |
+| `release-assets.githubusercontent.com` | ISRG Root X1 | the redirect's target |
+
+The redirect is to a signed URL whose path is 930 bytes and which expired 43 minutes after it was
+fetched. `download_count` counts requests to `github.com`, so a client that skips that host is
+not counted. `jig` today pins X1 for every host, and `pinned_tls_client` follows no redirect, so it
+passes over the listed asset and installs from basalt's `targets/` copy: it works, and counts
+nothing. Neither `api.github.com` nor `codeload.github.com` helps; both chain to the same Sectigo
+root.
+
+| Option | What it costs | Verdict |
+|---|---|---|
+| C1. `jig` carries a second root, Sectigo E46, for every listed location, and follows one redirect | One root (about 600 bytes, recalled) in every image. The redirect: a request buffer larger than 512 bytes, a `Location` header read, Q1's address check again on the new host. A listed location then has two roots, which §196 clause 4 refuses | Works, but wider than it needs to be |
+| C2. The index names each listed location's root, from the roots `jig` carries by name (`isrg-root-x1`, and E46 under a provisional name); unnamed means X1. One redirect is followed, HTTPS only, its target held to Q1's address check and to X1 | C1's code plus one token per location in the stand-in format. This is the per-location root clause 10 left open as "a later field", and it keeps one root per source | Recommended |
+| C3. The index lists the redirected URL | It lasts under an hour, its path is 930 bytes against `PATH_MAX`'s 256, and fetching it is not counted | Refused |
+| C4. Keep X1 only; `jig` fetches from Pages, and counting waits for a host with logs | Nothing to build. The Release counts then show only downloads made by hand, which undoes the measurement half of the 2026-10-12 ruling | The answer if no |
+| C5. No certificate check for listed locations, since the digest decides | Already refused in B: it voids the HTTPS-only safeguard | Refused |
+
+Why C2. The roots stay compiled in, so a signed index can only choose among roots the image
+already trusts, never add one. A listed location keeps one root, which is §196's rule. If GitHub
+changes authority again (it moved `github.com` from DigiCert to Sectigo in 2024, recalled), basalt
+edits the index and fetches fall back to the Pages copy until it does: counts are lost for a while,
+installs never are. E46 rather than USERTrust ECC because E46 is the root of the issuing chain and
+outlives the cross certificate; its own expiry was not read for this. Prior art, recalled
+rather than read: crates.io's download endpoint counts and then redirects to `static.crates.io`, the
+same shape, and `cargo` follows it under a full root store.
+
+Would C2 still win at equal cost? Against C1, yes, since it is narrower for one more token. Against
+C4, which is cheaper, it wins on the ruling it serves rather than on effort. Reversibility: no image
+carrying any of this has shipped, so today every option is a code change; once images ship with
+E46, removing it costs a new image.
+
+If no: C4, and basalt's publish keeps listing the asset, since the copy on Pages already serves
+`jig`. Blocked until ruled: `jig` counting anything. Nothing else waits.
+
 ## What this does not decide
 
 The TUF client and verifier are milestone 858's items 4 and 5, and the trust table is milestone

@@ -17,6 +17,11 @@ answers from one port:
                   pinning pinned_tls_client/fixtures/pinned-root.der accepts it
   stranger.test   a chain for stranger.test from an authority nothing pins: a
                   well-formed certificate the client must refuse by its root
+  releases.basalt.test, offroot.basalt.test
+                  a chain from the second test authority (second-root.der),
+                  which stands in for Sectigo E46: releases.basalt.test is
+                  github.com's stand-in, and offroot.basalt.test a redirect
+                  target off the index's root (calef's C2 on #2048)
   anything else   the basalt.test chain again, so a client asking for another
                   name is shown a valid certificate for the wrong host and must
                   refuse it by name
@@ -37,6 +42,15 @@ After the handshake it answers one HTTP/1.0 GET:
                       the repository's own copy, the fallback; `uptime`'s has
                       one byte flipped halfway, a lying repository only the
                       index's digest can refuse
+  GET /releases/<stem>.nifepkg
+                      302 to basalt.test's targets: a GitHub Release download's
+                      one redirect (calef's C2 of 2026-10-12 UTC on #2048)
+  GET /twice/<stem>.nifepkg
+                      302 to basalt.test's /twice-again/, which 302s again: the
+                      second redirect a client must refuse
+  GET /private/<stem>.nifepkg, GET /offroot/<stem>.nifepkg
+                      302 to private.basalt.test (a private address) or to
+                      offroot.basalt.test (a chain off the index's root)
   GET /bytes/<n>      n bytes of a repeating pattern, for measuring throughput
   anything else       404, with a Content-Length like every reply
 
@@ -76,6 +90,17 @@ REBOUND_STEM = "rebound-0.1.0-"
 GENUINE_STEM = "greeting-0.1.0-"
 CHANNEL = "rolling"
 TARGET = re.compile(rb"^/rolling/targets/([A-Za-z0-9._-]+\.nifepkg)$")
+# calef's C2 (2026-10-12 UTC, #2048): where each redirect probe sends the client.
+# The peer routes by path alone; the client's TLS name is what differs.
+PEER = b"https://%s:8443"
+REDIRECTS = {
+    b"releases": PEER % b"basalt.test" + b"/rolling/targets/",
+    b"twice": PEER % b"basalt.test" + b"/twice-again/",
+    b"twice-again": PEER % b"basalt.test" + b"/rolling/targets/",
+    b"private": PEER % b"private.basalt.test" + b"/rolling/targets/",
+    b"offroot": PEER % b"offroot.basalt.test" + b"/rolling/targets/",
+}
+REDIRECT = re.compile(rb"^/([a-z-]+)/([A-Za-z0-9._-]+\.nifepkg)$")
 
 
 def stand_in_index():
@@ -162,18 +187,21 @@ class Connection:
                 self.fill()
 
 
-def reply(conn, status, body):
-    head = b"HTTP/1.0 %s\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n" % (status, len(body))
+def reply(conn, status, body, extra=b""):
+    head = b"HTTP/1.0 %s\r\nContent-Type: application/octet-stream\r\n%sContent-Length: %d\r\n\r\n" % (status, extra, len(body))
     conn.call(conn.tls.write, head + body)
 
 
 def main():
     pinned = context("basalt-test")
     stranger = context("stranger-test")
+    releases = context("releases-test")
 
     def choose(tls, name, _ctx):
         if name == "stranger.test":
             tls.context = stranger
+        elif name in ("releases.basalt.test", "offroot.basalt.test"):
+            tls.context = releases
 
     pinned.sni_callback = choose
     conn = Connection(pinned)
@@ -200,6 +228,9 @@ def main():
         reply(conn, b"200 OK", stand_in_index())
     elif TARGET.match(path) and target(TARGET.match(path).group(1)) is not None:
         reply(conn, b"200 OK", target(TARGET.match(path).group(1)))
+    elif REDIRECT.match(path) and REDIRECT.match(path).group(1) in REDIRECTS:
+        kind, name = REDIRECT.match(path).groups()
+        reply(conn, b"302 Found", b"", b"Location: %s%s\r\n" % (REDIRECTS[kind], name))
     elif BYTES.match(path):
         n = int(BYTES.match(path).group(1))
         pattern = bytes(range(256))

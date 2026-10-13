@@ -108,14 +108,61 @@ there, with options, under `needs-architect` (`notes/packages/the-index-format.m
   (recommended: one index at up to two addresses on different registrable domains, one pin).
 - B. Which root a listed HTTPS location must chain to (recommended: the index's own pin).
 - The channel's name. `rolling` is provisional.
+- C. How `jig` reaches a GitHub Release asset, whose download starts at `github.com` (Sectigo, not
+  X1) and redirects. Ruled 2026-10-12 (UTC) on #2048, below.
 
 Not rulings but calef's hands: DNS and a host for `basalt.nifeos.org`, and the exit criterion on
-xenon. Checked 2026-10-12 (UTC): `nifeos.org` answers no DNS query at all.
+xenon. Corrected 2026-10-13 (UTC): `nifeos.org` now has a zone (Netlify DNS) with no record for
+`basalt`; on 2026-10-12 it answered no query at all. basalt's README lists the steps.
 
 One fork this lane decided rather than asked, because it is reversible and in-tree: how a manifest
 names a fixed directory (809's open fork). `Manifest::indexes`, granted like the installer, puts
 `activation/indexes` at the directory slot. It lives under `activation/` because it decides what
 installs, and because `packages/indexes` could collide with a package named `indexes`.
+
+## Ruled 2026-10-12 (UTC): where `basalt.nifeos.org` is served
+
+calef was asked whether the host should be a VPS running Caddy, GitHub Pages, Cloudflare, or S3 and
+CloudFront. He answered *"b"*, GitHub Pages. Asked how adoption would then be measured, he answered
+*"Packages on Releases, index on Pages"*. Later the same day: basalt must not become the
+organization's Pages site, since `www.nifeos.org` will be its own site from
+`nifeos/nifeos.github.io`; basalt is a project site of `nifeos/basalt` at its own custom domain.
+
+- The index (`/rolling/metadata/`) is served by GitHub Pages at `basalt.nifeos.org`, a CNAME to
+  `nifeos.github.io`, whose certificate chains to ISRG Root X1 (measured 2026-10-13), so §250's pin
+  holds unchanged.
+- Package bytes are GitHub Release assets, one Release per publish, each listed in its index line
+  as a location. §250 clause 2 already lets bytes live anywhere. An asset's `download_count` is the
+  first adoption signal (milestone 576).
+- basalt's `publish` job (nifeos/basalt#13) builds this. It also keeps clause 9's copy under
+  `targets/` on Pages, the fallback when the Release cannot be reached.
+- The image's production sources exist: `package_index::BASALT_SOURCES`, packed when an image is
+  built with `NIFE_INDEX_SOURCES=basalt` (lane `lane/basalt-on-pages-and-releases`). Every check
+  still boots the test peer.
+
+## Ruled 2026-10-12 (UTC): a listed location names its root, and one redirect is followed
+
+Question C, asked on #2048 with the options in `notes/packages/the-index-format.md`. calef answered
+*"a"*, the recommended C2, and §250's amendment of that date records it as clauses 11 to 13.
+
+- The signed index may name, per listed location, the root its certificate must chain to, among the
+  roots the image carries: `<root>=https://...` in the stand-in encoding. A location naming none
+  chains to the index's root. The image carries further roots on `location-root` lines in its
+  sources; basalt's names `sectigo-root-e46`, the root `github.com` chains to.
+- A fetch from a listed location follows exactly one redirect. It must be an absolute HTTPS URL,
+  its host is held to Q1's public-address check and to the index's root, and a second is refused.
+- The digest check is unchanged.
+
+Built 2026-10-13 (UTC), lane `lane/basalt-on-pages-and-releases`. `pinned_tls_client::listed` is
+the fetch, which `jig` and `package_fetch_exerciser` both call. `package_index` reads the root
+token, `Sources::root_for` chooses it, and `pinned_tls_client::SECTIGO_ROOT_E46` is the root,
+checked byte for byte against Sectigo's and macOS's copies. An ignored host test fetched ripgrep's
+Release asset through it: `github.com` under E46, a `302` with a 931-byte path, then the bytes from
+an X1 host. `a_package_is_fetched_through_the_index_by_name_over_tls_and_judged_by_its_digest` runs
+six redirect probes on all three architectures. One good redirect is fetched and admitted. Refused:
+an unnamed root, a root the image does not carry, a second redirect, a private address and a host
+off the index's root. Falsified on aarch64 twice: a redirect pinned to the
+location's root fetched from the off-root host, and two redirects allowed fetched through both.
 
 ## What it waits on
 
@@ -143,8 +190,16 @@ exists. aarch64 silicon waits on an aarch64 board.
 
 ## BUGS
 
-- Every image names the test peer (`basalt.test`, at 10.0.2.9 by the sources' address) and the
-  test root. The production sources wait on a host for `basalt.nifeos.org` and on milestone 909.
+- An image names the test peer (`basalt.test`, at 10.0.2.9 by the sources' address) and the test
+  root unless it is built with `NIFE_INDEX_SOURCES=basalt`. Nothing builds it that way until
+  milestone 909, and no boot here proves the production text, since a check may not depend on a
+  host outside the runner.
+- Under slirp no public address can be reached, so the boot test's redirect probes judge addresses
+  with a stand-in that admits the peer at 10.0.2.9 (`package_fetch_exerciser`'s
+  `stand_in_public`). `jig` always uses `public_address`, and at the prompt it reaches no listed
+  location, so its redirect path is proved by the exerciser calling the same function.
+- If GitHub moves `github.com` to a root the image does not carry, `jig` passes over the Release
+  and installs from the Pages copy, uncounted, until an image carries the new root.
 - At the prompt the index host is reached by the address the sources give, not by name, because
   slirp's name server is the host's (milestone 892 (a std program at the prompt holds the network
   and a name resolver)). Resolution by name is proved in the kernel harness.

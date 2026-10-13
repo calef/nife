@@ -601,6 +601,7 @@ version = "0.1.0"
 dependencies = [
  "cryptography_provider",
  "http_response",
+ "package_index",
  "rustls",
 ]
 

@@ -40,6 +40,13 @@ describes for the inbound gate's prober.
                        that connects by name reaches the second answer; the
                        fixed client dials the first, the one it checked, and
                        slirp refuses it.
+  releases.basalt.test, offroot.basalt.test
+                       A 10.0.2.9: github.com's stand-in and a redirect target off
+                       the index's root; helpers/tls-peer presents the second test
+                       authority's chain for both (calef's C2 on #2048)
+  private.basalt.test  A 10.0.2.2: a redirect target at a private address that is
+                       not the peer, so the exerciser's stand-in judge, which
+                       admits 10.0.2.9 alone, still refuses it
   gone.basalt.test     falls to REFUSED below: the image's first index address,
                        lost, so the client moves to its backup (basalt.test)
   anything else        REFUSED
@@ -103,8 +110,10 @@ def respond(query_id, question, asked):
     # so `zone` is where "nife.test" begins inside it, for records that compress into it.
     at = 12
     zone = at + 1 + len(asked.split(".")[0])
-    if asked in ("basalt.test", "packages.basalt.test"):
+    if asked in ("basalt.test", "packages.basalt.test", "releases.basalt.test", "offroot.basalt.test"):
         return answer(query_id, question, 0, [record(pointer(at), A, PEER)])
+    if asked == "private.basalt.test":
+        return answer(query_id, question, 0, [record(pointer(at), A, bytes([10, 0, 2, 2]))])
     if asked == REBIND:
         return answer(query_id, question, 0, [record(pointer(at), A, rebind_answer())])
     if asked == "packages.nife.test":

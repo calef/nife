@@ -126,10 +126,32 @@ pub fn public_address(ip: [u8; 4]) -> bool {
         && !(ip[0] == 100 && (64..128).contains(&ip[1]))
 }
 
-/// **One place the index says a package's bytes may be fetched**: `https://`, a host, an optional
-/// port, a path. No user, no fragment; a query is part of the path. HTTPS only (Q1).
+/// **The longest path a redirect may send a client to**: a GitHub Release asset's signed URL has
+/// a 931-byte path (measured 2026-10-13 UTC), far past [`PATH_MAX`], which bounds only what an
+/// index may list. Name: provisional, minted 2026-10-13 (UTC) by lane
+/// `lane/basalt-on-pages-and-releases`.
+pub const REDIRECT_PATH_MAX: usize = 2048;
+
+/// **How many redirects a fetch from a listed location follows: one** (calef, 2026-10-12 UTC, on
+/// #2048, option C2). A Release download is one hop from `github.com` to the host that serves the
+/// bytes; a second is refused rather than followed, so a listed location cannot walk a client
+/// anywhere further than one step from where the signed index pointed. Name: provisional, as
+/// above.
+pub const MAX_REDIRECTS: usize = 1;
+
+/// **One place the index says a package's bytes may be fetched**: optionally the name of the root
+/// its certificate must chain to, then `https://`, a host, an optional port, a path. No user, no
+/// fragment; a query is part of the path. HTTPS only (Q1).
+///
+/// The root, written `<root>=https://...`, is calef's C2 of 2026-10-12 (UTC) on #2048: the signed
+/// index chooses, per location, among the roots the image carries ([`Sources::root_for`]), and a
+/// location that names none chains to the index's own root, ISRG Root X1 in production. A
+/// redirect's target ([`Location::redirect`]) never names one: it is held to the index's root.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Location<'a> {
+    /// The root the index named for this location, or `None` for the index's own. Name:
+    /// provisional, minted 2026-10-13 (UTC) by lane `lane/basalt-on-pages-and-releases`.
+    pub root: Option<&'a str>,
     /// A DNS name, or a canonical dotted-decimal IPv4 address [`public_address`] admits.
     pub host: &'a str,
     /// The port written, or 443.
@@ -143,6 +165,29 @@ impl<'a> Location<'a> {
     /// included; a host that ends in a number but is not a canonical IPv4 address; and an address
     /// literal outside [`public_address`].
     pub fn parse(text: &'a str) -> Result<Location<'a>, LocationRefusal<'a>> {
+        let (root, url) = if text.starts_with("https://") {
+            (None, text)
+        } else {
+            match text.split_once('=') {
+                Some((root, url)) if is_root_name(root) => (Some(root), url),
+                _ => return Err(LocationRefusal::Malformed),
+            }
+        };
+        let at = Location::url(url, PATH_MAX)?;
+        Ok(Location { root, ..at })
+    }
+
+    /// **A redirect's `Location`, read as a place to fetch from**: an absolute `https://` URL with
+    /// no root of its own and a path of up to [`REDIRECT_PATH_MAX`] bytes, refused on the same
+    /// terms as [`Location::parse`] otherwise. A relative `Location` is refused: the one redirect
+    /// this follows (GitHub's) is absolute, and refusing is cheaper than resolving one right.
+    ///
+    /// Name: provisional, minted 2026-10-13 (UTC) by lane `lane/basalt-on-pages-and-releases`.
+    pub fn redirect(text: &'a str) -> Result<Location<'a>, LocationRefusal<'a>> {
+        Location::url(text, REDIRECT_PATH_MAX)
+    }
+
+    fn url(text: &'a str, path_max: usize) -> Result<Location<'a>, LocationRefusal<'a>> {
         use LocationRefusal::Malformed;
         let rest = text.strip_prefix("https://").ok_or(Malformed)?;
         let slash = rest.find('/').ok_or(Malformed)?;
@@ -151,7 +196,7 @@ impl<'a> Location<'a> {
             Some((host, port)) => (host, parse_port(port).ok_or(Malformed)?),
             None => (authority, 443),
         };
-        if !is_host(host) || path.len() > PATH_MAX || !path.bytes().all(|b| b.is_ascii_graphic()) {
+        if !is_host(host) || path.len() > path_max || !path.bytes().all(|b| b.is_ascii_graphic()) {
             return Err(Malformed);
         }
         // A fragment is the browser's and never reaches a server.
@@ -160,7 +205,12 @@ impl<'a> Location<'a> {
         }
         match ipv4_literal(host)? {
             Some(ip) if !public_address(ip) => Err(LocationRefusal::Private(Ipv4Addr::from(ip))),
-            _ => Ok(Location { host, port, path }),
+            _ => Ok(Location {
+                root: None,
+                host,
+                port,
+                path,
+            }),
         }
     }
 
@@ -186,12 +236,26 @@ impl<'a> Location<'a> {
         &self,
         resolved: &'r [SocketAddr],
     ) -> Result<CheckedLocation<'a, 'r>, AddressRefusal> {
+        self.check_by(resolved, public_address)
+    }
+
+    /// [`Location::check`] with the judge of a public address passed in. A client passes
+    /// [`public_address`] and nothing else; `package_fetch_exerciser` passes one that also admits
+    /// the runners' peer, because under QEMU's slirp no public address can be reached at all (a
+    /// `guestfwd` outside 10.0.2.0/24 is refused, measured 2026-10-13 UTC), and its redirect test
+    /// needs one host that passes. Name: provisional, minted 2026-10-13 (UTC) by lane
+    /// `lane/basalt-on-pages-and-releases`.
+    pub fn check_by<'r>(
+        &self,
+        resolved: &'r [SocketAddr],
+        public: impl Fn([u8; 4]) -> bool,
+    ) -> Result<CheckedLocation<'a, 'r>, AddressRefusal> {
         if resolved.is_empty() {
             return Err(AddressRefusal::NoAddress);
         }
         for address in resolved {
             match address {
-                SocketAddr::V4(v4) if public_address(v4.ip().octets()) => {}
+                SocketAddr::V4(v4) if public(v4.ip().octets()) => {}
                 SocketAddr::V4(v4) => return Err(AddressRefusal::Private(*v4.ip())),
                 SocketAddr::V6(v6) => return Err(AddressRefusal::NotJudged(*v6.ip())),
             }
@@ -591,6 +655,9 @@ pub mod fixture {
 //   `notes/packages/the-index-format.md`). A name is one the client carries (`isrg-root-x1`, §250's
 //   production pin); hex is a whole certificate in DER, for a root no client carries, such as the
 //   test authority.
+// - `location-root <name> [<root>]`, at most [`MAX_LOCATION_ROOTS`]: a further root the signed
+//   index may name for a listed location (calef's C2 on #2048); a bare name is one the client
+//   carries, as `sectigo-root-e46`. The keyword is provisional (2026-10-13 UTC).
 //
 // Every line must be read or the whole text is refused, [`crate::Index::parse`]'s rule, and there
 // must be at least one repository and exactly one root.
@@ -601,6 +668,25 @@ pub mod fixture {
 /// **The archive entry an image's index sources travel in**, packed before the measurement table
 /// so the table vouches for it, as `package_archive::CATALOG` is. Name: provisional.
 pub const SOURCES_ENTRY: &str = "package_index_sources";
+
+/// **basalt's production sources**: the text an image built for real machines carries, where
+/// the test image carries `helpers/tls-peer` and the test authority (xtask's
+/// `image_index_sources`, which chooses between the two).
+///
+/// `basalt.nifeos.org` on 443, the provisional channel, pinned to ISRG Root X1, as §250 (an image
+/// names its distribution's package index) rules. calef ruled on 2026-10-12 (UTC) that the host
+/// is GitHub Pages under that custom domain; `nifeos.github.io` chains to X1 (measured 2026-10-13
+/// UTC), so the pin holds there. §250's second address (its 2026-10-10 amendment, clause 6) is
+/// missing because its domain is not chosen yet.
+///
+/// Name: provisional, minted 2026-10-13 (UTC) by lane `lane/basalt-on-pages-and-releases`.
+pub const BASALT_SOURCES: &str = "\
+# basalt's index (§250): GitHub Pages under basalt.nifeos.org, pinned to ISRG Root X1.
+repository basalt.nifeos.org 443 rolling
+root isrg-root-x1
+# GitHub Release assets: github.com chains to Sectigo E46 (calef's C2 on #2048, 2026-10-12 UTC).
+location-root sectigo-root-e46
+";
 
 /// **The index store's directory**, inside the activation directory: `activation/indexes`, which
 /// the progenitor opens for a package manager holding `grant_plan::Manifest::indexes` (milestone
@@ -657,9 +743,16 @@ impl Root<'_> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Sources<'a> {
     repositories: [Option<Configured<'a>>; MAX_REPOSITORIES],
-    /// The one root.
+    /// The index's root: every repository here chains to it, and so does a listed location that
+    /// names no root, and so does a redirect's target.
     pub root: Root<'a>,
+    location_roots: [Option<(&'a str, Root<'a>)>; MAX_LOCATION_ROOTS],
 }
+
+/// **The most further roots an image may carry for listed locations**: Sectigo E46 for GitHub
+/// Releases (calef's C2 on #2048, 2026-10-12 UTC), and room for one more. Name: provisional,
+/// minted 2026-10-13 (UTC) by lane `lane/basalt-on-pages-and-releases`.
+pub const MAX_LOCATION_ROOTS: usize = 2;
 
 /// Why [`Sources::parse`] refused the text, with the line's number from 1 where one line is why.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -672,6 +765,8 @@ pub enum SourcesRefusal {
     NoRepository,
     /// No root, or a second one.
     OneRoot,
+    /// More than [`MAX_LOCATION_ROOTS`] `location-root` lines, or one name twice.
+    TooManyLocationRoots,
 }
 
 impl<'a> Sources<'a> {
@@ -680,6 +775,8 @@ impl<'a> Sources<'a> {
         let mut repositories = [None; MAX_REPOSITORIES];
         let mut count = 0;
         let mut root = None;
+        let mut location_roots = [None; MAX_LOCATION_ROOTS];
+        let mut further = 0;
         for (i, line) in text.split('\n').enumerate() {
             let number = i + 1;
             let line = line.trim_end_matches('\r');
@@ -705,6 +802,29 @@ impl<'a> Sources<'a> {
                     }
                     root = Some(root_word(named).ok_or(SourcesRefusal::BadLine(number))?);
                 }
+                // `location-root <name> [<root>]`: a root the signed index may name for a listed
+                // location. Without a second word the name is one the client carries itself.
+                Some("location-root") => {
+                    let name = words
+                        .next()
+                        .filter(|n| is_root_name(n))
+                        .ok_or(SourcesRefusal::BadLine(number))?;
+                    let found = match words.next() {
+                        None => Root::Named(name),
+                        Some(word) => root_word(word).ok_or(SourcesRefusal::BadLine(number))?,
+                    };
+                    if words.next().is_some() {
+                        return Err(SourcesRefusal::BadLine(number));
+                    }
+                    if location_roots.iter().flatten().any(|(n, _)| *n == name) {
+                        return Err(SourcesRefusal::TooManyLocationRoots);
+                    }
+                    let slot = location_roots
+                        .get_mut(further)
+                        .ok_or(SourcesRefusal::TooManyLocationRoots)?;
+                    *slot = Some((name, found));
+                    further += 1;
+                }
                 _ => return Err(SourcesRefusal::BadLine(number)),
             }
         }
@@ -714,12 +834,36 @@ impl<'a> Sources<'a> {
         Ok(Sources {
             repositories,
             root: root.ok_or(SourcesRefusal::OneRoot)?,
+            location_roots,
         })
     }
 
     /// The repositories, in the order they are tried.
     pub fn repositories(&self) -> impl Iterator<Item = Configured<'a>> + '_ {
         self.repositories.iter().flatten().copied()
+    }
+
+    /// **The root a listed location's certificate must chain to** (calef's C2, 2026-10-12 UTC, on
+    /// #2048): the index's own when the location names none; otherwise the `location-root` of
+    /// that name, or the index's root when it is a named root of that name. `None` when the index
+    /// names a root this image does not carry, and the client passes over that location.
+    ///
+    /// The signed index can only choose among roots the image already trusts, never add one: the
+    /// roots are the image's (measured with it), and the index carries names.
+    ///
+    /// Name: provisional, minted 2026-10-13 (UTC) by lane `lane/basalt-on-pages-and-releases`.
+    pub fn root_for(&self, location: &Location<'_>) -> Option<Root<'a>> {
+        let Some(name) = location.root else {
+            return Some(self.root);
+        };
+        if self.root == Root::Named(name) {
+            return Some(self.root);
+        }
+        self.location_roots
+            .iter()
+            .flatten()
+            .find(|(n, _)| *n == name)
+            .map(|(_, root)| *root)
     }
 }
 
@@ -741,6 +885,17 @@ fn repository<'a>(words: &mut core::str::Split<'a, char>) -> Option<Configured<'
     })
 }
 
+/// A root's name: lowercase letters, digits and hyphens, with at least one hyphen, so it is never
+/// all hex and never a host.
+fn is_root_name(word: &str) -> bool {
+    !word.is_empty()
+        && word.len() <= 64
+        && word.contains('-')
+        && word
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+}
+
 /// A root's word: a name of lowercase letters, digits and hyphens, or an even run of hex digits
 /// long enough to be a certificate (a name is never all hex, since every name the client carries
 /// has a hyphen).
@@ -751,12 +906,7 @@ fn root_word(word: &str) -> Option<Root<'_>> {
     if hex {
         return Some(Root::Der(word));
     }
-    let named = !word.is_empty()
-        && word.contains('-')
-        && word
-            .bytes()
-            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-');
-    named.then_some(Root::Named(word))
+    is_root_name(word).then_some(Root::Named(word))
 }
 
 #[cfg(test)]
@@ -786,10 +936,72 @@ mod sources_tests {
 
     #[test]
     fn the_production_pin_is_named() {
-        let s = Sources::parse("repository basalt.nifeos.org 443 rolling\nroot isrg-root-x1\n")
-            .unwrap();
+        let s = Sources::parse(BASALT_SOURCES).unwrap();
         assert_eq!(s.root, Root::Named("isrg-root-x1"));
         assert_eq!(s.root.der(&mut [0u8; 8]), None);
+        let r: Vec<_> = s.repositories().collect();
+        assert_eq!(r.len(), 1);
+        assert_eq!(
+            r[0].repository,
+            Repository::new("basalt.nifeos.org", 443, PROVISIONAL_CHANNEL).unwrap()
+        );
+        // Resolved by name, never by an address the image fixes.
+        assert_eq!(r[0].address, None);
+    }
+
+    #[test]
+    fn a_listed_location_chains_to_the_root_the_index_names_and_the_image_carries() {
+        let s = Sources::parse(BASALT_SOURCES).unwrap();
+        let at = |t| Location::parse(t).unwrap();
+        let x1 = Root::Named("isrg-root-x1");
+        assert_eq!(s.root_for(&at("https://basalt.nifeos.org/p")), Some(x1));
+        assert_eq!(
+            s.root_for(&at("isrg-root-x1=https://a.example/p")),
+            Some(x1)
+        );
+        assert_eq!(
+            s.root_for(&at(
+                "sectigo-root-e46=https://github.com/o/r/releases/download/t/x"
+            )),
+            Some(Root::Named("sectigo-root-e46"))
+        );
+        // A name the image does not carry: the index cannot add a root.
+        assert_eq!(s.root_for(&at("some-other-root=https://a.example/p")), None);
+        // The test image names its second authority by hex.
+        let test = Sources::parse(
+            "repository basalt.test 8443 rolling 10.0.2.9\n\
+             root 3082aabb3082aabb3082aabb3082aabb3082aabb3082aabb3082aabb3082aabb\n\
+             location-root test-second-root 3082ccdd3082ccdd3082ccdd3082ccdd3082ccdd3082ccdd3082ccdd3082ccdd\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            test.root_for(&at("test-second-root=https://releases.basalt.test:8443/x")),
+            Some(Root::Der(h)) if h.starts_with("3082ccdd")
+        ));
+        assert!(
+            matches!(test.root_for(&at("https://basalt.test/x")), Some(Root::Der(h)) if h.starts_with("3082aabb"))
+        );
+    }
+
+    #[test]
+    fn location_roots_are_bounded_and_named_once() {
+        let base = "repository h.example 443 rolling\nroot isrg-root-x1\n";
+        let refused = [
+            (
+                "location-root a-b\nlocation-root c-d\nlocation-root e-f\n",
+                SourcesRefusal::TooManyLocationRoots,
+            ),
+            (
+                "location-root a-b\nlocation-root a-b\n",
+                SourcesRefusal::TooManyLocationRoots,
+            ),
+            ("location-root nohyphen\n", SourcesRefusal::BadLine(3)),
+            ("location-root a-b c-d e-f\n", SourcesRefusal::BadLine(3)),
+        ];
+        for (extra, why) in refused {
+            let text = std::format!("{base}{extra}");
+            assert_eq!(Sources::parse(&text), Err(why), "{extra:?}");
+        }
     }
 
     #[test]
@@ -892,6 +1104,62 @@ mod tests {
             Location::parse("https://8.8.8.8/p").unwrap().host,
             "8.8.8.8"
         );
+    }
+
+    #[test]
+    fn a_location_may_name_its_root_and_a_redirect_may_not() {
+        let l = Location::parse("sectigo-root-e46=https://github.com/o/r/releases/download/t/x")
+            .unwrap();
+        assert_eq!((l.root, l.host), (Some("sectigo-root-e46"), "github.com"));
+        assert_eq!(Location::parse("https://h/p").unwrap().root, None);
+        // A query that carries a URL is a path, not a root.
+        let q = Location::parse("https://h/p?u=https://x/").unwrap();
+        assert_eq!((q.root, q.path), (None, "/p?u=https://x/"));
+        for bad in [
+            "Root=https://h/p",
+            "nohyphen=https://h/p",
+            "a-b=http://h/p",
+            "=https://h/p",
+        ] {
+            assert_eq!(
+                Location::parse(bad),
+                Err(LocationRefusal::Malformed),
+                "{bad}"
+            );
+        }
+        // GitHub's redirect: a 931-byte path, read as a redirect and refused as a listing.
+        let long = std::format!("https://release-assets.example/{}", "a".repeat(930));
+        assert_eq!(Location::redirect(&long).unwrap().path.len(), 931);
+        assert_eq!(Location::parse(&long), Err(LocationRefusal::Malformed));
+        let too_long = std::format!("https://h/{}", "a".repeat(REDIRECT_PATH_MAX));
+        assert_eq!(
+            Location::redirect(&too_long),
+            Err(LocationRefusal::Malformed)
+        );
+        for bad in [
+            "a-b=https://h/p",
+            "http://h/p",
+            "/relative",
+            "https://10.0.0.1/p",
+        ] {
+            assert!(Location::redirect(bad).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn the_judge_of_a_public_address_is_the_callers() {
+        use core::net::SocketAddrV4;
+        let peer = [SocketAddr::V4(SocketAddrV4::new(
+            Ipv4Addr::new(10, 0, 2, 9),
+            8443,
+        ))];
+        let at = Location::parse("https://releases.basalt.test:8443/x").unwrap();
+        assert_eq!(
+            at.check(&peer),
+            Err(AddressRefusal::Private(Ipv4Addr::new(10, 0, 2, 9)))
+        );
+        let stand_in = |ip: [u8; 4]| ip == [10, 0, 2, 9] || public_address(ip);
+        assert_eq!(at.check_by(&peer, stand_in).unwrap().addresses(), &peer[..]);
     }
 
     #[test]

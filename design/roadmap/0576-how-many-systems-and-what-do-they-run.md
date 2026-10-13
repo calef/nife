@@ -64,6 +64,29 @@ smaller version survives (whatever talks to the repository holds one endpoint an
 it), and it is ordinary rather than a showcase. The better design won and the argument for the other
 one is left here rather than quietly deleted.
 
+## Ruled 2026-10-12 (UTC): the first signal is a Release asset's download count
+
+Choosing GitHub Pages for `basalt.nifeos.org` (milestone 801's block has the ruling) left no server
+log to count from, so calef was asked how adoption would be measured. His answer: *"Packages on
+Releases, index on Pages"*. Each package is an asset on a GitHub Release, and GitHub keeps a
+`download_count` per asset, as crates.io counts downloads per crate version.
+
+- What it counts: fetches of one package, one version, one architecture. That is question 2's
+  unlinkable per-package shape, and it identifies no system, since nothing links two downloads.
+- What it cannot count: systems. Fedora's `countme` bucket or Debian's popcon needs an endpoint
+  whose logs someone reads. calef named that as later work, so the age bucket above is not
+  withdrawn, only not first.
+- What it miscounts: a mirror, a CI run and a retry each add one; a fetch from basalt's `targets/`
+  copy on Pages adds none.
+- How `jig` reaches it: a Release download starts at `github.com`, which chains to Sectigo E46
+  rather than ISRG Root X1, and answers with a redirect. calef ruled on 2026-10-12 (UTC), on
+  #2048, that the index names E46 for that location and `jig` follows one redirect: the third
+  amendment of §250 (an image names its distribution's package index). So every `jig install` from a published
+  basalt is one count.
+
+Reading the counts: `gh api repos/nifeos/basalt/releases --paginate --jq '.[].assets[] | [.name,
+.download_count] | @tsv'`.
+
 ## The prior art, which has already solved half of this
 
 - Fedora's `countme` is the strong one and it counts systems with no identifier at all. Each
