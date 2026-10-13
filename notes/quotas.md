@@ -45,11 +45,11 @@ spawn flood, or a pile of workers that block and never exit, was capped at eight
 eight threads, eight stacks, eight address spaces, and no more. Kernel memory from spawning was
 bounded, per spawner, for the first time.
 
-## Where this stands today (corrected 2026-07-30, milestone 41)
+## Where this stands today
 
 The mechanism is in the kernel and nothing calls it. Its one caller was the kernel-wired
-`shell_service`'s spawn service, which DECISIONS §28 retired and milestone 41 deleted; `Thread.quota`
-is `None` on every thread that exists. That is not a regression, because the bound moved: a
+`shell_service`'s spawn service, which DECISIONS §28 (SMP placement) retired; `Thread.quota` is `None` on every
+thread that exists. That is not a regression, because the bound is elsewhere: a
 userspace process spawns out of its own untyped budget (§10, §16), so the budget *is* the quota and
 retyping enforces it instead of a counter. What remains uncovered is a *kernel* thread spawned in a
 loop by something untrusted, and nothing does that.

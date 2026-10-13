@@ -5,7 +5,7 @@ prompt is undecided, and nobody had priced it. This page prices it. It gives opt
 because they touch the syscall surface and §142's retention rule; calef's ruling is at the end, and
 the decision now lives in milestone 602 (`pmap` from the prompt). Written 2026-09-26 (UTC) by the lane `proposal/126-pmap`, at base `484f3ebe2`.
 
-*Name: provisional, minted 2026-09-26 (UTC) by the lane `proposal/126-pmap`, for the stem `pmap`.
+*Name: provisional, for the stem `pmap`.
 Naming is calef's; `script/names --unratified` lists each stem.*
 
 ## What is being decided

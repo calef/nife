@@ -65,9 +65,9 @@ positions, which is why `kernel::user::pipeline_tests` (no slot 4) and
 
 Three things had to move to make room, and each is a fact worth keeping:
 
-- The shell's terminal page moved from `0x60_0000` to `0xc0_0000`. `0x60_0000` is
-  `FILE_VA_CLIENT`, which six programs map; the terminal page is the one address only the shell and
-  its progenitor know, so it is the one that moved.
+- The shell's terminal page is at `0xc0_0000`, not `0x60_0000`, which is `FILE_VA_CLIENT` and
+  mapped by six programs. The terminal page is the one address only the shell and its progenitor
+  know, so it is the one that gives way.
 - The progenitor's capability table is sixteen slots and two more kernel grants overflowed it. The
   console's `build_child` had no slot left to retype an address space into and returned an error,
   which presented as a boot that brought the console up and then printed nothing at all. The
@@ -93,11 +93,10 @@ were not enough. The result was a data abort one word below the lowest mapped pa
 
 Two things came out of it, and the second is the one to keep:
 
-- An `Endowment` is not small. The first version of that arm declared
-  `[Option<Endowment>; MAX_STAGES]` for a line that is one stage by construction, and an `Endowment`
-  carries a whole `NameSet`. `run_pipeline` takes a slice, so `&[Some(endow)]` is the same call with
-  the array cost deleted. That alone was not enough, but it is the fix that should have been written
-  first: the reflex of reaching for the full-width array is what made a one-stage line pay for four.
+- An `Endowment` is not small: it carries a whole `NameSet`. So a line that is one stage by
+  construction does not declare `[Option<Endowment>; MAX_STAGES]`. `run_pipeline` takes a slice, and
+  `&[Some(endow)]` is the same call without the array cost. The reflex of reaching for the
+  full-width array makes a one-stage line pay for four.
 - The two wirings gave the shell different stacks, and that was the real oddity.
   `system_initializer` maps eight pages and `pipeline_service` mapped seven, so the wiring that is
   *not* the one a person types was the smaller one, and it is where the overflow landed. They are

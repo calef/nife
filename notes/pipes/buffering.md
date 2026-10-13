@@ -86,6 +86,4 @@ bytes, and at 1.15 µs per sixteen that is tens of microseconds for a whole line
   program actually gets, not because it is a fair comparison.
 - `sink_throughput` is in `bench/baseline-*.txt` on both ISAs, under the same 10% tripwire as
   every other row, with a comment on the row that its second column is bytes rather than
-  iterations. *(This bullet used to say the row was missing and that adding it was the
-  integrator's; the rows landed in the same commit as this section, and the bullet stood
-  contradicting the two files beside it for eleven days. Corrected 2026-08-14.)*
+  iterations.

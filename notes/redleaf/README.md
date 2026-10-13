@@ -19,25 +19,16 @@ sources read on 2026-09-20.
   and the IDL observation.
 - [`after-2020.md`](after-2020.md): the repository's state, the PLOS '21 critique, and Atmosphere.
 
-*Name: provisional, minted 2026-10-11 (UTC) by lane/seventh-ten-longest-notes, which split the
-parent under §212 (a prose budget). The directory follows §212's siting default, `notes/X/` beside
-`notes/X.md`. calef names directories.*
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default, `notes/X/`
+beside `notes/X.md`. calef names directories.*
 
-The stems below were minted the same day by the same lane. Each is named for its content, and calef
-names files.
+Each stem below is named for its content, and calef names files.
 
-- `sources` Name: provisional, minted 2026-10-11 (UTC) by lane/seventh-ten-longest-notes, for the
-  source table it holds.
-- `the-2017-ancestor` Name: provisional, minted 2026-10-11 (UTC) by lane/seventh-ten-longest-notes,
-  after the parent's "The ancestor: the 2017 case".
-- `corrections-to-the-brief` Name: provisional, minted 2026-10-11 (UTC) by
-  lane/seventh-ten-longest-notes, after the parent's "Corrections to the sketch this lane was
-  briefed with".
-- `the-trusted-build` Name: provisional, minted 2026-10-11 (UTC) by lane/seventh-ten-longest-notes,
-  for the trusted compilation environment it describes.
-- `crossing-costs` Name: provisional, minted 2026-10-11 (UTC) by lane/seventh-ten-longest-notes,
-  after the parent's "Bet two: the cost per crossing".
-- `where-redleaf-is-ahead` Name: provisional, minted 2026-10-11 (UTC) by
-  lane/seventh-ten-longest-notes, after the parent's own heading.
-- `after-2020` Name: provisional, minted 2026-10-11 (UTC) by lane/seventh-ten-longest-notes, after
-  the parent's "What happened after 2020".
+- `sources` Name: provisional. For the source table it holds.
+- `the-2017-ancestor` Name: provisional. After the parent's "The ancestor: the 2017 case".
+- `corrections-to-the-brief` Name: provisional. After the parent's "Corrections to the sketch this
+  lane was briefed with".
+- `the-trusted-build` Name: provisional. For the trusted compilation environment it describes.
+- `crossing-costs` Name: provisional. After the parent's "Bet two: the cost per crossing".
+- `where-redleaf-is-ahead` Name: provisional. After the parent's own heading.
+- `after-2020` Name: provisional. After the parent's "What happened after 2020".
