@@ -45,7 +45,7 @@ queue-depth comparison above is no closer and the risk's status is unchanged.
 2026-10-12 (UTC): milestone 836 is built (#2009), so a C program has pthreads, and hackbench's
 thread mode runs unmodified on all three architectures. `fio` still does not build: it uses C's
 own `__thread` variables, which do not link on nife yet
-(`design/roadmap/proposals/c-thread-locals-on-the-thread-pointer.md`). The comparison is no
+(`design/roadmap/0912-c-thread-locals-on-the-thread-pointer.md`). The comparison is no
 closer, and the status is unchanged.
 
 ## Benchmarks that inform this risk

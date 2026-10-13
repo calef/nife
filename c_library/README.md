@@ -187,8 +187,9 @@ Stage 2 (milestone 836) added these, also reversible:
 
 - **C's own thread-locals do not link.** A `__thread` or `_Thread_local` variable stops the link
   with `has an STT_TLS symbol but doesn't have a PT_TLS segment`: nife's thread pointer names
-  `std`'s block, and nothing lays out an ELF one beside it. The proposal is
-  `design/roadmap/proposals/c-thread-locals-on-the-thread-pointer.md`; fio needs it.
+  `std`'s block, and nothing lays out an ELF one beside it. It is
+  milestone 912 (C thread-locals on nife's thread pointer). fio does not need it: its `configure`
+  finds `__thread` missing and uses `pthread_getspecific` instead.
 - **16 threads a process**, the main thread included (`std`'s limit). One more `pthread_create`
   answers `EAGAIN`.
 - **Every stack comes out of the heap**, which on nife is memory already committed. relibc's
