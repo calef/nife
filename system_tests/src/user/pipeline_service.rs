@@ -160,71 +160,8 @@ fn start_with(
     }
 
     let shell = crate::sched::spawn(move || {
-        // The extra stack goes in as ordinary mappings below the one `run` maps, which is the
-        // shape `spawn_fs_client` uses and for the same measured reason: a shell carries a path
-        // stack, a parsed line and now an array of planned endowments, all by value.
-        let mut maps = [Mapping {
-            va: OUT_VA,
-            phys: out_phys,
-            flags: Flags::user_data(),
-        }; 4 + SHELL_EXTRA_STACK];
-        maps[1] = Mapping {
-            va: LINE_VA,
-            phys: line_phys,
-            flags: Flags::user_rodata(),
-        };
-        for (k, m) in maps[2..2 + SHELL_EXTRA_STACK].iter_mut().enumerate() {
-            m.va = USER_STACK_VA - (k as u64 + 1) * FRAME_SIZE;
-            m.phys = crate::memory::alloc()
-                .expect("no frame for the shell's stack")
-                .addr();
-            m.flags = Flags::user_data();
-        }
-        // The optional pages last, so a shell wired without either maps exactly what it did before
-        // and the count is the only difference between the wirings.
-        let mut n = 2 + SHELL_EXTRA_STACK;
-        if let Some((_, file_shared)) = dir {
-            maps[n] = Mapping {
-                va: FS_VA,
-                phys: file_shared,
-                flags: Flags::user_data(),
-            };
-            n += 1;
-        }
-        if let Some(phys) = clock {
-            // **`user_rodata`, and that is the read rung of DECISIONS §43 rather than tidiness**: a
-            // shell that could write this page could set the wall clock, and the whole argument for
-            // it holding one at all is that reading is not that.
-            maps[n] = Mapping {
-                va: SH_CLOCK_VA,
-                phys,
-                flags: Flags::user_rodata(),
-            };
-            n += 1;
-        }
-
-        // Filled in the order the shell's own constants name, because a `Spawn` fills a capability table from
-        // zero: slot 0 the terminal, 1 the spawn channel, 2 the result channel, 3 the budget, then
-        // whichever of the directory and the clock this wiring has.
-        let mut grants = [rendezvous_cap(term, Rights::WRITE); 6];
-        grants[1] = rendezvous_cap(spawn_ep, Rights::WRITE);
-        grants[2] = rendezvous_cap(result, Rights::READ);
-        grants[3] = memory_region_lending_capability(budget);
-        let mut g = 4;
-        if let Some((dir_ep, _)) = dir {
-            grants[g] = rendezvous_cap(dir_ep, Rights::WRITE);
-            g += 1;
-        }
-        // **The slot the clock landed in, handed over in `arg2`**, which is the same thing both
-        // inits do and for the same reason: the number moves with what else this wiring granted, and
-        // a shell that guessed would probe some other object and map a page that is not a clock.
-        // Zero means none, and zero can never be a clock because slot 0 is the terminal everywhere.
-        let mut clock_slot = 0u64;
-        if let Some(phys) = clock {
-            grants[g] = page_frame_cap(phys, Rights::READ);
-            clock_slot = g as u64;
-            g += 1;
-        }
+        let (maps, n) = shell_mappings(out_phys, line_phys, dir, clock);
+        let (grants, g, clock_slot) = shell_grants(term, spawn_ep, result, budget, dir, clock);
         run(
             image,
             Spawn {
@@ -261,6 +198,94 @@ fn start_with(
     }
 
     Some(Wiring { term, out_phys })
+}
+
+/// The shell's mappings: its output and line pages, its extra stack, then the FS page and the
+/// clock page when this wiring has them. Returns the array and how many entries are in use.
+fn shell_mappings(
+    out_phys: u64,
+    line_phys: u64,
+    dir: Option<(RendezvousId, u64)>,
+    clock: Option<u64>,
+) -> ([Mapping; 4 + SHELL_EXTRA_STACK], usize) {
+    // The extra stack goes in as ordinary mappings below the one `run` maps, which is the
+    // shape `spawn_fs_client` uses and for the same measured reason: a shell carries a path
+    // stack, a parsed line and now an array of planned endowments, all by value.
+    let mut maps = [Mapping {
+        va: OUT_VA,
+        phys: out_phys,
+        flags: Flags::user_data(),
+    }; 4 + SHELL_EXTRA_STACK];
+    maps[1] = Mapping {
+        va: LINE_VA,
+        phys: line_phys,
+        flags: Flags::user_rodata(),
+    };
+    for (k, m) in maps[2..2 + SHELL_EXTRA_STACK].iter_mut().enumerate() {
+        m.va = USER_STACK_VA - (k as u64 + 1) * FRAME_SIZE;
+        m.phys = crate::memory::alloc()
+            .expect("no frame for the shell's stack")
+            .addr();
+        m.flags = Flags::user_data();
+    }
+    // The optional pages last, so a shell wired without either maps exactly what it did before
+    // and the count is the only difference between the wirings.
+    let mut n = 2 + SHELL_EXTRA_STACK;
+    if let Some((_, file_shared)) = dir {
+        maps[n] = Mapping {
+            va: FS_VA,
+            phys: file_shared,
+            flags: Flags::user_data(),
+        };
+        n += 1;
+    }
+    if let Some(phys) = clock {
+        // **`user_rodata`, and that is the read rung of DECISIONS §43 rather than tidiness**: a
+        // shell that could write this page could set the wall clock, and the whole argument for
+        // it holding one at all is that reading is not that.
+        maps[n] = Mapping {
+            va: SH_CLOCK_VA,
+            phys,
+            flags: Flags::user_rodata(),
+        };
+        n += 1;
+    }
+    (maps, n)
+}
+
+/// The shell's capability table, in slot order. Returns the array, how many slots are in use,
+/// and the clock's slot (0 for none).
+fn shell_grants(
+    term: RendezvousId,
+    spawn_ep: RendezvousId,
+    result: RendezvousId,
+    budget: u64,
+    dir: Option<(RendezvousId, u64)>,
+    clock: Option<u64>,
+) -> ([crate::cap::Cap; 6], usize, u64) {
+    // Filled in the order the shell's own constants name, because a `Spawn` fills a capability table from
+    // zero: slot 0 the terminal, 1 the spawn channel, 2 the result channel, 3 the budget, then
+    // whichever of the directory and the clock this wiring has.
+    let mut grants = [rendezvous_cap(term, Rights::WRITE); 6];
+    grants[1] = rendezvous_cap(spawn_ep, Rights::WRITE);
+    grants[2] = rendezvous_cap(result, Rights::READ);
+    grants[3] = memory_region_lending_capability(budget);
+    let mut g = 4;
+    if let Some((dir_ep, _)) = dir {
+        grants[g] = rendezvous_cap(dir_ep, Rights::WRITE);
+        g += 1;
+    }
+    // **The slot the clock landed in, handed over in `arg2`**, which is the same thing both
+    // inits do and for the same reason: the number moves with what else this wiring granted, and
+    // a shell that guessed would probe some other object and map a page that is not a clock.
+    // Zero means none, and zero can never be a clock because slot 0 is the terminal everywhere.
+    let mut clock_slot = 0u64;
+    if let Some(phys) = clock {
+        grants[g] = page_frame_cap(phys, Rights::READ);
+        clock_slot = g as u64;
+        g += 1;
+    }
+    (grants, g, clock_slot)
 }
 
 /// **Serve the terminal until the shell says it is finished**, collecting everything it printed.
