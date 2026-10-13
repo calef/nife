@@ -3,8 +3,7 @@
 # library, stage 1: files, clock and memory), the first consumer of milestone 831 (SQLite's
 # speedtest1 on nife and Linux)).
 #
-# This is an experiment's apparatus, as `helpers/build-ripgrep.sh` is: nothing in `script/test`
-# runs it. `xtask`'s archive step packs `target/speedtest1/<triple>/speedtest1` when it is on disk,
+# This is an experiment's apparatus: nothing in `script/test` runs it. `xtask`'s archive step packs `target/speedtest1/<triple>/speedtest1` when it is on disk,
 # and `system_tests/src/user/speedtest1_tests.rs` skips when it is not. Fetching SQLite from
 # sqlite.org in a gate is a dependency decision (§46 (thin primitives or whole subsystems)), so
 # the pull request that added this asks calef for the ruling.

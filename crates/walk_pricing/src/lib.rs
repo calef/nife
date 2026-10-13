@@ -441,13 +441,14 @@ mod tests {
 
     /// **The host's `rg`, walking in parallel, prints exactly the fixture's lines** (milestone 121,
     /// lane milestone/121-rg-threads). The same two lines the kernel harness types on nife, run by
-    /// the `rg` `helpers/build-ripgrep.sh` builds for the host from the same source and the same
-    /// patched `ignore`. Its match lines, sorted, must be [`fixture_rg_lines`]; nife's are held to
-    /// the same list, so the two agree byte for byte up to order. Sorted because a parallel walk
-    /// prints in the order its threads finish, on any system.
+    /// ripgrep's own 14.1.1 build for the host, which `cargo xtask basalt-fetch` fetches by SHA-256:
+    /// the version basalt's package carries, with upstream `ignore`, whose walker basalt's patch
+    /// leaves alone on a `unix` host. Its match lines, sorted, must be [`fixture_rg_lines`]; nife's
+    /// are held to the same list, so the two agree byte for byte up to order. Sorted because a
+    /// parallel walk prints in the order its threads finish, on any system.
     ///
-    /// Skips when no host `rg` was built, unless `NIFE_RIPGREP_REQUIRED=1`, which the CI row that
-    /// builds it sets.
+    /// Skips when no host `rg` was fetched, unless `NIFE_RIPGREP_REQUIRED=1`, which the CI row that
+    /// fetches it sets.
     #[test]
     fn the_hosts_parallel_rg_prints_the_fixture_lines() {
         let rg = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/ripgrep/host/rg");
@@ -458,7 +459,7 @@ mod tests {
                 rg.display()
             );
             eprintln!(
-                "no host rg at {}; helpers/build-ripgrep.sh builds it",
+                "no host rg at {}; `cargo xtask basalt-fetch` fetches it",
                 rg.display()
             );
             return;

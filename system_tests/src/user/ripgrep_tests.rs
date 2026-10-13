@@ -5,22 +5,21 @@
 //! decisive experiment because it is not a toy. It has forty transitive crates, it walks a
 //! filesystem, and it is written for a world with threads, a command line, and `mmap`.
 //!
-//! **The program here is not ours, and its own source is not patched.** `helpers/build-ripgrep.sh`
-//! downloads the published `ripgrep` crate and builds it with a target spec and three link
-//! arguments; there is no overlay, no vendored copy and no fork. One dependency, `ignore`, carries
-//! `helpers/ripgrep-ignore-walk.patch` for its parallel walker (calef, #1892), which the `--threads 1`
-//! lines here never reach. Everything this test observes is otherwise a fact about the platform
+//! **The program here is not ours, and its own source is not patched.** basalt builds the
+//! published `ripgrep` crate with a target spec and three link arguments (its
+//! `recipes/ripgrep.toml`), and `cargo xtask basalt-fetch` takes its published package by digest;
+//! there is no overlay, no vendored copy and no fork. One dependency, `ignore`, carries basalt's
+//! `patches/ripgrep-ignore-walk.patch` for its parallel walker (calef, #1892), which the
+//! `--threads 1` lines here never reach. Everything this test observes is otherwise a fact about the platform
 //! rather than about our port of a program.
 //!
-//! **It skips when the archive has no `rg`**, which is every ordinary build. Corrected 2026-10-12
-//! (UTC): CI's `rg-threads` rows build it and run this module with `ripgrep_threads_tests`, which
-//! walks in parallel. `rg` is never part of the base image either: calef ruled on 2026-10-07 (UTC) that
+//! **It skips when the archive has no `rg`**, which is every ordinary build. CI's `rg-threads` rows
+//! fetch it and run this module with `ripgrep_threads_tests`, which walks in parallel. `rg` is never part of the base image either: calef ruled on 2026-10-07 (UTC) that
 //! it is installed with `jig` from its own package. See notes/ripgrep-on-nife.md.
 //!
 //! **All three ISAs run it**, which is DECISIONS §19 rather than thoroughness: a capability ships on
-//! every supported architecture or a scope note records the gap and the plan. `helpers/build-ripgrep.sh`
-//! builds for `aarch64-unknown-nife`, `riscv64-unknown-nife` and (since milestone 184)
-//! `x86_64-unknown-nife` in one pass, and one test body serves all three because nothing it asserts
+//! every supported architecture or a scope note records the gap and the plan. basalt publishes a
+//! package for `aarch64-unknown-nife`, `riscv64-unknown-nife` and `x86_64-unknown-nife`, and one test body serves all three because nothing it asserts
 //! is architecture-specific. **It runs on all three since milestone 303**, which gave `q35` a RedoxFS
 //! image the FS service can find (the block lookup spans virtio-mmio and virtio-pci now), and the
 //! x86_64 transcript is byte-identical to the other two.
@@ -28,8 +27,8 @@
 use super::*;
 
 /// The reason this test gives when nobody built `rg`.
-const NO_RIPGREP: &str = "no rg in this archive: build it with helpers/build-ripgrep.sh, which \
-                          fetches the published ripgrep crate from crates.io (milestone 121)";
+const NO_RIPGREP: &str = "no rg in this archive: `cargo xtask basalt-fetch` fetches basalt's \
+                          published ripgrep package (milestones 121 and 810)";
 
 /// **The block server's ELF**, one program in every archive since milestone 291. This was two
 /// `cfg` arms (a role of `hello` on aarch64, the dedicated `block_driver` elsewhere) until that
@@ -104,7 +103,7 @@ fn unmodified_ripgrep_runs_and_has_no_arguments_to_run_on() {
     );
 
     // **Give the 256-page heap back** (`user::holding`'s reasoning). This program is in the archive
-    // only when somebody ran `helpers/build-ripgrep.sh`, so a permanent charge here would make the
+    // only when somebody ran `cargo xtask basalt-fetch`, so a permanent charge here would make the
     // suite's frame ledger fail for exactly the person running the experiment and pass for everyone
     // else. The thread is already gone, so one call is enough.
     let _ = crate::sched::reclaim_region(rg.heap);
@@ -455,7 +454,7 @@ fn a_bound_grant_reaches_nothing_outside_it() {
 // `fixture::walk::ROOT`; the words are `fixture::walk::RG_SEARCH`, made into an argv by
 // `grant_plan::argv`, the shell's own function, so `rg` hears what `swish` would send for that
 // line. This is the kernel harness, not the prompt: `rg` is in this archive only because somebody
-// ran `helpers/build-ripgrep.sh`, and it is never part of the base image (calef, 2026-10-07: it is
+// ran `cargo xtask basalt-fetch`, and it is never part of the base image (calef, 2026-10-07: it is
 // installed by `jig`, from its own package).
 // ===========================================================================================
 
@@ -518,8 +517,8 @@ impl Line {
 /// file searched, and one match in each file that holds the walk's small body. One match line is
 /// asserted whole, to prove `rg` printed matches and not only a summary.
 ///
-/// Falsification: unfalsified. A replay needs `rg` in the archive, and no gate builds it (the
-/// archive takes it only after `helpers/build-ripgrep.sh`), so a replayed patch would skip here.
+/// Falsification: unfalsified. A replay needs `rg` in the archive, which takes it only after
+/// `cargo xtask basalt-fetch`, so a replay that does not run that first would skip here.
 #[test_case]
 fn ripgrep_searches_the_tree_it_was_granted() {
     use filesystem_protocol::dir;
@@ -566,8 +565,8 @@ fn ripgrep_searches_the_tree_it_was_granted() {
 /// The control is [`ripgrep_reaches_a_named_file_without_enumerate`]: under the same grant, a
 /// search naming a file still finds its line, so this refusal is about enumeration alone.
 ///
-/// Falsification: unfalsified. A replay needs `rg` in the archive, and no gate builds it (the
-/// archive takes it only after `helpers/build-ripgrep.sh`), so a replayed patch would skip here.
+/// Falsification: unfalsified. A replay needs `rg` in the archive, which takes it only after
+/// `cargo xtask basalt-fetch`, so a replay that does not run that first would skip here.
 #[test_case]
 fn ripgrep_without_enumerate_is_refused_rather_than_empty() {
     use filesystem_protocol::dir;
@@ -601,8 +600,8 @@ fn ripgrep_without_enumerate_is_refused_rather_than_empty() {
 /// nife has none: `memmap2` compiles its stub, the map fails, and `ripgrep` reads instead. So
 /// `--no-mmap` is a measurement pin and never a requirement.
 ///
-/// Falsification: unfalsified. A replay needs `rg` in the archive, and no gate builds it (the
-/// archive takes it only after `helpers/build-ripgrep.sh`), so a replayed patch would skip here.
+/// Falsification: unfalsified. A replay needs `rg` in the archive, which takes it only after
+/// `cargo xtask basalt-fetch`, so a replay that does not run that first would skip here.
 #[test_case]
 fn ripgrep_reaches_a_named_file_without_enumerate() {
     use filesystem_protocol::dir;

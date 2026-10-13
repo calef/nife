@@ -6,7 +6,7 @@
 //! carries one with `manifest_note::carry!`. `ripgrep` is unmodified source from crates.io, so it
 //! cannot, and with no note the shell runs it as a native program that hears no words, which a `std`
 //! program cannot survive. This writes the note as a relocatable object of its own, which
-//! `helpers/build-ripgrep.sh` passes to the link (`-Clink-arg=<object>`). The shared link script
+//! basalt's package build passes to the link (`-Clink-arg=<object>`). The shared link script
 //! keeps every `.note.nife.*` input section in the `PT_NOTE`, so the note lands where the readers
 //! look and the program's source stays untouched. #1319 measured this route first.
 //!
@@ -53,8 +53,8 @@ fn source() -> String {
 }
 
 /// `cargo xtask foreign-note <nife-triple> <out.o>`.
-pub(crate) fn foreign_note(triple: Option<String>, out: Option<String>) -> bool {
-    let (Some(triple), Some(out)) = (triple, out) else {
+pub(crate) fn foreign_note() -> bool {
+    let (Some(triple), Some(out)) = (std::env::args().nth(2), std::env::args().nth(3)) else {
         eprintln!("usage: cargo xtask foreign-note <aarch64|riscv64|x86_64>-unknown-nife <out.o>");
         return false;
     };
