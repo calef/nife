@@ -23,6 +23,7 @@
 //! `sys/dev/e1000/` on FreeBSD's `main`. Only the branches for FreeBSD's `e1000_pch_spt` class are
 //! carried, because every I219 this crate claims is in it ([`super::is_pch`]).
 //!
+
 //! ```text
 //! SPDX-License-Identifier: BSD-3-Clause
 //!

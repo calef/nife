@@ -13,14 +13,12 @@
 //! this project is compared against is denominated in cycles: milestone 74's block sets out the
 //! difference and notes/pmu.md calls confusing the two a category error.
 //!
-//! **One counter, configured for one event, started and stopped.** Milestone 74's scope note
-//! refuses a profiling framework, and the PMU can count dozens of events. Generalising this to a
-//! counter set with a named target is milestone 147's, and it should wait for that second consumer.
+//! **One counter, configured for one event, started and stopped**, not a profiling framework.
 //!
+
 //! # The shape of the interface, from the specification
 //!
-//! Everything here is the RISC-V SBI Specification **v3.0** (ratified 2025-07-16), `src/ext-pmu.adoc`,
-//! read 2026-09-03 from `github.com/riscv-non-isa/riscv-sbi-doc` at tag `v3.0`. Four calls:
+//! Everything here is the RISC-V SBI Specification **v3.0**, `src/ext-pmu.adoc`. Four calls:
 //!
 //! 1. `sbi_pmu_num_counters` (FID #0), how many logical counters this hart has.
 //! 2. `sbi_pmu_counter_config_matching` (FID #2), "find a counter from this set which is not
@@ -35,28 +33,26 @@
 //! call that would dominate it. (A *firmware* counter would have to be read with FID #5, an
 //! `ecall` per read; this module refuses those, and [`init`] says why.)
 //!
+
 //! # Why the counter this asks for is startable at all
 //!
-//! OpenSBI leaves the fixed counters running and open to S-mode. Read from
-//! `lib/sbi/sbi_hart.c` on `riscv-software-src/opensbi` master, 2026-09-03: it writes
+//! Upstream OpenSBI (`lib/sbi/sbi_hart.c`) leaves the fixed counters running and open to S-mode: it
+//! writes
 //! `CSR_MCOUNTEREN, -1` ("Supervisor mode usage for all counters are enabled by default") and
 //! `CSR_MCOUNTINHIBIT, 0xFFFFFFF8`, which leaves bits 0 (`CY`) and 2 (`IR`) clear, so `mcycle` and
 //! `minstret` run and only the programmable counters are inhibited until S-mode asks. **That is
-//! upstream OpenSBI, not the firmware flashed on the VisionFive 2 this project benches on
-//! (radon)**, and it is a claim about somebody else's build until a
-//! bench reads it; notes/riscv-cycle-counters.md makes checking it step one of the procedure.
+//! upstream, not the firmware flashed on a board**; notes/riscv-cycle-counters.md makes checking
+//! it step one of the bench procedure.
 //!
 //! # BUGS
 //!
 //! - **Nothing here has been run on silicon.** QEMU-TCG models an instruction counter that has
-//!   nothing to do with cycles, so a green test under emulation proves the plumbing and says
-//!   nothing about the measurement. Every number this module can produce today is an emulator's
-//!   fiction. notes/riscv-cycle-counters.md carries the bench procedure that would fix that.
+//!   nothing to do with cycles, so a green test under emulation proves the plumbing only
+//!   (notes/riscv-cycle-counters.md has the bench procedure).
 //! - **The boot hart only.** SBI PMU counters are per-hart: `counter_config_matching` and
 //!   `counter_start` act on the calling hart, and the counter index a hart is given is that hart's.
 //!   [`init`] runs once, on the hart that runs `kernel_main`, and [`cycles`] is therefore only
-//!   meaningful to a reader who knows which hart it ran on. The consumer today is a single-hart
-//!   bench probe. A per-hart record is real work and belongs with a caller that needs it.
+//!   meaningful to a reader who knows which hart it ran on.
 //! - **A firmware counter is refused rather than used.** If firmware answers with a counter it
 //!   maintains itself, this module reports no cycle counter at all. That is a deliberate refusal:
 //!   reading one costs an `ecall`, and an `ecall` inside a cycle measurement measures the `ecall`.

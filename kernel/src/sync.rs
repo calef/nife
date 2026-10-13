@@ -16,8 +16,7 @@
 //!                                       Dead. Permanently. On one core.
 //! ```
 //!
-//! This is not a race. It is a **guaranteed** hang the moment the timing lines up, and it
-//! looks exactly like the mystery we lost two hours to in milestone 3.
+//! This is not a race. It is a **guaranteed** hang the moment the timing lines up.
 //!
 //! The fix: **mask interrupts for as long as the lock is held.** The interrupt cannot fire,
 //! so it cannot try to take the lock. This is Linux's `spin_lock_irqsave`.
@@ -31,18 +30,17 @@
 //! window where interrupts are live and we still hold the lock. Same deadlock, arrived at
 //! from the other side.
 //!
-//! Both windows are one or two instructions wide. Both are fatal. Both are the kind of bug
-//! that works fine in testing for months.
+//! Both windows are one or two instructions wide, and both are fatal.
 //!
+
 //! # Restore, do not enable
 //!
 //! [`IrqSafeGuard`] restores the interrupt state that was in effect when the lock was
 //! taken. It does **not** simply enable interrupts on release.
 //!
 //! The difference matters when a lock is taken inside a context that already had interrupts
-//! masked (an interrupt handler, or an outer lock). Blindly enabling on release would unmask
-//! interrupts *inside an interrupt handler*, and the resulting fault is one you will not
-//! enjoy explaining. This is why Linux's is called `irqsave`/`irqrestore`.
+//! masked (an interrupt handler, or an outer lock): enabling on release would unmask interrupts
+//! *inside an interrupt handler*. Hence Linux's `irqsave`/`irqrestore`.
 //!
 //! See notes/locking.md and DECISIONS §9.
 
@@ -54,22 +52,10 @@ use crate::arch::interrupts;
 
 /// # Lock ranking: the rule from DECISIONS §9, enforced by the machine
 ///
-/// > Two locks? Define a global order and always take them in it. Otherwise **AB-BA
-/// > deadlock**, which is a *real* race and far nastier than the interrupt deadlock this
-/// > type's other half prevents.
-///
-/// We wrote that rule and then relied on discipline, which is to say on remembering. Now
-/// every lock carries a **rank**, and the rule is:
-///
-/// > **You may only acquire a lock strictly LOWER than everything you currently hold.**
-///
-/// If every acquisition strictly decreases the rank, a cycle is **unrepresentable**. Not
-/// unlikely. Impossible. That is why this is *prevention* and not *detection*: it kills the
-/// circular-wait condition outright ([notes/deadlock.md](../notes/deadlock.md)), rather than
-/// building a graph and hunting for cycles the way Linux's `lockdep` does.
-///
-/// FreeBSD (WITNESS) and Solaris use the same mechanism, for the same reason: it costs three
-/// instructions and it cannot be wrong.
+/// Two locks need a global order, or **AB-BA deadlock**. Every lock carries a **rank**, and **you
+/// may only acquire a lock strictly LOWER than everything you currently hold.** A cycle is then
+/// **unrepresentable** ([notes/deadlock.md](../notes/deadlock.md)), with no cycle hunting as in
+/// Linux's `lockdep`; FreeBSD (WITNESS) and Solaris use the same mechanism.
 ///
 /// ## The hierarchy
 ///
@@ -93,29 +79,17 @@ use crate::arch::interrupts;
 ///   10  CONSOLE         the leaf: everyone may take it, it takes nothing
 /// ```
 ///
-/// (The allocators' ranks, HEAP and SLAB at 50, left with the allocators: milestone 14 removed
-/// the kernel heap, and a lock that no longer exists needs no place in the order.)
-///
-/// Two locks at the **same** rank may never be nested (`R < R` is false), which is exactly
-/// right: equal rank means we have declared no order between them, so nesting them would be
-/// choosing one at random.
+/// Two locks at the **same** rank may never be nested (`R < R` is false): equal rank declares no
+/// order between them.
 ///
 /// The nestings this permits, and they are the ones that actually happen:
 ///
-/// - **MAPPINGS (59) → `MEMORY_REGION` (58)**: recording a mapping retypes a log page from the paying
-///   process's own region, while holding the registry lock (milestone 14 phase C).
+/// - **MAPPINGS (59) → `MEMORY_REGION` (58)**: recording a mapping retypes a log page from the
+///   paying process's own region, while holding the registry lock.
 /// - **`IPC_TABLES` (60) → `CAPABILITY_TABLE` (57)**: an IPC that delivers a capability, and every
 ///   revocation sweep, locks another thread's table while holding the thread table. The reverse
 ///   is refused: a holder of a capability table takes nothing (see the rank's own note).
-/// - **anything → CONSOLE (10)**: a panic prints while holding a lock. Which is why the
-///   console must be the leaf, and why it takes nothing itself.
-///
-/// ## A design this would have caught
-///
-/// `memory::ram_regions()` used to be an iterator that held the RAM lock while the caller
-/// iterated. `mmu::map_everything` iterates it *and allocates frames inside the loop*, so it
-/// would have held RAM (30) while taking FRAMES (30), and `30 < 30` is false. The ranking
-/// would have failed it on the spot. (We happened to fix it for other reasons first.)
+/// - **anything → CONSOLE (10)**: a panic prints while holding a lock, so the console is the leaf.
 pub mod rank {
     /// The user-built address spaces (milestone 19b): the registry behind `Object::AddressSpace`
     /// capabilities. **Top of the order**: a `MAP_INTO` holds this while drawing page tables

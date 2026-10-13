@@ -1,12 +1,10 @@
 //! **Which Arm interrupt controller is this, and does the hardware agree?** The GIC's device tree
 //! node, read by its binding, and a cross-check of what the silicon says about itself.
 //!
-//! Milestone 227 (design/roadmap/0227-gicv3-driver.md). Until this existed the kernel found its GIC
-//! by the node-name prefix `intc@` and took the first two `reg` blocks as "distributor, CPU
-//! interface". That is true of a GICv2 and false of a GICv3, whose second block is the
-//! **redistributor** array. Milestone 222 measured what followed: a kernel that booted the whole
-//! tour, brought four cores up, printed `interrupts ON`, and then took zero interrupts with nothing
-//! faulting, because GICv2 CPU-interface writes landed in a redistributor frame and did nothing.
+//! Milestone 227 (design/roadmap/0227-gicv3-driver.md). Taking the first two `reg` blocks as
+//! "distributor, CPU interface" is true of a GICv2 and false of a GICv3, whose second block is the
+//! **redistributor** array: GICv2 CPU-interface writes land in a redistributor frame, do nothing,
+//! and the kernel boots and takes zero interrupts with nothing faulting.
 //!
 //! So this module answers two questions, and the second is the one that makes the first safe:
 //!
@@ -18,22 +16,20 @@
 //!    registers, the same split as [`crate::aarch64::Isa::decode`]): `GICD_PIDR2.ArchRev` for a
 //!    GICv3, `GICC_IIDR.ArchitectureVersion` for a GICv2, the latter read from the very block the
 //!    tree calls the CPU interface. A tree that says one version while the hardware is another
-//!    fails here, loudly, at boot, which is the whole point: the failure milestone 222 measured is
-//!    impossible to reach silently once this runs.
+//!    fails here, loudly, at boot.
 //!
+
 //! # Why `ID_AA64PFR0_EL1.GIC` is not one of the facts
 //!
-//! It was, in this module's first draft, and **the machine overruled it** (2026-09-19, the first
-//! HVF boot): QEMU under Hypervisor.framework on an Apple core reports `ID_AA64PFR0_EL1` as
+//! QEMU under Hypervisor.framework on an Apple core reports `ID_AA64PFR0_EL1` as
 //! `0x1101000010110011`, whose `GIC` field (bits 27:24) is **zero**, while QEMU emulates the GICv3
 //! system registers perfectly well behind it. The field describes the physical core, which has
-//! Apple's AIC rather than a GIC, and the hypervisor does not rewrite it. Linux does not require it
-//! either: its GICv3 driver sets `ICC_SRE_EL1.SRE` and reads it back, which is a measurement rather
-//! than a claim, and the kernel's CPU-interface bring-up does exactly that and panics if the bit
-//! will not stick. On a core that truly has no interface the first `ICC_*` access is UNDEFINED and
-//! traps, which is loud too. The field is still the right guard where Linux uses it, at EL2
-//! (`boot.s`), because there the question is whether the registers exist to be touched at all.
+//! Apple's AIC rather than a GIC, and the hypervisor does not rewrite it. Like Linux's GICv3
+//! driver, the kernel's CPU-interface bring-up sets `ICC_SRE_EL1.SRE` and reads it back, panicking
+//! if it will not stick. The field is still the guard at EL2 (`boot.s`), where the question is
+//! whether the registers exist to be touched at all.
 //!
+
 //! # The two bindings, as QEMU 11.1.1 writes them (`dumpdtb`, both versions of `virt`)
 //!
 //! | | `gic-version=2` | `gic-version=3` |
@@ -50,13 +46,11 @@
 //! - **One redistributor region.** The binding allows several (`#redistributor-regions`), for
 //!   machines whose redistributor frames are not contiguous; QEMU `virt` needs a second only past
 //!   123 cores, and this kernel's `cpu::MAX_CPUS` is eight. A tree stating more than one is a
-//!   [`Refusal::SeveralRedistributorRegions`] rather than a partial answer, so the day a board
-//!   needs it the boot says so instead of losing the cores in the second region.
+//!   [`Refusal::SeveralRedistributorRegions`] rather than a partial answer.
 //! - **The GICv2 binding list is the three strings an aarch64 GICv2 actually carries**
 //!   (`arm,gic-400`, `arm,cortex-a15-gic`, `arm,cortex-a7-gic`), checked against Linux's
-//!   `drivers/irqchip/irq-gic.c` `IRQCHIP_DECLARE` table at v6.16. The older version-1 parts that
-//!   table also lists (`arm,cortex-a9-gic`, `arm,pl390`, the 11MPCore family) exist only on 32-bit
-//!   machines this kernel cannot boot, so they are left out rather than claimed.
+//!   `drivers/irqchip/irq-gic.c` `IRQCHIP_DECLARE` table at v6.16; the version-1 parts it also
+//!   lists exist only on 32-bit machines.
 //! - **The ITS is not read.** A GICv3's MSI translation service is a child node and a separate
 //!   device; milestone 317 records why interrupt remapping wants it and nothing drives it yet.
 //! - **This is aarch64's question.** On RISC-V a node named `interrupt-controller@...` is the PLIC

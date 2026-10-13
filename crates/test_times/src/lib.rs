@@ -1,10 +1,8 @@
 //! **What each kernel test cost, as the lines the suite prints and `xtask` reads** (milestone 807
 //! (the kernel suite reports what each test cost), §254 (a gate prints what each item cost), Fork 1).
 //!
-//! The kernel's test runner already stamps the timer before every test, because the per-test
-//! ceiling needs a start time. Until milestone 807 it printed the elapsed figure only at 5 s and
-//! over and threw the rest away. Now it keeps every figure and, after the suite's other reports and
-//! before `test result:`, prints a block:
+//! The kernel's test runner stamps the timer before every test, keeps every figure and, after the
+//! suite's other reports and before `test result:`, prints a block:
 //!
 //! ```text
 //! time per test, in milliseconds:
@@ -14,10 +12,10 @@
 //!
 //! The console is the record's channel because it is the only one aarch64, riscv64 and x86_64
 //! share: x86_64 exits through `isa-debug-exit`, which has no file I/O, so semihosting a file out
-//! would break §19 (architectural parity is a tenet). That is why the grammar lives here. Two
-//! programs agree on it, the kernel that prints it and `xtask` that parses it, and rule 7 says such
-//! an agreement is a crate.
+//! would break §19 (architectural parity is a tenet). Two programs agree on the grammar, the kernel
+//! that prints it and `xtask` that parses it, so it is a crate (rule 7).
 //!
+
 //! # The grammar
 //!
 //! A line is `time`, one space, the elapsed milliseconds in decimal, one space, the test's full
@@ -32,18 +30,6 @@
 //! Milliseconds because whole seconds round most of this suite to zero (§254). A `u64` of
 //! milliseconds outlasts any suite.
 //!
-//! # EXAMPLES
-//!
-//! ```
-//! use test_times::{Line, parse};
-//!
-//! let line = Line { milliseconds: 42, path: "kernel::sched::tests::a_thread_runs" };
-//! let mut printed = String::new();
-//! core::fmt::write(&mut printed, format_args!("{line}")).unwrap();
-//! assert_eq!(printed, "time 42 kernel::sched::tests::a_thread_runs");
-//! assert_eq!(parse(&printed), Ok(line));
-//! ```
-//!
 //! # BUGS
 //!
 //! - **The figure is guest time.** Under TCG the guest's counter follows the host's clock, so a
@@ -55,13 +41,10 @@
 //!
 //! [`boot_ladder`]: ../boot_ladder/index.html
 //!
-//! Name: provisional, minted 2026-10-07 (UTC) by milestone 807's lane. §254 left the name to a
-//! separate ratification. A plain plural noun for what it holds: each test's time.
-//! Refused: `test_time_record`, the first draft, because `script/lint` reads a name ending in `d`
-//! as a claim about what the thing is (§39 (a component is named for what it is)) and an allow-list entry was more
-//! surface than a provisional name deserves; `test_timing`, which reads as a mechanism (a timer) rather than the record the two
-//! programs exchange; `test_cost`, which is the milestone's word but would claim more than elapsed
-//! time (the frame ledger is also a per-test cost, and it is not here).
+//! Name: provisional, minted 2026-10-07 (UTC) by milestone 807's lane: a plain plural noun for what
+//! it holds. Refused `test_time_record` (`script/lint` reads a name ending in `d` as a claim,
+//! §39 (a component is named for what it is)). Refused `test_timing` (reads as a mechanism). Refused
+//! `test_cost` (would claim more than elapsed time; the frame ledger is a per-test cost too).
 
 #![no_std]
 
@@ -108,6 +91,18 @@ pub enum Malformed {
 ///
 /// [`Malformed`] names the first thing wrong. A line that is not a record line at all is
 /// [`Malformed::NoPrefix`], so a caller scanning a block can tell "not mine" from "mine but bad".
+///
+/// # Examples
+///
+/// ```
+/// use test_times::{Line, parse};
+///
+/// let line = Line { milliseconds: 42, path: "kernel::sched::tests::a_thread_runs" };
+/// let mut printed = String::new();
+/// core::fmt::write(&mut printed, format_args!("{line}")).unwrap();
+/// assert_eq!(printed, "time 42 kernel::sched::tests::a_thread_runs");
+/// assert_eq!(parse(&printed), Ok(line));
+/// ```
 pub fn parse(line: &str) -> Result<Line<'_>, Malformed> {
     let line = line.strip_suffix('\r').unwrap_or(line);
     let rest = line.strip_prefix(PREFIX).ok_or(Malformed::NoPrefix)?;
