@@ -321,7 +321,7 @@ mod std_layout;
 use core::sync::atomic::AtomicU16;
 use core::sync::atomic::Ordering::Relaxed;
 
-use activation::{Activating, activate, package_manager_parts, serve_installer};
+use activation::{Activating, activate, copy_text, package_manager_parts, serve_installer};
 use announcement::*;
 pub use boot_sequence::boot;
 use children::*;

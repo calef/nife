@@ -112,8 +112,8 @@
 #![no_std]
 
 use grant_plan::{
-    ArgSpec, DIAGNOSTICS_SLOT, DirSpec, FileSpec, Flags, InputSpec, MAX_DECLARED_FLAGS, Manifest,
-    MemSpec, OutputSpec, Runtime, WordGrant,
+    ArgSpec, DIAGNOSTICS_SLOT, DirSpec, FileSpec, Flags, IndexStore, InputSpec, MAX_DECLARED_FLAGS,
+    Manifest, MemSpec, OutputSpec, Runtime, WordGrant,
 };
 
 /// **The note's owner string**, without its NUL: the project's name, lowercase as
@@ -240,6 +240,11 @@ pub const fn encode(m: &Manifest) -> [u8; DESCRIPTOR_LEN] {
         !m.installer && !m.catalog,
         "a manifest note cannot carry `installer` or `catalog`: only the owner's console grants them, \
          and only to a program the image names"
+    );
+    // Milestone 801 (packages over the internet): the index store likewise, for the same reason.
+    assert!(
+        matches!(m.indexes, IndexStore::Forbidden),
+        "a manifest note cannot carry `indexes`: only the owner's console grants the index store"
     );
     let mut out = [0u8; DESCRIPTOR_LEN];
     let v = VERSION.to_le_bytes();
@@ -399,6 +404,7 @@ pub fn decode(d: &[u8]) -> Result<Manifest, Error> {
         sync: false,
         installer: false,
         catalog: false,
+        indexes: IndexStore::Forbidden,
         runtime,
     })
 }
@@ -1108,7 +1114,8 @@ mod tests {
         for p in Prog::ALL {
             let m = p.manifest();
             // The two manifests with no note, by design (milestones 805 and 809): see `encode`.
-            if m.reboot || m.sync || m.installer || m.catalog {
+            if m.reboot || m.sync || m.installer || m.catalog || m.indexes != IndexStore::Forbidden
+            {
                 continue;
             }
             assert_eq!(decode(&encode(&m)), Ok(m), "{}", p.name());

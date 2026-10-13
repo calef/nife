@@ -1,12 +1,24 @@
 //! **`jig`, the package manager** (milestone 809 (the package client becomes a program)).
 //!
 //! ```text
-//! jig list                     the packages this image vouches for, from its catalog
+//! jig update                   fetch the image's index over HTTPS and keep a copy of it
+//! jig list                     the packages the index copy offers, or else the image's catalog
 //! jig install <path>           install a package file already on this system
 //! jig install <name>[@<ver>]   fetch a package by name and install it
 //! jig remove <program>         a new generation without the program
 //! jig rollback                 the generation below the live one becomes live
 //! ```
+//!
+//! **`update` and the index copy** (milestone 801 (packages over the internet), item 6 of
+//! milestone 809): the image names its index's addresses and the root their TLS must chain to
+//! (`package_index::Sources`, at `std_runtime_protocol::INDEX_SOURCES_PAGE`). `update` fetches
+//! the index from the first that answers, pinned to that root, keeps this architecture's lines,
+//! and writes them to `package_index::IMAGE_INDEX_COPY` in the index store, the directory the
+//! owner's console grants at `std_runtime_protocol::FS_DIR_SLOT`. After that a name is looked up
+//! in the copy first, fetched from the entry's locations or the repository's own `targets/` over
+//! HTTPS, and judged by the entry's digest; the progenitor installs it on the same copy's word
+//! (ruling I2). Before any `update`, a name is looked up in the image's catalog and fetched from
+//! the LAN package source, as since milestone 198 (a package manager)'s rung 3a.
 //!
 //! The verbs are apt's where apt has one (calef, 2026-10-10 (UTC): "Lets use apt's verbs.";
 //! design/naming/command-line-rulings.md). A word with a `/` in it is a file, by the prompt's rule
@@ -28,11 +40,17 @@
 //! Name: ratified 2026-10-06 (calef). See `grant_plan::Prog::Jig`.
 
 use std::io::{ErrorKind, Read, Write};
-use std::net::{Ipv4Addr, TcpStream};
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream, ToSocketAddrs};
 use std::process::ExitCode;
 
+use entropy_backend as _;
 use grant_plan::spawnproto::{self, Activation, ActivationStatus as S};
-use grant_plan::{CATALOG_SLOT, INSTALLER_REPLY_SLOT, INSTALLER_SLOT};
+use grant_plan::{CATALOG_SLOT, INDEX_SOURCES_SLOT, INSTALLER_REPLY_SLOT, INSTALLER_SLOT};
+use package_index::{
+    AddressRefusal, Configured, Entry, IMAGE_INDEX_COPY, Index, Location, Miss, PATH_MAX, Root,
+    STAND_IN_INDEX_FILE, Source, Sources,
+};
+use pinned_tls_client::{PinnedPeer, Session};
 use socket_protocol::fixture::{PACKAGE_PEER_HOST, PACKAGE_PEER_IP, PACKAGE_PEER_PORT};
 use user_mode_runtime as rt;
 
@@ -46,6 +64,7 @@ manifest_note::carry!(grant_plan::Manifest {
     network: false,
     installer: false,
     catalog: false,
+    indexes: grant_plan::IndexStore::Forbidden,
     ..grant_plan::Prog::Jig.manifest()
 });
 
@@ -57,12 +76,14 @@ const STAGING_VA: u64 = address_space_map::pair_page(0x0400_0000);
 /// This machine's architecture, as a package stem spells it.
 const ARCHITECTURE: &str = std::env::consts::ARCH;
 
-const USAGE: &str = "  jig list | jig install <file or name> | jig remove <program> | jig rollback";
+const USAGE: &str =
+    "  jig update | jig list | jig install <file or name> | jig remove <program> | jig rollback";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let words: Vec<&str> = args.iter().map(String::as_str).collect();
     match words.as_slice() {
+        ["update"] => update(),
         ["list"] => list(),
         ["install", path] if path.contains('/') => install_file(path),
         ["install", name] => install_name(name),
@@ -98,24 +119,39 @@ fn catalog() -> Option<&'static str> {
 /// **`jig list`**: every package this image's catalog vouches for on this architecture, one per
 /// line, as `<name> <version>`.
 fn list() -> ExitCode {
+    if let Some(copy) = index_copy() {
+        let Ok(index) = Index::parse(&copy) else {
+            return refuse("the index copy cannot be read; run jig update");
+        };
+        println!("  packages the index offers (the copy jig update wrote):");
+        for entry in index.entries() {
+            if let Some((name, version)) = name_and_version(entry.stem) {
+                println!("  {name} {version}");
+            }
+        }
+        return ExitCode::SUCCESS;
+    }
     let Some(catalog) = catalog() else {
         println!("  this jig holds no catalog; only the image's own jig is handed one");
         return ExitCode::FAILURE;
     };
     println!("  packages this image vouches for (its catalog; no index yet):");
-    let suffix = format!("-{ARCHITECTURE}");
     for line in catalog.lines() {
         let Some(stem) = line.split(' ').next() else {
             continue;
         };
-        let Some(rest) = stem.strip_suffix(suffix.as_str()) else {
-            continue;
-        };
-        if let Some((name, version)) = rest.rsplit_once('-') {
+        if let Some((name, version)) = name_and_version(stem) {
             println!("  {name} {version}");
         }
     }
     ExitCode::SUCCESS
+}
+
+/// A stem's name and version, when it is this architecture's.
+fn name_and_version(stem: &str) -> Option<(&str, &str)> {
+    stem.strip_suffix(ARCHITECTURE)?
+        .strip_suffix('-')?
+        .rsplit_once('-')
 }
 
 /// **A package's bytes, in a run of this program's own pages**, ready to hand on a page at a time.
@@ -123,6 +159,8 @@ struct Staged {
     /// The run's capability, with `GRANT`, which `SLICE` needs.
     run: u64,
     len: u64,
+    /// What the run was sized for, in bytes; `len` is at most this.
+    capacity: u64,
 }
 
 impl Staged {
@@ -145,12 +183,16 @@ impl Staged {
             rt::cap_delete(run);
             return Err("this jig could not map the pages for that package");
         }
-        Ok(Staged { run, len })
+        Ok(Staged {
+            run,
+            len,
+            capacity: len,
+        })
     }
 
     fn bytes(&mut self) -> &mut [u8] {
-        // SAFETY: `new` mapped `image_pages(len)` pages read/write at `STAGING_VA`, which nothing
-        // else in this process uses, and `len` is at most that many pages.
+        // SAFETY: `new` mapped `image_pages(capacity)` pages read/write at `STAGING_VA`, which
+        // nothing else in this process uses, and `len` is at most `capacity`.
         unsafe { std::slice::from_raw_parts_mut(STAGING_VA as *mut u8, self.len as usize) }
     }
 }
@@ -233,6 +275,23 @@ fn install_name(name: &str) -> ExitCode {
     if !holds_installer() {
         return ExitCode::FAILURE;
     }
+    // **The index copy first, once `update` has written one** (milestone 801).
+    if let Some(copy) = index_copy() {
+        let Ok(index) = Index::parse(&copy) else {
+            return refuse("the index copy cannot be read; run jig update");
+        };
+        match index.find(name, ARCHITECTURE) {
+            Ok(entry) => return install_indexed(&entry),
+            Err(Miss::SeveralVersions) => {
+                return refuse(
+                    "the index offers several versions of that package; \
+                     name one with <package>@<version>",
+                );
+            }
+            // Not in the index: the image's catalog may still vouch for it.
+            Err(Miss::NoSuchPackage) => {}
+        }
+    }
     let Some(catalog) = catalog() else {
         return refuse("this jig holds no catalog to look that name up in");
     };
@@ -311,6 +370,273 @@ fn fetch(stem: &str) -> Result<Staged, &'static str> {
     staged.ok_or(FAILED)
 }
 
+/// **The image's index sources**, as this program was handed them (milestone 801): the text before
+/// the page's first zero byte. `None` for a `jig` not granted the index store, which comes with it.
+fn sources_text() -> Option<&'static str> {
+    if !rt::is_granted(INDEX_SOURCES_SLOT) {
+        return None;
+    }
+    // SAFETY: the progenitor maps the sources page read-only at `INDEX_SOURCES_PAGE` whenever it
+    // places the page's capability at `INDEX_SOURCES_SLOT` (`system_initializer`'s `StdLayout`),
+    // and the mapping lives as long as this process.
+    let page = unsafe {
+        std::slice::from_raw_parts(
+            std_runtime_protocol::INDEX_SOURCES_PAGE as *const u8,
+            spawnproto::IMAGE_PAGE as usize,
+        )
+    };
+    let end = page.iter().position(|&b| b == 0).unwrap_or(page.len());
+    std::str::from_utf8(&page[..end]).ok()
+}
+
+/// The index copy `update` wrote, if this line holds the store and there is one.
+fn index_copy() -> Option<String> {
+    sources_text()?;
+    std::fs::read_to_string(IMAGE_INDEX_COPY).ok()
+}
+
+/// The image's sources, read, or why not.
+fn sources() -> Result<Sources<'static>, &'static str> {
+    let text = sources_text()
+        .ok_or("this jig holds no index store; only the owner's console grants one")?;
+    Sources::parse(text).map_err(|_| "this image's index sources cannot be read")
+}
+
+/// **The pin**: the root every repository must chain to, as DER. A named root is one this program
+/// carries (`isrg-root-x1`, the production pin of §250 (an image names its distribution's package
+/// index)); hex is the image's own.
+fn root_der(root: &Root<'_>) -> Result<Vec<u8>, &'static str> {
+    match root {
+        Root::Named("isrg-root-x1") => Ok(pinned_tls_client::ISRG_ROOT_X1.to_vec()),
+        Root::Named(_) => Err("this image names a root this jig does not carry"),
+        Root::Der(_) => {
+            let mut out = vec![0u8; 4096];
+            let n = root
+                .der(&mut out)
+                .ok_or("this image's root cannot be decoded")?
+                .len();
+            out.truncate(n);
+            Ok(out)
+        }
+    }
+}
+
+/// Where to connect for one configured repository: the address the image gave, or the host
+/// resolved once, through the resolver badge the progenitor placed (milestone 892 (a std program
+/// at the prompt holds the network and a name resolver)).
+fn addresses(c: &Configured<'_>) -> Result<Vec<SocketAddr>, String> {
+    let port = c.repository.port;
+    if let Some(ip) = c.address {
+        return Ok(vec![SocketAddr::V4(SocketAddrV4::new(ip, port))]);
+    }
+    Ok((c.repository.host, port)
+        .to_socket_addrs()
+        .map_err(|e| format!("{:?}", e.kind()))?
+        .collect())
+}
+
+/// **One `GET` over TLS**, connected to one of `to` and speaking to `server_name`, pinned to
+/// `root`, the body handed to `body` as it arrives. `server_name` is for TLS alone; nothing here
+/// resolves a name, so a listed location is dialed only at the address its check passed (milestone
+/// 871 (a sixth outsider pass attacks the confinement claim)).
+fn get(
+    server_name: &str,
+    to: &[SocketAddr],
+    root: &[u8],
+    path: &str,
+    body: impl FnMut(&[u8]),
+) -> Result<(), String> {
+    let peer = PinnedPeer::new(server_name, root).map_err(|e| format!("{e:?}"))?;
+    let tcp = TcpStream::connect(to).map_err(|e| format!("{:?}", e.kind()))?;
+    let session = Session::handshake(&peer, tcp).map_err(|e| format!("{e:?}"))?;
+    match session.get(path, body) {
+        Ok(200) => Ok(()),
+        Ok(status) => Err(format!("status {status}")),
+        Err(e) => Err(format!("{e:?}")),
+    }
+}
+
+/// **`jig update`**: the index, from the first of the image's addresses that answers (Q2), pinned
+/// to the image's root; this architecture's lines kept, read back whole, and written as the copy.
+fn update() -> ExitCode {
+    let sources = match sources() {
+        Ok(s) => s,
+        Err(why) => return refuse(why),
+    };
+    let root = match root_der(&sources.root) {
+        Ok(r) => r,
+        Err(why) => return refuse(why),
+    };
+    for configured in sources.repositories() {
+        let repo = configured.repository;
+        let mut buf = [0u8; PATH_MAX];
+        let Some(path) = repo.metadata_path(STAND_IN_INDEX_FILE, &mut buf) else {
+            continue;
+        };
+        let mut text = Vec::new();
+        let fetched = addresses(&configured).and_then(|to| {
+            get(repo.host, &to, &root, path, |part| {
+                text.extend_from_slice(part)
+            })
+        });
+        if let Err(why) = fetched {
+            println!("  index unreachable at {}: {why}", repo.host);
+            continue;
+        }
+        let Ok(text) = String::from_utf8(text) else {
+            return refuse("the index is not text; the copy was not changed");
+        };
+        if Index::parse(&text).is_err() {
+            return refuse("the index has a line this jig cannot read; the copy was not changed");
+        }
+        // This architecture's lines, so the copy fits the page the progenitor reads it into.
+        let ours: String = text
+            .split('\n')
+            .filter(|line| {
+                line.split(' ')
+                    .next()
+                    .is_some_and(|stem| name_and_version(stem).is_some())
+            })
+            .map(|line| format!("{line}\n"))
+            .collect();
+        let Ok(index) = Index::parse(&ours) else {
+            return refuse("the index has a line this jig cannot read; the copy was not changed");
+        };
+        if ours.len() > package_index::COPY_MAX {
+            return refuse("this architecture's index is larger than a copy may be (4095 bytes)");
+        }
+        if let Err(e) = std::fs::write(IMAGE_INDEX_COPY, ours.as_bytes()) {
+            return say_io(IMAGE_INDEX_COPY, e);
+        }
+        println!(
+            "  index updated: {} packages for {ARCHITECTURE}, from {} over TLS",
+            index.entries().count(),
+            repo.host
+        );
+        return ExitCode::SUCCESS;
+    }
+    refuse("no index address answered; the copy was not changed")
+}
+
+/// **A package the index copy lists, fetched over HTTPS and judged by the entry's digest**
+/// (milestone 801): the entry's listed locations, each only at a public address (Q1), then each of
+/// the image's repositories' own `targets/`. The bytes go straight into the staging run.
+fn install_indexed(entry: &Entry<'_>) -> ExitCode {
+    let sources = match sources() {
+        Ok(s) => s,
+        Err(why) => return refuse(why),
+    };
+    let root = match root_der(&sources.root) {
+        Ok(r) => r,
+        Err(why) => return refuse(why),
+    };
+    let Some(first) = sources.repositories().next() else {
+        return refuse("this image names no index address");
+    };
+    let mut staged = match Staged::new(spawnproto::IMAGE_MAX_PAGES * spawnproto::IMAGE_PAGE) {
+        Ok(s) => s,
+        Err(why) => return refuse(why),
+    };
+    let listed = Index::sources(entry, &first.repository, None).filter_map(|s| match s {
+        Source::Listed(at) => Some(at),
+        Source::Repository(_) => None,
+    });
+    let mut whence = None;
+    for at in listed {
+        match fetch_listed(&at, &root, &mut staged) {
+            Ok(()) => {
+                whence = Some(at.host);
+                break;
+            }
+            Err(why) => println!(
+                "  passed over https://{}:{}{}: {why}",
+                at.host, at.port, at.path
+            ),
+        }
+    }
+    if whence.is_none() {
+        for configured in sources.repositories() {
+            let repo = configured.repository;
+            let mut buf = [0u8; PATH_MAX];
+            let Some(path) = repo.target_path(entry.stem, &mut buf) else {
+                continue;
+            };
+            let fetched = addresses(&configured)
+                .and_then(|to| fill(&mut staged, |sink| get(repo.host, &to, &root, path, sink)));
+            match fetched {
+                Ok(()) => {
+                    whence = Some(repo.host);
+                    break;
+                }
+                Err(why) => println!("  {}'s copy did not arrive: {why}", repo.host),
+            }
+        }
+    }
+    let Some(whence) = whence else {
+        println!("  no source sent the package; nothing was installed");
+        return ExitCode::FAILURE;
+    };
+    if package_index::accept(entry, staged.bytes()).is_err() {
+        return refuse(
+            "the index does not vouch for the bytes that arrived; nothing was sent to the installer",
+        );
+    }
+    println!("  fetched {} from {whence} over TLS", entry.stem);
+    answer(
+        Activation::Install,
+        true,
+        ask(Activation::Install, Some(&staged), None),
+    )
+}
+
+/// A listed location, if every address its host resolves to is public (Q1's safeguard), fetched
+/// from exactly those addresses.
+fn fetch_listed(at: &Location<'_>, root: &[u8], staged: &mut Staged) -> Result<(), String> {
+    let resolved: Vec<SocketAddr> = (at.host, at.port)
+        .to_socket_addrs()
+        .map_err(|e| format!("{:?}", e.kind()))?
+        .collect();
+    let checked = at.check(&resolved).map_err(|why| match why {
+        AddressRefusal::Private(ip) => format!("a private address ({ip})"),
+        other => format!("{other:?}"),
+    })?;
+    fill(staged, |sink| {
+        get(
+            checked.host(),
+            checked.addresses(),
+            root,
+            checked.path(),
+            sink,
+        )
+    })
+}
+
+/// Run one fetch into the staging run from its start, and set the run's length to what arrived.
+fn fill(
+    staged: &mut Staged,
+    fetch: impl FnOnce(&mut dyn FnMut(&[u8])) -> Result<(), String>,
+) -> Result<(), String> {
+    let capacity = staged.capacity;
+    staged.len = capacity;
+    let mut filled = 0usize;
+    let mut over = false;
+    {
+        let bytes = staged.bytes();
+        fetch(&mut |part: &[u8]| {
+            match bytes.get_mut(filled..filled + part.len()) {
+                Some(dest) => dest.copy_from_slice(part),
+                None => over = true,
+            }
+            filled += part.len();
+        })?;
+    }
+    if over {
+        return Err("larger than a package may be (4 MiB)".into());
+    }
+    staged.len = filled as u64;
+    Ok(())
+}
+
 /// **`jig remove <program>`**, or `<program>@<version>` for one version.
 fn remove(program: &str) -> ExitCode {
     if program.len() > filesystem_protocol::grant::MAX_NAME {
@@ -363,7 +689,9 @@ fn answer(verb: Activation, fetched: bool, (status, live): (S, u64)) -> ExitCode
         (S::Done, Activation::Install) => "installed",
         (S::Done, Activation::Remove) => "removed",
         (S::Done, _) => "rolled back",
-        (S::NotCataloged, _) => "refused: this image's catalog does not vouch for those bytes",
+        (S::NotCataloged, _) => {
+            "refused: neither this image's catalog nor its index copy vouches for those bytes"
+        }
         (S::NoProgram, _) => "refused: that package carries no program named after it",
         (S::NotInstalled, _) => "refused: no program of that name is in the live generation",
         (S::NoEarlier, _) => "refused: there is no generation before the live one",

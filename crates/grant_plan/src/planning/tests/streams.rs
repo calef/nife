@@ -438,6 +438,7 @@ const RENDERS_AS_IT_READS: Manifest = Manifest {
     sync: false,
     installer: false,
     catalog: false,
+    indexes: IndexStore::Forbidden,
     runtime: Runtime::Native,
 };
 

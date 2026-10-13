@@ -7,8 +7,8 @@
 //! ratchet; the root re-exports every item at its old path.
 
 use crate::{
-    ArgSpec, DirSpec, FileSpec, InputSpec, Manifest, MemSpec, OutputSpec, Prog, Runtime,
-    UNVOUCHED_MANIFEST, UNVOUCHED_STD_MANIFEST,
+    ArgSpec, DirSpec, FileSpec, IndexStore, InputSpec, Manifest, MemSpec, OutputSpec, Prog,
+    Runtime, UNVOUCHED_MANIFEST, UNVOUCHED_STD_MANIFEST,
 };
 
 /// **What a file's bytes are bound and endowed with when they carry no manifest note** (milestone
@@ -85,6 +85,9 @@ pub fn image_can_carry(m: &Manifest) -> bool {
         // with it, are refused.
         && !m.installer
         && !m.catalog
+        // Milestone 801 (packages over the internet): the index store is the owner's console's to
+        // grant, as the installer is.
+        && m.indexes == IndexStore::Forbidden
         && std == (m.arg.hears_words())
         && (!std
             || (m.output == OutputSpec::Bytes

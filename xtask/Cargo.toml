@@ -92,6 +92,9 @@ manifest_note = { version = "0.1.0", path = "../crates/manifest_note" }
 # reads one with, and reads its own output back before writing it to disk, so a producer that
 # emitted a file its consumer refuses could not get past the gate.
 package_archive = { version = "0.1.0", path = "../crates/package_archive" }
+# The image's index sources (milestone 801 (packages over the internet)): the entry's name and the
+# reader the archive build checks its own text with.
+package_index = { version = "0.1.0", path = "../crates/package_index" }
 # Recipes and package declarations are TOML (calef, 2026-09-27; JSON refused for having no comments,
 # YAML too). A §46 (thin primitives or whole subsystems) dependency, taken rather than written: it is
 # host-only and never on the shipping graph, no target reads a recipe, it parses a format calef chose

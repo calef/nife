@@ -72,14 +72,7 @@ pub(crate) fn std_exerciser() -> bool {
     if !std_src() {
         return false;
     }
-    // **And `jig`** (milestone 809 (the package client becomes a program)), its own workspace,
-    // built into the same target directory so the standard library under it is compiled once for
-    // both. A program in the image rather than an exerciser, built here because this is the step
-    // every gate already runs before it packs an archive.
-    let manifests = [
-        s(workspace_root().join("std_exerciser/Cargo.toml")),
-        s(workspace_root().join("jig/Cargo.toml")),
-    ];
+    let manifests = [s(workspace_root().join("std_exerciser/Cargo.toml"))];
     // Pin where the build and its evidence land before the first child runs, so the ELFs the
     // archive packs, the dep-info the sweep reads, and this build cannot be separated by an
     // exported variable they never agreed to.
@@ -112,6 +105,39 @@ pub(crate) fn std_exerciser() -> bool {
             .unwrap_or(false);
         if !ok {
             eprintln!("std-exerciser: building {manifest} for {triple} failed");
+            return false;
+        }
+    }
+    // **And `jig`** (milestone 809 (the package client becomes a program)), its own workspace. A
+    // program in the image rather than an exerciser, built here because this is the step every
+    // gate already runs before it packs an archive. Since milestone 801 (packages over the
+    // internet) it speaks TLS to the index, so it builds with the TLS graph's flags, read from the
+    // one file that lists them (`--config`, so there is no second copy), into that graph's target
+    // directory.
+    for triple in STD_TARGETS {
+        let spec = s(workspace_root().join(format!("targets/{triple}.json")));
+        let ok = Command::new("cargo")
+            .env("RUSTUP_TOOLCHAIN", farm_dir())
+            .env("CARGO_TARGET_DIR", workspace_root().join(TLS_GRAPH_TARGET))
+            .args([
+                "build",
+                "--release",
+                "--locked",
+                "--manifest-path",
+                &s(workspace_root().join("jig/Cargo.toml")),
+                "--config",
+                &s(workspace_root().join("cryptography_exerciser/.cargo/config.toml")),
+                "-Zjson-target-spec",
+                "-Zbuild-std=core,alloc,std,panic_abort",
+                "-Zbuild-std-features=compiler-builtins-mem",
+                "--target",
+                &spec,
+            ])
+            .status()
+            .map(|st| st.success())
+            .unwrap_or(false);
+        if !ok {
+            eprintln!("std-exerciser: building jig for {triple} failed");
             return false;
         }
     }

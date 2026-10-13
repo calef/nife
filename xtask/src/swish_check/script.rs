@@ -165,6 +165,57 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         "packages/noteless/0.1.0/noteless",
         &["noteless: installed, and carrying no manifest note"],
     ),
+    // **The distribution's index, over HTTPS** (milestone 801 (packages over the internet)).
+    // `jig update` reads the image's index sources (an archive entry the kernel measured), fetches
+    // the stand-in index from `basalt.test` at the address the sources give, pinned to the test
+    // authority, and writes this architecture's lines to `activation/indexes/image`. The peer's
+    // index is `disk::stage_index`'s: `greeting` 0.1.0, `uptime`, a `rebound` twin
+    // (`helpers/tls-peer` adds it) and `greeting` 0.3.0, which the image's catalog does not name.
+    line(
+        1,
+        "jig update",
+        &[
+            "index updated: 4 packages for ",
+            "from basalt.test over TLS",
+        ],
+    ),
+    // `list` reads the copy once there is one, and says so.
+    line(
+        1,
+        "jig list",
+        &[
+            "packages the index offers (the copy jig update wrote):",
+            "  greeting 0.3.0",
+        ],
+    ),
+    // **A lying repository, refused by the index's digest** before the installer is asked: the
+    // peer serves `uptime` with a byte flipped. `jig` tries the entry's listed location first,
+    // which this prompt cannot resolve, and then the repository's own copy.
+    line(
+        1,
+        "jig install uptime",
+        &[
+            "refused: the index does not vouch for the bytes that arrived; nothing was sent to the \
+             installer",
+        ],
+    ),
+    // **Installed on the index copy's word alone** (ruling I2): the image's catalog names no
+    // `greeting` 0.3.0, so the progenitor's installer accepts it only because the copy in the
+    // store the owner's console granted lists its digest.
+    line(
+        1,
+        "jig install greeting@0.3.0",
+        &[
+            "fetched greeting-0.3.0-",
+            "from basalt.test over TLS",
+            "fetched and installed; generation 6 is live",
+        ],
+    ),
+    line(
+        1,
+        "packages/greeting/0.3.0/greeting",
+        &["hello from a package this image never carried"],
+    ),
 ];
 
 /// The text this gate types and what each line must answer. `None` is a line whose answer is
@@ -509,7 +560,9 @@ pub(super) const SWISH_CHECK_SCRIPT: &[Line] = &[
     line(
         1,
         "jig install ./tampered.nifepkg",
-        &["refused: this image's catalog does not vouch for those bytes; nothing is installed"],
+        &[
+            "refused: neither this image's catalog nor its index copy vouches for those bytes; nothing is installed",
+        ],
     ),
     // **A package cannot take a name the image carries** (DECISIONS §229, calef's ruling of
     // 2026-09-27). `uptime`'s package is genuine and cataloged, and the image carries `uptime`, so

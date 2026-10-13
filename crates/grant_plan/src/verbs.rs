@@ -6,7 +6,7 @@
 //!
 //! Name: provisional (milestone 809), as are the module, the types and the bit positions.
 
-use crate::{Manifest, each_word};
+use crate::{IndexStore, Manifest, each_word};
 
 /// **The authorities a verb table may hand out**, as bits (milestone 809 (the package client
 /// becomes a program), option V2). Each names one of [`Manifest`]'s fields the progenitor endows
@@ -40,8 +40,14 @@ impl Grants {
     pub const INSTALLER: Grants = Grants(1 << 7);
     /// [`Manifest::catalog`].
     pub const CATALOG: Grants = Grants(1 << 8);
+    /// [`Manifest::indexes`], read only (milestone 801 (packages over the internet)). Name:
+    /// provisional 2026-10-12 (UTC), as is the bit.
+    pub const INDEXES: Grants = Grants(1 << 9);
+    /// [`Manifest::indexes`], read and written: `jig update`. Holds nothing without
+    /// [`Grants::INDEXES`]. Name: provisional 2026-10-12 (UTC), as is the bit.
+    pub const INDEXES_WRITE: Grants = Grants(1 << 10);
     /// Every bit above, and no other.
-    pub const ALL: Grants = Grants((1 << 9) - 1);
+    pub const ALL: Grants = Grants((1 << 11) - 1);
 
     /// Both sets.
     pub const fn union(self, other: Grants) -> Grants {
@@ -87,16 +93,24 @@ pub const MAX_VERB: usize = 16;
 /// by their bytes, which `manifest_note`'s record requires. The
 /// least each needs: `list` the catalog, `remove` and `rollback` the installer, `install` all three
 /// of the installer, the catalog (to resolve a name and check what arrives) and the network.
+///
+/// Since milestone 801 (packages over the internet): `update` holds the network, the clock and
+/// entropy (TLS to the index) and writes the index store; `install` reads the store too, and
+/// takes the clock and entropy, since a name the index copy lists is fetched over TLS; `list`
+/// reads the store beside the catalog.
 pub(crate) const JIG_VERBS: &[VerbGrant] = &[
     VerbGrant {
         verb: "install",
         grants: Grants::INSTALLER
             .union(Grants::CATALOG)
-            .union(Grants::NETWORK),
+            .union(Grants::NETWORK)
+            .union(Grants::INDEXES)
+            .union(Grants::CLOCK)
+            .union(Grants::ENTROPY),
     },
     VerbGrant {
         verb: "list",
-        grants: Grants::CATALOG,
+        grants: Grants::CATALOG.union(Grants::INDEXES),
     },
     VerbGrant {
         verb: "remove",
@@ -105,6 +119,14 @@ pub(crate) const JIG_VERBS: &[VerbGrant] = &[
     VerbGrant {
         verb: "rollback",
         grants: Grants::INSTALLER,
+    },
+    VerbGrant {
+        verb: "update",
+        grants: Grants::NETWORK
+            .union(Grants::INDEXES)
+            .union(Grants::INDEXES_WRITE)
+            .union(Grants::CLOCK)
+            .union(Grants::ENTROPY),
     },
 ];
 
@@ -137,6 +159,15 @@ pub fn narrow_by_verb(m: &Manifest, verbs: &[VerbGrant], verb: Option<&[u8]>) ->
         share: m.share && g.contains(Grants::SHARE),
         installer: m.installer && g.contains(Grants::INSTALLER),
         catalog: m.catalog && g.contains(Grants::CATALOG),
+        indexes: match m.indexes {
+            IndexStore::ReadWrite if g.contains(Grants::INDEXES.union(Grants::INDEXES_WRITE)) => {
+                IndexStore::ReadWrite
+            }
+            IndexStore::ReadWrite | IndexStore::ReadOnly if g.contains(Grants::INDEXES) => {
+                IndexStore::ReadOnly
+            }
+            _ => IndexStore::Forbidden,
+        },
         ..*m
     }
 }
@@ -191,12 +222,20 @@ mod tests {
         assert!(install.catalog && install.installer && install.network);
         let remove = as_typed(b"jig 'remove' noteless");
         assert!(remove.installer && !remove.catalog && !remove.network);
+        // Milestone 801: only `update` writes the index store; `list` and `install` read it, and
+        // `remove` holds none of it.
+        assert_eq!(as_typed(b"jig update").indexes, IndexStore::ReadWrite);
+        assert!(!as_typed(b"jig update").installer);
+        assert_eq!(list.indexes, IndexStore::ReadOnly);
+        assert_eq!(install.indexes, IndexStore::ReadOnly);
+        assert_eq!(remove.indexes, IndexStore::Forbidden);
         // The progenitor's reading of the page the shell assembles agrees with the shell's.
         let mut page = [0u8; argument_protocol::PAGE_BYTES];
         argv(b"jig 'install' greeting", &mut page).unwrap();
         assert_eq!(verb_of_page(&page), Some(&b"install"[..]));
         let nothing = as_typed(b"jig upgrade");
         assert!(!nothing.installer && !nothing.catalog && !nothing.network);
+        assert_eq!(nothing.indexes, IndexStore::Forbidden);
         assert_eq!(as_typed(b"jig"), nothing);
         // Everything else about the manifest is untouched.
         assert_eq!(list.arg, jig.arg);
@@ -218,6 +257,11 @@ mod tests {
                     (narrowed.share, Grants::SHARE),
                     (narrowed.installer, Grants::INSTALLER),
                     (narrowed.catalog, Grants::CATALOG),
+                    (narrowed.indexes != IndexStore::Forbidden, Grants::INDEXES),
+                    (
+                        narrowed.indexes == IndexStore::ReadWrite,
+                        Grants::INDEXES_WRITE,
+                    ),
                 ]
                 .into_iter()
                 .filter(|(held, _)| *held)
@@ -233,7 +277,7 @@ mod tests {
         assert_eq!(Grants::from_bits(1 << 15), None);
     }
 
-    /// **Each authority a verb can choose is narrowed on its own.** A manifest declaring all nine,
+    /// **Each authority a verb can choose is narrowed on its own.** A manifest declaring all eleven,
     /// and a table with one verb per authority: each verb keeps its one, and only that one.
     #[test]
     fn each_field_is_narrowed_by_its_own_bit() {
@@ -247,6 +291,7 @@ mod tests {
             share: true,
             installer: true,
             catalog: true,
+            indexes: IndexStore::ReadWrite,
             ..Prog::Jig.manifest()
         };
         let one = |verb: &'static str, grants| VerbGrant { verb, grants };
@@ -260,6 +305,8 @@ mod tests {
             one("g", Grants::SHARE),
             one("h", Grants::INSTALLER),
             one("i", Grants::CATALOG),
+            one("j", Grants::INDEXES),
+            one("k", Grants::INDEXES.union(Grants::INDEXES_WRITE)),
         ];
         for v in &table {
             let n = narrow_by_verb(&all, &table, Some(v.verb.as_bytes()));
@@ -273,6 +320,8 @@ mod tests {
                 n.share,
                 n.installer,
                 n.catalog,
+                n.indexes != IndexStore::Forbidden,
+                n.indexes == IndexStore::ReadWrite,
             ];
             let bits = held
                 .iter()
@@ -283,12 +332,12 @@ mod tests {
         }
     }
 
-    /// The set of every authority is the nine bits and no tenth, and a union keeps a bit both
+    /// The set of every authority is the eleven bits and no twelfth, and a union keeps a bit both
     /// sides hold.
     #[test]
-    fn all_is_nine_bits_and_a_union_keeps_shared_bits() {
-        assert_eq!(Grants::ALL.bits(), 0x1ff);
-        assert_eq!(Grants::from_bits(1 << 9), None);
+    fn all_is_eleven_bits_and_a_union_keeps_shared_bits() {
+        assert_eq!(Grants::ALL.bits(), 0x7ff);
+        assert_eq!(Grants::from_bits(1 << 11), None);
         assert_eq!(Grants::CLOCK.union(Grants::CLOCK), Grants::CLOCK);
         assert_eq!(
             Grants::CLOCK
@@ -308,7 +357,13 @@ mod tests {
         for &p in Prog::ALL {
             let m = p.manifest();
             assert_eq!(m.installer, p == Prog::Jig, "{}", p.name());
-            if m.installer || m.catalog {
+            assert_eq!(
+                m.indexes != IndexStore::Forbidden,
+                p == Prog::Jig,
+                "{}",
+                p.name()
+            );
+            if m.installer || m.catalog || m.indexes != IndexStore::Forbidden {
                 assert_eq!(m.runtime, Runtime::Std, "{}", p.name());
             }
         }
@@ -318,9 +373,17 @@ mod tests {
             installer: false,
             ..jig
         }));
+        // Milestone 801: the index store alone is enough to refuse an image.
+        assert!(!image_can_carry(&Manifest {
+            installer: false,
+            catalog: false,
+            network: false,
+            ..jig
+        }));
         assert!(image_can_carry(&Manifest {
             installer: false,
             catalog: false,
+            indexes: IndexStore::Forbidden,
             network: false,
             ..jig
         }));
