@@ -11,8 +11,7 @@ grant path), `components/src/rm.rs` (the namespace mode), and `kernel/src/user/f
 `start_granted_set`, and `system_tests/src/user/glob_grant_tests.rs`.
 
 Read [dir-capability.md](dir-capability.md) first for the rights ladder and `fs_subtree_caretaker`,
-and [rm.md](rm.md) for why `rm` is a program with a directory grant. This lane is the wiring the
-other two left as the obvious next thing.
+and [rm.md](rm.md) for why `rm` is a program with a directory grant.
 
 ## What a match grants, which was the whole question
 
@@ -39,8 +38,7 @@ to carry `name: &[u8]`; it now carries `names: NameSet`, and a literal operand i
 The expansion you see is the grant. `echo *.txt` prints literally the authority that `rm *.txt`
 would transfer, because the matched set *is* the namespace the caretaker will serve.
 
-Unix cannot make that claim, and the reason is worth being precise about rather than waving at.
-Unix's `rm` gets its authority from the uid it inherits; the glob only tells it which of its
+Unix cannot make that claim. Unix's `rm` gets its authority from the uid it inherits; the glob only tells it which of its
 existing powers to use. So `echo *.txt` on Unix prints a list of names that happens to be what `rm
 *.txt` would delete, which is a coincidence of good behavior by `rm`, not a fact about what it was
 handed. Here it is the same object: the shell expands once, and the names it printed are the names
@@ -49,7 +47,7 @@ the caretaker is built from.
 It only means anything if both go through one expander, which is why `grant_plan::expand::Expander`
 exists and why both `echo` and the grant planner drive it. The guest test then checks the pairing
 from the other end: a shell rooted in the fixture's `globset` runs `echo gl-*.txt` and plans
-`rm gl-*.txt`, and reports whether the names agree. The two share the expander and not the
+`rm gl-*.txt`, and reports whether the names agree. They share the expander, not the
 plumbing (`echo` goes text → words → expand → print; the grant goes parse → positionals → expand →
 `plan` → the grant's names → render). So a planner that narrowed, reordered or added to a set shows
 up as a disagreement. Falsified deliberately: pointing the grant path at a wider pattern turns the
@@ -57,8 +55,7 @@ report from `0x3f` into `0x3d`.
 
 ## The shell expands before it plans, and that changed `plan_against`
 
-The shell expands first, which is also what Unix does, so there is no divergence to earn. The
-consequence is structural: `grant_plan::plan` must see the expanded set rather than the pattern,
+The shell expands first, as Unix does. The consequence is structural: `grant_plan::plan` must see the expanded set rather than the pattern,
 since the endowment is the set.
 
 `plan_against` used to fill its slots by splitting a slice of tokens. It now fills them by index,
@@ -74,7 +71,7 @@ Two guards fall out, and both exist so authority cannot move silently:
 - A token with no magic never consults the expansion at all, so a name that was typed always
   designates itself and no caller can substitute a set for it.
 
-The first guard matters more than it looks, and the reason is a correction. The obvious argument
+The first guard matters more than it looks. The obvious argument
 is that bash's pass-the-pattern-through is harmless here, because a name containing `*` would be
 refused downstream. It would not be: neither `grant_plan::file_name_fits` nor the
 FS server's `check_component` rejects `*` (they refuse the empty name, `.`, `..`, `/`, `\`, `:` and
@@ -84,9 +81,8 @@ name nobody has, useless today and live the moment anything creates a file calle
 should not be able to acquire a referent after it is written.
 
 `Endowment` also stopped borrowing from the command line, because a name a pattern produced comes
-out of a directory listing rather than out of the line. That makes explicit what `FileGrant::dir`
-already did by hand: a planned grant carries values, so nothing that happens afterwards can change
-what it means.
+out of a directory listing. A planned grant carries values, as `FileGrant::dir` already did by hand,
+so nothing afterwards can change what it means.
 
 ## Expansion costs `ENUMERATE`, and that is the whole bill
 
@@ -98,19 +94,18 @@ half that demonstrates this: showing the authority costs none of it.
 ## `fs_nameset_caretaker`, and why it is a third caretaker
 
 It is a third caretaker rather than a generalization of `fs_file_caretaker` or a mode on
-`fs_subtree_caretaker`. The second was refused because `fs_subtree_caretaker` performs no rights
-checks at all, and a name filter is a check on every name-taking verb. A set also needs a frame at
-start, which a single-name grant does not. The cost is about thirty lines of duplicated handle
-table; the three shapes are weighed in
+`fs_subtree_caretaker`, which performs no rights checks at all while a name filter is a check on
+every name-taking verb. The cost is about thirty lines of duplicated handle table; the three shapes,
+and the frame a set needs at start, are weighed in
 [glob-grant/third-caretaker.md](glob-grant/third-caretaker.md).
 
 Milestone 61 removed the *other* duplication, which was the dangerous one. Which verbs got asked "is
 this name in the set" used to be a list of match arms in this program. So a name-taking verb added
 to the contract would have arrived unfiltered and a set capability would quietly have reached a name
 the pattern never matched. It is now `filesystem_protocol::verb`'s `takes_name()`, one row per verb,
-in a host-testable crate: the filter covers a new verb from the moment its row exists. What is *not*
-shared is the attenuation. `fs_subtree_caretaker` consults no policy at all and still does not,
-which is exactly the property a mode would have destroyed.
+in a host-testable crate: the filter covers a new verb from the moment its row exists. The
+attenuation is not shared: `fs_subtree_caretaker` still consults no policy, the property a mode
+would have destroyed.
 
 The distinction that milestone made load-bearing is `Operand::Name` versus `Operand::Payload`. The
 four extended-attribute verbs carry a name in the shared page and it is not a name in the
@@ -142,12 +137,11 @@ and `mv *.txt` is not something this shape can express.
 
 At the granted directory the caretaker does not ask the server at all: the set is the namespace,
 so there is nothing to filter out of a listing that is not already absent from this one. That avoids
-the cursor problem a filtering caretaker would have (the client's index and the server's would
-diverge the moment an entry was dropped) and costs no round trip.
+a filtering caretaker's cursor problem (client and server indexes diverge once an entry is dropped)
+and costs no round trip.
 
-It is deliberately not gated on the `ENUMERATE` the grant carries, and that is not a widening: what
-a listing here reveals is exactly the set, which the command line already printed before the
-caretaker existed.
+It is deliberately not gated on the grant's `ENUMERATE`, and that is not a widening: a listing here
+reveals exactly the set, which the command line already printed.
 
 The price is that a set record carries the entry's type, decided at expansion time from what the
 directory said. That is the same resolve-at-grant-time rule the rest of a grant follows.
@@ -159,8 +153,8 @@ name is zero bytes long (`filesystem_protocol::grant::WHOLE_NAMESPACE`). A name 
 that spelling was free. It means the operand is the namespace, and `rm` learns the names by
 enumerating its own capability.
 
-It sweeps in one listing with no rounds, unlike the recursive walk, and the difference is a fact
-about the namespace rather than an optimization. `empty()` must re-read from cursor 0 because
+It sweeps in one listing with no rounds, unlike the recursive walk, a fact about the namespace
+rather than an optimization. `empty()` must re-read from cursor 0 because
 removing a name shifts a real directory's entries, while a set namespace is fixed, so re-reading
 would hand the loop the names this run has already taken away.
 
@@ -170,8 +164,8 @@ would hand the loop the names this run has already taken away.
 
 Refused, at the prompt, with nothing spawned. zsh's default rather than bash's, and here the
 model forces it: the expansion is the grant, so an empty expansion is an empty grant and running the
-command would be running it with an authority nobody named. The pass-through alternative is worse
-than it looks; see the correction above.
+command would be running it with an authority nobody named. The pass-through alternative is argued
+above.
 
 `echo` gives the same answer, and it has to. If `echo` printed the pattern where `rm` refuses it,
 the two would disagree about what the line designates, which is the one thing this pairing exists to
@@ -209,13 +203,10 @@ refusals survive it. Transcripts and each decision's argument are in
 
 ## What the tests prove, and from where
 
-On the host, `cargo test -p grant_plan -p swish -p fs_proto` proves the expander, the bound, the
-refusals, the set encoding and the batching, including a sweep of a directory that shrinks under it.
-At a real prompt on both ISAs, `script/swish-check` pins the resume rule and `xargs caps rm`'s
-second grant. In the guest, `glob_grant_tests` expands one pattern two ways, then makes `rm` the
-attacker: told to remove a name outside the set, it gets `ENOENT`. From the host afterwards,
-`xtask::redoxfs_glob_grant_took_exactly_the_match` reads the image and finds exactly the matched
-names gone. Each claim and why it is not vacuous is in [glob-grant/tests.md](glob-grant/tests.md).
+Host tests prove the expander, the bound, the refusals, the set encoding and the batching.
+`script/swish-check` pins the resume rule at a real prompt. In the guest `rm` is made the attacker
+and gets `ENOENT` for a name outside the set, and the host then reads the image and finds exactly
+the matched names gone. Each claim and why it is not vacuous is in [glob-grant/tests.md](glob-grant/tests.md).
 
 ## BUGS
 
@@ -247,8 +238,8 @@ Known limitations, next to the feature rather than only in a tracker.
   expanded carries the types it observed. Today no wiring serves a single-name grant through
   `fs_nameset_caretaker`, so nothing reads that bit; if one ever does, its listing would call a
   directory a file.
-- A set capability cannot move a name out of its set, so `mv *.txt elsewhere/` is not expressible.
-  Argued above under `RENAME`.
+- A set capability cannot move a name out of its set, so `mv *.txt elsewhere/` is not expressible
+  (see `RENAME` above).
 - Only the first pattern on a line is expanded. No manifest declares two name slots, so a second
   operand of any kind is already an unplaceable token and a refusal; the day one does, this needs a
   second expansion rather than a loop over the same one.
@@ -264,9 +255,8 @@ Known limitations, next to the feature rather than only in a tracker.
   set. Only the kernel test wires a set caretaker. How a set should travel is PROPOSED in
   [a-set-grant-at-the-prompt.md](a-set-grant-at-the-prompt.md).
 - The set is not consulted below the granted directory, including for attributes. A handle minted by
-  descending into a matched directory is unfiltered, which is argued above for the naming verbs and
-  is the same answer for the four attribute verbs milestone 61 (the caretakers) forwarded. What is
-  under a directory the pattern matched was never a question the pattern asked.
+  descending into a matched directory is unfiltered, argued above for the naming verbs and the same
+  answer for the four attribute verbs milestone 61 (the caretakers) forwarded.
 
 ## EXAMPLES
 
@@ -285,35 +275,8 @@ $ echo gl-*.rs
   no name here matches that pattern, so there is nothing to grant
 ```
 
-Expand once and grant what was shown, from the shell's side:
-
-```rust
-// components/src/swish/: one expander, two callers
-let shown = nav.expand(b"gl-*.txt")?;              // what `echo` prints
-let e = grant_plan::plan(&spec, holdings(&nav), Expansion::at(0, shown))?;
-assert_eq!(e.dir.unwrap().names, shown);           // and what `rm` would hold
-```
-
-Wire a set grant and attack it:
-
-```rust
-// system_tests/src/user/glob_grant_tests.rs
-let report = fs_service::start_granted_set(
-    blk_server_image(),
-    program("redoxfs_server").unwrap(),
-    program("fs_nameset_caretaker").unwrap(),
-    program("rm").unwrap(),
-    fs_service::SetGrant {
-        dir: tree::GLOBSET,
-        names: &[(b"gl-one.txt", false), (b"gl-two.txt", false)],
-        rights: dir::REMOVE,                       // take names out, and nothing else
-        role: filesystem_protocol::grant::spec(0, 0),         // no name: the operand is the namespace
-        arg: 0,
-        arg2: 0,
-        stack_pages: 4,
-    },
-)?;
-```
+The same pairing in code, expanding once and granting what was shown, and the guest test wiring a set grant
+to attack it, are in [glob-grant/tests.md](glob-grant/tests.md#the-two-code-paths-as-examples).
 
 Run it:
 

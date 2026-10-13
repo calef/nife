@@ -4,11 +4,9 @@ Milestone 31, phase 1. This is the note on the one idea the capability shell exi
 visible: on a nife command line, naming a resource is how you grant it. Mark Miller's
 principle, "designation is authorization," applied at the one interface a human touches. The pure
 logic lives in the `grant_plan` crate (host-tested); the wiring is `swish.rs` and, on the
-progenitor's side of the channel, `crates/system_initializer`'s spawn service. There were two first
-processes when this note was written (`hello.rs`'s `init_boot` role on aarch64,
-`components/src/progenitor.rs` on riscv); milestone 96 reduced each to a table of the slot numbers its
-kernel granted, and milestone 266 reduced them to one program, so the service that decodes a grant
-expression is written once and entered once. The manifest half is written up separately in
+progenitor's side of the channel, `crates/system_initializer`'s spawn service. The two first processes this note was written against (`hello.rs`'s `init_boot` role on aarch64,
+`components/src/progenitor.rs` on riscv) became slot tables in milestone 96 (one init) and one program in milestone 266 (one progenitor), so
+the service that decodes a grant expression is written once. The manifest half is in
 [program-manifest.md](program-manifest.md). The evidence behind this note is in
 [grant-expression/](grant-expression/README.md).
 
@@ -16,13 +14,11 @@ expression is written once and entered once. The manifest half is written up sep
 
 A Unix child inherits every one of your file descriptors and runs under your uid, so it may
 `open()` anything your uid allows. Authority comes from who you are, and it flows to a child
-whether or not the command mentioned it. `grep secret public.txt` hands grep the authority to read
-every file you own; that it only touches `public.txt` is grep's good manners, not a limit the
-system imposed. This is ambient authority ([capabilities.md](capabilities.md)), and it is what
+whether or not the command mentioned it. `grep secret public.txt` hands grep the authority to read every file you own; it touching only
+`public.txt` is good manners. This is ambient authority ([capabilities.md](capabilities.md)), and it is what
 makes the confused deputy constructible.
 
-The inversion: a nife command grants exactly what it names, and nothing else. A program
-that names no resource gets none. There is no ambient pool to draw from, so the question "may I?"
+The inversion: a nife command grants exactly what it names, and nothing else. There is no ambient pool to draw from, so the question "may I?"
 is never asked; there is nothing in the program's hands it was not given. `least_authority_demo 9` grants a
 report channel and an argument. `memory_grant_depleter --mem 16` grants a report channel and a 16-page memory
 budget. `memory_grant_depleter` alone grants a report channel and is refused, because memory_grant_depleter's manifest says it

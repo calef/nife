@@ -3,12 +3,10 @@
 Milestone 85 (mutation testing over the host crates). `script/mutation` runs
 [cargo-mutants](https://mutants.rs/) over the host crates. It rewrites one function at a time
 (replace a return value, delete a match arm, flip an operator), reruns the mutated package's tests,
-and records whether anything noticed. Coverage asks whether a line ran under a test. A mutation run
-asks whether any test would notice if the line were wrong, which is the property a test suite exists
-for.
+and records whether anything noticed. Coverage asks whether a line ran under a test; a mutation run asks whether any test would notice
+if the line were wrong.
 
-It is a report, not a gate. A new survivor fails nothing until the weekly numbers are stable enough
-to deserve it.
+It is a report, not a gate, until the weekly numbers deserve one.
 
 This page is enough to run the tool, read its numbers and triage a survivor. The per-crate history,
 and how each number got to where it is, lives in the [appendices](#appendices).
@@ -27,8 +25,7 @@ A full local run takes hours. The weekly `mutation testing` workflow (`.github/w
 runs the same command eight-way sharded with `--sharding round-robin`, so each shard is a uniform
 sample of every crate.
 
-The tool version is pinned in `.cargo-mutants-version`, today 27.1.0. The pin matters more here than
-for most tools: cargo-mutants changes which mutants it generates between versions, so an unpinned
+The tool version is pinned in `.cargo-mutants-version`, today 27.1.0. The pin matters: cargo-mutants changes which mutants it generates between versions, so an unpinned
 tool moves the numbers with nothing in the tree changed. Exclusions live in `.cargo/mutants.toml`,
 each with its reason. That file is config, not a code dependency, per §46 (thin primitives or whole
 subsystems).
@@ -70,7 +67,7 @@ survivors themselves".
 
 A census is a whole-corpus run. The weekly run's eight shards together make one; a single shard is
 a sample. A sample cannot tell an absent mutant from a killed one, so a per-crate rate from one
-reads as a crate that got worse. A whole run is different: it is a census rather than a sample.
+reads as a crate that got worse.
 
 ## The current numbers
 
@@ -94,8 +91,8 @@ Like-for-like, the score has risen since the baseline. Read consistently, the 38
 were 94.7% on 2026-09-19 against 92.4% in August. Over the 62 crates shared with 2026-09-19, the
 2026-09-21 rate rose again, 93.7% to 93.8%.
 
-The corpus number fell on 2026-09-21 because of what arrived, not what decayed. Four crates were
-measured for the first time and one grew eightfold:
+The corpus number fell on 2026-09-21 because of what arrived: four crates were measured for the
+first time and one grew eightfold:
 
 | crate | viable | killed | missed | since 2026-09-19 |
 |---|---|---|---|---|
@@ -151,8 +148,7 @@ the crates that regressed from the baseline
 [clock_protocol, swish, filesystem_protocol](mutation-testing/regressions-clock-protocol-swish-filesystem-protocol.md),
 [machine_discovery](mutation-testing/machine-discovery.md)). Part 3 took the worst of the crates
 new since the baseline ([new-crate-backlog](mutation-testing/new-crate-backlog.md) and the four
-appendices after it). Most survivors were missing tests, not bugs. The exceptions are real
-wrong-accepts, and `gpt`'s at the baseline is the one to read first: it accepted a table whose last
+appendices after it). Most survivors were missing tests, not bugs. Of the real wrong-accepts, `gpt`'s at the baseline is the one to read first: it accepted a table whose last
 usable block sat inside the backup array.
 
 ## The ledger
@@ -179,7 +175,7 @@ a hole in the measurement that reads as a pass) is that work, not started.
 
 ## What the tool has taught
 
-These recur across the appendices, so each is stated once here.
+These recur across the appendices.
 
 - An exhaustive sweep proves *rejection*, not *rejection for the right reason*. A mutant that
   weakens check B survives any input that also trips check A. `gpt`'s real bug hid this way

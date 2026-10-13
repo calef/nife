@@ -16,6 +16,8 @@ and evidence behind those answers, which its prose budget has no room for.
   wedge is a `CALL`.
 - [`milestone-23-residuals.md`](milestone-23-residuals.md): what the lane found about the two other
   residuals of milestone 23 (a capability-routed component OS with live replacement).
+- [`examples.md`](examples.md): the Rust examples, a watcher's `SURVEY` loop, its one-right
+  endowment, and restoring a service under a hung component.
 
 *Name: provisional, minted 2026-10-11 (UTC) by lane/fifth-ten-longest-notes, which split the parent
 under §212 (a prose budget). The directory follows §212's siting default, `notes/X/` beside
@@ -33,3 +35,5 @@ names files.
 - `the-wedge-test` Name: provisional, minted 2026-10-11 (UTC) by lane/fifth-ten-longest-notes.
 - `milestone-23-residuals` Name: provisional, minted 2026-10-11 (UTC) by
   lane/fifth-ten-longest-notes, after the parent's own heading.
+- `examples` Name: provisional, minted 2026-10-13 (UTC) by lane/prose-cap-notes-b, for the parent's
+  Rust EXAMPLES. calef names files.

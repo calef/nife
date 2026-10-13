@@ -1,8 +1,7 @@
 # The hung component
 
 *Milestone 23's third residual, and the one §32 named and declined: a component that stops answering
-without dying. The mechanism it interferes with is DECISIONS §41 and notes/live-replacement.md;
-read those first if you want the swap itself. `crates/swap_protocol`, `components/src/swapper.rs`'s
+without dying. The swap itself is DECISIONS §41 and notes/live-replacement.md. `crates/swap_protocol`, `components/src/swapper.rs`'s
 `ROLE_HUNG`, and `a_component_that_stops_answering_without_dying_is_invisible_to_its_supervisor` in
 `system_tests/src/user/live_swap_tests.rs`.*
 
@@ -14,7 +13,7 @@ Only a holder of the supervision endpoint alone still cannot end a child (133's 
 The two halves are tested apart, not together; milestone 23 (a capability-routed component OS with
 live replacement) records that task. notes/blocked-thread-teardown.md has the decision.
 
-## The problem, stated so the precision is usable
+## The problem
 
 Every failure this system handles is a death. A component faults or exits, and the kernel is the
 witness. It stamps a five-word message onto the supervision endpoint its spawner designated
@@ -24,11 +23,11 @@ architectures, and it is the whole of what a supervisor can do.
 
 A component that stops answering without dying produces none of it. It holds its endpoint. It
 holds its device. Its region is live and mapped. Its thread is `Blocked` or, if it is spinning,
-`Running`. Nothing faults, nothing exits, no message arrives, there is no corpse, and every mechanism
-in this tree reads that as a healthy server. Meanwhile a client is parked inside a `CALL` that will
+`Running`. Nothing faults or exits, no message arrives, and every mechanism in this tree reads that as a
+healthy server. Meanwhile a client is parked inside a `CALL` that will
 not return, and its supervisor is blocked in `RECEIVE` on an endpoint that will never deliver.
 
-The tree had the vocabulary for this and had never joined it up. DECISIONS §26.1 calls it
+DECISIONS §26.1 calls it
 "alive but wedged" and says polling "remains the right tool" for it. §32's second consequence names
 it exactly and declines it:
 
@@ -42,9 +41,8 @@ the machine answers, which need an architect, and where §32's sentence above is
 
 ## Three hangs, not one, and they have different answers
 
-This is the taxonomy the rest of the note runs on. It is not a classification exercise: the three
-have different detectability and different terminal states, and treating them as one thing is what
-makes "add a watchdog" sound like a single task.
+The three have different detectability and different terminal states, and treating them as one is
+what makes "add a watchdog" sound like a single task.
 
 | shape | what `SURVEY` sees | can the kernel tear it down today? |
 |---|---|---|
@@ -52,8 +50,8 @@ makes "add a watchdog" sound like a single task.
 | (b) blocked on an endpoint whose region the supervisor can destroy | `BLOCKED` | yes, with collateral. Destroying that region drains the endpoint's wait queues, aborts the blocked IPC with `abi::Error::Gone`, and the armed kill then lands |
 | (c) blocked on an endpoint the supervisor cannot reach | `BLOCKED` | no, when written. Yes since 2026-09-04: the region holder's `DESTROY` finishes it in place (milestone 133) |
 
-Case (c) was stated in the kernel's own words, in `reap_region_objects`'s comment of 2026-08-16.
-The mechanism is the load-bearing fact for question 4: `Untyped::DESTROY` arms a kill that is spent
+Case (c) is in `reap_region_objects`'s comment of 2026-08-16, and its mechanism is the
+load-bearing fact for question 4: `Untyped::DESTROY` arms a kill that is spent
 only in `schedule()`, for a `Running` thread, so a thread `Blocked` forever never spends it. That is
 why the "stronger right" §32 points at was, when written, insufficient for case (c). The comment and
 the mechanism step by step are in [`hung-component/the-armed-kill.md`](hung-component/the-armed-kill.md).
@@ -70,10 +68,9 @@ subtree, returning `(tid, state)` per member, gated on `Rights::ENUMERATE` and p
 because `READ` is what `RECEIVE` and `REAP` take. calef's ruling on 2026-08-17 is that a domain names
 its members and does not act on them.
 
-A watchdog looks like the first thing that legitimately needs both halves, and it is not, for a
-reason that survives being stated plainly: a watchdog does not need to act. It needs to be
-believed. What it produces is a verdict about liveness. What acts on that verdict is the party that
-holds the authority to act, which is the *supervisor* (`READ` on the supervision endpoint, so
+A watchdog looks like the first thing that needs both halves, and it is not: it does not need to
+act, it needs to be believed. It produces a verdict about liveness, and what acts on that verdict is
+the party already holding the authority, the *supervisor* (`READ` on the supervision endpoint, so
 it may reap) or the *builder* (a region capability, so it may destroy). Both of those relationships
 exist and neither wants widening.
 
@@ -116,15 +113,14 @@ it. The counter's granularity is the false-positive rate. Separating k observati
 and there is no timed wait anywhere in the kernel, which is milestone 106 (wait)'s fork. This lane did
 not settle it.
 
-The argument owner by owner, the two costs, what is missing, and a citation corrected in milestone
-106's block on the way through are in
+The argument owner by owner, what is missing, and a citation corrected in milestone 106's block
+are in
 [`hung-component/what-counts-as-hung.md`](hung-component/what-counts-as-hung.md).
 
 ### 3. What happens to the client that is already blocked?
 
-`abi::Error::Gone` does not cover it, and this is the answer with the sharpest edge. A caller
-whose server hangs mid-`CALL` is not merely inconvenienced. Nothing but that server can wake it, and
-when this note was written its memory was unreclaimable for the life of the machine.
+`abi::Error::Gone` does not cover it. Nothing but the server can wake a caller whose server hangs
+mid-`CALL`, and when this note was written its memory was unreclaimable for the life of the machine.
 
 The reason, from the code: a reply-parked caller is woken by `sched::ipc_reply` and nothing else,
 and the abort machinery that produces `Gone` walks endpoint wait queues the caller has already left.
@@ -134,15 +130,14 @@ is minted without `GRANT` and lives in the hung component's table. Freeing a str
 the cooperation of the component whose lack of cooperation is the definition of the hang. The test
 demonstrates that inversion with a wedge that cooperates on request.
 
-What has changed since (see the correction at the top): milestone 254 (a caller stranded by a server
-that died) wakes the callers of a server that *dies*, and milestone 133 lets the region holder end a
-blocked server. Together they free a stranded caller, though their composition is argued and not run.
-A server that is hung and alive still strands its caller. The path, the operator's position and the
+Since then (the correction at the top), milestones 254 and 133 together free a stranded caller
+whose server dies or is ended, argued and not run. A server that is hung and alive still strands its
+caller. The path, the operator's position and the
 test's evidence are in [`hung-component/stranded-caller.md`](hung-component/stranded-caller.md).
 
 ### 4. Is killing even the right response?
 
-No, and the more useful statement is that killing is neither necessary nor sufficient.
+Killing is neither necessary nor sufficient.
 
 Not necessary, for restoring the service. This is where §32's sentence is half wrong, and the
 test is the argument. Milestone 23's four steps against a hung incumbent:
@@ -165,21 +160,19 @@ test is the argument. Milestone 23's four steps against a hung incumbent:
 
 So a supervisor recovers the service with no authority it did not already hold, and §32's
 `Endpoint::REAP` was never in the path. What §32 is right about is step 5: reclaiming a hung
-component's memory needs more than a supervisor holds. Restarting a service and reclaiming a
-region are different acts, and the sentence conflates them.
+component's memory needs more than a supervisor holds. The sentence conflates restarting a
+service with reclaiming a region.
 
-The honest limit on that good news, and it is a real one: recovery costs a fresh region while the
-old one stays spoken for, so a supervisor survives as many hangs as it has spare budget and no
+The limit: recovery costs a fresh region while the old one stays spoken for, so a supervisor survives as many hangs as it has spare budget and no
 more. That makes the reclamation question a capacity question rather than a tidiness one, which is
 the strongest argument for deciding it.
 
 Not sufficient, when written, for the terminal case: case (c)'s armed kill was never spent, so
 construction authority would have bought nothing. Milestone 133 has since closed that.
 
-And restarting is what the machinery already does. §40's rule is that there is no reaper of last
-resort, and the live-replacement mechanism is a restart with a stable name in front of it. A hung
-component's replacement is the same four steps minus the one that needed cooperation. That is the
-right response, and it is built.
+Restarting is what the machinery already does. §40's rule is that there is no reaper of last
+resort, and live replacement is a restart with a stable name in front of it, so a hung component's
+replacement is the four steps minus the one that needed cooperation. That response is built.
 
 ## What this lane built, and what it deliberately did not
 
@@ -194,19 +187,18 @@ about program order and none about elapsed time:
 4. The stranded caller is freed only by the component that stranded it, after the service is back.
 
 The wedge is a `CALL` whose reply the operator keeps, so the blocked state is provable rather than
-raced. Each result's detail, and why the wedge takes that shape, is in
+raced; the detail is in
 [`hung-component/the-wedge-test.md`](hung-component/the-wedge-test.md).
 
-Not built: a watchdog program. Deliberately, and the reason is the ladder rather than time. Both
-halves of one are behind decisions calef has not made: the detection threshold needs milestone 106's
+Not built: a watchdog program, deliberately. Both halves of one are behind decisions calef has not
+made: the detection threshold needs milestone 106's
 timed wait (or a yield-spin that is the flaky assertion this project is currently removing), and the
 terminal action needs §32's new decision. A program shipped with a made-up threshold would be policy
-nobody ruled on, wearing a name nobody ratified, and the tree's rule is that a right defined for
-hypothetical callers is speculative abstraction. What is shipped instead is the case, the taxonomy,
+nobody ruled on, wearing a name nobody ratified. What is shipped instead is the case, the taxonomy,
 and the two asks.
 
 Not built: any kernel-surface change. No new syscall, method or rights bit, and no change to
-`SURVEY` or `REAP`. The obvious extension is tempting and is a decision: see `BUGS`.
+`SURVEY` or `REAP`. The obvious extension is a decision: see `BUGS`.
 
 ## EXAMPLES
 
@@ -224,40 +216,9 @@ script/test 2>&1 | grep -i 'stops answering'
 script/cpu-matrix                     # the riscv64 leg
 ```
 
-Watch the domain of a running supervisor from a program that cannot touch it. The pattern a
-`liveness_watch` would use, and it is `ps`'s loop with the acting half absent:
-
-```rust
-let mut cursor = abi::survey::DONE;          // 0, which is also "start here"
-loop {
-    let (next, tid, state) = user_mode_runtime::survey(domain, cursor);
-    if next < 0 { break }                    // refused: NOT an empty domain. Say so.
-    let next = next as u64;
-    if next == abi::survey::DONE || next <= cursor { break }
-    // `state` is READY | RUNNING | BLOCKED | DEAD, and BLOCKED is where a hang hides.
-    cursor = next;
-}
-```
-
-Endow it so it cannot act. One right, and the emptiness of the rest is the claim:
-
-```rust
-sched::tcb_insert_cap(tid, cap::endpoint_cap(deaths, Rights::ENUMERATE), None)
-```
-
-`crates/system_initializer` already does exactly this for `ps`, with the reasoning beside it:
-"`ENUMERATE` alone, deliberately. Granting `READ` here would hand a viewer [the authority] to
-collect a child rather than to name one."
-
-Restore a service under a hung component, which is the four steps minus one:
-
-```rust
-// 1 BUILT: the replacement, endowed without the device, unconfigured.
-// 2 DRAINED: skipped. A component that is not receiving needs no quiesce.
-// 3 REVOKED: take the device back from a holder that consents to nothing.
-invoke(DEVICE, abi::frame::REVOKE, 0, 0, 0);
-// 4 STARTED: map, configure, start. It drains what queued behind the silence.
-```
+Watch a domain from a program that cannot touch it, endow that program with one right, and restore a
+service under a hung component: the Rust for each, with `ps`'s precedent quoted from
+`crates/system_initializer`, is in [`hung-component/examples.md`](hung-component/examples.md).
 
 ## BUGS
 
@@ -268,8 +229,8 @@ about. A run in which something noticed a hang on its own is not in this tree an
 milestone 106's fork is decided, because every available notifier is a deadline and there is nothing
 to wait on.
 
-**`SURVEY` does not say what a thread is blocked *on*, so no wait-for graph is possible.** This is
-the single extension that would turn detection from a heuristic into a decision procedure. A cycle in
+**`SURVEY` does not say what a thread is blocked *on*, so no wait-for graph is possible.** It is
+the extension that would turn detection from a heuristic into a decision procedure. A cycle in
 the "waiting for" graph is a deadlock, provably and with no threshold at all (notes/deadlock.md,
 Coffman condition 4, and Postgres's wait-for graph as the prior art). It is also a kernel-surface
 change to a method milestone 126's lane landed hours ago, and it is arguably `ENUMERATE`-shaped
