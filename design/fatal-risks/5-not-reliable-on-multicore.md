@@ -42,10 +42,9 @@ needs to run here at all.
 ## Benchmarks that inform this risk
 
 As of 2026-10-08 (UTC), under §262 (nife is measured with the field's standard benchmarks).
-Each is to run unmodified on nife and on Linux, and none has produced a number yet. Corrected
-2026-10-10 (UTC): a port no longer waits on a C library, since milestone 835 (#1896) built one from
-relibc under §265 (a C library started from relibc). It still waits on whatever that first stage
-lacks, such as threads or sockets.
+Each is to run unmodified on nife and on Linux, and none has produced a number yet. A port does
+not wait on a C library, since milestone 835 (#1896) built one from relibc under §265 (a C library
+started from relibc). It waits on whatever that first stage lacks, such as threads or sockets.
 
 - [Milestone 827 (hackbench on nife and Linux)](../roadmap/0827-hackbench-on-nife-and-linux.md), run long as a second soak.
 - [Milestone 830 (wakeup latency on nife and Linux, from each kernel's own scheduler trace)](../roadmap/0830-wakeup-latency-on-nife-and-linux.md),

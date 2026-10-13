@@ -113,8 +113,8 @@ The result is green.
 nife machine: x86_64, 4 processor(s), 17119 MiB, 100 Hz nife self-test: 5 of 5 passed
 ```
 
-nife runs on all three declared architectures on real hardware. *(Corrected 2026-10-06: on
-bare metal, two of three; aarch64 has run only under HVF on patagonia, which is virtualization.)*
+nife runs on bare metal on two of its three declared architectures; aarch64 has run only under HVF
+on patagonia, which is virtualization (`notes/bench-runbook.md`).
 Transcript
 `bench/xenon-2026-09-17/first-light-095500.log`; milestone 87's block has the detail.
 

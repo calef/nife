@@ -87,9 +87,8 @@ That cuts against the claim's second clause, and it is the strongest evidence th
   to the rest. And moves `install_port_grant` inside the locked region so a core cannot reinstall a
   grant the sweep just cleared. Proved by 12 of 12 full two-core suites green, 36 boots. Shown under
   QEMU, not on silicon, which is the fourth such case and bears on this risk's premise below.
-  *(Corrected 2026-09-25 under §216 (fatal-risk facts are correctable, and verdicts are the architect's): this said "found the same way", meaning under QEMU. The audit
-  found it first and accepted the window on reasoning; QEMU showed it red afterwards, 7 of 12 two-core
-  runs. Sources: milestone 315's block and `notes/multicore-defect-curve.md` row D12.)*
+  The audit accepted the window on reasoning; QEMU showed it red afterwards, 7 of 12 two-core runs
+  (milestone 315's block and `notes/multicore-defect-curve.md` row D12).
 - A test that hung in two of three full HVF runs and passes in every TCG run and when run alone
   (`notes/hvf-leg.md`), un-diagnosed.
 

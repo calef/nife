@@ -132,9 +132,9 @@ milestone 906 (ioping is packaged in basalt, and its test installs it with `jig`
 ## Benchmarks that inform this risk
 
 As of 2026-10-08 (UTC), under §262 (nife is measured with the field's standard benchmarks).
-Each is to run unmodified on nife and on Linux, and none has produced a number yet. Corrected
-2026-10-10 (UTC): no port waits on a C library now. Milestone 835 (#1896) built one from relibc, as
-§265 (a C library started from relibc) ruled, and `speedtest1` and ioping already run on nife.
+Each is to run unmodified on nife and on Linux, and none has produced a number yet. No port waits
+on a C library: milestone 835 (#1896) built one from relibc, as §265 (a C library started from
+relibc) ruled, and `speedtest1` and ioping already run on nife.
 
 - [Milestone 831 (SQLite's speedtest1 on nife and Linux)](../roadmap/0831-sqlite-speedtest1-on-nife-and-linux.md). Runs on nife since 835; the Linux row is open.
 - [Milestone 833 (the same storage benchmark on nife and Linux, by porting real fio)](../roadmap/0833-the-same-storage-benchmark-on-nife-and-linux.md). Waits on threads too.
