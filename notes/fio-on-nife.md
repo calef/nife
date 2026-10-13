@@ -31,6 +31,11 @@ Linux build does not pay. It counts against nife, and it belongs in 833's caveat
 
 ## What is missing
 
+Built 2026-10-12 (UTC) by lane `lane/fio-c-library-pieces`: every item in this section is now in
+the C library, and `fixtures/c/c_library_contract.c` checks each on all three architectures
+(`c_library/README.md` says how each behaves). The list stays as the record of what the first
+compile found.
+
 Two bugs in the C library's headers, which any program can hit:
 
 - `stdlib.h` uses `__noreturn` and `__deprecated` without including `features.h`. A file whose
@@ -54,7 +59,7 @@ Two macros are missing from headers that exist: `O_SYNC` and `POSIX_MADV_DONTNEE
 Functions undefined at link, with the headers stubbed: `basename`, `getrusage` and `select` on the
 path. Off it: `closelog`, `dlclose`, `dlerror`, `dlopen`, `dlsym`, `freeaddrinfo`, `gai_strerror`,
 `getaddrinfo`, `openlog` and `syslog`. fio's other 228 external references are all defined.
-`getrusage` may answer zeros. `select` is the helper thread's timed wait on an in-process pipe,
+`getrusage` answers zeros, since nife accounts no CPU time a program can read. `select` is the helper thread's timed wait on an in-process pipe,
 which nife's pipes support.
 
 Some are defined but refuse on nife, and none of them is on the path. They are `fork` and `waitpid` (process jobs and

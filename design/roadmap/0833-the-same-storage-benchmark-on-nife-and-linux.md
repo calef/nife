@@ -54,7 +54,10 @@ Answered in part on 2026-10-12 (UTC) by compiling fio 3.40 against the C library
 it: `notes/fio-on-nife.md` has the list. fio needs no C thread-locals, since its `configure` falls
 back to `pthread_getspecific`, which costs nife one key lookup per timestamp that Linux does not pay.
 On the benchmark's path it needs `sys/resource.h`, `libgen.h`, `select`, two header fixes and an
-`os/os-nife.h`; the rest can stay stubs with `thread=1` and `--disable-shm`.
+`os/os-nife.h`; the rest can stay stubs with `thread=1` and `--disable-shm`. The C library side
+was built the same day by lane `lane/fio-c-library-pieces`: every piece on that list, with the off-path
+calls refusing honestly rather than missing, checked by `fixtures/c/c_library_contract.c` on all three
+architectures.
 
 ## What it must answer
 

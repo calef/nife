@@ -7,6 +7,7 @@ use crate::{
     error::Result,
     header::{
         fcntl::{AT_EMPTY_PATH, AT_FDCWD, AT_REMOVEDIR, AT_SYMLINK_NOFOLLOW, F_DUPFD},
+        sys_resource::rusage,
         sys_select::timeval,
         sys_stat::stat,
         sys_time::timezone,
@@ -211,6 +212,11 @@ pub trait Pal {
 
     /// Platform implementation of [`getpriority()`](crate::header::sys_resource::getpriority) from [`sys/resource.h`](crate::header::sys_resource).
     fn getpriority(which: c_int, who: id_t) -> Result<c_int>;
+
+    // nife: restored with `sys/resource.h` for fio (milestone 833); `getrlimit` and `setrlimit`
+    // stay out with the rest of the limits (that module's comment says why).
+    /// Platform implementation of [`getrusage()`](crate::header::sys_resource::getrusage) from [`sys/resource.h`](crate::header::sys_resource).
+    fn getrusage(who: c_int, r_usage: Out<rusage>) -> Result<()>;
 
     /// Platform implementation of [`getrandom()`](crate::header::sys_random::getrandom) from [`sys/random.h`](crate::header::sys_random).
     fn getrandom(buf: &mut [u8], flags: c_uint) -> Result<usize>;
