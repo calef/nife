@@ -212,25 +212,9 @@ pub(crate) fn stage_an_upgrade(disk: &Path, boot_file: &Path) -> bool {
     // Everything that has to survive the rebuild, taken before the borrow: the table is rebuilt
     // from its own decoded entries, so the disk's identity and geometry come from the old one.
     let (disk_guid, block_count, mut parts, slots) = {
-        let Ok(table) = Table::parse(
-            &head[LBA as usize..2 * LBA as usize],
-            &head[2 * LBA as usize..],
-        ) else {
-            eprintln!("rollback-boot: the installed disk has no readable partition table");
+        let Some((table, parts, slots)) = installed_table(&head) else {
             return false;
         };
-        let mut parts: Vec<Entry> = Vec::new();
-        let mut slots: Vec<usize> = Vec::new();
-        for (index, part) in table.partitions() {
-            if index != parts.len() {
-                eprintln!("rollback-boot: the installed disk's entries are not contiguous");
-                return false;
-            }
-            if part.type_guid == types::NIFE_BOOT {
-                slots.push(parts.len());
-            }
-            parts.push(part);
-        }
         (table.disk_guid(), table.block_count(), parts, slots)
     };
 
@@ -241,21 +225,7 @@ pub(crate) fn stage_an_upgrade(disk: &Path, boot_file: &Path) -> bool {
         );
         return false;
     };
-    let first_lba = parts[second].first_lba;
-
-    // The image, header first. Written in the order the installer writes it so that a failure here
-    // looks like the failure there.
-    let mut header = vec![0u8; boot_slot::SLOT_IMAGE_OFFSET as usize];
-    if !SlotHeader::of(&image).encode(&mut header) {
-        eprintln!("rollback-boot: could not encode the slot header");
-        return false;
-    }
-    let written = file
-        .seek(SeekFrom::Start(first_lba * LBA))
-        .and_then(|_| file.write_all(&header))
-        .and_then(|()| file.write_all(&image));
-    if let Err(e) = written {
-        eprintln!("rollback-boot: could not write slot 1: {e}");
+    if !write_slot_image(&mut file, parts[second].first_lba, &image) {
         return false;
     }
 
@@ -268,6 +238,70 @@ pub(crate) fn stage_an_upgrade(disk: &Path, boot_file: &Path) -> bool {
         eprintln!("rollback-boot: could not rebuild the partition table");
         return false;
     };
+    if !write_table_back(&mut file, &table) {
+        return false;
+    }
+
+    eprintln!();
+    eprintln!(
+        "rollback-boot: slot 1 written from {}, on trial",
+        boot_file.display()
+    );
+    eprintln!(
+        "               priority {TRIAL_PRIORITY}, {TRIAL_TRIES} try; slot 0 stays at priority \
+         {}, confirmed",
+        State::installed().priority
+    );
+    true
+}
+
+/// **The installed disk's table, its entries, and which of them are boot slots**, from the head of
+/// the disk. `None` after saying why the disk is not one this gate can stage onto.
+fn installed_table(head: &[u8; PRIMARY_BYTES]) -> Option<(Table<'_>, Vec<Entry>, Vec<usize>)> {
+    let Ok(table) = Table::parse(
+        &head[LBA as usize..2 * LBA as usize],
+        &head[2 * LBA as usize..],
+    ) else {
+        eprintln!("rollback-boot: the installed disk has no readable partition table");
+        return None;
+    };
+    let mut parts: Vec<Entry> = Vec::new();
+    let mut slots: Vec<usize> = Vec::new();
+    for (index, part) in table.partitions() {
+        if index != parts.len() {
+            eprintln!("rollback-boot: the installed disk's entries are not contiguous");
+            return None;
+        }
+        if part.type_guid == types::NIFE_BOOT {
+            slots.push(parts.len());
+        }
+        parts.push(part);
+    }
+    Some((table, parts, slots))
+}
+
+/// **The image into the slot at `first_lba`, header first.** Written in the order the installer
+/// writes it so that a failure here looks like the failure there.
+fn write_slot_image(file: &mut std::fs::File, first_lba: u64, image: &[u8]) -> bool {
+    let mut header = vec![0u8; boot_slot::SLOT_IMAGE_OFFSET as usize];
+    if !SlotHeader::of(image).encode(&mut header) {
+        eprintln!("rollback-boot: could not encode the slot header");
+        return false;
+    }
+    let written = file
+        .seek(SeekFrom::Start(first_lba * LBA))
+        .and_then(|_| file.write_all(&header))
+        .and_then(|()| file.write_all(image));
+    if let Err(e) = written {
+        eprintln!("rollback-boot: could not write slot 1: {e}");
+        return false;
+    }
+    true
+}
+
+/// **The rebuilt table back onto the disk**: the primary header, both entry arrays, and the
+/// backup header, then a flush.
+fn write_table_back(file: &mut std::fs::File, table: &Table) -> bool {
     let mut block = [0u8; LBA as usize];
     if table.write_primary_header(&mut block).is_err() {
         eprintln!("rollback-boot: could not build the primary header");
@@ -293,17 +327,6 @@ pub(crate) fn stage_an_upgrade(disk: &Path, boot_file: &Path) -> bool {
         eprintln!("rollback-boot: could not write the backup header");
         return false;
     }
-
-    eprintln!();
-    eprintln!(
-        "rollback-boot: slot 1 written from {}, on trial",
-        boot_file.display()
-    );
-    eprintln!(
-        "               priority {TRIAL_PRIORITY}, {TRIAL_TRIES} try; slot 0 stays at priority \
-         {}, confirmed",
-        State::installed().priority
-    );
     true
 }
 
