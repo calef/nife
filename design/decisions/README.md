@@ -104,7 +104,7 @@ and the index becomes generated) has the counts and the three decisions whose pr
 |---|---|
 | `PROPOSED` | Raised, not yet decided. Options and a recommendation are in the file; nothing is built on it, and nothing should cite it as settled. Waiting on an architect. |
 | `DECIDED` | It holds as written. |
-| `AMENDED` | It holds, but part of it was revised or overtaken by later work. The file names what changed, and the amendment is in the file or in the decision it names. |
+| `AMENDED` | It holds, but part of it was revised or overtaken by later work. The file states the decision as it now stands, or names the decision that amends it; what changed is in git, per §298 (a document states what is in force now). |
 | `SUPERSEDED` | A later decision replaces it, and `superseded_by` names which. Kept, never deleted, because the reasoning is the record: §8 (DEFERRED to a hard decision point)'s deferral was correct and §10 (process model: capability-based, microkernel) is what it deferred to. `script/decisions` lists it as `§M title -> §N`, which is the two keys read together. |
 
 `AMENDED` is the token that pays for the vocabulary. Eleven decisions carry a revision that a reader

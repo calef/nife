@@ -7,14 +7,10 @@ ratified_by: calef
 
 # 213. Writing standards: three countable rules, one review rule, and a ratchet
 
-The rules calef ratified on 2026-09-23 (UTC): a median sentence of 20 words or fewer,
-no sentence over 40 words, and 4 or fewer bold spans per 1,000 words. Rule 4 stays a review question.
-The ratchet is the enforcement, and two proposed rules stay dropped. Raised by calef the same day,
-reading a maintainer session's proposal to cap document length. A maintainer session then measured
-the tree and proposed four rules, he replied *"Set them."*, and he then changed the median from 25 to
-20 and split rule 3 in two. Section number 213 was minted at merge on 2026-09-24. He added two
-rulings on 2026-09-26, between about 00:15 and 00:45 UTC: line-opening labels, and bold density in
-any document a change touches.
+The rules, ratified by calef on 2026-09-23 (UTC) unless marked: a median sentence of 20 words or
+fewer, no sentence over 40 words, and 4 or fewer bold spans per 1,000 words. Rule 4 is a review
+question, and rule 5 is §298's, carried here. The ratchet is the enforcement, and two proposed
+rules stay dropped.
 
 His words, which are the whole brief:
 
@@ -102,7 +98,8 @@ that can be counted should be counted, rather than written as advice and left to
 
 ## The standard
 
-Three rules carry numbers. The fourth is the most valuable and no machine can check it.
+Three rules carry numbers. The fourth is the most valuable and no machine can check it. The fifth
+has a phrase gate under it, and review does the rest.
 
 1. A document's median sentence is 20 words or fewer. The corrected corpus median is exactly 20, so
    the tree already sits on Amazon's 15-to-20 standard, and the proposal's 25 was a floor set above
@@ -122,6 +119,9 @@ Three rules carry numbers. The fourth is the most valuable and no machine can ch
    Each appearance carries a sentence telling the reader how to feel about it: "which is the point",
    "and that is what makes it credible", "stated once so it is not re-litigated". The finding with
    its caveat is the content. The commentary on the finding is not, and it is often the longest part.
+5. A document states what is in force now, and its history is in git (calef, 2026-10-13 UTC).
+   [§298 (a document states what is in force now)](0298-a-document-states-what-is-in-force-now.md)
+   is the rule, what stays, and its gate.
 
 ### A label that opens a line becomes a heading
 

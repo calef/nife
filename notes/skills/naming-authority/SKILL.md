@@ -9,9 +9,8 @@ description: >-
 
 # Naming authority
 
-Moved whole from `AGENTS.md` on 2026-10-06 (UTC) by lane/agents-md-skills, wording unchanged apart
-from heading levels and link paths, so where it says "this file" it means `AGENTS.md`. Its name was
-ratified by calef on 2026-10-06 (UTC); notes/skills/README.md records it.
+Where this says "this file", it means `AGENTS.md`. Its name was ratified by calef on 2026-10-06
+(UTC); notes/skills/README.md records it.
 
 ## An architect names the crates, the programs, and the shared modules
 
@@ -22,7 +21,8 @@ OS accessible to humans and to LLMs, and in a capability system the name is ofte
 that says what a program may *do*.
 
 So: propose, ship a provisional name, say so in your report, and never rename on your own initiative
-(a rename is a naming decision with extra steps). That mechanism is what makes it safe not to have
+(a rename is a naming decision with extra steps). The block reads `Name: provisional.` and what was
+considered. Who minted it and when are in `git blame` (§298 (a document states what is in force now)). That mechanism is what makes it safe not to have
 read the conventions before you start: a provisional name is expected to change, and the maintainer
 surfaces it.
 
