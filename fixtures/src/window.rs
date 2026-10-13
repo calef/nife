@@ -206,30 +206,7 @@ pub extern "C" fn _start(role: u64, neighbour_va: u64, _arg2: u64) -> ! {
         die(E_SCREEN);
     }
 
-    if rd32(CTL_VA + ctl::MAGIC) != ctl::MAGIC_VALUE {
-        die(E_MAGIC);
-    }
-    let id = rd32(CTL_VA + ctl::ID);
-    let w = rd32(CTL_VA + ctl::WIDTH);
-    let h = rd32(CTL_VA + ctl::HEIGHT);
-    // We are *told* our geometry rather than assuming it: at rung two the compositor really does
-    // choose the size, and a client that assumed the constants would paint the wrong shape the first
-    // time a scene changed. It is still checked against the largest surface the contract allows,
-    // because a control page claiming more than that describes memory we were not granted, and the
-    // first thing that would happen is a fault while painting our own window.
-    // **Checked arithmetic, because `w * h * 4` in `u32` wraps and the check is against values
-    // from a shared page** (milestone 43, notes/shared-page-audit.md finding 4). `w = h = 0x10000`
-    // multiplied out to exactly 0, sailed through the bound it was written to fail, and the paint
-    // loop below would then write 2^32 pixels past a two-frame surface. `display_terminal.rs`
-    // validates the same geometry by division for the same reason; this is the multiplication
-    // spelled so it cannot lie.
-    let bytes = w
-        .checked_mul(h)
-        .and_then(|px| px.checked_mul(4))
-        .unwrap_or(u32::MAX);
-    if w == 0 || h == 0 || bytes > compositor::MAX_SURFACE_BYTES {
-        die(E_GEOMETRY);
-    }
+    let (id, w, h, bytes) = read_validated_geometry();
     // SAFETY: the compositor's `spawn_client` mapped `bytes` bytes (this client's own `w * h * 4`,
     // published on the control page it just read and validated above) read/write at `SURFACE_VA`
     // before `HELLO`'s reply arrived (see `px_write`/`px_read`'s doc). Constructing the window
@@ -362,30 +339,65 @@ pub extern "C" fn _start(role: u64, neighbour_va: u64, _arg2: u64) -> ! {
     }
 
     if role & ROLE_INPUT != 0 {
-        // Focus routing: we hold an input endpoint, so keystrokes can reach us. A client without this
-        // capability cannot be sent one, however the compositor feels about it.
-        let mut count = 0u64;
-        loop {
-            let req = receive_request(INPUT);
-            let (w0, bytes) = (req.w0, req.w1);
-            // Answer first: the compositor is blocked in CALL, the terminal contract's driver-half
-            // rendezvous, and it is the flow control for a fast source.
-            if let Some(to) = req.delivered.into_reply() {
-                reply(to, 0, 0);
-            }
-            // Clamp to the eight bytes one word carries. `proto::len` is a full 32-bit field, so
-            // an unclamped count shifts past 63 at `k == 8` and spins up to 2^32 times.
-            // `display_terminal.rs` and `line_editor.rs` both clamp here; this was the one that
-            // did not (milestone 43, notes/shared-page-audit.md finding 4).
-            let n = line_editor::proto::len(w0).min(8);
-            for k in 0..n {
-                count += 1;
-                send(REPORT, status::WIN_INPUT, (bytes >> (8 * k)) & 0xff, count);
-            }
-        }
+        report_every_keystroke();
     }
 
     exit();
+}
+
+/// Read this window's id and size off its control page, and refuse a size larger than the
+/// contract allows. Returns the id, the width and height, and the surface's size in bytes.
+fn read_validated_geometry() -> (u32, u32, u32, u32) {
+    if rd32(CTL_VA + ctl::MAGIC) != ctl::MAGIC_VALUE {
+        die(E_MAGIC);
+    }
+    let id = rd32(CTL_VA + ctl::ID);
+    let w = rd32(CTL_VA + ctl::WIDTH);
+    let h = rd32(CTL_VA + ctl::HEIGHT);
+    // We are *told* our geometry rather than assuming it: at rung two the compositor really does
+    // choose the size, and a client that assumed the constants would paint the wrong shape the first
+    // time a scene changed. It is still checked against the largest surface the contract allows,
+    // because a control page claiming more than that describes memory we were not granted, and the
+    // first thing that would happen is a fault while painting our own window.
+    // **Checked arithmetic, because `w * h * 4` in `u32` wraps and the check is against values
+    // from a shared page** (milestone 43, notes/shared-page-audit.md finding 4). `w = h = 0x10000`
+    // multiplied out to exactly 0, sailed through the bound it was written to fail, and the paint
+    // loop below would then write 2^32 pixels past a two-frame surface. `display_terminal.rs`
+    // validates the same geometry by division for the same reason; this is the multiplication
+    // spelled so it cannot lie.
+    let bytes = w
+        .checked_mul(h)
+        .and_then(|px| px.checked_mul(4))
+        .unwrap_or(u32::MAX);
+    if w == 0 || h == 0 || bytes > compositor::MAX_SURFACE_BYTES {
+        die(E_GEOMETRY);
+    }
+    (id, w, h, bytes)
+}
+
+/// Answer every input request on [`INPUT`] and report each byte it carried, forever.
+fn report_every_keystroke() -> ! {
+    // Focus routing: we hold an input endpoint, so keystrokes can reach us. A client without this
+    // capability cannot be sent one, however the compositor feels about it.
+    let mut count = 0u64;
+    loop {
+        let req = receive_request(INPUT);
+        let (w0, bytes) = (req.w0, req.w1);
+        // Answer first: the compositor is blocked in CALL, the terminal contract's driver-half
+        // rendezvous, and it is the flow control for a fast source.
+        if let Some(to) = req.delivered.into_reply() {
+            reply(to, 0, 0);
+        }
+        // Clamp to the eight bytes one word carries. `proto::len` is a full 32-bit field, so
+        // an unclamped count shifts past 63 at `k == 8` and spins up to 2^32 times.
+        // `display_terminal.rs` and `line_editor.rs` both clamp here; this was the one that
+        // did not (milestone 43, notes/shared-page-audit.md finding 4).
+        let n = line_editor::proto::len(w0).min(8);
+        for k in 0..n {
+            count += 1;
+            send(REPORT, status::WIN_INPUT, (bytes >> (8 * k)) & 0xff, count);
+        }
+    }
 }
 
 user_mode_runtime::panic_handler!();
