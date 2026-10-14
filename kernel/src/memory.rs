@@ -636,6 +636,20 @@ pub fn free_page_frames() -> usize {
     ALLOCATOR.lock().as_ref().map_or(0, |a| a.stats().free())
 }
 
+/// **Is the frame at `pa` allocated right now?** `None` when the allocator does not manage that
+/// address at all (outside RAM, or before `memory::init`), which is also the answer that says the
+/// direct map may not cover it. For a kill report walking tables that may have been written over: a
+/// table the space still links whose frame reads as free was handed back while still in use.
+///
+/// Name: provisional (lane `maintainer/pipeline-fetch-fault`, 2026-10-14 UTC).
+#[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))] // the x86_64 kill report is the caller
+pub fn frame_is_allocated(pa: u64) -> Option<bool> {
+    ALLOCATOR
+        .lock()
+        .as_ref()?
+        .is_used(PageFrame::from_addr(pa & !(FRAME_SIZE - 1)))
+}
+
 /// **The longest run of free frames**, in frames: what `alloc_contiguous` could still satisfy.
 ///
 /// The companion to [`free_page_frames`], and the one the test boot actually runs out of. A boot can hold

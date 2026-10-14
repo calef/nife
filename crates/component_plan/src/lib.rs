@@ -779,9 +779,8 @@ impl Dependents {
 /// **Which of the running components in `live` must be quiesced before `target_contract` is
 /// swapped**, because they declared it in their own [`Requirements::depends_on`].
 ///
-/// An instance of `target_contract` itself is never returned, even if a declaration were malformed
-/// enough to list its own contract: a component cannot be its own dependent, and this rules the
-/// question out rather than trusting every caller to have avoided asking it.
+/// An instance of `target_contract` itself is never returned, even from a malformed declaration
+/// that lists its own contract: a component cannot be its own dependent.
 ///
 /// # EXAMPLES
 ///
@@ -791,10 +790,7 @@ impl Dependents {
 /// const BACKEND: Requirements = Requirements {
 ///     contract: "backend",
 ///     caps: &[CapNeed { role: "service", direction: Direction::Serve }],
-///     maps: &[],
-///     pages: 32,
-///     depends_on: &[],
-///     handoff: None,
+///     maps: &[], pages: 32, depends_on: &[], handoff: None,
 /// };
 /// const BROKER: Requirements = Requirements {
 ///     contract: "broker",
@@ -802,10 +798,7 @@ impl Dependents {
 ///         CapNeed { role: "requests", direction: Direction::Serve },
 ///         CapNeed { role: "backend", direction: Direction::Use },
 ///     ],
-///     maps: &[],
-///     pages: 32,
-///     depends_on: &["backend"],
-///     handoff: None,
+///     maps: &[], pages: 32, depends_on: &["backend"], handoff: None,
 /// };
 ///
 /// let live = [
@@ -817,8 +810,7 @@ impl Dependents {
 /// let d = dependents("backend", &live).unwrap();
 /// assert_eq!(d.quiesce_order(), &[2]);
 ///
-/// // Swapping the broker itself has no dependents in this registry: nothing here declares
-/// // "broker" in its own `depends_on`.
+/// // Nothing here declares "broker" in its own `depends_on`.
 /// let d = dependents("broker", &live).unwrap();
 /// assert!(d.quiesce_order().is_empty());
 /// ```

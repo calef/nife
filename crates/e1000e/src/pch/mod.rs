@@ -33,6 +33,7 @@
 //! The constants are facts about the hardware; the sequences are FreeBSD's, adapted, and carry
 //! Intel's licence below as its first condition requires.
 //!
+
 //! ```text
 //! SPDX-License-Identifier: BSD-3-Clause
 //!
@@ -66,6 +67,7 @@
 //! POSSIBILITY OF SUCH DAMAGE.
 //! ```
 //!
+
 //! # BUGS
 //!
 //! - **None of it has run on silicon.** QEMU's 82574L is not a PCH part, so [`sequence`] is

@@ -450,4 +450,106 @@ where
         let offset = va % PAGE_SIZE;
         Some((F::entry_pa(entry) + offset, F::leaf_flags(entry)))
     }
+
+    /// **[`translate`](Self::translate), keeping every entry it read**: for a report about a walk
+    /// that failed, where "not mapped" is the question and not the answer. Which level stopped, and
+    /// what was written there, is what tells a cleared entry from a table that was never built or a
+    /// frame somebody else wrote into.
+    ///
+    /// `readable` is asked about every table before it is read, the root included, and a table it
+    /// refuses ends the walk as [`WalkEnd::Unreadable`]. A failed walk is by definition one whose
+    /// tables may hold garbage, and following a garbage address through `phys_to_ptr` from a fault
+    /// handler would fault the kernel; the caller says which frames are safe to read.
+    ///
+    /// Name: provisional (lane `maintainer/pipeline-fetch-fault`, 2026-10-14 UTC).
+    pub fn walk(&self, va: u64, readable: impl Fn(u64) -> bool) -> Walk {
+        let mut walk = Walk {
+            steps: [WalkStep::default(); MAX_WALK],
+            len: 0,
+            end: WalkEnd::OtherHalf,
+        };
+        if !F::is_in_half(self.half, va) {
+            return walk;
+        }
+        let mut table = self.root;
+        for level in 0..F::LEVELS.min(MAX_WALK) {
+            if !readable(table) {
+                walk.end = WalkEnd::Unreadable(table);
+                return walk;
+            }
+            let index = F::index(va, level);
+            // SAFETY: per the type's contract, for a table `readable` admitted.
+            let entry = unsafe { (*(self.phys_to_ptr)(table)).entries[index] };
+            walk.steps[walk.len] = WalkStep {
+                table,
+                index,
+                entry,
+            };
+            walk.len += 1;
+            walk.end = if !F::is_present(entry) {
+                WalkEnd::NotPresent
+            } else if level == F::LEVELS - 1 {
+                WalkEnd::Mapped
+            } else if F::is_block(entry) {
+                WalkEnd::Block
+            } else {
+                table = F::entry_pa(entry);
+                continue;
+            };
+            return walk;
+        }
+        walk
+    }
+}
+
+/// The most levels any format here has: four (aarch64's 4 KiB granule, `Ia32e`). One spare, so a
+/// fifth-level format would be caught by its own walk's length rather than by an index panic.
+const MAX_WALK: usize = 5;
+
+/// One level of a [`Walk`]: the table read, the index read at, and the raw entry found there.
+/// Name: provisional (lane `maintainer/pipeline-fetch-fault`, 2026-10-14 UTC).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct WalkStep {
+    /// The table's physical address.
+    pub table: u64,
+    /// The index the address selects in it.
+    pub index: usize,
+    /// The entry, raw, in the format's encoding.
+    pub entry: u64,
+}
+
+/// How a [`Walk`] stopped. Name: provisional (lane `maintainer/pipeline-fetch-fault`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WalkEnd {
+    /// A present leaf at the last level.
+    Mapped,
+    /// A present block entry above the last level.
+    Block,
+    /// The last step's entry is not present.
+    NotPresent,
+    /// The next table, at this physical address, was refused by the caller's `readable`.
+    Unreadable(u64),
+    /// The address is in the other half, so this mapper's tables never see it. No steps.
+    OtherHalf,
+}
+
+/// **The entries a walk read, root first**, from [`Mapper::walk`]. Name: provisional (lane
+/// `maintainer/pipeline-fetch-fault`, 2026-10-14 UTC).
+#[derive(Debug, Clone, Copy)]
+pub struct Walk {
+    steps: [WalkStep; MAX_WALK],
+    len: usize,
+    end: WalkEnd,
+}
+
+impl Walk {
+    /// Every level read, root first.
+    pub fn steps(&self) -> &[WalkStep] {
+        &self.steps[..self.len]
+    }
+
+    /// Why the walk stopped where it did.
+    pub fn end(&self) -> WalkEnd {
+        self.end
+    }
 }
