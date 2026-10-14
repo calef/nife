@@ -787,7 +787,9 @@ jobs:
   # with no thread flag and with `--threads 4`, and fails unless its process started the main
   # thread and one worker per thread asked for, and printed exactly the tree's 138 lines. The
   # aarch64 row also holds the host's `rg` to the same lines. The four `ripgrep_tests`, which no
-  # other job runs with `rg` present, come along. Both rows run on arm64, x86_64 under TCG as in
+  # other job runs with `rg` present, come along. Each row then boots the suite once more,
+  # filtered to `unmodified_ioping` at one core, which times reads with basalt's ioping package
+  # (milestone 906 (ioping is packaged in basalt)). Both rows run on arm64, x86_64 under TCG as in
   # `test-shard`. Not yet a required check: the merge queue's ruleset is an admin act.
   rg-threads:
     name: rg-threads (${{ matrix.legs }})

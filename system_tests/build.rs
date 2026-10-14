@@ -26,6 +26,14 @@ fn main() {
         "cargo::rustc-env=NIFE_RIPGREP_REQUIRED={}",
         std::env::var("NIFE_RIPGREP_REQUIRED").unwrap_or_default()
     );
+    // **And a missing `ioping`** (milestone 906 (ioping is packaged in basalt, and its test
+    // installs it with `jig`)), on the same terms: `c_program_tests` reads it, and the CI rows that
+    // fetch basalt's ioping set it to 1. Name provisional.
+    println!("cargo::rerun-if-env-changed=NIFE_IOPING_REQUIRED");
+    println!(
+        "cargo::rustc-env=NIFE_IOPING_REQUIRED={}",
+        std::env::var("NIFE_IOPING_REQUIRED").unwrap_or_default()
+    );
     println!("cargo::rustc-check-cfg=cfg(initial_ramdisk)");
     if matches!(arch.as_str(), "aarch64" | "riscv64" | "x86_64") {
         println!("cargo::rustc-cfg=initial_ramdisk");

@@ -640,9 +640,9 @@ impl OptionalPrograms {
                 return None;
             }
             eprintln!(
-                "swish-check ({arch}): skipping `{}`'s lines and the `jig install ripgrep` lines: \
-                 nothing was fetched from basalt here (`cargo xtask basalt-fetch` fetches it, as \
-                 CI does)",
+                "swish-check ({arch}): skipping `{}`'s lines and the lines that install from \
+                 basalt: nothing was fetched from basalt here (`cargo xtask basalt-fetch` fetches \
+                 it, as CI does)",
                 crate::disk::INSTALLED_RIPGREP
             );
         }
