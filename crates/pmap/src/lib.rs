@@ -1,99 +1,29 @@
-//! **`pmap`: what a process's mappings are when there is no `/proc/pid/maps`** (milestone 126,
-//! notes/process-view.md, DECISIONS §114).
+//! **`pmap`: what a process's mappings are when there is no `/proc/pid/maps`**
+//! (notes/process-view.md). The program's logic, lifted out to run on the host;
+//! `components/src/pmap.rs` is the syscall and the two output streams.
 //!
-//! This is the program's logic, lifted out so it runs on the host in milliseconds; `components/src/pmap.rs`
-//! is the syscall and the two output streams and nothing else. The crate and the program share a
-//! name because they are one thing split at the IO boundary, the same convention `crates/ps` and
-//! `components/src/ps.rs` follow.
-//!
-//! # What it does not do, which is the whole point
-//!
-//! `pmap <pid>` on Linux reads `/proc/<pid>/maps`, gated only by ptrace permission checks bolted on
-//! after the fact (`yama`'s `ptrace_scope`, `hidepid`): the file exists ambiently and the checks are a
-//! later patch over a design that assumed none were needed. Here the listing is a **capability**.
-//! What this crate is handed is a function that reads one entry of an address space's mappings, and
-//! that function is backed by `abi::address_space::LIST` on an address-space capability the program was
-//! endowed. It cannot widen the space, cannot ask about a `va` in a space it was not shown, and
-//! cannot discover that any other space exists.
-//!
-//! # `ENUMERATE`, not `WRITE`, is `ps`'s split one object type over
-//!
-//! `abi::address_space::MAP_INTO` needs `WRITE`: the authority to shape a space. `abi::address_space::LIST` needs
-//! `ENUMERATE`: the authority to look. A capability holding `ENUMERATE` alone can list every mapping
-//! and change none of them, exactly the split `Rendezvous::SURVEY` drew between naming a domain's
-//! members and reaping one (DECISIONS §114, `notes/process-view.md`).
-//!
-//! # Three answers, and telling them apart is the deliverable
-//!
-//! Same three as `ps`, one object type over: a space with mappings in it, a space that is empty
-//! (including one whose registry entry is already gone -- see this crate's `BUGS`), and a refusal.
-//!
-//! # Collect first, complain second, print third
-//!
-//! DECISIONS §67's rule, verbatim from `crates/ps`: everything a program has to complain about is
-//! said, and that stream closed, before a byte of output. [`collect`] takes the whole listing into a
-//! caller-provided buffer first for the identical reason `ps::collect` does (`script/stack-frame-check`
-//! made the buffer the caller's there; the same shape is kept here from the start rather than found
-//! the hard way twice).
-//!
-//! # EXAMPLES
-//!
-//! Driving it from a host test is the whole contract, and it needs no kernel:
-//!
-//! ```
-//! use pmap::{MAX_ROWS, Row, collect};
-//!
-//! // A space of one mapping: cursor 0 yields it, cursor 1 says done.
-//! let mut reader = |cursor: u64| match cursor {
-//!     0 => (1, 0x0040_0000, abi::address_space::MAP_CODE),
-//!     _ => (abi::survey::DONE as i64, 0, 0),
-//! };
-//! let mut rows = [Row::default(); MAX_ROWS];
-//! let listing = collect(&mut rows, &mut reader);
-//! assert_eq!(listing.rows().len(), 1);
-//! assert_eq!(listing.rows()[0].va, 0x0040_0000);
-//!
-//! let mut text = Vec::new();
-//! listing.write_report(&mut |b| text.extend_from_slice(b));
-//! assert!(String::from_utf8(text).unwrap().contains("r-x"));
-//! ```
+//! The listing is a capability, not an ambient file behind bolted-on ptrace checks: this crate is
+//! handed a function that reads one mapping, backed by `abi::address_space::LIST` on an endowed
+//! address-space capability, so it cannot widen the space or learn that another exists. `LIST` needs
+//! `ENUMERATE`, where `MAP_INTO` needs `WRITE`: the authority to look, apart from the authority to
+//! shape, as §114 (`pmap` gets its listing) ruled, the split `ps` has. The three answers are
+//! `ps`'s (mappings, an empty space, a refusal), and [`collect`] takes the whole listing into the
+//! caller's buffer before anything prints, for `ps`'s reasons.
 //!
 //! # BUGS
 //!
-//! - **There is no VA range column, only one row per page.** `abi::address_space::LIST` walks the space's
-//!   revocation log, which records one entry per mapped page and nothing about adjacency; upstream
-//!   `pmap` coalesces contiguous same-permission pages into a range. Doing that here would need this
-//!   crate to know the pages are contiguous, and the log does not promise an order that makes that
-//!   cheap to detect. Left as one row per page, which is honest about what the log actually holds.
-//! - **No size column beyond the implicit one page**, for the same reason.
-//! - **A `DeviceFrame` mapping reads as `rw-`**, the same as an ordinary read/write page: `kind` is
-//!   derived from `paging::Flags`, and a device mapping's flags do not carry a bit for "this is
-//!   device memory" as far as this crate can see. `pmap` cannot tell a driver's MMIO window from an
-//!   ordinary heap page. See `abi::address_space::LIST`'s doc.
-//! - **A resumed cursor can land on a slot the space's own log recycled for an unrelated mapping**,
-//!   if a tombstoned entry was reused between two calls. Unlike `ps`'s slot table, a log entry
-//!   carries no generation to detect this. See `kernel::revoke::list_mapping`'s doc for the mechanism
-//!   and why it is accepted rather than fixed here.
-//! - **There is no address space this program can be granted at the interactive prompt.** Every
-//!   `Object::AddressSpace` capability in this tree today is minted and consumed within the same thread
-//!   (`RETYPE_OBJ(ADDRESS_SPACE)` -> `MAP_INTO`* -> `ThreadControlBlock::CONFIGURE`, which removes the space from the
-//!   registry the moment it binds to a thread), and nothing in the shipped tree ever delegates one to
-//!   a different program. So unlike `ps`, which the shell endows a live supervision endpoint (
-//!   `Manifest::domain`), `pmap` has no analogous manifest field and no wiring in
-//!   `system_initializer`, because there is no source it could plumb through: no address space
-//!   anywhere in this system survives long enough, held by anyone other than its own builder, for a
-//!   second program to be handed a view of it. The kernel method and this program are real and
-//!   proven end to end against a real `Object::AddressSpace` (`kernel::user::pmap_tests`), the same way
-//!   `ps`'s kernel tests prove `Rendezvous::SURVEY` without going through the shell. What is missing is
-//!   a design for a builder to hand a narrowed, still-live view to a third party before it consumes
-//!   its own capability at `CONFIGURE` -- a real gap this milestone found rather than one it created,
-//!   named here for whoever picks it up next rather than decided by this lane. See
-//!   notes/process-view.md.
+//! - One row per page, with no range or size column: `LIST` walks the revocation log, which records
+//!   pages and nothing about adjacency.
+//! - A `DeviceFrame` mapping reads as `rw-`; the flags carry no device bit this crate can see.
+//! - A resumed cursor can land on a log slot recycled for an unrelated mapping, since a log entry
+//!   carries no generation (`kernel::revoke::list_mapping`).
+//! - Nothing at the prompt can grant this program an address space: there is no manifest field
+//!   for one and no wiring in `system_initializer`. Since §249 (a running address space stays
+//!   nameable) a builder can keep a copy, so the gap is the wiring and the design for handing a
+//!   view to a third party. `kernel::user::pmap_tests` proves the program against a real space.
 //!
-//! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review, confirming milestone
-//! 126's own reasoning). `pmap` is the name every reader already knows from outside this project.
-//! Sharing it with `components/src/pmap.rs` is the crate-and-program pair the naming tenet describes:
-//! `ps`, `coremark`, `line_editor` and `compositor` all keep one name across the two.
+//! Name: ratified 2026-08-23 (calef): the name every reader knows, shared with
+//! `components/src/pmap.rs` as one thing split at the IO boundary.
 
 #![cfg_attr(not(test), no_std)]
 
@@ -134,6 +64,26 @@ pub struct Listing<'a> {
 /// first word is a refusal and `abi::survey::DONE` means the walk is over. `ps::collect`'s shape
 /// verbatim, including its termination guarantee for a cursor that does not advance: this function
 /// is total for every reader, which is what makes every case here reachable from a host test.
+///
+/// # Examples
+///
+/// ```
+/// use pmap::{MAX_ROWS, Row, collect};
+///
+/// // A space of one mapping: cursor 0 yields it, cursor 1 says done.
+/// let mut reader = |cursor: u64| match cursor {
+///     0 => (1, 0x0040_0000, abi::address_space::MAP_CODE),
+///     _ => (abi::survey::DONE as i64, 0, 0),
+/// };
+/// let mut rows = [Row::default(); MAX_ROWS];
+/// let listing = collect(&mut rows, &mut reader);
+/// assert_eq!(listing.rows().len(), 1);
+/// assert_eq!(listing.rows()[0].va, 0x0040_0000);
+///
+/// let mut text = Vec::new();
+/// listing.write_report(&mut |b| text.extend_from_slice(b));
+/// assert!(String::from_utf8(text).unwrap().contains("r-x"));
+/// ```
 pub fn collect<'a>(
     rows: &'a mut [Row],
     read: &mut dyn FnMut(u64) -> (i64, u64, u64),

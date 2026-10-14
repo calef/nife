@@ -149,22 +149,40 @@ pub fn write_set(set: &NameSet, out: &mut dyn FnMut(&[u8])) {
     }
 }
 
-/// **`echo`, which expands.** The half of milestone 47's globbing demonstration that costs no
-/// authority: `echo *.txt` prints literally what `rm *.txt` would transfer.
+/// **`echo`, which expands**: `echo *.txt` prints literally what `rm *.txt` would transfer, at no
+/// authority. Words with no magic are copied byte for byte, spacing included; only a pattern is
+/// replaced by what it designates. A **quoted** word prints what is between its quotes and never
+/// expands, so `echo "*.txt"` names a name where `echo *.txt` names a set. [`STATUS_WORD`] prints
+/// `status`, how `$?` is read; `echo "$?"` prints the two characters ([`grant_plan::word`]).
 ///
-/// Words with no magic in them are copied through **byte for byte, spacing included**, so `echo
-/// two  spaces` still prints its two spaces. Only a word that is a pattern is replaced by what it
-/// designates, which keeps `echo` a text command everywhere it was one before.
+/// # Examples
 ///
-/// # The two words that are not text (milestone 67)
+/// ```
+/// use grant_plan::expand::NameSet;
+/// use swish::{Say, echo};
 ///
-/// A **quoted** word prints what is between its quotes and is never expanded, so `echo "*.txt"`
-/// prints a pattern and `echo *.txt` prints the set it designates. Those two lines side by side are
-/// the demonstration this milestone owes: quoting is the difference between naming a name and
-/// naming a set, and `echo` shows it before anything moves.
+/// // A directory holding two files, standing in for the one the shell would have to ask a server
+/// // for. Everything else on this path is the real thing.
+/// let mut listing = |_pattern: &[u8]| -> Result<NameSet, Say> {
+///     let mut set = NameSet::empty();
+///     set.push(b"notes.txt", false);
+///     set.push(b"report.txt", false);
+///     Ok(set)
+/// };
 ///
-/// And [`STATUS_WORD`] prints `status`, which is how `$?` is read at a prompt. `echo "$?"` prints
-/// the two characters, because both quote forms are literal here (see [`grant_plan::word`]).
+/// let mut printed = Vec::new();
+/// let said = echo(
+///     b"the set: *.txt",
+///     swish::Status::Ran,
+///     &mut listing,
+///     &mut |b| printed.extend_from_slice(b),
+/// );
+///
+/// assert!(matches!(said, Say::Nothing));
+/// // The words with no magic in them came through byte for byte; the pattern became what it
+/// // designates, which is exactly what `rm *.txt` would have been granted.
+/// assert_eq!(printed, b"the set: notes.txt report.txt");
+/// ```
 pub fn echo(
     text: &[u8],
     status: Status,

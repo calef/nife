@@ -1,89 +1,41 @@
-//! **The interactive boot's undertaker** (milestone 22 phase B.2, the interactive increment).
+//! **The interactive boot's undertaker.** The progenitor builds a fresh process for every command
+//! and is parked in `RECEIVE` on the spawn channel for life, with no non-blocking receive, so it
+//! cannot collect its dead jobs; without this program every job's region stayed spent and a long
+//! session ran out of memory. Collecting is the whole job: no restart policy, because a command a
+//! person typed should not restart when it ends.
 //!
-//! The prompt's the progenitor builds a fresh process for every command a person runs. Before this program
-//! existed, each of those processes stayed dead-but-uncollected forever and its region stayed spent,
-//! so the progenitor's budget only ever went one way: a long session ran out of memory and the shell started
-//! answering "could not spawn (the progenitor is out of memory)". The progenitor could not collect them itself, because
-//! there is no non-blocking receive and the progenitor is parked in `RECEIVE` on the shell's spawn channel for its
-//! whole life. So the collecting is a second process, and this is it.
+//! **Its authority is three endpoints and nothing else**: `READ` on the progenitor's supervision
+//! endpoint; `WRITE` on its result endpoint, to say one word to the shell; and `WRITE` on a copy of
+//! the spawn endpoint badged [`grant_plan::spawnproto::UNDERTAKER_BADGE`]. No untyped, frame, TCB or
+//! address space: `Rendezvous::REAP` is authorized by the supervision relationship (§32 (a
+//! supervisor may collect a corpse without being able to build one)), and the pages go back to the
+//! progenitor, which split the region. This process can free a job's memory and never spend it.
 //!
-//! **Its authority is three endpoint capabilities and nothing else.** `READ` on the progenitor's supervision
-//! endpoint, `WRITE` on the progenitor's result endpoint so it can say one word to whoever is waiting
-//! there, and `WRITE` on a badged copy of the spawn endpoint so it can tell the progenitor which job
-//! it reaped (milestone 685 (a job is finished when its memory is back)). No untyped, no frame, no TCB, no address space. It cannot build a process, allocate a
-//! page, or reach any child's memory; `Rendezvous::REAP` (DECISIONS §32) is authorized by the
-//! supervision relationship the kernel already records, not by holding the region. The pages
-//! therefore go back to **The progenitor's** job budget, because the progenitor split the region and §13 says a region
-//! belongs to whoever owns it. This process can free a job's memory and can never spend it.
-//!
-//! **The second capability is milestone 235's whole fix**
-//! (design/roadmap/0235-a-faulted-job-should-reach-the-prompt.md). A job the kernel killed sends
-//! nothing, so the shell's read of the result endpoint had nothing to complete it and the prompt
-//! never came back. This process is the one that learns the job died, so it is the one that says
-//! so: [`grant_plan::spawnproto::JOB_FAULTED`], once, after the corpse is collected. `WRITE` and no
-//! `GRANT`: the right to say that word to the shell, and nothing it could hand on.
-//!
-//! **The third capability is milestone 685's** (calef's ruling of 2026-10-06 UTC, option A). The
-//! shell shows its next prompt when it has read a job's output, and the job's memory comes back
-//! when this program collects it; nothing ordered the two, so a job typed at once could find the
-//! pool still holding the last one, and the progenitor could not know when a file-service window's
-//! last holder was gone. After every collect this program sends
-//! [`grant_plan::spawnproto::reaped`] on its copy of the spawn endpoint, badged
-//! [`grant_plan::spawnproto::UNDERTAKER_BADGE`], carrying the label the progenitor put on the job's
-//! supervision capability and the tid. The progenitor tells it from a request by the badge.
-//!
-//! It is deliberately not a supervisor in the `sub_server_supervisor` sense: it holds no restart
-//! policy, because a command a person typed has no business being restarted when it ends. Collecting
-//! is the whole job.
+//! A job the kernel killed sends nothing, so after collecting it this sends
+//! [`grant_plan::spawnproto::JOB_FAULTED`] on the result endpoint, once, and the prompt comes back.
+//! After every collect it sends [`grant_plan::spawnproto::reaped`] on the spawn endpoint, with the
+//! job's label and tid, so the progenitor knows the job's memory and file-service window are free
+//! before the next command.
 //!
 //! # BUGS
 //!
-//! **It can say one word and no more.** A refused reap is still taken as the kernel contradicting
-//! itself (it named a thread dead and then refused to collect it) and trapped on, which at least
-//! dies loudly at the pc of the mistake. The visible symptom of this process dying is that progenitor's
-//! job budget stops coming back and the prompt eventually answers "could not spawn". Milestone 235
-//! gave this program a channel for the one thing a person at a prompt has to be told; it did not
-//! make it a reporter.
-//!
-//! **A reaped message can park too**, behind a request the shell is still sending: the spawn
-//! endpoint is a rendezvous, and the progenitor takes this message in whatever receive it is in
-//! when it arrives. It parks for at most one request, because every receive the progenitor makes on
-//! that endpoint takes a reaped message as readily as a request's next word. The collect it
-//! announces has already happened, so the pool never waits on it.
-//!
-//! **A fault report can park, and then it wedges this loop** (milestone 235, recorded rather than
-//! solved). [`report`]'s `SEND` is a rendezvous and the ABI has no non-blocking send, so it
-//! completes only when someone reads the progenitor's result endpoint. Every ordinary job leaves the shell
-//! with a read outstanding there, so the common case rendezvous immediately. The exception is a
-//! **screen-narrowed line** (DECISIONS §106, the shell watches its tail's own fault endpoint
-//! instead): if a *non-tail* stage of such a line faults, nobody is reading the result endpoint,
-//! this loop parks in the `SEND`, and it collects nothing further until the next command reads
-//! there, which then takes the stale word and attributes the fault to the wrong line. The collect
-//! happens **before** the report for exactly this reason, so a parked report never costs the
-//! reclamation the prompt's memory depends on.
-//!
-//! Closing it needs either a non-blocking send or a receive that can wait on two endpoints, and
-//! both are the syscall surface (DECISIONS §10 (process model), §16 (object revocation)), which is
-//! an architect's and not a lane's. Proposed as its own milestone in this lane's report.
-//!
-//! **A refused reclaim is retried rather than trapped on** (milestone 31 phase 3, 2026-08-17), and
-//! that is the one thing this program does that is not a single call. A job behind a directory grant
-//! shares its region with the caretaker carrying the grant, so the first reclaim is refused by
-//! construction and the retry is what collects it; see [`MAX_ATTEMPTS`], which explains the whole
-//! mechanism and why running out is still a trap.
-//!
-//! It also cannot reap a **hung** job: a live thread is refused on purpose (§32), and nothing here
-//! escalates. That is §32's recorded watchdog case and it belongs to milestone 23, not here. At the
-//! prompt the forcible tier already exists for the case a person can see: `^C` twice tears the job's
-//! region down through the shell (DECISIONS §24), and those jobs are built from the shell's own
-//! untyped rather than the progenitor's, so they never reach this program at all.
+//! - It can say one word and no more. A refused reap of a thread the kernel named dead is a trap,
+//!   and this program dying shows as the prompt eventually answering "could not spawn".
+//! - A reaped message can park behind one request on the spawn endpoint; the collect it announces
+//!   has already happened.
+//! - **A fault report can park and wedge this loop**: the `SEND` completes only when someone reads
+//!   the result endpoint, and on a screen-narrowed line (§106 (take the `terminal_sink_caretaker`
+//!   narrowing)) a faulting non-tail stage leaves nobody reading. Nothing more is collected until the next command reads
+//!   there, which then takes the stale word for the wrong line. Collecting before reporting keeps
+//!   the memory coming back meanwhile. Closing it needs a non-blocking send or a two-endpoint
+//!   receive: the syscall surface, an architect's call.
+//! - A refused reclaim is retried, because a job behind a directory grant shares its region with
+//!   the caretaker, so the first reclaim is refused by construction ([`MAX_ATTEMPTS`]).
+//! - It cannot reap a hung job (§32 refuses a live thread); `^C` twice covers what a person sees.
 //!
 //! Name: ratified 2026-08-03 (calef), replacing `job_reaper`. Refused `job_reaper` (named for what
-//! it does to jobs, while its siblings are named for what they serve, and "reaper" carries a faint
-//! sense of taking a life) and, on 2026-08-04, `job_killer` (it claims an authority this program is
-//! specifically denied). An undertaker arrives strictly after death and never causes it, which is
-//! exactly the constraint DECISIONS §32 enforces by refusing to reap a live thread, and it joins
-//! the register its siblings already speak: supervisor, caretaker, undertaker.
+//! it does to jobs) and `job_killer` (an authority it is denied). An undertaker arrives strictly
+//! after death and never causes it, beside supervisor and caretaker.
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

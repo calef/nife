@@ -2,7 +2,7 @@
 
 Milestone 74's riscv64 half. What the kernel now asks firmware for, what it does with the answer,
 and the bench procedure that would turn any of it into a number. The procedure has not been run.
-radon (the VisionFive 2) was powered off and there was no bench session while this was built, so
+radon (the VisionFive 2) was powered off and there was no bench session while this was built. So
 everything below that is not marked as read off a machine is either read off QEMU (which cannot
 answer the question) or read out of a specification.
 
@@ -86,8 +86,8 @@ under one name on two machines will be compared across them, so each architectur
 its own ratio is a ratio of, beside the number rather than in a note. The numeric line is unchanged.
 
 That ratio is an artifact and the exactness is the tell. QEMU-TCG has no cycles to count; under
-`-icount` the `cycle` CSR and the `time` CSR are both driven off the same virtual clock, so the
-answer is the ratio between two views of one number and comes out to 100.00 with a rounding
+`-icount` the `cycle` CSR and the `time` CSR are both driven off the same virtual clock. So the
+answer is the ratio between two views of one number, and comes out to 100.00 with a rounding
 wobble. A green test under emulation proves the plumbing and says nothing whatever about the
 measurement.
 
@@ -126,7 +126,7 @@ disappointing.
 
 Not run. Written to be followed rather than interpreted, in the shape notes/x86-uefi-boot.md's
 own bench section uses, and it assumes you have already done the setup in notes/visionfive2.md's
-runbook: card, DIP switches to QSPI, serial on pins 6/8/10 at 115200 8N1 with the terminal attached
+runbook. That is card, DIP switches to QSPI, serial on pins 6/8/10 at 115200 8N1 with the terminal attached
 before power, USB-C in last.
 
 ### Step 0: the whole of it is three lines of output
@@ -215,12 +215,12 @@ three steps above. That is the second sense of the `HARDWARE` gate, not the firs
   follow it should expect at least one line of output to be worded differently from the table.
 - **The did-it-move check can only catch a counter that is already dead.** It reads twice across a
   100-tick spin at boot, so it refuses a counter that never counts. It cannot catch one that stops
-  later, and on QEMU's `rva23s64` the counter counts when first configured and reads zero after a
-  stop and a fresh match, which is why the stop test asserts only that the module reached a decided
+  later. On QEMU's `rva23s64` the counter counts when first configured and reads zero after a stop
+  and a fresh match. That is why the stop test asserts only that the module reached a decided
   state rather than that the round trip is idempotent.
 - Why `rva23s64` in particular differs is not established, only that it does. The likely
   suspects are its mandated `Sscofpmf` changing how OpenSBI allocates counters and TCG not modeling
-  the programmable ones, and neither was chased down: the finding that matters is that a counter
+  the programmable ones, and neither was chased down. The finding that matters is that a counter
   firmware describes as working can read zero, and the defense does not depend on knowing why.
 - Whether radon's OpenSBI implements SBI PMU is unknown. Step 1 exists because it is a fact
   about the vendor's firmware build and nobody here has read it. What *is* read is upstream: OpenSBI

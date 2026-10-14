@@ -51,6 +51,9 @@ mod flag_tests;
 #[cfg(test)]
 mod geometry_tests;
 
+#[cfg(test)]
+mod eighth_pass_attacks;
+
 /// Machine-checked proofs of the leaf-size choice [`Mapper::map_span`] makes for every block it
 /// writes. **This is the property that makes a block mapping safe**: a block that ran past the span
 /// it was asked for would map bytes nobody granted, which on the direct map means a second,

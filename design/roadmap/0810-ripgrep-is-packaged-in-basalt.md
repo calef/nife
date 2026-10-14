@@ -197,9 +197,9 @@ would replace only the download (unverified for `cargo-binstall`'s custom-target
   so far.
 - **Milestone 917.** Milestone 917 (basalt's packages build reproducibly, and the recipe records each
   package's digest).
-- **Outstanding.** Several programs in one package, as calef ruled: the installer, §229's lookup and
-  `jig remove` taking every `bin/` member. Two packages offering the same program name is a question
-  for calef when that work starts, not before.
+- **Milestone 919.** Several programs in one package, as calef ruled: milestone 919 (a package
+  carries several programs, and `jig` installs, finds and removes each one) holds the work and the
+  question of two packages offering one program name.
 - **Done.** Item 7: nife packs no `rg` it built, only the fetched package's, and only when a
   gate fetched it ("Built 2026-10-13").
 

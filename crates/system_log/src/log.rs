@@ -22,6 +22,44 @@ pub enum Handled {
 }
 
 /// The whole service's state. `const`-constructible so a `no_std` program holds it in a `static`.
+///
+/// # Examples
+///
+/// ```
+/// use system_log::{Log, Handled};
+/// use system_log_protocol::{control, read};
+/// use byte_sink_protocol::pack;
+///
+/// let mut log = Log::new();
+/// for (badge, program) in [(1u32, &b"alpha"[..]), (2, &b"beta"[..])] {
+///     for m in control::name_messages(badge, control::PROGRAM, program).into_iter().flatten() {
+///         log.handle(0, m.0, m.1, m.2, 0);
+///     }
+/// }
+/// log.handle(0, control::word(control::OPERATION_READER, control::SCOPE_SYSTEM, 0, 9), 0, 0, 0);
+///
+/// let (a, b) = (b"first half, then", b"one\n");
+/// let (w0, w1, w2, _) = pack(a);
+/// log.handle(1, w0, w1, w2, 10);
+/// let (w0, w1, w2, _) = pack(b"hello from beta\n");
+/// log.handle(2, w0, w1, w2, 20);
+/// let (w0, w1, w2, _) = pack(b);
+/// log.handle(1, w0, w1, w2, 30);
+///
+/// let mut window = [0u8; read::WINDOW_BYTES];
+/// let asked = log.handle(9, read::request(), 0, 0, 40);
+/// assert_eq!(asked, Handled::Read { window: 0, cursor: 0 });
+/// log.fill(9, 0, &mut window);
+/// let (next, len, status) = read::header(&window);
+/// let text = core::str::from_utf8(&window[read::DATA..read::DATA + len]).unwrap();
+/// assert_eq!(status, read::status::OK);
+/// assert_eq!(next, 2);
+/// let mut lines = text.lines();
+/// let beta = lines.next().unwrap();
+/// let alpha = lines.next().unwrap();
+/// assert!(beta.starts_with(r#"{"seq":0,"time":20,"source":2,"program":"beta","user":null,"#));
+/// assert!(alpha.ends_with(r#""severity":"info","msg":"first half, thenone"}"#));
+/// ```
 pub struct Log {
     registry: Registry,
     assembler: Assembler,

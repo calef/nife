@@ -1237,3 +1237,96 @@ mod seventh_pass_retype_tests;
 /// Cross-ISA: the delegation rule and the rendezvous are portable kernel code (DECISIONS §19).
 #[cfg(test)]
 mod seventh_pass_delegation_tests;
+
+/// **A consumed capability stays consumed, and deleting one disturbs nothing else** (an eighth
+/// outsider pass at the confinement claim, claims 4 and 5). Attacks the live kernel paths the host
+/// crate's pure-logic tests cannot reach: a stale slot number after `SYS_CAP_DELETE`, an
+/// out-of-range index forged in a register, a double delete, a neighbor that must keep working
+/// through the real dispatcher, and a freed slot regranted with narrower rights that must carry
+/// nothing of its deleted tenant. Nothing blocks. Its own header has the reasoning.
+///
+/// Cross-ISA: `invoke`, the slot lookup and the table are portable kernel code (DECISIONS §19).
+#[cfg(test)]
+mod eighth_pass_slot_lifecycle_tests;
+
+/// **A supervisor's domain is its own rendezvous on both the reap and the view side, and a
+/// stranger's liveness is invisible through either** (an eighth outsider pass at the confinement
+/// claim, claims 6, 7, 8 and 9). A fully privileged supervisor of one domain reaches sideways at
+/// another domain's members, alive and dead, through `REAP` and `SURVEY` over the real dispatcher;
+/// the liveness attack asserts the two refusals are the same error word for word. The view attack
+/// keeps a corpse in its own domain's walk and a stranger out of it, and checks the empty domain
+/// answers rather than refusing. Its own header has the reasoning.
+///
+/// Cross-ISA: the reap decision and the survey walk are portable kernel code (DECISIONS §19).
+#[cfg(test)]
+mod eighth_pass_rendezvous_scope_tests;
+
+/// **Revocation against a delegation that is still being made** (an eighth outsider pass at the
+/// confinement claim, claim 30). Two places the cited in-flight test names as unmeasured: the
+/// race window between `SEND_CAP`'s start and the filing of the copy, forced certain with the test
+/// kernel's delegation seam, and the `x86_64` PortRange sweep through a parked hand-off. The
+/// refused run answers `NoSuchSlot` and parks nothing; the control run delivers. Its own header
+/// has the reasoning.
+///
+/// Cross-ISA for the seam test; the port test is `x86_64` only (DECISIONS §19).
+#[cfg(test)]
+mod eighth_pass_delegation_race_tests;
+
+/// **Forged ELF images the cited tests do not shape** (an eighth outsider pass at the confinement
+/// claim, claim 22): a segment whose arithmetic overflows the address space, one that starts in
+/// band and claims to reach the kernel half, an image whose *second* program header names the
+/// kernel while the first is benign, and a `W|X` request dressed in vendor OS bits. Each refusal
+/// is pinned to the error that names why.
+///
+/// Cross-ISA: the band, the halves and `load` are portable over each ISA's `Mapper` (DECISIONS §19).
+#[cfg(all(test, initial_ramdisk))]
+mod eighth_pass_elf_attack_tests;
+
+/// **A user program cannot read the kernel through its other addresses either** (an eighth
+/// outsider pass at the confinement claim, claim 21). The outlaw is aimed at kernel text and at
+/// the direct-map alias of a page the cited test already proves unreadable at its link-time
+/// address, on every ISA the suite boots, each fault asserted to be a read at the exact address
+/// handed in.
+///
+/// Cross-ISA by construction: the claim is (DECISIONS §19).
+#[cfg(all(test, initial_ramdisk))]
+mod eighth_pass_kernel_address_tests;
+
+/// **The port range's read side, its revocation's precision, and a duplicated holder** (an eighth
+/// outsider pass at the confinement claim, claims 27, 28, 29 and 33). A non-holder's `in` faults
+/// after a holder transmitted; a READ-only capability's `in` works while its `out` faults on the
+/// `out`; revoking a sub-range stops its holder while revoking an unrelated range stops no one;
+/// and one range in two slots survives one delete and falls on the second. `x86_64` only.
+#[cfg(all(test, target_arch = "x86_64"))]
+mod eighth_pass_port_boundary_tests;
+
+/// **What a spawned child actually holds, and what a child with nothing can still build: nothing**
+/// (an eighth outsider pass at the confinement claim, claims 23, 31 and 32). A real spawned
+/// program granted the unvouched shape (one endpoint, two read-only pages) has its whole table
+/// read back slot for slot: exactly those three, and no device capability of any kind. The
+/// outlaw's `BUILD_WITH_NOTHING` role answers NoSuchSlot to every minting attempt from inside,
+/// through the real `SYS_INVOKE`.
+///
+/// Cross-ISA: the spawn path, the census and the outlaw are portable (DECISIONS §19).
+#[cfg(all(test, initial_ramdisk))]
+mod eighth_pass_spawn_audit_tests;
+
+/// **A client trying to upgrade itself into the server** (an eighth outsider pass at the
+/// confinement claim, claim 26). The two roads around the cited rights gates: a self-upgrade
+/// `SEND_CAP` asking for READ through the rights register, and a badged copy of the client's own
+/// capability tried against every server method. The badge labels a sender; it is not a right.
+/// Nothing blocks, and a positive control proves the endpoint live.
+///
+/// Cross-ISA: the delegation rule, the badge rule and the rendezvous are portable kernel code
+/// (DECISIONS §19).
+#[cfg(test)]
+mod eighth_pass_endpoint_usurper_tests;
+
+/// **The attenuation lattice, one right at a time, and each shell running the other's script**
+/// (an eighth outsider pass at the confinement claim, claims 19 and 24). Grants dropping exactly
+/// one right lose exactly that right's bit; shells running the other root's script complete the
+/// skeleton and reach nothing of the tree every probe aims at, absolute paths included.
+///
+/// Cross-ISA: the caretaker, the protocol and the shell are portable programs (DECISIONS §19).
+#[cfg(all(test, initial_ramdisk))]
+mod eighth_pass_dir_escape_tests;

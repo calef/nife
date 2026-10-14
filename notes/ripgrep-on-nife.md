@@ -33,10 +33,10 @@ Without `--threads 1` it walks on one thread per core, and the kernel counts the
 ## How it runs, and where it does not yet
 
 Through the kernel harness, not the prompt. `system_tests/src/user/ripgrep_tests.rs` spawns `rg`
-with `fs_service::start_std_narrowed`: a heap budget at slot 0, an output endpoint at slot 1, a
-caretaker narrowing `walk/` to the rights under test at slot 4, and the argv at slot 8. The argv is
-built from a line typed as it would be at the prompt, by `grant_plan::argv`, the function `swish`
-uses, and placed as the progenitor places it: a `READ` frame mapped read-only at `ARGS_PAGE`
+with `fs_service::start_std_narrowed`. It puts a heap budget at slot 0, an output endpoint at slot
+1, a caretaker narrowing `walk/` to the rights under test at slot 4, and the argv at slot 8. The
+argv is built from a line typed as it would be at the prompt, by `grant_plan::argv`, the function
+`swish` uses. It is placed as the progenitor places it: a `READ` frame mapped read-only at `ARGS_PAGE`
 (milestone 205 (how a foreign program is told what to do)). The image loads at its own link address
 since milestone 206 (a program image has under 896 KiB) moved the ceiling to 496 MiB.
 
@@ -77,9 +77,10 @@ and no fork. `ripgrep` is untouched. One dependency is patched: `ignore` 0.4.23,
 crates.io by its checksum and given basalt's `patches/ripgrep-ignore-walk.patch`, about ten lines. Milestone 812 (`std::thread::spawn` runs real
 threads in one address space) gave `rg` threads, so it walks in parallel, and `ignore`'s parallel
 walker answered "unsupported platform" for every path on a target that is neither `unix` nor
-`windows`. calef ruled the patch on pull request #1892; BUGS has its upkeep. What else differs from a Linux build is on the command line: the
-target spec (`panic=abort`), `-Zbuild-std` against the patched `std` (notes/std.md),
-the link script, and `-Copt-level=s -Cstrip=debuginfo`, because ripgrep's own release profile sets
+`windows`. calef ruled the patch on pull request #1892; BUGS has its upkeep. What else differs from
+a Linux build is on the command line: the target spec (`panic=abort`), `-Zbuild-std` against the
+patched `std` (notes/std.md), the link script, and `-Copt-level=s -Cstrip=debuginfo`. That last is
+because ripgrep's own release profile sets
 `debug = 1` and a 25 MB ELF rides into RAM in the initrd. About 25 seconds a target from cold.
 
 Every crate compiles, including the four milestone 64 (enough `std` to run somebody else's crate) flagged (`ignore`, `crossbeam-deque`,
@@ -119,8 +120,8 @@ pages `ripgrep_tests` gives the serial walk, the fourth spawn was refused for wa
 thread control block, so the threaded tests give `rg` 512. CI's `rg-threads` rows run them on
 every pull request (`script/ci-build`).
 
-The first full `x86_64` suite hung the four-thread test past its 90 s ceiling at two cores: the
-PAL held a spinlock on its one file page across each `CALL`, so idle workers spun while the holder
+The first full `x86_64` suite hung the four-thread test past its 90 s ceiling at two cores. The PAL
+held a spinlock on its one file page across each `CALL`, so idle workers spun while the holder
 waited on the caretaker. It is `std`'s futex mutex now (`sys/fs/nife/page.rs`), and the test takes
 about 0.5 s there. The comparison with Linux below stays serial on both sides.
 
@@ -133,8 +134,8 @@ rg: No files were searched, which means ripgrep probably applied a filter you di
 0 files searched
 ```
 
-The words after `./:` are the PAL's, for the FS server's `EPERM`: §47 (a directory capability
-carries six rights) chose a refusal over an empty listing, and it survives the caretaker, std's
+The words after `./:` are the PAL's, for the FS server's `EPERM`. §47 (a directory capability
+carries six rights) chose a refusal over an empty listing. It survives the caretaker, std's
 `read_dir` and `ignore`'s walker to reach a person as an error. The control holds the same
 `READ | DESCEND` grant and is told `rg 'walk entry' narrow/n000`, and finds its line, so the
 refusal is about enumeration alone.

@@ -1,7 +1,6 @@
-//! **What a name resolver and the programs around it agree on** (milestone 384 (in a capability
-//! system the resolver is a grant); §248 (the name resolver is its own confined program)).
-//!
-//! Three parties share one endpoint, the resolver's, and each holds a different capability to it:
+//! **What a name resolver and the programs around it agree on** (§248 (the name resolver is its
+//! own confined program)). Three parties share the resolver's endpoint, each with a different
+//! capability to it:
 //!
 //! ```text
 //!   spawner ──unbadged WRITE──┐          (GRANT: badge B may resolve names in zone Z)
@@ -11,76 +10,36 @@
 //!                                    └──entropy──► the transaction id
 //! ```
 //!
-//! - **The spawner** holds the one unbadged capability. It mints a badged copy for each client
-//!   (`abi::rendezvous::BADGE`), and tells the resolver what that badge may resolve with
-//!   [`OPERATION_GRANT`] messages ([`grant_messages`] builds them). Only a message arriving with
+//! - **The spawner** holds the one unbadged capability, mints a badged copy per client, and tells
+//!   the resolver what each badge may resolve with [`OPERATION_GRANT`] ([`grant_messages`]). Only
 //!   badge 0 is read as a grant, so a client cannot widen its own.
-//! - **A client** holds a badged copy and nothing else of the resolver. It delegates one page
-//!   ([`OPERATION_ATTACH_PAGE_FRAME`], a `SEND_CAP`), writes a host name into it, and `CALL`s
-//!   [`OPERATION_RESOLVE`] with the name's length. The reply word is a [`status`] (with the address
-//!   count and a detail byte, [`Outcome`]), the second word is the TTL, and the addresses are in
-//!   the page at [`OFF_ADDRESSES`].
-//! - **The resolver** keeps a [`Grants`] table, judges each name against the zone its caller's
-//!   badge was granted **before it sends anything**, and asks the name server only about a name
-//!   that passes.
+//! - **A client** delegates one page ([`OPERATION_ATTACH_PAGE_FRAME`]), writes a host name into it,
+//!   and `CALL`s [`OPERATION_RESOLVE`]: the reply is a [`status`] ([`Outcome`]) and the TTL, and the
+//!   addresses are in the page.
+//! - **The resolver** keeps a [`Grants`] table and judges each name against its caller's zone
+//!   before it sends anything.
 //!
-//! # What a grant means
-//!
-//! A grant is a **zone**: the zone's own name and every name under it, compared label by label
-//! (`domain_name_system::Name::is_within`), so a client granted `nife.test` may resolve
-//! `packages.nife.test` and may not resolve `evilnife.test`. A zone of one host name is an exact-name
-//! grant in effect, and the root zone (an empty zone text) is "any name", for the client that truly
-//! needs it. Those are the three options of Fork 2 in `notes/name-resolution.md`, expressed as one
-//! mechanism rather than three.
-//!
-//! **The check applies to the name asked, not to the chain the answer follows.** A client granted
-//! `packages.example.org` whose name is a CNAME into a CDN still gets the CDN's address, because the
-//! answer is `domain_name_system::Query::accept`'s business and the grant is about what the client
-//! may ask. What the grant stops is a client asking about a name outside its zone at all.
-//!
-//! # The page
+//! A grant is a **zone**, compared label by label (`domain_name_system::Name::is_within`): granted
+//! `nife.test`, a client may ask about `packages.nife.test` and not `evilnife.test`. One host name
+//! is an exact grant, and the empty zone is any name. It applies to the name asked, not to the
+//! CNAME chain the answer follows.
 //!
 //! | bytes | field | written by |
 //! |---|---|---|
 //! | [`OFF_NAME`].. | the host name, dotted ASCII, at most [`NAME_TEXT_MAX`] bytes | the client |
 //! | [`OFF_ADDRESSES`].. | up to [`MAX_ADDRESSES`] IPv4 addresses, four bytes each | the resolver |
 //!
-//! # EXAMPLES
-//!
-//! A spawner grants badge 7 the zone `nife.test`, and the resolver's table then answers for it:
-//!
-//! ```
-//! use domain_name_system::Name;
-//! use name_resolution_protocol::{Denied, Grants, grant_messages};
-//!
-//! let mut grants = Grants::new();
-//! for (w0, w1) in grant_messages(7, b"nife.test").unwrap() {
-//!     grants.control(w0, w1);
-//! }
-//! let asked = Name::from_dotted("packages.nife.test").unwrap();
-//! assert!(grants.check(7, &asked).is_ok());
-//! let elsewhere = Name::from_dotted("evilnife.test").unwrap();
-//! assert_eq!(grants.check(7, &elsewhere), Err(Denied::OutsideZone));
-//! assert_eq!(grants.check(8, &asked), Err(Denied::NoGrant));
-//! ```
-//!
+
 //! # BUGS
 //!
-//! - **A grant lasts until the spawner forgets it** ([`OPERATION_FORGET`], milestone 892 (a std
-//!   program at the prompt holds the network and a resolver)). At most [`GRANTS_MAX`] clients hold
-//!   a grant at once; a spawner that never forgets serves only that many in the resolver's life,
-//!   which is what this line said before the verb existed.
-//! - **One zone per badge.** A client that needs two unrelated domains needs two badges, or a
-//!   grant of their common parent, which may be the root.
-//! - **Grant messages carry eight bytes each**, because the resolver receives with `RECEIVE_CAP`
-//!   (its clients `CALL` and `SEND_CAP`), which returns two data words, and the first is the control
-//!   word. A 253-byte zone is 32 messages. It is the spawner's one-time cost per client.
+//! - A grant lasts until the spawner sends [`OPERATION_FORGET`]; at most [`GRANTS_MAX`] at once.
+//! - One zone per badge: two unrelated domains need two badges, or their common parent.
+//! - Grant messages carry eight bytes each (`RECEIVE_CAP` returns two words, one the control word),
+//!   so a 253-byte zone is 32 messages, once per client.
 //!
-//! Name: provisional 2026-10-06 (UTC), milestone 384's lane. Spelled the way
-//! `network_time_protocol` and `domain_name_system` are, by what it is the protocol of. Refused
-//! `resolver_protocol`, which names the program rather than the act, and `dns_protocol` under §154
-//! (the acronym test): the act is name resolution, and the wire format underneath is
-//! `domain_name_system`'s.
+//! Name: provisional (milestone 384 (in a capability system the resolver is a grant)'s lane):
+//! named for what it is the protocol of. Refused `resolver_protocol` (the program, not the act)
+//! and `dns_protocol` (§154 (the acronym test)).
 
 #![no_std]
 

@@ -1,87 +1,18 @@
-//! PCI configuration space: the decode logic, and none of the MMIO.
+//! PCI configuration space: the decode logic, and none of the MMIO. ECAM addressing, walking a
+//! config space for devices, sizing a BAR, finding the virtio vendor capabilities, all over
+//! read/write closures on `(bdf, offset)`: the kernel passes volatile accessors into the mapped
+//! ECAM window and the tests pass an array, the inversion `validate_and_shadow` uses and the reason
+//! this is host-testable.
 //!
-//! This crate knows how ECAM addressing works, how to walk a config space for devices, how to
-//! size a BAR, and how to find the virtio vendor capabilities. It deliberately does not know how
-//! to *touch* any of it: every function takes read/write closures over `(bdf, offset)`, and the
-//! kernel passes volatile accessors into the mapped ECAM window while the tests pass a fake
-//! config space built in an array. The same inversion `validate_and_shadow` uses in
-//! kernel/src/virtio.rs, and the reason all of this is host-testable.
+//! A function is addressed by **BDF** (bus, device, function) and has 4 KB of **configuration
+//! space** (ECAM: a flat window, `(bus << 20) | (dev << 15) | (fn << 12)`). The first 64 bytes are
+//! the standard header: vendor and device id, command and status, class, the **BARs** (where the
+//! function's register blocks live), and the capability list pointer, whose **vendor
+//! capabilities** carry what virtio-modern needs. See notes/pcie.md.
 //!
-//! Vocabulary, because PCI is fifty years of acronyms: a function is addressed by **BDF**
-//! (bus, device, function). Each function has 4 KB of **configuration space** (ECAM: a flat
-//! memory window, 4 KB per function, `(bus << 20) | (dev << 15) | (fn << 12)`). The first 64
-//! bytes are the standardized header: vendor/device id, command/status, class, the **BARs**
-//! (Base Address Registers, where the function's register blocks live in memory), and the
-//! capability list pointer. Everything virtio-modern needs beyond that lives in **vendor
-//! capabilities** in that list. See notes/pcie.md.
-//!
-//! # Examples
-//!
-//! Enumerating a bus with no bus. Every function here takes read/write closures over
-//! `(bdf, offset)`, so the kernel passes volatile accessors into the mapped ECAM window and a test
-//! passes an array. **That inversion is why this crate is host-testable at all**, so it is what an
-//! example should show:
-//!
-//! ```
-//! use pci::{Bdf, VENDOR_ID, VIRTIO_VENDOR, enumerate};
-//!
-//! // A config space with exactly one device: modern virtio-blk at 00:01.0. Everything else reads
-//! // 0xffff, which is the bus's way of saying nobody is home.
-//! let mut read32 = |bdf: Bdf, off: u64| -> u32 {
-//!     if bdf == (Bdf { bus: 0, dev: 1, func: 0 }) && off == VENDOR_ID {
-//!         (0x1042 << 16) | VIRTIO_VENDOR as u32 // device 0x1042 in the high half
-//!     } else if off == VENDOR_ID {
-//!         0xffff_ffff
-//!     } else {
-//!         0 // header type 0: single function, so functions 1..8 are skipped
-//!     }
-//! };
-//!
-//! let mut found = Vec::new();
-//! enumerate(1, &mut read32, &mut |bdf, vendor, device| {
-//!     found.push((bdf, vendor, device));
-//! });
-//!
-//! assert_eq!(found.len(), 1);
-//! let (bdf, vendor, device) = found[0];
-//! assert_eq!((vendor, device), (VIRTIO_VENDOR, 0x1042));
-//!
-//! // ECAM addressing: 4 KB per function, `bus:8 | dev:5 | fn:3 | offset:12`. This shift-and-or is
-//! // the whole of the spec.
-//! assert_eq!(bdf.ecam_offset(), 1 << 15);
-//!
-//! // And the requester id, which is the key an IOMMU looks the device up by. Both `virt` boards
-//! // publish an identity `iommu-map`, so this number is exactly what the IOMMU sees.
-//! assert_eq!(bdf.requester_id(), 0b0000_0000_0000_1000);
-//! ```
-//!
-//! The INTx swizzle is four lines and worth pinning, because getting it wrong misroutes an interrupt
-//! to a device that will never acknowledge it:
-//!
-//! ```
-//! use pci::intx_irq;
-//!
-//! // Four devices, each on INTA, spread across four interrupt inputs rather than sharing one.
-//! let base = 32;
-//! let spread: Vec<u32> = (0..4).map(|dev| intx_irq(base, dev, 1)).collect();
-//! assert_eq!(spread, vec![32, 33, 34, 35]);
-//!
-//! // The swizzle wraps, which is what makes it a swizzle rather than an offset.
-//! assert_eq!(intx_irq(base, 4, 1), 32);
-//! // And one device's four pins also spread, so a multi-function card does not self-collide.
-//! assert_eq!(intx_irq(base, 0, 4), 35);
-//! ```
-//!
-//! Name: ratified 2026-09-18 (calef, `design/decisions/` §154), re-ratified under the acronym
-//! test rather than grandfathered by the 2026-08-01 tenet that first blessed it. §154's question is
-//! whether the expansion is a phrase people actually say. "peripheral component interconnect" is not: an
-//! expert meeting those words has to translate them back to `pci` to know what they are looking
-//! at, so spelling it out would cost the reader who knows the term and help nobody. It stays.
-//! Refused `peripheral_component_interconnect` (§154).
-//!
-//! Originally ratified 2026-08-01 in the group of standard terms "already right and must not be
-//! touched". That reasoning (recognition bought from outside this project) survives; what changed is
-//! that it is now the outcome of a test rather than an exemption from one.
+//! Name: ratified 2026-09-18 (calef, §154 (the acronym test is whether the phrase is spoken)):
+//! nobody says "peripheral component interconnect", so it stays `pci`. Refused
+//! `peripheral_component_interconnect` (§154).
 
 #![cfg_attr(not(test), no_std)]
 // milestone 68's ratchet is workspace-wide (§107); this crate opts out until its 24-item
@@ -392,6 +323,43 @@ pub fn walk(ceiling: u16, read32: &mut dyn FnMut(Bdf, u64) -> u32, f: &mut dyn F
 /// Every function the machine has, as (bdf, vendor, device): [`walk`] with the topology detail
 /// dropped, which is all most callers want. `ceiling` is the exclusive bus bound the caller can
 /// read; see [`walk`] for what happens at it.
+///
+/// # Examples
+///
+/// Enumerating a bus with no bus: a test's closure over an array stands in for the ECAM window.
+///
+/// ```
+/// use pci::{Bdf, VENDOR_ID, VIRTIO_VENDOR, enumerate};
+///
+/// // A config space with exactly one device: modern virtio-blk at 00:01.0. Everything else reads
+/// // 0xffff, which is the bus's way of saying nobody is home.
+/// let mut read32 = |bdf: Bdf, off: u64| -> u32 {
+///     if bdf == (Bdf { bus: 0, dev: 1, func: 0 }) && off == VENDOR_ID {
+///         (0x1042 << 16) | VIRTIO_VENDOR as u32 // device 0x1042 in the high half
+///     } else if off == VENDOR_ID {
+///         0xffff_ffff
+///     } else {
+///         0 // header type 0: single function, so functions 1..8 are skipped
+///     }
+/// };
+///
+/// let mut found = Vec::new();
+/// enumerate(1, &mut read32, &mut |bdf, vendor, device| {
+///     found.push((bdf, vendor, device));
+/// });
+///
+/// assert_eq!(found.len(), 1);
+/// let (bdf, vendor, device) = found[0];
+/// assert_eq!((vendor, device), (VIRTIO_VENDOR, 0x1042));
+///
+/// // ECAM addressing: 4 KB per function, `bus:8 | dev:5 | fn:3 | offset:12`. This shift-and-or is
+/// // the whole of the spec.
+/// assert_eq!(bdf.ecam_offset(), 1 << 15);
+///
+/// // And the requester id, which is the key an IOMMU looks the device up by. Both `virt` boards
+/// // publish an identity `iommu-map`, so this number is exactly what the IOMMU sees.
+/// assert_eq!(bdf.requester_id(), 0b0000_0000_0000_1000);
+/// ```
 pub fn enumerate(
     ceiling: u16,
     read32: &mut dyn FnMut(Bdf, u64) -> u32,
@@ -720,6 +688,25 @@ pub fn msix_cap(bdf: Bdf, read32: &mut dyn FnMut(Bdf, u64) -> u32) -> Option<Msi
 /// bridge implements exactly it; this crate's `tests/qemu_virt_dtb.rs` cross-checks this formula
 /// against the machine's own `interrupt-map`, so if a future board routes differently the host
 /// tests say so before the kernel misroutes an interrupt.
+///
+/// # Examples
+///
+/// The swizzle spreads devices and pins across interrupt inputs; wrong, it misroutes an interrupt to
+/// a device that will never acknowledge it.
+///
+/// ```
+/// use pci::intx_irq;
+///
+/// // Four devices, each on INTA, spread across four interrupt inputs rather than sharing one.
+/// let base = 32;
+/// let spread: Vec<u32> = (0..4).map(|dev| intx_irq(base, dev, 1)).collect();
+/// assert_eq!(spread, vec![32, 33, 34, 35]);
+///
+/// // The swizzle wraps, which is what makes it a swizzle rather than an offset.
+/// assert_eq!(intx_irq(base, 4, 1), 32);
+/// // And one device's four pins also spread, so a multi-function card does not self-collide.
+/// assert_eq!(intx_irq(base, 0, 4), 35);
+/// ```
 pub fn intx_irq(base: u32, dev: u8, pin: u8) -> u32 {
     // Total for every input, proved in the verification module. Pins are 1-based (1=INTA); the
     // saturating_sub means a (contract-violating) pin of 0 behaves as INTA instead of

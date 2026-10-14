@@ -1,98 +1,42 @@
-//! **A confined process that fuzzes the syscall surface, conducted one call at a time** (milestone
-//! 779 (fuzz the surface a confined process can reach), part (b), provisional; calef ruled yes on
-//! 2026-10-04 UTC).
+//! **A confined process that fuzzes the syscall surface, conducted one call at a time.**
+//! `fixtures/src/confined_syscall_fuzzer.rs` is an EL0 program that draws one syscall at a time
+//! from a seed and makes it through the real trap entry. This conductor spawns two endowed fuzzers
+//! (`ROLE_A`, `ROLE_B`) and a witness (`ROLE_WITNESS`), steps each with `GO_STEP` on its slot 0,
+//! and after every completed call checks that nothing escaped. The oracle is the conductor's; the
+//! generator never interprets an answer, so a wrong one cannot steer it.
 //!
-//! `fixtures/src/confined_syscall_fuzzer.rs` is an EL0 program, spawned with `user::run` like any
-//! confined program, that draws one syscall at a time from a seed and makes it through the real
-//! trap entry: `svc`/`ecall`/`syscall`, register marshaling and all, which milestone 752 (a seeded syscall driver with a shadow
-//! model)'s kernel threads deliberately skip. This module is the conductor. It spawns three of them, two endowed
-//! (`ROLE_A`, `ROLE_B`) and a witness (`ROLE_WITNESS`) holding only the conductor's channel, steps
-//! each one by sending `GO_STEP` on its slot 0, and checks between every two calls that nothing
-//! escaped the endowment.
+//! - **The table diff.** A slot may empty freely, but may fill only by `RETYPE_OBJ` (the object's
+//!   page in the fuzzer's own region), `BADGE` (the same object, restamped), or `RECEIVE_CAP` (a
+//!   delegation this conductor watched leave a sender, no wider and same badge, or the `Reply` of a
+//!   parked caller). Any other fill, a plain `RECEIVE` included, is an escape.
+//! - **The delegation ledger** records each parked `SEND_CAP`, marks it dead on revocation, and
+//!   drops it when its sender returns; a fill naming a dead or unknown one is an escape (#1525).
+//! - **Register truth.** After `RECEIVE_CAP`, `x1` names the slot that filled or is `NO_CAP`, and
+//!   `x4` carries `REPLY_DELIVERED` exactly for a `Reply`.
+//! - **The badge.** Everything drained off the server endpoint carries a fuzzer's badge or one it
+//!   minted under the conductor's eye; badge 0 is the #1494 shape.
+//! - **The witness** holds only slot 0, which is never named, so every `SYS_INVOKE` must fail.
+//! - **The page oracle.** Every mapping lies in the spawned pages or the 32-page playground, whose
+//!   frames lie in granted regions or the two gift frames.
 //!
-//! **The oracle is the conductor's, and the generator never interprets an answer**, so a wrong
-//! answer cannot steer it anywhere a right one would not. After every completed call:
-//!
-//! - **The table diff.** The conductor snapshots the fuzzer's 64 slots before and after. A slot may
-//!   empty freely (deletes, revocation, one-shot Replies), but a fill is legal only for a call that
-//!   can grant one: `RETYPE_OBJ` (the object's page must lie in the fuzzer's *own* region), `BADGE`
-//!   (the same object, restamped with the badge the call named), or `RECEIVE_CAP` (the delivered
-//!   object must be a delegation this conductor watched leave a sender, with no more rights and the
-//!   same badge, or the one-shot `Reply` of a caller this conductor sees parked waiting for one). A
-//!   fill by any other call, a plain `RECEIVE` included, is an escape.
-//! - **The delegation ledger.** A `SEND_CAP` that parks stages its delegation; the conductor
-//!   records it at the next quiet point, marks it dead when the object is revoked, and drops it
-//!   when its sender comes back without a fuzzer having taken it. A `RECEIVE_CAP` fill naming a
-//!   dead or unknown delegation is an escape (the #1525 shape: a staged capability surviving to a
-//!   later delivery).
-//! - **Register truth.** For a `RECEIVE_CAP`, `x1` must name the slot that actually filled (the
-//!   table diff says which) or be `NO_CAP`, and `x4` must carry `REPLY_DELIVERED` exactly when the
-//!   fill was a `Reply` (milestones 634 and 706). A plain `SEND` collected by a `RECEIVE_CAP`
-//!   answers `NO_CAP` whichever side parked first, because the conductor is also a sender: it
-//!   releases parked receivers with its own plain sends.
-//! - **The badge.** The fuzzers' server endpoint is badged per fuzzer, so every message the
-//!   conductor drains off it carries one of those badges or one a fuzzer minted at a `BADGE` call
-//!   the conductor watched. Badge 0 is the #1494 shape.
-//! - **The witness.** It holds only slot 0, which the generator never names, so every `SYS_INVOKE`
-//!   it makes must come back an error and its table must stay empty for the whole run.
-//! - **The page oracle.** Every mapping in every fuzzer's space lies in the pages it was spawned
-//!   with (image, stack, report) or in the 32-page playground window, and a playground page's
-//!   physical frame lies in one of the granted regions or is one of the two gift frames. A mapping
-//!   of a frame nobody granted is an escape no register mentions.
-//!
-//! **Wedged calls are served, not timed out.** A random call may block (a `RECEIVE` on an empty
-//! endpoint, a `SEND` nobody drains, a `CALL` waiting its reply, a `WAIT` on an unsignalled
-//! notification). The conductor reads the parked thread's disposition and serves it: it drains
-//! sends with `RECEIVE_CAP` (checking the badge, answering calls, deleting what lands in its own
-//! table), releases receives with its own sends, answers `CALL`s with `ipc_reply`, and signals the
-//! notification. Serving is keyed on observed park states, never on timing, so a seed replays
-//! identically. Only a call that neither completes nor parks anywhere serviceable within the
-//! deadline is a finding, and the report page names it, because the generator writes the call
-//! before making it.
-//!
-//! **The seed is the reproducer** (752's discipline, one level down). `NIFE_CONFINED_FUZZ_SEEDS=
-//! <first>:<count>` at build time replaces the committed list; a failure prints seed, step and the
-//! call. Coverage-blind on purpose, as the proposal records.
+//! A call that blocks is served, keyed on the parked thread's observed state, never on timing:
+//! sends drained, receives released, `CALL`s answered, the notification signalled. Only a call that
+//! neither completes nor parks serviceably is a finding. The seed is the reproducer:
+//! `NIFE_CONFINED_FUZZ_SEEDS=<first>:<count>` replaces the committed list at build time.
 //!
 //! # BUGS
 //!
-//! - **Interrupt and death deliveries are unreachable, so milestone 714 (the sibling `RECEIVE_CAP`
-//!   paths get a receiver-first test)'s two replayable
-//!   falsifications cannot be run against this driver**: no fuzzer endpoint is bound to an
-//!   interrupt and no fuzzer has a supervision channel, and the generator cannot make one (it
-//!   holds no TCB capability, and `BIND` on the shared notification reaches only refusals). The
-//!   x1-truth oracle would catch both shapes if a delivery existed; `receive_cap_attack_tests`
-//!   keeps those two records.
-//! - **Two more of the recorded falsifications cannot redden this driver, structurally** (swept
-//!   to 400 seeds each, 2026-10-06 UTC): milestone 633 (an outside agent attacks the confinement
-//!   claim)'s staged `outgoing_cap` and 706's missing
-//!   `REPLY_DELIVERED` tag. Both need fuzzer-to-fuzzer IPC in one of two arrival orders (a plain
-//!   `RECEIVE` collecting a parked `SEND_CAP`, a `CALL` reaching a parked `RECEIVE_CAP`), and
-//!   this conductor's protocol closes both windows: at every quiet point each fuzzer is parked
-//!   on its GO, only the stepped fuzzer makes calls, and the conductor is the sole counterparty
-//!   for a mid-call park, always taking with `RECEIVE_CAP` and always answering `CALL`s. The
-//!   orders those patches flip never arise; `receive_cap_attack_tests` keeps both records, and
-//!   the fills the *other* four patches produce (seeds 0, 7, 16, 52) show the delivery paths
-//!   that do arise are still judged.
-//! - **`GO` (slot 0) is never fuzzed**, and holds `READ` alone, so `SEND` and `SEND_CAP` on it are
-//!   never exercised: the fixture's own record, inherited.
-//! - **No thread or timer is ever made**: the generator rewrites those retypes to a rendezvous, so
-//!   the seed stays the reproducer (a second thread at a random entry breaks determinism). TCB and
-//!   timer methods are therefore out of reach, as in 752.
-//! - **The conductor cannot see shared-endpoint badges.** The fuzzers hold the shared endpoint
-//!   unbadged and may mint badged copies the conductor does not know, so a badge check runs only
-//!   on the server endpoint, where the conductor set the badges itself.
-//! - **Stale names are admitted.** A capability whose object no longer resolves (its region was
-//!   destroyed under it) is left alone by the object-page check rather than judged; every path
-//!   that *fills* a slot is still judged.
-//! - **A justified-but-late delegation is judged at the quiet point, not the step.** A `SEND_CAP`
-//!   whose receiver was already parked completes the receiver's step before the sender's, so the
-//!   fill can be judged only once the sender's report is in. One step of latency, never more,
-//!   because a sender always completes when its delivery is taken.
+//! - Interrupt and death deliveries are unreachable (no fuzzer can bind an interrupt or hold a
+//!   supervision channel), and this protocol closes the fuzzer-to-fuzzer arrival orders, so four
+//!   recorded falsifications cannot redden it; `receive_cap_attack_tests` keeps those records.
+//! - `GO` (slot 0) is never fuzzed, and no thread or timer is made (retypes are rewritten to a
+//!   rendezvous to keep the seed the reproducer), so those methods are out of reach.
+//! - Badges are checked only on the server endpoint; copies minted from the shared one are unknown.
+//! - A stale capability whose object no longer resolves is not judged; every fill still is.
+//! - A delegation taken by an already-parked receiver is judged at the next quiet point, one step
+//!   late.
 //!
-//! Name: provisional (milestone 779 (fuzz the surface a confined process can reach)'s lane), as
-//! are the module's, the fixture's and the protocol
-//! crate's.
+//! Name: provisional, as are the fixture's and the protocol crate's.
 
 use abi::Error;
 use confined_fuzz_protocol as proto;
