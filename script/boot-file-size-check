@@ -3,7 +3,7 @@
 #
 # **Why this exists.** An install puts one file, `\EFI\BOOT\BOOTX64.EFI`, into the EFI system
 # partition and again into each of two boot slots, and a slot is a fixed 64 MiB
-# (`BOOT_FILE_MAX` in uefi_loader/src/main.rs; components/src/system_installer.rs has the layout). calef
+# (`BOOT_FILE_MAX` in uefi_loader/src/placement.rs; components/src/system_installer.rs has the layout). calef
 # ruled on 2026-10-03 UTC to keep 64 MiB "with both fixes". This is the second fix. The first is
 # that an installed image is always a release build with a kernel stripped of its DWARF
 # (`cargo xtask stick` and `install-boot` build release, and the loader refuses to offer a debug
@@ -77,10 +77,10 @@ MIB=1048576
 WARN=$((12 * MIB))
 DEFAULT_BUDGET=$((16 * MIB))
 BASE=bench/boot-file-size-x86_64.txt
-LOADER_SRC=uefi_loader/src/main.rs
+LOADER_SRC=uefi_loader/src/placement.rs
 
 # BOOT_FILE_MAX, from the one place it is defined, written there as `64 * 1024 * 1024`.
-slot_mib=$(sed -n 's/^const BOOT_FILE_MAX: u64 = \([0-9]*\) \* 1024 \* 1024;.*/\1/p' "$LOADER_SRC")
+slot_mib=$(sed -n 's/^\(pub([a-z]*) \)\{0,1\}const BOOT_FILE_MAX: u64 = \([0-9]*\) \* 1024 \* 1024;.*/\2/p' "$LOADER_SRC")
 if [ -z "$slot_mib" ]; then
     echo "boot-file-size-check: cannot read BOOT_FILE_MAX from $LOADER_SRC; its spelling changed" >&2
     exit 1

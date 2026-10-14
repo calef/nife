@@ -7,7 +7,7 @@ built: 2026-07-14
 
 The one early milestone whose outcome is a decision as much as code: DECISIONS §10 (process model:
 capability-based, microkernel), capability-based and microkernel-shaped, recorded in `491f23d`
-(2026-07-14) at the decision point §8 (process model / syscall ABI: deferred to a hard decision
+(2026-07-14). That was the decision point §8 (process model / syscall ABI: deferred to a hard decision
 point) had deliberately parked. The original plan row called this "the actual OS boundary. Decision
 point," and the deferral held: the decision was made before any of milestone 7 was written, not
 hacked in mid-syscall.

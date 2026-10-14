@@ -73,7 +73,7 @@ lands (~2026-08-21).
 
 - **Decision.** `design/decisions/0053-parity-matrix.md`. This block argued that parity should stop
   meaning two ISAs and start meaning the same suite across CPU profiles, and that is where the
-  reframing was settled: a model is a first-class axis beside the ISA, five of them, on its own CI
+  reframing was settled. A model is a first-class axis beside the ISA, five of them, on its own CI
   job rather than inside `script/test`.
 - **Milestone 60.** ISA discovery, which this block deliberately runs after itself so the matrix
   names the facts worth discovering instead of somebody guessing them.

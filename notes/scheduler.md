@@ -51,17 +51,17 @@ each IRQ in the first place is the companion mechanism, in notes/interrupts.md.
 
 A wake is not a favor, it is the second half of a delivery, and since 2026-08-14 the scheduler
 enforces that. Every genuine wake of a thread parked in IPC happens in the same `SCHED` critical
-section that gave the parked operation something to return: a rendezvous stages the mailbox, an
+section that gave the parked operation something to return. A rendezvous stages the mailbox, an
 interrupt counts a signal, a reply fills the reply words, revocation flags the abort. Each of
 those sites sets the handshake's `ipc_served` (or `ipc_aborted`; both on
-`thread_wake_handshake::Handshake`, embedded in `Thread`) before calling `wake`, and `wake` /
+`thread_wake_handshake::Handshake`, embedded in `Thread`) before calling `wake`. `wake` /
 `wake_load_aware` refuse to make a waiting thread Ready when neither flag is set, recording
 `refuse:tid` on the per-core event ring. The parked thread stays parked and still linked on its
 endpoint's wait queue, and the real counterparty completes the rendezvous normally later.
 
-The gate turns that transition into a refused no-op plus a ring event, whoever the caller is; the
+The gate turns that transition into a refused no-op plus a ring event, whoever the caller is. The
 receive tails carry a `debug_assert` tripwire ("resumed with nothing delivered") for the state the
-gate makes unreachable, and every `ipc_served` setter records a `serve:tid/site` ring event so a
+gate makes unreachable. Every `ipc_served` setter records a `serve:tid/site` ring event so a
 bench dump names who completed a rendezvous instead of leaving it to inference.
 
 The failure it was built against was misread, and that correction is the important part. It was
@@ -78,9 +78,9 @@ notes/interleaving.md.
 BUGS. The gate protects threads whose `wait_on` is set, which is every IPC block site today; a
 future block path that forgets to set `wait_on` opts itself out silently. A kernel-thread caller
 of `ipc_receive` still cannot tell an abort from a message unless it checks `take_ipc_aborted`
-itself; the gate guarantees *something* was delivered, not which thing. And the blocking
-`ipc_send` resume path carries no tripwire assert, deliberately: it takes no lock after
-`schedule()` today, and adding one on the IPC hot path to double-check an invariant the gate
+itself; the gate guarantees *something* was delivered, not which thing. And the blocking `ipc_send`
+resume path carries no tripwire assert, deliberately. It takes no lock after `schedule()` today, and
+adding one on the IPC hot path to double-check an invariant the gate
 already holds was judged not worth the cycles the bench tripwire watches.
 
 ## The costs migration made real
@@ -119,7 +119,7 @@ are two ways a test never finishes, and no single instrument sees both.
 
 Why the ceiling had to be added. The heartbeat credits a completed rendezvous as progress. The
 RedoxFS repeat-write livelock spins in an allocator commit *while still serving blk IPC*, so every
-rendezvous reset the heartbeat: a failure that had been a loud 60 s trip became an infinite silent
+rendezvous reset the heartbeat. A failure that had been a loud 60 s trip became an infinite silent
 hang at about 400% CPU with no watchdog fire. A livelock that makes progress is indistinguishable from
 healthy work to a progress-only instrument. Turning a loud failure into a silent one is worse than the
 flake the heartbeat fixed, so both mechanisms are live now.
@@ -207,12 +207,12 @@ trace-ring diagnosis, the fix, why a strand usually goes unnoticed and the proof
   cross-core reap lag (the latter waits the lag out rather than reading the instant the count drops).
 
 **No test guards the missed-SGI bug above, and that is deliberate.** Its trigger is a work steal
-landing inside a handful of instructions, which no test can schedule; a test that tried would be a
+landing inside a handful of instructions, which no test can schedule. A test that tried would be a
 flake pretending to be a guard, and the suite already has the honest instrument for it in the
 no-progress heartbeat. The guard is `place_on`'s return type and its `#[must_use]`, which is rung
-one of CLAUDE.md's ladder for the part it can reach: a caller now has to be *handed* the answer
-rather than derive it, and dropping the answer on the floor is a warning, which CI's `-D warnings`
-makes a failure. What it cannot stop is someone writing a fresh `target != cpu::id()` beside it,
+one of CLAUDE.md's ladder for the part it can reach. A caller now has to be *handed* the answer
+rather than derive it. Dropping the answer on the floor is a warning, which CI's `-D warnings` makes
+a failure. What it cannot stop is someone writing a fresh `target != cpu::id()` beside it,
 which is why `place_on`'s doc comment says out loud what that costs.
 
 ### Two flakes that were the tests' fault

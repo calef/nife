@@ -1,22 +1,15 @@
 //! **What CPU is this, and can it run us**, `x86_64`. The third implementation of the arch contract
 //! aarch64 answers from `MIDR_EL1` and RISC-V from the device tree plus `mvendorid`.
 //!
-//! x86 has had one answer since 1993 and it is a good one: `CPUID`, an instruction that returns
-//! structured data about the part, including a 48-character brand string the vendor wrote. There is
-//! no device tree to consult and no firmware call to make, which makes this the *easiest* of the
-//! three rather than the hardest.
+//! x86 answers with `CPUID`, which returns structured data about the part, including the vendor's
+//! 48-character brand string. The decoding is in [`machine_discovery::x86_64`], host-tested; what
+//! can only happen on the machine is here: the `cpuid` instructions, the record, and the refusal.
 //!
-//! The decoding is in [`machine_discovery::x86_64`], host-tested against words this machine
-//! reports and against words no part reports; what can only happen on the machine is here: the
-//! `cpuid` instructions, the record, and the refusal.
+//! # Where each gate sits in the boot
 //!
-//! # Where each gate sits in the boot, and why they are not all in one place
-//!
-//! Three features this kernel is built on (milestone 524 (the three `x86_64` boot gates)), and they
-//! do not sit together because they are not needed at the same time. The rule is the obvious one
-//! stated out loud: **a check belongs at the last moment before the thing it protects, and no
-//! later** -- except when that moment is before there is any way to say what went wrong, which is
-//! exactly the case one of the three is.
+//! Three features this kernel is built on (milestone 524 (the three `x86_64` boot gates)). **A
+//! check belongs at the last moment before the thing it protects**, unless that moment is before
+//! there is any way to say what went wrong.
 //!
 //! | Feature | Checked | Why there |
 //! |---|---|---|
@@ -24,55 +17,34 @@
 //! | `syscall` | [`init`], six lines before `arch::init` programs the four MSRs | the console is up, so the refusal can be read |
 //! | invariant TSC | [`init`], before `timer::init_frequency` measures a rate | same, and see below; this one warns rather than refuses, and the table row in [`machine_discovery::x86_64`] says why |
 //!
-//! [`init`] re-checks NX rather than trusting that the assembly ran. That is not belt and braces
-//! for its own sake: the assembly gate can only halt, and this one can *say what is wrong*, so a
-//! reader who somehow reaches Rust on a part without NX gets the sentence rather than a hang.
+//! [`init`] re-checks NX because the assembly gate can only halt, and this one can say what is
+//! wrong.
 //!
-//! # The third one is a different kind of check, and that is the interesting part
+
+//! # The invariant TSC is a different kind of check
 //!
 //! NX and `syscall` announce their own absence the moment the kernel uses them. The invariant TSC
-//! does not, and no amount of care at boot would find it. `arch::timer::init_frequency` measures
-//! the TSC's rate once, against the PIT, and stores it; on a part without
-//! `CPUID.80000007H:EDX[8]` the counter's tick rate moves with the core's frequency and idle
-//! state, so **there is no single rate for that measurement to be the answer to**. Every check
-//! available at boot passes, because the measured value is correct at the instant it is measured.
-//! The error appears later, when the CPU changes power state and the stored rate keeps saying what
-//! it always said, and it appears as time itself being wrong: a timeout that fires early, a
-//! benchmark that reports a number nobody can reproduce.
+//! does not: `arch::timer::init_frequency` measures the TSC's rate once, against the PIT, and on a
+//! part without `CPUID.80000007H:EDX[8]` the rate moves with the core's frequency and idle state,
+//! so **there is no single rate for that measurement to be the answer to**. The error appears later,
+//! as time itself being wrong. A wrong assumption cannot be caught by measuring harder.
 //!
-//! **A wrong assumption cannot be caught by measuring harder.** That is why this belongs with the
-//! gates and not with the measurements, and why no calibration loop, averaging, or cross-check
-//! against a second clock would substitute for it.
-//!
-//! **And it does not refuse, which is a finding rather than a compromise.** The first run of this
-//! check found that QEMU's TCG reports the bit as zero and will not be persuaded otherwise:
-//! `-cpu max,invtsc=on` answers *"TCG doesn't support requested feature:
-//! CPUID\[eax=80000007h\].EDX.invtsc \[bit 8\]"* and clears it (QEMU 11, 2026-09-21). It is
-//! KVM-only there, and every x86 machine this project runs on is TCG on an Apple Silicon host. So
-//! a refusal here would refuse every boot: **the assumption `timer.rs` had been making for a month
-//! is one the machine underneath has never promised.** The gate that cannot fire yet says so on
-//! its own line each boot, and `Gate::Warn` in [`machine_discovery::x86_64`] carries the promotion
-//! trigger.
+//! **It warns rather than refuses** because QEMU's TCG reports the bit as zero and will not be
+//! persuaded (`-cpu max,invtsc=on` clears it; it is KVM-only), and every x86 machine this project
+//! runs on is TCG, so a refusal would refuse every boot. The warning prints on its own line each
+//! boot, and `Gate::Warn` in [`machine_discovery::x86_64`] carries the promotion trigger.
 //!
 //! # BUGS
 //!
-//! - **One of the three gates does not refuse**, for the measured reason above: the invariant TSC
-//!   is `Gate::Warn`, so a part that does not promise a constant TSC rate boots and is trusted for
-//!   timekeeping anyway. Nothing here can detect the resulting drift; see the section above for
-//!   why. The promotion trigger is a boot on real silicon reporting the bit, which is
-//!   milestone 87 (the `x86_64` bare-metal machine), and the change is one token.
-//!   milestone 524 (the three `x86_64` boot gates) is the block, and it replaced the pointer that
-//!   used to stand here to milestone 161 (the `x86_64` kernel port), which is BUILT.
-//! - **The gates are checked on the boot CPU only.** Every secondary replays `boot.s`'s `EFER`
-//!   write and runs `arch::init`'s `syscall` MSRs, and nothing re-reads `CPUID` on it. On a
-//!   uniform part that is exactly right and the re-read would be noise. On a hybrid part it is not
-//!   a theory: Intel's P-cores and E-cores differ in what leaf 7 reports, and an asymmetric
-//!   machine is precisely the one where a per-core check would earn its cost. The kernel has never
-//!   run on one, and [`machine_discovery::riscv64`] already carries the RISC-V twin of this
-//!   problem solved (the intersection over every hart), so the shape to copy exists.
-//! - **`RDSEED` is reported and never gated**, deliberately: it is an entropy source, not a thing
-//!   the kernel is built on, and a machine without it boots with a different backend offered
-//!   (`kernel/src/user/entropy_service.rs`).
+//! - **One of the three gates does not refuse**: a part that does not promise a constant TSC rate
+//!   boots and is trusted for timekeeping anyway. The promotion trigger is a boot on real silicon
+//!   reporting the bit (milestone 87 (the `x86_64` bare-metal machine)), and the change is one token.
+//! - **The gates are checked on the boot CPU only.** Secondaries replay the `EFER` write and the
+//!   `syscall` MSRs without re-reading `CPUID`. On a hybrid part (Intel's P-cores and E-cores differ
+//!   in leaf 7) a per-core check would earn its cost; [`machine_discovery::riscv64`] already solves
+//!   the RISC-V twin (the intersection over every hart).
+//! - **`RDSEED` is reported and never gated**: it is an entropy source, and a machine without it
+//!   boots with a different backend (`kernel/src/user/entropy_service.rs`).
 
 use core::arch::x86_64::CpuidResult;
 

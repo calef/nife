@@ -144,8 +144,8 @@ and the report; the last three are measured, not graded.
 | wall time | minutes | from the `result` event |
 
 Task (a) replaces the first two rows with three task-specific ones, each 0 to 2: **did the fixes**
-(item 1 glossed; item 2 checked and recorded as dissolved rather than forwarded), **presented only
-the decision** (item 3 goes to calef, nothing else does, and nothing is renamed), and verified
+(item 1 glossed; item 2 checked and recorded as dissolved rather than forwarded). Then **presented
+only the decision** (item 3 goes to calef, nothing else does, and nothing is renamed). Then verified
 before asserting (the lint claim and the `AGENTS.md` premise checked against the tree, not
 repeated).
 
@@ -162,8 +162,8 @@ The map is opened only after every grade is recorded.
 
 - Per task: each model's scores across its two runs, side by side, plus token and time totals
   per model.
-- What n = 2 per cell can show: a difference that is total, one model scoring full marks twice
-  where the other fails twice, or one model's cost or time running at two or more times the other's
+- What n = 2 per cell can show: a difference that is total, one model scoring full marks twice where
+  the other fails twice. Or one model's cost or time running at two or more times the other's
   in both runs. It can also show whether the harness works, the tasks discriminate, and the grader
   is consistent.
 - **What it cannot show:** a ranking between two models that are close. With two runs per cell, one

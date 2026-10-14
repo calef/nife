@@ -76,6 +76,10 @@ const _: () = {
 };
 
 /// The kernel's view of physical address `pa`: its address in the direct map.
+///
+/// **Not for the kernel image's own frames.** The direct map skips them on purpose (a second,
+/// writable alias of `.text` would undo W^X; `claims::direct_map_claims` step 1), so the result for
+/// an image frame is unmapped and a read through it faults.
 pub const fn phys_to_virt(pa: u64) -> u64 {
     pa + DIRECT_MAP_BASE
 }

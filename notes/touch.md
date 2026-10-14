@@ -16,14 +16,14 @@ modification time to the instant you assert rather than to now: `touch -t 2030-0
 report.txt` backdates or postdates the name, deliberately, which is the ability DECISIONS §112
 calls "the ability to lie about history."
 
-A builtin, in `mkdir`'s category rather than `rm`'s, for both halves: even `-t` takes no more
-than a directory capability (`dir::WRITE` for the bare form, `dir::WRITE | dir::SETTIME` for `-t`),
-so there is nothing to attenuate and nothing gained by confining it to a program with its own
-grant. `mkdir` already established the shape (`fs::MKDIR` mints a name and hands the capability
-straight back); the create half is the same call with the handle closed instead of kept, because
-there is nothing useful to do with a handle to an empty file the moment after making it. Setting
-the time is a second, separate wire request, resolved directly under the directory handle exactly
-as `UNLINK`'s name is: neither mtime verb opens what it acts on.
+A builtin, in `mkdir`'s category rather than `rm`'s, for both halves. Even `-t` takes no more than a
+directory capability (`dir::WRITE` for the bare form, `dir::WRITE | dir::SETTIME` for `-t`). So
+there is nothing to attenuate and nothing gained by confining it to a program with its own grant.
+`mkdir` already established the shape (`fs::MKDIR` mints a name and hands the capability
+straight back); the create half is the same call with the handle closed instead of kept. There is
+nothing useful to do with a handle to an empty file the moment after making it. Setting the time is
+a second, separate wire request. It is resolved directly under the directory handle exactly as
+`UNLINK`'s name is: neither mtime verb opens what it acts on.
 
 ## Rights: DECISIONS §112, and why it needed a decision at all
 
@@ -45,8 +45,8 @@ So:
   `TOUCH_NOW_NEEDS_ONLY_WRITE` / `TOUCH_AT_REFUSED_WITHOUT_SETTIME` pair for the proof against a
   real, narrower-than-`dir::ALL` grant over the real wire.
 
-Two independent precedents converge on this split rather than inventing it: POSIX's own `utime()`
-needs only write permission to set the current time and ownership to set an arbitrary one, and this
+Two independent precedents converge on this split rather than inventing it. POSIX's own `utime()`
+needs only write permission to set the current time and ownership to set an arbitrary one. This
 tree's own DECISIONS §43 already treats reading the wall clock as broadly grantable and setting it
 as a separate, more tightly held authority. `touch`'s two behaviors are the same shape one level
 down, applied to a file's timestamp instead of the machine's clock. See
@@ -55,12 +55,12 @@ down, applied to a file's timestamp instead of the machine's clock. See
 ## What "now" is, honestly
 
 The FS server has no RTC wired to it. "Now" for `SETMTIME` is the server's own advancing logical
-clock, the same mechanism that has stamped every `WRITE`, `CREATE`, `TRUNCATE` and the extended
-attribute verbs since before this lane: a `touch` on two names in sequence is guaranteed to observe
-the second mtime strictly greater than the first (what a make-style staleness check depends on), and
-is not guaranteed to agree with a wall-clock reading (`date`, DECISIONS §43) taken at the same
+clock. It is the same mechanism that has stamped every `WRITE`, `CREATE`, `TRUNCATE` and the
+extended attribute verbs since before this lane. A `touch` on two names in sequence is guaranteed to
+observe the second mtime strictly greater than the first (what a make-style staleness check depends
+on). It is not guaranteed to agree with a wall-clock reading (`date`, DECISIONS §43 (reading the clock is a page)) taken at the same
 instant. Wiring the FS server to the real wall clock milestone 51 landed is a follow-up (see `BUGS`
-below), not a difference in what `SETMTIME` promises today.
+below). It is not a difference in what `SETMTIME` promises today.
 
 ## The wire: three verbs, and why not one
 
@@ -77,7 +77,7 @@ below), not a difference in what `SETMTIME` promises today.
 
 Three verbs rather than one with a "now or arbitrary" flag, because the rights differ per verb and
 `filesystem_protocol::verb::TABLE` (the table every caretaker's dispatch is built from) encodes one
-fixed `needs_all` per opcode; a single opcode would need dynamic, per-call rights outside that
+fixed `needs_all` per opcode. A single opcode would need dynamic, per-call rights outside that
 table's model. This is the same reasoning that gave `rm` (`UNLINK`) and the structural bound
 (`RMDIR`) two verbs instead of one that tries to do both.
 
@@ -96,9 +96,9 @@ for the read side. `date`'s own `FMT_RFC3339` output is therefore a valid `-t` o
 `touch -t "$(date ...)" name` round-trips through this shell without either side inventing a
 format.
 
-This is an earned divergence from Unix's compact `-t [[CC]YY]MMDDhhmm[.ss]` format, not an oversight:
-there is no existing parser for that format in this tree, RFC 3339 is what `date` already emits, and
-building a second, redundant date grammar for one flag was not worth it. See `BUGS`.
+This is an earned divergence from Unix's compact `-t [[CC]YY]MMDDhhmm[.ss]` format, not an
+oversight. There is no existing parser for that format in this tree, and RFC 3339 is what `date`
+already emits. Building a second, redundant date grammar for one flag was not worth it. See `BUGS`.
 
 ## EXAMPLES
 
@@ -111,7 +111,7 @@ $ ls
   report.txt
 ```
 
-The second `touch` is silent and changes nothing to the file's bytes; its modification time still
+The second `touch` is silent and changes nothing to the file's bytes. Its modification time still
 moves, which is the mtime half this section is about.
 
 ```
@@ -121,8 +121,8 @@ $ ls
   logs/
 ```
 
-`touch` on a name that already exists as a directory is also a no-op for the create half (`ls`
-still just shows `logs/`), and its mtime still bumps, because mtime is part of what a node *is*,
+`touch` on a name that already exists as a directory is also a no-op for the create half (`ls` still
+just shows `logs/`). Its mtime still bumps, because mtime is part of what a node *is*,
 not a property files alone carry.
 
 ```
@@ -138,15 +138,15 @@ appear and then learn its `-t` text was unusable.
 
 `crates/grant_plan` and `crates/swish` host suites: `touch` and `touch -t <instant> <name>` both
 parse correctly (including the `-template` guard: a name that merely starts with `-t` is not the
-flag), `touch` is reserved from the program namespace like every other builtin, and both forms
+flag). `touch` is reserved from the program namespace like every other builtin, and both forms
 appear in `help`.
 
 `redoxfs_server`'s host suite (`cargo test --manifest-path redoxfs_server/Cargo.toml --features hosttest`)
-covers the rights logic directly against the in-process `Server`, no emulator: `each_rung_of_the_
+covers the rights logic directly against the in-process `Server`, no emulator. `each_rung_of_the_
 ladder_gates_exactly_its_own_verb` isolates `dir::READ` (`GETMTIME`), `dir::WRITE` (`SETMTIME`) and
 `dir::SETTIME` (`SETMTIME_AT`, alongside `WRITE`) each against a handle that lacks only that one
-bit; `setting_mtime_to_now_twice_observes_two_different_times_and_neither_is_the_callers_choice`
-proves two bare touches in sequence never read back equal; `setting_an_arbitrary_mtime_round_
+bit. `setting_mtime_to_now_twice_observes_two_different_times_and_neither_is_the_callers_choice`
+proves two bare touches in sequence never read back equal. `setting_an_arbitrary_mtime_round_
 trips_exactly_and_is_not_now` proves the caller's value comes back byte-for-byte and that a
 following bare touch does not preserve it.
 
@@ -159,29 +159,29 @@ a real `fs_subtree_caretaker` in front of a real `redoxfs_server`):
   mtime through `GETMTIME` than the file had before.
 - `TOUCH_AT_ROUND_TRIPPED`: `touch -t 2030-01-01T00:00:00Z`, typed as a real command line the
   parser has to split into four tokens and `calendar` has to decode, lands on exactly
-  `NAV_TOUCH_AT_UNIX` and not the value `TOUCH_MTIME_ADVANCED` just observed; the exact-equality
+  `NAV_TOUCH_AT_UNIX` and not the value `TOUCH_MTIME_ADVANCED` just observed. The exact-equality
   check, not merely "later", is what makes this bit mean the caller's assertion moved rather than
   the server's own clock falling back to "now".
 - `TOUCH_NOW_NEEDS_ONLY_WRITE` / `TOUCH_AT_REFUSED_WITHOUT_SETTIME`: a fresh directory this shell
   mints with a raw `MKDIR` carrying `dir::ALL & !dir::SETTIME` (deliberately narrower than every
   other grant this script runs under), against which a bare `SETMTIME` succeeds and `SETMTIME_AT`
-  is refused. This is what makes DECISIONS §112's split provable over the real wire rather than
-  only in `redoxfs_server`'s in-process host tests: a wrong row in `filesystem_protocol::verb::TABLE`, or a
+  is refused. This is what makes the split in DECISIONS §112 (`touch`'s two behaviors need two rights) provable over the real wire rather than only
+  in `redoxfs_server`'s in-process host tests. A wrong row in `filesystem_protocol::verb::TABLE`, or a
   caretaker that forwarded rights incorrectly, would not be caught by a test that calls
   `Server::set_mtime_at` directly.
 
 Witnessed from the host by `xtask`'s `shell_navigation_landed` for the create half, as before; the
-mtime probes are not (yet) independently witnessed from the host, see `BUGS`.
+mtime probes are not (yet) independently witnessed from the host. See `BUGS`.
 
 ## BUGS
 
 - "Now" is this server's own advancing logical clock, not a reading of the real wall clock
-  milestone 51 landed (`clock_protocol`, DECISIONS §43). Two bare touches in sequence are guaranteed to
-  observe strictly increasing mtimes; a bare touch is not guaranteed to observe a mtime close to
-  what `date` reports at the same instant. Wiring the FS server with a read-only mapping of the
-  clock page (the same authority `date` itself holds) so `SETMTIME` records a real wall-clock second
-  is a follow-up, not started here: it is a new capability grant to a process that currently holds
-  none beyond the block-IPC endpoint, and DECISIONS §43's own read/set split argues for exactly the
+  milestone 51 (wall-clock time) landed (`clock_protocol`, DECISIONS §43). Two bare touches in sequence are guaranteed
+  to observe strictly increasing mtimes. A bare touch is not guaranteed to observe a mtime close to
+  what `date` reports at the same instant. The FS server could get a read-only mapping of the clock
+  page (the same authority `date` itself holds), so `SETMTIME` records a real wall-clock second. That
+  is a follow-up, not started here. It is a new capability grant to a process that currently holds
+  none beyond the block-IPC endpoint. DECISIONS §43's own read/set split argues for exactly the
   narrow, read-only half. **Since 2026-09-19 it reaches `std` too**: milestone 64 bound
   `Metadata::modified` to `GETMTIME`, so every std program reading a file this system wrote gets the
   counter as a `SystemTime` in early 1970 (notes/std/file-times.md). Proposed as

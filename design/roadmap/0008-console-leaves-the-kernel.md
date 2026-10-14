@@ -26,7 +26,7 @@ program can take reaches kernel UART code.
 ## Follow-on
 
 - **Refused.** Taking the *debug* UART out of the kernel too. It stays for boot, panics and the test
-  harness, which is the same split seL4 makes: a kernel that needs a userspace service to print
+  harness, which is the same split seL4 makes. A kernel that needs a userspace service to print
   cannot report the failure of that service, and a panic has to reach a human whatever else is
   broken. The claim was narrowed to match rather than the code changed, and the narrow claim is the
   true one: no code path a user program can take reaches kernel UART code.

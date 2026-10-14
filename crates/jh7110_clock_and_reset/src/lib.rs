@@ -1,99 +1,25 @@
 #![cfg_attr(not(test), no_std)]
-//! **The `StarFive` JH7110's clock and reset generator, as pure logic** (milestone 220; roadmap
-//! `design/roadmap/0220-jh7110-clock-and-reset.md`).
+//! **The `StarFive` JH7110's clock and reset generator, as pure logic**
+//! (notes/jh7110-clock-and-reset.md): register offsets, bit positions, the bring-up plan the TRNG
+//! needs, and the device-tree query that finds the controller. The volatile shell is
+//! `kernel/src/drivers/jh7110_clock_and_reset.rs`; this never dereferences a pointer, so it is
+//! host-testable and Kani-reachable. Real `SoC` peripherals do not come up running, as virtio
+//! devices do: radon read the TRNG's whole register file as zeros until these clocks were ungated.
 //!
-//! Register offsets, bit positions, the bring-up plan the TRNG needs, and the device-tree query
-//! that finds the controller, with nothing an actual driver touches. The volatile shell is
-//! `kernel/src/drivers/jh7110_clock_and_reset.rs`; this crate never dereferences a pointer, which is what
-//! makes it host-testable and Kani-reachable, the same rule-7 split `jh7110_entropy` and `pci`
-//! already use.
+//! Every number appears in two independent published trees, and they agree: Linux mainline
+//! ([mainline-dts], [mainline-trng], [mainline-ids], [mainline-clk], [mainline-rst]) and the
+//! vendor U-Boot radon runs ([vendor-dts], [vendor-ids]), whose flat numbering rebases to the same
+//! 15, 16 and 3 in the STG domain at `0x1023_0000` (the note's table; [`STG`]'s own note).
+//! One 32-bit register per clock, `base + 4 * idx`, enable bit 31. The STG block asserts resets at
+//! `0x74` and reads status at `0x78`, and the JH7110 inverts the poll: **a set status bit means
+//! the line is out of reset**, which is [`is_deasserted`]'s whole reason to exist.
 //!
-//! # Why this exists at all, and it is a measurement rather than an inference
+//! **Nothing here has been verified against a JH7110**: QEMU's `virt` has no clock or reset
+//! controller, so CI exercises the absence path and the arithmetic. The note has the bench
+//! procedure and what each outcome means.
 //!
-//! Every device nife has driven came up already running: QEMU's virtio devices, the PL011 and
-//! NS16550 consoles, the PLIC. Real `SoC` peripherals do not. On **2026-09-04** radon (the
-//! `StarFive` VisionFive 2) booted milestone 159's confined userspace TRNG driver twice,
-//! byte-identically, and the register window read as nothing:
-//!
-//! ```text
-//! hw entropy  : FAILED: JH7110 TRNG at 0x1600c000 (tree says starfive,trng, status disabled):
-//!               report 0x524e475550, bring-up diagnostic 0x0000000000000000,
-//!               draws 0/0 bytes, first-all-zero true, draws-differ false
-//! ```
-//!
-//! Transcript: `target/board/radon-2026-09-04-trng-bringup.log`. The all-zero diagnostic is the
-//! raw `(STAT << 32) | ISTAT`, so the whole register file read back as zeros; the device tree
-//! independently marks the node `status disabled`. Two signals, and they agree.
-//!
-//! # Sources, fetched rather than recalled
-//!
-//! Every number below appears in **two independent published trees** that describe the same
-//! silicon, and they agree. That agreement is the reason this crate is willing to carry a
-//! constant at all; see [`STG`]'s own note. The full quoted listings (both device trees, both
-//! drivers, the binding headers) are in this section's git history and in the linked sources.
-//!
-//! - **[mainline-dts]** Linux's `jh7110.dtsi`: the TRNG node wired to `stgcrg` clocks
-//!   `JH7110_STGCLK_SEC_AHB` and `JH7110_STGCLK_SEC_MISC_AHB` ("hclk", "ahb") and reset
-//!   `JH7110_STGRST_SEC_AHB`; `stgcrg` is `starfive,jh7110-stgcrg` at `0x1023_0000`, 0x10000
-//!   wide.
-//! - **[mainline-trng]** Linux's `jh7110-trng.c`: the probe order [`TRNG_BRING_UP`] reproduces,
-//!   two `clk_prepare_enable` calls then `reset_control_deassert`.
-//! - **[mainline-ids]** the binding headers: `JH7110_STGCLK_SEC_AHB 15`,
-//!   `JH7110_STGCLK_SEC_MISC_AHB 16`, `JH7110_STGRST_SEC_AHB 3`, `JH7110_STGRST_END 23`.
-//! - **[mainline-clk]** `clk-starfive-jh71x0.c`: one 32-bit register per clock,
-//!   `base + 4 * idx`, enable bit `BIT(31)`.
-//! - **[mainline-rst]** `reset-starfive-jh7110.c`: the STG block asserts at `0x74`, reads status
-//!   at `0x78`, and the JH7110 passes `asserted = NULL`, which inverts the poll's sense:
-//!   **a set status bit means the line is out of reset.** That inversion is
-//!   [`is_deasserted`]'s whole reason to exist.
-//! - **[vendor-dts]** and **[vendor-ids]** `starfive-tech/u-boot`, the `JH7110_VisionFive2_devel`
-//!   branch, which is the firmware radon actually runs. It spells the same wiring differently
-//!   (`starfive,trng`, `clkgen`, `rstgen`, the TRNG node `status disabled`), and its numbers are
-//!   **flat across all the domains**, so they must be rebased before they mean anything:
-//!   `JH7110_SEC_HCLK 205` against a stg group starting at 190 gives 15, and
-//!   `JH7110_SEC_MISCAHB_CLK 206` gives 16; `RSTN_U0_SEC_TOP_HRESETN 131` against a group
-//!   starting at 128 gives 3.
-//!
-//! **So the two trees converge**: 15, 16, 3, in the STG domain at `0x1023_0000`. The vendor
-//! spellings look nothing like mainline's, and a reader who checked only one would reasonably
-//! fear the driver was written against the wrong chip.
-//!
-//! # This has not run against real silicon
-//!
-//! **Nothing here has been verified against a JH7110.** QEMU's riscv64 `virt` machine has no
-//! clock or reset controller of any kind, so an emulator cannot validate the sequence end to end:
-//! what CI exercises is the absence path and the arithmetic, never a device answering. The bench
-//! procedure that would settle it, with a table mapping each observable outcome to what it means,
-//! is `notes/jh7110-clock-and-reset.md`.
-//!
-//! Name: ratified 2026-09-13 (calef, working the unratified worklist), replacing the provisional
-//! `jh7110_crg`, and kept as the crates.io name on 2026-10-07 (#1806). The refused names
-//! (`jh7110_clock`, `jh7110_clkgen`, `jh7110_clock_and_reset_generator`), the argument that lost
-//! over `crg`, and the vendor-spelling evidence are in git history; milestone 819 (JH7110 clock
-//! and reset logic, proven, then released on its own) publishes it.
-//! # Examples
-//!
-//! ```
-//! use jh7110_clock_and_reset::{STG, Step, TRNG_BRING_UP, CLOCK_ENABLE, is_deasserted};
-//!
-//! // The TRNG's plan is two clocks then one reset, in that order, which is the order
-//! // Linux's own probe takes: a reset deassert against a gated clock can hang forever.
-//! assert_eq!(
-//!     TRNG_BRING_UP,
-//!     &[Step::EnableClock(15), Step::EnableClock(16), Step::DeassertReset(3)]
-//! );
-//!
-//! // Clock 15 lives one word per clock from the domain's base.
-//! assert_eq!(STG.clock_offset(15), Some(0x3c));
-//! assert_eq!(CLOCK_ENABLE, 1 << 31);
-//!
-//! // Reset 3 is bit 3 of the word at 0x74, watched at 0x78. A SET status bit means
-//! // "out of reset", which is the opposite of what the register name suggests.
-//! let r = STG.reset_bit(3).unwrap();
-//! assert_eq!((r.assert_offset, r.status_offset, r.mask), (0x74, 0x78, 1 << 3));
-//! assert!(is_deasserted(0b1000, r.mask));
-//! assert!(!is_deasserted(0b0111, r.mask));
-//! ```
+//! Name: ratified 2026-09-13 (calef), replacing `jh7110_crg`; kept as the crates.io name
+//! (#1806).
 //!
 //! [mainline-dts]: https://github.com/torvalds/linux/blob/master/arch/riscv/boot/dts/starfive/jh7110.dtsi
 //! [mainline-trng]: https://github.com/torvalds/linux/blob/master/drivers/char/hw_random/jh7110-trng.c
@@ -158,6 +84,30 @@ pub const fn with_parent(word: u32, parent: u32) -> u32 {
 /// coupling is why there is no `Domain` field on `Step`. A second device in a second domain would
 /// carry its own plan and its own domain beside it, and the day that happens is the day to decide
 /// whether the pair wants a type.
+///
+/// # Examples
+///
+/// ```
+/// use jh7110_clock_and_reset::{STG, Step, TRNG_BRING_UP, CLOCK_ENABLE, is_deasserted};
+///
+/// // The TRNG's plan is two clocks then one reset, in that order, which is the order
+/// // Linux's own probe takes: a reset deassert against a gated clock can hang forever.
+/// assert_eq!(
+///     TRNG_BRING_UP,
+///     &[Step::EnableClock(15), Step::EnableClock(16), Step::DeassertReset(3)]
+/// );
+///
+/// // Clock 15 lives one word per clock from the domain's base.
+/// assert_eq!(STG.clock_offset(15), Some(0x3c));
+/// assert_eq!(CLOCK_ENABLE, 1 << 31);
+///
+/// // Reset 3 is bit 3 of the word at 0x74, watched at 0x78. A SET status bit means
+/// // "out of reset", which is the opposite of what the register name suggests.
+/// let r = STG.reset_bit(3).unwrap();
+/// assert_eq!((r.assert_offset, r.status_offset, r.mask), (0x74, 0x78, 1 << 3));
+/// assert!(is_deasserted(0b1000, r.mask));
+/// assert!(!is_deasserted(0b0111, r.mask));
+/// ```
 pub const TRNG_BRING_UP: &[Step] = &[
     Step::EnableClock(STGCLK_SEC_AHB),
     Step::EnableClock(STGCLK_SEC_MISC_AHB),

@@ -26,8 +26,8 @@ cargo build --no-default-features --target aarch64-unknown-none-softfloat ok
 ```
 
 Same pinned nightly as the kernel. The whole dependency graph (aes, xts-mode, argon2,
-lz4_flex, seahash, bitflags, endian-num, base64ct, uuid-core, redox_syscall) compiles for the
-`none` targets; `redox_syscall` contributes only its error type here, which is the crate's
+lz4_flex, seahash, bitflags, endian-num, base64ct, uuid-core, redox_syscall) compiles for the `none`
+targets. `redox_syscall` contributes only its error type here, which is the crate's
 `Result` everywhere and maps cleanly onto our ABI errors at the server boundary.
 
 ## The seams, confirmed

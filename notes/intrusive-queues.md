@@ -92,20 +92,21 @@ hazard as being freed, for the same reason, with the same fix:
 
 Verified at the time by moving the suite back to repeated clean runs (statistics, not proof).
 Since 2026-08-14 it is also searched: the `on_cpu`/`wake_pending` protocol lives in
-`crates/thread_wake_handshake`, and loom explores every interleaving of the waker against the switch-out,
-including a `#[should_panic]` reconstruction of exactly this race (the wake with the deferral
-removed), which fails the model the way the flake failed the suite. That covers the protocol's
+`crates/thread_wake_handshake`, and loom explores every interleaving of the waker against the
+switch-out. That includes a `#[should_panic]` reconstruction of exactly this race (the wake with the
+deferral removed), which fails the model the way the flake failed the suite. That covers the
+protocol's
 logic under the kernel's locking discipline; the discipline itself, and the ISA-level orderings,
 remain outside the model (notes/interleaving.md).
 
 ## The aliasing fine print, honestly
 
 Rust's strictest aliasing models (Stacked Borrows, the experimental semantics Miri checks) would
-complain about this design: while a TCB pointer sits in a queue, other code occasionally creates
+complain about this design. While a TCB pointer sits in a queue, other code occasionally creates
 `&mut Thread` to the same TCB through the table (a mailbox write, the revocation sweep's
-`iter_mut`), and under those models a new `&mut` invalidates previously-derived raw pointers.
+`iter_mut`). Under those models a new `&mut` invalidates previously-derived raw pointers.
 At the machine level the discipline is sound: every access is serialized by `SCHED` or a queue's
-own synchronization, and no two accesses overlap in time, but the language-level story for
+own synchronization, and no two accesses overlap in time. But the language-level story for
 intrusive, self-referential kernel structures is still being worked out (Rust-for-Linux lives
 with the same tension). Recorded rather than hidden: if rustc ever starts optimizing on the
 stricter model, the fix is `UnsafeCell`-based link access, and this paragraph is the pointer to

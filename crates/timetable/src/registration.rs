@@ -37,6 +37,7 @@
 //! view: a timetable with a page says nothing down its output endpoint ([`crate::contract`]), and
 //! when it stops it leaves its exit code at [`EXIT`].
 //!
+
 //! Name: provisional, minted 2026-09-26 (UTC) by milestone 129's lane, for this module,
 //! [`REPLACE`] and every constant here. Naming is calef's.
 

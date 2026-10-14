@@ -6,7 +6,7 @@
 
 Measured 2026-09-21 on patagonia by the `tscdrift` lane, after milestone 524 (the three x86_64 boot
 gates: NX, SYSCALL, and the invariant TSC) established that QEMU's TCG refuses to advertise
-`CPUID.80000007H:EDX[8]` under any invocation, so no machine this project runs `x86_64` on promises
+`CPUID.80000007H:EDX[8]` under any invocation. So no machine this project runs `x86_64` on promises
 that the time-stamp counter keeps a constant rate. `kernel/src/arch/x86_64/timer.rs` measures that
 rate once at boot and everything time-derived on x86 flows from that one number, and its `BUGS`
 section had asserted *"QEMU's TSC is invariant"* with nothing ever having checked.
@@ -53,8 +53,8 @@ The TSC cannot validate itself, and neither can the device the boot already cali
   it, so agreement would be the calibration agreeing with itself; and in QEMU the i8254 is driven
   from `QEMU_CLOCK_VIRTUAL`, which is the same clock the TSC comes from. It is the same opinion behind a
   different device model.
-- The local APIC timer is disqualified for the same reason, and worse: its own frequency is
-  itself measured against the PIT in the same 10 ms window, which is why the `apic timer NN MHz`
+- The local APIC timer is disqualified for the same reason, and worse. Its own frequency is itself
+  measured against the PIT in the same 10 ms window. That is why the `apic timer NN MHz`
   figure on the boot line moves in lockstep with the TSC figure in every transcript below.
 - The CMOS RTC is the one that works. QEMU drives it from `rtc_clock`, which is
   `QEMU_CLOCK_HOST`: host wall time, advanced by a host timer rather than by the vCPU. It is the
@@ -167,7 +167,7 @@ every `port` window, byte-identical, which is the property `bench --x86` gates o
 
 This is not a bug and nothing here should "fix" it. Under `-icount` the guest's
 virtual nanosecond *is* the unit of instruction count, so a bench number derived from it is a
-deterministic function of the instruction stream, which is exactly what a regression tripwire wants
+deterministic function of the instruction stream. That is exactly what a regression tripwire wants
 and exactly what a wall-clock measurement is not. `notes/benchmarks.md` already says the icount
 legs' nanoseconds are not wall time. What this measurement adds is the size: on this path the TSC is
 wrong about real time by up to 1.8x, and it is wrong by *different amounts within one run*.
@@ -186,8 +186,8 @@ Ten boots with the host deliberately saturated (16 spinners, load average 10 ris
 So the stored rate ranges from +0.1% to +333% of the truth, and a single ad-hoc run earlier the
 same afternoon caught 1326 MHz on an unloaded machine. Twenty-two boots of twenty-two reported a
 rate above the true one and not one reported below it, which is the tell that says what the
-mechanism is: `init_frequency` times one 10 ms PIT window by polling, the poll can only ever notice
-the terminal count *late*, and the whole of the resulting TSC delta is then attributed to 10 ms. One
+mechanism is. `init_frequency` times one 10 ms PIT window by polling, and the poll can only ever
+notice the terminal count *late*. The whole of the resulting TSC delta is then attributed to 10 ms. One
 host descheduling of the QEMU thread inside that window inflates the answer without bound. A 4330
 MHz reading is a 43 ms window reported as a 10 ms one.
 
@@ -204,8 +204,8 @@ time, never shorter); the reported numbers do not.
 FIXED, 2026-09-21, the same day, by milestone 571 (the x86 boot calibrates the TSC once, and can be wrong by 4x),
 this note's former proposal. The boot now
 times several windows and keeps the smallest, because the error being one-sided is what makes the
-minimum the right estimator; it stops as soon as two windows agree to one part in a thousand, so the
-mean cost is 3.5 windows on a quiet host; and the boot line prints the worst window beside the
+minimum the right estimator. It stops as soon as two windows agree to one part in a thousand, so the
+mean cost is 3.5 windows on a quiet host. The boot line prints the worst window beside the
 chosen one, so a calibration the host fought is visible rather than silent.
 
 The numbers in this section are the defect, and they got worse when measured harder. This note
@@ -221,7 +221,7 @@ what it still does not bound.
 
 - Drift below about 42 ppm over a 32-second window. That is the largest deviation observed
   across the plain-TCG conditions, and every part of it is consistent with the reference clock's own
-  edge jitter rather than with the TSC, so it is an upper bound on TSC drift and not an estimate of
+  edge jitter rather than with the TSC. So it is an upper bound on TSC drift and not an estimate of
   it. A slower wander (parts per million per hour, say) would need a run of hours and is not
   excluded here.
 - Anything about a second core. Every run was `-smp 1`. The probe halts the boot before
@@ -238,14 +238,14 @@ what it still does not bound.
   read on a part that might actually set it.
 
 This is an `x86_64`-only finding by nature, not a parity gap under §19 (architectural parity is a
-tenet; the targets are aarch64, riscv64, and x86_64): aarch64 reads `CNTFRQ_EL0` and riscv64 reads
-its rate from the device tree, so neither architecture has a calibration that could be wrong, and
+tenet; the targets are aarch64, riscv64, and x86_64). aarch64 reads `CNTFRQ_EL0` and riscv64 reads
+its rate from the device tree. So neither architecture has a calibration that could be wrong, and
 there is nothing for them to be at parity *with*.
 
 ## Reproducing it
 
-The harness is in the tree, behind the `tsc_probe` cargo feature, which is off by default and in
-no gate: `kernel/src/arch/x86_64/tsc_probe.rs`, plus a four-line call site in the x86 arm of
+The harness is in the tree, behind the `tsc_probe` cargo feature, which is off by default and in no
+gate. It is `kernel/src/arch/x86_64/tsc_probe.rs`, plus a four-line call site in the x86 arm of
 `kernel_main` that halts the boot when the measurement is done. It is an instrument rather than a
 test, the same shape `bench` and `icount` are, because the question it answers takes thirty-five
 seconds of wall clock and has no pass/fail. This note is its owner, and the calibration fix

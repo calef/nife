@@ -154,7 +154,7 @@ worklist rather than a verdict.
 
 Three of the baseline's five perfect crates lost their perfect score. No sampled run would have
 surfaced that as a regression, because a sample cannot distinguish an absent mutant from a killed
-one. These are the survivors to triage first, because each is a property that used to hold (see
+one. These are the survivors to triage first, because each is a property that held at the baseline (see
 [the 2026-09-19 triage](regressions-capability-to-dtb.md)):
 
 | crate | baseline | 2026-09-14 | missed |

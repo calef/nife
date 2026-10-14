@@ -150,6 +150,24 @@ KEPT = {
     'system_tests/src/user/std_threads_tests.rs':
         ({'cap', 'address_space_cap', 'memory_region_cap', 'page_frame_cap', 'rendezvous_cap',
           'thread_control_block_cap', 'thread_control_block_insert_cap'}, _CALLS),
+    # Milestone 913 (an eighth outsider pass attacks the confinement claim), 2026-10-13 (UTC): the
+    # pass's tests call these APIs by their existing names, and the names they minted are spelled
+    # out (`theirs_capability`, `two_capability_deletes_then_port_out`).
+    'system_tests/src/user/eighth_pass_delegation_race_tests.rs':
+        ({'cap', 'current_cap', 'delete_current_cap', 'ipc_receive_cap', 'ipc_send_cap', 'NO_CAP',
+          'page_frame_run_cap', 'port_range_cap', 'rendezvous_cap', 'SEND_CAP'}, _CALLS),
+    'system_tests/src/user/eighth_pass_endpoint_usurper_tests.rs':
+        ({'cap', 'current_cap', 'delete_current_cap', 'RECEIVE_CAP', 'rendezvous_cap', 'SEND_CAP'},
+         _CALLS),
+    'system_tests/src/user/eighth_pass_port_boundary_tests.rs':
+        ({'cap', 'Cap', 'cap_delete_then_port_out', 'CAP_DELETE_THEN_PORT_OUT_PC_OFFSET',
+          'port_range_cap', 'rendezvous_cap'}, _CALLS),
+    'system_tests/src/user/eighth_pass_slot_lifecycle_tests.rs':
+        ({'cap', 'current_cap', 'delete_current_cap', 'rendezvous_cap'}, _CALLS),
+    'system_tests/src/user/eighth_pass_spawn_audit_tests.rs':
+        ({'cap', 'page_frame_run_cap', 'rendezvous_cap'}, _CALLS),
+    'crates/component_plan/src/lib.rs': ({'CapNeed', 'caps'}, _CALLS),
+    'kernel/src/user/x86_programs.rs': ({'SYS_CAP_DELETE'}, _CALLS),
 }
 
 EXCLUDED_PREFIXES = ('vendor/', 'patches/', 'target/')

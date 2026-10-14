@@ -1,10 +1,7 @@
-//! **The name resolver** (milestone 384 (in a capability system the resolver is a grant); §248
-//! (the name resolver is its own confined program)).
-//!
-//! Turns a host name into IPv4 addresses for a client that holds a grant to ask, and for nobody
-//! else. It is a client of `net_stack` like any other and a server to its own clients; the
-//! contract between them is `crates/name_resolution_protocol`, and the wire format it speaks to a
-//! name server is `crates/domain_name_system`, whose `Query::accept` decides what is believed.
+//! **The name resolver** (§248 (the name resolver is its own confined program)): host names to
+//! IPv4 addresses for a client holding a grant to ask, and nobody else. A client of `net_stack` and
+//! a server to its own clients; the contract is `crates/name_resolution_protocol`, and
+//! `crates/domain_name_system`'s `Query::accept` decides what is believed.
 //!
 //! ```text
 //!   spawner ──GRANT (badge 0)──►┌───────────────┐──Stack (socket contract)──► net_stack ──► name server
@@ -13,82 +10,32 @@
 //!      and gets the addresses)         └──entropy──► the transaction id
 //! ```
 //!
-//! # What it holds
+//! Slots: 0, its own endpoint for grants and requests (`READ`); 1, `net_stack`'s `Stack`, its whole
+//! network authority (`WRITE`); 2, an untyped budget for the socket page and clients' page tables;
+//! 3, the entropy service (`WRITE`); 4, its own address space, to give up a forgotten client's page
+//! (`WRITE`). The start words ([`name_resolution_protocol::endowment`]) name the server and
+//! transport, which the spawner reads from the DHCP lease.
 //!
-//! | slot | what | rights |
-//! |---|---|---|
-//! | 0 | its own endpoint: the spawner's grants and its clients' requests arrive here | `READ` |
-//! | 1 | `net_stack`'s `Stack` endpoint, its whole network authority | `WRITE` |
-//! | 2 | an untyped budget: the socket page, and the page tables for its clients' pages | |
-//! | 3 | the entropy service's endpoint, for transaction ids | `WRITE` |
-//! | 4 | its own address space, so a forgotten client's page can be given up | `WRITE` |
-//!
-//! And two start words ([`name_resolution_protocol::endowment`]): the name server's address, and its
-//! port and the transport; the third is unused. Which server to ask is the spawner's decision,
-//! read from the DHCP lease (`socket_protocol::lease`), the way the network time client is told
-//! its server rather than choosing one.
-//!
-//! # What a client can and cannot make it do
-//!
-//! A client holds a badged copy of slot 0 and nothing else of this process. **The name is judged
-//! against the zone its badge was granted before anything is sent**, so a client granted
-//! `nife.test` that asks about `example.com` gets [`status::DENIED`] and the network sees nothing.
-//! It cannot widen its grant: only a message with badge 0 is a grant, and only the spawner holds an
-//! unbadged capability. When it ends, the spawner forgets its badge (`OPERATION_FORGET`): this
-//! process unmaps and deletes its page, and the window waits for the next grant. It cannot read
-//! another client's answer: each badge's page is mapped in its own window, and the name is copied out of the page before it is parsed, so a client rewriting
-//! its page mid-request changes nothing but its own reply.
-//!
-//! On Unix every process can read `/etc/resolv.conf` and call `getaddrinfo`, and the first sign
-//! that a program looked up a host it should not have is a packet capture.
-//!
-//! # How it asks
-//!
-//! Over UDP, with a transaction id drawn from the entropy service for every query, and again over
-//! TCP when the reply comes back truncated; or over TCP alone when the spawner says the server
-//! speaks nothing else (the QEMU runners' peer, which slirp reaches only over TCP). A UDP datagram
-//! from any address but the server's, or one `Query::accept` refuses as not ours (another id,
-//! another question, not a response, not DNS), is dropped and the resolver keeps listening, so a
-//! forger's packet arriving first does not end a real exchange. **With no entropy it asks
-//! nothing** and answers [`status::NO_ENTROPY`], for the reason the network time client refuses: a
-//! guessable id is what an off-path forger needs, and a resolver that quietly fell back to one would be
-//! worse than one that says it cannot.
-//!
-//! # EXAMPLES
-//!
-//! `system_tests/src/user/name_resolver_tests.rs` plays the spawner on all three architectures:
-//!
-//! ```text
-//! start net_stack over the e1000e NIC; start name_resolver on it, told 10.0.2.9:53 over TCP
-//! GRANT badge 0x384 the zone "nife.test"; spawn name_resolver_test_client with that badge
-//! client: packages.nife.test  -> OK, 10.0.2.9 (then a TCP echo to that address)
-//! client: mirror.nife.test    -> OK, 10.0.2.9, through a compressed CNAME
-//! client: forged.nife.test    -> REFUSED (IdMismatch)
-//! client: example.com         -> DENIED, and no query was sent
-//! ```
+//! **A name is judged against the zone its badge was granted before anything is sent**, so a client
+//! granted `nife.test` asking about `example.com` gets [`status::DENIED`] and the network sees
+//! nothing. Only badge 0, the spawner's, can grant; `OPERATION_FORGET` unmaps and deletes a client's
+//! page; each badge's page has its own window, and the name is copied out before it is parsed. A
+//! fresh entropy-drawn id per query, TCP after a truncated UDP reply (or TCP only, when told), and
+//! a datagram from elsewhere or one `Query::accept` refuses is dropped without ending the exchange.
+//! **With no entropy it asks nothing** ([`status::NO_ENTROPY`]): a guessable id is a forger's gift.
 //!
 //! # BUGS
 //!
-//! - **One request at a time.** A client's `CALL` holds this thread for the whole exchange, and
-//!   `net_stack` itself serves one request at a time, so a UDP query nobody answers stalls every
-//!   client of both for `net_stack`'s 15-second receive bound, three times.
-//! - **No cache.** Every resolve is a query, whatever the last answer's TTL said. The TTL is handed
-//!   back so a client can cache, which is where the knowledge of how long it needs an address is.
-//! - **IPv4 only, no DNSSEC, no EDNS(0)**: `domain_name_system`'s BUGS, inherited.
-//! - **One name server.** A second, tried when the first does not answer, wants a second endowment
-//!   word and a reason to need it.
-//! - **One socket at a time.** Each resolve opens a socket, which the stack hands back as a
-//!   capability no other client of the stack can reach (§255 (each socket is its own capability)),
-//!   and closes it before answering.
-//! - **A page attached before its badge was granted is deleted**, so a client must be spawned after
-//!   the spawner's grant, which is the order a spawner works in anyway.
-//! - The UDP path is proved on the host only up to the bytes (`domain_name_system`'s tests); the
-//!   gating boot test asks over TCP, because slirp forwards UDP to no process a test owns.
+//! - One request at a time, and `net_stack` serves one too, so an unanswered UDP query stalls every
+//!   client of both for three of `net_stack`'s 15-second receive bounds.
+//! - No cache: the TTL goes back to the client, which knows how long it needs an address.
+//! - IPv4 only, no DNSSEC, no EDNS(0), one name server.
+//! - A page attached before its badge was granted is deleted, so clients are spawned after grants.
+//! - The UDP path is proved only up to the bytes; the boot test (`name_resolver_tests.rs`) asks over
+//!   TCP, because slirp forwards UDP to no process a test owns.
 //!
-//! Name: provisional 2026-10-06 (UTC), milestone 384's lane. §248 calls it "the resolver", and
-//! "name resolver" is what the act is called wherever DNS is described (RFC 1034, section 5). Refused
-//! `dns_resolver` under §154 (the acronym test) and `resolver` alone, which says nothing about what
-//! is resolved in a tree where capabilities are resolved too.
+//! Name: provisional: what the act is called wherever DNS is described. Refused `dns_resolver`
+//! (§154 (the acronym test)) and `resolver` (capabilities are resolved here too).
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68 (code-quality gates: one lint

@@ -123,9 +123,9 @@ pattern: a `request` rendezvous (server `RECEIVE`, client `SEND`) and a `reply` 
 `SEND`, client `RECEIVE`), both created up front and granted to each party with the right rights. It
 works because the client topology is static: one known client per reply rendezvous.
 
-Its limits are exactly the three points above, inverted: it does not scale to a server with many
-*anonymous* clients (which client's `RECEIVE` grabs a shared reply is ambiguous), there is no call
-chain so no priority donation, and the server's reply `SEND` blocks until the client reaches
+Its limits are exactly the three points above, inverted. It does not scale to a server with many
+*anonymous* clients (which client's `RECEIVE` grabs a shared reply is ambiguous). There is no call
+chain so no priority donation. The server's reply `SEND` blocks until the client reaches
 its `RECEIVE` (a real Reply cap delivers to a caller already parked, without blocking the server).
 
 We could go part of the way with the machinery we already have: a client could create a reply
@@ -143,8 +143,8 @@ every server we have has a static client topology and the two-rendezvous pattern
 
 **Two triggers to build it.** *Functional:* the first server that must answer clients it was not
 individually wired to (a general RPC service). *Safety:* the first reply whose correctness depends
-on going to this caller, or on being consumed exactly once, because a pre-wired reply
-rendezvous is reusable and nameable, so nothing *structural* prevents a misrouted reply, a double
+on going to this caller, or on being consumed exactly once. A pre-wired reply rendezvous is reusable
+and nameable, so nothing *structural* prevents a misrouted reply, a double
 reply, or a stale reply landing on a client that has moved on. A one-shot kernel-minted reply cap
 makes those kernel guarantees instead of server discipline. At that point the right shape is a
 `Reply` object capability and a `Call` method, one-shot, with the call chain: its own DECISIONS
@@ -152,9 +152,9 @@ entry when it lands, because it widens the boundary §4 guards.
 
 **Safe today, by convention not by guarantee (checked 2026-07-22).** The console server shares one
 `reply` rendezvous across clients yet is correct, because it is single-threaded and IPC is
-synchronous rendezvous: it runs one request-reply cycle at a time, so the only client parked in
+synchronous rendezvous. It runs one request-reply cycle at a time, so the only client parked in
 `RECEIVE(reply)` when it replies is the one it just served. Workers and drivers avoid the question
-entirely with a per-request reply rendezvous. Nothing in the kernel enforces either property; the
+entirely with a per-request reply rendezvous. Nothing in the kernel enforces either property. The
 safety trigger above fires the moment a server fields concurrent clients on a shared reply path (a
 thread pool, or pipelined requests).
 

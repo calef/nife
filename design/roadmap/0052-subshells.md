@@ -12,7 +12,7 @@ needs_person: no
 Recorded and deliberately not designed: calef asked to design this one together, and the block
 says not to build from it without that conversation. Milestone 50 (pipes and redirection) is
 BUILT, so that half of the gate is satisfied, and what remains is exactly the conversation: 50
-removed most of the requirement and changed what is left, which is now the thing to design from.
+removed most of the requirement and changed what is left. That remainder is now the thing to design from.
 The fork is §160 (what a subshell copies). Nothing in it is answered by writing it down; the
 conversation calef asked for is still the gate.
 
@@ -95,8 +95,8 @@ benchmark win is not evidence against this gap, because it measures a different 
 
 It is a gap in the analysis, not currently a gap in the system. Nothing on the roadmap needs it:
 the Time Machine target (55) does not, gitoxide (99) does not, and no milestone names a workload that
-snapshots or zygotes. So this is recorded as a use the design does not serve, with the trigger stated
-rather than the work scheduled: the day a candidate workload needs a consistent snapshot of its own
+snapshots or zygotes. So this is recorded as a use the design does not serve, with the trigger
+stated rather than the work scheduled. The day a candidate workload needs a consistent snapshot of its own
 memory, or needs per-child warm start badly enough to measure, this stops being a note. Redis is the
 obvious such candidate and is on nobody's list.
 
@@ -141,11 +141,11 @@ the first thing to test in the design conversation.
 4. Hybrid: scoping by binding, isolation by an explicit verb, so the two uses stop sharing a
    syntax.
 
-Open questions for the conversation, in the order they probably matter: does derivation beat
-duplication; what happens when an endowment contains a non-duplicable capability; is the isolation
-case common enough to build for at all once 50 lands; does `( ... )` keep its Unix spelling if it
-means something materially different; and, from the section above, is address-space duplication
-this milestone's problem or its own, since it is a kernel question that would exist with no shell in the
+Open questions for the conversation, in the order they probably matter. Does derivation beat
+duplication? What happens when an endowment contains a non-duplicable capability? Is the isolation
+case common enough to build for at all once 50 lands? Does `( ... )` keep its Unix spelling if it
+means something materially different? And, from the section above, is address-space duplication this
+milestone's problem or its own? It is a kernel question that would exist with no shell in the
 tree, and answering it here risks designing a shell feature around a mechanism the shell does not
 need.
 

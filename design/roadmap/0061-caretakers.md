@@ -12,12 +12,12 @@ In brief. The rename first, because these files were being touched anyway: `fwar
 `cwarden` -> `c_confiner`, `cshim` -> `c_shim`, `conx`/`cconx` -> `rust_swappable`/`c_swappable`,
 `await_*` -> `wait_for_*`, and the C symbols to `c_seam_*`. That is 532 tokens rather than four
 filenames, and `c_confiner` deliberately did not take the caretaker noun in its prose. Then
-`fs_proto::verb`: one row per opcode saying what a request's words mean and which rights the
-server demands, with `const assert!`s that make a verb without a row a compile error; the three
-caretakers dispatch off it and stop being three hand-written matches. Then extended-attribute
-forwarding, the gap that raised the milestone, with three witnesses: a per-file grant that reads
-its file's attributes and cannot write them (and a writable twin that can, as its control), the
-three subtree rights configurations one bit wider, and a name-set grant that reads its file's
+`fs_proto::verb`: one row per opcode saying what a request's words mean and which rights the server
+demands. `const assert!`s make a verb without a row a compile error. The three caretakers dispatch
+off it and stop being three hand-written matches. Then extended-attribute
+forwarding, the gap that raised the milestone, with three witnesses. One is a per-file grant that
+reads its file's attributes and cannot write them (and a writable twin that can, as its control).
+Then the three subtree rights configurations one bit wider, and a name-set grant that reads its file's
 attributes and still cannot name the entry beside it. Notes: fs-server.md, dir-capability.md,
 glob-grant.md, xattr.md, grant-expression.md, naming.md.
 
@@ -134,14 +134,14 @@ which matters in a `user/src/` holding 48 programs and no subdirectories.
 Why these qualifiers. `file_` rather than `one_file_`, because cardinality is not the
 interesting property: you cannot enumerate at all, so "one versus few" never arises. `nameset_`
 rather than `glob_`, because §52 records that a BFS-style query result and a glob result are the
-same object granted by the same attenuation, so the name is about a designated set of names and
+same object granted by the same attenuation. So the name is about a designated set of names and
 globbing is merely its only caller today. `subtree_` rather than `directory_`, because all three
-hold a directory capability, so naming one of them for what it holds distinguishes nothing, which
-is the exact defect `dwarden` has and this rename exists to fix.
+hold a directory capability. Naming one of them for what it holds distinguishes nothing, which is
+the exact defect `dwarden` has and this rename exists to fix.
 
 Two costs, recorded rather than discovered later. `fs_subtree_caretaker` and
-`fs_nameset_caretaker` are 20 bytes against `nifefs`'s archive limit (`NAME_LEN`), which was 24
-when this was written, so four bytes of headroom and a four-part name would not fit; that constraint
+`fs_nameset_caretaker` are 20 bytes against `nifefs`'s archive limit (`NAME_LEN`), which was 24 when
+this was written, so four bytes of headroom and a four-part name would not fit. That constraint
 was load-bearing and is what led to raising the limit to 32 on 2026-08-01 (notes/nifefs.md).
 And `fs_file_caretaker` says filesystem twice, which is the price of the scheme being uniform.
 
@@ -290,12 +290,12 @@ work.
   name-taking verb. A mode switch would trade that program's one strong property for a
   forget-a-verb surface in the program that most deliberately has none.
 - **Refused.** Blind forwarding as the fix for the xattr gap. It is the obvious idea and it is a
-  security hole: `fs_file_caretaker` substitutes its own handle for the caller's and enforces
-  direction, and a blind proxy would forward the caller's handle and hand back the wide capability
+  security hole. `fs_file_caretaker` substitutes its own handle for the caller's and enforces
+  direction. A blind proxy would forward the caller's handle and hand back the wide capability
   the caretaker exists to attenuate.
 
 ## Index row
 
-built, both ISAs. The rename landed first (532 tokens, not four filenames); `fs_proto::verb`
-is one row per opcode and a verb with no row is a compile error; all three caretakers forward the
+built, both ISAs. The rename landed first (532 tokens, not four filenames); `fs_proto::verb` is one
+row per opcode and a verb with no row is a compile error. All three caretakers forward the
 four extended-attribute verbs, proven by three witnesses each with a control that must fail

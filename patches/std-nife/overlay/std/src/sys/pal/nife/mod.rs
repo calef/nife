@@ -20,7 +20,7 @@
 
 pub(crate) mod abi;
 // The net_stack socket-contract wire format (opcodes, frame offsets), generated verbatim from
-// `user/src/netproto.rs` by `cargo xtask std-src` so the numbers cannot drift from the server.
+// `crates/socket_protocol` by `cargo xtask std-src` so the numbers cannot drift from the server.
 // The net PAL (`sys/net`) is a client of it.
 pub(crate) mod netproto;
 // The FS-service wire format (opcodes, request packing, the errno convention), generated verbatim

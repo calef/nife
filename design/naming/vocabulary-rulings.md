@@ -38,8 +38,8 @@ nothing* (2026-09-05). *Initial ramdisk* teaches a great deal: it says the thing
 readable before storage exists. That is the entire point and is not recoverable from the five
 letters. By that test `initrd` should go, the same way `dma` went.
 
-*Corrected 2026-09-24: §154 (calef, 2026-09-18) superseded the 2026-09-05 wording quoted above. The
-test is now whether the expansion is a phrase people actually say, and it is stated on the
+*§154 (the acronym test), ruled by calef on 2026-09-18, replaces the 2026-09-05 wording quoted above. The
+test is whether the expansion is a phrase people actually say, and it is stated on the
 [main page](../naming.md). "Initial ramdisk" is said, so the verdict on `initrd` is unchanged.*
 
 It cannot, because about ninety of its 1,302 occurrences are somebody else's spelling:

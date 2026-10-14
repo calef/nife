@@ -108,25 +108,27 @@ no control endpoint refuses it with `BAD_REQUEST`, which is every terminal a boo
   discipline and raw mode (`len` 1 to enter, 0 to leave), replied immediately. While raw mode is on,
   `OPERATION_BYTES` bypasses [`LineDisc`](../crates/line_editor/src/line_disc.rs) entirely: no echo, no editing,
   no line assembly, and a control byte like `^C` is delivered literally rather than intercepted.
-  `OPERATION_READRAW` reads the result: one to eight raw bytes, packed little-endian, the same
-  register-only shape `OPERATION_BYTES` and `OPERATION_PRINT` already use, so this needs no page either. At most
+  `OPERATION_READRAW` reads the result: one to eight raw bytes, packed little-endian. That is the
+  same register-only shape `OPERATION_BYTES` and `OPERATION_PRINT` already use, so this needs no
+  page either. At most
   one `OPERATION_READRAW` may be outstanding, the same rule `OPERATION_READLINE` already has. The two input
   models refuse each other with `BAD_REQUEST`: `OPERATION_READLINE` while raw mode is on, `OPERATION_READRAW`
   while it is off. Switching mode in either direction abandons whatever line was in progress in the
-  mode being left (the line discipline's edit buffer, or raw mode's queued-but-unread bytes), and
-  fails a parked read of the mode being left rather than hang it forever; history and the kill
+  mode being left (the line discipline's edit buffer, or raw mode's queued-but-unread bytes). It
+  fails a parked read of the mode being left rather than hang it forever. History and the kill
   buffer are untouched. Proved in `system_tests/src/user/raw_mode_tests.rs` against a real `line_editor`
-  process: echo suppression (both ways, so the check cannot be vacuous), literal delivery of bytes
-  the line discipline would otherwise interpret, the two refusals, and a read parked before data
+  process. It checks echo suppression (both ways, so the check cannot be vacuous) and literal
+  delivery of bytes the line discipline would otherwise interpret. Then the two refusals, and a read
+  parked before data
   arrives still being answered once it does.
 
   Only `line_editor` serves it. `display_terminal` does not serve `OPERATION_READLINE` either (see
   "For milestones 29 and 31" below); raw mode is a line-discipline opcode exactly like
   `OPERATION_READLINE` is, and belongs nowhere else. A client behind the display terminal that wants raw
   keystrokes composes `line_editor` in front of it exactly as one wanting edited lines already does,
-  and that composition needs no change to either component: `line_editor`'s `OPERATION_WRITE` output is
-  already backend-agnostic (it prints through whatever `Con` sink is wired underneath), and raw
-  mode never touches `Con` at all except its overflow bell, so the primitive is identical behind
+  and that composition needs no change to either component. `line_editor`'s `OPERATION_WRITE` output
+  is already backend-agnostic (it prints through whatever `Con` sink is wired underneath). Raw mode
+  never touches `Con` at all except its overflow bell, so the primitive is identical behind
   either backend by construction rather than by having been wired twice.
 
 - `OPERATION_INTRCOUNT` (DECISIONS §24 (interrupting the foreground process)): reply immediately with the running count of `^C` the terminal
@@ -193,9 +195,9 @@ Does not owe:
 
 ## A known race, carried forward from milestone 10
 
-The first byte of input piped in a single burst at boot can be lost once: the input driver arms
-its receive interrupt a few instructions after the FIFO already holds the piped text, and the
-leading byte can fall in that window. An interactive user typing after the prompt never hits it,
+The first byte of input piped in a single burst at boot can be lost once. The input driver arms its
+receive interrupt a few instructions after the FIFO already holds the piped text, and the leading
+byte can fall in that window. An interactive user typing after the prompt never hits it,
 and every line after the first is intact. Fully closing it needs the driver armed before any
 input arrives. Noted, not papered over; see [shell.md](shell.md).
 
@@ -203,9 +205,10 @@ input arrives. Noted, not papered over; see [shell.md](shell.md).
 
 - 29 (display terminal): built, 2026-07-30, and the prediction held. `components/src/display_terminal.rs`
   implements the *same IPC half* against a framebuffer and a VT engine instead of a serial line and
-  this line discipline: `OPERATION_WRITE` prints from the client's output page, `OPERATION_BYTES` carries
-  keystrokes in from a driver (or from the compositor, forwarding to the focused client), and the
-  framing constants are these ones, unchanged. The wire half differs, as this note said it would: a
+  this line discipline. `OPERATION_WRITE` prints from the client's output page, and
+  `OPERATION_BYTES` carries keystrokes in from a driver (or from the compositor, forwarding to the
+  focused client). The framing constants are these ones, unchanged. The wire half differs, as this
+  note said it would: a
   grid, not a row.
 
   Two things this note could not have predicted, both recorded in [glyphs.md](glyphs.md):

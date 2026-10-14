@@ -38,8 +38,7 @@ The stranger found this itself. While grepping for "designation is authorization
 stranger-test note and read the rubric, including the "pass means" column. It disclosed that
 unprompted. It named questions (g) and (h) as contaminated, re-derived both from primary sources,
 cited those, and told the reader to discount them anyway. The rubric was in the repository the
-stranger is told to read, and nothing in the protocol anticipated that. See
-[the BUGS history](bugs-history.md).
+stranger is told to read, and nothing in the protocol anticipated that.
 
 No score is recorded. Two of the eight answers are contaminated, so a score would be a number with a
 footnote, and the questions it asked are worth more than that number. The full report is in the pull

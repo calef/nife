@@ -37,9 +37,9 @@ register. A result returned in a register.
 That is a syscall. Semihosting is a syscall ABI, and the kernel answering it is QEMU. We
 are the userspace program.
 
-Which makes it a preview of milestone 7, running in reverse. At milestone 7 we build the
-*other* side of exactly this shape: a user program at EL0 executes `svc`, traps into our
-kernel at EL1, we read an operation number out of a register, do the work, put a result back,
+Which makes it a preview of milestone 7 (user mode: EL0, capabilities, the ELF loader, and IPC), running in reverse. At milestone 7 we build the *other*
+side of exactly this shape. A user program at EL0 executes `svc` and traps into our kernel at EL1.
+We read an operation number out of a register, do the work, put a result back,
 and return. Same architecture. We are currently on the calling end of a mechanism we are
 about to go implement.
 
@@ -74,15 +74,15 @@ The limitation, learned the hard way (milestone 32). The heartbeat is bumped onc
 the test's start (in `Testable::run`), not while a test runs. So "no progress for 60 s" cannot
 distinguish a genuine deadlock from a test that is simply *slower than 60 s*. Both look identical:
 the heartbeat stops advancing because no *new* test started. The milestone 32 FS-server test tripped
-this as a false deadlock: it was not stuck, it was starved (leaked spinning driver threads crammed on
-core 0 slowed the RedoxFS mount past 60 s), and raising the limit made it pass, which is exactly what
+this as a false deadlock. It was not stuck, it was starved (leaked spinning driver threads crammed
+on core 0 slowed the RedoxFS mount past 60 s). Raising the limit made it pass, which is exactly what
 a deadlock can never do. The dump reinforced the wrong read, because a starved thread and a
 deadlocked one both sit `Blocked`/`Ready` with nothing obviously moving.
 
 **A harness improvement candidate, not yet built:** a per-test *progress* heartbeat (the test, or the
 IPC/scheduler, bumps a counter as work happens) would tell "slow" from "stuck." The enriched
 `sched::dump_threads` (each thread's EL0 PC and the per-endpoint sender/receiver/pending counts,
-added while chasing that false deadlock) is the other half: two dumps a few seconds apart show
+added while chasing that false deadlock) is the other half. Two dumps a few seconds apart show
 whether the pipeline's threads are changing state (starved but progressing) or frozen (a real
 deadlock). Until the heartbeat is per-progress, read a watchdog trip as "stuck or slow" and
 confirm which with a raised limit before assuming a lost wakeup.

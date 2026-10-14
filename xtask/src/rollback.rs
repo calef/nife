@@ -2,11 +2,8 @@
 //! machine comes back on the image it had before, with nobody typing anything (rung 2b of
 //! milestone 198 (a package manager, and the trivial install that makes a second customer possible)).
 //!
-//! **This file is the deliverable, not the code it exercises.** A rollback mechanism nobody has
-//! seen roll back is a claim. Everything in `crates/boot_slot`, `components/src/system_installer.rs` and
-//! `uefi_loader/src/chooser.rs` is only as good as the three boots below.
-//!
-//! # What the three boots are, and why the middle one is killed
+//! `crates/boot_slot`, `components/src/system_installer.rs` and `uefi_loader/src/chooser.rs` are
+//! only as good as the three boots below.
 //!
 //! | | |
 //! |---|---|
@@ -15,28 +12,21 @@
 //! | 2 | the machine picks slot 1, spends its one try, hands off, **and is killed at that instant** |
 //! | 3 | the machine picks slot 0 and comes up, and slot 1 is never tried again |
 //!
-//! **Killing the machine at the handoff is the test, not a shortcut.** The failure this feature
-//! exists for is an image that starts and never comes up: a kernel that wedges, a driver that spins,
-//! a power cut. From the disk's point of view those are all the same event, which is *the try was
-//! spent and nothing came back*, and QEMU dying one instruction after `StartImage` produces exactly
-//! that event. It is the one failure class the chooser cannot observe for itself, which is why the
-//! try is written before the handoff and why this is the boot worth staging.
+//! **Killing the machine at the handoff is the test.** A kernel that wedges, a driver that spins
+//! and a power cut are, to the disk, one event: the try was spent and nothing came back. QEMU dying
+//! one instruction after `StartImage` produces exactly that, and it is the failure the chooser
+//! cannot observe for itself. The upgrade is a **byte-for-byte copy of the working image**, so the
+//! header checksum cannot catch it and only the spent try decides.
 //!
-//! The upgrade in slot 1 is a **byte-for-byte copy of the working image**, deliberately. A slot
-//! holding garbage would be caught by the header's checksum inside one boot, and that would test
-//! the cheap half. What is being tested here is that a perfectly loadable image which then fails to
-//! come up is given up on, and the only thing that can decide that is the try spent on the disk.
+
+//! # What it asserts
 //!
-//! # What it asserts, and what a failure of each one would mean
-//!
-//! - Boot 2 says `starting boot slot 1`. **Priority chose the upgrade over the running image**;
-//!   without this the rest proves nothing, because the machine would have been on slot 0 anyway.
-//! - Boot 3 says `starting boot slot 0` and never mentions slot 1. **The decrement reached the
-//!   disk and survived a power cycle**, which is the property the whole design rests on.
-//! - Boot 3 reaches a shell and reads the file `mkfs` wrote. The fallback is a working machine and
-//!   not merely a different boot line.
-//! - The disk, read afterwards by this gate rather than by nife, shows slot 1 at `tries=0,
-//!   successful=0` with its **priority untouched**. The bits are what the format says they are.
+//! - Boot 2 says `starting boot slot 1`: **priority chose the upgrade over the running image**.
+//! - Boot 3 says `starting boot slot 0` and never mentions slot 1: **the decrement reached the
+//!   disk and survived a power cycle**.
+//! - Boot 3 reaches a shell and reads the file `mkfs` wrote: the fallback is a working machine.
+//! - The disk, read afterwards by this gate, shows slot 1 at `tries=0, successful=0` with its
+//!   **priority untouched**.
 //!
 //! # EXAMPLES
 //!
@@ -58,22 +48,18 @@
 //! rollback-boot: PASS
 //! ```
 //!
+
 //! # BUGS
 //!
-//! - **The upgrade is written by this gate and not by nife**, because nothing in this tree upgrades
-//!   a running machine yet. The bytes and the attribute bits go through the same
-//!   `crates/boot_slot` and `globally_unique_identifier_partition_table` code the installer uses, so
-//!   the *format* is exercised end to end; the program that will one day do this is not.
-//! - **One try, not three.** A real upgrade would be given several, and each one is a boot of a TCG
-//!   machine. The policy is the same at any count and `cargo test -p boot_slot` covers the counting
-//!   in milliseconds.
-//! - **It proves nothing about a real firmware**, the same caveat `install-boot` carries. OVMF is
-//!   one implementation and a generous one; xenon is where rung 2b's hardware half is settled.
-//! - **The power cut it simulates is at the handoff and not during the table write.** A machine
-//!   interrupted between the four block writes the chooser makes is the case nothing here covers,
-//!   and `uefi_loader/src/chooser.rs`'s `BUGS` says so at the code.
-//! - **It takes several minutes under TCG**, three boots of it, so it is not in `script/test`'s
-//!   default legs any more than `install-boot` is.
+//! - **The upgrade is written by this gate and not by nife**, because nothing in this tree writes
+//!   an upgrade to a running machine yet. The bytes and attribute bits go through the same
+//!   `crates/boot_slot` and `globally_unique_identifier_partition_table` code the installer uses.
+//! - **One try, not three.** The policy is the same at any count, and `cargo test -p boot_slot`
+//!   covers the counting.
+//! - **It proves nothing about a real firmware**, the same caveat `install-boot` carries.
+//! - **The power cut is at the handoff, not during the table write.** A machine interrupted between
+//!   the chooser's four block writes is not covered; `uefi_loader/src/chooser.rs`'s `BUGS` says so.
+//! - **It takes several minutes under TCG**, so it is not in `script/test`'s default legs.
 
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::Path;

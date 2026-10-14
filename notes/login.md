@@ -11,19 +11,21 @@ whole `login` family).
 
 Unix login authenticates a presented password and then, on success, mutates a global field: the
 process's uid becomes the user's. Every future authority decision for that process reads back through
-that one number. It is efficient and it is why `setuid` exists, a program running with the union of
+that one number. It is efficient, and it is why `setuid` exists. That is a program running with the
+union of
 its owner's authority and its invoker's intent, which has been a security disaster for fifty years.
 
 This system has no uid to mutate, and milestone 49 (users and attribution)'s own doc names the shape the replacement should
 take: authentication should **hand back a capability set** rather than change anything ambient. A
-compromised login service then leaks *what it can grant*, not *the ability to become anyone*, which is
-the same trade the credential service (milestone 56) already made for the secret store itself.
+compromised login service then leaks *what it can grant*, not *the ability to become anyone*. That
+is the same trade the credential service (milestone 56 (secrets, credentials, and the entropy to make them safe)) already made for the secret store itself.
 
 ## The shape
 
 `login` relays the presented identity and secret to the credential service's `VERIFY` unchanged: it
-never touches `credential_protocol`'s protocol or `credentialer.rs`. On a match it **builds**, rather
-than narrows, a capability set: a fresh `fs_subtree_caretaker` (the same construction
+never touches `credential_protocol`'s protocol or `credentialer.rs`. On a match it **builds**,
+rather than narrows, a capability set. It holds a fresh `fs_subtree_caretaker` (the same
+construction
 `crates/system_initializer` performs for a directory-granted spawn) and a fresh budget split off its
 own construction untyped. Two different successful logins therefore hold two different endpoint
 *objects*, which is §109's channel-shaped attribution rather than a badge on a shared one.
@@ -35,7 +37,7 @@ page delegated to exactly that caller. The identity and secret travel only on th
 pair. Two clients that reach the front door close together can contend only for which is
 served first, which is a wait, not a hazard. The process keeps its own copies of the private
 triple it delegates (the "delegate, then keep going" pattern `FS_PAGE_FRAME` already uses, unlike
-the "delegate, then drop" pattern `mint`'s capabilities use), because it is the one that goes on
+the "delegate, then drop" pattern `mint`'s capabilities use). It is the one that goes on
 to serve the login that channel was minted for.
 
 ### Why a caretaker, not a narrowed copy of the file service's own endpoint
@@ -43,8 +45,8 @@ to serve the login that channel was minted for.
 The cheaper-looking move is to hand every authenticated client a `WRITE`-narrowed copy of the same
 directory capability `login` itself holds. That fails the property this milestone is for. A
 narrowed copy of one shared endpoint is still one endpoint, so the file service (or anything
-downstream) cannot tell two principals apart, which is the shared-endpoint anti-pattern §109
-names three times over (the compositor, the FS server's handle table, the fault endpoint) and
+downstream) cannot tell two principals apart. That is the shared-endpoint anti-pattern §109 names
+three times over (the compositor, the FS server's handle table, the fault endpoint) and
 refuses. Building
 a fresh `fs_subtree_caretaker` per login costs a process per login and buys a real, distinguishable,
 independently revocable object per principal.
@@ -53,9 +55,10 @@ independently revocable object per principal.
 
 Each identity is attenuated to the subtree named by its identity string itself (§117, 2026-08-23),
 used directly, with no separate lookup table. `alice` and `bob`
-land in two different, independently-scoped subtrees; neither can name the other's. The subtree
-must already exist: `identity_provisioner` (milestone 155 (a provisioning tool)) provisions it at provisioning time, and
-this program never creates one (§117's own file records why provision-time creation was chosen over
+land in two different, independently-scoped subtrees; neither can name the other's. The subtree must
+already exist: `identity_provisioner` (milestone 155 (a provisioning tool)) provisions it at
+provisioning time. This program never creates one (§117's own file records why provision-time
+creation was chosen over
 creating it on a principal's first login). An authenticated identity with no provisioned subtree is
 refused, folded into the same `DENIED` a wrong password gets.
 
@@ -66,12 +69,12 @@ name travels in two `START` argument words, not a frame, and `mint` refuses rath
 a name that two identities agreeing on their first 16 bytes would silently share (a collision
 hazard, not merely a usability one). Lifting it means a frame for the caretaker's grant, a change
 to `filesystem_protocol::grant`'s contract and every caretaker built against it. And the
-unprovisioned-subtree fold is a considered answer, not the accident of reusing the fold: a caller
+unprovisioned-subtree fold is a considered answer, not the accident of reusing the fold. A caller
 must not be able to tell "your identity has no home" from "your password is wrong" by comparing
-outcomes across attempts, which would let a caller probe which identities are provisioned without
+outcomes across attempts. That would let a caller probe which identities are provisioned without
 ever presenting a right password for one (`login_protocol::DENIED`'s own doc gives the reasoning).
 The honest cost is that an operator who forgot to run `identity_provisioner` sees the same denial a
-typo would produce, and the audit trail does not help, since it only records a successful login.
+typo would produce. The audit trail does not help, since it only records a successful login.
 Distinguishing the two would need a deliberately-weaker operator-facing channel than the login
 result, real work this slice did not build.
 
@@ -81,26 +84,27 @@ Moved here 2026-10-09 from the module doc; the resolved history is in git.
 
 A successful login delegates four (or five, with the terminal) capabilities, and the fourth is
 the client's **logout ticket**. It is `mint`'s own construction region, undropped and narrowed
-to `WRITE`, with nothing left to `SPLIT` or `RETYPE` (the region's whole budget went into
-building the caretaker), so its only remaining use is `MemoryRegion::DESTROY`. Calling it reclaims the
+to `WRITE`, with nothing left to `SPLIT` or `RETYPE` (the region's whole budget went into building
+the caretaker). Its only remaining use is `MemoryRegion::DESTROY`. Calling it reclaims the
 caretaker's TCB, address space and endpoints, and the pages come home to `CONSTRUCTION_UT` under
 §13 (capability revocation and untyped reclamation) region ownership (the region's builder, not its destroyer). The client's budget (the third
-capability, `WRITE | GRANT`) was always able to do the same for its own half, so a full logout
+capability, `WRITE | GRANT`) was always able to do the same for its own half. A full logout
 destroys the budget and then the region and gives back everything a session spent.
 
-Two candidate shapes for giving this memory back were refused before the ticket was found, both
+Two candidate shapes for giving this memory back were refused before the ticket was found. Both are
 recorded with their reasons in the appendix: a supervision endpoint reaching back into this
 process, and a caretaker `DESTROY`ed by name. The first is the durable-session machinery milestone
-152 is scoped to design in general; the second needed a name for the caretaker's region this
-process does not keep. The ticket needed neither a session nor new supervision plumbing, because
-the caretaker's own construction region is the only thing that ever needed tearing down and its
-builder can hand the means directly to the one party who should hold it.
+152 is scoped to design in general. The second needed a name for the caretaker's region this
+process does not keep. The ticket needed neither a session nor new supervision plumbing. The
+caretaker's own construction region is the only thing that ever needed tearing down, and its builder
+can hand the means directly to the one party who should hold it.
 
-`MemoryRegion::DESTROY` works here for a reason checked against §32 (a supervisor may collect a corpse without being able to build one)'s own documented gap: `REAP`
-collects an already-dead thread, and `DESTROY`, which kills a live one, refuses permanently only
+`MemoryRegion::DESTROY` works here for a reason checked against the documented gap of §32 (a
+supervisor may collect a corpse without being able to build one). `REAP` collects an already-dead
+thread, and `DESTROY`, which kills a live one, refuses permanently only
 against a thread blocked on an endpoint *outside* the region being destroyed
 (notes/hung-component.md's case (c)). The caretaker's client-facing endpoint is retyped from the
-same region, so its steady state is case (b), blocked on an endpoint whose region the destroyer
+same region. So its steady state is case (b), blocked on an endpoint whose region the destroyer
 holds: reclaimable, with collateral (the wait queue drains, the blocked receive aborts). The one
 narrow exception is the instant the caretaker is mid-`forward` to the file service, a `CALL` on
 an endpoint the region does not own. A `DESTROY` in that window is refused transiently, and a
@@ -112,7 +116,7 @@ Moved here 2026-10-09 from the module doc; the 2026-08-27 resolution is in git.
 
 A terminal in this system is a singleton hardware-backed resource, wired once at interactive boot
 (`crates/system_initializer::boot`), so handing it to a login-authenticated principal has to say
-what a second concurrent login gets told, which naming another capability slot does not answer by
+what a second concurrent login gets told. Naming another capability slot does not answer by
 itself. The shape built is the narrow one, matching what this boot actually is: one interactive
 boot, one physical terminal, one session live at a time. A login while the terminal is held is
 refused `NO_TERMINAL` before its identity and secret are relayed to the credential service. The
@@ -122,16 +126,16 @@ door, not a private channel, because it carries no secret and there is nothing a
 exposes by handling it directly. The whole of the state this needs is one `terminal_held:
 bool`.
 
-What this does not build, named rather than assumed away: `LOGOUT` authenticates nothing (a
+What this does not build, named rather than assumed away: `LOGOUT` authenticates nothing. That is a
 deliberate choice for today's actual deployment, one interactive boot with no untrusted co-tenant
-reaching the front door; `login_protocol`'s own BUGS records the real interruption hazard a hostile
+reaching the front door. (`login_protocol`'s own BUGS records the real interruption hazard a hostile
 holder of the front door would pose in a different deployment). There is no liveness check on
 whoever currently holds the terminal. A session that exits, crashes, or simply never calls
-`LOGOUT` leaves the terminal held for the rest of this process's life, because this process has
-no wait-any primitive with which to watch a client and keep serving new connections at the same
+`LOGOUT` leaves the terminal held for the rest of this process's life. This process has no wait-any
+primitive with which to watch a client and keep serving new connections at the same
 time (the structural bound notes/hung-component.md names). Recovering from an abandoned session means
 restarting this process. And this is explicitly not the "real multiplexing" shape (more than one
-live session, each with its own view, composed the way the compositor composes windows): the
+live session, each with its own view, composed the way the compositor composes windows). The
 roadmap's own BUGS entry recommends against building that now, and choosing the narrow shape
 commits to nothing the wider one would later have to unwind.
 
@@ -148,15 +152,16 @@ rather than exercised.
 
 ## Measured boot: the posture
 
-This program spells measured boot's load-or-refuse decision itself (`_start` runs
+This program spells measured boot's load-or-refuse decision itself. `_start` runs
 `measured_boot::verify_in_manifest` over the caretaker blob and folds all three outcomes, absent,
-refused and not-an-ELF, into `care_elf = None`, answered per login with `DENIED`), rather than
-calling `measured_boot::verdict`, which milestone 246 (measured boot's refusal path is tested by nothing) moved the same decision into a crate for.
+refused and not-an-ELF, into `care_elf = None`, answered per login with `DENIED`. It does not call
+`measured_boot::verdict`, which milestone 246 (measured boot's refusal path is tested by nothing)
+moved the same decision into a crate for.
 Switching would buy the one thing 246 was about, the refusal branch tested rather than assumed,
 at the cost of a `Verdict` whose `unvouched` field this program has nothing to do with. It has
 not been done, on the record, because it is a change to a boot path the changing lane was not
 gating. The check's trust root is the progenitor's hand-over (both the bytes and the table arrive
-from it, already verified there), so what remains is a consistency check; it is kept because it
+from it, already verified there), so what remains is a consistency check. It is kept because it
 costs one hash and catches a spawner that pairs the wrong two blobs. Why the fold into `DENIED` is
 not anti-oracle reasoning here (a failed measurement varies with nothing a caller controls). The
 proof test and its limit are recorded at the check itself.

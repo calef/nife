@@ -94,6 +94,12 @@ pub const TEST_UDP_TFTP_HELD: u64 = 11;
 /// `net_stack`'s bound rather than block. [`tcp_accept_unheard`] says why. Name: provisional, the
 /// riscv-cpu-net-flake lane, 2026-10-13 (UTC).
 pub const TEST_TCP_ACCEPT_UNHEARD: u64 = 12;
+/// **The badge forgery** (an eighth outsider pass at claim 34): open a UDP socket, try to mint a
+/// second badge for the minted socket capability, and prove the socket still works afterwards.
+/// A minted socket capability is born badged (the stack mints it from its serve endpoint), so the
+/// badge rule's "set once, never changed" is the only thing standing between a client and a second
+/// name for the same socket.
+pub const TEST_SOCKET_BADGE_FORGE: u64 = 13;
 /// The first word a waiting role reports before it waits.
 pub const READY: u64 = 0x5EAD;
 /// Slot 3 of the three roles above: the hand-off endpoint (`WRITE` to the giver, `READ` to the
@@ -240,8 +246,14 @@ fn udp_tftp_held() -> ! {
 /// [`TEST_SOCKET_GIVE`]: open a UDP socket and send it to the taker, keeping our own copy. Then wait
 /// for the go on slot 4, which the test sends once the taker has used the socket and closed it, and
 /// report whether our copy still reaches anything: `OK` when it reaches nothing, which is what a
-/// close is for. The probe is a zero-length `SENDTO`, which an open socket answers `REP_OK` at once
-/// and a closed one `REP_ERR`, so it cannot be mistaken for a receive that timed out.
+/// close is for. The probe is a zero-length `SENDTO`, which a closed socket answers `REP_ERR` at
+/// once, so it cannot be mistaken for a receive that timed out.
+///
+/// # BUGS
+///
+/// The eighth outsider pass saw an open socket refuse a zero-length `SENDTO` too, which is why its
+/// own survival probe is a `CLOSE`. If so, this probe cannot tell a closed copy from an open one,
+/// and the hand-off test's "reaches nothing" rests on the probe alone. Not yet checked by a lane.
 fn socket_give() -> ! {
     let (word, _, socket) = call_receiving(STACK, OPERATION_OPEN_UDP, 0);
     let Some(socket) = socket.filter(|_| word == REP_OK) else {
@@ -255,6 +267,32 @@ fn socket_give() -> ! {
     let _ = receive(GO);
     let (stale, _) = call(socket, OPERATION_SENDTO, 0);
     done(if stale == REP_ERR { OK } else { 0xE0B2 });
+}
+
+/// [`TEST_SOCKET_BADGE_FORGE`]: open one UDP socket, attempt to re-badge its capability, and
+/// report. The refusal must be `NotPermitted` (the capability is already badged, and a badge is set
+/// once), and the socket must be undisturbed by the refused attempt: a `CLOSE` of it must still
+/// answer `REP_OK`. Reports `OK`, or a stage code.
+fn socket_badge_forge() -> ! {
+    let (word, _, socket) = call_receiving(STACK, OPERATION_OPEN_UDP, 0);
+    let Some(socket) = socket.filter(|_| word == REP_OK) else {
+        done(0xE0D0);
+    };
+    // A second badge for a capability the stack minted badged. The badge value is arbitrary; the
+    // rule is that no value is accepted.
+    //
+    // SAFETY: `svc`/`ecall` traps to the kernel, which validates the named slot before acting.
+    let re_badge =
+        unsafe { user_mode_runtime::invoke(socket, abi::rendezvous::BADGE, 0x7007, 0, 0) };
+    if re_badge != abi::Error::NotPermitted as i64 {
+        done(0xE0D1);
+    }
+    // The survival probe is a clean `CLOSE`: the stack answering `REP_OK` to a close of this
+    // socket is the stack still serving the capability the refused forgery named, with its entry
+    // free to hand back. (A zero-length `SENDTO` is refused on an open socket too, so it cannot
+    // probe liveness; the hand-off test only ever read its `REP_ERR` half.)
+    let (closed, _) = call(socket, OPERATION_CLOSE, 0);
+    done(if closed == REP_OK { OK } else { 0xE0D2 });
 }
 
 /// [`TEST_SOCKET_TAKE`]: take a socket from slot 3, attach our own page to it, and run the TFTP round
@@ -1065,6 +1103,7 @@ pub fn run(test: u64, arg: u64) -> ! {
         TEST_TCP_ACCEPT => tcp_accept_inbound(),
         TEST_TCP_DRAIN => tcp_drain(arg),
         TEST_SOCKET_GIVE => socket_give(),
+        TEST_SOCKET_BADGE_FORGE => socket_badge_forge(),
         TEST_SOCKET_TAKE => socket_take(),
         TEST_UDP_TFTP_HELD => udp_tftp_held(),
         TEST_TCP_ACCEPT_UNHEARD => tcp_accept_unheard(),

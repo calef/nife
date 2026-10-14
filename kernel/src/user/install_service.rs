@@ -1,16 +1,6 @@
-//! **The offer a booted stick makes, and the two programs that carry it out** (milestone 198 (a
-//! package manager, and the trivial install that makes a second customer possible), rung 2a).
-//!
-//! The proposal it follows is milestone 515 (a stick that puts itself on the machine's disk).
-//!
-//! # What this module is, and what it deliberately is not
-//!
-//! It is the **boot policy**: decide whether this boot could install at all, say what would be
-//! destroyed, ask, and then wire the two confined programs that do the work. It is not the
-//! installer. Nothing here writes a byte to a disk.
-//!
-//! The split is the whole argument, and it is the one `disk_service` already makes for milestone
-//! 57's partitioner:
+//! **The offer a booted stick makes, and the two programs that carry it out** (notes/installing.md).
+//! This is the boot policy: decide whether this boot could install, say what would be destroyed,
+//! ask, then wire the two confined programs that do the work. Nothing here writes a byte to a disk.
 //!
 //! | | holds | can destroy |
 //! |---|---|---|
@@ -18,36 +8,14 @@
 //! | `components/src/system_installer.rs` | one disk, one entropy endpoint, a read-only copy of the boot file | that disk |
 //! | `redoxfs_server`'s `mkfs` | the same disk, the same entropy endpoint | that disk |
 //!
-//! **The question is asked here rather than in the installer**, and that is not an accident of
-//! where the console is. A confirmation a program prints to itself is a confirmation that program
-//! could also decide to skip; asking before the capability is granted means the authority to wipe
-//! the disk does not exist until the answer does.
-//!
-//! # When the offer is made
-//!
-//! Three things must be true, and all three are facts about the machine rather than preferences:
-//!
-//! 1. **This boot came from a file the loader could read back** (`memory::boot_file_region`), so
-//!    there is something to install. A `-kernel` boot has no such file and is silently skipped.
-//! 2. **There is an NVMe controller**, which is the disk an install would go to.
-//! 3. **That disk does not already carry nife.** An installed machine boots from a file too, so
-//!    without this check every boot of every installed machine would pause to offer to wipe itself.
-//!    The check is a survey process, not a parse in the kernel: `system_installer`'s `ROLE_SURVEY`, spawned
-//!    with the disk and **no entropy endpoint**. That is `disk_partitioner`'s verify role, one
-//!    milestone along. **What the missing endpoint narrows is what the survey would write, not what
-//!    it can** (2026-09-24 security audit): a `blk` endpoint is the whole disk with no read-only
-//!    form, a reader of a partition table never checks that its ids were drawn from anywhere, so a
-//!    survey that chose to could write any table, or zeros, anywhere on that disk. What stops it is
-//!    the program's role, which is rung three of AGENTS.md's ladder; `confirm`'s section below
-//!    prices the read-only `blk` that would make it rung one.
-//! 4. **Somebody answers.** The wait is bounded, so a stick booted on a machine with no console
-//!    reaches the prompt instead of hanging.
-//!
-//! Anything else is a refusal, and every refusal is silent-or-explained and then continues to the
-//! ordinary boot. **Refusing by default is the whole safety property**: the only path to a write is
-//! a person typing [`CONFIRMATION`].
-//!
-//! # EXAMPLES
+//! **The question is asked here, before the capability exists**: a confirmation a program printed
+//! to itself is one it could skip. The offer is made only when this boot came from a file the
+//! loader can read back (`memory::boot_file_region`), there is an NVMe controller, the disk does
+//! not already carry nife, and somebody answers within a bounded wait. The nife check is
+//! `system_installer`'s `ROLE_SURVEY`, spawned without entropy; a `blk` endpoint has no read-only
+//! form, so what keeps the survey from writing is its role, not its authority (`confirm` below
+//! prices a read-only `blk`). **Refusing by default is the safety property**: the only path to a
+//! write is a person typing [`CONFIRMATION`].
 //!
 //! ```text
 //!   install     : this system was booted from a file and can install itself.
@@ -63,39 +31,13 @@
 //!
 //! # BUGS
 //!
-//! - **x86_64 only**, because `memory::boot_file_region` is: a device-tree handoff has one
-//!   initial ramdisk slot in `/chosen` and no second one for the loader's own file. `uefi_loader`'s
-//!   `place_boot_file` carries the argument and the gap, and
-//!   `design/roadmap/0568-the-boot-file-has-nowhere-to-go-on-a-device-tree-machine.md` prices
-//!   closing it and names the three other things that still stand between it and an install on
-//!   those architectures.
-//! - **It asks on the console, which means the kernel reads the UART** (`console::read_line`).
-//!   That is only sound because this runs before the progenitor hands the device to the input
-//!   driver, and it is the reason the offer is made at this exact point in the boot and not later.
-//! - **The disk is named by what it is, not by model and serial.** Milestone 515's `BUGS` asks for
-//!   model and size, and only the size is here: reading a controller's model is a second IDENTIFY
-//!   (`CNS_CONTROLLER`) in the admin plane and there is nowhere in
-//!   `non_volatile_memory_express::Handoff` to put forty ASCII bytes, whose three scalars are all
-//!   spent. On a machine with two disks this sentence would not say which, and that is why the
-//!   offer says "the NVMe disk attached to this machine" rather than naming an ordinal it cannot
-//!   back up. **It is the single most load-bearing sentence a stranger reads**, and it has a
-//!   milestone of its own, `design/roadmap/0569-the-disk-an-installer-names-has-no-model.md`,
-//!   which finds that the kernel-side half needs no ruling and the program-side half is the wire
-//!   question milestone 421 (the block roster cannot name an NVMe disk) is already held on.
-//! - **Nothing here is crash-atomic**, and a power cut between the partitioner and `mkfs` leaves a
-//!   partitioned disk with no filesystem, which the next boot reports as a disk it cannot mount.
-//! - **It checks for nife and for nothing else.** A disk carrying Windows, or a Linux root, looks
-//!   exactly like an empty one from here: the survey asks "is there a nife data partition" and any
-//!   other answer is "installable". A person who says yes to the question loses that disk. Naming
-//!   what is already on it is `disk_surveyor`'s job, and
-//!   `design/roadmap/0570-the-install-offer-should-say-what-is-already-on-the-disk.md` is the
-//!   milestone for it.
-//! - **A machine that already carries nife is never offered an install again**, which is what stops
-//!   an installed system offering to wipe itself on every boot and also means there is no way to
-//!   reinstall from the stick. The sharp case is a power cut between the installer and `mkfs`,
-//!   which leaves a nife data partition with no filesystem in it and a machine that will never be
-//!   offered an install again. `design/roadmap/0572-there-is-no-way-back-from-the-stick.md`
-//!   is the milestone, and the fix is a second question rather than a second mechanism.
+//! - x86_64 only (design/roadmap/0568). The kernel reads the UART to ask, before the input driver.
+//! - The disk is named by size, not model, which is the most load-bearing sentence a stranger reads
+//!   (design/roadmap/0569).
+//! - Not crash-atomic: a power cut between the partitioner and `mkfs` leaves an unmountable disk.
+//! - It checks for nife and nothing else, so a disk holding Windows looks empty (design/roadmap/0570).
+//! - A disk already carrying nife is never offered an install again, including a half-installed one
+//!   (design/roadmap/0572).
 
 use super::*;
 use crate::cap::{Rights, memory_region_cap, page_frame_cap, rendezvous_cap};
@@ -261,81 +203,36 @@ pub fn offer() {
 }
 
 /// **Say that this boot worked**, so an upgrade that came up is not rolled back once its tries run
-/// out (rung 2b of milestone 198's other half).
+/// out (rung 2b of milestone 198 (a package manager)'s other half). A no-op on every boot no
+/// chooser started (a stick, a `-kernel` boot, an installed machine whose chooser fell back to its
+/// own file).
 ///
-/// A no-op on every boot no chooser started, which is a stick, a `-kernel` boot, and an installed
-/// machine whose chooser fell back to the image in its own file. All three reach a running kernel
-/// with nothing to confirm.
+/// **The criterion: the machine got far enough that a person can log in and fix what else is
+/// wrong.** At this call site the kernel passed its self-tests and reached userspace, the NVMe
+/// server answered from ring 3, the filesystem server **mounted the installed disk and reported
+/// ready**, and the progenitor was loaded, measured and built. Earlier would confirm an upgrade
+/// with no working disk; later needs a person, and an unattended machine has none (the Boot Loader
+/// Specification and ChromeOS's update engine make the same call). Such a boot can still be wrong
+/// about anything boot does not exercise (the network, the compositor), about the shell, which
+/// nothing has typed at yet, and about anything that fails after the first seconds; this is a
+/// statement about coming up, repeated in `crates/boot_slot`'s `BUGS`.
 ///
-/// # What "this boot worked" means here, and it is a promise rather than a mechanism
+/// **The authority**: `components/src/system_installer.rs`'s [`ROLE_CONFIRM`], spawned with four
+/// capabilities: the report endpoint, the disk's `blk` endpoint, the page it shares with that
+/// disk's server, and a budget for the one page it maps. **No entropy endpoint**, so the only table
+/// it can write is the one it read; **no boot file**, so it cannot rewrite the image it vouches
+/// for. A `blk` endpoint is the whole disk (nothing in `filesystem_protocol::blk` bounds a client
+/// to a block range), so it *could* write anywhere on that disk, as `system_installer`'s `BUGS`
+/// records.
 ///
-/// **The criterion is: the machine got far enough that a person can log in and fix whatever else is
-/// wrong.** Concretely, at this call site, all of the following already happened:
-///
-/// | |
-/// |---|
-/// | the kernel came up, its self-tests passed, and it reached userspace |
-/// | the NVMe controller was brought up and its server answered requests from ring 3 |
-/// | the block server and the filesystem server started, and the filesystem server **mounted the installed disk and reported ready** |
-/// | the progenitor was loaded out of the archive, measured against the trust root, and built |
-///
-/// Nothing is confirmed unless every one of those held, because this runs after all of them and
-/// the boot does not reach here otherwise.
-///
-/// **Why not earlier, and why not later.** Confirming at the kernel's self-test would mark an
-/// upgrade good that has no working disk and no userspace, which is the failure the whole feature
-/// exists to prevent; the bias has to be late. Confirming later is what the rest of this comment
-/// is about, and the honest answer is that later is not reachable automatically on this system
-/// today: past this point the machine is waiting for a person, and an unattended appliance has
-/// nobody to ask. The Boot Loader Specification leaves the call to the operating system for the
-/// same reason, and ChromeOS's update engine sets the bit from userspace on the same judgement.
-///
-/// **What a boot that satisfies this criterion can still be wrong about**, which is the honest half
-/// of the feature and is repeated in `crates/boot_slot`'s `BUGS` where a reader meets it:
-///
-/// - **Anything nothing exercises at boot.** The network stack, the compositor, a driver for a
-///   device this machine has and the boot path does not touch. An upgrade that breaks only those
-///   is confirmed and kept.
-/// - **The shell**, which is the one thing the proposal's recommended criterion names and this does
-///   not reach. The filesystem is mounted and the progenitor is built, but nothing has typed
-///   anything. A regression between here and a prompt survives.
-/// - **Anything that fails after the first few seconds**: a leak, a wedge under load, a filesystem
-///   that mounts and then corrupts. This is a statement about coming up, not about running.
-///
-/// # What holds the authority to write the partition table, and how narrow it is
-///
-/// `components/src/system_installer.rs`'s [`ROLE_CONFIRM`], spawned here with four capabilities and
-/// nothing else: the report endpoint, the disk's `blk` endpoint, the page it shares with that
-/// disk's server, and a budget for the one page it maps itself. **No entropy endpoint**, so it
-/// cannot draw the unique ids a new partition table carries and the only table it can write is the
-/// one it read; **no boot file**, so it cannot rewrite the image it is vouching for; no console, no
-/// filesystem, no network.
-///
-/// It is not as narrow as it should be, and the gap is named rather than papered over: a `blk`
-/// endpoint is the whole disk, because nothing in `filesystem_protocol::blk` bounds a client to a
-/// block range. So this process *could* write anywhere on that disk. That is the same limitation
-/// `system_installer`'s own `BUGS` records for the filesystem server, it is one wire field away from
-/// fixed, and it is the reason this is a boot-path call rather than something a program could ask
-/// for later.
-///
-/// # What serialises this against the filesystem server, and the answer is an ordering
-///
-/// **Nothing enforces it.** One NVMe server has one transfer region, shared by every client of its
-/// endpoint, and a client stages bytes into that region before it calls. Two clients staging at
-/// once would corrupt each other, and no lock, lease or range check prevents it.
-///
-/// What makes this write safe is where it is: **after the filesystem server's ready report and
-/// before the progenitor's first instruction.** In that window the filesystem server is blocked in
-/// receive with no client that could wake it, because the kernel boot path is single-threaded and
-/// is the only thing that can hand its endpoint to anybody. So the region has one user.
-///
-/// That is rung three of `AGENTS.md`'s ladder, a written record at the thing itself, and it is an
-/// **exception** to the rule that the higher rung wins. It is stated as one: **this is a foot gun.**
-/// The day something spawns a second disk client before the progenitor runs, or this call moves
-/// after it, the ordering silently stops holding and the symptom is a corrupted partition table on
-/// somebody's installed machine. The mechanism that would make it hold is a transfer region per
-/// client, or a `blk` endpoint bounded to a block range; both are wire decisions and neither is
-/// this lane's.
+/// **Nothing serializes this against the filesystem server; an ordering does.** One NVMe server has
+/// one transfer region shared by every client, and two clients staging at once would corrupt each
+/// other. This write is safe only because it runs **after the filesystem server's ready report and
+/// before the progenitor's first instruction**, when the single-threaded boot path is the only
+/// thing that could wake that server. **This is a foot gun**: if something spawns a second disk
+/// client before the progenitor runs, or this call moves after it, the symptom is a corrupted
+/// partition table on an installed machine. A transfer region per client, or a `blk` endpoint
+/// bounded to a block range, would make it hold; both are wire decisions.
 pub fn confirm() {
     let Some(slot) = crate::memory::boot_slot() else {
         return; // No chooser started this boot: there is nothing to confirm.

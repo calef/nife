@@ -25,12 +25,12 @@ Three pieces, and the surface cost is zero new syscalls and zero new methods.
 
 2. Delivery, without blocking the faulting path. When the thread dies (`sched::depart`, reached
    from both the arch fault handlers and `SYS_EXIT`), the kernel builds the five-word message and
-   delivers it to the fault endpoint. Delivery is the ordinary synchronous-send rendezvous, reused:
-   if a supervisor is already blocked in `RECEIVE`, hand it the message and wake it; if none is, the
+   delivers it to the fault endpoint. Delivery is the ordinary synchronous-send rendezvous, reused.
+   If a supervisor is already blocked in `RECEIVE`, hand it the message and wake it. If none is, the
    corpse itself parks on the endpoint's sender queue with the message in its mailbox, so the
    notification waits there rather than being lost. This is the same guarantee an ordinary blocked
-   sender gets, and it is why a data-carrying death rides the sender queue rather than the data-less
-   IRQ signal count (`irq_notify`): a signal count could say "something died" but not carry the tid,
+   sender gets. It is why a data-carrying death rides the sender queue rather than the data-less IRQ
+   signal count (`irq_notify`): a signal count could say "something died" but not carry the tid,
    pc, and address. The corpse is never woken: `ipc_receive` recognizes a `Dead` sender, takes its
    message, and leaves it dead, exactly the way it already leaves a `CALL` caller blocked.
 
@@ -57,8 +57,8 @@ Five words, delivered to the supervision endpoint's holder through a plain `RECE
 mailbox widened from three words to five to carry this; ordinary three-word IPC leaves the top two
 zero, so only a supervisor reads them and no other program's `RECEIVE` changes.
 
-A sixth word, the child's label, arrives in argument register 5 (`x5`, `a5`, `r9`): the badge its
-builder put on the supervision capability with `rendezvous::BADGE` before inserting it, kept by
+A sixth word, the child's label, arrives in argument register 5 (`x5`, `a5`, `r9`). It is the badge
+its builder put on the supervision capability with `rendezvous::BADGE` before inserting it, kept by
 the kernel at `START` (milestone 105 (the two forks), §148 (resolves by asking the kernel)). The kernel
 writes it only on a death delivered to a plain `RECEIVE`, so the mailbox stays five words. A
 receiver zeroes the register first, as `receive_fault` does, so `0` means unbadged or not a death.
@@ -84,21 +84,23 @@ never-runnable, so it is dead in every sense but "its memory is gone."
 ## What this is not
 
 It is not restart policy, and it is not automatic. The kernel delivers one message and stops; a
-userspace supervisor decides everything else. It is not a heartbeat or a liveness check either: this
-detects death at the exact instant with the exact cause, which polling cannot, but a supervisor that
+userspace supervisor decides everything else. It is not a heartbeat or a liveness check either. This
+detects death at the exact instant with the exact cause, which polling cannot. A supervisor that
 wants to catch "alive but wedged" layers its own timeout with ordinary IPC and no kernel help (§26.1).
 
 ## Proven
 
 The policy half, built on top of this (phase B.2, notes/trusted-init.md): a real userspace
-supervision tree where a supervisor holding *no memory at all* applies bounded-retry policy to a
-sub-server a construction server builds, and the progenitor has deleted the authority it would need to interfere.
+supervision tree. A supervisor holding *no memory at all* applies bounded-retry policy to a
+sub-server a construction server builds, and the progenitor has deleted the authority it would need
+to interfere.
 That is what this mechanism exists for, and it is proven on both ISAs in `authority_tests`.
 
 And at the interactive prompt (the milestone 22 increment that migrated the boot path): every job
 the shell spawns is born supervised, and `job_undertaker` collects the corpse. It is the smallest
-supervisor in the tree and the one that says most plainly what supervision costs a system: one
-endpoint capability, no memory, no policy, and the job's pages come home to the progenitor's pool rather than to
+supervisor in the tree and the one that says most plainly what supervision costs a system. That is
+one endpoint capability, no memory, no policy, and the job's pages come home to the progenitor's
+pool rather than to
 the collector. The restart half is deliberately absent, because a command a person typed has no
 business being restarted when it ends. `system_tests/src/user/job_undertaker_tests.rs` proves it with a control
 (three jobs exhaust a three-job pool when nothing collects) and a claim (twelve go through the same
@@ -106,9 +108,9 @@ pool when `job_undertaker` runs); `script/swish-check` runs eleven through the r
 See notes/trusted-init.md for what the progenitor gave up and what it still holds.
 
 Cross-ISA kernel tests (`system_tests/src/user/supervision_tests.rs`): a child built holding a fault
-endpoint crashes on a null load, the supervisor receives `(FAULT, tid, pc, addr)` with the right tid
-and address, the corpse still holds its fault message after delivery, revocation reaps it, and a
-fresh child runs in its place; a second test drives the clean-exit path and asserts the `EXIT` event.
+endpoint crashes on a null load. The supervisor receives `(FAULT, tid, pc, addr)` with the right tid
+and address, and the corpse still holds its fault message after delivery. Revocation reaps it, and a
+fresh child runs in its place. A second test drives the clean-exit path and asserts the `EXIT` event.
 See DECISIONS §26, notes/abi.md (the message format and spawn-slot convention), and
 notes/object-revocation.md (the reap the supervisor uses).
 
@@ -181,7 +183,7 @@ reap" because it quantifies over rights combinations rather than sampling them.
 
 A death reaches one endpoint, and that single fact is what decided milestone 235
 (design/roadmap/0235-a-faulted-job-should-reach-the-prompt.md). At the interactive prompt the holder
-of that endpoint is `job_undertaker`, whose whole job is collecting; the process that *needed* to
+of that endpoint is `job_undertaker`, whose whole job is collecting. The process that *needed* to
 know was `swish`, blocked in a `RECEIVE` on the progenitor's result endpoint for an answer a killed thread can
 never send. So the prompt hung, and only on a fault: an ordinary non-zero exit is a value the child
 sends before it exits, and a spawn the progenitor could not build already had `spawnproto::SPAWN_FAILED`.
@@ -221,8 +223,8 @@ other side.
   (design/audit-reports/), recorded-accepted.
 
   Two facts that only look alarming together. `sched::start_tcb` reads the reserved slot with
-  `capability_table.get(FAULT_EP_SLOT)` rather than `get_with`, so **any** `Endpoint` capability there makes
-  the thread supervised, `Rights::NONE` included; it is the one place in the kernel where a
+  `capability_table.get(FAULT_EP_SLOT)` rather than `get_with`, so **any** `Endpoint` capability
+  there makes the thread supervised, `Rights::NONE` included. It is the one place in the kernel where a
   capability's *presence* authorizes something and its rights are never consulted. And
   `supervision_protocol` is the only site that places one, with `abi::rights::READ`, chosen by every
   spawner that uses `build_child` (`system_initializer`, `root_supervisor`, `c_confiner`,

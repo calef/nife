@@ -57,9 +57,9 @@ again. The input driver:
 
 1. Enables the PL011's receive interrupt.
 2. Blocks on it (its `Irq` capability's `WAIT`).
-3. When a character arrives, reads the receive FIFO, buffers it, and on a newline hands the line
-   to the shell over an endpoint (the bytes travel in a page shared with the shell; the length
-   crosses the endpoint: control by message, data by shared memory, §10 again).
+3. When a character arrives, reads the receive FIFO, buffers it, and on a newline hands the line to
+   the shell over an endpoint. The bytes travel in a page shared with the shell, and the length
+   crosses the endpoint: control by message, data by shared memory, §10 (process model: capability-based, microkernel) again.
 4. Acknowledges the device and re-arms the interrupt.
 
 **Driving it from a pipe.** QEMU connects the guest UART to stdio, so a script of commands piped

@@ -1,115 +1,37 @@
-//! **The JH7110 TRNG driver** (milestone 159; roadmap `design/roadmap/0159-jh7110-trng-driver.md`,
-//! notes/entropy.md), an alternate backend for the entropy contract (`entropy_protocol`,
-//! DECISIONS §44), alongside `entropy.rs`'s virtio-rng one. Same contract, same shape ("a driver,
-//! not a new protocol"), different device: no virtqueue, no DMA page, just a register window.
+//! **The JH7110 TRNG driver** (notes/entropy.md): an alternate backend for the entropy contract
+//! (`entropy_protocol`) beside `entropy.rs`'s virtio-rng one. Same contract, different device: no
+//! virtqueue, no DMA page, just a register window. `kernel/src/user/entropy_service.rs` spawns it on
+//! the riscv64 boot tour; QEMU has no JH7110, so CI resolves that to a skip. The register decode,
+//! the device-tree query and the byte buffer are in `crates/jh7110_entropy`, host-tested and
+//! Kani-reachable; what is left here is the volatile access and two polling bounds.
 //!
-//! # It is wired now, and it still has never run
+//! Slot 0 is the request endpoint (RECEIVE, `entropy_protocol`'s wire format) and slot 1 a
+//! readiness endpoint (WRITE) that gets one message: [`proto::READY`](entropy_protocol::READY) once
+//! a first generation is not all zero, or a [`bringup_failure`](entropy_protocol::bringup_failure)
+//! word naming the failed step. Mapped: one device page at [`TRNG_VA`], placed by the spawner (rule
+//! 2); the binding's window is `0x4000`, but `jh7110_entropy::regs` reaches only `0x68`. Nothing
+//! else: no DMA page and no IRQ, so its authority is smaller than virtio-rng's by construction.
 //!
-//! **Something spawns this program as of 2026-09-01**: `kernel/src/user/entropy_service.rs`'s
-//! `Bus` enum grew a `Jh7110` variant, and the riscv64 boot tour asks for it. The decision the
-//! previous draft of this paragraph was holding open (how a spawner locates this binary in an
-//! initial ramdisk) turned out to need no new answer: `entropy_service::ensure` already takes the
-//! program's bytes from its caller, exactly as it does for `entropy`, so the tour reads
-//! `user::program("jh7110_entropy")` and hands them over. Nothing about the interactive boot changed;
-//! DECISIONS §120's stopgap question is still open and still untouched by this.
-//!
-//! **Nothing below has run against a real TRNG**, and wiring it did not change that: QEMU has no
-//! JH7110, so on every machine this repository's CI boots the wiring resolves to a skip. The
-//! register sequence follows
-//! `jh7110_entropy`'s citations (the Linux `jh7110-trng.c` driver); the polling bounds
-//! ([`POLL_TRIES`], [`LOCKUP_RETRIES`]) are placeholders with no board measurement behind them, the
-//! same honest gap `entropy.rs`'s `WAIT_WAKEUPS` once was before QEMU could prove it. See the
-//! roadmap doc for what remains before this can be trusted.
-//!
-//! # What is proven, and where
-//!
-//! The register decode ([`jh7110_entropy::interpret`]), the device-tree query
-//! ([`jh7110_entropy::discover`]) and the byte buffer ([`jh7110_entropy::Pool`]) are all in the crate,
-//! host-tested and Kani-reachable, because none of them needs a device to be wrong in an
-//! interesting way. What is left in this file is exactly the part that cannot be tested without
-//! silicon: the volatile reads and writes, and the two polling bounds below.
-//!
-//! # Its authority, once something grants it
-//!
-//! - slot 0, the **request** endpoint (RECEIVE): clients `CALL` here, `entropy_protocol`'s wire format,
-//!   unchanged from `entropy.rs`'s;
-//! - slot 1, a **readiness** endpoint (WRITE): exactly one message, either
-//!   [`proto::READY`](entropy_protocol::READY) once the device has answered a first generation with
-//!   bytes that are not all zero, or a
-//!   [`bringup_failure`](entropy_protocol::bringup_failure) word naming which step failed;
-//! - mapped: **one page**, the TRNG's register block, device-typed at [`TRNG_VA`], placed there by
-//!   whoever spawns this (rule 2: a base address, passed in, nothing this driver looks up). The
-//!   binding's `reg` window is `0x4000` and the spawner maps `0x1000` of it, because
-//!   `jh7110_entropy::regs` reaches only `0x68`;
-//! - and nothing else. **No third slot, no DMA page, no IRQ**, unlike `entropy.rs`'s virtio-rng
-//!   backend: this device has no virtqueue and no shared buffer to negotiate, only the eight
-//!   `RAND` registers, so its authority is smaller by construction, not by omission. An earlier
-//!   draft named a slot 2 for a `DeviceFrame` capability; the spawner that actually exists grants
-//!   the page as a `Mapping` rather than as a capability the driver holds, so the slot was
-//!   describing a thing nobody hands over.
+//! It polls `ISTAT` rather than taking PLIC line 30: a wrong interrupt binding fails silently as a
+//! hang, a wrong poll bound fails loudly as `NO_ENTROPY`, and switching once the board confirms
+//! the binding is reversible.
 //!
 //! # BUGS
 //!
-//! **This driver still programs no clock and deasserts no reset, and something else now does.**
-//! The binding names two clock inputs (`hclk`, `ahb`) and one reset line, and Linux's
-//! `jh7110-trng.c` takes all three through the clock and reset frameworks before it touches a
-//! register. This driver takes none of them: it is handed a mapped register window and assumes the
-//! block behind it is powered, which is rule 2 working as intended rather than an omission. The
-//! prediction this entry used to carry came true on 2026-09-04 (all-zero registers, a failed first
-//! refill, an all-zero bring-up diagnostic), and **milestone 220 answered it**: the kernel now
-//! ungates the STG CRG's `SEC_HCLK` and `SEC_MISCAHB_CLK` and releases the block's reset before
-//! this program is spawned, and the second boot that day read live registers. What remains here is
-//! the dependency itself: nothing in this program checks that it happened, and a boot where it did
-//! not still presents as zeros.
+//! - It programs no clock and deasserts no reset: the kernel ungates `SEC_HCLK` and
+//!   `SEC_MISCAHB_CLK` and releases the block's reset before spawning it, and nothing here checks
+//!   that happened; a boot where it did not presents as zeros.
+//! - An all-zero first generation condemns the device for the boot
+//!   ([`proto::STEP_FIRST_ALL_ZERO`](entropy_protocol::STEP_FIRST_ALL_ZERO)), even if it powers on
+//!   a moment later.
+//! - [`POLL_TRIES`] and [`LOCKUP_RETRIES`] are unmeasured guesses, and [`POLL_TRIES`] counts loop
+//!   iterations with no delay, so it is a guard against hanging, not a timeout in microseconds.
+//! - **`MODE.R256` has never been read back.** [`init`] writes it and reports `STAT`; if radon's
+//!   `STAT.R256` reads clear, the upper four `RAND` words are not device output and only 16 bytes
+//!   may be served. One line of a bench transcript closes the one open question about the bytes.
 //!
-//! **A device that answers with zeros is condemned for the whole boot, with no way back.** An
-//! all-zero first generation is treated as a bring-up failure
-//! ([`proto::STEP_FIRST_ALL_ZERO`](entropy_protocol::STEP_FIRST_ALL_ZERO)) and this driver then
-//! answers every request `NO_ENTROPY` until it is restarted, even if the block is powered on
-//! underneath it a moment later. That is deliberate (a device that answers wrongly is worse than
-//! one that does not answer) and it is also the case a real clock driver would want to retry;
-//! milestone 220 is where that becomes worth building, and `entropy_protocol`'s own `BUGS` carries the
-//! probability this refusal is wrong on a working device.
-//!
-//! **The polling bounds below are guesses.** [`POLL_TRIES`] and [`LOCKUP_RETRIES`] have no board
-//! measurement behind them. A bound that is too small reports `NO_ENTROPY` on a working device;
-//! too large, and a dead device stalls the boot tour for as long as the loop takes. Nothing has
-//! measured which side of that this lands on.
-//!
-//! **The 256-bit mode selection has never been read back.** [`init`] writes `MODE.R256` because
-//! the width a JH7110's TRNG resets to is a build-time parameter of the silicon rather than
-//! something the documentation settles, and it reports the `STAT` it read afterwards so a bench
-//! session can check `STAT.R256`. Nobody has. If that bit reads clear on radon, this driver is
-//! assembling 32 bytes out of a 16-byte answer and the upper four `RAND` words are not device
-//! output; the count served would have to drop to 16. **This is the one open correctness question
-//! about the bytes themselves**, and one line of a bench transcript closes it.
-//!
-//! **The polling loops are unbounded in time, not just in count.** [`POLL_TRIES`] counts
-//! iterations of a loop with no delay in it, so what it actually bounds depends on how fast this
-//! core runs and what the compiler did to the loop. It is a guard against hanging forever, not a
-//! timeout anyone can state in microseconds.
-//!
-//! # Why polling, not the completion interrupt
-//!
-//! [binding] names `interrupts = <30>`, and the Linux driver is interrupt-driven. This program
-//! polls `ISTAT` instead, for one reason worth stating rather than defaulting to: routing PLIC
-//! line 30 correctly (which context, which priority) is one more fact this project cannot check
-//! without the board, and a wrong interrupt binding fails silently as a hang, while a wrong poll
-//! bound fails loudly as `NO_ENTROPY`. This is a reversible choice (AGENTS.md's "recommend on
-//! reversible forks"): switching to the interrupt once the board confirms the binding is a
-//! smaller change than getting IRQ routing wrong on the first hardware boot ever attempted.
-//!
-//! [binding]: https://github.com/torvalds/linux/blob/master/Documentation/devicetree/bindings/rng/starfive%2Cjh7110-trng.yaml
-//!
-//! Name: ratified 2026-09-13 (calef, working the unratified worklist), replacing the provisional
-//! `jh7110_entropy_source`, which this program carried from 2026-08-24 without a ruling. It moves
-//! with the crate it is the volatile shell over (`jh7110_entropy`), which is the deliberate
-//! crate-and-program pair AGENTS.md describes: the crate is the logic, host-tested and reachable
-//! by the prover, and the program keeps the IO. Splitting the two names would hide that
-//! relationship, and that is what disqualified `jh7110_entropy_driver` for this half too, even
-//! though it reads well beside `block_driver` and its three siblings in this directory. The chip
-//! qualifier, the measurement that retired the `_source` suffix, and the rest of the refusals are
-//! the crate's own argument and are not repeated here; see its header.
+//! Name: ratified 2026-09-13 (calef), replacing `jh7110_entropy_source`. It shares the crate's
+//! name as the crate-and-program pair; `jh7110_entropy_driver` was refused for hiding that pair.
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

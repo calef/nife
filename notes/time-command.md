@@ -19,12 +19,12 @@ endpoint and which has never been able to ask what time it is, gets timed anyway
 
 That is the Unix behavior, and it is also the capability-model answer, which is why the two agree
 here rather than needing a trade. A program does not consent to being timed and cannot tell that it
-is; a duration is observable to anybody who can watch a thing start and stop, and the shell is that
+is. A duration is observable to anybody who can watch a thing start and stop, and the shell is that
 observer by construction, because it is what started the thing and what noticed it finish.
 
 The alternative was delegating a clock to the child, and it is rejected rather than deferred. It
 would make `time` a grant: `time wc report.txt` would run a differently endowed `wc` from the one
-`wc report.txt` runs, which breaks the property the whole command rests on, and it would put a
+`wc report.txt` runs. That breaks the property the whole command rests on, and it would put a
 readable clock in the hands of every program anybody thought to time. The `design/decisions/` section for
 this is the integrator's to mint at merge (CLAUDE.md: a lane does not claim a number global to the
 tree); until it exists the argument is here and in `design/roadmap/0086-time-command.md`.
@@ -53,7 +53,7 @@ through `dispatch`, the same function the prompt calls. So `time date | wc` time
 refused is refused identically.
 
 This is `caps`'s shape one milestone later, including the ordering bug behind it: `swish::route`
-answers both prefix words before it splits the line on its operators, or the tail would arrive as
+answers both prefix words before it splits the line on its operators. Otherwise the tail would arrive as
 the single word `date` with everything after the pipe silently gone. One function, two arms, one
 host test each.
 
@@ -63,8 +63,8 @@ not a substring, because "identical" is the claim.
 
 ## What the number means, and three things it is not
 
-**It is wall clock**, between the shell deciding to run the line and the line being over, at the
-resolution of the ambient counter (16 ns on the aarch64 board at 62.5 MHz, 100 ns on the RISC-V one
+**It is wall clock**, between the shell deciding to run the line and the line being over. The
+resolution is the ambient counter's (16 ns on the aarch64 board at 62.5 MHz, 100 ns on the RISC-V one
 at 10 MHz). `real` is Unix's word for it and it is the honest one.
 
 **It is not CPU time.** There is no `user` row and no `sys` row, because nothing in this kernel is
@@ -124,11 +124,11 @@ This was written twice when milestone 86 landed, once in each of the two inits, 
 had not merged yet. It is written once now, in `crates/system_initializer`, and the frame it hands
 over is `BootEndowment::clock_page`: the same capability the kernel granted the progenitor, handed on with
 `READ` and no `GRANT`. There is deliberately no second endowment field for the shell's copy, because
-the shell's clock is not a separate kernel grant, and a field would ask each board to state the same
+the shell's clock is not a separate kernel grant. A field would ask each board to state the same
 slot number twice with nothing checking that the two agree.
 
 Being told is the same shape as `arg1` carrying the directory's rights (notes/shell-navigation.md),
-and here the argument is sharper: nothing in this system reports what a process holds, and a shell
+and here the argument is sharper. Nothing in this system reports what a process holds, and a shell
 that probed the wrong slot would find some *other* object and map a page that is not a clock. Zero
 means "no clock", which is unambiguous because slot 0 is the terminal in every wiring.
 

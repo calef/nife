@@ -65,8 +65,10 @@ corpse persists. Unix reparents orphans to init and lets init reap them; here re
 transferring the supervision endpoint, which is an explicit act rather than a rule nobody thinks
 about. **Decided as DECISIONS §40**: a supervisor's death is its subtree's death, because a child's
 resources come from its supervisor's region and §16's revocation reclaims the whole subtree in one act.
-So `disown` means **transfer supervision upward**, not "abandon", and §40 records the hole that makes
-the cascade close to the only coherent answer, namely that §32 authorizes reaping by matching the
+So `disown` means **transfer supervision upward**, not "abandon". §40 (a supervisor's death is its
+subtree's death) records the hole that makes
+the cascade close to the only coherent answer. §32 (a supervisor may collect a corpse) authorizes
+reaping by matching the
 child's recorded `fault_ep`, which nobody can satisfy once the supervisor's endpoint is gone.
 
 Sequencing. Phase one after milestone 47 (navigation and naming), because it wants `jobs` alongside

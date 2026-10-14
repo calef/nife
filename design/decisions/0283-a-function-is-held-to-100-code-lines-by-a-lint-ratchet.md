@@ -26,7 +26,7 @@ root is split along its seams) completes the `kernel_main` split.
 The ratchet holds every function with a body in every tracked `.rs` file outside `vendor/`. That
 includes host tools, `xtask`, build scripts, tests, benches, fixtures and items under
 `#[cfg(test)]`, as well as the Rust that runs on nife. calef ruled it on 2026-10-13 (UTC): "Yes,
-widen the gate". The gate and the function-length chart read one scope function,
+widen the gate". The gate and `script/metrics` read one scope function,
 `helpers/function_length.py`'s `in_scope`, so they count the same files.
 
 ## What was already ruled

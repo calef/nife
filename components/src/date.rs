@@ -1,63 +1,24 @@
-//! **`date`**: print the wall-clock time (milestone 51; DECISIONS §43, notes/clock.md,
-//! notes/calendar.md, notes/date.md).
+//! **`date`**: print the wall-clock time (notes/clock.md, notes/calendar.md, notes/date.md). Read
+//! the clock page, add the ambient counter, hand the number to `calendar`, send the bytes. It holds
+//! two capabilities and neither can change anything.
 //!
-//! The whole program is: read a page, add the ambient counter, hand the number to `calendar`, send
-//! the bytes. It holds two capabilities and neither of them can change anything.
+//! **It reads and cannot set.** §43 (reading the clock is a page, setting it is a page you may
+//! write, proposing is an endpoint) makes those three different objects, and `date` holds only the
+//! read-only mapping, so there is no `date -s`: setting would be a different binary holding a
+//! different capability, recognisable by its wiring rather than its argument parsing.
 //!
-//! # It reads. It does not set. (And that is not an omission.)
-//!
-//! DECISIONS §43 splits the clock into three authorities that are three *different objects*: read
-//! is a **read-only mapping** of the clock page, set is the **same page mapped read/write**, and
-//! propose is an **endpoint**. `date` holds the first one, and holding it is the entire reason it
-//! cannot do the other two: there is no flag it could pass and no method it could call, because
-//! the authority it lacks is a page permission rather than a check somewhere in this file.
-//!
-//! So there is no `date -s` here, deliberately. A program that set the clock would be a *different*
-//! binary holding a *different* capability, and one that did both in one process would be exactly
-//! the conflation Unix's `date` inherits and this design refuses. That program is not built; when
-//! it is, it will be about thirty lines and it will be recognisable by its wiring rather than by
-//! its argument parsing.
-//!
-//! # The unknown clock is an answer, not a crash
-//!
-//! `clock_protocol::state::UNKNOWN` is a real state and it is the **default**: a frame nobody has
-//! published to reads as unknown, so a machine with no RTC (or one whose RTC read a time the clock
-//! service did not believe) says so rather than reporting 1970 (DECISIONS §42's no-silent-
-//! degradation rule, on the time axis).
-//!
-//! `std`'s `SystemTime::now()` has to **panic** there, because it has no error channel. `date` has
-//! one, and since DECISIONS §67 it has one that is **not** its output. So this program reads the
-//! state word *before* it reads the offset, and says which of the two causes it was on its declared
-//! second stream. The two are worth telling apart because they call for different fixes: nobody
-//! granted this process a clock, or the machine itself never learned the time.
-//!
-//! # The second stream, and the one rule it comes with
-//!
-//! `date` is the first program in this system to declare a second output ([`DIAG_SLOT`]), and it is
-//! the program the decision was taken for: `date > when.txt` on a clockless machine used to write
-//! "the time is unknown" **into the file**, because a complaint about the run and an answer about
-//! the time travelled on the same endpoint. Now they do not, and the shell prints the complaint
-//! while the file stays empty.
-//!
-//! The rule that buys is real and belongs here rather than only in a note: **everything this program
-//! has to complain about is said, and the stream closed, before it writes a byte of output.** Its
-//! reader is single-threaded and drains the second stream to end-of-stream first (there is no
-//! receive-on-a-set in this kernel), so a program that interleaved the two would block in a
-//! rendezvous send that nobody is listening for. Every complaint here is a reason there is no
-//! answer, so the ordering costs `date` nothing; a program with more to say would have to be written
-//! for it.
-//!
-//! # Arguments, which arrive in registers because that is the ABI
-//!
-//! There is no argv on this ABI; a program gets three words at `_start` (notes/abi.md). So:
+//! **An unknown clock is an answer.** `clock_protocol::state::UNKNOWN` is the default, so a machine
+//! that never learned the time says so rather than printing 1970. It reads the state word before
+//! the offset and names the cause on its second stream ([`DIAG_SLOT`]): no clock granted, or none
+//! the machine believes. That stream exists so `date > when.txt` on a clockless machine leaves the
+//! file empty, and it carries the rule that every complaint is said, and the stream closed, before
+//! a byte of output: the reader drains it first, so interleaving would block a send nobody hears.
 //!
 //! | | |
 //! |---|---|
 //! | `a0` | which [`Format`] to print, `FMT_*` below. `0` is `Human`, so a bare spawn is `date` with no arguments. |
 //! | `a1` | the UTC offset in **minutes**, as a signed value. `0` is UTC, which is the default and the only sane one here: there is no tzdata (notes/calendar.md). |
 //! | `a2` | non-zero to add a second line naming the clock's **provenance**, which is the only way the four-state model is visible to a person. |
-//!
-//! # EXAMPLES
 //!
 //! ```text
 //! date                      Thu 2026-07-30 12:34:56 UTC
@@ -66,34 +27,17 @@
 //! date  (a1 = 330)          Thu 2026-07-30 18:04:56 +05:30
 //! date  (a2 = 1)            Thu 2026-07-30 12:34:56 UTC
 //!                           date: clock source: rtc, generation 1
-//! ```
-//!
-//! And the case worth reading twice, because it is the one every other OS gets wrong quietly:
-//!
-//! ```text
 //! date  (no clock service)  date: the time is unknown: the machine has no clock it believes
 //! date  (no clock granted)  date: the time is unknown: this process holds no clock capability
 //! ```
 //!
 //! # BUGS
 //!
-//! - **One-second resolution, and the read is not atomic with the print.** The seqlock makes the
-//!   *page* read consistent; the counter is sampled just after it. A clock stepped between the two
-//!   would be printed as the new time, which is right, but the two lines of a `a2` run can straddle
-//!   a step and disagree about the generation. Nothing here needs better and pretending otherwise
-//!   would be the lie this milestone exists to remove.
-//! - **A fixed UTC offset is not a time zone.** `a1 = -480` is Pacific Standard Time for part of the
-//!   year and wrong for the rest. notes/calendar.md records why tzdata is out of scope.
-//! - **No `strftime`.** Five named formats, because a format-string interpreter is a second parser
-//!   with runtime errors in a program that has no allocator (notes/calendar.md).
+//! - One-second resolution; the counter is sampled just after the page, so an `a2` run's two lines
+//!   can straddle a step and disagree about the generation.
+//! - A fixed UTC offset is not a time zone, and there is no `strftime` (notes/calendar.md).
 //!
-//! Name: ratified 2026-09-14 (calef, working the unratified worklist), on AGENTS.md's naming
-//! section, "standard terms a reader already knows from outside". Introduced 2026-07-31. The Unix
-//! command's own name, and a plain noun, so it satisfies the protected class and the
-//! name-things-with-nouns rule at once and there was nothing left to decide. What the ratification
-//! adds is the signature the general rule could not supply on its own, which is the whole
-//! difference between `recorded` and `ratified`: the rule covered this string, and now a person
-//! has said so about this string.
+//! Name: ratified 2026-09-14 (calef): the Unix command's name, a plain noun.
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

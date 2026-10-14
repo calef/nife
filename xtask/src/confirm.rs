@@ -1,13 +1,7 @@
 //! **The gate `rollback` is the mirror of**: an upgrade that comes up is confirmed by the running
-//! system, and the machine keeps it.
-//!
-//! `cargo xtask rollback-boot` proves nife gives up on an image that never comes up. That is half
-//! a mechanism, and on its own it is the *dangerous* half: a machine that rolls back correctly and
-//! confirms nothing reverts every upgrade a few boots after it succeeds, which fails days later
-//! and looks like something else. **A rollback mechanism nobody has watched NOT roll back is as
-//! unproven as one nobody has watched roll back.**
-//!
-//! # What the three boots are, and why the second one is allowed to live
+//! system, and the machine keeps it. A rollback mechanism alone reverts every good upgrade a few
+//! boots later, so one nobody has watched *not* roll back is as unproven as one nobody has watched
+//! roll back.
 //!
 //! | | |
 //! |---|---|
@@ -16,77 +10,27 @@
 //! | 2 | the machine picks slot 1, spends its one try, **comes up**, and says so on the disk |
 //! | 3 | the machine picks slot 1 again, on a slot with no tries left |
 //!
-//! Boot 3 is the whole assertion. Slot 1 reaches it with `tries = 0`, which is a state
-//! `boot_slot::State::is_bootable` refuses unless the successful bit is set, so a machine that
-//! chooses it has read a bit that something on boot 2 wrote. Nothing about that can be faked by a
-//! transcript: the two boots are separate QEMU processes and the only thing between them is the
-//! disk.
+//! **Boot 3 is the whole assertion**: `boot_slot::State::is_bootable` refuses `tries = 0` unless the
+//! successful bit is set, so choosing slot 1 means reading a bit boot 2 wrote, across two QEMU
+//! processes with only the disk between them. One try, not three, so priority alone cannot pass a
+//! machine whose confirmation did nothing. The upgrade is a copy of the working image, staged as
+//! `rollback` stages it.
 //!
-//! **One try rather than three, deliberately, and it is the opposite reason from `rollback`'s.**
-//! There the count was about how many boots the gate costs. Here it is about strength: a slot
-//! confirmed with tries to spare would still be chosen by priority alone, and the test would pass
-//! on a machine whose confirmation did nothing at all.
-//!
-//! The upgrade in slot 1 is a byte-for-byte copy of the working image, the same staging
-//! `rollback` does and through the same crates the installer uses.
-//!
-//! # What it asserts, and what a failure of each one would mean
-//!
-//! - Boot 2 says `starting boot slot 1` and `started from boot slot 1`. **The chooser chose the
-//!   upgrade and told it which slot it was**, which is the token `boot_slot::cmdline` carries.
-//! - Boot 2 reaches a shell and reads the file `mkfs` wrote. The criterion
-//!   `install_service::confirm` states was actually met, rather than the confirmation being a line
-//!   printed by a machine that had not come up.
-//! - Boot 2 says `slot 1 confirmed`. **The write happened**, and a failure here is the whole
-//!   feature missing.
-//! - Boot 3 says `starting boot slot 1` and never mentions slot 0. **The bit reached the disk and
-//!   survived a power cycle**, on a slot with no tries left, which is the property this gate
-//!   exists for.
-//! - Boot 3 says `already confirmed; nothing written`. **The write is idempotent and an installed
-//!   machine does not rewrite its partition table on every boot of its life.**
-//! - The disk, read afterwards by this gate rather than by nife, shows slot 1 at `tries = 0,
-//!   successful = 1` with its priority untouched, and slot 0 exactly as the install left it.
-//!
-//! # EXAMPLES
-//!
-//! ```console
-//! $ cargo xtask confirm-boot
-//! --- the stick installs itself onto an empty NVMe disk ---
-//!   install     : DONE. Remove the installation medium and reboot.
-//! rollback-boot: slot 1 written from target/esp-install/EFI/BOOT/BOOTX64.EFI, on trial
-//!                priority 3, 1 try; slot 0 stays at priority 2, confirmed
-//! --- boot 2 of 3: the machine tries the upgrade, and the upgrade comes up ---
-//! uefi_loader: starting boot slot 1
-//! uefi_loader: started from boot slot 1
-//!   boot slot   : slot 1 confirmed. This upgrade will not roll back.
-//! $ wc made-on-target
-//!   1 10 57
-//! --- boot 3 of 3: the upgrade has no tries left, and is chosen anyway ---
-//! uefi_loader: starting boot slot 1
-//!   boot slot   : slot 1 was already confirmed; nothing written.
-//! confirm-boot: slot 1 is priority 3, 0 tries, successful
-//! confirm-boot: PASS
-//! ```
+//! It asserts that boot 2 chose slot 1 and was told so (`boot_slot::cmdline`), reached a shell
+//! and read the file `mkfs` wrote (`install_service::confirm`'s criterion), and wrote `slot 1
+//! confirmed`; that boot 3 chose slot 1 without mentioning slot 0 and wrote nothing, since the
+//! write is idempotent; and that the disk, read by this gate, shows slot 1 at `tries = 0,
+//! successful = 1` with priority untouched and slot 0 as installed.
 //!
 //! # BUGS
 //!
-//! - **The upgrade is staged by this gate and not by nife**, `rollback`'s own caveat and the same
-//!   reason: nothing in this tree upgrades a running machine yet. The bytes and the attribute bits
-//!   go through the crates the installer uses, so the format is exercised end to end; the program
-//!   that will one day stage this is not.
-//! - **It does not cut power during the confirming write.** The interrupted-confirmation case is
-//!   argued in `install_service::confirm` and is as untested here as the interrupted decrement is
-//!   in `rollback`: nothing in this tree cuts power to a QEMU between two block writes.
-//! - **Nothing here checks that the two disk clients did not collide**, because on the boot path
-//!   they cannot: the filesystem server is blocked in receive while this runs. That is an ordering
-//!   rather than a mechanism (`install_service::confirm` names it as a foot gun), and a gate that
-//!   passed would not be evidence the ordering is enforced, only that it held this time.
-//! - **It proves nothing about a real firmware**, the same caveat `install-boot` and `rollback`
-//!   carry. OVMF is one implementation and a generous one.
-//! - **x86_64 only** (DECISIONS §19 (architectural parity is a tenet; the targets are aarch64, riscv64, and x86_64)), because
-//!   the chooser is. The device-tree architectures have no installed disk to choose slots on yet.
-//! - **It takes several minutes under TCG**, three boots of it, so it is not in `script/test`'s
-//!   default legs any more than `install-boot` and `rollback-boot` are.
+//! - The upgrade is staged by this gate, not by nife; the format goes through the installer's
+//!   crates, and the program that will stage upgrades does not exist yet.
+//! - No power cut during the confirming write; nothing here can cut QEMU's power mid-write.
+//! - The two disk clients cannot collide on the boot path only by ordering
+//!   (`install_service::confirm` names it a foot gun); a pass shows it held, not that it is enforced.
+//! - OVMF is one, generous firmware. x86_64 only, as the chooser is. Several minutes under TCG,
+//!   so it is not in `script/test`'s default legs.
 
 use boot_slot::State;
 use globally_unique_identifier_partition_table::GloballyUniqueIdentifierPartitionTable as Table;

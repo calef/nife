@@ -1,112 +1,31 @@
-//! **The DMA-confinement validator, as pure logic** (milestone 35; DECISIONS §14, §18).
+//! **The DMA-confinement validator, as pure logic.** A userspace virtio driver programs the
+//! descriptors a device does DMA against, and the device has no MMU in front of it (or an IOMMU,
+//! and this is defence in depth), so something trusted must check that every address the device
+//! will touch lies in the driver's granted DMA region. That is [`validate_and_shadow`], lifted out
+//! of `kernel/src/virtio.rs` so Kani proves it and the kernel calls the proved code
+//! (notes/verification.md).
 //!
-//! A userspace virtio driver programs the descriptors a device does DMA against, and the device has
-//! no MMU in front of it (or, where an IOMMU is present, this is defence in depth). So something
-//! trusted must check that every address the device will touch lies inside the driver's own granted
-//! DMA region, and refuse anything else. That check is [`validate_and_shadow`], and it is the last
-//! isolation boundary in the system that was attacker-tested but never machine-checked. This crate
-//! is that logic, lifted out of `kernel/src/virtio.rs` so Kani can prove it and the kernel then
-//! *calls* the proved code rather than keeping a parallel copy (the discipline in
-//! notes/verification.md, the same move `regions` and `inter_process_communication` made).
-//!
-//! The core property, proved for every input in the `#[cfg(kani)]` module: **no descriptor the
-//! device can read out of the shadow ring references memory outside `[base, base + size)`**, in
-//! either direction (the device reading a transmit buffer or writing a receive buffer), with
-//! indirect descriptors refused, over any newly-published batch. The shadow copy is why the check
-//! holds under time-of-check/time-of-use: the device reads a kernel-private copy the driver cannot
-//! touch after validation, so mutating the driver's descriptor afterward changes only a copy nothing
-//! reads.
-//!
-//! Everything here is address arithmetic over closures the caller supplies for memory access, so it
-//! is `no_std`, allocation-free, and host-testable; the kernel passes closures that hit the direct
-//! map, a test passes closures over ordinary arrays, and Kani passes closures over a symbolic memory
-//! model. No hardware, no kernel globals.
+//! The property, proved for every input: **no descriptor the device can read out of the shadow ring
+//! references memory outside `[base, base + size)`**, in either direction, with indirect
+//! descriptors refused, over any newly published batch. The device reads a kernel-private shadow
+//! copy, so a driver mutating its descriptor after validation changes only a copy nothing reads.
+//! Everything is address arithmetic over caller-supplied memory closures (the direct map, arrays,
+//! or Kani's symbolic memory), so it is `no_std` and host-testable.
 //!
 //! # BUGS
 //!
 //! **The shadow descriptor is published in two stores, and nothing keeps the device from reading
-//! between them.** [`shadow_one_head`] copies a validated descriptor as `write64(addr)` then
-//! `write64(word)` with no barrier and no check that the shadow slot is idle, and it writes each
-//! descriptor before it has checked the next one in the chain. A driver that republishes a head the
-//! device still holds (a posted receive buffer, say) can have the device observe the new `addr`
-//! with the old `len`, which is a span the validator never admitted. The proof cannot see it: the
-//! Kani memory model checks each descriptor after both halves are written and never models a
-//! concurrent reader. On virtio-mmio there is no IOMMU, so this walk is the only boundary. Found by
-//! milestone 633 (an outside agent attacks the confinement claim)'s second pass as
-//! `notes/confinement-claims.md` row 17's live hazard, reasoned from the code; the fix and its cost
-//! are design/roadmap/0799-the-shadow-descriptor-is-published-in-two-stores.md.
+//! between them.** [`shadow_one_head`] writes `addr` then `word` with no barrier and no check that
+//! the shadow slot is idle, before checking the next descriptor in the chain. A driver that
+//! republishes a head the device still holds can have it observe the new `addr` with the old `len`,
+//! a span never admitted. The proof models no concurrent reader, and on virtio-mmio this walk is
+//! the only boundary (`notes/confinement-claims.md` row 17;
+//! design/roadmap/0799-the-shadow-descriptor-is-published-in-two-stores.md).
 //!
-//! # Examples
-//!
-//! The confinement, one descriptor at a time. A driver's granted DMA region is a window, and every
-//! address the device will touch has to be inside it, whichever direction the bytes move:
-//!
-//! ```
-//! use direct_memory_access_validator::{Desc, check_descriptor, is_in_region};
-//!
-//! // One 64 KiB region, granted to a userspace virtio driver.
-//! let (base, size) = (0x4000_0000u64, 0x1_0000u64);
-//! let qsize = 8u16;
-//!
-//! // A descriptor pointing at a 1500-byte frame inside the region. Fine in either direction: the
-//! // device may read it (transmit) or write it (receive).
-//! let ok = Desc { addr: base + 0x1000, word: 1500 };
-//! assert!(check_descriptor(base, size, qsize, ok));
-//!
-//! // The same length, aimed at the kernel. Refused, and this is the whole point of the crate: a
-//! // receive buffer here would let the device overwrite the kernel, and a transmit buffer would
-//! // let it put the kernel on the wire.
-//! let escape = Desc { addr: 0xffff_0000_0000_0000, word: 1500 };
-//! assert!(!check_descriptor(base, size, qsize, escape));
-//!
-//! // A buffer that starts inside and runs off the end is refused too. One predicate closes both,
-//! // which is why there is only one.
-//! let overrun = Desc { addr: base + size - 8, word: 1500 };
-//! assert!(!check_descriptor(base, size, qsize, overrun));
-//! assert!(!is_in_region(base, size, base + size - 8, 1500));
-//! ```
-//!
-//! Two refusals are less obvious and are the ones that make the check total rather than merely
-//! correct on ordinary input:
-//!
-//! ```
-//! use direct_memory_access_validator::{Desc, F_INDIRECT, F_NEXT, check_descriptor, is_in_region};
-//!
-//! let (base, size, qsize) = (0x4000_0000u64, 0x1_0000u64, 8u16);
-//!
-//! // An **indirect** descriptor names a table of further descriptors. The table is never copied
-//! // into the shadow, so the device would follow the driver's own memory unchecked. Refused
-//! // outright rather than validated, whatever it points at.
-//! let indirect = Desc { addr: base, word: 16 | ((F_INDIRECT as u64) << 32) };
-//! assert!(indirect.is_indirect());
-//! assert!(!check_descriptor(base, size, qsize, indirect));
-//!
-//! // A `next` link outside the ring would walk the chain off the end of the queue.
-//! let bad_link = Desc { addr: base, word: 16 | ((F_NEXT as u64) << 32) | ((qsize as u64) << 48) };
-//! assert!(bad_link.has_next() && bad_link.next() == qsize);
-//! assert!(!check_descriptor(base, size, qsize, bad_link));
-//!
-//! // And arithmetic that would overflow answers "refuse" rather than panicking. A wrapping region
-//! // can only ever over-reject, which is the safe direction.
-//! assert!(!is_in_region(base, size, u64::MAX - 4, 1500));
-//! assert!(!is_in_region(u64::MAX - 4, 1500, base, 16));
-//! ```
-//!
-//! Name: ratified 2026-09-24 (calef, #1229), replacing `dma_validator`. Refused `dma_validator`
-//! (deratified by §154's acronym test, since "direct memory access" is a phrase people say).
-//! Refused `direct_memory_access_confinement` (it names the property, not the thing, and drops the
-//! ratified noun `validator`). Refused `descriptor_validator` (it drops DMA, the crate's reason to
-//! exist). Refused `dma_validate` (a verb, while the crate's own first line already called itself
-//! "the DMA-confinement validator": it had named itself a noun and carried a verb).
-//!
-//! The name follows every other rename under §154 (the acronym test is whether the phrase is
-//! spoken): expand the acronym and keep the rest, as `nvme` became `non_volatile_memory_express` and
-//! `ipc` became `inter_process_communication`. `dma_validator` was ratified 2026-08-01 under
-//! milestone 63 (directory and package names) and deratified by §154 on 2026-09-18. Its block read
-//! `ratified` until 2026-09-24 and `provisional` for the hours between that correction and this
-//! ruling. The same change expanded the kernel's and drivers' `dma_*` identifiers, so the crate and
-//! its callers spell the word one way; `dma_wmb` became `direct_memory_access_write_barrier`, the
-//! `wmb` half expanded by the same test.
+//! Name: ratified 2026-09-24 (calef, #1229), replacing `dma_validator`, under §154 (the acronym test
+//! is whether the phrase is spoken). Refused `dma_validator` (an unexpanded acronym),
+//! `direct_memory_access_confinement` (names the property and drops the noun `validator`),
+//! `descriptor_validator` (drops DMA, the crate's reason to exist) and `dma_validate` (a verb).
 
 #![no_std]
 
@@ -141,6 +60,34 @@ pub fn is_in_region(base: u64, size: u64, addr: u64, len: u64) -> bool {
 /// @12; u16 next @14 }`. The kernel reads the low 8 bytes as `addr` and the high 8 as one `word`
 /// carrying len/flags/next, and copies both verbatim into the shadow, so this models the same two
 /// 64-bit words and decodes the fields the same way.
+///
+/// # Examples
+///
+/// The refusals that make the check total: indirect descriptors, out-of-ring links, and
+/// arithmetic that would overflow, which can only over-reject:
+///
+/// ```
+/// use direct_memory_access_validator::{Desc, F_INDIRECT, F_NEXT, check_descriptor, is_in_region};
+///
+/// let (base, size, qsize) = (0x4000_0000u64, 0x1_0000u64, 8u16);
+///
+/// // An **indirect** descriptor names a table of further descriptors. The table is never copied
+/// // into the shadow, so the device would follow the driver's own memory unchecked. Refused
+/// // outright rather than validated, whatever it points at.
+/// let indirect = Desc { addr: base, word: 16 | ((F_INDIRECT as u64) << 32) };
+/// assert!(indirect.is_indirect());
+/// assert!(!check_descriptor(base, size, qsize, indirect));
+///
+/// // A `next` link outside the ring would walk the chain off the end of the queue.
+/// let bad_link = Desc { addr: base, word: 16 | ((F_NEXT as u64) << 32) | ((qsize as u64) << 48) };
+/// assert!(bad_link.has_next() && bad_link.next() == qsize);
+/// assert!(!check_descriptor(base, size, qsize, bad_link));
+///
+/// // And arithmetic that would overflow answers "refuse" rather than panicking. A wrapping region
+/// // can only ever over-reject, which is the safe direction.
+/// assert!(!is_in_region(base, size, u64::MAX - 4, 1500));
+/// assert!(!is_in_region(u64::MAX - 4, 1500, base, 16));
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Desc {
     /// The buffer's guest-physical address, the first 64-bit word.
@@ -184,6 +131,35 @@ impl Desc {
 /// (design/naming/boolean-predicates-worklist.md). It does not yet follow the Rust predicate rule
 /// calef ratified 2026-09-24; recommended `is_descriptor_allowed`, because `check_` reads as an
 /// action, and the function only answers.
+///
+/// # Examples
+///
+/// Every address the device will touch is inside the window, in either direction:
+///
+/// ```
+/// use direct_memory_access_validator::{Desc, check_descriptor, is_in_region};
+///
+/// // One 64 KiB region, granted to a userspace virtio driver.
+/// let (base, size) = (0x4000_0000u64, 0x1_0000u64);
+/// let qsize = 8u16;
+///
+/// // A descriptor pointing at a 1500-byte frame inside the region. Fine in either direction: the
+/// // device may read it (transmit) or write it (receive).
+/// let ok = Desc { addr: base + 0x1000, word: 1500 };
+/// assert!(check_descriptor(base, size, qsize, ok));
+///
+/// // The same length, aimed at the kernel. Refused, and this is the whole point of the crate: a
+/// // receive buffer here would let the device overwrite the kernel, and a transmit buffer would
+/// // let it put the kernel on the wire.
+/// let escape = Desc { addr: 0xffff_0000_0000_0000, word: 1500 };
+/// assert!(!check_descriptor(base, size, qsize, escape));
+///
+/// // A buffer that starts inside and runs off the end is refused too. One predicate closes both,
+/// // which is why there is only one.
+/// let overrun = Desc { addr: base + size - 8, word: 1500 };
+/// assert!(!check_descriptor(base, size, qsize, overrun));
+/// assert!(!is_in_region(base, size, base + size - 8, 1500));
+/// ```
 pub fn check_descriptor(base: u64, size: u64, qsize: u16, d: Desc) -> bool {
     if d.is_indirect() {
         return false; // an indirect table is never copied, so the device would follow it unchecked
@@ -1157,5 +1133,210 @@ mod tests {
         // block, and queue 0's area ends before queue 1's block begins (so the two never overlap).
         const { assert!(RING_END <= RING_BLOCK) };
         const { assert!(queue_block(0) + RING_END <= queue_block(1)) };
+    }
+    // The eighth outsider pass's host attacks (claims 13 to 17): the shapes around the cited
+    // tests, host-run the way every test in this module is. Name: provisional (this pass's lane,
+    // 2026-10-13 UTC).
+
+    /// **An address-plus-length that wraps the u64 is refused, and so is one that straddles the
+    /// region's end by a single byte** (claim 13).
+    #[test]
+    fn a_length_that_wraps_or_straddles_the_end_is_refused() {
+        assert!(
+            !is_in_region(BASE, 0x1000, u64::MAX - 8, 16),
+            "a length whose sum wraps the u64 was treated as inside",
+        );
+        assert!(
+            !is_in_region(0, u64::MAX, 1, u64::MAX),
+            "a buffer starting one page into the widest region wrapped and claimed to fit",
+        );
+        let mut r = Rings::new();
+        r.set_desc(0, BASE + 0xfff, 2, 0, 0);
+        r.driver_ring[0] = 0;
+        r.driver_idx = 1;
+        assert!(
+            !r.run(),
+            "a buffer straddling the region's end by one byte validated",
+        );
+        assert_eq!(
+            *r.shadow_idx.borrow(),
+            0,
+            "a refused descriptor still published a shadow index",
+        );
+    }
+
+    /// **An indirect descriptor refuses the batch wherever it sits in the chain** (claim 14).
+    #[test]
+    fn an_indirect_descriptor_mid_chain_refuses_the_whole_batch() {
+        let mut r = Rings::new();
+        r.set_desc(0, BASE + 0x200, 16, F_NEXT, 1);
+        r.set_desc(1, BASE + 0x400, 16, F_INDIRECT, 0);
+        r.set_desc(2, BASE + 0x600, 16, F_NEXT, 3);
+        r.driver_ring[0] = 0;
+        r.driver_idx = 1;
+        assert!(
+            !r.run(),
+            "a chain carrying an indirect descriptor in its middle validated",
+        );
+        assert_eq!(
+            *r.shadow_idx.borrow(),
+            0,
+            "a batch refused at its second descriptor still published a shadow index",
+        );
+    }
+
+    /// **A `next` at or past the ring's size refuses the batch** (claim 15). A two-slot cycle, by
+    /// contrast, terminates and validates by design (the cited `a_next_cycle_terminates`): the
+    /// walk is bounded by the ring, so a cycle cannot make it walk forever, and this pass adds
+    /// only the edge the cited tests leave, a `next` one past the last slot.
+    #[test]
+    fn an_out_of_ring_next_refuses_the_batch() {
+        let mut r = Rings::new();
+        r.set_desc(0, BASE + 0x200, 16, F_NEXT, QSIZE);
+        r.driver_ring[0] = 0;
+        r.driver_idx = 1;
+        assert!(
+            !r.run(),
+            "a next equal to the ring's size walked outside the rings",
+        );
+
+        let mut r = Rings::new();
+        r.set_desc(0, BASE + 0x200, 16, F_NEXT, u16::MAX);
+        r.driver_ring[0] = 0;
+        r.driver_idx = 1;
+        assert!(!r.run(), "the widest next walked outside the rings",);
+    }
+
+    /// **A batch spanning the ring's wrap point validates when it fits and is refused when it does
+    /// not** (claim 15).
+    #[test]
+    fn a_batch_across_the_wrap_validates_only_while_it_fits() {
+        let mut r = Rings::new();
+        r.set_desc(7, BASE + 0x200, 16, F_NEXT, 0);
+        r.set_desc(0, BASE + 0x400, 16, 0, 0);
+        r.driver_ring[7] = 0;
+        r.driver_idx = 9;
+        assert!(
+            r.run_range(7, 9),
+            "a two-descriptor batch across the wrap was refused"
+        );
+
+        let mut r = Rings::new();
+        r.set_desc(7, BASE + 0x200, 16, F_NEXT, 0);
+        r.driver_ring[7] = 0;
+        r.driver_idx = 7;
+        assert!(
+            !r.run_range(7, 17),
+            "a batch of ten against a ring of eight validated across the wrap",
+        );
+    }
+
+    /// **One queue's validation touches nothing in another queue's block** (claim 16).
+    #[test]
+    fn a_validate_on_queue_one_touches_nothing_in_queue_zero_block() {
+        let mut other_desc = [Desc { addr: 0, word: 0 }; 8];
+        other_desc[0] = Desc {
+            addr: BASE + 0x200,
+            word: (16u64) | ((F_NEXT as u64) << 32) | (1 << 48),
+        };
+        other_desc[1] = Desc {
+            addr: BASE + 0x400,
+            word: 16,
+        };
+        let driver_ring = [0u16; 8];
+        let escaped = core::cell::RefCell::new([0u64; 8]);
+        let escapes = core::cell::Cell::new(0usize);
+        let published = core::cell::Cell::new(false);
+
+        // Queue 1's blocks sit one `queue_block` past queue 0's, the layout `queue_block` pins.
+        let dd = DD + queue_block(1);
+        let da = DA + queue_block(1);
+        let sd = SD + queue_block(1);
+        let sa = SA + queue_block(1);
+
+        let ok = validate_and_shadow(
+            BASE,
+            0x1000,
+            dd,
+            da,
+            sd,
+            sa,
+            0,
+            1,
+            QSIZE,
+            &|p| {
+                if p == da + 2 {
+                    1
+                } else {
+                    driver_ring[((p - da - 4) / 2) as usize]
+                }
+            },
+            &|p| {
+                let off = (p - dd) / 16;
+                if (p - dd).is_multiple_of(16) {
+                    other_desc[off as usize].addr
+                } else {
+                    other_desc[off as usize].word
+                }
+            },
+            &|p, _v| {
+                if !(sa..sa + RING_END).contains(&p) {
+                    let mut e = escaped.borrow_mut();
+                    let n = escapes.get();
+                    if n < e.len() {
+                        e[n] = p;
+                        escapes.set(n + 1);
+                    }
+                } else if p == sa + 2 {
+                    published.set(true);
+                }
+            },
+            &|p, _v| {
+                if !(sd..sd + RING_END).contains(&p) {
+                    let mut e = escaped.borrow_mut();
+                    let n = escapes.get();
+                    if n < e.len() {
+                        e[n] = p;
+                        escapes.set(n + 1);
+                    }
+                }
+            },
+        );
+        assert!(ok, "the queue-1 chain was refused");
+        assert!(
+            published.get(),
+            "queue 1's shadow index was never published"
+        );
+        assert_eq!(
+            escapes.get(),
+            0,
+            "queue 1's validation reached outside its own block",
+        );
+    }
+
+    /// **A descriptor mutated after validation cannot reach the device** (claim 17): the device
+    /// reads the shadow, and the shadow holds what was validated.
+    #[test]
+    fn a_descriptor_mutated_after_validation_reads_back_validated() {
+        let mut r = Rings::new();
+        r.set_desc(0, BASE + 0x200, 16, 0, 0);
+        r.driver_ring[0] = 0;
+        r.driver_idx = 1;
+        assert!(r.run(), "the honest descriptor was refused");
+
+        r.driver_desc[0].addr = u64::MAX - 0x1000;
+        r.driver_desc[0].word = 0xffff_ffff;
+
+        let shadow_addr = r.shadow_desc.borrow()[0].addr;
+        let shadow_word = r.shadow_desc.borrow()[0].word;
+        assert_eq!(
+            shadow_addr,
+            BASE + 0x200,
+            "the device's copy followed a mutation made after validation",
+        );
+        assert_ne!(
+            shadow_word, 0xffff_ffff,
+            "the device's copy followed a mutated length and flags word",
+        );
     }
 }

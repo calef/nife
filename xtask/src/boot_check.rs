@@ -11,98 +11,30 @@ use crate::{RISCV_TARGET, RUNNER, TARGET, X86_TARGET, profile_dir, user};
 
 /// **Boot every architecture's default kernel and fail if it does not climb the whole ladder.**
 ///
-/// This is the mechanism milestone 268's block calls "the whole mechanism and the piece most
-/// likely to be dropped as follow-up". Without it the milestone ships its own finding 4 back: a
-/// boot check that reports by printing a word and carrying on, with nothing gating.
+/// It asserts that the kernel boots on all three architectures in the configuration `cargo xtask
+/// run` gives a person (nothing else in CI boots the default riscv64 or `x86_64` kernel), that the
+/// machine description printed to its end (`Stage::Machine`), that every boot self-test passed, read
+/// from the verdict the kernel printed (a default boot never exits), and that the `swish` prompt,
+/// the ladder's top rung, came up on all three. **`--inject` asserts the opposite**: it rebuilds
+/// with `--features self_test_injection`, which makes one check fail, and requires red. A gate only
+/// ever seen green is a gate nobody has tested.
 ///
-/// **What it actually asserts**, which is more than it looks like:
-///
-/// - The kernel boots at all, on all three architectures, in the configuration a person gets by
-///   typing `cargo xtask run`. Nothing else in CI boots the default riscv64 or `x86_64` kernel; the
-///   suite boots a `#[cfg(test)]` build that exits through semihosting before the tour, and
-///   `swish-check` boots `--features shell` on two architectures.
-/// - The machine description printed to its end (`Stage::Machine` is its *last* line).
-/// - Every one of the boot self-tests passed, by reading the verdict the kernel printed rather
-///   than by inferring anything from an exit status the kernel never produces: a default boot
-///   parks in `wfi` or sits at a prompt and never exits.
-/// - **The `swish` prompt**, the ladder's top rung and the stated terminal state of a default
-///   boot, on all three architectures. See "The top rung" below.
-///
-/// **`--inject` asserts the opposite**, and it is why this gate can be trusted. It rebuilds each
-/// kernel with `--features self_test_injection`, which makes one check report failure, and
-/// requires the run to come back **red**. A gate that has only ever been seen green is a gate
-/// nobody has tested, and this is the cheapest honest way to test one: milestone 268's proof
-/// condition is exactly that the same failure injected into any architecture turns the verdict red
-/// there and fails this.
-///
-/// # The top rung
-///
-/// **The archive is attached on all three architectures and the watch runs to `Stage::Prompt`**
-/// (2026-09-19). It did not before, and the reason was the machine rather than the gate: `x86_64`
-/// could not reach a prompt at all. DECISIONS §149 (may the kernel answer on an endpoint) was
-/// resolved 2026-09-15, and milestone 299 (the x86 port-range capability) built the thing that
-/// makes `console` a userspace driver there. Between them the rung is reachable everywhere, and
-/// asserting it is no longer the two-of-three shape milestone 268 (every architecture boots the
-/// same way) exists to remove.
-///
-/// **No disk, still.** Nothing here types, so nothing here needs a filesystem; `<` and `>` are
-/// `cargo xtask swish-check`'s business. The archive is the one thing a prompt cannot be reached
-/// without: the kernel hands the machine to the progenitor, which loads the console, the line
-/// discipline, the input driver and `swish` out of it by name.
-///
-/// **What this costs, measured on patagonia against a warm target directory** (2026-09-19):
-///
-/// | | verdict only (before) | prompt (now) |
-/// |---|---|---|
-/// | aarch64, boot | 2.8 s | 2.9 s |
-/// | riscv64, boot | 2.6 s | 2.8 s |
-/// | `x86_64`, boot | 2.9 s | 2.7 s |
-/// | whole gate, wall | 19.4 s | 25.6 s |
-///
-/// **The boot costs nothing and the archive costs six seconds**, which is the number that decided
-/// this. The prompt follows the verdict within a few hundred milliseconds on every architecture
-/// (the progenitor loads and measures every program it builds while the emulator is already
-/// running), so the whole of the difference is packing three archives, and two of those three
-/// packers are a no-op against a tree `script/test` has already built. A third of a pre-push
-/// gate's twenty seconds, for the rung that is the stated terminal state of a boot, was worth
-/// taking.
-///
-/// **It is the PVH `-kernel` boot on `x86_64`, not the UEFI image.** `swish-check`'s `x86_64` leg
-/// boots `BOOTX64.EFI` under OVMF and pays about six minutes for it, because under firmware the
-/// console server waits for every byte to be painted on the screen. That is milestone 400 (the
-/// shell on the firmware's screen), and what its fidelity buys `swish-check` is the loader, the
-/// firmware memory map and the screen tee. It buys this gate nothing it asserts: the prompt
-/// arrives on COM1 either way, and this is a pre-push gate. So the two legs boot different images
-/// on purpose, and the slow one is the one that types.
+/// It attaches the archive (the progenitor loads the console, line discipline, input driver and
+/// `swish` from it) but no disk: nothing here types, so `<` and `>` are `cargo xtask
+/// swish-check`'s. The archive costs about six seconds of the gate, the boot itself nothing. On
+/// `x86_64` it boots PVH `-kernel`, not the UEFI image `swish-check` pays minutes for under OVMF:
+/// the prompt arrives on COM1 either way, and this is a pre-push gate.
 ///
 /// # BUGS
 ///
-/// - **`quiet_after` is suppressed from `Stage::Tour` up**, which on riscv64 is *below* the prompt:
-///   its tour finishes and then it hands over. So a riscv64 boot that reaches the tour and then
-///   wedges short of the prompt is caught by the 180-second cap rather than by the 30-second quiet
-///   window, and takes that long to report. The exemption is `watch::Policy::quiet_after`'s and is
-///   right for its own reason (a default aarch64 or `x86_64` boot that halts after the tour is a
-///   good boot, not a quiet one); the cost lands here.
-/// - **The prompt rung is the shell's banner, not the `$ `.** `boot_ladder::PROMPT`'s own `BUGS`
-///   says why (two bytes is too weak to key on in a log that has just carried a kilobyte of hex),
-///   and the consequence is this gate's: it proves `swish` started and printed, not that a prompt
-///   was offered or that anything could be typed at it. `cargo xtask swish-check` makes the
-///   stronger claim by typing, on every architecture, and this one does not duplicate it.
-/// - **One emulator was found orphaned after about fifteen `x86_64` boots** (2026-09-19),
-///   reparented to `launchd` and still running half an hour later, holding this lane's kernel and
-///   archive. The kill below is meant to prevent exactly that and works on every run anybody has
-///   watched, so the mechanism is not known and is not guessed at here. What a reader should do is
-///   `AGENTS.md`'s standing rule rather than anything specific to this gate: `pgrep -l qemu` after
-///   a session that ran it, and walk `ps -o pid,ppid` up before killing anything, because
-///   somebody's gate in flight looks the same from outside.
-/// - **A red verdict ends the watch early**, so a kernel whose self-test fails and which then
-///   panics reports the self-test failure and not the panic. That is the right first thing to
-///   report and the log has the rest, but a reader should know the report is the *first* failure
-///   rather than the worst.
-/// - **Name provisional** (milestone 268). `boot-check` sits beside `swish-check` and is named the
-///   same way, which is a virtue and also inherits that name's recorded problem: `script/lint`
-///   runs `shellcheck`, and this family of `-check` entry points is one hyphen away from several
-///   unrelated things. calef has not ruled.
+/// - `quiet_after` is suppressed from `Stage::Tour` up, which on riscv64 is below the prompt, so a
+///   riscv64 boot that wedges after its tour is caught by the 180-second cap, not the quiet window.
+/// - The prompt rung is the shell's banner, not the `$ ` (`boot_ladder::PROMPT`'s `BUGS`): it
+///   proves `swish` started, not that anything could be typed; `swish-check` types.
+/// - An emulator has once been found orphaned after many `x86_64` boots, cause unknown. After a
+///   session, `pgrep -l qemu` and walk `ps -o pid,ppid` before killing anything.
+/// - A red verdict ends the watch early, so the report names the first failure, not the worst.
+/// - Name provisional; calef has not ruled on `boot-check`.
 pub(crate) fn boot_check() -> bool {
     let legs = match flag_value("--arch").as_deref() {
         None => [true, true, true],
