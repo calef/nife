@@ -531,3 +531,9 @@ pub const OUTLAW_ROUND_TRIP: u64 = 0;
 // The tour uses it, and the shell/bench boots skip the tour.
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
 pub const OUTLAW_READ_KERNEL: u64 = 1;
+
+/// `BUILD_WITH_NOTHING` tries to mint a page, a message and a kernel object on slots it was never
+/// granted, and reports the three errnos, which is claim 23's zero-authority corner: with no
+/// untyped budget in the table, every path to building must answer "nothing there".
+#[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
+pub const OUTLAW_BUILD_WITH_NOTHING: u64 = 2;
