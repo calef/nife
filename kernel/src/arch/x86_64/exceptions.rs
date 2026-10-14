@@ -1060,7 +1060,7 @@ fn report_walk(address: u64) {
     let own: Option<u64> = None;
     match own {
         Some(own) if own != live => {
-            crate::println!("    cr3 root {live:#x}, NOT the thread's own root {own:#x}")
+            crate::println!("    cr3 root {live:#x}, NOT the thread's own root {own:#x}");
         }
         Some(_) => crate::println!("    cr3 root {live:#x}, the thread's own"),
         None => crate::println!("    cr3 root {live:#x}"),
