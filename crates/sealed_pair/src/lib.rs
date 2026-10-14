@@ -1,100 +1,34 @@
-//! **Does this kernel vouch for this archive?** The host-side half of measured boot, built for
-//! milestone 223 (read a card and say whether its kernel and archive match).
+//! **Does this kernel vouch for this archive?** The host-side half of measured boot. A kernel image
+//! and the userspace archive beside it are one sealed set: the build compiles the digests of the
+//! archive entries the kernel may enter into its `.rodata` (`kernel/build.rs`), and the kernel
+//! refuses userspace when the bytes do not match (`kernel::trust::require`). A mismatched pair
+//! boots, prints `MEASURED BOOT REFUSED` and halts, discovered only after a walk to the board; this
+//! asks the same question on the host, where the answer costs nothing.
 //!
-//! A kernel image and the userspace archive beside it are **one sealed set**. The build hashes the
-//! archive entries the kernel may enter and compiles those digests into the kernel's own `.rodata`
-//! as its trust root (`kernel/build.rs`), and the kernel refuses to enter userspace when the bytes
-//! it is handed do not hash to what it carries (`kernel::trust::require`, milestone 22 (trusted init)). Put a kernel from one build beside an archive from another and nothing fails until the
-//! board is powered: it boots, prints `MEASURED BOOT REFUSED`, and halts.
-//!
-//! That halt has reached a bench three times, all of them after a walk to the board, a card swap and
-//! a power cycle: radon on 2026-08-15, xenon on 2026-09-17, and a lane's test wiring on 2026-09-19.
-//! This crate is the same question asked on the host, where the answer costs nothing.
-//!
-//! # What it compares, and why that is the thing that decides a refusal
-//!
-//! The kernel's decision is `measured_boot::verify_digest(TRUST_ROOT, name, sha256(bytes))` for each
-//! entry it is about to hand over: the boot programs ([`BOOT_PROGRAMS`]) and, since milestone 104 (the
-//! measurement continues past init), the measurement table the progenitor loads everything else
-//! against. So the deciding fact is **whether the SHA-256 of each such archive entry appears in
-//! the kernel image's trust root**, and nothing else about either file matters.
-//!
-//! [`inspect`] asks exactly that, by hashing each entry out of the archive with the tree's one
-//! SHA-256 and looking for the digest's **32 raw bytes** inside the kernel image. That is what the
-//! trust root compiles to, a chance 256-bit match elsewhere in the image is not a case worth a
-//! sentence, and it needs no knowledge of where in the image the array landed, which is what lets
-//! one function read a flat `booti` image, an ELF, and a UEFI boot file with the pair embedded.
-//!
-//! The asymmetry is worth stating plainly, because it bounds what this can say: finding a digest
-//! proves the kernel vouches for those bytes, while *not* finding one proves only that it does not.
-//! It cannot report what the kernel expected instead, because a digest it does not hold is not a
-//! digest we can find. See `BUGS`.
-//!
-//! # The second refusal, one level up
-//!
-//! A kernel that vouches for the archive still hands the progenitor a table it measures its own
-//! loads against, and the progenitor treats a program the table cannot vouch for as one that is not
-//! there (`system_initializer`). An archive whose table disagrees with its own contents therefore
-//! boots past the kernel and then loses its console. [`inspect`] checks that too, and reports it
-//! separately, because it is a different program's refusal.
-//!
-//! # EXAMPLES
-//!
-//! A pair built together is sealed, and the verdict is one line:
-//!
-//! ```
-//! # use sealed_pair::{inspect, Seal};
-//! # let (kernel, archive) = sealed_pair::test_support::matched_pair();
-//! let seal = inspect(&kernel, &archive).expect("the archive parses and carries a progenitor");
-//! assert!(seal.is_sealed());
-//! ```
-//!
-//! A kernel from one build beside an archive from another is refused, and the refusal names the
-//! entry, which is what makes it actionable:
-//!
-//! ```
-//! # use sealed_pair::inspect;
-//! # let (kernel, _) = sealed_pair::test_support::matched_pair();
-//! # let (_, archive) = sealed_pair::test_support::other_pair();
-//! let seal = inspect(&kernel, &archive).expect("the archive parses and carries a progenitor");
-//! assert!(!seal.is_sealed());
-//! assert!(seal.explain("nife-vf2.img", "nife-initial-ramdisk.img").contains("progenitor"));
-//! ```
+//! [`inspect`] hashes each entry the kernel would hand over (the [`BOOT_PROGRAMS`] and the
+//! measurement table) and looks for the digest's 32 raw bytes inside the kernel image. That is what
+//! the trust root compiles to, a chance match is not worth a sentence, and it needs no knowledge of
+//! where the array landed, so one function reads a flat `booti` image, an ELF, and a UEFI boot file.
+//! Finding a digest proves the kernel vouches for those bytes; not finding one cannot say what it
+//! expected instead. It also checks the archive's measurement table against its own contents, a
+//! separate refusal the progenitor would make one level up.
 //!
 //! # BUGS
 //!
-//! - **It duplicates a check the kernel already does, deliberately.** The kernel's is the authority
-//!   and this is an early warning. If the two ever disagree the kernel is right and this crate is
-//!   wrong, and [`Seal::explain`] says so where a person reads it.
-//! - **It cannot say what the kernel expected.** A trust root is an array of `(name: &str, digest)`
-//!   in the image's `.rodata`, and locating it without the digest as a needle would mean depending
-//!   on the struct's layout and on the image's load address. So a refusal names the entry and the
-//!   digest the archive *has*, never the one the kernel wanted. `cargo xtask card-check` recovers
-//!   the missing half a different way, by comparing both files against the tree's own build.
-//! - **It says nothing about the boot script or an `extlinux.conf`**, which are the other two ways a
-//!   card can be wrong ; milestone 218 (every boot of the VisionFive 2 needs a
-//!   human typing four commands into U-Boot) has just changed which of those a card should carry.
-//! - **Nothing forces anyone to run it**, on a card written by hand. Where the pair is built rather
-//!   than copied, `uefi_loader/build.rs` makes it a build failure instead, which is the rung above.
-//! - **It asks whether the digest is present, not whether the kernel checks it.** The two agree
-//!   on every build in the tree today, and a build that carried the digest without reaching the
-//!   check would read as **sealed** while verifying nothing. Until milestone 563 (a seal check that
-//!   reads bytes cannot see a check that was dropped) that was not hypothetical in its mirror form:
-//!   `soak_test`, `job_mix` and `bench` replaced the hand-over, never called the refusal, and the
-//!   linker dropped the trust root, so every such card and stick read `NOT SEALED` (measured
-//!   2026-09-21 on riscv64 and 2026-09-25 on `x86_64`). Those builds now measure what they enter
-//!   through `kernel::trust::require_program`, and the digests are there because the check is. The
-//!   scan still cannot tell the difference; option C in
+//! - It duplicates the kernel's check as an early warning; if they disagree, the kernel is right,
+//!   and [`Seal::explain`] says so.
+//! - A refusal names the entry and the digest the archive has, never the one the kernel wanted;
+//!   `cargo xtask card-check` recovers that by comparing against the tree's own build.
+//! - It says nothing about a boot script or `extlinux.conf`, and nothing forces anyone to run it on
+//!   a hand-written card (`uefi_loader/build.rs` makes it a build failure where the pair is built).
+//! - It asks whether a digest is present, not whether the kernel checks it, so a build carrying
+//!   the digest without reaching the check would read as sealed. Every build reaches it today
+//!   through `kernel::trust::require_program`; option C in
 //!   `design/roadmap/0563-a-seal-check-that-reads-bytes-cannot-see-a-check-that-was-dropped.md`
-//!   prices a build that says so about itself.
+//!   prices a build that says so itself.
 //!
-//! Name: provisional. Minted 2026-09-19 by the lane that built it. A kernel and the archive it
-//! vouches for are one sealed set, and this crate is the one place that says whether two given
-//! bytes-on-disk are that set; named for the thing rather than for the act, the way `measured_boot`
-//! was named over `measure`. Refused `card_check`, because the pair is checked in three places that
-//! are not a card (the UEFI loader's build, a staged directory, a stick's single file) and a name
-//! saying "card" would be wrong in two of them; refused `seal`, a verb, and generic enough to name
-//! almost anything. no architect has ratified it.
+//! Name: provisional: the thing (a sealed pair), not the act. Refused `card_check` (three of the
+//! checked places are not a card) and `seal` (a generic verb).
 
 use std::fmt::Write as _;
 
@@ -340,6 +274,28 @@ pub const THE_BOARD_IS_THE_AUTHORITY: &str = "The kernel's own check is the auth
 ///
 /// [`Unreadable`] when the archive does not parse or carries no `progenitor`: those are not
 /// mismatches, and calling them one would send somebody to rebuild the wrong half.
+///
+/// # Examples
+///
+/// A pair built together is sealed:
+///
+/// ```
+/// # use sealed_pair::{inspect, Seal};
+/// # let (kernel, archive) = sealed_pair::test_support::matched_pair();
+/// let seal = inspect(&kernel, &archive).expect("the archive parses and carries a progenitor");
+/// assert!(seal.is_sealed());
+/// ```
+///
+/// A kernel beside another build's archive is refused, naming the entry:
+///
+/// ```
+/// # use sealed_pair::inspect;
+/// # let (kernel, _) = sealed_pair::test_support::matched_pair();
+/// # let (_, archive) = sealed_pair::test_support::other_pair();
+/// let seal = inspect(&kernel, &archive).expect("the archive parses and carries a progenitor");
+/// assert!(!seal.is_sealed());
+/// assert!(seal.explain("nife-vf2.img", "nife-initial-ramdisk.img").contains("progenitor"));
+/// ```
 pub fn inspect(kernel: &[u8], archive: &[u8]) -> Result<Seal, Unreadable> {
     let fs = nifefs::Fs::parse(archive).map_err(Unreadable::NotAnArchive)?;
     if fs.read(BOOT_PROGRAMS[0]).is_none() {

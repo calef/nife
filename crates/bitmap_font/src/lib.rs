@@ -1,107 +1,17 @@
-//! **A 7x8 bitmap font, and the arithmetic that turns a character into pixels** (milestone 29,
-//! the display ladder's text).
+//! **A 7x8 bitmap font, and the arithmetic that turns a character into pixels**: a constant table
+//! of monochrome glyphs and a pure function from `(character, x, y)` to a colour.
 //!
-//! Rung one put pixels on a screen and rung two multiplexed the screen; neither could show a letter.
-//! This is the piece that can, and it is deliberately the smallest thing that could: a constant
-//! table of monochrome glyphs and a pure function from `(character, x, y)` to a colour.
+//! Not a scalable font, which wants an allocator, floating point, a hinting rasteriser and a file
+//! to load, none of which a `no_std` component has. Here the glyphs are a `static`, drawing one is
+//! a bit test, and the expected picture is a function three parties evaluate independently: the
+//! terminal that draws ([`cell_pixel`]), the kernel test that checks, and the host that reads the
+//! scanout back out of QEMU. That is what makes on-screen text provable rather than plausible. The
+//! classic bug, a mirrored font, hides in symmetric letters; [`is_ink`]'s example prints an `F`.
 //!
-//! # Why a bitmap font, and not a scalable one
+//! Not here: kerning, proportional widths, anti-aliasing, anything past basic latin ([`glyph`]
+//! draws a box for it) and font loading. The limits are in notes/glyphs.md.
 //!
-//! A scalable font (TrueType, or `cosmic-text` above it) wants an allocator, floating point, a
-//! rasteriser with hinting and anti-aliasing, and a font file to load from a filesystem. Every one
-//! of those is a dependency a `no_std`, allocation-free userspace component would have to acquire
-//! before it could draw the letter A. A bitmap font needs none of them: the glyphs are a `static`
-//! in `.rodata`, drawing one is a bit test, and the whole thing is `const`-shaped enough that the
-//! *expected* picture is a function three independent parties can evaluate (the terminal that
-//! draws, the kernel test that checks, and the host that reads the scanout back out of QEMU). That
-//! last property is what makes the text on the screen provable rather than merely plausible, and it
-//! is the reason to start here even though rung three will eventually want the scalable path.
-//!
-//! # Examples
-//!
-//! The whole crate is a pure function from `(byte, x, y)` to a colour, so the expected picture can be
-//! *printed*. This is the property the section above claims and it is worth showing rather than
-//! asserting: a mirrored font is the classic bitmap-font bug and nearly invisible in review, because
-//! half the alphabet is symmetric enough to look fine. `F` is not.
-//!
-//! ```
-//! use bitmap_font::{GLYPH_H, GLYPH_W, is_ink};
-//!
-//! let art: Vec<String> = (0..GLYPH_H)
-//!     .map(|y| (0..GLYPH_W).map(|x| if is_ink('F', x, y) { '#' } else { '.' }).collect())
-//!     .collect();
-//!
-//! assert_eq!(
-//!     art,
-//!     [
-//!         ".#####.", // the top bar runs the full five ink columns
-//!         ".#.....", // the stem is on the LEFT
-//!         ".#.....",
-//!         ".####..", // the middle bar is one column short, which is what makes it an F
-//!         ".#.....",
-//!         ".#.....",
-//!         ".#.....",
-//!         ".......", // row 7 is the descender row, and F has none
-//!     ],
-//! );
-//! ```
-//!
-//! The first and last columns are blank in **every** glyph, which is the Kaypro's geometry rather
-//! than an accident of this letter: five ink columns with a one-pixel gutter each side.
-//!
-//! Drawing into a framebuffer is [`cell_pixel`] and nothing else. Three independent parties call it
-//! for three different reasons, which is why it is a function rather than a method on a canvas: the
-//! terminal to paint, the kernel test to predict, and the host-side scanout check to grade what QEMU
-//! is actually displaying.
-//!
-//! ```
-//! use bitmap_font::{GLYPH_H, GLYPH_W, cell_pixel};
-//!
-//! const WHITE: u32 = 0x00ff_ffff;
-//! const BLACK: u32 = 0x0000_0000;
-//!
-//! // The cell at column 3, row 0 of a terminal grid, holding a space.
-//! let (col, row) = (3u32, 0u32);
-//! for y in 0..GLYPH_H {
-//!     for x in 0..GLYPH_W {
-//!         assert_eq!(cell_pixel(' ', x, y, WHITE, BLACK), BLACK);
-//!     }
-//! }
-//!
-//! // And the grid arithmetic a fixed-pitch font buys: a pixel's cell is a division.
-//! let (px, py) = (col * GLYPH_W + 1, row * GLYPH_H + 1); // column 1 is the F's stem
-//! assert_eq!((px / GLYPH_W, py / GLYPH_H), (col, row));
-//! assert_eq!(cell_pixel('F', px % GLYPH_W, py % GLYPH_H, WHITE, BLACK), WHITE);
-//! ```
-//!
-//! Out-of-cell coordinates are not ink rather than a panic, because the callers are pixel loops, and
-//! a character with no glyph draws a visible box rather than nothing:
-//!
-//! ```
-//! use bitmap_font::{is_ink, glyph, MISSING};
-//!
-//! assert!(!is_ink('F', 7, 0)); // past the cell
-//! assert!(!is_ink('F', 0, 99));
-//!
-//! // Everything past basic latin (0x80 up, and every non-Latin `char` since milestone 142's UTF-8
-//! // increment) draws the missing-glyph box. A reader sees that the text is wrong instead of seeing
-//! // a gap.
-//! assert_eq!(glyph('\u{e9}'), &MISSING);
-//! assert_ne!(glyph('F'), &MISSING);
-//! ```
-//!
-//! # What deliberately is NOT here
-//!
-//! No kerning, no proportional widths, no anti-aliasing, no Unicode beyond the basic-latin block
-//! (see [`glyph`] for what a byte outside it draws), and no font loading: this font is compiled in.
-//! The honest limits are listed in notes/glyphs.md.
-//!
-//! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review). Renamed from
-//! `bitfont`: spell out the contraction fully, consistent with this session's other renames,
-//! even though `bitfont` was already transparent. `bitfont` itself was one of the five
-//! run-together names milestone 63 reviewed on 2026-08-01 (`capsh`, `lineedit`, `uheap`,
-//! `nifefs`, `bitfont`) when it deleted the rule that had produced them; three moved, `nifefs`
-//! stayed with a reason recorded, and this one stayed unrecorded until now.
+//! Name: ratified 2026-08-23 (calef), renamed from `bitfont` to spell out the contraction.
 
 #![no_std]
 
@@ -147,6 +57,23 @@ pub static MISSING: [u8; 8] = [0x3e, 0x22, 0x22, 0x22, 0x22, 0x22, 0x3e, 0x00];
 /// (drawn as the missing-glyph box) rather than being fed byte-by-byte and drawing a run of wrong
 /// pictures, one per byte. Recorded as the honest remaining limit in notes/glyphs.md: a real
 /// repertoire needs a real font, not a signature change.
+///
+/// # Examples
+///
+/// Out-of-cell coordinates are not ink, and a character with no glyph draws a visible box:
+///
+/// ```
+/// use bitmap_font::{is_ink, glyph, MISSING};
+///
+/// assert!(!is_ink('F', 7, 0)); // past the cell
+/// assert!(!is_ink('F', 0, 99));
+///
+/// // Everything past basic latin (0x80 up, and every non-Latin `char` since the UTF-8
+/// // increment) draws the missing-glyph box. A reader sees that the text is wrong instead of seeing
+/// // a gap.
+/// assert_eq!(glyph('\u{e9}'), &MISSING);
+/// assert_ne!(glyph('F'), &MISSING);
+/// ```
 pub fn glyph(ch: char) -> &'static [u8; 8] {
     let cp = ch as u32;
     if cp >= 0x80 {
@@ -162,6 +89,33 @@ pub fn glyph(ch: char) -> &'static [u8; 8] {
 ///
 /// Out-of-cell coordinates are not ink rather than a panic: the callers are pixel loops, and a
 /// bounds check they can rely on is cheaper than one each.
+///
+/// # Examples
+///
+/// The expected picture can be printed. `F` is asymmetric, so a mirrored font shows; the first
+/// and last columns are blank in every glyph, the Kaypro's one-pixel gutter:
+///
+/// ```
+/// use bitmap_font::{GLYPH_H, GLYPH_W, is_ink};
+///
+/// let art: Vec<String> = (0..GLYPH_H)
+///     .map(|y| (0..GLYPH_W).map(|x| if is_ink('F', x, y) { '#' } else { '.' }).collect())
+///     .collect();
+///
+/// assert_eq!(
+///     art,
+///     [
+///         ".#####.", // the top bar runs the full five ink columns
+///         ".#.....", // the stem is on the LEFT
+///         ".#.....",
+///         ".####..", // the middle bar is one column short, which is what makes it an F
+///         ".#.....",
+///         ".#.....",
+///         ".#.....",
+///         ".......", // row 7 is the descender row, and F has none
+///     ],
+/// );
+/// ```
 pub fn is_ink(ch: char, x: u32, y: u32) -> bool {
     if x >= GLYPH_W || y >= GLYPH_H {
         return false;
@@ -175,6 +129,28 @@ pub fn is_ink(ch: char, x: u32, y: u32) -> bool {
 /// to paint, the kernel test calls it to predict, and the host-side scanout check calls it to grade
 /// what QEMU is actually displaying, so none of the three can be wrong in a way the others agree
 /// with.
+///
+/// # Examples
+///
+/// ```
+/// use bitmap_font::{GLYPH_H, GLYPH_W, cell_pixel};
+///
+/// const WHITE: u32 = 0x00ff_ffff;
+/// const BLACK: u32 = 0x0000_0000;
+///
+/// // The cell at column 3, row 0 of a terminal grid, holding a space.
+/// let (col, row) = (3u32, 0u32);
+/// for y in 0..GLYPH_H {
+///     for x in 0..GLYPH_W {
+///         assert_eq!(cell_pixel(' ', x, y, WHITE, BLACK), BLACK);
+///     }
+/// }
+///
+/// // And the grid arithmetic a fixed-pitch font buys: a pixel's cell is a division.
+/// let (px, py) = (col * GLYPH_W + 1, row * GLYPH_H + 1); // column 1 is the F's stem
+/// assert_eq!((px / GLYPH_W, py / GLYPH_H), (col, row));
+/// assert_eq!(cell_pixel('F', px % GLYPH_W, py % GLYPH_H, WHITE, BLACK), WHITE);
+/// ```
 pub fn cell_pixel(ch: char, x: u32, y: u32, fg: u32, bg: u32) -> u32 {
     if is_ink(ch, x, y) { fg } else { bg }
 }
