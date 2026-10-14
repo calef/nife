@@ -1,0 +1,21 @@
+# The outsider-pass image: script/runner-container's image with the two reviewer harnesses added.
+#
+# Built by script/launch-pass (helpers/launch_pass.py), never by hand, with each harness pinned to
+# the version on the host, so the container runs the release the maintainers already run. calef,
+# 2026-10-14 (UTC), on where an outsider pass runs: a container on patagonia, inside podman's
+# Linux VM. The base image holds the toolchain prerequisites and the pinned QEMU's build
+# dependencies; the pass's own volume, mounted at /cache, holds what script/ci-qemu and
+# script/bootstrap build there, and the harness's session state under HOME.
+#
+# Name: provisional, minted by milestone 920 (an outsider pass is launched pinned and
+# floor-checked)'s lane on 2026-10-14 (UTC). calef names files.
+FROM localhost/nife-runner-container
+
+ARG CLAUDE_CODE_VERSION
+ARG OPENCODE_VERSION
+
+RUN apt-get update && apt-get install -y --no-install-recommends nodejs npm \
+    && rm -rf /var/lib/apt/lists/* \
+    && npm install --global --prefix /usr/local \
+        "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION:?}" "opencode-ai@${OPENCODE_VERSION:?}" \
+    && npm cache clean --force

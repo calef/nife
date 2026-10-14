@@ -1,5 +1,5 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-10-14
 milestone_dependencies: none
 decision_dependencies: none
@@ -13,10 +13,8 @@ needs_person: no
 the slug and both script names below are drafts. Branch
 `milestone/920-an-outsider-pass-is-launched-pinned-and-floor-checked`.*
 
-Both scripts are built, with selftests in `script/lint`, and the checker reproduces pass 8's and
-pass 9's counts. What keeps it PARTIAL is one ruling: calef has not ruled on the Claude reviewer's
-fence below, which bypasses permission prompts on his machine. Until he does, the Fable pass is
-not launched.
+Both scripts are built, with selftests in `script/lint`, the checker reproduces pass 8's and pass
+9's counts, and the launcher runs both reviewers in a container on patagonia, as calef ruled.
 
 calef, 2026-10-14 (UTC), on outsider passes at risk 7 (the confinement claim is false): *"mint a
 milestone for the launcher, the floor checker and the brief change that allows a completion round.
@@ -113,28 +111,40 @@ heredoc), word for word with its values filled and its commit trailer set to the
 changes shape, and its selftest assembles both reviewers' prompts from the real briefs and fails on
 a milestone number, a roadmap block or an unfilled placeholder.
 
-## Where the Fable pass runs
+## Where both passes run
 
-On patagonia, through Claude Code. There the launcher can pin the model on the command line, read
-back the model the session reports before the attack, and resume the same session for the
-completion round. Claude's cloud runner allows none of the three before the attack: pass 9 was
-configured for Fable there and served by `claude-opus-4-8`, which showed only in the record
-afterward.
+calef, 2026-10-14 (UTC), asked *"What if we launched a container on patagonia for the test?"*,
+answered *"Yes"*. Both passes run on patagonia, each harness in a container inside podman's Linux
+VM: Claude Code for Fable, opencode for GLM 5.3. On patagonia the launcher can pin the model on the
+command line, read back the model the session reports before the attack, and resume the same
+session for the completion round. Claude's cloud runner allows none of the three before the
+attack: pass 9 was configured for Fable there and served by `claude-opus-4-8`, which showed only in
+the record afterward.
 
-**PROPOSED, pending calef.** The Claude reviewer runs headless, so it runs without permission
-prompts, and the launcher fences it instead:
+- The image is the one `script/runner-container` builds (Ubuntu 24.04 arm64, the pinned QEMU's
+  build dependencies), with the two harnesses added at the host's own versions by
+  `.github/runner-container/Containerfile.outsider-pass`. Each run names the image by digest.
+- The container sees the standalone clone at the pinned commit (read-write) and a results
+  directory, and nothing else of the host: no home directory, SSH key, `gh` token, private
+  checkout or MCP configuration. The model's API key is its one secret, passed by variable name so
+  its value is never on a command line. It should be a key made for the pass, which its owner
+  revokes once the pass is collected.
+- Outbound network is allowed, for the model's API.
+- The harness's session state, the built QEMU and the toolchain live in a podman volume named for
+  the pass, kept until the lane has collected, so `--complete` resumes the same session in a new
+  container run.
+- The launch record (harness and version, image digest, volume, model pinned and reported, session
+  id, commit, prompt hash, times) is written by the launcher on the host, outside the container.
+- The launcher checks that the podman machine answers and has at least 6 CPUs and 8 GiB, and
+  refuses with the exact `podman machine set` command if not. It never resizes or restarts the
+  machine; that is done when a pass is launched, by whoever launches it, after checking what else
+  the machine is running.
+- Inside the container, the Claude reviewer's tools are still the shell and the files, with no MCP
+  server and no settings but the tree's.
 
-- tools limited to the shell and files (`Bash`, `Read`, `Edit`, `Write`, `Glob`, `Grep`), so no
-  web access;
-- MCP servers off (`--strict-mcp-config` with none given), since the maintainers' connectors reach
-  mail and documents;
-- user-level settings and instructions skipped (`--setting-sources project`), since they hold
-  machine-local facts the tree keeps private;
-- permissions bypassed (`--permission-mode bypassPermissions`) inside the standalone clone, which
-  has no remote.
-
-calef has not ruled on running a reviewer with permissions bypassed on his machine. Until he does,
-the Fable pass is not launched, and this block stays PARTIAL.
+The selftest stubs podman and both harnesses and checks every container command: the two mounts
+and the volume and no other, no home directory, the key by name only, no network or privilege
+flag. No real container ran for this milestone; the machine was not sized for one.
 
 ## The replays
 
