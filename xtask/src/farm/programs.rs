@@ -88,15 +88,13 @@ pub(crate) fn package_fetch_exerciser_elf(triple: &str) -> PathBuf {
 /// nothing: the C library's own contract program (`fixtures/c/c_library_contract.c`, milestone
 /// 833), here until milestone 869 (the C library's headers cannot drift, and its contract is tested
 /// in nife) builds it in the gate.
-/// ioping and hackbench left this list for basalt's packages (milestones 906 (ioping is packaged
-/// in basalt) and 907 (hackbench is packaged in basalt)); the archive takes them from
-/// `crate::basalt`.
-pub(crate) const C_PROGRAMS: [&str; 2] = ["speedtest1", "c_library_contract"];
+/// speedtest1, ioping and hackbench left this list for basalt's packages (milestones 897 (SQLite is
+/// packaged in basalt), 906 (ioping is packaged in basalt) and 907 (hackbench is packaged in
+/// basalt)); the archive takes them from `crate::basalt`.
+pub(crate) const C_PROGRAMS: [&str; 1] = ["c_library_contract"];
 
-/// **One of [`C_PROGRAMS`], if somebody built it**: present when on disk, absent otherwise, because
-/// fetching SQLite in a gate is a dependency decision (§46 (thin primitives or whole
-/// subsystems; we write everything in between)), which the pull request that added this asks calef
-/// to make. `system_tests/src/user/c_program_tests.rs` skips each test whose program is absent.
+/// **One of [`C_PROGRAMS`], if somebody built it**: present when on disk, absent otherwise.
+/// `system_tests/src/user/c_thread_tests.rs` skips its test when the program is absent.
 pub(crate) fn c_program_elf(name: &str, triple: &str) -> PathBuf {
     workspace_root().join(format!("target/{name}/{triple}/{name}"))
 }

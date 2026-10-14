@@ -145,8 +145,8 @@ test-x86_64|ci|script/test --arch x86_64 --no-host
 swish-check|local|cargo xtask std-exerciser && cargo xtask basalt-fetch && script/swish-check && script/swish-check --arch aarch64 --input-race
 swish-check-aarch64-riscv64|ci|cargo xtask std-exerciser && cargo xtask basalt-fetch && script/swish-check --arch aarch64 && script/swish-check --arch riscv64 && script/swish-check --arch aarch64 --input-race
 swish-check-x86_64|ci|cargo xtask std-exerciser && cargo xtask basalt-fetch && script/swish-check --arch x86_64
-rg-threads-aarch64-riscv64|ci|cargo xtask basalt-fetch && NIFE_RIPGREP_REQUIRED=1 cargo test -p walk_pricing && NIFE_RIPGREP_REQUIRED=1 NIFE_SMP=4 script/test --arch aarch64,riscv64 --test ripgrep && NIFE_IOPING_REQUIRED=1 NIFE_HACKBENCH_REQUIRED=1 script/test --arch aarch64,riscv64 --test unmodified_
-rg-threads-x86_64|ci|cargo xtask basalt-fetch && NIFE_RIPGREP_REQUIRED=1 NIFE_SMP=4 script/test --arch x86_64 --test ripgrep && NIFE_IOPING_REQUIRED=1 NIFE_HACKBENCH_REQUIRED=1 script/test --arch x86_64 --test unmodified_
+rg-threads-aarch64-riscv64|ci|cargo xtask basalt-fetch && NIFE_RIPGREP_REQUIRED=1 cargo test -p walk_pricing && NIFE_RIPGREP_REQUIRED=1 NIFE_SMP=4 script/test --arch aarch64,riscv64 --test ripgrep && NIFE_IOPING_REQUIRED=1 NIFE_HACKBENCH_REQUIRED=1 NIFE_SPEEDTEST1_REQUIRED=1 script/test --arch aarch64,riscv64 --test unmodified_
+rg-threads-x86_64|ci|cargo xtask basalt-fetch && NIFE_RIPGREP_REQUIRED=1 NIFE_SMP=4 script/test --arch x86_64 --test ripgrep && NIFE_IOPING_REQUIRED=1 NIFE_HACKBENCH_REQUIRED=1 NIFE_SPEEDTEST1_REQUIRED=1 script/test --arch x86_64 --test unmodified_
 boot-check|local|script/boot-check
 hvf|local|hvf_leg
 fastpath-footprint|ci|script/fastpath-footprint
@@ -176,10 +176,11 @@ TABLE
 #                       host check, which only the aarch64 row runs. The same rows then boot the
 #                       suite filtered to `unmodified_`, at one core, because they have already
 #                       fetched basalt's packages: ioping (milestone 906 (ioping is packaged in
-#                       basalt)) and hackbench (milestone 907 (hackbench is packaged in basalt)), and
-#                       `rg`'s one-core test comes along. `NIFE_IOPING_REQUIRED` and
-#                       `NIFE_HACKBENCH_REQUIRED` refuse their skips. An exception to the rows'
-#                       names, kept because a row of its own would provision a runner for it.
+#                       basalt)), hackbench (milestone 907 (hackbench is packaged in basalt)) and
+#                       SQLite's speedtest1 (milestone 897 (SQLite is packaged in basalt)), and
+#                       `rg`'s one-core test comes along. Each `NIFE_<PROGRAM>_REQUIRED` refuses
+#                       its program's skip. An exception to the rows' names, kept because a row of
+#                       its own would provision a runner for it.
 #   fastpath-footprint  builds two RELEASE kernels, which no other check builds, so there is
 #                       nothing warm to share and a developer would wait for a cold build.
 #   boot-file-size-check builds the release x86_64 UEFI image (a release kernel and archive, which

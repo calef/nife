@@ -118,9 +118,9 @@ name, or `script/lint` fails ([package boundaries](package-boundaries.md)).
 `nifefs` caps `NAME_LEN` at 32, raised from 24 so `os_primitives_benchmarker` would fit. Raising
 it again costs directory entries per block, so do not let a name spend it.
 
-There is also a ceiling on how many programs an archive holds, `nifefs::MAX_FILES`, 127 since
-milestone 291 raised `DIR_BLOCKS` from 6 to 10. Every archive packs 87 programs plus up to five
-optional entries, so the headroom is about thirty. It fails loudly: `write_image`
+There is also a ceiling on how many programs an archive holds, `nifefs::MAX_FILES`, 178 at
+`DIR_BLOCKS = 14`. The kernel suite's x86_64 archive holds 128 where `cargo xtask basalt-fetch`
+ran, so the headroom is about fifty. It fails loudly: `write_image`
 returns `TooManyFiles` and each `initial_ramdisk_*` function prints the error, the file count and the size.
 
 ### 5. If the shell should be able to spawn it
