@@ -390,8 +390,7 @@ def judge(src):
     small:  [(item, code_lines)] small unmarked items the HANDFUL allowance let stand
     bad:    [(line, text)] malformed marks
     number: the code lines of `held`, the baseline's measure
-    marked_lines: the code lines of `marked`, which the gate excuses and `script/metrics`'
-            parent-index series counts as debt all the same
+    marked_lines: the code lines of `marked`, which the gate excuses
     """
     toks = lex(src)
     found = items(src, toks)
@@ -455,7 +454,7 @@ def git(*args):
 
 
 def in_scope(path):
-    """A `.rs` path outside `vendor/`: the files the rules reach, here and in `script/metrics`."""
+    """A `.rs` path outside `vendor/`: the files the rules reach."""
     return path.endswith('.rs') and not path.startswith('vendor/')
 
 
@@ -721,7 +720,7 @@ pub mod gamma {
     j = judge(INDEX + MARKED)
     check('a marked item is not held, and its mark is read',
           j['number'] == 0 and j['marked'] and j['marked'][0][1] == '2026-10-11')
-    check('a marked item\'s code lines are still measured, for script/metrics\' debt series',
+    check('a marked item\'s code lines are still measured',
           j['marked_lines'] == 5)
     j = judge(INDEX + '// Index exception (2026-10-11): because.\n' + FOUR)
     check('a mark with a reason under three words is malformed, and the item is held',

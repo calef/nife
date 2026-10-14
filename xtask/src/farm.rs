@@ -12,15 +12,6 @@ use std::process::Command;
 
 use crate::host::{capture, run, workspace_root};
 
-// Index exception (2026-10-12): the exerciser and the abort sweep both loop over these targets.
-/// The custom-target triples the std demo builds for, one per supported ISA. The name is the
-/// JSON spec's file stem, which is also cargo's target-dir subdirectory.
-const STD_TARGETS: [&str; 3] = [
-    "aarch64-unknown-nife",
-    "riscv64-unknown-nife",
-    "x86_64-unknown-nife",
-];
-
 /// The prefix of every worktree's linked toolchain name (`rustup toolchain link`); the rest of the
 /// name is [`toolchain_name`]'s. Provisional, minted 2026-10-10 (UTC) by lane
 /// maintainer/per-worktree-toolchain; calef has not ruled on it.
@@ -55,6 +46,7 @@ mod stamp;
 mod toolchain;
 
 pub(crate) use aborts::std_aborts;
+use exerciser::STD_TARGETS;
 pub(crate) use exerciser::std_exerciser;
 use generate::*;
 use patch::*;
