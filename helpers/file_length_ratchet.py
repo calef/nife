@@ -16,9 +16,7 @@ check.
 Name: provisional, minted by milestone 841's lane on 2026-10-08. A shared python module under
 `helpers/`, which `script/names` puts out of its own scope, so its provenance is this paragraph
 rather than a `Name:` block. calef names things; expect this to change. Refused
-`file_size_ratchet`: §266 names a count of lines, and `file size` belongs to the dashboard series
-`script/metrics` keeps (`notes/project-metrics/file-size.csv`), which measures the tree rather
-than policing it.
+`file_size_ratchet`: §266 names a count of lines.
 
 **The measure.** A file's size is its physical line count, `wc -l`: comments, blank lines and
 inline `mod tests` counted, exactly §266 section 1. A reader or a model opening a file loads every
@@ -45,8 +43,8 @@ allowed; 2,001 is over.
 664 merges in the fortnight to 2026-10-08 touched a listed file, so under exact match two
 shrinking changes to one file in one merge group each write a different number on the same row and
 the group fails even when the Rust merged cleanly. Under option (b) both pass; the cost is that an
-entry can sit above its file's real size until someone banks it. The dashboard row reads the tree,
-never the list, so that staleness reaches no number anyone quotes.
+entry can sit above its file's real size until someone banks it. Nothing but this gate reads
+the list, so that staleness reaches no number anyone quotes.
 
 **The failure message** names the file, its size and the ceiling, and says the remedy: §266
 section 1 names the incentive a line ceiling creates ("a file at 2,050 lines can pass by deleting
