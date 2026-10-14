@@ -73,3 +73,25 @@ pub const CASES: [Case; 10] = [
     // Not a host name at all.
     case("two words.nife.test", status::BAD_NAME, 0),
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// **The table's builder keeps what it is given, and the table names each case once.** `CASES`
+    /// is built in a `const`, which line coverage cannot see, so this runs `case` at runtime; and a
+    /// name listed twice would have the boot test check one answer twice and another not at all.
+    #[test]
+    fn every_case_is_built_as_written_and_named_once() {
+        let built = core::hint::black_box(case)("packages.nife.test", status::OK, 7);
+        assert_eq!(
+            (built.name, built.status, built.detail),
+            ("packages.nife.test", status::OK, 7)
+        );
+        for (i, a) in CASES.iter().enumerate() {
+            for b in &CASES[i + 1..] {
+                assert_ne!(a.name, b.name);
+            }
+        }
+    }
+}
