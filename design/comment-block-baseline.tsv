@@ -12,6 +12,3 @@
 # `--bank` writes for you. A block that must exceed its row needs §267 amended by an architect.
 block	lines
 crates/bitmap_font/src/glyphs.rs:44	128
-crates/grant_plan/src/lib.rs:1	69
-crates/stick_maker/src/lib.rs:1	51
-system_tests/src/user.rs:531	41
