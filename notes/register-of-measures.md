@@ -60,7 +60,7 @@ push. The defect is a `dated` row with no date, or with no command.
 
 ## Gated
 
-Twelve instruments. Nine are ceilings that fire when a number grows and stay silent when it falls.
+Thirteen instruments. Ten are ceilings that fire when a number grows and stay silent when it falls.
 Row 1 is a two-sided drift band and row 9 is a floor.
 
 | measure | instrument | what fails |
@@ -77,6 +77,7 @@ Row 1 is a two-sided drift band and row 9 is a floor.
 | Rust file length | `script/lint` (file-length ratchet) | any `.rs` file over 2,000 lines |
 | function length | `script/lint` (lint ratchet) | any function over 100 code lines |
 | words per document | `script/lint` (prose ratchet) | any document over 3,000 words, unless marked |
+| split parents | `script/lint` (parent-index check) | any split parent holding more than an index, unless marked |
 
 Only the density ceiling expresses a direction rather than a limit, and it mixes kernel and
 userspace unsafe into one population; the split is plotted weekly with no ceiling of its own. The
@@ -176,7 +177,7 @@ time.
 | Rust in the tree | code and comment lines, `kernel/src` apart from the rest | [proofs and coverage](register-of-measures/code-proofs-and-coverage.md) |
 | `BUGS` sections | markdown headings and Rust doc-comment headings; rising is good | [proofs and coverage](register-of-measures/code-proofs-and-coverage.md) |
 | coverage, and the lowest-covered file | the workspace aggregate, and the per-file minimum the floor acts on | [proofs and coverage](register-of-measures/code-proofs-and-coverage.md) |
-| ratchet debt | documents over a writing-standards limit, comment blocks over 40 lines, split parents that hold more than an index | [ratchet debt](register-of-measures/ratchet-debt.md) |
+| ratchet debt | documents over a writing-standards limit, and comment blocks over 40 lines | [ratchet debt](register-of-measures/ratchet-debt.md) |
 | benchmark drift | icount rows more than 5% above a fixed anchor, per architecture; a report, not a gate | [the drift report](project-metrics/baseline-drift.md), generated |
 | interface stability | public items of the contract and std ABI crates removed or changed, and added; syscall renumbers and renames, format bumps and amendments, co-change | [how stable the interface is](interface-stability.md) |
 | homes | packages by where their home stands and whether they have left; tracked files by the same | [package boundaries](package-boundaries.md) |

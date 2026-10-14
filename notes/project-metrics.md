@@ -258,12 +258,6 @@ Documents over each writing-standards limit; exempted ones count
 
 The 40-line comment-block cap: files holding a longer block, then the lines past it.
 
-## Split parents
-
-![Split parents over the index limit](project-metrics/parent-index.svg)
-
-Split parents holding more than an index, marked items included.
-
 ## How it stays current
 
 `.github/workflows/metrics.yml` runs `script/metrics --update` daily and opens or refreshes a pull

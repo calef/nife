@@ -200,7 +200,6 @@ import crate_release                                                        # no
 import interface_stability                                                  # noqa: E402
 import name_provenance                                                      # noqa: E402
 import packages as package_boundaries                                       # noqa: E402
-import parent_index                                                         # noqa: E402
 import prose_ratchet                                                        # noqa: E402
 import roadmap_block                                                        # noqa: E402
 import roadmap_proposals                                                    # noqa: E402
@@ -469,14 +468,13 @@ MEASURES = [
     ('crate-proofs', ['crate_%d_%s' % (n, part) for n in crate_release.MILESTONES
                       for part in ('harnesses', 'patches', 'proven', 'required')]
      + ['crate_properties_proven', 'crate_properties_owed', 'crate_properties_required']),
-    # Three ratchets' debt, calef's ask of 2026-10-13 (UTC), each read from the week's tree by the
-    # gate's own measure (`writing_standards`, `comment_block_debt`, `parent_index_debt` below).
+    # Two ratchets' debt, calef's ask of 2026-10-13 (UTC), each read from the week's tree by the
+    # gate's own measure (`writing_standards` and `comment_block_debt` below).
     # File, column and chart names provisional, minted 2026-10-13 (UTC) by lane/ratchet-metrics;
     # notes/register-of-measures/ratchet-debt.md defines them.
     ('writing-standards', ['writing_over_median', 'writing_over_longest', 'writing_over_bold']),
     ('comment-blocks', ['comment_block_files_over_cap', 'comment_blocks_over_cap',
                         'comment_block_excess_lines']),
-    ('parent-index', ['parents_over_index', 'parent_index_lines', 'parent_index_marked_lines']),
     # `bold-backlog.csv` (2026W29 to 2026W41) is history that nothing writes or reads any more. The
     # bold backlog reached zero on 2026-10-06 (UTC) and calef asked that it stop being tracked; the
     # gate that holds it at zero is `check` in helpers/prose_ratchet.py, which refuses any bold
@@ -1651,26 +1649,6 @@ def comment_block_debt(tree):
             'comment_block_excess_lines': excess}
 
 
-def parent_index_debt(tree):
-    """Split parents holding more than an index under §282 (when a file is split, the parent
-    becomes an index), by `parent_index.judge`: the parents, and the code lines of the items an
-    index may not hold. A marked item (`// Index exception`) counts
-    here; `parent_index_marked_lines` says how many of those lines the marks excuse."""
-    parents = lines = marked = 0
-    for path, text in tree.text.items():
-        if not parent_index.in_scope(path) or not parent_index.MAYBE_PARENT.search(text):
-            continue
-        judged = parent_index.judge(text)
-        if judged is None:
-            continue
-        held = judged['number'] + judged['marked_lines']
-        parents += held > 0
-        lines += held
-        marked += judged['marked_lines']
-    return {'parents_over_index': parents, 'parent_index_lines': lines,
-            'parent_index_marked_lines': marked}
-
-
 # Cumulative icount drift since a fixed anchor: milestone 415 item 3, which calef ruled on
 # 2026-09-26 (UTC) is a report and not a gate (§190). The arithmetic and its selftest are
 # helpers/baseline_drift.py. Three outputs: two cells per architecture in
@@ -1951,7 +1929,7 @@ def row_for(rev, week, coverage='', person_weeks='', coverage_min=''):
                  harnesses(tree),
                  unsafe_census(tree), unsafe_trust_census(tree),
                  fatal_risks_colors(tree), coe_action_counts(tree),
-                 writing_standards(tree), comment_block_debt(tree), parent_index_debt(tree),
+                 writing_standards(tree), comment_block_debt(tree),
                  homes(tree), crate_release_cells(tree)):
         row.update(part)
     row.update(baseline_drift.series_cells(rev))
@@ -2673,10 +2651,6 @@ CHARTS = [
      'file count',
      [('lines past the cap', 'comment_block_excess_lines')], 1000.0, None,
      'comment_block_excess_lines'),
-    ('parent-index.svg', 'Split parents holding more than an index',
-     'helpers/parent_index.py\'s verdict; an item a mark excuses counts, since the chart '
-     'measures the debt and the gate decides what passes',
-     [('parents over the index limit', 'parents_over_index')], 1.0, None, 'parents_over_index'),
     # Milestone 611. Packages stack by where their home stands, with the ones that have left on
     # top: the end state is one band. Paths are a separate panel because a path that has left is
     # not in the tree to count, so that panel's end state is empty rather than full.
@@ -3297,11 +3271,6 @@ def _ratchet_debt_cases():
     at_cap = ''.join('// line %d\n' % k for k in range(40)) + 'fn g() {}\n'
     rust = tree({'a.rs': block + block, 'b.rs': at_cap,
                  'vendor/x.rs': block, 'notes/a.md': block})
-    four = 'pub fn four(x: u32) -> u32 {\n    let y = x + 1;\n    y * 2\n}\n'
-    mark = '// Index exception (2026-10-13): every child reads this one.\n'
-    parents = tree({'p.rs': 'mod child;\n' + four, 'q.rs': 'mod child;\n' + mark + four,
-                    'r.rs': 'mod child;\npub use child::X;\n', 's.rs': four,
-                    'vendor/v.rs': 'mod child;\n' + four})
     return [
         ('writing standards: the gate\'s verdict, an exempted document counted, scope kept',
          writing_standards(prose),
@@ -3310,9 +3279,6 @@ def _ratchet_debt_cases():
          comment_block_debt(rust),
          {'comment_block_files_over_cap': 1, 'comment_blocks_over_cap': 2,
           'comment_block_excess_lines': 10}),
-        ('parent index: a marked item is debt here and is counted apart',
-         parent_index_debt(parents),
-         {'parents_over_index': 2, 'parent_index_lines': 8, 'parent_index_marked_lines': 4}),
     ]
 
 
