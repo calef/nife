@@ -263,7 +263,7 @@ fn bin_names(manifest: &str) -> Result<Vec<String>, String> {
 /// own build ran (see the `initial_ramdisk_*` functions). Hoisted out of the one test that used to
 /// hold it (milestone 595 (provisional)), because [`check_declared_programs`] now needs the same
 /// list.
-const BUILT_ELSEWHERE: [&str; 14] = [
+const BUILT_ELSEWHERE: [&str; 15] = [
     "redoxfs_server",
     "mkfs",
     "std_exerciser",
@@ -273,6 +273,7 @@ const BUILT_ELSEWHERE: [&str; 14] = [
     "rg",
     "ioping",
     "hackbench",
+    "speedtest1",
     "cryptography_exerciser",
     "pinned_tls_exerciser",
     "std_resolve",
@@ -596,14 +597,16 @@ fn ported_program_blobs(triple: &str) -> Vec<(&'static str, Vec<u8>)> {
     // `rg-threads` and `swish-check` rows do. The archive name is `rg`, which is what the program
     // is called everywhere else in the world.
     let mut blobs = present_blobs(triple, &[("rg", crate::basalt::ripgrep_elf)]);
-    // **Unmodified ioping and hackbench** (milestones 834 (ioping on nife and Linux) and 827
-    // (hackbench on nife and Linux)), the program members of basalt's packages (milestones 906
-    // (ioping is packaged in basalt) and 907 (hackbench is packaged in basalt)), on `rg`'s terms.
+    // **Unmodified ioping, hackbench and SQLite's speedtest1** (milestones 834, 827 and 831, each
+    // on nife and Linux), the program members of basalt's packages (milestones 906 (ioping is
+    // packaged in basalt), 907 (hackbench is packaged in basalt) and 897 (SQLite is packaged in
+    // basalt)), on `rg`'s terms.
     blobs.extend(present_blobs(
         triple,
         &[
             ("ioping", crate::basalt::ioping_elf),
             ("hackbench", crate::basalt::hackbench_elf),
+            ("speedtest1", crate::basalt::speedtest1_elf),
         ],
     ));
     // **The other unmodified C programs** (milestone 835 (a C library, stage 1: files, clock and

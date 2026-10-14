@@ -3,9 +3,9 @@
 # targets (milestone 833 (the same storage benchmark on nife and Linux, by porting real fio), for
 # the pieces fio 3.40 needed: `getrusage`, `basename`, `select`, `O_SYNC` and the refusals).
 #
-# It fetches nothing, unlike `helpers/build-speedtest1.sh`, but it rides the same way: nothing in
-# `script/test` runs this, the archive packs `target/c_library_contract/<triple>/c_library_contract`
-# when it is on disk, and `system_tests/src/user/c_program_tests.rs` skips when it is not. Building
+# It fetches nothing, unlike the foreign programs basalt packages, and nothing in
+# `script/test` runs this: the archive packs `target/c_library_contract/<triple>/c_library_contract`
+# when it is on disk, and `system_tests/src/user/c_thread_tests.rs` skips when it is not. Building
 # the C library in every gate is milestone 869 (the C library's headers cannot drift, and its
 # contract is tested in nife)'s to decide.
 #

@@ -367,6 +367,28 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
             "Time: ",
         ],
     ),
+    // **SQLite, basalt's third C package** (milestone 897 (SQLite is packaged in basalt)): the
+    // package `sqlite` carries the program `speedtest1`. The prompt runs the kernel suite's
+    // in-memory line, which opens no file and needs only the clock page, and holds it to the same
+    // hash of every result SQLite read back.
+    line(
+        1,
+        "jig install sqlite",
+        &[
+            "fetched sqlite-",
+            "from basalt.test over TLS",
+            "fetched and installed; generation 14 is live",
+        ],
+    ),
+    line(
+        1,
+        c_program_fixture::SPEEDTEST1_MEMDB,
+        &[
+            "-- Speedtest1 for SQLite 3.50.4",
+            "TOTAL",
+            c_program_fixture::SPEEDTEST1_HASH,
+        ],
+    ),
 ];
 
 /// The run `jig install hackbench` is followed by (milestone 907): `c_thread_tests`' pipe run,
@@ -377,8 +399,8 @@ const HACKBENCH_LINE: &str = "hackbench -T -p -g 1 -f 2 -l 10";
 /// flags, pointed at the installed program's own file rather than a directory.
 const IOPING_LINE: &str = "ioping -c 5 -i 0 -s 4k ioping/1.3/ioping";
 
-/// The lines that need a repository from basalt (milestones 810, 906 and 907), skipped without one
-/// outside CI.
+/// The lines that need a repository from basalt (milestones 810, 906, 907 and 897), skipped
+/// without one outside CI.
 pub(super) const FROM_BASALT: &[&str] = &[
     "jig install ripgrep",
     "rg --version",
@@ -387,6 +409,8 @@ pub(super) const FROM_BASALT: &[&str] = &[
     IOPING_LINE,
     "jig install hackbench",
     HACKBENCH_LINE,
+    "jig install sqlite",
+    c_program_fixture::SPEEDTEST1_MEMDB,
 ];
 
 /// The text this gate types and what each line must answer. `None` is a line whose answer is

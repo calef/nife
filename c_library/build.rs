@@ -88,8 +88,8 @@ fn compile_seeded_c(dir: &str) {
     println!("cargo::rustc-link-lib=static=c_library_seeded");
 }
 
-/// A clang with all three backends, found as fixtures/build.rs and helpers/build-speedtest1.sh
-/// find one.
+/// A clang with all three backends, found as fixtures/build.rs and helpers/c-library-cc.sh find
+/// one.
 fn clang() -> String {
     if let Ok(cc) = std::env::var("NIFE_CC") {
         return cc;

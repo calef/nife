@@ -7,35 +7,49 @@
 //! relibc, whose Rust platform layer holds the capabilities)) that neither program has heard of:
 //!
 //! - **SQLite 3.50.4's `speedtest1`**: 266,378 lines of C (the amalgamation and the benchmark)
-//!   written for POSIX. `helpers/build-speedtest1.sh` fetches both files, pinned by SHA-256.
+//!   written for POSIX, which basalt builds from both files pinned by SHA-256 (milestone 897 (SQLite
+//!   is packaged in basalt)).
 //! - **ioping 1.3**: one file, a storage-latency tool, the one milestone 834 (ioping on nife and
-//!   Linux) runs on silicon. basalt builds it from `ioping.c` pinned the same way, and `cargo xtask
-//!   basalt-fetch` takes its package by digest (milestone 906 (ioping is packaged in basalt)).
+//!   Linux) runs on silicon, built by basalt the same way (milestone 906 (ioping is packaged in
+//!   basalt)).
+//!
+//! `cargo xtask basalt-fetch` takes each package by the digest `xtask/basalt-pins.index` pins.
 //!
 //! Neither source is touched. What differs from a Linux build is on the command line: the target
 //! flags, nife's headers, and for SQLite two compile-time options it documents.
 //!
-//! **Each test skips when its program is not in the archive**, on `ripgrep_tests`' terms. For
-//! `speedtest1` that is every ordinary build and all of CI: fetching the source in a gate is §46
-//! (thin primitives or whole subsystems; we write everything in between)'s decision and calef's.
-//! `ioping` is in the archive wherever `cargo xtask basalt-fetch` ran, and CI's `rg-threads` rows
-//! run its test with `NIFE_IOPING_REQUIRED=1`, so there a missing one fails rather than skips.
+//! **Each test skips when its program is not in the archive**, which is wherever `cargo xtask
+//! basalt-fetch` did not run. CI's `rg-threads` rows fetch them and set `NIFE_SPEEDTEST1_REQUIRED`
+//! and `NIFE_IOPING_REQUIRED` to 1, so there a missing one fails rather than skips.
 //!
 //! **All three ISAs**, one body each, nothing architecture-specific asserted (§19 (architectural
 //! parity is a tenet; the targets are aarch64, riscv64, and x86_64)).
 
 use super::*;
 
-/// Skip unless this archive has `name` and this boot can run it.
+/// Skip unless this archive has `name` and this boot can run it. `required` is the build's
+/// `NIFE_<NAME>_REQUIRED`: where CI fetched basalt's package, a missing program is a broken fetch
+/// and fails rather than skips. `milestone` is the one that packaged it in basalt.
 macro_rules! skip_without {
-    ($name:literal) => {
+    ($name:literal, $required:expr, $milestone:literal) => {
         if program($name).is_none() {
+            assert!(
+                !matches!($required, "1"),
+                concat!(
+                    "no ",
+                    $name,
+                    " in this archive, though the build required it: `cargo xtask basalt-fetch` \
+                     ran and its ",
+                    $name,
+                    " did not reach the archive"
+                )
+            );
             crate::testing::skip!(concat!(
                 "no ",
                 $name,
-                " in this archive: build it with helpers/build-",
-                $name,
-                ".sh, which fetches its source (milestone 835)"
+                " in this archive: `cargo xtask basalt-fetch` fetches it (milestone ",
+                $milestone,
+                ")"
             ));
         }
         if fs_service::fs_server_image().is_none() {
@@ -161,10 +175,11 @@ fn assert_speedtest1_complete(text: &str, how: &str) {
 ///
 /// Falsification: attested 2026-10-10. On patagonia, aarch64 under HVF, before the run was granted
 /// a clock: `speedtest1` printed its banner, trapped in `SystemTime::now()` on its first timed
-/// test, and this test failed. A replay needs `speedtest1` in the archive, which no gate builds.
+/// test, and this test failed. A replay needs a `speedtest1` linked against that C library, and
+/// basalt's package is linked at the nife commit basalt pins.
 #[test_case]
 fn unmodified_sqlite_speedtest1_runs_in_memory() {
-    skip_without!("speedtest1");
+    skip_without!("speedtest1", env!("NIFE_SPEEDTEST1_REQUIRED"), "897");
     let mut got = [0u8; 16384];
     let line = c_program_fixture::SPEEDTEST1_MEMDB;
     let Some(len) = run("speedtest1", line, &mut got) else {
@@ -181,11 +196,11 @@ fn unmodified_sqlite_speedtest1_runs_in_memory() {
 /// at every commit, so this is also a create-and-remove loop.
 ///
 /// Falsification: attested 2026-10-10. The same red as the in-memory test's, on the same run: the
-/// program trapped before its first test with no clock granted. A replay needs `speedtest1` in the
-/// archive, which no gate builds.
+/// program trapped before its first test with no clock granted. A replay needs a `speedtest1` linked
+/// against that C library, and basalt's package is linked at the nife commit basalt pins.
 #[test_case]
 fn unmodified_sqlite_speedtest1_runs_on_a_file() {
-    skip_without!("speedtest1");
+    skip_without!("speedtest1", env!("NIFE_SPEEDTEST1_REQUIRED"), "897");
     let mut got = [0u8; 16384];
     let line = c_program_fixture::SPEEDTEST1_FILE;
     let Some(len) = run("speedtest1", line, &mut got) else {
@@ -211,19 +226,7 @@ fn unmodified_sqlite_speedtest1_runs_on_a_file() {
 /// C library, and basalt's package is linked at the nife commit basalt pins.
 #[test_case]
 fn unmodified_ioping_times_reads_in_a_granted_directory() {
-    // basalt's package (milestone 906), not a helper's build: a missing one is a fetch that did
-    // not run, or, where CI fetched it, a broken one.
-    if program("ioping").is_none() {
-        assert!(
-            !matches!(env!("NIFE_IOPING_REQUIRED"), "1"),
-            "no ioping in this archive, and NIFE_IOPING_REQUIRED=1: `cargo xtask basalt-fetch` \
-             ran and its ioping did not reach the archive"
-        );
-        crate::testing::skip!(
-            "no ioping in this archive: `cargo xtask basalt-fetch` fetches it (milestone 906)"
-        );
-    }
-    skip_without!("ioping");
+    skip_without!("ioping", env!("NIFE_IOPING_REQUIRED"), "906");
     let mut got = [0u8; 8192];
     let Some(len) = run("ioping", c_program_fixture::IOPING, &mut got) else {
         crate::testing::skip!("no RedoxFS disk attached");

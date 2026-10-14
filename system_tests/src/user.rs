@@ -324,8 +324,8 @@ mod ripgrep_threads_tests;
 
 /// **Somebody else's C, unmodified, on nife's C library**: SQLite's `speedtest1` and ioping
 /// (milestone 835 (a C library, stage 1: files, clock and memory)). Each skips unless its program is
-/// in the archive: `speedtest1` from its `helpers/build-speedtest1.sh`, ioping from basalt's
-/// package (`cargo xtask basalt-fetch`). Every ISA, per DECISIONS §19.
+/// in the archive, from basalt's package (`cargo xtask basalt-fetch`). Every ISA, per DECISIONS
+/// §19.
 #[cfg(all(test, initial_ramdisk))]
 mod c_program_tests;
 

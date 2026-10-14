@@ -38,16 +38,18 @@ fn the_noteless_install_line_names_the_seeded_file() {
 /// same way (milestone 614 (two installed versions of one program, each runnable), ruling 4).
 /// `rg` is the program `jig install ripgrep` installs from basalt's index (milestone 810
 /// (`ripgrep` is packaged in basalt and installed with `jig`)), `ioping` is `jig install
-/// ioping`'s (milestone 906 (ioping is packaged in basalt)), and `hackbench` is `jig install
-/// hackbench`'s (milestone 907 (hackbench is packaged in basalt)). `alto` and `tenor` are the two
+/// ioping`'s (milestone 906 (ioping is packaged in basalt)), `hackbench` is `jig install
+/// hackbench`'s (milestone 907 (hackbench is packaged in basalt)), and `speedtest1` is `jig install
+/// sqlite`'s (milestone 897 (SQLite is packaged in basalt)). `alto` and `tenor` are the two
 /// programs of `duet` (milestone 919 (a package carries several programs)).
-const INSTALLED_BY_THE_SCRIPT: [&str; 8] = [
+const INSTALLED_BY_THE_SCRIPT: [&str; 9] = [
     "greeting",
     "noteless",
     "greeting@0.1.0",
     "rg",
     "ioping",
     "hackbench",
+    "speedtest1",
     "alto",
     "tenor",
 ];

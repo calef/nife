@@ -3,9 +3,9 @@
 //! package `jig` installs from basalt) item 3). Name: provisional,
 //! `cargo xtask basalt-fetch`, minted 2026-10-13 (UTC) by lane `lane/ripgrep-from-basalt`.
 //!
-//! nife builds no `rg`, `ioping` or `hackbench`. basalt does (its `recipes/ripgrep.toml`,
-//! `recipes/ioping.toml` and `recipes/hackbench.toml`), and publishes one package
-//! per architecture on a GitHub Release with an index at `basalt.nifeos.org`. calef ruled on 2026-10-13
+//! nife builds none of the programs [`PINNED_INDEX`] names (`rg`, `ioping`, `hackbench`,
+//! `speedtest1`). basalt does, from its `recipes/`, and publishes one package per architecture on a
+//! GitHub Release with an index at `basalt.nifeos.org`. calef ruled on 2026-10-13
 //! (UTC) that nife's tests take that package rather than a build of their own: *"1 is preferable
 //! because that tests jig and basalt's delivery mechanism as well."*
 //!
@@ -18,8 +18,8 @@
 //!    [`crate::disk`] hands to the test index host, so `script/swish-check` types `jig install
 //!    ripgrep` against basalt's bytes;
 //! 3. writes the package's program member to `target/basalt/programs/<triple>/<program>`, which the
-//!    kernel harness's archive and the shell check's disk carry (`rg`, `ioping`, `hackbench`) for the tests and
-//!    lines that run it by path with hand-placed capabilities.
+//!    kernel harness's archive and the shell check's disk carry for the tests and lines that run it
+//!    by path with hand-placed capabilities.
 //!
 //! It also fetches the host's reference `rg`, the same 14.1.1 from ripgrep's own Release, pinned by
 //! SHA-256 per host ([`HOST_RIPGREP`]). `script/swish-check` compares the guest's walk against what
@@ -36,7 +36,7 @@
 //! wants it copies basalt's served lines over [`PINNED_INDEX`]'s file and lets CI judge them:
 //!
 //! ```text
-//! curl -sSf https://basalt.nifeos.org/rolling/metadata/stand-in-index | grep -E '^(ripgrep|ioping|hackbench)-' > xtask/basalt-pins.index
+//! curl -sSf https://basalt.nifeos.org/rolling/metadata/stand-in-index | grep -E '^(ripgrep|ioping|hackbench|sqlite)-' > xtask/basalt-pins.index
 //! ```
 
 use std::path::{Path, PathBuf};
@@ -118,6 +118,12 @@ pub(crate) fn hackbench_elf(triple: &str) -> PathBuf {
     program_elf(triple, "hackbench")
 }
 
+/// **SQLite's `speedtest1` for `triple`, the program of basalt's `sqlite` package** (milestone 897
+/// (SQLite is packaged in basalt)), on [`ioping_elf`]'s terms.
+pub(crate) fn speedtest1_elf(triple: &str) -> PathBuf {
+    program_elf(triple, "speedtest1")
+}
+
 /// Where [`take_programs`] writes a package's program member for `triple`.
 fn program_elf(triple: &str, program: &str) -> PathBuf {
     workspace_root().join(format!("target/basalt/programs/{triple}/{program}"))
@@ -145,7 +151,8 @@ pub(crate) fn fetch() -> bool {
                 ok = false;
             }
             Err(why) => eprintln!(
-                "basalt-fetch: {why}; the `rg`, `ioping` and `hackbench` lines and tests skip without it and say so"
+                "basalt-fetch: {why}; the lines and tests of basalt's programs skip without it \
+                 and say so"
             ),
         }
     }
