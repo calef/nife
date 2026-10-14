@@ -40,8 +40,8 @@ Each of these is why a step of the procedure exists.
        gh api graphql -f query='mutation($pr:ID!){dequeuePullRequest(input:{id:$pr}){clientMutationId}}' -f pr="$node_id"
 
    `helpers/merge-drain.sh` learned the same call on 2026-09-18 for a different reason (a
-   `needs-architect` label arriving 73 seconds after an enqueue), and `queue-hold.sh` borrows its
-   before/after timeline count: the mutation is a silent no-op on a pull request that is not queued,
+   `needs-architect` label arriving 73 seconds after an enqueue). `queue-hold.sh` borrows its
+   before/after timeline count. The mutation is a silent no-op on a pull request that is not queued,
    so counting `removed_from_merge_queue` events is the only honest way to say whether anything
    moved.
 3. GitHub leaves orphaned group builds running. Dequeuing an entry does not cancel the
@@ -51,8 +51,8 @@ Each of these is why a step of the procedure exists.
 4. A green CI conclusion does not mean a healthy tree. This is the one worth carrying furthest,
    because it falsifies a claim this tree has been making since 2026-08-04. `ci.yml` skips the steps
    of `build + test` when every changed path matches `notes/`, `design/` or a root `*.md`, and the
-   job still posts a green required status (it has to: a job that never runs never posts, and the
-   check is required, so the merge queue would wait forever). That rule is sound for a kernel and
+   job still posts a green required status. It has to: a job that never runs never posts, and the
+   check is required, so the merge queue would wait forever. That rule is sound for a kernel and
    false for `crates/documentation`, whose tests render those exact files. So a documentation-only
    commit broke `every_character_survives`, merged, and left `main` red for hours while
    `helpers/trunk-health.sh`, which reads the conclusion, said green. Pull request #1168 fixes the
@@ -98,9 +98,9 @@ The held set must survive the session that made it, and on 2026-09-23 it did not
 chat message, which is the medium milestone 94 (the untracked-work sweep) exists to abolish.
 
 So it is a label, `held-for-red-trunk`, on the pull requests themselves. That is rung three of
-AGENTS.md's ladder, the same rung and the same mechanism `needs-architect` already proves: the held
-queue is `gh pr list --label held-for-red-trunk` rather than something somebody has to have read, and
-a session that dies leaves a visible set rather than an invisible one.
+AGENTS.md's ladder, the same rung and the same mechanism `needs-architect` already proves. The held
+queue is `gh pr list --label held-for-red-trunk` rather than something somebody has to have read. A
+session that dies leaves a visible set rather than an invisible one.
 
 **Rungs one and two are deliberately not attempted.** No gate can tell a pull request that should be
 held from one that should not, because that is a judgment about whether a given failure is a real

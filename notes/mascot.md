@@ -8,9 +8,9 @@ Two images are in the tree, and the credit is the same for both because the desi
 is a realistic render of that design, added 2026-09-04 and now the one the README carries; its caption
 reads *designed by calef's kid; realistic render*, which is the whole of what the record claims about it.
 
-**The render was checked against the rulings below rather than accepted on looks**, and it keeps every
-one: the gear is held, not embedded; the reference gear is plain, with no "Ni · Fe" stamp; the
-posture is standing and top-heavy over small feet; and the moss is there. It is a rendering of the
+**The render was checked against the rulings below rather than accepted on looks**, and it keeps
+every one. The gear is held, not embedded. The reference gear is plain, with no "Ni · Fe" stamp; the
+posture is standing and top-heavy over small feet. The moss is there. It is a rendering of the
 ratified design rather than a reinterpretation of it, which is what makes it usable as the reference
 rather than a variant.
 
@@ -30,19 +30,19 @@ of basalt, which is a coherence the family gets for free.
 
 A golem is the project in one image: a creature made of rock that holds machinery. The gear is
 held, not embedded (calef, 2026-08-15): Cobble is the guardian of the machinery, not the
-machinery itself. And the reference gear is plain (calef, same day): a proposal to stamp it
-"Ni · Fe" was refused for the reference because detail that is not load-bearing belongs to
-variants, which is the Octodex lesson; the reference is the thing every variant must still be
+machinery itself. And the reference gear is plain (calef, same day): a proposal to stamp it "Ni ·
+Fe" was refused for the reference. Detail that is not load-bearing belongs to variants, which is the
+Octodex lesson. The reference is the thing every variant must still be
 recognizable as, so it carries only what identity requires. Standing posture, top-heavy over small feet; it plants rather than walks. The
 moss is time made visible: the thing has stood dependable long enough for things to grow on it.
 
 ## Considered and set aside
 
 Ingot, Eddy (Edison's nickel-iron cells, eddy currents), Ferro, Suess (who coined "nife"),
-Magnus. All recorded here because refusals are the valuable half of a naming record. Two costs
-were weighed and accepted with eyes open: the idiom "cobbled together" claims the opposite of a
-verified kernel, survivable because the rigor claim rides on `nife` and mascots metabolize irony
-(BSD ships a devil); and Minecraft's Cobblestone Golem is adjacent enough that the artist's generation
+Magnus. All recorded here because refusals are the valuable half of a naming record. Two costs were
+weighed and accepted with eyes open. The idiom "cobbled together" claims the opposite of a verified
+kernel, survivable because the rigor claim rides on `nife` and mascots metabolize irony (BSD ships a
+devil). And Minecraft's Cobblestone Golem is adjacent enough that the artist's generation
 may hear homage, ruled acceptable because the artist belongs to it.
 
 ## BUGS

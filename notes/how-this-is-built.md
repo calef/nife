@@ -21,9 +21,9 @@ someone who is not building an operating system, and it is the one nobody had wr
 
 ## The numbers, measured on 2026-09-21
 
-From a first commit on 2026-07-12: 71 days, 5,039 commits, 228 milestones built, 203
-architecture decisions, 72 crates, 50 user programs, 178 Kani proof harnesses,
-39,892 lines of kernel code and 88,334 elsewhere, on three architectures, with a booting kernel
+From a first commit on 2026-07-12: 71 days, 5,039 commits, 228 milestones built, 203 architecture
+decisions, 72 crates, 50 user programs, 178 Kani proof harnesses. 39,892 lines of kernel code and
+88,334 elsewhere. All on three architectures, with a booting kernel
 on real RISC-V silicon, a shell, a filesystem, a network stack, a compositor, and an unmodified
 third-party program (`ripgrep`, zero patches) running on all three.
 
@@ -36,8 +36,8 @@ denominator every figure above should be read against.
 
 What that is worth comparing to, carefully. Atmosphere, a hardware-isolated Verus-verified
 microkernel, reports 1.5 person-years on verification alone; seL4 reports about eleven
-person-years, plus nine more. Those are not the same work, and the comparison is dishonest if
-stated without that: seL4 and Atmosphere carry machine-checked proofs of functional correctness for
+person-years, plus nine more. Those are not the same work, and the comparison is dishonest if stated
+without that. seL4 and Atmosphere carry machine-checked proofs of functional correctness for
 their kernels, where this tree has 178 Kani harnesses covering parts of it and a risk register that
 says so. The honest sentence is narrower: ten person-weeks bought a three-architecture capability
 microkernel that boots on silicon and runs unmodified third-party software, and what it did not
@@ -60,9 +60,9 @@ comparison against another project belongs in code lines.
 
 The rate is not the method; the gates are. The same speed without them produces a great deal of
 code nobody can trust, faster. What actually holds this together is a set of machine checks that
-fail loudly: every architecture builds and boots or the merge fails; a proof harness must have a
-recorded way to make it go red; a citation must say what it cites; a refusal must say what would
-change it; a limitation is documented beside the feature rather than in a tracker. Every failure
+fail loudly. Every architecture builds and boots or the merge fails. A proof harness must have a
+recorded way to make it go red. A citation must say what it cites, and a refusal must say what would
+change it. A limitation is documented beside the feature rather than in a tracker. Every failure
 this project has had is evidence for that, and they are written down in the same files as the
 successes.
 

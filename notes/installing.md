@@ -72,9 +72,9 @@ the authority to wipe the disk does not exist until the answer does.
 too, so an offer that did not look at the disk first would ask every installed machine, once per
 boot, whether to wipe itself. Looking means reading a partition table, and the kernel does not parse
 partition tables (notes/block-devices.md). So the looking is done by a process holding the disk and
-no entropy endpoint: the `disk_partitioner` verify role of milestone 57 (partitioning and
-formatting a real drive), one milestone along, and
-the same demonstration: a program that cannot draw a unique id cannot write a table anything reads
+no entropy endpoint: the `disk_partitioner` verify role of milestone 57 (partitioning and formatting
+a real drive), one milestone along. It is the same demonstration: a program that cannot draw a
+unique id cannot write a table anything reads
 back.
 
 ## The three things the building changed
@@ -92,14 +92,15 @@ FAT volume in one call. It hands it over as module 1; module 0 stays the archive
 is a contract stated at both ends.
 
 **The kernel and the archive therefore move as a set for free**, which was the failure this had to
-make unexpressible: a disk carrying a new kernel beside an archive it does not vouch for halts at
+make unexpressible. A disk carrying a new kernel beside an archive it does not vouch for halts at
 `MEASURED BOOT REFUSED`, and that cost a boot on 2026-09-01. They are sealed together inside the one
 file at build time (`uefi_loader/build.rs`'s `refuse_an_unsealed_pair`), and the installer copies the
 file.
 
-Two candidates were priced in milestone 515 and lost: reading the stick over USB mass storage waits
+Two candidates were priced in milestone 515 and lost. Reading the stick over USB mass storage waits
 on milestone 242 (USB host and HID), which milestone 192 (a keyboard on real silicon) prices at
-*"months rather than weeks"*; and writing the installer as a UEFI application discards milestone 57's confined
+*"months rather than weeks"*. Writing the installer as a UEFI application discards milestone 57's
+confined
 partitioner entirely.
 
 It is x86_64 only. A device-tree handoff has one initrd slot in `/chosen` and no second one, so
@@ -116,22 +117,24 @@ header, and adopts the block it finds it at as the filesystem's origin. So **a R
 inside the first 256 MiB of a disk is mounted correctly by a server that was given the whole disk.**
 With the data partition at LBA 2048 it begins at block 256.
 
-What that deletes from this rung: a partition-aware mount in `redoxfs_server`, a base-block field on
-the `blk` wire (which is a wire value two programs agree on, and therefore calef's), and a caretaker
+What that deletes from this rung: a partition-aware mount in `redoxfs_server`, and a base-block
+field on the `blk` wire (a wire value two programs agree on, and therefore calef's). Also a
+caretaker
 process in the middle of every filesystem block. `kernel/src/user/fs_service.rs` grew an NVMe arm and
 nothing else.
 
 What it costs is real and is recorded in `system_installer`'s `BUGS`: the filesystem server on an
 installed machine can address the EFI system partition and the partition table. What keeps it inside
 the partition today is that `mkfs` created it bounded by a `PartitionDisk`, so its allocator never
-learns about the blocks past the end, a property of the filesystem rather than a capability, which
-is the wrong rung of AGENTS.md's ladder. Closing it is a lane of its own and it is the first thing a
+learns about the blocks past the end. That is a property of the filesystem rather than a capability,
+which is the wrong rung of AGENTS.md's ladder. Closing it is a lane of its own and it is the first
+thing a
 reader of this page should consider taking.
 
 ### 3. FAT32 had to be written, and the alignment is the part that bites
 
-Nothing in this tree could write a FAT volume: every path around it (QEMU's `vvfat`, macOS's
-`diskutil`, Linux's `mkfs.vfat`) is a host tool the target cannot reach, and the FAT32 stratum of
+Nothing in this tree could write a FAT volume. Every path around it (QEMU's `vvfat`, macOS's
+`diskutil`, Linux's `mkfs.vfat`) is a host tool the target cannot reach. The FAT32 stratum of
 milestone 140 (mount a drive this system did not create) is read-first and unbuilt. `crates/file_allocation_table` is the smallest thing that closes
 it: it creates one volume holding one file at one path, as pure computation with no I/O, and is then
 finished.
@@ -174,17 +177,18 @@ the strong ones from a distance.
 
 The third row is milestone 515's B1, which that proposal recommended and called unmeasured on
 anything but OVMF. It is now measured on OVMF and on nothing else. The deletion of the variable store
-is what makes it a measurement at all: the default store persists across runs in a checkout, so
+is what makes it a measurement at all. The default store persists across runs in a checkout, so
 without it the second boot would have been riding a boot option the first one left behind.
 
 ## What this does not do
 
-**Whole disk only**, and that one has no proposal: installing beside another operating system means
-resizing a filesystem nife cannot read, which is the territory of milestone 140 (mount a drive this
+**Whole disk only**, and that one has no proposal. Installing beside another operating system means
+resizing a filesystem nife cannot read. That is the territory of milestone 140 (mount a drive this
 system did not create) and a different order of risk to somebody's data.
 
-Everything else this rung found that it did not do is written where the next person meets it: in the
-`BUGS` section beside the feature, and, for the five that want work rather than only a record, as a
+Everything else this rung found that it did not do is written where the next person meets it. That
+is the `BUGS` section beside the feature and, for the five that want work rather than only a record,
+as a
 proposal in `design/roadmap/proposals/`. The five, and what each is actually about:
 
 | proposal | the thing it is about |
@@ -197,10 +201,10 @@ proposal in `design/roadmap/proposals/`. The five, and what each is actually abo
 
 A stick boot used to write the installed disk (the live stick proposal's G2, measured 2026-10-04).
 With no virtio disk the kernel mounted the NVMe filesystem whatever the boot medium was, and RedoxFS
-writes on mount: boot 3 of `install-boot` changed 3 blocks of the nife data partition with nobody
+writes on mount. Boot 3 of `install-boot` changed 3 blocks of the nife data partition with nobody
 typing anything. calef ruled the fix on PR #1652, 2026-10-04 (UTC): the loader writes
 `boot-medium=nvme` (provisional, `boot_slot::medium`) when its file is on an NVMe disk, or when a
-chooser started it from a slot, and the kernel mounts the NVMe only when that token is there. A
+chooser started it from a slot. The kernel mounts the NVMe only when that token is there. A
 stick, a `-kernel` boot and the device-tree architectures leave the internal disk alone. Boot 3 now
 finds the disk byte-identical.
 
