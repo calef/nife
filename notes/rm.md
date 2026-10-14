@@ -106,9 +106,9 @@ the names this run has already taken away.
   carries text frames (first word = a byte count, at most 16) and then `byte_sink_protocol::eof()`, whose
   first word is `OPERATION_EOF << 56`; the status and the removal count ride in the two words that message
   leaves free. A receiver reads "the first message ends the stream" as "the run printed nothing",
-  which is what makes `rm(1)`'s silence-on-success checkable. It used to be `filesystem_protocol::fixture::VERDICT`
-  instead, which no reader that was not a guest test could decode, so this program could not be piped
-  even though its manifest declared the sink contract.
+  which is what makes `rm(1)`'s silence-on-success checkable. `filesystem_protocol::fixture::VERDICT`
+  would not do: no reader that is not a guest test can decode it, so the program could not be piped
+  even though its manifest declares the sink contract.
 - **No `rm -i`.** There is no prompting anywhere in this system, so the flag has nothing to mean.
 - **Recursion depth is real stack**, since the program has no allocator and each level holds a listing
   buffer by value. `rm` asks for 4 stack pages. A deep enough tree will exhaust it, and the failure

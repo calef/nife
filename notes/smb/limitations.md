@@ -51,7 +51,7 @@ attempt knew it had not solved, written while the code was in front of someone.
 ## Durability and Apple metadata
 
 - `FULL_SYNC`'s durability is now backed, and here is what it still is not. The device is flushed
-  (see [apple-half.md](apple-half.md)), so the entry that used to sit here is closed. What remains:
+  (see [apple-half.md](apple-half.md)), so that entry is closed. What remains:
   the sync is device-wide, never per file. A client that flushes one handle makes the whole image
   durable. That is more work than it asked for, and is the only thing anything below here can do. And
   nothing fences: there is no ordering primitive on `fs_proto`. So a client issuing a write and a
@@ -178,7 +178,7 @@ attempt knew it had not solved, written while the code was in front of someone.
 - All timestamps are zero, since the server holds no clock capability and fs_proto's FSTAT does not
   carry times. macOS renders that as January 1601 or similar nonsense dates. Cosmetic, and honest:
   nothing here has a date to report.
-- `FILE_SUPERSEDE` is `FILE_OVERWRITE_IF` with a different `CreateAction`. Superseding properly
+- `FILE_SUPERSEDE` is `FILE_OVERWRITE_IF` with a different `CreateAction`. Doing it properly
   replaces a file's identity, attributes and all, and this model has no attributes to replace.
 
 ## Handles, listings and connections

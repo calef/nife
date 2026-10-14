@@ -11,8 +11,8 @@
 # `std` program the C is linked into has a `main` of its own (c_library/src/start.rs). The program
 # also carries the unvouched-`std` manifest note `cargo xtask foreign-note` writes, as `rg` does.
 #
-# It uses this checkout's own `std` farm by path, as helpers/build-ripgrep.sh explains, and the
-# pinned toolchain's `llvm-tools` for `llvm-objcopy` and `llvm-ar`.
+# It uses this checkout's own `std` farm by path (`target/nife-farm`, which `cargo xtask std-src`
+# builds; a link name can resolve another worktree's farm), and the pinned toolchain's `llvm-tools` for `llvm-objcopy` and `llvm-ar`.
 set -euo pipefail
 [ $# -ge 3 ] || { echo "usage: helpers/build-c-program.sh <name> <triple> <object>..." >&2; exit 2; }
 NAME="$1"; TRIPLE="$2"; shift 2

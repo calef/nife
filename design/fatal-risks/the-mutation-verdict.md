@@ -81,7 +81,7 @@ It ran at the milestone 636 branch's head, which differs from `main` only by tha
 The published rows disagree about what a timeout is: the baseline and the 2026-09-14 figures follow
 `notes/mutation-testing.md`'s rule that a timeout is a kill, while the 2026-09-19 figures (now in
 `notes/mutation-testing/regressions-capability-to-dtb.md`) scored that run's 205 timeouts as
-survivors. And `cred` was renamed to `credentialer`, so the join dropped it: 103 viable mutants at
+survivors. And the crate those rows call `cred` is `credentialer`, so the join dropped it: 103 viable mutants at
 100%. Reproducing the published 37 crates and 6,472 viable requires resolving two crates by hand and
 missing that one.
 
@@ -248,7 +248,7 @@ crates the 92.4% figure covers, so it was never a like-for-like reading. Two cra
 the apparent fall and neither was explained at the time: `uefi_loader` at 15% and `manual` at 52%.
 Both turned out to be measurement rather than quality (milestone 280, built 2026-09-13), as did a
 third, `system_initializer`, before them, in milestone 244 (the largest crate in the tree is proved
-by nothing a mutation can reach). The census of 2026-09-14 above supersedes this number; it is kept
+by nothing a mutation can reach). The census of 2026-09-14 above replaces this number; it is kept
 here because it is what this entry was ranked on for eleven days.
 
 ### Both repairs landed and the reading arrived

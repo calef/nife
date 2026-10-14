@@ -49,8 +49,9 @@ over the same copy. notes/ripgrep-on-nife.md has the three faults it exposed, fi
 timings.
 
 Re-checked in CI from 2026-10-08 (UTC) (lane `milestone/121-rg-ci`, #1853), the first gap of
-calef's amber ruling on fatal risk 1. `script/ci-build`'s `swish-check` rows build `rg` first, so
-the walk runs on every pull request, and in CI a missing `rg` fails the leg.
+calef's amber ruling on fatal risk 1. `script/ci-build`'s `swish-check` rows fetch basalt's `rg`
+first, so the walk runs on every pull request, and in CI a missing `rg` fails the leg. Why
+basalt's: calef's ruling in milestone 810 (`ripgrep` is packaged in basalt and installed with `jig`).
 
 Threaded 2026-10-12 (UTC) (lane `milestone/121-rg-threads`, risk 1's third gap): at `-smp 4` on
 all three, the kernel counted five threads in `rg`'s process, and CI re-checks it
@@ -230,25 +231,24 @@ ripgrep working beautifully and confinement being decorative.
   which needs a C cross-compiler this machine lacks, and uses musl's malloc. Upstream added
   `jemalloc` because musl's allocator is slow for `ripgrep`, so the Linux figure is if anything
   pessimistic. `bench/host/run_linux_rg.sh` says so where it does it.
-- CI's `test` job builds no `rg`, so the kernel suite's four `rg` tests skip there; `swish-check`
-  builds it (2026-10-08 UTC), and since 2026-10-12 the `rg-threads` rows build it and run them. Its crates.io fetch in a gate is a DECISIONS §46 (thin
-  primitives or whole subsystems) question, asked on #1853.
+- CI's `test` job fetches no `rg`, so the kernel suite's four `rg` tests skip there; the
+  `rg-threads` rows run them.
 
 - Spawning `rg` at the prompt takes up to 39 s under load, the walk up to 432 s on `x86_64` under
   TCG, and neither is explained; its peak memory there is unmeasured (notes/ripgrep-on-nife.md).
 
 ## Follow-on
 
-- **Outstanding.** nife maintains `helpers/ripgrep-ignore-walk.patch`, re-checked at every `rg` or
-  `ignore` bump. Upstream issue: (link pending).
+- **Outstanding.** nife maintains basalt's `patches/ripgrep-ignore-walk.patch`, re-checked at every
+  `rg` or `ignore` bump. Upstream issue: (link pending).
 - **Milestone 205.** The ABI has no argument vector, which is what stops `rg` after it loads and
   resolves its own directory. `design/roadmap/0205-foreign-program-arguments.md` was minted from
   this lane on 2026-08-31 and carries the wire-format fork.
 - **Milestone 206.** The 896 KiB image ceiling this lane found became
   `design/roadmap/0206-user-image-ceiling.md`, which also owns the mapping error that names an
   overlap rather than a size.
-- **Outstanding.** Exit clause 4, `rg` installed by `jig` (809) from the package #1797 mints.
-  Checked 2026-10-07.
+- **Outstanding.** Exit clause 4. Checked 2026-10-13: `jig install ripgrep` runs in CI, and no
+  gate types `rg pattern dir` by bare name.
 - **Outstanding.** A threaded comparison with Linux. Checked 2026-10-12: `rg_search` and `bench/host/run_linux_rg.sh` still run `RG_SEARCH`, which passes `--threads 1`.
 - **Done.** 2026-10-07: `rg` searches the priced tree and its counts match the fixture, on all
   three architectures (`ripgrep_tests::ripgrep_searches_the_tree_it_was_granted`).

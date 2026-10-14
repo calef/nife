@@ -106,7 +106,8 @@ packages, checked once and then pinned by digest, and it keeps them out of the b
 
 ## What a third party needs today
 
-`helpers/build-ripgrep.sh` is the one out-of-tree build. It needs the target file, the linker
+basalt's package build (`recipes/ripgrep.toml` and `helpers/packages.py` in `nifeos/basalt`) is
+the one out-of-tree build. It needs the target file, the linker
 script, the patched `nife-dev` toolchain made by `xtask std-src`, and `-Zbuild-std`. The `std`
 overlay reaches six crates: `abi`, `user_mode_runtime`, `filesystem_protocol`,
 `byte_sink_protocol`, `clock_protocol` and `counter_frequency_protocol`. With their own

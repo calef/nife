@@ -1,111 +1,34 @@
-//! **Unhalted core cycles, `x86_64`** (milestone 309, the `x86_64` half of milestone 74's
-//! measurement side).
+//! **Unhalted core cycles, `x86_64`.** [`super::timer::now()`] is `rdtsc`, so a cycle probe that
+//! read the TSC would divide one counter by itself and print an exact `1.00` on every part. The
+//! TSC is invariant, a good clock and not a cycle counter. This module reads
+//! `IA32_PERF_FIXED_CTR1`, `CPU_CLK_UNHALTED.CORE`: cycles the core ran, at its actual frequency,
+//! not counting halts, the quantity aarch64's `PMCCNTR_EL0` and riscv64's SBI PMU cycle counter
+//! give.
 //!
-//! # Why this is not `rdtsc`, which is the whole reason the module exists
+//! It creates no authority: the counter is read with `rdmsr` in ring 0, and `CR4.PCE` stays clear,
+//! so `rdpmc` from ring 3 still faults. (The TSC is already ambient, per §139 (who may read the cycle
+//! counter).)
 //!
-//! [`super::timer::now()`] **is** `rdtsc`. So a `cycles_per_tick` probe on this architecture that
-//! read the TSC at both ends would divide one counter by itself and print an exact `1.00`, every
-//! time, on every part. That is milestone 16a's "implausibly exact 100.00" again, except
-//! structural rather than emulated: no boot on real silicon would ever fix it, because the two
-//! reads are the same instruction.
+//! Intel SDM Volume 3B, "Architectural Performance Monitoring": `CPUID` leaf `0x0A` gives the
+//! version (fixed counters from 2) and the fixed counters' count and width;
+//! `IA32_FIXED_CTR_CTRL` (`0x38D`) enables counter 1 for ring 0 and ring > 0; `IA32_PERF_GLOBAL_CTRL`
+//! (`0x38F`) is the master switch, and a counter enabled in only one of the two counts nothing;
+//! `IA32_PERF_FIXED_CTR1` (`0x30A`) is the counter. The leaf is checked before any MSR, since
+//! `rdmsr` on an unimplemented MSR is a `#GP` with no recovery; QEMU without its `pmu` property
+//! reports version 0 and [`init`] stops there.
 //!
-//! The other two architectures do not have this problem, because on both of them the OS clock and
-//! the cycle counter are different hardware:
-//!
-//! | | `arch::timer::now()` | the cycle counter |
-//! |---|---|---|
-//! | `aarch64` | `CNTVCT_EL0`, the architected generic timer | `PMCCNTR_EL0`, a PMU counter |
-//! | `riscv64` | `rdtime`, a fixed-rate reference tick | `mcycle`/`hpmcounterN` via SBI PMU |
-//! | `x86_64` | `rdtsc`, **a constant-rate counter** | `IA32_PERF_FIXED_CTR1`, **this module** |
-//!
-//! `IA32_PERF_FIXED_CTR1` is architectural fixed-function counter 1,
-//! `CPU_CLK_UNHALTED.CORE`: cycles the core actually ran, at whatever frequency it was running,
-//! not counted while it is halted. That is the same quantity riscv64's `SBI_PMU_HW_CPU_CYCLES` and
-//! aarch64's `PMCCNTR_EL0` give, so with this in place the three architectures report the same
-//! thing under one name. The TSC cannot answer it: on every part since Nehalem the TSC is
-//! *invariant*, ticking at a fixed rate regardless of the core's frequency or idle state, which is
-//! exactly what makes it a good clock and exactly what makes it not a cycle counter.
-//!
-//! # No authority question, and this must not create one
-//!
-//! [DECISIONS §139 part 3](../../../design/decisions/0139-cycle-counter-authority.md) records that
-//! `x86_64`'s TSC is already ambient: `CR4.TSD` is clear at reset and this kernel never writes it, so
-//! ring 3 can `rdtsc` and the negative half of the cycle-counter grant test skips here with a
-//! reason. **This module does not change that and must not.** It enables a counter the kernel reads
-//! with `rdmsr`, which is ring 0 only. `CR4.PCE` stays clear, so `rdpmc` from ring 3 still faults
-//! and there is no new ambient counter to grant or to revoke.
-//!
-//! # The interface, from the specification
-//!
-//! Intel SDM Volume 3B, Chapter 20 (Performance Monitoring), "Architectural Performance
-//! Monitoring". Three registers and one `CPUID` leaf:
-//!
-//! 1. **`CPUID` leaf `0x0A`** says whether any of this exists. `EAX[7:0]` is the architectural
-//!    performance monitoring **version**; fixed-function counters arrive at version 2. `EDX[4:0]`
-//!    is how many fixed-function counters there are and `EDX[12:5]` how wide they are.
-//! 2. **`IA32_FIXED_CTR_CTRL` (`0x38D`)** enables counting, four bits per fixed counter. Counter 1
-//!    owns bits 4..7: the low two are "count in ring 0" and "count in ring > 0".
-//! 3. **`IA32_PERF_GLOBAL_CTRL` (`0x38F`)** is the master switch; fixed counter *i* is bit `32+i`.
-//!    Both have to be set, and a counter enabled in only one of them silently counts nothing.
-//! 4. **`IA32_PERF_FIXED_CTR1` (`0x30A`)** is the counter itself, read with one `rdmsr`.
-//!
-//! # Why the `CPUID` gate comes first and is not optional
-//!
-//! `rdmsr` on an MSR the part does not implement is a `#GP`, and this kernel has no recovery path
-//! for a probe that could have asked. The leaf is therefore checked before any of the three MSRs is
-//! touched, which is the same discipline `isa::draw_random_seed` keeps for `RDSEED` one file over.
-//! It is also what makes this safe under an emulator that models no PMU at all: QEMU zeroes leaf
-//! `0x0A` unless its `pmu` property is on, so [`init`] reads a version of 0, stops, and never
-//! issues an `rdmsr` that would fault.
-//!
-//! # Why a counter is checked before it is believed
-//!
-//! Because a counter can be present and useless, and this module's whole value is saying so rather
-//! than printing a number. `arch::riscv64::pmu` learned this from firmware handing back a counter
-//! QEMU models as a constant zero; the same shape is available here two ways, and both are
-//! detected:
-//!
-//! - **Stuck.** Read twice across a timed spin and unmoved. A counter of executed cycles cannot do
-//!   that on a core that is executing.
-//! - **In step with the TSC.** A hypervisor that satisfies the read by handing back the *same*
-//!   counter produces a delta bit-for-bit equal to the TSC's over the same window, and a probe that
-//!   believed it would print the exact `1.00` this module exists to avoid. Refused, with its own
-//!   reason, so a reader can tell "this machine has no cycle counter" from "this machine's cycle
-//!   counter is the clock wearing a hat".
-//!
-//! **The degradation this module must never do is fall back to the TSC.** A probe that quietly did
-//! would reproduce the artifact exactly, in a line somebody would later quote as a fact about a
-//! machine. There is no fallback path here; [`cycles`] answers `None` and the caller prints a
-//! reason.
+//! A counter is checked before it is believed: one unmoved across a timed spin is stuck, and one
+//! whose delta equals the TSC's bit for bit is the clock wearing a hat. **It never falls back to
+//! the TSC**: [`cycles`] answers `None` and the caller prints the reason.
 //!
 //! # BUGS
 //!
-//! - **Nothing here has been run on silicon.** Every outcome this module can report today is a fact
-//!   about QEMU. `xenon` (milestone 87, this project's x86 machine) is the one that would produce a
-//!   number. It **has** booted nife, on 2026-09-04 under its own UEFI firmware, and stopped in the
-//!   mapper at `mmu.rs`'s `AlreadyMapped` before reaching anything this module touches; that cause
-//!   is fixed on `main` and the next boot resumes one line further on. So the honest statement is
-//!   that this counter has never been read on silicon, not that the machine has never run.
-//!   See design/roadmap/0309-x86-64-core-cycles.md and notes/x86-uefi-boot.md.
-//! - **The in-step check is bit-exact equality, and that is a deliberate under-detection.** A real
-//!   core pegged at exactly its base frequency has core cycles and TSC ticks at the same *rate*, so
-//!   an approximate band would refuse a legitimate counter on a legitimate machine. Two independent
-//!   counters read by two different instructions a few tens of cycles apart do not produce equal
-//!   deltas over a ten-millisecond window; one counter read twice does. So equality catches
-//!   aliasing and a 1.00 *ratio* alone does not, and a hypervisor that aliased the two with an
-//!   offset would pass this check and print `1.00`. The printed line says what it counts, which is
-//!   the defence that does not depend on a heuristic.
-//! - **The boot CPU only.** These MSRs are per-logical-processor: a secondary that never ran
-//!   [`init`] has fixed counter 1 disabled and would read zero. [`init`] runs once, on the boot
-//!   CPU, and the one consumer is a single-threaded bench probe. A per-CPU record is real work and
-//!   belongs with a caller that needs it.
-//! - **The counter is never stopped.** It runs for the life of the boot, which is correct for a
-//!   free-running counter only ever read as a difference, and is the same call
-//!   `arch::riscv64::pmu` makes.
-//! - **`IA32_PERF_GLOBAL_CTRL` is read-modify-written, not assigned.** Nothing else in this kernel
-//!   programs a performance counter, so the bits preserved are firmware's. Preserving them is the
-//!   conservative choice and costs one `rdmsr`; if a second consumer ever appears, the arbitration
-//!   between them is its problem to raise and not this module's to assume.
+//! - Never read on silicon; xenon is the machine that would (design/roadmap/0309-x86-64-core-cycles.md).
+//! - The in-step check is exact equality, so a hypervisor aliasing the two with an offset passes and
+//!   prints `1.00`; a tolerance band would refuse a real core pegged at its base frequency.
+//! - Boot CPU only: a secondary that never ran [`init`] reads zero.
+//! - The counter runs for the whole boot, read only as a difference.
+//! - `IA32_PERF_GLOBAL_CTRL` is read-modify-written, preserving firmware's bits.
 
 use core::sync::atomic::{AtomicU8, AtomicU32, AtomicU64, Ordering};
 

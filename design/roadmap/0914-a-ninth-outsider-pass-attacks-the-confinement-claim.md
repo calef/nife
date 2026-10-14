@@ -1,5 +1,5 @@
 ---
-status: NOT-STARTED
+status: PARTIAL
 raised: 2026-10-13
 milestone_dependencies: 824
 decision_dependencies: none
@@ -78,6 +78,22 @@ launch.
   in 5 min 34 s, including the cold build; riscv64 in 1 min 6 s; x86_64 in 1 min 44 s. Each ran 2 of
   2 tests, with no watchdog or timeout. No QEMU was left running.
 
+## The first attempt: served by Opus, below the floor
+
+One pass ran on 2026-10-13 (UTC), its commits between 20:38 and 22:36, in cloud session
+`session_0198ZNJVhj6z8jdsXyKHPH64` at the pinned commit. It does not count toward criterion (c).
+[`notes/confinement-outsider-pass-9.md`](../../notes/confinement-outsider-pass-9.md) records it in
+full.
+
+- The session was configured for `claude-fable-5-1` and served by `claude-opus-4-8`, so it is not
+  the Fable pass this milestone names.
+- It booted 20 of the 27 bootable rows by the brief's counting: rows 19, 20, 24, 25 and 34 were
+  reruns of existing tests, and rows 31 and 32 were graded untestable.
+- No escape. One near miss, claim 17, already milestone 799 (the shadow descriptor is published in
+  two stores).
+- Its tests are on branch `claude/pass-9-confinement-run`, not on main, and the lane has not
+  reproduced them on patagonia.
+
 ## Done means
 
 - The dry run recorded, then every bootable row booted, or the pass recorded in full and marked
@@ -133,6 +149,12 @@ Minimal setup, in the order the launch brief's prompt runs it:
 
 ## Follow-on
 
+- **Outstanding.** The Fable pass itself: a fresh session that is served by Fable, at the pinned
+  commit, held to the 27-of-34 floor. The prompt is unchanged; check the served model before
+  counting.
+- **Outstanding.** Reproduce on patagonia every row pass 9 booted, one ISA at a time, then bring
+  its `pass9_*` tests from `claude/pass-9-confinement-run` to main with corrected
+  `Co-Authored-By` trailers, and delete the branch.
 - **Milestone 198.** A human review, or a public bounty once a stranger can install nife, is the
   stronger form and waits on milestone 198 (a package manager, and the trivial install that makes a
   second customer possible).

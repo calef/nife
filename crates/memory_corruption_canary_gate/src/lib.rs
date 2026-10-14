@@ -1,31 +1,8 @@
-//! **The corruption canary's arm/check/disarm serialization**, lifted out of
-//! `kernel/src/sched.rs` so loom can explore every interleaving of it on the host (milestone 80's
-//! method, third retrofit after `work_steal_slot` and `thread_wake_handshake`).
-//!
-//! # The bug this replaces
-//!
-//! The canary's first protocol was two variables: an `ARMED` flag the tick path read, and an
-//! `IN_CHECK` flag that made the byte-compare pass single-flight. It had two holes, and both were
-//! hit on 2026-08-15:
-//!
-//! - **The lost decisive check.** A caller whose `check()` lost the `IN_CHECK` compare-exchange
-//!   returned silently, having checked nothing. The kernel test flipped a watched byte and called
-//!   `check()` to count it; when a timer tick's own check held the slot (having read the byte
-//!   *before* the flip), the test's call was a no-op and the flip went uncounted. That is the
-//!   `thead-c906` flake in notes/cpu-models.md's BUGS: two failures in four runs of one tree,
-//!   timing-dependent and possible on any model and either ISA.
-//! - **The torn plan.** `arm()` waited for `IN_CHECK` to drain before rewriting the watch table,
-//!   but a checker that had loaded `ARMED == true` and not yet won `IN_CHECK` was invisible to
-//!   that drain. An arm landing in that two-instruction window rewrote the table and the shadow
-//!   *while the checker read them*: a Rust data race outright, and a torn `(base, len)` pair is a
-//!   wild read in kernel space. No failure was ever traced to this hole (every boot arms at most
-//!   once today, and re-arms write identical ranges), but the protocol permitted it, and a
-//!   protocol is what this crate exists to get right.
-//!
-//! # The protocol
-//!
-//! One word, four states, every transition a single compare-exchange, so there is no
-//! two-variable window for anything to hide in:
+//! **The corruption canary's arm/check/disarm serialization**, lifted out of `kernel/src/sched.rs`
+//! so loom can explore every interleaving of it on the host. Two flags let a caller's decisive
+//! `check()` lose a race and return having checked nothing (the `thead-c906` flake in
+//! notes/cpu-models.md), and let `arm()` rewrite the watch table while a checker read it. So it is
+//! one word, four states, every transition a single compare-exchange:
 //!
 //! ```text
 //!            arm()                    drop(ArmGuard)
@@ -36,75 +13,20 @@
 //!    └───────────────── ARMED ◄──────────────────── CHECKING ─┘
 //! ```
 //!
-//! - [`arm`](Gate::arm) spins until the instrument is idle (`DISARMED` or `ARMED`), takes it
-//!   exclusively, and hands back an [`ArmGuard`]; dropping the guard publishes `ARMED`.
-//! - [`try_check`](Gate::try_check) is one compare-exchange from `ARMED`. It either takes the
-//!   instrument exclusively ([`CheckGuard`]) or answers [`None`], and the caller KNOWS which: a
-//!   sampling caller (the timer tick) shrugs, a caller that needs a completed pass loops.
-//! - [`disarm`](Gate::disarm) quiesces: when it returns, no pass is mid-flight and none can
-//!   start, so the caller may free or repurpose the watched memory.
+//! - [`arm`](Gate::arm) spins until the instrument is idle, takes it exclusively, and returns an
+//!   [`ArmGuard`]; dropping it publishes `ARMED`.
+//! - [`try_check`](Gate::try_check) takes it exclusively ([`CheckGuard`]) or answers [`None`], and
+//!   the caller knows which: the timer tick shrugs, a caller that needs a completed pass loops.
+//! - [`disarm`](Gate::disarm) quiesces: when it returns, no pass is running or can start, so the
+//!   watched memory may be freed.
 //!
-//! The guards are what make the wrong interleaving unrepresentable at the call site: the kernel's
-//! watch table and shadow buffer are touched only while holding one, and the gate admits at most
-//! one guard of either kind at a time. The loom harnesses below check exactly that claim, plus the
-//! quiescence promise, under every interleaving and reordering C11 permits.
+//! The kernel touches its watch table and shadow only while holding a guard, and the gate admits
+//! one guard of either kind at a time; the loom harnesses check that and the quiescence promise
+//! under every interleaving C11 permits. No fairness: `arm` and `disarm` spin, bounded in practice
+//! by the kernel's callers, outside IRQ context. What a divergence means is the kernel's business.
 //!
-//! # What this crate does not promise
-//!
-//! - **No fairness.** `arm` and `disarm` spin; a pathological stream of checks could starve them.
-//!   The kernel's callers are a once-per-demo-window arm/disarm pair and a bounded tick pass, so
-//!   the spin is bounded in practice, and both spinners run outside IRQ context.
-//! - **Nothing about the bytes.** Whether a divergence is counted or printed is the kernel's
-//!   business; this crate only says who may touch the instrument's state, and when.
-//!
-//! # EXAMPLES
-//!
-//! The kernel's spelling, one armer and one checker:
-//!
-//! ```
-//! # // The hidden lines run this example on a worker with a deadline, as this crate's own tests do:
-//! # // `arm`, `disarm` and the `loop` below all spin, so a regression hangs `cargo test` rather
-//! # // than failing it, and a killed run leaves the doctest spinning (jh7110_entropy's `Pool`
-//! # // example did, for five days, in September 2026).
-//! # let (done, finished) = std::sync::mpsc::channel();
-//! # std::thread::spawn(move || {
-//! use memory_corruption_canary_gate::Gate;
-//!
-//! static GATE: Gate = Gate::new();
-//!
-//! // Arm: exclusive while the watch plan and shadow are (re)written.
-//! let guard = GATE.arm();
-//! // ... snapshot the watched ranges into the shadow ...
-//! drop(guard); // publishes ARMED
-//!
-//! // The timer tick: a sampling instrument may skip a beat.
-//! if let Some(pass) = GATE.try_check() {
-//!     // ... re-read every watched byte against the shadow ...
-//!     drop(pass);
-//! }
-//!
-//! // A caller that must have a completed pass (the kernel test) loops instead:
-//! let pass = loop {
-//!     if let Some(p) = GATE.try_check() {
-//!         break p;
-//!     }
-//!     core::hint::spin_loop();
-//! };
-//! drop(pass);
-//!
-//! // Disarm quiesces: after this returns, nothing reads the watched ranges.
-//! GATE.disarm();
-//! # let _ = done.send(());
-//! # });
-//! # finished
-//! #     .recv_timeout(std::time::Duration::from_secs(5))
-//! #     .expect("the example panicked (see above), or it never returned");
-//! ```
-//!
-//! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review). Renamed from
-//! `canary_gate`: more explicit about what kind of canary (a memory-corruption detector watching
-//! arbitrary byte ranges, not a stack-smashing canary specifically). The type is `Gate` and the
-//! guards are `ArmGuard`/`CheckGuard`, minted 2026-08-15 (the canary-race fix).
+//! Name: ratified 2026-08-23 (calef), renamed from `canary_gate`: a memory-corruption detector
+//! over arbitrary byte ranges, not a stack canary.
 
 #![cfg_attr(not(test), no_std)]
 
@@ -140,8 +62,46 @@ fn pause() {
     loom::thread::yield_now();
 }
 
-/// The canary instrument's one-word state machine. See the module documentation for the protocol
-/// and for what it does *not* promise.
+/// The canary instrument's one-word state machine; the module documentation has the protocol.
+///
+/// # Examples
+///
+/// ```
+/// # // A worker with a deadline, as this crate's tests use: the spins below would hang, not fail.
+/// # let (done, finished) = std::sync::mpsc::channel();
+/// # std::thread::spawn(move || {
+/// use memory_corruption_canary_gate::Gate;
+///
+/// static GATE: Gate = Gate::new();
+///
+/// // Arm: exclusive while the watch plan and shadow are (re)written.
+/// let guard = GATE.arm();
+/// // ... snapshot the watched ranges into the shadow ...
+/// drop(guard); // publishes ARMED
+///
+/// // The timer tick: a sampling instrument may skip a beat.
+/// if let Some(pass) = GATE.try_check() {
+///     // ... re-read every watched byte against the shadow ...
+///     drop(pass);
+/// }
+///
+/// // A caller that must have a completed pass (the kernel test) loops instead:
+/// let pass = loop {
+///     if let Some(p) = GATE.try_check() {
+///         break p;
+///     }
+///     core::hint::spin_loop();
+/// };
+/// drop(pass);
+///
+/// // Disarm quiesces: after this returns, nothing reads the watched ranges.
+/// GATE.disarm();
+/// # let _ = done.send(());
+/// # });
+/// # finished
+/// #     .recv_timeout(std::time::Duration::from_secs(5))
+/// #     .expect("the example panicked (see above), or it never returned");
+/// ```
 pub struct Gate {
     state: AtomicU8,
 }
