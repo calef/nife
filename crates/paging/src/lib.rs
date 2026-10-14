@@ -73,7 +73,7 @@ mod tlb_flush;
 
 pub use flags::Flags;
 use flags::*;
-pub use mapper::{MapError, Mapper};
+pub use mapper::{MapError, Mapper, Walk, WalkEnd, WalkStep};
 pub use page_format::{Half, PageFormat, is_user_page_va};
 pub use page_size::{PAGE_SIZE, PageSize};
 pub use page_table::{ENTRIES, PageTable};

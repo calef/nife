@@ -43,6 +43,19 @@ pub fn current_user_root() -> u64 {
     current_root()
 }
 
+/// **Every entry a walk of user `va` from `root` reads**, for the kill report of a page fault whose
+/// cause the error code cannot give (see `exceptions::report_walk`). Reads only tables in frames
+/// the allocator manages, because the walk being reported may run through entries somebody wrote
+/// over, and the direct map covers RAM and nothing else.
+///
+/// Name: provisional (lane `maintainer/pipeline-fetch-fault`, 2026-10-14 UTC).
+pub fn walk_user(root: u64, va: u64) -> paging::Walk {
+    // SAFETY: a walk allocates nothing, so the `|| None` allocator is never called, and it reads
+    // only tables `readable` admits: frames the allocator manages, which the direct map covers.
+    let mapper = unsafe { Mapper::<_, _, Ia32e>::new(root, Half::Low, || None, phys_to_ptr) };
+    mapper.walk(va, |table| memory::frame_is_allocated(table).is_some())
+}
+
 /// The root a thread with no user address space runs on.
 ///
 /// **The kernel's own root**, exactly as on RISC-V and for the same reason: one register names the

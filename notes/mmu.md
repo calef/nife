@@ -88,6 +88,40 @@ No MMU means no virtual addresses, no isolation, no user mode as we mean it. The
 an RTOS, but not the kind of OS we are building. This is why the RISC-V hardware we
 considered had to be JH7110-class or better.
 
+## BUGS
+
+- **A user thread can lose the translation of its own text while it runs, cause unknown.** Seen
+  twice, on two architectures, so the cause is in shared kernel code rather than in one port's TLB
+  handling:
+  - riscv64, merge-group run 38284891615 (2026-10-12 UTC), `thead-c906`: `network_time_client`
+    killed by an instruction page fault with `pc == stval == 0x60000f36`, the second instruction of
+    a function in its first text page.
+  - x86_64, merge-group run 38506029610 (2026-10-14 UTC), the AMD-Vi leg: `date`, the first stage of
+    `pipeline_tests`' `date | wc`, killed with `rip == addr == 0x60002102` and error code `0x14`
+    (a ring-3 fetch from a page not present). That address is the instruction after the `syscall`
+    in `user_mode_runtime::syscall::trap6`. The per-core trace rings show `date` ran that page twice
+    on core 1, blocked sending to `wc`, `wc` ran on core 1 and woke it, and `date` faulted on its
+    first fetch after being switched back in. The VT-d leg of the same job ran the same suite clean.
+
+  QEMU's TCG caches neither a not-present entry nor a paging-structure entry on either ISA, and
+  every root change in those windows flushed. So at the refill, either the live root was not the
+  thread's or the thread's own tables no longer mapped its text. Neither has reproduced. On riscv64,
+  fifteen local full `thead-c906` legs ran with two probes, and they saw no return to U-mode under a
+  root other than the thread's own and no write into a frame between its free and its next
+  allocation. On x86_64, 206 runs of `pipeline_tests` ran under round-robin TCG, 265 under
+  multi-threaded TCG (what CI's x86_64 host runs) and 300 under multi-threaded TCG with
+  `NIFE_IOMMU=amd`. Reading the x86_64 code ruled out lazy text mapping, since the loader maps every
+  page before the thread adopts the space, and the `CR3` comparison in `switch_user_root`, which
+  reads the register. It also ruled out revocation and table-cut records outliving their space, a
+  double free (the allocator asserts) and the e1000e DMA plane, which is never freed.
+
+  The riscv64 and x86_64 kill reports both name the half next time. riscv64 prints the live `satp`
+  and the leaf a walk finds. x86_64 prints the live `CR3` root and every level of the walk with
+  whether each table's frame is still allocated (`Mapper::walk`), so a cleared entry, a table freed
+  while linked and a frame written over each read differently. Both say, in a `system_tests`
+  build, whether the live root is the thread's own. aarch64's kill report prints neither, and
+  should before the next occurrence lands there.
+
 ---
 
 *Add to this file as new memory concepts come up.*
