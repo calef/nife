@@ -165,11 +165,10 @@ pub const ATTEMPT_WILD: u64 = 1;
 /// supervisor's restart left the component actually usable rather than merely alive.
 pub const ATTEMPT_HONEST: u64 = 2;
 
-/// How many attempts a full run makes.
-/// The underrun: a store one whole page **below** the grant, the downward direction the
+/// Attempt 3: the underrun, a store one whole page **below** the grant, the downward direction the
 /// over-running bugs never aimed. The eighth outsider pass's addition.
 pub const ATTEMPT_UNDERRUN: u64 = 3;
-
+/// How many attempts a full run makes.
 pub const ATTEMPTS: u64 = 4;
 
 /// **The attempt selectors are dense and start at zero, because the C indexes an array with them.**
