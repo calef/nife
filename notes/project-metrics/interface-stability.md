@@ -8,45 +8,47 @@ Sorted by breaking changes in the last four weeks (2026W39 to 2026W42), then by 
 
 | crate | breaking, 4 weeks | additions, 4 weeks | breaking | additions | commits | crossing another division |
 |---|---:|---:|---:|---:|---:|---:|
-| `globally_unique_identifier_partition_table` | 124 | 4 | 151 | 219 | 38 | 29 (76%) |
-| `grant_plan` | 84 | 280 | 131 | 912 | 151 | 124 (82%) |
-| `elf` | 52 | 1 | 55 | 53 | 45 | 35 (78%) |
+| `globally_unique_identifier_partition_table` | 124 | 4 | 151 | 219 | 39 | 30 (77%) |
+| `grant_plan` | 89 | 283 | 136 | 915 | 160 | 131 (82%) |
+| `elf` | 52 | 1 | 55 | 53 | 46 | 36 (78%) |
 | `line_editor` | 51 | 73 | 52 | 118 | 32 | 26 (81%) |
+| `package_archive` | 19 | 126 | 19 | 126 | 24 | 17 (71%) |
 | `socket_protocol` | 16 | 29 | 19 | 67 | 29 | 27 (93%) |
-| `package_archive` | 14 | 111 | 14 | 111 | 23 | 16 (70%) |
 | `login_protocol` | 13 | 68 | 14 | 83 | 35 | 34 (97%) |
-| `abi` | 11 | 71 | 41 | 169 | 106 | 100 (94%) |
-| `swap_protocol` | 10 | 34 | 12 | 124 | 43 | 42 (98%) |
-| `filesystem_protocol` | 9 | 58 | 42 | 458 | 106 | 97 (92%) |
+| `abi` | 11 | 71 | 41 | 169 | 107 | 101 (94%) |
+| `filesystem_protocol` | 10 | 58 | 43 | 458 | 108 | 99 (92%) |
+| `swap_protocol` | 10 | 34 | 12 | 124 | 44 | 43 (98%) |
 | `credential_protocol` | 8 | 6 | 35 | 70 | 33 | 30 (91%) |
-| `activation_set` | 6 | 57 | 6 | 57 | 19 | 18 (95%) |
+| `activation_set` | 8 | 71 | 8 | 71 | 22 | 20 (91%) |
 | `byte_sink_protocol` | 4 | 10 | 6 | 48 | 28 | 28 (100%) |
 | `clock_protocol` | 4 | 4 | 5 | 54 | 28 | 26 (93%) |
-| `component_plan` | 3 | 14 | 3 | 126 | 25 | 19 (76%) |
-| `graphics_protocol` | 2 | 2 | 11 | 33 | 27 | 27 (100%) |
+| `component_plan` | 3 | 14 | 3 | 126 | 31 | 25 (81%) |
+| `graphics_protocol` | 2 | 2 | 11 | 33 | 28 | 28 (100%) |
+| `nifefs` | 2 | 0 | 9 | 41 | 41 | 29 (71%) |
 | `entropy_protocol` | 2 | 3 | 3 | 18 | 23 | 21 (91%) |
 | `current_cpu_protocol` | 2 | 17 | 2 | 17 | 9 | 5 (56%) |
-| `measured_boot` | 2 | 24 | 2 | 65 | 21 | 17 (81%) |
-| `supervision_protocol` | 1 | 10 | 22 | 70 | 50 | 45 (90%) |
-| `std_runtime_protocol` | 1 | 24 | 1 | 24 | 9 | 8 (89%) |
-| `nifefs` | 0 | 0 | 7 | 41 | 39 | 28 (72%) |
-| `compositor` | 0 | 1 | 4 | 93 | 30 | 23 (77%) |
+| `measured_boot` | 2 | 24 | 2 | 65 | 22 | 18 (82%) |
+| `supervision_protocol` | 1 | 10 | 22 | 70 | 51 | 46 (90%) |
+| `std_runtime_protocol` | 1 | 24 | 1 | 24 | 10 | 9 (90%) |
+| `compositor` | 0 | 2 | 4 | 94 | 31 | 24 (77%) |
 | `counter_frequency_protocol` | 0 | 3 | 1 | 15 | 13 | 11 (85%) |
 | `environment_protocol` | 0 | 0 | 1 | 44 | 9 | 9 (100%) |
 | `user_mode_heap` | 0 | 0 | 1 | 11 | 0 | 0 |
 | `argument_protocol` | 0 | 29 | 0 | 29 | 0 | 0 |
-| `boot_slot` | 0 | 52 | 0 | 52 | 11 | 7 (64%) |
-| `capability_witness_protocol` | 0 | 7 | 0 | 10 | 14 | 11 (79%) |
+| `boot_slot` | 0 | 52 | 0 | 52 | 12 | 8 (67%) |
+| `capability_witness_protocol` | 0 | 7 | 0 | 10 | 15 | 12 (80%) |
 | `manifest_note` | 0 | 58 | 0 | 58 | 17 | 11 (65%) |
 
 ## What broke in 2026W42
 
-Read at `7b6d42a1939e` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
+Read at `e21573b00591` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
 
 > - `abi`: syscall renamed, number kept (method or encoding), now `interrupt::ACK` `irq::ACK`
 > - `abi`: syscall renamed, number kept (method or encoding), now `interrupt::WAIT` `irq::WAIT`
 > - `abi`: syscall renamed, number kept (method or encoding), now `virtio::READ_REGISTER` `virtio::READ_REG`
 > - `abi`: syscall renamed, number kept (method or encoding), now `virtio::WRITE_REGISTER` `virtio::WRITE_REG`
+> - `activation_set`: removed `without_entry`
+> - `activation_set`: removed `without_version`
 > - `credential_protocol`: removed `fixture::CHRIS`
 > - `credential_protocol`: removed `fixture::CORINNE`
 > - `credential_protocol`: removed `fixture::GRAEME`
@@ -104,6 +106,7 @@ Read at `7b6d42a1939e` against the week before. Each line is one removed or chan
 > - `elf`: removed `Segment::page_range`
 > - `elf`: removed `Segment::vaddr`
 > - `elf`: removed `machine_no_nife_build_accepts`
+> - `filesystem_protocol`: changed `verb::file_grant::POLICY`
 > - `globally_unique_identifier_partition_table`: removed `BackupMismatch`
 > - `globally_unique_identifier_partition_table`: removed `BackupMismatch: impl Clone`
 > - `globally_unique_identifier_partition_table`: removed `BackupMismatch: impl Copy`
@@ -188,6 +191,11 @@ Read at `7b6d42a1939e` against the week before. Each line is one removed or chan
 > - `globally_unique_identifier_partition_table`: removed `MbrProblem::Signature`
 > - `globally_unique_identifier_partition_table`: removed `MbrProblem::SizeLba`
 > - `globally_unique_identifier_partition_table`: removed `MbrProblem::StartLba`
+> - `grant_plan`: removed `MAX_FILE_NAME`
+> - `grant_plan`: removed `file_name_fits`
+> - `grant_plan`: removed `parse_u64`
+> - `grant_plan`: changed `spawnproto::activation_reply`
+> - `grant_plan`: removed `trim`
 > - `line_editor`: removed `Event`
 > - `line_editor`: removed `Event: impl Clone`
 > - `line_editor`: removed `Event: impl Copy`
@@ -228,3 +236,10 @@ Read at `7b6d42a1939e` against the week before. Each line is one removed or chan
 > - `line_editor`: removed `Sink`
 > - `line_editor`: removed `Sink::put`
 > - `line_editor`: removed `expand_output`
+> - `nifefs`: changed `DIR_BLOCKS`
+> - `nifefs`: changed `MAX_FILES`
+> - `package_archive`: changed `Installable`
+> - `package_archive`: removed `Installable::bytes`
+> - `package_archive`: removed `Installable::digest`
+> - `package_archive`: removed `Installable::program`
+> - `package_archive`: changed `Refusal`
