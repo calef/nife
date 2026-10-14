@@ -86,9 +86,10 @@ Effort is session-sized: S = part of a session, M = one to two, L = several.
 - The virtio-pci common-config register layout differs from the flat virtio-mmio block
   (`queue_select`, `queue_size`, `queue_desc/driver/device`, `queue_notify_data`, `device_status`,
   ...). The kernel's transport ownership (it holds the queue addresses and the notify, for
-  confinement) and the driver's register access both need a transport abstraction: a small trait
-  or enum with the handful of operations (select a queue, set its ring addresses, notify, read/ack
-  the ISR, read/write status and features), implemented once for mmio and once for pci. Everything
+  confinement) and the driver's register access both need a transport abstraction. That is a small
+  trait or enum with the handful of operations (select a queue, set its ring addresses, notify,
+  read/ack the ISR, read/write status and features). It is implemented once for mmio and once for
+  pci. Everything
   above it - the shadow ring, the address validator, the block request format, the userspace driver's
   logic - stays identical.
 - The DMA confinement is unchanged in spirit: the kernel still owns the ring addresses and the notify,

@@ -310,7 +310,7 @@ $ wc motd | wc | wc
 
 ## BUGS
 
-One line each. Each entry's full text is in [the BUGS appendix](pipes/bugs-history.md).
+One line each.
 
 - An unredirected tail stage's output goes to the terminal's sink adapter (DECISIONS §106), which
   carries a display race tracked at milestone 151 (notification objects). notes/documentation.md's `BUGS` has the worked case.
@@ -353,4 +353,3 @@ One line each. Each entry's full text is in [the BUGS appendix](pipes/bugs-histo
 | [buffering](pipes/buffering.md) | the throughput measurement and its caveats |
 | [the-boot](pipes/the-boot.md) | the boot's processes, its filesystem, and the stack |
 | [tests-and-the-boot-gate](pipes/tests-and-the-boot-gate.md) | the guest tests and `script/swish-check` |
-| [bugs-history](pipes/bugs-history.md) | every BUGS entry with its history |

@@ -85,9 +85,9 @@ restores it on the way in.
 
 ### The trampoline must unmask interrupts, but AFTER `finish_switch`, not before
 
-A brand-new thread must unmask interrupts by hand: we arrive from inside the timer IRQ handler (or
-a `schedule()` that ran there), IRQs masked, and unlike a *resumed* thread there is no `SPSR_EL1`
-to restore the interrupt state from: the thread was never interrupted, it has never run at all.
+A brand-new thread must unmask interrupts by hand. We arrive from inside the timer IRQ handler (or a
+`schedule()` that ran there), IRQs masked. Unlike a *resumed* thread there is no `SPSR_EL1` to
+restore the interrupt state from: the thread was never interrupted, it has never run at all.
 Without unmasking, the first thread you spawn runs with interrupts masked forever, never preempted:
 a cooperative scheduler with extra steps.
 

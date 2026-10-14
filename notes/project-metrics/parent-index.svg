@@ -51,9 +51,9 @@
 <path class="seg s0" d="M542.8,324.0 V67.3 Q542.8,63.3 546.8,63.3 H577.4 Q581.4,63.3 581.4,67.3 V324.0 Z"><title>2026W41, parents over the index limit: 49</title></path>
 <text class="mut" x="562.1" y="342" font-size="10" text-anchor="middle">2026W41</text>
 <text class="fg val" x="562.1" y="58.3" font-size="10" text-anchor="middle">49</text>
-<path class="seg s0" d="M601.4,324.0 V115.2 Q601.4,111.2 605.4,111.2 H636.0 Q640.0,111.2 640.0,115.2 V324.0 Z"><title>2026W42, parents over the index limit: 40</title></path>
+<path class="seg s0" d="M601.4,324.0 V173.7 Q601.4,169.7 605.4,169.7 H636.0 Q640.0,169.7 640.0,173.7 V324.0 Z"><title>2026W42, parents over the index limit: 29</title></path>
 <text class="mut" x="620.7" y="342" font-size="10" text-anchor="middle">2026W42</text>
-<text class="fg val" x="620.7" y="106.2" font-size="10" text-anchor="middle">40</text>
+<text class="fg val" x="620.7" y="164.7" font-size="10" text-anchor="middle">29</text>
 <rect class="s0" x="672" y="64" width="11" height="11" rx="2"/>
 <text class="fg" y="74" font-size="11"><tspan x="689" dy="0">parents over the index</tspan><tspan x="689" dy="13">limit</tspan></text>
 </svg>

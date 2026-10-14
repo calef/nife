@@ -1,12 +1,7 @@
-//! **The framebuffer contract** (milestone 29, the display ladder's first rung).
-//!
-//! Written down as code in one place so the three parties cannot drift: the GPU driver
+//! **The framebuffer contract** (notes/framebuffer-contract.md): one definition for the GPU driver
 //! (`components/src/gpu_driver.rs`, which owns the virtio-gpu device), the client that draws
-//! (`fixtures/src/painter.rs`, which owns no device at all), and the kernel-side test that checks the
-//! result. The prose contract is notes/framebuffer-contract.md; this crate is its machine-readable
-//! half, the same split `filesystem_protocol` makes for the filesystem and `line_editor::proto` for the terminal.
-//!
-//! # The shape
+//! (`fixtures/src/painter.rs`, which owns no device), and the kernel-side test that checks the
+//! result.
 //!
 //! ```text
 //!   virtio-gpu ──virtio──►┌────────────────┐◄──display IPC──┐ client
@@ -17,79 +12,17 @@
 //!                              └──────── the rings + request buffers, mapped in the DRIVER ONLY
 //! ```
 //!
-//! **Control by message, pixels by shared frame** (DECISIONS §10), the same division the block and
-//! file contracts make. A client CALLs the driver with an opcode and a rectangle; the pixels
-//! themselves never ride in a message. They live in a run of frames the kernel maps into both
-//! address spaces at spawn, and which the client may write at any time without asking.
+//! Control by message, pixels by shared frame (§10 (process model: capability-based)): a client
+//! `CALL`s the driver with an opcode and a rectangle, and the pixels live in frames mapped into both
+//! spaces at spawn, which the client may write at any time. The driver holds the `Virtio`
+//! capability, the interrupt and the whole DMA region; the client holds an endpoint and the surface,
+//! so it cannot program a queue, ring the device, see the rings or name a physical address. A
+//! hostile client can draw nonsense and nothing else, which is what the compositor builds on when it
+//! takes the client's place. No fonts, glyph cache, VT state or input: those are later clients of
+//! this same contract.
 //!
-//! # Who can do what, and why the split is the point
-//!
-//! The driver holds the `Virtio` capability, the device's interrupt, and a mapping of the whole DMA
-//! region. The client holds an endpoint and the surface frames, and that is all: it cannot program a
-//! queue, cannot ring the device, cannot see the descriptor rings (they are in a page it is not
-//! mapped), and cannot name a physical address. So the worst a hostile client can do is draw
-//! nonsense, which is exactly the authority a thing that draws should have. That separation is what
-//! rung two (the compositor, milestone 33) is built on, which is why it is drawn this early: the
-//! compositor takes the client's place and multiplexes many surfaces into one, and it should not
-//! have to invent a contract to do it.
-//!
-//! # Examples
-//!
-//! The test pattern is the part of this contract worth demonstrating, because its whole value is
-//! **negative**: it is built so that the ways a framebuffer actually fails are all visible, and a
-//! solid fill would catch none of them. A buffer shifted by a single pixel is the case that a
-//! checksum over a fill, or a "is it all blue?" check, cannot see at all:
-//!
-//! ```
-//! use graphics_protocol::{checksum, expected_checksum, first_mismatch, pixel_at};
-//!
-//! // A client that painted the surface correctly. `checksum`/`first_mismatch` read through a
-//! // closure rather than a materialized buffer, which is not just convenient here: at 924x344
-//! // a `[u32; PIXELS]` array is 1.2 MiB, too large for a doctest's default stack to hold
-//! // comfortably even once, let alone the two this example used to keep side by side.
-//! assert_eq!(checksum(pixel_at), expected_checksum());
-//! assert_eq!(first_mismatch(pixel_at), None);
-//!
-//! // The same pixels, off by one: a stride bug, or a driver that transferred from the wrong offset.
-//! let shifted = |i| pixel_at(i + 1);
-//! assert_ne!(checksum(shifted), expected_checksum());
-//! assert_eq!(first_mismatch(shifted), Some(0)); // and it names where
-//!
-//! // A device that ignored the transfer entirely.
-//! assert_ne!(checksum(|_| 0), expected_checksum());
-//! ```
-//!
-//! A damage rectangle is one word, so a flush is one message with no shared-memory preamble, and a
-//! rectangle that leaves the surface is **refused rather than clamped**: a clamp would silently
-//! absorb a client's coordinate bug.
-//!
-//! ```
-//! use graphics_protocol::{HEIGHT, WIDTH, rect, rect_in_surface, unrect};
-//!
-//! let w = rect(4, 8, 16, 32);
-//! assert_eq!(unrect(w), (4, 8, 16, 32));
-//! assert!(rect_in_surface(4, 8, 16, 32));
-//!
-//! assert!(!rect_in_surface(0, 0, WIDTH + 1, HEIGHT)); // one pixel too wide
-//! assert!(!rect_in_surface(0, 0, WIDTH, 0)); // empty is not a flush
-//! ```
-//!
-//! # What deliberately is NOT here
-//!
-//! No fonts, no glyph cache, no VT state, no input. Rung one puts pixels in a scanout and proves
-//! they got there; the terminal on top is a later increment and slots in as another client of this
-//! same contract (see notes/framebuffer-contract.md, "The seams left open").
-//!
-//! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review). Renamed from
-//! `gfx_proto`: spell out the `gfx` abbreviation fully, matching the pattern from
-//! `cred_proto` -> `credential_proto` and `env_proto` -> `environment_proto` in a parallel lane.
-//! `gfx_proto` was one of two `*_proto` crates whose name was unrecorded (introduced 2026-07-29
-//! with virtio-gpu enumeration); `gfx` was an abbreviation, which is the first of the three
-//! failure modes the naming tenet lists for crate names, and `graphics` is the word its seven
-//! siblings' rule was already missing a decision on. The suffix became `_protocol` at milestone
-//! 265 (calef, 2026-09-05), which is why all three crates named in this paragraph read
-//! `_protocol` today; the arrows above record what those renames produced on 2026-08-23 and keep
-//! that day's spelling.
+//! Name: ratified 2026-08-23 (calef), renamed from `gfx_proto` to spell out the abbreviation;
+//! `_protocol` per calef's 2026-09-05 ruling.
 
 #![no_std]
 
@@ -238,6 +171,30 @@ pub const fn pixel_at(i: usize) -> u32 {
 /// same multiset of pixels in a different order gives a different digest, which is the property that
 /// makes a rotated or mirrored surface fail. It is not a cryptographic hash and nothing here needs
 /// one; the measured-boot path (`crates/measured_boot`) is where that requirement lives.
+///
+/// # Examples
+///
+/// The pattern exists to make real failures visible: a buffer shifted by one pixel, which a
+/// checksum over a solid fill could never see.
+///
+/// ```
+/// use graphics_protocol::{checksum, expected_checksum, first_mismatch, pixel_at};
+///
+/// // A client that painted the surface correctly. `checksum`/`first_mismatch` read through a
+/// // closure rather than a materialized buffer, which is not just convenient here: at 924x344
+/// // a `[u32; PIXELS]` array is 1.2 MiB, too large for a doctest's default stack to hold
+/// // comfortably even once, let alone the two this example used to keep side by side.
+/// assert_eq!(checksum(pixel_at), expected_checksum());
+/// assert_eq!(first_mismatch(pixel_at), None);
+///
+/// // The same pixels, off by one: a stride bug, or a driver that transferred from the wrong offset.
+/// let shifted = |i| pixel_at(i + 1);
+/// assert_ne!(checksum(shifted), expected_checksum());
+/// assert_eq!(first_mismatch(shifted), Some(0)); // and it names where
+///
+/// // A device that ignored the transfer entirely.
+/// assert_ne!(checksum(|_| 0), expected_checksum());
+/// ```
 pub fn checksum(mut read: impl FnMut(usize) -> u32) -> u64 {
     let mut h: u64 = 0xcbf2_9ce4_8422_2325; // FNV-1a 64-bit offset basis
     for i in 0..PIXELS {
@@ -330,6 +287,22 @@ pub const fn unrect(v: u64) -> (u32, u32, u32, u32) {
 
 /// Is this rectangle wholly inside the surface, and not empty? The driver checks every incoming
 /// flush against this before it touches the device.
+///
+/// # Examples
+///
+/// A rectangle that leaves the surface is refused, not clamped: a clamp would absorb a client's
+/// coordinate bug.
+///
+/// ```
+/// use graphics_protocol::{HEIGHT, WIDTH, rect, rect_in_surface, unrect};
+///
+/// let w = rect(4, 8, 16, 32);
+/// assert_eq!(unrect(w), (4, 8, 16, 32));
+/// assert!(rect_in_surface(4, 8, 16, 32));
+///
+/// assert!(!rect_in_surface(0, 0, WIDTH + 1, HEIGHT)); // one pixel too wide
+/// assert!(!rect_in_surface(0, 0, WIDTH, 0)); // empty is not a flush
+/// ```
 pub const fn rect_in_surface(x: u32, y: u32, w: u32, h: u32) -> bool {
     w > 0 && h > 0 && x + w <= WIDTH && y + h <= HEIGHT
 }

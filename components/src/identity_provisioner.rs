@@ -1,106 +1,39 @@
-//! **A provisioning tool: create an identity and its home subtree together** (milestone 155,
-//! design/roadmap/0155-user-provisioning.md; DECISIONS §117).
+//! **A provisioning tool: create an identity and its home subtree together** (§117 (a principal's
+//! subtree is named by its identity string)). Unix's `useradd`, one level down: spawned once per
+//! identity by whoever holds the two administrative capabilities, it `PUT`s the identity and secret
+//! into the credential store ([`credential_protocol::provision::PUT`]) and `MKDIR`s the home subtree
+//! named by the identity string.
 //!
-//! Unix's `useradd`, one level down: this process is spawned once per new identity by whoever
-//! already holds the two administrative capabilities that authority requires, presents the
-//! identity and secret it was handed, and does two things as one act rather than two: `PUT`s them
-//! into the credential store over [`credential_protocol::provision::PUT`], and `MKDIR`s that identity's home
-//! subtree, named by the identity string itself (DECISIONS §117), under whatever directory
-//! capability holds the principal tree.
+//! It authenticates no caller and needs not to: whoever is handed [`PROV`] and [`FS_EP`] may run it,
+//! the same shape as the credential service's provision endpoint. How an operator comes to hold
+//! them is the boot-wiring question `login.rs`'s BUGS name.
 //!
-//! # Who may run this, and how (the milestone's own first question)
+//! **The subtree first.** The two calls go to two servers with no cross-server commit. If `MKDIR`
+//! fails, nothing was stored and the caller retries. If `PUT` then fails
+//! ([`credential_protocol::FULL`], [`credential_protocol::NO_ENTROPY`], a duplicate), the result is
+//! an orphaned, empty subtree with no identity: inert, and recovered by re-running. The other order
+//! risks a credential that verifies for an identity with no home. `MKDIR`'s [`EEXIST`] is therefore
+//! "already created, proceed", exactly the state a failed run leaves; any other `MKDIR` failure
+//! stops before the store is touched.
 //!
-//! **Answered by precedent, not invented here.** This tree's whole model is that authority is a
-//! capability held, never a checked identity: `credentialer.rs`'s provision endpoint has no
-//! authentication of its own, because by the time a caller holds it there is nothing left to check
-//! (the receive end that would refuse anybody is the one thing the seal deletes). This process
-//! follows the same shape. It performs **no authentication of its caller** and needs none: "who may
-//! run this tool" is answered completely by "whoever is handed [`PROV`] and [`FS_EP`] at spawn",
-//! exactly as `login.rs`'s BUGS name "who is granted these capabilities" as a boot-wiring question
-//! rather than a runtime check, and exactly as `credentialer_test_client.rs`'s provisioner role is
-//! trusted by construction rather than by a password. A real deployment's answer to "how does an
-//! operator come to hold these two capabilities" is the same open question `login.rs`'s BUGS already
-//! name for "not wired into the interactive boot": real work this slice does not attempt.
+//! - slot [`PROV`]: `WRITE` on the credential service's provision endpoint, before its seal; never
+//!   the verify endpoint, so this cannot authenticate anybody even by mistake.
+//! - slot [`FS_EP`]: `WRITE` on the directory holding the principal tree, unnarrowed in this slice.
+//! - slot [`REPORT`]: `WRITE`; one report, then exit.
+//! - mapped [`REQ_VA`]: the caller's staged identity and secret, in [`credential_protocol::place`]'s
+//!   layout, relayed and never chosen here.
+//! - mapped [`PROV_VA`]: the frame shared with the credential service (its own `PROV_VA`).
+//! - mapped [`FS_VA`]: the page shared with the file service, for the one `MKDIR`.
+//! - `a0`, `a1`: the identity's and secret's lengths, refused if [`credential_protocol::read`]
+//!   would refuse them.
 //!
-//! # Ordering: the subtree first, and why
+//! No [`credential_protocol::provision::SEAL`]: sealing ends provisioning for the whole store, the
+//! caller's decision once every identity is in. No deprovisioning.
 //!
-//! **These are two independent calls to two different servers, not one transaction**, and this
-//! system has no cross-server commit protocol to make them one (building one would be a real
-//! architectural undertaking, not a detail of this tool). So a failure between them is possible, and
-//! the milestone's own text asks which partial state is acceptable.
-//!
-//! **The subtree is created first.** If [`filesystem_protocol::fs::MKDIR`] fails, nothing has been written to
-//! the credential store: the failure is a clean no-op, and the caller can simply try again. If the
-//! subtree succeeds but [`credential_protocol::provision::PUT`] then fails (the store is
-//! [`credential_protocol::FULL`], the store has [`credential_protocol::NO_ENTROPY`] to draw a salt from, or the
-//! identity is already there), the result is an **orphaned, empty subtree with no live identity**.
-//! That is the safe direction: nobody can authenticate as an identity whose credential was never
-//! stored, so the orphaned subtree is inert, and it is recoverable by re-running this tool (see
-//! below). The alternative order risks the opposite state, a credential that verifies for an
-//! identity with no home, which is dangerous rather than merely untidy: once a caller wires
-//! per-identity subtree lookup (DECISIONS §117's own follow-on), a login against that identity would
-//! authenticate and then have nowhere defined to go. This tree's standing posture is to refuse
-//! toward safety on every ambiguity it can (`credential_protocol::NO_ENTROPY` over a weak salt,
-//! [`credential_protocol::MISMATCH`] over a distinguishable miss); this ordering is that same posture applied
-//! to a two-step provisioning act.
-//!
-//! **A pre-existing subtree is not treated as failure.** `MKDIR` answers [`EEXIST`] when the name is
-//! already there (`filesystem_protocol::fs::MKDIR`'s own contract; "create is create, not create-or-open"), and
-//! this process treats that one errno as "already created, proceed" rather than as a refusal: it is
-//! exactly the state a previous, partially-failed run would leave, and re-running this tool is the
-//! prescribed recovery. Every other `MKDIR` failure ([`filesystem_protocol::dir::EPERM`], a name that does not
-//! fit, no `CREATE` right on the parent) stops the request before the credential store is touched
-//! at all.
-//!
-//! # Capability contract
-//!
-//! - slot [`PROV`]: `WRITE` on the credential service's provision endpoint
-//!   (`components/src/credentialer.rs`), before its seal. Never the verify endpoint; this process could
-//!   not authenticate anybody even by mistake, because it never holds that capability.
-//! - slot [`FS_EP`]: `WRITE` on the directory capability that holds the principal tree. Unnarrowed
-//!   in this slice's own wiring, the same "not wired into the interactive boot" bound `login.rs`
-//!   names for its own fixed subtree grant: a real deployment scopes this to a dedicated parent
-//!   directory once one exists, which is follow-on and not guessed at here.
-//! - slot [`REPORT`]: `WRITE`. One report, then this process exits; it does not loop.
-//! - mapped [`REQ_VA`]: the page the caller (kernel test harness today; a real operator's shell,
-//!   eventually) stages the identity and secret into, in [`credential_protocol::place`]'s exact layout. This
-//!   process never chooses this content; it only relays it.
-//! - mapped [`PROV_VA`]: the page shared with the credential service, at the address
-//!   `components/src/credentialer.rs`'s own `PROV_VA` names. Must be the same physical frame; the wiring
-//!   guarantees this the way `login_service.rs` guarantees it for `CRED_VA`.
-//! - mapped [`FS_VA`]: the page shared with the file service, for the one `MKDIR` request.
-//! - `a0`: the identity's length in [`REQ_VA`]. `a1`: the secret's length. Both bounded the way
-//!   [`credential_protocol::read`] bounds them; a length outside that range is refused before anything is
-//!   sent anywhere.
-//!
-//! # What this does not do (see the milestone's own "what it does not decide")
-//!
-//! No [`credential_protocol::provision::SEAL`]. Sealing ends provisioning for the *whole store*, forever, and
-//! is a decision an operator makes once after every identity it wants is in, not a thing one
-//! identity's provisioning should trigger as a side effect. This tool's caller seals when it is
-//! done, exactly as `credentialer_test_client.rs`'s provisioner role already does in its own tests.
-//!
-//! No deprovisioning. Named as out of scope by the milestone's own text and sequenced against
-//! `login.rs`'s reclamation bound instead of invented here.
-//!
-//! Name: ratified 2026-09-13 (calef, working the unratified worklist). Minted with milestone 155.
-//! Qualifier plus agent noun, the shape ratified nine times that day, and the qualifier is not
-//! decoration: `provisioner` alone is already spent as a role name inside
-//! `credentialer_test_client.rs`.
-//!
-//! **`identity` is the load-bearing half, and it is the same argument that gave `user_mode_` its
-//! prefix the same day.** In this tree `user` means a person about 342 times, so it is overloaded
-//! against the privilege level; `identity` is the word the capability model actually manipulates,
-//! and this program is where that shows: `credential_protocol::provision::PUT` takes an identity, and
-//! DECISIONS §117 names the home subtree by the identity string itself. Where the tree means the
-//! person's record it says identity, and this name keeps that consistent.
-//!
-//! Refused `useradd`, Unix's name for the shape: not a term of art this tree has adopted, it would
-//! import the `user` ambiguity ruled against the same day, and it promises a command a person
-//! types where this is spawned by a holder of two administrative capabilities. Refused
-//! `provisioner`, spent and generic. Refused `identity_creator`, narrower than the act: the home
-//! subtree is the other half and doing both as one act is the milestone's point. Refused
-//! `account_provisioner`, which introduces a third word for what `identity` already names.
+//! Name: ratified 2026-09-13 (calef). `identity` is the word the capability model manipulates, where
+//! `user` is overloaded in this tree. Refused `useradd` (imports `user` and promises a typed
+//! command), `provisioner` (spent and generic), `identity_creator` (omits the subtree) and
+//! `account_provisioner` (a third word for identity).
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

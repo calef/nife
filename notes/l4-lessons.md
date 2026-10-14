@@ -53,7 +53,7 @@ and every consequence follows from that.
   needs its own kernel stack, which is row 11. An event kernel does not, because a blocking
   operation stores a continuation instead of a stack.
 
-The paper's numbers for what row 11 costs, measured by Warton on Pistachio and quoted there: the
+The paper's numbers for what row 11 costs, measured by Warton on Pistachio and quoted there. The
 event kernel's per-thread memory use was a quarter of the process kernel's, and it held a 20%
 performance advantage on a multi-tasking workload (AIM7), despite needing more than twice the TCB
 size to store continuations. Micro-benchmarks were generally within 1%, which is the part worth

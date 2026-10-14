@@ -6,21 +6,21 @@ provisional name; naming crates is an architect's call, per AGENTS.md); the deci
 
 ## What this is
 
-Milestone 47 splits what Unix puts in one string-to-string environment map into three parts:
-inert configuration (`TZ`, `LANG`, `TERM`, genuinely just data, no authority in it), names
-(`PATH`, `HOME`, directory capabilities wearing a string costume), and secrets (authority badly
+Milestone 47 splits what Unix puts in one string-to-string environment map into three parts. They
+are inert configuration (`TZ`, `LANG`, `TERM`, genuinely just data, no authority in it) and names
+(`PATH`, `HOME`, directory capabilities wearing a string costume). Then secrets (authority badly
 encoded as a bearer string). Only the first third is built here. Names wait on `bind` (milestone
 154's two-directory endowment, not yet built); secrets are answered elsewhere, by an endpoint
 (§41), and are never meant to arrive as a string on this table at all.
 
 The wire encoding is a read-only page, the same rights-ladder shape the clock page uses. No
 capability, or a `Frame` with `READ`. A config value is never something a person designates on a
-command line, and there is nothing to propose or set from inside the process that holds it, so an
+command line. There is nothing to propose or set from inside the process that holds it, so an
 endpoint (as the clock's propose half uses) would be the wrong shape here.
 
 Each declared key is validated against a closed domain before it is ever written to the page.
 `TZ` must be a real IANA-style timezone identifier, `LANG` a real locale identifier, `TERM` a real
-terminal type; a value that does not parse as a member of its key's domain is refused when the page
+terminal type. A value that does not parse as a member of its key's domain is refused when the page
 is assembled, not carried through disguised as configuration. This closes the gap DECISIONS §111
 identifies: a capability governs reach, not meaning, so once a value is bytes on a page nothing
 about the capability model can tell a password from a timezone. `environment_protocol::domain`'s three lists
@@ -43,10 +43,11 @@ atomics at all.
   or a zeroed frame reading as "no configuration" (DECISIONS §42's rule, applied here), every
   domain member fitting its field's byte cap.
 - `system_tests/src/user/std_service.rs`: assembles a page (`TZ=UTC`, `LANG=C`, `TERM=dumb`, the
-  conservative universal defaults, chosen because nothing holds a *different* default to pass
-  explicitly: the shell exists, but the "a shell holds its own default" mechanism does not, which is
-  this note's own second BUGS entry) and maps it read-only into a std program at `CONFIG_PAGE_STD`
-  (`0x1300_0000`), granting a `Frame` with `READ` at `CONFIG_SLOT` (7), the same shape as the
+  conservative universal defaults). They are chosen because nothing holds a *different* default to
+  pass explicitly: the shell exists, but the "a shell holds its own default" mechanism does not
+  (this note's own second BUGS entry). The page is mapped read-only into a std program at
+  `CONFIG_PAGE_STD` (`0x1300_0000`), granting a `Frame` with `READ` at `CONFIG_SLOT` (7), the same
+  shape as the
   clock's slot 5.
 - `patches/std-nife/overlay/std/src/sys/pal/nife/rt.rs`: `CONFIG_SLOT`/`CONFIG_PAGE` constants,
   the std PAL's twin of the kernel-side ones.
@@ -91,8 +92,9 @@ atomics at all.
 
 ## Tests
 
-`crates/environment_protocol` host suite: 9 unit tests plus 2 doctests, covering the round trip, every domain
-check, an undeclared key reading as absent rather than empty, a zeroed frame and an unrecognized
+`crates/environment_protocol` host suite: 9 unit tests plus 2 doctests. They cover the round trip,
+every domain check, and an undeclared key reading as absent rather than empty. Then a zeroed frame
+and an unrecognized
 magic both reading as "no configuration," and the layout offsets not overlapping.
 `kernel::user::std_tests::a_whole_std_program_runs_on_the_native_abi`, both ISAs: the real
 `std_exerciser` binary, granted a real config page assembled by the real kernel wiring, reads

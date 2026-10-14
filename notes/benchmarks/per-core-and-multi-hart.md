@@ -139,7 +139,7 @@ faster. The cross-OS story is unchanged: still faster than Linux `fork`+`exit`, 
 capability process is a lighter object than a Unix one" caveat.
 
 *Note, 2026-09-24: ~4.4 us remains the latest measured HVF figure for `spawn_el0`. A later
-paragraph derived ~8.2 us from the superseded 7.7; see the correction in
+paragraph derived ~8.2 us from the stale 7.7; see the correction in
 [the cross-OS appendix](cross-os-primitives.md).*
 
 Nothing here needed a path investigated. The only structural change was the harness (`--real` boots

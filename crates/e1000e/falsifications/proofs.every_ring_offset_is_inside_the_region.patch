@@ -6,11 +6,16 @@ page and into the transmit ring.
 
 Expected to fail: the harness's first assertion, on any index of 256 or more.
 
-diff --git a/crates/e1000e/src/lib.rs b/crates/e1000e/src/lib.rs
---- a/crates/e1000e/src/lib.rs
-+++ b/crates/e1000e/src/lib.rs
-@@ -270,3 +270,3 @@ pub mod layout {
-     pub const fn rx_descriptor(i: u16) -> u64 {
--        RX_RING + (i % RX_ENTRIES) as u64 * 16
-+        RX_RING + i as u64 * 16
-     }
+diff --git a/crates/e1000e/src/layout.rs b/crates/e1000e/src/layout.rs
+index 87e3ecc74..48772275e 100644
+--- a/crates/e1000e/src/layout.rs
++++ b/crates/e1000e/src/layout.rs
+@@ -22,7 +22,7 @@ pub const fn tx_buffer(i: u16) -> u64 {
+ }
+ /// Receive descriptor `i`'s offset.
+ pub const fn rx_descriptor(i: u16) -> u64 {
+-    RX_RING + (i % RX_ENTRIES) as u64 * 16
++    RX_RING + i as u64 * 16
+ }
+ /// Transmit descriptor `i`'s offset.
+ pub const fn tx_descriptor(i: u16) -> u64 {

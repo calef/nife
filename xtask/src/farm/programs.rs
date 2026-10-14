@@ -81,17 +81,6 @@ pub(crate) fn package_fetch_exerciser_elf(triple: &str) -> PathBuf {
     ))
 }
 
-/// **Unmodified `ripgrep` from crates.io, if somebody built it** (milestone 121).
-///
-/// `helpers/build-ripgrep.sh` puts it here. Nothing in this build produces it, and that is the
-/// point: fetching `ripgrep` and its transitive crates is a crates.io dependency tree, which
-/// DECISIONS §46 makes calef's decision rather than a gate's. So the archive carries it when it is
-/// on disk and does not when it is not, exactly as `std_exerciser` rides along, and
-/// `system_tests/src/user/ripgrep_tests.rs` skips rather than fails when the archive has no `rg`.
-pub(crate) fn ripgrep_elf(triple: &str) -> PathBuf {
-    workspace_root().join(format!("target/ripgrep/{triple}/rg"))
-}
-
 /// **The C programs milestones 835 (a C library, stage 1: files, clock and memory) and 836 (a C
 /// library, stage 2: threads) run unmodified, by name.** Each is built by its own
 /// `helpers/build-<name>.sh`, which fetches somebody else's C and links it with nife's C library;
@@ -102,7 +91,7 @@ pub(crate) fn ripgrep_elf(triple: &str) -> PathBuf {
 pub(crate) const C_PROGRAMS: [&str; 4] =
     ["speedtest1", "ioping", "hackbench", "c_library_contract"];
 
-/// **One of [`C_PROGRAMS`], if somebody built it**, on [`ripgrep_elf`]'s terms and for its reason:
+/// **One of [`C_PROGRAMS`], if somebody built it**: present when on disk, absent otherwise, because
 /// fetching SQLite or ioping in a gate is a dependency decision (§46 (thin primitives or whole
 /// subsystems; we write everything in between)), which the pull request that added this asks calef
 /// to make. `system_tests/src/user/c_program_tests.rs` skips each test whose program is absent.

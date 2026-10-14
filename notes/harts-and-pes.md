@@ -1,16 +1,16 @@
 # Harts and PEs: the unit that runs code
 
 Both terms answer the same question: what, precisely, is *one thing that executes an
-instruction stream*? "Core" and "CPU" are too ambiguous to build specs on, because one
-physical core can present two or more independent instruction streams (Intel's
-hyper-threading is the famous case: two register files and program counters sharing one
-core's execution units). Both architectures therefore coined a precise word.
+instruction stream*? The words "core" and "CPU" are too ambiguous to build specs on. One physical
+core can present two or more independent instruction streams (Intel's hyper-threading is the famous
+case: two register files and program counters sharing one core's execution units). Both
+architectures therefore coined a precise word.
 
 **Hart** is RISC-V's: a hardware thread, one independent instruction stream with
 its own register file and PC. A core might contain one hart or several; the ISA and the
-firmware only ever talk about harts. This is why OpenSBI's CPU-management extension is
-called HSM (Hart State Management), why our riscv kernel starts secondary CPUs with
-`sbi_hart_start`, and why the boot notes talk about surviving the hart lottery
+firmware only ever talk about harts. This is why OpenSBI's CPU-management extension is called HSM
+(Hart State Management). It is why our riscv kernel starts secondary CPUs with `sbi_hart_start`, and
+why the boot notes talk about surviving the hart lottery
 (OpenSBI races every hart at reset; the winner boots, the losers park in HSM STOPPED
 until asked for).
 
@@ -25,6 +25,6 @@ hart on the RISC-V side, core or PE on the ARM side.
 
 One place the distinction earned its keep here: the 2026-07-28 benchmark repair. Under
 `-icount`, QEMU's virtual-instruction clock is shared by *all* harts, so a benchmark
-running beside three idle harts counted their `wfi` wakeups as its own time. "Pinned to
-one hart" (`-smp 1`) is the fix, and saying "hart" rather than "core" is the reminder of
+running beside three idle harts counted their `wfi` wakeups as its own time. The fix is "pinned to
+one hart" (`-smp 1`), and saying "hart" rather than "core" is the reminder of
 what the clock actually counts: instruction streams, not silicon packages.

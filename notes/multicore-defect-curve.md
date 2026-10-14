@@ -32,11 +32,11 @@ without re-running anything:
 
 - **hours**, which is what milestone 201 names;
 - **crossings**, the judged unit: the soak's `crossings=` counter at the last beat (cross-core
-  migrations, from `sched::migrations()`), which [`soak.md`](soak.md) argues is the honest unit
-  because clock time on a saturated machine mostly repeats one interleaving. A board's rows count
+  migrations, from `sched::migrations()`), which [`soak.md`](soak.md) argues is the honest unit.
+  Clock time on a saturated machine mostly repeats one interleaving. A board's rows count
   toward risk 5's verdict once the architecture reaches 10 million crossings across at least 3
   boots, stated before the run (§259 (a multicore soak counts toward risk 5 at ten million
-  crossings over three boots)); a defect found does not reset the total;
+  crossings over three boots)). A defect found does not reset the total;
 - **boots**, since each boot is a fresh draw of the placement lottery and PCT's model says
   independent starts multiply the chance of finding a shallow bug where a long run does not.
 
@@ -108,17 +108,23 @@ The §259 ledger (at least 10 million crossings over at least 3 boots): counting
 boots only, E4 + E6 + E7 = 10,288,805 crossings over 3 boots, which meets it. E5's reboot draw adds 20,474 on top. The series milestone 249 (the boot lottery is sampled by a person walking to the board) wants
 is also unblocked by E5's reset, so future boots need no plug cycle.
 
-E8 through E12 are milestone 592's option-B evening, `23f0c8d87`, one capture: four 120-second draws each ended by the direct AXP15060 write (the reset milestone 592 (radon's cold reboot dies in OpenSBI's PMIC write) built, proven twice-deterministic in the same log), and a fifth boot ended when calef powered the board off. The crossings spread across five identical 120-second builds, 104 to 25,223, is the boot-lottery distribution the series milestone 249 (the boot lottery is sampled by a person walking to the board) wanted and had never sampled: a 243x range on identical silicon and build, zero defects throughout.
+E8 through E12 are milestone 592's option-B evening, `23f0c8d87`, one capture. Four 120-second draws
+were each ended by the direct AXP15060 write (the reset milestone 592 (radon's cold reboot dies in
+OpenSBI's PMIC write) built, proven twice-deterministic in the same log). A fifth boot ended when
+calef powered the board off. The crossings spread across five identical 120-second builds, 104 to
+25,223, is the boot-lottery distribution the series wanted. Milestone 249 (the boot lottery is
+sampled by a person walking to the board) had never sampled it: a 243x range on identical silicon
+and build, zero defects throughout.
 
 The start times are Pacific local times from `notes/soak.md` converted to UTC; the note does not
-state its zone, and the conversion is inferred from the commits that recorded them (2026-09-03
-20:45 UTC and 2026-09-04 00:11 UTC), which only a Pacific reading fits. None of the three logs is
+state its zone. The conversion is inferred from the commits that recorded them (2026-09-03 20:45 UTC
+and 2026-09-04 00:11 UTC), which only a Pacific reading fits. None of the three logs is
 in the tree and none records its build, which is why their columns are thin. So radon's curve
 starts at roughly three and a half hours and 5,500-plus crossings with zero defects, which is a
 confidence about one architecture and one workload, not a verdict about anything.
 
-E4 is the first row with a log in the tree and a build recorded, and on the crossings axis it
-dwarfs the three before it: 4.1 million against about 8,500 recorded in total, from one boot of 8.16
+E4 is the first row with a log in the tree and a build recorded, and on the crossings axis it dwarfs
+the three before it. It has 4.1 million against about 8,500 recorded in total, from one boot of 8.16
 hours that drew the fast arrangement. With E5 through E7 below, radon's curve stands at about 10.32
 million crossings over seven boots and about 26 hours with zero defects, and the boots axis is
 seven points instead of one.
@@ -137,11 +143,11 @@ seven points instead of one.
 | `fixed` | date (UTC) and milestone, commit or pull request; or `open` |
 | `source` | where the defect is recorded at the code |
 
-Classes: `race`, a defect that depends on the interleaving of two or more cores; `multicore`,
-one that exists only with more than one core but is deterministic once placement is fixed;
-**`instrument`**, a defect in the stress workload or its hook rather than in the kernel;
+Classes: `race`, a defect that depends on the interleaving of two or more cores. `multicore`, one
+that exists only with more than one core but is deterministic once placement is fixed.
+**`instrument`**, a defect in the stress workload or its hook rather than in the kernel.
 **`retracted`**, a reading since overturned, kept so it is never counted again by someone who read
-the old version; `unclassified`, not yet understood. Test-only defects (an assertion wrong under
+the old version. `unclassified`, not yet understood. Test-only defects (an assertion wrong under
 load) do not belong here; [`load-sensitive-assertions.md`](load-sensitive-assertions.md) is their
 register.
 
@@ -169,7 +175,7 @@ only on silicon") is a claim about this column, and the `silicon-only` column is
 
 The milestones in the `fixed` column: milestone 80 (Loom: the hand-rolled atomic protocols,
 model-checked), milestone 161 (the x86_64 kernel port), milestone 221 (the soak never crosses cores,
-so build the hook that makes it), milestone 313 (the security audit that was due since August),
+so build the hook that makes it). Then milestone 313 (the security audit that was due since August),
 milestone 315 (a port revoke that reaches every core) and milestone 316 (which core booted: making
 `NIFE_SMP=2` mean something on x86_64). D13's is milestone 514 (the HVF std listener hangs in some
 full runs).

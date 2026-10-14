@@ -17,10 +17,11 @@ that no longer compiles: one token cannot be both pushed and returned. So the de
 only way it can be now, by minting a second token with `unsafe`. That this takes an `unsafe` block
 a reviewer has to sign is the token doing its job; the harness is still shown to catch the result.
 
-diff --git a/crates/inter_process_communication/src/lib.rs b/crates/inter_process_communication/src/lib.rs
---- a/crates/inter_process_communication/src/lib.rs
-+++ b/crates/inter_process_communication/src/lib.rs
-@@ -417,6 +417,9 @@ impl<T: Node> Rendezvous<T> {
+diff --git a/crates/inter_process_communication/src/rendezvous.rs b/crates/inter_process_communication/src/rendezvous.rs
+index 845029a65..4b526b611 100644
+--- a/crates/inter_process_communication/src/rendezvous.rs
++++ b/crates/inter_process_communication/src/rendezvous.rs
+@@ -281,6 +281,9 @@ impl<T: Node> Rendezvous<T> {
              self.pending -= 1;
              Receive::Signal(me)
          } else if let Some(sender) = self.senders.pop_front() {

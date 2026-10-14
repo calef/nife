@@ -124,12 +124,12 @@ The shape:
 3. this core calls `flush_asid`
 4. the probe reads the same VA again, on the same core, with the same space still installed
 
-Two of those choices are load-bearing. **The space is never re-installed between the reads**, because
-a `satp` write is a second event a core or an emulator may treat as a flush, and then step 4 would be
+Two of those choices are load-bearing. **The space is never re-installed between the reads**,
+because a `satp` write is a second event a core or an emulator may treat as a flush. Then step 4 would be
 right for a reason that has nothing to do with the shootdown. And the mapping is changed rather
-than recycled: tearing the space down and handing its ASID to a new one is the scenario that
-matters in production, but the allocator would likely hand the new space the dead one's frames, and
-reading the right byte off the right frame by accident is the same failure of proof.
+than recycled: tearing the space down and handing its ASID to a new one is the scenario that matters
+in production. But the allocator would likely hand the new space the dead one's frames, and reading
+the right byte off the right frame by accident is the same failure of proof.
 
 It also covers aarch64's `tlbi aside1is` broadcast, which nothing tested before.
 
@@ -203,7 +203,7 @@ a kernel bug that strays into the low half faults instead of succeeding quietly.
 **aarch64's `flush_asid` was missing its leading `dsb ishst`.** A `tlbi` that publishes a page-table
 change must have the change visible to the other cores' table walkers first. At the teardown site the
 function was written for, nothing is published (the tables are about to be freed), so its absence
-never bit; the new test, which uses `flush_asid` to announce a mapping change, is a caller that would
+never bit. The new test, which uses `flush_asid` to announce a mapping change, is a caller that would
 have found otherwise. RISC-V gets that ordering for free, because `sfence.vma` is defined to order
 the executing hart's own page-table writes.
 
@@ -221,7 +221,7 @@ the executing hart's own page-table writes.
 - **QEMU cannot exercise the case the probe measures for the reason a real core would.** QEMU's
   softmmu TLB is not tagged by ASID; it flushes wholesale whenever `satp.ASID` changes. The test
   works around that by never re-installing the space between its two reads, so the entry it depends
-  on genuinely survives, but a hardware TLB and QEMU's are not the same object and only the board
+  on genuinely survives. But a hardware TLB and QEMU's are not the same object and only the board
   will prove the tagging behaves as the architecture says.
 - `AddressSpace::drop` frees the region before it sweeps the ASID. Between those two lines
   another hart could still hold entries wearing the tag, pointing at frames now on the free list.
@@ -240,11 +240,11 @@ the executing hart's own page-table writes.
   earlier. The test reported it as "the client failed before it reached the network", and the
   inbound check failed beside it only because the suite had already stopped. It is not load and
   not the network. Under QEMU the TLB is flushed on every `satp` change, so a stale tagged entry
-  cannot explain it: at the refill, either the live `satp` was not the thread's or the thread's
+  cannot explain it. At the refill, either the live `satp` was not the thread's or the thread's
   tables no longer mapped its text. 231 riscv64 CPU-matrix transcripts from failed CI runs since
   2026-10-01 hold no other instruction page fault inside program text. Fifteen local full
-  `thead-c906` legs with two probes, each checked by an injected fault, found neither half: no
-  return to U-mode under a root other than the thread's own, and no write into any frame between
+  `thead-c906` legs with two probes, each checked by an injected fault, found neither half. There
+  was no return to U-mode under a root other than the thread's own, and no write into any frame between
   its free and its next allocation. The kill report now prints the live `satp`, the leaf a walk of
   `stval` finds and, in a `system_tests` build, whether the live root is the thread's own, so the
   next CI occurrence names the half.

@@ -13,7 +13,7 @@ process sees one contiguous run down from `USER_STACK_TOP`.
 
 ## How the old number failed
 
-That number used to be 32 (33 pages, 135,168 bytes), chosen to be comfortably above the
+That number was 32 (33 pages, 135,168 bytes), chosen to be comfortably above the
 read-and-write path. Adding `CREATE` and `TRUNCATE` in milestone 31 (a capability shell) phase 2 took
 one more level of tree recursion, and it was 528 bytes short. The FS server ran off the bottom of its
 stack mid-request, and the kernel killed it, correctly and legibly:

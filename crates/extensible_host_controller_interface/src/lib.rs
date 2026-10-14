@@ -1,11 +1,8 @@
 #![no_std]
-//! **xHCI, as pure logic** (milestone 242, USB host and HID; notes/usb.md).
-//!
-//! Everything a USB host controller driver computes, with nothing it touches. The register file
-//! and the DMA memory are the kernel's to find and confine (`kernel/src/extensible_host_controller_interface.rs`)
-//! and the EL0 driver's to drive (`components/src/usb_keyboard_driver.rs`); what lives here is the
-//! arithmetic those volatile accesses carry. It is the NVMe split again, one device over:
-//! `crates/non_volatile_memory_express` is the precedent and rule 7 is the reason.
+//! **xHCI, as pure logic** (notes/usb.md): everything a USB host controller driver computes, with
+//! nothing it touches. The kernel finds and confines the register file and DMA memory
+//! (`kernel/src/extensible_host_controller_interface.rs`) and the EL0 driver drives them
+//! (`components/src/usb_keyboard_driver.rs`); this is the arithmetic between, the NVMe split again.
 //!
 //! The protocol in one paragraph (xHCI 1.2, chapters 4 and 6). **This is the first controller in
 //! the tree whose data structures the device walks on its own.** The driver lays out, in memory
@@ -15,77 +12,23 @@
 //! bit** in each: the producer writes TRBs carrying its current cycle, the consumer accepts a TRB
 //! only while the bit matches its own, and both flip at the end of the ring, where a producer ring
 //! carries a **link TRB** back to its start. The driver rings a **doorbell** to say a ring has new
-//! work; the controller writes **events** (command completions, transfer completions, port
-//! changes) to the event ring and raises an interrupt.
+//! work; the controller writes **events** to the event ring and raises an interrupt.
 //!
-//! What is here:
-//!
-//! - [`regs`]: register offsets and bit names, and [`Capabilities`], the read-only facts the
-//!   capability registers state.
-//! - [`register_window`]: **which pages of the register file a confined driver is mapped**, the
-//!   confinement decision this crate exists to make checkable.
-//! - [`Handoff`]: the three spawn words, packed and unpacked.
-//! - [`dma`]: the DMA region's layout, which both ends agree on.
-//! - [`Trb`], [`Event`], [`ProducerRing`] and [`EventRing`]: the ring discipline.
-//! - [`context`]: slot and endpoint contexts.
-//! - [`port`]: the port status register, whose write-one-to-clear bits are a trap.
-//!
-//! # Examples
-//!
-//! The cycle bit is the mechanism worth showing. A producer ring of four entries has three usable
-//! slots and a link TRB in the fourth; the third enqueue also writes the link, and the cycle the
-//! producer stamps flips for the next lap:
-//!
-//! ```
-//! use extensible_host_controller_interface::{ProducerRing, Trb};
-//!
-//! let mut ring = ProducerRing::new(0x1000, 4);
-//! let a = ring.enqueue(Trb::enable_slot());
-//! assert_eq!((a.index, a.trb.cycle(), a.link), (0, true, None));
-//! ring.enqueue(Trb::enable_slot());
-//! let c = ring.enqueue(Trb::enable_slot());
-//! assert_eq!(c.index, 2);
-//! let (at, link) = c.link.unwrap(); // the third TRB fills the lap, so the link is written too
-//! assert_eq!(at, 3);
-//! assert!(link.cycle()); // stamped with the lap it ends, so the controller follows it
-//! let d = ring.enqueue(Trb::enable_slot());
-//! assert_eq!((d.index, d.trb.cycle()), (0, false)); // second lap, cycle flipped
-//! assert_eq!(ring.address_of(d.index), 0x1000);
-//! ```
-//!
-//! And the register window: QEMU's `qemu-xhci` puts its MSI-X table in the fourth page of its
-//! 16 KiB register file, so a driver is mapped the first three and never the fourth.
-//!
-//! ```
-//! use extensible_host_controller_interface::{Capabilities, register_window};
-//!
-//! // qemu-xhci's capability registers: 0x40 bytes of them, 64 slots, 4 ports, runtime at 0x1000,
-//! // doorbells at 0x2000.
-//! let caps = Capabilities::decode(0x0100_0040, 0x0400_0840, 0, 0x0000_7000, 0x2000, 0x1000);
-//! let window = register_window(&caps, 0x4000, &[(0x3000, 0x3000 + 16 * 16), (0x3800, 0x3808)]);
-//! assert_eq!(window, Ok(0b0111));
-//! ```
+//! [`regs`] and [`Capabilities`] name the registers; [`register_window`] decides **which pages of
+//! the register file a confined driver is mapped**, the confinement this crate makes checkable;
+//! [`Handoff`] packs the spawn words; [`dma`] is the DMA region's layout; [`Trb`], [`Event`],
+//! [`ProducerRing`] and [`EventRing`] are the ring discipline; [`context`] holds slot and endpoint
+//! contexts; [`port`] is the port status register, whose write-one-to-clear bits are a trap.
 //!
 //! # BUGS
 //!
-//! - **One page size.** [`dma`] assumes the controller accepts 4 KiB pages (`PAGESIZE` bit 0),
-//!   which every xHCI this project has read about does; the driver checks and refuses otherwise.
-//! - **No streams, no isochronous, no bulk.** The TRB builders cover the commands and transfers a
-//!   keyboard needs and nothing more.
-//! - **Hubs are not modelled.** The slot context built here always has a route string of 0, so a
-//!   device behind a hub cannot be addressed. Milestone 242's own BUGS entry; the keyboards on
-//!   the bench plug into a root port.
+//! - One page size: [`dma`] assumes 4 KiB (`PAGESIZE` bit 0), and the driver refuses otherwise.
+//! - No streams, isochronous or bulk: the TRBs a keyboard needs and nothing more.
+//! - Hubs are not modelled (route string 0), so a device behind a hub cannot be addressed.
 //!
-//! Name: ratified 2026-10-07 (calef, pull request #1806's publish-ours review). The maintainer
-//! comment reads: "one milestone per crate, minted now, each keeping its tree name (all free on
-//! crates.io as of today): [...] `extensible_host_controller_interface` (no offer to rust-osdev's
-//! dormant `xhci`, per today's only-our-dependencies rule) [...] Names are ratified now and
-//! permanent on first publication." His words: "Yes, one per crate". Minted provisionally
-//! 2026-10-04 for milestone 242 (USB host and HID): the expansion of xHCI, by DECISIONS §154 (the
-//! acronym test is whether the phrase is spoken) as `crates/non_volatile_memory_express` was
-//! named; too long for a program (`nifefs`'s 32-byte limit), so the program that drives it is
-//! `usb_keyboard_driver`, which says what it is for. Milestone 820 (proven xHCI logic, released on
-//! its own) publishes it.
+//! Name: ratified 2026-10-07 (calef, #1806), permanent on first publication: xHCI expanded per §154
+//! (the acronym test is whether the phrase is spoken). Too long for a program name, so the program
+//! is `usb_keyboard_driver`.
 
 pub mod context;
 pub mod dma;

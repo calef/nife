@@ -180,15 +180,16 @@ fn threaded_run(line: &str, workers: usize, before_counting: impl FnOnce()) {
 macro_rules! skip_without_rg {
     () => {
         if program("rg").is_none() {
-            // CI's rows build `rg` and say so at build time; there, a missing `rg` is a broken
-            // build and must not read as a skip.
+            // CI's rows fetch `rg` (milestone 810 (`ripgrep` is packaged in basalt and installed
+            // with `jig`)) and say so at build time; there, a missing `rg` is a broken fetch and
+            // must not read as a skip.
             assert!(
                 env!("NIFE_RIPGREP_REQUIRED") != "1",
-                "no rg in this archive, and NIFE_RIPGREP_REQUIRED=1: helpers/build-ripgrep.sh ran \
-                 and its rg did not reach the archive"
+                "no rg in this archive, and NIFE_RIPGREP_REQUIRED=1: `cargo xtask basalt-fetch` \
+                 ran and its rg did not reach the archive"
             );
             crate::testing::skip!(
-                "no rg in this archive: build it with helpers/build-ripgrep.sh (milestone 121)"
+                "no rg in this archive: `cargo xtask basalt-fetch` fetches it (milestone 810)"
             );
         }
         if fs_service::fs_server_image().is_none() {

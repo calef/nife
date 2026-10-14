@@ -97,8 +97,7 @@ Milestone 1 (boot to Rust on QEMU `virt`, and print to the PL011 UART) is dated 
 That is 2026W28, and the series starts at 2026W29 because that is where the first commit is. It is
 dropped rather than absorbed into the neighboring week. The $200 of subscription in the same week is
 dropped for the same reason. A week gets a row only if a commit fell in it, and inventing one would
-leave every other column in it empty or wrong. That drop was silent until 2026-09-23. The cash column
-had carried a stderr warning for its identical case since it was written, and this one now does too.
+leave every other column in it empty or wrong. The drop prints a stderr warning, as the cash column does for its identical case.
 
 ### Nothing published changes
 
@@ -152,7 +151,7 @@ and the deck cannot tell them apart. It can only make the question visible.
 2026W29 and 2026W30 are genuine zeros. The first two weeks were commits straight to a branch with no
 pull request; the practice starts in 2026W31 with 8.
 
-### Commits are charted, and the reason this heading used to say the opposite still holds
+### Commits are charted, and the reason not to chart them still holds
 
 This section read *"commits are deliberately not a series here"* until 2026-09-24, and its argument
 was not wrong. The count measures lane hygiene at least as much as output. `AGENTS.md` requires a lane

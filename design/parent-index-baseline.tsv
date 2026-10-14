@@ -11,13 +11,9 @@
 path	code_lines
 crates/bitmap_font/src/lib.rs	160
 crates/board_console/src/lib.rs	6
-crates/designware_ethernet/src/lib.rs	284
 crates/designware_mobile_storage/src/lib.rs	77
-crates/e1000e/src/lib.rs	326
-crates/e1000e/src/pch/mod.rs	74
 crates/grant_plan/src/lib.rs	40
 crates/grant_plan/src/program.rs	129
-crates/inter_process_communication/src/lib.rs	310
 crates/memory_regions/src/lib.rs	183
 crates/name_resolution_protocol/src/lib.rs	102
 crates/stick_maker/src/host/mod.rs	106
@@ -33,5 +29,4 @@ patches/std-nife/overlay/std/src/sys/alloc/nife/mod.rs	141
 patches/std-nife/overlay/std/src/sys/pal/nife/mod.rs	27
 system_tests/src/main.rs	5
 system_tests/src/user.rs	11
-uefi_loader/src/main.rs	391
-xtask/src/main.rs	102
+xtask/src/main.rs	101

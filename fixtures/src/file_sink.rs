@@ -1,41 +1,18 @@
-//! **A file behind a byte sink** (milestone 50, split out of the `sink` binary by milestone 292;
-//! notes/sink-protocol.md).
-//!
-//! The `fs_file_caretaker` shape, one contract further out. `fs_file_caretaker` is a caretaker
-//! because it "serves the same `filesystem_protocol` protocol its own client speaks"; this one serves a
-//! *different* and much smaller protocol than it speaks, and that asymmetry is the point. It holds
-//! an FS-service endpoint, which is a directory capability: it can open names, read them, write at
-//! arbitrary offsets, truncate, and stat. Its client holds an endpoint to this process, over which
-//! the only expressible request is *here are up to sixteen bytes, append them*.
-//!
-//! So `> report.txt` grants strictly less than Unix's fd 1 does, and it is structural rather than
-//! policy: the confined program cannot seek, cannot truncate, cannot re-read and cannot stat,
-//! because there is no message that says any of those things and nothing in its capability table
-//! that names the FS server. That is milestone 50's claim, and this file is where it is either true
-//! or not.
-//!
-//! # The wiring
+//! **A file behind a byte sink** (notes/sink-protocol.md). It holds a directory capability on the
+//! FS service, which can open, read, write anywhere, truncate and stat; its client holds an
+//! endpoint over which the only expressible request is *here are up to sixteen bytes, append
+//! them*. So `> report.txt` grants strictly less than a Unix fd 1, structurally: no message seeks,
+//! truncates, re-reads or stats, and nothing in the client's table names the FS server.
 //!
 //! | slot 0 | slot 1 | slot 2 | [`PAGE_VA`] |
 //! |---|---|---|---|
 //! | the sink it serves, `READ` | the FS service, `WRITE` | the report, `WRITE` | shared with the FS server |
 //!
 //! The report carries [`fixture::READY`] once the file is open, then [`fixture::DONE`] and the byte
-//! total at end of stream, or [`fixture::BAD`] and the failing request. Readiness is separate from
-//! completion because a caller has to know the file exists before it hands the sink to a writer; a
-//! writer that arrives first would block on a rendezvous nobody is serving yet.
-//!
-//! # What this is not
-//!
-//! It is a fixture, not the `>` a person types. The shell's redirection goes through
-//! `components/src/fs_file_caretaker.rs`, which narrows the *same* protocol rather than translating
-//! between two. This program exists so that the sink contract's receiving end can be exercised
-//! against a real RedoxFS image, and `kernel::user::fs_service::start_file_sink` is its only
-//! caller.
-//!
-//! # EXAMPLES
-//!
-//! The whole of what a writer can say to it, which is the claim:
+//! total, or [`fixture::BAD`] and the failing request; readiness is separate so a caller never
+//! hands the sink to a writer before anything serves it. This is a fixture: the shell's `>` goes
+//! through `components/src/fs_file_caretaker.rs`, and `kernel::user::fs_service::start_file_sink`
+//! is this program's only caller.
 //!
 //! ```
 //! use byte_sink_protocol::{eof, pack};
@@ -50,39 +27,15 @@
 //!
 //! # BUGS
 //!
-//! Each message is written straight through rather than buffered. That costs an FS round trip per
-//! sixteen bytes and it is the honest starting point: buffering is a component that speaks the sink
-//! contract on both sides, inserted into the chain, not a hidden behaviour of one sink. See
-//! notes/sink-protocol.md.
+//! - Each message is written straight through, an FS round trip per sixteen bytes; buffering would
+//!   be a separate component speaking the sink contract on both sides.
+//! - It appends to one name, [`fixture::SINK_NAME`]; two running on one image would interleave.
+//! - [`PAGE_VA`] is copied in every program that maps the FS server's shared frame.
 //!
-//! It appends to one name, [`fixture::SINK_NAME`], in the FS service's root. Two of these running
-//! at once on one image would interleave into one file, and nothing stops that; the wiring runs
-//! exactly one.
-//!
-//! [`PAGE_VA`] is hard-coded here and in every other program that maps the FS server's shared
-//! frame, each with its own copy of the same address and its own byte accessors. That duplication
-//! is older than this file and outlives it, and the lane splitting `components/src/ntp.rs`
-//! concurrently with this one has proposed the crate that would end it.
-//!
-//! Name: recorded (design/roadmap/0292-the-sink-contract-ends-are-three-programs.md and
-//! notes/sink-protocol.md, which together carry the argument). **Provisional: calef has not
-//! ratified it.** It was `ROLE_FILE` inside the `sink` binary until milestone 292 split that binary
-//! into the three programs it had always been, and `file_sink` is the name the kernel side has
-//! spelled all along (`fs_service::FileSink`, `fs_service::start_file_sink`). `sink` survives the
-//! 2026-09-13 structural-versus-current test (design/naming.md) here for the strongest of the three
-//! reasons it survives anywhere: this terminus is structural, because the client holds a capability
-//! over which no message but "append" is expressible, and no grant anybody could make would change
-//! that. Refused `file_sink_caretaker` (it would match the shape the tree already spells
-//! `terminal_sink_caretaker`, the same adapter for a different backend, and that analogy nearly won;
-//! it loses on collision with the existing and different `fs_file_caretaker`, and two names a reader
-//! must hold apart cost more than the consistency buys) and `sink_file_writer` (it reads as a
-//! sibling of the transcript writer and is not one: that program writes *into* a sink, this one *is*
-//! the sink).
-//!
-//! That the tree spells one translating adapter `terminal_sink_caretaker` and this one not is a real
-//! inconsistency in what `caretaker` means. It is an architect's to settle rather than this file's,
-//! and it has a home: milestone 413 (what a `caretaker` is),
-//! design/roadmap/0413-what-a-caretaker-is-when-it-translates.md.
+//! Name: recorded (design/roadmap/0292-the-sink-contract-ends-are-three-programs.md), provisional:
+//! the name the kernel side spells (`fs_service::FileSink`). Refused `file_sink_caretaker` (collides
+//! with `fs_file_caretaker`) and `sink_file_writer` (this *is* the sink). What `caretaker` means for
+//! a translating adapter is milestone 413 (what a `caretaker` is).
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

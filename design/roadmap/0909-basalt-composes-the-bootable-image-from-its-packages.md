@@ -1,7 +1,7 @@
 ---
 status: NOT-STARTED
 raised: 2026-10-12
-milestone_dependencies: 755, 607, 611, 810, 911
+milestone_dependencies: 755, 607, 611, 810, 911, 919
 decision_dependencies: 297, 235, 241, 250
 machine_requirements: none
 specific_machine: none
@@ -33,6 +33,8 @@ system needs before `jig` runs reach it this way. They are the kernel, the proge
   composition the check it runs with nobody at a prompt. Each package's asks are tested against the
   image's approval file, as the same grant records an interactive install writes. 911's block names
   this dependency and leaves the edge here.
+- Milestone 919 (a package carries several programs, and `jig` installs, finds and removes each
+  one) lets a base package such as `core-tools`, with five programs, be installed at all.
 
 ## The work
 

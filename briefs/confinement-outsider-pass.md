@@ -1,30 +1,46 @@
 # Brief: an outsider pass at the confinement claim
 
-**Provisional name.** Written 2026-10-12 (UTC) by milestone 903 (a seventh outsider pass attacks
-the confinement claim)'s lane, after calef ruled on #2010 that a pass with 3 of 34 rows booted does
-not count toward risk 7's criterion (c). The lane that runs the next pass hands the reviewer the
-section "The reviewer's brief" below, with the posture filled in, and keeps the rest for itself.
+**Name: provisional.** The lane that runs a pass hands the reviewer the section "The reviewer's
+brief" below and keeps the rest for itself.
 
 ## For the lane
 
-- Mint the pass's block the way milestone 903 was minted, and claim it with
-  `script/claim <branch> --new-work`.
+- Mint the pass's block the way milestone 903 (a seventh outsider pass attacks the confinement
+  claim) was minted, and claim it with `script/claim <branch> --new-work`.
 - Build the reviewer's one prompt with [the launch brief](confinement-outsider-pass-launch.md),
-  which pins the commit and holds the per-runner sections (the Mac, Claude's cloud runner).
-- The posture is calef's for each pass, so take it from his ask. Blind is milestone 633 (an outside
-  agent attacks the confinement claim)'s. Informed is milestone 800 (a non-Anthropic model attacks
-  the confinement claim)'s.
+  which pins the commit and holds the per-runner sections (the Mac, Claude's cloud runner). The
+  prompt is the reviewer's brief and the runner section. Never a milestone number or a roadmap
+  block: those hold the lane's instructions, and a reviewer given one follows them.
+- Every pass is informed, milestone 800 (a non-Anthropic model attacks the confinement claim)'s
+  posture: the reviewer has the whole tree and its history at the pinned commit (calef,
+  2026-10-14 UTC).
 - Criterion (c) needs two consecutive clean passes, and at least one must come from a
   non-Anthropic model or a human. An Anthropic pass can only be the other one.
-- Blind: copy the claims table alone (`notes/confinement-claims.md` from `## The claims` to the end
-  of the table) to a scratch file and give the reviewer that path, never the note. Pass 7's first
-  reviewer read past the table, and the attempt was discounted.
-- Spawn a fresh agent. The lane briefs, collects, reproduces each claimed escape by test or boot,
-  and records. It does not attack and it does not hint.
+- Spawn a fresh agent, and record the model id the session reports, not the one you asked for. A
+  pass served by another model than its block names is recorded under the model that served it.
+- The lane briefs, collects, reproduces each claimed escape by test or boot, and records. It does
+  not attack and it does not hint.
 - Reproduce every booted row's test yourself, one ISA's QEMU at a time. A timeout under load is
   inconclusive, not a pass.
-- Before recording, count the rows graded `booted`. Below the floor, the pass is recorded in full
-  but does not count toward criterion (c), and the note says so.
+- Count booted rows from the reviewer's per-row table and your reproduction, never from the
+  report's own total. Below the floor, run the completion round below once. Still below it, the
+  pass is recorded in full but does not count toward criterion (c), and the note says so.
+
+## The completion round
+
+A pass below the floor goes back to the same reviewer, in the same session, once (calef,
+2026-10-14 UTC). Milestone 920 (an outsider pass is launched pinned and floor-checked) builds the
+counter that lists the short rows and the launcher that resumes the session; until it does, the
+lane does both by hand.
+
+- The message lists the short rows, one line each with the reason it is short (`row 10: host
+  only`, `row 19: rerun of the row's cited test`), and asks the reviewer to boot them and update
+  its report. It carries no finding, no file and no hint of where to look.
+- The pass counts if the recount, with the reviewer's new tests reproduced, meets the floor. An
+  escape found in the round counts like any other.
+- One round. A reviewer that leaves rows short twice has not attacked them, and a second round
+  makes the lane its supervisor.
+- A session that cannot be resumed gets no round. A new session is a new pass.
 
 ## The booted-row floor
 
@@ -60,21 +76,20 @@ nife is a capability microkernel in Rust for aarch64, riscv64 and x86_64. Its co
 confined component cannot reach an object it was not granted. The numbered claims are in the table
 at `<path>`. Work in `<worktree>` only.
 
-### Posture
+### What you may read
 
-Blind: do not open `notes/confinement-claims.md` or `notes/confinement-claims/`,
-`design/audit-reports/`, `design/fatal-risks/`, `design/roadmap/`, any note whose name contains
-`outsider`, `falsif`, `adversarial`, `breaking` or `audit`, git history, or GitHub. Source, comments,
-`BUGS` sections, `design/decisions/` and how-to notes are fair game; record any hint you meet.
-Informed: you have the whole tree and its history, and you report a re-found fixed escape apart, as
-a re-discovery.
+The whole tree and its history at your commit, as any attacker of a public repository has them.
+Earlier passes' notes, audit reports and fixed escapes are in it. Report a re-found fixed escape
+apart, as a re-discovery; only a new finding counts toward the claim.
 
 ### What counts
 
 An attack counts when it boots. Write your own hostile program or system test, aimed at the case
 you think breaks the claim, and boot it. Running a test that already exists is not an attack. Every
 row except 12 to 18 must be booted for the pass to count: 27 of 34. Reading is the weakest grade.
-Where a claim concerns a userspace server, build a hostile client that drives it.
+Where a claim concerns a userspace server, build a hostile client that drives it. Before you
+report, count your booted rows against the floor. If you fall short, the maintainers may send you
+the short rows once in this session; boot them and update your report.
 
 Rows 1 to 3 have attack tests from an earlier pass in `system_tests/src/user/`:
 `seventh_pass_delegation_tests.rs` (rows 1 and 2) and `seventh_pass_retype_tests.rs` (row 3). Read

@@ -21,8 +21,8 @@ The density ceiling is the only one that expresses a direction rather than a lim
 distinction is what `count-at-most` exists for. Milestone 139 (drive the unsafe count down, and
 cinch the ratchet behind it) lowered it from 100 to 97, then 96, then 95, then 94. Round 5 reduced
 the block count further but left the truncated density, and therefore the ceiling, unchanged.
-This text said 94 was the ceiling until 2026-09-24. The live gate in notes/unsafe-obligations.md
-is 88 on that date (corrected 2026-09-24). The drift was recorded by
+The live gate in notes/unsafe-obligations.md
+is 88 on 2026-09-24. The drift was recorded by
 design/roadmap/0522-a-boundary-drawn-by-dependency-not-by-path.md. See notes/unsafe-obligations.md
 for the measurement behind the ceiling.
 
