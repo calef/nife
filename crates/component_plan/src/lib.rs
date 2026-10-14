@@ -29,6 +29,10 @@
 //! - [`MAX_CAPS`] and [`MAX_MAPS`] are hard bounds, about double any manifest here.
 //! - Nothing checks that a routed object is the kind the role wants; the kernel refuses the
 //!   `CAP_INSERT` or the first `RECEIVE` instead.
+//! - [`plan`] does not refuse two roles routed to one supervisor slot. The child then holds one
+//!   object twice, each copy with the rights its own role declared, so nothing is widened past the
+//!   declaration; it is a provisioning mistake that should be a [`Refusal`]. Found by the eighth
+//!   outsider pass (`notes/confinement-outsider-pass-8.md`, near miss 3).
 //!
 //! Name: provisional, and ruled: calef ruled **`capability_plan`** on 2026-09-13. The block stays
 //! `provisional` until the rename is performed.

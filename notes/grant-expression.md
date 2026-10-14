@@ -4,8 +4,10 @@ Milestone 31, phase 1. This is the note on the one idea the capability shell exi
 visible: on a nife command line, naming a resource is how you grant it. Mark Miller's
 principle, "designation is authorization," applied at the one interface a human touches. The pure
 logic lives in the `grant_plan` crate (host-tested); the wiring is `swish.rs` and, on the
-progenitor's side of the channel, `crates/system_initializer`'s spawn service. The two first processes this note was written against (`hello.rs`'s `init_boot` role on aarch64,
-`components/src/progenitor.rs` on riscv) became slot tables in milestone 96 (one init) and one program in milestone 266 (one progenitor), so
+progenitor's side of the channel, `crates/system_initializer`'s spawn service. The two first
+processes this note was written against were `hello.rs`'s `init_boot` role on aarch64 and
+`components/src/progenitor.rs` on riscv. They became slot tables in milestone 96 (one init) and one
+program in milestone 266 (one progenitor), so
 the service that decodes a grant expression is written once. The manifest half is in
 [program-manifest.md](program-manifest.md). The evidence behind this note is in
 [grant-expression/](grant-expression/README.md).
@@ -125,7 +127,7 @@ the shell's holdings, so the durable fact is the one printed. Why is in
 ## Per-file grants: one file, one direction, and a caretaker in between
 
 *(Phase 2. The designator grammar was designed in phase 1 so this would slot in without a grammar
-change, and it did; milestone 47 then removed the `file:` prefix from it, which changed the spelling
+change, and it did. Milestone 47 (navigation and naming) then removed the `file:` prefix from it, which changed the spelling
 and not one line of the mechanism below.)*
 
 The filesystem's unit of authority is a directory: the endpoint a client holds IS the directory
@@ -252,7 +254,7 @@ for it. The four links and the delegation question are in
 ## The interrupt grant (DECISIONS §24)
 
 A foreground job the user can `^C` is another grant the command line expresses, and it flows the
-same way: the manifest marks a program `interruptible`, and the shell endows a supervised job with
+same way. The manifest marks a program `interruptible`, and the shell endows a supervised job with
 what the two-tier interrupt (DECISIONS §24) needs, and nothing more.
 
 - **A shared job frame** the shell mints per job (`grant_plan::jobframe`) and maps into the child. The
@@ -263,7 +265,7 @@ what the two-tier interrupt (DECISIONS §24) needs, and nothing more.
 - **A job untyped** the shell splits from its own budget and delegates for the progenitor to build the *whole*
   child from, so the child's region is one the shell holds. That is what makes the forcible tier a
   capability the shell already has: a second `^C` tears the job down with `Untyped::DESTROY` on that
-  region (which force-kills the resident thread, §16 amendment), and even a runaway that ignores the
+  region (which force-kills the resident thread, §16 amendment). Even a runaway that ignores the
   cooperative flag ends and the prompt returns.
 
 A program the command did not run as a supervised job holds no job frame and no reclaimable region,

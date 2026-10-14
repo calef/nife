@@ -55,13 +55,13 @@ This is the fourth appearance of one idea and it deserves the name the roadmap g
 | 56 (planned) | a password hash | **use** a credential, without reading it |
 
 In each case the narrow power is a different object rather than a flag on the wide one, so the
-narrowing survives delegation: a client that passes its endpoint on passes the small power, because
+narrowing survives delegation. A client that passes its endpoint on passes the small power, because
 the small power is all it ever held.
 
 ## The bytes are the device's bytes
 
 No pool, no whitening, no mixing, no DRBG. There is no cryptographic primitive in this tree yet,
-and without a one-way function every transformation available is a reversible permutation: it would
+and without a one-way function every transformation available is a reversible permutation. It would
 change the bytes without adding an unpredictability an attacker could not undo, while making the
 security claim harder to state. So the claim stays one sentence long, and it is auditable:
 
@@ -75,8 +75,8 @@ into one.
 ### Short reads
 
 virtio-rng is allowed to return fewer bytes than the buffer holds, and the used ring's `len` is
-where it says so. QEMU's really does, which is worth recording as a measurement rather than a
-spec allowance the code defends against on principle: the first version of the service passed a
+where it says so. QEMU's really does, which is worth recording as a measurement rather than a spec
+allowance the code defends against on principle. The first version of the service passed a
 short buffer straight through to the client, and the milestone-56 test caught a five-byte reply to
 an eight-byte request thirty draws in.
 
@@ -115,8 +115,9 @@ Transparent, and split where std already splits it:
 
 A program that calls `SystemRng` gets real entropy the moment it is granted the capability, with no
 nife-specific API to learn. `fill_bytes` has no error channel, so the only loud refusal available
-is a panic, which is [§43](../design/decisions/0043-clock-authority.md)'s `SystemTime::now()` decision applied a second time: a
-program that never asks is unaffected, and a program that asks gets told rather than quietly
+is a panic, which is [§43 (reading the clock is a page)](../design/decisions/0043-clock-authority.md)'s `SystemTime::now()`
+decision applied a second time. A program that never asks is unaffected, and a program that asks
+gets told rather than quietly
 stamping a key with something guessable.
 
 `hashmap_random_keys` is the one place a fallback is right. A `HashMap` in a program nobody granted
@@ -155,17 +156,18 @@ same assertions over both buses (`system_tests/src/user/entropy_tests.rs`):
 - Two devices do not agree. The mmio and PCIe services draw disjoint bytes, which is what says
   they came from the devices rather than from something shared underneath.
 - The count in a reply is the truth about the reply: a three-byte request writes three bytes and
-  leaves the rest of the caller's buffer alone, an oversized one is clamped and answered rather than
+  leaves the rest of the caller's buffer alone. An oversized one is clamped and answered rather than
   refused, and an unimplemented opcode is answered with nothing rather than killing the service.
 - A std program gets there: `std_exerciser` draws two 32-byte values through `std::random` and asserts
   they differ (`entropy ok` in the pinned transcript), on both ISAs.
 
 **And since 2026-08-03 the endpoint is load-bearing for something a machine cannot do without it.**
 Milestone 57's write half made this service the thing that decides whether a disk can be partitioned
-or formatted at all: a GPT partition and a RedoxFS volume each carry an identifier that must be
-globally unique, and neither `crates/globally_unique_identifier_partition_table` nor a `no_std` RedoxFS has any randomness of its own. So
-`disk_partitioner` and `mkfs` hold this endpoint beside their disk, and withholding it is what
-the test does to prove the pair is necessary: the same binary, the same disk, one capability fewer,
+or formatted at all. A GPT partition and a RedoxFS volume each carry an identifier that must be
+globally unique, and neither `crates/globally_unique_identifier_partition_table` nor a `no_std`
+RedoxFS has any randomness of its own. So
+`disk_partitioner` and `mkfs` hold this endpoint beside their disk. Withholding it is what the test
+does to prove the pair is necessary: the same binary, the same disk, one capability fewer,
 and a disk that afterwards still reads as unpartitioned. That is a stronger statement of "an
 endpoint is the authority to obtain randomness" than a client that merely draws bytes and compares
 them, because here the refusal is visible on the platter.
@@ -182,51 +184,55 @@ it.
   conditions them.
 - **No hardware TRNG yet, but "needs verifying" is now precise rather than open-ended** (milestone
   159, 2026-08-24). The StarFive JH7110's TRNG is documented, from the chip's own datasheet and
-  Linux's mainline driver, but nothing about it has run: `crates/jh7110_entropy` holds the register
+  Linux's mainline driver, but nothing about it has run. `crates/jh7110_entropy` holds the register
   layout (`CTRL`/`STAT`/`MODE`/`SMODE`/`IE`/`ISTAT`/`RAND0..RAND7`/`AUTO_RQSTS`/`AUTO_AGE`,
   transcribed from `drivers/char/hw_random/jh7110-trng.c`, mainline as of 2026-08-24) and a DTB
   discovery query (`starfive,jh7110-trng`, `reg = <0x1600C000 0x4000>`, PLIC interrupt 30, from the
-  device-tree binding's own worked example), both host-tested against fixtures, never against
+  device-tree binding's own worked example). Both are host-tested against fixtures, never against
   silicon. `components/src/jh7110_entropy.rs` is a full `entropy_protocol` backend built on that logic, over a
   raw device mapping rather than a virtqueue (this device has no DMA and no queue, only registers).
-  **Wired on 2026-09-01**: `entropy_service`'s `Bus` enum grew a `Jh7110` variant and the riscv64
-  boot tour spawns the driver when the machine's device tree describes the device, which on every
-  machine this repository boots it does not, so what CI exercises is the skip. Its authority is the
+  **Wired on 2026-09-01**: `entropy_service`'s `Bus` enum grew a `Jh7110` variant. The riscv64 boot
+  tour spawns the driver when the machine's device tree describes the device. On every machine this
+  repository boots it does not, so what CI exercises is the skip. Its authority is the
   smallest of any backend here: two rendezvous capabilities and one page of device memory, no DMA
   page, no `Irq` capability, no `Virtio` capability. The buffer that hands bytes to clients moved
   into the crate the same day (`jh7110_entropy::Pool`), so the one part of the driver that could serve
-  a byte twice is host-tested rather than merely written; what is left in the program is the
+  a byte twice is host-tested rather than merely written. What is left in the program is the
   volatile accesses and two unmeasured polling bounds. What the datasheet still does not settle:
   whether radon's own shipped device tree carries the TRNG node the mainline one does (nobody has
-  captured one from the board to check), whether the block's clocks and reset are left running by
+  captured one from the board to check). Nor whether the block's clocks and reset are left running
+  by
   U-Boot (this tree drives neither, and Linux's driver takes two clocks and a reset line before it
-  touches a register; see `components/src/jh7110_entropy.rs`'s `BUGS`), and the whole question below.
+  touches a register; see `components/src/jh7110_entropy.rs`'s `BUGS`). And the whole question
+  below.
 - **The health-test story got sharper, not answered.** The datasheet (§2.8.2) documents "Support
   LFSR based digital post process" and "Support self re-seeding" but claims no NIST SP 800-90B,
   FIPS 140, or AIS-31 compliance anywhere reachable. The Linux driver names exactly one hardware
-  fault signal, `ISTAT.LFSR_LOCKUP` (an SEU in the post-processing stage), which is cheap to read
-  and the new driver reads it, treating a lockup the way this service already treats a dry
-  virtio-rng device: retry, bounded, then tell the caller the truth. Whether that hardware bit is
-  *enough* before trusting these bytes for anything security-shaped, or whether this tree needs a
-  software statistical test (repetition-count, adaptive-proportion) over and above it, is not
-  decided; see [entropy/jh7110-trng.md](entropy/jh7110-trng.md), "Health testing", and
+  fault signal, `ISTAT.LFSR_LOCKUP` (an SEU in the post-processing stage), which is cheap to read,
+  and the new driver reads it. It treats a lockup the way this service already treats a dry
+  virtio-rng device: retry, bounded, then tell the caller the truth. It is not decided whether that
+  hardware bit is *enough* before trusting these bytes for anything security-shaped. The alternative
+  is a software statistical test (repetition-count, adaptive-proportion) over and above it. See
+  [entropy/jh7110-trng.md](entropy/jh7110-trng.md), "Health testing", and
   `design/roadmap/0159-jh7110-trng-driver.md` for the argument, which a lane deliberately did not
   resolve on its own initiative.
 - **A second backend exists on aarch64 and x86_64, milestone 162.** `entropy` can now be spawned in
-  an instruction mode that needs no virtio device at all: `RNDRRS` (aarch64, `FEAT_RNG`) rather than
-  `RDSEED` (x86_64), or the DRBG-buffered `RNDR`/`RDRAND`, since `entropy`'s whole discipline ("no
+  an instruction mode that needs no virtio device at all. It uses `RNDRRS` (aarch64, `FEAT_RNG`) or
+  `RDSEED` (x86_64), not the DRBG-buffered `RNDR`/`RDRAND`, since `entropy`'s whole discipline ("no
   pool, no whitening, no mixing, no DRBG") rules out a buffered instruction the same way it rules out
   software conditioning. `RNDRRS`'s register encoding is `S3_3_C2_C4_1`; success/failure rides
   `PSTATE.NZCV` after the `MRS`, the same idiom Linux's `arch/arm64/include/asm/archrandom.h` uses.
   `RDSEED`'s carry flag and Intel's DRNG Software Implementation Guide (rev. 2.2, §5.3.1.2) give the
   retry bound (100 attempts, a `pause` between). Both instructions' own specifications describe
-  SP800-90B-shaped on-die conditioning as part of their architectural contract, so bytes pass through
-  unmodified, same as virtio-rng; the health-test question above does not apply to either. Proven
-  end to end under QEMU on aarch64, but only with `--cpu neoverse-n2`: the suite's default CPU
-  (`cortex-a72`) predates `FEAT_RNG`, and QEMU's `max` model, despite carrying `FEAT_RNG`, cannot even
+  SP800-90B-shaped on-die conditioning as part of their architectural contract, so bytes pass
+  through unmodified, same as virtio-rng. The health-test question above does not apply to either.
+  Proven
+  end to end under QEMU on aarch64, but only with `--cpu neoverse-n2`. The suite's default CPU
+  (`cortex-a72`) predates `FEAT_RNG`. QEMU's `max` model, despite carrying `FEAT_RNG`, cannot even
   boot this kernel (a missing 4 KiB stage-1 granule, checked and confirmed 2026-08-24 against QEMU
-  11.0.2, unrelated to entropy). On x86_64 the instruction itself is proven (a kernel-side boot probe;
-  see `design/roadmap/0162-cpu-instruction-entropy.md`), but the service cannot be spawned into
+  11.0.2, unrelated to entropy). On x86_64 the instruction itself is proven (a kernel-side boot
+  probe; see `design/roadmap/0162-cpu-instruction-entropy.md`). But the service cannot be spawned
+  into
   userspace at all yet: there is no ring 3 on this port (milestone 161 item 3).
 - **No health test.** A device that started returning a constant would be passed straight through.
   The kernel tests would catch it, a running system would not. NIST SP 800-90B's repetition-count and
@@ -236,9 +242,9 @@ it.
 - **A program at the prompt can hold entropy, since milestone 111** (2026-09-05). This entry used to
   read "`init` does not endow the shell with entropy", and its own last sentence ("future work with
   no design problem in it") turned out to be right: no new mechanism, no new right, nothing on the
-  wire. `grant_plan::Manifest::entropy` joined `clock`, `domain` and `config`; the progenitor reads the
-  declaration and places a `WRITE` view of the entropy service's request endpoint at
-  `grant_plan::ENTROPY_SLOT`; a program that did not declare it holds an empty slot there and
+  wire. `grant_plan::Manifest::entropy` joined `clock`, `domain` and `config`. The progenitor reads
+  the declaration and places a `WRITE` view of the entropy service's request endpoint at
+  `grant_plan::ENTROPY_SLOT`. A program that did not declare it holds an empty slot there and
   `entropy_protocol::delivered` answers `None` rather than a short count. `components/src/uuid.rs` is the
   first consumer a person can type, and `caps uuid` prints the row.
 

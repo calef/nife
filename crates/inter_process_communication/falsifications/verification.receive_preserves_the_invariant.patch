@@ -9,10 +9,11 @@ Expected to fail: the harness's `assert!(e.one_queue_invariant())`, on a rendezv
 holding a queued receiver: both queues end up non-empty, and a later send would hand a receiver a
 receiver as its rendezvous partner.
 
-diff --git a/crates/inter_process_communication/src/lib.rs b/crates/inter_process_communication/src/lib.rs
---- a/crates/inter_process_communication/src/lib.rs
-+++ b/crates/inter_process_communication/src/lib.rs
-@@ -419,7 +419,7 @@ impl<T: Node> Rendezvous<T> {
+diff --git a/crates/inter_process_communication/src/rendezvous.rs b/crates/inter_process_communication/src/rendezvous.rs
+index 845029a65..95d8ee0d6 100644
+--- a/crates/inter_process_communication/src/rendezvous.rs
++++ b/crates/inter_process_communication/src/rendezvous.rs
+@@ -283,7 +283,7 @@ impl<T: Node> Rendezvous<T> {
          } else if let Some(sender) = self.senders.pop_front() {
              Receive::FromSender(sender, me)
          } else {

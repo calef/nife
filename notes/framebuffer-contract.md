@@ -117,13 +117,14 @@ bounds the descriptor that carries that command, but the addresses inside it are
 parse.
 
 And it should not start parsing them. Teaching the transport to read virtio-gpu commands would put
-device knowledge in the one place DECISIONS §18 keeps device-neutral, and it would be a per-device
-arms race: the next device class with addresses in a payload would need its own parser in the kernel.
+device knowledge in the one place DECISIONS §18 (the PCIe transport) keeps device-neutral. It would be a per-device arms
+race: the next device class with addresses in a payload would need its own parser in the kernel.
 
 So the IOMMU is the barrier for this class of address, and that is proven, not assumed.
-`the_iommu_refuses_the_gpu_a_framebuffer_outside_the_drivers_grant` gives a driver exactly the honest
-driver's authority, points the resource's backing at a frame the kernel deliberately left out of its
-domain, asks the device to transfer from it, and asserts the IOMMU recorded a fault at that frame.
+`the_iommu_refuses_the_gpu_a_framebuffer_outside_the_drivers_grant` gives a driver exactly the
+honest driver's authority. It points the resource's backing at a frame the kernel deliberately left
+out of its domain, asks the device to transfer from it, and asserts the IOMMU recorded a fault at
+that frame.
 Both ISAs.
 
 Two consequences follow, both stated plainly because they matter:
@@ -181,9 +182,9 @@ That gap is closed, and by the host rather than the guest, because only the host
 
 QEMU's monitor works headlessly: `screendump FILE` writes a PPM of the scanout even with
 `-display none` (verified against QEMU 11.0.2). So the runners take a monitor socket
-(`NIFE_GPU_MON`), and `cargo xtask`'s `cargo_test_with_scanout_check` drives it while the
-ordinary test run is happening: it spawns the suite, and beside it polls the monitor every 100 ms,
-dumps the scanout, and compares the PPM against `graphics_protocol::pixel`, the same definition the client
+(`NIFE_GPU_MON`), and `cargo xtask`'s `cargo_test_with_scanout_check` drives it while the ordinary
+test run is happening. It spawns the suite, and beside it polls the monitor every 100 ms, dumps the
+scanout, and compares the PPM against `graphics_protocol::pixel`, the same definition the client
 painted from. The first match ends the polling. Both ISAs. Every command goes over one monitor
 connection and waits for QEMU's prompt, so a dump is whole when it is read. On success it prints:
 
@@ -192,7 +193,7 @@ scanout check (aarch64): the 128x64 pattern reached the DEVICE's scanout, verifi
 against graphics_protocol::pixel (target/gpu-scanout-aarch64.ppm)
 ```
 
-So the pixels are proven all the way to the device, not just to our own frames: the guest's two
+So the pixels are proven all the way to the device, not just to our own frames. The guest's two
 witnesses agree about the framebuffer, and the host independently confirms that what QEMU is
 scanning out is the pattern, pixel for pixel, in the right format, at the right geometry.
 

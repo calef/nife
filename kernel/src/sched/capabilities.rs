@@ -140,6 +140,14 @@ pub fn delete_device_frame_caps_from_others(phys: u64) {
 /// [`delete_device_frame_caps_from_others`] has and for the same reason (the kernel mints a port
 /// capability once, at boot). This is `PortRange::REVOKE`'s body. `x86_64` only, like the
 /// `PortRange` object it deletes.
+///
+/// # BUGS
+///
+/// **Object equality, not overlap**, as [`delete_page_frame_caps`] does. A capability naming a wider
+/// or narrower range over the same ports is left alone, and so is its cached grant. No syscall can
+/// reach that: `PortRange::REVOKE` takes `(base, count)` from the invoker's own capability. A
+/// change that let a caller name a sub-range would reopen it. Found by the eighth outsider pass
+/// (`notes/confinement-outsider-pass-8.md`, near miss 1).
 #[cfg(target_arch = "x86_64")]
 pub fn delete_port_range_caps_from_others(base: u16, count: u16) {
     delete_port_range_caps_impl(base, count, Some(current_thread_id()));

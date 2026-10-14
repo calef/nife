@@ -10,12 +10,13 @@ question it raises is [../design/interrupt-routing.md](../design/interrupt-routi
 ## Two pieces: a sans-IO engine and a wiring process
 
 The editing lives in the `line_editor` crate, which does no IO and knows nothing about IPC, UARTs,
-or endpoints. Byte in, echo bytes out, completed lines out. That split is DECISIONS §7 applied:
-the editing rules are host-tested in milliseconds against a small terminal model that interprets
-the echo the way a VT does, so the tests assert what the user sees, not which escape
+or endpoints. Byte in, echo bytes out, completed lines out. That split is DECISIONS §7 (testing: host-testable crates) applied. The
+editing rules are host-tested in milliseconds against a small terminal model that interprets the
+echo the way a VT does. So the tests assert what the user sees, not which escape
 sequences were emitted. Twenty tests cover typing, backspace, mid-line insert and delete, cursor
-keys in three encodings (CSI, SS3, vt220 `~`), kill and yank (`^K` `^U` `^W` `^Y`), history with
-non-destructive browsing and dedup, CR/LF/CRLF endings, `^C`, `^D`'s double duty, `^L` repaint,
+keys in three encodings (CSI, SS3, vt220 `~`), and kill and yank (`^K` `^U` `^W` `^Y`). They also
+cover history with non-destructive browsing and dedup, CR/LF/CRLF endings, `^C`, `^D`'s double duty,
+`^L` repaint,
 overflow, and output newline expansion. The redraw strategy can change without touching a test,
 which is the payoff of modeling the screen instead of the byte stream.
 
@@ -43,9 +44,9 @@ why the two live candidates did not fit.
   the line-editing-and-echo layer we needed and would have pulled command parsing into the wrong
   process.
 
-What we would reuse if the requirement grew: a mature VT engine on the *output* side is a real
-port candidate for milestone 29 (a display terminal), where libghostty-vt or `vte` would
-serve, because a full grid-and-scrollback
+What we would reuse if the requirement grew: a mature VT engine on the *output* side. It is a real
+port candidate for milestone 29 (a display terminal), where libghostty-vt or `vte` would serve,
+because a full grid-and-scrollback
 state machine is genuinely worth not writing. The input-side line editor, by contrast, is a few
 hundred lines of well-understood logic with an unusual lifecycle requirement, and owning it kept
 the sans-IO testability and the always-on behavior that the candidates fought.
@@ -94,12 +95,14 @@ which is honest rather than reckless precisely because the hot-swap story is wha
 
 ## Where it runs
 
-The interactive system is built by userspace progenitor out of its own budget, on both architectures:
-aarch64 through `hello`'s init role (the `shell` feature, and the default tour hands off to it
-too, since the kernel-wired `shell_service` cannot host a contract-speaking shell; there was a
-second feature named `initboot` on this path until milestone 296 found it identical to `shell`),
-and RISC-V through the portable `system_initializer` builder (`riscv_shell_boot`).
-Init creates the terminal endpoint and the shared frames, grants `line_editor` the serve side and the
-drivers and shell the `WRITE` side, and none of the wiring is in the kernel. Proven under QEMU on
+The interactive system is built by userspace progenitor out of its own budget, on both
+architectures. On aarch64 it is built through `hello`'s init role, the `shell` feature. The default
+tour hands off to it too, since the kernel-wired `shell_service` cannot host a contract-speaking
+shell. `shell` is the only feature on this path; milestone 296 (the `initboot` feature was `shell`)
+records why. On RISC-V it is built through the portable `system_initializer` builder
+(`riscv_shell_boot`).
+Init creates the terminal endpoint and the shared frames. It grants `line_editor` the serve side and
+the drivers and shell the `WRITE` side, and none of the wiring is in the kernel. Proven under QEMU
+on
 both ISAs: `help`, `echo`, and `run` drive a worker to completion through the full path
 (input driver → line discipline → console server, and shell → line discipline → console server).

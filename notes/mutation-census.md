@@ -60,7 +60,7 @@ definitions.
 
 **What is missing is missing because it never existed.** The scheduled runs from 2026-08-10 to
 2026-08-31 produced no result at all; `mutation.yml`'s own `BUGS` section has why. The 2026-09-03
-run produced one shard of eight, which is a sample and is deliberately not a row here: a sample
+run produced one shard of eight, which is a sample and is deliberately not a row here. A sample
 cannot tell an absent mutant from a killed one, so a per-crate row taken from one reads as a crate
 that got worse.
 
@@ -76,8 +76,8 @@ $ script/mutation-census --add-run 35421192143
 
 Between 2026-09-14 and 2026-09-19, milestone 265 (`_proto` is a truncation)'s sweep renamed sixteen crates (`ntp_proto` to
 `network_time_protocol` and its siblings) and three more followed on 2026-09-18 (`dtb`, `ipc`,
-`gpt`). **A join on the bare crate name does not give a smaller answer, it gives a wrong one**: the
-renamed crates vanish from the intersection and take their mutants with them, so the surviving rate
+`gpt`). **A join on the bare crate name does not give a smaller answer, it gives a wrong one**. The
+renamed crates vanish from the intersection and take their mutants with them. So the surviving rate
 is over a different corpus than the one it is being compared to.
 
 `script/mutation-census --renames` derives the table from `git log --diff-filter=R` and commits it.
@@ -143,8 +143,9 @@ whole corpus went 91.7% to 93.7%; with timeouts as survivors, 89.5% to 91.4%. Su
 563 over the same window.
 
 This does not make risk 3 green, and milestone 518's lane did not edit that file. The entry's
-stronger argument is untouched by the arithmetic: milestone 85 (mutation testing over the host crates)'s rule is that every survivor
-is triaged into a test, an exclusion with a reason or a recorded gap, and 563 of them are not.
+stronger argument is untouched by the arithmetic. The rule of milestone 85 (mutation testing over
+the host crates) is that every survivor is triaged into a test, an exclusion with a reason or a
+recorded gap. 563 of them are not.
 
 One caveat on the definition this page prefers. The hand-check that justifies scoring a timeout
 as a kill was done on the baseline's 96. There are 205 now and nobody has looked at them. That is a
@@ -161,7 +162,7 @@ reason to check them, not a reason to change definitions between two rows of one
   could not be matched to any pass. A comparison against it is a comparison against a
   reconstruction.
 - The baseline row's crate names are half-swept. That file was rewritten by the rename sweeps
-  that renamed the crates, so it spells `device_tree_blob` for a run that recorded `dtb`; it still
+  that renamed the crates, so it spells `device_tree_blob` for a run that recorded `dtb`. It still
   spells `cred`, because that rename went to a different word rather than a longer spelling of the
   same one. The consequence is live: `script/mutation --report` prints `new` in the baseline column
   for `credentialer` today. The rename table resolves it here. Rewriting that file is milestone 326 (turn a mutation score upward)'s

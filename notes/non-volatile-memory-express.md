@@ -6,12 +6,12 @@ the specification's own name and the word the datasheet, the boot output and QEM
 all print; what moved is the crate, the kernel module, its `NonVolatileMemoryExpress` type, and the
 program. A reader who greps `nvme` and finds nothing is looking for the expansion.
 
-Milestone 53's storage half, decided by calef on 2026-08-15: NVMe first, because the backup
-workload (milestone 55) measures sustained sequential write and endurance, which SD media fails,
-and because a real PCIe device driver compounds toward the machines this project actually wants to
-run on. Everything this project drove before this was a QEMU paravirtual device; an NVMe
-controller is a real device family with a real specification, the same one in the M.2 drive on the
-desk, and QEMU emulates it faithfully enough that the driver written here is the driver the
+The storage half of milestone 53 (the board's own peripherals), decided by calef on 2026-08-15: NVMe first. The backup workload
+(milestone 55 (Time Machine)) measures sustained sequential write and endurance, which SD media fails. And a real
+PCIe device driver compounds toward the machines this project actually wants to
+run on. Everything this project drove before this was a QEMU paravirtual device. An NVMe controller
+is a real device family with a real specification, the same one in the M.2 drive on the desk. QEMU
+emulates it faithfully enough that the driver written here is the driver the
 board-side work will reuse.
 
 ## The shape
@@ -19,8 +19,8 @@ board-side work will reuse.
 Three pieces, in the tree's usual split:
 
 - **`crates/non_volatile_memory_express`**: the pure logic. Register field decode (CAP), command
-  building (the 64-byte submission entries), the submission/completion ring arithmetic with the
-  phase tag, doorbell addressing, PRP construction, IDENTIFY parsing, and (milestone 261) the
+  building (the 64-byte submission entries), and the submission/completion ring arithmetic with the
+  phase tag. Doorbell addressing, PRP construction, IDENTIFY parsing, and (milestone 261 (the NVMe driver leaves the kernel)) the
   spawn handoff and the block-range check the EL0 data plane runs before it builds a command.
   Host-tested in milliseconds, eight Kani harnesses (`script/verify`), no MMIO anywhere in it.
 - **`kernel/src/non_volatile_memory_express.rs`**: the admin plane's volatile half, at EL1.
@@ -75,27 +75,27 @@ driver-written memory, and nothing kernel-side parses commands on their way past
 
 What bounds the device instead is the IOMMU alone (milestone 16b): `bring_up` confines the
 controller's requester id to its DMA region *before* the controller is enabled, so there
-is no instant at which an enabled controller could reach other memory. All three test boots have
-an IOMMU denying unlisted requester ids by default (aarch64's SMMUv3, riscv64's ratified RISC-V
-IOMMU, x86_64's VT-d, confirmed behind this driver 2026-08-25 per decisions §86's evidence
-section), which cuts two ways: the confinement is real (an address outside the region faults in
-hardware), and it is *mandatory* (an unconfined NVMe controller on these machines cannot fetch its
-first command, so a boot where someone forgets the confine call fails loudly rather than running
-unconfined).
+is no instant at which an enabled controller could reach other memory. All three test boots have an
+IOMMU denying unlisted requester ids by default. They are aarch64's SMMUv3, riscv64's ratified
+RISC-V IOMMU, and x86_64's VT-d, confirmed behind this driver 2026-08-25 per the evidence section of §86 (whether an NVMe
+driver can leave the kernel). That cuts two ways. The confinement is real (an address outside the region faults
+in hardware). And it is *mandatory*: an unconfined NVMe controller on these machines cannot fetch
+its first command, so a boot where someone forgets the confine call fails loudly rather than running
+unconfined.
 
 Note the flag difference in the runners: the virtio PCI devices need `iommu_platform=on` or QEMU
-silently routes their DMA around the IOMMU; the NVMe device model needs no flag, because a real
+silently routes their DMA around the IOMMU. The NVMe device model needs no flag, because a real
 PCI device's DMA always goes through the PCI address space. One less thing to forget, and the
 reason the runner comment says so at the attach line.
 
 ### The driver left the kernel, 2026-09-17
 
 Milestone 261 built §86's option 2a, and the paragraph above is now about a *process* rather
-than about the kernel. The split costs no new syscall surface at all, because NVMe 1.4 §3.1
-already put a page boundary where the authority boundary belongs: the controller registers (`CC`,
+than about the kernel. The split costs no new syscall surface at all, because NVMe 1.4 section 3.1 already
+put a page boundary where the authority boundary belongs. The controller registers (`CC`,
 `CSTS`, `AQA`, `ASQ`, `ACQ`) are below offset `1000h` and the first doorbell is at `1000h`. So the
 kernel maps one page of BAR0 into the server and not the other, and the server holds no
-`DeviceFrame`, no `PageFrame`, no `Irq` and no `Virtio` capability: both windows arrive as
+`DeviceFrame`, no `PageFrame`, no `Irq` and no `Virtio` capability. Both windows arrive as
 mappings installed before `_start` runs, the way milestone 159's TRNG driver's register page does.
 
 What the split actually withholds, stated precisely because it is easy to overclaim. Creating
@@ -104,7 +104,7 @@ and the admin rings' own bases are the `ASQ` and `ACQ` registers. A process that
 admin command and cannot name those registers cannot choose where any ring lives.
 
 **What it does not withhold.** The IOMMU keys on the controller's requester id and bounds it to
-the whole allocation, admin rings included, because the controller fetches from both halves; so a
+the whole allocation, admin rings included, because the controller fetches from both halves. So a
 server that computes a PRP backwards from its own base can make the controller overwrite the admin
 ring. And with `CAP.DSTRD` = 0 the admin doorbells share the mapped page, so it can ring the admin
 queue without being able to write what that queue holds. Both are denial of service against the
@@ -118,16 +118,18 @@ that only a real (non-virtio) DMA device with a real PVH boot could have found, 
 than worked around:
 
 - `kernel/src/pci.rs::place_bars` used to trust any nonzero BAR as "already placed, already
-  mapped." True on the two device-tree architectures, where nothing runs before this kernel to
-  place one; false on `x86_64`'s PVH boot, where QEMU resets `-device nvme`'s BAR0 to a live
-  address of its own choosing (attached directly to the root complex, no firmware in between to
-  reprogram it), unrelated to `PCI_BAR_PHYS`, the window `mmu::map_everything` actually mapped.
+  mapped." True on the two device-tree architectures, where nothing runs before this kernel to place
+  one. False on `x86_64`'s PVH boot, where QEMU resets `-device nvme`'s BAR0 to a live address of
+  its own choosing. (It is attached directly to the root complex, with no firmware in between to
+  reprogram it.) That address is unrelated to `PCI_BAR_PHYS`, the window `mmu::map_everything`
+  actually mapped.
   `place_bars` now checks the existing address against that window rather than against zero.
 - `kernel/src/memory.rs::bring_up_page_frames` and `kernel/src/arch/x86_64/mmu.rs`'s
   `map_firmware_regions` both sized themselves from `ram_regions()` alone (the e820 map's
   `usable` entries). Attaching VT-d and NVMe together grows the ACPI tables QEMU parks just above
-  the top of guest memory enough that the `reserved` entry above them swallows the initrd's last
-  few hundred bytes, which the PVH loader placed at a fixed offset below the top of memory sized
+  the top of guest memory. They grow enough that the `reserved` entry above them swallows the
+  initrd's last few hundred bytes. The PVH loader placed those at a fixed offset below the top of
+  memory sized
   for a smaller device set. The frame allocator's bitmap now widens to cover whatever `forbidden`
   reaches past RAM's own end, and the direct map now covers the initrd's recorded bounds
   explicitly, regardless of how the memmap classified the bytes.
@@ -179,17 +181,18 @@ cargo xtask build && NIFE_NVME=target/nife-nvme.img cargo xtask run
 ## What the test proves, and where
 
 `system_tests/src/user/non_volatile_memory_express_tests.rs`'s
-`a_confined_el0_process_serves_the_block_interface_end_to_end`, on
-all three architectures (§19; x86_64 joined 2026-08-25, decisions §86's evidence section): the
-controller enumerates over ECAM, comes up confined behind the SMMU (aarch64), the RISC-V IOMMU
-(riscv64), or VT-d (x86_64), answers IDENTIFY with the attached disk's exact size, and then an
-EL0 process serves SIZE, WRITE, READ-back with byte-exact verification, a second block written
-with a second pattern so that each block reads back its own (the write landed where it said, not
-everywhere), a refusal of a block outside the namespace, a flush count that moves, and a refusal of
-an opcode it has no verb for. Every one of those is written against the geometry the boot was
+`a_confined_el0_process_serves_the_block_interface_end_to_end`, on all three architectures (§19 (architectural parity is a tenet);
+x86_64 joined 2026-08-25, decisions §86's evidence section). The controller enumerates over ECAM and
+comes up confined behind the SMMU (aarch64), the RISC-V IOMMU (riscv64), or VT-d (x86_64). It
+answers IDENTIFY with the attached disk's exact size. Then an EL0 process serves SIZE, WRITE,
+READ-back with byte-exact verification. A second block is written with a second pattern so that each
+block reads back its own (the write landed where it said, not everywhere). There is a refusal of a
+block outside the namespace, a flush count that moves, and a refusal of an opcode it has no verb
+for. Every one of those is written against the geometry the boot was
 handed rather than against the runner's image size, and none of them assumes what the disk held
-beforehand, so the same test proves the same things on a 256 GB disk (milestone 318). It asserts the IOMMU was active, which matters more than it did when the driver was the
-kernel: the IOMMU is now the *whole* of what stops a compromised server reaching memory it was not
+beforehand. So the same test proves the same things on a 256 GB disk (milestone 318 (the NVMe boot test on real geometry)). It asserts the
+IOMMU was active, which matters more than it did when the driver was the kernel. The IOMMU is now
+the *whole* of what stops a compromised server reaching memory it was not
 given.
 
 This is not fatal risk 6's experiment, and nothing here should be read as one. Milestone 16b
@@ -205,7 +208,7 @@ driver refuses fails the test.
 The parity note milestone 53 requires: what ships on all three architectures is this driver
 against QEMU's `-device nvme`, on the two `virt` machines and on `q35`. The VisionFive 2's PLDA
 XpressRICH root complex is a different host bridge (no `pci-host-ecam-generic` node, so
-`find_nvme_device` truthfully reports nobody home on the board today); driving it is the
+`find_nvme_device` truthfully reports nobody home on the board today). Driving it is the
 board-side follow-up, and this driver is written to need only a working enumeration and a BAR from
 it.
 
@@ -236,8 +239,8 @@ it.
   inside the doorbell write) and for a boot test; wrong for a shared machine under load. The
   controller is created with IEN=0 and no MSI-X table is touched, so interrupts are additive later.
   It also keeps `Object::Irq` off the EL0 server's grant list, which is a smaller authority, and
-  §86's interrupt finding is the reason not to reach for MSI-X casually: an MSI write is a memory
-  write to an architecturally special address, and this tree runs `intel-iommu` with no
+  §86's interrupt finding is the reason not to reach for MSI-X casually. An MSI write is a memory
+  write to an architecturally special address. This tree runs `intel-iommu` with no
   `intremap=on` and `gic-version=2` with no ITS, so nothing would confine one a userspace driver
   aimed. See `notes/confinement-claims.md`'s fifth claim.
 - One command in flight per queue. `SqState` asserts rather than manages a full ring; queue

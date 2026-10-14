@@ -1,109 +1,38 @@
-//! **The interrupt controller, `x86_64`: the local APIC and the IO APIC.**
+//! **The interrupt controller, `x86_64`: the local APIC and the IO APIC**, where aarch64 has a GIC
+//! and RISC-V a PLIC. On x86 the controller is a pair, and it is also the SMP bring-up mechanism.
+//! The **local APIC** is per-CPU: it receives and acknowledges interrupts (the EOI), owns a timer,
+//! and sends inter-processor interrupts, including the INIT and STARTUP that start a secondary
+//! ([`send_init`], [`send_startup`]; see `arch::x86_64::ap_boot`). The **IO APIC** routes device
+//! lines to vectors; the ACPI MADT says where it is (`machine_discovery::acpi`). Built here too:
+//! masking the 8259s, the calibration counter `timer.rs` needs, the redirection table, and MSI
+//! vector allocation ([`alloc_msi_vector`]), which is how a PCI function reaches a userspace driver.
 //!
-//! The third implementation of what aarch64 answers with a GIC and RISC-V with a PLIC, and the one
-//! structural difference worth knowing before reading any of it: on x86 the interrupt controller is
-//! a **pair**, and it is *also* the SMP bring-up mechanism.
+//! **The 8259s are still wired** (`PCAT_COMPAT`), raise interrupts on vectors 8..15 (the CPU's own
+//! exception vectors), and see every line the IO APIC routes. [`init_local_apic`] masks both before
+//! enabling the local APIC, in that order; masked, not remapped, because a live 8259 would deliver
+//! a second copy of every routed interrupt on an exception vector.
 //!
-//! - The **local APIC** is per-CPU, at a fixed physical address every CPU sees its own copy of. It
-//!   receives interrupts, acknowledges them (the EOI), owns a per-CPU timer, and is how one CPU
-//!   sends an interrupt to another. There is no PSCI `CPU_ON` and no SBI `hart_start`: a secondary
-//!   is started by sending it INIT and two STARTUP inter-processor interrupts *through this device*.
-//! - The **IO APIC** takes device interrupt lines and routes them to a vector on some local APIC.
-//!   Where it is and which lines it owns come from the ACPI MADT, which `machine_discovery::acpi`
-//!   now reads.
-//!
-//! # What is built here and what is not
-//!
-//! Built: the local APIC (enable, EOI, the timer's LVT), masking the legacy 8259 PICs, the
-//! calibration counter `timer.rs` needs, **the IO APIC's redirection table**, so a real device
-//! line reaches the kernel on a vector this module chose (and, since milestone 505, a userspace
-//! driver that bound it), **MSI vector allocation**
-//! ([`alloc_msi_vector`], milestone 215), which is how a PCI function's interrupt reaches a
-//! userspace driver here, and **INIT-SIPI-SIPI** ([`send_init`],
-//! [`send_startup`]), which is what starts a second logical CPU (milestone 161's SMP item; see
-//! `arch::x86_64::ap_boot`). The boot tour proves the interrupt-controller half: the local APIC's
-//! own timer, and the PIT arriving through the IO APIC.
-//!
-//! Not built: every redirection entry still targets the boot CPU only, so a device interrupt
-//! reaches whichever core booted the kernel regardless of which core is busiest.
-//!
-//! # The two obligations the tables state and code must honour
-//!
-//! **The 8259s are still there.** The MADT's `PCAT_COMPAT` flag says so on every PC, and QEMU's
-//! `q35` sets it. They are wired, they will raise interrupts on vectors 8..15 (their power-on
-//! default, which overlaps the CPU's own exception vectors), and nothing drives them.
-//! [`init_local_apic`] masks both before the local APIC is enabled, in that order, because the
-//! reverse leaves a window where an unowned interrupt can arrive at a live IDT. **They are masked
-//! rather than remapped, and the IO APIC does not coexist with them being live**: the same device
-//! line reaches both controllers, so an unmasked 8259 would deliver a second copy of every
-//! interrupt the redirection table routes, on a vector that is an exception number.
-//!
-//! **A legacy IRQ number is not an IO APIC input.** The MADT's interrupt source overrides rewire
-//! them, and on essentially every PC the timer's IRQ 0 arrives as global system interrupt 2,
-//! because the PIT is wired to the IO APIC's pin 2 while pin 0 carries the 8259 cascade. The
-//! resolution is `machine_discovery::acpi::isa_irq_table`, host-tested, and [`record_isa_routing`]
-//! is what hands the answer to this module. **Nothing here may take a legacy IRQ number as a pin
-//! number**, and the failure mode if it did is the quiet one: a redirection entry armed on a line
-//! nothing drives, no interrupts, and no error.
+//! **A legacy IRQ number is not an IO APIC input**: the MADT's overrides rewire them (the PIT's IRQ
+//! 0 arrives as GSI 2 on essentially every PC). `machine_discovery::acpi::isa_irq_table` resolves
+//! them and [`record_isa_routing`] hands the answer here; a legacy number used as a pin would arm a
+//! line nothing drives, silently.
 //!
 //! # BUGS
 //!
-//! - **One IO APIC, and only the boot CPU.** A machine with several IO APICs divides the global
-//!   interrupt space between them by `gsi_base`; this takes the first the MADT lists and refuses a
-//!   GSI outside its range rather than looking for a second. Every redirection entry is programmed
-//!   in physical destination mode at the local APIC id of the core that called [`enable`], so
-//!   nothing is distributed. That was always the boot CPU until milestone 505 (an x86_64 input
-//!   driver that never lets the core idle): a driver's `Irq::ACK` calls `enable`, so COM1's line now
-//!   follows whichever core the input driver last acknowledged from. Any core's handler routes it.
-//! - **The redirection table is written through the boot map's cacheable alias** when the tour
-//!   arms a line before `mmu::init` runs, the same as the local APIC's registers already are. It
-//!   works on QEMU and on real hardware (the MMIO hole is uncacheable by MTRR whatever the page
-//!   tables say), but it is a mapping this code does not control. After `mmu::init` the page is
-//!   device-typed by name; see `arch/x86_64/mmu.rs`.
-//! - **Nothing masks a routed line on the way out.** A GSI armed by [`enable`] stays armed until
-//!   something calls [`mask_gsi`], and revoking a driver's `Irq` capability does not. Since
-//!   milestone 505 (an x86_64 input driver that never lets the core idle) one driver owns an IO
-//!   APIC line, the input driver on COM1's IRQ 4; if it dies, the line stays armed and its
-//!   interrupts reach a rendezvous nobody waits on, which counts them and wakes nothing.
-//! - **An MSI vector is never handed back.** [`alloc_msi_vector`] is a bump counter, so a device
-//!   brought up twice (which the test suite does) consumes two of the sixty-three in the band. It
-//!   has not run out, and a free list with no free path would be machinery nothing calls; the
-//!   number to watch is the count of `find_*_device` calls in one boot.
-//! - **Interrupt remapping is not implemented, and this code assumes it is off.** A VT-d unit with
-//!   remapping enabled reinterprets a write to `0xfee0_0000..0xfef0_0000` as an index into a
-//!   remapping table, and the message [`alloc_msi_vector`] builds is a *compatibility-format*
-//!   message that such a unit rejects. `helpers/qemu-runner-x86_64.sh` runs `-device intel-iommu`
-//!   without `intremap=on`, and firmware leaves it off by default, so this holds today on QEMU and
-//!   is the thing to check first if MSI stops arriving on a machine whose firmware turns it on.
-//!   The fix is a remapping table plus remappable-format messages, and it is a milestone rather
-//!   than a patch.
-//! - **Nothing distributes MSI vectors across cores.** Every message is addressed to the local
-//!   APIC id of whichever core ran [`alloc_msi_vector`], which is the boot core, exactly as
-//!   [`route_gsi`]'s destination is.
-//! - **The multi-IO-APIC path has never been executed, and cannot be on any machine this project
-//!   owns.** This is the live half of what milestone 304 found and milestone 308 fixed, and it is
-//!   recorded rather than closed because the fix landing is not the same thing as the fix running.
-//!
-//!   The defect, for the record: [`gsi_vector`] was `GSI_VECTOR_BASE.wrapping_add(gsi as u8)`, and
-//!   [`MAX_REDIRECTION_ENTRIES`]'s doc named the cap as the reason that could not wrap onto an
-//!   exception vector. The cap bounds the *entry count*, not the GSI. [`redirection_index`] admits
-//!   any `gsi` in `base..base + entries`, so a second IO APIC owning global interrupts from 200
-//!   with the 24 entries every real part has admits GSI 210, and `0x30 + 210 = 0x102` wrapped to
-//!   vector **2, the NMI**, which [`enable`] passed straight to [`route_gsi`]. Nothing had hit it
-//!   because this kernel records one IO APIC and QEMU's q35 and every single-socket PC give it
-//!   base 0. Milestone 308 routes by redirection index instead, which is bit-for-bit identical
-//!   wherever the base is zero.
-//!
-//!   **So the correctness of the nonzero-base path rests on the proof and on the ACPI spec, not on
-//!   a boot** (accepted, calef, 2026-09-16). `proofs::an_owned_gsi_routes_inside_the_io_apic_band`
-//!   states it over every base, entry count and GSI, with no assumption, and
-//!   `tests::a_gsi_on_a_second_io_apic_routes_inside_the_band` executes the arithmetic against a
-//!   synthetic second part; neither is a machine delivering an interrupt through a second IO APIC,
-//!   and nothing in this tree will be until one exists to boot on. What is untested is the whole
-//!   surrounding path rather than the map: `read_madt` keeps only the first IO APIC it finds, so a
-//!   GSI belonging to the second is refused by [`route_gsi`] rather than misrouted, and a machine
-//!   that needs both is not merely unproven here, it is unimplemented. That is the thing to check
-//!   first when this kernel meets a two-socket server, and it is its own piece of work.
+//! - One IO APIC, the first the MADT lists; a GSI owned by a second is refused by [`route_gsi`],
+//!   so a two-socket server is unimplemented. The nonzero-base routing is proved
+//!   (`proofs::an_owned_gsi_routes_inside_the_io_apic_band`) and unit-tested, never booted.
+//! - Every entry targets the local APIC of the core that called [`enable`], in physical mode, and
+//!   every MSI the core that ran [`alloc_msi_vector`]; nothing is distributed.
+//! - Before `mmu::init`, the redirection table is written through the boot map's cacheable alias;
+//!   the MTRRs keep the MMIO hole uncacheable regardless.
+//! - Nothing masks a routed line on the way out: revoking a driver's `Irq` does not call
+//!   [`mask_gsi`], so a dead input driver's COM1 line stays armed into a rendezvous nobody waits on.
+//! - An MSI vector is never handed back ([`alloc_msi_vector`] bumps); a device brought up twice
+//!   spends two of the band's sixty-three.
+//! - Interrupt remapping is assumed off: a VT-d unit with it on rejects the compatibility-format
+//!   messages built here. Check this first if MSI stops arriving on a machine whose firmware enables
+//!   it.
 
 use core::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 
@@ -1189,15 +1118,10 @@ mod proofs {
     /// `no_stream_can_reach_another_streams_tables` one architecture over: a firmware-supplied
     /// identifier, one bounds check, and a write that cannot be taken back.
     ///
-    /// **`base` used to carry an assumption, and the assumption was the finding** (milestone 304).
-    /// `kani::assume(base == 0)` narrowed this to the single-IO-APIC machine, because without it
-    /// the harness failed and the counterexample was real rather than pathological: a base of 127
-    /// with 129 entries admits GSI 255, and the old `gsi_vector(255)` was
-    /// `0x30.wrapping_add(255)` = `0x2f`, inside the local APIC's own band. **Milestone 308 removed
-    /// the assumption by fixing the code**, routing by redirection index, and this harness now
-    /// states the property over every `base`, every entry count an eight-bit version field can
-    /// report, and every `gsi` in `u32`. There is no precondition left, which is the outcome worth
-    /// naming: a proof with no assume is a proof that owes the reader nothing.
+    /// **No precondition on `base`**: the property holds over every `base`, every entry count an
+    /// eight-bit version field can report, and every `gsi` in `u32`, because routing is by
+    /// redirection index (a GSI-based map once put GSI 255 on a base of 127 at `0x2f`, inside the
+    /// local APIC's own band).
     ///
     /// **The second assertion is the one milestone 308 added**, and it is a claim about two
     /// functions rather than one. [`is_device_vector`] has always defined the band by *index*
