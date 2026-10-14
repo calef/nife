@@ -37,7 +37,7 @@
 //!   (`design/roadmap/0568-the-boot-file-has-nowhere-to-go-on-a-device-tree-machine.md`).
 
 use core::ffi::c_void;
-use core::ptr;
+use core::ptr::{self, NonNull};
 
 use boot_slot::{SlotHeader, State, select_excluding};
 use globally_unique_identifier_partition_table as gpt;
@@ -587,34 +587,40 @@ impl Disk {
 /// started directly, which means it boots its own kernel, which is what it was going to do anyway.
 /// What it loses is the ability to say which slot it came from.
 fn tell_it_which_slot(child: Handle, services: &BootServices, slot: usize, options: &mut [u8; 16]) {
-    let Some(loaded) = loaded_image(child, services) else {
+    let Some(mut loaded) = loaded_image_pointer(child, services) else {
         return;
     };
     options[..STARTED_BY_CHOOSER.len()].copy_from_slice(STARTED_BY_CHOOSER);
     options[STARTED_BY_CHOOSER.len()] = b'0' + (slot as u8 % 10);
     let len = STARTED_BY_CHOOSER.len() + 1;
 
-    let loaded = ptr::from_ref(loaded).cast_mut();
     // SAFETY: the firmware's `EFI_LOADED_IMAGE_PROTOCOL` for an image that has been loaded and not
     // yet started is the caller's to fill in; that is the specified way to pass load options, and
-    // `options` is in [`Scratch`]'s pages, which are never freed and so outlive the child.
-    unsafe {
-        (*loaded).load_options = options.as_ptr().cast::<c_void>();
-        (*loaded).load_options_size = len as u32;
-    }
+    // nothing else holds a reference to it while the child has not started. `options` is in
+    // [`Scratch`]'s pages, which are never freed and so outlive the child.
+    let loaded = unsafe { loaded.as_mut() };
+    loaded.load_options = options.as_ptr().cast::<c_void>();
+    loaded.load_options_size = len as u32;
 }
 
-/// `HandleProtocol` for `EFI_LOADED_IMAGE_PROTOCOL`, which both callers here want.
+/// `HandleProtocol` for `EFI_LOADED_IMAGE_PROTOCOL`, read-only, which the readers here want.
 fn loaded_image(handle: Handle, services: &BootServices) -> Option<&'static LoadedImage> {
+    let pointer = loaded_image_pointer(handle, services)?;
+    // SAFETY: `loaded_image_pointer` returns only an interface the firmware answered SUCCESS with,
+    // non-null by construction; it is the firmware's own for this image handle, aligned for the
+    // protocol it names, and it outlives boot services.
+    Some(unsafe { pointer.as_ref() })
+}
+
+/// `HandleProtocol` for `EFI_LOADED_IMAGE_PROTOCOL` as the firmware's pointer, or `None` unless it
+/// answered SUCCESS with a non-null interface. [`tell_it_which_slot`] writes through it, so it
+/// must not come from a shared reference.
+fn loaded_image_pointer(handle: Handle, services: &BootServices) -> Option<NonNull<LoadedImage>> {
     let mut interface: *mut c_void = ptr::null_mut();
-    if (services.handle_protocol)(handle, &LOADED_IMAGE_PROTOCOL_GUID, &mut interface) != SUCCESS
-        || interface.is_null()
-    {
+    if (services.handle_protocol)(handle, &LOADED_IMAGE_PROTOCOL_GUID, &mut interface) != SUCCESS {
         return None;
     }
-    // SAFETY: the firmware answered with its own protocol interface for this image handle, and it
-    // outlives boot services.
-    Some(unsafe { &*interface.cast::<LoadedImage>() })
+    NonNull::new(interface.cast::<LoadedImage>())
 }
 
 /// What the firmware says the medium behind a `BlockIo` is, or `None` for a null description.
