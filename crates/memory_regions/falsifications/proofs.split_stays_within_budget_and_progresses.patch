@@ -10,11 +10,16 @@ so it is fresh")`, at a `want` that wraps the watermark to a small number, which
 budget test. The carved run `[parent_watermark, new)` would overlap pages already handed to an
 earlier child, which is two owners for one page.
 
-diff --git a/crates/memory_regions/src/lib.rs b/crates/memory_regions/src/lib.rs
---- a/crates/memory_regions/src/lib.rs
-+++ b/crates/memory_regions/src/lib.rs
-@@ -72,3 +72,3 @@ pub fn split_new_watermark(parent_pages: u64, parent_watermark: u64, want: u64)
+diff --git a/crates/memory_regions/src/watermark.rs b/crates/memory_regions/src/watermark.rs
+index 75e9d797f..1dd859810 100644
+--- a/crates/memory_regions/src/watermark.rs
++++ b/crates/memory_regions/src/watermark.rs
+@@ -11,7 +11,7 @@ pub fn split_new_watermark(parent_pages: u64, parent_watermark: u64, want: u64)
+     if want == 0 {
+         return None; // an empty carve makes no child; refuse rather than mint a zero-page region
      }
 -    let new = parent_watermark.checked_add(want)?; // no overflow: a wrap would forge budget
 +    let new = parent_watermark.wrapping_add(want);
      if new > parent_pages {
+         return None; // beyond the parent's remaining budget
+     }
