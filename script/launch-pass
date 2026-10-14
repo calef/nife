@@ -18,8 +18,8 @@
 # briefs/confinement-outsider-pass.md says when to run it.
 #
 # Name: provisional, minted by milestone 920 (an outsider pass is launched pinned and floor-checked)'s
-# lane on 2026-10-14 (UTC). An action, so a verb, per DECISIONS §134. calef names scripts; expect
-# this to change.
+# lane on 2026-10-14 (UTC). An action, so a verb, like `script/test` and `script/claim`. calef
+# names scripts; expect this to change.
 
 set -e
 
