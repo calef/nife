@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Link a C program's objects into a nife program (milestone 835 (a C library, stage 1: files,
-# clock and memory)). The shared second half of `helpers/build-speedtest1.sh` and
-# `helpers/build-hackbench.sh`, which fetch and compile; this renames, archives and links. basalt's
-# package build (its `helpers/packages.py`) calls it at the nife commit basalt pins, for ioping
-# (milestone 906 (ioping is packaged in basalt)) and every C recipe after it.
+# clock and memory)). The second half of `helpers/build-speedtest1.sh`, which fetches and compiles;
+# this renames, archives and links. basalt's package build (its `helpers/packages.py`) calls it at
+# the nife commit basalt pins, for ioping (milestone 906 (ioping is packaged in basalt)), hackbench
+# (milestone 907 (hackbench is packaged in basalt)) and every C recipe after them.
 #
 #     helpers/build-c-program.sh <name> <triple> <object>...
 #

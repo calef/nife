@@ -88,9 +88,10 @@ pub(crate) fn package_fetch_exerciser_elf(triple: &str) -> PathBuf {
 /// nothing: the C library's own contract program (`fixtures/c/c_library_contract.c`, milestone
 /// 833), here until milestone 869 (the C library's headers cannot drift, and its contract is tested
 /// in nife) builds it in the gate.
-/// ioping left this list for basalt's package (milestone 906 (ioping is packaged in basalt, and its
-/// test installs it with `jig`)); the archive takes it from `crate::basalt::ioping_elf`.
-pub(crate) const C_PROGRAMS: [&str; 3] = ["speedtest1", "hackbench", "c_library_contract"];
+/// ioping and hackbench left this list for basalt's packages (milestones 906 (ioping is packaged
+/// in basalt) and 907 (hackbench is packaged in basalt)); the archive takes them from
+/// `crate::basalt`.
+pub(crate) const C_PROGRAMS: [&str; 2] = ["speedtest1", "c_library_contract"];
 
 /// **One of [`C_PROGRAMS`], if somebody built it**: present when on disk, absent otherwise, because
 /// fetching SQLite in a gate is a dependency decision (§46 (thin primitives or whole
