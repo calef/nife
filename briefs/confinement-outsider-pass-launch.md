@@ -1,50 +1,48 @@
 # Launch: a pair of outsider passes at the confinement claim
 
-**Name: provisional.** This file turns [the brief](confinement-outsider-pass.md) into one prompt
-per pass, for the pair criterion (c) counts: one pass by GLM 5.3 on patagonia, launched by calef,
-and one by Claude Fable in Claude's cloud runner, launched by the maintainer. Milestone 920 (an
-outsider pass is launched pinned and floor-checked) turns these steps into a launcher; until it
-lands they are done by hand.
+**Name: provisional.** `script/launch-pass` launches each pass of the pair criterion (c) counts.
+It clones the pinned commit and builds the one prompt from [the brief](confinement-outsider-pass.md)
+and the runner text below, refusing a milestone number or a roadmap block in it. It pins the model,
+and stops a session that reports another model before the brief is sent. This file holds the runner
+text it reads and what it leaves to whoever launches. Its commands are in
+[notes/scripts/outsider-passes.md](../notes/scripts/outsider-passes.md), and
+`helpers/launch_pass.py`'s header is its manual.
 
 ## The rules both launches keep
 
-- One commit. Both passes attack one main commit, which the lane pins at launch as `sha` below
-  and names in each pass's note.
-- Concurrent is allowed. Nothing changes between the two passes, so they are consecutive even
-  when they run at the same time. Neither can see the other's findings, since neither pushes
-  before its report is done. The brief's "never in parallel" is about test runs within one pass.
-- Reset. If either finds an escape on a shipped path, the count resets: fix it, then both run
-  again at a new pinned commit.
-- The prompt holds the reviewer's brief and the runner section below, and nothing else. No
-  milestone number, no roadmap block, no pass note, nothing from `lab/`. Both passes are informed,
-  so the tree itself is not trimmed.
-- Pin the model when starting the session, then record the model id the session reports. If it
-  differs from the pin, stop the session before it attacks and start again.
+- The pair. One pass by GLM 5.3 and one by Claude Fable, both on patagonia, each in a container
+  inside podman's Linux VM (calef, 2026-10-14 UTC). Claude's cloud runner is not used: it cannot pin
+  the model and read it back before the attack, or resume the session for the completion round.
+- One commit. Both launches take the same `--commit`, a full main SHA, and each pass's note names
+  it.
+- Concurrent is allowed. Nothing changes between the two passes, so they are consecutive even when
+  they run at the same time. Each has its own clone and volume, and neither reviewer can see the
+  other's work.
+- Reset. If either finds an escape on a shipped path, the count resets: fix it, then both run again
+  at a new pinned commit.
 
-## Assemble the prompts
+## Before a launch
 
-In the lane's worktree, on a main that holds this file:
+- Read the prompt first. `--dry-run` writes the clone and `prompt.md` and touches neither podman
+  nor a model. It should hold the runner text below and the reviewer's brief, and nothing else.
+- The podman machine must be up with at least 6 CPUs and 8 GiB. The launcher refuses with the
+  `podman machine set` command otherwise and never resizes or restarts the machine. Whoever launches
+  checks what else the machine is running before resizing it.
+- The model's key is made for this pass: `ZHIPU_API_KEY` for GLM 5.3, `ANTHROPIC_API_KEY` for Fable.
+  Its owner revokes it once the lane has collected.
 
-```sh
-sha=<the pinned commit, full SHA>
-scratch="$(mktemp -d -t nife-review)"
-reviewer_brief() {
-    awk '/^## The reviewer.s brief/{f=1;next} f' briefs/confinement-outsider-pass.md
-}
-```
+## The runner text
+
+The launcher reads the `cat <<EOF` body below word for word, fills `$scratch` and `$sha` with the
+container's paths and the pinned commit, and swaps the GLM 5.3 trailer for the reviewer's own. Both
+reviewers get it. Its selftest assembles both prompts from this file and fails in `script/lint` if
+the text changes shape. A changed word changes every later pass's prompt, so passes compare row for
+row only within one wording.
 
 ### GLM 5.3 on patagonia
 
-The reviewer works in a standalone clone with no remote and one branch, at `sha`, so it cannot
-see a main newer than its commit or the other pass's branch.
-
 ```sh
-git clone --quiet --no-hardlinks "$(git rev-parse --path-format=absolute --git-common-dir)" "$scratch/nife"
-git -C "$scratch/nife" remote remove origin
-git -C "$scratch/nife" switch --quiet -c pass "$sha"
-git -C "$scratch/nife" for-each-ref --format='%(refname:short)' refs/heads |
-    grep -vx pass | xargs -n 1 git -C "$scratch/nife" branch --quiet -D
-{
+runner_text() {
     cat <<EOF
 ## Before you start
 
@@ -58,79 +56,14 @@ This section is about the machine you run on. Where it and the brief below disag
 - End every commit with \`Co-Authored-By: GLM 5.3 <noreply@z.ai>\`.
 
 EOF
-    reviewer_brief | sed -e "s|<path>|$scratch/nife/notes/confinement-claims.md, under \"## The claims\"|" \
-        -e "s|<worktree>|$scratch/nife|" -e "s|<results path>|$scratch/results.md|"
-} > "$scratch/glm-prompt.md"
-echo "$scratch"
+}
 ```
 
-calef's one prompt: start GLM 5.3's harness (opencode) with the model pinned, in `$scratch/nife`,
-and say "Read `$scratch/glm-prompt.md` and do it." Note the session id: the completion round
-resumes it.
+## After a pass
 
-### Claude Fable in Claude's cloud runner
-
-The runner shares no file system with the lane, and the report comes back as a committed file on
-a pushed branch. A runner new to this tree gets a setup-only dry run first: send the "Setup" steps
-below alone and record what they print.
-
-```sh
-{
-    cat <<EOF
-## Before you start
-
-You are in Claude's cloud runner, not on the maintainers' Mac. Where this section and the brief
-below disagree, this section wins.
-
-### Setup
-
-Run these in the repository, in order. Record each command's output tail and wall time in your
-report. If one fails, stop and report it; do not change the tree to get past it.
-
-    git reset --hard $sha
-    script/ci-qemu
-    NIFE_SKIP_LINT_TOOLS=1 script/bootstrap
-    script/qemu-check
-    uname -m; nproc; df -h .
-    script/test --arch aarch64 --test seventh_pass
-
-### Here, not on the Mac
-
-- Work at commit \`$sha\`, on the branch this session started on. Do not fetch other branches.
-- Skip the brief's \`/opt/homebrew/...\` \`PATH\` line; it is for macOS.
-- Every \`script/test\` leg runs under TCG. Record each leg's wall time. A timeout is
-  inconclusive, not a hold or an escape: rerun that leg once, alone, and report both runs.
-- Your report is a file at the root of the repository, \`pass-results.md\`, committed
-  last. Then push this branch once. Push nothing before the report is finished, and open no pull
-  request.
-- End every commit with \`Co-Authored-By:\` and the model this session reports, with
-  \`<noreply@anthropic.com>\`.
-
-EOF
-    reviewer_brief | sed -e 's|at `<path>`|in `notes/confinement-claims.md`, under "## The claims"|' \
-        -e 's|`<worktree>`|the repository this session started in|' \
-        -e 's|`<results path>`, outside the repository|`pass-results.md`, as above|'
-} > "$scratch/fable-prompt.md"
-```
-
-The maintainer's one prompt: start a cloud agent with the model set to Fable and the repository
-`nifeos/nife`, and give it the contents of `$scratch/fable-prompt.md` as its task. Read the served
-model from the session's record (`last_served_model`) before counting the pass.
-
-## The lane, for each pass
-
-Brief, collect, reproduce, record; never attack and never hint.
-
-- Pin `sha`, assemble the prompt, and hand it to whoever launches. Read the prompt once before
-  handing it over: it holds the brief and the section above, and nothing else.
-- Collect: the GLM pass's commits from `$scratch/nife` (`git fetch "$scratch/nife" pass`) and its
-  `results.md`; the Fable pass's pushed branch and its report.
-- Reproduce every booted row's test on patagonia, one ISA's QEMU at a time, at `sha`. A timeout
-  under load is inconclusive; rerun it on an idle machine before recording it.
-- Reproduce each claimed escape by test or boot before recording it, and commit its red test
-  before any fix.
-- Count booted rows against the floor. Short, send the completion round the brief describes, in
-  the same session, once, and count again.
-- Write the pass note in pass 7's format, with `sha`, the model reported, the host facts
-  (patagonia's load, or the runner's `uname -m`, `nproc` and leg times), whether a completion round
-  ran, and the refusal log.
+- The reviewer's commits are on branch `pass` in `<scratch>/nife`, which has no remote: `git fetch
+  <scratch>/nife pass`. Its report is `<scratch>/results/results.md`, and its test logs are under
+  `<scratch>/results/logs/`.
+- `<scratch>/launch.json` is the launch record. The pass note copies it.
+- Keep the pass's podman volume until the lane has collected and any completion round has run. The
+  launcher prints its name and the `podman volume rm` that removes it.

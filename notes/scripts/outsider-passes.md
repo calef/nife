@@ -64,8 +64,6 @@ podman volume rm "nife-pass-$(basename "$scratch")"
 - The runner text is the launch brief's Mac section, written for GLM 5.3, with its commit trailer
   swapped for the reviewer's. If that section changes shape (a new variable, a second trailer),
   the launcher refuses rather than guess, and its selftest fails in `script/lint`.
-- The launch brief's cloud-runner section is not used. A cloud runner the launcher does not start
-  cannot have its model pinned and read back before the attack, or its session resumed.
 - The image is built with both harnesses, so both must be installed on the host, even for a launch
   of one reviewer: their versions pin the image.
 - `IS_SANDBOX=1` is set because Claude Code refuses to bypass permission prompts as root unless it

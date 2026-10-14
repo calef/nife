@@ -186,15 +186,11 @@ that case. `script/lint` runs both replays.
   commit, and the checker reports both floors. Those passes follow this milestone; each is minted
   by its own lane, as milestone 913 (an eighth outsider pass attacks the confinement claim) was,
   with `milestone_dependencies: 920`.
-- `briefs/confinement-outsider-pass-launch.md` is left as it is on main, and the launcher reads
-  its runner text from it (calef, 2026-10-14 UTC). Reducing it is not this milestone's; BUGS below
-  records it.
+- The launcher reads its runner text from `briefs/confinement-outsider-pass-launch.md`, word for
+  word (calef, 2026-10-14 UTC).
 
 ## BUGS
 
-- The launch brief still describes the hand steps and the cloud runner, and still says the
-  launcher has not landed, while the lane's brief (`briefs/confinement-outsider-pass.md`) says to
-  launch with the script. Reducing the launch brief waits on a lane whose brief allows that edit.
 - The completion round's message is short rows only, but a reviewer told "row 10 is short" learns
   where the lane looked. It learns nothing the brief did not already demand, since every bootable
   row must boot.
