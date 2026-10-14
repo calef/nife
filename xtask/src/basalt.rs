@@ -7,9 +7,9 @@
 //! `speedtest1`). basalt does, from its `recipes/`, and publishes one package per architecture on a
 //! GitHub Release with an index at `basalt.nifeos.org`. calef ruled on 2026-10-13 (UTC) that
 //! nife's tests take that package rather than a build of their own: *"1 is preferable because that
-//! tests jig and basalt's delivery mechanism as well."* First-party `rmle` is pinned only for `jig
-//! install`; nife's tests run its own build (milestone 909 (basalt composes the bootable image from
-//! its packages) item 5).
+//! tests jig and basalt's delivery mechanism as well."* First-party `rmle` and `demos` are pinned
+//! for `jig install`; nife's tests run their own builds (milestone 909 (basalt composes the
+//! bootable image from its packages) item 5).
 //!
 //! For each of basalt's index lines in [`PINNED_INDEX`], this:
 //!
@@ -36,7 +36,7 @@
 //! wants it copies basalt's served lines over [`PINNED_INDEX`]'s file and lets CI judge them:
 //!
 //! ```text
-//! curl -sSf https://basalt.nifeos.org/rolling/metadata/stand-in-index | grep -E '^(ripgrep|ioping|hackbench|sqlite|rmle)-' > xtask/basalt-pins.index
+//! curl -sSf https://basalt.nifeos.org/rolling/metadata/stand-in-index | grep -E '^(ripgrep|ioping|hackbench|sqlite|rmle|demos)-' > xtask/basalt-pins.index
 //! ```
 
 use std::path::{Path, PathBuf};

@@ -402,7 +402,24 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
             "fetched and installed; generation 15 is live",
         ],
     ),
+    // **The demos, the second first-party package** (milestone 922 (the demos are packaged in
+    // basalt)): `demos` carries `least_authority_demo`, whose manifest note declares the integer it
+    // squares. Installed from basalt's index, the package is vouched, so its program run by path is
+    // granted that argument and answers as the image's own copy does above.
+    line(
+        1,
+        "jig install demos",
+        &[
+            "fetched demos-",
+            "from basalt.test over TLS",
+            "fetched and installed; generation 16 is live",
+        ],
+    ),
+    line(1, DEMOS_LINE, &["9*9 = 81"]),
 ];
+
+/// The installed `least_authority_demo`, by its package path (milestone 922).
+const DEMOS_LINE: &str = "packages/demos/0.1.0/least_authority_demo 9";
 
 /// The run `jig install hackbench` is followed by (milestone 907): `c_thread_tests`' pipe run,
 /// with one group of two and ten messages a sender.
@@ -412,8 +429,8 @@ const HACKBENCH_LINE: &str = "hackbench -T -p -g 1 -f 2 -l 10";
 /// flags, pointed at the installed program's own file rather than a directory.
 const IOPING_LINE: &str = "ioping -c 5 -i 0 -s 4k ioping/1.3/ioping";
 
-/// The lines that need a repository from basalt (milestones 810, 906, 907, 897 and 921), skipped
-/// without one outside CI.
+/// The lines that need a repository from basalt (milestones 810, 906, 907, 897, 921 and 922),
+/// skipped without one outside CI.
 pub(super) const FROM_BASALT: &[&str] = &[
     "jig install ripgrep",
     "rg --version",
@@ -425,6 +442,8 @@ pub(super) const FROM_BASALT: &[&str] = &[
     "jig install sqlite",
     c_program_fixture::SPEEDTEST1_MEMDB,
     "jig install rmle",
+    "jig install demos",
+    DEMOS_LINE,
 ];
 
 /// The text this gate types and what each line must answer. `None` is a line whose answer is
