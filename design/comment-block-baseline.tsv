@@ -114,6 +114,7 @@ crates/manifest_note/src/lib.rs:1	110
 crates/measured_boot/src/lib.rs:1	65
 crates/measured_boot/src/lib.rs:518	49
 crates/memory_corruption_canary_gate/src/lib.rs:1	107
+crates/memory_regions/src/lib.rs:1	57
 crates/name_resolution_protocol/src/lib.rs:1	83
 crates/nifefs/src/lib.rs:1	91
 crates/non_volatile_memory_express/src/lib.rs:2	91
