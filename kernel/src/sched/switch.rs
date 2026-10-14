@@ -526,17 +526,15 @@ pub(crate) fn finish_switch() {
 /// **Reap the thread this core just switched away from.** The `Reap` arm of [`finish_switch`],
 /// out of line because it runs when a thread has ended and never on an IPC.
 ///
-/// **Two short critical sections with the expensive part between them**, since 2026-10-04.
+/// **Two short critical sections with the expensive part between them.**
 ///
 /// 1. Under the caller's `IPC_TABLES` guard: take the thread's kernel stack and its address space
 ///    out, and mark it [`being_reaped`](crate::thread::Thread::being_reaped). It stays in the
 ///    table, `Finished`, so its name still resolves and region teardown still refuses it.
 /// 2. With no lock held: free the stack, then the address space. The stack is six page unmaps,
 ///    each discharging its TLB obligation; on riscv64 every one is an SBI remote fence that
-///    interrupts every other hart and waits for them, and on x86_64 an NMI shootdown round. Until
-///    2026-10-04 the stack was freed under `IPC_TABLES`, so every IPC and every capability lookup
-///    on every other core waited behind a thread exiting anywhere. The job mix measured it as the
-///    cheapest syscall nearly doubling in cost once four cores were busy
+///    interrupts every other hart and waits for them, and on x86_64 an NMI shootdown round; under
+///    `IPC_TABLES` every other core would wait behind it
 ///    (notes/job-mix/null-syscall-under-load.md). The address space could never be dropped under
 ///    the lock: its teardown is `memory_region::destroy` (milestone 14 (kernel objects from
 ///    untyped) phase B.4), whose §13 revocation sweep takes `IPC_TABLES` itself.
@@ -545,11 +543,8 @@ pub(crate) fn finish_switch() {
 /// **Everything the thread owned is gone before step 3, and that order is the point.** Region
 /// teardown (`reclaim_region`) relies on a resident thread's space being gone before the thread is
 /// (its `being_reaped` refusal holds the region until step 3), and an owner whose `DESTROY` succeeds
-/// may reuse the memory at once. Before
-/// 2026-10-04 the space was dropped just after the thread was removed, so a `DESTROY` on another
-/// core could reclaim the region in between, while the space's page tables (in that region) and
-/// its revocation-database entries were still live. The rest of the `Thread` (its quota token, its
-/// capability table) still drops under the lock in step 3.
+/// may reuse the memory at once. The rest of the `Thread` (its quota token, its capability table)
+/// drops under the lock in step 3.
 ///
 /// Nothing else removes a `Finished` thread between steps 1 and 3: the only other remover is region
 /// teardown, and `region_reap_verdict` refuses a thread that is being reaped.
@@ -564,10 +559,9 @@ pub(crate) fn finish_switch() {
 ///   window.** If this reaper takes the space in step 2 and a `DESTROY(R)` on another core runs
 ///   wholly before the drop finishes, the sweep finds no entry, R comes back, and the drop's
 ///   `revoke::forget_root` can land on a root that page has been given to since. The sweep taking
-///   the space first is the common order and is safe; this is the other order. Before §249 it was open for the whole life of an unreaped corpse rather than for one drop. It is
-///   handed to
-///   milestone 765 (a destroyed region cannot free the root a running thread walks), whose refusal
-///   is the natural place to count a space that is still being dropped.
+///   the space first is the common order and is safe; this is the other order. Milestone 765 (a
+///   destroyed region cannot free the root a running thread walks) is the natural place to count a
+///   space that is still being dropped.
 #[cold]
 #[inline(never)]
 pub(super) fn reap_switched_out(

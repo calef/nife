@@ -67,6 +67,19 @@ pub enum RxVerdict {
 /// Every field is the device's statement and none is trusted (notes/shared-page-audit.md's finding
 /// 6, applied to a second NIC): a `Frame(n)` always has `n <= room` and `n <= BUFFER_SIZE`, which is
 /// the property the Kani harness below proves for every word.
+///
+/// # Examples
+///
+/// A length the device could not have meant is a dropped frame rather than a read past the buffer:
+///
+/// ```
+/// use e1000e::{RxVerdict, rx_verdict, RX_STATUS_DD, RX_STATUS_EOP};
+///
+/// let word = |len: u64, status: u8| len | (status as u64) << 32;
+/// assert_eq!(rx_verdict(word(60, RX_STATUS_DD | RX_STATUS_EOP), 1514), RxVerdict::Frame(60));
+/// assert_eq!(rx_verdict(word(60, 0), 1514), RxVerdict::NotYet);
+/// assert_eq!(rx_verdict(word(0xffff, RX_STATUS_DD | RX_STATUS_EOP), 1514), RxVerdict::Drop);
+/// ```
 pub fn rx_verdict(word: u64, room: usize) -> RxVerdict {
     let status = (word >> 32) as u8;
     if status & RX_STATUS_DD == 0 {

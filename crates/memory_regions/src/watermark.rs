@@ -7,6 +7,21 @@
 /// watermark is `parent_watermark`. `Some(new_watermark)` on success (the caller carves the run
 /// `[parent_watermark, new_watermark)` and sets the parent's watermark to `new_watermark`); `None`
 /// if the carve is empty, would overflow, or exceeds the parent's remaining budget.
+///
+/// # Examples
+///
+/// ```
+/// use memory_regions::split_new_watermark;
+///
+/// // A 100-page parent that has spent 40: carving 10 more moves the watermark to 50.
+/// assert_eq!(split_new_watermark(100, 40, 10), Some(50));
+/// // Exactly exhausting the budget is fine; one page beyond it is not.
+/// assert_eq!(split_new_watermark(100, 90, 10), Some(100));
+/// assert_eq!(split_new_watermark(100, 90, 11), None);
+/// // An empty carve would mint a zero-page region, and a wrap would forge budget.
+/// assert_eq!(split_new_watermark(100, 40, 0), None);
+/// assert_eq!(split_new_watermark(100, 40, u64::MAX), None);
+/// ```
 pub fn split_new_watermark(parent_pages: u64, parent_watermark: u64, want: u64) -> Option<u64> {
     if want == 0 {
         return None; // an empty carve makes no child; refuse rather than mint a zero-page region
