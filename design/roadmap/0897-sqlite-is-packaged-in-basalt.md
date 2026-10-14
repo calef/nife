@@ -52,7 +52,8 @@ Lane `milestone/897-sqlite-is-packaged-in-basalt`, with nifeos/basalt#23.
 - The recipe is basalt's `recipes/sqlite.toml`: the 3.50.4 amalgamation zip and `speedtest1.c`
   under the SHA-256s the helper pinned, `LICENSE.md`, and the helper's two compile-time options.
   The package is `sqlite` (provisional) and carries one program, `speedtest1`. The aarch64 package
-  measured 1,300,376 bytes.
+  measured 1,300,376 bytes. The first published Release is `rolling-2026-10-14-85e15dd`, and
+  `xtask/basalt-pins.index` pins its three lines.
 - The license is `blessing`, SPDX's identifier for the SQLite Blessing. SQLite is public domain,
   which has no SPDX identifier; Fedora's sqlite package uses the same one.
 - **Where the tests run.** This block asked for `speedtest1 --verify` to run in basalt's package
