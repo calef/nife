@@ -91,8 +91,8 @@ full.
   reruns of existing tests, and rows 31 and 32 were graded untestable.
 - No escape. One near miss, claim 17, already milestone 799 (the shadow descriptor is published in
   two stores).
-- Its tests are on branch `claude/pass-9-confinement-run`, not on main, and the lane has not
-  reproduced them on patagonia.
+- Its tests are on main as `system_tests/src/user/ninth_pass_*`, and every one holds on patagonia
+  on all three ISAs.
 
 ## Done means
 
@@ -152,9 +152,10 @@ Minimal setup, in the order the launch brief's prompt runs it:
 - **Outstanding.** The Fable pass itself: a fresh session that is served by Fable, at the pinned
   commit, held to the 27-of-34 floor. The prompt is unchanged; check the served model before
   counting.
-- **Outstanding.** Reproduce on patagonia every row pass 9 booted, one ISA at a time, then bring
-  its `pass9_*` tests from `claude/pass-9-confinement-run` to main with corrected
-  `Co-Authored-By` trailers, and delete the branch.
+- **Done.** Every row pass 9 booted reproduces on patagonia, one ISA at a time, at the pinned
+  commit and on main: 13 of 13 tests on aarch64 and riscv64, 18 of 18 on x86_64. Its tests are on
+  main as `ninth_pass_*`, each reviewer commit carrying `Co-Authored-By: Claude Opus 4.8`, and the
+  runner's branch is gone. The pass note has the per-ISA table.
 - **Milestone 198.** A human review, or a public bounty once a stranger can install nife, is the
   stronger form and waits on milestone 198 (a package manager, and the trivial install that makes a
   second customer possible).

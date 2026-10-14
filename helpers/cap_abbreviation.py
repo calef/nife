@@ -168,6 +168,23 @@ KEPT = {
         ({'cap', 'page_frame_run_cap', 'rendezvous_cap'}, _CALLS),
     'crates/component_plan/src/lib.rs': ({'CapNeed', 'caps'}, _CALLS),
     'kernel/src/user/x86_programs.rs': ({'SYS_CAP_DELETE'}, _CALLS),
+    # Milestone 914 (a ninth outsider pass attacks the confinement claim): the pass's tests call
+    # these APIs by their existing names and mint none of their own.
+    'system_tests/src/user/ninth_pass_authority_tests.rs':
+        ({'cap', 'current_cap', 'delete_current_cap', 'memory_region_cap_rights'}, _CALLS),
+    'system_tests/src/user/ninth_pass_confinement_tests.rs':
+        ({'cap', 'current_cap', 'delete_current_cap', 'memory_region_cap_rights',
+          'rendezvous_cap'}, _CALLS),
+    'system_tests/src/user/ninth_pass_mapping_tests.rs':
+        ({'cap', 'delete_current_cap', 'memory_region_cap_rights'}, _CALLS),
+    'system_tests/src/user/ninth_pass_port_tests.rs':
+        ({'cap', 'cap_delete_then_port_out', 'CAP_DELETE_THEN_PORT_OUT_PC_OFFSET', 'port_range_cap',
+          'rendezvous_cap', 'thread_control_block_insert_cap'}, _CALLS),
+    'system_tests/src/user/ninth_pass_revocation_tests.rs':
+        ({'cap', 'current_cap', 'delete_port_range_caps', 'device_frame_cap', 'ipc_receive_cap',
+          'ipc_send_cap', 'NO_CAP', 'port_range_cap'}, _CALLS),
+    'system_tests/src/user/ninth_pass_supervision_tests.rs':
+        ({'cap', 'delete_current_cap', 'rendezvous_cap'}, _CALLS),
 }
 
 EXCLUDED_PREFIXES = ('vendor/', 'patches/', 'target/')
