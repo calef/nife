@@ -9,6 +9,13 @@ use super::*;
 ///
 /// Per-CPU as of §11 step 3b (`cpu::PerCpu::current`); it used to be one field on the global
 /// `IpcTables`. Reading it is a plain atomic load and needs no lock: it is this core's own slot.
+///
+/// `#[inline(always)]` on riscv64: it is on every IPC and must land in `.text.hot` with its
+/// caller. Which codegen unit this module falls in decides whether LLVM inlines it on its own,
+/// and riscv64's CI build left it out of line once the arch roots were split
+/// (`script/fastpath-footprint`, 2026-10-14 UTC). The other two still inline it unforced, and
+/// forcing it there grows aarch64's `syscall_entry` past its band.
+#[cfg_attr(target_arch = "riscv64", inline(always))]
 pub(super) fn current_thread_id() -> ThreadId {
     cpu::current().current.load(Ordering::Relaxed)
 }
@@ -46,6 +53,13 @@ pub(super) static CURRENT_CAPABILITIES: [CurrentCapabilities; cpu::MAX_CPUS] =
 /// # Safety
 ///
 /// `tcb` is `tid`'s page pointer as the thread table stores it (`Threads::pointer`), live.
+///
+/// `#[inline(always)]` on riscv64: it is on every IPC and must land in `.text.hot` with its
+/// caller. Which codegen unit this module falls in decides whether LLVM inlines it on its own,
+/// and riscv64's CI build left it out of line once the arch roots were split
+/// (`script/fastpath-footprint`, 2026-10-14 UTC). The other two still inline it unforced, and
+/// forcing it there grows aarch64's `syscall_entry` past its band.
+#[cfg_attr(target_arch = "riscv64", inline(always))]
 pub(super) unsafe fn set_current(tid: ThreadId, tcb: *mut Thread) {
     cpu::current().current.store(tid, Ordering::Relaxed);
     // SAFETY: the caller's contract; an address computation, nothing is read.
