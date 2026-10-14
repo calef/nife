@@ -1,0 +1,13 @@
+# solo, as an x86_64 package. The same package as `solo.recipe`, which says why it exists.
+
+name = "solo"
+version = "0.1.0"
+architecture = "x86_64"
+
+[[member]]
+program = "alto"
+as = "bin/alto"
+
+[[member]]
+name = "solo.license"
+file = "LICENSE-MIT"
