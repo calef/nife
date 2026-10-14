@@ -398,6 +398,24 @@ where
         refuse_entry(table, &entry, image_carries(entry.program))?;
     }
     let mut writer = Writer { out, at: 0 };
+    write_rows(table, &entries, &mut writer)?;
+    write_pointers(table, &entries, &mut writer)?;
+    Ok(writer.at)
+}
+
+/// [`with_entries`]' rows: each existing row, or the entry that [`replaces`] it, then each entry
+/// that replaced none. Out of line, as [`write_pointers`] is, so the passes' iterators do not share
+/// one frame: inlined together they came to 4,624 bytes on riscv64, over the kernel's 4,096-byte
+/// guard page (`script/stack-frame-check`).
+#[inline(never)]
+fn write_rows<'a, I>(
+    table: &'a str,
+    entries: &impl Fn() -> I,
+    writer: &mut Writer<'_>,
+) -> Result<(), Error>
+where
+    I: Iterator<Item = Entry<'a>>,
+{
     for existing in self::entries(table) {
         let existing = existing?;
         match entries().find(|e| replaces(&existing, e)) {
@@ -410,6 +428,20 @@ where
             writer.entry(&entry)?;
         }
     }
+    Ok(())
+}
+
+/// [`with_entries`]' pointers: each existing pointer, moved to a package entry of its program,
+/// then one for each package entry whose program had none. A vouch writes no pointer.
+#[inline(never)]
+fn write_pointers<'a, I>(
+    table: &'a str,
+    entries: &impl Fn() -> I,
+    writer: &mut Writer<'_>,
+) -> Result<(), Error>
+where
+    I: Iterator<Item = Entry<'a>>,
+{
     for existing in defaults(table) {
         let existing = existing?;
         match entries().find(|e| e.package != OWNER && e.program == existing.program) {
@@ -425,7 +457,7 @@ where
             writer.pointer(entry.program, &entry.digest)?;
         }
     }
-    Ok(writer.at)
+    Ok(())
 }
 
 /// Whether `entry` may join `table`: its names read back, a package's program is not the image's
