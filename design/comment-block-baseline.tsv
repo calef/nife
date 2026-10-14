@@ -106,6 +106,7 @@ crates/pmap/src/lib.rs:1	96
 crates/portable_executable/src/lib.rs:1	64
 crates/schedule_store/src/lib.rs:1	76
 crates/sealed_pair/src/lib.rs:1	97
+crates/stick_maker/src/lib.rs:1	51
 crates/supervision_protocol/src/lib.rs:17	90
 crates/swap_protocol/src/lib.rs:2	72
 crates/swish/src/lib.rs:1	84
@@ -164,6 +165,7 @@ patches/std-nife/overlay/std/src/sys/pal/nife/rt.rs:1	74
 patches/std-nife/overlay/std/src/sys/paths/nife.rs:1	87
 pinned_tls_client/src/lib.rs:1	77
 redoxfs_server/src/bin/mkfs.rs:1	73
+system_tests/src/user.rs:552	41
 system_tests/src/user/confined_fuzzer_tests.rs:1	95
 system_tests/src/user/login_tests.rs:7	73
 system_tests/src/user/syscall_fuzzer_tests.rs:1	67

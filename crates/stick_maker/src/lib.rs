@@ -26,7 +26,6 @@
 //!
 //! See notes/boot-stick.md for how it is built, tested, and what it has and has not run on.
 //!
-
 //! # No stick shares a GUID with another, because no stick has a GPT
 //!
 //! Measured 2026-10-06 (UTC) by lane/fresh-stick-guids, because a prebuilt image written to every
