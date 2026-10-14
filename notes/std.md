@@ -71,12 +71,13 @@ std by `cargo xtask std-src`. Each file binds one std concept to the ABI:
 
 The syscall glue (`sys/pal/nife/rt.rs`) deliberately twins `crates/user_mode_runtime`'s
 `svc`/`ecall` wrappers, because std cannot depend on the crate. The ABI constants are not restated: `abi.rs` is generated verbatim from `crates/abi` by `std-src`, so the numbers cannot
-drift. Likewise `user_mode_heap.rs` from `crates/user_mode_heap` (the host-tested heap algorithm is the only heap
-algorithm), `netproto.rs` from `crates/socket_protocol/src/lib.rs`, and `fsproto.rs` from `crates/filesystem_protocol`: every
-wire format the PAL speaks has exactly one definition, and it lives with the server that answers it.
-A crate root that keeps a module in its own file (`pub mod fs;`, as `filesystem_protocol` has since
-milestone 845 (the filesystem-protocol crate root is split along its seams)) is copied with that file
-inlined as `pub mod fs { ... }`, so std still builds one file.
+drift. Likewise `user_mode_heap.rs` from `crates/user_mode_heap`: the host-tested heap algorithm is
+the only heap algorithm. So too `netproto.rs` from `crates/socket_protocol/src/lib.rs`, and `fsproto.rs` from
+`crates/filesystem_protocol`. Every wire format the PAL speaks has exactly one definition, and it
+lives with the server that answers it.
+A crate root may keep a module in its own file (`pub mod fs;`), as `filesystem_protocol` has since
+milestone 845 (the filesystem-protocol crate root is split along its seams). It is copied with that
+file inlined as `pub mod fs { ... }`, so std still builds one file.
 The slot numbers and page addresses themselves (`rt::FS_DIR_SLOT`, `rt::CLOCK_PAGE` and the rest)
 come the same way, as `runtimeproto.rs` from `crates/std_runtime_protocol`, since milestone 595
 (provisional) made the progenitor a loader of `std` programs too.
@@ -100,9 +101,9 @@ builds one:
 4. Link it as this worktree's own toolchain, `nife-dev-<directory>-<hash>` (`rustup toolchain
    link`; the next section says why the name is per worktree).
 
-`cargo xtask std-exerciser` then builds the `std_exerciser` demo for both custom targets against it, setting
-`RUSTUP_TOOLCHAIN=<farm>` rather than `+<name>`, because the cargo proxy that launched xtask
-already exports `RUSTUP_TOOLCHAIN=nightly`, which would override a `+` selector
+`cargo xtask std-exerciser` then builds the `std_exerciser` demo for both custom targets against it,
+setting `RUSTUP_TOOLCHAIN=<farm>` rather than `+<name>`. The cargo proxy that launched xtask already
+exports `RUSTUP_TOOLCHAIN=nightly`, which would override a `+` selector
 and silently build std from the *unpatched* sysroot.
 
 `std-src` is idempotent: a stamp of all inputs (the toolchain version, the ABI/heap crates, the
@@ -159,7 +160,7 @@ The load-bearing fields:
 - softfloat (aarch64 `-neon`, riscv `lp64`, x86_64 `-mmx,-sse...,+soft-float` with
   `"rustc-abi": "softfloat"`) matches EL0/U-mode/ring 3 with no FP save area, the same choice the
   `no_std` programs make. On x86_64 this is a correctness requirement, not a preference:
-  `kernel/src/arch/x86_64/` saves no FPU or SSE state on a context switch, so a std program that let
+  `kernel/src/arch/x86_64/` saves no FPU or SSE state on a context switch. A std program that let
   LLVM emit SSE would have its `xmm` registers overwritten by whichever thread ran next.
 
 The reasoning of milestone 184 (extend the `std` port to x86_64) for each field, the probe showing no
@@ -279,7 +280,8 @@ One line each. The full entry is in
 - `std-aborts` covers `sys/` only, and proves a body reachable, never a call. A stale or foreign
   build under `std_exerciser/target` (left from before a nightly bump) surfaces as a defect or
   an abort, or compiles the nightly's unpatched std even with `RUSTUP_TOOLCHAIN` set (the farm's
-  hard-linked `rustc`, since fixed, [caveats](std/caveats.md)); the fix is `rm -rf std_exerciser/target` ([appendix](std/std-aborts.md#bugs)). An
+  hard-linked `rustc`, since fixed, [caveats](std/caveats.md)). The fix is `rm -rf
+  std_exerciser/target` ([appendix](std/std-aborts.md#bugs)). An
   exported `CARGO_TARGET_DIR` used to blind the check; `std-exerciser` now pins and prints it.
 
 ## Appendices

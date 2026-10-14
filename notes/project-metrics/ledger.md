@@ -46,13 +46,13 @@ The same goes for cordoba, which runs the family's backups and was never bought 
 ### A correction this ledger makes to milestone 519's own block
 
 Milestone 519 (what this project costs, tracked where it cannot rot) has a table saying "xenon was
-not bought for this project". That is wrong, and milestone 87's record is the reason: the
-OptiPlex was selected on 2026-08-03 and bought on 2026-08-15 specifically as the dedicated bring-up
-machine for the third ISA target that DECISIONS §19 (architectural parity is a tenet; the targets
-are aarch64, riscv64, and x86_64) names, and its own block says it "completes when the machine has
+not bought for this project". That is wrong, and milestone 87's record is the reason. The OptiPlex
+was selected on 2026-08-03 and bought on 2026-08-15 specifically as the dedicated bring-up machine
+for the third ISA target that DECISIONS §19 (architectural parity is a tenet; the targets are
+aarch64, riscv64, and x86_64) names. Its own block says it "completes when the machine has
 printed a byte over serial". It is as much a project purchase as argon is, and the block saying
 otherwise is wrong. Correcting it triples the recorded hardware figure, from $89.99 to $271.81, and
-it is recorded here rather than silently: the block's number was written from memory in the
+it is recorded here rather than silently. The block's number was written from memory in the
 conversation that minted the milestone, and the tree disagreed.
 
 ## Subscriptions
@@ -106,8 +106,8 @@ This is a shadow price and nothing else. This project pays a fixed monthly subsc
 marginal cost of one more lane is zero dollars. These rates answer a different question, which is
 what somebody without that subscription would pay a vendor to reproduce the same work. Milestone 519
 says both figures are legitimate and that quoting one while implying the other is the dishonest
-version, so: the paid number is `cash_spend` above, the shadow number is this table times the token
-counts in [`effort.csv`](effort.csv), and neither is ever printed without its label.
+version. So the paid number is `cash_spend` above, and the shadow number is this table times the
+token counts in [`effort.csv`](effort.csv). Neither is ever printed without its label.
 
 Rates are list prices on the date recorded, in USD per million tokens.
 
@@ -142,9 +142,9 @@ multipliers (1.25x and 2x input) applied to those inputs. This skill version sta
 for either model, so those four cells are derived, not read. The rows exist because 2026W39 and
 2026W40 had tokens on these models with no row, which left both blended rates blank.
 
-Source a: the `claude-api` skill bundled with the agent harness (version 2.1.277), whose model
-table carries input and output prices and is itself dated 2026-06-24, and whose
-`shared/prompt-caching.md` gives the cache multipliers: a write is 1.25x input at the five-minute
+Source a: the `claude-api` skill bundled with the agent harness (version 2.1.277), whose model table
+carries input and output prices and is itself dated 2026-06-24. Its `shared/prompt-caching.md` gives
+the cache multipliers: a write is 1.25x input at the five-minute
 time-to-live and 2x at the one-hour one, and a read is 0.1x input. The four cache columns above are
 that arithmetic, written out so a reader does not have to redo it and so a future rate change is a
 new row rather than a new formula.

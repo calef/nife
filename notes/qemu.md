@@ -129,9 +129,9 @@ qemu-system-aarch64: -device virtio-blk-device,drive=d0: Failed to get "write" l
 Is another process using the image [target/nifefs-blank.img]?
 ```
 
-That names a file. Nothing in it points at a process, so it reads as a bug in whatever the
-run was testing, and a lane that has read AGENTS.md's warning about leaked emulators can still
-lose an hour to it because the symptom does not look like that warning.
+That names a file. Nothing in it points at a process, so it reads as a bug in whatever the run was
+testing. A lane that has read AGENTS.md's warning about leaked emulators can still lose an hour to
+it because the symptom does not look like that warning.
 
 `helpers/qemu-bounded.sh` now gives the killer two more reasons to fire. It polls its parent
 once a second and kills the child as soon as the wrapper is gone, which covers a SIGKILLed
@@ -141,11 +141,11 @@ when `pkill -f` sweeps the wrapper and the killer together.
 
 What is left, and it is not fixable on macOS: a SIGKILL to the killer itself. SIGKILL is not
 trappable and macOS has no `prctl(PR_SET_PDEATHSIG)`, so a supervisor shot in the head cannot
-hand off. For that case the script does the other thing instead of preventing it: when the
-command fails, it runs `lsof` over the image paths in the command line and prints the pid, ppid,
-start time and command of whoever holds one for writing (a reader is not reported, and that
-filter is what keeps the message quiet on a green run: the three test legs share one read-only OVMF
-firmware file). **Walk the parent chain up before killing what it
+hand off. For that case the script does the other thing instead of preventing it. When the command
+fails, it runs `lsof` over the image paths in the command line. It prints the pid, ppid, start time
+and command of whoever holds one for writing. A reader is not reported, and that filter is what
+keeps the message quiet on a green run: the three test legs share one read-only OVMF firmware file.
+**Walk the parent chain up before killing what it
 names**: a QEMU whose parent is a live harness is somebody's gate in flight, not a leak.
 
 `helpers/qemu-bounded-selftest.sh` checks all of this against a real emulator, including that
@@ -177,7 +177,7 @@ runs with `Failed to get "write" lock` and looked like a bug in the code under t
 
 **And the check runs in both directions** (2026-08-15): before killing a "leaked" QEMU, walk
 `ps -o pid,ppid` UP from it too. A QEMU whose parent chain ends in a live harness is somebody's gate
-in flight, not a leak; the maintainer killed a lane's mid-suite emulator this way and the lane's run
+in flight, not a leak. The maintainer killed a lane's mid-suite emulator this way and the lane's run
 failed for a reason no one could see from inside it.
 
 Two habits fix it. **Ask who holds the file, not whether a process matches a name**:
@@ -203,7 +203,7 @@ forever, by design, exactly like real hardware. So every interactive run must be
   found that `script/ci-qemu`'s configure line does not link on this SDK: `hw/display/apple-gfx.m`
   needs `--disable-cocoa --disable-pvg`. On 2026-10-10 11.1.1 was built here that way for a
   same-tree comparison, into a scratch prefix, and configure also needed `--python=` pointed at
-  Homebrew's `python3` (its `libexec/bin`), because Apple's 3.9 cannot install QEMU's own Python
+  Homebrew's `python3` (its `libexec/bin`). Apple's 3.9 cannot install QEMU's own Python
   package editable and configure stops in `mkvenv`. And a QEMU installed into `$HOME/.cache/nife-qemu` is honored by
   `helpers/qemu-path.sh` on macOS too, for every checkout on the account, which is how a build meant
   for one clone changes the emulator under every other lane.
@@ -211,14 +211,14 @@ forever, by design, exactly like real hardware. So every interactive run must be
   sampling and starts asking). The check reads the guest's framebuffer through QEMU's monitor to
   assert the claim of milestone 243 (a machine with no serial port has no way to say anything, and
   no gate can read it). Sampling (poll every 50 ms and hope a dump lands while the tour is up) is
-  not enough: on a busy machine a full `script/test` run read zero rows and reported *"the tour was
-  never readable on the screen"* while the same leg run alone a minute later read 56, and the
-  message sent the reader after the loader's `LocateProtocol`, the pixel order, the stride and the
+  not enough. On a busy machine a full `script/test` run read zero rows and reported *"the tour was
+  never readable on the screen"*. The same leg run alone a minute later read 56. The message sent
+  the reader after the loader's `LocateProtocol`, the pixel order, the stride and the
   mapping, none of which was wrong.
 
   So the kernel is *asked* to stop. `screen-hold` on the boot command line makes
   `kernel::console::yield_screen` announce `boot_ladder::SCREEN_HELD` on the serial line and wait up
-  to ten seconds for a byte back before it clears the screen, so the dump is taken against a state
+  to ten seconds for a byte back before it clears the screen. So the dump is taken against a state
   that is not going anywhere. Three runs at a one-minute load average of 17, 32 and 38 on an
   eight-core Mac each read exactly 95 rows. Two things carry beyond it:
 

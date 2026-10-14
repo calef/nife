@@ -14,13 +14,13 @@ the modern way to reach it: one flat memory window, the function's page at
 space is just memory-mapped bytes, which is why an empty slot "reads all-ones" (nobody drives the
 bus, the read floats high) and why enumeration is a loop, not a protocol.
 
-The first 64 bytes of config space are standardized: vendor/device id (how you recognize what it
-is), the command/status registers, and six BARs (Base Address Registers). A BAR answers "where
-do this function's actual registers live in memory?" and it is writable: firmware assigns each
+The first 64 bytes of config space are standardized. They hold the vendor/device id (how you
+recognize what it is), the command/status registers, and six BARs (Base Address Registers). A BAR answers "where
+do this function's actual registers live in memory?" and it is writable. Firmware assigns each
 function an address by writing one. Sizing is the famous dance: write all-ones, read back which
 bits stuck (the low bits that stay zero encode the size and alignment), restore. Past the header,
-optional features hang off the capability list, a linked list in config space; virtio-modern
-puts everything it needs there as vendor capabilities: which BAR (and offset) holds the
+optional features hang off the capability list, a linked list in config space. Virtio-modern puts
+everything it needs there as vendor capabilities: which BAR (and offset) holds the
 common-config block, the notify doorbell, the ISR byte, the device config.
 
 Two command-register bits matter here. Memory-Space Enable makes the BARs decode at all.
@@ -44,17 +44,17 @@ first VisionFive 2 boot, where 0x4000_0000 is DRAM base and mapping it collided 
 map (notes/visionfive2.md). A machine whose tree has no such node gets no window mapped and
 every PCI probe answers "nobody home", the same degradation as an absent virtio-mmio device.
 
-Division of labor, same as the mmio side: the pci crate is pure decode logic (ECAM math,
+Division of labor, same as the mmio side. The pci crate is pure decode logic (ECAM math,
 enumeration, BAR sizing, capability parsing, the INTx swizzle), host-tested against a fake config
-space; kernel/src/pci.rs supplies the volatile accessors and the policy (which device, where
-BARs go, which bits to set); the driver stays in userspace, unchanged.
+space. kernel/src/pci.rs supplies the volatile accessors and the policy (which device, where BARs
+go, which bits to set). The driver stays in userspace, unchanged.
 
 ## The transport seam
 
 virtio is one device model over multiple buses. The queue machinery (descriptor table, available
 and used rings, DMA against physical addresses) is bus-independent; only "where are the
-registers and what do they look like" differs. `virtio::Transport` is that difference, contained:
-the mmio variant passes the vocabulary through; the pci variant translates each register name to
+registers and what do they look like" differs. `virtio::Transport` is that difference, contained.
+The mmio variant passes the vocabulary through. The pci variant translates each register name to
 the virtio-pci common-config layout, the ISR byte (whose *read* is the ack, deasserting INTx),
 and the notify doorbell (`notify_base + queue_notify_off * multiplier`, resolvable only with the
 queue selected). Registers pci has no equivalent for (magic, version, device id) are synthesized,
@@ -67,13 +67,13 @@ polices two buses, which is the demonstrator's argument in miniature.
 ## INTx
 
 The legacy PCI interrupt is four shared wires (INTA..INTD) routed up through the bridge with a
-standard rotation ("swizzle"): device `d` pin `p` lands on line `(d + p - 1) % 4`, then the board
+standard rotation ("swizzle"). Device `d` pin `p` lands on line `(d + p - 1) % 4`, then the board
 maps the four lines onto interrupt controller inputs (32..35 on riscv `virt`). It is
 level-triggered: the line stays asserted until the ISR byte is read. That plugs directly into the
-kernel's existing model: the PLIC delivery masks the source, the driver's WAIT wakes, its
+kernel's existing model. The PLIC delivery masks the source, the driver's WAIT wakes, its
 INTERRUPT_STATUS read (the ISR, via the transport) deasserts the line, and its Irq-capability ACK
 re-enables the source. MSI-X (the device writes a message to raise an interrupt, many vectors,
-no sharing) is the modern mechanism and a deliberate later step; nothing we drive needs it.
+no sharing) is the modern mechanism and a deliberate later step. Nothing we drive needs it.
 
 The swizzle is a hardcoded formula with a **witness**: host tests parse the riscv fixture's
 device tree and hold `intx_irq` against all sixteen of the machine's own `interrupt-map` entries
@@ -82,15 +82,15 @@ way; it is now parsed from the tree (above), and the same test pins the parse to
 
 ## What is proven, and where the edges are
 
-The riscv suite's `a_userspace_driver_reads_a_file_over_the_pcie_transport` runs the whole line:
-ECAM enumeration finds 00:01.0, the kernel places its BARs, sets up queue 0 through
-common-config, the driver (byte-identical to the mmio one) submits a request past the shadow-ring
+The riscv suite's `a_userspace_driver_reads_a_file_over_the_pcie_transport` runs the whole line.
+ECAM enumeration finds 00:01.0, and the kernel places its BARs and sets up queue 0 through
+common-config. The driver (byte-identical to the mmio one) submits a request past the shadow-ring
 validator, the doorbell rings, and the completion arrives as INTx through the PLIC.
 
 Both boards run it: riscv (INTx via the PLIC) and aarch64 (INTx via the GIC, SPIs 3..6, and the
-**highmem** ECAM at 0x40_1000_0000; the machine names the node `pcie@10000000` after the low MMIO
-base, and trusting the name instead of the `reg` is a mistake the witness test now guards). The
-per-arch cost of the second board was constants plus two map entries, the portability claim in
+**highmem** ECAM at 0x40_1000_0000). The machine names the node `pcie@10000000` after the low MMIO
+base. Trusting the name instead of the `reg` is a mistake the witness test now guards. The per-arch
+cost of the second board was constants plus two map entries, the portability claim in
 concrete form.
 
 Edges, honestly: INTx only, no MSI-X; the modern function only (`disable-legacy=on` in the runner,
@@ -125,8 +125,8 @@ new code at all? Measured on `q35` under QEMU with 256 MiB of RAM, it is also no
 
 252 KiB against a boot that spends 32,840 KiB on page tables is 0.8%, so the cost argument against
 the flat scan is weak and should not be the one anyone repeats. The reason to walk the bridges is
-the other one: a flat scan over a range ACPI happens to describe is the same species of assumption
-that produced this bug, it issues configuration reads to bus numbers no bridge on the machine
+the other one. A flat scan over a range ACPI happens to describe is the same species of assumption
+that produced this bug. It issues configuration reads to bus numbers no bridge on the machine
 decodes, and it stops being right on the first machine that numbers its buses differently.
 
 How the kernel knows how much to map before it has read anything. `pci::survey` runs from
@@ -158,10 +158,10 @@ pass, no arch-specific special case in the walk itself.
   machine whose device tree describes a flat root complex and where QEMU puts nothing behind a
   bridge. The walk itself is the same code on all three and would follow a bridge the moment one
   appeared, except that it would refuse to descend past the one mapped bus and would say so. The
-  survey has no home on those two architectures because there is no equivalent of the x86 boot map:
-  their MMU is off until `mmu::init`, so there is no moment before the fine map where an arbitrary
+  survey has no home on those two architectures because there is no equivalent of the x86 boot map.
+  Their MMU is off until `mmu::init`, so there is no moment before the fine map where an arbitrary
   bus is readable through `phys_to_virt`. If a device-tree board ever grows a root port, that is the
-  problem to solve, and lazy per-bus mapping (`pci::adopt` already maps a page at enumeration time,
+  problem to solve. Lazy per-bus mapping (`pci::adopt` already maps a page at enumeration time,
   so the machinery exists) is the likely shape.
 
 - The topology is read once, at boot. Hot plug would change it and nothing re-surveys.

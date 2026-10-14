@@ -15,7 +15,7 @@ gated and merged are roughly 2%.
 
 The dominant term is carrying and re-reading a large context every turn, not reasoning or
 output. A maintainer session accumulates `AGENTS.md`, every file it has read, every gate's output,
-every lane report, and every prior turn of its own conversation, and all of that rides along on the
+every lane report, and every prior turn of its own conversation. All of that rides along on the
 *next* turn too, because that is how a context window works. A lane starts cold, does one thing, and
 returns a report. Nothing it read outlives it.
 
@@ -27,7 +27,7 @@ the first-order one here.
 
 The first-order value is that a lane can read 547 files and return four paragraphs. Read those
 547 files in the maintainer session directly, and all 547 are now in that session's context for the
-rest of its life: every one of them gets carried and re-read on every subsequent turn, whether or
+rest of its life. Every one of them gets carried and re-read on every subsequent turn, whether or
 not it is still relevant. A lane that reads the same 547 files and hands back a conclusion pays for
 that reading once, in a context that then closes.
 

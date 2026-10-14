@@ -110,7 +110,7 @@ therefore undercounts the trusted base by exactly the code this project moved in
 things about it.
 
 Milestone 522 (a boundary drawn by dependency, not by path) draws it at a real `cargo metadata`
-dependency edge instead, and `script/metrics` now reports the four populations separately:
+dependency edge instead. `script/metrics` now reports the four populations separately:
 `unsafe_trust_kernel` is 694, at a density of 142 per 10,000 lines against userspace's 120.
 
 **The number of `unsafe` blocks in nife's TCB is 694**, not 1,138, not 824, and not 577.
@@ -195,14 +195,15 @@ with when blocking is not available.
 
 nife has both. It has threads, a scheduler and up to `MAX_CPUS` cores, so it takes a lock:
 `kernel/src/sync.rs`'s `IrqSafeSpinLock`, which masks interrupts before acquiring and restores on
-release, with a global lock ranking enforced by the type (DECISIONS §9 (locking: IrqSafeMutex, plus a discipline) governs both halves). A lock
+release. A global lock ranking is enforced by the type (DECISIONS §9 (locking: IrqSafeMutex, plus a
+discipline) governs both halves). A lock
 hands out `&mut` through its guard. No copy is made, and no closure indirection is needed, so
 neither of the two things Levy is choosing between applies.
 
 Checked rather than asserted: there is no `Cell<T>` and no `RefCell` in `kernel/src` at all. The
-only interior mutability in the kernel is `UnsafeCell`, in six places, every one of them static
+only interior mutability in the kernel is `UnsafeCell`, in six places. Every one of them is static
 per-CPU or per-core storage (`interrupt_stack.rs`, `cpu.rs` for the run queue and the x86_64
-syscall-stack scratch words, `smp.rs`) plus two test-local `Racy<T>` wrappers in `bench.rs` and
+syscall-stack scratch words, `smp.rs`), plus two test-local `Racy<T>` wrappers in `bench.rs` and
 `sched.rs`. None of that is the pattern `TakeCell` addresses.
 
 So: nothing to propose, and one thing worth recording. The two designs differ in what happens when
@@ -211,8 +212,8 @@ silently does nothing on re-entry; the operation is dropped and the caller is no
 taken twice on one core is a hang, which is loud, which is precisely what `kernel/src/sync.rs`'s
 header is about: *"This is not a race. It is a guaranteed hang the moment the timing lines up."*
 Trading a silent no-op for a loud hang is the right trade for a kernel with a supervisor over it
-(DECISIONS §26 (the fault endpoint: thread death becomes a message)) and the wrong one for a kernel
-that must keep running on a battery, which is the system Tock is.
+(DECISIONS §26 (the fault endpoint: thread death becomes a message)). It is the wrong one for a
+kernel that must keep running on a battery, which is the system Tock is.
 
 ## BUGS
 
