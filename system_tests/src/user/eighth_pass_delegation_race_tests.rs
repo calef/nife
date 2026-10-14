@@ -127,7 +127,14 @@ fn a_revocation_landing_inside_the_delegation_window_is_still_seen() {
         "the revoke never reached the sender's own table, so this test's premise is false",
     );
 
-    // The control run: same seam, no revoke. The delegation must complete and deliver.
+    the_same_seam_without_a_revoke_delivers(region, ep);
+    crate::memory_region::destroy(region);
+}
+
+/// The control run for [`a_revocation_landing_inside_the_delegation_window_is_still_seen`]: the
+/// same seam with no revoke. The delegation must complete, park, and deliver exactly the frame,
+/// which is what makes the refused run's emptiness the revocation talking.
+fn the_same_seam_without_a_revoke_delivers(region: u64, ep: sched::RendezvousId) {
     static CONTROL_ANSWER: AtomicI64 = AtomicI64::new(UNANSWERED);
     static CONTROL_DONE: AtomicBool = AtomicBool::new(false);
     crate::delegation_pause::disarm();
@@ -189,7 +196,6 @@ fn a_revocation_landing_inside_the_delegation_window_is_still_seen() {
     );
 
     crate::revoke::revoke_page_frame(phys_b);
-    crate::memory_region::destroy(region);
 }
 
 /// **A port capability revoked while it sits in the hand-off slot must not reach the receiver**

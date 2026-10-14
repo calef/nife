@@ -169,6 +169,39 @@ fn ring(operation: u64) -> i64 {
     r0 as i64
 }
 
+/// [`ROLE_FORGE_CTL`]: forge the control page's identity, geometry and bookkeeping and commit after
+/// each forge, then restore the honest values and commit once more, and report how many rings
+/// were answered.
+fn forge_control_page(seq: &mut u32) {
+    let (id0, w0, h0, s0) = (
+        rd32(CTL_VA + ctl::ID),
+        rd32(CTL_VA + ctl::WIDTH),
+        rd32(CTL_VA + ctl::HEIGHT),
+        rd32(CTL_VA + ctl::STRIDE),
+    );
+    wr32(CTL_VA + ctl::ID, 0xDEAD_BEEF);
+    wr32(CTL_VA + ctl::WIDTH, u32::MAX);
+    wr32(CTL_VA + ctl::HEIGHT, u32::MAX);
+    wr32(CTL_VA + ctl::STRIDE, 0);
+    wr32(CTL_VA + ctl::STATUS, 0xFFFF_FFFF);
+    wr32(CTL_VA + ctl::ACKED, 0xFFFF_FFFF);
+    wr32(CTL_VA + ctl::SEQ, 0);
+    commit(seq, compositor::Rect::new(0, 0, 4, 4));
+
+    wr32(CTL_VA + ctl::STRIDE, 1);
+    wr32(CTL_VA + ctl::WIDTH, 0x7fff_ffff);
+    wr32(CTL_VA + ctl::SEQ, u32::MAX);
+    commit(seq, compositor::Rect::new(0, 0, 4, 4));
+
+    wr32(CTL_VA + ctl::ID, id0);
+    wr32(CTL_VA + ctl::WIDTH, w0);
+    wr32(CTL_VA + ctl::HEIGHT, h0);
+    wr32(CTL_VA + ctl::STRIDE, s0);
+    wr32(CTL_VA + ctl::STATUS, ctl::STATUS_OK);
+    commit(seq, compositor::Rect::new(0, 0, 4, 4));
+    send(REPORT, status::WIN_FORGED, 3, 0);
+}
+
 /// Set our damage rectangle and bump our sequence, then commit. The compositor reads the rectangle as
 /// untrusted input and clips it to our surface; the reply comes after the pixels are on the screen.
 fn commit(seq: &mut u32, damage: compositor::Rect) {
@@ -307,33 +340,7 @@ pub extern "C" fn _start(role: u64, neighbour_va: u64, _arg2: u64) -> ! {
     }
 
     if role & ROLE_FORGE_CTL != 0 {
-        let (id0, w0, h0, s0) = (
-            rd32(CTL_VA + ctl::ID),
-            rd32(CTL_VA + ctl::WIDTH),
-            rd32(CTL_VA + ctl::HEIGHT),
-            rd32(CTL_VA + ctl::STRIDE),
-        );
-        wr32(CTL_VA + ctl::ID, 0xDEAD_BEEF);
-        wr32(CTL_VA + ctl::WIDTH, u32::MAX);
-        wr32(CTL_VA + ctl::HEIGHT, u32::MAX);
-        wr32(CTL_VA + ctl::STRIDE, 0);
-        wr32(CTL_VA + ctl::STATUS, 0xFFFF_FFFF);
-        wr32(CTL_VA + ctl::ACKED, 0xFFFF_FFFF);
-        wr32(CTL_VA + ctl::SEQ, 0);
-        commit(&mut seq, compositor::Rect::new(0, 0, 4, 4));
-
-        wr32(CTL_VA + ctl::STRIDE, 1);
-        wr32(CTL_VA + ctl::WIDTH, 0x7fff_ffff);
-        wr32(CTL_VA + ctl::SEQ, u32::MAX);
-        commit(&mut seq, compositor::Rect::new(0, 0, 4, 4));
-
-        wr32(CTL_VA + ctl::ID, id0);
-        wr32(CTL_VA + ctl::WIDTH, w0);
-        wr32(CTL_VA + ctl::HEIGHT, h0);
-        wr32(CTL_VA + ctl::STRIDE, s0);
-        wr32(CTL_VA + ctl::STATUS, ctl::STATUS_OK);
-        commit(&mut seq, compositor::Rect::new(0, 0, 4, 4));
-        send(REPORT, status::WIN_FORGED, 3, 0);
+        forge_control_page(&mut seq);
     }
 
     if role & ROLE_PROBE_NEIGHBOUR != 0 {
