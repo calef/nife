@@ -66,6 +66,7 @@ crates/coremark/src/lib.rs:1	53
 crates/device_tree_blob/src/lib.rs:1	42
 crates/documentation/src/index.rs:1	74
 crates/e1000e/src/lib.rs:2	83
+crates/e1000e/src/pch/mod.rs:1	92
 crates/e1000e/src/pch/nvm.rs:1	47
 crates/e1000e/src/pch/phy.rs:1	62
 crates/e1000e/src/pch/sequence.rs:1	57
