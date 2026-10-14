@@ -35,7 +35,8 @@ installs it).
 Lane `milestone/922-demos-are-packaged-in-basalt`, with nifeos/basalt#25.
 
 - The recipe packs `bin/least_authority_demo`. The release build keeps its manifest note, a
-  76-byte `PT_NOTE` on aarch64 (item 1).
+  76-byte `PT_NOTE` on aarch64 (item 1). The first published Release is
+  `rolling-2026-10-14-4d05b6c`, and `xtask/basalt-pins.index` pins its three lines.
 - `swish-check` types `jig install demos` and `packages/demos/0.1.0/least_authority_demo 9`, which
   must answer `9*9 = 81` (item 2). The same program unvouched is refused its argument
   (`installed/asks-an-arg` earlier in the script), so the answer is the vouch at work.
