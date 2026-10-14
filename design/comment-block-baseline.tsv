@@ -55,6 +55,7 @@ crates/board_console/src/progress.rs:1	60
 crates/board_console/src/screen.rs:1	62
 crates/boot_ladder/src/lib.rs:1	70
 crates/boot_slot/src/lib.rs:378	65
+crates/c_seam/src/lib.rs:2	89
 crates/capability/src/lib.rs:1	55
 crates/capability_witness_protocol/src/lib.rs:1	83
 crates/component_plan/src/lib.rs:779	46

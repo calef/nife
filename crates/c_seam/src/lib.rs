@@ -1,9 +1,17 @@
 #![cfg_attr(not(test), no_std)]
-//! **The C seam's shared half** (§31 (the foreign-language seam)). Two Rust programs sit either side of the
-//! foreign component: `c_shim` links the C and calls it, and `c_confiner` builds `c_shim`,
-//! supervises it, and holds the witness pages that prove what the C could not reach. This is what
-//! they agree on (rule 7): the address-space layout, the report protocol, and the constants also
-//! written in `fixtures/c/c_seam.c`.
+//! **The C seam's shared half** (milestone 36, DECISIONS §31).
+//!
+//! Two Rust programs sit either side of the foreign component: `c_shim` is the shell that links the
+//! C and calls it, and `c_confiner` is the process that builds `c_shim`, supervises it, and holds
+//! the witness pages that prove what the C could not reach. This is what they agree on: the
+//! address-space layout, the report protocol, and the constants that are also written down in
+//! `fixtures/c/c_seam.c`.
+//!
+//! A crate rather than a `#[path]` module since 2026-08-01 (CLAUDE.md rule 7): what two binaries
+//! must agree on is a crate, so that the agreement is reachable by host tests and by Kani. The test
+//! at the bottom of this file is what that bought.
+//!
+//! # The layout, and why these numbers
 //!
 //! ```text
 //!   c_shim (the C component's process)          c_confiner (the checker)
@@ -17,17 +25,69 @@
 //!   0x7FFE_F000  stack                         0x7FFE_F000  stack
 //! ```
 //!
-//! - **`WITNESS_RO` is the same physical page, mapped in the C component's own tables**, so an
-//!   off-by-one store that leaves it unchanged did not happen at all: the stronger witness.
-//! - **`WITNESS_FAR` is a different page at an address the C component does not map**, so a wild
-//!   store there leaving it unchanged says a virtual address means nothing outside its own space.
+//! The two witness pages answer two different questions, which is why there are two:
 //!
-//! Both patterns are position-derived, so a partial overwrite is caught and no `memset` of a single
-//! value passes. The checksum is a Rust recomputation of what the C returns: two implementations
-//! of one definition, not an echo.
+//! - **`WITNESS_RO` is the same physical page, present in the C component's own page tables.** So
+//!   when the off-by-one store does not change it, that is not "the write went somewhere else"; the
+//!   page was right there, reachable, and the write did not happen. This is the stronger witness.
+//! - **`WITNESS_FAR` is a different physical page at the same virtual address.** The C component has
+//!   no mapping at `0x5000_2000` at all, and the checker does. So when a wild store to that address
+//!   does not change the checker's page, that is the statement "a virtual address means nothing
+//!   outside the address space that owns it," which is the MMU claim, made concrete.
 //!
-//! Name: ratified 2026-08-01 (calef), when the C symbols became `c_seam_*`. Refused `cseam` (run
-//! together). The `c_` prefix means "written in C".
+//! Both patterns are position-derived, the discipline milestone 29 used for the framebuffer: a
+//! partial overwrite is detected, and a `memset` of any single value could not pass.
+//!
+//! # Examples
+//!
+//! Everything in here that is arithmetic rather than a layout number is host-testable, which is the
+//! whole reason rule 7 made this a crate instead of a `#[path]` module. The checksum is the piece
+//! that matters: it is a Rust recomputation of what the C returns, so it is **two implementations of
+//! one definition** rather than an echo of whatever the C happened to produce.
+//!
+//! ```
+//! use c_seam::{INPUT, expected_checksum};
+//!
+//! let sum = expected_checksum(INPUT);
+//!
+//! // The uppercasing is folded into the hash, matching `c_seam_transform`, so the input's case
+//! // cannot change the answer. A C side that skipped the transform would not land on this number.
+//! assert_eq!(expected_checksum(b"nife"), expected_checksum(b"NIFE"));
+//! assert_ne!(expected_checksum(b"nife"), sum);
+//!
+//! // FNV-1a over the input the checker writes before every attempt, including its NUL. This is the
+//! // number `c_seam_transform` has to put in the grant's output area for the honest attempt to pass.
+//! assert_eq!(sum, 0x61a0_7dae);
+//! ```
+//!
+//! The witness patterns are position-derived, and the two properties that buys are worth asserting
+//! because both are about what *cannot* pass:
+//!
+//! ```
+//! use c_seam::{MARK, pattern_far, pattern_ro};
+//!
+//! // No two adjacent bytes agree, so a `memset` of any single value fails, and so does a partial
+//! // overwrite. This is milestone 29's framebuffer discipline applied to one page.
+//! for i in 0..64 {
+//!     assert_ne!(pattern_ro(i), pattern_ro(i + 1));
+//!     assert_ne!(pattern_far(i), pattern_far(i + 1));
+//! }
+//!
+//! // Two different generators, so a checker bug that read the wrong page would not accidentally
+//! // agree with the page it should have read.
+//! assert!((0..64).any(|i| pattern_ro(i) != pattern_far(i)));
+//!
+//! // And the byte the misbehaving C stores differs from both at offset 0, which is the only offset
+//! // either of them targets. So "the witness is unchanged" cannot hold by accident.
+//! assert_ne!(MARK, pattern_ro(0));
+//! assert_ne!(MARK, pattern_far(0));
+//! ```
+//!
+//! Name: ratified 2026-08-01 (calef, milestone 61), when the C symbols became `c_seam_*` and the
+//! file left `user/src/` under rule 7 (the directory milestone 175 split into `components/` and
+//! `fixtures/`). Refused `cseam` (run together, and it sat among 48 programs
+//! while being none of them, which is one of the cases that produced the rule). The `c_` prefix
+//! means "written in C" (DECISIONS §31).
 
 /// The page size, which is the grant's size too. One page is enough: the seam is what is under test,
 /// not throughput.
@@ -67,28 +127,6 @@ pub const INPUT: &[u8] = b"nife foreign component\0";
 
 /// The position-derived witness patterns. Different generators for the two pages so a checker bug
 /// that read the wrong page would not accidentally agree.
-///
-/// # Examples
-///
-/// ```
-/// use c_seam::{MARK, pattern_far, pattern_ro};
-///
-/// // No two adjacent bytes agree, so a `memset` of any single value fails, and so does a partial
-/// // overwrite: the framebuffer test pattern's discipline, applied to one page.
-/// for i in 0..64 {
-///     assert_ne!(pattern_ro(i), pattern_ro(i + 1));
-///     assert_ne!(pattern_far(i), pattern_far(i + 1));
-/// }
-///
-/// // Two different generators, so a checker bug that read the wrong page would not accidentally
-/// // agree with the page it should have read.
-/// assert!((0..64).any(|i| pattern_ro(i) != pattern_far(i)));
-///
-/// // And the byte the misbehaving C stores differs from both at offset 0, which is the only offset
-/// // either of them targets. So "the witness is unchanged" cannot hold by accident.
-/// assert_ne!(MARK, pattern_ro(0));
-/// assert_ne!(MARK, pattern_far(0));
-/// ```
 pub fn pattern_ro(i: usize) -> u8 {
     (i.wrapping_mul(31).wrapping_add(7) & 0xff) as u8
 }
@@ -100,23 +138,6 @@ pub fn pattern_far(i: usize) -> u8 {
 /// FNV-1a over `bytes`, uppercased the way `c_seam_transform` uppercases. The Rust recomputation of
 /// what the C returns: two implementations of one definition, which is what makes the checksum a
 /// real check rather than an echo.
-///
-/// # Examples
-///
-/// ```
-/// use c_seam::{INPUT, expected_checksum};
-///
-/// let sum = expected_checksum(INPUT);
-///
-/// // The uppercasing is folded into the hash, matching `c_seam_transform`, so the input's case
-/// // cannot change the answer. A C side that skipped the transform would not land on this number.
-/// assert_eq!(expected_checksum(b"nife"), expected_checksum(b"NIFE"));
-/// assert_ne!(expected_checksum(b"nife"), sum);
-///
-/// // FNV-1a over the input the checker writes before every attempt, including its NUL. This is the
-/// // number `c_seam_transform` has to put in the grant's output area for the honest attempt to pass.
-/// assert_eq!(sum, 0x61a0_7dae);
-/// ```
 pub fn expected_checksum(bytes: &[u8]) -> u32 {
     let mut h: u32 = 2166136261;
     for &b in bytes {
