@@ -13,6 +13,11 @@ needs_person: no
 the slug and both script names below are drafts. Branch
 `milestone/920-an-outsider-pass-is-launched-pinned-and-floor-checked`.*
 
+Both scripts are built, with selftests in `script/lint`, and the checker reproduces pass 8's and
+pass 9's counts. What keeps it PARTIAL is one ruling: calef has not ruled on the Claude reviewer's
+fence below, which bypasses permission prompts on his machine. Until he does, the Fable pass is
+not launched.
+
 calef, 2026-10-14 (UTC), on outsider passes at risk 7 (the confinement claim is false): *"mint a
 milestone for the launcher, the floor checker and the brief change that allows a completion round.
 get rid of the blind passes."*
@@ -54,7 +59,7 @@ The brief change is calef's ruling and is in force in both briefs:
   because a second turns the lane into the reviewer's supervisor, and a reviewer that needs two has
   not attacked those rows.
 
-## Still to build
+## What it builds
 
 ### The checker: `script/booted-rows` (name provisional)
 
@@ -100,8 +105,65 @@ An action, so a verb. It starts one reviewer and records what actually ran.
   whole message, and refuses a second completion for the same record.
 
 Where a harness cannot resume a session or report its model (a cloud runner the launcher does not
-start), the launcher says so and refuses, rather than recording a guess. Whether Fable runs on
-patagonia or in a cloud runner is this lane's call, and the block records which and why.
+start), the launcher has no way to start it, rather than recording a guess.
+
+The prompt's runner text is the launch brief's Mac section (its `### GLM 5.3 on patagonia`
+heredoc), word for word with its values filled and its commit trailer set to the reviewer's (calef,
+2026-10-14 UTC: use the runner text already on main, unchanged). The launcher refuses if that text
+changes shape, and its selftest assembles both reviewers' prompts from the real briefs and fails on
+a milestone number, a roadmap block or an unfilled placeholder.
+
+## Where the Fable pass runs
+
+On patagonia, through Claude Code. There the launcher can pin the model on the command line, read
+back the model the session reports before the attack, and resume the same session for the
+completion round. Claude's cloud runner allows none of the three before the attack: pass 9 was
+configured for Fable there and served by `claude-opus-4-8`, which showed only in the record
+afterward.
+
+**PROPOSED, pending calef.** The Claude reviewer runs headless, so it runs without permission
+prompts, and the launcher fences it instead:
+
+- tools limited to the shell and files (`Bash`, `Read`, `Edit`, `Write`, `Glob`, `Grep`), so no
+  web access;
+- MCP servers off (`--strict-mcp-config` with none given), since the maintainers' connectors reach
+  mail and documents;
+- user-level settings and instructions skipped (`--setting-sources project`), since they hold
+  machine-local facts the tree keeps private;
+- permissions bypassed (`--permission-mode bypassPermissions`) inside the standalone clone, which
+  has no remote.
+
+calef has not ruled on running a reviewer with permissions bypassed on his machine. Until he does,
+the Fable pass is not launched, and this block stays PARTIAL.
+
+## The replays
+
+`script/booted-rows --from-table` on the two recorded passes, at this branch's tree. Pass 8 (GLM
+5.3), whose note gives 25:
+
+```
+row 10: host only
+row 11: host only
+booted 25 of 27, floor short by 2
+```
+
+Pass 9 (served by `claude-opus-4-8`), whose note gives 20:
+
+```
+row 19: rerun of the row's cited test
+row 20: rerun of the row's cited test
+row 24: rerun of the row's cited test
+row 25: rerun of the row's cited test
+row 31: no pass-written test (graded untestable)
+row 32: no pass-written test (graded untestable)
+row 34: rerun of the row's cited test
+booted 20 of 27, floor short by 7
+```
+
+Only the short rows are shown; every other row is booted, accepted (rows 1 and 3) or exempt. The
+first replay of pass 9 gave 16: its row 6 to 9 cell holds an escaped pipe (`READ \| ENUMERATE`),
+which the table reader split as a column. The reader now keeps `\|` as text, and its selftest has
+that case. `script/lint` runs both replays.
 
 ## Done means
 
@@ -113,13 +175,15 @@ patagonia or in a cloud runner is this lane's call, and the block records which 
   commit, and the checker reports both floors. Those passes follow this milestone; each is minted
   by its own lane, as milestone 913 (an eighth outsider pass attacks the confinement claim) was,
   with `milestone_dependencies: 920`.
-- `briefs/confinement-outsider-pass-launch.md` is reduced to what the launcher does not do.
+- `briefs/confinement-outsider-pass-launch.md` is left as it is on main, and the launcher reads
+  its runner text from it (calef, 2026-10-14 UTC). Reducing it is not this milestone's; BUGS below
+  records it.
 
 ## BUGS
 
-- Until the checker lands, the floor is counted by hand, and a hand count can disagree with the
-  reviewer's own table. The brief tells the lane to count from the per-row table, not the report's
-  total.
+- The launch brief still describes the hand steps and the cloud runner, and still says the
+  launcher has not landed, while the lane's brief (`briefs/confinement-outsider-pass.md`) says to
+  launch with the script. Reducing the launch brief waits on a lane whose brief allows that edit.
 - The completion round's message is short rows only, but a reviewer told "row 10 is short" learns
   where the lane looked. It learns nothing the brief did not already demand, since every bootable
   row must boot.

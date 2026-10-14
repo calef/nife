@@ -16,8 +16,9 @@ under `helpers/`, which `script/names` puts out of its own scope, so its provena
 paragraph; the entry point's `Name:` block is in `script/launch-pass`.
 
 **What one launch does, in order.** A standalone clone with no remote and one branch, `pass`, at
-the pinned commit. The prompt: the reviewer's brief from `briefs/confinement-outsider-pass.md` and
-the runner section from `briefs/confinement-outsider-pass-launch.md`, placeholders filled, and
+the pinned commit. The prompt: the Mac's runner text from `briefs/confinement-outsider-pass-launch.md`
+(its `### GLM 5.3 on patagonia` heredoc, word for word) and the reviewer's brief from
+`briefs/confinement-outsider-pass.md`, placeholders filled as that launch brief's `sed` fills them, and
 refused if it names a milestone or a roadmap block. Then a setup turn in a new session, with the
 model pinned on the harness's command line and no tools: the launcher reads back the model the
 session reports and stops there, before the brief is ever sent, if it differs from the pin. Only
@@ -59,6 +60,10 @@ REFUSED = (
      'holds a roadmap block\'s frontmatter'),
     (re.compile(r'^\s*\d+\s*$'), 'is a bare milestone number'),
 )
+# The runner text is the launch brief's, unchanged (calef, 2026-10-14 UTC): the Mac's section,
+# which both reviewers get, since both run on patagonia.
+RUNNER_HEADING = '### GLM 5.3 on patagonia'
+RUNNER_TRAILER = 'GLM 5.3 <noreply@z.ai>'
 SHORT_ROW = re.compile(r'^row \d+: (?!booted|host \(exempt\)).+$')
 
 
@@ -81,21 +86,43 @@ def section(text, heading):
     return found.group(1).strip() + '\n'
 
 
+def runner_section(launch_text, scratch, commit, trailer):
+    """The Mac's runner section, exactly as the launch brief's heredoc writes it, values filled.
+
+    The text is the `cat <<EOF` body under RUNNER_HEADING, read as the shell would expand it: the
+    escaped backticks unescaped and `$scratch` and `$sha` filled. Not a word of it is the launcher's.
+    Its commit trailer names GLM 5.3, the reviewer that section was written for, and is swapped for
+    the reviewer's own, so a Fable session on the same Mac signs its commits as itself.
+    """
+    start = launch_text.find('\n%s\n' % RUNNER_HEADING)
+    fence = re.compile(r'(?ms)^```sh\n(.*?)^```$').search(launch_text, max(start, 0))
+    body = fence and re.search(r'(?ms)^    cat <<EOF\n(.*?)^EOF$', fence.group(1))
+    if start < 0 or not body:
+        raise SystemExit('launch-pass: no `cat <<EOF` runner text under `%s`' % RUNNER_HEADING)
+    text = body.group(1).replace('\\`', '`').replace('$scratch', scratch).replace('$sha', commit)
+    if '$' in text or '\\' in text or text.count(RUNNER_TRAILER) != 1:
+        raise SystemExit('launch-pass: the runner text under `%s` has changed shape; read it and '
+                         'update the launcher' % RUNNER_HEADING)
+    return text.replace(RUNNER_TRAILER, trailer).rstrip() + '\n'
+
+
 def assemble(tree, scratch, commit, reviewer):
-    """The one prompt: the runner section, then the reviewer's brief, placeholders filled."""
+    """The one prompt: the runner section, then the reviewer's brief, placeholders filled.
+
+    The fills are the launch brief's own `sed` line for the Mac, plus `<logs>` and `<commit>`,
+    which the brief's Mechanics added for the floor checker.
+    """
     with open(os.path.join(tree, 'briefs/confinement-outsider-pass.md')) as brief, \
             open(os.path.join(tree, 'briefs/confinement-outsider-pass-launch.md')) as launch:
         reviewer_brief = section(brief.read(), "## The reviewer's brief")
-        runner = section(launch.read(), '## The runner section')
-    fill = {'<checkout>': os.path.join(scratch, 'nife'), '<worktree>': os.path.join(scratch, 'nife'),
-            '<commit>': commit, '<trailer>': reviewer['trailer'],
-            '<path>': os.path.join(scratch, 'nife', 'notes/confinement-claims.md'),
-            '<results path>': os.path.join(scratch, 'results.md'),
-            '<logs>': os.path.join(scratch, 'logs')}
-    text = '## Before you start\n\n' + runner + '\n' + reviewer_brief
+        runner = runner_section(launch.read(), scratch, commit, reviewer['trailer'])
+    checkout = os.path.join(scratch, 'nife')
+    fill = {'<path>': checkout + '/notes/confinement-claims.md, under "## The claims"',
+            '<worktree>': checkout, '<results path>': os.path.join(scratch, 'results.md'),
+            '<logs>': os.path.join(scratch, 'logs'), '<commit>': commit}
     for placeholder, value in fill.items():
-        text = text.replace(placeholder, value)
-    return text
+        reviewer_brief = reviewer_brief.replace(placeholder, value)
+    return runner + '\n' + reviewer_brief
 
 
 def git(*args, cwd=None):
@@ -139,6 +166,7 @@ def run_harness(argv, log_path, cwd):
 class Claude:
     """Claude Code headless: `init` names the session and model; each assistant message, the model."""
     name = 'claude'
+    # PROPOSED, pending calef's ruling on bypassed permissions on his machine (2026-10-14 UTC).
     # The reviewer runs with permission prompts off, so it gets the shell and the files and nothing
     # else: no web, no MCP server (the maintainers' connectors reach mail and documents), and no
     # user-level settings or instructions, which hold machine-local facts the tree keeps private.
@@ -308,17 +336,17 @@ else:
     print(json.dumps({'type': 'system', 'subtype': 'init', 'model': model, 'session_id': 's'}))
     print(json.dumps({'type': 'assistant', 'message': {'model': model}}))
 '''
-BRIEF = ("# Brief\n\n## The reviewer's brief\n\n### Your job\n\nAttack `<worktree>` at `<path>`.\n\n"
-         "### Output\n\nWrite `<results path>`.\n")
-LAUNCH = '# Launch\n\n## The runner section\n\nCommit `<commit>`; end with `<trailer>`.\n'
+BRIEFS = ('confinement-outsider-pass.md', 'confinement-outsider-pass-launch.md')
 
 
-def selftest_tree(tmp):
+def selftest_tree(tmp, real_tree):
+    """A one-commit repository holding the real briefs, and the fake harness for both reviewers."""
     tree = os.path.join(tmp, 'tree')
     os.makedirs(os.path.join(tree, 'briefs'))
-    for name, text in (('confinement-outsider-pass.md', BRIEF), ('confinement-outsider-pass-launch.md', LAUNCH)):
-        with open(os.path.join(tree, 'briefs', name), 'w') as out:
-            out.write(text)
+    for name in BRIEFS:
+        with open(os.path.join(real_tree, 'briefs', name)) as source, \
+                open(os.path.join(tree, 'briefs', name), 'w') as out:
+            out.write(source.read())
     git('init', '-q', cwd=tree)
     git('add', '-A', cwd=tree)
     git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'pinned', cwd=tree)
@@ -355,12 +383,31 @@ def expect_refusal(action, needle):
     raise AssertionError('expected a refusal naming %r' % needle)
 
 
+def selftest_real_prompt(real_tree):
+    """The prompt each reviewer would get from the briefs in this tree: the runner section and the
+    reviewer's brief, every placeholder filled, and no milestone number or roadmap block."""
+    commit = '0123456789abcdef0123456789abcdef01234567'
+    for name, reviewer in sorted(REVIEWERS.items()):
+        prompt = assemble(real_tree, '/scratch', commit, reviewer)
+        check_prompt(prompt)
+        assert prompt.startswith('## Before you start\n'), (name, prompt[:80])
+        assert 'milestone' not in prompt.lower() and 'roadmap' not in prompt.lower(), name
+        assert not re.search(r'(?m)^(status|raised|needs_person):', prompt), name
+        for placeholder in ('<worktree>', '<path>', '<results path>', '<logs>', '<commit>', '$'):
+            assert placeholder not in prompt, (name, placeholder)
+        assert 'commit `%s`' % commit in prompt and '`/scratch/nife`' in prompt, name
+        assert prompt.count(reviewer['trailer']) == 1, (name, reviewer['trailer'])
+        assert name == 'glm' or RUNNER_TRAILER not in prompt, name
+
+
 def selftest():
+    real_tree = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    selftest_real_prompt(real_tree)
     expect_refusal(lambda: check_prompt('Do milestone ' + '913'), 'milestone number')
     expect_refusal(lambda: check_prompt('913'), 'milestone number')
     expect_refusal(lambda: check_prompt('Read design/roadmap/0913-x.md'), 'roadmap block')
     with tempfile.TemporaryDirectory() as tmp:
-        tree, commit = selftest_tree(tmp)
+        tree, commit = selftest_tree(tmp, real_tree)
         prompt = assemble(tree, '/s', commit, REVIEWERS['glm'])
         check_prompt(prompt)
         assert '/s/nife' in prompt and commit in prompt and 'noreply@z.ai' in prompt, prompt
@@ -375,7 +422,7 @@ def selftest():
         for reviewer, wrong in (('fable', 'claude-opus-4-8'), ('glm', 'zai-coding-plan/glm-4.7')):
             status, record, calls, _ = selftest_launch(tree, tmp, reviewer, wrong, commit)
             assert status == 1 and record['status'].startswith('stopped'), record
-            assert not any(prompt.splitlines()[0] in ' '.join(c) for c in calls), 'the brief went out'
+            assert not any('### Your job' in ' '.join(c) for c in calls), 'the brief went out'
             assert not any('--resume' in c or '--session' in c for c in calls), calls
         status, record, calls, path = selftest_launch(tree, tmp, 'fable', 'claude-fable-5-1', commit)
         assert status == 0 and record['status'] == 'reported' and record['model_reported'] == ['claude-fable-5-1']

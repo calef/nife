@@ -223,7 +223,8 @@ def grade_table(note_text, floor):
     """{row: (booted?, reason)} from a pass note's per-row table, for a pass whose tests carry no tags."""
     grades, grade_col = {}, None
     for line in note_text.splitlines():
-        cells = [c.strip() for c in line.strip().strip('|').split('|')]
+        # A cell's own `\|` (pass 9's `READ \| ENUMERATE`) is text, not a column break.
+        cells = [c.strip() for c in re.split(r'(?<!\\)\|', line.strip().strip('|'))]
         if not line.startswith('|') or len(cells) < 2:
             grade_col = None if not line.startswith('|') else grade_col
             continue
@@ -370,7 +371,23 @@ def selftest_logs():
     return aarch64, x86, riscv
 
 
-def selftest():
+# The recorded passes the checker must reproduce (milestone 920's Done means): each note's own count.
+REPLAYS = (('notes/confinement-outsider-pass-8.md', 25), ('notes/confinement-outsider-pass-9.md', 20))
+
+
+def selftest_replays(tree):
+    """Pass 8's and pass 9's per-row tables, replayed against this tree's brief and claims table."""
+    with open(os.path.join(tree, 'briefs/confinement-outsider-pass.md')) as brief, \
+            open(os.path.join(tree, 'notes/confinement-claims.md')) as claims:
+        floor = read_floor(brief.read(), claims.read())
+    for path, booted in REPLAYS:
+        with open(os.path.join(tree, path)) as note:
+            last = report(floor, grade_table(note.read(), floor))[0][-1]
+        assert last.startswith('booted %d of ' % booted), (path, last)
+
+
+def selftest(tree):
+    selftest_replays(tree)
     floor = read_floor(BRIEF_FIXTURE, CLAIMS_FIXTURE)
     assert parse_rows('27 to 29, 33 and 34') == [27, 28, 29, 33, 34]
     assert floor['exempt'] == [3] and floor['carried'] == [1] and len(floor['rows']) == 7
@@ -396,7 +413,7 @@ def selftest():
     timed_out = read_log('test kernel::user::pass_tests::attack_five ... \n', 'x86_64')
     assert grade_row(5, floor, tests, timed_out, set())[1] == 'timed out on every ISA (inconclusive)'
     table = ('| # | Attack | Outcome | Grade |\n|---|---|---|---|\n| 1 | a | held | accepted |\n'
-             '| 2, 4 | a | held | booted, three ISAs |\n| 5 to 6 | a | held | host |\n'
+             '| 2, 4 | a `READ \\| ENUMERATE` | held | booted, three ISAs |\n| 5 to 6 | a | held | host |\n'
              '| 7 | a | held | rerun, aarch64 |\n')
     grades = grade_table(table, floor)
     assert report(floor, grades)[0][-1] == 'booted 3 of 6, floor short by 3'
@@ -417,7 +434,7 @@ def main(argv):
     parser.add_argument('--short-only', action='store_true')
     parser.add_argument('--selftest', action='store_true')
     args = parser.parse_args(argv)
-    return selftest() if args.selftest else run(args)
+    return selftest(args.tree) if args.selftest else run(args)
 
 
 if __name__ == '__main__':
