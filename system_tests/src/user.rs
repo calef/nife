@@ -1308,6 +1308,8 @@ mod eighth_pass_endpoint_usurper_tests;
 #[cfg(all(test, initial_ramdisk))]
 mod eighth_pass_dir_escape_tests;
 
+#[cfg(test)]
 mod code_pages;
 
+#[cfg(test)]
 use code_pages::*;
