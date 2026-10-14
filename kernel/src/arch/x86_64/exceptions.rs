@@ -1027,12 +1027,59 @@ fn user_fault(frame: &TrapFrame, vector: u64) -> ! {
         frame.rsp,
         frame.error_code,
     );
+    if vector == 14 {
+        report_walk(address);
+    }
     crate::println!("  the kernel is fine.");
 
     // Deliver the fault to a supervisor if this thread had one, and become a corpse; otherwise this
     // is `exit`'s unsupervised path (Finished, reaped by the next thread). See DECISIONS §26 and
     // sched::depart. `frame.rip` is the faulting pc, `address` the faulting address.
     crate::sched::fault(frame.rip, address);
+}
+
+/// **What the hardware walked for a user page fault, level by level, beside the root this thread's
+/// own space has.** The error code says a page was not present, and not why: whether the live `CR3`
+/// was somebody else's, or the thread's own tables had lost the entry, and if so at which level and
+/// what was written there instead. merge-group run 38506029610 killed `date` mid-pipeline on a
+/// fetch from text it had just executed, and the report could say none of that (the BUGS entry
+/// "A user thread can lose the translation of its own text" in `notes/riscv-tlb-shootdown.md`).
+///
+/// Each table is printed with whether its frame is allocated now: a table the walk still reaches
+/// through a frame the allocator calls free was handed back while linked. The thread's own root
+/// comes from `sched::thread_space_root`, which only a `system_tests` build has, so a shipping
+/// kernel prints the walk and leaves the comparison out. Out of line and cold, so the trap path
+/// pays nothing until a thread dies.
+#[cold]
+#[inline(never)]
+fn report_walk(address: u64) {
+    let live = super::mmu::current_user_root();
+    #[cfg(feature = "system_tests")]
+    let own = crate::sched::thread_space_root(crate::sched::current());
+    #[cfg(not(feature = "system_tests"))]
+    let own: Option<u64> = None;
+    match own {
+        Some(own) if own != live => {
+            crate::println!("    cr3 root {live:#x}, NOT the thread's own root {own:#x}")
+        }
+        Some(_) => crate::println!("    cr3 root {live:#x}, the thread's own"),
+        None => crate::println!("    cr3 root {live:#x}"),
+    }
+    let walk = super::mmu::walk_user(live, address);
+    for (level, step) in walk.steps().iter().enumerate() {
+        let frame = match crate::memory::frame_is_allocated(step.table) {
+            Some(true) => "allocated",
+            Some(false) => "FREE",
+            None => "unmanaged",
+        };
+        crate::println!(
+            "      level {level}: table {:#x} ({frame}) [{}] = {:#018x}",
+            step.table,
+            step.index,
+            step.entry,
+        );
+    }
+    crate::println!("      walk ends: {:?}", walk.end());
 }
 
 /// **Turn an x86 exception into the portable [`UserFault`] both other architectures already
