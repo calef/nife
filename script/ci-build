@@ -145,8 +145,8 @@ test-x86_64|ci|script/test --arch x86_64 --no-host
 swish-check|local|cargo xtask std-exerciser && cargo xtask basalt-fetch && script/swish-check && script/swish-check --arch aarch64 --input-race
 swish-check-aarch64-riscv64|ci|cargo xtask std-exerciser && cargo xtask basalt-fetch && script/swish-check --arch aarch64 && script/swish-check --arch riscv64 && script/swish-check --arch aarch64 --input-race
 swish-check-x86_64|ci|cargo xtask std-exerciser && cargo xtask basalt-fetch && script/swish-check --arch x86_64
-rg-threads-aarch64-riscv64|ci|cargo xtask basalt-fetch && NIFE_RIPGREP_REQUIRED=1 cargo test -p walk_pricing && NIFE_RIPGREP_REQUIRED=1 NIFE_SMP=4 script/test --arch aarch64,riscv64 --test ripgrep
-rg-threads-x86_64|ci|cargo xtask basalt-fetch && NIFE_RIPGREP_REQUIRED=1 NIFE_SMP=4 script/test --arch x86_64 --test ripgrep
+rg-threads-aarch64-riscv64|ci|cargo xtask basalt-fetch && NIFE_RIPGREP_REQUIRED=1 cargo test -p walk_pricing && NIFE_RIPGREP_REQUIRED=1 NIFE_SMP=4 script/test --arch aarch64,riscv64 --test ripgrep && NIFE_IOPING_REQUIRED=1 script/test --arch aarch64,riscv64 --test unmodified_ioping
+rg-threads-x86_64|ci|cargo xtask basalt-fetch && NIFE_RIPGREP_REQUIRED=1 NIFE_SMP=4 script/test --arch x86_64 --test ripgrep && NIFE_IOPING_REQUIRED=1 script/test --arch x86_64 --test unmodified_ioping
 boot-check|local|script/boot-check
 hvf|local|hvf_leg
 fastpath-footprint|ci|script/fastpath-footprint
@@ -173,7 +173,11 @@ TABLE
 #                       it at `NIFE_SMP=4`, which nothing else boots for the suite, so there is
 #                       nothing warm to share. A developer runs them by name. `NIFE_RIPGREP_REQUIRED`
 #                       turns a missing `rg` from a skip into a failure, here and in `walk_pricing`'s
-#                       host check, which only the aarch64 row runs.
+#                       host check, which only the aarch64 row runs. The same rows then boot the
+#                       suite filtered to `unmodified_ioping`, at one core, because they have
+#                       already fetched basalt's ioping (milestone 906 (ioping is packaged in basalt)); `NIFE_IOPING_REQUIRED`
+#                       refuses its skip. An exception to the rows' names, kept because a row of its
+#                       own would provision a runner for one test.
 #   fastpath-footprint  builds two RELEASE kernels, which no other check builds, so there is
 #                       nothing warm to share and a developer would wait for a cold build.
 #   boot-file-size-check builds the release x86_64 UEFI image (a release kernel and archive, which

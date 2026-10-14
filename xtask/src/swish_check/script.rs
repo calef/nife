@@ -234,10 +234,53 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         ],
     ),
     line(1, "rg --version", &["ripgrep "]),
+    // **`ioping`, basalt's first C package** (milestone 906 (ioping is packaged in basalt, and its
+    // test installs it with `jig`)), on `ripgrep`'s terms: compiled by basalt against the C library
+    // at the nife commit basalt pins. Installed, it times five 4 KiB reads of a file its word
+    // names, and the file is its own installed program: unvouched, it is granted that file
+    // read-only and the clock page. Pointed at a directory, it would need to write a working
+    // file there. The kernel suite's `c_program_tests` runs the same assertions on the same bytes
+    // against a granted directory.
+    line(
+        1,
+        "jig install ioping",
+        &[
+            "fetched ioping-",
+            "from basalt.test over TLS",
+            "fetched and installed; generation 8 is live",
+        ],
+    ),
+    line(1, "ioping -v", &["ioping 1.3"]),
+    line(
+        1,
+        IOPING_LINE,
+        &[
+            "4 KiB <<< /packages/ioping/1.3/ioping ",
+            "request=1 ",
+            "request=5 ",
+            "(warmup)",
+            "ioping statistics ---",
+            "4 requests completed in ",
+            ", 16 KiB read, ",
+            "generated 5 requests in ",
+            "min/avg/max/mdev = ",
+        ],
+    ),
 ];
 
-/// The lines that need a repository from basalt (milestone 810), skipped without one outside CI.
-pub(super) const FROM_BASALT: &[&str] = &["jig install ripgrep", "rg --version"];
+/// The timed reads `jig install ioping` is followed by (milestone 906): `c_program_fixture::IOPING`'s
+/// flags, pointed at the installed program's own file rather than a directory.
+const IOPING_LINE: &str = "ioping -c 5 -i 0 -s 4k /packages/ioping/1.3/ioping";
+
+/// The lines that need a repository from basalt (milestones 810 and 906), skipped without one
+/// outside CI.
+pub(super) const FROM_BASALT: &[&str] = &[
+    "jig install ripgrep",
+    "rg --version",
+    "jig install ioping",
+    "ioping -v",
+    IOPING_LINE,
+];
 
 /// The text this gate types and what each line must answer. `None` is a line whose answer is
 /// checked by a later one rather than by itself, which is every line that writes a file.

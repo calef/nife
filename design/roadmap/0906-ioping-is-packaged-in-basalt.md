@@ -1,5 +1,5 @@
 ---
-status: NOT-STARTED
+status: PARTIAL
 raised: 2026-10-12
 milestone_dependencies: 835, 809, 810
 decision_dependencies: 297, 195, 197, 250
@@ -11,13 +11,20 @@ needs_person: no
 
 *(The title and slug are provisional.)*
 
+**PARTIAL, 2026-10-14 (UTC).** basalt builds ioping from a recipe that pins `ioping.c` by SHA-256
+and publishes one package per architecture. nife builds no ioping. On all three architectures under
+QEMU, every pull request's `swish-check` rows type `jig install ioping` against basalt's package,
+then time five reads with the installed program. The kernel suite times reads in a granted
+directory with the same bytes. Left, as for milestone 810: recording the package's digest in the
+recipe, which needs a reproducible build. "Built" below has the rest.
+
 calef, 2026-10-12 (UTC): *"They should all be installed via jig through basalt. I missed that for
 our benchmarking tools, so I created debt by prioritizing them first."* This is that debt for
 ioping. It is the sibling of milestone 810 (`ripgrep` is packaged in basalt and installed with
 `jig`). It is also the sibling milestone 897 (SQLite is packaged in basalt, and its tests run in
 basalt's package build) named for ioping.
 
-## What exists, checked 2026-10-12 (UTC)
+## What existed, checked 2026-10-12 (UTC)
 
 - `helpers/build-ioping.sh` fetches ioping 1.3's one C file, `ioping.c` at the `v1.3` tag, pinned
   by SHA-256, compiles it with `helpers/c-library-cflags.sh`, and links it through
@@ -50,6 +57,32 @@ basalt's package build) named for ioping.
 6. When the package is the only source, `helpers/build-ioping.sh` and the archive's packing of
    `target/ioping/` leave this tree.
 
+## Built 2026-10-14 (UTC)
+
+Lane `milestone/906-ioping-is-packaged-in-basalt`, with nifeos/basalt#17.
+
+- The recipe is basalt's `recipes/ioping.toml`: `ioping.c` at `v1.3` under the SHA-256 the helper
+  pinned, and the flags ioping's Makefile passes. A download that does not match is refused before
+  anything is compiled (item 1).
+- basalt's `helpers/packages.py` gained a C recipe shape. It compiles each `[[object]]` with the
+  pinned nife's `helpers/c-library-cc.sh` and `helpers/c-library-cflags.sh`, links with its
+  `helpers/build-c-program.sh` (which writes the manifest note), and strips symbols as ripgrep's
+  build does (items 2 to 4). The aarch64 package measured 278,240 bytes. The shape takes per-object
+  flags, so milestones 907 (hackbench) and 897 (SQLite) reuse it.
+- Item 5's finding: both, as milestone 810 did for `rg`. `cargo xtask basalt-fetch` takes ioping's
+  lines in `xtask/basalt-pins.index`, and the kernel archive carries the package's `bin/ioping`
+  member, accepted by `package_index::accept`. `unmodified_ioping_times_reads_in_a_granted_directory`
+  runs it with every assertion unchanged. CI's `rg-threads` rows run that test with
+  `NIFE_IOPING_REQUIRED=1`, so a missing package fails rather than skips.
+- `script/swish-check` types `jig install ioping`, `ioping -v`, and `ioping -c 5 -i 0 -s 4k` on
+  the installed program's own file. Unvouched, ioping is granted that file read-only and the clock
+  page. A directory would need a writable grant for ioping's working file, which its note does not
+  ask for.
+- `helpers/build-ioping.sh` and `target/ioping/` left the tree (item 6). `C_PROGRAMS` no longer
+  names ioping.
+- Documentation, for the later step that installs it: upstream ships a man page, `ioping.1`, at the
+  same `v1.3` tag. The package does not carry it.
+
 ## Exit
 
 On aarch64, riscv64 and x86_64: a nife at basalt's pinned commit runs `jig install ioping` against
@@ -62,9 +95,26 @@ Reuse: the helper's pinned fetch and flags, `helpers/build-c-program.sh`'s link,
 
 ## BUGS
 
-- `helpers/build-ioping.sh`'s header names `system_tests/src/user/ioping_tests.rs`, which does not
-  exist; the test is in `c_program_tests.rs`. Left for whoever next edits the helper.
-- basalt has no package build yet. This waits on milestone 810 for the first one.
+- The recipe records the source's digest, not the package's, as milestone 810's does. Recording
+  the package's needs a build reproducible across machines, which nobody has measured.
+- At the prompt ioping times reads of a file, not a directory: its unvouched note grants a named
+  word read-only. Milestone 834's read pass fits that. Its write pass needs a writable grant, which
+  unvouched bytes cannot hold, so 834 needs ioping's recipe to vouch for more (§195) before it
+  writes.
+- A nife change the pinned ioping cannot run on cannot pass CI on its own, as for `rg` (milestone
+  810's `BUGS`).
+
+## Follow-on
+
+- **Outstanding.** The package's digest in the recipe: needs a build reproducible across machines.
+  Checked 2026-10-14 (UTC): `recipes/ioping.toml` records the source's digest only, as ripgrep's
+  does.
+- **Recorded.** The prompt's ioping holds a named file read-only, so a write pass is refused,
+  beside the feature in this block's `BUGS`. Milestone 834's write pass needs §195's vouch.
+- **Milestone 907.** Milestone 907 (hackbench is packaged in basalt) takes the same C recipe shape
+  next, then milestone 897 (SQLite is packaged in basalt).
+- **Recorded.** The man page `ioping.1` waits on `jig` installing documentation, noted in "Built"
+  above for the milestone being minted for packaged documentation.
 
 ## Index row
 
