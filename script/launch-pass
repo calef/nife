@@ -1,0 +1,27 @@
+#!/bin/sh
+#
+# script/launch-pass: start one outsider pass at the confinement claim, pinned, with a record of
+# what ran.
+#
+#     script/launch-pass --reviewer glm --commit SHA      # GLM 5.3 through opencode
+#     script/launch-pass --reviewer fable --commit SHA    # Claude Fable through Claude Code
+#     script/launch-pass ... --dry-run                    # the clone and the prompt, no session
+#     script/launch-pass --complete RECORD --short-rows FILE   # the one completion round
+#     script/launch-pass --selftest                       # a fake harness; no model is called
+#
+# It clones the pinned commit standalone, builds the one prompt from the two briefs and refuses a
+# milestone number or a roadmap block in it, pins the model, and stops the session before the brief
+# goes out if the model the session reports is not the pin. The harness runs in a container inside
+# podman's Linux VM that sees only the clone, a results directory and the pass's own volume, with
+# the model's API key as its one secret (calef, 2026-10-14 UTC). The launch record (`launch.json`,
+# beside the clone, on the host) is what the pass note copies. helpers/launch_pass.py's header is the manual, and
+# briefs/confinement-outsider-pass.md says when to run it.
+#
+# Name: provisional, minted by milestone 920 (an outsider pass is launched pinned and floor-checked)'s
+# lane on 2026-10-14 (UTC). An action, so a verb, like `script/test` and `script/claim`. calef
+# names scripts; expect this to change.
+
+set -e
+
+ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+exec python3 "$ROOT/helpers/launch_pass.py" --tree "$ROOT" "$@"

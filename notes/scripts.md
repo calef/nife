@@ -136,6 +136,8 @@ Full rows: the appendices above.
 | `script/nanny` | Work the merge queue by delegating the rebases. |
 | `script/redo-rate` | How often delegated work has to be done again. |
 | `script/effort` | Machine effort spent per ISO week, from agent session records. |
+| `script/launch-pass --reviewer glm\|fable --commit <sha>` | Start one outsider pass, pinned to a commit and a model; `--complete` sends its one completion round ([outsider-passes.md](scripts/outsider-passes.md)). |
+| `script/booted-rows` | An outsider pass's booted rows against the brief's floor; `--short-only` for the completion round ([outsider-passes.md](scripts/outsider-passes.md)). |
 
 ## They are thin wrappers, on purpose
 
@@ -323,3 +325,4 @@ The directory and stems are provisional names; [the directory's README](scripts/
 | [one-kernel-test.md](scripts/one-kernel-test.md) | How the filter reaches the kernel; What the flag turns off |
 | [piped-gate.md](scripts/piped-gate.md) | a piped gate's exit status, and the fix |
 | [lint-job-rename.md](scripts/lint-job-rename.md) | the lint job, and the three steps that rename a required check |
+| [outsider-passes.md](scripts/outsider-passes.md) | `script/launch-pass` and `script/booted-rows`: full rows, EXAMPLES and BUGS |

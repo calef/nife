@@ -1,0 +1,23 @@
+#!/bin/sh
+#
+# script/booted-rows: how many claims-table rows an outsider pass booted, against the brief's floor.
+#
+#     script/booted-rows --checkout DIR --pinned SHA --log FILE... [--results FILE]
+#     script/booted-rows --short-only ...           # only the short rows: the completion round's message
+#     script/booted-rows --from-table NOTE.md       # replay a recorded pass from its per-row table
+#     script/booted-rows --selftest
+#
+# It prints one line per row with its grade, or the reason it does not count (`row 10: host only`),
+# and ends `booted N of 27, floor met` or `floor short by K`; the exit status says the same. The
+# rules are the floor's in briefs/confinement-outsider-pass.md, the row total is the claims table in
+# notes/confinement-claims.md, and helpers/booted_rows.py's header is the manual. The reviewer runs
+# it before it reports, and the lane runs it on its own reproduction logs before it records.
+#
+# Name: provisional, minted by milestone 920 (an outsider pass is launched pinned and floor-checked)'s
+# lane on 2026-10-14 (UTC). A report, so a noun, like `script/names` and `script/citations`. calef
+# names scripts; expect this to change.
+
+set -e
+
+ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+exec python3 "$ROOT/helpers/booted_rows.py" --tree "$ROOT" "$@"

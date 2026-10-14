@@ -3218,6 +3218,14 @@ echo "==> no line-number citations (§277: cite a heading or a symbol)"
 # block) is not a citation; anything else needs a marked exception. Fixtures first.
 python3 helpers/line_citations.py --selftest
 python3 helpers/line_citations.py --check
+echo "==> the outsider-pass floor checker and launcher selftests"
+# Milestone 920 (an outsider pass is launched pinned and floor-checked). script/booted-rows counts a
+# pass's booted rows against the floor in briefs/confinement-outsider-pass.md; its fixtures run
+# here, and so does its replay of pass 8 and pass 9, whose notes give 25 and 20. script/launch-pass
+# runs against a fake harness, so no model is called, and assembles each reviewer's prompt from the
+# real briefs: a brief edit that breaks the prompt, or puts a milestone number in it, fails here.
+python3 helpers/booted_rows.py --selftest >/dev/null
+python3 helpers/launch_pass.py --selftest >/dev/null
 echo "==> exception markers the ratchets honor (a warning, never a failure)"
 # A marked exception is the one way an item passes a ratchet's limit with no baseline row, so once a
 # ratchet's debt is gone it is the only way that debt comes back. helpers/exception_markers.py reads
