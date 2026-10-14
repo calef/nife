@@ -389,6 +389,19 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
             c_program_fixture::SPEEDTEST1_HASH,
         ],
     ),
+    // **`rmle`, the first first-party package basalt builds** (milestone 921 (rmle is packaged in
+    // basalt)): the editor's `[[bin]]`, built by basalt at the nife commit it pins, installed from
+    // basalt's index. It is not typed afterwards: no prompt line can start `rmle` yet, because only
+    // the kernel harness wires its raw terminal (`kernel/src/user/rmle_service.rs`).
+    line(
+        1,
+        "jig install rmle",
+        &[
+            "fetched rmle-",
+            "from basalt.test over TLS",
+            "fetched and installed; generation 15 is live",
+        ],
+    ),
 ];
 
 /// The run `jig install hackbench` is followed by (milestone 907): `c_thread_tests`' pipe run,
@@ -399,7 +412,7 @@ const HACKBENCH_LINE: &str = "hackbench -T -p -g 1 -f 2 -l 10";
 /// flags, pointed at the installed program's own file rather than a directory.
 const IOPING_LINE: &str = "ioping -c 5 -i 0 -s 4k ioping/1.3/ioping";
 
-/// The lines that need a repository from basalt (milestones 810, 906, 907 and 897), skipped
+/// The lines that need a repository from basalt (milestones 810, 906, 907, 897 and 921), skipped
 /// without one outside CI.
 pub(super) const FROM_BASALT: &[&str] = &[
     "jig install ripgrep",
@@ -411,6 +424,7 @@ pub(super) const FROM_BASALT: &[&str] = &[
     HACKBENCH_LINE,
     "jig install sqlite",
     c_program_fixture::SPEEDTEST1_MEMDB,
+    "jig install rmle",
 ];
 
 /// The text this gate types and what each line must answer. `None` is a line whose answer is

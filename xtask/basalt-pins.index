@@ -10,3 +10,6 @@ hackbench-2.11-x86_64 sha256:11621f4788e2b567b42542b4e80e0cd8bd9c51315078e4efb6d
 sqlite-3.50.4-aarch64 sha256:754a36f15923517f8f6819259764d3d7c9b63eadedb910d023782788e3e1a997 sectigo-root-e46=https://github.com/nifeos/basalt/releases/download/rolling-2026-10-14-85e15dd/sqlite-3.50.4-aarch64.nifepkg
 sqlite-3.50.4-riscv64 sha256:a71d5bd2e76e8d74c7dbb625b9665b72e860fb8cef131914db117538e7bec691 sectigo-root-e46=https://github.com/nifeos/basalt/releases/download/rolling-2026-10-14-85e15dd/sqlite-3.50.4-riscv64.nifepkg
 sqlite-3.50.4-x86_64 sha256:8632b0b330a06688f1cb5b056500951b2b9b21b55ded3718ef55d302c1d4e3f0 sectigo-root-e46=https://github.com/nifeos/basalt/releases/download/rolling-2026-10-14-85e15dd/sqlite-3.50.4-x86_64.nifepkg
+rmle-0.1.0-aarch64 sha256:cd60b6c4ace10a45f9535aff9c43d6e3e299228f0866932f77e02fefc4e29459 sectigo-root-e46=https://github.com/nifeos/basalt/releases/download/rolling-2026-10-14-0f4fc9d/rmle-0.1.0-aarch64.nifepkg
+rmle-0.1.0-riscv64 sha256:77b3531165826d729211fe238dddf1c5d7a7a23a8de98551ad15419d36dbebfd sectigo-root-e46=https://github.com/nifeos/basalt/releases/download/rolling-2026-10-14-0f4fc9d/rmle-0.1.0-riscv64.nifepkg
+rmle-0.1.0-x86_64 sha256:cb5687bb0fea28ac560668b63149afa86e1b9cebb4e5d4c0b4a042c3b0ec5fc6 sectigo-root-e46=https://github.com/nifeos/basalt/releases/download/rolling-2026-10-14-0f4fc9d/rmle-0.1.0-x86_64.nifepkg
