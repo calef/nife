@@ -52,12 +52,10 @@ pass-7 test attacks and says little about why that is enough.
   carried no finding. The second round finished at 22:36 UTC.
 - Commit. `643e0bef86a626d3be9e77e5369ee4c73e47d814`, the merge of #2035 that brings milestone
   824 (a retype mints no right its budget lacks) to main, the commit 913 attacks.
-- Results. Branch `claude/pass-9-confinement-run`, commits `0dc8d0c2` to `4d88d055`, with the
-  report at `pass-9-results.md` on the branch root. Eight new modules under `system_tests/src/user/`,
-  all named `pass9_*` (names provisional).
-- Trailers. The first round's five commits, `0dc8d0c2` to `5bb23c68`, end with
-  `Co-Authored-By: Claude Fable`, which is wrong; the second round's carry `Claude Opus 4.8`. The
-  report says so, and nothing pushed was rewritten.
+- Results. Eight modules under `system_tests/src/user/`, named `ninth_pass_*` on main (names
+  provisional). This note carries the reviewer's report; the report itself is not kept in the tree.
+- Trailers. Every reviewer commit on main ends with `Co-Authored-By: Claude Opus 4.8` and the
+  cloud session's `Claude-Session` link, naming the model that served it.
 - Host. Claude's cloud runner: `uname -m` x86_64, `nproc` 4, 28 GB free on `/`. Every leg ran
   under TCG. Setup matched 914's dry run: `script/ci-qemu` about 420 s after one `apt-get update`,
   bootstrap 47 s, and the cold `seventh_pass` aarch64 leg 405 s. No leg timed out and no QEMU was
@@ -67,14 +65,34 @@ Leg wall times, per module, warm:
 
 | Module | aarch64 | riscv64 | x86_64 |
 |---|---|---|---|
-| `pass9_confinement_tests` | 29 s | 79 s | 130 s |
-| `pass9_supervision_tests` | 33 s | 33 s | 69 s |
-| `pass9_mapping_tests` | 31 s | 31 s | 66 s |
-| `pass9_revocation_tests` | 21 s | 71 s | 117 s |
-| `pass9_elf_tests` | 26 s | 33 s | |
-| `pass9_el0_tests` | 28 s | 32 s | |
-| `pass9_port_tests` | | | 72 s |
-| `pass9_authority_tests` | 34 s | 33 s | 75 s |
+| `ninth_pass_confinement_tests` | 29 s | 79 s | 130 s |
+| `ninth_pass_supervision_tests` | 33 s | 33 s | 69 s |
+| `ninth_pass_mapping_tests` | 31 s | 31 s | 66 s |
+| `ninth_pass_revocation_tests` | 21 s | 71 s | 117 s |
+| `ninth_pass_elf_tests` | 26 s | 33 s | |
+| `ninth_pass_el0_tests` | 28 s | 32 s | |
+| `ninth_pass_port_tests` | | | 72 s |
+| `ninth_pass_authority_tests` | 34 s | 33 s | 75 s |
+
+## Reproduced on patagonia
+
+Every booted row's test reran on patagonia (Apple Silicon, macOS, QEMU 11.1.2, every leg under
+TCG), one ISA at a time with `script/test --arch <isa> --no-host --test <filter>`, first at the
+pinned commit and then on main. Every test held on both.
+
+Wall times include the build.
+
+| ISA | Tests | Wall time, pinned commit | Wall time, main |
+|---|---|---|---|
+| aarch64 | 13 of 13 | 132 s | 127 s |
+| riscv64 | 13 of 13 | 47 s | 35 s |
+| x86_64 | 18 of 18, on the direct and the OVMF leg | 62 s | 56 s |
+
+The reviewer graded rows 21 and 22 on aarch64 and riscv64 only, and their modules' comments said
+x86_64 packs no initial ramdisk. It packs one, so the three ELF forgeries and the kernel-text read
+run on x86_64 as well, and hold there.
+The x86_64 fault is a page fault whose error code says a user-mode read of a present page. The four
+port-range tests (rows 27 to 29 and 33) and the port-range arm of row 30 are x86_64 only.
 
 ## The claims
 
@@ -97,8 +115,8 @@ booted green, which the brief does not count. `read` and `host` mean source revi
 | 18 | The component plan's mapping of Use and Serve to rights, reviewed | held | read |
 | 19 | `dir_capability_tests`: parent, sibling and `..` from a `sub` capability | held | rerun, aarch64 |
 | 20 | `c_seam_tests`: a C out-of-bounds write faults | held | rerun, aarch64 |
-| 21 | The `outlaw` reads a kernel code address, not the rodata static the suite reads | held | booted, aarch64 and riscv64 |
-| 22 | Two-segment ELF forgeries (benign, then W+X or kernel-half) and a wrapping segment | held | booted, aarch64 and riscv64 |
+| 21 | The `outlaw` reads a kernel code address, not the rodata static the suite reads | held | booted, three ISAs |
+| 22 | Two-segment ELF forgeries (benign, then W+X or kernel-half) and a wrapping segment | held | booted, three ISAs |
 | 23 | A full budget builds, is deleted, and the same builds answer `NoSuchSlot` | held | booted, three ISAs |
 | 24 | `shell_navigation_tests`: two roots cannot name each other's files | held | rerun, aarch64 |
 | 25 | `compositor_tests`: no neighbor's pixels, no screen | held | rerun, aarch64 |
@@ -135,17 +153,11 @@ and it is why those rows fall short.
 
 - A Fable pass. 914's pass is still to run, on Fable, held to the same floor at the same pinned
   commit.
-- Reproduction. The lane has not rerun any of pass 9's booted rows on patagonia. It cannot from a
-  Linux cloud container, so every grade above is the reviewer's own.
 
 ## BUGS
 
-- Pass 9's tests are not on main. They stay on `claude/pass-9-confinement-run` until a lane
-  reproduces them on patagonia and brings them in with corrected trailers. Keeping a branch as the
-  only copy of code is an exception to the rule that a branch holds no knowledge, and a foot gun:
-  deleting that branch before then loses the tests.
 - The reviewer graded rows 19, 20, 24, 25 and 34 booted for a rerun, against the brief, and the
   report's own totals rest on that. Read its counts with this note's table.
-- Rows 21 and 22 booted on aarch64 and riscv64 only, and rows 27 to 29 and 33 apply to x86_64 only.
+- Rows 27 to 29 and 33 apply to x86_64 only.
 - Blind is honor only in the runner: `git fetch` reaches every branch. The report says it kept to
   its own branch, and nothing enforced that.
