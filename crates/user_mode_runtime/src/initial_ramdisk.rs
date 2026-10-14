@@ -37,6 +37,7 @@
 //! count, still a real reduction" case `smb_server.rs`, `swish.rs`'s terminal pair and
 //! `display_terminal.rs`'s `paint` already were in this milestone's earlier rounds.
 //!
+
 //! Name: ratified 2026-10-08 (calef, #1842, milestone 139 (drive the unsafe count down) round 9's
 //! question 2), with [`bytes`]. His words: "Yes". Refused `initrd` (round 6's provisional name).
 //!

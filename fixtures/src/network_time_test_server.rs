@@ -25,6 +25,7 @@
 //! real internet time server: nothing in QEMU's slirp answers UDP 123, and pointing the gate at a
 //! public server would make it depend on somebody else's network.
 //!
+
 //! # The wiring, and the one report
 //!
 //! `a0` selects an [`srv`] variant, `a1` is the wall-clock nanoseconds it claims to have. **The

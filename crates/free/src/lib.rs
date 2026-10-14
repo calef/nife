@@ -32,6 +32,7 @@
 //! $ free       free: the machine's owner has not granted the machine statistics page
 //! ```
 //!
+
 //! # BUGS
 //!
 //! - No `shared`, `buff/cache` or `available` columns: the kernel has no page cache and no shared

@@ -183,42 +183,6 @@ impl BlockCache {
     }
 }
 
-/// **A [`Disk`] wrapping another, caching single-block reads** (milestone 138 step 2). Built to
-/// close the residual steps 1, 3 and 4 all left standing: `Transaction::read_tree_and_addr`'s
-/// four-level tree walk plus the target node, five single-block reads issued fresh on every
-/// `Server::read`/`write`/`fstat`/... call even when the last call resolved the very same node
-/// (notes/benchmarks/read-path-block-contract-and-metadata-cache.md, "the same five blocks every
-/// time"). Nothing below [`CachedDisk`] changed to make this true; it was always true of
-/// `Transaction::read_tree`, and steps 1, 3 and 4 all left it alone because none of them touch how
-/// a node is found, only what is done once it is.
-///
-/// # Why single blocks only, and why write-through rather than read-through-and-forget
-///
-/// **Only a `buffer.len() == BLOCK` read consults the cache.** A record body ([`BlockDisk`] and the
-/// EL0 binary's `IpcDisk` both call `Disk::read_at`/`write_at` with a multi-block buffer for one) is
-/// already the batched call step 4 built, and caching a whole record would spend far more of this
-/// process's small heap budget for far less repetition: a record is read once per access, not five
-/// times per access the way the tree spine is. Bypassing the cache for anything wider than one
-/// block keeps the memory this type owns proportional to the metadata working set it targets, not
-/// to the data moving through it.
-///
-/// **A write updates the cache rather than only invalidating it**, once the write to the inner disk
-/// has actually succeeded (never before: caching bytes a write has not been confirmed to have
-/// landed would make the cache lie about a write that failed partway). A short final chunk (the
-/// same case [`BlockDisk`]'s doc names) still touches one whole block on the platter through a
-/// read-modify-write below this type, and this type was not given the merged result, so it
-/// invalidates that block's slot instead of caching a guess.
-///
-/// # What makes it safe against RedoxFS's copy-on-write allocator
-///
-/// RedoxFS never rewrites a live block in place: a change always lands at a **freshly allocated**
-/// address and the old one is only deallocated, never immediately reused, until a later allocation
-/// claims it (`Transaction::allocate`/`deallocate`). So a cache entry for an address can only ever
-/// go stale by that same address being **written**, and this type's [`Disk::write_at`] is the only
-/// path a write reaches the platter through; there is no way for the bytes at a cached address to
-/// change without this type observing it and updating or invalidating the entry in the same call.
-/// This is the property that makes a bare write-through cache correct here without a generation
-/// counter or a fencing scheme: one process, one `Disk` impl, every write funnelled through it.
 /// **Whether `block` is one [`CachedDisk`] keeps** (milestone 606): everything but the header ring.
 ///
 /// The ring's 256 blocks are read once, all of them, when the image is mounted, and after that
@@ -231,6 +195,22 @@ fn cacheable(block: u64) -> bool {
     block >= redoxfs::HEADER_RING
 }
 
+/// **A [`Disk`] wrapping another, caching single-block reads** (milestone 138 step 2).
+/// `Transaction::read_tree_and_addr`'s four-level tree walk plus the target node is five
+/// single-block reads on every `Server::read`/`write`/`fstat` call, even for the node the last call
+/// resolved (notes/benchmarks/read-path-block-contract-and-metadata-cache.md).
+///
+/// **Only a `buffer.len() == BLOCK` read consults the cache.** A multi-block record body is read
+/// once per access, so caching it would spend this process's small heap for little repetition; the
+/// cache stays proportional to the metadata working set.
+///
+/// **A write updates the cache only after the inner write succeeded**, so the cache never holds
+/// bytes a failed write did not land. A short final chunk is a read-modify-write below this type
+/// whose merged result it never sees, so that block's slot is invalidated instead.
+///
+/// **Safe against RedoxFS's copy-on-write allocator without a generation counter**: RedoxFS never
+/// rewrites a live block in place, so a cached address goes stale only by being **written**, and
+/// this type's [`Disk::write_at`] is the only path a write reaches the platter through.
 pub struct CachedDisk<D> {
     inner: D,
     cache: BlockCache,

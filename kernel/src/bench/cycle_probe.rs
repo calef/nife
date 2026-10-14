@@ -13,22 +13,16 @@ use super::*;
 /// **What one tick of this machine's clock costs in CPU cycles** (milestone 74's riscv64 and aarch64
 /// halves, milestone 309's `x86_64` half).
 ///
-/// Every row of a board bench is denominated in ticks of `crate::arch::timer::now()`, a fixed-rate
-/// reference counter. The literature this project is compared against is denominated in **cycles**:
-/// notes/benchmarks.md converts by hand, against an assumed clock rate, and milestone 74's block is
-/// largely about how badly that has gone. One measured ratio converts every existing row at once,
-/// which is why this is the harness change rather than a second number on every line.
+/// Board bench rows are in ticks of `crate::arch::timer::now()`, a fixed-rate reference counter;
+/// the literature is in **cycles**, and one measured ratio converts every row at once.
 ///
-/// **A probe, not a benchmark row.** It is a rate, not a duration, and `--check` policing it with a
-/// 10% tolerance would fail on any machine that scales frequency, which is every machine this is
-/// interesting on. `bench-probe:` lines are echoed and never enter the baseline; see `map_new`.
+/// **A probe, not a benchmark row**: a rate that moves with frequency scaling. `bench-probe:` lines
+/// are echoed and never enter the baseline; see `map_new`.
 ///
 /// # The numerator and the denominator are different on each architecture, and the line says so
 ///
-/// This is the whole hazard milestone 309 was written to avoid, and it is the kind that cannot be
-/// un-published: a rate printed under one name on three machines will be compared across them.
-/// A second `cycles_per_tick_means` line is therefore printed beside the number on every
-/// architecture, naming both halves of the ratio in that machine's own vocabulary.
+/// A rate printed under one name on three machines will be compared across them, so a
+/// `cycles_per_tick_means` line beside the number names both halves of the ratio.
 ///
 /// - **`riscv64`.** Core cycles (SBI PMU `CPU_CYCLES`) over ticks of the `time` CSR, a timebase the
 ///   device tree states: 10 MHz on QEMU `virt`, 4 MHz on radon's JH7110.
@@ -38,21 +32,16 @@ use super::*;
 ///   2026-10-07 (UTC) in design/roadmap/0353-the-aarch64-half-of-74.md. That is user plus kernel,
 ///   the quantity the other two architectures count, and the meaning line names it.
 /// - **`x86_64`.** Unhalted core cycles (`IA32_PERF_FIXED_CTR1`) over TSC ticks. **The TSC is
-///   constant-rate and core cycles are not**, so this ratio moves with frequency scaling and turbo
-///   on a machine that does either. That is information rather than noise, and it is exactly why
-///   the TSC alone cannot answer this question: `arch::timer::now()` on this architecture *is*
-///   `rdtsc`, so a probe built on it would divide one counter by itself and print `1.00`. See
-///   `arch::x86_64::pmu`'s header.
+///   constant-rate and core cycles are not**, so this ratio moves with frequency scaling, which is
+///   information: `arch::timer::now()` here *is* `rdtsc`, so the TSC alone would print `1.00`.
+///   See `arch::x86_64::pmu`'s header.
 ///
 /// # What this measures under emulation, which is nothing
 ///
 /// QEMU-TCG's `riscv64` `cycle` CSR is an instruction count, and its `x86_64` build models no
-/// performance monitoring at all unless asked. The ratio printed on the merge machine is therefore
-/// a fact about the emulator and not about any silicon, and the line says so itself rather than
-/// leaving a reader to infer it from the milestone. The number is real only on a real core, which
-/// for this harness today means the JH7110 (radon) and nothing else it runs on;
-/// notes/riscv-cycle-counters.md is the riscv64 procedure and design/roadmap/0309-x86-64-core-cycles.md
-/// is the `x86_64` one.
+/// performance monitoring unless asked, so the ratio under emulation is a fact about the emulator,
+/// and the line says so. notes/riscv-cycle-counters.md and
+/// design/roadmap/0309-x86-64-core-cycles.md are the procedures on a real core.
 ///
 /// # Why the window is a timed spin
 ///

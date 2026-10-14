@@ -27,6 +27,7 @@
 //! it serves** (slot 2), a page an application writes text into, and its own pixels. No device, no
 //! interrupt, no DMA authority, no physical address, and no way to name another client's anything.
 //!
+
 //! # One endpoint, because this process has one wait point
 //!
 //! A terminal has two classes of sender: an application printing, and an input source typing.

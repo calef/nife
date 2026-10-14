@@ -34,6 +34,7 @@
 //!   clock service at EL0 (a power-management story would want one), that is a decision taken on
 //!   its own evidence and not one this forecloses.
 //!
+
 //! # SAFETY, and the one rule that keeps it true
 //!
 //! [`bring_up`] stores to whatever address it is given. `STG_BASE`'s fallback in the pure crate

@@ -32,6 +32,7 @@
 //!   refuses to start one at all where it cannot.
 //! - **Every endpoint but three.** No budget, no filesystem, no console, no clock.
 //!
+
 //! # BUGS
 //!
 //! - **The attach handshake is a blocking send.** If the driver died between its report and its

@@ -37,6 +37,7 @@
 //! - **`interrupts-extended` (the property, on the device) is not read.** No tree this kernel
 //!   meets puts it on a UART; the PLIC's own use of it is [`crate::plic`]'s.
 //!
+
 //! Name: provisional (`interrupt_id` for the module, following `cpu_list`'s pattern of a shared
 //! question beside the two arch records; the GIC spelling "INTID" is where the noun comes from).
 

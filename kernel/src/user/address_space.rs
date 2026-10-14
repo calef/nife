@@ -318,13 +318,9 @@ impl AddressSpace {
     /// client's and a server's.
     ///
     /// **The mapping is recorded** (`under`), because a mapping revocation cannot see is the
-    /// DECISIONS §13 (capability revocation and untyped reclamation) use-after-free, and until
-    /// 2026-09-21 this function was the one mapping site in the kernel that recorded nothing. The
-    /// paragraph above is about `Drop` and frame *ownership*, which is a different question that a
-    /// reader can easily take this for: not freeing a frame and not being able to unmap it are
-    /// unrelated, and the tree read the first as covering the second for as long as this function
-    /// existed. An unrecordable mapping is unmapped and refused as `OutOfPageFrames`, exactly as at
-    /// the `PageFrame::MAP` syscall, because the alternative is a mapping no sweep can reach.
+    /// DECISIONS §13 (capability revocation and untyped reclamation) use-after-free. Not freeing a
+    /// frame (the paragraph above) and not being able to unmap it are unrelated. An unrecordable
+    /// mapping is unmapped and refused as `OutOfPageFrames`, as at the `PageFrame::MAP` syscall.
     ///
     /// `under` says which capability's authority made this mapping, and it is a required argument
     /// with no default for [`crate::revoke::PageMapSource`]'s own reason (AGENTS.md's ladder, rung
@@ -334,14 +330,9 @@ impl AddressSpace {
     /// single-page revoke of it finds the record. [`user_address_space_map`] is the one caller that
     /// passes a capability through, because the `MAP_INTO` syscall has one to pass.
     ///
-    /// **What the defect was, since a reader will meet the fix without the failure.** Every unmap
-    /// sweep in `crate::revoke` is driven by the mapping log, so a page wired here was invisible to
-    /// `PageFrame::REVOKE`, `DeviceFrame::REVOKE` and `MemoryRegion::DESTROY` alike: the capability
-    /// went and the mapping stayed. Recorded by risk 7's adversarial pass as latent; it was not.
-    /// [`fs_service::spawn_fs_server`](crate::user::fs_service) wires the file channel's shared
-    /// pages into the FS server through `Spawn::maps`, and [`boot_progenitor`] hands the progenitor
-    /// `PageFrame(file_shared, 1)` with `GRANT` over the first of them, so `PageFrame::REVOKE` on
-    /// that slot left the FS server writing to a page the progenitor had just un-shared.
+    /// Every unmap sweep in `crate::revoke` is driven by the mapping log, so an unrecorded page
+    /// here would survive `PageFrame::REVOKE` of a frame shared through `Spawn::maps` (the FS
+    /// server's file channel, which [`boot_progenitor`] also grants the progenitor).
     /// `user::spawn_mapping_revocation_tests` is the falsification.
     ///
     /// # BUGS

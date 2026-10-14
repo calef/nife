@@ -761,13 +761,8 @@ pub fn deactivate_user() {
 ///
 /// # Why this has no caller in the running kernel
 ///
-/// It had one: the kernel's own `console::write` syscall, which read a user's bytes on the user's
-/// behalf and needed this check to avoid being exactly the deputy described above. That syscall
-/// left the kernel with the console driver (DECISIONS §21 moved the terminal to userspace), and
-/// the data path is shared memory now, with the kernel not on it. **No syscall in today's ABI
-/// dereferences a user pointer**, which is the reason the check is idle and also a fact worth
-/// stating out loud, because it is a property of the narrow surface (§4 rule 3) rather than an
-/// accident.
+/// **No syscall in today's ABI dereferences a user pointer** (data moves through shared memory),
+/// a property of the narrow surface (§4 (kernel shape) rule 3) rather than an accident.
 ///
 /// It is kept, not speculative, and it is **proved rather than merely allowed**:
 /// `system_tests::user::tests::the_hardware_says_el0_cannot_read_the_kernels_memory` asserts the

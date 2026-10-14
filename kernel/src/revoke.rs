@@ -445,19 +445,11 @@ pub fn forget_root(root: u64) {
 ///
 /// Every sweep in this module runs two passes in one order: capabilities first (`sched`, under
 /// `IPC_TABLES` and each table's lock), then the unmap pass, which takes this registry and unmaps
-/// what the log holds *when it scans*. A `PageFrame::MAP` or `AddressSpace::MAP_INTO` used to read
-/// its frame capability in a critical section of its own, then build page tables, map and record.
-/// A sweep could run wholly between the read and the record: it deleted the capability, scanned a
-/// log the mapping was not yet in, and left the mapping live. Under `PageFrame::REVOKE` that was
-/// authority the revoker had taken back; under `MemoryRegion::DESTROY` it was a mapping of a page
-/// the allocator then handed to somebody else, the use-after-free §13 (capability revocation and
-/// untyped reclamation) exists to prevent. §13 named it ("the one honest race") in 2026-07 and
-/// deferred it to seL4's answer, a mapping-database lock held across the whole operation. This is
-/// that lock, and it was already there: the registry every unmap pass takes.
-/// `system_tests::user::map_revocation_window_tests` drove a sweep into the gap on both paths under
-/// both sweeps, and all four kept the mapping. `MemoryRegion::MAP` had the same window against a
-/// region's `DESTROY` (a retype before the claim, a record after the scan), and it is closed here
-/// the same way.
+/// what the log holds *when it scans*. A `MAP` that read its capability, then mapped and recorded
+/// in separate critical sections, would let a sweep run wholly between: the use-after-free §13
+/// (capability revocation and untyped reclamation) exists to prevent. This registry is seL4's
+/// answer, a mapping-database lock held across the whole operation
+/// (`system_tests::user::map_revocation_window_tests`).
 ///
 /// **The invariant now is that a mapping of a capability's frame is made and recorded under the
 /// same hold the capability was read under.** [`MappingHold::current_cap`] is the read, and it
@@ -472,11 +464,8 @@ pub fn forget_root(root: u64) {
 /// **Held across page-table construction**, which is the cost: tables come from a region
 /// (`MEMORY_REGION`, 58, beneath this), and a run maps every page under one hold, so every other
 /// mapping and every unmap pass on the machine waits behind it. `MAP` is spawn-time and setup work,
-/// never a step of the IPC round trip. On one hart it is cheaper, not dearer, because a run now
-/// takes the registry once rather than once per page: riscv64 icount, 2026-10-04, `map_el0` 120 to
-/// 113 ticks a map (-6.3%) and `spawn_el0` 2,221 to 2,208 a spawn (-0.6%), every other row within
-/// one tick. What the longer hold costs under contention is not measured; it is a held lock on
-/// `MAP`, which no benchmark here runs from two cores at once.
+/// never a step of the IPC round trip; on one hart a run takes the registry once rather than per
+/// page, so it is cheaper. The cost under contention is not measured.
 ///
 /// # BUGS
 ///
@@ -655,10 +644,8 @@ pub enum Listing {
 
 /// **One entry of what `root` has mapped, resuming from `cursor`** (`abi::address_space::LIST`,
 /// milestone 126 (the `procps` package: who else is running)'s `pmap`, DECISIONS §114 (`pmap`
-/// gets its listing: `ENUMERATE` extends to the address-space object)). [`Listing::Done`] means
-/// done, the same
-/// `abi::survey::DONE` convention `SURVEY` uses on the endpoint side: start with `cursor = 0`,
-/// feed each returned cursor back, stop when it comes back done.
+/// gets its listing: `ENUMERATE` extends to the address-space object)). [`Listing::Done`] is the
+/// `abi::survey::DONE` convention: start with `cursor = 0`, feed each returned cursor back.
 ///
 /// **Reads the space's own revocation log rather than walking page tables**, which is the same
 /// move `ps` makes over `/proc`: the kernel already keeps this record for reclamation, so
@@ -689,12 +676,8 @@ pub enum Listing {
 /// only ever `page_phys | index` for a page in this space's chain, so membership is the whole
 /// check. One `SPACES` hold covers finding the space, the membership walk from its head, and the
 /// listing walk, so a space cannot die and have its root page come back as another space's log
-/// between the check and the follow (the check-then-act shape this walk had as a separate
-/// function for one day, 2026-10-06 UTC, found by review). Without the check a caller-chosen
-/// cursor named any kernel-mapped page and the walk treated it as a log page: at best a kernel
-/// data abort, at worst the page's contents returned as mapping records. Found by milestone
-/// 779 (fuzz the surface a confined process can reach)'s confined fuzzer (seed 0x14, 2026-10-06
-/// UTC), whose `LIST` draws made the cursor a random word.
+/// between the check and the follow. Without the check a caller-chosen cursor names any
+/// kernel-mapped page, and the walk would return its contents as mapping records.
 pub fn list_mapping(root: u64, cursor: u64) -> Listing {
     let mut spaces = SPACES.lock();
     let Some(space) = spaces.live_mut().find(|s| s.root == root) else {
@@ -939,8 +922,7 @@ pub fn revoke_port_range(base: u16, count: u16) {
 }
 
 /// Revoke every page in `[base, base + size)`. `memory_region::destroy` calls this before
-/// returning a region to the allocator, which is what turns the old "spend-only, never reused"
-/// invariant into the stronger "no live mapping survives" one that makes reuse actually safe.
+/// returning a region to the allocator, so no live mapping survives reuse.
 ///
 /// **Two passes, at two granularities, and the split is the point.** The capability sweep is over
 /// the whole range **once**, up front, and it matches by overlap rather than by object equality
@@ -948,14 +930,8 @@ pub fn revoke_port_range(base: u16, count: u16) {
 /// sweep stays per-page and mapping-log-driven, because the log is per-page and says nothing about
 /// which capability produced an entry.
 ///
-/// Doing capabilities first, for the whole range, is the same ordering [`revoke_page_frame`]
-/// documents one function up, applied at range scale: a `PageFrame::MAP` that starts after the
-/// sweep has no capability left to map with, so it cannot re-establish a mapping the unmap pass
-/// would then miss.
-///
-/// It also fixes what the per-page version could not see. That version deleted capabilities one
-/// *mapped* page at a time, so a capability naming a page nobody had mapped was never a candidate:
-/// the log had no record to find it by. A range sweep does not consult the log, so a
+/// Capabilities first, as [`revoke_page_frame`] does: a `PageFrame::MAP` that starts after the
+/// sweep has no capability left to map with. The sweep does not consult the log, so a
 /// retyped-but-never-mapped frame in a destroyed region loses its capability too.
 ///
 /// The unmap pass is one page per iteration: find a recorded page in range under the registry lock,
@@ -968,32 +944,23 @@ pub fn revoke_port_range(base: u16, count: u16) {
 /// **Then the tables, because page tables are not leaves.** `PageFrame::MAP` and
 /// `MemoryRegion::MAP` build a space's intermediate tables out of a region the caller names, which
 /// need not be the space's own, so the region going away can be a page table going away under a
-/// space that still walks it. The map-revocation-window lane reasoned this from the code on
-/// 2026-10-04 UTC; the page-tables-outlive-destroy lane drove it on 2026-10-05 UTC
-/// (`system_tests::user::page_table_region_tests`: before this pass the space still translated
-/// through a table the region had given back, and a later map wrote its leaf into it). Each such
-/// table is in the space's log as a [`TABLE`] record ([`MappingHold::retype_table`]), and this
-/// pass cuts each one in the range out of the walk that reaches it, flushes the space's tag, and
-/// tombstones the records of everything that hung beneath it, under the registry so no `MAP` is
-/// halfway through that walk. The space keeps running and loses that span, which is what already
-/// happens to a leaf the region paid for. One record per iteration, tombstoned as it is taken, so
-/// the scan strictly shrinks; a table below one already cut answers `None` and is simply dropped.
+/// space that still walks it (`system_tests::user::page_table_region_tests`). Each such table is in
+/// the space's log as a [`TABLE`] record ([`MappingHold::retype_table`]), and this pass cuts each
+/// one in the range out of the walk that reaches it, flushes the space's tag, and tombstones the
+/// records of everything that hung beneath it, under the registry so no `MAP` is halfway through
+/// that walk. The space keeps running and loses that span, which is what already happens to a leaf
+/// the region paid for. One record per iteration, tombstoned as it is taken, so the scan strictly
+/// shrinks; a table below one already cut answers `None` and is simply dropped.
 ///
 /// # BUGS
 ///
-/// - **An address space's root is a page table too, and nothing here cuts it** (found by the
-///   page-tables-outlive-destroy lane, 2026-10-05 UTC). The root of a space
-///   `RETYPE_OBJ(ADDRESS_SPACE)` built lives in the region it was built from, and `CONFIGURE` binds
-///   that space to a thread whose TCB can come from another. `sched::reclaim_region` reaps a bound
-///   space only through its thread's TCB, so destroying the space's region while the thread lives
-///   frees the root it runs on. Driven once on aarch64 by a scratch test (a kernel thread adopting
-///   such a space): `reclaim_region` answered `Ok`, and the thread went on running on the freed
-///   root. The `CONFIGURE` route from userspace is reasoned. Nothing can be cut, because no entry
-///   points at a root, so the fix is a choice of who dies or who refuses. calef ruled 2026-10-05
-///   (UTC) that the thread dies as a resident as recorded in §16 (object revocation),
-///   amended that date; milestone 765 (a
-///   destroyed region cannot free the root a running thread walks),
-///   `design/roadmap/0765-a-destroyed-region-cannot-free-a-running-root.md`, builds it.
+/// - **An address space's root is a page table too, and nothing here cuts it.** The root lives in
+///   the region the space was built from, and `CONFIGURE` binds the space to a thread whose TCB can
+///   come from another; `sched::reclaim_region` reaps a bound space only through its thread's TCB,
+///   so destroying the space's region while the thread lives frees the root it runs on (driven once
+///   on aarch64 by a scratch test). calef ruled 2026-10-05 (UTC) that the thread dies as a
+///   resident, recorded in §16 (object revocation); milestone 765 (a destroyed region cannot free
+///   the root a running thread walks) builds it.
 pub fn revoke_region(base: u64, size: u64) {
     crate::sched::delete_page_frame_caps_overlapping(base, size);
     // One scan finds either kind of record, so the common case (nothing left) costs one pass over

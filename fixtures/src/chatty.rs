@@ -32,6 +32,7 @@
 //! capability carries `WRITE` and not `READ`, and the same object handed out with different rights
 //! is a one-way pipe in whichever direction each holder was trusted with. It reports the refusal.
 //!
+
 //! Name: provisional, and ruled: calef ruled **`swap_boundary_witness`** on 2026-09-13, working
 //! the unratified worklist. The block stays `provisional` for the reason `flaky`'s does: the
 //! ratified name is not this file's until the rename is performed, and this one travels with

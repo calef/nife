@@ -70,20 +70,12 @@ pub const PROGENITOR_ROLE: u64 = 27;
 /// run on the scheduler while the boot thread parks.
 ///
 /// **The capability slot layout is the same on all three architectures** (milestone 166's point):
-/// the delegable root budget at slot 0, the console device at slot 1, the UART receive interrupt at
-/// slot 2, the wall clock page read-only at slot 3 (milestone 51's wiring), the inert-configuration
-/// page read-only at slot 4 (milestone 47's environment-variable fork, DECISIONS §111), the file
-/// service and the page its clients share at slots 5 and 6 when a RedoxFS disk is attached (milestone
-/// 50), the virtio-rng trio at 7-9, the graphical terminal stack at 10-12 and the virtio-net trio
-/// at 13-15 (milestone 590 (the booted system starts its network stack)) when each is present.
-/// That fills sixteen of the table's
-/// thirty-two slots at spawn (the GPU and keyboard grants at 17-22 and the machine statistics page
-/// at 23 came later, the progenitor's own address space at 28, §249, later still, and the reboot
-/// object at 31, milestone 805, last), which is why the progenitor spends the net trio before anything else.
-/// `components/src/progenitor.rs`'s single `GRANTS` table reads exactly this. Until milestone 166
-/// aarch64's boot carried two extra capabilities at slots 1 and 3 (a report endpoint and a test
-/// interrupt) that the interactive system never used, only because its loader was shared with
-/// milestone 19d's test roles; [`spawn_hello`] is that shared role path, now boot-free.
+/// the root budget at slot 0, the console device at 1, the UART receive interrupt at 2, the clock
+/// page at 3, the inert-configuration page at 4, the file service and its page at 5 and 6, the
+/// virtio-rng trio at 7-9, the graphical terminal stack at 10-12, the virtio-net trio at 13-15, the
+/// GPU and keyboard grants at 17-22, the machine statistics page at 23, the progenitor's own
+/// address space at 28 and the reboot object at 31, each when present.
+/// `components/src/progenitor.rs`'s single `GRANTS` table reads exactly this.
 ///
 /// **Only two differences are the hardware's, and only those are `#[cfg]`-gated**:
 /// - **The console device (slot 1).** aarch64 and riscv64 grant the UART's registers as a
@@ -100,14 +92,9 @@ pub const PROGENITOR_ROLE: u64 = 27;
 ///
 /// Returns the progenitor's thread, so the caller can say how it left.
 ///
-/// Name: ratified 2026-09-15 (calef, this header). Refused `boot_via_progenitor` (the provisional
-/// name from milestone 268, whose `via` did two jobs and has spent both: it disambiguated this entry
-/// from aarch64's separate boot path, which milestone 166 unified away, and it gestured at the
-/// microkernel indirection, which the sentence "on this path the progenitor **is** the system" says
-/// better than a preposition in a name can). `boot` is the term-of-art verb and `progenitor` the
-/// noun it acts on, so the name claims this function's own action, load the `progenitor` program,
-/// measure it, and start it, rather than the system bring-up `progenitor` itself does next. Greps
-/// with [`PROGENITOR_ENTRY`] and [`PROGENITOR_ROLE`] as one family.
+/// Name: ratified 2026-09-15 (calef, this header): `boot` the verb, `progenitor` the noun it acts
+/// on, greppable with [`PROGENITOR_ENTRY`] and [`PROGENITOR_ROLE`]. Refused `boot_via_progenitor`
+/// (its `via` disambiguated a separate aarch64 boot path that no longer exists).
 // One caller per architecture, all in `kernel::main`'s hand-off (aarch64's default boot, and
 // `riscv_hand_over`/`x86_hand_over`). The `allow` is kept for the configurations that reach none of
 // them: a `soak` or `job_mix` build replaces the hand-off with its own workload, and `test`/`bench`

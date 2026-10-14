@@ -13,6 +13,7 @@
 //! is `iters` divided by the wall-clock the caller measures around it. The dataset is a few kilobytes
 //! (CoreMark's small-memory profile), so it stays cache-resident and fits a small userspace stack.
 //!
+
 //! # Examples
 //!
 //! How a caller scores a machine, and the two things about this crate that make the score mean

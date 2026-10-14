@@ -116,24 +116,10 @@ pub fn trap() -> ! {
 ///
 /// # Why a macro and not a plain item in this crate
 ///
-/// A `#[panic_handler]` is per-final-binary: exactly one may exist in a linked program, so a
-/// library that defines one forces it on every binary that links the library and collides with any
-/// binary wanting its own. That constraint is real and this crate's header has recorded it since
-/// milestone 19f.6. A macro keeps it: nothing is defined until a binary asks, and a program with
-/// its own handler simply does not invoke this.
-///
-/// What the header got wrong, and what milestone 130 is fixing, is the clause after it: "each
-/// binary keeps its own one-line handler; it is trivial." It stopped being one line. By the time
-/// anyone counted it was fifteen, with two `unsafe` blocks and two `// SAFETY:` comments, at
-/// forty-eight sites across `user/`, `crates/` and `redoxfs_server/`, in **seven** variants. One of
-/// them (`terminal_sink_caretaker`) called `exit` instead of trapping, which reports a clean death
-/// for a panicking program; it was latent only because that program happens to be spawned
-/// unsupervised.
-///
-/// So the decision not to put a *handler* in a library was right, and the inference that each
-/// binary must therefore hand-roll the *trap* did not follow. The trap belongs here, in the crate
-/// whose header calls itself the one place in userspace that names the two ABIs, and the macro is
-/// what lets that be true without breaking the linking property.
+/// A `#[panic_handler]` is per-final-binary: a library that defined one would force it on every
+/// binary that links the library. A macro defines nothing until a binary asks, and a program with
+/// its own handler does not invoke it. The *trap* still belongs in this crate, the one place in
+/// userspace that names the two ABIs, rather than hand-rolled with `unsafe` in every binary.
 ///
 /// # Examples
 ///

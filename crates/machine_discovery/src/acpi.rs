@@ -37,6 +37,7 @@
 //! including PCI interrupt routing (`_PRT`) and every power-management method. AML needs an
 //! interpreter, which is a project rather than a parser, and nothing in this kernel needs it yet.
 //!
+
 //! # BUGS
 //!
 //! - **Nothing validates that two tables do not overlap**, or that a table's length is sane

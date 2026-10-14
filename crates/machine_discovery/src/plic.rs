@@ -31,6 +31,7 @@
 //!    `thead,c900-plic` (Linux `th1520.dtsi`, read 2026-09-25 for milestone 89 (Scaleway EM-RV1:
 //!    a second RISC-V implementation, rented)).
 //!
+
 //! # BUGS
 //!
 //! - **Entries are assumed to be two cells wide** (one phandle cell, one interrupt cell), which is

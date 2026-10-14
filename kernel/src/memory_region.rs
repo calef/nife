@@ -23,6 +23,7 @@
 //! own objects went fixed instead of untyped-backed (TCBs in a static pool, endpoints in a
 //! fixed table; notes/tcb.md records why retype earns nothing while the kernel is the only
 //! payer). What remains heap-backed is the revocation database, phase C's work.
+//!
 
 //!
 //! # Where the bookkeeping lives (milestone 135)
@@ -62,9 +63,8 @@ use crate::sync::{IrqSafeMutex, rank};
 /// # The ledger: what holds regions at the peak
 ///
 /// Read this before raising or lowering the constant. Every suite run prints the peak on its
-/// `regions:` line, with the test during which it was set; the account below is where the peak
-/// comes from, measured 2026-09-26 by milestone 601 (the region table prints its peak) with a
-/// temporary per-test print, on `main` at `484f3ebe` plus #1347's `login_test_client` fix.
+/// `regions:` line, with the test during which it was set. Measured 2026-09-26 by milestone 601
+/// (the region table prints its peak):
 ///
 /// | architecture | peak | spare | live when the first test starts | live after the last |
 /// |---|---|---|---|---|
@@ -72,45 +72,16 @@ use crate::sync::{IrqSafeMutex, rank};
 /// | riscv64 | **224** | 32 | 1 | 221 |
 /// | `x86_64` | **125** | 131 | 1 | 122 |
 ///
-/// Without #1347 the table is at its ceiling. The lane of milestone 152 (durable delegation) measured
-/// aarch64 at **252** (4 spare), and one more login test made it 253 and failed the timetable's
-/// `--mem` split as a 60-second hang. This lane's own CI run on the same base, without #1347,
-/// printed **256 of 256 on aarch64 and 255 on riscv64** and still passed: the table was full and
-/// something was refused quietly, which is the state this line exists to make visible.
+/// The table is nearly empty at boot: almost every region live at the peak is one an earlier test
+/// left behind (on aarch64, `ntp_tests` 39 and `login_tests` 33 lead, then the compositor, file
+/// service and date stacks), and the peak is a few above that residue. A full table refuses quietly
+/// (a `--mem` split hangs).
+/// `design/roadmap/0676-the-ntp-and-login-tests-give-their-regions-back.md` is the work to account
+/// for the residue.
 ///
-/// **What the peak is made of.** The table is nearly empty at boot. Almost every region live at
-/// the peak is one an earlier test left behind, and the peak itself is only three above the
-/// residue: `timetable_tests` spawns a scheduled entry on top of everything already held. So the
-/// ledger is the per-module residue, aarch64 first (riscv64 within a few of each row; `x86_64` is
-/// smaller mostly because it has no network under QEMU):
-///
-/// | kept at the end of the suite | aarch64 | `x86_64` | what it is |
-/// |---|---|---|---|
-/// | `ntp_tests` | 39 | 5 | five tests, 5 to 11 regions each; not on `notes/frames.md`'s held list |
-/// | `login_tests` | 33 | 0 | the shared login service, plus sessions and clients per test |
-/// | `user::tests` | 18 | 17 | one or two each from the oldest userspace tests |
-/// | `compositor_tests`, `display_tests` | 20 | 10 | the compositor and GPU driver stack |
-/// | `date_tests` | 10 | 11 | the wall-clock service and its clients |
-/// | `dir_capability_tests`, `disk_tests`, `rm_program_tests` | 24 | 15 | the file services |
-/// | 23 other modules (20 on `x86_64`), 1 to 6 each | 47 | 43 | |
-/// | created **between** tests | 30 | 20 | services still building after a test returned |
-/// | **total** | **221** | **121** | |
-///
-/// The last row is the frame ledger's own lesson (`notes/frames.md`, "The instrument"): reading
-/// around a test's body misses what a service it started does after the test has its answer.
-/// These figures were read around the body, so a row can be short by what landed in that gap.
-///
-/// `ntp_tests` and `login_tests` are a third of the aarch64 total between them, and neither is
-/// accounted for as deliberately permanent; the proposal
-/// `design/roadmap/0676-the-ntp-and-login-tests-give-their-regions-back.md` is the work to
-/// find out.
-///
-/// **No gate, deliberately, and not only by precedent.** `sched::MAX_THREADS` reports and does not
-/// gate because a climbing peak is usually a boot doing more, and that is true here. The frame
-/// ledger can gate its end state because the tree states what is permanent; nothing states that
-/// for regions yet, and a threshold set from one measurement would fire on the next milestone that
-/// adds a held service rather than on a leak. What would earn a gate is the held list the frame
-/// ledger has, and the proposal above is the first step toward one.
+/// **No gate, deliberately.** As with `sched::MAX_THREADS`, a climbing peak is usually a boot doing
+/// more; a gate needs the held list the frame ledger has (`notes/frames.md`), and nothing states
+/// what is permanent for regions yet.
 pub(crate) const MAX_REGIONS: usize = 256;
 
 /// **The most regions that were ever live at once on this boot**, the instrument that makes

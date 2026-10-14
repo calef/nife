@@ -37,6 +37,7 @@
 //!   up) gets a refusal sentence and keystrokes over the UART only. That is the design, and it is a
 //!   cost.
 //!
+
 //! Name: provisional (milestone 242 (USB host and HID)). The crate's name, as
 //! `kernel/src/non_volatile_memory_express.rs` takes its crate's: the volatile half of one pair.
 

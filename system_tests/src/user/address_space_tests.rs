@@ -114,13 +114,9 @@ fn asid_tagging_keeps_address_spaces_apart_without_flushes() {
 /// Step 4 must see the new frame. If the sweep stayed local it sees the old one, and that byte is
 /// exactly the bug: a core still translating an address space that no longer means what it did.
 ///
-/// Two of those choices are load-bearing. **The space is never re-installed**, because a `satp` or
-/// `TTBR0` write between the reads is a second event a core (or an emulator) is entitled to treat as
-/// a flush, and then step 4 would be right for a reason that has nothing to do with the shootdown.
-/// And the mapping is **changed rather than recycled**: tearing the space down and handing its ASID
-/// to a new one is the scenario that matters in production, but the allocator would likely hand the
-/// new space the dead one's frames, and reading the right byte off the right frame by accident is
-/// the same failure of proof.
+/// **The space is never re-installed**, because a `satp` or `TTBR0` write between the reads may be
+/// treated as a flush. And the mapping is **changed rather than recycled**, because a recycled ASID
+/// would likely get the dead space's frames and read the right byte by accident.
 ///
 /// # BUGS
 ///

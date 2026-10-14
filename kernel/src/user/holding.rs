@@ -26,6 +26,7 @@
 //! So a `Holding` is bookkeeping: remember what was handed out, and spend the existing verbs on it in
 //! the order that works. There is no new syscall and no new kernel object.
 //!
+
 //! # BUGS
 //!
 //! - **A thread that only ever blocks cannot be reclaimed this way**, and the limit is §16's rather

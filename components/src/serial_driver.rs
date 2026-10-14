@@ -21,6 +21,7 @@
 //! device-specific fact (the NS16550 register layout) is the driver's own knowledge, which is exactly
 //! what a driver is for.
 //!
+
 //! Name: ratified 2026-09-08 (calef, milestone 264). Shipped as `driver`, which was the fourth
 //! driver in `components/src/` and the only unqualified one, beside `block_driver`, `gpu_driver` and
 //! `keyboard_driver`. A reader scanning the directory met three programs that say what they drive

@@ -28,6 +28,7 @@
 //! * the **ASID width**, which `crates/address_space_identifier` is built on and which RISC-V had to measure,
 //! * the **VA range**, the direct twin of RISC-V's `mmu-type`.
 //!
+
 //! # BUGS
 //!
 //! - **`VARange` reporting 52 does not mean the kernel could use 52.** ARMv8.2-LVA needs a 64 KiB

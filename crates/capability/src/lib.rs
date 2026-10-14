@@ -16,6 +16,7 @@
 //! capability table's size is part of its type and creating one cannot touch a heap. The kernel picks the
 //! size once (16, in kernel/src/cap.rs); the tests and proofs pick small ones.
 //!
+
 //! # Examples
 //!
 //! Rights are a lattice, and the only operation that ever runs on the transfer path is

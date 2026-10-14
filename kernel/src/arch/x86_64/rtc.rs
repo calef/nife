@@ -28,6 +28,7 @@
 //! binary; which one this machine uses is itself a CMOS field, read *after* the six date/time
 //! registers precisely because it says how to interpret them.
 //!
+
 //! # Tearing: UIP is necessary and not sufficient
 //!
 //! The RTC's update cycle rewrites all ten time/date bytes roughly once a second, and a read that

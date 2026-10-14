@@ -26,6 +26,7 @@
 //! small file reads, against a spawn that builds a whole process, and a table the shell never
 //! caches cannot be stale.
 //!
+
 //! # EXAMPLES
 //!
 //! ```

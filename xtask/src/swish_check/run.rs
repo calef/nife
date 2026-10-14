@@ -9,43 +9,6 @@
 
 use super::*;
 
-/// **Boot the `--features shell` system and type at it** (milestone 50, notes/pipes.md).
-///
-/// # Why this exists
-///
-/// Everything else that exercises the shell wires it from **the kernel**, which serves the spawn
-/// protocol in place of `components/src/progenitor.rs`. The shell cannot tell the difference, and
-/// that is the problem: a change to the progenitor that broke the spawn path fails nothing. The interactive
-/// boot is the only thing that runs the real progenitor, and until this verb existed nothing ran the
-/// interactive boot.
-///
-/// It bit milestone 50 three times in one session and **all three presented as a boot that printed
-/// nothing at all**: a virtual-address collision between the shell's terminal page and the page six
-/// FS clients map, the progenitor's sixteen-slot capability table overflowing when the kernel handed it two more grants,
-/// and four stack pages being one deep call short of the redirection path. Each cost a manual bisect
-/// against a live prompt. Each is caught here in one boot.
-///
-/// # What it types, and why those lines
-///
-/// The lines answer each other rather than a constant, which is the shape the milestone's guest
-/// tests already have:
-///
-/// ```text
-/// echo hello world | wc      -> 1 2 12   the bytes went through a real spawned process
-/// echo hello world > gate    -> nothing  the same bytes into a file the shell backs
-/// wc < gate                  -> 1 2 12   ... and they are the same bytes
-/// echo hello world >> gate   -> nothing
-/// wc < gate                  -> 2 4 24   ... exactly twice, so `>>` kept the first line
-/// wc gate                    -> 2 4 24   milestone 31: the name IS the grant, same bytes
-/// wc                         -> refused  ... and with no name there is nothing to read
-/// caps wc gate               -> input     ... and the preview says which file, and how
-/// date                       -> ...UTC   a real wall clock, wired through the real progenitor
-/// caps date                  -> cap 1    ... and `caps` names the capability that made it real
-/// ```
-///
-/// One line would meet the BUGS entry that asked for this. Five is still seconds, and it walks the
-/// whole endowment: a spawn through the real progenitor, the FS service the real progenitor narrowed into the
-/// shell, and both redirection operators.
 /// **The probes of milestone 342 (the kernel and the `console` server drive one UART from two
 /// address spaces)** (names provisional): what the kernel is built to do on top of the
 /// ordinary leg. `--flood` prints a kernel line every ten ticks once the log service attaches, and
@@ -108,6 +71,30 @@ pub(super) fn flood_counts(raw: &str) -> (usize, usize) {
     (whole, all - whole)
 }
 
+/// **Boot the `--features shell` system and type at it** (milestone 50, notes/pipes.md).
+///
+/// Everything else that exercises the shell wires it from **the kernel**, which serves the spawn
+/// protocol in place of `components/src/progenitor.rs`, so a change that broke the real
+/// progenitor's spawn path would fail nothing else. Such breaks present as a boot that prints
+/// nothing at all (a virtual-address collision, a full capability table, a stack one call short).
+///
+/// The lines answer each other rather than a constant:
+///
+/// ```text
+/// echo hello world | wc      -> 1 2 12   the bytes went through a real spawned process
+/// echo hello world > gate    -> nothing  the same bytes into a file the shell backs
+/// wc < gate                  -> 1 2 12   ... and they are the same bytes
+/// echo hello world >> gate   -> nothing
+/// wc < gate                  -> 2 4 24   ... exactly twice, so `>>` kept the first line
+/// wc gate                    -> 2 4 24   milestone 31: the name IS the grant, same bytes
+/// wc                         -> refused  ... and with no name there is nothing to read
+/// caps wc gate               -> input     ... and the preview says which file, and how
+/// date                       -> ...UTC   a real wall clock, wired through the real progenitor
+/// caps date                  -> cap 1    ... and `caps` names the capability that made it real
+/// ```
+///
+/// That walks the whole endowment: a spawn through the real progenitor, the FS service it narrowed
+/// into the shell, and both redirection operators.
 pub(crate) fn swish_check() -> bool {
     let probe = if std::env::args().any(|a| a == "--flood") {
         Probe::Flood

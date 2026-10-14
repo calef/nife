@@ -38,6 +38,7 @@
 //! Name: provisional, milestone 649's lane, 2026-10-07 (UTC), keeping the file name milestone 800's
 //! lane gave the program it replaces.
 //!
+
 //! # Capability contract
 //! - slot 0: the report endpoint (WRITE)
 //! - slot 1: the stack's front door (WRITE), exactly what any client holds
