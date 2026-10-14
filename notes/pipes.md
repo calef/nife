@@ -225,7 +225,7 @@ $ wc < when.txt
 ```
 
 Read the `caps` output rather than the counts. **The last line of the `output` row is the only thing
-`>>` changes**, and it is a sentence about *this shell*, not about `date`: the `cap 0` row above it
+`>>` changes**, and it is a sentence about *this shell*, not about `date`. The `cap 0` row above it
 is identical to the one `date > when.txt` prints, and so is everything else, because the two
 spellings hand the child the same endpoint with the same right. That is the property `>>` was built
 to be a test of, printed where a person meets it.
@@ -278,8 +278,8 @@ the same question has no answer at that point, since fd 1 is whatever the shell'
 be and nothing records what that was.
 
 And the operand at the head of a pipeline, which is the line the draining lane fixed. Read the
-numbers rather than the fact that it ran: `2 4 24` plus a newline is seven bytes and three words on
-one line, so the second `wc` counting the first one's answer is what says the file reached the
+numbers rather than the fact that it ran. `2 4 24` plus a newline is seven bytes and three words on
+one line. So the second `wc` counting the first one's answer is what says the file reached the
 **head** stage rather than nothing reaching it:
 
 ```text

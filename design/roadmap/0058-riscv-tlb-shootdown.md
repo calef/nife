@@ -7,7 +7,7 @@ built: 2026-08-05
 
 Built 2026-08-05 (pull request #124, merge `8fdf2677`). The status read
 `IN-PROGRESS since 2026-08-04, a developer holds it on milestone/58-riscv-tlb-shootdown` for twelve
-days after that merge, and the branch it named had been deleted by the merge that finished it; found
+days after that merge, and the branch it named had been deleted by the merge that finished it. Found
 2026-08-17 by the status-accuracy sweep, which found all six `IN-PROGRESS` rows naming branches that
 do not exist. §76's defect class again: the index row and this file agreed with each other and both
 disagreed with the tree, which is the one case `script/roadmap --check` cannot see.
@@ -20,7 +20,7 @@ shootdown with its acknowledgement is `super::sbi_remote_sfence_vma_asid`
 now issues `sfence.vma` only when `!asid_tagging_is_trusted()`. And `bench/baseline-riscv64.txt` was
 re-saved. Two witnesses, both wired without an arch `cfg` so both run on both ISAs:
 `an_asid_flush_reaches_the_other_cores` (`kernel/src/user/tests.rs:611`), which was also the first
-coverage aarch64's `tlbi aside1is` broadcast ever had, and
+coverage aarch64's `tlbi aside1is` broadcast ever had. And
 `asid_tagging_keeps_address_spaces_apart_without_flushes` (`kernel/src/user/tests.rs:523`), which was
 aarch64-only and is now the milestone-15 witness meaning something on RISC-V. See
 notes/riscv-tlb-shootdown.md.
@@ -89,9 +89,9 @@ cost.
   only a hardware TLB settles it. This block points that measurement at milestone 24, which is an
   aarch64 VMM board and cannot take a RISC-V number; where it actually belongs is unsettled.
 - **Recorded.** `notes/riscv-tlb-shootdown.md`. Three hazards the shootdown carries and cannot close
-  from S-mode: a firmware that implemented RFENCE asynchronously would break this silently and
-  nothing can check for it, the hart mask is a bitmap relative to base 0 so the shootdown reaches
-  harts 0..63, and `share_kernel_half`'s one-time copy of the kernel's top-level entries would hide
+  from S-mode. A firmware that implemented RFENCE asynchronously would break this silently, and
+  nothing can check for it. The hart mask is a bitmap relative to base 0, so the shootdown reaches
+  harts 0..63. `share_kernel_half`'s one-time copy of the kernel's top-level entries would hide
   a later kernel mapping from every space created before it.
 - **Milestone 335.** Take the `ctx_switch`
   number on real RISC-V silicon, where the TLB is genuinely

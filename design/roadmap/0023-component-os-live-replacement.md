@@ -11,7 +11,7 @@ needs_person: no
 
 Every residual this block named is built, and so are the advisory warning (§231) and the live
 swap of `line_editor` (§232 (the line editor swap contract), with a terminal supervisor). What keeps
-it PARTIAL: the installer does not yet ask the terminal to swap (proposed, an architect's),
+it PARTIAL: the installer does not yet ask the terminal to swap (proposed, an architect's).
 `display_terminal` and `compositor` are not swapped, and no supervisor yet ends a hung incumbent,
 although the kernel can (milestone 133 (ending a permanently blocked thread, and deciding who may)).
 
@@ -19,13 +19,14 @@ although the kernel can (milestone 133 (ending a permanently blocked thread, and
 
 Every userspace component (driver, server, app) is a swappable, vendor-shippable unit behind a
 stable contract, and operators replace them live, with no reboot. A client names an endpoint, never
-a peer (§12 (call/reply IPC: a one-shot reply capability)), so a component's identity is invisible to the code that uses
-it: any program that speaks the protocol and holds the right capabilities is the component. The
+a peer (§12 (call/reply IPC: a one-shot reply capability)), so a component's identity is invisible
+to the code that uses it. Any program that speaks the protocol and holds the right capabilities is
+the component. The
 kernel is the one fixed thing underneath an entirely swappable userland. This is Fuchsia's shape
 (capability-routed components, stable protocol interfaces) on a verified core.
 
 It is also the product story. The kernel confines each component to what it was granted, so
-competing vendor components run safely: a Linux vendor module is ring 0, and a nife vendor component
+competing vendor components run safely. A Linux vendor module is ring 0, and a nife vendor component
 is a confined process that can touch only what the operator handed it. That is the payoff of the
 capability model and of milestone 22 (trusted init: verify it, and shrink what a broken one can do), and it connects to the parked
 competitor ambition ([competitor-question.md](../competitor-question.md)).
@@ -44,9 +45,10 @@ userspace), QNX (hot-swappable drivers), Erlang/OTP hot code loading and supervi
 DECISIONS §41 (the endpoint is the broker, and a device is revoked by taking it back),
 notes/live-replacement.md. An unprivileged operator (`swapper`) builds the replacement, drains the
 incumbent, takes the device back, and starts the replacement. A client (`chatty`) talks across the
-swap and is its own witness; an attacker holding the client's exact capabilities cannot become the
-server; the outgoing instance reads the UART after the revoke and faults at the device's own page;
-and the replacement is written in C over §31 (the foreign-language seam: C holds no capabilities and makes no syscalls), so what held across the swap is the contract.
+swap and is its own witness. An attacker holding the client's exact capabilities cannot become the
+server. The outgoing instance reads the UART after the revoke and faults at the device's own page.
+And the replacement is written in C over §31 (the foreign-language seam: C holds no capabilities and
+makes no syscalls), so what held across the swap is the contract.
 
 Three things the build settled. No forwarding process is needed as the broker: endpoint-only
 naming makes the endpoint object the stable name, so a swap costs nothing in steady state and the
@@ -77,9 +79,10 @@ Follow-on.
 notes/hung-component.md. Against an incumbent that stops answering without dying, three of the four
 steps are unchanged: the one that needs its cooperation, the drain, is the one a hang makes
 redundant. So a supervisor restores the service with no authority it did not already hold, which
-corrects §32's sentence that restarting a hung child needs the stronger right; that sentence is right
-about reclaiming its memory. The harder half is measured: the domain reports a hang as `BLOCKED`,
-exactly what a healthy idle server reports; `Endpoint::REAP` answers `StillAlive` for every member;
+corrects the sentence in §32 (a supervisor may collect a corpse) that restarting a hung child needs
+the stronger right. That sentence is right
+about reclaiming its memory. The harder half is measured. The domain reports a hang as `BLOCKED`,
+exactly what a healthy idle server reports. `Endpoint::REAP` answers `StillAlive` for every member;
 and `abi::Error::Gone` never reaches a caller stranded mid-`CALL`, because freeing it needs the
 cooperation whose absence is the hang.
 
@@ -95,8 +98,8 @@ a pure consumer degrades for free on the endpoint's sender queue, §41's mechani
 notes/state-handoff.md, to the ruling in DECISIONS §209 (state handoff is an opaque blob over a
 granted frame, and it is optional). `Requirements` gained the optional `handoff` field (provisional,
 as §209 asked), `swap_protocol` a stateful contract, and `swapper` a fourth role, `ROLE_HANDOFF`,
-that tries the swap twice: against a replacement that cannot read the incumbent's blob, which
-refuses, is reaped, and leaves the incumbent serving with its state; then against one that can,
+that tries the swap twice. First against a replacement that cannot read the incumbent's blob, which
+refuses, is reaped, and leaves the incumbent serving with its state. Then against one that can,
 which commits. The client's unchanged sequence check is the continuity witness, because the
 component answers with its tally. It runs on all three architectures, the first swap system to,
 since it has no device; the queued system lost the same inherited x86 skip.
@@ -145,8 +148,8 @@ warning is a `CALL`. notes/non-cooperative-fallback.md.
   that the region returns and that the swallowed request's caller sees `Gone`, on all three
   architectures. Recorded 2026-10-08.
 - **Done.** The advisory warning, 2026-09-27, as ruled in DECISIONS §231 (a swap's warning to a
-  dependent is advisory, and the supervisor never waits for it): `broker` reads a warning page on
-  every wakeup and `swapper` signals a notification bound to it and never waits, so a dependent that
+  dependent is advisory, and the supervisor never waits for it). `broker` reads a warning page on
+  every wakeup, and `swapper` signals a notification bound to it and never waits. So a dependent that
   does not answer no longer hangs the supervisor. Tested on time, never, and late
   (`ROLE_LATE_WARNING`) on all three architectures. notes/non-cooperative-fallback.md.
 - **Done.** A handoff is a run of pages, 2026-09-26: `Handoff::pages`, minted with

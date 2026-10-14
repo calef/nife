@@ -12,8 +12,8 @@ and the roadmap vocabulary has no word for "built, then removed"; minting one is
 and this block says so rather than inventing it.
 
 Everything below is history, and is deliberately kept. This milestone was the project's only
-realized instance of principle 1: a real Mac's own `mount_smbfs` mounted a share served by nife's
-userspace SMB adapter over its own TCP stack, read files byte-correct, remounted, wrote, reported
+realized instance of principle 1. A real Mac's own `mount_smbfs` mounted a share served by nife's
+userspace SMB adapter over its own TCP stack. It read files byte-correct, remounted, wrote, reported
 the volume's real free space, served subdirectories, and from 2026-08-17 knew who was asking.
 Four pieces landed over three days and each was gated on both ISAs.
 
@@ -32,8 +32,8 @@ The pull requests, and the wire decisions in each, were:
   end-of-file, rename, disposition and basic classes, and delete-on-close, gated by a file the host
   writes over SMB2 and a *different in-guest process* reads back through the FS server. Read-only
   remains expressible and is refused at the protocol layer rather than at the filesystem.
-- `statfs` and subdirectories (#255, 2026-08-16): `fs_proto` grew op 18, `STATFS`, so a client
-  no longer sizes its work against a constant; the share model became a tree, with
+- `statfs` and subdirectories (#255, 2026-08-16): `fs_proto` grew op 18, `STATFS`, so a client no
+  longer sizes its work against a constant. The share model became a tree, with
   `crates/smb_proto/src/path.rs` parsing a share-relative path once at the wire's edge, refusing `..`
   there in a type the `Share` seam cannot be handed around.
 - Identity (#274, 2026-08-17): `crates/smb_proto/src/authenticator.rs`, a seam in `Share`'s shape
@@ -41,8 +41,9 @@ The pull requests, and the wire decisions in each, were:
   A share can require an NTLMv2 proof, and the SMB server never holds the key that verifies it.
 
 Nothing gated this after milestone 107 merged on 2026-08-04, and the block nevertheless sat behind a
-stale IN-PROGRESS status for eleven days before anyone noticed (2026-08-15, §76's defect class),
-which is worth leaving on the record next to the finished status.
+stale IN-PROGRESS status for eleven days before anyone noticed (2026-08-15). That is the defect
+class of §76 (what catches a milestone status that is wrong in both places?).
+That is worth leaving on the record next to the finished status.
 
 ## Why identity is the half worth reading
 
@@ -70,12 +71,13 @@ compromising it leaks every hash: crackable offline, reusable wherever the passw
 the adapter's whole authority over identity is one endpoint, revoking it ends the access, and no
 compromise of it yields the ability to forge anything.
 
-The gate is what makes that more than an argument. The password exists only on the host: xtask's
+The gate is what makes that more than an argument. The password exists only on the host. xtask's
 prober computes a real proof over the challenge the *guest* chose, and sends three AUTHENTICATE
-messages down one connection, an anonymous login refused, a one-bit forgery refused, the real thing
-accepted and not flagged guest, trying a `TREE_CONNECT` after each refusal because a refusal that
+messages down one connection. An anonymous login is refused, a one-bit forgery is refused, and the
+real thing is accepted and not flagged guest. It tries a `TREE_CONNECT` after each refusal because a
+refusal that
 only changes a status word is not a gate. Four processes are on the path of one `ls`, each holding
-one authority: a host client that knows the password, an adapter that holds no key, a store that
+one authority. They are a host client that knows the password, an adapter that holds no key, a store that
 holds no network, and a filesystem server that holds no network either.
 
 ## What is honestly not done, and where each piece now lives
@@ -90,8 +92,9 @@ the features themselves, and none of them belongs to this milestone's question:
   printed would be worse than a labeled guest share. What closes this is a provisioning path,
   which is milestone 56's subject rather than this one's, and it is now the head of the customer path.
 - The adapter is configured with a resource name, which is one authority more than it needs. The
-  right answer is a narrower capability, so the endpoint *is* the credential for one resource and the
-  name is implied and unforgeable: DECISIONS §27's argument applied to `cred_proto`, and a change to a
+  right answer is a narrower capability, so the endpoint *is* the credential for one resource and
+  the name is implied and unforgeable. That is DECISIONS §27's argument applied to `cred_proto`, and
+  a change to a
   contract two programs agree on, so it is an architect's.
 - Sessions are not signed. Identity buys authentication of the client, not integrity of the
   stream. That is what `SessionBaseKey` is for and why the credential service publishes one.
@@ -171,8 +174,9 @@ backups but not delete them", which is a genuinely useful thing to be able to sa
 ## Index row
 
 **Built 2026-08-17 and removed from the tree 2026-08-30**, on calef's decision, after the customer
-it served moved to borg over SSH. It was the project's only realized instance of principle 1: a
-real Mac's own `mount_smbfs` mounted a share this kernel served, read and wrote it, walked its
-subdirectories, and proved who it was against milestone 65's store while the adapter held no key.
+it served moved to borg over SSH. It was the project's only realized instance of principle 1. A real
+Mac's own `mount_smbfs` mounted a share this kernel served, read and wrote it, and walked its
+subdirectories. It proved who it was against the store of milestone 65 (a secrets service) while the
+adapter held no key.
 What it demonstrated, what it never reached, and why it went are recorded in full in notes/smb.md.
 The status word is the vocabulary's closest fit and is not right; see that note

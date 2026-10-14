@@ -15,8 +15,8 @@ into a checklist.
 
 (The MILESTONE 107 half cleared 2026-08-04, found stale 2026-08-15; the MILESTONE 64 half cleared 2026-09-19, when 64 turned BUILT.) 64 was named as the prerequisite and this is its
 extreme case; 107 owns the listen and accept that head the gap table. The decision is the block's
-own and is now §161 (which subset counts
-as running Vaultwarden), written up 2026-09-19 by milestone 435's lane: which subset counts has to
+own and is now §161 (which subset counts as running Vaultwarden), written up 2026-09-19 by milestone
+435's lane. Which subset counts has to
 be settled before the work starts, or the goalposts move to wherever the effort lands. Until then
 this gate had named no decision anywhere a reader could open, while the ask sat in this block's own
 `BUGS` section addressed to one person.
@@ -44,8 +44,9 @@ Machine backups and their passwords is a home server, not an exhibit.
 
 The listen/accept question was the interesting one and it has been answered, which is why the
 row above changed. A listening socket is a *capability to accept connections on a port* and `accept`
-mints a new capability per connection, and milestone 107 settled the shape: `bind` is `OPERATION_LISTEN`,
-`accept` is `OPERATION_ACCEPT` into a second socket id with a frame attached, and a listener carries no
+mints a new capability per connection. Milestone 107 settled the shape: `bind` is
+`OPERATION_LISTEN`, and `accept` is `OPERATION_ACCEPT` into a second socket id with a frame
+attached. A listener carries no
 frame at all because a listener carries no bytes ([§25](../decisions/0025-socket-identity.md)). The authority
 is a listen grant `net_stack` is spawned with, so the same binary is a client or a server depending
 on what it was given, and neither is a fallback.
@@ -66,8 +67,8 @@ contract.
 
 - Milestone 64 is the prerequisite and this is its extreme case. 64 measures with small probe
   crates; this is what the measurements are eventually for.
-- Milestone 65 (A secrets service) is a different thing wearing a similar word, and conflating them would be a
-  mistake worth naming: 65 is a secrets service for the system (keys the OS computes with);
+- Milestone 65 (A secrets service) is a different thing wearing a similar word, and conflating them
+  would be a mistake worth naming. 65 is a secrets service for the system (keys the OS computes with);
   Vaultwarden is a secrets service for a human (passwords a person retrieves). Different layers,
   different threat models, no shared machinery.
 - Milestones 53 to 55 share the board and the thesis.

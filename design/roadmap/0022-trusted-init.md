@@ -34,23 +34,24 @@ Deliverable, three parts.
    remaining increment.) Reduce what a compromised init can do: hand most process-construction to
    smaller, less-privileged sub-servers, so init's own authority is minimal and short-lived (build the
    first servers, then drop the untyped). The less init holds, the less a broken init costs. Built as a
-   four-program tree (`root_supervisor`, `spawner`, `sub_server_supervisor`, `flaky`): the spawner holds one program image and
-   a `WRITE`-only budget (not the archive, so it can build exactly one program), the supervisor holds
-   no memory at all and can only *ask*, and the root deletes its untyped once both are running. Proven
-   on both ISAs by authority rather than timing: after the handoff, retyping a page or a kernel object
+   four-program tree (`root_supervisor`, `spawner`, `sub_server_supervisor`, `flaky`): the spawner
+   holds one program image and a `WRITE`-only budget (not the archive, so it can build exactly one
+   program). The supervisor holds no memory at all and can only *ask*, and the root deletes its
+   untyped once both are running. Proven on both ISAs by authority rather than timing. After the
+   handoff, retyping a page or a kernel object
    from init fails with `NoSuchSlot`, and a faulting sub-server is reaped and restarted by its own
    supervisor. That migration then reached the interactive boot itself (BUILT 2026-08-04, both ISAs).
    `system_initializer` and `hello`'s init role remain the shell's spawn service, but they no longer
-   hold the construction budget for life: after the boot servers are up, each carves a bounded
-   scratch budget and a bounded job pool, deletes the root, and gives away the UART device
+   hold the construction budget for life. After the boot servers are up, each carves a bounded
+   scratch budget and a bounded job pool and deletes the root. It gives away the UART device
    capability, its interrupt, and every capability reaching a live job's memory. A new `job_undertaker`
    (one endpoint, `READ`, no untyped, no restart policy) collects finished jobs and returns their
-   regions to the pool. Proven the same way the rest of this milestone is: init prints, from inside
-   itself, that `RETYPE` now answers `NoSuchSlot` rather than `NotPermitted`, and `script/swish-check`
+   regions to the pool. Proven the same way the rest of this milestone is. Init prints, from inside
+   itself, that `RETYPE` now answers `NoSuchSlot` rather than `NotPermitted`. `script/swish-check`
    runs eleven jobs through a six-job pool, so a boot that collected nothing fails partway down.
-   The predicted sub-server for the spawn service was refused with a reason (the spawn service is
+   The predicted sub-server for the spawn service was refused with a reason. The spawn service is
    the ELF loader and the loader is the archive, so a sub-server would hold every program in the
-   system while init held a pipe); see notes/trusted-init.md. Two design
+   system while init held a pipe. See notes/trusted-init.md. Two design
    forks found and reported rather than built through (a reap-only right, and turning a tid into a
    handle). See DECISIONS §26's phase B.2 block and notes/trusted-init.md.
 
@@ -72,9 +73,10 @@ Deliverable, three parts.
    (the kernel's guarantees hold regardless), so the only open question is availability: halt, or
    recover? The answer is neither a bare halt nor a kernel that relaunches init.
 
-   - **Not kernel-relaunch.** Relaunching init from the kernel re-imports the loader we just
-     evicted (milestone 19) plus *restart policy* (retries, backoff, escalation) into the trusted
-     core, and it crash-loops on a deterministic fault (init panics on a bad ELF; relaunch hits
+   - **Not kernel-relaunch.** Relaunching init from the kernel re-imports the loader we just evicted
+     (milestone 19 (run a real workload)) plus *restart policy* (retries, backoff, escalation) into
+     the trusted core. It
+     crash-loops on a deterministic fault (init panics on a bad ELF; relaunch hits
      the same bug). Restart is policy, and policy does not belong in the kernel.
    - The mechanism/policy split, as everywhere else. Add one small *mechanism* to the kernel:
      a fault/death notification, when a thread faults or exits, the kernel delivers a message
@@ -92,7 +94,7 @@ Deliverable, three parts.
      being one: it is either a trivial root or gone, and failures below it are supervised.
 
    The one kernel primitive this adds (the fault endpoint) is worth its own numbered decision when
-   19d.2/22 make it concrete; recorded here so the design (halt is the floor, supervision is the
+   19d.2/22 make it concrete. It is recorded here so the design (halt is the floor, supervision is the
    answer, the kernel never runs restart policy) is on the record rather than in a conversation.
 
 The reach tail. Beyond verifying init's *bytes*, verifying init's *behavior* is the natural
@@ -103,9 +105,9 @@ supervision is the load-bearing answer and proof is the optional reach.)
 
 Prior art. seL4 + a verified boot chain (measured boot, or CapDL-driven system initialisers
 whose output is checkable); the general secure/measured-boot literature (TPM/PCR measurement,
-signed boot images). For the supervision half: seL4 fault endpoints (the kernel turns a fault into
-a message a supervisor holds); MINIX 3's reincarnation server (a userspace process that restarts
-dead drivers, not the kernel); Erlang/OTP supervision trees and "let it crash" (decades of evidence
+signed boot images). For the supervision half: seL4 fault endpoints (the kernel turns a fault into a
+message a supervisor holds). MINIX 3's reincarnation server (a userspace process that restarts dead
+drivers, not the kernel). Erlang/OTP supervision trees and "let it crash" (decades of evidence
 that restart policy wants to be a rich userspace thing, not a kernel reflex).
 
 ## Follow-on
@@ -123,7 +125,7 @@ that restart policy wants to be a rich userspace thing, not a kernel reflex).
   two things and only one of them was the reap.
 - **Decision.** `design/decisions/0026-fault-endpoint.md`. The fault endpoint, the one kernel
   primitive phase 3 adds, got the numbered decision this block asked for when 19d.2 and 22 made it
-  concrete: the kernel delivers a message and never runs restart policy, and policy lives in the
+  concrete. The kernel delivers a message and never runs restart policy, and policy lives in the
   userspace supervision tree.
 - **Recorded.** `design/roadmap/0022-trusted-init.md`, under "The reach tail": proving init's
   *behavior* as distinct from verifying its bytes is the direction and is explicitly not committed.
