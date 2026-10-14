@@ -403,23 +403,22 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         ],
     ),
     // **The demos, the second first-party package** (milestone 922 (the demos are packaged in
-    // basalt)): `demos` carries `least_authority_demo`, whose manifest note declares the integer it
-    // squares. Installed from basalt's index, the package is vouched, so its program run by path is
-    // granted that argument and answers as the image's own copy does above.
+    // basalt)): `demos` carries `least_authority_demo`. The package is fetched from basalt and
+    // accepted by its digest, and then the installer refuses it, because this image carries that
+    // program and a base program is updated by a new base, not installed over. The refusal is the
+    // answer until milestone 909 (basalt composes the bootable image from its packages) leaves
+    // optional programs out of the image.
     line(
         1,
         "jig install demos",
         &[
             "fetched demos-",
             "from basalt.test over TLS",
-            "fetched and installed; generation 16 is live",
+            "refused: the image carries the program least_authority_demo; a new base updates it, not \
+             install; generation 15 is live",
         ],
     ),
-    line(1, DEMOS_LINE, &["9*9 = 81"]),
 ];
-
-/// The installed `least_authority_demo`, by its package path (milestone 922).
-const DEMOS_LINE: &str = "packages/demos/0.1.0/least_authority_demo 9";
 
 /// The run `jig install hackbench` is followed by (milestone 907): `c_thread_tests`' pipe run,
 /// with one group of two and ten messages a sender.
@@ -443,7 +442,6 @@ pub(super) const FROM_BASALT: &[&str] = &[
     c_program_fixture::SPEEDTEST1_MEMDB,
     "jig install rmle",
     "jig install demos",
-    DEMOS_LINE,
 ];
 
 /// The text this gate types and what each line must answer. `None` is a line whose answer is
