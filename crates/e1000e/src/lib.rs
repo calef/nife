@@ -1,30 +1,87 @@
 #![no_std]
-//! **The Intel `e1000e` family, as pure logic** (notes/e1000e.md): everything both halves of the
-//! driver compute, nothing either touches. The kernel (`kernel/src/e1000e.rs`) resets the
-//! controller, reads its MAC and programs the ring bases; `net_stack`
-//! (`components/src/e1000e_transport.rs`) fills descriptors and moves the ring tails. Both are thin
-//! volatile layers, so the ring logic is tested against a simulated device ([`DataPlane`]'s tests).
-//! Facts come from Linux's `e1000e` headers (no code copied), FreeBSD's `sys/dev/e1000/`, and
-//! QEMU's `e1000e_core.c` for the emulated 82574L; Intel's I219 datasheet was not read, and each
-//! believed difference is marked at its item.
+//! **The Intel `e1000e` family, as pure logic** (milestone 494 (a driver for the network card a PC
+//! actually has); notes/e1000e.md).
 //!
-//! **On this device the IOMMU is the whole of the DMA confinement.** Each queue's base and tail
-//! share a page (receive 0 at `0x2800` and `0x2818`, transmit 0 at `0x3800` and `0x3818`,
-//! [`regs`]), so a process that moves a tail can repoint the ring. The page split still withholds
-//! everything else: the process holds the two queue pages ([`RX_QUEUE_PAGE`], [`TX_QUEUE_PAGE`])
-//! and not page 0 (`CTRL`, `STATUS`, `RCTL`, `TCTL`, interrupts) or page 5 (the receive address
-//! filter), so it cannot reset the controller, change its MAC, receive promiscuously, or reach the
-//! PHY.
+//! Everything both halves of the driver compute, and nothing either of them touches. The kernel
+//! (`kernel/src/e1000e.rs`) resets the controller, reads its MAC address and programs the ring base
+//! registers; `net_stack` (`components/src/e1000e_transport.rs`) fills descriptors and moves the
+//! two ring tails. Both are thin volatile layers over this crate, which is what makes the ring
+//! logic host-testable against a simulated device ([`DataPlane`]'s tests) when the real device only
+//! exists inside an emulator and on one desk.
+//!
+//! # Where the facts come from
+//!
+//! Read, not recalled, on 2026-10-04 (UTC): Linux's `drivers/net/ethernet/intel/e1000e/regs.h`,
+//! `defines.h` and `hw.h` for offsets, bits, descriptor layouts and device ids, cross-checked the
+//! same day against FreeBSD's BSD-licensed `sys/dev/e1000/` (`e1000_regs.h`, and `e1000_api.c`'s
+//! SPT class, which is exactly [`DEVICE_IDS`]' I219 rows), and QEMU's `hw/net/e1000e_core.c` for
+//! what the emulated 82574L does with them (legacy descriptors unless `RFCTL.EXTEN`; receive only
+//! with `RCTL.EN`, link up and bus mastering). No Linux code was copied. **Intel's own I219
+//! datasheet was not read**; where the I219 is believed to differ from the 82574L it is said so,
+//! and marked, at the item.
+//!
+//! # The finding that decides the confinement story
+//!
+//! Milestone 494's block asked this to be read before the split was drawn, because NVMe had put a
+//! page boundary exactly where the authority boundary belongs and this family might not. **It does
+//! not.** Receive queue 0's base is at `0x2800` and its tail at `0x2818`; transmit queue 0's base
+//! is at `0x3800` and its tail at `0x3818` ([`regs`]). A process that can move a ring tail can
+//! also repoint the ring, so on this device **the IOMMU is the whole of the DMA confinement**, as
+//! the block predicted. What the page split still buys is everything else: the process holds the
+//! two queue pages ([`RX_QUEUE_PAGE`], [`TX_QUEUE_PAGE`]) and not page 0 (`CTRL`, `STATUS`, `RCTL`,
+//! `TCTL`, the interrupt registers) or page 5 (the receive address filter), so it cannot reset the
+//! controller, change its MAC address, turn on promiscuous receive, or touch the PHY.
+//!
+//! # Examples
+//!
+//! The spawn handoff is the one thing the kernel and `net_stack` must agree on bit for bit, and it
+//! refuses what it did not make:
+//!
+//! ```
+//! use e1000e::Handoff;
+//!
+//! let h = Handoff { mac: [0x52, 0x54, 0x00, 0x12, 0x34, 0x57], data_plane_phys: 0x4012_3000 };
+//! let [role, phys] = h.pack();
+//! assert_eq!(Handoff::unpack(role, phys), Some(h));
+//! // Role 0 is the virtio server and 1..=6 are socket clients; neither unpacks as this.
+//! assert_eq!(Handoff::unpack(0, phys), None);
+//! assert_eq!(Handoff::unpack(2, phys), None);
+//! // A data plane that is not page aligned was not made by the kernel.
+//! assert_eq!(Handoff::unpack(role, phys + 8), None);
+//! ```
+//!
+//! A receive descriptor is the device's statement, and a length it could not have meant is a
+//! dropped frame rather than a read past the buffer:
+//!
+//! ```
+//! use e1000e::{RxVerdict, rx_verdict, RX_STATUS_DD, RX_STATUS_EOP};
+//!
+//! let word = |len: u64, status: u8| len | (status as u64) << 32;
+//! assert_eq!(rx_verdict(word(60, RX_STATUS_DD | RX_STATUS_EOP), 1514), RxVerdict::Frame(60));
+//! assert_eq!(rx_verdict(word(60, 0), 1514), RxVerdict::NotYet);
+//! assert_eq!(rx_verdict(word(0xffff, RX_STATUS_DD | RX_STATUS_EOP), 1514), RxVerdict::Drop);
+//! ```
 //!
 //! # BUGS
 //!
-//! - The I219's bring-up is ported from FreeBSD in [`pch`], which records the half that is not (the
-//!   link-up reconfiguration); xenon's bench step is the first test of any of it.
-//! - Legacy descriptors on the I219 are an assumption from the 8254x lineage, not read anywhere.
-//! - One receive and one transmit queue, polled: no interrupt, offloads or jumbo frames.
+//! - **Half of the I219's own bring-up is here, and half is not.** The MAC-register steps FreeBSD
+//!   does for a PCH part (ULP exit through the Management Engine, the SPT descriptor-ring flush,
+//!   the reset's bus-master and STRAP steps) are ported in [`pch`], with Intel's BSD licence. The
+//!   PHY-register steps (MDIO under the firmware semaphore: ULP exit without an ME, `SMBus`
+//!   unforcing, the post-reset PHY workarounds) are not. xenon's bench step is the test of both.
+//! - **Legacy descriptors on the I219 are an assumption.** The 82574L supports them (QEMU uses them
+//!   unless `RFCTL.EXTEN`); the PCH parts are believed to, from the 8254x lineage, and that was not
+//!   read anywhere.
+//! - **One receive and one transmit queue, polled.** No interrupt, no checksum offload, no
+//!   segmentation offload, no jumbo frames. Each is a later decision rather than an omission.
 //!
-//! Name: ratified 2026-10-07 (calef, #1806), permanent on first publication: the family name QEMU's
-//! `-device e1000e` and Linux's driver both use, kept as the outside world spells it.
+//! Name: ratified 2026-10-07 (calef, pull request #1806's publish-ours review). The maintainer
+//! comment reads: "one milestone per crate, minted now, each keeping its tree name (all free on
+//! crates.io as of today) [...] Names are ratified now and permanent on first publication." His
+//! words: "Yes, one per crate". Minted provisionally 2026-10-04 by milestone 494's lane: `e1000e`
+//! is the family name QEMU's `-device e1000e` and Linux's driver directory both use, so it arrives
+//! across somebody else's interface and keeps their spelling (design/naming.md, the acronym test).
+//! Milestone 815 (proven Intel e1000e ring logic, released on its own) publishes it.
 
 #[cfg(test)]
 extern crate std;
@@ -270,17 +327,6 @@ pub enum RxVerdict {
 /// Every field is the device's statement and none is trusted (notes/shared-page-audit.md's finding
 /// 6, applied to a second NIC): a `Frame(n)` always has `n <= room` and `n <= BUFFER_SIZE`, which is
 /// the property the Kani harness below proves for every word.
-///
-/// # Examples
-///
-/// ```
-/// use e1000e::{RxVerdict, rx_verdict, RX_STATUS_DD, RX_STATUS_EOP};
-///
-/// let word = |len: u64, status: u8| len | (status as u64) << 32;
-/// assert_eq!(rx_verdict(word(60, RX_STATUS_DD | RX_STATUS_EOP), 1514), RxVerdict::Frame(60));
-/// assert_eq!(rx_verdict(word(60, 0), 1514), RxVerdict::NotYet);
-/// assert_eq!(rx_verdict(word(0xffff, RX_STATUS_DD | RX_STATUS_EOP), 1514), RxVerdict::Drop);
-/// ```
 pub fn rx_verdict(word: u64, room: usize) -> RxVerdict {
     let status = (word >> 32) as u8;
     if status & RX_STATUS_DD == 0 {
@@ -329,21 +375,6 @@ impl Handoff {
 
     /// The inverse of [`Handoff::pack`], refusing a role word without the tag, a base that is
     /// zero or not page aligned, and a MAC address no station can own.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use e1000e::Handoff;
-    ///
-    /// let h = Handoff { mac: [0x52, 0x54, 0x00, 0x12, 0x34, 0x57], data_plane_phys: 0x4012_3000 };
-    /// let [role, phys] = h.pack();
-    /// assert_eq!(Handoff::unpack(role, phys), Some(h));
-    /// // Role 0 is the virtio server and 1..=6 are socket clients; neither unpacks as this.
-    /// assert_eq!(Handoff::unpack(0, phys), None);
-    /// assert_eq!(Handoff::unpack(2, phys), None);
-    /// // A data plane that is not page aligned was not made by the kernel.
-    /// assert_eq!(Handoff::unpack(role, phys + 8), None);
-    /// ```
     pub fn unpack(arg0: u64, arg1: u64) -> Option<Handoff> {
         if arg0 & 0xffff != ROLE_TAG || arg1 == 0 || !arg1.is_multiple_of(PAGE) {
             return None;
