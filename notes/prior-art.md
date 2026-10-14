@@ -80,8 +80,8 @@ else's kernel:
   so any adoption pins a version. The single-toolchain fallback is `vte`.
 - RedLeaf, and the language-isolation line it belongs to. Not a donor of anything: x86_64 only,
   no license declared, and last touched in January 2022. It is on this list because it is the
-  closest academic relative nife has and it makes the *opposite* bet about where isolation comes
-  from, which is the only reason worth putting a system here that we will never take code from.
+  closest academic relative nife has. It makes the *opposite* bet about where isolation comes from,
+  which is the only reason worth putting a system here that we will never take code from.
   notes/redleaf.md has it, together with the 2017 Tock-founding paper the argument descends from and
   what the same authors built afterwards, which is a hardware-isolated Verus-verified Rust
   microkernel rather than more of RedLeaf.
@@ -93,20 +93,20 @@ else's kernel:
 ## Calls on the record
 
 - `pci` crate (2026-07-27): built, over `pci_types`. Made during the overnight PCIe run
-  without the survey pass this note requires; recorded the next day in DECISIONS §18 with the
-  honest split: the host-testable closure shape and the witness tests favored building, the
+  without the survey pass this note requires; recorded the next day in DECISIONS §18 (the PCIe transport) with the honest
+  split. The host-testable closure shape and the witness tests favored building, the
   rule favored reuse, and the omission of the pass is the actual lesson. Kept.
 
 - `nifefs` (2026-07-27): kept, over `tar-no-std`/ustar. Weighed retroactively on
   calef's question, with the swap costed out. The format predates this note (a learning-era
-  artifact), but the keep decision is a fresh application of the rule: the kernel parses the
-  initrd itself, so the parser sits inside the TCB, which is exactly where the rule says
-  build; 263 lines we wrote and test beat someone else's header arithmetic on boot input.
+  artifact), but the keep decision is a fresh application of the rule. The kernel parses the initrd
+  itself, so the parser sits inside the TCB, which is exactly where the rule says build. 263 lines
+  we wrote and test beat someone else's header arithmetic on boot input.
   The swap's real benefits (standard tooling, `tar tvf` inspection, ~260 lines retired) are
-  ergonomic, its cost is churn across the kernel boot path, four userspace binaries, and
+  ergonomic. Its cost is churn across the kernel boot path, four userspace binaries, and
   every proof-of-real-bytes assertion (six sites assert the `nife-` magic; tar has no
-  magic at offset 0). Revisit at **milestone 22** (trusted init): the initrd format must
-  change there anyway to carry measurements or signatures, and adopting ustar as the
+  magic at offset 0). Revisit at **milestone 22** (trusted init): the initrd format must change
+  there anyway to carry measurements or signatures. Adopting ustar as the
   container is nearly free inside a redesign that is happening regardless. Inspectability,
   the one benefit worth having now, is purchasable as a ~30-line `xtask initial-ramdisk-ls` without
   touching the format.

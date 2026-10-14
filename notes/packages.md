@@ -2,7 +2,7 @@
 
 Milestone 198 (a package manager, and the trivial install that makes a second customer possible)'s
 rung 3a has two halves. This note is the producer half and the format both halves share, built
-2026-09-23, and the first part of the consumer half, built 2026-09-24: a target fetches a package
+2026-09-23, and the first part of the consumer half, built 2026-09-24. A target fetches a package
 over plain HTTP and accepts it only by a digest its own image vouches for. Since 2026-09-26 an
 installed program runs by its bytes (DECISIONS §219 option D), and the target installs, removes and
 rolls back packages itself, fetched by name. What is missing is in "Where this stops" below.
@@ -16,9 +16,10 @@ is bytes a target must parse: *"the reader owes a fuzz target and the Kani treat
 and `crates/elf` already carry."*
 
 DECISIONS §195 (a reviewed recipe vouches for a package), in
-[its own file](../design/decisions/0195-a-recipe-vouches-and-the-owner-may-overrule.md), ruled trust: a package's digest lives in a version-controlled recipe
-changed by human review, trust is scoped per source the owner opted into, and the owner may
-overrule. That is Homebrew's arrangement, and Homebrew is also §197's worked example of the pairing.
+[its own file](../design/decisions/0195-a-recipe-vouches-and-the-owner-may-overrule.md), ruled
+trust. A package's digest lives in a version-controlled recipe changed by human review. Trust is
+scoped per source the owner opted into, and the owner may overrule. That is Homebrew's arrangement,
+and Homebrew is also §197's worked example of the pairing.
 
 What installing one does was the third fork, and DECISIONS §208 (installing a package is granting it, and
 the activation set is versioned) ruled it on 2026-09-23.
@@ -34,7 +35,7 @@ comparing this against `.hpkg` will ask about:
   data. `nifefs` made the same call about `start_block`.
 - **Every member carries its own SHA-256**, where `.hpkg` carries none and keeps digests in the
   repository index. §195 puts a digest over the whole file in the recipe, which answers *are these
-  the reviewed bytes*; the per-member digest answers *is this member the one that was reviewed*,
+  the reviewed bytes*. The per-member digest answers *is this member the one that was reviewed*,
   which is what a spawner handed one program out of a package needs to ask. It is also the shape
   `crates/measured_boot`'s table already has, so a package's table of contents is that table
   traveling with its bytes.
@@ -74,7 +75,7 @@ package: PASS
 
 A program is packed stripped since 2026-09-24, the same bytes the image packs. The first run
 above read 881,152 bytes for `uptime`, nearly all of it debug sections, against a job region of 40
-pages (160 KiB): an installed program is bytes something on the target must read into memory to
+pages (160 KiB). An installed program is bytes something on the target must read into memory to
 build a process from, and nothing there reads DWARF. The digests in this note's history changed
 with it; nobody had fetched one.
 
@@ -96,9 +97,10 @@ measurement table the first source of trust.
 The bytes are a function of the inputs alone, with no timestamp, ordering pass or non-zero padding. `the_same_inputs_give_the_same_bytes` holds that, because a reviewed digest is worth nothing if two
 hosts disagree.
 
-`packages/uptime.recipe.toml` deliberately records no digest, and the comment in it says why: the
+`packages/uptime.recipe.toml` deliberately records no digest, and the comment in it says why. The
 program it names is rebuilt by this checkout whenever anything it links changes, so a recorded
-digest would fail for the next reader, and a wrong recorded number is worse than an absent one. The line goes in when there is a release to pin it to, which is rung 4.
+digest would fail for the next reader. A wrong recorded number is worse than an absent one. The line
+goes in when there is a release to pin it to, which is rung 4.
 
 What proves the producer, and what running and installing cost, is in
 [the appendix](packages/measurements.md).
@@ -147,9 +149,9 @@ same test as a twin in `system_tests/src/user/riscv_virtio_tests.rs`.
 
 ### The versioned table, as logic
 
-`crates/activation_set` (provisional name) is §208's second clause as a pure, host-tested crate: a
+`crates/activation_set` (provisional name) is §208's second clause as a pure, host-tested crate. A
 generation is a text file of digest-keyed rows, `<digest> <program> <version> <package>`, and
-`default` pointer lines, never rewritten; a one-line `current` names the live one, and install,
+`default` pointer lines, never rewritten. A one-line `current` names the live one, and install,
 upgrade and remove each produce the next generation. Its test `a_rollback_restores_the_whole_set`
 is the property calef asked for by name. The progenitor reads and writes it on the target (below).
 

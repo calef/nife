@@ -70,8 +70,8 @@ maintainer is untrustworthy.
     everyone forgot.
   - Allowed merge methods: leave all three enabled.
 - Require status checks to pass: the list is below.
-  - Require branches to be up to date before merging: OFF. With several branches in flight at
-    once this turns every merge into a race to update first, and the value it adds (catching a
+  - Require branches to be up to date before merging: OFF. With several branches in flight at once
+    this turns every merge into a race to update first. The value it adds (catching a
     semantic conflict between two green branches) is largely already covered, because a
     `pull_request` run tests the *merge result*, not the branch tip.
 
@@ -138,7 +138,7 @@ Code scanning runs on advanced setup, by calef's order of 2026-10-08, for action
 rust, with `vendor/**` excluded; `notes/code-scanning.md` holds the decided record, the toggle and
 every alert's disposition. §36 (the repository is part of the TCB) records the reasoning. The number
 to read next to every Rust "0 alerts": on 2026-07-30 the Rust extractor reported 176 of 176 files
-scanned, 60 of them extracted with errors, running against the *host* target with default
+scanned, 60 of them extracted with errors. It ran against the *host* target with default
 features, for a kernel that does not build for the host at all.
 
 To re-check the coverage number after a future run:

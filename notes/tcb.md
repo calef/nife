@@ -6,17 +6,17 @@
 describes, "a thread under construction", was spelled `Tcb` (and its pointer wrapper `TcbPtr`) in
 code until this rename; both are now `ThreadControlBlock` and `ThreadControlBlockPointer`. The
 companion thread-id type `Tid` is now `ThreadId`. This note keeps saying "TCB" throughout, on
-purpose: that acronym is what the type is now spelled out in full, so the informal usage and the
-type name finally agree, and the acronym-collision section below (Thread Control Block vs Trusted
+purpose. That acronym is what the type is now spelled out in full, so the informal usage and the
+type name finally agree. The acronym-collision section below (Thread Control Block vs Trusted
 Computing Base) is unaffected by the rename either way.*
 
 ## What it is
 
 The kernel's bookkeeping record for one thread: our `Thread` struct in `kernel/src/thread.rs`.
 Milestone 1 defined a thread as "a stack plus a set of register values"; the TCB is where the
-kernel keeps everything needed to *manage* that thread while it is not running. Ours holds: the
-id (a generational name, notes/generational-names.md), the state, the `context` pointer naming
-where the registers are saved on the thread's own stack, ownership of that stack, the address
+kernel keeps everything needed to *manage* that thread while it is not running. Ours holds the id (a
+generational name, notes/generational-names.md), the state, and the `context` pointer naming where
+the registers are saved on the thread's own stack. It holds ownership of that stack, the address
 space, the capability table (`CapabilityTable`), the IPC mailbox, the intrusive queue link
 (notes/intrusive-queues.md), and the `on_cpu`/`wake_pending` switch-out flags. "Spawn allocates
 a TCB" means allocating this struct. seL4 uses the same name for the same object.
@@ -46,9 +46,9 @@ now worth doing when B.2 said retype earned nothing: B.2's premise was "the kern
 payer," and 19c is exactly when that expires (the progenitor becomes a payer).
 
 On the page-granularity worry the pool decision leaned on: a TCB is sub-page, so page-residency
-"wastes" most of a page. That was a real reason to prefer the pool *while the kernel paid*, and
-it is not one now, because the page is paid by whoever owns the thread (a user thread's by its
+"wastes" most of a page. That was a real reason to prefer the pool *while the kernel paid*. It is
+not one now, because the page is paid by whoever owns the thread (a user thread's by its
 creator's untyped, a kernel thread's by `kmem`, both bounded budgets). Sub-page packing stays
-declined for the same reason it was for endpoints (19a): one memory rule for the whole object
+declined for the same reason it was for endpoints (19a). One memory rule for the whole object
 family, packing a later placement optimization behind the table, not a slab rebuilt in the
 milestone that deleted the slab.

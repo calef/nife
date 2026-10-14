@@ -116,8 +116,9 @@ Full rows: [analysis-and-supply-chain.md](scripts/analysis-and-supply-chain.md).
 
 `fmt`, `lint`, `coverage`, `supply-chain`, `fuzz`, `miri`, and `mutants` are not part of the canonical
 set; they exist so the CI format, clippy, coverage, supply-chain, fuzz, miri, and weekly mutation
-jobs are one-liners. `coverage` measures only the pure-logic host crates(`abi`, `capability`, `nifefs`, `device_tree_blob`, `elf`, `frames`, `paging`, `pci`, ...): the kernel and user
-crates run under QEMU, out of reach of host instrumentation, which is the same reason DECISIONS
+jobs are one-liners. `coverage` measures only the pure-logic host crates(`abi`, `capability`,
+`nifefs`, `device_tree_blob`, `elf`, `frames`, `paging`, `pci`, ...). The kernel and user crates run
+under QEMU, out of reach of host instrumentation, which is the same reason DECISIONS
 §7 keeps the testable logic in host crates in the first place. It installs its own tool rather than
 leaning on `bootstrap`, so the CI test job (which runs `bootstrap`) never compiles a coverage tool
 it does not use.
@@ -271,7 +272,7 @@ test result: ok. 1 passed
 
 A filter that matches nothing fails the run, rather than reporting a green `0 passed`. Both
 images run, and the count is taken over the leg, because the test a filter names lives in exactly
-one of them: an image with no match says so and exits cleanly, and the leg fails if the two
+one of them. An image with no match says so and exits cleanly, and the leg fails if the two
 together selected nothing.
 
 ```

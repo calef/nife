@@ -8,7 +8,7 @@ was fixed, and what is deferred on purpose.
 ## Threat model
 
 A malicious or buggy userspace ELF running at EL0 that wants to (a) escape confinement and reach
-kernel or another process's memory, (b) forge or widen a capability it was not granted, (c) corrupt
+kernel or another process's memory, or (b) forge or widen a capability it was not granted. Or to (c) corrupt
 the kernel with a crafted binary, filesystem, or message, or (d) exhaust kernel resources to take
 the machine down. No remote attacker, no crypto, single core, runs under QEMU or HVF.
 
@@ -69,22 +69,22 @@ pointer path at all. Corrected, and the historical `abi::console` methods are ma
 
 - DMA confinement: now closed by kernel-mediated validation. This was the single most severe
   item: the virtio device is a second bus master doing DMA against raw physical addresses with no
-  MMU in front of it, so a hostile driver could point a descriptor at the kernel and the device
-  would DMA over it. QEMU `virt` has no IOMMU that covers virtio-mmio, so the fix is software: the
+  MMU in front of it. So a hostile driver could point a descriptor at the kernel and the device
+  would DMA over it. QEMU `virt` has no IOMMU that covers virtio-mmio, so the fix is software. The
   kernel keeps the two DMA-critical powers (programming the queue's ring addresses and ringing the
-  device) and validates that every descriptor stays within the driver's own DMA region before
+  device). It validates that every descriptor stays within the driver's own DMA region before
   the device sees it. The driver drives the device through a `Virtio` capability and can no longer
   aim it anywhere else. A malicious driver pointing a descriptor at the kernel image is now refused
   end to end, and there is a test that proves it (and that the legit block read still works).
   Fault isolation *and* malice isolation now hold. A second audit pass found the in-place check was
-  still bypassable two ways: an indirect descriptor aims the device at a table the validator
-  never walked (reachable on QEMU, which offers the feature), and a packed ring swaps the format
+  still bypassable two ways. An indirect descriptor aims the device at a table the validator never
+  walked (reachable on QEMU, which offers the feature). A packed ring swaps the format
   out from under it. Both are now stripped at feature negotiation and refused at validation, with
   unit and end-to-end tests. The residual time-of-check/time-of-use race (the validator read
-  descriptors the driver keeps mapped writable) is now closed too: the device reads a shadow
-  descriptor ring in kernel-private memory, filled by a validated copy on each notify, so it never
-  reads a descriptor the driver can mutate after the check. The driver's ABI is unchanged, the
-  end-to-end disk read still works through the copy, and a test points a descriptor at the kernel
+  descriptors the driver keeps mapped writable) is now closed too. The device reads a shadow
+  descriptor ring in kernel-private memory, filled by a validated copy on each notify. So it never
+  reads a descriptor the driver can mutate after the check. The driver's ABI is unchanged and the
+  end-to-end disk read still works through the copy. A test points a descriptor at the kernel
   after validation and confirms the shadow is untouched. See notes/dma.md.
 - Per-process resource limits: closed by the untyped budget, not by a per-spawner quota. The
   spawn-exhaustion vector is bounded because a process spawns out of its own untyped budget

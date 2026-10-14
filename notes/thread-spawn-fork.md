@@ -36,35 +36,36 @@ right now.
 | **C. Decline** | `thread::spawn` stays `Unsupported`, permanently rather than "phase one". Parallelism on nife stays process-plus-IPC-shaped, which is what the rest of the system already is. | Not really a loser: it is the cheapest, most reversible option and the one this note ends up suggesting for *now*, precisely because it forecloses nothing. |
 
 Two things that were not separately costed. A pure userspace "green threads" library
-(cooperative, stack-switching inside one existing TCB, no kernel involvement) was set aside
-without a table row: DECISIONS §5 already closed this door for the kernel's own execution model
+(cooperative, stack-switching inside one existing TCB, no kernel involvement) was set aside without
+a table row. DECISIONS §5 (preemptive threads with real stacks) already closed this door for the kernel's own execution model
 ("async cannot be the execution model for userspace... a userspace process is an arbitrary ELF
-binary [and] will loop forever because we will write a bug") and the identical argument applies
-one level up: a `std::thread::spawn` that is secretly cooperative cannot preempt a tight loop in
-one of its own "threads" any better than an async executor could, so it would be shipping the
+binary [and] will loop forever because we will write a bug"). The identical argument applies one
+level up. A `std::thread::spawn` that is secretly cooperative cannot preempt a tight loop in one of
+its own "threads" any better than an async executor could. So it would be shipping the
 same defect this kernel already refused once. And "give a std thread its own address space but
-keep frames aliased only for a small explicit shared arena" is Option B's honest, smaller
-cousin, folded into B's costing below rather than given its own row, because it is the same
+keep frames aliased only for a small explicit shared arena" is Option B's honest, smaller cousin. It
+is folded into B's costing below rather than given its own row, because it is the same
 mechanism at reduced scope.
 
 ## 2. What this tree already does in the analogous case
 
 **Process spawn already does exactly the RETYPE/CONFIGURE/CAP_INSERT/START sequence Option B
-would reuse**, unprivileged, from userspace: `kernel/src/user/entry.rs`'s `Spawn` struct documents a
-process's entire authority as "a function of `arg0`, `grants`, and `maps`", and the progenitor itself
+would reuse**, unprivileged, from userspace. `kernel/src/user/entry.rs`'s `Spawn` struct documents a
+process's entire authority as "a function of `arg0`, `grants`, and `maps`". The progenitor itself
 becomes "the spawn service" after boot (`PROGENITOR_ROLE`'s doc comment) and spawns every other
-process the same way a std program's PAL would spawn a thread. So Option B needs no new
-mechanism at the kernel boundary at all; it is a userspace consumer of machinery that has
+process the same way a std program's PAL would spawn a thread. So Option B needs no new mechanism at
+the kernel boundary at all. It is a userspace consumer of machinery that has
 existed since milestone 19c.3.
 
 **Multi-holder kernel objects already exist, and Endpoint is the precedent.** DECISIONS §16
-records that `Untyped::DESTROY` "refuses... [while] an endpoint in it has a blocked waiter", and
-§26's supervision handshake is two different processes each holding a capability that names the
-*same* Endpoint object (a spawner grants a supervision endpoint into a child's reserved slot,
-and both sides act on the one object). So "a kernel object with more than one holder, and
-liveness tracking to match" is not a new category for this kernel to reason about; Option A would
-be extending a pattern that Endpoint already proves out, to AddressSpace and (if a thread also
-needs to invoke capabilities the spawning thread already holds, for IO from a worker) to CapabilityTable.
+records that `Untyped::DESTROY` "refuses... [while] an endpoint in it has a blocked waiter". The supervision handshake of
+§26 (the fault endpoint) is two different processes each holding a capability that names the *same*
+Endpoint object. A spawner grants a supervision endpoint into a child's reserved slot, and both
+sides act on the one object. So "a kernel object with more than one holder, and
+liveness tracking to match" is not a new category for this kernel to reason about. Option A would be
+extending a pattern that Endpoint already proves out, to AddressSpace. If a thread also
+needs to invoke capabilities the spawning thread already holds, for IO from a worker), it would
+extend it to CapabilityTable too.
 
 Frame sharing across address spaces is already the tree's workhorse pattern for exactly one
 of the two things Option B needs. `notes/net.md`, `notes/framebuffer-contract.md` and
@@ -80,9 +81,9 @@ replicate a whole, dynamically growing heap, not one fixed buffer, which is the 
 **seL4 explicitly supports Option A, and it is nife's own stated lineage.** `crates/abi/src/lib.rs`'s
 `objtype::ASPACE` comment already cites "the seL4 principle" for how this kernel's address-space
 budget model works. seL4's own `TCB_Configure`/`TCB_SetSpace` binds a VSpace capability to a TCB
-without uniquely consuming it: a VSpace capability can be copied like any other capability, and
-multiple TCBs can be configured against copies naming the same underlying VSpace object, which is
-exactly how seL4-based systems build a conventional multithreaded process (the seL4 tutorials'
+without uniquely consuming it. A VSpace capability can be copied like any other capability. Multiple
+TCBs can be configured against copies naming the same underlying VSpace object, which is exactly how
+seL4-based systems build a conventional multithreaded process (the seL4 tutorials'
 own threads example has a new thread explicitly "share the main thread's CapabilityTable and VSpace").
 nife's `CONFIGURE` consuming the aspace capability uniquely is a deliberate simplification made
 at milestone 19c.3 (buys automatic Rust-`Drop` teardown, costs the sharing seL4 offers for free),
@@ -101,8 +102,8 @@ definition of the object, not a capability granted onto it.
 
 **Everywhere std::thread actually ships, "thread" means one address space, many schedulable
 contexts, never many address spaces kept in sync.** Linux's `pthread_create` is `clone` with
-`CLONE_VM` (share the mm_struct, do not copy it); it is the same shape as seL4's and Zircon's,
-a single shared address-space *object*, referenced by multiple schedulable entities, rather than
+`CLONE_VM` (share the mm_struct, do not copy it). It is the same shape as seL4's and Zircon's: a
+single shared address-space *object*, referenced by multiple schedulable entities. That is rather than
 several address spaces kept mutually consistent by replaying every mutation into each one.
 No prior art surveyed does Option B's shape (independent address spaces, kept aliased by
 replicated mappings) for the general shared-heap case. The pattern exists everywhere for a
@@ -155,8 +156,8 @@ scratch:
 - `kernel/src/user.rs`, `kernel/src/revoke.rs`: the reap path (§32, `reap_region_objects`) needs
   to know "still referenced" as a third state alongside live/dead.
 - Whether sibling TCBs also need a shared `CapabilityTable` (so a worker thread can invoke a capability
-  the spawning thread already holds, e.g. do IO through an already-granted socket or directory
-  slot) is the same fork one level down; seL4 answers it the same way, by letting `TCB_SetSpace`
+  the spawning thread already holds, e.g. do IO through an already-granted socket or directory slot)
+  is the same fork one level down. seL4 answers it the same way, by letting `TCB_SetSpace`
   bind a CapabilityTable root capability without consuming it either.
 - Plus, common to every option that yields a real OS thread: the std-side plumbing the PAL's own
   comment already names as missing regardless of the kernel side (TLS story, park/unpark on a
@@ -167,8 +168,8 @@ method, matching §22's own discipline for `std::fs`/`std::net` ("no new syscall
 capability method"). The cost is not at the kernel boundary; it is what "shared heap" actually
 demands once you look past the first allocation:
 
-- A single, fixed-size shared arena (map N frames once, at spawn time, into both spaces at
-  matching VAs) is genuinely cheap and needs nothing new: it is the exact client/server
+- A single, fixed-size shared arena (map N frames once, at spawn time, into both spaces at matching
+  VAs) is genuinely cheap and needs nothing new. It is the exact client/server
   shared-frame pattern `net_stack` and the compositor already use, aimed at a sibling instead of
   a server.
 - A general, growing heap is not that. Rust's global allocator (`crates/user_mode_heap`) grows by
@@ -176,8 +177,8 @@ demands once you look past the first allocation:
   "threads" to keep seeing the same heap, every growth by either side has to be mapped into the
   other's address space, at the same VA, before either side may safely dereference a pointer that
   crosses the growth. That is a synchronization protocol the allocator would have to invent from
-  nothing (there is no shared page table to make this free the way it is in Option A or in every
-  piece of prior art surveyed in §3), and it has to be race-free against two "threads" allocating
+  nothing. There is no shared page table to make this free the way it is in Option A or in every
+  piece of prior art surveyed in section 3. It has to be race-free against two "threads" allocating
   concurrently, which is the ordinary case a work-stealing pool like Rayon's exists to produce.
   Nothing in this tree's frame-sharing precedent (§2 above) does this, because every existing user
   of shared frames shares one buffer whose owner is unambiguous, not a heap two independent
@@ -189,8 +190,8 @@ demands once you look past the first allocation:
 
 Option C, decline. Zero kernel cost, zero std-side plumbing beyond what already exists
 (`Unsupported` is already the answer). The cost is entirely in the roadmap: milestone 149's
-Rayon-parallel NPB-Rust variants stay out of scope permanently rather than pending, and any
-future crate that needs `thread::spawn` (`crossbeam-channel`'s and `tokio`'s more advanced uses,
+Rayon-parallel NPB-Rust variants stay out of scope permanently rather than pending. Any future crate
+that needs `thread::spawn` (`crossbeam-channel`'s and `tokio`'s more advanced uses,
 beyond what already compiles) gets the same permanent `Unsupported`. That is a scope decision to
 write down (a `BUGS` entry or a roadmap scope note, per §71's convention), not a defect.
 
@@ -201,9 +202,9 @@ method promises, and every future program written against `CONFIGURE` inherits t
 Once something depends on shared-VSpace semantics, walking it back costs a rewrite of whatever
 was built on it.
 
-Option B is not actually cheap to reverse either, and that is the finding worth carrying: it
-looks reversible because no syscall changes, but a fixed-arena version ships a real constraint
-into every consumer built against it (rayon-shaped or not), and *that* is exactly as hard to
+Option B is not actually cheap to reverse either, and that is the finding worth carrying. It looks
+reversible because no syscall changes. But a fixed-arena version ships a real constraint into every
+consumer built against it (rayon-shaped or not). *That* is exactly as hard to
 walk back as a capability promise once real programs exist that assume a bounded shared arena.
 "No syscall touched" is not the same test as "cheap to undo."
 
@@ -215,7 +216,7 @@ naming the scope limit honestly where milestone 149 and any future consumer meet
 
 It does not pick A or B. That is the syscall-surface fork CLAUDE.md says is an architect's, and
 "which option costs less" only resolves once there is a concrete customer for real OS threads on
-nife, which there is not today (the NPB Rayon-parallel variants are useful evidence, not a paying
-workload). What it does do is retire the "B is the free option" intuition: measured against what
-Rust's own allocator needs, B is not obviously cheaper than A, only differently expensive, and in a
-way that is easy to miss until a consumer actually grows a heap across the boundary.
+nife. There is not one today (the NPB Rayon-parallel variants are useful evidence, not a paying
+workload). What it does do is retire the "B is the free option" intuition. Measured against what
+Rust's own allocator needs, B is not obviously cheaper than A, only differently expensive. It is so
+in a way that is easy to miss until a consumer actually grows a heap across the boundary.

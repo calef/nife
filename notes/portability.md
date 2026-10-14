@@ -177,8 +177,8 @@ shipping kernels, and it moves us from inside Pistachio's band to just below it.
 headline is unaffected, because it counts the whole tree the way a naive count of any kernel would.
 
 We are at Pistachio's number and are less specialized than seL4. The retrospective explains its
-own lower figure, and the explanation is not that seL4 is more Liedtke-true by intent: about half of
-its code is virtual memory, which is necessarily architecture-specific, and the fraction is high
+own lower figure, and the explanation is not that seL4 is more Liedtke-true by intent. About half of
+its code is virtual memory, which is necessarily architecture-specific. The fraction is high
 because seL4 is *smaller overall* with the agnostic resource management pushed to userland. Our
 `arch/` tree shows the same shape, with the two `mmu.rs` files at 2,781 lines making up a third of it.
 

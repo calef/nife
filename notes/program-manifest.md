@@ -58,7 +58,7 @@ It then carried `reports` and `interruptible` twice, and was missing `domain`, `
 few programs and the enum carries more.
 
 **The last four are one family and they are the ones a newcomer misreads.** Every other field is
-about something the command line can designate; these four are about authority no token can name, so
+about something the command line can designate. These four are about authority no token can name, so
 there is nothing to type and nothing to refuse. What they do is tell The progenitor which children to
 endow, and tell a person reading `caps <program>` that the authority exists at all. `clock` and
 `config` are read-only page mappings; `domain` and `entropy` are endpoints placed at named slots
@@ -113,13 +113,13 @@ refusal), with an upper bound the shell's own budget can actually back.
 ## The check, and its order
 
 `grant_plan::plan` resolves a parsed invocation against the manifest and yields either an `Endowment`
-(exactly what to grant) or a typed `Refusal`. The order is: the program name (a name that resolves
-to nothing is a fact about the system, and everything after it is a fact about a program that
-exists), then a flag nothing knows, then the positional tokens placed into the slots the manifest
+(exactly what to grant) or a typed `Refusal`. The order starts with the program name. A name that
+resolves to nothing is a fact about the system, and everything after it is a fact about a program
+that exists. Then a flag nothing knows, then the positional tokens placed into the slots the manifest
 declares (the integer argument, then the file), then the memory rules.
 
-Placing the tokens is what milestone 47 moved out of the parser. The parser knows a token's shape;
-only the manifest knows what a token *is*, which is why `wc 2026` designates a file named `2026`
+Placing the tokens is what milestone 47 (navigation and naming) moved out of the parser. The parser knows a token's shape.
+Only the manifest knows what a token *is*, which is why `wc 2026` designates a file named `2026`
 rather than an argument nobody declared. Two refusals fall out of the same rule:
 
 - a token past the last declared slot cannot be placed, so `least_authority_demo 5 extra` is refused. That is the
@@ -135,12 +135,12 @@ the full refusal catalog.
 ## Why it lives in the shell, not the kernel
 
 The manifest is a userspace contract, checked by the party doing the granting. The kernel does
-not read it, does not enforce it, and does not need to: even if the shell skipped the check and
-granted a program too little, the program would fault on an empty slot and die, harming only itself,
-because there is no ambient authority to fall back on. The manifest is not a security boundary; the
+not read it, does not enforce it, and does not need to. Even if the shell skipped the check and
+granted a program too little, the program would fault on an empty slot and die, harming only itself.
+That is because there is no ambient authority to fall back on. The manifest is not a security boundary; the
 capability model is. The manifest is a usability boundary, turning a deep mystery hang into a
 one-line refusal at the prompt. That is exactly the altitude SHILL's contracts sit at, and exactly
-what milestone 23's components will formalize: a component that declares the capabilities it needs,
+what the components of milestone 23 (a capability-routed component OS) will formalize. A component declares the capabilities it needs,
 checked by whoever wires it up, so a bad wiring is caught at composition, not at runtime.
 
 ## What grows from here

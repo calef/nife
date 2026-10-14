@@ -139,7 +139,7 @@ server, exactly as a leaked fd does on Unix, and this table outlives its clients
 `filesystem_protocol::fs::RMDIR`, from DECISIONS §49 (removal is a directory operation), which
 refuses a non-empty directory with `ENOTEMPTY`; `navscape::RMDIR_REFUSED_NON_EMPTY` and
 `RMDIR_REMOVED_EMPTY` prove the two halves. The reasoning that shaped it: a single call that removed
-whatever it found is how one word takes a subtree away, so the recursion in `rm -r` lives in
+whatever it found is how one word takes a subtree away. So the recursion in `rm -r` lives in
 userspace as a loop of individually safe steps and no single call on this contract can take a
 subtree away.
 
@@ -158,7 +158,7 @@ a reimplementation of it, and the thing being confined is a shell.
 
 Neither shell is told which subtree it holds. Each tries to open `inner` and `secret` and reports
 which it reached, so the property is read off the *pair* of reports rather than claimed by either.
-Shell A reaches `inner` and not `secret`; shell B the reverse; and the same crossing holds for what
+Shell A reaches `inner` and not `secret`; shell B the reverse. The same crossing holds for what
 their listings contain, because a listing is a rendering of authority and a stranger in one is an
 escape even though nothing was opened.
 
@@ -170,8 +170,8 @@ The falsification is cheap and was run: point the second shell at `sub` as well,
 `two_shells_with_different_roots_cannot_name_each_others_files` fails with "it opened a file that
 exists only in the OTHER shell's root".
 
-The two runs are **sequential**, and that is a fact about the harness rather than about the model:
-all three processes in a caretaker chain share one page with the FS server, so two live clients
+The two runs are **sequential**, and that is a fact about the harness rather than about the model.
+All three processes in a caretaker chain share one page with the FS server, so two live clients
 would scribble over each other's requests. Being alive at the same instant would prove no more than
 this does; they are separate processes with separate roots either way.
 
@@ -186,13 +186,13 @@ root, which is the upward escape.
 ## What the shell had to be told, because nothing on the wire will say
 
 There is no verb that reports what a handle carries. That matters here rather than being a
-curiosity: `OPENDIR` refuses with `EPERM` when the intersection is smaller than the request
-(deliberately, per §42's rule against silent degradation), so a shell that asked for `dir::ALL` from
+curiosity. `OPENDIR` refuses with `EPERM` when the intersection is smaller than the request
+(deliberately, per the rule against silent degradation in §42 (a filesystem declares what it offers and must be truthful)). So a shell that asked for `dir::ALL` from
 a narrower capability could not `cd` at all. It has to ask for exactly what it holds.
 
 So the shell is **told** its rights at spawn, in the same `filesystem_protocol::grant::spec` word the
-caretaker's own grant rides in. That works and it is a gap: a program handed a directory capability
-by someone else has no way to ask what it can do with it, and its options are to be told out of band
+caretaker's own grant rides in. That works and it is a gap. A program handed a directory capability
+by someone else has no way to ask what it can do with it. Its options are to be told out of band
 or to probe by attempting things. Reported rather than fixed, because widening the contract to suit
 a builtin is the wrong direction, and because "what does this capability carry" is a question `caps`
 should be able to answer for every capability rather than a flag on one verb.
@@ -202,9 +202,9 @@ should be able to answer for every capability rather than a flag on one verb.
 - **A namespace is one root, so `bind` is still not built.** `/` names the single directory
   capability a process holds, which is the whole of what an absolute path can mean until a process
   can hold **two**. DECISIONS §50 chose namespace composition over stored paths and left the
-  mechanism unbuilt; what this half found is that the missing piece is not the mount table (a bind
+  mechanism unbuilt. What this half found is that the missing piece is not the mount table. (A bind
   entry is a `nav::Cwd`, which is a value, costs no capability slot and cannot name above the root
-  by construction) but the **endowment**: nothing in this system grants a second directory
+  by construction.) It is the **endowment**: nothing in this system grants a second directory
   capability to one process, so a union would have exactly one member. See milestone 47's block for
   what a second grant costs.
 - There is still no environment, and `PATH` is still a closed enum. `/` answers "where", and
@@ -215,22 +215,23 @@ should be able to answer for every capability rather than a flag on one verb.
   bounded by the capabilities the walker holds at that level. Argued above.
 - No revocation, and the reason is the per-server handle table. Argued above.
 - The interactive prompt still holds no directory, so at a real keyboard every one of these five
-  answers "this shell holds no directory capability; there is nothing here to name". That sentence is
-  true rather than a placeholder (it is a fact about that shell's capability table, §27's amendment; the
-  interactive boot has held a directory since milestone 50), and
-  it is the same state the per-file grant has been in since milestone 31. The builtins are gated in
+  answers "this shell holds no directory capability; there is nothing here to name". That sentence
+  is true rather than a placeholder (it is a fact about that shell's capability table, the amendment to §27 (the filesystem service);
+  the interactive boot has held a directory since milestone 50 (pipes and redirection)). It is the same state the
+  per-file grant has been in since milestone 31 (a capability shell: designation is authorization). The builtins are gated in
   the navigating role on both ISAs; what is missing is a boot that wires an FS service into the
   interactive system, which is a wiring change and not a change here.
 - The shell tracks 8 levels and 16-byte components. Both are `grant_plan::nav`'s constants: the path
-  stack is an array because this program has no allocator, and 16 bytes is `filesystem_protocol::grant::MAX_NAME`
-  (a name that could be `cd`'d into but not granted would be a place you can reach and cannot talk
+  stack is an array because this program has no allocator. 16 bytes is
+  `filesystem_protocol::grant::MAX_NAME` (a name that could be `cd`'d into but not granted would be
+  a place you can reach and cannot talk
   about). Deeper is `TooDeep`, refused rather than truncated, because a truncated path names a
   different directory.
 - `ls` reads a directory in rounds of 256 bytes and re-reads it per round, so a name added or
   removed mid-listing can be seen twice or missed. That is `READDIR`'s own caveat
   ([dir-capability.md](dir-capability.md)), inherited rather than added.
 - The navigating shell needs two extra stack pages, and the number is a measurement. With the one
-  page `run` maps it overflowed by 192 bytes, which presented as a data abort on its own `sp` and
+  page `run` maps it overflowed by 192 bytes. That presented as a data abort on its own `sp` and
   then as the 60-second lost-wakeup watchdog, because the kernel test was still waiting for a report
   from a process that had died. A shell carries a path stack, a parsed path and a listing buffer by
   value; 4 KiB is genuinely tight. Same discipline as the FS server's stack (§27): sized by what it
