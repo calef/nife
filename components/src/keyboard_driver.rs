@@ -11,62 +11,37 @@
 //!   virtio-input ──virtio──► keyboard_driver ──OPERATION_BYTES, one CALL──► line_editor
 //! ```
 //!
-//! # Two modes, chosen at spawn, the same shape `display_terminal`'s `MODE_DISPLAY`/`MODE_WINDOW`
-//! # split already uses
-//!
-//! [`MODE_RING`] is rung two's: the driver publishes bytes into a page the compositor maps and
-//! rings a content-free doorbell, so a compositor arbitrating between several windows decides who
-//! actually sees them (DECISIONS §33). [`MODE_DIRECT`] is milestone 177's: for a boot with exactly
-//! one terminal, there is no second window to misdirect a keystroke to, so the problem the
-//! compositor's focus arbitration solves does not exist in this journey's scope
-//! (design/roadmap/0177-graphical-interactive-boot.md's own reasoning). The driver instead holds a
-//! fixed `CALL` capability to `line_editor`'s own served endpoint, granted at spawn, and sends
-//! every keystroke there directly, byte for byte the same [`line_editor::proto::OPERATION_BYTES`] framing
-//! `components/src/input.rs`'s UART driver already uses to feed the very same endpoint. **Not** a
-//! security exception to the module note below: it is *narrower* authority than [`MODE_RING`], not
-//! looser, because this driver holds exactly one fixed capability instead of "whichever client the
-//! compositor currently focuses."
-//!
-//! Its whole authority, and the shape of it is the point:
+//! Its whole authority:
 //!
 //! - slot 0, a **report** endpoint: how it tells its spawner it came up;
 //! - slot 1, an **`Irq`**: the device's event interrupt;
 //! - slot 2, a **`Virtio`**: the confined transport, and the only way it can reach the device;
 //! - slot 3, **[`OUT`]**: the compositor's doorbell (WRITE) in [`MODE_RING`], `line_editor`'s served
-//!   endpoint (WRITE) in [`MODE_DIRECT`] -- one slot, two meanings, chosen by `arg0` exactly as
-//!   `display_terminal`'s `PRESENT` slot is;
+//!   endpoint (WRITE) in [`MODE_DIRECT`], chosen by `arg0` as `display_terminal`'s `PRESENT` slot is;
 //! - mapped: its own DMA page, and in [`MODE_RING`] only, the **input ring** it shares with the
 //!   compositor and nobody else.
 //!
-//! # Why the ring is the authority, and the doorbell is not (`MODE_RING`)
+//! No key repeat of its own (the device sends repeats and [`video_terminal::keymap`] honors them),
+//! no LEDs, no layout switching, no mouse or tablet (a `virtio-tablet-pci` presents the same PCI id,
+//! recorded in `crates/pci`), and no configuration-space query. See notes/glyphs.md.
 //!
-//! DECISIONS §33's central idea, from the producing side. This driver's power to inject a keystroke
-//! is the **mapping of the input ring**, which no client has. It is not the doorbell: every client
-//! holds that, and everything sent on it is content-free, so a client that rang it a thousand times
-//! could not type a single character. A keystroke carried in a message word would have been
-//! forgeable by any client; a keystroke in a page nobody else maps cannot be forged at all.
+
+//! # Two modes, chosen at spawn
 //!
-//! So this driver is *not* trusted with the compositor's policy and holds no client's endpoint. It
-//! cannot choose who receives what it types: focus is the compositor's decision, expressed as which
-//! of the input endpoints *it* holds it uses. This program cannot name a client at all -- **in
-//! [`MODE_RING`]**. [`MODE_DIRECT`] names exactly one, fixed at spawn by whoever built this process,
-//! never by the driver's own choice, which is the same authority `components/src/input.rs` has always had
-//! for the plain UART case.
+//! In [`MODE_RING`] this driver's power to inject a keystroke is the **mapping of the input ring**
+//! (DECISIONS §33 (the compositor's authority is memory, not messages)), which no client has; the
+//! doorbell every client holds is content-free, so ringing it cannot type a character. The driver holds no client's endpoint and cannot choose who receives
+//! what it types: focus is the compositor's decision.
 //!
-//! # What it does not do
+//! In [`MODE_DIRECT`], for a boot with exactly one terminal, there is no second window to misdirect
+//! a keystroke to (design/roadmap/0177-graphical-interactive-boot.md). The driver holds one fixed
+//! `CALL` capability to `line_editor`'s served endpoint, granted at spawn, and sends every keystroke
+//! there in the [`line_editor::proto::OPERATION_BYTES`] framing `components/src/input.rs`'s UART
+//! driver uses. That is narrower authority than [`MODE_RING`], not looser: one capability, fixed by
+//! whoever built this process.
 //!
-//! No key repeat of its own (the device sends repeats and [`video_terminal::keymap`] honours them), no LEDs, no
-//! layout switching, no mouse or tablet (a `virtio-tablet-pci` presents the same PCI id, which is
-//! recorded in `crates/pci` rather than guessed at), and no configuration-space query: it drives the
-//! event queue and nothing else. The honest limits are in notes/glyphs.md.
-//!
-//! Name: ratified 2026-08-27 (calef). Renamed from `kbd` to `keyboard_driver`, matching the
-//! `<device>_driver` shape given to `block_driver` and `gpu_driver` in the same pass, and settling
-//! the open question this comment used to carry: `kbd` was never ratified (an earlier version of
-//! this comment claimed it was ratified 2026-07-30 alongside DECISIONS §39; checked directly
-//! against that section's own text and found false, §39 names `blk`, `spawner`, `console`,
-//! `input`, `shell`, `painter` and `window` as the names already right, and `kbd` was never among
-//! them), and calef is not a fan of `kbd` for "keyboard" in the first place.
+//! Name: ratified 2026-08-27 (calef), renamed from `kbd` (never ratified) to match the
+//! `<device>_driver` shape of `block_driver` and `gpu_driver`.
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

@@ -16,61 +16,17 @@
 //! descriptor table and the two rings, negotiated through the registers below. See the virtio
 //! 1.x spec, sections 4.2 (MMIO) and 5.2 (block).
 //!
-//! # Examples
+//! Nothing here can run off a machine: every entry point writes device registers through a
+//! mapping the kernel handed this process and returns `!`, so the example on [`run`] is `no_run`.
+//! The checkable parts of this subsystem are `direct_memory_access_validator` and
+//! `filesystem_protocol`.
 //!
-//! **Nothing here can run off a machine, and the reason is the whole point of the crate.** Every
-//! entry point below writes device registers through a mapping the kernel handed this process and
-//! returns `!`: there is no virtio device on a host, `script/test`'s host pass excludes this crate
-//! (it depends on `user_mode_runtime`'s EL0 `asm!`, an exclusion `script/lint` derives and checks),
-//! and a function that never returns has no assertion to make. So the example is `no_run`:
-//! type-checked against the real signatures, executed by the QEMU boot and by nothing else. The
-//! parts of this subsystem that *are* checkable are in `direct_memory_access_validator` and
-//! `filesystem_protocol`, which is where their examples live.
-//!
-//! What a driver's `_start` looks like, and it is the shortest interesting program in the tree,
-//! because the interesting part is what it is holding rather than what it does:
-//!
-//! ```no_run
-//! # use user_mode_runtime::exit;
-//! /// The kernel starts this thread with the DMA page's **physical** address in the first argument
-//! /// register. It has to: descriptors speak physical addresses and a process knows only virtual
-//! /// ones, and there is no syscall that would translate one, deliberately.
-//! ///
-//! /// Everything else this process holds arrived at spawn: a device-typed mapping of the registers,
-//! /// the DMA page, and an `Irq` capability in slot 1 so the interrupt reaches it as a message. It
-//! /// holds no filesystem, no console, and no way to name a physical address other than this one.
-//! fn start(direct_memory_access_phys: u64) -> ! {
-//!     virtio::run(direct_memory_access_phys)
-//! }
-//! ```
-//!
-//! If any of the register programming below is wrong, **this process faults and the kernel does
-//! not**, which is milestone 9's headline and the thing a reader should take from the crate.
-//!
-//! Name: ratified 2026-09-14 (calef, working the unratified worklist), on AGENTS.md's naming
-//! section, "standard terms a reader already knows from outside", and milestone 63's name table,
-//! which treats the name as claimed territory.
-//!
-//! **Ratified as a proper name, not on the acronym test, and the distinction is the record here.**
-//! `virtio` contracts *virtual I/O*, which the tree nowhere expands and which this block is the
-//! first place to write down. The 2026-09-05 rule spells out an acronym unless the expansion
-//! teaches nothing, and *virtual I/O* sits awkwardly against it: it teaches more than `pci`'s
-//! expansion and less than `dma`'s, being generic enough to name almost anything in an operating
-//! system rather than saying "a device and driver standard", which is the job `notes/virtio.md`
-//! has to do instead. The ruling did not turn on that. It turned on the word being the
-//! **specification's own name** (virtio 1.x, OASIS), the string in every QEMU flag and device tree
-//! node, so expanding it would rename a standard rather than spell out an abbreviation. That is the
-//! `elf` and `pci` ground. The contraction point matters for the next coined name that arrives:
-//! `virtio` is `virt` + `io` and not an initialism at all, the same shape that kept `rm` the same
-//! day.
-//! Introduced 2026-07-14 with milestone 9's block driver. It is the device family's own name from
-//! the specification, which is the protected class exactly, and the tree has reasoned about it
-//! from the far side: milestone 63 refused `virtio_net` for the transport adapter because
-//! "`crates/virtio` also drives net", which is an argument that this crate owns the whole
-//! family's name rather than one device's. design/naming.md's BUGS comes one clause short of the
-//! same conclusion, saying "the crate keeps its name, which is right" without giving the reason,
-//! so a reader there learns that somebody agreed rather than why; the reason is the two citations
-//! above. no architect has ratified it.
+
+//! Name: ratified 2026-09-14 (calef, working the unratified worklist), as a proper name rather than
+//! on the acronym test: `virtio` is the specification's own name (virtio 1.x, OASIS), the string in
+//! every QEMU flag and device tree node, so expanding it would rename a standard. That is the `elf`
+//! and `pci` ground. It names the whole device family (milestone 63 (directory and package names)
+//! refused `virtio_net` for the transport adapter because this crate also drives net).
 
 use abi::interrupt;
 use filesystem_protocol::blk;
@@ -252,7 +208,20 @@ fn init_with_features(driver_features_lo: u32, want_flush: bool) -> bool {
 /// Negotiates the device, reads the superblock and the `motd` file off the disk, sends the
 /// file's first eight bytes back to the kernel so it can check them, and exits. Never returns:
 /// this is a one-shot test driver, not a resident service, so it does not loop waiting for more
-/// work. See the module docs for why the example above is `no_run` rather than executed.
+/// work.
+///
+/// # Examples
+///
+/// A driver's `_start`. What matters is what it holds: a device-typed mapping of the registers, the
+/// DMA page, and an `Irq` capability in slot 1, and no syscall that translates an address, which is
+/// why the DMA page's physical address arrives as an argument.
+///
+/// ```no_run
+/// # use user_mode_runtime::exit;
+/// fn start(direct_memory_access_phys: u64) -> ! {
+///     virtio::run(direct_memory_access_phys)
+/// }
+/// ```
 pub fn run(direct_memory_access_phys: u64) -> ! {
     init();
 

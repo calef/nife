@@ -1,20 +1,13 @@
 //! **The argument page** (milestone 205 (how a foreign program is told what to do), DECISIONS
-//! §170 (how a foreign program is told what to do)). One definition of the read-only page that carries a `std` program's argv, so whoever
-//! assembles it (the shell, and the kernel test harness) and whoever reads it (the `std` PAL's
-//! `sys/args`) cannot drift. The same split `environment_protocol` makes for the configuration page.
-//!
-//! Name: provisional, like the layout below. Both are a wire format two programs agree on, so a
-//! ruling fixes them; `design/roadmap/0672-the-argument-page-layout.md` is the proposal.
-//!
-//! # What §170 ruled, and what this page therefore is not
+//! §170 (how a foreign program is told what to do)). One definition of the read-only page that
+//! carries a `std` program's argv, shared by whoever assembles it (the shell, the kernel test
+//! harness) and the `std` PAL's `sys/args`, as `environment_protocol` is for the configuration page.
 //!
 //! **A program written by somebody else hears its arguments as bytes, and the bytes carry no
-//! authority.** `rg foo src` gives `ripgrep` the three byte strings `rg`, `foo` and `src`. Whether
-//! `ripgrep` may read `src` is decided somewhere else entirely: by the directory the line granted
-//! and by what the program's manifest says a resolved word may be. So nothing on this page is
-//! validated for meaning, unlike `environment_protocol`'s, and nothing needs to be: a pattern is
-//! arbitrary bytes, and a path that names something the program was not granted reaches nothing.
+//! authority** (§170). Whether `rg foo src` may read `src` is decided by the directory the line
+//! granted and the program's manifest, so nothing on this page is validated for meaning.
 //!
+
 //! # The layout
 //!
 //! ```text
@@ -36,6 +29,7 @@
 //! - **One page.** [`CAPACITY`] is 4,080 bytes of records, the four-byte prefixes included.
 //!   A line that does not fit is refused at assembly ([`Refused::TooLong`]), never truncated.
 //!
+
 //! # A page that does not parse reads as no arguments
 //!
 //! [`MAGIC`] is checked first, and then every length against what is left, the same
@@ -43,29 +37,16 @@
 //! to something else, or a count that disagrees with the records all answer an empty argv rather
 //! than a partial one: a program that sees half its arguments would act on a line nobody typed.
 //!
-//! # Examples
-//!
-//! ```
-//! use argument_protocol::{ArgPage, PAGE_BYTES, PageBuilder};
-//!
-//! let mut page = [0u8; PAGE_BYTES];
-//! let mut b = PageBuilder::new(&mut page);
-//! for a in [&b"rg"[..], b"ab\xffcd", b"src"] {
-//!     b.push(a).unwrap();
-//! }
-//! b.finish();
-//! let args: Vec<&[u8]> = ArgPage::parse(&page).iter().collect();
-//! assert_eq!(args, [&b"rg"[..], b"ab\xffcd", b"src"]);
-//! ```
-//!
 //! # BUGS
 //!
 //! - **A secret on a command line is plain bytes on this page**, handed to the program with no
-//!   protection. §170 records it as the ruling's known cost; §111 (inert configuration is a read-only page) refused free-form strings on the
-//!   configuration page for exactly this reason, and no layout can help, because a regex is
-//!   arbitrary bytes too.
+//!   protection, the ruling's known cost; §111 (inert configuration is a read-only page) refused
+//!   free-form strings on the configuration page for this reason.
 //! - **The environment does not ride here.** §170 is silent on environment variables for a foreign
 //!   program, so they stay on §111's validated page and this one carries argv alone.
+//!
+//! Name: provisional, like the layout. Both are a wire format two programs agree on, so a ruling
+//! fixes them; `design/roadmap/0672-the-argument-page-layout.md` is the proposal.
 
 #![cfg_attr(not(test), no_std)]
 
@@ -95,6 +76,21 @@ pub enum Refused {
 /// (the shell) writes straight into the frame it is about to send and has no stack to spare for a
 /// second 4 KiB copy. A refused argument leaves the page as it was, and nothing is valid until
 /// [`PageBuilder::finish`] writes the header: a page abandoned half-built reads as no arguments.
+///
+/// # Examples
+///
+/// ```
+/// use argument_protocol::{ArgPage, PAGE_BYTES, PageBuilder};
+///
+/// let mut page = [0u8; PAGE_BYTES];
+/// let mut b = PageBuilder::new(&mut page);
+/// for a in [&b"rg"[..], b"ab\xffcd", b"src"] {
+///     b.push(a).unwrap();
+/// }
+/// b.finish();
+/// let args: Vec<&[u8]> = ArgPage::parse(&page).iter().collect();
+/// assert_eq!(args, [&b"rg"[..], b"ab\xffcd", b"src"]);
+/// ```
 pub struct PageBuilder<'p> {
     page: &'p mut [u8; PAGE_BYTES],
     count: u32,
