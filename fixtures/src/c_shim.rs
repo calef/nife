@@ -72,6 +72,7 @@ unsafe extern "C" {
     fn c_seam_transform(grant: *mut u8, len: usize) -> u32;
     fn c_seam_overrun(grant: *mut u8, len: usize);
     fn c_seam_wild(grant: *mut u8, len: usize);
+    fn c_seam_underrun(grant: *mut u8, len: usize);
 }
 
 #[unsafe(no_mangle)]
@@ -92,6 +93,9 @@ pub extern "C" fn _start(_a0: u64, attempt: u64, _a2: u64) -> ! {
         c_seam::ATTEMPT_OVERRUN => unsafe { c_seam_overrun(grant, len) },
         // SAFETY: as above: the same true grant and true length, handed to the C that deliberately runs wild. The kernel is what makes that survivable.
         c_seam::ATTEMPT_WILD => unsafe { c_seam_wild(grant, len) },
+        // SAFETY: as above again, aimed one page below the grant this time. The kernel is what
+        // makes that survivable too.
+        c_seam::ATTEMPT_UNDERRUN => unsafe { c_seam_underrun(grant, len) },
         // The honest path. The result also lands in the grant, so the checker reads it out of shared
         // memory rather than trusting a number we forwarded.
         _ => {

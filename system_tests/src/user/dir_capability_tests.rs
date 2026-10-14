@@ -16,7 +16,7 @@ pub(super) fn blk_server_image() -> &'static [u8] {
 /// boot and an `EEXIST` would otherwise read as a refusal.
 ///
 /// `None` when no RedoxFS disk is attached (nothing to test; do not fail).
-fn attack_a_subtree(rights: u64, run: u64) -> Option<u64> {
+pub(super) fn attack_a_subtree(rights: u64, run: u64) -> Option<u64> {
     let Some(report) = fs_service::start_granted_dir(
         blk_server_image(),
         program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
@@ -54,7 +54,7 @@ fn attack_a_subtree(rights: u64, run: u64) -> Option<u64> {
 /// Both directions are failures and they are different failures, which is why this is not one
 /// equality assertion: a bit set that should not be is an escape, and a bit clear that should be
 /// set means the capability did not work, so every refusal it reported proves nothing.
-fn assert_verdict(got: u64, want: u64, what: &str) {
+pub(super) fn assert_verdict(got: u64, want: u64, what: &str) {
     let leaked = got & !want;
     let missing = want & !got;
     assert_eq!(

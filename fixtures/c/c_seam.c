@@ -153,3 +153,24 @@ void c_seam_wild(unsigned char *grant, size_t len)
     p = grant + len + C_SEAM_WILD_SKIP;
     *p = C_SEAM_MARK;
 }
+
+/*
+ * The bug, version three: an underrun, a whole page BELOW the grant.
+ *
+ * The eighth outsider pass's addition. The other two bugs both aim upward;
+ * this one aims down, at the page before the grant, which this process has
+ * no mapping for at all (nothing in the fixture maps anything below the
+ * grant). Downward is the direction a size_t underflow or a negative index
+ * reaches for, and it is the one direction nothing in this suite had ever
+ * probed. The witness story is the wild store's: a translation fault, and
+ * the page stays whatever its owner left in it.
+ */
+void c_seam_underrun(unsigned char *grant, size_t len)
+{
+    volatile unsigned char *p;
+
+    (void)len;
+    grant[0] = C_SEAM_MARK;
+    p = grant - C_SEAM_WILD_SKIP;
+    *p = C_SEAM_MARK;
+}

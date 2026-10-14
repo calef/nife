@@ -3,8 +3,9 @@ use core::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use compositor::proto::wlist;
 use compositor::{Rect, SCENE, status};
 use compositor_service::{
-    ROLE_CAPTURE, ROLE_INPUT, ROLE_LIE_DAMAGE, ROLE_PROBE_INPUT, ROLE_PROBE_NEIGHBOUR,
-    ROLE_PROBE_READ, ROLE_PROBE_SCREEN, ROLE_SMALL_DAMAGE, ROLE_VICTIM, Wiring,
+    ROLE_CAPTURE, ROLE_FORGE_CTL, ROLE_INPUT, ROLE_LIE_DAMAGE, ROLE_PROBE_INPUT,
+    ROLE_PROBE_NEIGHBOUR, ROLE_PROBE_READ, ROLE_PROBE_SCREEN, ROLE_SMALL_DAMAGE, ROLE_VICTIM,
+    Wiring,
 };
 
 use super::*;
@@ -1044,4 +1045,67 @@ fn three_clients_compose_into_one_scanout_and_the_host_sees_it() {
     while crate::arch::timer::now() < deadline {
         sched::yield_now();
     }
+}
+
+/// **A client that forges its whole control page changes nothing but its own window, and the
+/// compositor answers every commit** (an eighth outsider pass at the confinement claim, claim 25).
+///
+/// The cited lying-rectangle test attacks the damage fields, the one input the protocol names as
+/// untrusted. This attacks the rest of the control page at once: `ID`, `WIDTH`, `HEIGHT`, `STRIDE`
+/// (including a zero and a `stride = 1` with a near-`i32::MAX` width), `STATUS`, `ACKED`, and a
+/// `SEQ` that jumps backwards to zero and then forwards to `u32::MAX`, with a commit after each
+/// forge. The page is the client's own granted memory, so writing it is not itself an escape; the
+/// escape would be the compositor trusting any of it back: re-reading geometry for clipping, or
+/// steering its `ACKED`/`SEQ` bookkeeping with a forged value, is a confused deputy writing
+/// through someone else's words. The forger reports `WIN_FORGED` only if the compositor answered
+/// all three commits (an error answer takes the client down at `E_COMMIT`, which reads here as a
+/// `0xDEAD` word), the victim's surface and whole control page are compared before and after, and
+/// the screen is exactly the two-window contract picture.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
+#[test_case]
+fn a_forged_control_page_changes_nothing_and_stops_no_one() {
+    const VICTIM: usize = 1;
+    const FORGER: usize = 0;
+    let (display, screen, display_region) = kernel_display();
+    let w = compositor_service::start(2, 0, display, screen);
+    wait_for_compositor(&w);
+
+    w.spawn_client(VICTIM, ROLE_VICTIM);
+    let (victim, victim_slot, reported) = take_call(w.client_report[VICTIM], status::WIN_PAINTED);
+    assert_eq!(reported, compositor::expected_window_checksum(VICTIM));
+    let digest = w.client_surface_digest(VICTIM);
+    let ctl = w.client_control_words(VICTIM);
+
+    w.spawn_client(FORGER, ROLE_FORGE_CTL);
+    expect_painted(&w, FORGER);
+    let [tag, answered, ..] = receive_within_bound(
+        w.client_report[FORGER],
+        "the compositor stopped answering a client that forged its whole control page",
+    );
+    assert_eq!(
+        tag,
+        status::WIN_FORGED,
+        "the forger reported {tag:#x} instead of finishing: a 0xdead word means the compositor          answered one of the forged commits with an error, and anything else means the client          never finished",
+    );
+    assert_eq!(answered, 3, "the forger did not complete its three commits");
+
+    assert_eq!(
+        w.client_surface_digest(VICTIM),
+        digest,
+        "a neighbor's forged control page changed the victim's pixels",
+    );
+    assert_eq!(
+        w.client_control_words(VICTIM),
+        ctl,
+        "a neighbor's forged control page changed the victim's control page",
+    );
+    assert_screen_is(&w, 2);
+    release(victim, victim_slot);
+    let [tag, after, was, ..] = sched::ipc_receive(w.client_report[VICTIM]);
+    assert_eq!(tag, status::WIN_INTACT);
+    assert_eq!(was, digest);
+    assert_eq!(after, digest);
+    retire_kernel_display(display_region);
 }
