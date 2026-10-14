@@ -32,8 +32,44 @@ pub(crate) const MAX_PHNUM: usize = 64;
 
 /// A parsed, **fully validated** ELF64 executable.
 ///
-/// Everything is checked in [`Elf::parse`], not lazily while iterating. A loader that validates
-/// as it maps has already mapped half a bad program by the time it finds out.
+/// Everything is checked in [`Elf::parse`], not lazily: a loader that validates as it maps has
+/// mapped half a bad program by the time it finds out.
+///
+/// # Examples
+///
+/// ```
+/// use elf::{Elf, Error, FOREIGN_MACHINES, NATIVE_MACHINE, PF_R, PF_W, PF_X};
+/// fn image(flags: u32, entry: u64) -> Vec<u8> {
+///     const EHDR: usize = 64; const PHDR: usize = 56;
+///     let mut v = vec![0u8; EHDR + PHDR];
+///     v[0..4].copy_from_slice(&[0x7f, b'E', b'L', b'F']);
+///     v[4] = 2; v[5] = 1; v[6] = 1; // ELFCLASS64, ELFDATA2LSB, EV_CURRENT
+///     v[16..18].copy_from_slice(&2u16.to_le_bytes()); // ET_EXEC
+///     v[18..20].copy_from_slice(&NATIVE_MACHINE.to_le_bytes());
+///     v[24..32].copy_from_slice(&entry.to_le_bytes()); // e_entry
+///     v[32..40].copy_from_slice(&(EHDR as u64).to_le_bytes()); // e_phoff
+///     v[54..56].copy_from_slice(&(PHDR as u16).to_le_bytes()); // e_phentsize
+///     v[56..58].copy_from_slice(&1u16.to_le_bytes()); // e_phnum
+///     let p = EHDR;
+///     v[p..p + 4].copy_from_slice(&1u32.to_le_bytes()); // PT_LOAD
+///     v[p + 4..p + 8].copy_from_slice(&flags.to_le_bytes());
+///     v[p + 8..p + 16].copy_from_slice(&((EHDR + PHDR) as u64).to_le_bytes()); // p_offset
+///     v[p + 16..p + 24].copy_from_slice(&0x40_0000u64.to_le_bytes()); // p_vaddr
+///     v[p + 24..p + 32].copy_from_slice(&0x40_0000u64.to_le_bytes()); // p_paddr, equal here
+///     v[p + 40..p + 48].copy_from_slice(&4096u64.to_le_bytes()); // p_memsz; p_filesz stays 0
+///     v
+/// }
+///
+/// let bytes = image(PF_R | PF_X, 0x40_0000);
+/// let elf = Elf::parse(&bytes).unwrap();
+/// assert_eq!(elf.entry(), 0x40_0000);
+/// let seg = elf.segments().next().unwrap();
+/// assert!(seg.is_readable() && seg.is_executable() && !seg.is_writable());
+/// assert_eq!(seg.page_range(4096), (0x40_0000, 0x40_1000));
+///
+/// // `paddr` equals `vaddr` here; a loader wants `vaddr` (see `Segment::paddr`).
+/// assert_eq!(seg.paddr, seg.vaddr);
+/// ```
 pub struct Elf<'a> {
     pub(crate) bytes: &'a [u8],
     entry: u64,

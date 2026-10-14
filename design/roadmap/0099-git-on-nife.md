@@ -35,15 +35,15 @@ The first fork, and it is the milestone's biggest decision: gitoxide, or C git.
   work lands as PAL surface this tree wants anyway, and every gap is a Rust `Unsupported` with a
   known owner. It also keeps the whole workload inside the language the verification story is
   written in.
-- C git is the real thing, and would prove the C seam (`c_shim`, `c_confiner`) at a scale far
-  past anything it has carried, but it wants a libc surface, `fork`/`exec` semantics this kernel
+- C git is the real thing, and would prove the C seam (`c_shim`, `c_confiner`) at a scale far past
+  anything it has carried. But it wants a libc surface, `fork`/`exec` semantics this kernel
   deliberately does not have (git spawns itself constantly: hooks, pagers, editors, `git` calling
   `git`), and `mmap` for packfiles.
 
 Decided 2026-08-04 (calef): gitoxide first. Its gaps are this project's own roadmap rather
 than a compatibility project, so every `Unsupported` it hits is PAL surface milestone 64 wants
-anyway and lands with a known owner. C git becomes a later, harder claim rather than a
-prerequisite, and the day it is attempted the `fork`/`exec` question is a design fork of its own
+anyway and lands with a known owner. C git becomes a later, harder claim rather than a prerequisite.
+The day it is attempted the `fork`/`exec` question is a design fork of its own
 (this kernel spawns by capability, and git spawns itself constantly), not a porting task.
 
 The measured gap, so nobody starts blind. `std::fs` answers `Unsupported` for 32 of its 54
@@ -69,7 +69,8 @@ Not a git implementation and not a compatibility project: the deliverable is *ru
 one*. If a stage needs a change to gitoxide, that is a dependency decision under §46 and a patch
 under `patches/`, the same road milestone 57 took with RedoxFS. Sequenced after milestone 64
 measures what a real crate actually needs, because 64's probe crates are the cheap version of this
-milestone's first week, and after milestone 91's glossary if it lands, since a reader meeting
+milestone's first week. Also after the glossary of milestone 91 (a glossary, and every acronym
+linked to it) if it lands, since a reader meeting
 "packfile", "ref" and "object database" deserves the same treatment acronyms get.
 
 ## Done when
@@ -87,8 +88,8 @@ on packaging.").
 
 ## Index row
 
-A second real-workload target beside 66's Vaultwarden, chosen because local git needs no network,
-no threads, no async runtime and no SQLite: it is a filesystem, a hash, a compressor and a clock,
+A second real-workload target beside 66's Vaultwarden, chosen because local git needs no network, no
+threads, no async runtime and no SQLite. It is a filesystem, a hash, a compressor and a clock,
 which is what milestone 57 just finished building. First fork **decided 2026-08-04: gitoxide**
 (Rust, rides the std PAL), so its gaps are milestone 64's surface with known owners; C git is a
 later, harder claim whose `fork`/`exec` question is its own design fork

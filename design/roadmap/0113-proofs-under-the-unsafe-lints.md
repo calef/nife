@@ -14,9 +14,9 @@ fire inside them at all. The tree has 14 `unsafe {}` blocks under `#[cfg(kani)]`
 `crates/intrusive` and `crates/inter_process_communication`. `intrusive`'s two both carry SAFETY comments.
 **Eleven of `ipc`'s twelve do not**, and the gate has never said so.
 
-The one exception worth naming is `ipc`'s `seed`, which is an `unsafe fn` under `#[cfg(kani)]`: it
-is the single `unsafe fn` in the tree whose blocks clippy does not reprove on every run, and the
-survey found it by enumerating rather than by the gate complaining.
+The one exception worth naming is `ipc`'s `seed`, which is an `unsafe fn` under `#[cfg(kani)]`. It
+is the single `unsafe fn` in the tree whose blocks clippy does not reprove on every run. The survey
+found it by enumerating rather than by the gate complaining.
 
 Why this is worse here than it would be elsewhere. This is the verification path. The project's
 whole method is pure logic in host-testable crates plus machine-checked proofs, and the unsafe code
@@ -40,8 +40,8 @@ Two candidate gates, and the milestone should measure before choosing.
    definition. Correct by construction, and it only runs when someone runs the proofs, which is not
    every commit.
 
-Measure what each would find before proposing which, which is the discipline §61 exists to
-enforce: run both over the tree, read the hits, and record the counts in the milestone the way
+Measure what each would find before proposing which, which is the discipline §61 (A lint is adopted on evidence from this tree,) exists to enforce.
+Run both over the tree, read the hits, and record the counts in the milestone the way
 `Cargo.toml` records the counts that killed three lints. A number decides this, not an argument
 about which is more principled.
 
@@ -68,11 +68,11 @@ That one is worth fixing and it is a different bug.
   riscv64 build of those two packages is linted by nothing. The note says outright that the gap is
   unrelated to this milestone and still open.
 - **Recorded.** `notes/unsafe-obligations.md` records what the shim does not promise. It is
-  deliberately looser than Kani (its `any` takes any `T` where the real one requires `Arbitrary`), a
+  deliberately looser than Kani (its `any` takes any `T` where the real one requires `Arbitrary`). A
   clean pass is not a proof, and a harness reaching for Kani API the shim lacks breaks the lint pass
   rather than the proof.
 - **Refused.** Widening this into a gate over every `cfg`. `cfg(kani)` is the case with evidence
-  behind it, thirteen undocumented blocks in the code that backs the verification claim; other
+  behind it, thirteen undocumented blocks in the code that backs the verification claim. Other
   cfg-gated code is already compiled by one of `script/lint`'s existing configurations, so a general
   rule would buy nothing and cost a configuration matrix nobody can read.
 

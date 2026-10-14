@@ -66,7 +66,7 @@ note per acronym":
   in part 3.
 
 **Flat rather than `notes/terms/`**, also calef's, and the reason is that the six which already
-exist are flat: nesting would break every link pointing at them today, to buy a separation between
+exist are flat. Nesting would break every link pointing at them today, to buy a separation between
 short notes and long ones that `notes/tcb.md` (54 lines) and `notes/mmu.md` (93) show this tree does
 not make anyway.
 
@@ -74,8 +74,8 @@ Measured, so the size is a number: the markdown tree (notes/, design/, the root 
 carries ~835 distinct all-caps tokens. The top of the list is the real problem: IPC appears 251
 times, DMA 231, EL0 181, IOMMU 180, TCB 123, none of them expanded anywhere a reader can reach
 from the use. The naive count also includes things that are *not* acronyms (rights constants like
-WRITE, the status vocabulary like BUILT, plain emphasis like NOT), which is the finding that
-shapes the enforcement below: the true glossary is likely a low hundred entries, and the gate
+WRITE, the status vocabulary like BUILT, plain emphasis like NOT). That finding shapes the
+enforcement below. The true glossary is likely a low hundred entries, and the gate
 needs a recorded line between prose and code.
 
 The deliverable, in three parts:

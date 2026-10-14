@@ -2,44 +2,30 @@
 //!
 //! The program that creates a filesystem, and the whole of its authority is two capabilities:
 //!
-//! - a **block-service endpoint** for **one** disk (`filesystem_protocol::blk`), which is the power to destroy
-//!   that disk and nothing else; and
+//! - a **block-service endpoint** for **one** disk (`filesystem_protocol::blk`), which is the power
+//!   to destroy that disk and nothing else; and
 //! - an **entropy endpoint** (`entropy_protocol`), which is the power to obtain random bytes and
-//!   nothing else. It cannot reach the virtio-rng device, program its queue, or see the DMA page.
+//!   nothing else.
 //!
-//! **That pair is sufficient and neither half is**, which is what this program exists to
-//! demonstrate. A filesystem carries a unique id, and an id that is not random is not unique; the
-//! vendored RedoxFS has no source of randomness in a `no_std` build, which is exactly why
-//! `Header::new` is `std`-gated (it calls `getrandom` through `Uuid::new_v4`). Rather than give the
-//! engine a random number generator, the engine now **takes the uuid as an argument**, the same way
-//! `create` already takes `ctime` because it has no clock. See `vendor/README.md` divergence 4 and
-//! `patches/redoxfs-no-std-create-uuid.patch`.
-//!
-//! So the capability boundary is where it should be: **the library computes, the program holds the
-//! authority, and no randomness enters vendored code.**
-//!
-//! Compare `mkfs.ext4 /dev/sda3` as root, which reaches every disk in the machine and opens
-//! `/dev/urandom` without asking anybody. Here a process with the disk and no entropy writes
-//! nothing at all, and a process with entropy and no disk has nothing to write to. The kernel-side
-//! test runs all three cases against the same binary.
+//! **That pair is sufficient and neither half is.** A filesystem carries a unique id, and the
+//! vendored RedoxFS has no randomness in a `no_std` build, so the engine **takes the uuid as an
+//! argument**, as `create` already takes `ctime` because it has no clock (`vendor/README.md`
+//! divergence 4, `patches/redoxfs-no-std-create-uuid.patch`). The library computes, the program
+//! holds the authority, and no randomness enters vendored code. The kernel-side test runs the
+//! binary with both, with the disk alone (it writes nothing) and with entropy alone.
 //!
 //! # What it does
 //!
-//! 1. Reads the partition table off the disk it holds and finds the **nife data partition**
-//!    by type GUID (DECISIONS §45). Nothing here trusts a partition *name*: on any disk a Mac
-//!    touched there is not one (notes/globally-unique-identifier-partition-table.md).
-//! 2. Draws sixteen random bytes, and stops if it cannot.
+//! 1. Reads the partition table off the disk it holds and finds the **nife data partition** by
+//!    type GUID, never by name: DECISIONS §45 (a nife partition is
+//!    `EC5CC08B-D749-4434-AC38-A274C50385BA`).
+//! 2. Draws sixteen random bytes, and stops if it cannot, **before the first write**, so a refusal
+//!    leaves the partition untouched.
 //! 3. Creates the filesystem **inside that partition**, through a [`PartitionDisk`] whose block
 //!    zero is the partition's first block and whose `size` is the partition's length, so the engine
 //!    cannot address a byte outside it even by arithmetic error.
-//! 4. Reopens it through [`redoxfs_server::Server`] (the same code the FS server serves with) and writes
-//!    one file, so that what lands on the platter is a filesystem with a tree in it rather than
-//!    only a header.
-//!
-//! The order matters: **the entropy draw comes before the first write**, so a refusal leaves a
-//! partition that still holds whatever it held.
-//!
-//! # EXAMPLES
+//! 4. Reopens it through [`redoxfs_server::Server`] and writes one file, so the platter holds a
+//!    filesystem with a tree in it rather than only a header.
 //!
 //! ```text
 //!   wired with a disk AND an entropy endpoint:
@@ -52,25 +38,19 @@
 //!     report: R_NO_DISK                         (there is nothing to write to)
 //! ```
 //!
+
 //! # BUGS
 //!
-//! - **Every timestamp on the new filesystem is zero.** `create_reserved_with_uuid` takes `ctime`
-//!   because the engine has no clock, and this program holds no clock capability either: it has a
-//!   disk and an entropy endpoint, and nothing else. The honest thing is to pass zero rather than
-//!   invent a plausible number, so a filesystem made on the target is dated 1970 until the wiring
-//!   grows a `clock_protocol` endpoint. A one-slot change, deliberately not taken here, because adding
-//!   it would blur the two-capability claim this program is making.
-//! - **It refuses a partition that is not 4096-aligned at both ends**, rather than rounding one in.
-//!   A filesystem whose blocks straddle the partition's first byte reads back correctly through the
-//!   offset disk that made it and is unreadable by everything else, which is the worst failure
-//!   available.
-//! - **No progress, no resume, and no confirmation.** It formats what it was handed the moment it
-//!   runs. The confirmation a `mkfs` normally prints exists because the tool could have been aimed
-//!   anywhere; this one was handed one partition of one disk.
-//! - **The filesystem is unencrypted**, deliberately (roadmap milestone 57). RedoxFS encryption
-//!   needs a salt and two keys, which are `getrandom` upstream; the `no_std` creation path refuses
-//!   a password rather than silently making an unencrypted filesystem, so wiring one in later is a
-//!   second entropy draw and not a surprise.
+//! - **Every timestamp on the new filesystem is zero.** This program holds no clock capability, so
+//!   it passes zero rather than invent a number; adding one would blur the two-capability claim.
+//! - **It refuses a partition that is not 4096-aligned at both ends**, rather than rounding one in:
+//!   blocks straddling the partition's first byte would be readable only through the offset disk
+//!   that made them.
+//! - **No progress, no resume, and no confirmation.** It formats what it was handed, one partition
+//!   of one disk.
+//! - **The filesystem is unencrypted** (milestone 57 (partitioning and formatting a real
+//!   drive)). RedoxFS encryption needs a salt and two keys; the `no_std` creation path refuses a
+//!   password rather than silently making an unencrypted filesystem.
 
 #![no_std]
 #![no_main]

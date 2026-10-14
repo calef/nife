@@ -33,7 +33,7 @@ larger one, because it touches how net_stack's single service loop relates to it
 than adding a verb to a protocol.
 
 **What the gate becomes.** `hostfwd` is the mirror of the `guestfwd` the outbound test already uses,
-so the shape is known and costs no host setup: QEMU forwards a host port to the guest, the test
+so the shape is known and costs no host setup. QEMU forwards a host port to the guest, the test
 connects to it from the host side, and the guest accepts, reads and answers. That keeps the property
 milestone 30 earned, a network gate with zero developer setup that runs in CI.
 
@@ -51,7 +51,8 @@ the next one. Decide the model with the verb, or the verb is a milestone that sh
 nothing can use.
 
 This also binds milestone 27's `std::net` PAL. `TcpListener` is currently unreachable for the
-same reason `TcpStream` was before milestone 30; whether the PAL binding lands here or in 27's
+same reason `TcpStream` was before milestone 30 (the network stack as a confined component). Whether
+the PAL binding lands here or in 27's
 follow-on is a scoping question worth settling early, because the answer decides whether a
 gitoxide-style real workload (milestone 99) can serve anything.
 

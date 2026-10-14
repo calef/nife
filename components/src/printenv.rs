@@ -1,34 +1,15 @@
 //! **`printenv`**: print the inert-configuration page (milestone 47's environment-variable fork,
 //! DECISIONS §111, notes/env-config.md).
 //!
-//! The whole program is: read a page, print what it carries. It holds two capabilities and
-//! neither of them can change anything, exactly `date`'s shape one manifest field over
-//! ([`grant_plan::Manifest::config`] rather than [`grant_plan::Manifest::clock`]).
-//!
-//! # It reads. There is no way to set anything from here.
-//!
-//! The page this program maps is `READ`-only, and that rung is the whole of why there is no
-//! `printenv -s TZ=...` here: the authority this process lacks is a page permission rather than a
-//! check somewhere in this file. Nothing about what a shell hands its own children can be changed
-//! by a program spawned with a config grant, which is the same shape `date` already demonstrates
-//! for the clock.
-//!
-//! # Three keys, three closed domains, and a state the type carries honestly
+//! The whole program is: read a page, print what it carries. It holds two capabilities and neither
+//! can change anything, `date`'s shape one manifest field over ([`grant_plan::Manifest::config`]
+//! rather than [`grant_plan::Manifest::clock`]). The page is mapped `READ`-only, which is why there
+//! is no `printenv -s TZ=...`: the missing authority is a page permission, not a check here.
 //!
 //! `environment_protocol::ConfigPage` answers `Option<&str>` per key: `Some(value)` when the page is
-//! valid and carries that key, `None` when the page is valid but that key was never set, and
-//! (indistinguishably from the outside, by design) `None` when nobody assembled a page into this
-//! frame at all. This program tells the second case apart from the first two the same way `date`
-//! tells "no clock service" from "no clock capability": by checking whether it holds the
-//! capability at all before it prints anything about what the page says.
-//!
-//! # Arguments: none
-//!
-//! There is no argv on this ABI (notes/abi.md), and this program needs none: `printenv` with no
-//! arguments is the only spelling, matching Unix's own `printenv(1)`/`env(1)` with nothing to
-//! filter by.
-//!
-//! # EXAMPLES
+//! valid and carries that key, and `None` both when the key was never set and when nobody assembled
+//! a page at all. This program tells "no grant" apart the way `date` tells "no clock capability"
+//! apart: by checking whether it holds the capability before printing anything.
 //!
 //! ```text
 //! printenv                  TZ=UTC
@@ -43,28 +24,14 @@
 //! # BUGS
 //!
 //! - **No filtering.** Unix's `printenv NAME` prints one variable; this always prints all three,
-//!   because `ArgSpec` has no position yet (the same gap `date`'s module docs name for a format
-//!   selector) and three lines cost nothing to read in full.
+//!   because `ArgSpec` has no position yet.
 //! - **The three keys are hardcoded.** Nothing here enumerates the page; a fourth validated domain
-//!   would need a fourth line written by hand. `environment_protocol::PAGE_BYTES` is small and fixed,
-//!   so this is a property of the contract rather than an oversight, but a reader expecting a
-//!   generic env dump should know the shape is closed.
+//!   would need a fourth line written by hand.
 //!
-//! Name: ratified 2026-09-13 (calef, working the unratified worklist). Introduced 2026-08-26
-//! alongside `grant_plan::Manifest::config`. Unix's own name for exactly this (`printenv(1)`), a
-//! term of art already right per this tree's naming convention for standard terms.
-//!
-//! **It passes the test `watch` failed the same day**, which is the reason to keep a borrowed word
-//! rather than merely the reason to like it. A borrowed name is the best available when it is true
-//! and the worst when it is not: upstream `watch` re-runs an arbitrary command and this tree's
-//! `watch` never could, so the recognition was false. Upstream `printenv` with no arguments prints
-//! the whole environment, which is exactly this program, and the section above records that
-//! checked rather than assumed.
-//!
-//! Refused `env`, which names `env(1)`, a program that also *sets* variables and *runs* a command;
-//! neither is possible here and the name would promise both. Refused `config` and `environment` as
-//! generic words that could name almost anything in an operating system, and `environment_protocol`
-//! already spends the stem on the wire format.
+//! Name: ratified 2026-09-13 (calef, working the unratified worklist). Unix's own name, true here:
+//! upstream `printenv` with no arguments prints the whole environment, which is exactly this
+//! program. Refused `env` (`env(1)` also sets variables and runs a command, neither possible here).
+//! Refused `config` and `environment` (generic, and `environment_protocol` spends the stem).
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

@@ -67,40 +67,22 @@ pub const SEND_CAP: u64 = 2;
 /// when a bound notification ended the receive, and `0` otherwise; x4 is written only by the
 /// kernel. Needs `READ`.
 ///
+/// `x1` is [`NO_CAP`] unless a capability was installed for this delivery, on both arrival
+/// orders, so a plain `SEND` never hands the receiver a sender-chosen slot.
+///
 /// # BUGS
 ///
-/// **A plain `SEND` received here used to fill `x1` differently depending on who arrived
-/// first**, and on the receiver-first order `x1` was the sender's second word, a number the
-/// sender chose where a `CALL` server reads a Reply slot. Found by milestone 613 (a system log
-/// service: the in-memory half)'s audit of `RECEIVE` consumers, 2026-10-03 UTC; **fixed the same
-/// day by milestone 634 (a plain SEND received by `RECEIVE_CAP` never hands the receiver a
-/// sender-chosen slot)**: the receive side returns [`NO_CAP`] in `x1` unless a capability was
-/// installed for this delivery, on both orders. (This entry said "not fixed" until the
-/// 2026-10-03 security audit found the fix had landed without the record moving.)
-///
-/// **A §26 death message read here loses the faulting `pc`.** The kernel's five words are
-/// `(event, tid, pc, addr, 0)`, and this method, having no capability to deliver, returns
-/// `(event, NO_CAP, tid, addr, 0)`: `x1` is `NO_CAP`, `x2` is the dead thread's id, and `pc` is
-/// not returned. The same on both arrival orders since milestone 634; before it, the
-/// receiver-first order returned `tid` in `x1`. No supervisor in the tree receives deaths this
-/// way; every one uses `RECEIVE` through `user_mode_runtime::receive_fault`. Recorded by the
-/// 2026-10-03 security audit so the next supervisor written against `RECEIVE_CAP` learns it here.
-///
-/// **A real capability passes the `NO_CAP` guard, and a `CALL` server used to have no way to
-/// tell it from a Reply.** Any client with `WRITE` on the endpoint and `GRANT` on a capability
-/// of its own can [`SEND_CAP`] it here; `x1` is then a real slot, and a server that invokes
-/// [`crate::reply::REPLY`] on it runs method `0` of whatever object it is: `SEND` on a
-/// rendezvous the client never receives on parks the server for the life of the machine, and
-/// every delivery that is not a Reply leaves its slot behind, since only a Reply is one-shot.
-/// Found by the 2026-10-03 security audit's follow-up; **fixed by milestone 706, DECISIONS §245
-/// (a `CALL` server tells a Reply from a delegation)**: the kernel writes [`REPLY_DELIVERED`]
-/// in `x4` when, and only when, `x1` is a `CALL`'s Reply, and every `CALL` server in the tree
-/// receives through `user_mode_runtime::receive_request`, whose typed Reply is the only thing
-/// `user_mode_runtime::reply` accepts, and which deletes a delegation the server did not ask
-/// for. **What is still open:** the check lives in the server, so a server that reads `x1` raw
-/// (its own `invoke`, outside the runtime) is as exposed as before. The rung-one answer, an
-/// endpoint that refuses `SEND_CAP` outright, is the milestone's recorded follow-on (option 2
-/// in its block).
+/// - **A §26 (the fault endpoint) death message read here loses the faulting `pc`.** The kernel's
+///   five words are `(event, tid, pc, addr, 0)`, and this method returns
+///   `(event, NO_CAP, tid, addr, 0)`. Every supervisor in the tree receives deaths with `RECEIVE`
+///   through `user_mode_runtime::receive_fault` instead.
+/// - **A delegated capability passes the `NO_CAP` guard.** Any client with `WRITE` on the endpoint
+///   and `GRANT` on a capability can [`SEND_CAP`] it here, and a `CALL` server that invoked
+///   [`crate::reply::REPLY`] on it would run method `0` of whatever object it is. The kernel writes
+///   [`REPLY_DELIVERED`] in `x4` only for a `CALL`'s Reply (DECISIONS §245 (a `CALL` server tells a
+///   Reply from a delegation)), and `user_mode_runtime::receive_request` checks it and deletes an
+///   unasked delegation; a server that reads `x1` raw is as exposed as before. An endpoint that
+///   refuses `SEND_CAP` outright is milestone 706's recorded follow-on.
 pub const RECEIVE_CAP: u64 = 3;
 
 /// `invoke(cap, CALL, w0, w1, _)` -> r0, with r1 in x1 and in x2 the slot of a capability the
@@ -140,73 +122,33 @@ pub const CALL: u64 = 4;
 pub const REAP: u64 = 5;
 
 /// `invoke(cap, SURVEY, cursor, record, 0)` -> `(next_cursor, tid, word)`. **Read one entry of
-/// the domain this endpoint supervises** (milestone 126 (who else is running, and who is allowed to ask)).
-/// `next_cursor` returns in x0, `tid` in
-/// x1, and the selected record's own word in x2.
+/// the domain this endpoint supervises** (milestone 126 (who else is running, and who is allowed to
+/// ask)). `next_cursor` returns in x0, `tid` in x1, and the selected record's own word in x2.
 ///
-/// **`record` is a selector, and that is the shape rather than an implementation detail.**
-/// calef ruled on 2026-09-21 that observing another thread is a selector: a new per-thread fact
-/// becomes a new [`survey::record`](super::survey::record) value, never a new return register.
-/// The reason was a forecast rather than an argument. A register row holds a fourth word with
-/// no new mechanism and appending one is the fewest moving parts *if the row stops*; he expects
-/// a third and a fourth fact, and a mechanism that must be redesigned at the sixth field is the
-/// wrong mechanism at the fourth. Nobody grows a register row: Linux's
-/// `/proc/[pid]/task/[tid]/stat` is 52 fields behind a pseudo-file, and Zircon's
-/// `zx_object_get_info` is a selector over 41 topics.
+/// **`record` is a selector** (calef, 2026-09-21): a new per-thread fact becomes a new
+/// [`survey::record`](super::survey::record) value, never a new return register, as Zircon's
+/// `zx_object_get_info` is a selector over topics. x0 and x1 are the frame and only x2 belongs to
+/// the record, so a caller wanting two facts walks twice and joins on the tid.
+/// [`survey::record::STATE`](super::survey::record::STATE) is 0 so callers that passed an unused 0
+/// keep reading what they read. An unknown record is [`crate::Error::BadMethod`], refused before
+/// the walk, so a bad selector against an empty domain is not a
+/// [`survey::DONE`](super::survey::DONE) that reads as "nothing here".
 ///
-/// **x0 and x1 are the frame; only x2 belongs to the record.** The cursor walk and the tid are
-/// identical whichever record is asked for, so a caller that wants two facts about one domain
-/// walks it twice and joins on the tid, and a caller that wants one is unaffected by the
-/// existence of the others. That is what makes a new record cost an existing reader nothing.
+/// **The scope is the supervision domain**: a thread is in the survey exactly when its recorded
+/// fault endpoint *is* this endpoint, the relationship [`REAP`] is authorized by. A `ps` launched
+/// from a shell sees the shell's children; an operator's `ps` sees the machine only because
+/// somebody handed it the endpoint that supervises the machine.
 ///
-/// **[`survey::record::STATE`](super::survey::record::STATE) is 0, which is not a coincidence
-/// and is the backward-compatibility claim stated out loud.** Every caller that shipped before
-/// the selector existed passed 0 in x1 because the argument was unused, and 0 selects the
-/// record those callers were already reading. The claim is that no existing caller changes, and
-/// it is a claim about a wire rather than a hope: it holds precisely because the numbering was
-/// chosen to make it hold.
+/// **Needs [`rights::ENUMERATE`](super::rights::ENUMERATE), and pointedly not `READ`**, which
+/// [`RECEIVE`] and [`REAP`] take: **a domain names its members, it does not act on them** (calef,
+/// 2026-08-17). A holder without it is refused with [`crate::Error::NotPermitted`], loudly, never
+/// shown an empty domain.
 ///
-/// **An unknown record is [`crate::Error::BadMethod`], refused before the walk begins.** The
-/// selector is part of the method's name, so an unrecognised one gets the same refusal an
-/// unrecognised method word gets. It is refused *before* the domain is examined so that a bad
-/// selector against an empty domain is a refusal rather than a
-/// [`survey::DONE`](super::survey::DONE) that reads as "nothing here": a plausible wrong answer
-/// is worse than an error, which is the ruling this tree already made about a counter it could
-/// not trust. `BadMethod` from a `SURVEY` names the selector without ambiguity, because `SURVEY`
-/// itself is a known method and the selector is the only other word this arm dispatches on.
-///
-/// **The scope is the supervision domain, because the kernel already maintains it.** A thread
-/// is in this survey exactly when its recorded fault endpoint *is* this endpoint, which is the
-/// same relationship [`REAP`] is authorized by and needs no second bookkeeping. So a `ps`
-/// launched from a shell sees the shell's children and nothing else, and an operator's `ps`
-/// sees the whole machine only because somebody handed it the endpoint that supervises the
-/// whole machine. Authority is a domain, not a global, and the difference between the two is
-/// a capability a reader can point at.
-///
-/// **Needs [`rights::ENUMERATE`](super::rights::ENUMERATE), and pointedly not `READ`.** This
-/// is the decision that makes the method safe rather than merely scoped. `READ` on a
-/// supervision endpoint is what [`RECEIVE`] and [`REAP`] take, so a viewer holding `READ` could
-/// reap a child, and **a domain names its members, it does not act on them** (calef,
-/// 2026-08-17). With a right of its own, a `ps` cannot express a reap rather than being
-/// refused one, and the difference is the ladder's top rung against its middle.
-///
-/// A holder without it (a send-only peer that reports to this supervisor, or a supervisor's own
-/// `READ` handle that was never widened) is refused with [`crate::Error::NotPermitted`],
-/// **loudly**. It is not shown an empty domain, because a monitor that reports nothing when it
-/// could not look is the worst failure this tool has available; `filesystem_protocol` chose `EPERM` over an
-/// empty listing for the same reason.
-///
-/// **The cursor is a resume point, not an index into a result.** Start at 0. Each entry returns
-/// the `next_cursor` to pass to get the one after it, and `next_cursor` of
-/// [`survey::DONE`](super::survey::DONE) means the survey is finished (`tid` and the record
-/// word are then 0). An empty domain finishes on the first call, which is a different answer
-/// from the refusal above and deliberately so.
-///
-/// **It is a snapshot per call, not per survey.** The domain may change between calls: a child
-/// that dies is simply absent from a later one, and one born into an already-passed slot is
-/// missed until the next survey. That is `readdir`'s bargain, taken knowingly, because holding
-/// `IPC_TABLES` across a whole survey would put a userspace program in charge of how long the
-/// scheduler is locked.
+/// **The cursor is a resume point.** Start at 0; each entry returns the `next_cursor` for the one
+/// after it, and [`survey::DONE`](super::survey::DONE) means finished (`tid` and the word are then
+/// 0). An empty domain finishes on the first call. **It is a snapshot per call, not per survey**:
+/// `readdir`'s bargain, because holding `IPC_TABLES` across a survey would put a userspace program
+/// in charge of how long the scheduler is locked.
 pub const SURVEY: u64 = 6;
 
 /// `invoke(cap, BADGE, badge, _, _)` -> the slot the badged copy landed in, or a negative

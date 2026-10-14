@@ -12,74 +12,34 @@ use std::time::{Duration, Instant};
 
 use super::*;
 
-/// **The graphical launch, folded into the plain legs' boots** (2026-10-03 UTC, calef's ruling; it was
-/// `swish_check_leg_graphical` and the `--graphical` and `--graphical-serial` flags, and a CI job
-/// of its own, until then). Milestone 632 (provisional), reversing milestone 177 (wire the graphical terminal stack into the real interactive boot)'s boot-half: the
-/// `--features shell` boot is now the **normal UART system on every boot** (the minimal shape
-/// of DECISIONS §26 (the fault endpoint: thread death becomes a message a supervisor holds)), and graphics is *launched*: this leg types `graphical_terminal` at the swish prompt and
-/// verifies what the launched session puts on the screen, read back with a `screendump` rather
-/// than a serial transcript.
+/// **The graphical launch, folded into the plain legs' boots** (milestone 632 (graphics on
+/// demand)). The `--features shell` boot is the **normal UART system on every boot**, and graphics
+/// is *launched*: this leg types `graphical_terminal` at the swish prompt and verifies what the
+/// launched session puts on the screen, read back with a `screendump`.
 ///
-/// # What the check does, in order
-///
-/// 1. [`swish_check_boot`] boots the normal system with a virtio-gpu attached (see
-///    [`swish_check_leg`] for which of a leg's boots), reading the UART transcript: the swish
-///    prompt must appear on the serial console before anything is typed, which is the assertion
-///    that the boot stayed minimal. A boot that quietly rebuilt the graphical stack at boot time,
-///    the shape calef's 2026-09-30 ruling reverses, would print no UART prompt and the boot fails
-///    right there.
+/// 1. [`swish_check_boot`] boots the normal system with a virtio-gpu attached, reading the UART
+///    transcript: the swish prompt must appear on the serial console before anything is typed,
+///    the assertion that the boot stayed minimal.
 /// 2. [`launch_graphical_terminal`] types `graphical_terminal` over the UART. The shell asks
-///    (`spawnproto::GRAPHICS_BIT`; it holds no device since milestone 715 (provisional)), the
-///    progenitor builds the session's stack from the devices it holds, and the session prints its
-///    own `$ ` prompt on the screen.
-/// 3. It presses one key and requires its echo on the screen: `sendkey` on the device arm, the same
-///    byte down the UART on the serial arm, which is a real round trip through the boot's line
-///    discipline in raw mode and the session's own echo.
-///
-/// # Two keystroke sources, one check (milestone 192 (a keyboard on real silicon), option A)
+///    (`spawnproto::GRAPHICS_BIT`), the progenitor builds the session's stack from the devices it
+///    holds, and the session prints its own `$ ` prompt on the screen.
+/// 3. It presses one key and requires its echo on the screen: a real round trip through a line
+///    discipline and the session's own echo.
 ///
 /// [`Keystrokes::Device`] attaches a virtio-keyboard and presses a key with the QEMU monitor's
-/// `sendkey`; the session's `keyboard_driver` feeds its line discipline. [`Keystrokes::Serial`]
-/// attaches **no** keyboard and types the same byte down the guest's UART, which is the
-/// configuration every one of the three target machines actually has: argon, radon and xenon all
-/// have a serial line and none has a virtio-input device. That arm is milestone 192's option A
-/// (serial input, screen output) at launch rather than at boot: the session reads the boot's own
-/// line discipline raw (`OPERATION_RAWMODE`/`OPERATION_READRAW`, the shell's own §227 shape) and paints the
-/// echo itself.
+/// `sendkey`. [`Keystrokes::Serial`] attaches **no** keyboard and types the same byte down the
+/// UART, the configuration every target machine has (milestone 192 (a keyboard on real silicon)'s
+/// option A, at launch): the session reads the boot's line discipline raw, the shell's own §227
+/// (how Tab reaches the shell) shape, and paints the echo itself. Neither the screen nor the
+/// session can tell which source a byte came by, so a change that made it matter turns exactly one
+/// run red.
 ///
-/// **The same two assertions cover both**, and that they can is still the claim. What reaches the
-/// screen is the session's echo of one keystroke, and neither the screen nor the session can tell
-/// which source the byte arrived by. If a future change made the session depend on the
-/// keystroke's source, exactly one of these two runs would go red.
-///
-/// # The silent-failure property, and why any prompt at all is the proof
-///
-/// This leg's central assertion is unchanged in kind from milestone 177's: **a capability-slot
-/// collision anywhere in the session's build fails in total silence** (the shell's seven held
-/// grants, the progenitor receiving them, the four to five children built from one region, and
-/// the session program's own table are all slot-accounted, and the failure mode of every one of
-/// them is a process that never says anything), so *any* `$ ` prompt reaching the screen
-/// disproves one. The retarget adds two more silent surfaces to the count rather than removing
-/// any: the boot's own table now carries the device grants to the shell's build, and the shell's
-/// table carries them for the boot's life. Finding the session's prompt at all is the proof; the
-/// `swish-check` plain legs already prove the boot side.
-///
-/// # Why this proves less than [`swish_check_leg`], and on purpose
-///
-/// There is no "the known picture" to check against here, for 177's own reasons: predicting the
-/// boot banner's wrapped position in a small grid is real work for no claim this milestone needs
-/// to make. What this leg proves is the launch: the normal boot came up on the UART, the devices
-/// moved from the shell's slots into drivers without a collision, and one real keystroke crossed
-/// from its source to the screen. The old graphical *boot* legs are retired by this retarget:
-/// the boot they booted no longer exists, and their claim (the stack wires up) is subsumed here.
-///
-/// It looks for `$ ` anywhere in the decoded grid, not at a predicted row, for 177's own reason:
-/// which row the prompt lands on is exactly the thing not worth predicting twice. Finding `$ a`
-/// after the key press is the proof that the keystroke made the round trip back to the screen,
-/// through the session's discipline and `display_terminal` (device arm) or through the boot
-/// discipline's raw queue and the session's own echo (serial arm). Which keystroke source this
-/// leg wires up is `Keystrokes`; the guest's own copy of that choice is the `graphical_terminal` program's
-/// `x0`, decided by whether the keyboard's three caps arrived.
+/// **Any `$ ` prompt on the screen is the proof**: a capability-slot collision anywhere in the
+/// session's build (the shell's held grants, the progenitor receiving them, the children built from
+/// one region, the session's own table) fails in total silence. It looks for `$ ` anywhere in the
+/// decoded grid, not at a predicted row, and `$ a` after the key press proves the keystroke's
+/// round trip. There is no known picture to compare against, so this proves the launch, less than
+/// [`swish_check_leg`] proves of a boot.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum Keystrokes {
     /// A virtio-input device, pressed with the monitor's `sendkey`. Milestone 177.

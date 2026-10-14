@@ -16,6 +16,7 @@
 //! `arch::irq` (the aarch64 adapter) is the one place that holds both and decides which version
 //! this machine has. See design/roadmap/0227-gicv3-driver.md for the placement and what lost.
 //!
+
 //! # What a redistributor is, and why each core must find its own
 //!
 //! GICv2 banked a core's private interrupts at one shared address: every core wrote `ISENABLER0`
@@ -47,6 +48,7 @@
 //! `gic_do_wait_for_rwp`). The driver waits on it after exactly the writes Linux waits after:
 //! turning the distributor off and on, the redistributor's private-interrupt setup, and a disable.
 //!
+
 //! # BUGS
 //!
 //! - **No ITS, no LPIs.** Message-signalled interrupts on a GICv3 go through a separate device (the

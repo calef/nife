@@ -2,69 +2,36 @@
 //! of**, for milestone 442 (a crypto provider `rustls` can use on all three bare-metal targets).
 //!
 //! DECISIONS §196 (nife carries TLS: `rustls` for the protocol, and a crypto provider we make
-//! work) ruled that the provider is work rather than a purchase, and milestone 442's block asks
-//! first for a measurement and then for one provider that builds and passes its own test vectors
-//! on all three architectures. `script/crypto-probes` answers the build half. This answers the
-//! other half, and it answers it the only way that counts: by running.
+//! work) ruled that the provider is work rather than a purchase. `script/crypto-probes` measures
+//! that it builds and links; this measures that it computes the right number here, by running.
 //!
-//! # Why a building crypto crate is not an answer
+//! That matters more than usual because `x86_64-unknown-nife` sets `+soft-float` and switches off
+//! every SSE level, so `sha2`, `polyval`, `poly1305` and `curve25519-dalek` run their portable
+//! fallbacks under this compiler, target specification and `std`. And the `rand_core` draw below is
+//! the only thing in the tree that exercises `entropy_backend`'s `getrandom` 0.2 hook end to end.
 //!
-//! `script/crypto-probes`' own `BUGS` section says it: it measures compile and link and nothing
-//! else. That caveat is worse here than it was for the fifty crates in
-//! notes/crates-io-on-nife.md, for two reasons that are specific to this milestone.
+//! Every expected value is **transcribed from the specification that publishes it**, named beside
+//! it, never taken from running the code. **If a vector fails, do not adjust the vector**: check
+//! the transcription against the specification, or the implementation is wrong on this target,
+//! which is what this program exists to find.
 //!
-//! **Every one of these crates is being used on a code path almost nobody uses.**
-//! `x86_64-unknown-nife` sets `+soft-float` and switches off every SSE level, so the SIMD
-//! implementations of `sha2`, `polyval`, `poly1305` and `curve25519-dalek` do not merely go
-//! unused, they do not compile, and the build only succeeds once each crate's portable fallback
-//! is forced on. A portable fallback is ordinary tested code upstream; what is not ordinary is
-//! this compiler, this target specification and this `std`. A vector is what distinguishes
-//! "it built" from "it computes the right number here".
-//!
-//! **And the randomness is genuinely new.** `entropy_backend` learned `getrandom` 0.2's hook at
-//! this milestone, and a linker resolving `__getrandom_custom` says nothing about whether bytes
-//! arrive from the entropy service. The `rand_core` draw below is the only thing in this tree
-//! that exercises that path end to end.
-//!
-//! # Where the vectors come from, and why that matters
-//!
-//! Every expected value here is **transcribed from the specification that publishes it**, named
-//! in the comment beside it, and not from running the code. That is the whole point:
-//! `crates/measured_boot` makes the same distinction in so many words about its own SHA-256
-//! ("the published FIPS 180-4 vectors, **not** self-consistency checks"), and a vector taken from
-//! the implementation under test proves only that it is consistent with itself.
-//!
-//! The rule that goes with it, for whoever maintains this: **if a vector fails, do not adjust the
-//! vector.** Either the transcription is wrong, in which case check it against the specification
-//! and not against the output, or the implementation is wrong on this target, which is exactly
-//! what this program exists to find out.
-//!
+
 //! # BUGS
 //!
-//! - **This does not speak TLS.** It builds this tree's own provider and asks what it can
-//!   negotiate; no
-//!   handshake happens, no certificate is verified, and no peer exists. Milestone 442's clause 3
-//!   (a client that speaks TLS 1.3 to one peer, holding that peer's root as a capability) is not
-//!   attempted here and there is no network in this program at all.
-//! - **The coverage is the algorithms a TLS 1.3 handshake uses, not everything the provider
-//!   offers.** There is no ECDSA or RSA signature verification vector, which means certificate
-//!   verification, the largest remaining piece, is unexercised. `rustls-webpki` is not called.
+//! - **This does not speak TLS.** It asks this tree's provider what it can negotiate; no handshake,
+//!   no certificate, no network.
+//! - **The coverage is the algorithms a TLS 1.3 handshake uses**, with no ECDSA or RSA signature
+//!   vector, so certificate verification is unexercised here.
 //! - **A crate that picks its implementation by asking the CPU is a hazard on
-//!   `x86_64-unknown-nife`, and this one cost most of a day.** The other flags in
-//!   `.cargo/config.toml` exist because LLVM cannot compile a SIMD path for this target at all,
-//!   which fails loudly at build time. `chacha20` compiles fine and then **executes an AVX2
-//!   instruction in ring 3**, where this target has no SSE or AVX state (its own description says
-//!   "softfloat ring 3, no SSE state"), and the program dies with `vector 6 (invalid opcode)`
-//!   before printing a byte. `--cfg chacha20_force_soft` is the fix here; the general case is that
-//!   run-time feature detection and this target disagree, and nothing warns.
-//! - **A vector proves the answer, not the manner.** Nothing here measures timing, so a portable
-//!   fallback that is correct and not constant-time would pass every line below. On
-//!   `x86_64-unknown-nife` the fallbacks are exactly what is being run.
-//! - **`cargo xtask test` builds it for every leg it boots**, through
-//!   `helpers/build-cryptography-exerciser.sh`, since milestone 855 (the TLS graph enters the gated
-//!   build). §196 (nife carries TLS) and §198 (the glue is ours, the primitives are not) ruled the
-//!   dependencies that DECISIONS §46 (thin primitives or whole subsystems) had made an architect's.
-//!   The kernel test skips only in a boot that did not build it.
+//!   `x86_64-unknown-nife`.** `chacha20` compiles and then executes an AVX2 instruction in ring 3,
+//!   where this target has no SSE or AVX state, and dies with `vector 6 (invalid opcode)`.
+//!   `--cfg chacha20_force_soft` (in `.cargo/config.toml`) is the fix; in general, run-time feature
+//!   detection and this target disagree and nothing warns.
+//! - **A vector proves the answer, not the manner.** Nothing measures timing, so a fallback that is
+//!   correct and not constant-time passes.
+//! - **`cargo xtask test` builds it for every leg it boots**
+//!   (`helpers/build-cryptography-exerciser.sh`, milestone 855 (the TLS graph enters the gated
+//!   build)); the kernel test skips only in a boot that did not build it.
 
 // `entropy_backend` defines `getrandom`'s two custom-backend symbols and nothing references them
 // from Rust, so an rlib nobody names is not linked. Same shape as a panic handler. See that

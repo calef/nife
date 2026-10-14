@@ -20,9 +20,10 @@ Found twice on 2026-08-04, independently:
   return a state from one publish beside an offset from another: a silently wrong wall clock. The
   instructive part is that `AcqRel` on the claim does not fix it and neither does `SeqCst`; it needs
   a `fence(Release)` between the claim and the stores, which is Linux's `smp_wmb()`.
-- Milestone 43's audit found three release-side fences in the compositor's subsystem **whose
-  acquire side did not exist**, and separately noted that the kernel's own stand-in for the same
-  input ring does fence, which is what shows the gap is an oversight rather than a design.
+- The audit of milestone 43 (a second security audit) found three release-side fences in the
+  compositor's subsystem **whose acquire
+  side did not exist**. It separately noted that the kernel's own stand-in for the same input ring
+  does fence. That is what shows the gap is an oversight rather than a design.
 
 Neither method could have found the other's, and **no gate in the tree can see either**. Clippy has
 no lint for it, Kani does not model concurrency, Miri's stacked borrows are about aliasing, and the
@@ -30,13 +31,14 @@ suite passes because both ISAs' hardware happens to be forgiving at the sizes in
 
 The work. Inventory every `fence`, every `Ordering::Release` store and every `Ordering::Acquire`
 load outside test code, and pair them. For each unpaired site decide, on the record, whether it is a
-bug (fix it, with the harness that proves it), sound for a stated reason (a single writer with
-interrupts masked is a real reason; say so where the fence is), or unreachable. Then decide whether
+bug (fix it, with the harness that proves it). Or it is sound for a stated reason (a single writer
+with interrupts masked is a real reason; say so where the fence is), or unreachable. Then decide whether
 the pairing can be checked mechanically at all.
 
 Be honest about that last part, because it is the interesting question and the answer may be no.
-A lint that pairs fences across functions is a dataflow problem, not a pattern match, and milestone
-112 already established this tree's posture: a narrow check that is true beats a broad one that is
+A lint that pairs fences across functions is a dataflow problem, not a pattern match. Milestone 112
+(the SAFETY comments that bind nobody)
+already established this tree's posture: a narrow check that is true beats a broad one that is
 aspirational. If the answer is "this is a review discipline plus a loom harness per protocol", say
 that, record it as a limitation, and make the inventory itself the deliverable. Milestone 80's
 `interleaving-check` is the tool that *can* decide a specific protocol, so the useful output may be

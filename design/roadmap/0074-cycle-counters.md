@@ -32,17 +32,18 @@ unanswered question. Until 2026-09-19 `PMCR_EL0.E` and `PMCNTENSET_EL0.C` were n
 this kernel, so `PMCCNTR_EL0` was a stopped counter that a granted thread read the same value from
 every time. That is built now; see "What the aarch64 half built" below.
 
-The `HARDWARE` half is now the second sense of that gate rather than the first: the riscv64 code
-is written and gated, and what remains is a person at radon following
-notes/riscv-cycle-counters.md's procedure, because QEMU-TCG models an instruction counter that has
+The `HARDWARE` half is now the second sense of that gate rather than the first: the riscv64 code is
+written and gated. What remains is a person at radon following notes/riscv-cycle-counters.md's
+procedure, because QEMU-TCG models an instruction counter that has
 nothing to do with cycles.
 
-The riscv64 half is built (2026-09-03): the SBI PMU extension is probed as an optional fifth
-row of `SBI_TABLE`, `kernel/src/arch/riscv64/pmu.rs` asks firmware to find and start a counter for
-`SBI_PMU_HW_CPU_CYCLES`, checks it is actually counting, remembers which CSR reads it and records
-why when there is none, the boot prints all of it, and `cargo xtask bench --riscv` prints one
-`cycles_per_tick` probe. The aarch64 half is built too (2026-09-19), in the same shape; the two
-decisions it left were ruled and built on 2026-10-07, `design/roadmap/0353-the-aarch64-half-of-74.md`.
+The riscv64 half is built (2026-09-03). The SBI PMU extension is probed as an optional fifth row of
+`SBI_TABLE`. `kernel/src/arch/riscv64/pmu.rs` asks firmware to find and start a counter for
+`SBI_PMU_HW_CPU_CYCLES` and checks it is actually counting. It remembers which CSR reads it and
+records why when there is none. The boot prints all of it, and `cargo xtask bench --riscv` prints one
+`cycles_per_tick` probe. The aarch64 half is built too (2026-09-19), in the same shape. The two
+decisions it left were ruled and built on 2026-10-07,
+`design/roadmap/0353-the-aarch64-half-of-74.md`.
 
 ## What we read today, and why it is not cycles
 

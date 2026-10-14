@@ -31,8 +31,7 @@ useless at a keyboard.
 What it costs, and when. Nearly nothing in code, and the whole point is *when* it is worth
 having. The note puts it plainly: "the day somebody plugs the board's drive into a Mac at 2am is the
 day the difference matters." A recovery tool that requires you to first `dd` a whole device into an
-image, on a laptop that may not have room for it, is a recovery tool with a step in front of it at
-the worst possible moment.
+image has a step in front of it at the worst possible moment. The laptop may not even have room for it.
 
 ## Scope note
 

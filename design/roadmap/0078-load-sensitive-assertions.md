@@ -15,12 +15,12 @@ extending it: the three claims below **could not see the timer drift bug at all*
 injected and `script/icount` went green with every number byte-identical to a clean run (why, in
 Follow-on). The instrument now asserts the re-arm law directly. See notes/instruction-clock.md.
 
-What closed it: `script/icount`, on both ISAs. The two claims this block was last left holding
-are asserted there: that the timer fired at the deadline the kernel armed (on riscv64, that SBI was
-armed with the `DEADLINE` word rather than with something else that leaves the array looking right),
-and that the handler costs fewer than N instructions. A third came free and closed a `BUGS` entry:
-zero missed ticks, which is only assertable on this instrument, because the miss taxonomy on both
-ISAs exists to tell a slow handler from a descheduled emulator and virtual time has no deschedules.
+What closed it: `script/icount`, on both ISAs. The two claims this block was last left holding are
+asserted there. The timer fired at the deadline the kernel armed (on riscv64, SBI was armed with the
+`DEADLINE` word rather than with something else that leaves the array looking right). And the
+handler costs fewer than N instructions. A third came free and closed a `BUGS` entry:
+zero missed ticks, which is only assertable on this instrument. The miss taxonomy on both ISAs
+exists to tell a slow handler from a descheduled emulator and virtual time has no deschedules.
 CI runs it beside the bench tripwire. See notes/instruction-clock.md.
 
 Everything in the evidence table below is closed, and the table is history rather than a
@@ -28,8 +28,9 @@ worklist: the disposition column says where each verdict lives.
 
 ## The day's evidence, which is history rather than a worklist
 
-All three negative-discrepancy assertions were fixed, and the line numbers in this table are stale
-(corrected 2026-08-17 by the status-accuracy sweep; `notes/load-sensitive-assertions/miss-taxonomy-and-clockless-loops.md`, "The fourth round,
+All three negative-discrepancy assertions were fixed. The line numbers in this table are stale
+(corrected 2026-08-17 by the status-accuracy sweep;
+`notes/load-sensitive-assertions/miss-taxonomy-and-clockless-loops.md`, "The fourth round,
 2026-08-16", had already
 named this exact defect, that a reader coming to the block first is sent to three finished sites). The
 reaper count is now at `kernel/src/sched.rs:3978`, rescoped to per-`Tid` waits and `used() <= before`.
@@ -41,8 +42,8 @@ the clock. The timer twins were rebuilt against the re-arm law on both ISAs
 
 The line numbers are 2026-08-03's. Find an assertion by its message
 text. The disposition column was added 2026-08-17 after this table briefed a lane at three finished
-sites: the three negative-discrepancy rows had been settled on 2026-08-03 and the block still asked
-for "three small changes with three arguments" in its own gate line, which is the stale pointer §71
+sites: the three negative-discrepancy rows had been settled on 2026-08-03. The block still asked for
+"three small changes with three arguments" in its own gate line. That is the stale pointer §71 (A limitation is promoted when it stops being a)
 exists to catch, sitting in the paragraph a reader meets first.
 
 | assertion | site | what it reported | disposition |
@@ -66,8 +67,8 @@ are not model-specific.
 A seventh, found by a lane on 2026-08-03 and reported rather than absorbed. `sched.rs:2709`,
 `threads_round_robin`, asserting every spawned thread ran at least once. It failed on one
 `script/gates` run and passed on the immediate re-run, with two full `script/test` runs either side of
-it green. The lane judged it pre-existing on grounds worth repeating, because they are the right shape
-for this call: its own code runs before the scheduler exists, does three register reads and an
+it green. The lane judged it pre-existing on grounds worth repeating, because they are the right
+shape for this call. Its own code runs before the scheduler exists, does three register reads and an
 `ecall`, and holds a leaf lock nothing else takes. It could not have starved a thread.
 
 One of them reproduces off CI. On 2026-08-03 a local `script/test` on an aarch64 dev machine hit
@@ -119,8 +120,8 @@ cross-core wall clock. Decide per assertion, as below.
 ## What the fix is not
 
 **Not wider margins.** Widening a bound that fires on a negative discrepancy hides the defect rather
-than fixing it, and this project already carries a scar for exactly that shape: DECISIONS §61 records
-three lints dropped because they were measuring the wrong thing, and the same reasoning applies to an
+than fixing it, and this project already carries a scar for exactly that shape. DECISIONS §61 (A lint is adopted on evidence from this tree,)
+records three lints dropped because they were measuring the wrong thing. The same reasoning applies to an
 assertion.
 
 **Not deleting the assertion**, either. Milestone 72's lane declined to delete
@@ -144,8 +145,8 @@ a framework.
 `thread_count` or `used()`). Do not touch all 39. The five with evidence are the milestone; the rest
 are a list to check against the same question and mostly to leave alone.
 
-The honest cost of leaving this open, and the reason it is worth doing: every red check in this
-repository currently needs a human to decide "known or real", and on 2026-08-03 that judgment was
+The honest cost of leaving this open, and the reason it is worth doing. Every red check in this
+repository currently needs a human to decide "known or real". On 2026-08-03 that judgment was
 made at least six times and got the wrong answer twice.
 
 ## Postscript, 2026-08-03: the frame-hygiene assertion is gone
@@ -153,12 +154,12 @@ made at least six times and got the wrong answer twice.
 Removed the same day this milestone was raised (#46), after it failed the cpu matrix twice more on
 `main`, once on `rv64`, the control model, and once on a Dependabot PR that touched only workflow
 files. That is a deletion, which the paragraph above says is not the fix, so the difference
-matters. The 72 lane rightly declined to delete a check it could not explain; by
-removal time the explanation was complete (the BUGS section of notes/live-replacement.md: only
-frames arriving from outside the run could trip it, with a measured margin of two frames). And the
-assertion this milestone asks for, one scoped to the property the test is responsible for, was
-already standing twelve lines above it: the budget reclaim must succeed and must return exactly
-`SWAPPER_BUDGET_PAGES`. The global count added no coverage on top of that, only the exposure to
+matters. The 72 lane rightly declined to delete a check it could not explain; by removal time the
+explanation was complete. (The BUGS section of notes/live-replacement.md: only frames arriving from
+outside the run could trip it, with a measured margin of two frames.) The assertion this milestone
+asks for, one scoped to the property the test is responsible for, was already standing twelve lines
+above it. The budget reclaim must succeed and must return exactly `SWAPPER_BUDGET_PAGES`. The global
+count added no coverage on top of that, only the exposure to
 neighbors. One of the five is done; the reaper count, the address-space frames and the two timing
 assertions remain, and the status stays NOT-STARTED for them.
 
@@ -172,14 +173,13 @@ section. `script/icount` is the answer, notes/instruction-clock.md is its note, 
 in notes/load-sensitive-assertions.md is the record of building it.)*
 
 The timer twins were rebuilt rather than widened, and the rebuild is the model this milestone asked
-for: both tests now assert the **law** directly, that over a window in which `MISSED_TICKS` did not
-move, the deadline advanced by exactly one interval per delivered tick. The deadline is read back
-out of the machine on both ISAs, `CNTV_CVAL_EL0` on aarch64 and the software `DEADLINE` array on
-riscv64, which is kept because SBI's `set_timer` is write-only, with a `deadline()` accessor added
+for: both tests now assert the **law** directly. Over a window in which `MISSED_TICKS` did not move,
+the deadline advanced by exactly one interval per delivered tick. The deadline is read back out of
+the machine on both ISAs: `CNTV_CVAL_EL0` on aarch64 and the software `DEADLINE` array on riscv64.
+The array is kept because SBI's `set_timer` is write-only, with a `deadline()` accessor added
 beside `missed_ticks()` on each. The defect this catches, re-arming from `now()` inside the handler,
-fails on the first tick. A descheduled emulator cannot fail it: a deschedule long enough to slip the
-grid increments `MISSED_TICKS`, which is the re-anchor safety valve working, and the window is
-retried.
+fails on the first tick. A descheduled emulator cannot fail it. A deschedule long enough to slip the
+grid increments `MISSED_TICKS`, which is the re-anchor safety valve working, and the window is retried.
 
 One claim moved out of scope rather than being weakened, and it is riscv64's alone. Nothing
 proves that SBI actually fired at the software grid's deadlines. `DEADLINE` is our own array; on
@@ -196,8 +196,8 @@ not built by it. Cost: it belongs in the bench harness rather than the test suit
 
 And the placement probe stays where it is, checked against the same question and left alone
 deliberately. Its wait is on exactly the property under test, its failure direction is purely
-positive, and moving it to the icount instrument is not an option even in principle: the icount
-bench boots `-smp 1` *because* a shared virtual clock makes multi-hart timing fictional, and a
+positive. Moving it to the icount instrument is not an option even in principle: the icount bench
+boots `-smp 1` *because* a shared virtual clock makes multi-hart timing fictional, and a
 cross-core delivery test cannot run on a one-core instrument.
 
 ## The outcome, 2026-08-17
@@ -215,10 +215,10 @@ asserts the two claims above and one that came free.
 The aarch64 numbers are the same on all 64 ticks, minimum equal to maximum, which is the instrument
 proving itself rather than being argued for.
 
-The riscv64 claim was proved by injection, twice, with the residual this block named built
-rather than argued about: an implementation that keeps `DEADLINE` on the grid and arms SBI from
-`now()` sends the arrival latency to 420,400 instructions against a bound of 1,500, and one that
-arms it a *fixed* quarter period off the grid (no drift, no misses, the delivered rate still exactly
+The riscv64 claim was proved by injection, twice, with the residual this block named built rather
+than argued about. An implementation that keeps `DEADLINE` on the grid and arms SBI from `now()`
+sends the arrival latency to 420,400 instructions against a bound of 1,500. One that arms it a
+*fixed* quarter period off the grid (no drift, no misses, the delivered rate still exactly
 100 Hz) reads 2,500,400 on every tick.
 
 And the prediction attached to those injections was wrong, which is the more useful finding. The
@@ -236,8 +236,8 @@ claims are. And the scope note's remaining sites are still unaudited, for the si
 ## Follow-on
 
 - **Milestone 62.** The fourth claim, added 2026-08-18, which corrects this block rather than
-  extending it: the three claims here could not see the timer drift bug at all, because claim 1
-  compares each arrival against the deadline that fired and a kernel re-anchoring the whole grid
+  extending it. The three claims here could not see the timer drift bug at all. Claim 1 compares
+  each arrival against the deadline that fired, and a kernel re-anchoring the whole grid
   arms the timer with the very word it records. 62 asserts the re-arm law directly.
 - **Recorded.** `notes/load-sensitive-assertions.md` holds the audit backlog. The scope note counts
   39 sites in 7 files matching the shape; five were the milestone, rounds two through four took
@@ -255,8 +255,8 @@ claims are. And the scope note's remaining sites are still unaudited, for the si
   the defect rather than fixing it, and §61 already records three lints dropped for measuring the
   wrong thing.
 - **Refused.** Moving the placement probe to the icount instrument. It was checked against the same
-  question and left alone deliberately: its wait is on exactly the property under test, its failure
-  direction is purely positive, and the icount bench boots `-smp 1` because a shared virtual clock
+  question and left alone deliberately. Its wait is on exactly the property under test, and its
+  failure direction is purely positive. The icount bench boots `-smp 1` because a shared virtual clock
   makes multi-hart timing fictional, so a cross-core delivery test cannot run on it even in
   principle.
 
@@ -264,6 +264,6 @@ claims are. And the scope note's remaining sites are still unaudited, for the si
 
 Seven distinct failures in one day on PRs that changed no code, two of them documentation
 only, and one reproduces off CI. Three reported a NEGATIVE discrepancy, so they were not
-slow-machine timeouts and were rescoped to the property; the two that ARE timing moved to the
+slow-machine timeouts and were rescoped to the property. The two that ARE timing moved to the
 icount instrument (`script/icount`), where a claim is denominated in instructions and a busy host
 cannot falsify it

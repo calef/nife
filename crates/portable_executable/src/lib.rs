@@ -1,25 +1,10 @@
 //! **Turning a position-independent ELF into the PE/COFF image UEFI firmware loads.**
 //!
-//! Name: ratified 2026-10-07 (calef, pull request #1806's publish-ours review). The maintainer
-//! comment reads: "one milestone per crate, minted now, each keeping its tree name (all free on
-//! crates.io as of today): [...] and `portable_executable` (its milestone writes its proofs
-//! first). Names are ratified now and permanent on first publication." His words: "Yes, one per
-//! crate". Minted provisionally 2026-09-19 by the lane that built it
-//! (`milestone/the-program-that-makes-the-stick`): the format's own name, spelled out as
-//! design/naming.md asks of an acronym people say whole ("PE" is what nobody expands, but "portable
-//! executable" is the phrase the specification's title uses, which puts it on the spelled-out side
-//! of §154 (the acronym test is whether the phrase is spoken)). Considered and set aside
-//! `elf_to_efi` (a verb phrase, and systemd's tool name) and `pe_image` (the acronym). Milestone
-//! 821 (an ELF-to-PE converter, proven, then released on its own) publishes it.
-//!
 //! UEFI loads applications in Microsoft's PE/COFF format. rustc builds PE directly for the three
 //! UEFI targets it has (`aarch64-`, `i686-`, `x86_64-unknown-uefi`) and has **no riscv64 UEFI
-//! target** (`rustc --print target-list` on the pinned nightly, 2026-09-19). So the riscv64 boot file
-//! is built as an ordinary static-PIE ELF for `riscv64imac-unknown-none-elf` and converted here.
-//! That is the approach systemd's `elf2efi` takes for every architecture it supports (recalled, not
-//! read); U-Boot and gnu-efi instead hand-write a PE header in assembly at the front of the image.
-//! This one was chosen because it is pure data transformation, so it is host-tested in
-//! milliseconds, and the loader's own source stays free of a header written byte by byte.
+//! target**. So the riscv64 boot file is built as an ordinary static-PIE ELF for
+//! `riscv64imac-unknown-none-elf` and converted here, as systemd's `elf2efi` does, rather than
+//! hand-writing a PE header in assembly (U-Boot, gnu-efi): pure data transformation, host-tested.
 //!
 //! # What goes in and what comes out
 //!
@@ -34,14 +19,13 @@
 //! this converter has already written each relocation's addend into its word, so the result is
 //! `B + addend`, which is exactly what `R_*_RELATIVE` means.
 //!
+
 //! # Why the ELF is read here and not with `crates/elf`
 //!
-//! `crates/elf` is the tree's one ELF *loader* reader, and it is built around the machine it runs
-//! on: `Elf::parse` refuses any machine but `NATIVE_MACHINE`, and refuses `ET_DYN` outright
-//! (`NeedsRelocation`), both correctly for what it is for. This runs on the build host and reads a
-//! different architecture's PIE, which is two refusals in, so it reads the four structures it needs
-//! (the file header, program headers, the dynamic section and `Elf64_Rela`) itself. They are named
-//! and bounded below, and every read is checked.
+//! `crates/elf`'s `Elf::parse` refuses any machine but `NATIVE_MACHINE` and refuses `ET_DYN`
+//! (`NeedsRelocation`), correctly for a loader. This reads a different architecture's PIE on the
+//! build host, so it reads the four structures it needs (the file header, program headers, the
+//! dynamic section and `Elf64_Rela`) itself, and every read is checked.
 //!
 //! # BUGS
 //!
@@ -62,6 +46,12 @@
 //!   only. The ELF beside it has them.
 //! - **The PE timestamp is zero**, deliberately: the image is a function of the ELF, so two builds of
 //!   one ELF are byte-identical.
+//!
+//! Name: ratified 2026-10-07 (calef, pull request #1806's publish-ours review: "Yes, one per
+//! crate"), the format's own name spelled out under §154 (the acronym test is whether the phrase is
+//! spoken): "portable executable" is the specification title's phrase. Set aside `elf_to_efi` (a
+//! verb phrase, and systemd's tool name) and `pe_image` (the acronym). Milestone 821 (an ELF-to-PE
+//! converter, proven, then released on its own) publishes it.
 
 #![cfg_attr(not(test), no_std)]
 
