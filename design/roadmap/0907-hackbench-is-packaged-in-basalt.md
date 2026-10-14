@@ -69,7 +69,8 @@ Lane `milestone/907-hackbench-is-packaged-in-basalt`, with nifeos/basalt#21.
 - The build is milestone 906 (ioping is packaged in basalt)'s C recipe shape, unchanged but for
   two things kernel.org needed. A source names the `file` it is saved as, since cgit puts the tag
   in a query (`?h=v2.11`). And the fetch sends a named User-Agent, since kernel.org answers
-  Python's default with 403 (items 2 to 4). The aarch64 package measured 278,523 bytes.
+  Python's default with 403 (items 2 to 4). The aarch64 package measured 278,523 bytes. The first
+  published Release is `rolling-2026-10-14-80d9b38`, and `xtask/basalt-pins.index` pins its lines.
 - Item 5's finding: both, as for ioping. `cargo xtask basalt-fetch` takes the three hackbench
   lines in `xtask/basalt-pins.index`, and the archive carries the package's `bin/hackbench`.
   `unmodified_hackbench_threads_over_pipes` and `..._over_socket_pairs` run it with every
