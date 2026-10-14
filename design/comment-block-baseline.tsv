@@ -30,13 +30,9 @@ crates/bitmap_font/src/glyphs.rs:44	128
 crates/board_console/src/lottery.rs:1	51
 crates/board_console/src/port.rs:1	52
 crates/board_console/src/progress.rs:1	60
-crates/c_seam/src/lib.rs:2	89
 crates/capability/src/lib.rs:1	55
-crates/component_plan/src/lib.rs:779	46
 crates/coremark/src/lib.rs:1	53
 crates/device_tree_blob/src/lib.rs:1	42
-crates/e1000e/src/lib.rs:2	83
-crates/e1000e/src/pch/mod.rs:1	92
 crates/filesystem_protocol/src/lib.rs:138	45
 crates/filesystem_protocol/src/lib.rs:286	45
 crates/filesystem_protocol/src/verb.rs:361	52
@@ -53,7 +49,6 @@ crates/machine_discovery/src/interrupt_id.rs:1	41
 crates/machine_discovery/src/plic.rs:1	50
 crates/machine_discovery/src/riscv64.rs:1	55
 crates/machine_discovery/src/x86_64.rs:1	59
-crates/memory_regions/src/lib.rs:1	57
 crates/screen_console/src/lib.rs:49	48
 crates/soak_page/src/lib.rs:1	54
 crates/std_runtime_protocol/src/lib.rs:1	50
@@ -87,7 +82,6 @@ kernel/src/arch/aarch64/timer.rs:258	47
 kernel/src/arch/riscv64/fp.rs:1	44
 kernel/src/arch/riscv64/instructions.rs:1	42
 kernel/src/arch/riscv64/iommu.rs:1	54
-kernel/src/arch/x86_64/cpu_init.rs:147	44
 kernel/src/arch/x86_64/reset.rs:1	44
 kernel/src/arch/x86_64/rtc.rs:1	61
 kernel/src/bench/cycle_probe.rs:13	50
@@ -107,7 +101,6 @@ kernel/src/retype_fault.rs:1	48
 kernel/src/revoke.rs:443	44
 kernel/src/revoke.rs:656	42
 kernel/src/revoke.rs:941	56
-kernel/src/sched/switch.rs:526	45
 kernel/src/stack.rs:166	43
 kernel/src/testing.rs:20	48
 kernel/src/user/address_space.rs:307	46
@@ -122,7 +115,7 @@ redoxfs_server/src/crash.rs:1	46
 redoxfs_server/src/lib.rs:1	41
 redoxfs_server/src/memo.rs:1	43
 redoxfs_server/tests/crash_consistency.rs:1	42
-system_tests/src/user.rs:552	41
+system_tests/src/user.rs:531	41
 system_tests/src/user/address_space_tests.rs:96	43
 system_tests/src/user/cycle_counter_tests.rs:21	42
 system_tests/src/user/display_tests.rs:254	41
@@ -135,8 +128,6 @@ system_tests/src/user/spawn_mapping_revocation_tests.rs:1	55
 system_tests/src/user/std_tests.rs:452	54
 uefi_loader/src/device_tree_from_acpi.rs:1	52
 uefi_loader/src/image.rs:1	41
-uefi_loader/src/main.rs:1	51
 uefi_loader/src/screen.rs:1	47
-xtask/src/archive.rs:421	46
 xtask/src/swish_check/run.rs:12	44
 xtask/src/swish_check/transcript.rs:158	43
