@@ -16,11 +16,8 @@ crates/c_seam/src/lib.rs:2	89
 crates/component_plan/src/lib.rs:779	46
 crates/e1000e/src/lib.rs:2	83
 crates/e1000e/src/pch/mod.rs:1	92
-crates/grant_plan/src/lib.rs:1	69
 crates/memory_regions/src/lib.rs:1	57
-crates/stick_maker/src/lib.rs:1	51
 kernel/src/arch/x86_64/cpu_init.rs:147	44
 kernel/src/sched/switch.rs:526	45
-system_tests/src/user.rs:531	41
 uefi_loader/src/main.rs:1	51
 xtask/src/archive.rs:422	46
