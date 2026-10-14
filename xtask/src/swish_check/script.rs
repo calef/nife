@@ -238,10 +238,11 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
     // test installs it with `jig`)), on `ripgrep`'s terms: compiled by basalt against the C library
     // at the nife commit basalt pins. Installed, it times five 4 KiB reads of a file its word
     // names, and the file is its own installed program: unvouched, it is granted that file
-    // read-only and the clock page. The word is relative because only a word whose first
-    // component names an entry here designates anything; `/packages/...` reached ioping with
-    // nothing granted, and its `stat` answered `ENOSYS`. Pointed at a directory, it would need to
-    // write a working file there. The kernel suite's `c_program_tests` runs the same assertions on
+    // read-only and the clock page. The line stands in `packages` and names the file relative to
+    // it: only a word whose first component names an entry here designates anything (an absolute
+    // one reached ioping with nothing granted, and its `stat` answered `ENOSYS`), and a word in
+    // the shell's root is refused, because a caretaker is built by descending into a directory.
+    // Pointed at a directory, ioping would need to write a working file there. The kernel suite's `c_program_tests` runs the same assertions on
     // the same bytes against a granted directory.
     line(
         1,
@@ -253,11 +254,12 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         ],
     ),
     line(1, "ioping -v", &["ioping 1.3"]),
+    line(0, "cd packages", &[]),
     line(
         1,
         IOPING_LINE,
         &[
-            "4 KiB <<< packages/ioping/1.3/ioping ",
+            "4 KiB <<< ioping/1.3/ioping ",
             "request=1 ",
             "request=5 ",
             "(warmup)",
@@ -268,11 +270,12 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
             "min/avg/max/mdev = ",
         ],
     ),
+    line(0, "cd /", &[]),
 ];
 
 /// The timed reads `jig install ioping` is followed by (milestone 906): `c_program_fixture::IOPING`'s
 /// flags, pointed at the installed program's own file rather than a directory.
-const IOPING_LINE: &str = "ioping -c 5 -i 0 -s 4k packages/ioping/1.3/ioping";
+const IOPING_LINE: &str = "ioping -c 5 -i 0 -s 4k ioping/1.3/ioping";
 
 /// The lines that need a repository from basalt (milestones 810 and 906), skipped without one
 /// outside CI.

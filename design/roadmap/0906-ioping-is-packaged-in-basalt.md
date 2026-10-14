@@ -77,9 +77,9 @@ Lane `milestone/906-ioping-is-packaged-in-basalt`, with nifeos/basalt#17.
   runs it with every assertion unchanged. CI's `rg-threads` rows run that test with
   `NIFE_IOPING_REQUIRED=1`, so a missing package fails rather than skips.
 - `script/swish-check` types `jig install ioping`, `ioping -v`, and `ioping -c 5 -i 0 -s 4k` on
-  the installed program's own file. Unvouched, ioping is granted that file read-only and the clock
-  page. A directory would need a writable grant for ioping's working file, which its note does not
-  ask for.
+  the installed program's own file, from inside `packages`. Unvouched, ioping is granted that
+  file read-only and the clock page. A directory would need a writable grant for ioping's working
+  file, which its note does not ask for.
 - `helpers/build-ioping.sh` and `target/ioping/` left the tree (item 6). `C_PROGRAMS` no longer
   names ioping.
 - Documentation, for the later step that installs it: upstream ships a man page, `ioping.1`, at the
