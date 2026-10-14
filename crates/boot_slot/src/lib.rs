@@ -380,12 +380,10 @@ impl SlotHeader {
 ///
 /// # Why there is a token at all
 ///
-/// A running system cannot work out which slot started it. The obvious inference, *"it is whatever
-/// [`select`] would pick now"*, is wrong in exactly the case that matters: the chooser spends a try
-/// before handing off, so a slot that was started with its last try is no longer
-/// [`State::is_bootable`] and [`select`] now names the other one. The one boot a confirmation
-/// exists for is the one the inference gets backwards, so the number has to be carried rather than
-/// recomputed.
+/// A running system cannot work out which slot started it. *"Whatever [`select`] would pick now"*
+/// is wrong on the boot a confirmation exists for: the chooser spends a try before handing off, so
+/// a slot started with its last try is no longer [`State::is_bootable`] and [`select`] names the
+/// other one. A machine would then confirm the copy it did not boot.
 ///
 /// # Why it is a word on the command line
 ///
@@ -403,43 +401,12 @@ impl SlotHeader {
 /// | a fixed physical page | a number two programs agree on with nothing checking it, and the one shape this tree has no precedent for |
 /// | **a word on the command line** | **one token, one parser, and a host test that round-trips it against the kernel's own reader** |
 ///
-/// **This is a value two programs agree on**, which `AGENTS.md` puts in the expensive category, so
-/// **the spelling was ratified by calef on 2026-09-22** ("Ratified"), after he asked what a slot is
-/// and why the number cannot be recomputed. It is now a value this project has committed to.
+/// **This is a value two programs agree on**, and **the spelling was ratified by calef on
+/// 2026-09-22**.
 ///
-/// **Why it cannot be recomputed, which is what the ruling turned on.** A reader will reach for
-/// inferring the slot from the table: the one with the highest priority and tries remaining must be
-/// the one that booted. **That inference is wrong precisely on the boot a confirmation exists for.**
-/// The chooser spends a try *before* handing off, so by the time the kernel looks, the state is no
-/// longer the state the decision was made from: on a trial boot with one try left, the slot that
-/// actually booted now shows zero, and the inference names the other one. A machine would then
-/// confirm the copy it did not boot, which is worse than never confirming.
-///
-/// # The cost worth naming
-///
-/// The boot command line now has tokens owned by two crates: the screen's are
-/// `machine_discovery::framebuffer`'s and this one is here. That split is deliberate (a reader
-/// asking what `boot-slot=1` means looks in the crate named after boot slots) and it is a cost: no
-/// single place enumerates the line's vocabulary. `uefi_loader::handoff::cmdline` is the writer
-/// that sees all of it, and its `CMDLINE_LEN` is the one place the lengths are added up.
-///
-/// # EXAMPLES
-///
-/// ```
-/// use boot_slot::cmdline;
-///
-/// let mut out = [0u8; cmdline::MAX_LEN];
-/// let n = cmdline::encode(1, &mut out);
-/// let line = core::str::from_utf8(&out[..n]).unwrap();
-/// assert_eq!(line, "boot-slot=1");
-/// assert_eq!(cmdline::parse(line), Some(1));
-///
-/// // Beside the screen, in either order, which is what the kernel actually reads.
-/// assert_eq!(cmdline::parse("screen=0x80000000,800,600,3200,bgrx boot-slot=0"), Some(0));
-///
-/// // A line that says nothing about slots is a boot that was not started by a chooser.
-/// assert_eq!(cmdline::parse("screen=0x80000000,800,600,3200,bgrx"), None);
-/// ```
+/// The command line's tokens are owned by two crates (the screen's by
+/// `machine_discovery::framebuffer`, this one here), so no single place enumerates its vocabulary;
+/// `uefi_loader::handoff::cmdline` writes all of it, and its `CMDLINE_LEN` adds up the lengths.
 pub mod cmdline {
     /// The token's key, including the `=`. Provisional: names are an architect's.
     pub const KEY: &str = "boot-slot=";
@@ -477,6 +444,24 @@ pub mod cmdline {
     /// A token whose value is not a single digit is `None` too, for the reason [`encode`] refuses
     /// to write one: a malformed slot number that parsed as *some* slot would be a confirmation
     /// written to the wrong partition entry, which is the one outcome worse than not confirming.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use boot_slot::cmdline;
+    ///
+    /// let mut out = [0u8; cmdline::MAX_LEN];
+    /// let n = cmdline::encode(1, &mut out);
+    /// let line = core::str::from_utf8(&out[..n]).unwrap();
+    /// assert_eq!(line, "boot-slot=1");
+    /// assert_eq!(cmdline::parse(line), Some(1));
+    ///
+    /// // Beside the screen, in either order, which is what the kernel actually reads.
+    /// assert_eq!(cmdline::parse("screen=0x80000000,800,600,3200,bgrx boot-slot=0"), Some(0));
+    ///
+    /// // A line that says nothing about slots is a boot that was not started by a chooser.
+    /// assert_eq!(cmdline::parse("screen=0x80000000,800,600,3200,bgrx"), None);
+    /// ```
     #[must_use]
     pub fn parse(cmdline: &str) -> Option<u8> {
         let word = cmdline

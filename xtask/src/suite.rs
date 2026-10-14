@@ -1282,65 +1282,29 @@ pub(crate) fn kernel_test_elf(package: &str, target: &str, who: &str) -> Option<
 /// **The host tests again, under Miri's interpreter** (milestone 79, notes/undefined-behavior.md).
 ///
 /// Miri checks the rules nothing else in the tree checks: aliasing (tree borrows), pointer
-/// provenance, uninitialized reads, leaks. Kani proves the properties it is asked about and the
-/// fuzzers see crashes; neither sees a `&mut` that aliases. The crate selection is `test()`'s,
-/// verbatim and for the same reason it is `--workspace --exclude` there rather than a list: a
-/// hand-maintained list drifted twice, and this way a new crate is covered the moment it joins
-/// the workspace. The exclusions are the three bare-metal crates that do not compile for the
-/// host, plus one that does:
+/// provenance, uninitialized reads, leaks. The crate selection is `test()`'s `--workspace
+/// --exclude`, so a new crate is covered the moment it joins the workspace. The exclusions are the
+/// three bare-metal crates that do not compile for the host, plus four, none with `unsafe` Miri
+/// could execute:
 ///
-/// **`xtask` is excluded like it is from `script/coverage`, and for cost, not principle.** It is
-/// the build tool, not a host-logic crate; its three tests are the scanout referees, safe pixel
-/// arithmetic with no `unsafe` on any path, and under the interpreter they cost around seven
-/// minutes for nothing the type system has not already said. They were run once under Miri during
-/// milestone 79's first full sweep and were clean; the recurring run leaves them out.
+/// - **`xtask`**, the build tool: its tests are safe pixel arithmetic, about seven minutes under
+///   the interpreter for nothing the type system has not said.
+/// - **`board_console`**: no dependencies and no `unsafe`, about 55 minutes under Miri, and ten of
+///   its tests reach the host filesystem (refused by isolation) or run on wall-clock timeouts,
+///   which under an interpreter measure Miri.
+/// - **`stick_maker`**: its tests build trees under the temp dir, and isolation refuses `statx`;
+///   its only `unsafe` is FFI, which Miri cannot execute. `measured_boot` stays in on its own tests.
+/// - **`walk_pricing`**: `std::fs` code staging trees under the temp dir (`lstat` refused), and a
+///   timing instrument. `filesystem_protocol::fixture` stays in.
 ///
-/// **`board_console` is excluded for the same reason and a much larger number** (milestone 238). It
-/// is the serial-console reader for a board on a bench, and it measured **3,307 seconds, 55
-/// minutes, for its lib tests alone** under Miri on 2026-09-03, against roughly four minutes for
-/// the entire rest of the workspace. It has **no dependencies and no `unsafe`**, so there is
-/// nothing in its call graph that Miri's rules can be broken by. Ten of its forty-one tests could
-/// not run under the interpreter anyway, and each one says why it is out rather than being a
-/// puzzle: five reach the host filesystem (`open`, `/dev`, the temp dir), which isolation refuses,
-/// and five in `watch` are wall-clock driven, so a 15-second quiet timeout and a 120-second budget
-/// expire against interpreted time and the watcher reports `Reached(Banner)` where a real run
-/// reaches `Reached(Tour)`. That last family is the same category as `credentialer`'s timing test, which
-/// notes/undefined-behavior.md already records: a wall-clock ratio under an interpreter measures
-/// Miri, not the thing being timed.
+/// **"Miri-clean" means the sampled paths.** The exhaustive suites gate themselves down under
+/// `cfg(miri)` (`network_time_protocol`, `globally_unique_identifier_partition_table`, `calendar`,
+/// `glob`, `credentialer`, each saying so next to the test); the exhaustive claims are native-only.
 ///
-/// This crate was never *deliberately* covered: it joined the workspace after milestone 79, and the
-/// weekly job had been red on an unrelated failure ever since, so its cost was only discovered when
-/// milestone 238 cleared the failure in front of it.
-///
-/// **`stick_maker` is excluded for `board_console`'s reason** (milestone 636 (the scheduled
-/// workflows are failing), 2026-10-03 UTC). Its `cli` and `linux` tests build and remove trees under
-/// the temp dir, and isolation refuses the first `statx`: "unsupported operation: `statx` not
-/// available when isolation is enabled", which failed the weekly run on 2026-09-21 and again on a
-/// 2026-10-03 dispatch (run 37109746541) once the crate in front of it was repaired. That is the
-/// harness refusing I/O, not a finding. Its only `unsafe` is FFI in `src/host/` (`geteuid`, four
-/// `kernel32` calls), which Miri cannot execute either, so nothing Miri checks is lost; its one
-/// dependency, `measured_boot`, stays in the run on its own tests.
-///
-/// **`walk_pricing` is out for the same reason, found the same day.** It is "ordinary `std::fs`
-/// code" by its own header, with no `unsafe`, and three of its four tests stage a tree under the
-/// temp dir, where isolation refuses `lstat`; the fourth fits a line. It is also a timing
-/// instrument, and a wall-clock price under the interpreter measures Miri. Its tree comes from
-/// `filesystem_protocol::fixture`, which stays in the run.
-///
-/// **"Miri-clean" means the sampled paths.** An interpreter runs roughly a thousand times slower
-/// than the silicon, so the exhaustive suites gate themselves down under `cfg(miri)`: `network_time_protocol`
-/// strides its 10^9-value sweep, `globally_unique_identifier_partition_table` skips its 460k-parse
-/// corruption sweeps, `calendar` and
-/// `glob` shrink their strides and scales, `credentialer` derives at Argon2's floor (each site says so,
-/// next to the test). What Miri certifies is every path the sampled suite executes, not the
-/// exhaustive claims; those remain native-only.
-///
-/// The two out-of-workspace test surfaces stay out deliberately: `tools/redoxfs_host` and
-/// `redoxfs_server` spend their runtime inside the vendored RedoxFS engine, and a finding in vendored
-/// code lands in the vendor pin, not in a crate this tree can fix (vendor/README.md). Extra args
-/// are forwarded to `cargo miri test`, but they do **not** narrow it: `-p` beside `--workspace`
-/// still ran the whole workspace when milestone 636 tried it on 2026-10-03. To check one crate,
-/// run `cargo miri test -p <crate>` directly.
+/// `tools/redoxfs_host` and `redoxfs_server` stay out: their runtime is the vendored RedoxFS
+/// engine, whose findings land in the vendor pin (vendor/README.md). Extra args are forwarded to
+/// `cargo miri test` but do **not** narrow it (`-p` beside `--workspace` still runs everything); to
+/// check one crate, run `cargo miri test -p <crate>` directly.
 pub(crate) fn undefined_behavior_check() -> bool {
     eprintln!("--- host tests under Miri (aliasing, provenance, uninitialized reads) ---");
     let mut args = vec![

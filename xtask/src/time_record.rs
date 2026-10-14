@@ -2,10 +2,8 @@
 //! (milestone 807 (the kernel suite reports what each test cost), §254 (a gate prints what each
 //! item cost)).
 //!
-//! Until this module, every per-test figure anyone had for this suite was scraped from the
-//! timestamps GitHub stamps on log lines, and two scrapes of one suite disagreed by 17%. Now the
-//! guest prints its own record (`crates/test_times`), and this module does three things with it
-//! for every booted test image:
+//! The guest prints its own record (`crates/test_times`), and this module does three things with
+//! it for every booted test image:
 //!
 //! 1. **Times the host side.** The child's stdout is passed through line by line, exactly as it was
 //!    when the child inherited it, and each line is stamped as it arrives. From the stamps come four
@@ -25,6 +23,7 @@
 //! table (see [`record_path`]) that CI uploads as an artifact and [`summary`] turns into the step
 //! summary (§254, Fork 3).
 //!
+
 //! # The file
 //!
 //! A header line, then rows of five tab-separated fields (shown here with ` | ` for the tabs):
@@ -52,8 +51,7 @@
 //! # BUGS
 //!
 //! - **Under `--hvf` nothing is recorded.** That leg reads its own transcript to work around a
-//!   semihosting exit HVF does not deliver (`hvf_kernel_leg`), and it runs on a laptop, never in CI,
-//!   so it was left alone. The guest still prints its block there.
+//!   semihosting exit HVF does not deliver (`hvf_kernel_leg`), and never runs in CI.
 //! - **A filtered run (`--test`) is not recorded either**, apart from x86_64's one-test root-port
 //!   boot, which is part of every unfiltered run. A filtered run is a person chasing one test, and
 //!   the figure is on their screen.

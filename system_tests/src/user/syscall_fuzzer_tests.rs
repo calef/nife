@@ -16,29 +16,23 @@
 //! `NoSuchSlot`, and its table must stay empty for the whole run: a thread endowed with nothing
 //! gains nothing, whatever the others do around it.
 //!
-//! **Why the oracle is a model and not a crash.** The three confinement defects of 2026-10-03
-//! (#1494, milestone 634 (a plain SEND received by RECEIVE_CAP never hands the receiver a
-//! sender-chosen slot), #1525) each delivered something wrong and crashed nothing. A fuzzer that
-//! watched only for panics would have passed all three. A kernel panic still ends the run, as it
-//! ends any test.
+//! **The oracle is a model, not a crash**: a confinement defect delivers something wrong and
+//! crashes nothing, so a fuzzer watching only for panics passes it. A kernel panic still ends the
+//! run, as it ends any test.
 //!
 //! **The seed is the reproducer.** Nothing here reads a clock or a core number to decide what to
 //! do, so a seed replays the same operations in the same order on every run. A failure prints the
 //! seed, the step and the call; `NIFE_SYSCALL_FUZZ_SEEDS=<first>:<count>` at build time (read with
 //! `option_env!`) replaces the committed list, which is how the weekly sweep runs many seeds and
-//! how one seed is replayed. Coverage-blind on purpose: the proposal records that as an effort
-//! trade, not a design preference.
+//! how one seed is replayed. Coverage-blind, as an effort trade.
 //!
-//! **Kernel threads, not an EL0 program, and this is a deviation from the proposal's text.** The
-//! proposal said "one EL0 system test program". These actors are kernel threads that hold ordinary
-//! capability tables and enter through `syscall::invoke`, which `reap_tests`, `notification_tests`
-//! and `timer_tests` already do for the same reason. Two things decided it. The oracle needs to
-//! know which side of a rendezvous parked first, and only the kernel can say that without timing
-//! guesses (`sched::thread_death_disposition`). And an EL0 helper thread needs a retyped TCB and
-//! an address space per helper, which buys the trap entry and nothing the model checks. What this
-//! does not exercise is the trap entry itself (register marshalling in `arch`), which every EL0
-//! test in the suite already crosses.
+//! **Kernel threads, not an EL0 program** (the proposal said EL0): they hold ordinary capability
+//! tables and enter through `syscall::invoke`, as `reap_tests` and `notification_tests` do. The
+//! oracle needs to know which side of a rendezvous parked first, which only the kernel can say
+//! without timing guesses (`sched::thread_death_disposition`). The trap entry itself is not
+//! exercised here; every EL0 test in the suite crosses it.
 //!
+
 //! # What the generator reaches
 //!
 //! Objects: two rendezvous, one notification, two single-page frames, and the Reply capabilities
@@ -59,12 +53,10 @@
 //!   answer at every step and at teardown, so a wrong wake is caught, but possibly some steps after
 //!   the operation that caused it.
 //! - **The corpus is tied to the kernel's walk, not only to this generator.** A kernel change that
-//!   alters any answer the model predicts re-rolls every seed's walk, and a corpus seed can rot
-//!   green with its defect still reachable: seed 342 did (2026-10-08, UTC, found by milestone 139
-//!   (drive the unsafe count down) round 10's sweep; re-found at 559 the same day). Milestone 752's
-//!   replay table
-//!   (`design/roadmap/0752-a-seeded-syscall-driver-with-a-shadow-model.md`) still names 342 in its
-//!   revocation-in-flight row, and that block is not a lane's to edit; the integrator updates it.
+//!   alters any answer the model predicts re-rolls every seed's walk, so a corpus seed can rot
+//!   green with its defect still reachable (seed 342 did; the defect re-found at 559). The replay
+//!   table in `design/roadmap/0752-a-seeded-syscall-driver-with-a-shadow-model.md` still names
+//!   342 in its revocation-in-flight row.
 
 use core::sync::atomic::{AtomicU64, Ordering};
 

@@ -1,69 +1,46 @@
 //! **The kernel proving it works on this machine, before it hands the machine to anybody.**
 //!
-//! Milestone 268's second rung. The boot ladder is: say what the machine is
-//! ([`crate::print_machine_description`]), prove the kernel works on it (here), then hand over. All
-//! three architectures climb the same ladder, and this module is the same code on all three: every
-//! check below is portable, and the one place an architecture differs is
-//! `arch::exceptions::self_test`, which each one already had to write anyway.
+//! Milestone 268 (every architecture boots the same way)'s second rung: say what the machine is
+//! ([`crate::print_machine_description`]), prove the kernel works on it (here), then hand over.
+//! Every check below is portable; the one place an architecture differs is
+//! `arch::exceptions::self_test`.
 //!
 //! # It reports, it does not gate
 //!
 //! calef, 2026-09-09: *"I could see building tools to diagnose what broke but we can only run them
 //! if there is a prompt"*. A failing check prints its verdict and the boot carries on to userspace.
-//! A machine you cannot log into is a machine you cannot fix, and a self-test that halted the boot
-//! would take the diagnosis away at exactly the moment it is wanted.
-//!
-//! **So the verdict has to be read by something other than a person**, or milestone 268 ships its
-//! own finding 4 back: a check that reports by printing a word and carrying on, with nothing
-//! gating. `boot_ladder::SELF_TEST` is that contract. `crates/board_console` matches it, `cargo xtask
-//! boot-check` boots all three architectures and fails on a red one, and CI runs that.
-//!
-//! # The verdict line is a contract, and its wording is provisional
+//! **So the verdict is read by a program**: `boot_ladder::SELF_TEST` is the contract,
+//! `crates/board_console` matches it, and `cargo xtask boot-check` boots all three architectures
+//! and fails on a red one in CI.
 //!
 //! ```text
 //! nife self-test: 5 of 5 passed
 //! nife self-test: 4 of 5 passed, 1 FAILED: exceptions
 //! ```
 //!
-//! Three properties, each of which is a lesson from something that already went wrong in this tree:
-//!
-//! - **The prefix is always present and identical on every architecture.** Milestone 268's finding
-//!   3 is that `Stage::Tour`'s only matchable string lived inside the RISC-V arm of `main.rs`, so
-//!   on the other two there was no signal on the channel at all, and a missing marker looks exactly
-//!   like a slow board.
+//! - **The prefix is always present and identical on every architecture**: a missing marker looks
+//!   exactly like a slow board.
 //! - **The counts print on success as well as on failure**, so "ran nothing and passed" is
-//!   distinguishable from "ran the set and passed". A vacuous pass is the failure a gate acquires
-//!   silently.
-//! - **`FAILED:` is spelled the way this tree already spells it**, in `main.rs`'s preemption check
-//!   (`FAILED: a spinner did not run, or nothing was preempted.`), rather than as a new word.
+//!   distinguishable from "ran the set and passed".
+//! - **`FAILED:` is spelled as `main.rs`'s preemption check spells it.**
 //!
-//! The wording is **provisional** (milestone 268 (every architecture boots the same way)): a line
-//! two programs agree on is an architect's under AGENTS.md's *move fast on what can be undone*
-//! tenet, and the milestone block says a lane should ship one and say so rather than wait. The
-//! other half of the contract is `board_console::progress`, which is tested against this module's
-//! own constant rather than against a remembered string.
+//! The wording is **provisional**: a line two programs agree on is an architect's.
+//! `board_console::progress` is tested against this module's own constant.
 //!
+
 //! # BUGS
 //!
-//! - **Nothing here proves an architecture ran the set.** The verdict says five of five passed on a
-//!   kernel that ran five checks; it cannot say that the *right* five ran, because the list is a
-//!   compile-time fact and a check deleted from it takes its own evidence with it. The count is the
-//!   partial defence (a shrunken set prints a smaller total), and `crates/board_console`'s tests
-//!   pin the wording, but the set itself is guarded by review.
-//! - **The set is cheap on purpose and therefore shallow.** Every check below completes in
-//!   microseconds except [`fn@timer`], which waits about 20 ms for a tick. Nothing here spawns a
-//!   process, touches a device, or exercises IPC, because this runs on every boot including a
-//!   board's, and a boot self-test that cost a second would be turned off. The deep proofs are
-//!   `script/test`'s suite; this is the subset that has to be true before a prompt is worth
-//!   offering.
-//! - **A check can still hang the boot if the operation it measures never returns.** The two
-//!   waits here no longer can: both read the counter through [`Counter`], which reports a counter
-//!   that has stopped rather than waiting on it, and [`fn@timer`] spins rather than sleeping, so a
-//!   machine whose interrupts never arrive cannot park it either. What nothing here bounds is a
-//!   `sched::yield_now` or an `mmu::map_page` that itself never comes back; that needs a watchdog
-//!   on another core or on the timer interrupt, which this module deliberately does not own.
-//!   (Before 2026-09-14 a stopped counter hung [`fn@timer`] forever, and `arch::timer::spin_for`
-//!   still has that exposure.)
+//! - **Nothing here proves an architecture ran the right set.** The list is a compile-time fact,
+//!   and a check deleted from it takes its own evidence with it; the count is the partial defense,
+//!   and review guards the set.
+//! - **The set is cheap on purpose and therefore shallow.** Every check completes in microseconds
+//!   except [`fn@timer`], which waits about 20 ms for a tick. Nothing spawns a process, touches a
+//!   device, or exercises IPC, because this runs on every boot; the deep proofs are `script/test`'s.
+//! - **A check can still hang the boot if the operation it measures never returns.** Both waits
+//!   read the counter through [`Counter`], which reports a stopped counter rather than waiting on
+//!   it, and [`fn@timer`] spins rather than sleeping. A `sched::yield_now` or `mmu::map_page` that
+//!   never comes back is unbounded; that needs a watchdog this module does not own.
+//!   `arch::timer::spin_for` still hangs on a stopped counter.
 
 use core::sync::atomic::{AtomicU64, Ordering};
 
