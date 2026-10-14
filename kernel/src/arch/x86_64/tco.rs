@@ -15,6 +15,7 @@
 //! takes the time to the reset as its argument and does the halving itself, so the number a caller
 //! writes is the number that matters to a person at the board.
 //!
+
 //! # Two generations, and where each keeps its registers
 //!
 //! | | ICH9 (QEMU `q35`), TCO version 2 | 100/200-series PCH (xenon's Q270), TCO version 4 |
@@ -32,6 +33,7 @@
 //! `hw/isa/lpc_ich9.c` and `include/hw/southbridge/ich9.h`. Intel's ICH9 datasheet (316972) could
 //! not be downloaded, so the version 2 column rests on Linux and QEMU agreeing, not on Intel.
 //!
+
 //! # `SECOND_TO_STS` is the evidence that survives the reset
 //!
 //! The datasheet says `SECOND_TO_STS` is cleared only by writing a 1 to it or by `RSMRST#`, which
@@ -47,6 +49,7 @@
 //! returns a [`Tco`] holding the base it found, and the caller holds it. Nothing here keeps a
 //! static, so a kernel that never calls [`find`] never touches the chipset.
 //!
+
 //! # BUGS
 //!
 //! - **The version 4 path has never run.** q35 is an ICH9, so the `SMBus` lookup, the P2SB unhide
@@ -55,11 +58,9 @@
 //! - **Firmware can hold `NO_REBOOT` set, and then the watchdog counts and never resets.** The
 //!   datasheet lets the no-reboot strap override software on version 4, and a BIOS may use it.
 //!   [`Tco::arm`] reads the bit back after clearing it and refuses to report armed if it stuck, so
-//!   the failure is a line on the console rather than a watchdog that silently does nothing.
-//!   **That read-back is not proof, measured.** Under q35 with `-global ICH9-LPC.noreboot=true`
-//!   (the strap), the bit reads back clear, this reports armed, and the second timeout never
-//!   resets (2026-09-25, `script/soak-test --wedge` failing at its deadline with the wedge on the
-//!   console). Only a wedge that comes back proves a machine resets.
+//!   the failure is a line on the console. **That read-back is not proof**: under q35 with
+//!   `-global ICH9-LPC.noreboot=true` (the strap) the bit reads back clear, this reports armed,
+//!   and the second timeout never resets. Only a wedge that comes back proves a machine resets.
 //! - **`TCO_EN` in `SMI_EN` is left as firmware set it.** With it set, the first timeout raises an
 //!   SMI, and firmware's SMI handler could in principle pet the timer on the kernel's behalf. Linux
 //!   clears it only for version 1 by default, and this follows Linux. If xenon's first wedged soak
@@ -67,8 +68,7 @@
 //! - **Nothing halts the timer at boot.** The datasheet makes `TCO_TMR_HALT` default to 0 (counting)
 //!   after a platform reset, and it is firmware that halts it. A firmware that does not would reset
 //!   an unarmed kernel about 2.4 seconds after the reload value's default of four ticks runs out
-//!   twice. Neither q35 nor, by all accounts, a Dell does this; the note is here because the first
-//!   machine that does would look haunted.
+//!   twice. Neither q35 nor, by all accounts, a Dell does this.
 //! - **The ACPI `WDAT` table, where firmware describes a watchdog for the OS, is not read.** Linux
 //!   prefers it when present. xenon's tables have not been dumped with that question in mind.
 

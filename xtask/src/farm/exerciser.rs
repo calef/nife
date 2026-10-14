@@ -10,6 +10,14 @@
 
 use super::*;
 
+/// The custom-target triples the std demo builds for, one per supported ISA. The name is the
+/// JSON spec's file stem, which is also cargo's target-dir subdirectory.
+pub(super) const STD_TARGETS: [&str; 3] = [
+    "aarch64-unknown-nife",
+    "riscv64-unknown-nife",
+    "x86_64-unknown-nife",
+];
+
 /// The `CARGO_TARGET_DIR` the `std_exerciser` build runs under, and the note to print when an
 /// exported value had to be overridden to get it there.
 ///

@@ -28,6 +28,7 @@
 //!   addresses either; only an NVM-supplied LCD configuration word could, and that returns
 //!   [`Error::PageNotPorted`] rather than writing somewhere unexamined.
 //!
+
 //! ```text
 //! SPDX-License-Identifier: BSD-3-Clause
 //!

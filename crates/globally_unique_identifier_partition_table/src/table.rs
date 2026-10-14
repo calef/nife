@@ -34,6 +34,28 @@ impl<'a> GloballyUniqueIdentifierPartitionTable<'a> {
     /// [`GloballyUniqueIdentifierPartitionTable::check_backup`], which is separate because reading
     /// the last block of the disk is a second I/O the caller may not want to do before it knows the
     /// primary is sound.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use globally_unique_identifier_partition_table::GloballyUniqueIdentifierPartitionTable;
+    /// # use globally_unique_identifier_partition_table::guid::types;
+    /// # let disk = globally_unique_identifier_partition_table::testing::sample_disk();
+    /// # let (header_block, entry_array) = (&disk[512..1024], &disk[1024..1024 + 16384]);
+    /// let table = GloballyUniqueIdentifierPartitionTable::parse(header_block, entry_array)?;
+    /// for (index, part) in table.partitions() {
+    ///     let mut label = [0u8; 4 * globally_unique_identifier_partition_table::entry::NAME_UNITS];
+    ///     let n = part.name_utf8(&mut label)?;
+    ///     println!(
+    ///         "{}: {} blocks of {}, {:?}",
+    ///         index + 1,
+    ///         part.blocks().unwrap(),
+    ///         types::name(part.type_guid).unwrap_or("unknown"),
+    ///         core::str::from_utf8(&label[..n]).unwrap(),
+    ///     );
+    /// }
+    /// # Ok::<(), globally_unique_identifier_partition_table::Error>(())
+    /// ```
     pub fn parse(
         header_block: &[u8],
         entry_array: &'a [u8],
@@ -109,6 +131,32 @@ impl<'a> GloballyUniqueIdentifierPartitionTable<'a> {
     /// caller's job**, deliberately: alignment (the 2048-block, 1 MiB convention that keeps a
     /// partition from straddling an SSD erase block) is policy, and a format crate that silently
     /// moved a partition would be doing policy behind the caller's back.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use globally_unique_identifier_partition_table::Entry;
+    /// # use globally_unique_identifier_partition_table::GloballyUniqueIdentifierPartitionTable;
+    /// # use globally_unique_identifier_partition_table::guid::types;
+    /// # use universally_unique_identifier::Uuid;
+    /// # let disk_guid = Uuid::NIL;
+    /// # let part_guid = Uuid::NIL;
+    /// let mut array = [0u8; globally_unique_identifier_partition_table::ENTRY_ARRAY_BYTES];
+    /// let table = GloballyUniqueIdentifierPartitionTable::create(
+    ///     disk_guid,
+    ///     512,
+    ///     131_072, // a 64 MiB disk
+    ///     &[Entry::new(types::NIFE_DATA, part_guid, 2048, 131_038).with_name("nife data")?],
+    ///     &mut array,
+    /// )?;
+    ///
+    /// let mut block = [0u8; 512];
+    /// table.write_protective_mbr(&mut block)?; // to LBA 0
+    /// table.write_primary_header(&mut block)?; // to LBA 1
+    /// table.write_backup_header(&mut block)?;  // to table.backup_header_lba()
+    /// let bytes = table.entry_array();          // to LBA 2 and to table.backup_entry_lba()
+    /// # Ok::<(), globally_unique_identifier_partition_table::Error>(())
+    /// ```
     pub fn create(
         disk_guid: Uuid,
         block_size: usize,

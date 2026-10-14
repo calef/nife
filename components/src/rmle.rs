@@ -1,33 +1,13 @@
 //! **`rmle`, the Rust multi-line editor: the smallest real text editor**
 //! (milestone 169, design/roadmap/0169-kilo-editor.md), built on the raw-keystroke primitive that
-//! milestone added to the terminal contract (`OPERATION_RAWMODE`/`OPERATION_READRAW`, `crates/line_editor`).
-//! Modelled on antirez's public-domain `kilo` (<https://github.com/antirez/kilo>): a fixed
-//! screen, a row array, a cursor, insert and delete, save. No dependency this milestone's own doc
-//! did not already say `kilo` needs none of: no subprocess, no dynamic linking, no threads.
+//! milestone added to the terminal contract (`OPERATION_RAWMODE`/`OPERATION_READRAW`,
+//! `crates/line_editor`). Modelled on antirez's public-domain `kilo`
+//! (<https://github.com/antirez/kilo>): a fixed screen, a row array, a cursor, insert and delete,
+//! save.
 //!
-//! Name: ratified 2026-08-27 (calef). Chosen over `kilo` to avoid the confusion of two things
-//! named `kilo` once a real C port of `kilo.c` through DECISIONS §31's foreign-language seam
-//! exists (see design/roadmap/0181-persistent-foreign-component.md, milestone 181): this is a
-//! Rust reimplementation of `kilo`'s spirit and scope, not a port, and it earns its own name for
-//! the same reason the distinction from `line_editor` (a single-line editor) is worth keeping
-//! visible on sight. `rmle`: Rust Multi-Line Editor. The search behind it (every SI-prefix name
-//! in the genre and several metalwork-themed alternatives was already taken) is in git history.
-//!
-//! # Why Rust and not a port of `kilo.c`
-//!
-//! The milestone doc frames `kilo` as the cheapest **C** program to run through DECISIONS §31's
-//! foreign-language seam, and that framing is right for *why `kilo` was chosen* among C editors.
-//! It is not achievable as a literal port with the seam as §31 actually built it: the seam's whole
-//! rule is "the C makes no syscalls and holds no capabilities", answered by C being called **once**,
-//! with a buffer and a length, and returning. `kilo`'s own shape is a blocking event loop
-//! (`read` a key, act, `write` a redraw, `read` the next), which needs the C side to make I/O calls
-//! itself. Restructuring that into the seam's one-shot shape (a call per keystroke, editor state
-//! serialised across the C ABI on every one) is a real design a lane should not invent unilaterally
-//! -- it is a new seam shape, not a `kilo`-sized change -- so this is a Rust program on the raw
-//! primitive instead, and the seam question is recorded as its own proposal (see this milestone's
-//! report) rather than decided here.
-//!
-//! # Capability contract
+//! It is Rust rather than a port of `kilo.c` because DECISIONS §31 (the foreign-language seam)
+//! calls C **once**, with a buffer and a length, and the C makes no syscalls; `kilo` is a blocking
+//! event loop that does its own I/O, and reshaping it into a call per keystroke is a new seam.
 //!
 //! | slot | what | why |
 //! |---|---|---|
@@ -35,32 +15,25 @@
 //! | 1 | a directory capability, `WRITE` (`CALL`) | `OPEN`/`CREATE`/`READ`/`WRITE`/`TRUNCATE`/`CLOSE` on the one file it edits |
 //! | 2 | a report endpoint, `WRITE` | one message, sent right before `exit()` |
 //!
-//! `_start(spec, name_lo, name_hi)`: the target filename arrives the way `rm` and
-//! `fs_file_caretaker` already take one (`filesystem_protocol::grant::{spec, pack_name}`), not as a
-//! fourth capability slot. `rmle` never learns any other name in the directory it holds: it is not
-//! handed a listing right, and [`load`] only ever calls `OPEN`/`CREATE` with the one name it was
-//! started with.
+//! `_start(spec, name_lo, name_hi)`: the target filename arrives as `rm` takes one
+//! (`filesystem_protocol::grant::{spec, pack_name}`). `rmle` holds no listing right, and [`load`]
+//! only ever calls `OPEN`/`CREATE` with the one name it was started with.
 //!
-//! # What real `kilo` has that this does not, honestly
+
+//! # What real `kilo` has that this does not
 //!
-//! - **No terminal size negotiation.** `notes/terminal-contract.md` says plainly the serial
-//!   contract does not carry one; [`SCREEN_COLS`]/[`SCREEN_ROWS`] are fixed at a conventional
-//!   80x24 rather than probed. A wider or narrower real terminal gets a wrong-sized redraw, the
-//!   same honest limit `line_editor::LINE_MAX` already carries one layer down. Milestone 142's
-//!   capability/terminal-size work is the eventual fix; this program does not attempt it.
-//! - **A bounded document.** [`MAX_ROWS`] rows of [`MAX_COLS`] bytes each, fixed arrays and no
-//!   allocator (this crate is `#![no_std]` with none), unlike real `kilo`'s `realloc`-backed rows.
-//!   A file past either bound is silently truncated on load. Small on purpose for a first cut;
-//!   raising either is a constant, not a redesign, the same `NAME_LEN`-style note `nifefs` carries.
-//! - **No incremental search (`^F`), no syntax highlighting, no `^C`/`SIGWINCH` handling.** All
-//!   three are real `kilo` features the milestone's own doc named as optional scope. Search and
-//!   highlighting are plain omissions; `^C` needs nothing special here because raw mode delivers
-//!   it as a literal byte rather than the line discipline's intercepted signal (`^C` is simply not
-//!   bound to anything, matching real `kilo`'s own choice to bind quit to `^Q` instead, because
-//!   termios raw mode disables `ISIG`).
-//! - **Quit confirmation is one extra `^Q`, not three.** Real `kilo` asks `KILO_QUIT_TIMES` (3)
-//!   times; this asks once. A deliberate simplification for a program this size, recorded here
-//!   rather than silently differing from the editor it is modelled on.
+//! - **No terminal size negotiation**: the serial contract carries none
+//!   (`notes/terminal-contract.md`), so [`SCREEN_COLS`]/[`SCREEN_ROWS`] are a fixed 80x24.
+//! - **A bounded document.** [`MAX_ROWS`] rows of [`MAX_COLS`] bytes, fixed arrays and no
+//!   allocator. A file past either bound is silently truncated on load; raising either is a
+//!   constant.
+//! - **No incremental search (`^F`), no syntax highlighting.** `^C` is a literal byte in raw mode
+//!   and bound to nothing; quit is `^Q`, as in `kilo`.
+//! - **Quit confirmation is one extra `^Q`, not three** (`KILO_QUIT_TIMES`).
+//!
+//! Name: ratified 2026-08-27 (calef): Rust Multi-Line Editor, chosen over `kilo` so a real C port of
+//! `kilo.c` through the foreign-language seam would not share the name, and distinct on sight from
+//! `line_editor` (a single-line editor).
 
 #![no_std]
 #![allow(missing_docs)] // program entry point, not library surface (DECISIONS §107)

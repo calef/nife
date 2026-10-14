@@ -34,6 +34,13 @@ fn main() {
         "cargo::rustc-env=NIFE_IOPING_REQUIRED={}",
         std::env::var("NIFE_IOPING_REQUIRED").unwrap_or_default()
     );
+    // **And a missing `hackbench`** (milestone 907 (hackbench is packaged in basalt)), the same
+    // way, for `c_thread_tests`. Name provisional.
+    println!("cargo::rerun-if-env-changed=NIFE_HACKBENCH_REQUIRED");
+    println!(
+        "cargo::rustc-env=NIFE_HACKBENCH_REQUIRED={}",
+        std::env::var("NIFE_HACKBENCH_REQUIRED").unwrap_or_default()
+    );
     println!("cargo::rustc-check-cfg=cfg(initial_ramdisk)");
     if matches!(arch.as_str(), "aarch64" | "riscv64" | "x86_64") {
         println!("cargo::rustc-cfg=initial_ramdisk");

@@ -36,12 +36,12 @@ programs would claim one phrase. The refusal was recorded in one table cell insi
 block, invisible at the moment it was needed. A blind rename then swept the old name out of that very
 row, and the record of the refusal was nearly destroyed by the rename it should have prevented.
 
-The refusals are the valuable half, and today produced six worth keeping: `job_killer` (claims an
-authority the program is specifically denied), `system_bootloader` (claims a position in the boot
-sequence it does not occupy, and milestone 88 will need the real one), `script/sanitize` (reads as
-*input* sanitization in a project about confining hostile input), `script/brief` (collides with
-briefing a developer, a term of art this tree minted the same afternoon), `caretaker` for the steward
-role (spent on capability-narrowing programs), and `Watcher`/`Project Manager` for the same role
+The refusals are the valuable half, and today produced six worth keeping. `job_killer` claims an
+authority the program is specifically denied. `system_bootloader` claims a position in the boot
+sequence it does not occupy, and milestone 88 (nife on rented silicon) will need the real one. `script/sanitize` reads as
+*input* sanitization in a project about confining hostile input. Then `script/brief` (collides with
+briefing a developer, a term of art this tree minted the same afternoon). Then `caretaker` for the
+steward role (spent on capability-narrowing programs), and `Watcher`/`Project Manager` for the same role
 (both understate a delegated merge authority). None of that is written down anywhere a future
 proposer would look.
 
@@ -56,9 +56,9 @@ maintain a record, derive one.
 1. Provenance lives at the name. A crate's `lib.rs` header, a program's module doc and a
    script's comment block already say what the thing is; each gains a line saying when its name was
    ratified and what was refused. `job_undertaker` carries why `job_killer` was refused;
-   `crates/system_initializer` carries why `system_builder` was. That is this project's own
-   posture, the reason beside the thing, and it fixes the failure that prompted the milestone:
-   a refusal is most useful to whoever is about to propose the same name, and that person is reading
+   `crates/system_initializer` carries why `system_builder` was. That is this project's own posture,
+   the reason beside the thing. It fixes the failure that prompted the milestone: a refusal is most
+   useful to whoever is about to propose the same name, and that person is reading
    the file where the name would go, not a registry.
 2. A lint checks presence, never content. Every crate, program and `script/` entry point carries
    a provenance line or the build fails: 42, 54 and 27 today. Adding a name touches exactly one
@@ -93,16 +93,16 @@ truthfully, and the tree goes green immediately.
 
 **`script/names --unratified` is the worklist**, and it is the deliverable calef actually asked for:
 what is left, in an order worth working through. Sort it by **exposure**, because that is what makes
-a wrong name expensive: programs a person types at a prompt first, then crates (a newcomer greps
-`crates/` before they open anything else, per the naming tenet), then `script/` entry points, then
-the rest. Within a tier, `unrecorded` before `recorded`, since a name nobody can justify is a worse
+a wrong name expensive. Programs a person types at a prompt come first. Then crates (a newcomer
+greps `crates/` before they open anything else, per the naming tenet), then `script/` entry points,
+then the rest. Within a tier, `unrecorded` before `recorded`, since a name nobody can justify is a worse
 risk than one whose reasoning merely lacks a signature.
 
-**Ratifying is then a conversation with a queue behind it**, a few names at a time, in the shape that
-worked on 2026-08-04: the maintainer brings a name with what the thing does and what the history
-says, calef rules, the state and the reason land in the same commit. Roughly fifteen names went that
-way in one day, several of them improved by the ruling, so the rate is not the problem; the
-accounting was.
+**Ratifying is then a conversation with a queue behind it**, a few names at a time, in the shape
+that worked on 2026-08-04. The maintainer brings a name with what the thing does and what the
+history says. calef rules, and the state and the reason land in the same commit. Roughly fifteen
+names went that way in one day, several of them improved by the ruling. So the rate is not the
+problem; the accounting was.
 
 **This section was written in another session and sat on an unmerged branch**
 (`roadmap/milestone-115-ratified-names`) while the milestone was built without it, so the first

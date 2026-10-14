@@ -1,25 +1,15 @@
 //! **Reading a screen the way [`super::watch`] reads a wire** (milestone 243).
 //!
-//! Milestone 216 gave a gate a way to read a board it cannot see: open the serial port, log the
-//! bytes, judge how far the boot got. **Six of the machines in calef's house have no serial port**,
-//! and on those nife's console is a framebuffer (`screen_console`). This module is the other half
-//! of the same tool: it turns a *picture* of that framebuffer back into the text that was written
-//! into it, so that everything in [`super::progress`] applies unchanged.
+//! On a machine with no serial port nife's console is a framebuffer (`screen_console`). This turns
+//! a *picture* of that framebuffer back into the text written into it, so everything in
+//! [`super::progress`] applies unchanged.
 //!
 //! # Why this is possible at all, and is not optical character recognition
 //!
 //! [`bitmap_font`] is a constant table of monochrome 7x8 glyphs, so the picture a character
 //! produces is a pure function of the character. Reading it back is therefore an exact table
 //! lookup rather than a guess: **a cell either matches a glyph bit for bit or it matches nothing**,
-//! and there is no threshold to tune and no confidence to report. That property is the same one
-//! `bitmap_font`'s own documentation claims for the writing direction, used backwards.
-//!
-//! It also means this is worthless on any screen nife did not draw. A firmware splash decodes to
-//! nothing, which is the correct answer.
-//!
-//! # What it is for
-//!
-//! Two things, and the second is the one that could not be done before.
+//! with no threshold to tune. A firmware splash decodes to nothing, which is the correct answer.
 //!
 //! - Under QEMU, `cargo xtask uefi-boot` asks the emulator for a screendump and reads the tour off
 //!   it. That gates the whole framebuffer path on every run: the loader's `LocateProtocol`, the
@@ -28,33 +18,12 @@
 //!   not pixel-aligned and it is not a screendump. Turning one into text is a different problem
 //!   this module does not solve, and `notes/serial-less-output.md` says so where a reader meets it.
 //!
-//! # Examples
-//!
-//! ```
-//! use board_console::screen;
-//!
-//! // A two-by-one grid of 7x8 cells, in the PPM QEMU's `screendump` writes.
-//! let mut ppm = b"P6\n14 8\n255\n".to_vec();
-//! for y in 0..8 {
-//!     for x in 0..14 {
-//!         let ink = bitmap_font::is_ink(if x < 7 { 'h' } else { 'i' }, x % 7, y);
-//!         ppm.extend_from_slice(if ink { &[0xc8, 0xc8, 0xc8] } else { &[0, 0, 0] });
-//!     }
-//! }
-//!
-//! assert_eq!(screen::read(&ppm).unwrap(), "hi\n");
-//! ```
-//!
 //! # BUGS
 //!
 //! - **Trailing blanks are trimmed and leading ones are not.** A framebuffer console pads every row
-//!   to the full width with background, so keeping them would make every line 182 characters long
-//!   and every substring search in [`super::progress`] still work but every printed transcript
-//!   unreadable. Leading blanks are the indentation the boot tour actually uses.
+//!   to the full width with background; leading blanks are the indentation the boot tour uses.
 //! - **A cell that matches no glyph reads as `?`**, not as an error. A screen is a picture and part
-//!   of it may be something else entirely (a firmware logo the console did not clear over, half a
-//!   character at the right edge); refusing the whole dump for one cell would throw away the
-//!   ninety-nine percent that decoded.
+//!   of it may be something else entirely (a logo, half a character at the right edge).
 //! - **Several characters share a glyph in a 7x8 font.** The lookup returns the first match in
 //!   ASCII order, so a font with a duplicate would silently prefer the earlier character. Nothing
 //!   currently checks `bitmap_font` for duplicate glyphs.
@@ -115,6 +84,23 @@ impl std::error::Error for ReadError {}
 /// # Errors
 ///
 /// [`ReadError`] when the bytes are not a readable binary PPM.
+///
+/// # Examples
+///
+/// ```
+/// use board_console::screen;
+///
+/// // A two-by-one grid of 7x8 cells, in the PPM QEMU's `screendump` writes.
+/// let mut ppm = b"P6\n14 8\n255\n".to_vec();
+/// for y in 0..8 {
+///     for x in 0..14 {
+///         let ink = bitmap_font::is_ink(if x < 7 { 'h' } else { 'i' }, x % 7, y);
+///         ppm.extend_from_slice(if ink { &[0xc8, 0xc8, 0xc8] } else { &[0, 0, 0] });
+///     }
+/// }
+///
+/// assert_eq!(screen::read(&ppm).unwrap(), "hi\n");
+/// ```
 pub fn read(ppm: &[u8]) -> Result<String, ReadError> {
     let (width, height, pixels) = parse_pixmap(ppm)?;
     // The console draws a wide screen at an integer scale (`ScreenConsole::scale_for`, 2026-10-04),

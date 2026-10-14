@@ -3,6 +3,44 @@
 //! Name: provisional (lane maintainer/split-parents-to-zero, 2026-10-13 UTC).
 
 /// Why [`Elf::parse`](crate::Elf::parse) refused a file.
+///
+/// # Examples
+///
+/// ```
+/// use elf::{Elf, Error, FOREIGN_MACHINES, NATIVE_MACHINE, PF_R, PF_W, PF_X};
+/// # fn image(flags: u32, entry: u64) -> Vec<u8> {
+/// #     const EHDR: usize = 64; const PHDR: usize = 56;
+/// #     let mut v = vec![0u8; EHDR + PHDR];
+/// #     v[0..4].copy_from_slice(&[0x7f, b'E', b'L', b'F']);
+/// #     v[4] = 2; v[5] = 1; v[6] = 1; // ELFCLASS64, ELFDATA2LSB, EV_CURRENT
+/// #     v[16..18].copy_from_slice(&2u16.to_le_bytes()); // ET_EXEC
+/// #     v[18..20].copy_from_slice(&NATIVE_MACHINE.to_le_bytes());
+/// #     v[24..32].copy_from_slice(&entry.to_le_bytes()); // e_entry
+/// #     v[32..40].copy_from_slice(&(EHDR as u64).to_le_bytes()); // e_phoff
+/// #     v[54..56].copy_from_slice(&(PHDR as u16).to_le_bytes()); // e_phentsize
+/// #     v[56..58].copy_from_slice(&1u16.to_le_bytes()); // e_phnum
+/// #     let p = EHDR;
+/// #     v[p..p + 4].copy_from_slice(&1u32.to_le_bytes()); // PT_LOAD
+/// #     v[p + 4..p + 8].copy_from_slice(&flags.to_le_bytes());
+/// #     v[p + 8..p + 16].copy_from_slice(&((EHDR + PHDR) as u64).to_le_bytes()); // p_offset
+/// #     v[p + 16..p + 24].copy_from_slice(&0x40_0000u64.to_le_bytes()); // p_vaddr
+/// #     v[p + 24..p + 32].copy_from_slice(&0x40_0000u64.to_le_bytes()); // p_paddr, equal here
+/// #     v[p + 40..p + 48].copy_from_slice(&4096u64.to_le_bytes()); // p_memsz; p_filesz stays 0
+/// #     v
+/// # }
+/// // W^X: a writable and executable segment is how a buffer overflow becomes code execution.
+/// let bad = image(PF_R | PF_W | PF_X, 0x40_0000);
+/// assert!(matches!(Elf::parse(&bad), Err(Error::WritableAndExecutable)));
+///
+/// // An entry point outside every executable segment is a program that cannot start.
+/// let nowhere = image(PF_R | PF_X, 0x99_0000);
+/// assert!(matches!(Elf::parse(&nowhere), Err(Error::EntryNotExecutable)));
+///
+/// // A foreign binary (which machines are foreign depends on the build).
+/// let mut foreign = image(PF_R | PF_X, 0x40_0000);
+/// foreign[18..20].copy_from_slice(&FOREIGN_MACHINES[0].to_le_bytes());
+/// assert!(matches!(Elf::parse(&foreign), Err(Error::WrongMachine)));
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
     /// Smaller than an ELF header. Not even worth looking at.

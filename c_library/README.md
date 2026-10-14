@@ -123,10 +123,11 @@ Verification Hash: 111130 1e792c9db61996c477b8ab5ce2d690052e8dae74824a430a
 test result: ok. 3 passed
 ```
 
-hackbench's thread mode the same way:
+hackbench's thread mode the same way, from basalt's package (milestone 907 (hackbench is packaged in
+basalt)):
 
 ```
-$ helpers/build-hackbench.sh
+$ cargo xtask basalt-fetch
 $ script/test --arch riscv64 --test c_thread_tests
 test system_tests::user::c_thread_tests::unmodified_hackbench_threads_over_pipes ...
 Running in threaded mode with 2 groups using 6 file descriptors each (== 12 tasks)

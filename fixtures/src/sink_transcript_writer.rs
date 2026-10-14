@@ -23,10 +23,11 @@
 //! program cannot know when its reader will die, so it writes until the sink tells it to stop,
 //! which is exactly the position a real producer in `yes | head` is in.
 //!
-//! **An empty slot 0 is a case, not a mistake.** It is how this kernel spells "you were never given
-//! one", and the program must keep running and classify [`byte_sink_protocol::Sent::NoSink`], because
-//! every operating system lets a process whose stdout is closed run to completion.
+//! **An empty slot 0 is a case, not a mistake**: "you were never given one". The program keeps
+//! running and classifies [`byte_sink_protocol::Sent::NoSink`], as a process whose stdout is closed
+//! runs to completion anywhere.
 //!
+
 //! # EXAMPLES
 //!
 //! The one the tests assert, in the kernel's vocabulary (`system_tests/src/user/sink_tests.rs`):
@@ -41,25 +42,14 @@
 //! # BUGS
 //!
 //! The report is a single `send` of three words, so a caller that never drains it parks this
-//! process forever at `exit`'s doorstep rather than losing the result. That is the rendezvous
-//! working as designed, and it is a foot gun for a test that spawns the writer and then returns
-//! early: drain the report or do not spawn it.
+//! process forever at `exit`'s doorstep: drain the report or do not spawn it.
 //!
 //! Name: recorded (design/roadmap/0292-the-sink-contract-ends-are-three-programs.md and
-//! notes/sink-protocol.md, which together carry the argument). **Provisional: calef has not
-//! ratified it.** It was `ROLE_WRITER` inside the `sink` binary until milestone 292 split that
-//! binary into the three programs it had always been. `sink` is kept as the contract word because
-//! the 2026-09-13 structural-versus-current test (design/naming/vocabulary-rulings.md) keeps it:
-//! `byte_sink_protocol` is a
-//! wire contract named for what it carries and makes no disposal claim, and this program is named
-//! for the contract it speaks rather than for an end of a stream. `transcript` names the thing it
-//! writes, which is a pinned constant rather than anything it computes, and a reader who sees
-//! `sink_transcript_writer` in a process listing is not going to expect it to be useful. Refused
-//! `writer` (a generic word that could name almost anything in an operating system), and
-//! `indifferent_writer` (the header's own phrase for it, which names the property being *proved*
-//! rather than the program; a fixture whose name asserts the conclusion is the borrowed-recognition
-//! mistake this tree already caught once), and `sink_writer` (it reads as "the thing that writes a
-//! sink" rather than "the thing that writes to one", and says nothing about what it writes).
+//! notes/sink-protocol.md). **Provisional: calef has not ratified it.** Named for the contract it
+//! speaks (`byte_sink_protocol`, which design/naming/vocabulary-rulings.md keeps) and the pinned
+//! transcript it writes. Refused `writer` (generic). Refused `indifferent_writer` (names the
+//! property being proved, not the program). Refused `sink_writer` (reads as the thing that writes
+//! a sink, and says nothing about what it writes).
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

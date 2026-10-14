@@ -16,15 +16,16 @@ fault-handling milestone" that has never existed.
 What a production kernel does when a confined device faults is a fork with
 three answers and different politics (print and continue, fault the driver process, disable the
 device), and the block argues for the second without taking it. The small half, clearing the
-overflow bit on drain, needs no decision and has a witness in milestone 29's flood, and should not
+overflow bit on drain, needs no decision and has a witness in milestone 29's flood. It should not
 wait on this. The large half is
 §163 (where a confined device's IOMMU fault
-is delivered), written up 2026-09-19 by milestone 435's lane; this gate had named no decision since
+is delivered), written up 2026-09-19 by the lane of milestone 435 (forty-five milestones are gated
+on a decision nobody wrote down). This gate had named no decision since
 the block was raised, which is the same shape as the three documents deferring to a milestone that
 did not exist.
 
 **Ruled 2026-10-05 (calef, "B1"):** the kernel faults the driver process and its supervisor receives
-`EVENT_FAULT` with the DMA address, and quarantines the device's IOMMU entry (one write per driver,
+`EVENT_FAULT` with the DMA address. The kernel quarantines the device's IOMMU entry (one write per driver,
 re-confined on restart), per §163 (where a confined device's IOMMU fault is delivered).
 The large half is now buildable. The small half (the overflow flag on aarch64 and riscv64; x86_64
 already clears it) was never blocked.
@@ -52,12 +53,13 @@ possible:
 
 Three distinct claims across four sites, all pointing at a milestone number that does not exist.
 
-The overflow bit is the small half, and it has a witness. Milestone 29 (a display terminal: framebuffer, virtio-gpu, and a foreign component)'s escape test first
-attached a 4096-byte buffer, which provoked a flood of faults, and the *next* test in the suite then
+The overflow bit is the small half, and it has a witness. Milestone 29 (a display terminal:
+framebuffer, virtio-gpu, and a foreign component)'s escape test first attached a 4096-byte buffer,
+which provoked a flood of faults. The *next* test in the suite then
 observed no fault and correctly reported the IOMMU as not confining the device. A real regression
 signal from a cause two tests away. The fix was to make the escape four bytes, so exactly one
 translation and one fault, and to drain the queue afterwards. That leaves the queue's overflow flag
-set by nobody's arrangement but the test's restraint: today's correctness rests on no test ever
+set by nobody's arrangement but the test's restraint. Today's correctness rests on no test ever
 overflowing the queue, rather than on a drain that clears the condition. The flag exists on both
 sides (the SMMUv3 event queue, and the RISC-V IOMMU's `fqcsr`, whose error bits `kernel/src/arch/riscv64/iommu.rs:48`
 already names), so clearing it is a two-driver change under rule 5.

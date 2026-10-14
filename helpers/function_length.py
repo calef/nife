@@ -1,10 +1,10 @@
 """Function length in code lines, read from source text the way clippy's `too_many_lines` reads it.
 
-Milestone 888 (a ratchet on function length). Two callers need the same number and cannot ask for
-it the same way. `script/lint`'s lint ratchet runs clippy, which is the authority. `script/metrics`
-reads blobs out of past commits, and its own header forbids it to build anything, so it cannot run
-clippy. This module is the text derivation `script/metrics` uses, and `helpers/lint_ratchet.py`
-compares it with clippy on every function clippy reports, failing on any difference. That is
+Milestone 888 (a ratchet on function length). `script/lint`'s lint ratchet runs clippy, which is
+the authority, but no clippy pass here compiles every file in scope: `patches/`, `c_library/`, the
+UEFI loader and others build only for nife's std targets or in a separate step. This module is the
+text derivation that reaches them, and `helpers/lint_ratchet.py` compares it with clippy on every
+function clippy reports, failing on any difference. That is
 `helpers/rust_source.py`'s answer for the harness count, applied here: two derivations, and a gate
 that says when they drift.
 
@@ -20,9 +20,8 @@ target still counts on every target, so the configurations agree on every functi
 **Which functions.** Every `fn` with a body in every tracked `.rs` file outside `vendor/`: the Rust
 that runs on nife, host tools, `xtask`, build scripts, tests, benches, fixtures and items under
 `#[cfg(test)]` alike. That is §283 (a function is held to 100 code lines by a lint ratchet), as
-calef widened it on 2026-10-13 (UTC): "Yes, widen the gate". `in_scope` is the one scope function:
-the lint ratchet's gate and `script/metrics`' chart both read it, so they count the same files. A
-`fn` written inside a `macro_rules!` body is skipped. Clippy reports such a function at its span in
+calef widened it on 2026-10-13 (UTC): "Yes, widen the gate". `in_scope` is the one scope function,
+and the lint ratchet's gate reads it. A `fn` written inside a `macro_rules!` body is skipped. Clippy reports such a function at its span in
 the macro, which this scan does not try to follow; all 8 today are under 10 code lines, and the
 gate's comparison fails if one ever passes 100.
 
@@ -279,26 +278,6 @@ def measure(files):
         for name, start, n, lines in functions(text, code):
             out[(path, name)] = (start, n, lines)
     return out
-
-
-def tree_code_lines(files):
-    """In-scope code lines, the denominator of the share: non-blank lines once comments and
-    literals are blanked, `helpers/rust_source.py`'s code-line measure."""
-    return sum(rs.non_blank(code) for _text, code in scoped(files).values())
-
-
-def series(files):
-    """The metrics cells: share of in-scope code lines inside functions over the threshold, the
-    count of those functions, and their summed excess."""
-    fns = measure(files)
-    over = {k: v for k, v in fns.items() if v[1] > THRESHOLD}
-    held = set()
-    for (path, _name), (_start, _n, lines) in over.items():
-        held.update((path, x) for x in lines)
-    total = tree_code_lines(files)
-    return {'functions_over_100': len(over),
-            'code_lines_share_over_100_pct': '%.1f' % (100.0 * len(held) / total) if total else '',
-            'excess_over_100': sum(v[1] - THRESHOLD for v in over.values())}
 
 
 def working_tree():

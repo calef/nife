@@ -6,7 +6,7 @@ built: 2026-08-03
 # 71. The thread-start fault: a user thread dispatched with `sepc` = 0
 
 Built (2026-08-03), both ISAs. Found, proved on the machine, and fixed. It was frame placement,
-which is where this entry said to look first, and the mechanism is exact rather than plausible:
+which is where this entry said to look first. The mechanism is exact rather than plausible.
 `current_sp()` is a real call at opt-level 0, so it returned `sp - 16` and put the frame at
 `sp - 304` while `trap.s` builds an S-mode trap frame at `sp - 288`. Sixteen bytes apart, so the user
 frame's `x[2]` sat on the trap frame's `x[0]` slot, which `trap_entry` writes as a literal zero. That
@@ -15,17 +15,17 @@ is why `user sp` read `0x0000000000000000` and not garbage. The frame now goes a
 `user_entry_trampoline` rather than a moving target. See notes/riscv-port.md.
 
 **The scope note below is upheld and one sentence of it is now wrong.** The fault does have a silent
-face: the `sepc == 0` guard fires only when `t5` happened to be 0, and otherwise the thread `sret`s
-to a garbage PC and dies quietly, so a lost-wakeup hang with no guard message really can be this bug.
-But the specific hang on `reclaim_frees_a_started_then_exited_childs_regions` is **not**: that test's
-child takes the TCB path, which runs with interrupts masked and cannot take the clobber, and the hang
-reproduces with this fix in the tree (one run in four under host load, a recipe that did not exist
+face. The `sepc == 0` guard fires only when `t5` happened to be 0. Otherwise the thread `sret`s to a
+garbage PC and dies quietly, so a lost-wakeup hang with no guard message really can be this bug.
+But the specific hang on `reclaim_frees_a_started_then_exited_childs_regions` is **not**. That
+test's child takes the TCB path, which runs with interrupts masked and cannot take the clobber. The
+hang reproduces with this fix in the tree (one run in four under host load, a recipe that did not exist
 before). It is tracked as its own open item in notes/scheduler.md.
 
 ## The evidence, which we now have because we instrumented instead of chasing
 
 The fault was first seen on 2026-08-02 as a *hang*: a user thread whose first instruction fetch
-faulted, so whatever it was meant to serve never answered, every waiter blocked, and the run died 60
+faulted. Whatever it was meant to serve never answered, every waiter blocked, and the run died 60
 seconds later in the lost-wakeup watchdog, arbitrarily far from the cause. It never reproduced
 locally, in nine full runs across both ISAs. Rather than keep hunting it, `enter_user` got a guard
 that converts the rare hang into a loud failure carrying its own evidence.
@@ -51,7 +51,7 @@ Three details do the work:
 The obvious reading of "built but not seen by this core" is a missing release/acquire pair between
 the core that builds a context and the core that dispatches it (DECISIONS rule 4: assume weak
 ordering). **That is probably not it**, and the reason is worth knowing before anyone spends a day
-on barriers: the frame is built by the thread ON ITS OWN kernel stack, in `kernel/src/user.rs`
+on barriers. The frame is built by the thread ON ITS OWN kernel stack, in `kernel/src/user.rs`
 around the `current_kernel_stack_top()` call, and `enter_user` runs a few lines later on the same
 core with no yield in between.
 
@@ -91,7 +91,7 @@ inconsistent with a generic ordering bug, which would be expected to show on aar
 
 Do not "fix" this by widening a deadline or re-running. Three CI failures on 2026-08-03 traced to
 three different tests on three different CPU models, and only one of them announced itself as this
-fault; the other two were a frame-leak wait and the lost-wakeup watchdog, which are what this bug
+fault. The other two were a frame-leak wait and the lost-wakeup watchdog, which are what this bug
 looks like when the guard does not happen to catch it first.
 
 ## Follow-on
@@ -100,10 +100,10 @@ looks like when the guard does not happen to catch it first.
   bug: that child takes the TCB path, which runs with interrupts masked and cannot take the clobber,
   and the hang reproduced with this fix in the tree. 72 chased it and found one line of test code, a
   `reclaim_region` probe whose refusal is destructive rather than passive.
-- **Recorded.** `design/roadmap/0071-thread-start-fault.md` keeps the scope note and the correction to
-  it: this fault has a silent face, so a lost-wakeup hang with no guard message really can be it.
-  The `sepc == 0` guard fires only when `t5` happened to be zero, and otherwise the thread `sret`s
-  to a garbage PC and dies quietly, which is why the note also says not to answer such a hang by
+- **Recorded.** `design/roadmap/0071-thread-start-fault.md` keeps the scope note and the correction
+  to it. This fault has a silent face, so a lost-wakeup hang with no guard message really can be it.
+  The `sepc == 0` guard fires only when `t5` happened to be zero. Otherwise the thread `sret`s to a
+  garbage PC and dies quietly, which is why the note also says not to answer such a hang by
   widening a deadline or re-running.
 
 ## Index row

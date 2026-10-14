@@ -35,8 +35,8 @@ Nothing was built for fork one, because it is a ruling about a pattern. See Foll
 
 ## Fork two: which child died, answered by §148 as amended, and built
 
-The fact was that the death message names the dead thread by tid (§26 (the fault endpoint), item
-5), and nothing turned a tid into something a builder holds, so a supervisor with several children
+The fact was that the death message names the dead thread by tid (§26 (the fault endpoint), item 5).
+Nothing turned a tid into something a builder holds, so a supervisor with several children
 could not say which one died.
 
 calef's ruling, 2026-10-04 (UTC), recorded as §148's amendment: *"R3, unless the IPC benchmarks

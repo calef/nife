@@ -19,7 +19,7 @@ Built 2026-09-29 (UTC) on `milestone/614-every-version-live`, against the five r
 `crates/activation_set` carries the ruled shape: rows `<digest> <program> <version> <package>`
 keyed on the digest, and the default pointer inside the generation file. Install appends and moves
 the pointer, so the bare word still means the newest install. Removal follows ruling 5: bare remove
-takes every live version and the pointer; `program@version` removes one, moving the pointer to the
+takes every live version and the pointer; `package@version` removes one, moving the pointer to the
 sole survivor and refusing, candidates named by the shell from the live table, when several remain.
 Rollback is unchanged. The shell resolves the bare word through the pointer, and consults the
 nearest version-set file at or above the working directory (asdf-style; built as `versions`,
@@ -148,12 +148,14 @@ the reasoning is kept to one line each so a reader can check the rule against it
    override exists, by path or by an explicit version-qualified ask. An installing dev tool is
    follow-on work, not this milestone; the capability, the file and the tool are three provisional
    names.
-5. `package remove uptime` removes every live version of the program and its pointer: the verb's
-   object is the program, and the version-qualified form removes one. Removing the version that
-   holds the pointer moves it to the sole remaining version, and refuses, naming the candidates,
-   when several remain, because no ordering among live versions exists to pick with. Rollback is
-   unchanged (§208): a generation is one snapshot of rows and pointer, and bytes are never deleted,
-   so what it restores is still on disk. Removal is not dependency-aware; see BUGS.
+5. `jig remove uptime` removes every live version of the package, its rows and its programs'
+   pointers: the verb's object is the package (calef, 2026-10-14 (UTC), on milestone 919 (a
+   package carries several programs): "jig remove should work on packages, not programs."), and
+   the version-qualified form removes one. Removing the version that holds a program's pointer
+   moves it to the sole remaining version, and refuses, naming the candidates, when several remain,
+   because no ordering among live versions exists to pick with. Rollback is unchanged (§208): a
+   generation is one snapshot of rows and pointer, and bytes are never deleted, so what it
+   restores is still on disk. Removal is not dependency-aware; see BUGS.
 
 ## Dependencies
 
@@ -184,7 +186,7 @@ the reasoning is kept to one line each so a reader can check the rule against it
 - Host tests in `activation_set`: installing 0.2.0 over 0.1.0 leaves both digests live; the bare
   name resolves to whichever version the ruled default names; removing one version leaves the
   other; a rollback restores the whole set, as `a_rollback_restores_the_whole_set` does today.
-- Bare removal: `package remove <program>` takes every live version and the pointer, with one
+- Bare removal: `jig remove <package>` takes every live version and the pointer, with one
   test at two versions live proving both rows go and a rollback brings both back.
 - A `script/swish-check` transcript on aarch64, riscv64 and x86_64 per §19 (architectural parity is
   a tenet). It installs two versions of one fixture, runs each by path and by the ruled grant in
@@ -200,7 +202,7 @@ the reasoning is kept to one line each so a reader can check the rule against it
   §242's building lane landing the capability an install would hold; revisit there, and do not
   build a second log to fill it.
 - **A remove operand shares the sixteen bytes a packed name carries** with its version
-  (`filesystem_protocol::grant::MAX_NAME`). A program whose name plus `@` plus the version exceeds
+  (`filesystem_protocol::grant::MAX_NAME`). A package whose name plus `@` plus the version exceeds
   sixteen bytes cannot be removed by the qualified form; it is still removable bare, which
   removes every version. Recorded 2026-09-29 when the qualified form was spelled. If a real
   package hits it, the wire grows a second packed name rather than widening the first.
@@ -209,7 +211,7 @@ the reasoning is kept to one line each so a reader can check the rule against it
   versions is the same table change plus two endpoints, and is left to the building lane to
   scope or split.
 - Removal is not dependency-aware (ruled 2026-09-29): nothing in the system records
-  package-to-package dependency, so `package remove` cannot warn about dependents. With no dynamic
+  package-to-package dependency, so `jig remove` cannot warn about dependents. With no dynamic
   loader, what looks like a dependency is a grant, and removing a package narrows what may be
   spawned next without revoking anything already running. The trigger that makes the question real
   is the services milestone above, where "who holds a grant from this" becomes askable; revisit
@@ -228,7 +230,7 @@ the reasoning is kept to one line each so a reader can check the rule against it
   `package_archive::catalogued_stem` took the first line, which recipe filenames ordered as 0.2.0
   (`-` sorts before `.`). The gate's source serves only 0.1.0, so the guest's GET was a 404. Now a
   bare fetch of a name cataloged at several versions is refused as `Ambiguous` before the network,
-  and `package install greeting@0.1.0` (ruling 5's spelling) picks one. The refusal names no
+  and `jig install greeting@0.1.0` (the qualified spelling) picks one. The refusal names no
   candidates, because the shell does not read the catalog; a reader who wants them has the
   recipes. Revisit when §220 (signed builds) makes catalog versions something a person adds.
 

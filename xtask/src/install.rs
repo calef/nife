@@ -6,24 +6,20 @@
 //!
 //! # Why it is two boots, and then a third
 //!
-//! **A sequence that only works while the stick is still attached has not installed anything.** The
-//! second boot is therefore the whole gate: the first one is a setup step for it, and everything the
-//! first one asserts is only there so a failure says which half broke.
-//!
-//! Three properties are deliberately arranged so that the second boot cannot succeed by accident:
+//! **A sequence that only works while the stick is still attached has not installed anything**, so
+//! the second boot is the gate, and three properties keep it from succeeding by accident:
 //!
 //! - **The stick is not attached at all**, not merely deprioritised. `NIFE_UEFI_NO_STICK=1` removes
 //!   the vvfat drive from the machine.
 //! - **The firmware variable store is deleted before each boot.** The default store persists across
-//!   runs in a checkout, so boot 1 would leave a boot option that boot 2 then rode. Deleting it is
-//!   what makes "the firmware found it on its own" a claim about the disk rather than about our
-//!   leftovers, and it is the measurement milestone 515 calls B1 and calls unmeasured.
+//!   runs in a checkout, so boot 1 would leave a boot option that boot 2 then rode.
 //! - **The NVMe image is created empty**, every run, so nothing survives from the last one.
 //!
 //! The third boot is the stick again, on the machine it installed, with nobody typing anything
 //! ([`stick_on_the_installed_machine`]). It is the live stick proposal's G1 and G2 as a measurement:
 //! which system ran, and whether the disk changed by a single byte.
 //!
+
 //! # EXAMPLES
 //!
 //! ```console
@@ -46,13 +42,10 @@
 //!   and a rounding step that nothing here varies, and a disk under about 600 MiB is refused by
 //!   code no test exercises.
 //! - **It proves nothing about a real firmware.** OVMF is one implementation and a generous one.
-//!   Rung 2b is the bench half and belongs to somebody with xenon in front of them.
-//! - **It runs nowhere on its own.** It was left out of `script/test`'s default legs because the
-//!   two boots were said to take several minutes under TCG. Measured 2026-10-03 on an Apple M-series
-//!   host, warm: 42.5 seconds for the whole gate. Nothing schedules it either, so a break is found
-//!   by whoever next runs it by hand: `design/roadmap/0712-the-install-gates-run-nowhere.md`.
+//! - **It runs nowhere on its own** (about 42 seconds warm, yet not in `script/test`'s default legs
+//!   and not scheduled): `design/roadmap/0712-the-install-gates-run-nowhere.md`.
 //! - **Boot 3 proves the stick left the disk alone under OVMF, and only there.** What keeps it so
-//!   is the `boot_slot::medium` token (calef's ruling on PR #1652, 2026-10-04 UTC): the loader
+//!   is the `boot_slot::medium` token (calef, 2026-10-04 UTC): the loader
 //!   writes it only when its file is on an NVMe namespace, and a real firmware that built that
 //!   device path differently would leave an installed machine without its filesystem rather than
 //!   a stick with one.

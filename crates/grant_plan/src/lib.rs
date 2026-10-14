@@ -123,64 +123,9 @@ pub use program::{PROG_COUNT, Prog};
 pub use refusal::{CapabilityKind, Refusal};
 pub use verbs::{Grants, MAX_VERB, VerbGrant, narrow_by_verb, verb_of, verb_of_page};
 
-/// The longest file name a per-file grant can carry. Duplicated from `filesystem_protocol::grant::MAX_NAME`
-/// rather than imported, because `grant_plan` is the shell's parser and must not depend on the filesystem
-/// contract to check a command line; the pair is pinned by a test in each crate so a change to one
-/// without the other fails on the host in milliseconds.
-pub const MAX_FILE_NAME: usize = 16;
+mod lexing;
 
-/// Whether a designated name can travel as a grant at all. A name is a single component, the same
-/// rule the FS server enforces (DECISIONS §27): a path is not something this shell can express,
-/// because there is no namespace here to walk.
-pub fn file_name_fits(name: &[u8]) -> bool {
-    !name.is_empty()
-        && name.len() <= MAX_FILE_NAME
-        && name != b"."
-        && name != b".."
-        && !name.contains(&b'/')
-        && !name.contains(&b'\\')
-}
+use lexing::*;
+pub use lexing::{MAX_FILE_NAME, file_name_fits, parse_u64, trim};
 
 // ---- small byte helpers (no_std, no alloc) ----
-
-/// Trim ASCII whitespace from both ends.
-pub fn trim(s: &[u8]) -> &[u8] {
-    let mut a = 0;
-    let mut b = s.len();
-    while a < b && s[a].is_ascii_whitespace() {
-        a += 1;
-    }
-    while b > a && s[b - 1].is_ascii_whitespace() {
-        b -= 1;
-    }
-    &s[a..b]
-}
-
-/// Split off the first whitespace-delimited word; return `(word, rest)` where `rest` keeps its
-/// internal spacing (so `echo` can print it verbatim). The word keeps its quotes if it had any;
-/// [`parse`] takes them off, because whether the word is a builtin is a question about what it
-/// says rather than about how it was spelled.
-fn split_first_word(s: &[u8]) -> (&[u8], &[u8]) {
-    let mut i = word::span(s, 0, &|b| b.is_ascii_whitespace());
-    let word = &s[..i];
-    while i < s.len() && s[i].is_ascii_whitespace() {
-        i += 1;
-    }
-    (word, &s[i..])
-}
-
-/// Parse a base-10 `u64`. `None` for empty or any non-digit byte, so `--mem twelve` is a missing
-/// grant rather than a silent zero.
-pub fn parse_u64(s: &[u8]) -> Option<u64> {
-    if s.is_empty() {
-        return None;
-    }
-    let mut v: u64 = 0;
-    for &b in s {
-        if !b.is_ascii_digit() {
-            return None;
-        }
-        v = v.checked_mul(10)?.checked_add((b - b'0') as u64)?;
-    }
-    Some(v)
-}

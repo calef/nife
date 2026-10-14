@@ -16,8 +16,8 @@ states it first, `notes/glob.md` repeats it, and milestone 47's own block says "
 built: the answer at the bound is a refusal."
 
 **Eight is measured, not chosen, and that matters for what the fix can be.** Sixteen was the number
-the argument produced and the machine refused it: a name set travels by value through the
-expander, the `Expansion`, `designate`'s return and the `Endowment`, four stack frames a debug build
+the argument produced and the machine refused it. A name set travels by value through the expander,
+the `Expansion`, `designate`'s return and the `Endowment`. Those are four stack frames a debug build
 does not collapse, and the shell ran off the bottom of its stack planning a single grant. Twice.
 Eight names of sixteen bytes is 152 bytes a copy. So `notes/glob-grant.md` is right that "lifting the
 number means giving the shell an allocator or the grant a different carrier, not editing the

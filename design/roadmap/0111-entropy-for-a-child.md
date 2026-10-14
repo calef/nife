@@ -17,15 +17,16 @@ It is written as prose rather than as a live gate line because nothing gates fin
 gate asked whether anything typed at the prompt needs entropy before either of those runs, and said
 nothing does. That is still literally true: `disk_partitioner` is spawned only by the test harness
 (`kernel/src/user/disk_tests.rs`), never by `init` and never as a shell command. But it is the
-program a person types to partition a disk, and on the same day a milestone was minted to wipe
-xenon's NVMe so nife can drive it (the EL0 NVMe driver §86 decided, whose number the integrator
-mints at merge; it is deliberately not cited by number here, because a number this block guessed
-would be one the roadmap gate could not resolve). A GPT gives every partition a random globally unique id and
-`crates/globally_unique_identifier_partition_table` refuses to invent one, so the moment that disk is partitioned from a prompt this is on
+program a person types to partition a disk. On the same day a milestone was minted to wipe xenon's
+NVMe so nife can drive it. (That is the EL0 NVMe driver §86 (whether an NVMe driver can leave the kernel) decided, whose number the integrator
+mints at merge. It is deliberately not cited by number here, because a number this block guessed
+would be one the roadmap gate could not resolve.) A GPT gives every partition a random globally
+unique id and `crates/globally_unique_identifier_partition_table` refuses to invent one. So the
+moment that disk is partitioned from a prompt this is on
 the path.
 
 The ranking argument against a lane was that this has no consumer today, and calef's answer is
-sequencing: the work is an afternoon whichever way it is done, and doing it now means it lands
+sequencing. The work is an afternoon whichever way it is done, and doing it now means it lands
 before 261 needs it rather than after. Folding it would have made it arrive late for the one
 consumer that can be named.
 
@@ -56,12 +57,12 @@ form of the property milestone 56 built the service to have.
 `grant_plan::Manifest::entropy` joins `clock`, `domain` and `config` as a declared endowment no
 token on the command line can designate. Init reads the declaration at spawn and places a `WRITE`
 view of the entropy service's request endpoint at `grant_plan::ENTROPY_SLOT` (nine, one past
-`DIAGNOSTICS_SLOT`, so the named slots stay one contiguous block); a program that did not declare it
+`DIAGNOSTICS_SLOT`, so the named slots stay one contiguous block). A program that did not declare it
 holds an empty slot there. `caps <program>` prints the row. `components/src/uuid.rs` is the consumer.
 
-`WRITE` alone, and the narrowing is the grant. On a rendezvous that is the right to `CALL`: a
-declaring child may ask the service for bytes, may not `RECV` another client's request out from
-under the service, and holds no `GRANT`, so it cannot hand a random source to anything it spawns.
+`WRITE` alone, and the narrowing is the grant. On a rendezvous that is the right to `CALL`. A
+declaring child may ask the service for bytes and may not `RECV` another client's request out from
+under the service. It holds no `GRANT`, so it cannot hand a random source to anything it spawns.
 
 Three departures from what this block predicted, each smaller than it sounds and each recorded
 because a reader comparing the two paragraphs would otherwise find a discrepancy with no reason
@@ -85,8 +86,8 @@ beside it.
 
 ## What was demonstrated
 
-The endowment, at the real prompt, through the real init. `script/swish-check` is the only gate
-that runs `crates/system_initializer` at all, and it is the only thing in this tree that can put a
+The endowment, at the real prompt, through the real init. `script/swish-check` is the only gate that
+runs `crates/system_initializer` at all. It is the only thing in this tree that can put a
 capability at a slot a manifest names (the kernel's own `Spawn` fills a capability table from slot 0
 upward). On aarch64 and riscv64:
 
@@ -119,7 +120,7 @@ whole stream is the one refusal sentence, not one hyphen of identifier-shaped ou
 sink, and the process ends normally rather than faulting on a `CALL` that cannot succeed.
 
 That direction is the one carrying the claim, and randomness is the authority where it is hardest to
-check by looking: a process that draws a key and a process that hardcodes one make the same syscalls
+check by looking. A process that draws a key and a process that hardcodes one make the same syscalls
 and produce output of the same shape. Only taking the capability away tells them apart, which is why
 `crates/globally_unique_identifier_partition_table` refuses to invent a GUID and `disk_partitioner` reports `R_NO_ENTROPY` instead of
 falling back to a counter.
@@ -148,8 +149,8 @@ row, and exactly one program in the whole manifest table declares the field.
   hardware-TRNG entries are all still open. In particular "nife has a cryptographic random source"
   remains a claim about QEMU until the JH7110's TRNG is verified on radon.
 - No rate limit reaches the prompt either. A `uuid` a person types can `CALL` the service as
-  fast as it likes, the same as any other client; `notes/entropy.md` already records that the
-  service has no quota, and putting a client at the prompt makes it easier to reach rather than
+  fast as it likes, the same as any other client. `notes/entropy.md` already records that the
+  service has no quota. Putting a client at the prompt makes it easier to reach rather than
   worse in kind.
 - `design/roadmap/README.md` and `231`'s own block still quote 21 of 24. They are accurate as
   history (that is what 231 measured on the day) and a lane does not edit another milestone's
@@ -166,8 +167,8 @@ row, and exactly one program in the whole manifest table declares the field.
 - **Recorded.** `disk_partitioner` still cannot be typed at a prompt, and this milestone does not
   claim it can. The EL0 NVMe driver whose
   milestone calef minted on 2026-09-05 (the block above names it without a number, because the
-  number was the integrator's to mint) is the sequencing reason this was built now, and the
-  partitioner at the prompt is that work's business: the entropy half of its endowment is built and
+  number was the integrator's to mint) is the sequencing reason this was built now. The partitioner
+  at the prompt is that work's business. The entropy half of its endowment is built and
   waiting, and what is missing is a disk capability the shell can attenuate. 
 - **Recorded.** The shell holding no entropy of its own is a decision, not an omission; the reason
   is in `Channels::entropy`'s own doc where a reader meets the wiring.
@@ -175,8 +176,8 @@ row, and exactly one program in the whole manifest table declares the field.
   the two refusals (`uuidgen`, `guid`) and their reasons. `Manifest::entropy` and `ENTROPY_SLOT`
   are provisional in the same sense. `script/names --unratified` is the worklist.
 - **Done.** Milestone 65 (a secrets service) and milestone 31 phase two are unaffected by this
-  landing first, which is what the scope note worried about: both wanted the same planner change
-  with a different capability in it, and it is now a field on `Manifest` and three lines in init
+  landing first, which is what the scope note worried about. Both wanted the same planner change
+  with a different capability in it. It is now a field on `Manifest` and three lines in init
   rather than a mechanism either has to build.
 
 ## Scope note

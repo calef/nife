@@ -25,50 +25,6 @@
 //! never lost on any of the three paths; that the kernel reads `bound_receiving` correctly is argued at
 //! its call site (`kernel/src/sched.rs`, `signal_locked`).
 //!
-//! # Examples
-//!
-//! ```
-//! use core::ptr::NonNull;
-//! use intrusive_fifo::{Node, Unqueued};
-//! use inter_process_communication::notification::{Notification, Signal, Wait};
-//!
-//! struct ThreadControlBlock {
-//!     next: Option<NonNull<ThreadControlBlock>>,
-//! }
-//!
-//! // SAFETY: plain field storage, which is the whole of the `Node` contract.
-//! unsafe impl Node for ThreadControlBlock {
-//!     fn next(&self) -> Option<NonNull<Self>> {
-//!         self.next
-//!     }
-//!     fn set_next(&mut self, next: Option<NonNull<Self>>) {
-//!         self.next = next;
-//!     }
-//! }
-//!
-//! let mut waiter = ThreadControlBlock { next: None };
-//! let mut n: Notification<ThreadControlBlock> = Notification::new();
-//!
-//! // Two signals with nobody waiting accumulate into one word. Neither is lost.
-//! assert_eq!(n.signal(0b01, false), Signal::Counted);
-//! assert_eq!(n.signal(0b10, false), Signal::Counted);
-//!
-//! // SAFETY: `waiter` is a live local declared before `n`, on no queue, minted once.
-//! let token = unsafe { Unqueued::new(NonNull::from(&mut waiter)) };
-//!
-//! // A wait takes the whole word and clears it, without blocking, and hands the token back.
-//! let Wait::Word(word, token) = n.wait(token) else { panic!("blocked on a non-zero word") };
-//! assert_eq!(word, 0b11);
-//!
-//! // The next wait finds nothing and queues; a signal now wakes it with its bits, already dequeued.
-//! assert_eq!(n.wait(token), Wait::Blocked);
-//! match n.signal(0b100, false) {
-//!     Signal::Woke(woken, bits) => assert!(woken == NonNull::from(&mut waiter) && bits == 0b100),
-//!     other => panic!("{other:?}"),
-//! }
-//! assert!(n.is_idle());
-//! ```
-//!
 //! Name: provisional (milestone 151's lane, 2026-09-26). `Notification` is §101's own word for the
 //! object, and seL4's; the module, the type and the two outcome enums are unratified.
 
@@ -78,6 +34,44 @@ use intrusive_fifo::{Fifo, Node, Unqueued};
 
 /// One notification object: the accumulated word and the threads waiting for it to become
 /// non-zero.
+///
+/// # Examples
+///
+/// ```
+/// use core::ptr::NonNull;
+/// use intrusive_fifo::{Node, Unqueued};
+/// use inter_process_communication::notification::{Notification, Signal, Wait};
+///
+/// # struct ThreadControlBlock {
+/// #     next: Option<NonNull<ThreadControlBlock>>,
+/// # }
+/// # // SAFETY: plain field storage, which is the whole of the `Node` contract.
+/// # unsafe impl Node for ThreadControlBlock {
+/// #     fn next(&self) -> Option<NonNull<Self>> { self.next }
+/// #     fn set_next(&mut self, next: Option<NonNull<Self>>) { self.next = next; }
+/// # }
+/// let mut waiter = ThreadControlBlock { next: None };
+/// let mut n: Notification<ThreadControlBlock> = Notification::new();
+///
+/// // Two signals with nobody waiting accumulate into one word. Neither is lost.
+/// assert_eq!(n.signal(0b01, false), Signal::Counted);
+/// assert_eq!(n.signal(0b10, false), Signal::Counted);
+///
+/// // SAFETY: `waiter` is a live local declared before `n`, on no queue, minted once.
+/// let token = unsafe { Unqueued::new(NonNull::from(&mut waiter)) };
+///
+/// // A wait takes the whole word and clears it, without blocking, and hands the token back.
+/// let Wait::Word(word, token) = n.wait(token) else { panic!("blocked on a non-zero word") };
+/// assert_eq!(word, 0b11);
+///
+/// // The next wait finds nothing and queues; a signal now wakes it with its bits, already dequeued.
+/// assert_eq!(n.wait(token), Wait::Blocked);
+/// match n.signal(0b100, false) {
+///     Signal::Woke(woken, bits) => assert!(woken == NonNull::from(&mut waiter) && bits == 0b100),
+///     other => panic!("{other:?}"),
+/// }
+/// assert!(n.is_idle());
+/// ```
 pub struct Notification<T: Node> {
     /// Bits signalled since the last wait, poll or bound delivery took them. A bitfield of binary
     /// semaphores, as seL4's is: a signal ORs in, a take clears all of it.

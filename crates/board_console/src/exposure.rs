@@ -3,17 +3,16 @@
 //! Built for milestone 225 (run the soak on radon, argon and xenon), whose rows feed milestone 201
 //! (is multicore reliability converging).
 //!
-//! `notes/multicore-defect-curve.md` keeps two tables, and the one that matters most is the one
-//! most likely to go unwritten: an *exposure* row for every boot that ran the soak, clean or not.
-//! Until this module that row was made by hand from the last heartbeat, and the three radon rows
-//! made that way before 2026-09-25 lost their build, their final beat and their logs. The fourth
-//! (E4) was right because a careful person made it. This makes the fifth the same way every time.
+//! `notes/multicore-defect-curve.md` keeps two tables, and the one most likely to go unwritten is
+//! an *exposure* row for every boot that ran the soak, clean or not. This makes that row the same
+//! way every time instead of by hand from the last heartbeat.
 //!
 //! It reads a finished capture (a `script/board-console` log, or a `script/soak-test` one from
 //! QEMU, which the curve does not accept but which proves the reader) and returns one [`Boot`] per
 //! kernel banner. A boot that never printed `soak-test: started` is kept, because "the board came
 //! up and the workload did not" is a finding, but it produces no row.
 //!
+
 //! # What it reads, and what it cannot
 //!
 //! From the log alone: the architecture and the tick rate (the `nife machine:` line), the cores
@@ -22,8 +21,7 @@
 //!
 //! - **machine**: the board's name. `nife machine: aarch64` is argon, an Apple Silicon Mac under
 //!   HVF, or QEMU, and the log cannot tell them apart.
-//! - **build**: the kernel does not print its commit. E4's row has one only because the bench
-//!   lane wrote it down.
+//! - **build**: the kernel does not print its commit.
 //! - **start**: the capture has no wall clock. The heartbeat's `t=` is the kernel's own.
 //!
 //! The caller passes those three, and anything not passed prints as `?` rather than as a guess.
@@ -31,7 +29,6 @@
 //! # The two checks to make before walking away
 //!
 //! Both come from milestone 221 (the soak never crosses cores, so build the hook that makes it).
-//!
 //! [`Boot::checks`] repeats them after the fact, so a run that was never checked at the bench is
 //! still classified correctly. `crossings` must rise between the first and last beat (frozen is a
 //! soak that never crossed cores, which the curve excludes), and `wakerate` must be near
@@ -44,28 +41,11 @@
 //! - **"Rising" is judged on the first and last beats only.** A soak that crossed for a minute and
 //!   then froze for seven hours would pass. The per-beat series is in the log; reading the slope
 //!   would be a stronger claim than this check makes, and nothing has yet produced that shape.
-//! - **The wakerate threshold is 80% of `TICK_HZ * cores`**, which is a judgement, not a
-//!   measurement. radon's eight-hour run sat at 101% of it; a slow board that reads 75% is a
-//!   question to ask, and this prints it as one rather than failing the row.
+//! - **The wakerate threshold is 80% of `TICK_HZ * cores`**, a judgment, not a measurement; a
+//!   board below it is printed as a question rather than failing the row.
 //! - **A boot is split at the banner (`nife on `)**, so a capture that lost the banner to line
 //!   noise merges two boots into one. The rebooting soak would show it as one long boot with two
 //!   `soak-test: started` lines; the count is printed so that is visible.
-//!
-//! # Examples
-//!
-//! ```
-//! use board_console::exposure::{self, Meta};
-//!
-//! let log = "nife on aarch64 (EL1)\n  smp: 4 core(s) online\n\
-//!            nife machine: aarch64, 4 processor(s), 256 MiB, 100 Hz\n\
-//!            soak-test: started 4 groups\n\
-//!            soak-test: t=5s beat=1 rounds=10 rate=2/s wakes=2000 wakerate=400/s refused=0 mismatch=0 stalled=0 crossings=900\n\
-//!            soak-test: t=7200s beat=1440 rounds=99 rate=2/s wakes=2880000 wakerate=400/s refused=0 mismatch=0 stalled=0 crossings=1234567\n";
-//! let boots = exposure::read(log);
-//! let meta = Meta { machine: Some("argon".into()), ..Meta::default() };
-//! assert!(boots[0].is_clean());
-//! assert!(boots[0].row(&meta).contains("| argon | aarch64 | 4 | ? | soak-test | 2.00 | 1,234,567 | 1,440 | clean |"));
-//! ```
 
 use crate::board;
 use crate::progress::{BootProgress, field};
@@ -152,6 +132,22 @@ pub struct Meta {
 }
 
 /// **Split a capture into boots and read each one.**
+///
+/// # Examples
+///
+/// ```
+/// use board_console::exposure::{self, Meta};
+///
+/// let log = "nife on aarch64 (EL1)\n  smp: 4 core(s) online\n\
+///            nife machine: aarch64, 4 processor(s), 256 MiB, 100 Hz\n\
+///            soak-test: started 4 groups\n\
+///            soak-test: t=5s beat=1 rounds=10 rate=2/s wakes=2000 wakerate=400/s refused=0 mismatch=0 stalled=0 crossings=900\n\
+///            soak-test: t=7200s beat=1440 rounds=99 rate=2/s wakes=2880000 wakerate=400/s refused=0 mismatch=0 stalled=0 crossings=1234567\n";
+/// let boots = exposure::read(log);
+/// let meta = Meta { machine: Some("argon".into()), ..Meta::default() };
+/// assert!(boots[0].is_clean());
+/// assert!(boots[0].row(&meta).contains("| argon | aarch64 | 4 | ? | soak-test | 2.00 | 1,234,567 | 1,440 | clean |"));
+/// ```
 pub fn read(log: &str) -> Vec<Boot> {
     let mut boots: Vec<(Boot, BootProgress)> = Vec::new();
     for raw in log.lines() {

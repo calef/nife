@@ -260,7 +260,7 @@ the installer. The progenitor's stack went from twelve pages to fourteen, measur
 - Retiring `Activation::Fetch` changed a wire format that only this tree speaks.
 - Until I3, `jig` is inside the trusted base for installs, and the activation set's provenance for
   an index install is `jig`'s claim.
-- `jig`'s own refusals name no generation, and a `remove <program>@<version>` that cannot pick a
+- `jig`'s own refusals name no generation, and a `remove <package>@<version>` that cannot pick a
   default names no candidates: it holds no view of `activation/` until item 6 grants one.
 - A package file at the root of the shell's namespace cannot be installed by path from the root,
   because the root cannot be narrowed to one name; `cd` to its directory first.

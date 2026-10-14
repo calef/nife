@@ -325,6 +325,26 @@ only 3 of 34 rows booted the count stays 0. The next pass's brief,
 booted rows: every row a boot can reach, 27 of 34, ruled by calef on #2010 ("27 seems right"). The verdict is unchanged, and moving the
 color stays calef's.
 
+### The eighth outsider pass (2026-10-14, milestone 913)
+
+Added under §216, from milestone 913 (an eighth outsider pass attacks the confinement claim), whose
+number is PROVISIONAL. The eighth pass was GLM 5.3, the non-Anthropic half of the pair calef ruled
+on 2026-10-13, at the commit that brings milestone 824 (a retype mints no right its budget lacks)
+to main. The record is
+[`notes/confinement-outsider-pass-8.md`](../../notes/confinement-outsider-pass-8.md).
+
+Its blind posture was breached. It was started with "Do milestone 913" and read that block,
+milestone 914 (a ninth outsider pass attacks the confinement claim)'s block and the launch brief
+before its prompt, and it ran a `git log` and a `gh pr view`. It disclosed the breach itself, in
+part. What leaked was mostly already in its prompt or in source the posture allows.
+
+It found no escape. Four near misses, none on a shipped path, each now recorded at its code. It is
+below the floor of 27 booted rows: 25 by its own table, since rows 10 and 11 were attacked by host
+tests; its report said 27. The lane reproduced every booted row on each ISA it applies to.
+
+It does not count toward criterion (c). calef ruled on 2026-10-14 (UTC): "pass 8 does not count."
+The count stays 0. The verdict is unchanged, and moving the color stays calef's.
+
 ### Added 2026-10-03: row 27's hand-off was tested on one of the two `x86_64` boots
 
 From 2026-09-23 to 2026-10-03 (UTC), `port_holder_transmits_then_a_non_holder_faults` (row 27 of

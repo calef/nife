@@ -3,82 +3,60 @@
 //!
 //! [DECISIONS §86]: ../../../design/decisions/0086-el0-nvme-driver.md
 //!
-//! The kernel half of a split the hardware already draws. `kernel/src/non_volatile_memory_express.rs` resets the
-//! controller, builds the admin queues by register, IDENTIFYs the namespace and creates the one
-//! I/O queue pair; this file decides what the process that drives that queue pair is handed, and
-//! the whole of the confinement claim is in the [`Spawn`] literal below.
+//! `kernel/src/non_volatile_memory_express.rs` resets the controller, builds the admin queues,
+//! IDENTIFYs the namespace and creates the one I/O queue pair; this file decides what the process
+//! that drives that queue pair is handed. The whole confinement claim is the [`Spawn`] literal.
 //!
 //! # What the server holds, and what it is denied
 //!
-//! Held, and it is four mappings and two endpoints:
+//! Held:
 //!
-//! - slot 0, the **request** endpoint (RECEIVE): clients `CALL` here, `filesystem_protocol::blk`'s
-//!   wire format, the same one the virtio block server speaks;
-//! - slot 1, a **readiness** endpoint (WRITE): exactly one message once the first command has
+//! - slot 0, the **request** endpoint (RECEIVE): `filesystem_protocol::blk`'s wire format, the
+//!   same one the virtio block server speaks;
+//! - slot 1, a **readiness** endpoint (WRITE): one message once the first command has
 //!   round-tripped, so a hang in bring-up is distinguishable from a hang in the first read;
 //! - mapped: **one page of BAR0**, device-typed, the **doorbell page** at `bar0 + 0x1000`;
-//! - mapped: **the data plane's run of its DMA region**, normal memory, read/write: the I/O
-//!   submission ring, the I/O completion ring, and [`crate::non_volatile_memory_express::TRANSFER_PAGES`] pages of transfer
-//!   buffer.
+//! - mapped: **the data plane's run of its DMA region**, read/write: the I/O submission and
+//!   completion rings and [`crate::non_volatile_memory_express::TRANSFER_PAGES`] pages of buffer.
 //!
-//! Denied, and each of these is a decision rather than an omission:
+//! Denied:
 //!
-//! - **BAR0's controller register page** (offsets 0x000..0x1000: `CC`, `CSTS`, `AQA`, `ASQ`,
-//!   `ACQ`). A process that cannot name that page cannot reset the controller and cannot move a
-//!   ring. This is the split, and it is a page boundary because NVMe 1.4 §3.1 put one there.
+//! - **BAR0's controller register page** (0x000..0x1000: `CC`, `CSTS`, `AQA`, `ASQ`, `ACQ`), so
+//!   it cannot reset the controller or move a ring. NVMe 1.4 section 3.1 puts a page boundary there.
 //! - **The admin plane's pages of the DMA region** (the two admin rings and the IDENTIFY buffer).
-//!   The kernel allocated the region and mints every mapping into it, so which pages the server
-//!   can address is entirely in the kernel's gift.
-//! - **An `Irq` capability.** The server polls the completion ring's phase tag. That is one fewer
-//!   authority than `components/src/entropy.rs` holds, and it is also what the NVMe controller is
-//!   created for: `Command::create_io_cq` sets `IEN=0` and names no vector, so there is no
-//!   interrupt to grant. The cost is recorded in this module's `BUGS`.
-//! - **A `Virtio` capability**, because this is not a virtio device and there is no kernel-
-//!   mediated transport to hold.
+//! - **An `Irq` capability.** The server polls the completion ring's phase tag;
+//!   `Command::create_io_cq` sets `IEN=0` and names no vector, so there is no interrupt to grant.
+//! - **A `Virtio` capability**, because this is not a virtio device.
 //! - **A `DeviceFrame` or `PageFrame` capability.** The pages arrive as [`Mapping`]s installed
-//!   before `_start` runs, so the server holds no *name* for either window and cannot delegate,
-//!   remap or revoke them. Milestone 159's TRNG driver made the same choice for the same reason,
-//!   and its own header records that an earlier draft's `DeviceFrame` slot described a thing
-//!   nobody hands over.
-//! - **The physical address of anything but its own data plane.** [`non_volatile_memory_express::Handoff`] carries one
-//!   base, and it is page [`crate::non_volatile_memory_express::DATA_PLANE_PAGE`] of the region, not page 0.
+//!   before `_start`, so the server holds no name for either window and cannot delegate, remap or
+//!   revoke them.
+//! - **The physical address of anything but its own data plane.**
+//!   [`non_volatile_memory_express::Handoff`] carries page
+//!   [`crate::non_volatile_memory_express::DATA_PLANE_PAGE`] of the region, not page 0.
 //!
+
 //! # BUGS
 //!
-//! **A driver confined to a region can still aim DMA anywhere inside that region, its own admin
-//! rings included.** The IOMMU keys on the controller's requester id and bounds it to the whole
-//! allocation, because the controller fetches admin commands out of it; so a server that computes
-//! a PRP pointing back at page 0 can make the controller overwrite the admin submission ring. It
-//! cannot reach a byte outside the region, so this is a denial of service against the controller
-//! and not an escape, and §86's option 2a states it in exactly those terms. **Option 4's
-//! doorbell validator is what would close it**, and §86 records in advance what measurement would
-//! buy that; this milestone is not that measurement.
+//! **The server can aim DMA anywhere inside its region, its own admin rings included.** The IOMMU
+//! bounds the controller to the whole allocation, because it fetches admin commands out of it, so
+//! a PRP pointing at page 0 can overwrite the admin submission ring. That is denial of service
+//! against the controller, not an escape, as §86 (whether an NVMe driver can leave the kernel)'s option 2a states; its option 4 (a doorbell
+//! validator) would close it.
 //!
-//! **The doorbell page carries the admin doorbells too, when `CAP.DSTRD` is 0.** `SQ0TDBL` is at
-//! `0x1000` and `CQ0HDBL` at `0x1004`, so the server can ring the admin queue. It cannot *write*
-//! the admin submission ring (that page is not mapped), so the worst it can do is make the
-//! controller re-fetch slots the kernel wrote or never filled. Same class as the entry above:
-//! denial of service against the controller, not an escape. A controller reporting a nonzero
-//! stride would put the admin doorbells on their own page and this would not arise; QEMU reports
-//! 0, which §86 notes is also "the expected doorbell stride value" for hardware.
+//! **The doorbell page carries the admin doorbells too when `CAP.DSTRD` is 0** (`SQ0TDBL` at
+//! `0x1000`, `CQ0HDBL` at `0x1004`). The server cannot write the admin ring, so ringing it only
+//! makes the controller re-fetch slots: the same denial-of-service class. QEMU reports stride 0.
 //!
 //! **The server cannot read `CSTS`, so a hung controller presents as a timeout rather than as
-//! `CSTS.CFS`.** The kernel's admin plane short-circuits on the fatal-error bit; the EL0 data
-//! plane polls a bounded loop and answers `EIO`. That is a worse diagnostic for a real failure
-//! and it is the direct price of not mapping the controller register page, which is the trade
-//! this milestone exists to make.
+//! `CSTS.CFS`**: the bounded poll answers `EIO`. That is the price of not mapping the register page.
 //!
-//! **One command in flight, so the ring depth buys nothing.** Inherited from the kernel-resident
-//! driver this replaced (notes/non-volatile-memory-express.md's `BUGS`), and it is what makes any throughput number
-//! measured against this server a lower bound rather than the device's.
+//! **One command in flight, so the ring depth buys nothing**, and any throughput measured against
+//! this server is a lower bound.
 //!
-//! Name: recorded (crates/non_volatile_memory_express). Renamed 2026-09-18 under DECISIONS §154
-//! (the acronym test is whether the phrase is spoken), for milestone 261 (the NVMe driver leaves
-//! the kernel). This
-//! module is a `<program>_service` like `entropy_service`, `clock_service` and `virtio_service`,
-//! so its name is the program's plus the suffix and carries no decision of its own. It was
-//! `nvme_service` while the program was `nvme_server`; the ruling and the refusals live once,
-//! beside the crate, in `crates/non_volatile_memory_express`.
+//! Name: recorded (crates/non_volatile_memory_express), renamed 2026-09-18 under DECISIONS §154
+//! (the acronym test is whether the phrase is spoken). A `<program>_service` like
+//! `entropy_service`, so the name is the program's plus the suffix; the ruling and refusals live
+//! in `crates/non_volatile_memory_express`.
 
 use super::*;
 use crate::cap::{Rights, rendezvous_cap};

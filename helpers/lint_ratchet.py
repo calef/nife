@@ -44,15 +44,15 @@ lint registered today is `too_many_lines`, a measure keyed by function, at 100 c
   row's function is gone from the tree, the two bodies share at least half their code lines (git's
   own `-M` default), and the number does not rise.
 
-**Function length is the text measure, held to clippy.** `script/metrics` needs the same count
-without a build, so `helpers/function_length.py` reproduces `too_many_lines` from source text. The
-row value is that measure, over its scope: every tracked `.rs` file outside `vendor/`, test code
-included (§283 (a function is held to 100 code lines by a lint ratchet)). It also reaches files no
-clippy pass here compiles: about 1,160 functions in `patches/`, `c_library/`, the UEFI loader, the
-std exercisers, `jig/` and kernel build modes, which build only for nife's std targets or in a
-separate step. Those are held by the text measure alone. On every function clippy does report,
-`--check` requires the two to agree exactly, so a clippy upgrade that counts differently fails here
-loudly rather than drifting the chart.
+**Function length is the text measure, held to clippy.** `helpers/function_length.py` reproduces
+`too_many_lines` from source text. The row value is that measure, over its scope: every tracked
+`.rs` file outside `vendor/`, test code included (§283 (a function is held to 100 code lines by a
+lint ratchet)). It also reaches files no clippy pass here compiles: about 1,160 functions in
+`patches/`, `c_library/`, the UEFI loader, the std exercisers, `jig/` and kernel build modes, which
+build only for nife's std targets or in a separate step. Those are held by the text measure alone.
+On every function clippy does report, `--check` requires the two to agree exactly, so a clippy
+upgrade that counts differently fails here loudly rather than drifting the text measure away from
+clippy.
 
 **A pass with no hit still checked something.** With no function over the threshold, clippy
 reports nothing, so an empty report cannot be the sign of a pass that never ran. `--check` instead
@@ -206,11 +206,11 @@ def agreement(hits, fns):
         found = at.get((path, line))
         if found is None:
             bad.append(f'{path}:{line}: clippy reports a function of {n} code lines that '
-                       f'helpers/function_length.py does not find. Fix the text measure, which '
-                       f'script/metrics charts, before this gate can hold the function')
+                       f'helpers/function_length.py does not find. Fix the text measure before '
+                       f'this gate can hold the function')
         elif found[1] != n:
             bad.append(f'{path}:{line}: {found[0]} is {n} code lines to clippy and {found[1]} to '
-                       f'helpers/function_length.py. The chart and the gate must count alike')
+                       f'helpers/function_length.py. The text measure and clippy must count alike')
     return bad
 
 

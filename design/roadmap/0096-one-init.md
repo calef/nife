@@ -31,8 +31,8 @@ pass on both legs, which is exactly what tonight's divergence broke.
 
 Not a rewrite of either init: the boot sequences differ for real reasons and stay. Only the
 duplicated construction logic moves. Milestone 22's lane also noted the loader now exists in three
-places with a fault slot each (`supervision_proto` plus each init's `build_child`) and
-deliberately did not unify them mid-flight; that unification belongs here, where a boot failure
+places with a fault slot each (`supervision_proto` plus each init's `build_child`) and deliberately
+did not unify them mid-flight. That unification belongs here, where a boot failure
 cannot be ambiguous between two changes.
 
 ## Follow-on

@@ -14,7 +14,7 @@ alone. The discipline has already slipped once: `kernel/src/user/tests.rs` reads
 second one arrives.
 
 The work is small: `script/lint` gains a check that fails on `asm!`, `global_asm!`, or `core::arch::`
-in `kernel/src/` outside `kernel/src/arch/`, with no allowlist; and the existing violation moves
+in `kernel/src/` outside `kernel/src/arch/`, with no allowlist. The existing violation moves
 behind an arch helper (name provisional, and an architect's to make, per the naming rule).
 
 ## Scope note

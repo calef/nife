@@ -1,13 +1,13 @@
-# Three ratchets' debt
+# Two ratchets' debt
 
 *(Appendix of [the register](../register-of-measures.md). Stem provisional, minted on 2026-10-13
-(UTC) by lane/ratchet-metrics, as are the files `writing-standards.csv`, `comment-blocks.csv` and
-`parent-index.csv`, their columns and their charts. calef asked for these charts on 2026-10-13 so
-the three baselines' debt can be driven down.)*
+(UTC) by lane/ratchet-metrics, as are the files `writing-standards.csv` and `comment-blocks.csv`,
+their columns and their charts. calef asked for these charts on 2026-10-13 so the baselines' debt
+can be driven down.)*
 
-Three gates in `script/lint` hold a debt to a baseline that only falls. They enforce §213
-(writing standards), §267 (a comment states the constraint as it is now) and §282 (when a file is
-split, the parent becomes an index). A baseline says what may not grow. These series say how much
+Two gates in `script/lint` hold a debt to a baseline that only falls. They enforce §213
+(writing standards) and §267 (a comment states the constraint as it is now). A baseline says what
+may not grow. These series say how much
 is left, one row per ISO week in `notes/project-metrics/`, read by `script/metrics` from that
 week's commit.
 
@@ -19,9 +19,6 @@ week's commit.
 | `comment-blocks.csv` | `comment_block_files_over_cap` | Rust files holding a comment block over 40 lines |
 | | `comment_blocks_over_cap` | the blocks themselves, which is what a baseline row counts |
 | | `comment_block_excess_lines` | each such block's lines past 40, summed |
-| `parent-index.csv` | `parents_over_index` | split parents holding code an index may not hold |
-| | `parent_index_lines` | the code lines of those items, summed |
-| | `parent_index_marked_lines` | the part of that sum an `// Index exception` mark excuses |
 
 ## One measure, the gate's
 
@@ -34,16 +31,13 @@ disagree about a file:
   the chart groups the three bars rather than stacking them.
 - §267: `comment_block_ratchet.blocks_over` over its `in_scope` files, every `.rs` outside
   `vendor/`.
-- §282: `parent_index.judge` over the same `in_scope` rule. A small item the handful allowance lets
-  stand is not debt, because §282 allows it.
 
 ## Counted from the tree, exemptions included
 
 The series never read a baseline's rows. A baseline holds ceilings, and a ceiling can sit above
 what the tree measures until someone banks the shrink; the tree is the debt. A `writing-standards`
-exception marker and an `// Index exception` mark excuse an item at the gate and not here, for the
-prose budget's reason: a chart that subtracted what the gate excuses would hide the debt it exists
-to show. `parent_index_marked_lines` keeps the excused part visible on its own.
+exception marker excuses a document at the gate and not here: a chart that subtracted what the
+gate excuses would hide the debt it exists to show.
 
 ## Every week, from 2026W29
 

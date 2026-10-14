@@ -168,10 +168,9 @@ measured class so the next reader does not rediscover it one frozen document at 
 ## Design note, 2026-10-13: the word count is the whole file
 
 The `words` measure is `budget_words`: every whitespace-separated word in the file, less a generated
-table, the one function `script/metrics`' prose-budget graph also calls (MEASURE 3). calef ruled it
-on 2026-10-13 (UTC), choosing the option "Gate counts every word"; §212 records it. §213's measures
-read prose, so its 200-word floor and bold density count prose words. An exception marker's grant
-is read as `wc -w` without frontmatter (`counted_words`).
+table (MEASURE 3). calef ruled it on 2026-10-13 (UTC), choosing the option "Gate counts every
+word"; §212 records it. §213's measures read prose, so its 200-word floor and bold density count
+prose words. An exception marker's grant is read as `wc -w` without frontmatter (`counted_words`).
 
 ## Follow-on
 

@@ -197,11 +197,9 @@ import baseline_drift                                                       # no
 import coe_actions                                                          # noqa: E402
 import comment_block_ratchet                                                # noqa: E402
 import crate_release                                                        # noqa: E402
-import function_length                                                      # noqa: E402
 import interface_stability                                                  # noqa: E402
 import name_provenance                                                      # noqa: E402
 import packages as package_boundaries                                       # noqa: E402
-import parent_index                                                         # noqa: E402
 import prose_ratchet                                                        # noqa: E402
 import roadmap_block                                                        # noqa: E402
 import roadmap_proposals                                                    # noqa: E402
@@ -439,19 +437,6 @@ MEASURES = [
     ('names', [_col('names', s) for s in NAME_STATUSES] + ['names_total']),
     ('lines', ['kernel_code_lines', 'kernel_comment_lines',
                'other_code_lines', 'other_comment_lines']),
-    # Milestone 841 (a ratchet on Rust file length, and its dashboard row), provisional: the
-    # §266 (a Rust source file stays under 2,000 lines) series, one row per week from that week's
-    # tree. The gate that holds the ceiling is `helpers/file_length_ratchet.py` in `script/lint`,
-    # against a committed baseline; this reads the tree, never the list, so an unbanked entry
-    # reaches no number anyone quotes (§266 section 3, option (b)'s one cost).
-    ('file-size', ['files_over_2000', 'lines_share_over_2000_pct', 'largest_file',
-                   'largest_file_lines', 'file_lines_p95', 'lines_share_over_1000_pct']),
-    # Milestone 888 (a ratchet on function length), provisional; calef asked for the chart on
-    # 2026-10-11 (UTC). The share of in-scope code lines inside functions over 100 code lines, with
-    # the count and the summed excess beside it, measured by `helpers/function_length.py`, which
-    # `script/lint`'s lint ratchet holds to clippy's `too_many_lines`. From the tree, never the
-    # baseline, for the file-size series' reason.
-    ('function-length', ['code_lines_share_over_100_pct', 'functions_over_100', 'excess_over_100']),
     ('bugs', ['bugs_markdown', 'bugs_rust']),
     ('harnesses', ['harnesses_falsified', 'harnesses_unfalsifiable', 'harnesses_unfalsified',
                    'harnesses_total']),
@@ -483,15 +468,13 @@ MEASURES = [
     ('crate-proofs', ['crate_%d_%s' % (n, part) for n in crate_release.MILESTONES
                       for part in ('harnesses', 'patches', 'proven', 'required')]
      + ['crate_properties_proven', 'crate_properties_owed', 'crate_properties_required']),
-    ('prose-budget', ['prose_excess_words', 'prose_documents_over_cap']),
-    # Three ratchets' debt, calef's ask of 2026-10-13 (UTC), each read from the week's tree by the
-    # gate's own measure (`writing_standards`, `comment_block_debt`, `parent_index_debt` below).
+    # Two ratchets' debt, calef's ask of 2026-10-13 (UTC), each read from the week's tree by the
+    # gate's own measure (`writing_standards` and `comment_block_debt` below).
     # File, column and chart names provisional, minted 2026-10-13 (UTC) by lane/ratchet-metrics;
     # notes/register-of-measures/ratchet-debt.md defines them.
     ('writing-standards', ['writing_over_median', 'writing_over_longest', 'writing_over_bold']),
     ('comment-blocks', ['comment_block_files_over_cap', 'comment_blocks_over_cap',
                         'comment_block_excess_lines']),
-    ('parent-index', ['parents_over_index', 'parent_index_lines', 'parent_index_marked_lines']),
     # `bold-backlog.csv` (2026W29 to 2026W41) is history that nothing writes or reads any more. The
     # bold backlog reached zero on 2026-10-06 (UTC) and calef asked that it stop being tracked; the
     # gate that holds it at zero is `check` in helpers/prose_ratchet.py, which refuses any bold
@@ -1492,45 +1475,6 @@ def lines(tree):
     return out
 
 
-# Milestone 841 (provisional): the size of Rust files, per §266 (a Rust source file stays under
-# 2,000 lines). The measure is physical lines, `wc -l`, comments and blank lines included, which
-# is that section's own ruling (section 1): a reader loads every line of a file, and comments are
-# 41% of the non-blank Rust here. The share of lines in files over 2,000 is the headline because
-# one split moves it; the count moves only when a file crosses the line, and the percentile barely
-# moves at all (§266 section 4). Percentiles are nearest-rank, as §266 measured them: the 95th of
-# 710 files is the 675th, not the 674th.
-FILE_CEILING = 2000
-
-
-def file_size(tree):
-    sizes = {path: text.count('\n') for path, text in tree.rust()}
-    if not sizes:
-        return {}
-    ordered = sorted(sizes.values())
-    total = sum(ordered)
-
-    def share(limit):
-        held = sum(n for n in ordered if n > limit)
-        return '%.1f' % (100.0 * held / total)
-
-    largest = max(sizes, key=sizes.get)
-    rank = math.ceil(0.95 * len(ordered))
-    return {'files_over_2000': sum(1 for n in ordered if n > FILE_CEILING),
-            'lines_share_over_2000_pct': share(FILE_CEILING),
-            'largest_file': largest,
-            'largest_file_lines': sizes[largest],
-            'file_lines_p95': ordered[rank - 1],
-            'lines_share_over_1000_pct': share(1000)}
-
-
-# Milestone 888 (provisional): function length in code lines, clippy's `too_many_lines` count,
-# read from text so a past week can be restated without a build. The scope and the count are
-# `helpers/function_length.py`'s; this only hands it the week's Rust.
-def function_lengths(tree):
-    rust = dict(tree.rust())
-    return function_length.series(rust) if rust else {}
-
-
 # A `BUGS` section is a markdown heading in a note, a decision or a milestone block, or the same
 # heading inside a Rust doc comment beside the feature it limits. Rising is GOOD: AGENTS.md calls
 # these "not modesty, they are the mechanism", and a tree that grows features without growing
@@ -1660,69 +1604,18 @@ def harnesses(tree):
     return {'harnesses_' + key: value for key, value in counts.items()}
 
 
-# The prose budget: 3,000 words of main body per document, with appendices under the same cap.
-# calef ratified it on 2026-09-23 (UTC) and asked for a graph in the same breath, because a ratchet
-# nobody plots is a rule that holds for months with nobody able to say whether the tree is gaining
-# ground or losing it. The decision is §212 (a prose budget).
-#
-# Two series rather than one, and they answer different questions. The excess above the cap is the
-# DEBT: how many words would have to move into appendices for the tree to meet its own rule. The
-# count of documents over the cap is how many places that work sits in. A tree can cut the debt by
-# splitting one book and move the count not at all, and the pair is what shows that.
-#
-# Every document is counted, one carrying a marked exception included. The exception mechanism
-# belongs to the gate, milestone 586 (a prose ratchet in lint), and a graph that subtracted exempted
-# documents would hide the debt rather than measure it. If the gate wants a column for what it
-# excuses, that is its own column; it does not get to edit this one.
-#
-# The scope and the count are `helpers/prose_ratchet.py`'s, shared with the gate so the two cannot
-# drift (milestone 586 (a prose ratchet in lint); the count is `budget_words`, calef 2026-10-13 UTC): every `.md` directly under
-# `design/`, `design/decisions/`, `design/roadmap/`, `notes/` and `briefs/`, plus `AGENTS.md`, plus
-# the appendices §212 (a prose budget) puts under the same cap. Before 586 this graph's scope was "directly under"
-# alone and could not see one appendix, although the docstring below said it counted them; the
-# weeks since the first appendix landed (2026W39) restate to include them. `AGENTS.md` is in because
-# a cap the tree's own rulebook is exempt from is not a cap; the ratified headline figures were
-# measured without it, and `design/roadmap/0581-one-metrics-file-per-measure.md` reconciles the two.
-PROSE_CAP = prose_ratchet.PROSE_CAP
-
-
+# The three ratchets below (calef, 2026-10-13 UTC) are charted from the week's tree, never from a
+# baseline's rows, through the gate's own functions and scope, so the chart and the gate cannot
+# disagree about a file. Every item counts, an exempted one included: the graph measures the debt
+# and the gate decides what passes. Each helper is today's, applied to the week's text, so a week
+# from before a gate existed reads as the debt that gate would have found. The document scope is
+# `helpers/prose_ratchet.py`'s, the one §212 (a prose budget) and §213 (writing standards) share.
 def _prose_documents(tree):
     wanted = set(prose_ratchet.documents(set(tree.text)))
     for path, text in tree.markdown():
         if path in wanted:
             yield path, text
 
-
-def prose_budget(tree):
-    """Words over the 3,000-word cap, and how many documents hold them.
-
-    Whitespace-separated words over the whole file, which is what was measured and what was
-    ratified, counted by `prose_ratchet.budget_words`, which is also the gate's `words` measure
-    (calef, 2026-10-13 UTC, "Gate counts every word"), so the graph and the gate cannot disagree. An
-    appendix is its own document under the same cap, which is what the ruling intends.
-
-    What `budget_words` skips is a generated table (`prose_ratchet.GENERATED_TABLES`), since nobody
-    can cut words a script writes. The decisions index was one until calef retired it on
-    2026-10-12 (UTC), and skipping it steps the series down from 2026W39 by the index's words.
-
-    Read from each week's own revision, unlike the cost columns: a week's prose debt is a property
-    of that week's tree and git can answer for it, so `--backfill` restates the whole history.
-    """
-    excess = 0
-    over = 0
-    for _path, text in _prose_documents(tree):
-        words = prose_ratchet.budget_words(text)
-        if words > PROSE_CAP:
-            over += 1
-            excess += words - PROSE_CAP
-    return {'prose_excess_words': excess, 'prose_documents_over_cap': over}
-
-
-# The three ratchets below (calef, 2026-10-13 UTC) are charted the way `prose_budget` is: from the
-# week's tree, never from a baseline's rows, through the gate's own functions and scope, so the
-# chart and the gate cannot disagree about a file. Every item counts, an exempted one included: the
-# graph measures the debt and the gate decides what passes. Each helper is today's, applied to the
-# week's text, so a week from before a gate existed reads as the debt that gate would have found.
 
 def writing_standards(tree):
     """Documents over each of the three limits of §213 (writing standards), as
@@ -1756,26 +1649,6 @@ def comment_block_debt(tree):
             'comment_block_excess_lines': excess}
 
 
-def parent_index_debt(tree):
-    """Split parents holding more than an index under §282 (when a file is split, the parent
-    becomes an index), by `parent_index.judge`: the parents, and the code lines of the items an
-    index may not hold. A marked item (`// Index exception`) counts
-    here; `parent_index_marked_lines` says how many of those lines the marks excuse."""
-    parents = lines = marked = 0
-    for path, text in tree.text.items():
-        if not parent_index.in_scope(path) or not parent_index.MAYBE_PARENT.search(text):
-            continue
-        judged = parent_index.judge(text)
-        if judged is None:
-            continue
-        held = judged['number'] + judged['marked_lines']
-        parents += held > 0
-        lines += held
-        marked += judged['marked_lines']
-    return {'parents_over_index': parents, 'parent_index_lines': lines,
-            'parent_index_marked_lines': marked}
-
-
 # Cumulative icount drift since a fixed anchor: milestone 415 item 3, which calef ruled on
 # 2026-09-26 (UTC) is a report and not a gate (§190). The arithmetic and its selftest are
 # helpers/baseline_drift.py. Three outputs: two cells per architecture in
@@ -1793,75 +1666,6 @@ DRIFT_REPORT = DATA_DIR / 'baseline-drift.md'
 # what a consumer of the interface would plan around.
 INTERFACE_BEGIN = '<!-- interface-stability: script/metrics writes this -->'
 INTERFACE_END = '<!-- /interface-stability -->'
-
-# Milestone 841's generated line, between these markers, from the latest week the series measured.
-# The form is the block's own example: the share first (the headline), then the count's context,
-# the largest file and the percentile.
-FILE_SIZE_BEGIN = '<!-- file-size: script/metrics writes this -->'
-FILE_SIZE_END = '<!-- /file-size -->'
-
-
-def file_size_line(rows):
-    measured = [w for w in sorted(rows) if rows[w].get('files_over_2000', '') not in ('', None)]
-    if not measured:
-        return None
-    row = rows[measured[-1]]
-    return ('**File size:** %d Rust files over 2,000 lines, holding %s%% of all Rust lines; '
-            'largest %s (%s); 95th percentile %s.'
-            % (int(row['files_over_2000']), row['lines_share_over_2000_pct'],
-               row['largest_file'], f"{int(row['largest_file_lines']):,}",
-               f"{int(row['file_lines_p95']):,}"))
-
-
-def write_file_size_line(rows):
-    path = pathlib.Path(PAGE)
-    text = path.read_text()
-    if text.count(FILE_SIZE_BEGIN) != 1 or text.count(FILE_SIZE_END) != 1:
-        raise SystemExit('metrics: %s must carry exactly one %r and one %r'
-                         % (PAGE, FILE_SIZE_BEGIN, FILE_SIZE_END))
-    line = file_size_line(rows)
-    if line is None:
-        return
-    before, rest = text.split(FILE_SIZE_BEGIN)
-    _old, after = rest.split(FILE_SIZE_END)
-    new = before + FILE_SIZE_BEGIN + '\n' + line + '\n' + FILE_SIZE_END + after
-    if new != text:
-        path.write_text(new)
-
-
-# Milestone 888's generated line, the file-size line's shape: the share, then the count and excess.
-FUNCTION_LENGTH_BEGIN = '<!-- function-length: script/metrics writes this -->'
-FUNCTION_LENGTH_END = '<!-- /function-length -->'
-
-
-def function_length_line(rows):
-    measured = [w for w in sorted(rows)
-                if rows[w].get('functions_over_100', '') not in ('', None)]
-    if not measured:
-        return None
-    row = rows[measured[-1]]
-    # Terse because the page sat 12 words under its 3,000-word cap (§212 (a prose budget)) when
-    # this section landed; the link carries the definition.
-    return ('[%s%%](register-of-measures/function-length.md), %d functions, %s lines past 100.'
-            % (row['code_lines_share_over_100_pct'], int(row['functions_over_100']),
-               f"{int(row['excess_over_100']):,}"))
-
-
-def write_function_length_line(rows):
-    path = pathlib.Path(PAGE)
-    text = path.read_text()
-    if text.count(FUNCTION_LENGTH_BEGIN) != 1 or text.count(FUNCTION_LENGTH_END) != 1:
-        raise SystemExit('metrics: %s must carry exactly one %r and one %r'
-                         % (PAGE, FUNCTION_LENGTH_BEGIN, FUNCTION_LENGTH_END))
-    line = function_length_line(rows)
-    if line is None:
-        return
-    before, rest = text.split(FUNCTION_LENGTH_BEGIN)
-    _old, after = rest.split(FUNCTION_LENGTH_END)
-    new = before + FUNCTION_LENGTH_BEGIN + '\n' + line + '\n' + FUNCTION_LENGTH_END + after
-    if new != text:
-        path.write_text(new)
-
 
 def interface_line(rows):
     measured = [w for w in sorted(rows) if rows[w].get('interface_breaking', '') not in ('', None)]
@@ -2121,11 +1925,11 @@ def row_for(rev, week, coverage='', person_weeks='', coverage_min=''):
     for status in NAME_STATUSES:
         row[_col('names', status)] = nm[status]
     row['names_total'] = named
-    for part in (proposals(tree), lines(tree), file_size(tree), function_lengths(tree), bugs(tree),
+    for part in (proposals(tree), lines(tree), bugs(tree),
                  harnesses(tree),
                  unsafe_census(tree), unsafe_trust_census(tree),
-                 fatal_risks_colors(tree), coe_action_counts(tree), prose_budget(tree),
-                 writing_standards(tree), comment_block_debt(tree), parent_index_debt(tree),
+                 fatal_risks_colors(tree), coe_action_counts(tree),
+                 writing_standards(tree), comment_block_debt(tree),
                  homes(tree), crate_release_cells(tree)):
         row.update(part)
     row.update(baseline_drift.series_cells(rev))
@@ -2763,23 +2567,6 @@ CHARTS = [
       ('shared (both, unresolved)', 'unsafe_trust_shared'),
       ('boot chain (uefi_loader)', 'unsafe_trust_boot_chain'),
       ('unclassified', 'unsafe_trust_unclassified')], 1.0, None, None),
-    # Milestone 841 (provisional). One series, the share, because it is the headline: one split
-    # moves it, where the count of files moves only at a crossing and the percentile barely at
-    # all. The other columns stay in the CSV and on the page's generated line; the ceiling itself
-    # is `script/lint`'s ratchet, not a line here.
-    ('file-size.svg', 'Share of Rust lines in files over 2,000, per cent',
-     'physical lines, comments counted: the reader loads every line. the ratchet holding the '
-     'ceiling is script/lint\'s; the share is the headline because one split moves it',
-     [('share of lines in files over 2,000', 'lines_share_over_2000_pct')], 1.0, None,
-     'lines_share_over_2000_pct'),
-    # Milestone 888 (provisional), modeled on the file-size chart at calef's request of 2026-10-11
-    # (UTC): the share, because one split moves it; the count and the excess are on the page's
-    # generated line.
-    ('function-length.svg', 'Share of code lines in functions over 100 code lines, per cent',
-     'code lines as clippy\'s too_many_lines counts them, comments free; the lint ratchet holds '
-     'each long function, and the share is the headline because one split moves it',
-     [('share in functions over 100', 'code_lines_share_over_100_pct')], 1.0, None,
-     'code_lines_share_over_100_pct'),
     # The verdict colours, stacked green then amber then red in their own hues (the
     # fatal-risk-colors-by-week proposal, 2026-09-29; chart name provisional). Grey is a risk with
     # no verdict rendered: five of nine today, which is the number a bar of four has to be read
@@ -2844,21 +2631,10 @@ CHARTS = [
      'the number script/coverage gates on; 2026W31-W38 backfilled 2026-09-24, W30 predates the floor',
      [('minimum per-file coverage', 'coverage_min_file_pct')], 1.0, (80, 'floor'),
      'coverage_min_file_pct'),
-    # Two panels for one measure, the coverage pair's reason: these series stack with nothing, and
-    # with each other least of all, since one is words and one is a count of files. The debt is the
-    # headline and the document count is where the work sits; the tree can halve one without moving
-    # the other, and a reader has to see both to know which happened.
-    ('prose-budget.svg', 'Words over the 3,000-word cap, in thousands',
-     'the debt the 3,000-word cap names: what would move into appendices. Every document counts, an '
-     'exempted one included, because the graph exists to show the debt rather than excuse it',
-     [('words over the cap', 'prose_excess_words')], 1000.0, None, 'prose_excess_words'),
-    ('prose-budget-documents.svg', 'Documents over the 3,000-word cap',
-     'the same debt by where it sits; one split book moves the chart above and not this one',
-     [('documents over the cap', 'prose_documents_over_cap')], 1.0, None,
-     'prose_documents_over_cap'),
     # The three ratchets' debt (lane/ratchet-metrics; chart names provisional). §213's limits are
     # grouped, not stacked: a document over two limits is in two bars, so a sum would count it
-    # twice. The comment-block pair is two panels for the prose-budget pair's reason.
+    # twice. The comment-block pair is two panels because files and lines are different units and
+    # shortening one block moves the lines without moving the files.
     ('writing-standards.svg', 'Documents over a writing-standards limit',
      'helpers/prose_ratchet.py\'s measure and scope; a document over two limits is in both bars, '
      'and an exempted document counts',
@@ -2875,10 +2651,6 @@ CHARTS = [
      'file count',
      [('lines past the cap', 'comment_block_excess_lines')], 1000.0, None,
      'comment_block_excess_lines'),
-    ('parent-index.svg', 'Split parents holding more than an index',
-     'helpers/parent_index.py\'s verdict; an item a mark excuses counts, since the chart '
-     'measures the debt and the gate decides what passes',
-     [('parents over the index limit', 'parents_over_index')], 1.0, None, 'parents_over_index'),
     # Milestone 611. Packages stack by where their home stands, with the ones that have left on
     # top: the end state is one band. Paths are a separate panel because a path that has left is
     # not in the tree to count, so that panel's end state is empty rather than full.
@@ -3224,12 +2996,6 @@ SERIES_FROM = {'ci-jobs.svg': build_job_series}
 TRENDS = {'velocity.svg': ('milestones_built_this_week', 10),
           'interface-stability.svg': ('interface_breaking', 4),
           'pull-requests.svg': ('merged_pull_requests', 10),
-          # calef, 2026-10-11 (UTC): a 10-week moving average on the file-size chart. One split
-          # moves the share in a week, so the mean is what says whether the splits are winning.
-          'file-size.svg': ('lines_share_over_2000_pct', 10),
-          # calef, 2026-10-11 (UTC), the same ruling for function length: one split moves the
-          # share in a week, so the mean is what says whether the splits are winning.
-          'function-length.svg': ('code_lines_share_over_100_pct', 10),
           # A share's trend is pooled, not a mean of shares: the line is ten weeks' labeled pull
           # requests over ten weeks' merged ones, so a quiet week weighs what it merged, for
           # `queue_by_week`'s reason. A (numerator, denominator) pair asks `trailing_mean` for that.
@@ -3362,8 +3128,6 @@ def draw_charts(rows, only=None):
     if only is None:
         write_drift_report()
         write_interface_line(rows)
-        write_file_size_line(rows)
-        write_function_length_line(rows)
         write_week_notes_bullets()
     weeks = sorted(rows)[-CHART_WEEKS:]
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -3507,11 +3271,6 @@ def _ratchet_debt_cases():
     at_cap = ''.join('// line %d\n' % k for k in range(40)) + 'fn g() {}\n'
     rust = tree({'a.rs': block + block, 'b.rs': at_cap,
                  'vendor/x.rs': block, 'notes/a.md': block})
-    four = 'pub fn four(x: u32) -> u32 {\n    let y = x + 1;\n    y * 2\n}\n'
-    mark = '// Index exception (2026-10-13): every child reads this one.\n'
-    parents = tree({'p.rs': 'mod child;\n' + four, 'q.rs': 'mod child;\n' + mark + four,
-                    'r.rs': 'mod child;\npub use child::X;\n', 's.rs': four,
-                    'vendor/v.rs': 'mod child;\n' + four})
     return [
         ('writing standards: the gate\'s verdict, an exempted document counted, scope kept',
          writing_standards(prose),
@@ -3520,9 +3279,6 @@ def _ratchet_debt_cases():
          comment_block_debt(rust),
          {'comment_block_files_over_cap': 1, 'comment_blocks_over_cap': 2,
           'comment_block_excess_lines': 10}),
-        ('parent index: a marked item is debt here and is counted apart',
-         parent_index_debt(parents),
-         {'parents_over_index': 2, 'parent_index_lines': 8, 'parent_index_marked_lines': 4}),
     ]
 
 

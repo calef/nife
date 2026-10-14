@@ -106,15 +106,15 @@ milestone 876 completes it. It did, on 2026-10-12 (UTC): `kernel_main` is 59 cod
 - The lint ratchet is `helpers/lint_ratchet.py`, built to the panic proposal's specification so the
   other lint proposals register a lint rather than write a gate. `script/lint` runs one more clippy
   pass per census configuration at `-W`, in about 20 seconds. One lint is registered.
-- The row value is `helpers/function_length.py`'s text replica of `too_many_lines`, which
-  `script/metrics` needs because it may not build. At a threshold of 0 it matched clippy on all
-  5,181 functions both saw. The gate fails on any difference.
+- The row value is `helpers/function_length.py`'s text replica of `too_many_lines`, which also
+  reaches files no clippy pass compiles. At a threshold of 0 it matched clippy on all 5,181
+  functions both saw. The gate fails on any difference.
 - The scope is every tracked `.rs` file outside `vendor/`, test code included (§283, calef,
-  2026-10-13 UTC). The gate and the chart read one scope function, so they count the same files.
+  2026-10-13 UTC). `in_scope` in `helpers/function_length.py` is the one scope function.
 - The baseline, `design/lint-baseline.tsv`, holds no rows: no function in scope is over 100.
-- The chart is `notes/project-metrics/function-length.svg`, backfilled from 2026W29 with no build.
-  The definition is [the register's appendix](../../notes/register-of-measures/function-length.md).
-- Every name here is provisional: both helpers, the baseline, the measure, its columns and the chart.
+- The measure has no chart: the gate holds it at zero (calef, 2026-10-14 UTC). The definition is
+  [the register's appendix](../../notes/register-of-measures/function-length.md).
+- Every name here is provisional: both helpers, the baseline and the measure.
 
 **Criterion 4 was held on §266, and milestone 876 landed it.** The split was built and passes clippy
 on all three targets, on the branch `lane/888-kernel-main-split-held`. `kernel_main` falls from 977
@@ -162,5 +162,5 @@ lines with no seam. It ranks fifth of the five.
 
 Clippy's `too_many_lines` at 100 code lines, held by a lint ratchet whose baseline only falls, one
 row per function. It builds the shared lint ratchet the panic proposal specified, so the other lint
-proposals register a lint instead of writing a gate. A chart beside it tracks the share of code
-lines in long functions, so the splits that drive the list down can be seen working.
+proposals register a lint instead of writing a gate. The baseline is empty, so no function in
+scope is over 100 code lines.

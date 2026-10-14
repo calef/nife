@@ -578,7 +578,7 @@ fn entry(line: &str) -> Result<Entry<'_>, Option<LocationRefusal<'_>>> {
 }
 
 /// **May these fetched bytes be installed as `entry`?** The package must be the one the entry names
-/// and its whole file must hash to the entry's digest; then its program member must match its own
+/// and its whole file must hash to the entry's digest; then every program member must match its own
 /// table of contents. That is `package_archive::installable_as`, handed the entry as a one-line
 /// catalog, so the decision is the installer's own and not a second copy of it.
 pub fn accept<'b>(entry: &Entry<'_>, bytes: &'b [u8]) -> Result<Installable<'b>, Refusal> {
@@ -1221,7 +1221,7 @@ mod tests {
         let entry = index.entries().next().unwrap();
         assert_eq!(entry.stem, stem);
         assert_eq!(
-            accept(&entry, &bytes).map(|i| i.program),
+            accept(&entry, &bytes).map(|i| i.package().name()),
             Err(Refusal::NotRequested)
         );
 
@@ -1452,7 +1452,15 @@ mod tests {
         );
         let index = Index::parse(&text).unwrap();
         let entry = index.find("greeting", "aarch64").unwrap();
-        assert_eq!(accept(&entry, &greeting).unwrap().program, "greeting");
+        assert_eq!(
+            accept(&entry, &greeting)
+                .unwrap()
+                .programs()
+                .next()
+                .unwrap()
+                .name,
+            "greeting"
+        );
         let mut tampered = greeting.clone();
         let mid = tampered.len() / 2;
         tampered[mid] ^= 1;
@@ -1462,11 +1470,11 @@ mod tests {
         ));
         // A package the index also vouches for, served in place of the one asked for.
         assert_eq!(
-            accept(&entry, &uptime).map(|i| i.program),
+            accept(&entry, &uptime).map(|i| i.package().name()),
             Err(Refusal::NotRequested)
         );
         assert_eq!(
-            accept(&entry, b"not a package").map(|i| i.program),
+            accept(&entry, b"not a package").map(|i| i.package().name()),
             Err(Refusal::Unreadable)
         );
     }

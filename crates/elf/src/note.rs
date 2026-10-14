@@ -1,9 +1,8 @@
 //! Finding one ELF note by owner and type, through the program headers alone.
 //!
-//! Landed by milestone 597 (a program carries its manifest in an ELF note), whose number is
-//! provisional, from the research prototype on `lane/elf-note-price` (draft pull request #1319),
-//! which priced DECISIONS §197 (a package is one archive file)'s option M2. calef ruled M2 on
-//! 2026-09-26 (UTC). Every public name here is provisional; calef names public items.
+//! Milestone 597 (a program carries its manifest in an ELF note), DECISIONS §197 (a package is one
+//! archive file)'s option M2, ruled by calef on 2026-09-26 (UTC). Every public name here is
+//! provisional; calef names public items.
 //!
 //! **Why program headers and not section headers.** A linker gathers allocated `SHT_NOTE` sections
 //! into a `PT_NOTE` segment, and the loader already walks the program-header table to find
@@ -17,6 +16,7 @@
 //! the kernel never calls [`Elf::note`]: only a program that reads manifests (the shell, the
 //! progenitor) does, and only on the bytes it was handed to spawn.
 //!
+
 //! # Two ways in, one rule
 //!
 //! The progenitor holds a whole image and asks [`Elf::note`]. The shell does not: it streams a
@@ -37,6 +37,7 @@
 //! and 4 mean 4, 8 means 8, and anything else is refused. That is LLVM's `Elf_Note_Iterator` rule,
 //! which is what `llvm-readelf` uses.
 //!
+
 //! # What a hostile file can try, and what happens
 //!
 //! - A `namesz` or `descsz` near `u32::MAX`: the extent arithmetic is checked, proved total by

@@ -2,33 +2,22 @@
 //! 292; notes/sink-protocol.md).
 //!
 //! The read-back. It opens the name `file_sink` wrote and streams the contents out **over the sink
-//! contract**, which is a small piece of evidence in itself: the same sixteen-byte framing carries a
-//! file's contents as carried a program's `println!`.
-//!
-//! That is what makes `<` the same shape as `|` in this system. A source is the sink contract
-//! *received* rather than sent, so the program on the reading end (`wc`, in the test that matters)
-//! holds one endpoint and cannot tell whether a pipe or a filesystem is behind it. This process is
-//! the part that makes a file look like a pipe, and it is a separate process with its own FS session
-//! precisely so that the reader's side of the claim is not co-located with the writer's.
-//!
-//! # The wiring
+//! contract**, the same sixteen-byte framing that carries a program's `println!`. That is what
+//! makes `<` the same shape as `|`: the program on the reading end (`wc`, in the test that matters)
+//! holds one endpoint and cannot tell whether a pipe or a filesystem is behind it. It is a separate
+//! process with its own FS session, so the reader's side of the claim is not co-located with the
+//! writer's.
 //!
 //! | slot 0 | slot 1 | slot 2 | [`PAGE_VA`] |
 //! |---|---|---|---|
 //! | the byte sink, `WRITE` | the FS service, `WRITE` | the report, `WRITE` | shared with the FS server |
 //!
-//! Slot 0 is `WRITE` here and `READ` in `file_sink`, which is the convention the whole milestone is
-//! about: the same slot, the same contract, and the direction is a right rather than a different
-//! protocol.
+//! Slot 0 is `WRITE` here and `READ` in `file_sink`: the same slot and contract, and the direction
+//! is a right. **It is spawned only after `file_sink` has reported that it closed the file**,
+//! because the two share the FS server's one file page.
 //!
-//! **It is spawned only after `file_sink` has reported that it closed the file**, because the two
-//! share the FS server's one file page. One page is sound between parties that are never using it at
-//! once, and sequencing is what makes that true.
-//!
-//! # EXAMPLES
-//!
-//! The pairing the test asserts, in the kernel's vocabulary
-//! (`system_tests/src/user/sink_tests.rs::one_reader_two_sources_and_the_same_answer`):
+//! The pairing `system_tests/src/user/sink_tests.rs::one_reader_two_sources_and_the_same_answer`
+//! asserts, in the kernel's vocabulary:
 //!
 //! ```text
 //! let (source, report) = fs_service::start_file_source(blk, fs_server, image).unwrap();
@@ -37,35 +26,22 @@
 //! assert_eq!(ipc_receive(report)[0], fixture::DONE);
 //! ```
 //!
+
 //! # BUGS
 //!
-//! It reports [`fixture::DONE`] and the size it *found*, not the size it managed to send. A sink
-//! that stopped taking bytes part way through would be reported by the `SEND` return code this
-//! program ignores, so a caller that wants delivery proven must compare what it received rather
-//! than trusting the report. Every caller does, which is why this has not been fixed rather than a
-//! reason it does not matter.
-//!
-//! It opens one name, [`fixture::SINK_NAME`], in the FS service's root. It is the read half of a
-//! two-program fixture rather than a general `cat`: nothing here takes a name from anywhere.
-//!
-//! [`PAGE_VA`] is hard-coded here and in every other program that maps the FS server's shared
-//! frame, each with its own copy of the same address and its own byte accessors. That duplication is
-//! older than this file and outlives it, and the lane splitting `components/src/ntp.rs`
-//! concurrently with this one has proposed the crate that would end it.
+//! - It reports [`fixture::DONE`] and the size it *found*, not the size it managed to send; a
+//!   caller that wants delivery proven compares what it received, as every caller does.
+//! - It opens one name, [`fixture::SINK_NAME`], in the FS service's root: the read half of a
+//!   two-program fixture, not a general `cat`.
+//! - [`PAGE_VA`] is hard-coded here and in every other program that maps the FS server's shared
+//!   frame, each with its own copy of the address and its own byte accessors.
 //!
 //! Name: recorded (design/roadmap/0292-the-sink-contract-ends-are-three-programs.md and
-//! notes/sink-protocol.md, which together carry the argument). **Provisional: calef has not
-//! ratified it.** It was `ROLE_VERIFY` inside the `sink` binary until milestone 292 split that
-//! binary into the three programs it had always been. `source` is this tree's own word for the
-//! reading end of the sink contract: `grant_plan::spawnproto::Wiring` already carries `sink` and
-//! `source` as the two directions, and `kernel::user::sink_tests` names the endpoint `source` at the
-//! call site. So `file_sink` and `file_source` are one pair under the vocabulary the shell wiring
-//! already uses. Refused `sink_verifier` (the old role's word, which names the *test* this happens
-//! to serve rather than the program: it verifies nothing, it reads a file and sends bytes, and every
-//! assertion is in the kernel) and `file_reader` (a generic word for something whose whole identity
-//! is the contract it speaks on the far side) and `cat` (the standard term a reader knows from
-//! outside, and exactly why it cannot be used: a reader who typed it would expect a name argument
-//! and a general program, and this is neither).
+//! notes/sink-protocol.md). **Provisional: calef has not ratified it.** `source` is this tree's own
+//! word for the reading end of the sink contract (`grant_plan::spawnproto::Wiring` carries `sink`
+//! and `source`), so `file_sink` and `file_source` are one pair. Refused `sink_verifier` (names the
+//! test it serves; it verifies nothing). Refused `file_reader` (generic). Refused `cat` (a reader
+//! would expect a name argument and a general program).
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

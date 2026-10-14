@@ -1,14 +1,11 @@
 //! **The framebuffer driver: a screen the firmware already set up, served behind the framebuffer
 //! contract** (the shell on the firmware screen; milestone 198's rung 1b).
 //!
-//! `gpu_driver` serves [`graphics_protocol`] by programming a virtio-gpu device. A PC has no
-//! virtio-gpu, but its firmware leaves a linear framebuffer running when it hands over (milestone
-//! 243: UEFI's `EFI_GRAPHICS_OUTPUT_PROTOCOL`, whose aperture outlives `ExitBootServices`). This
-//! driver serves the **same contract** over that screen, so `display_terminal`, which cannot tell
-//! the two apart, puts the shell on a PC's monitor with no device of our own to negotiate with.
-//! Milestone 157 describes exactly this driver for the boards ("a new backend behind that same
-//! contract, read a pre-set buffer instead of negotiating virtio queues"), fed there by U-Boot's
-//! `simple-framebuffer` rather than by UEFI.
+//! `gpu_driver` serves [`graphics_protocol`] by programming a virtio-gpu device. A PC has none, but
+//! its firmware leaves a linear framebuffer running when it hands over (UEFI's
+//! `EFI_GRAPHICS_OUTPUT_PROTOCOL`, whose aperture outlives `ExitBootServices`). This driver serves
+//! the **same contract** over that screen, so `display_terminal` cannot tell the two apart. On the
+//! boards U-Boot's `simple-framebuffer` would feed the same driver.
 //!
 //! # Its whole authority
 //!
@@ -17,62 +14,42 @@
 //! - slot 2, an **untyped**: the budget its surface mapping's page tables come out of;
 //! - slot 3, the **surface**: one `PageFrame` capability naming a run of RAM frames the size of
 //!   the covered part, shared with the client, which it maps itself (DECISIONS §102 (a Frame
-//!   names a run of pages), the shape of milestone 108 (the drivers move onto frame
-//!   capabilities));
+//!   names a run of pages));
 //! - mapped before `_start`: **the covered part of the aperture**, device-typed and, on `x86_64`,
-//!   write-combining (2026-10-04), at [`APERTURE_VA`]. Only the rows the surface can reach
-//!   (`screen_console::Aperture::span`), which is the whole screen unless it is too large to map
-//!   (`display_service::MAX_APERTURE_PAGES`), and as a spawn-time mapping rather than a capability, so
-//!   it holds no name for the screen and cannot map it again, delegate it, or hand it on. That is
-//!   the choice milestone 159's TRNG driver and milestone 261's NVMe server made for the same
-//!   reason; a capability would need a `DeviceFrame` naming more than one page, which the
-//!   capability surface does not have.
+//!   write-combining, at [`APERTURE_VA`]: the rows the surface can reach
+//!   (`screen_console::Aperture::span`), the whole screen unless it exceeds
+//!   `display_service::MAX_APERTURE_PAGES`. A spawn-time mapping, not a capability, so it cannot
+//!   map the screen again, delegate it, or hand it on.
 //!
-//! No interrupt, no DMA, no transport, no physical address. The kernel tells it the geometry in its
+//! No interrupt, no DMA, no transport, no physical address. The kernel passes the geometry in its
 //! three argument registers (`screen_console::Aperture::to_words`, then the aperture's offset into
-//! its first page), because nothing it holds could describe it.
+//! its first page).
 //!
+
 //! # What a flush is, here
 //!
-//! The client draws into the surface (RAM) and says which rectangle changed. For virtio-gpu that
-//! is two device commands. For a screen that is already scanning out, it is **a copy**: each pixel
-//! of the rectangle is read from the surface and stored into the aperture in the screen's byte
-//! order, at the screen's stride, **as a scale-by-scale block**: the scale is
-//! `screen_console::ScreenConsole::scale_for`'s, the rule the kernel's boot console draws by, so a
-//! 1920x1080 monitor shows a 960x540 surface at two and QEMU's 1280x800 shows a 1280x800 surface
-//! at one. The arithmetic is `screen_console::Aperture::copy_wide`, host-tested there: pairs of
-//! pixels staged from the cacheable surface into one qword store, word stores only where the
-//! aperture's alignment leaves an edge. **It never reads the aperture**, only the surface.
+//! The client draws into the surface (RAM) and says which rectangle changed. Here a flush is **a
+//! copy** into the aperture in the screen's byte order and stride, **as a scale-by-scale block**
+//! at `screen_console::ScreenConsole::scale_for`'s scale (a 1920x1080 monitor shows a 960x540
+//! surface at two). The arithmetic is `screen_console::Aperture::copy_wide`, host-tested: pairs of
+//! pixels in one qword store, word stores only at an unaligned edge. **It never reads the
+//! aperture**, only the surface.
 //!
 //! # BUGS
 //!
-//! - **A full-screen flush is the whole screen.** Until 2026-10-04 the surface was the virtio
-//!   contract's 924x344 at scale one, and on xenon's monitor the shell sat in the top-left corner.
-//!   It now covers the screen, so a scroll (which the terminal reports as whole-surface damage)
-//!   rewrites every visible pixel: 8 MB on xenon, against 1.27 MB before. Under KVM and on
-//!   silicon that is the price of a full screen; under QEMU's TCG, at OVMF's 1280x800, it is 3.2
-//!   times the old full flush, partly repaid by a 100-row grid scrolling less often than a
-//!   43-row one. Unmeasured on the swish leg; CI's timing is the record.
-//! - **Every pixel still crosses an uncacheable mapping; since 2026-09-30 it crosses at half the
-//!   store count.** A full-surface flush is 158,928 qword stores against 317,856 word stores
-//!   (`screen_console::Aperture::copy_wide`'s own test counts them), which under QEMU's TCG, where
-//!   store-heavy guest code runs ~3.8x slower per instruction than arithmetic
-//!   (`notes/benchmarks/icount-tick-scales.md`), is most of this copy's cost. A `u64` is the widest
-//!   store the `x86_64` target can legalise (`-mmx,-sse,+soft-float`), so the remaining levers are a
-//!   write-combining mapping or a scroll-aware flush contract, both outside this driver. Not
-//!   measured on silicon. **The first lever exists since 2026-10-04**: the kernel programs a
-//!   write-combining PAT entry on every core and maps this driver's aperture through it
-//!   (`paging::Flags::user_write_combining`, `DeviceRun::write_combining`). The title of this
-//!   bullet is therefore true on aarch64 and riscv64 only, which have no device-aperture screen.
-//! - **One client, no arbitration.** Whoever holds the display endpoint draws; that is the
-//!   contract's rung-one shape and the compositor is what multiplexes it.
+//! - **A full-screen flush is the whole screen.** A scroll (whole-surface damage) rewrites every
+//!   visible pixel, 8 MB on a 1080p monitor. Unmeasured on the swish leg; CI's timing is the record.
+//! - **Every pixel crosses a device mapping**, write-combining on `x86_64` (the kernel's PAT entry,
+//!   `paging::Flags::user_write_combining`), as qword stores: a `u64` is the widest store the
+//!   `x86_64` target can legalize (`-mmx,-sse,+soft-float`). A scroll-aware flush contract is the
+//!   remaining lever, outside this driver. Not measured on silicon.
+//! - **One client, no arbitration.** Whoever holds the display endpoint draws; the compositor is
+//!   what multiplexes it.
 //!
-//! Name: ratified 2026-10-06 (calef, "Ratify" it, in conversation). Introduced
-//! 2026-09-19 by the shell on the firmware screen's lane, in the `<device>_driver` shape `gpu_driver`, `block_driver` and `keyboard_driver` take, the device
-//! being a linear framebuffer.
-//! Considered `screen_driver`, which names a thing every display driver drives, and
-//! `firmware_screen_driver`, which names who set it up rather than what it is and would be wrong on
-//! the boards, where U-Boot sets it up.
+//! Name: ratified 2026-10-06 (calef, in conversation), in the `<device>_driver` shape `gpu_driver`,
+//! `block_driver` and `keyboard_driver` take, the device being a linear framebuffer. Considered
+//! `screen_driver` (every display driver drives a screen) and `firmware_screen_driver` (names who
+//! set it up, and would be wrong on the boards, where U-Boot does).
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

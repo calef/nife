@@ -6,9 +6,9 @@ built: 2026-08-16
 # 119. The merge queue is the bottleneck, and the long pole is one prover
 
 Built 2026-08-16. The after-median exists, which is this block's own definition of
-done, measured over eighteen queued landings rather than one sample: "land this" to merged fell
-from a **17.0-minute** median (n=29, before the queue) to **12.3** (n=17), merges per elapsed hour
-rose from 0.97 to 1.76, and red runs on `main` went from 2 of 120 to 0 of 30. The sharpest single
+done, measured over eighteen queued landings rather than one sample. "Land this" to merged fell from
+a **17.0-minute** median (n=29, before the queue) to **12.3** (n=17). Merges per elapsed hour rose
+from 0.97 to 1.76, and red runs on `main` went from 2 of 120 to 0 of 30. The sharpest single
 observation: five pull requests enqueued within six seconds landed together 20.6 minutes later,
 against roughly 85 serialized at the old median before counting the staling each merge used to
 cause. Caveats travel with the numbers in notes/merge-queue.md, including the storm hour, the
@@ -17,9 +17,9 @@ from evictions.
 
 And it corrected the block's own thesis. This milestone's title says the prover is the long
 pole; measured, it is not. `CI` runs a median 10.7 minutes against `verify`'s 0.6, because
-`--affected-since` scopes twelve of nineteen builds out of proving entirely. What remains is a
-tail of six builds where proofs ran, holding the merge a median 5.6 minutes past a green `CI`,
-and that tail is nearly all false positives from three blind spots in the scope predicate
+`--affected-since` scopes twelve of nineteen builds out of proving entirely. What remains is a tail
+of six builds where proofs ran, holding the merge a median 5.6 minutes past a green `CI`. That tail
+is nearly all false positives from three blind spots in the scope predicate
 (`scripts/` is not `script/`, a `Cargo.lock` touch proves everything, binary files count). Fixing
 those beats more shards, since one crate's proofs are atomic at half the suite's time. Each is
 its own small lane.
@@ -35,9 +35,9 @@ check name. Serial 30.3 min to 15.1 min.
 wants median merge-cycle wall clock over a *run* of pull requests, and only one sample exists on
 the new path. Take it from the next several merges rather than from the first.
 
-Two corrections this milestone's own measurement made to it, both recorded in the sharding
-section below: four shards buy nothing over two, because `glob` is atomic at 15.0 minutes; and
-the floor is not "the slowest harness, minutes on its own" but a specific 10.8-minute one whose
+Two corrections this milestone's own measurement made to it, both recorded in the sharding section
+below. Four shards buy nothing over two, because `glob` is atomic at 15.0 minutes. And the floor is
+not "the slowest harness, minutes on its own" but a specific 10.8-minute one whose
 cost is an unwind bound rather than a CI problem.
 
 ## The measurement, taken 2026-08-05
@@ -111,7 +111,7 @@ spending either of the two options above.
 ## What "done" means
 
 A recorded before-and-after: median merge-cycle wall clock over a run of pull requests, not a single
-sample, and the honest note that a queue drains at the pace of its slowest *required* check no matter
+sample. And the honest note that a queue drains at the pace of its slowest *required* check no matter
 how the work inside it is arranged.
 
 ## Scope note
@@ -131,7 +131,7 @@ shape, which is why it is named here rather than deferred.
 ## Follow-on
 
 - **Recorded.** A queue drains at the pace of its slowest required check no matter how the work
-  inside it is arranged, and the queue brought its own failure modes with it: evictions GitHub does
+  inside it is arranged. The queue brought its own failure modes with it: evictions GitHub does
   not auto-retry, and a batch that fails has to be bisected. `notes/merge-queue.md` carries the
   numbers, the caveats and the operator's part.
 - **Refused.** A self-hosted runner on `cordoba`, whose 23 GB would fit `VERIFY_JOBS=4` where the

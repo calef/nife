@@ -162,7 +162,7 @@ stage (milestone 916 (integration tests live in basalt)):
 
 - After `jig install ripgrep`, `apropos ripgrep` lists `doc/ripgrep/rg.md`, and `mdr
   doc/ripgrep/rg.md` renders its NAME section.
-- After `jig remove rg`, `apropos ripgrep` finds no ripgrep page, and `mdr doc/ripgrep/rg.md` is
+- After `jig remove ripgrep`, `apropos ripgrep` finds no ripgrep page, and `mdr doc/ripgrep/rg.md` is
   refused as not found.
 - After `jig rollback`, both work again.
 

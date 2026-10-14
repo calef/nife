@@ -2,65 +2,38 @@
 //!
 //! # There is no ambient environment, and that is the design
 //!
-//! A Unix process inherits `environ` from whoever spawned it, and every program on the machine can
-//! read it. This system has no such thing: what a process holds is what it was granted, and an
-//! environment variable is not a capability. So a nife process starts with an **empty** environment,
-//! seeded only with what its own grants say (see [`seed`], below).
+//! A Unix process inherits `environ` from whoever spawned it. Here what a process holds is what it
+//! was granted, and an environment variable is not a capability, so a nife process starts with an
+//! **empty** environment, seeded only from its own grants (see [`seed`]). `env::var("HOME")` is
+//! `None` because nobody gave this program a home; a crate reading `RUST_LOG` or `NO_COLOR` gets
+//! the `None` of a Unix box where the variable is unset.
 //!
-//! What that buys, stated plainly so nobody reads it as an omission: `env::var("HOME")` is `None`
-//! because nobody gave this program a home, not because the lookup failed. A crate reading
-//! `RUST_LOG` or `NO_COLOR` gets the same `None` it would get on a Unix box where the variable
-//! is unset, which is a case every one of them already handles.
+//! Without this backend, `sys::env::unsupported`'s `env()` panics, so `std::env::vars()` (and
+//! `Command::envs`, `dotenvy`, a logger dumping its configuration) aborted the process while
+//! compiling fine. An empty iterator is the truthful answer.
 //!
-//! # Why this exists at all, given that `getenv` could just answer `None`
+//! `set_var` and `remove_var` operate on a process-local table, and `var` reads it back: that is
+//! what `set_var` means on every platform. Nothing leaves the process, because nife has no
+//! `execve` carrying an environment, and spawn is by capability.
 //!
-//! Because [`env()`] could not. Without a backend, nife fell through to `sys::env::unsupported`,
-//! whose `env()` is `panic!("not supported on this platform")`. So `std::env::vars()` **aborted the
-//! process**, and so did anything built on it: `Command::envs`, a logger dumping its configuration,
-//! `dotenvy`, any crate that filters the environment rather than asking for one name. Nothing in a
-//! build failure list showed that, which is the measurement's own sting (notes/crates-io-on-nife.md)
-//! in a second place: `env::vars()` compiled fine and killed the program.
-//!
-//! An empty iterator is the truthful answer to "what variables does this process have", and it is
-//! the one answer that is never a lie here.
-//!
-//! # The table is real, because `set_var` is
-//!
-//! `set_var` and `remove_var` operate on a process-local table, and `var` reads it back. That is not
-//! a courtesy: it is what `set_var` means on every platform (it changes *this* process), and a
-//! program that sets a variable for a library it is about to call is doing something entirely
-//! ordinary that this system has no reason to refuse. Nothing leaves the process, because there is
-//! nowhere for it to go: nife has no `execve` carrying an environment, and spawn is by capability.
-//!
-//! # `TZ`, `LANG` and `TERM` are seeded from a grant, not invented (milestone 47, DECISIONS §111)
+
+//! # `TZ`, `LANG` and `TERM` are seeded from a grant (milestone 47, DECISIONS §111)
 //!
 //! [`seed`] is called once, from `pal::nife::init`, before `main` runs. It reads the
 //! inert-configuration page this process was granted (`rt::CONFIG_SLOT`, `rt::CONFIG_PAGE`), if
-//! any, and pushes whatever keys it carries into [`ENV`] before the program's own code has had a
-//! chance to touch it. A program granted no such page is seeded with nothing, so
-//! `env::var("TZ")` still answers `Err` for a program nobody handed a timezone to, the same
-//! honest-absence shape [`env()`] already has for the general case. See `environment_protocol` for why this
-//! needs no seqlock (one writer, and it finishes before the page has a second reader) and for the
-//! closed domains `TZ`/`LANG`/`TERM` are validated against before they are ever assembled onto
-//! the page.
+//! any, and pushes its keys into [`ENV`]. A program granted no such page is seeded with nothing,
+//! so `env::var("TZ")` answers `Err` for a program nobody handed a timezone to. See
+//! `environment_protocol` for why this needs no seqlock and for the closed domains the keys are
+//! validated against.
 //!
 //! # BUGS
 //!
-//! - **Only the inert-configuration third is seeded.** `PATH` and `HOME` are **names**
-//!   (directory capabilities wearing a string costume, per the roadmap's own framing) and wait on
-//!   `bind` (milestone 154's two-directory endowment, not yet built); secrets are answered
-//!   elsewhere, by an endpoint (§41), and are never meant to arrive as a string on this table at
-//!   all. A program cannot yet be *handed* an arbitrary variable the way it can be handed `TZ`.
-//! - **No shipped program declares wanting the config page.** `grant_plan::Manifest` carries no
-//!   `config` field the way it carries `clock` for `date`, so the seeding above is real and
-//!   tested (`std_exerciser`, milestone 47) but has no shell-facing customer yet. The `caps`
-//!   preview extension DECISIONS §111 also asks for (showing a program's inert-config values
-//!   before it runs) waits on the same customer.
+//! - **Only the inert-configuration third is seeded.** `PATH` and `HOME` are **names** (directory
+//!   capabilities wearing a string costume) and wait on a two-directory endowment; secrets are
+//!   answered by an endpoint (§41 (the endpoint is the broker)) and never arrive as a string on
+//!   this table. A program cannot be *handed* an arbitrary variable the way it can be handed `TZ`.
 //! - **The table is per-process and dies with it.** There is no `/etc/environment`, no shell export
 //!   that survives, and no way for a parent to hand one down.
-//! - **`env::temp_dir` and `env::current_dir` are not this module**, and they are still refused.
-//!   Both are namespace questions rather than variable ones (ranks 16 and 18), and they wait on the
-//!   same `File::open` resolution fork milestone 47 owns.
 
 use core::sync::atomic::{AtomicU8, Ordering};
 

@@ -270,6 +270,15 @@ pub(crate) const DOWNLOADED_NOTELESS: &str = "downloads/noteless.nifepkg";
 /// the install path (`packages/greeting/0.2.0/greeting`), where the version is a directory too.
 pub(crate) const DOWNLOADED_GREETING_0_2_0: &str = "downloads/0.2.0/greeting.nifepkg";
 
+/// **`duet`'s package, on the disk for every leg** (milestone 919 (a package carries several
+/// programs)): two programs, `alto` and `tenor`, neither named after the package. Provisional
+/// name (the constant's and the path's).
+pub(crate) const DOWNLOADED_DUET: &str = "downloads/duet.nifepkg";
+
+/// **`solo`'s package, on the disk for every leg** (milestone 919): `alto` again, in a second
+/// package, which is refused while `duet` holds the name. Provisional name.
+pub(crate) const DOWNLOADED_SOLO: &str = "downloads/solo.nifepkg";
+
 /// **What the gate's package source serves this architecture** (milestone 198 rung 3a's fetch):
 /// `helpers/package-http-peer` reads `NIFE_PACKAGE_SOURCE`, and `script/swish-check` points it here,
 /// one directory per architecture so two legs never share one. It holds `greeting`'s package as the
@@ -544,6 +553,9 @@ fn stage_installed(architecture: &str) -> Result<String, String> {
     // makes is a second digest, which is the whole point.
     let greeting_v2_stem = format!("greeting-0.2.0-{architecture}");
     let greeting_v2 = read_built_package(&root, &greeting_v2_stem)?;
+    // Two packages with several programs between them (milestone 919), one name in common.
+    let duet = read_built_package(&root, &format!("duet-0.1.0-{architecture}"))?;
+    let solo = read_built_package(&root, &format!("solo-0.1.0-{architecture}"))?;
     let (archive, image) = image_lacking_the_packages(architecture)?;
 
     let source = package_source_dir(architecture);
@@ -578,10 +590,13 @@ fn stage_installed(architecture: &str) -> Result<String, String> {
     programs.write(architecture, &tree)?;
     write_seed_file(tree.join(DOWNLOADED_NOTELESS), &noteless)?;
     write_seed_file(tree.join(DOWNLOADED_GREETING_0_2_0), &greeting_v2)?;
+    write_seed_file(tree.join(DOWNLOADED_DUET), &duet)?;
+    write_seed_file(tree.join(DOWNLOADED_SOLO), &solo)?;
     eprintln!(
         "seed_installed ({architecture}): {stem} ({} bytes, digest {}) at {DOWNLOADED_PACKAGE}, \
          a tampered copy, {noteless_stem} at \
-         {DOWNLOADED_NOTELESS}, {greeting_v2_stem} at {DOWNLOADED_GREETING_0_2_0}, and three \
+         {DOWNLOADED_NOTELESS}, {greeting_v2_stem} at {DOWNLOADED_GREETING_0_2_0}, duet at \
+         {DOWNLOADED_DUET}, solo at {DOWNLOADED_SOLO}, and three \
          unvouched programs; no activation set. The package source at {} serves {greeting_stem} \
          and a lying {stem}",
         package.len(),
@@ -638,12 +653,13 @@ fn genuine_and_tampered(root: &std::path::Path, stem: &str) -> Result<(Vec<u8>, 
     Ok((package, tampered))
 }
 
-/// **The archive this leg boots, read and checked to carry neither `greeting` nor `noteless`.**
+/// **The archive this leg boots, read and checked to carry none of the packaged-only fixtures**:
+/// `greeting`, `noteless`, and `duet`'s `alto` and `tenor` (milestone 919).
 ///
-/// The claim the prompt cannot check: the image does not carry them. Neither is a
+/// The claim the prompt cannot check: the image does not carry them. None is a
 /// `grant_plan::Prog`, so the progenitor's image-name refusal (§229) cannot see them either way,
 /// and only the archive can say. Read the archive this leg boots and refuse to seed if it has
-/// either program, since every line about them after that would prove nothing. Returns the
+/// any of them, since every line about them after that would prove nothing. Returns the
 /// archive's path and bytes.
 fn image_lacking_the_packages(architecture: &str) -> Result<(String, Vec<u8>), String> {
     let archive = match architecture {
@@ -653,7 +669,7 @@ fn image_lacking_the_packages(architecture: &str) -> Result<(String, Vec<u8>), S
     };
     let image = std::fs::read(&archive).map_err(|e| format!("could not read {archive}: {e}"))?;
     let fs = nifefs::Fs::parse(&image).map_err(|e| format!("{archive} does not parse: {e:?}"))?;
-    for program in ["greeting", "noteless"] {
+    for program in ["greeting", "noteless", "alto", "tenor"] {
         if fs.read(program).is_some() {
             return Err(format!(
                 "{archive} carries `{program}`, so installing it would prove nothing about a \

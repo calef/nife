@@ -13,6 +13,7 @@
 //! `e1000_flash_cycle_ich8lan`. Read only: nothing here can write or erase the flash, and no write
 //! path was ported.
 //!
+
 //! ```text
 //! SPDX-License-Identifier: BSD-3-Clause
 //!

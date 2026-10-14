@@ -29,44 +29,6 @@
 //! Pure logic. Bytes in, frame numbers out. No hardware, no `unsafe`. Its tests run on
 //! the host in milliseconds instead of booting an emulator.
 //!
-//! # Examples
-//!
-//! The wiring an early boot does: name the span, hand it a bitmap, then declare what is real RAM
-//! and what inside it is already spoken for.
-//!
-//! ```
-//! use page_frames::{PageFrameAllocator, PageFrame, FRAME_SIZE};
-//!
-//! const BASE: u64 = 0x4000_0000;
-//! const TOTAL: usize = 64;                      // 64 frames of address space
-//! let mut bitmap = [0u8; PageFrameAllocator::bitmap_bytes(TOTAL)];
-//! let mut fa = PageFrameAllocator::new(BASE, TOTAL, &mut bitmap);
-//!
-//! // Nothing is free until someone says so: an allocator starts owning nothing.
-//! assert_eq!(fa.stats().free(), 0);
-//!
-//! fa.mark_free(BASE, TOTAL as u64 * FRAME_SIZE);        // all of it is real RAM
-//! fa.mark_used(BASE, 4 * FRAME_SIZE);                   // ... but the first four hold the kernel
-//! assert_eq!(fa.stats().free(), TOTAL - 4);
-//!
-//! let f = fa.alloc().expect("60 frames are free");
-//! assert!(f.addr() >= BASE + 4 * FRAME_SIZE, "never hands back the kernel's own frames");
-//! assert_eq!(fa.stats().free(), TOTAL - 5);
-//!
-//! fa.free(f);
-//! assert_eq!(fa.stats().free(), TOTAL - 4);
-//! ```
-//!
-//! A frame is an address that is known to be aligned, which is the point of the newtype:
-//!
-//! ```
-//! use page_frames::{PageFrame, FRAME_SIZE};
-//!
-//! // `containing` rounds down to the frame an arbitrary address falls in.
-//! assert_eq!(PageFrame::containing(0x4000_0FFF).addr(), 0x4000_0000);
-//! assert_eq!(PageFrame::containing(0x4000_1000).addr(), 0x4000_1000);
-//! ```
-//!
 //! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review). Renamed from
 //! `frames`: the same collision DECISIONS §113 already found and fixed for the kernel's `PageFrame`
 //! capability type (renamed to `PageFrame`) against `crates/compositor`'s own use of "frame" for a
@@ -80,10 +42,20 @@ pub const FRAME_SIZE: u64 = 4096;
 
 /// A physical address, guaranteed frame-aligned.
 ///
-/// A newtype rather than a bare `u64`, because a physical address and a virtual address
-/// are about to become genuinely different things (milestone 4), and the compiler should
-/// stop us confusing them. Right now, with the MMU off, they happen to be identical.
-/// That coincidence ends soon and this type is what will keep it from hurting.
+/// A newtype rather than a bare `u64`, so the compiler keeps physical and virtual addresses
+/// apart.
+///
+/// # Examples
+///
+/// A frame is an address that is known to be aligned, which is the point of the newtype:
+///
+/// ```
+/// use page_frames::{PageFrame, FRAME_SIZE};
+///
+/// // `containing` rounds down to the frame an arbitrary address falls in.
+/// assert_eq!(PageFrame::containing(0x4000_0FFF).addr(), 0x4000_0000);
+/// assert_eq!(PageFrame::containing(0x4000_1000).addr(), 0x4000_1000);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PageFrame(u64);
 
@@ -138,6 +110,34 @@ impl Stats {
 /// handed out after someone has explicitly said "this address range is real RAM." A
 /// bitmap that defaulted to free would cheerfully allocate the MMIO hole at
 /// `0x0900_0000` and hand you the UART's registers as scratch space.
+///
+/// # Examples
+///
+/// The wiring an early boot does: name the span, hand it a bitmap, then declare what is real RAM
+/// and what inside it is already spoken for.
+///
+/// ```
+/// use page_frames::{PageFrameAllocator, PageFrame, FRAME_SIZE};
+///
+/// const BASE: u64 = 0x4000_0000;
+/// const TOTAL: usize = 64;                      // 64 frames of address space
+/// let mut bitmap = [0u8; PageFrameAllocator::bitmap_bytes(TOTAL)];
+/// let mut fa = PageFrameAllocator::new(BASE, TOTAL, &mut bitmap);
+///
+/// // Nothing is free until someone says so: an allocator starts owning nothing.
+/// assert_eq!(fa.stats().free(), 0);
+///
+/// fa.mark_free(BASE, TOTAL as u64 * FRAME_SIZE);        // all of it is real RAM
+/// fa.mark_used(BASE, 4 * FRAME_SIZE);                   // ... but the first four hold the kernel
+/// assert_eq!(fa.stats().free(), TOTAL - 4);
+///
+/// let f = fa.alloc().expect("60 frames are free");
+/// assert!(f.addr() >= BASE + 4 * FRAME_SIZE, "never hands back the kernel's own frames");
+/// assert_eq!(fa.stats().free(), TOTAL - 5);
+///
+/// fa.free(f);
+/// assert_eq!(fa.stats().free(), TOTAL - 4);
+/// ```
 pub struct PageFrameAllocator<'a> {
     bitmap: &'a mut [u8],
     /// Physical address of frame 0.

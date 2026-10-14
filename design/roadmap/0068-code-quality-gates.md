@@ -8,7 +8,7 @@ built: 2026-08-22
 The lint policy landed 2026-08-02. The doc-example half **closed 2026-08-17**;
 the `missing_docs` half's open policy question is decided 2026-08-22 (DECISIONS §107): opt-out,
 workspace-wide. The worklist itself (401 items across 32 crates on 2026-08-17, closed to 235 across
-7 crates by a 2026-08-22 follow-up lane) is not required to reach zero for BUILT; it is an ordinary
+7 crates by a 2026-08-22 follow-up lane) is not required to reach zero for BUILT. It is an ordinary
 ratchet now, the same shape §38 already uses for dead code, tracked in notes/doc-coverage.md.
 
 `missing_docs = "warn"` is in `[workspace.lints.rust]`; every crate with `[lints]
@@ -30,9 +30,9 @@ now single decisions: `group_imports`/`imports_granularity` in `rustfmt.toml`, a
 `[workspace.lints]` with a one-line opt-in per member.
 
 Adopted: `cast_ptr_alignment`, `ptr_as_ptr`, `semicolon_if_nothing_returned`, `manual_let_else`,
-`doc_markdown`. 1,221 warnings went to zero. Three new non-clippy gates joined `script/lint`:
-dependency direction (nothing under `crates/` may depend on a binary, which would take it out of
-the host tests and Kani while still building), **unused dependencies** (§46 with a gate), and
+`doc_markdown`. 1,221 warnings went to zero. Three new non-clippy gates joined `script/lint`. One is
+dependency direction: nothing under `crates/` may depend on a binary, which would take it out of the
+host tests and Kani while still building. Then **unused dependencies** (§46 (thin primitives or whole subsystems) with a gate), and
 spelling over the prose.
 
 ## The part worth carrying off: three lints were removed on the evidence
@@ -52,7 +52,7 @@ in `Cargo.toml` and `rustfmt.toml` rather than silently omitted.
 around `RedoxFS`, `PCIe` and `OpenSBI`, which are proper nouns that would then render as code a
 reader could type. `clippy.toml`'s `doc-valid-idents` takes those; the other half were real.
 
-The general rule, and the reason this milestone is worth a roadmap entry at all: a lint that is
+The general rule, and the reason this milestone is worth a roadmap entry at all. A lint that is
 right in general can be wrong for a tree, and the way to find out is to run it and read the hits.
 Reasoning about a lint's description predicts none of these.
 
@@ -77,9 +77,9 @@ Five crates' doctests are run by nothing in CI, which is the one gap the pass co
 from its syscall half is what would fix it, and that is a lane of its own.
 
 An example that runs was preferred everywhere it was possible, because a fenced block that never
-compiles is a comment. `elf` forges a writable-and-executable segment and watches it be refused;
-`paging` builds real aarch64 page tables on the host and shows that break-before-make is *forced*;
-`smb_proto` performs a whole SMB2 mount against the fixture share; `ntp_proto` shows an off-path spoof
+compiles is a comment. `elf` forges a writable-and-executable segment and watches it be refused.
+`paging` builds real aarch64 page tables on the host and shows that break-before-make is *forced*.
+`smb_proto` performs a whole SMB2 mount against the fixture share. `ntp_proto` shows an off-path spoof
 failing the origin check before any of the packet is believed. Three crates got `no_run` with the
 reason in the prose, because a `svc` on a host is a fault and a function returning `!` has nothing to
 assert.
@@ -104,18 +104,18 @@ the selected crate. That produced a first answer of 647 items across 38 crates, 
 looked entirely plausible. Measure it as one workspace-wide invocation into a clean target directory.
 
 A follow-up lane burned the worklist down on 2026-08-22, re-measuring the trap-avoiding way before
-and after every batch: the honest count had drifted to 404 across 31 crates in the five days since,
-and the lane closed 169 of those, crate by crate, writing real doc comments (not filler) for every
-item and turning on `#![warn(missing_docs)]` on each crate it brought to zero. 235 items remain,
+and after every batch. The honest count had drifted to 404 across 31 crates in the five days since.
+The lane closed 169 of those, crate by crate, writing real doc comments (not filler) for every item
+and turning on `#![warn(missing_docs)]` on each crate it brought to zero. 235 items remain,
 across 7 crates: `machine_discovery` (54), `smb_proto` (52), `mdns_proto` (41), `pci` (24), `gpt` (23),
 `grant_plan` (22), `compositor` (19). 50 of the 57 crates under `crates/` now carry the opt-in, up
 from 23. See notes/doc-coverage.md for the full crate list and the per-crate worklist table.
 
 Decided 2026-08-22 (DECISIONS §107): `[workspace.lints.rust]`, opt-out. Higher on CLAUDE.md's
-ladder, since the default becomes on and the opt-out list is a worklist that can only shrink, and it
-is the only version that covers a crate created tomorrow. It does invert a rule §61 itself states
+ladder, since the default becomes on and the opt-out list is a worklist that can only shrink. It is
+the only version that covers a crate created tomorrow. It does invert a rule §61 (A lint is adopted on evidence from this tree,) itself states
 ("adding a lint to this table is a decision to fix every existing violation first"); §107 records
-this as a deliberate, considered exception rather than a quiet reversal, made because the worklist a
+this as a deliberate, considered exception rather than a quiet reversal. It was made because the worklist a
 switch needed `#[allow]` for had shrunk from 32 crates to 7 by the time the question was answered.
 
 ## What closing the unsafe half taught
@@ -137,9 +137,9 @@ rather than an excuse:
   sentence is honest at all 73 sites.
 
 The remaining quarter was the real work, and each site's comment says something a reader could
-not have guessed: intrusive-queue link ownership (including a drop-order fact, that a test's nodes
-are declared before the queue so they outlive it); allocator alignment invariants; virtio ring
-aliasing, where the read side is the driver's memory and the write side is a kernel-private shadow;
+not have guessed. Intrusive-queue link ownership (including a drop-order fact, that a test's nodes
+are declared before the queue so they outlive it). Allocator alignment invariants. Virtio ring
+aliasing, where the read side is the driver's memory and the write side is a kernel-private shadow.
 `env::set_var` in `xtask`, unsafe since edition 2024, sound only because the one thread it ever
 spawns copies pipe bytes and never reads the environment.
 

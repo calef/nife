@@ -1,16 +1,14 @@
-//! **How deep one IPC reaches into a thread's kernel stack** (milestone 134, 2026-09-19).
+//! **How deep one IPC reaches into a thread's kernel stack** (milestone 134).
 //!
-//! Milestone 134's E1 predicts a knee in IPC latency against thread count from one piece of
-//! arithmetic: thread kernel stacks sit `STACK_SLOT_SPAN` apart, each IPC touches a different one,
-//! and "taking one IPC to touch roughly 1 to 2 KiB of its own kernel stack" they fill a 32 KB L1d
-//! somewhere between 16 and 32 threads. That 1 to 2 KiB was an estimate. notes/stack-high-water.md
-//! reports the deepest standing path across the whole suite, which is spawn and teardown rather than
-//! IPC, so nothing measured the per-IPC figure. This does.
+//! Milestone 134's E1 predicts a knee in IPC latency against thread count: thread kernel stacks sit
+//! `STACK_SLOT_SPAN` apart, each IPC touches a different one, and at roughly 1 to 2 KiB each they
+//! fill a 32 KB L1d somewhere between 16 and 32 threads. This measures the per-IPC figure;
+//! notes/stack-high-water.md reports the deepest path across the suite, which is not IPC.
 //!
 //! # The method
 //!
-//! The same watermark as milestone 84 (stack high-water), through its `crate::stack::paint` and
-//! `crate::stack::high_water`, re-armed **once per operation** instead of once per stack. Immediately before one IPC operation
+//! The same watermark as milestone 84 (stack high-water), through `crate::stack::paint` and
+//! `crate::stack::high_water`, re-armed **once per operation**. Immediately before one IPC operation
 //! the thread paints its own kernel stack from the bottom up to [`MARGIN`] bytes below its live `sp`;
 //! immediately after, it scans for the deepest word that is no longer paint. The result is the
 //! deepest byte that one operation reached, as a distance from the stack's top. Many operations,
@@ -29,6 +27,7 @@
 //!   its kernel stack (`sched::current_kernel_stack_top`'s note), so here the distance from the top
 //!   is exactly the stack one syscall touches, trap frame included.
 //!
+
 //! # What the instrument costs, and why it does not perturb what it reads
 //!
 //! **Nothing in a default build**: all of this, including the one call in `syscall::dispatch`, is
@@ -44,6 +43,7 @@
 //! paint of up to 24 KiB per sample), which is why it is off in every build that measures time, and
 //! why sampling stops once each series is full.
 //!
+
 //! # What it does not capture
 //!
 //! - **Interrupt nesting at the deepest instant.** A timer interrupt taken while an operation is at

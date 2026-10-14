@@ -90,6 +90,20 @@ pub fn evdev_code(usage: u8) -> Option<u16> {
 /// first is what a person did. A usage with no evdev code is skipped.
 ///
 /// At most twenty calls: eight modifiers, six releases, six presses.
+///
+/// # Examples
+///
+/// Shift and `h` arrive together in one report, so the shift press is delivered first:
+///
+/// ```
+/// use usb::boot_keyboard::{BootReport, changes};
+///
+/// let before = BootReport::parse(&[0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
+/// let after = BootReport::parse(&[0x02, 0, 0x0b, 0, 0, 0, 0, 0]).unwrap(); // left shift, usage 0x0b (h)
+/// let mut seen = Vec::new();
+/// changes(&before, &after, &mut |code, pressed| seen.push((code, pressed)));
+/// assert_eq!(seen, [(42, true), (35, true)]); // KEY_LEFTSHIFT, then KEY_H
+/// ```
 pub fn changes(before: &BootReport, after: &BootReport, event: &mut dyn FnMut(u16, bool)) {
     let flipped = before.modifiers ^ after.modifiers;
     for (bit, &code) in MODIFIER_CODES.iter().enumerate() {

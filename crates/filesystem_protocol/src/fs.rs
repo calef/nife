@@ -135,17 +135,14 @@ pub const MKDIR: u64 = 10;
 ///
 /// # The two atomicities, stated apart (DECISIONS §42)
 ///
-/// - **Concurrency-atomic: yes.** No observer sees the intermediate state where the name exists
-///   in both places or neither. The FS server runs one request to completion before it receives
-///   the next, so inside the server there is no concurrent observer to see anything.
+/// - **Concurrency-atomic: yes.** The FS server runs one request to completion before it
+///   receives the next, so no observer sees the name in both places or neither.
 /// - **Crash-atomic: yes.** The whole rename runs in one RedoxFS transaction and reaches the
 ///   platter through one commit in the header ring, so a fresh mount finds the old name or the
-///   new one and never both or neither. This is measured, not argued: it is the last operation
-///   of `redoxfs_server/tests/crash_consistency.rs`'s workload, so the sweep that cuts the device at
-///   every write in that workload cuts inside this one too.
+///   new one and never both or neither; `redoxfs_server/tests/crash_consistency.rs` cuts the
+///   device at every write of a workload that ends with a rename.
 ///
-/// The temp-file-then-rename idiom needs both, which is why §42 states them separately: saying
-/// "atomic" and letting the reader assume the stronger one is the mistake POSIX made.
+/// The temp-file-then-rename idiom needs both, which is why §42 states them separately.
 ///
 /// # Rights, and what is deliberately not offered
 ///
@@ -153,29 +150,20 @@ pub const MKDIR: u64 = 10;
 /// [`super::dir::CREATE`] on the **destination** (a name appears). Both are mutating rights, so
 /// a capability lacking either answers [`super::dir::EROFS`]: through this capability that
 /// directory does not give names up, or does not take new ones. Within one directory a rename
-/// needs both on that one directory. This is the rung that made `REMOVE` real: until this verb
-/// existed nothing on the wire consulted it, and a right nothing enforces is a right the
-/// contract is lying about.
+/// needs both on that one directory.
 ///
-/// - **`renameat2`'s `EXCHANGE` and `NOREPLACE` are not offered** (§42). They work on ext4,
-///   btrfs, XFS, f2fs and tmpfs and nowhere else, and emulating `NOREPLACE` with link-then-
-///   unlink is racy, so offering them would make behaviour backend-specific.
-/// - **Cross-filesystem move is not this verb** (§42). It is copy-then-unlink, a different
-///   object with a different identity, non-atomic by nature. It cannot be reached here anyway:
-///   both handles are minted by one server bound to one image.
-/// - **A directory can be renamed in place but not moved into another directory**, and the
-///   answer is `EINVAL`. POSIX's guard against making a directory its own descendant is a
-///   path-prefix test, and this contract has no paths to take a prefix of; the equivalent is an
-///   ancestry walk in the server, which is real recursion in a process whose stack is measured
-///   at three quarters used. Renaming within one directory cannot create a cycle, because the
-///   node's parent does not change, and that is the boundary the refusal is drawn at. §42's rule
-///   is that a verb which is not offered fails loudly rather than degrading, and this does.
+/// - **`renameat2`'s `EXCHANGE` and `NOREPLACE` are not offered** (§42): they work on a few
+///   Linux filesystems only, so offering them would make behavior backend-specific.
+/// - **Cross-filesystem move is not this verb** (§42): both handles are minted by one server
+///   bound to one image.
+/// - **A directory can be renamed in place but not moved into another directory** (`EINVAL`):
+///   POSIX's guard against making a directory its own descendant is a path-prefix test, and the
+///   equivalent here is an ancestry walk in a server whose stack is three quarters used.
 ///
 /// If the destination name exists it is **replaced**, provided it is the same kind as the
 /// source: a file over a directory is `EISDIR` and a directory over a file is `ENOTDIR`, POSIX's
-/// own answers, and a non-empty destination directory is `ENOTEMPTY`. The kinds are checked here
-/// rather than left to the backend, because §42's whole point is that an offered verb means one
-/// thing everywhere. Renaming a name onto itself is a successful no-op.
+/// own answers, and a non-empty destination directory is `ENOTEMPTY`, checked here so the verb
+/// means one thing on every backend. Renaming a name onto itself is a successful no-op.
 pub const RENAME: u64 = 11;
 /// **Remove a name from a directory. This is `unlink`, and it is not revocation.**
 ///
@@ -326,97 +314,48 @@ pub const REMOVEXATTR: u64 = 17;
 ///   There are no quotas in this filesystem, so there is no smaller number that would be true;
 ///   reporting the subtree's own usage as a "size" would be the silent degradation DECISIONS
 ///   §42 forbids. If quotas ever exist, this verb reports the quota and this note goes away.
-/// - **The number moves when somebody else writes, so it is a channel and not only a leak.**
-///   The 2026-08-17 security audit's extension of the entry above, recorded-accepted. The entry
-///   above states what a confined holder learns *once*; polling states what it learns *over
-///   time*, and the two have different characters. Two programs confined to disjoint subtrees of
-///   one image, sharing no capability and unable to name each other's names, can still
-///   communicate: one writes and truncates to modulate the free count, the other polls `STATFS`.
-///   Nobody has measured the bandwidth. It is bounded below by the store's allocation
-///   granularity and above by how fast a client can `CALL` this server.
-///
-///   It is not fixable at this verb, which is why it is recorded rather than milestoned. A
-///   confined writer has to be able to ask whether its next write fits, and any answer that is
-///   true is an answer that moves when the volume moves. Per-subtree quotas would replace the
-///   channel with a private number rather than merely narrow it, which is the second reason the
-///   entry above wants them. Until then the honest statement is that **two subtrees on one
-///   image are not isolated from each other's write volume**, and a deployment that needs that
-///   isolation needs two images.
+/// - **The number moves when somebody else writes, so it is a channel and not only a leak**
+///   (recorded-accepted). Two programs confined to disjoint subtrees of one image can communicate:
+///   one writes and truncates to modulate the free count, the other polls `STATFS`. The bandwidth
+///   is unmeasured. It is not fixable at this verb, since a true answer moves when the volume
+///   moves; per-subtree quotas would replace it with a private number. Until then **two subtrees
+///   on one image are not isolated from each other's write volume**; isolation needs two images.
 /// - **The numbers are a snapshot with no lock behind it.** Two clients writing concurrently
 ///   both see a free count that was true when it was read; the store's own `ENOSPC` at write
 ///   time is the authority, and this is a forecast. That is what `statfs` is everywhere.
 pub const STATFS: u64 = 18;
 
-/// **Make everything this server has acknowledged durable** (milestone 55). Written as the
-/// verb behind SMB2's `FLUSH`, which is what made macOS's `VOLUME_FULL_SYNC` bit claimable;
-/// that implementation was removed on 2026-08-30 (notes/smb.md) and this verb was not, because
-/// "make my writes durable" is a file service's question rather than a protocol's.
+/// **Make everything this server has acknowledged durable** (milestone 55 (Time Machine)).
 ///
 /// [`req_len`] and the second word are both 0; [`req_handle`] is **any handle this server
-/// minted**, file or directory, [`ROOT`] included, exactly as [`STATFS`] takes one. Reply `r0`
-/// = how many device flushes the storage behind this capability has completed since the block
-/// server started, **including this one**, so a success is always `>= 1`; or an error. `EBADF`
-/// for a handle the server did not mint.
+/// minted**, file or directory, [`ROOT`] included, as [`STATFS`] takes one. Reply `r0` = how many
+/// device flushes the storage behind this capability has completed since the block server
+/// started, **including this one**, so a success is always `>= 1`; or an error. `EBADF` for a
+/// handle the server did not mint.
 ///
-/// # What it actually promises, which is narrower than the name
+/// It promises that the **device** has been told and the reply waited for it to finish. The FS
+/// server commits every write in one RedoxFS transaction before replying, so there is no dirty
+/// state above the block device. **After a successful `SYNC`, every write this server has
+/// acknowledged is on the medium the device calls durable**; a device that lies about its flush is
+/// outside what a protocol can check.
 ///
-/// It promises that the **device** has been told, and that the reply waited for the device to
-/// say it was done. It does not promise anything about the filesystem's own state, because
-/// there is nothing to promise: the FS server puts every write through one RedoxFS transaction
-/// that commits to the header ring before it replies, so there is no dirty state above the
-/// block device at the moment a client could ask. This verb closes the layer below that one,
-/// where the block server previously issued no `VIRTIO_BLK_T_FLUSH` at all and the durability
-/// of the last acknowledged write was the device's word rather than ours.
+/// Needs [`super::dir::WRITE`], refused with [`super::dir::EROFS`]: a sync is an action on the
+/// device (a flush stalls the queue for every client of the image), and a holder that may not
+/// write has nothing outstanding to make durable.
 ///
-/// So the honest sentence is: **after a successful `SYNC`, every write this server has
-/// acknowledged is on the medium the device calls durable.** What "durable" means is still the
-/// device's definition, and a device that lies about its own flush is outside anything a
-/// protocol can check.
-///
-/// # Rights: [`super::dir::WRITE`], refused with [`super::dir::EROFS`]
-///
-/// This is the one place this contract departs from [`STATFS`]'s "a handle is the whole
-/// qualification", and the reason is that a sync is an **action on the device** rather than a
-/// fact about it. A holder that may not write has nothing outstanding to make durable, and
-/// letting it ask would hand a read-only capability a lever on every other client's write
-/// latency: a device flush stalls the queue for everyone on the image. Requiring the right
-/// costs nothing real, because anyone with something to sync wrote it first.
-///
-/// `EROFS` rather than `EACCES` for the reason [`super::dir`] gives everywhere else: through
-/// this capability the storage does not take writes, so there is no policy that could have
-/// said yes.
-///
-/// # The refusal that must stay loud
-///
-/// When the device cannot flush, the block server's `EOPNOTSUPP` (95) is passed **through**
-/// this verb unchanged rather than mapped or swallowed. That is deliberate and it is the whole
-/// point of the verb existing: a `SYNC` that answered 0 on a device with no flush would be the
-/// silent degradation DECISIONS §42 forbids, and it would be that in the one place where the
-/// consequence is somebody's backup. A client that meets `EOPNOTSUPP` here knows the truth,
-/// which is that this storage cannot be made durable on demand.
-///
-/// It is also the only errno on this contract that does not originate in the FS server or in
-/// RedoxFS. The FS server maps RedoxFS's error type once, at its serve loop; a blk errno is
-/// already a wire value when it arrives, and re-mapping it to `EIO` would throw away the one
-/// distinction the caller needs (cannot, versus tried and failed).
+/// When the device cannot flush, the block server's `EOPNOTSUPP` (95) passes **through**
+/// unchanged, the only errno on this contract that does not originate in the FS server or
+/// RedoxFS. Answering 0 would be the silent degradation that DECISIONS §42 (a filesystem declares
+/// what it offers and must be truthful) forbids, where the consequence is somebody's backup.
 ///
 /// # BUGS
 ///
-/// - **The count is a fact about the device, not about the caller**, so two clients of one
-///   image see one number and each can watch the other sync. That is [`STATFS`]'s free-count
-///   channel again, with the same answer: there is no smaller number that would be true, and
-///   two subtrees on one image are not isolated from each other's IO. The bandwidth is lower
-///   here than `STATFS`'s, because a sync costs a device round trip and a truncate does not.
-/// - **It syncs the whole device, never a subtree or a file.** A holder of one file makes the
-///   entire image durable, including writes it cannot see and did not make. POSIX's `fsync` on
-///   a descriptor suggests otherwise; nothing below here can honour that, because RedoxFS
-///   commits a transaction across the image and the block layer moves blocks rather than
-///   files. Naming it `SYNC` rather than `FSYNC` is the whole of what this note buys, and it
-///   is on purpose.
-/// - **It does not fence.** A client that issues a write and a sync concurrently on two
-///   handles gets no ordering guarantee between them; the sync covers what the server had
-///   already acknowledged when it ran. There is no ordering primitive on this contract, and a
-///   backup client's own write-then-flush is sequential, which is why this has not needed one.
+/// - **The count is a fact about the device, not about the caller**, so two clients of one image
+///   can watch each other sync: [`STATFS`]'s channel again, at lower bandwidth.
+/// - **It syncs the whole device, never a subtree or a file**, because RedoxFS commits across the
+///   image. Hence `SYNC` rather than `FSYNC`.
+/// - **It does not fence.** A write and a sync issued concurrently on two handles are unordered;
+///   the sync covers what the server had already acknowledged when it ran.
 pub const SYNC: u64 = 19;
 
 /// **The modification time of `name`, in Unix seconds** (milestone 47's `touch`, the read

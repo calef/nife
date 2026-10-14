@@ -60,7 +60,7 @@ push. The defect is a `dated` row with no date, or with no command.
 
 ## Gated
 
-Nine instruments. Six are ceilings that fire when a number grows and stay silent when it falls.
+Thirteen instruments. Ten are ceilings that fire when a number grows and stay silent when it falls.
 Row 1 is a two-sided drift band and row 9 is a floor.
 
 | measure | instrument | what fails |
@@ -74,6 +74,10 @@ Row 1 is a two-sided drift band and row 9 is a floor.
 | unsafe density outside `kernel/src/arch/` | `script/lint` | over the `count-at-most` ceiling in `notes/unsafe-obligations.md`: 88 blocks per 10,000 code lines on 2026-09-24 (corrected from 94) |
 | `unsafe impl Send`/`Sync` claims | `script/lint` | over the ceiling in the same file: 23 on 2026-09-24 (corrected from 17) |
 | per-file line coverage | `script/coverage` | any file under the 80% floor |
+| Rust file length | `script/lint` (file-length ratchet) | any `.rs` file over 2,000 lines |
+| function length | `script/lint` (lint ratchet) | any function over 100 code lines |
+| words per document | `script/lint` (prose ratchet) | any document over 3,000 words, unless marked |
+| split parents | `script/lint` (parent-index check) | any split parent holding more than an index, unless marked |
 
 Only the density ceiling expresses a direction rather than a limit, and it mixes kernel and
 userspace unsafe into one population; the split is plotted weekly with no ceiling of its own. The
@@ -165,7 +169,6 @@ time.
 | Kani proof harnesses | harnesses, and how many carry a falsification record | [proofs and coverage](register-of-measures/code-proofs-and-coverage.md) |
 | unsafe outside `arch/` | blocks per 10,000 code lines, against the gated ceiling | [the unsafe series](register-of-measures/unsafe-series.md) |
 | unsafe by trust boundary | the same blocks split kernel, userspace, shared and boot chain | [the unsafe series](register-of-measures/unsafe-series.md) |
-| Rust file size | files over 2,000 lines, their share of all Rust lines, the largest file, the 95th percentile, the share over 1,000 | [file size](register-of-measures/file-size.md) |
 | milestones built each week | a flow, read from each block's `Built` date in today's tree | [landed each week](register-of-measures/landed-each-week.md) |
 | pull requests merged each week; debt-paydown share | merge commits on `main`; the share, from GitHub labels | [landed each week](register-of-measures/landed-each-week.md) |
 | commits and lines by model | commits and lines touched per week, bucketed by the `Co-Authored-By` trailer | [which model wrote it](register-of-measures/which-model-wrote-it.md) |
@@ -174,8 +177,7 @@ time.
 | Rust in the tree | code and comment lines, `kernel/src` apart from the rest | [proofs and coverage](register-of-measures/code-proofs-and-coverage.md) |
 | `BUGS` sections | markdown headings and Rust doc-comment headings; rising is good | [proofs and coverage](register-of-measures/code-proofs-and-coverage.md) |
 | coverage, and the lowest-covered file | the workspace aggregate, and the per-file minimum the floor acts on | [proofs and coverage](register-of-measures/code-proofs-and-coverage.md) |
-| the prose budget | words over the 3,000-word cap, and documents over it | [prose budget](register-of-measures/prose-budget.md) |
-| ratchet debt | documents over a writing-standards limit, comment blocks over 40 lines, split parents that hold more than an index | [ratchet debt](register-of-measures/ratchet-debt.md) |
+| ratchet debt | documents over a writing-standards limit, and comment blocks over 40 lines | [ratchet debt](register-of-measures/ratchet-debt.md) |
 | benchmark drift | icount rows more than 5% above a fixed anchor, per architecture; a report, not a gate | [the drift report](project-metrics/baseline-drift.md), generated |
 | interface stability | public items of the contract and std ABI crates removed or changed, and added; syscall renumbers and renames, format bumps and amendments, co-change | [how stable the interface is](interface-stability.md) |
 | homes | packages by where their home stands and whether they have left; tracked files by the same | [package boundaries](package-boundaries.md) |
@@ -244,9 +246,9 @@ provisional names.
 | [records-by-status](register-of-measures/records-by-status.md) | fatal risks, decisions, names, proposals and milestones by status |
 | [fatal-risk-colors](register-of-measures/fatal-risk-colours.md) | verdict colors by week and the backfill's limits |
 | [unsafe-series](register-of-measures/unsafe-series.md) | the unsafe census by week and by trust boundary, and its BUGS |
-| [file-size](register-of-measures/file-size.md) | the §266 (a Rust source file stays under 2,000 lines) series: physical lines, comments counted |
+| [file-size](register-of-measures/file-size.md) | the §266 (a Rust source file stays under 2,000 lines) gate's measure, comments counted |
 | [landed-each-week](register-of-measures/landed-each-week.md) | milestones built and pull requests merged each week, and the 2026-09-23 reconciliation |
 | [which-model-wrote-it](register-of-measures/which-model-wrote-it.md) | the commits-and-lines-by-model series: why the trailer, the checked three-way sum, and what it cannot say |
 | [project-cost](register-of-measures/project-cost.md) | the cost units, the capture deadline, the two dollars, and what a turn costs |
 | [code-proofs-and-coverage](register-of-measures/code-proofs-and-coverage.md) | Kani harnesses, Rust lines, `BUGS` sections, coverage and the lowest-covered file |
-| [prose-budget](register-of-measures/prose-budget.md) | the §212 (a prose budget) series and its BUGS |
+| [prose-budget](register-of-measures/prose-budget.md) | the §212 (a prose budget) gate's scope, count and BUGS |
