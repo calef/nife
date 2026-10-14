@@ -17,12 +17,12 @@ not fuzz targets):
 Measured 2026-10-04 (UTC) on an M-series Mac, from an empty corpus: see notes/fuzzing-the-services.md.
 
 diff --git a/crates/compositor/src/lib.rs b/crates/compositor/src/lib.rs
-index d25c23481..43a9ddf70 100644
+index c1f9bd75b..771d8016d 100644
 --- a/crates/compositor/src/lib.rs
 +++ b/crates/compositor/src/lib.rs
-@@ -514,7 +514,7 @@ pub fn expected_screen_checksum(n: usize) -> u64 {
- /// window that hangs off the screen makes the compositor write outside the framebuffer. The client's
- /// number is *untrusted input* to the first clip, which is why it is a clip and not an assertion.
+@@ -468,7 +468,7 @@ pub fn expected_screen_checksum(n: usize) -> u64 {
+ /// assert!(out.right() <= SCREEN_W as i32 && out.bottom() <= SCREEN_H as i32);
+ /// ```
  pub fn damage_to_screen(win: &Window, damage: Rect) -> Rect {
 -    let inside = damage.intersect(&win.bounds());
 +    let inside = damage;

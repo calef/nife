@@ -8,11 +8,11 @@ Expected to fail: the `SEND` assertion, which gets `Ok(0)` where it wants `NotPe
 because the send rendezvouses with the driver parked in `Irq::WAIT`. That driver wakes holding
 `1`, which is exactly what its interrupt looks like.
 
-diff --git a/crates/inter_process_communication/src/lib.rs b/crates/inter_process_communication/src/lib.rs
---- a/crates/inter_process_communication/src/lib.rs
-+++ b/crates/inter_process_communication/src/lib.rs
-@@ -399,10 +399,8 @@ impl<T: Node> Rendezvous<T> {
-     /// kernel's discipline behind the token: `me` is the running thread, its token sits on its own
+diff --git a/crates/inter_process_communication/src/rendezvous.rs b/crates/inter_process_communication/src/rendezvous.rs
+index 845029a65..3dd0fb1b9 100644
+--- a/crates/inter_process_communication/src/rendezvous.rs
++++ b/crates/inter_process_communication/src/rendezvous.rs
+@@ -263,9 +263,7 @@ impl<T: Node> Rendezvous<T> {
      /// TCB (`thread::Thread::own_token`) until this call takes it, and a thread queued here is
      /// `Blocked`, which the reaper never touches.)
      pub fn send(&mut self, me: Unqueued<T>) -> Send<T> {
