@@ -1,4 +1,4 @@
-use core::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use super::*;
 use crate::cap::{
@@ -53,6 +53,46 @@ pub struct Wiring {
 /// trade.
 static TRANSCRIPT: spin::Mutex<[u8; 8192]> = spin::Mutex::new([0; 8192]);
 static WRITTEN: AtomicUsize = AtomicUsize::new(0);
+
+/// Set while a scripted shell's [`transcript`] is being collected; [`watch_for_a_killed_stage`]
+/// runs while it is.
+static SCRIPT_RUNNING: AtomicBool = AtomicBool::new(false);
+
+/// **Fail the test the moment a user thread dies under a scripted shell**, instead of a minute later
+/// as a watchdog "lost-wakeup hang".
+///
+/// The real boot reports a killed job to the shell: `job_undertaker` sends `JOB_FAULTED` on the
+/// result endpoint, the shell prints its faulted sentence and destroys the pipe, and the rest of
+/// the line ends. [`init_service`] has no undertaker, so here the line's other stages and the shell
+/// wait forever on a stage that will never write (merge-group run 38506029610: `date` killed in
+/// `date | wc`, then sixty seconds of every thread blocked). No script here expects a fault, because
+/// this stub could never have reported one, so any rise in `USER_FAULTS` while a script runs is
+/// the failure, and the kill report above this panic names the thread.
+///
+/// A `yield_now` loop, the shape `wait_for` uses, because the kernel has no timed wait a test can
+/// take. It ends when the transcript is collected, or after `GIVE_UP_SECONDS` if nobody collects
+/// it, so it never outlives the script into a test that faults on purpose.
+fn watch_for_a_killed_stage() {
+    use crate::arch::exceptions::USER_FAULTS;
+    const GIVE_UP_SECONDS: u64 = 300;
+    let before = USER_FAULTS.load(Ordering::Acquire);
+    let deadline = crate::arch::timer::now() + GIVE_UP_SECONDS * crate::arch::timer::frequency();
+    while SCRIPT_RUNNING.load(Ordering::Acquire) && crate::arch::timer::now() < deadline {
+        if USER_FAULTS.load(Ordering::Acquire) != before {
+            // The count rises before the kill report prints, on the dying thread's core. A fifth of
+            // a second lets the report finish, so the two do not interleave on the console.
+            let quiet = crate::arch::timer::now() + crate::arch::timer::frequency() / 5;
+            while crate::arch::timer::now() < quiet {
+                crate::sched::yield_now();
+            }
+            panic!(
+                "a user thread was killed while a scripted shell ran (its kill report is above). \
+                 This stub progenitor has no undertaker to tell the shell, so the line would hang."
+            );
+        }
+        crate::sched::yield_now();
+    }
+}
 
 /// **Wire a scripted shell and the progenitor service behind it.**
 ///
@@ -153,6 +193,11 @@ fn start_with(
     }
     .addr();
     WRITTEN.store(0, Ordering::SeqCst);
+    SCRIPT_RUNNING.store(true, Ordering::Release);
+    if crate::sched::spawn(watch_for_a_killed_stage).is_none() {
+        crate::println!("start_with: spawn(watch_for_a_killed_stage) refused");
+        return None;
+    }
 
     // The progenitor first, so a shell that spawns before the service is listening merely blocks in a
     // rendezvous rather than failing.
@@ -330,6 +375,7 @@ pub fn transcript(w: &Wiring, sentinel: &[u8], out: &mut [u8]) -> usize {
             len >= sentinel.len() && buf[len - sentinel.len()..len] == *sentinel
         };
         if done {
+            SCRIPT_RUNNING.store(false, Ordering::Release);
             let buf = TRANSCRIPT.lock();
             let len = WRITTEN.load(Ordering::SeqCst).min(out.len());
             out[..len].copy_from_slice(&buf[..len]);
