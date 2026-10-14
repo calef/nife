@@ -1,73 +1,48 @@
 //! **One task of the multi-tasking workload** (milestone 168), at EL0, where a real workload runs.
 //!
-//! `crates/job_mix` is the workload's definition and its header carries the argument for *what* the
-//! mix is and why AIM7's own categories were kept while its 53 job names were not. This file is one
-//! task: it runs the mix when the supervisor releases it, self-times, and reports.
-//! `kernel/src/job_mix.rs` is the supervisor that releases it and owns the wall clock.
+//! `crates/job_mix` is the workload's definition and why. This file is one task: it runs the mix
+//! when the supervisor releases it, self-times, and reports. `kernel/src/job_mix.rs` is the
+//! supervisor that releases it and owns the wall clock.
 //!
-//! # Why the tasks are processes and not kernel threads
-//!
-//! Milestone 134's E1 (`ipc_thread_scaling`) already sweeps IPC round-trip latency against thread
-//! count, and its threads are **kernel** threads calling `sched::` directly. That is the right shape
-//! for a micro-benchmark and the wrong one here. DECISIONS §96 asks what a process kernel costs a
-//! *workload*, and a workload is EL0 processes: every job below crosses the trap boundary the way a
-//! real program does, and the two jobs that do not ([`job_mix::COMPUTE`] and [`job_mix::TOUCH`]) are
-//! there precisely to be the application-mode time between two kernel entries, which is what
-//! displaces the cache a returning thread wanted.
+//! The tasks are EL0 processes, not kernel threads, because DECISIONS §96 (process kernel or
+//! event kernel) asks what a process kernel costs a *workload*: every job below crosses the trap
+//! boundary the way a real program does, and the two that do not ([`job_mix::COMPUTE`] and
+//! [`job_mix::TOUCH`]) are the application time between kernel entries that displaces the cache a
+//! returning thread wanted.
 //!
 //! # The two roles
 //!
 //! - [`job_mix::ROLE_MIXER`]: block on the go endpoint, run [`job_mix::ROUNDS_PER_TASK`] rounds of
 //!   the mix in this task's own order, report `[jobs, ticks, index]`, block again. A go word of
-//!   [`job_mix::GO_BREAKDOWN`] instead asks for the last subrun's per-kind ticks, untimed. It never exits;
-//!   the supervisor halts the machine when the sweep is done.
-//! - [`job_mix::ROLE_ECHO`]: `RECEIVE_CAP` and `REPLY`, forever. The [`job_mix::ROUND_TRIP`] job's other
-//!   half.
+//!   [`job_mix::GO_BREAKDOWN`] instead asks for the last subrun's per-kind ticks, untimed. It never
+//!   exits; the supervisor halts the machine when the sweep is done.
+//! - [`job_mix::ROLE_ECHO`]: `RECEIVE_CAP` and `REPLY`, forever. The [`job_mix::ROUND_TRIP`] job's
+//!   other half.
 //!
+
 //! # BUGS
 //!
-//! - **A mixer's self-timed ticks are not the benchmark's number.** They include whatever the
-//!   scheduler did to this task while it was runnable, which is the point of a multi-tasking
-//!   benchmark, so they are per-task latency rather than throughput. The number is the supervisor's
-//!   wall clock over the whole subrun; these are printed beside it so a subrun with one very slow
-//!   task can be told from one with many evenly slow ones.
-//! - **The compute grind can be recognised by a future compiler.** It is an LCG folded into a value
-//!   that leaves through a `#[inline(never)]` return and is accumulated across rounds, which is the
-//!   same defence `kernel/src/bench/smp_throughput.rs`'s `busy` uses; nothing checks that it still
-//!   holds. A compute job optimised to nothing would show as an implausible jump in the whole sweep
-//!   rather than as a subtle skew, which is the failure mode to hope for and not a guarantee.
-//! - **The touch job walks this task's own `.bss`.** It is not a fresh mapping per iteration, so it
-//!   measures cache displacement and not the page-table work AIM7's virtual-memory jobs also do.
-//!   That work is [`job_mix::MAP`]'s, added 2026-09-19.
+//! - **A mixer's self-timed ticks are per-task latency, not the benchmark's number**, which is the
+//!   supervisor's wall clock over the whole subrun. They are printed beside it so one very slow
+//!   task can be told from many evenly slow ones.
+//! - **The compute grind can be recognized by a future compiler.** It is an LCG folded into a value
+//!   that leaves through a `#[inline(never)]` return and is accumulated across rounds, the defense
+//!   `kernel/src/bench/smp_throughput.rs`'s `busy` uses; nothing checks that it still holds.
+//! - **The touch job walks this task's own `.bss`**, so it measures cache displacement, not
+//!   page-table work; that is [`job_mix::MAP`]'s.
 //! - **The map and spawn jobs report a refusal; the others cannot.** A refused `SPLIT`, retype,
-//!   map, configure or start ends the subrun and reports [`job_mix::REPORT_FAILED`] with the kernel's
-//!   error, and the supervisor prints `job-mix: FAILED` and halts. That is how the rehearsal proves
-//!   `job_mix::MAP_REGION_PAGES` and `job_mix::TASK_BUDGET_PAGES` are large enough on every
-//!   architecture, rather than a task silently doing less work than it claims.
-//! - **A mixer whose `CALL` is refused keeps counting the job as done.** `user_mode_runtime::call` returns two
-//!   words and no status this program can distinguish from a legitimate reply, so a wedged echo
-//!   server shows up as a subrun that never completes rather than as an error. The supervisor's
-//!   own stall is what says so.
+//!   map, configure or start reports [`job_mix::REPORT_FAILED`] with the kernel's error, and the
+//!   supervisor prints `job-mix: FAILED` and halts, which proves `job_mix::MAP_REGION_PAGES` and
+//!   `job_mix::TASK_BUDGET_PAGES` are large enough on every architecture.
+//! - **A mixer whose `CALL` is refused keeps counting the job as done**: `user_mode_runtime::call`
+//!   returns no status, so a wedged echo server shows as a subrun that never completes.
 //!
-//! Name: ratified 2026-09-05 (calef, milestone 168). Shipped provisionally as `job_mixer`, which
-//! was wrong rather than merely inconsistent: **this program does not mix anything.** It is one task
-//! *inside* the mix, and the `-er` suffix claimed an agent role it does not have, which is the
-//! failure `dwarden` is cited for in AGENTS.md's own evidence, a name for the wrong relationship so
-//! a reader who correctly infers the scheme gets it wrong.
-//!
-//! `job_mix_task` was calef's, over the maintainer's `mix_task`, and it is better for a reason the
-//! maintainer had not made: **the family stays greppable as one string**, so `job_mix` finds the
-//! crate, the script and this program. `job` alone was refused because this tree already uses the
-//! word in the shell sense (milestone 48 is job control, and `job_undertaker` collects them).
-//!
-//! **`task` is this crate's own word**, not a new one: 26 of the tree's 70 uses of it are inside
-//! `crates/job_mix`, and `abi` never uses it, so it competes with no kernel concept.
-//!
-//! Also refused, carried here from the provisional block this ratification replaced: `aim` and
-//! `aim7`, for naming somebody else's benchmark. This keeps AIM7's four methodological properties
-//! and none of its 53 jobs, so a name claiming the original would be a claim about comparability
-//! that `crates/job_mix`'s `BUGS` explicitly denies. And `worker`, which was taken at the time by
-//! `user/src/worker.rs` (`least_authority_demo` since 2026-09-13) and is a generic word besides.
+//! Name: ratified 2026-09-05 (calef, milestone 168 (a multi-tasking workload benchmark)). One task
+//! *inside* the mix; `job_mixer` claimed
+//! an agent role it does not have. `job_mix_task` keeps the family greppable as one string, and
+//! `task` is `crates/job_mix`'s own word. Refused `job` (the shell's job control), `aim` and `aim7`
+//! (naming somebody else's benchmark, whose comparability `crates/job_mix`'s `BUGS` denies), and
+//! `worker` (generic).
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

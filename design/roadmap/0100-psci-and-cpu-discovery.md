@@ -18,9 +18,9 @@ facts are compiled in:
 | The function id is `0xC400_0003` | `const PSCI_CPU_ON` | `/psci`'s `compatible` (the id set moved between PSCI 0.1 and 0.2) |
 | The core list is `0..MAX_CPUS`, and `MAX_CPUS` is 4 | `kernel/src/cpu.rs:30`, iterated in `bring_up_secondaries` | `/cpus` |
 
-Everywhere else the machine describes itself. `crates/device_tree_blob` already parses the tree, milestone 60
-(ISA discovery) reads the ISA out of it on both architectures, `crates/pci` holds its own hardcodes
-against the tree in a host test, and the console's hardcoded UART base is checked against
+Everywhere else the machine describes itself. `crates/device_tree_blob` already parses the tree, and
+milestone 60 (ISA discovery) reads the ISA out of it on both architectures. `crates/pci` holds its
+own hardcodes against the tree in a host test, and the console's hardcoded UART base is checked against
 `dtb`'s answer in `crates/device_tree_blob/tests/qemu_aarch64_virt.rs`. **The parser is not what is missing.**
 `Fdt::node_prop` and `Fdt::node_reg` already answer both questions; what is missing is the call.
 
@@ -28,7 +28,7 @@ Two failure shapes, and only one of them is certain. The core-list half is a gua
 no-op: a board with more than four cores has cores 4 and up never started, with no error to return
 because nothing asks about them. The conduit half is board-specific and untested. `smp.rs` does have
 a degradation path, and it is written for one case, a core that is absent (`PSCI {ret}; not
-present?`); a machine whose firmware answers on `smc` is under no obligation to produce a PSCI error
+present?`). A machine whose firmware answers on `smc` is under no obligation to produce a PSCI error
 code from an `hvc` it never agreed to serve. Calling both "silent" is close enough for a warning and
 too loose for a plan, so the plan should treat them separately.
 
@@ -61,11 +61,11 @@ reports more; changing the ceiling is a separate decision with a memory cost att
 ## Follow-on
 
 - **Milestone 88.** The ACPI front door. An ACPI machine has no device tree at all and states PSCI
-  in the FADT, so this milestone got the DTB path right and left a seam for the second source;
-  milestone 88 (nife on rented silicon) already budgets the UEFI boot path and the ACPI reader.
+  in the FADT. So this milestone got the DTB path right and left a seam for the second source.
+  Milestone 88 (nife on rented silicon) already budgets the UEFI boot path and the ACPI reader.
 - **Recorded.** `kernel/src/smp.rs` carries the compiled ceiling where the code does the seating.
   `MAX_CPUS` sizes the secondary stacks and the per-CPU arrays, so raising it costs memory and is a
-  decision of its own; what shipped instead is starting the cores the machine reports up to the
+  decision of its own. What shipped instead is starting the cores the machine reports up to the
   ceiling and printing how many were left unseated.
 - **Recorded.** `kernel/src/arch/aarch64/mod.rs` records beside `psci_cpu_on` that the `smc` conduit
   path has never executed. The reading is exercised against a real QEMU dump that states `smc`, but

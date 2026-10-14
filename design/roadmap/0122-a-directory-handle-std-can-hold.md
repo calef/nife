@@ -56,8 +56,9 @@ is `cap-std`'s `Dir` and this system's actual model. Honest about cost, aligned 
 preference, and it leaves path-shaped `std` programs where they are.
 
 Recommendation: build B, then A on top of it, and measure A. B is the primitive and the thing
-`cap-std` would bind to; A is compatibility built out of B, and it should exist because §84's second
-preference (a faithful port plus a small patch) is worthless if nothing runs at all before the patch.
+`cap-std` would bind to. A is compatibility built out of B, and it should exist because the second
+preference of §84 (how we port) (a faithful port plus a small patch) is worthless if nothing runs at
+all before the patch.
 Milestone 121's benchmark is what prices A, and if per-component IPC turns out to dominate, that is
 the input to whether the contract should grow a multi-component resolve.
 
@@ -73,10 +74,10 @@ so this is the difference between porting one tool and being able to port tools.
 
 Option A, the walk. `walk` in `sys/fs/nife.rs` resolves a path to the directory its last name
 lives in, one `OPENDIR` per intermediate component, and every name-taking verb goes through it:
-`open`, `create`, `mkdir`, `unlink`, `rmdir`, `rename` and `readdir`. Every hop asks for
-`DESCEND | <what the final verb needs>`, which reads like a widening and is not: a child's rights
-are its parent's intersected with the request, so a right an ancestor lacks is one no descendant of
-it could have had either, and the walk therefore asks for exactly the maximum the grant could give
+`open`, `create`, `mkdir`, `unlink`, `rmdir`, `rename` and `readdir`. Every hop asks for `DESCEND |
+<what the final verb needs>`, which reads like a widening and is not. A child's rights are its
+parent's intersected with the request. So a right an ancestor lacks is one no descendant of it could
+have had either, and the walk therefore asks for exactly the maximum the grant could give
 at the depth it is going to. At most two handles are open at once, because each hop drops the last.
 
 **Option B, the directory object, and it was not an interface this project had to invent.**
@@ -201,7 +202,8 @@ is §82's stated failure mode.
 
 ## Index row
 
-Descent was built and native programs used it, and `std` could not reach it: the PAL called `OPENDIR` only inside `read_dir` against ROOT and dropped the handle, so a program could list a
+Descent was built and native programs used it, and `std` could not reach it. The PAL called
+`OPENDIR` only inside `read_dir` against ROOT and dropped the handle. So a program could list a
 subdirectory and not open what it found there. Both answers are now built. A nested path is a
 chain of attenuated descents, and `std::fs::Dir` (upstream's own `openat`, `#![feature(dirfd)]`)
 holds one. `remove_dir_all` needed no code. Two live bugs fell out: a created file was unwritable

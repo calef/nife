@@ -1,37 +1,29 @@
 //! **`user_timetable_keeper`: what keeps a user's schedule running after they disconnect**
-//! (milestone 152 (durable delegation), S1 and L2 of 2026-09-26, §222 (who holds a user's
-//! schedule)).
+//! (milestone 152 (durable delegation), §222 (who holds a user's schedule)).
 //!
 //! `login` builds one of these when an authenticated identity asks for its schedule
 //! (`login_protocol::SCHEDULE`). It is built out of a region split from that user's own session
-//! budget, and so is the timetable it builds. Both are therefore live descendants of the budget,
-//! which is the whole of what keeps the session alive once the client leaves: DECISIONS §16 (object
-//! revocation) refuses `MemoryRegion::DESTROY` on a parent with a live child. Nothing new holds the
-//! session up. `kernel::user::login_tests::a_login_session_with_pending_work_refuses_logout_until_the_work_is_gone`
+//! budget, and so is the timetable it builds. Both are live descendants of the budget, which is
+//! what keeps the session alive once the client leaves: DECISIONS §16 (object revocation) refuses
+//! `MemoryRegion::DESTROY` on a parent with a live child.
+//! `kernel::user::login_tests::a_login_session_with_pending_work_refuses_logout_until_the_work_is_gone`
 //! proves that rule on a login budget.
 //!
 //! # What it does
 //!
-//! 1. Builds `timetable` from the image `login` copied in, out of [`BUDGET`]: its own region, a
-//!    budget for the jobs it fires, and two endpoints. It is handed no programs: a scheduled job
-//!    runs what the live activation generation names (Fork 8 ruled D by calef on 2026-09-27, on
-//!    #1377), so the timetable is handed the two read-only store caretakers `login` built
-//!    ([`ACTIVATION`], [`PACKAGES`]) and their channel's page ([`STORE_PAGE`]), which makes it a
-//!    store-mode timetable (`timetable::contract`). The registration page `login` made ([`PAGE`])
-//!    is mapped into it at [`TIMETABLE_PAGE_VA`], so the timetable starts empty and silent and
+//! 1. Builds `timetable` from the image `login` copied in, out of [`BUDGET`]. It is handed no
+//!    programs: a scheduled job runs what the live activation generation names, so the timetable
+//!    gets the two read-only store caretakers ([`ACTIVATION`], [`PACKAGES`]) and their page
+//!    ([`STORE_PAGE`]), a store-mode timetable (`timetable::contract`). The registration page
+//!    ([`PAGE`]) is mapped at [`TIMETABLE_PAGE_VA`], so the timetable starts empty and silent and
 //!    waits for a `REPLACE`.
 //! 2. Says it is ready on [`READY`], once. `login` is blocked waiting for exactly that word.
-//! 3. Blocks on `e`, its one endpoint, for the rest of its life. The timetable's death arrives
-//!    there, because `e` is its supervision endpoint. No job report does: calef ruled Fork 6 C on
-//!    2026-09-27 (UTC, #1377), so a scheduled job holds no report endpoint and writes its output
-//!    through whatever its entry grants.
+//! 3. Blocks on `e`, the timetable's supervision endpoint, for the rest of its life. Only the
+//!    timetable's death arrives there; a scheduled job holds no report endpoint.
 //! 4. When the timetable is gone, gives [`BUDGET`]'s contents back and exits. The page stays, in
-//!    `login`'s region, so `login` can read why the timetable stopped before it reclaims this
-//!    process.
+//!    `login`'s region, so `login` can read why the timetable stopped.
 //!
-//! **Only the timetable's death arrives.** The reap still decides rather than the event word, which
-//! is cheap and keeps this process right if something else ever holds `e`.
-//!
+
 //! # Capability contract (`login_protocol::user_timetable_keeper`)
 //!
 //! - slot [`READY`]: `WRITE`. One readiness word or a failure word, and, at the end,
@@ -42,31 +34,24 @@
 //!   construction region.
 //! - slots [`ACTIVATION`] and [`PACKAGES`]: `WRITE`. Endpoints to the caretakers serving the
 //!   store's `activation/` and `packages/` read-only, handed on to the timetable.
-//! - slot [`STORE_PAGE`]: `WRITE`. The durable window's page the caretakers stage through, mapped
-//!   into the timetable and never here.
-//! - `a0`: the length of `timetable`'s image, copied in at `login_protocol::user_timetable_keeper::TIMETABLE_VA`.
-//!
-//! Name: ratified 2026-10-06 (calef, "`user_timetable_keeper` ratified.", in conversation),
-//! replacing the provisional `session` (the maintainer's suggestion, shipped 2026-09-26). It builds
-//! a user's timetable and holds it alive after logout. `session` collided with every other OS's
-//! login session and with the login sessions PR #1769 proposes. Refused `supervisor`, because it
-//! does not restart a faulted timetable (BUGS), and `caretaker`, because it serves no access. A
-//! keeper holds something alive and does not restart it; if this ever restarts the timetable, it
-//! is renamed `user_timetable_supervisor`.
+//! - slot [`STORE_PAGE`]: `WRITE`. The page the caretakers stage through, mapped into the timetable
+//!   and never here.
+//! - `a0`: the length of `timetable`'s image, copied in at
+//!   `login_protocol::user_timetable_keeper::TIMETABLE_VA`.
 //!
 //! # BUGS
 //!
 //! - **Nothing restarts a timetable that faults.** This process exits, and the schedule stays on
 //!   disk for the next `SCHEDULE` or the boot-time re-deriver.
-//! - **The timetable's image is copied twice**, once into this process and once into the
-//!   timetable, because `supervision_protocol::build_child` can hand a child data only by copying a
-//!   blob or mapping a frame this process holds a capability to, and `login` hands it bytes rather
-//!   than frames.
-//! - **A durable timetable holds no clock**, so every calendar line in a durable schedule is
-//!   `timetable::Unbacked::WallClock` and never fires, and no durable job gets the clock page.
-//!   Milestone 129 (scheduled execution) gave the timetable an optional clock at
-//!   `timetable::contract::CLOCK_SLOT` while this program was being built; `login` holds no clock
-//!   to pass down. Found at the merge of 2026-10-03 (UTC).
+//! - **The timetable's image is copied twice**, because `supervision_protocol::build_child` hands a
+//!   child data only by copying a blob or mapping a frame, and `login` hands this process bytes.
+//! - **A durable timetable holds no clock**: `login` holds none to pass down, so every calendar
+//!   line in a durable schedule is `timetable::Unbacked::WallClock` and never fires.
+//!
+//! Name: ratified 2026-10-06 (calef, in conversation), replacing the provisional `session`, which
+//! collided with every other OS's login session. A keeper holds something alive and does not
+//! restart it. Refused `supervisor` (it does not restart a faulted timetable; if it ever does, it is
+//! renamed `user_timetable_supervisor`). Refused `caretaker` (it serves no access).
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68 (code-quality gates) tracks

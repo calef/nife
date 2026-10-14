@@ -9,7 +9,7 @@ for, §219 (how the shell names an installed program to the spawner)'s gate D2, 
 of users who may run new code (§221 (the boot prompt is the owner's console)), is
 [vouching.md](vouching.md). Packages over the internet are
 [over-the-internet.md](over-the-internet.md). The index format survey is
-[the-index-format.md](the-index-format.md).
+[the-index-format.md](the-index-format.md). A package with several programs is [several-programs.md](several-programs.md).
 
 Name: provisional (2026-09-26, milestone 198 (a package manager) rung 3a's installer lane). The
 directory `notes/packages/` follows §212 (a prose budget)'s siting of an appendix beside its parent,

@@ -5,67 +5,32 @@
 //! `components/src/uptime.rs` is the syscall and nothing else. The crate and the program share a name,
 //! the same split `ps`, `line_editor` and `compositor` already are.
 //!
-//! Name: ratified 2026-09-13 (calef, working the unratified worklist), for this crate and the
-//! program together. `uptime` is upstream `procps`'s own name for the program this replaces
-//! (`dpkg -L procps` lists `/usr/bin/uptime`), which the naming tenet calls the best name
-//! available for a standard term a reader already knows.
+//! # Where the number comes from
 //!
-//! **The narrowing was put to calef and did not change the answer.** This prints only elapsed
-//! time, none of upstream's load average or logged-in-user count (see `BUGS`). That is a
-//! narrowing rather than a contradiction: what `uptime` names is how long the machine has been up,
-//! and this reports exactly that. Contrast `watch`, cut the same day, whose borrowed name promised
-//! an arbitrary command line the capability model will not grant. A borrowed word is the best name
-//! available when it is true and the worst when it is not.
-//!
-//! # Where the number comes from, and why it needed no new capability
-//!
-//! `components/src/uptime.rs` reads `user_mode_runtime::monotonic_nanos`, the same ambient counter `date` reads
-//! to compute the wall clock and `os_primitives_benchmarker` reads to time itself. It is granted to
-//! **every** EL0 program, unconditionally, by `kernel/src/arch/*/timer.rs`'s `init` (`CNTKCTL_EL1`'s
-//! `EL0VCTEN` bit on aarch64, the RISC-V and `x86_64` equivalents), which documents the grant as **a
-//! deliberate, eyes-open exception to DECISIONS §10's no-ambient-authority rule**: a monotonic
-//! counter grants no authority to *affect* anything, only to observe the passage of time, and every
-//! OS that offers userspace self-timing accepts the same side channel. Since that exception already
-//! exists and already covers every process, `uptime` needed no manifest field, no new capability,
-//! and no wiring beyond what `least_authority_demo` already has: the program that answers with
-//! nothing but a
-//! number turned out to need nothing but the counter.
-//!
-//! This is the one member of milestone 126's "machine-wide statistics" row (`free`, `uptime`,
-//! `vmstat`) that turned out to be pure wiring rather than a design fork. `free` and `vmstat` read
-//! physical memory accounting the kernel keeps for itself and has no path to userspace yet
-//! (`kernel/src/memory.rs`'s `stats()`); see notes/process-view/what-is-left.md, section 3, for
-//! why that is a different body of work and the fork it waits on.
-//!
-//! # EXAMPLES
-//!
-//! ```
-//! use uptime::format;
-//!
-//! assert_eq!(format(0).as_bytes(), b"up 00:00:00\n");
-//! assert_eq!(format(90 * 1_000_000_000).as_bytes(), b"up 00:01:30\n");
-//! assert_eq!(format(90_000 * 1_000_000_000).as_bytes(), b"up 1 day, 01:00:00\n");
-//! ```
+//! `components/src/uptime.rs` reads `user_mode_runtime::monotonic_nanos`, the ambient counter
+//! `date` reads too. `kernel/src/arch/*/timer.rs`'s `init` grants it to every EL0 program as a
+//! deliberate exception to DECISIONS §10 (process model: capability-based, microkernel)'s
+//! no-ambient-authority rule (a monotonic counter observes time and affects nothing), so `uptime`
+//! needed no manifest field and no new capability.
 //!
 //! # BUGS
 //!
 //! - **No load average, no logged-in-user count.** Upstream `uptime` prints both; neither concept
 //!   exists here. There is no scheduler-load figure this kernel maintains (`sched.rs` tracks
 //!   preemptions and per-core run queues, not a decaying load average), and "logged in" presumes a
-//!   login registry this system does not keep (every shell is a program somebody spawned, not a
-//!   session in a table). Printing "up" alone rather than inventing placeholders for either is
-//!   DECISIONS §42's no-silent-degradation rule applied to features rather than to values: a zero
-//!   would read as a real answer.
+//!   login registry this system does not keep. A placeholder zero would read as a real answer.
 //! - **The counter's zero predates the kernel's own init by an unmeasured amount.** `CNTVCT_EL0`
 //!   (and its RISC-V/`x86_64` equivalents) is a free-running hardware counter set by firmware or the
 //!   VMM at reset, not by this kernel; `date`'s own module docs call it "ambient and untouched" for
 //!   the same reason. So "up" here means "since the counter started counting," which is at or
-//!   before kernel entry, never after. Under QEMU the gap is small and unmeasured; on real hardware
-//!   it is whatever the boot ROM and firmware took. Every OS that reports uptime from a free-running
-//!   counter carries the same caveat; Linux's is `CLOCK_BOOTTIME`, deliberately not the raw TSC, and
-//!   this program has no equivalent kernel-boot epoch to read.
+//!   before kernel entry; on real hardware the gap is whatever the boot ROM and firmware took.
+//!   There is no kernel-boot epoch (Linux's `CLOCK_BOOTTIME`) to read instead.
 //! - **One-second resolution**, `date`'s own limitation, for the same reason: `monotonic_nanos`
 //!   is exact, but there is no sub-second field in the printed format to spend it on.
+//!
+//! Name: ratified 2026-09-13 (calef, working the unratified worklist), for this crate and the
+//! program: upstream `procps`'s own name. It prints only elapsed time, a narrowing rather than a
+//! contradiction, since how long the machine has been up is exactly what `uptime` names.
 
 #![cfg_attr(not(test), no_std)]
 
@@ -97,6 +62,16 @@ impl Formatted {
 /// the zero case is the common one at a demo machine's uptime and Unix's own `uptime` elides it
 /// too. Singular/plural is the one piece of English this program commits to, because "1 days" is
 /// the detail that makes a status line read as generated rather than written.
+///
+/// # Examples
+///
+/// ```
+/// use uptime::format;
+///
+/// assert_eq!(format(0).as_bytes(), b"up 00:00:00\n");
+/// assert_eq!(format(90 * 1_000_000_000).as_bytes(), b"up 00:01:30\n");
+/// assert_eq!(format(90_000 * 1_000_000_000).as_bytes(), b"up 1 day, 01:00:00\n");
+/// ```
 pub fn format(nanos: u64) -> Formatted {
     let total_secs = nanos / NANOS_PER_SEC;
     let days = total_secs / SECS_PER_DAY;

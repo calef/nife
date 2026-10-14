@@ -7,9 +7,9 @@ built: 2026-08-15
 
 Minted 2026-08-13 by calef, who chose the name and the shape in the same
 conversation that established why the merge queue could not be switched on. Executed 2026-08-15, in
-the order the Ordering section demanded: queue drained to zero (#151 closed with its reasons; a
-dead lane's branch, `fix/max-cpus-fifth-hart`, parked pushed and unmerged for post-rename review),
-repository transferred to `crickertech` (ruleset, Actions and history survived; the one casualty
+the order the Ordering section demanded. The queue drained to zero (#151 closed with its reasons; a
+dead lane's branch, `fix/max-cpus-fifth-hart`, parked pushed and unmerged for post-rename review).
+The repository transferred to `crickertech` (ruleset, Actions and history survived; the one casualty
 was the `TOOLCHAIN_BUMP_PAT` secret, which does not transfer and is calef's to re-mint), then the
 rename in one reviewed pass. The counts at execution: 1,095 occurrences across 272 files at the
 frozen commit, up from the 1,001 this file recorded, which is why it said to recount. The hazards
@@ -43,11 +43,11 @@ the words already mean rather than an analogy stretched to fit, and it is what m
 inferable from two examples instead of needing a specification.
 
 Three properties make it work for people this project will never meet. It is unbounded: there are
-hundreds of named rocks, so nobody needs permission, a registry, or an allocation from us, and the
+hundreds of named rocks, so nobody needs permission, a registry, or an allocation from us. The
 alternative (everyone wanting to be `nife-something`) is a namespace we would have to police. It is
 self-classifying: a reader meeting `anthracite` knows it is a distribution and not a kernel
-before reading anything about it. And it lets a distribution state its character in its own name,
-which is what makes a convention get adopted rather than resented: `pumice` for a light one,
+before reading anything about it. And it lets a distribution state its character in its own name.
+That is what makes a convention get adopted rather than resented: `pumice` for a light one,
 `conglomerate` for one that bundles everything, `quartzite` for a hardened one, `flint` for a
 toolkit.
 
@@ -183,7 +183,7 @@ tree-wide rename. Those pull in opposite directions, so the sequence is not arbi
 
 The technical prior-art questions do not apply to a rename, but the organizational one does. The
 separation of publisher from product is the norm rather than an invention (Canonical and Ubuntu, Red
-Hat and Fedora, the Rust project and `rustc`), and the failure it prevents is visible in projects
+Hat and Fedora, the Rust project and `rustc`). The failure it prevents is visible in projects
 whose org and flagship share a name: the second product always reads as a subsidiary of the first.
 
 Redox is the closest neighbor in this tree's own reference set and does the opposite, publishing

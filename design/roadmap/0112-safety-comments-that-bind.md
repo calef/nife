@@ -14,14 +14,14 @@ after that merge; found 2026-08-17 by the status-accuracy sweep. §76's defect c
 
 Three of the four converted, and the fourth was decided rather than skipped, which is what the
 deleted gate line asked for when it said the answer may not be four conversions. `write_satp` is now
-`unsafe fn` (`kernel/src/arch/riscv64/mmu.rs:80`), and its `# Safety` section says out loud that it is
-unsafe because aarch64's `set_ttbr0` is, which closes the ISA asymmetry in the direction of the
+`unsafe fn` (`kernel/src/arch/riscv64/mmu.rs:80`), and its `# Safety` section says out loud that it
+is unsafe because aarch64's `set_ttbr0` is. That closes the ISA asymmetry in the direction of the
 stricter ISA. `switch_user_root` is `unsafe fn` on both ISAs
 (`kernel/src/arch/aarch64/mmu.rs:913`, `kernel/src/arch/riscv64/mmu.rs:796`). `stack::paint` is
 `unsafe fn` (`kernel/src/stack.rs:436`), and its sibling `high_water` went with it. `virtio::pread`
 stayed a safe fn on purpose, with the argument written where a reader meets it
-(`kernel/src/virtio.rs:233`, "Why these two stay safe fns"): it is private, all twenty call sites are
-one `impl Transport` block, and the compiler closes the caller set, so the obligation really is
+(`kernel/src/virtio.rs:233`, "Why these two stay safe fns"). It is private, all twenty call sites
+are one `impl Transport` block, and the compiler closes the caller set. So the obligation really is
 discharged by the module rather than onto nobody.
 
 The call sites carry the cost the block predicted. `kernel/src/sched.rs:1477` is the context
@@ -66,15 +66,15 @@ sound and only the timing is the caller's problem. The pattern to look for is a 
 be unsound if its own sentence were false.
 
 The related finding, which is the reason to read the whole set rather than the four. Of the 33
-`unsafe fn`s in the tree, **eleven contain no unsafe operation at all**. Their unsafety is a contract
-about *meaning*, not a memory operation a compiler can point at: `set_ttbr0` is an `unsafe fn`
-because writing `TTBR0_EL1` is the most consequential thing in the kernel, and `aarch64-cpu` hands
+`unsafe fn`s in the tree, **eleven contain no unsafe operation at all**. Their unsafety is a
+contract about *meaning*, not a memory operation a compiler can point at. `set_ttbr0` is an `unsafe
+fn` because writing `TTBR0_EL1` is the most consequential thing in the kernel. `aarch64-cpu` hands
 that write over as a safe call. `Clock::new` takes a virtual address the caller promises is a mapped
 clock page. `assume_no_stale_entry` is named for its contract. For those eleven the lint composition
-buys nothing, and the rustdoc `# Safety` section is the only enforcement there is, for a third
+buys nothing. The rustdoc `# Safety` section is the only enforcement there is, for a third
 of the tree's unsafe functions. That is worth knowing before deciding how many of the four to
-convert, because conversion moves a site *into* that same category rather than out of it: an
-`unsafe fn` with a contract nothing checks is better than a safe fn with a contract nothing checks,
+convert. Conversion moves a site *into* that same category rather than out of it. An `unsafe fn`
+with a contract nothing checks is better than a safe fn with a contract nothing checks,
 and it is not a proof.
 
 ## Scope note
@@ -94,8 +94,8 @@ tree), not an assumption to start from.
 
 - **Refused.** Converting `virtio::pread` to an `unsafe fn`, the fourth of the four sites. The
   argument is written where a reader meets it, at `kernel/src/virtio.rs:233` under "Why these two
-  stay safe fns": it is private, all twenty call sites sit in one `impl Transport` block, and the
-  compiler closes the caller set, so the obligation is discharged by the module rather than onto
+  stay safe fns". It is private, all twenty call sites sit in one `impl Transport` block, and the
+  compiler closes the caller set. So the obligation is discharged by the module rather than onto
   nobody. That is the case the other three could not make.
 - **Refused.** A lint for "a SAFETY comment on a safe fn". Neither unsafe lint can read a comment,
   and a check for this shape would fire on the legitimate uses the block separates out, where
@@ -104,8 +104,8 @@ tree), not an assumption to start from.
   ledger that adopts a lint on evidence from this tree.
   This refusal is milestone 453 (design/roadmap/0453-a-lint-for-a-safety-comment-on-a-safe-fn.md),
   which carries it with the condition that would change it.
-- **Recorded.** `notes/unsafe-obligations.md` carries the related finding, which is the wider one:
-  eleven of the tree's 33 `unsafe fn`s contain no unsafe operation at all, so their unsafety is a
+- **Recorded.** `notes/unsafe-obligations.md` carries the related finding, which is the wider one.
+  Eleven of the tree's 33 `unsafe fn`s contain no unsafe operation at all. So their unsafety is a
   contract about meaning and the rustdoc `# Safety` section is the only enforcement there is for a
   third of them. Converting a site moves it into that category rather than out of it.
 

@@ -73,7 +73,7 @@ is.** Doing this early means renaming 174 call sites across 16 files twice if th
 the current name blocks nothing until a sibling actually exists.
 
 So the trigger is the arrival of a second aarch64 configuration, and the deliverable until then is
-this entry plus a comment in `crates/paging/src/lib.rs` pointing at it, so the next reader who notices
+this entry plus a comment in `crates/paging/src/lib.rs` pointing at it. Then the next reader who notices
 the asymmetry finds the reasoning instead of filing it again.
 
 ## Scope note

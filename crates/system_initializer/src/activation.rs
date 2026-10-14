@@ -26,7 +26,7 @@ pub(super) fn serve_installer(
         // A holder this process has no record of: its reap came first. Nobody to answer.
         return;
     };
-    let (status, live) = match spawnproto::activation(w1, w2) {
+    let answer = match spawnproto::activation(w1, w2) {
         Some(Some(verb)) if spawnproto::installer_serves(verb) => activate(
             Some(verb),
             w0,
@@ -40,11 +40,81 @@ pub(super) fn serve_installer(
             },
             fs_mapped,
         ),
-        _ => (spawnproto::ActivationStatus::NotServedHere, 0),
+        _ => Answer::from((spawnproto::ActivationStatus::NotServedHere, 0)),
     };
     if !spawn.abandoned {
-        let (r0, r1, r2) = spawnproto::activation_reply(status, live);
+        let (r0, r1, r2) = spawnproto::activation_reply(answer.status, answer.live, answer.member);
         send(reply, r0, r1, r2);
+        // **Who holds the name** (milestone 919 (a package carries several programs)): calef's
+        // ruling is that the owner removes the first package before installing the second, so
+        // the refusal names it. Only `jig` installs, and it reads these two after the reply.
+        if answer.status == spawnproto::ActivationStatus::NameTaken {
+            for (a, b, c) in spawnproto::holder_words(answer.holder()) {
+                send(reply, a, b, c);
+            }
+        }
+    }
+}
+
+/// **What [`activate`] answers**: the status, the generation live afterwards, and for a refused
+/// install the member whose program was refused (`spawnproto::activation_reply`'s word 2) and,
+/// for `NameTaken`, the package that holds the name. Name: provisional, milestone 919's lane.
+pub(super) struct Answer {
+    pub(super) status: spawnproto::ActivationStatus,
+    pub(super) live: u32,
+    pub(super) member: u64,
+    holder: [u8; spawnproto::HOLDER_MAX],
+    holder_len: usize,
+}
+
+impl Answer {
+    /// The holder's name, as [`Answer::refused`] copied it, or `""`.
+    fn holder(&self) -> &str {
+        core::str::from_utf8(&self.holder[..self.holder_len]).unwrap_or("")
+    }
+
+    /// An install `activation_set::with_entries` refused, said with the program's member index
+    /// in `got` and the holder's name.
+    fn refused(
+        refused: &activation_set::Refused,
+        got: &package_archive::Installable,
+        live: u32,
+    ) -> Self {
+        use spawnproto::ActivationStatus as S;
+        let status = match refused.error {
+            activation_set::Error::ImageName => S::ImageName,
+            activation_set::Error::Taken => S::NameTaken,
+            _ => S::StoreFailed,
+        };
+        let member = got
+            .programs()
+            .find(|p| Some(p.name) == refused.program)
+            .map_or(0, |p| p.member as u64 + 1);
+        let mut answer = Answer {
+            status,
+            live,
+            member,
+            holder: [0; spawnproto::HOLDER_MAX],
+            holder_len: 0,
+        };
+        if let Some(holder) = refused.holder {
+            let len = holder.len().min(spawnproto::HOLDER_MAX);
+            answer.holder[..len].copy_from_slice(&holder.as_bytes()[..len]);
+            answer.holder_len = len;
+        }
+        answer
+    }
+}
+
+impl From<(spawnproto::ActivationStatus, u32)> for Answer {
+    fn from((status, live): (spawnproto::ActivationStatus, u32)) -> Self {
+        Answer {
+            status,
+            live,
+            member: 0,
+            holder: [0; spawnproto::HOLDER_MAX],
+            holder_len: 0,
+        }
     }
 }
 
@@ -130,11 +200,12 @@ pub(super) struct Activating {
 ///
 /// - **Install**: the package's frames are staged exactly as an image's are ([`take_frames`], [`stage_frames`]), so
 ///   what is checked is this process's copy. `package_archive::installable` decides on the bytes:
-///   the image's catalog must vouch for the whole file, and the member named after the package
-///   is the program. Its bytes go to `packages/<stem>/<program>`, a place per package version that
-///   is never rewritten with other bytes, and a new generation records the program's digest.
-/// - **Remove**: a new generation without the program. Its bytes stay where they are, so a rollback
-///   can bring it back; nothing collects them yet.
+///   the image's catalog must vouch for the whole file, and every program member is a program
+///   (milestone 919 (a package carries several programs)). Each program's bytes go to
+///   `packages/<name>/<version>/<program>`, a place per package version that is never rewritten
+///   with other bytes, and one new generation records every program's digest.
+/// - **Remove**: a new generation without the named package's rows. Their bytes stay where they
+///   are, so a rollback can bring them back; nothing collects them yet.
 /// - **Rollback**: `current` names the generation one below the live one. Nothing else is written.
 /// - **Vouch** (DECISIONS §221 (the boot prompt is the owner's console)): the executable's frames
 ///   are staged as an install's are, and a new generation records this process's hash of its own
@@ -161,7 +232,7 @@ pub(super) fn activate(
     spawn: &mut SpawnEndpoint,
     a: &Activating,
     fs_mapped: &mut bool,
-) -> (spawnproto::ActivationStatus, u32) {
+) -> Answer {
     use spawnproto::{Activation, ActivationStatus as S};
     // The request's own trailing messages come off the endpoint first, whatever happens next, so a
     // refusal never leaves words behind that the next request would read as its own. The frames
@@ -184,30 +255,30 @@ pub(super) fn activate(
 
     let outcome = (|| {
         let Some(verb) = verb else {
-            return (S::Unknown, 0);
+            return Answer::from((S::Unknown, 0));
         };
         // An installer holder that died mid-request sent nothing more, and is owed no answer.
         if spawn.abandoned {
-            return (S::Unknown, 0);
+            return Answer::from((S::Unknown, 0));
         }
         let Some(files) = FsCalls::map(a.fs, a.own_ut, fs_mapped) else {
-            return (S::StoreFailed, 0);
+            return Answer::from((S::StoreFailed, 0));
         };
         let act = files.directory(fs_operation::ROOT, activation_set::DIRECTORY);
         if act < 0 {
-            return (S::StoreFailed, 0);
+            return Answer::from((S::StoreFailed, 0));
         }
         let act_h = act as u64;
         let mut old = [0u8; PAGE_BYTES];
         let answer = match files.live_generation(act_h, &mut old) {
-            Err(()) => (S::StoreFailed, 0),
+            Err(()) => Answer::from((S::StoreFailed, 0)),
             // A live table that is not text is a table nothing can edit, the same answer as one
             // that cannot be read.
             Ok((live, n)) => match core::str::from_utf8(&old[..n]) {
                 Ok(table) => edit(
                     &files, act_h, verb, live, table, staging, a.catalog, a.manager, named,
                 ),
-                Err(_) => (S::StoreFailed, live),
+                Err(_) => Answer::from((S::StoreFailed, live)),
             },
         };
         files.close(act);
@@ -234,7 +305,7 @@ fn edit(
     catalog: &str,
     manager: &str,
     named: &[u8],
-) -> (spawnproto::ActivationStatus, u32) {
+) -> Answer {
     use spawnproto::Activation;
     let cx = EditContext {
         files,
@@ -245,12 +316,12 @@ fn edit(
     };
     let mut new = [0u8; PAGE_BYTES];
     match verb {
-        Activation::Rollback => rollback(&cx, &mut new),
-        Activation::Remove => remove(&cx, named, &mut new),
+        Activation::Rollback => rollback(&cx, &mut new).into(),
+        Activation::Remove => remove(&cx, named, &mut new).into(),
         // **The owner's vouch** (DECISIONS §221 ruling 1; §195 clause 3). The digest is this
         // process's hash of its own copy, the one a spawn of the same file computes, so the entry
         // is found by the next run of those bytes and by nothing else.
-        Activation::Vouch => vouch(&cx, staging, named, &mut new),
+        Activation::Vouch => vouch(&cx, staging, named, &mut new).into(),
         Activation::Install => install(&cx, staging, catalog, &mut new),
     }
 }
@@ -315,7 +386,7 @@ fn rollback(cx: &EditContext, new: &mut [u8; PAGE_BYTES]) -> (spawnproto::Activa
     (S::Done, back)
 }
 
-/// **Remove**: write a new generation without the named program, or without one version of it.
+/// **Remove**: write a new generation without the named package, or without one version of it.
 fn remove(
     cx: &EditContext,
     named: &[u8],
@@ -332,18 +403,18 @@ fn remove(
     let Ok(operand) = core::str::from_utf8(named) else {
         return (S::NotInstalled, live);
     };
-    // **The verb's object is a program or a program at a version** (milestone 614 (two
-    // installed versions of one program, each runnable, and a caller granted the one it
-    // needs), ruling 5). `@` is the qualified form's separator and is reserved for it: a
-    // word with one is never a program name, so the two cannot be mistaken for each other.
-    // **Another manager's rows are not this one's to remove** (calef, 2026-10-06; milestone
-    // 809). Checked over every row the edit would take, before anything is written.
-    let (program, version) = match operand.split_once('@') {
+    // **The verb's object is a package, or a package at a version** (calef, 2026-10-14 (UTC),
+    // milestone 919 (a package carries several programs): "jig remove should work on packages,
+    // not programs."). `@` is the qualified form's separator and is reserved for it: a word with
+    // one is never a package name, so the two cannot be mistaken for each other.
+    let (package, version) = match operand.split_once('@') {
         Some((p, v)) if !p.is_empty() && !v.is_empty() => (p, Some(v)),
         _ => (operand, None),
     };
+    // **Another manager's rows are not this one's to remove** (calef, 2026-10-06; milestone
+    // 809). Checked over every row the edit would take, before anything is written.
     let foreign = activation_set::entries(table).flatten().any(|e| {
-        e.program == program
+        e.package == package
             && e.package != activation_set::OWNER
             && version.is_none_or(|v| e.version == v)
             && !activation_set::may_edit(e.manager, manager)
@@ -351,13 +422,7 @@ fn remove(
     if foreign {
         return (S::NotYours, live);
     }
-    let removed = match operand.split_once('@') {
-        Some((program, version)) if !program.is_empty() && !version.is_empty() => {
-            activation_set::without_version(table, program, version, new)
-        }
-        _ => activation_set::without_entry(table, operand, new),
-    };
-    let n = match removed {
+    let n = match activation_set::without_package(table, package, version, new) {
         Ok(n) => n,
         Err(activation_set::Error::NotInstalled) => return (S::NotInstalled, live),
         Err(activation_set::Error::SeveralVersions) => return (S::Ambiguous, live),
@@ -419,14 +484,16 @@ fn vouch(
     (S::Done, m)
 }
 
-/// **Install**: check the staged package against the image's catalog, place its program under
-/// `packages/`, and write a new generation recording the program's digest.
+/// **Install**: check the staged package against the image's catalog, place every program it
+/// carries under `packages/`, and write one new generation recording each program's digest
+/// (milestone 919 (a package carries several programs)).
 fn install(
     cx: &EditContext,
     staging: Option<(u64, u64)>,
     catalog: &str,
     new: &mut [u8; PAGE_BYTES],
-) -> (spawnproto::ActivationStatus, u32) {
+) -> Answer {
+    use package_archive::Refusal;
     use spawnproto::ActivationStatus as S;
     let EditContext {
         files,
@@ -436,60 +503,60 @@ fn install(
         manager,
     } = *cx;
     let Some((_, len)) = staging else {
-        return (S::Unknown, live);
+        return Answer::from((S::Unknown, live));
     };
     let bytes = staged_image(len);
     // Whoever fetched it (`jig`, since milestone 809) checked it was the package asked
     // for; what decides here is only whether the image vouches for these bytes, or, failing
     // that, the copy of the image's index `jig update` wrote (milestone 801).
+    let no_program = Answer::from((S::NoProgram, live));
     let got = match package_archive::installable(catalog, bytes) {
         Ok(got) => got,
-        Err(package_archive::Refusal::NoProgram) => return (S::NoProgram, live),
+        Err(Refusal::NoProgram | Refusal::ProgramName) => return no_program,
         Err(_) => match indexed(files, act, bytes, new) {
             Ok(got) => got,
-            Err(package_archive::Refusal::NoProgram) => return (S::NoProgram, live),
-            Err(_) => return (S::NotCataloged, live),
+            Err(Refusal::NoProgram | Refusal::ProgramName) => return no_program,
+            Err(_) => return Answer::from((S::NotCataloged, live)),
         },
     };
-    let Ok(package) = package_archive::Package::parse(bytes) else {
-        return (S::NotCataloged, live);
-    };
-    if !place_program(files, &package, &got) {
-        return (S::StoreFailed, live);
+    let package = got.package();
+    // Every program's bytes are placed before any generation names them. A refusal below leaves
+    // them under `packages/`, where they still run by path, and names none of them.
+    if !got.programs().all(|p| place_program(files, &package, &p)) {
+        return Answer::from((S::StoreFailed, live));
     }
-    let entry = activation_set::Entry {
-        program: got.program,
-        // **The row is digest-keyed; name and version are label columns** (milestone 614
-        // (two installed versions of one program, each runnable, and a caller granted the
-        // one it needs), ruling 2). The version is the upstream developer's claim as the
-        // package header carries it; the package column is the package's name, the
-        // stem's first field, because the version now has a column of its own and no row
-        // carries the architecture.
-        version: package.version(),
-        package: package.name(),
-        digest: got.digest,
-        // Who asked (milestone 809): `jig`, or the owner's console.
-        manager,
+    // **The row is digest-keyed; name and version are label columns** (ruling 2 of
+    // milestone 614 (two installed versions of one program, each runnable)). The version is the upstream developer's claim as the package header
+    // carries it; the package column is the package's name, the stem's first field, because
+    // the version has a column of its own and no row carries the architecture. Who asked
+    // (milestone 809): `jig`, or the owner's console.
+    let rows = || {
+        got.programs().map(|p| activation_set::Entry {
+            program: p.name,
+            version: package.version(),
+            package: package.name(),
+            digest: p.digest,
+            manager,
+        })
     };
     // **A bare name belongs to one package, and never to one the image carries** (DECISIONS
     // §229 (how a bare name at the prompt reaches an installed program), B2 and calef's
-    // ruling of 2026-09-27). Either is refused here, after the bytes are placed under
-    // `packages/` (where they still run by path) and before any generation names them. A
-    // base program is updated through the boot slot under §235 (the OS is built and updated
-    // from packages), so the image refusal blocks no update. The prompt still refuses a
-    // name that is both, because a later base can add a name a package already holds.
-    let image = Prog::from_name(got.program.as_bytes()).is_some();
-    let n = match activation_set::with_entry(table, &entry, image, new) {
+    // ruling of 2026-09-27; calef, 2026-10-14 (UTC): "If two packages offer the same program
+    // name, refuse the second package. Need to remove the first one before installing the
+    // second one."). One program refused refuses the package. A base program is updated
+    // through the boot slot under §235 (the OS is built and updated from packages), so the
+    // image refusal blocks no update. The prompt still refuses a name that is both, because a
+    // later base can add a name a package already holds.
+    let image = |program: &str| Prog::from_name(program.as_bytes()).is_some();
+    let n = match activation_set::with_entries(table, rows, image, new) {
         Ok(n) => n,
-        Err(activation_set::Error::ImageName) => return (S::ImageName, live),
-        Err(activation_set::Error::Taken) => return (S::NameTaken, live),
-        Err(_) => return (S::StoreFailed, live),
+        Err(refused) => return Answer::refused(&refused, &got, live),
     };
     let m = cx.next();
     if !files.commit(act, m, Some(&new[..n])) {
-        return (S::StoreFailed, live);
+        return Answer::from((S::StoreFailed, live));
     }
-    (S::Done, m)
+    Answer::from((S::Done, m))
 }
 
 /// **Whether the copy of the image's index vouches for these bytes** (milestone 801 (packages
@@ -523,12 +590,12 @@ fn indexed<'b>(
     package_index::accept(&entry, bytes)
 }
 
-/// Write an installable package's program to `packages/<name>/<version>/<program>`, closing
-/// every handle opened on the way. `false` if any step failed.
+/// Write one of an installable package's programs to `packages/<name>/<version>/<program>`,
+/// closing every handle opened on the way. `false` if any step failed.
 fn place_program(
     files: &FsCalls,
     package: &package_archive::Package,
-    got: &package_archive::Installable,
+    got: &package_archive::Program,
 ) -> bool {
     // The program's bytes, where a person can run them (DECISIONS §219 option D hashes
     // whatever they run, so where they live is a convenience, not a trust decision).
@@ -547,7 +614,7 @@ fn place_program(
         -1
     };
     let placed = version >= 0 && {
-        let f = files.open_or_create(version as u64, got.program);
+        let f = files.open_or_create(version as u64, got.name);
         let ok = f >= 0 && files.replace(f as u64, got.bytes);
         if f >= 0 {
             files.close(f);

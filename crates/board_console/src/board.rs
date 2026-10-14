@@ -1,75 +1,48 @@
 //! **A board's firmware prologue, declared rather than hard-coded** (milestone 324 part 3).
 //!
 //! calef ruled on 2026-09-19: *one tool with a board profile, and the profile is the firmware
-//! prologue only*. A tool per board would fork 3,545 lines whose portable majority is already
-//! proven shared, and this module is the other half of that ruling: the part that is **not**
-//! shared, written as data instead of as a run of `if line.contains(...)` inside
-//! [`crate::progress`].
-//!
-//! # The split, which was already in the source before it was a design
-//!
-//! [`crate::progress::Stage`] was two things in one enum. Its lower rungs (`U-Boot SPL`, OpenSBI,
-//! U-Boot proper, `Starting kernel ...`) are **the VisionFive 2's firmware chain**, true of radon
-//! and of nothing else this project owns. Its upper rungs (banner, machine, self-test, tour,
-//! prompt, and the workloads above them) are **the kernel's own ladder**, and milestone 268 made
-//! every one of them reachable on all three architectures. Nothing in the file said so. Milestone
-//! 324's block said it, and this module is that sentence made mechanical: the prologue is a
-//! `&'static Profile`, the ladder is the enum, and adding a board is adding a [`Profile`] rather
-//! than editing a recogniser.
+//! prologue only*. This module is the part that is **not** shared, written as data instead of as a
+//! run of `if line.contains(...)` inside [`crate::progress`]. The lower rungs a board's firmware
+//! prints (on the VisionFive 2: `U-Boot SPL`, OpenSBI, U-Boot proper, `Starting kernel ...`) are a
+//! `&'static Profile`; the kernel's own ladder (banner, machine, self-test, tour, prompt, and the
+//! workloads above them), the same on all three architectures, is [`crate::progress::Stage`].
+//! Adding a board is adding a [`Profile`].
 //!
 //! # What a profile may and may not contain
 //!
-//! Only what the **firmware** prints, before the kernel has run an instruction. Three kinds:
+//! Only what the **firmware** prints, before the kernel has run an instruction:
 //!
 //! - [`Profile::prologue`], the ordered rungs. Order is the whole of their meaning.
-//! - [`Profile::refusals`], the ways that firmware gives up before handing over. These belong here
-//!   and not in the shared half because `Bad Linux RISCV Image magic!` and
-//!   `### ERROR ### Please RESET the board ###` are U-Boot's words: a board with different
-//!   firmware refuses differently, or does not refuse at all.
-//! - [`Profile::relocation`], a discriminator that is deliberately not a rung. The triage ladder in
-//!   `notes/visionfive2.md` lists `Moving Image from` as the thing to check when
-//!   `Starting kernel ...` is followed by silence, which is a different question from how far the
-//!   boot got.
+//! - [`Profile::refusals`], the ways that firmware gives up before handing over
+//!   (`Bad Linux RISCV Image magic!` is U-Boot's, so it belongs to the board, not the shared half).
+//! - [`Profile::relocation`], a discriminator that is deliberately not a rung: `Moving Image from`
+//!   answers what to check when `Starting kernel ...` is followed by silence
+//!   (`notes/visionfive2.md`), a different question from how far the boot got.
 //!
-//! Everything the kernel prints stays out. A profile that named our banner would be a second copy
-//! of `crates/boot_ladder`, which is the mistake that crate exists to have already made once.
+//! Everything the kernel prints stays out; that is `crates/boot_ladder`'s.
 //!
+
 //! # BUGS
 //!
-//! - **Only [`RADON`] has ever been checked against a machine, and [`XENON`]'s emptiness is the
-//!   claim rather than an omission.** radon's four rungs and both refusals are asserted against
-//!   bytes off the wire on 2026-09-01, in `tests/fixtures/captured/`. xenon's prologue is empty
-//!   because `bench/xenon-2026-09-17/first-light-095500.log` shows nothing before our banner that
-//!   this tool matches: it boots through PVH straight into `nife on `, so the portable half of the
-//!   ladder is its whole boot. An empty prologue is therefore a measurement, but it is a
-//!   measurement of **one capture on one day**, and a xenon that fell over inside its firmware
-//!   would print something nothing here would name.
-//! - **argon has no profile and deliberately gets none.** It has never booted nife and sits behind
-//!   milestone 127, which is NOT-STARTED. A profile written for it today would be a Jetson boot
-//!   chain read out of vendor documentation and never watched on a wire, which is the
-//!   assertion-shaped-as-measurement failure this tree keeps catching. Its prologue stays unwritten
-//!   until a board prints something.
-//! - **The default is [`RADON`], and a default that names a board is a foot gun.** It is what every
-//!   caller watched before profiles existed, so taking it changed nothing; what it does is make a
-//!   report from an unconfigured session say it was expecting a VisionFive 2. The three QEMU
-//!   callers in `xtask` (`boot-check`, `soak-test`, `job-mix`) name [`XENON`] instead, which is the
-//!   honest description of a machine with no firmware prologue, and it changes no behaviour either
-//!   way: a marker that never arrives is never matched.
-//! - **A [`Rung`] compares by depth alone**, so rung 2 of one profile equals rung 2 of another.
-//!   This is an accepted exception to *make the wrong state unrepresentable*, and it is a foot gun:
-//!   a session has exactly one profile, chosen once before any byte is read, so two profiles' rungs
-//!   never meet. Making them un-comparable would mean ordering [`crate::progress::Stage`] by hand
-//!   against a profile it does not carry, which is more machinery in exchange for a state nothing
-//!   can reach.
-//! - **Nothing gates a profile against the board it claims to describe.** The same gap
-//!   `crates/boot_ladder` records against the kernel, one level out, and the same mechanism:
-//!   review, plus a capture in `tests/fixtures/captured/` for every rung anybody asserts on.
+//! - **Only [`RADON`] has been checked against a machine** (bytes off the wire in
+//!   `tests/fixtures/captured/`). [`XENON`]'s empty prologue is a measurement of one capture: it
+//!   boots through PVH straight into `nife on `, and a xenon that fell over inside its firmware
+//!   would print something nothing here names.
+//! - **argon has no profile** until it boots nife and prints something on a wire (milestone 127
+//!   (the seL4 machine)); one written from vendor documentation would be an assertion shaped as a
+//!   measurement.
+//! - **The default is [`RADON`]**, so an unconfigured session says it expected a VisionFive 2. The
+//!   QEMU callers in `xtask` (`boot-check`, `soak-test`, `job-mix`) name [`XENON`], a machine with
+//!   no firmware prologue.
+//! - **A [`Rung`] compares by depth alone**, so rung 2 of one profile equals rung 2 of another. A
+//!   session has exactly one profile, chosen before any byte is read, so they never meet.
+//! - **Nothing gates a profile against the board it claims to describe** beyond review and a
+//!   capture in `tests/fixtures/captured/` for every rung anybody asserts on.
 //!
 //! Names provisional, this lane's coinage (2026-09-19, milestone 324 part 3). `Profile` is the word
-//! calef's own ruling used (*"a board profile"*), so it is his already; `Rung` is
-//! `crates/boot_ladder`'s word for the same shape one level up and is reused rather than reinvented;
-//! `Sign` was chosen over `Match` (a verb, and the tree asks for nouns) and over `Pattern` (which
-//! promises a regular expression this deliberately is not).
+//! calef's own ruling used (*"a board profile"*); `Rung` is `crates/boot_ladder`'s word for the
+//! same shape one level up; `Sign` was chosen over `Match` (a verb) and `Pattern` (which promises a
+//! regular expression).
 
 use core::cmp::Ordering;
 

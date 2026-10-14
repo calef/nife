@@ -126,7 +126,7 @@ region one package larger, from the progenitor's image pool (`grant_plan::named_
   in order again.
 - The index store needs a file server that binds grants itself; on one that does not, `jig` is
   not granted it and says so.
-- Its own refusals name no generation, and a `remove <program>@<version>` it cannot pick names no
+- Its own refusals name no generation, and a `remove <package>@<version>` it cannot pick names no
   candidates. It holds no view of `activation/`.
 - Before `update`, the package source is the runners' fixture peer, plain HTTP; outside QEMU there
   is none.

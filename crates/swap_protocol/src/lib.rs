@@ -5,9 +5,7 @@
 //! `c_swappable` the two instances of the swappable component, `chatty` the client and the
 //! attacker), and this is what they share: the wire protocol, the addresses of the pages they pass
 //! between them, the digest both language implementations of the component must compute, and the
-//! serving loop itself. Each of the four depends on this crate. It began as `swap.rs`, compiled
-//! into each binary with `#[path]`, and became a crate under rule 7 (dated 2026-08-01), as the
-//! supervision tree's `suptree.rs` became the crate now named `supervision_protocol`.
+//! serving loop itself. Each of the four depends on this crate (rule 7).
 //!
 //! # The shape
 //!
@@ -22,38 +20,6 @@
 //! trick, and it is DECISIONS §12's endpoint-only naming cashed in: a client names an endpoint and
 //! never a peer, so the peer is free to be somebody else tomorrow.
 //!
-//! # Examples
-//!
-//! **A caveat about this example first, because it is a limitation and not a footnote.** This crate
-//! takes an unconditional `user_mode_runtime` dependency, so `script/test`'s host pass excludes it (see the
-//! exclusion list in `xtask`, derived and checked by `script/lint`). The example below therefore runs
-//! under `cargo test --doc -p swap_protocol` on an aarch64 host and **is not checked by the gate**. It
-//! is written as a real example rather than a fenced comment so that it is at least checkable; the
-//! fix is to split the pure half out from the serving loop, which is a change no lane has made.
-//!
-//! What a client learns from one exchange, and it is two facts in two words: the answer, and *who
-//! answered*. The second is the only way anything outside the operator can tell a swap happened.
-//!
-//! ```
-//! use swap_protocol::{digest, tag, tag_seq, tag_version};
-//!
-//! // v1 answers request 7.
-//! let (r0, r1) = (digest(7), tag(1, 7));
-//! assert_eq!(r0, digest(7)); // the client checks the arithmetic itself
-//! assert_eq!(tag_version(r1), 1);
-//! assert_eq!(tag_seq(r1), 7);
-//!
-//! // The operator swaps the component. The client's capability did not change, its loop did not
-//! // branch, and the only observable difference is the version word.
-//! let (r0_after, r1_after) = (digest(8), tag(2, 8));
-//! assert_eq!(r0_after, digest(8)); // the same eight lines, in C this time, bit for bit
-//! assert_eq!(tag_version(r1_after), 2);
-//!
-//! // Which is why the digest is deliberately trivial: two language implementations of one
-//! // definition must agree, so the client can check its server without trusting either.
-//! assert_ne!(digest(7), digest(8));
-//! ```
-//!
 //! # The one thing the component owns that cannot be shared
 //!
 //! The UART's registers. Two processes writing one device's registers is the interleaving hazard
@@ -62,15 +28,10 @@
 //! endowing the new one. The old instance is asked to touch them one more time afterwards, and the
 //! kernel's fault message is the receipt.
 //!
-//! Name: recorded (milestone 46, and design/naming.md's crate section). The wire contract was
-//! spelled four ways (`filesystem_proto`, `graphics_proto`, `netproto`, `line_editor::proto`) for one concept;
-//! `*_proto` won on 2026-07-30 under DECISIONS §39, and `script/lint` has checked it since; the
-//! suffix became `_protocol` at milestone 265, on calef's ruling of 2026-09-05, and the
-//! 2026-07-30 spellings are
-//! kept above because that sentence is an account of what was decided then. That
-//! rule plus the service the stem names produces this name, which is the whole of what `recorded`
-//! claims: calef ruled on the rule, and never on this crate.
-//! The stem is milestone 23's word for live replacement, which no record weighs against another.
+//! Name: recorded (milestone 46, and design/naming.md's crate section): the `_protocol` suffix
+//! rule (calef, 2026-09-05) plus milestone 23's word for live replacement, under the naming rules
+//! milestone 46 (rename the components for what they are) wrote down. calef ruled on the rule,
+//! never on this crate.
 
 use user_mode_runtime::invoke;
 
@@ -762,6 +723,33 @@ pub const fn digest(seq: u64) -> u64 {
 
 /// Pack the second reply word: the answering instance's version above the sequence number it
 /// answered. Two facts in one word because `CALL` returns two and the digest owns the other.
+///
+/// # Examples
+///
+/// What a client learns from one exchange: the answer, and *who answered*, the only way anything
+/// outside the operator can tell a swap happened. This crate depends on `user_mode_runtime`, so the
+/// host pass excludes it and this runs only under `cargo test --doc -p swap_protocol` on an
+/// aarch64 host.
+///
+/// ```
+/// use swap_protocol::{digest, tag, tag_seq, tag_version};
+///
+/// // v1 answers request 7.
+/// let (r0, r1) = (digest(7), tag(1, 7));
+/// assert_eq!(r0, digest(7)); // the client checks the arithmetic itself
+/// assert_eq!(tag_version(r1), 1);
+/// assert_eq!(tag_seq(r1), 7);
+///
+/// // The operator swaps the component. The client's capability did not change, its loop did not
+/// // branch, and the only observable difference is the version word.
+/// let (r0_after, r1_after) = (digest(8), tag(2, 8));
+/// assert_eq!(r0_after, digest(8)); // the same eight lines, in C this time, bit for bit
+/// assert_eq!(tag_version(r1_after), 2);
+///
+/// // Which is why the digest is deliberately trivial: two language implementations of one
+/// // definition must agree, so the client can check its server without trusting either.
+/// assert_ne!(digest(7), digest(8));
+/// ```
 pub const fn tag(version: u64, seq: u64) -> u64 {
     (version << 32) | (seq & 0xffff_ffff)
 }

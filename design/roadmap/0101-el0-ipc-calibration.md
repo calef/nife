@@ -16,8 +16,9 @@ the corrected comparison is considerably worse for us than the one that was on t
 
 What remains is one step, reading cycles from a PMU instead of
 deriving them from nanoseconds and an assumed clock. That is milestone 74's deliverable by name, and
-it rides milestone 16's silicon. This line read `NONE` until 2026-08-16, which was true while a
-paragraph was still waiting to be rewritten and stopped being true when it was: nothing in this
+it rides the silicon of milestone 16 (real hardware and IOMMU-backed driver isolation). This line
+read `NONE` until 2026-08-16. That was true while a
+paragraph was still waiting to be rewritten, and stopped being true when it was. Nothing in this
 milestone is startable today, and a gate of `NONE` was advertising the opposite to
 `script/roadmap --ready`.
 
@@ -32,7 +33,7 @@ both IPC benchmarks on one machine, both planes from the same boot, five boots b
 | `ipc_rtt_el0` | EL0 to EL0 | 350 | two rendezvous, two address spaces, four `svc`s |
 
 Against seL4's published pair for the same-core cross-address-space path, 413 cycles for the call
-and 426 for the reply, one-way each, so ~839 cycles for a round trip in our sense: the corrected
+and 426 for the reply, one-way each. So ~839 cycles for a round trip in our sense. The corrected
 figure is roughly 1.1x to 1.7x an L4-lineage round trip. The range is the clock, not the
 measurement. HVF passes through no PMU, so a cycle count here is nanoseconds times an *assumed*
 clock, and the host M3 runs 2.75 GHz on an E-core and 4.05 GHz on a P-core with nothing pinning the
@@ -49,9 +50,9 @@ clock. None of that makes this a win, and the note says so in a section headed t
 ## The prediction of record, left standing
 
 Everything under this heading is the block as it was raised on 2026-08-04, before anything was
-measured. It is wrong, and it is kept rather than quietly fixed, for the same reason
-notes/benchmarks.md keeps the plausible first reading of the RISC-V `map_new` movement: the record
-of having been confidently wrong is the useful artifact, and a page that only ever shows corrected
+measured. It is wrong, and it is kept rather than quietly fixed. notes/benchmarks.md keeps the
+plausible first reading of the RISC-V `map_new` movement for the same reason. The record of having
+been confidently wrong is the useful artifact. A page that only ever shows corrected
 numbers teaches a reader nothing about how much to trust the next one.
 
 It forecast 12-24x. The measured answer is ~1.1x to ~1.7x, an error the same size as the one it
@@ -84,12 +85,12 @@ wrong twice (design/roadmap/0074-cycle-counters/corrections.md).
 
 **Why it was wrong, since that is the part worth carrying forward.** The arithmetic is fine: 2272 ns
 at 3.2 GHz really is ~7,300 cycles, and ~7,300 against 300-600 really is 12 to 24. Every step is
-checkable and every step is right. It fixed the plane error, inherited the build error without
+checkable and every step is right. It fixed the plane error and inherited the build error without
 noticing it (2272 ns is a debug figure, and the debug-to-release tax on this path is ~6.7x,
-measured), inherited the convention error without noticing it either (their 300-600 is one-way), and
-inherited the 3.2 GHz clock from the paragraph it was correcting. A correction that reuses its
-target's assumptions is not a correction, and the last clause, "it is not going to move the
-conclusion by a factor of three", is the tell: it forecloses the result before measuring, which is
+measured). It inherited the convention error without noticing it either (their 300-600 is one-way).
+And it inherited the 3.2 GHz clock from the paragraph it was correcting. A correction that reuses
+its target's assumptions is not a correction. The last clause, "it is not going to move the
+conclusion by a factor of three", is the tell. It forecloses the result before measuring, which is
 the one thing a milestone whose entire deliverable is a measurement must not do.
 
 ## The two stale claims, verified against the code
@@ -128,7 +129,7 @@ thread ran on. That is milestone 74's job, and it is why this milestone is not B
 
 **The remaining step is milestone 74's, not a second lane on this one.** Folding it into
 milestone 25 was the alternative this block named, and the reason for keeping it separate is now on
-the record rather than open: the paragraph correction is what should not have waited for a board,
+the record rather than open. The paragraph correction is what should not have waited for a board,
 and it did not.
 ## Follow-on
 

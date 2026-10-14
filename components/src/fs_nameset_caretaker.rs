@@ -3,45 +3,27 @@
 //!
 //! `fs_file_caretaker` narrows a directory capability to one **file**. `fs_subtree_caretaker`
 //! narrows it to one **subtree**. This narrows it to a **set of names in one directory**, which is
-//! what `rm *.txt` designates and what neither of the other two can express.
+//! what `rm *.txt` designates. It speaks `filesystem_protocol` above and below, over a wider
+//! namespace; nothing new in the kernel.
 //!
-//! # Why this is a third caretaker and not a mode on the second
-//!
-//! It was a real fork, and the reasons are three, in the order they mattered:
-//!
-//! 1. **`fs_subtree_caretaker` performs no checks at all, and that is its design**
-//!    (notes/dir-capability.md). Every attenuation it provides lives in the handle the FS server
-//!    minted for it at startup, so there is no branch in it that could be wrong. A name filter is a
-//!    check, and one that has to be consulted on **every name-taking verb** (`OPEN`, `CREATE`,
-//!    `OPENDIR`, `MKDIR`, `UNLINK`, `RMDIR`, and both halves of `RENAME`). Adding a mode would
-//!    trade that program's one strong property for a switch, and it would put a forget-a-verb
-//!    surface in the caretaker that most deliberately has none.
-//! 2. **`fs_file_caretaker` cannot be generalized into this**, though the roadmap's phrasing
-//!    invites the thought. It serves the *file* protocol: its client `OPEN`s a fixed handle and the
-//!    caretaker answers `ENOTDIR` to `CREATE` and refuses every directory verb. Teaching it a set
-//!    would mean teaching it `READDIR`, `UNLINK` and `RMDIR`, which is not generalizing a file
-//!    caretaker, it is writing a subtree caretaker and calling it one.
-//! 3. **The grants have different shapes.** A single name rides in two `START` argument words; a
-//!    set does not fit in any number of registers, so this program is started with a **frame** as
-//!    well (`filesystem_protocol::nameset`). Bolting that onto `fs_subtree_caretaker` would make every subtree
-//!    grant carry machinery it does not use.
-//!
-//! What *is* the roadmap's finding, and holds exactly: this is the same caretaker, speaking the
-//! same `filesystem_protocol` protocol above and below, over a wider namespace. **Nothing new in the kernel.**
+//! It is a third caretaker rather than a mode of the others because `fs_subtree_caretaker`'s
+//! strength is performing no checks at all, and a name filter is a check on every name-taking verb;
+//! `fs_file_caretaker` serves the *file* protocol and refuses every directory verb; and a set does
+//! not fit in `START`'s argument words, so this one is started with a **frame**
+//! (`filesystem_protocol::nameset`).
 //!
 //! # The rule, and the fact that there is only one
 //!
-//! **A name that is not in the set does not exist here.** One sentence covers every verb: reading
-//! it, writing it, creating it, removing it and renaming onto it are all `ENOENT`, because in this
-//! scope there is no such name and nothing consulted a permission. That is `fs_file_caretaker`'s
-//! sentence (DECISIONS §27) over a set instead of over one name, and it is why there is no per-verb
-//! policy here to get wrong.
+//! **A name that is not in the set does not exist here.** Reading it, writing it, creating it,
+//! removing it and renaming onto it are all `ENOENT`: in this scope there is no such name and
+//! nothing consulted a permission (`fs_file_caretaker`'s sentence, DECISIONS §27 (the filesystem
+//! service), over a set), so there is no per-verb policy here to get wrong.
 //!
 //! The filter applies at the **granted directory** and nowhere else. A handle minted below it (by
-//! descending into a matched directory, which needs a `-r` grant's `DESCEND`) is unfiltered, and
-//! that is right rather than a gap: the pattern selected top-level names, and what is under a
-//! directory it selected was never a question the pattern asked.
+//! descending into a matched directory, which needs a `-r` grant's `DESCEND`) is unfiltered: the
+//! pattern selected top-level names, and what is under a selected directory was never its question.
 //!
+
 //! # Capability contract (`kernel/src/user/fs_service/set_grant.rs`, `start_granted_set`)
 //!
 //! - **slot 0**: the FS-service endpoint, `WRITE`. The directory capability being attenuated.
@@ -55,17 +37,13 @@
 //! The granted directory's name and rights ride in the three `START` argument words exactly as
 //! `fs_subtree_caretaker`'s do.
 //!
-//! Name: ratified 2026-08-01 (calef, milestone 61), replacing `swarden`. Refused `swarden` and the
-//! `warden` family. A reader should predict exactly these names, in one directory. It survived the
-//! collapse this milestone was first drafted around, because it and `fs_subtree_caretaker` serve
-//! the same verbs by opposite means: this one filters names on every name-taking verb, where its
-//! sibling performs no checks at all.
-//!
 //! # BUGS
 //!
-//! **No host fuzz target reaches this caretaker's decode** (proposal #1592 part a, rank 4). It is
-//! inline in this EL0 binary with no library half, so a target would need it extracted first, the
-//! way `redoxfs_server::Server::handle` was. See `notes/fuzzing-the-services.md`.
+//! **No host fuzz target reaches this caretaker's decode.** It is inline in this EL0 binary with no
+//! library half, so a target would need it extracted first (`notes/fuzzing-the-services.md`).
+//!
+//! Name: ratified 2026-08-01 (calef, milestone 61), replacing `swarden`. Refused `swarden` and the
+//! `warden` family. A reader should predict exactly these names, in one directory.
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

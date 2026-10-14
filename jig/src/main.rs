@@ -5,7 +5,7 @@
 //! jig list                     the packages the index copy offers, or else the image's catalog
 //! jig install <path>           install a package file already on this system
 //! jig install <name>[@<ver>]   fetch a package by name and install it
-//! jig remove <program>         a new generation without the program
+//! jig remove <package>         a new generation without the package's programs
 //! jig rollback                 the generation below the live one becomes live
 //! ```
 //!
@@ -78,7 +78,7 @@ const STAGING_VA: u64 = address_space_map::pair_page(0x0400_0000);
 const ARCHITECTURE: &str = std::env::consts::ARCH;
 
 const USAGE: &str =
-    "  jig update | jig list | jig install <file or name> | jig remove <program> | jig rollback";
+    "  jig update | jig list | jig install <file or name> | jig remove <package> | jig rollback";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -88,7 +88,7 @@ fn main() -> ExitCode {
         ["list"] => list(),
         ["install", path] if path.contains('/') => install_file(path),
         ["install", name] => install_name(name),
-        ["remove", program] => remove(program),
+        ["remove", package] => remove(package),
         ["rollback"] => rollback(),
         _ => {
             println!("{USAGE}");
@@ -198,9 +198,19 @@ impl Staged {
     }
 }
 
-/// **Send one activation request on the installer endpoint and read its one answer**: the frames
+/// **The progenitor's answer to one activation request**: the status, the generation live
+/// afterwards, the member a refused install's program is (one more than its table-of-contents
+/// index, 0 for none), and the package already holding that program's name, for `NameTaken`.
+struct Reply {
+    status: S,
+    live: u64,
+    member: u64,
+    holder: String,
+}
+
+/// **Send one activation request on the installer endpoint and read its answer**: the frames
 /// of `staged` for an install, the packed name for a removal, nothing for a rollback.
-fn ask(verb: Activation, staged: Option<&Staged>, name: Option<&str>) -> (S, u64) {
+fn ask(verb: Activation, staged: Option<&Staged>, name: Option<&str>) -> Reply {
     let len = staged.map_or(0, |s| s.len);
     let (w0, w1, w2) = spawnproto::activation_request(verb, len);
     rt::send(INSTALLER_SLOT, w0, w1, w2);
@@ -223,8 +233,37 @@ fn ask(verb: Activation, staged: Option<&Staged>, name: Option<&str>) -> (S, u64
         let (lo, hi) = filesystem_protocol::grant::pack_name(name.as_bytes());
         rt::send(INSTALLER_SLOT, lo, hi, name.len() as u64);
     }
-    let (r0, r1, _) = rt::receive(INSTALLER_REPLY_SLOT);
-    (S::from_word(r0), r1)
+    let (r0, r1, r2) = rt::receive(INSTALLER_REPLY_SLOT);
+    let status = S::from_word(r0);
+    let mut holder = String::new();
+    // **Two more messages name the holder** (milestone 919 (a package carries several
+    // programs)): calef ruled the owner removes the first package before installing the second.
+    if status == S::NameTaken {
+        let words = [
+            rt::receive(INSTALLER_REPLY_SLOT),
+            rt::receive(INSTALLER_REPLY_SLOT),
+        ];
+        let mut out = [0u8; spawnproto::HOLDER_MAX];
+        holder = spawnproto::holder_from_words(words, &mut out).to_string();
+    }
+    Reply {
+        status,
+        live: r1,
+        member: r2,
+        holder,
+    }
+}
+
+/// **Send `staged` to the installer and say what came of it**, naming a refused program from these
+/// bytes, which are the ones the progenitor judged (milestone 919).
+fn send_install(staged: &mut Staged, fetched: bool) -> ExitCode {
+    let reply = ask(Activation::Install, Some(staged), None);
+    let program = reply.member.checked_sub(1).and_then(|index| {
+        let package = package_archive::Package::parse(staged.bytes()).ok()?;
+        let index = usize::try_from(index).ok()?;
+        package_archive::program_name(&package, index).map(String::from)
+    });
+    answer(Activation::Install, fetched, reply, program.as_deref())
 }
 
 /// Whether this process was granted an installer endpoint; says why not when it was not.
@@ -262,11 +301,7 @@ fn install_file(path: &str) -> ExitCode {
     if let Err(e) = file.read_exact(staged.bytes()) {
         return say_io(path, e);
     }
-    answer(
-        Activation::Install,
-        false,
-        ask(Activation::Install, Some(&staged), None),
-    )
+    send_install(&mut staged, false)
 }
 
 /// **`jig install <name>`**: the catalog names the stem, the package source serves
@@ -320,11 +355,7 @@ fn install_name(name: &str) -> ExitCode {
             "this image's catalog does not vouch for those bytes; nothing was sent to the installer",
         );
     }
-    answer(
-        Activation::Install,
-        true,
-        ask(Activation::Install, Some(&staged), None),
-    )
+    send_install(&mut staged, true)
 }
 
 /// **`GET /<stem>.nifepkg` from the package source**, into a staging run sized from the response's
@@ -587,11 +618,7 @@ fn install_indexed(entry: &Entry<'_>) -> ExitCode {
         );
     }
     println!("  fetched {} from {whence} over TLS", entry.stem);
-    answer(
-        Activation::Install,
-        true,
-        ask(Activation::Install, Some(&staged), None),
-    )
+    send_install(&mut staged, true)
 }
 
 /// Run one fetch into the staging run from its start, and set the run's length to what arrived.
@@ -620,9 +647,11 @@ fn fill(
     Ok(())
 }
 
-/// **`jig remove <program>`**, or `<program>@<version>` for one version.
-fn remove(program: &str) -> ExitCode {
-    if program.len() > filesystem_protocol::grant::MAX_NAME {
+/// **`jig remove <package>`**, or `<package>@<version>` for one version: every row the package
+/// installed, whatever its programs are called (calef, 2026-10-14 (UTC), milestone 919 (a package
+/// carries several programs): "jig remove should work on packages, not programs.").
+fn remove(package: &str) -> ExitCode {
+    if package.len() > filesystem_protocol::grant::MAX_NAME {
         println!("{USAGE}");
         return ExitCode::from(2);
     }
@@ -632,7 +661,8 @@ fn remove(program: &str) -> ExitCode {
     answer(
         Activation::Remove,
         false,
-        ask(Activation::Remove, None, Some(program)),
+        ask(Activation::Remove, None, Some(package)),
+        None,
     )
 }
 
@@ -645,6 +675,7 @@ fn rollback() -> ExitCode {
         Activation::Rollback,
         false,
         ask(Activation::Rollback, None, None),
+        None,
     )
 }
 
@@ -666,7 +697,17 @@ fn say_io(path: &str, e: std::io::Error) -> ExitCode {
 /// **What the progenitor's answer means**, in the words the shell's `package` builtin used, so a
 /// person who learned those reads the same sentences. Every answer names the generation live
 /// afterwards, because after a refusal that is still the fact a person needs.
-fn answer(verb: Activation, fetched: bool, (status, live): (S, u64)) -> ExitCode {
+fn answer(verb: Activation, fetched: bool, reply: Reply, program: Option<&str>) -> ExitCode {
+    let Reply {
+        status,
+        live,
+        holder,
+        ..
+    } = reply;
+    let program = program.map_or("one of its programs".to_string(), |p| {
+        format!("the program {p}")
+    });
+    let named;
     let said = match (status, verb) {
         (S::Done, Activation::Install) if fetched => "fetched and installed",
         (S::Done, Activation::Install) => "installed",
@@ -676,20 +717,29 @@ fn answer(verb: Activation, fetched: bool, (status, live): (S, u64)) -> ExitCode
             "refused: neither this image's catalog nor its index copy vouches for those bytes"
         }
         (S::NoProgram, _) => {
-            "refused: that package carries no program: no member named after it, and not one bin/ member"
+            "refused: that package carries no program jig can install: none named after it or \
+             under bin/, or a bin/ name that is empty, nested or repeated"
         }
-        (S::NotInstalled, _) => "refused: no program of that name is in the live generation",
+        (S::NotInstalled, _) => "refused: no package of that name is in the live generation",
         (S::NoEarlier, _) => "refused: there is no generation before the live one",
         (S::StoreFailed, _) => "could not write the activation set",
+        // calef, 2026-10-14 (UTC): "If two packages offer the same program name, refuse the
+        // second package. Need to remove the first one before installing the second one."
         (S::NameTaken, _) => {
-            "refused: another installed package already provides a program of that name"
+            named = format!(
+                "refused: the package {holder} already provides {program}; \
+                 jig remove {holder} first"
+            );
+            named.as_str()
         }
         (S::ImageName, _) => {
-            "refused: the image carries a program of that name; a new base updates it, not install"
+            named =
+                format!("refused: the image carries {program}; a new base updates it, not install");
+            named.as_str()
         }
         (S::Ambiguous, _) => {
-            "refused: several versions of that program are live and one holds the default; \
-             name one with <program>@<version>"
+            "refused: that version holds a program's default and several other versions of it are \
+             live, so none can take its place"
         }
         (S::NotServedHere, _) => "refused: the installer endpoint does not take that request",
         (S::NotYours, _) => {
