@@ -1,28 +1,8 @@
-//! **The secrets service** (milestone 56's credential half, generalised by milestone 65;
-//! notes/credentials.md; notes/ntlm.md is the history of the NTLM half, removed 2026-08-30).
-//!
-//! **Hold the key, expose the operation, never the key.** The one process in the system that holds
-//! secrets, and the only thing that can read them. Everything else holds an endpoint that means
-//! *"you may ask this store to compute with a secret"*, which is a strictly smaller authority than
-//! *"you may read the secret"*: a client cannot enumerate the identities, cannot obtain a salt, a
-//! or a tag, and cannot write a record.
-//!
-//! **This program's name lags its job**, and knowingly. Milestone 65 says the credentialer becomes
-//! one operation in a secrets service rather than a service beside it, because a second process
-//! holding secrets is exactly what the design exists to avoid. So the generalisation happened here
-//! rather than in a new program. A rename is a naming decision and belongs to an architect
-//! (CLAUDE.md); this header is the note that it is owed.
-//!
-//! # One kind of secret, one operation, one store
-//!
-//! | secret | operation | never exposed |
-//! |---|---|---|
-//! | an Argon2id tag | `VERIFY`: is this the secret? | the tag, the salt |
-//!
-//! There were two kinds until 2026-08-30. The second was an `NTOWFv2` answering `NTLM_PROOF`,
-//! because NTLMv2 never sends the password and so does not fit "secret in, boolean out"; it went
-//! with the SMB implementation that was its only consumer. notes/ntlm.md keeps the argument,
-//! which is not about NTLM: hold the key, expose the operation.
+//! **The secrets service** (notes/credentials.md): hold the key, expose the operation, never the
+//! key. The one process that holds secrets; everything else holds an endpoint meaning "you may ask
+//! this store to compute with a secret", so a client cannot enumerate identities, obtain a salt or
+//! a tag, or write a record. Today the one secret is an Argon2id tag and the one operation is
+//! `VERIFY`.
 //!
 //! ```text
 //!   the provisioner ──the provision endpoint──►┌────────────┐
@@ -32,88 +12,32 @@
 //!                  (VERIFY, forever)               the store lives here and nowhere else
 //! ```
 //!
-//! # Two phases, because this kernel has one wait point
+//! A process blocks on one endpoint at a time, so writing the store is a phase that ends:
+//! provision (each [`credential_protocol::provision::PUT`] derives a record with an
+//! entropy-service salt, [`credential_protocol::provision::SEAL`] ends it), then both ends of the
+//! provision endpoint are deleted, then serve `VERIFY` forever. A client is not refused write
+//! permission; there is no object left through which a write could travel.
 //!
-//! The clock service records the constraint (components/src/clock.rs): there is no wait-any primitive
-//! and no threads inside one address space, so a process can block on exactly **one** endpoint.
-//! The clock's answer was to make its wide authority a page write rather than a message. This
-//! service's answer is different and, for a credential store, better: writing the store is not an
-//! *operation* at all, it is a **phase**, and the phase ends.
+//! It never invents a salt (§44 (entropy is a capability)): a `PUT` that cannot get one answers
+//! [`credential_protocol::NO_ENTROPY`], and a service that cannot draw its decoy record's salt and
+//! tag at start-up refuses to start, since a weaker fallback would fail silently.
 //!
-//! 1. **Provision.** RECEIVE on the provision endpoint. Each [`credential_protocol::provision::PUT`]
-//!    derives a record with a salt drawn from the entropy service.
-//!    [`credential_protocol::provision::SEAL`] ends it.
-//! 2. **Delete.** The service `cap_delete`s its receive end of the provision endpoint, and the
-//!    provisioner deletes its send end. Nothing in the system can name it any more.
-//! 3. **Serve.** RECEIVE on the verify endpoint, forever. One opcode, one kind of secret, yes or no.
-//!    It was two until 2026-08-30, when the NTLM half went with the SMB implementation that was
-//!    its only consumer (notes/smb.md).
-//!
-//! **That is the asymmetry, and it is structural rather than a check.** A client is not refused
-//! permission to write the store; there is no object through which the request could travel by the
-//! time a client holds anything. Compare a Unix password database, where `smbd` opens the file and
-//! the only thing standing between a compromised server and every hash in it is that the code does
-//! not choose to read them.
-//!
-//! # It never invents a salt
-//!
-//! Every salt comes from the entropy service (DECISIONS §44), and a provisioning request that
-//! cannot get one is answered [`credential_protocol::NO_ENTROPY`] rather than being served with something
-//! weaker. A predictable salt is a store one rainbow table covers, so falling back would be
-//! exactly the silent degradation DECISIONS §42 forbids, in the one place it would be hardest to
-//! notice: everything would keep working.
-//!
-//! The decoy record's salt and tag come from the same place, at start-up. A service that could not
-//! draw them **refuses to start**, because a credential service with no unpredictable bits cannot
-//! do its job and saying so is the only honest option.
-//!
-//! # Capability contract (notes/abi.md §4)
-//!
-//! - slot 0: the **provision** endpoint (RECEIVE), deleted at the seal
-//! - slot 1: the **verify** endpoint (RECEIVE)
-//! - slot 2: the **entropy** service's endpoint (WRITE)
-//! - slot 3: an **untyped budget**, for the memory-hard scratch and nothing else
-//! - slot 4: a **readiness** endpoint (WRITE), one message once the store is sealed
-//! - mapped: the provision page, and the verify page. **Two frames, never one**: the provisioner
-//!   writes plaintext secrets into its page, and a client that shared that frame would read them.
-//!
-//! No initial ramdisk, no filesystem, no network, no device. A compromised secrets service is a
-//! machine whose logins an attacker can answer, for as long as they hold it, which is exactly as much damage as owning the store should be worth. It is not
-//! a machine whose passwords they can carry away.
+//! Slots: 0, the provision endpoint (RECEIVE), deleted at the seal; 1, the verify endpoint
+//! (RECEIVE); 2, the entropy service (WRITE); 3, an untyped budget for the memory-hard scratch;
+//! 4, a readiness endpoint (WRITE). Mapped: the provision page and the verify page, **two frames,
+//! never one**, because the provisioner writes plaintext secrets into its page. Owning this service
+//! lets an attacker answer logins while they hold it, not carry the passwords away.
 //!
 //! # BUGS
 //!
-//! **One verify page means one client at a time.** The page is per service, not per channel, so
-//! two clients sharing the endpoint would also share the frame each writes its presented secret
-//! into. Nothing here detects that. `filesystem_protocol`'s answer (one page per channel) is the shape to
-//! copy when a second client exists; today the one client is `login` (components/src/login.rs).
+//! - One verify page means one client at a time (today `login`); a second needs a page per
+//!   channel, as `filesystem_protocol` has.
+//! - Nothing survives a reboot. No rate limit or lockout: a guess costs one Argon2id derivation.
+//! - Revocation is per holder, not per secret: the sealed store has no way to remove a record, so
+//!   rotating one means reprovisioning.
 //!
-//! **Nothing survives a reboot.** The store is memory only. Secrets at rest are unsolved and this
-//! service does not pretend otherwise; see notes/credentials.md.
-//!
-//! **No rate limit, no lockout, no attempt counter.** A client holding the verify endpoint can
-//! guess as fast as it can `CALL`, and each guess costs it one Argon2id derivation of the service's
-//! time. That cost is the only thing slowing an online attack down, and it is also a way to make
-//! the service unresponsive to everyone else.
-//!
-//! **Revocation is per holder, not per secret.** Destroying a client's endpoint ends its access,
-//! which is the thing this design buys and a stored hash could never offer. Revoking one *secret*
-//! is a different question and this service cannot answer it: the store is sealed, so there is no
-//! object through which a record could be removed, which is the same property that makes the seal
-//! worth having. Rotating a secret means restarting the service and reprovisioning, so a
-//! deployment that needs finer granularity runs more than one. See notes/credentials.md.
-//! Name: ratified 2026-08-01 (calef, milestone 63), replacing `credential`. Refused `credential`
-//! (the plain resource noun, on the pattern `clock` and `entropy` follow). The argument for it was
-//! made twice and wrong twice: `credentialer` is a real profession rather than a coinage, and this
-//! service will never give you a credential, so naming it for the resource implies the one thing it
-//! exists to refuse.
-//!
-//! **That ratification predates what this program became.** Milestone 65 turned it from a
-//! credential service into a **secrets service** by adding an `NTOWFv2` beside the Argon2id tag
-//! and an `NTLM_PROOF` operation, and the NTLM half was removed again on 2026-08-30. Today the
-//! store holds Argon2id tags only, so whether that rename is still owed is itself an
-//! architect's question, not a lane's; `cred`, `credential_protocol` and
-//! `credentialer_test_client` are in the same boat. Recorded here rather than acted on.
+//! Name: ratified 2026-08-01 (calef), replacing `credential`. Refused `credential` (this service
+//! never gives you one). Whether a secrets service still owes a rename is calef's question.
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

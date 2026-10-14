@@ -33,6 +33,18 @@ impl Handoff {
 
     /// The inverse of [`Handoff::pack`], refusing a role word without the tag, a base that is
     /// zero or not page aligned, and a MAC address no station can own.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use designware_ethernet::Handoff;
+    ///
+    /// let h = Handoff { mac: [0x6c, 0xcf, 0x39, 0x00, 0x47, 0x2c], data_plane_phys: 0x4012_3000 };
+    /// let [role, phys] = h.pack();
+    /// assert_eq!(Handoff::unpack(role, phys), Some(h));
+    /// assert_eq!(Handoff::unpack(0, phys), None);
+    /// assert_eq!(Handoff::unpack(role, phys + 8), None);
+    /// ```
     pub fn unpack(arg0: u64, arg1: u64) -> Option<Handoff> {
         if arg0 & 0xffff != ROLE_TAG || arg1 == 0 || !arg1.is_multiple_of(PAGE) {
             return None;

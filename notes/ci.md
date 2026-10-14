@@ -49,7 +49,7 @@ after its fixes.
 ## What the lane's branch changes, and what it leaves
 
 Four purposes: the two stale cross-arch allowances in `sched.rs`, the arch-split items (with one
-deletion among them), the superseded ring-3 stack setter pair, and the iommu allowance. Verified
+deletion among them), the obsolete ring-3 stack setter pair, and the iommu allowance. Verified
 with `cargo check -p kernel --features shell` on all three targets: aarch64 prints nothing, and
 x86_64 falls from forty warnings to twenty-nine (twenty-eight in CI, see BUGS). The manifest
 warning that remains on riscv64 and x86_64 is #1477's. Every remaining dead-code one is in the two rows above that end in "already

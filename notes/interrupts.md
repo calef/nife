@@ -246,8 +246,8 @@ driver (9b) uses the same path with a real device interrupt.
 ## Testing it on RISC-V, which has no SGI (§19 (architectural parity), 2026-07-31)
 
 The two tests (`kernel::sched::tests::an_interrupt_becomes_a_message` and
-`an_interrupt_that_arrives_before_the_wait_is_not_lost`) were aarch64-only until 2026-07-31,
-because they trigger with an SGI. On RISC-V the trigger is now the console UART's own
+`an_interrupt_that_arrives_before_the_wait_is_not_lost`) trigger with an SGI on aarch64. On RISC-V
+the trigger is the console UART's own
 transmit-empty interrupt, behind `arm_test_irq`, `raise_test_irq` and `quiet_test_irq`. The SBI IPI
 was refused because it never reaches `irq_route`, and writing the PLIC's pending bits does nothing.
 The two legs are not twins: aarch64's needs no device, and RISC-V's covers more of the controller.

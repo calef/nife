@@ -53,7 +53,7 @@ monitor client is xtask itself over `std::os::unix::net::UnixStream`.
   split when it moved here on 2026-10-11 (UTC). It is a real account of what was checked and found
   (the qtree state, the two-witness digest agreement, the ruled-out fixes). And the project's own
   convention is to correct the record rather than delete the wrong turn. Read every claim below that
-  a QEMU resize bug exists as superseded by this paragraph.
+  a QEMU resize bug exists as withdrawn by this paragraph.
 
 - The host-side scanout check does not currently confirm a grown scanout, on aarch64, under QEMU
   11.0.2. This was found 2026-08-26, in milestone 142 (a text display good enough that people use

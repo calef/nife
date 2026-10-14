@@ -113,6 +113,17 @@ pub enum RxVerdict {
 /// Every field is the device's statement and none is trusted (notes/shared-page-audit.md's
 /// finding 6, applied to a third NIC): a `Frame(n)` always has `n <= room`, `n <= MAX_FRAME` and
 /// `n + CRC_BYTES <= BUFFER_SIZE`, which the Kani harness below proves for every word.
+///
+/// # Examples
+///
+/// ```
+/// use designware_ethernet::{RxVerdict, rx_verdict, RDES3_FD, RDES3_LD, RDES3_OWN};
+///
+/// // 64 bytes on the wire is 60 of frame and 4 of CRC, which the driver strips.
+/// assert_eq!(rx_verdict(RDES3_FD | RDES3_LD | 64, 1514), RxVerdict::Frame(60));
+/// assert_eq!(rx_verdict(RDES3_OWN | RDES3_FD | RDES3_LD | 64, 1514), RxVerdict::NotYet);
+/// assert_eq!(rx_verdict(RDES3_FD | RDES3_LD | 0x7fff, 1514), RxVerdict::Drop);
+/// ```
 pub fn rx_verdict(des3: u32, room: usize) -> RxVerdict {
     if des3 & RDES3_OWN != 0 {
         return RxVerdict::NotYet;

@@ -186,13 +186,13 @@ The map bench's tie and the spawn bench's "lighter object than a Unix process" a
 figure quoted without its caveats is worth less than no figure.
 
 1. The 4 KiB unit is ours by constraint and theirs by choice. A `filesystem_protocol` request
-   cannot carry more than a page. The 64 KiB row prices that, at about sixteen times. *(Superseded
-   2026-08-19 by step 3's 64 KiB request; see [steps 1 and 3](read-path-record-and-request-size.md).)*
+   cannot carry more than a page. The 64 KiB row prices that, at about sixteen times. *(Step 3's 64 KiB
+   request lifts this limit; see [steps 1 and 3](read-path-record-and-request-size.md).)*
 2. We have no cache and they have several. No `DiskCache`, no readahead, no metadata cache; the
    identical cost of our sequential, random and record-aligned reads is the proof. `O_DIRECT` and
    `F_NOCACHE` remove the page cache on the other side, but not the in-kernel metadata caching that
-   lets ext4 map a block without reading one. *(The metadata-cache half is superseded 2026-08-19 by
-   step 2's `CachedDisk`; see [steps 4 and 2](read-path-block-contract-and-metadata-cache.md).)*
+   lets ext4 map a block without reading one. *(Step 2's `CachedDisk` now supplies the metadata
+   cache; see [steps 4 and 2](read-path-block-contract-and-metadata-cache.md).)*
 3. Our write is between Linux's two. Every `filesystem_protocol` write goes through a RedoxFS
    transaction that commits to the header ring before the reply. So the filesystem's own state is
    durable per request, the way `O_DSYNC` makes ext4's. But no `VIRTIO_BLK_T_FLUSH` is issued unless

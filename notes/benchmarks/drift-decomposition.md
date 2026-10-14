@@ -109,7 +109,7 @@ switch path), trimmed the aarch64/riscv peak from ~+43 to the net ~+35.7 ticks/s
 PR #885's first pass classified this as intended feature work, reasoning that 139 is a decided
 feature whose own text places the cost at the switch. It re-saved the baselines to absorb it, and
 flagged that the delivered +35.7 ticks overran 139's estimate of ~2-3 by an order of magnitude,
-guessing a non-inlined arch function. This section supersedes that pass; its text is in
+guessing a non-inlined arch function. This section's reading is the one in force; the pass's text is in
 `git log -p notes/benchmarks.md`.
 
 The reason is milestone 237 (the cycle-counter grant), which made the cycle-counter grant a measurement-only feature that
@@ -146,7 +146,7 @@ riscv64 3654380 -> 3654349, both ~0.001%). The fix recovers ~91-93% of the drift
 threaded cost. The tuple is provably 3-wide and no cycle-counter code compiles with the feature off,
 so there is nothing left to gate. Untouched benchmarks shift by comparable sub-tenth-percent amounts
 whenever switch-path code changes, because the compiler remakes whole-crate inlining decisions. The
-baselines were re-saved on `nightly-2026-09-15` against these recovered numbers, superseding #885's
+baselines were re-saved on `nightly-2026-09-15` against these recovered numbers, replacing #885's
 re-baseline.
 
 *(Since then, 2026-09-24: the milestone 300 floors have themselves been re-recorded. The current
@@ -192,7 +192,3 @@ Leaving that floor in place would bake the removable regression into the x86 tri
 IPC benchmarks moved in proportion to their switch counts (`relay_rtt` 35208246 -> 34051949,
 `broker_rtt` 36208747 -> 35054295). The no-switch primitives (`map_new`, `map_el0`,
 `null_syscall`) stayed byte-identical, the same signature as the other two ISAs.
-
-An earlier note in this section said x86_64 was current and confirmed byte-identical against the
-#885 floor (`yield_switch` 20080160). That was measured before the shared-tuple finding, and the
-recovery table above supersedes it; the text is in git history.

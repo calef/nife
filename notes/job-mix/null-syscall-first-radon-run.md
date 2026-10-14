@@ -36,7 +36,7 @@ apply unchanged. Then read, in this order:
    (every boot then read 195 to 207 at four).
 2. On boots 4 and 5, `job-mix-lock: ... site=current_cap`: `wait_ticks / calls` at 4 tasks, in ticks
    per trap, against the job's per-trap growth `(per_job(4) - per_job(1)) / 64`.
-3. `site=reap`: `stack_free_ticks / reaps` is what used to be held under the lock per reap, on
+3. `site=reap`: `stack_free_ticks / reaps` is what the lock was held for per reap, on
    silicon, for the first time.
 
 What each outcome means, written before the numbers exist:
