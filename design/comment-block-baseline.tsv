@@ -136,6 +136,7 @@ kernel/src/arch/x86_64/irq.rs:1	106
 kernel/src/arch/x86_64/irq.rs:1181	43
 kernel/src/arch/x86_64/isa.rs:1	75
 kernel/src/arch/x86_64/mmu.rs:1	116
+kernel/src/arch/x86_64/mod.rs:570	44
 kernel/src/arch/x86_64/pmu.rs:1	108
 kernel/src/arch/x86_64/tco.rs:1	73
 kernel/src/cap.rs:228	79
