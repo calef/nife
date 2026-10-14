@@ -18,6 +18,7 @@
 //! milliseconds against a real device tree dumped from QEMU, instead of booting an
 //! emulator. See DECISIONS §7.
 //!
+
 //! Name: ratified 2026-09-18 (calef, `design/decisions/` §154), **deratifying the 2026-08-01
 //! ratification** to do it, and performed 2026-09-19. Refused `dtb`.
 //!

@@ -27,6 +27,7 @@
 //! device-tree reader living in `arch/aarch64/`: this file compiles for the host, its tests run
 //! without an emulator, and the kernel side is reduced to reading a pointer through the direct map.
 //!
+
 //! # The structure, from Xen's `start_info.h`
 //!
 //! ```text

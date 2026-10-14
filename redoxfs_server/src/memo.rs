@@ -28,6 +28,7 @@
 //! on purpose: it makes invalidation one line with nothing to get wrong, and a namespace change is
 //! rare next to the reads a walk issues.
 //!
+
 //! # BUGS
 //!
 //! - **Coarse.** One `mkdir` anywhere forgets every listing everywhere. A workload that creates

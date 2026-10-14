@@ -365,27 +365,18 @@ pub mod file_grant {
         Policy::Forward,                 // FSTAT
         Policy::Refused(grant::ENOTDIR), // CREATE: a file capability is not a directory.
         Policy::Forward,                 // TRUNCATE, EROFS without the direction
-        // **All six say the same thing `CREATE` says**, and for the same reason: a file
-        // capability is not a directory, so "list it", "make a name in it" or "take a name out
-        // of it" do not *mean* anything here. There is no policy that could have said yes.
-        //
-        // They answered `EBADF` until 2026-08-01, inherited from the catch-all this table
-        // replaced, which shared one arm with "you named a handle I never minted". Two
-        // different statements came out as one word: one is about the request, the other about
-        // the caller's handle. Writing the rows down is what made the conflation visible.
+        // **All six say what `CREATE` says**: a file capability is not a directory, so "list it",
+        // "make a name in it" or "take a name out of it" do not mean anything here. `EBADF` would
+        // be about the caller's handle; `ENOTDIR` is about the request.
         Policy::Refused(grant::ENOTDIR), // OPENDIR
         Policy::Refused(grant::ENOTDIR), // READDIR
         Policy::Refused(grant::ENOTDIR), // MKDIR
         Policy::Refused(grant::ENOTDIR), // RENAME
         Policy::Refused(grant::ENOTDIR), // UNLINK
         Policy::Refused(grant::ENOTDIR), // RMDIR
-        // **The milestone-61 change.** All four used to answer `super::super::xattr::ENOTSUP`
-        // here, so a
-        // program behind a per-file grant could not read its own file's attributes. They are
-        // forwarded now, and the two that mutate are refused with `EROFS` through a read-only
-        // grant by `Policy::Forward`'s own rule, which is the same rule `WRITE` and `TRUNCATE`
-        // already obeyed. An attribute is part of what a file *is* (see `xattr`'s header), so a
-        // capability that may read the file may read what is attached to it.
+        // Forwarded: an attribute is part of what a file *is* (see `xattr`'s header), so a
+        // capability that may read the file may read what is attached to it. The two that mutate
+        // are refused with `EROFS` through a read-only grant by `Policy::Forward`'s own rule.
         Policy::Forward, // GETXATTR
         Policy::Forward, // SETXATTR, EROFS without the direction
         Policy::Forward, // LISTXATTR
@@ -401,12 +392,8 @@ pub mod file_grant {
         Policy::Forward, // SYNC
         // The mtime verbs (milestone 47, DECISIONS §112) are all name-taking, resolved under a
         // *directory* handle, exactly like CREATE/OPENDIR/UNLINK/RENAME above: a file
-        // capability has no directory to resolve a name under, so none of the three means
-        // anything here. `dir::SETTIME` never applies to a file handle in any case, because a
-        // file entry is hard-attenuated to `READ | WRITE` the moment it is opened or created
-        // (`Server::open_file_at`, `Server::create_file_at`); the arbitrary-mtime right can
-        // only ever be checked against a directory's own rights, which is one more reason these
-        // three verbs are name-taking rather than handle-taking.
+        // capability has no directory to resolve a name under. (`dir::SETTIME` never applies to a
+        // file handle anyway: a file entry is attenuated to `READ | WRITE` when it is opened.)
         Policy::Refused(grant::ENOTDIR), // GETMTIME
         Policy::Refused(grant::ENOTDIR), // SETMTIME
         Policy::Refused(grant::ENOTDIR), // SETMTIME_AT

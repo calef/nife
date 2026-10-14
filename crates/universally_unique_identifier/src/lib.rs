@@ -38,6 +38,7 @@
 //! assert_eq!(Uuid::try_from_ascii(b"919108f7-52d1-4320-9bac-f847db4148a8"), Some(id));
 //! ```
 //!
+
 //! # BUGS
 //!
 //! - **Version 4 only.** No name-based (v3, v5) or time-based (v1, v6, v7) constructor: each needs

@@ -20,6 +20,7 @@
 //!    the resolution happens once, at the prompt, in a value you can print.
 //! 3. **`..` walks out**, so the cwd bounds nothing. Here it cannot: see below.
 //!
+
 //! # The three earned divergences
 //!
 //! Divergence from Unix is a tax on every user forever, so it has to be forced by the model rather

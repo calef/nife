@@ -50,25 +50,16 @@ pub const MIN_COLUMNS: u32 = 120;
 /// rectangle of pixels it was handed onto a screen the firmware set up (the shell on the firmware
 /// screen, rung 1b of milestone 198; `components/src/framebuffer_driver.rs` is its one caller).
 ///
-/// The other half of this crate paints *text* into a framebuffer. This paints *pixels* someone
-/// else already drew, and it lives here rather than in the driver because every framebuffer bug in
-/// history is a stride bug and a stride bug is only catchable on the host: the driver is a
-/// ring-3 program with no test harness, and this is a pure function of five numbers.
+/// It lives here rather than in the driver because a stride bug is only catchable on the host: this
+/// is a pure function of five numbers. It holds the surface's size clipped to the screen's, placed
+/// top-left, the screen's stride and byte order, and **the scale every surface pixel is drawn at**:
+/// [`ScreenConsole::scale_for`] of the screen's width, the kernel console's rule, so the shell
+/// after the handover is the boot tour's letter size. Clipping is in surface pixels against the
+/// screen divided by the scale; a screen not a whole multiple of its scale leaves fewer than
+/// `scale` pixels uncovered at its right and bottom edges (see BUGS).
 ///
-/// What it holds is the part of the screen a surface covers: the surface's size clipped to the
-/// screen's, placed at the screen's top-left corner, plus the screen's stride and byte order, and
-/// **the scale every surface pixel is drawn at**: [`ScreenConsole::scale_for`] of the screen's
-/// width, the same rule and the same function the kernel's console uses, so the shell after the
-/// handover is the same size of letter as the boot tour before it. A surface pixel becomes a
-/// scale-by-scale block. Clipping is in surface pixels against the screen divided by the scale;
-/// a surface larger than that loses its right and bottom edges, and a smaller one leaves the rest
-/// of the screen alone, so asking for a surface as large as the caller can afford gets one that
-/// covers the whole screen. A screen whose size is not a whole multiple of its scale leaves fewer
-/// than `scale` pixels at its right and bottom edges uncovered (see this crate's BUGS).
-///
-/// Name: provisional (the shell on the firmware screen's lane). "Aperture" is the word the
-/// tree already uses for the firmware's framebuffer as a device window
-/// (`kernel/src/arch/x86_64/machine.rs`, milestone 243).
+/// Name: provisional (the shell on the firmware screen's lane). "Aperture" is the tree's word for
+/// the firmware's framebuffer as a device window (`kernel/src/arch/x86_64/machine.rs`).
 ///
 /// # Examples
 ///

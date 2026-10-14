@@ -25,6 +25,7 @@
 //!   the chance the cheapest syscall waits, and `wait_ticks / calls` is what that costs it on
 //!   average, which is directly comparable with the `null_syscall` job's per-trap growth.
 //!
+
 //! # What it costs, and what it cannot see
 //!
 //! **An acquisition that finds the lock free costs what it always did**: `IrqSafeMutex::lock` opens

@@ -1,11 +1,8 @@
 //! **A specimen sheet for an 8-pixel-wide bitmap font**: the same text, in every font, so two of
 //! them can be compared by looking rather than by reading a table of byte counts.
 //!
-//! The crate is a pure function from `(byte, x, y)` to ink, which is the property that lets the
-//! terminal, the kernel test and the host-side scanout check agree about what a letter looks like
-//! (see the crate docs). It is also what makes this possible: if the picture is a function, the
-//! picture can be *printed*, and a font choice becomes something a person can look at instead of
-//! something they have to take on trust.
+//! The crate is a pure function from `(byte, x, y)` to ink, so the picture can be *printed*, and a
+//! font choice becomes something a person can look at.
 //!
 //! Run it on what ships:
 //!
@@ -27,9 +24,8 @@
 //! ```
 //!
 //! **Give `--font` more than once and the fonts are drawn interleaved**, sample line by sample
-//! line, with the name in a left gutter. That is the mode a choice is actually made in: two
-//! specimens in sections of their own is an inventory, and the eye cannot compare across a scroll.
-//! `--metrics` prints the table row for `notes/glyphs.md` instead of asserting the numbers.
+//! line, with the name in a left gutter: the eye cannot compare across a scroll. `--metrics` prints
+//! the table row for `notes/glyphs.md` instead of asserting the numbers.
 //!
 //! ```text
 //! cargo run -p bitmap_font --example specimen -- --metrics \
@@ -42,6 +38,7 @@
 //! good". `--dots` prints one character per pixel, which is the mode for "what exactly is in this
 //! glyph", and it is the format the crate's own doctest uses to pin the bit order.
 //!
+
 //! # BUGS
 //!
 //! Half-block output is only faithful if the terminal reading it renders U+2580 and U+2584 at full

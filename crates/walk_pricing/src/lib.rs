@@ -34,6 +34,7 @@
 //! Name: provisional 2026-09-26 (milestone 121's lane). A noun for what the crate does to a walk,
 //! in the `_pricing` shape nothing else in the tree uses yet; calef names crates.
 //!
+
 //! # BUGS
 //!
 //! - **A median of three is not statistics.** It removes a stray preemption and nothing else. The

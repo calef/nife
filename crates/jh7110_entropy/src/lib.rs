@@ -234,9 +234,8 @@ pub const COMPATIBLE: &[u8] = b"starfive,jh7110-trng";
 /// (radon's device tree does not describe the TRNG, so a working driver never runs) exists.
 ///
 /// The tree nife is handed on the VisionFive 2 is the vendor U-Boot's control DTB (U-Boot 2021.10,
-/// `Build: jenkins-VF2_515_Branch_SDK_Release-24`, Feb 12 2023, per the board's own banner in
-/// `crates/board_console/tests/fixtures/captured/vf2-2026-09-01-manual-boot.log`). Its source is
-/// `StarFive`'s fork, not Linux's, and it spells the node \[uboot-dtsi\]:
+/// per `crates/board_console/tests/fixtures/captured/vf2-2026-09-01-manual-boot.log`), from
+/// `StarFive`'s fork, which spells the node \[uboot-dtsi\]:
 ///
 /// ```text
 /// trng: trng@1600C000 {
@@ -251,12 +250,9 @@ pub const COMPATIBLE: &[u8] = b"starfive,jh7110-trng";
 /// };
 /// ```
 ///
-/// **Same device, same window, same interrupt, different string**, and the difference is a stale
-/// fork rather than different silicon: `StarFive`'s own kernel driver for this block already matched
-/// `starfive,jh7110-trng` in December 2022 \[vendor-driver\], two months before that firmware was
-/// built, and its register `#define`s are byte-for-byte the offsets in [`regs`]. Nothing on
-/// `StarFive`'s side ever noticed, because Linux on this board is handed the kernel package's own
-/// DTB and never sees U-Boot's.
+/// **Same device, same window, same interrupt, different string**: a stale fork, not different
+/// silicon. `StarFive`'s own kernel driver for this block \[vendor-driver\] defines its registers
+/// byte-for-byte as the offsets in [`regs`].
 ///
 /// **Accepting it is a claim about the register layout, so here is the evidence for that claim.**
 /// The vendor Linux driver at the firmware's own vintage \[vendor-driver\] defines `STARFIVE_CTRL`
@@ -265,14 +261,11 @@ pub const COMPATIBLE: &[u8] = b"starfive,jh7110-trng";
 /// positions mainline's `jh7110-trng.c` does. Two drivers written against one IP block agree
 /// completely, so a node claiming `starfive,trng` at `0x1600_C000` is claiming [`regs`].
 ///
-/// \[uboot-dtsi\]: `arch/riscv/dts/jh7110.dtsi` in `starfive-tech/u-boot`, branch
-/// `JH7110_VisionFive2_devel`, read 2026-09-03 at commit `bfbdce9b86a2` (2023-01-06, the last
-/// change to that file before the flashed firmware's Feb 12 2023 build date) and unchanged at that
-/// branch's head:
+/// \[uboot-dtsi\]: `arch/riscv/dts/jh7110.dtsi` in `starfive-tech/u-boot` at `bfbdce9b86a2`:
 /// <https://github.com/starfive-tech/u-boot/blob/bfbdce9b86a2/arch/riscv/dts/jh7110.dtsi>
 ///
-/// \[vendor-driver\]: `drivers/char/hw_random/starfive-trng.c` in `starfive-tech/linux`, commit
-/// `202b558ae34c` (2022-12-14), read 2026-09-03:
+/// \[vendor-driver\]: `drivers/char/hw_random/starfive-trng.c` in `starfive-tech/linux` at
+/// `202b558ae34c`:
 /// <https://github.com/starfive-tech/linux/blob/202b558ae34c/drivers/char/hw_random/starfive-trng.c>
 pub const COMPATIBLE_VENDOR: &[u8] = b"starfive,trng";
 
@@ -481,11 +474,8 @@ pub const WORD_BYTES: u64 = 8;
 /// # Examples
 ///
 /// ```
-/// # // The hidden lines run this example on a worker with a deadline, the same one
-/// # // `take_returns_rather_than_spinning` uses. A `take` that stops making progress spins rather
-/// # // than returning a wrong answer, and a doctest that spins is not a failure, it is a process:
-/// # // on 2026-09-20 a killed `cargo test -p jh7110_entropy --doc` left this example's two
-/// # // `rust_out` processes at 99% CPU for five days. With the deadline it fails in five seconds.
+/// # // A worker with a deadline, as in `take_returns_rather_than_spinning`: a `take` that stops
+/// # // making progress spins, and a doctest that spins never fails, it keeps running.
 /// # let (done, finished) = std::sync::mpsc::channel();
 /// # std::thread::spawn(move || {
 /// use jh7110_entropy::Pool;

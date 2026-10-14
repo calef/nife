@@ -34,6 +34,7 @@
 //! the same discipline as `abi` and every other contract the PAL reads, so this file must stay a
 //! valid non-root module: no crate attributes survive the copy, and neither does the test module.
 //!
+
 //! # Where the addresses come from
 //!
 //! **Every address below is a row of `crates/address_space_map`** (milestone 206 (a program image has under 896 KiB), DECISIONS §171 (where a program image starts)

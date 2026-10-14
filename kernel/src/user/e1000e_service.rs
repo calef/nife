@@ -34,6 +34,7 @@
 //! - **A `DeviceFrame` or `PageFrame` capability** for either window: they arrive as spawn-time
 //!   mappings, so it holds no name for them and cannot delegate or remap them.
 //!
+
 //! # Who starts it
 //!
 //! The tests and the bench boot, through [`start_net_server`], and the booted system, through

@@ -16,6 +16,7 @@
 //! stack has run out before (notes/pipes.md), and a listing streamed a second time costs one more
 //! `READDIR` walk rather than a buffer.
 //!
+
 //! # EXAMPLES
 //!
 //! ```

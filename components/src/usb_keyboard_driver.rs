@@ -36,6 +36,7 @@
 //! the bytes go to the line discipline. A keyboard unplugged gives its slot back; one plugged in
 //! later is found.
 //!
+
 //! # BUGS
 //!
 //! - **Root ports only.** A keyboard behind a hub, including one inside a keyboard that has a

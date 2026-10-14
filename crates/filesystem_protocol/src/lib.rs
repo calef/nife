@@ -139,34 +139,26 @@ pub mod dir;
 /// (milestone 61).
 ///
 /// Three caretakers (`components/src/fs_file_caretaker.rs`, `fs_subtree_caretaker.rs`,
-/// `fs_nameset_caretaker.rs`) proxy this same contract over a narrowed namespace, and each one used
-/// to be a hand-written `match` over the opcode. Nothing made a `match` and the contract agree, so
-/// the way that failed is that **a new verb was simply absent from a caretaker and the capability
-/// silently was not there**. That is not a hypothetical: milestone 57 added the four
-/// extended-attribute verbs, none of the three was taught them, and nothing failed. The programs
-/// behind a per-file grant just could not read their own file's attributes.
-///
-/// This table inverts the failure mode. A verb declares its **argument shape** (does the word's
-/// length field count a name, a payload, or nothing?) and the **rights the server will demand**, and
-/// the caretakers dispatch off that instead of off a match arm somebody has to remember to add.
-/// Adding a verb to [`fs`] without a row here is a **compile error** (see [`verb::TABLE`]'s const
-/// assertions), which is the whole deliverable: forgetting now fails the build rather than producing
-/// a capability that is quietly missing.
+/// `fs_nameset_caretaker.rs`) proxy this contract over a narrowed namespace. With a hand-written
+/// `match` per caretaker, **a new verb is silently absent from a caretaker**. A verb declares its
+/// **argument shape** (does the word's length field count a name, a payload, or nothing?) and the
+/// **rights the server will demand**, and the caretakers dispatch off that instead of off a match
+/// arm somebody has to remember to add. Adding a verb to [`fs`] without a row here is a **compile
+/// error** (see [`verb::TABLE`]'s const assertions), which is the whole deliverable: forgetting now
+/// fails the build rather than producing a capability that is quietly missing.
 ///
 /// # What it shares, and the thing it must never share
 ///
 /// **It shares the dispatch and never the attenuation.** The three caretakers narrow by three
-/// different means and stay three programs, which is a refutation the roadmap records rather than a
-/// coincidence:
+/// different means and stay three programs:
 ///
 /// - `fs_subtree_caretaker` performs **no checks at all**. One [`fs::OPENDIR`] at startup, the
 ///   server intersects the rights and mints a restricted handle, and everything afterwards is
 ///   reached through that handle. This table gives it its shape lookup and nothing else; it consults
 ///   no policy and no filter, because a branch here is a branch that can be wrong.
 /// - `fs_nameset_caretaker` filters names, on **every** verb whose operand is a directory name, and
-///   [`verb::Operand::Name`] is what tells it which those are. Before this table that was a
-///   hand-listed set of arms, so a new name-taking verb would have arrived **unfiltered**, which is
-///   the same failure one class more dangerous.
+///   [`verb::Operand::Name`] is what tells it which those are, so a new name-taking verb cannot
+///   arrive **unfiltered**.
 /// - `fs_file_caretaker` translates between two *protocols*, directory in and file out, so it needs
 ///   a per-verb answer and has one in [`verb::file_grant::POLICY`]. Its refusals keep their distinct
 ///   errnos deliberately: [`grant::ENOTDIR`] means the request does not mean anything through a file
@@ -292,11 +284,8 @@ pub mod nameset;
 ///
 /// # It is a layer, and the contract is why that is safe
 ///
-/// RedoxFS has none of this. The decision was to build it **above** the engine rather than to fork
-/// the on-disk format, and the argument that settled it was reversibility: this module is the
-/// contract, so whether an attribute lives in a node's on-disk structure or in a store the server
-/// manages is invisible to every client. Moving the implementation later changes nothing above this
-/// line.
+/// RedoxFS has none of this, so it is built **above** the engine rather than forking the on-disk
+/// format: this module is the contract, so where an attribute lives is invisible to every client.
 ///
 /// On Linux a layer like this would be worthless, because anything can open the file directly and
 /// walk around it. **Here nothing can.** Every path to the disk goes through [`fs`], so a layer above
@@ -308,9 +297,7 @@ pub mod nameset;
 /// [`fs::REMOVEXATTR`] need [`dir::WRITE`]. No seventh rung was added to the ladder. An attribute is
 /// part of what a file *is*, not a separate object with its own authority, so a capability that may
 /// read a file may read what is attached to it and a capability that may not write it may not
-/// change them. Adding a rung would also mean every existing grant silently gained or lost a right
-/// depending on which way the default fell, which is the kind of change milestone 47's monotonicity
-/// property exists to make impossible.
+/// change them. A new rung would silently change every existing grant.
 ///
 /// # The type code exists so indexing is not foreclosed
 ///
@@ -318,12 +305,9 @@ pub mod nameset;
 /// returned, and otherwise ignored. [`xattr::RAW`] is what a POSIX-style client writes, and it is what
 /// Samba will write.
 ///
-/// The reason to carry a field nothing reads is `design/haiku-bfs-and-packages.md`. BFS made
-/// attributes **typed and indexed**, with live queries over them, and that design's author went on to
-/// build Spotlight; it is the ambitious version of this feature and it is a real destination. A store
-/// of untyped blobs cannot be indexed later without a format migration and a wire break. A store that
-/// round-trips a type code can. The cost of not foreclosing it is four bytes per record and one
-/// packed word, paid now, once.
+/// The reason to carry a field nothing reads is `design/haiku-bfs-and-packages.md`: BFS made
+/// attributes **typed and indexed**, and a store of untyped blobs cannot be indexed later without a
+/// format migration and a wire break. The cost is four bytes per record and one packed word.
 ///
 /// **BUGS.** The kind is 31 bits, not 32, because it rides in the sign-protected half of a reply word
 /// (see [`xattr::reply`]). BFS-style four-character codes are ASCII and fit; a code with its top bit set does

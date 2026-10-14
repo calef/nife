@@ -31,6 +31,7 @@
 //! instructions wide, which no test can rely on. `delegation_pause` holds an armed thread at the
 //! start of its delegation with no lock held, the test runs the whole sweep, then lets it go.
 //!
+
 //! # BUGS
 //!
 //! - **The `DeviceFrame` and `PortRange` take-backs are reasoned, not driven.** They go through the

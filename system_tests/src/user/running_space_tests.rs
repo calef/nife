@@ -22,6 +22,7 @@
 //! Cross-ISA: every body is portable kernel code or portable userspace, and the hand-written reader
 //! is one stub per ISA (DECISIONS §19 (architectural parity is a tenet)).
 //!
+
 //! # BUGS
 //!
 //! - **The multicore test needs two online cores** and skips on one. CI's QEMU legs boot four.

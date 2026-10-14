@@ -161,11 +161,8 @@ enum BootClaim {
 ///
 /// The kernel prints fault reports with its own UART driver and the userspace `console` server
 /// drives the same device from another address space, with nothing arbitrating between them. The
-/// result is not truncation, it is a **byte-level shuffle**, and it is nondeterministic: milestone
-/// 230 saw the same code pass one CI run and fail the next, and saw `construction budget dropped`
-/// reduced to a longest surviving run of `const`. **No matcher can be made reliable against that**,
-/// because any string a matcher keys on can itself be split, including the kernel's own signature
-/// (`the kernel is fine.` came out as `the kernel iis fnit: constiner.`).
+/// result is a nondeterministic **byte-level shuffle** (`the kernel is fine.` came out as `the
+/// kernel iis fnit: constiner.`), and **no matcher can be made reliable against that**.
 ///
 /// So the safety does not live in the matching. It lives in **which question is asked first**, and
 /// in one asymmetry that a shuffle cannot break:
@@ -188,12 +185,9 @@ enum BootClaim {
 ///
 /// # What this trades, said plainly
 ///
-/// It moves the residual error from **false red to false green**, on purpose, and that is the right
-/// direction for a check that runs in CI on every lane. A false red taxes work that is not the cause
-/// and this tree has deleted three checks for that signature. A false green here is recoverable by
-/// repetition, because the failure it guards is persistent rather than transient: a progenitor that stops
-/// dropping its budget prints the negative sentence on *every* boot, on both legs, on every push, so
-/// hiding it requires the shuffle to land on that sentence every time.
+/// It moves the residual error from **false red to false green**, on purpose: the failure it
+/// guards is persistent, printed on *every* boot on both legs, so hiding it requires the shuffle to
+/// land on that sentence every time, while a false red taxes every lane.
 ///
 /// The residual hole is case 4's converse and is named in `script/swish-check`'s own BUGS: if the progenitor's
 /// report were deleted **and** a thread faulted in the same boot, this passes. Both halves have to

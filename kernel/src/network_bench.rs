@@ -38,6 +38,7 @@
 //! each is the one condition that decides whether the numbers after it mean anything on that
 //! machine. notes/designware-ethernet.md has the runbook and what each ending means.
 //!
+
 //! # BUGS
 //!
 //! - **The DHCP wait has no bound.** `net_stack` retries DISCOVER forever and the kernel blocks on

@@ -24,6 +24,7 @@
 //! in principle; the boundary is an address space, not a branch. That is the same reason milestone
 //! 36's checker lives outside the component it checks.
 //!
+
 //! # Capability contract (`kernel/src/user/fs_service/file_grant.rs`, `start_granted`)
 //!
 //! - **slot 0**: the FS-service endpoint, `WRITE`. The directory capability being attenuated. This

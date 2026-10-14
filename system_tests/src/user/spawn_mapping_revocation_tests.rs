@@ -37,6 +37,7 @@
 //! hotspot and AGENTS.md's lane rules say to stay out of it. It is named to sort before
 //! `thread_leak_police`, whose own header explains why that matters.
 //!
+
 //! # BUGS
 //!
 //! - **The test drives `PageFrame::REVOKE`'s sweep, not the other two.** `revoke_device_from_others`

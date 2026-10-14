@@ -18,6 +18,7 @@
 //! it would mean a walk), and that costs one wasted walk at most. Later would be a missed expiry
 //! that nothing ever notices, which is the one bug this structure can have.
 //!
+
 //! # Examples
 //!
 //! ```

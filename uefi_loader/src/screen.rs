@@ -34,6 +34,7 @@
 //!     == screen_console::ScreenConsole::FOREGROUND));
 //! ```
 //!
+
 //! # BUGS
 //!
 //! - **It is unobservable in a healthy boot.** The kernel clears the screen within milliseconds of

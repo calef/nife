@@ -40,12 +40,9 @@ impl Sweep {
 
 /// Write the sweep's account.
 ///
-/// **The failing case says what was not attempted, and that is the whole point of the sentence.**
-/// Unix's `xargs` carries on after a failed invocation and reports 123 at the end, which is its
-/// mechanism talking: it cannot know what a child did to the names it was handed, so it may as well
-/// try the rest. Here the shell printed each batch's set before that batch ran, so it can name the
-/// boundary instead, and the failure worth designing against is batch four succeeding after batch
-/// three failed.
+/// **The failing case says what was not attempted.** Unix's `xargs` carries on after a failed
+/// invocation; here the shell printed each batch's set before it ran, so it names the boundary,
+/// and batch four never runs after batch three failed.
 ///
 /// ```
 /// use swish::{Sweep, write_sweep};
@@ -76,9 +73,7 @@ impl Sweep {
 ///      them was attempted\n",
 /// );
 ///
-/// // A sweep whose FIRST batch did not run says nothing: the refusal printed above it is the
-/// // whole story, and "0 names were handed over in 0 batches" is a sentence about an event that
-/// // did not happen.
+/// // A sweep whose FIRST batch did not run says nothing: the refusal above it is the story.
 /// let mut none = Sweep::default();
 /// none.stop();
 /// assert_eq!(render(&none), "");

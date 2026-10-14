@@ -33,6 +33,7 @@
 //! address space could only report what that address space could see, which is exactly the thing
 //! under suspicion.
 //!
+
 //! Name: ratified 2026-08-01 (calef, milestone 61), replacing `cwarden`. Refused `cwarden` and the
 //! whole `warden` family, a synonym this project invented for a pattern that already has a name:
 //! DECISIONS §50 settled that using the literature's word claims "this is that", where a synonym

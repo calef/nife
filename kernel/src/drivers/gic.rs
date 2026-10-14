@@ -37,6 +37,7 @@
 //! Get the comparison backwards and you get a machine that takes no interrupts and gives you
 //! no clue why.
 //!
+
 //! # GICv2 only, and the other version is a sibling
 //!
 //! This file drives GICv2 and nothing else. A GICv3 is `gicv3.rs` beside it (the distributor and

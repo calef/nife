@@ -35,6 +35,7 @@
 //! the bytes in the request's own words, so this process needs **no page at all**: it unpacks a sink
 //! message and calls, and that is the entire program.
 //!
+
 //! # BUGS
 //!
 //! - **Eight bytes per call, so a sixteen-byte sink message is two round trips.** That is the

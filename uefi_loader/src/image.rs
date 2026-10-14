@@ -26,6 +26,7 @@
 //! now fail to boot on real firmware with a printed reason, which is a second mechanism behind
 //! `script/image-permissions` and the one that runs on the machine a person is standing at.
 //!
+
 //! # BUGS
 //!
 //! - **Segments must not overlap the loader's own image**, and nothing checks it. The kernel's

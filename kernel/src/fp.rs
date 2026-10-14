@@ -35,6 +35,7 @@
 //! two loads and two predictable branches, and touches no control register at all: the expensive
 //! half is behind `live`, and `live` is false. Milestone 447's block has the measured numbers.
 //!
+
 //! # BUGS
 //!
 //! - **`live` never clears.** A thread that used FP once saves and restores 512 bytes on every

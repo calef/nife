@@ -23,6 +23,7 @@
 //! because a user thread's kernel stack is empty at that moment and because the syscall it is
 //! probably taking will block, which this stack may not do.
 //!
+
 //! # The one rule, and why it is not negotiable
 //!
 //! **Nothing that runs on an interrupt stack may context-switch away from it.**

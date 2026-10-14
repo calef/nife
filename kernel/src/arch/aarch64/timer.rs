@@ -33,6 +33,7 @@
 //! Forget it and the timer fires exactly once and then the machine wedges in a permanent
 //! interrupt storm, which looks nothing like "you forgot to write a register".
 //!
+
 //! # And re-arming with TVAL silently loses ticks
 //!
 //! We shipped this bug and then measured it. `TVAL` is a **relative** countdown: writing N
@@ -260,9 +261,8 @@ pub fn is_cycle_counter_grantable() -> bool {
 ///
 /// Called from the context switch, on every switch, right beside
 /// [`mmu::switch_user_root`](crate::arch::mmu::switch_user_root), and deliberately the same shape:
-/// compare first, write only when the value changes. If no thread on this core has ever been
-/// granted the counter, the value never changes and the whole cost is a load, a compare and a
-/// return.
+/// compare first, write only when the value changes, so with no granted thread on this core the
+/// cost is a load, a compare and a return.
 ///
 /// # What it writes
 ///
@@ -281,23 +281,17 @@ pub fn is_cycle_counter_grantable() -> bool {
 ///
 /// # No barrier, on purpose
 ///
-/// There is no `isb` here. The write has to be visible to the instruction stream at EL0, and the
-/// only way back to EL0 from this path is the `eret` that ends the return-to-user sequence, which
-/// is a context-synchronizing event by definition. Linux's arm64 per-task hook for the same
-/// register writes it the same way, for the same reason.
+/// There is no `isb` here: the only way back to EL0 from this path is the `eret` that ends the
+/// return-to-user sequence, a context-synchronizing event. Linux's arm64 per-task hook does the
+/// same.
 ///
 /// # BUGS
 ///
-/// **Under QEMU with Hypervisor.framework, closing does not close.** Measured 2026-09-19 by
-/// milestone 227's lane on QEMU 11.1.1, `gic-version=3`, an Apple M-series core, in the first HVF
-/// run this machine could make since milestone 222 took the leg away: `user::tests::
-/// a_granted_thread_reads_the_cycle_counter_and_an_ungranted_one_faults` fails its negative half,
-/// "an ungranted thread read the cycle counter and was NOT stopped", with this register at zero.
-/// The likeliest reading is that the PMU access traps out to the hypervisor and is answered there
-/// without consulting the guest's `PMUSERENR_EL0`; which layer answers it (QEMU's `hvf` sysreg
-/// handler or Apple's framework) was not established. Under TCG the same test passes. So the claim
-/// this function makes holds on TCG and is untested on silicon; HVF is not evidence either way, and
-/// milestone 74's cycle-counter measurement should not treat an HVF run as one.
+/// **Under QEMU with Hypervisor.framework, closing does not close.** On an Apple core,
+/// `user::tests::a_granted_thread_reads_the_cycle_counter_and_an_ungranted_one_faults` fails its
+/// negative half with this register at zero: the PMU access likely traps to the hypervisor and is
+/// answered without consulting the guest's `PMUSERENR_EL0`. Under TCG it passes; silicon is
+/// untested, and an HVF run is not evidence either way.
 ///
 /// **Built only under `test` or `--features cycle_counter_grant`** (milestone 237): the grant is
 /// a measurement build the way `soak_test` is. `kernel/Cargo.toml`'s feature block carries the

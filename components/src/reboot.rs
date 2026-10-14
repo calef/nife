@@ -30,6 +30,7 @@
 //! when it has printed it, so the end-of-stream after the report is the barrier: the shell takes it
 //! only once it has finished with the report. Without that the report raced the reset and lost.
 //!
+
 //! # BUGS
 //!
 //! - **A firmware that accepts the reset and hangs cannot be told from a slow one**, from inside

@@ -26,14 +26,11 @@ fn cycle_counter_image() -> &'static [u8] {
 /// closed default does not permit, so it traps, the kernel kills the thread, and `USER_FAULTS`
 /// counts it.
 ///
-/// **The grant is applied through a `#[cfg(test)]` back door**, `sched::grant_cycle_counter_to_current`,
-/// and that is worth meeting head on: milestone 229 shipped the kernel mechanism **without** the
-/// syscall method that would let a loader set it, deliberately, because a method number is
-/// irreversible and milestone 147 (a profiler that holds exactly the counters it was granted) may
-/// subsume it. So there is no honest userspace route to a granted thread, and the alternative to a
-/// test-only door was leaving the EL0 half unexercised. What this therefore does **not** cover is
-/// the embryo-only rule that a real ABI would go through; `sched`'s own
-/// `a_running_thread_cannot_be_granted_the_cycle_counter` covers that separately.
+/// **The grant is applied through a `#[cfg(test)]` back door**,
+/// `sched::grant_cycle_counter_to_current`: there is no syscall method a loader could set it with
+/// yet (a method number is irreversible, and milestone 147 (a profiler that holds exactly the
+/// counters it was granted) may subsume it). `sched`'s
+/// `a_running_thread_cannot_be_granted_the_cycle_counter` covers the embryo-only rule.
 ///
 /// **What the reads count is checked on every architecture** (milestone 353 (the aarch64 half of 74), calef's ruling B4 of
 /// 2026-10-07 UTC). The program reads through `user_mode_runtime::cycle_reading`, which pairs each
@@ -45,8 +42,7 @@ fn cycle_counter_image() -> &'static [u8] {
 /// in every mode, and `x86_64` constant-rate reference cycles.
 ///
 /// **The difference of two reads is checked where the kernel has said the counter runs, and only
-/// there** (milestone 74 (cycle counters), its aarch64 half). Until that milestone the reads were
-/// carried and not checked, because nothing started `PMCCNTR_EL0` and it read zero forever. Now:
+/// there** (milestone 74 (cycle counters)):
 ///
 /// - **aarch64**: when `arch::pmu` reports `Running` on every online core, the second read must be
 ///   past the first. The thread may be placed on any core and the `yield` between the reads is a

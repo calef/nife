@@ -172,13 +172,10 @@ pub(crate) fn thread_stack_site(addr: u64) -> Option<(u64, i64)> {
 /// which is the case where the next one jumps clean over it. Printing it is what let milestone 78
 /// tell those apart.
 ///
-/// # `sp` is printed because this used to assert it without ever reading it
+/// # Why `sp` is printed beside the address
 ///
-/// Every line of this report but the last was derived from the faulting **address**, and the
-/// wording ("so sp went N bytes past it") stated a conclusion about the stack **pointer** that
-/// nothing here had measured. The two agree only when the fault really is `sp` walking off the
-/// end. They come apart in two ways that matter, and the report could not tell either of them
-/// from an ordinary overflow:
+/// The faulting **address** and the stack **pointer** agree only when the fault really is `sp`
+/// walking off the end. They come apart in two ways that look like an ordinary overflow:
 ///
 ///   - a store through a stray pointer that happens to name a guard page, with `sp` nowhere near
 ///     it, and
@@ -188,17 +185,11 @@ pub(crate) fn thread_stack_site(addr: u64) -> Option<(u64, i64)> {
 ///     8` are the first two words above a *different* stack's top, and a pointer that treats a
 ///     stack top as inclusive lands there rather than anywhere near `sp`.
 ///
-/// So it now prints `sp` beside the faulting address in the same units and leaves the comparison
-/// to the reader, rather than asserting the answer.
+/// So it prints `sp` in the same units and leaves the comparison to the reader.
 ///
-/// **The `sp` it prints is the interrupted one, taken from the trap frame**, and that is milestone
-/// 124's correction to milestone 78's line. It used to read the live `sp` in the handler, "a few
-/// frames deeper than the faulting context but on the same stack", and the second half of that
-/// sentence stopped being true when a trap from kernel mode started running its handler on this
-/// core's interrupt stack: the live reading would name a stack that has nothing to do with the
-/// fault. Each ISA's fault path passes the value it already holds (aarch64 computes it from the
-/// frame's own address, RISC-V reads the frame's saved `x2`), so the number is now exact rather
-/// than close, which is a better report as well as a necessary one.
+/// **The `sp` it prints is the interrupted one, taken from the trap frame**: a trap from kernel
+/// mode runs its handler on this core's interrupt stack, so the live `sp` would name an unrelated
+/// stack. aarch64 computes it from the frame's own address; RISC-V reads the frame's saved `x2`.
 ///
 /// **One reading of "slot N-1" is a trap, and the printed guidance names it.** aarch64 has no
 /// double fault: if the vector's own `SAVE_CONTEXT` store lands in a guard page it re-enters the

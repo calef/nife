@@ -35,6 +35,7 @@
 //! would have needed two servers. Making `set` a page write instead is not a workaround; it is
 //! what "set the offset outright" already means (DECISIONS §43).
 //!
+
 //! Name: ratified 2026-09-14 (calef, working the unratified worklist), confirming milestone 63's
 //! name table (design/roadmap/0063-name-spellings.md). Introduced 2026-07-30. Milestone 63 argues
 //! this name from the other side, while settling `credentialer`: it treats `clock` and `entropy`

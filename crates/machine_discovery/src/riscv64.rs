@@ -29,6 +29,7 @@
 //! the only way to tell "this machine has no FPU" from "one of its harts has no FPU". The `mmu-type`
 //! is taken the same way: the narrowest any hart declares.
 //!
+
 //! # BUGS
 //!
 //! - **A `status = "disabled"` CPU node contributes nothing to the record** (the VisionFive 2 prep,

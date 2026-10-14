@@ -26,23 +26,19 @@
 //!   - `TEST_TCP_ACCEPT`: **the inbound half** (milestone 107), and the only exchange here that is
 //!     not the guest as a client. A port outside the stack's listen grant is refused as a matter of
 //!     authority, the granted one binds and is exclusive, and then a *host* process connects to it
-//!     through QEMU's `hostfwd` twice, which proves the listener re-arms.
-//!     The same spawn then carries **the UDP bind grant's refusals** (milestone 55), because a
-//!     second net server does not fit the aarch64 boot (the memory receipt in notes/net/memory-and-reclamation.md; that
-//!     lane re-measured it: an eleventh spawn died as `Unmappable(OutOfPageFrames)` in an unrelated
-//!     later test). A fixed port outside the grant is refused as authority, a granted one binds
-//!     and is exclusive, which incidentally proves the two grant halves compose in one word on the
-//!     machine. Multicast traffic rode here first as marker payloads and then as a separate
-//!     multicast DNS responder client; the responder was retired on 2026-09-15 (milestone 298,
-//!     notes/mdns.md) and nothing exercises multicast now.
+//!     through QEMU's `hostfwd` twice, which proves the listener re-arms. The same spawn carries
+//!     **the UDP bind grant's refusals** (milestone 55 (Time Machine)), because a second net server
+//!     does not fit the aarch64 boot (notes/net/memory-and-reclamation.md): a fixed port outside
+//!     the grant is refused as authority, a granted one binds and is exclusive. Nothing exercises
+//!     multicast.
 //!
-//! On success it reports `OK`; any failure reports a stage code, so the kernel test fails loudly
-//! with a hint rather than hanging.
+//! On success it reports `OK`; any failure reports a stage code rather than hanging.
 //!
 //! This is a **module of the `net_stack` binary** (dispatched by its entry role), not a separate binary,
 //! because the initial ramdisk archive's directory holds at most 15 files; folding the client in
 //! keeps the entry count under that ceiling (see xtask `initial_ramdisk_aarch64`).
 //!
+
 //! # Capability contract (when entered as the client)
 //! - slot 0: the report endpoint (WRITE)
 //! - slot 1: the `Stack` endpoint (WRITE)

@@ -29,6 +29,7 @@
 //! (section 5.2.2.1, Figure 5). So nothing here needs the bus, and [`IvrsUnits::owner_index`]
 //! takes the requester id alone.
 //!
+
 //! # BUGS
 //!
 //! - **ACPI HID device entries (type F0h) are skipped, not recorded.** They name devices with no

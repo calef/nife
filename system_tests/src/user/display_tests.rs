@@ -284,10 +284,8 @@ fn a_backing_outside_the_grant_is_refused_by_the_iommu() {
 ///
 /// # And the picture the driver reports is the *blank* terminal, on purpose
 ///
-/// `gpu_driver`'s one status report covers its first flush, which here is the terminal's blank grid
-/// before anything has been written. So it doubles as the check that an empty terminal is a
-/// *defined* picture (spaces on the default background, with the cursor) rather than whatever
-/// those frames held at boot, exactly as rung two used it for the empty compositor screen.
+/// `gpu_driver`'s one status report covers its first flush, the terminal's blank grid, so it checks
+/// that an empty terminal is a *defined* picture rather than whatever the frames held at boot.
 ///
 /// **Runs after the confinement test and before the pattern test**, which the name arranges: the
 /// confinement test resets the device and would wipe this, and the pattern test's picture is the
