@@ -17,8 +17,9 @@ date. The number 913 is
 provisional; other lanes are minting nearby, so expect renumbering at merge. Title, slug and every
 name below are drafts.)*
 
-Reuse: the brief is `briefs/confinement-outsider-pass.md`, unchanged, and through it milestone 800
-(a non-Anthropic model attacks the confinement claim)'s counting rule, report format and refusal
+Reuse: the brief is `briefs/confinement-outsider-pass.md` as it stood at launch; milestone 920 (an
+outsider pass is launched pinned and floor-checked) gives the current brief no blind posture.
+Through it, milestone 800 (a non-Anthropic model attacks the confinement claim)'s counting rule, report format and refusal
 log, so the passes compare row for row. The isolation is milestone 633 (an outside agent attacks
 the confinement claim)'s: this pass is blind. The reviewer is GLM 5.3, by calef's ruling below.
 
