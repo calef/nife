@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-10-12
+built: 2026-10-14
 milestone_dependencies: 824
 decision_dependencies: none
 machine_requirements: none
@@ -84,9 +85,12 @@ reproduces each claimed escape by test or boot, and records. It does not attack 
 
 ## Result
 
-PARTIAL. The pass ran on 2026-10-13 (UTC) and is recorded in `notes/confinement-outsider-pass-8.md`
-by lane `lane/pass-8-collect`, with the per-row table, the reproduction and the refusal log. What
-calef needs to rule on whether it counts toward criterion (c):
+BUILT, 2026-10-14 (UTC). The pass ran on 2026-10-13 and is recorded in
+`notes/confinement-outsider-pass-8.md`, with the per-row table, the reproduction and the refusal log.
+Its tests are on main (#2149).
+
+It does not count toward criterion (c). calef ruled on 2026-10-14 (UTC): "pass 8 does not count."
+The count stays 0. The facts before him:
 
 - No escape. Four near misses: two unreachable or fail-closed port corners, a `component_plan`
   provisioning check that is missing, and one that is a deliberate design. Each has a `BUGS` entry
@@ -101,12 +105,7 @@ calef needs to rule on whether it counts toward criterion (c):
 - Reproduction. Every booted row's test passed again on all three ISAs it applies to, one ISA at
   a time, under another lane's load; no leg timed out. The host rows passed too.
 
-Outstanding:
-
-- calef's ruling on whether pass 8 counts toward criterion (c).
-- Risk 7's appendix cites the pass, through the maintainer under §216.
-- Pass 8's tests land on main with their `Co-Authored-By: GLM 5.3` trailers, in a pull request of
-  their own after this record.
+Risk 7's page and appendix cite the pass under §216, by lane `lane/pass-8-ruling`.
 
 ## Done means
 

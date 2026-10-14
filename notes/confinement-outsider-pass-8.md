@@ -7,7 +7,12 @@ non-Anthropic. Milestone 914 (a ninth outsider pass attacks the confinement clai
 
 Status: no escape, four near misses. The reviewer's table grades 25 of the 27 bootable rows
 `booted`, and its own count says 27. Its blindness was broken before it read its prompt, and it
-said so first. Whether it counts toward criterion (c) is calef's call; this note gives the facts.
+said so first. It does not count toward criterion (c).
+
+## The ruling: the count stays 0
+
+calef ruled on 2026-10-14 (UTC): "pass 8 does not count." Criterion (c)'s count stays 0. The facts
+he had are below: the breach, the floor counted three ways, and the reproduction.
 
 ## The breach, stated first
 
@@ -184,10 +189,6 @@ classifier. The breach above is not a refusal; it is listed first instead.
 - The reviewer booted rows 1 and 3 on aarch64 only; the lane's rerun covers all three ISAs. Row
   21's alias leg runs on two ISAs, and rows 27 to 29 and 33 apply to `x86_64` only.
 - Row 32's test censuses a spawned child, not the boot shell.
-- Pass 8's tests are not on main yet. Until they land, the copies are the reviewer's local clone
-  and branch `lane/pass-8-tests`, which carries them onto main through its gates. Keeping a
-  branch as the only pushed copy of code is an exception to the rule that a branch holds no
-  knowledge, and a foot gun.
 - The session ran in the maintainers' workspace with the whole tree in reach. After the prompt,
   the harness log shows no forbidden file opened, apart from the three grep lines above. That is
   honor, not isolation.
