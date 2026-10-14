@@ -68,7 +68,9 @@ Lane `milestone/906-ioping-is-packaged-in-basalt`, with nifeos/basalt#17.
   pinned nife's `helpers/c-library-cc.sh` and `helpers/c-library-cflags.sh`, links with its
   `helpers/build-c-program.sh` (which writes the manifest note), and strips symbols as ripgrep's
   build does (items 2 to 4). The aarch64 package measured 278,240 bytes. The shape takes per-object
-  flags, so milestones 907 (hackbench) and 897 (SQLite) reuse it.
+  flags, so milestones 907 (hackbench) and 897 (SQLite) reuse it. basalt's CI compiles with clang
+  19, since Ubuntu's default clang 18 refuses `-mabi=aapcs-soft`. The first published Release is
+  `rolling-2026-10-14-c9f3c5f`, and `xtask/basalt-pins.index` pins its three lines.
 - Item 5's finding: both, as milestone 810 did for `rg`. `cargo xtask basalt-fetch` takes ioping's
   lines in `xtask/basalt-pins.index`, and the kernel archive carries the package's `bin/ioping`
   member, accepted by `package_index::accept`. `unmodified_ioping_times_reads_in_a_granted_directory`
