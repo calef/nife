@@ -1,16 +1,20 @@
 //! **`grant_plan`: the grant-expression logic of the capability shell** (milestone 31, phase 1).
 //!
-//! On a nife command line *designation is authorization* (Mark Miller's principle): naming a
-//! resource in a command is how you grant it, and a program that names nothing gets nothing beyond
-//! the report channel every spawn carries. The failure when a program needs something the command
-//! did not grant is legible ("you hold no such capability"), not a Unix-flavored EPERM.
+//! This crate is the pure logic behind the shell's one idea: on a nife command line,
+//! *designation is authorization* (Mark Miller's principle). Naming a resource in a command is
+//! how you grant it; a program that names nothing gets nothing beyond the report channel every
+//! spawn carries. There is no ambient authority to fall back on, so the failure when a program
+//! needs something the command did not grant is legible ("you hold no such capability"), not a
+//! Unix-flavored EPERM.
 //!
-//! It performs no IO and makes no syscalls. It turns a line of bytes into a [`Command`], and for a
-//! program invocation an [`Endowment`] (exactly what to grant the child) or a typed [`Refusal`] the
-//! shell prints at the prompt, host-tested (DECISIONS §7 (testing: QEMU harness + host-testable
-//! crates)). See notes/grant-expression.md and notes/program-manifest.md.
+//! It performs no IO and makes no syscalls. It turns a line of bytes into a decision: a
+//! [`Command`], and for a program invocation an [`Endowment`] (exactly what to grant the child) or a
+//! typed [`Refusal`] the shell prints at the prompt. That split is DECISIONS §7 applied, the same
+//! shape as `line_editor`: the parsing and the manifest checking are host-tested in milliseconds, and
+//! only the wiring (the shell and the progenitor that carry the caps) needs QEMU. See
+//! notes/grant-expression.md and notes/program-manifest.md.
 //!
-//! # The grammar
+//! # The grammar, after milestone 47 took two words out of it
 //!
 //! ```text
 //! <prog> [-abc] [--mem N] [token ...]
@@ -21,32 +25,48 @@
 //! ```
 //!
 //! `caps` and `time` are **prefix words**: their operand is a whole command line, operators
-//! included, kept unsplit for the shell to act on. Short options are checked against the program's
-//! [`Manifest`] at the prompt, because one of them can **widen a grant**: `rm -r logs` hands over
-//! the subtree that `rm logs` does not. A bare program name spawns it, and a bare token in a file
-//! position designates the file; read or write lives in the [`Manifest`].
+//! included, which is why neither is a program (a program takes tokens) and why both keep the tail
+//! unsplit for the shell to act on.
 //!
-
-//! # The moving parts
+//! Short options arrived with `rm` (milestone 47's rmdir lane), and they are checked against the
+//! program's [`Manifest`] at the prompt rather than passed along unread, because one of them can
+//! **widen a grant**: `rm -r logs` hands over the subtree that `rm logs` does not.
+//!
+//! There is no `run` verb and no `file:` designator, and both removals are milestone 47's
+//! (roadmap, "`file:` and `run` are not earned"). A bare program name spawns it, because a shell
+//! where builtins are bare words and programs need a prefix makes the user learn which class a
+//! command is in before they can type it. A bare token in a file position designates the file,
+//! because `file:` marked the half of the grant that was already visible (*which* file) and said
+//! nothing about the half that matters (read or write), which lives in the [`Manifest`] by design.
+//!
+//! # The three moving parts
 //!
 //! - [`parse`] tokenizes a command line into a [`Command`]. A first word that is not a builtin is a
 //!   program invocation, and everything after it is the `--mem N` budget grant plus **unclassified
-//!   positional tokens**: which token is the argument and which the file is the manifest's job.
+//!   positional tokens**: the parser deliberately does not decide which token is the argument and
+//!   which is the file, because that is the manifest's job.
 //! - A [`Manifest`] is a program's declared endowment: does it take an argument, does it require
 //!   (or forbid) a memory grant, may it be granted a file and in which direction, does it report
 //!   back. [`Prog::manifest`] is the static table.
 //! - [`plan`] checks a parsed invocation against the named program's manifest, **placing the
 //!   positional tokens into the slots the manifest declares**, and yields an [`Endowment`] or a
-//!   [`Refusal`], at the prompt, before anything is spawned.
-//! - [`spawnproto`] is the word layout for the shell-to-progenitor spawn protocol, a userspace
-//!   protocol (DECISIONS §21 (the terminal is a userspace component)): the kernel routes the words and
-//!   never reads them.
+//!   [`Refusal`]. A mismatch is caught here, at the prompt, before anything is spawned, which is
+//!   milestone 23's component contract in embryo.
+//!
+//! # The wire half
+//!
+//! [`spawnproto`] is the word layout for the shell-to-progenitor spawn protocol, the capability-shell
+//! analogue of `line_editor::proto`. It is a userspace protocol (DECISIONS §21's shape): the kernel
+//! routes the words and never reads them.
 //!
 //! Name: ratified 2026-08-01 (calef, milestone 63), replacing `capsh`. Refused `capsh` (Linux's
-//! `capsh(1)` is a different tool). Refused `designation`, `designate` and `designator` (the user
-//! designates; this crate's work starts after that). Refused `endow`, `award`, `confer`, `bestow`,
-//! `allot` and `furnish` (grant is already this tree's word, and `endow` is taken by
-//! `supervision_protocol::ChildEndowment`). Not named for `swish`: seven things use it.
+//! libcap ships `capsh(1)`, a capability shell wrapper, so a reader arriving from Linux would
+//! assume ours is that tool); `designation`, `designate` and `designator` together (the user
+//! designates by typing a name, and this crate's work starts after that, so all three put it in a
+//! role it does not hold); and the grant synonyms `endow`, `award`, `confer`, `bestow`, `allot` and
+//! `furnish` (grant is already this tree's word and a synonym is a decoder ring, and `endow` is
+//! additionally taken by `supervision_protocol::ChildEndowment`). Deliberately not named for `swish`: seven
+//! things use it, so naming it for one consumer would repeat `dwarden`'s defect.
 
 #![no_std]
 // milestone 68's ratchet is workspace-wide (§107); this crate opts out until its 22-item

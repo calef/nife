@@ -51,6 +51,7 @@ crates/filesystem_protocol/src/lib.rs:286	45
 crates/filesystem_protocol/src/verb.rs:361	52
 crates/free/src/lib.rs:1	54
 crates/globally_unique_identifier_partition_table/src/lib.rs:1	136
+crates/grant_plan/src/lib.rs:1	69
 crates/grant_plan/src/nav.rs:1	48
 crates/inter_process_communication/src/timer.rs:1	58
 crates/jh7110_entropy/src/lib.rs:233	44
