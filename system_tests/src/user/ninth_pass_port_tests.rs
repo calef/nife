@@ -1,7 +1,6 @@
-//! **Pass 9 (an outside security reviewer attacks the confinement claim): the x86 port-range
-//! capability, attacked at the edges the existing suite does not reach** (fatal risk 7's
-//! confinement claim, claims 27, 28, 29 and 33; DECISIONS §121 (the x86 port-range capability),
-//! milestones 299, 313, 768).
+//! **The x86 port-range capability, attacked at the edges the existing suite does not reach** (a
+//! ninth outsider pass at the confinement claim, claims 27, 28, 29 and 33; DECISIONS §121 (x86 port
+//! I/O), milestones 299, 313, 768).
 //!
 //! `x86_port_tests` proves a non-holder faults, a holder transmits, a revoked holder faults, a
 //! self-deleter faults, and a `READ`-only capability grants no output. Every `out` it executes that
@@ -26,8 +25,9 @@
 //! be wrongly permitted exit cleanly in that case, so a broken gate arrives as `EVENT_EXIT` where
 //! the test wants `EVENT_FAULT` rather than hanging the run on a `SEND` nobody receives.
 //!
-//! Name: provisional (pass 9's lane, 2026-10-13 UTC), for the module, the file and each function.
-//! x86_64 only: there is no port space and no TSS I/O bitmap on the other two architectures.
+//! Name: provisional (lane/pass-9-tests, 2026-10-14 UTC), for the module, the file and each
+//! function. x86_64 only: there is no port space and no TSS I/O bitmap on the other two
+//! architectures.
 #![cfg(target_arch = "x86_64")]
 
 use abi::fault::{EVENT_EXIT, EVENT_FAULT, FAULT_EP_SLOT};
@@ -106,7 +106,7 @@ fn build_port_holder(
     .expect("insert report");
     assert_eq!(slot, 0, "the report cap must land in slot 0");
 
-    // Slot 1: the wake endpoint a parked child RECEIVEs on, when this build has one.
+    // Slot 1: the wake endpoint a parked child calls `RECEIVE` on, when this build has one.
     if let Some(w) = wake {
         let slot = sched::thread_control_block_insert_cap(
             tid,
@@ -172,6 +172,9 @@ fn endpoints(with_wake: bool) -> (RendezvousId, Option<RendezvousId>, Rendezvous
 /// the child would exit cleanly; the claim is that the range is enforced exactly, so the CPU raises
 /// a #GP at the `out`. A holder reaching a port it does not hold is a break whatever capability it
 /// holds for some *other* range.
+///
+/// Falsification: unfalsified. Written by the ninth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_port_range_holder_cannot_reach_a_port_above_its_range() {
     let (report, _wake, fault_ep, region) = endpoints(false);
@@ -214,6 +217,9 @@ fn a_port_range_holder_cannot_reach_a_port_above_its_range() {
 /// child, and the `out` it executes faults. The existing revoke test drives the whole-machine
 /// `revoke_port_range`; this drives the syscall-reachable sparing body against a parked holder,
 /// which no test did.
+///
+/// Falsification: unfalsified. Written by the ninth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_parked_holder_revoked_by_the_sparing_take_back_faults_on_wake() {
     let (report, wake, fault_ep, region) = endpoints(true);
@@ -247,14 +253,17 @@ fn a_parked_holder_revoked_by_the_sparing_take_back_faults_on_wake() {
     sched::reclaim_region(region).expect("the endpoint region did not come back");
 }
 
-/// **A holder that deletes its own port capability faults on its next write** (claim 29, §12 (a
-/// consumed capability cannot be used again)).
+/// **A holder that deletes its own port capability faults on its next write** (claim 29, §12
+/// (call/reply IPC: a one-shot reply capability)).
 ///
 /// The child deletes the slot holding its port capability (`PORT_SLOT_NO_WAKE`) and then executes
 /// `out`. The port grant is a cached field the context switch installs; if `SYS_CAP_DELETE` cleared
 /// the table but not the cache, the child would keep the ports for life after dropping the
-/// capability, which is §12 failing for the one object enforced outside the table. So the `out`
+/// capability, which is claim 29 failing for the one object enforced outside the table. So the `out`
 /// must fault at the instruction after the delete. Built and driven here rather than read.
+///
+/// Falsification: unfalsified. Written by the ninth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_self_deleting_holder_faults_on_its_next_write() {
     let (report, _wake, fault_ep, region) = endpoints(false);
@@ -286,13 +295,17 @@ fn a_self_deleting_holder_faults_on_its_next_write() {
     sched::reclaim_region(region).expect("the endpoint region did not come back");
 }
 
-/// **A `READ`-only holder cannot write a port inside its range** (claim 33, milestone 768).
+/// **A `READ`-only holder cannot write a port inside its range** (claim 33, milestone 768 (a
+/// read-only port range grants nothing)).
 ///
 /// The capability names the COM1 range but carries `READ` alone (a `Serve`-shaped grant), not
 /// `WRITE`. The claim is that the TSS bitmap installs nothing for a capability without `WRITE`, so
 /// the holder's `out` faults exactly as a non-holder's does even though the port it writes is one it
 /// nominally names. The port is inside the range, so only the missing `WRITE` can refuse it, which
 /// is the point: the grant must read the capability's rights, not just its range.
+///
+/// Falsification: unfalsified. Written by the ninth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_read_only_holder_cannot_write_a_port_inside_its_range() {
     let (report, _wake, fault_ep, region) = endpoints(false);

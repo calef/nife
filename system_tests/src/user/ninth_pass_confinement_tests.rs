@@ -1,5 +1,5 @@
-//! **Pass 9 (an outside security reviewer attacks the confinement claim): four fresh dispatcher
-//! attacks on the rights model** (fatal risk 7's confinement claim).
+//! **Four fresh dispatcher attacks on the rights model** (a ninth outsider pass at the confinement
+//! claim, claims 2, 4, 5 and 26).
 //!
 //! Each test here is a hostile program reduced to the kernel operations it would issue, driven
 //! through the real dispatcher (`syscall::invoke`), the way a program's `svc`/`ecall` reaches it.
@@ -11,7 +11,7 @@
 //!   slot is invoked again. The answer is `NoSuchSlot`, not a second slice: a consumed capability
 //!   names nothing. The existing `revocation_in_flight_tests` attack the *hand-off slot*; this is
 //!   the plain `cap_delete` path, which nothing drove through the dispatcher.
-//! - [`deleting_one_capability_leaves_its_neighbours`] (claim 5): three capabilities are filed, the
+//! - [`deleting_one_capability_leaves_its_neighbors`] (claim 5): three capabilities are filed, the
 //!   middle one is deleted, and the other two still resolve and still invoke. `capability`'s host
 //!   proof `delete_touches_only_its_slot` is over the table type; this is the live kernel table
 //!   under the real `SYS_CAP_DELETE` path.
@@ -22,18 +22,18 @@
 //!   widening here would be a client minting itself authority; nothing attacked it in a confinement
 //!   test.
 //! - [`an_out_of_range_or_empty_slot_names_nothing`] (claim 2, no ambient authority): a slot number
-//!   past the table and an empty slot inside it both answer `NoSuchSlot`. `confinement_attack_tests`
-//!   drives an empty slot; the out-of-range index is the other half, and the one a program reaching
-//!   past its table would use.
+//!   past the table and an empty slot inside it both answer `NoSuchSlot`.
+//!   `confinement_attack_tests` drives an empty slot; the out-of-range index is the other half, and
+//!   the one a program reaching past its table would use.
 //!
 //! **Nothing here blocks**, so a regression is red at an assertion rather than a watchdog hang: no
 //! `SEND`/`RECEIVE`/`CALL` with no peer is issued. Each capability is deleted and each region
 //! reclaimed, so the suite's frame and region ledgers are flat across the module.
 //!
-//! Name: provisional (pass 9's lane, 2026-10-13 UTC), for the module, the file and each function.
-//! Cross-ISA: `invoke`, the rights model, the delegation rule and the capability table are portable
-//! kernel code, so the same bodies run on each architecture (DECISIONS §19 (architectural parity is
-//! a tenet)).
+//! Name: provisional (lane/pass-9-tests, 2026-10-14 UTC), for the module, the file and each
+//! function. Cross-ISA: `invoke`, the rights model, the delegation rule and the capability table
+//! are portable kernel code, so the same bodies run on each architecture (DECISIONS §19
+//! (architectural parity is a tenet)).
 
 use abi::Error;
 
@@ -68,13 +68,16 @@ fn call(slot: u64, method: u64, a0: u64, a1: u64, a2: u64) -> Result<i64, Error>
 /// from the inside. `current_capability` agrees the slot is empty.
 ///
 /// Nothing blocks: `SLICE` does not touch the IPC path.
+///
+/// Falsification: unfalsified. Written by the ninth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_consumed_capability_cannot_be_reused() {
     let region = crate::memory_region::create(8).expect("no region");
     let budget = sched::grant(region_capability_rights(region, Rights::ALL)).expect("grant budget");
 
-    // A two-page frame, so a one-page slice at offset 0 is in range.
-    let frame = call(budget, abi::memory_region::RETYPE, 2, 0, 0).expect("RETYPE refused") as u64;
+    // A one-page frame (a RETYPE count of 0 is one page); slicing its one page is in range.
+    let frame = call(budget, abi::memory_region::RETYPE, 0, 0, 0).expect("RETYPE refused") as u64;
 
     // Positive control: the frame is real and slicing is permitted (it carries GRANT).
     let slice = call(frame, abi::page_frame::SLICE, 0, 1, 0).expect("SLICE refused a GRANT frame");
@@ -104,10 +107,13 @@ fn a_consumed_capability_cannot_be_reused() {
 ///
 /// Three capabilities are filed into this thread's own table: two endpoint capabilities and a
 /// `PageFrame` carved from a budget (the latter so a *working invocation*, not just a table read,
-/// proves a neighbour survived). The middle slot is deleted. The surviving two still resolve, and
+/// proves a neighbor survived). The middle slot is deleted. The surviving two still resolve, and
 /// the frame still slices, which is the live-kernel form of `capability::delete_touches_only_its_slot`.
+///
+/// Falsification: unfalsified. Written by the ninth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
-fn deleting_one_capability_leaves_its_neighbours() {
+fn deleting_one_capability_leaves_its_neighbors() {
     let region = crate::memory_region::create(8).expect("no region");
     let budget = sched::grant(region_capability_rights(region, Rights::ALL)).expect("grant budget");
     let ep_region = crate::memory_region::create(4).expect("no endpoint region");
@@ -115,7 +121,7 @@ fn deleting_one_capability_leaves_its_neighbours() {
 
     let first = sched::grant(rendezvous_capability(ep, Rights::READ)).expect("grant first");
     let middle = sched::grant(rendezvous_capability(ep, Rights::WRITE)).expect("grant middle");
-    let frame = call(budget, abi::memory_region::RETYPE, 2, 0, 0).expect("RETYPE refused") as u64;
+    let frame = call(budget, abi::memory_region::RETYPE, 0, 0, 0).expect("RETYPE refused") as u64;
 
     // Delete the middle capability only.
     delete_current_capability(middle).expect("delete of the middle capability failed");
@@ -124,13 +130,13 @@ fn deleting_one_capability_leaves_its_neighbours() {
         "the deleted middle slot still resolves",
     );
 
-    // The neighbours are untouched: they resolve, and the frame still performs its gated operation.
+    // The neighbors are untouched: they resolve, and the frame still performs its gated operation.
     assert!(
         current_capability(first).is_ok(),
-        "deleting the middle capability emptied a neighbour's slot (claim 5 broke)",
+        "deleting the middle capability emptied a neighbor's slot (claim 5 broke)",
     );
     let slice = call(frame, abi::page_frame::SLICE, 0, 1, 0)
-        .expect("a neighbour frame could not slice after an unrelated delete");
+        .expect("a neighbor frame could not slice after an unrelated delete");
     let _ = delete_current_capability(slice as u64);
 
     let _ = delete_current_capability(first);
@@ -157,6 +163,9 @@ fn deleting_one_capability_leaves_its_neighbours() {
 ///    so the method cannot be used to launder rights through repeated minting.
 ///
 /// Nothing blocks: `BADGE` files a capability in the caller's own table and returns the slot.
+///
+/// Falsification: unfalsified. Written by the ninth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_badge_is_grant_gated_and_mints_no_wider_right() {
     let region = crate::memory_region::create(4).expect("no endpoint region");
@@ -225,6 +234,9 @@ fn a_badge_is_grant_gated_and_mints_no_wider_right() {
 /// there is nothing there in either case. A method that acts is chosen (`SEND`) so a let-through
 /// would be observable, but no object exists to act on, so the dispatcher cannot even reach the
 /// rights gate.
+///
+/// Falsification: unfalsified. Written by the ninth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn an_out_of_range_or_empty_slot_names_nothing() {
     // Past the table: the index is >= the slot count, so it can never be occupied.

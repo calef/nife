@@ -1,6 +1,6 @@
-//! **Pass 9 (an outside security reviewer attacks the confinement claim): a holder that drops its
-//! construction authority cannot build again** (fatal risk 7's confinement claim, claim 23;
-//! DECISIONS §26, §12 (a consumed capability cannot be used again)).
+//! **A holder that drops its construction authority cannot build again** (a ninth outsider pass at
+//! the confinement claim, claim 23; DECISIONS §26 (the fault endpoint), §12 (call/reply IPC: a
+//! one-shot reply capability)).
 //!
 //! `authority_tests::init_drops_its_construction_authority_and_cannot_build_again` boots the real
 //! `root_supervisor` program, which deletes its untyped and reports that a later build answered
@@ -13,16 +13,16 @@
 //! from. A capability-model system where "drop your authority" left a usable handle behind would be
 //! a progenitor that could rebuild the world after promising it had thrown the key away.
 //!
-//! This is the mechanism `authority_tests` exercises end to end, driven one layer down so it runs on
-//! every architecture without a ramdisk: `SYS_CAP_DELETE` is what the progenitor's self-drop calls,
-//! and `RETYPE`/`SPLIT` through an empty slot is what its later build hits.
+//! This is the mechanism `authority_tests` exercises end to end, driven one layer down so it runs
+//! on every architecture without a ramdisk: `SYS_CAP_DELETE` is what the progenitor's self-drop
+//! calls, and `RETYPE`/`SPLIT` through an empty slot is what its later build hits.
 //!
 //! Nothing here blocks (no `SEND`/`RECEIVE`/`CALL` with no peer), so a regression is red at an
 //! assertion rather than a watchdog hang, and each capability and region is reclaimed, so the
 //! suite's ledgers are flat across the module.
 //!
-//! Name: provisional (pass 9's lane, 2026-10-13 UTC), for the module, the file and each function.
-//! Cross-ISA: untyped retype and split and the capability table are portable kernel code
+//! Name: provisional (lane/pass-9-tests, 2026-10-14 UTC), for the module, the file and each
+//! function. Cross-ISA: untyped retype and split and the capability table are portable kernel code
 //! (DECISIONS §19 (architectural parity is a tenet)).
 
 use abi::Error;
@@ -34,7 +34,7 @@ use crate::sched::{
 };
 use crate::syscall::invoke;
 
-/// `invoke` through the real dispatcher. Copied in shape from `pass9_confinement_tests::call`.
+/// `invoke` through the real dispatcher. Copied in shape from `ninth_pass_confinement_tests::call`.
 fn call(slot: u64, method: u64, a0: u64, a1: u64, a2: u64) -> Result<i64, Error> {
     let mut frame = TrapFrame::for_user_entry(0, 0, [0, 0, 0]);
     invoke(&mut frame, slot, method, a0, a1, a2)
@@ -49,6 +49,9 @@ fn call(slot: u64, method: u64, a0: u64, a1: u64, a2: u64) -> Result<i64, Error>
 /// path `SYS_CAP_DELETE` takes, and the identical `RETYPE` and `SPLIT` are issued at the now-empty
 /// slot. Both answer `NoSuchSlot`, the slot resolving to nothing, which is what "the authority was
 /// dropped" has to mean for the claim to hold.
+///
+/// Falsification: unfalsified. Written by the ninth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn dropping_the_construction_authority_leaves_nothing_to_build_from() {
     let region = crate::memory_region::create(16).expect("no region");
@@ -56,7 +59,7 @@ fn dropping_the_construction_authority_leaves_nothing_to_build_from() {
         .expect("grant the construction authority");
 
     // Positive control 1: the authority can retype a page into a frame.
-    let frame = call(budget, abi::memory_region::RETYPE, 2, 0, 0)
+    let frame = call(budget, abi::memory_region::RETYPE, 0, 0, 0)
         .expect("RETYPE refused a full construction authority") as u64;
 
     // Positive control 2: the authority can split itself into a child budget.
@@ -85,7 +88,7 @@ fn dropping_the_construction_authority_leaves_nothing_to_build_from() {
     // Build again. Both powers are gone, and the slot names nothing: NoSuchSlot, not a restricted
     // success and not a different error.
     assert_eq!(
-        call(budget, abi::memory_region::RETYPE, 2, 0, 0),
+        call(budget, abi::memory_region::RETYPE, 0, 0, 0),
         Err(Error::NoSuchSlot),
         "a RETYPE succeeded through the dropped construction authority: the progenitor could \
          rebuild after promising it had thrown the authority away",

@@ -1,6 +1,5 @@
-//! **Pass 9: a foreign endpoint cannot reap or survey a child it does not supervise** (an outside
-//! security reviewer attacks the confinement claim, 2026-10-13 UTC; fatal risk 7's confinement
-//! claim, claims 6, 7, 8 and 9).
+//! **A foreign endpoint cannot reap or survey a child it does not supervise** (a ninth outsider
+//! pass at the confinement claim, claims 6, 7, 8 and 9).
 //!
 //! The suite proves these properties with pure logic (`capability::reap_decision`,
 //! `survey_includes`) and drives `REAP`/`SURVEY` refusals for a *WRITE-only* holder of the right
@@ -26,10 +25,10 @@
 //! The reap and the survey are refused and permitted by the *same relationship*, which is claim 9:
 //! the foreign endpoint is refused both, the owning endpoint is granted both.
 //!
-//! Name: provisional (pass 9's lane, 2026-10-13 UTC), for the module, the file and the function.
-//! Cross-ISA: the supervision relationship, `reap_decision` and `survey_includes` are portable
-//! kernel code; the child stub is per-architecture inside `supervision_tests` (DECISIONS §19
-//! (architectural parity is a tenet)).
+//! Name: provisional (lane/pass-9-tests, 2026-10-14 UTC), for the module, the file and the
+//! function. Cross-ISA: the supervision relationship, `reap_decision` and `survey_includes` are
+//! portable kernel code; the child stub is per-architecture inside `supervision_tests` (DECISIONS
+//! §19 (architectural parity is a tenet)).
 
 use abi::Error;
 
@@ -54,6 +53,9 @@ fn call(slot: u64, method: u64, a0: u64, a1: u64, a2: u64) -> Result<i64, Error>
 /// settle-retry (`supervision_tests`/`reap_tests` explain the one-context-switch window where a
 /// just-dead corpse is still standing on its own kernel stack and the reclaim answers
 /// `NotPermitted`).
+///
+/// Falsification: unfalsified. Written by the ninth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_foreign_endpoint_cannot_reap_or_survey_a_child_it_does_not_supervise() {
     // One small region for the three endpoints; a bigger one for the child's whole world.

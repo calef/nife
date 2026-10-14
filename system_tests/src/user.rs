@@ -1308,103 +1308,90 @@ mod eighth_pass_endpoint_usurper_tests;
 #[cfg(all(test, initial_ramdisk))]
 mod eighth_pass_dir_escape_tests;
 
+/// **A consumed capability names nothing, a delete spares its neighbors, and a badge mints no wider
+/// right** (a ninth outsider pass at the confinement claim, claims 2, 4, 5 and 26). A frame sliced
+/// once, deleted, then invoked again answers `NoSuchSlot`; deleting the middle of three
+/// capabilities leaves the other two resolving and invoking; `BADGE` is `GRANT`-gated and write-once
+/// and copies exactly its source's rights; and a slot past the table or empty inside it names
+/// nothing. Nothing blocks. Its own header says which existing test each comes at from a new angle.
+///
+/// Cross-ISA: `invoke`, the rights model and the capability table are portable kernel code
+/// (DECISIONS §19 (architectural parity is a tenet)).
+#[cfg(test)]
+mod ninth_pass_confinement_tests;
+
+/// **A foreign endpoint cannot reap or survey a child it does not supervise** (a ninth outsider
+/// pass at the confinement claim, claims 6, 7, 8 and 9). A holder of an unrelated endpoint carrying
+/// `READ | ENUMERATE`, every right a supervisor needs, is refused `REAP` with `NotSupervised`, gets
+/// the same answer for a made-up tid, and surveys nothing; the owning endpoint sees and reaps the
+/// same child. Where `confinement_attack_tests` drives the right endpoint with a missing right, this
+/// drives the wrong endpoint with every right.
+///
+/// Cross-ISA: the supervision relationship is portable kernel code (DECISIONS §19); the child stub
+/// is per-architecture in `supervision_tests`.
+#[cfg(test)]
+mod ninth_pass_supervision_tests;
+
+/// **The map gate admits only the aligned low half, and no mapping flag is W+X** (a ninth outsider
+/// pass at the confinement claim, claims 10 and 11). A confined budget holder's `MemoryRegion::MAP`
+/// is refused `BadPointer` for a kernel-half and an unaligned address, tied to the proved
+/// `is_user_page_va` gate, and every `Flags` a mapping path installs is writable or user-executable,
+/// never both. One layer up from `crates/paging`'s per-format proofs.
+///
+/// Cross-ISA: the gate is instantiated at the running architecture's `Format` (DECISIONS §19).
+#[cfg(test)]
+mod ninth_pass_mapping_tests;
+
+/// **A revocation reaches a `DeviceFrame` or `PortRange` parked in the hand-off slot** (a ninth
+/// outsider pass at the confinement claim, claim 30). `revocation_in_flight_tests` drives the
+/// `PageFrame` sweep, and its `BUGS` names these two sweeps as reasoned from the code rather than
+/// driven. This parks each in `outgoing_cap` through the whole-machine revoke and confirms the
+/// receiver is handed nothing.
+///
+/// Cross-ISA for the `DeviceFrame` arm (DECISIONS §19); the `PortRange` arm is x86_64 only.
+#[cfg(test)]
+mod ninth_pass_revocation_tests;
+
+/// **A forged ELF cannot smuggle a hostile second segment, or wrap its range over the kernel** (a
+/// ninth outsider pass at the confinement claim, claim 22). Two-segment images with a benign first
+/// segment and a writable-executable or kernel-half second, and a segment whose `p_vaddr +
+/// p_memsz` wraps the address space. `load` refuses each.
+///
+/// Cross-ISA: `load` is portable over each ISA's `Mapper` (DECISIONS §19).
+#[cfg(all(test, initial_ramdisk))]
+mod ninth_pass_elf_tests;
+
+/// **A user program cannot read kernel code** (a ninth outsider pass at the confinement claim,
+/// claim 21). Where `el0_boundary_tests` reads a kernel rodata sentinel, this aims the `outlaw` at
+/// the address of a kernel function and asserts the same permission fault on the read.
+///
+/// Cross-ISA: every target with an initial ramdisk packs the `outlaw` (DECISIONS §19).
+#[cfg(all(test, initial_ramdisk))]
+mod ninth_pass_el0_tests;
+
+/// **The x86 port-range capability at the edges `x86_port_tests` does not reach** (a ninth outsider
+/// pass at the confinement claim, claims 27, 28, 29 and 33). A holder of exactly the COM1 range
+/// writes the port one past it; a parked holder is revoked by the sparing
+/// `revoke_port_range_from_others`; a holder deletes its own capability and writes; a `READ`-only
+/// holder writes inside its range. Each must fault with a #GP.
+///
+/// x86_64 only: there is no port space or TSS I/O bitmap on the other two architectures.
+#[cfg(test)]
+mod ninth_pass_port_tests;
+
+/// **A holder that drops its construction authority cannot build again** (a ninth outsider pass at
+/// the confinement claim, claim 23). `authority_tests` boots the real `root_supervisor` for this;
+/// this drives the mechanism through the dispatcher with no ramdisk. A full untyped budget retypes
+/// and splits, is deleted the way `SYS_CAP_DELETE` deletes it, and the identical build operations
+/// then answer `NoSuchSlot`.
+///
+/// Cross-ISA: untyped retype and split and the capability table are portable kernel code
+/// (DECISIONS §19).
+#[cfg(test)]
+mod ninth_pass_authority_tests;
+
 #[cfg(test)]
 mod code_pages;
 
 #[cfg(test)]
 use code_pages::*;
-/// **Pass 9's four fresh dispatcher attacks on the rights model** (an outside security reviewer
-/// attacks the confinement claim, 2026-10-13 UTC; fatal risk 7's confinement claim, claims 2, 4, 5
-/// and 26). A consumed capability cannot be reused (`cap_delete` then re-invoke answers
-/// `NoSuchSlot`); deleting one capability leaves its neighbours resolving and invoking; `BADGE` is
-/// `GRANT`-gated and mints no wider right than its source; and a slot past the table or empty inside
-/// it names nothing. Each drives `syscall::invoke` and none blocks, so a regression is red at an
-/// assertion. Fresh constructions, not replays: the header says which existing test each comes at
-/// from a new angle.
-///
-/// Cross-ISA: `invoke`, the rights model and the capability table are portable kernel code
-/// (DECISIONS §19 (architectural parity is a tenet)).
-#[cfg(test)]
-mod pass9_confinement_tests;
-
-/// **Pass 9: a foreign endpoint cannot reap or survey a child it does not supervise** (an outside
-/// security reviewer attacks the confinement claim, 2026-10-13 UTC; fatal risk 7's confinement
-/// claim, claims 6, 7, 8 and 9). A real supervised child is spawned, then a holder of an unrelated
-/// endpoint carrying `READ | ENUMERATE` (every right a supervisor needs) is refused `REAP`
-/// (`NotSupervised`), gets the same answer for a made-up tid (no liveness disclosure), and surveys
-/// `DONE`; the owning endpoint sees and reaps the same child. Reap and survey are refused and
-/// permitted by the same relationship. Where `confinement_attack_tests` drives the right endpoint
-/// with a missing right, this drives the wrong endpoint with every right.
-///
-/// Cross-ISA: the supervision relationship and its decisions are portable kernel code (DECISIONS
-/// §19 (architectural parity is a tenet)); the child stub is per-architecture in `supervision_tests`.
-#[cfg(test)]
-mod pass9_supervision_tests;
-
-/// **Pass 9: the map gate admits only the aligned low half, and no mapping flag is W+X** (an
-/// outside security reviewer attacks the confinement claim, 2026-10-13 UTC; fatal risk 7's
-/// confinement claim, claims 10 and 11). Through the live dispatcher, a confined budget holder's
-/// `MemoryRegion::MAP` is refused `BadPointer` for a kernel-half address and for an unaligned one,
-/// tied to the proved `is_user_page_va` gate; and every `Flags` a mapping path installs is writable
-/// or user-executable, never both. One layer up from `crates/paging`'s per-format proofs.
-///
-/// Cross-ISA: the gate is instantiated at the running architecture's `Format` (DECISIONS §19).
-#[cfg(test)]
-mod pass9_mapping_tests;
-
-/// **Pass 9: a revocation reaches a capability in flight, for the two sweeps no test drove through
-/// a parked hand-off** (an outside security reviewer attacks the confinement claim, 2026-10-13 UTC;
-/// fatal risk 7's confinement claim, claim 30). `revocation_in_flight_tests` drives the `PageFrame`
-/// sweep and its own `# BUGS` says the `DeviceFrame` and (x86_64) `PortRange` sweeps carry the same
-/// hand-off-slot lines untested. This drives a `DeviceFrame`, and on x86_64 a `PortRange`, parked in
-/// `outgoing_cap` through the whole-machine revoke, and confirms the receiver is handed nothing.
-///
-/// Cross-ISA: the `DeviceFrame` sweep is portable kernel code (DECISIONS §19); the `PortRange`
-/// object exists only on x86_64, so its arm is gated there.
-#[cfg(test)]
-mod pass9_revocation_tests;
-
-/// **Pass 9: a forged ELF cannot smuggle a hostile second segment, or wrap its range over the
-/// kernel** (an outside security reviewer attacks the confinement claim, 2026-10-13 UTC; fatal risk
-/// 7's confinement claim, claim 22). `elf_loader_tests` forges single-segment images; this forges
-/// two-segment images with a benign first segment and a writable-executable or kernel-half second,
-/// and a segment whose `p_vaddr + p_memsz` wraps the address space. Each is refused by `load`.
-///
-/// aarch64 and riscv64: `load` builds a `Half::Low` user `Mapper` on each; x86_64 packs no initial
-/// ramdisk, so the loader suite is gated out there.
-#[cfg(all(test, initial_ramdisk))]
-mod pass9_elf_tests;
-
-/// **Pass 9: a user program cannot read the kernel's code, not only a kernel data static** (an
-/// outside security reviewer attacks the confinement claim, 2026-10-13 UTC; fatal risk 7's
-/// confinement claim, claim 21). Where `el0_boundary_tests` reads a kernel rodata sentinel, this
-/// spawns the `outlaw` at the machine-code address of a kernel function and asserts the same
-/// permission fault on the read, on a page class (executable kernel text) a leak of which would be a
-/// gadget store.
-///
-/// aarch64 and riscv64: x86_64 builds no `outlaw` ELF, so its ring-3 boundary is driven by
-/// `x86_port_tests`.
-#[cfg(all(test, initial_ramdisk))]
-mod pass9_el0_tests;
-
-/// **Pass 9: holding a port *range* does not reach a port outside it** (an outside security
-/// reviewer attacks the confinement claim, 2026-10-13 UTC; fatal risk 7's confinement claim, claim
-/// 27, and the shape of claim 33). Every `out` in `x86_port_tests` is inside the granted range; this
-/// has a holder of exactly the COM1 range execute `out` to the port one past it and confirms the CPU
-/// refuses it with a #GP, which a TSS bitmap filled too wide would not.
-///
-/// x86_64 only: there is no port space or TSS I/O bitmap on the other two architectures.
-#[cfg(test)]
-mod pass9_port_tests;
-
-/// **Pass 9: a holder that drops its construction authority cannot build again** (an outside
-/// security reviewer attacks the confinement claim, 2026-10-13 UTC; fatal risk 7's confinement
-/// claim, claim 23). `authority_tests` boots the real `root_supervisor` program for this; this
-/// drives the mechanism through the dispatcher with no ramdisk: a full untyped budget retypes and
-/// splits (the positive control), is deleted the way `SYS_CAP_DELETE` deletes it, and the identical
-/// build operations then answer `NoSuchSlot`.
-///
-/// Cross-ISA: untyped retype and split and the capability table are portable kernel code
-/// (DECISIONS §19).
-#[cfg(test)]
-mod pass9_authority_tests;

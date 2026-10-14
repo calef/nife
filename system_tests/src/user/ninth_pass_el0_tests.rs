@@ -1,6 +1,6 @@
-//! **Pass 9 (an outside security reviewer attacks the confinement claim): a user program cannot
-//! read the kernel's *code*, not only a kernel data static** (fatal risk 7's confinement claim,
-//! claim 21; DECISIONS §19 (architectural parity is a tenet)).
+//! **A user program cannot read the kernel's *code*, not only a kernel data static** (a ninth
+//! outsider pass at the confinement claim, claim 21; DECISIONS §19 (architectural parity is a
+//! tenet)).
 //!
 //! `el0_boundary_tests::a_user_program_cannot_read_a_kernel_address` spawns the `outlaw` at a
 //! kernel **data** static and asserts a permission fault. This comes at the same claim from a
@@ -16,9 +16,10 @@
 //! `ESR_EL1`; riscv64 derives it by walking the tables (its classifier's caveat is in
 //! `riscv64::exceptions::user_fault`).
 //!
-//! Name: provisional (pass 9's lane, 2026-10-13 UTC), for the module, the file and each function.
-//! aarch64 and riscv64 only: x86_64 packs no initial ramdisk and builds no `outlaw` ELF, so its
-//! ring-3 boundary is driven by the hand-assembled `x86_port_tests` instead.
+//! Name: provisional (lane/pass-9-tests, 2026-10-14 UTC), for the module, the file and each
+//! function. Cross-ISA: it runs wherever the `outlaw` is packed, which is every target with an
+//! initial ramdisk (DECISIONS §19); on x86_64 the fault arrives as a page fault whose error code
+//! says a user-mode read of a present page.
 
 use core::sync::atomic::Ordering;
 
@@ -54,6 +55,9 @@ fn a_kernel_text_address() -> u64 {
 /// `outlaw` reads the address handed to it in its second argument register, faults, and is killed;
 /// the kernel records a permission fault on a read at exactly that address, and the kernel is still
 /// executing the assertions below, which is the other half of the claim.
+///
+/// Falsification: unfalsified. Written by the ninth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_user_program_cannot_read_a_kernel_code_address() {
     let kernel_text = a_kernel_text_address();

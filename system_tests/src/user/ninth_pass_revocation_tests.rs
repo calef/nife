@@ -1,23 +1,22 @@
-//! **Pass 9 (an outside security reviewer attacks the confinement claim): a revocation reaches a
-//! capability in flight, for the two sweeps no test drove through a parked hand-off** (fatal risk
-//! 7's confinement claim, claim 30).
+//! **A revocation reaches a capability in flight, for the two sweeps no test drove through a parked
+//! hand-off** (a ninth outsider pass at the confinement claim, claim 30).
 //!
 //! `revocation_in_flight_tests` drives the `PageFrame` sweep through a hand-off slot and holds. Its
 //! own `# BUGS` section says the other two sweeps carry the same two lines and *no test drives
-//! either through a parked hand-off*, so their correctness was reasoned from the code, not measured.
-//! This module measures them: a capability parked in `Thread::outgoing_cap` (where `ipc_send_cap`
-//! writes a handed-off capability before any receiver has arrived) is in no capability table, so a
-//! sweep that reads tables alone would leave one alive and hand it to the receiver. These are the
-//! `DeviceFrame` and (x86_64) `PortRange` objects through that same window.
+//! either through a parked hand-off*, so their correctness was reasoned from the code, not
+//! measured. This module measures them: a capability parked in `Thread::outgoing_cap` (where
+//! `ipc_send_cap` writes a handed-off capability before any receiver has arrived) is in no
+//! capability table, so a sweep that reads tables alone would leave one alive and hand it to the
+//! receiver. These are the `DeviceFrame` and (x86_64) `PortRange` objects through that same window.
 //!
 //! The shape is `revocation_in_flight_tests`' shape, with a different object: a sender holds the
 //! capability in its own table, hands a copy to a rendezvous nobody is receiving on (so the copy
 //! parks in `outgoing_cap` and the sender blocks), the whole-machine revoke runs, and then the
-//! receiver arrives and must be handed nothing. The last assertion is reached on every path, because
-//! `ipc_receive_cap` returns either `NO_CAP` or a slot and both are inspected.
+//! receiver arrives and must be handed nothing. The last assertion is reached on every path,
+//! because `ipc_receive_cap` returns either `NO_CAP` or a slot and both are inspected.
 //!
-//! Name: provisional (pass 9's lane, 2026-10-13 UTC), for the module, the file and each function.
-//! Cross-ISA: the `DeviceFrame` sweep is portable kernel code, so its test runs on every
+//! Name: provisional (lane/pass-9-tests, 2026-10-14 UTC), for the module, the file and each
+//! function. Cross-ISA: the `DeviceFrame` sweep is portable kernel code, so its test runs on every
 //! architecture (DECISIONS §19 (architectural parity is a tenet)); the `PortRange` object exists
 //! only on x86_64, so its test is gated there.
 
@@ -44,6 +43,9 @@ use crate::sched::{
 /// premise check reads) and parks a copy on the rendezvous. The main test thread is the revoke's
 /// caller, so it is the spared keeper; the sender is the only other holder and is swept. The
 /// receiver (the main thread) then arrives at `ipc_receive_cap` and must get `NO_CAP`.
+///
+/// Falsification: unfalsified. Written by the ninth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_device_frame_revoked_while_in_flight_does_not_reach_the_receiver() {
     static PARKED: AtomicBool = AtomicBool::new(false);
@@ -104,7 +106,7 @@ fn a_device_frame_revoked_while_in_flight_does_not_reach_the_receiver() {
 }
 
 /// **A `PortRange` revoked while it sits in the hand-off slot must not reach the receiver** (claim
-/// 30; the x86_64 port-range object, DECISIONS §121).
+/// 30; the x86_64 port-range object, DECISIONS §121 (x86 port I/O)).
 ///
 /// The twin of the `DeviceFrame` case for the one object that exists only on x86_64. A `PortRange`
 /// is enforced by the TSS I/O bitmap installed at the context switch from the holder's cached
@@ -113,6 +115,9 @@ fn a_device_frame_revoked_while_in_flight_does_not_reach_the_receiver() {
 /// `outgoing_cap`, or the receiver files a `PortRange` the revoker believed it took back. The range
 /// named is a plausible but harmless one (`0x1000`, past the legacy device ports), never COM1, so a
 /// stray permitted `out` could not scribble on the console the transcript prints to.
+///
+/// Falsification: unfalsified. Written by the ninth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[cfg(target_arch = "x86_64")]
 #[test_case]
 fn a_port_range_revoked_while_in_flight_does_not_reach_the_receiver() {

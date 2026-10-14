@@ -1,25 +1,24 @@
-//! **Pass 9 (an outside security reviewer attacks the confinement claim): a forged ELF cannot
-//! smuggle a hostile segment past the first one, or wrap its address range over the kernel** (fatal
-//! risk 7's confinement claim, claim 22; DECISIONS §15 (the ELF loader)).
+//! **A forged ELF cannot smuggle a hostile segment past the first one, or wrap its address range
+//! over the kernel** (a ninth outsider pass at the confinement claim, claim 22; DECISIONS §15 (the
+//! native ABI)).
 //!
 //! `elf_loader_tests` forges a *single*-segment image: one `PT_LOAD` at the kernel's base, or one
 //! that is writable-and-executable. Each of those is refused. This module comes at the same claim
 //! from the angle a single-segment test cannot reach: a program the linker would never emit, with
 //! **two** load segments, the first entirely benign, the second the attack. A loader that checked
 //! only the first segment, or stopped at the first `PT_LOAD` it could place, would load the second
-//! over the kernel or as a writable-executable page. And one segment whose `p_vaddr + p_memsz` wraps
-//! the 64-bit address space, so a low-half base names a high-half span (or the reverse): the kind of
-//! input an attacker reaches for when the half check reads only the base.
+//! over the kernel or as a writable-executable page. And one segment whose `p_vaddr + p_memsz`
+//! wraps the 64-bit address space, so a low-half base names a high-half span (or the reverse): the
+//! kind of input an attacker reaches for when the half check reads only the base.
 //!
-//! Every image is forged by hand (the loader has no heap; milestone 14 phase C), ELFCLASS64,
-//! this build's own machine, so the forgery reaches the property under test rather than being
-//! refused for being foreign. `load` is the real loader `exec` uses.
+//! Every image is forged by hand (the loader has no heap; milestone 14 (kernel objects from
+//! untyped) phase C), ELFCLASS64, this build's own machine, so the forgery reaches the property
+//! under test rather than being refused for being foreign. `load` is the real loader `exec` uses.
 //!
-//! Name: provisional (pass 9's lane, 2026-10-13 UTC), for the module, the file and each function.
-//! Cross-ISA: `load` builds a `Half::Low` user `Mapper` on each architecture and refuses a
-//! high-half or wrapping address by construction, so the same forgeries run on aarch64 and riscv64
-//! (DECISIONS §19); x86_64 packs no initial ramdisk, so the module is gated out there with the rest
-//! of the loader suite.
+//! Name: provisional (lane/pass-9-tests, 2026-10-14 UTC), for the module, the file and each
+//! function. Cross-ISA: `load` builds a `Half::Low` user `Mapper` on each architecture and refuses
+//! a high-half or wrapping address by construction, so the same forgeries run on every architecture
+//! with an initial ramdisk, which is all three (DECISIONS §19 (architectural parity is a tenet)).
 
 use super::*;
 
@@ -78,6 +77,9 @@ fn forged_sized(vaddr: u64, flags: u32, memsz: u64) -> [u8; EHDR + PHDR + 16] {
 /// program carries. The second asks for read-write-execute at the next page. A loader that enforced
 /// W^X on the first segment it saw and then trusted the rest would accept this; the claim is that
 /// every segment is checked, so the whole image is refused as `WritableAndExecutable`.
+///
+/// Falsification: unfalsified. Written by the ninth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_benign_first_segment_does_not_smuggle_a_writable_executable_second() {
     let image = forged_two_segments(
@@ -108,6 +110,9 @@ fn a_benign_first_segment_does_not_smuggle_a_writable_executable_second() {
 /// independent guards stand between this forgery and the kernel, and the outer one catches it, so
 /// the assertion is that it is refused, not which guard did it. The entry is kept off the result so
 /// a success is printable (`AddressSpace` is not `Debug`).
+///
+/// Falsification: unfalsified. Written by the ninth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_benign_first_segment_does_not_smuggle_a_segment_over_the_kernel() {
     let image = forged_two_segments(
@@ -139,6 +144,9 @@ fn a_benign_first_segment_does_not_smuggle_a_segment_over_the_kernel() {
 /// canonical hole. The loader must refuse rather than wrap. The base alone is already a high-half
 /// address, so `WrongHalf` is the floor; the point of the oversized `memsz` is that even arithmetic
 /// on it must not turn the refusal into a low-half success.
+///
+/// Falsification: unfalsified. Written by the ninth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_segment_whose_address_range_wraps_is_refused() {
     let vaddr = u64::MAX - page_frames::FRAME_SIZE + 1; // the last page of the space
