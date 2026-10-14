@@ -1,109 +1,37 @@
-//! **The DNS wire format a stub resolver needs** (RFC 1035; RFC 7766 for TCP), as pure computation.
+//! **The DNS wire format a stub resolver needs** (RFC 1035; RFC 7766 for TCP), as pure
+//! computation: the bytes of a query for one name's IPv4 addresses, and the checks a reply must pass
+//! before any address in it is believed. No socket, timer or policy; which program sends these
+//! bytes, and which names a client may ask about, are in `notes/name-resolution.md`.
 //!
-//! Milestone 384 (in a capability system the resolver is a grant) starts from a measured gap: nothing in this
-//! tree turns a host name into an address, so a program cannot reach a host by name however good
-//! its HTTP and TLS are. This crate is the part of the answer that is not a design fork: the bytes of
-//! a query for one name's IPv4 addresses, and the checks a reply must pass before any address in it
-//! is believed. It owns no socket, no timer and no policy. Which program sends these bytes, and the
-//! capability that says which names a client may ask it about, are the milestone's open questions,
-//! and `notes/name-resolution.md` carries them as a proposal rather than as code.
+//! Every byte parsed here came from a server the client may not trust, so the parser is total (Kani
+//! checks the name decoder, `fuzz/fuzz_targets/domain_name_system_reply.rs` the rest), and
+//! [`Query::accept`] believes as little as it can. A reply must, in order:
 //!
-//! Every byte this crate parses arrived from the network, from a server the client may not trust,
-//! through a path the client cannot see. So the parser is written to be total (no input panics or
-//! hangs it, which Kani checks for the name decoder and `fuzz/fuzz_targets/domain_name_system_reply.rs`
-//! exercises for the rest), and [`Query::accept`] is written to believe as little as it can.
-//!
-//! # What a reply must pass, in order
-//!
-//! [`Query::accept`] is the whole of a stub resolver's defence against a forged or confused answer,
-//! the same role `network_time_protocol::Query::accept` plays for time:
-//!
-//! 1. It parses as a DNS message at all ([`Reject::Malformed`]).
-//! 2. It is a response, to a standard query ([`Reject::NotAResponse`]).
-//! 3. It carries the transaction id we sent ([`Reject::IdMismatch`]). Over UDP that id is the
-//!    sixteen bits an off-path forger must guess, so the caller draws it from the entropy service.
-//! 4. It is not truncated ([`Reject::Truncated`], which over UDP means "ask again over TCP").
-//! 5. It echoes exactly our question: one question, our name (compared without regard to ASCII
-//!    case), type A, class IN ([`Reject::QuestionMismatch`]).
-//! 6. Its response code is success ([`Reject::NoSuchName`] for NXDOMAIN, [`Reject::ServerError`]
-//!    for the rest).
-//! 7. Its answer section follows a chain of CNAMEs **from our name**, at most [`MAX_CHAIN`] links,
-//!    and the addresses taken are the A records owned by the end of that chain and nothing else
-//!    ([`Reject::ChainTooLong`], [`Reject::NoAddress`]). A record for any other owner is ignored,
-//!    which is what keeps a reply about `example.com` from planting an address for `bank.test`.
-//!    The authority and additional sections are never read at all.
-//!
-//! # Examples
-//!
-//! A query, a reply as a recursive server would send it (the answer's owner is a compression
-//! pointer back to the question), and the address that comes out:
-//!
-//! ```
-//! use domain_name_system::{Query, Reject};
-//!
-//! let query = Query::new(0x4e1f, "packages.nife.test").unwrap();
-//! let mut request = [0u8; 512];
-//! let n = query.request(&mut request).unwrap();
-//! assert_eq!(&request[..2], &[0x4e, 0x1f]); // our transaction id
-//!
-//! // The reply: our header with QR and RA set, our question back, then one A record.
-//! let mut reply = request[..n].to_vec();
-//! reply[2] |= 0x80; // QR: a response
-//! reply[3] |= 0x80; // RA
-//! reply[7] = 1; // ANCOUNT = 1
-//! reply.extend_from_slice(&[0xc0, 0x0c]); // owner: a pointer to the question's name
-//! reply.extend_from_slice(&[0, 1, 0, 1]); // type A, class IN
-//! reply.extend_from_slice(&300u32.to_be_bytes()); // TTL
-//! reply.extend_from_slice(&[0, 4, 10, 0, 2, 9]); // RDLENGTH 4, then the address
-//!
-//! let answer = query.accept(&reply).unwrap();
-//! assert_eq!(answer.addresses(), &[[10, 0, 2, 9]]);
-//! assert_eq!(answer.ttl(), 300);
-//!
-//! // The same bytes under somebody else's transaction id are not an answer to us.
-//! reply[1] ^= 1;
-//! assert_eq!(query.accept(&reply), Err(Reject::IdMismatch));
-//! ```
-//!
-//! Over TCP the same message carries a two-byte length in front, and the reply may arrive in pieces:
-//!
-//! ```
-//! use domain_name_system::{Query, TcpReply};
-//!
-//! let query = Query::new(7, "nife.test").unwrap();
-//! let mut out = [0u8; 514];
-//! let n = query.request_tcp(&mut out).unwrap();
-//! assert_eq!(u16::from_be_bytes([out[0], out[1]]) as usize, n - 2);
-//!
-//! let mut buf = [0u8; 600];
-//! let mut reply = TcpReply::new(&mut buf);
-//! assert_eq!(reply.feed(&[0, 3, 1]), Ok(false)); // a length, and one byte of three
-//! assert_eq!(reply.feed(&[2, 3]), Ok(true));
-//! assert_eq!(reply.message(), Some(&[1u8, 2, 3][..]));
-//! ```
+//! 1. Parse as a DNS message at all ([`Reject::Malformed`]).
+//! 2. Be a response, to a standard query ([`Reject::NotAResponse`]).
+//! 3. Carry the transaction id we sent ([`Reject::IdMismatch`]): over UDP, the sixteen bits an
+//!    off-path forger must guess, so the caller draws it from the entropy service.
+//! 4. Not be truncated ([`Reject::Truncated`], which over UDP means "ask again over TCP").
+//! 5. Echo exactly our question: one question, our name (ASCII case aside), type A, class IN
+//!    ([`Reject::QuestionMismatch`]).
+//! 6. Succeed ([`Reject::NoSuchName`] for NXDOMAIN, [`Reject::ServerError`] for the rest).
+//! 7. Follow a chain of CNAMEs **from our name**, at most [`MAX_CHAIN`] links, taking only the A
+//!    records owned by its end ([`Reject::ChainTooLong`], [`Reject::NoAddress`]), so a reply about
+//!    `example.com` cannot plant an address for `bank.test`. The authority and additional sections
+//!    are never read.
 //!
 //! # BUGS
 //!
-//! - **IPv4 only.** It asks for A records and never AAAA, because `net_stack` builds `smoltcp` with
-//!   `proto-ipv4` alone and an IPv6 address would have nowhere to go.
-//! - **No EDNS(0)**, so a UDP reply is at most 512 bytes ([`UDP_MESSAGE_MAX`]) and a larger answer
-//!   comes back truncated, which the caller answers by asking again over TCP. That is RFC 1035's
-//!   behaviour and it costs a second exchange for large answers.
-//! - **No DNSSEC.** An on-path attacker who can read the query can forge the reply, transaction id
-//!   and all, exactly as against plain NTP. What this crate removes is the off-path forger who cannot
-//!   see the id, and only as well as the caller's id is unguessable. It does not randomise the case
-//!   of the question (the "0x20" trick), which would add up to one bit per letter.
-//! - **At most [`MAX_ADDRESSES`] addresses** are kept from one answer; the rest are dropped without
-//!   comment, which a resolver that only needs one address to connect to will not notice.
-//! - **Host names are restricted** to letters, digits, `-` and `_` in each label ([`Name::from_dotted`]).
-//!   The wire format allows any byte; a host name a person types does not need them, and refusing
-//!   them keeps escape syntax out of the one place a client's text becomes wire bytes.
+//! - IPv4 only: `net_stack` builds `smoltcp` with `proto-ipv4` alone.
+//! - No EDNS(0), so UDP replies stop at [`UDP_MESSAGE_MAX`] and a larger answer costs a TCP retry.
+//! - No DNSSEC: an on-path attacker can forge the reply, id and all. No "0x20" case randomisation.
+//! - At most [`MAX_ADDRESSES`] addresses are kept from one answer; the rest are dropped.
+//! - Host names are restricted to letters, digits, `-` and `_` per label ([`Name::from_dotted`]),
+//!   which keeps escape syntax out of the one place a client's text becomes wire bytes.
 //!
-//! Name: provisional 2026-10-04 (milestone 384's lane, an agent). DNS spelled out under §154 (the
-//! acronym test is whether the phrase is spoken, applied recursively), since people do say "the
-//! domain name system", the way `network_time_protocol` spells out NTP. Refused `dns` for that
-//! reason, and `name_resolver`, which names the program milestone 384 leaves open rather than the
-//! wire format this crate is.
+//! Name: provisional: DNS spelled out under §154 (the acronym test is whether
+//! the phrase is spoken). Refused `dns` for that reason, and `name_resolver`, which names a program
+//! rather than this wire format.
 
 #![no_std]
 
@@ -719,6 +647,37 @@ impl Query {
 
     /// **Judge a reply**, and return the addresses it gives for our name only if every check in the
     /// crate docs' list passes. Total on any input: a reply cannot panic this, and that is fuzzed.
+    ///
+    /// # Examples
+    ///
+    /// A reply as a recursive server sends it, the owner a compression pointer to the question:
+    ///
+    /// ```
+    /// use domain_name_system::{Query, Reject};
+    ///
+    /// let query = Query::new(0x4e1f, "packages.nife.test").unwrap();
+    /// let mut request = [0u8; 512];
+    /// let n = query.request(&mut request).unwrap();
+    /// assert_eq!(&request[..2], &[0x4e, 0x1f]); // our transaction id
+    ///
+    /// // The reply: our header with QR and RA set, our question back, then one A record.
+    /// let mut reply = request[..n].to_vec();
+    /// reply[2] |= 0x80; // QR: a response
+    /// reply[3] |= 0x80; // RA
+    /// reply[7] = 1; // ANCOUNT = 1
+    /// reply.extend_from_slice(&[0xc0, 0x0c]); // owner: a pointer to the question's name
+    /// reply.extend_from_slice(&[0, 1, 0, 1]); // type A, class IN
+    /// reply.extend_from_slice(&300u32.to_be_bytes()); // TTL
+    /// reply.extend_from_slice(&[0, 4, 10, 0, 2, 9]); // RDLENGTH 4, then the address
+    ///
+    /// let answer = query.accept(&reply).unwrap();
+    /// assert_eq!(answer.addresses(), &[[10, 0, 2, 9]]);
+    /// assert_eq!(answer.ttl(), 300);
+    ///
+    /// // The same bytes under somebody else's transaction id are not an answer to us.
+    /// reply[1] ^= 1;
+    /// assert_eq!(query.accept(&reply), Err(Reject::IdMismatch));
+    /// ```
     pub fn accept(&self, reply: &[u8]) -> core::result::Result<Answer, Reject> {
         let mut reader = Reader::new(reply).map_err(Reject::Malformed)?;
         let h = reader.header;
@@ -837,6 +796,23 @@ fn rcode_reject(code: u8) -> Reject {
 /// Reassembles one reply that arrives over TCP in pieces: a two-byte length, then that many bytes
 /// (RFC 7766 section 8). One reply per connection, which is all a stub resolver sends for; bytes past the
 /// announced length are [`Error::Trailing`], not the start of a second message.
+///
+/// # Examples
+///
+/// ```
+/// use domain_name_system::{Query, TcpReply};
+///
+/// let query = Query::new(7, "nife.test").unwrap();
+/// let mut out = [0u8; 514];
+/// let n = query.request_tcp(&mut out).unwrap();
+/// assert_eq!(u16::from_be_bytes([out[0], out[1]]) as usize, n - 2);
+///
+/// let mut buf = [0u8; 600];
+/// let mut reply = TcpReply::new(&mut buf);
+/// assert_eq!(reply.feed(&[0, 3, 1]), Ok(false)); // a length, and one byte of three
+/// assert_eq!(reply.feed(&[2, 3]), Ok(true));
+/// assert_eq!(reply.message(), Some(&[1u8, 2, 3][..]));
+/// ```
 pub struct TcpReply<'a> {
     buf: &'a mut [u8],
     have: usize,
