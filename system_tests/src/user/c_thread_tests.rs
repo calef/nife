@@ -1,19 +1,21 @@
 //! **Somebody else's threaded C, unmodified, on nife's C library** (milestone 836 (a C library,
 //! stage 2: threads); `design/fatal-risks/1-only-software-written-for-nife.md`).
 //!
-//! hackbench (rt-tests 2.11, `helpers/build-hackbench.sh`) in its thread mode: groups of sender
+//! hackbench (rt-tests 2.11, basalt's package) in its thread mode: groups of sender
 //! and receiver `pthread`s pass 100-byte messages over pipes or `socketpair`s, every receiver
 //! blocking in `read` until a sender's `write` wakes it, after every thread has said it is ready
 //! through one pipe and been started through another with `poll`. The source is not touched; what
-//! differs from a Linux build is on the command line (the helper says what and why).
+//! differs from a Linux build is on the command line (basalt's `recipes/hackbench.toml` says what
+//! and why).
 //!
 //! The program runs as a process (`std_threads_tests::run_as_process_with`): its threads are
 //! those of milestone 812 (`std::thread::spawn` runs real threads in one address space), joined to
 //! one process, so the process's end is checked to reap every one. hackbench times itself with
 //! `gettimeofday`, so it is given a clock as `c_program_tests` gives one.
 //!
-//! **Each test skips when hackbench is not in the archive**, on `c_program_tests`' terms: fetching
-//! its source in a gate is §46 (thin primitives or whole subsystems)'s decision. All three ISAs,
+//! **Each test skips when hackbench is not in the archive**, which is wherever `cargo xtask
+//! basalt-fetch` did not run (milestone 907 (hackbench is packaged in basalt)). CI's `rg-threads`
+//! rows fetch it and set `NIFE_HACKBENCH_REQUIRED=1`, so there a missing one fails. All three ISAs,
 //! nothing architecture-specific asserted (§19 (architectural parity is a tenet)).
 //!
 //! The group sizes keep every run inside a process's 16 threads (`std`'s limit, milestone 812's
@@ -219,9 +221,15 @@ fn assert_hackbench_complete(text: &str, groups: u32, fds: u32, loops: u32) {
 macro_rules! skip_without_hackbench {
     () => {
         if program("hackbench").is_none() {
+            // basalt's package (milestone 907), not a helper's build: where CI fetched it, a
+            // missing one is a broken fetch and must not read as a skip.
+            assert!(
+                env!("NIFE_HACKBENCH_REQUIRED") != "1",
+                "no hackbench in this archive, and NIFE_HACKBENCH_REQUIRED=1: `cargo xtask \
+                 basalt-fetch` ran and its hackbench did not reach the archive"
+            );
             crate::testing::skip!(
-                "no hackbench in this archive: build it with helpers/build-hackbench.sh, which \
-                 fetches its source (milestone 836)"
+                "no hackbench in this archive: `cargo xtask basalt-fetch` fetches it (milestone 907)"
             );
         }
         if clock_service::machine_has_no_rtc() {
@@ -238,7 +246,8 @@ macro_rules! skip_without_hackbench {
 /// Falsification: attested 2026-10-12. On patagonia, aarch64 under HVF, with the platform layer's
 /// pipe `read` waiting inside the descriptor table's lock (as stage 1's reads hold it): the first
 /// receiver to wait held the table, no sender could reach its pipe, and this test ran into the
-/// suite's 90-second watchdog. A replay needs hackbench in the archive, which no gate builds.
+/// suite's 90-second watchdog. A replay needs a hackbench linked against that C library, and
+/// basalt's package is linked at the nife commit basalt pins.
 #[test_case]
 fn unmodified_hackbench_threads_over_pipes() {
     skip_without_hackbench!();
@@ -255,8 +264,8 @@ fn unmodified_hackbench_threads_over_pipes() {
 ///
 /// Falsification: attested 2026-10-12. On patagonia, aarch64 under HVF, with `socketpair`
 /// answering `ENOSYS`: hackbench printed its plan, then `Creating fdpair (error: Function not
-/// implemented)`, and this test failed for want of its time line. A replay needs hackbench in the
-/// archive, which no gate builds.
+/// implemented)`, and this test failed for want of its time line. A replay needs a hackbench
+/// linked against that C library, and basalt's package is linked at the nife commit basalt pins.
 #[test_case]
 fn unmodified_hackbench_threads_over_socket_pairs() {
     skip_without_hackbench!();

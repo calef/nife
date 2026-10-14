@@ -315,8 +315,8 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
     // it: only a word whose first component names an entry here designates anything (an absolute
     // one reached ioping with nothing granted, and its `stat` answered `ENOSYS`), and a word in
     // the shell's root is refused, because a caretaker is built by descending into a directory.
-    // Pointed at a directory, ioping would need to write a working file there. The kernel suite's `c_program_tests` runs the same assertions on
-    // the same bytes against a granted directory.
+    // Pointed at a directory, ioping would need to write a working file there. The kernel suite's
+    // `c_program_tests` runs the same assertions on the same bytes against a granted directory.
     line(
         1,
         "jig install ioping",
@@ -344,13 +344,40 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         ],
     ),
     line(0, "cd /", &[]),
+    // **`hackbench`, basalt's second C package** (milestone 907 (hackbench is packaged in basalt,
+    // and its test installs it with `jig`)), installed the same way. Its thread mode is the run
+    // `c_thread_tests` makes, smaller: one group of two senders and two receivers, four threads
+    // and the main one, whose 64 KiB stacks fit an ordinary `std` program's heap. Unvouched, it
+    // needs no grant beyond the clock page it times itself with.
+    line(
+        1,
+        "jig install hackbench",
+        &[
+            "fetched hackbench-",
+            "from basalt.test over TLS",
+            "fetched and installed; generation 13 is live",
+        ],
+    ),
+    line(
+        1,
+        HACKBENCH_LINE,
+        &[
+            "Running in threaded mode with 1 groups using 4 file descriptors each (== 4 tasks)",
+            "Each sender will pass 10 messages of 100 bytes",
+            "Time: ",
+        ],
+    ),
 ];
+
+/// The run `jig install hackbench` is followed by (milestone 907): `c_thread_tests`' pipe run,
+/// with one group of two and ten messages a sender.
+const HACKBENCH_LINE: &str = "hackbench -T -p -g 1 -f 2 -l 10";
 
 /// The timed reads `jig install ioping` is followed by (milestone 906): `c_program_fixture::IOPING`'s
 /// flags, pointed at the installed program's own file rather than a directory.
 const IOPING_LINE: &str = "ioping -c 5 -i 0 -s 4k ioping/1.3/ioping";
 
-/// The lines that need a repository from basalt (milestones 810 and 906), skipped without one
+/// The lines that need a repository from basalt (milestones 810, 906 and 907), skipped without one
 /// outside CI.
 pub(super) const FROM_BASALT: &[&str] = &[
     "jig install ripgrep",
@@ -358,6 +385,8 @@ pub(super) const FROM_BASALT: &[&str] = &[
     "jig install ioping",
     "ioping -v",
     IOPING_LINE,
+    "jig install hackbench",
+    HACKBENCH_LINE,
 ];
 
 /// The text this gate types and what each line must answer. `None` is a line whose answer is
