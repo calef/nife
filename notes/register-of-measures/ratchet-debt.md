@@ -41,9 +41,9 @@ disagree about a file:
 
 The series never read a baseline's rows. A baseline holds ceilings, and a ceiling can sit above
 what the tree measures until someone banks the shrink; the tree is the debt. A `writing-standards`
-exception marker and an `// Index exception` mark excuse an item at the gate and not here, for the
-prose budget's reason: a chart that subtracted what the gate excuses would hide the debt it exists
-to show. `parent_index_marked_lines` keeps the excused part visible on its own.
+exception marker and an `// Index exception` mark excuse an item at the gate and not here: a chart
+that subtracted what the gate excuses would hide the debt it exists to show.
+`parent_index_marked_lines` keeps the excused part visible on its own.
 
 ## Every week, from 2026W29
 

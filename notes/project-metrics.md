@@ -243,22 +243,6 @@ code: unharnessed code is outside it ([what each ratio is of](denominators.md#th
 Open while what an item names is not done; the direction is down (`script/roadmap --coe-actions`).
 Each week is read from its own commit, so 2026W39 is the first correction, already in this form.
 
-## Rust file size
-
-![Share of Rust lines in files over 2,000](project-metrics/file-size.svg)
-
-<!-- file-size: script/metrics writes this -->
-**File size:** 0 Rust files over 2,000 lines, holding 0.0% of all Rust lines; largest crates/system_initializer/src/boot_steps.rs (1,904); 95th percentile 1,131.
-<!-- /file-size -->
-
-## Function length
-
-![Function length](project-metrics/function-length.svg)
-
-<!-- function-length: script/metrics writes this -->
-[0.0%](register-of-measures/function-length.md), 0 functions, 0 lines past 100.
-<!-- /function-length -->
-
 ## Writing standards
 
 ![Documents over a writing-standards limit](project-metrics/writing-standards.svg)
@@ -279,14 +263,6 @@ The 40-line comment-block cap: files holding a longer block, then the lines past
 ![Split parents over the index limit](project-metrics/parent-index.svg)
 
 Split parents holding more than an index, marked items included.
-
-## The prose budget
-
-![Words over the cap](project-metrics/prose-budget.svg)
-
-![Documents over the cap](project-metrics/prose-budget-documents.svg)
-
-The 3,000-word cap: the debt in words, then the documents holding it.
 
 ## How it stays current
 
@@ -357,7 +333,5 @@ rest.
   Opus 5.5 got its own column (`opus_5_5`), so this week's commits left *other models*, and Opus 4.8
   now draws inside that band because the palette has eight hues. The fatal-risks chart (since removed in favor of the colors chart, which now stores the total itself) gained
   `fatal_risks_total` and an *unclassified* band, so 2026W36 to 2026W38 read nine rather than five,
-  four and five. The coverage floor and the prose budget were backfilled from each week's own tree.
-- The prose budget will be restated again when milestone 586 (a prose ratchet in lint) lands,
-  because it shares one document scope with `script/lint` and may count documents this one does not.
+  four and five. The coverage floor was backfilled from each week's own tree.
 - Nothing here is audited outside this project, as stated at the top.
