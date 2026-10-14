@@ -1,6 +1,7 @@
 ---
 status: BUILT
 raised: 2026-10-14
+built: 2026-10-14
 milestone_dependencies: none
 decision_dependencies: none
 machine_requirements: none
