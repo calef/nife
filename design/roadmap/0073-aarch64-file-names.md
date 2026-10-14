@@ -55,8 +55,8 @@ and `riscv64/mmu.rs` are both named. Everywhere else, only one side is.
 | `crates/dtb/tests/fixtures/qemu-riscv-virt.dtb`, `.dts` | `qemu-virt.dtb`, `.dts` | 4 |
 | `crates/dtb/tests/qemu_riscv_virt.rs` | `crates/dtb/tests/qemu_virt.rs` | 2 |
 
-The cost today is small and real: `scripts/qemu-runner.sh` reads as the runner and it is one of two, so
-a reader looking for "the RISC-V one" finds it by suffix and then has to infer that the unsuffixed
+The cost today is small and real. `scripts/qemu-runner.sh` reads as the runner and it is one of two.
+A reader looking for "the RISC-V one" finds it by suffix and then has to infer that the unsuffixed
 file is the other ISA rather than something shared. The cost after x86_64 is different in kind. An
 unnamed file among two named siblings is ambiguous; among three it is a claim that is actively false,
 because "the default" will mean whichever ISA the reader started from. §19 names x86_64 as a declared
@@ -71,8 +71,8 @@ sibling on both sides", and that is a restructure with 174 call sites behind it.
 
 Milestone 73 touched nothing under `crates/paging`, and one finding is worth carrying to 77: ARM has
 no short format name the way RISC-V does. `Sv39` is a single token in the privileged spec and in
-`satp`; the nearest ARM equivalent, "VMSAv8-64", names the architecture's memory system rather than
-one translation scheme, and the configuration `aarch64.rs` actually implements (4 KiB granule,
+`satp`. The nearest ARM equivalent, "VMSAv8-64", names the architecture's memory system rather than
+one translation scheme. The configuration `aarch64.rs` actually implements (4 KiB granule,
 48-bit VA) is expressed in `TCR_EL1` fields and never given a name of its own. That is the same
 observation 77 starts from, arrived at independently.
 

@@ -233,10 +233,10 @@ honestly, which is a culture rather than a mechanism. Say so where the reader me
 ## Index row
 
 `AGENTS.md` (942 lines today) warns against `pkill` and `git reset --hard` once each, and both had
-already been violated when that was written: one lane killed another's emulator mid-test and four
-agents clobbered work with a destructive git operation in one day, all having been told to read it
-in full. Audited (#309), the cut and the split applied (the file is 573 lines, 2026-09-25), and a
-size gate (`script/lint`'s `agents-md-lines` ceiling) plus a violation ledger built (2026-08-22):
-the ledger's first run found the git-clobber rule already four strikes over the three-strike
+already been violated when that was written. One lane killed another's emulator mid-test, and four
+agents clobbered work with a destructive git operation in one day. All had been told to read it in
+full. Audited (#309), and the cut and the split applied (the file is 573 lines, 2026-09-25). A size
+gate (`script/lint`'s `agents-md-lines` ceiling) plus a violation ledger were built (2026-08-22).
+The ledger's first run found the git-clobber rule already four strikes over the three-strike
 threshold, a decision for calef or the integrator. Open: budget rules 2 (pruning at merge) and 3
 (squashing against the recorded base) have no mechanism yet.

@@ -13,10 +13,10 @@ number, a status and a condition that would change it.
 
 From '86. `time`: the shell times a command', under `## Follow-on`:
 
-> CPU time. It is the scheduler's knowledge and nothing queries it today, and the number this
-> command reports is deliberately wall clock between spawn and the exit arriving on the
-> supervision endpoint. If CPU time ever arrives it is an extension of the same command rather
-> than a rival to it.
+> CPU time. It is the scheduler's knowledge and nothing queries it today. The number this command
+> reports is deliberately wall clock between spawn and the exit arriving on the supervision
+> endpoint. If CPU time ever arrives it is an extension of the same command rather than a rival to
+> it.
 >
 > -- design/roadmap/0086-time-command.md
 

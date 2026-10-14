@@ -19,7 +19,7 @@ and the numbers should have to carry it:
 | churn | nine entries in one day | 126 commits in ten days |
 
 The conflict evidence is already in CLAUDE.md and did not need re-deriving: three section-number
-collisions in one day, which is exactly what the roadmap split made structurally impossible by
+collisions in one day. That is exactly what the roadmap split made structurally impossible, by
 giving each entry its own file and leaving the number to the integrator at merge.
 
 Two things this adds that the roadmap split did not need.
@@ -46,10 +46,10 @@ here.
 
 ## Scope note
 
-Sequence it with milestone 97 (citations), which is already about citations naming what they cite. The two
-interact in a way worth exploiting rather than colliding with: once a decision is a file with a
-title, a citation's parenthetical name can be checked against that file, which is the enforcement 97
-wants and cannot have while every section lives in one document. Doing 114 first makes 97's lint
+Sequence it with milestone 97 (citations), which is already about citations naming what they cite.
+The two interact in a way worth exploiting rather than colliding with. Once a decision is a file
+with a title, a citation's parenthetical name can be checked against that file. That is the
+enforcement 97 wants and cannot have while every section lives in one document. Doing 114 first makes 97's lint
 cheaper; doing them in the wrong order means writing the check twice.
 
 Sequence it also when no lane holds unmerged `DECISIONS.md` edits, for the reason the roadmap
@@ -79,7 +79,8 @@ the index README rather than out of the script, so the proof covers them rather 
 
 **One byte of content changed, and finding it is the strongest argument this entry could have
 made.** §67 exists twice in the file: once where it belongs, and once inserted into the MIDDLE of
-§61's BUGS sentence by commit 255879e, because that insertion anchored on the string `## Reading`
+the BUGS sentence of §61 (a lint is adopted on evidence from this tree) by commit 255879e. That
+insertion anchored on the string `## Reading`
 and the first occurrence of that string in the file was a wrapped prose line inside §61. The
 sentence it cut in half reads "`script/decisions --check` cannot see a section in the WRONG PLACE,
 only a missing number". §61 predicted the defect, in the sentence the defect broke, and every gate

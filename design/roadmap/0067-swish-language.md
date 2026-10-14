@@ -5,12 +5,12 @@ built: 2026-08-04
 ---
 # 67. `swish` the language: quoting, sequencing, and exit status
 
-Raised 2026-08-02 from measuring `swish` against a minimal POSIX shell; built
-2026-08-04 in three commits (`eca4da2f` quoting, `b20bfc3b` sequencing and exit status, `9155d647`
-the boot gate and the note), and the record did not catch up for twelve days. Closed 2026-08-16 on
-the tree's own evidence rather than on a report: `crates/grant_plan/src/word.rs`,
+Raised 2026-08-02 from measuring `swish` against a minimal POSIX shell; built 2026-08-04 in three
+commits (`eca4da2f` quoting, `b20bfc3b` sequencing and exit status, `9155d647` the boot gate and the
+note). The record did not catch up for twelve days. Closed 2026-08-16 on the tree's own evidence
+rather than on a report. `crates/grant_plan/src/word.rs`,
 `crates/swish/src/sequence.rs`, `swish::Status`, `kernel::user::language_tests` and
-notes/swish-language.md all exist, and the four rows below are each answered by a named artifact.
+notes/swish-language.md all exist. The four rows below are each answered by a named artifact.
 
 (The Gate paragraph that stood here said `NONE` and explained that quoting needed no decision. It
 was right, the work is done, and a BUILT milestone gates nothing, so it is gone rather than stale.)
@@ -25,89 +25,92 @@ was right, the work is done, and a BUILT milestone gates nothing, so it is gone 
 | `>>` and `2>` | already built with milestone 50's later work, 2026-08-03. See notes/pipes.md |
 
 The backslash escape named in the original block is **not** built and is not planned: every token in
-this shell is a slice of the line, and an escape has to remove a byte from the middle of a word,
-which a slice cannot do. The quoted spelling is the one that works. That is a recorded limitation
+this shell is a slice of the line. An escape has to remove a byte from the middle of a word, which a
+slice cannot do. The quoted spelling is the one that works. That is a recorded limitation
 rather than a residual, and it is in notes/swish-language.md's BUGS beside the feature.
 
 ## The two things worth reading the note for
 
 **Quoting was an authority gap, not a convenience.** A file called `my notes.txt` could not be
-named, and in a shell whose thesis is that naming a resource is granting it, a resource you cannot
-name is a resource you cannot grant. The built rule is that **quoting delimits a word and never
-rewrites one**, which keeps every token a slice, and its capability consequence is a *narrowing*:
-`rm "*.txt"` designates one name where `rm *.txt` designates a set, and `rm "-r"` names a file
+named. In a shell whose thesis is that naming a resource is granting it, a resource you cannot name
+is a resource you cannot grant. The built rule is that **quoting delimits a word and never rewrites
+one**, which keeps every token a slice. Its capability consequence is a *narrowing*. `rm "*.txt"`
+designates one name where `rm *.txt` designates a set. `rm "-r"` names a file
 rather than widening a directory grant.
 
-The fork this milestone was raised to settle is settled: a refusal is not an error, and `$?`
-says which. `0` ran, `1` failed (something was attempted and did not work), `2` was refused (the
+The fork this milestone was raised to settle is settled. A refusal is not an error, and `$?` says
+which. `0` ran, and `1` failed (something was attempted and did not work). `2` was refused (the
 shell declined at the prompt with nothing spawned, nothing opened and no authority moved). `&&` and
-`||` read one bit out of it, because they ask one question and both non-zero answers are "no"; the
-distinction stays where a person can see it. Unix cannot draw that line at all, because there `127`
-and a program's own `exit(1)` are the same kind of integer.
+`||` read one bit out of it, because they ask one question and both non-zero answers are "no". The
+distinction stays where a person can see it. Unix cannot draw that line at all. There `127` and a
+program's own `exit(1)` are the same kind of integer.
 
 ## What proves it, on both ISAs
 
-`kernel::user::language_tests` reads the tail of the same scripted run `redirection_tests` reads:
-the real shell binary through the real init, with a directory narrowed by an `fs_subtree_caretaker`
+`kernel::user::language_tests` reads the tail of the same scripted run `redirection_tests` reads.
+That is the real shell binary through the real init, with a directory narrowed by an `fs_subtree_caretaker`
 to one subtree of the real RedoxFS image. It shares that witness rather than wiring a seventh
-scripted shell, which is a memory finding the note keeps: the first version's extra role put
+scripted shell. That is a memory finding the note keeps: the first version's extra role put
 `time_tests` over the frame pool intermittently.
 
-The assertions are pairs, so a shell that ignored quoting entirely fails both halves of each:
-`echo "*.txt"` against `echo *.txt`, `wc "my notes.txt"` against `wc < "my notes.txt"`, and
+The assertions are pairs, so a shell that ignored quoting entirely fails both halves of each. They
+are `echo "*.txt"` against `echo *.txt`, `wc "my notes.txt"` against `wc < "my notes.txt"`, and
 `worker 3 && echo yes` against `worker && echo yes`. Parity is met by `script/swish-check` running
 the same script on aarch64 and riscv64 rather than by a second implementation.
 
 ## BUGS
 
 - **Scripting is still nowhere, and that was never in scope.** `if`/`while`/`for`/functions and
-  reading a script file are a much larger thing, and this project has no story yet for what a script
+  reading a script file are a much larger thing. This project has no story yet for what a script
   *is* when a program namespace is an endowment. Doing quoting and sequencing first is what makes
   that question answerable rather than theoretical.
 - The status is the shell's own reading of the line, not a program's. No program in this system
-  reports an exit status: a spawned program answers with a value, with bytes, or through a job frame.
+  reports an exit status. A spawned program answers with a value, with bytes, or through a job frame.
   A per-program status would be a `spawnproto` bit, a delegation position and an edit to every
-  program, which is a milestone and not a field.
-- `$?` is readable only in `echo`. Substituting a word anywhere else needs the machinery
-  milestone 47's variables need anyway.
+  program. That is a milestone and not a field.
+- `$?` is readable only in `echo`. Substituting a word anywhere else needs the machinery that the
+  variables of milestone 47 (navigation and naming) need anyway.
 - There is no grouping, so `a && b || c` is left to right with no precedence. `{ }` and `( )`
   should arrive with milestone 52's subshells.
-- This block stood at NOT-STARTED for twelve days after the work merged, which is the §76 class
-  the roadmap split and its gate exist to catch, and neither caught it: the gate compares the index
-  row against the file's status line, and here both said NOT-STARTED, so they agreed and the
-  build stayed green. Two records that agree with each other and not with the tree are invisible to a
+- This block stood at NOT-STARTED for twelve days after the work merged. That is the §76 (what
+  catches a milestone status that is wrong in) class the
+  roadmap split and its gate exist to catch, and neither caught it. The gate compares the index row
+  against the file's status line. Here both said NOT-STARTED, so they agreed and the build stayed
+  green. Two records that agree with each other and not with the tree are invisible to a
   consistency check. The remaining full list of limitations is in notes/swish-language.md, next to
   the feature a reader meets.
 
-Effort: small to medium, and it was: mostly `grant_plan` and `swish`, both host-testable, so
+Effort: small to medium, and it was. It is mostly `grant_plan` and `swish`, both host-testable, so
 nearly all of it is proven in milliseconds without an emulator.
 
 ## Follow-on
 
 - **Recorded.** `notes/swish-language.md` carries the backslash escape in `BUGS` beside the quoting
-  feature: none is planned while every token is a slice of the line, and the quoted spelling is the
+  feature. None is planned while every token is a slice of the line. The quoted spelling is the
   one that works.
 - **Recorded.** `notes/swish-language.md` also says scripting is nowhere. `if`, `while`, `for`,
-  functions and reading a script file were never in scope, and this project has no story yet for
+  functions and reading a script file were never in scope. This project has no story yet for
   what a script *is* when a program namespace is an endowment.
 - **Milestone 172.** A per-program exit status. This block says correctly that it needs a
-  `spawnproto` bit, a delegation position and an edit to every program, so it is a milestone and not
-  a field; milestone 172 names exit-status delivery as one of the things a capability-native
+  `spawnproto` bit, a delegation position and an edit to every program. So it is a milestone and not
+  a field. Milestone 172 (A capability-native subprocess primitive) names exit-status delivery as
+  one of the things a capability-native
   subprocess primitive owes, distinct from the death-notification path.
 - **Milestone 47.** `$?` readable anywhere but `echo`. Substituting a word in an arbitrary position
-  needs the machinery milestone 47's variables need anyway, and building half of it here would have
-  been building it twice.
+  needs the machinery that the variables of milestone 47 (navigation and naming) need anyway.
+  Building half of it here would have been
+  building it twice.
 - **Milestone 52.** Grouping. `a && b || c` is left to right with no precedence between `&&` and
-  `||`, and there is no `{ }` or `( )` to override it; both should arrive with subshells.
+  `||`, and there is no `{ }` or `( )` to override it. Both should arrive with subshells.
 - **Recorded.** `design/decisions/0076-roadmap-status-versus-tree.md` states the weakness that let
-  this block sit at NOT-STARTED for twelve days after the work merged: the gate cannot see a status
-  that is wrong in both places, because two records agreeing with each other and not with the tree
+  this block sit at NOT-STARTED for twelve days after the work merged. The gate cannot see a status
+  that is wrong in both places. Two records agreeing with each other and not with the tree
   look consistent to a consistency check.
 
 ## Index row
 
-quoting was an authority gap rather than a convenience, and it closed: a name with a space can be
-granted, and a quoted pattern narrows to one name where a bare one designates a set. `;`, `&&`
-and `||` split outermost, and the fork the block was raised to settle is settled: a refusal is not
-an error, and `$?` says which (`0` ran, `1` failed, `2` refused). Built 2026-08-04; the record
+quoting was an authority gap rather than a convenience, and it closed. A name with a space can be
+granted, and a quoted pattern narrows to one name where a bare one designates a set. `;`, `&&` and
+`||` split outermost. The fork the block was raised to settle is settled: a refusal is not an error,
+and `$?` says which (`0` ran, `1` failed, `2` refused). Built 2026-08-04; the record
 caught up 2026-08-16

@@ -17,9 +17,9 @@ threads, and it was not RISC-V. Full account, evidence and method in notes/sched
 refusal leaves the region untouched". DECISIONS §16 was later amended so that a refusal is **not**
 passive: it arms the kill on every live thread in the region, so an owner's retry can tear a runaway
 down (§24's `^C` escalation needs that). The comment kept compiling; the child did not survive. The
-scheduler converts a killed thread to a corpse at its next preemption, so whenever the timer beat the
-child's nine instructions, the child was reaped without ever sending, the test's `ipc_recv` never
-returned, and every core fell to idle: the 60 s lost-wakeup heartbeat, exactly as reported.
+scheduler converts a killed thread to a corpse at its next preemption. So whenever the timer beat
+the child's nine instructions, the child was reaped without ever sending. The test's `ipc_recv`
+never returned, and every core fell to idle: the 60 s lost-wakeup heartbeat, exactly as reported.
 
 The fix is deleting the probe. The refusal's own behavior is proved by
 `force_kill_tests::destroy_force_kills_a_runaway_and_reclaims_its_region`, which points the
@@ -56,7 +56,7 @@ entry, with the evidence recorded in notes/scheduler.md.
 - **Recorded.** `notes/scheduler.md`. The 101 threads and 109 endpoints this milestone started from,
   which it proved were not the hang and then handed on as wanting an entry of their own. The note's
   "The accumulation is not this bug" section carries the whole account, including its 2026-08-27
-  update: the suite did hit 128 of 128 with spawns refused and no diagnostic, `sched::MAX_THREADS`
+  update. The suite did hit 128 of 128 with spawns refused and no diagnostic. `sched::MAX_THREADS`
   is 256 on a measured peak of 130, and `sched::PEAK_THREADS` reports occupancy in the closing
   summary so nobody has to instrument the kernel to see the table filling. A **blocked** leak is
   still invisible to `thread_leak_police`, which polices runnable spinners on purpose, and 130 of
