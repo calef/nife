@@ -190,7 +190,7 @@ $ cd downloads
 $ jig install ./tampered.nifepkg
   refused: neither this image's catalog nor its index copy vouches for those bytes; nothing is installed
 $ jig install ./uptime.nifepkg
-  refused: the image carries a program of that name; a new base updates it, not install; nothing is installed
+  refused: the image carries the program uptime; a new base updates it, not install; nothing is installed
 $ jig install ./noteless.nifepkg
   installed; generation 1 is live
 $ cd /
@@ -222,7 +222,8 @@ $ packages/noteless/0.1.0/noteless
 ```
 
 Install refuses an image program's name, as `uptime` shows, and a name another package provides
-(§229, amended 2026-09-27).
+(§229, amended 2026-09-27). A package may carry several programs:
+[packages/several-programs.md](packages/several-programs.md).
 
 The progenitor is the installer, not a program, for §208's own reason: the authority that decides
 which version is active performs the swap, and §219 already made it the table's reader. It holds the file service with `WRITE`, the image's catalog in its
@@ -268,11 +269,11 @@ removed) is met, and so is §219's gate D2. The boot prompt is the owner's conso
   holding an installer endpoint, all but vouch.
 - A vouch, the owner's or a package's, now grants whatever the bytes' own note asks, the network
   included (milestone 597 (a program carries its manifest in an ELF note)).
-- Nothing collects `packages/`. A removed program's bytes stay, which is what rollback needs.
+- Nothing collects `packages/`. A removed package's bytes stay, which is what rollback needs.
 - Rollback is by number, to the generation one below the live one, as Nix's is (recalled, not
   read). Undoing a rollback is another install.
-- The program is the member named after the package, or else the one `bin/<program>` member
-  (milestone 810 (`ripgrep` is packaged in basalt)); the format marks none executable.
+- A program is the member named after the package or a `bin/<program>` member (milestone 810
+  (`ripgrep` is packaged in basalt)); the format marks none executable.
 - The `SYNC` before the reply is not falsified. QEMU keeps a killed guest's writes, so no gate
   here can lose a generation that was not synced.
 - A note may declare only what an image request can carry (`grant_plan::image_can_carry`): no

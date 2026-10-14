@@ -16,7 +16,7 @@ same day he changed one of nife's own: *"Change add-index to add-repository."*
 | `list` | the packages the local copy of the index (today, the image's catalog) offers | apt's | 2026-10-10 |
 | `install <name>` | fetch a package by name and install it | apt's | 2026-10-10 |
 | `install <path>` | install a package file already on the system; a word with a `/` is a file | apt's verb | 2026-10-10 |
-| `remove <program>` | a new generation without the program | apt's | 2026-10-10 |
+| `remove <package>` | a new generation without every row the package installed; a program's name is not the object (calef, 2026-10-14: "jig remove should work on packages, not programs.") | apt's | 2026-10-10, object 2026-10-14 |
 | `update` | refresh the local copy of the index, installing nothing | apt's | 2026-10-10 |
 | `list --upgradable` | what is outdated, against the index copy; not an `outdated` verb | apt's, as ruled | 2026-10-10 |
 | `rollback` | the generation below the live one becomes live | nife's: apt has no rollback | 2026-10-10 |
