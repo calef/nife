@@ -167,8 +167,8 @@ fn fetch_pinned() -> Result<(), String> {
         .map_err(|e| format!("{}: {e}", metadata.display()))
 }
 
-/// Accept each package `repository`'s index lists, by that index's digest, and write its program
-/// to [`ripgrep_elf`]'s directory for its architecture.
+/// Accept each package `repository`'s index lists, by that index's digest, and write every program
+/// it carries to [`ripgrep_elf`]'s directory for its architecture.
 fn take_programs(repository: &Path) -> Result<String, String> {
     let index_path = repository.join(CHANNEL).join("metadata/stand-in-index");
     let text = std::fs::read_to_string(&index_path)
@@ -189,8 +189,10 @@ fn take_programs(repository: &Path) -> Result<String, String> {
             "target/basalt/programs/{architecture}-unknown-nife"
         ));
         std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-        std::fs::write(dir.join(installable.program), installable.bytes)
-            .map_err(|e| format!("{}: {e}", dir.display()))?;
+        for program in installable.programs() {
+            std::fs::write(dir.join(program.name), program.bytes)
+                .map_err(|e| format!("{}: {e}", dir.display()))?;
+        }
         taken.push(entry.stem);
     }
     Ok(format!(
