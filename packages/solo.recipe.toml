@@ -1,0 +1,18 @@
+# solo, as a package: `alto`'s bytes again, as `bin/alto`, in a second package (milestone 919 (a
+# package carries several programs)). While `duet` holds the name `alto`, installing this is
+# refused whole, naming the program and the holder (calef, 2026-10-14 (UTC): "If two packages
+# offer the same program name, refuse the second package. Need to remove the first one before
+# installing the second one."). `script/swish-check` installs it from the disk on every leg.
+# Name: provisional 2026-10-14 (UTC).
+
+name = "solo"
+version = "0.1.0"
+architecture = "aarch64"
+
+[[member]]
+program = "alto"
+as = "bin/alto"
+
+[[member]]
+name = "solo.license"
+file = "LICENSE-MIT"

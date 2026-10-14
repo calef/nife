@@ -1,27 +1,19 @@
 //! The search index: one byte layout, agreed between the builder that runs on the host and the
 //! reader that runs confined.
 //!
-//! # Why an index at all, and why it is built on the host
+//! # Why an index, and why it is built on the host
 //!
-//! There is no directory iteration in this system. `readdir` refuses in the std PAL and the §27
-//! file contract has no such verb, and the capability model argues against adding one: **enumeration
-//! is authority**, and a viewer that can list a directory can discover what it was not given. So
-//! "what pages exist" is not something the guest can find out by looking. It is something a builder
-//! computes where there are no constraints and ships as a file, which is the same answer Unix's
-//! `mandb` reached for a different reason (scanning was slow).
+//! **Enumeration is authority**: a viewer that can list a directory can discover what it was not
+//! given, so the reader is not handed one to list. "What pages exist" is computed by a builder
+//! where there are no constraints and shipped as a file, as Unix's `mandb` does.
 //!
 //! # The one property the layout is designed for
 //!
-//! **A reader holds one 4 KiB page and never more.** That is not a budget chosen for tidiness: a
-//! client of the file contract shares exactly one frame with the FS server, and a shell that had to
-//! buffer a whole index would need a memory grant to search. So every section starts on a page
-//! boundary and every record divides 4096 evenly, which together mean **a reader with one page in
-//! hand never sees half a record**, and a lookup is a binary search over pages rather than a scan
-//! over bytes.
-//!
-//! A lookup costs `ceil(log2(term pages)) + 1` page reads: the search narrows to a page by comparing
-//! each candidate page's first term, then finishes inside that page with no further IO. For this
-//! repository's corpus (see the numbers `cargo xtask manual` prints) that is single digits.
+//! **A reader holds one 4 KiB page and never more.** A client of the file contract shares exactly
+//! one frame with the FS server, and a shell that had to buffer a whole index would need a memory
+//! grant to search. So every section starts on a page boundary and every record divides 4096
+//! evenly: **a reader with one page in hand never sees half a record**, and a lookup is a binary
+//! search over pages costing `ceil(log2(term pages)) + 1` page reads.
 //!
 //! # Layout
 //!
@@ -32,46 +24,27 @@
 //!   post_off          postings, 4 bytes each, 1024 per page, grouped by term
 //! ```
 //!
-//! # EXAMPLES
+//! The worked example lives on the `build` function, because it needs the `builder` feature.
 //!
-//! The worked example lives on the `build` function, because it needs the `builder` feature to run
-//! and rustdoc will only compile it when that feature is on. [`normalize`] and [`tokens`] are the
-//! two functions a caller on either side reaches for, and both are exercised by the tests at the
-//! foot of this file.
-//!
+
 //! # BUGS
 //!
 //! - **A term is truncated to [`TERM_MAX`] bytes**, so two identifiers that agree in their first 24
-//!   characters share a posting list and a query for either finds both. Nothing in this corpus
-//!   collides; a longer identifier set would.
+//!   characters share a posting list and a query for either finds both.
 //! - **Terms are ASCII-folded and split on anything that is not a letter or a digit**, so
-//!   `filesystem_protocol` indexes as `fs` and `proto` and a search for `filesystem_protocol` finds pages that mention
-//!   either. That is the same behaviour as `apropos` and it is wrong in the same way.
-//! - **There is no phrase search**, because it wants a position list and this index deliberately
-//!   stores none. Ranking (below) only ever needed a page's *length*, which is a single `u32` per
-//!   page record rather than a position per posting.
-//! - **The index does not record which line a term appeared on**, so a result names a page and not
-//!   a place in it. Storing positions would multiply the postings section by the average term
-//!   frequency, and the reader has no memory to spend on it.
+//!   `filesystem_protocol` indexes as `filesystem` and `protocol`, and a search for it finds pages
+//!   that mention either, as `apropos` does.
+//! - **There is no phrase search, and a result names a page, not a line**: the index stores no
+//!   positions, because the reader has no memory to spend on them. Ranking divides a term's count by
+//!   the page's [`Page::tokens`] (`score`), so a short dense page outranks a long passing mention;
+//!   [`Found::count`] is still the raw count. A heading mention and a passing one rank alike.
 //! - **A version mismatch is refused, not migrated.** [`Header::parse`] rejects any shard whose
-//!   [`VERSION`] is not this reader's, so an old guest meeting a new store answers "that is not an
-//!   index this reader knows" rather than misreading a record layout. There is no migration path
-//!   and there does not need to be one yet: every shard in the tree is a build artifact,
-//!   regenerated by `cargo xtask manual`, so the format and its reader ship together. The day a
-//!   shard arrives from somewhere the build did not produce, this is the decision to revisit.
+//!   [`VERSION`] is not this reader's. Every shard is a build artifact of `cargo xtask manual`, so
+//!   format and reader ship together; a shard from elsewhere is the day to revisit this.
 //! - **A search keeps [`RESULTS_MAX`] results and counts the rest.** [`Ranked::offered`] reports
-//!   the total, so a caller can say "16 of 43", and a caller that prints the results without it is
-//!   implying an answer it did not get.
-//! - ~~**Ranking is occurrence count and nothing else.**~~ **It divides by document length now**
-//!   (`score`, 2026-08-22): a page's stored [`Page::tokens`] is the denominator, so a short page
-//!   where a term is dense outranks a long page where it mentions the term only in passing, even
-//!   with a smaller raw count. [`Found::count`] still reports the raw occurrence count; only the
-//!   order changed. Ranking still has no notion of a phrase or a position, and still cannot tell
-//!   a heading mention from a passing one, because the index stores neither.
-//! - **A search answer names pages, never grants them.** That is the point rather than a
-//!   limitation: what a result carries is a *name* ([`Found::location`]), and reading the page is a
-//!   separate act in which the reader designates that name and whoever holds the store backs it.
-//!   Search cannot widen what its caller could already reach.
+//!   the total, so a caller can say "16 of 43".
+//! - **A search answer names pages, never grants them.** A result carries a *name*
+//!   ([`Found::location`]), and reading the page is a separate act backed by whoever holds the store.
 
 /// The page size the whole layout is built around: the frame a client shares with the FS server.
 pub const PAGE: usize = 4096;

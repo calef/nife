@@ -24,21 +24,18 @@
 //! timetable probes the slot at `_start` for `swish`'s reason: later, a region it split could land
 //! there.
 //!
-//! **Store mode** (milestone 152 (durable delegation), Fork 8 ruled D by calef on 2026-09-27, on
-//! #1377) is a timetable holding [`ACTIVATION_SLOT`]. It is handed no archive (`a1` is 0): each job's
-//! program is what a bare word runs at the prompt, the live activation generation's entry for the
-//! name, resolved when a document is registered and checked again at every fire. The two slots are
-//! endpoints to caretakers that serve those directories read-only, over a file-service channel of
-//! the timetable's own whose page the spawn site maps at [`STORE_PAGE_VA`]. A registrar is
-//! required. They were 4 and 5 until the clock took slot 4 on `main` (milestone 129 (scheduled
-//! execution)); moved at the merge of 2026-10-03 (UTC). A durable session grants no clock yet, so
-//! its calendar lines are `Unbacked::WallClock` (`components/src/user_timetable_keeper.rs`'s BUGS).
+//! **Store mode** (milestone 152 (durable delegation)) is a timetable holding [`ACTIVATION_SLOT`].
+//! It is handed no archive (`a1` is 0): each job's program is the live activation generation's
+//! entry for the name, resolved at registration and checked again at every fire. Slots 5 and 6 are
+//! endpoints to caretakers serving those directories read-only, over a file-service channel whose
+//! page the spawn site maps at [`STORE_PAGE_VA`]. A registrar is required. A durable session grants
+//! no clock yet (`components/src/user_timetable_keeper.rs`'s BUGS).
 //!
-//! Nothing else. In particular never the run-unvouched capability
-//! (`grant_plan::spawnproto::RUN_UNVOUCHED_SLOT`): a timetable holding it runs nothing and exits
-//! with [`E_UNVOUCHED`], because a scheduled job must stay within reach of §220 (signed builds, and
-//! trusting a key is scoped).
+//! Never the run-unvouched capability (`grant_plan::spawnproto::RUN_UNVOUCHED_SLOT`): a timetable
+//! holding it runs nothing and exits with [`E_UNVOUCHED`], because a scheduled job must stay within
+//! reach of §220 (signed builds, and trusting a key is scoped).
 //!
+
 //! # Arguments
 //!
 //! - `a0` ([`ARG_FIRES`]): how many fires before the timetable reports and exits; `0` is forever.
@@ -57,10 +54,10 @@
 //! a stream, and a `SEND` nobody takes would stop the timetable. Everything a registrar needs is in
 //! the page: each reply's status, verdicts and printed plan, and, once the timetable has stopped,
 //! its exit code at [`crate::registration::EXIT`]. Slot 0 may be left empty, and so may slot 2: a
-//! timetable that holds no report endpoint hands its jobs none (`crate::Held::report`). A durable
-//! session leaves it empty, which is Fork 6 C of milestone 152 (durable delegation), ruled 2026-09-27
-//! on #1377.
+//! timetable that holds no report endpoint hands its jobs none (`crate::Held::report`); a durable
+//! session leaves it empty.
 //!
+
 //! Name: provisional, minted 2026-09-26 (UTC) by milestone 129's lane, for this module and every
 //! constant here. Naming is calef's.
 

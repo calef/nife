@@ -1,82 +1,43 @@
 //! **Quoting: what a word is, and therefore what a command designates** (milestone 67,
 //! notes/swish-language.md).
 //!
-//! Before this module a word was "bytes up to the next space", so a file called `my notes.txt` was
-//! **unnameable**, and in a shell whose whole thesis is that naming a resource is granting it, a
-//! resource you cannot name is a resource you cannot grant. That is why quoting lands here rather
-//! than in a polish milestone: the gap was in the authority surface, not in the ergonomics.
+//! In a shell where naming a resource is granting it, a name you cannot type (`my notes.txt`) is a
+//! resource you cannot grant. Quoting is what makes such names nameable.
 //!
 //! # Quoting delimits a word. It never rewrites one.
 //!
-//! Every token in this shell is a **slice of the line you typed**. Nothing is copied and nothing is
-//! reassembled, which is what lets a crate with no allocator hand a name straight to the grant
-//! planner, and it is why `line::split` can keep a stage's command text as a slice rather than
-//! rebuilding it (notes/pipes.md).
-//!
-//! A backslash escape would have to *remove* a byte from the middle of a word, and a word with a
-//! byte removed is not a slice of anything. So:
+//! Every token in this shell is a **slice of the line you typed**, which is what lets a crate with
+//! no allocator hand a name straight to the grant planner (and `line::split` keep a stage's command
+//! text as a slice, notes/pipes.md). A backslash escape would remove a byte from the middle of a
+//! word, and a word with a byte removed is not a slice of anything. So:
 //!
 //! - `'...'` and `"..."` **wrap a whole word**, and the word is the span between them.
 //! - There is **no backslash escape**. A `\` is an ordinary byte in a name.
-//! - Two quoted pieces are **not joined**. `a"b c"d` is [`Refusal::PartlyQuoted`], because joining
-//!   is the one thing a slice cannot do.
+//! - Two quoted pieces are **not joined**. `a"b c"d` is [`Refusal::PartlyQuoted`].
 //!
-//! The property that buys is worth the corner it costs: **what is between the quotes is exactly
-//! what is designated, byte for byte.** There is no rewriting step between what you typed and what
-//! moves, so a preview (`caps`, `echo`) and a grant cannot disagree about what a name is.
+//! So **what is between the quotes is exactly what is designated, byte for byte**, and a preview
+//! (`caps`, `echo`) and a grant cannot disagree about what a name is.
 //!
 //! # What quoting does and does not change about authority
 //!
-//! It changes **what is designated**, and that is all:
+//! It changes a word's boundaries, so a name with a space, `>` or `|` can be named at all. It
+//! **suppresses pattern expansion**, so `rm "*.txt"` designates one name and `rm *.txt` the set, a
+//! narrowing visible before anything moves (`echo` prints both). Nothing else: no quoting form
+//! widens a grant or skips a manifest check; `"secret.txt"` is planned exactly as `secret.txt` is.
 //!
-//! - It changes a word's boundaries, so a name with a space, a `>` or a `|` in it can be named at
-//!   all. That is new authority only in the sense that a resource you could not name was a resource
-//!   you could not grant.
-//! - It **suppresses pattern expansion**, so `rm "*.txt"` designates one name spelled `*.txt` and
-//!   `rm *.txt` designates the set. That is a *narrowing*, and it is visible before anything moves:
-//!   `echo "*.txt"` and `echo *.txt` print what each would hand over.
-//!
-//! It changes nothing else. There is no quoting form that widens a grant, none that reaches a
-//! capability the same word unquoted could not, and none that skips a manifest check: `"secret.txt"`
-//! is planned against exactly what `secret.txt` is planned against. Quoting is a fact about the
-//! **line**, and authority here is a fact about what the shell **holds**.
-//!
-//! # `'` and `"` are the same today, and saying which will differ is not this milestone's call
-//!
-//! Both forms are literal. The difference POSIX draws between them is `$` expansion, and this shell
-//! has no variables (milestone 47 owns them), so inventing the distinction now would be inventing
-//! it rather than discovering it, which is the argument milestone 50 made about `InputSpec` and got
-//! right by waiting.
-//!
-//! What they do differ in today is which byte they let you write: `echo "it's"` and
-//! `echo 'say "hi"'` both work, and neither would with one form.
-//!
-//! # EXAMPLES
-//!
-//! ```
-//! use grant_plan::word::read;
-//!
-//! // The gap this closes: a name with a space in it.
-//! assert_eq!(read(b"\"my notes.txt\"").unwrap().text, b"my notes.txt");
-//! // Quoted, so nothing will expand it.
-//! assert!(read(b"'*.txt'").unwrap().quoted);
-//! // Bare, so it is a pattern and designates a set.
-//! assert!(!read(b"*.txt").unwrap().quoted);
-//! // The other quote is an ordinary byte inside a quoted word.
-//! assert_eq!(read(b"\"it's\"").unwrap().text, b"it's");
-//! ```
+//! `'` and `"` are both literal today. POSIX distinguishes them by `$` expansion, and this shell
+//! has no variables (milestone 47 (navigation and naming) owns them), so the distinction waits for them. They differ only in
+//! which quote byte they let you write: `echo "it's"` and `echo 'say "hi"'`.
 //!
 //! # BUGS
 //!
-//! - **No backslash escape, and none is planned while tokens are slices.** `my\ notes.txt` is a
+//! - **No backslash escape, and none is planned while tokens are slices.** `my\ notes.txt` names a
 //!   file whose name contains a backslash, and `nav::component_fits` refuses that byte, so the line
-//!   is refused rather than misread. The quoted spelling is the one that works.
-//! - **Adjacent pieces are not joined.** `a"b"` is refused where POSIX would read `ab`. The refusal
-//!   names the reason ([`Refusal::PartlyQuoted`]); it is not a silent misreading.
-//! - **A quote character cannot appear inside a word quoted with itself.** `'it''s'` is
-//!   [`Refusal::PartlyQuoted`] where POSIX joins three pieces into `it's`. Write it `"it's"`.
-//! - **`"$?"` prints `$?`**, because both forms are literal today. When variables arrive the two
-//!   forms have to stop being the same thing, and that decision belongs with them.
+//!   is refused rather than misread.
+//! - **Adjacent pieces are not joined.** `a"b"` and `'it''s'` are [`Refusal::PartlyQuoted`] where
+//!   POSIX would join them. Write `"it's"`.
+//! - **`"$?"` prints `$?`**, because both forms are literal. When variables arrive the two forms
+//!   have to stop being the same thing, and that decision belongs with them.
 
 use crate::Refusal;
 
@@ -201,6 +162,21 @@ impl<'a> Word<'a> {
 /// token: **the line means exactly what it says or it does not run.** A shell that read `a"b"` as
 /// `ab` would be joining pieces, and a shell that read it as the four literal bytes would be
 /// silently disagreeing with every other shell a person has used.
+///
+/// # Examples
+///
+/// ```
+/// use grant_plan::word::read;
+///
+/// // The gap this closes: a name with a space in it.
+/// assert_eq!(read(b"\"my notes.txt\"").unwrap().text, b"my notes.txt");
+/// // Quoted, so nothing will expand it.
+/// assert!(read(b"'*.txt'").unwrap().quoted);
+/// // Bare, so it is a pattern and designates a set.
+/// assert!(!read(b"*.txt").unwrap().quoted);
+/// // The other quote is an ordinary byte inside a quoted word.
+/// assert_eq!(read(b"\"it's\"").unwrap().text, b"it's");
+/// ```
 pub fn read(token: &[u8]) -> Result<Word<'_>, Refusal> {
     let Some(&first) = token.first() else {
         return Ok(Word::bare(token));

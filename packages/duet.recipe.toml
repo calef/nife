@@ -1,0 +1,21 @@
+# duet, as a package: two programs, `alto` and `tenor`, neither named after the package (milestone
+# 919 (a package carries several programs)). Each is a `bin/` member
+# (`package_archive::PROGRAM_PREFIX`), so `jig install` writes a row for each and `jig remove duet`
+# takes both. Their manifest notes differ, so the two are endowed differently. `script/swish-check`
+# installs it from the disk on every leg. Name: provisional 2026-10-14 (UTC).
+
+name = "duet"
+version = "0.1.0"
+architecture = "aarch64"
+
+[[member]]
+program = "alto"
+as = "bin/alto"
+
+[[member]]
+program = "tenor"
+as = "bin/tenor"
+
+[[member]]
+name = "duet.license"
+file = "LICENSE-MIT"

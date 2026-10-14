@@ -315,18 +315,96 @@ impl<'a> Package<'a> {
 pub const STEM_LEN: usize = NAME_LEN * 3 + 2;
 
 /// **A package the image vouches for, reduced to what installing it needs** (milestone 198 (a
-/// package manager) rung 3a's installer): the program a person will run, where it came from, and
-/// its bytes and digest.
+/// package manager) rung 3a's installer; milestone 919 (a package carries several programs)): the
+/// package, every one of whose programs [`installable`] has checked. Read them with
+/// [`Installable::programs`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Installable<'a> {
-    /// The program's name, which is the package's name (see [`installable`]).
-    pub program: &'a str,
+    package: Package<'a>,
+}
+
+/// **One program a package carries**: the name a person types, its bytes and their digest.
+///
+/// Name: provisional, milestone 919's lane, 2026-10-14 (UTC).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Program<'a> {
+    /// The program's name: the package's own for the member named after it, and the name after
+    /// [`PROGRAM_PREFIX`] for a `bin/` member.
+    pub name: &'a str,
     /// The executable member's bytes.
     pub bytes: &'a [u8],
     /// Their SHA-256, as the table of contents carries it and [`installable`] checked it. This is
     /// the digest the activation set records and the spawner computes (DECISIONS §219 (how the
     /// shell names an installed program to the spawner) option D).
     pub digest: Digest,
+    /// The member's index in the table of contents, which [`program_name`] reads back.
+    pub member: usize,
+}
+
+impl<'a> Installable<'a> {
+    /// The package the programs came from.
+    pub fn package(&self) -> Package<'a> {
+        self.package
+    }
+
+    /// **Every program the package carries**, in table-of-contents order. At least one, each name
+    /// once, and each member's bytes matched its digest when [`installable`] accepted it.
+    pub fn programs(&self) -> impl Iterator<Item = Program<'a>> + 'a {
+        let package = self.package;
+        (0..package.len()).filter_map(move |index| {
+            let name = program_name(&package, index)?;
+            Some(Program {
+                name,
+                bytes: package.member(index)?,
+                digest: package.member_digest(index)?,
+                member: index,
+            })
+        })
+    }
+}
+
+/// **The program member `index` is, if it is one**: the member named after the package, or a
+/// `bin/<program>` member. A `bin/` name that is empty or nested is returned as it is, for
+/// [`installable`] to refuse. Public so an installer that sent a package can name the program a
+/// refusal is about from the member index the reply carries.
+pub fn program_name<'a>(package: &Package<'a>, index: usize) -> Option<&'a str> {
+    let member = package.member_name(index)?;
+    if member == package.name() {
+        return Some(member);
+    }
+    member.strip_prefix(PROGRAM_PREFIX)
+}
+
+/// **Every program member, checked before any is installed** (milestone 919): at least one; no
+/// `bin/` name empty or holding a `/`; no program named twice; every member's bytes matching its
+/// table-of-contents digest.
+fn check_programs(package: &Package<'_>) -> Result<(), Refusal> {
+    let mut found = false;
+    for index in 0..package.len() {
+        let Some(name) = program_name(package, index) else {
+            continue;
+        };
+        if name.is_empty() || name.contains('/') {
+            return Err(Refusal::ProgramName);
+        }
+        let again = (0..index).any(|earlier| program_name(package, earlier) == Some(name));
+        if again {
+            return Err(Refusal::ProgramName);
+        }
+        let (Some(member), Some(digest)) = (package.member(index), package.member_digest(index))
+        else {
+            return Err(Refusal::NoProgram);
+        };
+        if sha256(member) != digest {
+            return Err(Refusal::MemberMismatch);
+        }
+        found = true;
+    }
+    if found {
+        Ok(())
+    } else {
+        Err(Refusal::NoProgram)
+    }
 }
 
 /// Why [`installable`] refused a package. Each is a different thing a person should be told.
@@ -338,9 +416,15 @@ pub enum Refusal {
     /// it. One refusal for both, because to the installer they are one fact: the image does not
     /// vouch for these bytes (DECISIONS §195 (a reviewed recipe vouches for a package)).
     NotCataloged,
-    /// The package carries no member named after itself, so there is no program to install.
+    /// The package carries no program: no member named after itself and no `bin/` member.
     NoProgram,
-    /// The program member does not hash to the digest its own table of contents claims. Only a
+    /// **A `bin/` member's program name is empty or holds a `/`, or two members name one
+    /// program** (milestone 919 (a package carries several programs)). The whole package is
+    /// refused rather than installed without that program.
+    ///
+    /// Name: provisional, milestone 919's lane, 2026-10-14 (UTC).
+    ProgramName,
+    /// A program member does not hash to the digest its own table of contents claims. Only a
     /// cataloged package can reach this, so it means the catalog vouched for a file the producer
     /// would never have written.
     MemberMismatch,
@@ -361,16 +445,19 @@ pub enum Refusal {
 ///    image's own ([`CATALOG`]), measured with every other archive entry, so this is DECISIONS §195's
 ///    "the image's measured table becomes the first source" taken literally: a person cannot install
 ///    what the image does not vouch for, whatever file they point at.
-/// 3. The member named after the package is the program; failing that, the one member named
-///    `bin/<program>` ([`PROGRAM_PREFIX`]), whose program is the name after the prefix. **That
-///    convention is this function's and is provisional**: nothing in the format marks which member
-///    is executable. The second half is milestone 810 (`ripgrep` is packaged in basalt)'s, whose
-///    package is `ripgrep` and whose program is `rg`, as Debian's is; it is a question put to calef
-///    on that milestone's pull request. A package with neither, or with two `bin/` members,
-///    installs nothing. Where a program's manifest travels is DECISIONS §197 (a package is one
-///    archive file)'s open question, and this does not answer it.
-/// 4. Its bytes are checked against the table of contents' digest, so what is recorded is a digest
-///    this installer computed rather than one it was told.
+/// 3. **Every program member is found** (milestone 919 (a package carries several programs);
+///    calef, 2026-10-12 (UTC): "A package can contain many programs and they may be different from
+///    the package name."). The member named after the package is a program, and so is every
+///    member named `bin/<program>` ([`PROGRAM_PREFIX`]), whose program is the name after the
+///    prefix: the package `ripgrep` carries `bin/rg`, as Debian's does. **That convention is this
+///    function's and is provisional**: nothing in the format marks which member is executable. A
+///    package with no program installs nothing ([`Refusal::NoProgram`]); a `bin/` name that is
+///    empty or nested, or a program named twice, refuses the whole package
+///    ([`Refusal::ProgramName`]). Where a program's manifest travels is DECISIONS §197 (a package
+///    is one archive file)'s open question, and this does not answer it.
+/// 4. Each program's bytes are checked against the table of contents' digest before any is
+///    returned, so what is recorded is a digest this installer computed rather than one it was
+///    told.
 ///
 /// `stem` is scratch for the `name-version-architecture` key; the caller reads it back with
 /// [`Package::stem`] when it needs the same string.
@@ -382,47 +469,14 @@ pub fn installable<'a>(catalogue: &str, bytes: &'a [u8]) -> Result<Installable<'
     if sha256(bytes) != expected {
         return Err(Refusal::NotCataloged);
     }
-    let (program, index) = program_member(&package).ok_or(Refusal::NoProgram)?;
-    let (Some(member), Some(digest)) = (package.member(index), package.member_digest(index)) else {
-        return Err(Refusal::NoProgram);
-    };
-    if sha256(member) != digest {
-        return Err(Refusal::MemberMismatch);
-    }
-    Ok(Installable {
-        program,
-        bytes: member,
-        digest,
-    })
+    check_programs(&package)?;
+    Ok(Installable { package })
 }
 
 /// **The prefix that marks a member as a program not named after its package** (milestone 810
 /// (`ripgrep` is packaged in basalt)): `bin/rg` in the package `ripgrep` is the program `rg`.
 /// Name: provisional 2026-10-12 (UTC), as is the convention, which [`installable`]'s step 3 states.
 pub const PROGRAM_PREFIX: &str = "bin/";
-
-/// The program member and the program's name: the member named after the package, or else the one
-/// `bin/<program>` member, whose program is a single non-empty component.
-fn program_member<'a>(package: &Package<'a>) -> Option<(&'a str, usize)> {
-    let name = package.name();
-    if let Some(index) = package.index_of(name) {
-        return Some((name, index));
-    }
-    let mut found = None;
-    for index in 0..package.len() {
-        let Some(program) = package
-            .member_name(index)
-            .and_then(|m| m.strip_prefix(PROGRAM_PREFIX))
-        else {
-            continue;
-        };
-        if program.is_empty() || program.contains('/') || found.is_some() {
-            return None;
-        }
-        found = Some((program, index));
-    }
-    found
-}
 
 /// **The catalog's stem for a package asked for by name** (milestone 198 (a package manager)
 /// rung 3a's fetch): the line whose stem is `<name>-<version>-<architecture>`, for a version with
@@ -431,8 +485,8 @@ fn program_member<'a>(package: &Package<'a>) -> Option<(&'a str, usize)> {
 ///
 /// **`name@version` asks for one version; a bare name must mean exactly one** (milestone 614 (two
 /// installed versions of one program, each runnable, and a caller granted the one it needs)). The
-/// qualified spelling is ruling 5's, given for `jig remove`, used here for the same reason: a
-/// word with `@` in it is never a package name. A bare name the catalog vouches for at two
+/// qualified spelling is the one `jig remove` takes, used here for the same reason: a word with
+/// `@` in it is never a package name. A bare name the catalog vouches for at two
 /// versions is [`CatalogMiss::SeveralVersions`]. Before this, the first matching line won, so which
 /// version a bare fetch asked for was decided by the order recipe *filenames* sort in
 /// (`greeting-0.2.0.recipe.toml` before `greeting.recipe.toml`, because `-` sorts before `.`),
@@ -820,9 +874,16 @@ mod tests {
         let members: [(&str, &[u8]); 2] = [("uptime", b"\x7fELF"), ("uptime.licence", b"MIT")];
         let file = written(&members);
         let got = installable(&catalogue_for(&file), &file).unwrap();
-        assert_eq!(got.program, "uptime");
-        assert_eq!(got.bytes, b"\x7fELF");
-        assert_eq!(got.digest, sha256(b"\x7fELF"));
+        let programs: std::vec::Vec<Program> = got.programs().collect();
+        assert_eq!(
+            programs,
+            [Program {
+                name: "uptime",
+                bytes: b"\x7fELF",
+                digest: sha256(b"\x7fELF"),
+                member: 0,
+            }]
+        );
         let mut stem = [0u8; STEM_LEN];
         assert_eq!(
             Package::parse(&file).unwrap().stem(&mut stem),
@@ -866,30 +927,70 @@ mod tests {
         );
     }
 
-    /// **A program named otherwise is its one `bin/` member** (milestone 810): `uptime`'s package
-    /// carrying `bin/up` installs the program `up`. Two such members, an empty name or a deeper
-    /// path install nothing, and a member named after the package still wins.
+    /// The programs a vouched package yields, as `(name, length)` pairs, or why it yields none.
+    fn programs_of(file: &[u8]) -> Result<std::vec::Vec<(std::string::String, usize)>, Refusal> {
+        let digest = measured_boot::digest_text(&sha256(file));
+        let vouched = std::format!(
+            "uptime-0.1.0-aarch64 {}",
+            core::str::from_utf8(&digest).unwrap()
+        );
+        installable(&vouched, file).map(|g| {
+            g.programs()
+                .map(|p| (p.name.into(), p.bytes.len()))
+                .collect()
+        })
+    }
+
+    /// **Every program member is a program** (milestones 810 and 919 (a package carries several
+    /// programs)): the member named after the package and each `bin/<program>` member, in table
+    /// order, named unlike the package or not. Files that are neither are not programs.
     #[test]
-    fn a_bin_member_is_the_program_when_none_is_named_after_the_package() {
-        fn install(file: &[u8]) -> Result<(std::string::String, usize), Refusal> {
-            let digest = measured_boot::digest_text(&sha256(file));
-            let vouched = std::format!(
-                "uptime-0.1.0-aarch64 {}",
-                core::str::from_utf8(&digest).unwrap()
-            );
-            installable(&vouched, file).map(|g| (g.program.into(), g.bytes.len()))
-        }
+    fn every_bin_member_and_the_one_named_after_the_package_is_a_program() {
         let file = written(&[("bin/up", b"\x7fELF up"), ("uptime.license", b"MIT")]);
-        assert_eq!(install(&file), Ok(("up".into(), 7)));
-        for refused in [
-            &[("bin/a", &b"a"[..]), ("bin/b", &b"b"[..])][..],
-            &[("bin/", &b"a"[..])][..],
-            &[("bin/x/y", &b"a"[..])][..],
+        assert_eq!(programs_of(&file), Ok(std::vec![("up".into(), 7)]));
+        let file = written(&[
+            ("bin/a", b"\x7fELF a"),
+            ("uptime", b"\x7fELF"),
+            ("uptime.license", b"MIT"),
+            ("bin/bb", b"\x7fELF bb"),
+        ]);
+        assert_eq!(
+            programs_of(&file),
+            Ok(std::vec![
+                ("a".into(), 6),
+                ("uptime".into(), 4),
+                ("bb".into(), 7)
+            ])
+        );
+        let package = Package::parse(&file).unwrap();
+        assert_eq!(program_name(&package, 3), Some("bb"));
+        assert_eq!(program_name(&package, 2), None);
+    }
+
+    /// **One bad program refuses the whole package** (milestone 919): an empty or nested `bin/`
+    /// name beside a good program, or the member named after the package and its `bin/` twin
+    /// naming one program twice, installs nothing. Two members of one name the writer refuses.
+    #[test]
+    fn a_bad_program_name_refuses_the_whole_package() {
+        let good = ("bin/ok", &b"\x7fELF"[..]);
+        for bad in [
+            &[good, ("bin/", &b"a"[..])][..],
+            &[good, ("bin/x/y", &b"a"[..])][..],
+            &[("uptime", &b"a"[..]), ("bin/uptime", &b"b"[..])][..],
         ] {
-            assert_eq!(install(&written(refused)), Err(Refusal::NoProgram));
+            assert_eq!(programs_of(&written(bad)), Err(Refusal::ProgramName));
         }
-        let file = written(&[("bin/up", b"other"), ("uptime", b"\x7fELF")]);
-        assert_eq!(install(&file), Ok(("uptime".into(), 4)));
+    }
+
+    /// **Every program's bytes are checked, not only the first's** (milestone 919): a second
+    /// program whose table-of-contents digest is wrong refuses the package. The catalog vouches
+    /// for the whole file, so only a producer bug writes this; it is built here by hand.
+    #[test]
+    fn a_second_program_that_does_not_match_its_digest_is_refused() {
+        let mut file = written(&[("bin/a", b"\x7fELF a"), ("bin/b", b"\x7fELF b")]);
+        let (at, _) = Package::parse(&file).unwrap().extent(1);
+        file[at] ^= 1;
+        assert_eq!(programs_of(&file), Err(Refusal::MemberMismatch));
     }
 
     /// **A name finds its package's stem on this architecture and nowhere else** (rung 3a's

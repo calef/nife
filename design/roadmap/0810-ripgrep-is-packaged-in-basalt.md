@@ -182,9 +182,6 @@ would replace only the download (unverified for `cargo-binstall`'s custom-target
 - A search may not fit a `std` program's heap. PR #1777 measured `rg --threads 1 --no-mmap` over
   this tree at a 3.0 MiB peak on macOS, against about 1 MiB of `std` heap. That is milestone 121's
   to solve, but `rg --version` passing here says nothing about it.
-- A package with more than one `bin/` member is refused, though calef ruled that a package may carry
-  many programs. The installer, the shell's bare-name lookup (§229 (how a bare name at the prompt
-  reaches an installed program)) and `jig remove` each handle one program per package today.
 - basalt's gate is one job for three architectures (its README's BUGS), so a red riscv64 build can
   hide behind a red aarch64 one.
 

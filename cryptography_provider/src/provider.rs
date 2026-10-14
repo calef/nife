@@ -6,6 +6,15 @@
 use super::*;
 
 /// **The provider.** Hand it to `rustls`' config builder, or install it as the process default.
+///
+/// # Examples
+///
+/// ```no_run
+/// // The provider, ready to hand to `rustls`.
+/// let provider = cryptography_provider::provider();
+/// assert_eq!(provider.cipher_suites.len(), 3);
+/// assert_eq!(provider.kx_groups.len(), 2);
+/// ```
 pub fn provider() -> CryptoProvider {
     CryptoProvider {
         cipher_suites: vec![

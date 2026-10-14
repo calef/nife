@@ -151,10 +151,10 @@ fn install_check(index: &Index<'_>, from: &Repository<'_>, name: &str, architect
         };
         return match accept(&entry, &bytes) {
             Ok(ok) => println!(
-                "fetched {} from {whence}, {} bytes, program {}",
+                "fetched {} from {whence}, {} bytes, programs {}",
                 entry.stem,
                 bytes.len(),
-                ok.program
+                ok.programs().map(|p| p.name).collect::<Vec<_>>().join(", ")
             ),
             Err(why) => println!("refused {}: {why:?}", entry.stem),
         };
@@ -225,12 +225,12 @@ fn redirect_checks(index: &Index<'_>, architecture: &str) {
         match fetched {
             Ok(from) => match accept(&entry, &bytes) {
                 Ok(ok) => println!(
-                    "redirect {label}: fetched {} from {} via {}, {} bytes, program {}",
+                    "redirect {label}: fetched {} from {} via {}, {} bytes, programs {}",
                     entry.stem,
                     from.host,
                     from.redirected_from.as_deref().unwrap_or("nothing"),
                     bytes.len(),
-                    ok.program
+                    ok.programs().map(|p| p.name).collect::<Vec<_>>().join(", ")
                 ),
                 Err(why) => println!("redirect {label}: refused by the digest: {why:?}"),
             },

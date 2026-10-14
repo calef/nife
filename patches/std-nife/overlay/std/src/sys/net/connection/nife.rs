@@ -1,37 +1,27 @@
 //! `std::net` for nife (milestone 27 phase two): `TcpStream` and outbound `UdpSocket` bound
-//! to the net_stack socket contract (DECISIONS §25, notes/net.md, `user/src/netproto.rs`).
+//! to the net_stack socket contract (DECISIONS §25, notes/net.md, `crates/socket_protocol`).
 //!
-//! This is the client half of the contract std sees. A std program given the network holds a
-//! `Stack` endpoint at slot 2 and an untyped budget at slot 3 (the slot convention in
-//! `pal/nife/rt.rs`). Opening a socket is a `CALL` on that endpoint, which net_stack answers with
-//! **the socket's own capability** (§255 (each socket is its own capability), milestone 649); this
-//! PAL then hands that socket a shared `PageFrame` it minted from the untyped (`SEND_CAP`,
+//! A std program given the network holds a `Stack` endpoint and an untyped budget (the slot
+//! convention in `pal/nife/rt.rs`). Opening a socket is a `CALL` on that endpoint, which net_stack
+//! answers with **the socket's own capability** (§255 (each socket is its own capability)); this
+//! PAL hands that socket a shared `PageFrame` minted from the untyped (`SEND_CAP`,
 //! `OPERATION_ATTACH_PAGE_FRAME`), and every later operation is one `CALL` on the socket's
-//! capability, with the payload already sitting in the shared frame. net_stack drives smoltcp over
-//! the confined NIC and replies. Bytes never cross a message.
+//! capability with the payload in the shared frame. Bytes never cross a message.
 //!
-//! The PAL's own **socket ids** are local: an index into its registry, which holds each open
-//! socket's capability, its page and its residual bytes. net_stack never sees them. Each open
-//! socket costs this program one capability slot, out of the 64 a process has.
+//! The PAL's **socket ids** are local: an index into its registry of each open socket's
+//! capability, page and residual bytes. Each open socket costs one of the process's 64 slots.
 //!
-//! **Blocking, one exchange at a time.** The contract is synchronous: a `CALL` blocks in net_stack
-//! while it services the network, so a std `read` blocks until data arrives, exactly the
-//! semantics `std::net`'s default blocking API wants. The target is single-threaded, so a program
-//! can hold several sockets (up to `SOCKETS`) but can only ever have one operation in flight.
+//! **Blocking, one exchange at a time.** A `CALL` blocks in net_stack while it services the
+//! network, which is what `std::net`'s blocking API wants. The target is single-threaded, so a
+//! program can hold up to `SOCKETS` sockets but has one operation in flight.
 //!
-//! ## The inbound half: `TcpListener` is a held authority, not a call that happens to work
+
+//! ## `TcpListener` is a held authority
 //!
-//! `bind` is `OPERATION_LISTEN` and `accept` is `OPERATION_ACCEPT` (milestone 64, the contract's half landed in
-//! milestone 107). The part worth understanding before reading the code is that **a listening port
-//! is a grant this program was given, or was not**, and nothing in the program decides which:
-//! `net_stack` is spawned with a **listen grant** (`netproto::listen_grant`), an inclusive port
-//! range, and refuses `LISTEN` outside it. `NO_LISTEN_GRANT` is the default, so a std program on
-//! a stack nobody granted ports to is refused **every** port. That is why `bind` has a
-//! `PermissionDenied` arm at all, and it is the one error here that a caller cannot fix by trying
-//! somewhere else: no other port helps, because the answer was about authority, not about the port.
-//!
-//! Three answers, three `ErrorKind`s, and the split is the contract's rather than a mapping
-//! invented here (`netproto`'s `LISTEN_*` vocabulary exists for exactly this reason):
+//! `bind` is `OPERATION_LISTEN` and `accept` is `OPERATION_ACCEPT`. **A listening port is a grant
+//! this program was given, or was not**: `net_stack` is spawned with a **listen grant**
+//! (`netproto::listen_grant`), an inclusive port range, and refuses `LISTEN` outside it;
+//! `NO_LISTEN_GRANT` is the default.
 //!
 //! | contract | `std::io::ErrorKind` | what a caller should do |
 //! |---|---|---|
@@ -39,39 +29,28 @@
 //! | `LISTEN_DENIED` | `PermissionDenied` | ask whoever spawned you for the port; do not retry |
 //! | `LISTEN_IN_USE` | `AddrInUse` | pick another port |
 //!
-//! **A listener and a connection are two objects, and this PAL keeps them apart** because the
-//! contract does (notes/net/the-inbound-half.md, "A listener is not a connection"). A listener holds
-//! its own capability and **no shared frame at all**, since no bytes ever cross on it; `accept` gets
-//! the connection back as a *second* capability, files it under a second id, and attaches that one's
-//! frame. So the POSIX move of letting a listening descriptor become the connection in place is not
-//! expressible from here.
+//! **A listener and a connection are two objects** (notes/net/the-inbound-half.md). A listener
+//! holds its own capability and no shared frame; `accept` gets the connection back as a *second*
+//! capability under a second id, and attaches that one's frame. The listener re-arms inside
+//! `ACCEPT`, so `listener.incoming()` serves connections one after another, but not two at once: a
+//! second peer arriving while this program is busy gets a RST (the backlog is one deep).
 //!
-//! The listener **re-arms inside `ACCEPT`**, so `for stream in listener.incoming()` works and serves
-//! connections one after another indefinitely. What it does not do is serve two at once: the target
-//! is single-threaded and the contract is one exchange per `CALL`, so a second peer arriving while
-//! this program is busy on an earlier connection gets a RST rather than a wait (the backlog is one
-//! connection deep). See the `BUGS` list below.
+
+//! ## What is Unsupported, and why
 //!
-//! ## What is honestly Unsupported, and why
-//! - **An accepted connection's peer address.** `accept` must return a `SocketAddr` and the
-//!   contract's `OPERATION_ACCEPT` reply carries no peer, so what comes back is `0.0.0.0:0` and
-//!   `peer_addr()` on an accepted stream reports the same. That is a placeholder and it is named
-//!   as one here rather than dressed up: a server that logs its peers logs zeros on nife.
-//!   Reporting the real peer means changing what two programs agree on (a second reply word, or the
-//!   frame's dead `dst` fields the way a UDP `RECEIVE` already uses them), which is not a PAL
-//!   decision. See notes/net/std-tcp-listener.md.
-//! - **Non-blocking mode and read/write timeouts.** The contract is blocking-only; there is no
-//!   poll verb. `set_nonblocking(true)` and `set_*_timeout(Some(..))` return `Unsupported`;
-//!   `set_nonblocking(false)` and the `None` timeouts (which mean "block") succeed.
-//! - **DNS without a resolver grant.** `lookup_host` asks the resolver at `rt::RESOLVER_SLOT`
-//!   (see the section at the end of this file). A program granted none gets `Unsupported`, so
-//!   `ToSocketAddrs` resolves only numeric addresses for it.
-//! - **IPv6.** net_stack is IPv4-only (smoltcp built with `proto-ipv4`). A V6 address is `Unsupported`.
+//! - **An accepted connection's peer address.** The `OPERATION_ACCEPT` reply carries no peer, so
+//!   `accept` and `peer_addr()` report the placeholder `0.0.0.0:0`. Fixing it changes what two
+//!   programs agree on; see notes/net/std-tcp-listener.md.
+//! - **Non-blocking mode and read/write timeouts.** The contract is blocking-only, with no poll
+//!   verb. `set_nonblocking(true)` and `set_*_timeout(Some(..))` return `Unsupported`;
+//!   `set_nonblocking(false)` and the `None` timeouts succeed.
+//! - **DNS without a resolver grant.** `lookup_host` asks the resolver at `rt::RESOLVER_SLOT` (see
+//!   the end of this file); a program granted none resolves only numeric addresses.
+//! - **IPv6.** net_stack is IPv4-only (smoltcp built with `proto-ipv4`).
 //! - **`peek`, `duplicate`, multicast join/leave.** No contract verb backs them.
 //!
 //! Advisory knobs with no contract effect (`set_nodelay`, `set_ttl`, `set_linger`, broadcast,
-//! multicast options) accept and return plausible values rather than fail, the way minimal
-//! backends do; they change nothing on the wire.
+//! multicast options) accept and return plausible values; they change nothing on the wire.
 
 #![allow(dead_code)]
 

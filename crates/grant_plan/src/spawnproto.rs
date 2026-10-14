@@ -328,14 +328,16 @@ pub const RUN_UNVOUCHED_SLOT: u64 = 62;
 /// [`ActivationStatus::Unknown`], as any verb this side does not know is.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Activation {
-    /// Install the program of the package whose bytes follow: record its digest in a new
-    /// generation, place its bytes where a person can run them, and make that generation live.
+    /// Install every program of the package whose bytes follow (milestone 919 (a package carries
+    /// several programs)): place each program's bytes where a person can run them, and record
+    /// each one's digest in one new generation, which is made live. One refused program refuses
+    /// the package, and nothing is written.
     Install = 1,
-    /// Write a new generation without the named program and make it live. Its bytes stay on
-    /// disk, which is what lets a rollback bring it back. The name is a program's bare name,
-    /// which removes every live version of it and its default pointer, or `program@version`,
-    /// which removes one (milestone 614 (two installed versions of one program, each runnable,
-    /// and a caller granted the one it needs), ruling 5).
+    /// Write a new generation without the named package and make it live. Its bytes stay on
+    /// disk, which is what lets a rollback bring it back. **The name is a package's** (calef,
+    /// 2026-10-14 (UTC), milestone 919: "jig remove should work on packages, not programs."): a
+    /// bare name removes every row the package installed, at every version, with the default
+    /// pointers of its programs; `package@version` removes that version's rows.
     Remove = 2,
     /// Make the generation numbered one below the live one live again. Nothing is rewritten.
     Rollback = 3,
@@ -400,7 +402,7 @@ pub enum ActivationStatus {
     NotCataloged = 1,
     /// A vouched package with no program the installer can find. Nothing was written.
     NoProgram = 2,
-    /// [`Activation::Remove`] named a program the live generation does not have.
+    /// [`Activation::Remove`] named a package the live generation has no row of.
     NotInstalled = 3,
     /// [`Activation::Rollback`] from a generation with none below it.
     NoEarlier = 4,
@@ -415,23 +417,27 @@ pub enum ActivationStatus {
     /// [`Activation::Vouch`] was sent bytes that do not parse as an executable, or a name the
     /// activation set cannot record. Nothing was written.
     NotExecutable = 10,
-    /// [`Activation::Install`] for a package whose program has the name another
+    /// [`Activation::Install`] for a package one of whose programs has the name another
     /// installed package's program already has (`activation_set::Error::Taken`; DECISIONS §229
-    /// (how a bare name at the prompt reaches an installed program), B2). The same package at
-    /// another version is an upgrade and is not this. No generation was written. Provisional.
+    /// (how a bare name at the prompt reaches an installed program), B2; calef, 2026-10-14 (UTC),
+    /// milestone 919: "If two packages offer the same program name, refuse the second package.
+    /// Need to remove the first one before installing the second one."). The same package at
+    /// another version is an upgrade and is not this. No generation was written. Word 2 names the
+    /// program ([`activation_reply`]), and on an installer endpoint two messages follow naming
+    /// the package that holds it ([`holder_words`]). Provisional.
     NameTaken = 11,
-    /// [`Activation::Install`] for a package whose program has the name of a program
+    /// [`Activation::Install`] for a package one of whose programs has the name of a program
     /// the image carries (`activation_set::Error::ImageName`; DECISIONS §229, calef's ruling of
     /// 2026-09-27). Under §235 (the OS is built and updated from packages) a base program is
     /// updated through the boot slot, never by install. No generation was written. Provisional,
     /// like its number.
     ImageName = 12,
-    /// [`Activation::Remove`] named `program@version`, the version is the one holding the default
-    /// pointer, and more than one other version remains: no ordering among live versions exists to
-    /// pick a new default with (milestone 614 (two installed versions of one program, each
-    /// runnable, and a caller granted the one it needs), ruling 5). Nothing was written; the shell
-    /// names the candidates from the live table, which it reads itself. Provisional, like its
-    /// number.
+    /// [`Activation::Remove`] named `package@version`, the version holds one of its programs'
+    /// default pointers, and more than one other version of that program remains: no ordering
+    /// among live versions exists to pick a new default with (milestone 614 (two installed
+    /// versions of one program, each runnable, and a caller granted the one it needs)). Nothing
+    /// was written; the shell names the candidates from the live table, which it reads itself.
+    /// Provisional, like its number.
     Ambiguous = 13,
     /// **The request arrived on the installer endpoint and is not one it serves** (milestone 809,
     /// [`INSTALLER_BADGE`]): a spawn, a vouch, or a verb this side does not know. Nothing was read
@@ -466,10 +472,46 @@ impl ActivationStatus {
     }
 }
 
-/// The progenitor's one reply to an activation request: the status and the generation live
-/// afterwards (0 when there is none).
-pub fn activation_reply(status: ActivationStatus, live: u32) -> (u64, u64, u64) {
-    (status as u64, u64::from(live), 0)
+/// The progenitor's reply to an activation request: the status, the generation live afterwards
+/// (0 when there is none), and `member`: for [`ActivationStatus::NameTaken`] and
+/// [`ActivationStatus::ImageName`], one more than the table-of-contents index of the member whose
+/// program was refused, and 0 otherwise. The installer that sent the package names the program
+/// from its own copy (`package_archive::program_name`), so the name does not travel (milestone
+/// 919 (a package carries several programs)).
+pub fn activation_reply(status: ActivationStatus, live: u32, member: u64) -> (u64, u64, u64) {
+    (status as u64, u64::from(live), member)
+}
+
+/// **The longest holder name a [`ActivationStatus::NameTaken`] reply carries**, in bytes: the
+/// width of a package header's name field (`package_archive::NAME_LEN`). A longer name, which only
+/// a hand-written table holds, arrives cut at this width. Name: provisional, milestone 919's lane.
+pub const HOLDER_MAX: usize = 32;
+
+/// **The two messages that follow a [`ActivationStatus::NameTaken`] reply on an installer
+/// endpoint** (milestone 919): the name of the package that already holds the program, so the
+/// owner is told what to remove first. Four little-endian words of name and its length. The spawn
+/// endpoint sends no install, so only a package manager reads these. Name: provisional.
+pub fn holder_words(holder: &str) -> [(u64, u64, u64); 2] {
+    let mut bytes = [0u8; HOLDER_MAX];
+    let len = holder.len().min(HOLDER_MAX);
+    bytes[..len].copy_from_slice(&holder.as_bytes()[..len]);
+    let word = |i: usize| {
+        let mut w = [0u8; 8];
+        w.copy_from_slice(&bytes[i * 8..i * 8 + 8]);
+        u64::from_le_bytes(w)
+    };
+    [(word(0), word(1), len as u64), (word(2), word(3), 0)]
+}
+
+/// [`holder_words`] read back into `out`: the holder's name, or `""` for words that do not spell
+/// one.
+pub fn holder_from_words(words: [(u64, u64, u64); 2], out: &mut [u8; HOLDER_MAX]) -> &str {
+    let [(a, b, len), (c, d, _)] = words;
+    for (i, w) in [a, b, c, d].into_iter().enumerate() {
+        out[i * 8..i * 8 + 8].copy_from_slice(&w.to_le_bytes());
+    }
+    let len = usize::try_from(len).map_or(HOLDER_MAX, |l| l.min(HOLDER_MAX));
+    core::str::from_utf8(&out[..len]).unwrap_or("")
 }
 
 /// **The largest image `IMAGE_BIT` may carry, in pages** (4 MiB). A ceiling both sides read,
@@ -869,6 +911,22 @@ mod tests {
         assert_eq!(reaped(6, 9), (6, 9, 0));
     }
 
+    /// A holder's name survives the two messages whole, at the full width and empty.
+    #[test]
+    fn a_holder_name_round_trips() {
+        let mut out = [0u8; HOLDER_MAX];
+        for name in ["duet", "", "a-package-name-that-fills-it-all"] {
+            assert_eq!(holder_from_words(holder_words(name), &mut out), name);
+        }
+        let mut out = [0u8; HOLDER_MAX];
+        let words = [(u64::MAX, 0, 99), (0, 0, 0)];
+        assert_eq!(
+            holder_from_words(words, &mut out),
+            "",
+            "not UTF-8 spells nothing"
+        );
+    }
+
     #[test]
     fn request_round_trips() {
         // 6, not 1: word zero must come back verbatim, and an id of 1 cannot tell verbatim from a
@@ -1032,7 +1090,7 @@ mod tests {
             ActivationStatus::NotServedHere,
             ActivationStatus::NotYours,
         ] {
-            let (w0, w1, _) = activation_reply(status, 7);
+            let (w0, w1, _) = activation_reply(status, 7, 0);
             assert_eq!(ActivationStatus::from_word(w0), status);
             assert_eq!(w1, 7);
         }

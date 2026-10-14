@@ -171,6 +171,27 @@ pub struct BootKeyboard {
 /// one that runs past `wTotalLength`) is refused with its offset. The walk answers at the first
 /// keyboard endpoint it finds, so a defect after that is never read: the bytes the keyboard was
 /// found in were well formed, and a trailing defect is common in cheap devices.
+///
+/// # Examples
+///
+/// A boot keyboard's configuration as QEMU's `usb-kbd` reports it, trimmed to what matters:
+///
+/// ```
+/// use usb::descriptor::find_boot_keyboard;
+///
+/// let config = [
+///     9, 2, 34, 0, 1, 1, 0, 0xa0, 50, // configuration 1, 34 bytes, one interface
+///     9, 4, 0, 0, 1, 3, 1, 1, 0, // interface 0: HID, boot, keyboard, one endpoint
+///     9, 0x21, 0x11, 1, 0, 1, 0x22, 63, 0, // the HID descriptor, which the walk skips
+///     7, 5, 0x81, 3, 8, 0, 10, // endpoint 1 IN, interrupt, 8 bytes, every 10 frames
+/// ];
+/// let keyboard = find_boot_keyboard(&config).unwrap();
+/// assert_eq!(keyboard.configuration, 1);
+/// assert_eq!(keyboard.interface, 0);
+/// assert_eq!(keyboard.endpoint, 0x81);
+/// assert_eq!(keyboard.max_packet, 8);
+/// assert_eq!(keyboard.interval, 10);
+/// ```
 pub fn find_boot_keyboard(config: &[u8]) -> Result<BootKeyboard, Refusal> {
     let header = ConfigurationHeader::parse(config)?;
     let total = usize::from(header.total_length);

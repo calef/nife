@@ -1,0 +1,17 @@
+# duet, as an x86_64 package. The same package as `duet.recipe`, which says why it exists.
+
+name = "duet"
+version = "0.1.0"
+architecture = "x86_64"
+
+[[member]]
+program = "alto"
+as = "bin/alto"
+
+[[member]]
+program = "tenor"
+as = "bin/tenor"
+
+[[member]]
+name = "duet.license"
+file = "LICENSE-MIT"

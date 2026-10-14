@@ -218,6 +218,79 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         "packages/greeting/0.3.0/greeting",
         &["hello from a package this image never carried"],
     ),
+    // **A package carries several programs** (milestone 919 (a package carries several
+    // programs)). `duet` carries `bin/alto` and `bin/tenor`, neither named after it: one install
+    // writes a row and a pointer for each, in one generation, and each runs by its own bare name. Their notes differ, so they are
+    // endowed differently: `alto` holds the clock and `tenor` does not.
+    // `jig` is granted the directory holding the file it names, so the line runs from there.
+    line(0, "cd downloads", &[]),
+    line(
+        1,
+        "jig install ./duet.nifepkg",
+        &["installed; generation 7 is live"],
+    ),
+    line(
+        1,
+        "alto",
+        &[
+            "alto: one of two programs in the package duet",
+            "clock: held at slot 1, as its manifest note asked",
+        ],
+    ),
+    line(
+        1,
+        "tenor",
+        &[
+            "tenor: one of two programs in the package duet",
+            "clock: not held; slot 1 is empty",
+        ],
+    ),
+    line(
+        0,
+        "caps alto",
+        &["its manifest note asks for: output bytes, the clock\n"],
+    ),
+    line(
+        0,
+        "caps tenor",
+        &["its manifest note asks for: output bytes\n"],
+    ),
+    // **A name one package holds refuses another package whole** (calef, 2026-10-14 (UTC): "If
+    // two packages offer the same program name, refuse the second package. Need to remove the
+    // first one before installing the second one."). `solo` carries `bin/alto` too. The refusal
+    // names the program and its holder, and writes no generation.
+    line(
+        1,
+        "jig install ./solo.nifepkg",
+        &[
+            "refused: the package duet already provides the program alto; jig remove duet first; \
+             generation 7 is live",
+        ],
+    ),
+    // **`jig remove` names a package** (calef, 2026-10-14 (UTC): "jig remove should work on
+    // packages, not programs."): a program's name removes nothing, and the package's name takes
+    // both programs, so neither bare word reaches anything after it.
+    line(
+        1,
+        "jig remove alto",
+        &["refused: no package of that name is in the live generation; generation 7 is live"],
+    ),
+    line(1, "jig remove duet", &["removed; generation 8 is live"]),
+    line(0, "alto", &["no such program"]),
+    line(0, "tenor", &["no such program"]),
+    // And with the holder gone, the second package installs, and the name is its.
+    line(
+        1,
+        "jig install ./solo.nifepkg",
+        &["installed; generation 9 is live"],
+    ),
+    line(0, "cd /", &[]),
+    line(
+        1,
+        "alto",
+        &["alto: one of two programs in the package duet"],
+    ),
+    line(1, "jig remove solo", &["removed; generation 10 is live"]),
     // **`ripgrep`, built and published by basalt** (milestone 810 (`ripgrep` is packaged in
     // basalt and installed with `jig`)): the package basalt published, fetched by its pinned
     // digest (`cargo xtask basalt-fetch`), or the repository basalt's own gate just built
@@ -230,7 +303,7 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         &[
             "fetched ripgrep-",
             "from basalt.test over TLS",
-            "fetched and installed; generation 7 is live",
+            "fetched and installed; generation 11 is live",
         ],
     ),
     line(1, "rg --version", &["ripgrep "]),
@@ -250,7 +323,7 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         &[
             "fetched ioping-",
             "from basalt.test over TLS",
-            "fetched and installed; generation 8 is live",
+            "fetched and installed; generation 12 is live",
         ],
     ),
     line(1, "ioping -v", &["ioping 1.3"]),
@@ -641,7 +714,7 @@ pub(super) const SWISH_CHECK_SCRIPT: &[Line] = &[
         1,
         "jig install ./uptime.nifepkg",
         &[
-            "refused: the image carries a program of that name; a new base updates it, not \
+            "refused: the image carries the program uptime; a new base updates it, not \
              install; nothing is installed",
         ],
     ),

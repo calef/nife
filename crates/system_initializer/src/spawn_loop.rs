@@ -420,7 +420,7 @@ impl Service<'_> {
         // first, because under this bit no other bit of word 2 means anything. On the spawn
         // endpoint this is the owner's console: `vouch`, and nothing else sends it since `jig`.
         if let Some(verb) = spawnproto::activation(w1, w2) {
-            let (status, live) = activate(
+            let answer = activate(
                 verb,
                 w0,
                 &mut self.spawn,
@@ -433,7 +433,8 @@ impl Service<'_> {
                 },
                 &mut self.fs_mapped,
             );
-            let (r0, r1, r2) = spawnproto::activation_reply(status, live);
+            // Only a vouch arrives here, and a vouch's answer names no member and no holder.
+            let (r0, r1, r2) = spawnproto::activation_reply(answer.status, answer.live, 0);
             send(result_ep, r0, r1, r2);
             return;
         }

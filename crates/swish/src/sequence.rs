@@ -1,10 +1,7 @@
-//! **Sequencing: `;`, `&&` and `||`, and the one bit that passes between commands** (milestone 67,
-//! notes/swish-language.md).
-//!
-//! This is the outermost split of a typed line, one level above [`grant_plan::line::split`]. It
-//! takes what a person typed and cuts it into **segments**, each of which is a whole command line
-//! in the sense everything below this already understood: operators, prefix words, redirections,
-//! the lot. So nothing under here learned a new grammar.
+//! **Sequencing: `;`, `&&` and `||`, and the one bit that passes between commands**
+//! (notes/swish-language.md). The outermost split of a typed line, above
+//! [`grant_plan::line::split`]: each **segment** is a whole command line as everything below
+//! already understood it, so nothing under here learned a new grammar.
 //!
 //! ```text
 //! line      := segment (connector segment)*
@@ -12,74 +9,23 @@
 //! segment   := <a whole command line: stages, operators, prefix words>
 //! ```
 //!
-//! # Why the split is outermost, which is a decision and not a layering accident
+//! It is outermost because `time a && b` must time `a` and then run `b`, not hand `time` the
+//! string `a && b`; that is bash's binding too (a connector joins pipelines). The prefix words
+//! (`caps`, `time`, `xargs`) take a whole segment, which is why [`crate::route`] sees them first.
 //!
-//! `caps`, `time` and `xargs` are prefix words whose operand is **a whole command line**, which is
-//! why [`crate::route`] answers them before the line is split on `|` (a `caps` that saw only `date`
-//! would preview a line the user did not type). Sequencing has the opposite need: `time a && b`
-//! must time `a` and then run `b`, not hand `time` the string `a && b`.
-//!
-//! Splitting here first gives that for free, and it is also bash's binding: a connector joins
-//! pipelines, and `time` applies to one pipeline. The cost is named in BUGS.
-//!
-//! # A connector carries one bit and no capability
-//!
-//! This is where a shell usually leaks. On Unix a `&&` chain runs inside one process holding one
-//! ambient authority, so "what the second command may touch" is a question the connector never has
-//! to answer. Here it does, and the answer is that **each segment is planned from scratch against
-//! what the shell holds**, exactly as if it had been typed alone:
-//!
-//! - No file the first segment opened is in scope for the second. The shell backs a `>` itself
-//!   (DECISIONS §55) and closes it when the segment is over.
-//! - **No pipeline region outlives its segment.** Each pipeline splits a region off the shell's
-//!   budget, mints its endpoints in it, and `DESTROY`s it when the line is over, and that destroy is
-//!   what turns a stalled writer's next `SEND` into `abi::Error::Gone` (notes/pipes.md). A chain
-//!   that reused one region across its segments would keep every earlier segment's endpoints alive
-//!   for the whole chain, and a writer parked on the first would never be told. So teardown happens
-//!   at the end of a **segment**, not at the end of a line, which falls out of the split being here
-//!   rather than inside [`crate::route`].
-//! - Nothing a segment was granted is named by [`Status`], which is one small
-//!   integer about the shell's own reading of what happened. It designates nothing, so nothing
-//!   downstream can be widened by it.
-//!
-//! # EXAMPLES
-//!
-//! ```
-//! use grant_plan::Refusal;
-//! use swish::sequence::{split, Joint};
-//! use swish::Status;
-//!
-//! let s = split(b"mkdir logs && date > logs/when.txt").unwrap();
-//! assert_eq!(s.len(), 2);
-//! assert_eq!(s.segments()[0], (Joint::First, &b"mkdir logs"[..]));
-//! assert_eq!(s.segments()[1].0, Joint::OnSuccess);
-//!
-//! // The second only runs if the first did.
-//! assert!(Joint::OnSuccess.runs_after(Status::Ran));
-//! assert!(!Joint::OnSuccess.runs_after(Status::Refused));
-//! // ... and `||` is the mirror. A refusal is a "did not succeed" here, the same as a failure:
-//! // `&&` asks one question and both answers are no. Which of the two it was is `$?`'s to say.
-//! assert!(Joint::OnFailure.runs_after(Status::Refused));
-//!
-//! // A connector inside quotes is text, so `echo` can print one.
-//! assert_eq!(split(b"echo 'a && b'").unwrap().len(), 1);
-//! // And a connector with nothing on one side of it is refused rather than skipped.
-//! assert_eq!(split(b"date &&"), Err(Refusal::EmptySegment));
-//! ```
+//! **A connector carries one bit and no capability.** Each segment is planned from scratch against
+//! what the shell holds, as if typed alone. A `>` the shell backs (§55 (the file behind a `>` is
+//! the shell itself)) closes with its segment; each pipeline's region is destroyed at the end of
+//! its segment, not the line, so a writer stalled on an earlier segment is told `abi::Error::Gone`
+//! (notes/pipes.md); and [`Status`] is one small integer that designates nothing, so nothing
+//! downstream can be widened by it.
 //!
 //! # BUGS
 //!
-//! - **There is no grouping.** `a && b || c` is left to right with no precedence between `&&` and
-//!   `||`, which is bash's rule, and there is no `{ }` or `( )` to override it. Subshells are
-//!   milestone 52's and grouping should arrive with them.
-//! - **`time a && b` times only `a`.** That is the binding above and it matches bash, but a person
-//!   who wanted the chain timed has no spelling for it until grouping exists.
-//! - **A single `&` is an ordinary byte**, so `date &` runs `date` with a word `&` on the line
-//!   rather than backgrounding it. Job control is milestone 48's; this module deliberately reads
-//!   only the doubled form, so that milestone can give `&` its meaning without taking one away.
-//! - **A skipped segment leaves `$?` alone**, which is bash's rule (`false && echo hi` leaves `$?`
-//!   at the `false`'s status). A reader who expected "skipped" to be its own status will not find
-//!   one, because nothing ran.
+//! - No grouping: `a && b || c` runs left to right as in bash, with no `{ }` or `( )`, so
+//!   `time a && b` times only `a` and a whole chain has no spelling.
+//! - A single `&` is an ordinary byte, kept free for job control to give it a meaning.
+//! - A skipped segment leaves `$?` alone, as bash does.
 
 use grant_plan::word::Cursor;
 use grant_plan::{Refusal, trim};
@@ -162,6 +108,31 @@ impl<'a> Sequence<'a> {
 /// A connector inside quotes is text, which is what lets `echo 'a && b'` print one. An unclosed
 /// quote is refused here rather than further down, because this is the first scanner to see the
 /// whole line and a line missing its end designates something nobody typed.
+///
+/// # Examples
+///
+/// ```
+/// use grant_plan::Refusal;
+/// use swish::sequence::{split, Joint};
+/// use swish::Status;
+///
+/// let s = split(b"mkdir logs && date > logs/when.txt").unwrap();
+/// assert_eq!(s.len(), 2);
+/// assert_eq!(s.segments()[0], (Joint::First, &b"mkdir logs"[..]));
+/// assert_eq!(s.segments()[1].0, Joint::OnSuccess);
+///
+/// // The second only runs if the first did.
+/// assert!(Joint::OnSuccess.runs_after(Status::Ran));
+/// assert!(!Joint::OnSuccess.runs_after(Status::Refused));
+/// // ... and `||` is the mirror. A refusal is a "did not succeed" here, the same as a failure:
+/// // `&&` asks one question and both answers are no. Which of the two it was is `$?`'s to say.
+/// assert!(Joint::OnFailure.runs_after(Status::Refused));
+///
+/// // A connector inside quotes is text, so `echo` can print one.
+/// assert_eq!(split(b"echo 'a && b'").unwrap().len(), 1);
+/// // And a connector with nothing on one side of it is refused rather than skipped.
+/// assert_eq!(split(b"date &&"), Err(Refusal::EmptySegment));
+/// ```
 pub fn split(line: &[u8]) -> Result<Sequence<'_>, Refusal> {
     let mut segments = [(Joint::First, &b""[..]); MAX_SEGMENTS];
     let mut n = 0usize;
