@@ -11,12 +11,12 @@ Private vulnerability reporting is on, and the `main` ruleset is active with sev
 zero bypass actors, no linear-history rule, and branches required to be up to date before merging.
 
 **BUGS: the fifth item is deliberately not done.** Signed commits are **not** required, on purpose,
-and the reason is sequencing rather than merit: a required-signature rule applies to every automated
+and the reason is sequencing rather than merit. A required-signature rule applies to every automated
 committer and to Dependabot, so turning it on before signing works blocks every merge. That deferral
 now has its own home in §78 instead of dying with the section that carried it. Two of the four items'
-caveats also moved: `undefined-behavior check` cannot be a required check because it runs on a weekly
-cron and never on a pull request, and five checks that do run on every pull request deliberately do
-not block, `cpu matrix` among them because it is load-sensitive.
+caveats also moved: `undefined-behavior check` cannot be a required check because it runs on a
+weekly cron and never on a pull request. Five checks that do run on every pull request deliberately
+do not block, `cpu matrix` among them because it is load-sensitive.
 
 The committable half is built 2026-07-30 (DECISIONS §36); the settings half is written down and
 waiting on an admin (notes/repo-hardening.md). `SECURITY.md` states the scope at confinement, with
@@ -24,20 +24,29 @@ the distinction that carries the weight: a missing feature on this roadmap is a 
 defense that is *claimed* and does not work is a vulnerability.
 
 Code scanning: checked rather than assumed, and the answer was no. The obvious argument for an
-advanced (committed-workflow) setup is that it would see more of the tree; the extraction log says
-otherwise, because default setup finds all five cargo workspaces by itself and reports 176 of 176
+advanced (committed-workflow) setup is that it would see more of the tree. The extraction log says
+otherwise: default setup finds all five cargo workspaces by itself and reports 176 of 176
 Rust files scanned. The number worth carrying forward is the other one: 60 of those 176 were
-extracted with errors, against the *host* target with default features, for a kernel that does not
-build for the host at all. "Zero alerts" means less than it looks, and that belongs next to the claim
+extracted with errors. That was against the *host* target with default features, for a kernel that does not
+build for the host at all. "Zero alerts" means less than it looks. That belongs next to the claim
 rather than in a footnote.
 
 Waiting on calef, both in notes/repo-hardening.md with exact steps: enable private vulnerability
-reporting (the committed `SECURITY.md` currently points at a button that does not exist), and apply
+reporting (the committed `SECURITY.md` currently points at a button that does not exist). Then apply
 the `main` ruleset with seven required checks, an empty bypass list, and *not* linear history. Apply
 the ruleset only after this branch merges, because one required check does not exist yet and a
 required check that never reports blocks every merge.
 
-In brief. Four items, and they split into files we can commit and settings someone with admin has to toggle. Files: a `SECURITY.md` policy stating what is in scope (the kernel's confinement boundaries) and what is not (a demonstrator running under QEMU is not a production system), and a code-scanning workflow. Settings: private vulnerability reporting, and a ruleset requiring pull requests into `main`. Note the plumbing for the last one already exists, since CI runs on `pull_request`; what is missing is the branch protection that makes it mandatory. One thing to check rather than assume: CodeQL's Rust support has been moving through preview, so confirm its current state before committing to it; if it is not ready, the practical scanners are the clippy gate we already run, `cargo-audit`/`cargo-deny` from milestone 42, and a SARIF upload from whatever does work
+In brief. Four items, and they split into files we can commit and settings someone with admin has to
+toggle. Files: a `SECURITY.md` policy and a code-scanning workflow. The policy states what is in
+scope (the kernel's confinement boundaries) and what is not (a demonstrator running under QEMU is
+not a production system). Settings: private vulnerability reporting, and a ruleset requiring pull
+requests into `main`. Note the plumbing for the last one already exists, since CI runs on
+`pull_request`. What is missing is the branch protection that makes it mandatory. One thing to check
+rather than assume: CodeQL's Rust support has been moving through preview, so confirm its current
+state before committing to it. If it is not ready, the practical scanners are the clippy gate we
+already run, `cargo-audit`/`cargo-deny` from milestone 42 (supply chain and fuzzing in CI), and a
+SARIF upload from whatever does work
 
 **Signed commits: a fifth item, deferred on purpose.** `notes/repo-hardening.md` files it under
 **Do NOT enable** with its reason:
@@ -61,7 +70,11 @@ That reasoning is right about sequencing, and this block is the eventual decisio
 Sequence it after the ruleset lands and after the required checks are green, for exactly the reason
 the ruleset itself is sequenced after this branch merges.
 
-Why it matters. a public repository with a security thesis should be able to receive a security report privately, which today it cannot. The pull-request item also changes how this project is built: work currently lands by merging feature branches into `main` locally, and requiring PRs would put every merge behind the same gate rather than trusting the person merging, which is the discipline that caught the reap flake and the conflict markers only because I happened to run the gates by hand
+Why it matters. a public repository with a security thesis should be able to receive a security
+report privately, which today it cannot. The pull-request item also changes how this project is
+built: work currently lands by merging feature branches into `main` locally. Requiring PRs would put
+every merge behind the same gate rather than trusting the person merging. That is the discipline
+that caught the reap flake and the conflict markers only because I happened to run the gates by hand
 
 ## Follow-on
 
@@ -73,7 +86,7 @@ Why it matters. a public repository with a security thesis should be able to rec
   admin minutes only calef could spend. He applied them the evening of 2026-08-04 and the section
   records what was applied and what turned out not to apply, rather than only saying "done".
 - **Recorded.** `design/roadmap/0044-github-hardening.md` keeps the code-scanning caveat, which is
-  the number worth carrying rather than the clean one: 60 of 176 Rust files were extracted with
+  the number worth carrying rather than the clean one. 60 of 176 Rust files were extracted with
   errors, against the host target with default features, for a kernel that does not build for the
   host at all. "Zero alerts" means less than it looks.
 - **Recorded.** `notes/repo-hardening.md` records why `undefined-behavior check` cannot be a

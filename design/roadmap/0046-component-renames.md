@@ -9,9 +9,9 @@ built: 2026-07-30
 `compd` → `compositor`, `gpud` → `display`, `termd` → `line_editor`, and the crate `crates/linedisc` →
 `crates/line_editor`. The scope estimated here at 398 came in at 457 whole-word token replacements
 across 4 file moves and 1 directory move (`netd` 184, `linedisc` 93, `termd` 77, `gpud` 67,
-`compd` 36); the estimate was measured before milestones 23 and 37 landed and the tree grew under it,
-which is the ordinary way a count like this drifts. The conventions are design/naming.md, indexed in
-notes/README.md, and four of them are checked in `script/lint`: no name ending in `-d`, the word
+`compd` 36). The estimate was measured before milestones 23 and 37 landed and the tree grew under
+it, which is the ordinary way a count like this drifts. The conventions are design/naming.md, indexed in
+notes/README.md, and four of them are checked in `script/lint`. No name ending in `-d`, the word
 "daemon" nowhere outside the documents that argue about it, one spelling for contract crates, and a
 recognized branch prefix. Each was proved to fail before it was trusted, and the strongest of those
 controls is that the `-d` check run against unmodified `main` reports exactly `compd gpud netd
@@ -55,10 +55,10 @@ Write the *principle* in prose, because it needs judgment and no checker can eva
 component for what it is, and prefer a word that parses without prior Unix exposure. DECISIONS §39
 already carries the reasoning; the note should point at it rather than restate it.
 
-Then check the mechanical ones in `script/lint`, because this project's own pattern is that a
-convention which matters gets a checker rather than a paragraph: the roadmap status vocabulary,
-DECISIONS numbering, script documentation, conflict markers and module-wide suppressions all became
-checks today, and a rule with no enforcement decays (which is the entire argument the dead-code
+Then check the mechanical ones in `script/lint`. This project's own pattern is that a convention
+which matters gets a checker rather than a paragraph. The roadmap status vocabulary, DECISIONS
+numbering, script documentation, conflict markers and module-wide suppressions all became checks
+today. A rule with no enforcement decays (which is the entire argument the dead-code
 ratchet was built on):
 
 - **No `-d` suffix on a binary.** §39 made this a rule; without a check it lasts until the first
@@ -81,9 +81,9 @@ Effort: 1 lane estimated, almost entirely verification rather than editing.
 - **Milestone 63.** The word-separation split this milestone measured and did not settle. It found
   two habits and no rule for multiword names; 63 wrote the rule, extended it to directories and
   package names, and renamed what disagreed.
-- **Recorded.** `design/naming.md` states two limits of the checks this milestone added: they read
+- **Recorded.** `design/naming.md` states two limits of the checks this milestone added. They read
   the filesystem for names and `git grep` for the word, so an untracked file saying "daemon" is
-  invisible, and check 1 sees names rather than behavior, so a component with a good name that acts
+  invisible. Check 1 sees names rather than behavior, so a component with a good name that acts
   like a daemon is not its problem.
 
 ## Index row

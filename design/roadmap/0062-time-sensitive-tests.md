@@ -127,8 +127,8 @@ section below.
 ## The confirmation run, 2026-08-22/23: 45 of 45 green, the block closes
 
 One item was left after the disposition and the migration-drain fix. It was a repeat count under
-load of the tree as it now stands, at the block's own 45-run standard, because a flake cannot be shown fixed
-by a green run and the same rule applies to the change that removed one. Full detail, every run in
+load of the tree as it now stands, at the block's own 45-run standard. A flake cannot be shown fixed
+by a green run, and the same rule applies to the change that removed one. Full detail, every run in
 order, and the confidence-interval arithmetic are in notes/load-sensitive-assertions.md ("The
 confirmation run, 2026-08-22"); this is the number the block is owed.
 
@@ -144,7 +144,7 @@ the suite, so it could contribute neither a red nor a false pass.
 in all 45 runs. No other assertion in the suite went red.
 
 **The honest bound this run sets, not a claim wider than that.** Zero red in 45 trials does not
-prove the true rate is zero; by the rule of three it bounds it at roughly 6.7% (95% confidence) at
+prove the true rate is zero. By the rule of three it bounds it at roughly 6.7% (95% confidence) at
 the full-suite-run granularity, and roughly 3.3% at the 90-leg granularity of the specific
 assertion. Both are compatible with the 2026-08-17 run's own observed rate if the disposition
 lowered it rather than eliminating the failure mode outright. Forty-five was the number the first
@@ -174,8 +174,8 @@ This closes the block. The status above moves to BUILT.
   bug this project has a comment about. The goal is tests that fail only when something is wrong, not
   fewer tests. *(Held, and it decided the 2026-08-18 disposition. That test was kept, in full, and
   the injection above proves it still catches exactly that bug where the instrument did not. The
-  assertion that WAS deleted is the other one, and the argument for deleting it is that it did not
-  fail only when something was wrong: it failed on a busy host and passed on a handler slow by 2.5
+  assertion that WAS deleted is the other one. The argument for deleting it is that it did not fail
+  only when something was wrong: it failed on a busy host and passed on a handler slow by 2.5
   tick periods.)*
 - The re-arm law now has two graders and they disagree about which is authoritative.
   `script/test` measures it on a wall clock and may report `UNMEASURED`; `script/icount` measures it
@@ -185,7 +185,7 @@ This closes the block. The status above moves to BUILT.
   they would drift apart silently.
 - The `UNMEASURED` rate is a new unknown, deliberately taken. Nothing was tuned to reduce how
   often the suite fails to find a miss-free window; the quarter-second window and the eight attempts
-  are exactly what they were, so the population of runs that used to go red now goes unmeasured
+  are exactly what they were. So the population of runs that used to go red now goes unmeasured
   instead. That is the right first move (it changes what is claimed rather than how loosely), but it
   means the number to watch has changed and the old measurement does not predict it.
 
@@ -213,7 +213,7 @@ assertions) but how many are mechanical and how many need a rethink is not.
   thread rather than per test, and that this blinded it once for real.
 - **Refused.** Shortening the quarter-second measurement window to cut the `UNMEASURED` rate. The
   candidate fix was identified and not taken, because the 25% figure justifying it rested on
-  eighteen runs from one host; the forty-five-run confirmation then reported zero of ninety legs
+  eighteen runs from one host. The forty-five-run confirmation then reported zero of ninety legs
   unmeasured, so there was nothing left for the change to buy.
 
 ## Index row
@@ -222,17 +222,18 @@ assertions) but how many are mechanical and how many need a rethink is not.
 Four separate lanes and the integrator hit them on 2026-08-01; the CPU matrix multiplies the
 exposure fivefold. The prescribed fixes shipped via milestone 78's rounds and milestone 50's shell
 work; the first acceptance run ran 2026-08-17 (`script/repeat-under-load`, 45 full-suite runs at
-load average 26 to 63) and **did not pass**: 9 red, 8 of them the two timing assertions, twice
-each on both ISAs, and 1 a real double free of a frame in DESTROY's reclaim path (fixed
-2026-08-18 in PR #316, an aspace-ownership defect reproducible on both ISAs rather than a
-riscv64 one). The disposition was made 2026-08-18: `the_handler_keeps_up_when_no_lock_is_held` **deleted** on both ISAs, its firing band being exactly the band in which it cannot attribute what
-it saw, and `ticks_arrive_at_the_configured_rate`'s retry budget converted to a loud `UNMEASURED`
+load average 26 to 63) and **did not pass**. There were 9 red: 8 of them the two timing assertions,
+twice each on both ISAs. 1 was a real double free of a frame in DESTROY's reclaim path (fixed
+2026-08-18 in PR #316, an aspace-ownership defect reproducible on both ISAs rather than a riscv64
+one). The disposition was made 2026-08-18. `the_handler_keeps_up_when_no_lock_is_held` was
+**deleted** on both ISAs, its firing band being exactly the band in which it cannot attribute what
+it saw. `ticks_arrive_at_the_configured_rate`'s retry budget was converted to a loud `UNMEASURED`
 report, its law untouched. Neither was widened. `script/icount` gained the re-arm law as a fourth
 claim first, because an injection showed it was **blind** to the drift bug the record said it
-subsumed, and `script/gates` ran it (`script/ci-build` since milestone 286, one enumeration of
+subsumed. `script/gates` ran it (`script/ci-build` since milestone 286, one enumeration of
 the checks that gate a pull request). A migration-drain assertion found in the disposition's
 own 18-run interim check (`smp.rs`, `a_migrated_kernel_thread_keeps_its_hart_pointer`) was fixed
-the same day, budgeted in delivered guest ticks rather than counter time. The block's own
-standard, a repeat count under load of the current tree, was taken 2026-08-22/23 at the same
-45-run scale: 45 of 45 green, load average 4.8 to 90.1, zero `UNMEASURED` results across 90
+the same day, budgeted in delivered guest ticks rather than counter time. The block's own standard,
+a repeat count under load of the current tree, was taken 2026-08-22/23 at the same 45-run scale. 45
+of 45 green, load average 4.8 to 90.1, zero `UNMEASURED` results across 90
 legs of the retry-budget assertion. Closes the block

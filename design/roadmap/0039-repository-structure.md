@@ -16,8 +16,9 @@ is this page's option C as the destination, reached through option B. What stays
 milestone.
 
 The *goal* is no longer the open decision (§151 took it); the
-*timing* still is, and it still inherits milestone 23. The recommendation on the page held up: option
-B (multiple workspaces in one repo) now, the distribution as a separate manifest repo (`basalt`,
+*timing* still is, and it still inherits milestone 23 (a capability-routed component OS). The
+recommendation on the page held up.
+Option B (multiple workspaces in one repo) now, the distribution as a separate manifest repo (`basalt`,
 milestone 120) later, and the split itself not before the strain justifies trading the
 single-command all-architecture gate for it.
 
@@ -27,7 +28,18 @@ package files instead of letting installers mutate shared directories. It reache
 47's conclusion that installing a program is granting it into a namespace, from an entirely different
 motive (atomic, rollback-able installs), which is the useful kind of convergence.
 
-In brief. Analysis recorded, no decision taken. The tree is a monorepo for a deliberately loosely-coupled system, and it is straining in measurable ways: `user/` is 28 binaries and 9,324 lines in one crate that is also a shared library, `fs_server/` has already escaped into its own workspace for real dependency reasons, `crates/` conflates kernel proof crates with wire contracts and userspace runtime so the boundary a third party cares about is invisible, and every crate is version 0.1.0. Four options are written up with their trade-offs (restructure in place; multiple workspaces in one repo; split repos; monorepo plus a later distribution *manifest* repo), along with a naming argument (components and services, never "daemons", because a Unix daemon is defined by the ambient authority this OS does not have) and the observation that milestone 31's program manifest plus §22's measured-boot hashing are already three quarters of a package format
+In brief. Analysis recorded, no decision taken. The tree is a monorepo for a deliberately
+loosely-coupled system, and it is straining in measurable ways. `user/` is 28 binaries and 9,324
+lines in one crate that is also a shared library. `fs_server/` has already escaped into its own
+workspace for real dependency reasons. `crates/` conflates kernel proof crates with wire contracts
+and userspace runtime so the boundary a third party cares about is invisible. Every crate is version
+0.1.0. Four options are written up with their trade-offs (restructure in place; multiple workspaces
+in one repo; split repos; monorepo plus a later distribution *manifest* repo). So is a naming
+argument: components and services, never "daemons", because a Unix daemon is defined by the ambient
+authority this OS does not have. So is the observation that the program manifest of milestone 31 (a
+capability shell)
+plus the measured-boot hashing of §22 (Rust `std` on the native ABI) are already three quarters of a
+package format
 
 Why it matters. the structure has to serve the thesis, and one constraint dominates. A single `script/test` proving the whole system on both ISAs is this project's credibility mechanism and what makes rule 5 a gate rather than an aspiration; splitting repos trades that for decoupling nothing external needs yet. Recommendation recorded (monorepo now, distribution as a separate manifest repo, executed as multiple workspaces, not before 23 forces it) so the eventual decision starts from evidence rather than from taste
 
@@ -53,10 +65,11 @@ a Linux-distribution-shaped layer will eventually sit on top of the OS component
   macOS) and its core wants `std` under test. Milestone 36 did the same to the toolchain by requiring
   a cross-capable clang. Two instances is a pattern: the first components with genuine dependency
   needs of their own had to leave.
-- `crates/` conflates three audiences with different rules, so the boundary a third party would
-  care about is invisible: kernel proof crates (`capability`, `paging`, `frames`, `regions`, `slots`,
-  `address_space_identifier`, `intrusive`, `dtb`, `elf`, `dma_validator`, `measured_boot`, `user_heap`, Kani-proved and nobody
-  else's business), wire contracts (`fs_proto`, `gfx_proto`, `line_editor`, `compositor`, `abi`, the
+- `crates/` conflates three audiences with different rules, so the boundary a third party would care
+  about is invisible. They are kernel proof crates (`capability`, `paging`, `frames`, `regions`, `slots`,
+  `address_space_identifier`, `intrusive`, `dtb`, `elf`, `dma_validator`, `measured_boot`,
+  `user_heap`, Kani-proved and nobody else's business). Then wire contracts (`fs_proto`,
+  `gfx_proto`, `line_editor`, `compositor`, `abi`, the
   only things an external component needs), and userspace runtime (`user_rt`, `grant_plan`,
   `nifefs`, `pci`).
 - Every crate is `version = "0.1.0"`. Correct for internal crates, fatal for a published
@@ -123,8 +136,8 @@ nife. Two decisions hide in that, and only one is expensive.
 `cargo publish -p calendar` works from a workspace. The thirty crates with no external dependencies
 have no path dependencies to strip either, so crates can be handed to the world without touching
 the repo structure at all. Splitting into separate repositories is the costly move, and the
-constraint above already rules on it: a single `script/test` proving the whole system is what makes
-parity a gate, and split repos let a crate be green in isolation while broken in the OS. That is the
+constraint above already rules on it. A single `script/test` proving the whole system is what makes
+parity a gate. Split repos let a crate be green in isolation while broken in the OS. That is the
 exact failure rule 5 exists to catch, plus cross-repo changes become multi-PR dances.
 
 How many are actually useful outside is fewer than it feels: two to four of about thirty.

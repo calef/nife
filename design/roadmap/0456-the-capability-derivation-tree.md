@@ -15,12 +15,12 @@ and a condition that would change it.
 
 From '13. Capability revocation + untyped reclamation', under `## Follow-on`:
 
-> The full seL4-style capability-derivation tree, and with it subtree granularity (revoke Bob's
-> copy while keeping Alice's). `design/decisions/0013-frame-revocation.md` argues it as a considered
-> terminal design rather than a way-station: revoke-all-derivatives is the memory-safety-critical
-> half and is exactly what reclamation wants, nothing on the roadmap needs subtree revoke, and if
-> one ever does, the unmap side and the revoke-before-reclaim discipline are reused unchanged with
-> only the holders index rebuilt as a tree.
+> The full seL4-style capability-derivation tree, and with it subtree granularity (revoke Bob's copy
+> while keeping Alice's). `design/decisions/0013-frame-revocation.md` argues it as a considered
+> terminal design rather than a way-station. Revoke-all-derivatives is the memory-safety-critical
+> half and is exactly what reclamation wants. Nothing on the roadmap needs subtree revoke. If one
+> ever does, the unmap side and the revoke-before-reclaim discipline are reused unchanged with only
+> the holders index rebuilt as a tree.
 >
 > -- design/roadmap/0013-capability-revocation.md
 

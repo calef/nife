@@ -27,22 +27,24 @@ Prior art. seL4 (Isabelle/HOL refinement, verified C) is the mountain; we took t
 (bounded model checking, Rust). Verus is the deeper Rust option to revisit if a property needs
 unbounded proof.
 
-Status (2026-07-29), with milestone 35 done. The proved set is now broad: 13 crates, ~60
-harnesses, covering `capability`, `ipc` (rendezvous, one-shot reply, the collected-sender path), the MMU
-codec on *both* formats (`paging`: VMSAv8-64 and Sv39, level-walk and leaf permission separation),
-generational names (`slots`: a removed name never resolves again), frame allocation, region
-split/destroy arithmetic, ELF parsing, the device-tree reader, ASID allocation, PCI decode, and now
-the DMA-confinement validator (`dma_validator`) and the IOMMU domain's page set (`paging::domain`), both
+Status (2026-07-29), with milestone 35 (prove the DMA-confinement boundary) done. The proved set is
+now broad: 13 crates, ~60 harnesses.
+They cover `capability`, `ipc` (rendezvous, one-shot reply, the collected-sender path), and the MMU
+codec on *both* formats (`paging`: VMSAv8-64 and Sv39, level-walk and leaf permission separation).
+Then generational names (`slots`: a removed name never resolves again), frame allocation, region
+split/destroy arithmetic, ELF parsing, the device-tree reader, ASID allocation, PCI decode. Then the
+DMA-confinement validator (`dma_validator`) and the IOMMU domain's page set (`paging::domain`), both
 milestone 35. An audit against the TCB (prompted by asking "what should we prove that we haven't")
 found the boundaries proved with **one glaring exception: the DMA-confinement validator was
-attacker-tested, never proved.** Milestone 35 closed it: the validator is extracted and proved for every
-input, the `Untyped::SPLIT` mint site is proved to hand a child *exactly* its parent's rights, and the
-IOMMU domain's *maps-exactly* property is proved too (its page set, in both directions,
-format-independently, so one proof covers both IOMMUs; the build-and-translate round trip stays on the
-declined BMC wall and on tests). What milestone 35 explicitly does **not** prove, and says so in three
-places rather than leaving it to be inferred: addresses that reach a device inside a command payload
-instead of a descriptor, which the validator structurally cannot see and only an IOMMU stops, so on a
-board without one they are unconfined. See DECISIONS §30 and notes/verification.md.
+attacker-tested, never proved.** Milestone 35 closed it. The validator is extracted and proved for
+every input, and the `Untyped::SPLIT` mint site is proved to hand a child *exactly* its parent's
+rights. The IOMMU domain's *maps-exactly* property is proved too: its page set, in both directions,
+format-independently, so one proof covers both IOMMUs. (The build-and-translate round trip stays on
+the declined BMC wall and on tests.) What milestone 35 explicitly does **not** prove, and says so in
+three places rather than leaving it to be inferred. It is addresses that reach a device inside a
+command payload instead of a descriptor. The validator structurally cannot see them and only an
+IOMMU stops them, so on a board without one they are unconfined. See DECISIONS §30 (the DMA boundary
+is proved for descriptors) and notes/verification.md.
 
 ## Follow-on
 

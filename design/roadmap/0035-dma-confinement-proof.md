@@ -43,9 +43,10 @@ tables, the bounds with their justifications, and the boundary statement; notes/
 what-is-proved-and-what-is-not map.
 
 1. The validator is `crates/dma_validator`, host-testable pure logic the kernel's
-   `validate_and_shadow` calls; **seven** Kani harnesses prove no descriptor the walk shadows escapes
-   the granted region or is indirect, covering both directions (symbolic flags include the RX
-   device-writable bit), indirect descriptors, chains including cycles, ring-index wraparound through
+   `validate_and_shadow` calls; **seven** Kani harnesses prove no descriptor the walk shadows
+   escapes the granted region or is indirect. They cover both directions (symbolic flags include the
+   RX device-writable bit), indirect descriptors, and chains including cycles. Then ring-index
+   wraparound through
    `u16` and outer-loop termination, overflowing address arithmetic, multi-queue block isolation, the
    oversized-batch bound, and the mutated-after-validation (TOCTOU) case. The QEMU attacker suite
    (DMA-escape and indirect-escape, both ISAs, both transports) is unchanged and green, so the
@@ -54,16 +55,17 @@ what-is-proved-and-what-is-not map.
 2. `split_never_widens_rights` in `crates/capability` proves the `Untyped::SPLIT` mint (routed through
    `Cap::mint_child`) gives the child **exactly** the parent's rights. §16's amendment (SPLIT grants
    `GRANT` so a budget is delegable) makes the loose phrasing wrong, so the property is stated and
-   proved as equality: `mint_child` takes no rights argument, delegability is a property of the *root's*
+   proved as equality. `mint_child` takes no rights argument, delegability is a property of the *root's*
    mint, and rights down a budget tree are monotonically non-increasing.
 3. The IOMMU domain's *maps-exactly* property is proved, reversing this milestone's own first
-   answer. That answer declined it as the build-and-translate BMC wall, which was the right diagnosis of
-   the wrong target: the wall is a symbolic IOVA walking a *built* table, and the *page set* the builder
+   answer. That answer declined it as the build-and-translate BMC wall, which was the right
+   diagnosis of the wrong target. The wall is a symbolic IOVA walking a *built* table, and the *page
+   set* the builder
    feeds the mapper is loopless arithmetic needing no tables. Factored out (`paging::domain::grant_pages`,
    `grant_page`, which `build_identity_domain` now calls instead of `map_range`'s unchecked
-   `va + i * PAGE_SIZE`) and proved by six harnesses in both directions: soundness (no page outside the
-   grant) and completeness (no whole page of the grant unmapped, because a domain mapping *nothing*
-   would satisfy soundness perfectly and confine by starvation). Format-independent, so one proof covers
+   `va + i * PAGE_SIZE`) and proved by six harnesses in both directions. Soundness: no page outside
+   the grant. Completeness: no whole page of the grant unmapped, because a domain mapping *nothing*
+   would satisfy soundness perfectly and confine by starvation. Format-independent, so one proof covers
    SMMUv3 and the RISC-V IOMMU with no parity gap. The residual link, "`Mapper::map` writes exactly one
    leaf and touches nothing else", stays on the proved walk arithmetic plus `domain.rs`'s
    build-and-translate tests on both formats and 16b's hardware attacker test.
@@ -78,10 +80,10 @@ allocator would run dry long before the multiply could wrap).
 is does damage.** The proof is about *descriptor chains*. Per §29, a virtio-gpu's backing addresses ride
 in a `RESOURCE_ATTACH_BACKING` command payload, which the validator structurally cannot see (the
 addresses are not in its input), and teaching the transport to parse device commands would breach §18.
-So: descriptor-borne addresses are provably confined; payload-borne addresses are confined by the
-IOMMU alone, whose allow-list item 3 now proves exact (a narrowing, not a closing: the hardware
-honoring that allow-list stays an attacker test, and the transport still cannot see the addresses); and
-on a board with no IOMMU nothing confines them at all.
+So descriptor-borne addresses are provably confined. Payload-borne addresses are confined by the
+IOMMU alone, whose allow-list item 3 now proves exact. (A narrowing, not a closing: the hardware
+honoring that allow-list stays an attacker test, and the transport still cannot see the addresses.)
+On a board with no IOMMU nothing confines them at all.
 That inverts this milestone's own load-bearing argument for the payload path: "prove the validator
 because on the VisionFive 2 it is all there is" holds only where the validator can look. On that board a
 display driver is either trusted with all of physical memory or the transport grows a device-aware
@@ -107,13 +109,13 @@ placement policy stay host-tested; a bad placement is a performance bug, not a s
   question, and says outright that whoever sequences 16a chooses. A virtio-gpu's backing addresses
   ride in a `RESOURCE_ATTACH_BACKING` command payload the validator structurally cannot see, so on a
   board with no IOMMU the display driver is either trusted with all of physical memory or the
-  transport grows a device-aware check and pays the §18 cost knowingly.
+  transport grows a device-aware check. That check pays the §18 (the PCIe transport) cost knowingly.
 - **Recorded.** `notes/dma.md` leads with the what-is-proved-and-what-is-not map: the hardware
   actually honoring the IOMMU's allow-list is still an attacker test rather than a proof, as is the
   residual link "`Mapper::map` writes exactly one leaf and touches nothing else".
   `notes/verification.md` carries the harness tables and the bounds beside them.
 - **Refused.** Proving the confined components themselves (`smoltcp`, RedoxFS, the drivers) was
-  considered and declined: the point of the capability core is that a confined component need not be
+  considered and declined. The point of the capability core is that a confined component need not be
   trusted, so proof effort belongs at the boundary and not on the code the boundary confines.
 - **Refused.** Proving the userspace-only crates (`user_heap`, `grant_plan`, `line_editor`) and
   scheduler placement policy, on the same reasoning one step down. A bad placement is a performance
