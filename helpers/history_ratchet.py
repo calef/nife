@@ -70,7 +70,7 @@ SELF = 'helpers/history_ratchet.py'
 
 # The tree's count when this gate was added. Never raise it by hand: new history is moved to the
 # commit message, not admitted.
-CEILING = 144
+CEILING = 42
 
 EXCLUDED_PREFIXES = ('vendor/', 'patches/', 'target/', 'notes/coes/', 'notes/corrections/',
                      'design/audit-reports/')

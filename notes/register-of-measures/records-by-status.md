@@ -139,10 +139,8 @@ them should be read against each other without their dates.
 `design/roadmap/proposals/` was created on 2026-09-04 (UTC) by milestone 247 (follow-on work named by a
 finished milestone goes nowhere, and this is the third time).
 
-Since 2026-09-19 they are drawn on top of the milestones chart, as the eighth series. The register
-used to say there was no chart because there was one bar. That was true at 2026W36 and stopped being
-true two weeks later without anybody revisiting it; the column had been collected every week and
-drawn nowhere. The bar totals on that chart now include them. On 2026-09-18, mid-week, 2026W38 read
+Since 2026-09-19 they are drawn on top of the milestones chart, as the eighth series. The column
+had been collected every week and drawn nowhere before that. The bar totals on that chart now include them. On 2026-09-18, mid-week, 2026W38 read
 431: 324 numbered milestones and 107 proposals. The finished week reads 515 and 2, after the
 promotions. The jump at 2026W36 is the pile appearing when the directory
 did, not a burst of milestones. They sit on top because they are work that has not entered the
@@ -181,7 +179,7 @@ Pacific, which is 2026-09-04 in UTC. **The number to
 watch is this one going up while the oldest date stops moving.** `script/roadmap --proposed` lists
 them oldest first and is the view that answers it.
 
-A rising line is still better than what it replaced. This work used to live in lane reports, which
+A rising line is still better than what it replaced. Without it this work lives in lane reports, which
 are read once, by one person, on the day they are written. `AGENTS.md` records the cost.
 Milestone 90 (a guard page under the per-CPU secondary stacks) exists only because calef happened to be at his
 desk the day a report named it. Milestone 94 (the untracked-work sweep, and the convention that ends
@@ -218,7 +216,7 @@ than it is consumed is only healthy while something is choosing the order.
 when milestone 54 (a network file service a Mac can actually mount) was deleted and the six words
 then available could only lie about it.
 
-Two statuses were missing from this chart's vocabulary until 2026-09-20, and one had been missing
+Two statuses were missing from this chart's vocabulary before 2026-09-20, and one had been missing
 for five days without anyone noticing. `script/metrics` keys the count on a fixed list. A token it
 does not hold is counted as nothing rather than as an error, so `milestones_total` went short by
 exactly the blocks it could not see. `SUPERSEDED` was minted 2026-09-15 and never added. Seven

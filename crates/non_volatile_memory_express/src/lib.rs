@@ -1,95 +1,20 @@
 #![no_std]
-//! **NVMe queue mechanics, as pure logic** (milestone 53's storage half; notes/non-volatile-memory-express.md).
+//! **NVMe queue mechanics, as pure logic** (notes/non-volatile-memory-express.md): everything an
+//! NVMe driver computes and nothing it touches. The register file, the doorbells and the queues'
+//! DMA memory are the kernel's (`kernel/src/non_volatile_memory_express.rs`, a thin volatile layer
+//! over this), so the queue logic is host-testable and Kani-reachable (rule 7).
 //!
-//! Everything an NVMe driver computes, with nothing an NVMe driver touches. The controller's
-//! register file, the doorbells, and the DMA memory the queues live in are all the kernel's
-//! (`kernel/src/non_volatile_memory_express.rs`, which is a thin volatile layer over this crate); what lives here is the
-//! arithmetic those accesses carry: which doorbell, what dword, whose completion. That split is
-//! rule 7's, the same one `pci` and `virtio` already follow, and it is what makes the queue logic
-//! host-testable and Kani-reachable when the device itself only exists inside an emulator.
-//!
-//! The shape of the protocol, in one paragraph (NVMe 1.4, chapters 4 and 5): the driver builds
-//! 64-byte **commands** in a **submission queue** (a ring in driver-owned DMA memory), then writes
-//! the ring's new tail to that queue's **doorbell register**; the controller reads the commands,
-//! does the work, and writes 16-byte **completions** into the paired **completion queue**, each
-//! carrying a **phase tag** that flips every time the controller laps the ring, which is how the
-//! driver tells a fresh completion from a stale one without any shared index; the driver then
-//! writes the completion queue's new head to its own doorbell. Queue pair 0 is the **admin**
+//! The protocol in one paragraph (NVMe 1.4, chapters 4 and 5): the driver builds 64-byte
+//! **commands** in a **submission queue** (a ring in driver-owned DMA memory), then writes the
+//! ring's new tail to that queue's **doorbell register**; the controller does the work and writes
+//! 16-byte **completions** into the paired **completion queue**, each carrying a **phase tag** that
+//! flips every lap, which tells a fresh completion from a stale one with no shared index; the
+//! driver writes the completion queue's new head to its own doorbell. Queue pair 0 is the **admin**
 //! queue, created by registers at reset; every other pair is created by admin commands. Data moves
-//! through **PRPs**, physical page pointers carried inside the command.
+//! through **PRPs**, physical page pointers in the command.
 //!
-//! # Examples
-//!
-//! The phase tag is the mechanism worth demonstrating, because it is how a driver tells a fresh
-//! completion from a stale one **with no shared index and no memory the controller and driver both
-//! write**. A ring that starts zeroed reads as phase 0, the first lap writes 1s, and every lap
-//! flips:
-//!
-//! ```
-//! use non_volatile_memory_express::{Completion, CqState};
-//!
-//! let mut cq = CqState::new(2); // a two-slot ring, so it laps quickly
-//!
-//! // The initial zeros. Phase 0 against an expected phase of 1: not ours, do not read the result.
-//! let stale = Completion::from_dwords([0, 0, 0, 0]);
-//! assert!(!cq.is_owned(&stale));
-//!
-//! // The controller's first completion, phase bit set, for command id 7.
-//! let fresh = Completion::from_dwords([0, 0, 0, 7 | (1 << 16)]);
-//! assert!(cq.is_owned(&fresh));
-//! assert_eq!(fresh.cid, 7);
-//! assert_eq!(fresh.status, 0); // 0 is success
-//! assert_eq!(cq.pop(), 1); // the value the driver writes to the completion head doorbell
-//!
-//! // Slot 1, same lap, still phase 1.
-//! assert!(cq.is_owned(&fresh));
-//! assert_eq!(cq.pop(), 0); // wrapped, so the expected phase flipped
-//!
-//! // Now the ring has lapped, and last lap's entries are the stale ones. This is the whole trick:
-//! // the bytes in slot 0 have not changed, and their meaning has.
-//! assert!(!cq.is_owned(&fresh));
-//! assert!(cq.is_owned(&stale));
-//! ```
-//!
-//! Doorbells are pure arithmetic over a stride the controller reports, and getting the parity wrong
-//! means ringing a completion head where a submission tail belongs:
-//!
-//! ```
-//! use non_volatile_memory_express::{Cap, Doorbell, doorbell};
-//!
-//! // A controller reporting DSTRD 0, so doorbells are 4 bytes apart.
-//! let cap = Cap(0);
-//! assert_eq!(cap.doorbell_stride(), 0);
-//!
-//! // Admin queue (qid 0), then the one I/O queue pair this driver creates.
-//! assert_eq!(doorbell(0, Doorbell::SubmissionTail, 0), 0x1000);
-//! assert_eq!(doorbell(0, Doorbell::CompletionHead, 0), 0x1004);
-//! assert_eq!(doorbell(1, Doorbell::SubmissionTail, 0), 0x1008);
-//! assert_eq!(doorbell(1, Doorbell::CompletionHead, 0), 0x100c);
-//! ```
-//!
-//! And [`prp_pair`] answers `None` rather than guessing, which is the interesting half: a transfer
-//! that would need a PRP *list* is a bug in this driver rather than a device error, because its unit
-//! of transfer is one 4096-byte filesystem block.
-//!
-//! ```
-//! use non_volatile_memory_express::prp_pair;
-//!
-//! // A page-aligned block: one pointer is enough.
-//! assert_eq!(prp_pair(0x4000_0000, 4096, 4096), Some((0x4000_0000, 0)));
-//!
-//! // The same block, offset half a page: it spills, so PRP2 carries the next page boundary, with
-//! // no offset of its own. That "offset-free by construction" is the spec's rule for PRP2.
-//! assert_eq!(prp_pair(0x4000_0800, 4096, 4096), Some((0x4000_0800, 0x4000_1000)));
-//!
-//! // Three pages would need a list. Not expressible, and said so.
-//! assert_eq!(prp_pair(0x4000_0000, 3 * 4096, 4096), None);
-//! ```
-//!
-//! Name: ratified 2026-09-17 (calef, DECISIONS §154), deratifying this crate's own 2026-08-23
-//! ratification, performed 2026-09-18, and kept as the crates.io name on 2026-10-07 (#1806). The
-//! acronym argument, the boundary story, the refused names, and the rename account are in git
-//! history.
+//! Name: ratified 2026-09-17 (calef, §154 (the acronym test is whether the phrase is spoken)); kept
+//! as the crates.io name (#1806).
 
 /// Register offsets in BAR0 (NVMe 1.4 §3.1). All are 4-byte registers or 8-byte registers the
 /// kernel accesses as two 4-byte halves (the spec permits either for the 64-bit ones).
@@ -163,6 +88,22 @@ pub enum Doorbell {
 }
 
 /// The BAR0 offset of queue `qid`'s doorbell. `dstrd` is [`Cap::doorbell_stride`].
+///
+/// # Examples
+///
+/// ```
+/// use non_volatile_memory_express::{Cap, Doorbell, doorbell};
+///
+/// // A controller reporting DSTRD 0, so doorbells are 4 bytes apart.
+/// let cap = Cap(0);
+/// assert_eq!(cap.doorbell_stride(), 0);
+///
+/// // Admin queue (qid 0), then the one I/O queue pair this driver creates.
+/// assert_eq!(doorbell(0, Doorbell::SubmissionTail, 0), 0x1000);
+/// assert_eq!(doorbell(0, Doorbell::CompletionHead, 0), 0x1004);
+/// assert_eq!(doorbell(1, Doorbell::SubmissionTail, 0), 0x1008);
+/// assert_eq!(doorbell(1, Doorbell::CompletionHead, 0), 0x100c);
+/// ```
 pub fn doorbell(qid: u16, which: Doorbell, dstrd: u32) -> u64 {
     let index = 2 * qid as u64
         + match which {
@@ -284,6 +225,22 @@ impl Command {
 /// PRP1; a transfer spilling into a second page puts that page in PRP2; anything longer needs a
 /// PRP *list*, which this driver does not build (its unit is one 4096-byte filesystem block), so
 /// `None` says "not expressible", and the caller treats it as a bug rather than a device error.
+///
+/// # Examples
+///
+/// ```
+/// use non_volatile_memory_express::prp_pair;
+///
+/// // A page-aligned block: one pointer is enough.
+/// assert_eq!(prp_pair(0x4000_0000, 4096, 4096), Some((0x4000_0000, 0)));
+///
+/// // The same block, offset half a page: it spills, so PRP2 carries the next page boundary, with
+/// // no offset of its own. That "offset-free by construction" is the spec's rule for PRP2.
+/// assert_eq!(prp_pair(0x4000_0800, 4096, 4096), Some((0x4000_0800, 0x4000_1000)));
+///
+/// // Three pages would need a list. Not expressible, and said so.
+/// assert_eq!(prp_pair(0x4000_0000, 3 * 4096, 4096), None);
+/// ```
 pub fn prp_pair(base: u64, len: u64, page_size: u64) -> Option<(u64, u64)> {
     assert!(page_size.is_power_of_two() && page_size >= 512);
     if len == 0 {
@@ -393,6 +350,36 @@ impl SqState {
 /// A completion ring's driver-side state: where the next completion will appear and which phase
 /// value marks it as fresh. The phase starts true (the ring starts zeroed, so the controller's
 /// first lap writes 1s) and flips every time the head wraps.
+///
+/// # Examples
+///
+/// A zeroed ring reads as phase 0, the first lap writes 1s, and every lap flips:
+///
+/// ```
+/// use non_volatile_memory_express::{Completion, CqState};
+///
+/// let mut cq = CqState::new(2); // a two-slot ring, so it laps quickly
+///
+/// // The initial zeros. Phase 0 against an expected phase of 1: not ours, do not read the result.
+/// let stale = Completion::from_dwords([0, 0, 0, 0]);
+/// assert!(!cq.is_owned(&stale));
+///
+/// // The controller's first completion, phase bit set, for command id 7.
+/// let fresh = Completion::from_dwords([0, 0, 0, 7 | (1 << 16)]);
+/// assert!(cq.is_owned(&fresh));
+/// assert_eq!(fresh.cid, 7);
+/// assert_eq!(fresh.status, 0); // 0 is success
+/// assert_eq!(cq.pop(), 1); // the value the driver writes to the completion head doorbell
+///
+/// // Slot 1, same lap, still phase 1.
+/// assert!(cq.is_owned(&fresh));
+/// assert_eq!(cq.pop(), 0); // wrapped, so the expected phase flipped
+///
+/// // Now the ring has lapped, and last lap's entries are the stale ones. This is the whole trick:
+/// // the bytes in slot 0 have not changed, and their meaning has.
+/// assert!(!cq.is_owned(&fresh));
+/// assert!(cq.is_owned(&stale));
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CqState {
     entries: u16,

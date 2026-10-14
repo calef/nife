@@ -107,8 +107,8 @@ recording for:
   `SystemTime::now()` has only a panic. Falsified before it was believed: removing the state check
   makes it print `Thu 1970-01-01 00:00:04 UTC`, and the test catches exactly that string.
 - It closes DECISIONS §43's own scope note that "the unknown-clock path is not proven in the
-  guest". That reasoning was about the machine (both QEMU boards have a working RTC) and the thing
-  under test is the page: a frame nobody has published to *is* that machine, as far as any reader
+  guest". That reasoning was about the machine (both QEMU boards have a working RTC), and the thing
+  under test is the page. A frame nobody has published to *is* that machine, as far as any reader
   can tell, so the test allocates one and grants it.
 
 Reads the wall clock and formats it. Timezone and calendar conversion are pure computation and belong
@@ -119,9 +119,9 @@ both is exactly the conflation this design refuses.
 The library half is built (2026-07-30): `crates/calendar`, host-tested and Kani-proved, holds the
 civil-date arithmetic, the weekday and day-of-year, five formats and an RFC 3339 parser, and depends
 on nothing in this milestone. Eleven harnesses, ten of them over the full ten-thousand-year range.
-Two scope calls are recorded in notes/calendar.md rather than left ambiguous: a fixed UTC offset is
-in and the IANA tzdata is out (zone rules are a data-distribution problem, not a calendar one), and
-there is no `strftime`, five named formats instead. The command itself still waits on the service. The
+Two scope calls are recorded in notes/calendar.md rather than left ambiguous. A fixed UTC offset is
+in and the IANA tzdata is out (zone rules are a data-distribution problem, not a calendar one).
+There is no `strftime`, five named formats instead. The command itself still waits on the service. The
 lane also produced a verification finding worth more than the crate: a 64-bit division by 86,400 is
 what bounded model checking chokes on here, not the calendar, and the `&str` boundary costs more than
 the parser behind it (notes/verification.md).
@@ -138,9 +138,9 @@ Buildable today: `net_stack` runs smoltcp, and NTP is UDP on port 123. Two hones
    time it is" rather than confidently reporting 1970. That state should be visible to readers, not
    papered over, which is the same rule §42 sets for filesystems: no silent degradation.
 
-The wire format is built (`crates/ntp_proto`, notes/ntp.md): the 48-byte NTPv4 packet, the
-1900-epoch fixed-point timestamp with a fixed era pivot for the 2036 rollover, the offset and delay
-arithmetic in modular form so an exchange across that rollover comes out right, and the seven
+The wire format is built (`crates/ntp_proto`, notes/ntp.md). It has the 48-byte NTPv4 packet and the
+1900-epoch fixed-point timestamp with a fixed era pivot for the 2036 rollover. It has the offset and
+delay arithmetic in modular form so an exchange across that rollover comes out right, and the seven
 response checks that are the whole of plain NTP's spoofing resistance. Host-tested and Kani-proved
 (the era pivot over all 4.2 billion seconds from 1970 to 2104; parse/serialise and the origin-nonce
 check over all 2^384 packets). Problem 1 above is **recorded, not solved**: the crate is
@@ -149,7 +149,7 @@ crate does not implement half of it.
 
 The client is built (2026-07-31, `components/src/ntp.rs`, notes/ntp.md). It holds five capability
 slots and none of them is the clock page, so the block's claim above is now a fact the machine
-enforces rather than a design intention: `an_ntp_client_holds_no_writable_clock_page` gives the same
+enforces rather than a design intention. `an_ntp_client_holds_no_writable_clock_page` gives the same
 binary the same five slots plus the exact address a *setter* maps the page at, and it faults. Four
 things the build settled or found:
 
@@ -202,7 +202,7 @@ NTP), noting estimates for unbuilt work are guesses on a history-calibrated scal
 ## Follow-on
 
 - **Milestone 106.** The timed-wait fork, which is bigger than this milestone and which the block
-  says is tracked separately: there is no timed wait anywhere in the kernel, so `thread::sleep` is a
+  says is tracked separately. There is no timed wait anywhere in the kernel, so `thread::sleep` is a
   yield-spin and `Endpoint::RECV` has the no-timeout limitation `sched.rs` complains about twice.
 - **Milestone 106.** The NTP client is a one-shot synchroniser rather than a polling service,
   deliberately, because a poll interval is a yield-spin and adding a sleep syscall to get a real one

@@ -1,50 +1,15 @@
-//! **What drives are attached** (milestone 57): the roster page, and the authority it is not.
+//! **What drives are attached**: the roster page, and the authority it is not. `lsblk` reads an
+//! ambient `/sys/block`; here the kernel writes this page once at wiring time and maps it read-only
+//! into exactly the programs granted it, so a program without it has nowhere to look.
 //!
-//! `lsblk` on Linux reads `/sys/block`, which every process on the machine can read, and the
-//! listing is therefore ambient: knowing what disks exist is free, and so is naming one to a tool
-//! that will write to it. Here it is a capability. The kernel writes this page once at wiring time
-//! and maps it **read-only** into exactly the programs that were granted it; a program without the
-//! mapping has nowhere to look, and the refusal is "you hold no such capability" rather than a
-//! permission check.
-//!
-//! # The line this draws, which is the point of the milestone
-//!
-//! Listing the drives and holding one of them are **different authorities**:
-//!
-//! - the roster says a device exists, what bus it came off, and its ordinal;
-//! - a block-service endpoint says you may read and write one particular device's blocks.
-//!
-//! So the roster deliberately carries **no capacity**, and that is a design decision rather than an
-//! omission. A disk's size is a fact about its contents-bearing surface, and you learn it by asking
-//! the device (`filesystem_protocol::blk::SIZE`), which takes the endpoint. An enumerator that answered "how
-//! big" would be answering a question only a holder should be able to ask, and it would also have
-//! to bring a PCI function up to find out, which has side effects the kernel has no business
-//! causing on behalf of a listing.
-//!
-//! Compare the compositor's window enumeration (DECISIONS §33), which is the same shape and the
-//! precedent this follows: a **read-only mapping, not a verb**. There is no request to forge, no
-//! server to confuse, and nothing to authorize at read time, because the authorization happened
-//! when the mapping was made.
-//!
-//! # This is not a `*_proto`, and the difference is the whole design
-//!
-//! Ten crates in `crates/` end in `_proto` and describe **messages two programs exchange**:
-//! `filesystem_protocol`, `byte_sink_protocol`, `clock_protocol` and the rest. This one is not among them, and a reader
-//! scanning the directory should not expect a protocol here. It describes **bytes at an address**,
-//! written once by the kernel at wiring time and thereafter only read.
-//!
-//! That is not a naming detail, it is the authority claim restated: a protocol has a server, and a
-//! server is something that can be asked, confused, or persuaded. There is nothing here to ask. The
-//! decision about who may see the machine's disks was made when the mapping was created, and a
-//! program either holds the page or has nowhere to look.
-//!
-//! It also has a consequence the `_proto` crates carry and this one does not: **no seqlock.** The
-//! clock page needs one because the clock service republishes it (`clock_protocol::ClockPage`); this
-//! page never changes after the mapping exists, so a reader needs no protocol for reading it
-//! consistently. Hot plug would change that, and it would be a change to this crate rather than to
-//! its readers.
-//!
-//! # The page
+//! **Listing the drives and holding one are different authorities.** The roster says a device
+//! exists, its bus and its ordinal; a block-service endpoint lets you use one device's blocks. So
+//! the roster carries **no capacity**: size is learned by asking the device
+//! (`filesystem_protocol::blk::SIZE`), which takes the endpoint, and finding it would mean bringing
+//! a PCI function up on behalf of a listing. Like the compositor's window list (§33 (the
+//! compositor's authority is memory, not messages)), it is a read-only mapping, not a verb: nothing
+//! to forge or confuse, because the authorization happened when the mapping was made. Hence no
+//! `_protocol` suffix and no seqlock: there is no server, and the page never changes after mapping.
 //!
 //! ```text
 //!   0..8     MAGIC
@@ -57,30 +22,11 @@
 //!   4..8     transport: TRANSPORT_MMIO or TRANSPORT_PCI
 //! ```
 //!
-//! Little-endian, fixed width, no pointers: the reader is a `no_std` program with no allocator and
-//! the writer is the kernel, and a self-describing format between two programs in one tree would be
-//! ceremony. A zeroed frame reads as an empty roster with the wrong magic, which [`Roster::read`]
-//! refuses, so a page nobody wrote is never mistaken for a machine with no disks.
+//! Little-endian, fixed width, no pointers, between a `no_std` reader and the kernel. A zeroed frame
+//! has the wrong magic and [`Roster::read`] refuses it, so a page nobody wrote never reads as a
+//! machine with no disks.
 //!
-//! ```
-//! # use block_roster::{Device, Roster, TRANSPORT_MMIO, TRANSPORT_PCI};
-//! let mut page = [0u8; 4096];
-//! let devices = [
-//!     Device { ordinal: 0, transport: TRANSPORT_MMIO },
-//!     Device { ordinal: 0, transport: TRANSPORT_PCI },
-//! ];
-//! block_roster::write(&mut page, &devices).unwrap();
-//!
-//! let roster = Roster::read(&page).unwrap();
-//! assert_eq!(roster.len(), 2);
-//! assert_eq!(roster.get(1).unwrap().transport, TRANSPORT_PCI);
-//! ```
-//!
-//! Name: ratified 2026-08-03 (calef, milestone 57). The lane shipped it provisionally and calef
-//! approved it by name. It deliberately does not take the `*_proto` suffix its ten neighbours
-//! carry: a protocol has a server, and a server is something that can be asked, confused or
-//! persuaded, where this is a read-only page whose authorization happened when the mapping was
-//! made.
+//! Name: ratified 2026-08-03 (calef): a read-only page, deliberately not a `_protocol`.
 
 #![no_std]
 
@@ -140,6 +86,22 @@ pub const fn capacity_of(len: usize) -> usize {
 ///
 /// The kernel is the only caller, and it writes the page before any program can see it. See the
 /// crate header for what that buys the reader.
+///
+/// # Examples
+///
+/// ```
+/// # use block_roster::{Device, Roster, TRANSPORT_MMIO, TRANSPORT_PCI};
+/// let mut page = [0u8; 4096];
+/// let devices = [
+///     Device { ordinal: 0, transport: TRANSPORT_MMIO },
+///     Device { ordinal: 0, transport: TRANSPORT_PCI },
+/// ];
+/// block_roster::write(&mut page, &devices).unwrap();
+///
+/// let roster = Roster::read(&page).unwrap();
+/// assert_eq!(roster.len(), 2);
+/// assert_eq!(roster.get(1).unwrap().transport, TRANSPORT_PCI);
+/// ```
 pub fn write(page: &mut [u8], devices: &[Device]) -> Result<(), Full> {
     let capacity = capacity_of(page.len());
     if devices.len() > capacity {

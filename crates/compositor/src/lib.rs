@@ -728,6 +728,10 @@ pub mod status {
     /// each one: `send(REPORT, WIN_LIED, how many, 0)`. Milestone 719. Never sent if the compositor
     /// stopped answering, which is the whole observation.
     pub const WIN_LIED: u64 = 0xC33_0018;
+    /// `send(REPORT, WIN_FORGED, how many rings answered, 0)`. The eighth outsider pass's
+    /// control-page forgery: a client that forged its page's identity, geometry and bookkeeping
+    /// and committed after each forge. Name: provisional.
+    pub const WIN_FORGED: u64 = 0xC33_0019;
 }
 
 /// A position-sensitive digest of a `w` by `h` surface, `read(i)` giving pixel `i` in row-major

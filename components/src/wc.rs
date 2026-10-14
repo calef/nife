@@ -1,38 +1,26 @@
 //! **`wc`: the consumer** (milestone 50, notes/pipes.md).
 //!
 //! It counts lines, words and bytes on its input and writes the three numbers to its output. Both
-//! ends are the sink contract (`crates/byte_sink_protocol`), which is the entire reason this program is
-//! worth having: it is the first thing in the tree that **reads** a stream, and it reads it with
-//! the same sixteen-byte framing that `date` and every `println!` write.
+//! ends are the sink contract (`crates/byte_sink_protocol`), the same sixteen-byte framing that
+//! `date` and every `println!` write.
 //!
-//! # It cannot tell what is feeding it, and that is the demonstration
+//! # It cannot tell what is feeding it
 //!
-//! Slot 1 holds an endpoint with `READ`. Sink messages arrive on it until [`byte_sink_protocol::OPERATION_EOF`].
-//! Behind that endpoint there is either another program (`date | wc`), a file the shell opened and
-//! streamed (`wc < report.txt`, and `wc report.txt`, which is the same thing with the operator left
-//! out), or the shell itself typing bytes into it (`echo hello | wc`). There is no message this
-//! program can send to ask which, no field in a message that says, and no capability in its capability table
-//! that names anything but the two endpoints. **The same binary, three sources, one behaviour.**
-//!
-//! `wc report.txt` is worth a second look for exactly that reason. It reads like Unix's `wc`, where
-//! naming a file means the program `open()`s it with your whole authority; here the name is a
-//! designation the *shell* resolves, and what arrives is bytes. A `wc` that opened the file it
-//! counts would be a `wc` that could open any file.
-//!
-//! The output side is the same claim, already made by `std_exerciser` in the protocol lane: slot 0 holds
-//! an endpoint with `WRITE`, and whether the shell prints the answer or a file records it is not
-//! something this program participates in.
-//!
-//! # Capability contract
+//! Slot 1 holds an endpoint with `READ`; sink messages arrive on it until
+//! [`byte_sink_protocol::OPERATION_EOF`]. Behind it is another program (`date | wc`), a file the
+//! shell opened and streamed (`wc < report.txt`, or `wc report.txt`), or the shell itself
+//! (`echo hello | wc`), and nothing this program holds can ask which. `wc report.txt` reads like
+//! Unix's `wc`, but the name is a designation the *shell* resolves, and what arrives is bytes: a
+//! `wc` that opened the file it counts would be a `wc` that could open any file.
 //!
 //! | slot | what | why |
 //! |---|---|---|
 //! | 0 | the output sink, `WRITE` | where the three numbers go |
 //! | 1 | the input source, `READ` | where the bytes come from |
 //!
-//! Two capabilities, no memory grant, no file, no directory, no shared page. A `wc` that could open
-//! the file it counts would be a `wc` that could open any file; this one is handed the bytes.
+//! Two capabilities, no memory grant, no file, no directory, no shared page.
 //!
+
 //! # EXAMPLES
 //!
 //! ```text
@@ -50,29 +38,19 @@
 //!
 //! # BUGS
 //!
-//! - **No `-l`, `-w` or `-c`.** Unix's `wc` prints a subset chosen by options; this one prints all
-//!   three, because selecting among them is formatting and the pipeline is where formatting
-//!   belongs. When there is something to select *with*, the selection is a program downstream.
+//! - **No `-l`, `-w` or `-c`.** It prints all three; selecting among them is formatting, and the
+//!   pipeline is where formatting belongs.
 //! - **A word is a run of non-whitespace**, which is Unix's definition and is wrong for text that
-//!   is not ASCII. There is no locale here to be wrong about, so the definition is at least honest.
-//! - **It counts what it is given.** A line with no trailing newline still counts as a line, which
-//!   differs from Unix's `wc -l` (that counts newlines). The number this prints is the number of
-//!   lines a person would count.
+//!   is not ASCII.
+//! - **A line with no trailing newline still counts as a line**, unlike Unix's `wc -l`, which
+//!   counts newlines.
 //! - **One name, and it cannot count two files or print a total.** `wc a.txt b.txt` is refused at
-//!   the prompt as an operand with nowhere to go, because a manifest here declares one input and a
-//!   second would need positional arity the shell does not have yet. Unix prints a per-file table
-//!   and a total; that is formatting over a set, and this program counts one stream.
+//!   the prompt: a manifest here declares one input, and a second would need positional arity the
+//!   shell does not have yet.
 //!
-//! Name: ratified 2026-09-14 (calef, working the unratified worklist), on AGENTS.md's naming
-//! section, which reasons about this exact string twice and so needed no new argument to sign. The
-//! Unix command's own name, in the protected class the tenet calls the best names available: a
-//! word a reader already knows from outside this project costs a newcomer nothing to learn.
-//! AGENTS.md does not merely cover it by rule, it argues it by name, first as the case that
-//! killed the two-tier draft (it was internal plumbing and became a prompt-typed pipeline stage
-//! inside a day, so "a short name for a typed command" is not a stable property to key a
-//! convention on) and then as the rule's closing line, that nobody needs a rule to know `wc`
-//! beats `word_count`. Introduced 2026-07-31. What is missing is an architect's signature, not a
-//! reason.
+//! Name: ratified 2026-09-14 (calef, working the unratified worklist). The Unix command's own name,
+//! in the protected class AGENTS.md's naming section calls the best available, and which it argues
+//! by this exact string: nobody needs a rule to know `wc` beats `word_count`.
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

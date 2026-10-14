@@ -11,12 +11,12 @@ Why it matters. the canonical microkernel component, the one people ask about fi
 
 Deliverable. Two components and a contract. A userspace virtio-net driver, confined by
 the same shadow-ring validator as the disk, which requires the one genuinely new kernel-adjacent
-piece: multi-queue transport support (virtio-net needs RX and TX; the §18 seam and the
-confinement are queue-0-only today, and RX is the direction where the *device writes into*
-driver memory, so the validator grows a proved, tested second direction rather than an ad hoc
-one). Above it, the TCP/IP stack itself as a swappable userspace component, `smoltcp` inside a
+piece: multi-queue transport support. Virtio-net needs RX and TX, and the §18 (the PCIe transport) seam and the
+confinement are queue-0-only today. RX is the direction where the *device writes into* driver
+memory, so the validator grows a proved, tested second direction rather than an ad hoc one. Above
+it, the TCP/IP stack itself as a swappable userspace component, `smoltcp` inside a
 net server, speaking a capability-shaped socket contract: an endpoint plus shared frames per
-connection, no ambient "the network"; a process holds a capability to a stack or it does not.
+connection, no ambient "the network". A process holds a capability to a stack or it does not.
 The contract is what `std::net`'s PAL (milestone 27) binds to, replacing its honest
 `Unsupported`. Scope discipline: TCP, UDP, DHCP, done; no sockets-API mimicry beyond what the
 PAL needs.

@@ -37,8 +37,8 @@ the kernel's free memory did not change, because the pages came out of the proce
 region, carved once at the start. A process cannot make the kernel allocate, so it cannot exhaust
 kernel memory. It runs out of *its own* budget, the retype returns `OutOfMemory`, and the kernel is
 untouched. There is a test that asserts exactly this equality, and it fails loudly if the memory
-comes from anywhere but the region (with the kernel allocator as the source, the same process maps
-thirty thousand pages and the kernel loses thirty thousand frames).
+comes from anywhere but the region. With the kernel allocator as the source, the same process maps
+thirty thousand pages and the kernel loses thirty thousand frames.
 
 ## How it works here
 
@@ -80,7 +80,7 @@ holder's own spending.
 
 `BUGS`: a builder that lends what it carves now holds `GRANT` on its budget, which is also the right
 to lend the budget. The sharpest case is a networked `std` program (`std_layout.rs`'s slot 3): it
-needs `GRANT` to lend socket pages, so it may also hand its whole job region to a server it holds,
+needs `GRANT` to lend socket pages. So it may also hand its whole job region to a server it holds,
 which could then spend or destroy the program's heap. It reaches nothing outside its own grant. A
 separate socket-page region split off the job region would narrow this to the pages lent, at the
 cost of a region per networked job and a reclaim that must destroy the child first.

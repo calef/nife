@@ -71,8 +71,8 @@ turns of `low`, for an identical answer.
 
 Cost is real but noisy, and the noise has an honest cause: prompt caching. Each `claude
 --effort <level> -p ...` invocation loaded this repository's full `AGENTS.md`/skills/system-prompt
-context fresh (about 40-43K tokens), unless a prior run in the same benchmark had written that
-exact content to Anthropic's server-side cache within its TTL, in which case the second run paid
+context fresh (about 40-43K tokens). The exception was a prior run in the same benchmark having
+written that exact content to Anthropic's server-side cache within its TTL. Then the second run paid
 the much cheaper cache-read rate instead of the cache-write rate. Runs launched back-to-back
 against the same content therefore cost 3-7x less than the first run of a batch, purely from
 ordering, not from effort level. With that caveat stated plainly: even comparing worst-case
@@ -80,11 +80,11 @@ ordering, not from effort level. With that caveat stated plainly: even comparing
 5-10x once a `max` run's much larger output (thinking and verification tokens) is included.
 
 This cost is the CLI's own `total_cost_usd`, at list-price rates against a subscription
-session, not a bill. These runs went through `claude`'s ordinary session auth (this lane had no
+session, not a bill. These runs went through `claude`'s ordinary session auth. This lane had no
 `ANTHROPIC_API_KEY` and could not use `--bare`, and had no OpenRouter credentials to route through
-the open-lane gateway), so no real dollar amount moved and no OpenRouter credit balance
-was checked. `total_cost_usd` is Claude Code's own notional accounting of what the same usage would
-cost at API list price (`"costBasis":"list"` in the raw JSON); it is the only cost number this lane
+the open-lane gateway. So no real dollar amount moved and no OpenRouter credit balance was checked.
+`total_cost_usd` is Claude Code's own notional accounting of what the same usage would
+cost at API list price (`"costBasis":"list"` in the raw JSON). It is the only cost number this lane
 could get, and it is reported as exactly that, not as a charge.
 
 ## What was not measured, and why it matters

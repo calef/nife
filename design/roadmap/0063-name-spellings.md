@@ -130,8 +130,9 @@ importing the clients' vocabulary into the wrong family.
 ## Why the three clients carry `test` (calef, 2026-08-01)
 
 `fs_client`, `credentialer_client` and `socket_client` are the names the real things will want,
-and the real things are coming: milestone 55 needs an actual credentialer client for SMB
-authentication, milestone 54 needs actual socket clients, and any program that wants files is an FS
+and the real things are coming. Milestone 55 (Time Machine) needs an actual credentialer client for SMB
+authentication, and milestone 54 (a network file service a Mac can mount) needs actual socket
+clients. Any program that wants files is an FS
 client. Giving those names to test programs squats them, and the bill arrives later as a rename or as
 something worse like `real_fs_client`.
 
@@ -155,8 +156,8 @@ this project's stated audience arrives from Linux rather than from formal method
 DONE, 2026-08-01, ahead of the rename and on its own merits. `NAME_LEN` is 32, `ENTRY_LEN` 40,
 `DIR_BLOCKS` 6, `MAX_FILES` 76 (up from 63), and the magic is `CRKR0002`. `os_primitives_benchmarker`
 fits with seven bytes to spare, so the rename below is unblocked. One thing in the paragraphs below
-was wrong and is worth reading before trusting them: the kernel-stack cost had already been
-retired, because `Fs` stopped holding a fixed entry array when the FS-server stack bug was fixed, so
+was wrong and is worth reading before trusting them. The kernel-stack cost had already been retired,
+because `Fs` stopped holding a fixed entry array when the FS-server stack bug was fixed, so
 the raise was much cheaper than the trade described here. The measured numbers and the reasoning are
 in [notes/nifefs.md](../../notes/nifefs.md). The paragraphs are kept as written because the
 decision to do this first, rather than under pressure from a name, is the part that generalizes.
@@ -172,7 +173,7 @@ budget, it is a trap, and discovering it a third time as a build error during an
 the expensive way to find out.
 
 It is a real trade rather than a free win. `NAME_LEN` sits inside `ENTRY_LEN = 32`, so widening it
-costs directory entries per block (`MAX_FILES` is 63 at `DIR_BLOCKS = 4`) and it costs **kernel
+costs directory entries per block (`MAX_FILES` is 63 at `DIR_BLOCKS = 4`). It also costs **kernel
 stack**, because `Fs` holds `entries` as a fixed array that is a stack local in the boot and spawn
 paths. The FS server was once found to have died 528 bytes short of stack, so this is not headroom to
 spend casually. There is no data migration, because every image regenerates from the crate.
@@ -184,9 +185,10 @@ Effort: small, and almost entirely mechanical, but it touches paths in `script/`
 
 ## Follow-on
 
-- **Recorded.** `design/naming.md` lists what this milestone deliberately did not rename, so the next
-  reader does not "fix" one by mistake: the `shell` boot mode beside the `swish` binary, the `caps`
-  shell builtin, `crates/virtio`'s first line still calling itself a virtio-blk driver, and the
+- **Recorded.** `design/naming.md` lists what this milestone deliberately did not rename, so the
+  next reader does not "fix" one by mistake. They are the `shell` boot mode beside the `swish`
+  binary and the `caps` shell builtin. Also `crates/virtio`'s first line still calling itself a
+  virtio-blk driver, and the
   measured-boot manifest at `target/init-measure-<arch>.txt`.
 - **Recorded.** `design/naming.md` also keeps this block's `target/` and `targets/` entry, told in
   `BUGS`.

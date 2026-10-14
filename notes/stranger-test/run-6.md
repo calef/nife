@@ -61,7 +61,7 @@ taking all of it. The stranger can see that only by running `env`.
 
 `--due` had been exiting 1 since 2026-09-17. But the weekly workflow runs on Mondays and was green
 on 2026-09-14, so nothing could go red before 2026-09-21. This run happened because a maintainer
-briefed a lane. [The BUGS history](bugs-history.md) records that as a finding, and milestone 495 (a
+briefed a lane. That is a finding, and milestone 495 (a
 cadence that says "due" reaches nobody) is its proposal, not started as of 2026-09-24.
 
 ### Three attempts were refused before any measurement

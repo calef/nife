@@ -15,9 +15,9 @@ From '50. Pipes and redirection: one sink protocol, and `|` turns out to be an e
 Follow-on`:
 
 > Converting the console server to the sink protocol. `line_editor` is its only client and now
-> speaks for two writers, so once the terminal adapter existed the page-plus-ack channel looked
-> like the right answer rather than a gap; a second client of the console would hit the same
-> one-page wall one layer down with nothing gained. `notes/sink-protocol.md` has the reasoning.
+> speaks for two writers, so once the terminal adapter existed the page-plus-ack channel looked like
+> the right answer rather than a gap. A second client of the console would hit the same one-page
+> wall one layer down with nothing gained. `notes/sink-protocol.md` has the reasoning.
 >
 > -- design/roadmap/0050-pipes-and-redirection.md
 

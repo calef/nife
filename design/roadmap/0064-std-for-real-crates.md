@@ -144,12 +144,12 @@ build them, and report what breaks.
 
 Fifty crates.io crates measured: **43 build, 7 fail** (2026-08-18; 39 without `entropy_backend`),
 ranked by demand, which is the list milestones 99 and 66 consume and is `script/crate-probes` rather
-than a prose recipe. **A green build is not evidence**: four std calls aborted a nife process while
+than a prose recipe. **A green build is not evidence**. Four std calls aborted a nife process while
 compiling perfectly (`env::temp_dir`, `env::split_paths`, `process::id`, and `process::exit`, a trap
-instruction that `cargo xtask std-aborts` found), and none could appear on a list built from
+instruction that `cargo xtask std-aborts` found). None could appear on a list built from
 `Unsupported` counts. Closed: the namespace verbs, `getrandom`, `env`, `File::set_len`, `fs::copy`,
-`TcpListener`, the four aborts, and last (2026-09-19) file times by path, `modified()` on `GETMTIME`
-and `fs::set_times` on `SETMTIME_AT`, which had been a binding for three weeks while the PAL said no
+`TcpListener`, the four aborts. Last (2026-09-19) came file times by path, `modified()` on
+`GETMTIME` and `fs::set_times` on `SETMTIME_AT`, which had been a binding for three weeks while the PAL said no
 verb existed. Declined with reasons: the `std::os::unix` fallthrough and `thread::spawn` (§105).
 Proposed: an mtime through an open `File` (a wire change), and an FS server that stamps a real time
 rather than a per-mount counter

@@ -225,7 +225,7 @@ $ wc < when.txt
 ```
 
 Read the `caps` output rather than the counts. **The last line of the `output` row is the only thing
-`>>` changes**, and it is a sentence about *this shell*, not about `date`: the `cap 0` row above it
+`>>` changes**, and it is a sentence about *this shell*, not about `date`. The `cap 0` row above it
 is identical to the one `date > when.txt` prints, and so is everything else, because the two
 spellings hand the child the same endpoint with the same right. That is the property `>>` was built
 to be a test of, printed where a person meets it.
@@ -278,8 +278,8 @@ the same question has no answer at that point, since fd 1 is whatever the shell'
 be and nothing records what that was.
 
 And the operand at the head of a pipeline, which is the line the draining lane fixed. Read the
-numbers rather than the fact that it ran: `2 4 24` plus a newline is seven bytes and three words on
-one line, so the second `wc` counting the first one's answer is what says the file reached the
+numbers rather than the fact that it ran. `2 4 24` plus a newline is seven bytes and three words on
+one line. So the second `wc` counting the first one's answer is what says the file reached the
 **head** stage rather than nothing reaching it:
 
 ```text
@@ -310,7 +310,7 @@ $ wc motd | wc | wc
 
 ## BUGS
 
-One line each. Each entry's full text is in [the BUGS appendix](pipes/bugs-history.md).
+One line each.
 
 - An unredirected tail stage's output goes to the terminal's sink adapter (DECISIONS §106), which
   carries a display race tracked at milestone 151 (notification objects). notes/documentation.md's `BUGS` has the worked case.
@@ -353,4 +353,3 @@ One line each. Each entry's full text is in [the BUGS appendix](pipes/bugs-histo
 | [buffering](pipes/buffering.md) | the throughput measurement and its caveats |
 | [the-boot](pipes/the-boot.md) | the boot's processes, its filesystem, and the stack |
 | [tests-and-the-boot-gate](pipes/tests-and-the-boot-gate.md) | the guest tests and `script/swish-check` |
-| [bugs-history](pipes/bugs-history.md) | every BUGS entry with its history |

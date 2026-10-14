@@ -109,10 +109,9 @@ to unvouched, "runnable only by a session holding the D2 capability". If a regis
 session's D2 capability into a scheduled job, that job keeps running a program whose key was
 revoked, on every fire, with nobody at a terminal to notice.
 
-**Recommendation: a scheduled job never holds D2.** It runs vouched programs only. **Corrected
-2026-09-27:** this used to say §220's drop then reaches a job "through the progenitor's ordinary
-activation-set lookup". It does not: the timetable loads a job from an archive `login` checked
-at start-up, and the progenitor never sees a fire. It holds only if fork 8 resolves jobs through
+**Recommendation: a scheduled job never holds D2.** It runs vouched programs only. §220's drop
+does not reach a job through the progenitor's activation-set lookup: the timetable loads a job from an archive `login` checked
+at start-up, and the progenitor never sees a fire. That path exists only if fork 8 resolves jobs through
 the activation set. A user who wants to schedule an unvouched
 build vouches it first. This is a grant rule for the registrar, so it is recorded here for whoever
 builds it; the milestone 129 (scheduled execution) lane working the scheduler in parallel is the likely consumer.

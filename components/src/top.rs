@@ -1,51 +1,20 @@
-//! **`top`: the domain `ps` lists, ordered by what it is costing** (milestone 282 (a thread's CPU time, and the `top` it makes possible),
-//! DECISIONS §150 (how does a thread's CPU time reach userspace?), notes/process-view.md).
-//!
-//! The whole program is: walk one supervision domain twice, once for each thread's run state and
-//! once for its CPU time, rank the rows by the second, and say what it found on one stream and what
-//! went wrong on the other. The table and the walk are `crates/ps`; the summary line is
-//! `crates/top`; what lives here is the syscalls and the two sinks.
-//!
-//! # It is `ps`'s authority and one read-only page, asking a different question
-//!
-//! `ps`'s three capabilities, from the same named constants, and the machine statistics page.
-//! Nothing here can name a process the prompt did not already put in its reach, and the CPU
-//! figures come from a second walk of the **same** endpoint under the **same** right, so a column
-//! that on Unix comes from reading an ambient `/proc` comes here from a capability somebody handed
-//! this program.
-//!
-//! The page is milestone 126 (the `procps` package)'s addition: DECISIONS §225 (`free` sees the
-//! machine and your share) made `tload`'s question a line in this summary. Before it, this program
-//! held exactly `ps`'s authority, and milestone 281 (`watch` holds exactly what `ps` holds)'s rule
-//! made whether it was a program at all a live question. It holds more than `ps` now; whether that
-//! settles it is calef's.
-//!
-//! # Capability contract
+//! **`top`: the domain `ps` lists, ordered by what it is costing** (§150 (how does a thread's CPU
+//! time reach userspace?), notes/process-view.md). Walk one supervision domain twice, once for run
+//! states and once for CPU time, rank by the second, and report on one stream and complain on the
+//! other. The walk and table are `crates/ps`, the summary `crates/top`; this is the syscalls and
+//! the two sinks.
 //!
 //! | slot | what | why |
 //! |---|---|---|
 //! | 0 | the output sink, `WRITE` | where the summary and the table go |
 //! | 7 | the process domain, `ENUMERATE` | the supervision endpoint whose members it may **name** |
 //! | 8 | the diagnostics sink, `WRITE` | where a refusal goes, so `>` cannot swallow it |
-//! | 11 | the machine statistics page, `READ`, mapped read-only | the machine line under the summary, which is what became of `tload` (milestone 126 (the `procps` package), DECISIONS §225 (`free` sees the machine and your share)) |
+//! | 11 | the machine statistics page, `READ`, mapped read-only | the machine line under the summary, which is what became of `tload` (§225 (`free` sees the machine and your share)) |
 //!
-//! No clock, and that is worth stating because a `top` looks like it needs one: the uptime in the
-//! summary is `user_mode_runtime::monotonic_nanos`, the ambient counter every process holds
-//! unconditionally, which is the same finding `uptime` reported when it turned out to need no new
-//! capability at all.
-//!
-//! # What a reader learns, and it is more than `ps` gave them
-//!
-//! A run state is one of five words about an instant. CPU time is **continuous and monotonic**: two
-//! runs of this program measure how much work another thread did in between, and a holder of
-//! `ENUMERATE` over a domain can watch the shape of a workload it cannot otherwise name. DECISIONS
-//! §150 (how does a thread's CPU time reach userspace?) weighed that and accepted it, because `ENUMERATE` is already the right to learn what
-//! exists rather than to act on it, and because the leak is bounded by the domain: this program
-//! cannot see outside the subtree it was endowed, and there is nothing it can hold that would widen
-//! that. It is written here as well as in the decision because this is where a reader meets the
-//! method.
-//!
-//! # EXAMPLES
+//! `ps`'s authority plus one read-only page: nothing here can name a process outside the domain it
+//! was handed. No clock: uptime is the ambient monotonic counter. CPU time is continuous, so two
+//! runs show how much work another thread did between them; §150 accepted that, because
+//! `ENUMERATE` is already the right to learn what exists, and the leak stays inside the domain.
 //!
 //! ```text
 //! $ top
@@ -55,39 +24,18 @@
 //!            9  running        310
 //! 4294967302  dead             150
 //!            5  blocked         20
-//!
-//! $ top > busiest.txt     the summary and the table land in the file
-//! $ top | wc              and no /proc was read to make either
-//! ```
-//!
-//! And the case with no Unix equivalent, because on Unix there is no domain to be outside of:
-//!
-//! ```text
 //! $ top        top: this process holds no process-domain capability
 //! ```
 //!
 //! # BUGS
 //!
-//! - **It does not refresh**, which is the first thing a reader will look for. This kernel has no
-//!   timed wait, so an interval would be a yield-spin, and a spin here is not merely wasteful the
-//!   way it was in the deleted `watch`: it would be charged to this program's own thread by the
-//!   counter the table ranks on, and `top` would truthfully report itself as the busiest thing on
-//!   the machine. See `crates/top`'s `BUGS` for the rest, including why there is no `%CPU` column
-//!   and no way to ask for the top *N*.
-//! - **`top` lists itself**, as `running`, because it is a member of the domain it was spawned
-//!   into, and unlike the rows below it, it is *accumulating* while it prints. Unix's `top` has the
-//!   same property and the same excuse. Its own figure is small (a few ticks at most) and is
-//!   truthful.
-//! - **Everything `ps` records applies here**, since the walk is `ps`'s: no `CMD` column because a
-//!   process has no name, a generational tid that is a large ugly number after slot reuse, and a
-//!   table that is a sequence of snapshots rather than one.
+//! - It does not refresh: an interval spin would be charged to this thread by the counter the table
+//!   ranks on (`crates/top`'s `BUGS` has the rest).
+//! - `top` lists itself, `running` and still accumulating, as Unix's does.
+//! - Everything `ps` records applies: no `CMD` column, whole generational tids, snapshot rows.
 //!
-//! Name: ratified 2026-10-06 (calef, "Ratify" it, in conversation). `top` is the standard term for
-//! a view ranked by resource consumption, which the naming tenet calls the best name available, and
-//! both DECISIONS §150 (how does a thread's CPU time reach userspace?) and milestone 281 (`watch` holds exactly what `ps` holds)
-//! named this program in advance. It stays its own program rather than a flag on `ps`, which was
-//! the prior question here; that follows calef's one-program-one-thing preference (the `pidwait`
-//! ruling, 2026-09-26).
+//! Name: ratified 2026-10-06 (calef): the standard term for a ranked view. It stays its own program
+//! rather than a flag on `ps`, by calef's one-program-one-thing preference.
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68 (code-quality gates: one lint policy)'s ratchet

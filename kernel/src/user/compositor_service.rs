@@ -43,6 +43,7 @@ pub const ROLE_VICTIM: u64 = 1 << 5;
 pub const ROLE_SMALL_DAMAGE: u64 = 1 << 6;
 pub const ROLE_PROBE_READ: u64 = 1 << 7;
 pub const ROLE_LIE_DAMAGE: u64 = 1 << 8;
+pub const ROLE_FORGE_CTL: u64 = 1 << 9;
 
 /// The screen's frames, in the scanout's own geometry. The same run of frames rung one's driver
 /// scans out, because the screen *is* rung one's surface.

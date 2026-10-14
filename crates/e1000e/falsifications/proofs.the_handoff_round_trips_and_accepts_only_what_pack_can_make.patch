@@ -5,11 +5,16 @@ base the kernel could never have produced is accepted and the process aims its r
 
 Expected to fail: the harness's alignment assertion, on any odd base.
 
-diff --git a/crates/e1000e/src/lib.rs b/crates/e1000e/src/lib.rs
---- a/crates/e1000e/src/lib.rs
-+++ b/crates/e1000e/src/lib.rs
-@@ -372,3 +372,3 @@ impl Handoff {
+diff --git a/crates/e1000e/src/handoff.rs b/crates/e1000e/src/handoff.rs
+index 47d1b9456..53cd69798 100644
+--- a/crates/e1000e/src/handoff.rs
++++ b/crates/e1000e/src/handoff.rs
+@@ -34,7 +34,7 @@ impl Handoff {
+     /// The inverse of [`Handoff::pack`], refusing a role word without the tag, a base that is
+     /// zero or not page aligned, and a MAC address no station can own.
      pub fn unpack(arg0: u64, arg1: u64) -> Option<Handoff> {
 -        if arg0 & 0xffff != ROLE_TAG || arg1 == 0 || !arg1.is_multiple_of(PAGE) {
 +        if arg0 & 0xffff != ROLE_TAG || arg1 == 0 {
              return None;
+         }
+         let b = (arg0 >> 16).to_le_bytes();

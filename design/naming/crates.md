@@ -47,7 +47,7 @@ newcomer greps `crates/` before they ever open `components/src/`. A crate name a
 reads to understand the shape of the system.
 
 Shared modules came in for a reason of their own. `user/src/` (the directory milestone 175 (split
-`user/`) split into `components/src/` and `fixtures/src/`) used to hold 48 `[[bin]]` programs. It
+`user/`) split into `components/src/` and `fixtures/src/`) held 48 `[[bin]]` programs. It
 also held a handful of modules compiled into them with `#[path = "..."] mod ...`. Nothing in the
 naming distinguished the two, so a reader who tried to run `cseam` was misled by the directory.
 
@@ -121,8 +121,8 @@ paragraph used to protect four names that fail that test. The test is an asymmet
 knows the term recognises its expansion instantly, so spelling it out costs the expert nothing and
 saves the newcomer a bounce. The acronym only ever helps the reader who was already fine.
 
-*Corrected 2026-09-24: §154 (calef, 2026-09-18) superseded this wording. The test is now whether
-the expansion is a phrase people actually say. The main page states the current test; the
+*§154 (the acronym test), ruled by calef on 2026-09-18, replaces this wording: the test is whether the
+expansion is a phrase people actually say. The main page states the test; the
 2026-09-05 version is kept here as the account of how it was reached.*
 
 It was settled by the architect not knowing one. `mmu::bar_window` was defended on 2026-09-05. The

@@ -14,7 +14,7 @@ isolation wrong somewhere the others had not:
 - Run 4's `pkill` shim was right because somebody remembered, not because anything held it.
 
 That was rung four of CLAUDE.md's ladder holding up the milestone that exists to move things off
-rung four, as [the BUGS history](bugs-history.md) says from run 1 on. The main page lists what the
+rung four, as every run from run 1 on found. The main page lists what the
 harness holds; each item there is something a person would otherwise have to remember. Telling the
 stranger it is measured is run 4's finding acted on, not a softening. The `nife-dev` link is
 restored because a stranger's `script/test` takes it like any other lane, and unlike a lane its tree
@@ -101,5 +101,5 @@ constants, packages) and this one's are not. What ages a stranger run is how muc
 never reads a sentence. So the calendar does the whole job here, where for audits it is a backstop.
 Revisit it the first time a run comes back saying nothing had changed.
 
-Run 6 showed that the notification has no reader yet; see [the BUGS history](bugs-history.md). That
+Run 6 showed that the notification has no reader yet. That
 gap is milestone 495 (a cadence that says "due" reaches nobody).

@@ -9,7 +9,7 @@ this file's stem are provisional names; naming is calef's.*
 
 Everything above this line about "two addresses, six faults" reached the right verdict on depth
 and the wrong reason for it, and the wrong reason sent a lane hunting a stray store that does not
-exist. This section is what the faults actually were. It supersedes "The guard-page faults of
+exist. This section is what the faults actually were, and it wins over "The guard-page faults of
 2026-08-16, which were not overflows" wherever the two disagree; that section's *conclusion* (not
 depth, not a frame over the guard, not the class milestone 124 closed) stands.
 
@@ -65,7 +65,7 @@ One of those three is where this file went wrong, and the mistake is worth namin
 section reasoned that `ELR = 0xffff00004013a228` was "ordinary Rust roughly 550 KB further into
 `.text`" because two local builds place `exception_vectors` at `0xffff0000400b4000`. But its own
 2026-08-15 section had already established that CI's vector base was `0xffff000040130000`, half a
-megabyte away from the local one, for a build a day older. A local address was used to read a CI
+megabyte away from the local one, for a build a day older. A local address was taken as a CI
 address in a file that had already measured the two to be different. This file's own rule covers it:
 take the number from the run, not from here.
 

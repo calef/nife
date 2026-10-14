@@ -1,8 +1,8 @@
 # Running under virtualization on Apple Silicon
 
 nife is aarch64. So is the Mac it is developed on (an M-series chip). That coincidence,
-noted in CLAUDE.md from the start, means running the kernel under hardware virtualization on the
-Mac is a flag, not a port: Apple's Hypervisor.framework (HVF) can put the kernel on the real core
+noted in CLAUDE.md from the start, means running the kernel under hardware virtualization on the Mac
+is a flag, not a port. Apple's Hypervisor.framework (HVF) can put the kernel on the real core
 at guest EL1, using the virtualization the chip already has, instead of QEMU translating every
 instruction (TCG).
 
@@ -25,7 +25,7 @@ keep working; only the CPU execution and the interrupt controller change.
 **The GICv3 is the change, and it is why HVF runs here at all.** QEMU 11.1.1 refuses to pair HVF
 with a GICv2 (`HVF does not support GICv2 emulation`), and from 2026-09-02 that left this machine
 with no accelerated run until milestone 227 (a GICv3 driver, because GICv2 boots and silently loses
-every interrupt) was built on 2026-09-19. [interrupts.md](interrupts.md) has the driver, and
+every interrupt) was built on 2026-09-19. [interrupts.md](interrupts.md) has the driver.
 [hvf-leg.md](hvf-leg.md) has the test leg it brought back, and what a contributor sees if the
 machine still refuses (milestone 222 (the one command a person runs before pushing has a leg that
 fails instead of skipping)). Boot goes from about a second to instant, and **the whole stack
@@ -40,7 +40,7 @@ does not survive the move to real hardware (see below). TCG is also the right ho
 regardless: deterministic, and identical on any host.
 
 The exception is asked for by name: `cargo xtask test --hvf` (milestone 81 (an HVF leg: the test
-suite on the physical core)) runs the same suite under HVF, reads the verdict off the transcript
+suite on the physical core)) runs the same suite under HVF. It reads the verdict off the transcript
 instead of waiting for a semihosting exit that never comes, and kills QEMU itself.
 [hvf-leg.md](hvf-leg.md) has how, and what it costs.
 
@@ -105,7 +105,7 @@ which is what makes the pair worth keeping side by side:
 Semihosting is a property of the *emulator*; PSCI is a property of the *machine*. That is why the
 test harness's semihosting exit is stuck on TCG while the SMP bring-up works on both. It is also
 why this note's own suggestion above (a real `SYSTEM_OFF` shutdown) is the right fix for the
-harness: `psci_cpu_on` already exists in `arch/aarch64`, so a `SYSTEM_OFF` sibling is a few lines,
+harness. `psci_cpu_on` already exists in `arch/aarch64`, so a `SYSTEM_OFF` sibling is a few lines,
 and it would work under HVF where semihosting cannot.
 
 ## Why this matters beyond the Mac

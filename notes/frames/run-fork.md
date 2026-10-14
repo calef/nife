@@ -1,7 +1,6 @@
 # A PageFrame that names a run: how the fork was found, priced and decided
 
-An appendix to [notes/frames.md](../frames.md). It was a BUGS entry there until 2026-08-26, when it
-was resolved. The entries it sits beside are in [limitations.md](limitations.md). Everything below
+An appendix to [notes/frames.md](../frames.md), resolved on 2026-08-26. The entries it sits beside are in [limitations.md](limitations.md). Everything below
 the first section describes a state this tree no longer has, and is kept as the record.
 
 ## Resolved 2026-08-26
@@ -87,7 +86,7 @@ cost milestone 230 (`script/shell-check` red) four instrumented boots to learn a
 That is the difference between a fork priced against a guess and one priced against a measurement.
 See design/roadmap/0231-capability-slot-high-water-mark.md.
 
-It was 21 until 2026-09-05. Then milestone 111 (a shell that can endow a child with entropy) gave the progenitor a reason to hold the entropy
+Milestone 111 (a shell that can endow a child with entropy) gave the progenitor a reason to hold the entropy
 service's request endpoint for the whole boot rather than release it after the login block. The gate
 caught the move on the first run rather than at the next silent halt. Two of the three slots of
 headroom are left.

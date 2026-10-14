@@ -81,6 +81,25 @@ impl Entry {
 /// An entry's index is its client's window, fixed for the resolver's life (see the crate's BUGS),
 /// so the resolver maps a client's page at the same place every time and a re-grant does not move
 /// it.
+///
+/// # Examples
+///
+/// A spawner grants badge 7 the zone `nife.test`:
+///
+/// ```
+/// use domain_name_system::Name;
+/// use name_resolution_protocol::{Denied, Grants, grant_messages};
+///
+/// let mut grants = Grants::new();
+/// for (w0, w1) in grant_messages(7, b"nife.test").unwrap() {
+///     grants.control(w0, w1);
+/// }
+/// let asked = Name::from_dotted("packages.nife.test").unwrap();
+/// assert!(grants.check(7, &asked).is_ok());
+/// let elsewhere = Name::from_dotted("evilnife.test").unwrap();
+/// assert_eq!(grants.check(7, &elsewhere), Err(Denied::OutsideZone));
+/// assert_eq!(grants.check(8, &asked), Err(Denied::NoGrant));
+/// ```
 pub struct Grants {
     entries: [Entry; GRANTS_MAX],
 }

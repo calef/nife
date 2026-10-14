@@ -764,18 +764,28 @@ mod tests {
     #[test]
     fn one_byte_off_is_a_mismatch_at_either_end() {
         let (s, mut mem) = store3();
-        for secret in [&b"correct hors"[..], b"correct horsee", b"correct horsf"] {
+        // Each case is named by a label, never by its bytes: a failure message that printed the
+        // presented secret would be the leak this crate's redacting `Debug` exists to prevent.
+        for (case, secret) in [
+            ("truncated", &b"correct hors"[..]),
+            ("extra byte", b"correct horsee"),
+            ("last byte changed", b"correct horsf"),
+        ] {
             assert_eq!(
                 s.verify(b"alice", secret, &mut mem).unwrap(),
                 Verdict::Mismatch,
-                "secret {secret:?}",
+                "secret {case}",
             );
         }
-        for id in [&b"alic"[..], b"alices", b"alicx"] {
+        for (case, id) in [
+            ("truncated", &b"alic"[..]),
+            ("extra byte", b"alices"),
+            ("last byte changed", b"alicx"),
+        ] {
             assert_eq!(
                 s.verify(id, b"correct horse", &mut mem).unwrap(),
                 Verdict::Mismatch,
-                "identity {id:?}",
+                "identity {case}",
             );
         }
     }

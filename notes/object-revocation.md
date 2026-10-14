@@ -46,13 +46,14 @@ automatic on thread exit. The reason is the capability model itself: **a region 
 created it, not to the thread that happens to live in it.** The thread is an occupant; the owner holds
 the untyped cap; the occupant never does. Reclamation destroys memory, which is an authority, and in
 this kernel authority *is* a capability you hold. Letting an occupant's death free memory it holds no
-capability to would reintroduce the ambient authority the design removes. Three consequences: the owner is usually not done when the child exits (it may want to read a result or
-reuse the space); the bump allocator can only free a whole region, so auto-on-exit could not be
-per-object anyway; and an owner-driven loop (build, run, destroy, build again) is deterministic where
+capability to would reintroduce the ambient authority the design removes. Three consequences follow.
+The owner is usually not done when the child exits (it may want to read a result or reuse the
+space). The bump allocator can only free a whole region, so auto-on-exit could not be per-object
+anyway. And an owner-driven loop (build, run, destroy, build again) is deterministic where
 scattered reaper-time frees are not.
 
 Thread *exit* still does the automatic half: the reaper tears down the thread's live state (drops it
-from the run queue, frees its kmem kernel stack, runs its `Drop` chain), but not the *memory* of a
+from the run queue, frees its kmem kernel stack, runs its `Drop` chain). It does not free the *memory* of a
 region-backed object, which waits for the owner's destroy. The split was
 already latent in the code (the reaper recycled kmem TCB pages and explicitly left region-backed ones
 "for region destroy").
@@ -63,9 +64,9 @@ already latent in the code (the reaper recycled kmem TCB pages and explicitly le
 reaper calls while holding `SCHED`. So if `destroy` (or the object reaping it triggers) took
 `SCHED`, it would self-deadlock against the reaper. That single fact split the implementation:
 
-- `reap_region_objects` (takes `SCHED`) is the caller-driven step: it scans the thread and
-  endpoint registries for objects whose backing page lies in the region, refuses if any is still in
-  use (a Ready/Running/Blocked thread, or an endpoint with a blocked waiter), and otherwise tears the
+- `reap_region_objects` (takes `SCHED`) is the caller-driven step. It scans the thread and endpoint
+  registries for objects whose backing page lies in the region. It refuses if any is still in use (a
+  Ready/Running/Blocked thread, or an endpoint with a blocked waiter), and otherwise tears the
   dead ones down. `reap_aspaces_in_region` does the same for unbound address spaces under the aspace
   registry lock, a second lock domain, sequenced never nested.
 - `untyped::destroy` (never takes `SCHED`) is the memory half: it frees the region's frames and
@@ -83,9 +84,9 @@ carves pages off a parent untyped's unspent budget into a new child untyped (seL
 untyped-retype-into-untyped). The child is independently reclaimable.
 
 A naive version has a double-free trap: a child's pages are part of the parent's run, so if both the child and the parent were destroyed, the parent's
-`destroy` would free the child's pages a second time. The fix without a CDT: a parent counts its live
-children and refuses `destroy` while any remain (so it can never double-free a live child's pages),
-and a child returns its pages to the *parent*, not the allocator, when it is destroyed.
+`destroy` would free the child's pages a second time. The fix without a CDT: a parent counts its
+live children and refuses `destroy` while any remain (so it can never double-free a live child's
+pages). A child returns its pages to the *parent*, not the allocator, when it is destroyed.
 
 Return-of-pages is LIFO. A child destroyed at the top of the parent's watermark gives its pages
 straight back to the parent's budget (the watermark un-bumps), so they are re-splittable. A
@@ -119,8 +120,8 @@ reclaim always makes progress.
 The sweep runs *before* the live-thread refusal. A `Blocked` thread never reaches `schedule()`, so
 it never spends the kill the refusal arms. With the sweep after the refusal, a region holding a
 server parked in `RECEIVE` would be refused on every pass forever, its memory gone until the machine
-stopped, and `DESTROY`'s documented contract ("the owner retries and reclaims") would be false for
-the ordinary case: a server blocks.
+stopped, and `DESTROY`'s documented contract ("the owner retries and reclaims") would be false. The
+ordinary case is a server that blocks.
 
 The aarch64 test boot shows the cost. `userspace_init_brings_up_the_console_server` builds a console
 server out of the progenitor's 2048-frame budget, and that server blocks in its serve loop, so
@@ -149,7 +150,7 @@ Two things kept the hot path intact. First, `endpoint_of` became fallible: a sta
 `Endpoint` capability (its endpoint reclaimed out from under a holder) used to reach a name that always
 resolved, so a miss panicked; now it returns `None` and the caller aborts cleanly. Second, the abort
 is routed through a per-thread `ipc_aborted` flag rather than changing `ipc_receive`/`ipc_send`'s
-return types (66 callers): the IPC primitive sets the flag inside its existing lock and the syscall
+return types (66 callers). The IPC primitive sets the flag inside its existing lock and the syscall
 layer reads-and-clears it, so no extra lock lands on the fast path and the IPC benchmark does not move.
 Kernel-side IPC callers never set the flag (their endpoints are never revoked), so they are untouched.
 
@@ -261,7 +262,7 @@ timing exposed it.
 
 - **The regression gate proves the ownership half; the overlap half is loom's** (updated
   2026-08-18, milestone 135). The literal double free needs two `untyped::destroy` calls to overlap
-  between the refusal check and the slot removal, and no test in this tree can schedule that: the
+  between the refusal check and the slot removal, and no test in this tree can schedule that. The
   deterministic test asserts the property that makes the overlap harmless (a lent region is never
   freed by its borrower) rather than the overlap itself. The single-winner claim is the whole of
   `RegionTable::claim_for_destroy` in `crates/memory_regions`, which decides and removes the name in one

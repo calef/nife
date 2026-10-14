@@ -111,7 +111,7 @@ prose (`**Status: BUILT.**`, `**Gate: NONE.**`, `**Built:** 2026-09-14`), read b
 its block before the switch.
 
 Status vocabulary. The `status` key in a milestone's own file is the *one* canonical place its
-state lives, and it uses exactly these tokens. This exists because status used to be prose scattered through the detail
+state lives, and it uses exactly these tokens. This exists because status in prose scatters through the detail
 blocks, phrased a dozen different ways ("Built 2026-07-28", "DONE", "Phase 1 built", "Largely done"),
 which is unreadable at a glance and, worse, unparseable: a status sweep on 2026-07-30 mis-reported eight
 milestones. `script/roadmap` validates this column and fails on anything outside the vocabulary.
@@ -137,9 +137,8 @@ check, are in [roadmap/vocabulary-history.md](roadmap/vocabulary-history.md).
 
 ### Dependency fields
 
-The status says where we stand; it does not say what stops a lane from starting. That question
-was answered in conversation until 2026-08-04, then by a `Gate:` line, and since 2026-09-26 by five
-fields, which are §207's:
+The status says where we stand; it does not say what stops a lane from starting. Five fields
+answer that question, and they are §207's:
 
 | field | says |
 |---|---|
@@ -269,9 +268,8 @@ generated one way from it. The argument in full is in
 
 ## The index, and why it is gone
 
-The table was hand-maintained until 2026-09-14, generated from the blocks until 2026-09-21, and is
-now not built at all. Generating it fixed a merge problem: eight conflicts in one session, all in
-the table. Retiring it answered a readability one. Nothing was lost, because milestone 294 (the
+The roadmap has no index table. A generated one fixed a merge problem (eight conflicts in one
+session, all in the table), and having none answers a readability one. Nothing was lost, because milestone 294 (the
 index is generated, not hand-maintained) had already moved the two hand-written columns into the
 blocks. `script/roadmap --index` still assembles the five columns to stdout for the two scripts
 that read them. The record of the generation and its measurements is in

@@ -117,7 +117,7 @@ which no host build compiles either. The census artifacts put 132 of the crate's
 `device_tree_patch.rs`, `handoff.rs` and `image.rs`, and the corpus reads 93.6%. Both files are now
 excluded, and `script/lint` walks a gated target's whole module tree, so the next one fails the gate.
 
-## How it got here
+## The baseline and its triage
 
 The baseline was one local run on 2026-08-03, and it is the fixed point
 `.cargo/mutants-baseline.txt` records ([baseline-2026-08-03](mutation-testing/baseline-2026-08-03.md)).

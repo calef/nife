@@ -13,7 +13,7 @@ checked it: a lane moved facts into notes already over the cap and each note gre
 Name: provisional, minted by milestone 586's lane on 2026-09-24. A shared python module under
 `helpers/`, which `script/names` puts out of its own scope, so its provenance is this paragraph
 rather than a `Name:` block. calef names things; expect this to change. Refused `prose_budget`,
-which is §212's half alone and the name `script/metrics` already gives its graph column.
+which is §212's half alone.
 
 **What it measures, per document.** Four things, each against a ratified limit:
 
@@ -52,8 +52,8 @@ its files must be linked from its own `README.md`. An appendix nothing links to 
 of median and a gate built on it would fail documents that pass:
 
 - §212's words are whitespace-separated tokens over the whole file, code, comments, frontmatter and
-  tables included, less a generated table: `budget_words`, the one function `script/metrics`' graph
-  calls too (calef, 2026-10-13 UTC, "Gate counts every word").
+  tables included, less a generated table: `budget_words` (calef, 2026-10-13 UTC, "Gate counts every
+  word").
 - For §213's measures, fenced code, HTML comments and YAML frontmatter are not prose and are
   stripped before anything. Its 200-word floor and its bold density count the prose words left.
 - Sentences are split on block boundaries first (blank lines, headings, list-item starts, table
@@ -221,8 +221,8 @@ def _flat(text):
 
 # --- scope -------------------------------------------------------------------------------------
 #
-# The document scope is `script/metrics`' (milestone 581 (one metrics file per measure)'s prose-budget graph), moved here so the
-# gate and the graph cannot drift: every `.md` directly under these directories, plus
+# The document scope, which `script/metrics`' writing-standards chart reads from here so the gate
+# and the chart cannot drift: every `.md` directly under these directories, plus
 # `AGENTS.md`. Directly under, so `design/audit-reports/` and `design/journeys/` are out, as the
 # ratified figures had them.
 #
@@ -232,9 +232,8 @@ def _flat(text):
 # exceptions are gone with it: a proposal meets the limits when it is written, and promotion is a
 # rename that the ratchet already reads as no new prose (`promotion_masked`).
 #
-# Appendices are added to it, because §212 puts them "under the same cap" and the graph's own
-# docstring already said it intended to count them. Before this module the graph's scope could not
-# see a single appendix: `notes/benchmarks/` and `design/fatal-risks/` sit one directory down.
+# Appendices are added to it, because §212 puts them "under the same cap". Directly under alone
+# would miss every one: `notes/benchmarks/` and `design/fatal-risks/` sit one directory down.
 #
 # `notes/coes/` is named outright (2026-10-03, UTC): a correction-of-error record is a document in
 # its own right with no `notes/coes.md` parent, so the appendix rule never reached it and a 3,291-word
@@ -278,7 +277,7 @@ def appendix_parent(path, all_paths):
 
 
 def documents(all_paths):
-    """Every markdown path the prose rules apply to: the graph's scope plus appendices."""
+    """Every markdown path the prose rules apply to: the directories above plus appendices."""
     paths = set(all_paths)
     out = []
     for p in sorted(paths):
@@ -326,8 +325,8 @@ GENERATED_TABLES = {'## The decisions'} | {
 
 
 def without_generated_tables(text):
-    """`text` minus the rows of every table in GENERATED_TABLES, which `budget_words` counts through,
-    so the prose-budget graph and this gate agree on what a generated table is."""
+    """`text` minus the rows of every table in GENERATED_TABLES, which `budget_words` counts
+    through."""
     out, generated = [], False
     for line in text.split('\n'):
         if line.strip() in GENERATED_TABLES:
@@ -343,9 +342,8 @@ def without_generated_tables(text):
 def budget_words(text):
     """§212's word count: whitespace-separated tokens over the whole file, generated tables out.
 
-    The one function both halves of §212's enforcement call, this gate's `words` measure and
-    `script/metrics`' prose-budget graph, so the two cannot disagree about a document (calef,
-    2026-10-13 UTC, "Gate counts every word"; §212 records it). §213's sentence and bold measures
+    This gate's `words` measure (calef, 2026-10-13 UTC, "Gate counts every word"; §212 records
+    it). §213's sentence and bold measures
     read prose only (`prose_lines`).
 
     Name: provisional, minted 2026-10-13 (UTC) by lane/prose-gate-whole-file. calef names things.
@@ -1296,11 +1294,11 @@ def selftest():
          lambda m: (m['bold_lead'], m['bold_inline']) == (1, 0)),
     ]
     failed = [name for name, text, ok in cases if not ok(measure(text))]
-    # The gate's `words` is the graph's count of the file as written, whatever `measured` reads
+    # The gate's `words` is `budget_words`, the count of the file as written, whatever `measured` reads
     # through for §213: a roadmap block's field tokens and a mechanical rename both still count.
     block = "---\nstatus: BUILT\n---\n\n**Status: BUILT.** an architect's call.\n"
     if measured('design/roadmap/0001-x.md', block)['words'] != budget_words(block):
-        failed.append('the gate\'s word count differs from script/metrics\' (budget_words)')
+        failed.append('the gate\'s word count differs from budget_words')
     # A counted claim's number moving is not a touch; a word moving on the same line is.
     # The marker is assembled, so `script/lint`'s counted-claims reader does not take it for a claim.
     a = 'We carry **188 widgets** <!-' + '-count:widgets--> today.\nOther **bold** here.'

@@ -1,116 +1,24 @@
-//! **calendar: Unix seconds to a civil date, and back** (milestone 51, the wall-clock lane).
+//! **calendar: Unix seconds to a civil date, and back.** The part of wall-clock time with no
+//! authority in it: seconds to a year, month and day and back, and the few textual forms the system
+//! needs. No IO, syscalls or allocation, so it is host-tested and Kani-checked.
 //!
-//! The machine will soon know what time it is (an RTC, a clock service holding the offset, an NTP
-//! client that may only *propose*). This crate is the part of that with no authority in it at all:
-//! turning a count of seconds into a year, a month and a day, turning one back, and printing or
-//! reading the handful of textual forms the rest of the system needs. It performs no IO, makes no
-//! syscalls, allocates nothing, and knows nothing about the clock service. The roadmap's milestone
-//! 51 block puts the split this way: "Timezone and calendar conversion are pure computation and
-//! belong in a host-tested library crate, not in the service."
+//! The calendar is proleptic Gregorian, as every Unix-time library's is, so dates before October
+//! 1582 differ from a historian's, and year 0 exists and is a leap year. Negative timestamps are
+//! supported, because files predating the epoch are ordinary and a dead RTC reads as anything.
 //!
-//! That is DECISIONS §7 and §14 applied, the same shape as `grant_plan` and `filesystem_protocol`: the arithmetic is
-//! host-tested in milliseconds and machine-checked by Kani, and only the wiring needs QEMU.
+//! The range is **years 0000 through 9999** ([`MIN_TIMESTAMP`] to [`MAX_TIMESTAMP`]), RFC 3339's
+//! four-digit year, so no value can be computed that cannot be written; outside it is
+//! [`Error::OutOfRange`], never a wrapped date. Every timestamp is [`i64`], so 2038 is a non-event,
+//! and the tests prove it.
 //!
-//! # The calendar
+//! Leap seconds have no Unix timestamp, so [`DateTime::parse_rfc3339`] refuses `:60` with
+//! [`Error::LeapSecond`] rather than folding it. Time zones are a fixed [`UtcOffset`], which is
+//! what RFC 3339 carries; the IANA database is out of scope permanently, being a frequently
+//! updated data distribution with its own capability question, and would be a separate crate. No
+//! durations or month arithmetic (one month after January 31 has no single answer) and no
+//! `strftime` ([`Format`] says why).
 //!
-//! Proleptic Gregorian, which means the Gregorian rules (leap years divisible by 4, except centuries,
-//! except centuries divisible by 400) are projected backwards past 1582 rather than switching to
-//! Julian. Every date library that speaks Unix time does this, because a Unix timestamp is defined as
-//! a count of seconds and has no idea a calendar reform happened. Dates before October 1582 therefore
-//! do **not** match what a historian would write, and that is a deliberate, universal convention
-//! rather than a bug. Year 0 exists here and is a leap year; historians write 1 BC instead.
-//!
-//! Negative timestamps (before 1970) are fully supported. That was a choice, and the reason is that
-//! refusing them would push the check onto every caller: file timestamps predating the epoch are
-//! ordinary, and an RTC that has lost its battery reads as something arbitrary rather than something
-//! polite.
-//!
-//! # The range, and what a timestamp outside it does
-//!
-//! Supported: **years 0000 through 9999**, that is [`MIN_TIMESTAMP`] through [`MAX_TIMESTAMP`]. The
-//! bound comes from RFC 3339, whose `date-fullyear` is exactly four digits; a year outside it cannot
-//! be written in the interchange format this crate parses and prints, so admitting it would create
-//! values that can be computed but not spoken. A timestamp outside the range is [`Error::OutOfRange`]
-//! rather than a wrapped or saturated date: silent degradation is the failure §42 forbids elsewhere,
-//! and it is no more acceptable here.
-//!
-//! The year-2038 problem is a non-event on this system and the tests prove it rather than assuming
-//! it: every timestamp here is [`i64`], and 2038-01-19T03:14:08Z is one second after
-//! 03:14:07Z with nothing special about it.
-//!
-//! # Leap seconds do not exist here
-//!
-//! Unix time is defined so that every day is exactly 86,400 seconds. A leap second has no timestamp;
-//! it is smeared or repeated by whatever sets the clock. This crate therefore has no way to *name*
-//! one, and rather than pretend, [`DateTime::parse_rfc3339`] refuses a `:60` field with a distinct
-//! [`Error::LeapSecond`] instead of quietly folding it onto `:59` or `:00`. A caller who wants the
-//! clamp can apply it, having been told.
-//!
-//! # Time zones: a fixed offset is in scope, tzdata is not
-//!
-//! [`UtcOffset`] is a fixed number of minutes from UTC. That is enough to print a timestamp the way a
-//! local user expects, enough to parse one someone else printed, and it is what RFC 3339 actually
-//! carries on the wire.
-//!
-//! **The IANA time zone database is explicitly out of scope, and not just "not yet".** tzdata is a
-//! ~450 KB compiled ruleset that changes several times a year, which makes it a *data distribution*
-//! problem (who ships it, who updates it, which capability lets a program read it) rather than a
-//! calendar problem. It also cannot be answered correctly without it: `America/Los_Angeles` is not
-//! an offset, it is a function from instants to offsets with 100+ years of political history in it,
-//! and a hardcoded "-08:00" would be wrong for a third of the year. So: no zone names, no DST, no
-//! `TZ` variable. A program that needs local time is given an offset by whatever knows one. If the
-//! system ever wants real zones, it is a separate crate with a file behind it, not a growth of this
-//! one.
-//!
-//! # What it does not do
-//!
-//! No durations or calendar arithmetic ("one month later"), because the caller that wants them does
-//! not exist yet and month arithmetic has no single correct answer (what is one month after
-//! January 31?). No `strftime`. See [`Format`] for that argument.
-//!
-//! # Examples
-//!
-//! The two conversions are inverses, which is the property the whole crate exists to get right:
-//!
-//! ```
-//! use calendar::{Civil, Weekday};
-//!
-//! // The Unix epoch, as a civil date. 1970-01-01 was a Thursday.
-//! let epoch = Civil::from_unix(0).unwrap();
-//! assert_eq!((epoch.year(), epoch.month(), epoch.day()), (1970, 1, 1));
-//! assert_eq!(epoch.weekday(), Weekday::Thursday);
-//! assert_eq!(epoch.to_unix(), 0);
-//!
-//! // And round-tripping an arbitrary instant.
-//! let d = Civil::new(2026, 8, 2, 12, 30, 15).unwrap();
-//! assert_eq!(Civil::from_unix(d.to_unix()).unwrap(), d);
-//! ```
-//!
-//! Timestamps before the epoch are the case a truncating division gets wrong, so they are worth
-//! showing rather than asserting:
-//!
-//! ```
-//! use calendar::Civil;
-//!
-//! // One second before the epoch is the last second of 1969, not the first of 1970.
-//! let d = Civil::from_unix(-1).unwrap();
-//! assert_eq!((d.year(), d.month(), d.day()), (1969, 12, 31));
-//! assert_eq!((d.hour(), d.minute(), d.second()), (23, 59, 59));
-//! ```
-//!
-//! Every field is validated separately, so a caller can say what it did not like:
-//!
-//! ```
-//! use calendar::{Civil, Error};
-//!
-//! assert_eq!(Civil::new(2026, 13, 1, 0, 0, 0), Err(Error::BadMonth));
-//! // 2026 is not a leap year, so there is no 29 February.
-//! assert_eq!(Civil::new(2026, 2, 29, 0, 0, 0), Err(Error::BadDay));
-//! assert!(Civil::new(2024, 2, 29, 0, 0, 0).is_ok());
-//! ```
-//!
-//! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review). Plain, standard
-//! noun for exactly what the crate does; introduced 2026-07-30 for milestone 51's `date`.
+//! Name: ratified 2026-08-23 (calef): the plain noun for what the crate does.
 
 #![no_std]
 
@@ -338,6 +246,17 @@ pub struct Civil {
 impl Civil {
     /// Build a date, checking every field. Returns the *specific* [`Error`] for the field that was
     /// wrong, so a `date -s` verb can say what it did not like.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use calendar::{Civil, Error};
+    ///
+    /// assert_eq!(Civil::new(2026, 13, 1, 0, 0, 0), Err(Error::BadMonth));
+    /// // 2026 is not a leap year, so there is no 29 February.
+    /// assert_eq!(Civil::new(2026, 2, 29, 0, 0, 0), Err(Error::BadDay));
+    /// assert!(Civil::new(2024, 2, 29, 0, 0, 0).is_ok());
+    /// ```
     pub const fn new(
         year: i32,
         month: u8,
@@ -375,6 +294,35 @@ impl Civil {
     }
 
     /// The UTC civil date of a Unix timestamp.
+    ///
+    /// # Examples
+    ///
+    /// The two conversions are inverses:
+    ///
+    /// ```
+    /// use calendar::{Civil, Weekday};
+    ///
+    /// // The Unix epoch, as a civil date. 1970-01-01 was a Thursday.
+    /// let epoch = Civil::from_unix(0).unwrap();
+    /// assert_eq!((epoch.year(), epoch.month(), epoch.day()), (1970, 1, 1));
+    /// assert_eq!(epoch.weekday(), Weekday::Thursday);
+    /// assert_eq!(epoch.to_unix(), 0);
+    ///
+    /// // And round-tripping an arbitrary instant.
+    /// let d = Civil::new(2026, 8, 2, 12, 30, 15).unwrap();
+    /// assert_eq!(Civil::from_unix(d.to_unix()).unwrap(), d);
+    /// ```
+    ///
+    /// One second before the epoch is the last second of 1969, which truncating division gets wrong:
+    ///
+    /// ```
+    /// use calendar::Civil;
+    ///
+    /// // One second before the epoch is the last second of 1969, not the first of 1970.
+    /// let d = Civil::from_unix(-1).unwrap();
+    /// assert_eq!((d.year(), d.month(), d.day()), (1969, 12, 31));
+    /// assert_eq!((d.hour(), d.minute(), d.second()), (23, 59, 59));
+    /// ```
     pub const fn from_unix(secs: i64) -> Result<Civil, Error> {
         if secs < MIN_TIMESTAMP || secs > MAX_TIMESTAMP {
             return Err(Error::OutOfRange);

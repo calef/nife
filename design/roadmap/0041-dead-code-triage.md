@@ -7,7 +7,16 @@ built: 2026-07-30
 
 In brief. Triage all 79 `allow(dead_code)`/`allow(unused)` suppressions in the tree, delete what is dead, and replace the module-wide ones with per-item allows that carry a reason. Three distinct classes, only one of which is tidying. (1) The gate is blindfolded over 5,831 lines: six files carry module-wide `#![allow(dead_code)]`, including `sched.rs` (3,166 lines) and `arch/aarch64/mmu.rs` (1,275), so `-D warnings` cannot see dead code in the two largest and most security-relevant files in the kernel. (2) Suppressions whose own comments name milestones that have since shipped. `cpu.rs`'s "by the scheduler in step 3" and `smp.rs`'s "by spawn's placement policy" both landed as §28 (SMP placement). `cap.rs` says "in 9b", and `interrupts.rs` says "milestone 5's first non-test caller", for milestone 5 (the GIC and the timer). Two in `mmu.rs` point at the in-kernel console of milestone 8 (the console driver leaves the kernel), which §21 (the terminal is a userspace component) moved to userspace. Each is either now-used (delete the attribute) or genuinely dead (delete the code); either way the comment is false. (3) **Obsolete demo payloads** in `user.rs`, which say so themselves ("7c handed the demo over to the real ELF"). Ends with a lint gate refusing new module-wide suppressions, the same shape as the conflict-marker and roadmap checks
 
-Why it matters. **a `-D warnings` gate with holes in a third of the kernel is a gate that reports success it has not earned**, which is the same class of problem as the four-times-corrected §27 record and the contradicted `fs_read` comment: the tooling said fine while nobody was looking. It also protects a real asset, since this codebase's unusually heavy commenting is only valuable while the comments are true, and a suppression citing a milestone that shipped weeks ago actively misleads. **Explicitly NOT in scope:** hardware register definitions (`gic.rs`, `timer.rs`, `semihosting.rs`, `mmu.rs` field encodings) where a complete definition is the point, and deliberate diagnostics (`VERIFY_WRITES`, `second_mount`) that encode measurements which killed hypotheses. Those keep their allows and gain a stated reason, which is the difference between a suppression and a decision
+Why it matters. **a `-D warnings` gate with holes in a third of the kernel is a gate that reports
+success it has not earned**. That is the same class of problem as the four-times-corrected §27 (the
+filesystem service)
+record and the contradicted `fs_read` comment: the tooling said fine while nobody was looking. It
+also protects a real asset, since this codebase's unusually heavy commenting is only valuable while
+the comments are true, and a suppression citing a milestone that shipped weeks ago actively
+misleads. **Explicitly NOT in scope:** hardware register definitions (`gic.rs`, `timer.rs`,
+`semihosting.rs`, `mmu.rs` field encodings) where a complete definition is the point, and deliberate
+diagnostics (`VERIFY_WRITES`, `second_mount`) that encode measurements which killed hypotheses.
+Those keep their allows and gain a stated reason, which is the difference between a suppression and a decision
 
 ## Built 2026-07-30. The rule is DECISIONS §38, and the ratchet is in `script/lint`.
 
@@ -105,7 +114,7 @@ because 7c handed the demo over to the real ELF").
 
 Triage all 79 suppressions; delete what is dead; convert the module-wide ones into per-item allows that
 each carry a reason; and finish with a `script/lint` check that refuses a new module-wide
-`#![allow(dead_code)]`, the same shape as the conflict-marker and roadmap-status gates. The point of
+`#![allow(dead_code)]`. That is the same shape as the conflict-marker and roadmap-status gates. The point of
 that last step is that this is a ratchet: without it the file-level suppression comes back the first
 time someone finds it inconvenient.
 
@@ -114,8 +123,8 @@ time someone finds it inconvenient.
 - Hardware register definitions (`gic.rs`, `timer.rs`, `semihosting.rs`, and `mmu.rs`'s field
   encodings), where defining the complete register set is the point and using only part of it is normal.
 - Deliberate diagnostics that encode measurements which killed hypotheses: `VERIFY_WRITES` in the FS
-  server (off by default, and its comment explains that turning it on overflows the server's stack from
-  RedoxFS's deep recursion) and `second_mount`, whose 30-cycle flat-heap measurement is what disproved
+  server (off by default; turning it on overflows the server's stack from RedoxFS's deep recursion).
+  And `second_mount`, whose 30-cycle flat-heap measurement is what disproved
   the accumulated-mount-state theory.
 
 Both keep their suppressions and gain a stated reason. That is the distinction the milestone is really
@@ -130,7 +139,7 @@ it when no other lane is open, or accept the rebases. Effort: 1 lane estimated, 
 - **Recorded.** `notes/quotas.md`. The finding this block marked worth a look: deleting
   `shell_service` left `sched::spawn_with_quota` with no caller, so the kernel's spawn quota has
   been unenforced since §28. The note now says so in its own "Where this stands today" section, and
-  `notes/security.md` was corrected in the same breath; the mechanism is kept with the disposition
+  `notes/security.md` was corrected in the same breath. The mechanism is kept with the disposition
   on the function, because deleting a documented safety mechanism is a design decision and not
   dead-code triage. The bound itself did not go away, it moved into the untyped budget a process
   spawns out of.

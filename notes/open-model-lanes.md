@@ -6,7 +6,7 @@ Claude tier.
 
 The decisions already existed and nobody had built them. §202 (mechanical work goes to a cheaper
 model) routes the work; §203 (capacity is rented rather than bought) rules that the capacity is
-rented, prices the mechanical load at roughly 2 million tokens a day, and says the binding
+rented. It prices the mechanical load at roughly 2 million tokens a day, and says the binding
 constraint out loud: *"calef's limit is a rate limit rather than a bill"*. On 2026-09-21, twenty
 lanes spent about 5 million tokens and 6% of them ran anywhere other than the expensive
 model. This note is the missing mechanism, not a new ruling.
@@ -136,8 +136,8 @@ the gate. It refuses a round whose commits touch the gate machinery (`script/`, 
 `.github/`, `.cargo/`, the lint and format configs, `design/prose-baseline.tsv`) unless the brief
 names the file on a `Gate target:` line. It then runs the gates in a throwaway worktree at the
 lane's committed HEAD, so an uncommitted edit cannot reach the verdict either. Of the two options,
-refusing the edit and judging from a clean copy, this does both, because each misses what the other
-catches: a clean copy of HEAD still carries a committed edit, and a refusal of committed edits
+refusing the edit and judging from a clean copy, this does both. Each misses what the other catches:
+a clean copy of HEAD still carries a committed edit, and a refusal of committed edits
 cannot see an uncommitted one.
 
 **So the routing rule is about the oracle, not about difficulty.** Work with a crisp gate goes to
@@ -158,8 +158,8 @@ hand-merging them, which is the trap that nearly shipped a wrong benchmark floor
 is clever: three named resolutions, and an instruction to abort on anything else. That is lookup
 rather than judgment, and lookup is what a cheap model is good at.
 
-So the briefs live in `briefs/` as checked-in assets rather than being retyped from memory, because
-a brief written fresh each time loses a clause a month and the clause it loses is the one that stops
+So the briefs live in `briefs/` as checked-in assets rather than being retyped from memory. A brief
+written fresh each time loses a clause a month, and the clause it loses is the one that stops
 a wrong conflict resolution shipping as housekeeping.
 
 **The 18% figure above is a guess from one example.** [notes/local-inference.md](local-inference.md)

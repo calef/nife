@@ -621,39 +621,29 @@ impl OptionalPrograms {
                  std-exerciser` builds it; `script/test` runs that)"
             );
         }
-        // **`rg` is on the disk only if somebody built it** (milestone 595 (the shell runs a `std`
-        // program)): `helpers/build-ripgrep.sh` fetches it from crates.io. Since lane
-        // milestone/121-rg-ci (2026-10-08 UTC) every `swish-check` row of `script/ci-build` runs that
-        // first, so in CI a missing `rg` means the build broke and its lines are refused rather than
-        // skipped, exactly as `std_exerciser`'s are. Before that CI skipped them in silence, and fatal
-        // risk 1's claim was re-checked by nothing. A local run without the build still skips and
-        // says so. The crates.io fetch in a gate is a DECISIONS §46 (thin primitives or whole
-        // subsystems) question, asked on that lane's pull request.
-        let rg_built = crate::farm::ripgrep_elf(&format!("{arch}-unknown-nife")).exists();
-        if fresh && !rg_built {
+        // **`rg` and its package come from basalt** (milestone 810 (`ripgrep` is packaged in basalt
+        // and installed with `jig`)): `cargo xtask basalt-fetch` fetches basalt's published package
+        // by its pinned digest, writes the repository the test index host serves, and takes the
+        // package's `rg` for the lines that run it by path. Every `swish-check` row of
+        // `script/ci-build` runs it first, so in CI a missing one means the fetch broke and its
+        // lines are refused rather than skipped, exactly as `std_exerciser`'s are: fatal risk 1's
+        // claim rests on them. A local run without a network skips them and says so.
+        let rg_built = crate::basalt::ripgrep_elf(&format!("{arch}-unknown-nife")).exists();
+        let basalt = crate::basalt::repository_index().exists();
+        if fresh && !(rg_built && basalt) {
             if std::env::var_os("CI").is_some() {
                 eprintln!(
-                    "swish-check ({arch}): no `rg` was built for this architecture, and in CI \
-                     `helpers/build-ripgrep.sh` runs first; refusing to skip its lines"
+                    "swish-check ({arch}): no `rg` or no repository from basalt for this \
+                     architecture, and in CI `cargo xtask basalt-fetch` runs first; refusing to \
+                     skip their lines"
                 );
                 return None;
             }
             eprintln!(
-                "swish-check ({arch}): skipping `{}`'s lines: it is not built here \
-                 (`helpers/build-ripgrep.sh` builds it, as CI does)",
+                "swish-check ({arch}): skipping `{}`'s lines and the lines that install from \
+                 basalt: nothing was fetched from basalt here (`cargo xtask basalt-fetch` fetches \
+                 it, as CI does)",
                 crate::disk::INSTALLED_RIPGREP
-            );
-        }
-        // **`ripgrep` from basalt** (milestone 810 (`ripgrep` is packaged in basalt and installed with
-        // `jig`)): its lines run only when the gate is handed a repository basalt built
-        // (`disk::BASALT_REPOSITORY`), which basalt's own gate does. nife's CI builds no basalt
-        // package, so here they are skipped, and said so.
-        let basalt = std::env::var_os(crate::disk::BASALT_REPOSITORY).is_some();
-        if fresh && !basalt {
-            eprintln!(
-                "swish-check ({arch}): skipping the `jig install ripgrep` lines: no repository from \
-                 basalt was named (set {}; basalt's gate does)",
-                crate::disk::BASALT_REPOSITORY
             );
         }
         Some(Self {

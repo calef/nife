@@ -26,49 +26,11 @@
 //!   already turns into terminal bytes for the virtio keyboard. One layout table in the tree, two
 //!   devices feeding it.
 //!
-//! # Examples
-//!
-//! A boot keyboard's configuration, as QEMU's `usb-kbd` reports it (trimmed to what matters): a
-//! configuration header, one HID interface (class 3, subclass 1 "boot", protocol 1 "keyboard"),
-//! its HID descriptor, and one interrupt IN endpoint.
-//!
-//! ```
-//! use usb::descriptor::find_boot_keyboard;
-//!
-//! let config = [
-//!     9, 2, 34, 0, 1, 1, 0, 0xa0, 50, // configuration 1, 34 bytes, one interface
-//!     9, 4, 0, 0, 1, 3, 1, 1, 0, // interface 0: HID, boot, keyboard, one endpoint
-//!     9, 0x21, 0x11, 1, 0, 1, 0x22, 63, 0, // the HID descriptor, which the walk skips
-//!     7, 5, 0x81, 3, 8, 0, 10, // endpoint 1 IN, interrupt, 8 bytes, every 10 frames
-//! ];
-//! let keyboard = find_boot_keyboard(&config).unwrap();
-//! assert_eq!(keyboard.configuration, 1);
-//! assert_eq!(keyboard.interface, 0);
-//! assert_eq!(keyboard.endpoint, 0x81);
-//! assert_eq!(keyboard.max_packet, 8);
-//! assert_eq!(keyboard.interval, 10);
-//! ```
-//!
-//! And two reports a keystroke apart. Shift and `h` arrive together in one report, so the shift
-//! press is delivered first: the order is what makes it an `H`.
-//!
-//! ```
-//! use usb::boot_keyboard::{BootReport, changes};
-//!
-//! let before = BootReport::parse(&[0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
-//! let after = BootReport::parse(&[0x02, 0, 0x0b, 0, 0, 0, 0, 0]).unwrap(); // left shift, usage 0x0b (h)
-//! let mut seen = Vec::new();
-//! changes(&before, &after, &mut |code, pressed| seen.push((code, pressed)));
-//! assert_eq!(seen, [(42, true), (35, true)]); // KEY_LEFTSHIFT, then KEY_H
-//! ```
-//!
 //! # BUGS
 //!
 //! - **Boot protocol only.** A keyboard is found by its interface triple (3, 1, 1) and read in the
 //!   fixed eight-byte layout; nothing here parses a HID *report descriptor*. A keyboard that
-//!   declares no boot interface is refused with [`Refusal::NoBootKeyboard`], which is the honest
-//!   answer and is milestone 242's own BUGS entry ("boot protocol may not survive contact with real
-//!   keyboards").
+//!   declares no boot interface is refused with [`Refusal::NoBootKeyboard`].
 //! - **The first boot keyboard interface wins.** A device with two (rare) gets its first; a second
 //!   keyboard on another port is not looked for by this crate, and the driver serves one.
 //! - **No key repeat.** A boot keyboard reports state, not events, and does not repeat. Typematic
@@ -76,9 +38,10 @@
 //! - **Caps Lock, Num Lock and the LEDs are not handled**: the lock keys are reported as key codes
 //!   and `video_terminal::keymap` maps none of them, so they do nothing.
 //!
-//! Name: provisional. Introduced 2026-10-04 for milestone 242 (USB host and HID). `usb` and not
-//! `universal_serial_bus` by DECISIONS §154 (the acronym test is whether the phrase is spoken), applied the way `pci` was: nobody says
-//! the expansion. An architect's call; expect it to be asked.
+
+//! Name: provisional, for milestone 242 (USB host and HID). `usb` and not `universal_serial_bus`
+//! by DECISIONS §154 (the acronym test is whether the phrase is spoken), as `pci` was: nobody says
+//! the expansion.
 
 pub mod boot_keyboard;
 pub mod descriptor;

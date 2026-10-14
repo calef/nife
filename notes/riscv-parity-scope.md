@@ -22,14 +22,14 @@ Effort is session-sized: S = part of a session, M = one to two sessions, L = sev
 ### A. SMP (multi-hart): DONE.
 
 RISC-V runs on all four harts, and the SMP test suite passes (riscv64 55, aarch64 116). Built in
-four steps: A1 the per-hart trap state (`sscratch` points at a per-hart `TrapStash` holding the
-kernel `tp` and stack, replacing the single global that could not scale past one hart); A2
+four steps. A1 is the per-hart trap state (`sscratch` points at a per-hart `TrapStash` holding the
+kernel `tp` and stack, replacing the single global that could not scale past one hart). A2 is
 secondary bring-up via SBI HSM `sbi_hart_start` into a `secondary_boot` that replays the higher-half
-transition, made robust to QEMU's non-deterministic boot hart by keying everything to
-`arch::boot_cpu_id()` (logical id == hart id); A3 IPIs via the SBI IPI extension (a supervisor
-software interrupt, `scause` = 1, draining the inbox), lighting up `send_reschedule`; A4 the SMP
-tests un-gated and generalized off "boot core is 0". The subtle one was TLB shootdown: RISC-V has
-no hardware TLB broadcast, so `flush_tlb` follows its local `sfence.vma` with an SBI RFENCE to the
+transition. It is made robust to QEMU's non-deterministic boot hart by keying everything to
+`arch::boot_cpu_id()` (logical id == hart id). A3 is IPIs via the SBI IPI extension (a supervisor
+software interrupt, `scause` = 1, draining the inbox), lighting up `send_reschedule`. A4 is the SMP
+tests un-gated and generalized off "boot core is 0". The subtle one was TLB shootdown: RISC-V has no
+hardware TLB broadcast. So `flush_tlb` follows its local `sfence.vma` with an SBI RFENCE to the
 other online harts, or a thread migrated to a core faults on a stale translation of its own stack.
 
 ### B. In-kernel test suite on RISC-V: DONE.
@@ -37,22 +37,22 @@ other online harts, or a thread migrated to a core faults on a stale translation
 RISC-V now boots the kernel test harness and passes 51 portable tests (`cargo xtask test` runs
 both arches: aarch64 116, riscv64 51). The gap is the aarch64-specific tests, gated off riscv: the
 userspace-exec suite in `system_tests/src/user/tests.rs` (37 tests driving hand-written aarch64 programs through `exec`), the
-SMP tests (workstream A), and the two SGI interrupt tests. Three real things surfaced: the
-`sifive_test` finisher (`0x10_0000`) had to be mapped device-typed and reached through the direct map
-(the boot tour halts via `wfi` and never exercised `semihosting::exit` under paging); the timer
-watchdog needed wiring into riscv `timer::tick`; and a genuine race: a timer tick landing inside
+SMP tests (workstream A), and the two SGI interrupt tests. Three real things surfaced. The
+`sifive_test` finisher (`0x10_0000`) had to be mapped device-typed and reached through the direct
+map (the boot tour halts via `wfi` and never exercised `semihosting::exit` under paging). The timer
+watchdog needed wiring into riscv `timer::tick`. And a genuine race: a timer tick landing inside
 `sched::init` ran the deferred `schedule()` before the idle thread was registered ("nothing runnable
-and no idle thread"), fixed by masking interrupts across init, which aarch64 gets for free by bringing
+and no idle thread"). It was fixed by masking interrupts across init, which aarch64 gets for free by bringing
 the scheduler up before enabling interrupts.
 
 Follow-on (§19 (architectural parity)): the suite was at parity on the portable tests and not on the arch ones.
 `arch/aarch64` carried 21 unit tests and `arch/riscv64` carried zero, across the same three files, so
 the properties that differ between the ISAs were asserted on one side only. The twins are now
-written, and they found three defects nothing else would have: the timer delivering 80 Hz against a
+written, and they found three defects nothing else would have. The timer delivered 80 Hz against a
 configured 100 (the relative-re-arm drift bug aarch64 shipped and fixed back at milestone 5, arrived
-at here by a different route), `missed_ticks` a stub returning 0, and a single global tick counter
-for a per-hart timer. The lesson is B's own lesson repeated one level down: a parity claim is only as
-wide as the suite that checks it, and "both ISAs run the same suite" was true of the portable half
+at here by a different route). Then `missed_ticks` a stub returning 0, and a single global tick counter
+for a per-hart timer. The lesson is B's own lesson repeated one level down. A parity claim is only
+as wide as the suite that checks it, and "both ISAs run the same suite" was true of the portable half
 and not of the arch half. See notes/riscv-arch-tests.md, which also sizes the remaining
 `kernel::user::tests` port.
 
@@ -111,10 +111,11 @@ aarch64 and riscv64 are at feature parity, DMA confinement included.
 ### D. Full integrated boot + interactive shell: DONE.
 
 The interactive shell runs on RISC-V, over the serial: `echo` echoes, `run 9` spawns a worker that
-computes 81. A new portable `system_initializer` (the counterpart of hello's aarch64-tied `init_boot`) is loaded
-as the boot process and, from an untyped budget plus the NS16550 device cap and the UART Irq cap,
-builds the console server, input driver, and shell out of its own budget and wires them; the kernel
-parks. The three shell programs became arch-neutral -- the UART register layout is gated per arch
+computes 81. A new portable `system_initializer` (the counterpart of hello's aarch64-tied
+`init_boot`) is loaded as the boot process. From an untyped budget plus the NS16550 device cap and
+the UART Irq cap, it builds the console server, input driver, and shell out of its own budget and
+wires them. The kernel parks. The three shell programs became arch-neutral -- the UART register
+layout is gated per arch
 (PL011 vs NS16550, including that the NS16550 clears its RX interrupt on read, with no ICR). The
 wiring is arch-neutral: `system_initializer` maps whatever device cap the kernel grants and delegates whatever
 Irq cap it is handed, so the same binary would drive a PL011. `--features shell` selects it (the
@@ -126,9 +127,11 @@ shell still works.
 
 All eleven primitives plus CoreMark run on RISC-V, single-hart and SMP. `bench.rs` moved its timing
 to `arch::timer::now`/`frequency` (rdtime on riscv), the boot reaches `bench::run` under `--features
-bench`, and `initial-ramdisk-riscv` packs `os_primitives_benchmarker` + `coremark`. Two fixes fell out of `spawn_el0` (the fast
-userspace spawn+reap loop): os_primitives_benchmarker's 9-instruction `CHILD_STUB` was aarch64 machine code (added the
-riscv `li`/`ecall` version), and the `MAP_CODE` syscall never synced the icache on the userspace
+bench`. `initial-ramdisk-riscv` packs `os_primitives_benchmarker` + `coremark`. Two fixes fell out
+of `spawn_el0` (the fast
+userspace spawn+reap loop): os_primitives_benchmarker's 9-instruction `CHILD_STUB` was aarch64
+machine code (added the riscv `li`/`ecall` version). And the `MAP_CODE` syscall never synced the
+icache on the userspace
 map-executable path (a correctness fix for both arches, latent until a spawn loop stressed it).
 
 And the numbers are now comparable. `cargo xtask bench --riscv` runs the same suite on riscv under
@@ -144,8 +147,8 @@ the two ISAs (same workload), which is the sanity check that the comparison is s
 Parity was declared with a hole nothing had tested: the riscv trap dispatcher could not kill a
 faulting user thread. A U-mode `ebreak` was counted and stepped over, so a userspace panic
 handler (every one of which ends in `ebreak`, expecting to die) resumed into its own spin loop and
-lived forever; any other U-mode fault fell into an arm that panicked the whole kernel, behind a
-comment claiming no user thread could run on RISC-V yet, which had been false since milestone 20.
+lived forever. Any other U-mode fault fell into an arm that panicked the whole kernel. A comment
+claimed no user thread could run on RISC-V yet, which had been false since milestone 20 (a portable HAL, proven on a second architecture).
 DECISIONS §10's "a driver bug is a crashed process, not a dead machine" was an aarch64-only
 property, and the parity record above did not say so.
 

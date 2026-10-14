@@ -1,8 +1,8 @@
 # Per-process resource quotas
 
-The security audit's one remaining userspace-reachable attack was **resource exhaustion**: a
-process that spawns children without limit, or spawns children that block forever, makes the
-kernel allocate a `Thread`, a 16 KiB kernel stack, and an address space per child, with no bound.
+The security audit's one remaining userspace-reachable attack was **resource exhaustion**. A process
+that spawns children without limit, or spawns children that block forever, makes the kernel allocate
+a `Thread`, a 16 KiB kernel stack, and an address space per child, with no bound.
 Untyped memory (milestone 11) bounds a process's *pages*, but not the kernel objects behind a
 spawn. This is the bound for those.
 

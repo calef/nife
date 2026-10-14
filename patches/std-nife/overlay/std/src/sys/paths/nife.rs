@@ -1,90 +1,49 @@
 //! `std::env`'s *path* half on nife (milestone 64): the four functions that name places, and the
 //! two that take a list of them apart.
 //!
-//! # Why this file exists, and it is the same reason `sys/env/nife.rs` exists
-//!
-//! nife had no `paths` backend at all, so it fell through to `sys/paths/unsupported.rs`, and two of
-//! that file's functions are not refusals:
-//!
-//! ```text
-//! pub fn temp_dir() -> PathBuf   { panic!("no filesystem on this platform") }
-//! pub fn split_paths(..)         { panic!("unsupported") }
-//! ```
-//!
-//! So **`std::env::temp_dir()` aborted the process**, and it compiled perfectly. That is exactly the
-//! shape milestone 64's second pass found in `env::vars()`, one module over, and it is the shape a
-//! gap list built from `Unsupported` counts cannot see: neither call ever returns an error, so
-//! neither appears as a refusal anywhere.
-//!
-//! It is not academic. `tempfile::NamedTempFile::new()` calls `tempfile::env::temp_dir()`, which
-//! delegates straight to `std::env::temp_dir`, so every `tempfile` operation on nife died here
-//! **before** reaching the `other.rs` arm that returns "operation not supported". The measurement
-//! note said tempfile "builds, links, and returns an error"; it built, linked, and aborted. Eleven
-//! of the fifty probe closures reach `env::temp_dir` and eight reach `split_paths`.
+//! Without this file nife falls through to `sys/paths/unsupported.rs`, whose `temp_dir` and
+//! `split_paths` panic rather than refuse, so `std::env::temp_dir()` (and every `tempfile`
+//! operation through it) aborted the process while compiling perfectly. See notes/std/caveats.md.
 //!
 //! # What is answered, what is refused, and the line between them
 //!
-//! **Refused, honestly:** `chdir` and `current_exe` return [`io::ErrorKind::Unsupported`], and
-//! `home_dir` is `None`. Each of those *can* say no in its own signature, and each of them needs
-//! something this process has not been given.
+//! **Refused:** `chdir` and `current_exe` return [`io::ErrorKind::Unsupported`], and `home_dir` is
+//! `None`. Each can say no in its own signature, and each needs something this process was not
+//! given.
 //!
-//! **`getcwd` stopped being one of them on 2026-08-18** (milestone 47's namespace half). It answers
-//! `/`, and that is not a new fiction: `sys/fs/nife.rs` accepts a leading `/` as the root of *this
-//! process's* namespace, which is the directory it was granted, so the path `getcwd` returns is one
-//! the filesystem half resolves. A process holding no directory capability still gets
-//! `Unsupported`, from the same `is_reachable()` probe every `std::fs` entry point uses: naming a
-//! place you hold no capability for would be this file's own recurring failure, an answer where a
-//! refusal was the truth.
+//! **`getcwd` answers `/`**, the root of this process's namespace, which is the directory it was
+//! granted (`sys/fs/nife.rs` accepts a leading `/` there). A process holding no directory
+//! capability gets `Unsupported`, from the same `is_reachable()` probe every `std::fs` entry point
+//! uses.
 //!
 //! **Answered, because the signature leaves no way to refuse:** `temp_dir` returns a `PathBuf` and
-//! `split_paths` returns an iterator. There is no error channel in either, so "this platform has
-//! none" is not expressible and something has to be named. The rule this file follows, and it is
-//! the one milestone 64 keeps rediscovering: **fix the ones that abort, leave the ones that
+//! `split_paths` returns an iterator. The rule: **fix the ones that abort, leave the ones that
 //! refuse.**
 //!
-//! # `temp_dir`, and why it was not the namespace fork in disguise
+
+//! # `temp_dir`
 //!
-//! `TMPDIR` first, exactly as `sys/paths/unix.rs` does, then `/` as the fallback.
-//!
-//! The variable comes first for a reason beyond parity: it is the seam milestone 47's namespace
-//! arrives through. Nothing seeds a nife process's environment today (see `sys/env/nife.rs`), so
-//! the lookup misses; the day a program can be *given* a variable, `TMPDIR` steers this with no
-//! change to this file.
-//!
-//! The fallback is `/`, which is where `getcwd` says you are, and the two are the same place:
-//! `sys/fs/nife.rs`'s `one_name` decided that *"./motd is motd: the current directory IS the
-//! granted one"*, and the namespace half added that `/motd` is `motd` too. A process holds one
-//! directory capability and that is the whole of its authority over files, so the only place a
-//! temporary file can go is the place every other file goes. It was `.` until 2026-08-18, which
-//! named the same directory in the only spelling that then existed.
-//!
-//! `/tmp` was the other candidate and it still loses, though the reason has narrowed. It no longer
-//! *refuses*: since the namespace half, `/tmp/x` is `tmp/x` under the granted directory. That is
-//! the problem. It names a subdirectory nothing creates, so every temporary file fails with
-//! `NotFound` instead of landing somewhere, and it puts a Unix fiction in a string a program may
-//! print. `/` names the one directory that is certainly there.
+//! `TMPDIR` first, exactly as `sys/paths/unix.rs` does, so a program given the variable is steered
+//! with no change here; then `/`. `/` is where `getcwd` says you are: a process holds one directory
+//! capability, so the only place a temporary file can go is where every other file goes. `/tmp`
+//! loses because it names a subdirectory nothing creates (every temporary file would fail with
+//! `NotFound`) and puts a Unix fiction in a string a program may print.
 //!
 //! # BUGS
 //!
-//! - **A temporary file lands in the program's granted directory, beside its real files.** There is
-//!   no separate scratch space, because there is no second directory to grant one from. A caller
-//!   that needs isolation should be given a directory of its own and use the `_in` variants
-//!   (`tempfile_in`, `tempdir_in`), which take the directory rather than asking for one.
-//! - **`tempfile` still does not work**, and removing this panic did not make it. Its platform
-//!   ladder has no nife arm, so it selects `other.rs`, whose six functions all return "operation
-//!   not supported on this platform". What changed is that the failure is now that crate's error
-//!   instead of this platform's abort.
-//! - **`chdir` refuses, so a `std` program cannot move.** `current_dir` answers `/` and always
-//!   will: a process holds one directory capability, fixed at spawn, and there is no second place
-//!   for it to be. Moving would mean this module holding a descent handle as mutable process state
-//!   and resolving every relative name against it, which is buildable (it is the shell's stack, one
-//!   level down) and is not built. A program that wants to work in a subdirectory should open it
-//!   and use the `_in`/`Dir` forms, exactly as one that wants an isolated scratch space should.
-//!   The asymmetry the previous version of this entry recorded, `getcwd` refusing while `temp_dir`
-//!   answered, is gone: both name `/` and both come from the same place.
+//! - **A temporary file lands in the program's granted directory, beside its real files.** A
+//!   caller that needs isolation should be given a directory of its own and use the `_in` variants
+//!   (`tempfile_in`, `tempdir_in`).
+//! - **`tempfile` still does not work.** Its platform ladder has no nife arm, so it selects
+//!   `other.rs`, which returns "operation not supported"; the failure is that crate's error now,
+//!   not this platform's abort.
+//! - **`chdir` refuses, so a `std` program cannot move.** `current_dir` is always `/`: the one
+//!   directory capability is fixed at spawn. Moving would mean holding a descent handle as mutable
+//!   process state, which is buildable and not built; a program should open the subdirectory and
+//!   use the `_in`/`Dir` forms.
 //! - **`split_paths` splits on `:` with no escaping**, so a path containing a colon cannot be
-//!   carried in a list. Every Unix has the same hole and `join_paths` reports it as an error rather
-//!   than producing a list that reads back wrong.
+//!   carried in a list; `join_paths` reports it as an error rather than producing a list that reads
+//!   back wrong.
 
 use crate::ffi::{OsStr, OsString};
 use crate::path::{self, Path, PathBuf};

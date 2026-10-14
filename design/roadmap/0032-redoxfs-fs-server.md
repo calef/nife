@@ -12,9 +12,9 @@ Why it matters. the flagship **userspace-reuse** story the prior-art note predic
 Phase 1 built (the write-capable block path; DECISIONS §22 area, notes/dma.md). Phase 2
 built, read path (2026-07-28; DECISIONS §27, notes/fs-server.md): RedoxFS runs confined as a
 three-process userspace service (block server over blk IPC, FS server over the vendored no_std core
-with its own untyped heap, client holding a directory capability), and a client opens the shipped
+with its own untyped heap, client holding a directory capability). A client opens the shipped
 `motd` through a granted directory capability and reads it back, proven on aarch64 and riscv64 with
-a host-tool consistency check. The contract is capability-shaped from birth and adds no syscall; the
+a host-tool consistency check. The contract is capability-shaped from birth and adds no syscall. The
 error type maps to the wire exactly once; creation stays host-side. Phase 2 write path proven
 too (2026-07-29, through `std::fs`): the old "on-device writes loop inside RedoxFS's allocator
 commit" open item was stale and is corrected in DECISIONS §27 and notes/fs-server.md. A guest write
@@ -23,17 +23,17 @@ now reads back when the host tool reopens the image, and that reopen is in the g
 `File::create` are honestly Unsupported and a write means opening a file the image already carries.
 
 Deliverable. Three pieces. A write-capable block path (the driver and the confinement
-validator already speak both directions; the write verbs and tests are the new work). An
-FS-server component whose contract is capability-shaped from birth: a file handle is a
-capability; open-by-path exists only inside the server, resolved relative to a *granted
-directory capability*, so designation keeps flowing the 31 way and no global namespace ever
+validator already speak both directions; the write verbs and tests are the new work). An FS-server
+component whose contract is capability-shaped from birth: a file handle is a capability.
+Open-by-path exists only inside the server, resolved relative to a *granted directory capability*,
+so designation keeps flowing the 31 way and no global namespace ever
 appears. And RedoxFS as the on-disk engine: port the `redoxfs` core behind its own `Disk`
 trait, implemented over blk IPC.
 
 Why RedoxFS. The prior-art survey named it the best single candidate the day the reuse
 rule was written: a real CoW, transactional filesystem in Rust, MIT-licensed, shipping daily in
-Redox, and only loosely coupled to Redox's syscalls precisely because it also runs on
-Linux/FUSE, which is itself a gift (images can be created and inspected on the host with the
+Redox. It is only loosely coupled to Redox's syscalls precisely because it also runs on Linux/FUSE.
+That is itself a gift (images can be created and inspected on the host with the
 same code that serves them on nife). It is the flagship form of the userspace-reuse
 thesis: the kernel confining a serious component we did not write.
 
@@ -58,9 +58,9 @@ building, so the implementer starts here rather than rediscovering):
    encryption unused in phase one.
 
 Risks, priced. (1) ~~The core's std/alloc footprint needs auditing~~ Audited, retired
-(notes/redoxfs-audit.md): `std` is a feature, not an assumption; the ~5,400-line core compiles
-for BOTH of our bare-metal targets today, three bit-rotted imports away from clean, and the
-`Disk` trait is three synchronous methods shaped exactly like a blk-IPC client. The one real
+(notes/redoxfs-audit.md): `std` is a feature, not an assumption. The ~5,400-line core compiles for
+BOTH of our bare-metal targets today, three bit-rotted imports away from clean. The `Disk` trait is
+three synchronous methods shaped exactly like a blk-IPC client. The one real
 cost is a `GlobalAlloc` for the FS-server process, which milestone 27's PAL needs anyway;
 creation paths (`mkfs`, uuid, entropy) are the only std-gated core APIs and stay on the host. (2) The write path is new on our
 side, driver through validator through tests, and errors there eat filesystems; the CoW design

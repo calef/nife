@@ -12,7 +12,8 @@ Why it matters. widens "runs real workloads" by orders of magnitude: the pool of
 **Built 2026-07-28, both ISAs green; phase two complete 2026-07-29.** std's platform layer runs
 directly on the capability ABI (Hermit's shape); a real std program (`Vec`, `String`, `HashMap`,
 `println!`, `Instant`) is spawned and checked byte for byte on aarch64 and riscv64. Phase two bound
-`std::net` to net_stack's socket contract and `std::fs` to the §27 FS service, so the same binary
+`std::net` to net_stack's socket contract and `std::fs` to the §27 (the filesystem service) FS
+service. So the same binary
 now has three behaviors chosen by its grants alone: a filesystem if it holds a directory capability,
 a network if it holds a `Stack` endpoint, and honest `Unsupported` for whichever it was not given.
 `std::fs`'s interesting half is what a path *means* with no global namespace: "under the directory I
@@ -24,11 +25,11 @@ Deliverable. A custom rustc target (`aarch64-unknown-nife` / `riscv64-unknown-ni
 `-Zbuild-std` against a target spec first, a real target later if ever warranted) whose `std`
 compiles and links against the capability ABI (notes/abi.md). Concretely: implement std's
 Platform Abstraction Layer (PAL, `library/std/src/sys/pal/*`), a native nife backend
-over what a process already has, not a libc shim under the Unix one. Allocation draws from the process's own untyped
-(the `user_rt` heap growing into a real `GlobalAlloc`); `stdout`/`stderr` SEND to the console
-endpoint by slot convention; `Instant`/`SystemTime` read the virtual counter; `panic!` aborts (a
-fault the kernel reports) before unwinding is ever attempted; `thread::spawn` retypes a TCB, or
-returns `Unsupported` in phase one; `fs` and `net` return `Unsupported`, honestly, until
+over what a process already has, not a libc shim under the Unix one. Allocation draws from the
+process's own untyped (the `user_rt` heap growing into a real `GlobalAlloc`). `stdout`/`stderr` SEND
+to the console endpoint by slot convention. `Instant`/`SystemTime` read the virtual counter.
+`panic!` aborts (a fault the kernel reports) before unwinding is ever attempted. `thread::spawn`
+retypes a TCB, or returns `Unsupported` in phase one. `fs` and `net` return `Unsupported`, honestly, until
 capability-granted servers exist to back them.
 
 Why. The first wall an application hits on nife is "no std" (the note

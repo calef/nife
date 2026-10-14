@@ -21,60 +21,27 @@
 //! happens: a tick bumps its core's busy or idle count and samples its run queue, the frame
 //! allocator stores the free count after each change. The one copy is the switch count: the
 //! context switch counts into its own core's private block, and that core's tick stores the total
-//! here, so the word is exact as of the core's last tick (milestone 629 (the context-switch
-//! statistic stops costing the switch path) moved it off the switch's walk to this page).
-//! Every per-core word has exactly one writer, the core it describes, and each core's words sit in
+//! here. Every per-core word has exactly one writer, the core it describes, and each core's words sit in
 //! their own 64-byte line, so no two cores ever write the same cache line.
 //!
 //! So a reader sees each word as it was a moment ago, and **the words are not a consistent snapshot
-//! of each other**. `busy + idle` on one core can be a tick ahead of another core's. That is the
-//! bargain `/proc/stat` makes too, and for the same reason: a seqlock over counters written from
-//! the context switch would be a store and a fence on the kernel's hottest path, bought for a
-//! consistency no reader of these figures needs.
+//! of each other**, the bargain `/proc/stat` makes too: a seqlock would put a store and a fence on
+//! the kernel's hottest path for a consistency no reader of these figures needs.
 //!
-//! # EXAMPLES
-//!
-//! A reader over a page a kernel filled, here built on the host from words:
-//!
-//! ```
-//! use machine_statistics_protocol::{Snapshot, WORDS, word};
-//!
-//! let mut words = [0u64; WORDS];
-//! words[word::MAGIC] = u64::from_le_bytes(*b"MACHSTA1");
-//! words[word::FRAME_BYTES] = 4096;
-//! words[word::TICK_HZ] = 100;
-//! words[word::TOTAL_FRAMES] = 32768;
-//! words[word::FREE_FRAMES] = 30000;
-//! words[word::cpu(0) + word::ONLINE] = 1;
-//! words[word::cpu(0) + word::BUSY_TICKS] = 25;
-//! words[word::cpu(0) + word::IDLE_TICKS] = 75;
-//!
-//! let s = Snapshot::from_words(&words).expect("a page the kernel prepared");
-//! assert_eq!(s.total_bytes(), 32768 * 4096);
-//! assert_eq!(s.online_cpus(), 1);
-//! assert_eq!(s.busy_ticks(), 25);
-//!
-//! // A frame nobody prepared has no answer, rather than an answer of zero.
-//! assert!(Snapshot::from_words(&[0u64; WORDS]).is_none());
-//! ```
-//!
+
 //! # BUGS
 //!
-//! - The words are not a consistent snapshot of each other; see above.
-//! - `busy` is not split into user and system time. The tick knows which thread was running, not
-//!   which privilege level it interrupted, and carrying that through three architectures' trap
-//!   paths to one counter was not worth a `vmstat` column. So `vmstat` prints `us` and `sy` as one.
+//! - `busy` is not split into user and system time: the tick knows which thread was running, not
+//!   which privilege level it interrupted. So `vmstat` prints `us` and `sy` as one.
 //! - The context-switch count is exact but up to one tick old, because the tick publishes it.
 //! - The run queue is sampled once per tick per core, so it is up to one tick stale, and a core
 //!   that has stopped ticking (a parked core) keeps its last sample.
-//! - There is no swap counter, because nife refuses paging out for now (pull request #1356). There
-//!   is no page cache or block I/O counter either, because the kernel has none of them to count:
-//!   the filesystem and the block driver are userspace programs.
+//! - There is no swap counter, because nife does not page out. There is no page cache or block
+//!   I/O counter either: the filesystem and the block driver are userspace programs.
 //!
 //! Name: ratified 2026-09-27 (calef, #1360's table), for the crate and for "the machine statistics
-//! page", as milestone 126's `free` lane minted them on 2026-09-26. §225 called it the machine memory page; it carries the scheduler's
-//! counters too, because `vmstat` needs them and a second page would be a second grant for one
-//! question.
+//! page". §225 called it the machine memory page; it carries the scheduler's counters too, because
+//! `vmstat` needs them and a second page would be a second grant for one question.
 
 #![cfg_attr(not(test), no_std)]
 
@@ -214,6 +181,32 @@ pub struct Snapshot {
 impl Snapshot {
     /// Read a page from its words, or `None` if the magic is missing: a frame nobody prepared
     /// reads as zeroes, and zero free memory is a plausible, wrong answer.
+    ///
+    /// # Examples
+    ///
+    /// A reader over a page a kernel filled, here built on the host from words:
+    ///
+    /// ```
+    /// use machine_statistics_protocol::{Snapshot, WORDS, word};
+    ///
+    /// let mut words = [0u64; WORDS];
+    /// words[word::MAGIC] = u64::from_le_bytes(*b"MACHSTA1");
+    /// words[word::FRAME_BYTES] = 4096;
+    /// words[word::TICK_HZ] = 100;
+    /// words[word::TOTAL_FRAMES] = 32768;
+    /// words[word::FREE_FRAMES] = 30000;
+    /// words[word::cpu(0) + word::ONLINE] = 1;
+    /// words[word::cpu(0) + word::BUSY_TICKS] = 25;
+    /// words[word::cpu(0) + word::IDLE_TICKS] = 75;
+    ///
+    /// let s = Snapshot::from_words(&words).expect("a page the kernel prepared");
+    /// assert_eq!(s.total_bytes(), 32768 * 4096);
+    /// assert_eq!(s.online_cpus(), 1);
+    /// assert_eq!(s.busy_ticks(), 25);
+    ///
+    /// // A frame nobody prepared has no answer, rather than an answer of zero.
+    /// assert!(Snapshot::from_words(&[0u64; WORDS]).is_none());
+    /// ```
     #[must_use]
     pub fn from_words(words: &[u64; WORDS]) -> Option<Snapshot> {
         if words[word::MAGIC] != u64::from_le_bytes(MAGIC) {

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Link a C program's objects into a nife program (milestone 835 (a C library, stage 1: files,
 # clock and memory)). The shared second half of `helpers/build-speedtest1.sh` and
-# `helpers/build-ioping.sh`, which fetch and compile; this renames, archives and links.
+# `helpers/build-hackbench.sh`, which fetch and compile; this renames, archives and links. basalt's
+# package build (its `helpers/packages.py`) calls it at the nife commit basalt pins, for ioping
+# (milestone 906 (ioping is packaged in basalt)) and every C recipe after it.
 #
 #     helpers/build-c-program.sh <name> <triple> <object>...
 #
@@ -11,8 +13,8 @@
 # `std` program the C is linked into has a `main` of its own (c_library/src/start.rs). The program
 # also carries the unvouched-`std` manifest note `cargo xtask foreign-note` writes, as `rg` does.
 #
-# It uses this checkout's own `std` farm by path, as helpers/build-ripgrep.sh explains, and the
-# pinned toolchain's `llvm-tools` for `llvm-objcopy` and `llvm-ar`.
+# It uses this checkout's own `std` farm by path (`target/nife-farm`, which `cargo xtask std-src`
+# builds; a link name can resolve another worktree's farm), and the pinned toolchain's `llvm-tools` for `llvm-objcopy` and `llvm-ar`.
 set -euo pipefail
 [ $# -ge 3 ] || { echo "usage: helpers/build-c-program.sh <name> <triple> <object>..." >&2; exit 2; }
 NAME="$1"; TRIPLE="$2"; shift 2

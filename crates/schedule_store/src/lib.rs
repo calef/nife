@@ -1,79 +1,35 @@
 //! **The durable schedule store's shared names, and the one document `timetable` does not already
 //! own** (milestone 152, DECISIONS §122 and §125).
 //!
-//! §122 decided the schedule itself: one file per identity, inside that identity's own subtree
-//! (DECISIONS §117), in `timetable::parse`'s own document format, unchanged. That answers what one
-//! identity's schedule looks like. It does not answer what tells boot-time re-derivation *which*
-//! identities have one at all, and neither §122 nor §123 fully specified it: §123 assumes "the store
-//! names" a set of sessions to re-derive, without saying how that set is discovered without falling
-//! into milestone 126's refusal (enumeration is itself authority). This crate is that answer, worked
-//! out as §125 and recorded there: a **manifest**, a second small document at a fixed, well-known
-//! location, listing exactly which identities currently have a durable session with pending
-//! scheduled work, one name per line.
+//! §122 (the on-disk, per-user schedule store) decided the schedule itself: one file per identity,
+//! inside that identity's own subtree, in `timetable::parse`'s format. This crate answers what
+//! tells boot-time re-derivation *which* identities have one, as §125 (what tells boot-time
+//! re-derivation which identities have pending work) recorded: a **manifest** at a fixed,
+//! well-known location, listing the identities with pending scheduled work, one name per line.
 //!
 //! # Why a manifest rather than a directory listing
 //!
-//! The obvious-looking alternative is to `READDIR` the principal tree's root and treat every
-//! subtree found there as "an identity with pending work". That is refused on this tree's own
-//! terms: DECISIONS §123 says boot-time re-derivation must not be granted "anything that would let
-//! it enumerate users rather than iterate a hard-wired set it was constructed to read", citing
-//! milestone 126's enumeration-is-authority rule, and every identity provisioned
-//! (`identity_provisioner`, milestone 155) gets a subtree whether or not it ever registers a
-//! schedule, so a directory listing would answer a different question than the one boot-time
-//! re-derivation needs to ask.
-//!
-//! A manifest answers the right question instead, and reading it is not enumeration in the sense
-//! §123 refuses: `OPEN`ing one file at a name the reader already knows at compile time
-//! ([`MANIFEST_FILE_NAME`]) is a targeted lookup, the same shape 152's own reattachment design uses
-//! for the credentialer ("given a proven identity, return the one record for it, never a list").
-//! What the manifest's *contents* name is data this crate interprets, not a directory the reader
-//! walked to find out what exists.
+//! `READDIR` of the principal tree's root would be enumeration, which §123 (boot-time
+//! re-derivation) refuses the re-deriver, and it would answer a different question: every
+//! provisioned identity gets a subtree whether or not it ever registers a schedule. `OPEN`ing one
+//! file at a name known at compile time ([`MANIFEST_FILE_NAME`]) is a targeted lookup, and what
+//! the manifest's contents name is data, not a directory the reader walked.
 //!
 //! # What this crate is not
 //!
-//! It performs no IO and makes no syscalls (CLAUDE.md rule 7: two programs that must agree on a
-//! format share a crate, not a wire convention re-derived twice). Both sides are
-//! `components/src/login.rs` since calef ruled Fork 7 on 2026-09-27: it writes an identity's line
-//! when a schedule opens at a login and reads the manifest at start-up to re-derive each session
-//! (DECISIONS §123 (the boot-time re-derivation privilege) as amended). It depends on this crate
-//! for exactly the same reason `timetable` is shared by the process that writes the shipped
-//! `timetable.conf` file and the process that reads it: the parser and the render logic must be one
-//! function, not two that could drift.
+//! It performs no IO and makes no syscalls. Both sides are `components/src/login.rs`: it writes an
+//! identity's line when a schedule opens at a login and reads the manifest at start-up to
+//! re-derive each session, and the parser and the renderer stay one function here. It does not
+//! touch `timetable::Schedule` or `timetable::parse`, and depends on nothing.
 //!
-//! It does not touch `timetable::Schedule` or `timetable::parse` at all, and depends on nothing:
-//! the schedule document itself is out of scope here (§122's own subject), and the manifest is
-//! small enough that pulling in a whole other crate to write eight lines of text would be the
-//! "more machinery" AGENTS.md's elegance tenet warns against.
-//!
-//! Name: provisional, and ruled: calef ruled **`timetable_store`** on 2026-09-13, immediately after
-//! ratifying `timetable`. The block stays `provisional` because the ratified name is not this
-//! crate's until the rename is performed.
-//!
-//! **The question that decided it is the one a reader scanning `crates/` asks**, and calef asked it
-//! verbatim: *"What kind of schedule? Is this the thread scheduler?"* It is not. This crate is
-//! scheduled *execution*, one document per identity in `timetable::parse`'s format plus the
-//! manifest saying which identities have pending work. The thread scheduler is
-//! `kernel/src/sched.rs`, which uses the word 128 times and has nothing to do with this.
-//!
-//! **The tree had already ruled against this collision once and a later lane walked into it.**
-//! `crates/timetable` exists under that name precisely because it *"avoids `scheduler`, which in
-//! this tree already means `kernel/src/sched.rs` and would make two unrelated things share a
-//! word."* `schedule` and `scheduler` are not two words to someone reading a crate list, so
-//! stepping around one and taking the other buys nothing.
-//!
-//! **The provenance that looked strongest was the argument that lost.** `schedule_store` is the
-//! plain noun both §122 and §123 already use ("the on-disk, per-user schedule store"), and a name
-//! the architect wrote first in a decision, adopted rather than coined by a lane, is better
-//! provenance than anything else on that day's worklist. It still loses: those sections say it in
-//! running prose, where the surrounding sentences supply the sense. **A crate name has no
-//! surrounding sentences.**
-//!
-//! Refused `schedule_proto`, wrong by the line `crates/soak_page` draws: this is names and a file
-//! format, not a request/reply vocabulary. Refused `schedule_file`, which names one of the two
-//! documents when the manifest is the other. The maintainer also refused `timetable_store` an hour
-//! before calef ruled it, on the ground that the format belongs to `timetable` and the location to
-//! the principal tree; that was too clever, since a store of timetables is what the word is for and
-//! "store" claims no more authorship than a bookshelf does.
+
+//! Name: provisional, and ruled: calef ruled **`timetable_store`** on 2026-09-13; the block stays
+//! `provisional` until the rename is performed. A reader scanning `crates/` asks *"What kind of
+//! schedule? Is this the thread scheduler?"*, and `crates/timetable` already avoids `scheduler`
+//! (`kernel/src/sched.rs`). `schedule_store` is the plain noun §122 and §123 use in running prose,
+//! but a crate name has no surrounding sentences. Refused `schedule_proto` (this is names and a
+//! file format, not a request/reply vocabulary). Refused `schedule_file` (names one of the two
+//! documents).
 
 #![no_std]
 

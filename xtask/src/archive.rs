@@ -6,8 +6,8 @@
 use crate::disk::{mkfs_elf, redoxfs_server_elf};
 use crate::farm::{
     C_PROGRAMS, c_program_elf, cryptography_exerciser_elf, jig_elf, package_fetch_exerciser_elf,
-    pinned_tls_exerciser_elf, ripgrep_elf, std_exerciser_elf, std_heap_contention_elf,
-    std_rayon_elf, std_resolve_elf, std_threads_elf,
+    pinned_tls_exerciser_elf, std_exerciser_elf, std_heap_contention_elf, std_rayon_elf,
+    std_resolve_elf, std_threads_elf,
 };
 use crate::host::{bin_elf, workspace_root};
 use crate::inspect::read_stripped;
@@ -263,7 +263,7 @@ fn bin_names(manifest: &str) -> Result<Vec<String>, String> {
 /// own build ran (see the `initial_ramdisk_*` functions). Hoisted out of the one test that used to
 /// hold it (milestone 595 (provisional)), because [`check_declared_programs`] now needs the same
 /// list.
-const BUILT_ELSEWHERE: [&str; 12] = [
+const BUILT_ELSEWHERE: [&str; 13] = [
     "redoxfs_server",
     "mkfs",
     "std_exerciser",
@@ -271,6 +271,7 @@ const BUILT_ELSEWHERE: [&str; 12] = [
     "std_heap_contention",
     "std_rayon",
     "rg",
+    "ioping",
     "cryptography_exerciser",
     "pinned_tls_exerciser",
     "std_resolve",
@@ -589,12 +590,20 @@ fn std_program_blobs(triple: &str) -> Vec<(&'static str, Vec<u8>)> {
 /// has been run, in the order every archive packs them.
 fn ported_program_blobs(triple: &str) -> Vec<(&'static str, Vec<u8>)> {
     // **Unmodified `ripgrep`** (milestone 121 (`ripgrep` on nife: enumeration as a capability)),
-    // present iff `helpers/build-ripgrep.sh` has been
-    // run, absent from every ordinary build and from CI. The archive name is `rg`, which is what
-    // the program is called everywhere else in the world.
-    let mut blobs = present_blobs(triple, &[("rg", ripgrep_elf)]);
-    // **The unmodified C programs** (milestone 835 (a C library, stage 1: files, clock and
-    // memory)), on exactly `rg`'s terms: each present iff its `helpers/build-<name>.sh` has run.
+    // the program member of basalt's published package (milestone 810 (`ripgrep` is packaged in
+    // basalt and installed with `jig`)), present iff `cargo xtask basalt-fetch` has run, as CI's
+    // `rg-threads` and `swish-check` rows do. The archive name is `rg`, which is what the program
+    // is called everywhere else in the world.
+    let mut blobs = present_blobs(triple, &[("rg", crate::basalt::ripgrep_elf)]);
+    // **Unmodified ioping** (milestone 834 (ioping on nife and Linux)), the program member of
+    // basalt's package (milestone 906 (ioping is packaged in basalt, and its test installs it with
+    // `jig`)), on exactly `rg`'s terms.
+    blobs.extend(present_blobs(
+        triple,
+        &[("ioping", crate::basalt::ioping_elf)],
+    ));
+    // **The other unmodified C programs** (milestone 835 (a C library, stage 1: files, clock and
+    // memory)): each present iff its `helpers/build-<name>.sh` has run.
     for name in C_PROGRAMS {
         let path = c_program_elf(name, triple).display().to_string();
         if let Ok(bytes) = read_stripped(&path) {

@@ -1,79 +1,52 @@
 //! The console server: a whole program in one job.
 //!
-//! Milestone 19f.3, the second program lifted out of `hello` into its own binary (after the `least_authority_demo`).
 //! It owns a device mapping of the PL011 UART and one request/reply channel. A client writes text
 //! into a page it shares with the server, SENDs the length on the request endpoint, and the server
-//! copies that many bytes to the UART one at a time and ACKs on the reply endpoint. The kernel never
-//! touches the bytes: a driver at EL0, confined by the same capability walls as any workload. A bad
-//! length faults the *server* (a read out of its own mapping), not the kernel.
+//! copies that many bytes to the UART and ACKs on the reply endpoint. The kernel never touches the
+//! bytes, and a bad length faults the *server* (a read out of its own mapping), not the kernel.
 //!
-//! Its whole authority is three things the progenitor hands it: the request endpoint (slot 0, RECEIVE), the reply
-//! endpoint (slot 1, SEND), and the UART registers, plus the shared page mapped read-only. Its one
-//! mode switch is whether a screen was wired beside the UART (below). It shares the `user`
-//! package's `link.ld` but not a line of hello's code.
+//! Its whole authority is the request endpoint (slot 0, RECEIVE), the reply endpoint (slot 1,
+//! SEND), the UART registers and the shared page mapped read-only, plus the screen below.
 //!
-//! The syscall runtime (`send`/`receive`) comes from the shared `user_mode_runtime` crate (19f.6).
-//!
-//! # A screen beside the wire (the shell on the firmware screen, milestone 198's rung 1b)
+
+//! # A screen beside the wire (milestone 198 (a package manager)'s rung 1b)
 //!
 //! Started with `arg0` = [`MODE_SCREEN`], it also holds a **terminal on a screen**: slot 2 is
 //! `display_terminal`'s served endpoint (`WRITE`) and [`SCREEN_OUT_VA`] maps the page that terminal
-//! reads an `OPERATION_WRITE`'s bytes from. Every byte it puts on the UART it then hands that terminal too,
-//! so **the same stream reaches both surfaces**: the prompt, the echo of every keystroke, and every
-//! line a program prints. That is the kernel's own console discipline (`kernel/src/console.rs`,
-//! "both, not either") one privilege level down, and it is what keeps a machine that has a serial
-//! port and a monitor saying the same thing on each: xenon's gates read the wire, a person at a PC
-//! reads the screen.
+//! reads an `OPERATION_WRITE`'s bytes from. Every byte it puts on the UART it hands that terminal
+//! too, so **the same stream reaches both surfaces**, as the kernel's own console does
+//! (`kernel/src/console.rs`, "both, not either"). It holds no device for the screen: the pixels are
+//! `display_terminal`'s and the aperture is `framebuffer_driver`'s.
 //!
-//! **It holds no device for the screen**, which is why this is not the refused option of the
-//! console server painting pixels itself: the pixels are `display_terminal`'s, and the aperture is
-//! `framebuffer_driver`'s. What this gains is one endpoint and one page, the exact authority any
-//! program printing to that terminal holds. The terminal is a full VT (`video_terminal`), so the
-//! escape sequences `line_editor` emits for editing land correctly on the screen as well.
+//! **The screen is batched, the wire is not.** Bytes reach the UART the moment they arrive, but
+//! the screen paints at most once per [`SCREEN_BATCH_NANOS`] window: writes are staged into the out
+//! page and one `OPERATION_WRITE` hands the batch over when the timer's deadline ends the next
+//! receive, through a notification bound to this thread (`receive_bound`) and `Timer::ARM`. A paint
+//! per write cost most of the `x86_64` swish leg's time under TCG. **An ack promises the wire, and
+//! the screen within one window.** A spawner that passes [`MODE_SCREEN`] without the timer and
+//! notification slots still gets a working console: the first refused `ARM` drops it back to one
+//! paint per write.
 //!
-//! **The screen is batched, the wire is not** (the paint lane, 2026-09-30). Bytes reach the UART
-//! the moment they arrive, but the screen paints at most once per [`SCREEN_BATCH_NANOS`] window:
-//! writes are staged into the out page and one `OPERATION_WRITE` hands the whole batch to the terminal
-//! when the timer's deadline ends the next receive. The mechanism is the one this module's old
-//! `BUGS` entry said was missing: a notification bound to this thread (`receive_bound`, milestone
-//! 151 (notification objects: async multiplexing without wait-any)) ending the one wait point on
-//! either a client's message or the deadline (milestone 106 (a wait that ends on either the
-//! interrupt or the deadline)'s `Timer::ARM`), plus a timer and notification slot beside the
-//! screen endpoint. Before it, every
-//! write blocked this one thread on a full paint+flush, which under QEMU's TCG was most of the
-//! `x86_64` swish leg's 321 s (`notes/benchmarks/icount-tick-scales.md`): the leg types a line, and
-//! the console painted it several times over, once per write, while the shell waited to be told its
-//! bytes went out. **An ack now promises the wire, and the screen within one window**, which is a
-//! contract change recorded here rather than slipped in: the old meaning ("out everywhere this
-//! console sends it") is what the batching traded for the leg. A spawner that passes
-//! [`MODE_SCREEN`] without the timer and notification slots still gets a working console: the
-//! first refused `ARM` drops it back to one paint per write, the old behavior exactly.
-//!
+
 //! # Kernel lines (milestone 342 (the kernel and the `console` server drive one UART from two
 //! address spaces))
 //!
 //! The system log service sends the kernel's lines here, sixteen bytes a message, opcode
-//! `system_log_protocol::console::OPERATION_KERNEL_LINE`, never acknowledged. They are written only at
-//! the start of a terminal line, so a kernel line can no longer land inside an echo: mid-line they
-//! wait for this console's own client to end the line, or for the service's `OPERATION_FLUSH`, which puts
-//! them on a line of their own and redraws the partial line beneath them.
+//! `system_log_protocol::console::OPERATION_KERNEL_LINE`, never acknowledged. They are written
+//! only at the start of a terminal line: mid-line they wait for this console's own client to end
+//! the line, or for the service's `OPERATION_FLUSH`, which puts them on a line of their own and
+//! redraws the partial line beneath them.
 //!
 //! # BUGS
 //!
-//! - **A redraw replays the partial line's bytes, not the line editor's state.** The bytes since
-//!   the last newline are written again, which reproduces what the terminal showed for anything
-//!   the line editor emits today; a partial line longer than 512 bytes is not redrawn at all.
-//! - **The batcher assumes the bind, and the bind cannot be probed from here.** The fallback
-//!   covers a missing or refused timer (`ARM` answers once, negatively, and the batcher turns
-//!   itself off), but a spawner that granted both slots and did not bind the notification to this
-//!   thread would leave deadlines signalling a word nobody delivers on receive: batches would then
-//!   flush only when the page filled. Today's only `MODE_SCREEN` spawner (`system_initializer`)
-//!   treats a refused bind as a refused boot, so the shape cannot arise from this tree; recorded
-//!   because "cannot arise" is a claim about spawners, not a mechanism.
+//! - **A redraw replays the partial line's bytes, not the line editor's state**; a partial line
+//!   longer than 512 bytes is not redrawn at all.
+//! - **The batcher assumes the bind, and cannot probe it.** A spawner that granted both slots and
+//!   did not bind the notification to this thread would leave batches flushing only when the page
+//!   filled. Today's only `MODE_SCREEN` spawner (`system_initializer`) treats a refused bind as a
+//!   refused boot.
 //! - **A screen terminal that stopped answering still stalls the console**, one window at a time:
-//!   the paint at the deadline is a synchronous `CALL`, and a terminal that never replied would
-//!   park this one thread there. The bytes reach the UART first, so a stalled screen still shows
-//!   the line that stalled it on the wire; the window bounds how much else lands in the same wait.
+//!   the paint at the deadline is a synchronous `CALL`. The bytes reach the UART first.
 //!
 //! Name: ratified 2026-07-30 (calef, DECISIONS §39), among the names recorded there as always
 //! right.

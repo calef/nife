@@ -1,17 +1,12 @@
 //! **The graphical terminal: a prompt on the display, launched from the swish prompt**
-//! (milestone 632 (provisional), calef's 2026-09-30 ruling: *"I don't want graphics at boot and
-//! won't for a long time. Change to launching a program from the swish prompt to get graphics;
-//! graphics is going to sit there largely unused for some time."*).
+//! (milestone 632 (graphics on demand), calef's 2026-09-30 ruling: graphics is launched from the
+//! swish prompt, not started at boot).
 //!
-//! The boot this program runs on is the plain UART system §26 (the fault endpoint: thread death becomes a message a supervisor holds) records, unchanged. The
-//! person at that prompt delegated the display devices by typing this program's name, and the
-//! progenitor built the stack from what the shell delegated: `gpu_driver`, `display_terminal`,
-//! and either the session's own line discipline with `keyboard_driver` behind it (a virtio
-//! keyboard came with the gpu), or nothing but the screen, in which case this program's
-//! keystrokes come from the boot's own line discipline over the UART (milestone 192 (a keyboard
-//! on real silicon)'s option A, at launch rather than at boot).
-//!
-//! Two arms, chosen by `x0`, and both are a prompt that echoes what is typed:
+//! The person at the boot prompt delegated the display devices by typing this program's name, and
+//! the progenitor built the stack from what the shell delegated: `gpu_driver`, `display_terminal`,
+//! and either the session's own line discipline with `keyboard_driver` behind it (a virtio keyboard
+//! came with the gpu), or nothing but the screen, with keystrokes from the boot's own line
+//! discipline over the UART. Two arms, chosen by `x0`, both a prompt that echoes what is typed:
 //!
 //! ```text
 //!   arm 0 (a keyboard came):
@@ -23,55 +18,37 @@
 //!            this program ──OPERATION_WRITE──► display_terminal ──► screen
 //! ```
 //!
-//! Arm 1 is the shell's own §227 (how Tab reaches the shell: the shell edits its own line) shape: raw mode on the boot discipline, register-only reads,
-//! echo painted by the reader. The discipline's echo goes to the UART console it was built
-//! against, so on this arm the screen's echo is this program's to do, byte for byte as the bytes
-//! arrive, which is why `$ a` reaches the screen the moment the key is pressed rather than when
-//! the line completes.
+//! Arm 1 is the shell's own §227 (how Tab reaches the shell) shape: raw mode on the boot
+//! discipline, register-only reads, echo painted by the reader as the bytes arrive.
 //!
-//! **Ending.** `^C` ends a session on either arm (arm 0's read fails with
-//! `FLAG_INTERRUPTED`, the discipline counted it; arm 1 reads it as the raw byte it is), and a
-//! line reading `quit` ends one too. Arm 1 puts the boot discipline back the way it found it on
-//! the way out; a session the kernel killed cannot, and the shell's §227 fallback (its
-//! `BAD_REQUEST` path) takes the discipline back on the next prompt either way.
+//! **Ending.** `^C` or a line reading `quit` ends a session on either arm. Arm 1 puts the boot
+//! discipline back cooked on the way out; the shell's §227 fallback (its `BAD_REQUEST` path) takes
+//! it back to raw on the next prompt, also after a session the kernel killed.
 //!
-//! Its whole authority: the result endpoint (slot 0, one word when the session ends), one
-//! endpoint that prints to the screen (slot 1) with the page its server reads, one endpoint that
-//! owns the keystrokes (slot 2), and, on arm 0 only, the page the discipline delivers lines
-//! into. No device, no interrupt, no DMA: a person delegated those to the drivers, not to the
-//! prompt that runs on them.
+//! Its whole authority: the result endpoint (slot 0, one word when the session ends), one endpoint
+//! that prints to the screen (slot 1) with the page its server reads, one endpoint that owns the
+//! keystrokes (slot 2), and, on arm 0 only, the page the discipline delivers lines into. No
+//! device, no interrupt, no DMA.
 //!
+
 //! # BUGS
 //!
-//! **Arm 1 has no line editing.** Raw bytes are echoed as they arrive; backspace and the arrows
-//! are stored and painted as the control bytes they are, so a mistyped `quit` cannot be corrected
-//! and the only edits are `^C` and retyping. The boot prompt's own editor (the §227 engine) is
-//! what arm 0 gets for free from its discipline; giving arm 1 a local copy of it is scoped-out
-//! follow-on work, not a property of the launch.
+//! **Arm 1 has no line editing.** Backspace and the arrows are stored and painted as the control
+//! bytes they are; the only edits are `^C` and retyping.
 //!
-//! **Arm 1 turns the boot discipline cooked on its way out, deliberately.** The courteous state
-//! is the one it found before the shell went raw, and the shell's own `BAD_REQUEST` recovery
-//! takes raw back at its next prompt, which costs that one round trip after every session. A
-//! session the kernel killed skips even that, and the same recovery covers it.
+//! **Arm 1 can still switch the boot discipline's mode under the shell.** Slot 2 on that arm is the
+//! boot discipline's endpoint badged `line_editor::proto::RAW_ONLY_BADGE`
+//! (milestone 709 (a graphical terminal session on the no-keyboard arm holds only the raw half of
+//! the boot discipline)), served `OPERATION_RAWMODE` and `OPERATION_READRAW` only, so a session cannot type
+//! or take a line the boot shell reads, or print to the UART. Flipping the mode while the shell is
+//! between reads abandons what the shell had half typed and fails a parked read with
+//! `BAD_REQUEST`, which the shell's §227 recovery absorbs. A disruption, not authority.
 //!
-//! **Arm 1 can still switch the boot discipline's mode under the shell.** Slot 2 on that arm is a
-//! copy of the boot discipline's endpoint badged `line_editor::proto::RAW_ONLY_BADGE` (milestone
-//! 709 (a graphical terminal session on the no-keyboard arm holds only the raw half of the boot
-//! discipline)), which the discipline serves `OPERATION_RAWMODE` and `OPERATION_READRAW` on and nothing else, so
-//! a session can no longer type a line the boot shell reads (`OPERATION_BYTES`), take one (`OPERATION_READLINE`)
-//! or print to the UART. `OPERATION_RAWMODE` is in the half it keeps: a session can flip the discipline
-//! cooked or raw while the shell is between reads, which abandons whatever the shell had half
-//! typed and fails a parked read with `BAD_REQUEST`. The shell's §227 recovery takes raw back on
-//! its next prompt. A disruption, not authority: no byte the session chooses reaches the shell.
-//! Before 709 the copy was unbadged and answered the whole contract; found by the 2026-10-03
-//! security audit, finding 2.
-//!
-//! Name: ratified 2026-10-03 (calef, #1493). Refused `screen` (clashes with `SCREEN_BIT`, the
-//! screen-narrowed tail of §106 (an unredirected tail stage's output goes to the screen, not the
-//! shell), and with GNU screen), `gate` (the tree's word for a check that fails loudly, about 3,700
-//! uses, and the x86 IDT's interrupt gate), `display_session` and `display_console` (`console` is
-//! the UART server). It names the whole stack (`gpu_driver`, `display_terminal` and the keyboard),
-//! so it survives any later change of VT engine behind `display_terminal`.
+//! Name: ratified 2026-10-03 (calef, #1493). Refused `screen` (clashes with `SCREEN_BIT` of §106
+//! (take the `terminal_sink_caretaker` narrowing), and with GNU screen), `gate` (the tree's word
+//! for a check that fails loudly, and the x86 IDT's interrupt gate), `display_session` and
+//! `display_console` (`console` is the UART server). It names the whole stack, so it survives any
+//! later change of VT engine behind `display_terminal`.
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68 (code-quality gates: one lint policy)'s ratchet tracks

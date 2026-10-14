@@ -1,90 +1,36 @@
-//! **The work-steal request slot**: the one lock-free, cross-core handshake in the scheduler.
-//!
-//! An idle core wants work. It cannot reach into a loaded core's run queue, and that is deliberate
-//! (DECISIONS §11: a remote core cannot even *name* another core's queue, which is what forces
-//! cross-core work movement onto the inbox/SGI path). So stealing is a **message**, not a reach:
-//! the idle core parks a request in the victim's slot and pokes it with a reschedule interrupt, and
-//! the victim, at its next scheduler entry, hands one thread back into the requester's inbox
-//! (DECISIONS §28.3).
-//!
-//! Everything else in that path is under a lock. The migration inbox is an `IrqSafeMutex`; the run
-//! queue is single-owner with interrupts masked; the thread table is under `IPC_TABLES`. **This slot is
-//! the exception**, and that is why it is lifted here: it is a hand-rolled compare-exchange plus a
-//! swap, the kind of protocol that is correct on a total-store-order machine and wrong on a weakly
-//! ordered one, and this project runs on two weakly ordered ISAs (CLAUDE.md rule 4).
-//!
-//! # The protocol, in full
-//!
-//! One `u32`, biased by one so that zero can mean *empty*:
+//! **The work-steal request slot**: the one lock-free, cross-core handshake in the scheduler. An
+//! idle core cannot reach a loaded core's run queue (§11 (SMP: per-CPU run queues, message-based
+//! migration)), so stealing is a message: the idle core parks a request in the victim's slot and
+//! pokes it with a reschedule interrupt, and the victim, at its next scheduler entry, hands one
+//! thread into the requester's inbox (§28 (SMP placement)). Everything else in that path is
+//! under a lock; this compare-exchange plus swap is lifted here because it is the kind of protocol
+//! that is right on total store order and wrong on the weakly ordered ISAs this project runs on.
 //!
 //! ```text
 //!   0          nobody is asking
 //!   id + 1     core `id` is asking, and has not been served yet
 //! ```
 //!
-//! - A thief **claims** the slot with a compare-exchange from zero. Only one can win, so a crowd of
-//!   idle cores collapses to one outstanding request per victim per round. A thief that loses does
-//!   not queue behind the winner; it simply asks again next time round its idle loop.
-//! - A victim **takes** the slot with a swap to zero, which reads and clears in one step. Clearing
-//!   is what lets the next idle core in, so a take that is not followed by a hand-off still makes
-//!   progress: the requester asks again, and meanwhile nobody else is blocked out.
-//!
-//! # Why the orderings are what they are
-//!
-//! The claim is a **release** and the take is an **acquire**, so they pair: everything the thief
-//! wrote before claiming is visible to the victim that takes the claim. The kernel does not yet put
-//! anything in that window (a request carries only the requester's identity, and the identity is
-//! inside the compare-exchange itself), so the pairing is not carrying a payload today. It is here
-//! because the slot is a *mailbox*, and the moment a request grows a field (a count, a deadline, a
-//! class of work) the pairing is what makes that field safe to read. `notes/interleaving.md` records
-//! the loom run that falsifies the relaxed spelling, so this is a checked claim rather than a
-//! cautious one.
-//!
-//! The failed-compare-exchange ordering is **relaxed** on purpose: a thief that loses the race
-//! learns nothing it acts on. It returns to its idle loop and tries again.
-//!
-//! # EXAMPLES
-//!
-//! The two halves of one round, as the kernel spells them:
-//!
-//! ```
-//! use work_steal_slot::Slot;
-//!
-//! // On core 3, idle, having picked core 0 as the most loaded victim:
-//! let victim_slot = Slot::new();
-//! assert!(victim_slot.claim(3));           // ... then send core 0 a reschedule interrupt
-//!
-//! // A second idle core, core 5, finds the slot already spoken for and moves on:
-//! assert!(!victim_slot.claim(5));
-//!
-//! // On core 0, at its next scheduler entry:
-//! assert_eq!(victim_slot.take(), Some(3)); // ... then pop one thread into core 3's inbox
-//! assert_eq!(victim_slot.take(), None);    // and the slot is open again
-//! ```
+//! A thief **claims** with a compare-exchange from zero, so a crowd of idle cores collapses to one
+//! request per victim, and a loser just asks again next idle round. A victim **takes** with a swap
+//! to zero, which reads and clears at once, so a take not followed by a hand-off still lets the
+//! next thief in. The claim is a **release** and the take an **acquire**: nothing rides that window
+//! yet, but the moment a request grows a field the pairing is what makes it safe, and loom
+//! falsifies the relaxed spelling (notes/interleaving.md). A failed claim is relaxed: the loser
+//! acts on nothing it learned.
 //!
 //! # BUGS
 //!
-//! - **A take that finds an empty run queue silently drops the request.** The victim clears the
-//!   slot before it looks for a thread to give, so a thief that asks a core which has just run its
-//!   last queued thread gets nothing and is not told. That is by design (DECISIONS §28.3 calls it
-//!   the bounded cost of an empty give) and it is safe because the idle loop retries on the next
-//!   timer tick, but it means **this type promises delivery of the request, never of a thread**.
-//! - **A slot is only as live as the victim's scheduler entries.** If a victim is poked and never
-//!   reaches a scheduler entry, its slot stays claimed and every other idle core is locked out of
-//!   it until it does. Nothing here can check that, and neither can loom: the reschedule interrupt
-//!   is outside the model. See `notes/interleaving.md`.
-//! - **The identity is not authenticated.** Any core may claim any slot as any id. Nothing in the
-//!   kernel can forge one (the only caller passes its own `cpu::id()`), but the type does not
-//!   enforce it.
-//! - [`MAX_REQUESTER`] exists because the bias is an addition, and an addition can overflow. No
-//!   kernel configuration can reach it (`MAX_CPUS` is single digits), so the branch that refuses it
-//!   is unreachable in the running system and is covered by a host test alone.
+//! - A take that finds an empty run queue drops the request silently (§28's bounded cost of an
+//!   empty give; the idle loop retries): **this promises delivery of the request, never a thread**.
+//! - A slot is only as live as the victim's scheduler entries; a poked victim that never reaches
+//!   one locks every other thief out, outside loom's model.
+//! - The identity is not authenticated; the only caller passes its own `cpu::id()`.
+//! - [`MAX_REQUESTER`] guards the bias's addition, unreachable with single-digit `MAX_CPUS` and
+//!   covered by a host test alone.
 //!
-//! Name: ratified 2026-08-23 (calef, a kernel-dependency crate naming review). Renamed from
-//! `steal_request`: not a proper noun phrase as named (the primary type is `Slot`, not
-//! `StealRequest`); "work-steal" as a compound modifier matches standard scheduling terminology
-//! (Cilk, Go, Rayon). The type is `Slot` and the methods are `claim`/`take`.
-//! `notes/interleaving.md` records why it was lifted into its own crate.
+//! Name: ratified 2026-08-23 (calef), renamed from `steal_request`: the type is `Slot` with
+//! `claim`/`take`, and "work-steal" is the field's compound (Cilk, Go, Rayon).
 
 #![cfg_attr(not(test), no_std)]
 
@@ -113,6 +59,25 @@ pub const MAX_REQUESTER: u32 = u32::MAX - 1;
 /// One core's work-steal request slot: at most one pending request, first come first served.
 ///
 /// See the module documentation for the protocol and for what it does *not* promise.
+///
+/// # Examples
+///
+/// The two halves of one round, as the kernel spells them:
+///
+/// ```
+/// use work_steal_slot::Slot;
+///
+/// // On core 3, idle, having picked core 0 as the most loaded victim:
+/// let victim_slot = Slot::new();
+/// assert!(victim_slot.claim(3));           // ... then send core 0 a reschedule interrupt
+///
+/// // A second idle core, core 5, finds the slot already spoken for and moves on:
+/// assert!(!victim_slot.claim(5));
+///
+/// // On core 0, at its next scheduler entry:
+/// assert_eq!(victim_slot.take(), Some(3)); // ... then pop one thread into core 3's inbox
+/// assert_eq!(victim_slot.take(), None);    // and the slot is open again
+/// ```
 pub struct Slot {
     /// `EMPTY`, or the requesting core's id plus one.
     inner: AtomicU32,

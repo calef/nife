@@ -117,7 +117,7 @@ and would have been quiet about a doubling of the real path.
 The gate measured two of the three architectures for nine days. `script/stack-frame-check` carried
 the same silent omission until the architecture-list sweep of the same week found both. x86_64 was
 then gated at `ipc_fastpath` 6,639 and `syscall_entry` 1,637, total 8,276 (8.08 KiB), in
-`bench/fastpath-x86_64.txt`. *(Superseded by milestone 188: the current x86_64 baseline is
+`bench/fastpath-x86_64.txt`. *(Milestone 188 (the IPC fastpath) re-baselined it: the current x86_64 baseline is
 `ipc_call_reply` 8,122 and `syscall_entry` 1,637, in the table below.)*
 
 `ipc_fastpath` is comparable across all three, and x86_64 is the largest. The closure is the same

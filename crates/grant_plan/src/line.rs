@@ -1,93 +1,36 @@
-//! **The operators: `>`, `<` and `|`** (milestone 50, notes/pipes.md).
+//! **The operators: `>`, `<` and `|`** (notes/pipes.md). The shape of a command line, one level
+//! above [`crate::parse`]: the line becomes a [`Line`] of stages plus the file names at either end,
+//! and each stage is then parsed as a whole line was before, so the operators change nothing about
+//! how a command is read.
 //!
-//! This module is the *shape* of a command line, one level above [`crate::parse`]. It takes the
-//! whole line and splits it into a [`Line`]: a sequence of stages, plus the file names on either
-//! end. Each stage is then parsed exactly as a whole line was before this existed, which is why
-//! adding three operators changed nothing about how a command is read.
-//!
-//! # There is one mechanism here, not three
-//!
-//! `>` and `|` do the same thing: they put a different capability in a program's **output slot**.
-//! The program cannot tell which, and that indifference is the milestone's claim
-//! (notes/sink-protocol.md). `<` is the same substitution on the **input slot**, which is the sink
-//! contract read from the other end: an endpoint the program holds with `READ`, on which sink
-//! messages arrive until [`byte_sink_protocol::OPERATION_EOF`](../../byte_sink_protocol/constant.OPERATION_EOF.html).
-//!
-//! So this module produces [`Sink`] and [`Source`] values and nothing else. Whether the thing on
-//! the other end is a file, another program, or the shell itself is a wiring question, and no part
-//! of it reaches the program.
-//!
-//! # The grammar
+//! **One mechanism, not three.** `>` and `|` put a different capability in a program's output slot,
+//! and the program cannot tell which (notes/sink-protocol.md); `<` does the same to the input slot.
+//! So this module produces [`Sink`] and [`Source`] values only; what is on the other end is wiring.
 //!
 //! ```text
 //! line  := stage ('|' stage)*
 //! stage := <command words> ('<' name | '>' name | '>>' name | '2>' name | '2>>' name)*
 //! ```
 //!
-//! Three rules, each of which exists to keep a line from meaning something other than it looks
-//! like:
+//! - **A redirection goes last in its stage** ([`Refusal::WordAfterRedirect`]), so a stage's
+//!   command is a slice of the line, not something reassembled without an allocator.
+//! - **Only the first stage takes input and only the last is redirected**: `a > f | b` would give
+//!   `a` two outputs ([`Refusal::RedirectMidPipeline`]).
+//! - **A redirection names one file**: a pattern there is [`Refusal::PatternInRedirect`].
 //!
-//! - **A redirection goes last in its stage.** `wc < report.txt` is the spelling; `< report.txt wc`
-//!   is [`Refusal::WordAfterRedirect`]. Bash accepts the second and nobody writes it, and refusing
-//!   it is what lets a stage's command text be a slice of the line rather than something
-//!   reassembled (`grant_plan` has no allocator).
-//! - **Only the first stage takes input and only the last is redirected.** `a > f | b` names a
-//!   destination for `a` and then pipes `a` somewhere else, which is two answers to one question;
-//!   it is [`Refusal::RedirectMidPipeline`] rather than a silent precedence rule.
-//! - **A redirection names one file.** A pattern there is [`Refusal::PatternInRedirect`]: a
-//!   redirection designates a single destination, and a set does not designate one.
-//!
-//! # EXAMPLES
-//!
-//! ```
-//! # use grant_plan::line::{split, Line, Mode};
-//! let l = split(b"date | wc").unwrap();
-//! assert_eq!(l.stages(), [&b"date"[..], b"wc"]);
-//! assert!(l.input.is_none() && l.output.is_none());
-//!
-//! let l = split(b"date > report.txt").unwrap();
-//! assert_eq!(l.stages(), [&b"date"[..]]);
-//! assert_eq!(l.output, Some(&b"report.txt"[..]));
-//! assert_eq!(l.mode(), Mode::Truncate);
-//!
-//! // `>>` names the same destination and only changes what happens to what is already in it.
-//! assert_eq!(split(b"date >> report.txt").unwrap().mode(), Mode::Append);
-//!
-//! // Whitespace around an operator is optional, as it is in every shell.
-//! assert_eq!(split(b"date>report.txt").unwrap().output, Some(&b"report.txt"[..]));
-//! ```
-//!
-//! # `2>` is the same substitution again, and the `2` is not a file descriptor
-//!
-//! `2>` (DECISIONS §67) names where a program's **declared second output** goes. It looks like
-//! Unix's spelling and it is not Unix's mechanism: nothing here agrees in advance that "2" is
-//! anything, so the operator binds to a stream the program's manifest declares
-//! ([`OutputSpec`](crate::OutputSpec)) and is [`Refusal::NoDiagnosticStream`] aimed at a program
-//! that declares none. The digit is kept because it is the spelling a person already knows, not
-//! because a number means anything.
-//!
-//! The digit must be at a word boundary, exactly as it must in a Unix shell: `date 2> err` is the
-//! operator and `least_authority_demo 2 > out` is the integer `2` and a `>`. A `2` inside a word (`wc2>f`) is part
-//! of the word.
+//! `2>` (§67 (a program's second stream is a declaration)) names where a program's declared second
+//! output goes: it binds to a stream the manifest declares ([`OutputSpec`](crate::OutputSpec)) and
+//! is [`Refusal::NoDiagnosticStream`] for a program declaring none. The `2` is the familiar
+//! spelling, not a file descriptor, and counts only at a word boundary (`wc2>f` is a word).
 //!
 //! # BUGS
 //!
-//! - **A line has one diagnostic stream, not one per stage.** `2>` goes at the tail like `>`, and
-//!   what it names is where *the line's* diagnostics go, because the shell mints one endpoint for
-//!   the line and hands it to every stage that declares one. So every stage of a pipeline carrying
-//!   a `2>` must declare a diagnostic stream, and a pipeline where only the producer does is
-//!   refused rather than half-wired.
-//! - **No `<<`.** A here-document is refused as [`Refusal::NoRedirectTarget`], because the second
-//!   `<` is read as the operator it is and then there is no name after it. The message is about a
-//!   missing name where the mistake was a missing feature, which is a wording gap and not a
-//!   silent acceptance.
-//! - **Quoting reaches this module, and it decides what an operator is** (milestone 67). A `>`,
-//!   `<`, `|` or `2>` inside quotes is an ordinary byte, so `echo "a > b"` has no redirection on it
-//!   and `date > "my out.txt"` writes to a file whose name has a space in it. What quoting cannot do
-//!   is put an operator *back*: there is no spelling that makes a quoted `>` redirect.
-//! - **A quoted redirection name is exempt from [`Refusal::PatternInRedirect`]**, because quoting is
-//!   what says the token designates one thing. `> "*.txt"` writes to a file called `*.txt`; `> *.txt`
-//!   is still refused.
+//! - A line has one diagnostic stream, minted once and given to every stage that declares one, so
+//!   a pipeline carrying `2>` where only some stages declare one is refused.
+//! - `<<` is refused as [`Refusal::NoRedirectTarget`], a message about a missing name where the
+//!   mistake was a missing feature.
+//! - Quoting makes an operator an ordinary byte, and nothing puts one back. A quoted redirection
+//!   name is exempt from [`Refusal::PatternInRedirect`]: `> "*.txt"` writes a file called `*.txt`.
 
 use crate::{Refusal, word};
 
@@ -294,6 +237,26 @@ fn is_diag_op(line: &[u8], i: usize, word_start: usize) -> bool {
 ///
 /// Pure and allocation-free: every slice it returns points into `line`. See the module note for the
 /// three rules it enforces and why each one exists.
+///
+/// # Examples
+///
+/// ```
+/// # use grant_plan::line::{split, Line, Mode};
+/// let l = split(b"date | wc").unwrap();
+/// assert_eq!(l.stages(), [&b"date"[..], b"wc"]);
+/// assert!(l.input.is_none() && l.output.is_none());
+///
+/// let l = split(b"date > report.txt").unwrap();
+/// assert_eq!(l.stages(), [&b"date"[..]]);
+/// assert_eq!(l.output, Some(&b"report.txt"[..]));
+/// assert_eq!(l.mode(), Mode::Truncate);
+///
+/// // `>>` names the same destination and only changes what happens to what is already in it.
+/// assert_eq!(split(b"date >> report.txt").unwrap().mode(), Mode::Append);
+///
+/// // Whitespace around an operator is optional, as it is in every shell.
+/// assert_eq!(split(b"date>report.txt").unwrap().output, Some(&b"report.txt"[..]));
+/// ```
 pub fn split(line: &[u8]) -> Result<Line<'_>, Refusal> {
     let mut stages = [&b""[..]; MAX_STAGES];
     let mut r = Redirects::new();

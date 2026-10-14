@@ -38,7 +38,7 @@ so, for a reason worth knowing before you read further: there is no way to *tell
 the BUGS.
 
 The session/connection split landed on 2026-08-24. It was durable delegation's first buildable piece,
-from milestone 152 (durable delegation). `smb_server.rs` used to be one accept-serve-close loop where
+from milestone 152 (durable delegation). `smb_server.rs` was one accept-serve-close loop where
 all session state, NTLMSSP proof included, died with the socket. That is the "unprotected afterwards"
 line, and meant there was nothing here that could outlive a disconnect even in principle. It now
 splits into the transient per-connection protocol handler (`serve_connection`, unchanged), and a

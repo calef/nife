@@ -51,7 +51,7 @@ tick, so one IPC reads as "1 tick, maybe 2." We beat the coarseness by timing a 
 of operations and dividing; the per-op cost falls out cleanly and the tick noise averages away.
 
 The PMU cycle counter is the opposite trade: fine enough to time a single operation, but it counts
-*cycles*, not time, and the cycle rate moves with clock scaling (DVFS), so turning cycles into
+*cycles*, not time. The cycle rate moves with clock scaling (DVFS), so turning cycles into
 nanoseconds needs the current frequency, which is not fixed.
 
 Two ways to measure a fast operation, then: one shot at high resolution (PMU, sel4bench) or a
@@ -77,8 +77,9 @@ is commonly left unvirtualized:
 - Apple HVF does not virtualize the guest PMU, so a guest's `PMCCNTR` reads are unstable.
 
 Either way a single-shot cycle measurement has no usable clock. This is why `sel4bench` (single-shot,
-PMU) cannot produce numbers on this Mac while our bench (long loop, generic timer) can, and it is the
-same constraint design/roadmap/0074-cycle-counters.md flags for any plan that wants real cycle counts: they wait on real
+PMU) cannot produce numbers on this Mac while our bench (long loop, generic timer) can. It is the
+same constraint design/roadmap/0074-cycle-counters.md flags for any plan that wants real cycle
+counts: they wait on real
 silicon. A Raspberry Pi has a real PMU because it *is* real silicon, not a guest, which is where the
 seL4 comparison goes (milestone 24).
 
