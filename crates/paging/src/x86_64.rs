@@ -1228,7 +1228,7 @@ mod eighth_pass_attacks {
     /// bits, and `entry_pa` reads back the masked address rather than the hostile one.
     #[test]
     fn a_hostile_address_cannot_smuggle_reserved_bits_through_vtd() {
-        let payload = u64::MAX & !VTD_ADDR_MASK;
+        let payload = !VTD_ADDR_MASK;
         let pa = (0x0040_0000_0000_0000 & VTD_ADDR_MASK) | payload;
         assert_ne!(
             pa & VTD_ADDR_MASK,

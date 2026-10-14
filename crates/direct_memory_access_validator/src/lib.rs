@@ -1273,7 +1273,7 @@ mod tests {
             },
             &|p| {
                 let off = (p - dd) / 16;
-                if (p - dd) % 16 == 0 {
+                if (p - dd).is_multiple_of(16) {
                     other_desc[off as usize].addr
                 } else {
                     other_desc[off as usize].word
