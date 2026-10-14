@@ -3,7 +3,7 @@
 # threads), its first consumer, and the program milestone 827 (hackbench on nife and Linux) runs on
 # silicon).
 #
-# An experiment's apparatus on `helpers/build-ioping.sh`'s terms: nothing in `script/test` runs it,
+# An experiment's apparatus on `helpers/build-speedtest1.sh`'s terms: nothing in `script/test` runs it,
 # the archive packs `target/hackbench/<triple>/hackbench` when it is on disk, and
 # `system_tests/src/user/c_thread_tests.rs` skips when it is not. Fetching it in a gate is §46 (thin
 # primitives or whole subsystems)'s decision.

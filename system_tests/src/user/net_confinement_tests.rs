@@ -31,6 +31,7 @@ const NET_ROLE_SQUATTER: u64 = 8;
 const NET_TEST_SOCKET_GIVE: u64 = 9;
 const NET_TEST_SOCKET_TAKE: u64 = 10;
 const NET_TEST_UDP_TFTP_HELD: u64 = 11;
+const NET_TEST_SOCKET_BADGE_FORGE: u64 = 13;
 /// `socket_test_client`'s success word and its `READY`.
 const NET_CLIENT_OK: u64 = 1;
 const NET_CLIENT_READY: u64 = 0x5EAD;
@@ -335,4 +336,32 @@ fn a_socket_moves_by_its_capability_and_a_closed_one_reaches_nothing() {
     );
     held.release_or_fail("the socket hand-off test's clients");
     crate::sched::reclaim_region(region).expect("the hand-off endpoints' region did not come back");
+}
+
+/// **A minted socket capability takes no second badge, and a refused forgery disturbs nothing**
+/// (an eighth outsider pass at claim 34).
+///
+/// The squatter's ten attempts already count a re-badge of its own socket among the refused. This
+/// is the single probe with the answer's shape: the refusal must be `NotPermitted` (the badge rule:
+/// a badge is set once, at the mint, and never changed), and the socket must be undisturbed by the
+/// refused attempt, proven by a `CLOSE` of it answering `REP_OK` afterwards. A second badge for one socket would be a second name for it, and names are
+/// how a stack tells its clients apart.
+///
+/// Falsification: unfalsified. Written by the eighth outsider pass's reviewer, who booted it
+/// green but did not break the code it guards to watch it go red.
+#[test_case]
+fn a_re_badged_socket_capability_is_refused_and_the_socket_survives() {
+    let Some((mut held, stack)) = start_stack() else {
+        crate::testing::skip!("no e1000e NIC attached");
+    };
+    let forger = spawn_client(NET_TEST_SOCKET_BADGE_FORGE, Some(stack), &[], &mut held);
+    let verdict = next_report(forger, "badge forger");
+    assert_eq!(
+        verdict[0], NET_CLIENT_OK,
+        "the badge forger did not report success: {:#x} is a stage code in the fixture (0xE0D0 \
+         open refused, 0xE0D1 the re-badge was not NotPermitted, 0xE0D2 the socket stopped \
+         working after the refused attempt)",
+        verdict[0],
+    );
+    held.release_or_fail("the badge forger net test's client");
 }

@@ -14,96 +14,26 @@
 // spelling. Since DECISIONS §142 it could not be `Default` anyway: the constructor takes the
 // retention declaration precisely so that nothing supplies one silently.
 #![allow(clippy::new_without_default)]
-//! **The supervision tree: the shared half** (milestone 22 phase B.2).
+//! **The supervision tree: the shared half.** The programs that shrink init's authority
+//! (`root_supervisor`, `spawner`, `sub_server_supervisor`, and the `flaky` sub-server they manage)
+//! share this: the protocol words they speak, and **the tree's only userspace ELF loader**.
+//! `system_initializer` builds with it too; nothing else builds a process in userspace.
 //!
-//! Three programs make up the tree that shrinks init's authority (`root_supervisor`, `spawner`, `sub_server_supervisor`,
-//! plus the `flaky` sub-server they manage), and this is what they share: the protocol words they
-//! speak, and the userspace ELF loader they build children with.
+//! The loader takes the builder's own budget and the budget the child is built *from* as separate
+//! arguments (the same for a server building from its own memory, different for a spawner building
+//! each child in its own reclaimable region), a capability for the reserved fault slot so the child
+//! is born supervised, capabilities for named slots, and **blobs** to copy into the child, which is
+//! what lets a construction sub-server hold one program image instead of the whole initial ramdisk.
+//! A [`ChildEndowment`] states the child's complete authority in both directions: what it is given,
+//! and what its spawner keeps (§142 (what a spawner retains over a child after `START`)).
 //!
-//! **The loader here is the tree's only one** (milestone 96). It began as a generalization of
-//! `system_initializer`'s `build_child` while the two inits kept copies of their own, which meant
-//! the same hundred and thirty lines existed three times with a fault slot each. Milestone 22's
-//! lane recorded that and declined to unify it mid-flight, because a boot failure would then have
-//! been ambiguous between two changes; `system_initializer` calls this one now, and nothing else builds
-//! a process in userspace.
+//! The examples are not checked by the gate: this crate depends on `user_mode_runtime`, so
+//! `script/test`'s host pass excludes it; they run under `cargo test --doc -p supervision_protocol`
+//! on an aarch64 host.
 //!
-//! What it takes: the builder's own budget and the budget the child is built *from* as separate
-//! arguments (they are the same for a server building out of its own memory, and different for a
-//! spawner building each child in its own reclaimable region), a capability for the reserved fault
-//! slot so the child is born supervised, capabilities for **named** slots the caller picks, and
-//! **blobs** to copy into the child. That last one is what lets a construction sub-server hold
-//! exactly the one program image it is allowed to build, instead of the whole initial ramdisk.
-//!
-//! # Examples
-//!
-//! **A caveat first, because it is a limitation rather than a footnote.** This crate takes an
-//! unconditional `user_mode_runtime` dependency, so `script/test`'s host pass excludes it (the exclusion list
-//! is in `xtask` and is derived and checked by `script/lint`). The examples below run under
-//! `cargo test --doc -p supervision_protocol` on an aarch64 host and **are not checked by the gate**.
-//!
-//! [`ChildEndowment`] is the crate's real interface, and reading one is meant to tell you the
-//! complete authority of the thing about to run, **in both directions**: what the child is given,
-//! and what its spawner keeps over it once it does (DECISIONS §142). Every field is public and
-//! there is a nothing-endowment to build from, which is what keeps a later field from being a
-//! change to every caller:
-//!
-//! ```
-//! use supervision_protocol::{CHILD_STACK_PAGES, ChildEndowment, Retention};
-//!
-//! // A sub-server that gets exactly one endpoint, is born supervised, and holds nothing else.
-//! // `..ChildEndowment::new(Retention::Nothing)` is the intended shape: what is not listed is not
-//! // granted, and what the spawner keeps is stated rather than inherited.
-//! let endow = ChildEndowment {
-//!     caps: &[(4, 0b11)], // our slot 4, read/write, landing in the child's slot 0
-//!     fault: Some(7), // our slot 7 holds its supervision endpoint
-//!     ..ChildEndowment::new(Retention::Nothing)
-//! };
-//!
-//! assert_eq!(endow.caps.len(), 1);
-//! assert!(endow.maps.is_empty() && endow.blobs.is_empty() && endow.placed.is_empty());
-//! assert_eq!(endow.stack_pages, CHILD_STACK_PAGES);
-//! assert_eq!(endow.retention, Retention::Nothing);
-//!
-//! // A construction sub-server, holding exactly the one program image it may build. That is what
-//! // `blobs` buys: the child is handed *data* it has no capability to reach, so the sub-server
-//! // never needs the whole initial ramdisk.
-//! let image = &[0x7f, b'E', b'L', b'F'][..];
-//! let builder = ChildEndowment {
-//!     blobs: &[(0x2000_0000, image)],
-//!     ..ChildEndowment::new(Retention::Nothing)
-//! };
-//! assert_eq!(builder.blobs[0].1.len(), 4);
-//! assert!(builder.fault.is_none()); // unsupervised, and visibly so
-//! ```
-//!
-//! The two budgets [`build_child`] takes are the design's load-bearing distinction and are easy to
-//! pass in the wrong order, so it is worth stating what each one is for:
-//!
-//! ```no_run
-//! # use supervision_protocol::{ChildEndowment, Retention, build_child, start_child};
-//! # fn demo(own: u64, per_child: u64, elf: &elf::Elf) -> Result<(), ()> {
-//! let endow = ChildEndowment { fault: Some(7), ..ChildEndowment::new(Retention::Nothing) };
-//!
-//! // `own` pays for OUR scratch mappings; `per_child` is what the child is made of. Passing a
-//! // per-child region as the second argument is what makes a single `DESTROY` reap the whole
-//! // instance, and passing our own would free our page tables under the child.
-//! let child = build_child(own, per_child, elf, &endow)?;
-//! start_child(child, 0, 0, 0); // and the tcb capability goes back here, as declared
-//! # Ok(())
-//! # }
-//! ```
-//!
-//! Name: recorded (milestone 46, and design/naming.md's crate section). The wire contract was
-//! spelled four ways (`filesystem_proto`, `graphics_proto`, `netproto`, `line_editor::proto`) for one concept;
-//! `*_proto` won on 2026-07-30 under DECISIONS §39, and `script/lint` has checked it since; the
-//! suffix became `_protocol` at milestone 265, on calef's ruling of 2026-09-05, and the
-//! 2026-07-30 spellings are
-//! kept above because that sentence is an account of what was decided then. That
-//! rule plus the service the stem names produces this name, which is the whole of what `recorded`
-//! claims: calef ruled on the rule, and never on this crate.
-//! The stem is the tree's word for the restart discipline. The type it exports as `ChildEndowment` is an
-//! open naming question of its own (DECISIONS §69): a verb where the tenet says noun, naming the
-//! same idea as `grant_plan::Endowment` one construction step apart.
+//! Name: recorded (design/naming.md's crate section). The `_protocol` contract suffix (calef,
+//! 2026-09-05) plus the stem, the tree's word for the restart discipline; `ChildEndowment` is an
+//! open naming question of its own (§69 (`Endow` is a verb)).
 
 use user_mode_runtime::{cap_delete, invoke};
 
@@ -356,6 +286,39 @@ pub fn give_up_own_page(va: u64) -> bool {
 
 /// **Everything a child is born holding.** The same idea as the kernel's `Spawn`: read one of these
 /// and you know the complete authority of the thing about to run.
+///
+/// # Examples
+///
+/// Every field is public and [`ChildEndowment::new`] is the nothing-endowment to build from:
+///
+/// ```
+/// use supervision_protocol::{CHILD_STACK_PAGES, ChildEndowment, Retention};
+///
+/// // A sub-server that gets exactly one endpoint, is born supervised, and holds nothing else.
+/// // `..ChildEndowment::new(Retention::Nothing)` is the intended shape: what is not listed is not
+/// // granted, and what the spawner keeps is stated rather than inherited.
+/// let endow = ChildEndowment {
+///     caps: &[(4, 0b11)], // our slot 4, read/write, landing in the child's slot 0
+///     fault: Some(7), // our slot 7 holds its supervision endpoint
+///     ..ChildEndowment::new(Retention::Nothing)
+/// };
+///
+/// assert_eq!(endow.caps.len(), 1);
+/// assert!(endow.maps.is_empty() && endow.blobs.is_empty() && endow.placed.is_empty());
+/// assert_eq!(endow.stack_pages, CHILD_STACK_PAGES);
+/// assert_eq!(endow.retention, Retention::Nothing);
+///
+/// // A construction sub-server, holding exactly the one program image it may build. That is what
+/// // `blobs` buys: the child is handed *data* it has no capability to reach, so the sub-server
+/// // never needs the whole initial ramdisk.
+/// let image = &[0x7f, b'E', b'L', b'F'][..];
+/// let builder = ChildEndowment {
+///     blobs: &[(0x2000_0000, image)],
+///     ..ChildEndowment::new(Retention::Nothing)
+/// };
+/// assert_eq!(builder.blobs[0].1.len(), 4);
+/// assert!(builder.fault.is_none()); // unsupervised, and visibly so
+/// ```
 pub struct ChildEndowment<'a> {
     /// Capabilities to insert, `(our_slot, rights)`, landing in the child's slots 0, 1, 2, ...
     pub caps: &'a [(u64, u64)],
@@ -518,6 +481,22 @@ pub struct Child {
 /// page tables freed under it when the child is reaped). `build_ut` is what the child itself is made
 /// of: its address space, frames, stack, and TCB. Passing a per-child region as `build_ut` is what
 /// makes a single `DESTROY` reap the whole instance.
+///
+/// # Examples
+///
+/// ```no_run
+/// # use supervision_protocol::{ChildEndowment, Retention, build_child, start_child};
+/// # fn demo(own: u64, per_child: u64, elf: &elf::Elf) -> Result<(), ()> {
+/// let endow = ChildEndowment { fault: Some(7), ..ChildEndowment::new(Retention::Nothing) };
+///
+/// // `own` pays for OUR scratch mappings; `per_child` is what the child is made of. Passing a
+/// // per-child region as the second argument is what makes a single `DESTROY` reap the whole
+/// // instance, and passing our own would free our page tables under the child.
+/// let child = build_child(own, per_child, elf, &endow)?;
+/// start_child(child, 0, 0, 0); // and the tcb capability goes back here, as declared
+/// # Ok(())
+/// # }
+/// ```
 pub fn build_child(
     own_ut: u64,
     build_ut: u64,

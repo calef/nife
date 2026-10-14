@@ -9,11 +9,16 @@ region must refuse")`, for a region that is pinned with no children, or has chil
 pinned. The first frees memory a live object still sits in; the second frees a parent out from
 under its own children, which is the double-free this proof is named for.
 
-diff --git a/crates/memory_regions/src/lib.rs b/crates/memory_regions/src/lib.rs
---- a/crates/memory_regions/src/lib.rs
-+++ b/crates/memory_regions/src/lib.rs
-@@ -105,3 +105,3 @@ pub fn destroy_outcome(
+diff --git a/crates/memory_regions/src/destroy.rs b/crates/memory_regions/src/destroy.rs
+index 8c95eb75e..adbdabc37 100644
+--- a/crates/memory_regions/src/destroy.rs
++++ b/crates/memory_regions/src/destroy.rs
+@@ -29,7 +29,7 @@ pub fn destroy_outcome(
+     is_lifo_top: bool,
+     child_pages: u64,
  ) -> DestroyOutcome {
 -    if pinned || children > 0 {
 +    if pinned && children > 0 {
          return DestroyOutcome::Refused;
+     }
+     if is_root {

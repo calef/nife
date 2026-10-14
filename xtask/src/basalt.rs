@@ -3,8 +3,9 @@
 //! package `jig` installs from basalt) item 3). Name: provisional,
 //! `cargo xtask basalt-fetch`, minted 2026-10-13 (UTC) by lane `lane/ripgrep-from-basalt`.
 //!
-//! nife builds no `rg`. basalt does (its `recipes/ripgrep.toml`), and publishes one package per
-//! architecture on a GitHub Release with an index at `basalt.nifeos.org`. calef ruled on 2026-10-13
+//! nife builds no `rg` and no `ioping`. basalt does (its `recipes/ripgrep.toml` and, since
+//! milestone 906 (ioping is packaged in basalt), `recipes/ioping.toml`), and publishes one package
+//! per architecture on a GitHub Release with an index at `basalt.nifeos.org`. calef ruled on 2026-10-13
 //! (UTC) that nife's tests take that package rather than a build of their own: *"1 is preferable
 //! because that tests jig and basalt's delivery mechanism as well."*
 //!
@@ -17,8 +18,8 @@
 //!    [`crate::disk`] hands to the test index host, so `script/swish-check` types `jig install
 //!    ripgrep` against basalt's bytes;
 //! 3. writes the package's program member to `target/basalt/programs/<triple>/<program>`, which the
-//!    kernel harness's archive and the shell check's disk carry as `rg` for the lines that run it by
-//!    path with hand-placed capabilities.
+//!    kernel harness's archive and the shell check's disk carry (`rg`, `ioping`) for the tests and
+//!    lines that run it by path with hand-placed capabilities.
 //!
 //! It also fetches the host's reference `rg`, the same 14.1.1 from ripgrep's own Release, pinned by
 //! SHA-256 per host ([`HOST_RIPGREP`]). `script/swish-check` compares the guest's walk against what
@@ -35,7 +36,7 @@
 //! wants it copies basalt's served lines over [`PINNED_INDEX`]'s file and lets CI judge them:
 //!
 //! ```text
-//! curl -sSf https://basalt.nifeos.org/rolling/metadata/stand-in-index | grep '^ripgrep-' > xtask/basalt-pins.index
+//! curl -sSf https://basalt.nifeos.org/rolling/metadata/stand-in-index | grep -E '^(ripgrep|ioping)-' > xtask/basalt-pins.index
 //! ```
 
 use std::path::{Path, PathBuf};
@@ -101,7 +102,19 @@ pub(crate) fn repository_index() -> PathBuf {
 /// basalt-fetch`. Never part of the base image (calef, 2026-10-07 UTC); the kernel harness's
 /// archive and the shell check's disk carry it when it is here.
 pub(crate) fn ripgrep_elf(triple: &str) -> PathBuf {
-    workspace_root().join(format!("target/basalt/programs/{triple}/rg"))
+    program_elf(triple, "rg")
+}
+
+/// **`ioping` for `triple`, taken from basalt's package** (milestone 906 (ioping is packaged in
+/// basalt, and its test installs it with `jig`)): present only after `cargo xtask basalt-fetch`, on
+/// [`ripgrep_elf`]'s terms. The kernel harness's archive carries it when it is here.
+pub(crate) fn ioping_elf(triple: &str) -> PathBuf {
+    program_elf(triple, "ioping")
+}
+
+/// Where [`take_programs`] writes a package's program member for `triple`.
+fn program_elf(triple: &str, program: &str) -> PathBuf {
+    workspace_root().join(format!("target/basalt/programs/{triple}/{program}"))
 }
 
 /// **The host's reference `rg`**, ripgrep's own 14.1.1 build for this host, present only after
@@ -126,7 +139,7 @@ pub(crate) fn fetch() -> bool {
                 ok = false;
             }
             Err(why) => eprintln!(
-                "basalt-fetch: {why}; the `rg` lines and tests skip without it and say so"
+                "basalt-fetch: {why}; the `rg` and `ioping` lines and tests skip without it and say so"
             ),
         }
     }
