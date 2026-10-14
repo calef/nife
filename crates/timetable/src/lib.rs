@@ -1,23 +1,13 @@
 //! **`timetable`: a cron whose every entry is a grant** (milestone 129).
 //!
-//! Unix cron is ambient authority with a timestamp on it. A crontab line runs as a user and can do
-//! whatever that user can do, so the crontab *is* the attack surface: the line `0 3 * * * rm -rf
-//! /var/tmp/*` is dangerous not because of what it says but because of what the account behind it
-//! holds. Nothing in the line bounds it, and nothing can, because on Unix a process's authority is
-//! a property of who it runs as rather than of what it was handed.
-//!
-//! This crate inverts that. An entry is **a schedule plus a grant expression**, and the grant
-//! expression is checked at registration by [`grant_plan::plan`], which is the same function the
-//! shell checks a prompt line with. What comes out is an [`Endowment`](grant_plan::Endowment): the complete authority the
-//! scheduled child will hold, computable and printable **before anything ever fires**. An entry
-//! cannot name what its program's manifest does not declare, and it cannot be backed by authority
-//! the scheduler itself was not given.
+//! A Unix crontab line runs as a user and can do whatever that user can do; nothing in the line
+//! bounds it. Here an entry is **a schedule plus a grant expression**, checked at registration by
+//! [`grant_plan::plan`], the same function the shell checks a prompt line with. The result is an
+//! [`Endowment`](grant_plan::Endowment): the complete authority the scheduled child will hold,
+//! printable before anything fires. An entry cannot name what its program's manifest does not
+//! declare, and cannot be backed by authority the scheduler was not given.
 //!
 //! # The four answers registration can give
-//!
-//! This is the demonstration, and it is the negative controls rather than the happy path. Unix cron
-//! has one answer to every line (it runs, and whether it should have is not a question anything
-//! asks); [`Registry::register`] has four, and three of them are refusals:
 //!
 //! | answer | what it means | example entry |
 //! |---|---|---|
@@ -26,13 +16,9 @@
 //! | [`Admission::Unbacked`] | the line is legal and **this scheduler holds nothing to back it** | `every 5s date` (a clock is a capability, and the scheduler has none) |
 //! | [`Error`] | the document itself does not parse, with the line number | `every fortnight least_authority_demo 7` |
 //!
-//! **[`Admission::Unbacked`] is the one worth reading twice.** `date` at a Unix cron line always
-//! works, because reading the clock there is ambient. Here the wall clock is a capability
-//! (DECISIONS §43), the scheduler was granted none, and so a scheduled `date` is refused *at
-//! registration, in writing*, rather than firing five hundred times and printing 1970. The refusal
-//! is a fact about the scheduler's own endowment, which is why it cannot be fixed by editing the
-//! entry: it is fixed by granting the scheduler a clock, which is a decision somebody makes on
-//! purpose at the spawn site.
+//! [`Admission::Unbacked`] is a fact about the scheduler's own endowment
+//! (DECISIONS §43 (reading the clock is a page)), so it is fixed by granting the scheduler a clock
+//! at the spawn site, not by editing the entry.
 //!
 //! # What the document looks like
 //!
@@ -43,43 +29,21 @@
 //! every month on last fri at 17:00  least_authority_demo 5
 //! ```
 //!
-//! Three shapes. `every <interval>` and `at-boot` run on the monotonic counter and need nothing.
-//! A calendar line (G5, ruled by calef on 2026-09-26; [`recurrence`]) names a time of day in UTC,
-//! is exactly one RFC 5545 RRULE, and needs the timetable to hold the wall clock. See
-//! notes/scheduled-execution/calendar-grammar-g5.md for the grammar and what it refuses.
+//! `every <interval>` and `at-boot` run on the monotonic counter and need nothing. A calendar line
+//! ([`recurrence`]) names a time of day in UTC, is exactly one RFC 5545 RRULE, and needs the
+//! timetable to hold the wall clock. See notes/scheduled-execution/calendar-grammar-g5.md.
 //!
-//! # What this crate is not
+//! This crate performs no IO and makes no syscalls, so the four answers are host-tested. The
+//! program that holds the budget, reads the counter and builds the children is
+//! `components/src/timetable.rs`.
 //!
-//! It performs no IO and makes no syscalls, which is CLAUDE.md rule 7 and the reason the four
-//! answers above are host-tested in milliseconds rather than under QEMU. The program that holds the
-//! budget, reads the counter and builds the children is `components/src/timetable.rs`; everything here is
-//! the decision it makes, lifted out so it can be tested and Kani-reached.
-//!
-//! Name: ratified 2026-09-13 (calef, working the unratified worklist), for this crate, the program
-//! `components/src/timetable.rs` and `components/timetable.conf` together. Milestone 129's block
-//! declined to propose a name and said the eventual one was calef's; this was the placeholder, and
-//! it is the placeholder that won.
-//!
-//! `timetable` is a noun naming the thing this crate holds, a table of scheduled entries, and it
-//! **avoids `scheduler`, which in this tree already means `kernel/src/sched.rs`** and would make two
-//! unrelated things share a word.
-//!
-//! **That avoidance turned out to be the load-bearing half**, and it decided a second name the same
-//! day. `crates/schedule_store` had taken the adjacent inflection, and calef asked the question a
-//! reader scanning `crates/` would ask: *"What kind of schedule? Is this the thread scheduler?"* It
-//! is not, and one inflection is not enough distance, so that crate becomes `timetable_store`. A
-//! word this tree stepped around once is a word it should keep stepping around.
-//!
-//! Refused `cron`, which milestone 129's block calls "a placeholder in the oldest tradition" and
-//! which names the model this milestone inverts: cron runs arbitrary commands as ambient authority
-//! made periodic, where here every entry is a grant checked at parse time by `grant_plan`. Refused
-//! `almanac`, a book of astronomical dates, promising calendar scheduling this does not do, and
-//! `metronome`, which names the tick and says nothing about the grant, the half that matters.
-//! Refused `grant_schedule`, which puts the inversion in the name and is worse as a word a person
-//! types at a prompt. Refused `cron` (the roadmap block calls it "a placeholder in the oldest tradition", and
-//! the whole point of the milestone is that this is *not* cron's model), `almanac` (a book of
-//! astronomical dates, which promises calendar scheduling this deliberately does not do), and
-//! `metronome` (names the tick and says nothing about the grant, which is the half that matters).
+
+//! Name: ratified 2026-09-13 (calef), for this crate, the program `components/src/timetable.rs`
+//! and `components/timetable.conf`. A noun for a table of scheduled entries that avoids
+//! `scheduler`, which here means `kernel/src/sched.rs`; for the same reason `schedule_store` became
+//! `timetable_store`. Refused `cron`, which names the ambient-authority model this inverts.
+//! Refused `almanac`, which promises astronomical calendar scheduling. Refused `metronome`, which
+//! names the tick and not the grant. Refused `grant_schedule`, worse as a word typed at a prompt.
 
 #![no_std]
 

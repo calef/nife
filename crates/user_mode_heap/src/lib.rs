@@ -1,16 +1,12 @@
 //! **`user_mode_heap`**: the userspace heap algorithm, as pure logic (milestone 27).
 //!
-//! A first-fit, address-sorted free list with coalescing, the same shape the kernel's original
-//! milestone-4 heap had (notes/heap.md) and for the same reason: zero overhead on allocated
-//! memory. `GlobalAlloc::dealloc` receives the `Layout` back, so no per-allocation header is
-//! needed; the free-list node lives *inside* free memory, and allocated bytes are all payload.
+//! A first-fit, address-sorted free list with coalescing, with zero overhead on allocated memory
+//! (notes/heap.md). `GlobalAlloc::dealloc` receives the `Layout` back, so no per-allocation header
+//! is needed; the free-list node lives inside free memory, and allocated bytes are all payload.
 //!
-//! This crate is deliberately just the algorithm: it manages address ranges someone else hands it
-//! (`add_region`) and never maps a page or makes a syscall. The syscall half (growing the heap out
-//! of the process's own untyped via `memory_region::MAP`) lives in `user_mode_runtime::heap`, which wraps this in
-//! a lock and a grow-on-demand policy. The split is the project's standing rule: pure logic
-//! compiles for the host, so these invariants are proven in milliseconds by `cargo test -p user_mode_heap`,
-//! not in QEMU.
+//! This crate manages address ranges someone else hands it (`add_region`) and never maps a page or
+//! makes a syscall. Growing the heap out of the process's own untyped via `memory_region::MAP`
+//! lives in `user_mode_runtime::heap`, which wraps this in a lock and a grow-on-demand policy.
 //!
 //! # The one invariant that makes it headerless
 //!
@@ -21,64 +17,13 @@
 //! anywhere. Front padding for over-aligned requests lands on the same grid, so every remainder
 //! is itself a legal free block and no sliver is ever silently leaked.
 //!
-//! # Examples
-//!
-//! The heap manages ranges someone else donates; it never maps a page. That split is what lets an
-//! example run on the host at all:
-//!
-//! ```
-//! use core::alloc::Layout;
-//! use user_mode_heap::{Heap, MIN_ALIGN, effective_size};
-//!
-//! // A 16-aligned arena. On a real process this would be pages mapped out of the untyped budget.
-//! #[repr(align(4096))]
-//! struct Arena([u8; 4096]);
-//! let mut arena = Box::new(Arena([0; 4096]));
-//!
-//! let mut h = Heap::new();
-//! // SAFETY: the arena is exclusively ours and outlives `h`.
-//! unsafe { h.add_region(arena.0.as_mut_ptr(), arena.0.len()) };
-//! assert_eq!(h.free_bytes(), 4096);
-//! assert_eq!(h.block_count(), 1);
-//!
-//! let p = h.alloc(Layout::from_size_align(100, 8).unwrap()).unwrap();
-//! assert!(p.as_ptr().addr().is_multiple_of(MIN_ALIGN));
-//!
-//! // SAFETY: `p` came from this heap with this layout, and is freed once.
-//! unsafe { h.dealloc(p, Layout::from_size_align(100, 8).unwrap()) };
-//!
-//! // Everything freed coalesces back to one block. That is the invariant, not a nicety:
-//! // without it a long-lived process fragments to death.
-//! assert_eq!(h.block_count(), 1);
-//! assert_eq!(h.free_bytes(), 4096);
-//! ```
-//!
-//! Sizes round up to the 16-byte grid, which is what makes the allocator headerless: `alloc` and
-//! `dealloc` both recompute the same number from the `Layout`, so nothing has to be stored.
-//!
-//! ```
-//! use core::alloc::Layout;
-//! use user_mode_heap::{MIN_ALIGN, effective_size};
-//!
-//! assert_eq!(effective_size(Layout::from_size_align(1, 1).unwrap()), MIN_ALIGN);
-//! assert_eq!(effective_size(Layout::from_size_align(16, 1).unwrap()), 16);
-//! assert_eq!(effective_size(Layout::from_size_align(17, 1).unwrap()), 32);
-//! ```
-//!
-//! Name: ratified 2026-09-13 (calef, milestone 285), replacing `user_heap`. The prefix moved with
-//! it: `user_` became `user_mode_`, because in this tree `user` means *a person* in several hundred
-//! places (milestone 49 is users and attribution, `identity_provisioner` creates them, `login`
-//! authenticates them), so `user_heap` read as "the heap belonging to a user" rather than "the heap
-//! a program gets at the unprivileged level". "User mode" is the tree's architecture-neutral phrase
-//! for that level, where `EL0`, `U-mode` and `ring 3` are one ISA's each; `el0_heap` was refused for
-//! being correct on one architecture and wrong on two (AGENTS.md rule 5). Refused `el0_heap` (names
-//! one architecture's privilege level for a crate that ships on three).
-//!
-//! It was ratified once before, on 2026-08-01 (calef, milestone 63), as `user_heap` replacing
-//! `uheap`. That record stands and its reasoning is not restated here in today's spelling: the `u`
-//! was "userspace" and had to be decoded, while `user_rt` already established `user_` as this
-//! tree's prefix for it. Milestone 285 is what closed that circle, since the prefix rested on a
-//! crate whose own name had never been argued.
+
+//! Name: ratified 2026-09-13 (calef; milestone 285 (`user_` meant a person in three hundred
+//! places)), replacing `user_heap`, which replaced `uheap` (2026-08-01; milestone 63 (directory and
+//! package names: one spelling per thing)). `user_heap` read as the heap belonging to a person;
+//! "user mode" is the tree's architecture-neutral phrase for the unprivileged level. Refused
+//! `el0_heap` (names one architecture's privilege level for a crate that ships on three,
+//! AGENTS.md rule 5).
 
 #![no_std]
 
@@ -102,11 +47,51 @@ const _: () = assert!(core::mem::align_of::<FreeBlock>() <= MIN_ALIGN);
 
 /// The bytes a `Layout` actually costs on the 16-byte grid. `alloc` and `dealloc` must agree on
 /// this number from the `Layout` alone; this function is that agreement.
+///
+/// # Examples
+///
+/// ```
+/// use core::alloc::Layout;
+/// use user_mode_heap::{MIN_ALIGN, effective_size};
+///
+/// assert_eq!(effective_size(Layout::from_size_align(1, 1).unwrap()), MIN_ALIGN);
+/// assert_eq!(effective_size(Layout::from_size_align(16, 1).unwrap()), 16);
+/// assert_eq!(effective_size(Layout::from_size_align(17, 1).unwrap()), 32);
+/// ```
 pub fn effective_size(layout: Layout) -> usize {
     layout.size().max(1).next_multiple_of(MIN_ALIGN)
 }
 
 /// The heap: an address-sorted list of free blocks over regions the caller donated.
+///
+/// # Examples
+///
+/// ```
+/// use core::alloc::Layout;
+/// use user_mode_heap::{Heap, MIN_ALIGN, effective_size};
+///
+/// // A 16-aligned arena. On a real process this would be pages mapped out of the untyped budget.
+/// #[repr(align(4096))]
+/// struct Arena([u8; 4096]);
+/// let mut arena = Box::new(Arena([0; 4096]));
+///
+/// let mut h = Heap::new();
+/// // SAFETY: the arena is exclusively ours and outlives `h`.
+/// unsafe { h.add_region(arena.0.as_mut_ptr(), arena.0.len()) };
+/// assert_eq!(h.free_bytes(), 4096);
+/// assert_eq!(h.block_count(), 1);
+///
+/// let p = h.alloc(Layout::from_size_align(100, 8).unwrap()).unwrap();
+/// assert!(p.as_ptr().addr().is_multiple_of(MIN_ALIGN));
+///
+/// // SAFETY: `p` came from this heap with this layout, and is freed once.
+/// unsafe { h.dealloc(p, Layout::from_size_align(100, 8).unwrap()) };
+///
+/// // Everything freed coalesces back to one block. That is the invariant, not a nicety:
+/// // without it a long-lived process fragments to death.
+/// assert_eq!(h.block_count(), 1);
+/// assert_eq!(h.free_bytes(), 4096);
+/// ```
 pub struct Heap {
     head: Option<NonNull<FreeBlock>>,
     free: usize,

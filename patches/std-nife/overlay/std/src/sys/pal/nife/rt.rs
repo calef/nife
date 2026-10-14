@@ -1,77 +1,26 @@
 //! The std runtime contract, and the syscall glue that meets it.
 //!
-//! This is the PAL's twin of `crates/user_mode_runtime`: the same `svc #0` / `ecall` / `syscall` instructions, the
-//! same register convention, deliberately re-stated here because std cannot depend on an
+//! This is the PAL's twin of `crates/user_mode_runtime`: the same `svc #0` / `ecall` / `syscall`
+//! instructions and register convention, re-stated here because std cannot depend on an
 //! out-of-tree crate. The ABI *constants* are not re-stated: `abi.rs` next door is generated
-//! verbatim from `crates/abi/src/lib.rs` by `cargo xtask std-src`, so the numbers cannot drift.
-//! Only the one trap, `trap6`, is hand-copied; if `user_mode_runtime`'s changes, change this.
+//! verbatim from `crates/abi/src/lib.rs` by `cargo xtask std-src`. Only the one trap, `trap6`, is
+//! hand-copied; if `user_mode_runtime`'s changes, change this.
 //!
 //! # The std slot convention
 //!
-//! A std program's loader owes it, per the out-of-band-contract rule of notes/abi.md §4:
+//! A std program's loader owes it, per the out-of-band-contract rule of notes/abi.md §4, the slots
+//! `crates/std_runtime_protocol` lists, each with what it grants. Two are always there: an untyped
+//! budget the global allocator draws heap pages from lazily (`memory_region::MAP`, at
+//! [`HEAP_BASE`], capped at [`HEAP_MAX`]), and the endpoint `stdout` and `stderr` SEND to, 16
+//! bytes per message (w0 = byte count, w1|w2 = the bytes, little-endian), so out and err
+//! interleave.
 //!
-//! - **slot 0**: an untyped budget. The global allocator draws heap pages from it lazily via
-//!   `memory_region::MAP`, at [`HEAP_BASE`], capped at [`HEAP_MAX`].
-//! - **slot 1**: an endpoint with WRITE. `stdout` and `stderr` SEND here, 16 bytes per message
-//!   (w0 = byte count, w1|w2 = the bytes, little-endian). Interleaving of out and err is the
-//!   phase-one price of one endpoint; milestone 28's terminal contract owns fixing it.
-//!
-//! And two more, granted only to a std program that is given the network (milestone 27 phase two;
-//! the net PAL in `sys/net` binds them, DECISIONS §25):
-//!
-//! - **slot 2**: the `Stack` endpoint with WRITE. `std::net` speaks the net_stack socket contract
-//!   (`netproto`) over it: an open is a `CALL` here that the stack answers with the socket's own
-//!   capability (§255 (each socket is its own capability)), and every later `CALL`, and the
-//!   `SEND_CAP` that delegates the socket's shared frame, is made on that capability. A program not given the network leaves this slot empty, and every
-//!   `TcpStream`/`UdpSocket` operation returns `Unsupported` rather than blocking.
-//! - **slot 3**: an untyped budget the net PAL mints and maps each socket's shared frame from.
-//!
-//! And one more, granted only to a std program that is given a **directory** (milestone 27 phase
-//! two, the FS-service half; the fs PAL in `sys/fs` binds it, DECISIONS §27):
-//!
-//! - **slot 4**: the FS-service endpoint with WRITE. That endpoint **is** the directory
-//!   capability: the server it reaches is bound to one directory node, and every name `std::fs`
-//!   sends is resolved under that directory. There is no global namespace to reach past it, so a
-//!   path that tries to leave the directory is refused before it ever reaches the wire. The grant
-//!   comes with one page the loader maps at [`FS_PAGE`], the contract's unit of transfer. A
-//!   program left this slot empty gets `Unsupported` from every `std::fs` call, which is what "no
-//!   ambient filesystem" feels like from inside a process.
-//!
-//! And one more, granted only to a std program that is given a **wall clock** (milestone 51; the
-//! time PAL in `sys/time` binds it, DECISIONS §43):
-//!
-//! - **slot 5**: a `PageFrame` capability naming the clock page, with `READ`. The loader maps that
-//!   same page **read-only** at [`CLOCK_PAGE`], and `SystemTime::now()` is then the ambient
-//!   monotonic counter plus the offset the clock service published there: two loads and an add,
-//!   no server round trip, and nothing this program can write. A program left this slot empty
-//!   does not know what time it is and `SystemTime::now()` says so loudly rather than reporting
-//!   1970 plus uptime, which is what it used to do.
-//!
-//! And one more, granted only to a std program that is given **entropy** (milestone 56; the random
-//! PAL in `sys/random` binds it, DECISIONS §44):
-//!
-//! - **slot 6**: the entropy service's request endpoint with WRITE. It means *"you may obtain
-//!   randomness"*, and it names no device: the service holds the virtio-rng transport and this
-//!   program cannot reach it. `std::random::SystemRng` (which promises bytes "suitable for
-//!   cryptographic purposes") is a `CALL` on this endpoint, and a program left this slot empty gets
-//!   a **panic** rather than a predictable stand-in, for the same reason `SystemTime::now()` does:
-//!   the function has no error channel and the alternative is a lie. `HashMap`'s seed is the one
-//!   caller std itself treats as best-effort, and it keeps working either way; see `sys/random`.
-//!
-//! And one more, granted only to a std program that is given **inert configuration** (milestone
-//! 47's environment-variable fork, DECISIONS §111; `sys/env` binds it):
-//!
-//! - **slot 7**: a `PageFrame` capability naming the inert-configuration page, with `READ`. The
-//!   loader maps that same page **read-only** at [`CONFIG_PAGE`], and `sys/env`'s `seed`
-//!   populates `std::env`'s `TZ`, `LANG` and `TERM` from it once, at process startup, before
-//!   `main` runs (`pal::nife::init`). A program left this slot empty is seeded with nothing,
-//!   which is the same honest-absence shape every other slot here uses: `env::var("TZ")`
-//!   answers `Err` because nobody granted this program a timezone, not because the lookup
-//!   failed. Unlike the clock page, this one has exactly one writer and it finishes before the
-//!   page has a second reader, so there is no seqlock to it (see `environment_protocol`'s own docs).
-//!
-//! Programs that never allocate, print, open a socket, or open a file never touch the slots they
-//! do not use.
+//! The rest (the network, a directory, the clock, entropy, configuration, arguments, a resolver,
+//! threads) are granted only to a program given that authority, and each is bound by the `sys/`
+//! module that owns it. A slot left empty makes the matching std call answer that it has nothing:
+//! `Unsupported`, `Err`, or a loud panic where the signature has no error channel (as
+//! `SystemTime::now()` and `SystemRng` do, rather than report 1970 or predictable bytes). Programs
+//! that never use a slot never touch it.
 
 // **The numbers themselves live in `crates/std_runtime_protocol`** (milestone 595 (provisional)),
 // generated into this PAL as `runtimeproto` by `cargo xtask std-src`. They were written here, and

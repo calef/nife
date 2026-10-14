@@ -1,29 +1,21 @@
 //! **Start the cycle counter, check it counts, and read it** (milestone 74, the aarch64 half).
 //!
-//! `PMCCNTR_EL0` is the PMU's always-present cycle counter. Until this module it was a **stopped**
-//! counter in this kernel: nothing wrote `PMCR_EL0.E` or `PMCNTENSET_EL0.C`, so a thread holding
-//! milestone 229's grant could read it legally and got the same number every time. Starting it is a
-//! handful of register writes. The rest of this file is what goes around them, and it is the shape
-//! `arch::riscv64::pmu` and `arch::x86_64::pmu` already established: check the counter moves before
-//! believing it, and record *why* when it does not, as a value the boot line prints.
+//! `PMCCNTR_EL0` is the PMU's always-present cycle counter, stopped until something writes
+//! `PMCR_EL0.E` and `PMCNTENSET_EL0.C`. The shape around those writes is the one
+//! `arch::riscv64::pmu` and `arch::x86_64::pmu` share: check the counter moves before believing it,
+//! and record *why* when it does not, as a value the boot line prints.
 //!
-//! # Why this is a register write and not a firmware call
+//! On aarch64 the PMU's control registers are directly writable at EL1 once nothing above traps
+//! them: `boot.s`'s EL2 drop clears `MDCR_EL2.TPM`, and `MDCR_EL3.TPM` is TF-A's. So a counter that
+//! does not run is this kernel's failure to start it, or a secure-world setting this module can
+//! observe but not change.
 //!
-//! On riscv64 the counters are M-mode's, so the kernel has to ask firmware (SBI PMU). On aarch64
-//! the PMU's control registers are directly writable at EL1 once nothing above traps them.
-//! `MDCR_EL2.TPM` is the EL2 half of "nothing above", and `boot.s`'s EL2 drop clears it (milestone
-//! 127's first prerequisite). `MDCR_EL3.TPM` is the EL3 half and is TF-A's, not ours. **So on
-//! aarch64 there is nobody else to blame**: a counter that does not run is this kernel's failure to
-//! start it, or a secure-world setting this module can observe but not change.
-//!
+
 //! # The registers, per core
 //!
-//! Every one of them is banked per PE, and every one resets to an architecturally UNKNOWN value
-//! (Arm DDI 0487, and the `AArch64-pmcr_el0`, `-pmcntenset_el0` and `-pmccfiltr_el0` pages of the
-//! system-register reference at `arm.jonpalmisc.com`, read 2026-09-19). So [`init_this_cpu`] runs
-//! on **every** core from `timer::init`, which is the per-core init site the `PMUSERENR_EL0` write
-//! already lives at, and it **assigns** rather than read-modify-writes: a field firmware left set is
-//! exactly the thing this is removing.
+//! Every one is banked per PE and resets to an architecturally UNKNOWN value (Arm DDI 0487), so
+//! [`init_this_cpu`] runs on **every** core from `timer::init` and **assigns** rather than
+//! read-modify-writes: a field firmware left set is exactly the thing this is removing.
 //!
 //! | register | written | why |
 //! |---|---|---|
@@ -31,51 +23,36 @@
 //! | `PMCR_EL0` | `E \| C \| LC` | `E` enables; `C` zeroes this core's cycle counter; `LC` makes its overflow 64-bit. `D` (divide by 64) and `DP` (stop when counting is prohibited) are cleared by the assignment, and a set `D` would make every number 64 times too small |
 //! | `PMCNTENSET_EL0` | bit 31 (`C`) | the cycle counter's own enable. Write-one-to-set, so no other counter is touched |
 //!
-//! Linux's `armv8pmu_reset` (`drivers/perf/arm_pmuv3.c`, read 2026-09-19) assigns `PMCR_EL0` the
-//! same way, `P | C | LC`, for the same reason. seL4's `arm_init_ccnt` (`src/arch/arm/benchmark/
-//! benchmark.c`, read 2026-09-19) writes `E | C | P` and then `PMCNTENSET` bit 31, which is this
-//! module minus `LC`.
+//! Linux's `armv8pmu_reset` (`drivers/perf/arm_pmuv3.c`) assigns `PMCR_EL0` the same way; seL4's
+//! `arm_init_ccnt` is this module minus `LC`.
 //!
 //! # `PMCCFILTR_EL0` is written with zero, on every board, by policy
 //!
-//! Its `P`, `U` and `NSH` bits decide whether cycles spent at EL1, EL0 and EL2 are counted. That
-//! decides what every cycle number this kernel prints *means*: a count that includes EL1 is the
-//! cost of an operation to the machine, kernel included, and one that excludes it is a userspace
-//! profile. calef ruled on 2026-10-07 (UTC), option A1 of milestone 353 (the aarch64 half of 74):
-//! **zero, everywhere**, so EL0 and EL1 count and EL2 does not, which is what riscv64 and `x86_64`
-//! already count (user and kernel). [`PMCCFILTR_COUNT_EL0_AND_EL1`] carries the reasons.
+//! Its `P`, `U` and `NSH` bits decide whether cycles at EL1, EL0 and EL2 are counted, and so what
+//! every cycle number this kernel prints means. calef ruled on 2026-10-07 (UTC), option A1 of
+//! milestone 353 (the aarch64 half of 74): **zero, everywhere**, so EL0 and EL1 count and EL2 does
+//! not, matching riscv64 and `x86_64`. [`PMCCFILTR_COUNT_EL0_AND_EL1`] carries the reasons;
+//! [`FIRMWARE_FILTER`] records the firmware's value for milestone 25 (cross-OS comparison) only.
 //!
-//! That ruling replaced an earlier one (2026-09-19) to wait for argon's firmware value and match
-//! it. The register's reset value is architecturally UNKNOWN and firmware-dependent, so argon's
-//! value says what argon's firmware does and what seL4's TX1 figures were measured under. It cannot
-//! set this kernel's policy. [`FIRMWARE_FILTER`] still records it, for milestone 25 (cross-OS
-//! comparison) only.
-//!
+
 //! # BUGS
 //!
-//! - **Nothing here has run on silicon.** Every outcome this module can report today is a fact about
-//!   QEMU. argon (the Jetson TX1, milestone 127) is the machine that would say something, and its
-//!   block's bench procedure names what to read on the console.
+//! - **Nothing here has run on silicon.** Every outcome this module can report today is a fact
+//!   about QEMU; milestone 127 (the seL4 machine)'s bench procedure names what to read on the
+//!   console on hardware.
 //! - **The did-it-move check cannot tell a real counter from an emulated one.** QEMU-TCG models
-//!   `PMUv3` on every `-cpu` this tree boots (`cortex-a72`, `-a57`, `-a53`) and drives
-//!   `PMCCNTR_EL0` from its own clocks, so the counter moves, is accepted as `Running`, and counts
-//!   nothing a core did. Measured 2026-09-19: under `-icount` (the bench boot) it is the
-//!   instruction count, and the probe reads `cycles_per_tick 16.00 (10000226 cycles over 625003
-//!   ticks at cntfrq 62500000)`, which is `script/icount`'s own `instructions_per_counter_tick 16`
-//!   plus the handful of instructions between the two reads; without `-icount` it advances in steps
-//!   of 1000 at roughly 32 per tick. The defence is the riscv64 half's: the probe prints its inputs,
-//!   and a round ratio is named as the tell rather than as the answer. The `Stuck` path has not run
-//!   on any configuration here, because no QEMU model this tree boots leaves the counter constant.
+//!   `PMUv3` on every `-cpu` this tree boots and drives `PMCCNTR_EL0` from its own clocks: under
+//!   `-icount` it is the instruction count (the probe reads `cycles_per_tick 16.00`, which is
+//!   `script/icount`'s `instructions_per_counter_tick 16`), and without it it advances in steps of
+//!   1000. The probe prints its inputs, and a round ratio is named as the tell. The `Stuck` path
+//!   has not run, because no QEMU model this tree boots leaves the counter constant.
 //! - **A trap here is a hang or a fault before the banner.** If TF-A leaves `MDCR_EL3.TPM` set,
-//!   every PMU register access at EL1 traps to EL3, and the first one is milestone 228's
-//!   `PMUSERENR_EL0` write in `timer::init`, not anything in this file. That ordering predates this
-//!   module; milestone 127's bench procedure says what the console looks like if it happens.
-//! - **Each core's counter is its own.** `C` zeroes each core's counter at that core's init, so
-//!   values from two cores are unrelated numbers, and a difference across a migration is garbage.
-//!   [`cycles`] reads the current core's; a caller that cannot rule out migration must check the
-//!   core did not change, which is what `bench::cycles_per_tick` does.
-//! - **The counter is never stopped.** It runs for the life of the boot, the same call the other two
-//!   halves make.
+//!   every PMU register access at EL1 traps to EL3, and the first is the `PMUSERENR_EL0` write in
+//!   `timer::init`, not anything in this file.
+//! - **Each core's counter is its own**, zeroed at that core's init. [`cycles`] reads the current
+//!   core's; a caller that cannot rule out migration must check the core did not change, as
+//!   `bench::cycles_per_tick` does.
+//! - **The counter is never stopped**, as in the other two halves.
 
 use core::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 

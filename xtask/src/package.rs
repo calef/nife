@@ -1,19 +1,11 @@
 //! **`cargo xtask package`**: build a package from a reviewed recipe, and say what its digest is.
 //!
-//! Rung 3a of milestone 198 (a package manager, and the trivial install that makes a second
-//! customer possible) has two halves, and this is the producer.
-//! DECISIONS §195 (a reviewed recipe vouches for a package), in
-//! [its own file](../../design/decisions/0195-a-recipe-vouches-and-the-owner-may-overrule.md),
-//! puts a package's digest in a version-controlled recipe changed by human review, which is
-//! Homebrew's arrangement; this is the tool that turns such a recipe into the one archive file
-//! DECISIONS §197 (a package is one archive file), in
-//! [its own file](../../design/decisions/0197-a-package-is-one-archive-file.md), rules a package
-//! is.
-//!
-//! **nife cannot build software**, so a package is produced here, on a host with a cross-toolchain,
-//! and consumed by a target with no compiler. That is why this lives in `xtask` and why a recipe
-//! names an architecture: three triples, three packages, §197's "per-architecture output is the
-//! normal case".
+//! The producer half of milestone 198 (a package manager, and the trivial install that makes a
+//! second customer possible). DECISIONS §195 (a reviewed recipe vouches for a package) puts a
+//! package's digest in a version-controlled recipe changed by human review; this turns such a
+//! recipe into the one archive file DECISIONS §197 (a package is one archive file) rules a package
+//! is. nife cannot build software, so a package is produced here, on a host with a
+//! cross-toolchain, and a recipe names an architecture: three triples, three packages.
 //!
 //! # EXAMPLES
 //!
@@ -28,56 +20,47 @@
 //! ```
 //!
 //! A recipe with no `digest` key builds and prints the digest to paste in; one whose `digest`
-//! disagrees with the bytes fails, which is the whole mechanism: the reviewed line is what decides
-//! whether the bytes may run, so a rebuild that does not reproduce it is a fact somebody must see.
+//! disagrees with the bytes fails, because the reviewed line decides whether the bytes may run.
 //!
+
 //! # The recipe format
 //!
-//! TOML (calef, 2026-09-27: package declarations and recipes both move to TOML; JSON was refused
-//! for having no comments, and YAML too). The file extension `.recipe.toml` and every key name
-//! are provisional, named by the lane of milestone 611 (every program and crate belongs to a
-//! package).
+//! TOML (calef, 2026-09-27; JSON and YAML refused). The extension `.recipe.toml` and every key
+//! name are provisional.
 //!
 //! ```toml
 //! name = "uptime"              # required, at most package_archive::NAME_LEN bytes
 //! version = "0.1.0"            # required
 //! architecture = "aarch64"     # required: aarch64, riscv64 or x86_64
 //! digest = "sha256:9f2c..."    # optional: sha256: and 64 hex characters, checked against
-//!                              # what was built (DECISIONS §197's digest ruling, 2026-10-07)
+//!                              # what was built
 //!
 //! [[member]]                   # members in order: the package's bytes depend on it
 //! program = "uptime"           # a built ELF for that architecture, resolved from target/
 //! as = "uptime"                # optional: the member's name in the package, when the ELF it
-//!                              # packs is built under another name (milestone 614's 0.2.0
-//!                              # fixture, which packs `greeting_v2` as `greeting`)
+//!                              # packs is built under another name
 //!
 //! [[member]]
 //! name = "uptime.licence"      # any file, by a path relative to the repository root
 //! file = "LICENSE-MIT"
 //! ```
 //!
-//! `program` exists so a recipe does not have to spell a target triple and a cargo profile, which
-//! are facts about this checkout rather than about the package. A key the parser does not know is
-//! refused, so a misspelt `digest` cannot pass review as a recipe that records none.
+//! `program` spares a recipe the target triple and cargo profile, which are facts about this
+//! checkout. An unknown key is refused, so a misspelt `digest` cannot pass review as a recipe that
+//! records none. The parser is the host-only `toml` crate; the target reads the image's catalog
+//! (`name sha256:<hex>` lines, below), never a recipe.
 //!
-//! The parser is the `toml` crate, host-only: `xtask` never reaches the shipping graph, and no
-//! target reads a recipe. The target reads the image's catalog (`name sha256:<hex>` lines, below).
-//!
+
 //! # BUGS
 //!
 //! - **It builds nothing.** A `program` whose ELF is not in `target/` is an error naming the file,
-//!   not a cargo invocation. Packaging and building are separate acts here for the reason milestone
-//!   150 gives about hand-maintained lists: a tool that quietly rebuilt would hide which binary it
-//!   had packed.
-//! - **Nothing installs the result.** A target can fetch a package and check it against the image's
-//!   catalogue (`image_catalogue` below, and the kernel's package tests), and nothing after that:
-//!   installing it waits on how an installed program reaches the spawner, which is calef's
-//!   (notes/packages.md, "Where this stops").
-//! - **The catalogue is a file in `target/` and an archive entry**, not a repository index. §195's
-//!   per-source trust needs a catalogue per source; the image's own is the only source there is.
-//! - **A recipe cannot say where its source came from.** Homebrew's formula carries a URL and a
-//!   digest of the upstream tarball; this carries neither, because the only packages that exist are
-//!   built from this repository.
+//!   not a cargo invocation, so the tool cannot hide which binary it packed.
+//! - **The catalog is a file in `target/` and an archive entry**, not a repository index. §195's
+//!   per-source trust needs a catalog per source; the image's own is the only source there is.
+//! - **A recipe cannot say where its source came from**: no upstream URL or tarball digest,
+//!   because the only packages built here come from this repository.
+//!
+//! Installing a fetched package happens on the target; see notes/packages.md.
 
 use std::path::PathBuf;
 
