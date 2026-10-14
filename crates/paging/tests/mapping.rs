@@ -9,7 +9,7 @@
 
 use std::cell::{Cell, RefCell};
 
-use paging::{Aarch64, Flags, Half, MapError, Mapper, PAGE_SIZE, PageFormat, PageTable};
+use paging::{Aarch64, Flags, Half, MapError, Mapper, PAGE_SIZE, PageFormat, PageTable, WalkEnd};
 
 thread_local! {
     /// Every table the pretend frame allocator hands out, so `TableGuard` can give them back.
@@ -582,5 +582,76 @@ fn unlinking_a_table_cuts_its_whole_span_and_nothing_else() {
         taken.borrow().len(),
         before + 2,
         "a map after the cut must build fresh tables, not write into the cut one"
+    );
+}
+
+/// **A walk of a mapped address reads one entry per level and ends at a present leaf**, and its
+/// steps name the tables `translate` would have descended: the root first, each next table the
+/// previous entry's address. The leaf entry decodes to the frame that was mapped.
+#[test]
+fn a_walk_of_a_mapped_address_reports_every_level_down_to_the_leaf() {
+    let _tables = TableGuard;
+    let budget = Cell::new(16);
+    let mut m = mapper(&budget);
+    m.map(0x40_2000, 0x4000_0000, Flags::user_data()).unwrap();
+
+    let walk = m.walk(0x40_2000, |_| true);
+    let steps = walk.steps();
+    assert_eq!(walk.end(), WalkEnd::Mapped);
+    assert_eq!(steps.len(), Fmt::LEVELS);
+    assert_eq!(steps[0].table, m.root());
+    for (level, pair) in steps.windows(2).enumerate() {
+        assert_eq!(pair[1].table, Fmt::entry_pa(pair[0].entry), "level {level}");
+    }
+    for (level, step) in steps.iter().enumerate() {
+        assert_eq!(step.index, index(0x40_2000, level));
+    }
+    assert_eq!(Fmt::entry_pa(steps[Fmt::LEVELS - 1].entry), 0x4000_0000);
+}
+
+/// **A cleared leaf stops the walk at the last level with the zero it found**, while the levels
+/// above it still read as present. That shape is the one a kill report has to tell apart from a
+/// table that was never built (which stops higher up).
+#[test]
+fn a_walk_stops_at_the_entry_that_is_not_present_and_keeps_what_it_read() {
+    let _tables = TableGuard;
+    let budget = Cell::new(16);
+    let mut m = mapper(&budget);
+    m.map(0x40_2000, 0x4000_0000, Flags::user_data()).unwrap();
+    let (_, flush) = m.unmap(0x40_2000).unwrap();
+    flush.flush(|_| {});
+
+    let walk = m.walk(0x40_2000, |_| true);
+    assert_eq!(walk.end(), WalkEnd::NotPresent);
+    assert_eq!(walk.steps().len(), Fmt::LEVELS);
+    assert_eq!(walk.steps()[Fmt::LEVELS - 1].entry, 0);
+
+    let never = m.walk(0x80_0000_0000, |_| true);
+    assert_eq!(never.end(), WalkEnd::NotPresent);
+    assert_eq!(
+        never.steps().len(),
+        1,
+        "nothing was ever built under the root's second entry"
+    );
+}
+
+/// **A table the caller will not let it read ends the walk without reading it**, named by its
+/// address. This is what keeps a fault handler from following a corrupted entry into memory the
+/// direct map does not cover.
+#[test]
+fn a_walk_never_reads_a_table_the_caller_refuses() {
+    let _tables = TableGuard;
+    let budget = Cell::new(16);
+    let mut m = mapper(&budget);
+    m.map(0x40_2000, 0x4000_0000, Flags::user_data()).unwrap();
+    let second = Fmt::entry_pa(m.walk(0x40_2000, |_| true).steps()[0].entry);
+
+    let walk = m.walk(0x40_2000, |table| table != second);
+    assert_eq!(walk.end(), WalkEnd::Unreadable(second));
+    assert_eq!(walk.steps().len(), 1);
+    assert_eq!(m.walk(0x40_2000, |_| false).steps().len(), 0);
+    assert_eq!(
+        m.walk(0xffff_0000_0000_0000, |_| true).end(),
+        WalkEnd::OtherHalf
     );
 }
