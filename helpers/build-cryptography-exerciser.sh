@@ -10,7 +10,7 @@
 # and §198 (the glue is ours, the primitives are not). It is its own workspace still, so its crates
 # stay out of the main `Cargo.lock`; `script/supply-chain` scans its graph.
 #
-# The one thing it does that `build-ripgrep.sh` does not: the package is **ours**, so it carries its
+# The package is **ours**, unlike a foreign program basalt builds, so it carries its
 # own `.cargo/config.toml` with the `getrandom` backend selector and the four soft-implementation
 # cfgs, and this script adds nothing to the command line beyond the target, build-std and the two pins
 # below. If a

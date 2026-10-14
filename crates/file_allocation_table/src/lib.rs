@@ -1,37 +1,11 @@
 #![no_std]
 //! **Enough of FAT32 to create an EFI system partition holding one boot file**, as pure
-//! computation (milestone 198 (a package manager, and the trivial install that makes a second
-//! customer possible), rung 2a).
-//!
-//! Name: ratified 2026-10-07 (calef, pull request #1806's FAT crate review). The maintainer
-//! comment reads: "FAT crate name ratified by calef, 2026-10-07 (UTC): `file_allocation_table`
-//! (crates.io treats it and `file-allocation-table` as one name; free as of today). Permanent once
-//! first published." His word: "Yes". Minted provisionally 2026-09-21 by milestone 198's rung 2a
-//! lane under the tree's expand-the-acronym rule, the one
-//! `crates/globally_unique_identifier_partition_table` and `crates/non_volatile_memory_express`
-//! already keep: FAT is the File Allocation Table, and a reader who greps `fat` and finds nothing
-//! is looking for the expansion. Milestone 813 (a proven FAT crate, released on its own) grows this
-//! crate into the FAT12/16/32 read-write crate the name now belongs to.
-//!
-//! # Why this exists, and what it deliberately is not
-//!
-//! An installer has to put `\EFI\BOOT\BOOTX64.EFI` somewhere the firmware will look, and the UEFI
-//! specification says that somewhere is a FAT volume. Nothing in this tree could write one:
-//! milestone 515 (a stick that puts itself on the machine's disk)
-//! records the hole, and every existing path around it is a host tool (QEMU's `vvfat`, macOS's
-//! `diskutil`, Linux's `mkfs.vfat`) that the target cannot reach.
-//!
-//! **This is a `mkfs` and not a filesystem.** It creates one volume, in one shape, containing one
-//! file at one path, and then it is finished. It cannot open, read, extend, delete or rename
-//! anything, and it never will: milestone 140 (mount a drive this system did not create)
-//! is the read half and is a different piece of work. The shape below is chosen to be the most
-//! boring FAT32 volume a firmware could be handed, because the reader is somebody else's driver.
-//!
-//! **No I/O of any kind**, the same rule `globally_unique_identifier_partition_table` keeps. This
-//! crate says what each sector must contain and the caller writes it, so the whole of it compiles
-//! for the host and its tests run in milliseconds.
-//!
-//! # The shape of the volume
+//! computation: an installer must put `\EFI\BOOT\BOOTX64.EFI` on a FAT volume, and nothing on the
+//! target could write one (notes/installing.md). **This is a `mkfs`, not a filesystem**: one volume,
+//! one shape, one file at one path, then finished; reading is milestone 140 (mount a drive this
+//! system did not create). No I/O: it says what each sector must contain and the caller writes it.
+//! The shape is the most boring FAT32 a firmware could be handed, because the reader is somebody
+//! else's driver.
 //!
 //! | | |
 //! |---|---|
@@ -44,56 +18,22 @@
 //! | Cluster 4 | `BOOT`: the dot entries and the boot file |
 //! | Cluster 5 onward | the boot file's data, contiguous |
 //!
-//! **The cluster count is the load-bearing number.** Microsoft's own specification defines the FAT
-//! type by how many data clusters the volume has, and every driver in the field follows it: fewer
-//! than 65525 and the volume *is* FAT16 whatever the boot sector claims. A volume built here is
-//! refused below [`MIN_CLUSTERS`] rather than handed to firmware as a lie about itself.
-//!
-//! # EXAMPLES
-//!
-//! Lay out a 512 MiB EFI system partition starting at LBA 2048, holding a 9 MiB boot file, and
-//! write it through anything that can put 512 bytes at an LBA:
-//!
-//! ```
-//! use file_allocation_table::{SECTOR, Volume};
-//!
-//! let volume = Volume::new(1024 * 1024, 2048, 9_000_000, 0x1234_5678, "BOOTX64.EFI")
-//!     .expect("512 MiB is a FAT32 volume");
-//!
-//! let mut sector = [0u8; SECTOR];
-//! for index in 0..volume.metadata_sectors() {
-//!     assert!(volume.sector(index, &mut sector));
-//!     // write `sector` at partition-relative LBA `index`
-//! }
-//! // then the file's own bytes, contiguous, at this LBA:
-//! assert_eq!(volume.file_first_sector(), volume.metadata_sectors());
-//! ```
+//! **The cluster count is load-bearing**: Microsoft's specification types a volume by its data
+//! clusters, so under 65525 it *is* FAT16 whatever the boot sector says, and a volume below
+//! [`MIN_CLUSTERS`] is refused rather than handed to firmware as a lie.
 //!
 //! # BUGS
 //!
-//! - **The file name must be 8.3 and upper case**, because nothing here writes a long-file-name
-//!   entry. `BOOTX64.EFI` and `BOOTAA64.EFI` fit; **`BOOTRISCV64.EFI` does not**, so the riscv64
-//!   removable-media path cannot be written by this crate as it stands. That is a real gap for
-//!   [milestone 515 (the installer)](../../../design/roadmap/0515-the-installer-a-stick-runs-to-put-itself-on-the-disk.md)
-//!   on riscv64 and it is recorded rather than worked around: a long-name entry is a checksum and a
-//!   run of UTF-16 entries ahead of the short one. It has a milestone of its own,
-//!   `design/roadmap/0560-a-long-file-name-or-riscv64-cannot-be-installed.md`, which prices it
-//!   and says what it does and does not unblock.
-//! - **Every timestamp is zero.** A `mkfs` with no clock capability writes 1970 rather than
-//!   inventing a plausible date, the same choice `redoxfs_server`'s `mkfs` made and for the same
-//!   reason.
-//! - **The `FSInfo` free-cluster count is written once and never maintained**, which is what the
-//!   specification says a driver must tolerate (the field is a hint). Nothing here ever opens the
-//!   volume again, so it cannot go stale from this side.
-//! - **Nothing reads back what this writes.** A writer tested against its own reader proves almost
-//!   nothing, and this crate has no reader at all. What proves it is **somebody else's FAT driver**,
-//!   and two of them do: OVMF, in `cargo xtask install-boot`, whose pass condition is that the
-//!   firmware finds and starts the file; and the host's own, in
-//!   `tests/a_third_party_driver_reads_it.rs`, which macOS's `msdos` driver mounted and read
-//!   byte-exact on 2026-09-21. The unit tests below check the bytes against the specification's own
-//!   field offsets, which is a different claim and a weaker one.
-//! - **The volume is not crash-atomic and has no journal**, which is FAT. A power cut partway
-//!   through writing one leaves a volume no firmware will read.
+//! - The file name must be 8.3 and upper case (no long-name entries), so `BOOTRISCV64.EFI` cannot
+//!   be written (`design/roadmap/0560-a-long-file-name-or-riscv64-cannot-be-installed.md`).
+//! - Every timestamp is zero: a `mkfs` with no clock capability writes 1970 rather than inventing one.
+//! - The `FSInfo` free-cluster count is written once, which the specification lets a driver tolerate.
+//! - Nothing here reads back what it writes. Other drivers prove it: OVMF in
+//!   `cargo xtask install-boot`, and the host's in `tests/a_third_party_driver_reads_it.rs`.
+//! - Not crash-atomic and no journal, which is FAT.
+//!
+//! Name: ratified 2026-10-07 (calef, #1806): FAT spelled out as the tree's acronym rule asks;
+//! permanent once published.
 
 /// A FAT sector, and the unit every one of this crate's outputs is measured in.
 ///
@@ -170,6 +110,26 @@ pub enum Error {
 }
 
 /// **A volume, laid out but not written.** Every method is arithmetic; nothing here touches a disk.
+///
+/// # Examples
+///
+/// A 512 MiB EFI system partition at LBA 2048 holding a 9 MiB boot file, written through anything
+/// that can put 512 bytes at an LBA:
+///
+/// ```
+/// use file_allocation_table::{SECTOR, Volume};
+///
+/// let volume = Volume::new(1024 * 1024, 2048, 9_000_000, 0x1234_5678, "BOOTX64.EFI")
+///     .expect("512 MiB is a FAT32 volume");
+///
+/// let mut sector = [0u8; SECTOR];
+/// for index in 0..volume.metadata_sectors() {
+///     assert!(volume.sector(index, &mut sector));
+///     // write `sector` at partition-relative LBA `index`
+/// }
+/// // then the file's own bytes, contiguous, at this LBA:
+/// assert_eq!(volume.file_first_sector(), volume.metadata_sectors());
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Volume {
     total_sectors: u32,

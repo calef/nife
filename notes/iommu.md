@@ -56,9 +56,10 @@ Each is driven almost entirely through memory, not registers:
 | how config changes take effect | command queue + CMD_SYNC | command queue + IOFENCE.C |
 | where faults are reported | event queue | fault queue |
 
-Each driver: `init` installs an all-invalid table and enables translation, so an unattached device is
-denied by default (the SMMU needs an explicit `GBPA.ABORT` for the pre-enable window; the RISC-V
-IOMMU's reset `ddtp` mode is already `Off`, which blocks, so it fails closed by architecture). `attach`
+Each driver: `init` installs an all-invalid table and enables translation, so an unattached device
+is denied by default. The SMMU needs an explicit `GBPA.ABORT` for the pre-enable window. The RISC-V
+IOMMU's reset `ddtp` mode is already `Off`, which blocks, so it fails closed by architecture.
+`attach`
 writes the device's table entry pointing at a domain root, then invalidates the cached STE/CD/context
 and the translation cache so a re-attach cannot use a stale table. `take_fault` pops one fault record.
 
@@ -78,15 +79,16 @@ kernel's shadow page (the descriptor table and available ring the device reads).
 
 The SMMUv3 is a device-tree platform node, found in `memory::smmu_region` and mapped by `mmu::init`;
 `arch::iommu::init(base)` is called from the aarch64 boot when the node is present. The RISC-V IOMMU
-is itself a PCI function (`riscv-iommu-pci`, Red Hat 1b36:0014), so `pci::init_iommu` enumerates it,
-places its BAR from a now-shared cursor (two functions need BARs placed, so the cursor can no longer
-reset per device), and hands the base to `arch::iommu::init`. The BAR-placement change is the one
+is itself a PCI function (`riscv-iommu-pci`, Red Hat 1b36:0014), so `pci::init_iommu` enumerates it.
+It places its BAR from a now-shared cursor (two functions need BARs placed, so the cursor can no
+longer reset per device), and hands the base to `arch::iommu::init`. The BAR-placement change is the
+one
 piece of PCI plumbing this milestone touched.
 
 ## Making the machine tell the truth: the confinement test
 
-`iommu_platform=on` is what puts a virtio-pci device behind the IOMMU: the device then emits IOVAs the
-IOMMU translates, and offers VIRTIO_F_ACCESS_PLATFORM (feature bit 33), which the driver negotiates
+`iommu_platform=on` is what puts a virtio-pci device behind the IOMMU. The device then emits IOVAs
+the IOMMU translates, and offers VIRTIO_F_ACCESS_PLATFORM (feature bit 33). The driver negotiates it
 only when offered (so one driver binary works on the bare mmio disk and the IOMMU-fronted PCIe disk).
 A device *without* the flag silently bypasses translation. That is the same manufactured-fact hazard
 the runners already fail loudly on for a missing disk: a plausible-looking success that is actually a
@@ -99,8 +101,8 @@ available ring, at an out-of-domain IOVA, so the IOMMU faults and records it; th
 fault queue and asserts a fault at that exact frame. If translation were absent (a missing
 `iommu=smmuv3` / `riscv-iommu-pci`, or a dropped `iommu_platform=on`), the escaping read would succeed
 and no fault would appear, so the assertion fails rather than passing on a fiction. The test goes
-around the software shadow ring deliberately (the shadow ring would refuse an out-of-region
-descriptor before the device was ever rung, so a normal path can never reach the hardware): the point
+around the software shadow ring deliberately. The shadow ring would refuse an out-of-region
+descriptor before the device was ever rung, so a normal path can never reach the hardware. The point
 is to prove the hardware would stop the device even if that software were bypassed.
 
 ## QEMU vs ours
@@ -131,22 +133,23 @@ wrote the *right* entry, because a wrong entry that still confines this device o
 invisible to it, and this board is the only one either driver has ever run on.
 
 `arch/aarch64/iommu.rs` now carries two Kani harnesses over the entry-building arithmetic, beside
-the code, and they were falsified before they were believed:
+the code, and they were falsified before they were believed. One is
 `the_smmu_is_handed_exactly_the_tables_the_kernel_built` (both physical addresses survive their
-split across two 32-bit words, and neither reaches the control bits sharing the low word) and
+split across two 32-bit words, and neither reaches the control bits sharing the low word). The other
+is
 `no_stream_can_reach_another_streams_tables` (the `StreamID` bound is exactly strong enough for the
 stride it protects). notes/kernel-proofs.md has the properties and the stub boundary.
 
 Two limits worth naming here rather than only there. **The register offsets and bit constants are
 not proved and cannot be**: nothing in this tree can check `CR0_SMMUEN` or the position of `CONFIG`
-against Arm IHI 0070, so a misreading of the document makes the code and the proof wrong together,
+against Arm IHI 0070. So a misreading of the document makes the code and the proof wrong together,
 and the boot-time confinement test is what stands against that. And **the RISC-V IOMMU's proofs are
 not ports of these**: it writes its device context in 64-bit stores with no split, so the property
 above does not apply to it.
 
-The RISC-V side has its own two since milestone 432 (the RISC-V IOMMU driver has no counterpart
-to the SMMU's proofs), proved from an aarch64 host because no host
-here is riscv64 (notes/kernel-proofs.md has how, and the caveat that comes with it).
+The RISC-V side has its own two since milestone 432 (the RISC-V IOMMU driver has no counterpart to
+the SMMU's proofs). They are proved from an aarch64 host because no host here is riscv64
+(notes/kernel-proofs.md has how, and the caveat that comes with it).
 `the_iommu_is_handed_exactly_the_domain_the_kernel_built`: `iosatp`'s PPN is the table root entire,
 its MODE is Sv39 for every root (MODE 0 would be Bare, translation off), and `ta.PSCID` is the
 domain's tag and nothing else. `no_device_can_reach_another_devices_context`: the directory bound

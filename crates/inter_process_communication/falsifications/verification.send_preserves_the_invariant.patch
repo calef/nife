@@ -9,10 +9,11 @@ holds a queued sender, where the blocked sender lands on the other queue and bot
 non-empty. Every other proof in this module rests on that invariant, and a later receive would
 rendezvous a sender with a sender.
 
-diff --git a/crates/inter_process_communication/src/lib.rs b/crates/inter_process_communication/src/lib.rs
---- a/crates/inter_process_communication/src/lib.rs
-+++ b/crates/inter_process_communication/src/lib.rs
-@@ -404,7 +404,7 @@ impl<T: Node> Rendezvous<T> {
+diff --git a/crates/inter_process_communication/src/rendezvous.rs b/crates/inter_process_communication/src/rendezvous.rs
+index 845029a65..38a5f02bd 100644
+--- a/crates/inter_process_communication/src/rendezvous.rs
++++ b/crates/inter_process_communication/src/rendezvous.rs
+@@ -268,7 +268,7 @@ impl<T: Node> Rendezvous<T> {
          } else if let Some(receiver) = self.receivers.pop_front() {
              Send::Rendezvous(receiver, me)
          } else {

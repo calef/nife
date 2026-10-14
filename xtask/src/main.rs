@@ -26,6 +26,7 @@ use std::process::ExitCode;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 mod archive;
+mod basalt;
 mod bench;
 mod board;
 mod boot_check;
@@ -226,15 +227,17 @@ fn main() -> ExitCode {
         }
         "std-exerciser" => std_exerciser(),
         // A manifest note as an object of its own, for a program whose source is somebody else's
-        // (milestone 595 (the shell runs a `std` program)). `helpers/build-ripgrep.sh` links it into
+        // (milestone 595 (the shell runs a `std` program)). basalt's package build links it into
         // `rg`. Name provisional (2026-10-07). See xtask/src/foreign_note.rs.
-        "foreign-note" => {
-            foreign_note::foreign_note(std::env::args().nth(2), std::env::args().nth(3))
-        }
+        "foreign-note" => foreign_note::foreign_note(),
         // The abort sweep (milestone 64): which std calls kill a nife process instead of refusing
         // it. Runs at the end of `std-exerciser` (and so inside `script/test`); exposed on its own
         // because re-reading the list after a nightly bump should not need a rebuild.
         "std-aborts" => std_aborts(),
+        // basalt's published packages, fetched by their pinned digests, and the host's reference
+        // `rg` (milestone 810 (`ripgrep` is packaged in basalt and installed with `jig`)). Name
+        // provisional. See xtask/src/basalt.rs.
+        "basalt-fetch" => basalt::fetch(),
         "swish-check" => swish_check(),
         // The boot ladder's gate (milestone 268, item 6): boot every architecture's default kernel
         // and fail if its self-test verdict is not green. See script/boot-check.

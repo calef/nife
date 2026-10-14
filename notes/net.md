@@ -34,9 +34,10 @@ by every client of the stack; §25 (socket identity) had named minted endpoints 
 ### Operations
 
 `ATTACH_FRAME` is a `SEND_CAP` on a socket's capability (it carries the frame). The rest are
-`CALL`s (which mint the reply cap net_stack answers on), the opcode alone in the request word:
-`OPEN_UDP` / `OPEN_TCP` on the front door; `SENDTO(len)` and `RECEIVE() -> len` for UDP (destination and payload in the shared
-frame); `CONNECT` / `SEND(len)` / `RECEIVE()` for TCP; `CLOSE`. A blocking `RECEIVE` is net_stack driving the
+`CALL`s (which mint the reply cap net_stack answers on), the opcode alone in the request word.
+`OPEN_UDP` / `OPEN_TCP` are on the front door, and `SENDTO(len)` and `RECEIVE() -> len` serve UDP
+(destination and payload in the shared frame). `CONNECT` / `SEND(len)` / `RECEIVE()` for TCP;
+`CLOSE`. A blocking `RECEIVE` is net_stack driving the
 smoltcp poll loop (WAIT on the NIC interrupt) until the socket has data, then replying, the disk
 driver's discipline one layer up.
 
@@ -186,22 +187,23 @@ written, in [the-inbound-check.md](net/the-inbound-check.md).*
 ### What is still not proven, and what is deliberately out of scope
 
 - **`std::net::TcpListener` is bound** (milestone 64 (enough `std` to run somebody else's crate)),
-  as predicted above: `bind` is `OPERATION_LISTEN` on a client-allocated socket id, `accept` is
-  `OPERATION_ACCEPT` into another one the PAL allocates and attaches a frame to, and the std
-  client's stack is spawned with a real listen grant. See "The
+  as predicted above. `bind` is `OPERATION_LISTEN` on a client-allocated socket id, and `accept` is
+  `OPERATION_ACCEPT` into another one the PAL allocates and attaches a frame to. The std client's
+  stack is spawned with a real listen grant. See "The
   std client is a server too" in [std-tcp-listener.md](net/std-tcp-listener.md), and notes/std.md.
 - **Only the mmio transport carries the inbound gate.** A PCIe twin would need a second host port,
   and the transport is orthogonal to the accept path, which the outbound gates already prove over
   both buses. This is the same reasoning that retired the PCIe DNS variant.
 - **Inbound UDP is built, and it is a grant of its own** (the mDNS stack half of milestone 55 (Time
-  Machine: SMB3 with Apple's extensions, and mDNS)). `BIND_UDP` claims a fixed UDP port the way `LISTEN` claims a TCP
-  one, checked against a UDP bind grant the spawn site packs into the high half of the same
-  spawn word the listen grant rides in (`socket_protocol::udp_bind_grant`; the halves are independent
+  Machine: SMB3 with Apple's extensions, and mDNS)). `BIND_UDP` claims a fixed UDP port the way
+  `LISTEN` claims a TCP one. It is checked against a UDP bind grant the spawn site packs into the
+  high half of the same spawn word the listen grant rides in (`socket_protocol::udp_bind_grant`; the
+  halves are independent
   authorities, and the zero word still grants nothing anywhere). It answers with `LISTEN`'s own
   vocabulary because the three outcomes are properties of claiming a port, not of TCP. A UDP
   `RECEIVE` reply carries the datagram's source endpoint in the frame's dst
-  fields (dead space on a reply), because a responder must see who asked and RFC 6762 §6.7 turns on
-  the querier's source port; the TFTP gate consumes it by ACKing to the DATA packet's reported
+  fields (dead space on a reply). A responder must see who asked, and RFC 6762 section 6.7 turns on the
+  querier's source port. The TFTP gate consumes it by ACKing to the DATA packet's reported
   source, which is what TFTP's TID scheme wanted all along. The stack joins no multicast group:
   milestone 298 (retire the multicast DNS responder and its two crates) removed the join, smoltcp's
   `multicast` feature and the runners' injection hub with the responder, so nothing proves

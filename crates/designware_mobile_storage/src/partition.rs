@@ -108,6 +108,18 @@ impl Mbr {
     /// before the first partition, starting no lower than sector 1, `count` between 1 and `want`.
     /// `None` for a protective MBR, a table with no partitions, a first partition at sector 0 or
     /// 1, or `want` of 0.
+    ///
+    /// # Examples
+    ///
+    /// A write test on radon's boot card may only land before the first partition:
+    ///
+    /// ```
+    /// use designware_mobile_storage::partition::{Entry, Mbr};
+    ///
+    /// let fat = Entry { kind: 0x0b, start: 2048, sectors: 1 << 20 };
+    /// let mbr = Mbr { entries: [fat, Entry::default(), Entry::default(), Entry::default()] };
+    /// assert_eq!(mbr.scratch(8), Some((2040, 8)));
+    /// ```
     #[must_use]
     pub fn scratch(&self, want: u32) -> Option<(u32, u32)> {
         if want == 0 || self.entries.iter().any(|e| e.kind == TYPE_PROTECTIVE_GPT) {

@@ -1,42 +1,14 @@
-//! **`top`: the same domain `ps` lists, ordered by what it is costing** (milestone 282 (a thread's CPU time, and the `top` it makes possible),
-//! DECISIONS §150 (how does a thread's CPU time reach userspace?), notes/process-view.md).
+//! **`top`: the same domain `ps` lists, ordered by what it is costing** (§150 (how does a thread's
+//! CPU time reach userspace?), notes/process-view.md). The program's logic, lifted out to run on
+//! the host; `components/src/top.rs` is the syscalls and the output streams.
 //!
-//! This is the program's logic, lifted out so it runs on the host in milliseconds;
-//! `components/src/top.rs` is the syscalls and the two output streams and nothing else. The crate
-//! and the program share a name because they are one thing split at the IO boundary, the same pair
-//! `ps`, `coremark` and `line_editor` already are.
-//!
-//! # The name had to be earned, and this is what earned it
-//!
-//! `top` means *the top N by resource consumption*: it is defined by ranking, and until there was
-//! something to rank by the name would have overclaimed. `ps`'s table was `TID` and `STATE`, two
-//! columns with no order to put them in, which is why milestone 126 (who else is running, and who is allowed to ask) shipped `ps` and
-//! deliberately did not ship this. `abi::survey::record::CPU_TIME` is what changed, and it is a
-//! **measurement** rather than an estimate: §150 refused wall-clock age (a thread that slept five
-//! minutes and one that ran five minutes read identically) and refused userspace sampling (a thread
-//! that runs between two samples is invisible), on the ground that a name like this one must not be
-//! attached to a number that does not mean what the name says.
-//!
-//! # What this holds that `crates/ps` does not
-//!
-//! Almost nothing, and that is the honest answer rather than a modest one. The walk is
-//! [`ps::collect`], the second walk that fills the CPU column is
-//! [`ps::Survey::join_cpu_time`], the ordering is [`ps::Survey::rank_by_cpu_time`] and the table is
-//! [`ps::Survey::write_report`]. What lives here is the **summary line**, which is the one thing a
-//! ranked view needs and a listing does not: how many threads there are in total, what they are
-//! doing, and how long the machine has been counting. Unix's `top` opens with the same three facts
-//! for the same reason, which is that a ranked table shows you the head of a distribution and tells
-//! you nothing about its size.
-//!
-//! **Whether this should be a program at all is an architect's**, and the argument is live rather
-//! than settled. Milestone 281 (`watch` holds exactly what `ps` holds) deleted `watch` on the
-//! finding that *two programs are two programs when they hold different authority*, and `top` holds
-//! exactly `ps`'s three slots. What is different here is the question asked rather than the
-//! authority held: `ps` answers *what exists*, in the kernel's own order, and `top` answers *what
-//! is consuming*, in order of consumption. Folding it back into `ps` as a flag is a day's work and
-//! stays available; see this crate's `BUGS`.
-//!
-//! # EXAMPLES
+//! `top` means the top N by consumption, so the name waited for something to rank by:
+//! `abi::survey::record::CPU_TIME`, a measurement, where §150 refused wall-clock age and userspace
+//! sampling as numbers that would not mean what the name says. The walk, the CPU-time join, the
+//! ranking and the table are all `ps`'s ([`ps::collect`], [`ps::Survey::join_cpu_time`],
+//! [`ps::Survey::rank_by_cpu_time`], [`ps::Survey::write_report`]); this holds the summary line
+//! ([`write_summary`]), which a ranked view needs because the head of a distribution says nothing
+//! about its size.
 //!
 //! ```text
 //! $ top
@@ -46,64 +18,21 @@
 //! 4294967302  dead             150
 //!            5  blocked         20
 //!            7  ready            0
-//! ```
-//!
-//! And the refusal, which reads exactly as `ps`'s does, because it is `ps`'s:
-//!
-//! ```text
 //! $ top        top: this process holds no process-domain capability
-//! ```
-//!
-//! The summary line is the host-testable part, and it needs no kernel:
-//!
-//! ```
-//! use ps::Row;
-//!
-//! let rows = [
-//!     Row { tid: 5, state: abi::survey::RUNNING, cpu_millis: Some(310) },
-//!     Row { tid: 9, state: abi::survey::DEAD, cpu_millis: Some(10) },
-//! ];
-//! let mut text = Vec::new();
-//! top::write_summary(&rows, 72_000_000_000, &mut |b| text.extend_from_slice(b));
-//! let line = String::from_utf8(text).unwrap();
-//! assert!(line.starts_with("up 00:01:12, 2 threads: "), "{line}");
-//! assert!(line.contains("1 running"), "{line}");
 //! ```
 //!
 //! # BUGS
 //!
-//! - **There is no live refresh, and that is a decision rather than a gap.** The obvious `top`
-//!   redraws on an interval, and this kernel has **no timed wait**: the interval `watch` used was a
-//!   yield-spin over the ambient monotonic counter, which burns a whole core for the length of the
-//!   wait. That was merely wasteful in a program showing two columns of text. It is *corrupting*
-//!   here, because the spin would be charged to this program's own thread by the very counter the
-//!   table ranks on, and `top` would truthfully report itself as the busiest thread on the machine.
-//!   A refresh arrives when a timed wait does (milestone 106 (a wait that ends on either the interrupt or the deadline)'s fork), not before.
-//! - **No `%CPU` column**, for the same root cause. A percentage is a ratio of CPU time to elapsed
-//!   time over an *interval*, so it needs two samples, and one invocation of this program is one
-//!   sample. What is printed instead is the cumulative figure, which is Unix `top`'s own `TIME+`
-//!   column and is the honest thing a single sample supports. A cumulative percentage against
-//!   uptime was considered and refused: a thread born a second ago and one born at boot would be
-//!   divided by the same denominator, which is the wall-clock-age error §150 refused, moved into the
-//!   printer.
-//! - **`top` cannot be asked for the top *N*.** `ArgSpec` (`crates/grant_plan`) is `Required` or
-//!   `Forbidden` with nothing between, so a program with an optional integer cannot be declared, and
-//!   a `top` that *required* one could not be typed bare. Every row is printed, ranked. This is the
-//!   same boundary limitation `crates/pgrep`'s `BUGS` records for its missing pattern.
-//! - **The summary counts what the survey returned, not what the machine holds.** A domain is the
-//!   supervision subtree the caller was endowed, so "4 threads" means four in *this* domain; the
-//!   idle threads, the kernel's own threads and every other domain are not in it and must not be.
-//!   That is the difference from Unix's `top`, whose header counts the machine because `/proc` is
-//!   ambient.
-//! - **Ties are broken by tid, so an idle machine ranks in slot order.** With every figure at zero
-//!   the "ranking" is no ranking at all, which is truthful and can read as a bug to somebody who
-//!   typed `top` on a quiet system.
+//! - No live refresh: an interval spin would be charged to this program by the very counter the
+//!   table ranks on, so `top` would report itself as the busiest thread.
+//! - No `%CPU`: a percentage needs two samples, and a cumulative one against uptime is the
+//!   wall-clock-age error §150 refused. `TIME(ms)` is the cumulative figure, as Unix's `TIME+`.
+//! - No top *N*: `ArgSpec` cannot declare an optional integer.
+//! - The summary counts this domain, not the machine, because nothing here is ambient.
+//! - Ties break by tid, so a quiet machine ranks in slot order.
 //!
-//! Name: provisional. `top` is the name every reader already knows from outside this project, which
-//! the naming tenet calls the best name available for a standard term, and it is the name DECISIONS
-//! §150 (how does a thread's CPU time reach userspace?) and milestone 281 (`watch` holds exactly what `ps` holds) both anticipated for this program by name. It is
-//! provisional because calef has not ruled on it and because the prior question is whether this is a
-//! program or a flag on `ps`; see the module docs above.
+//! Name: provisional here; calef ratified the program's name on 2026-10-06 and kept it a program
+//! of its own rather than a flag on `ps`.
 
 #![cfg_attr(not(test), no_std)]
 
@@ -123,6 +52,22 @@
 /// The state counts are in the order a reader scans for: what is on a CPU, what wants one, what is
 /// waiting, what is over. A zero count is printed rather than elided, because a row missing from a
 /// status line reads as a status line that did not check.
+///
+/// # Examples
+///
+/// ```
+/// use ps::Row;
+///
+/// let rows = [
+///     Row { tid: 5, state: abi::survey::RUNNING, cpu_millis: Some(310) },
+///     Row { tid: 9, state: abi::survey::DEAD, cpu_millis: Some(10) },
+/// ];
+/// let mut text = Vec::new();
+/// top::write_summary(&rows, 72_000_000_000, &mut |b| text.extend_from_slice(b));
+/// let line = String::from_utf8(text).unwrap();
+/// assert!(line.starts_with("up 00:01:12, 2 threads: "), "{line}");
+/// assert!(line.contains("1 running"), "{line}");
+/// ```
 pub fn write_summary(rows: &[ps::Row], uptime_nanos: u64, out: &mut dyn FnMut(&[u8])) {
     // `uptime::format` is the same formatter `uptime` prints, reused rather than restated so the
     // two programs cannot come to disagree about what "up" means. It ends in a newline and this

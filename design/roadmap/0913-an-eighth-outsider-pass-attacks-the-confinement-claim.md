@@ -1,5 +1,5 @@
 ---
-status: NOT-STARTED
+status: PARTIAL
 raised: 2026-10-12
 milestone_dependencies: 824
 decision_dependencies: none
@@ -81,6 +81,32 @@ reproduces each claimed escape by test or boot, and records. It does not attack 
 - The lane's role: pin the commit, assemble the prompt, hand it to calef, then collect the
   clone's commits and results, reproduce each claimed escape by test or boot, and record. It
   does not attack and does not hint.
+
+## Result
+
+PARTIAL. The pass ran on 2026-10-13 (UTC) and is recorded in `notes/confinement-outsider-pass-8.md`
+by lane `lane/pass-8-collect`, with the per-row table, the reproduction and the refusal log. What
+calef needs to rule on whether it counts toward criterion (c):
+
+- No escape. Four near misses: two unreachable or fail-closed port corners, a `component_plan`
+  provisioning check that is missing, and one that is a deliberate design. Each has a `BUGS` entry
+  or a doc line at its code.
+- The breach. calef started the reviewer with "Do milestone 913" in the maintainers' workspace. It
+  read this block, 914's block and the launch brief before its prompt, and also ran a `git log`
+  and a `gh pr view`. Its report disclosed the first two. Against what the prompt and the allowed
+  source already held, it added that a concurrent pass existed and nothing about a weakness.
+- The floor. The report counts 27 of 27 bootable rows booted. Its own table grades rows 10 and 11
+  `host`, so the brief's count is 25. Without the carry-over rows 1 and 3, fresh attacks reach 23.
+  Row 32's test censuses a spawned child rather than the boot shell.
+- Reproduction. Every booted row's test passed again on all three ISAs it applies to, one ISA at
+  a time, under another lane's load; no leg timed out. The host rows passed too.
+
+Outstanding:
+
+- calef's ruling on whether pass 8 counts toward criterion (c).
+- Risk 7's appendix cites the pass, through the maintainer under §216.
+- Pass 8's tests land on main with their `Co-Authored-By: GLM 5.3` trailers, in a pull request of
+  their own after this record.
 
 ## Done means
 

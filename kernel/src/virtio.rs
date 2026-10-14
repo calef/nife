@@ -594,98 +594,21 @@ struct Device {
     shadow_base: u64,
 }
 
-/// The most virtio transports we will drive. Each `register` call takes a slot for the life of
-/// the boot (there is no unregister), and the test suite registers one per driver it spawns: the
-/// reader, two attackers, the PCIe reader, two writers, the abandoner, and its post-kill reader
-/// already make eight, and milestone 30 adds the net driver and net server over both buses (four
-/// more), so the ceiling grew again. Fixed-size (milestone 14 phase B.1): probing never allocates.
+/// The most virtio transports we will drive. Fixed-size, so probing never allocates.
 ///
-/// **Bumped to 26 for milestone 29's display terminal**, which spawns a third `gpu_driver` over the same
-/// physical GPU (the confinement test, the terminal test, and the pattern test each program the
-/// device from scratch). Recorded rather than quietly widened, with the standing suggestion this
-/// number's history keeps earning: the honest fix is releasing a transport when its driver dies,
-/// which is its own piece of work because nothing here unregisters. The same suggestion DECISIONS
-/// §33 made about `KERNEL_EP_PAGES`, for the same reason.
+/// **Each `register` takes a slot for the life of the boot**: nothing unregisters, so this counts
+/// how many devices a boot has ever wired, not how many exist (the aarch64 machine has five). The
+/// test suite spawns a driver per gate, and every milestone that wires one more confined device
+/// has bumped it; tests share a transport where they can to avoid that (the genuine and tampered
+/// package fetches share one `net_stack`). Memory is no longer the binding constraint (a net
+/// service hands its frames back, notes/frames.md); only this counter is.
 ///
-/// **27 for milestone 37**, whose crash test brings up a block server on a disk of its own so that
-/// deliberately leaving a filesystem half-written cannot touch the image every other FS test reads.
-/// One more transport for the boot, and the same standing suggestion: this is the fourth bump, and
-/// each one is a receipt for the missing unregister.
-///
-/// **29 for milestone 56's entropy service**, one transport per bus. This bump is the cheapest of
-/// the five and the most annoying, because the entropy service is wired **once per device per boot**
-/// (`entropy_service::ensure`) precisely so that a second one cannot reset the device under the
-/// first, and it still costs two slots that are never released. The fifth receipt.
-///
-/// **30 for milestone 57's disk surveyor**, which brings up a block server on a fourth disk (the
-/// GPT-partitioned image) so that reading a partition table cannot disturb any filesystem test. The
-/// sixth receipt, and by now the pattern is not a coincidence: every milestone that wires one more
-/// confined device costs a slot forever, because a transport is never unregistered. The fix is an
-/// unregister on process death, not a seventh bump.
-///
-/// **31 for milestone 57's write half, which is the seventh bump the line above told it not to
-/// take.** It is recorded that way on purpose. The fifth disk is a blank image the guest partitions
-/// and formats, and it needs a block server of its own for the reason every other one does; what it
-/// does not need is a slot held until reboot by a process that has been dead for minutes.
-///
-/// **Why this lane took the bump anyway**, since the alternative was named and refused: the
-/// unregister is not a bookkeeping change. It has to decide what a `Virtio` capability *is* when its
-/// holder dies (revoked, or dangling at a slot that has been reused), whether a transport can be
-/// handed to a second driver at all after the first programmed the device, and how that interacts
-/// with `entropy_service::ensure`'s "one service per device per boot" rule, which exists precisely
-/// because re-driving a live device breaks the first driver. That is a lifetime decision about a
-/// kernel object, which DECISIONS §16 says is a design fork rather than a task, so a lane that was
-/// asked to partition a disk should not settle it in passing. Seventh receipt.
-///
-/// **32 for milestone 107's inbound half**, whose gate spawns one more `net_stack` over the mmio
-/// NIC so a host process can connect to the guest. Eighth receipt, and the number is exact: 31 was
-/// **precisely** the ceiling this boot already stood at, which is the clearest evidence yet that
-/// this constant tracks "how many devices has this boot ever wired" rather than "how many exist".
-/// The aarch64 machine has five.
-///
-/// **It was 33 for an hour, and the machine said no**, which is the honest half of this note. That
-/// lane wanted two gates, one for the guest being connected to and one for the listen grant, and
-/// wrote here that merging tests to fit a table is the table deciding what gets proved. Then the
-/// suite ran: the second `net_stack` costs a 192-page untyped region nothing ever reclaims, and a
-/// later test asking for 128 contiguous pages found **137 free frames and no run that long**. The
-/// two claims now share one exchange with distinct stage codes. So the constraint was never this
-/// table; it is the same missing reclamation, one resource over, and it binds harder there.
-///
-/// **The memory half was fixed on 2026-08-16 and this counter was not**, which is worth saying
-/// plainly rather than letting the eight receipts above read as settled. A net service now hands its
-/// frames back (notes/frames.md), so the *frame* ceiling those receipts describe is gone; this table
-/// still bumps `count` and never reuses a slot, so a boot's device budget is still "how many devices
-/// has this boot ever wired" and the aarch64 machine still has five. Reuse needs a **generational
-/// name** here, the same machinery region slots and Tids already use, because a stale
-/// `Object::Virtio` capability must not resolve to a different device than the one it named. That is
-/// a change to what a capability means, not to a counter, so it is its own piece of work.
-///
-/// **33 for milestone 64's `std::net::TcpListener` gate**, which spawns one more `net_stack` over
-/// the mmio NIC so that a std program with a listen grant and one without are two different
-/// programs rather than two branches of one. Ninth receipt, and it is the first one taken **after**
-/// the paragraph above, which is what makes it worth reading rather than another tally mark.
-///
-/// The eighth receipt records 33 being tried and refused an hour later, and the refusal was on
-/// **memory** grounds: a second net server cost 192 unreclaimed pages and a later test found 137
-/// free frames. That reason is recorded as fixed (2026-08-16, `Holding::release_or_fail`), and this
-/// lane is the first to actually spend the thing the fix was supposed to buy. It held: 33 devices,
-/// the new gate under five seconds, and the frame ledger untroubled. So the eighth receipt's
-/// conclusion ("the constraint was never this table") is confirmed from the other side, and what is
-/// left here really is only the counter.
-///
-/// **Which is the argument for the unregister, not against it.** Nothing above is a reason to keep
-/// bumping; it is the removal of the excuse that the other ceiling would bind first. The next lane
-/// that needs a device should read the generational-name paragraph above as its work item.
-///
-/// **34 for milestone 198 (a package manager)'s rung 3a fetch, the tenth receipt, and taken
-/// knowing the paragraph above names the unregister as the next lane's work item.** Refused here
-/// for the seventh receipt's reason, which still holds: reuse needs a generational name, and that
-/// is a change to what a `Virtio` capability means, a design fork under DECISIONS §16 (object
-/// revocation) rather than something a package lane settles in passing. The lane did what the
-/// eighth receipt did first: its genuine and tampered fetches share one `net_stack`, so the bump is
-/// one slot, not two. **This is an exception and a foot gun**: the next device will want 35, and
-/// the right answer to that lane is the generational unregister, proposed as
-/// `design/roadmap/0647-a-virtio-slot-comes-back-when-its-driver-dies.md`.
+/// **This is an exception and a foot gun.** The fix is reuse on driver death, which needs a
+/// generational name so a stale `Object::Virtio` capability cannot resolve to a different device:
+/// a change to what a capability means, a design fork under §16 (object revocation), and
+/// interacting with `entropy_service::ensure`'s one-service-per-device rule. It is proposed as
+/// `design/roadmap/0647-a-virtio-slot-comes-back-when-its-driver-dies.md`; the next lane that needs
+/// a device should take that rather than a bump.
 const MAX_DEVICES: usize = 34;
 
 /// The device table, fixed. `get`/`get_mut` mirror the slice API the call sites already used.

@@ -261,7 +261,7 @@ const RG_SEARCH_RUNS: usize = 5;
 /// Linux's in `bench/host/run_linux_rg.sh`, which runs the same words through the same function
 /// on the same machine. The spawn-to-exit time, which does include them, is a probe beside it.
 ///
-/// Present only when somebody ran `helpers/build-ripgrep.sh`: `rg` is never part of the base image
+/// Present only when somebody ran `cargo xtask basalt-fetch`: `rg` is never part of the base image
 /// (calef, 2026-10-07), so the row skips on every ordinary bench boot and in CI.
 ///
 /// # BUGS
@@ -279,7 +279,7 @@ pub(super) fn rg_search() {
         crate::trust::require_program("fs_subtree_caretaker"),
         crate::trust::require_program("rg"),
     ) else {
-        println!("bench-probe: rg_search skipped (no rg in the archive; helpers/build-ripgrep.sh)");
+        println!("bench-probe: rg_search skipped (no rg in the archive; cargo xtask basalt-fetch)");
         return;
     };
     use filesystem_protocol::dir;
