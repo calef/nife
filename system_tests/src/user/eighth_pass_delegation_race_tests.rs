@@ -171,7 +171,7 @@ fn a_revocation_landing_inside_the_delegation_window_is_still_seen() {
         abi::rendezvous::NO_CAP,
         "the control delivery was empty"
     );
-    let delivered = sched::current_cap(slot as u64).expect("the delivered slot is empty");
+    let delivered = sched::current_cap(slot).expect("the delivered slot is empty");
     assert_eq!(
         delivered.object,
         Object::PageFrame(phys_b, page_frame_run_len(1)),

@@ -55,7 +55,7 @@ fn a_user_program_cannot_read_kernel_text_or_the_direct_map() {
     let sentinel = a_kernel_address();
     // Aligned down into the same page: `read_volatile`'s alignment precondition panics before
     // the load on an odd function address, and the fault this test exists for would never run.
-    let text = kernel_text_marker as u64 & !0x7;
+    let text = kernel_text_marker as *const () as usize as u64 & !0x7;
     let direct_map = mmu::phys_to_virt(mmu::virt_to_phys(sentinel));
     assert!(
         mmu::translate(sentinel).is_some() && mmu::translate(text).is_some(),
@@ -86,11 +86,12 @@ fn a_user_program_cannot_read_kernel_text_or_the_direct_map() {
                 "the outlaw reading {target:#x} never died: its read was not stopped, and a user \
                  program read the kernel's memory",
             );
-            if let Some((kind, addr)) = last_user_fault() {
-                if addr == target && is_read_fault(kind) {
-                    recorded = Some((kind, addr));
-                    break;
-                }
+            if let Some((kind, addr)) = last_user_fault()
+                && addr == target
+                && is_read_fault(kind)
+            {
+                recorded = Some((kind, addr));
+                break;
             }
         }
         let (kind, addr) = recorded.unwrap_or_else(|| {
