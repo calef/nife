@@ -54,6 +54,7 @@ crates/boot_slot/src/lib.rs:378	65
 crates/c_seam/src/lib.rs:2	89
 crates/calendar/src/lib.rs:1	113
 crates/capability_witness_protocol/src/lib.rs:1	83
+crates/component_plan/src/lib.rs:775	46
 crates/designware_ethernet/src/lib.rs:2	110
 crates/designware_mobile_storage/src/lib.rs:2	114
 crates/direct_memory_access_validator/src/lib.rs:1	109
@@ -165,6 +166,8 @@ redoxfs_server/src/bin/mkfs.rs:1	73
 system_tests/src/user/confined_fuzzer_tests.rs:1	95
 system_tests/src/user/login_tests.rs:7	73
 system_tests/src/user/syscall_fuzzer_tests.rs:1	67
+uefi_loader/src/main.rs:1	51
+xtask/src/archive.rs:420	46
 xtask/src/boot_check.rs:12	94
 xtask/src/confirm.rs:1	89
 xtask/src/install.rs:1	64
