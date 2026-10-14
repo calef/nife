@@ -123,8 +123,8 @@ copied the original table would record a plan that was overtaken and silently mi
 
 Two need reconstruction rather than copying, because no commit titles them: milestone 1 (the
 earliest commits predate the convention, though "Boot to Rust on QEMU virt and print to the PL011
-UART" is the commit and matches the plan exactly) and milestone 7, the capability decision point,
-which is the densest citation target in the tree at 79 references and whose outcome is DECISIONS §10
+UART" is the commit and matches the plan exactly). The other is milestone 7 (user mode: EL0, capabilities, the ELF loader), the capability decision
+point. It is the densest citation target in the tree at 79 references, and its outcome is DECISIONS §10 (process model)
 rather than a single commit.
 
 Mark all eleven `BUILT`. They are, and the evidence is the kernel.
@@ -140,18 +140,18 @@ every relative markdown link resolves, so a missed one fails loudly rather than 
 
 ## Postscript: why it jumped the queue, and what the build found (2026-08-03)
 
-Raised in the morning, bumped to the front the same day, calef's call. The single file did not
-wait for the split: nine milestone entries landed in it in one day (a postscript to 78, and 79
-through 87), it passed 6,200 lines, and it produced repeated merge conflicts between same-day
+Raised in the morning, bumped to the front the same day, calef's call. The single file did not wait
+for the split. Nine milestone entries landed in it in one day (a postscript to 78, and 79 through
+87), and it passed 6,200 lines. It produced repeated merge conflicts between same-day
 pull requests (#46 against #47, then #53 replacing #52), which is exactly the
 conflict class this entry's own rationale predicted. The entry was still NOT-STARTED while its
 motivating failure was recurring, so it stopped queueing.
 
 The build held to the scope note, with the differences recorded:
 
-- The proof obligation was met in the strong form: a reassembly script inverted every mechanical
-  adjustment (heading promotion, inserted status lines, deepened links, the phrase fixes where
-  prose named the old single-file geometry, the linkified table) and reproduced the pre-split
+- The proof obligation was met in the strong form. A reassembly script inverted every mechanical
+  adjustment (heading promotion, inserted status lines, deepened links, the phrase fixes where prose
+  named the old single-file geometry, the linkified table). It reproduced the pre-split
   file byte for byte, all 468,082 bytes, before the old file was deleted.
 - "Twenty-nine files link to the old path" was undercounted the way tree-spanning counts usually
   are: the merged tree had 44 live references across 34 files. Taken from grep at build time, per
@@ -164,9 +164,9 @@ The build held to the scope note, with the differences recorded:
   the prose stays as narrative below the line.
 
 The status-agreement check, the one-milestone-per-file checks, and the tree-wide citation check
-were each proven against injected defects (a pasted `### N.` block, a second H1, a flipped
-status, a stray file, a rowless file, two files claiming one number, a citation to a milestone
-that does not exist): seven injections, seven failures reported, none missed.
+were each proven against injected defects. They were a pasted `### N.` block, a second H1, a flipped
+status, a stray file, a rowless file, two files claiming one number, and a citation to a milestone
+that does not exist. Seven injections, seven failures reported, none missed.
 
 ## Follow-on
 
@@ -178,7 +178,7 @@ that does not exist): seven injections, seven failures reported, none missed.
 ## Index row
 
 built 2026-08-03, the day the single file (by then 6,200 lines) took nine entries and two more
-same-day PR conflicts. The split is this directory, proven by byte-for-byte reassembly; the gate
-now checks index/file status agreement, one milestone per file, and every `milestone N` citation
-tree-wide (2,255, all resolving), with 1 to 11 backfilled from the first commits and the `n >= 12`
+same-day PR conflicts. The split is this directory, proven by byte-for-byte reassembly; the gate now
+checks index/file status agreement, one milestone per file, and every `milestone N` citation
+tree-wide (2,255, all resolving). 1 to 11 are backfilled from the first commits and the `n >= 12`
 floor gone

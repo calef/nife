@@ -104,8 +104,9 @@ composes it (`REMOVE_TREE = ENUMERATE | DESCEND | REMOVE`).
 
 This block said `rm -r` was the only thing composing `ENUMERATE`, and that was already false when it
 was minted (corrected 2026-08-17 by the status-accuracy sweep; the status itself is right and did not
-move). At least four other things compose it, and one of them predates this block by ten days: the
-shell's glob expander (`components/src/swish.rs:518`, driving `crates/grant_plan/src/expand.rs`, landed
+move). At least four other things compose it, and one of them predates this block by ten days. They
+are the shell's glob expander (`components/src/swish.rs:518`, driving
+`crates/grant_plan/src/expand.rs`, landed
 2026-08-03 against this block's 2026-08-13), the SMB server
 (`user/src/smb_server.rs:327`), the `std` PAL's `read_dir`
 (`patches/std-nife/overlay/std/src/sys/fs/nife.rs:891`), and the survey viewer's kernel-level
@@ -179,8 +180,8 @@ that number. ripgrep is a good instrument for it because it is famous for speed,
 publicly compared against other tools, and the comparison against Linux runs the same Rust logic on
 both sides rather than two different programs.
 
-What to measure: wall time and instruction count over a fixed tree, and the per-entry cost of the
-walk separated from the per-byte cost of the search, because those two exercise different halves of
+What to measure: wall time and instruction count over a fixed tree. Separate the per-entry cost of
+the walk from the per-byte cost of the search, because those two exercise different halves of
 the system and a single number hides which one is expensive.
 
 The caveat: `rg` walks in parallel since milestone 812, so both sides are pinned to `--threads 1`.

@@ -111,7 +111,7 @@ failed to build the kernel page tables: AlreadyMapped
 `notes/x86-uefi-boot.md` carries the session and the diagnosis; `notes/xenon-firmware.md` carries
 the 70 photographs of firmware settings taken the same day. The diagnosis corrected its own first
 hypothesis (the framebuffer aperture had not met RAM; the firmware's map does not describe the
-32-bit MMIO hole at all), and found something larger than the panic: the fill was mapping the IO
+32-bit MMIO hole at all). It found something larger than the panic. The fill was mapping the IO
 APIC, the SPI flash and 128 MiB of PCH decode **cacheably**, which is a write that can sit in a
 cache line and never reach the device. Nothing had touched those yet, so nothing had failed; the
 panic is what made it visible.
@@ -125,13 +125,13 @@ byte over serial":
 > This milestone is `BUILT` when xenon prints `nife self-test: N of N passed`.
 
 **Why that line and not the obvious alternatives.** "The tour completing" was proposed first and
-withdrawn: milestone 267 (the tour is three things wearing one name) established as much, and deleted
-one of them (the narrative program), so "the tour" would cite something that partly does not exist.
+withdrawn. Milestone 267 (the tour is three things wearing one name) established as much, and
+deleted one of them (the narrative program). So "the tour" would cite something that partly does not exist.
 
 The self-test is the right bound for **this** milestone. It is a machine-readable line that
 `script/soak` and `crates/board_console` already judge board runs by, so nothing new has to learn to
-read it; and passing it means exceptions, mapping, frames, timer and scheduler all work on the
-hardware, which is "this machine runs nife" with a definite answer rather than a liveness signal.
+read it. Passing it means exceptions, mapping, frames, timer and scheduler all work on the hardware.
+That is "this machine runs nife" with a definite answer rather than a liveness signal.
 
 The progenitor handover (`nife: handing the system to the userspace progenitor`) is a stronger
 claim, but it drags in the archive, ELF loading and the FS service, which are the scope of
@@ -162,10 +162,10 @@ It also means `script/test --arch x86_64` cannot regress under it, which was thi
 sharpest hazard.
 
 **Proved under OVMF, and it exercised four paths that had never run**, because a hypervisor never
-takes them: the ACPI root pointer arrives non-zero (so the BIOS-area `"RSD PTR "` scan is skipped),
-it is revision 2 with an **XSDT** root rather than revision 0 with an RSDT, the MCFG's ECAM window
+takes them. The ACPI root pointer arrives non-zero (so the BIOS-area `"RSD PTR "` scan is skipped).
+It is revision 2 with an **XSDT** root rather than revision 0 with an RSDT. The MCFG's ECAM window
 is `0xe0000000` where the hardcoded constant says `0xb0000000` (so "read the table" is finally
-distinguishable from "used the constant", which milestone 165 could not show), and the memory map is
+distinguishable from "used the constant", which milestone 165 (x86_64 PCI enumeration) could not show). The memory map is
 118 regions against PVH's nine. The userspace archive arrives too, through the module list the
 loader writes.
 
@@ -174,23 +174,23 @@ notes/x86-uefi-boot.md for the whole account, the measured numbers, and the hone
 (the bench procedure itself is untested, the suite has not been run under firmware, and SMP under
 UEFI has never been exercised).
 
-Purchased 2026-08-15 (calef), all arrived and installed as of 2026-08-23: the OptiPlex 7050
-Micro (i5-7500T, 16GB, 256GB NVMe, with its AC adapter, $139), the Dell C4PDJ serial module with
-its cable ($18.88, the with-cable check the earlier draft flagged, answered by the listing's own
-title), and the dev-side RS-232 chain (FTDI USB adapter at 1.5 ft, $15.96, plus a StarTech NM9FF
+Purchased 2026-08-15 (calef), all arrived and installed as of 2026-08-23. The OptiPlex 7050 Micro
+(i5-7500T, 16GB, 256GB NVMe, with its AC adapter, $139). The Dell C4PDJ serial module with its cable
+($18.88, the with-cable check the earlier draft flagged, answered by the listing's own title). And
+the dev-side RS-232 chain (FTDI USB adapter at 1.5 ft, $15.96, plus a StarTech NM9FF
 null-modem barrel, $7.98, chosen over a cable so the desk carries eighteen inches of serial, not
-three feet). About $182 all-in against the $194 estimate, twelve days after selection; the $129
+three feet). About $182 all-in against the $194 estimate, twelve days after selection. The $129
 machine tier had aged out and nothing else moved. This milestone completes when the machine has
-printed a byte over serial; the x86_64 port itself is milestone 161's scope and is not gated on
+printed a byte over serial. The x86_64 port itself is milestone 161's scope and is not gated on
 the purchase, because it starts under QEMU TCG the way riscv64 did. The RS-232 and 3.3 V TTL
 bench note is under Follow-on.
 
-DECISIONS §19 names x86_64 as the third ISA target, and the second ISA's lesson (milestone 16, the
+DECISIONS §19 (architectural parity is a tenet) names x86_64 as the third ISA target. The second ISA's lesson (milestone 16 (real hardware + IOMMU-backed driver isolation), the
 VisionFive 2) is that the board should be chosen and ordered before the port needs it, from
 requirements the port derives rather than from specs. Bare-metal bring-up is a loop of hang,
-power-cycle, retry, so the machine must be dedicated and consequence-free; cordoba is disqualified
-for bare metal on exactly those grounds (it is the production server, and a 2013 desktop board has
-no BMC, no serial-over-LAN, no remote power), though it remains the KVM and VT-d *virtualized* test
+power-cycle, retry, so the machine must be dedicated and consequence-free. cordoba is disqualified
+for bare metal on exactly those grounds: it is the production server, and a 2013 desktop board has
+no BMC, no serial-over-LAN, no remote power. It remains the KVM and VT-d *virtualized* test
 host for the same port.
 
 The requirements, each traced to something this tree already does:
@@ -213,26 +213,26 @@ The requirements, each traced to something this tree already does:
 - Remote power cycling by smart plug, not by management firmware. A plug is $15 and works on
   anything.
 
-The selection: a used Dell OptiPlex 7050 Micro plus the Dell C4PDJ serial module (calef,
-2026-08-03, settled after a full pass over the new market): i5-7500T with 16GB was $129 with the
-module at $35, ~$194 all-in with the dev-side serial gear and the smart plug. The used-hardware
-risk was weighed deliberately and priced: eBay's money-back guarantee bounds "does it work" to
-return friction, and at real configured prices every new machine cost $150-350 more. The 7050
+The selection: a used Dell OptiPlex 7050 Micro plus the Dell C4PDJ serial module (calef, 2026-08-03,
+settled after a full pass over the new market). i5-7500T with 16GB was $129 with the module at $35,
+~$194 all-in with the dev-side serial gear and the smart plug. The used-hardware risk was weighed
+deliberately and priced. eBay's money-back guarantee bounds "does it work" to return friction. At
+real configured prices every new machine cost $150-350 more. The 7050
 keeps the fastest cores in the field and the I219 NIC in QEMU's `e1000e` family, so the
 one-driver-spans-emulator-and-silicon property holds with no caveats. The module is Dell P/N
 C4PDJ (fits 3050/7040/7050 MFF, snaps into the rear punch-out, cables to a motherboard
-header; check the listing includes the cable); used units essentially never ship with it, so buy
-it separately rather than hunting for a factory-configured unit.
+header; check the listing includes the cable). Used units essentially never ship with it, so buy it
+separately rather than hunting for a factory-configured unit.
 
 The market at selection time, so the next reader knows what was weighed. The closest contender
-was a **new Protectli VP2430** ($300 configured with coreboot): a real vendor with published
+was a **new Protectli VP2430** ($300 configured with coreboot). It is a real vendor with published
 datasheets, open-source firmware aligned with `measured_boot`'s future on x86, console cable
-included, but i226-V NICs in the `igc` family QEMU does not emulate, and $150 over the used
-route; it stays **the recorded alternative** if the used machine disappoints or when open
+included. But it has i226-V NICs in the `igc` family QEMU does not emulate, and costs $150 over the
+used route. It stays **the recorded alternative** if the used machine disappoints or when open
 firmware becomes the point. Configured industrial N100 boxes on Amazon ran $500-730 and are
 dominated by the VP2430 at every point. A used PC Engines apu2 deserves a correction from the
-first draft of this entry: its i210 NICs are `igb` family, so QEMU's igb model gives it the
-one-driver property this entry originally credited only to the 7050; it stays a runner-up for its
+first draft of this entry: its i210 NICs are `igb` family. So QEMU's igb model gives it the
+one-driver property this entry originally credited only to the 7050. It stays a runner-up for its
 EOL status and slow Jaguar cores, not its NIC. If netboot iteration becomes worth it, cordoba
 hosts the PXE/TFTP end.
 

@@ -13,8 +13,8 @@ any kernel stack. The claim "the stacks are big enough" is currently an argument
 standard is to measure instead.
 
 The instrument is the classic one because the classic one is right: paint every kernel-owned stack
-with a pattern at boot, and at the end of the test suite scan each for the deepest overwritten byte
-and report it through the test channel. The first run is measurement only. Once the numbers are
+with a pattern at boot. At the end of the test suite, scan each for the deepest overwritten byte and
+report it through the test channel. The first run is measurement only. Once the numbers are
 seen, the threshold becomes an assertion with the margin the numbers justify, the same
 measure-then-gate sequence the icount tripwire used. Runs identically on every ISA, and covers
 whatever the suite actually exercises, interrupt nesting included.

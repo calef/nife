@@ -24,10 +24,10 @@ Follow-on`:
 
 From '81. An HVF leg: the test suite on the physical core', under `## Follow-on`:
 
-> A self-hosted runner on the dev machine, which is the only way to put HVF in hosted CI, since
-> GitHub's macOS arm64 runners are themselves virtual machines with no nested virtualization. It
-> couples CI to a laptop that sleeps, and the loud skip was taken instead so a transcript can
-> never be misread as having had silicon coverage.
+> A self-hosted runner on the dev machine, which is the only way to put HVF in hosted CI. GitHub's
+> macOS arm64 runners are themselves virtual machines with no nested virtualization. It couples CI
+> to a laptop that sleeps. The loud skip was taken instead so a transcript can never be misread as
+> having had silicon coverage.
 >
 > -- design/roadmap/0081-hvf-leg.md
 

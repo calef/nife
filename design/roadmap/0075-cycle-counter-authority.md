@@ -15,9 +15,9 @@ bullet point.
 
 Since 2026-09-02, and the block said `DECISION` for seventeen days after that.
 The question was *whether to open `PMCCNTR_EL0` (and `scounteren`'s cycle bit) to EL0 at ~160x the
-resolution of the counter DECISIONS §10 already excepted, or to make the read a capability*, and
+resolution of the counter DECISIONS §10 (process model) already excepted, or to make the read a capability*.
 [§139](../decisions/0139-cycle-counter-authority.md) answered it, under a title identical to this
-block's own: a per-thread grant enforced at the context switch, carried as a field in the spawn
+block's own. It is a per-thread grant enforced at the context switch, carried as a field in the spawn
 manifest rather than a method on a live thread, with `x86_64` keeping its ambient counter.
 
 Found by milestone 435's first slice, which was sweeping the forty-five blocks whose `DECISION`
@@ -26,9 +26,10 @@ the filter counted it as citing one. That is the shape of the defect rather than
 it, and 435's `Follow-on` records the blind spot.
 
 **The status line below is a separate reading and is deliberately left alone.** §139 shipped with
-`PMUSERENR_EL0` handling in `kernel/src/arch/aarch64/timer.rs` and its riscv64 twin, so whether this
+`PMUSERENR_EL0` handling in `kernel/src/arch/aarch64/timer.rs` and its riscv64 twin. So whether this
 block is BUILT, PARTIAL or still open is a question about the manifest field rather than about the
-gate, and answering it wants the reading milestone 435's method prescribes rather than an
+gate. Answering it wants the reading prescribed by the method of milestone 435 (forty-five
+milestones are gated on a decision nobody wrote down) rather than an
 integrator's guess while correcting a token.
 
 ## The question
@@ -78,7 +79,7 @@ finer one should be made on its own evidence, and recorded, rather than inherite
 
 Option 2 costs a capability type, a grant in the spawn path, and a trap-and-check on the register
 read. It also produces a demonstration the project can use: a fine-grained timer is exactly the
-resource a capability system should be able to hand out deliberately, and it would be the first one
+resource a capability system should be able to hand out deliberately. It would be the first one
 whose justification is a side channel rather than a resource.
 
 ## Parity, and a caveat about where this bites

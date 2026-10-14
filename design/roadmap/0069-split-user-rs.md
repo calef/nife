@@ -12,9 +12,9 @@ exception that proves why.
 All 46 top-level modules moved to `kernel/src/user/<name>.rs`; `user.rs` went from 15,499 lines to
 1,993, and the largest file left in the tree from that split is `user/tests.rs` at 2,306. Nothing
 gained visibility: not one `pub`, `pub(crate)` or `use` was added or widened, which the section below
-predicted and which was then checked mechanically rather than by eye. Re-inlining every new file back
-into `user.rs` and running `rustfmt` over the result reproduces the pre-split file byte for byte,
-so the only content change in the whole milestone is `rustfmt` reflowing about 90 lines that gained
+predicted and which was then checked mechanically rather than by eye. Re-inlining every new file
+back into `user.rs` and running `rustfmt` over the result reproduces the pre-split file byte for
+byte. So the only content change in the whole milestone is `rustfmt` reflowing about 90 lines that gained
 four columns of width when they lost a level of indentation.
 
 The declaration each module left behind keeps its own doc comment and its own `#[cfg]`/`#[cfg_attr]`
