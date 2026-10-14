@@ -1,22 +1,22 @@
 //! **basalt's published packages, fetched by digest for the gates** (milestone 810 (`ripgrep` is
 //! packaged in basalt and installed with `jig`), DECISIONS §297 (software reaches a nife system as a
-//! package `jig` installs from basalt) item 3). Name: provisional,
-//! `cargo xtask basalt-fetch`, minted 2026-10-13 (UTC) by lane `lane/ripgrep-from-basalt`.
+//! package `jig` installs from basalt) item 3). Name: provisional, `cargo xtask basalt-fetch`,
+//! minted 2026-10-13 (UTC) by lane `lane/ripgrep-from-basalt`.
 //!
-//! nife builds none of the programs [`PINNED_INDEX`] names (`rg`, `ioping`, `hackbench`,
+//! nife builds none of the foreign programs [`PINNED_INDEX`] names (`rg`, `ioping`, `hackbench`,
 //! `speedtest1`). basalt does, from its `recipes/`, and publishes one package per architecture on a
-//! GitHub Release with an index at `basalt.nifeos.org`. calef ruled on 2026-10-13
-//! (UTC) that nife's tests take that package rather than a build of their own: *"1 is preferable
-//! because that tests jig and basalt's delivery mechanism as well."*
+//! GitHub Release with an index at `basalt.nifeos.org`. calef ruled on 2026-10-13 (UTC) that
+//! nife's tests take that package rather than a build of their own: *"1 is preferable because that
+//! tests jig and basalt's delivery mechanism as well."* First-party `rmle` is pinned only for `jig
+//! install`; nife's tests run its own build (milestone 909 (basalt composes the bootable image from
+//! its packages) item 5).
 //!
-//! So this reads [`PINNED_INDEX`], basalt's own index lines for the packages nife's tests use, and
-//! for each one:
+//! For each of basalt's index lines in [`PINNED_INDEX`], this:
 //!
 //! 1. fetches the package from the Release the line lists, and refuses it unless
 //!    `package_index::accept`, the installer's own decision, takes it under that line's SHA-256;
 //! 2. writes it into a repository in basalt's layout under `target/basalt/`, whose index
-//!    [`crate::disk`] hands to the test index host, so `script/swish-check` types `jig install
-//!    ripgrep` against basalt's bytes;
+//!    [`crate::disk`] hands to the test index host for `script/swish-check`'s `jig install` lines;
 //! 3. writes the package's program member to `target/basalt/programs/<triple>/<program>`, which the
 //!    kernel harness's archive and the shell check's disk carry for the tests and lines that run it
 //!    by path with hand-placed capabilities.
@@ -29,14 +29,14 @@
 //! workflow does with the one it just built, nothing is fetched: that repository's packages are
 //! accepted under its own index and their programs taken from it.
 //!
-//! **Without a network** a local run says what it could not fetch and succeeds, and every `rg`
-//! line and test then skips and says why. In CI (`CI` set) a failed fetch fails the row.
+//! **Without a network** a local run says what it could not fetch and succeeds, and every line and
+//! test of basalt's programs skips and says why. In CI (`CI` set) a failed fetch fails the row.
 //!
 //! **Bumping the pin.** When basalt republishes and nife should take the new build, the lane that
 //! wants it copies basalt's served lines over [`PINNED_INDEX`]'s file and lets CI judge them:
 //!
 //! ```text
-//! curl -sSf https://basalt.nifeos.org/rolling/metadata/stand-in-index | grep -E '^(ripgrep|ioping|hackbench|sqlite)-' > xtask/basalt-pins.index
+//! curl -sSf https://basalt.nifeos.org/rolling/metadata/stand-in-index | grep -E '^(ripgrep|ioping|hackbench|sqlite|rmle)-' > xtask/basalt-pins.index
 //! ```
 
 use std::path::{Path, PathBuf};
