@@ -20,6 +20,9 @@ chmod +x "$tmp/gh"
 
 refs='refs/heads/lane/x 1111 refs/heads/lane/x 2222'
 fail=0
+# The hook runs this selftest under the pusher's own environment, so a real
+# `NIFE_PUSH_QUEUED=1 git push` would otherwise turn every refusal case into a pass.
+unset NIFE_PUSH_QUEUED FAKE_GH_FAIL FAKE_GH_OUT
 # Each case runs in a subshell: a variable assignment before a function call can outlive the call in
 # a POSIX shell, and a leaked NIFE_PUSH_QUEUED or FAKE_GH_FAIL would silently change the later cases.
 expect() { # name expected-exit expected-stderr-fragment
