@@ -10,7 +10,7 @@ pub(super) const PAGE: u64 = 4096;
 pub(super) const MIN_GROW_PAGES: u64 = 8;
 
 pub(super) struct Inner {
-    heap: user_mode_heap::Heap,
+    pub(super) heap: user_mode_heap::Heap,
     committed: u64,
 }
 
@@ -49,7 +49,7 @@ pub(super) fn lock() -> Guard {
 
 impl Guard {
     #[allow(clippy::mut_from_ref)]
-    fn inner(&mut self) -> &mut Inner {
+    pub(super) fn inner(&mut self) -> &mut Inner {
         // SAFETY: holding the guard means holding the spinlock; access is exclusive.
         unsafe { &mut *HEAP.inner.get() }
     }
