@@ -1,0 +1,6 @@
+ripgrep-14.1.1-aarch64 sha256:eef31e0a7703e448fdcdb506d941e267bd681447bae9c4b6b249771fd803f62e sectigo-root-e46=https://github.com/nifeos/basalt/releases/download/rolling-2026-10-13-ad0b146/ripgrep-14.1.1-aarch64.nifepkg
+ripgrep-14.1.1-riscv64 sha256:ba06e2c780c4b47162176abd58dbc189ebf59e59145092005430556a4d13b1f7 sectigo-root-e46=https://github.com/nifeos/basalt/releases/download/rolling-2026-10-13-ad0b146/ripgrep-14.1.1-riscv64.nifepkg
+ripgrep-14.1.1-x86_64 sha256:f25b1a67c68945f1d6f9325746d9cdb06359ac56bb6de3d1284b2513377c90ac sectigo-root-e46=https://github.com/nifeos/basalt/releases/download/rolling-2026-10-13-ad0b146/ripgrep-14.1.1-x86_64.nifepkg
+ioping-1.3-aarch64 sha256:88aa560b039ace465102d4c1fff5a0455fe3c8bb76ee1b92c97981e437f4ddec sectigo-root-e46=https://github.com/nifeos/basalt/releases/download/rolling-2026-10-14-c9f3c5f/ioping-1.3-aarch64.nifepkg
+ioping-1.3-riscv64 sha256:4d3ce8b82cee7a188777a21af72e482c6df0b61746f8829c8337ccecb19fd0b0 sectigo-root-e46=https://github.com/nifeos/basalt/releases/download/rolling-2026-10-14-c9f3c5f/ioping-1.3-riscv64.nifepkg
+ioping-1.3-x86_64 sha256:b415f3e1acc6168c26e43e148226bb856adf7f4ec55d8d5753e3244bf83e4452 sectigo-root-e46=https://github.com/nifeos/basalt/releases/download/rolling-2026-10-14-c9f3c5f/ioping-1.3-x86_64.nifepkg

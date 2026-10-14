@@ -1,106 +1,29 @@
-//! **Asking the emulator for a screen**, milestone 243 (a machine with no serial port): QEMU's
-//! `fw_cfg` interface, wire side.
+//! **Asking the emulator for a screen**: QEMU's `fw_cfg` interface, wire side. QEMU's `virt`
+//! boards are entered from `-kernel` with no firmware that lit a display, but they have **`ramfb`**,
+//! a device whose contract is that the guest supplies the memory and tells the emulator where it
+//! is, through `fw_cfg` (the channel firmware reads the E820 map and ACPI tables through). This
+//! crate is that conversation's wire format and nothing else, so the kernel driver is a
+//! `write_volatile` and a poll and the arithmetic is proved on the host. QEMU, Linux, EDK2 and
+//! U-Boot spell it `fw_cfg`; a reader arriving from QEMU's `docs/specs/fw_cfg.rst` is in the right
+//! place. See notes/serial-less-output/ramfb.md.
 //!
-//! Milestone 243 put the kernel's boot tour on a screen on `x86_64`, where UEFI's
-//! `EFI_GRAPHICS_OUTPUT_PROTOCOL` hands the loader a linear framebuffer that is already lit.
-//! `aarch64` and `riscv64` had no such stage: QEMU's `virt` boards are entered straight from
-//! `-kernel` with no firmware that has configured a display, so
-//! [`machine_discovery::framebuffer`]'s sentence had nobody to say it and `screen_console` had
-//! nothing to paint.
-//!
-//! What those boards do have is **`ramfb`**, a QEMU device whose whole contract is that *the guest*
-//! supplies the memory and then tells the emulator where it is. The telling goes through `fw_cfg`,
-//! which is the same channel firmware already uses to read the E820 map, the kernel command line
-//! and the ACPI tables. This crate is that conversation's wire format, and nothing else: no MMIO,
-//! no pointers, no device. The four structures below are what the bytes mean, so that the kernel
-//! driver is a `write_volatile` and a poll and the arithmetic is proved on the host.
-//!
-//! **QEMU spells this interface `fw_cfg`**, and so do Linux (`drivers/firmware/qemu_fw_cfg.c`),
-//! EDK2 and U-Boot. This tree spells crate names out, so it is `firmware_configuration` here; the
-//! `Cargo.toml` above records the refusals. A reader arriving from QEMU's `docs/specs/fw_cfg.rst`
-//! is in the right place.
-//!
-//! # Why the DMA interface and not the port pair
-//!
-//! `fw_cfg` has two access methods. The old one selects a key by a 16-bit write and then reads the
-//! data register a byte at a time; the DMA one hands the device a descriptor naming a buffer and a
-//! length. **Only the DMA interface can write**, and `ramfb` is a write-only file, so there is no
-//! choice to make. That it is also one transaction instead of `n` byte reads is a bonus rather than
-//! the reason.
-//!
-//! # Everything here is big-endian
-//!
-//! `fw_cfg` is a firmware interface that predates any of its guests agreeing on an endianness, so
-//! the device fixed one: **every multi-byte field in every structure below is big-endian**,
-//! including on the little-endian machines that are the only ones this tree runs on. That is the
-//! single mistake this whole crate exists to make impossible, which is why every encoder here takes
-//! a native value and returns bytes rather than a struct anybody could `transmute`.
-//!
-//! # Examples
-//!
-//! Point a `ramfb` at a framebuffer the guest owns. The configuration is 28 bytes and the command
-//! that delivers them is 16, and both are what the device reads:
-//!
-//! ```
-//! use firmware_configuration::{DmaCommand, RamFramebuffer};
-//! use machine_discovery::framebuffer::{Framebuffer, PixelOrder};
-//!
-//! let screen = Framebuffer {
-//!     base: 0x4020_0000,
-//!     width: 800,
-//!     height: 600,
-//!     stride: 3200,
-//!     order: PixelOrder::Bgrx,
-//! };
-//!
-//! let config = RamFramebuffer(screen).encode();
-//! // The address leads, big-endian, and the format is DRM's `XR24` spelled as four ASCII bytes.
-//! assert_eq!(&config[..8], &0x4020_0000u64.to_be_bytes());
-//! assert_eq!(&config[8..12], b"\x34\x32\x52\x58");
-//!
-//! // Selecting the file and writing those 28 bytes is one command.
-//! let command = DmaCommand::write(0x0021, config.len() as u32, 0x4000_1000).encode();
-//! assert_eq!(&command[..4], &0x0021_0018u32.to_be_bytes());
-//! ```
-//!
-//! Finding the key to select means walking the file directory the device publishes at a fixed key:
-//!
-//! ```
-//! use firmware_configuration::{DirectoryEntry, ENTRY_LEN, RAMFB};
-//!
-//! let mut entry = [0u8; ENTRY_LEN];
-//! entry[..4].copy_from_slice(&28u32.to_be_bytes());
-//! entry[4..6].copy_from_slice(&0x0021u16.to_be_bytes());
-//! entry[8..8 + RAMFB.len()].copy_from_slice(RAMFB);
-//!
-//! let parsed = DirectoryEntry::parse(&entry).expect("a well-formed entry");
-//! assert_eq!(parsed.size, 28);
-//! assert_eq!(parsed.select, 0x0021);
-//! assert!(parsed.is(RAMFB));
-//! ```
-//!
-//! Name: provisional, coined by milestone 243's lane on 2026-09-19, unrecorded (calef has not ruled
-//! on it). QEMU, Linux, EDK2 and U-Boot all spell this interface `fw_cfg`; this tree spells crate
-//! names out (`address_space_identifier`, `inter_process_communication`), and an acronym only its
-//! author can expand is the failure `design/naming.md` names. The refusals: `fw_cfg` is the outside
-//! world's name and is the abbreviation the convention refuses; `qemu_firmware_config` puts a vendor
-//! in the name of an interface other emulators also implement, and abbreviates anyway;
-//! `firmware_config` splits the difference and still abbreviates.
+//! Only `fw_cfg`'s DMA interface can write, and `ramfb` is a write-only file, so it is the DMA
+//! interface, not the port pair. **Every multi-byte field is big-endian**, including on the
+//! little-endian machines this tree runs on; that is the mistake this crate exists to make
+//! impossible, so every encoder takes native values and returns bytes, never a struct anybody could
+//! `transmute`.
 //!
 //! # BUGS
 //!
-//! - **Nothing here checks that the device is real.** A machine with no `fw_cfg` node in its
-//!   device tree never gets this far, and a machine whose node points somewhere else would have
-//!   these structures written into whatever is there. The trust boundary is the device tree, which
-//!   is the same boundary the UART and the interrupt controller already sit on.
-//! - **The directory is walked, not indexed.** `ramfb`'s key is not architecturally fixed (QEMU
-//!   assigns file keys in the order the files are added, so it moves when another device is
-//!   attached), so the only correct way to find it is the walk, and the walk is `O(files)` reads
-//!   over a DMA interface. It happens once per boot.
-//! - **`ramfb` is QEMU's**, not a standard. Real silicon has no such device, which is why the
-//!   milestone that added this says plainly that the boards' answer is milestone 157 (real display
-//!   output on the board), the U-Boot `simple-framebuffer` handoff, and this is what the emulator
-//!   can do in the meantime.
+//! - Nothing checks that the device is real: the trust boundary is the device tree, as for the UART.
+//! - The directory is walked, `O(files)` reads, once per boot: `ramfb`'s key moves as devices are
+//!   added.
+//! - `ramfb` is QEMU's, not a standard; the boards' answer is milestone 157 (real display output on
+//!   the board) and U-Boot's `simple-framebuffer` handoff.
+//!
+//! Name: provisional. Refused `fw_cfg` (an abbreviation only its author can
+//! expand), `qemu_firmware_config` (a vendor in an interface's name, and still abbreviated) and
+//! `firmware_config` (still abbreviated).
 
 #![no_std]
 
@@ -231,6 +154,24 @@ impl DmaCommand {
 pub struct Refused;
 
 /// **One file the device publishes**, as it appears in the directory at [`DIRECTORY_KEY`].
+///
+/// # Examples
+///
+/// The key to select is found by walking the directory the device publishes at a fixed key:
+///
+/// ```
+/// use firmware_configuration::{DirectoryEntry, ENTRY_LEN, RAMFB};
+///
+/// let mut entry = [0u8; ENTRY_LEN];
+/// entry[..4].copy_from_slice(&28u32.to_be_bytes());
+/// entry[4..6].copy_from_slice(&0x0021u16.to_be_bytes());
+/// entry[8..8 + RAMFB.len()].copy_from_slice(RAMFB);
+///
+/// let parsed = DirectoryEntry::parse(&entry).expect("a well-formed entry");
+/// assert_eq!(parsed.size, 28);
+/// assert_eq!(parsed.select, 0x0021);
+/// assert!(parsed.is(RAMFB));
+/// ```
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct DirectoryEntry {
     /// How many bytes the file holds.
@@ -277,6 +218,33 @@ impl DirectoryEntry {
 /// so that the thing the device is told about and the thing `screen_console` paints into cannot
 /// drift apart. What it adds is the one thing the handoff does not carry: the DRM format code the
 /// device wants instead of a byte order.
+///
+/// # Examples
+///
+/// Point a `ramfb` at a framebuffer the guest owns: a 28-byte configuration and a 16-byte command
+/// that delivers it.
+///
+/// ```
+/// use firmware_configuration::{DmaCommand, RamFramebuffer};
+/// use machine_discovery::framebuffer::{Framebuffer, PixelOrder};
+///
+/// let screen = Framebuffer {
+///     base: 0x4020_0000,
+///     width: 800,
+///     height: 600,
+///     stride: 3200,
+///     order: PixelOrder::Bgrx,
+/// };
+///
+/// let config = RamFramebuffer(screen).encode();
+/// // The address leads, big-endian, and the format is DRM's `XR24` spelled as four ASCII bytes.
+/// assert_eq!(&config[..8], &0x4020_0000u64.to_be_bytes());
+/// assert_eq!(&config[8..12], b"\x34\x32\x52\x58");
+///
+/// // Selecting the file and writing those 28 bytes is one command.
+/// let command = DmaCommand::write(0x0021, config.len() as u32, 0x4000_1000).encode();
+/// assert_eq!(&command[..4], &0x0021_0018u32.to_be_bytes());
+/// ```
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct RamFramebuffer(pub Framebuffer);
 

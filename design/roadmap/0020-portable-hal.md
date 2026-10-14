@@ -25,13 +25,13 @@ RISC-V, ring-3 on x86, and EL0 on ARM. seL4 (verified on both ARM and RISC-V) is
 Deliverable, in two parts.
 
 1. Make `arch/` a real HAL. Today it is a `#[cfg(target_arch)]` re-export whose contract is
-   "fails to compile if something is missing." Turn it into a genuine machine-dependent layer: split
-   the aarch64 descriptor format out of the `paging` crate (a generic level-walk plus a per-arch entry
-   codec, the way Linux folds page-table levels), put device discovery behind a "here is the hardware"
+   "fails to compile if something is missing." Turn it into a genuine machine-dependent layer. Split
+   the aarch64 descriptor format out of the `paging` crate (a generic level-walk plus a per-arch
+   entry codec, the way Linux folds page-table levels). Put device discovery behind a "here is the hardware"
    interface (device tree today, ACPI/PCI later), and make the arch surface explicit. This is the
    reusable half and most of the value; a second ISA is what proves the split is honest. The
-   seam-*naming* subset that needs no second architecture is broken out as **20a** and can start now;
-   the abstraction *shapes* (the codec and discovery interfaces) wait for RISC-V, because deriving
+   seam-*naming* subset that needs no second architecture is broken out as **20a** and can start
+   now. The abstraction *shapes* (the codec and discovery interfaces) wait for RISC-V, because deriving
    them from one ISA is the wrong-abstraction trap DECISIONS warns against.
 2. Bring up a second ISA, then a third: RISC-V first, x86_64 second. RISC-V is this
    milestone's own scope; x86_64 is milestone 161's.
@@ -73,8 +73,8 @@ precedent.
   second architecture lives on as its own addendum block rather than being folded back in here. It
   names and isolates the boundaries; it does not abstract across them.
 - **Refused.** Hardware breadth stays parked. Every driver on every board buys no proof coverage,
-  because the proofs live in the machine-independent crates that already do not care about the ISA,
-  and each new architecture enlarges the unverified TCB by one hand-written boot, MMU, trap and
+  because the proofs live in the machine-independent crates that already do not care about the ISA.
+  Each new architecture enlarges the unverified TCB by one hand-written boot, MMU, trap and
   syscall layer.
 
 ## Index row

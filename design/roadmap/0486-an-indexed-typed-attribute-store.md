@@ -13,10 +13,10 @@ work a number, a status and a condition that would change it.
 
 From '57. Partitioning and formatting a real drive, and extended attributes', under `## Follow-on`:
 
-> An indexed, typed attribute store in the BFS shape. Only opaque blobs are needed today, and
-> every attribute already carries a `u32` type code the layer stores, returns and never
-> interprets, so an indexed store later is a change of implementation rather than a format
-> migration plus a wire break.
+> An indexed, typed attribute store in the BFS shape. Only opaque blobs are needed today, and every
+> attribute already carries a `u32` type code the layer stores, returns and never interprets. So an
+> indexed store later is a change of implementation rather than a format migration plus a wire
+> break.
 >
 > -- design/roadmap/0057-partitioning-and-xattrs.md
 

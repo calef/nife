@@ -20,9 +20,9 @@ matches, with the heap later removed on purpose by milestone 14, which the recor
 obscure: the heap this milestone added is the one "kernel objects from untyped" spent a milestone
 taking back out.
 
-The same day's follow-on commits are part of the milestone's honest record: `ce55137` proved TLB
-invalidation works rather than asserting it, `499be5e` added a slab allocator "because the
-measurement said to," and `2ea4c6a` fixed `halt()` to use `wfi` after an idle kernel burned a
+The same day's follow-on commits are part of the milestone's honest record. `ce55137` proved TLB
+invalidation works rather than asserting it, and `499be5e` added a slab allocator "because the
+measurement said to." `2ea4c6a` fixed `halt()` to use `wfi` after an idle kernel burned a
 whole host core, the finding CLAUDE.md still carries.
 
 ## Follow-on

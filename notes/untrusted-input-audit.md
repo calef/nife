@@ -1,9 +1,9 @@
 # Auditing untrusted counterparty input: the network and the bus
 
-Done 2026-08-15, as milestone 43 continued. Milestone 43 is the second security audit, and its
-headline lens (time of check to time of use across the shared pages) was already carried out and is
-written up in full in [shared-page-audit.md](shared-page-audit.md), seven findings and a merged set
-of fixes. This note takes the milestone's **further** lenses, the ones that block names and that the
+Done 2026-08-15, as milestone 43 (a second security audit) continued. Milestone 43 is the second security audit. Its headline
+lens (time of check to time of use across the shared pages) was already carried out. It is written
+up in full in [shared-page-audit.md](shared-page-audit.md), seven findings and a merged set of
+fixes. This note takes the milestone's **further** lenses, the ones that block names and that the
 double-fetch pass explicitly left for later, and points them at the surface that landed *after* that
 pass was written.
 
@@ -135,13 +135,14 @@ and the pattern shared-page-audit.md named for finding 6 applies verbatim: a gua
 from the wrong side of a boundary. The IOMMU's guarantee is about where the device may touch. The
 driver read it as a guarantee about what the device may say.
 
-Disposition: recorded, and it wants a lane. The fix is not one line and not zero risk: turning
+Disposition: recorded, and it wants a lane. The fix is not one line and not zero risk. Turning
 `note_head` and the `cid` assert into an `Err(Error::...)` that the caller propagates changes the
-error contract of `submit_and_poll` and every path above it, and it needs a negative control (a
+error contract of `submit_and_poll` and every path above it. It needs a negative control (a
 device that lies) to prove the new path fails closed rather than mis-serving. That control is
 precisely the hostile-device harness shared-page-audit.md already proposed as its lane candidate B,
 and this finding extends that candidate's justification rather than adding a new one. Note this is
-consistent with `crates/non_volatile_memory_express`'s own design comment on `SqState`: it deliberately does not model the
+consistent with `crates/non_volatile_memory_express`'s own design comment on `SqState`. It
+deliberately does not model the
 controller's head as a free-slot count "instead of carrying a free-slot count nothing would
 exercise," which is the right call for the honest path and is exactly why the dishonest path lands on
 an assert.
@@ -197,7 +198,7 @@ several places the code is already at the standard an audit would ask for:
   reason: a derived one would compare tags with a short-circuiting `memcmp`, the exact timing oracle
   `Store::verify` avoids.
 - **The service stores `NTOWFv2`, not the password and not the NT hash** (`crates/ntlm`'s header,
-  [MS-NLMP] §3.3.2), which is §79's whole point: a stolen `NTOWFv2` authenticates as one account in
+  [MS-NLMP] section 3.3.2), which is the whole point of §79 (holding password-equivalent material). A stolen `NTOWFv2` authenticates as one account in
   one domain and is not the reusable secret an NT hash is. The `has_ntlm` flag is selected in
   constant time with the key material so an unprovisioned record does not carry a known HMAC key that
   anyone could forge a proof under.
@@ -262,7 +263,7 @@ named, with a second driver now depending on it.
 ---
 
 *See also [shared-page-audit.md](shared-page-audit.md) for the second audit and its double-fetch
-lens (finding 6 is finding 1's sibling), [arch-audit.md](arch-audit.md) for the first,
-[security.md](security.md) for the general kernel review, [iommu.md](iommu.md) and DECISIONS §20/§23/§30
-for the confinement claim finding 1 tests, [credentials.md](credentials.md) and notes/ntlm.md for the
-secret-material contract, and `SECURITY.md` for what this project claims and what it does not.*
+lens (finding 6 is finding 1's sibling). See [arch-audit.md](arch-audit.md) for the first and
+[security.md](security.md) for the general kernel review. See [iommu.md](iommu.md) and DECISIONS §20 (IOMMU-backed DMA isolation), §23 (multi-queue DMA confinement) and §30 (the DMA boundary is proved for descriptors)
+for the confinement claim finding 1 tests. See [credentials.md](credentials.md) and notes/ntlm.md
+for the secret-material contract, and `SECURITY.md` for what this project claims and what it does not.*

@@ -8,9 +8,10 @@ built: 2026-07-31
 Closed 2026-08-14 by the integrator on the overnight verification lane's
 evidence: every residual the paragraph below listed as open had closed on 2026-08-03 and the record
 had not caught up. Buffering was measured and the verdict is build nothing (commit 8c27953;
-notes/pipes.md carries the numbers and the honest caveats); the terminal sink adapter is
-`terminal_sink_caretaker`, built, wired as the fifth boot component, name ratified (061066e); and
-`2>` was decided by Chris and built as the declared second stream (design/decisions/0067-second-stream.md).
+notes/pipes.md carries the numbers and the honest caveats). The terminal sink adapter is
+`terminal_sink_caretaker`, built, wired as the fifth boot component, name ratified (061066e). And
+`2>` was decided by Chris and built as the declared second stream
+(design/decisions/0067-second-stream.md).
 
 (The Gate paragraph that stood here described the three residuals; all three closed 2026-08-03,
 and a BUILT milestone gates nothing, so it is gone rather than stale.)
@@ -30,7 +31,7 @@ Three things came out of it that were not in the plan below.
   swallowed print failures through `is_ebadf`, and the old PAL was defeating it by answering `true`
   unconditionally.
 - **A sink capability must not double as a terminal-service capability**, which is what stops
-  `line_editor` from simply serving the contract on the endpoint it already has: that endpoint also
+  `line_editor` from simply serving the contract on the endpoint it already has. That endpoint also
   carries `OP_READLINE`, so handing it to a child as its output slot would grant the child the
   terminal's *input*. The terminal's sink is therefore a separate endpoint served by an adapter,
   which is the shape `fixtures/src/sink.rs`'s file role proves against a real backend. Converting
@@ -62,7 +63,7 @@ Four things came out of it that were not in the plan below.
 
 Append is `line::Mode` and `swish`'s `open_sink`, gated by `cargo xtask swish-check`. `>>` is the
 cheapest of the four operators and that is DECISIONS §55 (the file behind a `>` is the shell itself)
-paying out: the shell already backs the file, so append is one bit about how it opens one, and
+paying out. The shell already backs the file, so append is one bit about how it opens one.
 `grant_plan` asserts that `date > f` and `date >> f` plan to endowments equal in every other field.
 The gate notes/pipes.md named as the milestone's most valuable test is `script/swish-check`: it
 boots `--features shell` on both ISAs and types at the prompt, the only thing in the tree that runs
@@ -160,7 +161,7 @@ integer with a convention attached.
   one child at a time today.
 
 Sequencing. The protocol unification is independent of 47 and 48 and could start now; the parser
-work wants 47's tokenizer changes, and the "who holds the terminal" story is shared with 48, so the
+work wants 47's tokenizer changes, and the "who holds the terminal" story is shared with 48. So the
 natural order is unify the protocol, then `>` and `<`, then `|`, then revisit 48's `fg` with pipelines
 in hand. **Effort: 3 lanes estimated** (protocol, redirection, pipelines), noting estimates for
 unbuilt work are guesses on a history-calibrated scale, and that the unification is the one most
@@ -177,7 +178,7 @@ likely to surprise.
   carries it with the condition that would change it.
 - **Refused.** Converting the console server to the sink protocol. `line_editor` is its only client
   and now speaks for two writers, so once the terminal adapter existed the page-plus-ack channel
-  looked like the right answer rather than a gap; a second client of the console would hit the same
+  looked like the right answer rather than a gap. A second client of the console would hit the same
   one-page wall one layer down with nothing gained. `notes/sink-protocol.md` has the reasoning.
   This refusal is milestone 483 (design/roadmap/0483-the-console-server-on-the-sink-protocol.md),
   which carries it with the condition that would change it.
@@ -187,9 +188,9 @@ likely to surprise.
   aimed at a non-declarer is a refusal at the prompt.
 - **Milestone 48.** Revisiting `fg` with pipelines in hand, which this block's sequencing paragraph
   put after the operators. Job control is still NOT-STARTED and carries it.
-- **Recorded.** `notes/pipes.md` names the slot problem beside the wiring a reader meets: slot 0 and
+- **Recorded.** `notes/pipes.md` names the slot problem beside the wiring a reader meets. Slot 0 and
   slot 1 each mean several things depending on what the line granted, so the ordered convention is
-  owed a numbered one, and the register fastpath wart `OutputSpec` refuses rather than fixes is
+  owed a numbered one. The register fastpath wart `OutputSpec` refuses rather than fixes is
   recorded with it.
 
 ## Index row

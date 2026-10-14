@@ -160,7 +160,7 @@ tasks that path is taken 41% of the time. Its counts are what to read.
 | reaper: stack free per reap, no lock held | 167 ticks, 42 us (149 at one task) |
 | reaper: removal under `IPC_TABLES` per reap | 2.8 ticks |
 
-So the reaper's share is gone on silicon too: the 42 us a reap used to hold the global lock for is
+So the reaper's share is gone on silicon too: the 42 us a reap held the global lock for is
 now spent holding nothing, and its last critical section is 2.8 ticks. What remains is ordinary
 contention for `IPC_TABLES` itself. Four cores run IPC, `schedule()` and capability lookups through
 one lock, and nearly half of all acquisitions find it held. The other 72% of the wait belongs to the

@@ -14,7 +14,7 @@ would let a thread take the word on hart H, take an external interrupt on H, and
 forever on a lock only the interrupted code can release. One hart, no SMP needed, permanent. This is the
 opening paragraph of §9 (locking: IrqSafeMutex, plus a discipline), arrived at in a new place.
 
-The rank is `rank::IRQ_CONTROLLER`, which used to be `rank::GIC`. Renamed rather than duplicated.
+The rank is `rank::IRQ_CONTROLLER`, one name for both controllers rather than a duplicate.
 The two drivers are mutually exclusive at *compile* time (`drivers/mod.rs` gates each to its ISA).
 So they are not two locks needing an order between them. They are one lock role with two
 implementations, and two names at rank 20 would invite the reader to work out a precedence that does

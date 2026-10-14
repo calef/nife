@@ -1,34 +1,19 @@
 //! **`pgrep`: name the members of a domain that match, and do nothing to them** (milestone 126,
 //! notes/process-view.md).
 //!
-//! The whole program is: walk one supervision domain with `abi::rendezvous::SURVEY`, filter it, then
-//! say what matched on one stream and what went wrong on the other. The walk is `crates/ps` and the
-//! filter is `crates/pgrep`, both host-tested in milliseconds; what lives here is the syscall and
-//! the two sinks.
+//! Walk one supervision domain with `abi::rendezvous::SURVEY`, filter it, then say what matched on
+//! one stream and what went wrong on the other. The walk is `crates/ps` and the filter is
+//! `crates/pgrep`, both host-tested; what lives here is the syscall and the two sinks.
 //!
-//! Name: ratified 2026-09-14 (calef, working the unratified worklist), on milestone 126. Its crate
-//! was ratified 2026-08-23 in a kernel-dependency naming review, so the pair is signed at both ends. `pgrep` is upstream's, which the naming tenet calls the best name
-//! available and not one to spend a rename on; sharing it with `crates/pgrep` is the crate-and-
-//! program pair the same tenet describes, as `ps` and `crates/ps` already are. That rule plus the
-//! standard term produces this name, so calef ruled on the rules and never on this program.
+//! # There is no `pkill`
 //!
-//! # There is no `pkill`, and that is the demonstration
-//!
-//! On Unix these are one lookup with two endings, and the split between them is convention:
-//! `kill(pid)` turns a **name** into an **action**, so anything that can find a process can end it.
-//!
-//! **A domain names its members and does not act on them** (calef, 2026-08-17). This program holds a
-//! supervision endpoint carrying `abi::rights::ENUMERATE` and nothing else. It cannot receive a
-//! death on it, cannot reap through it, and there is no method anywhere that turns a tid into
-//! authority over the thread it names: `abi::thread_control_block` has no `DESTROY`, and killing a live child is
-//! `abi::memory_region::DESTROY` on the region it was built from, which its spawner holds (DECISIONS §24).
-//!
-//! So the honest statement of what this port achieves is asymmetric: **`caps pgrep` prints a scope
-//! and there is no `caps pkill` to print beside it.** The side-by-side comparison milestone 126
-//! originally promised does not exist, because the second program cannot. A reader who expects
-//! `kill` to be a program here will not find one.
-//!
-//! # Capability contract
+//! On Unix `kill(pid)` turns a **name** into an **action**, so anything that can find a process can
+//! end it. Here **a domain names its members and does not act on them** (calef, 2026-08-17). This
+//! program holds a supervision endpoint carrying `abi::rights::ENUMERATE` and nothing else, and no
+//! method turns a tid into authority over its thread: `abi::thread_control_block` has no
+//! `DESTROY`, and killing a live child is `abi::memory_region::DESTROY` on the region it was built
+//! from, which its spawner holds (DECISIONS §24 (interrupting the foreground process)). So
+//! `caps pgrep` prints a scope and there is no `caps pkill` to print beside it.
 //!
 //! | slot | what | why |
 //! |---|---|---|
@@ -36,11 +21,10 @@
 //! | 7 | the process domain, `ENUMERATE` | the supervision endpoint whose members it may **name** |
 //! | 8 | the diagnostics sink, `WRITE` | where a refusal goes, so `>` cannot swallow it |
 //!
-//! **Exactly `ps`'s three, and not one right more.** That is the load-bearing half of the whole
-//! argument: a program that could act on what it lists would make the demonstration a promise about
-//! this source file rather than a property of the grant. There is no memory grant, no file, no
-//! directory, no clock, and no argument a person could type that widens any of it.
+//! **Exactly `ps`'s three.** No memory grant, file, directory or clock, and no argument a person
+//! could type widens any of it.
 //!
+
 //! # EXAMPLES
 //!
 //! ```text
@@ -52,8 +36,7 @@
 //! $ caps pgrep            the scope, printed before anything is spawned
 //! ```
 //!
-//! And the two answers Unix's `pgrep` cannot tell apart, because there both are "print nothing and
-//! exit 1":
+//! And the two answers Unix's `pgrep` cannot tell apart (both "print nothing and exit 1"):
 //!
 //! ```text
 //! $ pgrep      pgrep: none of the 2 processes in this domain are dead
@@ -62,17 +45,16 @@
 //!
 //! # BUGS
 //!
-//! - **At this prompt it always prints every member**, because the selector arrives in a register and
-//!   nothing in this system delivers bytes from a command line to a program (`crates/pgrep`'s `BUGS`
-//!   has the full reason, and `grant_plan::Prog::Date` is the precedent: three registers the shell
-//!   cannot set, and the defaults taken). So `pgrep` here is `pgrep '*'`, and the filter is exercised
-//!   by whoever *can* set a register, which today is `kernel::user::survey_tests`.
+//! - **At this prompt it always prints every member**: the selector arrives in a register the
+//!   shell cannot set (`crates/pgrep`'s `BUGS`), so `pgrep` here is `pgrep '*'`, and the filter is
+//!   exercised by `kernel::user::survey_tests`.
 //! - **`pgrep` names itself**, as `running`, because it is a member of the domain it was spawned
-//!   into. Truthful, the same as Unix's `pgrep` without `-x`, and recorded because the first thing a
-//!   reader counts is one more than they expected.
-//! - **A tid is a name and not a handle, so the answer goes stale.** By the time a person reads a
-//!   line, that thread may be gone and its slot reused under a new generation. Nothing here can be
-//!   done about it and nothing here needs to be: there is no operation to aim at a stale tid.
+//!   into, the same as Unix's `pgrep` without `-x`.
+//! - **A tid is a name and not a handle, so the answer goes stale**, and there is no operation to
+//!   aim at a stale tid.
+//!
+//! Name: ratified 2026-09-14 (calef, working the unratified worklist), on milestone 126 (the `procps` package). Upstream's
+//! name, shared with `crates/pgrep` as `ps` and `crates/ps` share theirs.
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

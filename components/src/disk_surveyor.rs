@@ -1,38 +1,25 @@
 //! **`disk_surveyor`**: what drives are attached, and how the one we hold is divided up
 //! (milestone 57, notes/block-devices.md).
 //!
-//! A surveyor maps land they do not own, and that is exactly the shape of this program's
-//! endowment. It holds two things that look like one thing on every other operating system:
+//! It holds two things that look like one thing on every other operating system:
 //!
-//! - a **`READ`-only capability on the roster page**, which says what block devices exist
-//!   (`block_roster`); and
+//! - a **`READ`-only `PageFrame` capability on the roster page**, which says what block devices
+//!   exist (`block_roster`), so a writable mapping cannot be obtained at all (see [`probe`]); and
 //! - a **block-service endpoint**, which lets it read and write the blocks of **one** device
 //!   (`filesystem_protocol::blk`).
 //!
-//! Since milestone 108 the roster is a `PageFrame` this program holds and maps itself, rather than a
-//! page the kernel wired into its address space before it started. The practical difference is at
-//! the top of [`probe`]: `READ` on the capability means a writable mapping cannot be *obtained*,
-//! where a read-only mapping only meant a write could not *land*.
-//!
-//! On Linux those are the same authority in practice: `/sys/block` is world-readable, `/dev/sda` is
-//! a path, and a tool that can see a disk can usually be pointed at it. `parted /dev/sda` as root
-//! reaches every disk in the machine, which is why calef's own router instructions carry a "confirm
-//! the target device path before proceeding" warning: the tool cannot enforce what the warning
-//! asks. **Here the warning is structural.** This program was handed one disk. There is no path to
-//! type, no second device to typo into, and nothing in the roster that can be turned into a handle.
+//! On Linux a tool that can see a disk can usually be pointed at it (`parted /dev/sda` as root
+//! reaches every disk). Here that is structural: this program was handed one disk, with no path to
+//! type and nothing in the roster that can be turned into a handle.
 //!
 //! # What it does
 //!
-//! Reads LBA 1 of the disk it holds and parses the GUID Partition Table there, then checks the
-//! backup table at the far end of the disk against it, then reports.
-//! `crates/globally_unique_identifier_partition_table` does every byte of the judging; this file is
-//! the I/O and nothing else, which is why the parser is host-tested against tables written by
-//! `sgdisk` and macOS `diskutil` and this program is tested by being run.
+//! Reads LBA 1 of the disk it holds, parses the GUID Partition Table there, checks the backup table
+//! at the far end of the disk against it, and reports. Every byte of judging is
+//! `crates/globally_unique_identifier_partition_table`, host-tested against tables written by
+//! `sgdisk` and macOS `diskutil`; this file is the I/O.
 //!
-//! Reading the table is the part that is not optional. A block device hands you an undifferentiated
-//! run of blocks, and **which of them is a filesystem is written in the table and nowhere else**, so
-//! a machine that cannot read a GPT cannot find a partition on a disk it did not create.
-//!
+
 //! # The two roles
 //!
 //! | `a0` | |
@@ -40,10 +27,9 @@
 //! | [`ROLE_SURVEY`] | enumerate, read the table, report |
 //! | [`ROLE_PROBE`] | announce the roster's address, write to it, and die |
 //!
-//! The second is the negative control, and it is a claim rather than a formality: **the roster is a
-//! listing, not a lever.** The page is mapped read-only, so a program that knows exactly where it
-//! is still cannot add a device to it, remove one, or point itself at a disk it was not given. The
-//! kernel-side test watches the fault land at that address.
+//! The second is the negative control: **the roster is a listing, not a lever.** A program that
+//! knows exactly where the page is still cannot change it; the kernel-side test watches the fault
+//! land at that address.
 //!
 //! # EXAMPLES
 //!
@@ -57,26 +43,19 @@
 //!     backup : agrees with the primary
 //! ```
 //!
+
 //! # BUGS
 //!
-//! - **The logical block size is assumed to be 512.** Every disk this project has met reports 512,
-//!   `crates/globally_unique_identifier_partition_table` handles 4096 and is tested at it, and the
-//!   block service does not carry the device's logical block size on the wire, so there is nothing
-//!   here to read it from. A 4Kn disk would be read as though its LBA 1 were at byte 512, which is
-//!   a wrong answer rather than an error. The fix is a field in `filesystem_protocol::blk`, not a
-//!   change here.
-//! - **It does not write.** Partitioning a disk from nife needs a unique GUID per partition,
-//!   which needs randomness, which this program is not endowed with.
-//!   `crates/globally_unique_identifier_partition_table` refuses to invent one and
-//!   notes/globally-unique-identifier-partition-table.md says why. That is milestone 57's remaining
-//!   half and it is a decision rather than a task; see
-//!   design/roadmap/0057-partitioning-and-xattrs.md.
+//! - **The logical block size is assumed to be 512.** The block service does not carry the
+//!   device's logical block size on the wire, so a 4Kn disk would be read as though its LBA 1 were
+//!   at byte 512: a wrong answer rather than an error. The fix is a field in
+//!   `filesystem_protocol::blk`, not a change here.
+//! - **It does not write.** Writing the table is `components/src/disk_partitioner.rs`.
 //! - **No hot plug.** The roster is written once at wiring time and never again.
 //!
-//! Name: ratified 2026-08-03 (calef, milestone 57). The lane shipped it provisionally and calef
-//! approved it by name. A surveyor maps land they do not own, which is this program's endowment
-//! exactly: a read-only mapping of the roster page that says what devices exist, plus a
-//! block-service endpoint for one of them.
+//! Name: ratified 2026-08-03 (calef, milestone 57 (partitioning and formatting a real drive)). A
+//! surveyor maps land they do not own, which is this program's endowment: a read-only roster of
+//! what devices exist, plus one device's endpoint.
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks

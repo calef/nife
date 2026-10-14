@@ -9,9 +9,9 @@ Built in `ba47a27` (2026-07-13), written up in `097ef52`, with the initrd reserv
 bitmap's placement proven in `bad2e28`.
 
 The kernel reads its memory map from the device tree instead of a constant, and hands out 4 KiB
-frames. The commit records the two decisions that still describe the allocator: the bitmap is
-carved by hand out of the memory it is about to manage ("the allocator's first act is to allocate
-itself"), and everything starts marked USED, because a bitmap that defaulted to free would hand
+frames. The commit records the two decisions that still describe the allocator. The bitmap is carved
+by hand out of the memory it is about to manage ("the allocator's first act is to allocate itself").
+Everything starts marked USED, because a bitmap that defaulted to free would hand
 out the MMIO hole and give you the UART's control registers as scratch space.
 
 The milestone also blew the kernel stack, took an embarrassingly long time to notice, and left

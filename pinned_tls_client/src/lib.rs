@@ -27,38 +27,11 @@
 //! | the certificates are in date | `rustls-webpki`, against `std`'s clock: see `BUGS` |
 //! | TLS 1.3 and nothing older | `cryptography_provider` offers no TLS 1.2 suite at all |
 //!
-//! # What it does not buy
+//! It does not buy integrity of a package: under §195 (a reviewed recipe vouches for a package) a
+//! package's digest decides whether its bytes may run, over any transport. TLS here protects the
+//! index, where the digests come from, and keeps the path from learning what was asked for.
 //!
-//! Integrity of a package. Under §195 (a reviewed recipe vouches for a package) a package's digest
-//! decides whether its bytes may run, over any transport. TLS here protects the index, which is
-//! where the digests come from, and keeps the path from learning what was asked for. §196 says so
-//! in its own words and so does milestone 501's block.
-//!
-//! # EXAMPLES
-//!
-//! ```no_run
-//! use pinned_tls_client::{PinnedPeer, Session};
-//! use std::net::TcpStream;
-//!
-//! // The production pin: basalt's index host and the one root it must chain to (§250).
-//! let peer = PinnedPeer::basalt_index();
-//! // No resolver yet (milestone 384), so the caller supplies the address.
-//! let tcp = TcpStream::connect("192.0.2.1:443").unwrap();
-//! let mut session = Session::handshake(&peer, tcp).unwrap();
-//! let mut index = Vec::new();
-//! let status = session.get("/index", |body| index.extend_from_slice(body)).unwrap();
-//! assert_eq!(status, 200);
-//! ```
-//!
-//! A test pins its own root instead, which is how `tests/peer.rs` and `pinned_tls_exerciser` reach
-//! `helpers/tls-peer`:
-//!
-//! ```
-//! let root = std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/fixtures/pinned-root.der")).unwrap();
-//! let peer = pinned_tls_client::PinnedPeer::new("basalt.test", &root).unwrap();
-//! assert_eq!(peer.host_name(), "basalt.test");
-//! ```
-//!
+
 //! # BUGS
 //!
 //! - **Certificate expiry is checked against whatever `std` says the time is**, and on nife that
@@ -67,14 +40,14 @@
 //!   whose clock is held back accepts an expired one. Failing closed on the first is right; the
 //!   second is the open half.
 //! - **No rotation story.** When the pinned root is retired, every image carrying it stops
-//!   reaching its index. ISRG Root X1's certificate says it is valid until 2035-06-04 (read from
-//!   the certificate in `roots/`, 2026-10-06), and the chains Let's Encrypt serves today reach it
-//!   only through cross-signatures that end sooner: see `PinnedPeer::basalt_index`.
+//!   reaching its index. ISRG Root X1's certificate in `roots/` is valid until 2035-06-04, and the
+//!   chains served today reach it through cross-signatures that end sooner: see
+//!   `PinnedPeer::basalt_index`.
 //! - **One request per connection**, HTTP/1.0, `Content-Length` required. [`Session::fetch`]
 //!   reports a redirect; only [`listed`] follows one, on a new session with its own pin.
-//! - **No resolver.** The caller connects the stream; milestone 384 (in a capability system the
-//!   resolver is a grant) owns turning a name into an
-//!   address, and the name verified here is whatever the pin says, never what the resolver used.
+//! - **The caller connects the stream.** Turning a name into an address is
+//!   `components/src/name_resolver.rs`'s, and the name verified here is whatever the pin says,
+//!   never what the resolver used.
 
 use std::io::{self, Read, Write};
 use std::sync::Arc;
@@ -135,6 +108,17 @@ impl PinnedPeer {
     ///
     /// Refuses a host name that is not a DNS name (an IP address is legal for TLS and is not what
     /// a pin names here) and a root that does not parse as a trust anchor.
+    ///
+    /// # Examples
+    ///
+    /// A test pins its own root, which is how `tests/peer.rs` and `pinned_tls_exerciser` reach
+    /// `helpers/tls-peer`:
+    ///
+    /// ```
+    /// let root = std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/fixtures/pinned-root.der")).unwrap();
+    /// let peer = pinned_tls_client::PinnedPeer::new("basalt.test", &root).unwrap();
+    /// assert_eq!(peer.host_name(), "basalt.test");
+    /// ```
     pub fn new(host_name: &str, root_der: &[u8]) -> Result<Self, Error> {
         let name = ServerName::try_from(host_name.to_owned()).map_err(|_| Error::HostName)?;
         if !matches!(name, ServerName::DnsName(_)) {
@@ -231,6 +215,22 @@ impl<S: Read + Write> Session<S> {
     ///
     /// Completing here, rather than lazily on the first write as `rustls::Stream` would, is what
     /// lets a caller time the handshake apart from the transfer and see a refusal as a refusal.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use pinned_tls_client::{PinnedPeer, Session};
+    /// use std::net::TcpStream;
+    ///
+    /// // The production pin: basalt's index host and the one root it must chain to (§250).
+    /// let peer = PinnedPeer::basalt_index();
+    /// // The caller resolves the name and connects the stream.
+    /// let tcp = TcpStream::connect("192.0.2.1:443").unwrap();
+    /// let mut session = Session::handshake(&peer, tcp).unwrap();
+    /// let mut index = Vec::new();
+    /// let status = session.get("/index", |body| index.extend_from_slice(body)).unwrap();
+    /// assert_eq!(status, 200);
+    /// ```
     pub fn handshake(peer: &PinnedPeer, stream: S) -> Result<Self, Error> {
         let conn = ClientConnection::new(peer.config(), peer.name.clone()).map_err(Error::Tls)?;
         let mut tls = StreamOwned::new(conn, stream);

@@ -110,6 +110,6 @@ longer than a caption. That entry says the measure counts comments on purpose an
 ## Index row
 
 No Rust file may cross 2,000 lines, and the twenty already over it may only shrink, held by a
-ratchet in `script/lint` copied from §212's prose ratchet. The share of Rust lines in files over
-2,000 goes on the metrics deck as a weekly series. The ceiling, the measure and the gate's matching
+ratchet in `script/lint` copied from §212's prose ratchet. The baseline is empty, so no Rust file
+is over 2,000 lines, and the measure has no chart. The ceiling, the measure and the gate's matching
 rule come from §266.

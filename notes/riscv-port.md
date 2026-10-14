@@ -3,7 +3,7 @@
 The point of a second port is not to reach RISC-V. It is to prove rule #1: that all
 architecture-specific code lives under `kernel/src/arch/`, an assumption maintained on faith since
 milestone 1. A genuinely different ISA is the first real test of it. RISC-V (rv64, `qemu-system-riscv64
--machine virt`) is chosen over x86_64 because it is clean-different rather than legacy-different: it
+-machine virt`) is chosen over x86_64 because it is clean-different rather than legacy-different. It
 exercises the HAL abstraction (a different trap, paging, interrupt, and firmware model) without the
 real-mode / GDT / IDT / APIC / UEFI tax that would make most of an x86 port about x86 plumbing, not
 about the abstraction. See the reasoning in the roadmap (milestone 20). x86_64 is the third port.
@@ -64,7 +64,7 @@ Finding these is the point; each gets pushed under `arch/`.
   `-kernel <elf>` boots the ELF directly. The hart id arrives in `a0`, the DTB physical pointer in
   `a1` (aarch64 put the DTB in `x0` and needed the Image header to get QEMU to pass it at all).
 - Firmware ABI = SBI (the PSCI analog): HSM (hart state management) `sbi_hart_start` for SMP
-  bring-up (replaces `psci_cpu_on`); TIME for the timer; DBCN/legacy console for the earliest
+  bring-up (replaces `psci_cpu_on`). TIME for the timer; DBCN/legacy console for the earliest
   prints before the UART driver exists; SRST (system reset) for the test-harness exit (replaces
   ARM semihosting `exit`).
 - Per-CPU: the `tp` register (thread pointer), the direct analog of `TPIDR_EL1`.
@@ -153,6 +153,6 @@ capability invocation, userspace-built processes (init loads and builds children
 interrupts serviced by a userspace driver all run on RISC-V, the same portable core as aarch64.
 
 The reward beyond the proof: when a real RISC-V board (a ~$70 StarFive VisionFive 2 / Milk-V Mars, or a
-rented Graviton later) is on hand, the QEMU-virt work transfers, because real boards use the same
+rented Graviton later) is on hand, the QEMU-virt work transfers. Real boards use the same
 OpenSBI + S-mode + device-tree model. And "one verified capability microkernel, aarch64 and RISC-V" is
 a stronger demonstrator line than any single board.

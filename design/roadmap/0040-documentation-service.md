@@ -7,12 +7,12 @@ built: 2026-08-26
 
 Built. Phases 1 and 2 are built, with search ranked by document length, and phase 3's
 caretaker-narrowing increment is built too (DECISIONS §106 (take the `terminal_sink_caretaker`
-narrowing)): `doc <page>` renders at the prompt with no `| wc` in front of it, which is the
+narrowing)). `doc <page>` renders at the prompt with no `| wc` in front of it, which is the
 milestone's own headline demonstration. There is no graphical viewer, by calef's word: *"I don't
 need a graphical viewer."* His quoted direction below never asked for one.
 
 What exists: `crates/documentation` (a streaming markdown renderer, the byte layout of a search
-index, and the query that reads one, all pure and host-tested in `tests/render.rs`),
+index, and the query that reads one, all pure and host-tested in `tests/render.rs`). Then
 `components/src/mdr.rs`, the viewer program, which the shell can spawn as `Prog::Mdr`, the store the
 image installs, `apropos` at the nife prompt, and `script/apropos` over the whole repository. The
 renderer was written against `line_editor`'s contract rather than `pulldown-cmark`, which the
@@ -55,9 +55,10 @@ documentation nothing because it already exists.
    *package build time* and ships the index, which sidesteps the missing verb and is the more honest
    shape. Unix reached the same answer for a different reason: `apropos` reads a prebuilt `mandb`
    because scanning was slow.
-2. ~~There is no font rendering yet.~~ There is now (milestone 29, 2026-07-30): a bitmap
-   font, a VT engine, and a display terminal that is a compositor client. ~~A *graphical*
-   documentation browser is therefore unblocked in principle~~ struck 2026-08-26: nobody asked
+2. ~~There is no font rendering yet.~~ There is now, since milestone 29 (a display terminal) on
+   2026-07-30. It has a bitmap font, a VT engine, and a display terminal that is a compositor
+   client. ~~A *graphical* documentation browser
+   is therefore unblocked in principle~~ struck 2026-08-26. Nobody asked
    for one, and this milestone's own headline demonstration renders at the prompt instead. See the
    Status block.
 
@@ -82,7 +83,7 @@ That split is the reuse judgment, and it is the same one milestone 32 made about
   into a documentation store when the component is installed. This is where milestone 39's packaging
   observation pays: manifest, hash, version, and now a doc bundle.
 - ~~The viewer holds a directory capability to the doc store and nothing else.~~ It should not, and
-  does not (phase 1's finding, now in notes/documentation.md): `doc`'s manifest is byte-identical to
+  does not (phase 1's finding, now in notes/documentation.md). `doc`'s manifest is byte-identical to
   `wc`'s, its cspace holds two endpoints, and the shell is what resolves a page name. A viewer that
   could open the page it renders could open any page. Phase 2 kept that true by making search a
   builtin rather than a program, for the same reason `ls` is one.
@@ -103,8 +104,8 @@ That split is the reuse judgment, and it is the same one milestone 32 made about
   today and inherits the display terminal for free when 29's glyph work lands. Host-tested in
   milliseconds like every other pure-logic piece: markdown in, styled bytes out.
 - Phase 2, search. BUILT. The host-built index, the shard merge, and the search
-  verb, which is `apropos <word>` rather than the `doc search` proposed above: `doc` is a
-  program and a builtin sharing its first word would make the parse ambiguous, and `man`/`apropos`
+  verb, which is `apropos <word>` rather than the `doc search` proposed above. `doc` is a program,
+  and a builtin sharing its first word would make the parse ambiguous. `man`/`apropos`
   is the split this design already borrowed everywhere else. The merge is
   `manual::index::Ranked`, a fixed sixteen-result table with no allocator, so a shell with one
   stack page can hold it. Ranking is by document length, not just raw occurrence count:
@@ -126,19 +127,20 @@ later. Effort: 1 lane estimated per phase, three phases, landed separately.
 
 - The caretaker-hop display race is a known, accepted interim, not fixed by §106. With the
   `terminal_sink_caretaker` narrowing built, a page's last line and the shell's next `$ ` prompt can
-  interleave under contention: kernel exit-delivery (DECISIONS §26) tells the shell a child is dead,
+  interleave under contention. Kernel exit-delivery (DECISIONS §26 (the fault endpoint)) tells the
+  shell a child is dead,
   but the caretaker's own trailing `CALL` to `line_editor` is a second, independent call with no
   ordering primitive against the shell's next prompt. A display glitch, not a confinement or
   correctness failure (no capability changes hands, no byte reaches the wrong reader). Not observed
   in either `script/swish-check` leg's transcript (`doc gate.txt`'s render is one short message, so
-  the window is narrow), but the argument for it is structural rather than about this one case; see
+  the window is narrow). But the argument for it is structural rather than about this one case; see
   notes/tail-output-narrowing.md's own BUGS, which is honest that the race is named and not measured.
   Tracked at milestone 151 (notification objects), DECISIONS §101's kernel build, which lets the
   shell `WAIT` on "the caretaker's queue for this client has drained" instead of racing it.
 - A screen-narrowed child does not appear in a concurrent `ps`/`pgrep`. Its DECISIONS §26 fault
-  target is a fresh endpoint the shell mints for this purpose, not init's `deaths` domain channel
-  (the shell needs to `RECV` its own child's exit directly, not race `job_undertaker` for the same
-  message), and domain membership is exactly having `deaths` as that target. Its memory still
+  target is a fresh endpoint the shell mints for this purpose, not init's `deaths` domain channel.
+  The shell needs to `RECV` its own child's exit directly, not race `job_undertaker` for the same
+  message. Domain membership is exactly having `deaths` as that target. Its memory still
   returns to init's job pool when the shell reaps it. Recorded rather than fixed: nothing asked for
   a rendering `doc` invocation to be surveyable, and the alternative (giving the shell a second,
   narrower view into `deaths` itself) is a bigger change than this increment needed.
@@ -151,8 +153,8 @@ later. Effort: 1 lane estimated per phase, three phases, landed separately.
   block names 151 (notification objects) as what lets the shell `WAIT` on the caretaker's queue
   draining instead of racing it.
 - **Recorded.** `design/roadmap/0040-documentation-service.md`'s own BUGS: a screen-narrowed child
-  does not appear in a concurrent `ps` or `pgrep`, because its fault target is a fresh endpoint the
-  shell mints rather than init's `deaths` domain channel, and domain membership is exactly having
+  does not appear in a concurrent `ps` or `pgrep`. Its fault target is a fresh endpoint the shell
+  mints rather than init's `deaths` domain channel. Domain membership is exactly having
   `deaths` as that target. Its memory still returns to init's job pool when the shell reaps it.
 - **Refused.** A graphical viewer. Traced to its origin 2026-08-26 and found to be the scoping
   lane's own unattributed addition rather than calef's direction; asked directly, he said "I don't
@@ -177,13 +179,16 @@ later. Effort: 1 lane estimated per phase, three phases, landed separately.
 
 ## Index row
 
-the OS explains itself, on itself. Phases 1 and 2 built: `crates/manual` (now `crates/documentation`; a streaming renderer and
-an index layout a reader with one 4 KiB page can binary-search), `doc` (now `mdr`) at the prompt, and `apropos` as a builtin because search is enumeration and a searching *program* would need the
+the OS explains itself, on itself. Phases 1 and 2 built: `crates/manual` (now
+`crates/documentation`; a streaming renderer and an index layout a reader with one 4 KiB page can
+binary-search). Then `doc` (now `mdr`) at the prompt, and `apropos` as a builtin because search is
+enumeration and a searching *program* would need the
 whole store. 2026-08-18 fixed a renderer bug the corpus test structurally could not see (a fence
-inside a block quote never closed, so one quoted transcript misrendered every line after it),
+inside a block quote never closed, so one quoted transcript misrendered every line after it). It
 fixed an index defect where the builder and the reader disagreed about what a word is (`apropos
-fs_proto` could not match a term the builder never wrote), corrected three `BUGS` entries that
-described a system which no longer existed, and pointed the same index at the repository as `script/apropos`, which is milestone 117's finding rather than a nicety: three strangers reached
+fs_proto` could not match a term the builder never wrote). It corrected three `BUGS` entries that
+described a system which no longer existed. And it pointed the same index at the repository as
+`script/apropos`, which is milestone 117's finding rather than a nicety. Three strangers reached
 neither `notes/capabilities.md` nor any `design/decisions/` file. The `terminal_sink_caretaker`
 narrowing is decided and built (§106, 2026-08-22): `doc <page>` renders at the prompt. An
 unredirected tail stage's output now defaults to the same adapter `2>` already uses; `grant_plan::check_chain` no longer refuses that shape, only the redirected one; and the shell's

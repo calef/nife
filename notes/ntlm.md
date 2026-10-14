@@ -102,7 +102,7 @@ Crosses, once, on a match: the 16-byte `SessionBaseKey`, written into the shared
 It crosses because an SMB server that cannot sign the session it authenticated cannot serve SMB2,
 so a boolean-only operation would be useless for its purpose. It
 is defensible because the value is a function of the stored key and of a challenge this server
-chose and a client challenge inside the client's blob: it is per-session, it signs one session, and
+chose and a client challenge inside the client's blob. It is per-session, it signs one session, and
 recovering the key it came from is an HMAC key recovery.
 
 It is released only against a proof that verified, which a caller cannot manufacture without the

@@ -59,9 +59,8 @@ In the kernel test suite several caretaker chains do coexist on the one frame, b
 `receive_cap` between tests, and the confined clients `exit()` after reporting.
 
 The remaining opening is a runnable third party, and it opened on 2026-09-27.
-This note used to say that the day init could build a caretaker per grant, "a runnable shell holding
-the page coexists with a caretaker chain using it". Init can, since 2026-08-17, and the coexistence
-became runnable with milestone 205 (how a foreign program is told what to do). The prompt builds an
+The open question was whether, once init could build a caretaker per grant, "a runnable shell
+holding the page coexists with a caretaker chain using it". Init can, since 2026-08-17, and the coexistence became runnable with milestone 205 (how a foreign program is told what to do). The prompt builds an
 `fs_nameset_caretaker` on this one frame. The shell writes through it while draining a redirected
 job (`std_grep needle docs > out.txt`). A write between the caretaker's
 re-staging and the server's read opens a name the set never approved. The case is

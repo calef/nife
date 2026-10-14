@@ -61,9 +61,9 @@ ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 # could, since anything reached through xtask can.
 . "$ROOT/helpers/qemu-path.sh"
 
-# **The probe crates are built OUTSIDE this repository**, which `helpers/build-ripgrep.sh` also
-# does and for a related reason. Its reason is cargo's workspace walk; this one is the toolchain
-# override, and it cost an hour twice on 2026-09-19. A probe under `target/` is inside the repo, so
+# **The probe crates are built OUTSIDE this repository**, which basalt's package build also does
+# with nife's checkout and for a related reason. Its reason is cargo's workspace walk; this one is
+# the toolchain override, and it cost an hour twice on 2026-09-19. A probe under `target/` is inside the repo, so
 # the repo's own `rust-toolchain.toml` (the plain pinned nightly) beats `RUSTUP_TOOLCHAIN` for the
 # rustc that `-Zbuild-std` invokes: std is then compiled from the UNPATCHED sysroot and dies in
 # `sys/alloc`'s `cfg_select!` for want of a `nife` arm, which reads exactly like the crate under

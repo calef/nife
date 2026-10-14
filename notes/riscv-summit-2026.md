@@ -77,7 +77,7 @@ https://riscv-europe.org/summit/2026/presentations#P-USADYC
 
 The single most on-thesis talk at the summit, given by the chair of RISC-V International's Security
 Horizontal Committee. Read from the slides, not the abstract. It lays the isolation mechanisms out
-as layers: privilege levels, ePMP, virtual memory, the hypervisor extension, **RISC-V Worlds**
+as layers: privilege levels, ePMP, virtual memory, and the hypervisor extension. Then **RISC-V Worlds**
 (a World ID tag *"Carried with transactions"* and checked at the device side or in the
 interconnect), Supervisor Domains (SDIDs, a *"Root Domain Security Manager"*, per-domain
 `SDSM`s), and Memory Protection Tables (*"Additional page table walk"*, *"One MPT per SDID"*,
@@ -90,8 +90,8 @@ Worlds+ gets a slide reading *"Watch this space…."*.
 What it means here. Nothing to build, and a framing worth having. This project's isolation is
 capabilities in software over an MMU; the hardware roadmap is heading for *more* coarse hardware
 domains beneath the supervisor, not fewer. The place it touches the tree is
-DECISIONS §20 (IOMMU-backed DMA isolation): a World ID or an SDID is a second, lower authority over the same
-device traffic an IOMMU mediates, and if silicon ever arrives that has both, the kernel's assumption
+DECISIONS §20 (IOMMU-backed DMA isolation): a World ID or an SDID is a second, lower authority over
+the same device traffic an IOMMU mediates. If silicon ever arrives that has both, the kernel's assumption
 that it is the only thing between a device and memory needs re-reading.
 
 ### 3. CHERI as a new base ISA: RV32Y / RV64Y: **CLAIM**, and the one calef should see
@@ -148,11 +148,11 @@ implemented."* (One sentence in the original, split here because the dash joinin
 tree's own lint forbids.)
 
 What it means here. Two things. First, the two-thirds/one-third split is the right shape for
-this kernel's own RVA23 question, and this tree has never asked it: the work is context-switch state
+this kernel's own RVA23 question, and this tree has never asked it. The work is context-switch state
 for the mandatory extensions, and everything else is `hwprobe`-style discovery a userspace program
-asks for. Second, `Ovlt` and `Oilsm` from Asanović's slides 6 and 7 are a new kind of thing to track,
-*"optimization guidance options"* that say how fast something is rather than whether it exists, and
-they are *"Intended to be mandatory for future RVA profiles"*, a CLAIM: no profile after RVA23 is
+asks for. Second, `Ovlt` and `Oilsm` from Asanović's slides 6 and 7 are a new kind of thing to
+track. They are *"optimization guidance options"* that say how fast something is rather than whether
+it exists. They are *"Intended to be mandatory for future RVA profiles"*, a CLAIM: no profile after RVA23 is
 ratified.
 
 ### 5. State Sensitive Counter, `Sssscnt` (Fengxue Zhang, Bohua Kou, Alibaba DAMO): **CLAIM**
@@ -254,7 +254,7 @@ microkernel:
 
 And one absence worth recording: there was no seL4, no microkernel and no formal-verification-of-a-kernel
 talk in the program. Searching the full text of the presentations page for those terms returns
-nothing. That is not evidence about seL4; it is evidence that this summit is a silicon and ecosystem
+nothing. That is not evidence about seL4. It is evidence that this summit is a silicon and ecosystem
 event, and that milestone 127 (the seL4 machine: a Jetson TX1, so identical silicon referees the
 comparison) will find its material at a systems conference rather than here.
 
@@ -268,8 +268,8 @@ comparison) will find its material at a systems conference rather than here.
   filter is stated above so it can be disagreed with; it has not been tested.
 - Per-extension ratification status could not be read from a table. RISC-V International's
   specification-status wiki does not render its entries to a fetcher, and `docs.riscv.org` redirects
-  to a library page. So RVA23, the Server Platform and CHERI each got a second source found by hand,
-  and the other extensions named here (Worlds, Supervisor Domains, IOPMP, SPMP, lightweight memory
+  to a library page. So RVA23, the Server Platform and CHERI each got a second source found by hand.
+  The other extensions named here (Worlds, Supervisor Domains, IOPMP, SPMP, lightweight memory
   tagging) are marked CLAIM on Asanović's slide alone, with no independent check of how far along
   they are.
 - The China summit runs 2026-10-18 to 20 and will be more recent than this one. This note is

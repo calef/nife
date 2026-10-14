@@ -1,91 +1,35 @@
-//! **The multi-tasking workload benchmark, and the thing that times it** (milestone 168).
+//! **The multi-tasking workload benchmark, and the thing that times it** (notes/job-mix.md).
+//! `crates/job_mix` defines the workload and `fixtures/src/job_mix_task.rs` is one task; this file
+//! is the supervisor: it builds the pool, releases a subrun's worth of tasks, owns the wall clock,
+//! and prints. Its number feeds §96 (process kernel or event kernel, and how to decide it), whose
+//! live input is performance under multitasking load, which micro-benchmarks cannot see.
 //!
-//! `design/decisions/0096-process-kernel-or-event-kernel.md` has four inputs and three of them are
-//! settled. The live one is performance, and the retrospective it rests on says exactly where the
-//! difference lives: *"generally within 1% on micro-benchmarks but a 20% performance advantage of
-//! the event kernel on a multitasking workload (AIM7)"* (Elphinstone and Heiser, *L4 Microkernels:
-//! The Lessons from 20 Years of Research and Deployment*, ACM TOCS 34(1), April 2016, section 4.1,
-//! read on 2026-09-04). Every instrument this tree owns is on the left of that sentence. This
-//! module is the right of it.
+//! It is shaped like `kernel/src/soak.rs`, not `kernel/src/bench.rs`, because the number has to be
+//! taken on radon and the bench boot has never run on a board: `--features job_mix`, the tour ends
+//! here, machine-readable console lines, and `script/job-mix` as the QEMU rehearsal. Unlike the
+//! soak it ends, printing [`job_mix::DONE`] and halting.
 //!
-//! `crates/job_mix` is the workload's definition, and its header carries what AIM7 actually is,
-//! which of its properties are kept and which of its 53 jobs are deliberately not.
-//! `fixtures/src/job_mix_task.rs` is one task. This file is the supervisor: it builds the pool, releases a
-//! subrun's worth of tasks, owns the wall clock, and prints.
-//!
-//! # The division of labour, and why it is the soak's and not the bench's
-//!
-//! `kernel/src/bench.rs` would have been the obvious home and is the wrong one, for a reason the
-//! gate makes concrete: **this milestone's number has to be taken on radon**, and the bench boot
-//! has never run on a board. The path a board takes is `script/board-image` plus
-//! `script/board-console`, which is a kernel feature that prints to the serial console and a watcher
-//! that reads it. So this is shaped like `kernel/src/soak.rs`: `--features job_mix`, the tour ends
-//! here instead of halting, output is machine-readable lines on the console, and `script/job-mix` is
-//! the QEMU rehearsal that proves the mechanism before anybody carries a card to a desk.
-//!
-//! It differs from the soak in the one way that matters: **a soak never ends and this one does.**
-//! The sweep is finite, and when it is finished this prints [`job_mix::DONE`] and halts.
-//!
-//! # The pool is built once and released in slices, which is not how AIM7 does it
-//!
-//! AIM7 forks a fresh set of tasks per subrun. This spawns [`job_mix::MAX_TASKS`] processes once and
-//! releases the first N of them per subrun, leaving the rest blocked on their own go endpoints.
-//!
-//! **Two reasons, and the second is a limitation rather than a design.** The honest one: a process
-//! here costs an address space and a loaded image, and `spawn_el0` in `kernel/src/bench.rs` exists
-//! to reclaim exactly one of those per iteration; spawning 63 across a sweep would measure the
-//! memory-region allocator's fragmentation as much as the scheduler. The one to know: it means the
-//! parked tasks' kernel stacks exist during every subrun even though nothing touches them. For the
-//! quantity §96 asks about that is the right choice (the cost is in the stacks the machine *cycles
-//! through*, and E1 measured the same way), but it is not a faithful reproduction of AIM7's own
-//! subrun, and a reader comparing the two should know which is which.
-//!
-//! # Release skew, priced rather than hidden
-//!
-//! The supervisor hands out the go-ahead one rendezvous at a time, and a rendezvous is synchronous,
-//! so task N starts N round trips after task 0. At the top of the sweep that is 32 sends of roughly
-//! a microsecond against a subrun of tens of milliseconds, so it is under a part in a thousand. It
-//! is not zero, and the alternative (a shared flag every parked task spins on) was refused: it would
-//! have the tasks *not* in this subrun burning cores while the subrun ran, which would make the
-//! sweep measure the pool size rather than N.
+//! The pool of [`job_mix::MAX_TASKS`] processes is built once and the first N released per subrun:
+//! spawning per subrun would measure the region allocator's fragmentation. So parked tasks' kernel
+//! stacks exist throughout, which is right for §96's question and unlike AIM7's own subruns. The
+//! go-ahead goes out one synchronous send at a time, a skew under a part in a thousand; a shared
+//! flag would have parked tasks spinning, measuring the pool size instead of N.
 //!
 //! # BUGS
 //!
-//! - **A number from one boot is a draw from a distribution, and on radon that distribution spans
-//!   fifteenfold.** `notes/soak.md` records four runs on that board whose rates differ by that much,
-//!   and milestone 240's census explains them: the rate tracks how the boot-time placement lottery
-//!   landed. Nothing in this module fixes placement, because nothing in this kernel can. What it
-//!   does instead is **print the census** ([`print_census`]) so a run's number is never quotable
-//!   without the arrangement that produced it, and the bench procedure in `notes/job-mix.md` asks
-//!   for repeated boots rather than one. **A single boot's jobs-per-minute figure is not a result.**
-//! - **Each point is the median of [`job_mix::REPEATS`], and that is a decision about this
-//!   workload rather than a house rule.** Until 2026-09-19 this kept the best of three, which is
-//!   `kernel/src/bench.rs`'s `tp_best` methodology and is right on a shared dev Mac. On radon the
-//!   spread between repeats is the tasks' own contention, not somebody else's load, and a best-of
-//!   drawn from it moved 29% between boots at `tasks=4`. `job_mix::REPEATS` carries the evidence
-//!   for 21 and the median. The fastest and slowest repeats are printed on the same line so the
-//!   spread is never hidden, and every repeat still gets its own `job-mix-repeat:` line.
-//! - **The breakdown exchange after each subrun is not free for the machine**, only for the clock.
-//!   It is `JOB_KINDS` rendezvous per released task, after the clock stops and before the next
-//!   subrun starts, so it warms the report endpoint and the supervisor's stack between repeats in a
-//!   way the pre-2026-09-19 sweep did not. It is the same for every repeat and every point.
-//! - **This does not compare a process kernel against an event kernel**, and it cannot: there is no
-//!   event kernel to compare against. It measures what this kernel does under multi-tasking load,
-//!   which is the input §96 says it is missing. §96 stays open either way.
-//! - **The supervisor is a thread on the machine under test.** It is blocked in `RECEIVE` for the whole
-//!   of every timed window rather than spinning, so it is much less load than the soak's yielding
-//!   watcher; it is not zero, and it is one more thread the scheduler holds.
-//! - **The subrun's wall clock includes the tasks' own report sends.** The last of N tasks finishing
-//!   is followed by N rendezvous the supervisor drains, and the clock stops after the last of them.
-//!   That is deliberate (AIM7's subrun ends when every task has finished, and reporting completion
-//!   is part of finishing) and it is a fixed additive cost that grows with N, so it flatters the
-//!   small subruns by a few microseconds.
-//! - **Any message on the report endpoint counts as a report.** `subrun` takes the first three
-//!   words of whatever arrives, so a task's `CALL` there (two words, answered `Gone` under §246 (a
-//!   plain `RECEIVE` never takes a capability)) is counted as that task's report of zero jobs. A
-//!   miscompiled task did exactly that on 2026-10-05, and the miscount wedged sweeps instead of
-//!   naming the fault (notes/job-mix/spawn-destroy-gone.md). Checking the sender's badge and the
-//!   message's shape would turn it into a `FAILED` line.
+//! - **A single boot's jobs-per-minute is not a result**: on radon the rate spans fifteenfold with
+//!   the boot-time placement lottery, so [`print_census`] prints the arrangement with every run and
+//!   the procedure asks for repeated boots.
+//! - Each point is the median of [`job_mix::REPEATS`] (the constant has the evidence), with the
+//!   fastest and slowest on the same line and every repeat on its own `job-mix-repeat:` line.
+//! - The per-subrun breakdown exchange happens after the clock stops but warms the report path
+//!   between repeats, identically for every point.
+//! - It cannot compare against an event kernel, which does not exist; §96 stays open either way.
+//! - The supervisor is one more thread, blocked in `RECEIVE` through every timed window.
+//! - The clock includes draining the N task reports, a small cost that grows with N.
+//! - Any message on the report endpoint counts as a report: a stray `CALL` there (answered `Gone`
+//!   under §246 (a plain `RECEIVE` never takes a capability)) reads as zero jobs and wedges the
+//!   sweep (notes/job-mix/spawn-destroy-gone.md). Checking the badge and shape would name it.
 
 // **The seven markers in this import moved out of this file** (milestone 324 part 2): `CENSUS`,
 // `DONE`, `FAILED`, `KIND`, `POINT`, `STARTED` and `SUBRUN`. They were private `const`s here and

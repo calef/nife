@@ -133,7 +133,7 @@ data block. It is deliberately the least thing that is still a real filesystem, 
 as `crates/elf`: milestone 9 is about drivers and block I/O, not filesystem design.
 
 The driver is the format's third reader (the kernel and `xtask` are the others), and the only one
-that walks the directory without holding the whole image: it has one block buffered, so it can see
+that walks the directory without holding the whole image. It has one block buffered, so it can see
 `nifefs::ENTRIES_IN_FIRST_BLOCK` entries and no more. It used to restate the offsets by hand and
 was the one place that had to be found by hand when the entry layout widened on 2026-08-01. It now
 depends on `nifefs` for them, which is CLAUDE.md's rule 7 (what two binaries must agree on is a

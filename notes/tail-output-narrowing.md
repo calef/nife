@@ -16,8 +16,8 @@ itself feeds (`grant_plan::plan_against_with` turns a trailing positional into `
 exactly as it does for `wc report.txt`; see notes/pipes/the-file-end.md, "the file behind a `>` is
 this shell").
 `doc` also writes while it reads (`InputSpec::Required { writes_while_reading: true }`, the only
-declarer today), so the shell would have to be both the feeder of its input and the reader of its
-output, and this kernel gives a process exactly one blocking wait point (`SEND`/`RECEIVE`, no select,
+declarer today). So the shell would have to be both the feeder of its input and the reader of its
+output. This kernel gives a process exactly one blocking wait point (`SEND`/`RECEIVE`, no select,
 no receive-on-a-set, no timed wait). `grant_plan::check_chain` refuses the line before anything is
 spawned:
 
@@ -40,23 +40,23 @@ Three prior answers exist in the tree already, all recorded before this note, no
 (a) A pull-based source. Collapse input and output onto one endpoint the child `CALL`s for
 bytes on and `SEND`s output over, so the shell has one wait point per child. notes/pipes.md names
 this "the exact answer to the constraint" and DECISIONS §101 confirms it is still available.
-Refused, twice, on the same grounds both times: it destroys the property milestone 50 (pipes and redirection) calls
-load-bearing, that a pipe's read and write ends are separate capabilities with separate rights (a
-program on the right of a `|` cannot write back up its own input, because it never holds a
-capability that could). notes/pipes.md calls this "a design fork, and calef's"; §101 declines it a
+Refused, twice, on the same grounds both times. It destroys the property milestone 50 (pipes and
+redirection) calls load-bearing: a pipe's read and write ends are separate capabilities with
+separate rights. (A program on the right of a `|` cannot write back up its own input, because it
+never holds a capability that could.) notes/pipes.md calls this "a design fork, and calef's"; §101 declines it a
 second time for the identical reason and does not reopen it.
 
 (b) A buffering stage. A component that speaks the sink contract on both sides and absorbs
 what it is given, inserted as a barrier. This is the shape the original milestone 50 roadmap block
 predicted buffering would arrive in if it earned its place. Measured and refused, 2026-08-03
 (notes/pipes.md, "Buffering: measured"): a buffering hop costs roughly a second rendezvous
-(`relay_rtt` vs `ipc_rtt`, about double), buys decoupling rather than bandwidth, and every pipeline
+(`relay_rtt` vs `ipc_rtt`, about double), and buys decoupling rather than bandwidth. Every pipeline
 in this tree today is pure byte-moving with no producer-side work to overlap, so it would make
 throughput worse for no correctness gain. It also does not remove the wall for a document larger
 than its grant, which would deadlock again. §101 restates the refusal rather than reopening it.
 
 (c) Do nothing. The refusal above is honest, non-deadlocking, and costs nothing further. This
-is the status quo. It loses only in the sense that it is not an answer: `doc page.md` still cannot
+is the status quo. It loses only in the sense that it is not an answer. `doc page.md` still cannot
 render at a prompt, which is the one thing phase 1 and 2 of this milestone were building toward
 (notes/documentation.md's own "In brief": rendered for display, not shown raw).
 
@@ -67,13 +67,14 @@ this note works out in full below, because it is the one live candidate.
 
 ## 2. What does this tree already do in the analogous case?
 
-Exactly this, for the second stream. DECISIONS §67 (a program's second stream), 2026-08-03, already answers a materially
-identical question for diagnostics: a program that declares a second output has it delivered by
-default to `terminal_sink_caretaker`, a dedicated adapter process that holds the terminal endpoint
+Exactly this, for the second stream. DECISIONS §67 (a program's second stream), 2026-08-03, already
+answers a materially identical question for diagnostics. A program that declares a second output has
+it delivered by default to `terminal_sink_caretaker`. That is a dedicated adapter process that holds
+the terminal endpoint
 and hands out a sink, bypassing the shell entirely. `date`'s clockless complaint reaches the screen
 "without passing through the shell at all" today. The refused alternatives at that decision (a
-numbered-slot convention, a tagged opcode on one endpoint) were refused for reasons that generalize:
-this system does not want ambient numbered conventions (Unix's fd 2), and it does not want to
+numbered-slot convention, a tagged opcode on one endpoint) were refused for reasons that generalize.
+This system does not want ambient numbered conventions (Unix's fd 2), and it does not want to
 conflate two kinds of thing on one channel again.
 
 The precedent buys three things for free if extended to the primary slot:
@@ -98,22 +99,23 @@ shell explicitly redirects it, because fd 1 was the terminal's fd before the for
 shell never reads a child's stdout to print it; the kernel's own tty layer does the printing, and
 the shell is not in the data path for an unredirected command at all. This system inverted that on
 purpose (§67's whole point: nothing here is ambient, a capability names a destination rather than a
-number everyone agrees on), and the cost of the inversion is exactly the wall this note is about:
-a nife shell is *in* the data path by construction, which is what makes it also the reader, which is
-what creates the one-wait-point conflict Unix's design never has to face.
+number everyone agrees on). The cost of the inversion is exactly the wall this note is about. A nife
+shell is *in* the data path by construction, which is what makes it also the reader. That is what
+creates the one-wait-point conflict Unix's design never has to face.
 
 seL4 has no shell-adjacent analogue (seL4 systems are typically single-purpose, not
 interactive), but DECISIONS §101 already did the relevant literature comparison for the general
-multiplexing question: Mach port sets (the ancestor), Fuchsia `zx_port` (a queued variant), Redox
-event queues (assumes a scheme/fd model this system does not have), and seL4's own notification
+multiplexing question. It covers Mach port sets (the ancestor) and Fuchsia `zx_port` (a queued
+variant). Then Redox event queues (assumes a scheme/fd model this system does not have), and seL4's
+own notification
 object (adopted, in `design/decisions/0101-notification-objects.md`). None of those is about
 *routing output away from a shell*; they are about a receiver waiting on more than one source. This
-note's question is narrower and orthogonal: it is asking whether the shell should be a party to the
+note's question is narrower and orthogonal. It is asking whether the shell should be a party to the
 wait at all for a tail stage's primary output, not how it should wait on several things once it is.
 
-`man`/`apropos`/`mandb`, already this design's stated prior art for the whole milestone, is
-silent on this question because a Unix pager runs as a normal Unix process with an inherited tty,
-so the equivalent question (how does a pager get the screen) never arises there either.
+`man`/`apropos`/`mandb`, already this design's stated prior art for the whole milestone, is silent
+on this question. A Unix pager runs as a normal Unix process with an inherited tty, so the
+equivalent question (how does a pager get the screen) never arises there either.
 
 ## 4. Is the premise true?
 
@@ -145,25 +147,26 @@ spawn time and `RECEIVE` on it instead of on the child's output), not a new kern
 | (c) Do nothing | None | None | Milestone 40 stays PARTIAL; no line renders a page at a prompt, ever, on this branch of the design | N/A |
 | (d) `terminal_sink_caretaker` takes primary output | None | One `spawnproto` bit (or a repurposed `DIAG_BIT`-shaped convention) for "this stage's output goes to the terminal by default"; the shell must additionally wire §26's fault endpoint for the spawn, where today it wires none | Narrows what the shell can observe about that child (it no longer reads its bytes); a completion-race caveat, below | §26's fault delivery is already built and proved (milestone 22); the incremental piece is shell wiring, comparable in size to `spawn_interruptible`'s existing job-watching path, not a new kernel primitive |
 
-The caveat option (d) owes, named exactly where notes/documentation.md already named it and not
-resolved there: using kernel exit-delivery (§26) as the shell's "child is done, print the next
-prompt" signal is *stronger* than the vaguer "wait for the child to exit" notes/documentation.md worried
-about, because §26's message is only sent after the thread is dead-until-reaped (DECISIONS §26.4):
-a dead thread cannot enqueue any further `SEND`. So there is no race in which the *child itself*
+Here is the caveat option (d) owes, named exactly where notes/documentation.md already named it and
+not resolved there. Using kernel exit-delivery (§26) as the shell's "child is done, print the next
+prompt" signal is *stronger* than the vaguer "wait for the child to exit" notes/documentation.md
+worried about. §26's message is only sent after the thread is dead-until-reaped (DECISIONS §26.4),
+and a dead thread cannot enqueue any further `SEND`. So there is no race in which the *child itself*
 paints the screen after the shell has moved on. The race that remains is one hop further out:
-`terminal_sink_caretaker` is a separate long-lived process, and a child's `SEND` to it completing
-(which is what could happen just before the child exits) only means the caretaker has *received*
-the bytes into its own address space, not that it has finished its own `CALL` to `line_editor`
+`terminal_sink_caretaker` is a separate long-lived process. A child's `SEND` to it completing (which
+is what could happen just before the child exits) only means the caretaker has *received* the bytes
+into its own address space. It does not mean it has finished its own `CALL` to `line_editor`
 delivering them to the screen. If the shell prints its next prompt (a second, concurrent `CALL` to
 `line_editor`) before the caretaker's trailing `CALL` lands, the two interleave at the terminal
 server, which serializes them but not in a guaranteed order. This is this note's own finding
-(notes/documentation.md flagged the shape of the question, not this mechanism): the fix, if wanted, is not part of this decision and is deferred to the same list
-DECISIONS §101 already carries (a bound notification the shell could `WAIT` on for "the caretaker's
-queue for this client has drained," which needs the notification object §101 already decided to
-build, later). Absent that, the honest interim is that a page's last line and the next `$ `
-prompt can interleave under contention, a display glitch rather than a correctness or
-confinement failure: no capability changes hands, no byte is misdelivered to the wrong reader, and
-the caretaker's own BUGS section already documents that it serializes clients with no guarantee
+(notes/documentation.md flagged the shape of the question, not this mechanism). The fix, if wanted,
+is not part of this decision. It is deferred to the same list DECISIONS §101 already carries: a
+bound notification the shell could `WAIT` on for "the caretaker's queue for this client has
+drained." That needs the notification object §101 already decided to build, later. Absent that, the
+honest interim is that a page's last line and the next `$ `
+prompt can interleave under contention. That is a display glitch rather than a correctness or
+confinement failure: no capability changes hands, and no byte is misdelivered to the wrong reader.
+The caretaker's own BUGS section already documents that it serializes clients with no guarantee
 about *which* pending message the terminal shows first when more than one is in flight.
 
 ## 6. How reversible is it, and who has already acted on it?
@@ -172,11 +175,12 @@ about *which* pending message the terminal shows first when more than one is in 
 this falls on the expensive side for two independent reasons:
 
 - **It is a spawn-protocol decision**, which `crates/grant_plan/src/spawnproto.rs` calls out as
-  "anything two binaries must agree on": both inits (`fixtures/src/hello.rs` for aarch64,
-  `crates/system_initializer` for riscv64, unified since milestone 96) and every program's manifest
-  would carry the new convention. §67 set the precedent for how cheaply this class of change lands
-  when it follows the existing shape (a bit, a manifest declaration, no new syscall), but it is still
-  a wire format, which the tenet lists explicitly as one of the few genuinely expensive categories.
+  "anything two binaries must agree on". Both inits (`fixtures/src/hello.rs` for aarch64,
+  `crates/system_initializer` for riscv64, unified since milestone 96 (one init: the spawn service written twice)) would carry the new
+  convention, and so would every program's manifest. §67 set the precedent for how cheaply this
+  class of change lands
+  when it follows the existing shape (a bit, a manifest declaration, no new syscall). But it is
+  still a wire format, which the tenet lists explicitly as one of the few genuinely expensive categories.
 - **It changes what a spawned program's authority *implies* at this prompt**, which is exactly the
   kind of thing DECISIONS §101 itself flags as syscall-adjacent: "what a spawned program holds at
   this prompt is an architect's."

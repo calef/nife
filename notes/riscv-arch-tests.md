@@ -108,9 +108,9 @@ instruction. An isolation test here would have passed with ASID tagging removed 
 could not fail for its stated reason.
 
 What shipped instead is `the_satp_carries_the_address_spaces_asid`, which proves the half that was
-real: distinct nonzero ASIDs, placed at bits 59:44 where the hardware reads them, without disturbing
-the MODE field above or the root PPN below (they are packed with no slack, so a shift that is off by
-four lands in one or the other). It still earns its keep as the only test that would catch a wrong
+real. It shows distinct nonzero ASIDs, placed at bits 59:44 where the hardware reads them, without
+disturbing the MODE field above or the root PPN below. They are packed with no slack, so a shift
+that is off by four lands in one or the other. It still earns its keep as the only test that would catch a wrong
 shift.
 
 Milestone 58 (RISC-V TLB shootdown) closed it. The follow-up this section once described (drop the flush and the aarch64
@@ -176,8 +176,8 @@ same on both ISAs.
 
 *One row is struck through: `the_handler_keeps_up_when_no_lock_is_held` was deleted on both ISAs
 by milestone 62 on 2026-08-18.* The mutation in that row is worth reading against the reason. Two
-intervals of handler spin is almost exactly the boundary the assertion's taxonomy got wrong: under
-one interval of resulting lateness it blamed this kernel, at one interval or more it blamed the
+intervals of handler spin is almost exactly the boundary the assertion's taxonomy got wrong. Under
+one interval of resulting lateness it blamed this kernel. At one interval or more it blamed the
 emulator and passed, and a handler slow by 2.5 periods was therefore exonerated in as many words.
 The mutation still dies, on `script/icount`, where the handler is bounded in instructions the host
 cannot move. See notes/load-sensitive-assertions.md.
@@ -259,8 +259,8 @@ problems, and only the first was large.
 
 The plan did not anticipate a third thing: the module was blocked on a stale comment as much as on
 machine code. `hello` carries milestone 7 (user mode) through 19 role catalog and xtask called it
-"aarch64-wired"; three quarters of that sentence had been false, and the last quarter
-was six syscalls hand-rolled in aarch64 `asm!` that `user_mode_runtime` had had portable versions of since
+"aarch64-wired". Three quarters of that sentence had been false. The last quarter was six syscalls
+hand-rolled in aarch64 `asm!` that `user_mode_runtime` had had portable versions of since
 19f.6. Deleting the duplicates was the whole port for roughly twenty of the tests. Sizing a job from
 what the comments say it needs is how an afternoon's work stays undone for a year.
 

@@ -24,9 +24,10 @@ In the second sense: the board is here and this needs hands on it. Bringing up
 an NVMe controller and a real NIC means flashing, a serial console, and power-cycling a board that
 will wedge, none of which a background lane can do. Both halves of the *old* gate are gone. The hardware cleared 2026-08-14: the board
 is on the desk and 16a boots it through the full tour, so the two drivers finally have silicon to
-exist on. The storage fork was decided by calef on 2026-08-15: NVMe first, because the backup
-workload (milestone 55) measures sustained sequential write and endurance, which SD media fails,
-and because a real PCIe root-complex driver compounds into milestone 87's x86 machine where an
+exist on. The storage fork was decided by calef on 2026-08-15: NVMe first. The backup workload
+(milestone 55 (Time Machine)) measures sustained sequential write and endurance, which SD media
+fails. And a real
+PCIe root-complex driver compounds into the x86 machine of milestone 87 (the x86_64 bare-metal machine) where an
 MSHC driver serves one slot on one board. SD/eMMC stays in scope as the later path, undecided only
 in its ordering against the network driver.
 

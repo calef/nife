@@ -62,7 +62,7 @@ unchanged from `sifive-u54` (bare RV64GC) to `rva23s64` (vector, `zicond`, point
 nothing in the kernel currently needs to branch on a discovered fact. That does **not** retire this
 milestone, and the reason is the sharpest thing 59 found: **QEMU reports `satp.ASID: 16 bits
 implemented` on every model**, including `sifive-u54`. The one place we already know a real chip may
-differ is the one place no emulator can tell us about, so discovery's value is not the branching, it
+differ is the one place no emulator can tell us about. So discovery's value is not the branching. It
 is being able to say what the machine is instead of assuming it. See
 [notes/cpu-models.md](../../notes/cpu-models.md).
 
@@ -71,14 +71,14 @@ is being able to say what the machine is instead of assuming it. See
 Four call sites vary, and two of this entry's four candidates dropped out. Real: the ASID width
 on both ISAs (`crates/asid` assumes 8 and RISC-V guarantees none); `TCR_EL1.IPS` from `PARange`,
 which predates the milestone and is now read once into the record; and two refusals, riscv64's
-Sv39-or-stop and aarch64's 4 KiB granule. Not real: TLB flush strategy varies nowhere, because
-the unconditional `sfence.vma` is unconditional by design and removing it is its own milestone; and
-IOMMU presence is already discovered, by the `smmuv3@` node and by PCI enumeration, so the record
+Sv39-or-stop and aarch64's 4 KiB granule. Not real: TLB flush strategy varies nowhere, because the
+unconditional `sfence.vma` is unconditional by design and removing it is its own milestone. And
+IOMMU presence is already discovered, by the `smmuv3@` node and by PCI enumeration. So the record
 would add a second way to ask one question. A fifth call site was never reached.
 
 aarch64 is covered, not scoped out, and doing both is what produced the sharpest finding.
 ARM has a tier this entry's list is missing: `MIDR_EL1` and the `ID_AA64*` space are the CPU
-describing *itself*, architected and mandatory, so the aarch64 half is a decoder where the RISC-V
+describing *itself*, architected and mandatory. So the aarch64 half is a decoder where the RISC-V
 half is a parser over a property firmware wrote. RISC-V removed that tier on purpose. There is no
 trait between them and should not be one until a second real board says what the abstraction is.
 
@@ -90,9 +90,9 @@ levels *wider* than the kernel, which is the opposite of the failure this entry 
 anticipate.
 
 Three shapes that would have broken on the VisionFive 2, all now covered by host tests: the
-deprecated `riscv,isa` string (the modern properties are Linux 6.6 and later), `g` as an
-abbreviation for `imafd_zicsr_zifencei` rather than an extension name, and the trap that requiring
-`zicsr`/`zifencei` would refuse to boot on that board, because both were carved out of base `I`
+deprecated `riscv,isa` string (the modern properties are Linux 6.6 and later), and `g` as an
+abbreviation for `imafd_zicsr_zifencei` rather than an extension name. The third is the trap that
+requiring `zicsr`/`zifencei` would refuse to boot on that board. Both were carved out of base `I`
 in 2019 and an older string simply does not list them. `m`, `a` and `c` are what gate instead.
 
 ## Follow-on

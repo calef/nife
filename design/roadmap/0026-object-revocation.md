@@ -22,8 +22,8 @@ Why it matters. the teardown half of "run real workloads": a process can be reap
   reclaimed is untouched, and the wake-with-an-error path reaches only waiters inside the region
   going away. The workaround, giving such endpoints a region of their own, is beside it.
 - **Recorded.** `notes/object-revocation.md`'s BUGS section is honest that the single-winner claim
-  over `untyped::destroy` is checked by loom rather than by the machine: loom models C11 rather than
-  aarch64 or riscv64, assumes the mutual exclusion `IrqSafeMutex` is supposed to deliver, and
+  over `untyped::destroy` is checked by loom rather than by the machine. Loom models C11 rather than
+  aarch64 or riscv64. It assumes the mutual exclusion `IrqSafeMutex` is supposed to deliver, and
   searches who wins the claim rather than whether the winner then frees the right pages.
 
 ## Index row

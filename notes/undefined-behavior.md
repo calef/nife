@@ -7,9 +7,10 @@ on demand; not part of `script/test` or `script/ci-build`'s table.
 ## What Miri checks that nothing else here does
 
 Miri is an interpreter for Rust's mid-level IR that enforces the language's dynamic rules while the
-tests run: aliasing (no `&mut` that aliases anything live), pointer provenance (a pointer is only
-good for the allocation it was derived from, and an integer-minted pointer only for allocations
-whose provenance was exposed), uninitialized reads, use-after-free, out-of-bounds, invalid values,
+tests run. They are aliasing (no `&mut` that aliases anything live) and pointer provenance (a
+pointer is only good for the allocation it was derived from, and an integer-minted pointer only for
+allocations whose provenance was exposed). Then uninitialized reads, use-after-free, out-of-bounds,
+invalid values,
 and leaks at process exit.
 
 The rest of the tree's analysis surface cannot see that class, and Miri is its third leg, after the
@@ -37,8 +38,9 @@ expensive underneath. See the section on what three weeks of red hid.
 The sequential per-crate triage sweep took about 31 minutes, of which
 five packages are 79% (`xtask` 473 s, `cred` 452 s, `measured_boot` 334 s, `coremark` 190 s, `gpt`
 127 s); 30 of the 41 finish in under 10 s. The interpreter tax measured about three orders of
-magnitude where it was visible (`network_time_protocol`'s 10^9-value sweep: 0.6 s native, a projected day-plus
-interpreted; `calendar`'s 315,000 round trips: about a second native, still running at 11 minutes
+magnitude where it was visible. (`network_time_protocol`'s 10^9-value sweep: 0.6 s native, a
+projected day-plus interpreted. `calendar`'s 315,000 round trips: about a second native, still
+running at 11 minutes
 when it was killed and sampled instead).
 
 ### Findings, each with its verdict
@@ -54,7 +56,7 @@ re-borrowing. This is the exact class the milestone was run for, found on its fi
 
 **2. `user_mode_heap`: integer-minted pointers with no exposed provenance. Real UB, fixed.**
 The allocator's arithmetic is integer arithmetic (`alloc` mints a tail block at `aligned + size`;
-`insert_free` recovers a predecessor node from a link address), and a coalesced block can span two
+`insert_free` recovers a predecessor node from a link address). A coalesced block can span two
 separately donated regions, so no single donated pointer could carry provenance for it even in
 principle. Rust's rule for that shape is expose-and-reclaim, and the code was using `addr()`, which
 deliberately does not expose. The first `alloc` to carve a block coalesced across a donation
@@ -71,8 +73,8 @@ declared first so it drops after the mapper that reads the tables.
 
 **And then it came back, which is the part worth learning from** (milestone 310). The guard above
 was opt-in: each test had to remember to bind one. A `domain.rs` test written after that fix did
-not, five frames leaked, and the weekly workflow was red on every scheduled run from 2026-08-11
-to 2026-09-17 with nobody able to see it, because a scheduled job's red is an entry in the Actions
+not, five frames leaked, and the weekly workflow was red on every scheduled run from 2026-08-11 to
+2026-09-17. Nobody was able to see it, because a scheduled job's red is an entry in the Actions
 tab with no badge. So the fix here was not the missing line, which would have restored the same
 defect for the next author. `domain.rs`'s pool now owns the allocation: `frame` and `frame_at` are
 methods on `FramePool`, the free functions are gone, and a test that allocates without holding a
@@ -90,7 +92,7 @@ completeness pin not yet updated. The finished edit passes under Miri and native
 
 **Also seen, deliberately left:** integer-to-pointer cast *warnings* in `paging`'s tests, where
 `phys_to_ptr` is an identity cast by design (the tests' documented trick is that host addresses
-stand in for physical ones); they are warnings about a pattern the harness is honest about, not
+stand in for physical ones). They are warnings about a pattern the harness is honest about, not
 errors.
 
 ## "Miri-clean" means the sampled paths
@@ -123,14 +125,14 @@ isolation refuses `open` and `opendir` outright; there is no smaller version, on
 **It was refused, on measurement rather than principle** (milestone 238). `crates/documentation` has no
 dependencies and no `unsafe`, so the rules Miri enforces cannot be broken by any line it would
 interpret there. Against that, `every_character_survives` costs 0.74 seconds natively and had not
-finished after 12 minutes under Miri with isolation off, and the flag is not per-test: it would
+finished after 12 minutes under Miri with isolation off, and the flag is not per-test. It would
 relax isolation for the whole workspace run, which is the reproducibility every other crate here is
 getting for free.
 
 These two are also the entire content of the three weeks the weekly workflow spent red. It
 reported failure from 2026-08-10 to 2026-09-03 and never once for undefined behavior: first an
 environment variable Miri does not forward, then a `read_dir` behind it, then five `board_console`
-tests behind that, each hidden by the one before because `cargo miri test` stops at the first. The
+tests behind that. Each was hidden by the one before because `cargo miri test` stops at the first. The
 audit that found it (milestone 232) recorded the fix as one flag, in good faith; it was three
 layers. See notes/check-inventory.md and `script/cadence-check`, which exists so the next dead
 cadence is noticed in days rather than weeks.
@@ -160,13 +162,13 @@ merely not-checking, it is also not-measuring, and the bill accrues the whole ti
 expensive one** (milestone 238). It measured 3,307 seconds, 55 minutes, for its lib tests alone
 on 2026-09-03, against roughly four minutes for the whole rest of the workspace, and it has no
 dependencies and no `unsafe`. Ten of its forty-one tests could not run under the interpreter
-regardless: five reach the host filesystem, and five in `watch` are wall-clock driven, so a
-15-second quiet timeout expires against interpreted time and the watcher reports `Reached(Banner)`
+regardless. Five reach the host filesystem, and five in `watch` are wall-clock driven. So a
+15-second quiet timeout expires against interpreted time, and the watcher reports `Reached(Banner)`
 where a real run reaches `Reached(Tour)`. That second family is exactly the `cred` timing row above.
 The reasoning sits in `xtask`'s exclusion list and in the crate's own header, where somebody
 pointing Miri at it by hand will meet it. It was never deliberately covered: it joined the workspace
-after milestone 79, and the weekly job had been red on an unrelated failure the whole time it
-existed, so its cost surfaced only when milestone 238 cleared what was in front of it.
+after milestone 79 (Miri over the host crates). The weekly job had been red on an unrelated failure the whole time it existed,
+so its cost surfaced only when milestone 238 (two scheduled checks have never once succeeded) cleared what was in front of it.
 
 Two test surfaces stay out entirely, deliberately. `tools/redoxfs_host` and `redoxfs_server` are their
 own workspaces whose runtime is spent inside the vendored RedoxFS engine, and a finding in vendored

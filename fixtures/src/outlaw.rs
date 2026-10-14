@@ -77,10 +77,20 @@ const ROUND_TRIP: u64 = 0;
 /// `kernel::user::tests::a_user_program_cannot_read_a_kernel_address`.
 const READ_KERNEL: u64 = 1;
 
+/// **Try to build something with no construction authority at all.** The eighth outsider pass's
+/// role (claim 23's zero-authority corner): a program holding one report endpoint and nothing else
+/// invokes `RETYPE`, a `SEND` and `RETYPE_OBJ` on slots it was never granted, and reports the three
+/// errnos over the endpoint so the test can assert each refusal's shape from outside. The point is
+/// that authority is a capability and not a property of being a program: with no untyped budget in
+/// the table, every path to minting one must answer "nothing there" rather than "not permitted",
+/// because there is nothing there.
+const BUILD_WITH_NOTHING: u64 = 2;
+
 #[unsafe(no_mangle)]
 pub extern "C" fn _start(role: u64, addr: u64, _arg2: u64) -> ! {
     match role {
         READ_KERNEL => read_kernel(addr),
+        BUILD_WITH_NOTHING => build_with_nothing(),
         // ROUND_TRIP, and anything else: a role this program does not know is not worth dying over.
         _ => round_trip(),
     }
@@ -104,6 +114,31 @@ fn read_kernel(addr: u64) -> ! {
     loop {
         core::hint::spin_loop();
     }
+}
+
+fn build_with_nothing() -> ! {
+    // Three minting attempts against an empty table: a page, a message, a kernel object. Each
+    // rides `SYS_INVOKE` with a slot number this program was never granted, which is the wire form
+    // of "a program with no construction authority tries to build anyway".
+    // SAFETY: `svc`/`ecall` traps to the kernel, which validates the named slot before acting;
+    // there is nothing at these slots, which is the whole attack.
+    let retype = unsafe { user_mode_runtime::invoke(5, abi::memory_region::RETYPE, 0, 0, 0) };
+    // SAFETY: as above.
+    let send = unsafe { user_mode_runtime::invoke(6, abi::rendezvous::SEND, 1, 0, 0) };
+    // SAFETY: as above.
+    let retype_obj = unsafe {
+        user_mode_runtime::invoke(
+            7,
+            abi::memory_region::RETYPE_OBJ,
+            abi::objtype::RENDEZVOUS,
+            0,
+            0,
+        )
+    };
+    // Slot 0 is the report endpoint the caller did grant, so the answer leaves. The errnos are
+    // negative; the test compares them against `abi::Error` directly.
+    let _ = user_mode_runtime::send(0, retype as u64, send as u64, retype_obj as u64);
+    exit();
 }
 
 user_mode_runtime::panic_handler!();

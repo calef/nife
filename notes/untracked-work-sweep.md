@@ -64,7 +64,7 @@ are the sweep's, which is where the two counts get confused.
 | 111, a shell that can endow a child with entropy | `notes/entropy.md`, "future work with no design problem in it" |
 
 Two of the twelve are worth reading as findings in their own right, because the sweep was wrong
-about both and the tree said so: 101 and 103 were each raised as unbuilt work and each turned out
+about both and the tree said so. 101 and 103 were each raised as unbuilt work and each turned out
 to be built, with a different, smaller thing genuinely owed. A sweep that reads prose inherits the
 prose's staleness. That is milestone 93's territory (documentation audits as a mechanism) and it is
 why the two milestones exist as corrections rather than as tasks.
@@ -117,8 +117,8 @@ decision rather than as everything that happened to be found.
 ## The lesson this note is
 
 Deliverable one of milestone 94 was a sweep, and the sweep did its job. What went wrong afterwards
-is the thing the milestone was written to abolish, committed by the milestone itself: the inventory
-was written into a pull request body, the nine blessings were described in a lane report, and both
+is the thing the milestone was written to abolish, committed by the milestone itself. The inventory
+was written into a pull request body and the nine blessings were described in a lane report. Both
 media are unreadable a fortnight later. The tree keeps records; GitHub keeps correspondence.
 
 The rung to have reached for was the third one, a written record at the thing itself. That is what

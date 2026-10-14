@@ -37,6 +37,21 @@ pub enum WindowRefusal {
 /// operational registers through the last port's status register, interrupter 0's registers, and
 /// the doorbells for every slot. A needed page that is withheld or out of reach is a refusal,
 /// because a driver started without one of those would fault on its first access to it.
+///
+/// # Examples
+///
+/// QEMU's `qemu-xhci` puts its MSI-X table in the fourth page of its 16 KiB register file, so a
+/// driver is mapped the first three and never the fourth:
+///
+/// ```
+/// use extensible_host_controller_interface::{Capabilities, register_window};
+///
+/// // qemu-xhci's capability registers: 0x40 bytes of them, 64 slots, 4 ports, runtime at 0x1000,
+/// // doorbells at 0x2000.
+/// let caps = Capabilities::decode(0x0100_0040, 0x0400_0840, 0, 0x0000_7000, 0x2000, 0x1000);
+/// let window = register_window(&caps, 0x4000, &[(0x3000, 0x3000 + 16 * 16), (0x3800, 0x3808)]);
+/// assert_eq!(window, Ok(0b0111));
+/// ```
 pub fn register_window(
     caps: &Capabilities,
     bar_bytes: u64,

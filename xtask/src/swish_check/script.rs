@@ -175,8 +175,8 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         1,
         "jig update",
         &[
-            // Four from the fixtures, and one more per package from basalt's repository when the
-            // gate is handed one (milestone 810), so the count is not asserted.
+            // Four from the fixtures, and one more per package from basalt's repository when one
+            // was fetched (milestone 810), so the count is not asserted.
             "index updated: ",
             "from basalt.test over TLS",
         ],
@@ -218,9 +218,83 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         "packages/greeting/0.3.0/greeting",
         &["hello from a package this image never carried"],
     ),
+    // **A package carries several programs** (milestone 919 (a package carries several
+    // programs)). `duet` carries `bin/alto` and `bin/tenor`, neither named after it: one install
+    // writes a row and a pointer for each, in one generation, and each runs by its own bare name. Their notes differ, so they are
+    // endowed differently: `alto` holds the clock and `tenor` does not.
+    // `jig` is granted the directory holding the file it names, so the line runs from there.
+    line(0, "cd downloads", &[]),
+    line(
+        1,
+        "jig install ./duet.nifepkg",
+        &["installed; generation 7 is live"],
+    ),
+    line(
+        1,
+        "alto",
+        &[
+            "alto: one of two programs in the package duet",
+            "clock: held at slot 1, as its manifest note asked",
+        ],
+    ),
+    line(
+        1,
+        "tenor",
+        &[
+            "tenor: one of two programs in the package duet",
+            "clock: not held; slot 1 is empty",
+        ],
+    ),
+    line(
+        0,
+        "caps alto",
+        &["its manifest note asks for: output bytes, the clock\n"],
+    ),
+    line(
+        0,
+        "caps tenor",
+        &["its manifest note asks for: output bytes\n"],
+    ),
+    // **A name one package holds refuses another package whole** (calef, 2026-10-14 (UTC): "If
+    // two packages offer the same program name, refuse the second package. Need to remove the
+    // first one before installing the second one."). `solo` carries `bin/alto` too. The refusal
+    // names the program and its holder, and writes no generation.
+    line(
+        1,
+        "jig install ./solo.nifepkg",
+        &[
+            "refused: the package duet already provides the program alto; jig remove duet first; \
+             generation 7 is live",
+        ],
+    ),
+    // **`jig remove` names a package** (calef, 2026-10-14 (UTC): "jig remove should work on
+    // packages, not programs."): a program's name removes nothing, and the package's name takes
+    // both programs, so neither bare word reaches anything after it.
+    line(
+        1,
+        "jig remove alto",
+        &["refused: no package of that name is in the live generation; generation 7 is live"],
+    ),
+    line(1, "jig remove duet", &["removed; generation 8 is live"]),
+    line(0, "alto", &["no such program"]),
+    line(0, "tenor", &["no such program"]),
+    // And with the holder gone, the second package installs, and the name is its.
+    line(
+        1,
+        "jig install ./solo.nifepkg",
+        &["installed; generation 9 is live"],
+    ),
+    line(0, "cd /", &[]),
+    line(
+        1,
+        "alto",
+        &["alto: one of two programs in the package duet"],
+    ),
+    line(1, "jig remove solo", &["removed; generation 10 is live"]),
     // **`ripgrep`, built and published by basalt** (milestone 810 (`ripgrep` is packaged in
-    // basalt and installed with `jig`)): basalt's gate hands this gate the repository it built
-    // (`disk::BASALT_REPOSITORY`), whose index lines the peer serves beside the fixtures'. The
+    // basalt and installed with `jig`)): the package basalt published, fetched by its pinned
+    // digest (`cargo xtask basalt-fetch`), or the repository basalt's own gate just built
+    // (`disk::BASALT_REPOSITORY`). The peer serves its index lines beside the fixtures'. The
     // package is `ripgrep`; its program is the member `bin/rg`
     // (`package_archive::PROGRAM_PREFIX`), so the bare word is `rg`. Skipped without a repository.
     line(
@@ -229,14 +303,62 @@ pub(super) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         &[
             "fetched ripgrep-",
             "from basalt.test over TLS",
-            "fetched and installed; generation 7 is live",
+            "fetched and installed; generation 11 is live",
         ],
     ),
     line(1, "rg --version", &["ripgrep "]),
+    // **`ioping`, basalt's first C package** (milestone 906 (ioping is packaged in basalt, and its
+    // test installs it with `jig`)), on `ripgrep`'s terms: compiled by basalt against the C library
+    // at the nife commit basalt pins. Installed, it times five 4 KiB reads of a file its word
+    // names, and the file is its own installed program: unvouched, it is granted that file
+    // read-only and the clock page. The line stands in `packages` and names the file relative to
+    // it: only a word whose first component names an entry here designates anything (an absolute
+    // one reached ioping with nothing granted, and its `stat` answered `ENOSYS`), and a word in
+    // the shell's root is refused, because a caretaker is built by descending into a directory.
+    // Pointed at a directory, ioping would need to write a working file there. The kernel suite's `c_program_tests` runs the same assertions on
+    // the same bytes against a granted directory.
+    line(
+        1,
+        "jig install ioping",
+        &[
+            "fetched ioping-",
+            "from basalt.test over TLS",
+            "fetched and installed; generation 12 is live",
+        ],
+    ),
+    line(1, "ioping -v", &["ioping 1.3"]),
+    line(0, "cd packages", &[]),
+    line(
+        1,
+        IOPING_LINE,
+        &[
+            "4 KiB <<< ioping/1.3/ioping ",
+            "request=1 ",
+            "request=5 ",
+            "(warmup)",
+            "ioping statistics ---",
+            "4 requests completed in ",
+            ", 16 KiB read, ",
+            "generated 5 requests in ",
+            "min/avg/max/mdev = ",
+        ],
+    ),
+    line(0, "cd /", &[]),
 ];
 
-/// The lines that need a repository from basalt (milestone 810), skipped without one.
-pub(super) const FROM_BASALT: &[&str] = &["jig install ripgrep", "rg --version"];
+/// The timed reads `jig install ioping` is followed by (milestone 906): `c_program_fixture::IOPING`'s
+/// flags, pointed at the installed program's own file rather than a directory.
+const IOPING_LINE: &str = "ioping -c 5 -i 0 -s 4k ioping/1.3/ioping";
+
+/// The lines that need a repository from basalt (milestones 810 and 906), skipped without one
+/// outside CI.
+pub(super) const FROM_BASALT: &[&str] = &[
+    "jig install ripgrep",
+    "rg --version",
+    "jig install ioping",
+    "ioping -v",
+    IOPING_LINE,
+];
 
 /// The text this gate types and what each line must answer. `None` is a line whose answer is
 /// checked by a later one rather than by itself, which is every line that writes a file.
@@ -592,7 +714,7 @@ pub(super) const SWISH_CHECK_SCRIPT: &[Line] = &[
         1,
         "jig install ./uptime.nifepkg",
         &[
-            "refused: the image carries a program of that name; a new base updates it, not \
+            "refused: the image carries the program uptime; a new base updates it, not \
              install; nothing is installed",
         ],
     ),
@@ -723,7 +845,7 @@ pub(super) const SWISH_CHECK_SCRIPT: &[Line] = &[
     ),
     // **Unmodified `ripgrep` searches what its words name, from the prompt** (milestone 595 (the
     // shell runs a `std` program), fatal risk 1). The same lines `std_grep` answered, typed to
-    // somebody else's program: crates.io's `rg` 14.1.1, unvouched, carrying only the note `cargo
+    // somebody else's program: crates.io's `rg` 14.1.1 as basalt packaged it, unvouched, carrying only the note `cargo
     // xtask foreign-note` linked in. `docs` is granted read-only because a word named it, and the
     // match is found there. `../hay/secret.txt` names the same directory's other file by a path
     // whose first component is not an entry here, so nothing is granted for it and `rg` cannot
@@ -732,7 +854,7 @@ pub(super) const SWISH_CHECK_SCRIPT: &[Line] = &[
     // space) gives `rg` more than one core. With no word naming anything `rg` holds no directory and asks for its working
     // directory, which the PAL refuses by design (its `sys/paths/nife.rs`),
     // so `rg` says so with a wrong guess ("did your CWD get deleted?"). Typed only when
-    // `helpers/build-ripgrep.sh` has run, as CI's rows do.
+    // `cargo xtask basalt-fetch` has run, as CI's rows do.
     line(0, "echo the needle outside the grant > secret.txt", &[]),
     line(
         0,
@@ -766,7 +888,7 @@ pub(super) const SWISH_CHECK_SCRIPT: &[Line] = &[
     // lists every directory it meets, opens every file, skips the binary ones itself, and prints
     // every matching line. The answer is wanted whole, so this line lists nothing here and
     // [`rg_walk_verdict`] compares it line for line with what the host's `rg` printed over the same
-    // copy. Typed only when `helpers/build-ripgrep.sh` has run, like the lines above.
+    // copy. Typed only when `cargo xtask basalt-fetch` has run, like the lines above.
     line(1, RG_WALK_LINE, &[]),
     line(0, "cd /", &[]),
     // **A note that asks more than its vouch allows is refused** (milestone 597, provisional).

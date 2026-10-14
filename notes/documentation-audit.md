@@ -3,8 +3,8 @@
 *Name: unrecorded. `documentation-audit.md`, and the phrase documentation sweep it introduces,
 are **provisional**, minted by milestone 93's lane on 2026-08-16 and not yet put to calef, who names
 things. `doc-audit.md` was passed over because the tree spells words out (`design/decisions/`, not
-`design/dec/`); `claim-rot.md` names the disease rather than the procedure, and this file is a
-procedure; `docs-versus-reality.md` is the **lens** the first sweep took, which is a row in an index
+`design/dec/`). `claim-rot.md` names the disease rather than the procedure, and this file is a
+procedure. `docs-versus-reality.md` is the **lens** the first sweep took, which is a row in an index
 rather than the name of the method.*
 
 A documentation sweep is milestone 92's audit mechanism pointed at a second target. 92 keeps the
@@ -16,14 +16,14 @@ is the index, and [milestone 93](../design/roadmap/0093-doc-audit-cadence.md), w
 ## What it is looking for, and what it is not
 
 **Claim rot**: a sentence that was true when it was written and that the tree has since moved past.
-A path that was renamed. A number that grew. A "currently" or a "still open" describing a state that
-ended. A plan a later decision superseded, still written in the future tense.
+A path that moved. A number that grew. A "currently" or a "still open" describing a state that
+ended. A plan a later decision overrode, still written in the future tense.
 
 The four exhibits that raised this milestone were all found in one day, 2026-08-03, and every one of
-them by accident, while somebody was looking for something else: `notes/verification.md` said
-the proof suite ran in "a few minutes" a month after that stopped being true; two roadmap status rows
-claimed more remained than their own blocks said; milestone 47's in-brief listed shipped work as
-pending; `notes/cpu-models.md`'s closing line prescribed a fix a later milestone had superseded. The
+them by accident, while somebody was looking for something else. `notes/verification.md` said the
+proof suite ran in "a few minutes" a month after that stopped being true. Two roadmap status rows
+claimed more remained than their own blocks said. The in-brief of milestone 47 (navigation and naming) listed shipped work as
+pending. `notes/cpu-models.md`'s closing line prescribed a fix a later milestone had replaced. The
 sweep exists so that finding these stops being luck.
 
 **It is not the other four things, and the boundaries are worth knowing before you start**, because
@@ -37,8 +37,8 @@ three of them are already somebody's job:
 | documentation that does not exist | milestone 68 (code-quality gates), milestone 40 (documentation as a system service), milestone 91 (a glossary) | a sweep audits prose against reality. It does not write missing prose, and it does not restructure it |
 
 The line between this and milestone 125 is the sharpest of the four and the easiest to blur, so say
-it in one sentence: **125 insists that a marked number be right and never that a number be marked;
-this is the reader who meets the unmarked ones.** 125 is a ratchet that a gate turns, this is a
+it in one line. **125 insists that a marked number be right and never that a number be marked. This
+is the reader who meets the unmarked ones.** 125 is a ratchet that a gate turns, this is a
 ratchet that a person turns, and part 3 below is how the second feeds the first.
 
 ## Running one
@@ -92,10 +92,10 @@ re-derive should not be left to a reader.
 The first sweep's worked example is in `script/lint`'s `==> environment names in prose` block. It
 found thirteen `CRICKER_*` environment variables in nine documents that name nothing the tree
 reads, survivors of milestone 120's rename, every one of them an instruction a reader would type and
-get nothing from. Fixing the nine a lane may edit took ten minutes; the gate that means there is
-never a fourteenth took thirty, and it derives
-liveness from the tree rather than spelling `NIFE_` into a rule, which is why it correctly passes the
-one document that names `CRICKER_CC` (`script/bootstrap` really does read it, so the *script* is the
+get nothing from. Fixing the nine a lane may edit took ten minutes. The gate that means there is
+never a fourteenth took thirty. It derives liveness from the tree rather than spelling `NIFE_` into
+a rule. That is why it correctly passes the one document that names `CRICKER_CC` (`script/bootstrap`
+really does read it, so the *script* is the
 stale one and the note is right).
 
 If nothing in your scope is convertible, say so in the report. That is a finding about the sweep, and

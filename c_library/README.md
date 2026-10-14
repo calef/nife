@@ -12,7 +12,8 @@ run in the suite on all three architectures:
 - **SQLite 3.50.4's `speedtest1`** (266,378 lines of C), in memory and on a file. Both runs print
   `Verification Hash: 111130 1e792c9db61996c477b8ab5ce2d690052e8dae74824a430a`, the hash of every
   value SQLite read back, which is what the same program prints on macOS.
-- **ioping 1.3**, timing five 4 KiB reads of a file it creates in its granted directory.
+- **ioping 1.3**, timing five 4 KiB reads of a file it creates in its granted directory. basalt
+  builds it as a package, and `cargo xtask basalt-fetch` fetches that package (milestone 906 (ioping is packaged in basalt)).
 - **hackbench** (rt-tests 2.11) in its thread mode: up to fourteen `pthread`s passing messages
   over pipes and socket pairs.
 
@@ -101,15 +102,16 @@ right is `EACCES`, no capability at all is `ENOSYS`. `crates/c_library_errno` ho
 
 ## EXAMPLES
 
-Build SQLite's `speedtest1` and ioping for all three architectures, then run them in the suite:
+Build SQLite's `speedtest1` for all three architectures, fetch basalt's ioping package, then run
+them in the suite:
 
 ```
 $ helpers/build-speedtest1.sh
 build-speedtest1: compiling SQLite 3.50.4 for aarch64-unknown-nife
 build-c-program: .../target/speedtest1/aarch64-unknown-nife/speedtest1 ( 1519664 bytes)
 ...
-$ helpers/build-ioping.sh
-...
+$ cargo xtask basalt-fetch
+basalt-fetch: ripgrep-14.1.1-aarch64, ..., ioping-1.3-x86_64 accepted from .../target/basalt
 $ script/test --arch aarch64 --test c_program_tests
 test system_tests::user::c_program_tests::unmodified_ioping_times_reads_in_a_granted_directory ...
 4 KiB <<< . (  0 B): request=1 time=25.5 ms (warmup)

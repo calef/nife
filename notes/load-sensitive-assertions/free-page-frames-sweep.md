@@ -12,7 +12,7 @@ a time, which is the expensive way to find the rest. This is the other way. It r
 fits, or that neither does and why.
 
 There are forty-six reads in the tree, and "46 sites" and "46 hazards" are different claims. One is
-the definition itself (`memory.rs`). Two are prose in doc comments recording that a site used to read
+the definition itself (`memory.rs`). Two are prose in doc comments recording that a site once read
 it. One is the companion `largest_free_run`'s cross-reference. That leaves 42 executable reads, in
 nine files.
 

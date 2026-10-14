@@ -154,11 +154,11 @@ and consequences of the encryption decision.
 
 ## Sequencing, and what was left
 
-Rewritten 2026-08-03 because everything it sequenced has happened. The GPT crate
-(2026-07-30), the transaction check (2026-07-31, answered yes), the host extraction tool
-(2026-07-30, the cheapest credibility win here), the extended-attribute layer and its recovery half
+Rewritten 2026-08-03 because everything it sequenced has happened. The GPT crate (2026-07-30), the
+transaction check (2026-07-31, answered yes), and the host extraction tool (2026-07-30, the cheapest
+credibility win here) are done. So are the extended-attribute layer and its recovery half
 (2026-07-31 and 2026-08-01), and the block-device path with a real table read on the target
-(2026-08-03) are all done. Real drives arrive with milestone 53; the board arrives around
+(2026-08-03). Real drives arrive with milestone 53 (the board's own peripherals); the board arrives around
 2026-08-21.
 
 The write half followed in commit `4db2fd74`. Partitioning needed only an entropy endpoint in the
@@ -196,7 +196,7 @@ scale, and so did the block-device lane.
   optional convenience rather than the answer to "can I get my data".
 - **Refused.** An indexed, typed attribute store in the BFS shape. Only opaque blobs are needed
   today, and every attribute already carries a `u32` type code the layer stores, returns and never
-  interprets, so an indexed store later is a change of implementation rather than a format migration
+  interprets. So an indexed store later is a change of implementation rather than a format migration
   plus a wire break.
   This refusal is milestone 486 (design/roadmap/0486-an-indexed-typed-attribute-store.md), which
   carries it with the condition that would change it.
@@ -214,10 +214,10 @@ scale, and so did the block-device lane.
   no GPT partition names, and the two tools disagree about the protective MBR's CHS fields.
 - **Done.** Partitioning on the target is built: `components/src/disk_partitioner.rs`, landed in commit
   `4db2fd74` ("disk: partition and format a disk on the target, with the two capabilities that takes",
-  2026-08-03). It holds exactly a block-service endpoint for one disk and an entropy endpoint, draws
-  four version-4 GUIDs, lays out three partitions through `Gpt::create` and writes both copies of the
-  table; its `ROLE_VERIFY` role reads the result back from a process holding no entropy at all, and
-  the negative control (the same binary with no entropy endpoint) writes nothing. The bullet above
+  2026-08-03). It holds exactly a block-service endpoint for one disk and an entropy endpoint. It
+  draws four version-4 GUIDs, lays out three partitions through `Gpt::create` and writes both copies
+  of the table. Its `ROLE_VERIFY` role reads the result back from a process holding no entropy at
+  all. The negative control (the same binary with no entropy endpoint) writes nothing. The bullet above
   was written before that landed.
 - **Done.** `mkfs` on the target is built: `redoxfs_server/src/bin/mkfs.rs`, in the same commit
   `4db2fd74`. The divergence it needed was taken and documented rather than left implicit:

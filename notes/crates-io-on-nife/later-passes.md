@@ -7,7 +7,7 @@ its reasoning.
 
 ## Six stale rows in the gap list
 
-Six rows in this table were stale until 2026-09-05 (milestone 259 (sweep)'s notes sweep), all in the
+Milestone 259 (sweep)'s notes sweep, 2026-09-05, found six stale rows in this table, all in the
 same direction: `Unsupported` where milestone 64 had since bound the call. The table's own
 annotations are what made it obvious, because five of the six carried a verb exists
 note. That is a gap list saying out loud that it is one binding away, and then not being reread

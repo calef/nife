@@ -1,109 +1,39 @@
-//! **`activation_set`**: what is installed, as a table that is never edited, only succeeded.
+//! **`activation_set`**: what is installed, as a table that is never edited, only succeeded (§208
+//! (installing a package is granting it, and the activation set is versioned)). The progenitor reads
+//! the live generation on every image spawn and looks the executable's digest up ([`lookup_digest`]);
+//! the shell reads it to resolve a bare word and preview `caps`. Both take the location from here
+//! (rule 7): a directory [`DIRECTORY`] holding [`CURRENT`] and one file per generation
+//! ([`generation_name`]).
 //!
-//! DECISIONS §208 (installing a package is granting it, and the activation set is versioned) ruled
-//! that installing *records that a package exists*, and that **the table of entries is versioned**
-//! so a set can be selected and rolled back as a whole. This crate is that table's logic, pure and
-//! host-tested, for whichever process DECISIONS §219 (how the shell names an installed program to
-//! the spawner) ends up giving it to. §219 gave it to the progenitor: since milestone 198 rung 3a's
-//! image lane (2026-09-26) the progenitor reads the live generation on every image spawn and looks
-//! the executable's digest up in it ([`lookup_digest`]).
-//!
-//! # Where it lives
-//!
-//! A directory [`DIRECTORY`] at the root of the file service, holding [`CURRENT`] and one file per
-//! generation named by its decimal number ([`generation_name`]). Both the progenitor, which reads
-//! and writes it, and the shell, which reads it to resolve a bare word and to preview `caps`, read
-//! the names from here, which is rule 7: what two programs agree on is a crate. Provisional, like
-//! the crate's name.
-//!
-//! # The shape, and why it is this one
-//!
-//! **A generation is a text file that is never rewritten.** Installing and removing each produce
-//! the *next* generation from the current one ([`with_entry`], [`without_entry`],
-//! [`without_version`]); a one-line `current` file names which generation is live
-//! ([`parse_current`], [`format_current`]). So a rollback is rewriting one line to name an older
-//! generation, and every older set is still on disk, whole, to be named. That is the Nix profile's
-//! arrangement (a generation is immutable, the profile is a pointer), recorded as recalled rather
-//! than re-read.
-//!
-//! **A generation carries two kinds of line** (milestone 614 (two installed versions of one
-//! program, each runnable, and a caller granted the one it needs), rulings 2 and 3 of 2026-09-29):
+//! **A generation is a text file that is never rewritten.** Install and remove write the next
+//! generation ([`with_entries`], [`with_entry`], [`without_package`]), and a one-line `current`
+//! names the live one ([`parse_current`], [`format_current`]), so a rollback rewrites one line, as
+//! a Nix profile does. A generation holds two kinds of line:
 //!
 //! ```text
 //! <digest> <program> <version> <package> <manager>   a row: what is installed, and who installed it
 //! default <program> <digest>                         the pointer: what the bare word runs
 //! ```
 //!
-//! A `<digest>` is written `sha256:<64 hex>`, the one text form `measured_boot::digest_text`
-//! writes and `measured_boot::parse_digest` reads (DECISIONS §197 (a package is one archive
-//! file), its digest ruling of 2026-10-07).
-//!
-//! **Rows key on the digest; `program`, `version` and `package` are label columns.** The digest is
-//! the packager's attestation (the program member's SHA-256, as installing verified it); the
-//! version string is the upstream developer's claim. A rebuild claiming a version string already
-//! live is a second row, visible, never a silent replacement, because its bytes are a different
-//! digest: two versions of one program coexist as two rows, which is what one row per program name
-//! could not hold. There is no architecture column: the digest is of target-specific bytes, so
-//! builds for two ISAs never collide in one table. There is no install datetime: the generation
-//! index is a total order with no clock in it.
-//!
-//! **The default pointer lives inside the generation file**, so a rollback restores the table and
-//! the default together and `current` stays the one commit point. Every install of a program moves
-//! its pointer: the bare word means the newest install, which was the implicit rule before and is
-//! now a written one. An owner's vouch ([`OWNER`]) claims no name (DECISIONS §229 (how a bare name
-//! at the prompt reaches an installed program), B2), so a vouch never writes a pointer and
-//! [`lookup`] never answers with one.
-//!
-//! **An owner's vouch row carries `-` in the version column** ([`NO_VERSION`]): the owner vouches
-//! for bytes, not for a version anyone claimed.
-//!
-//! **Strict, because this table decides what may be spawned.** A malformed line of either kind
-//! makes the whole table unreadable ([`Error::Malformed`]) rather than skipped, for `measured_boot`'s
-//! reason: a table that half-parses vouches for whatever survived.
-//!
-//! # EXAMPLES
-//!
-//! ```
-//! use activation_set::{lookup, with_entry, without_entry, Entry, NO_VERSION, OWNER};
-//!
-//! let digest = [7u8; 32];
-//! let uptime = Entry { program: "uptime", version: "0.1.0", package: "uptime", digest, manager: "jig" };
-//! let mut first = [0u8; 512];
-//! let n = with_entry("", &uptime, false, &mut first).unwrap();
-//! let generation_1 = core::str::from_utf8(&first[..n]).unwrap();
-//! assert_eq!(lookup(generation_1, "uptime").unwrap().unwrap().version, "0.1.0");
-//!
-//! let mut second = [0u8; 512];
-//! let n = without_entry(generation_1, "uptime", &mut second).unwrap();
-//! let generation_2 = core::str::from_utf8(&second[..n]).unwrap();
-//! assert!(lookup(generation_2, "uptime").unwrap().is_none());
-//! // Generation 1 is untouched, so rolling back is naming it again.
-//! assert!(lookup(generation_1, "uptime").unwrap().is_some());
-//!
-//! // A vouch is a row with no version and no pointer: found by digest, never by name.
-//! let vouch = Entry { program: "a.out", version: NO_VERSION, package: OWNER, digest, manager: OWNER };
-//! let mut third = [0u8; 512];
-//! let n = with_entry(generation_2, &vouch, false, &mut third).unwrap();
-//! let generation_3 = core::str::from_utf8(&third[..n]).unwrap();
-//! assert!(lookup(generation_3, "a.out").unwrap().is_none());
-//! ```
+//! A `<digest>` is `sha256:<64 hex>`, as `measured_boot::digest_text` writes it. **Rows key on the
+//! digest**, the packager's attestation; `program`, `version` and `package` are labels. A rebuild
+//! claiming a live version is a second, visible row, and two versions coexist. No architecture
+//! column (the digest is of target-specific bytes) and no clock (the generation index orders).
+//! The default pointer lives in the generation file, so a rollback restores it too, and every
+//! install moves it. An owner's vouch ([`OWNER`]) has version [`NO_VERSION`], claims no name
+//! (§229 (how a bare name at the prompt reaches an installed program)) and never writes a pointer.
+//! Any malformed line makes the whole table [`Error::Malformed`]: a half-parsed table would vouch
+//! for whatever survived.
 //!
 //! # BUGS
 //!
-//! - **Nothing collects old generations.** Every install leaves one file behind, which is what
-//!   makes rollback free and is also unbounded. A retention rule (keep N, keep the last boot's) is
-//!   owed before a system installs often.
-//! - **A table is read whole into memory**, and its size is whatever the caller's buffer is. With
-//!   the version column and the pointer lines a row costs about 140 bytes (the digest's `sha256:` label added seven on 2026-10-07), so thirty-odd entries
-//!   fit a page.
-//! - **One program per package row.** A package with two programs is two rows naming the same
-//!   package, which works and is not tested beyond that.
-//! - **The `current` file is the one mutable thing**, so its write is the commit point, and nothing
-//!   here makes that write atomic. On RedoxFS it is a one-line overwrite; whether a torn write of it
-//!   is possible was not checked.
+//! - Nothing collects old generations; a retention rule is owed before frequent installs.
+//! - A table is read whole into the caller's buffer, about 140 bytes a row.
+//! - A generation is read and written in one page by the progenitor, and a row with its pointer
+//!   takes about 170 bytes, so one generation holds about two dozen installed programs.
+//! - Nothing makes the `current` write atomic; a torn write on RedoxFS was not checked.
 //!
-//! Name: provisional 2026-09-24 (milestone 198 (a package manager)'s rung 3a consumer lane). §208's own phrase is
-//! "activation set", which is why; `design/naming.md` is the rule and calef's the call.
+//! Name: provisional: §208's own phrase.
 
 #![no_std]
 
@@ -133,9 +63,9 @@ pub enum Error {
     ///
     /// Name: provisional, milestone 47 (navigation and naming)'s bare-name lane, 2026-09-27.
     ImageName,
-    /// [`without_version`] refused: the version asked for holds the default pointer and more than
-    /// one other version remains, so no ordering among live versions exists to pick a new default
-    /// with. The caller names the candidates with [`versions_of`]. Nothing is written. The same
+    /// [`without_package`] refused: the version asked for holds a program's default pointer and
+    /// more than one other version of that program remains, so no ordering among live versions
+    /// exists to pick a new default with. The caller names the candidates with [`versions_of`]. Nothing is written. The same
     /// word as `package_archive::CatalogMiss::SeveralVersions`, for the same condition.
     ///
     /// Name: ratified 2026-10-07 (calef, §258 (names for two installed versions of one program)).
@@ -172,7 +102,7 @@ pub struct Entry<'a> {
 }
 
 /// **A default pointer line**: the row the bare word for `program` runs ([`lookup`]). Read with
-/// [`defaults`], written by [`with_entry`] and [`without_entry`]. The `default` line kind was
+/// [`defaults`], written by [`with_entries`] and [`without_package`]. The `default` line kind was
 /// ratified 2026-10-07 by calef (§258 (names for two installed versions of one program)); this
 /// struct's own name was not ruled on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -334,9 +264,8 @@ pub fn lookup_digest<'a>(table: &'a str, digest: &Digest) -> Result<Option<Entry
 }
 
 /// **The package row for this program at this version**, first in file order: what a version set's
-/// `<program> <version>` line resolves to at activation, and what `jig remove
-/// <program>@<version>` removes. Owner's vouches are not versions and never answer. A rebuild
-/// claiming a version already live is a second row, so the first is answered; the digest decides
+/// `<program> <version>` line resolves to at activation. Owner's vouches are not versions and
+/// never answer. A rebuild claiming a version already live is a second row, so the first is answered; the digest decides
 /// what runs either way. Name: provisional, milestone 614's build lane, 2026-09-29.
 pub fn lookup_version<'a>(
     table: &'a str,
@@ -373,45 +302,184 @@ pub fn versions_of<'a>(
     })
 }
 
-/// The next generation: `table` with `entry` installed. Returns the length written to `out`.
+/// The next generation: `table` with `entry` installed, its length written to `out`. **Upsert by
+/// digest, then move the pointer**:
 ///
-/// **Upsert by digest, then move the pointer** (milestone 614, rulings 2 and 3):
-///
-/// - a package row with the same program **and the same digest is replaced in place**, labels and
-///   all: the bytes are the identity, and reinstalling them under a new version string relabels
-///   the row;
-/// - the same package at a **new digest is a second row**: what one row per program name could not
-///   hold, two versions of one program, is the point;
+/// - the same program **and digest replaces its row in place**, relabelling it;
+/// - the same package at a **new digest is a second row**: two versions of one program;
 /// - another package's claim on the name is still [`Error::Taken`], and nothing is written;
-/// - an owner's vouch and a package's row **sit side by side**. A vouch is found by digest and
-///   never by name ([`lookup`]), so neither displaces the other. A later vouch of a name replaces
-///   the earlier vouch of that name, as it did before rows keyed on digest.
+/// - an owner's vouch and a package's row **sit side by side**, since a vouch is found by digest
+///   and never by name ([`lookup`]); a later vouch of a name replaces the earlier one.
 ///
-/// A package install also **writes the program's default pointer**: the bare word means the newest
-/// install. A vouch writes none, because it claims no name.
+/// A package install also **writes the program's default pointer** (the bare word means the newest
+/// install); a vouch writes none. `image_carries`, whether the running image has a program of that
+/// name, makes a package's row [`Error::ImageName`] (§229), before [`Error::Taken`]; it is a
+/// required argument so an installer cannot forget to ask. [`with_entries`] takes several rows.
 ///
-/// `image_carries` is whether the running image has a program named `entry.program`. A package's
-/// row under such a name is [`Error::ImageName`] (§229, 2026-09-27), checked before
-/// [`Error::Taken`]; a vouch ignores it. It is a required argument rather than a second function
-/// so an installer cannot forget to ask.
+/// # Examples
+///
+/// ```
+/// use activation_set::{lookup, with_entry, without_package, Entry, NO_VERSION, OWNER};
+///
+/// let digest = [7u8; 32];
+/// let uptime = Entry { program: "uptime", version: "0.1.0", package: "uptime", digest, manager: "jig" };
+/// let mut first = [0u8; 512];
+/// let n = with_entry("", &uptime, false, &mut first).unwrap();
+/// let generation_1 = core::str::from_utf8(&first[..n]).unwrap();
+/// assert_eq!(lookup(generation_1, "uptime").unwrap().unwrap().version, "0.1.0");
+///
+/// let mut second = [0u8; 512];
+/// let n = without_package(generation_1, "uptime", None, &mut second).unwrap();
+/// let generation_2 = core::str::from_utf8(&second[..n]).unwrap();
+/// assert!(lookup(generation_2, "uptime").unwrap().is_none());
+/// // Generation 1 is untouched, so rolling back is naming it again.
+/// assert!(lookup(generation_1, "uptime").unwrap().is_some());
+///
+/// // A vouch is a row with no version and no pointer: found by digest, never by name.
+/// let vouch = Entry { program: "a.out", version: NO_VERSION, package: OWNER, digest, manager: OWNER };
+/// let mut third = [0u8; 512];
+/// let n = with_entry(generation_2, &vouch, false, &mut third).unwrap();
+/// let generation_3 = core::str::from_utf8(&third[..n]).unwrap();
+/// assert!(lookup(generation_3, "a.out").unwrap().is_none());
+/// ```
 pub fn with_entry(
     table: &str,
     entry: &Entry<'_>,
     image_carries: bool,
     out: &mut [u8],
 ) -> Result<usize, Error> {
-    if !good_name(entry.program)
-        || !good_name(entry.version)
-        || !good_name(entry.package)
-        || !good_name(entry.manager)
-    {
-        return Err(Error::BadName);
+    with_entries(table, || core::iter::once(*entry), |_| image_carries, out).map_err(|r| r.error)
+}
+
+/// **Why [`with_entries`] refused, and over which row**: the error, the program it is about, and
+/// for [`Error::Taken`] the package that already holds that program's name, so the refusal can
+/// tell the owner what to remove first (calef, 2026-10-14 (UTC), milestone 919 (a package carries
+/// several programs): "If two packages offer the same program name, refuse the second package.
+/// Need to remove the first one before installing the second one.").
+///
+/// Name: provisional, milestone 919's lane, 2026-10-14 (UTC).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Refused<'a> {
+    /// What was wrong.
+    pub error: Error,
+    /// The program the refusal is about, when it is about one row.
+    pub program: Option<&'a str>,
+    /// For [`Error::Taken`], the package whose row holds the name.
+    pub holder: Option<&'a str>,
+}
+
+impl From<Error> for Refused<'_> {
+    fn from(error: Error) -> Self {
+        Refused {
+            error,
+            program: None,
+            holder: None,
+        }
+    }
+}
+
+/// [`with_entry`] for several rows at once: **every program of one package, in one generation**
+/// (milestone 919 (a package carries several programs); §208 (installing a package is granting
+/// it, and the activation set is versioned): one install is one generation, and one rollback
+/// undoes it). Every row is checked before a byte is written, so one refused program refuses the
+/// whole package and `out` means nothing. `entries` is called once per pass and must yield the same
+/// rows each time; `image_carries` answers, for one program's name, what [`with_entry`]'s flag
+/// answers for its one.
+pub fn with_entries<'a, I>(
+    table: &'a str,
+    entries: impl Fn() -> I,
+    image_carries: impl Fn(&str) -> bool,
+    out: &mut [u8],
+) -> Result<usize, Refused<'a>>
+where
+    I: Iterator<Item = Entry<'a>>,
+{
+    for entry in entries() {
+        refuse_entry(table, &entry, image_carries(entry.program))?;
+    }
+    let mut writer = Writer { out, at: 0 };
+    write_rows(table, &entries, &mut writer)?;
+    write_pointers(table, &entries, &mut writer)?;
+    Ok(writer.at)
+}
+
+/// [`with_entries`]' rows: each existing row, or the entry that [`replaces`] it, then each entry
+/// that replaced none. Out of line, as [`write_pointers`] is, so the passes' iterators do not share
+/// one frame: inlined together they came to 4,624 bytes on riscv64, over the kernel's 4,096-byte
+/// guard page (`script/stack-frame-check`).
+#[inline(never)]
+fn write_rows<'a, I>(
+    table: &'a str,
+    entries: &impl Fn() -> I,
+    writer: &mut Writer<'_>,
+) -> Result<(), Error>
+where
+    I: Iterator<Item = Entry<'a>>,
+{
+    for existing in self::entries(table) {
+        let existing = existing?;
+        match entries().find(|e| replaces(&existing, e)) {
+            Some(entry) => writer.entry(&entry)?,
+            None => writer.entry(&existing)?,
+        }
+    }
+    for entry in entries() {
+        if !self::entries(table).flatten().any(|e| replaces(&e, &entry)) {
+            writer.entry(&entry)?;
+        }
+    }
+    Ok(())
+}
+
+/// [`with_entries`]' pointers: each existing pointer, moved to a package entry of its program,
+/// then one for each package entry whose program had none. A vouch writes no pointer.
+#[inline(never)]
+fn write_pointers<'a, I>(
+    table: &'a str,
+    entries: &impl Fn() -> I,
+    writer: &mut Writer<'_>,
+) -> Result<(), Error>
+where
+    I: Iterator<Item = Entry<'a>>,
+{
+    for existing in defaults(table) {
+        let existing = existing?;
+        match entries().find(|e| e.package != OWNER && e.program == existing.program) {
+            Some(entry) => writer.pointer(entry.program, &entry.digest)?,
+            None => writer.pointer(existing.program, &existing.digest)?,
+        }
+    }
+    for entry in entries().filter(|e| e.package != OWNER) {
+        if !defaults(table)
+            .flatten()
+            .any(|p| p.program == entry.program)
+        {
+            writer.pointer(entry.program, &entry.digest)?;
+        }
+    }
+    Ok(())
+}
+
+/// Whether `entry` may join `table`: its names read back, a package's program is not the image's
+/// (§229, calef's ruling of 2026-09-27), and no other package holds its name (§229 B2).
+fn refuse_entry<'a>(
+    table: &'a str,
+    entry: &Entry<'a>,
+    image_carries: bool,
+) -> Result<(), Refused<'a>> {
+    let about = |error, holder| Refused {
+        error,
+        program: Some(entry.program),
+        holder,
+    };
+    let names = [entry.program, entry.version, entry.package, entry.manager];
+    if !names.iter().all(|n| good_name(n)) {
+        return Err(about(Error::BadName, None));
     }
     let vouch = entry.package == OWNER;
     if !vouch && image_carries {
-        return Err(Error::ImageName);
+        return Err(about(Error::ImageName, None));
     }
-    // Refuse before writing a byte, so a refused install leaves `out` meaning nothing.
     for existing in entries(table) {
         let existing = existing?;
         if !vouch
@@ -419,155 +487,109 @@ pub fn with_entry(
             && existing.package != OWNER
             && existing.package != entry.package
         {
-            return Err(Error::Taken);
+            return Err(about(Error::Taken, Some(existing.package)));
         }
     }
+    Ok(())
+}
+
+/// Whether `entry` takes `existing`'s place rather than joining beside it: a package row of the
+/// same program and digest (a relabel), or any earlier vouch of the same name.
+fn replaces(existing: &Entry<'_>, entry: &Entry<'_>) -> bool {
+    let vouch = entry.package == OWNER;
+    (existing.package == OWNER) == vouch
+        && existing.program == entry.program
+        && (vouch || existing.digest == entry.digest)
+}
+
+/// The next generation: `table` without the package `package`, or without its version `version`.
+/// **The verb's object is the package** (calef, 2026-10-14 (UTC), milestone 919 (a package
+/// carries several programs): "jig remove should work on packages, not programs."): every row the
+/// package wrote goes, whatever its programs are called, and the pointers with them, so no bare
+/// word the package gave reaches anything.
+///
+/// With a version, only that version's rows go. A program whose pointer named a removed row
+/// points at the package's one version still live for it, and the removal is
+/// [`Error::SeveralVersions`] when several remain, because no ordering among live versions exists
+/// to pick with; the caller names them with [`versions_of`]. An owner's vouch is not a package and
+/// stays; a rollback is what undoes a vouch. The bytes stay where they are, which is what lets a
+/// rollback bring the package back. Removing what is not installed is [`Error::NotInstalled`]
+/// rather than an identical generation. Nothing is written on a refusal.
+///
+/// Name: provisional, milestone 919's lane, 2026-10-14 (UTC).
+pub fn without_package(
+    table: &str,
+    package: &str,
+    version: Option<&str>,
+    out: &mut [u8],
+) -> Result<usize, Error> {
+    let gone = |e: &Entry<'_>| {
+        e.package == package && e.package != OWNER && version.is_none_or(|v| e.version == v)
+    };
+    let mut removed = false;
+    for existing in entries(table) {
+        removed |= gone(&existing?);
+    }
+    if !removed {
+        return Err(Error::NotInstalled);
+    }
+    // Refuse before writing a byte: every pointer that moves must have one place to go.
+    // Two pointers for one program are no single answer, and are malformed here as in [`lookup`].
+    for pointer in defaults(table) {
+        let pointer = pointer?;
+        default_of(table, pointer.program)?;
+        moved_pointer(table, &pointer, &gone)?;
+    }
     let mut writer = Writer { out, at: 0 };
-    let mut replaced = false;
     for existing in entries(table) {
         let existing = existing?;
-        let same_kind = (existing.package == OWNER) == vouch;
-        let replaced_here = same_kind
-            && existing.program == entry.program
-            && if vouch {
-                // A later vouch of a name replaces the earlier one, whatever its digest.
-                true
-            } else {
-                existing.digest == entry.digest
-            };
-        if replaced_here {
-            writer.entry(entry)?;
-            replaced = true;
-        } else {
+        if !gone(&existing) {
             writer.entry(&existing)?;
         }
     }
-    if !replaced {
-        writer.entry(entry)?;
-    }
-    let mut pointed = false;
-    for existing in defaults(table) {
-        let existing = existing?;
-        if !vouch && existing.program == entry.program {
-            writer.pointer(entry.program, &entry.digest)?;
-            pointed = true;
-        } else {
-            writer.pointer(existing.program, &existing.digest)?;
+    for pointer in defaults(table) {
+        let pointer = pointer?;
+        if let Some(digest) = moved_pointer(table, &pointer, &gone)? {
+            writer.pointer(pointer.program, &digest)?;
         }
-    }
-    if !vouch && !pointed {
-        writer.pointer(entry.program, &entry.digest)?;
     }
     Ok(writer.at)
 }
 
-/// The next generation: `table` without `program`. **The verb's object is the program** (milestone
-/// 614, ruling 5): every live version's row goes, and the program's pointer with them, so the bare
-/// word reaches nothing. An owner's vouch of the same name is not a package and stays; a rollback
-/// is what undoes a vouch. The bytes stay where they are, which is what lets a rollback bring every
-/// version back. Removing what is not installed is [`Error::NotInstalled`] rather than an identical
-/// generation, because an uninstall that silently did nothing is a report the caller should see.
-pub fn without_entry(table: &str, program: &str, out: &mut [u8]) -> Result<usize, Error> {
-    let mut writer = Writer { out, at: 0 };
-    let mut removed = false;
-    for existing in entries(table) {
-        let existing = existing?;
-        if existing.program == program && existing.package != OWNER {
-            removed = true;
-        } else {
-            writer.entry(&existing)?;
-        }
-    }
-    for existing in defaults(table) {
-        let existing = existing?;
-        if existing.program != program {
-            writer.pointer(existing.program, &existing.digest)?;
-        }
-    }
-    if removed {
-        Ok(writer.at)
-    } else {
-        Err(Error::NotInstalled)
-    }
-}
-
-/// The next generation: `table` without the one row for `program` at `version`, first in file
-/// order (milestone 614, ruling 5). Removing a version that is not the default leaves the pointer
-/// alone. Removing **the default's version** moves the pointer to the sole remaining version, and
-/// is [`Error::SeveralVersions`] when several remain, because no ordering among live versions exists to
-/// pick with: the caller names the candidates with [`versions_of`]. Nothing is written on a
-/// refusal.
-///
-/// Name: ratified 2026-10-07 (calef, §258 (names for two installed versions of one program)).
-pub fn without_version(
+/// Where `pointer` points once the rows `gone` matches are removed: where it did while a
+/// surviving package row of its program has that digest; else the first surviving row of the one
+/// version left; `None` when no row of the program survives; [`Error::SeveralVersions`] when
+/// several versions do. Survivors are counted by version, so two rows at one version string (a
+/// rebuild) are one survivor.
+fn moved_pointer(
     table: &str,
-    program: &str,
-    version: &str,
-    out: &mut [u8],
-) -> Result<usize, Error> {
-    // Refuse before writing a byte, as [`with_entry`] does. One pass decides: the row to remove,
-    // whether it holds the pointer, and what would survive it. Survivors are counted by *version*,
-    // because the pointer's rule and the refusal's candidates are both about versions: two rows at
-    // one version string (a rebuild) are one survivor, and the pointer moves to the first of them.
-    let mut target = None;
+    pointer: &Pointer<'_>,
+    gone: &impl Fn(&Entry<'_>) -> bool,
+) -> Result<Option<Digest>, Error> {
     let mut survivor: Option<Entry<'_>> = None;
     let mut uniform = true;
     for existing in entries(table) {
         let existing = existing?;
-        if existing.program != program || existing.package == OWNER {
+        if existing.program != pointer.program || existing.package == OWNER || gone(&existing) {
             continue;
         }
-        let is_target = existing.version == version && target.is_none();
-        if is_target {
-            target = Some(existing);
-        } else {
-            if let Some(first) = survivor {
-                uniform &= first.version == existing.version;
-            }
-            if survivor.is_none() {
-                survivor = Some(existing);
-            }
+        if existing.digest == pointer.digest {
+            return Ok(Some(pointer.digest));
+        }
+        match survivor {
+            Some(first) => uniform &= first.version == existing.version,
+            None => survivor = Some(existing),
         }
     }
-    let Some(target) = target else {
-        return Err(Error::NotInstalled);
-    };
-    let move_pointer = default_of(table, program)?.is_some_and(|d| d == target.digest);
-    if move_pointer && !uniform {
+    if !uniform {
         return Err(Error::SeveralVersions);
     }
-    let mut writer = Writer { out, at: 0 };
-    let mut skipped = false;
-    for existing in entries(table) {
-        let existing = existing?;
-        let same_row = !skipped
-            && existing.program == target.program
-            && existing.version == target.version
-            && existing.digest == target.digest;
-        if same_row {
-            skipped = true;
-        } else {
-            writer.entry(&existing)?;
-        }
-    }
-    for existing in defaults(table) {
-        let existing = existing?;
-        if existing.program == program && move_pointer {
-            match &survivor {
-                // The last version went with the pointer; a program with no rows keeps none.
-                None => continue,
-                Some(survivor) => writer.pointer(program, &survivor.digest)?,
-            }
-        } else {
-            writer.pointer(existing.program, &existing.digest)?;
-        }
-    }
-    Ok(writer.at)
+    Ok(survivor.map(|s| s.digest))
 }
 
 /// The program's default pointer's digest, as [`lookup`] reads it: `None` when the program has no
 /// pointer, [`Error::Malformed`] on two. Internal because [`lookup`] is the ruled reader;
-/// [`without_version`] needs the digest to compare against.
+/// [`without_package`] checks it is one.
 fn default_of(table: &str, program: &str) -> Result<Option<Digest>, Error> {
     let mut found = None;
     let mut count = 0usize;
@@ -819,15 +841,15 @@ mod tests {
             let n = with_entry(self.table(), &entry, false, &mut out).unwrap();
             self.commit(&out[..n]);
         }
-        fn remove(&mut self, program: &str) -> Result<(), Error> {
+        fn remove(&mut self, package: &str) -> Result<(), Error> {
             let mut out = vec![0u8; 4096];
-            let n = without_entry(self.table(), program, &mut out)?;
+            let n = without_package(self.table(), package, None, &mut out)?;
             self.commit(&out[..n]);
             Ok(())
         }
-        fn remove_version(&mut self, program: &str, version: &str) -> Result<(), Error> {
+        fn remove_version(&mut self, package: &str, version: &str) -> Result<(), Error> {
             let mut out = vec![0u8; 4096];
-            let n = without_version(self.table(), program, version, &mut out)?;
+            let n = without_package(self.table(), package, Some(version), &mut out)?;
             self.commit(&out[..n]);
             Ok(())
         }
@@ -931,7 +953,7 @@ mod tests {
         );
 
         let mut m = [0u8; 512];
-        let n = without_entry(&t3, "uptime", &mut m).unwrap();
+        let n = without_package(&t3, "uptime", None, &mut m).unwrap();
         let t4 = core::str::from_utf8(&m[..n]).unwrap();
         assert!(lookup(t4, "uptime").unwrap().is_none());
         assert_eq!(lookup_digest(t4, &[4; 32]).unwrap().unwrap().package, OWNER);
@@ -1017,8 +1039,8 @@ mod tests {
         );
     }
 
-    /// **The version-qualified removal, ruling 5**: removing one version leaves the other; removing
-    /// the default's version moves the pointer to the sole survivor; and with several remaining the
+    /// **The version-qualified removal** (`jig remove <package>@<version>`): removing one version
+    /// leaves the other; removing the default's version moves the pointer to the sole survivor; and with several remaining the
     /// removal refuses and [`versions_of`] names the candidates. Removing a version that does not
     /// hold the pointer leaves the pointer alone.
     #[test]
@@ -1048,7 +1070,7 @@ mod tests {
         let newest = store.newest();
         let mut out = [0u8; 4096];
         assert_eq!(
-            without_version(store.table(), "uptime", "0.4.0", &mut out),
+            without_package(store.table(), "uptime", Some("0.4.0"), &mut out),
             Err(Error::SeveralVersions)
         );
         assert_eq!(store.newest(), newest, "a refusal writes no generation");
@@ -1066,7 +1088,7 @@ mod tests {
     }
 
     /// **Bare removal at two versions live, milestone 614's second Done-means test**:
-    /// `jig remove <program>` takes every live version's row and the pointer, and a rollback
+    /// `jig remove <package>` takes every live version's row and the pointer, and a rollback
     /// brings both rows back, because bytes are never deleted.
     #[test]
     fn bare_removal_takes_every_version_and_a_rollback_brings_them_back() {
@@ -1119,7 +1141,7 @@ mod tests {
     /// Two programs installed, one upgraded beside itself, one removed; selecting the generation
     /// before both changes brings back the old version of the first and the presence of the second
     /// together. The pointer rides along: a generation is one snapshot of rows and pointer
-    /// (milestone 614, ruling 5).
+    /// (milestone 614 (two installed versions of one program, each runnable)).
     #[test]
     fn a_rollback_restores_the_whole_set() {
         let mut store = Store::new();
@@ -1428,12 +1450,12 @@ mod tests {
         let table = format!("{a} p 1 pkg\n{b} p 2 pkg\ndefault p {a}\ndefault p {b}\n");
         let mut out = [0u8; 512];
         assert_eq!(
-            without_version(&table, "p", "1", &mut out),
+            without_package(&table, "pkg", Some("1"), &mut out),
             Err(Error::Malformed)
         );
     }
 
-    /// Removing one program's version looks only at that program's rows: another program, and
+    /// Removing one version of a package looks only at that package's rows: another program, and
     /// the owner's vouch for this one, are not survivors, so they cannot make the removal
     /// ambiguous or take the pointer.
     #[test]
@@ -1474,16 +1496,130 @@ mod tests {
         assert_eq!(store.bare_version_of("date").unwrap(), "1.0.0");
     }
 
-    /// A qualified removal takes one row. Two rows sharing a digest (a hand-written table; an
-    /// install relabels instead) are not both taken because they agree on it.
+    /// A qualified removal takes its version's rows only. Two rows sharing a digest (a
+    /// hand-written table; an install relabels instead) are not both taken because they agree on
+    /// it, and the pointer stays on the digest the survivor still carries.
     #[test]
     fn a_qualified_removal_takes_one_row_even_when_a_digest_repeats() {
         let a = format!("sha256:{}", "11".repeat(32));
         let table = format!("{a} p 1 pkg\n{a} p 2 pkg\ndefault p {a}\n");
         let mut out = [0u8; 512];
-        let n = without_version(&table, "p", "2", &mut out).unwrap();
+        let n = without_package(&table, "pkg", Some("2"), &mut out).unwrap();
         let after = core::str::from_utf8(&out[..n]).unwrap();
         assert_eq!(versions_of(after, "p").count(), 1);
         assert!(lookup_version(after, "p", "1").unwrap().is_some());
+    }
+
+    /// Why [`install_package`] refused: the error, the program and the holder, owned.
+    type Why = (Error, Option<String>, Option<String>);
+
+    /// Install every row of one package as one generation, or say why not.
+    fn install_package(store: &mut Store, rows: &[Entry<'_>]) -> Result<(), Why> {
+        let mut out = vec![0u8; 4096];
+        let table = store.table().to_string();
+        let n = with_entries(&table, || rows.iter().copied(), |p| p == "ls", &mut out).map_err(
+            |r| {
+                let owned = |n: Option<&str>| n.map(String::from);
+                (r.error, owned(r.program), owned(r.holder))
+            },
+        )?;
+        store.commit(&out[..n]);
+        Ok(())
+    }
+
+    /// **A package's programs are one install** (milestone 919 (a package carries several
+    /// programs)): two programs named unlike their package are two rows and two pointers in one
+    /// generation, each bare word finding its own row, and a rollback of one step undoes both.
+    #[test]
+    fn a_package_with_two_programs_is_one_generation_with_a_row_and_pointer_each() {
+        let mut store = Store::new();
+        store.install(row("date", "date", "1.0.0", 9));
+        let before = store.current();
+        install_package(
+            &mut store,
+            &[
+                row("alto", "duet", "0.1.0", 1),
+                row("tenor", "duet", "0.1.0", 2),
+            ],
+        )
+        .unwrap();
+        assert_eq!(
+            store.current(),
+            before + 1,
+            "one generation for the package"
+        );
+        let table = store.table();
+        assert_eq!(lookup(table, "alto").unwrap().unwrap().digest, [1; 32]);
+        assert_eq!(lookup(table, "tenor").unwrap().unwrap().digest, [2; 32]);
+        assert!(
+            lookup(table, "duet").unwrap().is_none(),
+            "the package is not a program"
+        );
+        assert_eq!(defaults(table).count(), 3);
+        store.select(before);
+        assert_eq!(store.bare_version_of("alto"), None);
+        assert_eq!(store.bare_version_of("tenor"), None);
+    }
+
+    /// **calef, 2026-10-14 (UTC): "If two packages offer the same program name, refuse the second
+    /// package. Need to remove the first one before installing the second one."** One held name
+    /// refuses the whole second package, naming the program and the package that holds it, and
+    /// writes nothing; once the holder is removed, the second package installs. A program whose
+    /// name the image carries refuses its whole package the same way.
+    #[test]
+    fn a_held_name_refuses_the_whole_second_package_until_the_holder_is_removed() {
+        let mut store = Store::new();
+        install_package(
+            &mut store,
+            &[
+                row("alto", "duet", "0.1.0", 1),
+                row("tenor", "duet", "0.1.0", 2),
+            ],
+        )
+        .unwrap();
+        let newest = store.newest();
+        let solo = [row("bass", "solo", "1", 3), row("alto", "solo", "1", 4)];
+        assert_eq!(
+            install_package(&mut store, &solo),
+            Err((Error::Taken, Some("alto".into()), Some("duet".into())))
+        );
+        assert_eq!(store.newest(), newest, "a refusal writes no generation");
+        assert_eq!(store.bare_version_of("bass"), None, "not installed in part");
+
+        let image = [row("bass", "solo", "1", 3), row("ls", "solo", "1", 5)];
+        assert_eq!(
+            install_package(&mut store, &image),
+            Err((Error::ImageName, Some("ls".into()), None))
+        );
+
+        store.remove("duet").unwrap();
+        install_package(&mut store, &solo).unwrap();
+        assert_eq!(
+            lookup(store.table(), "alto").unwrap().unwrap().package,
+            "solo"
+        );
+    }
+
+    /// **calef, 2026-10-14 (UTC): "jig remove should work on packages, not programs."** Removing
+    /// a package takes every program it installed and their pointers, and nothing of another
+    /// package's; a program's name is not a package and removes nothing.
+    #[test]
+    fn removing_a_package_takes_every_program_it_installed() {
+        let mut store = Store::new();
+        store.install(row("date", "date", "1.0.0", 9));
+        install_package(
+            &mut store,
+            &[
+                row("alto", "duet", "0.1.0", 1),
+                row("tenor", "duet", "0.1.0", 2),
+            ],
+        )
+        .unwrap();
+        assert_eq!(store.remove("alto"), Err(Error::NotInstalled));
+        store.remove("duet").unwrap();
+        assert_eq!(store.bare_version_of("alto"), None);
+        assert_eq!(store.bare_version_of("tenor"), None);
+        assert_eq!(store.bare_version_of("date").unwrap(), "1.0.0");
+        assert_eq!(defaults(store.table()).count(), 1);
     }
 }

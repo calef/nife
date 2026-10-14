@@ -1,15 +1,7 @@
-//! **nifefs**: a filesystem so simple it fits in a comment.
-//!
-//! Read-only, flat (no directories), fixed-size everything. It exists to be *parsed*, not to be
-//! good, in the same spirit as `crates/elf`: the point of milestone 9 is drivers and block I/O,
-//! not filesystem design, so the on-disk format is the least thing that is still a real
-//! filesystem.
-//!
-//! Pure logic, host-tested, no `std`. The kernel's disk tool writes an image with [`write_image`]
-//! and the userspace filesystem server reads it with [`Fs::parse`], so **one definition of the
-//! format serves both**, and a test writes an image and reads it back.
-//!
-//! # The layout
+//! **nifefs**: a filesystem so simple it fits in a comment. Read-only, flat, fixed-size
+//! everything: it exists to be parsed, as `crates/elf` does, and it is the boot archive. The disk
+//! tool writes an image with [`write_image`] and the userspace filesystem server reads it with
+//! [`Fs::parse`], so one definition of the format serves both. Pure logic, host-tested, no `std`.
 //!
 //! ```text
 //!   blocks 0..DIR_BLOCKS   the superblock and directory
@@ -23,72 +15,27 @@
 //!   blocks DIR_BLOCKS..     file data, each file block-aligned
 //! ```
 //!
-//! The directory is [`DIR_BLOCKS`] blocks, holding the magic, the count, and up to [`MAX_FILES`]
-//! entries. It grew from one block to two under DECISIONS §24 (interrupting the foreground
-//! process), when the interactive system plus its demo programs passed fifteen files; to four on
-//! 2026-07-30 (three lanes landing together made 32); and to six on 2026-08-01 when the entries
-//! got wider. `start_block` is an absolute block number, so a
-//! reader never needs to know `DIR_BLOCKS` to find data; only the writer places it.
-//!
-//! # Names
-//!
-//! A name is at most [`NAME_LEN`] bytes and is **not** NUL-terminated when it uses all of them, so a
-//! reader compares against `NAME_LEN` bytes and stops at the first NUL if there is one.
-//! [`write_image`] refuses a longer name rather than truncating it; see BUGS.
-//!
-//! # EXAMPLES
-//!
-//! Pack two files and read one back:
-//!
-//! ```
-//! # use nifefs::{Fs, image_size, write_image};
-//! let files: [(&str, &[u8]); 2] = [("motd", b"welcome\n"), ("os_primitives_benchmarker", b"\x7fELF")];
-//! let mut img = vec![0u8; image_size(&files)];
-//! write_image(&files, &mut img).unwrap();
-//!
-//! let fs = Fs::parse(&img).unwrap();
-//! assert_eq!(fs.read("motd"), Some(&b"welcome\n"[..]));
-//! assert_eq!(fs.len(), 2);
-//! ```
+//! The directory is [`DIR_BLOCKS`] blocks, holding up to [`MAX_FILES`] entries. `start_block` is
+//! absolute, so a reader never needs `DIR_BLOCKS` to find data; only the writer places it. A name
+//! is at most [`NAME_LEN`] bytes and unterminated when full, so readers compare `NAME_LEN` bytes and
+//! stop at the first NUL.
 //!
 //! # BUGS
 //!
-//! - **A name longer than [`NAME_LEN`] is an error, not a truncation.** It used to be silently
-//!   truncated, which is the worse failure: two long names that agree in their first `NAME_LEN`
-//!   bytes become one entry, and `init` loads whichever program happened to be packed first. The
-//!   build now stops with [`Error::NameTooLong`].
-//! - **A name containing a NUL is an error too**, and for the same reason: the padding is NUL and
-//!   every reader stops at the first one, so `"a\0b"` would be written and read back as `"a"`.
-//!   [`Error::NameHasNul`]. This one survived the truncation fix because nobody thought to write a
-//!   name with a NUL in it; `fuzz/fuzz_targets/nifefs_roundtrip` did, in under a minute.
-//! - **A duplicate name is NOT an error, and the first one wins.** [`Fs::read`] returns the first
-//!   entry whose name matches, so packing two files under one name silently hides the second. The
-//!   disk tool builds its file list from a directory listing, where names are unique by
-//!   construction, which is why this has never bitten; nothing in the format prevents it.
-//! - **[`MAX_FILES`] is a ceiling that grows with the SUITE, not with the system**, so the cost is
-//!   invisible to each branch that causes it and lands on whoever merges. Three lanes landing
-//!   together on 2026-07-30 pushed the archive from 31 files to 32 and forced a directory resize.
-//! - **`a_short_image_is_refused_not_indexed` is the expensive proof in this tree**, and the cost
-//!   belongs to the harness rather than to any one machine. Replaying its falsification took
-//!   **20 to 31 minutes** and drove the solver to **3.0-3.6 GB**, against seconds and a few
-//!   hundred megabytes for every other record in `crates/`; 3.5 GB is the ceiling AGENTS.md
-//!   records for one harness on the dev Mac. Those numbers were taken on patagonia under load
-//!   from concurrent lanes, so read them as an order of magnitude and not as a benchmark.
-//!   `package_archive`'s `a_short_file_is_refused` behaves the same way, which is the part worth
-//!   keeping: both are "a short input is refused" shapes, and a length check against a wholly
-//!   symbolic buffer is what the solver has to case-split on. Anyone wondering why a falsification
-//!   sweep takes forty minutes is looking at these two.
-//! - **A reader holding one block cannot see the whole directory.** The EL0 blk driver
-//!   (`crates/virtio`) buffers block 0 only, so it can find the first
-//!   [`ENTRIES_IN_FIRST_BLOCK`] files and no more. It is used on the tiny test disk, not the
-//!   initial ramdisk, but the limit is real and nothing in the format announces it.
-//! - **No directories, no writes, no permissions.** This is a boot archive. The read-write
-//!   filesystem is the RedoxFS server in `redoxfs_server/` (DECISIONS §34), which is a different job.
+//! - A name too long ([`Error::NameTooLong`]) or containing a NUL ([`Error::NameHasNul`]) is
+//!   refused, never truncated: two names agreeing in their first `NAME_LEN` bytes would become one.
+//! - A duplicate name is not an error, and the first wins; the disk tool's directory listing keeps
+//!   names unique, and nothing in the format does.
+//! - [`MAX_FILES`] grows with the suite, not the system, so a resize lands on whoever merges.
+//! - `a_short_image_is_refused_not_indexed`'s falsification takes tens of minutes and gigabytes of
+//!   solver memory: a length check against a wholly symbolic buffer, the same shape as
+//!   `package_archive`'s `a_short_file_is_refused`.
+//! - The EL0 blk driver (`crates/virtio`) buffers block 0 only, so it sees the first
+//!   [`ENTRIES_IN_FIRST_BLOCK`] files and no more, and nothing in the format says so.
+//! - No directories, writes or permissions; the read-write filesystem is `redoxfs_server/`.
 //!
-//! Name: ratified 2026-08-01 as `crickerfs` (calef, milestone 63): the one run-together name kept
-//! when that rule was deleted. Refused `cricker_fs` (`procfs` is the shape of a filesystem name
-//! outside this project, and nobody writes `proc_fs`). Renamed `nifefs` with the OS (calef,
-//! milestone 120, 2026-08-15); the run-together reasoning carried over unchanged.
+//! Name: ratified 2026-08-01 as `crickerfs` (calef), renamed `nifefs` with the OS. Refused
+//! `cricker_fs` (`procfs` is the shape of a filesystem name; nobody writes `proc_fs`).
 
 #![no_std]
 
@@ -354,6 +301,21 @@ fn u32le(b: &[u8], at: usize) -> u32 {
 /// of bytes written. `out` must be large enough; the disk tool sizes it from [`image_size`].
 ///
 /// Not `no_std`-hostile, but only the disk-building tool calls it, on the host.
+///
+/// # Examples
+///
+/// Pack two files and read one back:
+///
+/// ```
+/// # use nifefs::{Fs, image_size, write_image};
+/// let files: [(&str, &[u8]); 2] = [("motd", b"welcome\n"), ("os_primitives_benchmarker", b"\x7fELF")];
+/// let mut img = vec![0u8; image_size(&files)];
+/// write_image(&files, &mut img).unwrap();
+///
+/// let fs = Fs::parse(&img).unwrap();
+/// assert_eq!(fs.read("motd"), Some(&b"welcome\n"[..]));
+/// assert_eq!(fs.len(), 2);
+/// ```
 pub fn write_image(files: &[(&str, &[u8])], out: &mut [u8]) -> Result<usize, Error> {
     if files.len() > MAX_FILES {
         return Err(Error::TooManyFiles);

@@ -119,7 +119,7 @@ An NMI lands at an arbitrary instruction boundary, and `trap.s` documents a wind
 `IA32_GS_BASE` still holds the *user's* value while `cs` says ring 0 (between the exit `swapgs` and
 the `iretq`). In that window `cpu::id()`, which reads that MSR, would answer with somebody else's
 arithmetic. So the handler names its own core from the local APIC's id register instead, which is
-hardware ground truth and needs no per-CPU pointer: `smp::seat_cpus_from_acpi` seats every core at
+hardware ground truth and needs no per-CPU pointer. `smp::seat_cpus_from_acpi` seats every core at
 the slot its own APIC id names, so on this port the two numbers are the same, and the sender
 `debug_assert`s that rather than assuming it.
 
@@ -161,14 +161,14 @@ NMI is forced here for the same reason as for a page: the target core is routine
 `IPC_TABLES` with interrupts masked, because the revoker is holding it.
 
 The lock is what makes the far end safe, and it is worth stating as a rule because the handler
-writes a TSS from an arbitrary instruction boundary: a core's port bitmap is written only by a
+writes a TSS from an arbitrary instruction boundary. A core's port bitmap is written only by a
 thread holding `IPC_TABLES`, or by an NMI such a thread sent. Milestone 315 moved `schedule`'s
-`install_port_grant` inside the locked region to make that true; before it, a core could read a
-grant the revoke sweep had already cleared and install it behind the broadcast's back, and the NMI
+`install_port_grant` inside the locked region to make that true. Before it, a core could read a
+grant the revoke sweep had already cleared and install it behind the broadcast's back. The NMI
 could land in the middle of an install.
 
-The evidence was a snapshot of `INSTALLED_PORT_GRANT` taken at the revoke and printed by the test:
-on both captured failures it read "revoker on cpu 0, cpu 1 holds a grant", and every passing run
+The evidence was a snapshot of `INSTALLED_PORT_GRANT` taken at the revoke and printed by the test.
+On both captured failures it read "revoker on cpu 0, cpu 1 holds a grant", and every passing run
 either had no grant installed anywhere or had the holder switch away in time.
 
 ## BUGS
@@ -181,7 +181,7 @@ either had no grant installed anywhere or had the holder switch away in time.
 - Nothing shoots down a core that is online-but-not-yet-listed. A secondary between installing
   the kernel `CR3` and setting its bit in `ONLINE_MASK` is not a target. Its TLB is fresh and the
   only addresses it touches in that window are the direct map and its own never-recycled boot stack,
-  so there is nothing stale for it to hold; the window is narrow rather than closed, and
+  so there is nothing stale for it to hold. The window is narrow rather than closed, and
   `smp::secondary_main` sets the bit before enabling interrupts precisely to keep it that way.
 - **The spurious-NMI count is written and never read.** `exceptions::NMIS_UNCLAIMED` should stay at
   zero, because nothing else on this machine sends an NMI, but no test asserts that.

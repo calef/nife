@@ -50,9 +50,9 @@ Columns:
 - status. `open` (nothing has changed about the rule since), `escalated` (a higher-rung
   mechanism now exists, and the row stays as the record of why), or `resolved` (the rule itself is
   gone, e.g. deleted as unenforceable). Only `open` rows count toward a strike.
-- source. Where the incident is on the record. A lane report or a pull request is fine; today's
+- source. Where the incident is on the record. A lane report or a pull request is fine. Today's
   three rows are backfilled from `AGENTS.md`'s own prose and from milestone 118's roadmap block
-  (design/roadmap/0118-constitution-budget.md), because those are what recorded and measured the
+  (design/roadmap/0118-constitution-budget.md). Those are what recorded and measured the
   incidents, not because a lane report is a worse source than a constitution.
 
 Three strikes on an `open` rule, and it must move up the ladder or be deleted as unenforceable.
@@ -77,16 +77,16 @@ strike each and are informative rather than urgent.
 ## What changed, 2026-08-25: the git-clobber row marked `resolved`
 
 [DECISIONS §128](../design/decisions/0128-git-clobber-enforcement.md) researched the four candidate
-mechanisms named above and priced them: git has no `pre-checkout`/`pre-reset`/`pre-stash` hook to
-build a genuine pre-command check on, and a shell shim can't distinguish `git checkout <path>`
+mechanisms named above and priced them. Git has no `pre-checkout`/`pre-reset`/`pre-stash` hook to
+build a genuine pre-command check on. A shell shim can't distinguish `git checkout <path>`
 (dangerous) from `git checkout <branch>` (ordinary) by prefix alone, so neither is a clean win. But
 the decision that actually closed the row was evidence, not a new mechanism: all four incidents
 trace to a single day (2026-08-04), and **zero repeats in the three weeks since**. calef's own
 call: "No repeat in three weeks seems like it isn't a problem any longer." The row is marked
 `resolved` on that basis, matching the convention's own reading of the word (the *concern* is
-resolved) rather than the rule itself being deleted from `AGENTS.md`, which stays exactly as
-written: the prose that already exists appears to be doing the job, so nothing further was added
-above it on the ladder. Should the pattern recur, this row (or a fresh one, since exact-text
+resolved). The rule itself was not deleted from `AGENTS.md`, which stays exactly as written. The
+prose that already exists appears to be doing the job, so nothing further was added above it on the
+ladder. Should the pattern recur, this row (or a fresh one, since exact-text
 matching means a differently-worded recurrence starts its own count) would reopen the same
 question with three more weeks of context behind it.
 
@@ -119,10 +119,10 @@ $ echo $?
 ## BUGS
 
 - **Not wired into `script/lint` or CI.** `--check` passes clean today (the git-clobber row that
-  once sat past threshold is `resolved`, see "What changed, 2026-08-25" above). The reason not
-  to wire it in stays live for the next rule that crosses three strikes: doing so automatically
-  would fail every lane's pull request over a decision that belongs to an architect or the
-  integrator, the same failure mode DECISIONS §61 (a lint is adopted on evidence from this tree)
+  once sat past threshold is `resolved`, see "What changed, 2026-08-25" above). The reason not to
+  wire it in stays live for the next rule that crosses three strikes. Doing so automatically would
+  fail every lane's pull request over a decision that belongs to an architect or the integrator.
+  That is the same failure mode DECISIONS §61 (a lint is adopted on evidence from this tree)
   warns about for an ordinary lint ("adding a lint is a commitment to fix every existing violation
   first"). Whether and when to wire this in for a *future* crossing is itself an open decision,
   named here rather than made.

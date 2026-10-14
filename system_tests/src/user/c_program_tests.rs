@@ -9,14 +9,17 @@
 //! - **SQLite 3.50.4's `speedtest1`**: 266,378 lines of C (the amalgamation and the benchmark)
 //!   written for POSIX. `helpers/build-speedtest1.sh` fetches both files, pinned by SHA-256.
 //! - **ioping 1.3**: one file, a storage-latency tool, the one milestone 834 (ioping on nife and
-//!   Linux) runs on silicon. `helpers/build-ioping.sh` fetches it, pinned the same way.
+//!   Linux) runs on silicon. basalt builds it from `ioping.c` pinned the same way, and `cargo xtask
+//!   basalt-fetch` takes its package by digest (milestone 906 (ioping is packaged in basalt)).
 //!
 //! Neither source is touched. What differs from a Linux build is on the command line: the target
 //! flags, nife's headers, and for SQLite two compile-time options it documents.
 //!
-//! **Each test skips when its program is not in the archive**, which is every ordinary build and
-//! all of CI, on `ripgrep_tests`' terms: fetching the source in a gate is §46 (thin primitives or
-//! whole subsystems; we write everything in between)'s decision and calef's.
+//! **Each test skips when its program is not in the archive**, on `ripgrep_tests`' terms. For
+//! `speedtest1` that is every ordinary build and all of CI: fetching the source in a gate is §46
+//! (thin primitives or whole subsystems; we write everything in between)'s decision and calef's.
+//! `ioping` is in the archive wherever `cargo xtask basalt-fetch` ran, and CI's `rg-threads` rows
+//! run its test with `NIFE_IOPING_REQUIRED=1`, so there a missing one fails rather than skips.
 //!
 //! **All three ISAs**, one body each, nothing architecture-specific asserted (§19 (architectural
 //! parity is a tenet; the targets are aarch64, riscv64, and x86_64)).
@@ -204,10 +207,22 @@ fn unmodified_sqlite_speedtest1_runs_on_a_file() {
 ///
 /// Falsification: attested 2026-10-10. On patagonia, aarch64 under HVF, with `printf` still reading
 /// a `double` vararg from the floating-point save area: every size printed as 0 (`0 KiB <<< .`),
-/// and this test failed on its first request line. A replay needs `ioping` in the archive, which
-/// no gate builds.
+/// and this test failed on its first request line. A replay needs an `ioping` linked against that
+/// C library, and basalt's package is linked at the nife commit basalt pins.
 #[test_case]
 fn unmodified_ioping_times_reads_in_a_granted_directory() {
+    // basalt's package (milestone 906), not a helper's build: a missing one is a fetch that did
+    // not run, or, where CI fetched it, a broken one.
+    if program("ioping").is_none() {
+        assert!(
+            !matches!(env!("NIFE_IOPING_REQUIRED"), "1"),
+            "no ioping in this archive, and NIFE_IOPING_REQUIRED=1: `cargo xtask basalt-fetch` \
+             ran and its ioping did not reach the archive"
+        );
+        crate::testing::skip!(
+            "no ioping in this archive: `cargo xtask basalt-fetch` fetches it (milestone 906)"
+        );
+    }
     skip_without!("ioping");
     let mut got = [0u8; 8192];
     let Some(len) = run("ioping", c_program_fixture::IOPING, &mut got) else {

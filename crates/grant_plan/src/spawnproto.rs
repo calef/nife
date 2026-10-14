@@ -1,106 +1,42 @@
-//! **The spawn protocol: the wire half of the shell-to-progenitor grant expression.**
+//! **The spawn protocol: the wire half of the shell-to-progenitor grant expression.** The shell
+//! resolves a `run` into an [`Endowment`](crate::Endowment) but does not build the child: the
+//! progenitor holds the initial ramdisk and the ELF loader. So the shell says what to spawn and
+//! delegates the capabilities it grants over the same endpoint. A userspace protocol, not kernel
+//! ABI: the kernel routes these words as any IPC and never reads them (§10 (process model:
+//! capability-based)).
 //!
-//! When the shell resolves a `run` into an [`Endowment`](crate::Endowment), it does not build the
-//! child itself: the progenitor holds the initial ramdisk and is the ELF loader (the parser stays
-//! in one place, out of the shell). So the shell tells the progenitor what to spawn and, crucially,
-//! *delegates the capabilities it grants* over the same endpoint. This module is that contract's
-//! word layout, the capability-shell analogue of `line_editor::proto`.
-//!
-//! It is a **userspace** protocol, not kernel ABI. The kernel routes these words the way it routes
-//! any IPC (DECISIONS §10, §12, §21); it never reads them. Adding a field is a change here, not to
-//! the syscall surface.
-//!
-//! # The exchange
-//!
-//! The shell owns the sequence; the progenitor serves it in a loop.
-//!
-//! 1. **Request.** The shell `SEND`s three words on the spawn endpoint: the program id, the
-//!    integer argument, and the memory-grant page count. See [`request`] / [`prog_id`] /
-//!    [`arg`] / [`mem_pages`].
-//! 2. **The directory grant, if the request announced one** ([`Wiring::dir`], milestone 31 phase 3):
-//!    [`GRANT_WORDS`] plain `SEND`s carrying the caretaker's `START` words and then the child's.
-//!    Before the delegation rather than after, because these are **data and not capabilities** and
-//!    mixing the two orders would put a `RECEIVE` where a `RECEIVE_CAP` belongs.
-//! 3. **Delegation.** The capabilities the request announced, in a fixed order: the supervised
-//!    job's pair (untyped, frame), then the **sink** (milestone 50), then the **source**, then the
-//!    **diagnostic endpoint** (DECISIONS §67), then the **screen-narrowed tail's completion
-//!    endpoint** (DECISIONS §106), then the `--mem` untyped, then the **gpu's four** and the
-//!    **keyboard's three** (milestone 632 (provisional), graphics launched from the prompt), then
-//!    the **machine statistics page**, last. Order rather than tags, because both sides read the
-//!    same [`Wiring`] out of the same word and a promise nobody receives would deadlock both.
-//!
-//!    If `mem_pages > 0`, the shell `SEND_CAP`s exactly one capability there: an
-//!    untyped it split from *its own* budget, sized to `mem_pages`. This is the grant made real,
-//!    not parsed and dropped. Programs that grant no capability (`least_authority_demo`) skip this step, and the progenitor
-//!    knows to skip the matching `RECEIVE_CAP` from `mem_pages == 0`.
-//! 4. **Outcome.** The progenitor builds the child, endows it (the shared result endpoint always; the
-//!    delegated untyped when present), and starts it. The child reports its own answer on the
-//!    result endpoint. If the progenitor cannot build it (its own budget is spent, or the program vanished),
-//!    it sends [`SPAWN_FAILED`] on the result endpoint so the shell's read completes instead of
-//!    hanging.
-//!
-//! The result endpoint carries both the progenitor's failure sentinel and the child's success answer, and
-//! the shell reads exactly once: a well-formed spawn yields the child's word, a failed one yields
-//! [`SPAWN_FAILED`]. One reader, one word, no ambiguity.
-//!
-//! 5. **Death** (milestone 235). A child the kernel killed sends nothing, so neither of those two
-//!    words arrives and the shell's single read has nothing to complete it. `job_undertaker`, which
-//!    already holds the progenitor's supervision endpoint and already collects the corpse, sends
-//!    [`JOB_FAULTED`] there instead. It is a third value on the same one-word read rather than a
-//!    second channel, because the shell has one thread and can be blocked in exactly one `RECEIVE`;
-//!    see [`JOB_FAULTED`] for the two couplings this refused.
-//! 6. **Reaped** (milestone 685 (a job is finished when its memory is back)). After every collect,
-//!    `job_undertaker` `SEND`s [`reaped`] on the **spawn** endpoint, through a copy badged
-//!    [`UNDERTAKER_BADGE`]. The progenitor tells it from a request by the badge alone, wherever in
-//!    a request it arrives, and learns that the job's memory is back and its file-service window
-//!    is free. See [`UNDERTAKER_BADGE`] for the layout.
+//! 1. **Request.** Three words on the spawn endpoint: the program id, the integer argument, and the
+//!    memory-grant page count ([`request`], [`prog_id`], [`arg`], [`mem_pages`]).
+//! 2. **The directory grant**, if announced ([`Wiring::dir`]): [`GRANT_WORDS`] plain `SEND`s,
+//!    before the capabilities, because they are data and mixing orders would put a `RECEIVE` where
+//!    a `RECEIVE_CAP` belongs.
+//! 3. **Delegation**, in a fixed order both sides read from the same [`Wiring`]: the supervised
+//!    job's pair, the sink, the source, the diagnostic endpoint, the screen-narrowed tail's
+//!    completion endpoint, the `--mem` untyped (split from the shell's own budget), the gpu's four
+//!    and the keyboard's three, and the machine statistics page last. Order rather than tags; a
+//!    promise nobody receives would deadlock both sides.
+//! 4. **Outcome.** The progenitor builds, endows and starts the child, which answers on the result
+//!    endpoint; if it cannot, it sends [`SPAWN_FAILED`] there, so the shell's single read completes.
+//! 5. **Death.** For a killed child, `job_undertaker` sends [`JOB_FAULTED`] on that same read.
+//! 6. **Reaped.** After every collect, `job_undertaker` sends [`reaped`] on the spawn endpoint
+//!    through a copy badged [`UNDERTAKER_BADGE`], which tells the progenitor the job's memory and
+//!    file-service window are back.
 //!
 //! # BUGS
 //!
-//! The image request ([`Wiring::image`], DECISIONS §219 (how the shell names an installed program to the spawner) option D) is a first cut, and these are
-//! what it does not do yet. Milestone 198 (a package manager)'s block carries the same list.
-//!
-//! - **A caller that claims the run-unvouched capability without holding it hangs the progenitor.**
-//!   [`Wiring::run_unvouched`] promises one `SEND` on [`RUN_UNVOUCHED_SLOT`], and the progenitor
-//!   waits for it on the endpoint behind that slot, which only a holder can reach. A shell that
-//!   sets the bit and holds nothing leaves the progenitor blocked there for the life of the boot.
-//!   It is the exposure every promised message in this protocol already has (the frame entry
-//!   below), and it is reachable only by a program that holds the spawn endpoint and lies on it,
-//!   which today is the boot shell alone.
-//! - **A holder can lend its presentation.** The progenitor serves requests one at a time, so a
-//!   holder's `SEND` is taken only while some request that claimed the capability is being served.
-//!   A holder that sends one early, on purpose, can let another caller's claim through. That is a
-//!   proxy, and no capability system prevents a holder from running something on another's behalf;
-//!   it is recorded so nobody reads the missing `GRANT` as a stronger promise than it is.
-//! - **An image's manifest reaches only what the request words and the progenitor's own grants can
-//!   carry** (milestone 597 (a program carries its manifest in an ELF note), provisional). The
-//!   manifest now travels in the bytes, as an ELF note (`crates/manifest_note`, §197 (a package is
-//!   one archive file) option M2), and [`crate::image_manifest`] endows from it. But this wire has
-//!   an argument, a `--mem` count and nothing else a line designates, so a note declaring a file, a
-//!   directory, an input, an option, a supervised job, a second stream, a silent output or the
-//!   `std` runtime is refused ([`crate::image_can_carry`]) rather than run without it. Each is the
-//!   wiring a named program already has, not a new idea.
-//! - **An image's [`crate::Endowment`] names a stand-in row** ([`crate::IMAGE_ROW`]), because an
-//!   endowment names a `Prog` and a file has none. Everything about an image is decided from the
-//!   manifest [`crate::image_manifest`] returns; reading the row instead is the foot gun.
-//! - **The shell and the progenitor read two copies of the note.** The shell reads the file to bind
-//!   the line, then again to send it; the progenitor judges what arrived. A file changed in between
-//!   is judged on what arrived, and a request that no longer fits is refused with
-//!   [`SPAWN_REFUSED_BY_MANIFEST`] ([`crate::image_request_fits`]), never half-honoured.
-//! - **Only a plain line runs an image.** A path in a pipeline or behind a redirection reaches
-//!   the planner as a program name and is refused as "no such program", which is true of the name
-//!   and says nothing about the bytes. Nothing sets the bit alongside `interruptible`, and the
-//!   progenitor refuses an interruptible image request if one arrives. `dir` rides an image only for
-//!   bytes that hear words (milestone 205), whose `std` region holds the caretaker too.
-//! - **Every activation verb is open to whoever holds the spawn endpoint**, including
-//!   [`Activation::Vouch`], which vouches for any bytes at all. That is the owner's authority by
-//!   DECISIONS §221 (the boot prompt is the owner's console), and it is safe only because the boot
-//!   prompt is the one holder. A session given a spawn endpoint would be the owner too. Install,
-//!   remove and rollback have their own since milestone 809, [`INSTALLER_BADGE`]; vouch has none.
-//! - **A shell that cannot retype a frame mid-request hangs the prompt.** The staging region is
-//!   sized to the image, so this needs a full capability table in the shell, but if it happens the
-//!   progenitor waits for a frame that never comes. Nothing in the ABI lets either side abandon a
-//!   half-sent request; every capability this protocol promises has the same exposure.
+//! - Any promised message a caller withholds hangs the progenitor: claiming run-unvouched
+//!   ([`Wiring::run_unvouched`]) without holding [`RUN_UNVOUCHED_SLOT`], or a shell that cannot
+//!   retype a frame mid-request. Nothing lets either side abandon a half-sent request; today the
+//!   boot shell is the only holder. A holder can also lend its presentation to another's claim.
+//! - An image's manifest note ([`crate::image_manifest`]) reaches only what these words carry, so a
+//!   note declaring a file, directory, input, option, job, second stream, silent output or `std` is
+//!   refused ([`crate::image_can_carry`]). Its [`crate::Endowment`] names a stand-in row
+//!   ([`crate::IMAGE_ROW`]); reading that row instead of the manifest is the foot gun.
+//! - The shell reads the note twice; the progenitor judges what arrived and refuses a misfit with
+//!   [`SPAWN_REFUSED_BY_MANIFEST`]. Only a plain line runs an image, never interruptibly.
+//! - Every activation verb, [`Activation::Vouch`] included, is open to any spawn-endpoint holder,
+//!   safe only while the owner's boot prompt is the one (§221); install, remove and rollback have
+//!   [`INSTALLER_BADGE`], vouch has none.
 
 /// The interruptible bit, packed into the high half of the page-count word so one `SEND` still
 /// carries the whole request. `mem_pages` is a small count (`memory_grant_depleter`'s ceiling is
@@ -392,14 +328,16 @@ pub const RUN_UNVOUCHED_SLOT: u64 = 62;
 /// [`ActivationStatus::Unknown`], as any verb this side does not know is.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Activation {
-    /// Install the program of the package whose bytes follow: record its digest in a new
-    /// generation, place its bytes where a person can run them, and make that generation live.
+    /// Install every program of the package whose bytes follow (milestone 919 (a package carries
+    /// several programs)): place each program's bytes where a person can run them, and record
+    /// each one's digest in one new generation, which is made live. One refused program refuses
+    /// the package, and nothing is written.
     Install = 1,
-    /// Write a new generation without the named program and make it live. Its bytes stay on
-    /// disk, which is what lets a rollback bring it back. The name is a program's bare name,
-    /// which removes every live version of it and its default pointer, or `program@version`,
-    /// which removes one (milestone 614 (two installed versions of one program, each runnable,
-    /// and a caller granted the one it needs), ruling 5).
+    /// Write a new generation without the named package and make it live. Its bytes stay on
+    /// disk, which is what lets a rollback bring it back. **The name is a package's** (calef,
+    /// 2026-10-14 (UTC), milestone 919: "jig remove should work on packages, not programs."): a
+    /// bare name removes every row the package installed, at every version, with the default
+    /// pointers of its programs; `package@version` removes that version's rows.
     Remove = 2,
     /// Make the generation numbered one below the live one live again. Nothing is rewritten.
     Rollback = 3,
@@ -464,7 +402,7 @@ pub enum ActivationStatus {
     NotCataloged = 1,
     /// A vouched package with no program the installer can find. Nothing was written.
     NoProgram = 2,
-    /// [`Activation::Remove`] named a program the live generation does not have.
+    /// [`Activation::Remove`] named a package the live generation has no row of.
     NotInstalled = 3,
     /// [`Activation::Rollback`] from a generation with none below it.
     NoEarlier = 4,
@@ -479,23 +417,27 @@ pub enum ActivationStatus {
     /// [`Activation::Vouch`] was sent bytes that do not parse as an executable, or a name the
     /// activation set cannot record. Nothing was written.
     NotExecutable = 10,
-    /// [`Activation::Install`] for a package whose program has the name another
+    /// [`Activation::Install`] for a package one of whose programs has the name another
     /// installed package's program already has (`activation_set::Error::Taken`; DECISIONS §229
-    /// (how a bare name at the prompt reaches an installed program), B2). The same package at
-    /// another version is an upgrade and is not this. No generation was written. Provisional.
+    /// (how a bare name at the prompt reaches an installed program), B2; calef, 2026-10-14 (UTC),
+    /// milestone 919: "If two packages offer the same program name, refuse the second package.
+    /// Need to remove the first one before installing the second one."). The same package at
+    /// another version is an upgrade and is not this. No generation was written. Word 2 names the
+    /// program ([`activation_reply`]), and on an installer endpoint two messages follow naming
+    /// the package that holds it ([`holder_words`]). Provisional.
     NameTaken = 11,
-    /// [`Activation::Install`] for a package whose program has the name of a program
+    /// [`Activation::Install`] for a package one of whose programs has the name of a program
     /// the image carries (`activation_set::Error::ImageName`; DECISIONS §229, calef's ruling of
     /// 2026-09-27). Under §235 (the OS is built and updated from packages) a base program is
     /// updated through the boot slot, never by install. No generation was written. Provisional,
     /// like its number.
     ImageName = 12,
-    /// [`Activation::Remove`] named `program@version`, the version is the one holding the default
-    /// pointer, and more than one other version remains: no ordering among live versions exists to
-    /// pick a new default with (milestone 614 (two installed versions of one program, each
-    /// runnable, and a caller granted the one it needs), ruling 5). Nothing was written; the shell
-    /// names the candidates from the live table, which it reads itself. Provisional, like its
-    /// number.
+    /// [`Activation::Remove`] named `package@version`, the version holds one of its programs'
+    /// default pointers, and more than one other version of that program remains: no ordering
+    /// among live versions exists to pick a new default with (milestone 614 (two installed
+    /// versions of one program, each runnable, and a caller granted the one it needs)). Nothing
+    /// was written; the shell names the candidates from the live table, which it reads itself.
+    /// Provisional, like its number.
     Ambiguous = 13,
     /// **The request arrived on the installer endpoint and is not one it serves** (milestone 809,
     /// [`INSTALLER_BADGE`]): a spawn, a vouch, or a verb this side does not know. Nothing was read
@@ -530,10 +472,46 @@ impl ActivationStatus {
     }
 }
 
-/// The progenitor's one reply to an activation request: the status and the generation live
-/// afterwards (0 when there is none).
-pub fn activation_reply(status: ActivationStatus, live: u32) -> (u64, u64, u64) {
-    (status as u64, u64::from(live), 0)
+/// The progenitor's reply to an activation request: the status, the generation live afterwards
+/// (0 when there is none), and `member`: for [`ActivationStatus::NameTaken`] and
+/// [`ActivationStatus::ImageName`], one more than the table-of-contents index of the member whose
+/// program was refused, and 0 otherwise. The installer that sent the package names the program
+/// from its own copy (`package_archive::program_name`), so the name does not travel (milestone
+/// 919 (a package carries several programs)).
+pub fn activation_reply(status: ActivationStatus, live: u32, member: u64) -> (u64, u64, u64) {
+    (status as u64, u64::from(live), member)
+}
+
+/// **The longest holder name a [`ActivationStatus::NameTaken`] reply carries**, in bytes: the
+/// width of a package header's name field (`package_archive::NAME_LEN`). A longer name, which only
+/// a hand-written table holds, arrives cut at this width. Name: provisional, milestone 919's lane.
+pub const HOLDER_MAX: usize = 32;
+
+/// **The two messages that follow a [`ActivationStatus::NameTaken`] reply on an installer
+/// endpoint** (milestone 919): the name of the package that already holds the program, so the
+/// owner is told what to remove first. Four little-endian words of name and its length. The spawn
+/// endpoint sends no install, so only a package manager reads these. Name: provisional.
+pub fn holder_words(holder: &str) -> [(u64, u64, u64); 2] {
+    let mut bytes = [0u8; HOLDER_MAX];
+    let len = holder.len().min(HOLDER_MAX);
+    bytes[..len].copy_from_slice(&holder.as_bytes()[..len]);
+    let word = |i: usize| {
+        let mut w = [0u8; 8];
+        w.copy_from_slice(&bytes[i * 8..i * 8 + 8]);
+        u64::from_le_bytes(w)
+    };
+    [(word(0), word(1), len as u64), (word(2), word(3), 0)]
+}
+
+/// [`holder_words`] read back into `out`: the holder's name, or `""` for words that do not spell
+/// one.
+pub fn holder_from_words(words: [(u64, u64, u64); 2], out: &mut [u8; HOLDER_MAX]) -> &str {
+    let [(a, b, len), (c, d, _)] = words;
+    for (i, w) in [a, b, c, d].into_iter().enumerate() {
+        out[i * 8..i * 8 + 8].copy_from_slice(&w.to_le_bytes());
+    }
+    let len = usize::try_from(len).map_or(HOLDER_MAX, |l| l.min(HOLDER_MAX));
+    core::str::from_utf8(&out[..len]).unwrap_or("")
 }
 
 /// **The largest image `IMAGE_BIT` may carry, in pages** (4 MiB). A ceiling both sides read,
@@ -933,6 +911,22 @@ mod tests {
         assert_eq!(reaped(6, 9), (6, 9, 0));
     }
 
+    /// A holder's name survives the two messages whole, at the full width and empty.
+    #[test]
+    fn a_holder_name_round_trips() {
+        let mut out = [0u8; HOLDER_MAX];
+        for name in ["duet", "", "a-package-name-that-fills-it-all"] {
+            assert_eq!(holder_from_words(holder_words(name), &mut out), name);
+        }
+        let mut out = [0u8; HOLDER_MAX];
+        let words = [(u64::MAX, 0, 99), (0, 0, 0)];
+        assert_eq!(
+            holder_from_words(words, &mut out),
+            "",
+            "not UTF-8 spells nothing"
+        );
+    }
+
     #[test]
     fn request_round_trips() {
         // 6, not 1: word zero must come back verbatim, and an id of 1 cannot tell verbatim from a
@@ -1096,7 +1090,7 @@ mod tests {
             ActivationStatus::NotServedHere,
             ActivationStatus::NotYours,
         ] {
-            let (w0, w1, _) = activation_reply(status, 7);
+            let (w0, w1, _) = activation_reply(status, 7, 0);
             assert_eq!(ActivationStatus::from_word(w0), status);
             assert_eq!(w1, 7);
         }

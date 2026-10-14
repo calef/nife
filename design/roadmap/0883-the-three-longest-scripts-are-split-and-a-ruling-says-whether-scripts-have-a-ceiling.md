@@ -155,7 +155,6 @@ lexer, which is what milestone 236 removed. The precedent for (c) is ten scripts
 The widening is small. `file_length_ratchet.py` selects files in `tracked_rust` and `renamed_rust`
 (lines 116 to 140). A script predicate would be every file directly under `script/`, plus
 `helpers/` files ending `.py`, `.sh`, `.awk` or `.jq`. That leaves out the 1,786-line JSON fixture.
-The dashboard's file-size series reads Rust only and can stay so.
 
 The measured stakes: 9 code files in `script/` and `helpers/` are over 1,000 lines, 4 over 1,500,
 and 3 over 2,000. Lint grew 386 lines in the 14 days to 2026-10-11. Metrics grew 861 and

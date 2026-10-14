@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-12
+built: 2026-10-14
 milestone_dependencies: 824
 decision_dependencies: none
 machine_requirements: none
@@ -16,8 +17,9 @@ date. The number 913 is
 provisional; other lanes are minting nearby, so expect renumbering at merge. Title, slug and every
 name below are drafts.)*
 
-Reuse: the brief is `briefs/confinement-outsider-pass.md`, unchanged, and through it milestone 800
-(a non-Anthropic model attacks the confinement claim)'s counting rule, report format and refusal
+Reuse: the brief is `briefs/confinement-outsider-pass.md` as it stood at launch; milestone 920 (an
+outsider pass is launched pinned and floor-checked) gives the current brief no blind posture.
+Through it, milestone 800 (a non-Anthropic model attacks the confinement claim)'s counting rule, report format and refusal
 log, so the passes compare row for row. The isolation is milestone 633 (an outside agent attacks
 the confinement claim)'s: this pass is blind. The reviewer is GLM 5.3, by calef's ruling below.
 
@@ -81,6 +83,30 @@ reproduces each claimed escape by test or boot, and records. It does not attack 
 - The lane's role: pin the commit, assemble the prompt, hand it to calef, then collect the
   clone's commits and results, reproduce each claimed escape by test or boot, and record. It
   does not attack and does not hint.
+
+## Result
+
+BUILT, 2026-10-14 (UTC). The pass ran on 2026-10-13 and is recorded in
+`notes/confinement-outsider-pass-8.md`, with the per-row table, the reproduction and the refusal log.
+Its tests are on main (#2149).
+
+It does not count toward criterion (c). calef ruled on 2026-10-14 (UTC): "pass 8 does not count."
+The count stays 0. The facts before him:
+
+- No escape. Four near misses: two unreachable or fail-closed port corners, a `component_plan`
+  provisioning check that is missing, and one that is a deliberate design. Each has a `BUGS` entry
+  or a doc line at its code.
+- The breach. calef started the reviewer with "Do milestone 913" in the maintainers' workspace. It
+  read this block, 914's block and the launch brief before its prompt, and also ran a `git log`
+  and a `gh pr view`. Its report disclosed the first two. Against what the prompt and the allowed
+  source already held, it added that a concurrent pass existed and nothing about a weakness.
+- The floor. The report counts 27 of 27 bootable rows booted. Its own table grades rows 10 and 11
+  `host`, so the brief's count is 25. Without the carry-over rows 1 and 3, fresh attacks reach 23.
+  Row 32's test censuses a spawned child rather than the boot shell.
+- Reproduction. Every booted row's test passed again on all three ISAs it applies to, one ISA at
+  a time, under another lane's load; no leg timed out. The host rows passed too.
+
+Risk 7's page and appendix cite the pass under §216, by lane `lane/pass-8-ruling`.
 
 ## Done means
 

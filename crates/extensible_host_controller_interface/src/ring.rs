@@ -6,6 +6,28 @@ use super::*;
 
 /// **A ring the driver produces into**: the command ring and every transfer ring. Its last entry is
 /// always a link TRB back to the first.
+///
+/// # Examples
+///
+/// Four entries are three usable slots and a link TRB; the third enqueue also writes the link, and
+/// the cycle flips for the next lap:
+///
+/// ```
+/// use extensible_host_controller_interface::{ProducerRing, Trb};
+///
+/// let mut ring = ProducerRing::new(0x1000, 4);
+/// let a = ring.enqueue(Trb::enable_slot());
+/// assert_eq!((a.index, a.trb.cycle(), a.link), (0, true, None));
+/// ring.enqueue(Trb::enable_slot());
+/// let c = ring.enqueue(Trb::enable_slot());
+/// assert_eq!(c.index, 2);
+/// let (at, link) = c.link.unwrap(); // the third TRB fills the lap, so the link is written too
+/// assert_eq!(at, 3);
+/// assert!(link.cycle()); // stamped with the lap it ends, so the controller follows it
+/// let d = ring.enqueue(Trb::enable_slot());
+/// assert_eq!((d.index, d.trb.cycle()), (0, false)); // second lap, cycle flipped
+/// assert_eq!(ring.address_of(d.index), 0x1000);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ProducerRing {
     pub(crate) base: u64,

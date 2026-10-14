@@ -60,9 +60,9 @@ There is no OS to allocate one. At boot, `sp` points at garbage. The script carv
 64 KiB and defines `__stack_top`, and the first thing `_start` does is load it into `sp`.
 
 **Before that instruction runs, you cannot call any Rust function.** On aarch64 the `bl`
-itself is fine (the return address goes in register `x30`, not on the stack), but the
-callee's prologue immediately stores registers and locals to `[sp, ...]`, which with a
-garbage `sp` writes to a random address in memory. See [the stack note](stack.md).
+itself is fine (the return address goes in register `x30`, not on the stack), but the callee's
+prologue immediately stores registers and locals to `[sp, ...]`. With a garbage `sp` that writes to
+a random address in memory. See [the stack note](stack.md).
 
 ### 3. Tell the code where `.bss` is, so we can zero it
 

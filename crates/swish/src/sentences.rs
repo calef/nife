@@ -43,13 +43,13 @@ pub fn write_help(out: &mut dyn FnMut(&[u8])) {
     out(
         b"  apropos <word>          name the installed pages that mention it (it grants nothing)\n",
     );
-    out(b"  package install <file>  install the program of a package this image vouches for\n");
-    out(b"  package install <name>  fetch it from the package source and install it\n");
-    out(b"  package remove <prog>   every live version of it goes; its bytes stay for rollback\n");
+    out(b"  jig install <file>      install every program of a package this image vouches for\n");
+    out(b"  jig install <name>      fetch a package and install it\n");
     out(
-        b"  package remove <prog>@<ver>   one version; refuses naming the rest if it held the default\n",
+        b"  jig remove <package>    every program it installed goes; its bytes stay for rollback\n",
     );
-    out(b"  package rollback        make the generation before the live one live again\n");
+    out(b"  jig remove <pkg>@<ver>  one version; refused if a program would lose its default\n");
+    out(b"  jig rollback            make the generation before the live one live again\n");
     out(b"  vouch <file>            the owner vouches for these bytes; a rollback undoes it\n");
     out(b"  user suspend <name>     the owner suspends an identity: its logins and schedule end\n");
     out(b"  user resume <name>      the owner lets a suspended identity back in\n");

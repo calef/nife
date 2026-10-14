@@ -1,80 +1,32 @@
 //! **Where the pixels are, told to the kernel by whoever booted it** (milestone 243).
 //!
-//! Every word nife had ever said, it said down a UART, and the six commodity machines in the house
-//! do not have one. What they all have is a screen the firmware is already drawing on. This module
-//! is the sentence that carries a screen across the handoff: the loader asks the firmware where the
-//! linear framebuffer is and writes it here, the kernel reads it and paints text into it.
+//! Many machines have no UART but do have a screen the firmware is already drawing on. The loader
+//! asks the firmware where the linear framebuffer is and writes it here; the kernel reads it and
+//! paints text into it.
 //!
 //! # Why it rides the boot command line rather than a new field
 //!
 //! The `x86_64` handoff is PVH's `hvm_start_info` (see [`crate::x86_64`]), and PVH **already carries
 //! a command line**: `cmdline_paddr` at offset 24, which [`crate::x86_64::BootInfo::cmdline`] has
-//! decoded since milestone 87 and which nothing has ever read. `uefi_loader`'s own `BUGS` recorded
-//! that as a gap: *"there is nowhere yet for a boot argument to come from or go to."*
+//! decoded since milestone 87 (the x86_64 bare-metal machine). `hvm_start_info` is Xen's, versioned by Xen, and a field appended to
+//! it would be a fork of somebody else's format; a `key=value` in the field the format provides is
+//! the smaller and reversible answer, and it is what Linux does with `video=`.
 //!
-//! So the alternative was widening a structure this project does not own. `hvm_start_info` is
-//! Xen's, versioned by Xen, and a field appended to it is a fork of somebody else's format that
-//! looks exactly like the real thing to anyone reading it later. A `key=value` in the field the
-//! format already provides for exactly this is the smaller, more reversible, and more honest
-//! answer, and it is what Linux does with `video=`.
-//!
-//! **It is also arch-neutral on purpose**, which is why this module sits beside [`crate::cpu_list`]
-//! rather than inside [`crate::x86_64`]. Nothing below is about x86: milestone 157's U-Boot
-//! framebuffer handoff has the same sentence to say on aarch64, and a second spelling of it would
-//! be a second thing to get wrong.
-//!
-//! # This module is the writer *and* the reader
+//! It is arch-neutral on purpose, which is why it sits beside [`crate::cpu_list`] rather than inside
+//! [`crate::x86_64`]: a U-Boot framebuffer handoff on aarch64 says the same sentence.
 //!
 //! [`Framebuffer::encode`] is what `uefi_loader` calls and [`Framebuffer::parse`] is what the kernel
-//! calls, and the tests below round-trip one through the other. Neither party keeps its own copy of
-//! the spelling, which is the rule `byte_sink_protocol`, `grant_plan` and [`crate::x86_64`] itself are
-//! already held to.
-//!
-//! # Examples
-//!
-//! What the loader writes and the kernel reads is one token on a command line, and it survives the
-//! round trip unchanged:
-//!
-//! ```
-//! use machine_discovery::framebuffer::{Framebuffer, PixelOrder};
-//!
-//! let found = Framebuffer {
-//!     base: 0x8000_0000,
-//!     width: 800,
-//!     height: 600,
-//!     stride: 3200,
-//!     order: PixelOrder::Bgrx,
-//! };
-//!
-//! let mut buffer = [0u8; Framebuffer::MAX_LEN];
-//! let written = found.encode(&mut buffer);
-//! assert_eq!(&buffer[..written], b"screen=0x80000000,800,600,3200,bgrx");
-//!
-//! let text = core::str::from_utf8(&buffer[..written]).expect("ASCII");
-//! assert_eq!(Framebuffer::parse(text), Some(found));
-//! ```
-//!
-//! A command line with other words on it is read the same way, and a machine that said nothing
-//! about a screen is the ordinary case rather than an error:
-//!
-//! ```
-//! use machine_discovery::framebuffer::Framebuffer;
-//!
-//! assert!(Framebuffer::parse("quiet screen=0x1000,64,32,256,rgbx debug").is_some());
-//! assert_eq!(Framebuffer::parse("quiet debug"), None);
-//! ```
+//! calls, so neither party keeps its own copy of the spelling.
 //!
 //! # BUGS
 //!
 //! - **Only the two 32-bit-per-pixel orders are expressible.** UEFI's `PixelBitMask` describes
 //!   channels by mask and `PixelBltOnly` means there is no linear framebuffer at all; a loader that
 //!   meets either says so and writes no token, so the kernel keeps whatever console it had. 15-bit
-//!   and 24-bit packed modes are not expressible either. This is the shape every UEFI machine in
-//!   the fleet is expected to be in and not a claim about every machine there is.
+//!   and 24-bit packed modes are not expressible either.
 //! - **Nothing here validates that the address is a framebuffer.** It is a physical address a
-//!   previous stage asserted, and the kernel writes to it. A wrong one corrupts whatever is there.
-//!   The trust boundary is the boot chain, which is the same boundary the memory map already sits
-//!   on.
+//!   previous stage asserted, and the kernel writes to it. The trust boundary is the boot chain,
+//!   the same boundary the memory map already sits on.
 //! - **The size of the aperture is not carried.** `stride * height` is what a console needs and is
 //!   derivable; the firmware's `framebuffer_size` can be larger and nothing here would notice.
 
@@ -188,6 +140,29 @@ impl Framebuffer {
     /// # Panics
     ///
     /// If `out` is shorter than [`Self::MAX_LEN`].
+    ///
+    /// # Examples
+    ///
+    /// The token survives the round trip unchanged:
+    ///
+    /// ```
+    /// use machine_discovery::framebuffer::{Framebuffer, PixelOrder};
+    ///
+    /// let found = Framebuffer {
+    ///     base: 0x8000_0000,
+    ///     width: 800,
+    ///     height: 600,
+    ///     stride: 3200,
+    ///     order: PixelOrder::Bgrx,
+    /// };
+    ///
+    /// let mut buffer = [0u8; Framebuffer::MAX_LEN];
+    /// let written = found.encode(&mut buffer);
+    /// assert_eq!(&buffer[..written], b"screen=0x80000000,800,600,3200,bgrx");
+    ///
+    /// let text = core::str::from_utf8(&buffer[..written]).expect("ASCII");
+    /// assert_eq!(Framebuffer::parse(text), Some(found));
+    /// ```
     pub fn encode(&self, out: &mut [u8]) -> usize {
         assert!(out.len() >= Self::MAX_LEN, "encode needs MAX_LEN bytes");
         let mut n = 0;
@@ -215,6 +190,17 @@ impl Framebuffer {
     /// **A malformed token reads as absent**, deliberately. The alternative is a kernel that
     /// refuses to boot because a display description it could have done without did not parse,
     /// which is the wrong trade for a diagnostic path: the UART, where there is one, still works.
+    ///
+    /// # Examples
+    ///
+    /// Other words on the line are ignored, and no token is the ordinary case, not an error:
+    ///
+    /// ```
+    /// use machine_discovery::framebuffer::Framebuffer;
+    ///
+    /// assert!(Framebuffer::parse("quiet screen=0x1000,64,32,256,rgbx debug").is_some());
+    /// assert_eq!(Framebuffer::parse("quiet debug"), None);
+    /// ```
     #[must_use]
     pub fn parse(cmdline: &str) -> Option<Self> {
         let token = cmdline
