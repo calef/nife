@@ -134,9 +134,10 @@ sides.
   `mutation gate (a survivor on a changed line cannot merge untriaged)` to the `main` ruleset's
   required checks; a lane cannot make that settings change. The workflow header says the same
   where its job name is written.
-- **Recorded.** The gate's first live pull request is this milestone's own. Its diff is Python and
-  workflow edits, which generate no mutants, so the expected result is a clean pass on a diff that
-  generates none; that run is the first observation of the wiring end to end.
+- **Recorded.** The gate has been watched failing: run 38803917791 (2026-10-15 UTC) went red at
+  the deciding step on a staged, untested `glob` function, five survivor keys, each listed with
+  what clears it. This pull request is the first live green to watch for: its diff generates no
+  mutants, so the expected result is a clean pass on a diff that generates none.
 
 ## Index row
 
