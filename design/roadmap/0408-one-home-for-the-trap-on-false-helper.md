@@ -50,6 +50,14 @@ Name: provisional. `require`, on §188's recommendation: the kernel's `trust::re
 shape one privilege level up. `check` refused on design/naming.md's generic-word rule, `insist`
 and `must` for the reasons §188 records. calef ratifies from the unratified worklist; the name
 does not block the merge.
+
+## Follow-on
+
+- **Decision.** `design/decisions/0188-one-home-for-the-trap-on-false-helper.md` names what the
+  lifted helper is called. The lane shipped `require` as a provisional name on that section's
+  recommendation, with what was considered in the item's `Name:` marker at
+  `crates/user_mode_runtime/src/process.rs`; it ratifies from the unratified worklist and the
+  section itself is the maintainer's to flip at merge.
 `grep -rn 'fn check(ok: bool)'` finds nine copies, the same count, and not the same nine:
 `fixtures/src/memory_region_depleter.rs` no longer carries one and `fixtures/src/hello.rs` does.
 `components/src/block_driver.rs` still reaches the trap through `panic!()` rather than
