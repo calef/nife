@@ -62,7 +62,7 @@ use filesystem_protocol::{blk, req};
 use globally_unique_identifier_partition_table::GloballyUniqueIdentifierPartitionTable;
 use globally_unique_identifier_partition_table::guid::types;
 use redoxfs::{BLOCK_SIZE, Disk, FileSystem};
-use redoxfs_server::Server;
+use redoxfs_server::{NameCopy, Server};
 use syscall::error::{EIO, Error, Result};
 use user_mode_runtime::{call, send};
 
@@ -196,8 +196,8 @@ pub extern "C" fn _start(role: u64, _a1: u64, _a2: u64) -> ! {
             user_mode_runtime::exit()
         }
     };
-    let made = server
-        .create_file_at(filesystem_protocol::fs::ROOT as u32, blank::MADE_NAME)
+    let made = NameCopy::copy_in(blank::MADE_NAME.as_bytes())
+        .and_then(|name| server.create_file_at(filesystem_protocol::fs::ROOT as u32, &name))
         .and_then(|h| server.write(h, 0, blank::MADE_BODY).map(|n| (h, n)));
     match made {
         Ok((h, n)) if n == blank::MADE_BODY.len() => {
@@ -254,8 +254,8 @@ fn check(first_block: u64, blocks: u64) -> ! {
         }
     };
     let mut buf = [0u8; 128];
-    let read = server
-        .open_file_at(filesystem_protocol::fs::ROOT as u32, blank::MADE_NAME)
+    let read = NameCopy::copy_in(blank::MADE_NAME.as_bytes())
+        .and_then(|name| server.open_file_at(filesystem_protocol::fs::ROOT as u32, &name))
         .and_then(|h| server.read(h, 0, &mut buf[..blank::MADE_BODY.len()]));
     match read {
         Ok(n) if n == blank::MADE_BODY.len() && buf[..n] == *blank::MADE_BODY => {

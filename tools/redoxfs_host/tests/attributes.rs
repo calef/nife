@@ -23,6 +23,13 @@ use std::process::Command;
 
 use filesystem_protocol::{dir, fs, xattr};
 use redoxfs::DiskFile;
+use redoxfs_server::NameCopy;
+
+/// A fixed name as the [`NameCopy`] every `Server` verb takes; the server copies a client's names
+/// out of its window the same way.
+fn named(name: &str) -> NameCopy {
+    NameCopy::copy_in(name.as_bytes()).expect("a fixed name fits one block and is UTF-8")
+}
 
 const TOOL: &str = env!("CARGO_BIN_EXE_redoxfs_host");
 
@@ -162,7 +169,7 @@ fn write_attributes_as_the_server_does(img: &Path) -> Vec<u8> {
         let mut srv =
             redoxfs_server::Server::open(disk).expect("mount the image as the FS server does");
 
-        let top = srv.open_file("top.txt").unwrap();
+        let top = srv.open_file(&named("top.txt")).unwrap();
         srv.set_xattr(top, b"user.com.apple.FinderInfo", xattr::RAW, &finder)
             .unwrap();
         srv.set_xattr(
@@ -174,12 +181,12 @@ fn write_attributes_as_the_server_does(img: &Path) -> Vec<u8> {
         .unwrap();
 
         let nested = srv
-            .open_dir(fs::ROOT as u32, "nested", dir::ALL)
+            .open_dir(fs::ROOT as u32, &named("nested"), dir::ALL)
             .expect("descend into nested");
         srv.set_xattr(nested, b"user.nife.kind", xattr::RAW, b"directory")
             .unwrap();
 
-        let note = srv.open_file_at(nested, "note.txt").unwrap();
+        let note = srv.open_file_at(nested, &named("note.txt")).unwrap();
         srv.set_xattr(note, b"user.nife.note", xattr::RAW, b"deep")
             .unwrap();
     }

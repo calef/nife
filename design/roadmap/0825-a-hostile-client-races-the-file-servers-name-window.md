@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-07
+built: 2026-10-15
 milestone_dependencies: 800, 812
 decision_dependencies: none
 machine_requirements: none
@@ -13,60 +14,96 @@ needs_person: no
 
 ## In brief
 
-Boot the attack that milestone 800 (a non-Anthropic model attacks the confinement claim)'s fourth
-outsider pass declined, then close the gap. A client rewrites a name in its own window between
-`redoxfs_server`'s check and its use. Can a name that passed `check_component` be swapped for one
-that would not? If so, it reaches outside the client's subtree.
+A client names its files in a window it shares with `redoxfs_server`. Since milestone 812 (threads
+in one address space) a confined client can run a second thread that rewrites that window. The claim
+this milestone holds (calef's "Refused names" ruling, 2026-10-15 UTC): the server acts on no name
+its own check refuses, even if the window changes after the check. The refused names are `check_component`'s:
+`..`, `.`, a name with `/` or `\`, the attribute store's directory, and invalid UTF-8.
+
+The server copies each path name out of the window once, before the check. The check and the resolve
+that follows both read that copy, so a rewrite of the page reaches past neither.
 
 ## Why
 
-calef ruled the refusal log's order on 2026-10-07 (UTC), option (i): this is the next probe. It is
-the likeliest live escape the outsider passes have left, and the one a later pass is most likely to
-find, which would reset criterion (c)'s count. The gap is recorded at the head of
-`redoxfs_server/src/dispatch.rs`: "A name is checked in the client's own window and then used from
-it". Claims 19 and 24 of `notes/confinement-claims.md` rest on it. `name_resolver` copies a name out
-before judging it. The file server does not.
+calef ruled the refusal log's order on 2026-10-07 (UTC), option (i): this was the next probe. The
+gap sat at the head of `redoxfs_server/src/dispatch.rs`. A name was checked in the client's window
+and then resolved from it. A rewrite between the check and the resolve could turn a checked name
+into a refused one, or put invalid UTF-8 under a `&str`. Claims 19 and 24 of
+`notes/confinement-claims.md` rest on it. `name_resolver` copies a name out before judging it; the
+file server now does too.
 
-The fix is this milestone's (calef, 2026-10-14 UTC), and it does not wait on the race being won.
-Every name-taking arm builds a `&str` over the shared page, so a second writer can put invalid
-UTF-8 under it, which is undefined behavior whether or not the swapped name escapes.
+**A swapped name cannot leave the client's subtree, as a fact about RedoxFS.** The engine stores no
+`..` entries, and its lookup is literal within one directory (`vendor/redoxfs`'s `find_node`). The
+attribute store's directory sits only in the image root. So a swap reaches a refused name planted
+inside the grant, or invalid UTF-8 under a `&str`. It does not reach a name outside the subtree.
+That is why the held claim is the refused-name one, narrower than the escape the probe set out to
+boot, and why the fix is defensive.
 
-## Who can write the window
+## The fix, in force
 
-- The client's own second thread. Milestone 812 (`std::thread::spawn` runs real threads in one
-  address space) is built, so a confined job can race its own window. This is the attack.
-- Window 0's long-lived clients (the shell, `login`, the identity provisioner, the progenitor). They
-  share the page but are kept apart by blocking, per `redoxfs_server`'s own BUGS, so none writes
-  while another's request is in flight in the shipped boot.
-- A window's previous holder. Closed: milestone 685 (a job is finished when its memory is back)
-  never hands out a window whose last holder is unreaped. The dispatch BUGS still names this route
-  and should drop it.
+Every verb that resolves a name takes a `NameCopy` (`redoxfs_server/src/names.rs`), not a `&str`.
+Its only constructor, `NameCopy::copy_in`, copies the bytes into the value's own buffer of at most
+one block and validates UTF-8 on the copy. Its text is reachable only through accessors that run
+`check_component` on the copy. So the arms in `redoxfs_server/src/dispatch.rs` must copy each name
+out of the window, and each verb must check it before resolving it.
 
-## The work
+The verbs still check where they always did: after `dir_at` for the path verbs, first for the rest.
+That keeps every verb's error order unchanged, which is why the check is not in the constructor.
+`RENAME` copies both operands. `walk_prefix` takes a `NameCopy`. `subtree_scope::walk` still takes
+bytes, because a shared crate cannot name this server's type. That exception is marked at its one
+call, whose bytes are the checked copy's.
 
-1. A hostile client, a role of an existing test binary as milestone 800's `socket_squatter` is. It
-   holds a directory capability for a subtree on a disk fixture. One thread issues name-taking
-   requests (`OPEN`, `CREATE`, `OPENDIR`, `MKDIR`) with a legal name; the other rewrites the window
-   to `..`, a name with `/`, the attribute store's directory, and invalid UTF-8.
-2. A test that goes red if any request reaches a name outside the subtree. Boot it on every ISA
-   that runs the file server, and commit it red before any fix. If it stays green after a real try,
-   record how many races ran and what bounds the window, and go on to the fix anyway.
-3. The fix the dispatch BUGS names: copy the name out of the window into a bounded buffer, then
-   check and resolve only the copy. One copy of at most a name's length per request.
-4. A replayable falsification: restoring the borrow turns the test red where step 2 got it red. If
-   the race was never won, a host test over `Server::handle` with a window that changes between
-   check and use stands in, since the host dispatch is the running server's.
+`get_xattr_request` already copied its attribute name. The other attribute-name arms (`SETXATTR`,
+`REMOVEXATTR`) take bytes in a separate namespace checked by `xattr::is_valid_name`. They are not
+path names, so they are not part of this claim.
+
+## The test
+
+Two records hold the claim. The first is the compiler. `NameCopy`'s `compile_fail` doctest shows that
+a window-borrowed `&str` cannot reach a verb (E0308). Dropping the copy from an arm fails the same
+way, and reading a name's text without the check fails E0624 (both measured).
+
+The second is `redoxfs_server/src/tests/name_window.rs`: host unit tests over `Server::handle`, one
+per name-taking arm. Each drives the arm with every class of refused name and a legal control. The
+mutating verbs also assert the directory is unchanged. They catch an arm whose check is wrong, which
+the type cannot see.
+
+Neither fires the live race. The attack is a second thread rewriting the page between the check and
+the use, a data race that safe single-threaded host code cannot stage. The six tests pass against
+the pre-fix dispatch too (measured). The type is what closes the race: the resolve reads the
+server's copy, which no thread of the client can write.
 
 ## Done when
 
-The race has been booted, and the server checks and uses only its own copy of every name. Claims
-19 and 24 cite the test and its falsification, and the pass notes' refusal log records the result:
-an escape with a red test, or a held claim with the race counts.
+The server checks and uses only its own copy of every path name, and no arm acts on a name
+`check_component` refuses. Met. The copy and the check are enforced by type, so dropping either does
+not compile, and `name_window.rs` holds each arm's refusals on the host dispatch the running server
+runs. Against RedoxFS no swap reaches outside the subtree, so the record is a held claim, not an
+escape.
 
-Reuse: milestone 800's attack shape, the file-server fixtures already in `system_tests`, the host
-dispatch the fuzz lane split out (`redoxfs_server::dispatch`), and `name_resolver`'s copy-out.
+## Reuse
+
+Milestone 800 (a non-Anthropic model attacks the confinement claim)'s attack shape, the file-server
+fixtures in `redoxfs_server/src/tests`, the host dispatch the fuzz lane split out
+(`redoxfs_server::dispatch`), and `name_resolver`'s copy-out. The stand-in reuses the crate's
+existing `Server::handle` host tests and `DiskMemory` fixtures rather than booting a client.
+
+## Follow-on
+
+- **Recorded.** The live race (a second thread rewriting the window between the resolver's
+  `check_component` and its `find_node`) is not reproduced by the host stand-in; it needs the
+  running second thread. The copy closes it regardless, and `redoxfs_server/src/dispatch.rs`'s module
+  header states the mechanism now in force.
+- **Done.** `design/fatal-risks/7-the-confinement-claim.md` gained a dated 2026-10-15 paragraph (the
+  milestone 275 (a gate that diffs the fatal-risks README against the roadmap it cites) required it) recording that 825 closed the refusal
+  the fifth pass homed to it; the verdict stays calef's.
+- **Proposed.** Rows 19 and 24 of `notes/confinement-claims.md` and the pass-4 refusal log still name
+  the window TOCTOU as the open near miss; they want the new test cited and the result recorded. That
+  edit touches the confinement records a lane does not own, so it is left to the confinement owner:
+  `design/roadmap/proposals/cite-825-in-the-confinement-claims.md`.
 
 ## Index row
 
-The fourth confinement pass's refused probe, booted and closed. A client's second thread races its
-own name window against `redoxfs_server`'s check-then-use, and the server then checks a copy.
+The fourth confinement pass's refused probe, closed defensively. A client's second thread could race
+its own name window against `redoxfs_server`'s check-then-use. The server now copies each name out
+first, so it acts on no name its check refuses.

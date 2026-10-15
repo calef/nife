@@ -33,7 +33,13 @@ use filesystem_protocol::fixture::walk as tree;
 use redoxfs::Disk;
 use syscall::error::Result;
 
-use crate::{BLOCK, Server};
+use crate::{BLOCK, NameCopy, Server};
+
+/// The model's names are its own constants and joined paths, copied into the [`NameCopy`] every
+/// verb takes, exactly as the dispatch copies a client's.
+fn copy(name: &str) -> Result<NameCopy> {
+    NameCopy::copy_in(name.as_bytes())
+}
 
 /// A [`Disk`] that counts what reaches it: the calls, and the blocks they moved. Put it
 /// *under* [`crate::CachedDisk`] and it counts the device reads a cache did not answer.
@@ -107,9 +113,9 @@ pub struct Walked {
 /// **Build [`tree`] under `parent`**, named [`tree::ROOT`], through the server's own verbs, and
 /// return nothing: a walk opens it the way the caretaker does, by name.
 pub fn stage<D: Disk>(srv: &mut Server<D>, parent: u32) -> Result<()> {
-    let root = srv.make_dir(parent, tree::ROOT, dir::ALL)?;
+    let root = srv.make_dir(parent, &copy(tree::ROOT)?, dir::ALL)?;
     let file = |srv: &mut Server<D>, at: u32, name: &str, body: &[u8]| -> Result<()> {
-        let h = srv.create_file_at(at, name)?;
+        let h = srv.create_file_at(at, &copy(name)?)?;
         let mut off = 0;
         while off < body.len() {
             let end = (off + BLOCK).min(body.len());
@@ -118,11 +124,11 @@ pub fn stage<D: Disk>(srv: &mut Server<D>, parent: u32) -> Result<()> {
         }
         srv.close(h)
     };
-    let chain = srv.make_dir(root, tree::CHAIN, dir::ALL)?;
+    let chain = srv.make_dir(root, &copy(tree::CHAIN)?, dir::ALL)?;
     let mut level = chain;
     for i in 0..=tree::DEPTH {
         if i > 0 {
-            let next = srv.make_dir(level, tree::LEVEL, dir::ALL)?;
+            let next = srv.make_dir(level, &copy(tree::LEVEL)?, dir::ALL)?;
             if level != chain {
                 srv.close(level)?;
             }
@@ -134,7 +140,7 @@ pub fn stage<D: Disk>(srv: &mut Server<D>, parent: u32) -> Result<()> {
     if level != chain {
         srv.close(chain)?;
     }
-    let wide = srv.make_dir(root, tree::WIDE, dir::ALL)?;
+    let wide = srv.make_dir(root, &copy(tree::WIDE)?, dir::ALL)?;
     for i in 0..tree::WIDE_COUNT {
         let name = tree::wide_name(i);
         file(
@@ -145,7 +151,7 @@ pub fn stage<D: Disk>(srv: &mut Server<D>, parent: u32) -> Result<()> {
         )?;
     }
     srv.close(wide)?;
-    let narrow = srv.make_dir(root, tree::NARROW, dir::ALL)?;
+    let narrow = srv.make_dir(root, &copy(tree::NARROW)?, dir::ALL)?;
     let first = tree::wide_name(0);
     file(
         srv,
@@ -154,7 +160,7 @@ pub fn stage<D: Disk>(srv: &mut Server<D>, parent: u32) -> Result<()> {
         tree::SMALL_BODY,
     )?;
     srv.close(narrow)?;
-    let sizes = srv.make_dir(root, tree::SIZES, dir::ALL)?;
+    let sizes = srv.make_dir(root, &copy(tree::SIZES)?, dir::ALL)?;
     for (name, len) in tree::SIZE_FILES {
         let body: Vec<u8> = (0..len).map(tree::sized_byte).collect();
         file(srv, sizes, name, &body)?;
@@ -191,7 +197,7 @@ fn descend<D: Disk>(
         return Ok(root);
     }
     r.opendir += 1;
-    srv.open_dir(root, &joined(path), want)
+    srv.open_dir(root, &copy(&joined(path))?, want)
 }
 
 /// The names joined by `/`, as the PAL sends a path.
@@ -242,7 +248,7 @@ fn walk_from<D: Disk>(
             // (ruling A). The server answers with the size in the reply's second word (ruling B),
             // which is server work but no request, and `read_to_end` sizes its buffer from it.
             w.requests.open += 1;
-            let h = srv.open_file_path(root, &joined(path), OPEN)?;
+            let h = srv.open_file_path(root, &copy(&joined(path))?, OPEN)?;
             let _size = srv.fstat(h)?;
             let mut off = 0u64;
             loop {

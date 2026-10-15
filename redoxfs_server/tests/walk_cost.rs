@@ -10,7 +10,12 @@ use filesystem_protocol::dir;
 use filesystem_protocol::fixture::walk as tree;
 use redoxfs::{DiskMemory, FileSystem};
 use redoxfs_server::walk_model::{self, Counting};
-use redoxfs_server::{CachedDisk, Server};
+use redoxfs_server::{CachedDisk, NameCopy, Server};
+/// A fixed name as the [`NameCopy`] every `Server` verb takes; the server copies a client's names
+/// out of its window the same way.
+fn named(name: &str) -> NameCopy {
+    NameCopy::copy_in(name.as_bytes()).expect("a fixed name fits one block and is UTF-8")
+}
 
 /// A fresh image holding the priced tree, reopened the way the EL0 binary opens its disk.
 fn staged() -> Server<CachedDisk<Counting<DiskMemory>>> {
@@ -32,7 +37,11 @@ fn staged() -> Server<CachedDisk<Counting<DiskMemory>>> {
 fn the_replayed_walk_visits_the_fixture() {
     let mut srv = staged();
     let root = srv
-        .open_dir(0, tree::ROOT, dir::ENUMERATE | dir::READ | dir::DESCEND)
+        .open_dir(
+            0,
+            &named(tree::ROOT),
+            dir::ENUMERATE | dir::READ | dir::DESCEND,
+        )
         .expect("open the tree");
     let w = walk_model::walk(&mut srv, root).expect("walk");
     assert_eq!(w.entries, tree::WALK_ENTRIES);
@@ -49,7 +58,11 @@ fn the_replayed_walk_visits_the_fixture() {
 fn a_warm_walk_reads_nothing_from_the_device() {
     let mut srv = staged();
     let root = srv
-        .open_dir(0, tree::ROOT, dir::ENUMERATE | dir::READ | dir::DESCEND)
+        .open_dir(
+            0,
+            &named(tree::ROOT),
+            dir::ENUMERATE | dir::READ | dir::DESCEND,
+        )
         .expect("open the tree");
     walk_model::walk(&mut srv, root).expect("the cold walk");
     let before = srv.disk_mut().inner().reads;

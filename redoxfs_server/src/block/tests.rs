@@ -178,8 +178,8 @@ fn cached_disk_reads_the_same_bytes_as_uncached() {
 
     let mut buf_a = [0u8; 32];
     let mut buf_b = [0u8; 32];
-    let ha = plain.open_file("f").unwrap();
-    let hb = cached.open_file("f").unwrap();
+    let ha = plain.open_file(&crate::tests::named("f")).unwrap();
+    let hb = cached.open_file(&crate::tests::named("f")).unwrap();
     // Read twice through the cached path, so a caching bug would have a chance to show up.
     for _ in 0..2 {
         let na = plain.read(ha, 0, &mut buf_a).unwrap();

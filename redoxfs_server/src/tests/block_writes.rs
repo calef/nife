@@ -24,7 +24,7 @@ fn repeat_writes_through_the_block_chunking_do_not_loop() {
     let image = fs.disk.0.0;
 
     let mut srv = Server::open(BlockDisk(VecIo(image))).expect("Server::open");
-    let h = srv.open_file("scratch").expect("open scratch");
+    let h = srv.open_file(&named("scratch")).expect("open scratch");
     let mut buf = [0u8; 128];
     for pass in 1..=3u8 {
         let payload = repeat_write_payload(pass);
@@ -55,7 +55,7 @@ fn repeat_record_sized_writes_through_the_chunking_do_not_loop() {
     let image = fs.disk.0.0;
 
     let mut srv = Server::open(BlockDisk(VecIo(image))).expect("open");
-    let h = srv.open_file("big").expect("open big");
+    let h = srv.open_file(&named("big")).expect("open big");
     let len = 2 * (redoxfs::BLOCK_SIZE << redoxfs::RECORD_LEVEL) as usize + BLOCK;
     for pass in 1..=3u8 {
         // Position-dependent and pass-dependent, and deliberately not compressible to a tiny
@@ -74,7 +74,7 @@ fn repeat_record_sized_writes_through_the_chunking_do_not_loop() {
 #[test]
 fn a_write_persists_and_reads_back() {
     let mut srv = server_with(&[("scratch", &[0u8; 32])]);
-    let h = srv.open_file("scratch").unwrap();
+    let h = srv.open_file(&named("scratch")).unwrap();
     let payload = b"CRKWRIT1 and then some position-dependent bytes here";
     let n = srv.write(h, 0, payload).unwrap();
     assert_eq!(n, payload.len());
@@ -110,7 +110,7 @@ pub(super) fn repeat_write_payload(pass: u8) -> [u8; 64] {
 #[test]
 fn a_second_write_to_the_same_block_does_not_loop() {
     let mut srv = server_with(&[("scratch", b"(placeholder)")]);
-    let h = srv.open_file("scratch").unwrap();
+    let h = srv.open_file(&named("scratch")).unwrap();
 
     // Equal-length, position-dependent payloads: each write fully replaces the last (a shorter
     // write at offset 0 does not truncate, which is correct filesystem behaviour but would muddy
@@ -143,7 +143,7 @@ fn a_write_after_a_reopen_of_a_previously_written_image_does_not_loop() {
     // Boot 1: mount, write, and drop the mount the way a dying process does (no unmount).
     {
         let mut srv = Server::open(disk).expect("open 1");
-        let h = srv.open_file("scratch").expect("open scratch 1");
+        let h = srv.open_file(&named("scratch")).expect("open scratch 1");
         let p1 = repeat_write_payload(1);
         assert_eq!(srv.write(h, 0, &p1).unwrap(), p1.len());
         disk = srv.fs.disk; // take the disk back; no unmount, as on device
@@ -151,7 +151,7 @@ fn a_write_after_a_reopen_of_a_previously_written_image_does_not_loop() {
 
     // Boot 2: mount the image boot 1 wrote, and write again.
     let mut srv = Server::open(disk).expect("open 2");
-    let h = srv.open_file("scratch").expect("open scratch 2");
+    let h = srv.open_file(&named("scratch")).expect("open scratch 2");
     let p2 = repeat_write_payload(2);
     assert_eq!(srv.write(h, 0, &p2).unwrap(), p2.len(), "boot-2 write");
     let mut buf = [0u8; 128];
@@ -175,7 +175,7 @@ fn a_write_after_a_reopen_of_a_previously_written_image_does_not_loop() {
 #[test]
 fn a_shorter_write_does_not_truncate_and_that_is_what_broke_across_boots() {
     let mut srv = server_with(&[("scratch", b"(placeholder)")]);
-    let h = srv.open_file("scratch").unwrap();
+    let h = srv.open_file(&named("scratch")).unwrap();
 
     // Boot 1's client wrote 64 bytes.
     let long = [b'L'; 64];
@@ -209,11 +209,11 @@ fn a_write_survives_a_full_close_and_reopen() {
     // property the kill-mid-write test leans on: a reopen sees the committed write.
     let disk = image_with(&[("f", b"")]);
     let mut srv = Server::open(disk).unwrap();
-    let h = srv.open_file("f").unwrap();
+    let h = srv.open_file(&named("f")).unwrap();
     srv.write(h, 0, b"persisted").unwrap();
     let disk = srv.fs.disk; // the FileSystem committed on each tx; take the disk back
     let mut srv = Server::open(disk).unwrap();
-    let h = srv.open_file("f").unwrap();
+    let h = srv.open_file(&named("f")).unwrap();
     let mut buf = [0u8; 16];
     let n = srv.read(h, 0, &mut buf).unwrap();
     assert_eq!(&buf[..n], b"persisted");

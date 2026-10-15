@@ -13,25 +13,27 @@
 //! Names: `handle`, `ServeEdges` and this module's are provisional, minted by the fuzz lane
 //! (`lane/fuzz-service-handlers`) on 2026-10-04 (UTC); an architect names things.
 //!
-//! # BUGS
+//! # A name is copied out of the client's window before it is judged
 //!
-//! **A name is checked in the client's own window and then used from it.** Every name-taking arm
-//! below does `core::str::from_utf8(&window[..len])`, which borrows the client's shared page, and
-//! `check_component` then runs over that borrow; the engine later resolves the same bytes. A second
-//! writer on the page (window 0 is shared by design, and `system_initializer`'s window pool reuses
-//! a window while its last job may still hold it; see `Windows`'s BUGS there) can change a checked
-//! name into `..`, a name with `/`, the attribute store's directory, or invalid UTF-8 under a
-//! `&str`, which is undefined behaviour. `fs_nameset_caretaker` rewrites the bytes it checked, but
-//! this server reads them again afterwards. Copying the name out of the window before the check
-//! closes it at the cost of one bounded copy per request. Found by milestone 633 (an outside agent
-//! attacks the confinement claim)'s second pass, reasoned from the code; `notes/confinement-claims.md`
-//! rows 19 and 24 are the claims it touches.
+//! The `window` a request names its files in is the client's own shared page (milestone 599 (a
+//! frame per filesystem client channel)), and since milestone 812 (threads in one address space) a
+//! confined client can run a second thread that rewrites that page. So every name-taking arm below
+//! copies the name into a [`NameCopy`], the server's own bounded buffer, and the server's name check
+//! (`check_component`) and the resolve that follows both read the copy. Every verb takes a
+//! `NameCopy` rather than a `&str`, so an arm that skipped the copy would not compile. A rewrite of the page after
+//! the copy reaches nothing: the check and the use agree on the server's bytes, so a name that
+//! passes the check cannot become one it refuses (`..`, `.`, a name with `/` or `\`, the attribute
+//! store's directory, or invalid UTF-8), and no invalid UTF-8 is ever read under a `&str`. This is
+//! milestone 825 (a hostile client races the file server's name window)'s fix (calef's "Refused names" ruling, 2026-10-15 UTC); `notes/confinement-claims.md`
+//! rows 19 and 24 are the claims it holds. The attribute-name arms (`GETXATTR`, `SETXATTR`,
+//! `REMOVEXATTR`) take bytes in a separate namespace checked by `xattr::is_valid_name`, not a path
+//! name; `get_xattr_request` copies its name for the same reason.
 
 use filesystem_protocol::{blk, fs, operation, reply_err, xattr};
 use redoxfs::Disk;
 use syscall::error::{EINVAL, EPERM, Error, Result};
 
-use crate::Server;
+use crate::{NameCopy, Server};
 
 /// One filesystem block, in bytes: the size of every reply whose length the server chooses.
 const BLOCK: usize = blk::BLOCK_SIZE;
@@ -153,12 +155,16 @@ impl<D: Disk> Server<D> {
         match code {
             // The handle field is the **parent directory**, not a file: `fs::ROOT` is the endpoint's
             // bound directory, which is what every client that predates directory handles sends.
-            fs::OPEN => match core::str::from_utf8(&window[..len]) {
+            fs::OPEN => {
                 // The second word is the rights each directory on a path asks for (milestone
-                // 606, ruling A); `fs::OPEN` has the whole rule.
-                Ok(name) => self.open_file_path(handle, name, offset).map(|h| h as i64),
-                Err(_) => Err(Error::new(EINVAL)),
-            },
+                // 606, ruling A); `fs::OPEN` has the whole rule. The name is copied off the
+                // client's window first (`NameCopy`, milestone 825): the check and the resolve
+                // below both read the server's copy, never the shared page.
+                match NameCopy::copy_in(&window[..len]) {
+                    Ok(name) => self.open_file_path(handle, &name, offset).map(|h| h as i64),
+                    Err(e) => Err(e),
+                }
+            }
             // Read straight into the channel, up to the whole of it.
             fs::READ => self
                 .read(handle, offset, &mut window[..bulk_len])
@@ -172,9 +178,9 @@ impl<D: Disk> Server<D> {
             fs::CLOSE => self.close(handle).map(|()| 0),
             // Same shape as OPEN, deliberately: the name is `len` bytes at the start of the
             // channel, and the reply is a handle. A client that can open can create.
-            fs::CREATE => match core::str::from_utf8(&window[..len]) {
-                Ok(name) => self.create_file_at(handle, name).map(|h| h as i64),
-                Err(_) => Err(Error::new(EINVAL)),
+            fs::CREATE => match NameCopy::copy_in(&window[..len]) {
+                Ok(name) => self.create_file_at(handle, &name).map(|h| h as i64),
+                Err(e) => Err(e),
             },
             // **The verbs that hand back authority** (milestone 47). Both share OPEN's shape: the
             // name is `len` bytes at the start of the channel and the reply is a handle. What
@@ -182,12 +188,12 @@ impl<D: Disk> Server<D> {
             // to have rather than an offset. It is `offset` here only because that is what the
             // wire's second word is called; the server intersects it with the parent's rights and
             // refuses if the answer is smaller than the request.
-            fs::OPENDIR | fs::MKDIR => match core::str::from_utf8(&window[..len]) {
+            fs::OPENDIR | fs::MKDIR => match NameCopy::copy_in(&window[..len]) {
                 Ok(name) if code == fs::OPENDIR => {
-                    self.open_dir(handle, name, offset).map(|h| h as i64)
+                    self.open_dir(handle, &name, offset).map(|h| h as i64)
                 }
-                Ok(name) => self.make_dir(handle, name, offset).map(|h| h as i64),
-                Err(_) => Err(Error::new(EINVAL)),
+                Ok(name) => self.make_dir(handle, &name, offset).map(|h| h as i64),
+                Err(e) => Err(e),
             },
             // The cursor rides in the second word for TRUNCATE's reason: `len` is clamped to one
             // page above, and a cursor is an index into a directory rather than a payload length.
@@ -206,10 +212,10 @@ impl<D: Disk> Server<D> {
             // They are one arm because they differ only in the kind they will remove, and that
             // difference is the safety property: `UNLINK` refuses a directory, `RMDIR` refuses a
             // non-empty one, and neither spelling removes whatever it finds.
-            fs::UNLINK | fs::RMDIR => match core::str::from_utf8(&window[..len]) {
-                Ok(name) if code == fs::UNLINK => self.unlink(handle, name).map(|()| 0),
-                Ok(name) => self.rmdir(handle, name).map(|()| 0),
-                Err(_) => Err(Error::new(EINVAL)),
+            fs::UNLINK | fs::RMDIR => match NameCopy::copy_in(&window[..len]) {
+                Ok(name) if code == fs::UNLINK => self.unlink(handle, &name).map(|()| 0),
+                Ok(name) => self.rmdir(handle, &name).map(|()| 0),
+                Err(e) => Err(e),
             },
             _ => self.dispatch_other_verbs(request, window, edges),
         }
@@ -274,20 +280,20 @@ impl<D: Disk> Server<D> {
             // under the directory `handle` names. The rights split lives in
             // [`Server::mtime`]/[`Server::set_mtime_now`]/[`Server::set_mtime_at`]; this arm is only
             // where the page is cut up, [`fs::GETXATTR`]'s boundary.
-            fs::GETMTIME => match core::str::from_utf8(&window[..len]) {
-                Ok(name) => self.mtime(handle, name).map(|t| t as i64),
-                Err(_) => Err(Error::new(EINVAL)),
+            fs::GETMTIME => match NameCopy::copy_in(&window[..len]) {
+                Ok(name) => self.mtime(handle, &name).map(|t| t as i64),
+                Err(e) => Err(e),
             },
-            fs::SETMTIME => match core::str::from_utf8(&window[..len]) {
-                Ok(name) => self.set_mtime_now(handle, name).map(|()| 0),
-                Err(_) => Err(Error::new(EINVAL)),
+            fs::SETMTIME => match NameCopy::copy_in(&window[..len]) {
+                Ok(name) => self.set_mtime_now(handle, &name).map(|()| 0),
+                Err(e) => Err(e),
             },
             // The asserted seconds value rides in the second word, TRUNCATE's reason: `len` is
             // clamped to one page above, which would silently cap a caller's timestamp at a
             // nonsensical range if it rode in the length field instead.
-            fs::SETMTIME_AT => match core::str::from_utf8(&window[..len]) {
-                Ok(name) => self.set_mtime_at(handle, name, offset).map(|()| 0),
-                Err(_) => Err(Error::new(EINVAL)),
+            fs::SETMTIME_AT => match NameCopy::copy_in(&window[..len]) {
+                Ok(name) => self.set_mtime_at(handle, &name, offset).map(|()| 0),
+                Err(e) => Err(e),
             },
             // Ruling D's two control verbs; `fs::BIND` has the rules, `subtree_scope` enforces them.
             fs::BIND => self.bind(badge, handle, offset).map(|()| 0),
@@ -311,11 +317,14 @@ impl<D: Disk> Server<D> {
         if len + dst_len > BLOCK {
             Err(Error::new(EINVAL))
         } else {
-            let (src, dst) = window[..len + dst_len].split_at(len);
-            match (core::str::from_utf8(src), core::str::from_utf8(dst)) {
+            // Each name copied off the window once, into a value the server owns, before either is
+            // judged; `rename` checks the copies.
+            let src = NameCopy::copy_in(&window[..len]);
+            let dst = NameCopy::copy_in(&window[len..len + dst_len]);
+            match (src, dst) {
                 (Ok(src), Ok(dst)) => self
                     .admit(badge, fs::dst_handle(offset))
-                    .and_then(|to| self.rename(handle, src, to, dst))
+                    .and_then(|to| self.rename(handle, &src, to, &dst))
                     .map(|()| 0),
                 _ => Err(Error::new(EINVAL)),
             }

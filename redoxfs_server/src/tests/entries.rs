@@ -9,28 +9,38 @@ use super::*;
 fn a_rename_moves_a_name_within_a_directory_and_between_two() {
     let mut srv = server_with_tree();
     let root = filesystem_protocol::fs::ROOT as u32;
-    let sub = srv.open_dir(root, "sub", dir::ALL).unwrap();
-    let deeper = srv.open_dir(sub, "deeper", dir::ALL).unwrap();
+    let sub = srv.open_dir(root, &named("sub"), dir::ALL).unwrap();
+    let deeper = srv.open_dir(sub, &named("deeper"), dir::ALL).unwrap();
 
     // Within one directory: `sub/inner` becomes `sub/renamed`, contents intact.
-    srv.rename(sub, "inner", sub, "renamed").expect("rename");
+    srv.rename(sub, &named("inner"), sub, &named("renamed"))
+        .expect("rename");
     assert_eq!(
-        srv.open_file_at(sub, "inner").err().map(|e| e.errno),
+        srv.open_file_at(sub, &named("inner"))
+            .err()
+            .map(|e| e.errno),
         Some(syscall::error::ENOENT),
         "the old name must be gone, not merely shadowed",
     );
-    let h = srv.open_file_at(sub, "renamed").expect("the new name");
+    let h = srv
+        .open_file_at(sub, &named("renamed"))
+        .expect("the new name");
     let mut buf = [0u8; 64];
     let n = srv.read(h, 0, &mut buf).unwrap();
     assert_eq!(&buf[..n], b"inside the grant");
 
     // Across two directories, which is the same-filesystem move POSIX mandates be atomic.
-    srv.rename(sub, "renamed", deeper, "moved").expect("move");
+    srv.rename(sub, &named("renamed"), deeper, &named("moved"))
+        .expect("move");
     assert_eq!(
-        srv.open_file_at(sub, "renamed").err().map(|e| e.errno),
+        srv.open_file_at(sub, &named("renamed"))
+            .err()
+            .map(|e| e.errno),
         Some(syscall::error::ENOENT),
     );
-    let h = srv.open_file_at(deeper, "moved").expect("the moved name");
+    let h = srv
+        .open_file_at(deeper, &named("moved"))
+        .expect("the moved name");
     let n = srv.read(h, 0, &mut buf).unwrap();
     assert_eq!(
         &buf[..n],
@@ -48,9 +58,11 @@ fn a_rename_needs_remove_where_it_takes_from_and_create_where_it_puts() {
     let mut srv = server_with_tree();
     let root = filesystem_protocol::fs::ROOT as u32;
     // Everything but REMOVE: milestone 47's motivating sentence, "add to this, destroy nothing".
-    let append = srv.open_dir(root, "sub", dir::ALL & !dir::REMOVE).unwrap();
+    let append = srv
+        .open_dir(root, &named("sub"), dir::ALL & !dir::REMOVE)
+        .unwrap();
     assert_eq!(
-        srv.rename(append, "inner", append, "elsewhere")
+        srv.rename(append, &named("inner"), append, &named("elsewhere"))
             .err()
             .map(|e| e.errno),
         Some(EROFS),
@@ -59,7 +71,7 @@ fn a_rename_needs_remove_where_it_takes_from_and_create_where_it_puts() {
     // And the refusal is about the capability, not about the name: it is the same answer for a
     // name that is not there, so this verb cannot be used to probe for one.
     assert_eq!(
-        srv.rename(append, "absent", append, "x")
+        srv.rename(append, &named("absent"), append, &named("x"))
             .err()
             .map(|e| e.errno),
         Some(EROFS),
@@ -67,9 +79,11 @@ fn a_rename_needs_remove_where_it_takes_from_and_create_where_it_puts() {
 
     // Everything but CREATE: it may give a name up and has nowhere to put one.
     let mut srv = server_with_tree();
-    let taker = srv.open_dir(root, "sub", dir::ALL & !dir::CREATE).unwrap();
+    let taker = srv
+        .open_dir(root, &named("sub"), dir::ALL & !dir::CREATE)
+        .unwrap();
     assert_eq!(
-        srv.rename(taker, "inner", taker, "elsewhere")
+        srv.rename(taker, &named("inner"), taker, &named("elsewhere"))
             .err()
             .map(|e| e.errno),
         Some(EROFS),
@@ -78,8 +92,8 @@ fn a_rename_needs_remove_where_it_takes_from_and_create_where_it_puts() {
     // With both, the same request through the same code succeeds, so the refusals above are
     // statements about the rights rather than about a verb that never works.
     let mut srv = server_with_tree();
-    let full = srv.open_dir(root, "sub", dir::ALL).unwrap();
-    srv.rename(full, "inner", full, "elsewhere")
+    let full = srv.open_dir(root, &named("sub"), dir::ALL).unwrap();
+    srv.rename(full, &named("inner"), full, &named("elsewhere"))
         .expect("REMOVE and CREATE together must be enough");
 }
 
@@ -90,14 +104,14 @@ fn a_rename_needs_remove_where_it_takes_from_and_create_where_it_puts() {
 fn a_cross_directory_rename_consults_both_directories_rights() {
     let mut srv = server_with_tree();
     let root = filesystem_protocol::fs::ROOT as u32;
-    let src = srv.open_dir(root, "sub", dir::ALL).unwrap();
+    let src = srv.open_dir(root, &named("sub"), dir::ALL).unwrap();
     // A destination with no CREATE. Reached by descending twice so it is a genuinely different
     // capability rather than the same handle spelled differently.
     let dst = srv
-        .open_dir(src, "deeper", dir::ALL & !dir::CREATE)
+        .open_dir(src, &named("deeper"), dir::ALL & !dir::CREATE)
         .unwrap();
     assert_eq!(
-        srv.rename(src, "inner", dst, "landed")
+        srv.rename(src, &named("inner"), dst, &named("landed"))
             .err()
             .map(|e| e.errno),
         Some(EROFS),
@@ -105,11 +119,12 @@ fn a_cross_directory_rename_consults_both_directories_rights() {
     );
     // The source is untouched by the refusal: a half-done rename is the failure this verb exists
     // to make impossible.
-    assert!(srv.open_file_at(src, "inner").is_ok());
+    assert!(srv.open_file_at(src, &named("inner")).is_ok());
 
-    let wide = srv.open_dir(src, "deeper", dir::ALL).unwrap();
-    srv.rename(src, "inner", wide, "landed").expect("rename");
-    assert!(srv.open_file_at(wide, "landed").is_ok());
+    let wide = srv.open_dir(src, &named("deeper"), dir::ALL).unwrap();
+    srv.rename(src, &named("inner"), wide, &named("landed"))
+        .expect("rename");
+    assert!(srv.open_file_at(wide, &named("landed")).is_ok());
 }
 
 /// A rename **replaces** an existing destination of the same kind, which is what the temp-file
@@ -118,12 +133,13 @@ fn a_cross_directory_rename_consults_both_directories_rights() {
 fn a_rename_replaces_a_file_and_refuses_to_cross_kinds() {
     let mut srv = server_with_tree();
     let root = filesystem_protocol::fs::ROOT as u32;
-    let sub = srv.open_dir(root, "sub", dir::ALL).unwrap();
-    let tmp = srv.create_file_at(sub, "tmp").unwrap();
+    let sub = srv.open_dir(root, &named("sub"), dir::ALL).unwrap();
+    let tmp = srv.create_file_at(sub, &named("tmp")).unwrap();
     srv.write(tmp, 0, b"the new contents").unwrap();
 
-    srv.rename(sub, "tmp", sub, "inner").expect("replace");
-    let h = srv.open_file_at(sub, "inner").unwrap();
+    srv.rename(sub, &named("tmp"), sub, &named("inner"))
+        .expect("replace");
+    let h = srv.open_file_at(sub, &named("inner")).unwrap();
     let mut buf = [0u8; 64];
     let n = srv.read(h, 0, &mut buf).unwrap();
     assert_eq!(
@@ -132,7 +148,7 @@ fn a_rename_replaces_a_file_and_refuses_to_cross_kinds() {
         "the destination must hold the source's bytes, whole",
     );
     assert_eq!(
-        srv.open_file_at(sub, "tmp").err().map(|e| e.errno),
+        srv.open_file_at(sub, &named("tmp")).err().map(|e| e.errno),
         Some(syscall::error::ENOENT),
     );
 
@@ -140,22 +156,22 @@ fn a_rename_replaces_a_file_and_refuses_to_cross_kinds() {
     // (it passes the destination's own type to remove_node, so it never compares the two);
     // these are our checks, so the verb means one thing regardless of backend.
     assert_eq!(
-        srv.rename(sub, "inner", sub, "deeper")
+        srv.rename(sub, &named("inner"), sub, &named("deeper"))
             .err()
             .map(|e| e.errno),
         Some(EISDIR),
     );
     assert_eq!(
-        srv.rename(sub, "deeper", sub, "inner")
+        srv.rename(sub, &named("deeper"), sub, &named("inner"))
             .err()
             .map(|e| e.errno),
         Some(ENOTDIR),
     );
     // And a non-empty destination directory survives, which is the engine's ENOTEMPTY.
-    let d = srv.make_dir(sub, "empty-dir", dir::ALL).unwrap();
+    let d = srv.make_dir(sub, &named("empty-dir"), dir::ALL).unwrap();
     let _ = d;
     assert_eq!(
-        srv.rename(sub, "empty-dir", sub, "deeper")
+        srv.rename(sub, &named("empty-dir"), sub, &named("deeper"))
             .err()
             .map(|e| e.errno),
         Some(syscall::error::ENOTEMPTY),
@@ -171,25 +187,27 @@ fn a_rename_replaces_a_file_and_refuses_to_cross_kinds() {
 fn a_directory_renames_in_place_and_refuses_to_move_between_directories() {
     let mut srv = server_with_tree();
     let root = filesystem_protocol::fs::ROOT as u32;
-    let sub = srv.open_dir(root, "sub", dir::ALL).unwrap();
+    let sub = srv.open_dir(root, &named("sub"), dir::ALL).unwrap();
 
-    srv.rename(sub, "deeper", sub, "renamed-dir")
+    srv.rename(sub, &named("deeper"), sub, &named("renamed-dir"))
         .expect("a directory renames in place");
     let d = srv
-        .open_dir(sub, "renamed-dir", dir::ALL)
+        .open_dir(sub, &named("renamed-dir"), dir::ALL)
         .expect("and it is still a directory, with its contents");
-    assert!(srv.open_file_at(d, "leaf").is_ok());
+    assert!(srv.open_file_at(d, &named("leaf")).is_ok());
 
     // The cycle this refusal prevents, spelled out: `sub` moved into something inside `sub`.
     assert_eq!(
-        srv.rename(root, "sub", d, "sub").err().map(|e| e.errno),
+        srv.rename(root, &named("sub"), d, &named("sub"))
+            .err()
+            .map(|e| e.errno),
         Some(EINVAL),
         "moving a directory between directories is not offered, and says so",
     );
     // Even a harmless-looking move (out of the grant's reach entirely) takes the same answer,
     // because the rule is about the verb and not about which pair happens to be safe.
     assert_eq!(
-        srv.rename(sub, "renamed-dir", root, "promoted")
+        srv.rename(sub, &named("renamed-dir"), root, &named("promoted"))
             .err()
             .map(|e| e.errno),
         Some(EINVAL),
@@ -203,36 +221,47 @@ fn a_directory_renames_in_place_and_refuses_to_move_between_directories() {
 fn a_rename_refuses_what_every_other_name_taking_verb_refuses() {
     let mut srv = server_with_tree();
     let root = filesystem_protocol::fs::ROOT as u32;
-    let sub = srv.open_dir(root, "sub", dir::ALL).unwrap();
+    let sub = srv.open_dir(root, &named("sub"), dir::ALL).unwrap();
 
     for bad in ["..", ".", "", "a/b", "/abs", "with:colon"] {
         assert_eq!(
-            srv.rename(sub, bad, sub, "x").err().map(|e| e.errno),
+            srv.rename(sub, &named(bad), sub, &named("x"))
+                .err()
+                .map(|e| e.errno),
             Some(EINVAL),
             "a source named {bad:?} must be refused as EINVAL",
         );
         assert_eq!(
-            srv.rename(sub, "inner", sub, bad).err().map(|e| e.errno),
+            srv.rename(sub, &named("inner"), sub, &named(bad))
+                .err()
+                .map(|e| e.errno),
             Some(EINVAL),
             "a destination named {bad:?} must be refused as EINVAL",
         );
     }
     // Renaming a name onto itself changes nothing and succeeds, which is POSIX's answer and the
     // one that matters: the alternative unlinks the only link and then has nothing to relink.
-    srv.rename(sub, "inner", sub, "inner").expect("a no-op");
-    assert!(srv.open_file_at(sub, "inner").is_ok());
+    srv.rename(sub, &named("inner"), sub, &named("inner"))
+        .expect("a no-op");
+    assert!(srv.open_file_at(sub, &named("inner")).is_ok());
 
-    let f = srv.open_file_at(sub, "inner").unwrap();
+    let f = srv.open_file_at(sub, &named("inner")).unwrap();
     assert_eq!(
-        srv.rename(f, "inner", sub, "x").err().map(|e| e.errno),
+        srv.rename(f, &named("inner"), sub, &named("x"))
+            .err()
+            .map(|e| e.errno),
         Some(ENOTDIR),
     );
     assert_eq!(
-        srv.rename(sub, "inner", f, "x").err().map(|e| e.errno),
+        srv.rename(sub, &named("inner"), f, &named("x"))
+            .err()
+            .map(|e| e.errno),
         Some(ENOTDIR),
     );
     assert_eq!(
-        srv.rename(999, "inner", sub, "x").err().map(|e| e.errno),
+        srv.rename(999, &named("inner"), sub, &named("x"))
+            .err()
+            .map(|e| e.errno),
         Some(EBADF),
     );
 }
@@ -246,20 +275,33 @@ fn a_rename_survives_a_reopen() {
     {
         let mut srv = Server::open(disk).expect("open");
         let sub = srv
-            .open_dir(filesystem_protocol::fs::ROOT as u32, "sub", dir::ALL)
+            .open_dir(
+                filesystem_protocol::fs::ROOT as u32,
+                &named("sub"),
+                dir::ALL,
+            )
             .unwrap();
-        srv.rename(sub, "inner", sub, "survivor").unwrap();
+        srv.rename(sub, &named("inner"), sub, &named("survivor"))
+            .unwrap();
         disk = srv.fs.disk;
     }
     let mut srv = Server::open(disk).expect("reopen");
     let sub = srv
-        .open_dir(filesystem_protocol::fs::ROOT as u32, "sub", dir::ALL)
+        .open_dir(
+            filesystem_protocol::fs::ROOT as u32,
+            &named("sub"),
+            dir::ALL,
+        )
         .unwrap();
     assert_eq!(
-        srv.open_file_at(sub, "inner").err().map(|e| e.errno),
+        srv.open_file_at(sub, &named("inner"))
+            .err()
+            .map(|e| e.errno),
         Some(syscall::error::ENOENT),
     );
-    let h = srv.open_file_at(sub, "survivor").expect("the new name");
+    let h = srv
+        .open_file_at(sub, &named("survivor"))
+        .expect("the new name");
     let mut buf = [0u8; 64];
     let n = srv.read(h, 0, &mut buf).unwrap();
     assert_eq!(&buf[..n], b"inside the grant");
@@ -273,21 +315,31 @@ fn a_subtree_built_through_directory_handles_survives_a_reopen() {
     {
         let mut srv = Server::open(disk).expect("open");
         let sub = srv
-            .open_dir(filesystem_protocol::fs::ROOT as u32, "sub", dir::ALL)
+            .open_dir(
+                filesystem_protocol::fs::ROOT as u32,
+                &named("sub"),
+                dir::ALL,
+            )
             .unwrap();
-        let made = srv.make_dir(sub, "made", dir::ALL).unwrap();
-        let f = srv.create_file_at(made, "note").unwrap();
+        let made = srv.make_dir(sub, &named("made"), dir::ALL).unwrap();
+        let f = srv.create_file_at(made, &named("note")).unwrap();
         srv.write(f, 0, b"written two levels down").unwrap();
         disk = srv.fs.disk; // no unmount, as a dying process leaves it
     }
     let mut srv = Server::open(disk).expect("reopen");
     let sub = srv
-        .open_dir(filesystem_protocol::fs::ROOT as u32, "sub", dir::ALL)
+        .open_dir(
+            filesystem_protocol::fs::ROOT as u32,
+            &named("sub"),
+            dir::ALL,
+        )
         .unwrap();
     let made = srv
-        .open_dir(sub, "made", dir::ALL)
+        .open_dir(sub, &named("made"), dir::ALL)
         .expect("the made directory");
-    let f = srv.open_file_at(made, "note").expect("the file in it");
+    let f = srv
+        .open_file_at(made, &named("note"))
+        .expect("the file in it");
     let mut buf = [0u8; 64];
     let n = srv.read(f, 0, &mut buf).unwrap();
     assert_eq!(&buf[..n], b"written two levels down");
@@ -319,7 +371,7 @@ fn statfs_reports_the_image_and_a_write_takes_space_out_of_it() {
     );
     assert!(free > 0 && free < total, "free {free} of {total} blocks");
 
-    let h = srv.create_file("big").unwrap();
+    let h = srv.create_file(&named("big")).unwrap();
     srv.write(h, 0, &[7u8; 1024 * 1024]).unwrap();
     let (_, after_total, after_free) = srv.statfs(filesystem_protocol::fs::ROOT as u32).unwrap();
     assert_eq!(after_total, total, "the image did not change size");
@@ -342,7 +394,7 @@ fn statfs_answers_through_a_capability_that_carries_nothing() {
     let mut srv = server_with_tree();
     let root = filesystem_protocol::fs::ROOT as u32;
     // A child directory holding one right, and not one of the ones a read would need.
-    let narrow = srv.open_dir(root, "sub", dir::DESCEND).unwrap();
+    let narrow = srv.open_dir(root, &named("sub"), dir::DESCEND).unwrap();
     assert!(
         srv.read_dir(narrow, 0, &mut [0u8; 64]).is_err(),
         "the fixture is only meaningful if this capability cannot enumerate",
@@ -360,17 +412,17 @@ fn statfs_answers_through_a_capability_that_carries_nothing() {
 fn create_makes_an_empty_file_and_refuses_an_existing_name() {
     let mut srv = server_with(&[("already", b"here")]);
 
-    let h = srv.create_file("fresh").unwrap();
+    let h = srv.create_file(&named("fresh")).unwrap();
     assert_eq!(srv.fstat(h).unwrap(), 0, "a created file starts empty");
 
     // Create is create, not create-or-open. Silently opening an existing file is how a
     // partly-working write comes to look like a working one (the §27 failure mode).
     assert_eq!(
-        srv.create_file("already").err().map(|e| e.errno),
+        srv.create_file(&named("already")).err().map(|e| e.errno),
         Some(EEXIST),
         "creating over an existing name must refuse, and must not truncate it either",
     );
-    let h2 = srv.open_file("already").unwrap();
+    let h2 = srv.open_file(&named("already")).unwrap();
     assert_eq!(
         srv.fstat(h2).unwrap(),
         4,
@@ -388,7 +440,7 @@ fn truncate_shrinks_and_discards_the_tail_which_is_the_bug_it_exists_to_fix() {
     // The exact byte counts from DECISIONS §27: a 64-byte payload from one boot, a 61-byte
     // write from the next, and the three-byte tail that made a good write look like a failure.
     let mut srv = server_with(&[("scratch", b"(placeholder)")]);
-    let h = srv.open_file("scratch").unwrap();
+    let h = srv.open_file(&named("scratch")).unwrap();
     assert_eq!(srv.write(h, 0, &[b'L'; 64]).unwrap(), 64);
 
     let short = [b'S'; 61];
@@ -405,7 +457,7 @@ fn truncate_shrinks_and_discards_the_tail_which_is_the_bug_it_exists_to_fix() {
 #[test]
 fn truncate_grows_with_zeroes_and_is_idempotent() {
     let mut srv = server_with(&[("f", b"abc")]);
-    let h = srv.open_file("f").unwrap();
+    let h = srv.open_file(&named("f")).unwrap();
 
     srv.truncate(h, 8).unwrap();
     assert_eq!(srv.fstat(h).unwrap(), 8);
@@ -442,7 +494,7 @@ fn create_write_truncate_all_survive_a_close_and_reopen() {
 
     {
         let mut srv = Server::open(disk).expect("open");
-        let h = srv.create_file("made").unwrap();
+        let h = srv.create_file(&named("made")).unwrap();
         assert_eq!(srv.write(h, 0, payload).unwrap(), payload.len());
         assert_eq!(srv.write(h, 0, &[b'X'; 200]).unwrap(), 200);
         assert_eq!(srv.write(h, 0, payload).unwrap(), payload.len());
@@ -452,7 +504,7 @@ fn create_write_truncate_all_survive_a_close_and_reopen() {
 
     let mut srv = Server::open(disk).expect("reopen");
     let h = srv
-        .open_file("made")
+        .open_file(&named("made"))
         .expect("the created name survived the reopen");
     assert_eq!(srv.fstat(h).unwrap(), payload.len() as u64);
     let mut buf = [0u8; 512];
@@ -490,7 +542,7 @@ fn create_and_truncate_refuse_what_every_other_verb_refuses() {
         "back\\slash",
     ] {
         assert_eq!(
-            srv.create_file(bad).err().map(|e| e.errno),
+            srv.create_file(&named(bad)).err().map(|e| e.errno),
             Some(EINVAL),
             "create must refuse {bad:?} as EINVAL: a name is not a path",
         );
@@ -500,7 +552,7 @@ fn create_and_truncate_refuse_what_every_other_verb_refuses() {
         // is not a name.
         let want = if bad == "sub/deep" { ENOENT } else { EINVAL };
         assert_eq!(
-            srv.open_file(bad).err().map(|e| e.errno),
+            srv.open_file(&named(bad)).err().map(|e| e.errno),
             Some(want),
             "and open must refuse {bad:?} the same way create does, or as a path",
         );
@@ -524,13 +576,13 @@ fn the_std_fs_write_sequence_twice_does_not_loop() {
     assert!(short.len() < long.len());
 
     // Call one: the name is absent, so create, then truncate an already-empty file, then write.
-    let h = srv.create_file("made-by-std").unwrap();
+    let h = srv.create_file(&named("made-by-std")).unwrap();
     srv.truncate(h, 0).unwrap();
     assert_eq!(srv.write(h, 0, long).unwrap(), long.len());
     srv.close(h).unwrap();
 
     // Call two: the name exists, so open, truncate away 51 bytes, then write 25.
-    let h = srv.open_file("made-by-std").unwrap();
+    let h = srv.open_file(&named("made-by-std")).unwrap();
     srv.truncate(h, 0).unwrap();
     assert_eq!(
         srv.fstat(h).unwrap(),
@@ -543,7 +595,7 @@ fn the_std_fs_write_sequence_twice_does_not_loop() {
 
     // And the read-back `std::fs::read` does: open, fstat for the size hint, read to EOF. The
     // read loop must terminate, which means a read at or past the size returns 0.
-    let h = srv.open_file("made-by-std").unwrap();
+    let h = srv.open_file(&named("made-by-std")).unwrap();
     let size = srv.fstat(h).unwrap() as usize;
     let mut got = Vec::new();
     let mut buf = [0u8; 4096];
@@ -596,7 +648,7 @@ fn create_into_a_populated_root_and_look_it_up() {
         ),
     ]);
 
-    let h = srv.create_file("made-by-std").unwrap();
+    let h = srv.create_file(&named("made-by-std")).unwrap();
     assert_eq!(srv.write(h, 0, b"first").unwrap(), 5);
     srv.close(h).unwrap();
 
@@ -604,12 +656,12 @@ fn create_into_a_populated_root_and_look_it_up() {
     // corrupted directory would take every scan down with it, not just the new entry's.
     for name in ["made-by-std", "motd", "scratch"] {
         let h = srv
-            .open_file(name)
+            .open_file(&named(name))
             .unwrap_or_else(|e| panic!("{name} no longer resolves: {e:?}"));
         srv.close(h).unwrap();
     }
     assert!(
-        srv.open_file("definitely-absent").is_err(),
+        srv.open_file(&named("definitely-absent")).is_err(),
         "a miss must still terminate and report, not scan forever",
     );
 }
@@ -654,7 +706,7 @@ fn create_through_the_block_chunking_does_not_loop() {
 
     // What std::fs::write does: create, truncate, write; then again, shorter.
     let h = srv
-        .create_file("made-by-std")
+        .create_file(&named("made-by-std"))
         .expect("create through chunking");
     srv.truncate(h, 0).unwrap();
     let long = b"the first write, deliberately the longer of the two";
@@ -662,7 +714,7 @@ fn create_through_the_block_chunking_does_not_loop() {
     srv.close(h).unwrap();
 
     let h = srv
-        .open_file("made-by-std")
+        .open_file(&named("made-by-std"))
         .expect("reopen through chunking");
     srv.truncate(h, 0).unwrap();
     let short = b"the second write, shorter";
@@ -673,12 +725,12 @@ fn create_through_the_block_chunking_does_not_loop() {
     // the create would take every scan down with it, not only the new entry's.
     for name in ["made-by-std", "motd", "scratch"] {
         let h = srv
-            .open_file(name)
+            .open_file(&named(name))
             .unwrap_or_else(|e| panic!("{name} no longer resolves after a chunked create: {e:?}"));
         srv.close(h).unwrap();
     }
 
-    let h = srv.open_file("made-by-std").unwrap();
+    let h = srv.open_file(&named("made-by-std")).unwrap();
     let mut buf = [0u8; 256];
     let n = srv.read(h, 0, &mut buf).unwrap();
     assert_eq!(
