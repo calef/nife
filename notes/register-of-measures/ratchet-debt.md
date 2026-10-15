@@ -1,13 +1,15 @@
-# Two ratchets' debt
+# Three ratchets' debt
 
 *(Appendix of [the register](../register-of-measures.md). Stem provisional, minted on 2026-10-13
 (UTC) by lane/ratchet-metrics, as are the files `writing-standards.csv` and `comment-blocks.csv`,
-their columns and their charts. calef asked for these charts on 2026-10-13 so the baselines' debt
-can be driven down.)*
+their columns and their charts. `line-citations.csv`, its columns, its chart and
+`line_citation_debt` are provisional too, minted 2026-10-14 (UTC) by
+maintainer/line-citations-chart. calef asked for these charts so the baselines' debt can be driven
+down.)*
 
-Two gates in `script/lint` hold a debt to a baseline that only falls. They enforce §213
-(writing standards) and §267 (a comment states the constraint as it is now). A baseline says what
-may not grow. These series say how much
+Three gates in `script/lint` hold a debt to a baseline that only falls. They enforce §213
+(writing standards), §267 (a comment states the constraint as it is now) and §277 (cite a heading
+or a symbol, never a line number). A baseline says what may not grow. These series say how much
 is left, one row per ISO week in `notes/project-metrics/`, read by `script/metrics` from that
 week's commit.
 
@@ -19,6 +21,9 @@ week's commit.
 | `comment-blocks.csv` | `comment_block_files_over_cap` | Rust files holding a comment block over 40 lines |
 | | `comment_blocks_over_cap` | the blocks themselves, which is what a baseline row counts |
 | | `comment_block_excess_lines` | each such block's lines past 40, summed |
+| `line-citations.csv` | `line_citations_code` | citations by line number into code |
+| | `line_citations_doc` | citations by line number into a Markdown document |
+| | `line_citations_ceiling` | the week's own `CODE_CEILING`, blank before the gate existed |
 
 ## One measure, the gate's
 
@@ -31,12 +36,15 @@ disagree about a file:
   the chart groups the three bars rather than stacking them.
 - §267: `comment_block_ratchet.blocks_over` over its `in_scope` files, every `.rs` outside
   `vendor/`.
+- §277: `line_citations.file_hits` over its `in_scope` files, every text file but data, symlinks
+  and `vendor/`. The ceiling is read from the week's own `helpers/line_citations.py`, so the chart
+  draws the ceiling that week's gate held.
 
 ## Counted from the tree, exemptions included
 
 The series never read a baseline's rows. A baseline holds ceilings, and a ceiling can sit above
 what the tree measures until someone banks the shrink; the tree is the debt. A `writing-standards`
-exception marker excuses a document at the gate and not here: a chart that subtracted what the
+exception marker and a `line-citation: exception` marker excuse an item at the gate and not here: a chart that subtracted what the
 gate excuses would hide the debt it exists to show.
 
 ## Every week, from 2026W29
@@ -51,5 +59,9 @@ would have found then. That is every row's rule here, and it is why no week is b
   refuses any bold ceiling. It stays a column so a regression would show.
 - Today's measure applied to an old week can read a construct the old tree used differently. The
   roadmap's field tokens are one: `measured` reads both forms, so they do not inflate the median.
+- The line-citation gate landed in 2026W41, so earlier weeks are today's counter on older text.
+  They have no ceiling and no marked exceptions, and their Markdown citations were never held.
+- The ceiling compares with the gate's count, which skips a marked code citation and this chart
+  does not. They agree while no code citation is marked, as in 2026W42.
 - None of these sees quality. A shorter sentence can be worse, and a comment block cut to 40 lines
   can lose a fact; §267's remedy is to move history to the commit message, not to delete it.
