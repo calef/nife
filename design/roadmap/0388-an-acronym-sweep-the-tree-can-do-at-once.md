@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: BUILT
+built: 2026-10-15
 raised: 2026-09-05
 milestone_dependencies: none
-decision_dependencies: unwritten
+decision_dependencies: 154
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -11,59 +12,44 @@ needs_person: no
 
 Filed 2026-09-05 as an unnumbered proposal by milestone 264, which asked
 the acronym question of sixty names and deliberately answered none of them; numbered 2026-09-19 by
-milestone 433 (drain)'s drain of the proposal pile. Premise re-read against the tree on 2026-09-19. The
-table below is already history rather than a worklist, and says so: all four rows were ruled by
-calef on 2026-09-13 and performed by milestones 265, 290 and 298. What is left is the BUGS
-section, and both halves of it are still live. `kernel/src/user/entropy_service.rs` still exports
-`jh7110_trng_device` (line 300) and `jh7110_crg_window` (line 416), so the file still reads
-`jh7110_entropy::discover` inside a function called `jh7110_trng_device`, and
-`kernel/src/user/entropy_tests.rs` and `kernel/src/main.rs` still call both by those names. Of the
-five names the 2026-09-05 rule deratified, three are still live crates carrying `provisional` and a
-recorded refusal apiece (`dtb`, `gpt`, `ipc`); `dma` and `asid` are no longer names
-`script/names` sees. *(Number provisional until the merge queue lands it.)*
+milestone 433 (drain)'s drain of the proposal pile. The rule behind the gate is
+[§154 (acronym)](../decisions/0154-the-acronym-test-is-whether-the-phrase-is-spoken.md), which
+replaced the 2026-09-05 test this block was proposed under.
 
-an architect names things, and this is a list of names. The rule behind the gate is
-[§154 (acronym)](../decisions/0154-the-acronym-test-is-whether-the-phrase-is-spoken.md), cited here from
-2026-09-19; the block argued from it throughout and never named it.
+an architect names things, and this is a list of names.
 
-§154 is `DECIDED` and it already answers this block's hard half, which is why nothing new is
-minted for it. calef ratified it on 2026-09-18: an acronym expands where its expansion is a phrase
-people actually say, and stays whole where nobody says it, asked again of any acronym left inside
-the expansion. Its own table rules four of the five names in this block's first `BUGS` entry by
-name: `dtb` becomes `device_tree_blob`, `ipc` becomes `inter_process_communication`, `asid` becomes
-`address_space_identifier`, `gpt` becomes `globally_unique_identifier_partition_table`, and `dma`
-was already ruled on 2026-09-05. [§113](../decisions/0113-kernel-object-plain-names.md)'s amendment
-is the other half, since it ends the external-standard exemption the `jh7110_crg` row leaned on.
+The sweep is performed. Every name this block carried is ruled and moved. The four in the
+table below were ruled by calef on 2026-09-13 and performed by milestone 265 (proto), milestone
+290 (one ntp binary is three programs) and milestone 298 (retire the multicast DNS responder).
+The
+five the 2026-09-05 rule deratified by name moved under §154 in the week that decision landed:
+`asid` is `address_space_identifier` (#949), `gpt` is
+`globally_unique_identifier_partition_table` (#955), `dtb` is `device_tree_blob` (#963), `ipc` is
+`inter_process_communication` (#965), and the `dma` family followed on 2026-09-24 (#1229), when
+calef ruled that the crate and its eleven kernel and driver identifiers expand in one change.
 
-So what stands here is performance and one genuinely open name, not a fork. Applying §154 to
-those four is a ratified rename per `design/naming.md`'s procedure and a sweep `ipc` makes large,
-which is why this is still a milestone; it is not a question anybody has to answer first. The one
-thing §154 does not settle is the second `BUGS` entry, `jh7110_trng_device` and
-`jh7110_crg_window` in `kernel/src/user/entropy_service.rs`, where `design/naming.md`'s
-*"abbreviation we receive rather than author"* clause may cover a name for a hardware block whose
-device-tree spelling is the vendor's (`starfive,jh7110-trng`). That is a ruling per name on
-`script/names`' worklist rather than a `design/decisions/` section, and this block is where it
-waits.
+Each renamed crate's provenance block carries its ruling, its refusals, and a census that
+classifies every survivor line. The classes that keep an acronym are recorded there, not here:
+the blob rather than the crate (`let dtb`, `crate::DTB`), UEFI's own vocabulary (`GPT`, the GPT
+header), the hardware field's manual spelling (`satp.ASID`, `asid_bits()`), IPC the concept
+(`ipc_send`, the bench files), `dma` alone, and ACPI's `dmar`. This lane re-ran the token census
+on 2026-10-15 and found no live identifier outside those classes. Two `ipc` module names minted
+provisional by the 2026-10-12 file splits sit inside the IPC-concept clause and are on
+`script/names`'s worklist, which is where a provisional name belongs.
 
-All four rows are now answered, every one of them by calef on 2026-09-13, working the
-unratified worklist: `jh7110_crg` is `jh7110_clock_and_reset`, `jh7110_trng` (crate and program) is
-`jh7110_entropy`, by way of `jh7110_entropy_source`, which he ratified first and replaced later the
-same day, and he ruled the `ntp` and `mdns` stems the same day. The rows stay in the table below
-with their answers beside them, because the question each one asked is the half a future proposer
-needs.
-
-The two stem rulings were recorded and not performed, deliberately, and milestone 265 (proto) performed
-them on 2026-09-14 along with its own suffix change, so that one crate was not renamed twice.
-`ntp_proto` is `network_time_protocol`, `mdns_proto` is `multicast_dns_protocol`, and the two
-siblings carrying the same stem moved with it. The nested `mdns` question this proposal called the
-interesting one was answered rather than dissolved: calef ruled that DNS stops because it is the
-`pci` case one level down, so `multicast_dns` is the whole expansion and
-`multicast_domain_name_system` is not. The `ntp` program was to stay short and no longer exists
-to: milestone 290 split it into `network_time_client`, `network_time_test_server` and
-`unwritable_clock_witness` on 2026-09-14.
-
-The gate no longer stands for the four names in the table. It stands for the BUGS below, which
-are the larger half and were never in it.
+With the sweep done, what remains is the ratification of the two public kernel functions the
+renames deliberately did not touch. `kernel/src/user/entropy_service.rs` still exports
+`jh7110_trng_device` and `jh7110_crg_window`, so the file reads `jh7110_entropy::discover` inside
+a function called `jh7110_trng_device`, and `jh7110_clock_and_reset::Found` inside one called
+`jh7110_crg_window`. They are a genuinely harder case than the crates were, and that is why the
+2026-09-13 renames left them: unlike a crate name, each of these names the **hardware block**,
+whose device-tree spelling is the vendor's (`starfive,jh7110-trng`, and mainline's driver file is
+`jh7110-trng.c`) and whose boot-log wording throughout the tree is "JH7110 TRNG", so the
+"abbreviation we receive rather than author" clause in design/naming.md may cover them where it
+did not cover the crate. Both now carry `Name: recorded` blocks citing this milestone, so they
+wait on `script/names`'s worklist instead of invisibly. An unratified name is a worklist item and
+never a blocker (AGENTS.md): ratification happens on the name ratification queue, and blocks no
+pull request (calef, 2026-10-15).
 
 ## Why it cannot be done a name at a time
 
@@ -102,33 +88,35 @@ accepts.
 
 ## What settling it needs
 
-**Settled for the four names in the table**, including the nested case (`mdns`), where the rule's own
+Settled for the four names in the table, including the nested case (`mdns`), where the rule's own
 asymmetry argument ran out: spelling out the outer acronym exposes an inner one, so the expansion
-does not reach a word the newcomer knows either way. calef did not apply the rule harder; he drew a
-line, and the reasoning is in milestone 265's block and in
-`crates/multicast_dns_protocol/src/lib.rs`'s provenance (that crate and its two siblings were retired
-on 2026-09-15 by milestone 298; the provenance is at commit `0652c981`).
+does not reach a word the newcomer knows either way. calef drew a line rather than applying the
+rule harder, and the reasoning is in milestone 265's block and in
+`crates/multicast_dns_protocol/src/lib.rs`'s provenance (that crate and its two siblings were
+retired on 2026-09-15 by milestone 298; the provenance is at commit `0652c981`).
 
-What is left is the BUGS below: the five names the rule deratified by name, and the two kernel
-function names. Both want a ruling per name, and `ipc` is the reason this is still a milestone
-rather than an afternoon.
+Settled for the five deratified names, each by a maintainer lane whose pull request and whose
+crate's provenance block carry the ruling and the survivor census.
+
+Settled as far as a lane reaches for the two functions: they are `recorded` on the worklist, and
+their ratification is the name ratification queue's, which blocks no pull request.
+
+## Follow-on
+
+- **Recorded.** The limitation lives beside the two functions, in `kernel/src/user/entropy_service.rs`'s
+  `Name: recorded` blocks: `jh7110_trng_device` and `jh7110_crg_window` wait on the name
+  ratification queue (`script/names --unratified`, 2026-10-15). A name ratification blocks no
+  pull request (calef, 2026-10-15).
 
 ## BUGS
 
-- The five names the rule deratified by name are not in the table above, because 264's scope was
-  the sixty unrecorded ones and all five were ratified. They are the larger half of the work and
-  `ipc` is the reason this is a milestone rather than an afternoon.
-- **Two public function names in the kernel carry the acronyms the crates just shed, and nobody has
-  ruled on them** (found 2026-09-14 by the `jh7110_entropy` rename, which deliberately did not touch
-  them). `kernel/src/user/entropy_service.rs` exports `jh7110_trng_device` and `jh7110_crg_window`,
-  and both survived the 2026-09-13 renames of the crates they call into, so the file now reads
-  `jh7110_entropy::discover` inside a function called `jh7110_trng_device`. They are a genuinely
-  harder case than the crates were and that is why they were left: unlike a crate name, each of
-  these names the **hardware block**, whose device-tree spelling is the vendor's
-  (`starfive,jh7110-trng`) and whose boot-log wording throughout the tree is "JH7110 TRNG", so the
-  "abbreviation we receive rather than author" clause in design/naming.md may cover them where it did
-  not cover the crate. A lane should not guess: AGENTS.md puts public function names in an
-  architect's hands, and this list is where a name waits for one.
+- **`jh7110_trng_device` and `jh7110_crg_window` are named on the worklist and not yet
+  ratified.** Each names a hardware block the vendor spells with the acronym
+  (`starfive,jh7110-trng`; `syscrg`, `stgcrg`, `aoncrg`), so the received-spelling clause in
+  design/naming.md may cover them where it did not cover the crates. Both carry `Name: recorded`
+  blocks in `kernel/src/user/entropy_service.rs` citing this milestone; ratification is the name
+  ratification queue's (`script/names --unratified`) and blocks no pull request (calef,
+  2026-10-15).
 
 ## Index row
 
@@ -141,9 +129,10 @@ That prediction was tested and held, on the `jh7110_trng` pair, where bare `jh71
 was refused precisely because the crate is not a driver, a refusal visible only while holding both
 halves. The four names milestone 264 surfaced were all ruled by calef on 2026-09-13 and performed by
 milestones 265, 290 and 298, including the nested case, where he drew a line rather than applying
-the rule harder: DNS stays whole because it is the `pci` case one level down. What is left is the
-larger half that was never in the table: the five ratified names the rule deratified by name, three
-of which (`dtb`, `gpt`, `ipc`) are still live crates carrying a recorded refusal apiece, and two
-public kernel function names, `jh7110_trng_device` and `jh7110_crg_window`, which survived the
-2026-09-13 crate renames and are a genuinely harder case, because each names a hardware block whose
-device-tree spelling is the vendor's.
+the rule harder: DNS stays whole because it is the `pci` case one level down. The five deratified
+names moved under §154 the week it was decided (#949, #955, #963, #965, #1229), each crate's
+provenance block carrying the ruling and the survivor census. The larger half's last two names are
+the public kernel functions `jh7110_trng_device` and `jh7110_crg_window`, which survived the
+2026-09-13 crate renames because each names a hardware block whose device-tree spelling is the
+vendor's; both are `recorded` on the name ratification queue, which ratifies names and blocks no
+pull request (calef, 2026-10-15).
