@@ -25,10 +25,37 @@ to ask), which introduced the process domain.
 Expected to fail: the `installed/unvouched` line wants `domain: refused (no capability at slot 7)`
 and `slots held: 0 1 2\n`, and the child reports `domain: REACHED` and `slots held: 0 1 2 7`.
 
+Re-cut 2026-10-15 (UTC) by the lane proving milestone 898 (`swish_check_boot` is decomposed into
+its phases): the sweep found this patch no longer compiled, because the vouch decision moved out
+of `spawn_service` into `resolve`, and `Wants::of` had no `unvouched` in scope to believe. The
+same defect, threaded through today's shape: `resolve` carries `unvouched` on `Resolved`,
+`spawn_job` passes it, and an unvouched image's domain request is believed exactly as before. Red
+again at `installed/unvouched` on aarch64, same sentence. The re-cut hunk's context carries two
+older records: milestone 31 (a capability shell: designation is authorization), whose phase 3
+moved the region split, and §92 (a caretaker is supervised by the client it serves), the
+supervision that split serves.
+
 diff --git a/crates/system_initializer/src/spawn_loop.rs b/crates/system_initializer/src/spawn_loop.rs
+index 300561286..91b99df20 100644
 --- a/crates/system_initializer/src/spawn_loop.rs
 +++ b/crates/system_initializer/src/spawn_loop.rs
-@@ -528,7 +528,7 @@ pub(super) fn spawn_service(
+@@ -262,6 +262,7 @@ struct Resolved {
+     image_elf: Option<elf::Elf<'static>>,
+     verb: [u8; grant_plan::MAX_VERB],
+     verb_len: Option<usize>,
++    unvouched: bool,
+ }
+ 
+ impl Resolved {
+@@ -287,14 +288,14 @@ struct Wants {
+ 
+ impl Wants {
+     /// Read each declaration from the program's own manifest, never from the request.
+-    fn of(manifest: Option<grant_plan::Manifest>) -> Wants {
++    fn of(manifest: Option<grant_plan::Manifest>, unvouched: bool) -> Wants {
+         // Read from the program's own declaration, not from the request: a clock is not something
+         // the command line can designate, so there is no bit on the wire for it (`Manifest::clock`).
+         let wants_clock = manifest.is_some_and(|m| m.clock);
          // Same reasoning, one authority over (milestone 126): a **process domain** is not something
          // a person designates either. There is no /proc to name and no pid space to scan, so what a
          // program may see is decided here, by which supervision endpoint the progenitor puts in its capability table.
@@ -37,3 +64,20 @@ diff --git a/crates/system_initializer/src/spawn_loop.rs b/crates/system_initial
          // `clock`'s twin again: the inert-configuration page is the progenitor's to endow, not something a
          // command line can designate, so there is no bit on the wire for it either
          // (`Manifest::config`).
+@@ -780,6 +781,7 @@ impl Service<'_> {
+             image_elf,
+             verb,
+             verb_len,
++            unvouched,
+         }
+     }
+ 
+@@ -837,7 +839,7 @@ impl Service<'_> {
+     ) {
+         let own_ut = self.c.own_ut;
+         let manifest = job.manifest;
+-        let wants = Wants::of(manifest);
++        let wants = Wants::of(manifest, job.unvouched);
+         // **A region of its own, split first now** (milestone 31 phase 3). It used to be split
+         // just before the build; a directory grant needs it earlier, because the caretaker is
+         // built out of the **same** region as the program it serves. That is DECISIONS §92's
