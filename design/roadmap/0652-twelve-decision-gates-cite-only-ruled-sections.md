@@ -40,7 +40,7 @@ rule. The other seven needed no new section, for the reasons in their rows.
 | 340 | `none`, and `needs_person: yes`. §97 (six gates run on every pull request and none of them can stop one) is decided; what remains is a checkbox flip at a GitHub settings page, which is a person and an account, not a decision. |
 | 356 | `decision_dependencies: 303`. The fork is [§303 (the region)](../decisions/0303-the-retention-declaration-says-nothing-about-the-region.md). |
 | 376 | `decision_dependencies: 304`. The fork is [§304 (who may turn a device off)](../decisions/0304-who-may-turn-a-device-off.md). |
-| 388 | `none`. [§154 (the acronym test is whether the phrase is spoken)](../decisions/0154-the-acronym-test-is-whether-the-phrase-is-spoken.md) rules every name the sweep covers, so it starts; the two kernel function names in its BUGS want a ruling each, and the lane that takes the block stops at them. |
+| 388 | Yielded. Its own lane claimed the milestone the same day (#2211) and rewrites the block; this lane read the gate and changed nothing here. |
 | 391 | Stays `unwritten` deliberately: §149 (may the kernel answer on an endpoint) refused to settle the general case until a real consumer exists, and [milestone 269 (`machine` at the prompt)](0269-machine-as-a-program.md) is that consumer. 269 is now the block's `milestone_dependencies`, which the sequencing always said and no field carried. |
 | 417 | `none`. The premise moved: [milestone 106 (a wait that ends on either the interrupt or the deadline)](0106-deadline-wait.md) built `Timer::ARM` and §101 (notification objects)'s binding ends a blocked `RECEIVE_CAP` at a deadline, so the reporting usurper is buildable on surface that exists. The first-class receive stays unwritten until a second consumer asks, and the `try_receive_cap` naming is reported for calef. |
 
@@ -48,8 +48,9 @@ rule. The other seven needed no new section, for the reasons in their rows.
 
 Twelve `DECISION` gates cited only ruled sections, so none could take the checked form and all
 twelve could go stale the way [milestone 198 (a package manager)](0198-package-manager.md) did.
-Read on 2026-10-15. Five forks became `PROPOSED` sections that gate their blocks by number. Three
-gates were answered outright: 340 to a person at a settings page, 388 to `none`, and 417 to `none`
-because the timer's built mechanism dissolved the fork. Three stay bare on purpose, because their
-wait is real but is not a section. And 188's fields were already right once the prose stopped
-describing a token the frontmatter switch retired.
+Read on 2026-10-15. Five forks became `PROPOSED` sections that gate their blocks by number. Two
+gates were answered outright: 340 to a person at a settings page, and 417 to `none`, because the
+timer's built mechanism dissolved the fork. Three stay bare on purpose, because their
+wait is real but is not a section. 188's fields were already right once the prose stopped
+describing a token the frontmatter switch retired. And 388's own lane claimed the milestone the
+same day, so this one read the gate and yielded the block.
