@@ -28,7 +28,8 @@ They are deliberately not architecture names. `riscv64` already names the ISA, a
 name has to survive the day a second machine of the same architecture arrives.
 
 The development machines keep their existing names and are not part of this scheme:
-**patagonia** (the Mac everything is built on) and **cordoba** (the always-on x86 box).
+**patagonia** (the Mac everything is built on), **cordoba** (the always-on x86 box) and
+**galapagos** (the build machine, an HP Z8 G4, named by calef on 2026-10-15).
 
 ## Item 0's alternative: isolation without an MMU
 
