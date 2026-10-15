@@ -126,6 +126,7 @@ is an equality invariant and a difference would be a finding; on x86_64 it can o
 SeaBIOS on q35. The wording fix turned out to be worth more than a tidy. **Two of the three x86_64
 boots in the merge gate already print a different base**, because OVMF relocates the window to
 `0xe0000000`. The misleading line has been firing on every real-firmware run since milestone 205
+(how a foreign program is told what to do)
 added them, and nobody read the log closely enough to notice. The line now reads
 `(q35's default is 0xb0000000)`, naming the machine the number belongs to rather than implying a
 disagreement, and the asymmetry is recorded in the constant's own doc. The equality test the doc

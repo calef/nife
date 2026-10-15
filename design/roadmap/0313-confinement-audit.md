@@ -19,7 +19,8 @@ this block is the account of building it, not a second copy of it.
 Scope, bounded on purpose because 112 milestones is more tree than one lens holds. The components
 that took device or network authority since 2026-08-17, found by reading every capability mint site
 rather than the names (the population was two objects, not forty-five). The six confinement claims
-milestone 307 marked as quotable-but-unreachable, asked what they actually guarantee. And the two
+milestone 307 (which assertion actually fires) marked as quotable-but-unreachable, asked what they
+actually guarantee. And the two
 machine classes that booted real silicon in the window, radon and xenon, followed from firmware-owned
 memory and device windows into what a confined component can reach.
 
