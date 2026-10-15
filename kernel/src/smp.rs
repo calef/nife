@@ -1208,4 +1208,83 @@ mod tests {
              hart migration)",
         );
     }
+
+    /// **A preemptible kernel thread that asks for its own name gets its own name**, however it
+    /// migrates (notes/mmu.md, BUGS: a user thread losing its text translation).
+    ///
+    /// The name lives in the running core's `PerCpu`. If reading it takes two steps (the per-CPU
+    /// register into a general register, then the field), a tick between them that moves the
+    /// thread to another core leaves the load reading the first core's `current`, which by then
+    /// names some other thread. `sched::adopt_address_space` asks from the kernel thread every
+    /// `user::run` spawn starts on, so a split read there gives the new space to another thread,
+    /// and the caller resumes U-mode on the reserved root at its next switch-in.
+    ///
+    /// The motion is [`a_migrated_kernel_thread_keeps_its_hart_pointer`]'s: waves of preempted
+    /// cpu-bound workers that idle cores steal. Each worker takes its own name once with interrupts
+    /// masked, where no tick can split the read, then asks again with them open. One answer naming
+    /// another thread is the bug. Its BUGS note applies here unchanged.
+    ///
+    /// Three choices are measured, not cautious. An idle core steals only from a backlog, so the
+    /// staggered lives keep cores draining, and stealing, through every wave; six even waves moved
+    /// a worker about six times per run. TCG takes an interrupt only between translation blocks, and
+    /// a clock read on every pass put most of them outside the read, so the clock is read once per
+    /// 256. Twenty-four waves, because the `x86_64` kernel leg boots two cores and moved a worker
+    /// four or five times per run at that count. With all three, every run on every ISA failed
+    /// against a split read (nine of nine, 2026-10-14 UTC).
+    #[test_case]
+    fn a_migrated_kernel_thread_reads_its_own_name() {
+        use core::sync::atomic::{AtomicU64, AtomicUsize};
+        static WRONG: AtomicU64 = AtomicU64::new(0);
+        static DONE: AtomicUsize = AtomicUsize::new(0);
+        WRONG.store(0, Ordering::Relaxed);
+        DONE.store(0, Ordering::Relaxed);
+
+        let life = crate::arch::timer::frequency() / 50;
+        let n = online_count();
+        let mut total = 0usize;
+
+        for _wave in 0..24 {
+            for k in 0..(n * 3) {
+                let life = life * (1 + k as u64 % 4);
+                let spawned = crate::sched::spawn(move || {
+                    let was_enabled = crate::arch::interrupts::disable();
+                    let me = crate::sched::current();
+                    crate::arch::interrupts::restore(was_enabled);
+                    let end = crate::arch::timer::now() + life;
+                    while crate::arch::timer::now() < end {
+                        for _ in 0..256 {
+                            let seen = crate::sched::current();
+                            if seen != me {
+                                WRONG.store(seen, Ordering::Relaxed);
+                            }
+                        }
+                    }
+                    DONE.fetch_add(1, Ordering::Relaxed);
+                });
+                if spawned.is_some() {
+                    total += 1;
+                } else {
+                    break; // the table is full of the last wave; let it drain
+                }
+            }
+            let mut budget = crate::testing::TickBudget::new(2 * crate::arch::timer::TICK_HZ);
+            while DONE.load(Ordering::Relaxed) < total {
+                assert!(
+                    !budget.is_expired(),
+                    "name-reading workers never drained ({}/{} done) within {} delivered ticks",
+                    DONE.load(Ordering::Relaxed),
+                    total,
+                    2 * crate::arch::timer::TICK_HZ,
+                );
+                crate::sched::yield_now();
+            }
+        }
+
+        let wrong = WRONG.load(Ordering::Relaxed);
+        assert!(
+            wrong == 0,
+            "a preemptible kernel thread asked for its own name and got thread {wrong:#x}'s: the \
+             read of PerCpu::current was split across a migration",
+        );
+    }
 }
