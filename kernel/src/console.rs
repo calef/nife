@@ -575,7 +575,7 @@ pub fn configure_from_dtb() {
 /// its line into the PLIC whenever a keystroke is waiting.
 ///
 /// The kernel arms the device and then stays out of the way: the *byte* is read by the userspace
-/// input driver, which `riscv_shell_boot` hands the NS16550's registers as a `DeviceFrame`
+/// input driver, which `boot_progenitor` hands the NS16550's registers as a `DeviceFrame`
 /// capability. There used to be a kernel-side `rx_read` here to drain it, from milestone 20 when
 /// the input path was still in the kernel; milestone 41 deleted it, along with `Ns16550::read_byte`
 /// and `LSR_DR`, after removing the crate-wide riscv `allow(dead_code)` showed they had no caller
