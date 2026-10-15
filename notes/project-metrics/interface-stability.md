@@ -9,14 +9,14 @@ Sorted by breaking changes in the last four weeks (2026W39 to 2026W42), then by 
 | crate | breaking, 4 weeks | additions, 4 weeks | breaking | additions | commits | crossing another division |
 |---|---:|---:|---:|---:|---:|---:|
 | `globally_unique_identifier_partition_table` | 124 | 4 | 151 | 219 | 39 | 30 (77%) |
-| `grant_plan` | 89 | 283 | 136 | 915 | 160 | 131 (82%) |
+| `grant_plan` | 89 | 283 | 136 | 915 | 161 | 132 (82%) |
 | `elf` | 52 | 1 | 55 | 53 | 46 | 36 (78%) |
 | `line_editor` | 51 | 73 | 52 | 118 | 32 | 26 (81%) |
 | `package_archive` | 19 | 126 | 19 | 126 | 24 | 17 (71%) |
-| `socket_protocol` | 16 | 29 | 19 | 67 | 29 | 27 (93%) |
+| `socket_protocol` | 16 | 29 | 19 | 67 | 30 | 28 (93%) |
 | `login_protocol` | 13 | 68 | 14 | 83 | 35 | 34 (97%) |
-| `abi` | 11 | 71 | 41 | 169 | 107 | 101 (94%) |
-| `filesystem_protocol` | 10 | 58 | 43 | 458 | 108 | 99 (92%) |
+| `abi` | 11 | 71 | 41 | 169 | 108 | 102 (94%) |
+| `filesystem_protocol` | 10 | 58 | 43 | 458 | 110 | 101 (92%) |
 | `swap_protocol` | 10 | 34 | 12 | 124 | 44 | 43 (98%) |
 | `credential_protocol` | 8 | 6 | 35 | 70 | 33 | 30 (91%) |
 | `activation_set` | 8 | 71 | 8 | 71 | 22 | 20 (91%) |
@@ -41,7 +41,7 @@ Sorted by breaking changes in the last four weeks (2026W39 to 2026W42), then by 
 
 ## What broke in 2026W42
 
-Read at `e21573b00591` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
+Read at `3ec07a0eb9ce` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
 
 > - `abi`: syscall renamed, number kept (method or encoding), now `interrupt::ACK` `irq::ACK`
 > - `abi`: syscall renamed, number kept (method or encoding), now `interrupt::WAIT` `irq::WAIT`
