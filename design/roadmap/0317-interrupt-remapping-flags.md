@@ -28,7 +28,7 @@ The asymmetry is the finding. §86's survey covered two architectures and conclu
 unaskable; the third one has the mechanism sitting inside a structure this tree already programs.
 
 An MSI or MSI-X message is a memory write to an architecturally special address, so an IOMMU doing
-DMA remapping alone does not confine it: a component that can write a device's MSI-X table can aim
+DMA remapping alone does not confine it. A component that can write a device's MSI-X table can aim
 an interrupt at a vector it was never given. VFIO refuses to hand a device to an untrusted
 userspace driver on a machine without interrupt remapping for this reason, and names its escape
 hatch `allow_unsafe_interrupts`.
@@ -103,10 +103,12 @@ layout has nothing to do with a GICv2 CPU interface. Nothing anywhere refuses th
 `NIFE_GIC=3 cargo xtask boot-check --arch aarch64` (the flag is this milestone's, and the runner
 prints a warning saying the configuration is unsupported):
 
-    interrupts      : GICv2, distributor 0x0000000008000000, cpu interface 0x00000000080a0000
-    self-test       : timer      FAILED  the 62MHz counter advanced 1250000 and 0 tick(s) arrived in ~20ms
-    self-test       : scheduler  FAILED  thread 5 did not run within 2s (saw 0x0)
-    nife self-test: 3 of 5 passed, 2 FAILED: timer scheduler
+```
+interrupts      : GICv2, distributor 0x0000000008000000, cpu interface 0x00000000080a0000
+self-test       : timer      FAILED  the 62MHz counter advanced 1250000 and 0 tick(s) arrived in ~20ms
+self-test       : scheduler  FAILED  thread 5 did not run within 2s (saw 0x0)
+nife self-test: 3 of 5 passed, 2 FAILED: timer scheduler
+```
 
 Against `gic-version=2`, the same command is 5 of 5.
 
@@ -255,15 +257,15 @@ that can write a device's MSI-X table can aim an interrupt at a vector it was ne
 here. Booting all three says something different: MSI confinement lives in a different place on
 each of them, and none of the three is exercised. `x86_64` has had it offered in every boot this
 tree ever ran (QEMU's `intremap` defaults to `auto`, which resolves ON with no in-kernel irqchip),
-and nothing read the bit; `NIFE_INTREMAP=off` is the flag that reaches the machine without it, and
+and nothing read the bit. `NIFE_INTREMAP=off` is the flag that reaches the machine without it, and
 a test asserts `GSTS.IRES` stays clear whatever `ECAP.IR` says. riscv64 was never surveyed and is
-the closest of the three: `CAPS.MSI_FLAT` is set, every device context is the extended format, and
-`attach` writes `msiptp = 0`, so the mechanism is one word inside a structure this driver already
-programs, and no flag is needed or available. It is also the one architecture whose answer can
+the closest of the three. `CAPS.MSI_FLAT` is set, every device context is the extended format, and
+`attach` writes `msiptp = 0`. The mechanism is one word inside a structure this driver already
+programs. No flag is needed or available. It is also the one architecture whose answer can
 never get a second witness, since no silicon ships the ratified IOMMU (milestone 143), which
 inverts `x86_64`, where xenon is waiting. aarch64's half of §86 survives, and turned out not to be
-one flag away, and finding out how was the point: `gic-version=3` moves `reg[1]` from the CPU
+one flag away, and finding out how was the point. `gic-version=3` moves `reg[1]` from the CPU
 interface to the redistributor, `memory::init` matches the node by the `intc@` name prefix and never
-reads `compatible`, and the result is a boot that prints `GICv2, cpu interface 0x80a0000` and
+reads `compatible`. The result is a boot that prints `GICv2, cpu interface 0x80a0000` and
 receives no timer tick. Milestone 227's bill is itemised here, and §86's MSI-X ownership decision is
 now answerable on x86_64 without further machinery.
