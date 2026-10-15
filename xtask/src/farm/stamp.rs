@@ -85,19 +85,7 @@ pub(crate) fn std_inputs_stamp() -> u64 {
     let roots = files.clone();
     for f in &roots {
         if let Ok(text) = std::fs::read_to_string(f) {
-            // A module the copy drops (see `uncopied_modules`) is not an input either: editing
-            // the fixture must not stale a farm it is absent from.
-            let uncopied = uncopied_modules(f);
-            files.extend(
-                out_of_line_modules(f, &text)
-                    .into_iter()
-                    .map(|(_, p)| p)
-                    .filter(|p| {
-                        !p.file_stem()
-                            .and_then(|s| s.to_str())
-                            .is_some_and(|n| uncopied.contains(&n))
-                    }),
-            );
+            files.extend(out_of_line_modules(f, &text).into_iter().map(|(_, p)| p));
         }
     }
     collect_files(&root.join("patches/std-nife/overlay"), &mut files);
