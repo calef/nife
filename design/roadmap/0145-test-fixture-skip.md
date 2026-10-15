@@ -17,7 +17,7 @@ the integrator should confirm the number at merge.
 Milestone 16a's on-board test-suite exit (milestone 144's sibling finding, recorded in
 notes/visionfive2.md) ran the kernel's `#[test_case]` suite on the VisionFive 2 for the first
 time. After six real hardware-assumption bugs were found and fixed (PR #380), the suite hit a
-different kind of wall: `kernel/src/non_volatile_memory_express.rs`'s end-to-end test expects a synthetic NVMe
+different kind of wall. `kernel/src/non_volatile_memory_express.rs`'s end-to-end test expects a synthetic NVMe
 controller that `xtask` always attaches under QEMU (`NIFE_NVME`), and the board's manual U-Boot
 boot attaches nothing. Its own comment already says why this is not a bug: "the test flow always
 attaches a controller... absence is a lost QEMU flag, not a machine without a disk."
@@ -85,10 +85,10 @@ never needed to be until a board existed to boot it on.
   were wrong assumptions about real hardware and are done (PR #380). This milestone is about the
   tests that are correct and simply need hardware the board doesn't have.
 - Deciding which mechanism, yet. The three candidates above are options, not a recommendation.
-  This block exists to scope the question; the decision belongs in a `design/decisions/` entry
-  once someone has weighed the trade (a new trait touches every existing `#[test_case]`'s type
-  signature implicitly through the blanket impl; a macro touches only the ~31 sites that need it;
-  a cfg split is nearly free but hides skipped coverage from the binary itself).
+  This block exists to scope the question. The decision belongs in a `design/decisions/` entry
+  once someone has weighed the trade. A new trait touches every existing `#[test_case]`'s type
+  signature implicitly through the blanket impl. A macro touches only the ~31 sites that need it.
+  A cfg split is nearly free but hides skipped coverage from the binary itself.
 
 ## Prior art in this tree
 
@@ -102,7 +102,7 @@ never needed to be until a board existed to boot it on.
 
 Minted provisionally on 2026-08-21 during milestone 16a's bench session. After six real
 hardware-assumption bugs were found and fixed, the board's boot hit `nvme.rs`'s end-to-end test
-correctly expecting a synthetic NVMe controller only `xtask` attaches; a survey found at least 31
+correctly expecting a synthetic NVMe controller only `xtask` attaches. A survey found at least 31
 more `#[test_case]`s across 7 files with the same shape (virtio-rng, virtio-gpu, disk programs). `Testable` has no notion of skip, only pass or panic. The boot tour already has the pattern
 ("skipped: no X in the initrd"); the test harness never needed it until a board existed to run it
 on.

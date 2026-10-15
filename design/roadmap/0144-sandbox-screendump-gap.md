@@ -11,8 +11,8 @@ needs_person: no
 
 Minted provisionally by calef on 2026-08-21, during milestone 16a's bench session;
 the integrator should confirm the number at merge (143 was already claimed on an unmerged branch,
-`roadmap/143-silicon-iommu`, so this may need renumbering; as of this writing 143 merged clean and
-144 has no collision).
+`roadmap/143-silicon-iommu`, so this may need renumbering). As of this writing 143 merged clean and
+144 has no collision.
 
 ## What this is
 
@@ -34,7 +34,7 @@ was ever taken (did QEMU get a monitor?)
 
 Same failure shape on all three GPU-referee checks (compositor, display-terminal, raw scanout
 pattern) plus the two network-referee checks (`InboundProber`'s port-forward accept test, the
-mDNS multicast test, the SMB session test): all six checks in this family fail the same way,
+mDNS multicast test, the SMB session test). All six checks in this family fail the same way,
 while every in-guest kernel test that doesn't depend on a host-side monitor or forwarded port
 passes.
 
@@ -51,7 +51,7 @@ passes.
   nor the flag differs from what the note describes as already proven.
 
 None of that isolates the actual failure: the synthetic hand-test above used no real kernel and
-no attached GPU device, so it does not reproduce the referee's actual conditions (a live guest,
+no attached GPU device. So it does not reproduce the referee's actual conditions (a live guest,
 under emulation, racing a 100ms poll loop against real boot and test time). The gap between
 "the mechanism works in isolation" and "the mechanism connects during a real run" is exactly what
 is unmeasured.
@@ -64,7 +64,7 @@ is unmeasured.
    for exactly this class of failure per notes/load-sensitive-assertions.md) should be read at
    the moment of failure rather than guessed.
 2. **Add a diagnostic to the referee itself**: log every `UnixStream::connect` attempt's result
-   (not just the aggregate "never taken"), so a failing run says whether QEMU never started the
+   (not just the aggregate "never taken"). So a failing run says whether QEMU never started the
    monitor at all, started it too late, or accepted connections that then went nowhere.
 3. **Check whether this sandbox's QEMU build differs from a bare-metal one** in some way that
    only shows up under load or under whatever containment this sandbox applies to child
