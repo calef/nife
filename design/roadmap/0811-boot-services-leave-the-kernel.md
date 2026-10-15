@@ -75,8 +75,7 @@ rest of `display_service` and `fs_service`, and `holding`. Their module declarat
 `kernel/src/user.rs` (3006-3822) carry `allow(dead_code)` outside `system_tests`. The bench boots
 reach `e1000e_service` (`network_bench.rs:48`), `designware_ethernet_service`
 (`network_bench.rs:193`), `designware_mobile_storage_service` (`storage_bench.rs:296`),
-`non_volatile_memory_express_service` (`disk_throughput.rs:43`) and `fs_service` (`bench.rs:1514`
-on). This milestone leaves them where they are: a harness that wires a driver by hand is measuring
+`non_volatile_memory_express_service` (`disk_throughput.rs:43`) and `fs_service` (`bench/filesystem.rs`). This milestone leaves them where they are: a harness that wires a driver by hand is measuring
 the driver, not the boot.
 
 ## Can the progenitor receive what each one needs?
