@@ -592,6 +592,12 @@ fn report_translation(stval: u64) {
         Some(_) => crate::println!(
             "    satp {satp:#018x} (root {live:#x}, the thread's own), leaf at stval {leaf:x?}"
         ),
+        // `thread_space_root` answers `None` for a thread whose record holds no space, which the
+        // switch-in then runs on the reserved root; say so, or it reads like a shipping build.
+        None if cfg!(feature = "system_tests") => crate::println!(
+            "    satp {satp:#018x} (root {live:#x}, and the thread's record holds no space), leaf \
+             at stval {leaf:x?}"
+        ),
         None => crate::println!("    satp {satp:#018x} (root {live:#x}), leaf at stval {leaf:x?}"),
     }
 }

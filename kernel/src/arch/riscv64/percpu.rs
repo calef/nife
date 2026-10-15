@@ -93,6 +93,39 @@ pub fn percpu() -> usize {
     instructions::read_tp()
 }
 
+/// The offset of `PerCpu::current`, which [`read_current_thread`] loads from `tp`.
+const CURRENT_OFF: usize = core::mem::offset_of!(crate::cpu::PerCpu, current);
+const _: () = assert!(
+    CURRENT_OFF < 2048,
+    "PerCpu::current must sit within `ld`'s signed 12-bit offset from tp"
+);
+
+/// **This hart's `PerCpu::current`, in one `ld` from `tp`**, so no interrupt can fall between
+/// finding the block and reading the field (notes/mmu.md, BUGS).
+///
+/// [`percpu()`] and then a load is two steps. A preempted kernel thread that resumes on another hart
+/// between them still holds the first hart's block in a general register, and reads the name of
+/// whatever thread that hart runs now. One instruction is indivisible, and `tp` itself is right at
+/// every S-mode instruction: `switch_to` never touches it, and `trap.s` returns to S-mode with the
+/// live hart's `tp` rather than the frame's.
+///
+/// Name: provisional.
+#[inline(always)]
+pub fn read_current_thread() -> u64 {
+    let v: u64;
+    // SAFETY: in S-mode `tp` is this hart's `PerCpu` (see above), and `CURRENT_OFF` is the offset of
+    // an aligned `AtomicU64` inside it, so this is a relaxed atomic load. It writes nothing.
+    unsafe {
+        core::arch::asm!(
+            "ld {v}, {off}(tp)",
+            v = out(reg) v,
+            off = const CURRENT_OFF,
+            options(nostack, readonly, preserves_flags),
+        );
+    }
+    v
+}
+
 /// **Test-only: does `tp` name the hart we are physically running on?** RISC-V keeps the kernel
 /// per-CPU pointer in `tp`, so `cpu::id()` is only right if `tp` is. The independent ground truth is
 /// `sscratch`, which points at this hart's [`TrapStash`], is set once per hart by [`set_percpu`], and

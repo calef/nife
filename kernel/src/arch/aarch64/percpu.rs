@@ -61,6 +61,28 @@ pub fn percpu() -> usize {
     TPIDR_EL1.get() as usize
 }
 
+/// **This core's `PerCpu::current`, read with IRQs masked**, so no interrupt can fall between
+/// finding the block and reading the field (notes/mmu.md, BUGS).
+///
+/// [`percpu()`] and then a load is two steps. A preempted kernel thread that resumes on another core
+/// between them still holds the first core's block in a general register, and reads the name of
+/// whatever thread that core runs now. riscv64 and `x86_64` close the window with one load relative
+/// to the per-CPU register; aarch64 has no addressing mode relative to a system register, so it
+/// masks instead. Linux's answer is `current` in `SP_EL0`, which would mean swapping that register
+/// on every trap and switch. On the syscall path IRQs are already masked and this costs the `DAIF`
+/// read and a branch.
+///
+/// Name: provisional.
+#[inline]
+pub fn read_current_thread() -> u64 {
+    let was_enabled = super::interrupts::disable();
+    let v = crate::cpu::current()
+        .current
+        .load(core::sync::atomic::Ordering::Relaxed);
+    super::interrupts::restore(was_enabled);
+    v
+}
+
 /// **Test-only: does the per-CPU pointer name the hart we run on?** Always `true` on aarch64: the
 /// pointer lives in `TPIDR_EL1`, a system register the trap frame never saves or restores, so a
 /// thread migrating between cores keeps whatever `TPIDR_EL1` the destination core set at boot. The

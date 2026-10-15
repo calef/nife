@@ -233,5 +233,5 @@ the executing hart's own page-table writes.
   it. Pre-existing, untouched by this milestone, and not currently reachable (the direct map covers
   all of RAM from `mmu::init`), but it is the neighboring hazard a reader of this file should know
   about.
-- A user thread can lose the translation of its own text while it runs. Seen on riscv64 and on
-  x86_64, so its entry is in [mmu.md](mmu.md)'s BUGS.
+- A user thread killed at a pc it was just running is not a TLB question first. Its entry, and what
+  the kill report says to tell the causes apart, are in [mmu.md](mmu.md)'s BUGS.

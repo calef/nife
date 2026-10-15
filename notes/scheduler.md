@@ -85,14 +85,24 @@ already holds was judged not worth the cycles the bench tripwire watches.
 
 ## The costs migration made real
 
-Turning on any migration at all strips the accidental cover off same-core assumptions. Two bit us
-and are now fixed and tested:
+Turning on any migration at all strips the accidental cover off same-core assumptions. Each of these
+bit us, and each is fixed and tested:
 
 - RISC-V `tp` (the per-hart pointer) is thread-frame state. A kernel thread preempted on one
   hart and resumed on another used to come back reading the wrong hart's per-CPU block. Fixed in
   `arch/riscv64/trap.s`; the full story and the regression test are in notes/riscv-port.md. aarch64
   is immune (its pointer is a system register the frame never carries). This is the concrete face of
   rule 4 (assume weak ordering) and rule 1 (arch state lives in arch).
+
+- A per-CPU field read from preemptible code is two steps on every ISA: the block's address into a
+  general register, then the load. A kernel thread migrated between them reads the core it left.
+  For the running thread's own name that is identity, not a hint. A split read in
+  `sched::adopt_address_space` binds a new space to whichever thread the stale name resolves to,
+  which then runs in a stranger's space, and its caller resumes U-mode on the reserved root
+  ([mmu.md](mmu.md), BUGS). So `sched::current_thread_id` reads through
+  `arch::read_current_thread`: one load relative to the per-CPU register on riscv64 and `x86_64`,
+  and a read with IRQs masked on aarch64, which has no such addressing mode. Any other field a
+  preemptible caller reads through `cpu::current()` describes a core it may have left.
 
 - The hang watchdog counts progress, not test starts. A slow-but-live workload (std_net once spent
   about 300 s in net_stack's userspace smoltcp poll, CPU-bound, no wakes or output for stretches over a
@@ -202,6 +212,8 @@ trace-ring diagnosis, the fix, why a strand usually goes unnoticed and the proof
   placement and stealing fill the machine.
 - `smp::a_migrated_kernel_thread_keeps_its_hart_pointer`: the tp invariant under forced migration
   (a no-op on aarch64, a real check on RISC-V via `sscratch` ground truth).
+- `smp::a_migrated_kernel_thread_reads_its_own_name`: a preemptible kernel thread's own name under
+  the same motion, on all three ISAs; a split read fails it on every one.
 - `sched::a_finished_thread_is_reaped_and_its_memory_returned`,
   `user::a_dead_user_thread_frees_its_whole_address_space`: reaping and exact frame accounting under
   cross-core reap lag (the latter waits the lag out rather than reading the instant the count drops).

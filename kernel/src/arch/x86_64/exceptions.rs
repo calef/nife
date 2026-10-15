@@ -1063,6 +1063,11 @@ fn report_walk(address: u64) {
             crate::println!("    cr3 root {live:#x}, NOT the thread's own root {own:#x}");
         }
         Some(_) => crate::println!("    cr3 root {live:#x}, the thread's own"),
+        // `thread_space_root` answers `None` for a thread whose record holds no space, which the
+        // switch-in then runs on the reserved root; say so, or it reads like a shipping build.
+        None if cfg!(feature = "system_tests") => {
+            crate::println!("    cr3 root {live:#x}, and the thread's record holds no space");
+        }
         None => crate::println!("    cr3 root {live:#x}"),
     }
     let walk = super::mmu::walk_user(live, address);

@@ -98,6 +98,34 @@ pub fn percpu() -> usize {
     p
 }
 
+/// The `gs`-relative offset of `PerCpu::current`, which [`read_current_thread`] loads.
+const CURRENT_OFF: usize = core::mem::offset_of!(crate::cpu::PerCpu, current);
+
+/// **This core's `PerCpu::current`, in one `gs`-relative load**, so no interrupt can fall between
+/// finding the block and reading the field (notes/mmu.md, BUGS).
+///
+/// [`percpu()`] and then a load is two steps. A preempted kernel thread that resumes on another core
+/// between them still holds the first core's block in a general register, and reads the name of
+/// whatever thread that core runs now. One instruction is indivisible, and `gs`'s base is an MSR no
+/// thread carries. [`percpu()`]'s note on the `swapgs` windows applies unchanged.
+///
+/// Name: provisional.
+#[inline(always)]
+pub fn read_current_thread() -> u64 {
+    let v: u64;
+    // SAFETY: as `percpu`: `gs` bases at this core's `PerCpu`, and `CURRENT_OFF` is the offset of
+    // an aligned `AtomicU64` inside it, so this is a relaxed atomic load. It writes nothing.
+    unsafe {
+        asm!(
+            "mov {v}, gs:[{off}]",
+            v = out(reg) v,
+            off = const CURRENT_OFF,
+            options(nostack, readonly, preserves_flags),
+        );
+    }
+    v
+}
+
 /// **Test-only: does the per-CPU pointer name the CPU we are physically running on?**
 ///
 /// A constant `true` here, and for aarch64's reason rather than RISC-V's. RISC-V keeps the pointer
