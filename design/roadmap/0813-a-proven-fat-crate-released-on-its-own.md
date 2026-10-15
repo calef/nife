@@ -89,6 +89,7 @@ the oracle's pin in its pull request for calef's ruling.
 Non-goals for the first release:
 
 - exFAT. calef ruled it later, as its own milestone or a sibling crate. hadris-fat is its reference.
+  Milestone 923 (exFAT waits for its patents) holds it until Microsoft's exFAT patents expire.
 - A journal or crash-consistency claim. FAT has none. Milestone 140 already says the difference
   belongs where a user meets it; this crate's `BUGS` says it too.
 - The filesystem-contract server. That is milestone 140's FAT32 stratum, which consumes this crate.
@@ -182,12 +183,28 @@ falsification patch makes it fail. No crate publishes without Kani harnesses cov
 hostile-input and state-machine surface, each carrying a falsification patch that makes it fail at
 its own assertion, replayable in the crate's own repository with stock Kani.
 
+## Patents
+
+Microsoft's long-name (VFAT) patents have all expired, per Google Patents, checked 2026-10-14
+(UTC). Google Patents marks its status an assumption rather than a legal conclusion, and this
+record is not legal advice.
+
+| patent | title | priority | expired |
+|---|---|---|---|
+| [US 5,579,517](https://patents.google.com/patent/US5579517A/en) | Common name space for long and short filenames | 1993-04-01 | 2013-11-26 |
+| [US 5,758,352](https://patents.google.com/patent/US5758352A/en) | Common name space for long and short filenames | 1993-04-01 | 2013-04-01 |
+| [US 6,286,013](https://patents.google.com/patent/US6286013B1/en) | A common name space for long and short file names in an operating system | 1993-04-01 | 2013-04-01 |
+| [US 5,745,902](https://patents.google.com/patent/US5745902A/en) | Accessing a file using file names having different file name formats | 1992-07-06 | 2015-04-28 |
+
+The first two were the ones asserted against TomTom in 2009 and upheld on reexamination. All four
+predate 1995, so none can still be in force. FAT12, FAT16 and FAT32 themselves date from 1977 to
+1996. The search was for the known Microsoft families, not a freedom-to-operate opinion.
+
 ## BUGS
 
 - Steps 4 and 5 wait on milestone 887 (crate repositories share one CI template),
   which owns the shared CI template, the publish allowlist lint and the `nifeos` crates.io team.
 - The "about 5,000 lines" figure is the probed crates' size, not an estimate of this one.
-- Long-name patent status was not checked here. Read it and record it before first publication.
 
 ## Index row
 
