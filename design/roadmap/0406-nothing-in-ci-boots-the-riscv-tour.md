@@ -10,33 +10,33 @@ needs_person: no
 # 406. Nothing on a pull request boots the riscv64 tour, so its userspace step is unasserted
 
 Not started, and **the title's claim is no longer true as written**, which is the first
-thing a reader needs. Filed 2026-09-14 as an unnumbered proposal by milestone 289's lane; numbered
+thing a reader needs. Filed 2026-09-14 as an unnumbered proposal by milestone 289's lane. Numbered
 2026-09-19 by milestone 433's drain of the proposal pile, with the premise re-read the same day.
 What closed, and it closed within hours of this being written: `script/boot-check` was added by
 milestone 268 on **2026-09-14**, sits in `script/ci-build`'s `local` tier (line 114) and runs on
-every pull request in the same job as `test` and `swish-check`, and
+every pull request in the same job as `test` and `swish-check`.
 `.github/workflows/ci.yml` names the gap in its own words, that boot-check *"is the only thing on a
 pull request that boots the DEFAULT riscv64 or `x86_64` kernel at all"*. So the default riscv64
 kernel **is** booted on a pull request, by the recognizer this block said to reuse, and the sentence
 under "The claim in one line" is false. What is still true is the narrower half, and it is the
-work: `script/boot-check` boots with no initrd and no disk, by design, and says so, since every
-rung it reads is printed before userspace exists, so it stops at the machine description and the
-self-test verdict. Nothing on a pull request reaches `Stage::Tour` or asserts `userspace_ran()`, and
-the userspace-builder step, the preemption claim, the UART driver's device IRQ, the virtio and PCIe
+work. `script/boot-check` boots with no initrd and no disk, by design, and says so. Every rung
+it reads is printed before userspace exists, so it stops at the machine description and the
+self-test verdict. Nothing on a pull request reaches `Stage::Tour` or asserts `userspace_ran()`. The
+userspace-builder step, the preemption claim, the UART driver's device IRQ, the virtio and PCIe
 probes and the hardware-entropy line are still asserted by a person remembering to type a command.
 The table below is accurate for every row it lists and is missing a row for `script/boot-check`.
-Two names in its text have moved and are corrected in place: `script/gates` was retired by
-milestone 286, its work now being `script/ci-build`'s table, which is where `boot-check` went, and
+Two names in its text have moved and are corrected in place. `script/gates` was retired by
+milestone 286, its work now being `script/ci-build`'s table, which is where `boot-check` went.
 `script/soak` is `script/soak-test` since milestone 297.
 *(Number provisional until the merge queue lands it.)*
 
 The decision is
 §186 (where a riscv64 tour-boot check runs, what it asserts, and what it is called), written up
 2026-09-19 by milestone 435's slice-c lane because this gate named no section. **That lane judged
-the gate and not the title**: the title's claim is false as written, the status paragraph above says
+the gate and not the title**. The title's claim is false as written, the status paragraph above says
 so, and retitling a block is an architect's rather than a sweep's.
 Where the check goes is an architect's: a CI job, a row in `script/ci-build`'s table,
-or a `script/cadence-check` entry. It boots a kernel and it is not free, and milestone 232's own refusal
+or a `script/cadence-check` entry. It boots a kernel and it is not free. Milestone 232's own refusal
 to assume CI is the answer for an expensive instrument applies here unchanged. The wiring and the
 measurement are a lane's; the placement is not.
 
@@ -65,7 +65,7 @@ Both `bench::run()` and `icount::run()` are `-> !` and end in `arch::halt()`, so
 So every step of that boot is asserted by nothing on a pull request: the userspace-builder step
 (`init/build`), the preemption claim, the UART-driver step's device IRQ, the virtio and PCIe probes,
 the hardware-entropy step's line, and the final banner. Some of what they demonstrate is covered
-independently by the riscv64 kernel suite, which is why this is a gap rather than a hole; what is not
+independently by the riscv64 kernel suite, which is why this is a gap rather than a hole. What is not
 covered is the boot as a sequence, which is exactly what a board produces and what
 `crates/board_console` was written to read. They are checked today by a person remembering to type
 `script/soak-test`, which is AGENTS.md's rung four holding a claim `design/fatal-risks/README.md` cites.
@@ -122,10 +122,10 @@ was written: milestone 268's `script/boot-check` boots the default kernel on all
 architectures in `script/ci-build`'s local tier, which is the caller this block asked for. It boots
 with no initrd, so it stops at the machine description and the self-test verdict, and what is still
 asserted by nobody is the boot as a sequence past that point: `Stage::Tour` with
-`userspace_ran()`, which is what a board actually produces and what `crates/board_console` was
+`userspace_ran()`. That is what a board actually produces and what `crates/board_console` was
 written to read. The recognizer exists and is tested, `Progress` already ratchets the stages and
 sets `userspace_ran` from the `init/build` line, and `script/soak-test` already judges a QEMU run
-with it, so the missing piece is an initrd and two assertions rather than an instrument. What is
+with it. So the missing piece is an initrd and two assertions rather than an instrument. What is
 calef's is where it runs, what it asserts beyond the floor, and its name. The aarch64 and x86_64
 halves are named rather than left to be discovered: aarch64's equivalent is exercised by
 `script/swish-check`, and x86_64 has neither a shell boot nor a tour step that loads userspace from

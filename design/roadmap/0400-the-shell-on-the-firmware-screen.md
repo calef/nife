@@ -117,7 +117,7 @@ the defect milestone 230 found on the UART, with pixels in place of bytes. So:
 1. The kernel console's screen carries a `Painter` state, `Kernel` or `Terminal`, and `print!`
    paints only while it says `Kernel`.
 2. `console::yield_screen` is the only way to `Terminal`, it is taken once (a second caller gets
-   `None`, so two userspace painters are unrepresentable rather than unlikely), it clears the screen
+   `None`, so two userspace painters are unrepresentable rather than unlikely). It clears the screen
    under the same lock every `print!` takes, and it returns the `Framebuffer` the driver needs. The
    driver is spawned only after it returns, so there is no instant with two painters.
 3. After the handover the kernel's own lines go to the UART alone, including the two announcing it
@@ -139,8 +139,8 @@ mapped and is the party whose text is being removed.
 The FLUSH hang milestone 177 (wire) recorded does not occur here. `notes/framebuffer-contract.md`'s BUGS
 records a second `FLUSH` through the real boot's virtio-gpu driver that never returns, not
 root-caused, with the driver's completion interrupt as the best hypothesis. Every prompt, echo and
-answer on this path is a further flush through the same `display_terminal`, and all of them return,
-which is evidence (not proof) that the hang lives in `gpu_driver`'s interrupt handling and not in the
+answer on this path is a further flush through the same `display_terminal`, and all of them return.
+That is evidence (not proof) that the hang lives in `gpu_driver`'s interrupt handling and not in the
 contract or the terminal. Recorded there too.
 
 ## Parity (rule 5)
@@ -161,7 +161,7 @@ of milestone 243's open xenon defect (below).
 2. Boot xenon from the stick with the **monitor attached and the serial cable connected**, and
    `script/board-console` (or any terminal at 115200) on patagonia.
 3. What the monitor should show, in order: the loader's lines; the screen clearing and the
-   kernel's tour; the screen clearing a second time; then, in the **top-left corner only** (132x43
+   kernel's tour; the screen clearing a second time. Then, in the **top-left corner only** (132x43
    cells, 924x344 pixels, whatever the panel's size), the shell's banner and `$ `.
 4. What the serial console should show: the same tour, then two `screen    :` lines (the UART
    alone has them), and the same banner and `$ `. Type `echo typed on the wire` on the serial
@@ -205,7 +205,7 @@ scroll is a full-surface copy through an uncacheable mapping (BUGS).
 - **Recorded.** On an x86 boot that had a virtio-gpu, `boot_graphical_terminal` spawned the virtio
   stack and then returned `None`, and this path took the firmware screen as well. Gone since
   milestone 600 (the graphical terminal stack is built in userspace) retired that function on
-  2026-09-26 and milestone 632 (graphics on demand) took graphics off the boot: the kernel now
+  2026-09-26, and milestone 632 (graphics on demand) took graphics off the boot. The kernel now
   grants the gpu or the firmware-screen terminal, never both (`crates/system_initializer`'s
   `boot_sequence.rs`). Corrected 2026-10-12 (UTC).
 - **Milestone 182.** That is milestone 182 (x86_64's own interactive-boot entry point).
@@ -235,7 +235,7 @@ scroll is a full-surface copy through an uncacheable mapping (BUGS).
   file. It turned 182's pull request red in CI on a slower runner, and 182 now carries a 90 s
   per-line bound for that leg, measured and recorded at `SWISH_CHECK_X86_LINE_SECS` in
   `xtask/src/main.rs`. A real PC pays native stores, not emulated ones; not measured on silicon.
-  The paint lane (2026-09-30, PR #1471) took that measurement as its mandate and built the three
+  The paint lane (2026-09-30, PR #1471) took that measurement as its mandate. It built the three
   fixes the paragraph names: the scroll that moves pixels instead of re-rendering them, qword
   aperture stores, and the console's coalescing window (the notification-object retrofit this
   bullet said was missing). The ack's meaning changed with it: the wire draws immediately, the
@@ -252,5 +252,5 @@ scroll is a full-surface copy through an uncacheable mapping (BUGS).
 ## Index row
 
 the shell's prompt and output on a UEFI PC's monitor, beside the serial console, through a second
-driver behind the framebuffer contract; proved under OVMF by a gate that types on the serial line and
+driver behind the framebuffer contract. Proved under OVMF by a gate that types on the serial line and
 reads the answer off the screen, and waiting on xenon with a monitor
