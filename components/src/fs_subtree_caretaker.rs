@@ -31,8 +31,8 @@
 //! - **slot 0**: the FS-service endpoint, `WRITE`. The directory capability being attenuated.
 //! - **slot 1**: the narrowed endpoint, `READ`. The confined program `CALL`s here; this endpoint IS
 //!   the subtree capability.
-//! - **slot 2**: a report endpoint, `WRITE`. Readiness ([`filesystem_protocol::fixture::READY`])
-//!   once the descent has succeeded, or [`filesystem_protocol::fixture::DESCENT_REFUSED`] with the
+//! - **slot 2**: a report endpoint, `WRITE`. Readiness ([`filesystem_protocol::READY`])
+//!   once the descent has succeeded, or [`filesystem_protocol::DESCENT_REFUSED`] with the
 //!   errno, after which this process exits without serving.
 //! - **[`PAGE_VA`]**: the page shared with the FS server *and* with the client, sound because
 //!   every request on both hops is a blocking `CALL`, so the client is parked inside its own call
@@ -279,14 +279,14 @@ pub extern "C" fn _start(name_lo: u64, name_hi: u64, spec: u64) -> ! {
     if let Some(errno) = reply_errno(r0 as i64) {
         send(
             REPORT,
-            filesystem_protocol::fixture::DESCENT_REFUSED,
+            filesystem_protocol::DESCENT_REFUSED,
             errno as i64 as u64,
             0,
         );
         exit();
     }
 
-    send(REPORT, filesystem_protocol::fixture::READY, 0, 0);
+    send(REPORT, filesystem_protocol::READY, 0, 0);
     serve(r0);
 }
 

@@ -1,5 +1,5 @@
-use filesystem_protocol::dir;
-use filesystem_protocol::fixture::{rm as rr, tree};
+use filesystem_fixture::tree;
+use filesystem_protocol::{dir, rm as rr};
 use grant_plan::rmopt;
 
 use super::*;
@@ -11,7 +11,7 @@ const MAX_MESSAGES: usize = 64;
 
 /// What one run of the program reported.
 struct Outcome {
-    /// Its exit status: 0, or the errno of the first failure (`filesystem_protocol::fixture::rm`).
+    /// Its exit status: 0, or the errno of the first failure (`filesystem_protocol::rm`).
     status: u64,
     /// How many names it removed.
     removed: u64,

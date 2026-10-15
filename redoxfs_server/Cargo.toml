@@ -116,6 +116,7 @@ redox_syscall = { version = "0.9.0", default-features = false }
 # bolts on at the boundary, which is what makes the attenuation impossible to forget. Pure no_std
 # logic with no dependencies of its own, so it costs the host build nothing.
 filesystem_protocol = { version = "0.1.0", path = "../crates/filesystem_protocol" }
+filesystem_fixture = { version = "0.1.0", path = "../crates/filesystem_fixture" }
 
 # The partition table (milestone 57): `mkfs` finds the partition it is to format by reading the
 # GPT off the disk it holds, with the same parser `disk_surveyor` uses. Pure no_std logic with no

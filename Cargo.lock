@@ -226,6 +226,7 @@ dependencies = [
  "environment_protocol",
  "extensible_host_controller_interface",
  "file_allocation_table",
+ "filesystem_fixture",
  "filesystem_protocol",
  "free",
  "globally_unique_identifier_partition_table",
@@ -456,9 +457,17 @@ name = "file_allocation_table"
 version = "0.1.0"
 
 [[package]]
+name = "filesystem_fixture"
+version = "0.1.0"
+dependencies = [
+ "filesystem_protocol",
+]
+
+[[package]]
 name = "filesystem_protocol"
 version = "0.1.0"
 dependencies = [
+ "filesystem_fixture",
  "glob",
 ]
 
@@ -493,6 +502,7 @@ dependencies = [
  "current_cpu_protocol",
  "elf",
  "entropy_protocol",
+ "filesystem_fixture",
  "filesystem_protocol",
  "grant_plan",
  "graphics_protocol",
@@ -674,6 +684,7 @@ dependencies = [
  "entropy_protocol",
  "environment_protocol",
  "extensible_host_controller_interface",
+ "filesystem_fixture",
  "filesystem_protocol",
  "firmware_configuration",
  "generational_table",
@@ -1235,6 +1246,7 @@ dependencies = [
  "elf",
  "entropy_protocol",
  "environment_protocol",
+ "filesystem_fixture",
  "filesystem_protocol",
  "grant_plan",
  "graphics_protocol",
@@ -1506,7 +1518,7 @@ dependencies = [
 name = "walk_pricing"
 version = "0.1.0"
 dependencies = [
- "filesystem_protocol",
+ "filesystem_fixture",
  "grant_plan",
 ]
 
@@ -1559,7 +1571,7 @@ dependencies = [
  "c_program_fixture",
  "compositor",
  "documentation",
- "filesystem_protocol",
+ "filesystem_fixture",
  "globally_unique_identifier_partition_table",
  "grant_plan",
  "graphics_protocol",

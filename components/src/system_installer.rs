@@ -48,7 +48,6 @@
 
 use boot_slot::{SlotHeader, State};
 use file_allocation_table as fat;
-use filesystem_protocol::fixture::blank;
 use filesystem_protocol::{blk, req};
 use globally_unique_identifier_partition_table::entry::Entry;
 use globally_unique_identifier_partition_table::guid::types;
@@ -91,8 +90,8 @@ pub const ROLE_CONFIRM: u64 = 2;
 /// The transfer unit of the block service: one filesystem block per request.
 const TRANSFER: u64 = blk::BLOCK_SIZE as u64;
 
-/// The logical block size a GPT counts in. See BUGS.
-const LBA: u64 = blank::LBA;
+/// The logical block size a GPT counts in, from the blk wire's own unit. See BUGS.
+const LBA: u64 = blk::SECTOR_BYTES;
 
 /// Logical blocks per transfer block: eight 512-byte sectors in one 4096-byte request.
 const SECTORS_PER_TRANSFER: u64 = TRANSFER / LBA;

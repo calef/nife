@@ -8,7 +8,8 @@
 //! Name: provisional (lane maintainer/files-over-1500, 2026-10-12 UTC), for the module and the
 //! file.
 
-use filesystem_protocol::{fixture, fs};
+use filesystem_fixture as fixture;
+use filesystem_protocol::fs;
 use user_mode_runtime::{call, exit, receive, send};
 
 use crate::channel::{FILE, REPORT, get_page, put_page};

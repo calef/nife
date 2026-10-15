@@ -35,7 +35,7 @@ fn start() -> Option<non_volatile_memory_express_service::Wiring> {
     if let Some(report) = w.wait_for_ready() {
         assert_eq!(
             report[0],
-            filesystem_protocol::fixture::READY,
+            filesystem_protocol::READY,
             "the NVMe server did not come up (it reported {:#x}, first-read status {:#x}; see \
              components/src/non_volatile_memory_express.rs for the step words)",
             report[0],
@@ -232,7 +232,7 @@ fn a_confined_el0_server_cannot_dma_outside_its_region() {
     // IOMMU for a build that never tried.
     assert_ne!(
         rd,
-        filesystem_protocol::fixture::READY,
+        filesystem_protocol::READY,
         "the NVMe server reported ready rather than attacking: this initial ramdisk was built without \
          `components/confinement_attackers`, so it has no DMA-escape role. Run the suite through \
          `cargo xtask test`, which builds it in",

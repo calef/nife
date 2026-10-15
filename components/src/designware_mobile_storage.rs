@@ -58,7 +58,7 @@ const REQ: u64 = 0;
 /// The readiness endpoint, sent on once.
 const READY: u64 = 1;
 
-/// Readiness words that are not `fixture::READY`: which step failed.
+/// Readiness words that are not [`filesystem_protocol::READY`]: which step failed.
 const STEP_BAD_HANDOFF: u64 = 1;
 const STEP_CONTROLLER: u64 = 2;
 const STEP_IDENTIFY: u64 = 3;
@@ -122,7 +122,7 @@ pub extern "C" fn _start(arg0: u64, arg1: u64, arg2: u64) -> ! {
     // discipline: ready means a client that asks will be answered.
     let first = transfer_blocks(&mut host, &card, &h, 0, 1, false);
     let report = if first >= 0 {
-        filesystem_protocol::fixture::READY
+        filesystem_protocol::READY
     } else {
         STEP_FIRST_READ
     };

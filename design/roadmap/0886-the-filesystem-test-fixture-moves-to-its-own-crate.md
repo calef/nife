@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-11
+built: 2026-10-15
 milestone_dependencies: 845
 decision_dependencies: unwritten
 machine_requirements: none
@@ -14,10 +15,11 @@ needs_person: no
 calef ruled on #1915, milestone 845 (the filesystem-protocol crate root is split along its seams),
 on 2026-10-11 (UTC): "Keep it for now, and open the follow-up milestone". This is that milestone.
 845 keeps `filesystem_protocol::fixture` in the protocol crate as `fixture.rs`, with its tests in
-`fixture/tests.rs`, so that its split stays a pure move. This block moves it out.
-
-It waits on 845. Moving `fixture` out of the 5,744-line `lib.rs` before 845 lands would make two
-lanes cut the same file at once.
+`fixture/tests.rs`, so that its split stays a pure move. This block moves it out. Built
+2026-10-15 (UTC) on branch
+`milestone/886-the-filesystem-test-fixture-moves-to-its-own-crate`, after 845 (built 2026-10-11)
+had landed, so the two never cut the same file at once; the std relief the block ordered as its own
+pull request went first, as nifeos/nife#2205.
 
 The crate name below is provisional and waits for calef's naming ratification pass; it does not
 block the lane.
@@ -57,25 +59,13 @@ dependency cycle. Every user is rewritten; there is no shim.
 
 ## std carries it today
 
-Yes, all of it. `std_generate_modules` in `xtask/src/farm.rs` copies `lib.rs` into the std farm as
-`sys/pal/nife/fsproto.rs`, cutting only at `#[cfg(test)] mod tests`. `fixture` sits above that
-line, so it is copied whole.
-
-Reproducing the generator's transform at `9532eeb53` gives a `fsproto.rs` of 3,703 lines and
-227,590 bytes. `fixture` is 1,241 of those lines (34%) and 83,820 of the bytes (37%). The farm in
-the main checkout, last generated 2026-10-06, has it at line 2445, 1,222 lines long.
-
-std reads none of it. The overlay names `fsproto::dir` 24 times, `reply_errno` four times, and
-`dirent` and `PAGE` once each. `sys/pal/nife/mod.rs` puts `#[allow(dead_code)]` on the module and
-names `fixture` as one reason. And `std_inputs_stamp` hashes `lib.rs`, so editing a test file's
-expected contents marks the farm stale and rebuilds std.
-
-That is a reason to do this sooner. 845 keeps it: its generator inlines every module back, and
-calef ruled that std's copy should stay the same text.
-
-There is a cheaper half. Once 845 has landed, the generator can skip `fixture.rs`, one line in
-`farm.rs`. std then stops carrying test data and stops rebuilding for it, and nothing else moves.
-That is step 1 below, and it can land on its own if the crate move waits.
+It did until this milestone landed: all of it, 34% of the generated `fsproto.rs` (measured at
+`9532eeb53`). `std_generate_modules` copies `lib.rs` into the std farm as `sys/pal/nife/fsproto.rs`.
+845's generator inlines every module back, so the copy stayed the same text, and while the copy
+carried the fixture, `std_inputs_stamp` hashed it, so editing a test file's expected contents
+marked every worktree's farm stale and rebuilt std. Step 1 below stopped the copy ahead of the
+move (#2205, 2026-10-15); the move deletes the file, and the skip with it. `fsproto.rs` is 2,470
+lines at the build this block ships, with no `fixture` module and no std code naming one.
 
 ## The premise is half right
 
@@ -160,12 +150,23 @@ benchmark shapes. calef names crates.
 
 1. `filesystem_protocol` has no `fixture` module, and no test data remains in it.
 2. The generated `fsproto.rs` has no `fixture` module, and the std farm builds.
-3. The kernel, `virtio` and `system_initializer` do not depend on the new crate.
+3. The kernel, `virtio` and `system_initializer` do not depend on the new crate. (The kernel's one
+   exception, recorded: `filesystem_fixture` is an optional dependency, on only under
+   `--features bench`, whose filesystem benchmark speaks the throughput and walk shapes. No
+   booting image sets the feature; `cargo tree` shows the crate absent from every default graph.)
 4. Every host test and doc test that passed before passes with no test body changed, and so does
    `script/test` on aarch64, riscv64 and x86_64.
 6. `system_installer` takes its block size from `blk`, not from `blank::LBA`, so no shipping
    installer depends on the test crate.
 5. The new crate's `lib.rs` carries a `//! Name:` line marked provisional.
+
+## Follow-on
+
+- **Recorded.** The merge drain can judge a brand-new pull request against a stale `main` and hold
+  it for an architect it does not need; the defect, its release and its fix are in
+  `notes/merge-queue/limitations.md`. The six other crates' `pub mod fixture` modules (two of them
+  copied into std) stay as they are; the section above records them so the next lane does not have
+  to measure again.
 
 ## Index row
 

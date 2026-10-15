@@ -587,7 +587,7 @@ fn the_login_service_serves_past_the_old_capability_table_ceiling() {
 /// `alice` and `bob` each log in and, through the directory capability `login` delegated,
 /// `CREATE` a marker file naming themselves ([`ls::WRITE_MARKER`], run once per identity); both
 /// also confirm
-/// [`filesystem_protocol::fixture::tree::INNER`] is absent, which is this suite's own proof (not merely a
+/// [`filesystem_fixture::tree::INNER`] is absent, which is this suite's own proof (not merely a
 /// stated intent) that neither landed in the old shared subtree every identity used to be
 /// attenuated to before this milestone. `alice` then logs in a **second, independent** time
 /// ([`ls::READ_MARKER`]) and reads the marker back: it must read `alice`'s own,
@@ -625,7 +625,7 @@ fn login_scopes_each_identity_to_its_own_provisioned_subtree() {
         r_alice[1] & ls::F_NOT_SHARED_SUBTREE,
         ls::F_NOT_SHARED_SUBTREE,
         "alice's granted directory carries the old shared fixture's own file \
-         (filesystem_protocol::fixture::tree::INNER), so it is not a subtree of alice's own",
+         (filesystem_fixture::tree::INNER), so it is not a subtree of alice's own",
     );
     let a_alice = sched::ipc_receive(w.audit);
     assert_eq!(
@@ -649,7 +649,7 @@ fn login_scopes_each_identity_to_its_own_provisioned_subtree() {
         r_bob[1] & ls::F_NOT_SHARED_SUBTREE,
         ls::F_NOT_SHARED_SUBTREE,
         "bob's granted directory carries the old shared fixture's own file \
-         (filesystem_protocol::fixture::tree::INNER), so it is not a subtree of bob's own",
+         (filesystem_fixture::tree::INNER), so it is not a subtree of bob's own",
     );
     let a_bob = sched::ipc_receive(w.audit);
     assert_eq!(

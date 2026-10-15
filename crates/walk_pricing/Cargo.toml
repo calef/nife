@@ -9,9 +9,11 @@ license.workspace = true
 workspace = true
 
 [dependencies]
-# The priced tree's shape. `no_std` and dependency-free; only its `fixture::walk` module is used,
-# so the image builder, the priced program and a host run cannot disagree about what was walked.
-filesystem_protocol = { version = "0.1.0", path = "../filesystem_protocol" }
+# The tree itself, test data since milestone 886 (the filesystem test fixture moves to its own
+# crate) moved it out of the protocol crate: this crate prices walks over exactly the layout the
+# test image ships, so the image builder, the priced program and a host run cannot disagree about
+# what was walked.
+filesystem_fixture = { version = "0.1.0", path = "../filesystem_fixture" }
 
 [dev-dependencies]
 # `examples/rg_host.rs` splits `fixture::walk::RG_SEARCH` with the function that builds nife's argv,

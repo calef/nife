@@ -2,7 +2,7 @@
 //! binary and booted as PID 1 in a one-file initramfs under QEMU-HVF, on the *same* M-series core,
 //! at the *same* virtualization tier, through the *same* virtio-blk-device model and the *same*
 //! raw host image file as nife's own bench boot. It mounts a scratch ext4 disk, runs the four
-//! phases `filesystem_protocol::fixture::throughput` defines, prints them, and powers the machine off (it is
+//! phases `filesystem_fixture::throughput` defines, prints them, and powers the machine off (it is
 //! PID 1: exiting would panic the kernel).
 //!
 //! # What it measures, and why there are two variants of everything
@@ -70,7 +70,7 @@ const O_DSYNC: i32 = 0o10000;
 const O_DIRECT: i32 = 0o200000; // aarch64 Linux
 const RB_POWER_OFF: i32 = 0x4321fedc_u32 as i32;
 
-/// The measurement's shape, kept identical to `filesystem_protocol::fixture::throughput` by hand. It is not
+/// The measurement's shape, kept identical to `filesystem_fixture::throughput` by hand. It is not
 /// shared as a crate because this file is compiled by `rustc` alone, outside the workspace, exactly
 /// as `linux_all.rs` is: a benchmark that needed the workspace to build could not be run on a
 /// machine that is not this one.

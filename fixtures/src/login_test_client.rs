@@ -158,7 +158,7 @@ pub const RPT_LOGGED_OUT: u64 = login_protocol::LOGGED_OUT;
 /// capabilities this process proved actually work, rather than merely that they arrived.
 pub const F_DIR_WORKS: u64 = 1 << 0;
 pub const F_BUDGET_WORKS: u64 = 1 << 1;
-/// **Set when [`filesystem_protocol::fixture::tree::INNER`] is confirmed absent** from the granted directory:
+/// **Set when [`filesystem_fixture::tree::INNER`] is confirmed absent** from the granted directory:
 /// that name exists only in the old, shared fixture subtree every identity used to be attenuated to.
 /// Its absence is this client's own proof (not merely an assertion) that the identity this run
 /// authenticated as is
@@ -458,7 +458,7 @@ fn prove_the_directory(behavior: u64, identity: &[u8], dir_ep: u64, region: u64)
                 if write_marker(dir_ep, identity) {
                     flags |= F_MARKER_WRITTEN;
                 }
-                if is_absent(dir_ep, filesystem_protocol::fixture::tree::INNER) {
+                if is_absent(dir_ep, filesystem_fixture::tree::INNER) {
                     flags |= F_NOT_SHARED_SUBTREE;
                 }
             }
@@ -683,7 +683,7 @@ fn write_marker(dir: u64, content: &[u8]) -> bool {
 }
 
 /// `true` if `OPEN`ing `name` under `dir` is refused. The expected answer for a name that lives only
-/// in the old, shared fixture subtree ([`filesystem_protocol::fixture::tree::INNER`]) when `dir` is a genuinely
+/// in the old, shared fixture subtree ([`filesystem_fixture::tree::INNER`]) when `dir` is a genuinely
 /// different, identity-scoped one.
 fn is_absent(dir: u64, name: &str) -> bool {
     put_page(name.as_bytes());

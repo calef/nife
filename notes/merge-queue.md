@@ -268,6 +268,10 @@ The ones a maintainer most needs:
   240-minute timeout lets a hung group block for four hours.
 - The drain's log says what the machinery did, never what a person did, and its event counts begin on
   2026-09-23.
+- The drain's surface pass judges a brand-new pull request against its own checkout's `main`, which
+  can be one merge behind: an empty claim draft picked up the merge before it and took a
+  `needs-architect` it did not earn (#2202, 2026-10-15). Release is one `record-ruling`; the fix
+  wants the pull request's real base ([limitations.md](merge-queue/limitations.md)).
 - `Blocked-by:` holds the drain and not the queue, reads only the first line, and matches inside code
   spans.
 - The 2026-08-16 measurement is a snapshot nothing re-derives.

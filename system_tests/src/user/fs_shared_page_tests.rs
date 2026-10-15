@@ -25,7 +25,7 @@
 //! The interleaving is one a genuinely runnable second writer reaches by chance on the four-core
 //! boots; the handshake removes the flakiness, not the mechanism.
 
-use filesystem_protocol::fixture;
+use filesystem_fixture as fixture;
 
 use super::*;
 use crate::sched;

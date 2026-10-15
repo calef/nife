@@ -1,5 +1,5 @@
+use filesystem_fixture::dirscape as esc;
 use filesystem_protocol::dir;
-use filesystem_protocol::fixture::dirscape as esc;
 
 use super::*;
 use crate::sched;
@@ -24,7 +24,7 @@ pub(super) fn attack_a_subtree(rights: u64, run: u64) -> Option<u64> {
             .expect("no fs_subtree_caretaker program in the initial ramdisk"),
         program("fs_test_client").expect("no fs_test_client program in the initial ramdisk"),
         fs_service::DirGrant {
-            name: filesystem_protocol::fixture::tree::SUB,
+            name: filesystem_fixture::tree::SUB,
             rights,
             role: 5, // ROLE_DIR_ATTACKER
             arg: run,
@@ -42,7 +42,7 @@ pub(super) fn attack_a_subtree(rights: u64, run: u64) -> Option<u64> {
     let [tag, verdict, ..] = sched::ipc_receive(report);
     assert_eq!(
         tag,
-        filesystem_protocol::fixture::VERDICT,
+        filesystem_fixture::VERDICT,
         "the attacker's report is not a verdict word",
     );
     Some(verdict)
@@ -226,9 +226,9 @@ fn a_name_set_capability_reads_its_attributes_and_still_names_only_its_set() {
             .expect("no fs_nameset_caretaker program in the initial ramdisk"),
         program("fs_test_client").expect("no fs_test_client program in the initial ramdisk"),
         fs_service::SetGrant {
-            dir: filesystem_protocol::fixture::tree::SUB,
+            dir: filesystem_fixture::tree::SUB,
             // Exactly one name, and `deeper` deliberately left out of it.
-            names: &[(filesystem_protocol::fixture::tree::INNER.as_bytes(), false)],
+            names: &[(filesystem_fixture::tree::INNER.as_bytes(), false)],
             rights: dir::READ | dir::WRITE | dir::DESCEND,
             role: 6, // ROLE_SET_ATTRS
             arg: 0,
@@ -241,7 +241,7 @@ fn a_name_set_capability_reads_its_attributes_and_still_names_only_its_set() {
     let [tag, v, ..] = sched::ipc_receive(report);
     assert_eq!(
         tag,
-        filesystem_protocol::fixture::VERDICT,
+        filesystem_fixture::VERDICT,
         "the name-set witness's report is not a verdict word",
     );
     assert_verdict(

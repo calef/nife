@@ -42,6 +42,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e9c71c2167ca323c882b99918929403426e2373ea17242ff5653e0d5e1058be"
 
 [[package]]
+name = "filesystem_fixture"
+version = "0.1.0"
+dependencies = [
+ "filesystem_protocol",
+]
+
+[[package]]
 name = "filesystem_protocol"
 version = "0.1.0"
 
@@ -99,6 +106,7 @@ version = "0.1.0"
 name = "std_exerciser"
 version = "0.1.0"
 dependencies = [
+ "filesystem_fixture",
  "filesystem_protocol",
  "grant_plan",
  "manifest_note",
@@ -112,5 +120,5 @@ dependencies = [
 name = "walk_pricing"
 version = "0.1.0"
 dependencies = [
- "filesystem_protocol",
+ "filesystem_fixture",
 ]

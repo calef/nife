@@ -124,13 +124,13 @@ pub fn wait_for_service(readiness: Readiness) {
     if let Some(blk_ready) = blk_ready {
         assert_eq!(
             crate::sched::ipc_receive(blk_ready)[0],
-            filesystem_protocol::fixture::READY,
+            filesystem_protocol::READY,
             "the block server did not bring the RedoxFS device up",
         );
     }
     assert_eq!(
         crate::sched::ipc_receive(fs_ready)[0],
-        filesystem_protocol::fixture::READY,
+        filesystem_protocol::READY,
         "the FS server did not open the RedoxFS image",
     );
 }
@@ -161,7 +161,7 @@ pub fn wait_for_service(readiness: Readiness) {
 pub(super) fn wait_for_caretaker(caretaker_ready: RendezvousId) {
     assert_eq!(
         crate::sched::ipc_receive(caretaker_ready)[0],
-        filesystem_protocol::fixture::READY,
+        filesystem_protocol::READY,
         "the caretaker could not open what it was granted, so there is nothing to attenuate",
     );
 }

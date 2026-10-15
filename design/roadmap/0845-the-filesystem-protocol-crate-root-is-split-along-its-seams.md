@@ -23,8 +23,8 @@ carries `needs-architect`.
 
 The lane wrote it up on 2026-10-10 (UTC) as §274 (the filesystem-protocol crate root splits into its module files), `status: PROPOSED`, with the cut re-measured
 on main at `396187b0b` and a recommendation on each fork. calef ruled on 2026-10-11 (UTC). Every
-module moves, each with its tests beside it in `x/tests.rs`. `fixture` stays as `fixture.rs` until
-milestone 886 (the filesystem test fixture moves to its own crate) moves it. The std copy's whitespace change is accepted, and §267 (a comment
+module moves, each with its tests beside it in `x/tests.rs`. `fixture` stayed as `fixture.rs` until
+milestone 886 (the filesystem test fixture moves to its own crate) moved it. The std copy's whitespace change is accepted, and §267 (a comment
 states the constraint as it is now) is amended so a row moves with its block. §274 records the ruling and the cut as built. Built 2026-10-11 (UTC) on branch
 `milestone/845-the-filesystem-protocol-crate-root-is-split-along-its-seams`.
 

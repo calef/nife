@@ -220,7 +220,7 @@ impl IpcDisk {
                 // Then die, with the transaction's commit still unwritten. Announce it first, on the
                 // readiness endpoint this process already holds, so the waiting test knows the kill
                 // was the injector's and not something else going wrong.
-                send(READY, filesystem_protocol::fixture::crash::CUT, 0, 0);
+                send(READY, filesystem_fixture::crash::CUT, 0, 0);
                 panic!();
             }
             if chunk.len() < BLOCK {
@@ -480,7 +480,7 @@ pub extern "C" fn _start(crash_at_write: u64, crash_after_blocks: u64, crash_tea
     };
     // The image is open: signal readiness (so the test can tell an open-path hang from a serve-path
     // one), then serve forever.
-    send(READY, filesystem_protocol::fixture::READY, 0, 0);
+    send(READY, filesystem_protocol::READY, 0, 0);
     serve(&mut server);
 }
 
