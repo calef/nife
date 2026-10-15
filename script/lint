@@ -356,9 +356,10 @@ cargo clippy -p components -p fixtures -p user_mode_runtime --target x86_64-unkn
 # counting arm of `IrqSafeMutex::lock` and the reaper's timing (kernel/src/lock_wait.rs).
 #
 # On BOTH ISAs since milestone 41. riscv64 was linted only under `watchdog_probe` before, so the
-# whole riscv `shell` boot path (`user::riscv_shell_boot` and the console it builds) was compiled
-# by `cargo xtask` and checked by nobody. Parity is a gate, not an aspiration (DECISIONS §19), and
-# that applies to the gate itself.
+# whole riscv `shell` boot path (`user::riscv_shell_boot` then; `boot_progenitor` since milestone
+# 166) and the console it builds were compiled by `cargo xtask` and checked by nobody.
+# Architectural parity is a gate, not an aspiration (DECISIONS §19 (architectural parity is a
+# tenet)), and that applies to the gate itself.
 for tgt in aarch64-unknown-none-softfloat riscv64imac-unknown-none-elf; do
     for feat in shell bench icount board fastpath_pad soak_test cycle_counter_grant lock_wait; do
         echo "==> clippy: kernel --features $feat ($tgt)"

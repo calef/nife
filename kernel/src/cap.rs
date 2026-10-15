@@ -95,9 +95,10 @@ pub enum Object {
     /// Distinct from `PageFrame` precisely because a `PageFrame` maps *normal cacheable* memory, which for
     /// MMIO would let the CPU cache and reorder register accesses: catastrophic for a device.
     ///
-    /// Constructed by the aarch64 boot (`spawn_init`, and its tests) and by riscv's
-    /// `riscv_shell_boot`, so a riscv build without `--features shell` never mints one. The
-    /// syscall path still *matches* on it in both, and a match is not a construction.
+    /// Constructed by the boot (`boot_progenitor`'s console device grant on aarch64 and
+    /// riscv64) and by `spawn_hello`'s test roles and the system tests beside them, so a
+    /// build that never reaches a hand-off never mints one. The syscall path still
+    /// *matches* on it, and a match is not a construction.
     #[cfg_attr(all(target_arch = "riscv64", not(feature = "shell")), allow(dead_code))]
     DeviceFrame(u64),
 

@@ -203,7 +203,7 @@ there and stopped one link short of the only child it built.
 
 calef retired `builder` on 2026-09-14, so that gap is closed by the program going away rather than
 by the call being added. What closed it is worth being exact about, because "the gap is gone" and
-"the gap was fixed" are different facts. The default riscv64 boot now ends in `riscv_shell_boot`,
+"the gap was fixed" are different facts. The default riscv64 boot now ends in `boot_progenitor`,
 which measures `progenitor` against the trust root and hands it the measurement table.
 `crates/system_initializer` is the same code aarch64's progenitor runs. So that boot's userspace is
 now covered by the interactive chain on this page, rather than by an exception to it. Nothing was added to

@@ -100,7 +100,7 @@ architectures. On aarch64 it is built through `hello`'s init role, the `shell` f
 tour hands off to it too, since the kernel-wired `shell_service` cannot host a contract-speaking
 shell. `shell` is the only feature on this path; milestone 296 (the `initboot` feature was `shell`)
 records why. On RISC-V it is built through the portable `system_initializer` builder
-(`riscv_shell_boot`).
+(`boot_progenitor`).
 Init creates the terminal endpoint and the shared frames. It grants `line_editor` the serve side and
 the drivers and shell the `WRITE` side, and none of the wiring is in the kernel. Proven under QEMU
 on
