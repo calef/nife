@@ -14,13 +14,13 @@ configuring an SMB share and provisioning its secret, and calef decided that day
 implementation (notes/smb.md). There is no share to configure. The status word is unchanged because
 the vocabulary has no word for a block whose subject is gone, and minting one is an architect's.
 
-The configuration half needs nothing and has a precedent to copy. The secret
-half is a fork calef must rule on, stated in full below and now in
-§165 (where a stored secret comes from on a
-boot that is not a test), written up 2026-09-19 by milestone 435's lane: where a secret physically
-comes from on a real boot. That section carries the second question this block leaves to calef as
-well, which is whether the block is re-aimed or retired now that its subject is gone. The two are one milestone because they are one act, and because splitting them would
-ship a document with a hole where the only value that matters goes.
+The configuration half needs nothing and has a precedent to copy. The secret half is a fork calef
+must rule on. It is stated in full below and now in §165 (where a stored secret comes from on a
+boot that is not a test), written up 2026-09-19 by the lane of milestone 435 (a decision nobody
+wrote down). The fork: where a secret physically comes from on a real boot. That section carries
+the second question this block leaves to calef as well, which is whether the block is re-aimed or
+retired now that its subject is gone. The two are one milestone because they are one act, and
+because splitting them would ship a document with a hole where the only value that matters goes.
 
 **What is still live in it, and why it is not simply deleted.** Two of the four deliverables were
 never really about SMB. The **configuration document** half generalizes to any service that is
@@ -61,7 +61,7 @@ of that.
 
 Milestone 55's mDNS responder already did the configuration half, and it is the shape to follow
 even though the code is gone (retired 2026-09-15 by milestone 298): a document described what the
-machine advertised, `multicast_dns_config` parsed it host-tested with line-numbered errors, and
+machine advertised. `multicast_dns_config` parsed it host-tested with line-numbered errors, and
 `notes/mdns.md` records the property that mattered, that what it advertised lived in a document a
 person edits rather than in constants. All of it is at commit `0652c981`, and `crates/timetable` is
 a live copy of the same shape. A share document is the same move one service over.
@@ -81,7 +81,7 @@ a live copy of the same shape. A share document is the same move one service ove
    it asking about another. `caps` on that adapter cannot show which credential it reaches, because
    the answer is "whichever one it types". If a document says share `backups` uses resource
    `backups-alice`, then init mints an endpoint that means exactly that credential, the request
-   carries only a challenge and a proof, and the name is not refused but unsayable, because there is
+   carries only a challenge and a proof. The name is not refused but unsayable, because there is
    no field to put it in. That is §27's "the endpoint IS the capability" carried through the one
    place `cred_proto` does not yet carry it, and its own header already argues the general case:
    *the endpoint gives a number its meaning, not the number itself.*
@@ -144,9 +144,9 @@ numbered behaviors, the whole image is the share, and the identity is four const
 Microsoft's published test account. calef asked for a configuration document and a stored secret
 while ruling that `smb-serve` stays guest-writable for now; this tracks the lock-down he asked to
 keep. Four deliverables: the document (milestone 55's retired `mdns_responder.conf` is the shape), the
-provisioning path (the fork, four options recorded and none chosen), per-resource credential
+provisioning path (the fork, four options recorded and none chosen). Third, per-resource credential
 endpoints (which retire the request-carries-a-name authority and the one-verify-frame limit for
-free), and the boot that stops admitting guests. **Subject removed 2026-08-30** with the SMB
+free). Fourth, the boot that stops admitting guests. **Subject removed 2026-08-30** with the SMB
 implementation (notes/smb.md): there is no share to configure. The configuration half generalizes
 to any service and the provisioning fork is still unanswered for the credential store; the block
 needs re-aiming or retiring, which is an architect's
