@@ -16,10 +16,10 @@ The seventh security audit on the record and the first under the userspace-confi
 [design/audit-reports/2026-09-17-userspace-confinement.md](../audit-reports/2026-09-17-userspace-confinement.md);
 this block is the account of building it, not a second copy of it.
 
-Scope, bounded on purpose because 112 milestones is more tree than one lens holds: the components
+Scope, bounded on purpose because 112 milestones is more tree than one lens holds. The components
 that took device or network authority since 2026-08-17, found by reading every capability mint site
-rather than the names (the population was two objects, not forty-five); the six confinement claims
-milestone 307 marked as quotable-but-unreachable, asked what they actually guarantee; and the two
+rather than the names (the population was two objects, not forty-five). The six confinement claims
+milestone 307 marked as quotable-but-unreachable, asked what they actually guarantee. And the two
 machine classes that booted real silicon in the window, radon and xenon, followed from firmware-owned
 memory and device windows into what a confined component can reach.
 
@@ -33,9 +33,9 @@ the capability table it could, and `system_initializer` performed exactly that d
 `x86_64` boot. Fixed in `sched::delete_current_cap`, with a test and a replayed falsification record.
 
 **The two existing port tests could not fail in the direction they exist for.** A wrongly permitted
-`out` was followed by a `SEND` nobody received, so a leaked hand-off or a surviving grant would have
-hung the suite rather than turning an assertion red: `notes/confinement-claims.md`'s row 26 shape,
-one object over, found when the new test's first draft did exactly that. The fixtures now exit
+`out` was followed by a `SEND` nobody received. So a leaked hand-off or a surviving grant would have
+hung the suite rather than turning an assertion red. That is `notes/confinement-claims.md`'s row 26
+shape, one object over, found when the new test's first draft did exactly that. The fixtures now exit
 after an `out` that is expected to fault, and both tests carry records replayed on `x86_64`.
 
 Ring 0 could execute a confined component's pages on `x86_64`, and the tree said otherwise.
@@ -44,23 +44,23 @@ that the hardware made it so; x86 does so only with `CR4.SMEP`, which nothing ha
 every core whose CPUID offers it, with a console line either way; the sentence and the encoder
 comment are corrected rather than deleted.
 
-And three things recorded rather than fixed, each with a proposal: `PortRange::REVOKE` reaches
+And three things recorded rather than fixed, each with a proposal. `PortRange::REVOKE` reaches
 one core and `x86_64` no longer runs one (a one-tick window, accepted with the reason and a `BUGS`
-section at the function); row 21's `x86_64` leg carries no falsification because the mechanism
-admits one architecture per record; and, outside the lens, one `x86_64` language test trips the
+section at the function). Row 21's `x86_64` leg carries no falsification because the mechanism
+admits one architecture per record. And, outside the lens, one `x86_64` language test trips the
 boot-stack gate when run alone and not inside the suite.
 
 ## What it cost
 
 Reading, about four hours of lane time. Twelve targeted `x86_64` boots: one cold build to prime the
-farm, three runs of the port tests as the fixtures changed, one run that hung (the first draft's
-escape parking on a `SEND`, killed at its root after ten minutes), four single-test runs to isolate
+farm, three runs of the port tests as the fixtures changed. One run that hung: the first draft's
+escape parking on a `SEND`, killed at its root after ten minutes. Four single-test runs to isolate
 the stack-gate excess (two of them on the base commit's own `kernel/` and `crates/`), and three
 record replays. Then the full suite on all three architectures, one at a time (`x86_64` in both boot
-modes, aarch64, riscv64, every one exit 0), although the kernel changes are
+modes, aarch64, riscv64, every one exit 0). The kernel changes are
 `#[cfg(target_arch = "x86_64")]` throughout and the only cross-architecture edit is a comment in
-`crates/paging`; the other two legs were run because the brief asked for every architecture whose
-code was touched and a comment in a shared crate is code that was touched.
+`crates/paging`. The other two legs were run because the brief asked for every architecture whose
+code was touched, and a comment in a shared crate is code that was touched.
 
 ## BUGS
 
@@ -117,16 +117,17 @@ code was touched and a comment in a shared crate is code that was touched.
 ## Index row
 
 The security audit `script/audits` had reported overdue every week since 2026-08-17, run under the
-userspace-confinement lens on a bounded scope: the device and port authority minted in the window,
-the six claims milestone 307 marked unreachable, and the two boards that booted real silicon. It found
-one confinement claim false as stated and fixed it: a thread that deleted its own `x86_64`
-`PortRange` capability kept the ports, because the grant is a cached field the context switch
-installs and `SYS_CAP_DELETE` cleared the table and not the cache, which `system_initializer` did on
+userspace-confinement lens on a bounded scope. The scope was the device and port authority minted in
+the window, the six claims milestone 307 marked unreachable, and the two boards that booted real
+silicon. It found
+one confinement claim false as stated and fixed it. A thread that deleted its own `x86_64`
+`PortRange` capability kept the ports. The grant is a cached field the context switch
+installs, and `SYS_CAP_DELETE` cleared the table and not the cache, which `system_initializer` did on
 every `x86_64` boot. The two existing port tests could not go red for the defects they exist to
-catch, because a wrongly permitted `out` parked on a `SEND` nobody received and hung the run (row
-26's shape, one object over); their fixtures now exit, and all three port claims carry replayed
+catch. A wrongly permitted `out` parked on a `SEND` nobody received and hung the run (row
+26's shape, one object over). Their fixtures now exit, and all three port claims carry replayed
 falsification records. Ring 0 could execute a user page on `x86_64` and the paging decoder said it
-could not; `CR4.SMEP` is now set where CPUID offers it. Recorded and proposed: the one-tick
-cross-core window on a revoked port range now that `x86_64` runs secondaries, the missing `x86_64`
-evidence for row 21, a test for the SMEP claim, and an `x86_64` stack gate that fires on a filtered
+could not; `CR4.SMEP` is now set where CPUID offers it. Recorded and proposed. The one-tick
+cross-core window on a revoked port range, now that `x86_64` runs secondaries. The missing `x86_64`
+evidence for row 21. A test for the SMEP claim. And an `x86_64` stack gate that fires on a filtered
 single-test run and not on the suite that contains the same test.
