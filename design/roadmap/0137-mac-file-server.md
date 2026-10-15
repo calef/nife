@@ -16,29 +16,30 @@ named streams, resource forks and Apple's directory-enumeration extensions are S
 nothing else here wants them. Retiring this block is an architect's call; the status word is
 unchanged because the vocabulary has no word for it.
 
-The first thing this milestone needs is the choice §99 deferred rather than
-refused: where Apple metadata lands, given that this is the workload that actually wants it.
-Options 2, 3 and 4 are priced in §99 with their costs measured; the lane that takes this block
-should read them before proposing anything new, and the `:` fix below travels with whichever wins.
+The first thing this milestone needs is the choice §99 (where Apple's metadata lands) deferred
+rather than refused: where Apple metadata lands, given that this is the workload that actually
+wants it. Options 2, 3 and 4 are priced in §99 with their costs measured. The lane that takes this
+block should read them before proposing anything new. The `:` fix below travels with whichever
+wins.
 
-The analysis below is kept because it is right and was expensive to get: §99's finding that a Time
+The analysis below is kept because it is right and was expensive to get. §99's finding that a Time
 Machine backup is a sparse bundle and never touches Apple's metadata surface is what let milestone
-55 stop looking blocked on work it never needed, and that reasoning would be worth re-reading by
-anyone who builds a file server here again.
+55 (Time Machine) stop looking blocked on work it never needed. That reasoning would be worth
+re-reading by anyone who builds a file server here again.
 
 In brief. A Mac using this share the way a person uses a file server: Finder metadata, resource
 forks, named streams, and the directory-enumeration extensions that make a Finder window feel like a
 local disk. Distinct from milestone 55, which is a Time Machine target.
 
 Why it matters, and why it is a separate block. Milestone 55 carried both workloads and nobody
-had noticed they were two, which made the metadata work look like a backup prerequisite. §99 showed
+had noticed they were two. That made the metadata work look like a backup prerequisite. §99 showed
 it is not: **a Time Machine backup is a sparse bundle, directories and band files, and the metadata a
 Mac cares about lives inside the disk image's own filesystem, which this server never sees.** Three
 independent sources agree, all read rather than recalled, and the sharpest is `ksmbd`: a whole
 in-kernel SMB server used as a Time Machine target whose entire Apple-create-context handling is four
 lines and which claims no named streams at all.
 
-So the two workloads have two feature lists, and holding them in one block meant the backup path
+So the two workloads have two feature lists. Holding them in one block meant the backup path
 appeared blocked on work it never needed. Splitting them is what lets 55 finish.
 
 ## What this milestone owns
@@ -62,7 +63,7 @@ in its name. §99 records it; whichever lane claims the bit fixes this in the sa
 ## BUGS
 
 - Nothing here has met a real Mac as a file server. §99 could not answer whether macOS in practice
-  stamps any extended attribute on a share it merely browses, because that needs hardware. Every
+  stamps any extended attribute on a share it merely browses. That needs hardware. Every
   feature list in this block is derived from source and documentation rather than from observation,
   and the first bench session may reorder all of it.
 - The line estimates in §99 are estimates, anchored on `ksmbd`'s ~200 lines of C. They are good
@@ -75,5 +76,5 @@ in its name. §99 records it; whichever lane claims the bit fixes this in the sa
 Split out of milestone 55 by calef on 2026-08-18, ruling on §99. A Time Machine backup is a sparse
 bundle and never touches Apple's metadata surface, so the two workloads had two feature lists
 under one block and the backup path looked blocked on work it never needed. This is where `FILE_NAMED_STREAMS`, resource forks and the Finder-facing enumeration extensions lived. Subject
-removed 2026-08-30 with the SMB implementation (notes/smb.md); nothing here is buildable without
+removed 2026-08-30 with the SMB implementation (notes/smb.md). Nothing here is buildable without
 an SMB server, so the block needs retiring, which is an architect's

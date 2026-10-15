@@ -30,8 +30,8 @@ so the whole of 113's benefit costs one flag, and `script/interleaving-check` al
     RUSTFLAGS="--cfg loom -D warnings" cargo test --release ...
 
 That script's own comment cites 113 and says why the shim is unnecessary. So the blind spot 135
-pointed at is closed, and the property 135 actually named is a different one that no lint
-against harness code could ever have reached: linting a loom model says nothing about whether the
+pointed at is closed. The property 135 actually named is a different one that no lint
+against harness code could ever have reached. Linting a loom model says nothing about whether the
 kernel still calls it.
 
 So this milestone gates the real property, in three pieces:
@@ -44,9 +44,9 @@ So this milestone gates the real property, in three pieces:
   name-set check could see.
 - **Every place the kernel releases region pages must have taken its warrant first.** Two functions
   in `kernel/src/untyped.rs` may reach a free loop, and each is pinned with the call that entitles
-  it: `create` with `insert_root` (its rollback frees a run no name was ever minted for), `destroy`
-  with `claim_for_destroy` (the only object in the system that proves nobody else is freeing the
-  same run).
+  it. `create` with `insert_root` (its rollback frees a run no name was ever minted for).
+  `destroy` with `claim_for_destroy` (the only object in the system that proves nobody else is
+  freeing the same run).
 - Two `compile_fail` doctests on `DestroyClaim`, carrying explicit error codes, asserting that
   the claim cannot be forged from outside the crate (`E0451`) and cannot be duplicated (`E0599`).
   These catch what a set cannot see: a `#[derive(Clone)]` is one word and a `pub` on a field is four
@@ -93,7 +93,7 @@ wrong rather than that something is:
 | `DestroyClaim`'s fields made `pub` | doctest | the forging snippet compiles, so the `compile_fail` fails |
 
 The doctests carry error codes (`compile_fail,E0451`) rather than a bare `compile_fail`, because a
-bare one passes when the snippet fails to compile for any reason, including a typo, which is how
+bare one passes when the snippet fails to compile for any reason, including a typo. That is how
 a compile-fail test rots into an assertion nobody has watched fail. That the codes are enforced was
 itself checked: changing `E0451` to `E0308` fails with *"Some expected error codes were not found"*.
 
@@ -124,7 +124,7 @@ shim is the ancestor 135 pointed at, and the finding here is that its problem do
 loom.
 
 Outside the tree, pinning a public surface to catch semantic drift is `cargo-semver-checks` and
-Rust's own `rustdoc`-JSON API snapshots; the reason not to reach for either is that both answer
+Rust's own `rustdoc`-JSON API snapshots. The reason not to reach for either is that both answer
 "did the API break compatibility", where the question here is "did the API grow a way to observe a
 decision without taking it", which no general tool can know.
 
@@ -196,9 +196,9 @@ Milestone 135's value is that the thing loom searches is the thing the kernel ru
 checked it: a later lane could hand the decision back to `untyped.rs` and every gate would stay
 green. 135 proposed milestone 113's Kani shim shape; **it does not transfer, because 135 already
 did it** in one flag (`RUSTFLAGS="--cfg loom -D warnings"`), loom being an ordinary dependency
-where `kani` is not. The real property needed a different gate: pin the claim protocol's public
+where `kani` is not. The real property needed a different gate. Pin the claim protocol's public
 surface with receivers (`claim_for_destroy` taking `&mut self` IS the mechanism), require every
-region free site to have taken its warrant, and two `compile_fail` doctests with error codes so
+region free site to have taken its warrant. Carry two `compile_fail` doctests with error codes so
 the claim cannot be forged or duplicated. **The first draft was green against a rebuilt double
 free** that needed no edit to `crates/regions` at all, because `has_children` and `bounds` are
 public and enough; that miss is why the unit is the warrant rather than the set. Verified against
