@@ -64,9 +64,9 @@ bus 0. With `NIFE_PCIE_ROOT_PORT=1`, the same boot, the same code:
 The block's premise is therefore neither confirmed nor refuted. It said to stop if the census
 found the NVMe on bus 0 all along; under QEMU it does find it on bus 0, and that is the machine
 being flat rather than evidence about xenon. The refutation this block asked for can only come from
-a xenon boot, and the census is what makes that boot decisive in one line instead of a day: it now
+a xenon boot, and the census is what makes that boot decisive in one line instead of a day. It now
 either prints a `class 010802` function behind a bridge, or it prints fifteen functions and no mass
-storage anywhere, which are two different diagnoses that used to look identical.
+storage anywhere. Those are two different diagnoses that used to look identical.
 
 **The BAR pressure the block predicted did not materialize under QEMU**: `0 with a BAR this kernel
 can neither use nor adopt`, both flat and bridged. The number to watch is still xenon's, which read
@@ -75,8 +75,8 @@ can neither use nor adopt`, both flat and bridged. The number to watch is still 
 ## The design fork, decided, and what the measurement changed
 
 Option 2, the bridge walk. `crates/pci` grew `bridge_buses` (the type-1 header's primary,
-secondary and subordinate bus numbers), `Function` (what a census needs to print), and `walk`, which
-descends breadth-first over a 256-bit visited set so that a cycle in firmware's bus numbering
+secondary and subordinate bus numbers), `Function` (what a census needs to print), and `walk`. The
+walk descends breadth-first over a 256-bit visited set so that a cycle in firmware's bus numbering
 terminates rather than recursing. `enumerate` is now `walk` with the topology dropped.
 
 The cost argument the block leaned on turned out to be weak, and that is worth recording because
@@ -96,8 +96,8 @@ assumption that produced this bug, and because it issues configuration reads to 
 bridge on the machine decodes.
 
 Option 3 (lazy mapping) was not needed and its machinery was not written. The reason is an ordering
-fact rather than a cleverness: `pci::survey` runs from `kernel_main` before `arch::mmu::init`,
-and at that point the x86 boot tables still cover the low 4 GiB indiscriminately, so every bus the
+fact rather than a cleverness: `pci::survey` runs from `kernel_main` before `arch::mmu::init`.
+At that point the x86 boot tables still cover the low 4 GiB indiscriminately, so every bus the
 MCFG describes is already readable at no mapping cost at all. `map_everything` runs afterwards and
 maps exactly what the survey found. `arch::mmu::PCI_ECAM_BUSES` stops being the answer and becomes
 the floor; `pci::ecam_buses()` is the answer, and all three architectures' `map_everything` ask it.
