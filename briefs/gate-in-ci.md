@@ -150,6 +150,11 @@ never machine-readable.
 
 ## BUGS
 
+- The claim raises suites before anyone flips anything. `opened` and `labeled` both fire the
+  `pull_request` workflows on a fresh draft, and a ready flip while that wave is running cancels
+  it. The flip's own wave re-proves the same head sha, so the cancellation is noise in the check
+  list, not lost proof. It still reads as a failure to anything summing conclusions, so wait out a
+  running wave before flipping ready on a lane's first day.
 - A dispatched run and a push-triggered run share a concurrency group, so pushing immediately
   after dispatching cancels your own run. Push first, then dispatch, in that order.
 - The timing rule in Step 2 is a wait, not an ordering: there is no event ordering that avoids
