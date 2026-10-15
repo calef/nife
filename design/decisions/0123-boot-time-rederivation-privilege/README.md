@@ -8,11 +8,8 @@ These files hold what its prose budget has no room for.
 - [`single-use-bit.md`](single-use-bit.md): option (c).
 - [`lazy-trigger.md`](lazy-trigger.md): option (d).
 
-*Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog, which split the
-parent under §212 (a prose budget). The directory follows §212's siting default. calef names
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default. calef names
 directories.*
 
-- `single-use-bit` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog,
-  for the parent's option (c). calef names files.
-- `lazy-trigger` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-backlog, for
-  the parent's option (d). calef names files.
+- `single-use-bit` Name: provisional. For the parent's option (c). calef names files.
+- `lazy-trigger` Name: provisional. For the parent's option (d). calef names files.

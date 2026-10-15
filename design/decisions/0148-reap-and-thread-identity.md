@@ -8,8 +8,6 @@ ratified_by: calef
 # 148. Milestone 105's two forks: a supervisor restarts by asking, and resolves by asking the kernel
 
 calef, 2026-09-05, on milestone 105 (the two forks named and left)'s two forks, taken one at a time.
-*(Section number provisional until the merge queue lands it. §147 was minted the same day by
-milestone 263's lane.)*
 
 Milestone 22 recorded both in `notes/trusted-init.md` as *"calef's call, not a thing to slip in"*,
 and milestone 105 stated them precisely and picked neither on purpose. This is the ruling.

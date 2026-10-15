@@ -8,8 +8,7 @@ ratified_by: calef
 # 125. What tells boot-time re-derivation which identities have pending work
 
 calef, 2026-08-25, in conversation, ratifying the recommendation below as
-written: *"Yes."* The number held: nothing else claimed 125 in the merged index between this
-decision being raised and ratified, so it needed no renumbering.
+written: *"Yes."*
 
 **The recommended shape is already built, not merely proposed.** `crates/schedule_store`,
 `fixtures/src/fs_test_client.rs`'s `ROLE_SCHEDULE_SEED`, and `components/src/session_reviver.rs` already
@@ -17,15 +16,13 @@ implement exactly the manifest format below, landed in the same pull request tha
 decision (milestone 152's own PR, already merged). Ratifying this closes the gap between a decision
 and the code, rather than authorizing new work.
 
-Raised 2026-08-24 by milestone 152's lane (pieces 2 and 3: the boot-time
-re-deriver and its connection to the schedule store), from a gap the lane's own brief named
-explicitly: neither [§122](0122-durable-schedule-store-format.md) nor
+It answers a gap in milestone 152 (durable delegation), pieces 2 and 3: the boot-time re-deriver
+and its connection to the schedule store. Neither [§122 (the on-disk, per-user schedule
+store)](0122-durable-schedule-store-format.md) nor
 [§123](0123-boot-time-rederivation-privilege.md) fully specifies what tells boot-time re-derivation
 which identities have a durable session with pending work at all. §122 is about one identity's own
 schedule file; §123 assumes "the store names" a set of sessions to re-derive without saying how that
 set is discovered without falling into milestone 126's refusal (enumeration is itself authority).
-The number was minted by this lane against the current `design/decisions/` index (highest existing
-was 124, `PROPOSED`, at the time of writing); it held through ratification, as noted above.
 
 ## The question
 

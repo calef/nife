@@ -8,7 +8,7 @@ complete without it; this file exists to verify or challenge it.
 
 ## Prior art, fetched rather than recalled
 
-Every quote below was fetched on 2026-09-03 in this lane. Where a source would not yield a verbatim
+Every quote below was fetched on 2026-09-03. Where a source would not yield a verbatim
 sentence it says so rather than paraphrasing into quotation marks; this tree carried a fabricated
 block quote for twelve days through every gate.
 

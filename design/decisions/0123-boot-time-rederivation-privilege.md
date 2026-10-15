@@ -15,9 +15,7 @@ store names, then deleting both capabilities from its own cspace in `root_superv
 The four hardening refinements below are to be built into it, not conditions on the ratification.
 Raised from milestone 152's own BUGS section (durable delegation), which named this exact gap: "a
 privileged, boot-only operation... [but] what object grants that privilege, and how it is scoped so
-it cannot be invoked again after boot, is not worked out." The number is provisional, minted by
-a lane against the tree at the time; the integrator assigns the real section number at merge, per
-this project's own convention for `DECISIONS.md` numbering.
+it cannot be invoked again after boot, is not worked out."
 
 ## The question
 

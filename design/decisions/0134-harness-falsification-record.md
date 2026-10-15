@@ -7,18 +7,15 @@ ratified_by: calef
 
 # 134. A harness carries a machine-replayable falsification record, or it is not evidence
 
-calef, 2026-08-30, in three rulings; the patch path amended 2026-08-31 when
-milestone 194's lane found the ratified spelling could not name eighteen of `paging`'s harnesses,
-clarified 2026-09-01 to say package rather than crate, and amended twice more from milestone 323's
-review: `Expected to fail:` ratified 2026-09-18 and "harness" widened to cover a kernel `#[test_case]`
-2026-09-19. Both of those late amendments ratified what the tree already did.
-Originally: The direction: *"It sounds like [option C] is
+calef, 2026-08-30, in three rulings, amended 2026-08-31 (the patch path), 2026-09-01 (package
+rather than crate), 2026-09-18 (`Expected to fail:`) and 2026-09-19 ("harness" covers a kernel
+`#[test_case]`). The direction: *"It sounds like [option C] is
 where we want to land if we want to state that nife is proven."* Then the format, after the options
 were costed: *"Go with the diff, weekly plus per-PR for touched harnesses."* Then the spellings, ratified the
 same day and recorded at the bottom. Nothing here is open.
 
-Its evidence is in two appendices, moved out on 2026-10-12 (UTC) under
-[§212 (a prose budget)](0212-a-prose-budget-for-every-document.md); this page is complete without them:
+Its evidence is in two appendices, under [§212 (a prose
+budget)](0212-a-prose-budget-for-every-document.md); this page is complete without them:
 
 - [`background.md`](0134-harness-falsification-record/background.md): why now, the failures, and
   the prior art.
@@ -127,8 +124,8 @@ job is saying who claimed what. Exactly the same is true here:
 | **`unfalsifiable <why>`** | examined, and no defect in the code under proof turns it red; reason written | counts it apart |
 | **`unfalsified`** | nobody has | counts it, and this is the claim's honest denominator |
 
-This is what makes the convention shippable against 145 existing harnesses, which the first draft
-of this section named as its largest cost. They land at `never` on day one, the lint passes
+This is what makes the convention shippable against 145 existing harnesses, its largest cost. They
+land at `never` on day one, the lint passes
 immediately, and the worklist derives itself instead of being written.
 
 It also states the refusal precisely. **Prose is refused as the destination, not as a way-station.**

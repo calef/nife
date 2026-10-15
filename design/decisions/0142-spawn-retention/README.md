@@ -13,16 +13,14 @@ here. These files hold the evidence, moved whole and unreworded:
 - [`sequencing.md`](sequencing.md): the order against milestone 133, the readings of the mapping,
   and what the decision leaves out.
 
-*Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-paydown, which split the
-parent under §212 (a prose budget). The directory follows §212's siting default. calef names
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default. calef names
 directories.*
 
-- `thread-capability` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-paydown,
-  for the parent's "The premise, checked rather than quoted" and R2's findings. calef names files.
-- `precedent` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-paydown, for the
-  parent's "What this tree already does in the analogous case" and "How reversible this is". calef
+- `thread-capability` Name: provisional. For the parent's "The premise, checked rather than quoted"
+  and R2's findings. calef names files.
+- `precedent` Name: provisional. For the parent's "What this tree already does in the analogous
+  case" and "How reversible this is". calef names files.
+- `prior-art` Name: provisional. For the parent's "Prior art, fetched rather than recalled". calef
   names files.
-- `prior-art` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-paydown, for the
-  parent's "Prior art, fetched rather than recalled". calef names files.
-- `sequencing` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-paydown, for the
-  parent's "Why this is upstream of milestone 133, and why the order matters". calef names files.
+- `sequencing` Name: provisional. For the parent's "Why this is upstream of milestone 133, and why
+  the order matters". calef names files.

@@ -20,8 +20,6 @@ And at 17:41 UTC, on whether a new kernel may need a reboot:
 > I think Live-patching a kernel is a separate milestone that we may not get to for a very long
 > time. Rebooting for a new kernel is fine for now.
 
-*(Section number provisional until the merge queue lands it.)*
-
 *Amended 2026-10-07 (UTC) by calef: the slot holds only the kernel and what nothing can restart, and every other program is a package. See the amendment at the end.*
 
 ## What was decided

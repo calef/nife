@@ -7,10 +7,8 @@ ratified_by: calef
 
 # 162. Whether a holder can give up a mapping, and what gives it up
 
-Raised 2026-09-19 by milestone 435 (forty-five milestones are gated on a decision nobody wrote down)'s lane, which found milestone 95 (an unmap primitive, and the mappings init never lets go) gated on
-`DECISION` with no decision anywhere a reader can open. The block has called it *"a design fork for
-calef before it is a task"* since it was raised on 2026-08-04 out of milestone 22's closing lane.
-*(Section number provisional until the merge queue lands it.)*
+This section is the decision milestone 95 (an unmap primitive, and the mappings init never lets go)
+is built on. The block calls it *"a design fork for calef before it is a task"*.
 
 (one amendment block below: milestone 95's two semantics, ruled on 2026-10-05.)
 

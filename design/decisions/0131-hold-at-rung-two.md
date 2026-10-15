@@ -63,7 +63,7 @@ decision of its own, not on this one.
   already proven (framebuffer contract, compositor, VT engine, virtio keyboard); it is a hold on
   climbing further, not a reason to strike what exists.
 - **It does not answer the competitor question itself, only defers it again**, on the same terms
-  §14 originally parked it: until the demonstrator has proved something a customer would want, not
+  §14 (the project's direction) parks it: until the demonstrator has proved something a customer would want, not
   until a calendar date or an amount of code.
 - **It does not touch milestone 142** (a text display good enough that people use it instead of a
   GUI) or any other rung-adjacent work that is explicitly *not* GUI-toolkit work.
