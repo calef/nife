@@ -72,7 +72,7 @@ row above moves to.
 `credential_service`, `compositor_service`, `disk_service`, `identity_provisioner_service`,
 `login_service`, `ntp_service`, `raw_mode_service`, `rmle_service`, `keyboard_service::start`, the
 rest of `display_service` and `fs_service`, and `holding`. Their module declarations in
-`kernel/src/user.rs` (3006-3822) carry `allow(dead_code)` outside `system_tests`. The bench boots
+`kernel/src/user.rs`, which is the index now, carry `allow(dead_code)` outside `system_tests`. The bench boots
 reach `e1000e_service` (`network_bench.rs:48`), `designware_ethernet_service`
 (`network_bench.rs:193`), `designware_mobile_storage_service` (`storage_bench.rs:296`),
 `non_volatile_memory_express_service` (`disk_throughput.rs:43`) and `fs_service` (`bench/filesystem.rs`). This milestone leaves them where they are: a harness that wires a driver by hand is measuring
