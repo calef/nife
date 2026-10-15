@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-12
+built: 2026-10-15
 promoted_from: swish-check-boot-is-decomposed
 milestone_dependencies: 847
 decision_dependencies: none
@@ -28,6 +29,26 @@ Reuse: not applicable; this restructures one function.
 
 Done when no function in `boot.rs` is over 300 lines. `script/swish-check` must pass on aarch64,
 riscv64 and x86_64, and both falsification records under `boot` must still turn their lines red.
+
+## What was built
+
+The decomposition landed 2026-10-13 in #2060 (`maintainer/long-function-paydown-xtask`), as the
+work of milestone 888 (a ratchet on function length, beside the one on file length) outside that
+milestone's scope. `swish_check_boot` went from 761 code lines to 79 and `usb_keyboard_boot` from
+159 to 44, each phase its own function with the shared state on `Leg` and `Console`, the shape
+this block proposed.
+
+This lane proved the rest of the done-when on `0f22bc9a4`, 2026-10-15 (UTC). 38 functions
+measured in `boot.rs`, the largest 82 code lines, none over 300. `script/swish-check` green on
+aarch64, riscv64 and x86_64. `script/falsifications --sweep xtask` found the `caps` record red
+at its line and the `installed/unvouched` record stale: its patch no longer compiled, because
+the vouch decision had moved out of `spawn_service` into `resolve`, where `Wants::of` has no
+`unvouched` in scope. The lane re-cut the patch to the same defect threaded through today's
+shape, and the sweep then turned both records red at the lines their patches name.
+
+## Follow-on
+
+- **None.**
 
 ## Index row
 
