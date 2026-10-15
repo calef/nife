@@ -95,6 +95,13 @@
 #     judgement notes/merge-queue.md argues a watcher must not exercise.
 #   - **It does not report its own death.** Shared with `helpers/merge-drain.sh`, accepted rather
 #     than solved; notes/merge-queue.md has the reasoning and the `launchd` plists.
+#   - **"Transition" means newly observed, not newly due.** The red/green, cadence and DUE memories
+#     (`prev`, `prev_cadence`, `prev_due`) live in the watching shell and die with it, so a restart
+#     announces the current state on its first pass as if it were new: a cadence that has stood due
+#     for a month is re-reported once by every restart, and a due that clears while nothing is
+#     watching is never reported at all. No persistent state sits behind any transition in this
+#     script; that has been true of the RED/GREEN and cadence halves all along and is stated once,
+#     here.
 #
 # Name: unrecorded. Provisional, minted 2026-08-04 and not yet put to calef. `trunk` rather than
 # `main` because the branch could be renamed and the concept could not, and because "trunk health"
@@ -194,6 +201,75 @@ cadence() {
 	python3 helpers/watcher_watch.py check --quiet 2>/dev/null || true
 }
 
+# --- DUE: a cadence that says "a person must now do something" (milestone 495) ------------------
+#
+# **A due cadence is not a dead one, and the two cadences that mean "due" reached this watcher only
+# as the second thing.** The stranger cadence (`script/stranger-test --due`) and the audit cadence
+# (`script/audits --due`) both exist to say "a person must now do something", and red in the Actions
+# tab is their correct output, not their failure. `script/cadence-check` answers only whether a
+# scheduled workflow has stopped *succeeding*, so a job correctly reporting due and a job that is
+# broken arrive as the same verdict, DEAD, a fortnight after the fact. The audits sat that way for
+# five Mondays before anyone acted; that sentence with dates is milestone 495's evidence section.
+#
+# So this section asks the scripts themselves, not the workflows that relay them. Both `--due` modes
+# read records already on disk (the stranger note's run headings, the audit index), need no network,
+# no toolchain and no credential, and answer in seconds on the checkout this watcher already holds.
+# That is milestone 495's option 1, taken for the reason it gives: it reuses the watcher a
+# maintainer session is already told to confirm is alive, adds no scheduled workflow to the ones
+# cadence-check polices, takes no `issues: write`, and opens no second channel. It is deliberately
+# not a gate and not in `script/lint`, for the reason `script/cadence-check`'s header already wrote
+# down: a due cadence is not a defect in the commit that happens to trip it.
+#
+# **The verdict speaks on transition, like everything else in this loop.** A cadence that stands due
+# for a month is one fact, and the transition discipline is also what keeps DUE from becoming the
+# standing alarm the block warns a due-echo would be: speak when something becomes due, speak when
+# it clears, and not on the polls between. Clearing means the work was done (a run written up, or
+# audits run and their rows added), or that the record moved underneath; both scripts' own BUGS
+# sections name the edit-to-silence hole, and this inherits it rather than policing it. The recovery
+# line, like RED/GREEN's, exists because a watcher that only speaks on failure trains its reader to
+# treat silence as health.
+#
+# **A record that would not read gets a row rather than silence.** Exit 1 from a `--due` mode means
+# "due" and also "the record could not be read" (a malformed or missing one), and the second case
+# prints nothing on stdout, so the DUE sentence itself is what tells the two apart. Saying nothing
+# about the second would recreate, in miniature, the silence this section exists to close.
+due() {
+	rows=""
+	if st="$(script/stranger-test --due 2>/dev/null)"; then
+		: # exit 0: a run is recorded as not due, and there is nothing to say
+	else
+		why="$(printf '%s\n' "$st" | sed -n 's/^stranger-test: DUE\. //p')"
+		if [ -n "$why" ]; then
+			last="$(printf '%s\n' "$st" | sed -n 's/^Last run: [0-9]*, \([0-9-]*\),.*/\1/p')"
+			rows="$(printf '%-32s %-24s %s\n' "stranger-test" "last run ${last:-?}" "DUE: ${why}")"
+		else
+			rows="$(printf '%-32s %-24s %s\n' "stranger-test" "cannot ask" \
+				"DUE: unknown; script/stranger-test --check says what is wrong with the run record")"
+		fi
+	fi
+	if au="$(script/audits --due 2>/dev/null)"; then
+		: # exit 0: no audit kind is overdue
+	else
+		kinds="$(printf '%s\n' "$au" | sed -n 's/^audits: [0-9]* on record, DUE: //p')"
+		if [ -n "$kinds" ]; then
+			n="$(printf '%s' "$kinds" | tr ',' ' ' | wc -w | tr -d ' ')"
+			row="$(printf '%-32s %-24s %s\n' "audits" "$n overdue" "DUE: ${kinds}")"
+		else
+			row="$(printf '%-32s %-24s %s\n' "audits" "cannot ask" \
+				"DUE: unknown; script/audits --check says what is wrong with the audit index")"
+		fi
+		if [ -n "$rows" ]; then
+			rows="$rows
+$row"
+		else
+			rows="$row"
+		fi
+	fi
+	if [ -n "$rows" ]; then
+		printf '%s\n' "$rows"
+	fi
+}
+
 # Relayed by `--once` only; the watching form no longer calls it. See the header section above for
 # why the fold was undone. `helpers/at-risk-check.sh` reports and never acts; this only relays it,
 # and on a machine with no lane worktrees it prints nothing rather than being wrong.
@@ -210,6 +286,8 @@ if [ -n "$once" ]; then
 	esac
 	c=$(cadence)
 	[ -n "$c" ] && printf '%s\n' "$c"
+	d=$(due)
+	[ -n "$d" ] && printf '%s\n' "$d"
 	a=$(at_risk)
 	[ -n "$a" ] && printf '%s\n' "$a"
 	exit 0
@@ -217,6 +295,7 @@ fi
 
 prev=""
 prev_cadence="unknown"
+prev_due="unknown"
 while true; do
 	s=$(state)
 	case "$s" in
@@ -242,6 +321,21 @@ while true; do
 			echo "every scheduled workflow is producing results again"
 		fi
 		prev_cadence="$c"
+	fi
+
+	# The DUE half keeps its own transition memory instead of folding its rows into the cadence
+	# stream above, because what clears a due list is that a person did the work, and "every
+	# scheduled workflow is producing results again" would say the wrong thing about that. Same
+	# shape and same first-pass rule as prev_cadence: a fresh watcher announces what stands, which
+	# is the "newly observed, not newly due" caveat in the BUGS list.
+	d=$(due)
+	if [ "$d" != "$prev_due" ]; then
+		if [ -n "$d" ]; then
+			printf '%s\n' "$d"
+		elif [ "$prev_due" != "unknown" ]; then
+			echo "nothing is due any more"
+		fi
+		prev_due="$d"
 	fi
 
 	sleep 90
