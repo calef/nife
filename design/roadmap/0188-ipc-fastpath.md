@@ -17,13 +17,16 @@ one."* The title says the premise needs checking before the fastpath does. The g
 over target measures an IPC shape that no userspace program in this tree performs. And the largest
 single item it reports on aarch64 is a symbol of which 94% is never fetched.
 
-Phase 4 only needs a decision; phases 1 to 3 were a lane's own call, needed nobody, and are done.
+Phase 4 only needs the measurement and the go-ahead; phases 1 to 3 were a lane's own call, needed
+nobody, and are done.
 The decision is [§95 (hand-written IPC)](../decisions/0095-a-proven-ipc-fastpath.md), a hand-written
 IPC fastpath and whether it can stay proven. It is `DECIDED`, and what calef decided is *"don't
 decide yet"*, in two tiers. The eligibility predicate and its proof in `crates/ipc` are ratified as
 buildable now. The fastpath itself stays gated on the one measurement that would justify it:
-milestone 74 (cycle counters) on milestone 127 (the seL4 machine). So the token stays `DECISION`,
-because the spend is still calef's. Phase 4 is a standing verification obligation and a permanent
+milestone 74 (cycle counters) on milestone 127 (the seL4 machine). So the field names §95 and
+nothing else, and the dependency graph resolves it: the ruling answered what it was asked, and the
+wait that remains is a person at radon running E3, which the machine and person fields carry. The
+spend is still calef's. Phase 4 is a standing verification obligation and a permanent
 maintenance cost, and this block recommends against starting it until the measurement exists.
 
 ## Appendices

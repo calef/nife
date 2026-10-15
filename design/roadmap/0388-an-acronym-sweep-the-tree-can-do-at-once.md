@@ -28,6 +28,7 @@ five the 2026-09-05 rule deratified by name moved under §154 in the week that d
 `inter_process_communication` (#965), and the `dma` family followed on 2026-09-24 (#1229), when
 calef ruled that the crate and its eleven kernel and driver identifiers expand in one change.
 
+<<<<<<< HEAD
 Each renamed crate's provenance block carries its ruling, its refusals, and a census that
 classifies every survivor line. The classes that keep an acronym are recorded there, not here:
 the blob rather than the crate (`let dtb`, `crate::DTB`), UEFI's own vocabulary (`GPT`, the GPT
@@ -50,6 +51,39 @@ did not cover the crate. Both now carry `Name: recorded` blocks citing this mile
 wait on `script/names`'s worklist instead of invisibly. An unratified name is a worklist item and
 never a blocker (AGENTS.md): ratification happens on the name ratification queue, and blocks no
 pull request (calef, 2026-10-15).
+=======
+So what stands here is performance and one genuinely open name, not a fork. Applying §154 to
+those four is a ratified rename per `design/naming.md`'s procedure and a sweep `ipc` makes large,
+which is why this is still a milestone; it is not a question anybody has to answer first. The one
+thing §154 does not settle is the second `BUGS` entry, `jh7110_trng_device` and
+`jh7110_crg_window` in `kernel/src/user/entropy_service.rs`, where `design/naming.md`'s
+*"abbreviation we receive rather than author"* clause may cover a name for a hardware block whose
+device-tree spelling is the vendor's (`starfive,jh7110-trng`). That is a ruling per name on
+`script/names`' worklist rather than a `design/decisions/` section, so the gate names nothing: the
+sweep starts, and the lane that takes it stops at those two names for calef's ruling rather than
+guessing.
+
+All four rows are now answered, every one of them by calef on 2026-09-13, working the
+unratified worklist: `jh7110_crg` is `jh7110_clock_and_reset`, `jh7110_trng` (crate and program) is
+`jh7110_entropy`, by way of `jh7110_entropy_source`, which he ratified first and replaced later the
+same day, and he ruled the `ntp` and `mdns` stems the same day. The rows stay in the table below
+with their answers beside them, because the question each one asked is the half a future proposer
+needs.
+
+The two stem rulings were recorded and not performed, deliberately, and milestone 265 (proto) performed
+them on 2026-09-14 along with its own suffix change, so that one crate was not renamed twice.
+`ntp_proto` is `network_time_protocol`, `mdns_proto` is `multicast_dns_protocol`, and the two
+siblings carrying the same stem moved with it. The nested `mdns` question this proposal called the
+interesting one was answered rather than dissolved: calef ruled that DNS stops because it is the
+`pci` case one level down, so `multicast_dns` is the whole expansion and
+`multicast_domain_name_system` is not. The `ntp` program was to stay short and no longer exists
+to: milestone 290 split it into `network_time_client`, `network_time_test_server` and
+`unwritable_clock_witness` on 2026-09-14.
+
+The gate no longer stands for the four names in the table, and it no longer stands for the rule:
+§154 (the acronym test is whether the phrase is spoken) decided the hard half, so what is left is
+the sweep itself and the two rulings the BUGS below will meet on the way.
+>>>>>>> 682ea409 (six gates no decision stops say so in their fields (milestone 652))
 
 ## Why it cannot be done a name at a time
 
@@ -90,6 +124,7 @@ accepts.
 
 Settled for the four names in the table, including the nested case (`mdns`), where the rule's own
 asymmetry argument ran out: spelling out the outer acronym exposes an inner one, so the expansion
+<<<<<<< HEAD
 does not reach a word the newcomer knows either way. calef drew a line rather than applying the
 rule harder, and the reasoning is in milestone 265's block and in
 `crates/multicast_dns_protocol/src/lib.rs`'s provenance (that crate and its two siblings were
@@ -107,6 +142,17 @@ their ratification is the name ratification queue's, which blocks no pull reques
   `Name: recorded` blocks: `jh7110_trng_device` and `jh7110_crg_window` wait on the name
   ratification queue (`script/names --unratified`, 2026-10-15). A name ratification blocks no
   pull request (calef, 2026-10-15).
+=======
+does not reach a word the newcomer knows either way. calef did not apply the rule harder; he drew a
+line, and the reasoning is in milestone 265's block and in
+`crates/multicast_dns_protocol/src/lib.rs`'s provenance (that crate and its two siblings were retired
+on 2026-09-15 by milestone 298; the provenance is at commit `0652c981`).
+
+What is left is the BUGS below: the five names the rule deratified by name, and the two kernel
+function names. The five are ruled, since §154's table names four of them and `dma` was ruled on
+2026-09-05, so they are a sweep; the two function names want a ruling each, and `ipc` is the
+reason the sweep is a milestone rather than an afternoon.
+>>>>>>> 682ea409 (six gates no decision stops say so in their fields (milestone 652))
 
 ## BUGS
 

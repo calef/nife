@@ -20,7 +20,9 @@ The first thing this milestone needs is the choice §99 (where Apple's metadata 
 rather than refused: where Apple metadata lands, given that this is the workload that actually
 wants it. Options 2, 3 and 4 are priced in §99 with their costs measured. The lane that takes this
 block should read them before proposing anything new. The `:` fix below travels with whichever
-wins.
+wins. The gate names no section on purpose: that choice is written and priced where §99 left it,
+and it has nowhere to land until an SMB server exists again, so this block's real wait is the
+retirement ruling above, which no field carries.
 
 The analysis below is kept because it is right and was expensive to get. §99's finding that a Time
 Machine backup is a sparse bundle and never touches Apple's metadata surface is what let milestone
