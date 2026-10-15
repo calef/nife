@@ -5,8 +5,9 @@ raised: 2026-10-15
 
 # 302. The screen fact and one line of input: the spawn protocol's other two thirds
 
-Raised 2026-10-15 by milestone 652's lane (twelve `DECISION` gates cite only ruled sections). The
-fork is milestone 334's (color and the pager), which has waited since
+Raised 2026-10-15 by the lane for milestone 652 (twelve `DECISION` gates cite only sections that
+are already ruled). Milestone 334 (color and the pager: the spawn protocol's other two thirds) has
+waited on this fork since
 [milestone 40 (documentation as a system service)](../roadmap/0040-documentation-service.md)'s block named
 it: [§106 (the terminal_sink_caretaker narrowing)](0106-tail-output-narrowing.md) took the spawn protocol's narrowing for a tail stage's *primary output* and did not extend
 it to telling a stage that it ends at a real screen, or to granting one line of input without

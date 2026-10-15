@@ -5,8 +5,9 @@ raised: 2026-10-15
 
 # 301. How a spawned child's exit status and output reach the program that spawned it
 
-Raised 2026-10-15 by milestone 652's lane (twelve `DECISION` gates cite only ruled sections). The
-fork belongs to milestone 172 (a capability-native subprocess primitive), whose gate has named it
+Raised 2026-10-15 by the lane for milestone 652 (twelve `DECISION` gates cite only sections that
+are already ruled). The fork belongs to
+milestone 172 (a capability-native subprocess primitive), whose gate has named it
 since the block was written: [§219 (how the shell names an installed program to the
 spawner)](0219-naming-an-installed-program-to-the-spawner.md) decided how a caller *starts* a child,
 [§264 (fork is declined, and spawn is supported)](0264-fork-is-declined-and-spawn-is-supported.md)

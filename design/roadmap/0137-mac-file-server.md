@@ -18,8 +18,10 @@ unchanged because the vocabulary has no word for it.
 
 The first thing this milestone needs is the choice §99 (where Apple's metadata lands) deferred
 rather than refused: where Apple metadata lands, given that this is the workload that actually
-wants it. Options 2, 3 and 4 are priced in §99 with their costs measured. The lane that takes this
-block should read them before proposing anything new. The `:` fix below travels with whichever
+wants it. Options 2, 3 and 4 are priced in
+[§99 (where Apple's metadata lands)](../decisions/0099-apple-metadata-at-rest.md) with their costs
+measured. The lane that takes this block should read them before proposing anything new. The `:`
+fix below travels with whichever
 wins. The gate names no section on purpose: that choice is written and priced where §99 left it,
 and it has nowhere to land until an SMB server exists again, so this block's real wait is the
 retirement ruling above, which no field carries.

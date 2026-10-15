@@ -5,8 +5,8 @@ raised: 2026-10-15
 
 # 304. Who may turn a device off, and what the unit of reclamation is
 
-Raised 2026-10-15 by milestone 652's lane (twelve `DECISION` gates cite only ruled sections). The
-fork is milestone 376's (nothing turns a device back off), filed by
+Raised 2026-10-15 by the lane for milestone 652 (twelve `DECISION` gates cite only sections that
+are already ruled). Milestone 376 (nothing turns a device back off) was filed by
 [milestone 220 (this kernel drives no clock or reset controller)](../roadmap/0220-jh7110-clock-and-reset.md)'s
 lane when it wrote the first code in this tree that turns a device on and deliberately did not
 write its inverse. A driver process that exits, faults or is revoked leaves its device clocked and running

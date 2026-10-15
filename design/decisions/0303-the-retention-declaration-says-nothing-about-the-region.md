@@ -5,9 +5,10 @@ raised: 2026-10-15
 
 # 303. The retention declaration says nothing about the region
 
-Raised 2026-10-15 by milestone 652's lane (twelve `DECISION` gates cite only ruled sections). The
-fork is milestone 356's (retention declares the thread capability and says nothing about the
-region), filed while §142 was being built and waiting since: [§142 (what a spawner retains over a
+Raised 2026-10-15 by the lane for milestone 652 (twelve `DECISION` gates cite only sections that
+are already ruled). Milestone 356 (retention declares the thread capability and says nothing about
+the region) has waited on this fork since it was filed while §142 was being built:
+[§142 (what a spawner retains over a
 child)](0142-spawn-retention.md) gave `ChildEndowment` a
 `retention` field so one struct literal states what a child is given and what its spawner keeps,
 and what it states is the disposal of the child's `ThreadControlBlock`, which the tree's own audit
