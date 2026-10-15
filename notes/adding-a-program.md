@@ -142,10 +142,11 @@ Three edits, and after the first the machine names each of the others.
    `PROG_COUNT` are all generated from the row.
 2. Its `manifest()` arm, which the compiler asks for (`E0004` in `grant_plan`). This carries all
    of the actual meaning: see "What you declare" below.
-3. A line in `SWISH_CHECK_SCRIPT` in `xtask/src/swish_check/script.rs`, and the array length the compiler then
-   asks for. The element is a `(&str, &[&str])` pair, one line typed and the substrings its answer
-   must contain: `("triple 21", &["21*3 = 63"]),`. The host test
-   `every_spawnable_program_has_a_swish_check_line` fails until the line exists, and names the one
+3. A row in the swish-check script: in the topic file under `xtask/src/swish_check/script/` whose
+   subject the line belongs to (each file's module doc says what it holds), a `line(...)` or
+   `keys(...)` element of that file's `LINES`. The topic slices concatenate, in table order, into
+   `SWISH_CHECK_SCRIPT` in `script.rs`. The host test
+   `every_spawnable_program_has_a_swish_check_line` fails until the row exists, and names the one
    exception it allows (a program a transcript cannot drive, listed with the reason).
 
 And a fourth only if your manifest says `output: OutputSpec::Words`, meaning the answer is a

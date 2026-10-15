@@ -92,7 +92,7 @@ fn no_script_types_a_silent_line_twice_in_a_row() {
     // that must answer something fails either way when it prints nothing (the second copy
     // then answers "no answer at all"), so only a line wanting no answer is a hazard, and
     // `network_echo_client --mem 4`, typed twice on purpose, wants one.
-    for script in [SWISH_CHECK_SCRIPT, SWISH_CHECK_AFTER_REBOOT] {
+    for script in [&**SWISH_CHECK_SCRIPT, SWISH_CHECK_AFTER_REBOOT] {
         for pair in script.windows(2) {
             assert!(
                 pair[0].typed != pair[1].typed || !pair[0].answer.is_empty(),
