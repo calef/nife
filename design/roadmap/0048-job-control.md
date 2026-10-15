@@ -10,12 +10,12 @@ needs_person: no
 # 48. Job control: `jobs`, `wait`, `kill`, `fg`, `bg`, and a stopped state
 
 Phase one is sequenced after 47, because it wants `jobs`
-alongside the other builtins on the same shell surface. Phase two is `Tcb::SUSPEND`/`RESUME`, which
+alongside the other builtins on the same shell surface. Phase two is `ThreadControlBlock::SUSPEND`/`RESUME`, which
 DECISIONS §24 deferred, so it is a kernel-surface fork for calef; the block asks for it to be
 designed as one surface with the fault endpoint and for all three of §24's triggers at once.
 
 In brief. Shell job control, in two phases split by whether they need a new kernel primitive.
-Phase one needs none; phase two is `Tcb::SUSPEND`/`RESUME`, which DECISIONS §24 deferred and whose
+Phase one needs none; phase two is `ThreadControlBlock::SUSPEND`/`RESUME`, which DECISIONS §24 deferred and whose
 own trigger list names "real job control (`fg`/`bg`, a stopped-process state) in the shell" as trigger
 2. That trigger has now fired.
 
@@ -36,7 +36,7 @@ group is a *number* with inherited, mutable membership; "what I hold" cannot dri
 - `wait`: §26 already delivers exit as a message with a kernel-stamped tid, so this is a receive
   on the supervision endpoint.
 - `kill`: §24 already built this under another name: the cooperative tier is the shared-flag
-  interrupt, and `kill -9` is the forcible tier (`Untyped::DESTROY`). Job control needs no signal
+  interrupt, and `kill -9` is the forcible tier (`MemoryRegion::DESTROY`). Job control needs no signal
   model because the two-tier one exists.
 - `&`: running in the background is simply *not granting the terminal*.
 - `fg` on a running background job: a capability transfer, below.
@@ -52,7 +52,7 @@ holds what.
 ## Phase two: the stopped state
 
 Only Ctrl-Z, `bg` on a stopped job, and zsh's `suspend` need pausing a thread resumably. §24's tiers
-are notify and kill, with pause deliberately absent. Build `Tcb::SUSPEND`/`RESUME` per that tracker's
+are notify and kill, with pause deliberately absent. Build `ThreadControlBlock::SUSPEND`/`RESUME` per that tracker's
 own instruction: design it as one surface with the fault endpoint (both are "the kernel turns a
 thread's state into a message a supervisor holds"), and give the method its own DECISIONS entry. The
 same verb unlocks the other two triggers, a userspace pager and a debugger, so it should be designed

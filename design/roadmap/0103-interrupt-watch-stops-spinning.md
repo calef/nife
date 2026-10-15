@@ -30,7 +30,7 @@ through and marked DONE when they landed. Item 1, `^C`, was never struck, and it
   shared interrupt frame) and `Escalation` (the host-tested escalation policy); `interruptible` is a
   manifest field the shell sets per program.
 - §24 records that "a pure `loop {}` spinner is now torn down on the second `^C` on both ISAs",
-  which required the §16 amendment teaching `Untyped::DESTROY` to force-kill a live resident thread.
+  which required the §16 amendment teaching `MemoryRegion::DESTROY` to force-kill a live resident thread.
 
 A handoff note is a snapshot of one session and nothing updates it when the world moves. Milestone
 93 (documentation audits as a mechanism) is the general answer; this is one more measured instance
@@ -64,10 +64,10 @@ whoever builds 103, not something to hide inside a gate change. Remove this mark
 
 Strictly downstream of milestone 106. There is no timed wait anywhere in the kernel (milestone
 51 (wall-clock time) records the fork and the three candidate shapes), and this milestone adds no
-kernel surface of its own. If 106 lands the deadline on `Endpoint::RECEIVE`/`CALL`, this is a small
+kernel surface of its own. If 106 lands the deadline on `Rendezvous::RECEIVE`/`CALL`, this is a small
 change in one file.
 
-**Not `Tcb::SUSPEND`.** Pausing a job resumably is §24's deliberate deferral and milestone 48's
+**Not `ThreadControlBlock::SUSPEND`.** Pausing a job resumably is §24's deliberate deferral and milestone 48's
 phase two; that milestone owns it, along with `fg`, `bg` and a stopped state. The two are adjacent
 and separate: 48 adds a state a job can be in, this one changes how the shell waits.
 
