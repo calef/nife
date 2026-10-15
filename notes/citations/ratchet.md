@@ -44,9 +44,10 @@ distribution is skewed rather than flat. 8 of the 42 would have been silent, and
 #970 at 893, which landed 24 proposal files at once. That number is the cost of writing 24 new
 documents that cite the roadmap heavily, which is exactly the case the gate is for.
 
-## The third shape: a phrase quoted after a path (milestone 644)
+## The third shape: a phrase quoted after a path
 
-A path that resolves from the repository root, then a comma, then a quoted phrase of six characters
+Milestone 644 (a quoted phrase after a path must still be in that file) added a third ratchet rule: a
+path that resolves from the repository root, then a comma, then a quoted phrase of six characters
 or more, must quote the file the path names, on a line the branch adds, under the attributed
 quotations' normalization. Root-only resolution is the guard that keeps non-citations out: a search
 string (`kani_lib.c`, "machine model macos") and a usage template (`runs.txt, "<run_id>"`) name no

@@ -99,8 +99,8 @@ both and is right to. They are well-formed citations that do not say what the ta
 the only property this ratchet is about.
 
 Milestone 644 (a quoted phrase after a path must still be in that file) added the third shape:
-path, comma, quoted phrase of six characters or more; the phrase must quote the file the path
-names. A stale-on-purpose quotation carries `quotation: exception. Reason: ...` beside it.
+path, comma, quoted phrase of six characters or more, must quote the file the path names. A
+stale-on-purpose quotation carries `quotation: exception. Reason: ...`.
 
 The rest of the ratchet's record is in [citations/ratchet.md](citations/ratchet.md). It says why a
 ratchet on new text does not contradict this page's refusal of a sweep, what it cannot catch, and
@@ -316,8 +316,8 @@ Each limit in one sentence. The full entries, with how each was found and what w
 - A wrong citation whose gloss is wrong in the same direction passes, and tier 2 is weaker the
   longer the target document.
 - Fenced code blocks in markdown are skipped, so a citation inside one is unchecked.
-- The path-then-quote rule reads one line and resolves paths from the root only; the limits and
-  their reasons are in [citations/ratchet.md](citations/ratchet.md).
+- The path-then-quote rule reads one line and resolves from the root only; see
+  [citations/ratchet.md](citations/ratchet.md).
 - The ratchet reads the committed tip; an uncommitted edit that adds or removes a citing line
   fails the run with "Commit first".
 - A tool that reads only stdout can see this gate as clean while it fails; check the exit code.

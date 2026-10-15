@@ -107,6 +107,18 @@ gloss), which is the two rules composing rather than competing.
 Against the proposal's bar for not worth doing: the audit's five non-rot cases do not match the
 landed shape, so the measured false-positive rate on added lines starts at zero.
 
+## Follow-on
+
+- **Recorded.** `design/decisions/0196-nife-carries-tls-and-builds-the-provider.md` quotes
+  design/roadmap/0198's "Rescoped 2026-09-19", which
+  that block no longer says. A developer lane does not edit `design/decisions/`, so the one-line
+  fix travels in this lane's pull request for the maintainer to land or to rule accepted, as the
+  2026-09-24 audit's accepted findings were.
+- **Recorded.** A citation whose path is a walk-up shorthand (`kani-upstream.md` meaning
+  `notes/kani-upstream.md`, written from a sibling directory) resolves nowhere and is skipped; the
+  limit lives in the BUGS of `notes/citations.md`, and the audit's wrong-README finding is why
+  resolution does not guess.
+
 ## Index row
 
 `script/citations --ratchet` checks three citation shapes; the third, since 2026-10-15, is that a
