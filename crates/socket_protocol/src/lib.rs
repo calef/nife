@@ -356,6 +356,18 @@ pub mod ephemeral {
             }
         }
 
+        /// **The cursor walks the whole private range and nothing outside it** (RFC 6335's
+        /// 49152 to 65535), in order, and wraps to its bottom. Spelled as numbers, because the
+        /// other tests compare ports only with each other and would pass on any range.
+        #[test]
+        fn the_cursor_walks_49152_to_65535_and_wraps() {
+            let mut ports = Ports::new();
+            for want in 49152..=65535u16 {
+                assert_eq!(ports.next(0, |_| false), want);
+            }
+            assert_eq!(ports.next(0, |_| false), 49152);
+        }
+
         /// A port a live socket holds is skipped, and the cursor moves past it.
         #[test]
         fn a_held_port_is_skipped() {

@@ -1004,6 +1004,14 @@ mod sources_tests {
         }
     }
 
+    /// Five digits is the longest port the check lets through, and the highest port is one.
+    #[test]
+    fn a_five_digit_port_is_read() {
+        let s = Sources::parse("repository h 65535 rolling\nroot a-b\n").unwrap();
+        let r: Vec<_> = s.repositories().collect();
+        assert_eq!(r[0].repository.port, 65535);
+    }
+
     #[test]
     fn one_unreadable_line_refuses_the_whole() {
         let refused = [
@@ -1034,6 +1042,21 @@ mod sources_tests {
             (
                 "repository h 443 rolling\nroot abc\n",
                 SourcesRefusal::BadLine(2),
+            ),
+            // Even and all hex, but far too short to be a certificate, and no hyphen to be a name.
+            (
+                "repository h 443 rolling\nroot abcd\n",
+                SourcesRefusal::BadLine(2),
+            ),
+            // A port is at most five decimal digits. `u16`'s parser alone would take a sign and
+            // any number of leading zeros.
+            (
+                "repository h +443 rolling\nroot a-b\n",
+                SourcesRefusal::BadLine(1),
+            ),
+            (
+                "repository h 000443 rolling\nroot a-b\n",
+                SourcesRefusal::BadLine(1),
             ),
             (
                 "repository h 443 rolling\nmirror x\nroot a-b\n",
