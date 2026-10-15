@@ -66,8 +66,8 @@ crates in both. Most of the rise is three drivers merged in the window: `e1000e`
 missed to 285, and `designware_ethernet` and `designware_mobile_storage` arrived with 257 and 205.
 Both inflow lists are triaged, 710 keys with 554 killed, 153 equivalent and 3 gaps
 ([inflow triage](../../notes/mutation-testing/inflow-2026-10-12-triage.md)). The 61 keys of the
-2026-10-12 census that neither list named, 102 mutants, are triaged too: 13 killed, 46 equivalent
-and 2 recorded gaps ([residue](../../notes/mutation-testing/census-2026-10-12-residue.md)). Of the 16 gaps recorded
-before that, 9 are now killed and 7 remain. Run
+2026-10-12 census that neither list named, 102 mutants, are triaged too: 13 killed and 48
+equivalent ([residue](../../notes/mutation-testing/census-2026-10-12-residue.md)). Of the 16 gaps
+recorded before that, 9 are now killed, 2 are equivalent and 5 remain. Run
 [38654094250](https://github.com/nifeos/nife/actions/runs/38654094250), dispatched 2026-10-14
 23:26 UTC, is the census that measures this; it is pending.

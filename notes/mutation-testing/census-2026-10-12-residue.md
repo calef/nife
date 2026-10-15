@@ -20,7 +20,7 @@ Joining the census's survivor list against the triage record on `(crate, functio
 | crate | keys | mutants | killed | equivalent | gap |
 |---|---|---|---|---|---|
 | `documentation` | 19 | 28 | 1 | 18 | 0 |
-| `machine_discovery` | 12 | 17 | 2 | 8 | 2 |
+| `machine_discovery` | 12 | 17 | 2 | 10 | 0 |
 | `video_terminal` | 10 | 12 | 0 | 10 | 0 |
 | `abi` | 8 | 8 | 7 | 1 | 0 |
 | `pci` | 5 | 11 | 0 | 5 | 0 |
@@ -28,7 +28,7 @@ Joining the census's survivor list against the triage record on `(crate, functio
 | `sealed_pair` | 2 | 2 | 2 | 0 | 0 |
 | `filesystem_protocol` | 1 | 19 | 0 | 1 | 0 |
 | `uefi_loader` | 1 | 1 | 1 | 0 | 0 |
-| total | 61 | 102 | 13 | 46 | 2 |
+| total | 61 | 102 | 13 | 48 | 0 |
 
 Most of the residue was already argued in prose and had no row. The equivalents in `documentation`,
 `video_terminal`, `machine_discovery` and `filesystem_protocol` are the shapes
@@ -46,6 +46,8 @@ Most of the residue was already argued in prose and had no row. The equivalents 
   good table. So a mutant that stops the walk passes. Each walk is now a `const fn`, which
   `aarch64::codes_are_distinct` and `riscv64::ids_are_sequential` name, and a test feeds it a
   table it must refuse.
+- `machine_discovery`'s `+ with *` and `+ with -` (equivalent) are `x86_64`'s `N`, a constant in
+  the `#[cfg(kani)]` harness module. See the Kani modules below.
 - `uefi_loader`'s `with_initrd` is `with_initial_ramdisk`. Under the new name it is caught.
 - `documentation`'s `flush_table` `> with >=` (killed). Its survivor was `vis > *width`, which a
   split of `flush_table` moved into `table_widths`. The key now names `c > 0`, which is caught.
@@ -53,21 +55,21 @@ Most of the residue was already argued in prose and had no row. The equivalents 
 
 ## The recorded gaps
 
-16 rows were `gap`. 9 are now killed and 7 stay.
+16 rows were `gap`. 9 are now killed, 2 are equivalent and 5 stay.
 
-| crate | keys | killed | still a gap |
-|---|---|---|---|
-| `board_console` | 3 | 0 | 3 |
-| `uefi_loader` | 2 | 2 | 0 |
-| `filesystem_protocol` | 2 | 2 | 0 |
-| `address_space_identifier` | 2 | 0 | 2 |
-| `designware_ethernet` | 2 | 2 | 0 |
-| `walk_pricing` | 1 | 1 | 0 |
-| `documentation` | 1 | 1 | 0 |
-| `job_mix` | 1 | 1 | 0 |
-| `network_time_protocol` | 1 | 0 | 1 |
-| `direct_memory_access_validator` | 1 | 0 | 1 |
-| total | 16 | 9 | 7 |
+| crate | keys | killed | equivalent | still a gap |
+|---|---|---|---|---|
+| `board_console` | 3 | 0 | 0 | 3 |
+| `uefi_loader` | 2 | 2 | 0 | 0 |
+| `filesystem_protocol` | 2 | 2 | 0 | 0 |
+| `address_space_identifier` | 2 | 0 | 0 | 2 |
+| `designware_ethernet` | 2 | 2 | 0 | 0 |
+| `walk_pricing` | 1 | 1 | 0 | 0 |
+| `documentation` | 1 | 1 | 0 | 0 |
+| `job_mix` | 1 | 1 | 0 | 0 |
+| `network_time_protocol` | 1 | 0 | 1 | 0 |
+| `direct_memory_access_validator` | 1 | 0 | 1 | 0 |
+| total | 16 | 9 | 2 | 5 |
 
 - `uefi_loader::CMDLINE_LEN` (11 mutants, two keys). The row called it deliberate slack. There is
   none: the only room is the screen token's own rounded-up `MAX_LEN` and the NUL. The longest-line
@@ -84,6 +86,19 @@ Most of the residue was already argued in prose and had no row. The equivalents 
 - `job_mix::order`'s `seed | 1`. `order(1)` is the order the kernel's first task walks in every
   recorded run, and it is now pinned. `seed ^ 1` starts the generator at 0 and fails it.
 
+### The Kani modules
+
+`network_time_protocol`'s `PROVED_NANOS`, `direct_memory_access_validator`'s `ChainMem::racing` and
+`machine_discovery`'s `x86_64` `N` sat in inline `#[cfg(kani)] mod verification` blocks. The
+`verification::` exclusion cannot reach a constant or a struct-field deletion there. No test can kill
+them either: only Kani compiles that code, so a mutant there changes nothing `cargo test` or a
+shipped image runs. Each module is now its own `verification.rs`, which `.cargo/mutants.toml`'s
+`**/src/**/verification.rs` glob excludes, and the re-run no longer generates them. The rows say
+`equivalent` for that reason. calef ruled on 2026-10-14 (UTC) "Close the four Kani-module gaps".
+§282 (when a file is split, the parent becomes an index)'s parent-index check now treats a
+`verification` child as it treats `proofs`. `script/verify --only` still proves every moved
+harness under its old path, and every falsification patch for these crates still applies.
+
 ## Also corrected
 
 `filesystem_protocol`'s `- with +` and `- with /` rows said `killed`. The re-run reported both, in
@@ -92,19 +107,10 @@ say so.
 
 ## BUGS
 
-- Seven gaps stay. `board_console`'s three need a real tty and a host `/dev`.
+- Five gaps stay. `board_console`'s three need a real tty and a host `/dev`.
   `address_space_identifier`'s two are a release-only guard behind two `debug_assert!`s of the same
   condition, which `notes/mutation-testing.md` calls equivalent under the harness. They stay `gap`,
-  because that is the weaker claim. `network_time_protocol`'s `PROVED_NANOS` and
-  `direct_memory_access_validator`'s `ChainMem::racing` sit in an inline `#[cfg(kani)] mod
-  verification`, which the `verification::` exclusion cannot reach. `machine_discovery`'s two new
-  gaps are `x86_64`'s `N`, the same shape.
-- What would close those four: the module in its own file, which `.cargo/mutants.toml`'s
-  `**/src/verification.rs` glob already excludes. §282 (when a file is split, the parent becomes an
-  index) blocks that move today. `helpers/parent_index.py` exempts a `tests` or `proofs` child and
-  not a `verification` one. Renaming the modules to `proofs` would rename every harness its
-  falsification patches and `notes/confinement-claims.md` cite. Exempting `verification` in the
-  check is the smaller change. It is a change to a gate, so it is proposed here rather than made.
+  because that is the weaker claim.
 - The 547 rows marked `killed` whose keys the 2026-10-12 census still lists were not re-run. Most
   are the inflow triage's kills, written after that census. Run
   [38654094250](https://github.com/nifeos/nife/actions/runs/38654094250) will show whether any of

@@ -108,10 +108,11 @@ exclude_globs = [
     # upward) triaging the 2026-09-14 census, where 36 of `timetable`'s 48 reported survivors were
     # this crate's proof harnesses rather than its code,
     # which is the whole reason it read 73.6%. Glob rather than regex, because the file layout is
-    # the thing that differs; `**/src/verification.rs` is listed with it so the sibling convention
-    # cannot arrive unexcluded.
-    "**/src/proofs.rs",
-    "**/src/verification.rs",
+    # the thing that differs; `verification.rs` is listed with it so the sibling convention cannot
+    # arrive unexcluded. The `**` after `src/` reaches a submodule's harness file, such as
+    # `machine_discovery`'s `src/x86_64/verification.rs`.
+    "**/src/**/proofs.rs",
+    "**/src/**/verification.rs",
 
     # Host tooling, not shipped code. xtask drives cargo and QEMU; its "tests" are the gates it
     # runs, so a mutant here is caught by CI going red, not by a unit suite. Mutating it would

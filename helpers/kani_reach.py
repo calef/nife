@@ -70,7 +70,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from rust_source import strip_non_code  # noqa: E402
 
 EXCLUDE_RE = ["verification::", "proofs::", "interleavings::", "tests::"]
-EXCLUDE_GLOB = ["**/src/proofs.rs", "**/src/verification.rs"]
+EXCLUDE_GLOB = ["**/src/**/proofs.rs", "**/src/**/verification.rs"]
 PROOF = re.compile(r"#\[kani::proof\]")
 FN_DEF = re.compile(r"\bfn\s+([A-Za-z_]\w*)")
 MOD_OPEN = re.compile(r"\bmod\s+([A-Za-z_]\w*)\s*\{")
