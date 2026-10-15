@@ -356,6 +356,8 @@ fn the_walk_totals_are_what_the_shape_adds_up_to() {
     assert_eq!(WALK_ENTRIES, 153);
     // 138 small files of 16 bytes, plus 4 KiB, 64 KiB and 256 KiB.
     assert_eq!(WALK_BYTES, 138 * 16 + 4096 + 65_536 + 262_144);
+    // `rg` finds its pattern once in each of those 138 small files and never in the alphabet.
+    assert_eq!(RG_MATCHES, 138);
     // Four regions at depth 1; chain levels 0..=7 hold two entries at depth i + 2 (2 * (2 + ... + 9)
     // = 88) and the last holds one at depth 10; 132 files at depth 2 in the other regions.
     assert_eq!(WALK_COMPONENTS, 4 + 88 + 10 + 2 * 132);

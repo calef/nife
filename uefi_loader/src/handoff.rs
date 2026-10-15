@@ -532,6 +532,16 @@ mod tests {
             "{n} bytes and a NUL must fit {CMDLINE_LEN}"
         );
         assert_eq!(out[n], 0);
+        // Nothing is left over that nobody accounted for: every token but the screen's counts at
+        // its exact length, the screen's at that crate's own rounded-up `MAX_LEN`, and the NUL
+        // once. The line above carries `screen-hold`, because Cargo.toml's self-dependency builds
+        // this package's tests with that feature on.
+        let screen_len = screen.encode(&mut [0u8; Framebuffer::MAX_LEN]);
+        assert_eq!(
+            CMDLINE_LEN,
+            n + (Framebuffer::MAX_LEN - screen_len) + 1,
+            "CMDLINE_LEN is the sum of its tokens and the NUL"
+        );
     }
 
     /// The two crates agree on the structure's length, which is the fact that would silently break

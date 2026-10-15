@@ -525,6 +525,17 @@ mod tests {
         assert!(!text.contains("disagrees"), "{text}");
     }
 
+    /// The refusal's digest is for a person to compare against `shasum -a 256`, so it has to be
+    /// that tool's spelling. The test above finds `hex_string`'s output in the report, which any
+    /// spelling passes; this one pins it to FIPS 180-2's digest of `abc`.
+    #[test]
+    fn a_digest_is_printed_as_shasum_prints_it() {
+        assert_eq!(
+            hex_string(&measured_boot::sha256(b"abc")),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
+
     #[test]
     fn a_kernel_from_another_build_is_refused_and_the_refusal_names_the_entry() {
         let (kernel, _) = matched_pair();

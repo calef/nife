@@ -562,10 +562,11 @@ impl Renderer {
                 // what makes a too-wide table lossy in layout only. Stopping here instead would
                 // drop every remaining cell without saying so, and that is the bug this arm exists
                 // to remove. The row's own trailing pipe is not part of the text.
-                j = body.end;
-                while j > i && (self.line[j - 1] == b' ' || self.line[j - 1] == b'\t') {
-                    j -= 1;
-                }
+                // A search rather than a loop that steps back, so no step can be lost.
+                j = i + self.line[i..body.end]
+                    .iter()
+                    .rposition(|&b| b != b' ' && b != b'\t')
+                    .map_or(0, |at| at + 1);
                 if j > i && self.line[j - 1] == b'|' && (j - 1 == i || self.line[j - 2] != b'\\') {
                     j -= 1;
                 }

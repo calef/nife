@@ -11,6 +11,13 @@ use std::vec::Vec;
 /// this test proves the part a `const` cannot reach: that the rows say the *right* thing. It is
 /// the mitigation for the table's own BUGS entry, which is that one wrong row is wrong in three
 /// programs at once.
+/// The build-time order check refuses a table with two rows swapped. The build only ever shows
+/// it the real table, which passes whether or not the check runs.
+#[test]
+fn the_order_check_refuses_two_rows_out_of_place() {
+    assert!(!verb::in_opcode_order(&[verb::TABLE[1], verb::TABLE[0]]));
+}
+
 #[test]
 fn every_verb_has_a_row_that_says_what_its_words_mean() {
     for operation in verb::FIRST..=verb::LAST {
