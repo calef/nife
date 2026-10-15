@@ -69,12 +69,12 @@ For one line of input:
 | **F** | Refuse: `mdr` renders and cannot page. | Today's state, and the sixth program that wants a screen meets the gap with a habit instead of a protocol. |
 
 Recommendation: B and D together. B is the capability-native form of what the documentation crate
-already asked for, "the shell knows and passes the answer in". Presence of the narrowed
-capability *is* the passing. It needs no new wire word, and it extends §106's slice in the
+already asked for. It said it plainly: "the shell knows and passes the answer in". Presence of the
+narrowed capability *is* the passing. It needs no new wire word, and it extends §106's slice in the
 direction §106 was already going. D is the input half's direct answer, and the badge mechanism is
 the tree's own precedent for saying "this capability may do exactly this much" on the terminal.
-The effort test, stated because the skill asks: E is less work than D and would still lose, because
-it puts the shell inside every page turn forever, and the whole point of a capability is that the
+The effort test, stated because the skill asks: E is less work than D and would still lose. It
+puts the shell inside every page turn forever, and the whole point of a capability is that the
 holder can act without a broker waking up.
 
 ## Whether the premise is true
