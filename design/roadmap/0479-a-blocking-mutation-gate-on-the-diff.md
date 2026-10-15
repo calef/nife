@@ -70,6 +70,11 @@ workflow, no `script/ci-build` row, no ruleset entry.
   asks for is measurable after the merge, weekly, without blocking anybody. What this gate would
   change is when the triage happens, not whether.
 
+A proposal to reopen this is
+[survivors-cannot-merge-untriaged](proposals/survivors-cannot-merge-untriaged.md). It holds that
+the proof-module objection is answered by `.cargo/mutants.toml`'s name exclusion, and that the
+kernel objection limits the gate's scope rather than arguing against it. It awaits calef's ruling.
+
 ## Index row
 
 A gate built, measured and then deliberately not switched on, with the ruling recorded at the
