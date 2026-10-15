@@ -37,7 +37,7 @@ fn a_sync_needs_write_and_takes_a_handle_of_either_kind() {
 
     // A file handle opened through it inherits READ | WRITE, so it may too: the verb is not
     // about the file, and refusing a file handle would be inventing a distinction.
-    let file = srv.open_file("scratch").expect("open scratch");
+    let file = srv.open_file(&named("scratch")).expect("open scratch");
     assert!(srv.sync_permitted(file).is_ok());
 
     // A directory capability narrowed to reading may not. EROFS rather than EACCES, because
@@ -46,7 +46,7 @@ fn a_sync_needs_write_and_takes_a_handle_of_either_kind() {
     let ro = srv
         .open_dir(
             filesystem_protocol::fs::ROOT as u32,
-            "sub",
+            &named("sub"),
             dir::ENUMERATE | dir::READ | dir::DESCEND,
         )
         .expect("open sub read-only");
@@ -70,11 +70,19 @@ fn setting_mtime_to_now_twice_observes_two_different_times_and_neither_is_the_ca
     let mut srv = server_with_tree();
     let root = filesystem_protocol::fs::ROOT as u32;
 
-    let before = srv.mtime(root, "motd").expect("read the seeded mtime");
-    srv.set_mtime_now(root, "motd").expect("touch, bare");
-    let first = srv.mtime(root, "motd").expect("read back the first touch");
-    srv.set_mtime_now(root, "motd").expect("touch again");
-    let second = srv.mtime(root, "motd").expect("read back the second touch");
+    let before = srv
+        .mtime(root, &named("motd"))
+        .expect("read the seeded mtime");
+    srv.set_mtime_now(root, &named("motd"))
+        .expect("touch, bare");
+    let first = srv
+        .mtime(root, &named("motd"))
+        .expect("read back the first touch");
+    srv.set_mtime_now(root, &named("motd"))
+        .expect("touch again");
+    let second = srv
+        .mtime(root, &named("motd"))
+        .expect("read back the second touch");
 
     assert!(
         first > before,
@@ -104,10 +112,10 @@ fn setting_an_arbitrary_mtime_round_trips_exactly_and_is_not_now() {
     // (which starts at 1 and has moved by single digits by the time this test runs), so a
     // fallback to "now" cannot coincidentally pass.
     const ASSERTED: u64 = filesystem_protocol::fixture::tree::NAV_TOUCH_AT_UNIX;
-    srv.set_mtime_at(root, "motd", ASSERTED)
+    srv.set_mtime_at(root, &named("motd"), ASSERTED)
         .expect("write an arbitrary mtime with full rights");
     assert_eq!(
-        srv.mtime(root, "motd").expect("read it back"),
+        srv.mtime(root, &named("motd")).expect("read it back"),
         ASSERTED,
         "the round trip must return exactly the asserted value"
     );
@@ -115,9 +123,10 @@ fn setting_an_arbitrary_mtime_round_trips_exactly_and_is_not_now() {
     // And a second, ordinary touch does NOT preserve it: `set_mtime_now` is unconditional, so
     // an arbitrary value set with -t is exactly as overwritable by a bare touch as any other
     // mtime, which is the honest answer for "how long does a lie about history last".
-    srv.set_mtime_now(root, "motd").expect("touch, bare");
+    srv.set_mtime_now(root, &named("motd"))
+        .expect("touch, bare");
     assert_ne!(
-        srv.mtime(root, "motd").expect("read it back again"),
+        srv.mtime(root, &named("motd")).expect("read it back again"),
         ASSERTED,
         "a bare touch after an arbitrary one must move the mtime again, not preserve the lie"
     );

@@ -48,7 +48,12 @@ use redoxfs::{FileSystem, HEADER_RING, Node, TreePtr};
 use redoxfs_server::crash::{
     Damage, MemIo, Recording, Write, blank_image, damaged_image, header_at, only_this_generation,
 };
-use redoxfs_server::{BLOCK, BlockDisk, Server};
+use redoxfs_server::{BLOCK, BlockDisk, NameCopy, Server};
+/// A fixed name as the [`NameCopy`] every `Server` verb takes; the server copies a client's names
+/// out of its window the same way.
+fn named(name: &str) -> NameCopy {
+    NameCopy::copy_in(name.as_bytes()).expect("a fixed name fits one block and is UTF-8")
+}
 
 /// The image size the fixture is built at. Big enough for the record-spanning write below to
 /// copy-on-write itself several times over, small enough that cloning it once per fault point is
@@ -88,7 +93,7 @@ type State = Vec<(&'static str, Option<Entry>)>;
 fn snapshot<D: redoxfs::Disk>(srv: &mut Server<D>) -> Result<State, syscall::error::Error> {
     let mut state = State::new();
     for &name in &NAMES {
-        let content = match srv.open_file(name) {
+        let content = match srv.open_file(&named(name)) {
             Err(e) if e.errno == syscall::error::ENOENT => None, // no such name in this state
             Err(e) => return Err(e), // anything else is the filesystem refusing, not an absence
             Ok(h) => {
@@ -253,7 +258,7 @@ fn record_workload() -> Recorded {
     };
     let big = tagged(b'5', 160 * 1024);
 
-    let h = srv.open_file("scratch").expect("open scratch");
+    let h = srv.open_file(&named("scratch")).expect("open scratch");
     srv.write(h, 0, &tagged(b'1', 64)).expect("operation 1");
     mark(&mut srv, &mut states, 1);
     srv.write(h, 0, &tagged(b'2', 61)).expect("operation 2");
@@ -261,7 +266,7 @@ fn record_workload() -> Recorded {
     srv.truncate(h, 61).expect("operation 3");
     mark(&mut srv, &mut states, 3);
 
-    let g = srv.create_file("made").expect("operation 4");
+    let g = srv.create_file(&named("made")).expect("operation 4");
     mark(&mut srv, &mut states, 4);
     srv.write(g, 0, &big).expect("operation 5");
     mark(&mut srv, &mut states, 5);
@@ -274,7 +279,7 @@ fn record_workload() -> Recorded {
     // The rename: `made` becomes `renamed`, both of which `snapshot` reads, so a recovery that
     // found the file under both names or under neither is a state that never existed.
     let root = filesystem_protocol::fs::ROOT as u32;
-    srv.rename(root, "made", root, "renamed")
+    srv.rename(root, &named("made"), root, &named("renamed"))
         .expect("operation 8");
     mark(&mut srv, &mut states, 8);
 

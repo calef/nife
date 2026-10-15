@@ -16,7 +16,12 @@ use filesystem_protocol::dir;
 use filesystem_protocol::fixture::walk as tree;
 use redoxfs::{DiskMemory, FileSystem};
 use redoxfs_server::walk_model::{self, Counting};
-use redoxfs_server::{CachedDisk, Server};
+use redoxfs_server::{CachedDisk, NameCopy, Server};
+/// A fixed name as the [`NameCopy`] every `Server` verb takes; the server copies a client's names
+/// out of its window the same way.
+fn named(name: &str) -> NameCopy {
+    NameCopy::copy_in(name.as_bytes()).expect("a fixed name fits one block and is UTF-8")
+}
 
 fn main() {
     let runs: usize = std::env::args()
@@ -34,7 +39,11 @@ fn main() {
     ))
     .expect("reopen");
     let root = srv
-        .open_dir(0, tree::ROOT, dir::ENUMERATE | dir::READ | dir::DESCEND)
+        .open_dir(
+            0,
+            &named(tree::ROOT),
+            dir::ENUMERATE | dir::READ | dir::DESCEND,
+        )
         .expect("open the tree");
 
     let reads0 = srv.disk_mut().inner().reads;
@@ -49,9 +58,9 @@ fn main() {
     let reads2 = srv.disk_mut().inner().reads;
     ns.sort_unstable();
     // A namespace change forgets the memo; what is left is the block cache under it.
-    let h = srv.create_file_at(0, "scratch").expect("create");
+    let h = srv.create_file_at(0, &named("scratch")).expect("create");
     srv.close(h).expect("close");
-    srv.unlink(0, "scratch").expect("unlink");
+    srv.unlink(0, &named("scratch")).expect("unlink");
     let reads3 = srv.disk_mut().inner().reads;
     let t0 = Instant::now();
     walk_model::walk(&mut srv, root).expect("walk after a change");

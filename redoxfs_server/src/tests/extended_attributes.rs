@@ -50,7 +50,7 @@ fn attr(srv: &mut Server<DiskMemory>, handle: u32, name: &[u8]) -> Result<(u32, 
 fn an_attribute_survives_a_mount_it_was_not_written_in() {
     let disk = image_with(&[("motd", b"hello")]);
     let mut srv = Server::open(disk).unwrap();
-    let h = srv.open_file("motd").unwrap();
+    let h = srv.open_file(&named("motd")).unwrap();
     srv.set_xattr(h, b"user.DOSATTRIB", xattr::RAW, b"0x20")
         .expect("set");
     srv.set_xattr(h, b"user.com.apple.FinderInfo", 0x4353_5452, &[7u8; 32])
@@ -58,7 +58,7 @@ fn an_attribute_survives_a_mount_it_was_not_written_in() {
     let disk = srv.fs.disk; // no unmount, exactly as on device
 
     let mut srv = Server::open(disk).unwrap();
-    let h = srv.open_file("motd").unwrap();
+    let h = srv.open_file(&named("motd")).unwrap();
     assert_eq!(
         attr(&mut srv, h, b"user.DOSATTRIB").unwrap(),
         (xattr::RAW, b"0x20".to_vec()),
@@ -88,23 +88,32 @@ fn an_attribute_survives_a_mount_it_was_not_written_in() {
 #[test]
 fn a_rename_carries_the_attributes_because_the_store_keys_on_the_node() {
     let mut srv = server_with_tree();
-    let h = srv.open_file("motd").unwrap();
+    let h = srv.open_file(&named("motd")).unwrap();
     srv.set_xattr(h, b"user.tag", 9, b"follow me").unwrap();
     let before = node_id_of(&mut srv, TreePtr::root(), "motd");
 
     // Rename within the root, then into a subdirectory: neither touches the node.
     srv.rename(
         filesystem_protocol::fs::ROOT as u32,
-        "motd",
+        &named("motd"),
         filesystem_protocol::fs::ROOT as u32,
-        "motd2",
+        &named("motd2"),
     )
     .expect("rename in place");
     let sub = srv
-        .open_dir(filesystem_protocol::fs::ROOT as u32, "sub", dir::ALL)
+        .open_dir(
+            filesystem_protocol::fs::ROOT as u32,
+            &named("sub"),
+            dir::ALL,
+        )
         .unwrap();
-    srv.rename(filesystem_protocol::fs::ROOT as u32, "motd2", sub, "moved")
-        .expect("rename across directories");
+    srv.rename(
+        filesystem_protocol::fs::ROOT as u32,
+        &named("motd2"),
+        sub,
+        &named("moved"),
+    )
+    .expect("rename across directories");
 
     let after = node_id_of(&mut srv, TreePtr::root(), "sub");
     assert_ne!(
@@ -112,7 +121,7 @@ fn a_rename_carries_the_attributes_because_the_store_keys_on_the_node() {
         "sanity: the subdirectory is a different node"
     );
     let moved = srv
-        .open_file_at(sub, "moved")
+        .open_file_at(sub, &named("moved"))
         .expect("open at its new name");
     assert_eq!(
         attr(&mut srv, moved, b"user.tag").unwrap(),
@@ -135,14 +144,14 @@ fn a_rename_carries_the_attributes_because_the_store_keys_on_the_node() {
 #[test]
 fn unlink_takes_the_attributes_and_a_reused_node_inherits_nothing() {
     let mut srv = server_with_tree();
-    let h = srv.create_file("doomed").unwrap();
+    let h = srv.create_file(&named("doomed")).unwrap();
     srv.set_xattr(h, b"user.secret", xattr::RAW, b"not yours")
         .unwrap();
     let doomed = node_id_of(&mut srv, TreePtr::root(), "doomed");
     assert!(store_holds(&mut srv, doomed));
 
     srv.close(h).unwrap(); // an open handle pins the node; close first so the id is really freed
-    srv.unlink(filesystem_protocol::fs::ROOT as u32, "doomed")
+    srv.unlink(filesystem_protocol::fs::ROOT as u32, &named("doomed"))
         .unwrap();
     assert!(
         !store_holds(&mut srv, doomed),
@@ -158,7 +167,7 @@ fn unlink_takes_the_attributes_and_a_reused_node_inherits_nothing() {
     let mut reused = None;
     for i in 0..8 {
         let name = format!("fresh{i}");
-        let nh = srv.create_file(&name).unwrap();
+        let nh = srv.create_file(&named(&name)).unwrap();
         if node_id_of(&mut srv, TreePtr::root(), &name) == doomed {
             reused = Some(nh);
             break;
@@ -181,22 +190,22 @@ fn unlink_takes_the_attributes_and_a_reused_node_inherits_nothing() {
 #[test]
 fn a_rename_over_a_file_takes_the_replaced_files_attributes() {
     let mut srv = server_with_tree();
-    let victim = srv.create_file("victim").unwrap();
+    let victim = srv.create_file(&named("victim")).unwrap();
     srv.set_xattr(victim, b"user.doomed", xattr::RAW, b"x")
         .unwrap();
     srv.close(victim).unwrap();
     let victim_id = node_id_of(&mut srv, TreePtr::root(), "victim");
 
-    let winner = srv.create_file("winner").unwrap();
+    let winner = srv.create_file(&named("winner")).unwrap();
     srv.set_xattr(winner, b"user.kept", xattr::RAW, b"y")
         .unwrap();
     let winner_id = node_id_of(&mut srv, TreePtr::root(), "winner");
 
     srv.rename(
         filesystem_protocol::fs::ROOT as u32,
-        "winner",
+        &named("winner"),
         filesystem_protocol::fs::ROOT as u32,
-        "victim",
+        &named("victim"),
     )
     .expect("replace");
 
@@ -208,7 +217,7 @@ fn a_rename_over_a_file_takes_the_replaced_files_attributes() {
         store_holds(&mut srv, winner_id),
         "and the survivor kept its own"
     );
-    let h = srv.open_file("victim").unwrap();
+    let h = srv.open_file(&named("victim")).unwrap();
     assert_eq!(attr_names(&mut srv, h), [b"user.kept".to_vec()]);
 }
 
@@ -219,7 +228,11 @@ fn a_rename_over_a_file_takes_the_replaced_files_attributes() {
 fn a_directory_carries_attributes_and_rmdir_takes_them_with_it() {
     let mut srv = server_with_tree();
     let d = srv
-        .make_dir(filesystem_protocol::fs::ROOT as u32, "attrdir", dir::ALL)
+        .make_dir(
+            filesystem_protocol::fs::ROOT as u32,
+            &named("attrdir"),
+            dir::ALL,
+        )
         .unwrap();
     srv.set_xattr(d, b"user.on-a-directory", 3, b"yes").unwrap();
     let id = node_id_of(&mut srv, TreePtr::root(), "attrdir");
@@ -228,7 +241,7 @@ fn a_directory_carries_attributes_and_rmdir_takes_them_with_it() {
         (3, b"yes".to_vec()),
     );
 
-    srv.rmdir(filesystem_protocol::fs::ROOT as u32, "attrdir")
+    srv.rmdir(filesystem_protocol::fs::ROOT as u32, &named("attrdir"))
         .unwrap();
     assert!(
         !store_holds(&mut srv, id),
@@ -263,8 +276,8 @@ fn the_last_attribute_takes_the_store_with_it() {
         "a fresh image must not carry a store before anything sets an attribute",
     );
 
-    let motd = srv.open_file("motd").unwrap();
-    let second = srv.create_file("second").unwrap();
+    let motd = srv.open_file(&named("motd")).unwrap();
+    let second = srv.create_file(&named("second")).unwrap();
     srv.set_xattr(motd, b"user.a", xattr::RAW, b"1").unwrap();
     srv.set_xattr(second, b"user.b", xattr::RAW, b"2").unwrap();
     assert!(store_exists(&mut srv), "setting one must create the store");
@@ -285,7 +298,7 @@ fn the_last_attribute_takes_the_store_with_it() {
     // so the two paths need separate evidence.
     srv.set_xattr(motd, b"user.c", xattr::RAW, b"3").unwrap();
     assert!(store_exists(&mut srv));
-    srv.unlink(filesystem_protocol::fs::ROOT as u32, "motd")
+    srv.unlink(filesystem_protocol::fs::ROOT as u32, &named("motd"))
         .unwrap();
     srv.close(motd).unwrap();
     assert!(
@@ -300,7 +313,7 @@ fn the_last_attribute_takes_the_store_with_it() {
 #[test]
 fn the_attribute_store_is_not_in_the_namespace() {
     let mut srv = server_with_tree();
-    let h = srv.open_file("motd").unwrap();
+    let h = srv.open_file(&named("motd")).unwrap();
     srv.set_xattr(h, b"user.x", xattr::RAW, b"1").unwrap();
 
     // It is really there: this test would be vacuous against a filesystem with no store at all.
@@ -318,43 +331,52 @@ fn the_attribute_store_is_not_in_the_namespace() {
     // Every name-taking verb, at every rights this contract can carry, and the answer is always
     // the same one `..` gets: the name is not expressible here.
     assert_eq!(
-        srv.open_file_at(root, xattr::STORE_DIR).unwrap_err().errno,
+        srv.open_file_at(root, &named(xattr::STORE_DIR))
+            .unwrap_err()
+            .errno,
         EINVAL
     );
     assert_eq!(
-        srv.open_dir(root, xattr::STORE_DIR, dir::ALL)
+        srv.open_dir(root, &named(xattr::STORE_DIR), dir::ALL)
             .unwrap_err()
             .errno,
         EINVAL,
     );
     assert_eq!(
-        srv.create_file_at(root, xattr::STORE_DIR)
+        srv.create_file_at(root, &named(xattr::STORE_DIR))
             .unwrap_err()
             .errno,
         EINVAL
     );
     assert_eq!(
-        srv.make_dir(root, xattr::STORE_DIR, dir::ALL)
+        srv.make_dir(root, &named(xattr::STORE_DIR), dir::ALL)
             .unwrap_err()
             .errno,
         EINVAL,
     );
     assert_eq!(
-        srv.unlink(root, xattr::STORE_DIR).unwrap_err().errno,
+        srv.unlink(root, &named(xattr::STORE_DIR))
+            .unwrap_err()
+            .errno,
         EINVAL
     );
-    assert_eq!(srv.rmdir(root, xattr::STORE_DIR).unwrap_err().errno, EINVAL);
     assert_eq!(
-        srv.rename(root, "motd", root, xattr::STORE_DIR)
+        srv.rmdir(root, &named(xattr::STORE_DIR)).unwrap_err().errno,
+        EINVAL
+    );
+    assert_eq!(
+        srv.rename(root, &named("motd"), root, &named(xattr::STORE_DIR))
             .unwrap_err()
             .errno,
         EINVAL,
     );
     // And it is reserved in a *subdirectory* too, so the rule is one sentence rather than a
     // location-dependent one.
-    let sub = srv.open_dir(root, "sub", dir::ALL).unwrap();
+    let sub = srv.open_dir(root, &named("sub"), dir::ALL).unwrap();
     assert_eq!(
-        srv.create_file_at(sub, xattr::STORE_DIR).unwrap_err().errno,
+        srv.create_file_at(sub, &named(xattr::STORE_DIR))
+            .unwrap_err()
+            .errno,
         EINVAL
     );
 }
@@ -370,11 +392,11 @@ fn attributes_take_the_direction_the_capability_already_carries() {
     let ro = srv
         .open_dir(
             filesystem_protocol::fs::ROOT as u32,
-            "sub",
+            &named("sub"),
             dir::READ | dir::DESCEND,
         )
         .unwrap();
-    let h = srv.open_file_at(ro, "inner").unwrap();
+    let h = srv.open_file_at(ro, &named("inner")).unwrap();
     let mut page = [0u8; 4096];
     assert_eq!(
         srv.list_xattr(h, &mut page).unwrap(),
@@ -395,11 +417,11 @@ fn attributes_take_the_direction_the_capability_already_carries() {
     let wo = srv
         .open_dir(
             filesystem_protocol::fs::ROOT as u32,
-            "sub",
+            &named("sub"),
             dir::WRITE | dir::DESCEND,
         )
         .unwrap();
-    let h = srv.open_file_at(wo, "inner").unwrap();
+    let h = srv.open_file_at(wo, &named("inner")).unwrap();
     srv.set_xattr(h, b"user.x", xattr::RAW, b"1")
         .expect("writing is allowed");
     assert_eq!(
@@ -417,7 +439,7 @@ fn attributes_take_the_direction_the_capability_already_carries() {
 #[test]
 fn every_ceiling_refuses_loudly_and_with_its_own_word() {
     let mut srv = server_with_tree();
-    let h = srv.open_file("motd").unwrap();
+    let h = srv.open_file(&named("motd")).unwrap();
     let mut page = [0u8; 4096];
 
     assert_eq!(
@@ -493,7 +515,7 @@ fn every_ceiling_refuses_loudly_and_with_its_own_word() {
 #[test]
 fn a_shrinking_attribute_set_does_not_leave_a_tail() {
     let mut srv = server_with_tree();
-    let h = srv.open_file("motd").unwrap();
+    let h = srv.open_file(&named("motd")).unwrap();
     for i in 0..6 {
         srv.set_xattr(h, format!("user.n{i}").as_bytes(), 1, &[b'x'; 200])
             .unwrap();
@@ -510,7 +532,7 @@ fn a_shrinking_attribute_set_does_not_leave_a_tail() {
 
     let disk = srv.fs.disk;
     let mut srv = Server::open(disk).unwrap();
-    let h = srv.open_file("motd").unwrap();
+    let h = srv.open_file(&named("motd")).unwrap();
     assert_eq!(attr_names(&mut srv, h), [b"user.n5".to_vec()]);
     assert_eq!(
         attr(&mut srv, h, b"user.n5").unwrap(),

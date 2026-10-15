@@ -85,7 +85,7 @@ impl<D: Disk> Server<D> {
     /// Resolve `name` under the **bound directory** and return a handle for it: the shorthand for
     /// [`Server::open_file_at`] with [`filesystem_protocol::fs::ROOT`], which is what every caller that predates
     /// directory handles means.
-    pub fn open_file(&mut self, name: &str) -> Result<u32> {
+    pub fn open_file(&mut self, name: &NameCopy) -> Result<u32> {
         self.open_file_at(filesystem_protocol::fs::ROOT as u32, name)
     }
 
@@ -100,7 +100,7 @@ impl<D: Disk> Server<D> {
     /// The file handle **inherits** the directory's read and write bits, which is what makes
     /// milestone 47's "a program handed a directory to write logs into" mean something: the
     /// direction was decided when the directory was granted, and the file cannot widen it.
-    pub fn open_file_at(&mut self, handle: u32, name: &str) -> Result<u32> {
+    pub fn open_file_at(&mut self, handle: u32, name: &NameCopy) -> Result<u32> {
         self.open_file_path(handle, name, 0)
     }
 
@@ -112,7 +112,7 @@ impl<D: Disk> Server<D> {
     /// handle carries exactly the bits the hop-by-hop walk would have given it. Every component
     /// passes `check_component`, so `..` and empty steps are still `EINVAL`. `requested` is
     /// `OPEN`'s second word; a single-component name ignores it, as `OPEN` always has.
-    pub fn open_file_path(&mut self, handle: u32, name: &str, requested: u64) -> Result<u32> {
+    pub fn open_file_path(&mut self, handle: u32, name: &NameCopy, requested: u64) -> Result<u32> {
         let (parent, rights, name) = self.walk_prefix(handle, name, requested)?;
         if rights.denies_all(dir::READ | dir::WRITE) {
             return Err(Error::new(syscall::error::ENOENT));
@@ -149,7 +149,7 @@ impl<D: Disk> Server<D> {
     ///
     /// Needs [`dir::DESCEND`] on the parent, and its absence answers `ENOENT` rather than a
     /// refusal, so a holder that may not walk in cannot map what is there.
-    pub fn open_dir(&mut self, handle: u32, name: &str, requested: u64) -> Result<u32> {
+    pub fn open_dir(&mut self, handle: u32, name: &NameCopy, requested: u64) -> Result<u32> {
         // A relative path (milestone 606, ruling A): every directory before the last is a descent
         // asking for `DESCEND | requested`, the shape the hop-by-hop walk sends.
         let (parent, rights, name) = self.walk_prefix(handle, name, requested)?;
@@ -168,8 +168,8 @@ impl<D: Disk> Server<D> {
     /// have walked into would be a way to mint a capability out of a right that was withheld.
     /// `EEXIST` if the name is already there, and nothing is modified, for the reason
     /// [`Server::create_file`] gives.
-    pub fn make_dir(&mut self, handle: u32, name: &str, requested: u64) -> Result<u32> {
-        check_component(name)?;
+    pub fn make_dir(&mut self, handle: u32, name: &NameCopy, requested: u64) -> Result<u32> {
+        let name = name.component()?;
         let (parent, rights) = self.dir_at(handle)?;
         if !rights.allows(dir::CREATE) {
             return Err(Error::new(EROFS));
@@ -302,15 +302,15 @@ impl<D: Disk> Server<D> {
     ///
     /// Resolved under the bound directory like every other name, so this cannot create outside the
     /// granted subtree, and `check_component` rejects a path rather than walking one.
-    pub fn create_file(&mut self, name: &str) -> Result<u32> {
+    pub fn create_file(&mut self, name: &NameCopy) -> Result<u32> {
         self.create_file_at(filesystem_protocol::fs::ROOT as u32, name)
     }
 
     /// [`Server::create_file`], under the directory `handle` names. Needs [`dir::CREATE`] on it;
     /// without it the answer is [`dir::EROFS`], because through this capability that directory takes
     /// no new names.
-    pub fn create_file_at(&mut self, handle: u32, name: &str) -> Result<u32> {
-        check_component(name)?;
+    pub fn create_file_at(&mut self, handle: u32, name: &NameCopy) -> Result<u32> {
+        let name = name.component()?;
         let (parent, rights) = self.dir_at(handle)?;
         if !rights.allows(dir::CREATE) {
             return Err(Error::new(EROFS));
@@ -408,9 +408,15 @@ impl<D: Disk> Server<D> {
     ///   every backend.
     /// - A non-empty destination directory is `ENOTEMPTY`, from the engine.
     /// - Either name that is not a single component is `EINVAL`, so `..` means nothing here either.
-    pub fn rename(&mut self, src_dir: u32, src: &str, dst_dir: u32, dst: &str) -> Result<()> {
-        check_component(src)?;
-        check_component(dst)?;
+    pub fn rename(
+        &mut self,
+        src_dir: u32,
+        src: &NameCopy,
+        dst_dir: u32,
+        dst: &NameCopy,
+    ) -> Result<()> {
+        let src = src.component()?;
+        let dst = dst.component()?;
         let (src_parent, src_rights) = self.dir_at(src_dir)?;
         let (dst_parent, dst_rights) = self.dir_at(dst_dir)?;
         if !src_rights.allows(dir::REMOVE) || !dst_rights.allows(dir::CREATE) {
@@ -483,8 +489,8 @@ impl<D: Disk> Server<D> {
     /// confined program that dies mid-session leaves its files on the release list forever. The fix
     /// is per-client handle ownership, which the note records as the same missing thing that makes
     /// revocation unavailable.
-    pub fn unlink(&mut self, handle: u32, name: &str) -> Result<()> {
-        check_component(name)?;
+    pub fn unlink(&mut self, handle: u32, name: &NameCopy) -> Result<()> {
+        let name = name.component()?;
         let (parent, rights) = self.dir_at(handle)?;
         if !rights.allows(dir::REMOVE) {
             return Err(Error::new(EROFS));
@@ -540,8 +546,8 @@ impl<D: Disk> Server<D> {
     /// *server* and this server cannot enumerate the clients holding handles, so it could not
     /// invalidate them if it wanted to. Recorded rather than fixed, because registering directory
     /// handles is the same change as per-client handle ownership, which is what revocation needs.
-    pub fn rmdir(&mut self, handle: u32, name: &str) -> Result<()> {
-        check_component(name)?;
+    pub fn rmdir(&mut self, handle: u32, name: &NameCopy) -> Result<()> {
+        let name = name.component()?;
         let (parent, rights) = self.dir_at(handle)?;
         if !rights.allows(dir::REMOVE) {
             return Err(Error::new(EROFS));
@@ -579,8 +585,8 @@ impl<D: Disk> Server<D> {
     /// this is a naming right, [`Server::open_file_at`]'s own rule, checked before the name is
     /// resolved so a holder that may not read a time cannot use this to learn whether a name is
     /// there. Works on a directory exactly as on a file, [`Server::get_xattr`]'s reason.
-    pub fn mtime(&mut self, handle: u32, name: &str) -> Result<u64> {
-        check_component(name)?;
+    pub fn mtime(&mut self, handle: u32, name: &NameCopy) -> Result<u64> {
+        let name = name.component()?;
         let (parent, rights) = self.dir_at(handle)?;
         if !rights.allows(dir::READ) {
             return Err(Error::new(ENOENT));
@@ -603,8 +609,8 @@ impl<D: Disk> Server<D> {
     /// Needs [`dir::WRITE`], refused with [`dir::EROFS`], checked before the name is resolved for
     /// [`Server::unlink`]'s reason. No more than [`dir::WRITE`], because the value recorded is one
     /// the server observed rather than one the caller asserted (DECISIONS §112).
-    pub fn set_mtime_now(&mut self, handle: u32, name: &str) -> Result<()> {
-        check_component(name)?;
+    pub fn set_mtime_now(&mut self, handle: u32, name: &NameCopy) -> Result<()> {
+        let name = name.component()?;
         let (parent, rights) = self.dir_at(handle)?;
         if !rights.allows(dir::WRITE) {
             return Err(Error::new(EROFS));
@@ -628,8 +634,8 @@ impl<D: Disk> Server<D> {
     /// this server observed, which is exactly the authority DECISIONS §112 declines to fold into
     /// plain [`dir::WRITE`]. No range check on `seconds`: any value is accepted, because asserting
     /// an implausible history is the same authority as asserting a merely surprising one.
-    pub fn set_mtime_at(&mut self, handle: u32, name: &str, seconds: u64) -> Result<()> {
-        check_component(name)?;
+    pub fn set_mtime_at(&mut self, handle: u32, name: &NameCopy, seconds: u64) -> Result<()> {
+        let name = name.component()?;
         let (parent, rights) = self.dir_at(handle)?;
         if !rights.allows(dir::WRITE | dir::SETTIME) {
             return Err(Error::new(EROFS));
@@ -1013,13 +1019,15 @@ impl<D: Disk> Server<D> {
     fn walk_prefix<'n>(
         &mut self,
         handle: u32,
-        path: &'n str,
+        path: &'n NameCopy,
         hop: u64,
     ) -> Result<(TreePtr<Node>, Rights, &'n str)> {
         let (ptr, rights) = self.dir_at(handle)?;
-        for step in path.split('/') {
-            check_component(step)?;
-        }
+        // Checked here, after `dir_at`, so a bad handle answers before a bad name, as it always has.
+        let path = path.path()?;
+        // `subtree_scope::walk` takes bytes rather than a `NameCopy`: it is a shared crate and cannot
+        // name this server's type. A deliberate exception to the typed boundary, and safe only because
+        // this is its one caller here and the bytes are the checked copy's, never the window's.
         let (ptr, rights, last) =
             subtree_scope::walk(ptr, rights, path.as_bytes(), hop, |dir, name| {
                 let name = core::str::from_utf8(name).map_err(|_| Fault(Error::new(EINVAL)))?;

@@ -230,7 +230,9 @@ fn payload(pass: u8) -> [u8; 61] {
 /// error if any step failed, so the caller can print the errno rather than guess at it.
 fn mount_and_write(pass: u8) -> syscall::error::Result<()> {
     let mut srv = Server::open(BlockDisk(StaticImage))?;
-    let h = srv.open_file("scratch")?;
+    let h = srv.open_file(
+        &redoxfs_server::NameCopy::copy_in(("scratch").as_bytes()).expect("a fixed name copies"),
+    )?;
     let p = payload(pass);
     let n = srv.write(h, 0, &p)?;
     assert_eq!(n, p.len(), "short write on mount {pass}");
