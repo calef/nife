@@ -99,7 +99,7 @@ solved this problem once:
 
 `kernel/src/bench.rs`'s `cycles_per_tick` grew an `x86_64` arm (it was `#[cfg(target_arch =
 "riscv64")]`), keeping the riscv64 arm's numeric format and its `unavailable` behaviour byte for
-byte. `bench/baseline-*.txt` readers meet both, and milestone 74's block records a riscv64 reading
+byte. `bench/baseline-*.txt` readers meet both, and milestone 74 (cycle counters)'s block records a riscv64 reading
 against the existing window of 100,000 ticks. So that window stayed a constant rather than becoming
 `frequency()/100` like x86's.
 

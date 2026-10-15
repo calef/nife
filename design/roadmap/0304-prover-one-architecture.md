@@ -203,7 +203,8 @@ aarch64. It is now in `script/falsifications`' `BUGS`.
   `x86_64/machine.rs`'s ACPI walk, is reachable for the first time and still unproved: 836 lines
   over firmware-supplied lengths, checksums and counts. This item was first written up as milestone
   431, on the reading that the walk's parsing half in `crates/machine_discovery` carried no
-  harnesses and no `script/verify` row. Milestone 319 proved that crate on 2026-09-17, so 431 is
+  harnesses and no `script/verify` row. Milestone 319 (the crate that parses firmware had no
+  proofs) proved that crate on 2026-09-17, so 431 is
   `SUPERSEDED` and keeps the account. What is left is the volatile half's bounded read against
   the direct map, which is milestone 423. Finding that seam wants a lane; it is
   not folded into this block because it is a design question rather than a mechanical one.

@@ -80,7 +80,8 @@ one change is the ambiguity that milestone forbade itself.
 
 The `cfg` is data rather than code and it sits in one file beside the table it disagrees with, which
 is the cheapest place to notice it. But it is still one architectural difference inside the first
-process, in a milestone whose argument was that there should not be one. DECISIONS §19's failure
+process, in a milestone whose argument was that there should not be one. DECISIONS §19
+(architectural parity is a tenet)'s failure
 mode is precisely a fact that is true on one ISA and quietly not on another.
 
 ## What it is not

@@ -152,7 +152,8 @@ and the crate's other thirty pass unchanged.
   check it, because "a test that allocates and forgets a guard" is not a grep.
 - **Recorded.** An edit outside this lane's own roadmap block, named here because AGENTS.md says a
   lane edits its own block and only that. `notes/undefined-behavior.md`'s item 3 said the `paging`
-  leak was "fixed". That stopped being true five weeks ago and is the §76 shape of a record
+  leak was "fixed". That stopped being true five weeks ago and is the §76 (what catches a milestone
+  status that is wrong in both places) shape of a record
   describing a system that no longer exists. Corrected in place, with the recurrence and why the
   second fix went up a rung.
 
