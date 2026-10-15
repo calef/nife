@@ -177,7 +177,8 @@ The kernel writes the enable on the switch, the same way it writes the address-s
   instrument seL4's published numbers were taken with, which is what comparability requires.
 - Cost on the context-switch path: one comparison, and one `msr` only when the value changes.
   That is exactly the shape `kernel/src/arch/aarch64/mmu.rs`'s `switch_user_root` already has (it
-  early-returns when `TTBR0_EL1` already holds the wanted value), called from `sched.rs:1870`. If no
+  early-returns when `TTBR0_EL1` already holds the wanted value), called from `schedule`
+  (`sched/switch.rs`). If no
   thread is granted, the value never changes and the whole cost is a compare.
 - Cost to build: a bit on the TCB, a write at the switch site on three architectures, and a way
   to set the bit. The last part is the expensive one: setting it is a syscall-surface change, either

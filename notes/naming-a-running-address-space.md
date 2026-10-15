@@ -16,15 +16,15 @@ True, at `origin/main` e1f3ddf8c:
   `kernel/src/user/address_space_registry.rs`), and the name lives in that file's `USER_SPACES`.
 - `CONFIGURE` deletes the caller's capability (`thread_control_block_configure`,
   `kernel/src/syscall.rs:1366`) after `sched::configure_thread_control_block`
-  (`kernel/src/sched.rs:5544`) has called `user::take_user_address_space`. The space
+  (`sched/configure.rs`) has called `user::take_user_address_space`. The space
   moves into `Thread::space: Option<AddressSpace>` (`kernel/src/thread.rs:468`), owned outright.
   The comment at `syscall.rs:1363` says why the delete is there: "a second bind must not find it".
-- The thread's death frees the space: `reap_switched_out` takes `t.space` (`sched.rs:2737`) and drops
-  it. Init's space is kernel-built and adopted the same way (`adopt_address_space`, `sched.rs:5848`);
+- The thread's death frees the space: `reap_switched_out` takes `t.space` (`sched/switch.rs`) and drops
+  it. Init's space is kernel-built and adopted the same way (`adopt_address_space`, `sched/thread_control_block.rs`);
   it never enters `USER_SPACES`.
-- A region's `DESTROY` runs `reap_region_objects` (`sched.rs:5067`), then
+- A region's `DESTROY` runs `reap_region_objects` (`sched/region_reaping.rs`), then
   `user::reap_address_spaces_in_region`, which sees only unbound spaces, then unpins
-  (`reclaim_region`, `sched.rs:5348`). `revoke::revoke_region` (`kernel/src/revoke.rs:847`) carries
+  (`reclaim_region`, `sched/region_reaping.rs`). `revoke::revoke_region` (`kernel/src/revoke.rs:847`) carries
   the running-root `BUGS` entry that milestone 765 (a destroyed region cannot free the root a running
   thread walks) closes.
 
@@ -142,7 +142,7 @@ dead. seL4's is the derivation tree. Option A should borrow seL4's *authority* s
   the same authority with nife's ownership model.
 - Different in the 765 case: seL4 leaves the thread alive on an empty space, to fault. nife kills it.
   That divergence is right for nife, because `CONFIGURE` refuses anything but an embryo
-  (`sched.rs:5558`), so a nife thread that lost its space could never be given another.
+  (the embryo check in `configure_thread_control_block`, `sched/configure.rs`), so a nife thread that lost its space could never be given another.
 
 ## What option A must specify
 
@@ -156,7 +156,7 @@ capability-level revoke of a space is added. That is Zircon's "handle valid, ope
 
 Where the `AddressSpace` lives decides most of the code. The cleaner answer is that the registry
 owns every space, bound or not, and a thread caches its immutable root and tag for the context
-switch. The switch reads the root every time (`sched.rs:2460`) and must not take the
+switch. The switch reads the root every time (`schedule`, `sched/switch.rs`) and must not take the
 `ADDRESS_SPACES` lock.
 Then one owner, two removers (the thread's reap and the region sweep), and `remove` on a generational
 table is take-once, so a double free is not representable. The alternative leaves the space in the
@@ -188,7 +188,7 @@ thread can still run, and the existing order already guarantees that: `reclaim_r
 sweep frees the root in one place, which is simpler than freeing it through the corpse.
 
 One gap, reasoned from the code and not driven: a thread already `Dead` or `Finished` but not yet
-reaped still holds its space today, and `region_reap_verdict` (`sched.rs:4955`) says `Reap` for it.
+reaped still holds its space today, and `region_reap_verdict` (`sched/region_reaping.rs`) says `Reap` for it.
 If its TCB is outside R and its root inside, R can come back while the corpse still owns that root.
 The corpse's later `Drop` then calls `revoke::forget_root` on a page that may by then be someone
 else's root. Under A with registry ownership the sweep takes the space from under the corpse

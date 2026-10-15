@@ -39,7 +39,7 @@ consequence for the shell unstated.
 ## What the tree already provides, measured rather than assumed
 
 - The endpoint object is `Object::Rendezvous`, and the kernel's is `type Rendezvous =
-  inter_process_communication::Rendezvous<Thread>` (`kernel/src/sched.rs:73`).
+  inter_process_communication::Rendezvous<Thread>` (the alias in `sched/ipc_tables.rs`).
 - `crates/inter_process_communication`'s rendezvous is generic over `T: Node` and
   host-testable, with no privilege level anywhere in it. `ThreadControlBlock` is what implements
   `Node`.

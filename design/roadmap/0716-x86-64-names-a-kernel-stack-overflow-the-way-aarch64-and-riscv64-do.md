@@ -29,12 +29,12 @@ in a guard page. x86_64 has the stacks and the guard pages and never asks the qu
 - x86_64's fatal kernel-exception arm (`arch/x86_64/exceptions.rs`, the `vector =>` arm of
   `x86_trap_body`, near line 888) prints vector, error code, `rip`, `rsp`, `rflags` and, for vector 14,
   `cr2` (`faulting_address`, line 605), then panics. It never says that `cr2` is a guard page.
-- The guard pages exist on x86_64: `arch/x86_64/mmu.rs:1498` and `:1503` assert the boot and
+- The guard pages exist on x86_64: the `verify` asserts in `mmu/fine_map.rs` assert the boot and
   secondary guards are unmapped.
 - The cost is already visible as eight dead-code warnings (`GuardPage`, both `guard_page_at`s,
   `thread_stack_site`, `warn_if_guard_page`, `print_text_words`, `stack_area_span`, `is_mapped`),
-  recorded in `notes/ci.md` on #1472 as one chain with one cause. `is_mapped` is
-  `arch/x86_64/mmu.rs:691`, whose own doc names the shared caller `stack::print_text_words`.
+  recorded in `notes/ci.md` on #1472 as one chain with one cause. `is_mapped` is in
+  `mmu/kernel_map.rs`, and its own doc names the shared caller `stack::print_text_words`.
 
 Why it matters: the 2026-08-14 and 2026-08-16 incidents (`notes/stack/overflows-2026-08-14.md`,
 `notes/stack/guard-page-faults-2026-08-16.md`) were each read as a memory fault until the kernel
