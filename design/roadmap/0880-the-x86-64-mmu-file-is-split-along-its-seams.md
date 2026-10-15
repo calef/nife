@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-11
+built: 2026-10-12
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 282
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -20,9 +21,10 @@ Pull request #1892, for milestone 812 (`std::thread::spawn` runs real threads in
 space), was in flight when this was measured, and at its head it does not touch this file. If it
 changes this file before it merges, the line ranges below must be measured again.
 
-The cut and every module name below are calef's call. A lane writes them up as a
-`status: PROPOSED` file in `design/decisions/` before it moves a line, and its pull request
-carries `needs-architect`.
+The cut and every module name are calef's call. He ruled the shape on 2026-10-11 (UTC) in §282
+(when a file is split, the parent becomes an index), while ruling milestone 872 (the kernel's
+user-mode file is split along its seams) and its fork. The merge of #1988 applied it here the
+next day; every module name ships provisional.
 
 Reuse: not applicable; this moves code and adds none.
 
@@ -89,7 +91,13 @@ Every name here is provisional.
 `mmu.rs` stays a file beside an `mmu/` directory, the shape `kernel/src/user.rs` has beside
 `kernel/src/user/`.
 
-## What an architect has to rule
+## What an architect had to rule
+
+Answered 2026-10-12 (UTC) by the merge of #1988 under §282. The shootdown is a child of `mmu`,
+as recommended. `MapFailure` and `first_conflict` went with the claim enumeration they walk, into
+`claims.rs`, one seam over from `map_everything` in `fine_map.rs`, which is the recommendation's
+own reason. The names in the what-was-built table ship provisional. The questions stay here as
+they were asked.
 
 1. Whether the shootdown is a child of `mmu` or a sibling, `arch/x86_64/shootdown.rs`. The
    recommendation is a child. Its whole design argument, why it is an NMI and not an ordinary
@@ -156,10 +164,67 @@ Found with `grep` at `396187b0b`. A lane has to carry each one.
 5. `script/icount` is unchanged on x86_64, or each difference is explained.
 6. Each new module carries a `//! Name:` block marked provisional.
 
+## What was built
+
+Built 2026-10-12 (UTC), in pull request #1988, by lane `maintainer/last-three-over-2000` under
+§282. No 880 lane was ever cut: the ruling that answered this block's fork covered the work, and
+the sweep took the file with it. `kernel/src/arch/x86_64/mmu.rs` went from 2,192 lines to an
+index. Every name below is provisional.
+
+| file | lines | holds |
+|---|---|---|
+| `mmu.rs` | 81 | the index: module docs, the `Format` alias, every `mod` line with its re-export |
+| `mmu/fine_map.rs` | 308 | `map_everything`, `direct_map`, `map_range`, `verify` |
+| `mmu/user_space.rs` | 304 | `CR3`, the kernel half, the per-space map, unmap and translate |
+| `mmu/claims.rs` | 303 | `Claim`, `MapFailure`, `first_conflict`, the claim enumerations |
+| `mmu/map_tests.rs` | 265 | the eight tests, moved with their indent alone; the path `mmu::map_tests` is the same |
+| `mmu/memory_mapped_io_window.rs` | 264 | the fill ceiling, the MMIO hole, the BAR window and their refusal sentences |
+| `mmu/shootdown.rs` | 261 | the NMI shootdown and `revoke_port_grant_others` |
+| `mmu/kernel_map.rs` | 246 | `init`, `init_secondary`, the live tables under `KERNEL_MMU` |
+| `mmu/layout.rs` | 156 | the two bases, `phys_to_virt`, the fixed device addresses, `print_summary` |
+| `mmu/image_bounds.rs` | 76 | the linker symbols, `phys_to_ptr` |
+| `mmu/device_windows.rs` | 70 | the device windows |
+
+The done-when list, checked on `0f22bc9a4`:
+
+1. The parent is 81 lines and the largest child (`fine_map.rs`) is 308. The file-length row is
+   gone from `design/file-length-baseline.tsv`, removed in the same change; the baseline holds no
+   rows at all now.
+2. Code moved only: the split's line-multiset check against the old file found nothing changed
+   beyond `pub(super)`, the module headers and the index. `revoke_port_grant_others` became
+   `pub(in crate::arch::x86_64)`, the same reach it had. The split commit changes no Rust file
+   outside `kernel/src/arch/x86_64/`, so every `arch::mmu` path callers use still resolves.
+3. `script/test` passed on all three ISAs in #1988's CI (the aarch64 and riscv64 shard in 11m14s,
+   the x86_64 shard in 8m57s). This lane diffed the moved tests against the pre-split module:
+   byte-identical from the first `use` once dedented, eight `#[test_case]` on each side.
+4. The falsification record is now
+   `user.el0_boundary_tests.a_user_program_cannot_read_a_kernel_address.patch` (the test's module
+   path changed when `user.rs` was split, and the record's name follows the test, so the name
+   changed with it). Its x86_64 hunk patches `mmu/fine_map.rs`. This lane applied it and replayed
+   the test red on x86_64: panic at the test's headline assertion in
+   `system_tests/src/user/el0_boundary_tests.rs`, "the user
+   program read a kernel address and was NOT stopped". The replay is dated in the record.
+5. CI's icount tripwire passed on the split's head: `script/bench --check` on all three ISAs and
+   the instruction-count instrument, in the one `bench (icount regression tripwire)` job. No
+   x86_64 difference was recorded.
+6. The nine new modules carry a `//! Name:` block marked provisional. `map_tests.rs` is not new;
+   it carries the move note and its date.
+
+## Follow-on
+
+- **Recorded.** The live `mmu.rs:NNNN` citations this block named are stale now, and stand in
+  blocks this lane may not edit. 716's guard-page asserts at `:1498` and `:1503` are the `verify`
+  asserts in `mmu/fine_map.rs`, and its `:691` is `serve_shootdown_nmi` in `mmu/shootdown.rs`.
+  187's `:529` is the swapgs-window comment beside `serve_shootdown_nmi`. 320 heads a snippet
+  with a `mmu.rs` line comment over `PCI_ECAM_BUSES`, which lives in `mmu/layout.rs`. Each gets a
+  function name in place of a number. Listed on pull request #2201 for a maintainer lane.
+- **Decision.** Every module name is provisional and is calef's to rule, per
+  `design/decisions/0282-when-a-file-is-split-the-parent-becomes-an-index.md`.
+
 ## Index row
 
-The x86-64 MMU file is 2,192 lines. Two parts of it have no counterpart in the aarch64 and
-riscv64 ports: a software TLB shootdown by NMI, and the firmware memory map the direct map is
-built from. This moves those two into child modules, the second with its tests, and leaves a
-spine that reads beside the siblings section by section. The cut and every name are an
-architect's call.
+`kernel/src/arch/x86_64/mmu.rs` was 2,192 lines, over §266's ceiling, with two parts no sibling
+port has: a software TLB shootdown by NMI, and the firmware memory map the direct map is built
+from. It is now an 81-line index of nine child modules and its tests under
+`kernel/src/arch/x86_64/mmu/`, each named for what it holds, as §282 rules; the shootdown and the
+claims stand alone, as this block proposed. Every module name is provisional.
