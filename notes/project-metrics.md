@@ -258,6 +258,13 @@ Documents over each writing-standards limit; exempted ones count
 
 The 40-line comment-block cap: files holding a longer block, then the lines past it.
 
+## Line-number citations
+
+![Line-number citations](project-metrics/line-citations.svg)
+
+Citations by line number, which §277 (cite a heading or a symbol, never a line number) retires. The
+line is the code ceiling. Markdown is held at zero, so what remains there carries an exception marker.
+
 ## How it stays current
 
 `.github/workflows/metrics.yml` runs `script/metrics --update` daily and opens or refreshes a pull

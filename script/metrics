@@ -198,6 +198,7 @@ import coe_actions                                                          # no
 import comment_block_ratchet                                                # noqa: E402
 import crate_release                                                        # noqa: E402
 import interface_stability                                                  # noqa: E402
+import line_citations                                                       # noqa: E402
 import name_provenance                                                      # noqa: E402
 import packages as package_boundaries                                       # noqa: E402
 import prose_ratchet                                                        # noqa: E402
@@ -475,6 +476,9 @@ MEASURES = [
     ('writing-standards', ['writing_over_median', 'writing_over_longest', 'writing_over_bold']),
     ('comment-blocks', ['comment_block_files_over_cap', 'comment_blocks_over_cap',
                         'comment_block_excess_lines']),
+    # §277's ratchet the same way, through `line_citations.file_hits`, with the week's own ceiling.
+    # File, column and chart names provisional (maintainer/line-citations-chart).
+    ('line-citations', ['line_citations_code', 'line_citations_doc', 'line_citations_ceiling']),
     # `bold-backlog.csv` (2026W29 to 2026W41) is history that nothing writes or reads any more. The
     # bold backlog reached zero on 2026-10-06 (UTC) and calef asked that it stop being tracked; the
     # gate that holds it at zero is `check` in helpers/prose_ratchet.py, which refuses any bold
@@ -575,6 +579,22 @@ def _wanted(path):
             or (path.startswith('crates/') and path.endswith('.patch')))
 
 
+def _cat(oids):
+    """Each blob's text, in order, from one `git cat-file --batch`."""
+    if not oids:
+        return []
+    blob = subprocess.run(['git', 'cat-file', '--batch'],
+                          input=('\n'.join(oids) + '\n').encode(),
+                          capture_output=True, check=True).stdout
+    out, pos = [], 0
+    for _oid in oids:
+        end = blob.index(b'\n', pos)
+        size = int(blob[pos:end].split()[2])
+        out.append(blob[end + 1:end + 1 + size].decode('utf-8', 'replace'))
+        pos = end + 1 + size + 1
+    return out
+
+
 class Tree:
     """Every blob a metric reads in one commit: Rust, markdown, manifests and `script/` entries."""
 
@@ -583,32 +603,29 @@ class Tree:
         paths, oids = [], []
         # Every tracked path, wanted or not, for the homes measure: it asks whether each one has a
         # home, and the blob filter below is about which texts to read, not which paths exist.
-        self.paths, self.oid = [], {}
+        self.paths, self.oid, self.links = [], {}, set()
         for entry in git('ls-tree', '-r', '-z', rev).decode('utf-8', 'replace').split('\0'):
             if not entry:
                 continue
             meta, path = entry.split('\t', 1)
-            _mode, kind, oid = meta.split()
+            mode, kind, oid = meta.split()
             if kind != 'blob':
                 continue
             self.paths.append(path)
             self.oid[path] = oid
+            if mode == '120000':
+                self.links.add(path)
             if not _wanted(path):
                 continue
             paths.append(path)
             oids.append(oid)
-        self.text = {}
-        if not oids:
-            return
-        blob = subprocess.run(['git', 'cat-file', '--batch'],
-                              input=('\n'.join(oids) + '\n').encode(),
-                              capture_output=True, check=True).stdout
-        pos = 0
-        for path in paths:
-            end = blob.index(b'\n', pos)
-            size = int(blob[pos:end].split()[2])
-            self.text[path] = blob[end + 1:end + 1 + size].decode('utf-8', 'replace')
-            pos = end + 1 + size + 1
+        self.text = dict(zip(paths, _cat(oids)))
+
+    def read(self, paths):
+        """{path: text} for any of this commit's blobs, `_wanted` or not, in one more batch."""
+        missing = [p for p in paths if p not in self.text and p in self.oid]
+        return {**{p: self.text[p] for p in paths if p in self.text},
+                **dict(zip(missing, _cat([self.oid[p] for p in missing])))}
 
     def rust(self):
         return [(p, t) for p, t in self.text.items() if p.endswith('.rs')]
@@ -1649,6 +1666,28 @@ def comment_block_debt(tree):
             'comment_block_excess_lines': excess}
 
 
+_CODE_CEILING = re.compile(r'(?m)^CODE_CEILING = ([\d_]+)$')
+
+
+def line_citation_debt(tree):
+    """Line-number citations under §277 (cite a heading or a symbol, never a line number), by
+    `line_citations.file_hits` over its `in_scope` files, split into code and Markdown targets. A
+    marked citation counts. The ceiling is the week's own `CODE_CEILING`, blank before the gate.
+
+    The gate's scope is every text file, wider than `_wanted`, so this reads the rest of the week's
+    blobs itself; a binary blob holds a NUL and is skipped, as the gate skips it."""
+    paths = [p for p in tree.paths if line_citations.in_scope(p) and p not in tree.links]
+    counts = {'code': 0, 'doc': 0}
+    for path, text in tree.read(paths).items():
+        if '\0' in text:
+            continue
+        for _line, _target, kind in line_citations.file_hits(text, path, honor_marks=False):
+            counts[kind] += 1
+    ceiling = _CODE_CEILING.search(tree.read([line_citations.SELF]).get(line_citations.SELF, ''))
+    return {'line_citations_code': counts['code'], 'line_citations_doc': counts['doc'],
+            'line_citations_ceiling': int(ceiling.group(1)) if ceiling else ''}
+
+
 # Cumulative icount drift since a fixed anchor: milestone 415 item 3, which calef ruled on
 # 2026-09-26 (UTC) is a report and not a gate (§190). The arithmetic and its selftest are
 # helpers/baseline_drift.py. Three outputs: two cells per architecture in
@@ -1929,7 +1968,7 @@ def row_for(rev, week, coverage='', person_weeks='', coverage_min=''):
                  harnesses(tree),
                  unsafe_census(tree), unsafe_trust_census(tree),
                  fatal_risks_colors(tree), coe_action_counts(tree),
-                 writing_standards(tree), comment_block_debt(tree),
+                 writing_standards(tree), comment_block_debt(tree), line_citation_debt(tree),
                  homes(tree), crate_release_cells(tree)):
         row.update(part)
     row.update(baseline_drift.series_cells(rev))
@@ -2651,6 +2690,12 @@ CHARTS = [
      'file count',
      [('lines past the cap', 'comment_block_excess_lines')], 1000.0, None,
      'comment_block_excess_lines'),
+    # The ceiling moves when `--bank` lowers it, so it is a stored line (LINES), not `ceiling`.
+    ('line-citations.svg', 'Line-number citations',
+     'helpers/line_citations.py\'s measure; a marked citation counts, and the line is the week\'s '
+     'own code ceiling',
+     [('into code', 'line_citations_code'), ('into a Markdown document', 'line_citations_doc')],
+     1.0, None, 'line_citations_code'),
     # Milestone 611. Packages stack by where their home stands, with the ones that have left on
     # top: the end state is one band. Paths are a separate panel because a path that has left is
     # not in the tree to count, so that panel's end state is empty rather than full.
@@ -2982,13 +3027,13 @@ def github_anchor(heading):
 # it is arithmetic over a column already in the CSV, and a stored copy could disagree with it.
 # Charts whose series stand side by side rather than stacked, and charts that carry stored columns
 # as lines over the bars: [(legend label, column)]. The build chart's jobs run side by side, and
-# §213's limits overlap (one document can be over two), so neither may be summed. Only the build
-# chart carries lines.
+# §213's limits overlap (one document can be over two), so neither may be summed.
 GROUPED = {'ci-jobs.svg', 'writing-standards.svg'}
 # Two lines, so the second is dotted with open markers: solid and dashed already mean a trailing
 # mean's full and short window on this page (TRENDS).
 LINES = {'ci-jobs.svg': [('median build', 'ci_build_median_minutes'),
-                         ('p90 build', 'ci_build_p90_minutes')]}
+                         ('p90 build', 'ci_build_p90_minutes')],
+         'line-citations.svg': [('code ceiling', 'line_citations_ceiling')]}
 # Charts whose bars are read from a record when drawn rather than from stored columns:
 # chart -> function(weeks) returning (series, note), the note printed under the plot.
 SERIES_FROM = {'ci-jobs.svg': build_job_series}
@@ -3251,11 +3296,11 @@ def _fatal_risk_cases():
 
 
 def _ratchet_debt_cases():
-    """The three ratchet-debt series, driven with fixture trees: each counts what its gate's
-    function finds, an exempted item included, and nothing outside the gate's scope."""
-    def tree(text):
+    """The ratchet-debt series, driven with fixture trees: each counts what its gate's function
+    finds, an exempted item included, and nothing outside the gate's scope."""
+    def tree(text, links=()):
         t = Tree.__new__(Tree)
-        t.text = text
+        t.text, t.paths, t.oid, t.links = text, list(text), {}, set(links)
         return t
 
     long_sentence = ' '.join(['word'] * 45) + '.'
@@ -3271,7 +3316,22 @@ def _ratchet_debt_cases():
     at_cap = ''.join('// line %d\n' % k for k in range(40)) + 'fn g() {}\n'
     rust = tree({'a.rs': block + block, 'b.rs': at_cap,
                  'vendor/x.rs': block, 'notes/a.md': block})
+    # Each citation is built from its parts, or the gate would count this fixture as one.
+    def at(path, line):
+        return '%s:%d' % (path, line)
+    cites = {'notes/a.md': ('See %s and %s.\n<!-- line-citation: exception. Reason: a fixture. -->'
+                            '\n%s\n' % (at('notes/net.md', 63), at('x.rs', 12), at('notes/b.md', 3))),
+             'kernel/a.rs': '// %s\n' % at('sched.rs', 40), 'vendor/v.rs': at('a.rs', 1),
+             'bench/out.log': at('a.rs', 2), 'art/x.jpg': at('a.rs', 4) + '\0',
+             'notes/link.md': at('x.rs', 9)}
+    gated = dict(cites, **{line_citations.SELF: 'CODE_CEILING = 1_200\n'})
     return [
+        ('line citations: marked ones counted; vendor, data, binary and symlink skipped; the '
+         'week\'s own ceiling',
+         line_citation_debt(tree(gated, links=['notes/link.md'])),
+         {'line_citations_code': 2, 'line_citations_doc': 2, 'line_citations_ceiling': 1200}),
+        ('line citations: no ceiling before the gate existed',
+         line_citation_debt(tree(cites, links=['notes/link.md']))['line_citations_ceiling'], ''),
         ('writing standards: the gate\'s verdict, an exempted document counted, scope kept',
          writing_standards(prose),
          {'writing_over_median': 0, 'writing_over_longest': 2, 'writing_over_bold': 1}),

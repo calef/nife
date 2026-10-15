@@ -13,7 +13,7 @@ Two appendices are indexed here rather than in that table, because the register 
 
 - [function-length.md](function-length.md), the measure milestone 888 (a ratchet on function
   length)'s gate holds at zero.
-- [ratchet-debt.md](ratchet-debt.md), the debt the writing-standards and comment-block ratchets still hold, which
+- [ratchet-debt.md](ratchet-debt.md), the debt the writing-standards, comment-block and line-citation ratchets still hold, which
   the register's *The weekly series* table routes to.
 
 `ratchet-debt` Name: provisional, minted 2026-10-13 (UTC) by lane/ratchet-metrics, with the files
