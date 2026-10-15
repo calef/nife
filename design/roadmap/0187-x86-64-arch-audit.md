@@ -109,8 +109,8 @@ The bounding facts to re-establish here, which is the first hour's work and not 
   is exactly the question that archetype asks. Establish it before reading anything else.
 - `swapgs` is the x86_64 archetype of the class, and neither other ISA has one. Three
   instructions, `trap.s:105`, `:178`, `:206`. The window is single-copy by construction: between the
-  exit `swapgs` and the `iretq` the CPU is in ring 0 holding the *user's* GS base, and `mmu.rs:529`
-  already documents that window in its own comment. aarch64's per-CPU pointer is `TPIDR_EL1`, a
+  exit `swapgs` and the `iretq` the CPU is in ring 0 holding the *user's* GS base, and the comment
+  above `serve_shootdown_nmi` in `mmu/shootdown.rs` already documents that window. aarch64's per-CPU pointer is `TPIDR_EL1`, a
   system register no frame carries; riscv64's is `tp`, whose migration hazard the original audit
   already cleared. So the class transfers to x86_64 with an instance that has no precedent in the
   note, which is the best possible sign that the lens is still worth aiming.

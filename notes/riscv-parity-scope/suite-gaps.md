@@ -113,7 +113,7 @@ and that is the obstacle:
 Both are spawned bare (`sched::spawn` around `user::run`), not into a reclaimable region, so
 there is no `reclaim_region` to arm the kill with and no other way for a test to tear down a user
 thread it started. Making the module policeable therefore means giving the kernel a way to kill a
-bare user thread by `Tid`, which is a kernel change with its own design questions, not a test
+bare user thread by `ThreadId`, which is a kernel change with its own design questions, not a test
 reordering. Recorded here rather than done under a test lane. Reordering the runner *without* that
 change would simply turn a silent gap into a permanently red gate.
 
@@ -124,7 +124,7 @@ region, and the scheduler converts a killed thread to a corpse at its next preem
 armed kill, the tier §24's `^C` escalation stands on). What is missing is only the ability to name
 one thread instead of a region.
 
-1. `sched::kill_thread(tid: Tid)`, test-support, roughly ten lines: take `SCHED`, resolve `tid`, set
+1. `sched::kill_thread(tid: ThreadId)`, test-support, roughly ten lines: take `SCHED`, resolve `tid`, set
    `killed = true`. No new syscall and no change to the user-visible surface (rule 3 is about the
    syscall boundary; this is an in-kernel function for in-kernel tests).
 2. The two tests above kill their subject after asserting, and wait for `is_thread_present` to go

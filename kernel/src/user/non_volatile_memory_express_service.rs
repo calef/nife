@@ -427,7 +427,7 @@ pub fn start_dma_escape(image: &'static [u8]) -> Option<DmaEscape> {
 
 impl Wiring {
     /// Take the startup report, or `None` when this caller was not the one that wired the server.
-    /// Word 0 is [`filesystem_protocol::fixture::READY`] when the first command round-tripped, and
+    /// Word 0 is [`filesystem_protocol::READY`] when the first command round-tripped, and
     /// a `0xDEAD_..` word naming the failing step otherwise; word 1 is the namespace size the
     /// server was handed, so a bench transcript can see the geometry reached ring 3 intact.
     pub fn wait_for_ready(&self) -> Option<[u64; 5]> {

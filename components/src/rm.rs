@@ -28,7 +28,7 @@
 //!   holds the operand: the shell resolves any leading path at the prompt and grants **the
 //!   directory the name is in**, because taking a name away is an operation on a directory.
 //! - **slot 1**: a report endpoint, `WRITE`. Diagnostics and `-v` lines as framed text, then one
-//!   [`byte_sink_protocol::eof`] carrying the verdict; see [`filesystem_protocol::fixture::rm`] and [`verdict`].
+//!   [`byte_sink_protocol::eof`] carrying the verdict; see [`filesystem_protocol::rm`] and [`verdict`].
 //! - **[`PAGE_VA`]**: the page shared with the FS server, where a name goes out and a listing comes
 //!   back.
 //!
@@ -61,7 +61,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use filesystem_protocol::{dir, dirent, fixture, fs, grant};
+use filesystem_protocol::{dir, dirent, fs, grant, rm};
 use user_mode_runtime::mapped_window::MappedWindow;
 use user_mode_runtime::{call, exit, send};
 
@@ -361,7 +361,7 @@ fn text(bytes: &[u8]) {
 ///
 /// This program's manifest declares [`grant_plan::OutputSpec::Bytes`], which is the sink contract:
 /// self-framing byte messages ending in `OPERATION_EOF`. [`text`] always produced them, and the verdict
-/// used to be `filesystem_protocol::fixture::VERDICT`, a word that contract has no meaning for. Under the guest
+/// used to be `filesystem_fixture::VERDICT`, a word that contract has no meaning for. Under the guest
 /// wiring the reader was a test that knew to look for it; at the real prompt the reader is the shell,
 /// which reads the same three words through `byte_sink_protocol::unpack` and would have called it malformed.
 /// So `rm -rv logs | wc` had never been expressible, and the declaration and the program disagreed
@@ -394,8 +394,8 @@ pub extern "C" fn _start(spec: u64, name_lo: u64, name_hi: u64) -> ! {
         remove(fs::ROOT, &buf[..n], flags, 0, &mut count)
     };
     let status = match removal {
-        Ok(()) => fixture::rm::OK,
-        Err(errno) => fixture::rm::status(errno),
+        Ok(()) => rm::OK,
+        Err(errno) => rm::status(errno),
     };
     // The verdict, last and once. Anything this run printed went out before it, so a receiver that
     // takes this as its first message knows the run printed nothing, which is `rm(1)`'s default.

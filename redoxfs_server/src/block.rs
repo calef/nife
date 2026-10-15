@@ -27,7 +27,7 @@ pub const CACHE_SLOTS: usize = 256;
 /// **The one place in this tree that sees both the wire protocol and the store**, which is what
 /// makes the two assertions below possible at all: `filesystem_protocol` deliberately depends on nothing, and
 /// the vendored engine has never heard of it. Milestone 138 wrote them because it moved the record
-/// level, and `filesystem_protocol::fixture::throughput::RECORD`'s own comment named itself the soft spot a
+/// level, and `filesystem_fixture::throughput::RECORD`'s own comment named itself the soft spot a
 /// change like that would break silently.
 ///
 /// They are `const` assertions rather than tests so that they fire in the EL0 build too, where no
@@ -40,7 +40,7 @@ const _: () = {
     // The record-aligned throughput phase reads at multiples of `RECORD`, and that means what it
     // claims only while every such multiple is also a record boundary. See that constant's comment.
     assert!(
-        filesystem_protocol::fixture::throughput::RECORD
+        filesystem_fixture::throughput::RECORD
             .is_multiple_of(redoxfs::BLOCK_SIZE << redoxfs::RECORD_LEVEL)
     );
 

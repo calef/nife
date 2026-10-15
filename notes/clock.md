@@ -55,8 +55,8 @@ requires the counter to have moved only by the cost of the round trip.
 | set | the clock page, `MAP_RW` | one seqlock publish; nothing polices it |
 | propose | the propose endpoint, `WRITE` | one `CALL`; the service may refuse |
 
-Nothing new was needed in the kernel: the ladder is `Frame` with `READ`, `Frame` with `WRITE`, and
-`Endpoint` with `WRITE`. No new syscall, no new method, no new object type. Rights are already
+Nothing new was needed in the kernel: the ladder is `PageFrame` with `READ`, `PageFrame` with `WRITE`, and
+`Rendezvous` with `WRITE`. No new syscall, no new method, no new object type. Rights are already
 introspectable, so `caps` shows which rung a process is on.
 
 **Why set is a page and not a message.** A process has exactly one blocking wait point, because this
@@ -180,7 +180,7 @@ which is the one word neither unknown-clock sentence contains.
 ## What a std program sees
 
 `SystemTime::now()` is the clock page plus the counter, and a std program's whole wall-clock
-authority is slot 5 (a `Frame` capability with `READ`) and a read-only mapping at
+authority is slot 5 (a `PageFrame` capability with `READ`) and a read-only mapping at
 `rt::CLOCK_PAGE`. See notes/std.md.
 
 The uncomfortable part, recorded rather than smoothed over: `SystemTime::now()` has no error

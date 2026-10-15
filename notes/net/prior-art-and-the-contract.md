@@ -21,7 +21,7 @@ seL4 net_stack componentization (and the CAmkES/lwIP and later Rust efforts). Th
 component; clients reach it over seL4 endpoints, and bulk data moves through shared dataports
 (pre-shared memory regions), not through the IPC message. Control (open, connect, close, "data
 ready") travels as small messages on the endpoint; payload lives in the shared region. This is the
-cleanest match to what this kernel already has: an `Endpoint` for control and a delegated `Frame`
+cleanest match to what this kernel already has: a `Rendezvous` for control and a delegated `PageFrame`
 for the shared buffer. The lesson taken: keep the per-connection data plane in shared frames and the
 control plane in three-word messages, exactly the split DECISIONS §10 already chose for IPC.
 
@@ -136,7 +136,7 @@ a per-connection shared frame delegated at open time.
 
 - `Stack::open(kind, ...)` where `kind` is TCP or UDP -> a socket capability (a fresh endpoint
   minted by the server, or a small integer socket id carried on the stack endpoint; see open
-  question 1). At open, the client delegates (or the server delegates back) a shared `Frame` that
+  question 1). At open, the client delegates (or the server delegates back) a shared `PageFrame` that
   becomes that connection's TX/RX ring, seL4-dataport style.
 - `Socket::connect(ip, port)`, `Socket::bind(port)`, `Socket::listen`, `Socket::send(len)`,
   `Socket::recv() -> len`, `Socket::close`. `send`/`recv` carry only a length; the bytes are already

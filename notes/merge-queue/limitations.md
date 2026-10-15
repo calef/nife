@@ -157,6 +157,26 @@ a pull request object says it is in a merge queue. A queued pull request reports
 `mergeQueue.entries` is the only authority. The obvious field looking authoritative while being wrong
 is what cost the three hours. The verification now asks the queue.
 
+## The drain judges a new pull request against a stale `main`
+
+`merge-drain.sh`'s surface pass diffs each unlabeled pull request head against
+`git merge-base origin/main <head>` in its own checkout, and runs
+`helpers/architect-label-rules.py` on the result. That `main` is whatever the pass fetched, which
+can be one merge behind the base a just-opened pull request really branched from. Observed
+2026-10-15 (UTC) on #2202, an empty claim draft opened seconds after #2193 merged. The drain's
+`main` predated the merge, so the empty diff contained #2193's edits to `design/decisions/0203` and
+`0299`. The decisions rule fired, and the drain added `needs-architect` by its #1792 policy. The
+add cost calef the glance the policy prices it at.
+
+`architect-label.yml` is not exposed the same way: it resolves the pull request's own base at run
+time and fired nothing on the same pull request. Its header records the same exposure for the
+payload's cached `base.sha` (#1416); the drain's line carries it through its checkout rather than
+the payload. A second, cosmetic defect sat on the same run: the `HELD #N for an architect (...)`
+log line prints the previous record's causes, because `$causes` is assigned after the hold block
+uses it, so #2202's hold logged `(orphan)` from an unrelated adoption. The fix, when a lane takes
+it: diff against the pull request's real base fetched at pass time, or re-check a firing against a
+fresh fetch before holding, and assign `$causes` before the hold block prints it.
+
 ## The watchers
 
 - `lane-claim-check.sh` is only as alive as the drain is. It runs from the drain's pass and has no

@@ -1,5 +1,5 @@
+use filesystem_fixture::twodir as t;
 use filesystem_protocol::dir;
-use filesystem_protocol::fixture::twodir as t;
 
 use super::*;
 use crate::sched;
@@ -28,8 +28,8 @@ fn two_dir_witness() -> Option<u64> {
             // caretakers (`start_granted_two_dirs` reuses a pair asked for twice). The extra
             // rights do not widen what this witness proves: it opens by name, and the claim is
             // that each endpoint reaches only its own subtree.
-            a: (filesystem_protocol::fixture::tree::SUB, TWO_TREE_RIGHTS),
-            b: (filesystem_protocol::fixture::tree::OTHER, TWO_TREE_RIGHTS),
+            a: (filesystem_fixture::tree::SUB, TWO_TREE_RIGHTS),
+            b: (filesystem_fixture::tree::OTHER, TWO_TREE_RIGHTS),
             role: 10, // ROLE_TWO_DIR
             arg: 0,
             stack_pages: 0,
@@ -45,7 +45,7 @@ fn two_dir_witness() -> Option<u64> {
     let [tag, verdict, ..] = sched::ipc_receive(report);
     assert_eq!(
         tag,
-        filesystem_protocol::fixture::VERDICT,
+        filesystem_fixture::VERDICT,
         "the two-directory witness's report is not a verdict word",
     );
     Some(verdict)
@@ -105,8 +105,8 @@ fn two_tree_shell() -> Option<u64> {
             .expect("no fs_subtree_caretaker program in the initial ramdisk"),
         program("swish").expect("no swish program in the initial ramdisk"),
         fs_service::TwoDirGrant {
-            a: (filesystem_protocol::fixture::tree::SUB, rights),
-            b: (filesystem_protocol::fixture::tree::OTHER, rights),
+            a: (filesystem_fixture::tree::SUB, rights),
+            b: (filesystem_fixture::tree::OTHER, rights),
             role: ROLE_TWO_TREES,
             arg: filesystem_protocol::grant::spec(0, rights),
             // **Seven, measured.** This script plans an `rm`, and the planner's own frames in a
@@ -120,7 +120,7 @@ fn two_tree_shell() -> Option<u64> {
     let [tag, verdict, ..] = sched::ipc_receive(report);
     assert_eq!(
         tag,
-        filesystem_protocol::fixture::VERDICT,
+        filesystem_fixture::VERDICT,
         "the two-tree shell's report is not a verdict word",
     );
     Some(verdict)
@@ -139,7 +139,7 @@ fn two_tree_shell() -> Option<u64> {
 /// consistent with a shell that reaches nothing.
 #[test_case]
 fn a_shell_holding_two_trees_moves_between_them_and_crosses_neither() {
-    use filesystem_protocol::fixture::twotrees as tt;
+    use filesystem_fixture::twotrees as tt;
     if fs_service::fs_server_image().is_none() {
         crate::testing::skip!(fs_service::NO_FS_SERVER);
     }

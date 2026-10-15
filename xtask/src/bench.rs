@@ -557,7 +557,8 @@ fn run_bench(
     // whose virtual clock never waits on the host spins a full core forever instead of parking in
     // `hlt`. The other two runners `exec` (their own PID already *is* QEMU's), so `pkill -P` finds
     // nothing there and this is a no-op. Best-effort and silent either way: a runner that already
-    // exited leaves no children to find. See AGENTS.md, "Never leave QEMU running".
+    // exited leaves no children to find. The rule the bound enforces is
+    // notes/skills/qemu-hygiene/SKILL.md, "Never leave QEMU running".
     let _ = Command::new("pkill")
         .args(["-9", "-P", &runner_pid.to_string()])
         .status();

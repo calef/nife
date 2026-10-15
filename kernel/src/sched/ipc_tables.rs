@@ -64,7 +64,7 @@ pub const MAX_THREADS: usize = 256;
 
 pub(super) struct IpcTables {
     /// The thread table: generational names over page-resident TCBs. See [`Threads`];
-    /// design/kernel-objects-from-untyped.md D2 records the path, notes/tcb.md the storage.
+    /// design/kernel-objects-from-untyped.md D2 records the path, notes/thread-control-block.md the storage.
     pub(super) threads: Threads,
     /// Neither the run queue nor `current` live here any more: both moved to per-CPU storage
     /// (`cpu::PerCpu`, DECISIONS §11 steps 3a and 3b), because a single shared queue and a

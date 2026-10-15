@@ -22,3 +22,8 @@ workspace = true
 # provably the expansion of the pattern rather than a second opinion about it.
 [dev-dependencies]
 glob = { path = "../glob" }
+# The crate's own tests pin two of the fixture's names against the wire (a verdict word that
+# could be a byte count, subtree names that fit a grant's argument words). The fixture is test
+# data living in its own crate since milestone 886 (the filesystem test fixture moves to its own
+# crate), so the tests reach it as a dev dependency, which nothing shipping links.
+filesystem_fixture = { version = "0.1.0", path = "../filesystem_fixture" }

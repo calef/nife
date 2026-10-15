@@ -26,8 +26,7 @@ pub(crate) mod netproto;
 // The FS-service wire format (opcodes, request packing, the errno convention), generated verbatim
 // from `crates/filesystem_protocol/src/lib.rs`, with each module file inlined, by the same xtask
 // step. The fs PAL (`sys/fs`) is a client of it. `blk` in there belongs to the other party,
-// hence the allow. The crate's test fixture is not copied at all (milestone 886): it is test
-// data, and no std code reads it.
+// hence the allow.
 #[allow(dead_code)]
 pub(crate) mod fsproto;
 // The wall-clock contract (DECISIONS §43): the clock page's layout and its seqlock, the propose

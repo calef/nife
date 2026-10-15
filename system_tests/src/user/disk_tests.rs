@@ -74,7 +74,7 @@ fn the_disk_surveyor_reads_a_table_gptfdisk_wrote() {
     };
     // Past device bring-up, so a hang below is a hang in a read rather than in the driver.
     let [ready, ..] = crate::sched::ipc_receive(w.ready);
-    assert_eq!(ready, filesystem_protocol::fixture::READY);
+    assert_eq!(ready, filesystem_protocol::READY);
 
     // Message one: the roster, which is the authority that does NOT involve the disk.
     let [total, mmio, pci, ..] = crate::sched::ipc_receive(w.report);
@@ -304,13 +304,13 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
     if let Some(ready) = disk.blk_ready {
         // Past device bring-up, so a hang below is a hang in a write rather than in the driver.
         let [word, ..] = crate::sched::ipc_receive(ready);
-        assert_eq!(word, filesystem_protocol::fixture::READY);
+        assert_eq!(word, filesystem_protocol::READY);
     }
     let Some(entropy) = entropy_rendezvous() else {
         crate::testing::skip!("no virtio-rng device on the mmio bus (NIFE_RNG not set?)");
     };
     let maker = program("mkfs").expect("no mkfs program in the initial ramdisk");
-    use filesystem_protocol::fixture::blank;
+    use filesystem_fixture::blank;
 
     // 1. The partitioner, with the disk and NO entropy rendezvous. It must refuse, and it must refuse
     //    before writing anything, which is why the program draws all four ids first and lays out

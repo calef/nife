@@ -1295,7 +1295,7 @@ pub(crate) fn kernel_test_elf(package: &str, target: &str, who: &str) -> Option<
 /// - **`stick_maker`**: its tests build trees under the temp dir, and isolation refuses `statx`;
 ///   its only `unsafe` is FFI, which Miri cannot execute. `measured_boot` stays in on its own tests.
 /// - **`walk_pricing`**: `std::fs` code staging trees under the temp dir (`lstat` refused), and a
-///   timing instrument. `filesystem_protocol::fixture` stays in.
+///   timing instrument. `filesystem_fixture` stays in.
 ///
 /// **"Miri-clean" means the sampled paths.** The exhaustive suites gate themselves down under
 /// `cfg(miri)` (`network_time_protocol`, `globally_unique_identifier_partition_table`, `calendar`,

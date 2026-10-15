@@ -141,6 +141,7 @@ Found with `grep` at `396187b0b`. A lane has to carry each one.
   kernel stack overflow the way aarch64 and riscv64 do) cites `:1498`, `:1503` and `:691`.
   Milestone 187 (read the x86_64 arch tree through the lens the first arch audit used) cites
   `:529`. Each gets a function name in place of a number.
+  **Done.** Repointed by lane `maintainer/stale-line-citations` (#2206).
 - Comments elsewhere name `mmu::shoot_down_others` in `instructions.rs`, `irq.rs`, `ap_boot.rs`,
   `exceptions.rs` and `helpers/qemu-runner-x86_64.sh`. They still read true through the re-export,
   but each should name the new module.

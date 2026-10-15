@@ -1010,7 +1010,7 @@ pub fn run_blk_server(direct_memory_access_phys: u64) -> ! {
     let can_flush = init_with_features(0, true);
     // The device is up: signal readiness, so a hang here (bring-up) is distinct from a hang in the
     // first read completion. SEND rendezvous, so this also paces the test past bring-up.
-    send(BLK_READY, filesystem_protocol::fixture::READY, 0, 0);
+    send(BLK_READY, filesystem_protocol::READY, 0, 0);
     // How many device flushes have completed. Answered back on every successful `blk::FLUSH`, so a
     // client can tell a real round trip from a constant yes: see `filesystem_protocol::blk::FLUSH`.
     let mut flushes: i64 = 0;

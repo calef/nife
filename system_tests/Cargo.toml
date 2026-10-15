@@ -74,6 +74,7 @@ environment_protocol = { version = "0.1.0", path = "../crates/environment_protoc
 # stage 1: files, clock and memory)).
 c_program_fixture = { path = "../crates/c_program_fixture" }
 filesystem_protocol = { version = "0.1.0", path = "../crates/filesystem_protocol" }
+filesystem_fixture = { version = "0.1.0", path = "../crates/filesystem_fixture" }
 grant_plan = { version = "0.1.0", path = "../crates/grant_plan" }
 # The registration page's layout (milestone 129 (scheduled execution), DECISIONS §222 (who holds a
 # user's schedule)). The timetable test is the registrar until milestone 152 (durable delegation)

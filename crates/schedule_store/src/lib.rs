@@ -201,7 +201,7 @@ pub fn render_manifest(names: &[&[u8]], buf: &mut [u8]) -> Option<usize> {
 
 /// Fixture data the kernel's tests share, so the schedule document a reader meets in
 /// `timetable_tests` and in `login_tests`' start-up test is the same one, matching
-/// `filesystem_protocol::fixture`'s own convention.
+/// `filesystem_fixture`'s own convention.
 pub mod fixture {
     /// One `at-boot` entry and one `every` entry, matching `timetable::parse`'s own document shape
     /// (`components/timetable.conf`'s own reference document is the model): enough to prove the format

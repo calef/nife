@@ -23,7 +23,7 @@ investigate and decide, the same latitude this project already gives reversible 
 Every operation that deletes capabilities by physical range (`MemoryRegion::DESTROY`'s reclamation
 sweep, §132's capability-scoped `REVOKE`) currently walks every live thread in the system,
 checking every slot of every thread's capability table against the range in question
-(`kernel/src/sched.rs:2293`, `delete_page_frame_caps_where`). This is correct and was deliberately
+(`delete_page_frame_caps_where`, in `sched/capabilities.rs`). This is correct and was deliberately
 not fixed differently: capabilities in this system travel over IPC delegation, not only parent-child
 spawn, so a capability overlapping a given physical range could legitimately be sitting in any
 thread's table anywhere in the system, and there is no way to know that without either checking

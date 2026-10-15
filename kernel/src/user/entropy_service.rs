@@ -299,6 +299,12 @@ const TRNG_VA: u64 = address_space_map::pair_page(0x0000_0000_0094_0000);
 /// it is "no" too under QEMU's `virt` board, which carries no such node; that is the skip path
 /// this tree's whole CI runs through, and `crates/jh7110_entropy`'s own
 /// `discover_finds_nothing_on_qemus_virt_board` test pins it against the same blob.
+///
+/// Name: recorded (design/roadmap/0388-an-acronym-sweep-the-tree-can-do-at-once.md). The block
+/// argues the abbreviation is the hardware block's own, spelled `starfive,jh7110-trng` by the
+/// vendor's tree and `jh7110-trng.c` by mainline, a name received rather than authored. It does
+/// not settle that: AGENTS.md puts public function names in an architect's hands, and calef has
+/// not ruled on this one.
 #[cfg(target_arch = "riscv64")]
 pub fn jh7110_trng_device() -> Option<jh7110_entropy::Discovered> {
     jh7110_entropy::discover(&crate::device_tree().ok()?)
@@ -416,6 +422,11 @@ fn jh7110_clock_bring_up() -> Option<jh7110_clock_and_reset::Report> {
 /// Exposed rather than inlined into the tour because [`Wiring::clock`] carries what the hardware
 /// answered and not where it was asked, and the second half is the one a bench transcript cannot
 /// re-derive: a base that came from a constant is a base nobody on that machine confirmed.
+///
+/// Name: recorded (design/roadmap/0388-an-acronym-sweep-the-tree-can-do-at-once.md). The same
+/// received-spelling question as `jh7110_trng_device`, sharpened by calef's 2026-09-13 ruling
+/// that the crate spelling this block's clocks expands to `jh7110_clock_and_reset`. The function
+/// waits on the name ratification queue beside its sibling; it does not rule for itself.
 pub fn jh7110_crg_window() -> Option<jh7110_clock_and_reset::Found> {
     crate::memory::jh7110_clock_and_reset()
 }

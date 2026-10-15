@@ -1,5 +1,3 @@
-use crate::*;
-
 // The crate is `no_std`, so its own tests have to say where the allocating types come from. They
 // are here only to build fixtures; nothing under test allocates.
 extern crate std;
@@ -13,7 +11,7 @@ use std::vec::Vec;
 /// day when it was discovered from the far end instead of pinned here.
 #[test]
 fn the_crash_payloads_replace_each_other_completely() {
-    use fixture::crash;
+    use crate::crash;
     assert_eq!(
         crash::A.len(),
         crash::B.len(),
@@ -31,7 +29,7 @@ fn the_crash_payloads_replace_each_other_completely() {
 fn the_escape_bits_are_distinct() {
     // The attacker reports a bitmap and the test asserts an expected set, so two outcomes
     // sharing a bit would hide one of them and make a wrong verdict read as a right one.
-    use fixture::escape::*;
+    use crate::escape::*;
     let bits = [
         SECOND_FILE,
         WROTE,
@@ -56,7 +54,7 @@ fn the_escape_bits_are_distinct() {
 /// an expected set, so two outcomes on one bit make a wrong verdict read as a right one.
 #[test]
 fn the_directory_escape_bits_are_distinct() {
-    use fixture::dirscape::*;
+    use crate::dirscape::*;
     let bits = [
         REACHED_PARENT,
         REACHED_SIBLING,
@@ -90,7 +88,7 @@ fn the_directory_escape_bits_are_distinct() {
 /// clear bit, which reads exactly like the escape it is looking for having been prevented.
 #[test]
 fn the_absolute_probe_names_are_the_relative_ones_rooted() {
-    use fixture::tree::*;
+    use crate::tree::*;
     assert_eq!(ABS_INNER, format!("/{INNER}"));
     assert_eq!(ABS_SECRET, format!("/{SECRET}"));
 }
@@ -98,7 +96,7 @@ fn the_absolute_probe_names_are_the_relative_ones_rooted() {
 /// **The two-grant fixture's bits**, which had no distinctness test of its own at all.
 #[test]
 fn the_two_grant_bits_are_distinct() {
-    use fixture::twodir::*;
+    use crate::twodir::*;
     // The only fixture bit set with no distinctness test of its own, which milestone 326's run
     // found: five of its six bits could each become zero and nothing in the tree would say so.
     // Two of them are the structural finding notes/dir-capability.md records (an endpoint is
@@ -129,7 +127,7 @@ fn the_two_grant_bits_are_distinct() {
 /// numbers, so two phases sharing a name is two rows a reader cannot tell apart.
 #[test]
 fn every_throughput_phase_tag_has_its_own_name() {
-    use fixture::throughput::*;
+    use crate::throughput::*;
     let named = [
         (SEQ_WRITE, "fs_seq_write"),
         (SEQ_READ, "fs_seq_read"),
@@ -154,7 +152,7 @@ fn every_throughput_phase_tag_has_its_own_name() {
 /// a bit that meant two things would let one shell's success stand in for the other's failure.
 #[test]
 fn the_navigation_bits_are_distinct() {
-    use fixture::navscape::*;
+    use crate::navscape::*;
     let bits = [
         PWD_IS_ROOT,
         CLAMPED_AT_ROOT,
@@ -229,87 +227,87 @@ fn the_witness_bits_are_distinct_single_bits() {
         }
     }
     all_distinct_bits(&[
-        fixture::escape::SECOND_FILE,
-        fixture::escape::WROTE,
-        fixture::escape::TRUNCATED,
-        fixture::escape::CREATED,
-        fixture::escape::FORGED_HANDLE,
-        fixture::escape::GRANTED_READ_FAILED,
-        fixture::escape::WROTE_ATTR,
-        fixture::escape::GRANTED_ATTRS_FAILED,
+        crate::escape::SECOND_FILE,
+        crate::escape::WROTE,
+        crate::escape::TRUNCATED,
+        crate::escape::CREATED,
+        crate::escape::FORGED_HANDLE,
+        crate::escape::GRANTED_READ_FAILED,
+        crate::escape::WROTE_ATTR,
+        crate::escape::GRANTED_ATTRS_FAILED,
     ]);
     all_distinct_bits(&[
-        fixture::dirscape::REACHED_PARENT,
-        fixture::dirscape::REACHED_SIBLING,
-        fixture::dirscape::WALKED_UP,
-        fixture::dirscape::WIDENED,
-        fixture::dirscape::ENUMERATED,
-        fixture::dirscape::DESCENDED,
-        fixture::dirscape::CREATED,
-        fixture::dirscape::WROTE,
-        fixture::dirscape::RENAMED,
-        fixture::dirscape::ENUMERATED_A_STRANGER,
-        fixture::dirscape::FORGED_HANDLE,
-        fixture::dirscape::GRANTED_ACCESS_FAILED,
-        fixture::dirscape::MADE_A_DIR,
-        fixture::dirscape::OPENED_ITS_OWN,
-        fixture::dirscape::READ_ATTRS,
-        fixture::dirscape::SET_AN_ATTR,
-        fixture::dirscape::REACHED_AN_UNMATCHED_NAME,
+        crate::dirscape::REACHED_PARENT,
+        crate::dirscape::REACHED_SIBLING,
+        crate::dirscape::WALKED_UP,
+        crate::dirscape::WIDENED,
+        crate::dirscape::ENUMERATED,
+        crate::dirscape::DESCENDED,
+        crate::dirscape::CREATED,
+        crate::dirscape::WROTE,
+        crate::dirscape::RENAMED,
+        crate::dirscape::ENUMERATED_A_STRANGER,
+        crate::dirscape::FORGED_HANDLE,
+        crate::dirscape::GRANTED_ACCESS_FAILED,
+        crate::dirscape::MADE_A_DIR,
+        crate::dirscape::OPENED_ITS_OWN,
+        crate::dirscape::READ_ATTRS,
+        crate::dirscape::SET_AN_ATTR,
+        crate::dirscape::REACHED_AN_UNMATCHED_NAME,
     ]);
     all_distinct_bits(&[
-        fixture::navscape::PWD_IS_ROOT,
-        fixture::navscape::CLAMPED_AT_ROOT,
-        fixture::navscape::WALKED_UP,
-        fixture::navscape::ABSOLUTE_IS_MY_ROOT,
-        fixture::navscape::REACHED_INNER,
-        fixture::navscape::REACHED_SECRET,
-        fixture::navscape::LISTED,
-        fixture::navscape::SAW_INNER,
-        fixture::navscape::SAW_SECRET,
-        fixture::navscape::DESCENDED,
-        fixture::navscape::RETURNED,
-        fixture::navscape::CREATED,
-        fixture::navscape::MADE_DIR,
-        fixture::navscape::UNLINKED,
-        fixture::navscape::HOLDER_KEPT_READING,
-        fixture::navscape::NAME_GONE_AFTER_UNLINK,
-        fixture::navscape::UNLINK_REFUSED_A_DIRECTORY,
-        fixture::navscape::NAVIGATION_FAILED,
-        fixture::navscape::RMDIR_REFUSED_NON_EMPTY,
-        fixture::navscape::RMDIR_REMOVED_EMPTY,
-        fixture::navscape::ABSOLUTE_REACHED_INNER,
-        fixture::navscape::ABSOLUTE_REACHED_SECRET,
-        fixture::navscape::ABSOLUTE_CLAMPED_AT_ROOT,
-        fixture::navscape::TOUCH_CREATED,
-        fixture::navscape::TOUCH_PRESERVED,
-        fixture::navscape::TOUCH_MTIME_ADVANCED,
-        fixture::navscape::TOUCH_AT_ROUND_TRIPPED,
-        fixture::navscape::TOUCH_NOW_NEEDS_ONLY_WRITE,
-        fixture::navscape::TOUCH_AT_REFUSED_WITHOUT_SETTIME,
+        crate::navscape::PWD_IS_ROOT,
+        crate::navscape::CLAMPED_AT_ROOT,
+        crate::navscape::WALKED_UP,
+        crate::navscape::ABSOLUTE_IS_MY_ROOT,
+        crate::navscape::REACHED_INNER,
+        crate::navscape::REACHED_SECRET,
+        crate::navscape::LISTED,
+        crate::navscape::SAW_INNER,
+        crate::navscape::SAW_SECRET,
+        crate::navscape::DESCENDED,
+        crate::navscape::RETURNED,
+        crate::navscape::CREATED,
+        crate::navscape::MADE_DIR,
+        crate::navscape::UNLINKED,
+        crate::navscape::HOLDER_KEPT_READING,
+        crate::navscape::NAME_GONE_AFTER_UNLINK,
+        crate::navscape::UNLINK_REFUSED_A_DIRECTORY,
+        crate::navscape::NAVIGATION_FAILED,
+        crate::navscape::RMDIR_REFUSED_NON_EMPTY,
+        crate::navscape::RMDIR_REMOVED_EMPTY,
+        crate::navscape::ABSOLUTE_REACHED_INNER,
+        crate::navscape::ABSOLUTE_REACHED_SECRET,
+        crate::navscape::ABSOLUTE_CLAMPED_AT_ROOT,
+        crate::navscape::TOUCH_CREATED,
+        crate::navscape::TOUCH_PRESERVED,
+        crate::navscape::TOUCH_MTIME_ADVANCED,
+        crate::navscape::TOUCH_AT_ROUND_TRIPPED,
+        crate::navscape::TOUCH_NOW_NEEDS_ONLY_WRITE,
+        crate::navscape::TOUCH_AT_REFUSED_WITHOUT_SETTIME,
     ]);
     all_distinct_bits(&[
-        fixture::globscape::EXPANDED,
-        fixture::globscape::AGREED,
-        fixture::globscape::EXCLUDED_A_STRANGER,
-        fixture::globscape::NO_MATCH_REFUSED,
-        fixture::globscape::PATTERN_IN_PATH_REFUSED,
-        fixture::globscape::TEXT_UNTOUCHED,
-        fixture::globscape::GLOB_FAILED,
+        crate::globscape::EXPANDED,
+        crate::globscape::AGREED,
+        crate::globscape::EXCLUDED_A_STRANGER,
+        crate::globscape::NO_MATCH_REFUSED,
+        crate::globscape::PATTERN_IN_PATH_REFUSED,
+        crate::globscape::TEXT_UNTOUCHED,
+        crate::globscape::GLOB_FAILED,
     ]);
     all_distinct_bits(&[
-        fixture::attrs::SET_AND_READ_BACK,
-        fixture::attrs::LISTED,
-        fixture::attrs::SURVIVED_RENAME,
-        fixture::attrs::GONE_AFTER_REMOVE,
-        fixture::attrs::GONE_AFTER_UNLINK,
-        fixture::attrs::OVERSIZE_REFUSED,
-        fixture::attrs::STORE_UNNAMEABLE,
-        fixture::attrs::STORE_UNLISTED,
-        fixture::attrs::ATTRS_FAILED,
+        crate::attrs::SET_AND_READ_BACK,
+        crate::attrs::LISTED,
+        crate::attrs::SURVIVED_RENAME,
+        crate::attrs::GONE_AFTER_REMOVE,
+        crate::attrs::GONE_AFTER_UNLINK,
+        crate::attrs::OVERSIZE_REFUSED,
+        crate::attrs::STORE_UNNAMEABLE,
+        crate::attrs::STORE_UNLISTED,
+        crate::attrs::ATTRS_FAILED,
     ]);
     assert_eq!(
-        fixture::attrs::EXPECTED,
+        crate::attrs::EXPECTED,
         255,
         "the eight required claims, bits 0 through 7"
     );
@@ -322,7 +320,7 @@ fn the_witness_bits_are_distinct_single_bits() {
 /// is an interface.
 #[test]
 fn a_sized_file_cycles_the_alphabet_and_breaks_every_sixty_four() {
-    use fixture::walk::sized_byte;
+    use crate::walk::sized_byte;
     assert_eq!(sized_byte(0), b'a');
     assert_eq!(sized_byte(25), b'z');
     assert_eq!(sized_byte(26), b'a');
@@ -336,7 +334,7 @@ fn a_sized_file_cycles_the_alphabet_and_breaks_every_sixty_four() {
 /// numeric order and none collides.
 #[test]
 fn the_wide_directory_names_are_n_and_three_digits() {
-    use fixture::walk::wide_name;
+    use crate::walk::wide_name;
     assert_eq!(&wide_name(0), b"n000");
     assert_eq!(&wide_name(7), b"n007");
     assert_eq!(&wide_name(45), b"n045");
@@ -346,11 +344,11 @@ fn the_wide_directory_names_are_n_and_three_digits() {
 
 /// **The match list's three regions meet where the shape says**, spelled out by hand: the chain's
 /// top and bottom, the wide directory's first and last, and the narrow file. The kernel harness and
-/// the host's `rg` both compare against [`fixture::walk::rg_match_path`], so a wrong path here
+/// the host's `rg` both compare against [`crate::walk::rg_match_path`], so a wrong path here
 /// would be agreed on by both sides and fail neither.
 #[test]
 fn the_rg_match_paths_meet_at_the_region_boundaries() {
-    use fixture::walk::*;
+    use crate::walk::*;
     let path = |i| {
         let mut buf = [0u8; 32];
         let len = rg_match_path(i, &mut buf);
@@ -371,7 +369,7 @@ fn the_rg_match_paths_meet_at_the_region_boundaries() {
 /// these, so a wrong constant here makes the walk fail on the wrong thing.
 #[test]
 fn the_walk_totals_are_what_the_shape_adds_up_to() {
-    use fixture::walk::*;
+    use crate::walk::*;
     assert_eq!(WALK_DIRS, 12);
     assert_eq!(WALK_FILES, 141);
     assert_eq!(WALK_ENTRIES, 153);
@@ -389,7 +387,7 @@ fn the_walk_totals_are_what_the_shape_adds_up_to() {
 /// set could still match.
 #[test]
 fn every_two_trees_flag_is_its_own_single_bit() {
-    use fixture::twotrees::*;
+    use crate::twotrees::*;
     let flags = [
         PWD_STARTS_AT_ROOT,
         LISTED_ROOT,

@@ -6,7 +6,7 @@
 //! cargo run --release -p walk_pricing --example rg_host -- <path to rg> [runs]
 //! ```
 //!
-//! The command line is `filesystem_protocol::fixture::walk::RG_SEARCH`, split into words by
+//! The command line is `filesystem_fixture::walk::RG_SEARCH`, split into words by
 //! `grant_plan::each_word`, the function that builds nife's argv, so both sides hear the same
 //! words. It runs with the staged tree as its working directory. Its output goes to a pipe this program drains, which is
 //! the nearest thing on a host to nife's byte sink. The figure compared is ripgrep's own
@@ -26,7 +26,7 @@
 use std::process::Command;
 use std::time::Instant;
 
-use filesystem_protocol::fixture::walk as tree;
+use filesystem_fixture::walk as tree;
 
 /// `rg --stats`'s last line, `<seconds> seconds`, in nanoseconds.
 fn rg_seconds(text: &str) -> Option<u128> {

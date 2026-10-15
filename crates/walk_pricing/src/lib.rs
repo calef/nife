@@ -11,7 +11,7 @@
 //! # What it separates
 //!
 //! One number for a walk hides which half of the system is expensive, so [`price`] measures four
-//! things over [`filesystem_protocol::fixture::walk`]'s tree, each a slope over one variable with
+//! things over [`filesystem_fixture::walk`]'s tree, each a slope over one variable with
 //! the others held still:
 //!
 //! - **per component**: reading the one small file at each level of a chain of directories, from
@@ -53,7 +53,7 @@ use std::path::Path;
 use std::time::Instant;
 use std::{fs, io};
 
-use filesystem_protocol::fixture::walk as tree;
+use filesystem_fixture::walk as tree;
 
 /// Timed runs per slope point. Odd, so the median is a run rather than an average of two. Three
 /// rather than five because the kernel suite runs this under TCG on three architectures inside a

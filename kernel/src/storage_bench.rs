@@ -312,7 +312,7 @@ fn through_el0(slot: &Slot, r: &ReadReport, write: bool) -> El0 {
         return El0::NotStarted;
     };
     let ready = crate::sched::ipc_receive(w.ready);
-    if ready[0] != filesystem_protocol::fixture::READY {
+    if ready[0] != filesystem_protocol::READY {
         return El0::NotReady(ready[0], ready[1], ready[2]);
     }
     let call = |op, block| crate::sched::ipc_call(w.request, [blk::req(op, 1), block])[0] as i64;

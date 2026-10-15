@@ -114,7 +114,7 @@ pub(crate) fn install_boot() -> bool {
             // And then read the file back, which is what makes this an install rather than a boot.
             ("made-on-target", "wc made-on-target\r"),
         ],
-        // `wc`'s answer for `filesystem_protocol::fixture::blank::MADE_BODY`: one line, ten words,
+        // `wc`'s answer for `filesystem_fixture::blank::MADE_BODY`: one line, ten words,
         // fifty-seven bytes. Written out rather than derived, because a gate that computed the
         // number from the same constant the program wrote would be checking its own arithmetic.
         "1 10 57",

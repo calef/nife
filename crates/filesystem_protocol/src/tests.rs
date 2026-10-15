@@ -49,7 +49,7 @@ fn errors_are_negated_errnos_and_invert() {
 /// test pass for the wrong reason.
 #[test]
 fn the_subtree_fixture_is_grantable_and_unambiguous() {
-    use fixture::tree::*;
+    use filesystem_fixture::tree::*;
     for name in [
         SUB, INNER, DEEPER, LEAF, OTHER, SECRET, MADE, MADE_DIR, MOVED, NAV_KEPT, NAV_GONE,
         NAV_DIR, NAV_EMPTY, NAV_INSIDE,
@@ -118,24 +118,20 @@ fn a_text_frame_and_a_verdict_are_told_apart_by_the_first_word() {
     // it should fail the build rather than wait for someone to run the suite. Same discipline as
     // the clock service's step-bound assertion (§43).
     const _: () = assert!(
-        fixture::VERDICT > 16,
+        filesystem_fixture::VERDICT > 16,
         "a verdict word that could be a byte count would make a diagnostic read as a verdict",
     );
     // And the caretakers' two answers to a descent are told apart the same way, which is what
     // lets init read one word and know whether it holds a capability or a refusal.
     const _: () = assert!(
-        fixture::READY != fixture::DESCENT_REFUSED,
+        crate::READY != crate::DESCENT_REFUSED,
         "a caretaker's two possible answers must not be the same word",
     );
     // And a non-zero status is the errno, so the two ends agree about what failed rather than
     // only that something did.
-    assert_eq!(fixture::rm::status(dir::EROFS), dir::EROFS as u64);
-    assert_ne!(fixture::rm::status(dir::EROFS), fixture::rm::OK);
-    assert_eq!(
-        fixture::rm::OK,
-        0,
-        "success is zero, as every shell expects"
-    );
+    assert_eq!(crate::rm::status(dir::EROFS), dir::EROFS as u64);
+    assert_ne!(crate::rm::status(dir::EROFS), crate::rm::OK);
+    assert_eq!(crate::rm::OK, 0, "success is zero, as every shell expects");
 }
 
 /// **The set the globbing lane grants is exactly what the pattern matches**, checked against the
@@ -147,7 +143,7 @@ fn a_text_frame_and_a_verdict_are_told_apart_by_the_first_word() {
 /// two names in the set and neither of the two controls, over the fixture as staged.
 #[test]
 fn the_glob_fixture_is_matched_by_the_pattern_it_is_staged_for() {
-    use fixture::tree;
+    use filesystem_fixture::tree;
     let p = tree::GLOB_PATTERN;
     for name in [tree::GLOB_ONE, tree::GLOB_TWO] {
         assert!(
@@ -178,11 +174,11 @@ fn the_glob_fixture_is_matched_by_the_pattern_it_is_staged_for() {
 /// `script/swish-check` asserts two literal strings at a real prompt, and a literal is only
 /// worth asserting if it is the answer rather than a second opinion about it. So this pins all
 /// three claims: the pattern matches every name and not the control, there are more names than
-/// one grant can carry, and the batch boundary falls where [`fixture::tree::MANY_FIRST_BATCH`]
+/// one grant can carry, and the batch boundary falls where [`filesystem_fixture::tree::MANY_FIRST_BATCH`]
 /// says it does.
 #[test]
 fn the_batching_fixture_is_over_the_bound_and_splits_where_the_gate_says() {
-    use fixture::tree;
+    use filesystem_fixture::tree;
     let p = tree::MANY_PATTERN;
     for name in tree::MANY_NAMES {
         assert!(
@@ -220,7 +216,7 @@ fn the_batching_fixture_is_over_the_bound_and_splits_where_the_gate_says() {
 /// something the bits no longer spell.
 #[test]
 fn the_attribute_witness_bits_are_distinct_and_its_expectation_matches_them() {
-    use fixture::attrs::*;
+    use filesystem_fixture::attrs::*;
     let bits = [
         SET_AND_READ_BACK,
         LISTED,
@@ -256,7 +252,7 @@ fn the_attribute_witness_bits_are_distinct_and_its_expectation_matches_them() {
     // default kind should fail the build rather than wait for the suite. The same discipline
     // `a_text_frame_and_a_verdict_are_told_apart_by_the_first_word` uses.
     const _: () = assert!(
-        fixture::attrs::KIND != xattr::RAW,
+        filesystem_fixture::attrs::KIND != xattr::RAW,
         "a default kind would hide a layer that dropped it",
     );
 }

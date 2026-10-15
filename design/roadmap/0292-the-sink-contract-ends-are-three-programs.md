@@ -39,6 +39,10 @@ because none of them was a `#[path]` module:
 | `kernel/src/user/sink_tests.rs:9` | `ROLE_WRITER = 0` |
 | `kernel/src/user/fs_service.rs:1272-1273` | `SINK_ROLE_FILE = 1`, `SINK_ROLE_VERIFY = 2` |
 
+The table is a dated record, quoting the tree as this milestone found it at its build on
+2026-09-14: the split deleted every copy it lists, and the `fs_service.rs` it cites is now an index
+of child modules, so no row names a file as it stands now.
+
 Three sites, six constant definitions, and the split deleted every one. Counted by grepping the
 values and not only the names, because a bare `arg0: 1` would not have shown up in a search for
 `ROLE_`; there were none. (`components/src/disk_partitioner.rs` and

@@ -22,17 +22,22 @@ a_read_only_directory_capability_reaches_its_subtree_and_nothing_above_it` on aa
 x86_64: red at exactly that assertion on all three. The hunk is portable userspace code, so one patch
 serves every leg.
 
+Re-cut 2026-10-15 (UTC) by the milestone 886 (the filesystem test fixture moves to its own crate)
+lane: the
+hunk's context line names the readiness word, which moved from `filesystem_protocol::fixture::READY`
+to `filesystem_protocol::READY`. The mutation is unchanged. Replayed red on aarch64
+the same day, at exactly the assertion quoted above, then reverted.
+
 What it does not reach: `redoxfs_server::check_component`, the refusal of `..` and of names carrying
 `/`. A defect there would set `WALKED_UP`, and this record does not show that bit can be set.
 
 diff --git a/components/src/fs_subtree_caretaker.rs b/components/src/fs_subtree_caretaker.rs
-index 43dde5f15..209062b16 100644
 --- a/components/src/fs_subtree_caretaker.rs
 +++ b/components/src/fs_subtree_caretaker.rs
-@@ -303,7 +303,7 @@ pub extern "C" fn _start(name_lo: u64, name_hi: u64, spec: u64) -> ! {
+@@ -287,7 +287,7 @@ pub extern "C" fn _start(name_lo: u64, name_hi: u64, spec: u64) -> ! {
      }
  
-     send(REPORT, filesystem_protocol::fixture::READY, 0, 0);
+     send(REPORT, filesystem_protocol::READY, 0, 0);
 -    serve(r0);
 +    serve(fs::ROOT);
  }

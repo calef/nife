@@ -17,8 +17,8 @@
 //! Cross-ISA: the caretaker, the protocol and the shell are portable programs (DECISIONS §19
 //! (architectural parity is a tenet)).
 
+use filesystem_fixture::{dirscape as esc, navscape as nb, tree};
 use filesystem_protocol::dir;
-use filesystem_protocol::fixture::{dirscape as esc, navscape as nb, tree};
 
 use super::dir_capability_tests::{assert_verdict, attack_a_subtree};
 use super::shell_navigation_tests::{ALWAYS, navigate};

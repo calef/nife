@@ -24,9 +24,11 @@ stayed a safe fn on purpose, with the argument written where a reader meets it
 are one `impl Transport` block, and the compiler closes the caller set. So the obligation really is
 discharged by the module rather than onto nobody.
 
-The call sites carry the cost the block predicted. `kernel/src/sched.rs:1477` is the context
+The call sites carry the cost the block predicted. `schedule`'s `switch_user_root` call (in
+`sched/switch.rs`) is the context
 switch, and its SAFETY comment argues liveness from `on_cpu` and `Running` after `SCHED` is released
-rather than restating the signature; `kernel/src/sched.rs:2827` carries its own separate argument.
+rather than restating the signature; the one in `adopt_address_space`
+(`sched/thread_control_block.rs`) carries its own separate argument.
 
 One gate did arrive, adjacent to the headline property rather than on it: `script/lint` now checks
 that every `unsafe fn` states its contract in a `# Safety` section. It checks that a contract is

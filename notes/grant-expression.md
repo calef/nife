@@ -264,7 +264,7 @@ what the two-tier interrupt (DECISIONS §24) needs, and nothing more.
   place control rides in memory rather than a message, and the note says why.
 - **A job untyped** the shell splits from its own budget and delegates for the progenitor to build the *whole*
   child from, so the child's region is one the shell holds. That is what makes the forcible tier a
-  capability the shell already has: a second `^C` tears the job down with `Untyped::DESTROY` on that
+  capability the shell already has: a second `^C` tears the job down with `MemoryRegion::DESTROY` on that
   region (which force-kills the resident thread, §16 amendment). Even a runaway that ignores the
   cooperative flag ends and the prompt returns.
 

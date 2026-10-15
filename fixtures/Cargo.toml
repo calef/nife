@@ -548,6 +548,7 @@ elf = { version = "0.1.0", path = "../crates/elf" }
 # given.
 manifest_note = { version = "0.1.0", path = "../crates/manifest_note" }
 filesystem_protocol = { version = "0.1.0", path = "../crates/filesystem_protocol" }
+filesystem_fixture = { version = "0.1.0", path = "../crates/filesystem_fixture" }
 graphics_protocol = { version = "0.1.0", path = "../crates/graphics_protocol" }
 line_editor = { version = "0.1.0", path = "../crates/line_editor" }
 byte_sink_protocol = { version = "0.1.0", path = "../crates/byte_sink_protocol" }

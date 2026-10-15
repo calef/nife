@@ -20,6 +20,15 @@
 set -e
 cd "$(dirname "$0")/.."
 
+# The checks call python3 helpers that import tomllib, stdlib since 3.11. Found 2026-10-15
+# (milestone 352 (DECISIONS 113's rename reaches the prose)) when the pre-push gate died mid-run on a 3.9 system python. Fail here, with
+# the fix, rather than several checks in.
+if ! python3 -c 'import tomllib' >/dev/null 2>&1; then
+    echo "script/lint: python3 has no tomllib; this tree's checks need Python 3.11 or newer." >&2
+    echo "  Put a newer python3 first on PATH and rerun, e.g. PATH=\"/<dir-with-python3.11+>:\$PATH\" script/lint" >&2
+    exit 1
+fi
+
 # This project's own QEMU, if `script/ci-qemu` has built one. This file matches its own
 # "the project's QEMU is on PATH" rule below, because a checker's source necessarily
 # carries every pattern it looks for; taking the line is cheaper than an exemption.
@@ -356,9 +365,10 @@ cargo clippy -p components -p fixtures -p user_mode_runtime --target x86_64-unkn
 # counting arm of `IrqSafeMutex::lock` and the reaper's timing (kernel/src/lock_wait.rs).
 #
 # On BOTH ISAs since milestone 41. riscv64 was linted only under `watchdog_probe` before, so the
-# whole riscv `shell` boot path (`user::riscv_shell_boot` and the console it builds) was compiled
-# by `cargo xtask` and checked by nobody. Parity is a gate, not an aspiration (DECISIONS §19), and
-# that applies to the gate itself.
+# whole riscv `shell` boot path (`user::riscv_shell_boot` then; `boot_progenitor` since milestone
+# 166) and the console it builds were compiled by `cargo xtask` and checked by nobody.
+# Architectural parity is a gate, not an aspiration (DECISIONS §19 (architectural parity is a
+# tenet)), and that applies to the gate itself.
 for tgt in aarch64-unknown-none-softfloat riscv64imac-unknown-none-elf; do
     for feat in shell bench icount board fastpath_pad soak_test cycle_counter_grant lock_wait; do
         echo "==> clippy: kernel --features $feat ($tgt)"

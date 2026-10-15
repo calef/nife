@@ -207,6 +207,7 @@ home and replayed red at its headline assertion on aarch64.
 - **Done.** The riscv64 `syscall_entry` change is recorded in `bench/fastpath-riscv64.txt`.
 - **Recorded.** The `user.rs:NNNN` citations in other milestones' blocks go to a maintainer follow-up,
   listed on pull request #1959.
+- **Done.** Repointed by lane `maintainer/stale-line-citations` (#2206).
 
 ## Index row
 

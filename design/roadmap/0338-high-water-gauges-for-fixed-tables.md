@@ -13,7 +13,7 @@ Filed 2026-09-03 as an unnumbered proposal by the milestone 247 sweep,
 from milestone 231's block; numbered 2026-09-19 by milestone 433. **Premise re-checked 2026-09-19 and
 it holds.** `kernel/src/cap.rs` still carries the only gauge of its kind
 (`CAPABILITY_TABLE_PEAK_MEASURED`, `PEAK_REPORTED`, `PEAK_STABLE_PASSES`),
-`kernel/src/sched.rs:189` still carries `PEAK_THREADS` as a separate mechanism reported in a
+`kernel/src/sched/thread_table.rs` still carries `PEAK_THREADS` as a separate mechanism reported in a
 different place, and `kernel/src/memory.rs`'s `MAX_REGIONS` and `crates/nifefs`'s `NAME_LEN` still
 have no gauge at all. `cap.rs:199` names those two as the tree's own precedent for the failure being
 described.

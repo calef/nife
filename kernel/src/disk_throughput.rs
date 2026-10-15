@@ -212,7 +212,7 @@ fn bring_up(image: &'static [u8]) -> Result<Wiring, Verdict> {
     #[cfg(target_arch = "x86_64")]
     crate::arch::iommu::print_context(disk.rid);
     if let Some(report) = disk.wait_for_ready()
-        && report[0] != filesystem_protocol::fixture::READY
+        && report[0] != filesystem_protocol::READY
     {
         println!(
             "disk-throughput: the server did not come up: step word {:#x}, first-read status {:#x}",

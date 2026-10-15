@@ -1,6 +1,6 @@
 use byte_sink_protocol::eof;
-use filesystem_protocol::dir;
-use filesystem_protocol::fixture::{VERDICT, globscape as gb, rm as rr, tree};
+use filesystem_fixture::{VERDICT, globscape as gb, tree};
+use filesystem_protocol::{dir, rm as rr};
 
 use super::*;
 use crate::sched;

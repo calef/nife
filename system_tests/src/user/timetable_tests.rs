@@ -111,7 +111,7 @@ fn narrowed_archive(programs: &[&'static str]) -> &'static [u8] {
 
 /// **Spawn the timetable the way a boot would**, and hand back the three endpoints it is wired to.
 ///
-/// Deliberately the same endowment shape `spawn_init` and `c_seam_tests::spawn_confiner` use (the
+/// Deliberately the same endowment shape `spawn_hello` and `c_seam_tests::spawn_confiner` use (the
 /// archive read-only at `INITIAL_RAMDISK_VA`, capabilities in numbered slots, nothing privileged),
 /// so what is under test is the scheduler rather than a shortcut. Its complete authority is the
 /// four slots below, which is the same list `components/src/timetable.rs`'s header states and the

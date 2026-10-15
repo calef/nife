@@ -127,7 +127,7 @@ pub(super) fn fs_throughput() {
         blk_image,
         redoxfs_server,
         fs_test_client,
-        filesystem_protocol::fixture::throughput::ROLE,
+        filesystem_fixture::throughput::ROLE,
     ) else {
         return; // no RedoxFS disk on this run
     };
@@ -140,9 +140,9 @@ pub(super) fn fs_throughput() {
         let _ = sched::ipc_receive(ready);
     }
     let hz = crate::arch::timer::frequency();
-    for _ in 0..filesystem_protocol::fixture::throughput::PHASES {
+    for _ in 0..filesystem_fixture::throughput::PHASES {
         let [ticks, transfers, phase, ..] = sched::ipc_receive(report);
-        let Some(name) = filesystem_protocol::fixture::throughput::name(phase) else {
+        let Some(name) = filesystem_fixture::throughput::name(phase) else {
             println!("bench-probe: fs_throughput unknown phase {phase}");
             continue;
         };
@@ -153,7 +153,7 @@ pub(super) fn fs_throughput() {
         // without which the interesting figures here (1.52 and 2.59) both print as "2". Ticks of
         // zero would mean the counter did not advance across a whole phase, which is a broken run
         // rather than a fast one, so it reports zero instead of dividing.
-        let bytes = transfers * filesystem_protocol::fixture::throughput::UNIT as u64;
+        let bytes = transfers * filesystem_fixture::throughput::UNIT as u64;
         let hundredths = bytes
             .checked_mul(hz)
             .and_then(|v| v.checked_mul(100))
@@ -206,7 +206,7 @@ pub(super) fn fs_walk() {
         server,
         caretaker,
         walker,
-        filesystem_protocol::fixture::walk::ROOT,
+        filesystem_fixture::walk::ROOT,
         dir::ENUMERATE | dir::READ | dir::DESCEND,
         None,
     ) else {
@@ -235,7 +235,7 @@ pub(super) fn fs_walk_bound() {
         blk,
         server,
         walker,
-        filesystem_protocol::fixture::walk::ROOT,
+        filesystem_fixture::walk::ROOT,
         dir::ENUMERATE | dir::READ | dir::DESCEND,
     ) else {
         return;
@@ -282,8 +282,8 @@ pub(super) fn rg_search() {
         println!("bench-probe: rg_search skipped (no rg in the archive; cargo xtask basalt-fetch)");
         return;
     };
+    use filesystem_fixture::walk as tree;
     use filesystem_protocol::dir;
-    use filesystem_protocol::fixture::walk as tree;
     let hz = crate::arch::timer::frequency();
     let mut searched = [0u64; RG_SEARCH_RUNS];
     let mut whole = [0u64; RG_SEARCH_RUNS];

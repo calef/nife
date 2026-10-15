@@ -162,11 +162,6 @@ could still take.
 - **It says nothing about a server that is alive and simply never replies**, which is the case that
   motivated milestone 133 and is answered by a deadline on `CALL` (milestone 106's fork, not this
   one's) or by ending the thread (133's).
-- Milestone 133's own block and note both still say `Tcb`, a name DECISIONS §113 retired on
-  2026-08-23 in favor of `ThreadControlBlock`. They predate the rename and were never swept, because
-  `script/roadmap`'s staleness gates reach `BUILT`, `REMOVED` and now `PARTIAL` blocks, and 133 is
-  `NOT-STARTED`.
-
 - **A server that is alive and holding a reply capability it never uses still strands its caller**,
   and that is not an oversight: it is the same case the third bullet below names. Nothing here
   fires while the server is running, because nothing has happened that the kernel witnesses.

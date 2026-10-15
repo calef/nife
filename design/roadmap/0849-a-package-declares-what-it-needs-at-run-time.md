@@ -68,7 +68,7 @@ Nothing joins these. No gate knows that `uuid` (in `core-tools`) declares `entro
 What it is handed, and by whom: the only thing that runs it is the kernel's test harness, not
 the progenitor. `system_tests/src/user/ripgrep_tests.rs:71` calls `fs_service::start_std_full`, which
 starts a RedoxFS server if none is running and spawns `rg` with three capabilities
-(`kernel/src/user/fs_service.rs:2005-2014`):
+(`fs_service/std_start.rs`):
 
 | Slot | What | Why `rg` needs it |
 |---|---|---|
