@@ -99,7 +99,7 @@ protocol for the shell to ask it to run, which is squarely *anything two program
 pages, an x86_64 timebase placeholder and `endow.maps` -- nothing else. The `maps` a normal job may
 receive are chosen at `:2451-2462` and are exactly three: a filesystem client page, the clock page,
 or the config page, with the comment *"One extra mapping at most, today"*. `INITIAL_RAMDISK_VA` reaches only
-the kernel-spawned progenitor (`kernel/src/user.rs:999`, `:1762`), and `a1` carries the manifest's
+the kernel-spawned progenitor (mapped in `user/entry.rs` and `user/progenitor_boot.rs`), and `a1` carries the manifest's
 integer argument rather than `initial_ramdisk_len`.
 
 So a supervisor launched from the prompt cannot read `job_mix_task`'s bytes. It is the same gap
@@ -122,7 +122,7 @@ The shell's whole budget is `SH_BUDGET_PAGES = 128` (`components/src/swish.rs:14
 A supervisor needs, roughly: 34 children at about 40 pages each for segments, stack, page tables and
 a TCB; 32 task budgets at `job_mix::TASK_BUDGET_PAGES` (25); and 67 rendezvous pages. That is about
 2,200 pages, call it 3,072 with headroom, 12 MiB. The progenitor's own root region is 12,288
-pages (`kernel/src/user.rs:1780`) with roughly 2,800 already committed to the shell, the jobs pool,
+pages (created by `boot_progenitor`, `user/progenitor_boot.rs`) with roughly 2,800 already committed to the shell, the jobs pool,
 the credentialer and login, so the memory exists. What does not exist is a route from it to a
 shell-spawned program, and widening `SH_BUDGET_PAGES` by a factor of twenty-four to carry one
 benchmark is a cost every interactive boot pays.

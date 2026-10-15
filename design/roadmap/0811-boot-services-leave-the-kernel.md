@@ -38,20 +38,20 @@ architecture.
 |---|---|---|---|---|
 | `fs_service::root_directory` | `boot_progenitor` (`user/progenitor_boot.rs`) | `block_driver` (`spawn_block_server`, `fs_service/wiring.rs`), `redoxfs_server` (`spawn_fs_server`, `fs_service/wiring.rs`) | all | virtio: a `Virtio` cap, an `Irq`, DMA pages as spawn-time mappings; the FS server gets a `MemoryRegion` budget and the channel pages |
 | the NVMe arm of the above | `nvme_disk` (`fs_service/wiring.rs`), only when booted from NVMe | `non_volatile_memory_express` (§86's data plane) | all (exercised on `x86_64`) | BAR0's doorbell page and a DMA run, as mappings; the kernel keeps the admin plane |
-| `boot_clock_page` | `user.rs:2442` → `user.rs:3188` | `clock` (`clock_service.rs:58`) | all | the clock page, and the RTC page as a mapping on aarch64 and riscv64; on `x86_64` a CMOS reading as an argument (§130) |
-| `boot_instruction_entropy` | `user.rs:2545` → `user.rs:3331` | `entropy` in instruction mode | `x86_64`, aarch64 with `FEAT_RNG`; riscv64 answers `None` | two endpoints; no device |
-| `boot_usb_keyboard` | `user.rs:2704` → `user.rs:2944` | `usb_keyboard_driver` | all | an `Irq`, about a dozen xHCI register pages and eleven DMA pages as mappings |
-| `boot_screen_terminal` | `user.rs:2721` → `user.rs:3591` | `framebuffer_driver`, `display_terminal` | all, UEFI boots only | the firmware screen's aperture |
-| `boot_e1000e_network` | `user.rs:2850` → `user.rs:3392` | `net_stack` over an `e1000e` | all (a PCIe part; exercised on `x86_64`) | BAR0's two queue pages and an 18-page DMA region as mappings |
-| `boot_designware_network` | `user.rs:2852` → `user.rs:3451` | `net_stack` over radon's GMAC | riscv64 | nothing until `PROVEN_ON_SILICON` |
-| `install_service::confirm` | `user.rs:2881` | `system_installer` (confirm role) | `x86_64` | one disk's NVMe endpoint |
+| `boot_clock_page` | `boot_progenitor`; starter in `user/device_starters.rs` | `clock` (`clock_service.rs:58`) | all | the clock page, and the RTC page as a mapping on aarch64 and riscv64; on `x86_64` a CMOS reading as an argument (§130) |
+| `boot_instruction_entropy` | `boot_progenitor`; starter in `user/device_starters.rs` | `entropy` in instruction mode | `x86_64`, aarch64 with `FEAT_RNG`; riscv64 answers `None` | two endpoints; no device |
+| `boot_usb_keyboard` | `boot_progenitor`; starter in `user/device_starters.rs` | `usb_keyboard_driver` | all | an `Irq`, about a dozen xHCI register pages and eleven DMA pages as mappings |
+| `boot_screen_terminal` | `boot_progenitor`; starter in `user/device_starters.rs` | `framebuffer_driver`, `display_terminal` | all, UEFI boots only | the firmware screen's aperture |
+| `boot_e1000e_network` | `boot_progenitor`; starter in `user/device_starters.rs` | `net_stack` over an `e1000e` | all (a PCIe part; exercised on `x86_64`) | BAR0's two queue pages and an 18-page DMA region as mappings |
+| `boot_designware_network` | `boot_progenitor`; starter in `user/device_starters.rs` | `net_stack` over radon's GMAC | riscv64 | nothing until `PROVEN_ON_SILICON` |
+| `install_service::confirm` | `boot_progenitor`; in `user/install_service.rs` | `system_installer` (confirm role) | `x86_64` | one disk's NVMe endpoint |
 
 ### Started by the kernel on a real boot, outside `boot_progenitor`
 
 | starter | call site | spawns | arch |
 |---|---|---|---|
 | `install_service::offer` | `kernel/src/lib.rs:1051` | `non_volatile_memory_express`, `entropy`, `system_installer`, `mkfs` | `x86_64`, a boot from a file only |
-| `x86_userspace_demo` | `lib.rs:943` → `user.rs:2018` | two hand-assembled children | `x86_64`, every boot |
+| `x86_userspace_demo` | `lib.rs:943`; the demo is in `user/boot_demos.rs` | two hand-assembled children | `x86_64`, every boot |
 | tour: `console_service::start` | `lib.rs:2134` | `console` | aarch64 |
 | tour: `virtio_service::start`, `start_pci` | `lib.rs:2207`, `lib.rs:2244` | the virtio and PCIe block demos | aarch64 |
 | tour: `outlaw` | `lib.rs:2267`, `lib.rs:1328` | `outlaw` | aarch64, riscv64 |
@@ -89,7 +89,7 @@ the driver, not the boot.
 | a DMA run for a PCIe device | `PageFrame` run | yes (unverified that the IOMMU binding survives a grant rather than a kernel-built mapping) | NVMe, e1000e, xHCI |
 | several contiguous MMIO pages | `DeviceFrame` names one page | no | xHCI's register window |
 | a firmware aperture | `PageFrame` run (`display_service.rs:121`) | yes | `framebuffer_driver` |
-| "the CPU has a seed instruction" | none; a fact, not an object | no slot for a fact (`user.rs:3331`'s doc) | `entropy` in instruction mode |
+| "the CPU has a seed instruction" | none; a fact, not an object | no slot for a fact (`boot_instruction_entropy`'s doc, in `user/device_starters.rs`) | `entropy` in instruction mode |
 | CMOS wall clock on `x86_64` | none; ports stay kernel-resident (§121 (what a device capability is when the device has no page: x86 port I/O)) | the reading can travel in the clock page | `clock` |
 
 Two gaps are real. A multi-page device window has no capability, and the progenitor's capability
@@ -202,7 +202,7 @@ A test proves both, on aarch64, riscv64 and `x86_64` under QEMU, on the default 
 `shell` build:
 
 1. The kernel spawns only the progenitor. The kernel counts every user process it builds (the
-   `run`/`run_with` path, `user.rs:1648`) and prints the count at the hand-over;
+   `run`/`run_with` path, `user/entry.rs`) and prints the count at the hand-over;
    `script/swish-check` requires it to read 1 at the prompt.
 2. `redoxfs_server` dies and its supervisor restarts it. The test arms the server to fault (the
    arming `fs_service::start_crash` uses, carried by the progenitor's spawn). The transcript shows
