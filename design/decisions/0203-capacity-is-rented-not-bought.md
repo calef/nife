@@ -19,6 +19,9 @@ freed by reducing inference spend rather than increased.
 **Rent. Do not buy a machine.** Rented capacity is elastic, API-driven, needs no capital, and bare
 metal you install your own operating system on is open enough for nife to run on it.
 
+[§299 (the build machine is bought)](0299-the-build-machine-is-bought.md) amends this ruling for
+one machine, galapagos, which buying repaid within a year.
+
 ## Why buying lost, with the numbers that decided it
 
 A bought machine was weighed seriously and priced against what this tree measures. Two candidates
