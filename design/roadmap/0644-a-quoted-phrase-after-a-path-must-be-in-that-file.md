@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-09-24
+built: 2026-10-15
 promoted_from: a-quoted-phrase-after-a-path-must-be-in-that-file
 milestone_dependencies: none
 decision_dependencies: none
@@ -22,8 +23,8 @@ already checks the same thing for two other shapes.
 ## The claim
 
 The tree cites a section of a document in one common shape: a path, then the section's heading or a
-phrase from it, in quotation marks. `notes/interrupts.md, "Testing it with no device on RISC-V"` is
-one. Nothing checks that the quoted phrase is still in the file the path names.
+phrase from it, in quotation marks. `notes/interrupts.md, "Testing it with no device"` is one.
+Nothing checks that the quoted phrase is still in the file the path names.
 
 `script/citations` already checks two neighbors of this shape. An attributed block quote
 (`> -- path`) must still exist in the file it names, and a gloss after `milestone N` or `§N` must
@@ -58,6 +59,54 @@ form already allows.
 If a lane's added lines produce more false positives than the 5 in 14 measured over the whole
 tree, the rule costs more attention than it saves. The first week's failures are the measurement.
 
+## Built 2026-10-15 (UTC): the third shape is a ratchet rule
+
+Written by the milestone 644 lane. The proposal above is kept as written, with one exception
+recorded here: its example line quoted a phrase a later split of `notes/interrupts.md` had divided
+in two, which is the defect this milestone exists for, and the example now quotes the heading the
+file has today.
+
+`script/citations --ratchet` judges every line a branch adds for the shape: a path that resolves
+from the repository root, then a comma, then a quoted phrase of six characters or more. It fails
+when the phrase is not in the file the path names, matched on the same normalization as the
+attributed quotations (whitespace collapsed, emphasis and double-quote punctuation dropped). A
+quotation that is stale on purpose carries `quotation: exception. Reason: ...` on its line or the
+one above, the reach `helpers/line_citations.py` allows its own marker. The false-positive shapes
+the audit's looser scan caught stay out on resolution: `runs.txt, "<run_id> <lane>"` in a usage
+template and `kani_lib.c, "machine model macos"` in a list of search strings name no file from the
+root, so they are never judged, and the possessive (`AGENTS.md's "old wording"`, the historical
+form) has no comma, so the scanner never sees it.
+
+Measured at the lane's base `8fad33799`: 128 citations in the shape, 125 with a path that resolves,
+12 quoting a phrase the file does not hold.
+
+- 10 were stale, and this lane fixed them: six QEMU pointers and the lane-count pointer aimed at
+  text the skills split had moved out of AGENTS.md and CLAUDE.md, a comment in
+  `crates/swap_protocol` quoting a sentence `notes/hung-component.md` no longer has, a census row
+  abbreviating "milestone 74's" to "M-74's" inside its quotation, and this block's example.
+- 1 was not rot: design/roadmap/0610 quotes "What stable would mean" and the note's heading is
+  `## What "stable" would mean`. Normalization now drops double-quote punctuation, which its
+  docstring had claimed all along, and the citation passes with no edit.
+- 1 is routed, not fixed: design/decisions/0196 quotes design/roadmap/0198's "Rescoped
+  2026-09-19", gone from that block. A developer lane does not edit `design/decisions/`; the
+  finding is in the pull request for the maintainer to land or drop.
+- 1 is unchecked by construction: `notes/kani-upstream/pr-4913-review.md` cites `kani-upstream.md`
+  for `notes/kani-upstream.md`, a walk-up shorthand that resolves neither from the root nor from
+  the citing file's directory. That is a BUGS entry, not a false positive.
+
+The gate's first week starts from that zero. Proven on this branch before the docs landed, by
+planting one line at a time and committing it: a stale quotation failed with its line and phrase; a
+current phrase passed; the marker above the line exempted a planted deliberate quotation; and the
+gloss ratchet still fired on the same plant for its own reason (a bare `milestone 644` with no
+gloss), which is the two rules composing rather than competing.
+
+Against the proposal's bar for not worth doing: the audit's five non-rot cases do not match the
+landed shape, so the measured false-positive rate on added lines starts at zero.
+
 ## Index row
 
-`script/citations` checks two citation shapes but not a path followed by a quoted section phrase. Proposed: extend it so a phrase quoted after a path must still be in that file.
+`script/citations --ratchet` checks three citation shapes; the third, since 2026-10-15, is that a
+phrase quoted after a path must still be in the file the path names, on lines a branch adds. A
+deliberate old quotation carries `quotation: exception. Reason: ...` on its line or the one above.
+Normalization drops double-quote punctuation, so a heading that scare-quotes its term still
+matches.
