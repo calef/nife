@@ -77,7 +77,10 @@ pub fn prepare(
     dp.start(region, tails);
     let poison = [POISON; PROBE_LEN + CRC_BYTES];
     region.write_bytes(layout::rx_buffer(0), &poison);
-    let mut back = [0u8; PROBE_LEN + CRC_BYTES];
+    // A copy of the poison, so the read-back covers exactly the bytes poisoned: a second length
+    // written out here could drift from the first, and `sim::Memory`'s write-allocate cache would
+    // hide a short one.
+    let mut back = poison;
     region.read_bytes(layout::rx_buffer(0), &mut back);
     dp.transmit(region, tails, &probe_frame(mac))
 }

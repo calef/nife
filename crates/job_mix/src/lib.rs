@@ -592,6 +592,34 @@ mod tests {
         assert_eq!(order(12_345), order(12_345));
     }
 
+    /// **The order a published run used does not move.** Seed 1 is the one the kernel hands its
+    /// first task, so this is the sequence every recorded sweep's task 0 walked. Changing the
+    /// arithmetic would change it, and the BUGS on [`order`] says why that is refused.
+    #[test]
+    fn the_first_tasks_order_is_the_one_every_recorded_run_used() {
+        assert_eq!(
+            order(1),
+            [
+                MAP,
+                YIELD,
+                ROUND_TRIP,
+                TOUCH,
+                NULL_SYSCALL,
+                SPAWN,
+                ROUND_TRIP,
+                TOUCH,
+                NULL_SYSCALL,
+                COMPUTE,
+                ROUND_TRIP,
+                ROUND_TRIP,
+                MAP,
+                COMPUTE,
+                YIELD,
+                SPAWN,
+            ]
+        );
+    }
+
     /// The metric, against a case worked by hand: 600 jobs in one second of a 4 MHz counter is
     /// 36,000 jobs per minute.
     #[test]

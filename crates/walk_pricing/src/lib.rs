@@ -210,7 +210,13 @@ fn median_ns(mut f: impl FnMut() -> io::Result<()>) -> io::Result<u64> {
         *run = u64::try_from(t0.elapsed().as_nanos()).unwrap_or(u64::MAX);
     }
     runs.sort_unstable();
-    Ok(runs[REPS / 2])
+    Ok(*middle(&runs))
+}
+
+/// The middle element of a sorted, odd-length slice. Both medians here take it, so the index is
+/// written once and tested on values a test controls, which a real clock is not.
+fn middle<T>(sorted: &[T]) -> &T {
+    &sorted[sorted.len() / 2]
 }
 
 /// Least-squares slope of `ys` over `xs`, in the units of `ys` per unit of `xs`.
@@ -310,7 +316,7 @@ pub fn price(root: &Path) -> io::Result<Price> {
         wholes.push((since(t0), split));
     }
     wholes.sort_unstable_by_key(|&(ns, _)| ns);
-    let (whole, split) = wholes[WHOLE_REPS / 2];
+    let (whole, split) = *middle(&wholes);
     let (whole_min, whole_max) = (wholes[0].0, wholes[WHOLE_REPS - 1].0);
 
     Ok(Price {
@@ -599,6 +605,13 @@ mod tests {
         );
         assert!((p.per_entry() - 7.0).abs() < 1e-9, "{}", p.per_entry());
         assert!((p.per_kib() - 3.0).abs() < 1e-9, "{}", p.per_kib());
+    }
+
+    /// The middle of five is the third. Real timings tie too often to tell it from the second, so
+    /// the index is checked here on values that cannot.
+    #[test]
+    fn the_middle_of_five_sorted_values_is_the_third() {
+        assert_eq!(*middle(&[10, 20, 30, 40, 50]), 30);
     }
 
     /// `median_ns` runs its closure once untimed and then `REPS` times, and answers what the middle

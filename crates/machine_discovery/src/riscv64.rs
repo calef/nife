@@ -577,16 +577,23 @@ pub const IMPLEMENTATIONS: [Implementation; 7] = [
 
 // The registry assigns these sequentially, so "row i has id i" is both the duplicate check and a
 // check that nobody inserted a row in the middle and shifted the rest off their real ids.
-const _: () = {
+const _: () = assert!(
+    ids_are_sequential(&IMPLEMENTATIONS),
+    "IMPLEMENTATIONS is out of order or has a gap; the registry assigns ids sequentially"
+);
+
+/// Does row `i` of `table` carry id `i`, for every row? A function for the reason
+/// [`crate::aarch64`]'s duplicate check is one: so a test can show it refuses a bad table.
+const fn ids_are_sequential(table: &[Implementation]) -> bool {
     let mut i = 0;
-    while i < IMPLEMENTATIONS.len() {
-        assert!(
-            IMPLEMENTATIONS[i].id as usize == i,
-            "IMPLEMENTATIONS is out of order or has a gap; the registry assigns ids sequentially"
-        );
+    while i < table.len() {
+        if table[i].id as usize != i {
+            return false;
+        }
         i += 1;
     }
-};
+    true
+}
 
 /// **What this RISC-V machine is.** One record, populated once at boot, printed at boot.
 ///
@@ -1097,5 +1104,16 @@ mod verification {
             None => assert!(info.firmware),
         }
         kani::cover!(info.bits() == Some(64), "a 64-bit counter decodes as 64");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The build-time order check refuses a table whose first row is not id 0.
+    #[test]
+    fn the_order_check_refuses_a_row_off_its_id() {
+        assert!(!ids_are_sequential(&[Implementation { id: 1, name: "" }]));
     }
 }

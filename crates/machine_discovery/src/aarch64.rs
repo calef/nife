@@ -278,20 +278,28 @@ pub const IMPLEMENTERS: [Implementer; 14] = [
 
 // A code listed twice would shadow whichever row came second, and the shadowed vendor would be
 // unreportable for as long as the table lived. Cheaper as a compile error than as a test.
-const _: () = {
+const _: () = assert!(
+    codes_are_distinct(&IMPLEMENTERS),
+    "two rows of IMPLEMENTERS share a code"
+);
+
+/// Does every row of `table` carry its own code? A function rather than a loop inside the `const`
+/// above, because a check that only ever meets a good table cannot show it would refuse a bad one,
+/// and this one is fed a bad one in the tests below.
+const fn codes_are_distinct(table: &[Implementer]) -> bool {
     let mut i = 0;
-    while i < IMPLEMENTERS.len() {
+    while i < table.len() {
         let mut j = i + 1;
-        while j < IMPLEMENTERS.len() {
-            assert!(
-                IMPLEMENTERS[i].code != IMPLEMENTERS[j].code,
-                "two rows of IMPLEMENTERS share a code"
-            );
+        while j < table.len() {
+            if table[i].code == table[j].code {
+                return false;
+            }
             j += 1;
         }
         i += 1;
     }
-};
+    true
+}
 
 /// **How a PSCI call leaves EL1.**
 ///
@@ -415,5 +423,18 @@ impl Psci {
     /// Can a core actually be started with this? Both halves have to be known.
     pub fn can_start_a_cpu(&self) -> bool {
         self.conduit.is_some() && self.cpu_on.is_some()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The build-time duplicate check refuses a code listed twice, apart and not adjacent, so
+    /// both of its loops have to run to see it.
+    #[test]
+    fn the_duplicate_check_refuses_a_code_listed_twice() {
+        let row = |code| Implementer { code, name: "" };
+        assert!(!codes_are_distinct(&[row(0x41), row(0x42), row(0x41)]));
     }
 }

@@ -303,16 +303,24 @@ const _: () = assert!(
     TABLE.len() == (LAST - FIRST + 1) as usize,
     "every opcode between verb::FIRST and verb::LAST needs a row in verb::TABLE"
 );
-const _: () = {
+const _: () = assert!(
+    in_opcode_order(&TABLE),
+    "verb::TABLE is stored in opcode order and indexed by it; a row is out of place"
+);
+
+/// Does `table` hold one row per opcode from [`FIRST`], in order? A function rather than a loop
+/// inside the `const` above, because a check that only ever meets a good table cannot show it
+/// would refuse a bad one, and this one is fed a bad one in `tests.rs`.
+pub(crate) const fn in_opcode_order(table: &[Verb]) -> bool {
     let mut i = 0;
-    while i < TABLE.len() {
-        assert!(
-            TABLE[i].operation == FIRST + i as u64,
-            "verb::TABLE is stored in opcode order and indexed by it; a row is out of place"
-        );
+    while i < table.len() {
+        if table[i].operation != FIRST + i as u64 {
+            return false;
+        }
         i += 1;
     }
-};
+    true
+}
 
 /// **What a per-file grant answers for each verb** (`components/src/fs_file_caretaker.rs`).
 ///
