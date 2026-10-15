@@ -12,7 +12,7 @@ needs_person: no
 Filed 2026-09-14 as an unnumbered proposal by milestone 293's lane, which
 reduced one instance of this and then measured the rest of it; numbered 2026-09-19 by milestone
 433's drain of the proposal pile. Premise re-read against the tree on 2026-09-19 and still true,
-and the tree's counter-example is still in it: `kernel/src/user/live_swap_tests.rs` still
+and the tree's counter-example is still in it: `system_tests/src/user/live_swap_tests.rs` still
 re-declares `ROLE_DIRECT`, `ROLE_QUEUED` and `ROLE_HUNG` locally although `crates/swap_protocol`
 publishes all three. An independent re-count on 2026-09-19, over `ROLE_*`, `RPT_*`, `F_*` and
 `TERM_MAGIC` declared on both sides of a spawn, found **25 kernel/program file pairs sharing 79
@@ -62,21 +62,21 @@ It is rung four of AGENTS.md's ladder for a fact that has a rung-one answer sitt
 failure it permits is silent and specific: a role number changed on one side spawns a *different*
 role, and a flag bit changed on one side makes a test assert against a bit nothing sets. Both read
 as a bug in the code under test rather than as a mismatch, which is the same misdiagnosis
-`credential_proto::fixture`'s own module doc warns about for the SMB account.
+`credential_protocol::fixture`'s own module doc warns about for the SMB account.
 
-**This is not hypothetical, and the counter-example is in the tree.** `crates/swap_proto` already
+**This is not hypothetical, and the counter-example is in the tree.** `crates/swap_protocol` already
 publishes `ROLE_DIRECT`, `ROLE_QUEUED` and `ROLE_HUNG` with real doc comments, and
-`kernel/src/user/live_swap_tests.rs` **re-declares all three locally anyway** under a four-word
+`system_tests/src/user/live_swap_tests.rs` **re-declares all three locally anyway** under a four-word
 comment. So even where the crate exists, one side was written without it. That is the strongest
 argument for a gate rather than a convention.
 
 ## Prior art inside this tree
 
-The shape is built and works, twice. `crates/swap_proto` and `crates/job_mix` both publish the role
+The shape is built and works, twice. `crates/swap_protocol` and `crates/job_mix` both publish the role
 numbers their two binaries agree on, and `crates/schedule_store` publishes the file names
 `session_reviver` and `fs_test_client` both depend on, for exactly this reason and with the reason
 written down. Milestone 293 did the same for the credential values three files were copying
-(`credential_proto::fixture::PEOPLE`). What is missing is not a design, it is the sweep.
+(`credential_protocol::fixture::PEOPLE`). What is missing is not a design, it is the sweep.
 
 ## What a lane cannot decide
 
@@ -114,7 +114,7 @@ role, and a flag bit changed on one side makes a test assert against a bit nothi
 which read as a bug in the code under test rather than as a mismatch. It is not hypothetical, and
 the counter-example is the strongest argument for a gate rather than a convention:
 `crates/swap_protocol` already publishes three role numbers with real doc comments and
-`kernel/src/user/live_swap_tests.rs` re-declares all three locally anyway. The shape is built and
+`system_tests/src/user/live_swap_tests.rs` re-declares all three locally anyway. The shape is built and
 works three times over, in `swap_protocol`, `job_mix` and `schedule_store`, so what is missing is
 not a design but the sweep. What a lane cannot decide is the crate names, and there is no useful
 half of this work that does not create one: these numbers are not part of any shipped wire

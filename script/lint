@@ -2043,6 +2043,48 @@ REGISTRY = {
         'how many workspace packages carry at least one Kani proof harness',
         lambda: len(_harness_hits()),
     ),
+    # The per-crate harness counts notes/verification/core-harnesses.md marks. One entry per crate
+    # that appendix covers, added by milestone 427 (the documentation sweep the worklist already
+    # ranks) after five of its nine counts were found wrong: a count that rots silently in prose
+    # had already cost two sweeps their re-derivation. A lane landing a harness in one of these
+    # crates bumps the number beside the marker in the same commit, which is the forcing function
+    # the total `kani-harnesses` marker already exercises.
+    'capability-harnesses': (
+        'how many Kani proof harnesses crates/capability carries',
+        lambda: _harness_hits().get('capability', 0),
+    ),
+    'memory-regions-harnesses': (
+        'how many Kani proof harnesses crates/memory_regions carries',
+        lambda: _harness_hits().get('memory_regions', 0),
+    ),
+    'paging-harnesses': (
+        'how many Kani proof harnesses crates/paging carries',
+        lambda: _harness_hits().get('paging', 0),
+    ),
+    'page-frames-harnesses': (
+        'how many Kani proof harnesses crates/page_frames carries',
+        lambda: _harness_hits().get('page_frames', 0),
+    ),
+    'device-tree-blob-harnesses': (
+        'how many Kani proof harnesses crates/device_tree_blob carries',
+        lambda: _harness_hits().get('device_tree_blob', 0),
+    ),
+    'inter-process-communication-harnesses': (
+        'how many Kani proof harnesses crates/inter_process_communication carries',
+        lambda: _harness_hits().get('inter_process_communication', 0),
+    ),
+    'generational-table-harnesses': (
+        'how many Kani proof harnesses crates/generational_table carries',
+        lambda: _harness_hits().get('generational_table', 0),
+    ),
+    'intrusive-fifo-harnesses': (
+        'how many Kani proof harnesses crates/intrusive_fifo carries',
+        lambda: _harness_hits().get('intrusive_fifo', 0),
+    ),
+    'address-space-identifier-harnesses': (
+        'how many Kani proof harnesses crates/address_space_identifier carries',
+        lambda: _harness_hits().get('address_space_identifier', 0),
+    ),
     'markdown-files': (
         'how many markdown files the tree carries outside target/ and vendor/, which is the corpus '
         "README.md's reading order sends a newcomer into",
