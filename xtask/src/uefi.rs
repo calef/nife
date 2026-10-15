@@ -1135,7 +1135,9 @@ mod exit_verdict_tests {
         // The bound and a reset share this shape, so the line must give the reader the elapsed
         // time that separates them.
         assert!(
-            lines.iter().any(|l| l.contains("NIFE_UEFI_TIMEOUT") && l.contains("41 s")),
+            lines
+                .iter()
+                .any(|l| l.contains("NIFE_UEFI_TIMEOUT") && l.contains("41 s")),
             "{lines:?}"
         );
     }
@@ -1152,6 +1154,9 @@ mod exit_verdict_tests {
     #[test]
     fn a_watchdog_kill_defers_to_the_watchdogs_own_line() {
         let lines = lines(None, "test result: ok. 277 passed, 101 skipped\n");
-        assert!(lines.iter().any(|l| l.contains("HOST WATCHDOG")), "{lines:?}");
+        assert!(
+            lines.iter().any(|l| l.contains("HOST WATCHDOG")),
+            "{lines:?}"
+        );
     }
 }
