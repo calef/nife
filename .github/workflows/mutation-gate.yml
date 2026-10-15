@@ -1,5 +1,10 @@
 name: mutation gate
 
+# Observed failing: 2026-10-15, run 38803917791: red at "Decide against the triage ledger" on
+#   #2220, a throwaway pull request staging one untested function in `crates/glob`
+#   (`staged_gate_observation`): five survivor keys, all the staged function's, each listed with
+#   what clears it. That is the red this gate exists to raise, on the trigger it will live on.
+
 # **A surviving mutant on a line this pull request changed cannot merge untriaged** (roadmap
 # 924, provisional: calef's ruling "Reopen, build it", 2026-10-15 UTC, on milestone 479 (a
 # blocking `--in-diff` mutation gate)). `cargo mutants --in-diff` generates mutants only for
