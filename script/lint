@@ -594,6 +594,27 @@ if [ -n "$cfi_bad" ]; then
 fi
 echo "CFI: every hand-written .s file with an exported symbol carries call-frame information"
 
+# Every committed `.dtb` is what the `.dts` beside it compiles to. The device-tree fixtures
+# commit both halves of each pair, and a sweep can edit the text without reaching the binary
+# beside it: five blobs kept a name the tree had renamed away five weeks earlier, because nothing
+# read the property and nothing compared the bytes (milestone 491 (a committed .dtb is checked
+# against what its .dts compiles to)). The helper compiles each source with `dtc` and diffs
+# the DECOMPILED structure of the two blobs (`dtc -I dtb -O dts` on both sides), so one local
+# tool produced both texts and a `dtc` version difference cannot fail a contributor; a
+# difference that survives is a real drift.
+#
+# Where `dtc` is absent the check skips, and its own output says what that is worth: a skip is a
+# pass on a machine without the tool, and CI's lint job installs `dtc`, so the gate is real
+# where the merge queue runs. That split is the design, not a shortcut.
+#
+# It is a comparison, so it covers only the blobs that HAVE a source beside them. Bench images,
+# font atlases, the RedoxFS test image and the QEMU-dumped fixtures have no source to compare
+# against; the helper prints their count rather than passing over them in silence. An empty pair
+# set fails rather than passing (milestone 401 (a gate that selects the set it judges)).
+echo "==> every committed .dtb matches its .dts"
+python3 "$(dirname "$0")/../helpers/lint_dtb_matches_dts.py" --selftest >/dev/null
+python3 "$(dirname "$0")/../helpers/lint_dtb_matches_dts.py" || exit 1
+
 # The machine description prints on every boot (milestone 267).
 #
 # `print_machine_description` (kernel/src/machine_description.rs) is the bring-up transcript:
