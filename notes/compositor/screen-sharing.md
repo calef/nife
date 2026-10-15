@@ -14,5 +14,5 @@ screen-sharing app or a recorder, and exactly the authority such a thing needs a
 three items the roadmap asks for (enumeration, screenshots, screen sharing) are therefore one grant
 with three uses rather than three features. That is the point of building on mappings instead of
 verbs. And because the grant is a frame mapping, it is revocable through the machinery milestone 13
-(capability revocation) already built (`Frame::REVOKE`), rather than by asking a server to stop
+(capability revocation) already built (`PageFrame::REVOKE`), rather than by asking a server to stop
 honoring a request.

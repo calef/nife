@@ -28,7 +28,7 @@ days ago here has usually been overtaken. All three had been:
 
 | the block's three | site | state on 2026-08-16 |
 |---|---|---|
-| reaper count, `left: 5, right: 6` | `sched.rs`, `a_finished_thread_is_reaped_and_its_memory_returned` | rescoped; per-`Tid` `is_thread_present` waits and `used() <= before` |
+| reaper count, `left: 5, right: 6` | `sched.rs`, `a_finished_thread_is_reaped_and_its_memory_returned` | rescoped; per-`ThreadId` `is_thread_present` waits and `used() <= before` |
 | address-space frames, "-52" and "-19" | `user/tests.rs`, `a_dead_user_thread_frees_its_whole_address_space` | rescoped, the same two changes |
 | frame hygiene, margin of two frames | `user/live_swap_tests.rs` | removed 2026-08-03 in PR #46, with the analysis |
 
@@ -84,7 +84,7 @@ demands. The run then goes red accusing an embryo that is present and correct. N
 global baseline, a claim about one object: it is the milestone's signature. It was unrecorded
 against this site only because nothing had happened to fall on it yet.
 
-The rescope is also the stronger claim. `create_tcb` returns a generational `Tid`, so
+The rescope is also the stronger claim. `create_tcb` returns a generational `ThreadId`, so
 `is_thread_present(tid)` asks the narrow question the test is responsible for ("is this embryo in
 the table"), and it is immune to neighbors by construction. The old second assertion could pass
 with the embryo still in the table, as long as somebody else's thread left in the same window. The

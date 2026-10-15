@@ -40,7 +40,7 @@ The two numbers that decide anything are the last two, and neither is a data str
 The brief for this lane said "`MAX_THREADS` is 128 and the thread pool is a static BSS array". That
 was true at milestone 14 (kernel) phase B.2 and stopped being true at 19c.2. The static pool is
 gone, and every `Thread` now lives at the start of one page drawn from `kmem` or from a user process's own
-untyped (`sched.rs:80-93`, notes/thread-control-block.md). The table is `generational_table::Table<TcbPtr, 128>`, about 2 KiB of
+memory region (`sched.rs:80-93`, notes/thread-control-block.md). The table is `generational_table::Table<ThreadControlBlockPointer, 256>`, about 2 KiB of
 pointers.
 
 So the question "what does a per-thread deadline field cost in bytes" has an answer nobody has to
@@ -119,7 +119,7 @@ company is not the scheduler at all.
 A `SYS_SLEEP` and a timer object need nothing else. The thread blocks with a deadline and no
 counterparty; the expiry wakes it; it returns.
 
-A deadline on `Endpoint::RECEIVE`/`CALL` needs two things the other two do not, and both are concrete:
+A deadline on `Rendezvous::RECEIVE`/`CALL` needs two things the other two do not, and both are concrete:
 
 1. A targeted unlink from an endpoint's wait queue. `crates/intrusive_fifo`'s `Fifo` is
    singly linked: one `next` per node, `head`/`tail`/`len`, and its whole API is `push_back`,
@@ -139,7 +139,7 @@ machine the moment a program is written against it. A `CALL` that times out leav
 capability naming a thread that is no longer waiting. `ipc_reply` already refuses to deliver to a
 thread not parked as `WaitRole::Reply`, and its comment says why in exactly these terms ("a stale
 reply whose CALL was aborted long ago, its caller re-parked elsewhere"), so the dangerous case is
-covered. The residual is narrower: `Object::Reply(tid)` carries a Tid and no per-call nonce, so a
+covered. The residual is narrower: `Object::Reply(tid)` carries a `ThreadId` and no per-call nonce, so a
 caller that times out and then issues a *second* `CALL` is Reply-parked again, and the first call's
 stale reply would satisfy the second. This is latent today (revocation can produce the same
 situation) and a deadline on `CALL` would make it reachable on purpose. It wants a lane of its own,

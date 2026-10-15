@@ -25,7 +25,7 @@ unification is this lane. `>` and `|` are parser work afterwards.
 
 ## The shape, and the two decisions inside it
 
-A sink is an `Endpoint` capability with `WRITE`, and nothing else.
+A sink is a `Rendezvous` capability with `WRITE`, and nothing else.
 
 ### Register-only, not a shared page
 
@@ -114,7 +114,7 @@ longer exists*. It applies to all five endpoint IPC paths (SEND, RECEIVE, SEND_C
 CALL), because the fact is about the endpoint and not about the direction.
 
 This is the second time a distinction like this came up and it was resolved the other way the first
-time. DECISIONS §32 deliberately makes `Endpoint::REAP` return one error for "already collected" and
+time. DECISIONS §32 deliberately makes `Rendezvous::REAP` return one error for "already collected" and
 "not your child", because telling them apart would let a supervisor probe the tid space of children
 it has no relationship with. `Gone` carries no such risk: the capability is one the caller already
 holds, in its own capability table, so learning that its object died reveals nothing it was not

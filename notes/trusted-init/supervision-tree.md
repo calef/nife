@@ -35,7 +35,7 @@ Each split is chosen so that the authority is the smallest thing that still does
 - The spawner's budget is WRITE without GRANT. It may spend memory; it may not lend it. Nothing
   it builds can be endowed with a budget of its own.
 - Each instance is built in its own region, split off the budget, so reaping it is one
-  `Untyped::DESTROY` (§16) and one instance's corpse cannot pin another's memory. A LIFO reap returns
+  `MemoryRegion::DESTROY` (§16) and one instance's corpse cannot pin another's memory. A LIFO reap returns
   the pages to the budget (§16's return-of-pages), so the restart loop is not a leak.
 - The supervisor holds no memory at all. Its entire power is to ask the spawner for a rebuild of
   one program. A compromised supervisor is a restart loop, not a foothold.
@@ -86,7 +86,7 @@ there rather than here because it is an exception-path fact, not a progenitor fa
 
 ## Two design forks found and deliberately not built through
 
-1. Reaping requires the same right as building. `Untyped::DESTROY` needs `WRITE` on the region,
+1. Reaping requires the same right as building. `MemoryRegion::DESTROY` needs `WRITE` on the region,
    and so does `RETYPE`. So a root supervisor that could restart a dead tier-one server is a root
    supervisor that can build processes, which is exactly the authority we set out to give away.
    root_supervisor therefore chooses to be *unable* to build, and its policy for a dead tier-one server is

@@ -16,7 +16,7 @@ Three pieces, and the surface cost is zero new syscalls and zero new methods.
 
 1. Designation, at spawn only. A supervised thread is spawned with its supervision endpoint in a
    reserved capability table slot (`abi::fault::FAULT_EP_SLOT`, the last one). At `START` the kernel reads that
-   slot; an `Endpoint` capability there means "supervised," and the kernel records the endpoint as
+   slot; a `Rendezvous` capability there means "supervised," and the kernel records the rendezvous as
    the thread's fault target (`Thread::fault_ep`) and clears the slot, so the child holds no
    authority to send on it. A thread spawned with an empty fault slot is unsupervised and gets the
    pre-22 behavior: it dies and is reaped immediately, reporting to no one. Supervision is fixed at
@@ -37,7 +37,7 @@ Three pieces, and the surface cost is zero new syscalls and zero new methods.
 3. Dead until reaped. After the message, the thread is `State::Dead`: it never runs again, but
    its corpse (TCB, address space, memory, and the fault-time registers in its mailbox) persists for
    postmortem. The scheduler never runs a `Dead` thread, and the reaper (`finish_switch`) never
-   collects one; only the supervisor's explicit §16 revocation (`Untyped::DESTROY` on the child's
+   collects one; only the supervisor's explicit §16 revocation (`MemoryRegion::DESTROY` on the child's
    region) frees it. That is what makes a future resume protocol possible additively: the reserved
    fifth message word can carry it, because the corpse it would resume is still there.
 
@@ -119,7 +119,7 @@ notes/object-revocation.md (the reap the supervisor uses).
 Milestone 36 (notes/c-seam.md) is the first thing outside milestone 22 to build a supervisor that
 restarts a real component, and it pinned down the requirement §26's phase-B block left open.
 
-Reaping is `Untyped::DESTROY`, which needs `WRITE` on the region. `WRITE` on a region is also what
+Reaping is `MemoryRegion::DESTROY`, which needs `WRITE` on the region. `WRITE` on a region is also what
 builds a process from it (`RETYPE`, `RETYPE_OBJ`, `SPLIT`). So a supervisor that can restart its
 child is a supervisor that can build processes, unless it proxies the reap through something else.
 
@@ -132,10 +132,10 @@ child is a supervisor that can build processes, unless it proxies the reap throu
   or a distinct `Untyped::REAP` method changes the rights model and the syscall surface, so it stays a
   decision rather than an implementation detail.
 
-## Resolved: `Endpoint::REAP` (DECISIONS §32 (supervisor))
+## Resolved: `Rendezvous::REAP` (DECISIONS §32 (supervisor))
 
 calef ratified it the same day the requirement above was measured, and it is built on both ISAs. The
-method hangs off the supervision endpoint, not off `Untyped`: an `Untyped` method has to name a
+method hangs off the supervision endpoint, not off `MemoryRegion`: a `MemoryRegion` method has to name a
 region, and the whole premise is that the supervisor holds none. Authorization needs no new
 bookkeeping, because §26 already stores `Thread::fault_ep` and the kernel already stamps the tid on the
 death message, so the check is "the named thread's recorded fault endpoint *is* the endpoint being
@@ -153,8 +153,8 @@ Two boundaries, both deliberate:
   be separate processes without the supervisor slowly accumulating the builder's rights.
 
 It also settles the tid-to-handle half of this gap for this case only: the tid is authorized
-*relative to the endpoint it arrived on*, so no `Tcb::NAME`, no per-child endpoints, no
-builder-reported tid. That is the endpoint-only naming discipline applied consistently, a name that
+*relative to the rendezvous it arrived on*, so no `Tcb::NAME`, no per-child rendezvouses, no
+builder-reported tid. That is the rendezvous-only naming discipline applied consistently, a name that
 means something only to the holder of the capability it came through rather than a global handle. Any
 future operation that needs to name a child is a fresh decision and should try this shape first.
 
@@ -223,7 +223,7 @@ other side.
   (design/audit-reports/), recorded-accepted.
 
   Two facts that only look alarming together. `sched::start_tcb` reads the reserved slot with
-  `capability_table.get(FAULT_EP_SLOT)` rather than `get_with`, so **any** `Endpoint` capability
+  `capability_table.get(FAULT_EP_SLOT)` rather than `get_with`, so **any** `Rendezvous` capability
   there makes the thread supervised, `Rights::NONE` included. It is the one place in the kernel where a
   capability's *presence* authorizes something and its rights are never consulted. And
   `supervision_protocol` is the only site that places one, with `abi::rights::READ`, chosen by every

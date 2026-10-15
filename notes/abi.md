@@ -52,13 +52,13 @@ at, and `a0..a2` are the operation's arguments. The kernel checks that the slot 
 that its *rights* permit the method, and that the object's type understands it. The method numbers
 live per object type in `crates/abi`:
 
-- Endpoint (`endpoint::`): `SEND`, `RECEIVE`, `CALL`, and the capability-passing pair `SEND_CAP` /
+- Rendezvous (`rendezvous::`): `SEND`, `RECEIVE`, `CALL`, and the capability-passing pair `SEND_CAP` /
   `RECEIVE_CAP`. The synchronous-IPC primitive the whole system talks over. `WRITE` rights permit
   `SEND`; `READ` rights permit `RECEIVE`; `GRANT` permits passing a capability along.
 - Reply (`reply::REPLY`): the one-shot return leg of a `CALL`.
-- Untyped / objects (`objtype::`): `RETYPE` an untyped region into an `ENDPOINT`, `ADDRESS_SPACE`,
-  or `TCB`. This is how a process builds new kernel objects out of a raw memory budget it holds.
-- TCB (`tcb::`): `CONFIGURE` (entry, stack, address space), `CAP_INSERT` (place a capability into
+- MemoryRegion / objects (`objtype::`): `RETYPE` a region into a `RENDEZVOUS`, an `ADDRESS_SPACE`,
+  or a `THREAD_CONTROL_BLOCK`. This is how a process builds new kernel objects out of a raw memory budget it holds.
+- ThreadControlBlock (`thread_control_block::`): `CONFIGURE` (entry, stack, address space), `CAP_INSERT` (place a capability into
   the child's capability table), `START` (see §3).
 - AddressSpace (`address_space::MAP_INTO`, with modes `MAP_RO` / `MAP_RW` / `MAP_CODE`): map a
   frame into an address space at a chosen virtual address with chosen permissions.
@@ -109,13 +109,13 @@ virtual addresses. The program hardcodes which slot holds what and which VA is w
 is the contract, and it is per program, published in that program's own source:
 
 - the least_authority_demo is granted one endpoint at slot 0 (its result channel).
-- the console server gets its request endpoint at slot 0, its reply endpoint at slot 1, the
+- the console server gets its request rendezvous at slot 0, its reply rendezvous at slot 1, the
   shared text page read-only at `0x60_0000`, and the UART device frame.
-- the input driver gets the line endpoint at slot 0 and its RX interrupt capability at slot 1.
-- the shell holds five endpoints (slots 0–4) and two shared pages.
-- a **std program** (milestone 27) gets an untyped budget at slot 0 (its heap) and a WRITE endpoint
+- the input driver gets the line rendezvous at slot 0 and its RX interrupt capability at slot 1.
+- the shell holds five rendezvouses (slots 0–4) and two shared pages.
+- a **std program** (milestone 27) gets an untyped budget at slot 0 (its heap) and a WRITE rendezvous
   at slot 1 (stdout/stderr). A std program *given the network* (milestone 27 phase two) also gets a
-  WRITE `Stack` endpoint at slot 2 (net_stack's socket contract, DECISIONS §25) and a second untyped
+  WRITE `Stack` rendezvous at slot 2 (net_stack's socket contract, DECISIONS §25) and a second untyped
   budget at slot 3 (the per-socket shared frames `std::net` mints). Absent slots 2 and 3, `std::net`
   returns `Unsupported`: no ambient network, felt from inside the process. See notes/std.md.
 - a std program *given a directory* (milestone 27 phase two, the FS half) gets a WRITE FS-service
@@ -139,7 +139,7 @@ is the contract, and it is per program, published in that program's own source:
   directory but no network holds 0, 1, and 4, with 2 and 3 empty, because empty 2 and 3 are exactly
   how `std::net` knows it has no network. `Spawn.grants` fills slots from zero in order and cannot
   express a gap, so the kernel-side wiring places slot 4 with `sched::grant_at` first and lets the
-  ordered grants land at 0 and 1 behind it. That is the same explicit-target move `Tcb::CAP_INSERT`
+  ordered grants land at 0 and 1 behind it. That is the same explicit-target move `ThreadControlBlock::CAP_INSERT`
   offers a userspace loader (§5's fault slot uses it), available to the kernel's own service wiring.
 
 This is out-of-band agreement, not discovery: the program does not ask "what am I holding," it knows
@@ -192,7 +192,7 @@ only word that says where the dead thread actually pointed.
 
 The corpse is dead until reaped: after the message, the thread never runs again, but its TCB,
 address space, and memory persist for postmortem until the supervisor reaps them with §16 revocation
-(`Untyped::DESTROY` on the child's region). That is why the reserved `w4` can carry a resume protocol
+(`MemoryRegion::DESTROY` on the child's region). That is why the reserved `w4` can carry a resume protocol
 later without a format change: the corpse it would resume is still there.
 
 ## The one ambient thing: reading the clock (milestone 19e / the primitive suite)

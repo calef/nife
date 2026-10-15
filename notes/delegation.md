@@ -72,14 +72,14 @@ checks the three things that have to hold:
    (no `GRANT`), so when it tries to `SEND_CAP` it onward, the kernel refuses before any rendezvous.
 
 Verified it can fail: stub the `GRANT` check to accept, and claim 3 collapses. The receiver's
-re-delegation is now permitted, blocks forever on the empty endpoint it tried to send over, and the
+re-delegation is now permitted, blocks forever on the empty rendezvous it tried to send over, and the
 whole test suite hangs. The gate is load-bearing, not decoration.
 
 ## What this unlocks
 
-Delegation is the prerequisite for the next simplification worth making: a `Frame` capability. Today
+Delegation is the prerequisite for the next simplification worth making: a `PageFrame` capability. Today
 every shared page (the console buffer, the DMA region) is mapped into both parties by the kernel at
-spawn. With delegation in place, a process can hold a `Frame` capability and *pass it* to whoever it
+spawn. With delegation in place, a process can hold a `PageFrame` capability and *pass it* to whoever it
 wants to share memory with, narrowing the rights, instead of the kernel pre-wiring the sharing. That
 is "IPC carries control, shared memory carries data" (§10) done by the processes rather than arranged
-for them. See DECISIONS' open ideas and cap.rs's note on the `Frame` object.
+for them. See DECISIONS' open ideas and cap.rs's note on the `PageFrame` object.

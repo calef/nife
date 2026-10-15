@@ -4,11 +4,11 @@ An appendix to [notes/grant-expression.md](../grant-expression.md), moved there 
 (UTC) under §212 (a prose budget). It records the kernel fix `--mem N` needed and the program
 that spends what it was granted.
 
-## Untyped had to become delegable first
+## The region had to become delegable first
 
 Making `--mem N` real, and not parsed-and-ignored, needed a kernel fix, recorded as an amendment
-to DECISIONS §16. `Untyped::SPLIT` minted its child budget with `WRITE` alone, so it could be spent
-but never delegated (`SEND_CAP` and `CAP_INSERT` both gate on `GRANT`). Untyped was the one object
+to DECISIONS §16. `MemoryRegion::SPLIT` minted its child budget with `WRITE` alone, so it could be spent
+but never delegated (`SEND_CAP` and `CAP_INSERT` both gate on `GRANT`). A memory region was the one object
 type no process could hand on, which quietly foreclosed the whole feature.
 
 The fix is rights inheritance, not a blanket upgrade, and the distinction matters. Minting the

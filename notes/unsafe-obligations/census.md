@@ -104,7 +104,7 @@ So it is neither raw pointer arithmetic nor a missing abstraction in the usual s
 populations, and both are one wrapper away. The 114 `invoke` sites all call one `unsafe fn` whose
 own `# Safety` section says *"the kernel validates the capability and the method before acting; that
 is its whole job. The caller is trusting the kernel, not the other way around"*, which describes an
-obligation on nobody. It is not simply mismarked: a few methods (`aspace::MAP_INTO` among them) can
+obligation on nobody. It is not simply mismarked: a few methods (`address_space::MAP_INTO` among them) can
 perturb the caller's own address space, so *some* obligation is real. But it is a per-method
 obligation carried by a single all-methods signature, and 114 blocks assert it identically. The 127
 volatile and slice accesses are the same story about granted pages.

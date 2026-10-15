@@ -16,7 +16,7 @@ Eight harnesses in `crates/capability/src/lib.rs`, under `#[cfg(kani)]`:
 | `from_bits_cannot_forge_a_right` | an attacker-controlled syscall register cannot conjure an undefined right |
 | `subset_matches_allows` | the two phrasings of the order agree, so a bug in one shows against the other |
 | `derive_never_widens_rights` | the central theorem, on the real `CapabilityTable::derive` |
-| `split_never_widens_rights` | authority never widens at the *other* mint site: `Cap::mint_child` (the inheriting mint `Untyped::SPLIT` now uses) hands a child no more than the parent held (milestone 35, below) |
+| `split_never_widens_rights` | authority never widens at the *other* mint site: `Cap::mint_child` (the inheriting mint `MemoryRegion::SPLIT` now uses) hands a child no more than the parent held (milestone 35, below) |
 | `a_deleted_capability_stays_deleted` | for every table state, once `delete` succeeds the slot answers `NoSuchSlot` to both `get` and a second `delete` (the consume-on-use mechanism behind the one-shot Reply) |
 | `delete_touches_only_its_slot` | deleting any slot leaves every other slot exactly as it was (consuming one caller's Reply cannot orphan another's) |
 
@@ -86,7 +86,7 @@ Five in `crates/page_frames/src/lib.rs`, the physical frame allocator:
 | `two_allocations_are_distinct` | over any bitmap, two back-to-back `alloc`s never return the same frame (the property isolation rests on: one physical page is never handed to two owners) |
 | `an_allocated_frame_is_aligned_and_in_range` | an allocated frame is frame-aligned and within `[base, base + total*FRAME_SIZE)` |
 | `index_of_inverts_frame_addressing` | frame address and bitmap index are inverses, so naming is unambiguous |
-| `containing_rounds_down_within_a_frame` | `Frame::containing` returns an aligned frame that holds the address |
+| `containing_rounds_down_within_a_frame` | `PageFrame::containing` returns an aligned frame that holds the address |
 | `bitmap_bytes_covers_every_frame` | the bitmap is always sized to hold one bit per frame (no out-of-bounds in `get`/`set`) |
 
 The allocator harnesses build a small allocator over a *symbolic* bitmap directly. The
@@ -113,7 +113,7 @@ is the ELF lesson reused: prove (and here, harden) the loopless leaves; the walk
 ## `crates/inter_process_communication`
 
 Six in `crates/inter_process_communication/src/lib.rs`, the synchronous-rendezvous state machine.
-It is the decision core of `sched.rs`'s `Endpoint`, extracted as pure logic. It was restated over
+It is the decision core of `sched`'s `Rendezvous`, extracted as pure logic. It was restated over
 the intrusive queues at milestone 14 (kernel objects from untyped) phase A.3, so the rewire did not demote proved code back to
 argued code. The same six properties now hold over real `intrusive::Fifo`s with TCB-shaped nodes,
 composing with the `Fifo`'s own FIFO proof below.
@@ -175,7 +175,7 @@ A; see notes/generational-names.md):
 
 | Harness | Property |
 |---|---|
-| `a_removed_name_never_resolves_again` | once removed, a name fails `get`/`get_mut`/`remove` forever, even after its slot is reused (the stale-Tid safety that capability payloads will lean on) |
+| `a_removed_name_never_resolves_again` | once removed, a name fails `get`/`get_mut`/`remove` forever, even after its slot is reused (the stale-ThreadId safety that capability payloads will lean on) |
 | `live_names_are_distinct_and_resolve_to_their_own_entry` | the `(generation, slot)` packing cannot alias two live entries |
 | `a_name_the_table_never_minted_resolves_to_nothing` | for any u64, resolution succeeds only on exactly a name the table issued |
 

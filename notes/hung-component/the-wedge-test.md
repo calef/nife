@@ -13,7 +13,7 @@ assertion about program order and not one of them about elapsed time:
    which is byte for byte what a healthy idle system reads as: `abi::survey::BLOCKED` is the state of
    a server parked in `RECEIVE_CAP`, and that is every healthy server between requests. The widest view
    a supervisor has cannot tell the difference, and no death message has arrived by then either.
-2. The supervisor's whole vocabulary is refused. `Endpoint::REAP` is asked about *every* member of
+2. The supervisor's whole vocabulary is refused. `Rendezvous::REAP` is asked about *every* member of
    the domain and answers `StillAlive` every time. It is side-effect free by construction:
    `reap_supervised` decides `StillAlive` before it looks up a region.
 3. The service is restored with no new authority, per the four-step table in the parent, and the drain step is
