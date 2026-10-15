@@ -179,6 +179,10 @@ pub(super) fn std_generate_modules() -> bool {
         if let Some(idx) = body.find("\n#[cfg(test)]\nmod tests") {
             body.truncate(idx);
         }
+        // A module the copy does not carry (see [`uncopied_modules`]) loses the line that names
+        // it, and the doc comment attached to that line, so nothing downstream goes looking for
+        // its file and no orphaned comment is left where the module was.
+        let body = drop_module_lines(&body, uncopied_modules(&src));
         let modules = out_of_line_modules(&src, &body);
         let body = match inline_modules(&body, |name| {
             let (_, path) = modules.iter().find(|(n, _)| n == name)?;
@@ -203,6 +207,55 @@ pub(super) fn std_generate_modules() -> bool {
         }
     }
     true
+}
+
+/// The out-of-line modules of a copied crate root that std's copy does not carry, by name. One
+/// today: the filesystem test fixture (milestone 886 (the filesystem test fixture moves to its
+/// own crate)) is test data rather than wire contract, and the PAL reads none of it. While the
+/// copy carried it, every edit to a test's expected contents staled every worktree's farm, which
+/// is why the copy drops it here. The fixture's move to its own crate, also 886, deletes the
+/// file and this list with it.
+pub(super) fn uncopied_modules(crate_root: &Path) -> &'static [&'static str] {
+    if crate_root.ends_with("crates/filesystem_protocol/src/lib.rs") {
+        &["fixture"]
+    } else {
+        &[]
+    }
+}
+
+/// Remove a module from a copy's body: the `pub mod x;` line and the doc comment attached to it,
+/// for every name in `uncopied`. A doc comment left behind where its item was would be an outer
+/// doc comment with nothing left to document, which does not compile.
+fn drop_module_lines(body: &str, uncopied: &[&str]) -> String {
+    if uncopied.is_empty() {
+        return body.to_string();
+    }
+    let lines: Vec<&str> = body.lines().collect();
+    let mut dropped = vec![false; lines.len()];
+    for (i, line) in lines.iter().enumerate() {
+        let names_uncopied = line
+            .strip_prefix("pub mod ")
+            .and_then(|l| l.strip_suffix(';'))
+            .is_some_and(|n| uncopied.contains(&n));
+        if !names_uncopied {
+            continue;
+        }
+        dropped[i] = true;
+        for j in (0..i).rev() {
+            if lines[j].trim_start().starts_with("///") {
+                dropped[j] = true;
+            } else {
+                break;
+            }
+        }
+    }
+    lines
+        .iter()
+        .zip(&dropped)
+        .filter(|(_, dropped)| !*dropped)
+        .map(|(line, _)| *line)
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// The modules a crate root names out of line, as a column-0 `pub mod x;`, each with the `x.rs`
